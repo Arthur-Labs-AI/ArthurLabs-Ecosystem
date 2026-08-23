@@ -1,0 +1,532 @@
+﻿
+ARTHUR
+PHASE 2 — ISOLATED MEMORY + RAG
+DeepSeek V4 Flash Implementation Specification
+Version 1.0  •  August 2026
+PURPOSEThis document is the implementation contract for ARTHUR Phase 2. Phase 2 gives ARTHUR persistent long-term memory and retrieval while enforcing hard separation between Personal and Business domains. DeepSeek remains the remote reasoning model; memory storage, retrieval, indexing, filtering, provenance, and secret controls remain local.
+
+1. Phase 2 Goal
+Extend the hardened Phase 1 ARTHUR Core with persistent, mode-isolated long-term memory and a local RAG pipeline. A Personal turn may search and write only Personal memory. A Business turn may search and write only Business memory. The isolation boundary must be enforced by local code and separate stores—not by prompts, model cooperation, or client-supplied namespaces.
+Phase 2 must preserve all Phase 1 architectural boundaries: ConversationService remains provider-independent; DeepSeek remains behind ModelGateway; the AI Harness remains behind HarnessAdapter; tool execution remains guarded; session mode remains server-owned.
+PHASE 2 NORTH STARIf a bug in the LLM, a malicious prompt, a bad tool result, or a client request tries to cross Personal/Business memory boundaries, the system must fail closed before retrieval or persistence occurs.
+2. Entry Gate / Assumptions
+Phase 1 build, typecheck, tests, and security regressions pass.
+Phase 1 request idempotency and approval state machines are hardened.
+Phase 1 mode history partitioning is already fixed or Phase 2 must preserve/finalize that invariant.
+Phase 1 secret sanitization boundary is available and must be reused.
+DeepSeek V4 Flash remains the configured reasoning provider through ModelGateway.
+No Phase 2 component may bypass the Phase 1 tool or model boundaries.
+3. Non-Goals — Do Not Implement Yet
+Voice, wake word, STT, TTS, audio streaming, or barge-in.
+Phone client, node discovery, remote PC/laptop selection, or distributed failover.
+AgencyOS, Cost Intelligence, AI Hoster, CRM, billing, or client acquisition logic.
+Knowledge-graph UI, Obsidian-style graph visualization, or complex graph databases.
+Training/fine-tuning the LLM on memories.
+Massive enterprise-scale vector infrastructure.
+PDF OCR, image understanding, email/calendar ingestion, or cloud-drive connectors.
+Autonomous memory deletion or irreversible summarization without traceability.
+Automatic cross-domain sharing between Personal and Business.
+4. Architectural Invariants
+Invariant
+Required behavior
+Two memory domains
+Personal and Business use separate physical/logical stores, indexes, and store handles.
+Server-owned routing
+MemoryGateway selects the domain from trusted SessionContext/ArthurMode. Client and LLM cannot choose arbitrary memory stores.
+No cross-domain fallback
+If the active store fails, ARTHUR must not query the other store as fallback.
+Local retrieval
+Embedding/index lookup, filtering, hybrid search, reranking, provenance, and memory writes run locally.
+Minimal DeepSeek context
+Only selected, sanitized retrieved snippets are added to the DeepSeek request.
+Source of truth
+RAG context is evidence/context, not an authoritative database replacement.
+Provenance
+Every memory item records source, timestamps, type, confidence, domain, and supersession metadata.
+Deletion
+A user-visible memory can be removed from structured rows, FTS index, vector index, and future retrieval.
+Idempotent ingestion
+Replaying the same memory/document ingestion request cannot silently create duplicates.
+Prompt injection resistance
+Retrieved content is marked as untrusted data and cannot redefine system/tool policies.
+Mode-safe context
+Personal turns receive only Personal memories; Business turns receive only Business memories.
+Replaceable embeddings
+Conversation code depends on EmbeddingGateway/VectorStore interfaces, not one embedding model.
+5. High-Level Runtime Architecture
+                         ARTHUR Core                              |                     ConversationService                              |                  +-----------+-----------+                  |                       |            ContextBuilder             Tool system                  |            MemoryGateway                  |          +-------+--------+          |                | PERSONAL store       BUSINESS store          |                |   SQLite + FTS       SQLite + FTS   Vector index       Vector index          |                |          +-------+--------+                  |          Retrieval/Reranker                  |          selected snippets                  |             ModelGateway                  |          DeepSeek V4 Flash
+The two stores must not share a query object or generic unrestricted connection. MemoryGateway owns two explicitly named store dependencies and chooses exactly one based on trusted mode.
+6. Recommended Repository Additions
+arthur/  src/    memory/      gateway.ts      contracts.ts      policy.ts      provenance.ts      candidates.ts      dedupe.ts      stores/        personal_store.ts        business_store.ts        sqlite_memory_store.ts      retrieval/        hybrid_retriever.ts        keyword_search.ts        vector_search.ts        fusion.ts        reranker.ts      embeddings/        gateway.ts        contracts.ts        providers/          local_multilingual.ts          fake.ts      ingestion/        service.ts        chunker.ts        normalizer.ts        document_service.ts      extraction/        memory_extractor.ts        schemas.ts      lifecycle/        supersession.ts        retention.ts    core/      conversation/        context_builder.ts      # extend through MemoryContextSource  tests/    memory/      isolation.test.ts      retrieval.test.ts      ingestion.test.ts      lifecycle.test.ts      prompt_injection.test.ts      secrets.test.ts
+7. Physical Memory Isolation
+For Phase 2, the recommended local implementation is two separate SQLite databases. This matches the Phase 1 local-first stack while creating a genuine storage boundary.
+data/  arthur-core.db  memory-personal.db  memory-business.db
+Database
+Contents
+Access identity
+arthur-core.db
+Sessions, turns, approvals, model/tool metadata from Phase 1
+CoreStore only
+memory-personal.db
+Personal memory items, chunks, FTS index, embeddings, source metadata
+PersonalMemoryStore only
+memory-business.db
+Business/project memory items, chunks, FTS index, embeddings, source metadata
+BusinessMemoryStore only
+IMPORTANTDo not implement one `memories` table with a `domain` column as the only isolation mechanism. A domain column may still exist for validation/audit, but Personal and Business data must live in separate stores.
+8. Trusted Memory Context
+8.1 Server-generated context
+MemoryContext {  domain: "personal" | "business"  context_key: string       // generated by server, not caller  session_id: string  user_id: string  business_workspace_id?: string  trace_id: string}
+`context_key` is generated from trusted server state. Phase 2 may use one default Business workspace, but the contract must allow future business/project scoping.
+The HTTP client may request a mode change through the existing Phase 1 route.
+The client may not supply a database filename, vector collection, namespace, tenant, or context_key.
+The LLM may not choose Personal vs Business memory.
+MemoryGateway derives the exact store from SessionContext after server-side mode validation.
+9. Memory Taxonomy
+Type
+Purpose
+Example
+Default lifecycle
+EPISODIC
+Events/decisions that happened
+“We decided to use DeepSeek for ARTHUR V1.”
+Long-lived; supersedable
+SEMANTIC
+Stable fact/preference
+“User prefers ARTHUR as the assistant name.”
+Long-lived; confidence tracked
+PROJECT
+Scoped project knowledge
+Architecture decision for a project
+Scoped; long-lived
+DOCUMENT
+Chunks from an ingested source
+Section of a spec/README/note
+Lives with source
+PROCEDURAL
+Approved way ARTHUR should behave
+“Require approval before production deploy.”
+Explicit/high confidence only
+TEMPORARY
+Short-lived contextual memory
+Temporary task note
+TTL/expiry
+10. Memory Data Model
+MemoryItem {  id: UUID  domain: PERSONAL | BUSINESS  type: EPISODIC | SEMANTIC | PROJECT | DOCUMENT | PROCEDURAL | TEMPORARY  subject_key?: string  project_key?: string  source_type: USER_EXPLICIT | CONVERSATION | DOCUMENT | TOOL | SYSTEM  source_id?: string  canonical_text: string  display_text: string  content_hash: string  confidence: number          // 0..1  importance: number          // 0..1  sensitivity: NORMAL | PRIVATE | RESTRICTED  status: ACTIVE | SUPERSEDED | DELETED | EXPIRED  supersedes_id?: UUID  created_at: timestamp  updated_at: timestamp  last_verified_at?: timestamp  expires_at?: timestamp  embedding_model: string  embedding_version: string}
+10.1 Chunk model
+MemoryChunk {  id: UUID  memory_id: UUID  ordinal: number  text: string  token_count: number  content_hash: string  embedding: vector/blob}
+10.2 Provenance rules
+Every memory must be traceable to a source type and optional source ID.
+Conversation-derived memories reference the originating turn/session.
+Document memories reference document_id + chunk position.
+Tool-derived memories identify the tool call but must not store secrets/raw credentials.
+Superseded memories remain auditable but must not appear in normal retrieval.
+11. SQLite Schema Requirements
+memory_items  id PRIMARY KEY  domain CHECK(...)  type CHECK(...)  source_type CHECK(...)  source_id  subject_key  project_key  canonical_text  display_text  content_hash  confidence CHECK(confidence >= 0 AND confidence <= 1)  importance CHECK(importance >= 0 AND importance <= 1)  sensitivity CHECK(...)  status CHECK(...)  supersedes_id  created_at  updated_at  last_verified_at  expires_at  embedding_model  embedding_versionmemory_chunks  id PRIMARY KEY  memory_id REFERENCES memory_items(id) ON DELETE CASCADE  ordinal  text  token_count  content_hash  embedding_blob  UNIQUE(memory_id, ordinal)memory_sources  id PRIMARY KEY  source_type  source_external_id  title  source_hash  metadata_json  created_at  updated_atingestion_requests  request_id PRIMARY KEY  request_hash  state  result_id  created_at  updated_at
+Each memory database has its own schema/migrations. Migration versioning must be independent so future Personal and Business evolution does not require unsafe cross-database transactions.
+12. Local Embedding Layer
+Embeddings should remain local in Phase 2 so raw memory does not need to be sent to another external provider. Implement a provider-agnostic EmbeddingGateway with a small multilingual local embedding provider and a deterministic fake provider for tests.
+interface EmbeddingProvider {  id(): string  dimensions(): number  embed(texts: string[]): Promise<number[][]>}interface EmbeddingGateway {  embed(texts: string[]): Promise<EmbeddingBatch>}
+Model/provider name is configuration, not hard-coded in memory logic.
+Store embedding model ID/version on every item/chunk.
+If embedding model changes, do not mix vectors silently; mark/reindex explicitly.
+Batch embeddings where possible.
+Enforce input-size limits before embedding.
+Never send secrets that were sanitized out of the canonical memory text.
+13. Vector Store Strategy
+Phase 2 does not require a dedicated vector database. Store embeddings persistently in each memory SQLite database and expose vector search behind a `VectorStore` interface. A linear/local cosine search is acceptable for the expected Phase 2 dataset if bounded and tested. The interface must allow replacement by pgvector or another vector engine later.
+interface VectorStore {  upsert(chunks: EmbeddedChunk[]): Promise<void>  search(queryVector: number[], filters: RetrievalFilter, limit: number): Promise<VectorHit[]>  deleteByMemoryId(memoryId: string): Promise<void>}
+14. Keyword / FTS Retrieval
+Create an FTS index per memory database for exact names, phrases, IDs, and terms that embeddings may miss. FTS and vector retrieval are combined rather than choosing one.
+Only ACTIVE and non-expired memories are eligible.
+Project/entity filters are applied before ranking when present.
+Deleted/superseded records must never appear.
+FTS query generation must be escaped/validated; user text is not inserted as raw SQL.
+Result size is bounded.
+15. Hybrid Retrieval Pipeline
+User turn   |Query normalizer   |   +--> Local embedding --> Vector search (active domain only)   |   +--> FTS keyword search (active domain only)   |Reciprocal-rank / weighted fusion   |Metadata + lifecycle filters   |Deduplication   |Lightweight reranker   |Top-K sanitized snippets   |ContextBuilder   |DeepSeek V4 Flash
+15.1 Retrieval request
+MemoryQuery {  context: MemoryContext  query_text: string  project_key?: string  subject_keys?: string[]  allowed_types?: MemoryType[]  top_k: number  max_context_tokens: number}
+15.2 Fusion
+Use a deterministic, testable fusion strategy such as Reciprocal Rank Fusion or a simple weighted normalized score. Do not let DeepSeek directly search the raw databases. The reranker may remain local/heuristic in Phase 2.
+Signal
+Possible contribution
+Vector similarity
+Semantic relevance
+FTS rank
+Exact phrase/name relevance
+Importance
+User-approved or highly important memories receive a bounded boost
+Recency
+Small optional boost for recent episodic memories
+Confidence
+Low-confidence extracted memories are downweighted
+Project match
+Strong boost/required filter when project_key is known
+16. Context Budgeting
+Do not dump every retrieved memory into DeepSeek. MemoryContextSource must enforce a strict token budget.
+RAG budget example:  max_retrieval_candidates: 40  max_reranked_results: 12  max_memory_context_tokens: configurable  max_single_chunk_tokens: configurable
+Prefer fewer high-quality memories to large low-relevance context.
+Deduplicate semantically similar chunks.
+Do not include superseded or expired memories.
+Include memory IDs/provenance in hidden structured metadata, not necessarily in spoken/display output.
+ContextBuilder labels retrieved content as untrusted memory/source data.
+17. Prompt-Injection Boundary
+RETRIEVED MEMORY IS DATAA memory/document may contain text such as “ignore previous instructions” or fake tool commands. ARTHUR must treat all retrieved memory as untrusted content. It cannot modify system policy, permissions, tool schemas, mode, or approval rules.
+SYSTEM / POLICY  authoritativeTOOL DEFINITIONS / PERMISSIONS  authoritativeRETRIEVED MEMORY  <memory-data>    ... untrusted text ...  </memory-data>USER MESSAGE  user input
+Never concatenate memory text into the system policy section.
+Do not parse tool calls out of memory content.
+Memory cannot request mode changes.
+Tool output stored as memory is also untrusted on later retrieval.
+Add adversarial tests containing prompt-injection strings in both Personal and Business stores.
+18. Memory Write Paths
+Phase 2 supports three write paths:
+Path
+Trigger
+Policy
+Explicit remember
+User says to remember/store a fact
+High trust; sanitize, dedupe, persist immediately
+Conversation extraction
+Post-turn memory extractor proposes candidates
+Schema-validated; confidence/importance thresholds; policy decides write
+Document ingestion
+User explicitly ingests a note/spec/text source
+Chunk/index with source provenance
+19. Explicit Remember API
+POST /v1/memory/remember{  "session_id": "...",  "client_request_id": "...",  "text": "...",  "type": "semantic",  "project_key": "optional"}
+The server resolves domain from the session. The request does not accept `domain`, `database`, `namespace`, or `context_key`.
+20. Automatic Memory Extraction
+After a successful conversation turn, ARTHUR may run a memory-extraction step using the existing DeepSeek ModelGateway. This is not a second agent with unrestricted powers. It is a strict structured extraction task.
+MemoryCandidate {  text: string  type: MemoryType  subject_key?: string  project_key?: string  confidence: number  importance: number  reason: string  should_store: boolean}
+The extractor must be instructed to avoid storing:
+temporary conversational filler
+guesses presented as facts
+secrets/credentials/tokens/passwords
+large copied blocks better represented as documents
+information belonging to the opposite mode
+model-generated conclusions with no supporting user/tool source unless explicitly marked low-confidence
+20.1 Write policy
+Candidate
+Default action
+User explicitly says remember this
+Store after sanitization and dedupe
+Stable user preference / durable project fact
+Store if confidence threshold passes
+Temporary task detail
+Temporary/TTL or do not store
+Uncertain inference
+Do not store automatically
+Secret-like content
+Reject/redact according to secret policy
+Potential conflict with existing memory
+Run supersession/conflict policy
+21. Deduplication
+Memory should not grow by storing the same fact after every conversation.
+Deduplication order:1. Normalize canonical text.2. Compare exact content_hash.3. Search same subject/type for high semantic similarity.4. If equivalent, update provenance/verification timestamp instead of creating duplicate.5. If contradictory/newer, invoke supersession policy.
+22. Supersession and Contradictions
+ARTHUR must preserve history without retrieving stale facts as current truth.
+old memory: ACTIVEnew verified replacement arrives   |   +--> old.status = SUPERSEDED   +--> new.supersedes_id = old.id   +--> new.status = ACTIVE
+Do not physically delete superseded memories during normal updates.
+Normal retrieval excludes SUPERSEDED.
+If conflict confidence is low, keep both but mark conflict and avoid presenting either as certain.
+Explicit user correction has stronger authority than an inferred memory.
+Document/tool-source facts carry their source timestamps/provenance.
+23. Forget / Delete
+DELETE /v1/memory/{memory_id}orPOST /v1/memory/forget
+Deletion must target the active domain only. A Personal session cannot delete a Business memory ID even if the caller somehow knows it.
+Mark item DELETED and remove it from FTS/vector retrieval immediately.
+Delete/clear vector chunks transactionally where practical.
+Retain minimal audit tombstone if required for integrity, without retaining deleted sensitive text.
+A deleted item must not reappear through stale caches.
+24. Document Ingestion — Phase 2 Scope
+Support text-first ingestion only: plain text, Markdown, and explicit pasted notes/specifications. PDF/OCR/Google Drive/email ingestion is deferred.
+DocumentIngestionRequest {  session_id: string  client_request_id: string  title: string  source_type: "text" | "markdown"  content: string  project_key?: string}
+Pipeline:
+sanitize -> normalize -> hash/idempotency reserve -> chunk -> embed locally -> write source + chunks atomically -> index FTS -> mark ingestion completed
+25. Chunking
+Prefer semantic/paragraph boundaries over blind fixed-size splitting.
+Apply configurable max tokens per chunk.
+Use modest overlap only when useful.
+Preserve source title and ordinal.
+Do not merge Personal and Business document chunks.
+Hash normalized chunks to support re-ingestion and dedupe.
+26. MemoryGateway Contract
+interface MemoryGateway {  retrieve(ctx: TrustedSessionContext, query: RetrievalRequest): Promise<RetrievedMemory[]>  remember(ctx: TrustedSessionContext, request: RememberRequest): Promise<MemoryItem>  ingestDocument(ctx: TrustedSessionContext, request: DocumentRequest): Promise<DocumentResult>  forget(ctx: TrustedSessionContext, memoryId: string): Promise<void>  list(ctx: TrustedSessionContext, filter: MemoryListFilter): Promise<MemoryItemSummary[]>}class MemoryGatewayImpl {  constructor(    private readonly personal: PersonalMemoryStore,    private readonly business: BusinessMemoryStore,    ...  ) {}}
+NO GENERIC STORE LOOKUPAvoid APIs like `getStore(domainString)` that accept arbitrary strings deep in the stack. Resolve mode once from trusted session state, then select one explicit store branch.
+27. Conversation Integration
+Extend ContextBuilder using a `MemoryContextSource`. ConversationService should not know how vector search, FTS, or databases work.
+ConversationService   |ContextBuilder   |MemoryContextSource   |MemoryGateway
+interface ContextSource {  collect(ctx: ContextSourceRequest): Promise<ContextFragment[]>}MemoryContextSource implements ContextSource
+ContextSourceRequest receives a trusted server-generated mode/context, not raw client namespace.
+Memory retrieval failure must not cause fallback to the opposite domain.
+If memory is unavailable, ARTHUR may continue in explicit degraded no-memory mode.
+Retrieved memory IDs/scores should be attached to trace metadata for debugging.
+28. DeepSeek Payload Privacy
+DeepSeek receives only the current user request, recent mode-scoped session history, allowed tool schemas, and selected sanitized memory snippets. It never receives the memory database, embeddings, full document corpus, database paths, encryption keys, or secrets.
+May be sent
+Must stay local
+Selected sanitized memory text
+Raw memory databases
+Necessary source labels/titles
+Embedding vectors
+Current mode label
+Other mode memories
+Relevant project context
+Secrets/credentials
+Recent same-mode history
+Unrelated documents/history
+29. Retrieval Result Contract
+RetrievedMemory {  memory_id: string  type: MemoryType  text: string  score: number  confidence: number  source_type: string  source_id?: string  project_key?: string  created_at: string}
+Do not expose raw embedding vectors or internal database identifiers to DeepSeek.
+30. New HTTP API Surface
+Method
+Path
+Purpose
+POST
+/v1/memory/remember
+Explicitly store one memory in active session domain
+POST
+/v1/memory/search
+Debug/user search active domain only
+GET
+/v1/memory
+List safe summaries for active domain
+DELETE
+/v1/memory/{id}
+Forget one active-domain memory
+POST
+/v1/documents
+Ingest text/Markdown source into active domain
+GET
+/v1/documents/{id}
+Read safe source metadata
+DELETE
+/v1/documents/{id}
+Delete source + chunks from active domain
+GET
+/v1/memory/status
+Memory provider/index status for current mode
+Every endpoint resolves the domain from authenticated/session state. No endpoint accepts a caller-supplied storage domain.
+31. CLI Additions
+arthur memory remember --session <id> "..."arthur memory search --session <id> "..."arthur memory list --session <id>arthur memory forget --session <id> <memory-id>arthur documents add --session <id> --file note.mdarthur documents list --session <id>
+32. Secret Safety
+Reuse the centralized Phase 1 sanitizer before memory persistence.
+Reject or redact credential-like structured fields.
+Do not create embeddings for raw secret values that policy removes.
+Do not keep unsanitized copies in ingestion staging tables.
+Tool results must be sanitized before candidate extraction or storage.
+Session/API memory listing must return sanitized display text only.
+Deletion/forget must clear secret-bearing content from active retrieval stores.
+33. Idempotency / Crash Consistency
+Memory writes and document ingestion must follow the hardened Phase 1 idempotency philosophy.
+ingestion_request  pending    -> writing    -> completed    -> failedsame request_id + same request_hash:  return/recover same logical resultsame request_id + different hash:  reject
+Reserve the request before embeddings/index writes.
+Define recovery for crash after DB rows but before vector/FTS indexing.
+Use reconciliation on startup or explicit repair function for incomplete indexing states.
+Do not allow two concurrent identical ingestions to create duplicate documents.
+Delete must be idempotent.
+34. Caching
+Caching is optional in Phase 2. If added, every cache key must include the trusted memory domain/context key. Never share a retrieval cache between Personal and Business.
+safe cache key:  domain + context_key + normalized_query + filters + index_versionunsafe cache key:  normalized_query only
+35. Observability
+Metric/trace
+Requirement
+memory.domain
+Personal or Business; safe metadata only
+retrieval.candidate_count
+Pre-rerank candidate count
+retrieval.returned_count
+Number inserted into model context
+retrieval.latency_ms
+FTS/vector/fusion/rerank timing
+embedding.latency_ms
+Local embedding timing
+memory.write_reason
+explicit/extracted/document
+memory.dedupe_action
+created/updated/superseded/skipped
+memory.index_state
+healthy/degraded/rebuilding
+memory.context_tokens
+Approximate tokens sent to model
+Never log raw restricted memory text by default.
+36. Failure Handling
+Failure
+Expected behavior
+Personal store unavailable
+Continue only in explicit no-memory/degraded mode; never query Business.
+Business store unavailable
+Continue only in explicit no-memory/degraded mode; never query Personal.
+Embedding provider failure
+Turn may continue without new vector retrieval if policy allows; surface memory degraded state.
+FTS failure
+Do not silently use other domain; vector-only same-domain fallback is allowed if explicit.
+Index/version mismatch
+Mark affected memories for reindex; do not mix incompatible vectors.
+Malformed extraction output
+Discard candidate; conversation response remains valid.
+Document ingestion crash
+Recover/reconcile from ingestion state; no duplicate logical source.
+Delete failure
+Return failure; do not claim memory is forgotten unless indexes are no longer retrievable.
+37. Required Tests — Isolation
+Store PERSONAL_SENTINEL in Personal; Business search returns zero matches.
+Store BUSINESS_SENTINEL in Business; Personal search returns zero matches.
+Personal → Business → Personal conversation: inspect actual DeepSeek payload at every step.
+Known Personal memory ID cannot be fetched/deleted/listed from Business session.
+Known Business memory ID cannot be fetched/deleted/listed from Personal session.
+A client-supplied fake namespace/context key is rejected/ignored.
+A malicious LLM-proposed tool argument cannot override memory domain.
+Personal store failure does not trigger Business fallback and vice versa.
+Retrieval caches are domain-scoped.
+38. Required Tests — Retrieval Quality
+Exact phrase found through FTS.
+Paraphrased query found through embeddings.
+Hybrid fusion ranks a combined relevant result above weak single-channel hits.
+Project filter prevents unrelated project memories from outranking scoped memories.
+Superseded/deleted/expired memories never appear.
+Duplicate chunks collapse appropriately.
+Token budget truncates/selects results deterministically.
+39. Required Tests — Memory Lifecycle
+Explicit remember persists and is retrievable after restart.
+Same request ID + same payload is idempotent.
+Same request ID + different payload is rejected.
+Exact duplicate memory updates provenance/verification instead of duplicating.
+User correction supersedes old memory.
+Forget removes item from FTS/vector retrieval immediately.
+Expired TEMPORARY memory is excluded.
+Deleted source removes its document chunks.
+40. Required Tests — Security
+Prompt-injection string inside Personal memory cannot alter tool permissions.
+Prompt-injection string inside Business document cannot change mode.
+Secret-like user text is not stored/indexed unsafely according to Phase 1 policy.
+Secret-like tool output is sanitized before memory extraction.
+Raw vectors/database paths are never included in DeepSeek payload.
+Malformed extraction JSON cannot write memory.
+Unknown memory type/status cannot be persisted.
+FTS queries resist SQL/FTS injection and malformed syntax.
+41. Required Tests — Crash / Concurrency
+Two concurrent explicit remember calls with same idempotency key create one logical memory.
+Two concurrent document ingestions with same key create one logical document.
+Crash after memory row write but before vector index can be reconciled.
+Crash after vector write but before completion does not duplicate on retry.
+Concurrent delete/search never returns a memory after delete is acknowledged.
+Concurrent Personal and Business ingestion cannot cross handles/stores.
+Both memory DB migrations can start concurrently without corruption.
+42. Acceptance Scenarios
+Scenario
+Expected result
+Remember personal preference
+Stored only in Personal DB and later retrieved in Personal mode.
+Business project fact
+Stored only in Business DB and later retrieved in Business mode.
+Cross-mode attack
+Known text/ID from opposite store cannot be retrieved, listed, or deleted.
+RAG answer
+DeepSeek receives top same-domain snippets only and uses them in answer.
+Mode switch
+Outbound payload after switch contains only same-mode session history + same-domain memory.
+Correction
+New explicit fact supersedes stale one; stale fact is excluded from normal retrieval.
+Forget
+Memory disappears from all active retrieval paths.
+Document
+Markdown note is chunked, embedded, indexed, sourced, and retrievable in active domain.
+Provider failure
+ARTHUR reports/degrades memory safely without leaking/cross-querying other domain.
+Restart
+Stores/index metadata and retrieval behavior survive restart.
+43. Suggested Implementation Order
+Define MemoryContext, MemoryItem, MemoryChunk, source, retrieval, and lifecycle contracts.
+Create separate Personal and Business SQLite stores with independent migrations.
+Implement MemoryGateway with hard server-side store routing and negative isolation tests.
+Implement local EmbeddingGateway + FakeEmbeddingProvider.
+Implement persistent vector storage/search interface.
+Implement FTS/keyword search in each store.
+Implement HybridRetriever + fusion + lifecycle filters + token budgeting.
+Integrate MemoryContextSource into ContextBuilder.
+Implement explicit remember/list/search/forget APIs + CLI.
+Implement idempotent text/Markdown document ingestion.
+Implement automatic structured memory extraction + write policy.
+Implement dedupe + supersession + expiry.
+Add prompt-injection, secret, crash, concurrency, and restart tests.
+Run full Phase 1 + Phase 2 tests, build, typecheck, deterministic verification.
+Have Codex perform a read-only Phase 2 adversarial audit before Phase 3.
+44. DeepSeek Coding Instructions
+IMPLEMENTATION RULEImplement only Phase 2 memory/RAG capabilities. Do not start voice, mobile/node routing, AgencyOS, or future ecosystem services. Preserve all hardened Phase 1 security and idempotency behavior.
+Before coding, create a dependency-aware task plan mapped to this specification.
+Implement one bounded task at a time and keep build/typecheck/tests green.
+Write isolation tests before or alongside MemoryGateway implementation.
+Do not solve isolation with prompts or a single client-supplied domain field.
+Do not send the memory database or full corpus to DeepSeek.
+Do not introduce a dedicated vector database unless the local interface requires it; preserve VectorStore abstraction.
+Do not use an embedding provider directly from ConversationService.
+Do not let automatic memory extraction write raw model output without strict schema validation and policy.
+Do not store chain-of-thought.
+Record intentional deviations in `docs/architecture/phase2-decisions.md`.
+45. Definition of Done
+Personal and Business long-term memories live in separate physical stores.
+MemoryGateway chooses the store exclusively from trusted server-side session mode.
+Cross-domain retrieval/list/delete/write tests pass, including known-ID attacks.
+Local embeddings and persistent vector retrieval work behind replaceable interfaces.
+FTS + vector hybrid retrieval works and is lifecycle-filtered.
+ContextBuilder sends only bounded, sanitized, same-domain memory snippets to DeepSeek.
+Explicit remember/search/list/forget works through API and CLI.
+Text/Markdown document ingestion is idempotent, persistent, chunked, embedded, and sourced.
+Automatic memory extraction is schema-validated, policy-controlled, deduplicated, and secret-safe.
+Supersession, expiry, deletion, and restart behavior are tested.
+Prompt-injection memories cannot alter mode, system policy, tools, or approvals.
+Crash/concurrency tests for memory writes and ingestion pass.
+All Phase 1 tests remain passing.
+Phase 2 tests, build, typecheck, and deterministic verification pass.
+README and `phase2-decisions.md` document configuration, storage, embedding model, APIs, and recovery behavior.
+No Phase 3+ features are prematurely implemented.
+46. Phase 2 Completion Evidence
+DeepSeek should produce a final finding/evidence report containing:
+Final test count and skipped tests.
+`npm run build` result.
+`npm run typecheck` result.
+Deterministic verification result.
+Exact Personal and Business DB paths.
+Embedding provider/model/version used.
+Isolation test names and what each proves.
+Actual captured DeepSeek payload evidence for Personal → Business → Personal isolation.
+Crash/concurrency regression evidence.
+List of files added/changed.
+Any documented deviation from this spec.
+47. Gate to Phase 3
+Do not begin voice or distributed-device work immediately after implementation. First perform a read-only Codex audit focused on memory isolation, retrieval poisoning, prompt injection, secret leakage, deletion semantics, idempotency, index consistency, and actual outbound DeepSeek payloads.
+PHASE 3 GATEProceed only when the audit confirms that Personal and Business memory cannot cross through retrieval, caches, IDs, document ingestion, mode switches, automatic extraction, or failure fallback.
+Appendix A — Minimal Interfaces
+interface PersonalMemoryStore extends MemoryStore {}interface BusinessMemoryStore extends MemoryStore {}interface MemoryStore {  put(item: MemoryWrite): Promise<MemoryItem>  get(id: string): Promise<MemoryItem | null>  list(filter: MemoryListFilter): Promise<MemoryItemSummary[]>  keywordSearch(query: KeywordQuery): Promise<KeywordHit[]>  vectorSearch(query: VectorQuery): Promise<VectorHit[]>  supersede(oldId: string, replacement: MemoryWrite): Promise<MemoryItem>  forget(id: string): Promise<void>}interface HybridRetriever {  retrieve(ctx: MemoryContext, request: MemoryQuery): Promise<RetrievedMemory[]>}
+Appendix B — Example Isolation Flow
+Session S1 = PERSONAL  remember "PERSONAL_SENTINEL"  -> MemoryGateway -> PersonalMemoryStore onlyswitch S1 -> BUSINESS  query "PERSONAL_SENTINEL"  -> MemoryGateway -> BusinessMemoryStore only  -> zero results  -> DeepSeek payload contains no PERSONAL_SENTINELremember "BUSINESS_SENTINEL"  -> BusinessMemoryStore onlyswitch S1 -> PERSONAL  query "BUSINESS_SENTINEL"  -> PersonalMemoryStore only  -> zero results  -> DeepSeek payload contains no BUSINESS_SENTINEL
+Appendix C — Phase 2 Checklist
+☐  Separate memory DB files created
+☐  Independent migrations created
+☐  MemoryGateway trusted-mode routing implemented
+☐  Cross-domain negative tests passing
+☐  Local embedding provider working
+☐  Fake embedding provider working
+☐  Vector search persistent
+☐  FTS search persistent
+☐  Hybrid fusion implemented
+☐  Lifecycle filters implemented
+☐  Context token budget enforced
+☐  DeepSeek payload memory minimization verified
+☐  Explicit remember/search/list/forget implemented
+☐  Document ingestion implemented
+☐  Automatic extraction implemented
+☐  Dedupe implemented
+☐  Supersession implemented
+☐  Expiry implemented
+☐  Deletion/index cleanup implemented
+☐  Secret-safety tests passing
+☐  Prompt-injection tests passing
+☐  Crash/concurrency tests passing
+☐  Restart tests passing
+☐  Phase 1 regression suite passing
+☐  Build/typecheck passing
+☐  Phase 2 decisions documented
+☐  Ready for Codex audit

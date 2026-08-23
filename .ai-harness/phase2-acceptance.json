@@ -1,0 +1,100 @@
+[
+  {
+    "id": "dod-separate-stores",
+    "criterion": "Personal and Business long-term memories live in separate physical stores with independent migrations.",
+    "status": "met",
+    "evidence": "src/memory/stores/sqlite_memory_store.ts: PersonalMemoryStore/BusinessMemoryStore subclasses over one SqliteMemoryStore; per-store MIGRATIONS array + schema_migrations + validateSchema; default paths ./data/memory-personal.db and ./data/memory-business.db. Tests: migration coexistence (crash_concurrency), restart persistence (lifecycle)."
+  },
+  {
+    "id": "dod-trusted-routing",
+    "criterion": "MemoryGateway chooses the store exclusively from trusted server-side session mode; clients/models cannot supply a domain/database/namespace.",
+    "status": "met",
+    "evidence": "src/memory/gateway.ts selectStore() exhaustive explicit branch; memoryContextFromSession derives domain from SessionRecord only; strict API schemas reject domain/database/namespace/context_key (tests/memory/api.test.ts, isolation.test.ts)."
+  },
+  {
+    "id": "dod-cross-domain-negative",
+    "criterion": "Cross-domain retrieval/list/delete/write tests pass, including known-ID attacks.",
+    "status": "met",
+    "evidence": "tests/memory/isolation.test.ts: sentinel isolation (PERSONAL_SENTINEL/BUSINESS_SENTINEL), known business id delete from personal session -> INVALID_REQUEST, client-supplied domain fields rejected, model-proposed memory_write tool rejected, business query for personal sentinel returns no personal data."
+  },
+  {
+    "id": "dod-embeddings-interface",
+    "criterion": "Local embeddings and persistent vector retrieval work behind replaceable interfaces.",
+    "status": "met",
+    "evidence": "EmbeddingGateway interface + EmbeddingGatewayImpl (batch 16, max 64 texts, 16k chars); local_multilingual (FNV-1a n-gram, 384d) and fake (64d) providers; vectors persisted as Float32Array BLOBs in memory_chunks; VectorSearch adapter. Tests: tests/unit/embeddings.test.ts (determinism, dims, cosine, limits, batching)."
+  },
+  {
+    "id": "dod-hybrid-retrieval",
+    "criterion": "FTS + vector hybrid retrieval works and is lifecycle-filtered.",
+    "status": "met",
+    "evidence": "HybridRetriever: vector channel + FTS5 bm25 channel + RRF (k=60) + dedupe + reranker + token budget; SQL joins filter status='ACTIVE', expiry, domain, project/subject/type. Tests: tests/memory/retrieval.test.ts + tests/unit/memory_units.test.ts (fusion, reranker, FTS builder)."
+  },
+  {
+    "id": "dod-context-minimization",
+    "criterion": "ContextBuilder sends only bounded, sanitized, same-domain memory snippets to DeepSeek, marked untrusted.",
+    "status": "met",
+    "evidence": "MemoryContextSource emits a single labeled user-role block (<memory domain=...>) with XML-escaped items; ModelRequest.memory metadata {domain, context_tokens, included}; budgets enforced (1200/300 defaults). Tests: isolation 'mode-safe context' captures the exact provider ModelRequest and asserts sentinel presence/absence per domain; prompt_injection asserts contracts/tools unchanged."
+  },
+  {
+    "id": "dod-apis",
+    "criterion": "Explicit remember/search/list/forget works through API and CLI; document add/list works through API and CLI.",
+    "status": "met",
+    "evidence": "apps/api/server.ts routes POST /v1/memory/remember, POST /v1/memory/search, GET /v1/memory/status, GET /v1/memory, DELETE /v1/memory/{id}, POST /v1/documents, GET/DELETE /v1/documents/{id}; apps/cli/index.ts arthur memory remember|search|list|forget|status and arthur documents add|list. Tests: tests/memory/api.test.ts (HTTP level, 200/400/404 semantics)."
+  },
+  {
+    "id": "dod-document-ingestion",
+    "criterion": "Text/Markdown document ingestion is idempotent, persistent, chunked, embedded, and sourced.",
+    "status": "met",
+    "evidence": "DocumentIngestionService: sanitize -> normalize -> hash -> reserve -> chunk (paragraph/sentence boundaries, overlap, hard split) -> embed -> writeDocumentAtomic (source + item + chunks + FTS in one transaction) -> complete. Deterministic doc-<hash32> ids + INSERT OR IGNORE convergence. Tests: tests/memory/ingestion.test.ts (idempotency, conflict, convergence, deletion, isolation, chunking)."
+  },
+  {
+    "id": "dod-extraction",
+    "criterion": "Automatic memory extraction is schema-validated, policy-controlled, deduplicated, and secret-safe; malformed output cannot write memory.",
+    "status": "met",
+    "evidence": "MemoryExtractor + strict zod memoryExtractionSchema; parseExtractionOutput never throws; decideCandidate policy (confidence/importance thresholds, secret scan, length limits); TurnMemoryExtractor opt-in hook, failures swallowed. Tests: tests/memory/extraction.test.ts + secrets.test.ts (malformed JSON, schema violations, low-confidence/secret candidates, disabled-no-extra-call)."
+  },
+  {
+    "id": "dod-lifecycle",
+    "criterion": "Supersession, expiry, deletion, and restart behavior are tested.",
+    "status": "met",
+    "evidence": "tests/memory/lifecycle.test.ts: restart persistence (file-backed), idempotent remember, key-conflict rejection, provenance update, user correction supersession (SUPERSEDED excluded from retrieval, auditable), forget tombstones + FTS/vector removal, TEMPORARY TTL expiry, type/size validation."
+  },
+  {
+    "id": "dod-prompt-injection",
+    "criterion": "Prompt-injection memories cannot alter mode, system policy, tools, or approvals.",
+    "status": "met",
+    "evidence": "tests/memory/prompt_injection.test.ts: injected instructions in memory leave systemContract/modeContract/toolSchemas unchanged; injection text appears only inside the untrusted memory block; cross-domain query for business secret from personal session returns nothing; no memory tools exist."
+  },
+  {
+    "id": "dod-crash-concurrency",
+    "criterion": "Crash/concurrency tests for memory writes and ingestion pass.",
+    "status": "met",
+    "evidence": "tests/memory/crash_concurrency.test.ts: concurrent same-key remembers -> one memory; concurrent same-key ingestions -> one document; concurrent cross-domain ingestions isolated; concurrent search/delete no corruption; crash-after-write reconciled on reopen (state converges to completed, result_id backfilled); key binding rejects different payloads."
+  },
+  {
+    "id": "dod-phase1-regression",
+    "criterion": "All Phase 1 tests remain passing.",
+    "status": "met",
+    "evidence": "npm test: 182 pass / 0 fail / 1 skip (live contract, needs DEEPSEEK_API_KEY); integration suite 51/51 pass; original Phase 1 upgrade/migration/idempotency/security tests green."
+  },
+  {
+    "id": "dod-verification",
+    "criterion": "Phase 2 tests, build, typecheck, and deterministic verification pass.",
+    "status": "met",
+    "evidence": "npm run typecheck exit 0; npm run build exit 0; npm test exit 0 (181 pass, 1 optional live skip); npm run test:integration exit 0 (51/51)."
+  },
+  {
+    "id": "dod-docs",
+    "criterion": "README and phase2-decisions.md document configuration, storage, embedding model, APIs, and recovery behavior.",
+    "status": "met",
+    "evidence": "README.md Phase 2 section + 14 new env vars + CLI/API examples; docs/architecture/phase2-decisions.md (isolation, embeddings, retrieval, idempotency/crash recovery, secrets, extraction, deviations); .env.example updated."
+  },
+  {
+    "id": "dod-no-phase3",
+    "criterion": "No Phase 3+ features are prematurely implemented.",
+    "status": "met",
+    "evidence": "No voice, mobile/node routing, AgencyOS, or distributed-device code added; only Phase 2 memory/RAG surfaces; Phase 1 boundaries (ModelGateway, provider-independent ConversationService, Harness stub) untouched."
+  },
+  {
+    "id": "evidence-payload",
+    "criterion": "Captured DeepSeek payload evidence for Personal -> Business -> Personal isolation.",

@@ -1,0 +1,64 @@
+{
+  "criteria": [
+    {
+      "id": "migration-history-immutable",
+      "criterion": "Released migration versions 1 and 2 are restored to their original Phase 1 definitions and all remediation is forward-only.",
+      "status": "met",
+      "evidence": "src/sessions/store.ts defines v1 initial_schema as the original base session/turn/model/tool schema and v2 approval_persistence as the original approvals schema; remediation is migration v5 secure_schema_reconciliation. tests/fixtures/phase1-legacy-schema.ts is the exact released v1/v2 fixture; the upgrade test begins with only versions [1,2] and ends [1,2,3,4,5]."
+    },
+    {
+      "id": "legacy-upgrade",
+      "criterion": "An original Phase 1 database upgrades to the current secure schema without deletion, preserving sessions, turns, model calls, tool calls, and approvals.",
+      "status": "met",
+      "evidence": "reconcileSecureSchema in src/sessions/store.ts rebuilds and copies all five legacy tables, backfills turns.mode from sessions, creates idempotency_keys, and installs current constraints/indexes. tests/integration/store.test.ts asserts exact pre-write row counts, legacy row retrieval, mode backfill, and foreign_key_check=0."
+    },
+    {
+      "id": "migration-atomic-restart-safe",
+      "criterion": "Migrations are atomic, fail without half-migration, validate schema, tolerate restart/current databases, and do not reapply incorrectly.",
+      "status": "met",
+      "evidence": "SessionStore.migrate uses serialized BEGIN IMMEDIATE around schema_migrations creation and every migration, validates required tables/columns/indexes and PRAGMA foreign_key_check before COMMIT, rolls back on failure, restores foreign keys, and closes failed connections. Tests cover forced unique-constraint migration failure rollback to versions [1,2], no __new tables/idempotency/mode residue, restart version stability, ordinary reopen, and four concurrent starters."
+    },
+    {
+      "id": "migration-runtime-behavior",
+      "criterion": "After legacy upgrade, normal conversation, idempotency replay, and mode behavior work and remain correct after restart.",
+      "status": "met",
+      "evidence": "tests/integration/store.test.ts opens the legacy fixture with current ARTHUR, retrieves old history, creates a new turn, asserts exact replay equality, changes mode both ways, restarts, replays again, and verifies migrations remain [1,2,3,4,5]. Replay response construction was normalized to omit undefined usage keys while preserving numeric token fields."
+    },
+    {
+      "id": "public-error-boundary",
+      "criterion": "One centralized configured public error sanitization boundary protects HTTP, CLI, and serialized errors while preserving stable codes and excluding stacks.",
+      "status": "met",
+      "evidence": "sanitizePublicError in src/core/errors/errors.ts sanitizes message and recursively sanitizes exposed details, never serializes cause/stack, and returns the stable code/status. buildApp wires the configured SecretSanitizer as App.sanitizePublicError; apps/api/server.ts sendError and apps/cli/index.ts renderCliError both use it; startup renderers use environment secret values. Unit tests cover configured values, identifiers, nested details, codes, and stack omission."
+    },
+    {
+      "id": "credential-redaction",
+      "criterion": "Configured secrets and conservative generic credential shapes are redacted from HTTP responses, CLI output, logs, and persisted operational/error data.",
+      "status": "met",
+      "evidence": "src/security/redaction.ts covers sk-, GitHub gh*/github_pat tokens, bearer tokens, private-key blocks, credential assignments, and secret/password/token/private-key/auth property names without corrupting input_tokens/output_tokens/token_budget. HTTP tests inject configured/GitHub secrets through session IDs, request IDs, provider errors and tool errors; CLI/logging unit tests and audit_regressions persistence tests prove absence from output/logs/tool result summaries."
+    },
+    {
+      "id": "http-media-types",
+      "criterion": "JSON POST endpoints reject missing or unsupported media types with 415 and accept application/json including charset while GET/bodyless action endpoints remain functional.",
+      "status": "met",
+      "evidence": "apps/api/server.ts requireJsonMediaType accepts application/json and application/*+json and throws stable UNSUPPORTED_MEDIA_TYPE (415) otherwise, before body parsing; 1 MiB streaming body limit remains. tests/integration/api.test.ts covers text/plain, no Content-Type, application/json, application/json; charset=utf-8, health GET, and approval/rejection POST actions."
+    },
+    {
+      "id": "http-strict-input",
+      "criterion": "Request schemas reject unknown fields and route identifiers have explicit format/size validation including approval/rejection routes.",
+      "status": "met",
+      "evidence": "src/core/conversation/validation.ts makes turn, nested metadata, and mode schemas .strict(); identifierSchema is 1..128 characters with an explicit safe character grammar. server.ts decodes path segments and validates session and approval IDs. API tests cover unknown root/nested fields, 129-character session/approval IDs, NUL/malformed approval reject IDs, and both approve/reject behavior."
+    },
+    {
+      "id": "regression-invariants",
+      "criterion": "Approval exactly-once/binding, global request idempotency, Personal/Business isolation, secured tool execution, Harness verification, DeepSeek strict validation, atomic persistence, and provider abstraction boundaries remain resolved; no Phase 2 work is introduced.",
+      "status": "met",
+      "evidence": "The existing security, audit_regressions, approval_token, deepseek_provider, conversation, store, and tools suites all pass. App still exposes only ConversationService/store/gateway, ConversationService still depends on ModelGateway, and Harness remains behind HarnessAdapter. Changes are limited to Phase 1 persistence/error/protocol contracts and tests."
+    },
+    {
+      "id": "verification",
+      "criterion": "npm test, npm run build, npm run typecheck, integration tests, and deterministic harness verification all pass.",
+      "status": "met",
+      "evidence": "npm test: 114 tests, 113 passed, 0 failed, 1 optional live DeepSeek test skipped. C:\\AI-Harness\\bin\\aih-verify.cmd reports 4 passed, 0 failed: typecheck PASS, build PASS, test PASS, integration PASS."
+    }
+  ]
+}

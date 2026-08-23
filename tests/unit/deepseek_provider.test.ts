@@ -1,0 +1,208 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+import { ModelRequest } from "../../src/models/contracts";
+import { ProviderAuthError, ProviderBadResponseError, ProviderTimeoutError } from "../../src/models/contracts";
+import {
+  DeepSeekProvider,
+  DeepSeekProviderConfig,
+  MAX_ASSISTANT_TEXT_CHARS,
+  MAX_RESPONSE_BYTES,
+  MAX_TOOL_CALLS,
+  normalizeDeepSeekResponse,
+  readBodyWithLimit,
+} from "../../src/models/providers/deepseek";
+
+function baseRequest(): ModelRequest {
+  return {
+    systemContract: "system",
+    modeContract: "mode",
+    history: [],
+    toolSchemas: [],
+    userMessage: "hi",
+    model: "deepseek-chat",
+    reasoningProfile: "normal",
+  };
+}
+
+function config(overrides: Partial<DeepSeekProviderConfig> = {}): DeepSeekProviderConfig {
+  return {
+    apiKey: "sk-test",
+    model: "deepseek-chat",
+    baseUrl: "https://api.deepseek.com",
+    timeoutMs: 1000,
+    retryMaxAttempts: 1,
+    retryBaseDelayMs: 5,
+    reasoningProfile: "normal",
+    ...overrides,
+  };
+}
+
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+}
+
+const OK_BODY = { id: "c-1", choices: [{ finish_reason: "stop", message: { content: "hi" } }] };
+
+test("retries transient 5xx with backoff then succeeds", async () => {
+  let calls = 0;
+  const sleeps: number[] = [];
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    if (calls <= 2) return jsonResponse(500, { error: "boom" });
+    return jsonResponse(200, OK_BODY);
+  };
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 2 }), {
+    fetchFn,
+    sleepFn: async (ms) => {
+      sleeps.push(ms);
+    },
+  });
+  const result = await provider.generate(baseRequest());
+  assert.equal(result.assistant_text, "hi");
+  assert.equal(calls, 3);
+  assert.equal(sleeps.length, 2);
+  assert.ok(sleeps[1] !== undefined && sleeps[1] >= sleeps[0]!);
+});
+
+test("401 maps to ProviderAuthError without retry", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    return jsonResponse(401, { error: "unauthorized" });
+  };
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  await assert.rejects(() => provider.generate(baseRequest()), ProviderAuthError);
+  assert.equal(calls, 1);
+});
+
+test("non-retryable 400 maps to ProviderBadResponseError without retry", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    return jsonResponse(400, { error: "bad" });
+  };
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  await assert.rejects(() => provider.generate(baseRequest()), ProviderBadResponseError);
+  assert.equal(calls, 1);
+});
+
+test("timeout maps to ProviderTimeoutError", async () => {
+  const fetchFn: typeof fetch = (_url, init) =>
+    new Promise<Response>((_resolve, reject) => {
+      const signal = init?.signal;
+      if (signal) {
+        signal.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })));
+      }
+    });
+  const provider = new DeepSeekProvider(config({ timeoutMs: 30, retryMaxAttempts: 0 }), { fetchFn });
+  await assert.rejects(() => provider.generate(baseRequest()), ProviderTimeoutError);
+});
+
+test("oversized response body is rejected", async () => {
+  const fetchFn: typeof fetch = async () =>
+    new Response("x", { status: 200, headers: { "content-length": String(MAX_RESPONSE_BYTES + 1) } });
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  await assert.rejects(() => provider.generate(baseRequest()), ProviderBadResponseError);
+});
+
+test("readBodyWithLimit rejects oversized declared bodies", async () => {
+  const big = new Response("a".repeat(100), { headers: { "content-length": "101" } });
+  await assert.rejects(() => readBodyWithLimit(big, 50), ProviderBadResponseError);
+  const small = new Response(JSON.stringify({ ok: true }));
+  const text = await readBodyWithLimit(small, 1024);
+  assert.ok(text.includes("ok"));
+});
+
+test("normalizeDeepSeekResponse rejects empty choices and non-string content", () => {
+  assert.throws(() => normalizeDeepSeekResponse({ choices: [{}] }), ProviderBadResponseError);
+  assert.throws(() => normalizeDeepSeekResponse({ choices: [{ message: { content: 123 } }] }), ProviderBadResponseError);
+  assert.throws(() => normalizeDeepSeekResponse({ choices: [{ message: {} }] }), ProviderBadResponseError);
+  assert.throws(() => normalizeDeepSeekResponse({ choices: [{ message: { tool_calls: "nope" } }] }), ProviderBadResponseError);
+});
+
+test("generate places authentication only in the header and sanitizes provider payloads", async () => {
+  let observedHeaders: Headers | undefined;
+  let observedBody = "";
+  const fetchFn: typeof fetch = async (_url, init) => {
+    observedHeaders = new Headers(init?.headers);
+    observedBody = String(init?.body ?? "");
+    return jsonResponse(200, OK_BODY);
+  };
+  const provider = new DeepSeekProvider(config({ apiKey: "sk-provider-secret-123456", retryMaxAttempts: 0 }), { fetchFn });
+  await provider.generate({ ...baseRequest(), userMessage: "DEEPSEEK_API_KEY=sk-provider-secret-123456 password=hunter2" });
+  assert.equal(observedHeaders?.get("authorization"), "Bearer sk-provider-secret-123456");
+  assert.equal(observedHeaders?.get("content-type"), "application/json");
+  assert.ok(!observedBody.includes("sk-provider-secret-123456"));
+  assert.ok(!observedBody.includes("hunter2"));
+  assert.ok(observedBody.includes("[REDACTED]"));
+});
+
+test("normalization rejects malformed nested provider values as bad responses", () => {
+  const malformed: unknown[] = [
+    { choices: [null] },
+    { choices: [{ message: null }] },
+    { id: 42, choices: [{ message: { content: "ok" } }] },
+    { choices: [{ finish_reason: 42, message: { content: "ok" } }] },
+    { choices: [{ message: { tool_calls: [null] } }] },
+    { choices: [{ message: { tool_calls: [{ type: "other", function: { name: "x", arguments: "{}" } }] } }] },
+    { choices: [{ message: { tool_calls: [{ id: 12, function: { name: "x", arguments: "{}" } }] } }] },
+    { choices: [{ message: { tool_calls: [{ function: { name: "x", arguments: 12 } }] } }] },
+  ];
+  for (const body of malformed) assert.throws(() => normalizeDeepSeekResponse(body), ProviderBadResponseError);
+});
+
+test("normalization validates usage counts strictly", () => {
+  for (const usage of [
+    { prompt_tokens: -1 },
+    { completion_tokens: 1.5 },
+    { total_tokens: Number.POSITIVE_INFINITY },
+    { prompt_tokens: "1" },
+    { prompt_tokens_details: "bad" },
+    { prompt_tokens_details: { cached_tokens: -2 } },
+  ]) {
+    assert.throws(
+      () => normalizeDeepSeekResponse({ choices: [{ message: { content: "ok" } }], usage }),
+      ProviderBadResponseError,
+    );
+  }
+});
+
+test("normalization bounds assistant text, tool count, and identifiers", () => {
+  assert.throws(
+    () => normalizeDeepSeekResponse({ choices: [{ message: { content: "x".repeat(MAX_ASSISTANT_TEXT_CHARS + 1) } }] }),
+    ProviderBadResponseError,
+  );
+  const calls = Array.from({ length: MAX_TOOL_CALLS + 1 }, (_, i) => ({ id: "id-" + i, type: "function", function: { name: "x", arguments: "{}" } }));
+  assert.throws(() => normalizeDeepSeekResponse({ choices: [{ message: { tool_calls: calls } }] }), ProviderBadResponseError);
+  assert.throws(
+    () => normalizeDeepSeekResponse({ choices: [{ message: { tool_calls: [{ id: "x".repeat(300), function: { name: "x", arguments: "{}" } }] } }] }),
+    ProviderBadResponseError,
+  );
+  assert.throws(
+    () => normalizeDeepSeekResponse({ choices: [{ message: { tool_calls: [{ id: "id", function: { name: "x".repeat(300), arguments: "{}" } }] } }] }),
+    ProviderBadResponseError,
+  );
+});
+
+test("streaming response limit rejects actual bytes without a content-length header", async () => {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode("12345"));
+      controller.enqueue(new TextEncoder().encode("67890"));
+      controller.close();
+    },
+  });
+  const response = new Response(stream);
+  await assert.rejects(() => readBodyWithLimit(response, 8), ProviderBadResponseError);
+});
+
+test("network failures exhaust exactly the bounded retry budget", async () => {
+  let calls = 0;
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 2 }), {
+    fetchFn: async () => { calls += 1; throw new Error("network down"); },
+    sleepFn: async () => {},
+  });
+  await assert.rejects(() => provider.generate(baseRequest()));
+  assert.equal(calls, 3);
+});

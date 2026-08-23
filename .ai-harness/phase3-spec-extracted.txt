@@ -1,0 +1,843 @@
+
+ARTHUR
+PHASE 3 — LOCAL VOICE LAYER
+DeepSeek V4 Flash + Local STT/TTS Implementation Specification
+Version 1.0  •  August 2026
+PURPOSE
+Phase 3 gives ARTHUR a real local voice interface: wake word, voice activity detection, local speech-to-text, DeepSeek-backed reasoning, local text-to-speech, streaming playback, interruption/barge-in, push-to-talk fallback, and a deterministic voice state machine. Phase 3 does not implement phone/remote-node routing yet.
+
+
+1. Phase 3 Goal
+Extend the hardened Phase 1 Core and Phase 2 isolated memory/RAG system with a low-latency, hands-free local voice experience. The user should be able to say the wake word “Arthur”, speak naturally, have the utterance transcribed locally, receive an answer reasoned by DeepSeek V4 Flash using the existing ARTHUR context/tool/memory stack, and hear the result through local TTS.
+Voice is an input/output transport for ARTHUR—not a second assistant. Typed and spoken requests must converge on the same ConversationService, permissions, memory isolation, tool system, approval system, and DeepSeek ModelGateway.
+NORTH STAR
+The voice path must never weaken Phase 1/2 guarantees. A spoken request is subject to the exact same mode, RAG isolation, tool permission, approval, secret-safety, and audit rules as a typed request.
+2. Entry Gate / Assumptions
+Phase 1 security/idempotency/tool boundaries remain green.
+Phase 2 Personal/Business memory isolation and RAG remain green.
+DeepSeek V4 Flash remains the primary reasoning provider behind ModelGateway.
+ARTHUR currently runs on the local PC/laptop; distributed node selection is deferred.
+Audio capture/playback is local. Raw microphone audio is never sent to DeepSeek.
+The existing text API/CLI path remains supported and must not regress.
+3. Non-Goals — Do Not Implement Yet
+Phone client, remote voice streaming, PC/laptop discovery, node failover, or mesh networking.
+AgencyOS, AI Hoster, Cost Intelligence, or unrelated ecosystem applications.
+Voice cloning of a real person without explicit rights/consent.
+Always-uploaded microphone audio or cloud STT/TTS by default.
+Emotion inference, speaker identity biometrics, or surveillance-style ambient transcription.
+Multi-user household voice profiles.
+Continuous conversation recording or long-term raw audio archives.
+Custom hardware microphone arrays or far-field beamforming.
+Replacing DeepSeek with a local 27B model in this phase.
+4. Architectural Invariants
+Invariant
+Required behavior
+Local ears/voice
+Wake word, VAD, STT and TTS execute locally in Phase 3.
+Same brain
+Voice text enters the same ConversationService used by HTTP/CLI text turns.
+No raw audio to DeepSeek
+Only transcript + existing selected context reaches ModelGateway.
+Provider isolation
+STT/TTS/wake/VAD are behind interfaces; ARTHUR Core does not depend on one engine.
+Interruptible
+User speech can cancel TTS and model generation promptly.
+Fail safe
+Voice failure falls back to text/UI without corrupting session or memory state.
+No silent tool privilege
+Spoken tool requests still pass validation, permission and approval.
+Mode stable
+Voice cannot bypass explicit Personal/Business mode semantics.
+Privacy
+Raw audio is ephemeral by default and is not written to logs or memory.
+Observable
+Latency/state/cancellation events are traceable without logging raw audio.
+Single turn authority
+Only one active foreground voice turn owns the local microphone response loop at a time.
+Deterministic state machine
+Voice transitions are explicit and testable; no ad hoc booleans spread across UI/services.
+5. High-Level Voice Architecture
+MICROPHONE
+   |
+Audio Capture
+   |
+Local Wake Word  ---- Push-to-Talk fallback
+   |
+Local VAD
+   |
+Local STT
+   |
+Final transcript
+   |
+VoiceTurnController
+   |
+ConversationService
+   |
+Phase 2 Memory/RAG + Tools + Approvals
+   |
+ModelGateway -> DeepSeek V4 Flash
+   |
+streamed assistant text
+   |
+SpeechFormatter
+   |
+Local TTS
+   |
+Audio Playback
+   |
+SPEAKER / HEADPHONES
+
+User speech during playback -> INTERRUPT -> cancel TTS + cancel generation -> LISTENING
+6. Recommended Repository Additions
+arthur/
+  src/
+    voice/
+      contracts.ts
+      controller.ts
+      state_machine.ts
+      events.ts
+      config.ts
+      audio/
+        capture.ts
+        playback.ts
+        ring_buffer.ts
+        devices.ts
+      wake/
+        gateway.ts
+        fake.ts
+        local_provider.ts
+      vad/
+        gateway.ts
+        fake.ts
+        local_provider.ts
+      stt/
+        gateway.ts
+        contracts.ts
+        fake.ts
+        local_provider.ts
+      tts/
+        gateway.ts
+        contracts.ts
+        fake.ts
+        local_provider.ts
+      speech/
+        formatter.ts
+        chunker.ts
+      cancellation/
+        cancellation_scope.ts
+      realtime/
+        websocket.ts
+    core/
+      conversation/
+        streaming_service.ts   # optional thin extension, not a second core
+  tests/
+    voice/
+      state_machine.test.ts
+      wake.test.ts
+      vad.test.ts
+      stt.test.ts
+      tts.test.ts
+      barge_in.test.ts
+      privacy.test.ts
+      integration.test.ts
+
+7. Voice Provider Contracts
+7.1 Wake word
+interface WakeWordProvider {
+  id(): string
+  start(config: WakeConfig, onWake: (event: WakeEvent) => void): Promise<void>
+  stop(): Promise<void>
+}
+
+7.2 VAD
+interface VadProvider {
+  process(frame: PcmFrame): VadResult
+  reset(): void
+}
+
+VadResult {
+  speechProbability: number
+  isSpeech: boolean
+  transition?: "speech_started" | "speech_ended"
+}
+
+7.3 STT
+interface SttProvider {
+  id(): string
+  transcribeStream(input: AsyncIterable<PcmFrame>, options: SttOptions): AsyncIterable<SttEvent>
+  cancel(utteranceId: string): Promise<void>
+}
+
+SttEvent =
+  | { type: "partial"; text: string; stability?: number }
+  | { type: "final"; text: string; language?: string; confidence?: number }
+  | { type: "error"; code: string }
+
+7.4 TTS
+interface TtsProvider {
+  id(): string
+  synthesizeStream(request: TtsRequest): AsyncIterable<AudioChunk>
+  cancel(synthesisId: string): Promise<void>
+}
+
+All real engine-specific code remains inside local provider adapters. Tests use deterministic FakeWake/FakeVAD/FakeSTT/FakeTTS providers.
+8. Audio Format Contract
+Normalize microphone input to one internal PCM format before VAD/STT.
+Use mono PCM with configured sample rate and frame duration; provider adapters resample only at boundaries.
+AudioFrame timestamps are monotonic and local.
+No compressed audio is stored unless explicitly enabled for debugging.
+Playback format conversion happens inside AudioPlayback/TTS adapter boundaries.
+PcmFrame {
+  sequence: number
+  timestamp_ms: number
+  sample_rate_hz: number
+  channels: 1
+  sample_format: "s16le" | configured internal format
+  duration_ms: number
+  data: bytes
+}
+
+9. Voice State Machine
+DISABLED
+  -> enable
+IDLE
+  -> wake detected / push-to-talk
+LISTENING
+  -> speech detected
+CAPTURING
+  -> VAD end-of-utterance
+TRANSCRIBING_FINAL
+  -> final transcript
+THINKING
+  -> first speakable response chunk
+SPEAKING
+  -> response completes
+IDLE
+
+SPEAKING + user speech -> INTERRUPTING -> LISTENING/CAPTURING
+ANY ACTIVE STATE + fatal component error -> ERROR -> IDLE or DISABLED
+
+State
+Owns
+May transition on
+IDLE
+Wake detector
+wake/PTT/disable
+LISTENING
+Mic + VAD
+speech start/timeout/cancel
+CAPTURING
+Mic + VAD + STT
+speech end/cancel
+TRANSCRIBING_FINAL
+STT
+final/error
+THINKING
+Conversation/model stream
+text delta/tool wait/cancel
+SPEAKING
+TTS + playback
+completion/barge-in/cancel
+INTERRUPTING
+CancellationScope
+all cancelled -> listening
+ERROR
+Controller
+recover/disable
+10. Wake Word Behavior
+Wake detection runs locally continuously only while voice mode is enabled.
+Wake provider receives short audio frames but does not persist them.
+Wake event begins a fresh utterance capture window.
+Pre-roll ring buffer may retain a very short in-memory window so the first spoken syllable is not lost.
+Pre-roll is memory-only and cleared after each utterance.
+Wake false positives return to IDLE after a configurable no-speech timeout.
+Push-to-talk/hotkey must work even if wake engine is unavailable.
+11. VAD and End-of-Utterance
+VAD is the authority for when the user starts/stops speaking. Avoid sending silence to STT indefinitely.
+Parameter
+Requirement
+speech_start_threshold
+Configurable probability/debounce
+speech_end_threshold
+Configurable probability/debounce
+min_speech_ms
+Reject tiny clicks/noise
+end_silence_ms
+Natural pause before finalizing utterance
+max_utterance_ms
+Hard bound; finalize/cancel safely
+no_speech_timeout_ms
+Wake without speech returns to IDLE
+12. STT Requirements
+STT runs locally and never requires DeepSeek/network access.
+Support Bulgarian and English at minimum; automatic language detection is allowed but language hints should be configurable.
+Expose partial transcripts when the engine supports them.
+Only the final transcript creates a ConversationService user turn.
+Partial transcripts may appear in UI but must not be written to long-term memory.
+Empty/low-confidence/noise utterances are discarded or ask for repetition.
+Normalize whitespace/punctuation conservatively; do not rewrite meaning.
+Bound maximum utterance duration and transcript length.
+13. TTS Requirements
+TTS runs locally.
+ARTHUR has a stable configured voice persona independent from DeepSeek.
+TTS supports cancellation at any point.
+Prefer streaming/chunked synthesis; if engine is sentence-based, synthesize sentence chunks incrementally.
+Playback starts before the full assistant response has been generated when safe.
+Do not speak Markdown syntax, code fences, long URLs, JSON, citations, IDs, or raw tool payloads unless explicitly requested.
+Preserve numbers, dates, units and names intelligibly.
+TTS failures must still leave display_text available.
+14. Speech Formatter
+Do not send display Markdown directly to TTS. Add a speech-specific formatting layer.
+AssistantOutput {
+  display_text: string
+  speech_text: string
+  ...
+}
+
+Remove Markdown/control syntax from speech.
+Collapse tables into short spoken summaries.
+Do not read URLs character-by-character by default.
+For code-heavy answers, say that code is shown on screen unless the user asks to hear it.
+Keep spoken replies concise by default; display output may be richer.
+Never alter tool approval semantics in the spoken summary.
+15. DeepSeek Streaming Integration
+Extend ModelGateway with a streaming capability without creating a second DeepSeek-specific conversation stack.
+interface StreamingModelProvider extends ModelProvider {
+  generateStream(request: ModelRequest, signal: AbortSignal): AsyncIterable<ModelStreamEvent>
+}
+
+ModelStreamEvent =
+  | { type: "text_delta"; text: string }
+  | { type: "tool_call"; call: ProposedToolCall }
+  | { type: "usage"; usage: TokenUsage }
+  | { type: "done"; finish_reason: string }
+
+Non-streaming providers remain supported.
+DeepSeek-specific SSE/event parsing remains inside DeepSeekProvider.
+Cancellation uses AbortSignal/central CancellationScope.
+Partial text is not persisted as final assistant turn until the response reaches a valid terminal state.
+Tool calls interrupt/hold speech until tool/approval semantics are known.
+16. Speakable Chunking
+Do not feed token-by-token output to TTS. Buffer into speakable units.
+text deltas
+  -> sentence/phrase buffer
+  -> safe boundary detector
+  -> SpeechFormatter
+  -> TTS queue
+
+Prefer sentence boundaries.
+Allow bounded phrase fallback when a sentence is very long.
+Do not speak a fragment that could be invalidated by a pending tool call or approval.
+Never speak hidden/internal metadata.
+Backpressure prevents unlimited queued TTS when model output is faster than playback.
+17. Barge-In / Interruption
+CRITICAL EXPERIENCE REQUIREMENT
+If ARTHUR is speaking and the user starts talking, playback must stop quickly and the new utterance must take priority. This behavior is required for Phase 3 completion.
+User speech while SPEAKING
+   |
+Barge-in detector
+   |
+CancellationScope.cancel(reason="barge_in")
+   +--> stop audio playback
+   +--> cancel TTS synthesis
+   +--> abort DeepSeek stream
+   +--> cancel cancellable read-only tools
+   +--> mark interrupted assistant turn
+   |
+start new LISTENING/CAPTURING utterance
+
+Do not automatically cancel irreversible/external actions already approved and committed; cancellation policy is tool-specific.
+Queued unsent TTS chunks are discarded.
+Interrupted partial assistant text may be stored with status=interrupted for audit, not as a normal completed answer.
+New utterance must not accidentally append to the interrupted model stream.
+Cancellation is idempotent.
+18. Echo / Self-Trigger Protection
+ARTHUR must not repeatedly wake or transcribe its own TTS output.
+Wake detector may be paused or hardened while TTS is playing.
+Barge-in still needs microphone monitoring during playback; use echo-suppression strategy or tighter VAD/wake gating.
+AudioPlayback exposes playback-active state to VoiceTurnController.
+If acoustic echo cancellation is unavailable, prefer headphones or conservative software gating for V1.
+Add a regression test where synthesized “Arthur” does not recursively create new turns.
+19. Tool Calls and Voice
+Voice must reuse Phase 1 tool security exactly.
+Read-only tool results may be summarized and spoken.
+Approval-required actions must pause before execution and ask the user for explicit approval.
+Voice approval is treated as a user input turn/action and must bind to the exact pending approval object.
+Phrases such as “yes”, “do it”, or “approve” are accepted only when there is exactly one unambiguous pending approval in the active trusted session.
+If multiple approvals are pending, ARTHUR asks which one; it must not guess.
+High-risk/User-only policy from Phase 1 remains authoritative.
+Never convert arbitrary TTS/STT text directly into an adapter call.
+20. Voice Approval UX
+ARTHUR: "The Harness is ready to start job X. This will create a new coding job. Approve?"
+USER: "Yes."
+STT -> approval intent
+ApprovalService resolves exactly one pending approval
+-> verifies session/mode/action hash/expiry
+-> executes through secured ToolOrchestrator
+
+FAIL CLOSED
+If “yes” could refer to more than one pending action or the approval has expired/changed, ARTHUR must not execute anything.
+21. Session and Mode Integration
+VoiceSession references an existing ARTHUR session_id.
+Active Personal/Business mode is read from the server-side session store.
+Voice UI may expose a mode-switch command, but it invokes the same explicit Phase 1 mode-change operation.
+Wake word alone does not select a mode.
+The spoken confirmation after a mode switch should make the active mode obvious when useful.
+Phase 2 memory retrieval remains same-domain and is unaffected by voice.
+22. Voice Session Contract
+VoiceSession {
+  voice_session_id: UUID
+  arthur_session_id: UUID
+  state: VoiceState
+  active_utterance_id?: UUID
+  active_turn_id?: UUID
+  input_device_id?: string
+  output_device_id?: string
+  wake_enabled: boolean
+  push_to_talk_enabled: boolean
+  created_at: timestamp
+  updated_at: timestamp
+}
+
+VoiceSession operational state is ephemeral/persist-minimal. Conversation truth remains in the existing SessionStore.
+23. Realtime Local API
+Add a realtime channel for the local desktop/web client. This is not remote phone networking yet.
+WebSocket /v1/voice/realtime
+
+Client -> ARTHUR
+  voice.enable
+  voice.disable
+  voice.ptt.start
+  voice.ptt.stop
+  voice.interrupt
+  voice.set_device
+
+ARTHUR -> Client
+  voice.state
+  wake.detected
+  stt.partial
+  stt.final
+  assistant.text.delta
+  assistant.speech.started
+  assistant.speech.ended
+  approval.required
+  voice.error
+
+24. Local HTTP Control Endpoints
+Method
+Path
+Purpose
+GET
+/v1/voice/status
+Voice component health and active state
+POST
+/v1/voice/enable
+Enable local wake/listening mode
+POST
+/v1/voice/disable
+Disable mic/wake path
+GET
+/v1/voice/devices
+List safe input/output device metadata
+POST
+/v1/voice/devices
+Choose input/output device
+POST
+/v1/voice/interrupt
+Cancel current speak/generate pipeline
+POST
+/v1/voice/ptt/start
+Start push-to-talk capture
+POST
+/v1/voice/ptt/stop
+Finalize push-to-talk utterance
+25. Configuration
+ARTHUR_VOICE_ENABLED=false
+ARTHUR_WAKE_ENABLED=true
+ARTHUR_WAKE_WORD=arthur
+ARTHUR_WAKE_PROVIDER=local
+ARTHUR_VAD_PROVIDER=local
+ARTHUR_STT_PROVIDER=local
+ARTHUR_TTS_PROVIDER=local
+ARTHUR_STT_LANGUAGE=auto
+ARTHUR_STT_MODEL_PATH=...
+ARTHUR_TTS_MODEL_PATH=...
+ARTHUR_TTS_VOICE=arthur
+ARTHUR_AUDIO_INPUT_DEVICE=default
+ARTHUR_AUDIO_OUTPUT_DEVICE=default
+ARTHUR_VAD_END_SILENCE_MS=...
+ARTHUR_VOICE_NO_SPEECH_TIMEOUT_MS=...
+ARTHUR_VOICE_MAX_UTTERANCE_MS=...
+ARTHUR_TTS_MAX_QUEUE_CHUNKS=...
+ARTHUR_RAW_AUDIO_RETENTION=false
+
+Voice is disabled safely if configured model files/devices are unavailable.
+No secrets or raw audio appear in /status.
+Default raw audio retention is false.
+Engine/model paths are configurable and kept outside core logic.
+26. Local Engine Selection Rules
+Phase 3 architecture is engine-agnostic. The implementation may choose practical local providers compatible with the current PC, but the following contracts are mandatory:
+Component
+First-provider requirements
+Wake word
+Offline, low CPU, configurable “Arthur”, continuous local use
+VAD
+Offline frame-level speech probability/transition output
+STT
+Offline/local, Bulgarian + English, cancellable, acceptable realtime factor
+TTS
+Offline/local, natural stable voice, cancellable, supports streaming or incremental chunks
+Document the chosen implementations and model versions in `docs/architecture/phase3-decisions.md`. Do not couple core contracts to those engines.
+27. Audio Privacy
+Raw microphone frames stay in memory buffers only by default.
+Raw audio is not inserted into Personal/Business RAG.
+Raw audio is not sent to DeepSeek.
+Raw audio is not emitted in logs/traces.
+Final transcript is treated like normal user text and therefore passes Phase 1 secret sanitization and Phase 2 mode/memory policy.
+Optional debug recording requires an explicit development-only flag and obvious warning; never enable by default.
+Microphone active/listening/speaking state must be visible to the local UI.
+28. Transcript Safety
+Apply input length bounds before creating a turn.
+Do not trust STT confidence as authorization.
+Transcription errors cannot bypass approval requirements.
+Approval by voice should use contextual confirmation for high-impact actions.
+Secret sanitizer runs on final transcript before persistence/model payload according to Phase 1 policy.
+Partial transcripts are not persisted as completed user turns.
+29. Cancellation Architecture
+CancellationScope per voice turn
+  signal
+  cancel(reason)
+  register(resource)
+
+resources:
+  STT stream
+  DeepSeek stream
+  TTS synthesis
+  audio playback
+  cancellable read-only tools
+
+Cancellation reason is recorded as safe metadata.
+Cancellation does not roll back already committed irreversible external actions.
+Every provider adapter must release native/process/audio resources on cancellation.
+After cancellation, late events from the old generation are ignored using utterance/turn generation IDs.
+30. Generation / Stale-Event Guards
+Every active utterance/turn receives a monotonically newer generation/ID. Async callbacks must verify they still belong to the current generation before mutating state or playing audio.
+if event.voiceGeneration != controller.currentGeneration:
+    ignore event
+
+Old STT final events cannot create a new turn after barge-in.
+Old DeepSeek deltas cannot be queued into the new TTS response.
+Old TTS audio cannot resume after interruption.
+Old timeout callbacks cannot return a new active session to IDLE unexpectedly.
+31. Latency Targets
+Targets are engineering goals, not security gates. Measure on the actual PC.
+Metric
+Target / expectation
+Wake reaction
+Perceptually immediate; typically < 300 ms target
+VAD speech-start detection
+Fast enough not to clip first syllable; pre-roll assists
+STT partial
+Visible during speech when provider supports it
+End-of-utterance
+Natural; target roughly sub-second after final speech pause
+DeepSeek first token
+Measured separately; use fast reasoning profile for simple voice turns
+TTS first audio
+Start from first safe phrase/sentence rather than full answer
+Barge-in playback stop
+Near-immediate; target < 250 ms from detected user speech
+Full simple voice response
+Optimize perceived latency, not only total completion time
+32. Reasoning Profile for Voice
+Simple conversational/status queries default to fast/low reasoning.
+Complex architecture/decision requests may escalate to normal/deep reasoning.
+Tool intent complexity may influence reasoning profile.
+Voice UI may say a short acknowledgement only when latency is high and only if it does not imply an action already happened.
+Reasoning profile mapping remains inside ModelGateway/provider logic.
+33. Failure Handling
+Failure
+Expected behavior
+Wake provider unavailable
+Voice can still use push-to-talk; expose degraded status.
+Microphone missing
+Voice disabled with actionable error; text path remains healthy.
+VAD failure
+PTT/manual endpoint can finalize utterance; no infinite capture.
+STT failure
+Discard/ask user to repeat; no fake transcript.
+DeepSeek unavailable
+Speak/display concise failure; preserve session integrity.
+TTS failure
+Display response text; do not fail completed model turn.
+Playback device missing
+Display response and report audio output unavailable.
+Barge-in cancellation failure
+Force-stop playback process/device if possible; stale-generation guard blocks old events.
+Tool waits for approval
+Voice enters approval-wait state; no premature speech implying success.
+Memory unavailable
+Use Phase 2 same-domain degraded behavior; never cross domains.
+34. Resource Management
+One owner opens/closes the microphone device.
+Provider processes/models are initialized once and reused when safe.
+Audio ring buffers are bounded.
+TTS queue is bounded and supports backpressure.
+Child processes/native handles are shut down on ARTHUR exit.
+Voice disable releases microphone access.
+Handle suspend/resume and audio-device disappearance without process crash.
+35. Observability
+Signal
+Record
+voice.state_transition
+from/to/reason/trace_id
+wake.detected
+provider + latency; no raw audio
+vad.utterance_ms
+speech duration
+stt.latency_ms
+partial/final timing + provider/model
+stt.realtime_factor
+processing time / audio duration
+model.first_token_ms
+DeepSeek perceived response latency
+tts.first_audio_ms
+time from speakable chunk to playback
+voice.barge_in_ms
+speech detection to playback stop
+voice.cancel_reason
+barge_in/user_stop/error/etc.
+voice.error
+typed code + component
+36. Voice Error Codes
+Code
+Meaning
+VOICE_DISABLED
+Voice is not enabled.
+AUDIO_INPUT_UNAVAILABLE
+No usable microphone.
+AUDIO_OUTPUT_UNAVAILABLE
+No usable speaker/headphones.
+WAKE_UNAVAILABLE
+Wake provider unavailable.
+VAD_FAILED
+Voice activity detector failed.
+STT_FAILED
+Speech recognition failed.
+STT_EMPTY
+No usable speech recognized.
+TTS_FAILED
+Speech synthesis failed.
+VOICE_TIMEOUT
+No speech / utterance duration timeout.
+VOICE_BUSY
+Conflicting local foreground turn.
+VOICE_CANCELLED
+Turn interrupted/cancelled.
+VOICE_STATE_INVALID
+Illegal state transition blocked.
+37. Required Tests — State Machine
+IDLE → wake → listening → capturing → final STT → thinking → speaking → IDLE.
+Wake with no speech returns to IDLE after timeout.
+PTT works with wake disabled.
+Illegal transitions fail closed.
+Disable from every active state cancels resources and reaches DISABLED.
+Fatal provider error reaches ERROR/recovery without hanging.
+Stale callbacks from older generations are ignored.
+38. Required Tests — STT/TTS
+FakeSTT partials do not create turns; final event creates exactly one turn.
+Empty STT result creates no turn.
+Long transcript is bounded/rejected safely.
+Bulgarian and English sample utterances are recognized in optional local-provider smoke tests.
+TTS formatter removes Markdown/code syntax.
+TTS queue preserves response order.
+TTS cancellation releases queued chunks and playback.
+TTS failure still returns display text.
+39. Required Tests — Barge-In
+User speech during TTS stops playback promptly.
+DeepSeek stream receives cancellation.
+Queued TTS chunks are discarded.
+Old model deltas after cancellation are ignored.
+Old TTS audio after cancellation is ignored.
+New utterance creates a new generation and turn.
+Cancelling twice is safe/idempotent.
+Committed external tool action is not incorrectly rolled back.
+40. Required Tests — Security / Phase 1+2 Regression
+Spoken Business request cannot retrieve Personal memory.
+Spoken Personal request cannot retrieve Business memory.
+Actual DeepSeek payload contains transcript + same-domain context only, no raw audio.
+Voice cannot call unknown/raw tool executor.
+Voice “yes” cannot approve multiple ambiguous actions.
+Expired/mismatched approval cannot execute from voice.
+Secret-like spoken transcript follows Phase 1 sanitization policy.
+Prompt injection spoken aloud cannot bypass tool or memory policy.
+All existing Phase 1/2 test suites remain green.
+41. Required Tests — Privacy
+No raw audio bytes appear in SQLite, logs, RAG stores, DeepSeek payload captures, or normal traces.
+Pre-roll buffer is cleared after use.
+Partial transcripts are not long-term memory.
+Voice disable releases microphone device.
+Raw-audio debug flag defaults false and is clearly development-only.
+Audio-device metadata does not expose unnecessary OS/private details through APIs.
+42. Required Tests — Echo/Self-Trigger
+TTS saying “Arthur” does not create recursive wake turns.
+Playback-active gating still permits intentional barge-in.
+Headphone mode works without special assumptions.
+Speaker mode with software gating does not deadlock wake/listen state.
+43. Required Tests — Streaming / Backpressure
+Many model deltas do not create unbounded TTS queue growth.
+Slow TTS applies backpressure or bounded buffering.
+Long sentence eventually flushes via bounded phrase fallback.
+Tool call appearing after text does not cause unsafe premature success speech.
+Connection/client disconnect does not crash local voice controller.
+44. Acceptance Scenarios
+Scenario
+Expected result
+Wake + question
+“Arthur” activates; user speaks; local STT creates one turn; DeepSeek answers; local TTS speaks.
+Push-to-talk
+Works when wake is disabled/unavailable.
+Personal RAG voice
+Spoken question retrieves only Personal memory.
+Business RAG voice
+Spoken question retrieves only Business memory.
+Barge-in
+User interrupts ARTHUR mid-sentence; old speech/model stops and new utterance wins.
+Approval
+Voice asks for approval and executes only exact unambiguous approved action.
+TTS outage
+Text answer remains available; session remains completed/consistent.
+STT outage
+No fabricated turn; user can use text/PTT after recovery.
+Privacy
+Captured DeepSeek payload contains no raw audio; local stores/logs contain no raw audio by default.
+Restart
+Voice providers/controller reinitialize without corrupting core sessions/memory.
+45. Suggested Implementation Order
+Define voice contracts, states, events, error types, configuration and fake providers.
+Implement VoiceTurnController + deterministic state machine using fake providers only.
+Implement audio capture/playback abstractions and device enumeration.
+Implement local VAD provider + tests.
+Implement local wake provider + PTT fallback.
+Implement local STT provider + final/partial transcript flow.
+Integrate final transcripts into existing ConversationService.
+Add ModelGateway/DeepSeek streaming with cancellation.
+Implement SpeechFormatter + speakable chunker.
+Implement local TTS provider + audio playback queue.
+Implement central CancellationScope + generation guards.
+Implement barge-in and echo/self-trigger protection.
+Add local realtime WebSocket/control endpoints.
+Add approval-by-voice flow through existing ApprovalService only.
+Add observability/latency metrics and privacy hardening.
+Run full Phase 1+2+3 tests, typecheck, build and deterministic verification.
+Have Codex perform read-only adversarial Phase 3 audit before distributed-device Phase 4.
+46. DeepSeek Coding Instructions
+IMPLEMENTATION RULE
+Implement only the local voice layer. Do not build phone connectivity, node discovery/failover, AgencyOS, or other future applications. Preserve Phase 1 and Phase 2 security boundaries exactly.
+Before coding, produce a dependency-aware task plan mapped to this specification.
+Use Fake voice providers first so the state machine and cancellation semantics are deterministic before native/model integration.
+Do not implement a second ConversationService for voice.
+Do not send raw audio to DeepSeek.
+Do not persist partial transcripts or raw audio by default.
+Do not let STT text directly execute tools or approvals.
+Do not couple core code to one wake/STT/TTS engine.
+Use bounded queues/buffers and explicit cancellation.
+Every async provider callback must carry generation/utterance identity.
+Document chosen real local wake/VAD/STT/TTS providers and model versions in `docs/architecture/phase3-decisions.md`.
+Document any intentional deviation from this spec before considering Phase 3 complete.
+47. Definition of Done
+Local wake word “Arthur” works or a documented local provider limitation has a PTT fallback; wake remains provider-abstracted.
+Local VAD correctly detects utterance start/end and timeouts.
+Local STT produces final Bulgarian/English text usable by ConversationService.
+Voice requests use the same Phase 1/2 session, mode, RAG, tools and approvals as typed requests.
+DeepSeek streaming is integrated behind ModelGateway and cancellable.
+Local TTS speaks responses with a stable ARTHUR voice configuration.
+SpeechFormatter prevents raw Markdown/code/tool metadata from being spoken by default.
+Barge-in stops playback/generation and new speech takes priority.
+Generation guards prevent stale STT/model/TTS events from corrupting the next turn.
+Echo/self-trigger protection prevents recursive “Arthur” wake loops.
+Raw audio is not persisted or sent to DeepSeek by default.
+Voice approval cannot bypass exact Phase 1 approval binding.
+Voice failure degrades to text without corrupting sessions or memory.
+Latency metrics are recorded without raw audio.
+All Phase 1 and Phase 2 tests remain passing.
+Phase 3 tests, typecheck, build and deterministic verification pass.
+`phase3-decisions.md`, README and `.env.example` document setup/providers/devices/privacy.
+No Phase 4 distributed-device features are prematurely implemented.
+48. Completion Evidence Required
+Final test counts and skipped tests.
+`npm run typecheck` result.
+`npm run build` result.
+Integration/voice test result.
+Deterministic verification result.
+Chosen wake/VAD/STT/TTS providers and versions.
+Audio format and configured device behavior.
+Latency measurements: wake, end-of-utterance, STT final, DeepSeek first token, TTS first audio, barge-in stop.
+Captured model payload proving no raw audio and correct same-domain RAG.
+Barge-in regression evidence.
+Echo/self-trigger regression evidence.
+Privacy test evidence proving no raw audio persistence.
+Files added/changed and documented deviations.
+49. Gate to Phase 4
+Do not begin phone/remote-node work immediately after implementation. First run a read-only Codex audit focused on voice state races, cancellation, stale events, tool approval by speech, prompt injection, raw-audio leakage, self-trigger loops, local provider process safety, and regression of Phase 1/2 boundaries.
+PHASE 4 GATE
+Proceed to distributed-device/node routing only when local ARTHUR voice is stable, interruptible, private, and cannot weaken memory/tool isolation.
+Appendix A — Example End-to-End Voice Turn
+1. State IDLE; wake provider hears "Arthur".
+2. Controller -> LISTENING, starts pre-roll/VAD.
+3. User: "What did we decide about ARTHUR memory?"
+4. VAD starts CAPTURING; local STT emits partials.
+5. VAD detects end; STT emits one final transcript.
+6. Controller creates a normal ConversationService turn in active mode.
+7. Phase 2 MemoryContextSource retrieves same-domain memories locally.
+8. ModelGateway streams minimized text context to DeepSeek V4 Flash.
+9. Safe sentence arrives; SpeechFormatter creates speech text.
+10. Local TTS begins playback while DeepSeek continues.
+11. Final assistant turn is persisted normally.
+12. Playback completes; controller returns to IDLE.
+
+Appendix B — Example Barge-In
+ARTHUR is SPEAKING: "There are three important..."
+USER begins: "Arthur, stop—just tell me the first one."
+
+VAD detects user speech
+-> generation N cancellation
+-> audio playback stop
+-> TTS cancel
+-> DeepSeek AbortSignal
+-> old text/audio events ignored
+-> generation N+1 CAPTURING
+-> new final transcript
+-> new normal ConversationService turn
+
+Appendix C — Phase 3 Checklist
+☐  Voice contracts defined
+☐  State machine implemented
+☐  Fake voice providers passing
+☐  Audio capture implemented
+☐  Audio playback implemented
+☐  Wake provider implemented
+☐  PTT fallback implemented
+☐  VAD implemented
+☐  STT implemented
+☐  TTS implemented
+☐  DeepSeek streaming implemented
+☐  Speech formatter implemented
+☐  Speakable chunker implemented
+☐  CancellationScope implemented
+☐  Generation guards implemented
+☐  Barge-in passing
+☐  Echo/self-trigger protection passing
+☐  Voice approval flow passing
+☐  Personal/Business voice isolation passing
+☐  Raw-audio privacy tests passing
+☐  Realtime local API implemented
+☐  Voice control endpoints implemented
+☐  Latency metrics captured
+☐  Phase 1 regressions passing
+☐  Phase 2 regressions passing
+☐  Phase 3 tests passing
+☐  Build/typecheck passing
+☐  Deterministic verification passing
+☐  phase3-decisions.md documented
+☐  Ready for Codex audit

@@ -1,0 +1,37 @@
+{
+    "schemaVersion":  1,
+    "taskId":  "TASK-0003",
+    "description":  "Perform an independent read-only review of ARTHUR Phase 2: Isolated Memory + Local RAG.\r\n\r\nDo not modify any files.\r\n\r\nFocus only on the most security- and correctness-critical Phase 2 invariants.\r\n\r\nReview these areas:\r\n\r\n1. Personal / Business physical isolation\r\n   - Personal memory must never be readable or writable from Business mode.\r\n   - Business memory must never be readable or writable from Personal mode.\r\n   - Caller-controlled domain/database/namespace/context fields must not bypass trusted session routing.\r\n   - Known IDs from the opposite domain must fail closed.\r\n\r\n2. Secret protection\r\n   - Check whether JSON-shaped secrets such as:\r\n     {\"api_key\":\"secret\"}\r\n     {\"password\":\"secret\"}\r\n     {\"client_secret\":\"secret\"}\r\n     can reach memory persistence, chunks, FTS, retrieval, or outbound model context.\r\n\r\n3. Forget / replay lifecycle\r\n   - Examine:\r\n     remember ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ forget ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ remember again\r\n   - A deleted tombstone must never be returned as a successful new memory.\r\n   - The new memory must become ACTIVE and searchable.\r\n\r\n4. Crash / retry consistency\r\n   - Examine the window:\r\n     item persisted\r\n     ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ crash before chunks / embeddings / FTS\r\n     ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ retry in the same process\r\n   - ACTIVE memory must not remain permanently unsearchable.\r\n   - Retry should converge without creating duplicate logical memories.\r\n\r\n5. Prompt-injection boundary\r\n   - Retrieved memory must be treated as untrusted data, not trusted system/developer instructions.\r\n   - Check how memory is inserted into ModelRequest / ContextBuilder.\r\n\r\n6. Retrieval lifecycle\r\n   - DELETED, expired, superseded, or otherwise inactive memory must not be returned by RAG.\r\n   - Search indexes must remain consistent with lifecycle state.\r\n\r\nUse repository evidence only.\r\n\r\nPrefer inspecting the smallest set of relevant Phase 2 files, up to the controller limit.\r\n\r\nLikely relevant files include, if present:\r\n\r\nsrc/memory/gateway.ts\r\nsrc/memory/stores/sqlite_memory_store.ts\r\nsrc/memory/policy.ts\r\nsrc/memory/dedupe.ts\r\nsrc/security/redaction.ts\r\n\r\nand the relevant ContextBuilder / model-request memory integration file.\r\n\r\nDo not broaden this into a full repository audit.\r\nDo not review Phase 1 or future Phase 3 functionality except where required to verify a Phase 2 boundary.\r\n\r\nFor every finding return:\r\n\r\n- severity\r\n- exact file/function/location\r\n- problem\r\n- concrete evidence from the code\r\n- exploit/failure sequence where applicable\r\n- suggested direction\r\n\r\nExplicitly answer at the end:\r\n\r\nPHYSICAL ISOLATION: VERIFIED / PARTIAL / BROKEN\r\n\r\nF1 JSON SECRET BYPASS: PRESENT / FIXED / UNCERTAIN\r\n\r\nF2 REPLAY-AFTER-FORGET: PRESENT / FIXED / UNCERTAIN\r\n\r\nF3 SAME-PROCESS CRASH RETRY: PRESENT / FIXED / UNCERTAIN\r\n\r\nPHASE 2 VERDICT: PASS / PASS WITH FIXES / FAIL\r\n\r\nDo not modify source.\r\nDo not claim something is fixed unless the current repository code proves it.",
+    "status":  "ready",
+    "dependencies":  [
+
+                     ],
+    "baseCommit":  "",
+    "executionClass":  "deepseek_deep",
+    "executor":  "deepseek_deep",
+    "attempt":  0,
+    "maxAttempts":  3,
+    "risk":  "normal",
+    "acceptanceCriteria":  [
+
+                           ],
+    "verification":  {
+                         "required":  [
+
+                                      ],
+                         "outcomes":  [
+
+                                      ]
+                     },
+    "reviewRequested":  true,
+    "executionClassOverride":  "deepseek_normal",
+    "worktree":  null,
+    "failureSignatures":  [
+
+                          ],
+    "codexCalls":  1,
+    "completionAuthority":  "controller",
+    "createdAtUtc":  "2026-08-23T17:47:50.0694469Z",
+    "updatedAtUtc":  "2026-08-23T17:49:41.1972900Z",
+    "completedAtUtc":  null
+}

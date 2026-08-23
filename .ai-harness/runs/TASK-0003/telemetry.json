@@ -1,0 +1,66 @@
+{
+    "schemaVersion":  1,
+    "taskId":  "TASK-0003",
+    "timestampUtc":  "2026-08-23T17:48:46.7501060Z",
+    "executionClass":  "codex_review",
+    "model":  "gpt-5.6-sol",
+    "provider":  "sol-local",
+    "modelCalls":  1,
+    "usageAvailable":  false,
+    "inputTokens":  0,
+    "cachedTokens":  0,
+    "outputTokens":  0,
+    "costProxy":  null,
+    "contextSize":  0,
+    "filesSupplied":  4,
+    "filesModified":  0,
+    "diffLines":  0,
+    "attempts":  0,
+    "failureSignatures":  [
+
+                          ],
+    "verificationOutcomes":  [
+
+                             ],
+    "codexCalls":  1,
+    "codexFindings":  [
+                          {
+                              "severity":  "high",
+                              "location":  "src/memory/stores/sqlite_memory_store.ts: SqliteMemoryStore constructor; source/document methods",
+                              "problem":  "Physical database isolation is not enforced. PersonalMemoryStore and BusinessMemoryStore may be constructed with the same database path, while memory_sources operations have no domain scoping.",
+                              "evidence":  "Both named stores accept any dbPath and SqliteMemoryStore opens resolve(dbPath) without asserting distinct files. memory_sources has no domain column, and getSource, listSources, and deleteSource query only by source ID. If both handles receive the same path, document metadata is shared and known opposite-domain source IDs are not inherently isolated.",
+                              "suggestedDirection":  "Enforce distinct canonical database paths during composition or construction and domain-scope all source/document records and operations as defense in depth. PHYSICAL ISOLATION: BROKEN."
+                          },
+                          {
+                              "severity":  "high",
+                              "location":  "src/memory/gateway.ts: MemoryGatewayImpl.retrieve",
+                              "problem":  "The gateway selects the trusted session store but does not pass that store to retrieval, so the claimed single trusted routing boundary does not govern the actual search.",
+                              "evidence":  "retrieve computes `store = this.selectStore(context.domain)` and uses it only for `store.expireDue()`. It then calls `this.retriever.retrieve(context, ...)` without the selected handle. HybridRetriever is absent, so repository evidence in the packet cannot prove that retrieval cannot select or query the opposite store.",
+                              "suggestedDirection":  "Bind retrieval directly to the gateway-selected store, or otherwise make the retriever store-specific and prove it cannot accept caller-controlled routing."
+                          },
+                          {
+                              "severity":  "high",
+                              "location":  "src/memory/policy.ts: hasSecretLikeContent; src/memory/gateway.ts: remember/storeCandidate",
+                              "problem":  "Protection against the specified JSON-shaped secrets cannot be verified and may depend entirely on an unavailable redaction implementation.",
+                              "evidence":  "The local CREDENTIAL_PATTERNS do not match generic JSON fields such as `{\"api_key\":\"secret\"}`, `{\"password\":\"secret\"}`, or `{\"client_secret\":\"secret\"}`. Detection falls through to `redactText(text, []) !== text`, but src/security/redaction.ts is absent. Document ingestion is also absent, so its pre-persistence/pre-embedding handling cannot be established. If redactText misses these forms, they reach persistence, chunks, embeddings, FTS, and retrieval.",
+                              "suggestedDirection":  "Add explicit structured/key-value credential detection before every memory and document persistence or embedding path, with tests for the three specified JSON forms. F1 JSON SECRET BYPASS: UNCERTAIN."
+                          },
+                          {
+                              "severity":  "high",
+                              "location":  "ModelRequest / ContextBuilder memory integration (not included)",
+                              "problem":  "The prompt-injection boundary cannot be verified because no retrieved-memory-to-model integration code is provided.",
+                              "evidence":  "The packet contains gateway and store code only. It does not show whether RetrievedMemory is placed in an untrusted data section or injected as system/developer instructions.",
+                              "suggestedDirection":  "Verify that retrieved text is clearly delimited and represented as untrusted data in model requests, never concatenated into trusted instruction roles."
+                          },
+                          {
+                              "severity":  "low",
+                              "location":  "src/memory/gateway.ts: remember; src/memory/stores/sqlite_memory_store.ts: forget and ingestion state methods",
+                              "problem":  "Lifecycle replay and same-process retry logic appears correct for the reviewed explicit-memory path.",
+                              "evidence":  "A completed reservation whose result is missing or non-ACTIVE is failed and reopened, while forget tombstones the old item and removes chunks/FTS. A retry finding an ACTIVE exact duplicate calls ensureChunks, rebuilding absent chunks without creating another logical memory. F2 REPLAY-AFTER-FORGET: FIXED. F3 SAME-PROCESS CRASH RETRY: FIXED. PHASE 2 VERDICT: FAIL.",
+                              "suggestedDirection":  "Retain regression tests covering rememberâforgetâremember and failure after item insertion but before putChunks."
+                          }
+                      ],
+    "finalResult":  "fail",
+    "elapsedSeconds":  null,
+    "configuration":  "deepseek-codex-review"
+}

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+data/
+.npm-cache/
+.tmptest/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.env
+*.log
+coverage/
+.DS_Store

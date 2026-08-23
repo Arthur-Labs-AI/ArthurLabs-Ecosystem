@@ -1,0 +1,64 @@
+{
+  "criteria": [
+    {
+      "id": "blocker-approval-once",
+      "criterion": "Concurrent approval retries and crash-window retries cannot execute harness.create_job more than once.",
+      "status": "met",
+      "evidence": "src/tools/orchestrator.ts uses a fully bound pending->executing CAS; executing/unknown outcomes are never auto-retried; src/tools/adapters/harness_stub.ts derives a deterministic job id from approval_id; tests/integration/security.test.ts covers concurrent calls and fail-closed executing records; tests/integration/audit_regressions.test.ts creates an external job, simulates a crash before completion, restarts, and proves zero retry calls."
+    },
+    {
+      "id": "blocker-approval-binding",
+      "criterion": "Approval execution re-enforces current session, mode, registry, schema, risk, arguments, turn/tool-call binding, expiry, and exact signed action.",
+      "status": "met",
+      "evidence": "src/tools/orchestrator.ts revalidates every binding and uses SessionStore.claimApprovalBound; src/sessions/store.ts checks persisted session/tool-call fields in one SQL CAS; src/tools/execution.ts requires approval evidence; HarnessStubAdapter verifies HMAC/tool/digest/spec. Tests cover mode change, deleted session, registry absence, digest/risk mismatch, expiry, forged tokens, and mode changes during execution."
+    },
+    {
+      "id": "high-idempotency",
+      "criterion": "Turn idempotency is atomic, globally unique, request-bound, replay-safe, and fail-closed after unknown crashes.",
+      "status": "met",
+      "evidence": "src/core/conversation/validation.ts uses global request ids plus requestHash; src/sessions/store.ts reserves unique idempotency rows, atomically binds session/turn, atomically finalizes assistant+response, and terminalizes failed/stale records; service validates mode before replay. Tests cover concurrent identical requests, changed message/mode/session, restart/crash in_progress, rollback, and sequential replay."
+    },
+    {
+      "id": "high-mode-isolation",
+      "criterion": "Personal and Business history and future context-source keys remain mode-isolated across explicit mode changes.",
+      "status": "met",
+      "evidence": "turns persist mode; getRecentTurns filters active mode; ContextBuilder receives sessionId:mode context keys; mode+boundary is transactional and blocked during active turns/approvals. tests/integration/security.test.ts verifies Personal->Business->Personal payload isolation; audit_regressions verifies atomic rollback and executing-action locking."
+    },
+    {
+      "id": "high-secret-safety",
+      "criterion": "Secrets are protected across input, persistence, provider payloads, session/turn APIs, CLI-compatible responses, tool records/results, structured keys, logs, and exceptions.",
+      "status": "met",
+      "evidence": "src/security/sanitize.ts centralizes recursive sanitization; SessionStore sanitizes all text/JSON/summaries; ConversationService sanitizes the complete ModelGateway request; DeepSeekProvider independently sanitizes; redactDeep now redacts secret-like keys. Integration/unit tests prove DB, model, HTTP, response, tool argument/result, exception, known-secret, assignment, and arbitrary secret-key behavior."
+    },
+    {
+      "id": "medium-persistence",
+      "criterion": "Runtime multi-row transitions are crash-consistent, constrained, contention-aware, and have explicit fail-closed recovery rules.",
+      "status": "met",
+      "evidence": "SessionStore transactions cover session+first turn+request binding, existing turn+binding, assistant+replay cache, mode+boundary, pending tool+approval, and approval resolution; schema adds CHECK/UNIQUE/FK/risk binding; WAL, synchronous=NORMAL, busy timeout, BEGIN IMMEDIATE migration serialization, and bounded busy retry are configured. Four-worker migration test passes, plus five consecutive integration stress runs passed."
+    },
+    {
+      "id": "medium-execution-surface",
+      "criterion": "Raw tool executors are not publicly exposed and every execution surface enforces validation, mode, risk, and approval evidence.",
+      "status": "met",
+      "evidence": "App exposes neither registry nor execution/orchestrator; ToolRegistry keeps executor map private, caches validators, and freezes cloned definitions; ToolExecutionService requires token evidence and rejects high risk; adapters verify exact signed actions. Tests cover surface absence, metadata immutability, personal-mode denial, forged token, and high-risk attempts."
+    },
+    {
+      "id": "medium-deepseek",
+      "criterion": "DeepSeek response handling strictly validates nested shapes and usage, consistently emits bad-response errors, and enforces response/content/tool bounds while preserving retry/timeout/auth behavior.",
+      "status": "met",
+      "evidence": "src/models/providers/deepseek.ts validates objects, choices, content/tool combinations, ids/types/names/arguments, finish_reason, response id, nonnegative safe-integer usage, 10 MiB streamed bytes, 1M chars, and 32 calls; provider payloads are sanitized. Unit tests cover malformed nested values, usage edge cases, both size-limit paths, auth headers, transient/network retry budgets, timeout, 401, nonretryable 400, and tool/text bounds."
+    },
+    {
+      "id": "scope-boundaries",
+      "criterion": "Preserve ModelGateway/provider and Harness adapter boundaries, shared CLI/HTTP core services, explicit server-side modes, and do not begin Phase 2 or add new ARTHUR features.",
+      "status": "met",
+      "evidence": "ConversationService still depends on ModelGateway, DeepSeek remains isolated under models/providers, Harness behavior remains behind HarnessAdapter, and changes are limited to Phase 1 audit security/persistence/provider hardening and regression tests. docs/architecture/phase1-decisions.md records the amended Phase 1 decisions and retains Phase 2 features as non-goals."
+    },
+    {
+      "id": "verification",
+      "criterion": "Complete test suite, integration suite, build, and typecheck pass after implementation.",
+      "status": "met",
+      "evidence": "Final aih-verify result: 4 passed, 0 failed (typecheck, build, test, integration all exit 0). Full npm test result: 104 tests total, 103 passed, 0 failed, 1 optional live DeepSeek test skipped because no API key. Integration concurrency stress passed 5/5 consecutive runs."
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+version: 1
+mode: replace
+commands:
+  - name: typecheck
+    kind: typecheck
+    command: 'cmd.exe /c "npm run typecheck 1>NUL 2>NUL"; $c=$LASTEXITCODE; $s = if ($c -eq 0) { "PASS" } else { "FAIL" }; Write-Output ("node:typecheck " + $s + " exit=" + $c); exit $c'
+    workingDirectory: .
+    required: true
+    timeoutSeconds: 1200
+  - name: build
+    kind: build
+    command: 'cmd.exe /c "npm run build 1>NUL 2>NUL"; $c=$LASTEXITCODE; $s = if ($c -eq 0) { "PASS" } else { "FAIL" }; Write-Output ("node:build " + $s + " exit=" + $c); exit $c'
+    workingDirectory: .
+    required: true
+    timeoutSeconds: 1200
+  - name: test
+    kind: test
+    command: 'cmd.exe /c "npm run test 1>NUL 2>NUL"; $c=$LASTEXITCODE; $s = if ($c -eq 0) { "PASS" } else { "FAIL" }; Write-Output ("node:test " + $s + " exit=" + $c); exit $c'
+    workingDirectory: .
+    required: true
+    timeoutSeconds: 1200
+  - name: integration
+    kind: integration
+    command: 'cmd.exe /c "npm run test:integration 1>NUL 2>NUL"; $c=$LASTEXITCODE; $s = if ($c -eq 0) { "PASS" } else { "FAIL" }; Write-Output ("node:test:integration " + $s + " exit=" + $c); exit $c'
+    workingDirectory: .
+    required: true
+    timeoutSeconds: 1200
