@@ -45,12 +45,11 @@ export class FakeVadProvider implements VadProvider {
     this.index += 1;
     if (step === "speech") {
       this.speechFrames += 1;
-      if (!this.speakingFlag) {
-        this.speakingFlag = true;
-        this.transitions.push({ transition: "speech_started", atMs: frame.timestamp_ms });
-        return { speechProbability: 0.9, isSpeech: true, transition: "speech_started" };
-      }
-      return { speechProbability: 0.9, isSpeech: true };
+      this.speakingFlag = true;
+      // Every speech step emits the boundary: barge-in eligibility counts
+      // consecutive speech_started runs while playback is active.
+      this.transitions.push({ transition: "speech_started", atMs: frame.timestamp_ms });
+      return { speechProbability: 0.9, isSpeech: true, transition: "speech_started" };
     }
     if (step === "end") {
       if (this.speakingFlag) {

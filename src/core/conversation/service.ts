@@ -12,7 +12,7 @@
  */
 
 import { invalidRequest, modeViolation, sessionNotFound, toArthurError } from "../errors/errors";
-import type { ChatMessage, ModelGateway, ModelResult } from "../../models/contracts";
+import type { ChatMessage, ModelGateway, ModelResult, ProposedToolCall } from "../../models/contracts";
 import { Logger } from "../../observability/logging";
 import { Metrics } from "../../observability/metrics";
 import { newId, newSessionId, newTraceId, newTurnId } from "../../observability/tracing";
@@ -34,6 +34,7 @@ import {
   TurnResponseModel,
   TurnStatus,
 } from "./models";
+import type { StreamingTurnEvent } from "./streaming_service";
 import { idempotencyKey, parseModeChange, parseTurnRequest, requestHash } from "./validation";
 
 export interface AfterTurnInput {
@@ -157,6 +158,375 @@ export class ConversationService {
         responseJson: JSON.stringify(response),
       });
       return response;
+    } catch (err) {
+      this.store.failIdempotency(key);
+      throw err;
+    }
+  }
+
+
+  /**
+   * Streaming turn (Phase 3 spec section 15).
+   *
+   * Thin extension of the text path, not a second core: identical request
+   * validation, session/mode checks, sanitization, context assembly, tool
+   * orchestration, approval binding, idempotency and persistence. Text
+   * deltas are yielded as they arrive; the assistant turn is persisted
+   * ONLY at a valid terminal state (completed / needs_approval /
+   * interrupted / failed). Cancellation via `signal` persists an
+   * `interrupted` audit turn instead of a completed answer.
+   */
+  async *streamTurn(rawInput: unknown, signal?: AbortSignal): AsyncGenerator<StreamingTurnEvent> {
+    const request = parseTurnRequest(rawInput, this.config.maxMessageChars);
+    if (request.session_id) {
+      const current = this.store.getSession(request.session_id);
+      if (!current) throw sessionNotFound(request.session_id);
+      if (current.mode !== request.mode) {
+        throw modeViolation(`Session ${current.id} is in ${current.mode} mode; use the mode-change endpoint to switch modes`, {
+          session_id: current.id,
+          session_mode: current.mode,
+          requested_mode: request.mode,
+        });
+      }
+    }
+    const key = idempotencyKey(request);
+    const hash = requestHash(request);
+    const begin = this.store.beginIdempotency(key, request.client_request_id, hash, this.idempotencyStaleMs);
+    switch (begin.kind) {
+      case "replay":
+        // A voice turn is a fresh operation; a reused client_request_id must
+        // not replay an unrelated cached response into the audio path.
+        throw invalidRequest("client_request_id was already used for a completed request", {
+          client_request_id: request.client_request_id,
+        });
+      case "conflict":
+        throw invalidRequest("client_request_id was already used for a different request", {
+          client_request_id: request.client_request_id,
+        });
+      case "in_progress":
+        throw invalidRequest("A request with this client_request_id is already in progress", {
+          client_request_id: request.client_request_id,
+        });
+      case "failed":
+        throw invalidRequest("A previous attempt with this client_request_id did not complete; use a new id", {
+          client_request_id: request.client_request_id,
+        });
+      case "proceed":
+        break;
+    }
+
+    try {
+      const traceId = newTraceId();
+      const startedAt = Date.now();
+      const turnId = newTurnId();
+      // Secret-safety boundary identical to the text path.
+      const safeMessage = this.sanitizer.sanitizeText(request.message);
+
+      let session: SessionRecord;
+      let history: TurnRecord[];
+      if (request.session_id) {
+        const existing = this.store.getSession(request.session_id);
+        if (!existing) throw sessionNotFound(request.session_id);
+        if (existing.mode !== request.mode) {
+          throw modeViolation(
+            `Session ${existing.id} is in ${existing.mode} mode; use the mode-change endpoint to switch modes`,
+            { session_id: existing.id, session_mode: existing.mode, requested_mode: request.mode },
+          );
+        }
+        session = existing;
+        history = this.store.getRecentTurns(session.id, session.mode, this.config.historyMaxTurns);
+        this.store.createUserTurnForIdempotency({
+          idempotencyId: key,
+          id: turnId,
+          sessionId: session.id,
+          text: safeMessage,
+          traceId,
+          mode: session.mode,
+        });
+      } else {
+        session = this.store.createSessionAndUserTurn({
+          sessionId: newSessionId(),
+          mode: request.mode,
+          idempotencyId: key,
+          turn: { id: turnId, text: safeMessage, traceId },
+        });
+        history = [];
+      }
+
+      const allowedTools = this.registry.listAllowedForMode(session.mode);
+      const builtModelRequest = await this.contextBuilder.build({
+        mode: session.mode,
+        history,
+        toolSchemas: allowedTools.map(toToolSchema),
+        userMessage: safeMessage,
+        model: this.config.modelName,
+        reasoningProfile: this.config.reasoningProfile,
+        traceId,
+        sessionId: session.id,
+        clientRequestId: request.client_request_id,
+      });
+      const modelRequest = this.sanitizer.sanitizeValue(builtModelRequest);
+
+      yield {
+        type: "turn_started",
+        session_id: session.id,
+        turn_id: turnId,
+        trace_id: traceId,
+        mode: session.mode,
+      };
+
+      let assistantText = "";
+      let firstTokenMs: number | undefined;
+      let streamUsage: ModelResult["usage"];
+      let finishReason = "stop";
+      let cancelled = false;
+      const toolCallById = new Map<string, ProposedToolCall>();
+      const anonymousToolCalls: ProposedToolCall[] = [];
+      const streamT0 = Date.now();
+
+      try {
+        for await (const event of this.gateway.generateStream(modelRequest, signal)) {
+          if (signal?.aborted) {
+            cancelled = true;
+            break;
+          }
+          switch (event.type) {
+            case "text_delta":
+              if (firstTokenMs === undefined) firstTokenMs = Date.now() - streamT0;
+              assistantText += event.text;
+              yield { type: "text_delta", text: event.text };
+              break;
+            case "tool_call":
+              // Keep the LAST event per call id so the complete call (with
+              // parsed arguments) wins over the early partial signal.
+              if (event.call.id !== "") {
+                toolCallById.set(event.call.id, event.call);
+              } else {
+                anonymousToolCalls.push(event.call);
+              }
+              yield { type: "tool_call", call: event.call };
+              break;
+            case "usage":
+              streamUsage = event.usage;
+              yield { type: "usage", usage: event.usage };
+              break;
+            case "done":
+              finishReason = event.finish_reason;
+              break;
+          }
+        }
+      } catch (err) {
+        if (signal?.aborted) {
+          cancelled = true;
+        } else {
+          const arthurErr = toArthurError(err);
+          this.recordModelCall(turnId, "failed", Date.now() - startedAt, undefined);
+          this.store.transaction(() => {
+            this.store.createTurn({
+              id: newTurnId(),
+              sessionId: session.id,
+              role: "assistant",
+              text: "",
+              traceId,
+              status: "failed",
+              mode: session.mode,
+            });
+            this.store.failIdempotency(key);
+          });
+          this.logger.error("streaming model generation failed", {
+            trace_id: traceId,
+            session_id: session.id,
+            turn_id: turnId,
+            code: arthurErr.code,
+          });
+          this.metrics.counter("arthur.model.failed", 1, { code: arthurErr.code });
+          yield {
+            type: "turn_failed",
+            session_id: session.id,
+            turn_id: turnId,
+            trace_id: traceId,
+            mode: session.mode,
+            code: arthurErr.code,
+            message: arthurErr.message,
+          };
+          return;
+        }
+      }
+
+      // A provider that honors abort by completing early (without yielding
+      // more events) still ends the stream here: mark it cancelled so the
+      // interrupted audit turn is persisted (spec section 17).
+      if (signal?.aborted) {
+        cancelled = true;
+      }
+
+      if (cancelled) {
+        // Barge-in / user stop: persist an interrupted audit turn - never a
+        // normal completed answer (spec section 17).
+        const partial = this.sanitizer.sanitizeText(assistantText);
+        this.store.transaction(() => {
+          this.store.createTurn({
+            id: newTurnId(),
+            sessionId: session.id,
+            role: "assistant",
+            text: partial,
+            traceId,
+            status: "interrupted",
+            mode: session.mode,
+          });
+          this.store.failIdempotency(key);
+        });
+        this.logger.info("streaming turn interrupted", {
+          trace_id: traceId,
+          session_id: session.id,
+          turn_id: turnId,
+          partial_chars: partial.length,
+        });
+        this.metrics.counter("arthur.turn", 1, { status: "interrupted" });
+        yield {
+          type: "turn_interrupted",
+          session_id: session.id,
+          turn_id: turnId,
+          trace_id: traceId,
+          mode: session.mode,
+          partial_text: assistantText,
+        };
+        return;
+      }
+
+      const latencyMs = Date.now() - streamT0;
+      if (firstTokenMs !== undefined) {
+        this.metrics.timer("model.first_token_ms", firstTokenMs, { provider: this.gateway.id });
+      }
+      const allCalls = [...toolCallById.values(), ...anonymousToolCalls];
+      this.recordModelCall(turnId, "success", latencyMs, {
+        assistant_text: assistantText,
+        tool_calls: allCalls,
+        usage: streamUsage,
+        finish_reason: finishReason,
+      });
+      this.metrics.timer("arthur.model.latency_ms", latencyMs, { provider: this.gateway.id });
+
+      const ctx: ToolExecutionContext = {
+        session_id: session.id,
+        turn_id: turnId,
+        trace_id: traceId,
+        mode: session.mode,
+        approved: false,
+      };
+      const handling = await this.orchestrator.handleProposed(allCalls, ctx);
+
+      let finalText = this.sanitizer.sanitizeText(assistantText);
+      let finalLatencyMs = latencyMs;
+      let finalUsage = streamUsage;
+      let finalStatus: TurnStatus = "completed";
+
+      if (handling.needsApproval) {
+        finalStatus = "needs_approval";
+        finalText =
+          finalText.trim() !== "" ? finalText : "(requesting approval to run a tool)";
+        const approvals = handling.summaries
+          .filter((s) => s.status === "pending_approval" && s.approval_id !== undefined)
+          .map((s) => ({ approval_id: s.approval_id as string, tool_name: s.name }));
+        yield { type: "approval_required", approvals };
+      } else if (handling.toolResultMessages.length > 0) {
+        const assistantMessage: ChatMessage = {
+          role: "assistant",
+          content: finalText,
+          tool_calls: allCalls,
+        };
+        const followupRequest = this.contextBuilder.buildFollowup(
+          modelRequest,
+          assistantMessage,
+          handling.toolResultMessages,
+        );
+        const followupStarted = Date.now();
+        try {
+          const followup = await this.gateway.generate(followupRequest);
+          finalLatencyMs = Date.now() - followupStarted;
+          finalText = this.sanitizer.sanitizeText(followup.assistant_text);
+          finalUsage = followup.usage;
+          if (finalText !== "") yield { type: "text_delta", text: finalText };
+          this.recordModelCall(turnId, "success", finalLatencyMs, followup);
+        } catch (err) {
+          const arthurErr = toArthurError(err);
+          this.recordModelCall(turnId, "failed", Date.now() - followupStarted, undefined);
+          this.logger.warn("follow-up model call failed; returning tool results", {
+            trace_id: traceId,
+            session_id: session.id,
+            turn_id: turnId,
+            code: arthurErr.code,
+          });
+          finalText =
+            finalText.trim() !== ""
+              ? finalText
+              : handling.toolResultMessages.map((m) => m.content).join("\n");
+        }
+      }
+
+      const response = this.buildResponse(
+        session,
+        turnId,
+        traceId,
+        finalText,
+        finalStatus,
+        handling.summaries,
+        finalLatencyMs,
+        finalUsage,
+      );
+      this.store.finalizeIdempotentTurn({
+        idempotencyId: key,
+        assistant: {
+          id: newTurnId(),
+          sessionId: response.session_id,
+          text: response.display_text,
+          traceId: response.trace_id,
+          status: response.status,
+          mode: response.mode,
+        },
+        responseJson: JSON.stringify(response),
+      });
+
+      if (this.afterTurn && finalStatus === "completed") {
+        try {
+          await this.afterTurn({
+            session,
+            turnId,
+            traceId,
+            userMessage: safeMessage,
+            assistantText: finalText,
+            history,
+          });
+        } catch (err) {
+          this.logger.warn("post-turn hook failed; conversation continues", {
+            trace_id: traceId,
+            session_id: session.id,
+            turn_id: turnId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      this.logger.info("streaming turn completed", {
+        trace_id: traceId,
+        session_id: session.id,
+        turn_id: turnId,
+        status: finalStatus,
+        total_ms: Date.now() - startedAt,
+        tool_calls: handling.summaries.length,
+      });
+      this.metrics.counter("arthur.turn", 1, { status: finalStatus });
+      yield {
+        type: "turn_completed",
+        session_id: session.id,
+        turn_id: turnId,
+        trace_id: traceId,
+        mode: session.mode,
+        status: finalStatus,
+        display_text: finalText,
+        tool_calls: handling.summaries,
+        usage: finalUsage,
+      };
     } catch (err) {
       this.store.failIdempotency(key);
       throw err;

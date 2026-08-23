@@ -35,7 +35,9 @@ export type StateListener = (from: VoiceState, to: VoiceState, reason: string) =
 
 const TABLE: Readonly<Record<VoiceState, readonly VoiceState[]>> = {
   [VoiceState.DISABLED]: [VoiceState.IDLE],
-  [VoiceState.IDLE]: [VoiceState.LISTENING, VoiceState.DISABLED, VoiceState.ERROR],
+  // SPEAKING from IDLE is a documented extension for proactive spoken
+  // confirmations (mode switch, approval outcome).
+  [VoiceState.IDLE]: [VoiceState.LISTENING, VoiceState.SPEAKING, VoiceState.DISABLED, VoiceState.ERROR],
   [VoiceState.LISTENING]: [VoiceState.CAPTURING, VoiceState.IDLE, VoiceState.DISABLED, VoiceState.ERROR],
   [VoiceState.CAPTURING]: [
     VoiceState.TRANSCRIBING_FINAL,

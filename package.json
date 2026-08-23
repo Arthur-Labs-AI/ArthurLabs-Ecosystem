@@ -16,7 +16,7 @@
     "test": "npm run build:test && node --disable-warning=ExperimentalWarning --experimental-test-isolation=none --test \"dist/tests/**/*.test.js\"",
     "test:unit": "npm run build:test && node --disable-warning=ExperimentalWarning --experimental-test-isolation=none --test \"dist/tests/unit/**/*.test.js\"",
     "test:integration": "npm run build:test && node --disable-warning=ExperimentalWarning --experimental-test-isolation=none --test \"dist/tests/integration/**/*.test.js\"",
-    "test:contract": "npm run build:test && node --disable-warning=ExperimentalWarning --experimental-test-isolation=none --test \"dist/tests/contract/**/*.test.js\""
+    "test:contract": "npm run build:test && node --env-file-if-exists=.env --disable-warning=ExperimentalWarning --experimental-test-isolation=none --test \"dist/tests/contract/**/*.test.js\""
   },
   "dependencies": {
     "ajv": "^8.17.1",

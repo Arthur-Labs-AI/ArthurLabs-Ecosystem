@@ -127,7 +127,7 @@ export function loadDotEnv(path = ".env"): void {
 }
 
 export type SettingsOverrides = {
-  [key: string]: string | number | boolean | undefined;
+  [key: string]: string | number | boolean | undefined | VoiceSettingsOverrides;
   env?: string;
   dbPath?: string;
   modelProvider?: string;
@@ -159,6 +159,8 @@ export type SettingsOverrides = {
   memoryExtractionConfidenceThreshold?: number;
   memoryExtractionImportanceThreshold?: number;
   memoryTemporaryTtlSeconds?: number;
+  /** Phase 3 voice settings (nested override object; flattened env in .env). */
+  voice?: VoiceSettingsOverrides;
 }
 
 export function loadSettings(overrides: SettingsOverrides = {}): Settings {

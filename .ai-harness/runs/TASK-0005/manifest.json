@@ -1,0 +1,37 @@
+{
+    "schemaVersion":  1,
+    "taskId":  "TASK-0005",
+    "description":  "Fix ARTHUR DeepSeek V4 non-stream response validation.\r\n\r\nWe have now reproduced the issue and isolated it conclusively.\r\n\r\nARTHUR:\r\n- provider: deepseek\r\n- model: deepseek-v4-flash\r\n- ConversationService returns:\r\n  MODEL_BAD_RESPONSE: Model provider returned a malformed response\r\n\r\nA direct request to the exact same DeepSeek API/key/model succeeds with this\r\nreal response shape:\r\n\r\n{\r\n  \"id\": \"97d8c765-9f18-4b1b-8a43-250a78e71a42\",\r\n  \"object\": \"chat.completion\",\r\n  \"created\": 1787514710,\r\n  \"model\": \"deepseek-v4-flash\",\r\n  \"choices\": [\r\n    {\r\n      \"index\": 0,\r\n      \"message\": {\r\n        \"role\": \"assistant\",\r\n        \"content\": \"Hello! How can I assist you today?\"\r\n      },\r\n      \"logprobs\": null,\r\n      \"finish_reason\": \"stop\"\r\n    }\r\n  ],\r\n  \"usage\": {\r\n    \"prompt_tokens\": 6,\r\n    \"completion_tokens\": 9,\r\n    \"total_tokens\": 15,\r\n    \"prompt_tokens_details\": {\r\n      \"cached_tokens\": 0\r\n    },\r\n    \"prompt_cache_hit_tokens\": 0,\r\n    \"prompt_cache_miss_tokens\": 6\r\n  },\r\n  \"system_fingerprint\": \"a26a7955944dc5c60445bff77fac9c8e\"\r\n}\r\n\r\nTherefore the bug is inside ARTHUR\u0027s DeepSeek response parsing/validation\r\nboundary, NOT the API key, network, model name, or DeepSeek service.\r\n\r\nTASK\r\n\r\n1. Find the exact schema/validator/parser that rejects the response.\r\n2. Reproduce the failure with the exact response fixture above BEFORE fixing it.\r\n3. Identify and report the exact rejected field/type/schema constraint.\r\n4. Fix the DeepSeek provider boundary only.\r\n5. Do NOT weaken validation of security-critical fields.\r\n6. Do NOT change ConversationService, memory/RAG, voice controller, tools,\r\n   permissions, or provider-independent architecture unless required.\r\n\r\nThe parser must validate the required subset:\r\n\r\nTop-level:\r\n- id: string\r\n- object: string\r\n- created: number\r\n- model: string\r\n- choices: non-empty array\r\n- usage: optional object\r\n\r\nChoice:\r\n- index: number\r\n- message: object\r\n- message.role: \"assistant\"\r\n- message.content: string | null\r\n- message.reasoning_content: optional string | null\r\n- message.tool_calls: optional array\r\n- logprobs: object | null | undefined\r\n- finish_reason: string | null\r\n\r\nUsage:\r\n- prompt_tokens: number\r\n- completion_tokens: number\r\n- total_tokens: number\r\n\r\nIt must tolerate additive provider metadata, including:\r\n- prompt_tokens_details\r\n- prompt_tokens_details.cached_tokens\r\n- prompt_cache_hit_tokens\r\n- prompt_cache_miss_tokens\r\n- completion_tokens_details\r\n- system_fingerprint\r\n- future unknown non-security-critical metadata\r\n\r\nDo NOT use additionalProperties:false across the entire provider response if\r\nthat causes valid future DeepSeek additive fields to fail validation.\r\n\r\nImportant:\r\n- HTTP non-2xx responses must be parsed/classified before completion validation.\r\n- message.content may be null when tool_calls exist.\r\n- reasoning_content must never become visible assistant text or be persisted as\r\n  the assistant answer.\r\n- final answer comes only from message.content.\r\n- preserve tool validation/security boundaries.\r\n\r\nAlso verify the streaming V4 parser for the same additive-schema problem, but\r\ndo not redesign streaming if it already works.\r\n\r\nREGRESSION TESTS\r\n\r\nAdd the exact real response above as a fixture and require it to PASS.\r\n\r\nAlso test:\r\n- system_fingerprint present\r\n- prompt_tokens_details.cached_tokens present\r\n- unknown additive top-level field\r\n- unknown additive usage field\r\n- logprobs = null\r\n- reasoning_content present\r\n- content = null with tool_calls\r\n- malformed missing choices rejected\r\n- malformed message rejected\r\n- malformed content type rejected\r\n- HTTP error not mapped to MODEL_BAD_RESPONSE\r\n\r\nThen run:\r\n\r\nnpm run typecheck\r\nnpm run build\r\nnpm test\r\nnpm run test:integration\r\n\r\nFinally report:\r\n- exact root cause\r\n- exact schema field that rejected the captured response\r\n- changed files\r\n- regression tests added\r\n- all gate results",
+    "status":  "ready",
+    "dependencies":  [
+
+                     ],
+    "baseCommit":  "575228c8c44ab50b32fd9f40815aa578adb3f13f",
+    "executionClass":  "deepseek_normal",
+    "executor":  "deepseek_normal",
+    "attempt":  0,
+    "maxAttempts":  3,
+    "risk":  "normal",
+    "acceptanceCriteria":  [
+
+                           ],
+    "verification":  {
+                         "required":  [
+
+                                      ],
+                         "outcomes":  [
+
+                                      ]
+                     },
+    "reviewRequested":  false,
+    "executionClassOverride":  "deepseek_normal",
+    "worktree":  null,
+    "failureSignatures":  [
+
+                          ],
+    "codexCalls":  0,
+    "completionAuthority":  "controller",
+    "createdAtUtc":  "2026-08-23T19:52:43.8025462Z",
+    "updatedAtUtc":  "2026-08-23T19:52:44.4732742Z",
+    "completedAtUtc":  null
+}

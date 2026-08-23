@@ -112,6 +112,11 @@ export interface ModelGateway {
   readonly id: string;
   capabilities(): ModelCapabilities;
   generate(request: ModelRequest): Promise<ModelResult>;
+  /**
+   * Streaming generation (Phase 3 spec section 15). Providers without native
+   * streaming fall back to a single buffered result; the signal is honored.
+   */
+  generateStream(request: ModelRequest, signal?: AbortSignal): AsyncIterable<ModelStreamEvent>;
 }
 
 // ---- Provider-level error types (mapped to ArthurError at the gateway) ----

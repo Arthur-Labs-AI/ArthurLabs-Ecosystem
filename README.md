@@ -1,4 +1,4 @@
-# ARTHUR — Phase 1 Core Foundation
+# ARTHUR — Core Foundation (Phases 1–3)
 
 ARTHUR is a small, testable conversational core: it accepts a text request,
 creates a conversation turn, calls a model through a provider-agnostic
@@ -17,6 +17,11 @@ foundation only — clean boundaries over feature count — as specified by
   explicit approval.
 - An **HTTP API** and a **CLI** that use the same core services.
 - Structured logging, tracing, usage capture, and secret redaction.
+- A **local voice layer** (Phase 3): wake word, VAD, local STT, streaming
+  TTS playback, barge-in, push-to-talk fallback, approval-by-voice, a
+  deterministic voice state machine, HTTP control endpoints, and a
+  dependency-free realtime WebSocket channel - all behind
+  provider-agnostic engine boundaries.
 
 ## Repository layout
 
@@ -35,10 +40,12 @@ src/
   sessions/             SQLite store + migrations
   observability/        logging, tracing, usage, metrics
   config/               settings, validation
+  voice/                contracts, state machine, controller, audio,
+                        wake/vad/stt/tts providers + gateways, realtime WS
   security/             redaction
 tests/
   unit/ integration/ contract/
-docs/architecture/      phase1-decisions.md
+docs/architecture/      phase1/2/3-decisions.md
 ```
 
 ## Requirements
@@ -135,6 +142,118 @@ curl http://127.0.0.1:8080/v1/documents \
   -d '{"session_id":"<id>","client_request_id":"3","title":"Notes","source_type":"text","content":"..."}'
 ```
 
+## Voice (Phase 3)
+
+Voice is **disabled by default** (`ARTHUR_VOICE_ENABLED=false`). Enable it in
+`.env`, then control it over HTTP:
+
+```bash
+curl http://127.0.0.1:8080/v1/voice/status
+curl -X POST http://127.0.0.1:8080/v1/voice/enable \
+  -H "content-type: application/json" -d '{"session_id":"<id>"}'
+curl -X POST http://127.0.0.1:8080/v1/voice/disable
+curl http://127.0.0.1:8080/v1/voice/devices
+curl -X POST http://127.0.0.1:8080/v1/voice/interrupt
+curl -X POST http://127.0.0.1:8080/v1/voice/ptt/start
+curl -X POST http://127.0.0.1:8080/v1/voice/ptt/stop
+```
+
+Realtime events/commands ride the WebSocket at `/v1/voice/realtime`
+(no external dependencies; RFC 6455 handshake + masked frames implemented
+in-repo). The same event stream is available via `app.voice.subscribe`.
+
+Engine selection: `ARTHUR_WAKE_PROVIDER`/`ARTHUR_VAD_PROVIDER`/
+`ARTHUR_STT_PROVIDER`/`ARTHUR_TTS_PROVIDER` = `local` (energy VAD,
+command-based STT/TTS, energy-burst wake) or `fake` (deterministic
+offline stand-ins). Missing engines never fail startup: the status
+endpoint reports availability and never leaks commands, paths, keys, or
+raw audio. Raw audio is processed locally and never sent to DeepSeek -
+only the transcript enters the conversation (client_type=voice).
+
+The local wake provider is a documented energy-burst detector (not a
+keyword spotter); push-to-talk remains available as the fallback and the
+wake path is provider-abstracted.
+
+### Voice - Windows setup (v1 reference)
+
+The local engines are plain child processes with a strict stdin/stdout
+contract (`child_process.spawn`, tokenized command lines, bounded buffers,
+timeouts, and tree-kill cleanup - see `src/voice/process_util.ts`). Any
+tool that matches the contract can be used directly; engines that do not
+are bridged by the zero-dependency wrapper scripts in `tools/voice/`
+(`stt_wrapper.cjs`, `tts_wrapper.cjs`).
+
+**1. FFmpeg (capture + playback)**
+
+- Install FFmpeg (https://www.gyan.dev/ffmpeg/builds/ - the "release"
+  build includes ffplay) and add `bin` to your PATH.
+- List your capture devices once:
+  `ffmpeg -list_devices true -f dshow -i dummy`
+- Capture - raw mono s16le at 16 kHz on stdout:
+  `ARTHUR_AUDIO_CAPTURE_COMMAND="C:\ffmpeg\bin\ffmpeg.exe -f dshow -i audio=\"Microphone (Realtek(R) Audio)\" -ac 1 -ar 16000 -f s16le pipe:1"`
+- Playback - read raw s16le from stdin until EOF:
+  `ARTHUR_AUDIO_PLAYBACK_COMMAND="C:\ffmpeg\bin\ffplay.exe -nodisp -autoexit -f s16le -ar 16000 -ac 1 -"`
+
+**2. whisper.cpp (STT)**
+
+- Build or download `whisper-cli` and a model, e.g. `ggml-base.bin`
+  (https://github.com/ggml-org/whisper.cpp).
+- The wrapper adapts whisper-cli's WAV-file workflow to ARTHUR's stdin PCM
+  contract (temp WAV, deleted before exit; segment text extracted; one JSON
+  line emitted):
+  - `WHISPER_CLI="C:\whisper\build\bin\Release\whisper-cli.exe"`
+  - `WHISPER_MODEL="C:\whisper\models\ggml-base.bin"`
+  - `ARTHUR_STT_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\stt_wrapper.cjs\""`
+
+**3. piper (TTS)**
+
+- Download the piper 1.2.0 Windows zip and a voice, e.g.
+  `en_US-lessac-medium` (https://github.com/rhasspy/piper/releases).
+- The wrapper feeds text straight to `piper --output_raw` and resamples its
+  native 22050 Hz output to ARTHUR's 16 kHz (streaming linear interpolation,
+  no dependencies):
+  - `PIPER_EXE="C:\piper\piper.exe"`
+  - `PIPER_MODEL="C:\piper\voices\en_US-lessac-medium.onnx"`
+  - `PIPER_VOICE_CONFIG="C:\piper\voices\en_US-lessac-medium.onnx.json"`
+  - `ARTHUR_TTS_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\tts_wrapper.cjs\""`
+
+**4. End-to-end `.env` (mic -> STT -> DeepSeek -> TTS -> speaker)**
+
+```dotenv
+DEEPSEEK_API_KEY=sk-...
+ARTHUR_MODEL_PROVIDER=deepseek
+ARTHUR_VOICE_ENABLED=true
+ARTHUR_WAKE_ENABLED=true
+ARTHUR_WAKE_WORD=arthur
+ARTHUR_WAKE_PROVIDER=local
+ARTHUR_VAD_PROVIDER=local
+ARTHUR_STT_PROVIDER=local
+ARTHUR_TTS_PROVIDER=local
+ARTHUR_STT_LANGUAGE=en
+ARTHUR_STT_MODEL_PATH=C:\whisper\models\ggml-base.bin
+ARTHUR_TTS_VOICE=en_US-lessac-medium
+ARTHUR_AUDIO_INPUT_DEVICE=default
+ARTHUR_AUDIO_OUTPUT_DEVICE=default
+ARTHUR_AUDIO_CAPTURE_COMMAND="C:\ffmpeg\bin\ffmpeg.exe -f dshow -i audio=\"Microphone (Realtek(R) Audio)\" -ac 1 -ar 16000 -f s16le pipe:1"
+ARTHUR_AUDIO_PLAYBACK_COMMAND="C:\ffmpeg\bin\ffplay.exe -nodisp -autoexit -f s16le -ar 16000 -ac 1 -"
+ARTHUR_STT_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\stt_wrapper.cjs\""
+ARTHUR_TTS_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\tts_wrapper.cjs\""
+WHISPER_CLI=C:\whisper\build\bin\Release\whisper-cli.exe
+WHISPER_MODEL=C:\whisper\models\ggml-base.bin
+PIPER_EXE=C:\piper\piper.exe
+PIPER_MODEL=C:\piper\voices\en_US-lessac-medium.onnx
+PIPER_VOICE_CONFIG=C:\piper\voices\en_US-lessac-medium.onnx.json
+```
+
+Start the app, then: `curl http://127.0.0.1:8080/v1/voice/status` should
+report every component available. Say "arthur" (or use
+`POST /v1/voice/ptt/start`), speak, and ARTHUR replies out loud. Replace
+`audio="Microphone (Realtek(R) Audio)"` with the device name from the
+`ffmpeg -list_devices` output, and adjust paths to your installs. Vosk or
+sherpa-onnx engines that emit the documented JSON line can replace the
+whisper wrapper; any `--output_raw`-style TTS can replace piper.
+See `docs/architecture/phase3-decisions.md` for the full decision record.
+
 ## Test
 
 ```bash
@@ -173,12 +292,18 @@ DeepSeek contract test runs only when `DEEPSEEK_API_KEY` is present.
   contract, mode contract, tool schemas, permissions, or approval rules;
   credential-like content is rejected before persistence, and documents are
   redacted with the Phase 1 sanitizer boundary.
+- **Local voice, remote reasoning** — wake/VAD/STT/TTS and playback run
+  locally; only the transcript reaches the model (client_type=voice); raw
+  audio is never persisted, logged, or transmitted.
+- **Fail-closed voice** — the deterministic state machine rejects illegal
+  transitions; missing engines disable only their component (PTT fallback),
+  never startup; voice errors map to stable HTTP status codes.
 
-See `docs/architecture/phase1-decisions.md` and
-`docs/architecture/phase2-decisions.md` for detailed decisions.
+See `docs/architecture/phase1-decisions.md`, `phase2-decisions.md`, and
+`phase3-decisions.md` for detailed decisions.
 
 ## Phase 1 non-goals
 
 No wake word/voice, real Harness execution (stub only), autonomous agents, or
 polished UI. *(RAG/embeddings/memory were Phase 1 non-goals — implemented in
-Phase 2.)*
+Phase 2; the voice layer was a Phase 1 non-goal — implemented in Phase 3.)*

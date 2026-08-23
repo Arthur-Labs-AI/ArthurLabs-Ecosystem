@@ -53,6 +53,7 @@ export class FakeTtsProvider implements TtsProvider {
     for (let i = 0; i < count; i++) {
       if (this.cancelled.has(request.synthesisId)) return;
       const chunk = syntheticAudioChunk(request.synthesisId, i, timestamp, chunkDurationMs, request.sampleRateHz, i);
+      if (i === count - 1) chunk.final = true;
       this.emittedChunks.push(chunk);
       yield chunk;
       timestamp += chunkDurationMs;

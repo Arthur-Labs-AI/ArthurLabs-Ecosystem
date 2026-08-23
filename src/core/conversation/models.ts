@@ -4,7 +4,7 @@
 
 import type { ArthurMode } from "../modes/mode";
 
-export type ClientType = "cli" | "desktop" | "mobile" | "web";
+export type ClientType = "cli" | "desktop" | "mobile" | "web" | "voice";
 
 export interface TurnRequest {
   session_id?: string;
@@ -16,7 +16,7 @@ export interface TurnRequest {
   };
 }
 
-export type TurnStatus = "completed" | "needs_approval" | "failed";
+export type TurnStatus = "completed" | "needs_approval" | "failed" | "interrupted";
 
 export interface ToolCallSummary {
   tool_call_id: string;

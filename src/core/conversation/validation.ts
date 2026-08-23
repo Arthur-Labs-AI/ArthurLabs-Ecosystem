@@ -14,7 +14,7 @@ import { ArthurMode } from "../modes/mode";
 import type { TurnRequest } from "./models";
 
 export const modeSchema = z.enum([ArthurMode.PERSONAL, ArthurMode.BUSINESS]);
-export const clientTypeSchema = z.enum(["cli", "desktop", "mobile", "web"]);
+export const clientTypeSchema = z.enum(["cli", "desktop", "mobile", "web", "voice"]);
 const identifierSchema = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/, "Invalid identifier format");
 
 const turnRequestSchema = z.object({

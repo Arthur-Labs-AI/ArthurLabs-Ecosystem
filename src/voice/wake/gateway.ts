@@ -40,7 +40,12 @@ export class WakeWordGateway {
 
   async start(config: WakeWordConfig, onWake: (event: WakeEvent) => void): Promise<void> {
     if (!this.provider.available) return;
-    await this.provider.start(config, onWake);
+    await this.provider.start(config, (event) => {
+      // Echo protection (spec section 18): events are dropped while paused,
+      // including events already in flight from the provider.
+      if (this.pausedFlag) return;
+      onWake(event);
+    });
   }
 
   async stop(): Promise<void> {

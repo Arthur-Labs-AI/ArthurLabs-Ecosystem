@@ -25,6 +25,7 @@ export interface FakeSttScript {
 export class FakeSttProvider implements SttProvider {
   private readonly providerId: string;
   private readonly scripts = new Map<string, FakeSttScript>();
+  private defaultScript: FakeSttScript | undefined;
   private readonly cancelled = new Set<string>();
   readonly startedUtterances: string[] = [];
   cancelCount = 0;
@@ -47,13 +48,18 @@ export class FakeSttProvider implements SttProvider {
     this.scripts.set(utteranceId, script);
   }
 
+  /** Script applied to any utterance without an exact id (test convenience). */
+  setDefaultScript(script: FakeSttScript): void {
+    this.defaultScript = script;
+  }
+
   isCancelled(utteranceId: string): boolean {
     return this.cancelled.has(utteranceId);
   }
 
   async *transcribeStream(input: AsyncIterable<PcmFrame>, options: SttOptions): AsyncIterable<SttEvent> {
     this.startedUtterances.push(options.utteranceId);
-    const script = this.scripts.get(options.utteranceId) ?? { partials: [], final: "" };
+    const script = this.scripts.get(options.utteranceId) ?? this.defaultScript ?? { partials: [], final: "" };
 
     // Consume the frame stream so capture stops can unblock the producer.
     let frames = 0;

@@ -38,6 +38,7 @@ export interface VoiceSettings {
   voiceReasoningProfile: ReasoningProfile;
   /** Optional external local engine command for capture/STT/TTS adapters. */
   audioCaptureCommand: string;
+  audioPlaybackCommand: string;
   sttEngineCommand: string;
   ttsEngineCommand: string;
 }
@@ -66,6 +67,7 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   maxTranscriptChars: 8000,
   voiceReasoningProfile: "fast",
   audioCaptureCommand: "",
+  audioPlaybackCommand: "",
   sttEngineCommand: "",
   ttsEngineCommand: "",
 };
@@ -93,6 +95,7 @@ export interface VoiceSettingsOverrides {
   maxTranscriptChars?: number;
   voiceReasoningProfile?: string;
   audioCaptureCommand?: string;
+  audioPlaybackCommand?: string;
   sttEngineCommand?: string;
   ttsEngineCommand?: string;
 }
@@ -122,20 +125,23 @@ function envBool(key: string, fallback: boolean): boolean {
  * bag can be shared with loadSettings.
  */
 export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): VoiceSettings {
+  // Accept both the nested { voice: {...} } SettingsOverrides bag and the
+  // flat voice-key bag; unknown keys are ignored either way.
+  const source: VoiceSettingsOverrides = (overrides.voice ?? overrides) as VoiceSettingsOverrides;
   const pick = <T>(envKey: string, fallback: T, overKey: keyof VoiceSettingsOverrides): T => {
-    const over = overrides[overKey];
+    const over = source[overKey];
     if (over !== undefined) return over as T;
     const raw = process.env[envKey];
     if (raw === undefined || raw === "") return fallback;
     return raw as unknown as T;
   };
   const pickInt = (envKey: string, fallback: number, overKey: keyof VoiceSettingsOverrides): number => {
-    const over = overrides[overKey];
+    const over = source[overKey];
     if (over !== undefined) return Number(over);
     return envInt(envKey, fallback);
   };
   const pickBool = (envKey: string, fallback: boolean, overKey: keyof VoiceSettingsOverrides): boolean => {
-    const over = overrides[overKey];
+    const over = source[overKey];
     if (over !== undefined) return Boolean(over);
     return envBool(envKey, fallback);
   };
@@ -164,6 +170,7 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
     maxTranscriptChars: pickInt("ARTHUR_VOICE_MAX_TRANSCRIPT_CHARS", DEFAULT_VOICE_SETTINGS.maxTranscriptChars, "maxTranscriptChars"),
     voiceReasoningProfile: pick("ARTHUR_VOICE_REASONING_PROFILE", DEFAULT_VOICE_SETTINGS.voiceReasoningProfile, "voiceReasoningProfile") as ReasoningProfile,
     audioCaptureCommand: pick("ARTHUR_AUDIO_CAPTURE_COMMAND", DEFAULT_VOICE_SETTINGS.audioCaptureCommand, "audioCaptureCommand"),
+    audioPlaybackCommand: pick("ARTHUR_AUDIO_PLAYBACK_COMMAND", DEFAULT_VOICE_SETTINGS.audioPlaybackCommand, "audioPlaybackCommand"),
     sttEngineCommand: pick("ARTHUR_STT_ENGINE_COMMAND", DEFAULT_VOICE_SETTINGS.sttEngineCommand, "sttEngineCommand"),
     ttsEngineCommand: pick("ARTHUR_TTS_ENGINE_COMMAND", DEFAULT_VOICE_SETTINGS.ttsEngineCommand, "ttsEngineCommand"),
   };

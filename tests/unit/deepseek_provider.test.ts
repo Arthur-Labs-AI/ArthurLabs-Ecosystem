@@ -1,8 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { ModelRequest } from "../../src/models/contracts";
-import { ProviderAuthError, ProviderBadResponseError, ProviderTimeoutError } from "../../src/models/contracts";
+import { ModelRequest, ModelStreamEvent } from "../../src/models/contracts";
+import {
+  ProviderAuthError,
+  ProviderBadResponseError,
+  ProviderTimeoutError,
+  ProviderUnavailableError,
+} from "../../src/models/contracts";
 import {
   DeepSeekProvider,
   DeepSeekProviderConfig,
@@ -42,7 +47,13 @@ function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
 
-const OK_BODY = { id: "c-1", choices: [{ finish_reason: "stop", message: { content: "hi" } }] };
+const OK_BODY = {
+  id: "c-1",
+  object: "chat.completion",
+  created: 1787514710,
+  model: "deepseek-v4-flash",
+  choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "hi" } }],
+};
 
 test("retries transient 5xx with backoff then succeeds", async () => {
   let calls = 0;
@@ -76,14 +87,18 @@ test("401 maps to ProviderAuthError without retry", async () => {
   assert.equal(calls, 1);
 });
 
-test("non-retryable 400 maps to ProviderBadResponseError without retry", async () => {
+test("non-retryable 400 maps to request-rejected (NOT ProviderBadResponseError) without retry", async () => {
   let calls = 0;
   const fetchFn: typeof fetch = async () => {
     calls += 1;
-    return jsonResponse(400, { error: "bad" });
+    return jsonResponse(400, { error: { message: "invalid request" } });
   };
   const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
-  await assert.rejects(() => provider.generate(baseRequest()), ProviderBadResponseError);
+  await assert.rejects(
+    () => provider.generate(baseRequest()),
+    (err: unknown) =>
+      err instanceof ProviderUnavailableError && !(err instanceof ProviderBadResponseError),
+  );
   assert.equal(calls, 1);
 });
 
@@ -206,3 +221,78 @@ test("network failures exhaust exactly the bounded retry budget", async () => {
   await assert.rejects(() => provider.generate(baseRequest()));
   assert.equal(calls, 3);
 });
+
+// ---- TASK-0006: streaming tool name aliasing -----------------------------
+
+function sseResponse(...dataLines: string[]): Response {
+  const body = dataLines.map((d) => `data: ${d}\n\n`).join("");
+  return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
+}
+
+test("streaming: payload sent to the provider uses aliased tool names only", async () => {
+  let observedBody = "";
+  const fetchFn: typeof fetch = async (_url, init) => {
+    observedBody = String(init?.body ?? "");
+    return sseResponse(
+      JSON.stringify({ choices: [{ index: 0, delta: { content: "ok" } }] }),
+      "[DONE]",
+    );
+  };
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  const events: ModelStreamEvent[] = [];
+  for await (const e of provider.generateStream(
+    { ...baseRequest(), toolSchemas: [{ name: "system.echo", description: "echo", parameters: {} }] },
+  )) {
+    events.push(e);
+  }
+  assert.ok(events.some((e) => e.type === "done"));
+  const parsed = JSON.parse(observedBody) as { tools: Array<{ function: { name: string } }> };
+  assert.equal(parsed.tools[0]?.function.name, "system__echo");
+  assert.ok(!parsed.tools[0]?.function.name.includes("."));
+  assert.ok(!observedBody.includes("system.echo"));
+});
+
+test("streaming: fragmented tool-call name resolves to canonical at completion", async () => {
+  const fetchFn: typeof fetch = async () =>
+    sseResponse(
+      JSON.stringify({ choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: "call_1", function: { name: "system__", arguments: "" } }] } }] }),
+      JSON.stringify({ choices: [{ index: 0, delta: { tool_calls: [{ index: 0, function: { name: "echo", arguments: "{\"text\":\"hi\"}" } }] } }] }),
+      JSON.stringify({ choices: [{ index: 0, delta: { content: "" }, finish_reason: "tool_calls" }] }),
+      "[DONE]",
+    );
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  const toolCalls: ModelStreamEvent[] = [];
+  for await (const e of provider.generateStream(
+    { ...baseRequest(), toolSchemas: [{ name: "system.echo", description: "echo", parameters: {} }] },
+  )) {
+    if (e.type === "tool_call") toolCalls.push(e);
+  }
+  // The last tool_call event per call id is the complete, resolved call.
+  const finalCall = toolCalls[toolCalls.length - 1];
+  assert.ok(finalCall && finalCall.type === "tool_call");
+  assert.equal(finalCall.call.name, "system.echo");
+  assert.deepEqual(finalCall.call.arguments, { text: "hi" });
+});
+
+test("streaming: unknown provider alias fails the stream closed", async () => {
+  const fetchFn: typeof fetch = async () =>
+    sseResponse(
+      JSON.stringify({ choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: "call_1", function: { name: "never__exposed", arguments: "{}" } }] } }] }),
+      JSON.stringify({ choices: [{ index: 0, delta: { content: "" }, finish_reason: "tool_calls" }] }),
+      "[DONE]",
+    );
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  await assert.rejects(
+    (async () => {
+      const out: ModelStreamEvent[] = [];
+      for await (const e of provider.generateStream(
+        { ...baseRequest(), toolSchemas: [{ name: "system.echo", description: "echo", parameters: {} }] },
+      )) {
+        out.push(e);
+      }
+      return out;
+    })(),
+    ProviderBadResponseError,
+  );
+});
+

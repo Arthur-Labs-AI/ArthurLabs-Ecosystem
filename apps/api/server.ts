@@ -24,6 +24,7 @@ import {
   parseTypeLabel,
 } from "../../src/memory/api";
 import type { App } from "../../src/app";
+import { VoiceError, VoiceErrorCode } from "../../src/voice/contracts";
 
 const MAX_BODY_BYTES = 1024 * 1024; // 1 MB
 
@@ -51,6 +52,40 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
 function sendError(app: App, res: ServerResponse, err: unknown): void {
   const publicError = app.sanitizePublicError(err);
   sendJson(res, publicError.status, publicError.body);
+}
+
+/** Map a typed VoiceError to an HTTP status (spec section 36). */
+function voiceErrorStatus(err: VoiceError): number {
+  switch (err.code) {
+    case VoiceErrorCode.VOICE_DISABLED:
+    case VoiceErrorCode.VOICE_BUSY:
+    case VoiceErrorCode.VOICE_STATE_INVALID:
+      return 409;
+    case VoiceErrorCode.AUDIO_INPUT_UNAVAILABLE:
+    case VoiceErrorCode.AUDIO_OUTPUT_UNAVAILABLE:
+    case VoiceErrorCode.WAKE_UNAVAILABLE:
+    case VoiceErrorCode.VAD_FAILED:
+    case VoiceErrorCode.STT_FAILED:
+    case VoiceErrorCode.TTS_FAILED:
+    case VoiceErrorCode.MODEL_FAILED:
+      return 503;
+    case VoiceErrorCode.STT_EMPTY:
+    case VoiceErrorCode.VOICE_TIMEOUT:
+    case VoiceErrorCode.VOICE_CANCELLED:
+      return 400;
+    default:
+      return 500;
+  }
+}
+
+function sendVoiceError(res: ServerResponse, err: unknown): void {
+  if (err instanceof VoiceError) {
+    sendJson(res, voiceErrorStatus(err), {
+      error: { code: err.code, message: err.message },
+    });
+    return;
+  }
+  sendJson(res, 500, { error: { code: "INTERNAL_ERROR", message: "Unexpected internal failure" } });
 }
 
 function requireJsonMediaType(req: IncomingMessage): void {
@@ -258,6 +293,93 @@ async function handleRequest(app: App, req: IncomingMessage, res: ServerResponse
       return;
     }
 
+
+    // ---- Phase 3 voice control endpoints (spec section 24) ----------------
+
+    // GET /v1/voice/status
+    if (method === "GET" && path.length === 3 && path[0] === "v1" && path[1] === "voice" && path[2] === "status") {
+      sendJson(res, 200, app.voice.status());
+      return;
+    }
+
+    // POST /v1/voice/enable  { session_id?: string }
+    if (method === "POST" && path.length === 3 && path[0] === "v1" && path[1] === "voice" && path[2] === "enable") {
+      requireJsonMediaType(req);
+      const body = (await readJsonBody(req)) as { session_id?: unknown } | undefined;
+      const sessionId = typeof body?.session_id === "string" ? body.session_id : undefined;
+      try {
+        await app.voice.enable(sessionId);
+        sendJson(res, 200, { status: "enabled", state: app.voice.state });
+      } catch (err) {
+        sendVoiceError(res, err);
+      }
+      return;
+    }
+
+    // POST /v1/voice/disable
+    if (method === "POST" && path.length === 3 && path[0] === "v1" && path[1] === "voice" && path[2] === "disable") {
+      try {
+        await app.voice.disable();
+        sendJson(res, 200, { status: "disabled", state: app.voice.state });
+      } catch (err) {
+        sendVoiceError(res, err);
+      }
+      return;
+    }
+
+    // GET /v1/voice/devices
+    if (method === "GET" && path.length === 3 && path[0] === "v1" && path[1] === "voice" && path[2] === "devices") {
+      sendJson(res, 200, {
+        input_devices: app.voice.status().audio_input.available ? [{ id: "default", label: "default input" }] : [],
+        output_devices: app.voice.status().audio_output.available ? [{ id: "default", label: "default output" }] : [],
+      });
+      return;
+    }
+
+    // POST /v1/voice/devices  { input_device_id?, output_device_id? }
+    if (method === "POST" && path.length === 3 && path[0] === "v1" && path[1] === "voice" && path[2] === "devices") {
+      requireJsonMediaType(req);
+      const body = (await readJsonBody(req)) as { input_device_id?: unknown; output_device_id?: unknown } | undefined;
+      const inputDeviceId = typeof body?.input_device_id === "string" ? body.input_device_id : undefined;
+      const outputDeviceId = typeof body?.output_device_id === "string" ? body.output_device_id : undefined;
+      app.voice.setDevices(inputDeviceId, outputDeviceId);
+      sendJson(res, 200, { status: "devices_set", state: app.voice.state });
+      return;
+    }
+
+    // POST /v1/voice/interrupt
+    if (method === "POST" && path.length === 3 && path[0] === "v1" && path[1] === "voice" && path[2] === "interrupt") {
+      try {
+        await app.voice.interrupt("user_stop");
+        sendJson(res, 200, { status: "interrupted", state: app.voice.state });
+      } catch (err) {
+        sendVoiceError(res, err);
+      }
+      return;
+    }
+
+    // POST /v1/voice/ptt/start
+    if (method === "POST" && path.length === 4 && path[0] === "v1" && path[1] === "voice" && path[2] === "ptt" && path[3] === "start") {
+      try {
+        await app.voice.pttStart();
+        sendJson(res, 200, { status: "ptt_started", state: app.voice.state });
+      } catch (err) {
+        sendVoiceError(res, err);
+      }
+      return;
+    }
+
+    // POST /v1/voice/ptt/stop
+    if (method === "POST" && path.length === 4 && path[0] === "v1" && path[1] === "voice" && path[2] === "ptt" && path[3] === "stop") {
+      try {
+        await app.voice.pttStop();
+        sendJson(res, 200, { status: "ptt_stopped", state: app.voice.state });
+      } catch (err) {
+        sendVoiceError(res, err);
+      }
+      return;
+    }
+
     sendError(app, res, new ArthurError("INVALID_REQUEST", `No route for ${method} ${req.url ?? "/"}`));
   } catch (err) {
     sendError(app, res, err);
@@ -282,6 +404,7 @@ export function startServer(app: App, opts: ServerOptions = {}): Promise<{ serve
   const server = createServer((req, res) => {
     handleRequest(app, req, res).catch((err) => sendError(app, res, err));
   });
+  app.realtime.attach(server);
   return new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(port, host, () => {

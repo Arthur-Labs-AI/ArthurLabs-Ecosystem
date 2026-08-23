@@ -42,6 +42,30 @@ import { MemoryContextSource } from "./memory/context_source";
 import { MemoryService } from "./memory/service";
 import { MemoryExtractor } from "./memory/extraction/memory_extractor";
 import { TurnMemoryExtractor } from "./memory/extraction/turn_extractor";
+import { FakeAudioCapture, LocalAudioCapture } from "./voice/audio/capture";
+import { FakeAudioPlayback, LocalAudioPlayback } from "./voice/audio/playback";
+import { FakeVadProvider } from "./voice/vad/fake";
+import { LocalEnergyVadProvider } from "./voice/vad/local_provider";
+import { VadGateway } from "./voice/vad/gateway";
+import { FakeWakeWordProvider } from "./voice/wake/fake";
+import { LocalWakeWordProvider } from "./voice/wake/local_provider";
+import { WakeWordGateway } from "./voice/wake/gateway";
+import { FakeSttProvider } from "./voice/stt/fake";
+import { LocalSttProvider } from "./voice/stt/local_provider";
+import { SttGateway } from "./voice/stt/gateway";
+import { FakeTtsProvider } from "./voice/tts/fake";
+import { LocalTtsProvider } from "./voice/tts/local_provider";
+import { TtsGateway } from "./voice/tts/gateway";
+import { SpeechFormatter } from "./voice/speech/formatter";
+import { VoiceTurnController } from "./voice/controller";
+import { RealtimeVoiceServer } from "./voice/realtime/websocket";
+import type { VadConfig } from "./voice/contracts";
+import type { AudioCapture } from "./voice/audio/capture";
+import type { AudioPlayback } from "./voice/audio/playback";
+import type { VadProvider } from "./voice/contracts";
+import type { SttProvider } from "./voice/contracts";
+import type { TtsProvider } from "./voice/contracts";
+import type { WakeWordProvider } from "./voice/contracts";
 
 export interface App {
   config: Settings;
@@ -52,6 +76,9 @@ export interface App {
   conversation: ConversationService;
   /** Phase 2 session-aware memory facade (HTTP/CLI surface). */
   memory: MemoryService;
+  /** Phase 3 local voice layer (disabled unless configured/controlled). */
+  voice: VoiceTurnController;
+  realtime: RealtimeVoiceServer;
   sanitizePublicError(error: unknown): PublicError;
   close(): void;
 }
@@ -78,6 +105,101 @@ export interface BuildDeps {
   harness?: HarnessAdapter;
   /** App-level secret used to sign and verify approval tokens. */
   approvalSigningSecret?: string;
+  /** Phase 3 voice overrides (deterministic providers for tests). */
+  voice?: {
+    capture?: AudioCapture;
+    playback?: AudioPlayback;
+    wake?: WakeWordProvider;
+    vad?: VadProvider;
+    stt?: SttProvider;
+    tts?: TtsProvider;
+    now?: () => number;
+  };
+}
+
+function vadConfigFrom(settings: Settings): VadConfig {
+  const voice = settings.voice;
+  return {
+    speechStartThreshold: 0.6,
+    speechEndThreshold: 0.35,
+    speechStartFrames: 2,
+    speechEndFrames: 8,
+    minSpeechMs: 300,
+    endSilenceMs: voice.vadEndSilenceMs,
+    maxUtteranceMs: voice.maxUtteranceMs,
+    noSpeechTimeoutMs: voice.noSpeechTimeoutMs,
+    frameDurationMs: voice.frameDurationMs,
+  };
+}
+
+/** Build the Phase 3 voice layer from configuration (engine-agnostic). */
+export function createVoiceController(
+  settings: Settings,
+  conversation: ConversationService,
+  store: SessionStore,
+  logger: Logger,
+  metrics: Metrics,
+  sanitizer: SecretSanitizer,
+  deps: BuildDeps,
+): { controller: VoiceTurnController; realtime: RealtimeVoiceServer } {
+  const voice = settings.voice;
+  const capture: AudioCapture =
+    deps.voice?.capture ??
+    new LocalAudioCapture(voice.audioCaptureCommand, voice.sampleRateHz, voice.audioInputDevice, {
+      frameDurationMs: voice.frameDurationMs,
+      logger: logger.child("voice-capture"),
+      sanitizer,
+    });
+  const playback: AudioPlayback =
+    deps.voice?.playback ??
+    new LocalAudioPlayback(voice.audioPlaybackCommand, {
+      logger: logger.child("voice-playback"),
+      sanitizer,
+    });
+  const vadConfig = vadConfigFrom(settings);
+  const vad: VadProvider =
+    deps.voice?.vad ??
+    (voice.vadProvider === "fake"
+      ? new FakeVadProvider(vadConfig)
+      : new LocalEnergyVadProvider(vadConfig));
+  const stt: SttProvider =
+    deps.voice?.stt ??
+    (voice.sttProvider === "fake"
+      ? new FakeSttProvider()
+      : new LocalSttProvider(voice.sttEngineCommand, voice.sttModelPath, voice.sttLanguage, {
+        logger: logger.child("voice-stt"),
+        sanitizer,
+      }));
+  const tts: TtsProvider =
+    deps.voice?.tts ??
+    (voice.ttsProvider === "fake"
+      ? new FakeTtsProvider()
+      : new LocalTtsProvider(voice.ttsEngineCommand, voice.ttsVoice, {
+        logger: logger.child("voice-tts"),
+        sanitizer,
+      }));
+  const wakeProvider: WakeWordProvider =
+    deps.voice?.wake ??
+    (voice.wakeProvider === "fake" ? new FakeWakeWordProvider() : new LocalWakeWordProvider());
+  const wake = new WakeWordGateway(wakeProvider, { frameBased: true });
+  const controller = new VoiceTurnController({
+    settings: voice,
+    conversation,
+    store,
+    capture,
+    playback,
+    wake,
+    vad: new VadGateway(vad),
+    stt: new SttGateway(stt, metrics),
+    tts: new TtsGateway(tts, metrics),
+    formatter: new SpeechFormatter(),
+    logger,
+    metrics,
+    sanitizer,
+    now: deps.voice?.now,
+  });
+  const realtime = new RealtimeVoiceServer(controller, logger);
+  return { controller, realtime };
 }
 
 export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}): App {
@@ -217,6 +339,16 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
     afterTurn,
   });
 
+  const { controller, realtime } = createVoiceController(
+    settings,
+    conversation,
+    store,
+    logger,
+    metrics,
+    sanitizer,
+    deps,
+  );
+
   return {
     config: settings,
     logger,
@@ -225,8 +357,12 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
     store,
     conversation,
     memory,
+    voice: controller,
+    realtime,
     sanitizePublicError: (error: unknown) => sanitizePublicError(error, sanitizer),
     close: () => {
+      void controller.close();
+      realtime.close();
       store.close();
       memory.close();
     },

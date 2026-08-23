@@ -270,6 +270,11 @@ export const VoiceErrorCode = {
   VOICE_BUSY: "VOICE_BUSY",
   VOICE_CANCELLED: "VOICE_CANCELLED",
   VOICE_STATE_INVALID: "VOICE_STATE_INVALID",
+  /**
+   * Extension beyond the spec section 36 table: model/provider failure on the",
+   * voice path (DeepSeek unavailable etc.). Documented in phase3-decisions.md.",
+   */
+  MODEL_FAILED: "MODEL_FAILED",
 } as const;
 
 export type VoiceErrorCode = (typeof VoiceErrorCode)[keyof typeof VoiceErrorCode];

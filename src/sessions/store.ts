@@ -297,6 +297,33 @@ const MIGRATIONS: Migration[] = [
     name: "secure_schema_reconciliation",
     up: reconcileSecureSchema,
   },
+  {
+    version: 6,
+    name: "turn_interrupted_status",
+    // Phase 3: interrupted assistant turns (barge-in) are persisted for
+    // audit with an explicit status instead of being recorded as a normal
+    // completed answer (spec section 17). The turns table CHECK constraint
+    // is widened by rebuilding the table with the same columns/data.
+    up: (db: DatabaseSync) => {
+      db.exec(`
+        CREATE TABLE __new_turns_v6 (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          role TEXT NOT NULL CHECK(role IN ('user','assistant','system','tool')),
+          text TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          trace_id TEXT NOT NULL,
+          status TEXT NOT NULL CHECK(status IN ('completed','needs_approval','failed','pending','interrupted')),
+          mode TEXT NOT NULL CHECK(mode IN ('personal','business')),
+          FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+        );
+        INSERT INTO __new_turns_v6 SELECT id, session_id, role, text, created_at, trace_id, status, mode FROM turns;
+        DROP TABLE turns;
+        ALTER TABLE __new_turns_v6 RENAME TO turns;
+        CREATE INDEX IF NOT EXISTS idx_turns_session ON turns(session_id, mode, created_at);
+      `);
+    },
+  },
 ];
 
 const nowIso = (): string => new Date().toISOString();
