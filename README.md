@@ -1,4 +1,4 @@
-# ARTHUR — Core Foundation (Phases 1–3)
+# ARTHUR — Adaptive Reasoning & Task Handling Unified Runtime
 
 ARTHUR is a small, testable conversational core: it accepts a text request,
 creates a conversation turn, calls a model through a provider-agnostic
