@@ -11,3 +11,7 @@ data/
 *.log
 coverage/
 .DS_Store
+
+# Whisper/voice model binaries are machine-local downloads (e.g.
+# ggml-large-v3-turbo.bin) - never commit them.
+models/

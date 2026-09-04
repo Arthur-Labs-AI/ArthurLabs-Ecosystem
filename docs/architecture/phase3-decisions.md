@@ -146,6 +146,64 @@ disabled by default. `Settings.voice` carries VoiceSettings; overrides in
 tests may be passed nested as `{ voice: {...} }` (loadVoiceSettings
 unpacks the nested bag) or flat.
 
+### 13. STT Quality v2 (TASK-0008)
+
+Real-device finding: for short English utterances with a Bulgarian accent,
+whisper.cpp auto-language detection is unstable ("Count from one to twenty
+slowly." was transcribed partly as Japanese under `auto`; the same audio with
+`ARTHUR_STT_LANGUAGE=en` was clearly better). STT Quality v2 hardens the
+local whisper.cpp path only - PTT ownership, VAD thresholds, pre-roll,
+barge-in, TTS, playback, DeepSeek, ConversationService, history filtering,
+and wake detection are untouched:
+
+- Model strategy: `ggml-large-v3-turbo.bin` is the recommended primary
+  desktop/server model. Paths stay configurable via `ARTHUR_STT_MODEL_PATH`
+  (commented example in `.env.example`; no machine-specific path in source;
+  `models/` is git-ignored). Any whisper.cpp-compatible model remains
+  supported; quantized models may serve lower-resource future nodes.
+- Language profiles: `en`/`bg` forward `-l <code>` verbatim; `auto` forwards
+  `-l auto` (explicitly accepted by whisper-cli). `auto` stays the code-level
+  default for backwards compatibility; short utterances should prefer an
+  explicit profile when the expected language is known.
+- Domain initial prompt: `ARTHUR_STT_INITIAL_PROMPT` flows VoiceSettings ->
+  buildApp -> LocalSttProvider env -> stt_wrapper and reaches whisper-cli as
+  ONE `--prompt` argv element (spawn, never a shell; empty/whitespace =
+  omitted; over 2048 characters fails closed both at startup validation and
+  inside the wrapper; never logged). Example vocabulary lives only in
+  `.env.example`/README - never hardcoded in the provider.
+- Language observability: whisper.cpp suppresses its library logs (including
+  "auto-detected language: xx (p = ...)") under `-np`, so the wrapper no
+  longer passes `-np`; segment stdout lines were verified byte-identical with
+  and without `-np` on the installed whisper-cli. In auto mode the wrapper
+  reports the detected code parsed from the engine log; explicit profiles are
+  echoed as configured; if the engine logs no detection, `language` stays
+  undefined (never fabricated).
+- Honest confidence: whisper-cli's text output exposes no utterance-level
+  transcript probability (`--print-confidence` is per-token ANSI coloring;
+  real per-token probabilities exist only in the `--output-json-full` FILE
+  output). `confidence` therefore stays undefined instead of being invented;
+  the language-detection probability is explicitly NOT reused as confidence.
+  TODO(STT-Quality-v3): derive a bounded score from `--output-json-full`
+  probabilities or a scorer layered above the wrapper.
+- Fallback hook: a future primary/fallback policy (explicit profile -> auto
+  on empty/unusable transcript, suspicious reported language, or future
+  quality score) belongs ABOVE the wrapper (controller/gateway layer,
+  documented in src/voice/stt/contracts.ts); the wrapper stays single-shot
+  with no hidden retries.
+- Wrapper hardening: temp WAV deletion now also registers exit/SIGINT/SIGTERM
+  handlers (best effort - `taskkill /F` bypasses JS handlers on Windows and
+  can only leak into the OS temp directory); retained engine stderr is
+  bounded (64 KiB); the single JSON result line is flushed via its write
+  callback before exit.
+
+Verification (executed on the installed whisper-cli with piper-synthesized
+16 kHz speech): `-l auto` without `-np` logs "whisper_full_with_state:
+auto-detected language: en (p = 0.995679)"; with `-np` that line is absent;
+`-l en`/`-l bg` force profiles; `--prompt` accepts a domain string as one
+argument. Regression coverage lives in tests/voice/stt_wrapper.test.ts
+(profiles, prompt contract, JSON echo, honest confidence, cleanup, shell
+injection), tests/voice/voice_config.test.ts, and tests/voice/local_adapters.test.ts.
+
 ## Deviations from spec (all documented)
 
 | Item | Spec | Implementation |

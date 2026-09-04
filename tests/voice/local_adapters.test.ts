@@ -268,6 +268,41 @@ test("STT cancellation terminates the engine and ends the stream", async () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+test("LocalSttProvider forwards the language profile and initial prompt via engine env", async () => {
+  const dir = newTempDir("stt-env");
+  const envFile = join(dir, "env.json");
+  const stt = new LocalSttProvider(nodeCmd(sttFixture), "model.bin", "en", {
+    env: { FIXTURE_ENV_FILE: envFile, FIXTURE_ENV_KEYS: "ARTHUR_STT_LANGUAGE,ARTHUR_STT_INITIAL_PROMPT" },
+    initialPrompt: "ARTHUR, Nexus, AutoPulse",
+  });
+  await collectStt(stt, speechFrames(1), "utt-env");
+  const recorded = JSON.parse(readFileSync(envFile, "utf8")) as Record<string, string>;
+  assert.equal(recorded.ARTHUR_STT_LANGUAGE, "en");
+  assert.equal(recorded.ARTHUR_STT_INITIAL_PROMPT, "ARTHUR, Nexus, AutoPulse");
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("LocalSttProvider config is authoritative over lower-precedence environment keys", async () => {
+  const dir = newTempDir("stt-env-clear");
+  const envFile = join(dir, "env.json");
+  // Lower-precedence sources (opts.env mirrors what an inherited process.env
+  // would do) must never win over provider configuration: auto resolves in
+  // the wrapper and an unset prompt stays unset - nothing leaks through.
+  const stt = new LocalSttProvider(nodeCmd(sttFixture), "model.bin", "auto", {
+    env: {
+      ARTHUR_STT_LANGUAGE: "de",
+      ARTHUR_STT_INITIAL_PROMPT: "GLOBAL-LEAK-SHOULD-NOT-REACH-ENGINE",
+      FIXTURE_ENV_FILE: envFile,
+      FIXTURE_ENV_KEYS: "ARTHUR_STT_LANGUAGE,ARTHUR_STT_INITIAL_PROMPT",
+    },
+  });
+  await collectStt(stt, speechFrames(1), "utt-env-clear");
+  const recorded = JSON.parse(readFileSync(envFile, "utf8")) as Record<string, string>;
+  assert.equal(recorded.ARTHUR_STT_LANGUAGE, "", "auto must clear inherited language keys");
+  assert.equal(recorded.ARTHUR_STT_INITIAL_PROMPT, "", "no prompt configured must clear inherited prompts");
+  rmSync(dir, { recursive: true, force: true });
+});
+
 test("STT unavailable and missing executable yield STT_FAILED", async () => {
   const empty = new LocalSttProvider("", "", "en");
   assert.equal(empty.available, false);

@@ -19,6 +19,13 @@ export interface VoiceSettings {
   sttProvider: VoiceProviderId;
   ttsProvider: VoiceProviderId;
   sttLanguage: string;
+  /**
+   * Optional domain-vocabulary initial prompt for local STT engines
+   * (STT Quality v2, TASK-0008), e.g. "ARTHUR, Nexus, AutoPulse". Empty =
+   * disabled. Bounded by STT_INITIAL_PROMPT_MAX_CHARS; the value is passed
+   * to the engine as data (never logged, never a command line fragment).
+   */
+  sttInitialPrompt: string;
   sttModelPath: string;
   ttsModelPath: string;
   ttsVoice: string;
@@ -60,6 +67,7 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   sttProvider: "local",
   ttsProvider: "local",
   sttLanguage: "auto",
+  sttInitialPrompt: "",
   sttModelPath: "",
   ttsModelPath: "",
   ttsVoice: "arthur",
@@ -91,6 +99,7 @@ export interface VoiceSettingsOverrides {
   sttProvider?: string;
   ttsProvider?: string;
   sttLanguage?: string;
+  sttInitialPrompt?: string;
   sttModelPath?: string;
   ttsModelPath?: string;
   ttsVoice?: string;
@@ -109,6 +118,9 @@ export interface VoiceSettingsOverrides {
   sttEngineCommand?: string;
   ttsEngineCommand?: string;
 }
+
+/** Hard bound for the STT initial prompt (mirrored by the engine wrapper). */
+export const STT_INITIAL_PROMPT_MAX_CHARS = 2048;
 
 function envStr(key: string, fallback: string): string {
   const v = process.env[key];
@@ -165,6 +177,7 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
     sttProvider: pick("ARTHUR_STT_PROVIDER", DEFAULT_VOICE_SETTINGS.sttProvider, "sttProvider"),
     ttsProvider: pick("ARTHUR_TTS_PROVIDER", DEFAULT_VOICE_SETTINGS.ttsProvider, "ttsProvider"),
     sttLanguage: pick("ARTHUR_STT_LANGUAGE", DEFAULT_VOICE_SETTINGS.sttLanguage, "sttLanguage"),
+    sttInitialPrompt: pick("ARTHUR_STT_INITIAL_PROMPT", DEFAULT_VOICE_SETTINGS.sttInitialPrompt, "sttInitialPrompt"),
     sttModelPath: pick("ARTHUR_STT_MODEL_PATH", DEFAULT_VOICE_SETTINGS.sttModelPath, "sttModelPath"),
     ttsModelPath: pick("ARTHUR_TTS_MODEL_PATH", DEFAULT_VOICE_SETTINGS.ttsModelPath, "ttsModelPath"),
     ttsVoice: pick("ARTHUR_TTS_VOICE", DEFAULT_VOICE_SETTINGS.ttsVoice, "ttsVoice"),
@@ -226,6 +239,11 @@ export function validateVoiceSettings(settings: VoiceSettings): string[] {
   }
   if (settings.maxTranscriptChars < 100 || settings.maxTranscriptChars > 100000) {
     problems.push("ARTHUR_VOICE_MAX_TRANSCRIPT_CHARS must be within 100..100000");
+  }
+  if (settings.sttInitialPrompt.length > STT_INITIAL_PROMPT_MAX_CHARS) {
+    problems.push(
+      `ARTHUR_STT_INITIAL_PROMPT must be at most ${STT_INITIAL_PROMPT_MAX_CHARS} characters (got ${settings.sttInitialPrompt.length})`,
+    );
   }
   return problems;
 }

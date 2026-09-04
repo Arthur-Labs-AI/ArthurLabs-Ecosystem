@@ -8,7 +8,9 @@
  *
  * Engine integration contract: the command reads raw mono s16le PCM from
  * stdin at the configured sample rate and writes exactly one final JSON
- * line to stdout: {"text":"...","language":"bg","confidence":0.9}.
+ * line to stdout: {"text":"...","language":"bg","confidence":0.9}
+ * (language and confidence are optional: engines that cannot report a
+ * value honestly omit the field - wrappers must never fabricate one).
  * The line is parsed and strictly validated; malformed JSON, non-zero exit,
  * timeout, oversized output, or invalid fields all surface as STT_FAILED.
  * Cancellation terminates the engine process promptly. Raw audio never
@@ -44,6 +46,14 @@ export interface LocalSttOptions {
   sanitizer?: TextSanitizer;
   /** Extra environment passed to the engine command. */
   env?: Record<string, string>;
+  /**
+   * Optional domain-vocabulary initial prompt (STT Quality v2, TASK-0008).
+   * Forwarded to the engine via the ARTHUR_STT_INITIAL_PROMPT environment
+   * variable and always set (possibly empty) so provider configuration is
+   * authoritative over any inherited process environment. The prompt is
+   * engine data only: never logged, never placed on a command line here.
+   */
+  initialPrompt?: string;
 }
 
 export interface SttParseResult {
@@ -95,6 +105,7 @@ export class LocalSttProvider implements SttProvider {
   private readonly logger: LogSink | undefined;
   private readonly sanitizer: TextSanitizer | undefined;
   private readonly extraEnv: Record<string, string>;
+  private readonly initialPrompt: string;
 
   constructor(
     private readonly engineCommand: string,
@@ -109,6 +120,7 @@ export class LocalSttProvider implements SttProvider {
     this.logger = opts.logger;
     this.sanitizer = opts.sanitizer;
     this.extraEnv = opts.env ?? {};
+    this.initialPrompt = opts.initialPrompt ?? "";
   }
 
   id(): string {
@@ -131,6 +143,9 @@ export class LocalSttProvider implements SttProvider {
         ...this.extraEnv,
         ARTHUR_STT_MODEL_PATH: this.modelPath,
         ARTHUR_STT_LANGUAGE: this.language === "auto" ? "" : this.language,
+        // Always present (possibly "") so an inherited ARTHUR_STT_INITIAL_PROMPT
+        // cannot leak into the engine; empty means no initial prompt.
+        ARTHUR_STT_INITIAL_PROMPT: this.initialPrompt,
       });
     } catch (err) {
       this.logger?.error("STT engine spawn failed", {

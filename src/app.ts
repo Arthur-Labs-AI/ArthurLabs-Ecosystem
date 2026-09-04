@@ -170,6 +170,7 @@ export function createVoiceController(
     (voice.sttProvider === "fake"
       ? new FakeSttProvider()
       : new LocalSttProvider(voice.sttEngineCommand, voice.sttModelPath, voice.sttLanguage, {
+        initialPrompt: voice.sttInitialPrompt,
         logger: logger.child("voice-stt"),
         sanitizer,
       }));

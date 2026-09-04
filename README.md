@@ -196,8 +196,31 @@ are bridged by the zero-dependency wrapper scripts in `tools/voice/`
 
 **2. whisper.cpp (STT)**
 
-- Build or download `whisper-cli` and a model, e.g. `ggml-base.bin`
-  (https://github.com/ggml-org/whisper.cpp).
+- Build or download `whisper-cli` and a model (https://github.com/ggml-org/whisper.cpp).
+- Recommended primary desktop/server model: **ggml-large-v3-turbo.bin**
+  (https://huggingface.co/ggml-org/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin).
+  Model files are machine-local downloads - `models/` is git-ignored, never
+  commit one. A quantized model may be used on lower-resource future nodes;
+  any whisper.cpp-compatible `.bin` works via `ARTHUR_STT_MODEL_PATH`.
+- Language profiles (STT Quality v2): `ARTHUR_STT_LANGUAGE=en | bg | auto`.
+  Prefer an explicit profile whenever the expected language is known: Whisper
+  auto-detection is unstable for short accented utterances (real-device A/B:
+  short Bulgarian-accented English was transcribed partly as Japanese under
+  `auto`; `en` was clearly better). `auto` remains the code-level default for
+  unknown-language scenarios.
+- Domain initial prompt: `ARTHUR_STT_INITIAL_PROMPT` (e.g. "ARTHUR, Nexus,
+  AutoPulse, DeepSeek, GitHub, Engineering Mode") is passed to whisper-cli as
+  one `--prompt` data argument - spawned without a shell, bounded to 2048
+  characters (fail-closed), never logged, empty = disabled. Vocabulary lives
+  in configuration, never hardcoded in source.
+- Language/confidence observability: the wrapper JSON echoes an explicit
+  profile; under `auto` it reports the language whisper.cpp auto-detected
+  (parsed from its log line - which `-np` would suppress, so the wrapper no
+  longer passes `-np`; undefined if the engine logs no detection). whisper-cli
+  exposes no utterance-level transcript confidence in its text output, so
+  `confidence` stays undefined instead of being fabricated (future hook:
+  `--output-json-full` per-token probabilities; any primary/fallback retry
+  policy belongs ABOVE the wrapper, which stays single-shot).
 - The wrapper adapts whisper-cli's WAV-file workflow to ARTHUR's stdin PCM
   contract (temp WAV, deleted before exit; segment text extracted; one JSON
   line emitted):
@@ -230,7 +253,8 @@ ARTHUR_VAD_PROVIDER=local
 ARTHUR_STT_PROVIDER=local
 ARTHUR_TTS_PROVIDER=local
 ARTHUR_STT_LANGUAGE=en
-ARTHUR_STT_MODEL_PATH=C:\whisper\models\ggml-base.bin
+ARTHUR_STT_MODEL_PATH=C:\whisper\models\ggml-large-v3-turbo.bin
+ARTHUR_STT_INITIAL_PROMPT=ARTHUR, Nexus, AutoPulse, DeepSeek, GitHub, Engineering Mode
 ARTHUR_TTS_VOICE=en_US-lessac-medium
 ARTHUR_AUDIO_INPUT_DEVICE=default
 ARTHUR_AUDIO_OUTPUT_DEVICE=default
@@ -239,7 +263,7 @@ ARTHUR_AUDIO_PLAYBACK_COMMAND="C:\ffmpeg\bin\ffplay.exe -nodisp -autoexit -f s16
 ARTHUR_STT_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\stt_wrapper.cjs\""
 ARTHUR_TTS_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\tts_wrapper.cjs\""
 WHISPER_CLI=C:\whisper\build\bin\Release\whisper-cli.exe
-WHISPER_MODEL=C:\whisper\models\ggml-base.bin
+WHISPER_MODEL=C:\whisper\models\ggml-large-v3-turbo.bin
 PIPER_EXE=C:\piper\piper.exe
 PIPER_MODEL=C:\piper\voices\en_US-lessac-medium.onnx
 PIPER_VOICE_CONFIG=C:\piper\voices\en_US-lessac-medium.onnx.json
