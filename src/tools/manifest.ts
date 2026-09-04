@@ -69,10 +69,24 @@ export function validateToolDefinition(definition: unknown): void {
   if (!isPlainObject(definition)) {
     throw toolManifestInvalid("definition", "must be a plain object");
   }
+  if (Object.getOwnPropertySymbols(definition).length > 0) {
+    throw toolManifestInvalid("definition", "contains symbol-keyed properties");
+  }
+  // Descriptor-level scan of the manifest itself (TASK-0010 follow-up): a
+  // getter or non-enumerable field could show one value to validation and
+  // another to the runtime; every manifest field must be an ordinary own
+  // enumerable data property.
   const allowedFields = new Set<string>(MANIFEST_FIELDS);
-  for (const key of Object.keys(definition)) {
+  const descriptors = Object.getOwnPropertyDescriptors(definition) as Record<string, PropertyDescriptor>;
+  for (const [key, descriptor] of Object.entries(descriptors)) {
     if (!allowedFields.has(key)) {
       throw toolManifestInvalid(key, "unknown manifest field");
+    }
+    if (descriptor.get !== undefined || descriptor.set !== undefined) {
+      throw toolManifestInvalid(key, "must be an ordinary data property (accessors are rejected)");
+    }
+    if (!descriptor.enumerable) {
+      throw toolManifestInvalid(key, "must be an enumerable own property");
     }
   }
   for (const field of REQUIRED_FIELDS) {

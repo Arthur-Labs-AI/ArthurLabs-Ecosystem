@@ -14,7 +14,7 @@
  */
 
 import { ArthurError, modeViolation } from "../core/errors/errors";
-import { assertJsonSafe, JsonSafeError } from "./json_safe";
+import { JsonSafeError, snapshotJsonSafe } from "./json_safe";
 import type { PermissionService } from "./permissions";
 import type { ToolRegistry } from "./registry";
 import { ToolExecutionContext, ToolDefinition, ToolResult } from "./contracts";
@@ -109,33 +109,70 @@ export class ToolExecutionService {
 
   /**
    * Fail-closed validation of the ToolResult contract (TASK-0010 sections
-   * 4/5): shape invariants, JSON-safety of structured data, and the declared
-   * output_schema. Invalid executor output fails as TOOL_OUTPUT_INVALID and
-   * is never treated as successful output.
+   * 4/5; descriptor/TOCTOU hardening per the TASK-0010 follow-up): the
+   * wrapper itself must be a plain data object with ordinary own enumerable
+   * DATA properties (accessors, non-enumerable fields, symbol keys, unknown
+   * fields, and custom prototypes are rejected - a getter is never merely
+   * read and trusted), and the result is returned as a fresh validated
+   * plain-data snapshot built in ONE descriptor pass. Later mutation of the
+   * executor-owned object can never change what crossed the boundary.
    */
   private assertResultContract(tool: string, definition: ToolDefinition, result: unknown): ToolResult {
     if (result === null || typeof result !== "object" || Array.isArray(result)) {
       throw outputInvalid(tool, ["executor must return a ToolResult object"]);
     }
-    const r = result as Record<string, unknown>;
-    const unknownFields = Object.keys(r).filter((key) => !TOOL_RESULT_FIELDS.has(key));
-    if (unknownFields.length > 0) {
-      throw outputInvalid(tool, ["unexpected ToolResult fields: " + unknownFields.join(", ")]);
+    const proto = Object.getPrototypeOf(result);
+    if (proto !== Object.prototype && proto !== null) {
+      throw outputInvalid(tool, ["ToolResult must be a plain object (custom prototypes are rejected)"]);
     }
-    if (typeof r.ok !== "boolean") {
+    if (Object.getOwnPropertySymbols(result).length > 0) {
+      throw outputInvalid(tool, ["ToolResult contains symbol-keyed properties"]);
+    }
+    // getOwnPropertyDescriptors exposes EVERY own property (including
+    // non-enumerable ones), so exotic fields cannot hide behind enumerability.
+    // Each accepted field value is captured here exactly once; nothing below
+    // re-reads from the executor-owned object.
+    const descriptors = Object.getOwnPropertyDescriptors(result) as Record<string, PropertyDescriptor>;
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+      if (!TOOL_RESULT_FIELDS.has(key)) {
+        throw outputInvalid(tool, ["unexpected ToolResult field: " + key]);
+      }
+      if (descriptor.get !== undefined || descriptor.set !== undefined) {
+        throw outputInvalid(tool, ["ToolResult." + key + " must be an ordinary data property (accessor rejected)"]);
+      }
+      if (!descriptor.enumerable) {
+        throw outputInvalid(tool, ["ToolResult." + key + " must be an enumerable own data property (non-enumerable fields are rejected)"]);
+      }
+    }
+    const okDescriptor = descriptors.ok;
+    if (!okDescriptor) {
+      throw outputInvalid(tool, ["ToolResult.ok must be an own data property"]);
+    }
+    const summaryDescriptor = descriptors.summary;
+    if (!summaryDescriptor) {
+      throw outputInvalid(tool, ["ToolResult.summary must be an own data property"]);
+    }
+    const ok = okDescriptor.value;
+    if (typeof ok !== "boolean") {
       throw outputInvalid(tool, ["ToolResult.ok must be a boolean"]);
     }
-    if (typeof r.summary !== "string") {
+    const summary = summaryDescriptor.value;
+    if (typeof summary !== "string") {
       throw outputInvalid(tool, ["ToolResult.summary must be a string"]);
     }
-    if (r.summary.length > TOOL_RESULT_SUMMARY_MAX_CHARS) {
+    if (summary.length > TOOL_RESULT_SUMMARY_MAX_CHARS) {
       throw outputInvalid(tool, ["ToolResult.summary exceeds " + TOOL_RESULT_SUMMARY_MAX_CHARS + " characters"]);
     }
 
-    const data = r.data;
-    if (data !== undefined) {
+    // Snapshot the structured data in the same single pass that validates it:
+    // fresh plain data, independent of the executor-owned graph.
+    let data: unknown;
+    let dataPresent = false;
+    const dataDescriptor = descriptors.data;
+    if (dataDescriptor && dataDescriptor.value !== undefined) {
       try {
-        assertJsonSafe(data, "ToolResult.data");
+        data = snapshotJsonSafe(dataDescriptor.value, "ToolResult.data");
+        dataPresent = true;
       } catch (err) {
         if (err instanceof JsonSafeError) {
           throw outputInvalid(tool, [err.message]);
@@ -145,14 +182,21 @@ export class ToolExecutionService {
     }
 
     if (definition.output_schema !== undefined) {
-      if (data === undefined) {
+      if (!dataPresent) {
         throw outputInvalid(tool, ["tool declared an output_schema but returned no data"]);
       }
+      // The schema validates the SNAPSHOT - the exact value that will cross.
       const output = this.registry.validateOutput(tool, data);
       if (!output.valid) {
         throw outputInvalid(tool, output.errors ?? ["data does not match output_schema"]);
       }
     }
-    return result as ToolResult;
+
+    // Fresh plain wrapper built exclusively from validated values.
+    const validated: ToolResult = { ok, summary };
+    if (dataPresent) {
+      validated.data = data;
+    }
+    return validated;
   }
 }

@@ -285,3 +285,231 @@ test("approval evidence is required and tool-bound at the facade", async () => {
   );
   assert.equal(h.calls.length, 0);
 });
+
+// ---- TASK-0010 follow-up: descriptor/TOCTOU boundary (tests A-L) -----------
+
+test("A: top-level ToolResult accessor is rejected", async () => {
+  const h = makeHarness(() => {
+    const r: Record<string, unknown> = { ok: true, summary: "s" };
+    Object.defineProperty(r, "summary", {
+      get: () => "tampered-" + String(Math.random()),
+      enumerable: true,
+      configurable: true,
+    });
+    return r as unknown as ToolResult;
+  });
+  await assert.rejects(
+    () => h.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => {
+      assertCode(e, "TOOL_OUTPUT_INVALID");
+      assert.ok((e as ArthurError).message.includes("accessor"));
+      return true;
+    },
+  );
+});
+
+test("B: nested data getter is rejected", async () => {
+  const h = makeHarness(() => ({ ok: true, summary: "s", data: { get sneaky() { return "payload"; } } }) as unknown as ToolResult);
+  await assert.rejects(
+    () => h.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => {
+      assertCode(e, "TOOL_OUTPUT_INVALID");
+      assert.ok((e as ArthurError).message.includes("accessor"));
+      return true;
+    },
+  );
+});
+
+test("C: setter/accessor (get+set) is rejected", async () => {
+  const h = makeHarness(() => {
+    const r: Record<string, unknown> = { summary: "s" };
+    Object.defineProperty(r, "ok", {
+      get: () => true,
+      set: () => {},
+      enumerable: true,
+      configurable: true,
+    });
+    return r as unknown as ToolResult;
+  });
+  await assert.rejects(
+    () => h.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => assertCode(e, "TOOL_OUTPUT_INVALID") !== undefined,
+  );
+});
+
+test("D: non-enumerable own properties are rejected", async () => {
+  // Non-enumerable unexpected field.
+  const h1 = makeHarness(() => {
+    const r: Record<string, unknown> = { ok: true, summary: "s" };
+    Object.defineProperty(r, "shadow", { value: 1, enumerable: false, configurable: true });
+    return r as unknown as ToolResult;
+  });
+  await assert.rejects(
+    () => h1.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => assertCode(e, "TOOL_OUTPUT_INVALID") !== undefined,
+  );
+  // Non-enumerable KNOWN field (hidden ok).
+  const h2 = makeHarness(() => {
+    const r: Record<string, unknown> = { summary: "s" };
+    Object.defineProperty(r, "ok", { value: true, enumerable: false, configurable: true });
+    return r as unknown as ToolResult;
+  });
+  await assert.rejects(
+    () => h2.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => {
+      assertCode(e, "TOOL_OUTPUT_INVALID");
+      assert.ok((e as ArthurError).message.includes("non-enumerable"));
+      return true;
+    },
+  );
+});
+
+test("E: symbol-keyed ToolResult property is rejected", async () => {
+  const h = makeHarness(() => {
+    const r = { ok: true, summary: "s" } as Record<string | symbol, unknown>;
+    r[Symbol("tracker")] = "side-channel";
+    return r as unknown as ToolResult;
+  });
+  await assert.rejects(
+    () => h.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => {
+      assertCode(e, "TOOL_OUTPUT_INVALID");
+      assert.ok((e as ArthurError).message.includes("symbol"));
+      return true;
+    },
+  );
+});
+
+test("F: symbol-keyed nested data property is rejected", async () => {
+  const h = makeHarness(() => {
+    const payload = {} as Record<string | symbol, unknown>;
+    payload[Symbol("k")] = 1;
+    return { ok: true, summary: "s", data: payload } as unknown as ToolResult;
+  });
+  await assert.rejects(
+    () => h.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => {
+      assertCode(e, "TOOL_OUTPUT_INVALID");
+      assert.ok((e as ArthurError).message.includes("symbol"));
+      return true;
+    },
+  );
+});
+
+test("G: custom/class ToolResult is rejected", async () => {
+  class CustomResult {
+    ok = true;
+    summary = "s";
+  }
+  const h1 = makeHarness(() => new CustomResult() as unknown as ToolResult);
+  await assert.rejects(
+    () => h1.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => {
+      assertCode(e, "TOOL_OUTPUT_INVALID");
+      assert.ok((e as ArthurError).message.includes("plain object"));
+      return true;
+    },
+  );
+  const h2 = makeHarness(() => Object.create({ ok: true, summary: "s" }) as unknown as ToolResult);
+  await assert.rejects(
+    () => h2.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => assertCode(e, "TOOL_OUTPUT_INVALID") !== undefined,
+  );
+});
+
+test("H: custom/class nested data is rejected", async () => {
+  class Payload {
+    branch = "main";
+  }
+  const h = makeHarness(() => ({ ok: true, summary: "s", data: new Payload() }) as unknown as ToolResult);
+  await assert.rejects(
+    () => h.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => {
+      assertCode(e, "TOOL_OUTPUT_INVALID");
+      assert.ok((e as ArthurError).message.includes("plain JSON object"));
+      return true;
+    },
+  );
+});
+
+test("I: mutating the executor result after validation cannot affect the returned result", async () => {
+  const owned: { result: ToolResult } = { result: { ok: true, summary: "original", data: { v: 1 } } };
+  const h = makeHarness(() => owned.result);
+  const returned = await h.execution.execute("spy.read", { q: "x" }, ctx());
+
+  // Mutate everything the executor still owns.
+  owned.result.ok = false;
+  owned.result.summary = "tampered";
+  (owned.result.data as { v: number }).v = 999;
+  (owned.result as { extra?: unknown }).extra = "injected";
+  (owned.result.data as Record<string, unknown>).nested = { injected: true };
+  delete (owned.result.data as Record<string, unknown>).v;
+
+  assert.equal(returned.ok, true);
+  assert.equal(returned.summary, "original");
+  assert.deepEqual(returned.data, { v: 1 });
+  assert.equal("extra" in returned, false);
+  assert.equal("nested" in (returned.data as object), false);
+  assert.notEqual(returned.data, owned.result.data, "snapshot must not share the executor object");
+});
+
+test("J: mutating nested executor data after validation cannot affect the returned data", async () => {
+  const owned = {
+    result: {
+      ok: true,
+      summary: "original",
+      data: { list: [1, 2], inner: { k: "a" } } as unknown,
+    } as ToolResult,
+  };
+  const data = owned.result.data as { list: number[]; inner: { k: string } };
+  const h = makeHarness(() => owned.result);
+  const returned = await h.execution.execute("spy.read", { q: "x" }, ctx());
+
+  // Structural mutation of the nested graph after the boundary crossed.
+  data.list.push(3);
+  data.list.length = 0;
+  data.inner.k = "tampered";
+  delete (data as Record<string, unknown>).inner;
+
+  const returnedData = returned.data as { list: number[]; inner: { k: string } };
+  assert.deepEqual(returnedData.list, [1, 2]);
+  assert.deepEqual(returnedData.inner, { k: "a" });
+});
+
+test("K: normal plain object/array JSON data still passes and returns a detached snapshot", async () => {
+  const nested = { tags: ["a", "b"], meta: { count: 2, flag: true, nothing: null } };
+  const h = makeHarness(() => ({ ok: true, summary: "s", data: { items: [nested, [1, 2, 3]], frozen: Object.freeze({ f: 1 }) } }));
+  const result = await h.execution.execute("spy.read", { q: "x" }, ctx());
+  assert.deepEqual(result.data, {
+    items: [{ tags: ["a", "b"], meta: { count: 2, flag: true, nothing: null } }, [1, 2, 3]],
+    frozen: { f: 1 },
+  });
+  assert.notEqual(result.data, nested, "snapshot must be a fresh object");
+});
+
+test("arrays with exotic own properties or holes fail closed", async () => {
+  const exotic = [1, 2, 3] as unknown as Record<string | symbol, unknown>;
+  exotic.extra = 9;
+  const h1 = makeHarness(() => ({ ok: true, summary: "s", data: { arr: exotic } } as unknown as ToolResult));
+  await assert.rejects(
+    () => h1.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => {
+      assertCode(e, "TOOL_OUTPUT_INVALID");
+      assert.ok((e as ArthurError).message.includes("exotic own property"));
+      return true;
+    },
+  );
+
+  const sparse = [1, 2, 3] as unknown as Record<number, unknown>;
+  delete sparse[1];
+  const h2 = makeHarness(() => ({ ok: true, summary: "s", data: { arr: sparse } }));
+  await assert.rejects(
+    () => h2.execution.execute("spy.read", { q: "x" }, ctx()),
+    (e: unknown) => {
+      assertCode(e, "TOOL_OUTPUT_INVALID");
+      assert.ok((e as ArthurError).message.includes("sparse"));
+      return true;
+    },
+  );
+});
+

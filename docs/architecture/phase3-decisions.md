@@ -339,6 +339,24 @@ Decisions:
   stores a deep-frozen clone; caller-side mutation after register and
   mutation attempts through registry-returned definitions have no effect on
   runtime policy (unit tests A-S assert both directions).
+- **Descriptor/TOCTOU hardening (TASK-0010 follow-up)**: review found that
+  validating executor-provided objects through ordinary property reads and
+  returning the ORIGINAL object allowed accessor properties to show one
+  value during validation and another during consumption, and let
+  non-enumerable/symbol-keyed fields (which JSON silently omits) slip
+  through. Fixed fail-closed: `ToolExecutionService` now validates the
+  ToolResult wrapper through OWN PROPERTY DESCRIPTORS (plain prototype,
+  ordinary own enumerable data properties only, exact field set), and
+  `snapshotJsonSafe` recursively scans descriptors - rejecting accessors,
+  non-enumerable own properties, symbol keys, class-derived arrays, arrays
+  with exotic own properties/holes, plus the existing classes of invalid
+  data (cycles, functions, BigInt, undefined, NaN/Infinity, non-plain
+  prototypes) - while building a fresh CANONICAL key-sorted plain-data
+  snapshot in the SAME single pass (each accepted value is read exactly
+  once from its captured descriptor). The facade returns that snapshot, so
+  later mutation of the executor-owned object graph can never change what
+  crossed the boundary; output_schema validates the snapshot itself. The
+  same descriptor rules guard tool manifest fields at registration.
 - **Model-facing contract unchanged**: ToolDefinition -> toToolSchema() ->
   ModelRequest.toolSchemas exposes only name/description/input parameters;
   executors, permissions, output schemas, paths, and secrets stay out of
@@ -385,3 +403,11 @@ injection), tests/voice/voice_config.test.ts, and tests/voice/local_adapters.tes
   voice implementation is untouched. New focused suites:
   tests/unit/tool_manifest.test.ts, tests/unit/tool_boundary.test.ts,
   tests/integration/tool_contract.test.ts (33 tests).
+- TASK-0010 follow-up (descriptor/TOCTOU boundary): same gates re-run on
+  the follow-up commit - typecheck, build, test:unit (184 pass),
+  test:integration (64 pass), test:contract (6 pass), focused suites 57
+  pass; full suite 465 tests with the SAME 36 environment-blocked voice
+  failures (name-identical set, spawn EPERM in this sandbox) and 12 new
+  boundary tests (getters/setters, non-enumerable, symbol keys, class
+  instances, mutation-after-validation snapshot independence, exotic
+  arrays/holes).
