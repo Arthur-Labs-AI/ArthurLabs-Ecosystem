@@ -642,3 +642,93 @@ test("sustained but below-threshold speech during playback does not barge in", a
   await waitFor(() => h.app.voice.state === VoiceState.IDLE, 4000);
   await h.app.close();
 });
+
+// ---------------------------------------------------------------------------
+// TASK-0007 follow-up: fresh PTT start discards pre-button pre-roll
+// ---------------------------------------------------------------------------
+
+/** Frame with a unique marker amplitude so recorded audio is identifiable. */
+function markedFrame(sequence: number, atMs: number, marker: number): PcmFrame {
+  const samples = new Int16Array(320);
+  samples.fill(marker);
+  return frameFromInt16(samples, sequence, atMs);
+}
+
+test("fresh PTT start discards pre-button pre-roll and resets the VAD boundary", async () => {
+  const h = await buildHarness();
+  await h.app.voice.disable();
+  await h.app.voice.enable(h.sessionId);
+  h.stt.recordFrames = true;
+  h.stt.setDefaultScript({ final: "post button speech" });
+  // 1. While IDLE, feed uniquely identifiable pre-button frames (marker 111).
+  for (let i = 0; i < 5; i++) {
+    h.capture.feedFrame(markedFrame(i, Date.now() + i * 20, 111));
+  }
+  assert.equal(h.app.voice.state, VoiceState.IDLE);
+  const resetCountBefore = h.vad.resetCount;
+  // 2. PTT start: the pre-button audio belongs to no PTT utterance.
+  await h.app.voice.pttStart();
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  assert.ok(h.vad.resetCount > resetCountBefore, "PTT boundary must reset the VAD episode");
+  // The boundary vad.reset() replays the script from the start, so the
+  // speech_started boundary lands on the 6th post-PTT frame.
+  h.vad.setScript(["silence", "silence", "silence", "silence", "silence", "speech", "speech", "end"]);
+  // 3. Uniquely identifiable LISTENING frames captured AFTER the press.
+  for (let i = 0; i < 5; i++) {
+    h.capture.feedFrame(markedFrame(100 + i, Date.now() + 100 + i * 20, 222));
+  }
+  // 4. Trigger speech_started with one more post-PTT frame.
+  h.capture.feedFrame(markedFrame(105, Date.now() + 200, 222));
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  await waitFor(() => h.stt.receivedFrames.length >= 6, 2000, "post-PTT frames to reach STT");
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const received = h.stt.receivedFrames;
+  // 5. STT receives ONLY frames captured after PTT start.
+  assert.equal(received.length, 6, "exactly the 5 post-PTT pre-roll frames plus the started frame");
+  assert.deepEqual(
+    received.map((f) => f.sequence),
+    [100, 101, 102, 103, 104, 105],
+    "no pre-button frame may leak into the PTT utterance",
+  );
+  for (const frame of received) {
+    const firstSample = new DataView(frame.data.buffer, frame.data.byteOffset, 2).getInt16(0, true);
+    assert.equal(firstSample, 222, "received audio must be the post-button audio, not pre-button noise");
+  }
+  // 6. Post-PTT pre-roll arrives in FIFO order with no duplication.
+  for (let i = 1; i < received.length; i++) {
+    assert.equal((received[i] as PcmFrame).sequence - (received[i - 1] as PcmFrame).sequence, 1);
+  }
+  await h.app.voice.pttStop();
+  await h.app.close();
+});
+
+test("wake-triggered listening keeps its pre-wake pre-roll (unchanged contract)", async () => {
+  const h = await buildHarness();
+  h.stt.recordFrames = true;
+  h.stt.setDefaultScript({ final: "wake utterance" });
+  // Pre-wake IDLE audio (marker 333) must be RETAINED for the wake utterance.
+  for (let i = 0; i < 5; i++) {
+    h.capture.feedFrame(markedFrame(i, Date.now() + i * 20, 333));
+  }
+  assert.equal(h.app.voice.state, VoiceState.IDLE);
+  h.wake.triggerWake(Date.now());
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  h.vad.setScript(["silence", "silence", "speech", "speech", "end"]);
+  h.capture.feedFrame(markedFrame(5, Date.now() + 100, 333));
+  h.capture.feedFrame(markedFrame(6, Date.now() + 120, 333));
+  h.capture.feedFrame(markedFrame(7, Date.now() + 140, 333));
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  await waitFor(() => h.stt.receivedFrames.length >= 8, 2000, "wake utterance frames to reach STT");
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const received = h.stt.receivedFrames;
+  assert.deepEqual(
+    received.map((f) => f.sequence),
+    [0, 1, 2, 3, 4, 5, 6, 7],
+    "wake mode must keep the pre-wake pre-roll and stream it FIFO before the started frame",
+  );
+  for (const frame of received) {
+    const firstSample = new DataView(frame.data.buffer, frame.data.byteOffset, 2).getInt16(0, true);
+    assert.equal(firstSample, 333, "wake utterance audio includes the pre-wake window");
+  }
+  await h.app.close();
+});

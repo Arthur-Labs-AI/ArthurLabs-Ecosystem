@@ -440,6 +440,12 @@ export class VoiceTurnController {
     if (this.machine.state !== VoiceState.LISTENING) {
       this.machine.transition(VoiceState.LISTENING, "push_to_talk");
     }
+    // PTT boundary (TASK-0007 follow-up): audio captured BEFORE the button
+    // press belongs to no PTT utterance - discard the IDLE pre-roll and any
+    // stale VAD episode so STT only ever sees post-button audio. Wake mode
+    // intentionally keeps its pre-wake pre-roll (onWake does not clear).
+    this.preRoll.clear();
+    this.vad.reset();
     // BUG 1 (TASK-0007): PTT owns the utterance lifecycle from here until
     // pttStop. Pauses are allowed; no VAD silence may finalize the utterance.
     this.pttActive = true;
