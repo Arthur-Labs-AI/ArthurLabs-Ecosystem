@@ -22,7 +22,8 @@ import type { SessionRecord, TurnRecord } from "../../sessions/models";
 import { SecretSanitizer } from "../../security/sanitize";
 import { toToolSchema, ToolRegistry } from "../../tools/registry";
 import type { ToolOrchestrator } from "../../tools/orchestrator";
-import { ToolExecutionContext } from "../../tools/contracts";
+import { ToolExecutionContext, ToolDefinition } from "../../tools/contracts";
+import type { ArthurMode } from "../modes/mode";
 import { ContextBuilder } from "./context_builder";
 import {
   ApprovalOutcome,
@@ -61,6 +62,24 @@ export interface ConversationServiceDeps {
    * fail the turn; the service wraps it in its own error handling.
    */
   afterTurn?: (input: AfterTurnInput) => Promise<void>;
+}
+
+/**
+ * Deep-frozen structured clone of a tool manifest. Definitions are cloned so a
+ * caller holding an older snapshot can never be affected by (or affect) later
+ * registry state; freezing makes the returned view read-only.
+ */
+function frozenToolDefinition(definition: ToolDefinition): ToolDefinition {
+  const clone = structuredClone(definition) as ToolDefinition;
+  deepFreezeValue(clone);
+  return clone;
+}
+
+function deepFreezeValue(value: unknown): void {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const child of Object.values(value as Record<string, unknown>)) deepFreezeValue(child);
+  }
 }
 
 export interface StatusInfo {
@@ -793,6 +812,30 @@ export class ConversationService {
 
   listPendingApprovals(sessionId?: string) {
     return this.store.listPendingApprovals(sessionId);
+  }
+
+  /**
+   * Safe tool catalog introspection for developer-facing surfaces (DEV-CLI-1,
+   * Option A). Returns manifest-only definitions - name, version, description,
+   * schemas, risk, allowed modes. A ToolDefinition carries no executor,
+   * adapter, or approval material, and every returned object is a deep-frozen
+   * clone of the registry's own frozen definition, so callers can neither
+   * mutate runtime policy nor reach execution through the catalog.
+   *
+   * This is a read-only view, NOT an executable handle: tools still run only
+   * through ToolOrchestrator -> ToolExecutionService with full validation,
+   * permission, and approval checks.
+   */
+  listTools(mode?: ArthurMode): ToolDefinition[] {
+    const definitions =
+      mode === undefined ? this.registry.list() : this.registry.listAllowedForMode(mode);
+    return definitions.map(frozenToolDefinition);
+  }
+
+  /** Safe manifest lookup by tool name; undefined when the tool is unknown. */
+  getToolDefinition(name: string): ToolDefinition | undefined {
+    const definition = this.registry.getDefinition(name);
+    return definition === undefined ? undefined : frozenToolDefinition(definition);
   }
 
   // ---- helpers -----------------------------------------------------------

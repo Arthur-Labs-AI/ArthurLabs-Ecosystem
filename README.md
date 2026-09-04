@@ -108,7 +108,12 @@ npm start
 
 # CLI
 npm run cli -- chat --mode personal
-npm run cli -- status
+npm run cli -- chat --mode personal --verbose
+npm run cli -- ask --mode personal "Hello"
+npm run cli -- tools
+npm run cli -- tools --mode business
+npm run cli -- tools inspect system.status
+npm run cli -- status --json
 npm run cli -- session <id>
 npm run cli -- approve <approval-id>
 npm run cli -- reject <approval-id>
@@ -120,6 +125,9 @@ npm run cli -- memory status --session <id>
 npm run cli -- documents add --session <id> --file notes.md --title "Notes"
 npm run cli -- documents list --session <id>
 ```
+
+See **Developer Console (CLI)** below for the observability commands
+(`--verbose`, `tools`, `tools inspect`, `ask`, `--json`).
 
 Example API interaction:
 
@@ -141,6 +149,137 @@ curl http://127.0.0.1:8080/v1/documents \
   -H "content-type: application/json" \
   -d '{"session_id":"<id>","client_request_id":"3","title":"Notes","source_type":"text","content":"..."}'
 ```
+
+## Developer Console (CLI)
+
+The CLI doubles as a developer console for manually observing and testing the
+runtime: conversation, model calls, tool proposals, tool execution, approvals,
+sessions, memory, and runtime status. It uses the same
+`buildApp() -> ConversationService -> ToolOrchestrator -> ToolExecutionService`
+path as the HTTP API - there is no second runtime, and the CLI never invokes
+tool executors directly.
+
+> The Developer Console is a thin observability and interaction surface over
+> the same ARTHUR runtime. It does not bypass the runtime's authorization or
+> execution boundaries.
+
+### Interactive chat
+
+```powershell
+npm run cli -- chat --mode personal --verbose
+```
+
+```text
+ARTHUR Developer Console
+Mode: PERSONAL
+Provider: deepseek
+Model: deepseek-chat
+Session: new
+Verbose: ON
+
+Type /help for commands.
+
+you> What machine are you running on?
+
+[session] <session-id>
+[tool] system.status
+       status: completed
+       risk: read
+       summary: Local system: win32 x64, Node v22.18.0, 12 CPUs, 32 GB RAM
+
+arthur> I'm running on Windows x64 with 12 logical CPUs and 32 GB RAM.
+
+you>
+```
+
+Verbose mode shows the safe session id and every returned tool call (name,
+status, risk, sanitized result summary, and the approval id for pending
+actions) after each turn. Normal mode stays compact and renders every tool
+call on one line.
+
+Interactive slash commands inside chat:
+
+| Command | Behavior |
+| --- | --- |
+| `/help` | Show the interactive command list |
+| `/status` | Safe runtime status: mode, session id, provider, model, memory flag |
+| `/session` | Current session id and mode (use `arthur session <id>` for the full dump) |
+| `/tools` | Tools available in the current mode (name + risk) |
+| `/tool <name>` | Safe manifest inspection of one tool |
+| `/new` | Start a new session on the next message; the previous session is kept |
+| `/exit` | Leave the console (`exit` also works) |
+
+### Tool catalog and inspection
+
+```powershell
+npm run cli -- tools
+npm run cli -- tools --mode personal     # only tools allowed in that mode
+npm run cli -- tools --mode business
+npm run cli -- tools inspect system.status
+npm run cli -- tools inspect system.status --json
+```
+
+`tools` prints the safe catalog (NAME / VERSION / RISK / MODES);
+`tools inspect <name>` prints the manifest only: name, version, description,
+risk, allowed modes, and the input/output schemas. Executors, adapters,
+function source, filesystem paths, secrets, and approval internals are never
+part of the catalog or the inspection output.
+
+### One-shot ask
+
+```powershell
+npm run cli -- ask --mode personal "What system are you running on?"
+npm run cli -- ask --mode personal --verbose "Check the local system status."
+```
+
+`ask` runs exactly one turn through `ConversationService.handleTurn()`, prints
+the final answer, and with `--verbose` prints the same safe tool lifecycle
+plus the session id. There is deliberately no `arthur tool run ...` command:
+the model/conversation path remains the only way to execute a tool.
+
+### Machine-readable mode
+
+```powershell
+npm run cli -- status --json
+npm run cli -- tools --json
+npm run cli -- tools inspect system.status --json
+npm run cli -- ask --mode personal --json "Check the local system status."
+npm run cli -- session <id> --json
+```
+
+With `--json`, stdout contains exactly one valid JSON result, diagnostics and
+errors go to stderr, and there are no banners or ANSI decoration. (`chat`
+never has a JSON mode.)
+
+### Approvals stay explicit
+
+When verbose chat sees a pending approval it shows exactly how to continue:
+
+```text
+[pending approval]
+harness.create_job
+approve with:
+npm run cli -- approve <approval-id>
+```
+
+Approvals are never automatic and cannot be granted from inside chat: the
+signed `arthur approve <approval-id>` / `arthur reject <approval-id>`
+commands remain the only execution path for an approval-required action.
+
+### Console security invariants
+
+```text
+CLI visibility != permission
+CLI command != tool authorization
+Tool catalog != executable handle
+Verbose mode != debug secret dump
+```
+
+No developer flag bypasses mode restrictions, argument validation, risk
+policy, approvals, `ToolExecutionService`, or `ToolOrchestrator`. Verbose
+output never includes raw executor exceptions, stack traces, secrets,
+environment variables, approval tokens or signatures, internal adapter
+objects, or full model provider payloads.
 
 ## Voice (Phase 3)
 
