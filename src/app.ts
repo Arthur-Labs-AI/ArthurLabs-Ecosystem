@@ -18,7 +18,7 @@ import { ContextBuilder } from "./core/conversation/context_builder";
 import { ModelGateway } from "./models/gateway";
 import { HarnessAdapter } from "./tools/contracts";
 import { ModelProvider } from "./models/contracts";
-import { DeepSeekProvider } from "./models/providers/deepseek";
+import { DeepSeekProvider, ProviderLogSink } from "./models/providers/deepseek";
 import { FakeProvider } from "./models/providers/fake";
 import { Logger } from "./observability/logging";
 import { InMemoryMetrics, Metrics } from "./observability/metrics";
@@ -83,17 +83,20 @@ export interface App {
   close(): void;
 }
 
-export function createModelProvider(settings: Settings): ModelProvider {
+export function createModelProvider(settings: Settings, logger?: ProviderLogSink): ModelProvider {
   if (settings.modelProvider === "deepseek") {
-    return new DeepSeekProvider({
-      apiKey: settings.deepseekApiKey,
-      model: settings.modelName,
-      baseUrl: settings.deepseekBaseUrl,
-      timeoutMs: settings.modelTimeoutSeconds * 1000,
-      retryMaxAttempts: settings.retryMaxAttempts,
-      retryBaseDelayMs: settings.retryBaseDelayMs,
-      reasoningProfile: settings.reasoningProfile,
-    });
+    return new DeepSeekProvider(
+      {
+        apiKey: settings.deepseekApiKey,
+        model: settings.modelName,
+        baseUrl: settings.deepseekBaseUrl,
+        timeoutMs: settings.modelTimeoutSeconds * 1000,
+        retryMaxAttempts: settings.retryMaxAttempts,
+        retryBaseDelayMs: settings.retryBaseDelayMs,
+        reasoningProfile: settings.reasoningProfile,
+      },
+      { logger },
+    );
   }
   return new FakeProvider({ modelName: settings.modelName || "fake-model" });
 }
@@ -210,7 +213,7 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
   const sanitizer = new SecretSanitizer(secrets);
   const approvalSigningSecret = deps.approvalSigningSecret ?? randomBytes(32).toString("hex");
 
-  const provider = deps.provider ?? createModelProvider(settings);
+  const provider = deps.provider ?? createModelProvider(settings, logger.child("model-provider"));
   const gateway = new ModelGateway(provider);
   const store = new SessionStore(settings.dbPath, sanitizer);
 

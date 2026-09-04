@@ -50,9 +50,22 @@ export interface DeepSeekProviderConfig {
   reasoningProfile: ReasoningProfile;
 }
 
+/** Minimal structural diagnostics sink (the app Logger satisfies this). */
+export interface ProviderLogSink {
+  info(message: string, fields?: Record<string, unknown>): void;
+  warn(message: string, fields?: Record<string, unknown>): void;
+}
+
 export interface DeepSeekProviderDeps {
   fetchFn?: typeof fetch;
   sleepFn?: (ms: number) => Promise<void>;
+  /**
+   * Optional structured diagnostics sink for the streaming path. Fields
+   * NEVER contain the API key, authorization headers, prompts, or response
+   * bodies - only failure kind, HTTP status, attempt counts, and whether
+   * consumer-visible events had already been emitted.
+   */
+  logger?: ProviderLogSink;
 }
 
 export const DEEPSEEK_DEFAULT_BASE_URL = "https://api.deepseek.com";
@@ -409,6 +422,81 @@ function isAbortError(err: unknown): boolean {
   return err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError");
 }
 
+// ---- Streaming failure diagnostics (TASK-0007 hardening) ----------------
+
+/** Structured failure kinds for the streaming path (never secret-bearing). */
+export type StreamFailureKind =
+  | "auth"
+  | "request_rejected"
+  | "provider_bad_response"
+  | "malformed_sse"
+  | "timeout"
+  | "http_status"
+  | "network_fetch_failure"
+  | "unexpected";
+
+/** SSE data line that is not valid JSON (distinct diagnostic kind). */
+export const MALFORMED_SSE_MESSAGE = "SSE line is not valid JSON";
+
+const MAX_DIAGNOSTIC_MESSAGE_CHARS = 200;
+
+/** HTTP status of classified HTTP errors (attached at classify time). */
+const errorHttpStatus = new WeakMap<object, number>();
+
+function truncateDiagnostic(message: string): string {
+  return message.length > MAX_DIAGNOSTIC_MESSAGE_CHARS
+    ? message.slice(0, MAX_DIAGNOSTIC_MESSAGE_CHARS) + " (truncated)"
+    : message;
+}
+
+export interface StreamFailureDiagnosis {
+  kind: StreamFailureKind;
+  http_status?: number;
+  error_name?: string;
+  error_message?: string;
+}
+
+/**
+ * Map a streaming attempt failure to a safe diagnostic shape. Only error
+ * KIND, HTTP status, and our own static/redacted error messages are exposed;
+ * network and unexpected failures report the error NAME only. Never contains
+ * the API key, authorization headers, prompts, or response bodies.
+ */
+export function classifyStreamFailure(err: unknown, timedOut: boolean): StreamFailureDiagnosis {
+  const nameOf = (e: unknown): string | undefined => (e instanceof Error ? e.name : typeof e);
+  if (err instanceof ProviderAuthError) {
+    return { kind: "auth", error_name: err.name, error_message: truncateDiagnostic(err.message) };
+  }
+  if (err instanceof DeepSeekRequestRejectedError) {
+    const status = errorHttpStatus.get(err);
+    return {
+      kind: "request_rejected",
+      http_status: status,
+      error_name: err.name,
+      error_message: truncateDiagnostic(err.message),
+    };
+  }
+  if (err instanceof ProviderBadResponseError) {
+    return {
+      kind: err.message === MALFORMED_SSE_MESSAGE ? "malformed_sse" : "provider_bad_response",
+      error_name: err.name,
+      error_message: truncateDiagnostic(err.message),
+    };
+  }
+  if (timedOut) return { kind: "timeout", error_name: nameOf(err) };
+  if (err instanceof ProviderUnavailableError) {
+    const status = errorHttpStatus.get(err);
+    return status !== undefined
+      ? { kind: "http_status", http_status: status, error_name: err.name, error_message: truncateDiagnostic(err.message) }
+      : { kind: "network_fetch_failure", error_name: nameOf(err) };
+  }
+  // Every parse/normalize path throws ProviderBadResponseError by design
+  // (fail-closed), so a plain non-abort error here escapes from the fetch
+  // or body-read layer: a network-level failure, not a provider response
+  // problem. ("unexpected" stays reserved for future defensive use.)
+  return { kind: "network_fetch_failure", error_name: nameOf(err) };
+}
+
 const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ---- HTTP error classification (non-2xx responses) ----------------------
@@ -470,13 +558,17 @@ async function readHttpErrorDetail(response: Response, secrets: string[]): Promi
 async function classifyHttpError(response: Response, secrets: string[]): Promise<never> {
   const detail = await readHttpErrorDetail(response, secrets);
   const message = `DeepSeek HTTP ${response.status}${detail !== "" ? `: ${detail}` : ""}`;
+  let err: Error;
   if (response.status === 401 || response.status === 403) {
-    throw new ProviderAuthError(message);
+    err = new ProviderAuthError(message);
+  } else if (isTransientHttpStatus(response.status)) {
+    err = new ProviderUnavailableError(message);
+  } else {
+    err = new DeepSeekRequestRejectedError(message);
   }
-  if (isTransientHttpStatus(response.status)) {
-    throw new ProviderUnavailableError(message);
-  }
-  throw new DeepSeekRequestRejectedError(message);
+  // Attach the status for safe structured diagnostics (never the body).
+  errorHttpStatus.set(err, response.status);
+  throw err;
 }
 
 
@@ -636,11 +728,13 @@ export class DeepSeekProvider implements ModelProvider {
   private readonly config: DeepSeekProviderConfig;
   private readonly fetchFn: typeof fetch;
   private readonly sleepFn: (ms: number) => Promise<void>;
+  private readonly logger: ProviderLogSink | undefined;
 
   constructor(config: DeepSeekProviderConfig, deps: DeepSeekProviderDeps = {}) {
     this.config = config;
     this.fetchFn = deps.fetchFn ?? fetch;
     this.sleepFn = deps.sleepFn ?? defaultSleep;
+    this.logger = deps.logger;
   }
 
   id(): string {
@@ -748,6 +842,11 @@ export class DeepSeekProvider implements ModelProvider {
    * consumer-visible event are retried with a fresh AbortController and a
    * fresh timeout per attempt; failures after partial data are never retried
    * (no duplicated stream content); caller abort never retries.
+   *
+   * Diagnostics (safe, structured): every failed attempt, caller abort,
+   * retry exhaustion, and completion are reported through the optional
+   * logger with failure kind / HTTP status / attempt counts / emitted_any -
+   * never the API key, headers, prompts, or response bodies.
    */
   async *generateStream(
     request: ModelRequest,
@@ -778,13 +877,29 @@ export class DeepSeekProvider implements ModelProvider {
     const attempts = Math.max(0, this.config.retryMaxAttempts) + 1;
     let attempt = 0;
     let lastError: unknown;
+    let lastKind: StreamFailureKind | undefined;
+    const streamStartedAt = Date.now();
 
     while (attempt < attempts) {
-      if (signal?.aborted) return;
+      if (signal?.aborted) {
+        this.logger?.info("deepseek.stream.caller_aborted", {
+          attempt,
+          max_attempts: attempts,
+          emitted_any: false,
+        });
+        return;
+      }
       if (attempt > 0) {
         const delay = backoffDelay(attempt - 1, this.config.retryBaseDelayMs);
         await this.sleepFn(delay);
-        if (signal?.aborted) return;
+        if (signal?.aborted) {
+          this.logger?.info("deepseek.stream.caller_aborted", {
+            attempt,
+            max_attempts: attempts,
+            emitted_any: false,
+          });
+          return;
+        }
       }
       attempt += 1;
 
@@ -831,6 +946,7 @@ export class DeepSeekProvider implements ModelProvider {
         return calls;
       };
 
+      const attemptStartedAt = Date.now();
       try {
         const response = await this.fetchFn(url, {
           method: "POST",
@@ -872,6 +988,11 @@ export class DeepSeekProvider implements ModelProvider {
                   emittedAny = true;
                   yield { type: "done", finish_reason: "stop" };
                 }
+                this.logger?.info("deepseek.stream.completed", {
+                  attempts: attempt,
+                  max_attempts: attempts,
+                  total_ms: Date.now() - streamStartedAt,
+                });
                 return;
               }
               if (data === "") continue;
@@ -879,7 +1000,7 @@ export class DeepSeekProvider implements ModelProvider {
               try {
                 parsed = JSON.parse(data);
               } catch {
-                throw new ProviderBadResponseError("SSE line is not valid JSON");
+                throw new ProviderBadResponseError(MALFORMED_SSE_MESSAGE);
               }
               const events = parseDeepSeekStreamChunk(parsed, toolAccumulators);
               if (events) {
@@ -901,7 +1022,14 @@ export class DeepSeekProvider implements ModelProvider {
                 }
               }
             }
-            if (signal?.aborted) return;
+            if (signal?.aborted) {
+              this.logger?.info("deepseek.stream.caller_aborted", {
+                attempt,
+                max_attempts: attempts,
+                emitted_any: emittedAny,
+              });
+              return;
+            }
           }
         } finally {
           reader.releaseLock();
@@ -912,7 +1040,31 @@ export class DeepSeekProvider implements ModelProvider {
         }
         return;
       } catch (err) {
-        if (signal?.aborted) return;
+        const attemptDurationMs = Date.now() - attemptStartedAt;
+        if (signal?.aborted) {
+          // Caller cancellation: never retried, never surfaced as failure.
+          this.logger?.info("deepseek.stream.caller_aborted", {
+            attempt,
+            max_attempts: attempts,
+            emitted_any: emittedAny,
+            duration_ms: attemptDurationMs,
+          });
+          return;
+        }
+        // The attempt-level timeout fired (this attempt's controller, never
+        // the caller's signal - that case returned above).
+        const timedOut = isAbortError(err) || (controller.signal.aborted && !signal?.aborted);
+        const diagnosis = classifyStreamFailure(err, timedOut);
+        this.logger?.warn("deepseek.stream.attempt_failed", {
+          kind: diagnosis.kind,
+          http_status: diagnosis.http_status ?? null,
+          attempt,
+          max_attempts: attempts,
+          emitted_any: emittedAny,
+          duration_ms: attemptDurationMs,
+          error_name: diagnosis.error_name ?? null,
+          error_message: diagnosis.error_message ?? null,
+        });
         if (
           err instanceof ProviderAuthError ||
           err instanceof ProviderBadResponseError ||
@@ -920,9 +1072,6 @@ export class DeepSeekProvider implements ModelProvider {
         ) {
           throw err;
         }
-        // The attempt-level timeout fired (this attempt's controller, never
-        // the caller's signal - that case returned above).
-        const timedOut = isAbortError(err) || (controller.signal.aborted && !signal?.aborted);
         if (emittedAny) {
           // Never retry after consumer-visible data: a fresh attempt would
           // duplicate already-delivered text/tool-call events.
@@ -936,6 +1085,7 @@ export class DeepSeekProvider implements ModelProvider {
           : err instanceof ProviderUnavailableError
             ? err
             : new ProviderUnavailableError(err instanceof Error ? err.message : "network failure");
+        lastKind = diagnosis.kind;
         // continue to next attempt (transient failure before any data)
       } finally {
         clearTimeout(timer);
@@ -943,6 +1093,14 @@ export class DeepSeekProvider implements ModelProvider {
       }
     }
 
+    // Bounded retry budget exhausted without any consumer-visible event.
+    this.logger?.warn("deepseek.stream.retries_exhausted", {
+      attempts: attempt,
+      max_attempts: attempts,
+      emitted_any: false,
+      last_kind: lastKind ?? null,
+      total_ms: Date.now() - streamStartedAt,
+    });
     throw lastError instanceof Error ? lastError : new ProviderUnavailableError();
   }
 }
