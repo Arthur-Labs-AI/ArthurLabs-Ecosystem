@@ -165,11 +165,13 @@ export class ToolExecutionService {
     }
 
     // Snapshot the structured data in the same single pass that validates it:
-    // fresh plain data, independent of the executor-owned graph.
+    // fresh plain data, independent of the executor-owned graph. An explicit
+    // own data: undefined is invalid (JSON would silently drop it), while an
+    // absent data property remains valid for tools without output_schema.
     let data: unknown;
     let dataPresent = false;
     const dataDescriptor = descriptors.data;
-    if (dataDescriptor && dataDescriptor.value !== undefined) {
+    if (dataDescriptor) {
       try {
         data = snapshotJsonSafe(dataDescriptor.value, "ToolResult.data");
         dataPresent = true;
