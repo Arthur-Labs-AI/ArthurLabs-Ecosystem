@@ -245,15 +245,19 @@ test("X: Personal/Business mode restrictions remain unchanged", async () => {
   const w = buildWorld();
   try {
     // Mode mapping of the PHASE 1 BUILTINS is unchanged; broken.output is a
-    // deterministic test tool registered by this suite.
+    // deterministic test tool registered by this suite. TASK-0011 added the
+    // real machine-local system.status builtin (read, both modes).
     const builtinNames = (mode: ArthurMode) =>
       w.registry
         .listAllowedForMode(mode)
         .map((d) => d.name)
         .filter((name) => name.startsWith("system.") || name.startsWith("harness."))
         .sort();
-    assert.deepEqual(builtinNames(ArthurMode.PERSONAL), ["harness.status", "system.echo"]);
-    assert.deepEqual(builtinNames(ArthurMode.BUSINESS), ["harness.create_job", "harness.status", "system.echo"]);
+    assert.deepEqual(builtinNames(ArthurMode.PERSONAL), ["harness.status", "system.echo", "system.status"]);
+    assert.deepEqual(
+      builtinNames(ArthurMode.BUSINESS),
+      ["harness.create_job", "harness.status", "system.echo", "system.status"],
+    );
 
     await w.execution.execute("harness.status", {}, w.ctx); // read in personal: fine
     await assert.rejects(

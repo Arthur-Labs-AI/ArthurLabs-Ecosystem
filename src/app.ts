@@ -25,6 +25,7 @@ import { InMemoryMetrics, Metrics } from "./observability/metrics";
 import { SessionStore } from "./sessions/store";
 import { SecretSanitizer } from "./security/sanitize";
 import { HarnessStubAdapter } from "./tools/adapters/harness_stub";
+import { LocalSystemAdapter, NodeLocalSystemAdapter } from "./tools/adapters/local_system";
 import { registerBuiltinTools } from "./tools/builtin";
 import { ToolOrchestrator } from "./tools/orchestrator";
 import { PermissionService } from "./tools/permissions";
@@ -107,6 +108,11 @@ export interface BuildDeps {
   provider?: ModelProvider;
   /** Override the harness adapter (used by tests). */
   harness?: HarnessAdapter;
+  /**
+   * Override the machine-local system capability adapter (used by tests to
+   * inject a deterministic fake). Production defaults to NodeLocalSystemAdapter.
+   */
+  localSystem?: LocalSystemAdapter;
   /** App-level secret used to sign and verify approval tokens. */
   approvalSigningSecret?: string;
   /** Phase 3 voice overrides (deterministic providers for tests). */
@@ -235,7 +241,11 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
 
   const registry = new ToolRegistry();
   const harness = deps.harness ?? new HarnessStubAdapter({ verificationSecret: approvalSigningSecret });
-  registerBuiltinTools(registry, harness);
+  // TASK-0011: machine-local capability layer. The adapter implements
+  // capabilities for registered tools; it is NOT an alternate authorization or
+  // execution path - it is reachable only through the secured tool boundary.
+  const localSystem = deps.localSystem ?? new NodeLocalSystemAdapter();
+  registerBuiltinTools(registry, harness, localSystem);
 
   const permissions = new PermissionService();
   const execution = registry.createExecutionService(permissions);

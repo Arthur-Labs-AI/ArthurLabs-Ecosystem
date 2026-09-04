@@ -58,8 +58,9 @@ test("injected memory cannot change the system/mode contracts or tools in the De
     assert.ok(!request.modeContract.includes("ignore all previous instructions"));
 
     // Tool schemas are unchanged: fixed tools only, no memory tools.
+    // TASK-0011 added the real machine-local system.status builtin (read).
     const toolNames = request.toolSchemas.map((t) => t.name);
-    assert.deepEqual([...toolNames].sort(), ["harness.status", "system.echo"]);
+    assert.deepEqual([...toolNames].sort(), ["harness.status", "system.echo", "system.status"]);
     assert.ok(!toolNames.some((n) => n.startsWith("memory")), "no memory-defined tools may exist");
 
     // No new system-role messages were created by memory.

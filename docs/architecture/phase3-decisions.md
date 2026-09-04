@@ -378,6 +378,51 @@ argument. Regression coverage lives in tests/voice/stt_wrapper.test.ts
 (profiles, prompt contract, JSON echo, honest confidence, cleanup, shell
 injection), tests/voice/voice_config.test.ts, and tests/voice/local_adapters.test.ts.
 
+### 16. Phase 3B: Local Tool Host + First Real Local Tool (TASK-0011)
+
+Invariant:
+
+> The local tool host provides implementations of capabilities; it is not an
+> alternate authorization or execution path.
+
+The first production machine-local capability layer lives in
+`src/tools/adapters/local_system.ts`: a `LocalSystemAdapter` capability
+contract with a `NodeLocalSystemAdapter` production implementation built on
+Node standard APIs only (`node:os`, `process.platform/arch/version`). No
+`child_process`, no shell, no network - TASK-0011 introduces no generic
+command-execution primitive.
+
+The first real local tool is `system.status` (version 1.0.0, risk `read`,
+PERSONAL + BUSINESS): it reports only non-sensitive host information
+(platform, arch, node_version, uptime_seconds, cpu_count, total_memory_bytes,
+free_memory_bytes) under a strict `output_schema`
+(`additionalProperties: false`, uptime >= 0, cpu_count >= 1, memory >= 0).
+It never returns usernames, hostname, home/project paths, environment
+variables, network addresses, or secrets.
+
+Authorization and execution direction is one-way and unchanged:
+
+    Model proposal
+    -> ARTHUR secured tool boundary
+       (ToolRegistry -> ToolExecutionService -> permission policy)
+    -> local capability adapter (LocalSystemAdapter)
+    -> real machine state
+    -> validated ToolResult (snapshot + output_schema)
+    -> ToolOrchestrator
+    -> model follow-up
+
+NEVER:
+
+    Model -> local adapter directly
+
+Composition root: `BuildDeps.localSystem` lets tests inject a deterministic
+fake adapter; production defaults to `NodeLocalSystemAdapter`. The adapter is
+wired into the existing registry during `buildApp()` and stays internal - the
+public `App` exposes no registry, executor, or adapter handle. Model-facing
+availability is the generic path only: `ToolDefinition -> registry ->
+toToolSchema() -> ModelRequest.toolSchemas` - no provider-specific handling;
+DeepSeek sees `system.status` exactly like every other registered tool.
+
 ## Deviations from spec (all documented)
 
 | Item | Spec | Implementation |
