@@ -134,14 +134,30 @@ export class FakeAudioPlayback implements AudioPlayback {
  *
  * Spawns a configured local playback command (e.g. ffplay/aplay reading raw
  * mono s16le PCM from stdin) and streams AudioChunk PCM into its stdin with
- * backpressure, preserving chunk order. stop() kills the child immediately
- * and discards queued audio so barge-in stays under the 250 ms target; once
+ * backpressure, preserving chunk order. Explicit cancellation (stop():
+ * barge-in, user interrupt, disable) kills the child immediately and
+ * discards queued audio so barge-in stays under the 250 ms target; normal
+ * completion instead waits on a dedicated EOF-drain deadline so a healthy
+ * player draining its buffer is never misclassified as a failure. Once
  * stopped, stale-generation audio can never resume (the consumption loop is
  * latched and the child is reaped).
  */
 export interface LocalAudioPlaybackOptions {
-  /** Grace window for terminating the child (default 250 ms). */
+  /**
+   * Grace window for terminating the child on EXPLICIT cancellation
+   * (stop()/barge-in). Interruption latency target: <= 250 ms (default).
+   */
   killGraceMs?: number;
+  /**
+   * Grace for NORMAL completion, measured after all PCM was written and
+   * stdin was closed (default 2000 ms). A healthy player may legitimately
+   * take longer than the kill grace to exit on EOF because it still has to
+   * drain buffered audio. This window is additionally extended by the
+   * estimated remaining buffered audio (from AudioChunk duration metadata),
+   * capped by maxPlaybackMs. Distinct from killGraceMs on purpose: barge-in
+   * must be fast, normal EOF must not be misclassified as a failure.
+   */
+  eofDrainGraceMs?: number;
   /** Hard cap on a single play() session (default 5 minutes). */
   maxPlaybackMs?: number;
   /** Secret-safe logger (app Logger redacts known secrets). */
@@ -158,6 +174,7 @@ export class LocalAudioPlayback implements AudioPlayback {
   private stopped = false;
   private child: ChildProcess | undefined;
   private readonly killGraceMs: number;
+  private readonly eofDrainGraceMs: number;
   private readonly maxPlaybackMs: number;
   private readonly logger: LogSink | undefined;
   private readonly sanitizer: TextSanitizer | undefined;
@@ -169,6 +186,7 @@ export class LocalAudioPlayback implements AudioPlayback {
     opts: LocalAudioPlaybackOptions = {},
   ) {
     this.killGraceMs = opts.killGraceMs ?? 250;
+    this.eofDrainGraceMs = opts.eofDrainGraceMs ?? 2_000;
     this.maxPlaybackMs = opts.maxPlaybackMs ?? 300_000;
     this.logger = opts.logger;
     this.sanitizer = opts.sanitizer;
@@ -216,13 +234,18 @@ export class LocalAudioPlayback implements AudioPlayback {
     }
     try {
       this.events.onStarted?.();
-      const deadline = Date.now() + this.maxPlaybackMs;
+      const startedAtMs = Date.now();
+      // Estimated audio still buffered inside the player at stdin EOF,
+      // derived from the emitted AudioChunk duration metadata.
+      let writtenAudioMs = 0;
+      const deadline = startedAtMs + this.maxPlaybackMs;
       for await (const chunk of chunks) {
         if (this.stopped || this.child !== child) break;
         if (Date.now() > deadline) {
           killChild(child);
           throw new Error("playback exceeded max duration");
         }
+        if (chunk.duration_ms > 0) writtenAudioMs += chunk.duration_ms;
         if (child.stdin && !child.stdin.write(chunk.data)) {
           await drainOrClose(child.stdin, child);
           if (this.stopped || this.child !== child) break;
@@ -230,10 +253,20 @@ export class LocalAudioPlayback implements AudioPlayback {
       }
       if (!this.stopped && this.child === child) {
         child.stdin?.end();
-        let code = await waitForClose(child, this.killGraceMs);
+        // NORMAL completion is not an interruption. The player still has to
+        // drain its internal buffer after stdin EOF, which can legitimately
+        // exceed the 250 ms kill grace (observed with ffplay on Windows:
+        // false "exited abnormally code:null" failures). Wait on a dedicated
+        // normal-drain deadline: eofDrainGraceMs plus the estimated buffered
+        // audio, capped by maxPlaybackMs - never unbounded.
+        const elapsedMs = Math.max(0, Date.now() - startedAtMs);
+        const remainingAudioMs = Math.max(0, writtenAudioMs - elapsedMs);
+        const drainTimeoutMs = this.eofDrainGraceMs + Math.min(remainingAudioMs, this.maxPlaybackMs);
+        let code = await waitForClose(child, drainTimeoutMs);
         if (this.stopped || this.child !== child) return;
         if (code === null) {
-          // The player did not exit on EOF; reap it and treat as failure.
+          // The player did not exit within the normal-drain deadline: reap it
+          // (bounded by the kill grace) and only then classify as failure.
           await terminateChild(child, this.killGraceMs).catch(() => undefined);
           code = child.exitCode;
         }

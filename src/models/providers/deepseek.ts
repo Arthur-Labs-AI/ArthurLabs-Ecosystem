@@ -743,6 +743,11 @@ export class DeepSeekProvider implements ModelProvider {
    * while tool intent is pending, and complete calls with parsed
    * arguments are emitted at stream end (consumers keep the last event
    * per call id).
+   *
+   * Retries (TASK-0007): transient failures and timeouts BEFORE any
+   * consumer-visible event are retried with a fresh AbortController and a
+   * fresh timeout per attempt; failures after partial data are never retried
+   * (no duplicated stream content); caller abort never retries.
    */
   async *generateStream(
     request: ModelRequest,
@@ -762,151 +767,182 @@ export class DeepSeekProvider implements ModelProvider {
     const base = this.config.baseUrl.replace(/\/+$/, "");
     const url = `${base}/chat/completions`;
 
-    const controller = new AbortController();
-    const onAbort = (): void => {
-      try { controller.abort(signal?.reason); } catch { /* noop */ }
-    };
-    signal?.addEventListener("abort", onAbort, { once: true });
-    const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
+    // Retry discipline (TASK-0007 hardening): every network attempt owns a
+    // FRESH AbortController and a FRESH timeout budget, both cleaned up when
+    // the attempt ends - no controller/timeout is ever shared across retry
+    // attempts. A timeout BEFORE any consumer-visible stream data is a
+    // transient failure and is retried within the bounded attempt budget;
+    // once any event has been yielded, the stream never retries (a fresh
+    // attempt would replay already-delivered text/tool-call content). Caller
+    // cancellation aborts the current attempt and never retries.
+    const attempts = Math.max(0, this.config.retryMaxAttempts) + 1;
+    let attempt = 0;
+    let lastError: unknown;
 
-    const toolAccumulators = new Map<number, ToolCallAccumulator>();
-    let doneYielded = false;
-    const finalizeToolCalls = (): ProposedToolCall[] => {
-      const calls: ProposedToolCall[] = [];
-      for (const acc of toolAccumulators.values()) {
-        let args: Record<string, unknown> = {};
-        if (acc.argumentsJson.trim() !== "") {
-          try {
-            const parsed: unknown = JSON.parse(acc.argumentsJson);
-            if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-              throw new ProviderBadResponseError("tool call arguments are not a JSON object");
-            }
-            args = parsed as Record<string, unknown>;
-          } catch (err) {
-            if (err instanceof ProviderBadResponseError) throw err;
-            throw new ProviderBadResponseError("tool call arguments are not valid JSON");
-          }
-        }
-        if (acc.name.trim() === "") {
-          throw new ProviderBadResponseError("tool call is missing a function name");
-        }
-        calls.push({
-          id: acc.id !== "" ? acc.id : randomUUID(),
-          // Resolution only after the function name is complete (accumulated
-          // across all SSE fragments). Unknown/never-exposed names throw and
-          // fail the stream closed.
-          name: resolveInboundToolName(acc.name, aliasMap),
-          arguments: args,
-        });
+    while (attempt < attempts) {
+      if (signal?.aborted) return;
+      if (attempt > 0) {
+        const delay = backoffDelay(attempt - 1, this.config.retryBaseDelayMs);
+        await this.sleepFn(delay);
+        if (signal?.aborted) return;
       }
-      return calls;
-    };
+      attempt += 1;
 
-    try {
-      let attempt = 0;
-      const attempts = Math.max(0, this.config.retryMaxAttempts) + 1;
-      let lastError: unknown;
-      for (;;) {
-        if (attempt > 0) {
-          if (signal?.aborted) return;
-          const delay = backoffDelay(attempt - 1, this.config.retryBaseDelayMs);
-          await this.sleepFn(delay);
-        }
-        if (attempt >= attempts) {
-          throw lastError instanceof Error ? lastError : new ProviderUnavailableError();
-        }
-        attempt += 1;
-        try {
-          const response = await this.fetchFn(url, {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              authorization: `Bearer ${this.config.apiKey}`,
-            },
-            body: redactText(JSON.stringify(payload), [this.config.apiKey]),
-            signal: controller.signal,
-          });
-          // Non-2xx responses are parsed and classified BEFORE any chunk
-          // validation: an HTTP error is never reported as a malformed response.
-          if (!response.ok) {
-            await classifyHttpError(response, [this.config.apiKey]);
+      const controller = new AbortController();
+      const onAbort = (): void => {
+        try { controller.abort(signal?.reason); } catch { /* noop */ }
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+      const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
+
+      // Fresh per attempt: fragments accumulated by a failed attempt must
+      // never leak into a retry's tool-call state.
+      const toolAccumulators = new Map<number, ToolCallAccumulator>();
+      let doneYielded = false;
+      let emittedAny = false;
+      const finalizeToolCalls = (): ProposedToolCall[] => {
+        const calls: ProposedToolCall[] = [];
+        for (const acc of toolAccumulators.values()) {
+          let args: Record<string, unknown> = {};
+          if (acc.argumentsJson.trim() !== "") {
+            try {
+              const parsed: unknown = JSON.parse(acc.argumentsJson);
+              if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+                throw new ProviderBadResponseError("tool call arguments are not a JSON object");
+              }
+              args = parsed as Record<string, unknown>;
+            } catch (err) {
+              if (err instanceof ProviderBadResponseError) throw err;
+              throw new ProviderBadResponseError("tool call arguments are not valid JSON");
+            }
           }
-          const body = response.body;
-          if (!body) throw new ProviderBadResponseError("streaming response has no body");
-          const reader = body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = "";
-          try {
-            for (;;) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              buffer += decoder.decode(value, { stream: true });
-              let newlineIndex: number;
-              while ((newlineIndex = buffer.indexOf("\n")) >= 0) {
-                const line = buffer.slice(0, newlineIndex).replace(/\r$/, "");
-                buffer = buffer.slice(newlineIndex + 1);
-                if (!line.startsWith("data:")) continue;
-                const data = line.slice(5).trim();
-                if (data === "[DONE]") {
-                  if (!doneYielded) {
-                    doneYielded = true;
-                    for (const call of finalizeToolCalls()) yield { type: "tool_call", call };
-                    yield { type: "done", finish_reason: "stop" };
+          if (acc.name.trim() === "") {
+            throw new ProviderBadResponseError("tool call is missing a function name");
+          }
+          calls.push({
+            id: acc.id !== "" ? acc.id : randomUUID(),
+            // Resolution only after the function name is complete (accumulated
+            // across all SSE fragments). Unknown/never-exposed names throw and
+            // fail the stream closed.
+            name: resolveInboundToolName(acc.name, aliasMap),
+            arguments: args,
+          });
+        }
+        return calls;
+      };
+
+      try {
+        const response = await this.fetchFn(url, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${this.config.apiKey}`,
+          },
+          body: redactText(JSON.stringify(payload), [this.config.apiKey]),
+          signal: controller.signal,
+        });
+        // Non-2xx responses are parsed and classified BEFORE any chunk
+        // validation: an HTTP error is never reported as a malformed response.
+        if (!response.ok) {
+          await classifyHttpError(response, [this.config.apiKey]);
+        }
+        const body = response.body;
+        if (!body) throw new ProviderBadResponseError("streaming response has no body");
+        const reader = body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        try {
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            let newlineIndex: number;
+            while ((newlineIndex = buffer.indexOf("\n")) >= 0) {
+              const line = buffer.slice(0, newlineIndex).replace(/\r$/, "");
+              buffer = buffer.slice(newlineIndex + 1);
+              if (!line.startsWith("data:")) continue;
+              const data = line.slice(5).trim();
+              if (data === "[DONE]") {
+                if (!doneYielded) {
+                  doneYielded = true;
+                  for (const call of finalizeToolCalls()) {
+                    emittedAny = true;
+                    yield { type: "tool_call", call };
                   }
-                  return;
+                  emittedAny = true;
+                  yield { type: "done", finish_reason: "stop" };
                 }
-                if (data === "") continue;
-                let parsed: unknown;
-                try {
-                  parsed = JSON.parse(data);
-                } catch {
-                  throw new ProviderBadResponseError("SSE line is not valid JSON");
-                }
-                const events = parseDeepSeekStreamChunk(parsed, toolAccumulators);
-                if (events) {
-                  for (const event of events) {
-                    if (event.type === "done") {
-                      if (!doneYielded) {
-                        doneYielded = true;
-                        for (const call of finalizeToolCalls()) yield { type: "tool_call", call };
-                        yield event;
+                return;
+              }
+              if (data === "") continue;
+              let parsed: unknown;
+              try {
+                parsed = JSON.parse(data);
+              } catch {
+                throw new ProviderBadResponseError("SSE line is not valid JSON");
+              }
+              const events = parseDeepSeekStreamChunk(parsed, toolAccumulators);
+              if (events) {
+                for (const event of events) {
+                  if (event.type === "done") {
+                    if (!doneYielded) {
+                      doneYielded = true;
+                      for (const call of finalizeToolCalls()) {
+                        emittedAny = true;
+                        yield { type: "tool_call", call };
                       }
-                    } else {
+                      emittedAny = true;
                       yield event;
                     }
+                  } else {
+                    emittedAny = true;
+                    yield event;
                   }
                 }
               }
-              if (signal?.aborted) return;
             }
-          } finally {
-            reader.releaseLock();
-          }
-          if (!doneYielded) {
             if (signal?.aborted) return;
-            throw new ProviderBadResponseError("stream ended without [DONE]");
           }
-          return;
-        } catch (err) {
-          if (signal?.aborted) return;
-          if (
-            err instanceof ProviderAuthError ||
-            err instanceof ProviderBadResponseError ||
-            err instanceof DeepSeekRequestRejectedError
-          ) {
-            throw err;
-          }
-          if (isAbortError(err)) throw new ProviderTimeoutError();
-          lastError =
-            err instanceof ProviderUnavailableError
-              ? err
-              : new ProviderUnavailableError(err instanceof Error ? err.message : "network failure");
-          // continue to next attempt (transient failure before any data)
+        } finally {
+          reader.releaseLock();
         }
+        if (!doneYielded) {
+          if (signal?.aborted) return;
+          throw new ProviderBadResponseError("stream ended without [DONE]");
+        }
+        return;
+      } catch (err) {
+        if (signal?.aborted) return;
+        if (
+          err instanceof ProviderAuthError ||
+          err instanceof ProviderBadResponseError ||
+          err instanceof DeepSeekRequestRejectedError
+        ) {
+          throw err;
+        }
+        // The attempt-level timeout fired (this attempt's controller, never
+        // the caller's signal - that case returned above).
+        const timedOut = isAbortError(err) || (controller.signal.aborted && !signal?.aborted);
+        if (emittedAny) {
+          // Never retry after consumer-visible data: a fresh attempt would
+          // duplicate already-delivered text/tool-call events.
+          if (timedOut) throw new ProviderTimeoutError();
+          throw err instanceof ProviderUnavailableError
+            ? err
+            : new ProviderUnavailableError(err instanceof Error ? err.message : "network failure");
+        }
+        lastError = timedOut
+          ? new ProviderTimeoutError()
+          : err instanceof ProviderUnavailableError
+            ? err
+            : new ProviderUnavailableError(err instanceof Error ? err.message : "network failure");
+        // continue to next attempt (transient failure before any data)
+      } finally {
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", onAbort);
       }
-    } finally {
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", onAbort);
     }
+
+    throw lastError instanceof Error ? lastError : new ProviderUnavailableError();
   }
 }

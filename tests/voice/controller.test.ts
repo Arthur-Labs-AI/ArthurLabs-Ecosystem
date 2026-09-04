@@ -40,11 +40,14 @@ async function buildHarness(opts: {
   mode?: string;
   streamResponder?: (request: ModelRequest, signal?: AbortSignal) => AsyncIterable<ModelStreamEvent>;
   noSpeechTimeoutMs?: number;
+  maxUtteranceMs?: number;
+  /** FakeVadProvider realisticTransitions mode (speech_started once per episode). */
+  vadRealistic?: boolean;
 } = {}): Promise<Harness> {
   const capture = new FakeAudioCapture();
   const playback = new FakeAudioPlayback(undefined, { delayPerChunkMs: 25 });
   const wake = new FakeWakeWordProvider();
-  const vad = new FakeVadProvider();
+  const vad = new FakeVadProvider(undefined, opts.vadRealistic ? { realisticTransitions: true } : undefined);
   const stt = new FakeSttProvider();
   const tts = new FakeTtsProvider();
   const app = buildTestApp(
@@ -55,6 +58,7 @@ async function buildHarness(opts: {
         wakeWord: "arthur",
         ttsMaxQueueChunks: 8,
         noSpeechTimeoutMs: opts.noSpeechTimeoutMs ?? 5000,
+        maxUtteranceMs: opts.maxUtteranceMs ?? 30000,
       },
     },
     {
@@ -82,10 +86,10 @@ async function buildHarness(opts: {
   return { app, capture, playback, wake, vad, stt, tts, events, sessionId: first.session_id };
 }
 
-async function waitFor(predicate: () => boolean, timeoutMs = 4000): Promise<void> {
+async function waitFor(predicate: () => boolean, timeoutMs = 4000, what = "condition"): Promise<void> {
   const start = Date.now();
   while (!predicate()) {
-    if (Date.now() - start > timeoutMs) throw new Error("timed out waiting for condition");
+    if (Date.now() - start > timeoutMs) throw new Error("timed out waiting for " + what);
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
 }
@@ -199,9 +203,10 @@ test("barge-in interrupts speech, cancels the model stream, and persists an inte
   await waitFor(() => h.app.voice.state === VoiceState.SPEAKING);
   assert.equal(h.playback.stopRequested, false);
   // User talks over ARTHUR while playback is still active: sustained
-  // speech_started runs (>= 3) while SPEAKING trigger the barge-in.
-  h.vad.setScript(["silence", "speech", "speech", "speech", "speech", "speech"]);
-  feedUtterance(h, Date.now(), 6);
+  // high-probability speech (>= bargeInMinSpeechMs = 150 ms = 8 frames at
+  // 20 ms) must trigger the barge-in.
+  h.vad.setScript(["silence", "speech", "speech", "speech", "speech", "speech", "speech", "speech", "speech", "speech"]);
+  feedUtterance(h, Date.now(), 10);
   await waitFor(() => h.app.voice.state === VoiceState.LISTENING || h.app.voice.state === VoiceState.CAPTURING);
   assert.ok(
     h.events.some((e) => e.type === "voice.error" && e.code === VoiceErrorCode.VOICE_CANCELLED),
@@ -366,5 +371,274 @@ test("interrupt command cancels speech and returns to idle", async () => {
   await h.app.voice.interrupt("user_stop");
   assert.equal(h.app.voice.state, VoiceState.IDLE);
   assert.ok(h.playback.stopRequested, "playback must stop on interrupt");
+  await h.app.close();
+});
+
+// ---------------------------------------------------------------------------
+// TASK-0007 BUG 1: PTT owns utterance finalization
+// ---------------------------------------------------------------------------
+
+test("PTT utterance is not finalized by temporary VAD silence while the button is held", async () => {
+  const h = await buildHarness();
+  await h.app.voice.disable();
+  await h.app.voice.enable(h.sessionId);
+  h.stt.setDefaultScript({ final: "count from one to one hundred slowly" });
+  // Speech, a VAD end-of-speech episode, more silence, speech again - the
+  // button is never released, so nothing may finalize until pttStop.
+  h.vad.setScript(["speech", "speech", "end", "end", "end", "speech", "speech"]);
+  await h.app.voice.pttStart();
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  feedUtterance(h, Date.now(), 3);
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  h.capture.feedFrame(silenceFrame(20, Date.now() + 100));
+  h.capture.feedFrame(silenceFrame(21, Date.now() + 120));
+  h.capture.feedFrame(silenceFrame(22, Date.now() + 140));
+  assert.equal(
+    h.app.voice.state,
+    VoiceState.CAPTURING,
+    "temporary VAD silence must not finalize an active PTT utterance",
+  );
+  assert.ok(
+    !h.events.some((e) => e.type === "voice.state" && e.reason === "vad_end"),
+    "no vad_end finalization may occur while PTT is active",
+  );
+  h.capture.feedFrame(speechFrame(30, Date.now() + 160));
+  h.capture.feedFrame(speechFrame(31, Date.now() + 180));
+  await h.app.voice.pttStop();
+  assert.equal(h.app.voice.state, VoiceState.TRANSCRIBING_FINAL);
+  await waitFor(() => h.app.voice.state === VoiceState.IDLE, 4000);
+  assert.ok(h.events.some((e) => e.type === "assistant.turn.completed"), "the full utterance must complete as one turn");
+  await h.app.close();
+});
+
+test("PTT max-utterance safety timeout still finalizes a held utterance", async () => {
+  const h = await buildHarness({ maxUtteranceMs: 1000 });
+  await h.app.voice.disable();
+  await h.app.voice.enable(h.sessionId);
+  h.stt.setDefaultScript({ final: "held too long" });
+  h.vad.setScript(["speech"]);
+  await h.app.voice.pttStart();
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  feedUtterance(h, Date.now(), 2);
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  // Keep the button held (no pttStop): only the safety timeout may finalize.
+  await waitFor(
+    () => h.events.some((e) => e.type === "voice.state" && e.reason === "max_utterance"),
+    4000,
+    "max-utterance safety timeout",
+  );
+  await waitFor(() => h.app.voice.state === VoiceState.IDLE, 4000);
+  await h.app.close();
+});
+
+test("pttStop with no speech returns to idle without creating a turn", async () => {
+  const h = await buildHarness();
+  await h.app.voice.disable();
+  await h.app.voice.enable(h.sessionId);
+  h.vad.setScript(["silence"]);
+  await h.app.voice.pttStart();
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  h.capture.feedFrame(silenceFrame(1, Date.now()));
+  h.capture.feedFrame(silenceFrame(2, Date.now() + 20));
+  await h.app.voice.pttStop();
+  assert.equal(h.app.voice.state, VoiceState.IDLE);
+  assert.ok(!h.events.some((e) => e.type === "assistant.turn.completed"));
+  await h.app.close();
+});
+
+// ---------------------------------------------------------------------------
+// TASK-0007 BUG 2: pre-roll is drained into the utterance STT stream
+// ---------------------------------------------------------------------------
+
+test("pre-roll captured before speech_started reaches STT in order without duplication", async () => {
+  const h = await buildHarness();
+  await h.app.voice.disable();
+  await h.app.voice.enable(h.sessionId);
+  h.stt.recordFrames = true;
+  h.stt.setDefaultScript({ final: "count from one to one hundred slowly" });
+  // Ten silent frames, then speech: the speech_started boundary must land on
+  // the 11th fed frame.
+  h.vad.setScript(["silence", "silence", "silence", "silence", "silence", "silence", "silence", "silence", "silence", "silence", "speech", "speech", "end"]);
+  await h.app.voice.pttStart();
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  // Ten frames of audio BEFORE the speech_started frame: exactly the first
+  // words the old LISTENING path lost (pre-roll was never drained).
+  for (let i = 0; i < 10; i++) {
+    h.capture.feedFrame(silenceFrame(i, Date.now() + i * 20));
+  }
+  assert.equal(h.app.voice.state, VoiceState.LISTENING);
+  h.capture.feedFrame(speechFrame(10, Date.now() + 200));
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  await waitFor(() => h.stt.receivedFrames.length >= 11, 2000, "pre-roll frames to reach STT");
+  const received = h.stt.receivedFrames.map((f) => f.sequence);
+  assert.equal(received.length, 11, "exactly the 10 pre-roll frames plus the current frame");
+  assert.deepEqual(
+    received,
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "pre-roll must precede the current frame and no frame may be duplicated",
+  );
+  await h.app.voice.pttStop();
+  await h.app.close();
+});
+
+test("pre-roll injection stays within the bounded ring buffer window", async () => {
+  const h = await buildHarness();
+  await h.app.voice.disable();
+  await h.app.voice.enable(h.sessionId);
+  h.stt.recordFrames = true;
+  h.stt.setDefaultScript({ final: "bounded pre-roll" });
+  h.vad.setScript([...Array(80).fill("silence"), "speech", "end"]);
+  await h.app.voice.pttStart();
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  // 80 frames (~1.6 s) far exceed the ~700 ms pre-roll window: eviction must
+  // keep the injected window bounded.
+  for (let i = 0; i < 80; i++) {
+    h.capture.feedFrame(silenceFrame(i, Date.now() + i * 20));
+  }
+  h.capture.feedFrame(speechFrame(80, Date.now() + 1600));
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  await waitFor(() => h.stt.receivedFrames.length >= 1, 2000, "frames to reach STT");
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const count = h.stt.receivedFrames.length;
+  const maxWindowFrames = Math.ceil(700 / 20) + 1 + 2;
+  assert.ok(count <= maxWindowFrames, `injected pre-roll must stay bounded (got ${count}, max ${maxWindowFrames})`);
+  await h.app.voice.pttStop();
+  await h.app.close();
+});
+
+test("pre-roll is cleared after ownership transfers so stale audio never repeats", async () => {
+  const h = await buildHarness();
+  await h.app.voice.disable();
+  await h.app.voice.enable(h.sessionId);
+  h.stt.recordFrames = true;
+  h.stt.setDefaultScript({ final: "two utterances" });
+  h.vad.setScript(["silence", "speech", "end"]);
+  // Utterance 1.
+  await h.app.voice.pttStart();
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  for (let i = 0; i < 3; i++) h.capture.feedFrame(silenceFrame(i, Date.now() + i * 20));
+  h.capture.feedFrame(speechFrame(3, Date.now() + 60));
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  await h.app.voice.pttStop();
+  await waitFor(() => h.app.voice.state === VoiceState.IDLE, 4000);
+  h.stt.clearReceivedFrames();
+  // Utterance 2: only frames from this utterance may reach STT.
+  h.vad.setScript(["silence", "speech", "end"]);
+  await h.app.voice.pttStart();
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  h.capture.feedFrame(silenceFrame(100, Date.now() + 200));
+  h.capture.feedFrame(silenceFrame(101, Date.now() + 220));
+  h.capture.feedFrame(speechFrame(102, Date.now() + 240));
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  await waitFor(() => h.stt.receivedFrames.length >= 3, 2000, "second utterance frames to reach STT");
+  const sequences = h.stt.receivedFrames.map((f) => f.sequence);
+  assert.equal(sequences[0], 100, "second utterance must start at its own pre-roll, no stale frames");
+  assert.ok(sequences.every((s) => s >= 100), `no stale pre-utterance frames may repeat (got ${sequences.join(",")})`);
+  await h.app.voice.pttStop();
+  await h.app.close();
+});
+
+// ---------------------------------------------------------------------------
+// TASK-0007 BUG 4: barge-in requires sustained high-probability speech
+// ---------------------------------------------------------------------------
+
+test("a short transient during playback does not barge in", async () => {
+  const h = await buildHarness();
+  h.stt.setDefaultScript({ final: "tell me a story" });
+  h.vad.setScript(["silence", "speech", "speech", "end"]);
+  h.wake.triggerWake(Date.now());
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  feedUtterance(h, Date.now() + 40, 2);
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  h.capture.feedFrame(silenceFrame(10, Date.now() + 80));
+  h.capture.feedFrame(silenceFrame(10, Date.now() + 100));
+  await waitFor(() => h.app.voice.state === VoiceState.SPEAKING);
+  // 3 speech frames (~60 ms) then silence: far below the 150 ms sustained bar.
+  h.vad.setScript(["speech", "speech", "speech", "silence", "silence", "silence", "silence"]);
+  feedUtterance(h, Date.now(), 7);
+  assert.equal(h.app.voice.state, VoiceState.SPEAKING, "a short transient must not cancel playback");
+  assert.ok(
+    !h.events.some((e) => e.type === "voice.error" && e.code === VoiceErrorCode.VOICE_CANCELLED),
+  );
+  await waitFor(() => h.app.voice.state === VoiceState.IDLE, 4000);
+  await h.app.close();
+});
+
+test("sustained speech barges in even without repeated speech_started transitions", async () => {
+  let releaseStream!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    releaseStream = resolve;
+  });
+  const h = await buildHarness({
+    vadRealistic: true,
+    streamResponder: (async function* (_req: ModelRequest, signal?: AbortSignal) {
+      yield { type: "text_delta", text: "A long answer that will be interrupted. " };
+      await Promise.race([
+        gate,
+        new Promise<void>((resolve) => {
+          signal?.addEventListener("abort", () => resolve(), { once: true });
+        }),
+      ]);
+      if (signal?.aborted) return;
+      yield { type: "done", finish_reason: "stop" };
+    }) as (request: ModelRequest, signal?: AbortSignal) => AsyncIterable<ModelStreamEvent>,
+  });
+  h.stt.setDefaultScript({ final: "speak about the weather" });
+  h.vad.setScript(["silence", "speech", "speech", "end"]);
+  h.wake.triggerWake(Date.now());
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  feedUtterance(h, Date.now() + 40, 3);
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  h.capture.feedFrame(silenceFrame(10, Date.now() + 80));
+  h.capture.feedFrame(silenceFrame(10, Date.now() + 100));
+  await waitFor(() => h.app.voice.state === VoiceState.SPEAKING);
+  const deltasBefore = h.events.filter((e) => e.type === "assistant.text.delta").length;
+  // Realistic VAD shape: ONE speech_started transition, then sustained speech
+  // frames without transitions (1 silence + 8 speech = 160 ms >= 150 ms bar).
+  h.vad.setScript(["silence", "speech", "speech", "speech", "speech", "speech", "speech", "speech", "speech"]);
+  feedUtterance(h, Date.now(), 9);
+  // LISTENING is entered only after the VOICE_CANCELLED error is emitted, so
+  // waiting for it avoids racing the async cancellation.
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING, 4000, "sustained speech to barge in");
+  assert.ok(
+    h.events.some((e) => e.type === "voice.error" && e.code === VoiceErrorCode.VOICE_CANCELLED),
+    "barge-in must surface VOICE_CANCELLED",
+  );
+  await waitFor(() => h.playback.stopRequested, 2000, "playback to stop");
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING, 4000, "state to return to listening");
+  releaseStream();
+  // The interrupted generation is dead: no further deltas, turn persisted as
+  // interrupted, and no stale audio resumes.
+  await waitFor(() =>
+    h.app.store
+      .getRecentTurns(h.sessionId, "personal", 10)
+      .some((t) => t.role === "assistant" && t.status === "interrupted"),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const deltasAfter = h.events.filter((e) => e.type === "assistant.text.delta").length;
+  assert.equal(deltasAfter, deltasBefore, "stale generation must never emit more deltas after barge-in");
+  await h.app.close();
+});
+
+test("sustained but below-threshold speech during playback does not barge in", async () => {
+  const h = await buildHarness();
+  h.stt.setDefaultScript({ final: "tell me a story" });
+  h.vad.setScript(["silence", "speech", "speech", "end"]);
+  h.wake.triggerWake(Date.now());
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  feedUtterance(h, Date.now() + 40, 2);
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  h.capture.feedFrame(silenceFrame(10, Date.now() + 80));
+  h.capture.feedFrame(silenceFrame(10, Date.now() + 100));
+  await waitFor(() => h.app.voice.state === VoiceState.SPEAKING);
+  // Sustained (10 frames) but probability 0.75 < 0.8 playback threshold:
+  // likely speaker echo, not a deliberate user interruption.
+  h.vad.setScript(["speech_low", "speech_low", "speech_low", "speech_low", "speech_low", "speech_low", "speech_low", "speech_low", "speech_low", "speech_low"]);
+  feedUtterance(h, Date.now(), 10);
+  assert.equal(h.app.voice.state, VoiceState.SPEAKING, "echo-level sustained sound must not cancel playback");
+  assert.ok(
+    !h.events.some((e) => e.type === "voice.error" && e.code === VoiceErrorCode.VOICE_CANCELLED),
+  );
+  await waitFor(() => h.app.voice.state === VoiceState.IDLE, 4000);
   await h.app.close();
 });

@@ -27,6 +27,14 @@ export interface VoiceSettings {
   vadEndSilenceMs: number;
   noSpeechTimeoutMs: number;
   maxUtteranceMs: number;
+  /**
+   * Sustained user speech required before barge-in cancels playback or
+   * generation (TASK-0007). A single loud frame or speaker echo must not
+   * cancel ARTHUR mid-speech; ~120-200 ms feels responsive while filtering
+   * transients. Energy-VAD still cannot distinguish speaker echo from user
+   * speech (no AEC yet) - see controller barge-in monitoring.
+   */
+  bargeInMinSpeechMs: number;
   ttsMaxQueueChunks: number;
   rawAudioRetention: boolean;
   /** Internal PCM format. */
@@ -60,6 +68,7 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   vadEndSilenceMs: 700,
   noSpeechTimeoutMs: 6000,
   maxUtteranceMs: 30000,
+  bargeInMinSpeechMs: 150,
   ttsMaxQueueChunks: 8,
   rawAudioRetention: false,
   sampleRateHz: 16000,
@@ -90,6 +99,7 @@ export interface VoiceSettingsOverrides {
   vadEndSilenceMs?: number;
   noSpeechTimeoutMs?: number;
   maxUtteranceMs?: number;
+  bargeInMinSpeechMs?: number;
   ttsMaxQueueChunks?: number;
   rawAudioRetention?: boolean;
   maxTranscriptChars?: number;
@@ -163,6 +173,7 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
     vadEndSilenceMs: pickInt("ARTHUR_VAD_END_SILENCE_MS", DEFAULT_VOICE_SETTINGS.vadEndSilenceMs, "vadEndSilenceMs"),
     noSpeechTimeoutMs: pickInt("ARTHUR_VOICE_NO_SPEECH_TIMEOUT_MS", DEFAULT_VOICE_SETTINGS.noSpeechTimeoutMs, "noSpeechTimeoutMs"),
     maxUtteranceMs: pickInt("ARTHUR_VOICE_MAX_UTTERANCE_MS", DEFAULT_VOICE_SETTINGS.maxUtteranceMs, "maxUtteranceMs"),
+    bargeInMinSpeechMs: pickInt("ARTHUR_VOICE_BARGE_IN_MIN_SPEECH_MS", DEFAULT_VOICE_SETTINGS.bargeInMinSpeechMs, "bargeInMinSpeechMs"),
     ttsMaxQueueChunks: pickInt("ARTHUR_TTS_MAX_QUEUE_CHUNKS", DEFAULT_VOICE_SETTINGS.ttsMaxQueueChunks, "ttsMaxQueueChunks"),
     rawAudioRetention: pickBool("ARTHUR_RAW_AUDIO_RETENTION", DEFAULT_VOICE_SETTINGS.rawAudioRetention, "rawAudioRetention"),
     sampleRateHz: DEFAULT_VOICE_SETTINGS.sampleRateHz,
@@ -206,6 +217,9 @@ export function validateVoiceSettings(settings: VoiceSettings): string[] {
   }
   if (settings.maxUtteranceMs < 1000 || settings.maxUtteranceMs > 300000) {
     problems.push("ARTHUR_VOICE_MAX_UTTERANCE_MS must be within 1000..300000");
+  }
+  if (settings.bargeInMinSpeechMs < 40 || settings.bargeInMinSpeechMs > 1000) {
+    problems.push("ARTHUR_VOICE_BARGE_IN_MIN_SPEECH_MS must be within 40..1000");
   }
   if (settings.ttsMaxQueueChunks < 1 || settings.ttsMaxQueueChunks > 256) {
     problems.push("ARTHUR_TTS_MAX_QUEUE_CHUNKS must be within 1..256");

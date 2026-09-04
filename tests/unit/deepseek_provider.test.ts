@@ -274,6 +274,169 @@ test("streaming: fragmented tool-call name resolves to canonical at completion",
   assert.deepEqual(finalCall.call.arguments, { text: "hi" });
 });
 
+// ---- TASK-0007: streaming retry hardening --------------------------------
+
+test("streaming: transient network failure before stream data is retried", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    if (calls === 1) throw new Error("network down");
+    return sseResponse(
+      JSON.stringify({ choices: [{ index: 0, delta: { content: "ok" } }] }),
+      "[DONE]",
+    );
+  };
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 2 }), {
+    fetchFn,
+    sleepFn: async () => {},
+  });
+  const events: ModelStreamEvent[] = [];
+  for await (const e of provider.generateStream(baseRequest())) events.push(e);
+  assert.equal(calls, 2);
+  assert.ok(events.some((e) => e.type === "text_delta" && e.text === "ok"));
+  assert.ok(events.some((e) => e.type === "done"));
+});
+
+test("streaming: timeout before stream data is retried with a fresh timeout per attempt", async () => {
+  let calls = 0;
+  const observedSignals: AbortSignal[] = [];
+  const fetchFn: typeof fetch = (_url, init) => {
+    calls += 1;
+    const signal = init?.signal;
+    observedSignals.push(signal as AbortSignal);
+    if (calls === 1) {
+      return new Promise<Response>((_resolve, reject) => {
+        signal?.addEventListener(
+          "abort",
+          () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+          { once: true },
+        );
+      });
+    }
+    // A retry attempt must receive a FRESH controller: the shared-controller
+    // bug reuses an already-aborted signal, which fails this attempt instantly.
+    assert.equal(signal?.aborted, false, "retry attempt must receive a fresh, non-aborted controller");
+    return new Promise<Response>((resolve) => {
+      setTimeout(() => {
+        resolve(sseResponse(
+          JSON.stringify({ choices: [{ index: 0, delta: { content: "recovered" } }] }),
+          "[DONE]",
+        ));
+      }, 25);
+    });
+  };
+  const provider = new DeepSeekProvider(
+    config({ timeoutMs: 50, retryMaxAttempts: 2, retryBaseDelayMs: 5 }),
+    { fetchFn, sleepFn: async () => {} },
+  );
+  const events: ModelStreamEvent[] = [];
+  for await (const e of provider.generateStream(baseRequest())) events.push(e);
+  assert.equal(calls, 2, "a pre-data timeout must be retried within the bounded budget");
+  assert.ok(observedSignals[0]?.aborted, "the first attempt's timeout must have fired");
+  assert.ok(events.some((e) => e.type === "text_delta" && e.text === "recovered"));
+});
+
+test("streaming: caller abort does not retry", async () => {
+  let calls = 0;
+  const caller = new AbortController();
+  const fetchFn: typeof fetch = (_url, init) => {
+    calls += 1;
+    const signal = init?.signal;
+    return new Promise<Response>((_resolve, reject) => {
+      signal?.addEventListener(
+        "abort",
+        () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+        { once: true },
+      );
+    });
+  };
+  const provider = new DeepSeekProvider(config({ timeoutMs: 5000, retryMaxAttempts: 3 }), {
+    fetchFn,
+    sleepFn: async () => {},
+  });
+  const consumed = (async () => {
+    for await (const _e of provider.generateStream(baseRequest(), caller.signal)) {
+      void _e;
+    }
+  })();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  caller.abort();
+  await consumed;
+  assert.equal(calls, 1, "caller cancellation must never trigger a retry");
+});
+
+test("streaming: 401 does not retry", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    return jsonResponse(401, { error: { message: "unauthorized" } });
+  };
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 3 }), { fetchFn, sleepFn: async () => {} });
+  await assert.rejects(
+    (async () => {
+      for await (const _e of provider.generateStream(baseRequest())) void _e;
+    })(),
+    ProviderAuthError,
+  );
+  assert.equal(calls, 1);
+});
+
+test("streaming: malformed SSE chunk fails without retry", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    return sseResponse("{not valid json");
+  };
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 3 }), { fetchFn, sleepFn: async () => {} });
+  await assert.rejects(
+    (async () => {
+      for await (const _e of provider.generateStream(baseRequest())) void _e;
+    })(),
+    ProviderBadResponseError,
+  );
+  assert.equal(calls, 1);
+});
+
+test("streaming: failure after partial data is not retried and text is not duplicated", async () => {
+  let calls = 0;
+  const encoder = new TextEncoder();
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        // First read delivers the SSE chunk; the SECOND read rejects, i.e.
+        // the connection dies mid-body after consumer-visible data.
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(
+              "data: " + JSON.stringify({ choices: [{ index: 0, delta: { content: "Hello " } }] }) + "\n\n",
+            ),
+          );
+        },
+        pull(controller) {
+          controller.error(new Error("connection reset mid-stream"));
+        },
+      }),
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    );
+  };
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 3 }), {
+    fetchFn,
+    sleepFn: async () => {},
+  });
+  const deltas: string[] = [];
+  await assert.rejects(
+    (async () => {
+      for await (const e of provider.generateStream(baseRequest())) {
+        if (e.type === "text_delta") deltas.push(e.text);
+      }
+    })(),
+    ProviderUnavailableError,
+  );
+  assert.equal(calls, 1, "a retry after consumer-visible data could duplicate content");
+  assert.equal(deltas.join(""), "Hello ");
+});
+
 test("streaming: unknown provider alias fails the stream closed", async () => {
   const fetchFn: typeof fetch = async () =>
     sseResponse(
