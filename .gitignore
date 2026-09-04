@@ -12,6 +12,9 @@ data/
 coverage/
 .DS_Store
 
+# AI harness runtime/task state is machine-local and controller-owned.
+.ai-harness/
+
 # Whisper/voice model binaries are machine-local downloads (e.g.
 # ggml-large-v3-turbo.bin) - never commit them.
 models/
