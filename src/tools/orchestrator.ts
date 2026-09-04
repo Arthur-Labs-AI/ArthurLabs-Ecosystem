@@ -23,6 +23,7 @@ import type { SessionStore } from "../sessions/store";
 import { SecretSanitizer } from "../security/sanitize";
 import { ApprovalToken, ToolExecutionContext, ToolDefinition, ToolResult } from "./contracts";
 import { ToolExecutionService } from "./execution";
+import { buildModelToolResultPayload, MODEL_TOOL_RESULT_MAX_BYTES } from "./model_payload";
 import { argumentsDigest, PermissionService, signApprovalToken } from "./permissions";
 import { ToolRegistry } from "./registry";
 
@@ -34,6 +35,12 @@ export interface ToolOrchestratorDeps {
   sanitizer: SecretSanitizer;
   approvalTtlSeconds: number;
   approvalSigningSecret: string;
+  /**
+   * Model-facing tool-result payload cap in bytes (TASK-0011B). Defaults to
+   * MODEL_TOOL_RESULT_MAX_BYTES (16 KiB); oversized data is omitted whole,
+   * never partially truncated.
+   */
+  modelToolResultMaxBytes?: number;
   logger: Logger;
   metrics: Metrics;
 }
@@ -53,6 +60,7 @@ export class ToolOrchestrator {
   private readonly sanitizer: SecretSanitizer;
   private readonly approvalTtlSeconds: number;
   private readonly approvalSigningSecret: string;
+  private readonly modelToolResultMaxBytes: number;
   private readonly logger: Logger;
   private readonly metrics: Metrics;
 
@@ -64,6 +72,7 @@ export class ToolOrchestrator {
     this.sanitizer = deps.sanitizer;
     this.approvalTtlSeconds = deps.approvalTtlSeconds;
     this.approvalSigningSecret = deps.approvalSigningSecret;
+    this.modelToolResultMaxBytes = deps.modelToolResultMaxBytes ?? MODEL_TOOL_RESULT_MAX_BYTES;
     this.logger = deps.logger;
     this.metrics = deps.metrics;
   }
@@ -154,9 +163,14 @@ export class ToolOrchestrator {
         const summary = this.completedSummary(call, definition, { ok: result.ok, summary: safeSummary });
         summaries.push(summary);
         this.recordToolCall(ctx, call, definition, "completed", safeSummary);
+        // TASK-0011B: the model follow-up receives a bounded structured
+        // payload (summary + validated data), not just the summary. The data
+        // already crossed the ToolExecutionService validation boundary; the
+        // payload builder re-sanitizes it recursively and enforces the
+        // model-facing size cap (oversized data is omitted whole).
         toolResultMessages.push({
           role: "tool",
-          content: safeSummary,
+          content: buildModelToolResultPayload(result, this.sanitizer, this.modelToolResultMaxBytes),
           name: call.name,
           tool_call_id: call.id,
         });

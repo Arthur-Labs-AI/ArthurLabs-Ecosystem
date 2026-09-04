@@ -186,7 +186,8 @@ test("U: system.echo still works end to end", async () => {
     assert.equal(message?.role, "tool");
     assert.equal(message?.tool_call_id, "call-u");
     assert.equal(message?.name, "system.echo");
-    assert.equal(message?.content, "ping");
+    // TASK-0011B: bounded structured payload { summary, data }.
+    assert.deepEqual(JSON.parse(message?.content ?? ""), { summary: "ping", data: { echo: "ping" } });
     const records = w.store.getToolCallsForTurn("t1");
     assert.equal(records[0]?.status, "completed");
   } finally {

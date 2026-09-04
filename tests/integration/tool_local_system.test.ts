@@ -114,7 +114,12 @@ test("H: system.status executes automatically (read risk, no approval, approved=
     assert.equal(message?.role, "tool");
     assert.equal(message?.name, "system.status");
     assert.equal(message?.tool_call_id, "call-ss");
-    assert.equal(message?.content, EXPECTED_SUMMARY);
+    // TASK-0011B: the model-facing content is the bounded structured payload
+    // { summary, data } - summary stays concise, data is the validated
+    // canonical snapshot of the adapter status.
+    const payload = JSON.parse(message?.content ?? "") as { summary: string; data: LocalSystemStatus };
+    assert.equal(payload.summary, EXPECTED_SUMMARY);
+    assert.deepEqual(payload.data, FAKE_STATUS);
     const records = w.store.getToolCallsForTurn("t1");
     assert.equal(records.length, 1);
     assert.equal(records[0]?.status, "completed");
@@ -248,15 +253,16 @@ test("L: FakeProvider proposal of system.status returns a role=tool follow-up", 
       additionalProperties: false,
     });
 
-    // The model receives exactly one role=tool follow-up carrying the capped
-    // summary (structured data stays in the ToolResult, not in the message).
+    // TASK-0011B: the model receives exactly one role=tool follow-up carrying
+    // the capped summary AND the validated structured data.
     const followupToolMessages = requests[1]?.history.filter((m) => m.role === "tool") ?? [];
     assert.equal(followupToolMessages.length, 1);
     const toolMessage = followupToolMessages[0];
     assert.equal(toolMessage?.name, "system.status");
     assert.equal(toolMessage?.tool_call_id, "call-ss");
-    assert.equal(toolMessage?.content, EXPECTED_SUMMARY);
-    assert.equal((JSON.stringify(followupToolMessages[0]) ?? "").includes("total_memory_bytes"), false);
+    const followupPayload = JSON.parse(toolMessage?.content ?? "") as { summary: string; data: LocalSystemStatus };
+    assert.equal(followupPayload.summary, EXPECTED_SUMMARY);
+    assert.deepEqual(followupPayload.data, FAKE_STATUS);
 
     const records = app.store.getToolCallsForTurn(response.turn_id);
     assert.equal(records.length, 1);
