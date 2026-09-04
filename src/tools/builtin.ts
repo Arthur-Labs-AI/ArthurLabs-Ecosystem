@@ -1,9 +1,12 @@
 /**
- * Built-in Phase 1 tools (spec section 10).
+ * Built-in Phase 1 tools (spec section 10; TASK-0010 hardened manifests).
  *
  * - system.echo        (READ)               deterministic contract/integration tool
  * - harness.status     (READ)               deterministic fake harness status
  * - harness.create_job (APPROVAL_REQUIRED)  stub; never executes without approval
+ *
+ * Each builtin declares an output_schema so the executor-output validation
+ * boundary (TASK-0010 section 4) is exercised by every regression path.
  */
 
 import { ArthurMode } from "../core/modes/mode";
@@ -22,6 +25,12 @@ export function registerBuiltinTools(registry: ToolRegistry, harness: HarnessAda
         required: ["text"],
         additionalProperties: false,
       },
+      output_schema: {
+        type: "object",
+        properties: { echo: { type: "string" } },
+        required: ["echo"],
+        additionalProperties: false,
+      },
       risk: "read",
       allowed_modes: [ArthurMode.PERSONAL, ArthurMode.BUSINESS],
     },
@@ -37,6 +46,16 @@ export function registerBuiltinTools(registry: ToolRegistry, harness: HarnessAda
       version: "1.0.0",
       description: "Return the current AI Harness status (stub).",
       input_schema: { type: "object", properties: {}, additionalProperties: false },
+      output_schema: {
+        type: "object",
+        properties: {
+          status: { type: "string", enum: ["online", "offline", "degraded"] },
+          version: { type: "string" },
+          jobs_active: { type: "integer", minimum: 0 },
+        },
+        required: ["status", "version", "jobs_active"],
+        additionalProperties: false,
+      },
       risk: "read",
       allowed_modes: [ArthurMode.PERSONAL, ArthurMode.BUSINESS],
     },
@@ -64,6 +83,24 @@ export function registerBuiltinTools(registry: ToolRegistry, harness: HarnessAda
         required: ["kind"],
         additionalProperties: false,
       },
+      output_schema: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          status: { type: "string", enum: ["queued", "running", "succeeded", "failed", "cancelled"] },
+          spec: {
+            type: "object",
+            properties: {
+              kind: { type: "string" },
+              payload: { type: "object" },
+            },
+            required: ["kind"],
+            additionalProperties: false,
+          },
+        },
+        required: ["id", "status", "spec"],
+        additionalProperties: false,
+      },
       risk: "approval_required",
       allowed_modes: [ArthurMode.BUSINESS],
     },
@@ -72,10 +109,12 @@ export function registerBuiltinTools(registry: ToolRegistry, harness: HarnessAda
         throw new Error("harness.create_job requires explicit approval");
       }
       const token: ApprovalToken = ctx.approvalToken;
-      const spec: HarnessJobSpec = {
-        kind: String(args.kind ?? ""),
-        payload: args.payload as Record<string, unknown> | undefined,
-      };
+      // TASK-0010: structured results must be JSON-safe (no explicit undefined
+      // fields - they would be silently dropped by JSON serialization).
+      const spec: HarnessJobSpec = { kind: String(args.kind ?? "") };
+      if (args.payload !== undefined) {
+        spec.payload = args.payload as Record<string, unknown>;
+      }
       const job = await harness.createJob(spec, token);
       return { ok: true, summary: `job created: ${job.id} (${job.status})`, data: job };
     },

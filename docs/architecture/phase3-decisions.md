@@ -271,6 +271,87 @@ plus the focused wake tests ran green (see the task report for the
 executed commands); the guarded native KWS test ran separately with the
 real model when available.
 
+### 15. Phase 3B: Tool & Action Contracts Hardening (TASK-0010)
+
+Phase 3B hardens the EXISTING Phase 1 tool boundary (ToolRegistry /
+ToolExecutionService / ToolOrchestrator / PermissionService / signed
+approval tokens); no second registry or execution framework was introduced
+and no real OS tool was added.
+
+Tool execution invariant (authoritative for every future tool task):
+
+    LLM proposes.
+    ARTHUR validates.
+    ARTHUR authorizes.
+    Executor executes.
+    ARTHUR validates the result.
+    Only then may the result return to the model.
+
+> Tool availability is not permission.
+> A model tool call is untrusted structured input, never executable authority.
+
+Distinctions that must never be collapsed:
+
+    Conversation != Tool Execution
+    Tool Definition != Executor
+    Capability != Permission
+    Proposal != Authorization
+
+Decisions:
+
+- **Manifest validation at registration** (`src/tools/manifest.ts`): a
+  ToolDefinition is validated as a whole when registered - canonical dotted
+  name (`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$`, e.g. `git.status`; no
+  spaces, shell syntax, or arbitrary Unicode), strict MAJOR.MINOR.PATCH
+  version (invalid versions are rejected, never normalized), non-empty
+  bounded description (<= 2000 chars; it is sent to the LLM), at least one
+  valid duplicate-free `ArthurMode`, a valid `ToolRisk`, exactly the known
+  manifest fields, and JSON-safe schemas. Both `input_schema` and
+  `output_schema` must COMPILE with AJV (strict mode at registration) at
+  `registry.register()` time. Any violation throws a deterministic
+  INVALID_CONFIG ArthurError naming the field, so a malformed tool can
+  never appear in the model tool schemas nor fail late during a user turn.
+- **Output validation is a real boundary** (task section 4): the secured
+  execution facade now validates every ToolResult before it may return:
+  shape invariants (`ok` boolean, `summary` bounded string <= 2000 chars,
+  no extra fields), JSON-safety of `data` (no functions, symbols, BigInt,
+  undefined values, NaN/Infinity, native objects such as Date/Map/Set/RegExp,
+  symbol keys, or cycles - fail closed with TOOL_OUTPUT_INVALID, never
+  String(object) fallbacks or silent drops), and - when the tool declares
+  `output_schema` - data must be present and match it. The task's example
+  contract: a future `git.status` executor returning `{ branch: 123 }`
+  fails with TOOL_OUTPUT_INVALID and the model never sees malformed data as
+  a successful result. The three Phase 1 builtins now declare output_schema
+  so every regression path exercises this boundary.
+- **Raw executor exceptions no longer cross the boundary**: the facade wraps
+  any non-ArthurError executor failure into TOOL_EXECUTION_FAILED with a
+  generic, path-free message (cause attached for LOCAL sanitized logging
+  only; `ArthurError.toJSON()` never serializes it). Executor errors are
+  recorded as failed tool calls.
+- **Tool error taxonomy** (`src/core/errors/errors.ts`): TOOL_NOT_FOUND,
+  TOOL_ARGUMENT_INVALID, TOOL_PERMISSION_DENIED (new; policy rejection such
+  as high_risk where the mode gate is not the reason), TOOL_EXECUTION_FAILED
+  (new), TOOL_OUTPUT_INVALID (new), APPROVAL_REQUIRED, APPROVAL_INVALID.
+  MODE_VIOLATION is retained (reused, not duplicated) for mode-gate
+  rejections; APPROVAL_* semantics are untouched (deeper approval/version
+  binding hardening belongs to TASK-0012).
+- **Definition immutability preserved and tested**: registration still
+  stores a deep-frozen clone; caller-side mutation after register and
+  mutation attempts through registry-returned definitions have no effect on
+  runtime policy (unit tests A-S assert both directions).
+- **Model-facing contract unchanged**: ToolDefinition -> toToolSchema() ->
+  ModelRequest.toolSchemas exposes only name/description/input parameters;
+  executors, permissions, output schemas, paths, and secrets stay out of
+  the provider boundary. ProposedToolCall remains an untrusted proposal.
+- **Deliberately deferred**: structured ToolResult.data rendering into
+  model tool messages (today the model still receives the capped summary
+  only; one deterministic bounded serialization policy belongs to a later
+  task); deeper approval-token version binding (TASK-0012); real
+  filesystem/Git/process tools (subsequent tasks); any distributed/node
+  execution (Phase 4). The contracts above do not assume every executor is
+  forever in-process: the invocation semantics stay
+  `secured execution service -> executor -> ToolResult`.
+
 Verification (executed on the installed whisper-cli with piper-synthesized
 16 kHz speech): `-l auto` without `-np` logs "whisper_full_with_state:
 auto-detected language: en (p = 0.995679)"; with `-np` that line is absent;
@@ -294,3 +375,13 @@ injection), tests/voice/voice_config.test.ts, and tests/voice/local_adapters.tes
   `npm run test:integration` - all green.
 - Privacy: status/session payloads never leak commands, keys, paths, or
   raw audio (tests/voice/privacy.test.ts).
+- TASK-0010 (Phase 3B): typecheck, build, test:unit (172 pass),
+  test:integration (64 pass), test:contract (6 pass) and the full suite
+  (453 tests: 407 pass, 10 skipped, 36 failing) ran on the task branch.
+  The 36 failures are the SAME pre-existing voice child-process fixture
+  tests that fail on the verified base HEAD in this environment (fixture
+  engines cannot spawn: sandbox EPERM on piped-stdio child processes);
+  the failure set is name-identical before and after TASK-0010, and the
+  voice implementation is untouched. New focused suites:
+  tests/unit/tool_manifest.test.ts, tests/unit/tool_boundary.test.ts,
+  tests/integration/tool_contract.test.ts (33 tests).

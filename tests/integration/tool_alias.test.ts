@@ -178,7 +178,9 @@ test("approval flow binds and executes canonical harness.create_job", async () =
     assert.ok((outcome.result_summary ?? "").includes("job created"));
     assert.equal(harness.createJobCalls.length, 1);
     assert.equal(harness.createJobCalls[0]?.token.tool_name, "harness.create_job");
-    assert.deepEqual(harness.createJobCalls[0]?.spec, { kind: "deploy", payload: undefined });
+    // TASK-0010: structured tool output is JSON-safe - an absent payload is
+    // omitted entirely instead of being carried as an explicit undefined key.
+    assert.deepEqual(harness.createJobCalls[0]?.spec, { kind: "deploy" });
     assert.ok(!JSON.stringify(harness.createJobCalls[0]?.token).includes("harness__create_job"));
   } finally {
     app.close();

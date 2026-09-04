@@ -172,6 +172,13 @@ export class ToolOrchestrator {
         this.metrics.timer("arthur.tool.duration_ms", Date.now() - start, { tool: call.name });
       } catch (err) {
         const message = this.sanitizer.capSummary(err instanceof Error ? err.message : "tool execution failed");
+        // The execution facade wraps raw executor failures into a generic
+        // TOOL_EXECUTION_FAILED message; the sanitized cause is kept for the
+        // LOCAL log only (never persisted to tool records or sent to model).
+        const causeMessage =
+          err instanceof ArthurError && err.cause instanceof Error
+            ? this.sanitizer.capSummary(err.cause.message)
+            : undefined;
         const summary = this.rejectedSummary(call, definition.risk, `execution failed: ${message}`);
         summaries.push(summary);
         this.recordToolCall(ctx, call, definition, "failed", `execution failed: ${message}`);
@@ -181,6 +188,7 @@ export class ToolOrchestrator {
           turn_id: ctx.turn_id,
           tool_name: call.name,
           error: message,
+          cause: causeMessage,
         });
         this.metrics.counter("arthur.tool.failed", 1);
       }
@@ -362,12 +370,17 @@ export class ToolOrchestrator {
       // write succeeded but its response was lost. Preserve the unknown state;
       // automatic retry is forbidden until explicit reconciliation.
       this.store.recordApprovalExecutionError(approvalId, approval.tool_call_id, message);
+      const causeMessage =
+        err instanceof ArthurError && err.cause instanceof Error
+          ? this.sanitizer.capSummary(err.cause.message)
+          : undefined;
       this.logger.error("approved tool execution failed", {
         session_id: approval.session_id,
         turn_id: approval.turn_id,
         tool_name: approval.tool_name,
         approval_id: approvalId,
         error: message,
+        cause: causeMessage,
       });
       this.metrics.counter("arthur.approval.failed", 1);
       throw toArthurError(err);
