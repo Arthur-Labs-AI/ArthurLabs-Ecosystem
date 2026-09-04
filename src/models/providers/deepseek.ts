@@ -136,6 +136,32 @@ export function reasoningParams(profile: ReasoningProfile): ReasoningParams {
   }
 }
 
+// ---- Request boundary validation (defense-in-depth) ---------------------
+
+/**
+ * Fail LOCALLY (before any network call) when a ModelRequest carries an
+ * assistant history message with neither non-empty content nor tool_calls.
+ * OpenAI-compatible providers reject such messages with HTTP 400 ("Invalid
+ * assistant message: content or tool_calls must be set"), which upstream
+ * surfaced as an opaque provider-unavailable error on voice turns. The
+ * primary fix is history eligibility at the ContextBuilder; this boundary
+ * check converts any future regression into an immediate, local,
+ * MODEL_BAD_RESPONSE-classified failure instead of a vendor 400. It is a
+ * loud failure, not a silent vendor special-case.
+ */
+export function assertAssistantHistorySendable(request: ModelRequest): void {
+  for (const message of request.history) {
+    if (message.role !== "assistant") continue;
+    const hasText = typeof message.content === "string" && message.content.trim() !== "";
+    const hasToolCalls = Array.isArray(message.tool_calls) && message.tool_calls.length > 0;
+    if (!hasText && !hasToolCalls) {
+      throw new ProviderBadResponseError(
+        "assistant history message has neither content nor tool_calls"
+      );
+    }
+  }
+}
+
 // ---- Payload assembly (pure; redaction applied by the caller's logger) ---
 
 function chatMessageToOpenAI(message: ChatMessage, aliasMap: ToolNameAliasMap): Record<string, unknown> {
@@ -754,6 +780,9 @@ export class DeepSeekProvider implements ModelProvider {
 
   async generate(request: ModelRequest): Promise<ModelResult> {
     const safeRequest = sanitizeStructured(request, [this.config.apiKey]) as ModelRequest;
+    // Defense-in-depth: reject malformed assistant history locally, before
+    // any fetch (both streaming and buffered paths).
+    assertAssistantHistorySendable(safeRequest);
     // One alias map per model request, built from the exact exposed tool set.
     // A collision or unencodable name throws HERE, before any fetch: the
     // request fails closed without ever reaching the provider.
@@ -853,6 +882,9 @@ export class DeepSeekProvider implements ModelProvider {
     signal?: AbortSignal,
   ): AsyncIterable<ModelStreamEvent> {
     const safeRequest = sanitizeStructured(request, [this.config.apiKey]) as ModelRequest;
+    // Defense-in-depth: reject malformed assistant history locally, before
+    // any fetch (both streaming and buffered paths).
+    assertAssistantHistorySendable(safeRequest);
     // Same per-request alias map as generate(): built from the exact exposed
     // tool set and shared by outbound payload assembly and inbound resolution.
     const aliasMap = ToolNameAliasMap.fromToolSchemas(safeRequest.toolSchemas);

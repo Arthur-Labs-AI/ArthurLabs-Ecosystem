@@ -81,6 +81,21 @@ export interface BuildContextInput {
   clientRequestId?: string;
 }
 
+/**
+ * A persisted turn is eligible for model history only when it is a valid
+ * conversational record: role user or assistant, status "completed", and
+ * non-empty text after trim. Failed, interrupted, needs_approval, system,
+ * tool, and empty records are excluded. They remain in the database for
+ * audit/debugging - this governs model context only.
+ */
+export function isEligibleHistoryTurn(turn: TurnRecord): boolean {
+  return (
+    (turn.role === "user" || turn.role === "assistant") &&
+    turn.status === "completed" &&
+    turn.text.trim() !== ""
+  );
+}
+
 export class ContextBuilder {
   private readonly systemContract: string;
   private readonly modeContracts: Record<ArthurMode, string>;
@@ -103,7 +118,16 @@ export class ContextBuilder {
     const systemContract = this.systemContract;
     const modeContract = this.modeContracts[input.mode] ?? "";
 
-    const history = this.limitHistory(input.history, systemContract, modeContract, input.userMessage, input.toolSchemas);
+    // Eligibility FIRST (TASK: poisoned-history fix): failed, interrupted,
+    // pending-approval, and empty persisted turns must never reach a model
+    // request. An empty assistant message serializes as content:null with no
+    // tool_calls, which OpenAI-compatible providers (DeepSeek) reject with
+    // HTTP 400. Filtering happens BEFORE turn-count and token-budget
+    // limiting so bad records consume neither slots, budget, nor recency
+    // position. Persisted records themselves are untouched - this only
+    // governs what is eligible for model context.
+    const eligibleHistory = input.history.filter(isEligibleHistoryTurn);
+    const history = this.limitHistory(eligibleHistory, systemContract, modeContract, input.userMessage, input.toolSchemas);
     const chatHistory: ChatMessage[] = history
       .filter((t) => t.role === "user" || t.role === "assistant")
       .map((t) => ({ role: t.role as "user" | "assistant", content: t.text }));

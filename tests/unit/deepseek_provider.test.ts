@@ -696,3 +696,66 @@ test("diagnostics: classifyStreamFailure maps directly and safely", () => {
   assert.equal(classifyStreamFailure(new ProviderAuthError(), false).kind, "auth");
 });
 
+// ---- provider boundary: malformed assistant history fails locally --------
+
+test("provider boundary: assistant history without content or tool_calls fails locally in generate", async () => {
+  let fetchCalls = 0;
+  const fetchFn: typeof fetch = async () => {
+    fetchCalls += 1;
+    return jsonResponse(200, OK_BODY);
+  };
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  const request = {
+    ...baseRequest(),
+    history: [{ role: "assistant" as const, content: "" }],
+  };
+  await assert.rejects(() => provider.generate(request), ProviderBadResponseError);
+  assert.equal(fetchCalls, 0, "the malformed request must fail before any network call");
+});
+
+test("provider boundary: assistant history without content or tool_calls fails locally in generateStream", async () => {
+  let fetchCalls = 0;
+  const fetchFn: typeof fetch = async () => {
+    fetchCalls += 1;
+    return sseResponse(
+      JSON.stringify({ choices: [{ index: 0, delta: { content: "ok" } }] }),
+      "[DONE]",
+    );
+  };
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  const request = {
+    ...baseRequest(),
+    history: [{ role: "assistant" as const, content: "" }],
+  };
+  await assert.rejects(
+    (async () => {
+      for await (const e of provider.generateStream(request)) void e;
+    })(),
+    ProviderBadResponseError,
+  );
+  assert.equal(fetchCalls, 0, "the malformed request must fail before any network call");
+});
+
+test("provider boundary: assistant message with tool_calls and empty content is sendable", async () => {
+  // The buildFollowup shape: an assistant tool-call proposal followed by a
+  // tool result. This MUST remain valid - only content-less AND call-less
+  // assistant messages are malformed.
+  const fetchFn: typeof fetch = async () =>
+    jsonResponse(200, { ...OK_BODY, choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "done" } }] });
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  const request = {
+    ...baseRequest(),
+    history: [
+      { role: "user" as const, content: "echo pong" },
+      {
+        role: "assistant" as const,
+        content: "",
+        tool_calls: [{ id: "call_1", name: "system.echo", arguments: { text: "pong" } }],
+      },
+      { role: "tool" as const, content: "pong", tool_call_id: "call_1", name: "system.echo" },
+    ],
+  };
+  const result = await provider.generate(request);
+  assert.equal(result.assistant_text, "done");
+});
+
