@@ -49,6 +49,7 @@ import { LocalEnergyVadProvider } from "./voice/vad/local_provider";
 import { VadGateway } from "./voice/vad/gateway";
 import { FakeWakeWordProvider } from "./voice/wake/fake";
 import { LocalWakeWordProvider } from "./voice/wake/local_provider";
+import { SherpaWakeWordProvider } from "./voice/wake/sherpa_provider";
 import { WakeWordGateway } from "./voice/wake/gateway";
 import { FakeSttProvider } from "./voice/stt/fake";
 import { LocalSttProvider } from "./voice/stt/local_provider";
@@ -184,7 +185,21 @@ export function createVoiceController(
       }));
   const wakeProvider: WakeWordProvider =
     deps.voice?.wake ??
-    (voice.wakeProvider === "fake" ? new FakeWakeWordProvider() : new LocalWakeWordProvider());
+    (voice.wakeProvider === "fake"
+      ? new FakeWakeWordProvider()
+      : voice.wakeProvider === "sherpa"
+        ? // True Wake Word v1 (TASK-0009): streaming sherpa-onnx KWS over the
+          // same gateway-routed PCM frames. Unavailable models keep the
+          // provider available=false and the controller falls back to PTT.
+          new SherpaWakeWordProvider({
+            modelDir: voice.wakeModelDir,
+            keywordsFile: voice.wakeKeywordsFile,
+            keywordsScore: voice.wakeKeywordsScore,
+            keywordsThreshold: voice.wakeKeywordsThreshold,
+            numThreads: voice.wakeNumThreads,
+            logger: logger.child("voice-wake"),
+          })
+        : new LocalWakeWordProvider());
   const wake = new WakeWordGateway(wakeProvider, { frameBased: true });
   const controller = new VoiceTurnController({
     settings: voice,

@@ -8,13 +8,23 @@
 
 import type { ReasoningProfile } from "../models/contracts";
 
+/** STT/TTS/VAD provider ids (unchanged by True Wake Word v1). */
 export type VoiceProviderId = "local" | "fake";
+
+/**
+ * Wake-specific provider ids (TASK-0009 True Wake Word v1). Kept separate so
+ * the shared VoiceProviderId of VAD/STT/TTS stays unpolluted: "local" keeps
+ * its documented energy-burst meaning there and in existing tests, while
+ * "sherpa" selects the streaming keyword spotter for wake only.
+ */
+export type WakeProviderId = "local" | "sherpa" | "fake";
 
 export interface VoiceSettings {
   voiceEnabled: boolean;
   wakeEnabled: boolean;
   wakeWord: string;
-  wakeProvider: VoiceProviderId;
+  /** Wake provider only: "local" energy fallback | "sherpa" true KWS | "fake". */
+  wakeProvider: WakeProviderId;
   vadProvider: VoiceProviderId;
   sttProvider: VoiceProviderId;
   ttsProvider: VoiceProviderId;
@@ -56,6 +66,25 @@ export interface VoiceSettings {
   audioPlaybackCommand: string;
   sttEngineCommand: string;
   ttsEngineCommand: string;
+  // ---- True Wake Word v1 (sherpa-onnx streaming KWS, TASK-0009) ----
+  /**
+   * Machine-local sherpa KWS model directory (git-ignored under models/).
+   * Must contain the zipformer transducer ONNX files (int8 preferred),
+   * tokens.txt and a generated keywords file.
+   */
+  wakeModelDir: string;
+  /**
+   * Generated (text2token-encoded) keyword file. Empty = the deterministic
+   * default "<wakeModelDir>/keywords_arthur.txt" produced by
+   * tools/voice/setup_sherpa_wake.ps1.
+   */
+  wakeKeywordsFile: string;
+  /** sherpa keywordsScore: bonus applied to keyword path hypotheses. */
+  wakeKeywordsScore: number;
+  /** sherpa keywordsThreshold: probability mass required to emit. */
+  wakeKeywordsThreshold: number;
+  /** sherpa ONNX runtime threads for the (tiny) KWS model. */
+  wakeNumThreads: number;
 }
 
 export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
@@ -87,6 +116,11 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   audioPlaybackCommand: "",
   sttEngineCommand: "",
   ttsEngineCommand: "",
+  wakeModelDir: "models/wake/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01",
+  wakeKeywordsFile: "",
+  wakeKeywordsScore: 1,
+  wakeKeywordsThreshold: 0.25,
+  wakeNumThreads: 1,
 };
 
 export interface VoiceSettingsOverrides {
@@ -117,6 +151,11 @@ export interface VoiceSettingsOverrides {
   audioPlaybackCommand?: string;
   sttEngineCommand?: string;
   ttsEngineCommand?: string;
+  wakeModelDir?: string;
+  wakeKeywordsFile?: string;
+  wakeKeywordsScore?: number;
+  wakeKeywordsThreshold?: number;
+  wakeNumThreads?: number;
 }
 
 /** Hard bound for the STT initial prompt (mirrored by the engine wrapper). */
@@ -132,6 +171,13 @@ function envInt(key: string, fallback: number): number {
   const raw = envStr(key, String(fallback));
   const n = Number.parseInt(raw, 10);
   if (Number.isNaN(n)) return fallback;
+  return n;
+}
+
+function envFloat(key: string, fallback: number): number {
+  const raw = envStr(key, String(fallback));
+  const n = Number.parseFloat(raw);
+  if (Number.isNaN(n) || !Number.isFinite(n)) return fallback;
   return n;
 }
 
@@ -161,6 +207,11 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
     const over = source[overKey];
     if (over !== undefined) return Number(over);
     return envInt(envKey, fallback);
+  };
+  const pickFloat = (envKey: string, fallback: number, overKey: keyof VoiceSettingsOverrides): number => {
+    const over = source[overKey];
+    if (over !== undefined) return Number(over);
+    return envFloat(envKey, fallback);
   };
   const pickBool = (envKey: string, fallback: boolean, overKey: keyof VoiceSettingsOverrides): boolean => {
     const over = source[overKey];
@@ -197,6 +248,11 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
     audioPlaybackCommand: pick("ARTHUR_AUDIO_PLAYBACK_COMMAND", DEFAULT_VOICE_SETTINGS.audioPlaybackCommand, "audioPlaybackCommand"),
     sttEngineCommand: pick("ARTHUR_STT_ENGINE_COMMAND", DEFAULT_VOICE_SETTINGS.sttEngineCommand, "sttEngineCommand"),
     ttsEngineCommand: pick("ARTHUR_TTS_ENGINE_COMMAND", DEFAULT_VOICE_SETTINGS.ttsEngineCommand, "ttsEngineCommand"),
+    wakeModelDir: pick("ARTHUR_WAKE_MODEL_DIR", DEFAULT_VOICE_SETTINGS.wakeModelDir, "wakeModelDir"),
+    wakeKeywordsFile: pick("ARTHUR_WAKE_KEYWORDS_FILE", DEFAULT_VOICE_SETTINGS.wakeKeywordsFile, "wakeKeywordsFile"),
+    wakeKeywordsScore: pickFloat("ARTHUR_WAKE_KEYWORDS_SCORE", DEFAULT_VOICE_SETTINGS.wakeKeywordsScore, "wakeKeywordsScore"),
+    wakeKeywordsThreshold: pickFloat("ARTHUR_WAKE_KEYWORDS_THRESHOLD", DEFAULT_VOICE_SETTINGS.wakeKeywordsThreshold, "wakeKeywordsThreshold"),
+    wakeNumThreads: pickInt("ARTHUR_WAKE_NUM_THREADS", DEFAULT_VOICE_SETTINGS.wakeNumThreads, "wakeNumThreads"),
   };
 }
 
@@ -204,8 +260,9 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
 export function validateVoiceSettings(settings: VoiceSettings): string[] {
   const problems: string[] = [];
   const providers = ["local", "fake"];
-  if (!providers.includes(settings.wakeProvider)) {
-    problems.push(`ARTHUR_WAKE_PROVIDER must be one of ${providers.join(", ")} (got "${settings.wakeProvider}")`);
+  const wakeProviders = ["local", "sherpa", "fake"];
+  if (!wakeProviders.includes(settings.wakeProvider)) {
+    problems.push(`ARTHUR_WAKE_PROVIDER must be one of ${wakeProviders.join(", ")} (got "${settings.wakeProvider}")`);
   }
   if (!providers.includes(settings.vadProvider)) {
     problems.push(`ARTHUR_VAD_PROVIDER must be one of ${providers.join(", ")} (got "${settings.vadProvider}")`);
@@ -244,6 +301,22 @@ export function validateVoiceSettings(settings: VoiceSettings): string[] {
     problems.push(
       `ARTHUR_STT_INITIAL_PROMPT must be at most ${STT_INITIAL_PROMPT_MAX_CHARS} characters (got ${settings.sttInitialPrompt.length})`,
     );
+  }
+  // True Wake Word v1 (sherpa KWS) tuning bounds: finite and sensible only.
+  // File existence is validated by the provider so text mode never crashes.
+  if (settings.wakeProvider === "sherpa") {
+    if (!Number.isFinite(settings.wakeKeywordsScore) || settings.wakeKeywordsScore < 0.1 || settings.wakeKeywordsScore > 5) {
+      problems.push("ARTHUR_WAKE_KEYWORDS_SCORE must be within 0.1..5");
+    }
+    if (!Number.isFinite(settings.wakeKeywordsThreshold) || settings.wakeKeywordsThreshold <= 0 || settings.wakeKeywordsThreshold > 1) {
+      problems.push("ARTHUR_WAKE_KEYWORDS_THRESHOLD must be within (0..1]");
+    }
+    if (!Number.isInteger(settings.wakeNumThreads) || settings.wakeNumThreads < 1 || settings.wakeNumThreads > 8) {
+      problems.push("ARTHUR_WAKE_NUM_THREADS must be an integer within 1..8");
+    }
+    if (settings.wakeWord.trim() === "") {
+      problems.push("ARTHUR_WAKE_WORD must not be empty when ARTHUR_WAKE_PROVIDER=sherpa");
+    }
   }
   return problems;
 }

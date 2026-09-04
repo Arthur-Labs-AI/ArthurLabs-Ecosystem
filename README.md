@@ -164,15 +164,63 @@ in-repo). The same event stream is available via `app.voice.subscribe`.
 
 Engine selection: `ARTHUR_WAKE_PROVIDER`/`ARTHUR_VAD_PROVIDER`/
 `ARTHUR_STT_PROVIDER`/`ARTHUR_TTS_PROVIDER` = `local` (energy VAD,
-command-based STT/TTS, energy-burst wake) or `fake` (deterministic
-offline stand-ins). Missing engines never fail startup: the status
-endpoint reports availability and never leaks commands, paths, keys, or
-raw audio. Raw audio is processed locally and never sent to DeepSeek -
-only the transcript enters the conversation (client_type=voice).
+command-based STT/TTS, energy-burst wake), `sherpa` (wake only: True Wake
+Word v1, see below) or `fake` (deterministic offline stand-ins). Missing
+engines never fail startup: the status endpoint reports availability and
+never leaks commands, paths, keys, or raw audio. Raw audio is processed
+locally and never sent to DeepSeek - only the transcript enters the
+conversation (client_type=voice).
 
 The local wake provider is a documented energy-burst detector (not a
 keyword spotter); push-to-talk remains available as the fallback and the
 wake path is provider-abstracted.
+
+### True Wake Word v1 (sherpa-onnx KWS)
+
+`ARTHUR_WAKE_PROVIDER=sherpa` enables the production wake word: a fully
+local streaming keyword spotter (`sherpa-onnx-node`, pinned exact version)
+running the small English GigaSpeech zipformer KWS model in-process on the
+same PCM frames that already flow through the wake gateway. Detection is
+strictly the literal keyword (case/whitespace/BPE-marker-insensitive exact
+match) - random speech no longer wakes ARTHUR. After each detection the
+KWS stream is reset; during TTS playback the gateway keeps suppressing wake
+processing (echo protection); PTT stays fully independent of the KWS
+lifecycle, and a missing model/package degrades to PTT-only (never a crash,
+never a false wake).
+
+`local-energy-wake` = compatibility/fallback energy detector - NOT true
+keyword spotting. `sherpa-kws-wake` = production True Wake Word v1.
+
+Windows setup (model binaries stay machine-local; `models/` is git-ignored):
+
+1. Install the one-shot keyword converter tooling (runtime ARTHUR never
+   needs Python): `pip install sherpa-onnx click sentencepiece pypinyin`
+2. Download the model + generate the encoded keyword file (idempotent):
+   `powershell -ExecutionPolicy Bypass -File tools\voice\setup_sherpa_wake.ps1`
+   This fetches
+   `sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01` (INT8 + FP32
+   ONNX, ~18 MB) into `models/wake/`, writes `keywords_raw.txt`
+   (`Arthur @Arthur`) and converts it with the model's `tokens.txt` +
+   `bpe.model` via the official `sherpa-onnx-cli text2token` into
+   `keywords_arthur.txt`. The raw word can NEVER be written into the
+   keywords file directly - it must be BPE-encoded for the model.
+3. Configure in `.env`:
+   `ARTHUR_WAKE_PROVIDER=sherpa`,
+   `ARTHUR_WAKE_MODEL_DIR=models/wake/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01`,
+   `ARTHUR_WAKE_KEYWORDS_FILE=` (empty = keywords_arthur.txt in the model dir),
+   `ARTHUR_WAKE_KEYWORDS_SCORE=1`, `ARTHUR_WAKE_KEYWORDS_THRESHOLD=0.25`,
+   `ARTHUR_WAKE_NUM_THREADS=1`.
+4. Real-device acceptance (do not skip): say "banana" (no wake), "hello
+   there" (no wake), "Arthur" (wake), "Arthur, what is Nexus?" (full
+   turn), repeat "Arthur" at normal volume, and verify PTT. Tune
+   `ARTHUR_WAKE_KEYWORDS_SCORE`/`_THRESHOLD` only against the real
+   microphone - never against synthetic fixtures - prioritizing LOW false
+   positives over 100% detection.
+
+Native integration check (opt-in, never part of `npm test`): with the
+model, keywords file and `tests/fixtures/wake/*.wav` fixtures present, run
+`ARTHUR_SHERPA_WAKE_NATIVE_TEST=1 npm test` - the guarded tests feed the
+real KWS "Arthur" (must wake), "banana" and "hello there" (must not wake).
 
 ### Voice - Windows setup (v1 reference)
 
@@ -248,6 +296,7 @@ ARTHUR_MODEL_PROVIDER=deepseek
 ARTHUR_VOICE_ENABLED=true
 ARTHUR_WAKE_ENABLED=true
 ARTHUR_WAKE_WORD=arthur
+# local = energy-burst fallback; sherpa = True Wake Word v1 (see above)
 ARTHUR_WAKE_PROVIDER=local
 ARTHUR_VAD_PROVIDER=local
 ARTHUR_STT_PROVIDER=local

@@ -196,6 +196,81 @@ and wake detection are untouched:
   bounded (64 KiB); the single JSON result line is flushed via its write
   callback before exit.
 
+### 14. True Wake Word v1 (TASK-0009, sherpa-onnx streaming KWS)
+
+Decision: implement wake as REAL keyword spotting with the official
+`sherpa-onnx-node` Node addon, pinned EXACTLY (`sherpa-onnx-node@1.13.7`
+in package.json/package-lock; the addon binary comes from the matching
+`sherpa-onnx-win-x64` platform package). The zero-dependency energy-burst
+provider (`local-energy-wake`) is RETAINED unchanged as the compatibility/
+fallback path - `local` keeps its old meaning everywhere (existing tests
+and VAD/STT/TTS provider ids untouched); wake gets its own
+`WakeProviderId = "local" | "sherpa" | "fake"` so the shared
+`VoiceProviderId` is not polluted.
+
+- Provider: `src/voice/wake/sherpa_provider.ts` (`id() = "sherpa-kws-wake"`)
+  implements the existing `WakeWordProvider` contract plus `processFrame`,
+  and rides the existing `WakeWordGateway` (`frameBased`) - no controller
+  changes, no second microphone pipeline, no audio persistence, no network.
+  The controller keeps: pause-while-speaking echo protection, WAKE_UNAVAILABLE
+  degradation to PTT, and one-shot enable/disable lifecycle semantics.
+- Engine isolation: the sherpa API is wrapped behind an injectable
+  `SherpaKwsEngine` factory (createStream/isReady/decode/getResult/reset +
+  explicit release hooks). Unit tests run against a deterministic fake; the
+  native addon is only loaded when a sherpa provider actually starts.
+- Model: `sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01` (English,
+  BPE units, ~3.3M params, chunk-16-left-64). INT8 ONNX files are preferred
+  automatically when present (deterministic resolution inside the configured
+  model dir; fp32 fallback). Binaries stay machine-local under git-ignored
+  `models/wake/`; config carries the directory, never absolute paths.
+- Keywords: the literal word ("Arthur") must be BPE-encoded with the
+  model's `tokens.txt` + `bpe.model` via the official sherpa text2token
+  tooling (`tools/voice/setup_sherpa_wake.ps1` writes `keywords_raw.txt`
+  = `Arthur @Arthur` and runs `sherpa-onnx-cli text2token --tokens-type
+  bpe` into `keywords_arthur.txt`). The @display annotation is what the
+  engine returns as result.keyword on a detection.
+- Detection semantics: a wake fires ONLY when the normalized result equals
+  the normalized configured wake word (lowercase, whitespace and
+  sentencepiece U+2581 marker stripped) - keyword string OR full token
+  sequence, EXACT equality; partial/substring/unrelated results never wake.
+  After a detection the stream is reset immediately (KWS API requirement),
+  which also guarantees one event per detection; a hard per-frame decode
+  budget (64) fails closed instead of spinning if an engine misbehaves.
+- Audio contract: mono s16le 16 kHz PCM frames are converted sample/32768
+  into short-lived Float32Arrays ([-1, 1]); an odd trailing byte across a
+  frame boundary is carried (max one byte). No audio is retained, logged,
+  or persisted; long-run memory is bounded (framesProcessed counter +
+  <=1 carried byte).
+- Failure semantics (fail closed): missing model/keywords files or an
+  unresolvable package => `available === false` => enable() degrades to
+  PTT with WAKE_UNAVAILABLE (text mode unaffected). Native init failures
+  reject start() with a PATH-FREE error; /v1/voice/status keeps exposing
+  only provider id + availability (never paths, file names, or audio).
+  Runtime KWS exceptions mark the provider failed (no further processing,
+  never a fabricated wake), leaving PTT and the text path intact.
+- Configuration: `ARTHUR_WAKE_MODEL_DIR`, `ARTHUR_WAKE_KEYWORDS_FILE`
+  (empty = `<modelDir>/keywords_arthur.txt`), `ARTHUR_WAKE_KEYWORDS_SCORE`
+  (default 1, validated 0.1..5), `ARTHUR_WAKE_KEYWORDS_THRESHOLD` (default
+  0.25, validated (0..1]), `ARTHUR_WAKE_NUM_THREADS` (default 1, validated
+  1..8). Defaults match the model documentation; tuning happens only after
+  real-microphone acceptance, prioritizing LOW false positives.
+- Tests: deterministic suite (tests/voice/sherpa_wake.test.ts) covers
+  provider selection (sherpa/local/fake), id separation, tuning validation,
+  env mapping, INT8-preferring file resolution, PCM conversion + odd-byte
+  carry, exact-match detection (positive/negative/partial), stream reset,
+  gateway pause suppression, start/stop/start lifecycle without duplicate
+  handlers, fail-closed missing-model behavior, PTT independence, no audio
+  retention, and bounded long-run processing. The native integration test
+  (tests/voice/sherpa_wake.native.test.ts) uses the real addon + model +
+  generated keywords file + piper-synthesized 16 kHz WAV fixtures
+  ("Arthur" wakes; "banana"/"hello there" do not) and is skipped unless
+  ARTHUR_SHERPA_WAKE_NATIVE_TEST=1 - never part of normal npm test.
+
+Verification (TASK-0009): typecheck, build, and the full offline suites
+plus the focused wake tests ran green (see the task report for the
+executed commands); the guarded native KWS test ran separately with the
+real model when available.
+
 Verification (executed on the installed whisper-cli with piper-synthesized
 16 kHz speech): `-l auto` without `-np` logs "whisper_full_with_state:
 auto-detected language: en (p = 0.995679)"; with `-np` that line is absent;
@@ -208,7 +283,7 @@ injection), tests/voice/voice_config.test.ts, and tests/voice/local_adapters.tes
 
 | Item | Spec | Implementation |
 | --- | --- | --- |
-| Wake keyword spotter | local keyword detection | energy-burst detector; PTT fallback; provider-abstracted |
+| Wake keyword spotter | local keyword detection | Phase 3 v1: energy-burst detector + PTT fallback (provider-abstracted); TASK-0009 added true KWS as `sherpa-kws-wake` while `local` stays the documented fallback |
 | IDLE -> SPEAKING | not in table | allowed for proactive confirmations (documented extension) |
 | MODEL_FAILED | not in spec | added VoiceErrorCode for streamed turn failures |
 | VoiceSession.mode/wake_word | suggested fields | omitted; mode lives in the ARTHUR session, wake state in wake_enabled |
