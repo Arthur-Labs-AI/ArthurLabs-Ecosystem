@@ -16,6 +16,7 @@
  *
  *   arthur chat --mode personal|business [--session <id>] [--verbose]
  *   arthur ask --mode personal|business [--verbose] [--json] "<message>"
+ *   arthur voice --mode personal|business [--session <id>] [--verbose]
  *   arthur tools [--mode personal|business] [--json]
  *   arthur tools inspect <tool-name> [--json]
  *   arthur status [--json]
@@ -39,6 +40,9 @@ import type { MemoryStatusReport } from "../../src/memory/contracts";
 import type { ToolCallSummary } from "../../src/core/conversation/models";
 import type { ToolDefinition } from "../../src/tools/contracts";
 import type { App } from "../../src/app";
+import type { VoiceTurnController } from "../../src/voice/controller";
+import type { VoiceClientEvent } from "../../src/voice/events";
+import { VoiceState } from "../../src/voice/contracts";
 
 /**
  * Output boundary for every CLI command. The real CLI writes to the process
@@ -97,6 +101,7 @@ const HELP = `ARTHUR CLI
 Usage:
   arthur chat --mode personal|business [--session <id>] [--verbose]
   arthur ask --mode personal|business [--verbose] [--json] "<message>"
+  arthur voice --mode personal|business [--session <id>] [--verbose]
   arthur tools [--mode personal|business] [--json]
   arthur tools inspect <tool-name> [--json]
   arthur status [--json]
@@ -394,6 +399,253 @@ export async function runAsk(app: App, opts: AskOptions): Promise<number> {
   }
 }
 
+// ---- voice console (DEV-VOICE-CLI-1) ----------------------------------------
+
+export type VoiceStatus = ReturnType<VoiceTurnController["status"]>;
+
+/**
+ * Deterministic renderer for the voice console. It renders ONLY the existing
+ * VoiceClientEvent vocabulary (one event protocol everywhere) and derives
+ * nothing from internal tool/runtime state. Assistant text is buffered across
+ * deltas and flushed once at speech start (or turn completion when TTS never
+ * starts), so the console output stays natural. No raw audio, provider
+ * payload, approval token, stack trace, or structured tool payload is ever
+ * printed: the renderer only sees the controller's sanitized event surface.
+ */
+export class VoiceConsoleRenderer {
+  private assistantBuffer = "";
+  private assistantFlushed = true;
+
+  constructor(
+    private readonly io: CliIO,
+    private readonly verbose: boolean,
+  ) {}
+
+  onEvent(event: VoiceClientEvent): void {
+    switch (event.type) {
+      case "voice.state":
+        if (this.verbose) {
+          this.io.out("[state] " + event.state + (event.reason ? " (" + event.reason + ")" : "") + "\n");
+        }
+        break;
+      case "voice.session":
+        if (this.verbose) {
+          this.io.out("[voice session] state=" + event.session.state + " arthur=" + (event.session.arthur_session_id || "-") + "\n");
+        }
+        break;
+      case "wake.detected":
+        this.io.out("[wake] Arthur\n");
+        break;
+      case "stt.partial":
+        if (this.verbose) {
+          this.io.out("[stt.partial] " + event.text + "\n");
+        }
+        break;
+      case "stt.final":
+        if (this.verbose) {
+          this.io.out("[stt.final] " + event.text + "\n");
+        }
+        this.io.out("you> " + event.text + "\n");
+        break;
+      case "assistant.text.delta":
+        // Buffer for the natural "arthur> <answer>" line; verbose also tags
+        // each delta for developer visibility.
+        this.assistantBuffer += event.text;
+        this.assistantFlushed = false;
+        if (this.verbose) {
+          this.io.out("[assistant] " + event.text + "\n");
+        }
+        break;
+      case "assistant.speech.started":
+        this.flushAssistant();
+        this.io.out(this.verbose ? "[tts] started\n" : "[speaking]\n");
+        break;
+      case "assistant.speech.ended":
+        this.io.out(this.verbose ? "[tts] ended\n" : "[speaking done]\n");
+        break;
+      case "assistant.turn.completed":
+        this.flushAssistant();
+        if (this.verbose) {
+          this.io.out("[turn] " + event.status + "\n");
+        }
+        break;
+      case "approval.required":
+        // Render the id + tool name ONLY; never any token/signature material.
+        this.io.out("[approval required]\nTool: " + event.tool_name + "\nApproval ID: " + event.approval_id + "\n");
+        break;
+      case "approval.ambiguous":
+        this.io.out("[approval ambiguous] " + event.pending_count + " pending; name the approval id to resolve\n");
+        break;
+      case "approval.outcome":
+        this.io.out("[approval " + event.status + "] " + event.approval_id + "\n");
+        break;
+      case "voice.error":
+        // The controller sanitizes the message before emitting.
+        this.io.err("[voice error] " + event.message + "\n");
+        break;
+    }
+  }
+
+  /** Print the buffered assistant answer exactly once. */
+  flushAssistant(): void {
+    if (this.assistantFlushed || this.assistantBuffer === "") return;
+    this.io.out("arthur> " + this.assistantBuffer + "\n");
+    this.assistantBuffer = "";
+    this.assistantFlushed = true;
+  }
+}
+
+/** Startup banner derived from the controller's OWN component status. */
+export function renderVoiceStartup(
+  status: VoiceStatus,
+  opts: { mode: ArthurMode; sessionId: string; verbose: boolean },
+): string {
+  const wakeWord = status.wake_word.charAt(0).toUpperCase() + status.wake_word.slice(1);
+  const lines = [
+    "ARTHUR Voice Console",
+    "Mode: " + opts.mode.toUpperCase(),
+    "Session: " + opts.sessionId,
+    "Wake word: " + wakeWord,
+    "Wake: " + (status.wake.available ? "READY" : "UNAVAILABLE"),
+    "Microphone: " + (status.audio_input.available ? "READY" : "UNAVAILABLE"),
+    "TTS: " + (status.tts.available ? "READY" : "UNAVAILABLE"),
+    "",
+    "Say \"" + wakeWord + "\" to start.",
+    "Press Enter for push-to-talk.",
+    "Ctrl+C to exit.",
+    "",
+  ];
+  return lines.join("\n") + "\n";
+}
+
+/** Normalize sync/async line sources into one async iterable. */
+async function* toAsyncLines(lines: AsyncIterable<string> | Iterable<string>): AsyncIterable<string> {
+  if (Symbol.asyncIterator in (lines as object)) {
+    yield* lines as AsyncIterable<string>;
+  } else {
+    yield* lines as Iterable<string>;
+  }
+}
+
+export interface VoiceOptions {
+  mode: ArthurMode;
+  /** Existing session id; when omitted a NEW legitimate session is created. */
+  sessionId?: string;
+  verbose?: boolean;
+  io?: CliIO;
+  /** Voice has no JSON mode; --json fails cleanly with INVALID_REQUEST. */
+  json?: boolean;
+  /**
+   * Input line source. Production passes a readline interface over stdin;
+   * tests pass deterministic async iterables. Only EMPTY lines (Enter) act
+   * as push-to-talk toggles.
+   */
+  lines: AsyncIterable<string> | Iterable<string>;
+  /** Optional hook re-drawing the prompt after each processed line (TTY). */
+  prompt?: () => void;
+  /**
+   * Returns a promise resolved when shutdown is requested (SIGINT / Ctrl+C).
+   * Tests resolve it deterministically; production resolves it from the
+   * readline SIGINT event and process signal handling.
+   */
+  requestShutdown?: () => Promise<void>;
+}
+
+/**
+ * Voice developer console over the EXISTING VoiceTurnController runtime
+ * (DEV-VOICE-CLI-1). A thin surface: it bootstraps a legitimate session via
+ * the narrow conversation API, subscribes to the existing voice event stream,
+ * toggles PTT through voice.pttStart()/pttStop(), and shuts down gracefully.
+ * It never touches the model provider, tool registry/execution, or the
+ * session store, and has no approval bypass flags.
+ */
+export async function runVoice(app: App, opts: VoiceOptions): Promise<number> {
+  const io = opts.io ?? PROCESS_IO;
+  const verbose = opts.verbose === true;
+  if (opts.json === true) {
+    throw new ArthurError("INVALID_REQUEST", "arthur voice does not support --json");
+  }
+
+  // ---- session bootstrap (fail-closed; no raw store exposure) ----
+  let sessionId: string;
+  if (opts.sessionId !== undefined) {
+    const session = await app.conversation.getSession(opts.sessionId);
+    if (session.mode !== opts.mode) {
+      throw new ArthurError(
+        "INVALID_REQUEST",
+        "Session " + opts.sessionId + " is in " + session.mode.toUpperCase() + " mode; requested " + opts.mode.toUpperCase() + ". Voice console does not switch modes.",
+      );
+    }
+    sessionId = opts.sessionId;
+  } else {
+    sessionId = (await app.conversation.createSession(opts.mode)).session_id;
+  }
+
+  // Subscribe BEFORE enable so startup errors are rendered.
+  const renderer = new VoiceConsoleRenderer(io, verbose);
+  const unsubscribe = app.voice.subscribe((event) => renderer.onEvent(event));
+
+  let pttActive = false;
+  let shuttingDown = false;
+  const shutdown = async (): Promise<void> => {
+    if (shuttingDown) return; // repeated shutdown is safe/idempotent
+    shuttingDown = true;
+    renderer.flushAssistant();
+    unsubscribe(); // stop rendering voice events
+    await app.voice.disable(); // stops mic, wake detector, playback (idempotent)
+  };
+
+  try {
+    app.voice.setSession(sessionId);
+    await app.voice.enable();
+
+    const status = app.voice.status();
+    io.out(renderVoiceStartup(status, { mode: opts.mode, sessionId, verbose }));
+    if (status.wake.available === false) {
+      io.out("Wake word unavailable.\nPush-to-talk remains available.\n");
+    }
+    if (app.voice.state === VoiceState.DISABLED) {
+      // enable() failed closed (e.g. no microphone): the sanitized error was
+      // already rendered through voice.error; nothing pretends to run.
+      io.err("Voice console could not start.\n");
+      return 1;
+    }
+
+    // ---- input loop: Enter toggles PTT; shutdown exits ----
+    const input = toAsyncLines(opts.lines)[Symbol.asyncIterator]();
+    const shutdownPromise = (opts.requestShutdown ?? (() => new Promise<void>(() => undefined)))();
+    for (;;) {
+      const next = await Promise.race([
+        input.next(),
+        shutdownPromise.then(() => null),
+      ]);
+      if (next === null || next.done) break;
+      const line = (typeof next.value === "string" ? next.value : "").trim();
+      if (line !== "") {
+        io.err("voice console: only Enter (push-to-talk toggle) is supported here\n");
+        continue;
+      }
+      const startPtt: boolean = !pttActive;
+      try {
+        if (startPtt) {
+          await app.voice.pttStart();
+        } else {
+          await app.voice.pttStop();
+        }
+        pttActive = startPtt;
+        io.out("[ptt] " + (startPtt ? "START" : "STOP") + "\n");
+      } catch (err) {
+        // e.g. VOICE_BUSY; the controller also emitted a sanitized voice.error.
+        printError(err, app, io);
+      }
+      opts.prompt?.();
+    }
+    return 0;
+  } finally {
+    await shutdown();
+  }
+}
+
 export interface ToolsOptions {
   mode?: ArthurMode;
   json?: boolean;
@@ -683,6 +935,40 @@ async function main(): Promise<void> {
           return;
         }
         process.exitCode = await runAsk(app, { mode, message, verbose, json, io });
+        break;
+      }
+      case "voice": {
+        const mode = resolveModeFlag(rawMode, "personal", app, io);
+        if (mode === undefined) {
+          process.exitCode = 1;
+          return;
+        }
+        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        let requestShutdown: () => void = () => undefined;
+        const shutdownRequested = new Promise<void>((resolve) => {
+          requestShutdown = resolve;
+        });
+        const interactive = Boolean(process.stdin.isTTY);
+        if (interactive) {
+          // readline emits SIGINT on Ctrl+C for TTY input.
+          rl.on("SIGINT", () => requestShutdown());
+        }
+        const onProcessSigint = () => requestShutdown();
+        process.on("SIGINT", onProcessSigint);
+        try {
+          process.exitCode = await runVoice(app, {
+            mode,
+            sessionId: flags.get("session"),
+            verbose,
+            json,
+            io,
+            lines: rl,
+            requestShutdown: () => shutdownRequested,
+          });
+        } finally {
+          process.removeListener("SIGINT", onProcessSigint);
+          rl.close();
+        }
         break;
       }
       case "tools": {

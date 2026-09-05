@@ -760,6 +760,19 @@ export class ConversationService {
     );
   }
 
+  /**
+   * Narrow session bootstrap for legitimate clients without a first user turn
+   * (DEV-VOICE-CLI-1, voice console): creates a REAL persisted session through
+   * the existing SessionStore logic and returns its authoritative id + mode.
+   * No user turn is created merely to bootstrap the session, and no store
+   * handle is exposed to the caller.
+   */
+  async createSession(mode: ArthurMode): Promise<{ session_id: string; mode: ArthurMode }> {
+    const session = this.store.createSession(newSessionId(), mode);
+    this.logger.info("session created", { session_id: session.id, mode: session.mode });
+    return { session_id: session.id, mode: session.mode };
+  }
+
   async getSession(id: string): Promise<SessionSummary> {
     const session = this.store.getSession(id);
     if (!session) {

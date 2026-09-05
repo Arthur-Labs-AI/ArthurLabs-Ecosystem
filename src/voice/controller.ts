@@ -264,6 +264,14 @@ export class VoiceTurnController {
   private noSpeechTimer: ReturnType<typeof setTimeout> | undefined;
   private maxUtteranceTimer: ReturnType<typeof setTimeout> | undefined;
   private closedFlag = false;
+  /**
+   * Whether this controller was ever ACTIVATED (enable() reached a running
+   * microphone). DEV-VOICE-CLI-1: closing a never-activated controller - as
+   * every non-voice CLI command does on exit - must stay quiet instead of
+   * logging an active voice shutdown. Real lifecycle logs for an actually
+   * enabled controller are untouched.
+   */
+  private everEnabled = false;
   private readonly pendingApprovals = new Map<string, { tool_name: string; session_id: string }>();
   private speakPumpPromise: Promise<void> | undefined;
   private speakPumpRunning = false;
@@ -381,6 +389,7 @@ export class VoiceTurnController {
       this.ttsQueue.reopen();
       await this.capture.start((frame) => this.onFrame(frame));
       this.machine.transition(VoiceState.IDLE, "enable");
+      this.everEnabled = true;
       if (this.settings.wakeEnabled) {
         if (this.wake.available) {
           await this.wake.start(
@@ -407,6 +416,9 @@ export class VoiceTurnController {
 
   /** Disable from any state: cancels resources and reaches DISABLED. */
   async disable(): Promise<void> {
+    // Only a controller that is currently leaving an active state reports the
+    // disable lifecycle; repeated disables and idle shutdowns stay quiet.
+    const wasActive = this.machine.state !== VoiceState.DISABLED;
     await this.cancelActive("disable");
     await this.wake.stop().catch(() => undefined);
     await this.capture.stop().catch(() => undefined);
@@ -421,7 +433,11 @@ export class VoiceTurnController {
       this.machine.transition(VoiceState.DISABLED, "disable");
     }
     this.emitSession();
-    this.logger.info("voice disabled");
+    // DEV-VOICE-CLI-1: report the disable lifecycle only for a controller
+    // that was actually active; an idle controller exits silently.
+    if (wasActive) {
+      this.logger.info("voice disabled");
+    }
   }
 
   /**
@@ -1210,7 +1226,11 @@ export class VoiceTurnController {
     if (reason !== "disable") {
       this.metrics.counter("voice.cancel_reason", 1, { reason });
     }
-    this.logger.info("voice turn cancelled", { reason });
+    // DEV-VOICE-CLI-1: a never-activated controller has nothing to cancel;
+    // logging an "active shutdown" for it is idle CLI noise.
+    if (this.machine.state !== VoiceState.DISABLED || scope !== undefined) {
+      this.logger.info("voice turn cancelled", { reason });
+    }
   }
 
   private returnToIdle(reason: string): void {
@@ -1275,7 +1295,11 @@ export class VoiceTurnController {
     if (this.closedFlag) return;
     this.closedFlag = true;
     await this.disable();
-    this.logger.info("voice controller closed");
+    // DEV-VOICE-CLI-1: quiet for a never-activated controller; the real
+    // lifecycle log remains for a controller that was actually enabled.
+    if (this.everEnabled) {
+      this.logger.info("voice controller closed");
+    }
   }
 
   // ---- emit helpers ---------------------------------------------------------
