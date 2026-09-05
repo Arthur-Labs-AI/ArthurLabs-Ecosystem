@@ -38,7 +38,9 @@ export interface ToolOrchestratorDeps {
   /**
    * Model-facing tool-result payload cap in bytes (TASK-0011B). Defaults to
    * MODEL_TOOL_RESULT_MAX_BYTES (16 KiB); oversized data is omitted whole,
-   * never partially truncated.
+   * never partially truncated. A non-positive or non-finite value is invalid
+   * and silently falls back to the default (TASK-0011B-F1): it must never be
+   * able to weaken or disable the bound.
    */
   modelToolResultMaxBytes?: number;
   logger: Logger;
@@ -72,7 +74,16 @@ export class ToolOrchestrator {
     this.sanitizer = deps.sanitizer;
     this.approvalTtlSeconds = deps.approvalTtlSeconds;
     this.approvalSigningSecret = deps.approvalSigningSecret;
-    this.modelToolResultMaxBytes = deps.modelToolResultMaxBytes ?? MODEL_TOOL_RESULT_MAX_BYTES;
+    // TASK-0011B-F1 hardening: a positive finite cap is accepted (floored to
+    // whole bytes); 0, negative values, NaN, or Infinity are invalid and fall
+    // back to the default 16 KiB bound - NaN would otherwise compare false
+    // against every size and silently disable the cap, and 0/negative would
+    // omit every payload while looking like a "bounded" configuration.
+    const requestedCap = deps.modelToolResultMaxBytes;
+    this.modelToolResultMaxBytes =
+      typeof requestedCap === "number" && Number.isFinite(requestedCap) && requestedCap > 0
+        ? Math.floor(requestedCap)
+        : MODEL_TOOL_RESULT_MAX_BYTES;
     this.logger = deps.logger;
     this.metrics = deps.metrics;
   }

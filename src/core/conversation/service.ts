@@ -21,7 +21,7 @@ import type { SessionStore } from "../../sessions/store";
 import type { SessionRecord, TurnRecord } from "../../sessions/models";
 import { SecretSanitizer } from "../../security/sanitize";
 import { toToolSchema, ToolRegistry } from "../../tools/registry";
-import type { ToolOrchestrator } from "../../tools/orchestrator";
+import type { ProposedHandling, ToolOrchestrator } from "../../tools/orchestrator";
 import { ToolExecutionContext, ToolDefinition } from "../../tools/contracts";
 import type { ArthurMode } from "../modes/mode";
 import { ContextBuilder } from "./context_builder";
@@ -80,6 +80,21 @@ function deepFreezeValue(value: unknown): void {
     Object.freeze(value);
     for (const child of Object.values(value as Record<string, unknown>)) deepFreezeValue(child);
   }
+}
+
+/**
+ * Degraded-mode fallback text for the rare case where the follow-up model
+ * call fails (TASK-0011B-F1): the concise sanitized result summaries of the
+ * completed tools. This is the ToolCallSummary surface - NEVER the
+ * model-facing ChatMessage.content, which is a structured JSON payload that
+ * must not leak into display text, speech, or persistence.
+ */
+function toolFallbackText(handling: ProposedHandling): string {
+  return handling.summaries
+    .filter((s) => s.status === "completed")
+    .map((s) => s.result_summary)
+    .filter((s): s is string => Boolean(s))
+    .join("\n");
 }
 
 export interface StatusInfo {
@@ -476,10 +491,8 @@ export class ConversationService {
             turn_id: turnId,
             code: arthurErr.code,
           });
-          finalText =
-            finalText.trim() !== ""
-              ? finalText
-              : handling.toolResultMessages.map((m) => m.content).join("\n");
+          // TASK-0011B-F1: concise summaries, never the structured payload.
+          finalText = finalText.trim() !== "" ? finalText : toolFallbackText(handling);
         }
       }
 
@@ -698,10 +711,8 @@ export class ConversationService {
           turn_id: turnId,
           code: arthurErr.code,
         });
-        finalText =
-          finalText.trim() !== ""
-            ? finalText
-            : handling.toolResultMessages.map((m) => m.content).join("\n");
+        // TASK-0011B-F1: concise summaries, never the structured payload.
+        finalText = finalText.trim() !== "" ? finalText : toolFallbackText(handling);
       }
     }
 

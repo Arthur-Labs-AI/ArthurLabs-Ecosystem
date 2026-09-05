@@ -119,6 +119,25 @@ function parsePayload(content: string | undefined): Record<string, unknown> {
   return JSON.parse(content ?? "") as Record<string, unknown>;
 }
 
+/** Shared oversized tool: a payload larger than the default 16 KiB cap. */
+const BIG_BLOB_TOOL: ExtraTool = {
+  definition: {
+    name: "big.blob",
+    version: "1.0.0",
+    description: "returns a payload larger than the model-facing cap",
+    input_schema: { type: "object", properties: {}, additionalProperties: false },
+    output_schema: {
+      type: "object",
+      properties: { blob: { type: "string" } },
+      required: ["blob"],
+      additionalProperties: false,
+    },
+    risk: "read",
+    allowed_modes: [ArthurMode.PERSONAL, ArthurMode.BUSINESS],
+  },
+  executor: () => ({ ok: true, summary: "big result", data: { blob: "X".repeat(20000) } }),
+};
+
 // ---- summary + data reach the model follow-up --------------------------------
 
 test("0011B-1: system.status model follow-up receives summary AND validated data", async () => {
@@ -257,27 +276,7 @@ test("0011B-4: secret-like keys and known secrets are redacted in the payload da
 // ---- payload bound -------------------------------------------------------------
 
 test("0011B-5: oversized data is omitted whole, never partially truncated", async () => {
-  const w = buildPayloadWorld({
-    tools: [
-      {
-        definition: {
-          name: "big.blob",
-          version: "1.0.0",
-          description: "returns a payload larger than the model-facing cap",
-          input_schema: { type: "object", properties: {}, additionalProperties: false },
-          output_schema: {
-            type: "object",
-            properties: { blob: { type: "string" } },
-            required: ["blob"],
-            additionalProperties: false,
-          },
-          risk: "read",
-          allowed_modes: [ArthurMode.PERSONAL, ArthurMode.BUSINESS],
-        },
-        executor: () => ({ ok: true, summary: "big result", data: { blob: "X".repeat(20000) } }),
-      },
-    ],
-  });
+  const w = buildPayloadWorld({ tools: [BIG_BLOB_TOOL] });
   try {
     const handling = await w.orchestrator.handleProposed(
       [{ id: "call-big", name: "big.blob", arguments: {} }],
@@ -506,5 +505,58 @@ test("0011B-12: CLI ask --verbose prints the answer and summaries, never the pay
     assert.equal(errBuf.join(""), "");
   } finally {
     app.close();
+  }
+});
+
+// ---- injected cap hardening (TASK-0011B-F1) -----------------------------------
+
+const INVALID_CAPS = [0, -1, -16384, Number.NaN, Number.POSITIVE_INFINITY];
+
+test("0011B-13: invalid injected caps (0, negative, NaN, Infinity) never omit normal payloads", async () => {
+  for (const invalidCap of INVALID_CAPS) {
+    const w = buildPayloadWorld({ modelToolResultMaxBytes: invalidCap });
+    try {
+      const handling = await w.orchestrator.handleProposed(
+        [{ id: `call-h-${String(invalidCap)}`, name: "system.status", arguments: {} }],
+        w.ctx,
+      );
+      const payload = parsePayload(handling.toolResultMessages[0]?.content) as {
+        data?: unknown;
+        data_omitted?: boolean;
+      };
+      // A 0/negative cap would omit every payload and look "bounded" while
+      // being useless; the fallback must keep normal data flowing.
+      assert.deepEqual(payload.data, FAKE_STATUS, `cap ${String(invalidCap)} must not omit normal payloads`);
+      assert.equal(payload.data_omitted, undefined);
+    } finally {
+      w.close();
+    }
+  }
+});
+
+test("0011B-14: invalid injected caps (NaN, Infinity, 0) still enforce the default 16 KiB bound", async () => {
+  for (const invalidCap of INVALID_CAPS) {
+    const w = buildPayloadWorld({ modelToolResultMaxBytes: invalidCap, tools: [BIG_BLOB_TOOL] });
+    try {
+      const handling = await w.orchestrator.handleProposed(
+        [{ id: `call-nan-${String(invalidCap)}`, name: "big.blob", arguments: {} }],
+        w.ctx,
+      );
+      const payload = parsePayload(handling.toolResultMessages[0]?.content) as {
+        data?: unknown;
+        data_omitted?: boolean;
+        reason?: string;
+      };
+      // NaN would compare false against every size and silently disable the
+      // cap; the fallback must keep the default 16 KiB bound active.
+      assert.equal(payload.data, undefined, `cap ${String(invalidCap)} must not become unbounded`);
+      assert.equal(payload.data_omitted, true);
+      assert.equal(payload.reason, TOOL_RESULT_PAYLOAD_TOO_LARGE);
+      assert.ok(
+        Buffer.byteLength(handling.toolResultMessages[0]?.content ?? "", "utf8") <= MODEL_TOOL_RESULT_MAX_BYTES,
+      );
+    } finally {
+      w.close();
+    }
   }
 });
