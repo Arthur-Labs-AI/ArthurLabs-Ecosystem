@@ -123,8 +123,16 @@ spec section 44 ("Record intentional deviations in
 ## SC-01 freeze (Software Core v1)
 
 - **Status: FROZEN** — Software Core milestone SC-01. Frozen schema version:
-  `1` (`CURRENT_MEMORY_SCHEMA_VERSION`). Freeze commit: `5cd124648d745595e6b1ca89286b10c2bbac4c1d`
-  (plus the uncommitted SC-01 working tree verified in this session).
+  `1` (`CURRENT_MEMORY_SCHEMA_VERSION`).
+- **SC-01 implementation commit:** `534ece2f79c9e5342549194c27baa46cdd37171a`
+  (`feat(memory): harden and freeze phase 2 memory` — the complete SC-01
+  implementation, freeze suite, and this freeze record's first version).
+- **Freeze metadata commit:** `docs(memory): record SC-01 freeze SHAs and F16 verdict`
+  (docs-only follow-up; HEAD of this freeze sequence — resolve via
+  `git log --oneline --decorate`. A commit can never embed its own SHA, so
+  this record names the authoritative implementation SHA above and
+  identifies the metadata commit by message; the implementation commit SHA
+  is the freeze reference and is unaffected by metadata amendments).
 - **Freeze invariants (immutable for Software Core v1):**
   - **M1 trusted domain authority** — the domain comes only from the trusted
     server-side session (`memoryContextFromSession`); API schemas stay strict
@@ -183,10 +191,16 @@ spec section 44 ("Record intentional deviations in
   is deterministic/offline (no DeepSeek API, microphone, wake model, Piper,
   Whisper, or network); symlink tests skip only when the OS truly forbids
   them, hardlink/path-alias coverage is mandatory. Full offline suite
-  (unit+memory+integration: 407 tests) passes; the 36 voice-engine failures
-  in this sandbox are pre-existing environment failures (engine child
-  processes cannot spawn with piped stdio — verified identical on the
-  pristine tree) and are unrelated to memory.
+  (unit+memory+integration: 407 tests) passes.
+- **SC01-F16 full-repository regression:** `npm test` gives 576 tests —
+  530 pass, 36 fail, 10 skipped. All 36 failures are voice-engine
+  child-process/stdio tests (capture, STT, TTS, playback, STT wrapper) and
+  reproduce byte-identically on the pristine pre-SC-01 tree (verified via
+  `git stash` + rerun: same 36, same names). Zero SC-01 regression delta:
+  no memory, unit, or integration test fails. Status: PASS with an
+explicitly evidenced pre-existing/environment-only exception for the 36
+  voice-engine tests; no Memory code was changed and no test was weakened
+  to obtain this result.
 
 ## Rules after freeze
 
