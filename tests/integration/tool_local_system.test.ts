@@ -178,7 +178,9 @@ test("J: malformed fake adapter output fails with TOOL_OUTPUT_INVALID", async ()
       w.ctx,
     );
     assert.equal(handling.toolResultMessages.length, 0);
-    assert.equal(handling.summaries[0]?.status, "rejected");
+    // SC-03: execution failure surfaces the durable status (failed), not the
+    // old conflated "rejected" proposal status.
+    assert.equal(handling.summaries[0]?.status, "failed");
     const records = w.store.getToolCallsForTurn("t1");
     assert.equal(records[0]?.status, "failed");
   } finally {
@@ -205,7 +207,8 @@ test("K: adapter exception becomes TOOL_EXECUTION_FAILED", async () => {
       w.ctx,
     );
     assert.equal(handling.toolResultMessages.length, 0);
-    assert.equal(handling.summaries[0]?.status, "rejected");
+    // SC-03: execution failure surfaces the durable status (failed).
+    assert.equal(handling.summaries[0]?.status, "failed");
     const records = w.store.getToolCallsForTurn("t1");
     assert.equal(records[0]?.status, "failed");
     assert.ok(records[0]?.result_summary?.includes("execution failed"));

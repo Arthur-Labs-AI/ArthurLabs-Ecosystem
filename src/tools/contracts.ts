@@ -14,6 +14,13 @@ export interface ToolDefinition {
   output_schema?: Record<string, unknown>;
   risk: ToolRisk;
   allowed_modes: ArthurMode[];
+  /**
+   * SC-03 execution policy: trusted registry metadata, never model/user
+   * input. When omitted the risk-derived default applies (read ->
+   * side-effect-free retryable; anything else -> mutation, no retry).
+   * Part of the definition fingerprint (SC-03 section 114).
+   */
+  execution_policy?: import("./execution_policy").ToolExecutionPolicy;
 }
 
 /**
@@ -35,6 +42,14 @@ export interface ToolExecutionContext {
   approvalToken?: ApprovalToken;
   /** Centrally verified approval authority; required for approval tools. */
   authorization?: import("./approval_signer").VerifiedApproval;
+  /** SC-03 v2 executor fields: stable operation identity + attempt scope. */
+  execution_id?: string;
+  attempt_id?: string;
+  attempt_no?: number;
+  /** Absolute attempt deadline (ISO); the composed AbortSignal enforces it. */
+  deadline_at?: string;
+  /** Composed signal: user cancellation + attempt timeout + overall deadline. */
+  signal?: AbortSignal;
 }
 
 export interface ToolResult {
@@ -43,9 +58,18 @@ export interface ToolResult {
   data?: unknown;
 }
 
+export interface ToolAttemptContext {
+  execution_id: string;
+  attempt_id: string;
+  attempt_no: number;
+  deadline_at: string;
+  signal: AbortSignal;
+}
+
 export type ToolExecutor = (
   args: Record<string, unknown>,
   ctx: ToolExecutionContext,
+  attempt?: ToolAttemptContext,
 ) => Promise<ToolResult> | ToolResult;
 
 // ---- Permission/approval -------------------------------------------------

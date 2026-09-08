@@ -362,7 +362,8 @@ test("0011B-8: malformed executor output dies before model handoff (no message)"
       w.ctx,
     );
     assert.equal(handling.toolResultMessages.length, 0, "malformed output must not reach the model");
-    assert.equal(handling.summaries[0]?.status, "rejected");
+    // SC-03: malformed executor output is a durable execution failure.
+    assert.equal(handling.summaries[0]?.status, "failed");
     const records = w.store.getToolCallsForTurn("t1");
     assert.equal(records[0]?.status, "failed");
     assert.ok(records[0]?.result_summary?.includes("invalid output"));

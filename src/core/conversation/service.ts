@@ -835,6 +835,27 @@ export class ConversationService {
     return this.orchestrator.rejectApproval(approvalId);
   }
 
+  /** SC-03 safe execution status view (section 71). */
+  getExecution(executionId: string): import("../../tools/execution_types").ExecutionStatusView {
+    const view = this.orchestrator.getCoordinator().getStatus(executionId);
+    if (!view) throw sessionNotFound(executionId);
+    return view;
+  }
+
+  /** SC-03 cancel API (section 70). */
+  cancelExecution(executionId: string): import("../../tools/execution_types").ExecutionStatusView {
+    const updated = this.orchestrator.getCoordinator().requestCancel(executionId);
+    if (!updated) throw sessionNotFound(executionId);
+    const view = this.orchestrator.getCoordinator().getStatus(executionId);
+    if (!view) throw sessionNotFound(executionId);
+    return view;
+  }
+
+  /** SC-03 startup recovery passthrough (section 58). */
+  async recoverExecutions(): Promise<{ recovered: number }> {
+    return this.orchestrator.getCoordinator().recoverStaleExecutions();
+  }
+
   getStatus(): StatusInfo {
     return {
       version: this.config.version,
@@ -866,6 +887,21 @@ export class ConversationService {
     const definitions =
       mode === undefined ? this.registry.list() : this.registry.listAllowedForMode(mode);
     return definitions.map(frozenToolDefinition);
+  }
+
+  /**
+   * SC-03 test seam: exposes the orchestrator/registry for crash-recovery
+   * proofs that must drive the production coordinator against a persistent DB.
+   * Not a second execution path: every call still flows through the same
+   * orchestrator -> coordinator -> service -> executor chain.
+   */
+  orchestratorForTests(): import("../../tools/orchestrator").ToolOrchestrator {
+    return this.orchestrator;
+  }
+
+  /** SC-03 test seam: production registry behind the frozen catalog views. */
+  registryForTests(): import("../../tools/registry").ToolRegistry {
+    return this.registry;
   }
 
   /** Safe manifest lookup by tool name; undefined when the tool is unknown. */

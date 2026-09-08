@@ -378,12 +378,19 @@ test("F25: executor transport failure keeps executing/outcome-unknown; retry nev
   try {
     const response = await app.conversation.handleTurn(validTurn({ mode: "business", client_request_id: "unk-" + Math.random() }));
     const approvalId = response.tool_calls[0]?.approval_id as string;
-    await assert.rejects(() => app.conversation.approve(approvalId));
-    assert.equal(app.store.getApproval(approvalId)?.status, "executing");
+    // SC-03 section 13: the approval is atomically consumed (APPROVED +
+    // consumed_at + bound execution); the transport failure quarantines the
+    // bound execution as OUTCOME_UNKNOWN while the approval stays consumed
+    // (never 'executing' anymore — that was the pre-§13 claim shape).
+    await assert.rejects(() => app.conversation.approve(approvalId), (e: unknown) => e instanceof ArthurError && e.code === "TOOL_OUTCOME_UNKNOWN");
+    assert.equal(app.store.getApproval(approvalId)?.status, "approved");
+    assert.ok(app.store.getApproval(approvalId)?.consumed_at, "consumed_at persisted");
     assert.equal(executions, 1);
-    await assert.rejects(() => app.conversation.approve(approvalId), (e: unknown) => e instanceof ArthurError && e.code === "APPROVAL_INVALID");
+    const bound = app.store.unsafeDbHandle().prepare("SELECT state FROM tool_executions WHERE approval_id = ?").get(approvalId) as { state: string };
+    assert.equal(bound.state, "outcome_unknown", "execution quarantined");
+    await assert.rejects(() => app.conversation.approve(approvalId), (e: unknown) => e instanceof ArthurError && (e.code === "TOOL_OUTCOME_UNKNOWN" || e.code === "APPROVAL_INVALID"));
     assert.equal(executions, 1, "retry must not cause a second external mutation");
-    assert.equal(app.store.getApproval(approvalId)?.status, "executing");
+    assert.equal((app.store.unsafeDbHandle().prepare("SELECT state FROM tool_executions WHERE approval_id = ?").get(approvalId) as { state: string }).state, "outcome_unknown");
   } finally { app.close(); }
 });
 

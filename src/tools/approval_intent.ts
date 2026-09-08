@@ -12,6 +12,7 @@ import type { ArthurMode } from "../core/modes/mode";
 import type { ToolRisk } from "./contracts";
 import type { ToolDefinition } from "./contracts";
 import { canonicalizeJson, sha256Canonical } from "./canonical_json";
+import { defaultPolicyForRisk, executionPolicyFingerprintSource } from "./execution_policy";
 
 export const APPROVAL_BINDING_VERSION = 2;
 
@@ -45,11 +46,22 @@ export interface ApprovalPresentation {
 
 export type ApprovalPresenter = (args: Record<string, unknown>) => ApprovalPresentation;
 
-/** Security-relevant manifest snapshot fingerprinted at registration. */
+/**
+ * Security-relevant manifest snapshot fingerprinted at registration.
+ *
+ * SC-03 section 114: the execution policy (effects/timeouts/idempotency/
+ * retry/cancellation/reconciliation/result persistence) is runtime-relevant
+ * and therefore part of the fingerprint. A policy change without a hash
+ * change is rejected: registered tools always carry a normalized policy, so
+ * legacy definitions hash their risk-derived default.
+ */
 export function toolDefinitionFingerprintSource(definition: ToolDefinition): Record<string, unknown> {
   return {
     allowed_modes: [...definition.allowed_modes].sort(),
     description: definition.description,
+    execution_policy: executionPolicyFingerprintSource(
+      definition.execution_policy ?? defaultPolicyForRisk(definition.risk),
+    ),
     input_schema: definition.input_schema,
     name: definition.name,
     output_schema: definition.output_schema ?? null,

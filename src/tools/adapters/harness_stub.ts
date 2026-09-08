@@ -13,6 +13,7 @@ import { createHash } from "node:crypto";
 
 import { ApprovalToken, HarnessAdapter, HarnessJob, HarnessJobSpec, HarnessStatus } from "../contracts";
 import { argumentsDigest, verifyApprovalToken } from "../permissions";
+import { sha256Canonical } from "../canonical_json";
 
 export interface HarnessStubOptions {
   /** Secret used to verify approval-token HMAC signatures (fail closed). */
@@ -34,8 +35,11 @@ export class HarnessStubAdapter implements HarnessAdapter {
 
   async createJob(spec: HarnessJobSpec, approval: ApprovalToken): Promise<HarnessJob> {
     this.assertApproval(approval);
-    const specDigest = argumentsDigest({ kind: spec.kind, payload: spec.payload });
-    if (specDigest !== approval.arguments_hash) {
+    const specArgs: Record<string, unknown> = { kind: spec.kind };
+    if (spec.payload !== undefined) specArgs.payload = spec.payload;
+    const legacyDigest = argumentsDigest(specArgs);
+    const canonicalDigest = sha256Canonical(specArgs);
+    if (legacyDigest !== approval.arguments_hash && canonicalDigest !== approval.arguments_hash) {
       throw new Error("approval token does not authorize this exact job spec");
     }
 
@@ -78,6 +82,13 @@ export class HarnessStubAdapter implements HarnessAdapter {
     if (!this.verificationSecret) {
       throw new Error("harness adapter is not configured to verify approval tokens");
     }
+    // SC-02 section 33 executor-side verification (NOT weakened by SC-03): the
+    // receiving adapter re-checks signature, binding, AND expiry before any
+    // side effect. Race safety comes from the DB CAS layer (consume +
+    // claimAttempt require expires_at > now on the same persisted timestamps),
+    // never from skipping this check: every contender mints its token from the
+    // same persisted expires_at at consume time, so identical validity windows
+    // apply to all — clock skew cannot elect two different winners.
     if (!verifyApprovalToken(approval, this.verificationSecret)) {
       throw new Error("approval token signature is invalid");
     }
@@ -89,6 +100,9 @@ export class HarnessStubAdapter implements HarnessAdapter {
     }
     if (typeof approval.arguments_hash !== "string" || !/^[0-9a-f]{64}$/.test(approval.arguments_hash)) {
       throw new Error("approval token has an invalid argument digest");
+    }
+    if (Number.isNaN(Date.parse(approval.expires_at)) || Number.isNaN(Date.parse(approval.issued_at))) {
+      throw new Error("approval token has an invalid validity window");
     }
     if (new Date(approval.expires_at).getTime() < Date.now()) {
       throw new Error("approval token has expired");

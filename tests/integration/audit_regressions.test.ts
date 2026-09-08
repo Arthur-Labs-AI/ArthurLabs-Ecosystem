@@ -82,6 +82,9 @@ test("approval remains non-retryable across restart when external outcome is unk
       (err: unknown) => err instanceof ArthurError && err.code === "APPROVAL_INVALID",
     );
     assert.equal(calls, 0);
+    // SC-03 section 13: legacy pre-consume claim shape (crash-window
+    // simulation); production approve() consumes instead. Either way the
+    // row is never re-executed through the public path.
     assert.equal(second.store.getApproval(approvalId)?.status, "executing");
   } finally {
     second.close();
@@ -136,6 +139,9 @@ test("mode cannot change while an approved external action is executing", async 
     const { sessionId, approvalId } = await makePending(app);
     const approving = app.conversation.approve(approvalId);
     await startedPromise;
+    // SC-03 section 13: the consumed-but-unresolved approval (APPROVED +
+    // consumed_at, bound execution RUNNING) blocks mode changes exactly like
+    // the legacy executing claim did — same guard message, same protection.
     await assert.rejects(() => app.conversation.changeMode(sessionId, { mode: "personal" }), /while an approval is executing/);
     assert.equal(app.store.getSession(sessionId)?.mode, "business");
     release();

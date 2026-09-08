@@ -22,9 +22,11 @@ export interface ToolCallSummary {
   tool_call_id: string;
   name: string;
   risk: string;
-  status: "completed" | "pending_approval" | "rejected";
+  status: "completed" | "pending_approval" | "rejected" | "failed" | "cancelled" | "timed_out" | "outcome_unknown";
   result_summary?: string;
   approval_id?: string;
+  /** SC-03 durable execution identity (present once an execution exists). */
+  execution_id?: string;
 }
 
 export interface TurnResponseModel {
@@ -79,4 +81,6 @@ export interface ApprovalOutcome {
   status: "approved" | "rejected" | "already_resolved";
   tool_call_id?: string;
   result_summary?: string;
+  /** SC-03: the durable execution bound to this approval (when created). */
+  execution_id?: string;
 }

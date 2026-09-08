@@ -16,8 +16,10 @@ import type { ArthurMode } from "../core/modes/mode";
 import type { ToolSchema } from "../models/contracts";
 import { ToolDefinition, ToolExecutor } from "./contracts";
 import { ToolExecutionService, type ExecutorInvoker } from "./execution";
+import { SingleAttemptExecutionService, type AttemptInvoker } from "./execution_service_v2";
 import { toolManifestInvalid, validateToolDefinition } from "./manifest";
 import type { PermissionService } from "./permissions";
+import { defaultPolicyForRisk } from "./execution_policy";
 import { toolDefinitionHash } from "./approval_intent";
 import type { ApprovalPresenter } from "./approval_intent";
 
@@ -37,6 +39,8 @@ interface RegisteredTool {
   outputValidator?: ValidateFunction;
   definitionHash: string;
   presenter?: ApprovalPresenter;
+  /** SC-03 normalized execution policy (risk default when omitted). */
+  policy: import("./execution_policy").ToolExecutionPolicy;
 }
 
 function deepFreeze<T>(value: T): T {
@@ -94,18 +98,32 @@ export class ToolRegistry {
     if (definition.risk === "approval_required" && presenter === undefined) {
       throw toolManifestInvalid("presenter", "approval_required tools must provide a trusted ApprovalPresenter");
     }
-    const immutable = deepFreeze(structuredClone(definition));
+    // SC-03 section 116: policy comes only from the trusted registered
+    // definition. Normalize the risk default BEFORE freezing so the stored
+    // definition, the fingerprint, and getPolicy() always agree.
+    const withPolicy: ToolDefinition = {
+      ...definition,
+      execution_policy: definition.execution_policy ?? defaultPolicyForRisk(definition.risk),
+    };
+    const immutable = deepFreeze(structuredClone(withPolicy));
     const validator = this.compileSchema("input_schema", immutable.input_schema);
     const outputValidator = immutable.output_schema
       ? this.compileSchema("output_schema", immutable.output_schema)
       : undefined;
     const definitionHash = toolDefinitionHash(immutable);
-    this.tools.set(immutable.name, { definition: immutable, executor, validator, outputValidator, definitionHash, presenter });
+    const policy = structuredClone(immutable.execution_policy ?? defaultPolicyForRisk(immutable.risk));
+    deepFreeze(policy);
+    this.tools.set(immutable.name, { definition: immutable, executor, validator, outputValidator, definitionHash, presenter, policy });
   }
 
   /** SC-02 tool definition fingerprint bound into every approval. */
   getDefinitionHash(name: string): string | undefined {
     return this.tools.get(name)?.definitionHash;
+  }
+
+  /** SC-03 trusted execution policy for a registered tool. */
+  getExecutionPolicy(name: string): import("./execution_policy").ToolExecutionPolicy | undefined {
+    return this.tools.get(name)?.policy;
   }
 
   getPresenter(name: string): ApprovalPresenter | undefined {
@@ -186,5 +204,21 @@ export class ToolRegistry {
       return await tool.executor(args, ctx);
     };
     return new ToolExecutionService(this, permissions, invoker);
+  }
+
+  /**
+   * Build the SC-03 single-attempt primitive bound to this registry's private
+   * executor map. Same closure pattern as createExecutionService: raw executors
+   * stay reachable only through the secured service, now with attempt scope.
+   */
+  createSingleAttemptService(permissions: PermissionService): SingleAttemptExecutionService {
+    const invoke: AttemptInvoker = async (name, args, ctx, attempt) => {
+      const tool = this.tools.get(name);
+      if (!tool) {
+        throw new ArthurError("TOOL_NOT_FOUND", "Unknown tool: " + name);
+      }
+      return await tool.executor(args, ctx, attempt);
+    };
+    return new SingleAttemptExecutionService(this, permissions, invoke);
   }
 }

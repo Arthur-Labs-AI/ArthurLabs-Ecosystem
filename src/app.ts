@@ -75,6 +75,8 @@ export interface App {
   metrics: Metrics;
   gateway: ModelGateway;
   store: SessionStore;
+  /** SC-03 section 58: result of the automatic startup recovery scan. */
+  startupRecovery?: { recovered: number };
   conversation: ConversationService;
   /** Phase 2 session-aware memory facade (HTTP/CLI surface). */
   memory: MemoryService;
@@ -384,12 +386,29 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
     deps,
   );
 
+  // SC-03 section 58: startup recovery runs automatically on every production
+  // startup (same production path tests exercise): scan non-terminal executions
+  // left by a dead runtime and apply the deterministic policy matrix. Best
+  // effort and synchronous-safe: recovery never throws out of buildApp and
+  // never dispatches executors; stale RUNNING mutations quarantine to
+  // OUTCOME_UNKNOWN, side-effect-free work resumes via retry_wait.
+  let startupRecovery: { recovered: number } | undefined;
+  try {
+    startupRecovery = orchestrator.runStartupRecovery();
+  } catch (err) {
+    logger.error("startup execution recovery failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    startupRecovery = { recovered: 0 };
+  }
+
   return {
     config: settings,
     logger,
     metrics,
     gateway,
     store,
+    startupRecovery,
     conversation,
     memory,
     voice: controller,

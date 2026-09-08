@@ -41,7 +41,15 @@ export interface ModelCallRecord {
   created_at: string;
 }
 
-export type ToolCallStatus = "completed" | "pending_approval" | "rejected" | "failed" | "executing";
+export type ToolCallStatus =
+  | "completed"
+  | "pending_approval"
+  | "rejected"
+  | "failed"
+  | "executing"
+  | "cancelled"
+  | "timed_out"
+  | "outcome_unknown";
 
 export interface ToolCallRecord {
   id: string;
@@ -80,6 +88,9 @@ export interface ApprovalRecord {
   created_at: string;
   /** ISO timestamp set when the approval atomically transitions pending -> executing. */
   claimed_at?: string;
+  /** SC-03 section 13: set exactly once when the approval is atomically consumed
+   * and bound to its single execution. NULL = never consumed. */
+  consumed_at?: string | null;
   resolved_at?: string;
   /** SC-02 Approval Binding v2 fields (nullable on pre-v2 rows). */
   binding_version?: number;
@@ -92,6 +103,70 @@ export interface ApprovalRecord {
   signing_key_id?: string;
   invalidated_reason?: string;
   decision_channel?: string;
+}
+
+export type ExecutionRecordStatus =
+  | "ready"
+  | "running"
+  | "retry_wait"
+  | "cancel_requested"
+  | "reconciling"
+  | "succeeded"
+  | "failed"
+  | "cancelled"
+  | "timed_out"
+  | "outcome_unknown";
+
+export interface ToolExecutionRow {
+  id: string;
+  tool_call_id: string;
+  approval_id?: string | null;
+  session_id: string;
+  turn_id: string;
+  mode: string;
+  tool_name: string;
+  tool_version: string;
+  tool_definition_hash: string;
+  arguments_hash: string;
+  state: ExecutionRecordStatus;
+  attempt_count: number;
+  max_attempts: number;
+  created_at: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  deadline_at: string;
+  next_attempt_at?: string | null;
+  cancel_requested_at?: string | null;
+  result_summary?: string | null;
+  last_error_code?: string | null;
+  last_error_summary?: string | null;
+  runtime_instance_id?: string | null;
+  reconciliation_required: number;
+  /** SC-03 section 79: validated bounded structured result (bounded_json tools
+   * only; NULL for summary_only). Sanitized, JSON-safe, size-bounded. */
+  result_data_json?: string | null;
+}
+
+export type AttemptRecordStatus =
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "cancelled"
+  | "timed_out"
+  | "outcome_unknown";
+
+export interface ToolExecutionAttemptRow {
+  id: string;
+  execution_id: string;
+  attempt_no: number;
+  runtime_instance_id: string;
+  started_at: string;
+  finished_at?: string | null;
+  state: AttemptRecordStatus;
+  failure_kind?: string | null;
+  effect_outcome?: string | null;
+  error_code?: string | null;
+  error_summary?: string | null;
 }
 
 export type IdempotencyStatus = "in_progress" | "completed" | "failed";

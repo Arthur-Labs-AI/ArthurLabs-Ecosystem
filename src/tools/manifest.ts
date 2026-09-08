@@ -11,7 +11,8 @@
 import { ArthurError } from "../core/errors/errors";
 import { isArthurMode } from "../core/modes/mode";
 import type { ToolDefinition, ToolRisk } from "./contracts";
-import { assertJsonSafe, JsonSafeError } from "./json_safe";
+import { assertJsonSafe, JsonSafeError, snapshotJsonSafe } from "./json_safe";
+import { validateExecutionPolicy as validateExecutionPolicyValue } from "./execution_policy";
 
 /**
  * Canonical dotted tool identity, e.g. `system.echo`, `filesystem.read`,
@@ -46,7 +47,7 @@ const REQUIRED_FIELDS: readonly string[] = [
   "allowed_modes",
 ];
 
-const MANIFEST_FIELDS: readonly string[] = [...REQUIRED_FIELDS, "output_schema"];
+const MANIFEST_FIELDS: readonly string[] = [...REQUIRED_FIELDS, "output_schema", "execution_policy"];
 
 export function toolManifestInvalid(field: string, reason: string): ArthurError {
   return new ArthurError("INVALID_CONFIG", "Invalid tool manifest: " + field + ": " + reason, {
@@ -95,7 +96,7 @@ export function validateToolDefinition(definition: unknown): void {
     }
   }
 
-  const { name, version, description, input_schema, output_schema, risk, allowed_modes } =
+  const { name, version, description, input_schema, output_schema, risk, allowed_modes, execution_policy } =
     definition as ToolDefinition & Record<string, unknown>;
 
   if (typeof name !== "string") throw toolManifestInvalid("name", "must be a string");
@@ -163,6 +164,24 @@ export function validateToolDefinition(definition: unknown): void {
         throw toolManifestInvalid(field, err.message);
       }
       throw err;
+    }
+  }
+
+  // SC-03 section 116-117: execution policy is trusted registry metadata.
+  // It must be a plain validated policy when present; deep validation lives
+  // in execution_policy.ts so the manifest layer stays a shape gate.
+  if (execution_policy !== undefined) {
+    let snapshot: unknown;
+    try {
+      snapshot = snapshotJsonSafe(execution_policy, "execution_policy");
+    } catch (err) {
+      if (err instanceof JsonSafeError) throw toolManifestInvalid("execution_policy", err.message);
+      throw err;
+    }
+    try {
+      validateExecutionPolicyValue(snapshot);
+    } catch (err) {
+      throw toolManifestInvalid("execution_policy", err instanceof Error ? err.message : "invalid execution policy");
     }
   }
 }

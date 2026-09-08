@@ -58,7 +58,13 @@ test("concurrent approval requests execute the action exactly once", async () =>
       app.conversation.approve(approvalId),
     ]);
     const fulfilled = results.filter((r) => r.status === "fulfilled");
-    assert.equal(fulfilled.length, 1);
+    // SC-03 section 13: one winner approves + dispatches (jobCount=1); the
+    // duplicate converges on the same bound execution as already_resolved.
+    assert.equal(fulfilled.length, 2, "duplicates share the single truth, never throw");
+    const statuses = fulfilled.map((r) => (r.value as { status: string }).status).sort();
+    assert.deepEqual(statuses, ["already_resolved", "approved"]);
+    const ids = new Set(fulfilled.map((r) => (r.value as { execution_id?: string }).execution_id));
+    assert.equal(ids.size, 1, "one bound execution for one approval");
     assert.equal(h.jobCount(), 1);
     assert.equal(app.store.getApproval(approvalId)?.status, "approved");
   } finally {
@@ -78,6 +84,9 @@ test("claimApproval is an atomic compare-and-swap", async () => {
 });
 
 test("an executing approval with unknown crash outcome is never automatically retried", async () => {
+  // SC-03 section 13: legacy pre-consume claim shape (crash-window simulation).
+  // Production approve() now consumes PENDING -> APPROVED + consumed_at +
+  // bound execution; the legacy claim still blocks re-execution identically.
   const h = countingHarness();
   const app = buildTestApp({}, { harness: h.harness, provider: createJobProvider() });
   try {

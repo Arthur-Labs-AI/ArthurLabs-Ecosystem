@@ -382,7 +382,15 @@ test("SC02-F17/F18: single-use replay blocked; 100 concurrent approve = exactly 
     assert.ok(approvalId);
     const results = await Promise.allSettled(Array.from({ length: 100 }, () => app.conversation.approve(approvalId)));
     const fulfilled = results.filter((r) => r.status === "fulfilled");
-    assert.equal(fulfilled.length, 1);
+    // SC-03 section 13: exactly ONE approval consumes and dispatches (calls=1,
+    // one execution); the winner reports approved, duplicates converge on the
+    // SAME terminal truth as already_resolved with the SAME execution_id.
+    // (Pre-§13 shape asserted fulfilled=1; the frozen contract shares one truth.)
+    assert.equal(fulfilled.length, 100, "no duplicate may throw once single-use binding holds");
+    const approved = fulfilled.filter((r) => r.status === "fulfilled" && (r.value as { status: string }).status === "approved");
+    assert.equal(approved.length, 1, "exactly one consume winner");
+    const ids = new Set(fulfilled.map((r) => (r.value as { execution_id?: string }).execution_id));
+    assert.equal(ids.size, 1, "all duplicates share the single bound execution");
     assert.equal(calls, 1);
     // Retry-after-success is already_resolved, never a second execution.
     const again = await app.conversation.approve(approvalId);

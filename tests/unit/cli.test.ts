@@ -286,9 +286,13 @@ test("J: inspection never exposes executor/adapter/internal fields", () => {
     const cap = captureIo();
     runToolsInspect(app, { name: "system.status", io: cap.io });
     const manifest = JSON.parse(cap.out());
+    // SC-03: the trusted execution policy (timeouts/retry/idempotency -
+    // operational metadata, no secrets) is part of the manifest surface and
+    // of the definition fingerprint (section 114).
     assert.deepEqual(Object.keys(manifest).sort(), [
       "allowed_modes",
       "description",
+      "execution_policy",
       "input_schema",
       "name",
       "output_schema",

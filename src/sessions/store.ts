@@ -26,6 +26,7 @@ import type {
   TurnRecord,
   TurnRole,
 } from "./models";
+import { TOOL_EXECUTIONS_DDL } from "./execution_store";
 
 interface Migration {
   version: number;
@@ -98,7 +99,7 @@ function reconcileSecureSchema(db: DatabaseSync): void {
       tool_name TEXT NOT NULL,
       arguments_json TEXT NOT NULL,
       risk_level TEXT NOT NULL CHECK(risk_level IN ('read','low_write','approval_required','high_risk')),
-      status TEXT NOT NULL CHECK(status IN ('completed','pending_approval','rejected','failed','executing')),
+      status TEXT NOT NULL CHECK(status IN ('completed','pending_approval','rejected','failed','executing','cancelled','timed_out','outcome_unknown')),
       result_summary TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
@@ -124,6 +125,7 @@ function reconcileSecureSchema(db: DatabaseSync): void {
       risk_level TEXT NOT NULL DEFAULT 'approval_required'
         CHECK(risk_level IN ('read','low_write','approval_required','high_risk')),
       binding_version INTEGER NOT NULL DEFAULT 1,
+      consumed_at TEXT,
       mode TEXT,
       tool_version TEXT,
       tool_definition_hash TEXT,
@@ -150,10 +152,11 @@ function reconcileSecureSchema(db: DatabaseSync): void {
   const signingKeyId = approvalColumns.has("signing_key_id") ? "signing_key_id" : "NULL";
   const invalidatedReason = approvalColumns.has("invalidated_reason") ? "invalidated_reason" : "NULL";
   const decisionChannel = approvalColumns.has("decision_channel") ? "decision_channel" : "NULL";
+  const consumedAt = approvalColumns.has("consumed_at") ? "consumed_at" : "NULL";
   db.exec(`INSERT INTO __new_approvals
     SELECT id, turn_id, session_id, tool_call_id, tool_name, arguments_json, arguments_hash,
       status, expires_at, created_at, resolved_at, ${claimedAt}, ${riskLevel},
-      ${bindingVersion}, ${modeCol}, ${toolVersion}, ${toolDefHash}, ${presentationJson},
+      ${bindingVersion}, ${consumedAt}, ${modeCol}, ${toolVersion}, ${toolDefHash}, ${presentationJson},
       ${presentationHash}, ${authDigest}, ${signingKeyId}, ${invalidatedReason}, ${decisionChannel} FROM approvals`);
 
   db.exec(`
@@ -204,9 +207,11 @@ function validateSecureSchema(db: DatabaseSync): void {
     model_calls: ["id", "turn_id", "provider", "model", "latency_ms", "status", "created_at"],
     tool_calls: ["id", "turn_id", "tool_name", "arguments_json", "risk_level", "status"],
     approvals: ["id", "turn_id", "session_id", "tool_call_id", "status", "claimed_at", "risk_level",
-      "binding_version", "mode", "tool_version", "tool_definition_hash", "presentation_json",
+      "binding_version", "consumed_at", "mode", "tool_version", "tool_definition_hash", "presentation_json",
       "presentation_hash", "authorization_digest", "signing_key_id", "invalidated_reason", "decision_channel"],
     idempotency_keys: ["id", "client_request_id", "request_hash", "status", "created_at", "updated_at"],
+    tool_executions: ["id", "tool_call_id", "session_id", "turn_id", "state", "attempt_count", "max_attempts", "deadline_at", "result_data_json"],
+    tool_execution_attempts: ["id", "execution_id", "attempt_no", "state", "started_at"],
   };
   for (const [table, columns] of Object.entries(required)) {
     const actual = columnNames(db, table);
@@ -215,7 +220,7 @@ function validateSecureSchema(db: DatabaseSync): void {
     }
   }
   const indexes = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all() as Array<{ name: string }>).map((row) => row.name));
-  for (const index of ["idx_turns_session", "idx_approvals_status", "idx_idempotency_client_request"]) {
+  for (const index of ["idx_turns_session", "idx_approvals_status", "idx_idempotency_client_request", "idx_executions_state", "idx_attempts_execution"]) {
     if (!indexes.has(index)) throw new Error(`Schema validation failed for index ${index}`);
   }
   const foreignKeyFailures = db.prepare("PRAGMA foreign_key_check").all();
@@ -357,6 +362,9 @@ const MIGRATIONS: Migration[] = [
         if (!cols.has(name)) db.exec(`ALTER TABLE approvals ADD COLUMN ${ddl}`);
       };
       add("binding_version", "binding_version INTEGER NOT NULL DEFAULT 1");
+      // SC-03 section 13: single-use approval consumption timestamp. Set exactly
+      // once in the atomic consume+create-execution transaction; NULL = unconsumed.
+      add("consumed_at", "consumed_at TEXT");
       add("mode", "mode TEXT");
       add("tool_version", "tool_version TEXT");
       add("tool_definition_hash", "tool_definition_hash TEXT");
@@ -380,6 +388,64 @@ const MIGRATIONS: Migration[] = [
             SELECT 1 FROM approvals a WHERE a.tool_call_id = tool_calls.id AND a.status = 'pending'
           );
       `);
+    },
+  },
+  {
+    version: 8,
+    name: "tool_execution_lifecycle",
+    up: (db: DatabaseSync) => {
+      // SC-03 section 91: execution tables share arthur.db so approval
+      // consumption + tool call + execution creation commit atomically.
+      // Additive only: existing rows are never rewritten or dropped here.
+      db.exec(TOOL_EXECUTIONS_DDL);
+      // Pre-v8 databases carry the narrow tool_calls CHECK from migration v1.
+      // Rebuild once to admit the durable terminal mirrors
+      // (cancelled/timed_out/outcome_unknown) without touching row data.
+      const ddl = String(
+        (db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tool_calls'").get() as { sql?: string } | undefined)?.sql ?? "",
+      );
+      if (!ddl.includes("'cancelled'")) {
+        db.exec(`
+          CREATE TABLE __new_tool_calls_v8 (
+            id TEXT PRIMARY KEY,
+            turn_id TEXT NOT NULL,
+            tool_name TEXT NOT NULL,
+            arguments_json TEXT NOT NULL,
+            risk_level TEXT NOT NULL CHECK(risk_level IN ('read','low_write','approval_required','high_risk')),
+            status TEXT NOT NULL CHECK(status IN ('completed','pending_approval','rejected','failed','executing','cancelled','timed_out','outcome_unknown')),
+            result_summary TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (turn_id) REFERENCES turns(id) ON DELETE CASCADE
+          );
+          INSERT INTO __new_tool_calls_v8 SELECT id, turn_id, tool_name, arguments_json, risk_level,
+            status, result_summary, created_at, updated_at FROM tool_calls;
+          DROP TABLE tool_calls;
+          ALTER TABLE __new_tool_calls_v8 RENAME TO tool_calls;
+        `);
+      }
+    },
+  },
+  {
+    version: 9,
+    name: "approval_consumed_at",
+    up: (db: DatabaseSync) => {
+      // SC-03 section 13: single-use consumption marker. Pure ADD COLUMN:
+      // existing rows keep consumed_at = NULL (unconsumed); only the new
+      // atomic consume path ever sets it. Idempotent for re-runs.
+      const cols = columnNames(db, "approvals");
+      if (!cols.has("consumed_at")) db.exec("ALTER TABLE approvals ADD COLUMN consumed_at TEXT");
+    },
+  },
+  {
+    version: 10,
+    name: "execution_result_data",
+    up: (db: DatabaseSync) => {
+      // SC-03 section 79: bounded structured result persistence for
+      // result_persistence = 'bounded_json' tools. Pure ADD COLUMN; existing
+      // rows keep NULL (summary_only semantics preserved retroactively).
+      const cols = columnNames(db, "tool_executions");
+      if (!cols.has("result_data_json")) db.exec("ALTER TABLE tool_executions ADD COLUMN result_data_json TEXT");
     },
   },
 ];
@@ -933,6 +999,56 @@ export class SessionStore {
     return Number(result.changes) === 1;
   }
 
+  /**
+   * SC-03 section 13 binding re-check for the consume winner: verifies the FULL
+   * v2 binding still holds on the just-consumed (APPROVED + consumed_at) row.
+   * Read-only CAS: sets nothing, requires changes-free match. Returns true only
+   * when every binding field (including consumed_at) matches exactly one row.
+   */
+  claimApprovalBoundConsumed(input: {
+    id: string;
+    sessionId: string;
+    sessionMode: ArthurMode;
+    turnId: string;
+    toolCallId: string;
+    toolName: string;
+    toolVersion?: string;
+    toolDefinitionHash?: string;
+    presentationHash?: string;
+    authorizationDigest?: string;
+    argumentsJson: string;
+    argumentsHash: string;
+    riskLevel: ToolRisk;
+    consumedAt: string;
+  }): boolean {
+    const versionMatch = input.toolVersion === undefined ? "approvals.tool_version IS NULL" : "approvals.tool_version = ?";
+    const defMatch = input.toolDefinitionHash === undefined ? "approvals.tool_definition_hash IS NULL" : "approvals.tool_definition_hash = ?";
+    const presMatch = input.presentationHash === undefined ? "approvals.presentation_hash IS NULL" : "approvals.presentation_hash = ?";
+    const digestMatch = input.authorizationDigest === undefined ? "approvals.authorization_digest IS NULL" : "approvals.authorization_digest = ?";
+    const params: unknown[] = [input.id, input.sessionId, input.turnId, input.toolCallId,
+      input.toolName, input.argumentsJson, input.argumentsHash, input.riskLevel, input.sessionMode];
+    if (input.toolVersion !== undefined) params.push(input.toolVersion);
+    if (input.toolDefinitionHash !== undefined) params.push(input.toolDefinitionHash);
+    if (input.presentationHash !== undefined) params.push(input.presentationHash);
+    if (input.authorizationDigest !== undefined) params.push(input.authorizationDigest);
+    params.push(input.consumedAt, input.sessionMode);
+    const row = this.db
+      .prepare(
+        `SELECT id FROM approvals WHERE id = ? AND status = 'approved' AND consumed_at IS NOT NULL
+           AND session_id = ? AND turn_id = ? AND tool_call_id = ? AND tool_name = ?
+           AND arguments_json = ? AND arguments_hash = ? AND risk_level = ? AND mode = ?
+           AND ${versionMatch} AND ${defMatch} AND ${presMatch} AND ${digestMatch}
+           AND binding_version = 2 AND consumed_at = ?
+           AND EXISTS (SELECT 1 FROM sessions s WHERE s.id = approvals.session_id AND s.mode = ?)
+           AND EXISTS (SELECT 1 FROM tool_calls t WHERE t.id = approvals.tool_call_id
+             AND t.turn_id = approvals.turn_id AND t.tool_name = approvals.tool_name
+             AND t.arguments_json = approvals.arguments_json AND t.risk_level = approvals.risk_level)
+           AND EXISTS (SELECT 1 FROM tool_executions e WHERE e.approval_id = approvals.id)`,
+      )
+      .get(...(params as [])) as unknown as { id: string } | undefined;
+    return row?.id === input.id;
+  }
+
   /** Legacy-shaped bound claim kept for pre-v2 tests: exact v1 binding only. */
   claimApprovalBoundLegacy(input: {
     id: string;
@@ -964,13 +1080,23 @@ export class SessionStore {
     return Number(result.changes) === 1;
   }
 
+  /**
+   * Terminalize a consumed approval (SC-03 section 13): the approval was
+   * already consumed (APPROVED + consumed_at + bound execution) in the atomic
+   * consume transaction; this step only stamps resolved_at. The status CAS
+   * accepts 'approved' (consumed, terminalizing now) and legacy 'executing'
+   * rows (pre-§13 path / in-flight upgrades). Never transitions backwards.
+   */
   completeApproval(approvalId: string, toolCallId: string, resultSummary: string): void {
     this.transaction(() => {
       const approval = this.db
-        .prepare("UPDATE approvals SET status = 'approved', resolved_at = ? WHERE id = ? AND tool_call_id = ? AND status = 'executing'")
+        .prepare("UPDATE approvals SET resolved_at = COALESCE(resolved_at, ?) WHERE id = ? AND tool_call_id = ? AND status IN ('approved','executing') AND consumed_at IS NOT NULL")
         .run(nowIso(), approvalId, toolCallId);
+      // SC-03: the coordinator terminal commit may already have mirrored
+      // completed onto the tool call; accept either pending_approval (legacy
+      // direct path) or the durable completed mirror, refreshing the summary.
       const tool = this.db
-        .prepare("UPDATE tool_calls SET status = 'completed', result_summary = ?, updated_at = ? WHERE id = ? AND status = 'pending_approval'")
+        .prepare("UPDATE tool_calls SET status = 'completed', result_summary = ?, updated_at = ? WHERE id = ? AND status IN ('pending_approval','completed')")
         .run(this.sanitizer.capSummary(resultSummary), nowIso(), toolCallId);
       if (Number(approval.changes) !== 1 || Number(tool.changes) !== 1) {
         throw new Error("approval completion state transition failed");
@@ -978,16 +1104,31 @@ export class SessionStore {
     });
   }
 
-  /** Persist diagnostic context while preserving the unknown executing state. */
+  /**
+   * Persist diagnostic context for a consumed approval (SC-03 section 13).
+   * The execution row carries the quarantine/retry truth; this only refreshes
+   * the tool-call summary. Gated on the consumed (approved + consumed_at) row
+   * so diagnostics can never attach to an unconsumed or foreign approval.
+   */
   recordApprovalExecutionError(approvalId: string, toolCallId: string, message: string): void {
-    const result = this.db
+    const capped = this.sanitizer.capSummary(message);
+    const now = nowIso();
+    const gate = `EXISTS (SELECT 1 FROM approvals a WHERE a.id = ? AND a.tool_call_id = tool_calls.id
+      AND a.status = 'approved' AND a.consumed_at IS NOT NULL)`;
+    const pending = this.db
       .prepare(
         `UPDATE tool_calls SET result_summary = ?, updated_at = ? WHERE id = ?
-         AND status = 'pending_approval'
-         AND EXISTS (SELECT 1 FROM approvals a WHERE a.id = ? AND a.tool_call_id = tool_calls.id AND a.status = 'executing')`,
+         AND status = 'pending_approval' AND ${gate}`,
       )
-      .run(this.sanitizer.capSummary(message), nowIso(), toolCallId, approvalId);
-    if (Number(result.changes) !== 1) throw new Error("approval execution diagnostic could not be persisted");
+      .run(capped, now, toolCallId, approvalId);
+    if (Number(pending.changes) === 1) return;
+    const mirrored = this.db
+      .prepare(
+        `UPDATE tool_calls SET result_summary = ?, updated_at = ? WHERE id = ?
+         AND status IN ('failed','outcome_unknown','timed_out','cancelled','completed','executing') AND ${gate}`,
+      )
+      .run(capped, now, toolCallId, approvalId);
+    if (Number(mirrored.changes) !== 1) throw new Error("approval execution diagnostic could not be persisted");
   }
 
   failApproval(approvalId: string, toolCallId: string, message: string): void {
@@ -1191,8 +1332,12 @@ export class SessionStore {
     marker: { id: string; text: string; traceId: string },
   ): void {
     this.transaction(() => {
+      // SC-03 section 13: an in-flight operation is either a legacy 'executing'
+      // claim or a consumed-but-unresolved approval (APPROVED + consumed_at
+      // with a non-terminal bound execution). Both block mode changes.
       const activeApproval = this.db
-        .prepare("SELECT 1 FROM approvals WHERE session_id = ? AND status = 'executing' LIMIT 1")
+        .prepare(`SELECT 1 FROM approvals WHERE session_id = ? AND (status = 'executing'
+           OR (status = 'approved' AND consumed_at IS NOT NULL AND resolved_at IS NULL)) LIMIT 1`)
         .get(sessionId);
       if (activeApproval) throw new Error("session mode cannot change while an approval is executing");
       const activeTurn = this.db
@@ -1224,6 +1369,15 @@ export class SessionStore {
         mode,
       });
     });
+  }
+
+  /** SC-03 section 92: share the SAME connection/transaction with ExecutionStore. */
+  unsafeDbHandle(): DatabaseSync {
+    return this.db;
+  }
+
+  sanitizerHandle(): SecretSanitizer {
+    return this.sanitizer;
   }
 
   private sanitizeJson(value: string): string {

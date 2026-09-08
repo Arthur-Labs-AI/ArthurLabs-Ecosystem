@@ -93,7 +93,11 @@ test("N: TOOL_OUTPUT_INVALID never produces a model follow-up message", async ()
     assert.equal(handling.toolResultMessages.length, 0, "no tool result message may be built");
     assert.equal(handling.needsApproval, false);
     assert.equal(handling.summaries.length, 1);
-    assert.equal(handling.summaries[0]?.status, "rejected");
+    // SC-03: executor output validation failure is an EXECUTION failure
+    // (durable FAILED with evidence), not a proposal rejection. Approval
+    // status (was it allowed?) and execution status (what happened?) are
+    // separate domain objects since SC-03 section 11.
+    assert.equal(handling.summaries[0]?.status, "failed");
     assert.ok(handling.summaries[0]?.result_summary?.includes("invalid output"));
     const records = w.store.getToolCallsForTurn("t1");
     assert.equal(records.length, 1);

@@ -40,6 +40,9 @@ import { validatePresentation } from "./approval_presenters";
 import { ApprovalSigner, ApprovalVerifier, type ApprovalCapabilityV2 } from "./approval_signer";
 import { EphemeralApprovalKeyProvider, type ApprovalKeyProvider } from "./approval_keys";
 import type { ApprovalRecord } from "../sessions/models";
+import { ExecutionStore } from "../sessions/execution_store";
+import { ToolExecutionCoordinator } from "./execution_coordinator";
+import { randomUUID } from "node:crypto";
 
 export interface ApprovalChallenge {
   approval_id: string;
@@ -54,6 +57,8 @@ export interface ApprovalChallenge {
 export interface ToolOrchestratorDeps {
   registry: ToolRegistry;
   execution: ToolExecutionService;
+  /** SC-03 durable coordinator; when omitted the orchestrator builds one. */
+  coordinator?: import("./execution_coordinator").ToolExecutionCoordinator;
   store: SessionStore;
   permissions: PermissionService;
   sanitizer: SecretSanitizer;
@@ -87,6 +92,7 @@ export interface ProposedHandling {
 export class ToolOrchestrator {
   private readonly registry: ToolRegistry;
   private readonly execution: ToolExecutionService;
+  private readonly coordinator: ToolExecutionCoordinator;
   private readonly store: SessionStore;
   private readonly permissions: PermissionService;
   private readonly sanitizer: SecretSanitizer;
@@ -103,6 +109,21 @@ export class ToolOrchestrator {
   constructor(deps: ToolOrchestratorDeps) {
     this.registry = deps.registry;
     this.execution = deps.execution;
+    if (deps.coordinator) {
+      this.coordinator = deps.coordinator;
+    } else {
+      const executions = new ExecutionStore(deps.store.unsafeDbHandle(), deps.store.sanitizerHandle());
+      this.coordinator = new ToolExecutionCoordinator(
+        deps.store,
+        executions,
+        deps.registry,
+        deps.permissions,
+        deps.registry.createSingleAttemptService(deps.permissions),
+        deps.sanitizer,
+        deps.logger,
+        deps.metrics,
+      );
+    }
     this.store = deps.store;
     this.permissions = deps.permissions;
     this.sanitizer = deps.sanitizer;
@@ -232,34 +253,19 @@ export class ToolOrchestrator {
         continue;
       }
 
-      // decision === "auto": execute now (read / low_write) through the facade.
-      // The facade receives the SAME immutable snapshot that was validated.
+      // decision === "auto": durable execution first, then the coordinator.
+      // SC-03 section 14: the READY record + tool call commit BEFORE dispatch,
+      // so a crash between side effect and bookkeeping can never lose intent.
+      // The coordinator receives the SAME immutable snapshot that was validated.
       try {
-        const result = await this.execution.execute(call.name, (executionSnapshot ?? safeArgs), ctx);
-        const safeSummary = this.sanitizer.capSummary(result.summary);
-        const summary = this.completedSummary(call, definition, { ok: result.ok, summary: safeSummary });
+        const autoRun = await this.runAutoExecution(call, (executionSnapshot ?? safeArgs) as Record<string, unknown>, definition, ctx, start);
+        const summary = autoRun.summary;
         summaries.push(summary);
-        this.recordToolCall(ctx, call, definition, "completed", safeSummary);
-        // TASK-0011B: the model follow-up receives a bounded structured
-        // payload (summary + validated data), not just the summary. The data
-        // already crossed the ToolExecutionService validation boundary; the
-        // payload builder re-sanitizes it recursively and enforces the
-        // model-facing size cap (oversized data is omitted whole).
-        toolResultMessages.push({
-          role: "tool",
-          content: buildModelToolResultPayload(result, this.sanitizer, this.modelToolResultMaxBytes),
-          name: call.name,
-          tool_call_id: call.id,
-        });
-        this.logger.info("tool executed", {
-          trace_id: ctx.trace_id,
-          session_id: ctx.session_id,
-          turn_id: ctx.turn_id,
-          tool_name: call.name,
-          risk: definition.risk,
-          duration_ms: Date.now() - start,
-        });
-        this.metrics.counter("arthur.tool.executed", 1, { risk: definition.risk });
+        if (autoRun.toolMessage !== undefined && summary.status === "completed") {
+          toolResultMessages.push(autoRun.toolMessage);
+        }
+        // NOTE: recordToolCall + execution creation happen inside
+        // runAutoExecution atomically; logging/metrics also live there.
         this.metrics.timer("arthur.tool.duration_ms", Date.now() - start, { tool: call.name });
       } catch (err) {
         const message = this.sanitizer.capSummary(err instanceof Error ? err.message : "tool execution failed");
@@ -298,6 +304,27 @@ export class ToolOrchestrator {
     // Never automatically reset or retry it; reconciliation must determine the
     // adapter outcome first, otherwise a retry could duplicate an external write.
 
+    // SC-03 section 13: a consumed approval resumes or reports its SINGLE bound
+    // execution. Unresolved (crash between consume and dispatch/terminalize):
+    // resume the SAME execution. Resolved (resolved_at set): the execution is
+    // terminal, so return the existing outcome (already_resolved) — concurrent
+    // duplicates and client retries share one truth and never re-dispatch.
+    if (approval.status === "approved" && approval.consumed_at) {
+      const bound = this.coordinator.getExecutions().getExecutionByApproval(approvalId);
+      if (bound && !approval.resolved_at) {
+        return this.resumeConsumedApproval(approvalId, bound.id);
+      }
+      if (bound) {
+        return {
+          approval_id: approvalId,
+          tool_name: approval.tool_name,
+          status: "already_resolved",
+          tool_call_id: approval.tool_call_id,
+          execution_id: bound.id,
+        };
+      }
+      return { approval_id: approvalId, tool_name: approval.tool_name, status: "already_resolved" };
+    }
     switch (approval.status) {
       case "approved":
       case "rejected":
@@ -305,7 +332,7 @@ export class ToolOrchestrator {
       case "invalidated":
         return { approval_id: approvalId, tool_name: approval.tool_name, status: "already_resolved" };
       case "executing":
-        // Concurrent duplicate or a crash left the record mid-flight. Never re-execute.
+        // Legacy pre-consume dispatch claim (or crash mid-flight). Never re-execute.
         throw approvalInvalid("Approval is currently being executed", { approval_id: approvalId });
       case "expired":
         throw approvalInvalid("Approval expired", { approval_id: approvalId, expires_at: approval.expires_at });
@@ -488,8 +515,12 @@ export class ToolOrchestrator {
       });
     }
 
-    // Atomic claim: exactly one concurrent caller wins pending -> executing.
-    // The CAS re-checks the FULL v2 binding in one SQL statement.
+    // SC-03 section 13 atomic single-use consumption: the FULL SC-02 v2 binding
+    // CAS (pending -> executing) runs FIRST as the contention gate, then the
+    // consume step (executing -> approved + consumed_at + bound READY execution)
+    // commits in ONE SQLite transaction. Exactly one concurrent caller wins the
+    // gate; the consume CAS additionally requires the winner's executing row,
+    // and UNIQUE(approval_id) enforces at-most-one execution at the DB level.
     const claimed = this.store.claimApprovalBound({
       id: approvalId,
       sessionId: approval.session_id,
@@ -507,11 +538,59 @@ export class ToolOrchestrator {
     });
     if (!claimed) {
       const current = this.store.getApproval(approvalId);
+      // A concurrent winner may already have consumed + bound: resume the SAME
+      // execution instead of failing (crash/race between consume and dispatch).
+      if (current?.status === "approved" && current?.consumed_at) {
+        const bound = this.coordinator.getExecutions().getExecutionByApproval(approvalId);
+        if (bound && !current?.resolved_at) {
+          return this.resumeConsumedApproval(approvalId, bound.id);
+        }
+        return { approval_id: approvalId, tool_name: approval.tool_name, status: "already_resolved" };
+      }
       if (current?.status === "approved") {
         return { approval_id: approvalId, tool_name: approval.tool_name, status: "already_resolved" };
       }
       this.metrics.counter("arthur.approval.replay_blocked", 1);
       throw approvalInvalid("Approval is already being executed", { approval_id: approvalId });
+    }
+    const policy = this.registry.getExecutionPolicy(approval.tool_name);
+    if (!policy) throw approvalInvalid(`Tool is not registered: ${approval.tool_name}`, { approval_id: approvalId });
+    const consumeNow = new Date().toISOString();
+    const boundExecutionId = randomUUID();
+    const totalMs = policy.total_timeout_ms;
+    const createdNow = new Date().toISOString();
+    const deadlineAt = new Date(Date.now() + totalMs).toISOString();
+    const consumed = this.store.transaction(() =>
+      this.coordinator.getExecutions().consumeExecutingApprovalAndCreateExecution({
+        approvalId,
+        toolCallId: approval.tool_call_id,
+        executionId: boundExecutionId,
+        sessionId: approval.session_id,
+        turnId: approval.turn_id,
+        mode: session.mode,
+        toolName: approval.tool_name,
+        toolVersion: approval.tool_version as string,
+        toolDefinitionHash: approval.tool_definition_hash as string,
+        argumentsHash: approval.arguments_hash,
+        maxAttempts: policy.retry.max_attempts,
+        createdAt: createdNow,
+        consumedAt: consumeNow,
+        deadlineAt,
+      }),
+    );
+    // Consume result handling: null after winning the gate is a hard defect
+    // (gate won but consume CAS missed). The gate already re-checked the FULL
+    // SC-02 v2 binding, so a null here means concurrent state changed between
+    // the two CAS steps: fail closed, never dispatch. A concurrent winner that
+    // already consumed + bound resumes the SAME execution via the entry check.
+    if (consumed === null) {
+      const current = this.store.getApproval(approvalId);
+      const bound = this.coordinator.getExecutions().getExecutionByApproval(approvalId);
+      if (current?.status === "approved" && current?.consumed_at && bound && !current?.resolved_at) {
+        return this.resumeConsumedApproval(approvalId, bound.id);
+      }
+      this.metrics.counter("arthur.approval.binding_mismatch", 1);
+      throw approvalInvalid("Approval binding changed during consumption", { approval_id: approvalId });
     }
 
     // SC-02 section 26: executor-facing signed capability (Ed25519).
@@ -553,9 +632,28 @@ export class ToolOrchestrator {
       this.store.recordApprovalDecisionChannel(approvalId, this.decisionChannel);
     }
     const start = Date.now();
+    // SC-03 sections 4/13: the APPROVED path enters the SAME durable lifecycle.
+    // The READY execution was already created + bound in the atomic consume
+    // transaction above; reuse that exact execution id (never a second one).
+    const approvedExecutionId = boundExecutionId;
     try {
-      const result = await this.execution.execute(approval.tool_name, args, ctx);
-      const safeSummary = this.sanitizer.capSummary(result.summary);
+      const run = await this.runApprovedExecution(
+        approval.tool_name,
+        args as Record<string, unknown>,
+        ctx,
+        session.mode,
+        approval.tool_call_id,
+        approvalId,
+        approval.tool_version as string,
+        approval.tool_definition_hash as string,
+        approval.arguments_hash,
+        policy,
+        approvedExecutionId,
+      );
+      const result = run.result;
+      const safeSummary = this.sanitizer.capSummary(
+        result?.summary ?? this.coordinator.getExecution(approvedExecutionId)?.result_summary ?? "approved tool executed",
+      );
       this.store.completeApproval(approvalId, approval.tool_call_id, safeSummary);
       this.logger.info("approved tool executed", {
         trace_id: ctx.trace_id,
@@ -578,6 +676,7 @@ export class ToolOrchestrator {
         status: "approved",
         tool_call_id: approval.tool_call_id,
         result_summary: safeSummary,
+        execution_id: approvedExecutionId,
       };
     } catch (err) {
       const message = this.sanitizer.capSummary(err instanceof Error ? err.message : "execution failed");
@@ -603,6 +702,258 @@ export class ToolOrchestrator {
       this.metrics.counter("arthur.approval.failed", 1);
       throw toArthurError(err);
     }
+  }
+
+  /**
+   * Run the already-consumed approval's execution through the coordinator.
+   * Single-flight (§13 resume race): when the bound execution is already
+   * terminal, return its stored truth WITHOUT dispatching or throwing —
+   * concurrent duplicates and client retries share one outcome. Only a
+   * genuinely non-terminal execution is driven; its typed durable error
+   * preserves the executing/unknown invariant (SC-02 F25) while the execution
+   * row carries the quarantine/retry truth.
+   */
+  private async runApprovedExecution(
+    toolName: string,
+    args: Record<string, unknown>,
+    ctx: ToolExecutionContext,
+    mode: ToolExecutionContext["mode"],
+    toolCallId: string,
+    approvalId: string,
+    toolVersion: string,
+    toolDefinitionHash: string,
+    argumentsHash: string,
+    policy: import("./execution_policy").ToolExecutionPolicy,
+    executionId: string,
+    opts?: { duplicate?: boolean },
+  ): Promise<import("./execution_coordinator").ExecutionRunResult> {
+    void opts;
+    const current = this.coordinator.getExecution(executionId);
+    if (current && ["succeeded", "failed", "cancelled", "timed_out"].includes(current.state)) {
+      return this.coordinator.toPublicResult(current);
+    }
+    const base = {
+      toolName,
+      args,
+      sessionId: ctx.session_id,
+      turnId: ctx.turn_id,
+      traceId: ctx.trace_id,
+      mode,
+      toolCallId,
+      approvalId,
+      authorization: ctx.authorization,
+      approvalToken: ctx.approvalToken,
+      toolVersion,
+      toolDefinitionHash,
+      argumentsHash,
+      policy,
+    };
+    let run = await this.coordinator.run(base, executionId);
+    let guard = 0;
+    while (run.state === "retry_wait" && guard < policy.retry.max_attempts + 1) {
+      guard += 1;
+      const exec = this.coordinator.getExecution(executionId);
+      const waitMs = exec?.next_attempt_at ? Date.parse(exec.next_attempt_at) - this.coordinator.clock.nowMs() : 0;
+      if (waitMs > 0) await this.coordinator.clock.sleep(Math.min(waitMs, 60000));
+      run = await this.coordinator.run(base, executionId);
+    }
+    if (run.state === "succeeded") return run;
+    // §13 resume race: a duplicate that arrived while another dispatcher owns
+    // the execution observes a non-terminal snapshot (running/retry_wait/
+    // reconciling) that is NOT its own verdict. It must not throw a transient
+    // error as if it drove the outcome: report the stored truth instead.
+    // The terminal commit below (or the driver's error) remains the one truth.
+    if (run.state === "running" || run.state === "retry_wait" || run.state === "reconciling") {
+      const owned = this.coordinator.getExecution(executionId);
+      if (owned) return this.coordinator.toPublicResult(owned);
+    }
+    const exec = this.coordinator.getExecution(executionId);
+    const summary = this.sanitizer.capSummary(exec?.last_error_summary ?? run.errorSummary ?? run.state);
+    if (run.state === "failed") {
+      throw new ArthurError(run.errorCode === "TOOL_RETRY_EXHAUSTED" ? "TOOL_RETRY_EXHAUSTED" : "TOOL_EXECUTION_FAILED", summary);
+    }
+    if (run.state === "timed_out") {
+      throw new ArthurError("TOOL_TIMEOUT", summary);
+    }
+    if (run.state === "cancelled") {
+      throw new ArthurError("TOOL_CANCELLED", summary);
+    }
+    // outcome_unknown / still-running-ish: preserve the executing approval
+    // invariant; the execution row is the quarantine truth.
+    throw new ArthurError("TOOL_OUTCOME_UNKNOWN", summary);
+  }
+
+  /**
+   * Resume a previously consumed approval binding (crash window: consume
+   * committed, process died before/during dispatch). Rebuilds the capability
+   * + ctx from the persisted consumed row and runs the SAME bound execution.
+   * Never creates a second execution: the approval_id UNIQUE binding is the
+   * single-use proof.
+   */
+  private async resumeConsumedApproval(approvalId: string, executionId: string): Promise<ApprovalOutcome> {
+    const approval = this.store.getApproval(approvalId);
+    if (!approval || approval.status !== "approved" || !approval.consumed_at) {
+      throw approvalInvalid("Approval is already being executed", { approval_id: approvalId });
+    }
+    const session = this.store.getSession(approval.session_id);
+    if (!session || session.status !== "active") {
+      throw approvalInvalid("Approval session is no longer active", { approval_id: approvalId });
+    }
+    let args: Record<string, unknown>;
+    try {
+      args = JSON.parse(approval.arguments_json) as Record<string, unknown>;
+    } catch {
+      throw approvalInvalid("Stored approval arguments are malformed", { approval_id: approvalId });
+    }
+    const intent: ApprovalIntentV2 = {
+      binding_version: APPROVAL_BINDING_VERSION,
+      approval_id: approvalId,
+      tool_call_id: approval.tool_call_id,
+      session_id: approval.session_id,
+      turn_id: approval.turn_id,
+      mode: approval.mode as ApprovalIntentV2["mode"],
+      tool_name: approval.tool_name,
+      tool_version: approval.tool_version as string,
+      tool_definition_hash: approval.tool_definition_hash as string,
+      risk_level: approval.risk_level,
+      arguments_hash: approval.arguments_hash,
+      presentation_hash: approval.presentation_hash as string,
+      created_at: approval.created_at,
+      expires_at: approval.expires_at,
+    };
+    const capability = this.signer.sign(intent, authorizationDigest(intent));
+    let verified: import("./approval_signer").VerifiedApproval;
+    try {
+      verified = this.verifier.verify(capability);
+    } catch {
+      throw approvalInvalid("Approval capability signature verification failed", { approval_id: approvalId });
+    }
+    const signable = {
+      approval_id: approvalId,
+      tool_name: approval.tool_name,
+      session_id: approval.session_id,
+      turn_id: approval.turn_id,
+      arguments_hash: approval.arguments_hash,
+      issued_at: new Date().toISOString(),
+      expires_at: approval.expires_at,
+    };
+    const token: ApprovalToken = { ...signable, signature: signApprovalToken(signable, this.approvalSigningSecret) };
+    const ctx: ToolExecutionContext = {
+      session_id: approval.session_id,
+      turn_id: approval.turn_id,
+      trace_id: newTraceId(),
+      mode: session.mode,
+      approved: true,
+      approvalToken: token,
+      authorization: verified,
+    };
+    const policy = this.registry.getExecutionPolicy(approval.tool_name);
+    if (!policy) throw approvalInvalid(`Tool is not registered: ${approval.tool_name}`, { approval_id: approvalId });
+    const start = Date.now();
+    try {
+      const run = await this.runApprovedExecution(
+        approval.tool_name,
+        args,
+        ctx,
+        session.mode,
+        approval.tool_call_id,
+        approvalId,
+        approval.tool_version as string,
+        approval.tool_definition_hash as string,
+        approval.arguments_hash,
+        policy,
+        executionId,
+        { duplicate: true },
+      );
+      // Duplicate path: converge on the TERMINAL truth. When the driver still
+      // owns the execution, wait bounded for its commit (never dispatch, never
+      // invent a verdict); then report stored truth without throwing and
+      // without terminalizing the approval (the driver's commit is the truth).
+      if (run.state !== "succeeded") {
+        const terminal = await this.waitForExecutionTerminal(executionId, 5000);
+        if (terminal && terminal.state === "succeeded" && terminal.executionId === executionId) {
+          const okRun = this.coordinator.toPublicResult(this.coordinator.getExecution(executionId) as import("../sessions/models").ToolExecutionRow);
+          if (okRun.state === "succeeded" && okRun.result) {
+            const safeSummary = this.sanitizer.capSummary(
+              okRun.result.summary ?? this.coordinator.getExecution(executionId)?.result_summary ?? "approved tool executed",
+            );
+            return {
+              approval_id: approvalId,
+              tool_name: approval.tool_name,
+              status: "already_resolved",
+              tool_call_id: approval.tool_call_id,
+              result_summary: safeSummary,
+              execution_id: executionId,
+            };
+          }
+        }
+        const stored = this.coordinator.getExecution(executionId);
+        return {
+          approval_id: approvalId,
+          tool_name: approval.tool_name,
+          status: "already_resolved",
+          tool_call_id: approval.tool_call_id,
+          result_summary: this.sanitizer.capSummary(stored?.result_summary ?? stored?.last_error_summary ?? stored?.state ?? run.state),
+          execution_id: executionId,
+        };
+      }
+      const safeSummary = this.sanitizer.capSummary(
+        run.result?.summary ?? this.coordinator.getExecution(executionId)?.result_summary ?? "approved tool executed",
+      );
+      this.store.completeApproval(approvalId, approval.tool_call_id, safeSummary);
+      this.metrics.counter("arthur.approval.approved", 1);
+      this.logger.info("approved tool executed (resumed)", {
+        trace_id: ctx.trace_id,
+        approval_id: approvalId,
+        tool_call_id: approval.tool_call_id,
+        duration_ms: Date.now() - start,
+      });
+      return {
+        approval_id: approvalId,
+        tool_name: approval.tool_name,
+        status: "approved",
+        tool_call_id: approval.tool_call_id,
+        result_summary: safeSummary,
+        execution_id: executionId,
+      };
+    } catch (err) {
+      const message = this.sanitizer.capSummary(err instanceof Error ? err.message : "execution failed");
+      this.store.recordApprovalExecutionError(approvalId, approval.tool_call_id, message);
+      this.metrics.counter("arthur.approval.failed", 1);
+      throw toArthurError(err);
+    }
+  }
+
+  /**
+   * Bounded convergence wait for duplicates (§13 resume race): poll the DURABLE
+   * row (no dispatch, no claim) until terminal or timeout. Returns the stored
+   * truth or null on timeout (caller then reports the current snapshot).
+   */
+  private async waitForExecutionTerminal(executionId: string, maxMs: number): Promise<{ state: string; executionId: string } | null> {
+    const deadline = Date.now() + Math.max(0, maxMs);
+    for (;;) {
+      const exec = this.coordinator.getExecution(executionId);
+      if (!exec) return null;
+      if (["succeeded", "failed", "cancelled", "timed_out"].includes(exec.state)) {
+        return { state: exec.state, executionId: exec.id };
+      }
+      if (Date.now() >= deadline) return null;
+      await new Promise((r) => setTimeout(r, 25));
+    }
+  }
+
+  /** SC-03 coordinator accessor (status/cancel APIs, recovery). */
+  getCoordinator(): ToolExecutionCoordinator {
+    return this.coordinator;
+  }
+
+  /**
+   * SC-03 section 58 production startup entry: runs the coordinator's
+   * deterministic recovery scan synchronously during buildApp. Tests exercise
+   * this exact method (never a test-only path).
+   */
+  runStartupRecovery(): { recovered: number } {
+    return this.coordinator.recoverStaleExecutionsSync();
   }
 
   /** Test/rotation hook: trust an additional signing key without restart. */
@@ -635,6 +986,189 @@ export class ToolOrchestrator {
       status: "rejected",
       tool_call_id: approval.tool_call_id,
     };
+  }
+
+  // ---- SC-03 durable auto execution --------------------------------------
+
+  /**
+   * AUTO path through the single durable lifecycle (SC-03 4/14): create the
+   * tool call + READY execution atomically BEFORE dispatch, then run the
+   * coordinator. Returns the turn summary plus the optional model message.
+   */
+  private async runAutoExecution(
+    call: ProposedToolCall,
+    executionSnapshot: Record<string, unknown>,
+    definition: ToolDefinition,
+    ctx: ToolExecutionContext,
+    start: number,
+  ): Promise<{ summary: ToolCallSummary; toolMessage?: ChatMessage }> {
+    const toolCallId = newId();
+    const policy = this.registry.getExecutionPolicy(call.name);
+    if (!policy) throw approvalInvalid(`Tool is not registered: ${call.name}`, { tool: call.name });
+    const definitionHash = this.registry.getDefinitionHash(call.name) ?? "";
+    const argumentsJson = canonicalizeJson(executionSnapshot);
+    const argumentsHash = approvalArgumentsHash(executionSnapshot);
+    const executionId = this.store.transaction(() => {
+      this.store.createToolCall({
+        id: toolCallId,
+        turnId: ctx.turn_id,
+        toolName: call.name,
+        argumentsJson,
+        riskLevel: definition.risk,
+        status: "executing",
+      });
+      const row = this.coordinator.createExecution({
+        toolName: call.name,
+        args: executionSnapshot,
+        sessionId: ctx.session_id,
+        turnId: ctx.turn_id,
+        traceId: ctx.trace_id,
+        mode: ctx.mode,
+        toolCallId,
+        approvalId: null,
+        toolVersion: definition.version,
+        toolDefinitionHash: definitionHash,
+        argumentsHash,
+        policy,
+      });
+      return row.id;
+    });
+    try {
+      let run = await this.coordinator.run(
+        {
+          toolName: call.name,
+          args: executionSnapshot,
+          sessionId: ctx.session_id,
+          turnId: ctx.turn_id,
+          traceId: ctx.trace_id,
+          mode: ctx.mode,
+          toolCallId,
+          approvalId: null,
+          toolVersion: definition.version,
+          toolDefinitionHash: definitionHash,
+          argumentsHash,
+          policy,
+        },
+        executionId,
+      );
+      let guard = 0;
+      while (run.state === "retry_wait" && guard < policy.retry.max_attempts + 1) {
+        guard += 1;
+        const exec = this.coordinator.getExecution(executionId);
+        const waitMs = exec?.next_attempt_at ? Date.parse(exec.next_attempt_at) - this.coordinator.clock.nowMs() : 0;
+        if (waitMs > 0) await this.coordinator.clock.sleep(Math.min(waitMs, 60000));
+        run = await this.coordinator.run(
+          {
+            toolName: call.name,
+            args: executionSnapshot,
+            sessionId: ctx.session_id,
+            turnId: ctx.turn_id,
+            traceId: ctx.trace_id,
+            mode: ctx.mode,
+            toolCallId,
+            approvalId: null,
+            toolVersion: definition.version,
+            toolDefinitionHash: definitionHash,
+            argumentsHash,
+            policy,
+          },
+          executionId,
+        );
+      }
+      const exec = this.coordinator.getExecution(executionId);
+      const summary = this.executionSummary(toolCallId, call.name, definition.risk, executionId, exec?.state ?? run.state, exec?.result_summary, exec?.last_error_summary, run.errorCode);
+      if (run.state === "succeeded") {
+        const result = run.result ?? this.coordinator.lastResult(executionId);
+        this.logger.info("tool executed", {
+          trace_id: ctx.trace_id,
+          session_id: ctx.session_id,
+          turn_id: ctx.turn_id,
+          tool_name: call.name,
+          risk: definition.risk,
+          execution_id: executionId,
+          tool_call_id: toolCallId,
+          duration_ms: Date.now() - start,
+        });
+        this.metrics.counter("arthur.tool.executed", 1, { risk: definition.risk });
+        if (result !== undefined) {
+          return {
+            summary: { ...summary, result_summary: this.sanitizer.capSummary(result.summary) },
+            toolMessage: {
+              role: "tool",
+              content: buildModelToolResultPayload(result, this.sanitizer, this.modelToolResultMaxBytes),
+              name: call.name,
+              tool_call_id: call.id,
+            },
+          };
+        }
+        return { summary };
+      }
+      this.logger.error("tool execution failed", {
+        trace_id: ctx.trace_id,
+        session_id: ctx.session_id,
+        turn_id: ctx.turn_id,
+        tool_name: call.name,
+        execution_id: executionId,
+        tool_call_id: toolCallId,
+        error: summary.result_summary,
+      });
+      this.metrics.counter("arthur.tool.failed", 1);
+      return { summary };
+    } catch (err) {
+      const message = this.sanitizer.capSummary(err instanceof Error ? err.message : "tool execution failed");
+      const summary: ToolCallSummary = {
+        tool_call_id: toolCallId,
+        name: call.name,
+        risk: definition.risk,
+        status: "failed",
+        result_summary: `execution failed: ${message}`,
+        execution_id: executionId,
+      };
+      try {
+        this.store.updateToolCall(toolCallId, { status: "failed", resultSummary: `execution failed: ${message}` });
+      } catch {
+      }
+      this.logger.error("tool execution failed", {
+        trace_id: ctx.trace_id,
+        session_id: ctx.session_id,
+        turn_id: ctx.turn_id,
+        tool_name: call.name,
+        execution_id: executionId,
+        tool_call_id: toolCallId,
+        error: message,
+      });
+      this.metrics.counter("arthur.tool.failed", 1);
+      return { summary };
+    }
+  }
+
+  /** Map a durable execution state to the turn-facing summary status. */
+  private executionSummary(
+    toolCallId: string,
+    toolName: string,
+    risk: string,
+    executionId: string,
+    state: string,
+    resultSummary?: string | null,
+    lastError?: string | null,
+    errorCode?: string,
+  ): ToolCallSummary {
+    const text = (resultSummary ?? lastError ?? errorCode ?? state) as string;
+    const capped = this.sanitizer.capSummary(text);
+    switch (state) {
+      case "succeeded":
+        return { tool_call_id: toolCallId, name: toolName, risk, status: "completed", result_summary: capped, execution_id: executionId };
+      case "cancelled":
+        return { tool_call_id: toolCallId, name: toolName, risk, status: "cancelled", result_summary: capped, execution_id: executionId };
+      case "timed_out":
+        return { tool_call_id: toolCallId, name: toolName, risk, status: "timed_out", result_summary: capped, execution_id: executionId };
+      case "outcome_unknown":
+        return { tool_call_id: toolCallId, name: toolName, risk, status: "outcome_unknown", result_summary: capped, execution_id: executionId };
+      default: {
+        const prefixed = capped.startsWith("execution failed:") ? capped : `execution failed: ${capped}`;
+        return { tool_call_id: toolCallId, name: toolName, risk, status: "failed", result_summary: this.sanitizer.capSummary(prefixed), execution_id: executionId };
+      }
+    }
   }
 
   // ---- helpers -----------------------------------------------------------
