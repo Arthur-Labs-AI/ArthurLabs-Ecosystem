@@ -56,6 +56,11 @@ function tableExists(db: DatabaseSync, table: string): boolean {
 
 const nowIso = (): string => new Date().toISOString();
 
+/** SC-01C: frozen schema version. A database reporting a newer version always fails startup. */
+export const CURRENT_MEMORY_SCHEMA_VERSION = 1;
+
+const KNOWN_MEMORY_MIGRATIONS: ReadonlyArray<{ version: number; name: string }> = [{ version: 1, name: "memory_schema" }];
+
 const MIGRATIONS: Migration[] = [
   {
     version: 1,
@@ -136,23 +141,112 @@ const MIGRATIONS: Migration[] = [
   },
 ];
 
-function validateSchema(db: DatabaseSync): void {
+export interface MemorySchemaIssue {
+  table: string;
+  detail: string;
+}
+
+interface ColumnInfo {
+  name: string;
+  notnull: number;
+  pk: number;
+}
+
+function columnInfo(db: DatabaseSync, table: string): Map<string, ColumnInfo> {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string; notnull: number; pk: number }>;
+  return new Map(rows.map((row) => [row.name, { name: row.name, notnull: row.notnull, pk: row.pk }]));
+}
+
+function foreignKeys(db: DatabaseSync, table: string): Array<{ from: string; table: string; to: string; on_delete: string }> {
+  return db.prepare(`PRAGMA foreign_key_list(${table})`).all() as Array<{ from: string; table: string; to: string; on_delete: string }>;
+}
+
+function indexList(db: DatabaseSync, table: string): Array<{ name: string; origin: string; partial: number }> {
+  return db.prepare(`PRAGMA index_list(${table})`).all() as Array<{ name: string; origin: string; partial: number }>;
+}
+
+function tableSql(db: DatabaseSync, name: string): string {
+  const row = db.prepare("SELECT sql FROM sqlite_master WHERE name = ?").get(name) as { sql: string | null } | undefined;
+  return row?.sql ?? "";
+}
+
+/**
+ * SC-01C structural contract: columns, primary keys, NOT NULL requirements,
+ * the memory_chunks -> memory_items FK with ON DELETE CASCADE, critical
+ * UNIQUE indexes, the FTS5 virtual table, and the known migration ledger.
+ * Returns issues instead of throwing so the verifier can report them all.
+ */
+export function collectMemorySchemaIssues(db: DatabaseSync, expectedDomain: MemoryDomain): MemorySchemaIssue[] {
+  const issues: MemorySchemaIssue[] = [];
   const required: Record<string, string[]> = {
+    schema_migrations: ["version", "name"],
     memory_items: ["id", "domain", "type", "source_type", "canonical_text", "display_text", "content_hash", "confidence", "importance", "sensitivity", "status", "created_at", "updated_at", "embedding_model", "embedding_version"],
     memory_chunks: ["id", "memory_id", "ordinal", "text", "token_count", "content_hash"],
     memory_sources: ["id", "source_type", "source_hash", "created_at", "updated_at"],
     ingestion_requests: ["request_id", "request_hash", "state", "created_at", "updated_at"],
   };
   for (const [table, columns] of Object.entries(required)) {
-    const actual = new Set(
-      (db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((row) => row.name),
-    );
-    if (columns.some((column) => !actual.has(column))) {
-      throw new Error(`Memory schema validation failed for ${table}`);
+    if (!tableExists(db, table)) {
+      issues.push({ table, detail: `missing table ${table}` });
+      continue;
+    }
+    const actual = columnInfo(db, table);
+    for (const column of columns) {
+      if (!actual.has(column)) issues.push({ table, detail: `missing column ${column}` });
     }
   }
-  const fts = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'memory_fts5'").get();
-  if (!fts) throw new Error("Memory schema validation failed for memory_fts5");
+  const items = columnInfo(db, "memory_items");
+  if (items.get("id")?.pk !== 1) issues.push({ table: "memory_items", detail: "id must be the primary key" });
+  for (const column of ["domain", "type", "source_type", "canonical_text", "display_text", "content_hash", "confidence", "importance", "sensitivity", "status", "created_at", "updated_at", "embedding_model", "embedding_version"]) {
+    if (items.has(column) && items.get(column)?.notnull !== 1) issues.push({ table: "memory_items", detail: `NOT NULL required on ${column}` });
+  }
+  const chunks = columnInfo(db, "memory_chunks");
+  if (chunks.get("id")?.pk !== 1) issues.push({ table: "memory_chunks", detail: "id must be the primary key" });
+  for (const column of ["memory_id", "ordinal", "text", "token_count", "content_hash"]) {
+    if (chunks.has(column) && chunks.get(column)?.notnull !== 1) issues.push({ table: "memory_chunks", detail: `NOT NULL required on ${column}` });
+  }
+  const chunkFk = foreignKeys(db, "memory_chunks").find((fk) => fk.from === "memory_id" && fk.table === "memory_items" && fk.to === "id");
+  if (!chunkFk) {
+    issues.push({ table: "memory_chunks", detail: "missing FOREIGN KEY (memory_id) REFERENCES memory_items(id)" });
+  } else if (chunkFk.on_delete !== "CASCADE") {
+    issues.push({ table: "memory_chunks", detail: "memory_chunks.memory_id must use ON DELETE CASCADE" });
+  }
+  const itemIndexes = new Set(indexList(db, "memory_items").map((entry) => entry.name));
+  if (!itemIndexes.has("uq_items_active_hash")) issues.push({ table: "memory_items", detail: "missing UNIQUE index uq_items_active_hash" });
+  const sourceIndexes = new Set(indexList(db, "memory_sources").map((entry) => entry.name));
+  if (!sourceIndexes.has("uq_sources_hash")) issues.push({ table: "memory_sources", detail: "missing UNIQUE index uq_sources_hash" });
+  if (!tableExists(db, "memory_fts5")) {
+    issues.push({ table: "memory_fts5", detail: "missing FTS5 virtual table memory_fts5" });
+  } else if (!/USING\s+fts5/i.test(tableSql(db, "memory_fts5"))) {
+    issues.push({ table: "memory_fts5", detail: "memory_fts5 must be an FTS5 virtual table" });
+  }
+  const migrations = tableExists(db, "schema_migrations")
+    ? (db.prepare("SELECT version, name FROM schema_migrations").all() as Array<{ version: number; name: string }>)
+    : [];
+  const known = new Map(KNOWN_MEMORY_MIGRATIONS.map((entry) => [entry.version, entry.name]));
+  for (const row of migrations) {
+    if (row.version > CURRENT_MEMORY_SCHEMA_VERSION) {
+      issues.push({ table: "schema_migrations", detail: `database schema version ${String(row.version)} is newer than supported ${String(CURRENT_MEMORY_SCHEMA_VERSION)}` });
+    } else if (known.get(row.version) !== row.name) {
+      issues.push({ table: "schema_migrations", detail: `unknown migration ${String(row.version)}:${String(row.name)}` });
+    }
+  }
+  const missing = KNOWN_MEMORY_MIGRATIONS.filter((entry) => !migrations.some((row) => row.version === entry.version));
+  for (const entry of missing) issues.push({ table: "schema_migrations", detail: `missing migration ${String(entry.version)}:${entry.name}` });
+  const foreign = tableExists(db, "memory_items")
+    ? (db.prepare("SELECT COUNT(*) AS n FROM memory_items WHERE domain != ?").get(expectedDomain) as { n: number } | undefined)
+    : undefined;
+  if (foreign !== undefined && Number(foreign.n) > 0) {
+    issues.push({ table: "memory_items", detail: `domain purity violated: ${String(foreign.n)} row(s) with domain != '${expectedDomain}'` });
+  }
+  return issues;
+}
+
+function validateSchema(db: DatabaseSync, expectedDomain: MemoryDomain): void {
+  const issues = collectMemorySchemaIssues(db, expectedDomain);
+  if (issues.length > 0) {
+    throw new Error(`Memory schema validation failed: ${issues.map((issue) => `${issue.table}: ${issue.detail}`).join("; ")}`);
+  }
 }
 
 function embedBlob(vector: number[] | undefined): Buffer | null {
@@ -181,23 +275,58 @@ export class SqliteMemoryStore implements MemoryStore {
   constructor(dbPath: string, domain: MemoryDomain, sanitizer: SecretSanitizer = new SecretSanitizer([])) {
     this.domainValue = domain;
     this.sanitizer = sanitizer;
-    const target = dbPath === ":memory:" ? ":memory:" : resolve(dbPath);
+    const trimmed = dbPath.trim();
+    const target = trimmed === ":memory:" ? ":memory:" : resolve(trimmed);
     if (target !== ":memory:") {
       mkdirSync(dirname(target), { recursive: true });
     }
     this.db = new DatabaseSync(target, { enableForeignKeyConstraints: true });
     try {
+      // SC-01B/M4: enforce the frozen storage policy in a fixed order, then
+      // verify the effective PRAGMA values instead of assuming they stuck.
+      // foreign_keys + busy_timeout first (needed for safe migrations),
+      // WAL + FULL only after migrations so a downgraded journal mode can
+      // never silently back a persistent memory database.
+      this.db.exec("PRAGMA foreign_keys = ON;");
       this.db.exec("PRAGMA busy_timeout = 10000;");
       this.migrate();
       if (target !== ":memory:") {
         this.db.exec("PRAGMA journal_mode = WAL;");
       }
-      this.db.exec("PRAGMA synchronous = NORMAL;");
+      this.db.exec("PRAGMA synchronous = FULL;");
+      this.verifyStoragePolicy(target);
       this.reconcileIngestions();
       this.expireDue();
     } catch (error) {
       this.db.close();
       throw error;
+    }
+  }
+
+  /**
+   * SC-01B: query back every enforced PRAGMA. A persistent database that
+   * cannot run WAL + FULL + FK fails startup instead of silently
+   * downgrading. ":memory:" databases are exempt from the WAL requirement.
+   */
+  private verifyStoragePolicy(target: string): void {
+    const cell = (pragma: string): string => {
+      const row = this.db.prepare(`PRAGMA ${pragma};`).get() as Record<string, unknown> | undefined;
+      const value = row === undefined ? undefined : Object.values(row)[0];
+      return String(value ?? "").toLowerCase();
+    };
+    const foreignKeys = cell("foreign_keys");
+    if (foreignKeys !== "1") {
+      throw new Error(`Memory storage policy failed: foreign_keys is ${foreignKeys || "unknown"} (expected ON)`);
+    }
+    const synchronous = this.db.prepare("PRAGMA synchronous;").get() as Record<string, unknown> | undefined;
+    if (Number(Object.values(synchronous ?? {})[0]) !== 2) {
+      throw new Error("Memory storage policy failed: synchronous is not FULL");
+    }
+    if (target !== ":memory:") {
+      const journalMode = cell("journal_mode");
+      if (journalMode !== "wal") {
+        throw new Error(`Memory storage policy failed: journal_mode is ${journalMode || "unknown"} (expected WAL)`);
+      }
     }
   }
 
@@ -234,7 +363,17 @@ export class SqliteMemoryStore implements MemoryStore {
     this.execWithBusyRetry("BEGIN IMMEDIATE");
     try {
       this.db.exec("CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL)");
-      const rows = this.db.prepare("SELECT version FROM schema_migrations").all() as Array<{ version: number }>;
+      const rows = this.db.prepare("SELECT version, name FROM schema_migrations").all() as Array<{ version: number; name: string }>;
+      // SC-01C: never open an unknown newer schema, never downgrade or
+      // repair destructively — fail closed before touching user data.
+      for (const row of rows) {
+        if (row.version > CURRENT_MEMORY_SCHEMA_VERSION) {
+          throw new Error(`Memory database schema version ${String(row.version)} is newer than supported ${String(CURRENT_MEMORY_SCHEMA_VERSION)} (fail-closed)`);
+        }
+        if (!KNOWN_MEMORY_MIGRATIONS.some((entry) => entry.version === row.version && entry.name === row.name)) {
+          throw new Error(`Memory database has an unknown migration ${String(row.version)}:${String(row.name)} (fail-closed)`);
+        }
+      }
       const applied = new Set(rows.map((r) => r.version));
       for (const migration of MIGRATIONS) {
         if (applied.has(migration.version)) continue;
@@ -242,7 +381,7 @@ export class SqliteMemoryStore implements MemoryStore {
         else migration.up(this.db);
         this.db.prepare("INSERT INTO schema_migrations (version, name) VALUES (?, ?)").run(migration.version, migration.name);
       }
-      validateSchema(this.db);
+      validateSchema(this.db, this.domainValue);
       this.db.exec("COMMIT");
     } catch (err) {
       this.db.exec("ROLLBACK");
@@ -496,41 +635,67 @@ export class SqliteMemoryStore implements MemoryStore {
     });
   }
 
+  async findActiveBySourceId(sourceId: string): Promise<MemoryItem | null> {
+    const row = this.db
+      .prepare("SELECT * FROM memory_items WHERE domain = ? AND source_id = ? AND status = 'ACTIVE' ORDER BY created_at DESC, rowid DESC LIMIT 1")
+      .get(this.domainValue, sourceId) as Record<string, unknown> | undefined;
+    return row ? this.toItem(row) : null;
+  }
+
   async writeDocumentAtomic(input: {
     source: MemorySourceRecord;
     item: MemoryWrite;
     chunks: MemoryChunkWrite[];
+    completion?: { requestId: string; resultId: string };
   }): Promise<void> {
-    const { source, item, chunks } = input;
+    const { source, item, chunks, completion } = input;
     this.transaction(() => {
       const now = nowIso();
+      const memoryId = item.id ?? randomUUID();
+      // Item first: putNow converges concurrent identical ingestions onto one
+      // ACTIVE row via uq_items_active_hash. Chunks, FTS rows, and source
+      // metadata must reference the surviving row or the FK constraint fails.
+      const persisted = this.putNow({
+        ...item,
+        id: memoryId,
+        canonical_text: this.sanitizer.sanitizeText(item.canonical_text),
+        display_text: this.sanitizer.sanitizeText(item.display_text),
+      });
+      const chunkMemoryId = persisted.id;
+      const convergedMetadata = (() => {
+        try {
+          const parsed = source.metadata_json ? (JSON.parse(source.metadata_json) as Record<string, unknown>) : {};
+          if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+            parsed.memory_ids = [chunkMemoryId];
+            return JSON.stringify(parsed);
+          }
+          return source.metadata_json ?? null;
+        } catch {
+          return source.metadata_json ?? null;
+        }
+      })();
+      const convergedSource = { ...source, metadata_json: convergedMetadata };
       this.db
         .prepare(
           `INSERT OR IGNORE INTO memory_sources (id, source_type, source_external_id, title, source_hash, metadata_json, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
-          source.id,
-          source.source_type,
-          source.source_external_id ?? null,
-          source.title ?? null,
-          source.source_hash,
-          source.metadata_json ?? null,
-          source.created_at,
+          convergedSource.id,
+          convergedSource.source_type,
+          convergedSource.source_external_id ?? null,
+          convergedSource.title ?? null,
+          convergedSource.source_hash,
+          convergedSource.metadata_json ?? null,
+          convergedSource.created_at,
           now,
         );
       this.db
         .prepare("UPDATE memory_sources SET title = ?, metadata_json = ?, updated_at = ? WHERE id = ?")
-        .run(source.title ?? null, source.metadata_json ?? null, now, source.id);
-      this.putNow({
-        ...item,
-        id: item.id ?? randomUUID(),
-        canonical_text: this.sanitizer.sanitizeText(item.canonical_text),
-        display_text: this.sanitizer.sanitizeText(item.display_text),
-      });
-      this.db.prepare("DELETE FROM memory_fts5 WHERE memory_id = ?").run(item.id ?? "");
+        .run(convergedSource.title ?? null, convergedSource.metadata_json ?? null, now, convergedSource.id);
+      this.db.prepare("DELETE FROM memory_fts5 WHERE memory_id = ?").run(chunkMemoryId);
       for (const chunk of chunks) {
-        const id = chunkId(item.id ?? "", chunk.ordinal);
+        const id = chunkId(chunkMemoryId, chunk.ordinal);
         this.db
           .prepare(
             `INSERT OR IGNORE INTO memory_chunks (id, memory_id, ordinal, text, token_count, content_hash, embedding_blob)
@@ -538,7 +703,7 @@ export class SqliteMemoryStore implements MemoryStore {
           )
           .run(
             id,
-            item.id ?? "",
+            chunkMemoryId,
             chunk.ordinal,
             this.sanitizer.sanitizeText(chunk.text),
             chunk.token_count,
@@ -547,7 +712,12 @@ export class SqliteMemoryStore implements MemoryStore {
           );
         this.db
           .prepare("INSERT OR REPLACE INTO memory_fts5 (chunk_id, memory_id, text) VALUES (?, ?, ?)")
-          .run(id, item.id ?? "", this.sanitizer.sanitizeText(chunk.text));
+          .run(id, chunkMemoryId, this.sanitizer.sanitizeText(chunk.text));
+      }
+      if (completion) {
+        this.db
+          .prepare("UPDATE ingestion_requests SET state = 'completed', result_id = ?, updated_at = ? WHERE request_id = ? AND request_hash IS NOT NULL")
+          .run(completion.resultId, now, completion.requestId);
       }
     });
   }
