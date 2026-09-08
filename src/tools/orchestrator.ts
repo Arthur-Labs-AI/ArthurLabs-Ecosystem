@@ -24,8 +24,32 @@ import { SecretSanitizer } from "../security/sanitize";
 import { ApprovalToken, ToolExecutionContext, ToolDefinition, ToolResult } from "./contracts";
 import { ToolExecutionService } from "./execution";
 import { buildModelToolResultPayload, MODEL_TOOL_RESULT_MAX_BYTES } from "./model_payload";
-import { argumentsDigest, PermissionService, signApprovalToken } from "./permissions";
+import { argumentsDigest, argumentsDigestV2, PermissionService, signApprovalToken } from "./permissions";
 import { ToolRegistry } from "./registry";
+import { snapshotJsonSafe, JsonSafeError } from "./json_safe";
+import { canonicalizeJson } from "./canonical_json";
+import {
+  APPROVAL_BINDING_VERSION,
+  approvalArgumentsHash,
+  authorizationDigest,
+  presentationHash,
+  type ApprovalIntentV2,
+  type ApprovalPresentation,
+} from "./approval_intent";
+import { validatePresentation } from "./approval_presenters";
+import { ApprovalSigner, ApprovalVerifier, type ApprovalCapabilityV2 } from "./approval_signer";
+import { EphemeralApprovalKeyProvider, type ApprovalKeyProvider } from "./approval_keys";
+import type { ApprovalRecord } from "../sessions/models";
+
+export interface ApprovalChallenge {
+  approval_id: string;
+  tool_call_id: string;
+  mode: string;
+  tool: { name: string; version: string };
+  risk: string;
+  presentation: ApprovalPresentation;
+  expires_at: string;
+}
 
 export interface ToolOrchestratorDeps {
   registry: ToolRegistry;
@@ -35,6 +59,12 @@ export interface ToolOrchestratorDeps {
   sanitizer: SecretSanitizer;
   approvalTtlSeconds: number;
   approvalSigningSecret: string;
+  /** SC-02 signing identity; defaults to an ephemeral keypair (tests). */
+  approvalKeyProvider?: ApprovalKeyProvider;
+  /** Trust ring override (key rotation tests). */
+  approvalTrustedKeys?: import("./approval_signer").ApprovalKeypair[];
+  /** Audit-only decision channel recorded on approve/reject. */
+  decisionChannel?: string;
   /**
    * Model-facing tool-result payload cap in bytes (TASK-0011B). Defaults to
    * MODEL_TOOL_RESULT_MAX_BYTES (16 KiB); oversized data is omitted whole,
@@ -62,6 +92,10 @@ export class ToolOrchestrator {
   private readonly sanitizer: SecretSanitizer;
   private readonly approvalTtlSeconds: number;
   private readonly approvalSigningSecret: string;
+  private readonly approvalKeyProvider: ApprovalKeyProvider;
+  private readonly signer: ApprovalSigner;
+  private readonly verifier: ApprovalVerifier;
+  private readonly decisionChannel: string | undefined;
   private readonly modelToolResultMaxBytes: number;
   private readonly logger: Logger;
   private readonly metrics: Metrics;
@@ -74,6 +108,11 @@ export class ToolOrchestrator {
     this.sanitizer = deps.sanitizer;
     this.approvalTtlSeconds = deps.approvalTtlSeconds;
     this.approvalSigningSecret = deps.approvalSigningSecret;
+    this.approvalKeyProvider = deps.approvalKeyProvider ?? new EphemeralApprovalKeyProvider();
+    const current = this.approvalKeyProvider.current();
+    this.signer = new ApprovalSigner(current);
+    this.verifier = new ApprovalVerifier(deps.approvalTrustedKeys ?? [current]);
+    this.decisionChannel = deps.decisionChannel;
     // TASK-0011B-F1 hardening: a positive finite cap is accepted (floored to
     // whole bytes); 0, negative values, NaN, or Infinity are invalid and fall
     // back to the default 16 KiB bound - NaN would otherwise compare false
@@ -96,7 +135,33 @@ export class ToolOrchestrator {
     for (const call of proposed) {
       const start = Date.now();
       const definition = this.registry.getDefinition(call.name);
-      const safeArgs = this.sanitizer.sanitizeObject(call.arguments);
+      // SC-02 sections 9-10: model arguments cross the JSON-safe TOCTOU
+      // boundary FIRST (fresh independent snapshot), then sanitization, then
+      // schema validation. The immutable execution snapshot below is exactly
+      // what gets hashed AND executed - never validate A then execute B.
+      let jsonSafeArgs: unknown;
+      try {
+        jsonSafeArgs = snapshotJsonSafe(call.arguments, "ToolCall.arguments");
+      } catch (err) {
+        const reason = err instanceof JsonSafeError ? err.message : "arguments are not JSON-safe";
+        const summary = this.rejectedSummary(call, definition?.risk ?? "unknown_tool", `invalid arguments: ${reason}`);
+        summaries.push(summary);
+        this.recordToolCall(ctx, call, definition, "rejected", summary.result_summary ?? "invalid arguments");
+        this.metrics.counter("arthur.tool.rejected", 1, { reason: "json_unsafe" });
+        continue;
+      }
+      const safeArgs = this.sanitizer.sanitizeObject(jsonSafeArgs as Record<string, unknown>);
+      let executionSnapshot: Record<string, unknown>;
+      try {
+        executionSnapshot = snapshotJsonSafe(safeArgs, "ToolCall.executionArgs") as Record<string, unknown>;
+      } catch (err) {
+        const reason = err instanceof JsonSafeError ? err.message : "arguments are not JSON-safe";
+        const summary = this.rejectedSummary(call, definition?.risk ?? "unknown_tool", `invalid arguments: ${reason}`);
+        summaries.push(summary);
+        this.recordToolCall(ctx, call, definition, "rejected", summary.result_summary ?? "invalid arguments");
+        this.metrics.counter("arthur.tool.rejected", 1, { reason: "json_unsafe" });
+        continue;
+      }
 
       if (!definition) {
         const summary = this.rejectedSummary(call, "unknown_tool", "unknown tool");
@@ -112,7 +177,7 @@ export class ToolOrchestrator {
         continue;
       }
 
-      const validation = this.registry.validateArgs(call.name, safeArgs);
+      const validation = this.registry.validateArgs(call.name, executionSnapshot ?? safeArgs);
       if (!validation.valid) {
         const summary = this.rejectedSummary(
           call,
@@ -154,7 +219,7 @@ export class ToolOrchestrator {
 
       if (decision === "approval") {
         needsApproval = true;
-        const { summary } = this.createPendingApproval(call, safeArgs, definition, ctx);
+        const { summary } = this.createPendingApproval(call, (executionSnapshot ?? safeArgs), definition, ctx);
         summaries.push(summary);
         this.logger.info("tool pending approval", {
           trace_id: ctx.trace_id,
@@ -168,8 +233,9 @@ export class ToolOrchestrator {
       }
 
       // decision === "auto": execute now (read / low_write) through the facade.
+      // The facade receives the SAME immutable snapshot that was validated.
       try {
-        const result = await this.execution.execute(call.name, safeArgs, ctx);
+        const result = await this.execution.execute(call.name, (executionSnapshot ?? safeArgs), ctx);
         const safeSummary = this.sanitizer.capSummary(result.summary);
         const summary = this.completedSummary(call, definition, { ok: result.ok, summary: safeSummary });
         summaries.push(summary);
@@ -236,6 +302,7 @@ export class ToolOrchestrator {
       case "approved":
       case "rejected":
       case "failed":
+      case "invalidated":
         return { approval_id: approvalId, tool_name: approval.tool_name, status: "already_resolved" };
       case "executing":
         // Concurrent duplicate or a crash left the record mid-flight. Never re-execute.
@@ -250,14 +317,29 @@ export class ToolOrchestrator {
 
     if (new Date(approval.expires_at).getTime() < Date.now()) {
       this.store.updateApproval(approvalId, { status: "expired" });
+      this.metrics.counter("arthur.approval.expired", 1);
       throw approvalInvalid("Approval expired", { approval_id: approvalId, expires_at: approval.expires_at });
     }
 
-    // Session must still exist; fail closed rather than defaulting to a mode.
+    // SC-02 section 44: v1 rows without a v2 binding fail closed, never upgrade.
+    if ((approval.binding_version ?? 1) < APPROVAL_BINDING_VERSION) {
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "legacy v1 approval without v2 binding");
+      this.metrics.counter("arthur.approval.invalidated", 1);
+      throw approvalInvalid("Approval binding is from a legacy version and is no longer valid", { approval_id: approvalId });
+    }
+
+    // Session must still exist AND be active; fail closed rather than defaulting
+    // to a mode (SC-02 section 32: "session exists / session active").
     const session = this.store.getSession(approval.session_id);
     if (!session) {
       this.store.failPendingApproval(approvalId, approval.tool_call_id, "session no longer exists");
       throw approvalInvalid("Approval session no longer exists", { approval_id: approvalId });
+    }
+    if (session.status !== "active") {
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "session is no longer active");
+      this.metrics.counter("arthur.approval.binding_mismatch", 1);
+      this.metrics.counter("arthur.approval.invalidated", 1);
+      throw approvalInvalid("Approval session is no longer active", { approval_id: approvalId });
     }
 
     // The persisted tool call must be the exact record this approval authorizes.
@@ -283,8 +365,35 @@ export class ToolOrchestrator {
     }
 
     if (definition.risk !== approval.risk_level) {
-      this.store.failPendingApproval(approvalId, approval.tool_call_id, "tool risk no longer matches approval");
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "tool risk no longer matches approval");
+      this.metrics.counter("arthur.approval.binding_mismatch", 1);
+      this.metrics.counter("arthur.approval.invalidated", 1);
       throw approvalInvalid("Approval risk binding does not match the registered tool", { approval_id: approvalId });
+    }
+
+    // SC-02 section 22 (mode binding): requested == current == execution.
+    // A mode switch already invalidates pending rows atomically; this check
+    // closes the race where execution starts with a stale session snapshot.
+    if (!approval.mode || approval.mode !== session.mode) {
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "session mode no longer matches approval mode");
+      this.metrics.counter("arthur.approval.binding_mismatch", 1);
+      this.metrics.counter("arthur.approval.invalidated", 1);
+      throw approvalInvalid("Approval mode binding does not match the current session mode", { approval_id: approvalId });
+    }
+
+    // SC-02 sections 13-14: version + definition fingerprint binding.
+    if (!approval.tool_version || approval.tool_version !== definition.version) {
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "tool version no longer matches approval");
+      this.metrics.counter("arthur.approval.binding_mismatch", 1);
+      this.metrics.counter("arthur.approval.invalidated", 1);
+      throw approvalInvalid("Approval tool version does not match the registered tool", { approval_id: approvalId });
+    }
+    const currentDefinitionHash = this.registry.getDefinitionHash(approval.tool_name);
+    if (!approval.tool_definition_hash || approval.tool_definition_hash !== currentDefinitionHash) {
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "tool definition no longer matches approval");
+      this.metrics.counter("arthur.approval.binding_mismatch", 1);
+      this.metrics.counter("arthur.approval.invalidated", 1);
+      throw approvalInvalid("Approval tool definition does not match the registered tool", { approval_id: approvalId });
     }
 
     let args: Record<string, unknown>;
@@ -296,12 +405,64 @@ export class ToolOrchestrator {
     }
 
     // Cryptographic binding: the recalculated digest must equal the stored hash.
-    if (argumentsDigest(args) !== approval.arguments_hash) {
-      this.store.failPendingApproval(approvalId, approval.tool_call_id, "argument digest mismatch");
+    // V2 canonical form (JCS) is authoritative; the legacy key-sorted form is
+    // accepted only for rows created before SC-02 (binding_version < 2 rows
+    // already fail closed above, so legacy acceptance here is belt-and-braces).
+    if (approvalArgumentsHash(args) !== approval.arguments_hash && argumentsDigest(args) !== approval.arguments_hash) {
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "argument digest mismatch");
+      this.metrics.counter("arthur.approval.binding_mismatch", 1);
+      this.metrics.counter("arthur.approval.invalidated", 1);
       throw approvalInvalid("Approval argument digest does not match", { approval_id: approvalId });
     }
 
-    // Re-validate before execution (spec section 18).
+    // Presentation binding: the exact WYSIWYS data the user saw is part of the
+    // authorization identity (SC-02 section 19).
+    if (!approval.presentation_hash || !approval.presentation_json) {
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "approval presentation is missing");
+      this.metrics.counter("arthur.approval.binding_mismatch", 1);
+      this.metrics.counter("arthur.approval.invalidated", 1);
+      throw approvalInvalid("Approval presentation binding is missing", { approval_id: approvalId });
+    }
+    let storedPresentation: ApprovalPresentation;
+    try {
+      storedPresentation = JSON.parse(approval.presentation_json) as ApprovalPresentation;
+    } catch {
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "approval presentation is malformed");
+      this.metrics.counter("arthur.approval.binding_mismatch", 1);
+      throw approvalInvalid("Approval presentation is corrupted", { approval_id: approvalId });
+    }
+    if (presentationHash(storedPresentation) !== approval.presentation_hash) {
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "presentation digest mismatch");
+      this.metrics.counter("arthur.approval.binding_mismatch", 1);
+      this.metrics.counter("arthur.approval.invalidated", 1);
+      throw approvalInvalid("Approval presentation digest does not match", { approval_id: approvalId });
+    }
+
+    // Rebuild + verify the authorization digest (SC-02 section 25).
+    const intent: ApprovalIntentV2 = {
+      binding_version: APPROVAL_BINDING_VERSION,
+      approval_id: approvalId,
+      tool_call_id: approval.tool_call_id,
+      session_id: approval.session_id,
+      turn_id: approval.turn_id,
+      mode: approval.mode as ApprovalIntentV2["mode"],
+      tool_name: approval.tool_name,
+      tool_version: approval.tool_version,
+      tool_definition_hash: approval.tool_definition_hash,
+      risk_level: approval.risk_level,
+      arguments_hash: approval.arguments_hash,
+      presentation_hash: approval.presentation_hash,
+      created_at: approval.created_at,
+      expires_at: approval.expires_at,
+    };
+    if (authorizationDigest(intent) !== approval.authorization_digest) {
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "authorization digest mismatch");
+      this.metrics.counter("arthur.approval.binding_mismatch", 1);
+      this.metrics.counter("arthur.approval.invalidated", 1);
+      throw approvalInvalid("Approval authorization digest does not match", { approval_id: approvalId });
+    }
+
+    // Re-validate before execution (spec section 18) on the persisted snapshot.
     const validation = this.registry.validateArgs(approval.tool_name, args);
     if (!validation.valid) {
       this.store.failPendingApproval(approvalId, approval.tool_call_id, "argument re-validation failed");
@@ -314,7 +475,8 @@ export class ToolOrchestrator {
     // Re-run the permission decision against the CURRENT session mode.
     const decision = this.permissions.evaluate(definition, session.mode);
     if (decision !== "approval") {
-      this.store.failPendingApproval(approvalId, approval.tool_call_id, "tool is no longer approved for this session");
+      this.store.invalidatePendingApproval(approvalId, approval.tool_call_id, "tool is no longer approved for this session");
+      this.metrics.counter("arthur.approval.invalidated", 1);
       if (!definition.allowed_modes.includes(session.mode)) {
         throw modeViolation(`Tool ${approval.tool_name} is not permitted in ${session.mode} mode`, {
           tool: approval.tool_name,
@@ -327,6 +489,7 @@ export class ToolOrchestrator {
     }
 
     // Atomic claim: exactly one concurrent caller wins pending -> executing.
+    // The CAS re-checks the FULL v2 binding in one SQL statement.
     const claimed = this.store.claimApprovalBound({
       id: approvalId,
       sessionId: approval.session_id,
@@ -334,6 +497,10 @@ export class ToolOrchestrator {
       turnId: approval.turn_id,
       toolCallId: approval.tool_call_id,
       toolName: approval.tool_name,
+      toolVersion: approval.tool_version,
+      toolDefinitionHash: approval.tool_definition_hash,
+      presentationHash: approval.presentation_hash,
+      authorizationDigest: approval.authorization_digest ?? undefined,
       argumentsJson: approval.arguments_json,
       argumentsHash: approval.arguments_hash,
       riskLevel: approval.risk_level,
@@ -343,9 +510,22 @@ export class ToolOrchestrator {
       if (current?.status === "approved") {
         return { approval_id: approvalId, tool_name: approval.tool_name, status: "already_resolved" };
       }
+      this.metrics.counter("arthur.approval.replay_blocked", 1);
       throw approvalInvalid("Approval is already being executed", { approval_id: approvalId });
     }
 
+    // SC-02 section 26: executor-facing signed capability (Ed25519).
+    // The legacy HMAC token is still minted for the harness stub boundary and
+    // removed once the stub migrates to capability verification.
+    const digest = authorizationDigest(intent);
+    const capability: ApprovalCapabilityV2 = this.signer.sign(intent, digest);
+    let verified: import("./approval_signer").VerifiedApproval;
+    try {
+      verified = this.verifier.verify(capability);
+    } catch {
+      this.metrics.counter("arthur.approval.signature_invalid", 1);
+      throw approvalInvalid("Approval capability signature verification failed", { approval_id: approvalId });
+    }
     const signable = {
       approval_id: approvalId,
       tool_name: approval.tool_name,
@@ -366,8 +546,12 @@ export class ToolOrchestrator {
       mode: session.mode,
       approved: true,
       approvalToken: token,
+      authorization: verified,
     };
 
+    if (this.decisionChannel) {
+      this.store.recordApprovalDecisionChannel(approvalId, this.decisionChannel);
+    }
     const start = Date.now();
     try {
       const result = await this.execution.execute(approval.tool_name, args, ctx);
@@ -377,8 +561,14 @@ export class ToolOrchestrator {
         trace_id: ctx.trace_id,
         session_id: approval.session_id,
         turn_id: approval.turn_id,
+        mode: session.mode,
         tool_name: approval.tool_name,
+        tool_version: approval.tool_version,
+        risk: approval.risk_level,
         approval_id: approvalId,
+        tool_call_id: approval.tool_call_id,
+        expires_at: approval.expires_at,
+        binding_version: approval.binding_version,
         duration_ms: Date.now() - start,
       });
       this.metrics.counter("arthur.approval.approved", 1);
@@ -402,14 +592,22 @@ export class ToolOrchestrator {
       this.logger.error("approved tool execution failed", {
         session_id: approval.session_id,
         turn_id: approval.turn_id,
+        mode: session.mode,
         tool_name: approval.tool_name,
+        tool_version: approval.tool_version,
         approval_id: approvalId,
+        tool_call_id: approval.tool_call_id,
         error: message,
         cause: causeMessage,
       });
       this.metrics.counter("arthur.approval.failed", 1);
       throw toArthurError(err);
     }
+  }
+
+  /** Test/rotation hook: trust an additional signing key without restart. */
+  addTrustedApprovalKey(keypair: Pick<import("./approval_signer").ApprovalKeypair, "kid" | "publicKeyPem">): void {
+    this.verifier.addTrusted(keypair);
   }
 
   async rejectApproval(approvalId: string): Promise<ApprovalOutcome> {
@@ -461,19 +659,81 @@ export class ToolOrchestrator {
     };
   }
 
+  /** Server-generated WYSIWYS challenge for a pending approval (SC-02 section 20). */
+  getApprovalChallenge(approvalId: string): ApprovalChallenge {
+    const approval = this.store.getApproval(approvalId);
+    if (!approval || approval.status !== "pending") {
+      throw approvalInvalid(`Approval not found or not pending: ${approvalId}`, { approval_id: approvalId });
+    }
+    let presentation: ApprovalPresentation;
+    try {
+      presentation = JSON.parse(approval.presentation_json ?? "") as ApprovalPresentation;
+    } catch {
+      throw approvalInvalid("Approval presentation is corrupted", { approval_id: approvalId });
+    }
+    return {
+      approval_id: approval.id,
+      tool_call_id: approval.tool_call_id,
+      mode: approval.mode ?? "",
+      tool: { name: approval.tool_name, version: approval.tool_version ?? "" },
+      risk: approval.risk_level,
+      presentation,
+      expires_at: approval.expires_at,
+    };
+  }
+
+  /** Trusted spoken summary derived from the presenter (SC-02 section 21), never model prose. */
+  approvalVoicePrompt(approvalId: string): string {
+    const challenge = this.getApprovalChallenge(approvalId);
+    const first = challenge.presentation.details[0];
+    const detail = first ? ` ${first.label}: ${first.value}.` : "";
+    return `${challenge.presentation.action}.${detail}`.trim();
+  }
+
   private createPendingApproval(
     call: ProposedToolCall,
-    safeArgs: Record<string, unknown>,
+    executionSnapshot: Record<string, unknown>,
     definition: ToolDefinition,
     ctx: ToolExecutionContext,
   ): { summary: ToolCallSummary } {
     const toolCallId = newId();
-    const argumentsJson = JSON.stringify(safeArgs);
-    const argumentsHash = argumentsDigest(safeArgs);
+    // Canonical execution arguments: hash EXACTLY what the executor receives.
+    const argumentsJson = canonicalizeJson(executionSnapshot);
+    const argumentsHash = approvalArgumentsHash(executionSnapshot);
+    const legacyHash = argumentsDigest(executionSnapshot);
+    void legacyHash;
     const approvalId = newId();
+    const createdAt = new Date().toISOString();
     const expiresAt = new Date(Date.now() + this.approvalTtlSeconds * 1000).toISOString();
+    const definitionHash = this.registry.getDefinitionHash(call.name) ?? "";
+    const presenter = this.registry.getPresenter(call.name);
+    if (!presenter) {
+      throw approvalInvalid(`Approval-required tool ${call.name} has no trusted presenter`, { tool: call.name });
+    }
+    const presentation = validatePresentation(presenter(executionSnapshot), this.sanitizer);
+    const presentationJson = canonicalizeJson(presentation as unknown as Record<string, unknown>);
+    const presHash = presentationHash(presentation);
+    const intent: ApprovalIntentV2 = {
+      binding_version: APPROVAL_BINDING_VERSION,
+      approval_id: approvalId,
+      tool_call_id: toolCallId,
+      session_id: ctx.session_id,
+      turn_id: ctx.turn_id,
+      mode: ctx.mode,
+      tool_name: call.name,
+      tool_version: definition.version,
+      tool_definition_hash: definitionHash,
+      risk_level: definition.risk,
+      arguments_hash: argumentsHash,
+      presentation_hash: presHash,
+      created_at: createdAt,
+      expires_at: expiresAt,
+    };
+    const digest = authorizationDigest(intent);
 
     this.store.createPendingApprovalAtomic({
+      // createdAt override keeps the persisted row byte-identical to the intent.
+
       toolCall: {
         id: toolCallId,
         turnId: ctx.turn_id,
@@ -491,8 +751,18 @@ export class ToolOrchestrator {
         argumentsHash,
         riskLevel: definition.risk,
         expiresAt,
+        createdAt,
+        bindingVersion: APPROVAL_BINDING_VERSION,
+        mode: ctx.mode,
+        toolVersion: definition.version,
+        toolDefinitionHash: definitionHash,
+        presentationJson,
+        presentationHash: presHash,
+        authorizationDigest: digest,
+        signingKeyId: this.signer.keyId,
       },
     });
+    this.metrics.counter("arthur.approval.created", 1);
 
     const summary: ToolCallSummary = {
       tool_call_id: toolCallId,

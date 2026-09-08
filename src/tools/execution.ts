@@ -14,6 +14,7 @@
  */
 
 import { ArthurError, modeViolation } from "../core/errors/errors";
+import { sha256Canonical } from "./canonical_json";
 import { JsonSafeError, snapshotJsonSafe } from "./json_safe";
 import type { PermissionService } from "./permissions";
 import type { ToolRegistry } from "./registry";
@@ -82,11 +83,44 @@ export class ToolExecutionService {
         exposeDetails: true,
       });
     }
-    if (decision === "approval" && (!ctx.approved || !ctx.approvalToken)) {
-      throw new ArthurError("APPROVAL_REQUIRED", "Tool " + name + " requires explicit approval evidence");
-    }
-    if (decision === "approval" && ctx.approvalToken?.tool_name !== name) {
-      throw new ArthurError("APPROVAL_INVALID", "Approval evidence does not authorize tool " + name);
+    // SC-02 section 31/32: ToolExecutionService is the MANDATORY final approval
+    // verification gate. Authority comes ONLY from a centrally verified
+    // capability (`authorization`); the deprecated `approved` boolean and any
+    // caller-supplied token shape carry zero authority on their own.
+    if (decision === "approval") {
+      const auth = ctx.authorization;
+      if (!auth) {
+        throw new ArthurError("APPROVAL_REQUIRED", "Tool " + name + " requires explicit approval evidence");
+      }
+      if (auth.v !== 2 || auth.tool_name !== name) {
+        throw new ArthurError("APPROVAL_INVALID", "Approval evidence does not authorize tool " + name);
+      }
+      if (auth.session_id !== ctx.session_id || auth.turn_id !== ctx.turn_id || auth.mode !== ctx.mode) {
+        throw new ArthurError("APPROVAL_INVALID", "Approval evidence does not match this execution context");
+      }
+      if (new Date(auth.expires_at).getTime() < Date.now() || new Date(auth.issued_at).getTime() > Date.now() + 60000) {
+        throw new ArthurError("APPROVAL_INVALID", "Approval evidence is expired or not yet valid");
+      }
+      // Legacy HMAC token, when present, must still agree on the tool binding;
+      // its absence does not weaken the Ed25519 capability, and its presence
+      // grants zero authority on its own (SC-02 section 34: only VerifiedApproval
+      // authorizes; the HMAC stub boundary verifies signatures itself).
+      if (ctx.approvalToken !== undefined && ctx.approvalToken.tool_name !== name) {
+        throw new ArthurError("APPROVAL_INVALID", "Approval evidence does not authorize tool " + name);
+      }
+      // SC-02 section 32 final gate, checked immediately before invoker(): the
+      // capability's argument digest must match the EXACT args about to execute.
+      // A caller that swaps args after approval (or reuses a capability for a
+      // different payload) fails closed here even if every persisted check passed.
+      let liveArgsHash: string;
+      try {
+        liveArgsHash = sha256Canonical(args);
+      } catch {
+        throw new ArthurError("APPROVAL_INVALID", "Approval evidence does not cover these arguments");
+      }
+      if (auth.arguments_hash !== liveArgsHash) {
+        throw new ArthurError("APPROVAL_INVALID", "Approval evidence does not authorize these exact arguments");
+      }
     }
 
     let result: ToolResult;

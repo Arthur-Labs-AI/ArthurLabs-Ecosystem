@@ -206,7 +206,7 @@ test("V: harness.status still works with enforced output_schema", async () => {
   }
 });
 
-test("W: harness.create_job still requires approval and works with signed evidence", async () => {
+test("W: harness.create_job still requires approval and works through the SC-02 approval flow", async () => {
   const w = buildWorld(ArthurMode.BUSINESS);
   try {
     // No approval evidence: fail closed before the executor.
@@ -216,27 +216,18 @@ test("W: harness.create_job still requires approval and works with signed eviden
     );
     assert.equal((await w.harness.getStatus()).jobs_active, 0);
 
-    // Valid signed approval token bound to the exact tool + arguments: works.
-    const args = { kind: "deploy" };
-    const signable = {
-      approval_id: "ap-w",
-      tool_name: "harness.create_job",
-      session_id: "s1",
-      turn_id: "t1",
-      arguments_hash: argumentsDigest(args),
-      issued_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 60_000).toISOString(),
-    };
-    const token: ApprovalToken = { ...signable, signature: signApprovalToken(signable, SIGNING_SECRET) };
-    const result = await w.execution.execute("harness.create_job", args, {
-      ...w.ctx,
-      approved: true,
-      approvalToken: token,
-    });
-    assert.equal(result.ok, true);
-    const job = result.data as { id: string; status: string };
-    assert.ok(job.id.startsWith("job-"));
-    assert.equal(job.status, "queued");
+    // Full SC-02 flow: propose -> pending approval with WYSIWYS challenge -> approve -> executes once.
+    const handling = await w.orchestrator.handleProposed(
+      [{ id: "call-w", name: "harness.create_job", arguments: { kind: "deploy" } }],
+      w.ctx,
+    );
+    assert.equal(handling.needsApproval, true);
+    const approvalId = handling.summaries[0]?.approval_id;
+    assert.ok(approvalId);
+    const outcome = await w.orchestrator.executeApproval(approvalId as string);
+    assert.equal(outcome.status, "approved");
+    assert.ok((outcome.result_summary ?? "").includes("job created:"));
+    assert.equal((await w.harness.getStatus()).jobs_active, 1);
   } finally {
     w.close();
   }

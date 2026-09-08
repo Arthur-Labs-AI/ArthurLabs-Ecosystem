@@ -14,6 +14,7 @@
 
 import { ArthurMode } from "../core/modes/mode";
 import { ApprovalToken, HarnessAdapter, HarnessJobSpec, ToolExecutionContext } from "./contracts";
+import { harnessCreateJobPresenter } from "./approval_presenters";
 import { LocalSystemAdapter, NodeLocalSystemAdapter } from "./adapters/local_system";
 import { ToolRegistry } from "./registry";
 
@@ -113,11 +114,12 @@ export function registerBuiltinTools(
       risk: "approval_required",
       allowed_modes: [ArthurMode.BUSINESS],
     },
+    harnessCreateJobPresenter(),
     async (args, ctx: ToolExecutionContext) => {
-      if (!ctx.approved || !ctx.approvalToken) {
+      if (!ctx.authorization && (!ctx.approved || !ctx.approvalToken)) {
         throw new Error("harness.create_job requires explicit approval");
       }
-      const token: ApprovalToken = ctx.approvalToken;
+      const token: ApprovalToken = ctx.approvalToken as ApprovalToken;
       // TASK-0010: structured results must be JSON-safe (no explicit undefined
       // fields - they would be silently dropped by JSON serialization).
       const spec: HarnessJobSpec = { kind: String(args.kind ?? "") };

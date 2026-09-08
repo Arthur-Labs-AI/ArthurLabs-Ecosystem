@@ -23,9 +23,26 @@ interface Harness {
   execution: { execute(name: string, args: Record<string, unknown>, ctx: ToolExecutionContext): Promise<ToolResult> };
 }
 
-function makeHarness(executor: ToolExecutor, definition: Partial<ToolDefinition> = {}): Harness {
+function makeHarness(executor: ToolExecutor, definition: Partial<ToolDefinition> = {}, presenter?: (args: Record<string, unknown>) => { action: string; details: Array<{ label: string; value: string }> }): Harness {
   const registry = new ToolRegistry();
   const calls: { name: string; args: Record<string, unknown> }[] = [];
+  const full = def({
+    name: "spy.read",
+    description: "records invocations",
+    input_schema: {
+      type: "object",
+      properties: { q: { type: "string" } },
+      required: ["q"],
+      additionalProperties: false,
+    },
+    ...definition,
+  });
+  if (full.risk === "approval_required") {
+    registry.register(full, presenter ?? (() => ({ action: "Test action", details: [] })), (args, c) => {
+      calls.push({ name: c.mode === undefined ? "spy.read" : "spy.read", args });
+      return executor(args, c);
+    });
+  } else {
   registry.register(
     def({
       name: "spy.read",
@@ -43,6 +60,7 @@ function makeHarness(executor: ToolExecutor, definition: Partial<ToolDefinition>
       return executor(args, c);
     },
   );
+  }
   const execution = registry.createExecutionService(new PermissionService());
   return { registry, calls, execution };
 }
@@ -264,7 +282,23 @@ test("approval evidence is required and tool-bound at the facade", async () => {
     () => h.execution.execute("gated.tool", {}, { ...ctx(ArthurMode.BUSINESS), approved: true }),
     (e: unknown) => assertCode(e, "APPROVAL_REQUIRED") !== undefined,
   );
-  // A token bound to a DIFFERENT tool name is rejected.
+  // A verified capability bound to a DIFFERENT tool name is rejected (SC-02 central gate).
+  await assert.rejects(
+    () =>
+      h.execution.execute("gated.tool", {}, {
+        ...ctx(ArthurMode.BUSINESS),
+        approved: true,
+        authorization: {
+          v: 2 as const, alg: "Ed25519" as const, kid: "k", approval_id: "a", tool_call_id: "tc",
+          session_id: "s", turn_id: "t", mode: ArthurMode.BUSINESS, tool_name: "other.tool",
+          tool_version: "1.0.0", tool_definition_hash: "d", risk_level: "approval_required" as const,
+          arguments_hash: "0".repeat(64), presentation_hash: "p", authorization_digest: "x",
+          issued_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60000).toISOString(),
+        },
+      }),
+    (e: unknown) => assertCode(e, "APPROVAL_INVALID") !== undefined,
+  );
+  // A legacy token shape with NO verified capability is rejected before tool matching (SC-02).
   await assert.rejects(
     () =>
       h.execution.execute("gated.tool", {}, {
@@ -281,7 +315,7 @@ test("approval evidence is required and tool-bound at the facade", async () => {
           signature: "0".repeat(64),
         },
       }),
-    (e: unknown) => assertCode(e, "APPROVAL_INVALID") !== undefined,
+    (e: unknown) => assertCode(e, "APPROVAL_REQUIRED") !== undefined,
   );
   assert.equal(h.calls.length, 0);
 });

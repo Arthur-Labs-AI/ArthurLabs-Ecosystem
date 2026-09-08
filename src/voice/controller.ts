@@ -1074,7 +1074,7 @@ export class VoiceTurnController {
         const approval = pending[0];
         if (approval) {
           try {
-            const outcome = await this.conversation.reject(approval.id);
+            const outcome = await this.conversation.reject(approval.id, 'voice');
             this.emitApprovalOutcome(outcome);
           } catch (err) {
             this.emitError(VoiceErrorCode.VOICE_STATE_INVALID, err instanceof Error ? err.message : "reject failed", "approval");
@@ -1135,7 +1135,7 @@ export class VoiceTurnController {
    */
   private async resolveApproval(approvalId: string): Promise<void> {
     try {
-      const outcome = await this.conversation.approve(approvalId);
+      const outcome = await this.conversation.approve(approvalId, 'voice');
       this.emitApprovalOutcome(outcome);
       if (outcome.status === "approved") {
         const summary = (outcome.result_summary ?? "").slice(0, 300);
@@ -1153,6 +1153,19 @@ export class VoiceTurnController {
     } finally {
       this.pendingApprovals.delete(approvalId);
     }
+  }
+
+  /** Trusted spoken approval prompt from the server-side presenter (SC-02 section 21). */
+  approvalVoicePrompt(approvalId: string): string | undefined {
+    try {
+      const prompt = (this.conversation as unknown as { approvalVoicePrompt?: (id: string) => string }).approvalVoicePrompt;
+      if (typeof prompt === "function") {
+        return (this.conversation as unknown as { approvalVoicePrompt: (id: string) => string }).approvalVoicePrompt(approvalId);
+      }
+    } catch {
+      return undefined;
+    }
+    return undefined;
   }
 
   private emitApprovalRequired(

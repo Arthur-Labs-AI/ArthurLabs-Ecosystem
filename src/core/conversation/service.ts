@@ -815,11 +815,23 @@ export class ConversationService {
     return { session_id: id, from: session.mode, to: mode };
   }
 
-  async approve(approvalId: string): Promise<ApprovalOutcome> {
+  /** Server-generated WYSIWYS approval challenge (SC-02 section 20). */
+  getApprovalChallenge(approvalId: string): import("../../tools/orchestrator").ApprovalChallenge {
+    return this.orchestrator.getApprovalChallenge(approvalId);
+  }
+
+  /** Trusted spoken approval summary from the server-side presenter (SC-02 section 21). */
+  approvalVoicePrompt(approvalId: string): string {
+    return this.orchestrator.approvalVoicePrompt(approvalId);
+  }
+
+  async approve(approvalId: string, channel?: string): Promise<ApprovalOutcome> {
+    if (channel !== undefined) this.store.recordApprovalDecisionChannel(approvalId, channel);
     return this.orchestrator.executeApproval(approvalId);
   }
 
-  async reject(approvalId: string): Promise<ApprovalOutcome> {
+  async reject(approvalId: string, channel?: string): Promise<ApprovalOutcome> {
+    if (channel !== undefined) this.store.recordApprovalDecisionChannel(approvalId, channel);
     return this.orchestrator.rejectApproval(approvalId);
   }
 

@@ -728,7 +728,7 @@ export interface ApprovalOptions {
 export async function runApprove(app: App, opts: ApprovalOptions): Promise<number> {
   const io = opts.io ?? PROCESS_IO;
   try {
-    printJson(await app.conversation.approve(opts.id), io);
+    printJson(await app.conversation.approve(opts.id, 'cli'), io);
     return 0;
   } catch (err) {
     printError(err, app, io);

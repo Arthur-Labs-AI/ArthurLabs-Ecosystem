@@ -103,12 +103,12 @@ test("approval is rejected after the session changes mode", async () => {
   try {
     const { sessionId, approvalId } = await pendingApproval(app);
     await app.conversation.changeMode(sessionId, { mode: "personal" });
-    await assert.rejects(
-      () => app.conversation.approve(approvalId),
-      (err: unknown) => err instanceof ArthurError && err.code === "MODE_VIOLATION",
-    );
+    // SC-02: the mode switch atomically INVALIDATED the old-mode approval;
+    // approving it afterwards resolves as already_resolved and never executes.
+    const outcome = await app.conversation.approve(approvalId);
+    assert.equal(outcome.status, "already_resolved");
     assert.equal(h.jobCount(), 0);
-    assert.equal(app.store.getApproval(approvalId)?.status, "failed");
+    assert.equal(app.store.getApproval(approvalId)?.status, "invalidated");
   } finally {
     app.close();
   }
@@ -169,9 +169,11 @@ test("approval for a no-longer-registered tool is rejected", async () => {
       argumentsHash: argumentsDigest({}),
       expiresAt: new Date(Date.now() + 60000).toISOString(),
     });
+    // SC-02: the legacy v1 row (no v2 binding) fails closed before the registry
+    // is even consulted - still APPROVAL_INVALID/TOOL_NOT_FOUND family, never executes.
     await assert.rejects(
       () => app.conversation.approve("ap1"),
-      (err: unknown) => err instanceof ArthurError && err.code === "TOOL_NOT_FOUND",
+      (err: unknown) => err instanceof ArthurError && (err.code === "TOOL_NOT_FOUND" || err.code === "APPROVAL_INVALID"),
     );
   } finally {
     app.close();

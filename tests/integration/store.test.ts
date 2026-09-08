@@ -99,7 +99,7 @@ test("original Phase 1 database upgrades forward with data and restart safety", 
   assert.equal(Number((inspect.prepare("SELECT COUNT(*) AS count FROM idempotency_keys").get() as { count: number }).count), 1);
   assert.deepEqual(
     (inspect.prepare("SELECT version FROM schema_migrations ORDER BY version").all() as Array<{ version: number }>).map((row) => row.version),
-    [1, 2, 3, 4, 5, 6],
+    [1, 2, 3, 4, 5, 6, 7],
   );
   assert.equal(inspect.prepare("PRAGMA foreign_key_check").all().length, 0);
   inspect.close();
@@ -112,7 +112,7 @@ test("original Phase 1 database upgrades forward with data and restart safety", 
   const finalDb = new DatabaseSync(dbPath);
   assert.deepEqual(
     (finalDb.prepare("SELECT version FROM schema_migrations ORDER BY version").all() as Array<{ version: number }>).map((row) => row.version),
-    [1, 2, 3, 4, 5, 6],
+    [1, 2, 3, 4, 5, 6, 7],
   );
   finalDb.close();
   rmSync(dir, { recursive: true, force: true });

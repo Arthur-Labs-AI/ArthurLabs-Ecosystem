@@ -116,13 +116,23 @@ function reconcileSecureSchema(db: DatabaseSync): void {
       arguments_json TEXT NOT NULL,
       arguments_hash TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending'
-        CHECK(status IN ('pending','executing','approved','rejected','failed','expired')),
+        CHECK(status IN ('pending','executing','approved','rejected','failed','expired','invalidated')),
       expires_at TEXT NOT NULL,
       created_at TEXT NOT NULL,
       resolved_at TEXT,
       claimed_at TEXT,
       risk_level TEXT NOT NULL DEFAULT 'approval_required'
         CHECK(risk_level IN ('read','low_write','approval_required','high_risk')),
+      binding_version INTEGER NOT NULL DEFAULT 1,
+      mode TEXT,
+      tool_version TEXT,
+      tool_definition_hash TEXT,
+      presentation_json TEXT,
+      presentation_hash TEXT,
+      authorization_digest TEXT,
+      signing_key_id TEXT,
+      invalidated_reason TEXT,
+      decision_channel TEXT,
       FOREIGN KEY (turn_id) REFERENCES turns(id) ON DELETE CASCADE,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
       FOREIGN KEY (tool_call_id) REFERENCES tool_calls(id) ON DELETE CASCADE
@@ -130,9 +140,21 @@ function reconcileSecureSchema(db: DatabaseSync): void {
   `);
   const claimedAt = approvalColumns.has("claimed_at") ? "claimed_at" : "NULL";
   const riskLevel = approvalColumns.has("risk_level") ? "risk_level" : "'approval_required'";
+  const bindingVersion = approvalColumns.has("binding_version") ? "binding_version" : "1";
+  const modeCol = approvalColumns.has("mode") ? "mode" : "NULL";
+  const toolVersion = approvalColumns.has("tool_version") ? "tool_version" : "NULL";
+  const toolDefHash = approvalColumns.has("tool_definition_hash") ? "tool_definition_hash" : "NULL";
+  const presentationJson = approvalColumns.has("presentation_json") ? "presentation_json" : "NULL";
+  const presentationHash = approvalColumns.has("presentation_hash") ? "presentation_hash" : "NULL";
+  const authDigest = approvalColumns.has("authorization_digest") ? "authorization_digest" : "NULL";
+  const signingKeyId = approvalColumns.has("signing_key_id") ? "signing_key_id" : "NULL";
+  const invalidatedReason = approvalColumns.has("invalidated_reason") ? "invalidated_reason" : "NULL";
+  const decisionChannel = approvalColumns.has("decision_channel") ? "decision_channel" : "NULL";
   db.exec(`INSERT INTO __new_approvals
     SELECT id, turn_id, session_id, tool_call_id, tool_name, arguments_json, arguments_hash,
-      status, expires_at, created_at, resolved_at, ${claimedAt}, ${riskLevel} FROM approvals`);
+      status, expires_at, created_at, resolved_at, ${claimedAt}, ${riskLevel},
+      ${bindingVersion}, ${modeCol}, ${toolVersion}, ${toolDefHash}, ${presentationJson},
+      ${presentationHash}, ${authDigest}, ${signingKeyId}, ${invalidatedReason}, ${decisionChannel} FROM approvals`);
 
   db.exec(`
     CREATE TABLE __new_idempotency_keys (
@@ -181,7 +203,9 @@ function validateSecureSchema(db: DatabaseSync): void {
     turns: ["id", "session_id", "role", "text", "created_at", "trace_id", "status", "mode"],
     model_calls: ["id", "turn_id", "provider", "model", "latency_ms", "status", "created_at"],
     tool_calls: ["id", "turn_id", "tool_name", "arguments_json", "risk_level", "status"],
-    approvals: ["id", "turn_id", "session_id", "tool_call_id", "status", "claimed_at", "risk_level"],
+    approvals: ["id", "turn_id", "session_id", "tool_call_id", "status", "claimed_at", "risk_level",
+      "binding_version", "mode", "tool_version", "tool_definition_hash", "presentation_json",
+      "presentation_hash", "authorization_digest", "signing_key_id", "invalidated_reason", "decision_channel"],
     idempotency_keys: ["id", "client_request_id", "request_hash", "status", "created_at", "updated_at"],
   };
   for (const [table, columns] of Object.entries(required)) {
@@ -244,7 +268,7 @@ const MIGRATIONS: Migration[] = [
         tool_name TEXT NOT NULL,
         arguments_json TEXT NOT NULL,
         risk_level TEXT NOT NULL CHECK(risk_level IN ('read','low_write','approval_required','high_risk')),
-        status TEXT NOT NULL CHECK(status IN ('completed','pending_approval','rejected','failed')),
+        status TEXT NOT NULL CHECK(status IN ('completed','pending_approval','rejected','failed','executing')),
         result_summary TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -324,7 +348,50 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 7,
+    name: "approval_binding_v2",
+    up: (db: DatabaseSync) => {
+      const cols = columnNames(db, "approvals");
+      const add = (name: string, ddl: string): void => {
+        if (!cols.has(name)) db.exec(`ALTER TABLE approvals ADD COLUMN ${ddl}`);
+      };
+      add("binding_version", "binding_version INTEGER NOT NULL DEFAULT 1");
+      add("mode", "mode TEXT");
+      add("tool_version", "tool_version TEXT");
+      add("tool_definition_hash", "tool_definition_hash TEXT");
+      add("presentation_json", "presentation_json TEXT");
+      add("presentation_hash", "presentation_hash TEXT");
+      add("authorization_digest", "authorization_digest TEXT");
+      add("signing_key_id", "signing_key_id TEXT");
+      add("invalidated_reason", "invalidated_reason TEXT");
+      add("decision_channel", "decision_channel TEXT");
+      // Legacy (v1) non-terminal approvals can never be "upgraded": the user
+      // never saw a v2 transaction presentation (SC-02 section 44). Fail them
+      // closed via the new terminal INVALIDATED state and terminalize their
+      // tool calls so they can never execute.
+      db.exec(`
+        UPDATE approvals SET status = 'invalidated', resolved_at = COALESCE(resolved_at, CURRENT_TIMESTAMP),
+          invalidated_reason = COALESCE(invalidated_reason, 'sc02-migration: v1 approval without v2 binding')
+          WHERE status IN ('pending', 'executing') AND (binding_version IS NULL OR binding_version < 2);
+        UPDATE tool_calls SET status = 'failed',
+          result_summary = COALESCE(result_summary, 'invalidated by SC-02 migration: v1 approval without v2 binding')
+          WHERE status = 'pending_approval' AND NOT EXISTS (
+            SELECT 1 FROM approvals a WHERE a.tool_call_id = tool_calls.id AND a.status = 'pending'
+          );
+      `);
+    },
+  },
 ];
+
+/** SC-02 fail-closed migration helper for legacy databases (tested directly). */
+export function invalidateLegacyV1Approvals(db: DatabaseSync): void {
+  db.exec(`
+    UPDATE approvals SET status = 'invalidated', resolved_at = COALESCE(resolved_at, CURRENT_TIMESTAMP),
+      invalidated_reason = COALESCE(invalidated_reason, 'sc02-migration: v1 approval without v2 binding')
+      WHERE status IN ('pending', 'executing') AND (binding_version IS NULL OR binding_version < 2);
+  `);
+}
 
 const nowIso = (): string => new Date().toISOString();
 
@@ -645,17 +712,30 @@ export class SessionStore {
     argumentsHash: string;
     riskLevel?: ToolRisk;
     expiresAt: string;
+    bindingVersion?: number;
+    mode?: ArthurMode;
+    toolVersion?: string;
+    toolDefinitionHash?: string;
+    presentationJson?: string;
+    presentationHash?: string;
+    authorizationDigest?: string;
+    signingKeyId?: string;
+    createdAt?: string;
   }): ApprovalRecord {
     if (!/^[0-9a-f]{64}$/.test(input.argumentsHash)) throw new Error("approval argument hash is invalid");
-    const created_at = nowIso();
+    const created_at = input.createdAt ?? nowIso();
+    if (input.createdAt !== undefined && !Number.isFinite(Date.parse(input.createdAt))) {
+      throw new Error("approval creation time is invalid");
+    }
     if (!Number.isFinite(Date.parse(input.expiresAt)) || Date.parse(input.expiresAt) <= Date.parse(created_at)) {
       throw new Error("approval expiry must be after creation");
     }
     this.db
       .prepare(
         `INSERT INTO approvals
-         (id, turn_id, session_id, tool_call_id, tool_name, arguments_json, arguments_hash, risk_level, status, expires_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+         (id, turn_id, session_id, tool_call_id, tool_name, arguments_json, arguments_hash, risk_level, status, expires_at, created_at,
+          binding_version, mode, tool_version, tool_definition_hash, presentation_json, presentation_hash, authorization_digest, signing_key_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         input.id,
@@ -668,6 +748,14 @@ export class SessionStore {
         input.riskLevel ?? "approval_required",
         input.expiresAt,
         created_at,
+        input.bindingVersion ?? 1,
+        input.mode ?? null,
+        input.toolVersion ?? null,
+        input.toolDefinitionHash ?? null,
+        input.presentationJson === undefined ? null : this.sanitizer.sanitizeText(input.presentationJson),
+        input.presentationHash ?? null,
+        input.authorizationDigest ?? null,
+        input.signingKeyId ?? null,
       );
     return {
       id: input.id,
@@ -681,6 +769,14 @@ export class SessionStore {
       status: "pending",
       expires_at: input.expiresAt,
       created_at,
+      binding_version: input.bindingVersion ?? 1,
+      mode: input.mode,
+      tool_version: input.toolVersion,
+      tool_definition_hash: input.toolDefinitionHash,
+      presentation_json: input.presentationJson === undefined ? undefined : this.sanitizer.sanitizeText(input.presentationJson),
+      presentation_hash: input.presentationHash,
+      authorization_digest: input.authorizationDigest,
+      signing_key_id: input.signingKeyId,
     };
   }
 
@@ -706,6 +802,15 @@ export class SessionStore {
       argumentsHash: string;
       riskLevel: ToolRisk;
       expiresAt: string;
+      bindingVersion?: number;
+      mode?: ArthurMode;
+      toolVersion?: string;
+      toolDefinitionHash?: string;
+      presentationJson?: string;
+      presentationHash?: string;
+      authorizationDigest?: string;
+      signingKeyId?: string;
+      createdAt?: string;
     };
   }): ApprovalRecord {
     return this.transaction(() => {
@@ -727,8 +832,36 @@ export class SessionStore {
         argumentsHash: input.approval.argumentsHash,
         riskLevel: input.approval.riskLevel,
         expiresAt: input.approval.expiresAt,
+        createdAt: input.approval.createdAt,
+        bindingVersion: input.approval.bindingVersion,
+        mode: input.approval.mode,
+        toolVersion: input.approval.toolVersion,
+        toolDefinitionHash: input.approval.toolDefinitionHash,
+        presentationJson: input.approval.presentationJson,
+        presentationHash: input.approval.presentationHash,
+        authorizationDigest: input.approval.authorizationDigest,
+        signingKeyId: input.approval.signingKeyId,
       });
     });
+  }
+
+  /** Terminal invalidation of a pending approval whose context drifted (SC-02 section 41). */
+  invalidatePendingApproval(approvalId: string, toolCallId: string, reason: string): boolean {
+    return this.transaction(() => {
+      const result = this.db
+        .prepare("UPDATE approvals SET status = 'invalidated', resolved_at = ?, invalidated_reason = ? WHERE id = ? AND status = 'pending'")
+        .run(nowIso(), this.sanitizer.capSummary(reason), approvalId);
+      if (Number(result.changes) === 1) {
+        this.updateToolCall(toolCallId, { status: "failed", resultSummary: "invalidated: " + reason });
+        return true;
+      }
+      return false;
+    });
+  }
+
+  /** Mark an approval decision channel (audit metadata only, never authority). */
+  recordApprovalDecisionChannel(approvalId: string, channel: string): void {
+    this.db.prepare("UPDATE approvals SET decision_channel = ? WHERE id = ?").run(channel, approvalId);
   }
 
   getApproval(id: string): ApprovalRecord | undefined {
@@ -753,8 +886,55 @@ export class SessionStore {
     return Number(result.changes) === 1;
   }
 
-  /** Claim only if every persisted binding still matches in one SQL CAS. */
+  /** Claim only if every persisted binding still matches in one SQL CAS (SC-02 v2). */
   claimApprovalBound(input: {
+    id: string;
+    sessionId: string;
+    sessionMode: ArthurMode;
+    turnId: string;
+    toolCallId: string;
+    toolName: string;
+    toolVersion?: string;
+    toolDefinitionHash?: string;
+    presentationHash?: string;
+    authorizationDigest?: string;
+    argumentsJson: string;
+    argumentsHash: string;
+    riskLevel: ToolRisk;
+  }): boolean {
+    const versionMatch = input.toolVersion === undefined ? "approvals.tool_version IS NULL" : "approvals.tool_version = ?";
+    const defMatch = input.toolDefinitionHash === undefined ? "approvals.tool_definition_hash IS NULL" : "approvals.tool_definition_hash = ?";
+    const presMatch = input.presentationHash === undefined ? "approvals.presentation_hash IS NULL" : "approvals.presentation_hash = ?";
+    const digestMatch = input.authorizationDigest === undefined ? "approvals.authorization_digest IS NULL" : "approvals.authorization_digest = ?";
+    const now = nowIso();
+    const params: unknown[] = [now, input.id, input.sessionId, input.turnId, input.toolCallId,
+      input.toolName, input.argumentsJson, input.argumentsHash, input.riskLevel, input.sessionMode];
+    if (input.toolVersion !== undefined) params.push(input.toolVersion);
+    if (input.toolDefinitionHash !== undefined) params.push(input.toolDefinitionHash);
+    if (input.presentationHash !== undefined) params.push(input.presentationHash);
+    if (input.authorizationDigest !== undefined) params.push(input.authorizationDigest);
+    params.push(now, input.sessionMode);
+    const result = this.db
+      .prepare(
+        `UPDATE approvals SET status = 'executing', claimed_at = ?
+         WHERE id = ? AND status = 'pending' AND session_id = ? AND turn_id = ?
+           AND tool_call_id = ? AND tool_name = ? AND arguments_json = ?
+           AND arguments_hash = ? AND risk_level = ? AND mode = ?
+           AND ${versionMatch} AND ${defMatch} AND ${presMatch} AND ${digestMatch}
+           AND binding_version = 2
+           AND expires_at > ?
+           AND EXISTS (SELECT 1 FROM sessions s WHERE s.id = approvals.session_id AND s.mode = ?)
+           AND EXISTS (SELECT 1 FROM tool_calls t WHERE t.id = approvals.tool_call_id
+             AND t.turn_id = approvals.turn_id AND t.tool_name = approvals.tool_name
+             AND t.arguments_json = approvals.arguments_json AND t.risk_level = approvals.risk_level
+             AND t.status = 'pending_approval')`,
+      )
+      .run(...(params as []));
+    return Number(result.changes) === 1;
+  }
+
+  /** Legacy-shaped bound claim kept for pre-v2 tests: exact v1 binding only. */
+  claimApprovalBoundLegacy(input: {
     id: string;
     sessionId: string;
     sessionMode: ArthurMode;
@@ -1019,6 +1199,20 @@ export class SessionStore {
         .prepare("SELECT 1 FROM idempotency_keys WHERE session_id = ? AND status = 'in_progress' LIMIT 1")
         .get(sessionId);
       if (activeTurn) throw new Error("session mode cannot change while a turn is in progress");
+      // SC-02 section 6/42: mode switch atomically invalidates old-mode pending
+      // approvals (even for tools allowed in both modes) plus their tool calls.
+      const pending = this.db
+        .prepare("SELECT id, tool_call_id FROM approvals WHERE session_id = ? AND status = 'pending'")
+        .all(sessionId) as Array<{ id: string; tool_call_id: string }>;
+      const now = nowIso();
+      for (const row of pending) {
+        this.db
+          .prepare("UPDATE approvals SET status = 'invalidated', resolved_at = ?, invalidated_reason = ? WHERE id = ? AND status = 'pending'")
+          .run(now, "session mode changed", row.id);
+        this.db
+          .prepare("UPDATE tool_calls SET status = 'failed', result_summary = ?, updated_at = ? WHERE id = ? AND status = 'pending_approval'")
+          .run(this.sanitizer.capSummary("invalidated: session mode changed"), now, row.tool_call_id);
+      }
       this.updateSessionMode(sessionId, mode);
       this.createTurn({
         id: marker.id,

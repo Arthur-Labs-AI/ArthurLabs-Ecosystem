@@ -17,16 +17,24 @@ export interface ToolDefinition {
 }
 
 /**
- * Execution context handed to a tool executor. `approvalToken` is present only
- * when an `approval_required` action is being executed with explicit approval.
+ * Execution context handed to a tool executor (SC-02 section 34).
+ *
+ * `approved` is a deprecated compat flag with NO authorization power: authority
+ * comes exclusively from `authorization` (a centrally verified approval
+ * capability). New code must read `authorization`; `approved`/`approvalToken`
+ * remain only so existing executors/tests keep compiling during migration.
  */
 export interface ToolExecutionContext {
   session_id: string;
   turn_id: string;
   trace_id: string;
   mode: ArthurMode;
+  /** Deprecated: informational only, never authority (SC-02 section 34). */
   approved: boolean;
+  /** Deprecated: superseded by `authorization` (SC-02 section 26). */
   approvalToken?: ApprovalToken;
+  /** Centrally verified approval authority; required for approval tools. */
+  authorization?: import("./approval_signer").VerifiedApproval;
 }
 
 export interface ToolResult {

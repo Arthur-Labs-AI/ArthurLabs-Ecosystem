@@ -18,6 +18,8 @@ import { ToolDefinition, ToolExecutor } from "./contracts";
 import { ToolExecutionService, type ExecutorInvoker } from "./execution";
 import { toolManifestInvalid, validateToolDefinition } from "./manifest";
 import type { PermissionService } from "./permissions";
+import { toolDefinitionHash } from "./approval_intent";
+import type { ApprovalPresenter } from "./approval_intent";
 
 /** Convert a tool definition into the schema shape handed to the model. */
 export function toToolSchema(definition: ToolDefinition): ToolSchema {
@@ -33,6 +35,8 @@ interface RegisteredTool {
   executor: ToolExecutor;
   validator: ValidateFunction;
   outputValidator?: ValidateFunction;
+  definitionHash: string;
+  presenter?: ApprovalPresenter;
 }
 
 function deepFreeze<T>(value: T): T {
@@ -63,17 +67,49 @@ export class ToolRegistry {
    * later mutation of the caller's object or of the returned definition can
    * never alter runtime policy.
    */
-  register(definition: ToolDefinition, executor: ToolExecutor): void {
+  register(definition: ToolDefinition, executor: ToolExecutor, presenter?: ApprovalPresenter): void;
+  register(definition: ToolDefinition, presenter: ApprovalPresenter, executor: ToolExecutor): void;
+  register(definition: ToolDefinition, second: ToolExecutor | ApprovalPresenter, third?: ToolExecutor | ApprovalPresenter): void {
     validateToolDefinition(definition);
     if (this.tools.has(definition.name)) {
       throw toolManifestInvalid("name", "tool already registered: " + definition.name);
+    }
+    // Overload resolution: (definition, executor) for read/low_write tools,
+    // or (definition, presenter, executor) for approval_required tools.
+    // A two-arg call for an approval_required tool fails closed below.
+    let executor: ToolExecutor;
+    let presenter: ApprovalPresenter | undefined;
+    if (third !== undefined) {
+      presenter = second as ApprovalPresenter;
+      executor = third as ToolExecutor;
+    } else {
+      executor = second as ToolExecutor;
+      presenter = undefined;
+    }
+    if (typeof executor !== "function") {
+      throw toolManifestInvalid("executor", "tool executor must be a function");
+    }
+    // SC-02 section 17: approval_required tools MUST provide a trusted
+    // server-side presenter; otherwise no WYSIWYS challenge can be built.
+    if (definition.risk === "approval_required" && presenter === undefined) {
+      throw toolManifestInvalid("presenter", "approval_required tools must provide a trusted ApprovalPresenter");
     }
     const immutable = deepFreeze(structuredClone(definition));
     const validator = this.compileSchema("input_schema", immutable.input_schema);
     const outputValidator = immutable.output_schema
       ? this.compileSchema("output_schema", immutable.output_schema)
       : undefined;
-    this.tools.set(immutable.name, { definition: immutable, executor, validator, outputValidator });
+    const definitionHash = toolDefinitionHash(immutable);
+    this.tools.set(immutable.name, { definition: immutable, executor, validator, outputValidator, definitionHash, presenter });
+  }
+
+  /** SC-02 tool definition fingerprint bound into every approval. */
+  getDefinitionHash(name: string): string | undefined {
+    return this.tools.get(name)?.definitionHash;
+  }
+
+  getPresenter(name: string): ApprovalPresenter | undefined {
+    return this.tools.get(name)?.presenter;
   }
 
   private compileSchema(field: "input_schema" | "output_schema", schema: Record<string, unknown>): ValidateFunction {

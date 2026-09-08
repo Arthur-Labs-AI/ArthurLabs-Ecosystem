@@ -115,6 +115,10 @@ export interface BuildDeps {
   localSystem?: LocalSystemAdapter;
   /** App-level secret used to sign and verify approval tokens. */
   approvalSigningSecret?: string;
+  /** SC-02 signing identity override (tests / persistent key file wiring). */
+  approvalKeyProvider?: import("./tools/approval_keys").ApprovalKeyProvider;
+  /** SC-02 trust ring override (key rotation tests). */
+  approvalTrustedKeys?: import("./tools/approval_signer").ApprovalKeypair[];
   /** Phase 3 voice overrides (deterministic providers for tests). */
   voice?: {
     capture?: AudioCapture;
@@ -257,6 +261,8 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
     sanitizer,
     approvalTtlSeconds: settings.approvalTtlSeconds,
     approvalSigningSecret,
+    approvalKeyProvider: deps.approvalKeyProvider,
+    approvalTrustedKeys: deps.approvalTrustedKeys,
     logger,
     metrics,
   });

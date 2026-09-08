@@ -55,7 +55,16 @@ export interface ToolCallRecord {
   updated_at: string;
 }
 
-export type ApprovalStatus = "pending" | "executing" | "approved" | "rejected" | "failed" | "expired";
+export type ApprovalStatus =
+  | "pending"
+  | "executing"
+  | "approved"
+  | "rejected"
+  | "failed"
+  | "expired"
+  | "invalidated";
+
+export type ApprovalDecisionChannel = "cli" | "voice" | "web" | "desktop" | "mobile" | "api";
 
 export interface ApprovalRecord {
   id: string;
@@ -72,6 +81,17 @@ export interface ApprovalRecord {
   /** ISO timestamp set when the approval atomically transitions pending -> executing. */
   claimed_at?: string;
   resolved_at?: string;
+  /** SC-02 Approval Binding v2 fields (nullable on pre-v2 rows). */
+  binding_version?: number;
+  mode?: string;
+  tool_version?: string;
+  tool_definition_hash?: string;
+  presentation_json?: string;
+  presentation_hash?: string;
+  authorization_digest?: string;
+  signing_key_id?: string;
+  invalidated_reason?: string;
+  decision_channel?: string;
 }
 
 export type IdempotencyStatus = "in_progress" | "completed" | "failed";

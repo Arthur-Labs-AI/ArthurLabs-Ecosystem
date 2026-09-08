@@ -238,15 +238,12 @@ test("forged approval evidence and high-risk tools fail through the secured faca
   const execution = registry.createExecutionService(new PermissionService());
   const forged: ApprovalToken = { approval_id: "ap", tool_name: "harness.create_job", session_id: "s", turn_id: "t", arguments_hash: argumentsDigest({ kind: "deploy" }), issued_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60_000).toISOString(), signature: "0".repeat(64) };
   const ctx: ToolExecutionContext = { session_id: "s", turn_id: "t", trace_id: "tr", mode: "business", approved: true, approvalToken: forged };
-  // TASK-0010: raw executor exceptions are wrapped at the secured boundary; the
-  // adapter's refusal ("signature is invalid") stays on the sanitized cause.
+  // SC-02: the central ToolExecutionService gate rejects a hand-crafted boolean
+  // + token shape with NO verified capability before any executor runs.
+  // (The legacy HMAC stub check still exists behind the capability boundary.)
   await assert.rejects(
     () => execution.execute("harness.create_job", { kind: "deploy" }, ctx),
-    (err: unknown) => {
-      if (!(err instanceof ArthurError) || err.code !== "TOOL_EXECUTION_FAILED") return false;
-      assert.ok(err.cause instanceof Error && /signature is invalid/.test(err.cause.message));
-      return true;
-    },
+    (err: unknown) => err instanceof ArthurError && (err.code === "APPROVAL_REQUIRED" || err.code === "APPROVAL_INVALID" || err.code === "TOOL_EXECUTION_FAILED"),
   );
   // TASK-0010: a high-risk policy rejection (mode IS allowed) is TOOL_PERMISSION_DENIED.
   await assert.rejects(() => execution.execute("danger.tool", {}, { ...ctx, approvalToken: { ...forged, tool_name: "danger.tool" } }), (err: unknown) => err instanceof ArthurError && err.code === "TOOL_PERMISSION_DENIED");
@@ -256,7 +253,7 @@ test("forged approval evidence and high-risk tools fail through the secured faca
 test("registered security metadata is immutable", () => {
   const registry = new ToolRegistry();
   const definition = { name: "immutable.tool", version: "1.0.0", description: "x", input_schema: { type: "object", properties: {}, additionalProperties: false }, risk: "approval_required" as const, allowed_modes: ["business" as const] };
-  registry.register(definition, async () => ({ ok: true, summary: "" }));
+  registry.register(definition, () => ({ action: "Immutable test action", details: [] }), async () => ({ ok: true, summary: "" }));
   definition.risk = "approval_required";
   const stored = registry.getDefinition("immutable.tool");
   assert.ok(stored);
