@@ -1,0 +1,28 @@
+{
+  "name": "@qa/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "qa": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@qa/domain": "workspace:*",
+    "@qa/harness-protocol": "workspace:*",
+    "@qa/schemas": "workspace:*",
+    "@qa/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "eslint": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:",
+    "@types/node": "catalog:"
+  }
+}

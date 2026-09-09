@@ -1,0 +1,2 @@
+{"schemaVersion":1,"eventId":"evt_01K7777777777777777777A88X","agentRunId":"arun_01K7777777777777777777A8W4","timestamp":"2026-09-09T19:00:00.000Z","type":"run.started"}
+{"schemaVersion":1,"eventId":"evt_01K7777777777777777777A89X","agentRunId":"arun_01K7777777777777777777A8W4","timestamp":"2026-09-09T19:04:00.000Z","type":"run.failed","failure":{"code":"HARNESS_PROCESS_CRASHED","message":"Harness process exited unexpectedly","retryable":true}}

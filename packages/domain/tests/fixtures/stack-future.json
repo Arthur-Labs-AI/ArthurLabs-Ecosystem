@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "stack_future_main",
+  "displayName": "Future QA Agent",
+  "enabled": true,
+  "model": {
+    "provider": "future-ai",
+    "modelId": "future-model-v9"
+  },
+  "harness": {
+    "adapterId": "future-harness",
+    "expectedProtocolVersion": 1
+  },
+  "execution": {
+    "operatingSystem": "any"
+  },
+  "policy": {
+    "id": "qa-standard",
+    "version": 1
+  }
+}

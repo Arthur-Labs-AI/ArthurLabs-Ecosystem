@@ -1,0 +1,26 @@
+{
+  "name": "qa-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.12.3",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "eslint": "catalog:",
+    "prettier": "^3.3.3",
+    "turbo": "^2.4.0",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "@types/node": "catalog:"
+  }
+}

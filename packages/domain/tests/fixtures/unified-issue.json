@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "issue_01K7777777777777777777A8WB",
+  "qaRunId": "run_01K7777777777777777777A8W3",
+  "title": "Session expiry missing",
+  "category": "authentication",
+  "severity": "high",
+  "status": "corroborated",
+  "findingIds": ["find_01K7777777777777777777A8W7", "find_01K7777777777777777777A8W8"],
+  "sourceAgentStackIds": ["stack_muse_main", "stack_deepseek_main"],
+  "evidenceIds": ["ev_01K7777777777777777777A8W9"],
+  "verificationId": "verify_01K7777777777777777777A8WC",
+  "createdAt": "2026-09-09T19:00:00.000Z"
+}

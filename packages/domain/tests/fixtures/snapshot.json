@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "snap_01K7777777777777777777A8W2",
+  "projectId": "proj_01K7777777777777777777A8W1",
+  "createdAt": "2026-09-09T19:00:00.000Z",
+  "sourceState": {
+    "git": {
+      "branch": "main",
+      "headCommit": "abc123",
+      "dirty": false,
+      "modifiedFiles": 0,
+      "untrackedFiles": 0
+    }
+  },
+  "manifest": {
+    "entries": [
+      {
+        "relativePath": "src/index.ts",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sizeBytes": 123,
+        "type": "file"
+      }
+    ]
+  },
+  "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

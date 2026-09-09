@@ -1,0 +1,58 @@
+import { z } from 'zod';
+import {
+  IsoTimestampSchema,
+  ProjectIdSchema,
+  RelativePathSchema,
+  SchemaVersionSchema,
+  Sha256Schema,
+  NonNegativeIntSchema,
+} from './primitives.js';
+import { SNAPSHOT_FILE_TYPES } from './enums.js';
+
+export const SnapshotSourceStateSchema = z
+  .object({
+    git: z
+      .object({
+        branch: z.string().min(1).max(200).optional(),
+        headCommit: z.string().min(1).max(200).optional(),
+        dirty: z.boolean(),
+        modifiedFiles: NonNegativeIntSchema.optional(),
+        untrackedFiles: NonNegativeIntSchema.optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type SnapshotSourceState = z.infer<typeof SnapshotSourceStateSchema>;
+
+export const SnapshotFileEntrySchema = z
+  .object({
+    relativePath: RelativePathSchema,
+    sha256: Sha256Schema,
+    sizeBytes: NonNegativeIntSchema,
+    type: z.enum(SNAPSHOT_FILE_TYPES),
+  })
+  .strict();
+export type SnapshotFileEntry = z.infer<typeof SnapshotFileEntrySchema>;
+
+export const SnapshotManifestSchema = z
+  .object({
+    entries: z.array(SnapshotFileEntrySchema).default([]),
+  })
+  .strict();
+export type SnapshotManifest = z.infer<typeof SnapshotManifestSchema>;
+
+export const ProjectSnapshotSchema = z
+  .object({
+    schemaVersion: SchemaVersionSchema,
+    id: z.string().refine((v) => /^snap_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
+      message: 'Must be a valid SnapshotId',
+    }),
+    projectId: ProjectIdSchema,
+    createdAt: IsoTimestampSchema,
+    sourceState: SnapshotSourceStateSchema.default({}),
+    manifest: SnapshotManifestSchema.default({ entries: [] }),
+    contentHash: Sha256Schema,
+  })
+  .strict();
+export type ProjectSnapshot = z.infer<typeof ProjectSnapshotSchema>;

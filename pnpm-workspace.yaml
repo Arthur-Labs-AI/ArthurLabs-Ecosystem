@@ -1,0 +1,18 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Shared toolchain versions. All workspace packages resolve
+# typescript / eslint / vitest through these catalog entries so the
+# monorepo can never drift into mixed-compiler states.
+catalog:
+  typescript: ~5.6.3
+  eslint: ^9.14.0
+  typescript-eslint: ^8.14.0
+  vitest: ^2.1.5
+  zod: ^3.23.8
+  '@types/node': ^22.9.0
+
+# Only esbuild ships a postinstall build step in our tree (via vitest).
+onlyBuiltDependencies:
+  - esbuild
