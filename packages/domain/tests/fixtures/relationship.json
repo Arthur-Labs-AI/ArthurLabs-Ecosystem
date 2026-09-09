@@ -1,0 +1,16 @@
+{
+  "$comment": "Project -> Snapshot -> QARun -> AgentRuns -> Findings -> Evidence -> UnifiedIssue -> Verification -> FixProposal (references by ID only)",
+  "project": "fixtures/project.json",
+  "snapshot": "fixtures/snapshot.json",
+  "qaRun": "fixtures/qa-run.json",
+  "agentRuns": [
+    "fixtures/agent-run-muse.json",
+    "fixtures/agent-run-deepseek.json",
+    "fixtures/agent-run-glm.json"
+  ],
+  "findings": ["fixtures/finding.json", "fixtures/finding-2.json"],
+  "evidence": ["fixtures/evidence.json", "fixtures/evidence-2.json"],
+  "unifiedIssue": "fixtures/unified-issue.json",
+  "verification": "fixtures/verification.json",
+  "fixProposal": "fixtures/fix-proposal.json"
+}

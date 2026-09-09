@@ -1,0 +1,18 @@
+{
+  "id": "arun_01K7777777777777777777A8W4",
+  "qaRunId": "run_01K7777777777777777777A8W3",
+  "agentStackId": "stack_muse_main",
+  "taskType": "qa",
+  "status": "completed",
+  "runtimeIdentity": {
+    "adapterId": "muse-code",
+    "adapterVersion": "0.1.0",
+    "policyId": "qa-standard",
+    "policyVersion": 1
+  },
+  "usage": {
+    "inputTokens": 100,
+    "outputTokens": 20,
+    "turns": 1
+  }
+}

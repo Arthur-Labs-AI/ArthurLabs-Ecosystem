@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "stack_muse_main",
+  "displayName": "Muse QA Agent",
+  "enabled": true,
+  "model": {
+    "provider": "meta",
+    "modelId": "muse-1.3-contributor",
+    "displayName": "Muse 1.3 Contributor"
+  },
+  "harness": {
+    "adapterId": "muse-code",
+    "expectedProtocolVersion": 1
+  },
+  "execution": {
+    "operatingSystem": "any",
+    "supportsLocalExecution": true
+  },
+  "policy": {
+    "id": "qa-standard",
+    "version": 1
+  }
+}

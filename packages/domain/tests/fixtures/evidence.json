@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "ev_01K7777777777777777777A8W9",
+  "qaRunId": "run_01K7777777777777777777A8W3",
+  "agentRunId": "arun_01K7777777777777777777A8W4",
+  "type": "command",
+  "strength": "reproduced_failure",
+  "description": "Failing auth test",
+  "command": {
+    "command": "pnpm vitest run auth",
+    "exitCode": 1,
+    "durationMs": 812
+  },
+  "artifactIds": ["artifact_01K7777777777777777777A8WF"],
+  "createdAt": "2026-09-09T19:00:00.000Z"
+}

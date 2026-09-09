@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "ev_01K7777777777777777777A8WA",
+  "qaRunId": "run_01K7777777777777777777A8W3",
+  "agentRunId": "arun_01K7777777777777777777A8W5",
+  "type": "static_analysis",
+  "strength": "tool_diagnostic",
+  "staticAnalysis": {
+    "tool": "eslint",
+    "ruleId": "no-unused-vars",
+    "message": "TTL variable assigned but never read",
+    "locations": [
+      {
+        "relativePath": "src/auth/session.ts",
+        "startLine": 61
+      }
+    ]
+  },
+  "artifactIds": [],
+  "createdAt": "2026-09-09T19:00:00.000Z"
+}

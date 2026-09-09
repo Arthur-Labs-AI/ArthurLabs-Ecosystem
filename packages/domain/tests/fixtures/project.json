@@ -1,0 +1,19 @@
+{
+  "id": "proj_01K7777777777777777777A8W1",
+  "name": "Example",
+  "sourcePath": "D:/Projects/AutoPulse",
+  "createdAt": "2026-09-09T19:00:00.000Z",
+  "updatedAt": "2026-09-09T19:00:00.000Z",
+  "metadata": {
+    "git": {
+      "detected": true
+    },
+    "stack": {
+      "languages": ["TypeScript"],
+      "frameworks": ["Fastify"]
+    },
+    "packageManagers": ["pnpm"],
+    "testFrameworks": ["vitest"],
+    "ciProviders": ["github_actions"]
+  }
+}

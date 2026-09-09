@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "fix_01K7777777777777777777A8WD",
+  "qaRunId": "run_01K7777777777777777777A8W3",
+  "unifiedIssueId": "issue_01K7777777777777777777A8WB",
+  "sourceSnapshotId": "snap_01K7777777777777777777A8W2",
+  "generatedByAgentStackId": "stack_glm_main",
+  "status": "proposed",
+  "changedFiles": [
+    {
+      "relativePath": "src/auth/session.ts",
+      "operation": "modify",
+      "originalHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "validation": {
+    "build": {
+      "status": "not_run",
+      "evidenceIds": []
+    }
+  },
+  "createdAt": "2026-09-09T19:00:00.000Z"
+}

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "stack_glm_main",
+  "displayName": "GLM QA Agent",
+  "enabled": true,
+  "model": {
+    "provider": "zai",
+    "modelId": "glm-5.3-flash",
+    "displayName": "GLM-5.3-Flash"
+  },
+  "harness": {
+    "adapterId": "claude-code",
+    "expectedProtocolVersion": 1
+  },
+  "execution": {
+    "operatingSystem": "any",
+    "supportsLocalExecution": true
+  },
+  "policy": {
+    "id": "qa-standard",
+    "version": 1
+  }
+}

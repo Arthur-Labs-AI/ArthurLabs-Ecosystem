@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "stack_deepseek_main",
+  "displayName": "DeepSeek QA Agent",
+  "enabled": true,
+  "model": {
+    "provider": "deepseek",
+    "modelId": "deepseek-v4-flash",
+    "displayName": "DeepSeek V4 Flash"
+  },
+  "harness": {
+    "adapterId": "deepseek-harness",
+    "expectedProtocolVersion": 1
+  },
+  "execution": {
+    "operatingSystem": "any",
+    "supportsLocalExecution": true
+  },
+  "policy": {
+    "id": "qa-standard",
+    "version": 1
+  }
+}

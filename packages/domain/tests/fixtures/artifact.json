@@ -1,0 +1,10 @@
+{
+  "id": "artifact_01K7777777777777777777A8WF",
+  "qaRunId": "run_01K7777777777777777777A8W3",
+  "type": "log",
+  "relativeStoragePath": "artifacts/run_01/auth.log",
+  "mimeType": "text/plain",
+  "sizeBytes": 512,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "createdAt": "2026-09-09T19:00:00.000Z"
+}
