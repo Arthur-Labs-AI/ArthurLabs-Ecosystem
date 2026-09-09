@@ -11,7 +11,7 @@ data/
 *.log
 coverage/
 .DS_Store
-
+ARTHUR Software Core v1/
 # AI harness runtime/task state is machine-local and controller-owned.
 .ai-harness/
 

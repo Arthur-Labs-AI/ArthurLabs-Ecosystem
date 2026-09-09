@@ -26,7 +26,8 @@ import { SessionStore } from "./sessions/store";
 import { SecretSanitizer } from "./security/sanitize";
 import { HarnessStubAdapter } from "./tools/adapters/harness_stub";
 import { LocalSystemAdapter, NodeLocalSystemAdapter } from "./tools/adapters/local_system";
-import { registerBuiltinTools } from "./tools/builtin";
+import { buildDefaultLocalHost, registerBuiltinTools } from "./tools/builtin";
+import type { LocalCapabilityHost } from "./tools/local_host";
 import { ToolOrchestrator } from "./tools/orchestrator";
 import { PermissionService } from "./tools/permissions";
 import { ToolRegistry } from "./tools/registry";
@@ -115,6 +116,14 @@ export interface BuildDeps {
    * inject a deterministic fake). Production defaults to NodeLocalSystemAdapter.
    */
   localSystem?: LocalSystemAdapter;
+  /**
+   * SC-04 full local capability host override (tests inject deterministic
+   * filesystem/app/browser fakes). When omitted the host is composed from
+   * localSystem + localConfig. Never exposed on the public App surface.
+   */
+  localHost?: LocalCapabilityHost;
+  /** SC-04 trusted local capability config (filesystem scopes, app catalog). */
+  localConfig?: import("./tools/local_config").LocalCapabilityConfig;
   /** App-level secret used to sign and verify approval tokens. */
   approvalSigningSecret?: string;
   /** SC-02 signing identity override (tests / persistent key file wiring). */
@@ -247,11 +256,14 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
 
   const registry = new ToolRegistry();
   const harness = deps.harness ?? new HarnessStubAdapter({ verificationSecret: approvalSigningSecret });
-  // TASK-0011: machine-local capability layer. The adapter implements
-  // capabilities for registered tools; it is NOT an alternate authorization or
-  // execution path - it is reachable only through the secured tool boundary.
+  // SC-04 Local Capability Host: typed adapters bundled for registered tools
+  // only. The host is NOT an alternate authorization or execution path and is
+  // never exposed on the App surface - it is reachable solely through the
+  // secured registry -> execution-service -> permission boundary.
   const localSystem = deps.localSystem ?? new NodeLocalSystemAdapter();
-  registerBuiltinTools(registry, harness, localSystem);
+  const localHost: LocalCapabilityHost =
+    deps.localHost ?? buildDefaultLocalHost(localSystem, deps.localConfig);
+  registerBuiltinTools(registry, harness, { host: localHost });
 
   const permissions = new PermissionService();
   const execution = registry.createExecutionService(permissions);

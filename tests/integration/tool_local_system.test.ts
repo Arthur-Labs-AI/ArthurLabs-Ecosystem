@@ -242,12 +242,24 @@ test("L: FakeProvider proposal of system.status returns a role=tool follow-up", 
     assert.equal(response.display_text, "Host is up: win32 x64, 12 CPUs.");
 
     // Model-facing availability: generic ToolDefinition -> registry ->
-    // toToolSchema() -> ModelRequest.toolSchemas (section 9) - exactly the
-    // four generic tools, no provider-specific handling.
-    // Personal-mode session: the BUSINESS-only harness.create_job is correctly
-    // absent; the three read tools are exposed to the model generically.
+    // toToolSchema() -> ModelRequest.toolSchemas (section 9) - the SC-04
+    // catalog, no provider-specific handling. Personal-mode session: the
+    // BUSINESS-only harness.create_job is correctly absent.
     const toolNames = requests[0]?.toolSchemas.map((s) => s.name).sort();
-    assert.deepEqual(toolNames, ["harness.status", "system.echo", "system.status"]);
+    assert.deepEqual(toolNames, [
+      "app.launch",
+      "app.list",
+      "browser.open_url",
+      "filesystem.list",
+      "filesystem.read_text",
+      "filesystem.roots",
+      "filesystem.search",
+      "filesystem.stat",
+      "harness.status",
+      "system.echo",
+      "system.status",
+      "system.storage",
+    ]);
     const statusSchema = requests[0]?.toolSchemas.find((s) => s.name === "system.status");
     assert.ok(statusSchema);
     assert.deepEqual(statusSchema.parameters, {
@@ -307,11 +319,13 @@ test("M: the conversation turn completes normally after the tool round", async (
 
 // ---- N/O: security posture ----------------------------------------------------
 
-test("N: no shell or child-process execution primitive exists in the local tool host", () => {
+test("N: system adapter stays shell-free; launchers use spawn with shell=false only", () => {
   const adapterSource = readFileSync(resolve(SRC, "tools", "adapters", "local_system.ts"), "utf8");
   const builtinSource = readFileSync(resolve(SRC, "tools", "builtin.ts"), "utf8");
-  // The adapter must run on Node standard APIs only: its ONLY module import is
-  // node:os, so no process/shell module can even be reached.
+  const appsSource = readFileSync(resolve(SRC, "tools", "adapters", "local_applications.ts"), "utf8");
+  const browserSource = readFileSync(resolve(SRC, "tools", "adapters", "local_browser.ts"), "utf8");
+  // The system adapter must run on Node standard APIs only: its ONLY module
+  // import is node:os, so no process/shell module can even be reached.
   const adapterImports = [...adapterSource.matchAll(/^import .* from "([^"]+)"/gm)].map((m) => m[1]);
   assert.deepEqual(adapterImports, ["node:os"]);
   // Scan EXECUTABLE source (comments stripped) for shell primitives; comments
@@ -321,12 +335,9 @@ test("N: no shell or child-process execution primitive exists in the local tool 
       .replace(/\/\*[\s\S]*?\*\//g, " ")
       .replace(/(^|[^:])\/\/.*$/gm, "$1");
   const BANNED_SHELL_TOKENS = [
-    "child_process",
-    "spawn",
     "execSync",
     "execFile",
     "popen",
-    "cmd.exe",
     "powershell",
     "wmic",
     "systeminfo",
@@ -334,6 +345,8 @@ test("N: no shell or child-process execution primitive exists in the local tool 
   const scanTargets: [string, string][] = [
     ["adapter", stripComments(adapterSource)],
     ["builtin", stripComments(builtinSource)],
+    ["apps", stripComments(appsSource)],
+    ["browser", stripComments(browserSource)],
   ];
   for (const [label, source] of scanTargets) {
     for (const token of BANNED_SHELL_TOKENS) {
@@ -343,6 +356,13 @@ test("N: no shell or child-process execution primitive exists in the local tool 
         label + " source must not contain shell primitive: " + token,
       );
     }
+  }
+  // SC-04 launchers may spawn ONLY with shell=false (trusted catalog
+  // executable + fixed args; model never supplies executable/args/env).
+  for (const [label, source] of [["apps", appsSource], ["browser", browserSource]] as Array<[string, string]>) {
+    const code = stripComments(source);
+    assert.ok(code.includes("shell: false"), label + " launcher must pass shell:false");
+    assert.ok(!/exec\s*\(/.test(code), label + " must not call exec()");
   }
   // Runtime: the registry of a real app-facing composition exposes no
   // process/shell tools (checked via the model-facing schemas in test L).
@@ -402,10 +422,19 @@ test("Q: existing builtins keep their exact manifests alongside system.status", 
   try {
     const byName = new Map(w.registry.list().map((d) => [d.name, d]));
     assert.deepEqual([...byName.keys()].sort(), [
+      "app.launch",
+      "app.list",
+      "browser.open_url",
+      "filesystem.list",
+      "filesystem.read_text",
+      "filesystem.roots",
+      "filesystem.search",
+      "filesystem.stat",
       "harness.create_job",
       "harness.status",
       "system.echo",
       "system.status",
+      "system.storage",
     ]);
     assert.deepEqual(byName.get("system.echo")?.allowed_modes, [ArthurMode.PERSONAL, ArthurMode.BUSINESS]);
     assert.equal(byName.get("system.echo")?.risk, "read");

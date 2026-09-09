@@ -225,15 +225,41 @@ test("internal ModelRequest keeps canonical names; only the wire carries aliases
     await app.conversation.handleTurn(validTurn());
 
     // Internal boundary: canonical names are preserved in the ModelRequest.
-    // TASK-0011 added the real machine-local system.status builtin.
+    // SC-04 registers the 10 local tools alongside the legacy builtins.
     const internalNames = (provider.requests[0]?.toolSchemas ?? []).map((s) => s.name);
-    assert.deepEqual(internalNames.sort(), ["harness.status", "system.echo", "system.status"]);
+    assert.deepEqual(internalNames.sort(), [
+      "app.launch",
+      "app.list",
+      "browser.open_url",
+      "filesystem.list",
+      "filesystem.read_text",
+      "filesystem.roots",
+      "filesystem.search",
+      "filesystem.stat",
+      "harness.status",
+      "system.echo",
+      "system.status",
+      "system.storage",
+    ]);
 
     // Wire boundary: only aliases, no dots.
     const wireTools = (JSON.parse(wireBody) as { tools: Array<{ function: { name: string } }> }).tools;
     assert.deepEqual(
       wireTools.map((t) => t.function.name).sort(),
-      ["harness__status", "system__echo", "system__status"],
+      [
+        "app__launch",
+        "app__list",
+        "browser__open_url",
+        "filesystem__list",
+        "filesystem__read_text",
+        "filesystem__roots",
+        "filesystem__search",
+        "filesystem__stat",
+        "harness__status",
+        "system__echo",
+        "system__status",
+        "system__storage",
+      ],
     );
     assert.ok(!wireBody.includes("system.echo"));
     assert.ok(!wireBody.includes("harness.status"));

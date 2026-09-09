@@ -222,13 +222,13 @@ test("E: memory and document commands are unchanged", async () => {
 
 // ---- tool catalog (F-K) ----------------------------------------------------
 
-test("F: tools lists all four current tools", () => {
+test("F: tools lists all current tools", () => {
   const app = buildTestApp();
   try {
     const cap = captureIo();
     assert.equal(runTools(app, { io: cap.io }), 0);
     const out = cap.out();
-    for (const name of ["system.echo", "system.status", "harness.status", "harness.create_job"]) {
+    for (const name of ["system.echo", "system.status", "system.storage", "filesystem.roots", "filesystem.list", "filesystem.stat", "filesystem.read_text", "filesystem.search", "app.list", "app.launch", "browser.open_url", "harness.status", "harness.create_job"]) {
       assert.ok(out.includes(name), `catalog must include ${name}`);
     }
     assert.match(out, /NAME\s+VERSION\s+RISK\s+MODES/);
@@ -320,7 +320,7 @@ test("J: inspection never exposes executor/adapter/internal fields", () => {
     assert.notEqual(snapshot, fresh);
 
     const listed = app.conversation.listTools();
-    assert.equal(listed.length, 4);
+    assert.equal(listed.length, 13);
     assert.ok(listed.every((d) => Object.isFrozen(d)));
   } finally {
     app.close();
@@ -452,7 +452,7 @@ test("R: /tools lists tools for the current mode", async () => {
   try {
     const { out, err } = await chat(app, ["/tools", "/exit"]);
     assert.equal(err, "");
-    for (const name of ["system.echo", "system.status", "harness.status"]) {
+    for (const name of ["system.echo", "system.status", "system.storage", "filesystem.roots", "filesystem.list", "filesystem.stat", "filesystem.read_text", "filesystem.search", "app.list", "app.launch", "browser.open_url", "harness.status"]) {
       assert.ok(out.includes(name), `must include ${name}`);
     }
     assert.ok(!out.includes("harness.create_job"), "personal mode must not offer business-only tools");
@@ -588,7 +588,7 @@ test("Y: tools --json is valid JSON and honors the mode filter", () => {
     assert.ok(Array.isArray(parsed.tools));
     assert.deepEqual(
       parsed.tools.map((t: { name: string }) => t.name),
-      ["harness.create_job", "harness.status", "system.echo", "system.status"],
+      ["app.launch", "app.list", "browser.open_url", "filesystem.list", "filesystem.read_text", "filesystem.roots", "filesystem.search", "filesystem.stat", "harness.create_job", "harness.status", "system.echo", "system.status", "system.storage"],
     );
 
     const cap2 = captureIo();
@@ -672,11 +672,11 @@ test("catalog table columns align deterministically", () => {
   try {
     const table = renderToolCatalogTable(app.conversation.listTools());
     const lines = table.split("\n");
-    assert.equal(lines.length, 5);
+    assert.equal(lines.length, 14);
     const header = lines[0] ?? "";
     assert.match(header, /^NAME\s+VERSION\s+RISK\s+MODES$/);
-    assert.equal(header.indexOf("VERSION"), 20, "name column matches the longest tool name");
-    assert.equal(header.indexOf("RISK"), 29);
+    assert.equal(header.indexOf("VERSION"), 22, "name column matches the longest tool name");
+    assert.equal(header.indexOf("RISK"), 31);
   } finally {
     app.close();
   }

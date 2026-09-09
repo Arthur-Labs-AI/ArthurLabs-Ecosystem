@@ -1,29 +1,106 @@
 /**
- * Built-in tools (spec section 10; TASK-0010 hardened manifests; TASK-0011).
+ * Built-in tools: composition/registration aggregator (SC-04 section 6).
  *
- * - system.echo        (READ)               deterministic contract/integration tool
- * - harness.status     (READ)               deterministic fake harness status
- * - harness.create_job (APPROVAL_REQUIRED)  stub; never executes without approval
- * - system.status      (READ)               FIRST REAL machine-local tool (TASK-0011):
- *                                           reports non-sensitive host information through
- *                                           the injected LocalSystemAdapter capability.
+ * Phase-1 harness/echo tools stay inline; every SC-04 local capability
+ * lives in its own pack module (packs/system, packs/filesystem,
+ * packs/applications, packs/browser) over typed adapters bundled as a
+ * LocalCapabilityHost. builtin.ts registers; it never implements OS
+ * access itself. Default host (no injection) keeps the four legacy
+ * tools working with inert local packs: filesystem scopes default to
+ * the process working directory, catalogs default to empty.
  *
- * Each builtin declares an output_schema so the executor-output validation
- * boundary (TASK-0010 section 4) is exercised by every regression path.
+ * Registered surface (10 local tools + 3 legacy):
+ *   system.echo, harness.status, harness.create_job (legacy);
+ *   system.status, system.storage;
+ *   filesystem.roots/list/stat/read_text/search;
+ *   app.list, app.launch, browser.open_url.
  */
 
 import { ArthurMode } from "../core/modes/mode";
 import { ApprovalToken, HarnessAdapter, HarnessJobSpec, ToolExecutionContext } from "./contracts";
 import { harnessCreateJobPresenter } from "./approval_presenters";
+import { NodeLocalApplicationAdapter } from "./adapters/local_applications";
+import { NodeLocalBrowserAdapter } from "./adapters/local_browser";
+import { NodeLocalFilesystemAdapter } from "./adapters/local_filesystem";
 import { LocalSystemAdapter, NodeLocalSystemAdapter } from "./adapters/local_system";
+import { DEFAULT_FILESYSTEM_BOUNDS, validateLocalCapabilityConfig } from "./local_config";
+import type { LocalCapabilityConfig } from "./local_config";
+import type { LocalCapabilityHost } from "./local_host";
+import { registerApplicationsPack } from "./packs/applications";
+import { registerBrowserPack } from "./packs/browser";
+import { registerFilesystemPack } from "./packs/filesystem";
+import { registerSystemPack } from "./packs/system";
 import { ToolRegistry } from "./registry";
+import { FilesystemScopeRegistry } from "./scoped_path";
+
+/** Back-compat: a bare LocalSystemAdapter still builds a full host. */
+export interface BuiltinLocalDeps {
+  system?: LocalSystemAdapter;
+  host?: LocalCapabilityHost;
+  localConfig?: LocalCapabilityConfig;
+}
+
+export function buildDefaultLocalHost(
+  system: LocalSystemAdapter = new NodeLocalSystemAdapter(),
+  config?: LocalCapabilityConfig,
+): LocalCapabilityHost {
+  // SC-04 section 64: invalid security config fails startup (INVALID_CONFIG
+  // semantics: throw out of buildApp). A merely-missing optional app only
+  // flips app.available=false at launch/list time (section 65) and never
+  // throws here. Validation runs before any adapter is constructed so there
+  // is no fallback to unrestricted filesystem or arbitrary executables.
+  if (config !== undefined) validateLocalCapabilityConfig(config);
+  const roots = config?.filesystem_roots ?? [
+    { id: "workspace", label: "Workspace", physical_root: process.cwd(), permissions: ["list", "stat", "read", "search"] as const },
+  ];
+  const scopes = new FilesystemScopeRegistry(
+    roots.map((r) => ({ id: r.id, label: r.label, physical_root: r.physical_root, permissions: [...r.permissions] })),
+  );
+  const bounds = config?.filesystem_bounds ?? DEFAULT_FILESYSTEM_BOUNDS;
+  return {
+    system: system,
+    filesystem: new NodeLocalFilesystemAdapter(scopes, {
+      searchBounds: {
+        max_results: bounds.search_max_results,
+        max_files_scanned: bounds.search_max_files,
+        max_bytes_per_file: bounds.search_max_bytes_per_file,
+        max_total_bytes: bounds.search_max_total_bytes,
+      },
+    }),
+    applications: new NodeLocalApplicationAdapter(config?.applications ?? []),
+    browser: new NodeLocalBrowserAdapter(),
+  };
+}
+
+export function resolveLocalHost(deps: LocalSystemAdapter | BuiltinLocalDeps | undefined, config?: LocalCapabilityConfig): LocalCapabilityHost {
+  if (deps !== undefined && typeof deps === "object" && "getStatus" in (deps as Record<string, unknown>)) {
+    return buildDefaultLocalHost(deps as LocalSystemAdapter, config);
+  }
+  const d = (deps ?? {}) as BuiltinLocalDeps;
+  if (d.host) return d.host;
+  return buildDefaultLocalHost(d.system ?? new NodeLocalSystemAdapter(), d.localConfig ?? config);
+}
 
 export function registerBuiltinTools(
   registry: ToolRegistry,
   harness: HarnessAdapter,
-  /** Local system capability; production defaults to the real Node adapter. */
-  localSystem: LocalSystemAdapter = new NodeLocalSystemAdapter(),
+  depsOrSystem?: LocalSystemAdapter | BuiltinLocalDeps,
+  config?: LocalCapabilityConfig,
 ): void {
+  registerLegacyPacks(registry, harness);
+  const host = resolveLocalHost(depsOrSystem, config);
+  registerSystemPack(registry, host);
+  registerFilesystemPack(registry, host, {
+    list_limit_max: DEFAULT_FILESYSTEM_BOUNDS.list_limit_max,
+    read_max_lines: DEFAULT_FILESYSTEM_BOUNDS.read_max_lines,
+    read_max_bytes: DEFAULT_FILESYSTEM_BOUNDS.read_max_bytes,
+    search_max_results: DEFAULT_FILESYSTEM_BOUNDS.search_max_results,
+  });
+  registerApplicationsPack(registry, host);
+  registerBrowserPack(registry, host);
+}
+
+function registerLegacyPacks(registry: ToolRegistry, harness: HarnessAdapter): void {
   registry.register(
     {
       name: "system.echo",
@@ -73,7 +150,7 @@ export function registerBuiltinTools(
       const status = await harness.getStatus();
       return {
         ok: true,
-        summary: `harness ${status.status} (v${status.version}, ${status.jobs_active} active jobs)`,
+        summary: "harness " + status.status + " (v" + status.version + ", " + status.jobs_active + " active jobs)",
         data: status,
       };
     },
@@ -120,60 +197,12 @@ export function registerBuiltinTools(
         throw new Error("harness.create_job requires explicit approval");
       }
       const token: ApprovalToken = ctx.approvalToken as ApprovalToken;
-      // TASK-0010: structured results must be JSON-safe (no explicit undefined
-      // fields - they would be silently dropped by JSON serialization).
       const spec: HarnessJobSpec = { kind: String(args.kind ?? "") };
       if (args.payload !== undefined) {
         spec.payload = args.payload as Record<string, unknown>;
       }
       const job = await harness.createJob(spec, token);
-      return { ok: true, summary: `job created: ${job.id} (${job.status})`, data: job };
-    },
-  );
-
-  registry.register(
-    {
-      name: "system.status",
-      version: "1.0.0",
-      description:
-        "Report non-sensitive local host information: platform, architecture, Node version, uptime, CPU count, and memory. Read-only.",
-      input_schema: { type: "object", properties: {}, additionalProperties: false },
-      output_schema: {
-        type: "object",
-        properties: {
-          platform: { type: "string" },
-          arch: { type: "string" },
-          node_version: { type: "string" },
-          uptime_seconds: { type: "number", minimum: 0 },
-          cpu_count: { type: "integer", minimum: 1 },
-          total_memory_bytes: { type: "integer", minimum: 0 },
-          free_memory_bytes: { type: "integer", minimum: 0 },
-        },
-        required: [
-          "platform",
-          "arch",
-          "node_version",
-          "uptime_seconds",
-          "cpu_count",
-          "total_memory_bytes",
-          "free_memory_bytes",
-        ],
-        additionalProperties: false,
-      },
-      risk: "read",
-      allowed_modes: [ArthurMode.PERSONAL, ArthurMode.BUSINESS],
-    },
-    async () => {
-      // Machine-local capability call: the adapter is an implementation of the
-      // capability, reached ONLY through this registered executor under the
-      // secured registry -> execution-service -> permission boundary.
-      const status = await localSystem.getStatus();
-      const totalGb = Math.round(status.total_memory_bytes / 2 ** 30);
-      return {
-        ok: true,
-        summary: `Local system: ${status.platform} ${status.arch}, Node ${status.node_version}, ${status.cpu_count} CPUs, ${totalGb} GB RAM`,
-        data: status,
-      };
+      return { ok: true, summary: "job created: " + job.id + " (" + job.status + ")", data: job };
     },
   );
 }

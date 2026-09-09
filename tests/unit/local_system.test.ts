@@ -198,8 +198,25 @@ test("G: system.status declares a strict output schema that is enforced", () => 
   assert.equal(registry.validateArgs("system.status", { verbose: true }).valid, false);
 });
 
-test("G: registry exposes only the four builtins - no exec/shell-like tools", () => {
+test("G: registry exposes the SC-04 catalog - no exec/shell-like tools", () => {
   const registry = buildRegistry();
   const names = registry.list().map((d) => d.name).sort();
-  assert.deepEqual(names, ["harness.create_job", "harness.status", "system.echo", "system.status"]);
+  assert.deepEqual(names, [
+    "app.launch",
+    "app.list",
+    "browser.open_url",
+    "filesystem.list",
+    "filesystem.read_text",
+    "filesystem.roots",
+    "filesystem.search",
+    "filesystem.stat",
+    "harness.create_job",
+    "harness.status",
+    "system.echo",
+    "system.status",
+    "system.storage",
+  ]);
+  for (const banned of ["shell.exec", "process.exec", "terminal.exec", "filesystem.write", "app.kill", "browser.control", "system.shutdown", "network.request"]) {
+    assert.equal(names.includes(banned), false, "must not expose " + banned);
+  }
 });
