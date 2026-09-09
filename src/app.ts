@@ -124,6 +124,8 @@ export interface BuildDeps {
   localHost?: LocalCapabilityHost;
   /** SC-04 trusted local capability config (filesystem scopes, app catalog). */
   localConfig?: import("./tools/local_config").LocalCapabilityConfig;
+  /** SC-05 trusted git capability config (repository catalog). Absent = git tools not registered. */
+  gitConfig?: import("./tools/git/repository_catalog").GitCapabilityConfig;
   /** App-level secret used to sign and verify approval tokens. */
   approvalSigningSecret?: string;
   /** SC-02 signing identity override (tests / persistent key file wiring). */
@@ -262,7 +264,7 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
   // secured registry -> execution-service -> permission boundary.
   const localSystem = deps.localSystem ?? new NodeLocalSystemAdapter();
   const localHost: LocalCapabilityHost =
-    deps.localHost ?? buildDefaultLocalHost(localSystem, deps.localConfig);
+    deps.localHost ?? buildDefaultLocalHost(localSystem, deps.localConfig, deps.gitConfig);
   registerBuiltinTools(registry, harness, { host: localHost });
 
   const permissions = new PermissionService();

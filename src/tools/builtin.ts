@@ -22,13 +22,16 @@ import { harnessCreateJobPresenter } from "./approval_presenters";
 import { NodeLocalApplicationAdapter } from "./adapters/local_applications";
 import { NodeLocalBrowserAdapter } from "./adapters/local_browser";
 import { NodeLocalFilesystemAdapter } from "./adapters/local_filesystem";
+import { LocalGitAdapter } from "./adapters/local_git";
 import { LocalSystemAdapter, NodeLocalSystemAdapter } from "./adapters/local_system";
+import { validateGitCapabilityConfig, type GitCapabilityConfig } from "./git/repository_catalog";
 import { DEFAULT_FILESYSTEM_BOUNDS, validateLocalCapabilityConfig } from "./local_config";
 import type { LocalCapabilityConfig } from "./local_config";
 import type { LocalCapabilityHost } from "./local_host";
 import { registerApplicationsPack } from "./packs/applications";
 import { registerBrowserPack } from "./packs/browser";
 import { registerFilesystemPack } from "./packs/filesystem";
+import { registerGitPack } from "./packs/git";
 import { registerSystemPack } from "./packs/system";
 import { ToolRegistry } from "./registry";
 import { FilesystemScopeRegistry } from "./scoped_path";
@@ -38,11 +41,14 @@ export interface BuiltinLocalDeps {
   system?: LocalSystemAdapter;
   host?: LocalCapabilityHost;
   localConfig?: LocalCapabilityConfig;
+  /** SC-05 trusted git capability config (optional; invalid fails startup). */
+  gitConfig?: GitCapabilityConfig;
 }
 
 export function buildDefaultLocalHost(
   system: LocalSystemAdapter = new NodeLocalSystemAdapter(),
   config?: LocalCapabilityConfig,
+  gitConfig?: GitCapabilityConfig,
 ): LocalCapabilityHost {
   // SC-04 section 64: invalid security config fails startup (INVALID_CONFIG
   // semantics: throw out of buildApp). A merely-missing optional app only
@@ -57,7 +63,8 @@ export function buildDefaultLocalHost(
     roots.map((r) => ({ id: r.id, label: r.label, physical_root: r.physical_root, permissions: [...r.permissions] })),
   );
   const bounds = config?.filesystem_bounds ?? DEFAULT_FILESYSTEM_BOUNDS;
-  return {
+  if (gitConfig !== undefined) validateGitCapabilityConfig(gitConfig);
+  const host: LocalCapabilityHost = {
     system: system,
     filesystem: new NodeLocalFilesystemAdapter(scopes, {
       searchBounds: {
@@ -70,15 +77,23 @@ export function buildDefaultLocalHost(
     applications: new NodeLocalApplicationAdapter(config?.applications ?? []),
     browser: new NodeLocalBrowserAdapter(),
   };
+  if (gitConfig !== undefined) {
+    host.git = new LocalGitAdapter(scopes, gitConfig);
+  }
+  return host;
 }
 
-export function resolveLocalHost(deps: LocalSystemAdapter | BuiltinLocalDeps | undefined, config?: LocalCapabilityConfig): LocalCapabilityHost {
+export function resolveLocalHost(
+  deps: LocalSystemAdapter | BuiltinLocalDeps | undefined,
+  config?: LocalCapabilityConfig,
+  gitConfig?: GitCapabilityConfig,
+): LocalCapabilityHost {
   if (deps !== undefined && typeof deps === "object" && "getStatus" in (deps as Record<string, unknown>)) {
-    return buildDefaultLocalHost(deps as LocalSystemAdapter, config);
+    return buildDefaultLocalHost(deps as LocalSystemAdapter, config, gitConfig);
   }
   const d = (deps ?? {}) as BuiltinLocalDeps;
   if (d.host) return d.host;
-  return buildDefaultLocalHost(d.system ?? new NodeLocalSystemAdapter(), d.localConfig ?? config);
+  return buildDefaultLocalHost(d.system ?? new NodeLocalSystemAdapter(), d.localConfig ?? config, d.gitConfig ?? gitConfig);
 }
 
 export function registerBuiltinTools(
@@ -86,9 +101,10 @@ export function registerBuiltinTools(
   harness: HarnessAdapter,
   depsOrSystem?: LocalSystemAdapter | BuiltinLocalDeps,
   config?: LocalCapabilityConfig,
+  gitConfig?: GitCapabilityConfig,
 ): void {
   registerLegacyPacks(registry, harness);
-  const host = resolveLocalHost(depsOrSystem, config);
+  const host = resolveLocalHost(depsOrSystem, config, gitConfig);
   registerSystemPack(registry, host);
   registerFilesystemPack(registry, host, {
     list_limit_max: DEFAULT_FILESYSTEM_BOUNDS.list_limit_max,
@@ -98,6 +114,7 @@ export function registerBuiltinTools(
   });
   registerApplicationsPack(registry, host);
   registerBrowserPack(registry, host);
+  registerGitPack(registry, host);
 }
 
 function registerLegacyPacks(registry: ToolRegistry, harness: HarnessAdapter): void {

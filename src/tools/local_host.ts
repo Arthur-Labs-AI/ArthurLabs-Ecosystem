@@ -11,6 +11,7 @@
 import type { LocalApplicationAdapter } from "./adapters/local_applications";
 import type { LocalBrowserAdapter } from "./adapters/local_browser";
 import type { LocalFilesystemAdapter } from "./adapters/local_filesystem";
+import type { LocalGitAdapter } from "./adapters/local_git";
 import type { LocalSystemAdapter } from "./adapters/local_system";
 
 export interface LocalCapabilityHost {
@@ -18,4 +19,6 @@ export interface LocalCapabilityHost {
   filesystem: LocalFilesystemAdapter;
   applications: LocalApplicationAdapter;
   browser: LocalBrowserAdapter;
+  /** SC-05 git capability (optional: absent when no git config is provided). */
+  git?: LocalGitAdapter;
 }
