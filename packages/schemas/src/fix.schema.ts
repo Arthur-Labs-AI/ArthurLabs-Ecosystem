@@ -2,49 +2,30 @@ import { z } from 'zod';
 import {
   AgentStackIdSchema,
   ArtifactIdSchema,
-  EvidenceIdSchema,
   FixProposalIdSchema,
   IsoTimestampSchema,
   QARunIdSchema,
   RelativePathSchema,
   SchemaVersionSchema,
-  Sha256Schema,
   SnapshotIdSchema,
   UnifiedIssueIdSchema,
 } from './primitives.js';
-import { FIX_FILE_OPERATIONS, FIX_PROPOSAL_STATUSES, VALIDATION_CHECK_STATUSES } from './enums.js';
+import { FIX_FILE_OPERATIONS } from './enums.js';
 
-export const FixFileChangeSchema = z
+export const SuggestedFileChangeSchema = z
   .object({
     relativePath: RelativePathSchema,
     operation: z.enum(FIX_FILE_OPERATIONS),
+    description: z.string().min(1).max(5000),
     previousRelativePath: RelativePathSchema.optional(),
-    originalHash: Sha256Schema.optional(),
-    proposedHash: Sha256Schema.optional(),
   })
   .strict()
   .refine((c) => c.operation !== 'rename' || c.previousRelativePath !== undefined, {
     message: 'rename requires previousRelativePath',
   });
-export type FixFileChange = z.infer<typeof FixFileChangeSchema>;
+export type SuggestedFileChange = z.infer<typeof SuggestedFileChangeSchema>;
 
-export const ValidationCheckSchema = z
-  .object({
-    status: z.enum(VALIDATION_CHECK_STATUSES),
-    evidenceIds: z.array(EvidenceIdSchema).default([]),
-  })
-  .strict();
-export type ValidationCheck = z.infer<typeof ValidationCheckSchema>;
-
-export const FixValidationResultSchema = z
-  .object({
-    build: ValidationCheckSchema.optional(),
-    tests: ValidationCheckSchema.optional(),
-    targetedRegression: ValidationCheckSchema.optional(),
-  })
-  .strict();
-export type FixValidationResult = z.infer<typeof FixValidationResultSchema>;
-
+/** Advisory output only. It carries no permission or ability to modify a project. */
 export const FixProposalSchema = z
   .object({
     schemaVersion: SchemaVersionSchema,
@@ -53,10 +34,12 @@ export const FixProposalSchema = z
     unifiedIssueId: UnifiedIssueIdSchema,
     sourceSnapshotId: SnapshotIdSchema,
     generatedByAgentStackId: AgentStackIdSchema,
-    status: z.enum(FIX_PROPOSAL_STATUSES),
-    changedFiles: z.array(FixFileChangeSchema).min(1),
-    patchArtifactId: ArtifactIdSchema.optional(),
-    validation: FixValidationResultSchema.default({}),
+    summary: z.string().min(1).max(5000),
+    rationale: z.string().min(1).max(10_000),
+    suggestedChanges: z.array(SuggestedFileChangeSchema).min(1),
+    affectedPaths: z.array(RelativePathSchema).min(1),
+    suggestedPatchArtifactId: ArtifactIdSchema.optional(),
+    suggestedRegressionTests: z.array(z.string().min(1).max(2000)).default([]),
     createdAt: IsoTimestampSchema,
   })
   .strict();

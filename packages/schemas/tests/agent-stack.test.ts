@@ -57,13 +57,25 @@ describe('AgentStackDefinitionSchema', () => {
     };
     expect(AgentStackDefinitionSchema.safeParse(future).success).toBe(true);
   });
-  it('rejects invalid limits', () => {
+  it('accepts only operational execution safeguards', () => {
     expect(
-      AgentStackDefinitionSchema.safeParse({ ...muse, limits: { maxTurns: -1 } }).success,
+      AgentStackDefinitionSchema.safeParse({
+        ...muse,
+        executionSafeguards: { runTimeoutMs: -1 },
+      }).success,
     ).toBe(false);
     expect(
-      AgentStackDefinitionSchema.safeParse({ ...muse, limits: { maxTurns: 1.5 } }).success,
+      AgentStackDefinitionSchema.safeParse({
+        ...muse,
+        executionSafeguards: { commandTimeoutMs: 1.5 },
+      }).success,
     ).toBe(false);
+    expect(
+      AgentStackDefinitionSchema.safeParse({
+        ...muse,
+        executionSafeguards: { runTimeoutMs: 60_000, commandTimeoutMs: 10_000 },
+      }).success,
+    ).toBe(true);
   });
   it('accepts configuration extensions', () => {
     const s = AgentStackDefinitionSchema.parse({

@@ -5,12 +5,7 @@
  * are open strings validated for shape, never enumerated.
  */
 import { z } from 'zod';
-import {
-  AgentStackIdSchema,
-  SchemaVersionSchema,
-  NonNegativeIntSchema,
-  NonNegativeNumberSchema,
-} from './primitives.js';
+import { AgentStackIdSchema, SchemaVersionSchema, NonNegativeIntSchema } from './primitives.js';
 import { OPERATING_SYSTEMS } from './enums.js';
 
 export const ModelDefinitionSchema = z
@@ -50,17 +45,13 @@ export const QAPolicyReferenceSchema = z
   .strict();
 export type QAPolicyReference = z.infer<typeof QAPolicyReferenceSchema>;
 
-export const AgentRunLimitsSchema = z
+export const ExecutionSafeguardsSchema = z
   .object({
-    maxDurationMs: NonNegativeIntSchema.optional(),
-    maxTurns: NonNegativeIntSchema.optional(),
-    maxInputTokens: NonNegativeIntSchema.optional(),
-    maxOutputTokens: NonNegativeIntSchema.optional(),
-    maxCostUsd: NonNegativeNumberSchema.optional(),
+    runTimeoutMs: NonNegativeIntSchema.optional(),
     commandTimeoutMs: NonNegativeIntSchema.optional(),
   })
   .strict();
-export type AgentRunLimits = z.infer<typeof AgentRunLimitsSchema>;
+export type ExecutionSafeguards = z.infer<typeof ExecutionSafeguardsSchema>;
 
 export const AgentStackDefinitionSchema = z
   .object({
@@ -72,7 +63,7 @@ export const AgentStackDefinitionSchema = z
     harness: HarnessDefinitionSchema,
     execution: ExecutionRequirementsSchema.default({}),
     policy: QAPolicyReferenceSchema,
-    limits: AgentRunLimitsSchema.optional(),
+    executionSafeguards: ExecutionSafeguardsSchema.optional(),
   })
   .strict();
 export type AgentStackDefinition = z.infer<typeof AgentStackDefinitionSchema>;

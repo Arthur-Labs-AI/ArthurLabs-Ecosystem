@@ -7,6 +7,7 @@ const base = {
   schemaVersion: 1,
   id: 'snap_01K7777777777777777777A8W2',
   projectId: 'proj_01K7777777777777777777A8W1',
+  projectRevisionId: 'rev_01K7777777777777777777A8W9',
   createdAt: T,
   sourceState: {},
   manifest: {

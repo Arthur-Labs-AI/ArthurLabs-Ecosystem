@@ -5,6 +5,7 @@
   "agentRunId": "arun_01K7777777777777777777A8W5",
   "type": "static_analysis",
   "strength": "tool_diagnostic",
+  "environmentState": "baseline",
   "staticAnalysis": {
     "tool": "eslint",
     "ruleId": "no-unused-vars",

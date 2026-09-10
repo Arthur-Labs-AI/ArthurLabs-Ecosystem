@@ -1,73 +1,95 @@
 # Domain Model
 
 ```text
-Project
-  │ sourcePath = user's real folder (never the writable QA workspace)
-  ▼
-ProjectSnapshot            # exact state used by a run (git state + manifest + contentHash)
-  ▼
-QARun                      # mode, status pipeline, snapshotted configuration
-  │
-  ├─► AgentRun × N        # one AgentStack × one task inside the QARun
-  │     ├─► Finding       # ONE agent's claim (title, severity, confidence, locations…)
-  │     └─► Evidence      # supporting material (command/runtime/browser/static/…)
-  │                         large outputs referenced as ArtifactIds
-  ▼
-UnifiedIssue               # platform grouping: findingIds[] + evidenceIds[] (no embedding)
-  ▼
-VerificationAttempt        # independent check: verified | failed | inconclusive
-  ▼
-FixProposal                # changedFiles[] + validation checks (no application in Phase 1)
+Project → ManagedProjectCopy → ProjectRevision → ProjectSnapshot
+                                              ├─► ProjectContextSnapshot
+                                              └─► QARun + RunInstructions + Policy
+                                                    ├─► AgentRun × N
+                                                    │    ├─► InitialInvestigationPlan
+                                                    │    ├─► EmergentHypothesis × N
+                                                    │    ├─► Finding × N
+                                                    │    └─► Evidence × N
+                                                    ├─► RunActivity tree
+                                                    └─► UnifiedIssue → VerificationAttempt
+                                                                           └─► FixProposal (advice)
 ```
 
-CICDPlan and Artifact orbit the graph: plans propose provider pipelines per
-snapshot; artifacts store large/file outputs referenced by evidence and fixes.
+Every persisted or transport structure carries `schemaVersion: 1`; embedded
+value objects reuse strict schemas without unnecessary entity identity.
 
-## Entities
+## Project lifecycle and immutable run inputs
 
-- **Project** (`schemaVersion: 1`) — id, name, sourcePath, created/updated/lastOpened timestamps,
-  extensible metadata (git detection, languages, package/test/CI hints).
-- **ProjectSnapshot** (`schemaVersion: 1`) — sourceState (branch/head/dirty counts),
-  manifest of `SnapshotFileEntry` (relativePath + sha256 + sizeBytes + type), contentHash.
-  All paths project-relative.
-- **AgentStackDefinition** (`schemaVersion: 1`) — stable id + displayName, enabled,
-  ModelDefinition (open provider/modelId strings), HarnessDefinition (open adapterId
-  - expectedProtocolVersion), ExecutionRequirements, QAPolicyReference, optional limits.
-- **QARunConfiguration** — agentStackIds[], verificationLevel, policy, optional
-  executionProfileId and cost/duration caps. Snapshotted at run creation.
-- **QARun** (`schemaVersion: 1`) — mode (quick/full/targeted/ci/verify/fix/cicd),
-  15-state status pipeline (created → … → completed/partial/failed/cancelled),
-  lifecycle timestamps, optional summary.
-- **AgentRun** (`schemaVersion: 1`) — qaRunId + agentStackId + taskType, 7-state status, optional
-  AgentRuntimeIdentity (exact model/harness/adapter/policy versions for traceability),
-  failure, usage.
-- **Finding** (`schemaVersion: 1`) — severity (critical/high/medium/low/info, documented
-  semantics) separate from confidence (confirmed/strong/probable/speculative).
-  Controlled 19-value category taxonomy; `other` requires categoryDetail.
-- **Evidence** (`schemaVersion: 1`) — a strict discriminated union of command,
-  runtime, browser, static-analysis, code-reference, test, log, and manual payloads,
-  plus strength (`reproduced_failure` … `agent_reasoning`). A type cannot omit its
-  payload or carry a different subtype's payload; heavy output uses ArtifactIds.
-- **UnifiedIssue** (`schemaVersion: 1`) — findingIds[] + evidenceIds[] + status
-  (confirmed/corroborated/probable/unverified/rejected). No full-object embedding.
-- **VerificationAttempt** (`schemaVersion: 1`) — verified = independently reproduced;
-  failed = evidence contradicts; inconclusive = undetermined.
-- **FixProposal** (`schemaVersion: 1`) — changedFiles[] (rename requires
-  previousRelativePath), patchArtifactId, build/tests/regression validation checks.
-- **CICDPlan** (`schemaVersion: 1`) — provider (github_actions/…/custom), create|improve, recommendations
-  - file proposals. No generation in Phase 1.
-- **Artifact** (`schemaVersion: 1`) — type, relativeStoragePath (never absolute machine paths), mime,
-  size, sha256.
-- **AgentUsage** — optional tokens/cost/turns/duration; unknown stays `undefined`
-  (zero means genuinely zero).
+- `Project` identifies the user's external local folder. Sentry never writes to it.
+- `ManagedProjectCopy` identifies the current revision and its
+  `ready|updating|locked_for_run|error` lifecycle. Only a locked copy has
+  `lockedByQARunId`.
+- `ProjectRevision` is one immutable successful import/update: project, source
+  path, timestamp, content hash, optional safe-integer stats and source Git state.
+- `ProjectSnapshot` is the exact immutable run-start manifest derived from a
+  revision. It holds only relative file entries and hashes, not project content.
+- `ProjectContextSnapshot` records purpose, architecture, critical flows,
+  business rules, constraints, limitations, out-of-scope facts, stack detection,
+  and source/user/inference provenance for the same revision.
+- Embedded `RunInstructions` are optional explicit user guidance for one run.
+  They take precedence over conflicting inferred context without changing the
+  context or suppressing factual runtime evidence.
 
-## Invariants
+`QARun` references project, snapshot, and context IDs and snapshots selected
+Agent Stack IDs, policy, verification level, instructions, and optional
+operational safeguards. `DEFAULT_VERIFICATION_LEVEL` is `strict`; the schema does
+not inject a default. Selected stacks are arbitrary N where N ≥ 1.
 
-- Centralized opaque branded ID schemas; ULID-style `prefix_SUFFIX`; no auto-increment identity.
-- ISO 8601 UTC strings for every serialized timestamp, including calendar validation.
-- One shared `CodeLocationSchema` enforces relative paths and valid line ranges for
-  Findings, static-analysis evidence, and code references.
-- Relative paths only on transport; absolute Windows/Unix/UNC and `..` traversal rejected.
-- `schemaVersion: 1` strict today; see ADR-0003 for migration principles.
-- Pure transition helpers (`canTransition*`/`assert*`) govern QARun, AgentRun,
-  VerificationAttempt, FixProposal — no framework.
+## Independent agent investigation
+
+One `AgentRun` represents one Agent Stack and task. Status includes explicit
+`planning` and terminal `interrupted`; failed/interrupted agents carry bounded
+structured failure details. The request and contracts expose no other agents.
+
+`InitialInvestigationPlan`/`AgentInvestigationPlan` captures the agent's immutable
+project understanding, critical flows, weak points, and all planned checks before
+active investigation. It contains no priority or skip mechanism.
+`EmergentHypothesis` is a separate append-only structure discovered during work;
+it never mutates the initial plan.
+
+## Findings, evidence, disagreement, and advice
+
+- `Finding` is one agent's claim, with severity separate from confidence.
+- `Evidence` is a strict discriminated union whose `environmentState` distinguishes
+  clean-baseline evidence from evidence gathered after workspace modification.
+- `UnifiedIssue` groups IDs and keeps `agreementState`
+  (`single_source|aligned|mixed|disputed`) independent from verification status.
+- `VerificationAttempt` records an independent check. Future verification begins
+  from the run baseline, never a mutated investigation workspace.
+- `FixProposal` contains a summary, rationale, suggested file changes, affected
+  paths, optional suggested patch artifact, and regression-test advice. It has no
+  application/validation status or transition and grants no write authority.
+
+## Retest
+
+`mode: retest` requires `RetestTarget` with the historical QARun and UnifiedIssue.
+The Retest's own snapshot points to the current revision. Optional `RetestResult`
+records `fixed|still_reproducible|partially_fixed|inconclusive` plus evidence IDs.
+Non-Retest modes reject Retest-only fields.
+
+## Observability, exports, and usage
+
+`HarnessEvent` is adapter-bound output for one agent. `RunActivity` is a normalized
+Core-owned activity with optional agent and parent IDs, enabling a major workflow
+graph plus expandable child steps. `RunExportManifest` prepares human `.log` and
+structured `.json` artifacts; it is not an exporter.
+
+`AgentUsage` stores optional input, output, and cached-input token counts, turns,
+and duration. Monetary data is absent. QARun totals are derived using
+`aggregateAgentUsage`, so there is no conflicting stored total.
+
+## Cross-entity invariants
+
+Zod validates individual shapes. Pure domain helpers validate relationships:
+snapshot/context ↔ revision/project, run ↔ snapshot, agent ↔ run, plan ↔
+agent/run/snapshot/context, and Retest ↔ earlier run/issue. Pure transition tables
+govern QARun, AgentRun, VerificationAttempt, and ManagedProjectCopy. Worker-outcome
+aggregation distinguishes completed, partial, failed, and whole-run cancellation.
+
+CICDPlan and Artifact remain versioned supporting contracts. Large bytes, diffs,
+logs, screenshots, reports, and patches are referenced by `ArtifactId`, never
+embedded into core DTOs.

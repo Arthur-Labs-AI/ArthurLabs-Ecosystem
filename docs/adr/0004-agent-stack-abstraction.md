@@ -12,10 +12,11 @@ harness, OpenCode, Kimi) invasive.
 
 Model the schedulable unit as an Agent Stack: open-ended ModelDefinition +
 HarnessDefinition (adapterId + expectedProtocolVersion) + ExecutionRequirements +
-QAPolicyReference + limits. Stable product identities (“Muse QA Agent”) are
+QAPolicyReference + optional operational ExecutionSafeguards. Stable product identities (“Muse QA Agent”) are
 configuration; model versions and harnesses are replaceable fields.
 
 ## Consequences
 
-Replacements are config edits, proven by the future-agent fixture/test. Cost: the
-core must stay generic — any vendor-specific need goes to adapter extensions.
+Replacements are config edits, proven by the future-agent fixture/test. The
+tradeoff is that the core must stay generic: vendor-specific needs go to adapter
+extensions. Safeguards are timeouts only, never billing, token, or turn quotas.

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertAgentRunTransition,
-  assertFixProposalTransition,
+  assertManagedProjectCopyTransition,
   assertQARunTransition,
   assertVerificationTransition,
   canTransitionAgentRun,
-  canTransitionFixProposal,
+  canTransitionManagedProjectCopy,
   canTransitionQARun,
   canTransitionVerification,
   InvalidStateTransitionError,
@@ -28,6 +28,10 @@ describe('state transitions', () => {
   });
   it('agent run transitions', () => {
     expect(canTransitionAgentRun('queued', 'starting')).toBe(true);
+    expect(canTransitionAgentRun('starting', 'planning')).toBe(true);
+    expect(canTransitionAgentRun('planning', 'running')).toBe(true);
+    expect(canTransitionAgentRun('starting', 'interrupted')).toBe(true);
+    expect(canTransitionAgentRun('running', 'interrupted')).toBe(true);
     expect(canTransitionAgentRun('running', 'timed_out')).toBe(true);
     expect(canTransitionAgentRun('completed', 'running')).toBe(false);
     expect(() => assertAgentRunTransition('failed', 'completed')).toThrow(
@@ -42,11 +46,13 @@ describe('state transitions', () => {
       InvalidStateTransitionError,
     );
   });
-  it('fix proposal transitions', () => {
-    expect(canTransitionFixProposal('proposed', 'validating')).toBe(true);
-    expect(canTransitionFixProposal('validating', 'conflict')).toBe(true);
-    expect(canTransitionFixProposal('applied', 'rejected')).toBe(false);
-    expect(() => assertFixProposalTransition('rejected', 'applied')).toThrow(
+  it('managed project copy transitions preserve run locking', () => {
+    expect(canTransitionManagedProjectCopy('ready', 'updating')).toBe(true);
+    expect(canTransitionManagedProjectCopy('ready', 'locked_for_run')).toBe(true);
+    expect(canTransitionManagedProjectCopy('locked_for_run', 'ready')).toBe(true);
+    expect(canTransitionManagedProjectCopy('locked_for_run', 'updating')).toBe(false);
+    expect(canTransitionManagedProjectCopy('error', 'ready')).toBe(true);
+    expect(() => assertManagedProjectCopyTransition('updating', 'locked_for_run')).toThrow(
       InvalidStateTransitionError,
     );
   });

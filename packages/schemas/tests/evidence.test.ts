@@ -8,6 +8,7 @@ const base = {
   qaRunId: 'run_01K7777777777777777777A8W3',
   type: 'command',
   strength: 'reproduced_failure',
+  environmentState: 'modified_workspace',
   command: { command: 'pnpm vitest run', exitCode: 1 },
   artifactIds: [],
   createdAt: T,

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   IsoTimestampSchema,
   ProjectIdSchema,
+  ProjectRevisionIdSchema,
   RelativePathSchema,
   SchemaVersionSchema,
   Sha256Schema,
@@ -48,6 +49,7 @@ export const ProjectSnapshotSchema = z
     schemaVersion: SchemaVersionSchema,
     id: SnapshotIdSchema,
     projectId: ProjectIdSchema,
+    projectRevisionId: ProjectRevisionIdSchema,
     createdAt: IsoTimestampSchema,
     sourceState: SnapshotSourceStateSchema.default({}),
     manifest: SnapshotManifestSchema.default({ entries: [] }),

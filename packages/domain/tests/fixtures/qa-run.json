@@ -3,11 +3,16 @@
   "id": "run_01K7777777777777777777A8W3",
   "projectId": "proj_01K7777777777777777777A8W1",
   "snapshotId": "snap_01K7777777777777777777A8W2",
+  "projectContextSnapshotId": "ctx_01K7777777777777777777A8WA",
   "mode": "full",
   "status": "collecting",
   "configuration": {
     "agentStackIds": ["stack_muse_main", "stack_deepseek_main", "stack_glm_main"],
-    "verificationLevel": "balanced",
+    "verificationLevel": "strict",
+    "instructions": {
+      "message": "Exercise authentication flows and preserve evidence.",
+      "createdAt": "2026-09-09T19:00:00.000Z"
+    },
     "policy": {
       "id": "qa-standard",
       "version": 1

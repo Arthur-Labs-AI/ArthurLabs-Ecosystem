@@ -7,15 +7,19 @@
 import { z } from 'zod';
 import {
   AgentRunIdSchema,
+  ArtifactIdSchema,
   HarnessEventIdSchema,
   IsoTimestampSchema,
   RelativePathSchema,
   SchemaVersionSchema,
   NonNegativeIntSchema,
+  OperationIdSchema,
 } from './primitives.js';
 import { FindingSchema } from './finding.schema.js';
 import { EvidenceSchema } from './evidence.schema.js';
 import { AgentUsageSchema } from './usage.schema.js';
+import { AgentInvestigationPlanSchema, EmergentHypothesisSchema } from './investigation.schema.js';
+import { FILE_CHANGE_PURPOSES } from './enums.js';
 
 export const HARNESS_PROTOCOL_VERSION = 1 as const;
 
@@ -50,12 +54,14 @@ export const AgentMessageEventSchema = HarnessEventBaseSchema.extend({
 }).strict();
 export const ToolStartedEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('tool.started'),
+  operationId: OperationIdSchema,
   tool: z
     .object({ name: z.string().min(1).max(100), inputSummary: z.string().max(2000).optional() })
     .strict(),
 }).strict();
 export const ToolCompletedEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('tool.completed'),
+  operationId: OperationIdSchema,
   tool: z
     .object({
       name: z.string().min(1).max(100),
@@ -66,6 +72,7 @@ export const ToolCompletedEventSchema = HarnessEventBaseSchema.extend({
 }).strict();
 export const CommandExecutedEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('command.executed'),
+  operationId: OperationIdSchema.optional(),
   command: z.string().min(1).max(2000),
   exitCode: z.number().int(),
   durationMs: NonNegativeIntSchema.optional(),
@@ -78,13 +85,24 @@ export const FileChangedEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('file.changed'),
   relativePath: RelativePathSchema,
   operation: z.enum(['create', 'modify', 'delete', 'rename']),
+  purpose: z.enum(FILE_CHANGE_PURPOSES).optional(),
+  artifactId: ArtifactIdSchema.optional(),
 }).strict();
 export const TestResultEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('test.result'),
+  operationId: OperationIdSchema.optional(),
   suite: z.string().min(1).max(300).optional(),
   passed: NonNegativeIntSchema.optional(),
   failed: NonNegativeIntSchema.optional(),
   skipped: NonNegativeIntSchema.optional(),
+}).strict();
+export const InvestigationPlanCreatedEventSchema = HarnessEventBaseSchema.extend({
+  type: z.literal('investigation.plan.created'),
+  plan: AgentInvestigationPlanSchema,
+}).strict();
+export const InvestigationHypothesisDiscoveredEventSchema = HarnessEventBaseSchema.extend({
+  type: z.literal('investigation.hypothesis.discovered'),
+  hypothesis: EmergentHypothesisSchema,
 }).strict();
 export const FindingSubmittedEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('finding.submitted'),
@@ -126,6 +144,8 @@ export const HarnessEventSchema = z.discriminatedUnion('type', [
   FileReadEventSchema,
   FileChangedEventSchema,
   TestResultEventSchema,
+  InvestigationPlanCreatedEventSchema,
+  InvestigationHypothesisDiscoveredEventSchema,
   FindingSubmittedEventSchema,
   EvidenceSubmittedEventSchema,
   UsageUpdatedEventSchema,
@@ -146,6 +166,8 @@ export const HarnessEventTypeSchema = z.enum([
   'file.read',
   'file.changed',
   'test.result',
+  'investigation.plan.created',
+  'investigation.hypothesis.discovered',
   'finding.submitted',
   'evidence.submitted',
   'usage.updated',

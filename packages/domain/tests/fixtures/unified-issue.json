@@ -6,6 +6,7 @@
   "category": "authentication",
   "severity": "high",
   "status": "corroborated",
+  "agreementState": "aligned",
   "findingIds": ["find_01K7777777777777777777A8W7", "find_01K7777777777777777777A8W8"],
   "sourceAgentStackIds": ["stack_muse_main", "stack_deepseek_main"],
   "evidenceIds": ["ev_01K7777777777777777777A8W9"],

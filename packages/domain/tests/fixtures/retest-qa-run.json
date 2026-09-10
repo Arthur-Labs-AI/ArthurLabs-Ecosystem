@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "run_01K7777777777777777777A8WX",
+  "projectId": "proj_01K7777777777777777777A8W1",
+  "snapshotId": "snap_01K7777777777777777777A8WX",
+  "projectContextSnapshotId": "ctx_01K7777777777777777777A8WX",
+  "mode": "retest",
+  "retestTarget": {
+    "sourceQARunId": "run_01K7777777777777777777A8W3",
+    "unifiedIssueId": "issue_01K7777777777777777777A8WB"
+  },
+  "status": "created",
+  "configuration": {
+    "agentStackIds": ["stack_muse_main", "stack_deepseek_main"],
+    "verificationLevel": "strict",
+    "instructions": {
+      "message": "Reproduce the original issue and run focused regressions.",
+      "createdAt": "2026-09-10T19:00:00.000Z"
+    },
+    "policy": { "id": "qa-standard", "version": 1 }
+  },
+  "createdAt": "2026-09-10T19:00:00.000Z"
+}

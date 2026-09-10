@@ -9,7 +9,7 @@ import {
   SchemaVersionSchema,
   NonNegativeIntSchema,
 } from './primitives.js';
-import { EVIDENCE_STRENGTHS } from './enums.js';
+import { EVIDENCE_ENVIRONMENT_STATES, EVIDENCE_STRENGTHS } from './enums.js';
 import { CodeLocationSchema, extendCodeLocationSchema } from './code-location.schema.js';
 
 export const CommandEvidenceSchema = z
@@ -110,6 +110,7 @@ export const BaseEvidenceSchema = z
     qaRunId: QARunIdSchema,
     agentRunId: AgentRunIdSchema.optional(),
     strength: z.enum(EVIDENCE_STRENGTHS),
+    environmentState: z.enum(EVIDENCE_ENVIRONMENT_STATES),
     description: z.string().min(1).max(5000).optional(),
     artifactIds: z.array(ArtifactIdSchema).default([]),
     createdAt: IsoTimestampSchema,

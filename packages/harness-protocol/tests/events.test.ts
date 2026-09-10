@@ -16,6 +16,32 @@ const base = {
   agentRunId: 'arun_01K7777777777777777777A8W4',
   timestamp: T,
 };
+const operationId = 'op_01K7777777777777777777A8WY';
+const plan = {
+  schemaVersion: 1,
+  id: 'plan_01K7777777777777777777A8WB',
+  qaRunId: 'run_01K7777777777777777777A8W3',
+  agentRunId: base.agentRunId,
+  agentStackId: 'stack_muse_main',
+  projectSnapshotId: 'snap_01K7777777777777777777A8W2',
+  projectContextSnapshotId: 'ctx_01K7777777777777777777A8WA',
+  projectUnderstanding: 'A test service.',
+  criticalFlows: [],
+  weakPoints: [],
+  plannedChecks: ['Run tests'],
+  createdAt: T,
+};
+const hypothesis = {
+  schemaVersion: 1,
+  id: 'hyp_01K7777777777777777777A8WC',
+  qaRunId: plan.qaRunId,
+  agentRunId: base.agentRunId,
+  title: 'Possible boundary defect',
+  rationale: 'Observed an unexpected boundary condition.',
+  relatedPaths: ['src/a.ts'],
+  plannedChecks: ['Exercise the boundary'],
+  discoveredAt: T,
+};
 const finding = FindingSchema.parse(
   JSON.parse(
     readFileSync(
@@ -39,12 +65,21 @@ describe('HarnessEvent protocol', () => {
       { ...base, type: 'run.started' },
       { ...base, type: 'agent.status', status: 'working' },
       { ...base, type: 'agent.message', message: 'hi' },
-      { ...base, type: 'tool.started', tool: { name: 'shell' } },
-      { ...base, type: 'tool.completed', tool: { name: 'shell', exitCode: 0 } },
+      { ...base, type: 'tool.started', operationId, tool: { name: 'shell' } },
+      { ...base, type: 'tool.completed', operationId, tool: { name: 'shell', exitCode: 0 } },
       { ...base, type: 'command.executed', command: 'npm test', exitCode: 0 },
       { ...base, type: 'file.read', relativePath: 'src/a.ts' },
-      { ...base, type: 'file.changed', relativePath: 'src/a.ts', operation: 'modify' },
+      {
+        ...base,
+        type: 'file.changed',
+        relativePath: 'src/a.ts',
+        operation: 'modify',
+        purpose: 'instrumentation',
+        artifactId: 'artifact_01K7777777777777777777A8WF',
+      },
       { ...base, type: 'test.result', passed: 3, failed: 0 },
+      { ...base, type: 'investigation.plan.created', plan },
+      { ...base, type: 'investigation.hypothesis.discovered', hypothesis },
       { ...base, type: 'finding.submitted', finding },
       { ...base, type: 'evidence.submitted', evidence },
       { ...base, type: 'usage.updated', usage: { inputTokens: 1 } },
@@ -100,8 +135,11 @@ describe('HarnessEvent protocol', () => {
     expect(eventTypes(ok)).toEqual([
       'run.started',
       'agent.status',
+      'investigation.plan.created',
+      'agent.status',
       'tool.started',
       'tool.completed',
+      'test.result',
       'evidence.submitted',
       'finding.submitted',
       'usage.updated',
@@ -119,6 +157,13 @@ describe('HarnessEvent protocol', () => {
     validateHarnessEventSequence(ok);
     validateHarnessEventSequence(fail);
     validateHarnessEventSequence(cancelled);
+    const transportLoss = decodeEventsNdjson(
+      readFileSync(join(dir, 'sample-transport-loss.ndjson'), 'utf8'),
+    );
+    expect(eventTypes(transportLoss)).toEqual(['run.started', 'agent.status']);
+    expect(() => validateHarnessEventSequence(transportLoss)).toThrowError(
+      expect.objectContaining({ code: 'INVALID_EVENT_SEQUENCE' }),
+    );
   });
 
   it.each([
@@ -183,6 +228,70 @@ describe('HarnessEvent protocol', () => {
         { qaRunId: 'run_01K7777777777777777777A8W6' },
       ),
     ).toThrowError(expect.objectContaining({ code: 'QA_RUN_MISMATCH' }));
+  });
+
+  it('correlates tool operation pairs and rejects mismatches', () => {
+    const valid = [
+      HarnessEventSchema.parse({ ...base, type: 'run.started' }),
+      HarnessEventSchema.parse({
+        ...base,
+        type: 'tool.started',
+        operationId,
+        tool: { name: 'shell' },
+      }),
+      HarnessEventSchema.parse({
+        ...base,
+        type: 'tool.completed',
+        operationId,
+        tool: { name: 'shell', exitCode: 0 },
+      }),
+      HarnessEventSchema.parse({ ...base, type: 'run.completed' }),
+    ];
+    expect(() => validateHarnessEventSequence(valid)).not.toThrow();
+    const mismatched = valid.map((event) =>
+      event.type === 'tool.completed'
+        ? HarnessEventSchema.parse({ ...event, operationId: 'op_01K7777777777777777777A8WZ' })
+        : event,
+    );
+    expect(() => validateHarnessEventSequence(mismatched)).toThrow(HarnessProtocolError);
+    expect(HarnessEventSchema.safeParse({ ...base, type: 'warning', message: 'x' }).success).toBe(
+      true,
+    );
+    expect(
+      HarnessEventSchema.safeParse({
+        ...base,
+        type: 'tool.started',
+        operationId: 'evt_01K7777777777777777777A8WX',
+        tool: { name: 'shell' },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects investigation payload identity mismatches', () => {
+    const events = [
+      HarnessEventSchema.parse({ ...base, type: 'run.started' }),
+      HarnessEventSchema.parse({
+        ...base,
+        type: 'investigation.plan.created',
+        plan: { ...plan, agentRunId: 'arun_01K7777777777777777777A8W5' },
+      }),
+      HarnessEventSchema.parse({ ...base, type: 'run.completed' }),
+    ];
+    expect(() => validateHarnessEventSequence(events, { qaRunId: plan.qaRunId })).toThrowError(
+      expect.objectContaining({ code: 'AGENT_RUN_MISMATCH' }),
+    );
+    const qaMismatch = [
+      HarnessEventSchema.parse({ ...base, type: 'run.started' }),
+      HarnessEventSchema.parse({
+        ...base,
+        type: 'investigation.plan.created',
+        plan: { ...plan, qaRunId: 'run_01K7777777777777777777A8WX' },
+      }),
+      HarnessEventSchema.parse({ ...base, type: 'run.completed' }),
+    ];
+    expect(() => validateHarnessEventSequence(qaMismatch, { qaRunId: plan.qaRunId })).toThrowError(
+      expect.objectContaining({ code: 'QA_RUN_MISMATCH' }),
+    );
   });
 
   it('uses bounded protocol errors for malformed NDJSON and events', () => {

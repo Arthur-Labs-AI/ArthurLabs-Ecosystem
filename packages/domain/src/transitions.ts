@@ -5,7 +5,7 @@
  */
 import type {
   AgentRunStatus,
-  FixProposalStatus,
+  ManagedProjectCopyState,
   QARunStatus,
   VerificationStatus,
 } from '@qa/schemas';
@@ -31,12 +31,23 @@ const QA_RUN_TRANSITIONS: Readonly<Record<QARunStatus, readonly QARunStatus[]>> 
 
 const AGENT_RUN_TRANSITIONS: Readonly<Record<AgentRunStatus, readonly AgentRunStatus[]>> = {
   queued: ['starting', 'cancelled'],
-  starting: ['running', 'failed', 'cancelled'],
-  running: ['completed', 'failed', 'cancelled', 'timed_out'],
+  starting: ['planning', 'running', 'failed', 'interrupted', 'cancelled'],
+  planning: ['running', 'failed', 'interrupted', 'cancelled', 'timed_out'],
+  running: ['completed', 'failed', 'interrupted', 'cancelled', 'timed_out'],
   completed: [],
   failed: [],
   cancelled: [],
   timed_out: [],
+  interrupted: [],
+};
+
+const MANAGED_PROJECT_COPY_TRANSITIONS: Readonly<
+  Record<ManagedProjectCopyState, readonly ManagedProjectCopyState[]>
+> = {
+  ready: ['updating', 'locked_for_run'],
+  updating: ['ready', 'error'],
+  locked_for_run: ['ready', 'error'],
+  error: ['ready'],
 };
 
 const VERIFICATION_TRANSITIONS: Readonly<
@@ -49,17 +60,6 @@ const VERIFICATION_TRANSITIONS: Readonly<
   inconclusive: [],
   cancelled: [],
 };
-
-const FIX_PROPOSAL_TRANSITIONS: Readonly<Record<FixProposalStatus, readonly FixProposalStatus[]>> =
-  {
-    proposed: ['validating', 'rejected'],
-    validating: ['validated', 'validation_failed', 'conflict'],
-    validated: ['applied', 'rejected'],
-    validation_failed: ['validating', 'rejected'],
-    conflict: ['validating', 'rejected'],
-    applied: [],
-    rejected: [],
-  };
 
 function makeHelpers<S extends string>(table: Readonly<Record<S, readonly S[]>>, entity: string) {
   return {
@@ -87,7 +87,7 @@ export const canTransitionVerification = verification.canTransition;
 export const assertVerificationTransition = verification.assertTransition;
 export const VERIFICATION_TRANSITIONS_MAP = VERIFICATION_TRANSITIONS;
 
-const fix = makeHelpers(FIX_PROPOSAL_TRANSITIONS, 'FixProposal');
-export const canTransitionFixProposal = fix.canTransition;
-export const assertFixProposalTransition = fix.assertTransition;
-export const FIX_PROPOSAL_TRANSITIONS_MAP = FIX_PROPOSAL_TRANSITIONS;
+const managedCopy = makeHelpers(MANAGED_PROJECT_COPY_TRANSITIONS, 'ManagedProjectCopy');
+export const canTransitionManagedProjectCopy = managedCopy.canTransition;
+export const assertManagedProjectCopyTransition = managedCopy.assertTransition;
+export const MANAGED_PROJECT_COPY_TRANSITIONS_MAP = MANAGED_PROJECT_COPY_TRANSITIONS;

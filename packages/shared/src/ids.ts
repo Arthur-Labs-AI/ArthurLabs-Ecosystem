@@ -11,10 +11,14 @@
 export type Brand<T, Name extends string> = T & { readonly __brand: Name };
 
 export type ProjectId = Brand<string, 'ProjectId'>;
+export type ProjectRevisionId = Brand<string, 'ProjectRevisionId'>;
 export type SnapshotId = Brand<string, 'SnapshotId'>;
+export type ProjectContextSnapshotId = Brand<string, 'ProjectContextSnapshotId'>;
 export type QARunId = Brand<string, 'QARunId'>;
 export type AgentRunId = Brand<string, 'AgentRunId'>;
 export type AgentStackId = Brand<string, 'AgentStackId'>;
+export type InvestigationPlanId = Brand<string, 'InvestigationPlanId'>;
+export type InvestigationHypothesisId = Brand<string, 'InvestigationHypothesisId'>;
 export type FindingId = Brand<string, 'FindingId'>;
 export type EvidenceId = Brand<string, 'EvidenceId'>;
 export type UnifiedIssueId = Brand<string, 'UnifiedIssueId'>;
@@ -23,13 +27,19 @@ export type FixProposalId = Brand<string, 'FixProposalId'>;
 export type CICDPlanId = Brand<string, 'CICDPlanId'>;
 export type ArtifactId = Brand<string, 'ArtifactId'>;
 export type HarnessEventId = Brand<string, 'HarnessEventId'>;
+export type RunActivityId = Brand<string, 'RunActivityId'>;
+export type OperationId = Brand<string, 'OperationId'>;
 
 export const ID_PREFIXES = {
   project: 'proj',
+  projectRevision: 'rev',
   snapshot: 'snap',
+  projectContextSnapshot: 'ctx',
   qaRun: 'run',
   agentRun: 'arun',
   agentStack: 'stack',
+  investigationPlan: 'plan',
+  investigationHypothesis: 'hyp',
   finding: 'find',
   evidence: 'ev',
   unifiedIssue: 'issue',
@@ -38,6 +48,8 @@ export const ID_PREFIXES = {
   cicdPlan: 'cicd',
   artifact: 'artifact',
   harnessEvent: 'evt',
+  runActivity: 'activity',
+  operation: 'op',
 } as const;
 
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -82,8 +94,14 @@ function isPrefixed(value: unknown, prefix: string): boolean {
 export function createProjectId(nowMs?: number): ProjectId {
   return make(ID_PREFIXES.project, nowMs) as ProjectId;
 }
+export function createProjectRevisionId(nowMs?: number): ProjectRevisionId {
+  return make(ID_PREFIXES.projectRevision, nowMs) as ProjectRevisionId;
+}
 export function createSnapshotId(nowMs?: number): SnapshotId {
   return make(ID_PREFIXES.snapshot, nowMs) as SnapshotId;
+}
+export function createProjectContextSnapshotId(nowMs?: number): ProjectContextSnapshotId {
+  return make(ID_PREFIXES.projectContextSnapshot, nowMs) as ProjectContextSnapshotId;
 }
 export function createQARunId(nowMs?: number): QARunId {
   return make(ID_PREFIXES.qaRun, nowMs) as QARunId;
@@ -93,6 +111,12 @@ export function createAgentRunId(nowMs?: number): AgentRunId {
 }
 export function createAgentStackId(nowMs?: number): AgentStackId {
   return make(ID_PREFIXES.agentStack, nowMs) as AgentStackId;
+}
+export function createInvestigationPlanId(nowMs?: number): InvestigationPlanId {
+  return make(ID_PREFIXES.investigationPlan, nowMs) as InvestigationPlanId;
+}
+export function createInvestigationHypothesisId(nowMs?: number): InvestigationHypothesisId {
+  return make(ID_PREFIXES.investigationHypothesis, nowMs) as InvestigationHypothesisId;
 }
 export function createFindingId(nowMs?: number): FindingId {
   return make(ID_PREFIXES.finding, nowMs) as FindingId;
@@ -118,12 +142,24 @@ export function createArtifactId(nowMs?: number): ArtifactId {
 export function createHarnessEventId(nowMs?: number): HarnessEventId {
   return make(ID_PREFIXES.harnessEvent, nowMs) as HarnessEventId;
 }
+export function createRunActivityId(nowMs?: number): RunActivityId {
+  return make(ID_PREFIXES.runActivity, nowMs) as RunActivityId;
+}
+export function createOperationId(nowMs?: number): OperationId {
+  return make(ID_PREFIXES.operation, nowMs) as OperationId;
+}
 
 export function isProjectId(v: unknown): v is ProjectId {
   return isPrefixed(v, ID_PREFIXES.project);
 }
+export function isProjectRevisionId(v: unknown): v is ProjectRevisionId {
+  return isPrefixed(v, ID_PREFIXES.projectRevision);
+}
 export function isSnapshotId(v: unknown): v is SnapshotId {
   return isPrefixed(v, ID_PREFIXES.snapshot);
+}
+export function isProjectContextSnapshotId(v: unknown): v is ProjectContextSnapshotId {
+  return isPrefixed(v, ID_PREFIXES.projectContextSnapshot);
 }
 export function isQARunId(v: unknown): v is QARunId {
   return isPrefixed(v, ID_PREFIXES.qaRun);
@@ -136,6 +172,12 @@ export function isAgentStackId(v: unknown): v is AgentStackId {
     isPrefixed(v, ID_PREFIXES.agentStack) ||
     (typeof v === 'string' && /^stack_[a-z0-9][a-z0-9_-]{0,63}$/.test(v))
   );
+}
+export function isInvestigationPlanId(v: unknown): v is InvestigationPlanId {
+  return isPrefixed(v, ID_PREFIXES.investigationPlan);
+}
+export function isInvestigationHypothesisId(v: unknown): v is InvestigationHypothesisId {
+  return isPrefixed(v, ID_PREFIXES.investigationHypothesis);
 }
 export function isFindingId(v: unknown): v is FindingId {
   return isPrefixed(v, ID_PREFIXES.finding);
@@ -160,4 +202,10 @@ export function isArtifactId(v: unknown): v is ArtifactId {
 }
 export function isHarnessEventId(v: unknown): v is HarnessEventId {
   return isPrefixed(v, ID_PREFIXES.harnessEvent);
+}
+export function isRunActivityId(v: unknown): v is RunActivityId {
+  return isPrefixed(v, ID_PREFIXES.runActivity);
+}
+export function isOperationId(v: unknown): v is OperationId {
+  return isPrefixed(v, ID_PREFIXES.operation);
 }

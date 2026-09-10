@@ -5,19 +5,16 @@
   "unifiedIssueId": "issue_01K7777777777777777777A8WB",
   "sourceSnapshotId": "snap_01K7777777777777777777A8W2",
   "generatedByAgentStackId": "stack_glm_main",
-  "status": "proposed",
-  "changedFiles": [
+  "summary": "Enforce session expiry during validation.",
+  "rationale": "Both independent findings show the TTL is read but not enforced.",
+  "suggestedChanges": [
     {
       "relativePath": "src/auth/session.ts",
       "operation": "modify",
-      "originalHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "description": "Compare session age with the configured TTL and reject expired sessions."
     }
   ],
-  "validation": {
-    "build": {
-      "status": "not_run",
-      "evidenceIds": []
-    }
-  },
+  "affectedPaths": ["src/auth/session.ts"],
+  "suggestedRegressionTests": ["Add boundary tests around the configured TTL."],
   "createdAt": "2026-09-09T19:00:00.000Z"
 }

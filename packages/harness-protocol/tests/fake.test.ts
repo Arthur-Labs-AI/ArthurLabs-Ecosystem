@@ -18,10 +18,13 @@ const request = HarnessRunRequestSchema.parse({
   schemaVersion: 1,
   agentRunId: 'arun_01K7777777777777777777A8W4',
   qaRunId: 'run_01K7777777777777777777A8W3',
+  agentStackId: 'stack_muse_main',
+  projectContextSnapshotId: 'ctx_01K7777777777777777777A8WA',
   workspace: {
     runtimePath: '/tmp/qa-work',
     snapshotId: 'snap_01K7777777777777777777A8W2',
-    writable: false,
+    writable: true,
+    isolated: true,
   },
   model: { provider: 'future-ai', modelId: 'future-model-v9' },
   task: { type: 'qa', prompt: 'Analyze this snapshot.', policyId: 'qa-standard', policyVersion: 1 },
@@ -34,6 +37,30 @@ const evidence = EvidenceSchema.parse(
 );
 
 describe('FakeHarnessAdapter', () => {
+  it('keeps each harness request private to one AgentRun and one AgentStack', () => {
+    expect(HarnessRunRequestSchema.safeParse(request).success).toBe(true);
+    for (const field of [
+      'otherAgentRunIds',
+      'otherAgentStackIds',
+      'otherFindings',
+      'otherEvidence',
+      'otherPlans',
+    ]) {
+      expect(HarnessRunRequestSchema.safeParse({ ...request, [field]: [] }).success).toBe(false);
+    }
+    expect(
+      HarnessRunRequestSchema.safeParse({
+        ...request,
+        workspace: { ...request.workspace, writable: false },
+      }).success,
+    ).toBe(false);
+    expect(
+      HarnessRunRequestSchema.safeParse({
+        ...request,
+        workspace: { ...request.workspace, isolated: false },
+      }).success,
+    ).toBe(false);
+  });
   it('exposes protocol v1 metadata and healthy status', async () => {
     const fake = new FakeHarnessAdapter();
     expect((await fake.getMetadata()).protocolVersion).toBe(1);
@@ -46,6 +73,19 @@ describe('FakeHarnessAdapter', () => {
     );
     expect(eventTypes(events)[0]).toBe('run.started');
     expect(eventTypes(events).at(-1)).toBe('run.completed');
+    expect(eventTypes(events)).toEqual([
+      'run.started',
+      'agent.status',
+      'investigation.plan.created',
+      'agent.status',
+      'tool.started',
+      'tool.completed',
+      'test.result',
+      'evidence.submitted',
+      'finding.submitted',
+      'usage.updated',
+      'run.completed',
+    ]);
     for (const e of events) expect(HarnessEventSchema.safeParse(e).success).toBe(true);
     validateHarnessEventSequence(events, {
       agentRunId: request.agentRunId,

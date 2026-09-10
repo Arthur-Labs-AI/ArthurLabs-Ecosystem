@@ -1,10 +1,9 @@
 # Phase 1 — Foundation (this phase)
 
-## Phase 1 Status: COMPLETE
+## Phase 1 Status: COMPLETE (extended by Phase 1.1)
 
-Sentry Phase 1 is complete. Harness Protocol v1 and the core domain contracts are
-the implementation baseline for Phase 2. Future explicitly versioned migrations
-remain possible; this is not a claim of permanent immutability.
+The original Phase 1 foundation remains complete. Phase 1.1 corrects and extends
+its pre-production contracts; see `phase-1.1.md` for the final Phase 2 baseline.
 
 ## Delivered
 
@@ -20,7 +19,8 @@ fixtures, golden NDJSON streams, FakeHarnessAdapter, docs, ADRs, and repo CI.
 All real integrations and execution: Muse/DeepSeek/Claude-GLM adapters and SDKs,
 AI calls, snapshot creation, Git cloning/worktrees, Docker/WSL, Playwright,
 SQLite persistence, Electron UI, REST/MCP servers, QA execution, deduplication,
-verification/fix execution, AI synthesis, CI/CD generation.
+verification execution, advisory fix generation, AI synthesis, CI/CD generation.
+Automatic fix execution/application is not part of the product baseline.
 
 ## Exit check
 

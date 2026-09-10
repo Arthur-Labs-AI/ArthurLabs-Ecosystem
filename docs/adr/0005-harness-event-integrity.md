@@ -4,14 +4,14 @@ Status: accepted
 
 ## Context
 
-Early Protocol v1 shapes duplicated Finding IDs, Evidence IDs, and usage cost at
+Early Protocol v1 shapes duplicated Finding IDs, Evidence IDs, and usage data at
 the event level. Those copies could disagree with the embedded DTOs. Individual
 event validation also could not detect a mixed-AgentRun stream or events emitted
 after termination.
 
 ## Decision
 
-The embedded Finding or Evidence owns its ID, and AgentUsage owns all cost fields.
+The embedded Finding or Evidence owns its ID, and AgentUsage owns token/runtime fields.
 The redundant event-level copies are removed. `validateHarnessEventSequence`
 separately enforces one `run.started` first, one terminal event last, a single
 AgentRun ID, and agreement between an event and its submitted Finding/Evidence.
@@ -22,7 +22,7 @@ stable codes and positions; raw payloads are not copied into messages.
 
 ## Consequences
 
-Adapters have one authoritative value for each identity and cost datum, while
+Adapters have one authoritative value for each identity and usage datum, while
 stream validation remains lightweight and optional for incremental transport.
 This is a breaking correction within pre-production Protocol v1, so no v2 or
 compatibility layer is required. Protocol v1 becomes the Phase 2 baseline.

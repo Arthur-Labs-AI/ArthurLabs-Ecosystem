@@ -1,12 +1,17 @@
 # Agent Stack
 
 ```text
-AgentStack = Model + Harness + Execution Requirements + QA Policy + Run Limits
+AgentStack = Model + Harness + Execution Requirements + QA Policy
+           + optional ExecutionSafeguards
 ```
 
 The stack is the unit the QA Core schedules: one `AgentRun` = one stack × one
 task inside one `QARun`. The domain reasons about stacks generically — there is
 no `if (model === 'muse')` anywhere; vendor specifics belong in future adapters.
+
+`ExecutionSafeguards` contains operational controls only: `runTimeoutMs` and
+`commandTimeoutMs`. They are process safety boundaries, not product quotas.
+Turn, token, and monetary limits are deliberately absent.
 
 ## Today's configurations (fixtures, not product constants)
 
@@ -49,3 +54,12 @@ AgentStack IDs; it does not loosen any runtime entity ID schema.
 `AgentRun.runtimeIdentity` records the exact model/harness/adapter/policy versions
 that produced each Finding, so agent-performance analytics can later answer
 “which exact stack produced this claim?” without guessing from display names.
+
+## Independent execution
+
+Each selected stack receives one private `HarnessRunRequest` and an isolated,
+writable workspace derived from the locked baseline. The request cannot expose
+other selected agents, their plans, findings, evidence, or progress. Each agent
+creates an immutable initial investigation plan and may later emit separate
+emergent hypotheses. Plan targets have no priority field that permits relevant
+areas to be skipped.

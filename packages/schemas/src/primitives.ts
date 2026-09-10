@@ -13,8 +13,14 @@ import {
   isFixProposalId,
   isHarnessEventId,
   isProjectId,
+  isProjectRevisionId,
+  isProjectContextSnapshotId,
   isQARunId,
   isSnapshotId,
+  isInvestigationPlanId,
+  isInvestigationHypothesisId,
+  isRunActivityId,
+  isOperationId,
   isUnifiedIssueId,
   isVerificationId,
   isCICDPlanId,
@@ -33,10 +39,23 @@ function idSchema<Id extends string>(guard: (value: unknown) => value is Id, lab
 }
 
 export const ProjectIdSchema = idSchema(isProjectId, 'ProjectId (proj_...)');
+export const ProjectRevisionIdSchema = idSchema(isProjectRevisionId, 'ProjectRevisionId (rev_...)');
 export const SnapshotIdSchema = idSchema(isSnapshotId, 'SnapshotId (snap_...)');
+export const ProjectContextSnapshotIdSchema = idSchema(
+  isProjectContextSnapshotId,
+  'ProjectContextSnapshotId (ctx_...)',
+);
 export const QARunIdSchema = idSchema(isQARunId, 'QARunId (run_...)');
 export const AgentRunIdSchema = idSchema(isAgentRunId, 'AgentRunId (arun_...)');
 export const AgentStackIdSchema = idSchema(isAgentStackId, 'AgentStackId (stack_...)');
+export const InvestigationPlanIdSchema = idSchema(
+  isInvestigationPlanId,
+  'InvestigationPlanId (plan_...)',
+);
+export const InvestigationHypothesisIdSchema = idSchema(
+  isInvestigationHypothesisId,
+  'InvestigationHypothesisId (hyp_...)',
+);
 export const FindingIdSchema = idSchema(isFindingId, 'FindingId (find_...)');
 export const EvidenceIdSchema = idSchema(isEvidenceId, 'EvidenceId (ev_...)');
 export const UnifiedIssueIdSchema = idSchema(isUnifiedIssueId, 'UnifiedIssueId (issue_...)');
@@ -45,6 +64,8 @@ export const FixProposalIdSchema = idSchema(isFixProposalId, 'FixProposalId (fix
 export const CICDPlanIdSchema = idSchema(isCICDPlanId, 'CICDPlanId (cicd_...)');
 export const ArtifactIdSchema = idSchema(isArtifactId, 'ArtifactId (artifact_...)');
 export const HarnessEventIdSchema = idSchema(isHarnessEventId, 'HarnessEventId (evt_...)');
+export const RunActivityIdSchema = idSchema(isRunActivityId, 'RunActivityId (activity_...)');
+export const OperationIdSchema = idSchema(isOperationId, 'OperationId (op_...)');
 
 /**
  * Project-relative path (forward slashes). Rejects absolute Windows
@@ -71,5 +92,6 @@ export const Sha256Schema = z
 export const SchemaVersionSchema = z.literal(1);
 
 export const NonNegativeIntSchema = z.number().int().min(0);
+export const NonNegativeSafeIntSchema = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 export const NonNegativeNumberSchema = z.number().min(0);
 export const ShortTextSchema = z.string().min(1).max(200);

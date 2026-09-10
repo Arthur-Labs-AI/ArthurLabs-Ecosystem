@@ -15,13 +15,36 @@ import {
   UnifiedIssueSchema,
   VerificationAttemptSchema,
   FixProposalSchema,
+  ProjectRevisionSchema,
+  ManagedProjectCopySchema,
+  ProjectContextSnapshotSchema,
+  AgentInvestigationPlanSchema,
+  EmergentHypothesisSchema,
+  RunActivitySchema,
 } from '@qa/schemas';
+import {
+  isAgentRunForQARun,
+  isContextForRevision,
+  isManagedCopyForRevision,
+  isPlanForAgentRun,
+  isQARunForSnapshot,
+  isQARunForContext,
+  isRetestAgainstNewerRevision,
+  isRetestLineageValid,
+  isSnapshotForRevision,
+} from '../src/index.js';
 
 const dir = join(__dirname, 'fixtures');
 const load = (name: string) => JSON.parse(readFileSync(join(dir, name), 'utf8'));
 const schemas: Record<string, { parse: (v: unknown) => unknown }> = {
   'project.json': ProjectSchema,
+  'managed-project-copy.json': ManagedProjectCopySchema,
+  'project-revision.json': ProjectRevisionSchema,
+  'project-revision-2.json': ProjectRevisionSchema,
   'snapshot.json': ProjectSnapshotSchema,
+  'snapshot-2.json': ProjectSnapshotSchema,
+  'project-context.json': ProjectContextSnapshotSchema,
+  'project-context-2.json': ProjectContextSnapshotSchema,
   'stack-muse.json': AgentStackDefinitionSchema,
   'stack-deepseek.json': AgentStackDefinitionSchema,
   'stack-glm.json': AgentStackDefinitionSchema,
@@ -30,6 +53,8 @@ const schemas: Record<string, { parse: (v: unknown) => unknown }> = {
   'agent-run-muse.json': AgentRunSchema,
   'agent-run-deepseek.json': AgentRunSchema,
   'agent-run-glm.json': AgentRunSchema,
+  'investigation-plan.json': AgentInvestigationPlanSchema,
+  'emergent-hypothesis.json': EmergentHypothesisSchema,
   'finding.json': FindingSchema,
   'finding-2.json': FindingSchema,
   'evidence.json': EvidenceSchema,
@@ -39,6 +64,8 @@ const schemas: Record<string, { parse: (v: unknown) => unknown }> = {
   'fix-proposal.json': FixProposalSchema,
   'cicd-plan.json': CICDPlanSchema,
   'artifact.json': ArtifactSchema,
+  'run-activity.json': RunActivitySchema,
+  'retest-qa-run.json': QARunSchema,
 };
 void HarnessRunRequestSchema;
 
@@ -59,6 +86,30 @@ describe('contract fixtures', () => {
     expect(issue.qaRunId).toBe(run.id);
     expect(issue.findingIds).toContain(f1.id);
     expect(run.configuration.agentStackIds).toContain(f1.sourceAgentStackId);
+
+    const revision = ProjectRevisionSchema.parse(load('project-revision.json'));
+    const managedCopy = ManagedProjectCopySchema.parse(load('managed-project-copy.json'));
+    const snapshot = ProjectSnapshotSchema.parse(load('snapshot.json'));
+    const context = ProjectContextSnapshotSchema.parse(load('project-context.json'));
+    const agentRun = AgentRunSchema.parse(load('agent-run-muse.json'));
+    const plan = AgentInvestigationPlanSchema.parse(load('investigation-plan.json'));
+    expect(isSnapshotForRevision(snapshot, revision)).toBe(true);
+    expect(isManagedCopyForRevision(managedCopy, revision)).toBe(true);
+    expect(isContextForRevision(context, revision)).toBe(true);
+    expect(isQARunForSnapshot(run, snapshot)).toBe(true);
+    expect(isQARunForContext(run, context)).toBe(true);
+    expect(isAgentRunForQARun(agentRun, run)).toBe(true);
+    expect(isPlanForAgentRun(plan, agentRun, run)).toBe(true);
+
+    const retest = QARunSchema.parse(load('retest-qa-run.json'));
+    expect(isRetestLineageValid(retest, run, issue)).toBe(true);
+    const retestRevision = ProjectRevisionSchema.parse(load('project-revision-2.json'));
+    const retestSnapshot = ProjectSnapshotSchema.parse(load('snapshot-2.json'));
+    const retestContext = ProjectContextSnapshotSchema.parse(load('project-context-2.json'));
+    expect(isContextForRevision(retestContext, retestRevision)).toBe(true);
+    expect(
+      isRetestAgainstNewerRevision(retest, retestSnapshot, retestRevision, snapshot, revision),
+    ).toBe(true);
   });
   it('no fixture leaks absolute machine paths', () => {
     for (const f of readdirSync(dir)) {

@@ -9,7 +9,12 @@ import {
   UnifiedIssueIdSchema,
   VerificationIdSchema,
 } from './primitives.js';
-import { FINDING_CATEGORIES, FINDING_SEVERITIES, UNIFIED_ISSUE_STATUSES } from './enums.js';
+import {
+  FINDING_CATEGORIES,
+  FINDING_SEVERITIES,
+  ISSUE_AGREEMENT_STATES,
+  UNIFIED_ISSUE_STATUSES,
+} from './enums.js';
 
 /**
  * UnifiedIssue: platform-level grouping of one or more Findings.
@@ -24,6 +29,7 @@ export const UnifiedIssueSchema = z
     category: z.enum(FINDING_CATEGORIES),
     severity: z.enum(FINDING_SEVERITIES),
     status: z.enum(UNIFIED_ISSUE_STATUSES),
+    agreementState: z.enum(ISSUE_AGREEMENT_STATES),
     findingIds: z.array(FindingIdSchema).min(1),
     sourceAgentStackIds: z.array(AgentStackIdSchema).min(1),
     evidenceIds: z.array(EvidenceIdSchema).default([]),

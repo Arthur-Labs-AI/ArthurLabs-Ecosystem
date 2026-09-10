@@ -37,6 +37,8 @@ export function validateHarnessEventSequence(
   let startedCount = 0;
   let terminalCount = 0;
   let terminalIndex = -1;
+  const openOperations = new Map<string, string>();
+  const seenOperations = new Set<string>();
 
   events.forEach((event, eventIndex) => {
     if (event.agentRunId !== agentRunId) {
@@ -50,6 +52,24 @@ export function validateHarnessEventSequence(
     if (TERMINAL_EVENT_TYPES.has(event.type)) {
       terminalCount += 1;
       terminalIndex = eventIndex;
+    }
+
+    if (event.type === 'tool.started') {
+      if (seenOperations.has(event.operationId)) {
+        sequenceError('A tool operation may only start once', eventIndex);
+      }
+      seenOperations.add(event.operationId);
+      openOperations.set(event.operationId, event.tool.name);
+    }
+    if (event.type === 'tool.completed') {
+      const startedTool = openOperations.get(event.operationId);
+      if (startedTool === undefined) {
+        sequenceError('tool.completed requires a matching tool.started operationId', eventIndex);
+      }
+      if (startedTool !== event.tool.name) {
+        sequenceError('Correlated tool events must name the same tool', eventIndex);
+      }
+      openOperations.delete(event.operationId);
     }
 
     if (event.type === 'finding.submitted' && event.finding.agentRunId !== event.agentRunId) {
@@ -81,6 +101,28 @@ export function validateHarnessEventSequence(
         { eventIndex },
       );
     }
+    if (
+      event.type === 'investigation.plan.created' &&
+      (event.plan.agentRunId !== event.agentRunId ||
+        (context.qaRunId !== undefined && event.plan.qaRunId !== context.qaRunId))
+    ) {
+      throw new HarnessProtocolError(
+        event.plan.agentRunId !== event.agentRunId ? 'AGENT_RUN_MISMATCH' : 'QA_RUN_MISMATCH',
+        'Investigation plan must belong to the event AgentRun and requested QARun',
+        { eventIndex },
+      );
+    }
+    if (
+      event.type === 'investigation.hypothesis.discovered' &&
+      (event.hypothesis.agentRunId !== event.agentRunId ||
+        (context.qaRunId !== undefined && event.hypothesis.qaRunId !== context.qaRunId))
+    ) {
+      throw new HarnessProtocolError(
+        event.hypothesis.agentRunId !== event.agentRunId ? 'AGENT_RUN_MISMATCH' : 'QA_RUN_MISMATCH',
+        'Emergent hypothesis must belong to the event AgentRun and requested QARun',
+        { eventIndex },
+      );
+    }
   });
 
   if (startedCount !== 1)
@@ -90,5 +132,8 @@ export function validateHarnessEventSequence(
   }
   if (terminalIndex !== events.length - 1) {
     sequenceError('The terminal event must be last', terminalIndex + 1);
+  }
+  if (openOperations.size > 0) {
+    sequenceError('Every tool.started operation must have a matching tool.completed event');
   }
 }

@@ -4,8 +4,14 @@
  * success | failure | cancellation | finding | evidence.
  */
 import type { AgentRunId } from '@qa/shared';
-import { createHarnessEventId } from '@qa/shared';
-import { HarnessEventSchema, type AgentUsage, type Evidence, type Finding } from '@qa/schemas';
+import { createHarnessEventId, createInvestigationPlanId, createOperationId } from '@qa/shared';
+import {
+  HarnessEventSchema,
+  type AgentUsage,
+  type EmergentHypothesis,
+  type Evidence,
+  type Finding,
+} from '@qa/schemas';
 import type { HarnessEvent } from '@qa/schemas';
 import type { HarnessAdapter } from './adapter.js';
 import type { HarnessHealthResult, HarnessMetadata } from './metadata.js';
@@ -18,6 +24,7 @@ export interface FakeAdapterOptions {
   readonly scenario?: FakeScenario;
   readonly finding?: Finding;
   readonly evidence?: Evidence;
+  readonly hypothesis?: EmergentHypothesis;
   readonly usage?: AgentUsage;
 }
 
@@ -33,6 +40,7 @@ export class FakeHarnessAdapter implements HarnessAdapter {
   private readonly scenario: FakeScenario;
   private readonly finding?: Finding | undefined;
   private readonly evidence?: Evidence | undefined;
+  private readonly hypothesis?: EmergentHypothesis | undefined;
   private readonly usage: AgentUsage;
   private readonly cancelledRunIds = new Set<AgentRunId>();
   private disposed = false;
@@ -41,6 +49,7 @@ export class FakeHarnessAdapter implements HarnessAdapter {
     this.scenario = options.scenario ?? 'success';
     this.finding = options.finding;
     this.evidence = options.evidence;
+    this.hypothesis = options.hypothesis;
     this.usage = options.usage ?? {
       inputTokens: 120,
       outputTokens: 45,
@@ -94,15 +103,47 @@ export class FakeHarnessAdapter implements HarnessAdapter {
       agentRunId,
       timestamp: t(20),
       type: 'agent.status',
-      status: 'working',
-      message: 'Fake analysis running',
+      status: 'planning',
+      message: 'Building an independent investigation plan',
     });
+    yield validatedEvent({
+      schemaVersion: 1,
+      eventId: createHarnessEventId(),
+      agentRunId,
+      timestamp: t(25),
+      type: 'investigation.plan.created',
+      plan: {
+        schemaVersion: 1,
+        id: createInvestigationPlanId(),
+        qaRunId: request.qaRunId,
+        agentRunId,
+        agentStackId: request.agentStackId,
+        projectSnapshotId: request.workspace.snapshotId,
+        projectContextSnapshotId: request.projectContextSnapshotId,
+        projectUnderstanding: 'A deterministic fake project understanding.',
+        criticalFlows: ['Primary application flow'],
+        weakPoints: ['Boundary validation'],
+        plannedChecks: ['Run the deterministic fake test command'],
+        createdAt: t(25),
+      },
+    });
+    yield validatedEvent({
+      schemaVersion: 1,
+      eventId: createHarnessEventId(),
+      agentRunId,
+      timestamp: t(28),
+      type: 'agent.status',
+      status: 'investigating',
+      message: 'Executing the independent investigation plan',
+    });
+    const operationId = createOperationId();
     yield validatedEvent({
       schemaVersion: 1,
       eventId: createHarnessEventId(),
       agentRunId,
       timestamp: t(30),
       type: 'tool.started',
+      operationId,
       tool: { name: 'shell', inputSummary: 'npm test' },
     });
     yield validatedEvent({
@@ -111,8 +152,30 @@ export class FakeHarnessAdapter implements HarnessAdapter {
       agentRunId,
       timestamp: t(40),
       type: 'tool.completed',
+      operationId,
       tool: { name: 'shell', exitCode: 0, durationMs: 120 },
     });
+    yield validatedEvent({
+      schemaVersion: 1,
+      eventId: createHarnessEventId(),
+      agentRunId,
+      timestamp: t(45),
+      type: 'test.result',
+      operationId,
+      suite: 'fake-suite',
+      passed: 1,
+      failed: 0,
+    });
+    if (this.hypothesis !== undefined) {
+      yield validatedEvent({
+        schemaVersion: 1,
+        eventId: createHarnessEventId(),
+        agentRunId,
+        timestamp: t(48),
+        type: 'investigation.hypothesis.discovered',
+        hypothesis: this.hypothesis,
+      });
+    }
     if (
       (this.scenario === 'evidence' ||
         this.scenario === 'finding' ||

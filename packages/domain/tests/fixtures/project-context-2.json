@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "ctx_01K7777777777777777777A8WX",
+  "projectId": "proj_01K7777777777777777777A8W1",
+  "projectRevisionId": "rev_01K7777777777777777777A8WX",
+  "purpose": "Focused retest after the user updated the original project.",
+  "criticalFlows": [],
+  "businessRules": [],
+  "constraints": [],
+  "knownLimitations": [],
+  "outOfScope": [],
+  "detectedStack": {
+    "languages": ["TypeScript"],
+    "frameworks": ["Fastify"],
+    "packageManagers": ["pnpm"],
+    "testFrameworks": ["vitest"],
+    "sources": [{ "kind": "configuration", "relativePath": "package.json" }]
+  },
+  "createdAt": "2026-09-10T19:00:00.000Z"
+}

@@ -6,18 +6,21 @@
 import { z } from 'zod';
 import {
   AgentRunIdSchema,
+  AgentStackIdSchema,
+  ProjectContextSnapshotIdSchema,
   QARunIdSchema,
   SchemaVersionSchema,
   SnapshotIdSchema,
 } from './primitives.js';
-import { AgentRunLimitsSchema, ModelDefinitionSchema } from './agent.schema.js';
+import { ExecutionSafeguardsSchema, ModelDefinitionSchema } from './agent.schema.js';
 import { AGENT_TASK_TYPES } from './enums.js';
 
 export const HarnessWorkspaceSchema = z
   .object({
     runtimePath: z.string().min(1).max(2000),
     snapshotId: SnapshotIdSchema,
-    writable: z.boolean(),
+    writable: z.literal(true),
+    isolated: z.literal(true),
   })
   .strict();
 export type HarnessWorkspace = z.infer<typeof HarnessWorkspaceSchema>;
@@ -38,10 +41,12 @@ export const HarnessRunRequestSchema = z
     schemaVersion: SchemaVersionSchema,
     agentRunId: AgentRunIdSchema,
     qaRunId: QARunIdSchema,
+    agentStackId: AgentStackIdSchema,
+    projectContextSnapshotId: ProjectContextSnapshotIdSchema,
     workspace: HarnessWorkspaceSchema,
     model: ModelDefinitionSchema,
     task: HarnessTaskSchema,
-    limits: AgentRunLimitsSchema.optional(),
+    executionSafeguards: ExecutionSafeguardsSchema.optional(),
   })
   .strict();
 export type HarnessRunRequest = z.infer<typeof HarnessRunRequestSchema>;
