@@ -12,10 +12,7 @@
     "adapterId": "muse-code",
     "expectedProtocolVersion": 1
   },
-  "execution": {
-    "operatingSystem": "any",
-    "supportsLocalExecution": true
-  },
+  "execution": {},
   "policy": {
     "id": "qa-standard",
     "version": 1

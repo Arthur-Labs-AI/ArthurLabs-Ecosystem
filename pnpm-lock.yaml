@@ -59,9 +59,6 @@ importers:
       '@qa/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
-      '@qa/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

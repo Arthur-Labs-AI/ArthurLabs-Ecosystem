@@ -46,6 +46,18 @@ describe('FindingSchema', () => {
         locations: [{ relativePath: 'a.ts', startLine: 9, endLine: 3 }],
       }).success,
     ).toBe(false);
+    expect(
+      FindingSchema.safeParse({
+        ...base,
+        locations: [{ relativePath: 'a.ts', endLine: 3 }],
+      }).success,
+    ).toBe(false);
+    expect(
+      FindingSchema.safeParse({
+        ...base,
+        locations: [{ relativePath: '../a.ts', startLine: 1 }],
+      }).success,
+    ).toBe(false);
   });
   it('rejects unknown top-level categories but accepts other + detail', () => {
     expect(FindingSchema.safeParse({ ...base, category: 'nope' }).success).toBe(false);
@@ -56,5 +68,8 @@ describe('FindingSchema', () => {
       FindingSchema.safeParse({ ...rest, category: 'other', categoryDetail: 'custom area' })
         .success,
     ).toBe(true);
+  });
+  it('rejects unknown top-level fields', () => {
+    expect(FindingSchema.safeParse({ ...base, unexpected: true }).success).toBe(false);
   });
 });

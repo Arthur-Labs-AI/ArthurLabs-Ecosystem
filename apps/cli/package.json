@@ -15,8 +15,7 @@
   "dependencies": {
     "@qa/domain": "workspace:*",
     "@qa/harness-protocol": "workspace:*",
-    "@qa/schemas": "workspace:*",
-    "@qa/shared": "workspace:*"
+    "@qa/schemas": "workspace:*"
   },
   "devDependencies": {
     "typescript": "catalog:",

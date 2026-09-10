@@ -4,7 +4,10 @@ import {
   EvidenceIdSchema,
   FindingIdSchema,
   IsoTimestampSchema,
+  QARunIdSchema,
   SchemaVersionSchema,
+  UnifiedIssueIdSchema,
+  VerificationIdSchema,
 } from './primitives.js';
 import { FINDING_CATEGORIES, FINDING_SEVERITIES, UNIFIED_ISSUE_STATUSES } from './enums.js';
 
@@ -15,12 +18,8 @@ import { FINDING_CATEGORIES, FINDING_SEVERITIES, UNIFIED_ISSUE_STATUSES } from '
 export const UnifiedIssueSchema = z
   .object({
     schemaVersion: SchemaVersionSchema,
-    id: z.string().refine((v) => /^issue_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid UnifiedIssueId',
-    }),
-    qaRunId: z.string().refine((v) => /^run_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid QARunId',
-    }),
+    id: UnifiedIssueIdSchema,
+    qaRunId: QARunIdSchema,
     title: z.string().min(1).max(200),
     category: z.enum(FINDING_CATEGORIES),
     severity: z.enum(FINDING_SEVERITIES),
@@ -28,12 +27,7 @@ export const UnifiedIssueSchema = z
     findingIds: z.array(FindingIdSchema).min(1),
     sourceAgentStackIds: z.array(AgentStackIdSchema).min(1),
     evidenceIds: z.array(EvidenceIdSchema).default([]),
-    verificationId: z
-      .string()
-      .refine((v) => /^verify_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-        message: 'Must be a valid VerificationId',
-      })
-      .optional(),
+    verificationId: VerificationIdSchema.optional(),
     rootCause: z.string().min(1).max(5000).optional(),
     recommendedFix: z.string().min(1).max(5000).optional(),
     createdAt: IsoTimestampSchema,

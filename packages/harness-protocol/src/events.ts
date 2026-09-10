@@ -3,6 +3,7 @@
  * fixtures today and the future NDJSON worker transport.
  */
 import { HarnessEventSchema, type HarnessEvent } from '@qa/schemas';
+import { HarnessProtocolError } from './errors.js';
 
 export function encodeEventsNdjson(events: readonly HarnessEvent[]): string {
   return events.map((e) => JSON.stringify(e)).join('\n') + (events.length > 0 ? '\n' : '');
@@ -18,15 +19,22 @@ export function decodeEventsNdjson(ndjson: string): HarnessEvent[] {
     try {
       raw = JSON.parse(line);
     } catch {
-      throw new Error('Invalid NDJSON on line ' + (i + 1) + ': not JSON');
+      throw new HarnessProtocolError('INVALID_NDJSON', 'Invalid NDJSON on line ' + (i + 1), {
+        line: i + 1,
+      });
     }
     const parsed = HarnessEventSchema.safeParse(raw);
     if (!parsed.success) {
-      throw new Error(
+      throw new HarnessProtocolError(
+        'INVALID_HARNESS_EVENT',
         'Invalid HarnessEvent on line ' +
           (i + 1) +
           ': ' +
-          parsed.error.issues.map((x) => x.path.join('.') + ' ' + x.message).join('; '),
+          parsed.error.issues
+            .slice(0, 5)
+            .map((x) => x.path.join('.') + ' ' + x.message)
+            .join('; '),
+        { line: i + 1 },
       );
     }
     return parsed.data;

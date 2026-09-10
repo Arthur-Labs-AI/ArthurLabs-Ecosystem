@@ -12,6 +12,8 @@ const base = {
   artifactIds: [],
   createdAt: T,
 };
+const { command: _baseCommand, ...baseWithoutCommand } = base;
+void _baseCommand;
 
 describe('EvidenceSchema', () => {
   it('accepts command evidence with nonzero exit', () => {
@@ -20,21 +22,47 @@ describe('EvidenceSchema', () => {
   it('accepts browser evidence', () => {
     expect(
       EvidenceSchema.safeParse({
-        ...base,
+        ...baseWithoutCommand,
         type: 'browser',
-        command: undefined,
         browser: { url: 'https://example.com' },
       }).success,
     ).toBe(true);
   });
   it('accepts static-analysis evidence', () => {
     const v = {
-      ...base,
+      ...baseWithoutCommand,
       type: 'static_analysis',
-      command: undefined,
       staticAnalysis: { tool: 'tsc', message: 'boom' },
     };
     expect(EvidenceSchema.safeParse(v).success).toBe(true);
+  });
+  it('accepts runtime and code-reference evidence', () => {
+    expect(
+      EvidenceSchema.safeParse({
+        ...baseWithoutCommand,
+        type: 'runtime',
+        runtime: { summary: 'Process exited after startup' },
+      }).success,
+    ).toBe(true);
+    expect(
+      EvidenceSchema.safeParse({
+        ...baseWithoutCommand,
+        type: 'code_reference',
+        codeReference: { relativePath: 'src/a.ts', startLine: 4, endLine: 8 },
+      }).success,
+    ).toBe(true);
+  });
+  it('requires meaningful browser, log, and manual details', () => {
+    expect(
+      EvidenceSchema.safeParse({ ...baseWithoutCommand, type: 'browser', browser: {} }).success,
+    ).toBe(false);
+    expect(
+      EvidenceSchema.safeParse({ ...baseWithoutCommand, type: 'log', log: { source: 'app' } })
+        .success,
+    ).toBe(false);
+    expect(
+      EvidenceSchema.safeParse({ ...baseWithoutCommand, type: 'manual', manual: {} }).success,
+    ).toBe(false);
   });
   it('rejects negative duration and bad strength', () => {
     expect(
@@ -48,5 +76,62 @@ describe('EvidenceSchema', () => {
       EvidenceSchema.safeParse({ ...base, command: { command: 'x', exitCode: 3221225477 } })
         .success,
     ).toBe(true);
+  });
+
+  it.each([
+    ['command', 'command'],
+    ['runtime', 'runtime'],
+    ['browser', 'browser'],
+    ['static_analysis', 'staticAnalysis'],
+    ['code_reference', 'codeReference'],
+  ] as const)('requires the %s payload', (type, payloadKey) => {
+    const value = { ...base, type } as Record<string, unknown>;
+    delete value.command;
+    delete value[payloadKey];
+    expect(EvidenceSchema.safeParse(value).success).toBe(false);
+  });
+
+  it('rejects contradictory subtype payloads', () => {
+    expect(
+      EvidenceSchema.safeParse({ ...base, browser: { url: 'https://example.com' } }).success,
+    ).toBe(false);
+  });
+
+  it.each([
+    ['test', 'test', { framework: 'vitest', name: 'auth suite', status: 'passed' }],
+    ['log', 'log', { source: 'app', summary: 'Unhandled rejection' }],
+    ['manual', 'manual', { summary: 'Verified by inspection', author: 'QA reviewer' }],
+  ] as const)('accepts a meaningful %s payload', (type, payloadKey, payload) => {
+    const value: Record<string, unknown> = { ...base, type, [payloadKey]: payload };
+    delete value.command;
+    expect(EvidenceSchema.safeParse(value).success).toBe(true);
+  });
+
+  it.each([{ startLine: 0 }, { startLine: 9, endLine: 3 }, { endLine: 3 }])(
+    'applies shared location rules to static analysis: %j',
+    (location) => {
+      const value = {
+        ...baseWithoutCommand,
+        type: 'static_analysis',
+        staticAnalysis: {
+          tool: 'eslint',
+          message: 'problem',
+          locations: [{ relativePath: 'src/a.ts', ...location }],
+        },
+      };
+      expect(EvidenceSchema.safeParse(value).success).toBe(false);
+    },
+  );
+
+  it.each([
+    { relativePath: 'src/a.ts', startLine: 0 },
+    { relativePath: 'src/a.ts', startLine: 9, endLine: 3 },
+    { relativePath: 'src/a.ts', endLine: 3 },
+    { relativePath: 'C:/src/a.ts' },
+    { relativePath: '/src/a.ts' },
+    { relativePath: '../src/a.ts' },
+  ])('applies shared location rules to code references: %j', (codeReference) => {
+    const value = { ...baseWithoutCommand, type: 'code_reference', codeReference };
+    expect(EvidenceSchema.safeParse(value).success).toBe(false);
   });
 });

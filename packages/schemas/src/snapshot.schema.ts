@@ -5,6 +5,7 @@ import {
   RelativePathSchema,
   SchemaVersionSchema,
   Sha256Schema,
+  SnapshotIdSchema,
   NonNegativeIntSchema,
 } from './primitives.js';
 import { SNAPSHOT_FILE_TYPES } from './enums.js';
@@ -45,9 +46,7 @@ export type SnapshotManifest = z.infer<typeof SnapshotManifestSchema>;
 export const ProjectSnapshotSchema = z
   .object({
     schemaVersion: SchemaVersionSchema,
-    id: z.string().refine((v) => /^snap_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid SnapshotId',
-    }),
+    id: SnapshotIdSchema,
     projectId: ProjectIdSchema,
     createdAt: IsoTimestampSchema,
     sourceState: SnapshotSourceStateSchema.default({}),

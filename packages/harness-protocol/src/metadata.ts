@@ -13,9 +13,9 @@ export const HarnessCapabilitiesSchema = z
     sessionResume: z.boolean(),
     structuredOutput: z.boolean(),
     usageReporting: z.boolean(),
+    extensions: z.record(z.unknown()).optional(),
   })
-  .strict()
-  .catchall(z.unknown());
+  .strict();
 export type HarnessCapabilities = z.infer<typeof HarnessCapabilitiesSchema>;
 
 export const HarnessMetadataSchema = z

@@ -38,6 +38,10 @@ export function parseDomain<T>(schema: z.ZodType<T>, input: unknown, label: stri
   );
 }
 
+/**
+ * Clone an already validated JSON-safe DTO for transport or persistence.
+ * Do not use with arbitrary classes, functions, cyclic values, or BigInt.
+ */
 export function toSerializable<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }

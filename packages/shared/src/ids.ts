@@ -48,6 +48,7 @@ function randomCrockford(length: number): string {
   let out = '';
   for (let i = 0; i < length; i += 1) {
     const b = bytes[i] as number;
+    // 256 is exactly divisible by 32, so this mapping has no modulo bias.
     out += CROCKFORD[b % 32];
   }
   return out;

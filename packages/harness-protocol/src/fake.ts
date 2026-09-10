@@ -5,7 +5,8 @@
  */
 import type { AgentRunId } from '@qa/shared';
 import { createHarnessEventId } from '@qa/shared';
-import type { AgentUsage, Evidence, Finding, HarnessEvent } from '@qa/schemas';
+import { HarnessEventSchema, type AgentUsage, type Evidence, type Finding } from '@qa/schemas';
+import type { HarnessEvent } from '@qa/schemas';
 import type { HarnessAdapter } from './adapter.js';
 import type { HarnessHealthResult, HarnessMetadata } from './metadata.js';
 import type { HarnessRunRequest } from './requests.js';
@@ -24,12 +25,16 @@ function ts(offsetMs: number): string {
   return new Date(Date.now() + offsetMs).toISOString();
 }
 
+function validatedEvent(event: unknown): HarnessEvent {
+  return HarnessEventSchema.parse(event);
+}
+
 export class FakeHarnessAdapter implements HarnessAdapter {
   private readonly scenario: FakeScenario;
   private readonly finding?: Finding | undefined;
   private readonly evidence?: Evidence | undefined;
   private readonly usage: AgentUsage;
-  private cancelled = false;
+  private readonly cancelledRunIds = new Set<AgentRunId>();
   private disposed = false;
 
   constructor(options: FakeAdapterOptions = {}) {
@@ -63,27 +68,27 @@ export class FakeHarnessAdapter implements HarnessAdapter {
   }
 
   async *run(request: HarnessRunRequest): AsyncIterable<HarnessEvent> {
-    const agentRunId = request.agentRunId as AgentRunId;
+    const agentRunId = request.agentRunId;
     const t = (ms: number) => ts(ms) as HarnessEvent['timestamp'];
-    yield {
+    yield validatedEvent({
       schemaVersion: 1,
       eventId: createHarnessEventId(),
       agentRunId,
       timestamp: t(0),
       type: 'run.started',
-    };
-    if (this.cancelled || this.scenario === 'cancellation') {
-      yield {
+    });
+    if (this.cancelledRunIds.has(agentRunId) || this.scenario === 'cancellation') {
+      yield validatedEvent({
         schemaVersion: 1,
         eventId: createHarnessEventId(),
         agentRunId,
         timestamp: t(10),
         type: 'run.cancelled',
         reason: 'Cancelled by fake scenario',
-      };
+      });
       return;
     }
-    yield {
+    yield validatedEvent({
       schemaVersion: 1,
       eventId: createHarnessEventId(),
       agentRunId,
@@ -91,61 +96,61 @@ export class FakeHarnessAdapter implements HarnessAdapter {
       type: 'agent.status',
       status: 'working',
       message: 'Fake analysis running',
-    };
-    yield {
+    });
+    yield validatedEvent({
       schemaVersion: 1,
       eventId: createHarnessEventId(),
       agentRunId,
       timestamp: t(30),
       type: 'tool.started',
       tool: { name: 'shell', inputSummary: 'npm test' },
-    };
-    yield {
+    });
+    yield validatedEvent({
       schemaVersion: 1,
       eventId: createHarnessEventId(),
       agentRunId,
       timestamp: t(40),
       type: 'tool.completed',
       tool: { name: 'shell', exitCode: 0, durationMs: 120 },
-    };
+    });
     if (
       (this.scenario === 'evidence' ||
         this.scenario === 'finding' ||
         this.scenario === 'success') &&
       this.evidence !== undefined
     ) {
-      yield {
+      yield validatedEvent({
         schemaVersion: 1,
         eventId: createHarnessEventId(),
         agentRunId,
         timestamp: t(50),
         type: 'evidence.submitted',
         evidence: this.evidence,
-      };
+      });
     }
     if (
       (this.scenario === 'finding' || this.scenario === 'success') &&
       this.finding !== undefined
     ) {
-      yield {
+      yield validatedEvent({
         schemaVersion: 1,
         eventId: createHarnessEventId(),
         agentRunId,
         timestamp: t(60),
         type: 'finding.submitted',
         finding: this.finding,
-      };
+      });
     }
-    yield {
+    yield validatedEvent({
       schemaVersion: 1,
       eventId: createHarnessEventId(),
       agentRunId,
       timestamp: t(70),
       type: 'usage.updated',
       usage: this.usage,
-    };
+    });
     if (this.scenario === 'failure') {
-      yield {
+      yield validatedEvent({
         schemaVersion: 1,
         eventId: createHarnessEventId(),
         agentRunId,
@@ -156,21 +161,21 @@ export class FakeHarnessAdapter implements HarnessAdapter {
           message: 'Fake harness process exited unexpectedly',
           retryable: true,
         },
-      };
+      });
       return;
     }
-    yield {
+    yield validatedEvent({
       schemaVersion: 1,
       eventId: createHarnessEventId(),
       agentRunId,
       timestamp: t(90),
       type: 'run.completed',
       usage: this.usage,
-    };
+    });
   }
 
-  async cancel(_runId: AgentRunId): Promise<void> {
-    this.cancelled = true;
+  async cancel(runId: AgentRunId): Promise<void> {
+    this.cancelledRunIds.add(runId);
   }
 
   async dispose(): Promise<void> {

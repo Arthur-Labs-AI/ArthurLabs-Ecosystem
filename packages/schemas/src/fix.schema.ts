@@ -3,10 +3,14 @@ import {
   AgentStackIdSchema,
   ArtifactIdSchema,
   EvidenceIdSchema,
+  FixProposalIdSchema,
   IsoTimestampSchema,
+  QARunIdSchema,
   RelativePathSchema,
   SchemaVersionSchema,
   Sha256Schema,
+  SnapshotIdSchema,
+  UnifiedIssueIdSchema,
 } from './primitives.js';
 import { FIX_FILE_OPERATIONS, FIX_PROPOSAL_STATUSES, VALIDATION_CHECK_STATUSES } from './enums.js';
 
@@ -44,18 +48,10 @@ export type FixValidationResult = z.infer<typeof FixValidationResultSchema>;
 export const FixProposalSchema = z
   .object({
     schemaVersion: SchemaVersionSchema,
-    id: z.string().refine((v) => /^fix_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid FixProposalId',
-    }),
-    qaRunId: z.string().refine((v) => /^run_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid QARunId',
-    }),
-    unifiedIssueId: z.string().refine((v) => /^issue_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid UnifiedIssueId',
-    }),
-    sourceSnapshotId: z.string().refine((v) => /^snap_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid SnapshotId',
-    }),
+    id: FixProposalIdSchema,
+    qaRunId: QARunIdSchema,
+    unifiedIssueId: UnifiedIssueIdSchema,
+    sourceSnapshotId: SnapshotIdSchema,
     generatedByAgentStackId: AgentStackIdSchema,
     status: z.enum(FIX_PROPOSAL_STATUSES),
     changedFiles: z.array(FixFileChangeSchema).min(1),

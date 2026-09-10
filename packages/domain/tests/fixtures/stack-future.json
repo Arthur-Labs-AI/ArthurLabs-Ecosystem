@@ -11,9 +11,7 @@
     "adapterId": "future-harness",
     "expectedProtocolVersion": 1
   },
-  "execution": {
-    "operatingSystem": "any"
-  },
+  "execution": {},
   "policy": {
     "id": "qa-standard",
     "version": 1

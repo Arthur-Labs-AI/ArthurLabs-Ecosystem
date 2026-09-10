@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IsoTimestampSchema, ProjectIdSchema } from './primitives.js';
+import { IsoTimestampSchema, ProjectIdSchema, SchemaVersionSchema } from './primitives.js';
 
 export const ProjectMetadataSchema = z
   .object({
@@ -17,6 +17,7 @@ export type ProjectMetadata = z.infer<typeof ProjectMetadataSchema>;
 
 export const ProjectSchema = z
   .object({
+    schemaVersion: SchemaVersionSchema,
     id: ProjectIdSchema,
     name: z.string().min(1).max(200),
     sourcePath: z.string().min(1).max(1000),

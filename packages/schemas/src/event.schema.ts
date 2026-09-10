@@ -7,14 +7,11 @@
 import { z } from 'zod';
 import {
   AgentRunIdSchema,
-  EvidenceIdSchema,
-  FindingIdSchema,
   HarnessEventIdSchema,
   IsoTimestampSchema,
   RelativePathSchema,
   SchemaVersionSchema,
   NonNegativeIntSchema,
-  NonNegativeNumberSchema,
 } from './primitives.js';
 import { FindingSchema } from './finding.schema.js';
 import { EvidenceSchema } from './evidence.schema.js';
@@ -91,18 +88,15 @@ export const TestResultEventSchema = HarnessEventBaseSchema.extend({
 }).strict();
 export const FindingSubmittedEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('finding.submitted'),
-  findingId: FindingIdSchema.optional(),
   finding: FindingSchema,
 }).strict();
 export const EvidenceSubmittedEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('evidence.submitted'),
-  evidenceId: EvidenceIdSchema.optional(),
   evidence: EvidenceSchema,
 }).strict();
 export const UsageUpdatedEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('usage.updated'),
   usage: AgentUsageSchema,
-  estimatedCostUsd: NonNegativeNumberSchema.optional(),
 }).strict();
 export const WarningEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('warning'),

@@ -4,16 +4,19 @@
  * @qa/harness-protocol re-exports them alongside the adapter contract.
  */
 import { z } from 'zod';
-import { AgentRunIdSchema, SchemaVersionSchema } from './primitives.js';
+import {
+  AgentRunIdSchema,
+  QARunIdSchema,
+  SchemaVersionSchema,
+  SnapshotIdSchema,
+} from './primitives.js';
 import { AgentRunLimitsSchema, ModelDefinitionSchema } from './agent.schema.js';
 import { AGENT_TASK_TYPES } from './enums.js';
 
 export const HarnessWorkspaceSchema = z
   .object({
     runtimePath: z.string().min(1).max(2000),
-    snapshotId: z.string().refine((v) => /^snap_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid SnapshotId',
-    }),
+    snapshotId: SnapshotIdSchema,
     writable: z.boolean(),
   })
   .strict();
@@ -34,9 +37,7 @@ export const HarnessRunRequestSchema = z
   .object({
     schemaVersion: SchemaVersionSchema,
     agentRunId: AgentRunIdSchema,
-    qaRunId: z.string().refine((v) => /^run_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid QARunId',
-    }),
+    qaRunId: QARunIdSchema,
     workspace: HarnessWorkspaceSchema,
     model: ModelDefinitionSchema,
     task: HarnessTaskSchema,

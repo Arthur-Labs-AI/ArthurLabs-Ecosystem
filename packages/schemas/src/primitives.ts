@@ -26,8 +26,10 @@ export const IsoTimestampSchema = z.string().refine(isIsoTimestamp, {
   message: 'Must be an ISO 8601 UTC timestamp (YYYY-MM-DDTHH:mm:ss.sssZ)',
 });
 
-function idSchema(guard: (v: unknown) => boolean, label: string) {
-  return z.string().refine(guard, { message: 'Must be a valid ' + label });
+function idSchema<Id extends string>(guard: (value: unknown) => value is Id, label: string) {
+  return z.string().refine((value): value is Id => guard(value), {
+    message: 'Must be a valid ' + label,
+  });
 }
 
 export const ProjectIdSchema = idSchema(isProjectId, 'ProjectId (proj_...)');

@@ -4,7 +4,9 @@ import {
   AgentStackIdSchema,
   IsoTimestampSchema,
   ProjectIdSchema,
+  QARunIdSchema,
   SchemaVersionSchema,
+  SnapshotIdSchema,
   NonNegativeIntSchema,
   NonNegativeNumberSchema,
 } from './primitives.js';
@@ -36,24 +38,34 @@ export type QARunConfiguration = z.infer<typeof QARunConfigurationSchema>;
 
 export const QARunSummarySchema = z
   .object({
-    totalFindings: NonNegativeIntSchema.optional(),
-    totalIssues: NonNegativeIntSchema.optional(),
-    verifiedCount: NonNegativeIntSchema.optional(),
+    agentRuns: z
+      .object({
+        configured: NonNegativeIntSchema,
+        completed: NonNegativeIntSchema,
+        failed: NonNegativeIntSchema,
+      })
+      .strict(),
+    findings: z.object({ total: NonNegativeIntSchema }).strict(),
+    issues: z
+      .object({
+        critical: NonNegativeIntSchema,
+        high: NonNegativeIntSchema,
+        medium: NonNegativeIntSchema,
+        low: NonNegativeIntSchema,
+        info: NonNegativeIntSchema,
+      })
+      .strict()
+      .optional(),
   })
-  .strict()
-  .catchall(z.unknown());
+  .strict();
 export type QARunSummary = z.infer<typeof QARunSummarySchema>;
 
 export const QARunSchema = z
   .object({
     schemaVersion: SchemaVersionSchema,
-    id: z.string().refine((v) => /^run_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid QARunId',
-    }),
+    id: QARunIdSchema,
     projectId: ProjectIdSchema,
-    snapshotId: z.string().refine((v) => /^snap_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid SnapshotId',
-    }),
+    snapshotId: SnapshotIdSchema,
     mode: z.enum(QARUN_MODES),
     status: z.enum(QARUN_STATUSES),
     configuration: QARunConfigurationSchema,
@@ -89,10 +101,9 @@ export type AgentRunFailure = z.infer<typeof AgentRunFailureSchema>;
 
 export const AgentRunSchema = z
   .object({
+    schemaVersion: SchemaVersionSchema,
     id: AgentRunIdSchema,
-    qaRunId: z.string().refine((v) => /^run_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid QARunId',
-    }),
+    qaRunId: QARunIdSchema,
     agentStackId: AgentStackIdSchema,
     taskType: z.enum(AGENT_TASK_TYPES),
     status: z.enum(AGENT_RUN_STATUSES),

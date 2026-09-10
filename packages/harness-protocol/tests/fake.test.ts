@@ -7,7 +7,12 @@ import {
   HarnessEventSchema,
   HarnessRunRequestSchema,
 } from '@qa/schemas';
-import { collectEvents, eventTypes, FakeHarnessAdapter } from '../src/index.js';
+import {
+  collectEvents,
+  eventTypes,
+  FakeHarnessAdapter,
+  validateHarnessEventSequence,
+} from '../src/index.js';
 
 const request = HarnessRunRequestSchema.parse({
   schemaVersion: 1,
@@ -42,6 +47,10 @@ describe('FakeHarnessAdapter', () => {
     expect(eventTypes(events)[0]).toBe('run.started');
     expect(eventTypes(events).at(-1)).toBe('run.completed');
     for (const e of events) expect(HarnessEventSchema.safeParse(e).success).toBe(true);
+    validateHarnessEventSequence(events, {
+      agentRunId: request.agentRunId,
+      qaRunId: request.qaRunId,
+    });
   });
   it('finding scenario submits the finding; evidence scenario submits evidence', async () => {
     const f = await collectEvents(
@@ -60,5 +69,19 @@ describe('FakeHarnessAdapter', () => {
     await fake.cancel(request.agentRunId);
     const cancelled = await collectEvents(fake.run(request));
     expect(eventTypes(cancelled).at(-1)).toBe('run.cancelled');
+    for (const events of [fail, cancelled]) {
+      for (const event of events) expect(HarnessEventSchema.safeParse(event).success).toBe(true);
+      validateHarnessEventSequence(events);
+    }
+  });
+  it('cancels only the requested AgentRun when an adapter instance is reused', async () => {
+    const fake = new FakeHarnessAdapter();
+    await fake.cancel(request.agentRunId);
+    const otherRequest = HarnessRunRequestSchema.parse({
+      ...request,
+      agentRunId: 'arun_01K7777777777777777777A8W5',
+    });
+    expect(eventTypes(await collectEvents(fake.run(request))).at(-1)).toBe('run.cancelled');
+    expect(eventTypes(await collectEvents(fake.run(otherRequest))).at(-1)).toBe('run.completed');
   });
 });

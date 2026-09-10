@@ -17,8 +17,9 @@ no `if (model === 'muse')` anywhere; vendor specifics belong in future adapters.
 - **GLM QA Agent** = GLM-5.3-Flash (`provider: zai`) + Claude Code
   (`adapterId: claude-code`) — `stack_glm_main`
 
-Each fixture carries `policy: qa-standard v1`, `execution: { operatingSystem: any }`,
-and protocol v1 expectations.
+Each fixture carries `policy: qa-standard v1`, `execution: {}`, and protocol v1
+expectations. Execution capabilities remain unknown until a real Phase 2 adapter
+can prove them; Phase 1 does not claim local or OS support.
 
 ## Stable identity vs replaceable model
 
@@ -35,6 +36,13 @@ open strings (shape-validated, never enumerated).
 through the unchanged `AgentStackDefinitionSchema`, and the agent-stack test pins
 this: unknown future providers and adapter IDs are accepted; hard-coded model
 unions are forbidden by design and by test.
+
+## Identity policy
+
+Runtime-generated entities use opaque, sortable ULID-shaped IDs. Agent Stack IDs
+are configuration keys, so validated stable human-authored forms such as
+`stack_muse_main` are deliberately allowed. This exception applies only to
+AgentStack IDs; it does not loosen any runtime entity ID schema.
 
 ## Traceability
 

@@ -1,6 +1,6 @@
-# QA Platform (Phase 1 — Foundation)
+# Sentry
 
-A local-first, modular, multi-agent AI software QA platform. A user selects a
+Local-first, modular, multi-agent AI software QA platform. A user selects a
 normal software project folder and independent AI QA agents analyze it:
 source inspection, builds, tests, architecture, APIs, frontend behavior,
 databases, configuration, evidence collection, fix proposals, verification,
@@ -12,16 +12,16 @@ Phase 1 is the **stable domain, schemas, contracts, protocol, repository
 structure, and testing foundation** only:
 
 - pnpm workspaces + Turborepo monorepo with strict TypeScript, ESLint, Prettier;
-- `@qa/shared`: opaque branded IDs (`proj_…`, `run_…`, `find_…`), ISO 8601 UTC timestamps;
+- `@qa/shared`: opaque branded IDs (`proj_…`, `run_…`, `find_…`) and calendar-valid ISO 8601 UTC timestamps;
 - `@qa/schemas`: Zod source of truth for every boundary DTO (project, snapshot,
   agent stacks, runs, findings, evidence, issues, verification, fixes, CI/CD,
-  artifacts, usage, harness events) with strict `schemaVersion: 1`;
+  artifacts, usage, harness events) with strict `schemaVersion: 1`, centralized IDs and source locations;
 - `@qa/domain`: error taxonomy, pure state-transition helpers, stack fixtures,
   parse/serialization boundary, contract fixtures;
 - `@qa/harness-protocol`: `HarnessAdapter` semantic contract, metadata,
-  capabilities, health, run requests, NDJSON event helpers, `FakeHarnessAdapter`;
+  capabilities, health, run requests, safe NDJSON/event-sequence validation, `FakeHarnessAdapter`;
 - `qa` CLI shell (`--version`, `doctor`);
-- 71 tests, golden NDJSON streams, docs, ADRs, and repo CI.
+- contract and lifecycle tests, golden NDJSON streams, docs, ADRs, and repo CI.
 
 ## What is NOT implemented yet
 
@@ -42,8 +42,8 @@ packages/harness-protocol# adapter contract, fake adapter, NDJSON helpers
 packages/domain/tests/fixtures          # contract fixtures + relationship graph
 packages/harness-protocol/tests/fixtures/harness  # golden NDJSON event streams
 docs/architecture        # domain-model, agent-stack, harness-protocol, phase-1
-docs/adr                 # 0001–0004
-.github/workflows/ci.yml# install → lint → typecheck → test → build
+docs/adr                 # 0001–0005
+.github/workflows/ci.yml# install → format:check → lint → typecheck → test → build
 ```
 
 ## Development commands
@@ -75,6 +75,11 @@ Requirements + QA Policy + Limits`. No `if (model === 'muse')` branching exists
   FixProposal (proposed modification).
 - **References, not embedding**: issues hold `findingIds`, not `Finding[]`;
   large outputs are `ArtifactId` references, never inline blobs.
+- **Evidence is discriminated**: every evidence `type` requires exactly its matching
+  strict payload; contradictory subtype payloads are rejected.
+- **Protocol identity is singular**: submitted Finding/Evidence IDs come only from
+  the embedded DTO, usage cost comes only from `AgentUsage`, and collected streams
+  enforce one AgentRun plus one final terminal event.
 - **Zod at boundaries**: untrusted JSON is validated once, then trusted internally.
 
 ## Initial Agent Stacks (configuration fixtures)

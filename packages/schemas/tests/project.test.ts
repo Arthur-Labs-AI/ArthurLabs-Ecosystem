@@ -3,6 +3,7 @@ import { ProjectSchema } from '../src/index.js';
 
 const T = '2026-09-09T19:00:00.000Z';
 const base = {
+  schemaVersion: 1,
   id: 'proj_01K7777777777777777777A8W1',
   name: 'Example',
   sourcePath: 'D:/Projects/AutoPulse',

@@ -1,5 +1,13 @@
 import { z } from 'zod';
-import { IsoTimestampSchema, ProjectIdSchema, RelativePathSchema } from './primitives.js';
+import {
+  ArtifactIdSchema,
+  CICDPlanIdSchema,
+  IsoTimestampSchema,
+  ProjectIdSchema,
+  RelativePathSchema,
+  SchemaVersionSchema,
+  SnapshotIdSchema,
+} from './primitives.js';
 import {
   CICD_PROVIDERS,
   CICD_RECOMMENDATION_CATEGORIES,
@@ -21,7 +29,7 @@ export const CICDFileProposalSchema = z
   .object({
     relativePath: RelativePathSchema,
     mode: z.enum(['create', 'overwrite', 'patch']),
-    contentArtifactId: z.string().min(1).max(200).optional(),
+    contentArtifactId: ArtifactIdSchema.optional(),
     summary: z.string().min(1).max(2000).optional(),
   })
   .strict();
@@ -29,14 +37,10 @@ export type CICDFileProposal = z.infer<typeof CICDFileProposalSchema>;
 
 export const CICDPlanSchema = z
   .object({
-    schemaVersion: z.literal(1),
-    id: z.string().refine((v) => /^cicd_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid CICDPlanId',
-    }),
+    schemaVersion: SchemaVersionSchema,
+    id: CICDPlanIdSchema,
     projectId: ProjectIdSchema,
-    snapshotId: z.string().refine((v) => /^snap_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid SnapshotId',
-    }),
+    snapshotId: SnapshotIdSchema,
     provider: z.enum(CICD_PROVIDERS),
     mode: z.enum(['create', 'improve']),
     detectedExistingConfiguration: z.boolean(),

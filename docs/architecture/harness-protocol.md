@@ -35,7 +35,9 @@ interface HarnessAdapter {
 - **Events**: versioned discriminated union on `type` (16 variants: run.started …
   finding/evidence.submitted … run.completed/failed/cancelled). Every event carries
   schemaVersion, eventId, agentRunId, ISO UTC timestamp. Finding/evidence events
-  embed validated Finding/Evidence payloads.
+  embed validated Finding/Evidence payloads. Their embedded IDs are authoritative;
+  there is no redundant event-level findingId or evidenceId. Usage cost exists only
+  inside AgentUsage.
 - **Failures**: structured `{ code, message, retryable }` (e.g.
   `HARNESS_PROCESS_CRASHED`, retryable).
 - **Versioning**: protocol v1 independent of per-entity `schemaVersion`; strict
@@ -48,6 +50,17 @@ Production workers will stream one JSON object per line over stdio/sockets.
 implement that framing; golden fixtures in
 `packages/harness-protocol/tests/fixtures/harness/` pin the wire shape
 (`sample-success.ndjson`, `sample-failure.ndjson`, `sample-cancelled.ndjson`).
+Malformed framing and events raise bounded `HarnessProtocolError` values with a
+stable code and location, without echoing full raw payloads.
+
+## Collected stream integrity
+
+Individual Zod event validation and collected-stream validation are separate.
+`validateHarnessEventSequence` enforces exactly one `run.started` first, one
+terminal event (`run.completed`, `run.failed`, or `run.cancelled`) last, no events
+after termination, and one shared AgentRun ID. It also checks that embedded
+Finding/Evidence AgentRun IDs match their event and can validate embedded QARun IDs
+against the originating request. Short started→terminal streams remain valid.
 
 ## Complete example event stream
 
@@ -74,5 +87,6 @@ evidence.submitted → finding.submitted → usage.updated → run.completed
 ## Fake adapter
 
 `FakeHarnessAdapter` implements the contract deterministically without AI
-(scenarios: success, failure, cancellation, finding, evidence) and is the
+(scenarios: success, failure, cancellation, finding, evidence), validates every
+event before yielding it, and tracks cancellation per AgentRun ID. It is the
 primary Phase 2 development double.

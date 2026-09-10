@@ -1,4 +1,5 @@
 export * from './primitives.js';
+export * from './code-location.schema.js';
 export * from './enums.js';
 export * from './project.schema.js';
 export * from './snapshot.schema.js';

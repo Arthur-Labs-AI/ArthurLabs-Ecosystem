@@ -4,8 +4,9 @@ Status: accepted
 
 ## Context
 
-Snapshots, runs, findings, evidence, issues, verification, fixes, run requests,
-and harness events persist or cross process boundaries. Structures will evolve.
+Projects, snapshots, runs, findings, evidence, issues, verification, fixes,
+artifacts, CI/CD plans, run requests, and harness events persist or cross process
+boundaries. Structures will evolve.
 
 ## Decision
 
@@ -14,6 +15,9 @@ version (`HARNESS_PROTOCOL_VERSION = 1`) is tracked independently. Phase 1
 validates strictly (unknown versions rejected). Future changes add a new version
 with an explicit migration (`migrateV1ToV2`) and dual-version acceptance tests;
 never silent coercion, never in-place reinterpretation.
+
+Project and AgentRun are included deliberately: both become persisted records in
+the local-first model, even though the persistence adapter itself is deferred.
 
 ## Consequences
 

@@ -4,11 +4,13 @@ import {
   ArtifactIdSchema,
   EvidenceIdSchema,
   IsoTimestampSchema,
+  QARunIdSchema,
   RelativePathSchema,
   SchemaVersionSchema,
   NonNegativeIntSchema,
 } from './primitives.js';
-import { EVIDENCE_STRENGTHS, EVIDENCE_TYPES } from './enums.js';
+import { EVIDENCE_STRENGTHS } from './enums.js';
+import { CodeLocationSchema, extendCodeLocationSchema } from './code-location.schema.js';
 
 export const CommandEvidenceSchema = z
   .object({
@@ -43,7 +45,16 @@ export const BrowserEvidenceSchema = z
     consoleArtifactId: ArtifactIdSchema.optional(),
     networkArtifactId: ArtifactIdSchema.optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (evidence) =>
+      evidence.url !== undefined ||
+      evidence.actionSummary !== undefined ||
+      evidence.screenshotArtifactId !== undefined ||
+      evidence.consoleArtifactId !== undefined ||
+      evidence.networkArtifactId !== undefined,
+    { message: 'Browser evidence needs a URL, summary, or artifact reference' },
+  );
 export type BrowserEvidence = z.infer<typeof BrowserEvidenceSchema>;
 
 export const StaticAnalysisEvidenceSchema = z
@@ -51,51 +62,83 @@ export const StaticAnalysisEvidenceSchema = z
     tool: z.string().min(1).max(100),
     ruleId: z.string().min(1).max(200).optional(),
     message: z.string().min(1).max(5000),
-    locations: z
-      .array(
-        z
-          .object({
-            relativePath: RelativePathSchema,
-            startLine: z.number().int().min(1).optional(),
-            endLine: z.number().int().min(1).optional(),
-            symbol: z.string().min(1).max(300).optional(),
-            message: z.string().min(1).max(2000).optional(),
-          })
-          .strict(),
-      )
-      .optional(),
+    locations: z.array(CodeLocationSchema).optional(),
   })
   .strict();
 export type StaticAnalysisEvidence = z.infer<typeof StaticAnalysisEvidenceSchema>;
 
-export const CodeReferenceEvidenceSchema = z
-  .object({
-    relativePath: RelativePathSchema,
-    startLine: z.number().int().min(1).optional(),
-    endLine: z.number().int().min(1).optional(),
-    excerptArtifactId: ArtifactIdSchema.optional(),
-  })
-  .strict();
+export const CodeReferenceEvidenceSchema = extendCodeLocationSchema({
+  excerptArtifactId: ArtifactIdSchema.optional(),
+});
 export type CodeReferenceEvidence = z.infer<typeof CodeReferenceEvidenceSchema>;
 
-export const EvidenceSchema = z
+export const TestEvidenceSchema = z
+  .object({
+    framework: z.string().min(1).max(100),
+    name: z.string().min(1).max(500),
+    status: z.enum(['passed', 'failed']),
+    artifactId: ArtifactIdSchema.optional(),
+    summary: z.string().min(1).max(5000).optional(),
+  })
+  .strict();
+export type TestEvidence = z.infer<typeof TestEvidenceSchema>;
+
+export const LogEvidenceSchema = z
+  .object({
+    source: z.string().min(1).max(200),
+    summary: z.string().min(1).max(5000).optional(),
+    artifactId: ArtifactIdSchema.optional(),
+  })
+  .strict()
+  .refine((evidence) => evidence.summary !== undefined || evidence.artifactId !== undefined, {
+    message: 'Log evidence needs a summary or an artifact reference',
+  });
+export type LogEvidence = z.infer<typeof LogEvidenceSchema>;
+
+export const ManualEvidenceSchema = z
+  .object({
+    summary: z.string().min(1).max(5000),
+    author: z.string().min(1).max(200).optional(),
+  })
+  .strict();
+export type ManualEvidence = z.infer<typeof ManualEvidenceSchema>;
+
+export const BaseEvidenceSchema = z
   .object({
     schemaVersion: SchemaVersionSchema,
     id: EvidenceIdSchema,
-    qaRunId: z.string().refine((v) => /^run_[0-9A-HJKMNP-TV-Z]{26}$/.test(v), {
-      message: 'Must be a valid QARunId',
-    }),
+    qaRunId: QARunIdSchema,
     agentRunId: AgentRunIdSchema.optional(),
-    type: z.enum(EVIDENCE_TYPES),
     strength: z.enum(EVIDENCE_STRENGTHS),
     description: z.string().min(1).max(5000).optional(),
-    command: CommandEvidenceSchema.optional(),
-    runtime: RuntimeEvidenceSchema.optional(),
-    browser: BrowserEvidenceSchema.optional(),
-    staticAnalysis: StaticAnalysisEvidenceSchema.optional(),
-    codeReference: CodeReferenceEvidenceSchema.optional(),
     artifactIds: z.array(ArtifactIdSchema).default([]),
     createdAt: IsoTimestampSchema,
   })
   .strict();
+
+export const EvidenceSchema = z.discriminatedUnion('type', [
+  BaseEvidenceSchema.extend({
+    type: z.literal('command'),
+    command: CommandEvidenceSchema,
+  }).strict(),
+  BaseEvidenceSchema.extend({
+    type: z.literal('runtime'),
+    runtime: RuntimeEvidenceSchema,
+  }).strict(),
+  BaseEvidenceSchema.extend({
+    type: z.literal('browser'),
+    browser: BrowserEvidenceSchema,
+  }).strict(),
+  BaseEvidenceSchema.extend({
+    type: z.literal('static_analysis'),
+    staticAnalysis: StaticAnalysisEvidenceSchema,
+  }).strict(),
+  BaseEvidenceSchema.extend({
+    type: z.literal('code_reference'),
+    codeReference: CodeReferenceEvidenceSchema,
+  }).strict(),
+  BaseEvidenceSchema.extend({ type: z.literal('test'), test: TestEvidenceSchema }).strict(),
+  BaseEvidenceSchema.extend({ type: z.literal('log'), log: LogEvidenceSchema }).strict(),
+  BaseEvidenceSchema.extend({ type: z.literal('manual'), manual: ManualEvidenceSchema }).strict(),
+]);
 export type Evidence = z.infer<typeof EvidenceSchema>;
