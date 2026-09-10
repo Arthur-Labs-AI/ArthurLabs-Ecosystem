@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import {
+  ArtifactIdSchema,
   IsoTimestampSchema,
+  NonNegativeSafeIntSchema,
   ProjectIdSchema,
   ProjectRevisionIdSchema,
   RelativePathSchema,
@@ -37,12 +39,17 @@ export const SnapshotFileEntrySchema = z
   .strict();
 export type SnapshotFileEntry = z.infer<typeof SnapshotFileEntrySchema>;
 
-export const SnapshotManifestSchema = z
+export const SnapshotManifestSummarySchema = z
   .object({
-    entries: z.array(SnapshotFileEntrySchema).default([]),
+    entryCount: NonNegativeSafeIntSchema,
+    fileCount: NonNegativeSafeIntSchema,
+    directoryCount: NonNegativeSafeIntSchema,
+    symlinkCount: NonNegativeSafeIntSchema,
+    totalBytes: NonNegativeSafeIntSchema,
+    artifactId: ArtifactIdSchema,
   })
   .strict();
-export type SnapshotManifest = z.infer<typeof SnapshotManifestSchema>;
+export type SnapshotManifestSummary = z.infer<typeof SnapshotManifestSummarySchema>;
 
 export const ProjectSnapshotSchema = z
   .object({
@@ -52,7 +59,7 @@ export const ProjectSnapshotSchema = z
     projectRevisionId: ProjectRevisionIdSchema,
     createdAt: IsoTimestampSchema,
     sourceState: SnapshotSourceStateSchema.default({}),
-    manifest: SnapshotManifestSchema.default({ entries: [] }),
+    manifest: SnapshotManifestSummarySchema,
     contentHash: Sha256Schema,
   })
   .strict();

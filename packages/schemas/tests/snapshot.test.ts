@@ -11,7 +11,12 @@ const base = {
   createdAt: T,
   sourceState: {},
   manifest: {
-    entries: [{ relativePath: 'src/index.ts', sha256: SHA, sizeBytes: 10, type: 'file' }],
+    entryCount: 1,
+    fileCount: 1,
+    directoryCount: 0,
+    symlinkCount: 0,
+    totalBytes: 10,
+    artifactId: 'artifact_01K7777777777777777777A8WE',
   },
   contentHash: SHA,
 };
@@ -20,10 +25,10 @@ describe('ProjectSnapshotSchema', () => {
   it('accepts a valid snapshot', () => {
     expect(ProjectSnapshotSchema.safeParse(base).success).toBe(true);
   });
-  it('rejects negative file size', () => {
+  it('rejects negative manifest totals', () => {
     const bad = {
       ...base,
-      manifest: { entries: [{ relativePath: 'a.ts', sha256: SHA, sizeBytes: -1, type: 'file' }] },
+      manifest: { ...base.manifest, totalBytes: -1 },
     };
     expect(ProjectSnapshotSchema.safeParse(bad).success).toBe(false);
   });
@@ -31,23 +36,11 @@ describe('ProjectSnapshotSchema', () => {
     const bad = { ...base, contentHash: 'zzz' };
     expect(ProjectSnapshotSchema.safeParse(bad).success).toBe(false);
   });
-  it('rejects absolute file paths', () => {
-    for (const p of ['C:/x.ts', '/home/x.ts']) {
-      const bad = {
-        ...base,
-        manifest: { entries: [{ relativePath: p, sha256: SHA, sizeBytes: 1, type: 'file' }] },
-      };
-      expect(ProjectSnapshotSchema.safeParse(bad).success).toBe(false);
-    }
-  });
-  it('accepts all file types', () => {
-    for (const t of ['file', 'directory', 'symlink'] as const) {
-      const v = {
-        ...base,
-        manifest: { entries: [{ relativePath: 'a', sha256: SHA, sizeBytes: 0, type: t }] },
-      };
-      expect(ProjectSnapshotSchema.safeParse(v).success).toBe(true);
-    }
+  it('rejects an inline unbounded entries array', () => {
+    expect(
+      ProjectSnapshotSchema.safeParse({ ...base, manifest: { ...base.manifest, entries: [] } })
+        .success,
+    ).toBe(false);
   });
   it('round-trips through JSON', () => {
     const s = ProjectSnapshotSchema.parse(base);

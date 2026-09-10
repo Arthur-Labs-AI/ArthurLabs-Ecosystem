@@ -15,6 +15,18 @@
     },
     {
       "path": "../../packages/harness-protocol"
+    },
+    {
+      "path": "../../packages/persistence"
+    },
+    {
+      "path": "../../packages/project-manager"
+    },
+    {
+      "path": "../../packages/run-engine"
+    },
+    {
+      "path": "../../packages/shared"
     }
   ]
 }

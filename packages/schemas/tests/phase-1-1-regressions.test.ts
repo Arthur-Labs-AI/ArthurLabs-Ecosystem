@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AGENT_RUN_STATUSES,
   AGENT_TASK_TYPES,
+  AgentRunSchema,
   AgentStackDefinitionSchema,
   AgentUsageSchema,
   EvidenceSchema,
@@ -56,7 +57,14 @@ describe('Phase 1.1 contract corrections', () => {
       projectId: 'proj_01K7777777777777777777A8W1',
       createdAt: T,
       sourceState: {},
-      manifest: { entries: [] },
+      manifest: {
+        entryCount: 0,
+        fileCount: 0,
+        directoryCount: 0,
+        symlinkCount: 0,
+        totalBytes: 0,
+        artifactId: 'artifact_01K7777777777777777777A8WE',
+      },
       contentHash: SHA,
     };
     expect(ProjectSnapshotSchema.safeParse(snapshot).success).toBe(false);
@@ -64,6 +72,28 @@ describe('Phase 1.1 contract corrections', () => {
       ProjectSnapshotSchema.safeParse({
         ...snapshot,
         projectRevisionId: 'rev_01K7777777777777777777A8W9',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('requires structured failure details for timed-out agent runs', () => {
+    const run = {
+      schemaVersion: 1,
+      id: 'arun_01K7777777777777777777A8W4',
+      qaRunId: 'run_01K7777777777777777777A8W3',
+      agentStackId: 'stack_muse_main',
+      taskType: 'qa',
+      status: 'timed_out',
+    };
+    expect(AgentRunSchema.safeParse(run).success).toBe(false);
+    expect(
+      AgentRunSchema.safeParse({
+        ...run,
+        failure: {
+          code: 'RUN_TIMEOUT',
+          message: 'Agent exceeded configured run timeout.',
+          retryable: true,
+        },
       }).success,
     ).toBe(true);
   });

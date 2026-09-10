@@ -11,7 +11,14 @@ describe('schema versioning (strict Phase 1)', () => {
       projectRevisionId: 'rev_01K7777777777777777777A8W9',
       createdAt: '2026-09-09T19:00:00.000Z',
       sourceState: {},
-      manifest: { entries: [] },
+      manifest: {
+        entryCount: 0,
+        fileCount: 0,
+        directoryCount: 0,
+        symlinkCount: 0,
+        totalBytes: 0,
+        artifactId: 'artifact_01K7777777777777777777A8WE',
+      },
       contentHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     };
     expect(ProjectSnapshotSchema.safeParse(snap).success).toBe(false);

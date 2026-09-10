@@ -10,10 +10,9 @@ Full QA is broad; Retest follows an earlier issue onto the current revision.
 Evidence-first reporting preserves disagreement, token usage, and complete
 observable run history until the user explicitly deletes it.
 
-## What Phase 1 + Phase 1.1 implement
+## What Phase 2 implements
 
-The repository implements the **contracted architecture**, not the execution
-runtime:
+The repository now implements the first real local runtime foundation:
 
 - pnpm workspaces + Turborepo monorepo with strict TypeScript, ESLint, Prettier;
 - `@qa/shared`: centralized opaque branded IDs and calendar-valid ISO UTC timestamps;
@@ -25,32 +24,44 @@ runtime:
 - `@qa/harness-protocol`: `HarnessAdapter` semantic contract, metadata,
   private single-agent requests, correlated operations, safe NDJSON/sequence
   validation, investigation events, and `FakeHarnessAdapter`;
-- `qa` CLI shell (`--version`, `doctor`);
-- contract and lifecycle tests, golden NDJSON streams, docs, ADRs, and repo CI.
+- `@qa/persistence`: centralized data root, migrated SQLite repositories,
+  filesystem artifacts, deterministic traversal, streamed/bounded copies;
+- `@qa/project-manager`: full import, recoverable update, locks, integrity checks,
+  storage preflight, progress, cancellation, deletion, and update recovery;
+- `@qa/snapshot-engine`: deterministic hashes and streamed NDJSON manifests;
+- `@qa/context-builder`: factual context plus progressive material indexes;
+- `@qa/workspace-factory`: reflink-first isolated writable copies without hardlinks;
+- `@qa/run-engine`: independent fake workers, incremental events, activity tree,
+  failure isolation, timeouts, recovery, cleanup, and log/JSON exports;
+- `qa` CLI project lifecycle and simulated-run commands;
+- unit, filesystem, SQLite, integration, recovery, and fake end-to-end tests.
 
 ## What is not implemented yet
 
 - Muse 1.3 Contributor integration: **NOT IMPLEMENTED YET**
 - DeepSeek V4 Flash integration: **NOT IMPLEMENTED YET**
 - GLM-5.3-Flash integration: **NOT IMPLEMENTED YET**
-- No real folder import/copy/update engine, hashing pipeline, snapshot builder,
-  context builder, run coordinator, activity store/projector, log/JSON exporter,
-  or crash recovery.
-- No real AI calls, Git worktrees, Docker, Playwright, SQLite, Electron, REST,
+- No real AI calls, Git worktrees, Docker, Playwright, Electron, REST,
   MCP, execution, deduplication, synthesis, verification, or CI/CD generation.
 
 ## Repository layout
 
 ```text
-apps/cli                 # qa binary (Phase 1: --version, doctor)
+apps/cli                 # thin qa project/run CLI
 packages/shared          # IDs, timestamps
 packages/schemas         # Zod source of truth + inferred types
 packages/domain          # errors, transitions, fixtures, parse boundary
 packages/harness-protocol# adapter contract, fake adapter, NDJSON helpers
+packages/persistence     # SQLite, data root, artifacts, filesystem engine
+packages/project-manager # managed project lifecycle
+packages/snapshot-engine # deterministic streamed snapshots
+packages/context-builder # factual context/material index
+packages/workspace-factory # isolated writable agent copies
+packages/run-engine      # fake coordinator, activities, recovery, exports
 packages/domain/tests/fixtures          # contract fixtures + relationship graph
 packages/harness-protocol/tests/fixtures/harness  # golden NDJSON event streams
-docs/architecture        # domain, lifecycle, protocol, Phase 1/1.1 baselines
-docs/adr                 # 0001–0006
+docs/architecture        # domain, lifecycle, protocol, Phase 1/1.1/2 baselines
+docs/adr                 # 0001–0008
 .github/workflows/ci.yml# install → format:check → lint → typecheck → test → build
 ```
 
@@ -92,7 +103,29 @@ Requirements + QA Policy`, with optional operational `ExecutionSafeguards`. No `
   AgentRun and one AgentStack and contains no peer agents, plans, findings, or evidence.
 - **Local trusted product boundary**: local folders only; no Sentry auth, RBAC,
   multitenancy, billing, quotas, cloud import, or project-size cap.
-- **Zod at boundaries**: untrusted JSON is validated once, then trusted internally.
+- **Zod at boundaries**: untrusted transport and persisted JSON are validated;
+  corrupted stored rows fail with an entity-specific error.
+
+## Runtime CLI
+
+```bash
+qa doctor
+qa project add ./sample-project
+qa project list
+qa project show <project-id>
+qa run simulate <project-id> --scenario success
+qa run simulate <project-id> --scenario partial
+qa run list <project-id>
+qa run show <run-id>
+qa run export <run-id> --format log
+qa run export <run-id> --format json
+qa project update <project-id> ./sample-project
+qa project delete <project-id> --yes
+```
+
+All simulated runs print `SIMULATED / FAKE HARNESS RUN`. Set
+`SENTRY_DATA_ROOT` to override the OS data location. See
+`docs/architecture/phase-2.md` for storage, hashing, recovery, and deferred scope.
 
 ## Initial Agent Stacks (configuration fixtures)
 

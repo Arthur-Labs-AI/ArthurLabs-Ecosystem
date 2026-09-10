@@ -14,7 +14,7 @@ export type {
   ManagedProjectCopyState,
   ProjectSnapshot,
   SnapshotSourceState,
-  SnapshotManifest,
+  SnapshotManifestSummary,
   SnapshotFileEntry,
   AgentStackDefinition,
   ModelDefinition,

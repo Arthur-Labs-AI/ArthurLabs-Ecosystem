@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src", "composite": true },
+  "include": ["src"],
+  "references": [
+    { "path": "../shared" },
+    { "path": "../schemas" },
+    { "path": "../domain" },
+    { "path": "../harness-protocol" },
+    { "path": "../persistence" },
+    { "path": "../project-manager" },
+    { "path": "../snapshot-engine" },
+    { "path": "../workspace-factory" }
+  ]
+}

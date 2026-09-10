@@ -59,8 +59,8 @@ event last, and one shared AgentRun across the stream.
 
 A worker process can disappear without emitting a terminal event. Such an
 incomplete raw stream remains invalid; `sample-transport-loss.ndjson` is a golden
-fixture that deliberately fails sequence validation. The future coordinator or
-transport layer—not the protocol validator—must translate that condition into a
+fixture that deliberately fails sequence validation. The Phase 2 coordinator—not
+the protocol validator—translates that condition into a
 structured `AgentRun.interrupted` such as `HARNESS_PROCESS_CRASH`,
 `WORKER_DISCONNECTED`, or `APP_INTERRUPTED`. Previously persisted observable
 events, findings, evidence, and usage remain valid.
@@ -68,8 +68,8 @@ events, findings, evidence, and usage remain valid.
 ## HarnessEvent versus RunActivity
 
 `HarnessEvent` is what one harness emits across the adapter boundary.
-`RunActivity` is normalized Sentry-owned history for the whole workflow. A future
-projector may convert some events into activities, while Sentry directly records
+`RunActivity` is normalized Sentry-owned history for the whole workflow. The
+Phase 2 projector converts events into activities, while Sentry directly records
 copy, snapshot, context, baseline, merger, verification, and report activity.
 Neither the future UI nor human-readable log is the source of truth.
 
@@ -81,5 +81,6 @@ raise bounded errors without echoing raw payloads. Structured failures contain a
 short code, bounded message, and retryable flag.
 
 `FakeHarnessAdapter` is a deterministic no-AI double with success, failure,
-cancellation, finding, and evidence scenarios. Its success flow includes private
-planning, correlated tools, and a test result. It is not an orchestrator.
+cancellation, finding, evidence, transport-loss, and timeout behavior. Its success
+flow includes private planning, correlated tools, and a test result. The Phase 2
+coordinator schedules one adapter/request/workspace per selected AgentRun.

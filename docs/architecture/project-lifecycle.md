@@ -7,7 +7,7 @@ another cloud source, and it never modifies the user's original folder. Sentry
 uses a separately configured `SentryDataRoot`; it must not default to writing
 managed data inside the source project.
 
-Conceptual layout (not implemented in Phase 1.1):
+Implemented Phase 2 layout:
 
 ```text
 SentryDataRoot/
@@ -15,14 +15,16 @@ SentryDataRoot/
     ├── working-copy/                 # current clean managed copy
     ├── revisions/<ProjectRevisionId>/
     └── runs/<QARunId>/
+        ├── snapshot/manifest.ndjson
         ├── activities/
         ├── artifacts/
+        ├── exports/run.log|run.json
         └── agents/<AgentRunId>/workspace/
 ```
 
-The layout is a requirement, not a filesystem API. Paths inside transport DTOs
-remain project-relative; runtime paths in harness requests are opaque local
-execution paths.
+`resolveSentryDataRoot()` owns OS defaults and `SENTRY_DATA_ROOT` overrides.
+Paths inside transport DTOs remain project-relative; runtime paths in harness
+requests are opaque local execution paths.
 
 ## Import, revision, snapshot
 
@@ -31,7 +33,7 @@ original local folder
         │ Import / Update Project Copy
         ▼
 staging copy + validation
-        │ successful atomic replacement
+        │ successful recoverable replacement
         ▼
 ManagedProjectCopy.currentRevisionId
         ▼
@@ -45,10 +47,11 @@ Every successful initial import or update creates a new `ProjectRevision`.
 baseline was derived. Old runs and snapshots never move when the managed copy is
 updated.
 
-Update Project Copy must copy into staging, validate completion, create the new
-revision, atomically make it current, and then regenerate project context. A
-failed update must preserve the previous healthy working copy and history.
-Drift detection between the external folder and managed copy is deferred.
+Update Project Copy copies into revision-named staging, validates content,
+persists a non-current revision and context, preserves the old copy as a backup,
+promotes staging, and then commits `currentRevisionId`. A failed update restores
+the previous healthy working copy and history. Run start hashes the managed copy
+and rejects unexpected baseline changes as `PROJECT_COPY_DRIFT`.
 
 ## Locking and isolation
 
@@ -60,8 +63,8 @@ ready ──► updating ──► ready | error
 error ──► ready
 ```
 
-`locked_for_run` requires `lockedByQARunId`; every other state forbids it. While
-locked, future application code must reject update, replace, delete, and baseline
+`ready` and `locked_for_run` require `currentRevisionId`; only a locked copy has
+`lockedByQARunId`. While locked, application code rejects update, replace, delete, and baseline
 mutation operations. The user may continue editing the original external folder;
 those edits cannot affect the active run.
 
@@ -75,15 +78,16 @@ workspace.
 
 There is no project-size, file-count, token, or inline-content cap in the domain
 contract. `fileCount` and `totalBytes` accept non-negative JSON-safe integers.
-Phase 2 copy, hash, manifest, and artifact implementations must be streaming or
-chunked: they must not load, hash, copy, or serialize a whole project in one
-buffer. Complete import is the default; any future exclusion must be explicit and
-must not silently omit QA-relevant files.
+Phase 2 copy, hash, manifest, and artifact implementations are streaming/chunked.
+File-copy concurrency is bounded, manifests are NDJSON artifacts, and Snapshot
+DTOs contain only counts/bytes plus the ArtifactId. Complete import is the default;
+there are no implicit exclusions. Workspace copies prefer reflinks and fall back
+to physical stream copies; mutable hardlinks are never used.
 
 ## History and deletion
 
 Run activity is append-oriented and retained incrementally so pre-crash events,
 evidence, and findings survive an agent interruption. History has no expiry,
-scheduler, quota cleanup, or automatic retention window. Future deletion actions
-(`Delete Run`, selected runs, project history, or Sentry project) must be explicit
-user operations. Their filesystem/persistence implementation is deferred.
+scheduler, quota cleanup, or automatic retention window. Project deletion is an
+explicit `--yes` operation and deletes only Sentry-managed data. Selected run
+deletion remains deferred.

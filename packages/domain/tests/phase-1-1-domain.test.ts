@@ -40,7 +40,14 @@ const snapshot = ProjectSnapshotSchema.parse({
   projectRevisionId: revision.id,
   createdAt: T1,
   sourceState: {},
-  manifest: { entries: [] },
+  manifest: {
+    entryCount: 0,
+    fileCount: 0,
+    directoryCount: 0,
+    symlinkCount: 0,
+    totalBytes: 0,
+    artifactId: 'artifact_01K7777777777777777777A8WE',
+  },
   contentHash: SHA,
 });
 const context = ProjectContextSnapshotSchema.parse({
@@ -188,11 +195,27 @@ describe('Phase 1.1 domain invariants', () => {
   });
 
   it('aggregates partial worker outcomes without treating cancellation as worker failure', () => {
-    expect(aggregateAgentRunOutcome(['completed', 'completed'])).toBe('completed');
-    expect(aggregateAgentRunOutcome(['completed', 'interrupted'])).toBe('partial');
-    expect(aggregateAgentRunOutcome(['completed', 'failed', 'failed'])).toBe('partial');
-    expect(aggregateAgentRunOutcome(['failed', 'timed_out', 'interrupted'])).toBe('failed');
-    expect(() => aggregateAgentRunOutcome(['completed', 'cancelled'])).toThrow(TypeError);
+    expect(
+      aggregateAgentRunOutcome([
+        { status: 'completed', producedUsableOutput: true },
+        { status: 'completed', producedUsableOutput: true },
+      ]),
+    ).toBe('completed');
+    expect(
+      aggregateAgentRunOutcome([
+        { status: 'interrupted', producedUsableOutput: true },
+        { status: 'failed', producedUsableOutput: false },
+      ]),
+    ).toBe('partial');
+    expect(
+      aggregateAgentRunOutcome([
+        { status: 'failed', producedUsableOutput: false },
+        { status: 'timed_out', producedUsableOutput: false },
+      ]),
+    ).toBe('failed');
+    expect(() =>
+      aggregateAgentRunOutcome([{ status: 'cancelled', producedUsableOutput: false }]),
+    ).toThrow(TypeError);
   });
 
   it('derives token/runtime totals while preserving unknown metrics', () => {
@@ -201,7 +224,7 @@ describe('Phase 1.1 domain invariants', () => {
         { inputTokens: 10, outputTokens: 3, turns: 1 },
         { inputTokens: 5, durationMs: 20 },
       ]),
-    ).toEqual({ inputTokens: 15, outputTokens: 3, turns: 1, durationMs: 20 });
+    ).toEqual({ inputTokens: 15, outputTokens: 3, turns: 1, aggregateAgentExecutionMs: 20 });
     expect(aggregateAgentUsage([])).toEqual({});
   });
 });

@@ -14,14 +14,12 @@
     }
   },
   "manifest": {
-    "entries": [
-      {
-        "relativePath": "src/index.ts",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "sizeBytes": 123,
-        "type": "file"
-      }
-    ]
+    "entryCount": 1,
+    "fileCount": 1,
+    "directoryCount": 0,
+    "symlinkCount": 0,
+    "totalBytes": 123,
+    "artifactId": "artifact_01K7777777777777777777A8WE"
   },
   "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 }

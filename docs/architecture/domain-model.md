@@ -25,8 +25,9 @@ value objects reuse strict schemas without unnecessary entity identity.
   `lockedByQARunId`.
 - `ProjectRevision` is one immutable successful import/update: project, source
   path, timestamp, content hash, optional safe-integer stats and source Git state.
-- `ProjectSnapshot` is the exact immutable run-start manifest derived from a
-  revision. It holds only relative file entries and hashes, not project content.
+- `ProjectSnapshot` is the exact immutable run-start identity derived from a
+  revision. Its bounded manifest summary references a streamed NDJSON Artifact;
+  individual lines validate as `SnapshotFileEntry`.
 - `ProjectContextSnapshot` records purpose, architecture, critical flows,
   business rules, constraints, limitations, out-of-scope facts, stack detection,
   and source/user/inference provenance for the same revision.
@@ -42,7 +43,7 @@ not inject a default. Selected stacks are arbitrary N where N ≥ 1.
 ## Independent agent investigation
 
 One `AgentRun` represents one Agent Stack and task. Status includes explicit
-`planning` and terminal `interrupted`; failed/interrupted agents carry bounded
+`planning` and terminal `interrupted`; failed/interrupted/timed-out agents carry bounded
 structured failure details. The request and contracts expose no other agents.
 
 `InitialInvestigationPlan`/`AgentInvestigationPlan` captures the agent's immutable
@@ -75,12 +76,13 @@ Non-Retest modes reject Retest-only fields.
 
 `HarnessEvent` is adapter-bound output for one agent. `RunActivity` is a normalized
 Core-owned activity with optional agent and parent IDs, enabling a major workflow
-graph plus expandable child steps. `RunExportManifest` prepares human `.log` and
-structured `.json` artifacts; it is not an exporter.
+graph plus expandable child steps. `RunExportManifest` references implemented
+human `.log` and structured `.json` artifacts generated from persisted state.
 
 `AgentUsage` stores optional input, output, and cached-input token counts, turns,
-and duration. Monetary data is absent. QARun totals are derived using
-`aggregateAgentUsage`, so there is no conflicting stored total.
+and duration. Monetary data is absent. Aggregate tokens/turns are summed;
+summed worker duration is named `aggregateAgentExecutionMs` and is never confused
+with QARun wall-clock time derived from run timestamps.
 
 ## Cross-entity invariants
 
@@ -88,7 +90,8 @@ Zod validates individual shapes. Pure domain helpers validate relationships:
 snapshot/context ↔ revision/project, run ↔ snapshot, agent ↔ run, plan ↔
 agent/run/snapshot/context, and Retest ↔ earlier run/issue. Pure transition tables
 govern QARun, AgentRun, VerificationAttempt, and ManagedProjectCopy. Worker-outcome
-aggregation distinguishes completed, partial, failed, and whole-run cancellation.
+aggregation uses explicit `producedUsableOutput` and distinguishes completed,
+partial, failed, and whole-run cancellation.
 
 CICDPlan and Artifact remain versioned supporting contracts. Large bytes, diffs,
 logs, screenshots, reports, and patches are referenced by `ArtifactId`, never

@@ -56,9 +56,49 @@ importers:
       '@qa/harness-protocol':
         specifier: workspace:*
         version: link:../../packages/harness-protocol
+      '@qa/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
+      '@qa/project-manager':
+        specifier: workspace:*
+        version: link:../../packages/project-manager
+      '@qa/run-engine':
+        specifier: workspace:*
+        version: link:../../packages/run-engine
       '@qa/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
+      '@qa/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.2
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.5
+      typescript:
+        specifier: 'catalog:'
+        version: 5.6.3
+      typescript-eslint:
+        specifier: 'catalog:'
+        version: 8.70.0(eslint@9.39.5)(typescript@5.6.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.20.2)
+
+  packages/context-builder:
+    dependencies:
+      '@qa/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@qa/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+      '@qa/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -126,6 +166,111 @@ importers:
         specifier: 'catalog:'
         version: 2.1.9(@types/node@22.20.2)
 
+  packages/persistence:
+    dependencies:
+      '@qa/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+      '@qa/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.2
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.5
+      typescript:
+        specifier: 'catalog:'
+        version: 5.6.3
+      typescript-eslint:
+        specifier: 'catalog:'
+        version: 8.70.0(eslint@9.39.5)(typescript@5.6.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.20.2)
+
+  packages/project-manager:
+    dependencies:
+      '@qa/context-builder':
+        specifier: workspace:*
+        version: link:../context-builder
+      '@qa/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@qa/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+      '@qa/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@qa/snapshot-engine':
+        specifier: workspace:*
+        version: link:../snapshot-engine
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.2
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.5
+      typescript:
+        specifier: 'catalog:'
+        version: 5.6.3
+      typescript-eslint:
+        specifier: 'catalog:'
+        version: 8.70.0(eslint@9.39.5)(typescript@5.6.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.20.2)
+
+  packages/run-engine:
+    dependencies:
+      '@qa/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@qa/harness-protocol':
+        specifier: workspace:*
+        version: link:../harness-protocol
+      '@qa/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@qa/project-manager':
+        specifier: workspace:*
+        version: link:../project-manager
+      '@qa/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+      '@qa/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@qa/snapshot-engine':
+        specifier: workspace:*
+        version: link:../snapshot-engine
+      '@qa/workspace-factory':
+        specifier: workspace:*
+        version: link:../workspace-factory
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.2
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.5
+      typescript:
+        specifier: 'catalog:'
+        version: 5.6.3
+      typescript-eslint:
+        specifier: 'catalog:'
+        version: 8.70.0(eslint@9.39.5)(typescript@5.6.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.20.2)
+
   packages/schemas:
     dependencies:
       '@qa/shared':
@@ -150,6 +295,62 @@ importers:
 
   packages/shared:
     devDependencies:
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.5
+      typescript:
+        specifier: 'catalog:'
+        version: 5.6.3
+      typescript-eslint:
+        specifier: 'catalog:'
+        version: 8.70.0(eslint@9.39.5)(typescript@5.6.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.20.2)
+
+  packages/snapshot-engine:
+    dependencies:
+      '@qa/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@qa/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+      '@qa/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.2
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.5
+      typescript:
+        specifier: 'catalog:'
+        version: 5.6.3
+      typescript-eslint:
+        specifier: 'catalog:'
+        version: 8.70.0(eslint@9.39.5)(typescript@5.6.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.20.2)
+
+  packages/workspace-factory:
+    dependencies:
+      '@qa/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@qa/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+      '@qa/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.2
       eslint:
         specifier: 'catalog:'
         version: 9.39.5

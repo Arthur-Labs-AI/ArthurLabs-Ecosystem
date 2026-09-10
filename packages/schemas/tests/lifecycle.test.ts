@@ -35,6 +35,14 @@ describe('project lifecycle schemas', () => {
       updatedAt: T,
     };
     expect(ManagedProjectCopySchema.safeParse({ ...base, state: 'ready' }).success).toBe(true);
+    expect(
+      ManagedProjectCopySchema.safeParse({
+        schemaVersion: 1,
+        projectId: revision.projectId,
+        state: 'ready',
+        updatedAt: T,
+      }).success,
+    ).toBe(false);
     expect(ManagedProjectCopySchema.safeParse({ ...base, state: 'locked_for_run' }).success).toBe(
       false,
     );

@@ -26,7 +26,9 @@ export const RunActivitySchema = z
   })
   .strict()
   .superRefine((activity, ctx) => {
-    const terminal = new Set(['completed', 'failed', 'cancelled', 'skipped']).has(activity.status);
+    const terminal = new Set(['completed', 'warning', 'failed', 'cancelled', 'skipped']).has(
+      activity.status,
+    );
     if (terminal && activity.completedAt === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

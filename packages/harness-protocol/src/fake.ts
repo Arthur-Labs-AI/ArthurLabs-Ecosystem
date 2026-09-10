@@ -1,7 +1,7 @@
 /**
  * FakeHarnessAdapter: deterministic, no-AI implementation of
  * HarnessAdapter for tests (and Phase 2 development). Scenarios:
- * success | failure | cancellation | finding | evidence.
+ * success | failure | cancellation | finding | evidence | transport-loss | timeout.
  */
 import type { AgentRunId } from '@qa/shared';
 import { createHarnessEventId, createInvestigationPlanId, createOperationId } from '@qa/shared';
@@ -18,7 +18,8 @@ import type { HarnessHealthResult, HarnessMetadata } from './metadata.js';
 import type { HarnessRunRequest } from './requests.js';
 import { FAKE_ADAPTER_CAPABILITIES } from './capabilities.js';
 
-export type FakeScenario = 'success' | 'failure' | 'cancellation' | 'finding' | 'evidence';
+export type FakeScenario =
+  'success' | 'failure' | 'cancellation' | 'finding' | 'evidence' | 'transport-loss' | 'timeout';
 
 export interface FakeAdapterOptions {
   readonly scenario?: FakeScenario;
@@ -179,7 +180,9 @@ export class FakeHarnessAdapter implements HarnessAdapter {
     if (
       (this.scenario === 'evidence' ||
         this.scenario === 'finding' ||
-        this.scenario === 'success') &&
+        this.scenario === 'success' ||
+        this.scenario === 'transport-loss' ||
+        this.scenario === 'timeout') &&
       this.evidence !== undefined
     ) {
       yield validatedEvent({
@@ -192,7 +195,10 @@ export class FakeHarnessAdapter implements HarnessAdapter {
       });
     }
     if (
-      (this.scenario === 'finding' || this.scenario === 'success') &&
+      (this.scenario === 'finding' ||
+        this.scenario === 'success' ||
+        this.scenario === 'transport-loss' ||
+        this.scenario === 'timeout') &&
       this.finding !== undefined
     ) {
       yield validatedEvent({
@@ -225,6 +231,15 @@ export class FakeHarnessAdapter implements HarnessAdapter {
           retryable: true,
         },
       });
+      return;
+    }
+    if (this.scenario === 'transport-loss') {
+      throw new Error('Fake harness transport disconnected before a terminal event');
+    }
+    if (this.scenario === 'timeout') {
+      while (!this.cancelledRunIds.has(agentRunId)) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 10));
+      }
       return;
     }
     yield validatedEvent({

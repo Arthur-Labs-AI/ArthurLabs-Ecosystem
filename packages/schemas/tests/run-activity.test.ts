@@ -70,7 +70,7 @@ describe('run, retest, failure, and activity contracts', () => {
     expect(QARunSchema.safeParse({ ...run, retestTarget: target }).success).toBe(false);
   });
 
-  it('requires structured failure details for failed and interrupted agents', () => {
+  it('requires structured failure details for failed, interrupted, and timed-out agents', () => {
     const agent = {
       schemaVersion: 1,
       id: 'arun_01K7777777777777777777A8W4',
@@ -80,6 +80,7 @@ describe('run, retest, failure, and activity contracts', () => {
     };
     expect(AgentRunSchema.safeParse({ ...agent, status: 'planning' }).success).toBe(true);
     expect(AgentRunSchema.safeParse({ ...agent, status: 'interrupted' }).success).toBe(false);
+    expect(AgentRunSchema.safeParse({ ...agent, status: 'timed_out' }).success).toBe(false);
     expect(
       AgentRunSchema.safeParse({
         ...agent,
@@ -130,6 +131,11 @@ describe('run, retest, failure, and activity contracts', () => {
       RunActivitySchema.safeParse({ ...root, id: 'evt_01K7777777777777777777A8WX' }).success,
     ).toBe(false);
     expect(RunActivitySchema.safeParse({ ...root, status: 'completed' }).success).toBe(false);
+    expect(RunActivitySchema.safeParse({ ...root, status: 'warning' }).success).toBe(false);
+    expect(
+      RunActivitySchema.safeParse({ ...root, kind: 'browser', status: 'warning', completedAt: T })
+        .success,
+    ).toBe(true);
     expect(
       RunActivitySchema.safeParse({
         ...root,

@@ -8,12 +8,13 @@ describe('qa cli', () => {
   it('--version prints qa version', () => {
     expect(versionLine()).toMatch(/^qa \d+\.\d+\.\d+$/);
   });
-  it('doctor reports foundation OK and defers harnesses', () => {
+  it('doctor reports runtime foundation OK and defers real AI harnesses', () => {
     const lines = doctorLines();
     expect(lines[0]).toBe('Sentry');
     expect(lines.join('\n')).toContain('Domain       OK');
     expect(lines.join('\n')).not.toContain('ERROR');
-    expect(lines.join('\n')).toContain('not implemented in Phase 1');
+    expect(lines.join('\n')).toContain('Real AI harnesses are not implemented yet');
+    expect(lines.join('\n')).toContain('SQLite       OK');
   });
   it('prints help and rejects unknown commands', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);

@@ -60,6 +60,16 @@ export const ManagedProjectCopySchema = z
   })
   .strict()
   .superRefine((copy, ctx) => {
+    if (
+      (copy.state === 'ready' || copy.state === 'locked_for_run') &&
+      copy.currentRevisionId === undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['currentRevisionId'],
+        message: copy.state + ' managed copy requires currentRevisionId',
+      });
+    }
     if (copy.state === 'locked_for_run' && copy.lockedByQARunId === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

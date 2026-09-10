@@ -148,7 +148,8 @@ export const AgentRunSchema = z
   })
   .strict()
   .superRefine((run, ctx) => {
-    const requiresFailure = run.status === 'failed' || run.status === 'interrupted';
+    const requiresFailure =
+      run.status === 'failed' || run.status === 'interrupted' || run.status === 'timed_out';
     if (requiresFailure && run.failure === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -160,7 +161,7 @@ export const AgentRunSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['failure'],
-        message: 'Only failed or interrupted AgentRuns may carry failure details',
+        message: 'Only failed, interrupted, or timed_out AgentRuns may carry failure details',
       });
     }
   });
