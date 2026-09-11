@@ -646,3 +646,132 @@ test("SC03-F02/F72-73: AUTO and APPROVED executions share the lifecycle and surf
     app.close();
   }
 });
+
+// ---- SC05-F37 regression: deadline aborts keep TOOL_TIMEOUT through the service race ----
+
+test("SC03/SC05-F37: prompt deadline-timeout rejection keeps timeout kind (never rewritten to cancel)", async () => {
+  const w = buildScriptWorld([
+    {
+      name: "deadline.read",
+      // Single attempt, no retry: mirrors the git read policy shape.
+      policy: { ...readPolicy(), retry: { strategy: "off", max_attempts: 1, base_delay_ms: 100, max_delay_ms: 2000 } },
+      run: (_n, ctx) => {
+        const signal = (ctx as { signal?: AbortSignal }).signal;
+        // Behave like HardenedGitRunner after the SC-05 fix: abort promptly
+        // with the reason-mapped error instead of hanging through grace.
+        return new Promise<ToolResult>((_resolve, reject) => {
+          if (signal?.aborted) {
+            const e = new Error("Git operation timed out");
+            (e as { code?: string }).code = "TOOL_TIMEOUT";
+            reject(e);
+            return;
+          }
+          const onAbort = (): void => {
+            const e = new Error("Git operation timed out");
+            (e as { code?: string }).code = "TOOL_TIMEOUT";
+            reject(e);
+          };
+          signal?.addEventListener("abort", onAbort, { once: true });
+        });
+      },
+    },
+  ]);
+  try {
+    const service = w.registry.createSingleAttemptService(new PermissionService());
+    const ctl = new AbortController();
+    const policy = w.registry.getExecutionPolicy("deadline.read") as ToolExecutionPolicy;
+    const pending = service.executeAttempt({
+      name: "deadline.read", args: {},
+      ctx: { session_id: "s1", turn_id: "t1", trace_id: "tr", mode: ArthurMode.PERSONAL, approved: false },
+      attempt: { execution_id: "e-dl", attempt_id: "a-dl", attempt_no: 1, deadline_at: new Date(Date.now() + 5000).toISOString(), signal: ctl.signal },
+      policy,
+      signal: ctl.signal,
+      abortGraceMs: 50,
+    });
+    // Coordinator attempt-timeout reason convention.
+    ctl.abort(new Error("attempt timeout"));
+    const outcome = await pending;
+    assert.equal(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.equal(outcome.failure.code, "TOOL_TIMEOUT", "deadline abort must stay TOOL_TIMEOUT, got " + outcome.failure.code);
+      assert.equal(outcome.kind, "timeout");
+    }
+    // Genuine user cancel still maps to cancelled.
+    const ctl2 = new AbortController();
+    const pending2 = service.executeAttempt({
+      name: "deadline.read", args: {},
+      ctx: { session_id: "s1", turn_id: "t1", trace_id: "tr", mode: ArthurMode.PERSONAL, approved: false },
+      attempt: { execution_id: "e-dl2", attempt_id: "a-dl2", attempt_no: 1, deadline_at: new Date(Date.now() + 5000).toISOString(), signal: ctl2.signal },
+      policy,
+      signal: ctl2.signal,
+      abortGraceMs: 50,
+    });
+    ctl2.abort(new Error("user cancellation"));
+    const outcome2 = await pending2;
+    assert.equal(outcome2.ok, false);
+    if (!outcome2.ok) {
+      assert.equal(outcome2.failure.code, "TOOL_CANCELLED");
+      assert.equal(outcome2.kind, "cancelled");
+    }
+  } finally {
+    w.close();
+  }
+});
+
+// ---- SC05-F37 regression: deadline aborts keep TOOL_TIMEOUT through the service race ----
+
+test("SC03/SC05-F37: prompt deadline-timeout rejection keeps timeout kind (never rewritten to cancel)", async () => {
+  const w = buildScriptWorld([
+    {
+      name: "deadline.read",
+      policy: { ...readPolicy(), retry: { strategy: "off", max_attempts: 1, base_delay_ms: 100, max_delay_ms: 2000 } },
+      run: (_n, ctx) => {
+        const signal = (ctx as { signal?: AbortSignal }).signal;
+        const mapAbort = (): Promise<ToolResult> => {
+          const r = signal?.reason;
+          const t = r instanceof Error ? r.message : String(r ?? "");
+          const user = /user cancellation|user_cancel|cancel_requested/i.test(t);
+          const e = new Error(user ? "Git operation was cancelled" : "Git operation timed out");
+          (e as { code?: string }).code = user ? "TOOL_CANCELLED" : "TOOL_TIMEOUT";
+          return Promise.reject(e);
+        };
+        if (signal?.aborted) return mapAbort();
+        return new Promise<ToolResult>((_resolve, reject) => {
+          signal?.addEventListener("abort", () => { mapAbort().catch(reject); }, { once: true });
+        });
+      },
+    },
+  ]);
+  try {
+    const service = w.registry.createSingleAttemptService(new PermissionService());
+    const policy = w.registry.getExecutionPolicy("deadline.read") as ToolExecutionPolicy;
+    const mkInput = (ctl: AbortController, tag: string): Parameters<typeof service.executeAttempt>[0] => ({
+      name: "deadline.read", args: {},
+      ctx: { session_id: "s1", turn_id: "t1", trace_id: "tr", mode: ArthurMode.PERSONAL, approved: false },
+      attempt: { execution_id: "e-" + tag, attempt_id: "a-" + tag, attempt_no: 1, deadline_at: new Date(Date.now() + 5000).toISOString(), signal: ctl.signal },
+      policy,
+      signal: ctl.signal,
+      abortGraceMs: 50,
+    });
+    const ctl = new AbortController();
+    const pending = service.executeAttempt(mkInput(ctl, "dl"));
+    ctl.abort(new Error("attempt timeout"));
+    const outcome = await pending;
+    assert.equal(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.equal(outcome.failure.code, "TOOL_TIMEOUT", "deadline abort must stay TOOL_TIMEOUT, got " + outcome.failure.code);
+      assert.equal(outcome.kind, "timeout");
+    }
+    const ctl2 = new AbortController();
+    const pending2 = service.executeAttempt(mkInput(ctl2, "uc"));
+    ctl2.abort(new Error("user cancellation"));
+    const outcome2 = await pending2;
+    assert.equal(outcome2.ok, false);
+    if (!outcome2.ok) {
+      assert.equal(outcome2.failure.code, "TOOL_CANCELLED");
+      assert.equal(outcome2.kind, "cancelled");
+    }
+  } finally {
+    w.close();
+  }
+});

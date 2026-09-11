@@ -49,6 +49,22 @@ function outputInvalid(tool: string, reasons: string[]): ArthurError {
   );
 }
 
+function executorReportsDeadlineTimeout(err: unknown): boolean {
+  if (err instanceof Error) {
+    const code = (err as Error & { code?: unknown }).code;
+    if (code === "TOOL_TIMEOUT") return true;
+    if (/timed out|timeout|deadline/i.test(err.message)) return true;
+  }
+  return false;
+}
+
+function signalReasonIsDeadline(signal: AbortSignal): boolean {
+  const reason = signal.reason;
+  const text = reason instanceof Error ? reason.message : String(reason);
+  if (/user cancellation|user_cancel|cancel_requested/i.test(text)) return false;
+  return /timeout|timed out|deadline/i.test(text);
+}
+
 function isAbortError(err: unknown): boolean {
   if (err instanceof Error) {
     const e = err as Error & { name?: string; code?: unknown };
@@ -248,6 +264,16 @@ export class SingleAttemptExecutionService {
     } catch (err) {
       if (isAbortError(err) && !signal.aborted) throw err;
       if (signal.aborted && isAbortError(err)) {
+        // Deadline aborts must keep TOOL_TIMEOUT semantics (SC-03 42): an
+        // executor that rejects promptly on a deadline abort (e.g. the SC-05
+        // runner, which kills its child and rejects at once) already carries
+        // the true timeout code. The blanket cancel mapping below would
+        // otherwise rewrite it to TOOL_CANCELLED and claim a user cancel that
+        // never happened. Preserve the timeout only when the signal reason is
+        // itself a deadline (never a user-cancel reason, which always wins).
+        if (effects !== "mutation" && executorReportsDeadlineTimeout(err) && signalReasonIsDeadline(signal)) {
+          throw new ArthurError("TOOL_TIMEOUT", "Tool execution timed out");
+        }
         if (effects === "mutation") throw new ArthurError("TOOL_OUTCOME_UNKNOWN", "Tool execution aborted with uncertain side effects");
         throw new ArthurError("TOOL_CANCELLED", "Tool execution was cancelled");
       }
