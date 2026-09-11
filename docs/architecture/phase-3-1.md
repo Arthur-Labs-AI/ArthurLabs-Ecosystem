@@ -133,6 +133,21 @@ agents share them. Muse-specific tool correlation stays in harness-muse.
   complete on a FAILED caused by a Sentry bug; pure-external config failures
   are reported exactly, never faked.
 
+## Live Muse validation result (attempt 1, this host)
+
+LIVE MUSE SMOKE TEST NOT RUN
+Reason: no Muse executable on PATH, no SENTRY_MUSE_MODEL, no
+SENTRY_MUSE_BINARY, and no SENTRY_LIVE_MUSE_TEST opt-in on this development
+host. Doctor output on this host: model FAIL (not configured), binary FAIL
+(Muse executable was not found: muse), environment PASS (15 allowed, 58
+blocked), sdk PASS (0.1.1), sandbox WARN (not yet verified), runtime WARN
+(no live session yet); overall status unavailable. This is a purely external
+configuration precondition, not a Sentry code failure: all deterministic
+gates (CI run 34639562954, status completed, conclusion success) pass. The
+live smoke must be re-attempted from an explicitly prepared host with the
+binary, exact model, credentials, and SENTRY_LIVE_MUSE_TEST=1 before Phase
+3.1 can be declared complete.
+
 ## Deferred (explicitly not in 3.1)
 
 DeepSeek, GLM/Claude Code, real merger, verifier, retest execution, UI, and
