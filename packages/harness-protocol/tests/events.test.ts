@@ -366,6 +366,52 @@ describe('HarnessEvent protocol', () => {
     });
     duplicateTool.accept(started);
     expect(() => duplicateTool.accept(started)).toThrow(HarnessProtocolError);
+
+    const reusedTool = new IncrementalHarnessEventValidator(finding.qaRunId, finding.agentRunId);
+    reusedTool.accept(HarnessEventSchema.parse({ ...base, type: 'run.started' }));
+    reusedTool.accept(started);
+    reusedTool.accept(
+      HarnessEventSchema.parse({
+        ...base,
+        type: 'tool.completed',
+        operationId,
+        tool: { name: 'shell', exitCode: 0 },
+      }),
+    );
+    expect(() => reusedTool.accept(started)).toThrowError(
+      expect.objectContaining({ code: 'INVALID_EVENT_SEQUENCE' }),
+    );
+
+    const distinctTool = new IncrementalHarnessEventValidator(finding.qaRunId, finding.agentRunId);
+    distinctTool.accept(HarnessEventSchema.parse({ ...base, type: 'run.started' }));
+    distinctTool.accept(started);
+    distinctTool.accept(
+      HarnessEventSchema.parse({
+        ...base,
+        type: 'tool.completed',
+        operationId,
+        tool: { name: 'shell', exitCode: 0 },
+      }),
+    );
+    const secondOperationId = 'op_01K7777777777777777777A8WZ';
+    distinctTool.accept(
+      HarnessEventSchema.parse({
+        ...base,
+        type: 'tool.started',
+        operationId: secondOperationId,
+        tool: { name: 'browser' },
+      }),
+    );
+    distinctTool.accept(
+      HarnessEventSchema.parse({
+        ...base,
+        type: 'tool.completed',
+        operationId: secondOperationId,
+        tool: { name: 'browser', exitCode: 0 },
+      }),
+    );
+    distinctTool.accept(HarnessEventSchema.parse({ ...base, type: 'run.completed' }));
+    expect(() => distinctTool.finish()).not.toThrow();
   });
 
   it('rejects events after terminal and requires a terminal on stream close', () => {

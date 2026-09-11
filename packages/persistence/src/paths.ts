@@ -52,7 +52,12 @@ export function agentWorkspacePath(
   runId: QARunId,
   agentRunId: AgentRunId,
 ): string {
-  return resolve(runDataPaths(dataRoot, projectId, runId).agents, agentRunId, 'workspace');
+  return resolve(
+    runDataPaths(dataRoot, projectId, runId).agents,
+    agentRunId,
+    'workspace',
+    'project',
+  );
 }
 
 function comparisonPath(value: string): string {

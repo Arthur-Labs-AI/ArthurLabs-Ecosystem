@@ -118,6 +118,19 @@ describe('fake end-to-end run engine', () => {
     }
     expect((await scanTree(f.source)).contentHash).toBe(originalBefore.contentHash);
 
+    for (const name of ['listRunEvents', 'listEvidence', 'listActivities'] as const) {
+      vi.spyOn(f.repository, name).mockImplementation(() => {
+        throw new Error('Run status must not materialize ' + name);
+      });
+    }
+    expect(runCoordinator.getRunStatus(result.run.id)).toMatchObject({
+      runId: result.run.id,
+      agents: { configured: 3, completed: 3 },
+      findings: { total: 3 },
+      tokens: { inputTokens: 303, outputTokens: 120, totalTokens: 423 },
+    });
+    vi.restoreAllMocks();
+
     const oldRevision = f.added.revision.id;
     await writeFile(join(f.source, 'src', 'value.txt'), 'V2');
     const updated = await f.manager.updateProjectCopy(f.added.project.id);

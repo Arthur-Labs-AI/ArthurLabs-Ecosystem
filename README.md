@@ -10,7 +10,7 @@ Full QA is broad; Retest follows an earlier issue onto the current revision.
 Evidence-first reporting preserves disagreement, token usage, and complete
 observable run history until the user explicitly deletes it.
 
-## What Phase 2 implements
+## What Phases 2–2.2 implement
 
 The repository now implements the first real local runtime foundation:
 
@@ -34,6 +34,8 @@ The repository now implements the first real local runtime foundation:
 - `@qa/run-engine`: independent fake workers, incremental events, activity tree,
   failure isolation, timeouts, recovery, cleanup, and log/JSON exports;
 - `qa` CLI project lifecycle and simulated-run commands;
+- versioned `--json` machine responses, typed errors, stable exit codes,
+  lightweight status polling, and truthful capability discovery;
 - unit, filesystem, SQLite, integration, recovery, and fake end-to-end tests.
 
 Phase 2.1 hardens this runtime for concurrent local processes and large runs:
@@ -41,6 +43,11 @@ durable leases, abandoned-only recovery, atomic project locking, operation
 journals, workspace symlink isolation, incremental transactional event ingestion,
 live/recovered activity state, and iterator-backed exports. See
 [docs/architecture/phase-2-1.md](docs/architecture/phase-2-1.md).
+
+Phase 2.2 makes the CLI a first-class automation interface while preserving the
+same application services and read/mutation boundary. See
+[docs/architecture/phase-2-2.md](docs/architecture/phase-2-2.md) and
+[ADR-0011](docs/adr/0011-headless-cli-automation-contract.md).
 
 ## What is not implemented yet
 
@@ -67,7 +74,7 @@ packages/run-engine      # fake coordinator, activities, recovery, exports
 packages/domain/tests/fixtures          # contract fixtures + relationship graph
 packages/harness-protocol/tests/fixtures/harness  # golden NDJSON event streams
 docs/architecture        # domain, lifecycle, protocol, Phase 1/1.1/2 baselines
-docs/adr                 # 0001–0008
+docs/adr                 # 0001–0011
 .github/workflows/ci.yml# install → format:check → lint → typecheck → test → build
 ```
 
@@ -116,22 +123,27 @@ Requirements + QA Policy`, with optional operational `ExecutionSafeguards`. No `
 
 ```bash
 qa doctor
+qa capabilities --json
 qa project add ./sample-project
-qa project list
-qa project show <project-id>
+qa project list --json
+qa project show <project-id> --json
 qa run simulate <project-id> --scenario success
 qa run simulate <project-id> --scenario partial
 qa run list <project-id>
 qa run show <run-id>
+qa run status <run-id> --json
 qa run export <run-id> --format log
-qa run export <run-id> --format json
+qa run export <run-id> --format json --json
 qa project update <project-id> ./sample-project
-qa project delete <project-id> --yes
+qa project delete <project-id> --yes --json
 ```
 
-All simulated runs print `SIMULATED / FAKE HARNESS RUN`. Set
+Human-mode simulated runs print `SIMULATED / FAKE HARNESS RUN`; the machine
+response contains `"simulated": true`. Simulation is **FAKE / DEVELOPMENT ONLY**.
+Exit 5 means QA completed and found issues, not that Sentry crashed. Set
 `SENTRY_DATA_ROOT` to override the OS data location. See
-`docs/architecture/phase-2.md` for storage, hashing, recovery, and deferred scope.
+`docs/architecture/phase-2-2.md` for the complete machine contract and deferred
+scope.
 
 ## Initial Agent Stacks (configuration fixtures)
 

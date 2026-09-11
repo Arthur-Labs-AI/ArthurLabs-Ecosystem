@@ -312,6 +312,13 @@ export class SentryRepository {
     );
   }
 
+  countProjectRuns(projectId: ProjectId): number {
+    const row = this.database.connection
+      .prepare('SELECT COUNT(*) AS count FROM qa_runs WHERE project_id=?')
+      .get(projectId) as { count: number };
+    return row.count;
+  }
+
   listNonterminalRuns(): QARun[] {
     return decodeMany(
       QARunSchema,
@@ -347,6 +354,33 @@ export class SentryRepository {
         .all(runId) as unknown as PayloadRow[],
       'AgentRun',
     );
+  }
+
+  countAgentRunsByStatus(runId: QARunId): ReadonlyMap<AgentRun['status'], number> {
+    const rows = this.database.connection
+      .prepare('SELECT status, COUNT(*) AS count FROM agent_runs WHERE qa_run_id=? GROUP BY status')
+      .all(runId) as unknown as Array<{ status: AgentRun['status']; count: number }>;
+    return new Map(rows.map((row) => [row.status, row.count]));
+  }
+
+  countRunFindings(runId: QARunId): number {
+    return this.countRunRows('findings', runId);
+  }
+
+  countRunEvidence(runId: QARunId): number {
+    return this.countRunRows('evidence', runId);
+  }
+
+  countRunActivities(runId: QARunId): number {
+    return this.countRunRows('run_activities', runId);
+  }
+
+  countRunEvents(runId: QARunId): number {
+    return this.countRunRows('harness_events', runId);
+  }
+
+  countRunExports(runId: QARunId): number {
+    return this.countRunRows('run_exports', runId);
   }
 
   iterateAgentRuns(runId: QARunId): Iterable<AgentRun> {
@@ -636,6 +670,21 @@ export class SentryRepository {
       .prepare('SELECT payload FROM ' + table + ' WHERE qa_run_id=? ORDER BY rowid')
       .all(runId) as unknown as PayloadRow[];
     return decodeMany(schema, rows, label);
+  }
+
+  private countRunRows(table: string, runId: QARunId): number {
+    const allowed = new Set([
+      'findings',
+      'evidence',
+      'run_activities',
+      'harness_events',
+      'run_exports',
+    ]);
+    if (!allowed.has(table)) throw new TypeError('Unsupported repository table');
+    const row = this.database.connection
+      .prepare('SELECT COUNT(*) AS count FROM ' + table + ' WHERE qa_run_id=?')
+      .get(runId) as { count: number };
+    return row.count;
   }
 
   private iterateRunEntity<T>(

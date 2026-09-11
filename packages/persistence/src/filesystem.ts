@@ -30,6 +30,7 @@ export interface CopyTreeOptions {
   readonly preferReflink?: boolean;
   readonly onProgress?: (progress: CopyProgress) => void;
   readonly symlinkPolicy?: 'preserve' | 'inert-unsafe';
+  readonly blockedLinkMetadataRoot?: string;
 }
 
 export interface TreeStats {
@@ -193,13 +194,23 @@ async function copySymlink(
   destinationRoot: string,
   destination: string,
   policy: 'preserve' | 'inert-unsafe',
+  blockedLinkMetadataRoot?: string,
 ): Promise<void> {
   const scope = entry.linkScope ?? 'broken';
   const target = entry.linkTarget ?? (await readlink(entry.absolutePath)).replaceAll('\\', '/');
   await mkdir(dirname(destination), { recursive: true });
   if (scope !== 'internal' && policy === 'inert-unsafe') {
+    if (blockedLinkMetadataRoot === undefined) {
+      throw new Error('BLOCKED_LINK_METADATA_ROOT_REQUIRED');
+    }
+    const metadataName = createHash('sha256').update(entry.relativePath, 'utf8').digest('hex');
+    const metadataPath = resolve(blockedLinkMetadataRoot, metadataName + '.json');
+    if (!isPathInside(resolve(blockedLinkMetadataRoot), metadataPath)) {
+      throw new Error('BLOCKED_LINK_METADATA_PATH_ESCAPE');
+    }
+    await mkdir(blockedLinkMetadataRoot, { recursive: true });
     await writeFile(
-      destination + '.sentry-link.json',
+      metadataPath,
       JSON.stringify({
         schemaVersion: 1,
         relativePath: entry.relativePath,
@@ -343,7 +354,13 @@ export async function copyTree(
         continue;
       }
       if (entry.type === 'symlink') {
-        await copySymlink(entry, destinationRoot, destination, options.symlinkPolicy ?? 'preserve');
+        await copySymlink(
+          entry,
+          destinationRoot,
+          destination,
+          options.symlinkPolicy ?? 'preserve',
+          options.blockedLinkMetadataRoot,
+        );
         symlinkCount += 1;
         continue;
       }

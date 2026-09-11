@@ -1,4 +1,5 @@
 import { rm } from 'node:fs/promises';
+import { basename, dirname, resolve } from 'node:path';
 import type { AgentRunId, ProjectId, QARunId, SnapshotId } from '@qa/shared';
 import type { HarnessWorkspace } from '@qa/schemas';
 import { agentWorkspacePath, copyTree, resolveInside, type CopyProgress } from '@qa/persistence';
@@ -31,10 +32,12 @@ export class WorkspaceFactory {
       input.qaRunId,
       input.agentRunId,
     );
-    await rm(runtimePath, { recursive: true, force: true });
+    const workspaceRoot = dirname(runtimePath);
+    await rm(workspaceRoot, { recursive: true, force: true });
     await copyTree(input.workingCopyPath, runtimePath, {
       preferReflink: true,
       symlinkPolicy: 'inert-unsafe',
+      blockedLinkMetadataRoot: resolve(workspaceRoot, '.sentry-workspace', 'blocked-links'),
       ...(input.signal === undefined ? {} : { signal: input.signal }),
       ...(input.onProgress === undefined ? {} : { onProgress: input.onProgress }),
     });
@@ -46,7 +49,11 @@ export class WorkspaceFactory {
       return { cleaned: false, warning: 'Workspace retained by configuration' };
     try {
       const safePath = resolveInside(this.dataRoot, workspace.runtimePath);
-      await rm(safePath, {
+      const cleanupPath =
+        basename(safePath) === 'project' && basename(dirname(safePath)) === 'workspace'
+          ? dirname(safePath)
+          : safePath;
+      await rm(cleanupPath, {
         recursive: true,
         force: true,
         maxRetries: 2,

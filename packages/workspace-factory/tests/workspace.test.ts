@@ -2,13 +2,14 @@ import {
   lstat,
   mkdtemp,
   mkdir,
+  readdir,
   readFile,
   readlink,
   rm,
   symlink,
   writeFile,
 } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { WorkspaceFactory } from '../src/index.js';
@@ -90,8 +91,8 @@ describe('WorkspaceFactory', () => {
     await writeFile(join(workspace.runtimePath, 'internal.txt'), 'workspace');
     expect(await readFile(join(workspace.runtimePath, 'target.txt'), 'utf8')).toBe('workspace');
     expect(await readFile(join(baseline, 'target.txt'), 'utf8')).toBe('baseline');
-    expect(await lstat(join(workspace.runtimePath, 'escape.txt.sentry-link.json'))).toBeDefined();
-    expect(await lstat(join(workspace.runtimePath, 'broken.txt.sentry-link.json'))).toBeDefined();
+    const metadataRoot = join(dirname(workspace.runtimePath), '.sentry-workspace', 'blocked-links');
+    expect(await readdir(metadataRoot)).toHaveLength(2);
     await writeFile(join(workspace.runtimePath, 'escape.txt'), 'local replacement');
     expect(await readFile(external, 'utf8')).toBe('external');
   });
@@ -119,5 +120,55 @@ describe('WorkspaceFactory', () => {
     expect(await readlink(join(workspace.runtimePath, 'absolute.txt'))).not.toBe(target);
     await writeFile(join(workspace.runtimePath, 'absolute.txt'), 'workspace');
     expect(await readFile(target, 'utf8')).toBe('baseline');
+  });
+
+  it('stores blocked-link metadata in a collision-free workspace namespace', async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), 'sentry-workspaces-'));
+    roots.push(dataRoot);
+    const baseline = join(dataRoot, 'baseline');
+    const external = join(dataRoot, 'external.txt');
+    await mkdir(join(baseline, 'nested'), { recursive: true });
+    await writeFile(external, 'external');
+    await writeFile(join(baseline, 'foo.sentry-link.json'), 'legitimate content');
+    try {
+      await symlink('../external.txt', join(baseline, 'foo'));
+      await symlink('../../external.txt', join(baseline, 'nested', 'escape'));
+    } catch (cause) {
+      if (process.platform === 'win32') return;
+      throw cause;
+    }
+
+    const workspace = await new WorkspaceFactory(dataRoot, true).create({
+      projectId: 'proj_01K7777777777777777777A8W1',
+      qaRunId: 'run_01K7777777777777777777A8W3',
+      agentRunId: 'arun_01K7777777777777777777A8W4',
+      snapshotId: 'snap_01K7777777777777777777A8W2',
+      workingCopyPath: baseline,
+    });
+
+    expect(await readFile(join(workspace.runtimePath, 'foo.sentry-link.json'), 'utf8')).toBe(
+      'legitimate content',
+    );
+    await expect(lstat(join(workspace.runtimePath, 'foo'))).rejects.toThrow();
+    await expect(lstat(join(workspace.runtimePath, 'nested', 'escape'))).rejects.toThrow();
+
+    const metadataRoot = join(dirname(workspace.runtimePath), '.sentry-workspace', 'blocked-links');
+    const metadataFiles = (await readdir(metadataRoot)).sort();
+    expect(metadataFiles).toHaveLength(2);
+    const metadata = await Promise.all(
+      metadataFiles.map(
+        async (name) =>
+          JSON.parse(await readFile(join(metadataRoot, name), 'utf8')) as {
+            relativePath: string;
+            linkTarget: string;
+            linkScope: string;
+            reason: string;
+          },
+      ),
+    );
+    expect(metadata.map((item) => item.relativePath).sort()).toEqual(['foo', 'nested/escape']);
+    expect(metadata.every((item) => item.linkTarget.length > 0)).toBe(true);
+    expect(metadata.every((item) => item.linkScope === 'external')).toBe(true);
+    expect(metadata.every((item) => item.reason.length > 0)).toBe(true);
   });
 });

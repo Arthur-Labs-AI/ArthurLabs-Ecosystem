@@ -1,8 +1,8 @@
 # Phase 2.1 — Runtime Integrity Hardening
 
-Status: **IMPLEMENTED LOCALLY; GITHUB CI VERIFICATION PENDING**
+Status: **COMPLETE — LOCAL QUALITY GATES AND GITHUB ACTIONS PASSED**
 
-Baseline: `52c8bd7dff2d2a12978f13dabfe24237f6880556`
+Completion commit: `8338870451921e5066c267499bfca56116cb3a16`
 
 Phase 2.1 hardens the Phase 2 local runtime without introducing a real AI adapter,
 UI, authentication, monetary cost tracking, or automatic source changes.
@@ -55,16 +55,20 @@ is deterministic.
 
 Managed baseline import preserves links. Agent workspaces use the stricter
 `inert-unsafe` policy: safe internal links are recreated against the
-workspace-local target; external and broken links become inert
-`*.sentry-link.json` descriptions containing relative path, target, and reason.
-They are never writable paths to the original source or an external target.
+workspace-local target; external and broken links become inert. Phase 2.2 moved
+their deterministic descriptions into the workspace-owned
+`.sentry-workspace/blocked-links` namespace, outside the copied project's normal
+namespace. Metadata records the relative path, textual target, classification,
+and reason. Unsafe links are never writable paths to the original source or an
+external target.
 Windows directory links use a workspace-local junction target when required by
 the platform; external or unclassifiable reparse targets are not activated.
 
 ## Protocol ingestion and live observability
 
 Each AgentRun owns one incremental validator. It retains only started/terminal
-flags and currently open tool operation IDs, rather than the full event history.
+flags plus seen and currently open tool operation IDs, rather than the full event
+history. An operation ID is permanently unique for the AgentRun lifetime.
 It rejects a wrong QARun or AgentRun, duplicate/unmatched tool lifecycle, tool-name
 mismatch, missing or duplicate start/terminal events, open tools at terminal, and
 events after terminal. SQLite classifies duplicate event IDs as `EVENT_CONFLICT`.
@@ -96,5 +100,6 @@ upgrades a representative healthy 0001 database in place without data loss.
 Application DTO schemas keep new QARun ownership optional so version-1 payloads
 remain readable; newly active runtime records always write ownership.
 
-The exact Phase 2.1 completion statement is intentionally withheld until the
-repository's GitHub Actions run has been observed passing.
+Phase 2.1's local quality gates and GitHub Actions run passed before Phase 2.2
+development began. The two final correctness refinements above are delivered as
+part of Phase 2.2.

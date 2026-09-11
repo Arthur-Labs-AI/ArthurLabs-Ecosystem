@@ -9,6 +9,7 @@ const TERMINAL_TYPES = new Set<HarnessEvent['type']>([
 ]);
 
 export class IncrementalHarnessEventValidator {
+  private readonly seenOperations = new Set<string>();
   private readonly openOperations = new Map<string, string>();
   private started = false;
   private terminal = false;
@@ -38,9 +39,10 @@ export class IncrementalHarnessEventValidator {
     }
 
     if (event.type === 'tool.started') {
-      if (this.openOperations.has(event.operationId)) {
-        this.fail('A tool operation cannot start twice while it is active', index);
+      if (this.seenOperations.has(event.operationId)) {
+        this.fail('A tool operationId cannot be reused during an AgentRun', index);
       }
+      this.seenOperations.add(event.operationId);
       this.openOperations.set(event.operationId, event.tool.name);
     } else if (event.type === 'tool.completed') {
       const toolName = this.openOperations.get(event.operationId);

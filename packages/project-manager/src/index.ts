@@ -403,6 +403,7 @@ export class ProjectManager {
           { cause: recoveryCause },
         );
       }
+      if (cause instanceof ProjectManagerError) throw cause;
       throw new ProjectManagerError(
         'PROJECT_UPDATE_FAILED',
         'Project update failed; previous working copy was preserved',

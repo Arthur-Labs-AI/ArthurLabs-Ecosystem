@@ -1,0 +1,14 @@
+_config_version: 1
+autonomy: oversight
+default_agent: codex-cli
+gateway:
+  events: []
+git_mode: team
+plan_approval_gates: true
+round_tasks_skip_plan_approval: true
+workflow:
+  default_preset: implementation
+  require_tdd: true
+agents:
+  enabled:
+  - codex-cli

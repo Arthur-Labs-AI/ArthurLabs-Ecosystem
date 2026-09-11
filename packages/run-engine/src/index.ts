@@ -24,6 +24,7 @@ import {
   type VerificationLevel,
 } from '@qa/schemas';
 import {
+  aggregateAgentUsage,
   aggregateAgentRunOutcome,
   assertAgentRunTransition,
   INITIAL_AGENT_STACKS,
@@ -45,6 +46,7 @@ import { SnapshotEngine } from '@qa/snapshot-engine';
 import { WorkspaceFactory } from '@qa/workspace-factory';
 import { RunActivityProjector } from './activity-projector.js';
 import { RunExporter } from './exporters.js';
+import { RunEngineError } from './errors.js';
 
 export type SimulationScenario =
   'success' | 'partial' | 'all-fail' | 'transport-loss' | 'timeout' | 'protocol-error';
@@ -67,6 +69,52 @@ export interface RunDetails {
   readonly activities: ReturnType<SentryRepository['listActivities']>;
   readonly events: ReturnType<SentryRepository['listRunEvents']>;
   readonly exports: ReturnType<SentryRepository['listExports']>;
+}
+
+export interface RunSummary {
+  readonly run: QARun;
+  readonly agentRuns: AgentRun[];
+  readonly findings: Finding[];
+  readonly evidence: Evidence[];
+  readonly exports: ReturnType<SentryRepository['listExports']>;
+  readonly counts: {
+    readonly agentRuns: number;
+    readonly findings: number;
+    readonly evidence: number;
+    readonly activities: number;
+    readonly events: number;
+    readonly exports: number;
+  };
+}
+
+export interface RunStatus {
+  readonly runId: QARunId;
+  readonly projectId: ProjectId;
+  readonly mode: QARun['mode'];
+  readonly status: QARun['status'];
+  readonly createdAt: string;
+  readonly startedAt?: string;
+  readonly completedAt: string | null;
+  readonly agents: {
+    readonly configured: number;
+    readonly queued: number;
+    readonly starting: number;
+    readonly planning: number;
+    readonly running: number;
+    readonly completed: number;
+    readonly failed: number;
+    readonly cancelled: number;
+    readonly timedOut: number;
+    readonly interrupted: number;
+  };
+  readonly findings: { readonly total: number };
+  readonly tokens?: {
+    readonly inputTokens?: number;
+    readonly outputTokens?: number;
+    readonly cachedInputTokens?: number;
+    readonly totalTokens?: number;
+    readonly turns?: number;
+  };
 }
 
 class RunTimeoutError extends Error {}
@@ -107,11 +155,13 @@ export class FakeRunCoordinator {
   async simulate(projectId: ProjectId, options: SimulateRunOptions = {}): Promise<RunDetails> {
     const runtimeLease = this.requireRuntimeLease();
     const project = this.projects.getProject(projectId);
-    if (project === undefined) throw new Error('PROJECT_NOT_FOUND: ' + projectId);
+    if (project === undefined)
+      throw new RunEngineError('PROJECT_NOT_FOUND', 'Project not found: ' + projectId);
     const selectedIds = options.agentStackIds ?? INITIAL_AGENT_STACKS.map((stack) => stack.id);
     const selected = selectedIds.map((id) => {
       const stack = this.stacks.get(id);
-      if (stack === undefined) throw new Error('AGENT_STACK_NOT_FOUND: ' + id);
+      if (stack === undefined)
+        throw new RunEngineError('AGENT_STACK_NOT_FOUND', 'Agent stack not found: ' + id);
       return stack;
     });
     if (selected.length === 0) throw new Error('At least one fake agent stack must be selected');
@@ -474,7 +524,7 @@ export class FakeRunCoordinator {
 
   getRunDetails(runId: QARunId): RunDetails {
     const run = this.repository.getRun(runId);
-    if (run === undefined) throw new Error('RUN_NOT_FOUND: ' + runId);
+    if (run === undefined) throw new RunEngineError('RUN_NOT_FOUND', 'Run not found: ' + runId);
     return {
       run,
       agentRuns: this.repository.listAgentRuns(runId),
@@ -486,11 +536,89 @@ export class FakeRunCoordinator {
     };
   }
 
+  getRunSummary(runId: QARunId): RunSummary {
+    const run = this.repository.getRun(runId);
+    if (run === undefined) throw new RunEngineError('RUN_NOT_FOUND', 'Run not found: ' + runId);
+    const agentRuns = this.repository.listAgentRuns(runId);
+    const findings = this.repository.listFindings(runId);
+    const evidence = this.repository.listEvidence(runId);
+    const exports = this.repository.listExports(runId);
+    return {
+      run,
+      agentRuns,
+      findings,
+      evidence,
+      exports,
+      counts: {
+        agentRuns: agentRuns.length,
+        findings: findings.length,
+        evidence: evidence.length,
+        activities: this.repository.countRunActivities(runId),
+        events: this.repository.countRunEvents(runId),
+        exports: exports.length,
+      },
+    };
+  }
+
+  getRunStatus(runId: QARunId): RunStatus {
+    const run = this.repository.getRun(runId);
+    if (run === undefined) throw new RunEngineError('RUN_NOT_FOUND', 'Run not found: ' + runId);
+    const counts = this.repository.countAgentRunsByStatus(runId);
+    const agentRuns = this.repository.listAgentRuns(runId);
+    const usage = aggregateAgentUsage(
+      agentRuns.flatMap((agentRun) => (agentRun.usage === undefined ? [] : [agentRun.usage])),
+    );
+    const tokens = {
+      ...(usage.inputTokens === undefined ? {} : { inputTokens: usage.inputTokens }),
+      ...(usage.outputTokens === undefined ? {} : { outputTokens: usage.outputTokens }),
+      ...(usage.cachedInputTokens === undefined
+        ? {}
+        : { cachedInputTokens: usage.cachedInputTokens }),
+      ...(usage.inputTokens === undefined || usage.outputTokens === undefined
+        ? {}
+        : { totalTokens: usage.inputTokens + usage.outputTokens }),
+      ...(usage.turns === undefined ? {} : { turns: usage.turns }),
+    };
+    return {
+      runId: run.id,
+      projectId: run.projectId,
+      mode: run.mode,
+      status: run.status,
+      createdAt: run.createdAt,
+      ...(run.startedAt === undefined ? {} : { startedAt: run.startedAt }),
+      completedAt: run.completedAt ?? null,
+      agents: {
+        configured: run.configuration.agentStackIds.length,
+        queued: counts.get('queued') ?? 0,
+        starting: counts.get('starting') ?? 0,
+        planning: counts.get('planning') ?? 0,
+        running: counts.get('running') ?? 0,
+        completed: counts.get('completed') ?? 0,
+        failed: counts.get('failed') ?? 0,
+        cancelled: counts.get('cancelled') ?? 0,
+        timedOut: counts.get('timed_out') ?? 0,
+        interrupted: counts.get('interrupted') ?? 0,
+      },
+      findings: { total: this.repository.countRunFindings(runId) },
+      ...(Object.keys(tokens).length === 0 ? {} : { tokens }),
+    };
+  }
+
   listRuns(projectId: ProjectId): QARun[] {
     return this.repository.listRuns(projectId);
   }
 
   exportRun(runId: QARunId, format: 'log' | 'json') {
+    const run = this.repository.getRun(runId);
+    if (run === undefined) {
+      throw new RunEngineError('RUN_NOT_FOUND', 'Run not found: ' + runId);
+    }
+    if (!['completed', 'partial', 'failed', 'cancelled'].includes(run.status)) {
+      throw new RunEngineError(
+        'RUN_NOT_COMPLETE',
+        'Run export is available after the run reaches a terminal status',
+      );
+    }
     return this.exporter.export(runId, format);
   }
 
@@ -587,6 +715,8 @@ export class FakeRunCoordinator {
     return this.runtimeLease;
   }
 }
+
+export * from './errors.js';
 
 export * from './activity-projector.js';
 export * from './exporters.js';
