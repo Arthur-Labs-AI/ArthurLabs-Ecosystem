@@ -30,10 +30,39 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
           'Project lifecycle: yes',
           'Run inspection: yes',
           'Fake simulation: yes',
-          'Real agent execution: no',
+          'Real agent execution: yes (Muse Code)',
           'Retest execution: no',
           'Run cancellation: no',
         ].join('\n'),
+      );
+      return;
+    case 'agent.list':
+      io.stdout(
+        response.data.agents
+          .map(
+            (agent) =>
+              agent.id +
+              '  ' +
+              agent.displayName +
+              '  ' +
+              (agent.available ? 'configured' : 'not configured'),
+          )
+          .join('\n'),
+      );
+      return;
+    case 'agent.doctor':
+      io.stdout(
+        ['Muse doctor: ' + response.data.status]
+          .concat(
+            response.data.checks.map(
+              (check) =>
+                check.status.toUpperCase() +
+                '  ' +
+                check.name +
+                (check.message === undefined ? '' : '  ' + check.message),
+            ),
+          )
+          .join('\n'),
       );
       return;
     case 'project.add':
@@ -73,6 +102,11 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
           response.data.status,
       );
       return;
+    case 'run.start':
+      io.stdout(
+        'REAL MUSE QA RUN\nRun: ' + response.data.runId + '\nStatus: ' + response.data.status,
+      );
+      return;
     case 'run.list':
       io.stdout(
         response.data.runs
@@ -97,7 +131,8 @@ export function emitHumanError(response: CliErrorEnvelope, io: CliIo): void {
 }
 
 export function successExitCode(response: CliSuccessEnvelope): number {
-  if (response.command !== 'run.simulate') return CLI_EXIT.success;
+  if (response.command !== 'run.simulate' && response.command !== 'run.start')
+    return CLI_EXIT.success;
   if (response.data.status === 'cancelled') return CLI_EXIT.cancelled;
   if (response.data.status === 'failed') return CLI_EXIT.executionFailed;
   if (response.data.status === 'partial') return CLI_EXIT.partial;

@@ -61,12 +61,12 @@ describe('qa cli', () => {
     expect(versionLine()).toMatch(/^qa \d+\.\d+\.\d+$/);
   });
 
-  it('doctor reports runtime foundation OK and defers real AI harnesses', () => {
+  it('doctor reports runtime foundation OK and points to Muse diagnostics', () => {
     const lines = doctorLines();
     expect(lines[0]).toBe('Sentry');
     expect(lines.join('\n')).toContain('Domain       OK');
     expect(lines.join('\n')).not.toContain('ERROR');
-    expect(lines.join('\n')).toContain('Real AI harnesses are not implemented yet');
+    expect(lines.join('\n')).toContain('qa agent doctor muse');
     expect(lines.join('\n')).toContain('SQLite       OK');
   });
 
@@ -81,6 +81,61 @@ describe('qa cli', () => {
     error.mockRestore();
   });
 
+  it('lists Muse, reports deterministic doctor failures, and types missing model configuration', async () => {
+    const f = await fixture();
+    const listed = invoke(['agent', 'list', '--json'], f.dataRoot);
+    expect(listed.status).toBe(0);
+    const listResponse = machine(listed, 'agent.list');
+    expect(listResponse.ok && listResponse.data).toMatchObject({
+      agents: [{ id: 'muse', harness: 'muse-code', modelEnvironmentVariable: 'SENTRY_MUSE_MODEL' }],
+    });
+
+    const doctor = spawnSync(
+      process.execPath,
+      ['--no-warnings', entry, 'agent', 'doctor', 'muse', '--json'],
+      {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          SENTRY_DATA_ROOT: f.dataRoot,
+          SENTRY_MUSE_BINARY: join(f.root, 'missing-muse'),
+          SENTRY_MUSE_MODEL: 'muse-spark-1.3-contributor',
+        },
+      },
+    );
+    expect(doctor.status).toBe(0);
+    const doctorResponse = machine(doctor, 'agent.doctor');
+    expect(doctorResponse.ok && doctorResponse.data).toMatchObject({
+      agent: 'muse',
+      status: 'unavailable',
+      sdkVersion: '0.1.1',
+    });
+
+    const start = spawnSync(
+      process.execPath,
+      [
+        '--no-warnings',
+        entry,
+        'run',
+        'start',
+        'proj_01K7777777777777777777A8W1',
+        '--mode',
+        'full',
+        '--agents',
+        'muse',
+        '--wait',
+        '--json',
+      ],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, SENTRY_DATA_ROOT: f.dataRoot, SENTRY_MUSE_MODEL: '' },
+      },
+    );
+    expect(start.status).toBe(6);
+    const startResponse = machine(start, 'run.start');
+    expect(!startResponse.ok && startResponse.error.code).toBe('MUSE_MODEL_NOT_CONFIGURED');
+  });
+
   it('supports the complete subprocess JSON lifecycle with one document per command', async () => {
     const f = await fixture();
     const capabilities = invoke(['capabilities', '--json'], f.dataRoot);
@@ -88,7 +143,7 @@ describe('qa cli', () => {
     const capabilityResponse = machine(capabilities, 'capabilities');
     expect(capabilityResponse.ok && capabilityResponse.data).toMatchObject({
       cliContractVersion: 1,
-      features: { realAgentExecution: false, fakeRunSimulation: true },
+      features: { realAgentExecution: true, fakeRunSimulation: true },
     });
 
     const add = invoke(['project', 'add', f.source, '--json'], f.dataRoot);

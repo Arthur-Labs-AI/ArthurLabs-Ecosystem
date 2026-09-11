@@ -18,7 +18,7 @@ import {
   type CliIo,
 } from './output.js';
 
-export const QA_VERSION = '0.2.2';
+export const QA_VERSION = '0.3.0';
 
 export function versionLine(): string {
   return 'qa ' + QA_VERSION;
@@ -80,7 +80,7 @@ export function doctorLines(options: DoctorOptions = {}): string[] {
     'Schemas      ' + status(schemasReady),
     'Protocol     ' + status(protocolReady),
     '',
-    'Real AI harnesses are not implemented yet.',
+    'Muse Code is the only real Phase 3 agent; use qa agent doctor muse for runtime checks.',
   ];
 }
 
@@ -91,18 +91,21 @@ function helpText(): string {
     '  qa --version',
     '  qa doctor',
     '  qa capabilities [--json]',
+    '  qa agent list [--json]',
+    '  qa agent doctor muse [--json]',
     '  qa project add <path> [--json]',
     '  qa project list [--json]',
     '  qa project show <project-id> [--json]',
     '  qa project update <project-id> [path] [--json]',
     '  qa project delete <project-id> --yes [--json]',
     '  qa run simulate <project-id> [--scenario success|partial|all-fail|transport-loss|timeout|protocol-error] [--json]',
+    '  qa run start <project-id> --mode full --agents muse --wait [--instructions <text>] [--timeout-ms <ms>] [--json]',
     '  qa run list <project-id> [--json]',
     '  qa run show <run-id> [--json]',
     '  qa run status <run-id> [--json]',
     '  qa run export <run-id> --format log|json [--json]',
     '',
-    'run simulate is FAKE / DEVELOPMENT ONLY. Real agent execution is not implemented.',
+    'run simulate is FAKE / DEVELOPMENT ONLY. run start executes one real Muse worker.',
   ].join('\n');
 }
 

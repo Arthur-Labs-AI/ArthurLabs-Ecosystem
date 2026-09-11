@@ -69,6 +69,12 @@ export type StaticAnalysisEvidence = z.infer<typeof StaticAnalysisEvidenceSchema
 
 export const CodeReferenceEvidenceSchema = extendCodeLocationSchema({
   excerptArtifactId: ArtifactIdSchema.optional(),
+  sourceState: z.enum(EVIDENCE_ENVIRONMENT_STATES).optional(),
+  contentHash: z
+    .string()
+    .regex(/^sha256:[a-f0-9]{64}$/)
+    .optional(),
+  excerpt: z.string().min(1).max(4_000).optional(),
 });
 export type CodeReferenceEvidence = z.infer<typeof CodeReferenceEvidenceSchema>;
 

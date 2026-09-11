@@ -118,7 +118,11 @@ export class RunExporter {
   private async *logSource(runId: QARunId): AsyncGenerator<string> {
     const run = this.repository.getRun(runId);
     if (run === undefined) return;
-    yield '[' + run.createdAt + '] [SENTRY] SIMULATED / FAKE HARNESS RUN created\n';
+    yield '[' +
+      run.createdAt +
+      '] [SENTRY] ' +
+      (run.executionKind === 'production' ? 'REAL AGENT RUN' : 'SIMULATED / FAKE HARNESS RUN') +
+      ' created\n';
     for (const stored of this.repository.iterateRunEvents(runId)) yield eventLogLine(stored);
     yield '[' +
       (run.completedAt ?? nowIsoTimestamp()) +
@@ -134,7 +138,12 @@ export class RunExporter {
     const revision =
       snapshot === undefined ? undefined : this.repository.getRevision(snapshot.projectRevisionId);
     const context = this.repository.getContext(run.projectContextSnapshotId);
-    yield '{"schemaVersion":1,"exportKind":"sentry.fake-run","qaRun":' + JSON.stringify(run) + ',';
+    const exportKind = run.executionKind === 'production' ? 'sentry.agent-run' : 'sentry.fake-run';
+    yield '{"schemaVersion":1,"exportKind":' +
+      JSON.stringify(exportKind) +
+      ',"qaRun":' +
+      JSON.stringify(run) +
+      ',';
     yield '"projectRevision":' + JSON.stringify(revision ?? null) + ',';
     yield '"projectSnapshot":' + JSON.stringify(snapshot ?? null) + ',';
     yield '"projectContextSnapshot":' + JSON.stringify(context ?? null) + ',';

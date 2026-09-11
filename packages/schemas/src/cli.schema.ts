@@ -27,12 +27,15 @@ export const CLI_CONTRACT_VERSION = 1 as const;
 
 export const CLI_COMMANDS = [
   'capabilities',
+  'agent.list',
+  'agent.doctor',
   'project.add',
   'project.list',
   'project.show',
   'project.update',
   'project.delete',
   'run.simulate',
+  'run.start',
   'run.list',
   'run.show',
   'run.status',
@@ -61,6 +64,16 @@ export const CLI_ERROR_CODES = [
   'RUNTIME_LEASE_LOST',
   'HARNESS_PROTOCOL_VIOLATION',
   'RUN_EXECUTION_FAILED',
+  'AGENT_STACK_UNAVAILABLE',
+  'MUSE_BINARY_NOT_FOUND',
+  'MUSE_STACK_UNAVAILABLE',
+  'MUSE_MODEL_NOT_CONFIGURED',
+  'MUSE_START_FAILED',
+  'MUSE_AUTH_FAILED',
+  'MUSE_SANDBOX_UNAVAILABLE',
+  'MUSE_INVALID_RESULT',
+  'MUSE_SUBAGENT_FORBIDDEN',
+  'MUSE_CANCEL_FAILED',
   'INTERNAL_ERROR',
 ] as const;
 export const CliErrorCodeSchema = z.enum(CLI_ERROR_CODES);
@@ -219,6 +232,63 @@ export const RunSimulateResultSchema = z
   .strict();
 export type RunSimulateResult = z.infer<typeof RunSimulateResultSchema>;
 
+export const RunStartResultSchema = z
+  .object({
+    simulated: z.literal(false),
+    runId: QARunIdSchema,
+    projectId: ProjectIdSchema,
+    status: z.enum(QARUN_STATUSES),
+    agents: z
+      .object({
+        configured: NonNegativeIntSchema,
+        completed: NonNegativeIntSchema,
+        failed: NonNegativeIntSchema,
+      })
+      .strict(),
+    findings: z.object({ total: NonNegativeIntSchema }).strict(),
+  })
+  .strict();
+export type RunStartResult = z.infer<typeof RunStartResultSchema>;
+
+export const AgentListResultSchema = z
+  .object({
+    agents: z.array(
+      z
+        .object({
+          id: z.string().min(1).max(100),
+          displayName: z.string().min(1).max(200),
+          harness: z.string().min(1).max(100),
+          available: z.boolean(),
+          modelEnvironmentVariable: z.string().min(1).max(100),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+export type AgentListResult = z.infer<typeof AgentListResultSchema>;
+
+export const AgentDoctorResultSchema = z
+  .object({
+    agent: z.literal('muse'),
+    status: z.enum(['healthy', 'degraded', 'unavailable']),
+    checks: z.array(
+      z
+        .object({
+          name: z.string(),
+          status: z.enum(['pass', 'warn', 'fail']),
+          message: z.string().optional(),
+        })
+        .strict(),
+    ),
+    checkedAt: IsoTimestampSchema,
+    executable: z.string().optional(),
+    executableVersion: z.string().optional(),
+    modelId: z.string().optional(),
+    sdkVersion: z.string(),
+  })
+  .strict();
+export type AgentDoctorResult = z.infer<typeof AgentDoctorResultSchema>;
+
 export const RunExportResultSchema = z
   .object({
     runId: QARunIdSchema,
@@ -237,7 +307,7 @@ export const CapabilitiesResultSchema = z
         projectLifecycle: z.literal(true),
         runInspection: z.literal(true),
         fakeRunSimulation: z.literal(true),
-        realAgentExecution: z.literal(false),
+        realAgentExecution: z.literal(true),
         retestExecution: z.literal(false),
         runCancellation: z.literal(false),
       })
@@ -248,12 +318,15 @@ export type CapabilitiesResult = z.infer<typeof CapabilitiesResultSchema>;
 
 export const CliResultSchemas = {
   capabilities: CapabilitiesResultSchema,
+  'agent.list': AgentListResultSchema,
+  'agent.doctor': AgentDoctorResultSchema,
   'project.add': ProjectAddResultSchema,
   'project.list': ProjectListResultSchema,
   'project.show': ProjectShowResultSchema,
   'project.update': ProjectUpdateResultSchema,
   'project.delete': ProjectDeleteResultSchema,
   'run.simulate': RunSimulateResultSchema,
+  'run.start': RunStartResultSchema,
   'run.list': RunListResultSchema,
   'run.show': RunShowResultSchema,
   'run.status': RunStatusResultSchema,

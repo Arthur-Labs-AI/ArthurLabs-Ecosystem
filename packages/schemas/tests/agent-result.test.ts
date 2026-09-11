@@ -1,0 +1,82 @@
+import { describe, expect, it } from 'vitest';
+import {
+  QARunSchema,
+  SentryAgentResultV1Schema,
+  SentryInvestigationPlanV1Schema,
+} from '../src/index.js';
+
+describe('Phase 3 structured agent contracts', () => {
+  it('requires a versioned plan with at least one planned check', () => {
+    expect(
+      SentryInvestigationPlanV1Schema.safeParse({
+        schemaVersion: 1,
+        projectUnderstanding: 'x',
+        criticalFlows: [],
+        weakPoints: [],
+        plannedChecks: ['inspect'],
+      }).success,
+    ).toBe(true);
+    expect(
+      SentryInvestigationPlanV1Schema.safeParse({
+        schemaVersion: 1,
+        projectUnderstanding: 'x',
+        criticalFlows: [],
+        weakPoints: [],
+        plannedChecks: [],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects duplicate or dangling temporary evidence keys', () => {
+    const base = {
+      schemaVersion: 1,
+      summary: 'summary',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        { key: 'ev1', type: 'manual', strength: 'agent_reasoning', description: 'observation' },
+      ],
+      findings: [
+        {
+          title: 'finding',
+          category: 'logic',
+          severity: 'low',
+          confidence: 'probable',
+          description: 'description',
+          locations: [{ relativePath: 'src/a.ts' }],
+          evidenceKeys: ['missing'],
+          reproductionSteps: [],
+        },
+      ],
+      limitations: [],
+    };
+    expect(SentryAgentResultV1Schema.safeParse(base).success).toBe(false);
+    expect(
+      SentryAgentResultV1Schema.safeParse({
+        ...base,
+        findings: [],
+        evidence: [base.evidence[0], base.evidence[0]],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('keeps pre-Phase-3 persisted runs readable while accepting canonical execution kind', () => {
+    const legacy = {
+      schemaVersion: 1,
+      id: 'run_01K7777777777777777777A8W3',
+      projectId: 'proj_01K7777777777777777777A8W1',
+      snapshotId: 'snap_01K7777777777777777777A8W2',
+      projectContextSnapshotId: 'ctx_01K7777777777777777777A8W8',
+      mode: 'full',
+      status: 'created',
+      configuration: {
+        agentStackIds: ['stack_muse_main'],
+        verificationLevel: 'strict',
+        policy: { id: 'qa-standard', version: 1 },
+      },
+      createdAt: '2026-09-11T00:00:00.000Z',
+    };
+    expect(QARunSchema.safeParse(legacy).success).toBe(true);
+    expect(QARunSchema.safeParse({ ...legacy, executionKind: 'production' }).success).toBe(true);
+  });
+});

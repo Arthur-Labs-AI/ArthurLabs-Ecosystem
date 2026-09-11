@@ -17,6 +17,9 @@
       "path": "../../packages/harness-protocol"
     },
     {
+      "path": "../../packages/harness-muse"
+    },
+    {
       "path": "../../packages/persistence"
     },
     {

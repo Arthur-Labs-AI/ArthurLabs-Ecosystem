@@ -15,6 +15,7 @@ import {
 import { ProjectManager } from '@qa/project-manager';
 import { AgentRunSchema, QARunSchema, RunActivitySchema } from '@qa/schemas';
 import type { HarnessRunRequest } from '@qa/schemas';
+import { FakeHarnessAdapter, HarnessAdapterRegistry } from '@qa/harness-protocol';
 import {
   createAgentRunId,
   createHarnessEventId,
@@ -22,7 +23,12 @@ import {
   createRunActivityId,
   nowIsoTimestamp,
 } from '@qa/shared';
-import { FakeRunCoordinator, RunExporter } from '../src/index.js';
+import {
+  createFakeHarnessRegistry,
+  RunCoordinator,
+  RunExporter,
+  type SimulateRunOptions,
+} from '../src/index.js';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -50,8 +56,20 @@ async function fixture() {
   return { root, source, dataRoot, database, repository, lease, manager, added };
 }
 
-function coordinator(f: Awaited<ReturnType<typeof fixture>>): FakeRunCoordinator {
-  return new FakeRunCoordinator(f.dataRoot, f.repository, f.lease);
+function coordinator(f: Awaited<ReturnType<typeof fixture>>) {
+  return {
+    simulate: (projectId: typeof f.added.project.id, options: SimulateRunOptions = {}) => {
+      const { scenario = 'success', ...runOptions } = options;
+      return new RunCoordinator(
+        f.dataRoot,
+        f.repository,
+        f.lease,
+        createFakeHarnessRegistry(scenario),
+      ).run(projectId, { ...runOptions, executionKind: 'simulation' });
+    },
+    getRunStatus: (runId: Parameters<RunCoordinator['getRunStatus']>[0]) =>
+      new RunCoordinator(f.dataRoot, f.repository).getRunStatus(runId),
+  };
 }
 
 describe('fake end-to-end run engine', () => {
@@ -95,8 +113,17 @@ describe('fake end-to-end run engine', () => {
           .every((peer) => !serialized.includes(peer.agentRunId)),
       ).toBe(true);
       expect(serialized).not.toContain('peer');
+      expect(serialized).not.toContain(f.source);
       expect(request.task.prompt).toContain('Feature X behavior is intentional.');
       expect(request.projectContextSnapshotId).toBe(result.run.projectContextSnapshotId);
+      expect(request.task.context).toMatchObject({
+        project: { id: f.added.project.id, name: f.added.project.name },
+        revision: { id: f.added.revision.id, contentHash: f.added.revision.contentHash },
+        snapshot: { id: result.run.snapshotId },
+        projectContext: { id: result.run.projectContextSnapshotId },
+        runInstructions: { message: 'Feature X behavior is intentional.' },
+        qaPolicy: { id: 'qa-standard', version: 1 },
+      });
     }
     expect(f.manager.getManagedCopy(f.added.project.id).state).toBe('ready');
     for (const agent of result.agentRuns) {
@@ -150,6 +177,87 @@ describe('fake end-to-end run engine', () => {
     if (jsonExport !== undefined) {
       expect(f.repository.getArtifact(jsonExport.artifactId)).toBeUndefined();
     }
+    f.database.close();
+  });
+
+  it('routes production through the same coordinator without fake export labels or merger stages', async () => {
+    const f = await fixture();
+    const result = await new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      createFakeHarnessRegistry('success'),
+    ).run(f.added.project.id, {
+      executionKind: 'production',
+      agentStackIds: ['stack_muse_main'],
+      runTimeoutMs: 2_000,
+    });
+    expect(result.run.executionKind).toBe('production');
+    expect(result.agentRuns).toHaveLength(1);
+    expect(result.activities.some((activity) => activity.kind === 'merger')).toBe(false);
+    expect(result.activities.some((activity) => activity.kind === 'verification')).toBe(false);
+    const exported = result.exports.find((item) => item.format === 'json');
+    expect(exported).toBeDefined();
+    if (exported !== undefined) {
+      const artifact = f.repository.getArtifact(exported.artifactId);
+      expect(artifact).toBeDefined();
+      if (artifact !== undefined) {
+        const contents = await readFile(
+          resolveInside(f.dataRoot, artifact.relativeStoragePath),
+          'utf8',
+        );
+        expect(contents).toContain('"exportKind":"sentry.agent-run"');
+        expect(contents).not.toContain('sentry.fake-run');
+      }
+    }
+    f.database.close();
+  });
+
+  it('stops a production adapter before cleanup and contains its workspace writes', async () => {
+    const f = await fixture();
+    const originalBefore = await scanTree(f.source);
+    const managedPath = projectDataPaths(f.dataRoot, f.added.project.id).workingCopy;
+    const managedBefore = await scanTree(managedPath);
+    const base = createFakeHarnessRegistry('success').resolve('stack_muse_main');
+    expect(base).toBeDefined();
+    if (base === undefined) throw new Error('Muse fixture registration missing');
+    const delegate = new FakeHarnessAdapter({ scenario: 'success' });
+    let workspacePath: string | undefined;
+    const lifecycle: string[] = [];
+    const registry = new HarnessAdapterRegistry().register({
+      stack: base.stack,
+      createAdapter: () => ({
+        getMetadata: () => delegate.getMetadata(),
+        healthCheck: () => delegate.healthCheck(),
+        run: async function* (request) {
+          workspacePath = request.workspace.runtimePath;
+          await writeFile(join(workspacePath, 'src', 'value.txt'), 'WORKSPACE ONLY');
+          lifecycle.push('workspace-write');
+          yield* delegate.run(request);
+        },
+        cancel: (runId) => delegate.cancel(runId),
+        dispose: async () => {
+          if (workspacePath === undefined) throw new Error('Workspace path was not captured');
+          await stat(workspacePath);
+          lifecycle.push('disposed-before-cleanup');
+          await delegate.dispose();
+        },
+      }),
+    });
+    const result = await new RunCoordinator(f.dataRoot, f.repository, f.lease, registry).run(
+      f.added.project.id,
+      {
+        executionKind: 'production',
+        agentStackIds: ['stack_muse_main'],
+        runTimeoutMs: 2_000,
+      },
+    );
+    expect(result.run.status).toBe('completed');
+    expect(lifecycle).toEqual(['workspace-write', 'disposed-before-cleanup']);
+    expect((await scanTree(f.source)).contentHash).toBe(originalBefore.contentHash);
+    expect((await scanTree(managedPath)).contentHash).toBe(managedBefore.contentHash);
+    expect(workspacePath).toBeDefined();
+    if (workspacePath !== undefined) await expect(stat(workspacePath)).rejects.toThrow();
     f.database.close();
   });
 
@@ -282,7 +390,7 @@ describe('fake end-to-end run engine', () => {
     f.lease.release();
     const recoveryLease = new RuntimeInstanceLease(f.repository, { autoHeartbeat: false });
     recoveryLease.start();
-    await new FakeRunCoordinator(f.dataRoot, f.repository, recoveryLease).recover();
+    await new RunCoordinator(f.dataRoot, f.repository, recoveryLease).recover();
     expect(f.repository.getAgentRun(agentRunId)).toMatchObject({
       status: 'interrupted',
       failure: { code: 'APP_INTERRUPTED' },
@@ -339,7 +447,7 @@ describe('fake end-to-end run engine', () => {
     expect(repositoryB.getManagedCopy(f.added.project.id)?.state).toBe('locked_for_run');
     const observer = new RuntimeInstanceLease(repositoryB, { autoHeartbeat: false });
     observer.start();
-    const observerCoordinator = new FakeRunCoordinator(f.dataRoot, repositoryB, observer);
+    const observerCoordinator = new RunCoordinator(f.dataRoot, repositoryB, observer);
     await observerCoordinator.recover();
     expect(f.repository.getRun(runId)?.status).toBe('agents_running');
     expect(f.manager.getManagedCopy(f.added.project.id).state).toBe('locked_for_run');

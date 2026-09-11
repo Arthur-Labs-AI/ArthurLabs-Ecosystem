@@ -1,4 +1,5 @@
 export * from './adapter.js';
+export * from './registry.js';
 export * from './requests.js';
 export * from './events.js';
 export * from './errors.js';

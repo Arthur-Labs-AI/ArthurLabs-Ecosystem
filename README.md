@@ -10,7 +10,7 @@ Full QA is broad; Retest follows an earlier issue onto the current revision.
 Evidence-first reporting preserves disagreement, token usage, and complete
 observable run history until the user explicitly deletes it.
 
-## What Phases 2–2.2 implement
+## What Phases 2–3 implement
 
 The repository now implements the first real local runtime foundation:
 
@@ -31,9 +31,10 @@ The repository now implements the first real local runtime foundation:
 - `@qa/snapshot-engine`: deterministic hashes and streamed NDJSON manifests;
 - `@qa/context-builder`: factual context plus progressive material indexes;
 - `@qa/workspace-factory`: reflink-first isolated writable copies without hardlinks;
-- `@qa/run-engine`: independent fake workers, incremental events, activity tree,
+- `@qa/run-engine`: registry-driven real or fake workers, incremental events, activity tree,
   failure isolation, timeouts, recovery, cleanup, and log/JSON exports;
-- `qa` CLI project lifecycle and simulated-run commands;
+- `@qa/harness-muse`: the isolated Muse Code SDK adapter and structured plan/result boundary;
+- `qa` CLI project lifecycle, simulated runs, and one-worker real Muse runs;
 - versioned `--json` machine responses, typed errors, stable exit codes,
   lightweight status polling, and truthful capability discovery;
 - unit, filesystem, SQLite, integration, recovery, and fake end-to-end tests.
@@ -49,13 +50,20 @@ same application services and read/mutation boundary. See
 [docs/architecture/phase-2-2.md](docs/architecture/phase-2-2.md) and
 [ADR-0011](docs/adr/0011-headless-cli-automation-contract.md).
 
+Phase 3 adds the first real AgentStack execution path. It pins
+`@muse-code/sdk@0.1.1`, requires an exact configured model, and runs one Muse
+worker through the same coordinator used by fake simulation. See
+[docs/architecture/phase-3.md](docs/architecture/phase-3.md),
+[ADR-0012](docs/adr/0012-muse-code-sdk-adapter-boundary.md), and the
+[Muse setup guide](docs/setup/muse-code.md).
+
 ## What is not implemented yet
 
-- Muse 1.3 Contributor integration: **NOT IMPLEMENTED YET**
 - DeepSeek V4 Flash integration: **NOT IMPLEMENTED YET**
 - GLM-5.3-Flash integration: **NOT IMPLEMENTED YET**
-- No real AI calls, Git worktrees, Docker, Playwright, Electron, REST,
-  MCP, execution, deduplication, synthesis, verification, or CI/CD generation.
+- No DeepSeek/GLM calls, merger, independent verifier, retest execution,
+  automatic fixes, Docker, Playwright, Electron, REST, MCP, deduplication,
+  synthesis, or CI/CD generation.
 
 ## Repository layout
 
@@ -65,16 +73,17 @@ packages/shared          # IDs, timestamps
 packages/schemas         # Zod source of truth + inferred types
 packages/domain          # errors, transitions, fixtures, parse boundary
 packages/harness-protocol# adapter contract, fake adapter, NDJSON helpers
+packages/harness-muse    # sole @muse-code/sdk integration boundary
 packages/persistence     # SQLite, data root, artifacts, filesystem engine
 packages/project-manager # managed project lifecycle
 packages/snapshot-engine # deterministic streamed snapshots
 packages/context-builder # factual context/material index
 packages/workspace-factory # isolated writable agent copies
-packages/run-engine      # fake coordinator, activities, recovery, exports
+packages/run-engine      # generic coordinator, registry composition, recovery, exports
 packages/domain/tests/fixtures          # contract fixtures + relationship graph
 packages/harness-protocol/tests/fixtures/harness  # golden NDJSON event streams
 docs/architecture        # domain, lifecycle, protocol, Phase 1/1.1/2 baselines
-docs/adr                 # 0001–0011
+docs/adr                 # 0001–0012
 .github/workflows/ci.yml# install → format:check → lint → typecheck → test → build
 ```
 
@@ -124,11 +133,14 @@ Requirements + QA Policy`, with optional operational `ExecutionSafeguards`. No `
 ```bash
 qa doctor
 qa capabilities --json
+qa agent list --json
+qa agent doctor muse --json
 qa project add ./sample-project
 qa project list --json
 qa project show <project-id> --json
 qa run simulate <project-id> --scenario success
 qa run simulate <project-id> --scenario partial
+qa run start <project-id> --mode full --agents muse --wait
 qa run list <project-id>
 qa run show <run-id>
 qa run status <run-id> --json
@@ -140,6 +152,8 @@ qa project delete <project-id> --yes --json
 
 Human-mode simulated runs print `SIMULATED / FAKE HARNESS RUN`; the machine
 response contains `"simulated": true`. Simulation is **FAKE / DEVELOPMENT ONLY**.
+Real execution requires `SENTRY_MUSE_MODEL` and a separately installed `muse`
+binary (or `SENTRY_MUSE_BINARY`); its response contains `"simulated": false`.
 Exit 5 means QA completed and found issues, not that Sentry crashed. Set
 `SENTRY_DATA_ROOT` to override the OS data location. See
 `docs/architecture/phase-2-2.md` for the complete machine contract and deferred

@@ -10,7 +10,11 @@ export const MUSE_QA_STACK = AgentStackDefinitionSchema.parse({
   id: 'stack_muse_main',
   displayName: 'Muse QA Agent',
   enabled: true,
-  model: { provider: 'meta', modelId: 'muse-1.3-contributor', displayName: 'Muse 1.3 Contributor' },
+  model: {
+    provider: 'meta',
+    modelId: 'muse-spark-1.3-contributor',
+    displayName: 'Muse 1.3 Contributor',
+  },
   harness: { adapterId: 'muse-code', expectedProtocolVersion: 1 },
   execution: {},
   policy: { id: 'qa-standard', version: 1 },

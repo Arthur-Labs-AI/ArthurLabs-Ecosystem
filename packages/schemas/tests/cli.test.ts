@@ -14,7 +14,7 @@ describe('machine CLI schemas', () => {
         projectLifecycle: true,
         runInspection: true,
         fakeRunSimulation: true,
-        realAgentExecution: false,
+        realAgentExecution: true,
         retestExecution: false,
         runCancellation: false,
       },

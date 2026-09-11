@@ -2,6 +2,7 @@ import { RuntimePersistenceError } from '@qa/persistence';
 import { ProjectManagerError } from '@qa/project-manager';
 import { RunEngineError } from '@qa/run-engine';
 import { HarnessProtocolError } from '@qa/harness-protocol';
+import { MuseHarnessError } from '@qa/harness-muse';
 import {
   CLI_CONTRACT_VERSION,
   CliErrorEnvelopeSchema,
@@ -92,6 +93,13 @@ function canonicalError(cause: unknown): CliError {
       retryable: false,
     };
   }
+  if (cause instanceof MuseHarnessError) {
+    return {
+      code: cause.code,
+      message: bounded(cause.message),
+      retryable: cause.retryable,
+    };
+  }
   if (cause instanceof RuntimePersistenceError) {
     const code: CliErrorCode =
       cause.code === 'SQLITE_BUSY'
@@ -136,7 +144,12 @@ export function errorExitCode(error: CliError): number {
     return CLI_EXIT.notFound;
   if (error.code === 'PROJECT_SOURCE_NOT_FOUND') return CLI_EXIT.notFound;
   if (RETRYABLE.has(error.code) || error.code === 'PROJECT_COPY_DRIFT') return CLI_EXIT.conflict;
-  if (error.code === 'RUN_EXECUTION_FAILED' || error.code === 'HARNESS_PROTOCOL_VIOLATION') {
+  if (
+    error.code === 'RUN_EXECUTION_FAILED' ||
+    error.code === 'HARNESS_PROTOCOL_VIOLATION' ||
+    error.code.startsWith('MUSE_') ||
+    error.code === 'AGENT_STACK_UNAVAILABLE'
+  ) {
     return CLI_EXIT.executionFailed;
   }
   return CLI_EXIT.internal;

@@ -19,6 +19,8 @@ interface BaseCommand<C extends CliCommand> {
 
 export type ParsedCliCommand =
   | BaseCommand<'capabilities'>
+  | BaseCommand<'agent.list'>
+  | (BaseCommand<'agent.doctor'> & { readonly agent: 'muse' })
   | (BaseCommand<'project.add'> & { readonly sourcePath: string })
   | BaseCommand<'project.list'>
   | (BaseCommand<'project.show'> & { readonly projectId: string })
@@ -32,6 +34,14 @@ export type ParsedCliCommand =
       readonly scenario: SimulationScenario;
       readonly instructions?: string;
       readonly agents?: string;
+    })
+  | (BaseCommand<'run.start'> & {
+      readonly projectId: string;
+      readonly mode: 'full';
+      readonly agents: 'muse';
+      readonly wait: true;
+      readonly instructions?: string;
+      readonly runTimeoutMs?: number;
     })
   | (BaseCommand<'run.list'> & { readonly projectId: string })
   | (BaseCommand<'run.show'> & { readonly runId: string })
@@ -90,7 +100,10 @@ export function commandHint(args: readonly string[]): CliCommand | 'unknown' {
     'project.show',
     'project.update',
     'project.delete',
+    'agent.list',
+    'agent.doctor',
     'run.simulate',
+    'run.start',
     'run.list',
     'run.show',
     'run.status',
@@ -109,6 +122,17 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
   const area = args[0];
   const action = args[1];
   const tail = args.slice(2);
+  if (area === 'agent' && action === 'list') {
+    assertFlags(tail, []);
+    assertPositionals(tail, 0, 'qa agent list');
+    return { command: 'agent.list' };
+  }
+  if (area === 'agent' && action === 'doctor') {
+    assertFlags(tail, []);
+    const [agent] = assertPositionals(tail, 1, 'qa agent doctor muse');
+    if (agent !== 'muse') fail('Only the Muse agent is available in Phase 3');
+    return { command: 'agent.doctor', agent: 'muse' };
+  }
   if (area === 'project' && action === 'add') {
     assertFlags(tail, []);
     const [sourcePath] = assertPositionals(tail, 1, 'qa project add <path>');
@@ -164,6 +188,36 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
       scenario: scenario as SimulationScenario,
       ...(instructions === undefined ? {} : { instructions }),
       ...(agents === undefined ? {} : { agents }),
+    };
+  }
+  if (area === 'run' && action === 'start') {
+    assertFlags(tail, ['--mode', '--agents', '--wait', '--instructions', '--timeout-ms']);
+    const [projectId] = positional(tail);
+    if (projectId === undefined || positional(tail).length !== 1) {
+      fail('Usage: qa run start <project-id> --mode full --agents muse --wait');
+    }
+    const mode = option(tail, '--mode');
+    const agents = option(tail, '--agents');
+    if (mode !== 'full') fail('--mode must be full', '--mode');
+    if (agents !== 'muse') fail('--agents must be muse', '--agents');
+    if (!tail.includes('--wait')) fail('Phase 3 real runs require --wait', '--wait');
+    const instructions = option(tail, '--instructions');
+    const timeoutText = option(tail, '--timeout-ms');
+    const runTimeoutMs = timeoutText === undefined ? undefined : Number(timeoutText);
+    if (
+      runTimeoutMs !== undefined &&
+      (!Number.isSafeInteger(runTimeoutMs) || runTimeoutMs < 1_000)
+    ) {
+      fail('--timeout-ms must be an integer of at least 1000', '--timeout-ms');
+    }
+    return {
+      command: 'run.start',
+      projectId,
+      mode: 'full',
+      agents: 'muse',
+      wait: true,
+      ...(instructions === undefined ? {} : { instructions }),
+      ...(runTimeoutMs === undefined ? {} : { runTimeoutMs }),
     };
   }
   if (area === 'run' && action === 'list') {

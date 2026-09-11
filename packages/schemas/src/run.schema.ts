@@ -88,6 +88,7 @@ const QARunBaseSchema = z
     snapshotId: SnapshotIdSchema,
     projectContextSnapshotId: ProjectContextSnapshotIdSchema,
     runtimeInstanceId: RuntimeInstanceIdSchema.optional(),
+    executionKind: z.enum(['simulation', 'production']).optional(),
     status: z.enum(QARUN_STATUSES),
     configuration: QARunConfigurationSchema,
     createdAt: IsoTimestampSchema,
@@ -119,6 +120,9 @@ export const AgentRuntimeIdentitySchema = z
     adapterId: z.string().min(1).max(100).optional(),
     adapterVersion: z.string().min(1).max(100).optional(),
     harnessVersion: z.string().min(1).max(100).optional(),
+    sdkVersion: z.string().min(1).max(100).optional(),
+    executable: z.string().min(1).max(2000).optional(),
+    executableVersion: z.string().min(1).max(200).optional(),
     policyId: z.string().min(1).max(100).optional(),
     policyVersion: z.number().int().min(1).optional(),
   })

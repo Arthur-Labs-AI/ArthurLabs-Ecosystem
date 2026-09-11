@@ -6,7 +6,9 @@ import {
   resolveSentryDataRoot,
 } from '@qa/persistence';
 import { ProjectManager, ProjectManagerError } from '@qa/project-manager';
-import { FakeRunCoordinator } from '@qa/run-engine';
+import { createFakeHarnessRegistry, RunCoordinator } from '@qa/run-engine';
+import { HarnessAdapterRegistry } from '@qa/harness-protocol';
+import { createMuseRegistration, doctorMuse, MUSE_SDK_VERSION } from '@qa/harness-muse';
 import {
   AgentStackDefinitionSchema,
   CLI_CONTRACT_VERSION,
@@ -20,7 +22,7 @@ import type { ParsedCliCommand } from './arguments.js';
 interface RuntimeContext {
   readonly repository: SentryRepository;
   readonly projects: ProjectManager;
-  readonly runs: FakeRunCoordinator;
+  readonly runs: RunCoordinator;
   readonly dataRoot: string;
 }
 
@@ -33,7 +35,7 @@ async function withReadRuntime<T>(operation: (runtime: RuntimeContext) => Promis
   const database = new SentryDatabase({ dataRoot });
   const repository = new SentryRepository(database);
   const projects = new ProjectManager(dataRoot, repository);
-  const runs = new FakeRunCoordinator(dataRoot, repository);
+  const runs = new RunCoordinator(dataRoot, repository);
   try {
     return await operation({ repository, projects, runs, dataRoot });
   } finally {
@@ -44,6 +46,7 @@ async function withReadRuntime<T>(operation: (runtime: RuntimeContext) => Promis
 async function withMutationRuntime<T>(
   operation: (runtime: RuntimeContext) => Promise<T>,
   options: ExecuteOptions,
+  registry: HarnessAdapterRegistry = new HarnessAdapterRegistry(),
 ): Promise<T> {
   const dataRoot = resolveSentryDataRoot();
   const database = new SentryDatabase({ dataRoot });
@@ -56,7 +59,7 @@ async function withMutationRuntime<T>(
     lease.start();
     leaseStarted = true;
     const projects = new ProjectManager(dataRoot, repository, { runtimeLease: lease });
-    const runs = new FakeRunCoordinator(dataRoot, repository, lease);
+    const runs = new RunCoordinator(dataRoot, repository, lease, registry);
     await runs.recover();
     return await operation({ repository, projects, runs, dataRoot });
   } finally {
@@ -88,11 +91,31 @@ export async function executeCommand(
         projectLifecycle: true,
         runInspection: true,
         fakeRunSimulation: true,
-        realAgentExecution: false,
+        realAgentExecution: true,
         retestExecution: false,
         runCancellation: false,
       },
     });
+  }
+  if (input.command === 'agent.list') {
+    const health = await doctorMuse();
+    const configured = (name: string) =>
+      health.checks.some((check) => check.name === name && check.status === 'pass');
+    return success(input.command, {
+      agents: [
+        {
+          id: 'muse',
+          displayName: 'Muse QA Agent',
+          harness: 'muse-code',
+          available: configured('model') && configured('binary'),
+          modelEnvironmentVariable: 'SENTRY_MUSE_MODEL',
+        },
+      ],
+    });
+  }
+  if (input.command === 'agent.doctor') {
+    const result = await doctorMuse();
+    return success(input.command, { agent: 'muse', ...result, sdkVersion: MUSE_SDK_VERSION });
   }
   if (input.command === 'project.add') {
     return withMutationRuntime(async ({ projects }) => {
@@ -160,20 +183,53 @@ export async function executeCommand(
       .filter((value) => value.length > 0)
       .map((name) => (name.startsWith('stack_') ? name : 'stack_' + name + '_main'))
       .map((id) => AgentStackDefinitionSchema.shape.id.parse(id));
-    return withMutationRuntime(async ({ runs }) => {
-      const details = await runs.simulate(projectId, {
-        scenario: input.scenario,
-        ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
-        ...(agentStackIds === undefined ? {} : { agentStackIds }),
-      });
-      return success(input.command, {
-        simulated: true,
-        runId: details.run.id,
-        projectId: details.run.projectId,
-        status: details.run.status,
-        findings: { total: details.findings.length },
-      });
-    }, options);
+    return withMutationRuntime(
+      async ({ runs }) => {
+        const details = await runs.run(projectId, {
+          executionKind: 'simulation',
+          ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
+          ...(agentStackIds === undefined ? {} : { agentStackIds }),
+        });
+        return success(input.command, {
+          simulated: true,
+          runId: details.run.id,
+          projectId: details.run.projectId,
+          status: details.run.status,
+          findings: { total: details.findings.length },
+        });
+      },
+      options,
+      createFakeHarnessRegistry(input.scenario),
+    );
+  }
+  if (input.command === 'run.start') {
+    const projectId = ProjectIdSchema.parse(input.projectId);
+    const registry = new HarnessAdapterRegistry().register(createMuseRegistration());
+    return withMutationRuntime(
+      async ({ runs }) => {
+        const details = await runs.run(projectId, {
+          executionKind: 'production',
+          agentStackIds: [AgentStackDefinitionSchema.shape.id.parse('stack_muse_main')],
+          verificationLevel: 'strict',
+          ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
+          ...(input.runTimeoutMs === undefined ? {} : { runTimeoutMs: input.runTimeoutMs }),
+        });
+        return success(input.command, {
+          simulated: false,
+          runId: details.run.id,
+          projectId: details.run.projectId,
+          status: details.run.status,
+          agents: {
+            configured: details.agentRuns.length,
+            completed: details.agentRuns.filter((agent) => agent.status === 'completed').length,
+            failed: details.agentRuns.filter((agent) => agent.status !== 'completed').length,
+          },
+          findings: { total: details.findings.length },
+        });
+      },
+      options,
+      registry,
+    );
   }
   if (input.command === 'run.list') {
     const projectId = ProjectIdSchema.parse(input.projectId);

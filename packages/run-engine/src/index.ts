@@ -1,7 +1,5 @@
 import {
   createAgentRunId,
-  createEvidenceId,
-  createFindingId,
   createQARunId,
   nowIsoTimestamp,
   type AgentStackId,
@@ -14,7 +12,6 @@ import {
   QARunSchema,
   RunActivitySchema,
   type AgentRun,
-  type AgentStackDefinition,
   type Evidence,
   type Finding,
   type HarnessEvent,
@@ -27,13 +24,13 @@ import {
   aggregateAgentUsage,
   aggregateAgentRunOutcome,
   assertAgentRunTransition,
-  INITIAL_AGENT_STACKS,
 } from '@qa/domain';
 import {
-  FakeHarnessAdapter,
+  HarnessAdapterRegistry,
   HarnessProtocolError,
   IncrementalHarnessEventValidator,
-  type FakeScenario,
+  type HarnessAdapter,
+  type HarnessAdapterRegistration,
 } from '@qa/harness-protocol';
 import {
   projectDataPaths,
@@ -48,12 +45,9 @@ import { RunActivityProjector } from './activity-projector.js';
 import { RunExporter } from './exporters.js';
 import { RunEngineError } from './errors.js';
 
-export type SimulationScenario =
-  'success' | 'partial' | 'all-fail' | 'transport-loss' | 'timeout' | 'protocol-error';
-
-export interface SimulateRunOptions {
+export interface RunOptions {
   readonly agentStackIds?: readonly AgentStackId[];
-  readonly scenario?: SimulationScenario;
+  readonly executionKind: 'simulation' | 'production';
   readonly verificationLevel?: VerificationLevel;
   readonly instructions?: string;
   readonly runTimeoutMs?: number;
@@ -119,27 +113,18 @@ export interface RunStatus {
 
 class RunTimeoutError extends Error {}
 
-function fakeScenarioFor(scenario: SimulationScenario, index: number): FakeScenario {
-  if (scenario === 'all-fail') return 'failure';
-  if (scenario === 'partial') return index === 1 ? 'transport-loss' : 'success';
-  if (scenario === 'transport-loss') return index === 0 ? 'transport-loss' : 'success';
-  if (scenario === 'timeout') return index === 0 ? 'timeout' : 'success';
-  if (scenario === 'protocol-error') return index === 0 ? 'protocol-error' : 'success';
-  return 'success';
-}
-
-export class FakeRunCoordinator {
+export class RunCoordinator {
   private readonly projects: ProjectManager;
   private readonly snapshots: SnapshotEngine;
   private readonly workspaces: WorkspaceFactory;
   private readonly activities: RunActivityProjector;
   private readonly exporter: RunExporter;
-  private readonly stacks = new Map(INITIAL_AGENT_STACKS.map((stack) => [stack.id, stack]));
 
   constructor(
     private readonly dataRoot: string,
     private readonly repository: SentryRepository,
     private readonly runtimeLease?: RuntimeInstanceLease,
+    private readonly registry: HarnessAdapterRegistry = new HarnessAdapterRegistry(),
   ) {
     this.projects = new ProjectManager(
       dataRoot,
@@ -152,19 +137,20 @@ export class FakeRunCoordinator {
     this.exporter = new RunExporter(dataRoot, repository);
   }
 
-  async simulate(projectId: ProjectId, options: SimulateRunOptions = {}): Promise<RunDetails> {
+  async run(projectId: ProjectId, options: RunOptions): Promise<RunDetails> {
     const runtimeLease = this.requireRuntimeLease();
     const project = this.projects.getProject(projectId);
     if (project === undefined)
       throw new RunEngineError('PROJECT_NOT_FOUND', 'Project not found: ' + projectId);
-    const selectedIds = options.agentStackIds ?? INITIAL_AGENT_STACKS.map((stack) => stack.id);
+    const selectedIds = options.agentStackIds ?? this.registry.list().map((item) => item.stack.id);
     const selected = selectedIds.map((id) => {
-      const stack = this.stacks.get(id);
-      if (stack === undefined)
+      const registration = this.registry.resolve(id);
+      if (registration === undefined)
         throw new RunEngineError('AGENT_STACK_NOT_FOUND', 'Agent stack not found: ' + id);
-      return stack;
+      return registration;
     });
-    if (selected.length === 0) throw new Error('At least one fake agent stack must be selected');
+    if (selected.length === 0) throw new Error('At least one agent stack must be selected');
+    for (const registration of selected) await registration.preflight?.();
     const runId = createQARunId();
     this.projects.lockProjectForRun(projectId, runId);
     try {
@@ -185,18 +171,22 @@ export class FakeRunCoordinator {
         id: runId,
         projectId,
         runtimeInstanceId: runtimeLease.instanceId,
+        executionKind: options.executionKind,
         snapshotId: snapshot.id,
         projectContextSnapshotId: context.id,
         mode: 'full',
         status: 'agents_running',
         configuration: {
-          agentStackIds: selected.map((stack) => stack.id),
+          agentStackIds: selected.map((item) => item.stack.id),
           verificationLevel: options.verificationLevel ?? 'strict',
           ...(options.instructions === undefined
             ? {}
             : { instructions: { message: options.instructions, createdAt } }),
           policy: { id: 'qa-standard', version: 1 },
-          executionSafeguards: { runTimeoutMs: options.runTimeoutMs ?? 2_000 },
+          executionSafeguards: {
+            runTimeoutMs:
+              options.runTimeoutMs ?? (options.executionKind === 'production' ? 1_800_000 : 2_000),
+          },
         },
         createdAt,
         startedAt: createdAt,
@@ -206,14 +196,17 @@ export class FakeRunCoordinator {
         qaRunId: runId,
         source: 'sentry',
         kind: 'run',
-        title: 'Full QA — SIMULATED / FAKE HARNESS RUN',
+        title:
+          options.executionKind === 'simulation'
+            ? 'Full QA — SIMULATED / FAKE HARNESS RUN'
+            : 'Full QA — REAL AGENT RUN',
         status: 'running',
       });
       for (const [kind, title] of [
         ['preparation', 'Preparation'],
         ['snapshot', 'Snapshot'],
         ['context', 'Context'],
-        ['baseline', 'Baseline (simulated)'],
+        ['baseline', options.executionKind === 'simulation' ? 'Baseline (simulated)' : 'Baseline'],
       ] as const) {
         this.activities.stage({
           qaRunId: runId,
@@ -224,14 +217,30 @@ export class FakeRunCoordinator {
         });
       }
 
-      const workers = selected.map((stack, index) =>
+      const workers = selected.map((registration, index) =>
         this.runAgent({
           run,
-          stack,
+          registration,
           index,
-          scenario: fakeScenarioFor(options.scenario ?? 'success', index),
           workingCopy,
           rootActivityId: root.id,
+          missionContext: {
+            project: {
+              id: project.project.id,
+              name: project.project.name,
+              metadata: project.project.metadata,
+            },
+            revision: {
+              id: revision.id,
+              contentHash: revision.contentHash,
+              ...(revision.stats === undefined ? {} : { stats: revision.stats }),
+              ...(revision.sourceState === undefined ? {} : { sourceState: revision.sourceState }),
+            },
+            snapshot,
+            projectContext: context,
+            runInstructions: run.configuration.instructions ?? null,
+            qaPolicy: run.configuration.policy,
+          },
           ...(options.onHarnessRequest === undefined
             ? {}
             : { onHarnessRequest: options.onHarnessRequest }),
@@ -248,11 +257,15 @@ export class FakeRunCoordinator {
           producedUsableOutput: this.repository.agentProducedUsableOutput(agentRun.id),
         })),
       );
-      for (const [source, kind, title] of [
-        ['merger', 'merger', 'Merger (deterministic no-op)'],
-        ['verifier', 'verification', 'Verification (simulated)'],
-        ['report', 'report', 'Report'],
-      ] as const) {
+      const finalStages =
+        options.executionKind === 'simulation'
+          ? ([
+              ['merger', 'merger', 'Merger (deterministic no-op)'],
+              ['verifier', 'verification', 'Verification (simulated)'],
+              ['report', 'report', 'Report'],
+            ] as const)
+          : ([['report', 'report', 'Report']] as const);
+      for (const [source, kind, title] of finalStages) {
         this.activities.stage({ qaRunId: runId, parentActivityId: root.id, source, kind, title });
       }
       const completedAt = nowIsoTimestamp();
@@ -289,77 +302,53 @@ export class FakeRunCoordinator {
 
   private async runAgent(input: {
     readonly run: QARun;
-    readonly stack: AgentStackDefinition;
+    readonly registration: HarnessAdapterRegistration;
     readonly index: number;
-    readonly scenario: FakeScenario;
     readonly workingCopy: string;
     readonly rootActivityId: ReturnType<RunActivityProjector['stage']>['id'];
+    readonly missionContext: Readonly<Record<string, unknown>>;
     readonly onHarnessRequest?: (request: HarnessRunRequest) => void;
     readonly onHarnessEventPersisted?: (event: HarnessEvent, agentRun: AgentRun) => void;
   }): Promise<void> {
+    const stack = input.registration.stack;
     const agentRunId = createAgentRunId();
     const startedAt = nowIsoTimestamp();
     let agentRun = AgentRunSchema.parse({
       schemaVersion: 1,
       id: agentRunId,
       qaRunId: input.run.id,
-      agentStackId: input.stack.id,
+      agentStackId: stack.id,
       taskType: 'qa',
       status: 'starting',
       startedAt,
       runtimeIdentity: {
-        modelId: input.stack.model.modelId,
-        adapterId: 'fake-harness',
-        adapterVersion: '0.1.0',
-        policyId: input.stack.policy.id,
-        policyVersion: input.stack.policy.version,
+        modelId: stack.model.modelId,
+        ...input.registration.runtimeIdentity,
+        policyId: stack.policy.id,
+        policyVersion: stack.policy.version,
       },
     });
     this.repository.saveAgentRun(agentRun);
     let workspace: HarnessWorkspace | undefined;
-    const evidenceId = createEvidenceId();
-    const evidence = {
-      schemaVersion: 1,
-      id: evidenceId,
-      qaRunId: input.run.id,
-      agentRunId,
-      strength: 'reproduced_behavior',
-      environmentState: 'baseline',
-      type: 'test',
-      test: { framework: 'fake-harness', name: 'deterministic simulation', status: 'passed' },
-      artifactIds: [],
-      createdAt: startedAt,
-    } satisfies Evidence;
-    const finding = {
-      schemaVersion: 1,
-      id: createFindingId(),
-      qaRunId: input.run.id,
-      agentRunId,
-      sourceAgentStackId: input.stack.id,
-      title: 'Simulated finding from ' + input.stack.displayName,
-      category: 'testing',
-      severity: 'low',
-      confidence: 'confirmed',
-      description: 'Deterministic fake output used to validate the Sentry runtime pipeline.',
-      locations: [{ relativePath: 'README.md' }],
-      evidenceIds: [evidenceId],
-      reproductionSteps: ['Run the fake harness simulation'],
-      createdAt: startedAt,
-    } satisfies Finding;
-    const adapter = new FakeHarnessAdapter({
-      scenario: input.scenario,
-      evidence,
-      finding,
-      usage: {
-        inputTokens: 100 + input.index,
-        outputTokens: 40,
-        cachedInputTokens: 10,
-        turns: 2,
-        durationMs: 90,
-      },
-    });
+    let adapter: HarnessAdapter | undefined;
     const validator = new IncrementalHarnessEventValidator(input.run.id, agentRunId);
     try {
+      adapter = await input.registration.createAdapter({
+        qaRunId: input.run.id,
+        agentRunId,
+        agentIndex: input.index,
+        stack,
+      });
+      const metadata = await adapter.getMetadata();
+      agentRun = AgentRunSchema.parse({
+        ...agentRun,
+        runtimeIdentity: {
+          ...agentRun.runtimeIdentity,
+          adapterId: metadata.adapterId,
+          adapterVersion: metadata.adapterVersion,
+        },
+      });
+      this.repository.saveAgentRun(agentRun);
       workspace = await this.workspaces.create({
         projectId: input.run.projectId,
         qaRunId: input.run.id,
@@ -371,18 +360,23 @@ export class FakeRunCoordinator {
         schemaVersion: 1,
         agentRunId,
         qaRunId: input.run.id,
-        agentStackId: input.stack.id,
+        agentStackId: stack.id,
         projectContextSnapshotId: input.run.projectContextSnapshotId,
         workspace,
-        model: input.stack.model,
+        model: stack.model,
         task: {
           type: 'qa',
           prompt:
-            'SIMULATED QA. Independently inspect the supplied snapshot. ' +
+            (input.run.executionKind === 'simulation'
+              ? 'SIMULATED QA. '
+              : 'REAL QA. Independently inspect the supplied snapshot. ') +
             (input.run.configuration.instructions?.message ?? 'No additional user instructions.'),
           policyId: input.run.configuration.policy.id,
           policyVersion: input.run.configuration.policy.version,
-          context: { projectContextSnapshotId: input.run.projectContextSnapshotId },
+          context: {
+            ...input.missionContext,
+            agentStack: stack,
+          },
         },
         executionSafeguards: input.run.configuration.executionSafeguards,
       });
@@ -404,6 +398,14 @@ export class FakeRunCoordinator {
         });
         input.onHarnessEventPersisted?.(event, agentRun);
       });
+      agentRun = AgentRunSchema.parse({
+        ...agentRun,
+        runtimeIdentity: {
+          ...agentRun.runtimeIdentity,
+          ...input.registration.runtimeIdentity,
+        },
+      });
+      this.repository.saveAgentRun(agentRun);
       validator.finish();
       const persisted = this.repository.getAgentRun(agentRunId);
       if (
@@ -417,6 +419,10 @@ export class FakeRunCoordinator {
       const protocolViolation =
         cause instanceof HarnessProtocolError ||
         (cause instanceof RuntimePersistenceError && cause.code === 'EVENT_CONFLICT');
+      const typed =
+        typeof cause === 'object' && cause !== null && 'code' in cause
+          ? (cause as { code?: unknown; message?: unknown; retryable?: unknown })
+          : undefined;
       agentRun = AgentRunSchema.parse({
         ...agentRun,
         status: timedOut ? 'timed_out' : protocolViolation ? 'failed' : 'interrupted',
@@ -426,15 +432,19 @@ export class FakeRunCoordinator {
             ? 'RUN_TIMEOUT'
             : protocolViolation
               ? 'HARNESS_PROTOCOL_VIOLATION'
-              : 'WORKER_DISCONNECTED',
+              : typeof typed?.code === 'string'
+                ? typed.code
+                : 'WORKER_DISCONNECTED',
           message: timedOut
             ? 'Agent exceeded configured run timeout.'
             : protocolViolation
               ? cause instanceof Error
                 ? cause.message
                 : 'Harness protocol validation failed.'
-              : 'Fake worker transport disconnected.',
-          retryable: !protocolViolation,
+              : cause instanceof Error
+                ? cause.message
+                : 'Agent worker transport disconnected.',
+          retryable: typeof typed?.retryable === 'boolean' ? typed.retryable : !protocolViolation,
         },
       });
       this.repository.saveAgentRun(agentRun);
@@ -449,6 +459,7 @@ export class FakeRunCoordinator {
             : 'Agent interrupted by transport loss',
       );
     } finally {
+      await adapter?.dispose();
       if (workspace !== undefined) {
         const cleanup = await this.workspaces.cleanup(workspace);
         if (cleanup.warning !== undefined) {
@@ -462,7 +473,6 @@ export class FakeRunCoordinator {
           });
         }
       }
-      await adapter.dispose();
     }
   }
 
@@ -500,7 +510,7 @@ export class FakeRunCoordinator {
   }
 
   private async consumeWithTimeout(
-    adapter: FakeHarnessAdapter,
+    adapter: HarnessAdapter,
     request: ReturnType<typeof HarnessRunRequestSchema.parse>,
     timeoutMs: number,
     onEvent: (event: HarnessEvent) => Promise<void>,
@@ -720,3 +730,4 @@ export * from './errors.js';
 
 export * from './activity-projector.js';
 export * from './exporters.js';
+export * from './simulation.js';
