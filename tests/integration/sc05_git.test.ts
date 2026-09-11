@@ -131,11 +131,11 @@ test("status/log/branches/show/diff flow through fixed argv templates", async ()
     { match: (a) => a.includes("for-each-ref") && a.includes("refs/heads/"), stdout: "refs/heads/main\x1f" + OID_A + "\x1f\n" },
     { match: (a) => a.includes("for-each-ref") && a.includes("refs/remotes/"), stdout: "refs/remotes/origin/main\x1f" + OID_A + "\x1f\n" },
     { match: (a) => a.includes("symbolic-ref"), stdout: "main\n" },
-    { match: (a) => a.some((x) => x.startsWith("--format=")), stdout: logOut },
+    { match: (a) => a.some((x) => x.startsWith("--format=")) && !a.includes("--numstat"), stdout: logOut },
     { match: (a) => a.includes("diff") && a.includes("--numstat"), stdout: "3\t1\tsrc/app.ts\0" },
     { match: (a) => a.includes("diff") && !a.includes("--numstat"), stdout: "diff --git a/src/app.ts b/src/app.ts\n" },
-    { match: (a) => a.includes("diff-tree"), stdout: "3\t1\tsrc/app.ts\0" },
-    { match: (a) => a.includes("show"), stdout: "show-patch\n" },
+    { match: (a) => a[0] === "diff-tree", stdout: "3\t1\tsrc/app.ts\0" },
+    { match: (a) => a[0] === "show", stdout: "show-patch\n" },
   ]);
 
   const status = await adapter.getStatus("repo", ArthurMode.PERSONAL);

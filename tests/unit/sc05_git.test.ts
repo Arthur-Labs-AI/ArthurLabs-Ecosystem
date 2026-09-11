@@ -6,8 +6,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { buildGitChildEnv, HardenedGitRunner } from "../../src/tools/git/command_runner";
-import { boundPatch, deterministicDiffFlags, parseNumstatZ } from "../../src/tools/git/parsers/diff";
+import { buildGitChildEnv, gitAbortCode, HardenedGitRunner } from "../../src/tools/git/command_runner";
+import { boundPatch, deterministicDiffFlags, deterministicNumstatFlags, parseNumstatZ } from "../../src/tools/git/parsers/diff";
 import { parseLogOutput, parseShowMetadata } from "../../src/tools/git/parsers/log";
 import { parseBranches } from "../../src/tools/git/parsers/refs";
 import { operationStateFromMarkers, parsePorcelainV2, splitNulRecords } from "../../src/tools/git/parsers/status";
@@ -136,12 +136,42 @@ test("NUL splitting keeps newline/unicode filenames intact", () => {
 
 // ---- numstat/diff ----
 
-test("numstat -z parses stats literally (no pathspec magic)", () => {
-  const buf = Buffer.from("10\t4\tsrc/app.ts\0-\t-\tbin/blob.bin\0", "utf8");
+test("numstat -z parses NUL-framed stats literally incl. adversarial names (F16)", () => {
+  const buf = Buffer.from(
+    "10\t4\tsrc/app.ts\0-\t-\tbin/blob.bin\0" +
+    "1\t0\tspace name.txt\0" +
+    "1\t0\tquote\"name.txt\0" +
+    "1\t0\ttab\tname.txt\0" +
+    "1\t0\tline\nbreak.txt\0" +
+    "1\t0\tЮникод.txt\0" +
+    "1\t0\t-leading-dash.txt\0",
+    "utf8",
+  );
   const parsed = parseNumstatZ(buf);
-  assert.equal(parsed.files.length, 2);
-  assert.equal(parsed.files[0]?.path, "src/app.ts");
+  assert.deepEqual(parsed.files.map((f) => f.path), [
+    "src/app.ts",
+    "bin/blob.bin",
+    "space name.txt",
+    "quote\"name.txt",
+    "tab\tname.txt",
+    "line\nbreak.txt",
+    "Юникод.txt",
+    "-leading-dash.txt",
+  ]);
   assert.equal(parsed.files[1]?.added_lines, 0);
+});
+
+test("numstat rejects a patch tail (Git 2.55 regression: --unified re-enables patch)", () => {
+  // Real Git 2.55 defect framing: --numstat -z WITH --unified appends the
+  // full patch after the stats records. Production argv never sets --unified
+  // on numstat runs; if a patch tail ever reaches the parser it must fail
+  // closed (GIT_COMMAND_FAILED upstream), never misread as a file stat.
+  const framed = Buffer.from("1\t0\ta.txt\0diff --git a/a.txt b/a.txt\n", "utf8");
+  assert.throws(() => parseNumstatZ(framed), /unparseable numstat/);
+  const clean = Buffer.from("1\t0\ta.txt\0", "utf8");
+  const parsed = parseNumstatZ(clean);
+  assert.equal(parsed.files.length, 1);
+  assert.equal(parsed.files[0]?.path, "a.txt");
 });
 
 test("patch is bounded whole, never cut", () => {
@@ -154,6 +184,15 @@ test("patch is bounded whole, never cut", () => {
 
 test("deterministic diff flags disable helpers", () => {
   const flags = deterministicDiffFlags();
+  for (const f of ["--no-ext-diff", "--no-textconv", "--no-renames", "--no-color"]) {
+    assert.ok(flags.includes(f), f);
+  }
+});
+
+test("deterministic numstat flags omit unified context (patch stays suppressed)", () => {
+  const flags = deterministicNumstatFlags();
+  assert.ok(!flags.some((f) => f.startsWith("--unified")), "numstat flags must not set --unified (--unified implies --patch on Git 2.55)");
+  assert.ok(!flags.includes("-p") && !flags.includes("--patch") && !flags.includes("-s") && !flags.includes("--no-patch"), "numstat flags must not toggle patch output either way");
   for (const f of ["--no-ext-diff", "--no-textconv", "--no-renames", "--no-color"]) {
     assert.ok(flags.includes(f), f);
   }
@@ -316,4 +355,54 @@ test("runner abort signal kills child with TOOL_CANCELLED; pre-abort never spawn
   );
   assert.equal(spawned, false);
   clearInterval(keepAlive);
+});
+
+// ---- abort-reason mapping (F37 regression: deadline aborts are timeouts, not cancels) ----
+
+test("gitAbortCode maps SC-03 abort reasons (deadline -> timeout, user cancel -> cancelled)", () => {
+  const timeoutCtl = new AbortController();
+  timeoutCtl.abort(new Error("attempt timeout"));
+  assert.equal(gitAbortCode(timeoutCtl.signal), "TOOL_TIMEOUT");
+  const deadlineCtl = new AbortController();
+  deadlineCtl.abort(new Error("execution deadline exceeded"));
+  assert.equal(gitAbortCode(deadlineCtl.signal), "TOOL_TIMEOUT");
+  const userCtl = new AbortController();
+  userCtl.abort(new Error("user cancellation"));
+  assert.equal(gitAbortCode(userCtl.signal), "TOOL_CANCELLED");
+  const bareCtl = new AbortController();
+  bareCtl.abort();
+  assert.equal(gitAbortCode(bareCtl.signal), "TOOL_CANCELLED");
+});
+
+test("runner maps attempt-timeout abort to TOOL_TIMEOUT and pre-aborted timeout never spawns (F37)", async () => {
+  const keepAlive = setInterval(() => {}, 1000);
+  try {
+    const box: { holder?: { child: unknown; killed: string[] } } = {};
+    const runner = new HardenedGitRunner(((() => {
+      box.holder = emitterChild({ hangOpen: true });
+      return box.holder.child;
+    }) as unknown) as typeof import("node:child_process").spawn);
+    const ctl = new AbortController();
+    const pending = runner.run({ executable: "git", args: ["x"], cwd: ".", signal: ctl.signal, timeoutMs: 10000, maxStdoutBytes: 1e6, maxStderrBytes: 1e6 });
+    setTimeout(() => ctl.abort(new Error("attempt timeout")), 50);
+    await assert.rejects(
+      pending,
+      (e: unknown) => (e as { code?: string }).code === "TOOL_TIMEOUT",
+    );
+    assert.deepEqual(box.holder?.killed, ["SIGKILL"]);
+    let spawned = false;
+    const runner2 = new HardenedGitRunner(((() => {
+      spawned = true;
+      return emitterChild().child;
+    }) as unknown) as typeof import("node:child_process").spawn);
+    const ctl2 = new AbortController();
+    ctl2.abort(new Error("attempt timeout"));
+    await assert.rejects(
+      runner2.run({ executable: "git", args: ["x"], cwd: ".", signal: ctl2.signal, timeoutMs: 5000, maxStdoutBytes: 1e6, maxStderrBytes: 1e6 }),
+      (e: unknown) => (e as { code?: string }).code === "TOOL_TIMEOUT",
+    );
+    assert.equal(spawned, false);
+  } finally {
+    clearInterval(keepAlive);
+  }
 });

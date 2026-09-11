@@ -15,7 +15,7 @@ import { ArthurError } from "../../core/errors/errors";
 import type { FilesystemScopeRegistry } from "../scoped_path";
 import { assertNotSensitive } from "../scoped_path";
 import { buildGitChildEnv, HardenedGitRunner } from "../git/command_runner";
-import { deterministicDiffFlags, boundPatch, parseNumstatZ } from "../git/parsers/diff";
+import { deterministicDiffFlags, deterministicNumstatFlags, boundPatch, parseNumstatZ } from "../git/parsers/diff";
 import { forEachRefFormat, parseBranches } from "../git/parsers/refs";
 import { logFormatString, parseLogOutput, parseShowMetadata } from "../git/parsers/log";
 import { operationStateFromMarkers, parsePorcelainV2, splitNulRecords } from "../git/parsers/status";
@@ -291,12 +291,18 @@ export class LocalGitAdapter {
     let numstatArgs: string[];
     let patchArgs: string[];
     const flags = deterministicDiffFlags();
+    const numstatFlags = deterministicNumstatFlags();
     try {
+      // PASS 1 numstat: --numstat -z with NO patch-producing flag. Verified
+      // on Git 2.55: --unified implies --patch and appends the full patch
+      // after the stats records, so numstat runs use numstatFlags (no
+      // --unified) and no --format. With -z git emits literal NUL-framed
+      // paths (never C-quoted), satisfying the F16 NUL-safe contract.
       if (scope === "unstaged") {
-        numstatArgs = this.prefix(["diff", "--numstat", "-z", ...flags, "--"]);
+        numstatArgs = this.prefix(["diff", "--numstat", "-z", ...numstatFlags, "--"]);
         patchArgs = this.prefix(["diff", ...flags, "--"]);
       } else if (scope === "staged") {
-        numstatArgs = this.prefix(["diff", "--cached", "--numstat", "-z", ...flags, "--"]);
+        numstatArgs = this.prefix(["diff", "--cached", "--numstat", "-z", ...numstatFlags, "--"]);
         patchArgs = this.prefix(["diff", "--cached", ...flags, "--"]);
       } else if (scope === "working_tree") {
         // HEAD <-> tracked working tree (HEAD/empty-tree <-> worktree for
@@ -305,7 +311,7 @@ export class LocalGitAdapter {
         const headOid = await this.headOid(repo, signal, timeoutMs);
         baseOid = headOid;
         const headArg = headOid === null ? [] : [headOid];
-        numstatArgs = this.prefix(["diff", "--numstat", "-z", ...flags, ...headArg, "--", ...(relPath ? [relPath] : [])]);
+        numstatArgs = this.prefix(["diff", "--numstat", "-z", ...numstatFlags, ...headArg, "--", ...(relPath ? [relPath] : [])]);
         patchArgs = this.prefix(["diff", ...flags, ...headArg, "--", ...(relPath ? [relPath] : [])]);
       } else {
         // commits scope: resolve both refs to OIDs first (snapshot semantics).
@@ -320,7 +326,7 @@ export class LocalGitAdapter {
         } catch (err) {
           throw gitError("GIT_REF_INVALID", repoId, err instanceof Error ? err.message : undefined);
         }
-        numstatArgs = this.prefix(["diff", "--numstat", "-z", ...flags, baseOid, targetOid, "--", ...(relPath ? [relPath] : [])]);
+        numstatArgs = this.prefix(["diff", "--numstat", "-z", ...numstatFlags, baseOid, targetOid, "--", ...(relPath ? [relPath] : [])]);
         patchArgs = this.prefix(["diff", ...flags, baseOid, targetOid, "--", ...(relPath ? [relPath] : [])]);
       }
       const numstat = await this.runGit(repo, [...numstatArgs, ...(relPath && scope !== "commits" ? [relPath] : [])], signal, timeoutMs);
@@ -488,7 +494,7 @@ export class LocalGitAdapter {
     this.checkExit(repoId, meta);
     const parsed = parseShowMetadata(meta.stdout.toString("utf8"));
     const flags = deterministicDiffFlags();
-    const numstat = await this.runGit(repo, this.prefix(["diff-tree", "--numstat", "-z", "--no-commit-id", ...flags, oid, "--"]), signal, timeoutMs);
+    const numstat = await this.runGit(repo, this.prefix(["diff-tree", "--numstat", "-z", "--no-commit-id", ...deterministicNumstatFlags(), oid, "--"]), signal, timeoutMs);
     this.checkExit(repoId, numstat);
     const files = parseNumstatZ(numstat.stdout).files;
     let patch: string | null = null;

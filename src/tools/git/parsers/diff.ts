@@ -24,8 +24,17 @@ function assertRelativePath(p: string): void {
 }
 
 /**
- * Parse git diff --numstat -z output. Records are NUL-separated triples:
+ * Parse git diff --numstat -z output (F16 NUL-safe contract, spec §44).
+ * Records are NUL-separated triples:
  *   <added>\t<deleted>\t<path>\0  (binary files use "-\t-\t<path>")
+ *
+ * Path identity comes ONLY from NUL framing: with -z git never C-quotes or
+ * mangles paths, so space/quote/tab/newline/Unicode/leading-dash names all
+ * round-trip byte-exact. The numstat invocation MUST NOT contain any flag
+ * that (re-)enables patch output (--unified, -U, -p/--patch, --format with
+ * patch semantics): on Git 2.55 such a flag appends the full patch after the
+ * stats records. A record that is not a well-formed triple (e.g. a patch
+ * tail leaking into the stream) fails closed: it is never misread as a stat.
  */
 export function parseNumstatZ(stdout: Buffer): ParsedDiff {
   const files: GitDiffFileStat[] = [];
@@ -70,4 +79,14 @@ export function deterministicDiffFlags(): string[] {
     "--src-prefix=a/",
     "--dst-prefix=b/",
   ];
+}
+
+/**
+ * Numstat-only flags: deterministicDiffFlags() minus --unified. The unified
+ * context setting implies patch output on Git 2.55, which appends the full
+ * patch after --numstat -z records. The numstat invocation stays patch-free
+ * so NUL framing delimits stats only. Numstat runs never need hunk context.
+ */
+export function deterministicNumstatFlags(): string[] {
+  return deterministicDiffFlags().filter((f) => !f.startsWith("--unified"));
 }

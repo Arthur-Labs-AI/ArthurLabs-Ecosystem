@@ -122,6 +122,22 @@ export function gitConfigOverrides(): string[] {
   return ["-c", "core.fsmonitor=false", "-c", "core.pager=cat"];
 }
 
+/**
+ * Classify an AbortSignal abort by its reason, using the same convention as
+ * SC-03 (coordinator attempt-timeout aborts with an "attempt timeout" reason;
+ * user cancellation aborts with a "user cancellation" reason). Attempt/overall
+ * deadline aborts are timeouts (retryable for side-effect-free reads); only a
+ * genuine user-cancel reason is a cancellation. A bare abort() with no reason
+ * stays TOOL_CANCELLED (fail closed, preserves pre-existing behavior).
+ */
+export function gitAbortCode(signal: AbortSignal): "TOOL_TIMEOUT" | "TOOL_CANCELLED" {
+  const reason = signal.reason;
+  const text = reason instanceof Error ? reason.message : String(reason ?? "");
+  if (/user cancellation|user_cancel|cancel_requested/i.test(text)) return "TOOL_CANCELLED";
+  if (/timeout|timed out|deadline/i.test(text)) return "TOOL_TIMEOUT";
+  return "TOOL_CANCELLED";
+}
+
 export class HardenedGitRunner {
   /** Test seam: how many spawn calls were attempted. */
   spawnCalls = 0;
@@ -133,8 +149,9 @@ export class HardenedGitRunner {
   run(options: GitRunOptions): Promise<GitRunResult> {
     const { executable, args, cwd, signal, timeoutMs, maxStdoutBytes, maxStderrBytes } = options;
     if (signal?.aborted) {
-      const err = new Error("Git operation was cancelled");
-      (err as { code?: string }).code = "TOOL_CANCELLED";
+      const code = gitAbortCode(signal);
+      const err = new Error(code === "TOOL_TIMEOUT" ? "Git operation timed out" : "Git operation was cancelled");
+      (err as { code?: string }).code = code;
       return Promise.reject(err);
     }
     return new Promise<GitRunResult>((resolve, reject) => {
@@ -182,8 +199,9 @@ export class HardenedGitRunner {
         timer.unref?.();
       }
       const onAbort = (): void => {
-        const err = new Error("Git operation was cancelled");
-        (err as { code?: string }).code = "TOOL_CANCELLED";
+        const code = gitAbortCode(signal as AbortSignal);
+        const err = new Error(code === "TOOL_TIMEOUT" ? "Git operation timed out" : "Git operation was cancelled");
+        (err as { code?: string }).code = code;
         fail(err);
       };
       signal?.addEventListener("abort", onAbort, { once: true });
