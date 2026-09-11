@@ -7,3 +7,4 @@ export * from './capabilities.js';
 export * from './metadata.js';
 export * from './health.js';
 export * from './fake.js';
+export * from './incremental.js';

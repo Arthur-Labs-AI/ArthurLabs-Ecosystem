@@ -1,9 +1,22 @@
 import { createReadStream, createWriteStream, constants } from 'node:fs';
-import { chmod, copyFile, lstat, mkdir, opendir, readlink, rm, symlink } from 'node:fs/promises';
+import {
+  chmod,
+  copyFile,
+  lstat,
+  mkdir,
+  opendir,
+  readlink,
+  realpath,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { SnapshotFileEntrySchema, type SnapshotFileEntry } from '@qa/schemas';
+import { isPathInside } from './paths.js';
 
 export interface CopyProgress {
   readonly filesProcessed: number;
@@ -16,6 +29,7 @@ export interface CopyTreeOptions {
   readonly signal?: AbortSignal;
   readonly preferReflink?: boolean;
   readonly onProgress?: (progress: CopyProgress) => void;
+  readonly symlinkPolicy?: 'preserve' | 'inert-unsafe';
 }
 
 export interface TreeStats {
@@ -31,6 +45,10 @@ interface WalkEntry {
   readonly type: 'file' | 'directory' | 'symlink';
   readonly sizeBytes: number;
   readonly mode: number;
+  readonly linkTarget?: string;
+  readonly linkScope?: 'internal' | 'external' | 'broken';
+  readonly linkTargetRelativePath?: string;
+  readonly linkTargetType?: 'file' | 'directory';
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -49,6 +67,46 @@ async function sortedNames(directory: string): Promise<string[]> {
 /** Deterministic lstat traversal. Symlinks are yielded and never followed. */
 export async function* walkTree(root: string, signal?: AbortSignal): AsyncGenerator<WalkEntry> {
   const absoluteRoot = resolve(root);
+  const canonicalRoot = await realpath(absoluteRoot);
+
+  const classifyLink = async (
+    absolutePath: string,
+  ): Promise<
+    Pick<WalkEntry, 'linkTarget' | 'linkScope' | 'linkTargetRelativePath' | 'linkTargetType'>
+  > => {
+    const linkTarget = await readlink(absolutePath);
+    const unresolvedTarget = isAbsolute(linkTarget)
+      ? resolve(linkTarget)
+      : resolve(dirname(absolutePath), linkTarget);
+    try {
+      const canonicalTarget = await realpath(unresolvedTarget);
+      const targetStat = await stat(canonicalTarget);
+      const internal = isPathInside(
+        process.platform === 'win32' ? canonicalRoot.toLowerCase() : canonicalRoot,
+        process.platform === 'win32' ? canonicalTarget.toLowerCase() : canonicalTarget,
+      );
+      return {
+        linkTarget: linkTarget.replaceAll('\\', '/'),
+        linkScope: internal ? 'internal' : 'external',
+        ...(internal
+          ? {
+              linkTargetRelativePath: relative(canonicalRoot, canonicalTarget).replaceAll(
+                '\\',
+                '/',
+              ),
+            }
+          : {}),
+        ...(targetStat.isDirectory()
+          ? { linkTargetType: 'directory' as const }
+          : targetStat.isFile()
+            ? { linkTargetType: 'file' as const }
+            : {}),
+      };
+    } catch {
+      return { linkTarget: linkTarget.replaceAll('\\', '/'), linkScope: 'broken' };
+    }
+  };
+
   async function* visit(directory: string): AsyncGenerator<WalkEntry> {
     throwIfAborted(signal);
     for (const name of await sortedNames(directory)) {
@@ -57,7 +115,14 @@ export async function* walkTree(root: string, signal?: AbortSignal): AsyncGenera
       const stats = await lstat(absolutePath);
       const relativePath = relative(absoluteRoot, absolutePath).replaceAll('\\', '/');
       if (stats.isSymbolicLink()) {
-        yield { absolutePath, relativePath, type: 'symlink', sizeBytes: 0, mode: stats.mode };
+        yield {
+          absolutePath,
+          relativePath,
+          type: 'symlink',
+          sizeBytes: 0,
+          mode: stats.mode,
+          ...(await classifyLink(absolutePath)),
+        };
       } else if (stats.isDirectory()) {
         yield { absolutePath, relativePath, type: 'directory', sizeBytes: 0, mode: stats.mode };
         yield* visit(absolutePath);
@@ -99,8 +164,10 @@ export async function snapshotEntry(
   if (entry.type === 'file') {
     sha256 = await hashFile(entry.absolutePath, signal);
   } else if (entry.type === 'symlink') {
-    const target = (await readlink(entry.absolutePath)).replaceAll('\\', '/');
-    sha256 = createHash('sha256').update(target, 'utf8').digest('hex');
+    const target = entry.linkTarget ?? (await readlink(entry.absolutePath)).replaceAll('\\', '/');
+    sha256 = createHash('sha256')
+      .update((entry.linkScope ?? 'broken') + '\0' + target, 'utf8')
+      .digest('hex');
   } else {
     sha256 = createHash('sha256')
       .update('directory\0' + entry.relativePath, 'utf8')
@@ -111,7 +178,60 @@ export async function snapshotEntry(
     type: entry.type,
     sizeBytes: entry.sizeBytes,
     sha256,
+    ...(entry.type === 'symlink'
+      ? { linkTarget: entry.linkTarget, linkScope: entry.linkScope }
+      : {}),
   });
+}
+
+function destinationForRelative(root: string, relativePath: string): string {
+  return resolve(root, ...relativePath.split('/'));
+}
+
+async function copySymlink(
+  entry: WalkEntry,
+  destinationRoot: string,
+  destination: string,
+  policy: 'preserve' | 'inert-unsafe',
+): Promise<void> {
+  const scope = entry.linkScope ?? 'broken';
+  const target = entry.linkTarget ?? (await readlink(entry.absolutePath)).replaceAll('\\', '/');
+  await mkdir(dirname(destination), { recursive: true });
+  if (scope !== 'internal' && policy === 'inert-unsafe') {
+    await writeFile(
+      destination + '.sentry-link.json',
+      JSON.stringify({
+        schemaVersion: 1,
+        relativePath: entry.relativePath,
+        linkTarget: target,
+        linkScope: scope,
+        reason:
+          scope === 'external'
+            ? 'Link resolves outside the copied project root and is inert in agent workspaces.'
+            : 'Link target cannot be resolved and is inert in agent workspaces.',
+      }) + '\n',
+      { flag: 'wx' },
+    );
+    return;
+  }
+
+  let copiedTarget = target;
+  if (scope === 'internal' && entry.linkTargetRelativePath !== undefined) {
+    const localTarget = destinationForRelative(destinationRoot, entry.linkTargetRelativePath);
+    copiedTarget =
+      process.platform === 'win32' && entry.linkTargetType === 'directory'
+        ? localTarget
+        : relative(dirname(destination), localTarget) || '.';
+  }
+  const type =
+    process.platform === 'win32' && entry.linkTargetType === 'directory'
+      ? 'junction'
+      : entry.linkTargetType === 'directory'
+        ? 'dir'
+        : entry.linkTargetType === 'file'
+          ? 'file'
+          : undefined;
+  await symlink(copiedTarget, destination, type);
 }
 
 export interface ScanTreeResult extends TreeStats {
@@ -216,16 +336,14 @@ export async function copyTree(
   try {
     for await (const entry of walkTree(sourceRoot, options.signal)) {
       throwIfAborted(options.signal);
-      const destination = resolve(destinationRoot, ...entry.relativePath.split('/'));
+      const destination = destinationForRelative(destinationRoot, entry.relativePath);
       if (entry.type === 'directory') {
         await mkdir(destination, { recursive: true });
         directoryCount += 1;
         continue;
       }
       if (entry.type === 'symlink') {
-        const target = await readlink(entry.absolutePath);
-        await mkdir(dirname(destination), { recursive: true });
-        await symlink(target, destination);
+        await copySymlink(entry, destinationRoot, destination, options.symlinkPolicy ?? 'preserve');
         symlinkCount += 1;
         continue;
       }

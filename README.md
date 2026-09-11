@@ -36,6 +36,12 @@ The repository now implements the first real local runtime foundation:
 - `qa` CLI project lifecycle and simulated-run commands;
 - unit, filesystem, SQLite, integration, recovery, and fake end-to-end tests.
 
+Phase 2.1 hardens this runtime for concurrent local processes and large runs:
+durable leases, abandoned-only recovery, atomic project locking, operation
+journals, workspace symlink isolation, incremental transactional event ingestion,
+live/recovered activity state, and iterator-backed exports. See
+[docs/architecture/phase-2-1.md](docs/architecture/phase-2-1.md).
+
 ## What is not implemented yet
 
 - Muse 1.3 Contributor integration: **NOT IMPLEMENTED YET**

@@ -6,7 +6,11 @@ import {
   type ProjectId,
   type ProjectRevisionId,
 } from '@qa/shared';
-import { ProjectContextSnapshotSchema, type ProjectContextSnapshot } from '@qa/schemas';
+import {
+  ProjectContextSnapshotSchema,
+  type Artifact,
+  type ProjectContextSnapshot,
+} from '@qa/schemas';
 import {
   FilesystemArtifactStore,
   projectDataPaths,
@@ -27,6 +31,11 @@ export interface BuildContextInput {
   readonly projectRevisionId: ProjectRevisionId;
   readonly workingCopyPath: string;
   readonly signal?: AbortSignal;
+}
+
+export interface PreparedProjectContext {
+  readonly context: ProjectContextSnapshot;
+  readonly materialArtifact: Artifact;
 }
 
 const TEXT_EXTENSIONS = new Set([
@@ -132,6 +141,23 @@ export class ProjectContextBuilder {
   }
 
   async build(input: BuildContextInput): Promise<ProjectContextSnapshot> {
+    const prepared = await this.prepare(input);
+    try {
+      this.repository.transaction(() => {
+        this.artifacts.persist(prepared.materialArtifact);
+        this.repository.saveContext(
+          prepared.context,
+          prepared.materialArtifact.relativeStoragePath,
+        );
+      });
+      return prepared.context;
+    } catch (cause) {
+      await this.artifacts.discard(prepared.materialArtifact).catch(() => undefined);
+      throw cause;
+    }
+  }
+
+  async prepare(input: BuildContextInput): Promise<PreparedProjectContext> {
     const id = createProjectContextSnapshotId();
     const languages = new Set<string>();
     const frameworks = new Set<string>();
@@ -206,6 +232,7 @@ export class ProjectContextBuilder {
       source: materials,
       projectId: input.projectId,
       mimeType: 'application/x-ndjson',
+      persistMetadata: false,
     });
     const context = ProjectContextSnapshotSchema.parse({
       schemaVersion: 1,
@@ -227,7 +254,15 @@ export class ProjectContextBuilder {
       },
       createdAt: nowIsoTimestamp(),
     });
-    this.repository.saveContext(context, artifact.relativeStoragePath);
-    return context;
+    return { context, materialArtifact: artifact };
+  }
+
+  persist(prepared: PreparedProjectContext): void {
+    this.artifacts.persist(prepared.materialArtifact);
+    this.repository.saveContext(prepared.context, prepared.materialArtifact.relativeStoragePath);
+  }
+
+  discard(prepared: PreparedProjectContext): Promise<void> {
+    return this.artifacts.discard(prepared.materialArtifact);
   }
 }

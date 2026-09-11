@@ -60,6 +60,7 @@ and rejects unexpected baseline changes as `PROJECT_COPY_DRIFT`.
 ```text
 ready ──► updating ──► ready | error
   └────► locked_for_run ──► ready | error
+  └────► deleting ──► ready | error
 error ──► ready
 ```
 
@@ -91,3 +92,8 @@ evidence, and findings survive an agent interruption. History has no expiry,
 scheduler, quota cleanup, or automatic retention window. Project deletion is an
 explicit `--yes` operation and deletes only Sentry-managed data. Selected run
 deletion remains deferred.
+
+Phase 2.1 makes lock acquisition a `BEGIN IMMEDIATE` compare-and-set and records
+the owning RuntimeInstance. Update and delete journals make rename/tombstone crash
+boundaries recoverable, while read-only processes never invoke recovery. See
+[Phase 2.1](./phase-2-1.md) for the precise lease and symlink policies.

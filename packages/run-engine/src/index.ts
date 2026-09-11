@@ -12,6 +12,7 @@ import {
   AgentRunSchema,
   HarnessRunRequestSchema,
   QARunSchema,
+  RunActivitySchema,
   type AgentRun,
   type AgentStackDefinition,
   type Evidence,
@@ -22,16 +23,31 @@ import {
   type QARun,
   type VerificationLevel,
 } from '@qa/schemas';
-import { aggregateAgentRunOutcome, INITIAL_AGENT_STACKS } from '@qa/domain';
-import { FakeHarnessAdapter, type FakeScenario } from '@qa/harness-protocol';
-import { projectDataPaths, type SentryRepository } from '@qa/persistence';
+import {
+  aggregateAgentRunOutcome,
+  assertAgentRunTransition,
+  INITIAL_AGENT_STACKS,
+} from '@qa/domain';
+import {
+  FakeHarnessAdapter,
+  HarnessProtocolError,
+  IncrementalHarnessEventValidator,
+  type FakeScenario,
+} from '@qa/harness-protocol';
+import {
+  projectDataPaths,
+  RuntimeInstanceLease,
+  RuntimePersistenceError,
+  type SentryRepository,
+} from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
 import { SnapshotEngine } from '@qa/snapshot-engine';
 import { WorkspaceFactory } from '@qa/workspace-factory';
 import { RunActivityProjector } from './activity-projector.js';
 import { RunExporter } from './exporters.js';
 
-export type SimulationScenario = 'success' | 'partial' | 'all-fail' | 'transport-loss' | 'timeout';
+export type SimulationScenario =
+  'success' | 'partial' | 'all-fail' | 'transport-loss' | 'timeout' | 'protocol-error';
 
 export interface SimulateRunOptions {
   readonly agentStackIds?: readonly AgentStackId[];
@@ -40,6 +56,7 @@ export interface SimulateRunOptions {
   readonly instructions?: string;
   readonly runTimeoutMs?: number;
   readonly onHarnessRequest?: (request: HarnessRunRequest) => void;
+  readonly onHarnessEventPersisted?: (event: HarnessEvent, agentRun: AgentRun) => void;
 }
 
 export interface RunDetails {
@@ -59,6 +76,7 @@ function fakeScenarioFor(scenario: SimulationScenario, index: number): FakeScena
   if (scenario === 'partial') return index === 1 ? 'transport-loss' : 'success';
   if (scenario === 'transport-loss') return index === 0 ? 'transport-loss' : 'success';
   if (scenario === 'timeout') return index === 0 ? 'timeout' : 'success';
+  if (scenario === 'protocol-error') return index === 0 ? 'protocol-error' : 'success';
   return 'success';
 }
 
@@ -73,8 +91,13 @@ export class FakeRunCoordinator {
   constructor(
     private readonly dataRoot: string,
     private readonly repository: SentryRepository,
+    private readonly runtimeLease?: RuntimeInstanceLease,
   ) {
-    this.projects = new ProjectManager(dataRoot, repository);
+    this.projects = new ProjectManager(
+      dataRoot,
+      repository,
+      runtimeLease === undefined ? {} : { runtimeLease },
+    );
     this.snapshots = new SnapshotEngine(dataRoot, repository);
     this.workspaces = new WorkspaceFactory(dataRoot);
     this.activities = new RunActivityProjector(repository);
@@ -82,6 +105,7 @@ export class FakeRunCoordinator {
   }
 
   async simulate(projectId: ProjectId, options: SimulateRunOptions = {}): Promise<RunDetails> {
+    const runtimeLease = this.requireRuntimeLease();
     const project = this.projects.getProject(projectId);
     if (project === undefined) throw new Error('PROJECT_NOT_FOUND: ' + projectId);
     const selectedIds = options.agentStackIds ?? INITIAL_AGENT_STACKS.map((stack) => stack.id);
@@ -110,6 +134,7 @@ export class FakeRunCoordinator {
         schemaVersion: 1,
         id: runId,
         projectId,
+        runtimeInstanceId: runtimeLease.instanceId,
         snapshotId: snapshot.id,
         projectContextSnapshotId: context.id,
         mode: 'full',
@@ -160,6 +185,9 @@ export class FakeRunCoordinator {
           ...(options.onHarnessRequest === undefined
             ? {}
             : { onHarnessRequest: options.onHarnessRequest }),
+          ...(options.onHarnessEventPersisted === undefined
+            ? {}
+            : { onHarnessEventPersisted: options.onHarnessEventPersisted }),
         }),
       );
       await Promise.allSettled(workers);
@@ -217,6 +245,7 @@ export class FakeRunCoordinator {
     readonly workingCopy: string;
     readonly rootActivityId: ReturnType<RunActivityProjector['stage']>['id'];
     readonly onHarnessRequest?: (request: HarnessRunRequest) => void;
+    readonly onHarnessEventPersisted?: (event: HarnessEvent, agentRun: AgentRun) => void;
   }): Promise<void> {
     const agentRunId = createAgentRunId();
     const startedAt = nowIsoTimestamp();
@@ -279,6 +308,7 @@ export class FakeRunCoordinator {
         durationMs: 90,
       },
     });
+    const validator = new IncrementalHarnessEventValidator(input.run.id, agentRunId);
     try {
       workspace = await this.workspaces.create({
         projectId: input.run.projectId,
@@ -309,34 +339,22 @@ export class FakeRunCoordinator {
       input.onHarnessRequest?.(request);
       const timeoutMs = input.run.configuration.executionSafeguards?.runTimeoutMs ?? 2_000;
       await this.consumeWithTimeout(adapter, request, timeoutMs, async (event) => {
-        this.repository.appendHarnessEvent(input.run.id, event);
-        this.activities.project(event, input.run.id, input.rootActivityId);
-        if (event.type === 'investigation.plan.created') this.repository.savePlan(event.plan);
-        else if (event.type === 'investigation.hypothesis.discovered')
-          this.repository.saveHypothesis(event.hypothesis);
-        else if (event.type === 'finding.submitted') this.repository.saveFinding(event.finding);
-        else if (event.type === 'evidence.submitted') this.repository.saveEvidence(event.evidence);
-        else if (event.type === 'usage.updated') {
-          agentRun = AgentRunSchema.parse({ ...agentRun, usage: event.usage });
-          this.repository.saveAgentRun(agentRun);
-        } else if (event.type === 'run.completed') {
-          agentRun = AgentRunSchema.parse({
-            ...agentRun,
-            status: 'completed',
-            completedAt: event.timestamp,
-            ...(event.usage === undefined ? {} : { usage: event.usage }),
-          });
-          this.repository.saveAgentRun(agentRun);
-        } else if (event.type === 'run.failed') {
-          agentRun = AgentRunSchema.parse({
-            ...agentRun,
-            status: 'failed',
-            completedAt: event.timestamp,
-            failure: event.failure,
-          });
-          this.repository.saveAgentRun(agentRun);
-        }
+        this.requireRuntimeLease();
+        validator.accept(event);
+        this.repository.transaction(() => {
+          this.repository.appendHarnessEventWithinTransaction(input.run.id, event);
+          this.activities.project(event, input.run.id, input.rootActivityId);
+          if (event.type === 'investigation.plan.created') this.repository.savePlan(event.plan);
+          else if (event.type === 'investigation.hypothesis.discovered')
+            this.repository.saveHypothesis(event.hypothesis);
+          else if (event.type === 'finding.submitted') this.repository.saveFinding(event.finding);
+          else if (event.type === 'evidence.submitted')
+            this.repository.saveEvidence(event.evidence);
+          agentRun = this.projectAgentRunEvent(agentRun, event);
+        });
+        input.onHarnessEventPersisted?.(event, agentRun);
       });
+      validator.finish();
       const persisted = this.repository.getAgentRun(agentRunId);
       if (
         persisted !== undefined &&
@@ -346,16 +364,27 @@ export class FakeRunCoordinator {
       }
     } catch (cause) {
       const timedOut = cause instanceof RunTimeoutError;
+      const protocolViolation =
+        cause instanceof HarnessProtocolError ||
+        (cause instanceof RuntimePersistenceError && cause.code === 'EVENT_CONFLICT');
       agentRun = AgentRunSchema.parse({
         ...agentRun,
-        status: timedOut ? 'timed_out' : 'interrupted',
+        status: timedOut ? 'timed_out' : protocolViolation ? 'failed' : 'interrupted',
         completedAt: nowIsoTimestamp(),
         failure: {
-          code: timedOut ? 'RUN_TIMEOUT' : 'WORKER_DISCONNECTED',
+          code: timedOut
+            ? 'RUN_TIMEOUT'
+            : protocolViolation
+              ? 'HARNESS_PROTOCOL_VIOLATION'
+              : 'WORKER_DISCONNECTED',
           message: timedOut
             ? 'Agent exceeded configured run timeout.'
-            : 'Fake worker transport disconnected.',
-          retryable: true,
+            : protocolViolation
+              ? cause instanceof Error
+                ? cause.message
+                : 'Harness protocol validation failed.'
+              : 'Fake worker transport disconnected.',
+          retryable: !protocolViolation,
         },
       });
       this.repository.saveAgentRun(agentRun);
@@ -363,7 +392,11 @@ export class FakeRunCoordinator {
         agentRunId,
         'failed',
         agentRun.completedAt,
-        timedOut ? 'Agent timed out' : 'Agent interrupted by transport loss',
+        timedOut
+          ? 'Agent timed out'
+          : protocolViolation
+            ? 'Agent failed protocol validation'
+            : 'Agent interrupted by transport loss',
       );
     } finally {
       if (workspace !== undefined) {
@@ -381,6 +414,39 @@ export class FakeRunCoordinator {
       }
       await adapter.dispose();
     }
+  }
+
+  private projectAgentRunEvent(agentRun: AgentRun, event: HarnessEvent): AgentRun {
+    let nextStatus = agentRun.status;
+    let completedAt = agentRun.completedAt;
+    let failure = agentRun.failure;
+    let usage = agentRun.usage;
+    if (event.type === 'run.started') nextStatus = 'running';
+    else if (event.type === 'agent.status') {
+      nextStatus = event.status === 'planning' ? 'planning' : 'running';
+    } else if (event.type === 'usage.updated') usage = event.usage;
+    else if (event.type === 'run.completed') {
+      nextStatus = 'completed';
+      completedAt = event.timestamp;
+      usage = event.usage ?? usage;
+    } else if (event.type === 'run.failed') {
+      nextStatus = 'failed';
+      completedAt = event.timestamp;
+      failure = event.failure;
+    } else if (event.type === 'run.cancelled') {
+      nextStatus = 'cancelled';
+      completedAt = event.timestamp;
+    }
+    if (nextStatus !== agentRun.status) assertAgentRunTransition(agentRun.status, nextStatus);
+    const projected = AgentRunSchema.parse({
+      ...agentRun,
+      status: nextStatus,
+      ...(completedAt === undefined ? {} : { completedAt }),
+      ...(failure === undefined ? {} : { failure }),
+      ...(usage === undefined ? {} : { usage }),
+    });
+    if (projected !== agentRun) this.repository.saveAgentRun(projected);
+    return projected;
   }
 
   private async consumeWithTimeout(
@@ -429,45 +495,96 @@ export class FakeRunCoordinator {
   }
 
   async recover(): Promise<void> {
-    await this.projects.recoverInterruptedUpdates();
+    const lease = this.requireRuntimeLease();
+    await this.projects.recoverAbandonedOperations(lease);
     const timestamp = nowIsoTimestamp();
-    for (const agentRun of this.repository.listNonterminalAgentRuns()) {
-      this.repository.saveAgentRun(
-        AgentRunSchema.parse({
-          ...agentRun,
-          status: 'interrupted',
-          completedAt: timestamp,
-          failure: {
-            code: 'APP_INTERRUPTED',
-            message: 'Sentry stopped before the agent completed.',
-            retryable: true,
-          },
-        }),
-      );
-    }
     for (const run of this.repository.listNonterminalRuns()) {
-      const agents = this.repository.listAgentRuns(run.id);
-      const outcome = aggregateAgentRunOutcome(
-        agents.map((agent) => ({
-          status: agent.status,
-          producedUsableOutput: this.repository.agentProducedUsableOutput(agent.id),
-        })),
-      );
-      this.repository.saveRun(
-        QARunSchema.parse({ ...run, status: outcome, completedAt: timestamp }),
-      );
+      const managedCopy = this.repository.getManagedCopy(run.projectId);
+      const lockOwner =
+        managedCopy?.state === 'locked_for_run' && managedCopy.lockedByQARunId === run.id
+          ? managedCopy.runtimeInstanceId
+          : undefined;
+      if (
+        (run.runtimeInstanceId !== undefined && lease.isFresh(run.runtimeInstanceId)) ||
+        (lockOwner !== undefined && lease.isFresh(lockOwner))
+      )
+        continue;
+      this.repository.transaction(() => {
+        for (const agentRun of this.repository.listAgentRuns(run.id)) {
+          if (
+            ['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(
+              agentRun.status,
+            )
+          )
+            continue;
+          this.repository.saveAgentRun(
+            AgentRunSchema.parse({
+              ...agentRun,
+              status: 'interrupted',
+              completedAt: timestamp,
+              failure: {
+                code: 'APP_INTERRUPTED',
+                message: 'Sentry stopped before the agent completed.',
+                retryable: true,
+              },
+            }),
+          );
+        }
+        const agents = this.repository.listAgentRuns(run.id);
+        const outcome = aggregateAgentRunOutcome(
+          agents.map((agent) => ({
+            status: agent.status === 'cancelled' ? 'failed' : agent.status,
+            producedUsableOutput: this.repository.agentProducedUsableOutput(agent.id),
+          })),
+        );
+        for (const activity of this.repository.listActivities(run.id)) {
+          if (activity.status !== 'running' && activity.status !== 'waiting') continue;
+          const recoveredStatus =
+            activity.kind === 'run'
+              ? outcome === 'completed'
+                ? 'completed'
+                : outcome === 'partial'
+                  ? 'warning'
+                  : 'failed'
+              : 'failed';
+          this.repository.saveActivity(
+            RunActivitySchema.parse({
+              ...activity,
+              status: recoveredStatus,
+              title: (activity.title + ' — interrupted by unexpected Sentry stop').slice(0, 300),
+              completedAt: timestamp,
+            }),
+          );
+        }
+        this.repository.saveRun(
+          QARunSchema.parse({ ...run, status: outcome, completedAt: timestamp }),
+        );
+      });
+      this.projects.recoverAbandonedRunLock(run.projectId, run.id);
     }
     for (const copy of this.repository.listManagedCopiesByState(['locked_for_run'])) {
       if (copy.lockedByQARunId !== undefined) {
+        if (copy.runtimeInstanceId !== undefined && lease.isFresh(copy.runtimeInstanceId)) continue;
         const run = this.repository.getRun(copy.lockedByQARunId);
         if (
           run === undefined ||
           ['completed', 'partial', 'failed', 'cancelled'].includes(run.status)
         ) {
-          this.projects.unlockProjectAfterRun(copy.projectId, copy.lockedByQARunId);
+          this.projects.recoverAbandonedRunLock(copy.projectId, copy.lockedByQARunId);
         }
       }
     }
+  }
+
+  private requireRuntimeLease(): RuntimeInstanceLease {
+    if (this.runtimeLease === undefined) {
+      throw new RuntimePersistenceError(
+        'RUNTIME_LEASE_LOST',
+        'This runtime operation requires an active runtime instance lease',
+      );
+    }
+    this.runtimeLease.assertHealthy();
+    return this.runtimeLease;
   }
 }
 

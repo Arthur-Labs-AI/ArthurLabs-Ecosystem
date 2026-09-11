@@ -29,6 +29,7 @@ export type ArtifactId = Brand<string, 'ArtifactId'>;
 export type HarnessEventId = Brand<string, 'HarnessEventId'>;
 export type RunActivityId = Brand<string, 'RunActivityId'>;
 export type OperationId = Brand<string, 'OperationId'>;
+export type RuntimeInstanceId = Brand<string, 'RuntimeInstanceId'>;
 
 export const ID_PREFIXES = {
   project: 'proj',
@@ -50,6 +51,7 @@ export const ID_PREFIXES = {
   harnessEvent: 'evt',
   runActivity: 'activity',
   operation: 'op',
+  runtimeInstance: 'runtime',
 } as const;
 
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -148,6 +150,9 @@ export function createRunActivityId(nowMs?: number): RunActivityId {
 export function createOperationId(nowMs?: number): OperationId {
   return make(ID_PREFIXES.operation, nowMs) as OperationId;
 }
+export function createRuntimeInstanceId(nowMs?: number): RuntimeInstanceId {
+  return make(ID_PREFIXES.runtimeInstance, nowMs) as RuntimeInstanceId;
+}
 
 export function isProjectId(v: unknown): v is ProjectId {
   return isPrefixed(v, ID_PREFIXES.project);
@@ -208,4 +213,7 @@ export function isRunActivityId(v: unknown): v is RunActivityId {
 }
 export function isOperationId(v: unknown): v is OperationId {
   return isPrefixed(v, ID_PREFIXES.operation);
+}
+export function isRuntimeInstanceId(v: unknown): v is RuntimeInstanceId {
+  return isPrefixed(v, ID_PREFIXES.runtimeInstance);
 }

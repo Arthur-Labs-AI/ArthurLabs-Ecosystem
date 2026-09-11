@@ -35,8 +35,27 @@ export const SnapshotFileEntrySchema = z
     sha256: Sha256Schema,
     sizeBytes: NonNegativeIntSchema,
     type: z.enum(SNAPSHOT_FILE_TYPES),
+    linkTarget: z.string().min(1).max(2000).optional(),
+    linkScope: z.enum(['internal', 'external', 'broken']).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((entry, ctx) => {
+    const isLink = entry.type === 'symlink';
+    if (isLink && (entry.linkTarget === undefined || entry.linkScope === undefined)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['linkTarget'],
+        message: 'Symlink entries require linkTarget and linkScope',
+      });
+    }
+    if (!isLink && (entry.linkTarget !== undefined || entry.linkScope !== undefined)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['linkTarget'],
+        message: 'Only symlink entries may carry link metadata',
+      });
+    }
+  });
 export type SnapshotFileEntry = z.infer<typeof SnapshotFileEntrySchema>;
 
 export const SnapshotManifestSummarySchema = z

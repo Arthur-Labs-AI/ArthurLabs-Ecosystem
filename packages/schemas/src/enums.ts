@@ -176,6 +176,7 @@ export const MANAGED_PROJECT_COPY_STATES = [
   'ready',
   'updating',
   'locked_for_run',
+  'deleting',
   'error',
 ] as const;
 export type ManagedProjectCopyState = (typeof MANAGED_PROJECT_COPY_STATES)[number];

@@ -1,7 +1,7 @@
 /**
  * FakeHarnessAdapter: deterministic, no-AI implementation of
  * HarnessAdapter for tests (and Phase 2 development). Scenarios:
- * success | failure | cancellation | finding | evidence | transport-loss | timeout.
+ * success | failure | cancellation | finding | evidence | transport-loss | timeout | protocol-error.
  */
 import type { AgentRunId } from '@qa/shared';
 import { createHarnessEventId, createInvestigationPlanId, createOperationId } from '@qa/shared';
@@ -19,7 +19,14 @@ import type { HarnessRunRequest } from './requests.js';
 import { FAKE_ADAPTER_CAPABILITIES } from './capabilities.js';
 
 export type FakeScenario =
-  'success' | 'failure' | 'cancellation' | 'finding' | 'evidence' | 'transport-loss' | 'timeout';
+  | 'success'
+  | 'failure'
+  | 'cancellation'
+  | 'finding'
+  | 'evidence'
+  | 'transport-loss'
+  | 'timeout'
+  | 'protocol-error';
 
 export interface FakeAdapterOptions {
   readonly scenario?: FakeScenario;
@@ -107,6 +114,20 @@ export class FakeHarnessAdapter implements HarnessAdapter {
       status: 'planning',
       message: 'Building an independent investigation plan',
     });
+    if (this.scenario === 'protocol-error' && this.finding !== undefined) {
+      yield validatedEvent({
+        schemaVersion: 1,
+        eventId: createHarnessEventId(),
+        agentRunId,
+        timestamp: t(22),
+        type: 'finding.submitted',
+        finding: {
+          ...this.finding,
+          qaRunId: 'run_01K7777777777777777777A8W3',
+        },
+      });
+      return;
+    }
     yield validatedEvent({
       schemaVersion: 1,
       eventId: createHarnessEventId(),

@@ -25,6 +25,7 @@ import {
   isVerificationId,
   isCICDPlanId,
   isIsoTimestamp,
+  isRuntimeInstanceId,
 } from '@qa/shared';
 
 /** ISO 8601 UTC timestamp string (e.g. 2026-09-09T19:15:31.521Z). */
@@ -66,6 +67,10 @@ export const ArtifactIdSchema = idSchema(isArtifactId, 'ArtifactId (artifact_...
 export const HarnessEventIdSchema = idSchema(isHarnessEventId, 'HarnessEventId (evt_...)');
 export const RunActivityIdSchema = idSchema(isRunActivityId, 'RunActivityId (activity_...)');
 export const OperationIdSchema = idSchema(isOperationId, 'OperationId (op_...)');
+export const RuntimeInstanceIdSchema = idSchema(
+  isRuntimeInstanceId,
+  'RuntimeInstanceId (runtime_...)',
+);
 
 /**
  * Project-relative path (forward slashes). Rejects absolute Windows

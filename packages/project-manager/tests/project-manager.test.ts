@@ -1,16 +1,22 @@
-import { mkdtemp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
-import { SentryDatabase, SentryRepository, projectDataPaths, scanTree } from '@qa/persistence';
-import { ProjectManager, ProjectManagerError } from '../src/index.js';
+import {
+  RuntimeInstanceLease,
+  SentryDatabase,
+  SentryRepository,
+  projectDataPaths,
+  scanTree,
+} from '@qa/persistence';
+import { ProjectManager, ProjectManagerError, type ProjectMutationStage } from '../src/index.js';
 
 const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((value) => rm(value, { recursive: true, force: true })));
 });
 
-async function fixture() {
+async function fixture(faultInjector?: (stage: ProjectMutationStage) => void) {
   const root = await mkdtemp(join(tmpdir(), 'sentry-project-manager-'));
   roots.push(root);
   const source = join(root, 'Source Project ü');
@@ -23,13 +29,16 @@ async function fixture() {
   await writeFile(join(source, 'node_modules', 'fixture', 'index.js'), 'module.exports = 1');
   const database = new SentryDatabase({ dataRoot });
   const repository = new SentryRepository(database);
+  const lease = new RuntimeInstanceLease(repository, { autoHeartbeat: false });
+  lease.start();
   return {
     root,
     source,
     dataRoot,
     database,
     repository,
-    manager: new ProjectManager(dataRoot, repository),
+    lease,
+    manager: new ProjectManager(dataRoot, repository, { runtimeLease: lease, faultInjector }),
   };
 }
 
@@ -52,7 +61,7 @@ describe('managed project lifecycle', () => {
     const runId = 'run_01K7777777777777777777A8W3';
     f.manager.lockProjectForRun(added.project.id, runId);
     await expect(f.manager.updateProjectCopy(added.project.id)).rejects.toMatchObject({
-      code: 'PROJECT_LOCKED',
+      code: 'ACTIVE_RUN_EXISTS',
     });
     f.manager.unlockProjectAfterRun(added.project.id, runId);
     f.database.close();
@@ -107,14 +116,137 @@ describe('managed project lifecycle', () => {
     f.repository.saveManagedCopy({
       ...added.managedCopy,
       state: 'updating',
+      runtimeInstanceId: f.lease.instanceId,
     });
+    f.repository.saveRuntimeOperation({
+      schemaVersion: 1,
+      id: 'op_01K7777777777777777777C020',
+      projectId: added.project.id,
+      runtimeInstanceId: f.lease.instanceId,
+      type: 'project_update',
+      stage: 'promoted',
+      createdAt: added.project.createdAt,
+      updatedAt: added.project.updatedAt,
+    });
+    f.lease.release();
+    const observer = new RuntimeInstanceLease(f.repository, { autoHeartbeat: false });
+    observer.start();
 
-    await f.manager.recoverInterruptedUpdates();
+    await new ProjectManager(f.dataRoot, f.repository, {
+      runtimeLease: observer,
+    }).recoverAbandonedOperations(observer);
 
     expect(await readFile(join(paths.workingCopy, 'README.md'), 'utf8')).toContain(
       'Factual sample purpose',
     );
     expect(f.manager.getManagedCopy(added.project.id).state).toBe('ready');
+    f.database.close();
+  });
+
+  it('does not expose staged revision/context rows when promotion fails', async () => {
+    const f = await fixture((stage) => {
+      if (stage === 'after_staging_promoted') throw new Error('injected promotion failure');
+    });
+    const added = await f.manager.addProject(f.source);
+    const revisionCount = f.repository.listRevisions(added.project.id).length;
+    const contextCount = f.repository.listContexts(added.project.id).length;
+    await writeFile(join(f.source, 'README.md'), '# Example\n\nUncommitted version.');
+
+    await expect(f.manager.updateProjectCopy(added.project.id)).rejects.toMatchObject({
+      code: 'PROJECT_UPDATE_FAILED',
+    });
+
+    expect(f.repository.listRevisions(added.project.id)).toHaveLength(revisionCount);
+    expect(f.repository.listContexts(added.project.id)).toHaveLength(contextCount);
+    expect(f.repository.listRuntimeOperations()).toHaveLength(0);
+    expect(
+      await readFile(
+        join(projectDataPaths(f.dataRoot, added.project.id).workingCopy, 'README.md'),
+        'utf8',
+      ),
+    ).toContain('Factual sample purpose');
+    f.database.close();
+  });
+
+  it('acquires the same-project run lock atomically across two connections', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    const databaseB = new SentryDatabase({ dataRoot: f.dataRoot });
+    const repositoryB = new SentryRepository(databaseB);
+    const leaseB = new RuntimeInstanceLease(repositoryB, { autoHeartbeat: false });
+    leaseB.start();
+    const managerB = new ProjectManager(f.dataRoot, repositoryB, { runtimeLease: leaseB });
+    f.manager.lockProjectForRun(added.project.id, 'run_01K7777777777777777777C021');
+
+    expect(() =>
+      managerB.lockProjectForRun(added.project.id, 'run_01K7777777777777777777C022'),
+    ).toThrowError(ProjectManagerError);
+    expect(repositoryB.getManagedCopy(added.project.id)?.lockedByQARunId).toBe(
+      'run_01K7777777777777777777C021',
+    );
+    leaseB.release();
+    databaseB.close();
+    f.database.close();
+  });
+
+  it('finishes a committed project deletion after its owner exits', async () => {
+    const f = await fixture((stage) => {
+      if (stage === 'after_delete_committed') throw new Error('injected process exit');
+    });
+    const added = await f.manager.addProject(f.source);
+    const paths = projectDataPaths(f.dataRoot, added.project.id);
+    await expect(f.manager.deleteProject(added.project.id)).rejects.toMatchObject({
+      code: 'PROJECT_DELETE_FAILED',
+    });
+    expect(f.repository.getProject(added.project.id)).toBeUndefined();
+    expect(f.repository.listRuntimeOperations()).toHaveLength(1);
+    f.lease.release();
+    const observer = new RuntimeInstanceLease(f.repository, { autoHeartbeat: false });
+    observer.start();
+    await new ProjectManager(f.dataRoot, f.repository, {
+      runtimeLease: observer,
+    }).recoverAbandonedOperations(observer);
+    expect(f.repository.listRuntimeOperations()).toHaveLength(0);
+    await expect(stat(paths.root + '.deleting')).rejects.toMatchObject({ code: 'ENOENT' });
+    f.database.close();
+  });
+
+  it('restores a tombstoned project when deletion did not commit before owner exit', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    const paths = projectDataPaths(f.dataRoot, added.project.id);
+    const tombstone = paths.root + '.deleting';
+    await rename(paths.root, tombstone);
+    f.repository.saveManagedCopy({
+      ...added.managedCopy,
+      state: 'deleting',
+      runtimeInstanceId: f.lease.instanceId,
+    });
+    f.repository.saveRuntimeOperation({
+      schemaVersion: 1,
+      id: 'op_01K7777777777777777777C023',
+      projectId: added.project.id,
+      runtimeInstanceId: f.lease.instanceId,
+      type: 'project_delete',
+      stage: 'tombstoned',
+      createdAt: added.project.createdAt,
+      updatedAt: added.project.updatedAt,
+    });
+    f.lease.release();
+    const observer = new RuntimeInstanceLease(f.repository, { autoHeartbeat: false });
+    observer.start();
+    await new ProjectManager(f.dataRoot, f.repository, {
+      runtimeLease: observer,
+    }).recoverAbandonedOperations(observer);
+
+    expect(f.repository.getProject(added.project.id)).toEqual(added.project);
+    expect(f.repository.getManagedCopy(added.project.id)?.state).toBe('ready');
+    expect(f.repository.listRuntimeOperations()).toHaveLength(0);
+    expect(await readFile(join(paths.workingCopy, 'README.md'), 'utf8')).toContain(
+      'Factual sample purpose',
+    );
+    expect(await readFile(join(f.source, 'README.md'), 'utf8')).toContain('Factual sample purpose');
+    observer.release();
     f.database.close();
   });
 });

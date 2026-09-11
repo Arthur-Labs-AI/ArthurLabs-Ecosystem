@@ -7,6 +7,7 @@ import { FakeHarnessAdapter, HARNESS_PROTOCOL_VERSION } from '@qa/harness-protoc
 import {
   SentryDatabase,
   SentryRepository,
+  RuntimeInstanceLease,
   resolveInside,
   resolveSentryDataRoot,
 } from '@qa/persistence';
@@ -98,7 +99,7 @@ function printHelp(): void {
       '  qa project show <project-id>',
       '  qa project update <project-id> [path]',
       '  qa project delete <project-id> --yes',
-      '  qa run simulate <project-id> [--scenario success|partial|all-fail|transport-loss|timeout]',
+      '  qa run simulate <project-id> [--scenario success|partial|all-fail|transport-loss|timeout|protocol-error]',
       '  qa run list <project-id>',
       '  qa run show <run-id>',
       '  qa run export <run-id> --format log|json',
@@ -111,7 +112,27 @@ function option(args: readonly string[], name: string): string | undefined {
   return index < 0 ? undefined : args[index + 1];
 }
 
-async function withRuntime<T>(
+interface RuntimeContext {
+  repository: SentryRepository;
+  projects: ProjectManager;
+  runs: FakeRunCoordinator;
+  dataRoot: string;
+}
+
+async function withReadRuntime<T>(operation: (runtime: RuntimeContext) => Promise<T>): Promise<T> {
+  const dataRoot = resolveSentryDataRoot();
+  const database = new SentryDatabase({ dataRoot });
+  const repository = new SentryRepository(database);
+  const projects = new ProjectManager(dataRoot, repository);
+  const runs = new FakeRunCoordinator(dataRoot, repository);
+  try {
+    return await operation({ repository, projects, runs, dataRoot });
+  } finally {
+    database.close();
+  }
+}
+
+async function withMutationRuntime<T>(
   operation: (runtime: {
     repository: SentryRepository;
     projects: ProjectManager;
@@ -122,12 +143,17 @@ async function withRuntime<T>(
   const dataRoot = resolveSentryDataRoot();
   const database = new SentryDatabase({ dataRoot });
   const repository = new SentryRepository(database);
-  const projects = new ProjectManager(dataRoot, repository);
-  const runs = new FakeRunCoordinator(dataRoot, repository);
+  const lease = new RuntimeInstanceLease(repository, {
+    onHeartbeatError: (error) => console.error(error.code + ': ' + error.message),
+  });
+  lease.start();
+  const projects = new ProjectManager(dataRoot, repository, { runtimeLease: lease });
+  const runs = new FakeRunCoordinator(dataRoot, repository, lease);
   try {
     await runs.recover();
     return await operation({ repository, projects, runs, dataRoot });
   } finally {
+    lease.release();
     database.close();
   }
 }
@@ -135,7 +161,7 @@ async function withRuntime<T>(
 async function projectCommand(args: readonly string[]): Promise<number> {
   const command = args[1];
   if (command === 'add' && args[2] !== undefined) {
-    return withRuntime(async ({ projects }) => {
+    return withMutationRuntime(async ({ projects }) => {
       const added = await projects.addProject(args[2] as string, {
         onProgress: (progress) => {
           if (progress.filesProcessed % 100 === 0) {
@@ -154,7 +180,7 @@ async function projectCommand(args: readonly string[]): Promise<number> {
     });
   }
   if (command === 'list') {
-    return withRuntime(async ({ projects, repository }) => {
+    return withReadRuntime(async ({ projects, repository }) => {
       console.log('Sentry Projects\n');
       for (const record of projects.listProjects()) {
         console.log(
@@ -174,7 +200,7 @@ async function projectCommand(args: readonly string[]): Promise<number> {
   }
   if (command === 'show' && args[2] !== undefined) {
     const projectId = ProjectIdSchema.parse(args[2]);
-    return withRuntime(async ({ projects }) => {
+    return withReadRuntime(async ({ projects }) => {
       const record = projects.getProject(projectId);
       if (record === undefined) throw new Error('Project not found: ' + projectId);
       console.log(JSON.stringify(record, null, 2));
@@ -183,7 +209,7 @@ async function projectCommand(args: readonly string[]): Promise<number> {
   }
   if (command === 'update' && args[2] !== undefined) {
     const projectId = ProjectIdSchema.parse(args[2]);
-    return withRuntime(async ({ projects }) => {
+    return withMutationRuntime(async ({ projects }) => {
       const updated = await projects.updateProjectCopy(projectId, args[3]);
       console.log('Updated ' + projectId + '\nRevision: ' + updated.revision.id);
       return 0;
@@ -195,7 +221,7 @@ async function projectCommand(args: readonly string[]): Promise<number> {
       return 1;
     }
     const projectId = ProjectIdSchema.parse(args[2]);
-    return withRuntime(async ({ projects }) => {
+    return withMutationRuntime(async ({ projects }) => {
       await projects.deleteProject(projectId);
       console.log('Deleted Sentry-managed project data for ' + projectId);
       return 0;
@@ -214,7 +240,7 @@ async function runCommand(args: readonly string[]): Promise<number> {
     const agentStackIds = agentOption
       ?.split(',')
       .map((name) => (name.startsWith('stack_') ? name : 'stack_' + name + '_main'));
-    return withRuntime(async ({ runs }) => {
+    return withMutationRuntime(async ({ runs }) => {
       console.log('SIMULATED / FAKE HARNESS RUN');
       const details = await runs.simulate(projectId, {
         scenario,
@@ -233,7 +259,7 @@ async function runCommand(args: readonly string[]): Promise<number> {
   }
   if (command === 'list' && args[2] !== undefined) {
     const projectId = ProjectIdSchema.parse(args[2]);
-    return withRuntime(async ({ runs }) => {
+    return withReadRuntime(async ({ runs }) => {
       for (const run of runs.listRuns(projectId)) {
         console.log(run.id + '  ' + run.status + '  ' + run.mode + '  ' + run.createdAt);
       }
@@ -242,7 +268,7 @@ async function runCommand(args: readonly string[]): Promise<number> {
   }
   if (command === 'show' && args[2] !== undefined) {
     const runId = QARunIdSchema.parse(args[2]);
-    return withRuntime(async ({ runs }) => {
+    return withReadRuntime(async ({ runs }) => {
       const details = runs.getRunDetails(runId);
       console.log(
         JSON.stringify(
@@ -265,7 +291,7 @@ async function runCommand(args: readonly string[]): Promise<number> {
     const runId = QARunIdSchema.parse(args[2]);
     const format = option(args, '--format');
     if (format !== 'log' && format !== 'json') throw new Error('--format must be log or json');
-    return withRuntime(async ({ runs, repository, dataRoot }) => {
+    return withMutationRuntime(async ({ runs, repository, dataRoot }) => {
       const manifest = await runs.exportRun(runId, format);
       const artifact = repository.getArtifact(manifest.artifactId);
       if (artifact === undefined) throw new Error('Export artifact metadata missing');

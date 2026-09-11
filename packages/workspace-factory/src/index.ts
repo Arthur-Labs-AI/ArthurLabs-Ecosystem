@@ -34,6 +34,7 @@ export class WorkspaceFactory {
     await rm(runtimePath, { recursive: true, force: true });
     await copyTree(input.workingCopyPath, runtimePath, {
       preferReflink: true,
+      symlinkPolicy: 'inert-unsafe',
       ...(input.signal === undefined ? {} : { signal: input.signal }),
       ...(input.onProgress === undefined ? {} : { onProgress: input.onProgress }),
     });

@@ -1,20 +1,28 @@
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   SentryDatabase,
   SentryRepository,
+  RuntimeInstanceLease,
+  FilesystemArtifactStore,
   agentWorkspacePath,
   projectDataPaths,
   resolveInside,
   scanTree,
 } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
-import { AgentRunSchema, QARunSchema } from '@qa/schemas';
+import { AgentRunSchema, QARunSchema, RunActivitySchema } from '@qa/schemas';
 import type { HarnessRunRequest } from '@qa/schemas';
-import { createAgentRunId, createQARunId, nowIsoTimestamp } from '@qa/shared';
-import { FakeRunCoordinator } from '../src/index.js';
+import {
+  createAgentRunId,
+  createHarnessEventId,
+  createQARunId,
+  createRunActivityId,
+  nowIsoTimestamp,
+} from '@qa/shared';
+import { FakeRunCoordinator, RunExporter } from '../src/index.js';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -35,25 +43,37 @@ async function fixture() {
   await writeFile(join(source, 'src', 'value.txt'), 'A');
   const database = new SentryDatabase({ dataRoot });
   const repository = new SentryRepository(database);
-  const manager = new ProjectManager(dataRoot, repository);
+  const lease = new RuntimeInstanceLease(repository, { autoHeartbeat: false });
+  lease.start();
+  const manager = new ProjectManager(dataRoot, repository, { runtimeLease: lease });
   const added = await manager.addProject(source);
-  return { root, source, dataRoot, database, repository, manager, added };
+  return { root, source, dataRoot, database, repository, lease, manager, added };
+}
+
+function coordinator(f: Awaited<ReturnType<typeof fixture>>): FakeRunCoordinator {
+  return new FakeRunCoordinator(f.dataRoot, f.repository, f.lease);
 }
 
 describe('fake end-to-end run engine', () => {
   it('persists a successful multi-agent run, exports it, cleans workspaces, and updates revisions', async () => {
     const f = await fixture();
     const originalBefore = await scanTree(f.source);
-    const coordinator = new FakeRunCoordinator(f.dataRoot, f.repository);
+    const runCoordinator = coordinator(f);
     const requests: HarnessRunRequest[] = [];
-    const result = await coordinator.simulate(f.added.project.id, {
+    const liveStatuses: string[] = [];
+    const result = await runCoordinator.simulate(f.added.project.id, {
       scenario: 'success',
       instructions: 'Feature X behavior is intentional.',
       onHarnessRequest: (request) => requests.push(request),
+      onHarnessEventPersisted: (_event, agentRun) => {
+        liveStatuses.push(f.repository.getAgentRun(agentRun.id)?.status ?? 'missing');
+      },
     });
     expect(result.run.status).toBe('completed');
     expect(result.agentRuns).toHaveLength(3);
     expect(result.agentRuns.every((agent) => agent.status === 'completed')).toBe(true);
+    expect(liveStatuses).toContain('planning');
+    expect(liveStatuses).toContain('running');
     expect(result.findings).toHaveLength(3);
     expect(result.evidence).toHaveLength(3);
     expect(result.events.length).toBeGreaterThan(20);
@@ -122,8 +142,7 @@ describe('fake end-to-end run engine', () => {
 
   it('isolates transport loss, keeps pre-crash output durable, and finalizes the run partial', async () => {
     const f = await fixture();
-    const coordinator = new FakeRunCoordinator(f.dataRoot, f.repository);
-    const result = await coordinator.simulate(f.added.project.id, { scenario: 'partial' });
+    const result = await coordinator(f).simulate(f.added.project.id, { scenario: 'partial' });
     expect(result.run.status).toBe('partial');
     expect(result.agentRuns.map((item) => item.status).sort()).toEqual([
       'completed',
@@ -151,13 +170,10 @@ describe('fake end-to-end run engine', () => {
 
   it('times out one worker without cancelling peers', async () => {
     const f = await fixture();
-    const result = await new FakeRunCoordinator(f.dataRoot, f.repository).simulate(
-      f.added.project.id,
-      {
-        scenario: 'timeout',
-        runTimeoutMs: 25,
-      },
-    );
+    const result = await coordinator(f).simulate(f.added.project.id, {
+      scenario: 'timeout',
+      runTimeoutMs: 25,
+    });
     expect(result.run.status).toBe('partial');
     expect(
       result.agentRuns.some(
@@ -170,10 +186,7 @@ describe('fake end-to-end run engine', () => {
 
   it('marks an all-fail run failed when no worker produced usable output', async () => {
     const f = await fixture();
-    const result = await new FakeRunCoordinator(f.dataRoot, f.repository).simulate(
-      f.added.project.id,
-      { scenario: 'all-fail' },
-    );
+    const result = await coordinator(f).simulate(f.added.project.id, { scenario: 'all-fail' });
     expect(result.run.status).toBe('failed');
     expect(result.agentRuns.every((item) => item.status === 'failed')).toBe(true);
     expect(result.findings).toHaveLength(0);
@@ -184,12 +197,9 @@ describe('fake end-to-end run engine', () => {
 
   it('recovers nonterminal persisted state and unlocks the managed copy', async () => {
     const f = await fixture();
-    const snapshotRun = await new FakeRunCoordinator(f.dataRoot, f.repository).simulate(
-      f.added.project.id,
-      {
-        agentStackIds: ['stack_muse_main'],
-      },
-    );
+    const snapshotRun = await coordinator(f).simulate(f.added.project.id, {
+      agentStackIds: ['stack_muse_main'],
+    });
     const runId = createQARunId();
     const timestamp = nowIsoTimestamp();
     f.repository.saveRun(
@@ -216,13 +226,212 @@ describe('fake end-to-end run engine', () => {
       }),
     );
     f.manager.lockProjectForRun(f.added.project.id, runId);
-    await new FakeRunCoordinator(f.dataRoot, f.repository).recover();
+    const rootActivity = RunActivitySchema.parse({
+      schemaVersion: 1,
+      id: createRunActivityId(),
+      qaRunId: runId,
+      source: 'sentry',
+      kind: 'run',
+      status: 'running',
+      title: 'Full QA',
+      startedAt: timestamp,
+      artifactIds: [],
+    });
+    const activeActivity = RunActivitySchema.parse({
+      schemaVersion: 1,
+      id: createRunActivityId(),
+      qaRunId: runId,
+      agentRunId,
+      parentActivityId: rootActivity.id,
+      source: 'agent',
+      kind: 'agent',
+      status: 'running',
+      title: 'Agent started',
+      startedAt: timestamp,
+      artifactIds: [],
+    });
+    const toolActivity = RunActivitySchema.parse({
+      schemaVersion: 1,
+      id: createRunActivityId(),
+      qaRunId: runId,
+      agentRunId,
+      parentActivityId: activeActivity.id,
+      source: 'agent',
+      kind: 'tool',
+      status: 'running',
+      title: 'Tool started: shell',
+      startedAt: timestamp,
+      artifactIds: [],
+    });
+    f.repository.saveActivity(rootActivity);
+    f.repository.saveActivity(activeActivity);
+    f.repository.saveActivity(toolActivity);
+    f.lease.release();
+    const recoveryLease = new RuntimeInstanceLease(f.repository, { autoHeartbeat: false });
+    recoveryLease.start();
+    await new FakeRunCoordinator(f.dataRoot, f.repository, recoveryLease).recover();
     expect(f.repository.getAgentRun(agentRunId)).toMatchObject({
       status: 'interrupted',
       failure: { code: 'APP_INTERRUPTED' },
     });
     expect(f.repository.getRun(runId)?.status).toBe('failed');
+    for (const activityId of [rootActivity.id, activeActivity.id, toolActivity.id]) {
+      expect(f.repository.listActivities(runId)).toContainEqual(
+        expect.objectContaining({
+          id: activityId,
+          status: 'failed',
+          completedAt: expect.any(String),
+        }),
+      );
+    }
     expect(f.manager.getManagedCopy(f.added.project.id).state).toBe('ready');
+    recoveryLease.release();
+    f.database.close();
+  });
+
+  it('does not recover state owned by a fresh runtime, then recovers it after release', async () => {
+    const f = await fixture();
+    const completed = await coordinator(f).simulate(f.added.project.id, {
+      agentStackIds: ['stack_muse_main'],
+    });
+    const runId = createQARunId();
+    const timestamp = nowIsoTimestamp();
+    f.repository.saveRun(
+      QARunSchema.parse({
+        ...completed.run,
+        id: runId,
+        runtimeInstanceId: f.lease.instanceId,
+        status: 'agents_running',
+        createdAt: timestamp,
+        startedAt: timestamp,
+        completedAt: undefined,
+        summary: undefined,
+      }),
+    );
+    f.repository.saveAgentRun(
+      AgentRunSchema.parse({
+        schemaVersion: 1,
+        id: createAgentRunId(),
+        qaRunId: runId,
+        agentStackId: 'stack_muse_main',
+        taskType: 'qa',
+        status: 'running',
+        startedAt: timestamp,
+      }),
+    );
+    f.manager.lockProjectForRun(f.added.project.id, runId);
+    const databaseB = new SentryDatabase({ dataRoot: f.dataRoot });
+    const repositoryB = new SentryRepository(databaseB);
+    expect(repositoryB.getRun(runId)?.status).toBe('agents_running');
+    expect(repositoryB.getManagedCopy(f.added.project.id)?.state).toBe('locked_for_run');
+    const observer = new RuntimeInstanceLease(repositoryB, { autoHeartbeat: false });
+    observer.start();
+    const observerCoordinator = new FakeRunCoordinator(f.dataRoot, repositoryB, observer);
+    await observerCoordinator.recover();
+    expect(f.repository.getRun(runId)?.status).toBe('agents_running');
+    expect(f.manager.getManagedCopy(f.added.project.id).state).toBe('locked_for_run');
+    f.lease.release();
+    await observerCoordinator.recover();
+    expect(f.repository.getRun(runId)?.status).toBe('failed');
+    expect(f.manager.getManagedCopy(f.added.project.id).state).toBe('ready');
+    observer.release();
+    databaseB.close();
+    f.database.close();
+  });
+
+  it('rejects cross-run protocol output while preserving earlier valid events', async () => {
+    const f = await fixture();
+    const result = await coordinator(f).simulate(f.added.project.id, {
+      scenario: 'protocol-error',
+      agentStackIds: ['stack_muse_main'],
+    });
+    expect(result.run.status).toBe('failed');
+    expect(result.agentRuns[0]).toMatchObject({
+      status: 'failed',
+      failure: { code: 'HARNESS_PROTOCOL_VIOLATION', retryable: false },
+    });
+    expect(result.events.map((stored) => stored.event.type)).toEqual([
+      'run.started',
+      'agent.status',
+    ]);
+    expect(result.findings).toHaveLength(0);
+    f.lease.release();
+    f.database.close();
+  });
+
+  it('isolates a protocol failure to one agent while peers complete', async () => {
+    const f = await fixture();
+    const result = await coordinator(f).simulate(f.added.project.id, {
+      scenario: 'protocol-error',
+    });
+    expect(result.run.status).toBe('partial');
+    expect(result.agentRuns.filter((agent) => agent.status === 'completed')).toHaveLength(2);
+    expect(
+      result.agentRuns.filter(
+        (agent) =>
+          agent.status === 'failed' && agent.failure?.code === 'HARNESS_PROTOCOL_VIOLATION',
+      ),
+    ).toHaveLength(1);
+    f.lease.release();
+    f.database.close();
+  });
+
+  it('streams large exports through repository iterators without list materialization', async () => {
+    const f = await fixture();
+    const result = await coordinator(f).simulate(f.added.project.id, {
+      agentStackIds: ['stack_muse_main'],
+    });
+    const agentRunId = result.agentRuns[0]?.id;
+    expect(agentRunId).toBeDefined();
+    if (agentRunId === undefined) throw new Error('Fixture agent run missing');
+    f.repository.transaction(() => {
+      for (let index = 0; index < 2_000; index += 1) {
+        f.repository.appendHarnessEventWithinTransaction(result.run.id, {
+          schemaVersion: 1,
+          eventId: createHarnessEventId(),
+          agentRunId,
+          timestamp: nowIsoTimestamp(),
+          type: 'warning',
+          message: 'streaming-export-record-' + index,
+        });
+      }
+    });
+    const oldExports = f.repository.listExports(result.run.id);
+    f.database.connection.prepare('DELETE FROM run_exports WHERE qa_run_id=?').run(result.run.id);
+    const artifacts = new FilesystemArtifactStore(f.dataRoot, f.repository);
+    for (const item of oldExports) {
+      const artifact = f.repository.getArtifact(item.artifactId);
+      if (artifact !== undefined) await artifacts.delete(artifact);
+    }
+    for (const name of [
+      'listAgentRuns',
+      'listPlans',
+      'listHypotheses',
+      'listActivities',
+      'listRunEvents',
+      'listFindings',
+      'listEvidence',
+      'listArtifacts',
+    ] as const) {
+      vi.spyOn(f.repository, name).mockImplementation(() => {
+        throw new Error('Exporter must use iterator API: ' + name);
+      });
+    }
+    const exporter = new RunExporter(f.dataRoot, f.repository);
+    const logManifest = await exporter.export(result.run.id, 'log');
+    const jsonManifest = await exporter.export(result.run.id, 'json');
+    const logArtifact = f.repository.getArtifact(logManifest.artifactId);
+    const jsonArtifact = f.repository.getArtifact(jsonManifest.artifactId);
+    expect(logArtifact).toBeDefined();
+    expect(jsonArtifact).toBeDefined();
+    if (logArtifact === undefined || jsonArtifact === undefined) throw new Error('Export missing');
+    const log = await readFile(resolveInside(f.dataRoot, logArtifact.relativeStoragePath), 'utf8');
+    const json = JSON.parse(
+      await readFile(resolveInside(f.dataRoot, jsonArtifact.relativeStoragePath), 'utf8'),
+    ) as { harnessEvents: unknown[] };
+    expect(log).toContain('streaming-export-record-1999');
+    expect(json.harnessEvents).toHaveLength(result.events.length + 2_000);
+    f.lease.release();
     f.database.close();
   });
 });

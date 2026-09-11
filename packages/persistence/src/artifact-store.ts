@@ -16,6 +16,7 @@ export interface WriteArtifactInput {
   readonly projectId?: ProjectId;
   readonly qaRunId?: QARunId;
   readonly mimeType?: string;
+  readonly persistMetadata?: boolean;
 }
 
 export class FilesystemArtifactStore {
@@ -57,7 +58,7 @@ export class FilesystemArtifactStore {
         sha256: hash.digest('hex'),
         createdAt: nowIsoTimestamp(),
       });
-      this.repository.saveArtifact(artifact);
+      if (input.persistMetadata ?? true) this.repository.saveArtifact(artifact);
       return artifact;
     } catch (cause) {
       output.destroy();
@@ -74,6 +75,15 @@ export class FilesystemArtifactStore {
   open(artifact: Artifact): ReadStream {
     const validated = ArtifactSchema.parse(artifact);
     return createReadStream(resolveInside(this.dataRoot, validated.relativeStoragePath));
+  }
+
+  persist(artifact: Artifact): void {
+    this.repository.saveArtifact(ArtifactSchema.parse(artifact));
+  }
+
+  async discard(artifact: Artifact): Promise<void> {
+    const validated = ArtifactSchema.parse(artifact);
+    await rm(resolveInside(this.dataRoot, validated.relativeStoragePath), { force: true });
   }
 
   async delete(artifact: Artifact): Promise<void> {

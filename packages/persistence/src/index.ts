@@ -6,3 +6,4 @@ export * from './database.js';
 export * from './repository.js';
 export * from './artifact-store.js';
 export * from './filesystem.js';
+export * from './runtime-lease.js';

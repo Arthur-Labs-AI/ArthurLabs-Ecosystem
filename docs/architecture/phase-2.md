@@ -156,3 +156,8 @@ deletes the selected source folder. Run deletion is deferred.
 **Sentry Phase 2 is complete. The local project lifecycle, persistence, snapshot,
 workspace, observability, recovery and simulated end-to-end runtime are ready for
 real Agent Stack integration.**
+
+> Phase 2 remains the historical foundation. Its runtime and recovery behavior was
+> hardened in [Phase 2.1](./phase-2-1.md), including durable process ownership,
+> multi-process locking, symlink isolation, lifecycle journals, incremental event
+> validation, activity reconciliation, and iterator-backed exports.

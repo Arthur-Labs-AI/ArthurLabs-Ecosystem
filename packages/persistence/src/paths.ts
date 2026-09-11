@@ -60,7 +60,7 @@ function comparisonPath(value: string): string {
   return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
 }
 
-function contains(parent: string, child: string): boolean {
+export function isPathInside(parent: string, child: string): boolean {
   const rel = relative(parent, child);
   return rel === '' || (!rel.startsWith('..' + sep) && rel !== '..' && !isAbsolute(rel));
 }
@@ -83,8 +83,8 @@ export async function assertNoPathOverlap(source: string, destinationRoot: strin
   const canonicalSource = comparisonPath(await canonicalizePath(source));
   const canonicalDestination = comparisonPath(await canonicalizePath(destinationRoot));
   if (
-    contains(canonicalSource, canonicalDestination) ||
-    contains(canonicalDestination, canonicalSource)
+    isPathInside(canonicalSource, canonicalDestination) ||
+    isPathInside(canonicalDestination, canonicalSource)
   ) {
     throw new Error(
       'PROJECT_PATH_OVERLAP: source and Sentry destination must not contain each other',
@@ -94,7 +94,7 @@ export async function assertNoPathOverlap(source: string, destinationRoot: strin
 
 export function resolveInside(root: string, relativePath: string): string {
   const target = resolve(root, relativePath);
-  if (!contains(comparisonPath(root), comparisonPath(target))) {
+  if (!isPathInside(comparisonPath(root), comparisonPath(target))) {
     throw new Error('PATH_ESCAPE: path resolves outside Sentry data root');
   }
   return target;

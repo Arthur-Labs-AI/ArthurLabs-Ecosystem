@@ -19,3 +19,4 @@ export * from './usage.schema.js';
 export * from './request.schema.js';
 export * from './event.schema.js';
 export * from './activity.schema.js';
+export * from './runtime.schema.js';

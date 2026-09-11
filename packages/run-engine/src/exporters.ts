@@ -60,12 +60,14 @@ function eventLogLine(stored: StoredHarnessEvent): string {
   );
 }
 
-function section(name: string, values: readonly unknown[], comma: boolean): AsyncIterable<string> {
+function section(name: string, values: Iterable<unknown>, comma: boolean): AsyncIterable<string> {
   return (async function* (): AsyncGenerator<string> {
     yield JSON.stringify(name) + ':[';
-    for (let index = 0; index < values.length; index += 1) {
+    let index = 0;
+    for (const value of values) {
       if (index > 0) yield ',';
-      yield JSON.stringify(values[index]);
+      yield JSON.stringify(value);
+      index += 1;
     }
     yield ']' + (comma ? ',' : '');
   })();
@@ -117,7 +119,7 @@ export class RunExporter {
     const run = this.repository.getRun(runId);
     if (run === undefined) return;
     yield '[' + run.createdAt + '] [SENTRY] SIMULATED / FAKE HARNESS RUN created\n';
-    for (const stored of this.repository.listRunEvents(runId)) yield eventLogLine(stored);
+    for (const stored of this.repository.iterateRunEvents(runId)) yield eventLogLine(stored);
     yield '[' +
       (run.completedAt ?? nowIsoTimestamp()) +
       '] [SENTRY] Run status: ' +
@@ -136,25 +138,37 @@ export class RunExporter {
     yield '"projectRevision":' + JSON.stringify(revision ?? null) + ',';
     yield '"projectSnapshot":' + JSON.stringify(snapshot ?? null) + ',';
     yield '"projectContextSnapshot":' + JSON.stringify(context ?? null) + ',';
-    for await (const part of section('agentRuns', this.repository.listAgentRuns(runId), true))
-      yield part;
-    for await (const part of section('investigationPlans', this.repository.listPlans(runId), true))
+    for await (const part of section('agentRuns', this.repository.iterateAgentRuns(runId), true))
       yield part;
     for await (const part of section(
-      'emergentHypotheses',
-      this.repository.listHypotheses(runId),
+      'investigationPlans',
+      this.repository.iteratePlans(runId),
       true,
     ))
       yield part;
-    for await (const part of section('runActivities', this.repository.listActivities(runId), true))
+    for await (const part of section(
+      'emergentHypotheses',
+      this.repository.iterateHypotheses(runId),
+      true,
+    ))
       yield part;
-    for await (const part of section('harnessEvents', this.repository.listRunEvents(runId), true))
+    for await (const part of section(
+      'runActivities',
+      this.repository.iterateActivities(runId),
+      true,
+    ))
       yield part;
-    for await (const part of section('findings', this.repository.listFindings(runId), true))
+    for await (const part of section(
+      'harnessEvents',
+      this.repository.iterateRunEvents(runId),
+      true,
+    ))
       yield part;
-    for await (const part of section('evidence', this.repository.listEvidence(runId), true))
+    for await (const part of section('findings', this.repository.iterateFindings(runId), true))
       yield part;
-    for await (const part of section('artifacts', this.repository.listArtifacts(runId), false))
+    for await (const part of section('evidence', this.repository.iterateEvidence(runId), true))
+      yield part;
+    for await (const part of section('artifacts', this.repository.iterateArtifacts(runId), false))
       yield part;
     yield '}';
   }

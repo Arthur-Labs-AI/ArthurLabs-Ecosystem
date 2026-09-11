@@ -22,7 +22,9 @@ export class SentryDatabase {
         'node:sqlite',
       ) as typeof import('node:sqlite');
       this.connection = new DatabaseSync(this.path);
-      this.connection.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
+      this.connection.exec(
+        'PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;',
+      );
       this.migrate();
     } catch (cause) {
       throw new RuntimePersistenceError('DATABASE_ERROR', 'Unable to initialize Sentry database', {
@@ -63,9 +65,32 @@ export class SentryDatabase {
       return result;
     } catch (cause) {
       this.connection.exec('ROLLBACK');
-      throw new RuntimePersistenceError('DATABASE_ERROR', 'Sentry database transaction failed', {
-        cause,
-      });
+      const sqliteCode =
+        typeof cause === 'object' && cause !== null && 'code' in cause
+          ? String(cause.code)
+          : undefined;
+      const sqliteMessage = cause instanceof Error ? cause.message : '';
+      if (
+        sqliteMessage.includes('AGENT_QA_RUN_MISMATCH') ||
+        sqliteMessage.includes('ENTITY_OWNERSHIP_IMMUTABLE') ||
+        sqliteMessage.includes('FOREIGN KEY constraint failed')
+      ) {
+        throw new RuntimePersistenceError(
+          'RELATIONSHIP_CONFLICT',
+          'Persisted entity ownership conflicts with its parent run',
+          { cause },
+        );
+      }
+      if (sqliteCode?.startsWith('SQLITE_') === true) {
+        throw new RuntimePersistenceError(
+          sqliteCode.includes('BUSY') ? 'SQLITE_BUSY' : 'DATABASE_ERROR',
+          sqliteCode.includes('BUSY')
+            ? 'Sentry data is busy in another local process; retry shortly'
+            : 'Sentry database transaction failed',
+          { cause },
+        );
+      }
+      throw cause;
     }
   }
 

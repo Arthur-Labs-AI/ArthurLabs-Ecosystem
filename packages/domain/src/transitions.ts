@@ -33,7 +33,7 @@ const AGENT_RUN_TRANSITIONS: Readonly<Record<AgentRunStatus, readonly AgentRunSt
   queued: ['starting', 'cancelled'],
   starting: ['planning', 'running', 'failed', 'interrupted', 'cancelled'],
   planning: ['running', 'failed', 'interrupted', 'cancelled', 'timed_out'],
-  running: ['completed', 'failed', 'interrupted', 'cancelled', 'timed_out'],
+  running: ['planning', 'completed', 'failed', 'interrupted', 'cancelled', 'timed_out'],
   completed: [],
   failed: [],
   cancelled: [],
@@ -44,9 +44,10 @@ const AGENT_RUN_TRANSITIONS: Readonly<Record<AgentRunStatus, readonly AgentRunSt
 const MANAGED_PROJECT_COPY_TRANSITIONS: Readonly<
   Record<ManagedProjectCopyState, readonly ManagedProjectCopyState[]>
 > = {
-  ready: ['updating', 'locked_for_run'],
+  ready: ['updating', 'locked_for_run', 'deleting'],
   updating: ['ready', 'error'],
   locked_for_run: ['ready', 'error'],
+  deleting: ['ready', 'error'],
   error: ['ready'],
 };
 

@@ -27,7 +27,7 @@ describe('project lifecycle schemas', () => {
     ).toBe(false);
   });
 
-  it('requires a run owner exactly while a managed copy is locked', () => {
+  it('requires run and runtime owners exactly while a managed copy is locked', () => {
     const base = {
       schemaVersion: 1,
       projectId: revision.projectId,
@@ -51,6 +51,7 @@ describe('project lifecycle schemas', () => {
         ...base,
         state: 'locked_for_run',
         lockedByQARunId: 'run_01K7777777777777777777A8W3',
+        runtimeInstanceId: 'runtime_01K7777777777777777777A8W2',
       }).success,
     ).toBe(true);
     expect(

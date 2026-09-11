@@ -1,4 +1,4 @@
-import type { AgentRunId, ProjectId, QARunId } from '@qa/shared';
+import type { AgentRunId, ProjectId, QARunId, RuntimeInstanceId } from '@qa/shared';
 import {
   AgentInvestigationPlanSchema,
   AgentRunSchema,
@@ -15,6 +15,8 @@ import {
   QARunSchema,
   RunActivitySchema,
   RunExportManifestSchema,
+  RuntimeInstanceSchema,
+  RuntimeOperationSchema,
   type AgentInvestigationPlan,
   type AgentRun,
   type Artifact,
@@ -30,6 +32,8 @@ import {
   type QARun,
   type RunActivity,
   type RunExportManifest,
+  type RuntimeInstance,
+  type RuntimeOperation,
 } from '@qa/schemas';
 import type { SentryDatabase } from './database.js';
 import { RuntimePersistenceError } from './errors.js';
@@ -70,6 +74,16 @@ function decodeMany<T>(schema: Parser<T>, rows: readonly PayloadRow[], label: st
     if (value === undefined) throw new Error('Unreachable empty persisted row');
     return value;
   });
+}
+
+function* decodeRows<T>(schema: Parser<T>, rows: Iterable<PayloadRow>, label: string): Iterable<T> {
+  let index = 0;
+  for (const row of rows) {
+    const value = decode(schema, row, label + '[' + index + ']');
+    if (value === undefined) throw new Error('Unreachable empty persisted row');
+    yield value;
+    index += 1;
+  }
 }
 
 export class SentryRepository {
@@ -113,9 +127,15 @@ export class SentryRepository {
     const payload = encode(ManagedProjectCopySchema, value);
     this.database.connection
       .prepare(
-        'INSERT INTO managed_project_copies(project_id,state,locked_by_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(project_id) DO UPDATE SET state=excluded.state,locked_by_run_id=excluded.locked_by_run_id,payload=excluded.payload',
+        'INSERT INTO managed_project_copies(project_id,state,locked_by_run_id,runtime_instance_id,payload) VALUES (?,?,?,?,?) ON CONFLICT(project_id) DO UPDATE SET state=excluded.state,locked_by_run_id=excluded.locked_by_run_id,runtime_instance_id=excluded.runtime_instance_id,payload=excluded.payload',
       )
-      .run(value.projectId, value.state, value.lockedByQARunId ?? null, payload);
+      .run(
+        value.projectId,
+        value.state,
+        value.lockedByQARunId ?? null,
+        value.runtimeInstanceId ?? null,
+        payload,
+      );
   }
 
   getManagedCopy(projectId: ProjectId): ManagedProjectCopy | undefined {
@@ -159,6 +179,16 @@ export class SentryRepository {
     );
   }
 
+  listContexts(projectId: ProjectId): ProjectContextSnapshot[] {
+    return decodeMany(
+      ProjectContextSnapshotSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM project_context_snapshots WHERE project_id=? ORDER BY id')
+        .all(projectId) as unknown as PayloadRow[],
+      'ProjectContextSnapshot',
+    );
+  }
+
   saveArtifact(value: Artifact): void {
     this.database.connection
       .prepare(
@@ -184,6 +214,16 @@ export class SentryRepository {
       this.database.connection
         .prepare('SELECT payload FROM artifacts WHERE qa_run_id=? ORDER BY id')
         .all(runId) as unknown as PayloadRow[],
+      'Artifact',
+    );
+  }
+
+  iterateArtifacts(runId: QARunId): Iterable<Artifact> {
+    return decodeRows(
+      ArtifactSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM artifacts WHERE qa_run_id=? ORDER BY id')
+        .iterate(runId) as Iterable<PayloadRow>,
       'Artifact',
     );
   }
@@ -242,7 +282,7 @@ export class SentryRepository {
   saveRun(value: QARun): void {
     this.database.connection
       .prepare(
-        'INSERT INTO qa_runs(id,project_id,snapshot_id,context_id,status,payload) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET status=excluded.status,payload=excluded.payload',
+        'INSERT INTO qa_runs(id,project_id,snapshot_id,context_id,status,runtime_instance_id,payload) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET status=excluded.status,runtime_instance_id=excluded.runtime_instance_id,payload=excluded.payload',
       )
       .run(
         value.id,
@@ -250,6 +290,7 @@ export class SentryRepository {
         value.snapshotId,
         value.projectContextSnapshotId,
         value.status,
+        value.runtimeInstanceId ?? null,
         encode(QARunSchema, value),
       );
   }
@@ -286,7 +327,7 @@ export class SentryRepository {
   saveAgentRun(value: AgentRun): void {
     this.database.connection
       .prepare(
-        'INSERT INTO agent_runs(id,qa_run_id,status,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET status=excluded.status,payload=excluded.payload',
+        'INSERT INTO agent_runs(id,qa_run_id,status,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET qa_run_id=excluded.qa_run_id,status=excluded.status,payload=excluded.payload',
       )
       .run(value.id, value.qaRunId, value.status, encode(AgentRunSchema, value));
   }
@@ -308,6 +349,16 @@ export class SentryRepository {
     );
   }
 
+  iterateAgentRuns(runId: QARunId): Iterable<AgentRun> {
+    return decodeRows(
+      AgentRunSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM agent_runs WHERE qa_run_id=? ORDER BY id')
+        .iterate(runId) as Iterable<PayloadRow>,
+      'AgentRun',
+    );
+  }
+
   listNonterminalAgentRuns(): AgentRun[] {
     return decodeMany(
       AgentRunSchema,
@@ -323,7 +374,7 @@ export class SentryRepository {
   savePlan(value: AgentInvestigationPlan): void {
     this.database.connection
       .prepare(
-        'INSERT INTO investigation_plans(id,qa_run_id,agent_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload',
+        'INSERT INTO investigation_plans(id,qa_run_id,agent_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET qa_run_id=excluded.qa_run_id,agent_run_id=excluded.agent_run_id,payload=excluded.payload',
       )
       .run(value.id, value.qaRunId, value.agentRunId, encode(AgentInvestigationPlanSchema, value));
   }
@@ -337,10 +388,19 @@ export class SentryRepository {
     );
   }
 
+  iteratePlans(runId: QARunId): Iterable<AgentInvestigationPlan> {
+    return this.iterateRunEntity(
+      'investigation_plans',
+      runId,
+      AgentInvestigationPlanSchema,
+      'AgentInvestigationPlan',
+    );
+  }
+
   saveHypothesis(value: EmergentHypothesis): void {
     this.database.connection
       .prepare(
-        'INSERT INTO emergent_hypotheses(id,qa_run_id,agent_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload',
+        'INSERT INTO emergent_hypotheses(id,qa_run_id,agent_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET qa_run_id=excluded.qa_run_id,agent_run_id=excluded.agent_run_id,payload=excluded.payload',
       )
       .run(value.id, value.qaRunId, value.agentRunId, encode(EmergentHypothesisSchema, value));
   }
@@ -354,10 +414,19 @@ export class SentryRepository {
     );
   }
 
+  iterateHypotheses(runId: QARunId): Iterable<EmergentHypothesis> {
+    return this.iterateRunEntity(
+      'emergent_hypotheses',
+      runId,
+      EmergentHypothesisSchema,
+      'EmergentHypothesis',
+    );
+  }
+
   saveFinding(value: Finding): void {
     this.database.connection
       .prepare(
-        'INSERT INTO findings(id,qa_run_id,agent_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload',
+        'INSERT INTO findings(id,qa_run_id,agent_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET qa_run_id=excluded.qa_run_id,agent_run_id=excluded.agent_run_id,payload=excluded.payload',
       )
       .run(value.id, value.qaRunId, value.agentRunId, encode(FindingSchema, value));
   }
@@ -366,10 +435,14 @@ export class SentryRepository {
     return this.listRunEntity('findings', runId, FindingSchema, 'Finding');
   }
 
+  iterateFindings(runId: QARunId): Iterable<Finding> {
+    return this.iterateRunEntity('findings', runId, FindingSchema, 'Finding');
+  }
+
   saveEvidence(value: Evidence): void {
     this.database.connection
       .prepare(
-        'INSERT INTO evidence(id,qa_run_id,agent_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload',
+        'INSERT INTO evidence(id,qa_run_id,agent_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET qa_run_id=excluded.qa_run_id,agent_run_id=excluded.agent_run_id,payload=excluded.payload',
       )
       .run(value.id, value.qaRunId, value.agentRunId ?? null, encode(EvidenceSchema, value));
   }
@@ -378,16 +451,24 @@ export class SentryRepository {
     return this.listRunEntity('evidence', runId, EvidenceSchema, 'Evidence');
   }
 
+  iterateEvidence(runId: QARunId): Iterable<Evidence> {
+    return this.iterateRunEntity('evidence', runId, EvidenceSchema, 'Evidence');
+  }
+
   saveActivity(value: RunActivity): void {
     this.database.connection
       .prepare(
-        'INSERT INTO run_activities(id,qa_run_id,agent_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload',
+        'INSERT INTO run_activities(id,qa_run_id,agent_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET qa_run_id=excluded.qa_run_id,agent_run_id=excluded.agent_run_id,payload=excluded.payload',
       )
       .run(value.id, value.qaRunId, value.agentRunId ?? null, encode(RunActivitySchema, value));
   }
 
   listActivities(runId: QARunId): RunActivity[] {
     return this.listRunEntity('run_activities', runId, RunActivitySchema, 'RunActivity');
+  }
+
+  iterateActivities(runId: QARunId): Iterable<RunActivity> {
+    return this.iterateRunEntity('run_activities', runId, RunActivitySchema, 'RunActivity');
   }
 
   saveExport(value: RunExportManifest): void {
@@ -403,20 +484,39 @@ export class SentryRepository {
   }
 
   appendHarnessEvent(runId: QARunId, event: HarnessEvent): number {
+    return this.database.transaction(() => this.appendHarnessEventWithinTransaction(runId, event));
+  }
+
+  appendHarnessEventWithinTransaction(runId: QARunId, event: HarnessEvent): number {
     const payload = encode(HarnessEventSchema, event);
-    return this.database.transaction(() => {
-      const row = this.database.connection
-        .prepare(
-          'SELECT COALESCE(MAX(sequence),0)+1 AS sequence FROM harness_events WHERE agent_run_id=?',
-        )
-        .get(event.agentRunId) as { sequence: number };
+    const row = this.database.connection
+      .prepare(
+        'SELECT COALESCE(MAX(sequence),0)+1 AS sequence FROM harness_events WHERE agent_run_id=?',
+      )
+      .get(event.agentRunId) as { sequence: number };
+    try {
       this.database.connection
         .prepare(
           'INSERT INTO harness_events(agent_run_id,sequence,event_id,qa_run_id,payload) VALUES (?,?,?,?,?)',
         )
         .run(event.agentRunId, row.sequence, event.eventId, runId, payload);
-      return row.sequence;
-    });
+    } catch (cause) {
+      const code =
+        typeof cause === 'object' && cause !== null && 'code' in cause ? String(cause.code) : '';
+      const message = cause instanceof Error ? cause.message : '';
+      if (
+        code.includes('CONSTRAINT') ||
+        message.includes('UNIQUE constraint failed: harness_events')
+      ) {
+        throw new RuntimePersistenceError(
+          'EVENT_CONFLICT',
+          'Harness event identity or sequence conflicts with persisted history',
+          { cause },
+        );
+      }
+      throw cause;
+    }
+    return row.sequence;
   }
 
   listAgentEvents(agentRunId: AgentRunId): StoredHarnessEvent[] {
@@ -447,6 +547,72 @@ export class SentryRepository {
     });
   }
 
+  *iterateRunEvents(runId: QARunId): Iterable<StoredHarnessEvent> {
+    const rows = this.database.connection
+      .prepare(
+        'SELECT sequence,payload FROM harness_events WHERE qa_run_id=? ORDER BY agent_run_id,sequence',
+      )
+      .iterate(runId) as Iterable<{ sequence: number; payload: string }>;
+    let index = 0;
+    for (const row of rows) {
+      const event = decode(HarnessEventSchema, row, 'HarnessEvent ' + runId + '[' + index + ']');
+      if (event === undefined) throw new Error('Unreachable empty event row');
+      yield { sequence: row.sequence, event };
+      index += 1;
+    }
+  }
+
+  saveRuntimeInstance(value: RuntimeInstance): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO runtime_instances(id,process_id,started_at,heartbeat_at,released_at,payload) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET heartbeat_at=excluded.heartbeat_at,released_at=excluded.released_at,payload=excluded.payload',
+      )
+      .run(
+        value.id,
+        value.processId,
+        value.startedAt,
+        value.heartbeatAt,
+        value.releasedAt ?? null,
+        encode(RuntimeInstanceSchema, value),
+      );
+  }
+
+  getRuntimeInstance(id: RuntimeInstanceId): RuntimeInstance | undefined {
+    const row = this.database.connection
+      .prepare('SELECT payload FROM runtime_instances WHERE id=?')
+      .get(id) as PayloadRow | undefined;
+    return decode(RuntimeInstanceSchema, row, 'RuntimeInstance ' + id);
+  }
+
+  saveRuntimeOperation(value: RuntimeOperation): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO runtime_operations(id,project_id,runtime_instance_id,type,stage,payload) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET runtime_instance_id=excluded.runtime_instance_id,stage=excluded.stage,payload=excluded.payload',
+      )
+      .run(
+        value.id,
+        value.projectId,
+        value.runtimeInstanceId,
+        value.type,
+        value.stage,
+        encode(RuntimeOperationSchema, value),
+      );
+  }
+
+  listRuntimeOperations(): RuntimeOperation[] {
+    return decodeMany(
+      RuntimeOperationSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM runtime_operations ORDER BY id')
+        .all() as unknown as PayloadRow[],
+      'RuntimeOperation',
+    );
+  }
+
+  deleteRuntimeOperation(id: string): void {
+    this.database.connection.prepare('DELETE FROM runtime_operations WHERE id=?').run(id);
+  }
+
   agentProducedUsableOutput(agentRunId: AgentRunId): boolean {
     const row = this.database.connection
       .prepare(
@@ -470,5 +636,28 @@ export class SentryRepository {
       .prepare('SELECT payload FROM ' + table + ' WHERE qa_run_id=? ORDER BY rowid')
       .all(runId) as unknown as PayloadRow[];
     return decodeMany(schema, rows, label);
+  }
+
+  private iterateRunEntity<T>(
+    table: string,
+    runId: QARunId,
+    schema: Parser<T>,
+    label: string,
+  ): Iterable<T> {
+    const allowed = new Set([
+      'investigation_plans',
+      'emergent_hypotheses',
+      'findings',
+      'evidence',
+      'run_activities',
+    ]);
+    if (!allowed.has(table)) throw new TypeError('Unsupported repository table');
+    return decodeRows(
+      schema,
+      this.database.connection
+        .prepare('SELECT payload FROM ' + table + ' WHERE qa_run_id=? ORDER BY rowid')
+        .iterate(runId) as Iterable<PayloadRow>,
+      label,
+    );
   }
 }

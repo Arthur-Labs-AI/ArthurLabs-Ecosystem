@@ -6,6 +6,7 @@ import {
   decodeEventsNdjson,
   eventTypes,
   HarnessProtocolError,
+  IncrementalHarnessEventValidator,
   validateHarnessEventSequence,
 } from '../src/index.js';
 
@@ -309,5 +310,71 @@ describe('HarnessEvent protocol', () => {
         'definitely-not-json',
       );
     }
+  });
+
+  it('validates identities and tool lifecycle incrementally without event history', () => {
+    const validator = new IncrementalHarnessEventValidator(finding.qaRunId, finding.agentRunId);
+    validator.accept(HarnessEventSchema.parse({ ...base, type: 'run.started' }));
+    validator.accept(
+      HarnessEventSchema.parse({
+        ...base,
+        type: 'tool.started',
+        operationId,
+        tool: { name: 'shell' },
+      }),
+    );
+    expect(() =>
+      validator.accept(
+        HarnessEventSchema.parse({
+          ...base,
+          type: 'tool.completed',
+          operationId,
+          tool: { name: 'browser' },
+        }),
+      ),
+    ).toThrow(HarnessProtocolError);
+
+    const ownership = new IncrementalHarnessEventValidator(finding.qaRunId, finding.agentRunId);
+    ownership.accept(HarnessEventSchema.parse({ ...base, type: 'run.started' }));
+    expect(() =>
+      ownership.accept(
+        HarnessEventSchema.parse({
+          ...base,
+          type: 'finding.submitted',
+          finding: { ...finding, qaRunId: 'run_01K7777777777777777777A8WX' },
+        }),
+      ),
+    ).toThrowError(expect.objectContaining({ code: 'QA_RUN_MISMATCH' }));
+    expect(() =>
+      ownership.accept(
+        HarnessEventSchema.parse({
+          ...base,
+          agentRunId: 'arun_01K7777777777777777777A8W5',
+          type: 'warning',
+          message: 'wrong worker',
+        }),
+      ),
+    ).toThrowError(expect.objectContaining({ code: 'AGENT_RUN_MISMATCH' }));
+
+    const duplicateTool = new IncrementalHarnessEventValidator(finding.qaRunId, finding.agentRunId);
+    duplicateTool.accept(HarnessEventSchema.parse({ ...base, type: 'run.started' }));
+    const started = HarnessEventSchema.parse({
+      ...base,
+      type: 'tool.started',
+      operationId,
+      tool: { name: 'shell' },
+    });
+    duplicateTool.accept(started);
+    expect(() => duplicateTool.accept(started)).toThrow(HarnessProtocolError);
+  });
+
+  it('rejects events after terminal and requires a terminal on stream close', () => {
+    const validator = new IncrementalHarnessEventValidator(finding.qaRunId, finding.agentRunId);
+    validator.accept(HarnessEventSchema.parse({ ...base, type: 'run.started' }));
+    expect(() => validator.finish()).toThrow(HarnessProtocolError);
+    validator.accept(HarnessEventSchema.parse({ ...base, type: 'run.completed' }));
+    expect(() =>
+      validator.accept(HarnessEventSchema.parse({ ...base, type: 'warning', message: 'late' })),
+    ).toThrow(HarnessProtocolError);
   });
 });

@@ -7,6 +7,7 @@ import {
   QARunIdSchema,
   SchemaVersionSchema,
   Sha256Schema,
+  RuntimeInstanceIdSchema,
 } from './primitives.js';
 import { MANAGED_PROJECT_COPY_STATES } from './enums.js';
 
@@ -56,6 +57,7 @@ export const ManagedProjectCopySchema = z
     currentRevisionId: ProjectRevisionIdSchema.optional(),
     state: z.enum(MANAGED_PROJECT_COPY_STATES),
     lockedByQARunId: QARunIdSchema.optional(),
+    runtimeInstanceId: RuntimeInstanceIdSchema.optional(),
     updatedAt: IsoTimestampSchema,
   })
   .strict()
@@ -82,6 +84,21 @@ export const ManagedProjectCopySchema = z
         code: z.ZodIssueCode.custom,
         path: ['lockedByQARunId'],
         message: 'Only locked_for_run may carry lockedByQARunId',
+      });
+    }
+    const requiresOwner = new Set(['updating', 'locked_for_run', 'deleting']).has(copy.state);
+    if (requiresOwner && copy.runtimeInstanceId === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['runtimeInstanceId'],
+        message: copy.state + ' managed copy requires runtimeInstanceId',
+      });
+    }
+    if (!requiresOwner && copy.runtimeInstanceId !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['runtimeInstanceId'],
+        message: 'Only active managed-copy states may carry runtimeInstanceId',
       });
     }
   });

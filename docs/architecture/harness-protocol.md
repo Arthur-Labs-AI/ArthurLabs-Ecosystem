@@ -55,6 +55,12 @@ validation checks their AgentRun and, when supplied, QARun identity. It also
 requires one `run.started` first, exactly one completed/failed/cancelled terminal
 event last, and one shared AgentRun across the stream.
 
+Phase 2.1 applies these rules incrementally before persistence. Each live stream
+retains only its flags and open-operation map. One short transaction stores an
+accepted event and all SQLite projections, so later protocol corruption preserves
+earlier valid history without leaving a stored event whose domain projection is
+missing. Cross-run ownership triggers provide a second persistence-level guard.
+
 ## Transport loss and interrupted workers
 
 A worker process can disappear without emitting a terminal event. Such an

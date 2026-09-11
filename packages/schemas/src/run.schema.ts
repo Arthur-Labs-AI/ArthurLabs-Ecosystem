@@ -11,6 +11,7 @@ import {
   SnapshotIdSchema,
   NonNegativeIntSchema,
   UnifiedIssueIdSchema,
+  RuntimeInstanceIdSchema,
 } from './primitives.js';
 import {
   AGENT_RUN_STATUSES,
@@ -86,6 +87,7 @@ const QARunBaseSchema = z
     projectId: ProjectIdSchema,
     snapshotId: SnapshotIdSchema,
     projectContextSnapshotId: ProjectContextSnapshotIdSchema,
+    runtimeInstanceId: RuntimeInstanceIdSchema.optional(),
     status: z.enum(QARUN_STATUSES),
     configuration: QARunConfigurationSchema,
     createdAt: IsoTimestampSchema,
