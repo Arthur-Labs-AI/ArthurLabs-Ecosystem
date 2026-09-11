@@ -278,6 +278,44 @@ test('SC06-F04: streaming multi-round turn matches the text core', async () => {
   }
 });
 
+
+// TASK-0024 Bug 1: tool-capable live deltas are provisional; only the settled
+// final text is speech-eligible. A streaming provider emits "I'll check that."
+// BEFORE the round's tool call; the flag must mark it provisional.
+test('TASK-0024: streamTurn flags tool-round text provisional and final text final', async () => {
+  let calls = 0;
+  const provider = new FakeProvider({
+    responder: () => {
+      calls += 1;
+      if (calls === 1) {
+        return result("I'll check that.", [{ id: 'flag-1', name: 'system.echo', arguments: { text: 'v' } }]);
+      }
+      return result('stream final answer');
+    },
+  });
+  const app = buildTestApp({}, { provider });
+  try {
+    const events: StreamingTurnEvent[] = [];
+    for await (const event of app.conversation.streamTurn(validTurn({ message: 'flag me' }))) {
+      events.push(event);
+    }
+    const deltas = events.filter((e) => e.type === 'text_delta');
+    assert.ok(deltas.length >= 2, 'provisional + final deltas expected, got ' + deltas.length);
+    // Gateway replays buffered text before the tool call: provisional.
+    assert.equal(deltas[0]?.type === 'text_delta' && deltas[0].provisional, true);
+    assert.ok(String(deltas[0]?.type === 'text_delta' ? deltas[0].text : '').includes("I'll check that"));
+    // The settled final-round text is speech-eligible.
+    const last = deltas[deltas.length - 1];
+    assert.equal(last?.type === 'text_delta' && last.provisional, false);
+    assert.equal(last?.type === 'text_delta' ? last.text : '', 'stream final answer');
+    const completed = events.find((e): e is Extract<StreamingTurnEvent, { type: 'turn_completed' }> => e.type === 'turn_completed');
+    assert.ok(completed);
+    assert.equal(completed.display_text, 'stream final answer');
+  } finally {
+    app.close();
+  }
+});
+
 // SC06-F47/F48: turn response aggregates all rounds + model totals.
 test('SC06-F47: tool calls aggregate across rounds in order', async () => {
   let calls = 0;

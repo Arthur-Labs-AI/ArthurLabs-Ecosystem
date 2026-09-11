@@ -432,11 +432,16 @@ export class ConversationLoopRunner {
     };
 
     // Per-round model stream (§14 + voice barge-in): text deltas and tool
-    // calls are yielded LIVE as provisional round events (consumers may show
-    // them immediately), but classification happens at round end — only the
+    // calls are yielded LIVE as round events (consumers may show them
+    // immediately), but classification happens at round end — only the
     // final round's text becomes the answer (§12-13). Fully assembled,
     // normalized, validated calls are returned at round end (§22); partial
     // fragments are advisory live events only and never reach validation.
+    // TASK-0024 Bug 1: live text from a tool-CAPABLE round is provisional
+    // (it can still be invalidated by a later tool call in the same round)
+    // and must never reach TTS. A tool-DISABLED round (toolSchemas empty)
+    // cannot later become a tool round, so its live text is final-speech
+    // eligible and streams to speech immediately.
     const streamRound = async function* (
       gateway: ModelGateway,
       request: ModelRequest,
@@ -462,7 +467,7 @@ export class ConversationLoopRunner {
           switch (event.type) {
             case "text_delta":
               assistantText += event.text;
-              yield { kind: "live", event: { type: "text_delta", text: event.text, round_no: roundNo, provisional: true } };
+              yield { kind: "live", event: { type: "text_delta", text: event.text, round_no: roundNo, provisional: request.toolSchemas.length > 0 } };
               break;
             case "tool_call":
               // Advisory live signal (voice holds speech); the complete

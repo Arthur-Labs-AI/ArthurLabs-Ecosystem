@@ -172,13 +172,15 @@ test("STT failure fails closed: no turn is created and voice returns to idle", a
   assert.equal(after, before, "no completed turn may exist after STT failure");
   await h.app.close();
 });
-test("barge-in interrupts speech, cancels the model stream, and persists an interrupted turn", async () => {
+test("barge-in interrupts generation, cancels the model stream, and persists an interrupted turn", async () => {
   let releaseStream!: () => void;
   const gate = new Promise<void>((resolve) => {
     releaseStream = resolve;
   });
   const h = await buildHarness({
     streamResponder: (async function* (_req: ModelRequest, signal?: AbortSignal) {
+      // TASK-0024: tool-capable partial text is provisional — held for UI,
+      // never spoken. The generation stays open (THINKING) until cancelled.
       yield { type: "text_delta", text: "Partial answer that will be cut off. " };
       await Promise.race([
         gate,
@@ -199,10 +201,11 @@ test("barge-in interrupts speech, cancels the model stream, and persists an inte
   await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
   h.capture.feedFrame(silenceFrame(10, t0 + 100));
   h.capture.feedFrame(silenceFrame(10, t0 + 120));
-  // ARTHUR starts speaking the partial answer.
-  await waitFor(() => h.app.voice.state === VoiceState.SPEAKING);
-  assert.equal(h.playback.stopRequested, false);
-  // User talks over ARTHUR while playback is still active: sustained
+  // Generation is open (provisional text visible for UI, nothing spoken yet).
+  await waitFor(() => h.app.voice.state === VoiceState.THINKING);
+  assert.ok(h.events.some((e) => e.type === "assistant.text.delta"), "provisional text stays UI-visible");
+  assert.equal(h.tts.requests.length, 0, "provisional text must never reach TTS");
+  // User talks over ARTHUR while generation is still active: sustained
   // high-probability speech (>= bargeInMinSpeechMs = 150 ms = 8 frames at
   // 20 ms) must trigger the barge-in.
   h.vad.setScript(["silence", "speech", "speech", "speech", "speech", "speech", "speech", "speech", "speech", "speech"]);
@@ -212,7 +215,6 @@ test("barge-in interrupts speech, cancels the model stream, and persists an inte
     h.events.some((e) => e.type === "voice.error" && e.code === VoiceErrorCode.VOICE_CANCELLED),
     "barge-in must surface VOICE_CANCELLED",
   );
-  await waitFor(() => h.playback.stopRequested, 2000);
   releaseStream();
   // The interrupted turn is persisted as interrupted, never completed.
   await waitFor(() =>
@@ -591,7 +593,10 @@ test("sustained speech barges in even without repeated speech_started transition
   await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
   h.capture.feedFrame(silenceFrame(10, Date.now() + 80));
   h.capture.feedFrame(silenceFrame(10, Date.now() + 100));
-  await waitFor(() => h.app.voice.state === VoiceState.SPEAKING);
+  // TASK-0024: provisional text is UI-only while the round can still become
+  // a tool round — the generation stays open (THINKING) until cancelled.
+  await waitFor(() => h.app.voice.state === VoiceState.THINKING);
+  assert.equal(h.tts.requests.length, 0, "provisional text must never reach TTS");
   const deltasBefore = h.events.filter((e) => e.type === "assistant.text.delta").length;
   // Realistic VAD shape: ONE speech_started transition, then sustained speech
   // frames without transitions (1 silence + 8 speech = 160 ms >= 150 ms bar).
@@ -604,7 +609,6 @@ test("sustained speech barges in even without repeated speech_started transition
     h.events.some((e) => e.type === "voice.error" && e.code === VoiceErrorCode.VOICE_CANCELLED),
     "barge-in must surface VOICE_CANCELLED",
   );
-  await waitFor(() => h.playback.stopRequested, 2000, "playback to stop");
   await waitFor(() => h.app.voice.state === VoiceState.LISTENING, 4000, "state to return to listening");
   releaseStream();
   // The interrupted generation is dead: no further deltas, turn persisted as
@@ -732,3 +736,140 @@ test("wake-triggered listening keeps its pre-wake pre-roll (unchanged contract)"
   }
   await h.app.close();
 });
+
+test("TASK-0024 Bug 1: provisional tool-round text is held from TTS and never spoken as final truth", async () => {
+  // Live order: provisional text deltas arrive BEFORE the round's tool call.
+  // The provisional sentence is long enough to cross a speakable boundary so
+  // this test FAILS on the pre-fix code (which spoke it immediately).
+  const PROVISIONAL = "I'll check that. Let me look at the repository state now. ";
+  const FINAL = "The last commit is abc1234, fixing the voice loop.";
+  let rounds = 0;
+  let releaseFinal!: () => void;
+  const finalGate = new Promise<void>((resolve) => {
+    releaseFinal = resolve;
+  });
+  const h = await buildHarness({
+    streamResponder: (async function* (_req: ModelRequest, signal?: AbortSignal) {
+      rounds += 1;
+      if (rounds === 1) {
+        yield { type: "text_delta", text: PROVISIONAL };
+        // Hold the round open briefly so any premature speech would surface.
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        yield {
+          type: "tool_call",
+          call: { id: "tc-provisional", name: "system.echo", arguments: { text: "probe" } },
+        };
+        yield { type: "done", finish_reason: "tool_calls" };
+      } else {
+        // Follow-up round: hold open so the pre-completion TTS count is exact.
+        yield { type: "text_delta", text: FINAL };
+        await Promise.race([
+          finalGate,
+          new Promise<void>((resolve) => {
+            signal?.addEventListener("abort", () => resolve(), { once: true });
+          }),
+        ]);
+        if (signal?.aborted) return;
+        yield { type: "done", finish_reason: "stop" };
+      }
+    }) as (request: ModelRequest, signal?: AbortSignal) => AsyncIterable<ModelStreamEvent>,
+  });
+  h.stt.setDefaultScript({ final: "check the repository and tell me the last commit" });
+  h.vad.setScript(["silence", "speech", "speech", "speech", "end"]);
+  const t0 = Date.now();
+  h.wake.triggerWake(t0);
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  feedUtterance(h, t0 + 40, 3);
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  h.capture.feedFrame(silenceFrame(10, t0 + 100));
+  h.capture.feedFrame(silenceFrame(10, t0 + 120));
+  // The tool round must complete with NO TTS before the follow-up round
+  // completes: provisional text is UI-only.
+  await waitFor(() => rounds >= 2, 4000, "tool round to complete and follow-up to start");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.ok(
+    h.events.some((e) => e.type === "assistant.text.delta" && e.text.includes("I'll check that")),
+    "provisional text stays visible as a UI delta",
+  );
+  assert.equal(h.tts.requests.length, 0, "TTS chunks before round completion must be 0");
+  // Full turn: the tool executes and only the final follow-up answer is spoken.
+  releaseFinal();
+  await waitFor(() => h.app.voice.state === VoiceState.IDLE);
+  const spoken = h.tts.requests.map((r) => r.text).join(" ");
+  assert.ok(rounds >= 2 && h.events.some((e) => e.type === "assistant.turn.completed"), "tool round + follow-up must run");
+  assert.equal(h.tts.requests.length, 1, "final answer is spoken exactly once, got: " + spoken);
+  assert.ok(spoken.includes("abc1234"), "final follow-up answer is spoken, got: " + spoken);
+  assert.equal(
+    spoken.includes("I'll check that"),
+    false,
+    "provisional tool-round text must never be spoken as final truth, got: " + spoken,
+  );
+  await h.app.close();
+});
+
+test("TASK-0024 Bug 3: failed continuation never promotes provisional text to final speech", async () => {
+  // Round 1 is a tool round with provisional text; the round-2 continuation
+  // fails like the live HTTP 400. Bounded fallback (tool summary) is the only
+  // speech-eligible text; provisional text must never be spoken as final truth.
+  const PROVISIONAL = "I'll check that. Let me look at the repository state now. ";
+  let rounds = 0;
+  const h = await buildHarness({
+    streamResponder: (async function* () {
+      rounds += 1;
+      if (rounds === 1) {
+        yield { type: "text_delta", text: PROVISIONAL };
+        yield {
+          type: "tool_call",
+          call: { id: "tc-fallback", name: "system.echo", arguments: { text: "probe-summary" } },
+        };
+        yield { type: "done", finish_reason: "tool_calls" };
+      } else {
+        throw new Error("DeepSeek HTTP 400: Failed to parse the request body as JSON");
+      }
+    }) as (request: ModelRequest, signal?: AbortSignal) => AsyncIterable<ModelStreamEvent>,
+  });
+  h.stt.setDefaultScript({ final: "check the repository and tell me the last commit" });
+  h.vad.setScript(["silence", "speech", "speech", "speech", "end"]);
+  const t0 = Date.now();
+  h.wake.triggerWake(t0);
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  feedUtterance(h, t0 + 40, 3);
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  h.capture.feedFrame(silenceFrame(10, t0 + 100));
+  h.capture.feedFrame(silenceFrame(10, t0 + 120));
+  await waitFor(() => h.app.voice.state === VoiceState.IDLE);
+  const completed = h.events.filter((e) => e.type === "assistant.turn.completed");
+  assert.equal(completed.length, 1, "exactly one terminal turn event");
+  assert.equal(completed[0]?.type === "assistant.turn.completed" ? completed[0].status : "", "completed");
+  const spoken = h.tts.requests.map((r) => r.text).join(" ");
+  assert.equal(spoken.includes("I'll check that"), false, "provisional text cannot qualify as final answer, got: " + spoken);
+  assert.ok(spoken.includes("probe-summary"), "bounded fallback summary is spoken per contract, got: " + spoken);
+  await h.app.close();
+});
+
+test("TASK-0024 Bug 3: failed first round yields no speech and no completed turn", async () => {
+  const h = await buildHarness({
+    streamResponder: (async function* () {
+      throw new Error("DeepSeek HTTP 400: Failed to parse the request body as JSON");
+    }) as (request: ModelRequest, signal?: AbortSignal) => AsyncIterable<ModelStreamEvent>,
+  });
+  h.stt.setDefaultScript({ final: "check the repository" });
+  h.vad.setScript(["silence", "speech", "speech", "speech", "end"]);
+  const t0 = Date.now();
+  h.wake.triggerWake(t0);
+  await waitFor(() => h.app.voice.state === VoiceState.LISTENING);
+  feedUtterance(h, t0 + 40, 3);
+  await waitFor(() => h.app.voice.state === VoiceState.CAPTURING);
+  h.capture.feedFrame(silenceFrame(10, t0 + 100));
+  h.capture.feedFrame(silenceFrame(10, t0 + 120));
+  await waitFor(() => h.app.voice.state === VoiceState.IDLE);
+  assert.equal(h.tts.requests.length, 0, "no valid final answer means no speech at all");
+  assert.equal(
+    h.events.filter((e) => e.type === "assistant.turn.completed").length,
+    0,
+    "a failed turn must not complete as a normal successful turn",
+  );
+  assert.ok(h.events.some((e) => e.type === "voice.error"), "failure surfaces as a voice error");
+  await h.app.close();
+});
+

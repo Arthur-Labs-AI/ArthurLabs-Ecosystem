@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { ModelRequest, ModelStreamEvent } from "../../src/models/contracts";
+import { sanitizeStructured } from "../../src/security/sanitize";
 import {
   ProviderAuthError,
   ProviderBadResponseError,
@@ -13,6 +14,7 @@ import {
   DeepSeekProvider,
   DeepSeekProviderConfig,
   DeepSeekRequestRejectedError,
+  describePayloadShape,
   MALFORMED_SSE_MESSAGE,
   MAX_ASSISTANT_TEXT_CHARS,
   MAX_RESPONSE_BYTES,
@@ -543,6 +545,69 @@ test("diagnostics: pre-data timeout classified as timeout and retried", async ()
   assert.equal(failed.fields?.http_status, null);
   const completed = entries.find((e) => e.message === "deepseek.stream.completed");
   assert.equal(completed?.fields?.attempts, 2);
+});
+
+
+test("TASK-0024 Bug 2: continuation body after tool rounds is exactly the valid serialized payload", async () => {
+  // Live shape: several tool-result messages, one carrying commit/file text with
+  // secret-like keys adjacent to quotes (password="a\\"b"). Pre-fix, the
+  // redactText-on-serialized-JSON transform consumed the quote-escaping backslash
+  // and the provider rejected the body with "expected ',' or '}'".
+  const hostileCommitText = 'commit abc123 author dev auth note password="a\\"b" token: "abc\\"def\\" end';
+  const commits: Array<Record<string, unknown>> = [];
+  for (let i = 0; i < 40; i += 1) {
+    commits.push({ oid: String(i).padStart(40, "a"), subject: "subject " + i + " " + hostileCommitText, author: "dev" });
+  }
+  const toolContent = JSON.stringify({
+    status: "completed",
+    summary: "git log: 40 commits",
+    data: { commits, files: [{ path: "src/index.ts", body: hostileCommitText }] },
+    source: "tool",
+    trust: "untrusted_data",
+  });
+  const history: ModelRequest["history"] = [
+    { role: "assistant", content: "", tool_calls: [{ id: "call_1", name: "system.echo", arguments: { text: "one" } }] },
+    { role: "tool", content: toolContent, name: "system.echo", tool_call_id: "call_1" },
+    { role: "assistant", content: "", tool_calls: [{ id: "call_2", name: "system.echo", arguments: { text: "two" } }] },
+    { role: "tool", content: toolContent, name: "system.echo", tool_call_id: "call_2" },
+  ];
+  const request: ModelRequest = {
+    ...baseRequest(),
+    history,
+    toolSchemas: [{ name: "system.echo", description: "echo", parameters: { type: "object" } }],
+    userMessage: "",
+  };
+  const bodies: string[] = [];
+  const fetchFn: typeof fetch = async (_url, init) => {
+    bodies.push(String(init?.body ?? ""));
+    return jsonResponse(200, OK_BODY);
+  };
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  await provider.generate(request);
+  assert.equal(bodies.length, 1);
+  const sent = bodies[0] as string;
+  // Invariant: the sent body parses as valid JSON (provider-side parse succeeds)
+  // and is EXACTLY JSON.stringify of the assembled payload — no transport
+  // transform. Secrets are handled at the data layer (sanitizeStructured),
+  // which preserves valid JSON; the transport must not re-edit the bytes.
+  const parsed = JSON.parse(sent) as { messages: Array<{ role: string; content: string | null }> };
+  const expectedContent = String(
+    (sanitizeStructured({ content: toolContent }, ["sk-test"]) as { content: string }).content,
+  );
+  // The data-layer sanitized form round-trips byte-identical through dispatch.
+  JSON.parse(JSON.stringify({ content: expectedContent }));
+  const toolMessages = parsed.messages.filter((m) => m.role === "tool");
+  assert.equal(toolMessages.length, 2);
+  for (const m of toolMessages) assert.equal(m.content, expectedContent);
+  // The hostile quoted shape that broke the old redactText transport survives
+  // structurally: still valid JSON with the tool envelope intact.
+  assert.ok(sent.includes('"role":"tool"'));
+  // Bounded sanitized shape: identifies roles/indexes without any payload values.
+  const shape = describePayloadShape({ messages: parsed.messages });
+  assert.ok(shape.length >= 6, "system + mode + 4 continuation messages, got " + shape.length);
+  const shapeJson = JSON.stringify(shape);
+  assert.equal(shapeJson.includes(hostileCommitText), false, "diagnostics must not carry payload text");
+  assert.ok(shape.filter((s) => s.role === "tool").length === 2);
 });
 
 test("diagnostics: malformed SSE line classified without retry", async () => {

@@ -163,6 +163,17 @@ export function assertAssistantHistorySendable(request: ModelRequest): void {
 }
 
 // ---- Payload assembly (pure; redaction applied by the caller's logger) ---
+//
+// TASK-0024 Bug 2: the HTTP body MUST be exactly JSON.stringify(providerPayload)
+// with no post-serialization string transforms. Applying secret-redaction regexes
+// to serialized JSON corrupted the wire body: tool/commit/file text containing
+// secret-like keys adjacent to quotes (e.g. password="a\"b") let the redaction
+// match consume the backslash that escapes a string quote, terminating the JSON
+// string early — the provider then rejects the body with
+// "messages[N].?: expected `,` or `}`". Secrets are already handled at the DATA
+// layer (sanitizeStructured on the request, sanitizer on tool payloads/summaries);
+// the transport layer must not re-edit the serialized bytes. Redaction stays for
+// logs and diagnostics only.
 
 function chatMessageToOpenAI(message: ChatMessage, aliasMap: ToolNameAliasMap): Record<string, unknown> {
   const msg: Record<string, unknown> = {
@@ -191,6 +202,56 @@ function chatMessageToOpenAI(message: ChatMessage, aliasMap: ToolNameAliasMap): 
     }));
   }
   return msg;
+}
+
+/**
+ * Serialize a provider payload for HTTP dispatch (TASK-0024 Bug 2 invariant).
+ *
+ * Returns EXACTLY JSON.stringify(payload) — the string that must be sent as the
+ * request body, byte-for-byte. The round-trip parse asserts the body is valid
+ * JSON before dispatch; no caller may apply regex/text transforms to it.
+ */
+export function serializeDispatchBody(payload: Record<string, unknown>): string {
+  const body = JSON.stringify(payload);
+  // Fail closed locally rather than sending a body the provider must reject.
+  JSON.parse(body);
+  return body;
+}
+
+export interface PayloadShapeEntry {
+  index: number;
+  role: unknown;
+  content_chars: number;
+  has_tool_calls: boolean;
+  tool_call_args_chars: number[];
+  has_name: boolean;
+  has_tool_call_id: boolean;
+}
+
+/**
+ * Bounded SANITIZED diagnostic of the outbound message list (TASK-0024 Bug 2).
+ * Carries per-message index/role/sizes only — never prompt, tool, or user
+ * content — so a dispatch failure can name the offending messages[N] without
+ * logging secrets or payloads.
+ */
+export function describePayloadShape(payload: Record<string, unknown>): PayloadShapeEntry[] {
+  const messages = Array.isArray(payload.messages) ? payload.messages : [];
+  return (messages as Array<Record<string, unknown>>).slice(0, 128).map((m, index) => {
+    const toolCalls = Array.isArray(m.tool_calls) ? (m.tool_calls as Array<Record<string, unknown>>) : [];
+    const argsChars = toolCalls.slice(0, 32).map((tc) => {
+      const fn = (tc.function ?? {}) as Record<string, unknown>;
+      return typeof fn.arguments === "string" ? fn.arguments.length : 0;
+    });
+    return {
+      index,
+      role: typeof m.role === "string" ? m.role : "?",
+      content_chars: typeof m.content === "string" ? m.content.length : 0,
+      has_tool_calls: toolCalls.length > 0,
+      tool_call_args_chars: argsChars,
+      has_name: typeof m.name === "string",
+      has_tool_call_id: typeof m.tool_call_id === "string",
+    };
+  });
 }
 
 export function buildDeepSeekPayload(
@@ -808,13 +869,15 @@ export class DeepSeekProvider implements ModelProvider {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
       try {
+        // TASK-0024 Bug 2: the exact serialized body is what is sent — no
+        // post-serialization transforms (redaction corrupted quoted payloads).
         const response = await this.fetchFn(url, {
           method: "POST",
           headers: {
             "content-type": "application/json",
             authorization: `Bearer ${this.config.apiKey}`,
           },
-          body: redactText(JSON.stringify(payload), [this.config.apiKey]),
+          body: serializeDispatchBody(payload),
           signal: controller.signal,
         });
 
@@ -980,13 +1043,15 @@ export class DeepSeekProvider implements ModelProvider {
 
       const attemptStartedAt = Date.now();
       try {
+        // TASK-0024 Bug 2: the exact serialized body is what is sent — no
+        // post-serialization transforms (redaction corrupted quoted payloads).
         const response = await this.fetchFn(url, {
           method: "POST",
           headers: {
             "content-type": "application/json",
             authorization: `Bearer ${this.config.apiKey}`,
           },
-          body: redactText(JSON.stringify(payload), [this.config.apiKey]),
+          body: serializeDispatchBody(payload),
           signal: controller.signal,
         });
         // Non-2xx responses are parsed and classified BEFORE any chunk

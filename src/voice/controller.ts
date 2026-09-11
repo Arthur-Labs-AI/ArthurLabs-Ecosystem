@@ -253,6 +253,14 @@ export class VoiceTurnController {
   private toolHeld = false;
   private speakPending = false;
   private toolBufferedText = "";
+  /**
+   * Classified-final text already streamed to speech this turn (TASK-0024).
+   * The shared loop yields the final round's settled text as a non-provisional
+   * delta AND as turn_completed.display_text; speaking both would voice the
+   * final answer twice. The tool-turn completion compares sanitized forms and
+   * speaks the display text only when it was not already streamed.
+   */
+  private streamedFinalText = "";
   private turnCompletedFlag = false;
   private ttsFailureSpoken = false;
   private currentSynthesisId: string | undefined;
@@ -806,6 +814,7 @@ export class VoiceTurnController {
     this.chunker.reset();
     this.toolHeld = false;
     this.toolBufferedText = "";
+    this.streamedFinalText = "";
     this.turnCompletedFlag = false;
     this.ttsFailureSpoken = false;
     // One speak pump per turn; stale pumps exit on the next generation.
@@ -832,15 +841,26 @@ export class VoiceTurnController {
               text: event.text,
               ts: voiceEventTs(this.now()),
             });
-            if (this.toolHeld) {
+            // TASK-0024 Bug 1 / SC-06 §13: the provisional flag is the SOLE
+            // TTS gate. Provisional text comes from a round that can still
+            // produce tool calls — it is streaming-UI observability only and
+            // must never reach TTS (a later tool_call in the same round
+            // would invalidate it). Only classified-final text streams to
+            // speech. The flag arrives from the shared loop via streamTurn;
+            // arrival order vs tool_call can never unspeak held text because
+            // provisional text is NEVER spoken in the first place.
+            if (event.provisional) {
               this.toolBufferedText += event.text;
             } else {
+              this.streamedFinalText += event.text;
               this.dispatchDeltas(event.text, generation);
             }
             break;
           case "tool_call":
-            // Hold speech: never speak a fragment that could be invalidated
-            // by a pending tool call or approval (spec section 16).
+            // Tool intent is pending: keep buffering provisional text (never
+            // spoken) while the tool round executes (spec section 16). The
+            // flag above already guarantees nothing provisional was spoken;
+            // this marker preserves the pre-existing hold observability.
             this.toolHeld = true;
             break;
           case "approval_required":
@@ -858,6 +878,7 @@ export class VoiceTurnController {
           case "turn_interrupted":
             this.toolHeld = false;
             this.toolBufferedText = "";
+            this.streamedFinalText = "";
             this.chunker.reset();
             this.ttsQueue.clear();
             return;
@@ -896,19 +917,36 @@ export class VoiceTurnController {
     if (event.status === "needs_approval") {
       // Approval-wait: speak the request; NO premature success speech. The
       // exact approval binding is resolved via conversation.approve() only.
+      this.streamedFinalText = "";
       this.dispatchSpeakOnce(event.display_text, generation);
       return;
     }
     if (event.tool_calls.length > 0) {
       // Tool turn: speak only the final (post-tool) text, not fragments
-      // that were held while tool/approval semantics were pending.
+      // that were held while tool/approval semantics were pending. The final
+      // round's settled text was already streamed as a non-provisional delta
+      // (spoken once via the chunker); re-speaking display_text would voice
+      // the same answer twice. Speak it only when it never streamed (bounded
+      // fallback after a provider failure, sanitized comparison).
       this.toolHeld = false;
       this.toolBufferedText = "";
+      const streamed = this.sanitizer.sanitizeText(this.streamedFinalText).trim();
+      this.streamedFinalText = "";
+      if (streamed !== "" && streamed === event.display_text.trim()) {
+        const chunks = this.chunker.flush();
+        for (const chunk of chunks) await this.enqueueSpeech(chunk, generation);
+        if (!this.speakPending) {
+          this.finishSpeech();
+        }
+        return;
+      }
+      this.chunker.reset();
       this.dispatchSpeakOnce(event.display_text, generation);
       return;
     }
     // Pure text turn: streaming already spoke; flush any residue.
     this.toolHeld = false;
+    this.streamedFinalText = "";
     const chunks = this.chunker.flush();
     for (const chunk of chunks) await this.enqueueSpeech(chunk, generation);
     if (!this.speakPending) {
@@ -1229,6 +1267,7 @@ export class VoiceTurnController {
     this.ttsQueue.clear();
     this.toolHeld = false;
     this.toolBufferedText = "";
+    this.streamedFinalText = "";
     this.turnCompletedFlag = false;
     this.speakPending = false;
     this.activeUtteranceId = undefined;

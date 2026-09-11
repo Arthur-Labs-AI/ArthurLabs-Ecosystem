@@ -398,14 +398,18 @@ export class ConversationService {
             case "text_delta":
               trackFirstToken();
               if (loopEvent.provisional) {
-                // Live intermediate text: forwarded for observability; the
-                // voice layer holds speech while tool intent pends. Never
-                // final persistence (§12) and never spoken as truth (§13).
+                // Live intermediate text from a tool-capable round: forwarded
+                // for observability (streaming UI); the voice layer must NOT
+                // speak it — it can still be invalidated by a later tool
+                // call in the same round (§13, TASK-0024 Bug 1). Never final
+                // persistence (§12) and never spoken as truth (§13).
                 provisionalText += loopEvent.text;
-                yield { type: "text_delta", text: loopEvent.text };
+                yield { type: "text_delta", text: loopEvent.text, provisional: true };
               } else {
+                // Classified final text: the tool-disabled round stream, or
+                // the final round's settled answer. Speech-eligible.
                 finalText = loopEvent.text;
-                if (finalText !== "") yield { type: "text_delta", text: finalText };
+                if (finalText !== "") yield { type: "text_delta", text: finalText, provisional: false };
               }
               break;
             case "tool_call":
