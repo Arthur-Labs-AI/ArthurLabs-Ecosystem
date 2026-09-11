@@ -61,6 +61,14 @@ export interface Settings {
    * ARTHUR_GIT_CONFIG. Never model input.
    */
   gitConfigPath: string;
+  /**
+   * SC-04 production local capability file (TASK-0025): machine-local JSON
+   * file using the exact LocalCapabilityConfig schema. Empty = existing
+   * default local behavior (workspace filesystem root, default bounds,
+   * empty application catalog). Set via ARTHUR_LOCAL_CONFIG. Never model
+   * input.
+   */
+  localConfigPath: string;
   // ---- Phase 3 local voice layer ----
   voice: VoiceSettings;
 }
@@ -105,6 +113,7 @@ const DEFAULTS_MAP: Settings = {
   memoryExtractionImportanceThreshold: 0.2,
   memoryTemporaryTtlSeconds: 86400,
   gitConfigPath: "",
+  localConfigPath: "",
   voice: DEFAULT_VOICE_SETTINGS,
 };
 
@@ -190,6 +199,8 @@ export type SettingsOverrides = {
   memoryTemporaryTtlSeconds?: number;
   /** SC-05 production git catalog file (ARTHUR_GIT_CONFIG). */
   gitConfigPath?: string;
+  /** SC-04 production local capability file (ARTHUR_LOCAL_CONFIG). */
+  localConfigPath?: string;
   /** Phase 3 voice settings (nested override object; flattened env in .env). */
   voice?: VoiceSettingsOverrides;
 }
@@ -234,6 +245,7 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD: envFloat("ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD", DEFAULTS_MAP.memoryExtractionImportanceThreshold),
     ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS: envInt("ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS", DEFAULTS_MAP.memoryTemporaryTtlSeconds),
     ARTHUR_GIT_CONFIG: envStr("ARTHUR_GIT_CONFIG", DEFAULTS_MAP.gitConfigPath),
+    ARTHUR_LOCAL_CONFIG: envStr("ARTHUR_LOCAL_CONFIG", DEFAULTS_MAP.localConfigPath),
   };
 
   // SC-06 §140: camelCase loopMax* overrides map to ARTHUR_TOOL_LOOP_*
@@ -248,6 +260,10 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     // SC-05 production catalog file: camelCase gitConfigPath maps to
     // ARTHUR_GIT_CONFIG (the generic prefixer would yield the wrong key).
     gitConfigPath: "ARTHUR_GIT_CONFIG",
+    // SC-04 production local capability file: camelCase localConfigPath
+    // maps to ARTHUR_LOCAL_CONFIG (the generic prefixer would yield the
+    // wrong key).
+    localConfigPath: "ARTHUR_LOCAL_CONFIG",
   };
   for (const [key, value] of Object.entries(overrides)) {
     if (value === undefined) continue;
@@ -312,6 +328,7 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     memoryExtractionImportanceThreshold: Number(raw["ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD"]),
     memoryTemporaryTtlSeconds: Number(raw["ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS"]),
     gitConfigPath: String(raw["ARTHUR_GIT_CONFIG"]),
+    localConfigPath: String(raw["ARTHUR_LOCAL_CONFIG"]),
     voice: loadVoiceSettings(overrides as VoiceSettingsOverrides),
   };
 }

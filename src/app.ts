@@ -122,7 +122,12 @@ export interface BuildDeps {
    * localSystem + localConfig. Never exposed on the public App surface.
    */
   localHost?: LocalCapabilityHost;
-  /** SC-04 trusted local capability config (filesystem scopes, app catalog). */
+  /**
+   * SC-04 trusted local capability config (filesystem scopes, app catalog).
+   * Tests inject this directly; production startup resolves it from the
+   * ARTHUR_LOCAL_CONFIG file (Settings.localConfigPath) when no explicit
+   * deps.localConfig is provided.
+   */
   localConfig?: import("./tools/local_config").LocalCapabilityConfig;
   /**
    * SC-05 trusted git capability config (repository catalog). Absent = git
@@ -264,6 +269,21 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
       require("./tools/git/config_file") as typeof import("./tools/git/config_file");
     gitConfig = resolveGitCapabilityConfig(settings.gitConfigPath);
   }
+  // TASK-0025 production path: resolve the trusted SC-04 local capability
+  // config from the ARTHUR_LOCAL_CONFIG file unless tests injected
+  // deps.localConfig (or a full deps.localHost). Absent = existing default
+  // local behavior; present-but-invalid fails closed with INVALID_CONFIG
+  // out of buildApp (never silently disabled). Feeds the same
+  // buildDefaultLocalHost -> NodeLocalApplicationAdapter ->
+  // registerApplicationsPack path as the injected config; no second
+  // registry, no auto-discovery, no model-provided paths.
+  let localConfig = deps.localConfig;
+  if (localConfig === undefined && deps.localHost === undefined) {
+    const { resolveLocalCapabilityConfig } =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("./tools/local_config_file") as typeof import("./tools/local_config_file");
+    localConfig = resolveLocalCapabilityConfig(settings.localConfigPath);
+  }
   const secrets = collectSecrets(settings);
   const logger = new Logger(settings.logLevel, secrets);
   const metrics = new InMemoryMetrics();
@@ -282,7 +302,7 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
   // secured registry -> execution-service -> permission boundary.
   const localSystem = deps.localSystem ?? new NodeLocalSystemAdapter();
   const localHost: LocalCapabilityHost =
-    deps.localHost ?? buildDefaultLocalHost(localSystem, deps.localConfig, gitConfig);
+    deps.localHost ?? buildDefaultLocalHost(localSystem, localConfig, gitConfig);
   registerBuiltinTools(registry, harness, { host: localHost });
 
   const permissions = new PermissionService();
