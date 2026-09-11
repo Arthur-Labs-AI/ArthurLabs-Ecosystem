@@ -20,11 +20,18 @@ import {
   SentryInvestigationPlanV1Schema,
   type AgentUsage,
   type Evidence,
+  type FindingConfidence,
   type HarnessEvent,
   type HarnessRunRequest,
   type SentryAgentEvidenceV1,
 } from '@qa/schemas';
-import type { HarnessAdapter, HarnessHealthResult, HarnessMetadata } from '@qa/harness-protocol';
+import { validateFindingTrust } from '@qa/domain';
+import type {
+  HarnessAdapter,
+  HarnessDiagnostic,
+  HarnessHealthResult,
+  HarnessMetadata,
+} from '@qa/harness-protocol';
 import {
   doctorMuse,
   markMuseRuntimeVerified,
@@ -110,72 +117,69 @@ export function aggregateTurnUsage(
   };
 }
 
-function childPidOf(client: MuseClientView): number | undefined {
-  const maybe = client as { readonly pid?: unknown };
-  return typeof maybe.pid === 'number' ? maybe.pid : undefined;
-}
-
 async function buildBaselineIndex(
-  workspaceRoot: string,
-  _snapshotId: string,
+  // workspace/project runtime path; the sidecar lives in Sentry-owned
+  // .sentry-workspace/ next to it (outside the agent-visible project tree).
+  workspaceRuntimePath: string,
+  snapshotId: string,
 ): Promise<BaselineFileIndex | undefined> {
-  // Baseline provenance without rehashing the project per evidence item:
-  // the adapter cannot reach the run snapshot manifest directly, so it
-  // consults a sidecar baseline-hashes file ONLY when the coordinator wrote
-  // one next to the workspace. Absent sidecar → undefined → every file
-  // is conservatively classified modified_workspace (never a false baseline).
   try {
     const { readFile } = await import('node:fs/promises');
     const { join, dirname } = await import('node:path');
-    const sidecar = join(dirname(workspaceRoot), 'baseline-hashes.json');
+    const sidecar = join(
+      dirname(workspaceRuntimePath),
+      '.sentry-workspace',
+      'baseline-hashes.json',
+    );
     const raw = await readFile(sidecar, 'utf8');
     const parsed: unknown = JSON.parse(raw);
-    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      const map = new Map<string, string>();
-      for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-        if (typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value)) map.set(key, value);
-      }
-      return { fileHashByPath: map };
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
+    const record = parsed as {
+      schemaVersion?: unknown;
+      snapshotId?: unknown;
+      files?: unknown;
+    };
+    // Snapshot-anchored: a sidecar from another run must never classify.
+    if (record.schemaVersion !== 1 || record.snapshotId !== snapshotId) return undefined;
+    if (record.files === null || typeof record.files !== 'object' || Array.isArray(record.files))
+      return undefined;
+    const map = new Map<string, string>();
+    for (const [key, value] of Object.entries(record.files as Record<string, unknown>)) {
+      if (typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value)) map.set(key, value);
     }
+    return { fileHashByPath: map };
   } catch {
     // Absent/unreadable sidecar: conservative modified_workspace.
   }
   return undefined;
 }
 
+/**
+ * Production finding gate delegates to the single generic trust policy
+ * (validateFindingTrust in @qa/domain). The adapter only translates the
+ * verdict into its canonical MUSE_INVALID_RESULT error; no duplicate
+ * confidence logic lives here.
+ */
 function validateProductionFindings(
   findings: ReadonlyArray<{
     readonly evidenceKeys: readonly string[];
-    readonly confidence: string;
+    readonly confidence: FindingConfidence;
   }>,
   evidenceByKey: ReadonlyMap<string, Evidence>,
 ): void {
   for (const finding of findings) {
-    if (finding.evidenceKeys.length === 0) {
-      throw new MuseHarnessError(
-        'MUSE_INVALID_RESULT',
-        'Production findings must reference at least one durable evidence item.',
-      );
-    }
-    if (finding.confidence === 'confirmed') {
-      const items = finding.evidenceKeys.map((key) => evidenceByKey.get(key));
-      const grounded = items.some(
-        (item) =>
-          item !== undefined &&
-          (item.type === 'command' ||
-            item.type === 'code_reference' ||
-            item.type === 'test' ||
-            item.strength === 'reproduced_failure' ||
-            item.strength === 'reproduced_behavior' ||
-            item.strength === 'tool_diagnostic' ||
-            item.strength === 'strong_code_evidence'),
-      );
-      if (!grounded) {
-        throw new MuseHarnessError(
-          'MUSE_INVALID_RESULT',
-          'Confirmed findings require at least one grounded evidence item; manual/model reasoning alone is insufficient.',
-        );
-      }
+    const evidence = [...evidenceByKey.values()];
+    const verdict = validateFindingTrust(
+      {
+        confidence: finding.confidence,
+        evidenceIds: finding.evidenceKeys.map(
+          (key) => (evidenceByKey.get(key)?.id ?? key) as Evidence['id'],
+        ),
+      },
+      evidence,
+    );
+    if (!verdict.ok) {
+      throw new MuseHarnessError('MUSE_INVALID_RESULT', verdict.reason);
     }
   }
 }
@@ -316,17 +320,39 @@ async function codeReference(
   };
 }
 
+/** One observed tool/command execution, adapter-owned correlation identity. */
+export interface ObservedOperation {
+  readonly operationId: OperationId;
+  /** Temporary agent-visible correlation key (op_1, op_2, ...). */
+  readonly operationKey: string;
+  readonly toolName: string;
+  readonly commandText?: string;
+  readonly argsText?: string;
+  readonly exitCode?: number;
+  /** True when this operation ran a test command (generic detection). */
+  readonly isTestOperation: boolean;
+  readonly durationMs?: number;
+}
+
 export interface ObservedEvidenceGrounding {
   readonly observedCommands: ReadonlySet<string>;
-  /** Normalized observed test executions: "framework\u0000name\u0000status". */
-  readonly observedTests: ReadonlySet<string>;
-  /** Normalized observed tool operations: "tool-name\u0000command-or-args". */
-  readonly observedTools: ReadonlySet<string>;
+  readonly operations: ReadonlyMap<string, ObservedOperation>;
   readonly baseline?: BaselineFileIndex;
 }
 
 function groundingOf(observedCommands: ReadonlySet<string>): ObservedEvidenceGrounding {
-  return { observedCommands, observedTests: new Set<string>(), observedTools: new Set<string>() };
+  return { observedCommands, operations: new Map<string, ObservedOperation>() };
+}
+
+const TEST_COMMAND_PATTERN =
+  /\b(pnpm|npm|yarn|bun|node|npx|vitest|jest|pytest|dotnet\s+test|cargo\s+test|go\s+test|mvn(\s+test)?|gradle(\s+test)?|phpunit|rspec)\b/i;
+
+function normalizeCommandText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function commandIdentity(command: string, exitCode: number): string {
+  return JSON.stringify([normalizeCommandText(command), exitCode]);
 }
 
 async function convertEvidence(
@@ -343,60 +369,75 @@ async function convertEvidence(
       source.lineStart,
       source.lineEnd,
     );
-  // Grounding policy: a model must not mint reproduced test/runtime/log proof
-  // by writing JSON alone. Test evidence without an observed tool operation is
-  // downgraded to agent reasoning; purely model-reported runtime/log evidence
-  // keeps its type but is marked agent_reasoning strength so confirmed
-  // findings cannot rely on it.
-  if (source.type === 'test') {
-    const key = [source.framework ?? '', source.name ?? '', source.status ?? ''].join('\u0000');
-    const observedTest =
-      observed.observedTests.has(key) || observed.observedTests.size === 0
-        ? observed.observedCommands.size > 0 || observed.observedTools.size > 0
-        : false;
-    if (!observedTest) {
-      return EvidenceSchema.parse({
-        schemaVersion: 1 as const,
-        id: createEvidenceId(),
-        qaRunId: request.qaRunId,
-        agentRunId: request.agentRunId,
-        strength: 'agent_reasoning',
-        environmentState: 'modified_workspace' as const,
-        description: source.description,
-        artifactIds: [],
-        createdAt: nowIsoTimestamp(),
-        type: 'manual',
-        manual: {
-          summary:
-            'Ungrounded test claim downgraded (framework=' +
-            (source.framework ?? 'unknown') +
-            ' name=' +
-            (source.name ?? 'unknown') +
-            ' status=' +
-            (source.status ?? 'unknown') +
-            '): ' +
-            source.description,
-          author: 'Muse Code',
-        },
-      });
+  // Operation-specific grounding (HIGH C): a claim is grounded ONLY by the
+  // specific observed operation it names via operationKey. An unrelated tool
+  // run elsewhere in the session never grounds a claim. Unknown operation
+  // keys are rejected. Policy for misrepresented reproduction: a reproduced
+  // strength without a correlated operation is rejected as MUSE_INVALID_RESULT
+  // (the model explicitly misrepresents reproduction); weaker ungrounded
+  // test/runtime/log claims are downgraded to manual/agent_reasoning.
+  const isReproducedClaim =
+    source.strength === 'reproduced_failure' || source.strength === 'reproduced_behavior';
+  const needsOperation =
+    source.type === 'test' || source.type === 'runtime' || source.type === 'log';
+  let correlated: ObservedOperation | undefined;
+  if (source.operationKey !== undefined) {
+    correlated = observed.operations.get(source.operationKey);
+    if (correlated === undefined) {
+      throw new MuseHarnessError(
+        'MUSE_INVALID_RESULT',
+        'Evidence references an unknown operation correlation key.',
+      );
     }
+    if (source.type === 'test' && !correlated.isTestOperation) {
+      throw new MuseHarnessError(
+        'MUSE_INVALID_RESULT',
+        'Test evidence references an operation that did not run tests.',
+      );
+    }
+    if (
+      source.type === 'test' &&
+      source.status !== undefined &&
+      correlated.exitCode !== undefined
+    ) {
+      const observedStatus = correlated.exitCode === 0 ? 'passed' : 'failed';
+      if (observedStatus !== source.status) {
+        throw new MuseHarnessError(
+          'MUSE_INVALID_RESULT',
+          'Test evidence status does not match the observed operation result.',
+        );
+      }
+    }
+  } else if (needsOperation) {
+    if (isReproducedClaim) {
+      throw new MuseHarnessError(
+        'MUSE_INVALID_RESULT',
+        'Reproduced evidence strength requires a correlated observed operation.',
+      );
+    }
+    return EvidenceSchema.parse({
+      schemaVersion: 1 as const,
+      id: createEvidenceId(),
+      qaRunId: request.qaRunId,
+      agentRunId: request.agentRunId,
+      strength: 'agent_reasoning',
+      environmentState: 'modified_workspace' as const,
+      description: source.description,
+      artifactIds: [],
+      createdAt: nowIsoTimestamp(),
+      type: 'manual',
+      manual: {
+        summary: 'Ungrounded ' + source.type + ' claim downgraded: ' + source.description,
+        author: 'Muse Code',
+      },
+    });
   }
-  const groundedStrength = (
-    fallback: SentryAgentEvidenceV1['strength'],
-  ): SentryAgentEvidenceV1['strength'] => {
-    if (source.type === 'runtime' || source.type === 'log') {
-      const hasToolGrounding =
-        observed.observedCommands.size > 0 || observed.observedTools.size > 0;
-      if (!hasToolGrounding) return 'agent_reasoning';
-    }
-    return fallback;
-  };
   const base = {
     schemaVersion: 1 as const,
     id: createEvidenceId(),
     qaRunId: request.qaRunId,
     agentRunId: request.agentRunId,
-    strength: groundedStrength(source.strength),
+    strength: source.strength,
     environmentState: 'modified_workspace' as const,
     description: source.description,
     artifactIds: [],
@@ -412,7 +453,11 @@ async function convertEvidence(
     });
   }
   if (source.type === 'command') {
-    if (!observed.observedCommands.has(JSON.stringify([source.command, source.exitCode]))) {
+    if (
+      source.command === undefined ||
+      source.exitCode === undefined ||
+      !observed.observedCommands.has(commandIdentity(source.command, source.exitCode))
+    ) {
       throw new MuseHarnessError(
         'MUSE_INVALID_RESULT',
         'Command evidence does not match an observed Muse command execution.',
@@ -482,6 +527,7 @@ function executionPrompt(plan: ReturnType<typeof SentryInvestigationPlanV1Schema
     'Do not silently obtain unrestricted network access. Record sandbox or network restrictions as limitations and never retry with sandbox disabled.',
     'Return exactly one JSON document and no Markdown. Do not invent file paths or command results.',
     'Use temporary evidence keys only; Sentry owns all durable IDs.',
+    'For test/runtime/log evidence, set operationKey to the observed operation that produced it (op_1, op_2, ... in execution order as Sentry reported them via tool events). Omit operationKey only for pure reasoning/manual evidence. Never invent operation keys.',
     'Schema: {"schemaVersion":1,"summary":string,"checks":[{"name":string,"status":"passed|failed|inconclusive|not_run","details"?:string}],"hypotheses":[{"title":string,"rationale":string,"relatedPaths":string[],"plannedChecks":string[at least one]}],"evidence":[{"key":string,"type":"command|runtime|code_reference|test|log|manual","strength":"reproduced_failure|reproduced_behavior|tool_diagnostic|strong_code_evidence|agent_reasoning","description":string,"relativePath"?:string,"lineStart"?:number,"lineEnd"?:number,"command"?:string,"exitCode"?:number,"framework"?:string,"name"?:string,"status"?:"passed|failed","source"?:string}],"findings":[{"title":string,"category":string,"categoryDetail"?:string,"severity":"critical|high|medium|low|info","confidence":"confirmed|strong|probable|speculative","description":string,"expectedBehavior"?:string,"actualBehavior"?:string,"locations":[{"relativePath":string,"lineStart"?:number,"lineEnd"?:number,"symbol"?:string}],"evidenceKeys":string[],"reproductionSteps":string[],"rootCause"?:string,"recommendedFix"?:string}],"limitations":string[]}.',
     'Frozen plan: ' + JSON.stringify(plan),
   ].join('\n');
@@ -504,9 +550,9 @@ export class MuseHarnessAdapter implements HarnessAdapter {
   private readonly operationIds = new Map<string, OperationId>();
   private readonly completedTools = new Set<string>();
   private readonly observedCommands = new Set<string>();
-  private readonly observedTests = new Set<string>();
-  private readonly observedTools = new Set<string>();
-  private shutdownWarning?: string;
+  private readonly observedOperations = new Map<string, ObservedOperation>();
+  private operationCounter = 0;
+  private readonly shutdownDiagnostics: HarnessDiagnostic[] = [];
 
   constructor(private readonly options: MuseHarnessAdapterOptions = {}) {
     this.hostEnvironment = options.environment ?? process.env;
@@ -579,18 +625,6 @@ export class MuseHarnessAdapter implements HarnessAdapter {
       }
       if (item.kind === 'agentMessage' && item.text !== undefined) text = item.text;
       if (item.kind !== 'toolCall' && item.kind !== 'userShell') continue;
-      this.observedTools.add(
-        (item.kind === 'userShell' ? 'shell' : (item.tool ?? 'unknown')) +
-          '\u0000' +
-          (item.commandText ?? item.args ?? ''),
-      );
-      // Record observed test executions so final-JSON test claims can be
-      // correlated to real tool activity instead of trusted on assertion.
-      if (item.kind === 'toolCall' && /test/i.test(item.tool ?? '')) {
-        const argsText = item.commandText ?? item.args ?? '';
-        const status = item.exitCode === undefined ? '' : item.exitCode === 0 ? 'passed' : 'failed';
-        this.observedTests.add(argsText + '\u0000' + status);
-      }
       let operationId = this.operationIds.get(item.itemId);
       if (operationId === undefined) {
         operationId = createOperationId();
@@ -617,12 +651,42 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         });
         if (item.commandText !== undefined && item.exitCode !== undefined) {
           const command = redactDiagnostic(item.commandText, this.secrets);
-          this.observedCommands.add(JSON.stringify([command, item.exitCode]));
+          this.observedCommands.add(commandIdentity(command, item.exitCode));
+          const toolName = item.kind === 'userShell' ? 'shell' : (item.tool ?? 'unknown');
+          this.operationCounter += 1;
+          const operationKey = 'op_' + this.operationCounter;
+          this.observedOperations.set(operationKey, {
+            operationId,
+            operationKey,
+            toolName,
+            commandText: command,
+            ...(item.args === undefined ? {} : { argsText: item.args }),
+            exitCode: item.exitCode,
+            isTestOperation: TEST_COMMAND_PATTERN.test(command),
+            ...(item.durationMs === undefined ? {} : { durationMs: item.durationMs }),
+          });
           yield event(agentRunId, {
             type: 'command.executed',
             operationId,
             command,
             exitCode: item.exitCode,
+            ...(item.durationMs === undefined ? {} : { durationMs: item.durationMs }),
+          });
+        } else if (item.kind === 'toolCall') {
+          // Non-command tool operations (file reads, edits, browser, etc.)
+          // also get correlation keys so runtime/log evidence can name them.
+          const argsText = item.args;
+          this.operationCounter += 1;
+          const operationKey = 'op_' + this.operationCounter;
+          this.observedOperations.set(operationKey, {
+            operationId,
+            operationKey,
+            toolName: item.tool ?? 'unknown',
+            ...(argsText === undefined ? {} : { argsText }),
+            ...(item.exitCode === undefined ? {} : { exitCode: item.exitCode }),
+            isTestOperation:
+              TEST_COMMAND_PATTERN.test(item.tool ?? '') ||
+              TEST_COMMAND_PATTERN.test(argsText ?? ''),
             ...(item.durationMs === undefined ? {} : { durationMs: item.durationMs }),
           });
         }
@@ -724,8 +788,7 @@ export class MuseHarnessAdapter implements HarnessAdapter {
       for (const source of result.evidence) {
         const converted = await convertEvidence(request, source, {
           observedCommands: this.observedCommands,
-          observedTests: this.observedTests,
-          observedTools: this.observedTools,
+          operations: this.observedOperations,
           ...(baselineIndex === undefined ? {} : { baseline: baselineIndex }),
         });
         evidenceByKey.set(source.key, converted);
@@ -777,8 +840,8 @@ export class MuseHarnessAdapter implements HarnessAdapter {
       ]);
       if (usage !== undefined) yield event(request.agentRunId, { type: 'usage.updated', usage });
       // NOTE: dispose() runs after this stream ends (coordinator-owned
-      // lifecycle), so a partial-shutdown warning cannot be yielded here.
-      // It stays observable via shutdownNotice() for coordinators/exports.
+      // lifecycle), so partial-shutdown diagnostics surface via
+      // getShutdownDiagnostics() and the coordinator persists them.
       yield event(request.agentRunId, {
         type: 'run.completed',
         ...(usage === undefined ? {} : { usage }),
@@ -830,25 +893,28 @@ export class MuseHarnessAdapter implements HarnessAdapter {
     // Primary mechanism stays SDK shutdown (SS2.1.2: stdin EOF, bounded
     // drain, then SIGTERM/SIGKILL escalation of the owned child). On Windows
     // the SDK signals only the child (no subtree containment per FR-017b),
-    // so record an observable warning when shutdown confidence is partial.
+    // so record an observable diagnostic when shutdown confidence is partial.
+    // The SDK facade does not expose the host PID, so no PID is claimed and
+    // no process is ever targeted by name: the limitation is observed, not
+    // worked around with unsafe kills.
     this.closePromise = (async () => {
-      const pid = childPidOf(client);
       await client.close();
-      if (process.platform === 'win32' && pid !== undefined) {
-        this.shutdownWarning =
-          'Windows process-tree limitation: SDK shutdown closed the Muse host ' +
-          '(pid ' +
-          pid +
-          ') but cannot guarantee descendant cleanup; orphaned grandchildren ' +
-          'remain possible. Workspace cleanup still proceeds.';
+      if (process.platform === 'win32') {
+        this.shutdownDiagnostics.push({
+          code: 'MUSE_SHUTDOWN_PARTIAL',
+          severity: 'warning',
+          message:
+            'Windows process-tree limitation: SDK shutdown closed the Muse host ' +
+            'but descendant process-tree cleanup cannot be fully verified on Windows; ' +
+            'orphaned grandchildren remain possible. Workspace cleanup still proceeds.',
+        });
       }
     })();
     return this.closePromise;
   }
 
-  /** Observable shutdown limitation, when dispose() could not prove full cleanup. */
-  shutdownNotice(): string | undefined {
-    return this.shutdownWarning;
+  getShutdownDiagnostics(): readonly HarnessDiagnostic[] {
+    return this.shutdownDiagnostics;
   }
 
   runtimeIdentity() {

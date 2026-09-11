@@ -349,12 +349,16 @@ export class RunCoordinator {
         },
       });
       this.repository.saveAgentRun(agentRun);
+      // Authoritative baseline hashes come from the frozen run snapshot
+      // manifest (never the live source or a harness-side rescan).
+      const baselineHashes = await this.snapshots.baselineFileHashes(input.run.snapshotId);
       workspace = await this.workspaces.create({
         projectId: input.run.projectId,
         qaRunId: input.run.id,
         agentRunId,
         snapshotId: input.run.snapshotId,
         workingCopyPath: input.workingCopy,
+        baseline: { snapshotId: input.run.snapshotId, fileHashByPath: baselineHashes },
       });
       const request = HarnessRunRequestSchema.parse({
         schemaVersion: 1,
@@ -460,6 +464,21 @@ export class RunCoordinator {
       );
     } finally {
       await adapter?.dispose();
+      // Generic shutdown observability: after dispose(), surface any adapter
+      // shutdown diagnostics as run warnings before workspace cleanup.
+      for (const diagnostic of adapter?.getShutdownDiagnostics?.() ?? []) {
+        this.activities.stage({
+          qaRunId: input.run.id,
+          parentActivityId: input.rootActivityId,
+          source: 'sentry',
+          kind: 'runtime',
+          title:
+            diagnostic.severity === 'error'
+              ? 'Shutdown diagnostic (error): ' + diagnostic.code
+              : 'Shutdown diagnostic: ' + diagnostic.code,
+          status: diagnostic.severity === 'error' ? 'failed' : 'warning',
+        });
+      }
       if (workspace !== undefined) {
         const cleanup = await this.workspaces.cleanup(workspace);
         if (cleanup.warning !== undefined) {

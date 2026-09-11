@@ -1,15 +1,19 @@
 import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { createInterface } from 'node:readline';
 import {
   createSnapshotId,
   nowIsoTimestamp,
   type ProjectId,
   type ProjectRevisionId,
   type QARunId,
+  type SnapshotId,
 } from '@qa/shared';
 import { ProjectSnapshotSchema, type ProjectSnapshot, type SnapshotSourceState } from '@qa/schemas';
 import {
   FilesystemArtifactStore,
   type SentryRepository,
+  resolveInside,
   runDataPaths,
   scanTree,
   snapshotEntry,
@@ -38,6 +42,39 @@ export class SnapshotEngine {
 
   scanRevision(root: string, signal?: AbortSignal): Promise<ScanTreeResult> {
     return scanTree(root, { ...(signal === undefined ? {} : { signal }) });
+  }
+
+  /**
+   * Authoritative baseline file hashes for one frozen snapshot, streamed
+   * from the stored NDJSON manifest (file entries only). No rescan: the
+   * manifest was written at snapshot-creation time from the locked revision.
+   */
+  async baselineFileHashes(snapshotId: SnapshotId): Promise<ReadonlyMap<string, string>> {
+    const snapshot = this.repository.getSnapshot(snapshotId);
+    if (snapshot === undefined) throw new Error('SNAPSHOT_NOT_FOUND: ' + snapshotId);
+    const artifact = this.repository.getArtifact(snapshot.manifest.artifactId);
+    if (artifact === undefined) throw new Error('SNAPSHOT_MANIFEST_MISSING: ' + snapshotId);
+    const absolute = resolveInside(this.dataRoot, artifact.relativeStoragePath);
+    const hashes = new Map<string, string>();
+    const lines = createInterface({ input: createReadStream(absolute), crlfDelay: Infinity });
+    for await (const line of lines) {
+      if (line.trim().length === 0) continue;
+      let entry: { relativePath?: unknown; type?: unknown; sha256?: unknown };
+      try {
+        entry = JSON.parse(line) as { relativePath?: unknown; type?: unknown; sha256?: unknown };
+      } catch {
+        continue;
+      }
+      if (
+        entry.type === 'file' &&
+        typeof entry.relativePath === 'string' &&
+        typeof entry.sha256 === 'string' &&
+        /^[0-9a-fA-F]{64}$/.test(entry.sha256)
+      ) {
+        hashes.set(entry.relativePath, 'sha256:' + entry.sha256.toLowerCase());
+      }
+    }
+    return hashes;
   }
 
   async createSnapshot(input: CreateSnapshotInput): Promise<ProjectSnapshot> {

@@ -26,11 +26,22 @@ export function markMuseRuntimeVerified(): void {
   runtimeVerifiedThisProcess = true;
 }
 
+/**
+ * Readiness state machine (final semantics):
+ * - unconfigured: model (or essential config) missing
+ * - unavailable: configured but binary cannot execute / hard failure
+ * - configured: model + binary + SDK local checks pass, no live session yet
+ *   (sandbox-unverified and runtime-unverified are INFORMATIONAL here, not
+ *   degraded: they describe what cheap checks cannot prove)
+ * - ready: a real session startup succeeded and no real warning exists
+ * - degraded: runtime works but a REAL warning exists (probe failure that is
+ *   not hard, partial shutdown confidence, known restriction)
+ */
 export function museReadinessFromChecks(input: {
   readonly modelOk: boolean;
   readonly binaryOk: boolean;
   readonly runtimeVerified?: boolean;
-  readonly degraded?: boolean;
+  readonly realWarning?: boolean;
 }): MuseReadinessSummary {
   const verified = input.runtimeVerified ?? runtimeVerifiedThisProcess;
   if (!input.modelOk) {
@@ -49,16 +60,16 @@ export function museReadinessFromChecks(input: {
       runtimeVerified: false,
     };
   }
-  if (verified && !input.degraded) {
-    return { readiness: 'ready', configured: true, binaryAvailable: true, runtimeVerified: true };
-  }
-  if (input.degraded || verified) {
+  if (input.realWarning === true) {
     return {
       readiness: 'degraded',
       configured: true,
       binaryAvailable: true,
       runtimeVerified: verified,
     };
+  }
+  if (verified) {
+    return { readiness: 'ready', configured: true, binaryAvailable: true, runtimeVerified: true };
   }
   return {
     readiness: 'configured',
@@ -233,7 +244,9 @@ export async function doctorMuse(
   }
   const modelOk = checks.some((check) => check.name === 'model' && check.status === 'pass');
   const binaryOk = checks.some((check) => check.name === 'binary' && check.status === 'pass');
-  const readiness = museReadinessFromChecks({ modelOk, binaryOk, degraded: true });
+  // No real warning exists at doctor scope: sandbox/runtime unverified are
+  // informational (cheap checks cannot prove them), not degraded.
+  const readiness = museReadinessFromChecks({ modelOk, binaryOk });
   const status = checks.some((check) => check.status === 'fail')
     ? 'unavailable'
     : checks.some((check) => check.status === 'warn')

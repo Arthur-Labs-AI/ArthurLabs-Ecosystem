@@ -149,6 +149,9 @@ importers:
       '@muse-code/sdk':
         specifier: 0.1.1
         version: 0.1.1
+      '@qa/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@qa/harness-protocol':
         specifier: workspace:*
         version: link:../harness-protocol
@@ -162,6 +165,21 @@ importers:
         specifier: 'catalog:'
         version: 3.25.76
     devDependencies:
+      '@qa/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@qa/project-manager':
+        specifier: workspace:*
+        version: link:../project-manager
+      '@qa/run-engine':
+        specifier: workspace:*
+        version: link:../run-engine
+      '@qa/snapshot-engine':
+        specifier: workspace:*
+        version: link:../snapshot-engine
+      '@qa/workspace-factory':
+        specifier: workspace:*
+        version: link:../workspace-factory
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.2

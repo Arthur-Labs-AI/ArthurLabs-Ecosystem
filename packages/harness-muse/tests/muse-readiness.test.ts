@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { doctorMuse } from '../src/index.js';
+import { doctorMuse, museReadinessFromChecks } from '../src/index.js';
 
 // Separate file: runtime verification is process-scoped module state, and
 // adapter tests in muse-adapter.test.ts set it via real startSession calls.
@@ -17,7 +17,8 @@ describe('Muse readiness semantics', () => {
         GITHUB_TOKEN: 'do-not-leak',
       },
     });
-    expect(doctor.readiness).toBe('degraded');
+    // model + binary present, no live session, no real warning -> configured.
+    expect(doctor.readiness).toBe('configured');
     expect(doctor.configured).toBe(true);
     expect(doctor.binaryAvailable).toBe(true);
     expect(doctor.runtimeVerified).toBe(false);
@@ -45,5 +46,29 @@ describe('Muse readiness semantics', () => {
     expect(doctor.readiness).toBe('unconfigured');
     expect(doctor.configured).toBe(false);
     expect(doctor.runtimeVerified).toBe(false);
+  });
+
+  it('computes ready only after runtime verification, degraded only on real warning', () => {
+    expect(museReadinessFromChecks({ modelOk: true, binaryOk: true }).readiness).toBe('configured');
+    expect(
+      museReadinessFromChecks({ modelOk: true, binaryOk: true, runtimeVerified: true }).readiness,
+    ).toBe('ready');
+    expect(
+      museReadinessFromChecks({ modelOk: true, binaryOk: true, realWarning: true }).readiness,
+    ).toBe('degraded');
+    expect(
+      museReadinessFromChecks({
+        modelOk: true,
+        binaryOk: true,
+        runtimeVerified: true,
+        realWarning: true,
+      }).readiness,
+    ).toBe('degraded');
+    expect(museReadinessFromChecks({ modelOk: false, binaryOk: true }).readiness).toBe(
+      'unconfigured',
+    );
+    expect(museReadinessFromChecks({ modelOk: true, binaryOk: false }).readiness).toBe(
+      'unavailable',
+    );
   });
 });

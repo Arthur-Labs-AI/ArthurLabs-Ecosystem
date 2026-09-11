@@ -15,9 +15,9 @@
  * authenticated state (device login / `muse login` credential store outside
  * the workspace). No Muse-specific secret env var names are documented in the
  * installed SDK surface or official setup guides, so this module allowlists
- * only `MUSE_*` / `META_*` prefixed values that look like non-secret
- * configuration (no TOKEN/SECRET/KEY/PASSWORD/AUTH names) plus an explicit
- * opt-in list. Unknown secret-bearing variables are NEVER forwarded.
+ * only `MUSE_*` / `META_MUSE_*` prefixed values plus two explicit META names,
+ * and only when they do not look secret (no TOKEN/SECRET/KEY/PASSWORD/AUTH
+ * names). Unknown secret-bearing variables are NEVER forwarded.
  *
  * Secrets are never persisted: only variable NAMES and inclusion decisions
  * are reported; values stay in memory for the spawn call.
@@ -60,8 +60,16 @@ const BASE_RUNTIME_NAMES = [
   'SENTRY_MUSE_MODEL',
 ] as const;
 
-/** Prefix allowlist for Muse/Meta configuration (non-secret names only). */
-const MUSE_CONFIG_PREFIXES = ['MUSE_', 'META_MUSE_', 'META_'] as const;
+/**
+ * Explicit Muse/Meta configuration names (non-secret only). Narrow by
+ * design: no broad META_* prefix, only documented prefix + known names.
+ * Live setup confirmed local-credential-state auth; no secret env names are
+ * documented, so MUSE_ALLOWED_SECRET_ENV_NAMES stays empty.
+ */
+const MUSE_CONFIG_PREFIXES = ['MUSE_', 'META_MUSE_'] as const;
+
+/** Exact additional Meta names required by the host, if any (non-secret). */
+const EXPLICIT_META_NAMES = ['META_API_ENDPOINT', 'META_REGION'] as const;
 
 /** Name fragments that mark a variable as secret-bearing: never forwarded. */
 const SECRET_NAME_PATTERN =
@@ -86,6 +94,7 @@ function isSecretName(name: string): boolean {
 
 function isMuseConfigName(name: string): boolean {
   const upper = name.toUpperCase();
+  if ((EXPLICIT_META_NAMES as readonly string[]).some((known) => known === upper)) return true;
   return MUSE_CONFIG_PREFIXES.some((prefix) => upper.startsWith(prefix));
 }
 

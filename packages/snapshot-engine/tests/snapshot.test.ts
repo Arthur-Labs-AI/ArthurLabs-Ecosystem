@@ -2,7 +2,8 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
-import { scanTree } from '../src/index.js';
+import { SentryDatabase, SentryRepository } from '@qa/persistence';
+import { scanTree, SnapshotEngine } from '../src/index.js';
 
 const roots: string[] = [];
 async function root(): Promise<string> {
@@ -74,5 +75,51 @@ describe('streaming deterministic snapshots', () => {
     expect(first).toEqual(second);
     expect(first.join('')).toContain('"linkScope":"external"');
     expect(first.join('')).toContain('"linkScope":"broken"');
+  });
+
+  it('serves authoritative baseline file hashes from the stored manifest', async () => {
+    const container = await root();
+    const dataRoot = join(container, 'data');
+    const source = join(container, 'source');
+    await mkdir(source, { recursive: true });
+    await writeFile(join(source, 'keep.ts'), 'const value = 1;\n');
+    await writeFile(join(source, 'notes.md'), '# notes\n');
+    const database = new SentryDatabase({ dataRoot });
+    const repository = new SentryRepository(database);
+    try {
+      repository.saveProject({
+        schemaVersion: 1,
+        id: 'proj_01K7777777777777777777A8W1',
+        name: 'snapshot-test',
+        sourcePath: source,
+        createdAt: '2026-09-11T00:00:00.000Z',
+        updatedAt: '2026-09-11T00:00:00.000Z',
+      });
+      repository.saveRevision({
+        schemaVersion: 1,
+        id: 'rev_01K7777777777777777777A8W1',
+        projectId: 'proj_01K7777777777777777777A8W1',
+        sourcePath: source,
+        importedAt: '2026-09-11T00:00:00.000Z',
+        contentHash: '0'.repeat(64),
+      });
+      const engine = new SnapshotEngine(dataRoot, repository);
+      const snapshot = await engine.createSnapshot({
+        projectId: 'proj_01K7777777777777777777A8W1',
+        projectRevisionId: 'rev_01K7777777777777777777A8W1',
+        qaRunId: 'run_01K7777777777777777777A8W3',
+        workingCopyPath: source,
+      });
+      const hashes = await engine.baselineFileHashes(snapshot.id);
+      expect(hashes.get('keep.ts')).toMatch(/^sha256:[a-f0-9]{64}$/);
+      expect(hashes.get('notes.md')).toMatch(/^sha256:[a-f0-9]{64}$/);
+      // Directories are not file provenance.
+      expect(hashes.has('')).toBe(false);
+      await expect(engine.baselineFileHashes('snap_01K7777777777777777777A9W9')).rejects.toThrow(
+        'SNAPSHOT_NOT_FOUND',
+      );
+    } finally {
+      database.close();
+    }
   });
 });

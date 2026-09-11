@@ -35,6 +35,11 @@ export const SentryAgentEvidenceV1Schema = z
     name: z.string().min(1).max(500).optional(),
     status: z.enum(['passed', 'failed']).optional(),
     source: z.string().min(1).max(200).optional(),
+    // Temporary operation correlation: the harness maps observed tool/command
+    // executions to short-lived agent-visible op keys (never durable Sentry
+    // IDs). Evidence that claims tool-produced behavior should name the
+    // operation that produced it; correlation is validated, never trusted.
+    operationKey: CorrelationKeySchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -171,28 +176,35 @@ export const SentryAgentResultV1Schema = z
             message: 'Unknown evidence key',
           });
       });
-      // Generic confidence guardrail (applies to every future agent): a
-      // confirmed finding cannot rely only on ungrounded model reasoning.
-      if (finding.confidence === 'confirmed') {
-        const grounded = finding.evidenceKeys.some((key) => {
-          const strength = strengthByKey.get(key);
-          const type = typeByKey.get(key);
-          return (
-            strength === 'reproduced_failure' ||
-            strength === 'reproduced_behavior' ||
-            strength === 'tool_diagnostic' ||
-            strength === 'strong_code_evidence' ||
-            type === 'command' ||
-            type === 'code_reference' ||
-            type === 'test'
-          );
-        });
+      // Generic confidence guardrails mirror validateFindingTrust (single
+      // source of truth lives in @qa/domain; this keeps raw agent JSON from
+      // entering the pipeline with ungrounded confidence). Grounding here is
+      // intentionally conservative: only reproduced/tool strengths and
+      // operation/source types count; adapter correlation refines further.
+      const isGroundedKey = (key: string): boolean => {
+        const strength = strengthByKey.get(key);
+        const type = typeByKey.get(key);
+        return (
+          strength === 'reproduced_failure' ||
+          strength === 'reproduced_behavior' ||
+          strength === 'tool_diagnostic' ||
+          strength === 'strong_code_evidence' ||
+          type === 'command' ||
+          type === 'code_reference' ||
+          type === 'test' ||
+          type === 'static_analysis' ||
+          type === 'browser'
+        );
+      };
+      if (finding.confidence === 'confirmed' || finding.confidence === 'strong') {
+        const grounded = finding.evidenceKeys.some(isGroundedKey);
         if (!grounded)
           context.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['findings', findingIndex, 'confidence'],
             message:
-              'Confirmed findings require at least one grounded evidence item; manual/model reasoning alone is insufficient',
+              finding.confidence +
+              ' findings require at least one grounded evidence item; manual/model reasoning alone is insufficient',
           });
       }
     });

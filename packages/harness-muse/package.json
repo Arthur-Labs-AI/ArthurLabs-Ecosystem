@@ -18,12 +18,18 @@
   },
   "dependencies": {
     "@muse-code/sdk": "0.1.1",
+    "@qa/domain": "workspace:*",
     "@qa/harness-protocol": "workspace:*",
     "@qa/schemas": "workspace:*",
     "@qa/shared": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@qa/persistence": "workspace:*",
+    "@qa/project-manager": "workspace:*",
+    "@qa/run-engine": "workspace:*",
+    "@qa/snapshot-engine": "workspace:*",
+    "@qa/workspace-factory": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",

@@ -171,4 +171,63 @@ describe('WorkspaceFactory', () => {
     expect(metadata.every((item) => item.linkScope === 'external')).toBe(true);
     expect(metadata.every((item) => item.reason.length > 0)).toBe(true);
   });
+
+  it('writes the snapshot baseline hash sidecar outside the agent-visible tree', async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), 'sentry-workspaces-'));
+    roots.push(dataRoot);
+    const baseline = join(dataRoot, 'baseline');
+    await mkdir(baseline, { recursive: true });
+    await writeFile(join(baseline, 'src.ts'), 'const value = 1;\n');
+    const { createHash } = await import('node:crypto');
+    const hash =
+      'sha256:' +
+      createHash('sha256')
+        .update(await readFile(join(baseline, 'src.ts')))
+        .digest('hex');
+    const workspace = await new WorkspaceFactory(dataRoot, true).create({
+      projectId: 'proj_01K7777777777777777777A8W1',
+      qaRunId: 'run_01K7777777777777777777A8W3',
+      agentRunId: 'arun_01K7777777777777777777A8W4',
+      snapshotId: 'snap_01K7777777777777777777A8W2',
+      workingCopyPath: baseline,
+      baseline: {
+        snapshotId: 'snap_01K7777777777777777777A8W2',
+        fileHashByPath: new Map([['src.ts', hash]]),
+      },
+    });
+    // Agent-visible tree carries the project, not the metadata.
+    await expect(lstat(join(workspace.runtimePath, 'baseline-hashes.json'))).rejects.toThrow();
+    const sidecar = join(
+      dirname(workspace.runtimePath),
+      '.sentry-workspace',
+      'baseline-hashes.json',
+    );
+    const parsed = JSON.parse(await readFile(sidecar, 'utf8')) as {
+      schemaVersion: number;
+      snapshotId: string;
+      files: Record<string, string>;
+    };
+    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.snapshotId).toBe('snap_01K7777777777777777777A8W2');
+    expect(parsed.files).toEqual({ 'src.ts': hash });
+    expect(JSON.stringify(parsed)).not.toContain(dataRoot.replaceAll('\\', '/'));
+  });
+
+  it('omits the sidecar when no baseline index is supplied', async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), 'sentry-workspaces-'));
+    roots.push(dataRoot);
+    const baseline = join(dataRoot, 'baseline');
+    await mkdir(baseline, { recursive: true });
+    await writeFile(join(baseline, 'src.ts'), 'x\n');
+    const workspace = await new WorkspaceFactory(dataRoot, true).create({
+      projectId: 'proj_01K7777777777777777777A8W1',
+      qaRunId: 'run_01K7777777777777777777A8W3',
+      agentRunId: 'arun_01K7777777777777777777A8W4',
+      snapshotId: 'snap_01K7777777777777777777A8W2',
+      workingCopyPath: baseline,
+    });
+    await expect(
+      lstat(join(dirname(workspace.runtimePath), '.sentry-workspace', 'baseline-hashes.json')),
+    ).rejects.toThrow();
+  });
 });

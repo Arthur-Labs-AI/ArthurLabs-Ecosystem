@@ -49,4 +49,14 @@ export const HarnessHealthResultSchema = z
   .strict();
 export type HarnessHealthResult = z.infer<typeof HarnessHealthResultSchema>;
 
+export const HarnessDiagnosticSchema = z
+  .object({
+    code: z.string().min(1).max(100),
+    severity: z.enum(['info', 'warning', 'error']),
+    message: z.string().min(1).max(2000),
+    retryable: z.boolean().optional(),
+  })
+  .strict();
+export type HarnessDiagnostic = z.infer<typeof HarnessDiagnosticSchema>;
+
 export { HARNESS_PROTOCOL_VERSION } from '@qa/schemas';

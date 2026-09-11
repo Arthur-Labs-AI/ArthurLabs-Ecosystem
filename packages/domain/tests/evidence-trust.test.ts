@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { validateFindingTrust, isGroundedEvidence } from '../src/evidence-trust.js';
+import {
+  groundingOfEvidence,
+  validateFindingTrust,
+  isGroundedEvidence,
+} from '../src/evidence-trust.js';
 
 describe('generic evidence trust policy', () => {
   it('rejects findings with zero evidence', () => {
@@ -57,5 +61,45 @@ describe('generic evidence trust policy', () => {
     expect(isGroundedEvidence({ type: 'test', strength: 'agent_reasoning' })).toBe(true);
     expect(isGroundedEvidence({ type: 'manual', strength: 'agent_reasoning' })).toBe(false);
     expect(isGroundedEvidence({ type: 'manual', strength: 'reproduced_behavior' })).toBe(true);
+  });
+
+  it('accepts strong + code_reference and confirmed + reproduced command failure', () => {
+    const code = {
+      id: 'ev_1' as never,
+      type: 'code_reference' as const,
+      strength: 'strong_code_evidence' as const,
+    };
+    expect(
+      validateFindingTrust({ confidence: 'strong', evidenceIds: ['ev_1' as never] }, [code]),
+    ).toEqual({ ok: true });
+    const command = {
+      id: 'ev_1' as never,
+      type: 'command' as const,
+      strength: 'reproduced_failure' as const,
+    };
+    expect(
+      validateFindingTrust({ confidence: 'confirmed', evidenceIds: ['ev_1' as never] }, [command]),
+    ).toEqual({ ok: true });
+  });
+
+  it('classifies grounding: reproduced, operation, source, model-reported', () => {
+    expect(groundingOfEvidence({ type: 'command', strength: 'reproduced_failure' })).toBe(
+      'reproduced',
+    );
+    expect(groundingOfEvidence({ type: 'command', strength: 'tool_diagnostic' })).toBe(
+      'operation_observed',
+    );
+    expect(groundingOfEvidence({ type: 'test', strength: 'agent_reasoning' })).toBe(
+      'operation_observed',
+    );
+    expect(groundingOfEvidence({ type: 'code_reference', strength: 'agent_reasoning' })).toBe(
+      'source_verified',
+    );
+    expect(groundingOfEvidence({ type: 'manual', strength: 'agent_reasoning' })).toBe(
+      'model_reported',
+    );
+    expect(groundingOfEvidence({ type: 'runtime', strength: 'reproduced_behavior' })).toBe(
+      'reproduced',
+    );
   });
 });

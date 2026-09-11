@@ -130,6 +130,60 @@ describe('Phase 3 structured agent contracts', () => {
     ).toBe(true);
   });
 
+  it('rejects strong findings backed only by manual reasoning', () => {
+    const base = {
+      schemaVersion: 1,
+      summary: 'summary',
+      checks: [],
+      hypotheses: [],
+      evidence: [{ key: 'ev1', type: 'manual', strength: 'agent_reasoning', description: 'hunch' }],
+      findings: [
+        {
+          title: 'finding',
+          category: 'logic',
+          severity: 'low',
+          confidence: 'strong',
+          description: 'description',
+          locations: [{ relativePath: 'src/a.ts' }],
+          evidenceKeys: ['ev1'],
+          reproductionSteps: [],
+        },
+      ],
+      limitations: [],
+    };
+    expect(SentryAgentResultV1Schema.safeParse(base).success).toBe(false);
+  });
+
+  it('accepts operation-correlated evidence keys on the agent contract', () => {
+    const result = {
+      schemaVersion: 1,
+      summary: 'summary',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 't1',
+          type: 'test',
+          strength: 'reproduced_failure',
+          description: 'suite failed',
+          framework: 'vitest',
+          name: 'suite',
+          status: 'failed',
+          operationKey: 'op_1',
+        },
+      ],
+      findings: [],
+      limitations: [],
+    };
+    expect(SentryAgentResultV1Schema.safeParse(result).success).toBe(true);
+    expect(
+      SentryAgentResultV1Schema.safeParse({
+        ...result,
+        evidence: [{ ...result.evidence[0], operationKey: 'bad key!' }],
+      }).success,
+    ).toBe(false);
+  });
+
   it('keeps pre-Phase-3 persisted runs readable while accepting canonical execution kind', () => {
     const legacy = {
       schemaVersion: 1,
