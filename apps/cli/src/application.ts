@@ -99,15 +99,22 @@ export async function executeCommand(
   }
   if (input.command === 'agent.list') {
     const health = await doctorMuse();
-    const configured = (name: string) =>
+    const pass = (name: string) =>
       health.checks.some((check) => check.name === name && check.status === 'pass');
+    const configured = pass('model') && pass('binary');
     return success(input.command, {
       agents: [
         {
           id: 'muse',
           displayName: 'Muse QA Agent',
           harness: 'muse-code',
-          available: configured('model') && configured('binary'),
+          // available stays boolean for contract stability; status carries
+          // the truthful readiness (configured vs actually verified/ready).
+          available: configured,
+          configured,
+          binaryAvailable: pass('binary'),
+          runtimeVerified: health.runtimeVerified ?? false,
+          status: health.readiness ?? (configured ? 'configured' : 'unconfigured'),
           modelEnvironmentVariable: 'SENTRY_MUSE_MODEL',
         },
       ],

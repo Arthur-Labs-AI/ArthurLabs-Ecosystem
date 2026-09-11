@@ -250,6 +250,15 @@ export const RunStartResultSchema = z
   .strict();
 export type RunStartResult = z.infer<typeof RunStartResultSchema>;
 
+export const AgentReadinessSchema = z.enum([
+  'unconfigured',
+  'configured',
+  'ready',
+  'degraded',
+  'unavailable',
+]);
+export type AgentReadiness = z.infer<typeof AgentReadinessSchema>;
+
 export const AgentListResultSchema = z
   .object({
     agents: z.array(
@@ -258,7 +267,13 @@ export const AgentListResultSchema = z
           id: z.string().min(1).max(100),
           displayName: z.string().min(1).max(200),
           harness: z.string().min(1).max(100),
+          // Legacy boolean kept for contract stability: true only when model
+          // + binary are present (NOT proof of live authentication).
           available: z.boolean(),
+          configured: z.boolean().optional(),
+          binaryAvailable: z.boolean().optional(),
+          runtimeVerified: z.boolean().optional(),
+          status: AgentReadinessSchema.optional(),
           modelEnvironmentVariable: z.string().min(1).max(100),
         })
         .strict(),
@@ -285,6 +300,10 @@ export const AgentDoctorResultSchema = z
     executableVersion: z.string().optional(),
     modelId: z.string().optional(),
     sdkVersion: z.string(),
+    readiness: AgentReadinessSchema.optional(),
+    configured: z.boolean().optional(),
+    binaryAvailable: z.boolean().optional(),
+    runtimeVerified: z.boolean().optional(),
   })
   .strict();
 export type AgentDoctorResult = z.infer<typeof AgentDoctorResultSchema>;

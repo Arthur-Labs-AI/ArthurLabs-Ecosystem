@@ -60,6 +60,76 @@ describe('Phase 3 structured agent contracts', () => {
     ).toBe(false);
   });
 
+  it('requires every production finding to reference evidence', () => {
+    const base = {
+      schemaVersion: 1,
+      summary: 'summary',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        { key: 'ev1', type: 'manual', strength: 'agent_reasoning', description: 'observation' },
+      ],
+      findings: [
+        {
+          title: 'finding',
+          category: 'logic',
+          severity: 'low',
+          confidence: 'probable',
+          description: 'description',
+          locations: [{ relativePath: 'src/a.ts' }],
+          evidenceKeys: [],
+          reproductionSteps: [],
+        },
+      ],
+      limitations: [],
+    };
+    expect(SentryAgentResultV1Schema.safeParse(base).success).toBe(false);
+    expect(
+      SentryAgentResultV1Schema.safeParse({
+        ...base,
+        findings: [{ ...base.findings[0], evidenceKeys: ['ev1'] }],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects confirmed findings backed only by manual reasoning', () => {
+    const base = {
+      schemaVersion: 1,
+      summary: 'summary',
+      checks: [],
+      hypotheses: [],
+      evidence: [{ key: 'ev1', type: 'manual', strength: 'agent_reasoning', description: 'hunch' }],
+      findings: [
+        {
+          title: 'finding',
+          category: 'logic',
+          severity: 'low',
+          confidence: 'confirmed',
+          description: 'description',
+          locations: [{ relativePath: 'src/a.ts' }],
+          evidenceKeys: ['ev1'],
+          reproductionSteps: [],
+        },
+      ],
+      limitations: [],
+    };
+    expect(SentryAgentResultV1Schema.safeParse(base).success).toBe(false);
+    expect(
+      SentryAgentResultV1Schema.safeParse({
+        ...base,
+        evidence: [
+          {
+            key: 'ev1',
+            type: 'code_reference',
+            strength: 'strong_code_evidence',
+            description: 'observed',
+            relativePath: 'src/a.ts',
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
   it('keeps pre-Phase-3 persisted runs readable while accepting canonical execution kind', () => {
     const legacy = {
       schemaVersion: 1,

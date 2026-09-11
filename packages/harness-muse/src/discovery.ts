@@ -2,8 +2,71 @@ import { spawn } from 'node:child_process';
 import { isAbsolute } from 'node:path';
 import { nowIsoTimestamp } from '@qa/shared';
 import type { HarnessHealthResult } from '@qa/harness-protocol';
+import { buildMuseChildEnvironment } from './environment.js';
+import { MUSE_SDK_VERSION } from './sdk.js';
 import { MuseHarnessError } from './errors.js';
 import { redactDiagnostic, secretValues } from './redaction.js';
+
+export type MuseAgentReadiness =
+  'unconfigured' | 'configured' | 'ready' | 'degraded' | 'unavailable';
+
+export interface MuseReadinessSummary {
+  readonly readiness: MuseAgentReadiness;
+  /** True only when model + binary are present (NOT proof of live auth). */
+  readonly configured: boolean;
+  readonly binaryAvailable: boolean;
+  /** True only after a real session startup succeeded in this process scope. */
+  readonly runtimeVerified: boolean;
+}
+
+/** Ephemeral in-process verification: a real session startup set it, nothing persists it. */
+let runtimeVerifiedThisProcess = false;
+
+export function markMuseRuntimeVerified(): void {
+  runtimeVerifiedThisProcess = true;
+}
+
+export function museReadinessFromChecks(input: {
+  readonly modelOk: boolean;
+  readonly binaryOk: boolean;
+  readonly runtimeVerified?: boolean;
+  readonly degraded?: boolean;
+}): MuseReadinessSummary {
+  const verified = input.runtimeVerified ?? runtimeVerifiedThisProcess;
+  if (!input.modelOk) {
+    return {
+      readiness: 'unconfigured',
+      configured: false,
+      binaryAvailable: input.binaryOk,
+      runtimeVerified: false,
+    };
+  }
+  if (!input.binaryOk) {
+    return {
+      readiness: 'unavailable',
+      configured: false,
+      binaryAvailable: false,
+      runtimeVerified: false,
+    };
+  }
+  if (verified && !input.degraded) {
+    return { readiness: 'ready', configured: true, binaryAvailable: true, runtimeVerified: true };
+  }
+  if (input.degraded || verified) {
+    return {
+      readiness: 'degraded',
+      configured: true,
+      binaryAvailable: true,
+      runtimeVerified: verified,
+    };
+  }
+  return {
+    readiness: 'configured',
+    configured: true,
+    binaryAvailable: true,
+    runtimeVerified: false,
+  };
+}
 
 export interface MuseRuntimeConfiguration {
   readonly executable: string;
@@ -117,6 +180,11 @@ export async function doctorMuse(
     readonly executable?: string;
     readonly executableVersion?: string;
     readonly modelId?: string;
+    readonly sdkVersion?: string;
+    readonly readiness?: MuseAgentReadiness;
+    readonly configured?: boolean;
+    readonly binaryAvailable?: boolean;
+    readonly runtimeVerified?: boolean;
   }
 > {
   const environment = input.environment ?? process.env;
@@ -136,14 +204,36 @@ export async function doctorMuse(
   } catch (cause) {
     checks.push({ name: 'binary', status: 'fail', message: redactDiagnostic(cause) });
   }
+  const child = buildMuseChildEnvironment({ source: environment });
+  checks.push({
+    name: 'environment',
+    status: 'pass',
+    message:
+      'Child env allowlisted (' +
+      child.allowedNames.length +
+      ' allowed, ' +
+      child.blockedNames.length +
+      ' blocked); blocked names are never forwarded.',
+  });
+  checks.push({ name: 'sdk', status: 'pass', message: MUSE_SDK_VERSION });
   checks.push({
     name: 'sandbox',
     status: 'warn',
     message:
       executableVersion === undefined
         ? 'Sandbox startup probe cannot run until Muse is available.'
-        : 'Sandbox enforcement is validated by Muse at real session startup; Sentry passes no sandbox-disable flags.',
+        : 'Sandbox: not yet verified. Sandbox enforcement is validated by Muse at real session startup; Sentry passes no sandbox-disable flags.',
   });
+  if (!runtimeVerifiedThisProcess) {
+    checks.push({
+      name: 'runtime',
+      status: 'warn',
+      message: 'No live Muse session has succeeded in this process scope yet.',
+    });
+  }
+  const modelOk = checks.some((check) => check.name === 'model' && check.status === 'pass');
+  const binaryOk = checks.some((check) => check.name === 'binary' && check.status === 'pass');
+  const readiness = museReadinessFromChecks({ modelOk, binaryOk, degraded: true });
   const status = checks.some((check) => check.status === 'fail')
     ? 'unavailable'
     : checks.some((check) => check.status === 'warn')
@@ -156,5 +246,10 @@ export async function doctorMuse(
     executable: isAbsolute(executable) ? executable : executable,
     ...(executableVersion === undefined ? {} : { executableVersion }),
     ...(runtime === undefined ? {} : { modelId: runtime.modelId }),
+    sdkVersion: MUSE_SDK_VERSION,
+    readiness: readiness.readiness,
+    configured: readiness.configured,
+    binaryAvailable: readiness.binaryAvailable,
+    runtimeVerified: readiness.runtimeVerified,
   };
 }

@@ -25,7 +25,13 @@ import {
   type SentryAgentEvidenceV1,
 } from '@qa/schemas';
 import type { HarnessAdapter, HarnessHealthResult, HarnessMetadata } from '@qa/harness-protocol';
-import { doctorMuse, resolveMuseRuntime, type MuseRuntimeConfiguration } from './discovery.js';
+import {
+  doctorMuse,
+  markMuseRuntimeVerified,
+  resolveMuseRuntime,
+  type MuseRuntimeConfiguration,
+} from './discovery.js';
+import { buildMuseChildEnvironment } from './environment.js';
 import { MuseHarnessError } from './errors.js';
 import { redactDiagnostic, redactStructured, secretValues } from './redaction.js';
 import {
@@ -64,22 +70,114 @@ function event(agentRunId: AgentRunId, value: Readonly<Record<string, unknown>>)
   });
 }
 
-function usageFrom(outcome: MuseTurnOutcome, turns: number): AgentUsage | undefined {
-  if (outcome.kind !== 'completed') return undefined;
-  const source = outcome.params.usage;
-  const durationMs = outcome.params.durationMs;
-  if (source === undefined && durationMs === undefined) return { turns };
+/**
+ * Aggregate per-turn usage. The SDK documents
+ * TurnCompletedParams.usage as "the turn's aggregate token usage, summed
+ * across the turn's model completions", i.e. PER-TURN, not cumulative, so
+ * planning + execution totals are summed. Unknown stays undefined (never 0).
+ */
+export function aggregateTurnUsage(
+  turns: ReadonlyArray<{ readonly outcome: MuseTurnOutcome }>,
+): AgentUsage | undefined {
+  let inputTokens: number | undefined;
+  let outputTokens: number | undefined;
+  let cachedInputTokens: number | undefined;
+  let durationMs: number | undefined;
+  let knownTurns = 0;
+  let sawUsage = false;
+  for (const turn of turns) {
+    if (turn.outcome.kind !== 'completed') continue;
+    knownTurns += 1;
+    const source = turn.outcome.params.usage;
+    if (source !== undefined) {
+      sawUsage = true;
+      inputTokens = (inputTokens ?? 0) + source.inputTokens;
+      outputTokens = (outputTokens ?? 0) + source.outputTokens;
+      cachedInputTokens = (cachedInputTokens ?? 0) + source.cachedTokens;
+    }
+    if (turn.outcome.params.durationMs !== undefined) {
+      durationMs = (durationMs ?? 0) + turn.outcome.params.durationMs;
+    }
+  }
+  if (knownTurns === 0) return undefined;
+  if (!sawUsage && durationMs === undefined) return { turns: knownTurns };
   return {
-    ...(source === undefined
-      ? {}
-      : {
-          inputTokens: source.inputTokens,
-          outputTokens: source.outputTokens,
-          cachedInputTokens: source.cachedTokens,
-        }),
-    turns,
+    ...(inputTokens === undefined ? {} : { inputTokens }),
+    ...(outputTokens === undefined ? {} : { outputTokens }),
+    ...(cachedInputTokens === undefined ? {} : { cachedInputTokens }),
+    turns: knownTurns,
     ...(durationMs === undefined ? {} : { durationMs }),
   };
+}
+
+function childPidOf(client: MuseClientView): number | undefined {
+  const maybe = client as { readonly pid?: unknown };
+  return typeof maybe.pid === 'number' ? maybe.pid : undefined;
+}
+
+async function buildBaselineIndex(
+  workspaceRoot: string,
+  _snapshotId: string,
+): Promise<BaselineFileIndex | undefined> {
+  // Baseline provenance without rehashing the project per evidence item:
+  // the adapter cannot reach the run snapshot manifest directly, so it
+  // consults a sidecar baseline-hashes file ONLY when the coordinator wrote
+  // one next to the workspace. Absent sidecar → undefined → every file
+  // is conservatively classified modified_workspace (never a false baseline).
+  try {
+    const { readFile } = await import('node:fs/promises');
+    const { join, dirname } = await import('node:path');
+    const sidecar = join(dirname(workspaceRoot), 'baseline-hashes.json');
+    const raw = await readFile(sidecar, 'utf8');
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const map = new Map<string, string>();
+      for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+        if (typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value)) map.set(key, value);
+      }
+      return { fileHashByPath: map };
+    }
+  } catch {
+    // Absent/unreadable sidecar: conservative modified_workspace.
+  }
+  return undefined;
+}
+
+function validateProductionFindings(
+  findings: ReadonlyArray<{
+    readonly evidenceKeys: readonly string[];
+    readonly confidence: string;
+  }>,
+  evidenceByKey: ReadonlyMap<string, Evidence>,
+): void {
+  for (const finding of findings) {
+    if (finding.evidenceKeys.length === 0) {
+      throw new MuseHarnessError(
+        'MUSE_INVALID_RESULT',
+        'Production findings must reference at least one durable evidence item.',
+      );
+    }
+    if (finding.confidence === 'confirmed') {
+      const items = finding.evidenceKeys.map((key) => evidenceByKey.get(key));
+      const grounded = items.some(
+        (item) =>
+          item !== undefined &&
+          (item.type === 'command' ||
+            item.type === 'code_reference' ||
+            item.type === 'test' ||
+            item.strength === 'reproduced_failure' ||
+            item.strength === 'reproduced_behavior' ||
+            item.strength === 'tool_diagnostic' ||
+            item.strength === 'strong_code_evidence'),
+      );
+      if (!grounded) {
+        throw new MuseHarnessError(
+          'MUSE_INVALID_RESULT',
+          'Confirmed findings require at least one grounded evidence item; manual/model reasoning alone is insufficient.',
+        );
+      }
+    }
+  }
 }
 
 function assertCompleted(outcome: MuseTurnOutcome, phase: string): void {
@@ -181,7 +279,16 @@ async function validateLocation(
   return absolute;
 }
 
-async function codeReference(root: string, source: SentryAgentEvidenceV1) {
+export interface BaselineFileIndex {
+  /** Baseline content hash by workspace-relative path (forward slashes). */
+  readonly fileHashByPath: ReadonlyMap<string, string>;
+}
+
+async function codeReference(
+  root: string,
+  source: SentryAgentEvidenceV1,
+  baseline?: BaselineFileIndex,
+) {
   const relativePath = source.relativePath as string;
   const absolute = await validateLocation(root, relativePath, source.lineStart, source.lineEnd);
   const bytes = await readFile(absolute);
@@ -192,21 +299,43 @@ async function codeReference(root: string, source: SentryAgentEvidenceV1) {
     .slice(start - 1, end)
     .join('\n')
     .slice(0, 4_000);
+  const contentHash = 'sha256:' + createHash('sha256').update(bytes).digest('hex');
+  const baselineHash = baseline?.fileHashByPath.get(relativePath);
   return {
     relativePath,
     ...(source.lineStart === undefined ? {} : { startLine: source.lineStart }),
     ...(source.lineEnd === undefined ? {} : { endLine: source.lineEnd }),
-    sourceState: 'modified_workspace' as const,
-    contentHash: 'sha256:' + createHash('sha256').update(bytes).digest('hex'),
+    // Unchanged-from-baseline evidence is baseline provenance; anything else
+    // (modified existing file or agent-created new file) is modified_workspace.
+    sourceState:
+      baselineHash !== undefined && baselineHash === contentHash
+        ? ('baseline' as const)
+        : ('modified_workspace' as const),
+    contentHash,
     ...(excerpt.length === 0 ? {} : { excerpt }),
   };
+}
+
+export interface ObservedEvidenceGrounding {
+  readonly observedCommands: ReadonlySet<string>;
+  /** Normalized observed test executions: "framework\u0000name\u0000status". */
+  readonly observedTests: ReadonlySet<string>;
+  /** Normalized observed tool operations: "tool-name\u0000command-or-args". */
+  readonly observedTools: ReadonlySet<string>;
+  readonly baseline?: BaselineFileIndex;
+}
+
+function groundingOf(observedCommands: ReadonlySet<string>): ObservedEvidenceGrounding {
+  return { observedCommands, observedTests: new Set<string>(), observedTools: new Set<string>() };
 }
 
 async function convertEvidence(
   request: HarnessRunRequest,
   source: SentryAgentEvidenceV1,
-  observedCommands: ReadonlySet<string>,
+  grounding: ObservedEvidenceGrounding | ReadonlySet<string>,
 ): Promise<Evidence> {
+  const observed =
+    grounding instanceof Set ? groundingOf(grounding) : (grounding as ObservedEvidenceGrounding);
   if (source.relativePath !== undefined)
     await validateLocation(
       request.workspace.runtimePath,
@@ -214,26 +343,76 @@ async function convertEvidence(
       source.lineStart,
       source.lineEnd,
     );
+  // Grounding policy: a model must not mint reproduced test/runtime/log proof
+  // by writing JSON alone. Test evidence without an observed tool operation is
+  // downgraded to agent reasoning; purely model-reported runtime/log evidence
+  // keeps its type but is marked agent_reasoning strength so confirmed
+  // findings cannot rely on it.
+  if (source.type === 'test') {
+    const key = [source.framework ?? '', source.name ?? '', source.status ?? ''].join('\u0000');
+    const observedTest =
+      observed.observedTests.has(key) || observed.observedTests.size === 0
+        ? observed.observedCommands.size > 0 || observed.observedTools.size > 0
+        : false;
+    if (!observedTest) {
+      return EvidenceSchema.parse({
+        schemaVersion: 1 as const,
+        id: createEvidenceId(),
+        qaRunId: request.qaRunId,
+        agentRunId: request.agentRunId,
+        strength: 'agent_reasoning',
+        environmentState: 'modified_workspace' as const,
+        description: source.description,
+        artifactIds: [],
+        createdAt: nowIsoTimestamp(),
+        type: 'manual',
+        manual: {
+          summary:
+            'Ungrounded test claim downgraded (framework=' +
+            (source.framework ?? 'unknown') +
+            ' name=' +
+            (source.name ?? 'unknown') +
+            ' status=' +
+            (source.status ?? 'unknown') +
+            '): ' +
+            source.description,
+          author: 'Muse Code',
+        },
+      });
+    }
+  }
+  const groundedStrength = (
+    fallback: SentryAgentEvidenceV1['strength'],
+  ): SentryAgentEvidenceV1['strength'] => {
+    if (source.type === 'runtime' || source.type === 'log') {
+      const hasToolGrounding =
+        observed.observedCommands.size > 0 || observed.observedTools.size > 0;
+      if (!hasToolGrounding) return 'agent_reasoning';
+    }
+    return fallback;
+  };
   const base = {
     schemaVersion: 1 as const,
     id: createEvidenceId(),
     qaRunId: request.qaRunId,
     agentRunId: request.agentRunId,
-    strength: source.strength,
+    strength: groundedStrength(source.strength),
     environmentState: 'modified_workspace' as const,
     description: source.description,
     artifactIds: [],
     createdAt: nowIsoTimestamp(),
   };
   if (source.type === 'code_reference') {
+    const reference = await codeReference(request.workspace.runtimePath, source, observed.baseline);
     return EvidenceSchema.parse({
       ...base,
+      environmentState: reference.sourceState,
       type: 'code_reference',
-      codeReference: await codeReference(request.workspace.runtimePath, source),
+      codeReference: reference,
     });
   }
   if (source.type === 'command') {
-    if (!observedCommands.has(JSON.stringify([source.command, source.exitCode]))) {
+    if (!observed.observedCommands.has(JSON.stringify([source.command, source.exitCode]))) {
       throw new MuseHarnessError(
         'MUSE_INVALID_RESULT',
         'Command evidence does not match an observed Muse command execution.',
@@ -309,7 +488,12 @@ function executionPrompt(plan: ReturnType<typeof SentryInvestigationPlanV1Schema
 }
 
 export class MuseHarnessAdapter implements HarnessAdapter {
+  private readonly hostEnvironment: NodeJS.ProcessEnv;
   private readonly environment: NodeJS.ProcessEnv;
+  private readonly childEnvironmentReport: {
+    readonly allowedNames: readonly string[];
+    readonly blockedNames: readonly string[];
+  };
   private readonly runtime: MuseRuntimeConfiguration;
   private readonly clientFactory: MuseClientFactory;
   private readonly shutdownTimeoutMs: number;
@@ -320,13 +504,32 @@ export class MuseHarnessAdapter implements HarnessAdapter {
   private readonly operationIds = new Map<string, OperationId>();
   private readonly completedTools = new Set<string>();
   private readonly observedCommands = new Set<string>();
+  private readonly observedTests = new Set<string>();
+  private readonly observedTools = new Set<string>();
+  private shutdownWarning?: string;
 
   constructor(private readonly options: MuseHarnessAdapterOptions = {}) {
-    this.environment = options.environment ?? process.env;
-    this.runtime = resolveMuseRuntime({ ...options, environment: this.environment });
+    this.hostEnvironment = options.environment ?? process.env;
+    this.runtime = resolveMuseRuntime({ ...options, environment: this.hostEnvironment });
     this.clientFactory = options.clientFactory ?? createProductionMuseClient;
     this.shutdownTimeoutMs = options.shutdownTimeoutMs ?? 10_000;
-    this.secrets = secretValues(this.environment);
+    // Never hand the raw host environment to the autonomous worker: build the
+    // explicit sanitized child environment (PATH/temp/locale + Muse config).
+    const child = buildMuseChildEnvironment({ source: this.hostEnvironment });
+    this.environment = child.environment;
+    this.childEnvironmentReport = child;
+    this.secrets = secretValues(this.hostEnvironment);
+  }
+
+  /** Names forwarded to the Muse child (never values); for diagnostics only. */
+  childEnvironmentNames(): {
+    readonly allowed: readonly string[];
+    readonly blocked: readonly string[];
+  } {
+    return {
+      allowed: this.childEnvironmentReport.allowedNames,
+      blocked: this.childEnvironmentReport.blockedNames,
+    };
   }
 
   async getMetadata(): Promise<HarnessMetadata> {
@@ -352,10 +555,12 @@ export class MuseHarnessAdapter implements HarnessAdapter {
   }
 
   async healthCheck(): Promise<HarnessHealthResult> {
+    // Doctor reads local config (host env); only run() spawns the worker and
+    // only with the sanitized child environment.
     return doctorMuse({
       executable: this.runtime.executable,
       modelId: this.runtime.modelId,
-      environment: this.environment,
+      environment: this.hostEnvironment,
     });
   }
 
@@ -374,6 +579,18 @@ export class MuseHarnessAdapter implements HarnessAdapter {
       }
       if (item.kind === 'agentMessage' && item.text !== undefined) text = item.text;
       if (item.kind !== 'toolCall' && item.kind !== 'userShell') continue;
+      this.observedTools.add(
+        (item.kind === 'userShell' ? 'shell' : (item.tool ?? 'unknown')) +
+          '\u0000' +
+          (item.commandText ?? item.args ?? ''),
+      );
+      // Record observed test executions so final-JSON test claims can be
+      // correlated to real tool activity instead of trusted on assertion.
+      if (item.kind === 'toolCall' && /test/i.test(item.tool ?? '')) {
+        const argsText = item.commandText ?? item.args ?? '';
+        const status = item.exitCode === undefined ? '' : item.exitCode === 0 ? 'passed' : 'failed';
+        this.observedTests.add(argsText + '\u0000' + status);
+      }
       let operationId = this.operationIds.get(item.itemId);
       if (operationId === undefined) {
         operationId = createOperationId();
@@ -440,6 +657,8 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         workspaceRoot: request.workspace.runtimePath,
         modelId: this.runtime.modelId,
       });
+      // A real session started: ephemeral runtime verification for this process.
+      markMuseRuntimeVerified();
       const planning = yield* this.streamTurn(
         await session.sendText(planningPrompt(request)),
         request.agentRunId,
@@ -498,11 +717,21 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         });
       }
       const evidenceByKey = new Map<string, Evidence>();
+      const baselineIndex = await buildBaselineIndex(
+        request.workspace.runtimePath,
+        request.workspace.snapshotId,
+      ).catch(() => undefined);
       for (const source of result.evidence) {
-        const converted = await convertEvidence(request, source, this.observedCommands);
+        const converted = await convertEvidence(request, source, {
+          observedCommands: this.observedCommands,
+          observedTests: this.observedTests,
+          observedTools: this.observedTools,
+          ...(baselineIndex === undefined ? {} : { baseline: baselineIndex }),
+        });
         evidenceByKey.set(source.key, converted);
         yield event(request.agentRunId, { type: 'evidence.submitted', evidence: converted });
       }
+      validateProductionFindings(result.findings, evidenceByKey);
       for (const source of result.findings) {
         for (const location of source.locations)
           await validateLocation(
@@ -542,8 +771,14 @@ export class MuseHarnessAdapter implements HarnessAdapter {
           message: diagnostic,
         });
       }
-      const usage = usageFrom(execution.outcome, 2);
+      const usage = aggregateTurnUsage([
+        { outcome: planning.outcome },
+        { outcome: execution.outcome },
+      ]);
       if (usage !== undefined) yield event(request.agentRunId, { type: 'usage.updated', usage });
+      // NOTE: dispose() runs after this stream ends (coordinator-owned
+      // lifecycle), so a partial-shutdown warning cannot be yielded here.
+      // It stays observable via shutdownNotice() for coordinators/exports.
       yield event(request.agentRunId, {
         type: 'run.completed',
         ...(usage === undefined ? {} : { usage }),
@@ -587,8 +822,33 @@ export class MuseHarnessAdapter implements HarnessAdapter {
 
   async dispose(): Promise<void> {
     if (this.closePromise !== undefined) return this.closePromise;
-    this.closePromise = this.client?.close() ?? Promise.resolve();
+    const client = this.client;
+    if (client === undefined) {
+      this.closePromise = Promise.resolve();
+      return this.closePromise;
+    }
+    // Primary mechanism stays SDK shutdown (SS2.1.2: stdin EOF, bounded
+    // drain, then SIGTERM/SIGKILL escalation of the owned child). On Windows
+    // the SDK signals only the child (no subtree containment per FR-017b),
+    // so record an observable warning when shutdown confidence is partial.
+    this.closePromise = (async () => {
+      const pid = childPidOf(client);
+      await client.close();
+      if (process.platform === 'win32' && pid !== undefined) {
+        this.shutdownWarning =
+          'Windows process-tree limitation: SDK shutdown closed the Muse host ' +
+          '(pid ' +
+          pid +
+          ') but cannot guarantee descendant cleanup; orphaned grandchildren ' +
+          'remain possible. Workspace cleanup still proceeds.';
+      }
+    })();
     return this.closePromise;
+  }
+
+  /** Observable shutdown limitation, when dispose() could not prove full cleanup. */
+  shutdownNotice(): string | undefined {
+    return this.shutdownWarning;
   }
 
   runtimeIdentity() {

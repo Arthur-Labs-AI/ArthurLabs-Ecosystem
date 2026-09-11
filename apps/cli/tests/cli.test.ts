@@ -109,6 +109,8 @@ describe('qa cli', () => {
       agent: 'muse',
       status: 'unavailable',
       sdkVersion: '0.1.1',
+      readiness: 'unavailable',
+      runtimeVerified: false,
     });
 
     const start = spawnSync(

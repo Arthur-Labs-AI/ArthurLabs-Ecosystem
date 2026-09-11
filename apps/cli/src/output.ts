@@ -39,14 +39,19 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
     case 'agent.list':
       io.stdout(
         response.data.agents
-          .map(
-            (agent) =>
-              agent.id +
-              '  ' +
-              agent.displayName +
-              '  ' +
-              (agent.available ? 'configured' : 'not configured'),
-          )
+          .map((agent) => {
+            const status =
+              'status' in agent && typeof agent.status === 'string'
+                ? agent.status
+                : agent.available
+                  ? 'configured'
+                  : 'not configured';
+            const verified =
+              'runtimeVerified' in agent && agent.runtimeVerified === true
+                ? ' (runtime verified)'
+                : '';
+            return agent.id + '  ' + agent.displayName + '  ' + status + verified;
+          })
           .join('\n'),
       );
       return;

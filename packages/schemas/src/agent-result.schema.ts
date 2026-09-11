@@ -106,7 +106,9 @@ const SentryAgentFindingV1Schema = z
       )
       .min(1)
       .max(100),
-    evidenceKeys: z.array(CorrelationKeySchema).max(100),
+    // Production QA promise: every durable finding must reference at least
+    // one durable evidence item. Simulation must use the same strict shape.
+    evidenceKeys: z.array(CorrelationKeySchema).min(1).max(100),
     reproductionSteps: z.array(z.string().min(1).max(2_000)).max(100),
     rootCause: z.string().min(1).max(5_000).optional(),
     recommendedFix: z.string().min(1).max(5_000).optional(),
@@ -147,6 +149,8 @@ export const SentryAgentResultV1Schema = z
   .strict()
   .superRefine((value, context) => {
     const keys = new Set<string>();
+    const strengthByKey = new Map<string, (typeof EVIDENCE_STRENGTHS)[number]>();
+    const typeByKey = new Map<string, string>();
     for (const [index, evidence] of value.evidence.entries()) {
       if (keys.has(evidence.key))
         context.addIssue({
@@ -155,6 +159,8 @@ export const SentryAgentResultV1Schema = z
           message: 'Evidence keys must be unique',
         });
       keys.add(evidence.key);
+      strengthByKey.set(evidence.key, evidence.strength);
+      typeByKey.set(evidence.key, evidence.type);
     }
     value.findings.forEach((finding, findingIndex) => {
       finding.evidenceKeys.forEach((key, keyIndex) => {
@@ -165,6 +171,30 @@ export const SentryAgentResultV1Schema = z
             message: 'Unknown evidence key',
           });
       });
+      // Generic confidence guardrail (applies to every future agent): a
+      // confirmed finding cannot rely only on ungrounded model reasoning.
+      if (finding.confidence === 'confirmed') {
+        const grounded = finding.evidenceKeys.some((key) => {
+          const strength = strengthByKey.get(key);
+          const type = typeByKey.get(key);
+          return (
+            strength === 'reproduced_failure' ||
+            strength === 'reproduced_behavior' ||
+            strength === 'tool_diagnostic' ||
+            strength === 'strong_code_evidence' ||
+            type === 'command' ||
+            type === 'code_reference' ||
+            type === 'test'
+          );
+        });
+        if (!grounded)
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['findings', findingIndex, 'confidence'],
+            message:
+              'Confirmed findings require at least one grounded evidence item; manual/model reasoning alone is insufficient',
+          });
+      }
     });
   });
 export type SentryAgentResultV1 = z.infer<typeof SentryAgentResultV1Schema>;

@@ -83,7 +83,7 @@ packages/run-engine      # generic coordinator, registry composition, recovery, 
 packages/domain/tests/fixtures          # contract fixtures + relationship graph
 packages/harness-protocol/tests/fixtures/harness  # golden NDJSON event streams
 docs/architecture        # domain, lifecycle, protocol, Phase 1/1.1/2 baselines
-docs/adr                 # 0001–0012
+docs/adr                 # 0001–0013
 .github/workflows/ci.yml# install → format:check → lint → typecheck → test → build
 ```
 

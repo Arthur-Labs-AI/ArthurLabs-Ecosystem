@@ -10,6 +10,8 @@ import {
   createSnapshotId,
 } from '@qa/shared';
 import {
+  aggregateTurnUsage,
+  buildMuseChildEnvironment,
   MuseHarnessAdapter,
   MUSE_APPROVAL_MODE,
   MUSE_HOST_ARGUMENTS,
@@ -244,10 +246,12 @@ describe('MuseHarnessAdapter', () => {
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'agent.message', message: 'One evidence-backed issue.' }),
     );
+    // Both turns report identical usage in this fixture, so the aggregate
+    // doubles the single-turn fixture values (per-turn semantics, summed).
     expect(events).toContainEqual(
       expect.objectContaining({
         type: 'usage.updated',
-        usage: expect.objectContaining({ inputTokens: 10, outputTokens: 4, turns: 2 }),
+        usage: expect.objectContaining({ inputTokens: 20, outputTokens: 8, turns: 2 }),
       }),
     );
     const evidence = events.find((event) => event.type === 'evidence.submitted');
@@ -427,5 +431,578 @@ describe('MuseHarnessAdapter', () => {
     expect(redactStructured({ summary: 'token=topsecret' }, ['topsecret'])).toEqual({
       summary: 'token=[REDACTED]',
     });
+  });
+
+  it('never forwards unrelated host secrets to the Muse child environment', async () => {
+    const seen: Array<NodeJS.ProcessEnv | undefined> = [];
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-env-'));
+    roots.push(root);
+    const input = await request(root);
+    const factory: MuseClientFactory = async (spawnInput) => {
+      seen.push(spawnInput.environment);
+      return {
+        startSession: async () => ({
+          sendText: async () =>
+            turn([
+              {
+                itemId: 'p',
+                revision: 1,
+                kind: 'agentMessage',
+                status: 'completed',
+                text: JSON.stringify({
+                  schemaVersion: 1,
+                  projectUnderstanding: 'x',
+                  criticalFlows: [],
+                  weakPoints: [],
+                  plannedChecks: ['x'],
+                }),
+              },
+            ]),
+        }),
+        close: async () => undefined,
+      };
+    };
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'model',
+      environment: {
+        PATH: '/usr/bin:/bin',
+        HOME: '/home/qa',
+        LANG: 'en_US.UTF-8',
+        UNRELATED_SECRET: 'do-not-leak',
+        GITHUB_TOKEN: 'do-not-leak',
+        OPENAI_API_KEY: 'do-not-leak',
+        DATABASE_URL: 'do-not-leak',
+        Path: '/windows-merge',
+        SENTRY_MUSE_MODEL: 'model',
+      },
+      clientFactory: factory,
+    });
+    await collect(adapter, input);
+    await adapter.dispose();
+    expect(seen).toHaveLength(1);
+    const child = seen[0] as Record<string, string>;
+    expect(child['UNRELATED_SECRET']).toBeUndefined();
+    expect(child['GITHUB_TOKEN']).toBeUndefined();
+    expect(child['OPENAI_API_KEY']).toBeUndefined();
+    expect(child['DATABASE_URL']).toBeUndefined();
+    expect(child['PATH']).toBeDefined();
+    expect(child['HOME']).toBeDefined();
+    expect(child['LANG']).toBeDefined();
+    expect(child['SENTRY_MUSE_MODEL']).toBe('model');
+    expect(Object.keys(child)).not.toContain('UNRELATED_SECRET');
+  });
+
+  it('sanitizes Windows-like and Linux-like environments case-insensitively', () => {
+    const windowsLike = buildMuseChildEnvironment({
+      source: {
+        Path: 'C:\\Windows\\System32',
+        SYSTEMROOT: 'C:\\Windows',
+        temp: 'C:\\Temp',
+        Github_Token: 'do-not-leak',
+        Aws_Secret_Access_Key: 'do-not-leak',
+      },
+      platform: 'win32',
+    });
+    expect(windowsLike.environment['Github_Token']).toBeUndefined();
+    expect(windowsLike.environment['Aws_Secret_Access_Key']).toBeUndefined();
+    expect(windowsLike.blockedNames).toContain('Github_Token');
+    expect(Object.keys(windowsLike.environment).length).toBeGreaterThan(0);
+    const linuxLike = buildMuseChildEnvironment({
+      source: { PATH: '/usr/bin', HOME: '/root', NEON_DATABASE_URL: 'do-not-leak' },
+      platform: 'linux',
+    });
+    expect(linuxLike.environment['NEON_DATABASE_URL']).toBeUndefined();
+    expect(linuxLike.environment['PATH']).toBe('/usr/bin');
+    expect(linuxLike.environment['HOME']).toBe('/root');
+  });
+
+  it('aggregates planning + execution usage without double counting', () => {
+    const planning = completed({
+      inputTokens: 10,
+      outputTokens: 4,
+      cachedTokens: 2,
+      reasoningTokens: 0,
+    });
+    const execution = completed({
+      inputTokens: 7,
+      outputTokens: 3,
+      cachedTokens: 5,
+      reasoningTokens: 0,
+    });
+    expect(aggregateTurnUsage([{ outcome: planning }, { outcome: execution }])).toEqual({
+      inputTokens: 17,
+      outputTokens: 7,
+      cachedInputTokens: 7,
+      turns: 2,
+    });
+    const noUsage = {
+      kind: 'completed',
+      observedStart: true,
+      params: { terminal: 'completed' },
+    } as MuseTurnOutcome;
+    expect(aggregateTurnUsage([{ outcome: planning }, { outcome: noUsage }])).toEqual({
+      inputTokens: 10,
+      outputTokens: 4,
+      cachedInputTokens: 2,
+      turns: 2,
+    });
+    const withDuration = {
+      kind: 'completed',
+      observedStart: true,
+      params: { terminal: 'completed', durationMs: 12 },
+    } as MuseTurnOutcome;
+    expect(aggregateTurnUsage([{ outcome: withDuration }])).toEqual({ turns: 1, durationMs: 12 });
+    expect(
+      aggregateTurnUsage([{ outcome: { kind: 'terminalUnknown' } as MuseTurnOutcome }]),
+    ).toBeUndefined();
+    expect(aggregateTurnUsage([])).toBeUndefined();
+  });
+
+  it('reports aggregated planning + execution usage on real runs', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-usage-'));
+    roots.push(root);
+    const input = await request(root);
+    let index = 0;
+    const plan = (usage: unknown) =>
+      turn(
+        [
+          {
+            itemId: 'p',
+            revision: 1,
+            kind: 'agentMessage',
+            status: 'completed',
+            text: JSON.stringify({
+              schemaVersion: 1,
+              projectUnderstanding: 'x',
+              criticalFlows: [],
+              weakPoints: [],
+              plannedChecks: ['x'],
+            }),
+          },
+        ],
+        usage as MuseTurnOutcome,
+      );
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'muse-spark-1.3-contributor',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          sendText: async () => {
+            index += 1;
+            if (index === 1)
+              return plan(
+                completed({
+                  inputTokens: 10,
+                  outputTokens: 4,
+                  cachedTokens: 2,
+                  reasoningTokens: 0,
+                }),
+              );
+            return turn(
+              [
+                {
+                  itemId: 'r',
+                  revision: 1,
+                  kind: 'agentMessage',
+                  status: 'completed',
+                  text: JSON.stringify({
+                    schemaVersion: 1,
+                    summary: 'usage check',
+                    checks: [],
+                    hypotheses: [],
+                    evidence: [],
+                    findings: [],
+                    limitations: [],
+                  }),
+                },
+              ],
+              completed({ inputTokens: 7, outputTokens: 3, cachedTokens: 5, reasoningTokens: 0 }),
+            );
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'usage.updated',
+        usage: expect.objectContaining({ inputTokens: 17, outputTokens: 7, turns: 2 }),
+      }),
+    );
+  });
+
+  it('rejects production findings with no evidence', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-noev-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = turn([
+      {
+        itemId: 'p',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          projectUnderstanding: 'x',
+          criticalFlows: [],
+          weakPoints: [],
+          plannedChecks: ['x'],
+        }),
+      },
+    ]);
+    const execution = turn([
+      {
+        itemId: 'r',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          summary: 'no evidence',
+          checks: [],
+          hypotheses: [],
+          evidence: [],
+          findings: [
+            {
+              title: 'Orphan',
+              category: 'logic',
+              severity: 'low',
+              confidence: 'probable',
+              description: 'no backing evidence',
+              locations: [{ relativePath: 'README.md' }],
+              evidenceKeys: [],
+              reproductionSteps: [],
+            },
+          ],
+          limitations: [],
+        }),
+      },
+    ]);
+    let index = 0;
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'model',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'MUSE_INVALID_RESULT' },
+    });
+  });
+
+  it('rejects confirmed findings backed only by manual reasoning', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-manual-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = turn([
+      {
+        itemId: 'p',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          projectUnderstanding: 'x',
+          criticalFlows: [],
+          weakPoints: [],
+          plannedChecks: ['x'],
+        }),
+      },
+    ]);
+    const execution = turn([
+      {
+        itemId: 'r',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          summary: 'manual only',
+          checks: [],
+          hypotheses: [],
+          evidence: [
+            { key: 'm1', type: 'manual', strength: 'agent_reasoning', description: 'I think so' },
+          ],
+          findings: [
+            {
+              title: 'Claim',
+              category: 'logic',
+              severity: 'low',
+              confidence: 'confirmed',
+              description: 'ungrounded confirmation',
+              locations: [{ relativePath: 'README.md' }],
+              evidenceKeys: ['m1'],
+              reproductionSteps: [],
+            },
+          ],
+          limitations: [],
+        }),
+      },
+    ]);
+    let index = 0;
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'model',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'MUSE_INVALID_RESULT' },
+    });
+  });
+
+  it('does not accept spoofed test evidence without observed tool execution', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-spoof-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = turn([
+      {
+        itemId: 'p',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          projectUnderstanding: 'x',
+          criticalFlows: [],
+          weakPoints: [],
+          plannedChecks: ['x'],
+        }),
+      },
+    ]);
+    const execution = turn([
+      {
+        itemId: 'r',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          summary: 'spoofed test',
+          checks: [],
+          hypotheses: [],
+          evidence: [
+            {
+              key: 't1',
+              type: 'test',
+              strength: 'reproduced_failure',
+              description: 'claimed failure',
+              framework: 'vitest',
+              name: 'suite',
+              status: 'failed',
+            },
+          ],
+          findings: [
+            {
+              title: 'Spoofed failure',
+              category: 'testing',
+              severity: 'high',
+              confidence: 'probable',
+              description: 'model-claimed failure with no tool run',
+              locations: [{ relativePath: 'README.md' }],
+              evidenceKeys: ['t1'],
+              reproductionSteps: [],
+            },
+          ],
+          limitations: [],
+        }),
+      },
+    ]);
+    let index = 0;
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'model',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    const evidenceEvents = events.filter((event) => event.type === 'evidence.submitted');
+    expect(evidenceEvents).toHaveLength(1);
+    const only = evidenceEvents[0];
+    expect(only?.type === 'evidence.submitted' && only.evidence.type).toBe('manual');
+    expect(only?.type === 'evidence.submitted' && only.evidence.strength).toBe('agent_reasoning');
+  });
+
+  it('still rejects mismatched command evidence against observed exit codes', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-cmdspoof-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = turn([
+      {
+        itemId: 'p',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          projectUnderstanding: 'x',
+          criticalFlows: [],
+          weakPoints: [],
+          plannedChecks: ['x'],
+        }),
+      },
+    ]);
+    const execution = turn([
+      {
+        itemId: 'shell-1',
+        revision: 1,
+        kind: 'userShell',
+        status: 'completed',
+        commandText: 'pnpm test',
+        exitCode: 0,
+      },
+      {
+        itemId: 'r',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          summary: 'exit mismatch',
+          checks: [],
+          hypotheses: [],
+          evidence: [
+            {
+              key: 'c1',
+              type: 'command',
+              strength: 'tool_diagnostic',
+              description: 'claimed failure',
+              command: 'pnpm test',
+              exitCode: 1,
+            },
+          ],
+          findings: [],
+          limitations: [],
+        }),
+      },
+    ]);
+    let index = 0;
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'model',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'MUSE_INVALID_RESULT' },
+    });
+  });
+
+  it('classifies unchanged baseline files vs agent-modified files', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-prov-'));
+    roots.push(root);
+    const input = await request(root);
+    await writeFile(join(root, 'generated.txt'), 'agent artifact\n');
+    const baselineContent = await import('node:fs/promises').then((fs) =>
+      fs.readFile(join(root, 'README.md')),
+    );
+    const { createHash } = await import('node:crypto');
+    const baselineHash = 'sha256:' + createHash('sha256').update(baselineContent).digest('hex');
+    const plan = turn([
+      {
+        itemId: 'p',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          projectUnderstanding: 'x',
+          criticalFlows: [],
+          weakPoints: [],
+          plannedChecks: ['x'],
+        }),
+      },
+    ]);
+    const execution = turn([
+      {
+        itemId: 'shell-1',
+        revision: 1,
+        kind: 'userShell',
+        status: 'completed',
+        commandText: 'pnpm test',
+        exitCode: 0,
+      },
+      {
+        itemId: 'r',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          summary: 'provenance',
+          checks: [],
+          hypotheses: [],
+          evidence: [
+            {
+              key: 'base',
+              type: 'code_reference',
+              strength: 'strong_code_evidence',
+              description: 'unchanged file',
+              relativePath: 'README.md',
+              lineStart: 1,
+              lineEnd: 1,
+            },
+            {
+              key: 'gen',
+              type: 'code_reference',
+              strength: 'strong_code_evidence',
+              description: 'new file',
+              relativePath: 'generated.txt',
+              lineStart: 1,
+              lineEnd: 1,
+            },
+          ],
+          findings: [],
+          limitations: [],
+        }),
+      },
+    ]);
+    let index = 0;
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'model',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    const submitted = events.filter((event) => event.type === 'evidence.submitted');
+    expect(submitted).toHaveLength(2);
+    // Without a baseline sidecar the adapter stays conservative: both modified.
+    for (const event of submitted) {
+      expect(event.type === 'evidence.submitted' && event.evidence.environmentState).toBe(
+        'modified_workspace',
+      );
+    }
+    expect(baselineHash).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 });
