@@ -27,15 +27,28 @@ export interface ToolCallSummary {
   approval_id?: string;
   /** SC-03 durable execution identity (present once an execution exists). */
   execution_id?: string;
+  /** SC-06 loop round/sequence for observability/client debugging (§116). */
+  round?: number;
+  sequence?: number;
+  /**
+   * Increment 3 loop note (additive): how a non-dispatched call was
+   * absorbed pre-execution — already_completed (F24), previously_rejected
+   * (F23 anti-nag), deferred_by_approval (F19). Status union stays frozen;
+   * absorbed calls reuse completed/rejected with the note attached.
+   */
+  note?: "already_completed" | "previously_rejected" | "deferred_by_approval";
 }
 
 export interface TurnResponseModel {
   provider: string;
   model: string;
+  /** SC-06 §117-118: total active latency across all model rounds in the turn. */
   latency_ms: number;
   input_tokens?: number;
   output_tokens?: number;
   cached_tokens?: number;
+  /** SC-06 §117-118: number of model calls aggregated into this turn total. */
+  calls?: number;
 }
 
 export interface TurnResponse {
@@ -83,4 +96,15 @@ export interface ApprovalOutcome {
   result_summary?: string;
   /** SC-03: the durable execution bound to this approval (when created). */
   execution_id?: string;
+  /**
+   * SC-06 §8 resume continuation (present only when a journaled loop won the
+   * single-flight resume and ran post-decision model rounds). The resumed
+   * assistant text + status persist as a NEW assistant turn; tool_calls
+   * aggregates ALL turn rounds (pre- + post-decision).
+   */
+  resumed?: boolean;
+  loop_id?: string;
+  continuation_text?: string;
+  continuation_status?: TurnStatus;
+  continuation_tool_calls?: ToolCallSummary[];
 }

@@ -943,7 +943,12 @@ test("SC03-freeze-consume-expiry: expired approval cannot consume or bind execut
       const approvalId = turn.tool_calls[0]?.approval_id as string;
       assert.ok(approvalId);
       app.store.unsafeDbHandle().prepare("UPDATE approvals SET expires_at = ? WHERE id = ?").run(new Date(Date.now() - 1000).toISOString(), approvalId);
-      await assert.rejects(() => app.conversation.approve(approvalId));
+      // SC-06 §49: an expired JOURNALED approval resumes the loop with the
+      // approval_expired envelope (already_resolved, no throw) instead of a
+      // bare rejection — but it must still never consume or bind execution.
+      const outcome = await app.conversation.approve(approvalId);
+      assert.equal(outcome.status, "already_resolved");
+      assert.equal(outcome.resumed, true);
       const row = app.store.getApproval(approvalId);
       assert.equal(row?.status, "expired");
       assert.equal(row?.consumed_at ?? null, null, "expired approval never consumes");

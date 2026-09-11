@@ -66,6 +66,9 @@ export class MemoryContextSource implements ContextSource {
       });
       return [];
     }
+    // F33 audit surface: exactly one retrieval attempt per turn bootstrap
+    // (the loop never re-runs retrieval between rounds or on resume).
+    this.metrics.counter("arthur.memory.retrieval_attempt", 1, { domain: session.mode });
     try {
       const memories = await this.gateway.retrieve(
         { session, trace_id: input.traceId ?? "memory-context-source" },

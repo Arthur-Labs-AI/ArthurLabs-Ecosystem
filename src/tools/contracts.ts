@@ -50,6 +50,14 @@ export interface ToolExecutionContext {
   deadline_at?: string;
   /** Composed signal: user cancellation + attempt timeout + overall deadline. */
   signal?: AbortSignal;
+  /**
+   * SC-06 §15-18/§92 loop protocol metadata (informational only, never
+   * authority): provider correlation id + round/sequence. When present the
+   * orchestrator persists them onto the durable tool-call row.
+   */
+  provider_call_id?: string;
+  round_no?: number;
+  sequence_no?: number;
 }
 
 export interface ToolResult {

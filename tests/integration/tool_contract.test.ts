@@ -191,7 +191,15 @@ test("U: system.echo still works end to end", async () => {
     assert.equal(message?.tool_call_id, "call-u");
     assert.equal(message?.name, "system.echo");
     // TASK-0011B: bounded structured payload { summary, data }.
-    assert.deepEqual(JSON.parse(message?.content ?? ""), { summary: "ping", data: { echo: "ping" } });
+    // SC-06 Increment 3 §28 (F35): completed results additionally carry the
+    // explicit untrusted-data markers (additive extension, not a shape break).
+    assert.deepEqual(JSON.parse(message?.content ?? ""), {
+      status: "completed",
+      summary: "ping",
+      source: "tool",
+      trust: "untrusted_data",
+      data: { echo: "ping" },
+    });
     const records = w.store.getToolCallsForTurn("t1");
     assert.equal(records[0]?.status, "completed");
   } finally {

@@ -42,7 +42,7 @@ import { EphemeralApprovalKeyProvider, type ApprovalKeyProvider } from "./approv
 import type { ApprovalRecord } from "../sessions/models";
 import { ExecutionStore } from "../sessions/execution_store";
 import { ToolExecutionCoordinator } from "./execution_coordinator";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 export interface ApprovalChallenge {
   approval_id: string;
@@ -148,6 +148,25 @@ export class ToolOrchestrator {
     this.metrics = deps.metrics;
   }
 
+  /**
+   * SC-06 §39-41 read-only batch preflight: index of the first call whose
+   * CURRENT permission decision is "approval", or -1 when no call needs
+   * approval. Performs definition lookup + permission evaluation ONLY —
+   * never validation side effects, persistence, or execution — so the loop
+   * can suspend mixed batches atomically at the barrier before anything in
+   * the batch runs. Unknown tools return -1 here (their rejection envelope
+   * is produced by the normal handleProposed path).
+   */
+  approvalBarrierIndex(proposed: ProposedToolCall[], mode: ArthurMode): number {
+    for (let i = 0; i < proposed.length; i += 1) {
+      const call = proposed[i] as ProposedToolCall;
+      const definition = this.registry.getDefinition(call.name);
+      if (!definition) continue;
+      if (this.permissions.evaluate(definition, mode) === "approval") return i;
+    }
+    return -1;
+  }
+
   async handleProposed(proposed: ProposedToolCall[], ctx: ToolExecutionContext): Promise<ProposedHandling> {
     const summaries: ToolCallSummary[] = [];
     const toolResultMessages: ChatMessage[] = [];
@@ -171,6 +190,19 @@ export class ToolOrchestrator {
         this.metrics.counter("arthur.tool.rejected", 1, { reason: "json_unsafe" });
         continue;
       }
+      // Increment 3.1 exact semantic identity: fingerprint the EXACT
+      // JSON-safe proposal crossing BEFORE any sanitization/redaction, so
+      // semantically distinct secrets never collide (§1). Canonicalization
+      // failure here (non-plain snapshot) yields undefined — the row simply
+      // carries no fingerprint (never a wrong one).
+      let exactFingerprint: string | undefined;
+      try {
+        if (jsonSafeArgs !== null && typeof jsonSafeArgs === "object" && !Array.isArray(jsonSafeArgs)) {
+          exactFingerprint = createHash("sha256").update(canonicalizeJson({ tool_name: call.name, arguments: jsonSafeArgs }), "utf8").digest("hex");
+        }
+      } catch {
+        exactFingerprint = undefined;
+      }
       const safeArgs = this.sanitizer.sanitizeObject(jsonSafeArgs as Record<string, unknown>);
       let executionSnapshot: Record<string, unknown>;
       try {
@@ -179,7 +211,7 @@ export class ToolOrchestrator {
         const reason = err instanceof JsonSafeError ? err.message : "arguments are not JSON-safe";
         const summary = this.rejectedSummary(call, definition?.risk ?? "unknown_tool", `invalid arguments: ${reason}`);
         summaries.push(summary);
-        this.recordToolCall(ctx, call, definition, "rejected", summary.result_summary ?? "invalid arguments");
+        this.recordToolCall(ctx, call, definition, "rejected", summary.result_summary ?? "invalid arguments", undefined);
         this.metrics.counter("arthur.tool.rejected", 1, { reason: "json_unsafe" });
         continue;
       }
@@ -187,7 +219,7 @@ export class ToolOrchestrator {
       if (!definition) {
         const summary = this.rejectedSummary(call, "unknown_tool", "unknown tool");
         summaries.push(summary);
-        this.recordToolCall(ctx, call, undefined, "rejected", summary.result_summary ?? "unknown tool");
+        this.recordToolCall(ctx, call, undefined, "rejected", summary.result_summary ?? "unknown tool", exactFingerprint);
         this.logger.warn("tool rejected: unknown tool", {
           trace_id: ctx.trace_id,
           session_id: ctx.session_id,
@@ -206,7 +238,7 @@ export class ToolOrchestrator {
           `invalid arguments: ${(validation.errors ?? []).join("; ")}`,
         );
         summaries.push(summary);
-        this.recordToolCall(ctx, call, definition, "rejected", summary.result_summary ?? "invalid arguments");
+        this.recordToolCall(ctx, call, definition, "rejected", summary.result_summary ?? "invalid arguments", exactFingerprint);
         this.logger.warn("tool rejected: invalid arguments", {
           trace_id: ctx.trace_id,
           session_id: ctx.session_id,
@@ -225,7 +257,7 @@ export class ToolOrchestrator {
           : "high-risk action rejected in Phase 1";
         const summary = this.rejectedSummary(call, definition.risk, reason);
         summaries.push(summary);
-        this.recordToolCall(ctx, call, definition, "rejected", summary.result_summary ?? reason);
+        this.recordToolCall(ctx, call, definition, "rejected", summary.result_summary ?? reason, exactFingerprint);
         this.logger.warn("tool rejected", {
           trace_id: ctx.trace_id,
           session_id: ctx.session_id,
@@ -240,7 +272,7 @@ export class ToolOrchestrator {
 
       if (decision === "approval") {
         needsApproval = true;
-        const { summary } = this.createPendingApproval(call, (executionSnapshot ?? safeArgs), definition, ctx);
+        const { summary } = this.createPendingApproval(call, (executionSnapshot ?? safeArgs), definition, ctx, exactFingerprint);
         summaries.push(summary);
         this.logger.info("tool pending approval", {
           trace_id: ctx.trace_id,
@@ -258,7 +290,7 @@ export class ToolOrchestrator {
       // so a crash between side effect and bookkeeping can never lose intent.
       // The coordinator receives the SAME immutable snapshot that was validated.
       try {
-        const autoRun = await this.runAutoExecution(call, (executionSnapshot ?? safeArgs) as Record<string, unknown>, definition, ctx, start);
+        const autoRun = await this.runAutoExecution(call, (executionSnapshot ?? safeArgs) as Record<string, unknown>, definition, ctx, start, exactFingerprint);
         const summary = autoRun.summary;
         summaries.push(summary);
         if (autoRun.toolMessage !== undefined && summary.status === "completed") {
@@ -278,7 +310,7 @@ export class ToolOrchestrator {
             : undefined;
         const summary = this.rejectedSummary(call, definition.risk, `execution failed: ${message}`);
         summaries.push(summary);
-        this.recordToolCall(ctx, call, definition, "failed", `execution failed: ${message}`);
+        this.recordToolCall(ctx, call, definition, "failed", `execution failed: ${message}`, exactFingerprint);
         this.logger.error("tool execution failed", {
           trace_id: ctx.trace_id,
           session_id: ctx.session_id,
@@ -1001,6 +1033,7 @@ export class ToolOrchestrator {
     definition: ToolDefinition,
     ctx: ToolExecutionContext,
     start: number,
+    exactFingerprint?: string,
   ): Promise<{ summary: ToolCallSummary; toolMessage?: ChatMessage }> {
     const toolCallId = newId();
     const policy = this.registry.getExecutionPolicy(call.name);
@@ -1016,6 +1049,12 @@ export class ToolOrchestrator {
         argumentsJson,
         riskLevel: definition.risk,
         status: "executing",
+        // SC-06 §15-18: provider protocol id + round/seq (informational).
+        providerCallId: ctx.provider_call_id ?? call.id,
+        roundNo: ctx.round_no,
+        sequenceNo: ctx.sequence_no,
+        // Increment 3.1: exact semantic fingerprint (pre-sanitization).
+        invocationFingerprint: exactFingerprint,
       });
       const row = this.coordinator.createExecution({
         toolName: call.name,
@@ -1229,6 +1268,7 @@ export class ToolOrchestrator {
     executionSnapshot: Record<string, unknown>,
     definition: ToolDefinition,
     ctx: ToolExecutionContext,
+    exactFingerprint?: string,
   ): { summary: ToolCallSummary } {
     const toolCallId = newId();
     // Canonical execution arguments: hash EXACTLY what the executor receives.
@@ -1274,6 +1314,12 @@ export class ToolOrchestrator {
         toolName: call.name,
         argumentsJson,
         riskLevel: definition.risk,
+        // SC-06 §15-18: provider protocol id + round/seq (informational).
+        providerCallId: ctx.provider_call_id ?? call.id,
+        roundNo: ctx.round_no,
+        sequenceNo: ctx.sequence_no,
+        // Increment 3.1: exact semantic fingerprint (pre-sanitization).
+        invocationFingerprint: exactFingerprint,
       },
       approval: {
         id: approvalId,
@@ -1314,6 +1360,7 @@ export class ToolOrchestrator {
     definition: ToolDefinition | undefined,
     status: "completed" | "pending_approval" | "rejected" | "failed",
     resultSummary: string,
+    exactFingerprint?: string,
   ): void {
     this.store.createToolCall({
       id: newId(),
@@ -1323,6 +1370,12 @@ export class ToolOrchestrator {
       riskLevel: definition?.risk ?? "read",
       status,
       resultSummary: this.sanitizer.capSummary(resultSummary),
+      // SC-06 §15-18: provider protocol id + round/seq (informational).
+      providerCallId: ctx.provider_call_id ?? call.id,
+      roundNo: ctx.round_no,
+      sequenceNo: ctx.sequence_no,
+      // Increment 3.1: exact semantic fingerprint (pre-sanitization).
+      invocationFingerprint: exactFingerprint,
     });
   }
 }

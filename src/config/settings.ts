@@ -25,6 +25,15 @@ export interface Settings {
   retryMaxAttempts: number;
   retryBaseDelayMs: number;
   approvalTtlSeconds: number;
+  // ---- SC-06 bounded conversation loop budgets (trusted config; the model
+  // can never change these). Human approval waiting never counts against
+  // loopActiveRuntimeMs; the approval TTL bounds that wait separately.
+  loopMaxRounds: number;
+  loopMaxCallsPerRound: number;
+  loopMaxCallsTotal: number;
+  loopMaxResultBytes: number;
+  loopMaxActiveMs: number;
+  loopRepeatLimit: number;
   logLevel: string;
   bindHost: string;
   bindPort: number;
@@ -63,6 +72,12 @@ const DEFAULTS_MAP: Settings = {
   retryMaxAttempts: 3,
   retryBaseDelayMs: 250,
   approvalTtlSeconds: 300,
+  loopMaxRounds: 6,
+  loopMaxCallsPerRound: 8,
+  loopMaxCallsTotal: 24,
+  loopMaxResultBytes: 64 * 1024,
+  loopMaxActiveMs: 120000,
+  loopRepeatLimit: 2,
   logLevel: "info",
   bindHost: "127.0.0.1",
   bindPort: 8080,
@@ -129,6 +144,12 @@ export function loadDotEnv(path = ".env"): void {
 export type SettingsOverrides = {
   [key: string]: string | number | boolean | undefined | VoiceSettingsOverrides;
   env?: string;
+  loopMaxRounds?: number;
+  loopMaxCallsPerRound?: number;
+  loopMaxCallsTotal?: number;
+  loopMaxResultBytes?: number;
+  loopMaxActiveMs?: number;
+  loopRepeatLimit?: number;
   dbPath?: string;
   modelProvider?: string;
   modelName?: string;
@@ -178,6 +199,12 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     ARTHUR_MODEL_RETRY_MAX_ATTEMPTS: envInt("ARTHUR_MODEL_RETRY_MAX_ATTEMPTS", DEFAULTS_MAP.retryMaxAttempts),
     ARTHUR_MODEL_RETRY_BASE_DELAY_MS: envInt("ARTHUR_MODEL_RETRY_BASE_DELAY_MS", DEFAULTS_MAP.retryBaseDelayMs),
     ARTHUR_APPROVAL_TTL_SECONDS: envInt("ARTHUR_APPROVAL_TTL_SECONDS", DEFAULTS_MAP.approvalTtlSeconds),
+    ARTHUR_TOOL_LOOP_MAX_ROUNDS: envInt("ARTHUR_TOOL_LOOP_MAX_ROUNDS", DEFAULTS_MAP.loopMaxRounds),
+    ARTHUR_TOOL_LOOP_MAX_CALLS_PER_ROUND: envInt("ARTHUR_TOOL_LOOP_MAX_CALLS_PER_ROUND", DEFAULTS_MAP.loopMaxCallsPerRound),
+    ARTHUR_TOOL_LOOP_MAX_CALLS_TOTAL: envInt("ARTHUR_TOOL_LOOP_MAX_CALLS_TOTAL", DEFAULTS_MAP.loopMaxCallsTotal),
+    ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES: envInt("ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES", DEFAULTS_MAP.loopMaxResultBytes),
+    ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS: envInt("ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS", DEFAULTS_MAP.loopMaxActiveMs),
+    ARTHUR_TOOL_LOOP_REPEAT_LIMIT: envInt("ARTHUR_TOOL_LOOP_REPEAT_LIMIT", DEFAULTS_MAP.loopRepeatLimit),
     ARTHUR_LOG_LEVEL: envStr("ARTHUR_LOG_LEVEL", DEFAULTS_MAP.logLevel),
     ARTHUR_BIND_HOST: envStr("ARTHUR_BIND_HOST", DEFAULTS_MAP.bindHost),
     ARTHUR_BIND_PORT: envInt("ARTHUR_BIND_PORT", DEFAULTS_MAP.bindPort),
@@ -198,8 +225,23 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS: envInt("ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS", DEFAULTS_MAP.memoryTemporaryTtlSeconds),
   };
 
+  // SC-06 §140: camelCase loopMax* overrides map to ARTHUR_TOOL_LOOP_*
+  // (the generic ARTHUR_ prefixer would produce the wrong key).
+  const LOOP_OVERRIDE_KEYS: Record<string, string> = {
+    loopMaxRounds: "ARTHUR_TOOL_LOOP_MAX_ROUNDS",
+    loopMaxCallsPerRound: "ARTHUR_TOOL_LOOP_MAX_CALLS_PER_ROUND",
+    loopMaxCallsTotal: "ARTHUR_TOOL_LOOP_MAX_CALLS_TOTAL",
+    loopMaxResultBytes: "ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES",
+    loopMaxActiveMs: "ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS",
+    loopRepeatLimit: "ARTHUR_TOOL_LOOP_REPEAT_LIMIT",
+  };
   for (const [key, value] of Object.entries(overrides)) {
     if (value === undefined) continue;
+    if (typeof key === "string" && key === "voice") continue;
+    if (typeof key === "string" && LOOP_OVERRIDE_KEYS[key] !== undefined) {
+      raw[LOOP_OVERRIDE_KEYS[key] as string] = value as number;
+      continue;
+    }
     const upper = key
       .replace(/[A-Z]/g, (m) => `_${m}`)
       .toUpperCase()
@@ -230,6 +272,12 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     retryMaxAttempts: Number(raw["ARTHUR_MODEL_RETRY_MAX_ATTEMPTS"]),
     retryBaseDelayMs: Number(raw["ARTHUR_MODEL_RETRY_BASE_DELAY_MS"]),
     approvalTtlSeconds: Number(raw["ARTHUR_APPROVAL_TTL_SECONDS"]),
+    loopMaxRounds: Number(raw["ARTHUR_TOOL_LOOP_MAX_ROUNDS"]),
+    loopMaxCallsPerRound: Number(raw["ARTHUR_TOOL_LOOP_MAX_CALLS_PER_ROUND"]),
+    loopMaxCallsTotal: Number(raw["ARTHUR_TOOL_LOOP_MAX_CALLS_TOTAL"]),
+    loopMaxResultBytes: Number(raw["ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES"]),
+    loopMaxActiveMs: Number(raw["ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS"]),
+    loopRepeatLimit: Number(raw["ARTHUR_TOOL_LOOP_REPEAT_LIMIT"]),
     logLevel: String(raw["ARTHUR_LOG_LEVEL"]),
     bindHost: String(raw["ARTHUR_BIND_HOST"]),
     bindPort: Number(raw["ARTHUR_BIND_PORT"]),

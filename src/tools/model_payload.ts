@@ -56,7 +56,10 @@ export function buildModelToolResultPayload(
 ): string {
   const summary = sanitizer.capSummary(result.summary);
 
-  const payload: Record<string, unknown> = { summary };
+  // Increment 3 §28 (SC06-F35): every completed model-facing result carries
+  // the explicit untrusted-data markers. Additive to the frozen {summary,
+  // data} contract — existing field assertions are unaffected.
+  const payload: Record<string, unknown> = { status: "completed", summary, source: "tool", trust: "untrusted_data" };
   if (result.data !== undefined) {
     // Recursive redaction with the existing sanitizer semantics. The walk
     // rebuilds every object/array it visits, so the serialized payload is
@@ -70,9 +73,12 @@ export function buildModelToolResultPayload(
     // summary. The omission payload is bounded by the summary cap itself, so
     // it always fits.
     return JSON.stringify({
+      status: "completed",
       summary,
       data_omitted: true,
       reason: TOOL_RESULT_PAYLOAD_TOO_LARGE,
+      source: "tool",
+      trust: "untrusted_data",
     });
   }
   return json;

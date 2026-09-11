@@ -14,7 +14,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { FakeProvider } from "../../src/models/providers/fake";
-import type { ModelRequest, ModelStreamEvent } from "../../src/models/contracts";
+import type { ModelRequest, ModelResult, ModelStreamEvent } from "../../src/models/contracts";
 import { FakeAudioCapture } from "../../src/voice/audio/capture";
 import { FakeAudioPlayback } from "../../src/voice/audio/playback";
 import { FakeWakeWordProvider } from "../../src/voice/wake/fake";
@@ -49,17 +49,16 @@ async function waitFor(predicate: () => boolean, timeoutMs = 8000, what = "condi
 }
 
 /**
- * Two-round scripted provider for the streaming voice turn:
- *  - round 1 (generateStream): propose the system.status tool call;
- *  - round 2 (buffered generate follow-up): read the structured role=tool
- *    payload from the history and answer with the uptime sentence.
+ * Two-round scripted provider for the streaming voice turn (SC-06: every
+ * loop round streams — the provider is streaming-capable across rounds):
+ *  - round 1: propose the system.status tool call;
+ *  - round 2+: read the structured role=tool payload from the history and
+ *    answer with the uptime sentence, streamed as live deltas.
  */
 function scriptedProvider(): FakeProvider {
   let round = 0;
-  return new FakeProvider({
-    responder: async (request: ModelRequest) => {
-      round += 1;
-      // Round 2: the structured tool result must be in the message history.
+  const answerFollowup = async (request: ModelRequest): Promise<ModelResult> => {
+      // Round 2+: the structured tool result must be in the message history.
       const toolMessage = request.history.find(
         (m) => m.role === "tool",
       );
@@ -91,10 +90,18 @@ function scriptedProvider(): FakeProvider {
         finish_reason: "stop",
         usage: { input_tokens: 20, output_tokens: 10, total_tokens: 30 },
       };
-    },
-    streamResponder: (async function* () {
+    };
+  return new FakeProvider({
+    responder: answerFollowup,
+    streamResponder: (async function* (request: ModelRequest) {
       round += 1;
-      assert.equal(round, 1, "stream round proposes the tool call");
+      if (round > 1) {
+        const followup = await answerFollowup(request);
+        yield { type: "text_delta", text: EXPECTED_ANSWER };
+        yield { type: "usage", usage: followup.usage };
+        yield { type: "done", finish_reason: followup.finish_reason };
+        return;
+      }
       yield {
         type: "tool_call",
         call: { id: "call_uptime_1", name: "system.status", arguments: {} },

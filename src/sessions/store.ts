@@ -18,7 +18,10 @@ import { SecretSanitizer } from "../security/sanitize";
 import type {
   ApprovalRecord,
   ApprovalStatus,
+  ConversationLoopRecord,
+  ConversationLoopState,
   IdempotencyRecord,
+  LoopTranscriptEntry,
   ModelCallRecord,
   SessionRecord,
   ToolCallRecord,
@@ -205,7 +208,13 @@ function validateSecureSchema(db: DatabaseSync): void {
     sessions: ["id", "mode", "created_at", "updated_at", "status"],
     turns: ["id", "session_id", "role", "text", "created_at", "trace_id", "status", "mode"],
     model_calls: ["id", "turn_id", "provider", "model", "latency_ms", "status", "created_at"],
-    tool_calls: ["id", "turn_id", "tool_name", "arguments_json", "risk_level", "status"],
+    tool_calls: ["id", "turn_id", "tool_name", "arguments_json", "risk_level", "status",
+      "provider_call_id", "round_no", "sequence_no", "invocation_fingerprint"],
+    conversation_loops: ["id", "turn_id", "session_id", "mode", "state", "current_round",
+      "model_calls_used", "tool_calls_used", "active_runtime_ms", "waiting_approval_id",
+      "last_batch_fingerprint", "trace_id", "client_request_id", "budgets_json",
+      "tool_schema_fingerprint", "transcript_json", "created_at", "updated_at",
+      "rejected_fingerprints", "consecutive_repeats"],
     approvals: ["id", "turn_id", "session_id", "tool_call_id", "status", "claimed_at", "risk_level",
       "binding_version", "consumed_at", "mode", "tool_version", "tool_definition_hash", "presentation_json",
       "presentation_hash", "authorization_digest", "signing_key_id", "invalidated_reason", "decision_channel"],
@@ -220,7 +229,8 @@ function validateSecureSchema(db: DatabaseSync): void {
     }
   }
   const indexes = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all() as Array<{ name: string }>).map((row) => row.name));
-  for (const index of ["idx_turns_session", "idx_approvals_status", "idx_idempotency_client_request", "idx_executions_state", "idx_attempts_execution"]) {
+  for (const index of ["idx_turns_session", "idx_approvals_status", "idx_idempotency_client_request", "idx_executions_state", "idx_attempts_execution",
+    "idx_loops_turn", "idx_loops_state", "idx_loops_waiting_approval", "idx_tool_calls_provider", "idx_tool_calls_turn_status"]) {
     if (!indexes.has(index)) throw new Error(`Schema validation failed for index ${index}`);
   }
   const foreignKeyFailures = db.prepare("PRAGMA foreign_key_check").all();
@@ -446,6 +456,75 @@ const MIGRATIONS: Migration[] = [
       // rows keep NULL (summary_only semantics preserved retroactively).
       const cols = columnNames(db, "tool_executions");
       if (!cols.has("result_data_json")) db.exec("ALTER TABLE tool_executions ADD COLUMN result_data_json TEXT");
+    },
+  },
+  {
+    version: 11,
+    name: "conversation_loop_journal",
+    up: (db: DatabaseSync) => {
+      // SC-06 Increment 2: durable loop journal + provider protocol identity.
+      // Additive only. Existing tool_calls rows keep NULL provider_call_id /
+      // round_no / sequence_no (pre-SC-06 semantics preserved retroactively).
+      const toolCols = columnNames(db, "tool_calls");
+      if (!toolCols.has("provider_call_id")) db.exec("ALTER TABLE tool_calls ADD COLUMN provider_call_id TEXT");
+      if (!toolCols.has("round_no")) db.exec("ALTER TABLE tool_calls ADD COLUMN round_no INTEGER");
+      if (!toolCols.has("sequence_no")) db.exec("ALTER TABLE tool_calls ADD COLUMN sequence_no INTEGER");
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS conversation_loops (
+          id TEXT PRIMARY KEY,
+          turn_id TEXT NOT NULL,
+          session_id TEXT NOT NULL,
+          mode TEXT NOT NULL CHECK(mode IN ('personal','business')),
+          state TEXT NOT NULL CHECK(state IN ('CREATED','MODEL_RUNNING','ROUND_READY','TOOL_EXECUTING','WAITING_APPROVAL','RESUMING','COMPLETED','FAILED','INTERRUPTED','LIMIT_REACHED')),
+          current_round INTEGER NOT NULL DEFAULT 0 CHECK(current_round >= 0),
+          model_calls_used INTEGER NOT NULL DEFAULT 0 CHECK(model_calls_used >= 0),
+          tool_calls_used INTEGER NOT NULL DEFAULT 0 CHECK(tool_calls_used >= 0),
+          active_runtime_ms INTEGER NOT NULL DEFAULT 0 CHECK(active_runtime_ms >= 0),
+          waiting_approval_id TEXT,
+          last_batch_fingerprint TEXT,
+          trace_id TEXT NOT NULL,
+          client_request_id TEXT NOT NULL,
+          budgets_json TEXT NOT NULL DEFAULT '{}',
+          tool_schema_fingerprint TEXT,
+          transcript_json TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (turn_id) REFERENCES turns(id) ON DELETE CASCADE,
+          FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_loops_turn ON conversation_loops(turn_id);
+        CREATE INDEX IF NOT EXISTS idx_loops_state ON conversation_loops(state);
+        CREATE INDEX IF NOT EXISTS idx_loops_waiting_approval ON conversation_loops(waiting_approval_id);
+        CREATE INDEX IF NOT EXISTS idx_tool_calls_provider ON tool_calls(turn_id, provider_call_id);
+      `);
+    },
+  },
+  {
+    version: 12,
+    name: "loop_anti_nag_cycle",
+    up: (db: DatabaseSync) => {
+      // SC-06 Increment 3: bounded rejected-intent fingerprints (§50-51) +
+      // consecutive-batch-repeat counter (§57-58). Additive only; existing
+      // rows default to empty/no-repeat.
+      const cols = columnNames(db, "conversation_loops");
+      if (!cols.has("rejected_fingerprints")) {
+        db.exec("ALTER TABLE conversation_loops ADD COLUMN rejected_fingerprints TEXT NOT NULL DEFAULT '[]'");
+      }
+      if (!cols.has("consecutive_repeats")) {
+        db.exec("ALTER TABLE conversation_loops ADD COLUMN consecutive_repeats INTEGER NOT NULL DEFAULT 0");
+      }
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tool_calls_turn_status ON tool_calls(turn_id, status);`);
+    },
+  },
+  {
+    version: 13,
+    name: "invocation_fingerprint",
+    up: (db: DatabaseSync) => {
+      // SC-06 Increment 3.1: exact semantic invocation identity per tool-call
+      // row (SHA-256 hex or NULL for pre-3.1 rows). Only the fingerprint is
+      // stored; argument persistence rules are unchanged (sanitized JSON).
+      const cols = columnNames(db, "tool_calls");
+      if (!cols.has("invocation_fingerprint")) db.exec("ALTER TABLE tool_calls ADD COLUMN invocation_fingerprint TEXT");
     },
   },
 ];
@@ -706,12 +785,20 @@ export class SessionStore {
     riskLevel: ToolRisk;
     status: ToolCallStatus;
     resultSummary?: string;
+    /** SC-06 §15-18 provider protocol correlation id (NULL = pre-SC-06). */
+    providerCallId?: string;
+    roundNo?: number;
+    sequenceNo?: number;
+    /** Increment 3.1 exact semantic fingerprint (NULL = pre-3.1/unhashable). */
+    invocationFingerprint?: string;
   }): ToolCallRecord {
     const now = nowIso();
     this.db
       .prepare(
-        `INSERT INTO tool_calls (id, turn_id, tool_name, arguments_json, risk_level, status, result_summary, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tool_calls (id, turn_id, tool_name, arguments_json, risk_level, status, result_summary, created_at, updated_at,
+          provider_call_id, round_no, sequence_no, invocation_fingerprint)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+
       )
       .run(
         input.id,
@@ -723,6 +810,10 @@ export class SessionStore {
         input.resultSummary === undefined ? null : this.sanitizer.capSummary(input.resultSummary),
         now,
         now,
+        input.providerCallId ?? null,
+        input.roundNo ?? null,
+        input.sequenceNo ?? null,
+        input.invocationFingerprint ?? null,
       );
     return {
       id: input.id,
@@ -734,7 +825,18 @@ export class SessionStore {
       result_summary: input.resultSummary === undefined ? undefined : this.sanitizer.capSummary(input.resultSummary),
       created_at: now,
       updated_at: now,
+      provider_call_id: input.providerCallId ?? null,
+      round_no: input.roundNo ?? null,
+      sequence_no: input.sequenceNo ?? null,
+      invocation_fingerprint: input.invocationFingerprint ?? null,
     };
+  }
+
+  /** SC-06 §21: look up a durable tool call by provider protocol id within a turn. */
+  getToolCallByProvider(turnId: string, providerCallId: string): ToolCallRecord | undefined {
+    return this.db.prepare("SELECT * FROM tool_calls WHERE turn_id = ? AND provider_call_id = ?").get(turnId, providerCallId) as unknown as
+      | ToolCallRecord
+      | undefined;
   }
 
   getToolCall(id: string): ToolCallRecord | undefined {
@@ -764,6 +866,268 @@ export class SessionStore {
         id,
       );
     }
+  }
+
+  // ---- conversation loops (SC-06 §90-91 durable journal) ------------------
+
+  /**
+   * Persist a new loop journal row BEFORE active progression begins (§1).
+   * Identity is server-generated; no model/provider value chooses it.
+   */
+  createLoop(input: {
+    id: string;
+    turnId: string;
+    sessionId: string;
+    mode: ArthurMode;
+    traceId: string;
+    clientRequestId: string;
+    budgetsJson: string;
+    toolSchemaFingerprint?: string;
+  }): ConversationLoopRecord {
+    const now = nowIso();
+    this.db
+      .prepare(
+        `INSERT INTO conversation_loops
+          (id, turn_id, session_id, mode, state, current_round, model_calls_used, tool_calls_used,
+           active_runtime_ms, waiting_approval_id, last_batch_fingerprint, trace_id, client_request_id,
+           budgets_json, tool_schema_fingerprint, transcript_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'CREATED', 0, 0, 0, 0, NULL, NULL, ?, ?, ?, ?, NULL, ?, ?)`,
+      )
+      .run(
+        input.id, input.turnId, input.sessionId, input.mode,
+        input.traceId, input.clientRequestId, input.budgetsJson,
+        input.toolSchemaFingerprint ?? null, now, now,
+      );
+    const row = this.getLoop(input.id);
+    if (!row) throw new Error("loop journal row could not be created");
+    return row;
+  }
+
+  getLoop(id: string): ConversationLoopRecord | undefined {
+    return this.db.prepare("SELECT * FROM conversation_loops WHERE id = ?").get(id) as unknown as
+      | ConversationLoopRecord
+      | undefined;
+  }
+
+  getLoopByTurn(turnId: string): ConversationLoopRecord | undefined {
+    return this.db.prepare("SELECT * FROM conversation_loops WHERE turn_id = ? ORDER BY created_at DESC LIMIT 1").get(turnId) as unknown as
+      | ConversationLoopRecord
+      | undefined;
+  }
+
+  getLoopByApproval(approvalId: string): ConversationLoopRecord | undefined {
+    return this.db.prepare("SELECT * FROM conversation_loops WHERE waiting_approval_id = ? ORDER BY updated_at DESC LIMIT 1").get(approvalId) as unknown as
+      | ConversationLoopRecord
+      | undefined;
+  }
+
+  /**
+   * Conditional state transition (CAS): UPDATE succeeds only when the current
+   * state is one of `from`. NEVER read-then-write without this gate (§3).
+   * Returns true only for the single caller that won the transition.
+   */
+  casLoopState(
+    id: string,
+    from: ConversationLoopState[],
+    to: ConversationLoopState,
+    patch?: {
+      currentRound?: number;
+      modelCallsUsed?: number;
+      toolCallsUsed?: number;
+      activeRuntimeMs?: number;
+      lastBatchFingerprint?: string;
+    },
+  ): boolean {
+    if (from.length === 0) return false;
+    const placeholders = from.map(() => "?").join(",");
+    const sets: string[] = ["state = ?", "updated_at = ?"];
+    const params: unknown[] = [to, nowIso()];
+    if (patch?.currentRound !== undefined) { sets.push("current_round = ?"); params.push(patch.currentRound); }
+    if (patch?.modelCallsUsed !== undefined) { sets.push("model_calls_used = ?"); params.push(patch.modelCallsUsed); }
+    if (patch?.toolCallsUsed !== undefined) { sets.push("tool_calls_used = ?"); params.push(patch.toolCallsUsed); }
+    if (patch?.activeRuntimeMs !== undefined) { sets.push("active_runtime_ms = ?"); params.push(patch.activeRuntimeMs); }
+    if (patch?.lastBatchFingerprint !== undefined) { sets.push("last_batch_fingerprint = ?"); params.push(patch.lastBatchFingerprint); }
+    params.push(id);
+    for (const s of from) params.push(s);
+    const result = this.db
+      .prepare(`UPDATE conversation_loops SET ${sets.join(", ")} WHERE id = ? AND state IN (${placeholders})`)
+      .run(...(params as []));
+    return Number(result.changes) === 1;
+  }
+
+  /**
+   * Durably attach the approval barrier (§6-7): active-state row enters
+   * WAITING_APPROVAL with the single waiting_approval_id, ONLY when no
+   * unresolved barrier is already attached (waiting_approval_id IS NULL).
+   * Concurrent second-barrier attempts lose this CAS and fail closed.
+   */
+  setLoopBarrierCAS(input: {
+    id: string;
+    approvalId: string;
+    currentRound: number;
+    modelCallsUsed: number;
+    toolCallsUsed: number;
+    activeRuntimeMs: number;
+    lastBatchFingerprint?: string;
+    budgetsJson?: string;
+  }): boolean {
+    const sets = ["state = 'WAITING_APPROVAL'", "waiting_approval_id = ?", "current_round = ?",
+      "model_calls_used = ?", "tool_calls_used = ?", "active_runtime_ms = ?", "updated_at = ?"];
+    const params: unknown[] = [input.approvalId, input.currentRound, input.modelCallsUsed,
+      input.toolCallsUsed, input.activeRuntimeMs, nowIso()];
+    if (input.lastBatchFingerprint !== undefined) { sets.push("last_batch_fingerprint = ?"); params.push(input.lastBatchFingerprint); }
+    if (input.budgetsJson !== undefined) { sets.push("budgets_json = ?"); params.push(input.budgetsJson); }
+    params.push(input.id);
+    const result = this.db
+      .prepare(
+        `UPDATE conversation_loops SET ${sets.join(", ")}
+         WHERE id = ? AND waiting_approval_id IS NULL
+           AND state IN ('CREATED','MODEL_RUNNING','ROUND_READY','TOOL_EXECUTING')`,
+      )
+      .run(...(params as []));
+    return Number(result.changes) === 1;
+  }
+
+  /**
+   * Single-flight resume claim (§47, F20): WAITING_APPROVAL -> RESUMING.
+   * Exactly one concurrent caller wins; all others observe truth.
+   * Optionally binds the expected approval so a stale decision for a
+   * superseded barrier cannot claim the row.
+   */
+  claimLoopResumeCAS(id: string, expectedApprovalId?: string): boolean {
+    const extra = expectedApprovalId !== undefined ? " AND waiting_approval_id = ?" : "";
+    const params: unknown[] = expectedApprovalId !== undefined ? [nowIso(), id, expectedApprovalId] : [nowIso(), id];
+    const result = this.db
+      .prepare(
+        `UPDATE conversation_loops SET state = 'RESUMING', updated_at = ?
+         WHERE id = ? AND state = 'WAITING_APPROVAL'${extra}`,
+      )
+      .run(...(params as []));
+    return Number(result.changes) === 1;
+  }
+
+  /** Clear the resolved barrier after a successful resume claim (same txn as follow-up). */
+  clearLoopBarrier(id: string): void {
+    this.db.prepare("UPDATE conversation_loops SET waiting_approval_id = NULL, updated_at = ? WHERE id = ?").run(nowIso(), id);
+  }
+
+  /** Non-state bookkeeping: counters/round/fingerprint/transcript/budgets. */
+  updateLoopProgress(id: string, patch: {
+    currentRound?: number;
+    modelCallsUsed?: number;
+    toolCallsUsed?: number;
+    activeRuntimeMs?: number;
+    lastBatchFingerprint?: string | null;
+    budgetsJson?: string;
+    transcriptJson?: string;
+    consecutiveRepeats?: number;
+  }): void {
+    const sets: string[] = ["updated_at = ?"];
+    const params: unknown[] = [nowIso()];
+    if (patch.currentRound !== undefined) { sets.push("current_round = ?"); params.push(patch.currentRound); }
+    if (patch.modelCallsUsed !== undefined) { sets.push("model_calls_used = ?"); params.push(patch.modelCallsUsed); }
+    if (patch.toolCallsUsed !== undefined) { sets.push("tool_calls_used = ?"); params.push(patch.toolCallsUsed); }
+    if (patch.activeRuntimeMs !== undefined) { sets.push("active_runtime_ms = ?"); params.push(patch.activeRuntimeMs); }
+    if (patch.lastBatchFingerprint !== undefined) { sets.push("last_batch_fingerprint = ?"); params.push(patch.lastBatchFingerprint); }
+    if (patch.budgetsJson !== undefined) { sets.push("budgets_json = ?"); params.push(patch.budgetsJson); }
+    if (patch.transcriptJson !== undefined) { sets.push("transcript_json = ?"); params.push(patch.transcriptJson); }
+    if (patch.consecutiveRepeats !== undefined) { sets.push("consecutive_repeats = ?"); params.push(patch.consecutiveRepeats); }
+    params.push(id);
+    this.db.prepare(`UPDATE conversation_loops SET ${sets.join(", ")} WHERE id = ?`).run(...(params as []));
+  }
+
+  /** Increment 3 §50-51: read bounded rejected-intent fingerprints. */
+  getLoopRejectedFingerprints(loopId: string): string[] {
+    const loop = this.getLoop(loopId);
+    if (!loop?.rejected_fingerprints) return [];
+    try {
+      const parsed: unknown = JSON.parse(loop.rejected_fingerprints);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((v): v is string => typeof v === "string" && /^[0-9a-f]{64}$/.test(v)).slice(0, 32);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Increment 3 §50-51: append a rejected invocation fingerprint (bounded
+   * 32, set semantics). Called when the USER rejects an approval-requiring
+   * action — the fingerprint is recorded at decision time so re-proposals
+   * in the same turn never re-prompt (§50) and the record survives restart.
+   */
+  addLoopRejectedFingerprint(loopId: string, fingerprint: string): void {
+    if (!/^[0-9a-f]{64}$/.test(fingerprint)) return;
+    const current = this.getLoopRejectedFingerprints(loopId);
+    if (current.includes(fingerprint)) return;
+    const next = [...current, fingerprint].slice(-32);
+    this.db.prepare("UPDATE conversation_loops SET rejected_fingerprints = ?, updated_at = ? WHERE id = ?")
+      .run(JSON.stringify(next), nowIso(), loopId);
+  }
+
+  /** Increment 3 §57-58: read the consecutive-repeat counter. */
+  getLoopConsecutiveRepeats(loopId: string): number {
+    return this.getLoop(loopId)?.consecutive_repeats ?? 0;
+  }
+
+  /**
+   * Increment 3.1 durable completed-mutation fingerprints (F24 authority).
+   * Returns persisted invocation_fingerprint values for completed +
+   * non-read-risk rows. NULL entries (pre-3.1 rows) are returned as null
+   * and skipped by callers — never rehashed from sanitized args.
+   * Reads excluded (§8).
+   */
+  getCompletedMutationFingerprints(turnId: string): Array<string | null> {
+    const rows = this.db
+      .prepare("SELECT invocation_fingerprint FROM tool_calls WHERE turn_id = ? AND status = 'completed' AND risk_level != 'read'")
+      .all(turnId) as Array<{ invocation_fingerprint: string | null }>;
+    return rows.map((r) => r.invocation_fingerprint);
+  }
+
+  /**
+   * Append bounded compact transcript entries (§16, §95-97): operational
+   * continuation metadata only. Caps at 64 entries (oldest dropped) and caps
+   * each summary; sanitizes args JSON. Never stores rich payloads/reasoning.
+   */
+  appendLoopTranscript(loopId: string, entries: LoopTranscriptEntry[]): void {
+    const loop = this.getLoop(loopId);
+    if (!loop) throw new Error("loop journal row not found");
+    let current: LoopTranscriptEntry[] = [];
+    try {
+      current = loop.transcript_json ? (JSON.parse(loop.transcript_json) as LoopTranscriptEntry[]) : [];
+      if (!Array.isArray(current)) current = [];
+    } catch {
+      current = [];
+    }
+    const safe = entries.map((e) => ({
+      round_no: e.round_no,
+      sequence_no: e.sequence_no,
+      ...(e.note !== undefined ? { note: e.note } : {}),
+      provider_call_id: String(e.provider_call_id).slice(0, 256),
+      tool_call_id: String(e.tool_call_id),
+      tool_name: String(e.tool_name).slice(0, 256),
+      arguments_json: this.sanitizeJson(e.arguments_json).slice(0, 4096),
+      status: String(e.status).slice(0, 32),
+      result_summary: e.result_summary === undefined ? undefined : this.sanitizer.capSummary(e.result_summary).slice(0, 500),
+    }));
+    const merged = [...current, ...safe].slice(-64);
+    this.db.prepare("UPDATE conversation_loops SET transcript_json = ?, updated_at = ? WHERE id = ?")
+      .run(JSON.stringify(merged), nowIso(), loopId);
+  }
+
+  /**
+   * Startup recovery (§102, F46): every loop left in a non-suspended,
+   * non-terminal state by a crash is marked FAILED — never auto-resumed.
+   * WAITING_APPROVAL rows are left untouched (explicit human barrier).
+   * Returns the number of rows failed closed.
+   */
+  failClosedActiveLoops(): number {
+    const result = this.db
+      .prepare(
+        `UPDATE conversation_loops SET state = 'FAILED', updated_at = ?
+         WHERE state IN ('CREATED','MODEL_RUNNING','ROUND_READY','TOOL_EXECUTING','RESUMING')`,
+      )
+      .run(nowIso());
+    return Number(result.changes);
   }
 
   // ---- approvals ---------------------------------------------------------
@@ -857,6 +1221,10 @@ export class SessionStore {
       toolName: string;
       argumentsJson: string;
       riskLevel: ToolRisk;
+      providerCallId?: string;
+      roundNo?: number;
+      sequenceNo?: number;
+      invocationFingerprint?: string;
     };
     approval: {
       id: string;
@@ -887,6 +1255,10 @@ export class SessionStore {
         argumentsJson: input.toolCall.argumentsJson,
         riskLevel: input.toolCall.riskLevel,
         status: "pending_approval",
+        providerCallId: input.toolCall.providerCallId,
+        roundNo: input.toolCall.roundNo,
+        sequenceNo: input.toolCall.sequenceNo,
+        invocationFingerprint: input.toolCall.invocationFingerprint,
       });
       return this.createApproval({
         id: input.approval.id,
@@ -1153,6 +1525,19 @@ export class SessionStore {
         .run(nowIso(), approvalId);
       this.updateToolCall(toolCallId, { status: "failed", resultSummary: message });
     });
+  }
+
+  /**
+   * SC-06 §49 expiry: atomic pending -> expired when past expiry. Returns
+   * true only for the caller that marked it. Terminal; never auto-resumes
+   * execution. The loop resume path converts it to an approval_expired
+   * envelope with at most one bounded model continuation.
+   */
+  expireApprovalCAS(approvalId: string): boolean {
+    const result = this.db
+      .prepare("UPDATE approvals SET status = 'expired', resolved_at = ? WHERE id = ? AND status = 'pending' AND expires_at <= ?")
+      .run(nowIso(), approvalId, nowIso());
+    return Number(result.changes) === 1;
   }
 
   /** Atomic pending -> rejected; returns false if the approval was not pending. */

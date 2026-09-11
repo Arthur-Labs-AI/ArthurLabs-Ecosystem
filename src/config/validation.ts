@@ -66,6 +66,27 @@ export function validateSettings(settings: Settings): Settings {
   if (settings.approvalTtlSeconds < 1) {
     problems.push("ARTHUR_APPROVAL_TTL_SECONDS must be >= 1");
   }
+  // SC-06 section 140-141 + 64: loop budgets are trusted config with
+  // conservative Software Core bounds. Invalid values fail startup with
+  // INVALID_CONFIG; the model can never change them (§63).
+  if (!Number.isInteger(settings.loopMaxRounds) || settings.loopMaxRounds < 1 || settings.loopMaxRounds > 10) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_ROUNDS must be an integer between 1 and 10");
+  }
+  if (!Number.isInteger(settings.loopMaxCallsPerRound) || settings.loopMaxCallsPerRound < 1 || settings.loopMaxCallsPerRound > 16) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_CALLS_PER_ROUND must be an integer between 1 and 16");
+  }
+  if (!Number.isInteger(settings.loopMaxCallsTotal) || settings.loopMaxCallsTotal < 1 || settings.loopMaxCallsTotal > 64) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_CALLS_TOTAL must be an integer between 1 and 64");
+  }
+  if (!Number.isInteger(settings.loopMaxResultBytes) || settings.loopMaxResultBytes < 1024) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES must be an integer >= 1024");
+  }
+  if (!Number.isInteger(settings.loopMaxActiveMs) || settings.loopMaxActiveMs < 1000) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS must be an integer >= 1000");
+  }
+  if (!Number.isInteger(settings.loopRepeatLimit) || settings.loopRepeatLimit < 1 || settings.loopRepeatLimit > 3) {
+    problems.push("ARTHUR_TOOL_LOOP_REPEAT_LIMIT must be an integer between 1 and 3");
+  }
   if (settings.maxMessageChars < 1) {
     problems.push("ARTHUR_MAX_MESSAGE_CHARS must be >= 1");
   }

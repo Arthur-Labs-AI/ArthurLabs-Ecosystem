@@ -415,6 +415,17 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
     });
     startupRecovery = { recovered: 0 };
   }
+  // SC-06 §102/F46: fail closed any loop left in an active (non-suspended,
+  // non-terminal) state by a dead runtime. WAITING_APPROVAL rows survive —
+  // the explicit human barrier is the only resumable continuation point.
+  try {
+    const failedClosed = store.failClosedActiveLoops();
+    if (failedClosed > 0) logger.info("startup loop recovery failed closed", { failed_closed: failedClosed });
+  } catch (err) {
+    logger.error("startup loop recovery failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   return {
     config: settings,

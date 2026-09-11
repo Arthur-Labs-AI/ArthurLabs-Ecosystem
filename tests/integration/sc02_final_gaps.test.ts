@@ -746,9 +746,15 @@ test("HTTP: challenge + approve/reject matrix (session binding, channels, duplic
     assert.ok(expId);
     const anyStore = app.store as unknown as { db: { prepare: (s: string) => { run: (...a: unknown[]) => unknown } } };
     anyStore.db.prepare("UPDATE approvals SET expires_at = ? WHERE id = ?").run(new Date(Date.now() - 1000).toISOString(), expId);
+    // SC-06 §49: an expired JOURNALED approval resumes with the
+    // approval_expired envelope (200 already_resolved + bounded continuation),
+    // never an executor invocation. Non-journaled expiry still fails 400
+    // (see conversation.test.ts "expired approval is rejected").
     const expApprove = await post(`${base}/v1/approvals/${expId}/approve`, { session_id: (third as unknown as { session_id: string }).session_id });
-    assert.equal(expApprove.status, 400);
-    assert.equal(((await expApprove.json()) as { error: { code: string } }).error.code, "APPROVAL_INVALID");
+    assert.equal(expApprove.status, 200);
+    const expOutcome = (await expApprove.json()) as { status: string; resumed?: boolean };
+    assert.equal(expOutcome.status, "already_resolved");
+    assert.equal(expOutcome.resumed, true);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     app.close();
