@@ -124,7 +124,12 @@ export interface BuildDeps {
   localHost?: LocalCapabilityHost;
   /** SC-04 trusted local capability config (filesystem scopes, app catalog). */
   localConfig?: import("./tools/local_config").LocalCapabilityConfig;
-  /** SC-05 trusted git capability config (repository catalog). Absent = git tools not registered. */
+  /**
+   * SC-05 trusted git capability config (repository catalog). Absent = git
+   * tools not registered. Tests inject this directly; production startup
+   * resolves it from the ARTHUR_GIT_CONFIG file (Settings.gitConfigPath)
+   * when no explicit deps.gitConfig is provided.
+   */
   gitConfig?: import("./tools/git/repository_catalog").GitCapabilityConfig;
   /** App-level secret used to sign and verify approval tokens. */
   approvalSigningSecret?: string;
@@ -246,6 +251,19 @@ export function createVoiceController(
 
 export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}): App {
   const settings = validateSettings(loadSettings(overrides));
+  // TASK-0022 production path: resolve the trusted SC-05 catalog from the
+  // ARTHUR_GIT_CONFIG file unless tests injected deps.gitConfig (or a full
+  // deps.localHost). Absent = disabled; present-but-invalid fails closed
+  // with INVALID_CONFIG out of buildApp (never silently disabled). Feeds
+  // the same buildDefaultLocalHost -> LocalGitAdapter -> registerGitPack
+  // path as the injected config; no second registry or CLI-only path.
+  let gitConfig = deps.gitConfig;
+  if (gitConfig === undefined && deps.localHost === undefined) {
+    const { resolveGitCapabilityConfig } =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("./tools/git/config_file") as typeof import("./tools/git/config_file");
+    gitConfig = resolveGitCapabilityConfig(settings.gitConfigPath);
+  }
   const secrets = collectSecrets(settings);
   const logger = new Logger(settings.logLevel, secrets);
   const metrics = new InMemoryMetrics();
@@ -264,7 +282,7 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
   // secured registry -> execution-service -> permission boundary.
   const localSystem = deps.localSystem ?? new NodeLocalSystemAdapter();
   const localHost: LocalCapabilityHost =
-    deps.localHost ?? buildDefaultLocalHost(localSystem, deps.localConfig, deps.gitConfig);
+    deps.localHost ?? buildDefaultLocalHost(localSystem, deps.localConfig, gitConfig);
   registerBuiltinTools(registry, harness, { host: localHost });
 
   const permissions = new PermissionService();

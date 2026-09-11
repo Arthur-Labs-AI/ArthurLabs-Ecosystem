@@ -54,6 +54,13 @@ export interface Settings {
   memoryExtractionConfidenceThreshold: number;
   memoryExtractionImportanceThreshold: number;
   memoryTemporaryTtlSeconds: number;
+  /**
+   * SC-05 production git catalog file (TASK-0022): machine-local JSON file
+   * using the exact GitCapabilityConfig schema. Empty = git capability
+   * disabled (startup succeeds, git.* tools absent). Set via
+   * ARTHUR_GIT_CONFIG. Never model input.
+   */
+  gitConfigPath: string;
   // ---- Phase 3 local voice layer ----
   voice: VoiceSettings;
 }
@@ -97,6 +104,7 @@ const DEFAULTS_MAP: Settings = {
   memoryExtractionConfidenceThreshold: 0.6,
   memoryExtractionImportanceThreshold: 0.2,
   memoryTemporaryTtlSeconds: 86400,
+  gitConfigPath: "",
   voice: DEFAULT_VOICE_SETTINGS,
 };
 
@@ -180,6 +188,8 @@ export type SettingsOverrides = {
   memoryExtractionConfidenceThreshold?: number;
   memoryExtractionImportanceThreshold?: number;
   memoryTemporaryTtlSeconds?: number;
+  /** SC-05 production git catalog file (ARTHUR_GIT_CONFIG). */
+  gitConfigPath?: string;
   /** Phase 3 voice settings (nested override object; flattened env in .env). */
   voice?: VoiceSettingsOverrides;
 }
@@ -223,6 +233,7 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     ARTHUR_MEMORY_EXTRACTION_CONFIDENCE_THRESHOLD: envFloat("ARTHUR_MEMORY_EXTRACTION_CONFIDENCE_THRESHOLD", DEFAULTS_MAP.memoryExtractionConfidenceThreshold),
     ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD: envFloat("ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD", DEFAULTS_MAP.memoryExtractionImportanceThreshold),
     ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS: envInt("ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS", DEFAULTS_MAP.memoryTemporaryTtlSeconds),
+    ARTHUR_GIT_CONFIG: envStr("ARTHUR_GIT_CONFIG", DEFAULTS_MAP.gitConfigPath),
   };
 
   // SC-06 §140: camelCase loopMax* overrides map to ARTHUR_TOOL_LOOP_*
@@ -234,6 +245,9 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     loopMaxResultBytes: "ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES",
     loopMaxActiveMs: "ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS",
     loopRepeatLimit: "ARTHUR_TOOL_LOOP_REPEAT_LIMIT",
+    // SC-05 production catalog file: camelCase gitConfigPath maps to
+    // ARTHUR_GIT_CONFIG (the generic prefixer would yield the wrong key).
+    gitConfigPath: "ARTHUR_GIT_CONFIG",
   };
   for (const [key, value] of Object.entries(overrides)) {
     if (value === undefined) continue;
@@ -297,6 +311,7 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     memoryExtractionConfidenceThreshold: Number(raw["ARTHUR_MEMORY_EXTRACTION_CONFIDENCE_THRESHOLD"]),
     memoryExtractionImportanceThreshold: Number(raw["ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD"]),
     memoryTemporaryTtlSeconds: Number(raw["ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS"]),
+    gitConfigPath: String(raw["ARTHUR_GIT_CONFIG"]),
     voice: loadVoiceSettings(overrides as VoiceSettingsOverrides),
   };
 }

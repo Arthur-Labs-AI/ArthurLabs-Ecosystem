@@ -12,6 +12,12 @@ data/
 coverage/
 .DS_Store
 ARTHUR Software Core v1/
+# Machine-local trusted capability catalogs (e.g. ARTHUR_GIT_CONFIG) -
+# physical paths differ per machine and must never be committed.
+.arthur-git.local.json
+*.git-catalog.json
+arthur.git.json
+.git-catalog/
 # AI harness runtime/task state is machine-local and controller-owned.
 .ai-harness/
 
