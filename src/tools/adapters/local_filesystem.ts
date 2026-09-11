@@ -130,6 +130,7 @@ export class NodeLocalFilesystemAdapter implements LocalFilesystemAdapter {
     throwIfAborted(signal);
     const display = rel === "" ? "." : rel;
     this.scopes.requirePermission(rootId, "list", display);
+    if (this.sensitive !== null) assertNotSensitive(rootId, display, this.sensitive);
     const scope = this.scopes.get(rootId);
     const realRoot = this.scopes.realRoot(rootId);
     const candidate = resolveLexical(rootId, scope.physical_root, rel);
@@ -183,6 +184,7 @@ export class NodeLocalFilesystemAdapter implements LocalFilesystemAdapter {
     throwIfAborted(signal);
     const display = rel === "" ? "." : rel;
     this.scopes.requirePermission(rootId, "stat", display);
+    if (this.sensitive !== null) assertNotSensitive(rootId, display, this.sensitive);
     const scope = this.scopes.get(rootId);
     const realRoot = this.scopes.realRoot(rootId);
     const candidate = resolveLexical(rootId, scope.physical_root, rel);
@@ -322,6 +324,7 @@ export class NodeLocalFilesystemAdapter implements LocalFilesystemAdapter {
     throwIfAborted(signal);
     const display = rel === "" ? "." : rel;
     this.scopes.requirePermission(rootId, "search", display);
+    if (this.sensitive !== null) assertNotSensitive(rootId, display, this.sensitive);
     if (query.length === 0) {
       throw resourceUnsupported("Search query must not be empty", rootId, display);
     }

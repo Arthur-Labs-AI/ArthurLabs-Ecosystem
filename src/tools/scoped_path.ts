@@ -187,8 +187,47 @@ export function assertPhysicalContainment(rootId: string, rel: string, realRoot:
   }
 }
 
+/**
+ * True when a normalized relative path resolves THROUGH a real `.git`
+ * directory component (exact, lowercase ` ".git"` segment). Component
+ * semantics only: `.gitignore`, `.gitattributes`, `.github`, and
+ * `some.git.txt` never match. Both separators are normalized first, so
+ * Windows backslash and mixed-separator forms hit the same guard.
+ * Dot-dot segments are resolved lexically (popped) before matching, so
+ * `src/../.git/config` is caught while `a/.git/../notes.md` (which
+ * escapes the `.git` tree) is not.
+ */
+export function isGitMetadataPath(rel: string): boolean {
+  if (typeof rel !== "string") return false;
+  // Normalize BOTH separators, resolve "." lexically, resolve ".." by
+  // popping (a leading ".." that would escape the scope simply resolves
+  // to empty here; the lexical containment gate still rejects it with
+  // TOOL_SCOPE_VIOLATION). Only then inspect surviving components, so
+  // "src/../.git/config" is caught while "a/.git/../notes.md"
+  // (normalized to "a/notes.md") is not. Comparison is
+  // case-insensitive: Windows scopes are case-insensitive filesystems.
+  const unified = rel.split("\\").join("/");
+  const stack: string[] = [];
+  for (const raw of unified.split("/")) {
+    if (raw === "" || raw === ".") continue;
+    if (raw === "..") {
+      if (stack.length > 0) stack.pop();
+      continue;
+    }
+    stack.push(raw);
+  }
+  return stack.some((seg) => seg.toLowerCase() === ".git");
+}
+
 /** Sensitive basename policy (defense in depth; content sanitizer is second line). */
 export function assertNotSensitive(rootId: string, rel: string, policy: SensitivePathPolicy = DEFAULT_SENSITIVE_POLICY): void {
+  // SC-05 hardening: any path through a real `.git` directory component
+  // is Git metadata and must flow through the git.* tools, never the
+  // generic filesystem tools. Checked BEFORE the suffix allowlist so a
+  // hypothetical `.git/*.example` cannot slip through.
+  if (isGitMetadataPath(rel)) {
+    throw resourceUnsupported("Resource is blocked by sensitive-path policy", rootId, rel);
+  }
   // Split on BOTH separators: a Windows-style "sub\\.env" must hit the same
   // basename block as "sub/.env" (SC-04 F15). Splitting on "/" only would
   // let backslash-separated sensitive basenames bypass the policy.
