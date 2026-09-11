@@ -169,6 +169,7 @@ Thumbs.db
 *.key
 *.p12
 secrets/
+.superharness/.dashboard_auth_token
 
 # Task-runner session state (controller-owned, machine-local)
 .ai-harness/

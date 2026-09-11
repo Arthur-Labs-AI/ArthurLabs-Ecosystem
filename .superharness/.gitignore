@@ -1,4 +1,5 @@
 # Security — never commit secrets
+.dashboard_auth_token
 .env
 *.key
 *.pem

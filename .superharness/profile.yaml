@@ -11,4 +11,4 @@ workflow:
   require_tdd: true
 agents:
   enabled:
-  - codex-cli
+    - codex-cli
