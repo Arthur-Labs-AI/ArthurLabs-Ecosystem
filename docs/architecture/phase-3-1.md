@@ -178,6 +178,7 @@ Muse Code 1.1.1 installed via the official installer and device-code login.
 ## Live Muse validation result (final, WSL2 Ubuntu prepared host)
 
 LIVE MUSE SMOKE TEST PASSED
+
 - Muse executable version: Muse Code 1.1.1 (1.1.1-R2514.1)
 - SDK version: 0.1.1 (pinned, unchanged)
 - Configured model ID: muse-spark-1.3-contributor (exact, no fallback)
