@@ -305,6 +305,34 @@ describe('fake end-to-end run engine', () => {
     f.database.close();
   });
 
+  it('cleans up workspaces, releases the lock, and keeps partial events after a timeout', async () => {
+    const f = await fixture();
+    const result = await coordinator(f).simulate(f.added.project.id, {
+      scenario: 'timeout',
+      agentStackIds: ['stack_muse_main'],
+      runTimeoutMs: 25,
+    });
+    const timedOut = result.agentRuns.find((item) => item.status === 'timed_out');
+    expect(timedOut).toBeDefined();
+    // Workspace cleanup ran for the timed-out worker.
+    if (timedOut !== undefined) {
+      const workspacePath = agentWorkspacePath(
+        f.dataRoot,
+        f.added.project.id,
+        result.run.id,
+        timedOut.id,
+      );
+      await expect(stat(workspacePath)).rejects.toThrow();
+    }
+    // Project lock released back to ready.
+    expect(f.manager.getManagedCopy(f.added.project.id)?.state).toBe('ready');
+    // Partial valid events (plan, tool activity) remain persisted.
+    expect(result.events.some((item) => item.event.type === 'investigation.plan.created')).toBe(
+      true,
+    );
+    f.database.close();
+  });
+
   it('marks an all-fail run failed when no worker produced usable output', async () => {
     const f = await fixture();
     const result = await coordinator(f).simulate(f.added.project.id, { scenario: 'all-fail' });

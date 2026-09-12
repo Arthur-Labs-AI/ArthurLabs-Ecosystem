@@ -13,6 +13,7 @@ import {
   type OperationId,
 } from '@qa/shared';
 import {
+  describeSentryAgentEvidenceContract,
   EvidenceSchema,
   FindingSchema,
   HarnessEventSchema,
@@ -47,6 +48,7 @@ import {
   createProductionMuseClient,
   type MuseClientFactory,
   type MuseClientView,
+  type MuseHostCompatibility,
   type MuseSessionView,
   type MuseTurnOutcome,
   type MuseTurnView,
@@ -475,6 +477,20 @@ async function convertEvidence(
       },
     });
   }
+  const downgradedManual = (summary: string): Evidence =>
+    EvidenceSchema.parse({
+      schemaVersion: 1 as const,
+      id: createEvidenceId(),
+      qaRunId: request.qaRunId,
+      agentRunId: request.agentRunId,
+      strength: 'agent_reasoning',
+      environmentState: 'modified_workspace' as const,
+      description: source.description,
+      artifactIds: [],
+      createdAt: nowIsoTimestamp(),
+      type: 'manual',
+      manual: { summary, author: 'Muse Code' },
+    });
   const base = {
     schemaVersion: 1 as const,
     id: createEvidenceId(),
@@ -496,10 +512,12 @@ async function convertEvidence(
     });
   }
   if (source.type === 'command') {
-    // Operation-linked command evidence validates by linked operation identity
-    // (op key + exit-code equality), which is stronger than string recall: the
-    // model cannot reliably reproduce long compound shell strings verbatim.
-    // Without a valid operation link, strict string identity still applies.
+    // Canonical integrity: the OBSERVED operation is authoritative. When an
+    // operation link exists, command/exitCode/durationMs derive from it —
+    // model-authored text can never become the canonical execution record.
+    // Text mismatch policy (deterministic): reproduced claims are rejected
+    // as misrepresentation; weaker ones downgrade to manual reasoning.
+    // Exit-code alteration on a matched operation is always fatal (spoofing).
     if (source.operationKey !== undefined) {
       const linked = observed.operations.get(source.operationKey);
       if (linked === undefined) {
@@ -514,6 +532,30 @@ async function convertEvidence(
           'Command evidence operation does not match the claimed exit code.',
         );
       }
+      if (
+        source.command !== undefined &&
+        normalizeCommandText(source.command) !== normalizeCommandText(linked.commandText)
+      ) {
+        if (isReproducedClaim) {
+          throw new MuseHarnessError(
+            'MUSE_INVALID_RESULT',
+            'Reproduced command evidence text does not match the linked observed operation.',
+          );
+        }
+        return downgradedManual(
+          'Command text differs from the linked observed operation; downgraded: ' +
+            source.description,
+        );
+      }
+      return EvidenceSchema.parse({
+        ...base,
+        type: 'command',
+        command: {
+          command: linked.commandText,
+          exitCode: linked.exitCode,
+          ...(linked.durationMs === undefined ? {} : { durationMs: linked.durationMs }),
+        },
+      });
     } else if (
       source.command === undefined ||
       source.exitCode === undefined ||
@@ -655,7 +697,9 @@ function executionPrompt(plan: ReturnType<typeof SentryInvestigationPlanV1Schema
     'Evidence type MUST be exactly one of: command, runtime, code_reference, test, log, manual. Strength MUST be exactly one of: reproduced_failure, reproduced_behavior, tool_diagnostic, strong_code_evidence, agent_reasoning.',
     'For command evidence, use ONLY short single-purpose commands you issued alone (never chains joined by &&, ;, or |, never pipelines): reproduce the command text EXACTLY character-for-character as you issued it, with the exact exit code you observed. Any deviation fails validation. Prefer test and code_reference evidence for findings over command evidence.',
     'For test/runtime/log evidence, set operationKey to the observed operation that produced it: op_1 is your first tool/command operation this session, op_2 the second, and so on in execution order. Omit operationKey only for pure reasoning/manual evidence. Never invent operation keys.',
-    'Schema: {"schemaVersion":1,"summary":string,"checks":[{"name":string,"status":"passed|failed|inconclusive|not_run","details"?:string}],"hypotheses":[{"title":string,"rationale":string,"relatedPaths":string[],"plannedChecks":string[at least one]}],"evidence":[{"key":string,"type":"command|runtime|code_reference|test|log|manual","strength":"reproduced_failure|reproduced_behavior|tool_diagnostic|strong_code_evidence|agent_reasoning","description":string,"relativePath"?:string,"lineStart"?:number,"lineEnd"?:number,"command"?:string,"exitCode"?:number,"framework"?:string,"name"?:string,"status"?:"passed|failed","source"?:string}],"findings":[{"title":string,"category":string,"categoryDetail"?:string,"severity":"critical|high|medium|low|info","confidence":"confirmed|strong|probable|speculative","description":string,"expectedBehavior"?:string,"actualBehavior"?:string,"locations":[{"relativePath":string,"lineStart"?:number,"lineEnd"?:number,"symbol"?:string}],"evidenceKeys":string[],"reproductionSteps":string[],"rootCause"?:string,"recommendedFix"?:string}],"limitations":string[]}.',
+    'Evidence item contract (every field the parser accepts; copy names exactly): ' +
+      describeSentryAgentEvidenceContract(),
+    'Schema: {"schemaVersion":1,"summary":string,"checks":[{"name":string,"status":"passed|failed|inconclusive|not_run","details"?:string}],"hypotheses":[{"title":string,"rationale":string,"relatedPaths":string[],"plannedChecks":string[at least one]}],"evidence":[<see Evidence item contract above>],"findings":[{"title":string,"category":string,"categoryDetail"?:string,"severity":"critical|high|medium|low|info","confidence":"confirmed|strong|probable|speculative","description":string,"expectedBehavior"?:string,"actualBehavior"?:string,"locations":[{"relativePath":string,"lineStart"?:number,"lineEnd"?:number,"symbol"?:string}],"evidenceKeys":string[],"reproductionSteps":string[],"rootCause"?:string,"recommendedFix"?:string}],"limitations":string[]}.',
     'Frozen plan: ' + JSON.stringify(plan),
   ].join('\n');
 }
@@ -674,6 +718,7 @@ export class MuseHarnessAdapter implements HarnessAdapter {
   private readonly secrets: readonly string[];
   private client?: MuseClientView;
   private serverVersion?: string;
+  private hostCompatibility?: MuseHostCompatibility;
   private closePromise?: Promise<void>;
   private readonly operationIds = new Map<string, OperationId>();
   private readonly completedTools = new Set<string>();
@@ -770,10 +815,33 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         if (timer !== undefined) clearTimeout(timer);
       }
     };
+    // Final drain helper: approval decisions buffer in the session and are
+    // otherwise emitted only when the next item arrives. A decision made on
+    // the last item of a turn must still reach observable run history.
+    const drainRemaining = function* (): Generator<HarnessEvent> {
+      const drained = session?.drainApprovalDecisions?.() ?? [];
+      for (const decision of drained) {
+        yield event(agentRunId, {
+          type: 'warning',
+          code: decision.approved ? 'MUSE_APPROVAL_GRANTED' : 'MUSE_APPROVAL_DENIED',
+          message:
+            'Tool approval ' +
+            (decision.approved ? 'granted' : 'denied') +
+            ' for ' +
+            decision.toolName +
+            ' (' +
+            decision.reason +
+            ')',
+        });
+      }
+    };
     try {
       for (;;) {
         const step = await nextWithDeadline();
-        if (step.done === true) return step.value;
+        if (step.done === true) {
+          yield* drainRemaining();
+          return step.value;
+        }
         yield step.value;
       }
     } catch (cause) {
@@ -920,6 +988,22 @@ export class MuseHarnessAdapter implements HarnessAdapter {
       if (this.client.serverVersion !== undefined) this.serverVersion = this.client.serverVersion;
       if (this.serverVersion !== undefined) {
         this.options.onRuntimeIdentity?.({ harnessVersion: this.serverVersion });
+      }
+      const compatibility = this.client.compatibility;
+      if (compatibility !== undefined) {
+        this.hostCompatibility = compatibility;
+        // Unknown protocol states warn instead of being silently assumed:
+        // a non-1 envelope schema version is a real compatibility risk.
+        if (compatibility.schemaVersion !== undefined && compatibility.schemaVersion !== 1) {
+          yield event(request.agentRunId, {
+            type: 'warning',
+            code: 'MUSE_SCHEMA_MISMATCH',
+            message:
+              'Muse host reports MSP envelope schema version ' +
+              String(compatibility.schemaVersion) +
+              '; Sentry expects version 1.',
+          });
+        }
       }
       const session = await this.client.startSession({
         workspaceRoot: request.workspace.runtimePath,
@@ -1125,6 +1209,9 @@ export class MuseHarnessAdapter implements HarnessAdapter {
 
   runtimeIdentity() {
     return {
+      // Requested/configured model through Muse. The host does not expose
+      // authoritative provider-level execution identity, so this must never
+      // be read as proof of which model weights served a turn.
       modelId: this.runtime.modelId,
       adapterId: 'muse-code',
       adapterVersion: '0.1.0',

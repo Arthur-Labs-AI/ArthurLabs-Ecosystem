@@ -274,30 +274,60 @@ describe('MuseHarnessAdapter', () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
-  it('decides approvals: workspace-contained allowed, network/protected/outside denied', () => {
+  it('decides approvals fail-closed on semantics, not label matching', () => {
     const ws = '/tmp/ws/project';
+    const choices = [
+      {
+        choiceId: 'persist_allow',
+        label: 'Always allow (sneaky label match)',
+        decision: 'approved',
+        scope: 'session',
+      },
+      { choiceId: 'once_allow', label: 'Allow once', decision: 'approved', scope: 'once' },
+      { choiceId: 'stop_it', label: 'Stop', decision: 'abort', scope: 'once' },
+    ];
     const base = (overrides: Record<string, unknown> = {}) => ({
       approvalId: 'appr_1',
-      availableChoices: [
-        { choiceId: 'allow_once', label: 'Allow once' },
-        { choiceId: 'abort', label: 'Reject' },
-      ],
+      availableChoices: choices,
       toolName: 'bash',
       ...overrides,
     });
-    // Workspace-contained shell subject: approved with server-offered choice.
+    // Known shell + canonical workspace root + once approval: approve, and
+    // choose the once-scoped approval even though a persistent approval
+    // with an allow-matching label is listed first.
     expect(
       decideMuseApproval(base({ subject: { kind: 'shell', workspaceRoot: ws } }) as never, ws),
-    ).toMatchObject({ choiceId: 'allow_once', approved: true });
-    // Network subject: denied via offered abort choice.
+    ).toMatchObject({ choiceId: 'once_allow', approved: true });
+    // Unknown subject kind: deny via semantic abort (exact offered choice).
+    expect(
+      decideMuseApproval(
+        base({ subject: { kind: 'futureTeleport', workspaceRoot: ws } }) as never,
+        ws,
+      ),
+    ).toMatchObject({ choiceId: 'stop_it', approved: false });
+    // Missing workspaceRoot where containment is required: deny.
+    expect(decideMuseApproval(base({ subject: { kind: 'shell' } }) as never, ws)).toMatchObject({
+      approved: false,
+    });
+    // Traversal escape: deny.
+    expect(
+      decideMuseApproval(
+        base({ subject: { kind: 'shell', workspaceRoot: ws + '/../outside' } }) as never,
+        ws,
+      ),
+    ).toMatchObject({ approved: false });
+    // Sibling with common prefix: deny.
+    expect(
+      decideMuseApproval(
+        base({ subject: { kind: 'process', workspaceRoot: '/tmp/ws/project2' } }) as never,
+        ws,
+      ),
+    ).toMatchObject({ approved: false });
+    // Network: deny.
     expect(
       decideMuseApproval(base({ subject: { kind: 'network', host: 'example.com' } }) as never, ws),
-    ).toMatchObject({ choiceId: 'abort', approved: false });
-    // Outside-workspace subject: denied.
-    expect(
-      decideMuseApproval(base({ subject: { kind: 'shell', workspaceRoot: '/etc' } }) as never, ws),
-    ).toMatchObject({ approved: false });
-    // Protected write / judge escalation: denied.
+    ).toMatchObject({ choiceId: 'stop_it', approved: false });
+    // Protected write / judge escalation: deny.
     expect(
       decideMuseApproval(
         base({ protectedWrite: true, subject: { kind: 'shell', workspaceRoot: ws } }) as never,
@@ -310,6 +340,58 @@ describe('MuseHarnessAdapter', () => {
         ws,
       ),
     ).toMatchObject({ approved: false });
+    // Only persistent approval available: never auto-approve.
+    expect(
+      decideMuseApproval(
+        {
+          approvalId: 'appr_2',
+          toolName: 'bash',
+          availableChoices: [
+            { choiceId: 'forever', label: 'Always', decision: 'approved', scope: 'session' },
+            { choiceId: 'stop_it', label: 'Stop', decision: 'abort', scope: 'once' },
+          ],
+          subject: { kind: 'shell', workspaceRoot: ws },
+        } as never,
+        ws,
+      ),
+    ).toMatchObject({ choiceId: 'stop_it', approved: false });
+    // Invented choice IDs are never produced: every selected ID comes from
+    // the offered set.
+    const verdict = decideMuseApproval(
+      base({ subject: { kind: 'tool', workspaceRoot: ws + '/sub' } }) as never,
+      ws,
+    );
+    expect(choices.map((c) => c.choiceId)).toContain(verdict.choiceId);
+    // No safe denial choice at all: fail closed by throwing, never inventing.
+    expect(() =>
+      decideMuseApproval(
+        {
+          approvalId: 'appr_3',
+          toolName: 'bash',
+          availableChoices: [{ choiceId: 'x', label: 'X', decision: 'weird', scope: 'once' }],
+          subject: { kind: 'network' },
+        } as never,
+        ws,
+      ),
+    ).toThrow();
+  });
+
+  it('approves file access only for workspace-contained canonical targets', () => {
+    const ws = '/tmp/ws/project';
+    const choices = [
+      { choiceId: 'once_allow', label: 'Allow once', decision: 'approved', scope: 'once' },
+      { choiceId: 'stop_it', label: 'Stop', decision: 'abort', scope: 'once' },
+    ];
+    const file = (subject: Record<string, unknown>) =>
+      decideMuseApproval(
+        { approvalId: 'f', toolName: 'read', availableChoices: choices, subject } as never,
+        ws,
+      );
+    expect(file({ kind: 'fileAccess', path: ws + '/src/a.ts' })).toMatchObject({ approved: true });
+    expect(file({ kind: 'fileAccess', path: ws + '/../outside' })).toMatchObject({
+      approved: false,
+    });
+    expect(file({ kind: 'fileAccess' })).toMatchObject({ approved: false });
   });
 
   it('surfaces session approval decisions as observable warning events', async () => {
@@ -389,6 +471,82 @@ describe('MuseHarnessAdapter', () => {
     );
   });
 
+  it('still surfaces an approval decision when no later turn item follows', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-approval-tail-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = turn([
+      {
+        itemId: 'p',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          projectUnderstanding: 'x',
+          criticalFlows: [],
+          weakPoints: [],
+          plannedChecks: ['x'],
+        }),
+      },
+    ]);
+    // The denial becomes available only after the last item was consumed:
+    // per-item drains see nothing, so only the final end-of-turn drain can
+    // surface it.
+    let itemsExhausted = false;
+    const execution: MuseTurnView = {
+      items: async function* () {
+        yield {
+          itemId: 'r',
+          revision: 1,
+          kind: 'agentMessage',
+          status: 'completed',
+          text: JSON.stringify({
+            schemaVersion: 1,
+            summary: 'done',
+            checks: [],
+            hypotheses: [],
+            evidence: [],
+            findings: [],
+            limitations: [],
+          }),
+        } as MuseFoldedItem;
+        itemsExhausted = true;
+      },
+      completed: Promise.resolve(completed()),
+    };
+    let index = 0;
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'model',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          sendText: async () => (++index === 1 ? plan : execution),
+          drainApprovalDecisions: () =>
+            itemsExhausted
+              ? [
+                  {
+                    approvalId: 'appr_9',
+                    toolName: 'bash',
+                    choiceId: 'abort',
+                    approved: false,
+                    reason: 'network subjects are never auto-approved',
+                  },
+                ]
+              : [],
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'MUSE_APPROVAL_DENIED' }),
+    );
+  });
+
   it('bounds a hung turn with the per-turn watchdog', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-muse-watchdog-'));
     roots.push(root);
@@ -430,11 +588,14 @@ describe('MuseHarnessAdapter', () => {
     });
   });
 
-  it('uses the documented noninteractive mode without sandbox-disable host flags', () => {
+  it('uses least-authority approval mode without sandbox-disable host flags', () => {
     expect(MUSE_HOST_ARGUMENTS).toEqual(['serve']);
     expect(MUSE_HOST_ARGUMENTS).not.toContain('--yolo');
     expect(MUSE_HOST_ARGUMENTS).not.toContain('--disable-sandbox');
-    expect(MUSE_APPROVAL_MODE).toBe('allowAll');
+    // onRequest routes every tool request to Sentry's explicit decider
+    // instead of letting the host pre-resolve matches; the sandbox boundary
+    // is orthogonal and stays enforced by the host in every mode.
+    expect(MUSE_APPROVAL_MODE).toBe('onRequest');
   });
 
   it.each([
@@ -1089,6 +1250,181 @@ describe('MuseHarnessAdapter', () => {
     expect(only?.type === 'evidence.submitted' && only.evidence.strength).toBe(
       'reproduced_failure',
     );
+  });
+
+  it('never persists model-authored command text over the observed operation', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-canon-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = turn([
+      {
+        itemId: 'p',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          projectUnderstanding: 'x',
+          criticalFlows: [],
+          weakPoints: [],
+          plannedChecks: ['x'],
+        }),
+      },
+    ]);
+    const lyingExecution = (strength: string) =>
+      turn([
+        {
+          itemId: 'shell-1',
+          revision: 1,
+          kind: 'userShell',
+          status: 'completed',
+          commandText: 'cat README.md',
+          exitCode: 0,
+        },
+        {
+          itemId: 'r',
+          revision: 1,
+          kind: 'agentMessage',
+          status: 'completed',
+          text: JSON.stringify({
+            schemaVersion: 1,
+            summary: 'lying command',
+            checks: [],
+            hypotheses: [],
+            evidence: [
+              {
+                key: 'c1',
+                type: 'command',
+                strength,
+                description: 'claimed command',
+                command: 'rm -rf something',
+                exitCode: 0,
+                operationKey: 'op_1',
+              },
+            ],
+            findings: [],
+            limitations: [],
+          }),
+        },
+      ]);
+    const runWith = async (strength: string) => {
+      let index = 0;
+      const adapter = new MuseHarnessAdapter({
+        executable: 'muse-test',
+        modelId: 'model',
+        environment: {},
+        clientFactory: async () => ({
+          startSession: async () => ({
+            sendText: async () => (++index === 1 ? plan : lyingExecution(strength)),
+          }),
+          close: async () => undefined,
+        }),
+      });
+      const events = await collect(adapter, input);
+      await adapter.dispose();
+      return events;
+    };
+    // Reproduced lie: rejected, and the false text never becomes canonical
+    // command evidence (it may appear in the bounded failure diagnostic).
+    const rejected = await runWith('reproduced_failure');
+    expect(rejected.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'MUSE_INVALID_RESULT' },
+    });
+    const rejectedEvidence = rejected.filter((event) => event.type === 'evidence.submitted');
+    expect(rejectedEvidence).toHaveLength(0);
+    expect(
+      rejected.some(
+        (event) =>
+          event.type === 'evidence.submitted' &&
+          event.evidence.type === 'command' &&
+          event.evidence.command.command.includes('rm -rf'),
+      ),
+    ).toBe(false);
+    // Weak lie: downgraded to manual reasoning, never command evidence.
+    const downgraded = await runWith('tool_diagnostic');
+    expect(downgraded.at(-1)?.type).toBe('run.completed');
+    const submitted = downgraded.filter((event) => event.type === 'evidence.submitted');
+    expect(submitted).toHaveLength(1);
+    expect(submitted[0]?.type === 'evidence.submitted' && submitted[0].evidence.type).toBe(
+      'manual',
+    );
+  });
+
+  it('derives canonical command evidence from the observed operation', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-canon-ok-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = turn([
+      {
+        itemId: 'p',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          projectUnderstanding: 'x',
+          criticalFlows: [],
+          weakPoints: [],
+          plannedChecks: ['x'],
+        }),
+      },
+    ]);
+    const execution = turn([
+      {
+        itemId: 'shell-1',
+        revision: 1,
+        kind: 'userShell',
+        status: 'completed',
+        commandText: 'pnpm test',
+        exitCode: 1,
+        durationMs: 9,
+      },
+      {
+        itemId: 'r',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          summary: 'linked command',
+          checks: [],
+          hypotheses: [],
+          evidence: [
+            {
+              key: 'c1',
+              type: 'command',
+              strength: 'reproduced_failure',
+              description: 'tests failed',
+              command: 'pnpm test',
+              exitCode: 1,
+              operationKey: 'op_1',
+            },
+          ],
+          findings: [],
+          limitations: [],
+        }),
+      },
+    ]);
+    let index = 0;
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'model',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    const submitted = events.filter((event) => event.type === 'evidence.submitted');
+    expect(submitted).toHaveLength(1);
+    const evidence =
+      submitted[0]?.type === 'evidence.submitted' ? submitted[0].evidence : undefined;
+    expect(evidence?.type === 'command' && evidence.command.command).toBe('pnpm test');
+    expect(evidence?.type === 'command' && evidence.command.exitCode).toBe(1);
   });
 
   it('rejects test evidence bound to an unrelated non-test operation', async () => {

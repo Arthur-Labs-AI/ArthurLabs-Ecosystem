@@ -88,6 +88,71 @@ export const SentryAgentEvidenceV1Schema = z
   });
 export type SentryAgentEvidenceV1 = z.infer<typeof SentryAgentEvidenceV1Schema>;
 
+/**
+ * Single source of truth for the model-facing structured-output contract.
+ * Harnesses render this into prompts INSTEAD of hand-maintained schema
+ * strings, so parser and prompt agree by construction. When the evidence
+ * contract gains a field, add it here; the consistency test fails otherwise.
+ */
+export const SENTRY_AGENT_EVIDENCE_CONTRACT_FIELDS = [
+  'key',
+  'type',
+  'strength',
+  'description',
+  'relativePath',
+  'lineStart',
+  'lineEnd',
+  'command',
+  'exitCode',
+  'framework',
+  'name',
+  'status',
+  'source',
+  'operationKey',
+] as const;
+
+export function describeSentryAgentEvidenceContract(): string {
+  // The evidence schema carries a superRefine (ZodEffects): read the object
+  // shape through its inner type.
+  const shape = SentryAgentEvidenceV1Schema.innerType().shape;
+  const missing = SENTRY_AGENT_EVIDENCE_CONTRACT_FIELDS.filter((field) => !(field in shape));
+  if (missing.length > 0) {
+    throw new Error(
+      'Evidence contract description is stale; missing schema fields: ' + missing.join(', '),
+    );
+  }
+  const unionOf = (field: keyof typeof shape): string => {
+    let candidate: unknown = shape[field];
+    // Unwrap ZodOptional/ZodDefault layers to reach the string union.
+    for (let depth = 0; depth < 4; depth += 1) {
+      const node = candidate as {
+        options?: readonly unknown[];
+        innerType?: () => unknown;
+        _def?: { innerType?: unknown };
+      };
+      if (node.options !== undefined && Array.isArray(node.options)) {
+        return (node.options as readonly unknown[]).map((option) => String(option)).join('|');
+      }
+      const inner =
+        typeof node.innerType === 'function' ? node.innerType() : (node._def?.innerType as unknown);
+      if (inner === undefined || inner === null) break;
+      candidate = inner;
+    }
+    throw new Error('Evidence contract field is not a string union: ' + String(field));
+  };
+  return (
+    '{"key":string,"type":"' +
+    unionOf('type') +
+    '","strength":"' +
+    unionOf('strength') +
+    '","description":string,"relativePath"?:string,"lineStart"?:number,"lineEnd"?:number,' +
+    '"command"?:string,"exitCode"?:number,"framework"?:string,"name"?:string,' +
+    '"status"?:"' +
+    unionOf('status') +
+    '","source"?:string,"operationKey"?:string}'
+  );
+}
+
 const SentryAgentFindingV1Schema = z
   .object({
     title: z.string().min(1).max(200),

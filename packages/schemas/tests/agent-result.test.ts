@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  describeSentryAgentEvidenceContract,
   QARunSchema,
+  SENTRY_AGENT_EVIDENCE_CONTRACT_FIELDS,
+  SentryAgentEvidenceV1Schema,
   SentryAgentResultV1Schema,
   SentryInvestigationPlanV1Schema,
 } from '../src/index.js';
@@ -182,6 +185,29 @@ describe('Phase 3 structured agent contracts', () => {
         evidence: [{ ...result.evidence[0], operationKey: 'bad key!' }],
       }).success,
     ).toBe(false);
+  });
+
+  it('keeps the prompt contract consistent with the parser schema', () => {
+    // Every field the parser accepts must appear in the prompt description:
+    // if the contract gains a field without updating the description, the
+    // describer throws and this test fails.
+    const shapeKeys = Object.keys(SentryAgentEvidenceV1Schema.innerType().shape);
+    expect([...SENTRY_AGENT_EVIDENCE_CONTRACT_FIELDS].sort()).toEqual(shapeKeys.sort());
+    const description = describeSentryAgentEvidenceContract();
+    for (const field of [
+      'operationKey',
+      'relativePath',
+      'lineStart',
+      'lineEnd',
+      'command',
+      'exitCode',
+      'framework',
+      'name',
+      'status',
+      'source',
+    ] as const) {
+      expect(description).toContain(field);
+    }
   });
 
   it('keeps pre-Phase-3 persisted runs readable while accepting canonical execution kind', () => {

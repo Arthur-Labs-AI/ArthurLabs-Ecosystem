@@ -103,20 +103,21 @@ describe.skipIf(!liveEnabled || modelId.length === 0)(
           runTimeoutMs: 5_400_000,
         });
 
-        // Terminal state through the real pipeline. A failed run is only
-        // acceptable evidence of pipeline health if it still produced
-        // evidence or a structured failure downstream stages can explain;
-        // log the failure payload for diagnosis either way (no credentials).
+        // The live regression gate requires REAL success: a completed run
+        // with a completed agent and a run.completed event (and no
+        // run.failed). Zero findings remain allowed; failure does not.
+        // Failure payloads log for diagnosis either way (no credentials).
         const failedEvent = details.events.find((e) => e.event.type === 'run.failed');
         if (failedEvent?.type === 'run.failed') {
-          // eslint-disable-next-line no-console
           console.log('LIVE-FAILURE:' + JSON.stringify(failedEvent.failure).slice(0, 500));
         }
-        expect(['completed', 'partial', 'failed']).toContain(details.run.status);
+        expect(details.run.status).toBe('completed');
+        expect(details.events.some((e) => e.event.type === 'run.completed')).toBe(true);
+        expect(failedEvent).toBeUndefined();
         expect(details.run.executionKind).toBe('production');
         expect(details.agentRuns).toHaveLength(1);
         const agentRun = details.agentRuns[0];
-        // eslint-disable-next-line no-console
+        expect(agentRun?.status).toBe('completed');
         console.log(
           'LIVE-AGENT:' +
             JSON.stringify({
@@ -125,7 +126,6 @@ describe.skipIf(!liveEnabled || modelId.length === 0)(
               usage: agentRun?.usage ?? null,
             }).slice(0, 600),
         );
-        // eslint-disable-next-line no-console
         console.log('LIVE-EVENTS:' + details.events.map((e) => e.event.type).join(','));
         expect(agentRun).toBeDefined();
         expect(agentRun?.agentStackId).toBe('stack_muse_main');
@@ -180,9 +180,9 @@ describe.skipIf(!liveEnabled || modelId.length === 0)(
               );
             }
           }
-        } else {
-          expect(details.evidence.length).toBeGreaterThanOrEqual(0);
         }
+        // Zero findings stay allowed (nondeterministic model), but the
+        // pipeline must still have produced evidence of completed work.
 
         // Token usage recorded when the SDK reports it (never fabricated).
         const usageEvents = details.events.filter((e) => e.event.type === 'usage.updated');
@@ -213,7 +213,6 @@ describe.skipIf(!liveEnabled || modelId.length === 0)(
         expect(baselineAfter.contentHash).toBe(baselineBefore.contentHash);
 
         // Report (no credentials): versions, counts, trust detail, integrity.
-        // eslint-disable-next-line no-console
         console.log(
           JSON.stringify({
             live: 'LIVE MUSE SMOKE TEST PASSED',
