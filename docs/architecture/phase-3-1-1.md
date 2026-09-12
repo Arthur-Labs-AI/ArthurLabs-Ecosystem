@@ -1,6 +1,6 @@
 # Phase 3.1.1 -- Live Integration Trust Hardening
 
-Status: IN PROGRESS (implementation; live regression pending)
+Status: COMPLETE (deterministic gates green, exact-HEAD CI green, final WSL live regression PASSED)
 
 Baseline: b65bb5d0e7c38879e1f56c146645f6c35306eda0 (Phase 3.1 complete, live smoke PASSED).
 Phase 3.1 stays intact and its historical smoke remains valid evidence. This is a small hardening pass over the live Muse integration only. No DeepSeek, GLM, multi-agent execution, merger, verifier, retest, UI, or adaptive InvestigationDepth.
@@ -35,6 +35,17 @@ Phase 3.1 stays intact and its historical smoke remains valid evidence. This is 
 
 - runtimeIdentity.modelId means requested/configured through Muse, never proven provider-level execution identity.
 - The adapter captures handshake canary facts (server name/version, MSP schema fingerprint/version, granted capabilities, platform) without coupling Core to Muse protocol details. Non-1 envelope schema versions warn (MUSE_SCHEMA_MISMATCH) instead of being silently assumed.
+
+## Final live regression (WSL2 Ubuntu prepared host, Muse 1.1.1)
+
+LIVE MUSE SMOKE TEST PASSED
+- Muse executable: Muse Code 1.1.1 (1.1.1-R2514.1); SDK 0.1.1; model muse-spark-1.3-contributor
+- Run run_01M2BSBFJJA2MXYHV1Z9RJ4F6E: status completed; agent completed, no failure
+- 1 plan; 12 tool operations; usage turns 2
+- 6 evidence: 4 code_reference/strong_code_evidence/baseline, 1 runtime/reproduced_failure, 1 log/tool_diagnostic
+- 2 findings: confirmed/logic (real divide-by-zero defect) plus strong/testing (honest toolchain limitation)
+- Workspace cleaned; fixture and baseline hashes match; json + log exports produced
+- No fake labels, no FakeHarnessAdapter, no persisted reasoning, no credentials printed
 
 ## Deferred (explicitly not in 3.1.1)
 
