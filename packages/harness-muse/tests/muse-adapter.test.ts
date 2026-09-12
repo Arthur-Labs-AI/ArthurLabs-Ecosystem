@@ -12,6 +12,7 @@ import {
 import {
   aggregateTurnUsage,
   buildMuseChildEnvironment,
+  decideMuseApproval,
   MuseHarnessAdapter,
   MUSE_APPROVAL_MODE,
   MUSE_HOST_ARGUMENTS,
@@ -271,6 +272,162 @@ describe('MuseHarnessAdapter', () => {
     await adapter.cancel(input.agentRunId);
     await adapter.dispose();
     expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('decides approvals: workspace-contained allowed, network/protected/outside denied', () => {
+    const ws = '/tmp/ws/project';
+    const base = (overrides: Record<string, unknown> = {}) => ({
+      approvalId: 'appr_1',
+      availableChoices: [
+        { choiceId: 'allow_once', label: 'Allow once' },
+        { choiceId: 'abort', label: 'Reject' },
+      ],
+      toolName: 'bash',
+      ...overrides,
+    });
+    // Workspace-contained shell subject: approved with server-offered choice.
+    expect(
+      decideMuseApproval(base({ subject: { kind: 'shell', workspaceRoot: ws } }) as never, ws),
+    ).toMatchObject({ choiceId: 'allow_once', approved: true });
+    // Network subject: denied via offered abort choice.
+    expect(
+      decideMuseApproval(base({ subject: { kind: 'network', host: 'example.com' } }) as never, ws),
+    ).toMatchObject({ choiceId: 'abort', approved: false });
+    // Outside-workspace subject: denied.
+    expect(
+      decideMuseApproval(base({ subject: { kind: 'shell', workspaceRoot: '/etc' } }) as never, ws),
+    ).toMatchObject({ approved: false });
+    // Protected write / judge escalation: denied.
+    expect(
+      decideMuseApproval(
+        base({ protectedWrite: true, subject: { kind: 'shell', workspaceRoot: ws } }) as never,
+        ws,
+      ),
+    ).toMatchObject({ approved: false });
+    expect(
+      decideMuseApproval(
+        base({ judgeEscalated: true, subject: { kind: 'shell', workspaceRoot: ws } }) as never,
+        ws,
+      ),
+    ).toMatchObject({ approved: false });
+  });
+
+  it('surfaces session approval decisions as observable warning events', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-approval-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = turn([
+      {
+        itemId: 'p',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          projectUnderstanding: 'x',
+          criticalFlows: [],
+          weakPoints: [],
+          plannedChecks: ['x'],
+        }),
+      },
+    ]);
+    const execution = turn([
+      {
+        itemId: 'shell-1',
+        revision: 1,
+        kind: 'userShell',
+        status: 'completed',
+        commandText: 'pnpm test',
+        exitCode: 0,
+      },
+      {
+        itemId: 'r',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          summary: 'done',
+          checks: [],
+          hypotheses: [],
+          evidence: [],
+          findings: [],
+          limitations: [],
+        }),
+      },
+    ]);
+    let index = 0;
+    let drained = false;
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'model',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          sendText: async () => (++index === 1 ? plan : execution),
+          drainApprovalDecisions: () => {
+            if (drained) return [];
+            drained = true;
+            return [
+              {
+                approvalId: 'appr_1',
+                toolName: 'bash',
+                choiceId: 'allow_once',
+                approved: true,
+                reason: 'workspace-contained subject auto-approved',
+              },
+            ];
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'MUSE_APPROVAL_GRANTED' }),
+    );
+  });
+
+  it('bounds a hung turn with the per-turn watchdog', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-watchdog-'));
+    roots.push(root);
+    const input = await request(root);
+    const hanging: MuseTurnView = {
+      items: async function* () {
+        yield {
+          itemId: 'p',
+          revision: 1,
+          kind: 'agentMessage',
+          status: 'completed',
+          text: JSON.stringify({
+            schemaVersion: 1,
+            projectUnderstanding: 'x',
+            criticalFlows: [],
+            weakPoints: [],
+            plannedChecks: ['x'],
+          }),
+        } as MuseFoldedItem;
+        await new Promise<void>(() => undefined);
+      },
+      completed: new Promise(() => undefined) as Promise<MuseTurnOutcome>,
+    };
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'model',
+      environment: {},
+      turnTimeoutMs: 50,
+      clientFactory: async () => ({
+        startSession: async () => ({ sendText: async () => hanging }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'MUSE_START_FAILED', retryable: true },
+    });
   });
 
   it('uses the documented noninteractive mode without sandbox-disable host flags', () => {

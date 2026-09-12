@@ -46,6 +46,7 @@ import {
   createProductionMuseClient,
   type MuseClientFactory,
   type MuseClientView,
+  type MuseSessionView,
   type MuseTurnOutcome,
   type MuseTurnView,
 } from './sdk.js';
@@ -56,10 +57,28 @@ export interface MuseHarnessAdapterOptions {
   readonly environment?: NodeJS.ProcessEnv;
   readonly clientFactory?: MuseClientFactory;
   readonly shutdownTimeoutMs?: number;
+  /**
+   * Per-turn watchdog: the SDK never times out a turn locally (INV-006), so
+   * Sentry owns the bound. When one turn exceeds this budget the adapter
+   * aborts the session and reports a structured timeout (partial
+   * observations already yielded are preserved). Defaults to 30 minutes.
+   */
+  readonly turnTimeoutMs?: number;
   readonly onRuntimeIdentity?: (identity: {
     readonly harnessVersion?: string;
     readonly executableVersion?: string;
   }) => void;
+}
+
+export class MuseTurnTimeoutError extends MuseHarnessError {
+  constructor(phase: string, budgetMs: number) {
+    super(
+      'MUSE_START_FAILED',
+      'Muse ' + phase + ' turn exceeded its ' + String(budgetMs) + ' ms budget.',
+      true,
+    );
+    this.name = 'MuseTurnTimeoutError';
+  }
 }
 
 interface TurnCollection {
@@ -525,6 +544,8 @@ function executionPrompt(plan: ReturnType<typeof SentryInvestigationPlanV1Schema
     'Inspect every applicable area needed for comprehensive QA: build, lint, typecheck, existing and generated tests, integration/runtime/API/frontend/database/auth behavior, configuration, dependencies, architecture, business logic, error handling, edge cases, performance, concurrency, CI/CD, deployment, maintainability, and project-specific weak points. Do not force irrelevant checks.',
     'Priority controls order, not permission to skip relevant checks. Record every blocked or incomplete check as a limitation; never claim it passed.',
     'Do not silently obtain unrestricted network access. Record sandbox or network restrictions as limitations and never retry with sandbox disabled.',
+    'Use only the repository toolchain already present in the workspace; do not download packages or install dependencies from the network (no npx fetches, no npm/pip installs). If a test runner is unavailable, record it as a limitation.',
+    'Keep the investigation tight: a handful of targeted checks beats dozens of exploratory commands. Do not repeat commands that already produced results.',
     'Return exactly one JSON document and no Markdown. Do not invent file paths or command results.',
     'Use temporary evidence keys only; Sentry owns all durable IDs.',
     'For test/runtime/log evidence, set operationKey to the observed operation that produced it (op_1, op_2, ... in execution order as Sentry reported them via tool events). Omit operationKey only for pure reasoning/manual evidence. Never invent operation keys.',
@@ -543,6 +564,7 @@ export class MuseHarnessAdapter implements HarnessAdapter {
   private readonly runtime: MuseRuntimeConfiguration;
   private readonly clientFactory: MuseClientFactory;
   private readonly shutdownTimeoutMs: number;
+  private readonly turnTimeoutMs: number;
   private readonly secrets: readonly string[];
   private client?: MuseClientView;
   private serverVersion?: string;
@@ -559,6 +581,7 @@ export class MuseHarnessAdapter implements HarnessAdapter {
     this.runtime = resolveMuseRuntime({ ...options, environment: this.hostEnvironment });
     this.clientFactory = options.clientFactory ?? createProductionMuseClient;
     this.shutdownTimeoutMs = options.shutdownTimeoutMs ?? 10_000;
+    this.turnTimeoutMs = options.turnTimeoutMs ?? 1_800_000;
     // Never hand the raw host environment to the autonomous worker: build the
     // explicit sanitized child environment (PATH/temp/locale + Muse config).
     const child = buildMuseChildEnvironment({ source: this.hostEnvironment });
@@ -613,9 +636,78 @@ export class MuseHarnessAdapter implements HarnessAdapter {
   private async *streamTurn(
     turn: MuseTurnView,
     agentRunId: AgentRunId,
+    session?: MuseSessionView,
+    phase = 'execution',
+  ): AsyncGenerator<HarnessEvent, TurnCollection> {
+    // Per-turn watchdog (the SDK never times out a turn locally, INV-006, so
+    // Sentry owns the bound): the inner generator is pumped one step at a
+    // time, racing each next() against the deadline. A wedged item stream
+    // (no yields at all) still trips the bound. On expiry the pump throws
+    // MuseTurnTimeoutError out through run() for structured mapping; events
+    // already yielded stay persisted by the coordinator.
+    const inner = this.streamTurnInner(turn, agentRunId, session);
+    const deadline = Date.now() + this.turnTimeoutMs;
+    const timeoutError = (): MuseTurnTimeoutError =>
+      new MuseTurnTimeoutError(phase, this.turnTimeoutMs);
+    const nextWithDeadline = async (): Promise<IteratorResult<HarnessEvent, TurnCollection>> => {
+      const budget = deadline - Date.now();
+      if (budget <= 0) throw timeoutError();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        return await Promise.race([
+          inner.next(),
+          new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(() => reject(timeoutError()), budget);
+          }),
+        ]);
+      } finally {
+        if (timer !== undefined) clearTimeout(timer);
+      }
+    };
+    try {
+      for (;;) {
+        const step = await nextWithDeadline();
+        if (step.done === true) return step.value;
+        yield step.value;
+      }
+    } catch (cause) {
+      // Do not await the inner return: a wedged item stream may never settle
+      // its pending next(), which would wedge the return as well.
+      try {
+        inner.return?.(undefined as never)?.catch?.(() => undefined);
+      } catch {
+        // ignore synchronous return errors; the timeout is already decided
+      }
+      throw cause;
+    }
+  }
+
+  private async *streamTurnInner(
+    turn: MuseTurnView,
+    agentRunId: AgentRunId,
+    session?: MuseSessionView,
   ): AsyncGenerator<HarnessEvent, TurnCollection> {
     let text = '';
+    const drainDecisions = function* (): Generator<HarnessEvent> {
+      // Defensive: test fakes and older sessions may omit the drain method.
+      const drained = session?.drainApprovalDecisions?.() ?? [];
+      for (const decision of drained) {
+        yield event(agentRunId, {
+          type: 'warning',
+          code: decision.approved ? 'MUSE_APPROVAL_GRANTED' : 'MUSE_APPROVAL_DENIED',
+          message:
+            'Tool approval ' +
+            (decision.approved ? 'granted' : 'denied') +
+            ' for ' +
+            decision.toolName +
+            ' (' +
+            decision.reason +
+            ')',
+        });
+      }
+    };
     for await (const item of turn.items()) {
+      yield* drainDecisions();
       if (item.kind === 'reasoning') continue;
       // reminderChild items are host-internal reminder-plugin sessions (e.g.
       // skill-reminder, goal-reminder, verify-reminder): they carry no model
@@ -732,6 +824,8 @@ export class MuseHarnessAdapter implements HarnessAdapter {
       const planning = yield* this.streamTurn(
         await session.sendText(planningPrompt(request)),
         request.agentRunId,
+        session,
+        'planning',
       );
       assertCompleted(planning.outcome, 'planning');
       const planResult = SentryInvestigationPlanV1Schema.parse(
@@ -756,6 +850,7 @@ export class MuseHarnessAdapter implements HarnessAdapter {
       const execution = yield* this.streamTurn(
         await session.sendText(executionPrompt(planResult)),
         request.agentRunId,
+        session,
       );
       assertCompleted(execution.outcome, 'execution');
       const result = SentryAgentResultV1Schema.parse(
