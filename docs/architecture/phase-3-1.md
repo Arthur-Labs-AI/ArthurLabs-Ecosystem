@@ -1,6 +1,6 @@
 # Phase 3.1 -- Real agent trust, environment isolation and live Muse validation
 
-Status: IN PROGRESS (finalization landed and deterministic gates green; live smoke pending prepared host)
+Status: COMPLETE (finalization landed, deterministic gates green, GitHub Actions green on exact HEAD, live Muse smoke PASSED)
 
 Baseline: f6954f0b774c6494f3c8e9345e0657ad22768e5a (Phase 3 complete).
 Phase 3 remains the adapter foundation; this phase hardens it without
@@ -169,20 +169,40 @@ ProjectSnapshot), never the live source path or post-start working copy.
   complete on a FAILED caused by a Sentry bug; pure-external config failures
   are reported exactly, never faked.
 
-## Live Muse validation result (attempt 1, this host)
+## Live Muse validation result (attempt 1, Windows host)
 
-LIVE MUSE SMOKE TEST NOT RUN
-Reason: no Muse executable on PATH, no SENTRY_MUSE_MODEL, no
-SENTRY_MUSE_BINARY, and no SENTRY_LIVE_MUSE_TEST opt-in on this development
-host. Doctor output on this host: model FAIL (not configured), binary FAIL
-(Muse executable was not found: muse), environment PASS (15 allowed, 58
-blocked), sdk PASS (0.1.1), sandbox WARN (not yet verified), runtime WARN
-(no live session yet); overall status unavailable. This is a purely external
-configuration precondition, not a Sentry code failure: all deterministic
-gates (CI run 34639562954, status completed, conclusion success) pass. The
-live smoke must be re-attempted from an explicitly prepared host with the
-binary, exact model, credentials, and SENTRY_LIVE_MUSE_TEST=1 before Phase
-3.1 can be declared complete.
+LIVE MUSE SMOKE TEST NOT RUN on the Windows side (no native Muse binary;
+Muse Code is macOS/Linux-only). Validated instead from WSL2 Ubuntu with
+Muse Code 1.1.1 installed via the official installer and device-code login.
+
+## Live Muse validation result (final, WSL2 Ubuntu prepared host)
+
+LIVE MUSE SMOKE TEST PASSED
+- Muse executable version: Muse Code 1.1.1 (1.1.1-R2514.1)
+- SDK version: 0.1.1 (pinned, unchanged)
+- Configured model ID: muse-spark-1.3-contributor (exact, no fallback)
+- Commit SHA: d3698fd0546c921588973f4ff9a4ca4a6f92559d
+- GitHub Actions run ID: 34717527493 (status completed, conclusion success)
+- Run ID: run_01M2BNASWGVHXHT6GFCD1V9HM2, terminal status: completed
+- Agent status: completed, no failure; InvestigationPlan count: 1
+- Tool operations: 10; usage: turns 2, durationMs 117505
+- Evidence: 4 (2 code_reference/strong_code_evidence/baseline,
+  1 runtime/reproduced_behavior, 1 manual/agent_reasoning from a
+  downgraded paraphrased command claim)
+- Findings: 1 (confirmed/logic: divide() returns 0 instead of rejecting
+  division by zero -- the real fixture defect)
+- Workspace cleanup: deleted after run; original fixture hash: match;
+  managed baseline hash: match; production exports: json + log created
+- No fake labels, no FakeHarnessAdapter involvement, no persisted reasoning
+
+Three live-verified integration fixes were required to get here (all in
+this phase, all covered by deterministic tests): host-internal
+reminderChild items are skipped, not failed; workspace-scoped approval
+auto-decision answers human_pending tool parks (observable via
+MUSE_APPROVAL_GRANTED/DENIED warnings); per-turn watchdog bounds turns
+because the SDK never times out locally. Two pipeline-hardening fixes came
+from the same runs: activity titles truncate model-influenced strings, and
+ZodError maps to structured failures without JSON leaks.
 
 ## Deferred (explicitly not in 3.1)
 
