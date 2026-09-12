@@ -99,6 +99,8 @@ describe.skipIf(!liveEnabled || modelId.length === 0)(
           agentStackIds: ['stack_muse_main'],
           verificationLevel: 'strict',
           instructions: 'Inspect this tiny math fixture for defects.',
+          // Real model turns are slow; leave headroom under the test budget.
+          runTimeoutMs: 5_400_000,
         });
 
         // Terminal state through the real pipeline.
@@ -219,6 +221,6 @@ describe.skipIf(!liveEnabled || modelId.length === 0)(
         }
         await rm(root, { recursive: true, force: true });
       }
-    }, 1_800_000);
+    }, 5_700_000);
   },
 );

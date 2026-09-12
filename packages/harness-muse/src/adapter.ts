@@ -617,7 +617,13 @@ export class MuseHarnessAdapter implements HarnessAdapter {
     let text = '';
     for await (const item of turn.items()) {
       if (item.kind === 'reasoning') continue;
-      if (item.kind === 'subagent' || item.kind === 'workflow' || item.kind === 'reminderChild') {
+      // reminderChild items are host-internal reminder-plugin sessions (e.g.
+      // skill-reminder, goal-reminder, verify-reminder): they carry no model
+      // delegation, no objective, and no usable output. Verified against a
+      // live 1.1.1 host, which emits them on even trivial turns. They are
+      // skipped like reasoning, never persisted, never trusted as evidence.
+      if (item.kind === 'reminderChild') continue;
+      if (item.kind === 'subagent' || item.kind === 'workflow') {
         throw new MuseHarnessError(
           'MUSE_SUBAGENT_FORBIDDEN',
           'Muse attempted forbidden subagent fanout.',
