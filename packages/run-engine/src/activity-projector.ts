@@ -2,6 +2,15 @@ import { createRunActivityId, nowIsoTimestamp, type QARunId, type RunActivityId 
 import { RunActivitySchema, type HarnessEvent, type RunActivity } from '@qa/schemas';
 import type { SentryRepository } from '@qa/persistence';
 
+/**
+ * Boundary truncation: model-influenced strings (failure messages, commands,
+ * hypothesis/finding titles) flow into fixed-size activity titles. Truncate
+ * here so a long model string can never break persistence; schemas stay strict.
+ */
+function activityTitle(value: string): string {
+  return value.slice(0, 300);
+}
+
 function eventTitle(event: HarnessEvent): string {
   switch (event.type) {
     case 'run.started':
@@ -95,7 +104,7 @@ export class RunActivityProjector {
         const completed = RunActivitySchema.parse({
           ...current,
           status,
-          title: eventTitle(event),
+          title: activityTitle(eventTitle(event)),
           completedAt: event.timestamp,
         });
         this.repository.saveActivity(completed);
@@ -109,7 +118,7 @@ export class RunActivityProjector {
         const completed = RunActivitySchema.parse({
           ...current,
           status: 'completed',
-          title: eventTitle(event),
+          title: activityTitle(eventTitle(event)),
           completedAt: event.timestamp,
         });
         this.repository.saveActivity(completed);
@@ -137,7 +146,7 @@ export class RunActivityProjector {
       source: 'agent',
       kind: eventKind(event),
       status,
-      title: eventTitle(event).slice(0, 300),
+      title: activityTitle(eventTitle(event)),
       startedAt,
       ...(status === 'running' ? {} : { completedAt: event.timestamp }),
       artifactIds: [],
@@ -166,7 +175,7 @@ export class RunActivityProjector {
       source: input.source,
       kind: input.kind,
       status,
-      title: input.title,
+      title: activityTitle(input.title),
       startedAt: timestamp,
       ...(status === 'running' ? {} : { completedAt: timestamp }),
       artifactIds: [],
@@ -184,7 +193,12 @@ export class RunActivityProjector {
     const current = this.agentActivities.get(agentRunId);
     if (current === undefined || completedAt === undefined) return;
     this.repository.saveActivity(
-      RunActivitySchema.parse({ ...current, status, title, completedAt }),
+      RunActivitySchema.parse({
+        ...current,
+        status,
+        title: activityTitle(title),
+        completedAt,
+      }),
     );
     this.agentActivities.delete(agentRunId);
   }

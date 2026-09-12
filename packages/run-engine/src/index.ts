@@ -420,7 +420,15 @@ export class RunCoordinator {
       }
     } catch (cause) {
       const timedOut = cause instanceof RunTimeoutError;
+      // A raw ZodError escaping an adapter is a structured validation failure,
+      // not a transport loss — and its message is raw JSON that must never be
+      // persisted verbatim. Map it to a bounded protocol message.
+      const zodFailure =
+        typeof cause === 'object' &&
+        cause !== null &&
+        (cause as { name?: unknown }).name === 'ZodError';
       const protocolViolation =
+        zodFailure ||
         cause instanceof HarnessProtocolError ||
         (cause instanceof RuntimePersistenceError && cause.code === 'EVENT_CONFLICT');
       const typed =
@@ -441,13 +449,15 @@ export class RunCoordinator {
                 : 'WORKER_DISCONNECTED',
           message: timedOut
             ? 'Agent exceeded configured run timeout.'
-            : protocolViolation
-              ? cause instanceof Error
-                ? cause.message
-                : 'Harness protocol validation failed.'
-              : cause instanceof Error
-                ? cause.message
-                : 'Agent worker transport disconnected.',
+            : zodFailure
+              ? 'Agent output failed schema validation.'
+              : protocolViolation
+                ? cause instanceof Error
+                  ? cause.message
+                  : 'Harness protocol validation failed.'
+                : cause instanceof Error
+                  ? cause.message
+                  : 'Agent worker transport disconnected.',
           retryable: typeof typed?.retryable === 'boolean' ? typed.retryable : !protocolViolation,
         },
       });

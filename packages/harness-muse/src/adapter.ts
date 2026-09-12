@@ -24,6 +24,7 @@ import {
   type HarnessEvent,
   type HarnessRunRequest,
   type SentryAgentEvidenceV1,
+  type SentryAgentResultV1,
 } from '@qa/schemas';
 import { validateFindingTrust } from '@qa/domain';
 import type {
@@ -231,6 +232,27 @@ function assertCompleted(outcome: MuseTurnOutcome, phase: string): void {
   );
 }
 
+function summarizeSchemaIssues(error: {
+  issues: Array<{ path: Array<string | number>; message: string }>;
+}): string {
+  // Paths only, never model values; bounded so the message stays a summary.
+  return error.issues
+    .slice(0, 8)
+    .map((issue) => issue.path.join('.') + ': ' + issue.message)
+    .join('; ')
+    .slice(0, 500);
+}
+
+function parseAgentResult(text: string, secrets: readonly string[]): SentryAgentResultV1 {
+  const parsed = SentryAgentResultV1Schema.safeParse(parseWholeJson(text, 'execution', secrets));
+  if (parsed.success) return parsed.data;
+  throw new MuseHarnessError(
+    'MUSE_INVALID_RESULT',
+    'Muse execution result did not match the required schema (' +
+      summarizeSchemaIssues(parsed.error) +
+      ').',
+  );
+}
 function parseWholeJson(text: string, phase: string, secrets: readonly string[]): unknown {
   try {
     return redactStructured(JSON.parse(text), secrets);
@@ -853,9 +875,7 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         session,
       );
       assertCompleted(execution.outcome, 'execution');
-      const result = SentryAgentResultV1Schema.parse(
-        parseWholeJson(execution.text, 'execution', this.secrets),
-      );
+      const result = parseAgentResult(execution.text, this.secrets);
       yield event(request.agentRunId, { type: 'agent.message', message: result.summary });
       for (const check of result.checks) {
         yield event(request.agentRunId, {
