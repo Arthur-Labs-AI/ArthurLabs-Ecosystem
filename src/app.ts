@@ -59,6 +59,9 @@ import { SttGateway } from "./voice/stt/gateway";
 import { FakeTtsProvider } from "./voice/tts/fake";
 import { LocalTtsProvider } from "./voice/tts/local_provider";
 import { TtsGateway } from "./voice/tts/gateway";
+import { ModelRouter } from "./runtime/model_router";
+import { SttRouter } from "./runtime/stt_router";
+import { TtsRouter } from "./runtime/tts_router";
 import { SpeechFormatter } from "./voice/speech/formatter";
 import { VoiceTurnController } from "./voice/controller";
 import { RealtimeVoiceServer } from "./voice/realtime/websocket";
@@ -75,6 +78,10 @@ export interface App {
   logger: Logger;
   metrics: Metrics;
   gateway: ModelGateway;
+  /** HR-01: provider-neutral routing seams (always resolve configured providers). */
+  modelRouter: ModelRouter;
+  sttRouter: SttRouter;
+  ttsRouter: TtsRouter;
   store: SessionStore;
   /** SC-03 section 58: result of the automatic startup recovery scan. */
   startupRecovery?: { recovered: number };
@@ -178,7 +185,12 @@ export function createVoiceController(
   metrics: Metrics,
   sanitizer: SecretSanitizer,
   deps: BuildDeps,
-): { controller: VoiceTurnController; realtime: RealtimeVoiceServer } {
+): {
+  controller: VoiceTurnController;
+  realtime: RealtimeVoiceServer;
+  sttRouter: SttRouter;
+  ttsRouter: TtsRouter;
+} {
   const voice = settings.voice;
   const capture: AudioCapture =
     deps.voice?.capture ??
@@ -234,6 +246,15 @@ export function createVoiceController(
           })
         : new LocalWakeWordProvider());
   const wake = new WakeWordGateway(wakeProvider, { frameBased: true });
+  // HR-01 STT/TTS router seams: VoiceController -> SttRouter/TtsRouter ->
+  // SttProvider/TtsProvider. The routers resolve only the existing
+  // configured backends (behavior unchanged); the controller consumes the
+  // provider-neutral contracts and keeps no concrete provider knowledge.
+  // Locality is trusted construction metadata: both the local engine and
+  // the in-process fake execute on-device, so both report "local" — never
+  // inferred from provider ids, hosts, or the network.
+  const sttRouter = new SttRouter({ provider: new SttGateway(stt, metrics), locality: "local" });
+  const ttsRouter = new TtsRouter({ provider: new TtsGateway(tts, metrics), locality: "local" });
   const controller = new VoiceTurnController({
     settings: voice,
     conversation,
@@ -242,8 +263,8 @@ export function createVoiceController(
     playback,
     wake,
     vad: new VadGateway(vad),
-    stt: new SttGateway(stt, metrics),
-    tts: new TtsGateway(tts, metrics),
+    stt: sttRouter,
+    tts: ttsRouter,
     formatter: new SpeechFormatter(),
     logger,
     metrics,
@@ -251,7 +272,7 @@ export function createVoiceController(
     now: deps.voice?.now,
   });
   const realtime = new RealtimeVoiceServer(controller, logger);
-  return { controller, realtime };
+  return { controller, realtime, sttRouter, ttsRouter };
 }
 
 export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}): App {
@@ -292,6 +313,16 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
 
   const provider = deps.provider ?? createModelProvider(settings, logger.child("model-provider"));
   const gateway = new ModelGateway(provider);
+  // HR-01 ModelRouter seam: ConversationService/ConversationLoopRunner ->
+  // ModelRouter -> ModelProvider. The router always resolves the configured
+  // provider (configured_default); DeepSeek configured today -> DeepSeek.
+  // Locality is trusted configuration metadata (settings.modelProvider) —
+  // DeepSeek executes as a remote API ("cloud"), the in-process fake
+  // executes on-device ("local"). Never inferred from ids/names/hosts.
+  const modelRouter = new ModelRouter({
+    gateway,
+    locality: settings.modelProvider === "deepseek" ? "cloud" : "local",
+  });
   const store = new SessionStore(settings.dbPath, sanitizer);
 
   const registry = new ToolRegistry();
@@ -416,7 +447,11 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
   }
 
   const conversation = new ConversationService({
-    gateway,
+    gateway: modelRouter,
+    // Trusted construction metadata: DeepSeek executes remote ("cloud"),
+    // the in-process fake executes on-device ("local"). Ignored while
+    // gateway is already a ModelRouter; required for raw gateways.
+    modelLocality: settings.modelProvider === "deepseek" ? "cloud" : "local",
     store,
     contextBuilder,
     orchestrator,
@@ -428,7 +463,7 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
     afterTurn,
   });
 
-  const { controller, realtime } = createVoiceController(
+  const { controller, realtime, sttRouter, ttsRouter } = createVoiceController(
     settings,
     conversation,
     store,
@@ -470,6 +505,9 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
     logger,
     metrics,
     gateway,
+    modelRouter,
+    sttRouter,
+    ttsRouter,
     store,
     startupRecovery,
     conversation,

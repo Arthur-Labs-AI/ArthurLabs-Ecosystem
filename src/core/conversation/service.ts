@@ -17,6 +17,8 @@ import { Logger } from "../../observability/logging";
 import { Metrics } from "../../observability/metrics";
 import { newId, newSessionId, newTraceId, newTurnId } from "../../observability/tracing";
 import { ConversationLoopRunner, type LoopEvent } from "./loop_runner";
+import { ModelRouter } from "../../runtime/model_router";
+import type { RuntimeMode } from "../../runtime/runtime_mode";
 import type { Settings } from "../../config/settings";
 import type { SessionStore } from "../../sessions/store";
 import type { SessionRecord, TurnRecord } from "../../sessions/models";
@@ -51,6 +53,15 @@ export interface AfterTurnInput {
 
 export interface ConversationServiceDeps {
   gateway: ModelGateway;
+  /**
+   * Explicit trusted execution locality of the model provider behind
+   * `gateway` (composition-root metadata — never inferred from
+   * capabilities().online, ids, names, URLs, or network state). Required
+   * only when `gateway` is a raw ModelGateway; ignored when `gateway` is
+   * already a ModelRouter (which carries its own locality). DeepSeek =>
+   * "cloud"; in-process fake => "local".
+   */
+  modelLocality?: RuntimeMode;
   store: SessionStore;
   contextBuilder: ContextBuilder;
   orchestrator: ToolOrchestrator;
@@ -95,6 +106,7 @@ export interface StatusInfo {
 
 export class ConversationService {
   private readonly gateway: ModelGateway;
+  private readonly modelLocality: RuntimeMode;
   private readonly store: SessionStore;
   private readonly contextBuilder: ContextBuilder;
   private readonly orchestrator: ToolOrchestrator;
@@ -108,6 +120,10 @@ export class ConversationService {
 
   constructor(deps: ConversationServiceDeps) {
     this.gateway = deps.gateway;
+    // Default "local" keeps directly-constructed test services honest when
+    // no locality is stated (in-process fake); production always passes the
+    // explicit value via buildApp. Never derived from capabilities().online.
+    this.modelLocality = deps.modelLocality ?? "local";
     this.store = deps.store;
     this.contextBuilder = deps.contextBuilder;
     this.orchestrator = deps.orchestrator;
@@ -252,10 +268,47 @@ export class ConversationService {
     return { session, history, turnId, traceId, startedAt, safeMessage, modelRequest };
   }
 
-  /** Build the single authoritative loop runner for this service. */
+  /**
+   * Build the single authoritative loop runner for this service.
+   *
+   * HR-01 ModelRouter seam: ConversationLoopRunner -> ModelRouter ->
+   * ModelProvider. The service holds whatever ModelGateway buildApp wired
+   * (normally the ModelRouter already); when a raw gateway arrives (tests
+   * composing ConversationService directly), wrap it once so the loop
+   * always runs behind the router. The wrap is idempotent: an existing
+   * ModelRouter is reused, never double-wrapped. Locality for a raw gateway
+   * comes ONLY from the explicit `modelLocality` construction metadata —
+   * capabilities().online (network capability) must never determine
+   * RuntimeMode (execution locality): a LAN model may be offline-capable, a
+   * local model may have internet access, and a cloud provider may be
+   * temporarily unavailable, all without changing where it executes.
+   * SC-06 semantics are untouched — the router only selects the configured
+   * provider.
+   */
+  /**
+   * Resolve the single authoritative model gateway for the loop: an injected
+   * ModelRouter is reused as-is (never rewrapped); a raw ModelGateway is
+   * wrapped once with the explicit `modelLocality` construction metadata.
+   */
+  private resolveModelGateway(): ModelGateway {
+    if (this.gateway instanceof ModelRouter) return this.gateway;
+    return new ModelRouter({ gateway: this.gateway, locality: this.modelLocality });
+  }
+
+  /**
+   * HR-01 test seam: the effective loop gateway (ModelRouter) with its
+   * routing decision. Read-only; the loop always runs behind this gateway.
+   */
+  modelRouterForTests(): ModelRouter {
+    const gateway = this.resolveModelGateway();
+    if (!(gateway instanceof ModelRouter)) throw new Error("model gateway did not resolve to a ModelRouter");
+    return gateway;
+  }
+
   private createLoopRunner(): ConversationLoopRunner {
+    const gateway = this.resolveModelGateway();
     return new ConversationLoopRunner({
-      gateway: this.gateway,
+      gateway,
       store: this.store,
       contextBuilder: this.contextBuilder,
       orchestrator: this.orchestrator,
