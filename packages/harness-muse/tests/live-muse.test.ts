@@ -212,7 +212,7 @@ describe.skipIf(!liveEnabled || modelId.length === 0)(
         const baselineAfter = await scanTree(workingCopy);
         expect(baselineAfter.contentHash).toBe(baselineBefore.contentHash);
 
-        // Report (no credentials): versions, counts, integrity.
+        // Report (no credentials): versions, counts, trust detail, integrity.
         // eslint-disable-next-line no-console
         console.log(
           JSON.stringify({
@@ -226,7 +226,14 @@ describe.skipIf(!liveEnabled || modelId.length === 0)(
               .length,
             toolOperations: toolOps.length,
             evidence: details.evidence.length,
+            evidenceDetail: details.evidence.map(
+              (e) => e.type + '/' + e.strength + '/' + e.environmentState,
+            ),
             findings: details.findings.length,
+            findingsDetail: details.findings.map(
+              (f) => f.confidence + '/' + f.category + '/' + f.title.slice(0, 80),
+            ),
+            usage: agentRun?.usage ?? null,
             workspaceCleaned: true,
             fixtureHashMatch: true,
             baselineHashMatch: true,

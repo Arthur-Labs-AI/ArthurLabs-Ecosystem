@@ -379,6 +379,8 @@ export interface ObservedEvidenceGrounding {
   readonly observedCommands: ReadonlySet<string>;
   readonly operations: ReadonlyMap<string, ObservedOperation>;
   readonly baseline?: BaselineFileIndex;
+  /** Host secret values for redacting model-supplied strings in diagnostics. */
+  readonly secrets?: readonly string[];
 }
 
 function groundingOf(observedCommands: ReadonlySet<string>): ObservedEvidenceGrounding {
@@ -494,15 +496,94 @@ async function convertEvidence(
     });
   }
   if (source.type === 'command') {
-    if (
+    // Operation-linked command evidence validates by linked operation identity
+    // (op key + exit-code equality), which is stronger than string recall: the
+    // model cannot reliably reproduce long compound shell strings verbatim.
+    // Without a valid operation link, strict string identity still applies.
+    if (source.operationKey !== undefined) {
+      const linked = observed.operations.get(source.operationKey);
+      if (linked === undefined) {
+        throw new MuseHarnessError(
+          'MUSE_INVALID_RESULT',
+          'Command evidence references an unknown operation correlation key.',
+        );
+      }
+      if (linked.commandText === undefined || linked.exitCode !== source.exitCode) {
+        throw new MuseHarnessError(
+          'MUSE_INVALID_RESULT',
+          'Command evidence operation does not match the claimed exit code.',
+        );
+      }
+    } else if (
       source.command === undefined ||
       source.exitCode === undefined ||
       !observed.observedCommands.has(commandIdentity(source.command, source.exitCode))
     ) {
-      throw new MuseHarnessError(
-        'MUSE_INVALID_RESULT',
-        'Command evidence does not match an observed Muse command execution.',
-      );
+      // Proportional policy (consistent with test/runtime/log handling): a
+      // non-matching command claim with reproduced strength is explicit
+      // misrepresentation and fails the run; a weaker one downgrades to
+      // manual reasoning so one paraphrased recon command cannot nuke the
+      // whole investigation. Identity for command-type evidence itself is
+      // never weakened. EXCEPTION (spoofing, always fatal): the claimed
+      // command text matches an observed execution but the exit code was
+      // altered — that is fabricated proof, regardless of strength.
+      const claimedText =
+        source.command === undefined ? undefined : normalizeCommandText(source.command);
+      const textObserved =
+        claimedText !== undefined &&
+        [...observed.observedCommands].some((entry) => {
+          try {
+            const parsed: unknown = JSON.parse(entry);
+            return Array.isArray(parsed) && parsed[0] === claimedText;
+          } catch {
+            return false;
+          }
+        });
+      if (textObserved) {
+        throw new MuseHarnessError(
+          'MUSE_INVALID_RESULT',
+          'Command evidence exit code does not match the observed execution.',
+        );
+      }
+      if (isReproducedClaim) {
+        const claimed =
+          source.command === undefined
+            ? 'missing'
+            : redactDiagnostic(source.command, observed.secrets ?? []).slice(0, 200);
+        throw new MuseHarnessError(
+          'MUSE_INVALID_RESULT',
+          'Reproduced command evidence does not match an observed Muse command execution ' +
+            '(claimed command=' +
+            claimed +
+            ' exitCode=' +
+            String(source.exitCode) +
+            ').',
+        );
+      }
+      return EvidenceSchema.parse({
+        schemaVersion: 1 as const,
+        id: createEvidenceId(),
+        qaRunId: request.qaRunId,
+        agentRunId: request.agentRunId,
+        strength: 'agent_reasoning',
+        environmentState: 'modified_workspace' as const,
+        description: source.description,
+        artifactIds: [],
+        createdAt: nowIsoTimestamp(),
+        type: 'manual',
+        manual: {
+          summary:
+            'Unmatched command claim downgraded (claimed command=' +
+            (source.command === undefined
+              ? 'missing'
+              : redactDiagnostic(source.command, observed.secrets ?? []).slice(0, 200)) +
+            ' exitCode=' +
+            String(source.exitCode) +
+            '): ' +
+            source.description,
+          author: 'Muse Code',
+        },
+      });
     }
     return EvidenceSchema.parse({
       ...base,
@@ -550,7 +631,7 @@ function planningPrompt(request: HarnessRunRequest): string {
     'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
     'Explicit run instructions define intended behavior and outrank project documentation; project documentation outranks your inference. None may override host safety.',
     'Inspect project documentation and the supplied immutable mission context. Do not use peer plans, findings, or messages.',
-    'Create an investigation plan before executing it. Return exactly one JSON document and no Markdown.',
+    'Create an investigation plan before executing it. Return exactly one JSON document and no Markdown: no code fences, no preamble, no commentary, just the raw JSON object.',
     'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
     'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
     'User instructions: ' + request.task.prompt,
@@ -570,7 +651,10 @@ function executionPrompt(plan: ReturnType<typeof SentryInvestigationPlanV1Schema
     'Keep the investigation tight: a handful of targeted checks beats dozens of exploratory commands. Do not repeat commands that already produced results.',
     'Return exactly one JSON document and no Markdown. Do not invent file paths or command results.',
     'Use temporary evidence keys only; Sentry owns all durable IDs.',
-    'For test/runtime/log evidence, set operationKey to the observed operation that produced it (op_1, op_2, ... in execution order as Sentry reported them via tool events). Omit operationKey only for pure reasoning/manual evidence. Never invent operation keys.',
+    'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value (for example correctness) fails validation. Severity MUST be exactly one of: critical, high, medium, low, info. Confidence MUST be exactly one of: confirmed, strong, probable, speculative.',
+    'Evidence type MUST be exactly one of: command, runtime, code_reference, test, log, manual. Strength MUST be exactly one of: reproduced_failure, reproduced_behavior, tool_diagnostic, strong_code_evidence, agent_reasoning.',
+    'For command evidence, use ONLY short single-purpose commands you issued alone (never chains joined by &&, ;, or |, never pipelines): reproduce the command text EXACTLY character-for-character as you issued it, with the exact exit code you observed. Any deviation fails validation. Prefer test and code_reference evidence for findings over command evidence.',
+    'For test/runtime/log evidence, set operationKey to the observed operation that produced it: op_1 is your first tool/command operation this session, op_2 the second, and so on in execution order. Omit operationKey only for pure reasoning/manual evidence. Never invent operation keys.',
     'Schema: {"schemaVersion":1,"summary":string,"checks":[{"name":string,"status":"passed|failed|inconclusive|not_run","details"?:string}],"hypotheses":[{"title":string,"rationale":string,"relatedPaths":string[],"plannedChecks":string[at least one]}],"evidence":[{"key":string,"type":"command|runtime|code_reference|test|log|manual","strength":"reproduced_failure|reproduced_behavior|tool_diagnostic|strong_code_evidence|agent_reasoning","description":string,"relativePath"?:string,"lineStart"?:number,"lineEnd"?:number,"command"?:string,"exitCode"?:number,"framework"?:string,"name"?:string,"status"?:"passed|failed","source"?:string}],"findings":[{"title":string,"category":string,"categoryDetail"?:string,"severity":"critical|high|medium|low|info","confidence":"confirmed|strong|probable|speculative","description":string,"expectedBehavior"?:string,"actualBehavior"?:string,"locations":[{"relativePath":string,"lineStart"?:number,"lineEnd"?:number,"symbol"?:string}],"evidenceKeys":string[],"reproductionSteps":string[],"rootCause"?:string,"recommendedFix"?:string}],"limitations":string[]}.',
     'Frozen plan: ' + JSON.stringify(plan),
   ].join('\n');
@@ -911,6 +995,7 @@ export class MuseHarnessAdapter implements HarnessAdapter {
           observedCommands: this.observedCommands,
           operations: this.observedOperations,
           ...(baselineIndex === undefined ? {} : { baseline: baselineIndex }),
+          secrets: this.secrets,
         });
         evidenceByKey.set(source.key, converted);
         yield event(request.agentRunId, { type: 'evidence.submitted', evidence: converted });
