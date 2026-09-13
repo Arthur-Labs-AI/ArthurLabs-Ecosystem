@@ -201,8 +201,19 @@ cost tracking, hard token budgets, full Adaptive InvestigationDepth.
     binary: host lacks `socat` (bubblewrap present), so the binary
     refuses to start with `sandbox.failIfUnavailable`; the adapter
     maps this to `GLM_SANDBOX_UNAVAILABLE` exactly per spec.
-  - REMAINING (external, honest): full GLM smoke needs the Z.AI auth
-    token plus `socat` on the host; three-agent parallel smoke needs
-    GLM plus the already-passing Muse/DeepSeek stacks. No fallback
-    model was substituted; no success was faked. Phase 4 stays IN
-    PROGRESS until these smokes pass.
+  - **GLM individual smoke PASSED** (`run_01M2EBSC5XCPEKTT8TH6DJREM3`, WSL2):
+    status `completed`, agent `completed`, model `glm-5.3-flash`
+    (verified served on the key via the Z.AI models endpoint — exact
+    intended model, no fallback), Claude Code `2.1.270`, provider
+    `zai-anthropic`, 4 findings (strong/logic defect + testing +
+    2 probable/logic), 7 evidence (4 code_reference/baseline +
+    command/manual with `groundingOperationIds` populated), usage
+    40691 in / 19627 out / 194496 cached / 2 turns, `subagent_stats`
+    spawned 0, sandbox enforced (failIfUnavailable, socat present),
+    credential sentinel: zero token-shape hits in persisted data,
+    workspace + ephemeral Claude home removed, no stray processes,
+    fixture intact, `json` + `log` exports. Four preceding runs each
+    drove a genuine fix (planning contract, resume-flag shape,
+    evidence-field guard, execution contract).
+  - REMAINING: three-agent parallel smoke (Muse + DeepSeek + GLM).
+    No fallback model was substituted; no success was faked.
