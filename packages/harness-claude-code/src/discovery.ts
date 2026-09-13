@@ -104,12 +104,35 @@ export async function probeClaudeExecutable(
   environment: NodeJS.ProcessEnv = process.env,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(executable, ['--version'], {
-      env: environment,
-      windowsHide: true,
-      shell: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    // Narrow wrapper preserves the piped-stdio overload type (non-null
+    // stdout/stderr) across the try/catch a bare ReturnType<typeof spawn>
+    // would widen away.
+    const spawnChild = () =>
+      spawn(executable, ['--version'], {
+        env: environment,
+        windowsHide: true,
+        shell: false,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    let child: ReturnType<typeof spawnChild>;
+    try {
+      child = spawnChild();
+    } catch (cause) {
+      // spawn() itself throws synchronously for non-executable paths
+      // (e.g. EFTYPE on Windows): wrap it so callers always see the typed
+      // harness error, never a raw system error.
+      const code = (cause as NodeJS.ErrnoException | undefined)?.code;
+      reject(
+        new ClaudeCodeHarnessError(
+          code === 'ENOENT' ? 'GLM_BINARY_NOT_FOUND' : 'GLM_START_FAILED',
+          code === 'ENOENT'
+            ? 'Claude Code executable was not found: ' + executable
+            : redactDiagnostic(cause, secretValues(environment)),
+          code !== 'ENOENT',
+        ),
+      );
+      return;
+    }
     let stdout = '';
     let stderr = '';
     let settled = false;
