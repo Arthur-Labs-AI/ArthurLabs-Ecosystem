@@ -20,6 +20,12 @@
       "path": "../../packages/harness-muse"
     },
     {
+      "path": "../../packages/harness-deepseek"
+    },
+    {
+      "path": "../../packages/harness-claude-code"
+    },
+    {
       "path": "../../packages/persistence"
     },
     {

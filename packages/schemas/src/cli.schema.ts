@@ -284,7 +284,7 @@ export type AgentListResult = z.infer<typeof AgentListResultSchema>;
 
 export const AgentDoctorResultSchema = z
   .object({
-    agent: z.literal('muse'),
+    agent: z.enum(['muse', 'deepseek', 'glm']),
     status: z.enum(['healthy', 'degraded', 'unavailable']),
     checks: z.array(
       z
@@ -299,6 +299,7 @@ export const AgentDoctorResultSchema = z
     executable: z.string().optional(),
     executableVersion: z.string().optional(),
     modelId: z.string().optional(),
+    provider: z.string().optional(),
     sdkVersion: z.string(),
     readiness: AgentReadinessSchema.optional(),
     configured: z.boolean().optional(),
@@ -331,6 +332,19 @@ export const CapabilitiesResultSchema = z
         runCancellation: z.literal(false),
       })
       .strict(),
+    // Additive Phase 4 extension: stable stack identities with their
+    // harness bindings. Optional so older machine consumers keep parsing.
+    agentStacks: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1).max(100),
+            displayName: z.string().min(1).max(200),
+            harness: z.string().min(1).max(100),
+          })
+          .strict(),
+      )
+      .optional(),
   })
   .strict();
 export type CapabilitiesResult = z.infer<typeof CapabilitiesResultSchema>;

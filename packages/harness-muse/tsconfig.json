@@ -5,6 +5,8 @@
   "references": [
     { "path": "../shared" },
     { "path": "../schemas" },
+    { "path": "../domain" },
+    { "path": "../evidence-pipeline" },
     { "path": "../harness-protocol" }
   ]
 }

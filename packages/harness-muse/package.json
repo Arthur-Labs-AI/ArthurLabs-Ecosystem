@@ -19,6 +19,7 @@
   "dependencies": {
     "@muse-code/sdk": "0.1.1",
     "@qa/domain": "workspace:*",
+    "@qa/evidence-pipeline": "workspace:*",
     "@qa/harness-protocol": "workspace:*",
     "@qa/schemas": "workspace:*",
     "@qa/shared": "workspace:*",

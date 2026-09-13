@@ -1,8 +1,4 @@
-import { createHash } from 'node:crypto';
-import { readFile, realpath, stat } from 'node:fs/promises';
-import { isAbsolute, relative, resolve, sep } from 'node:path';
 import {
-  createEvidenceId,
   createFindingId,
   createHarnessEventId,
   createInvestigationHypothesisId,
@@ -13,21 +9,29 @@ import {
   type OperationId,
 } from '@qa/shared';
 import {
+  buildBaselineIndex,
+  commandIdentity,
+  convertEvidence,
+  isTestCommand,
+  parseWholeJson,
+  summarizeSchemaIssues,
+  validateLocation,
+  validateProductionFindings,
+  type EvidencePipelineContext,
+  type ObservedOperation,
+} from '@qa/evidence-pipeline';
+import {
   describeSentryAgentEvidenceContract,
-  EvidenceSchema,
   FindingSchema,
   HarnessEventSchema,
   SentryAgentResultV1Schema,
   SentryInvestigationPlanV1Schema,
   type AgentUsage,
   type Evidence,
-  type FindingConfidence,
   type HarnessEvent,
   type HarnessRunRequest,
-  type SentryAgentEvidenceV1,
   type SentryAgentResultV1,
 } from '@qa/schemas';
-import { validateFindingTrust } from '@qa/domain';
 import type {
   HarnessAdapter,
   HarnessDiagnostic,
@@ -140,71 +144,16 @@ export function aggregateTurnUsage(
   };
 }
 
-async function buildBaselineIndex(
-  // workspace/project runtime path; the sidecar lives in Sentry-owned
-  // .sentry-workspace/ next to it (outside the agent-visible project tree).
-  workspaceRuntimePath: string,
-  snapshotId: string,
-): Promise<BaselineFileIndex | undefined> {
-  try {
-    const { readFile } = await import('node:fs/promises');
-    const { join, dirname } = await import('node:path');
-    const sidecar = join(
-      dirname(workspaceRuntimePath),
-      '.sentry-workspace',
-      'baseline-hashes.json',
-    );
-    const raw = await readFile(sidecar, 'utf8');
-    const parsed: unknown = JSON.parse(raw);
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
-    const record = parsed as {
-      schemaVersion?: unknown;
-      snapshotId?: unknown;
-      files?: unknown;
-    };
-    // Snapshot-anchored: a sidecar from another run must never classify.
-    if (record.schemaVersion !== 1 || record.snapshotId !== snapshotId) return undefined;
-    if (record.files === null || typeof record.files !== 'object' || Array.isArray(record.files))
-      return undefined;
-    const map = new Map<string, string>();
-    for (const [key, value] of Object.entries(record.files as Record<string, unknown>)) {
-      if (typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value)) map.set(key, value);
-    }
-    return { fileHashByPath: map };
-  } catch {
-    // Absent/unreadable sidecar: conservative modified_workspace.
-  }
-  return undefined;
-}
-
-/**
- * Production finding gate delegates to the single generic trust policy
- * (validateFindingTrust in @qa/domain). The adapter only translates the
- * verdict into its canonical MUSE_INVALID_RESULT error; no duplicate
- * confidence logic lives here.
- */
-function validateProductionFindings(
-  findings: ReadonlyArray<{
-    readonly evidenceKeys: readonly string[];
-    readonly confidence: FindingConfidence;
-  }>,
-  evidenceByKey: ReadonlyMap<string, Evidence>,
-): void {
-  for (const finding of findings) {
-    const evidence = [...evidenceByKey.values()];
-    const verdict = validateFindingTrust(
-      {
-        confidence: finding.confidence,
-        evidenceIds: finding.evidenceKeys.map(
-          (key) => (evidenceByKey.get(key)?.id ?? key) as Evidence['id'],
-        ),
-      },
-      evidence,
-    );
-    if (!verdict.ok) {
-      throw new MuseHarnessError('MUSE_INVALID_RESULT', verdict.reason);
-    }
-  }
+function pipelineContext(secrets: readonly string[]): EvidencePipelineContext {
+  return {
+    errors: {
+      invalidResult: (message: string) => new MuseHarnessError('MUSE_INVALID_RESULT', message),
+    },
+    authorLabel: 'Muse Code',
+    secrets,
+    redactDiagnostic: (value: string) => redactDiagnostic(value, secrets),
+    redactStructured: (value: unknown) => redactStructured(value, secrets),
+  };
 }
 
 function assertCompleted(outcome: MuseTurnOutcome, phase: string): void {
@@ -235,19 +184,8 @@ function assertCompleted(outcome: MuseTurnOutcome, phase: string): void {
   );
 }
 
-function summarizeSchemaIssues(error: {
-  issues: Array<{ path: Array<string | number>; message: string }>;
-}): string {
-  // Paths only, never model values; bounded so the message stays a summary.
-  return error.issues
-    .slice(0, 8)
-    .map((issue) => issue.path.join('.') + ': ' + issue.message)
-    .join('; ')
-    .slice(0, 500);
-}
-
-function parseAgentResult(text: string, secrets: readonly string[]): SentryAgentResultV1 {
-  const parsed = SentryAgentResultV1Schema.safeParse(parseWholeJson(text, 'execution', secrets));
+function parseAgentResult(text: string, pipeline: EvidencePipelineContext): SentryAgentResultV1 {
+  const parsed = SentryAgentResultV1Schema.safeParse(parseWholeJson(text, 'execution', pipeline));
   if (parsed.success) return parsed.data;
   throw new MuseHarnessError(
     'MUSE_INVALID_RESULT',
@@ -255,416 +193,6 @@ function parseAgentResult(text: string, secrets: readonly string[]): SentryAgent
       summarizeSchemaIssues(parsed.error) +
       ').',
   );
-}
-function parseWholeJson(text: string, phase: string, secrets: readonly string[]): unknown {
-  try {
-    return redactStructured(JSON.parse(text), secrets);
-  } catch {
-    throw new MuseHarnessError(
-      'MUSE_INVALID_RESULT',
-      `Muse ${phase} response was not one complete JSON document.`,
-    );
-  }
-}
-
-function safeAbsolute(root: string, relativePath: string): string {
-  const absoluteRoot = resolve(root);
-  const absolute = resolve(absoluteRoot, relativePath);
-  const rel = relative(absoluteRoot, absolute);
-  if (rel === '' || (!rel.startsWith('..' + sep) && rel !== '..' && !isAbsolute(rel)))
-    return absolute;
-  throw new MuseHarnessError(
-    'MUSE_INVALID_RESULT',
-    'Evidence path escapes the isolated workspace.',
-  );
-}
-
-async function validateExistingFile(root: string, relativePath: string): Promise<string> {
-  const absolute = safeAbsolute(root, relativePath);
-  let details;
-  let realRoot: string;
-  let realTarget: string;
-  try {
-    [realRoot, realTarget] = await Promise.all([realpath(root), realpath(absolute)]);
-    details = await stat(absolute);
-  } catch {
-    throw new MuseHarnessError(
-      'MUSE_INVALID_RESULT',
-      'Referenced evidence path does not exist: ' + relativePath,
-    );
-  }
-  if (!details.isFile()) {
-    throw new MuseHarnessError(
-      'MUSE_INVALID_RESULT',
-      'Referenced evidence path is not a file: ' + relativePath,
-    );
-  }
-  const realRelative = relative(realRoot, realTarget);
-  if (realRelative === '..' || realRelative.startsWith('..' + sep) || isAbsolute(realRelative)) {
-    throw new MuseHarnessError(
-      'MUSE_INVALID_RESULT',
-      'Referenced evidence path resolves outside the isolated workspace.',
-    );
-  }
-  return absolute;
-}
-
-async function validateLocation(
-  root: string,
-  relativePath: string,
-  lineStart?: number,
-  lineEnd?: number,
-): Promise<string> {
-  const absolute = await validateExistingFile(root, relativePath);
-  if (lineStart === undefined) return absolute;
-  const lineCount = (await readFile(absolute, 'utf8')).split(/\r?\n/).length;
-  if (lineStart > lineCount || (lineEnd !== undefined && lineEnd > lineCount)) {
-    throw new MuseHarnessError(
-      'MUSE_INVALID_RESULT',
-      'Referenced evidence line range is outside the file: ' + relativePath,
-    );
-  }
-  return absolute;
-}
-
-export interface BaselineFileIndex {
-  /** Baseline content hash by workspace-relative path (forward slashes). */
-  readonly fileHashByPath: ReadonlyMap<string, string>;
-}
-
-async function codeReference(
-  root: string,
-  source: SentryAgentEvidenceV1,
-  baseline?: BaselineFileIndex,
-) {
-  const relativePath = source.relativePath as string;
-  const absolute = await validateLocation(root, relativePath, source.lineStart, source.lineEnd);
-  const bytes = await readFile(absolute);
-  const lines = bytes.toString('utf8').split(/\r?\n/);
-  const start = source.lineStart ?? 1;
-  const end = Math.min(source.lineEnd ?? start, lines.length);
-  const excerpt = lines
-    .slice(start - 1, end)
-    .join('\n')
-    .slice(0, 4_000);
-  const contentHash = 'sha256:' + createHash('sha256').update(bytes).digest('hex');
-  const baselineHash = baseline?.fileHashByPath.get(relativePath);
-  return {
-    relativePath,
-    ...(source.lineStart === undefined ? {} : { startLine: source.lineStart }),
-    ...(source.lineEnd === undefined ? {} : { endLine: source.lineEnd }),
-    // Unchanged-from-baseline evidence is baseline provenance; anything else
-    // (modified existing file or agent-created new file) is modified_workspace.
-    sourceState:
-      baselineHash !== undefined && baselineHash === contentHash
-        ? ('baseline' as const)
-        : ('modified_workspace' as const),
-    contentHash,
-    ...(excerpt.length === 0 ? {} : { excerpt }),
-  };
-}
-
-/** One observed tool/command execution, adapter-owned correlation identity. */
-export interface ObservedOperation {
-  readonly operationId: OperationId;
-  /** Temporary agent-visible correlation key (op_1, op_2, ...). */
-  readonly operationKey: string;
-  readonly toolName: string;
-  readonly commandText?: string;
-  readonly argsText?: string;
-  readonly exitCode?: number;
-  /** True when this operation ran a test command (generic detection). */
-  readonly isTestOperation: boolean;
-  readonly durationMs?: number;
-}
-
-export interface ObservedEvidenceGrounding {
-  readonly observedCommands: ReadonlySet<string>;
-  readonly operations: ReadonlyMap<string, ObservedOperation>;
-  readonly baseline?: BaselineFileIndex;
-  /** Host secret values for redacting model-supplied strings in diagnostics. */
-  readonly secrets?: readonly string[];
-}
-
-function groundingOf(observedCommands: ReadonlySet<string>): ObservedEvidenceGrounding {
-  return { observedCommands, operations: new Map<string, ObservedOperation>() };
-}
-
-const TEST_COMMAND_PATTERN =
-  /\b(pnpm|npm|yarn|bun|node|npx|vitest|jest|pytest|dotnet\s+test|cargo\s+test|go\s+test|mvn(\s+test)?|gradle(\s+test)?|phpunit|rspec)\b/i;
-
-function normalizeCommandText(value: string): string {
-  return value.replace(/\s+/g, ' ').trim();
-}
-
-function commandIdentity(command: string, exitCode: number): string {
-  return JSON.stringify([normalizeCommandText(command), exitCode]);
-}
-
-async function convertEvidence(
-  request: HarnessRunRequest,
-  source: SentryAgentEvidenceV1,
-  grounding: ObservedEvidenceGrounding | ReadonlySet<string>,
-): Promise<Evidence> {
-  const observed =
-    grounding instanceof Set ? groundingOf(grounding) : (grounding as ObservedEvidenceGrounding);
-  if (source.relativePath !== undefined)
-    await validateLocation(
-      request.workspace.runtimePath,
-      source.relativePath,
-      source.lineStart,
-      source.lineEnd,
-    );
-  // Operation-specific grounding (HIGH C): a claim is grounded ONLY by the
-  // specific observed operation it names via operationKey. An unrelated tool
-  // run elsewhere in the session never grounds a claim. Unknown operation
-  // keys are rejected. Policy for misrepresented reproduction: a reproduced
-  // strength without a correlated operation is rejected as MUSE_INVALID_RESULT
-  // (the model explicitly misrepresents reproduction); weaker ungrounded
-  // test/runtime/log claims are downgraded to manual/agent_reasoning.
-  const isReproducedClaim =
-    source.strength === 'reproduced_failure' || source.strength === 'reproduced_behavior';
-  const needsOperation =
-    source.type === 'test' || source.type === 'runtime' || source.type === 'log';
-  let correlated: ObservedOperation | undefined;
-  if (source.operationKey !== undefined) {
-    correlated = observed.operations.get(source.operationKey);
-    if (correlated === undefined) {
-      throw new MuseHarnessError(
-        'MUSE_INVALID_RESULT',
-        'Evidence references an unknown operation correlation key.',
-      );
-    }
-    if (source.type === 'test' && !correlated.isTestOperation) {
-      throw new MuseHarnessError(
-        'MUSE_INVALID_RESULT',
-        'Test evidence references an operation that did not run tests.',
-      );
-    }
-    if (
-      source.type === 'test' &&
-      source.status !== undefined &&
-      correlated.exitCode !== undefined
-    ) {
-      const observedStatus = correlated.exitCode === 0 ? 'passed' : 'failed';
-      if (observedStatus !== source.status) {
-        throw new MuseHarnessError(
-          'MUSE_INVALID_RESULT',
-          'Test evidence status does not match the observed operation result.',
-        );
-      }
-    }
-  } else if (needsOperation) {
-    if (isReproducedClaim) {
-      throw new MuseHarnessError(
-        'MUSE_INVALID_RESULT',
-        'Reproduced evidence strength requires a correlated observed operation.',
-      );
-    }
-    return EvidenceSchema.parse({
-      schemaVersion: 1 as const,
-      id: createEvidenceId(),
-      qaRunId: request.qaRunId,
-      agentRunId: request.agentRunId,
-      strength: 'agent_reasoning',
-      environmentState: 'modified_workspace' as const,
-      description: source.description,
-      artifactIds: [],
-      createdAt: nowIsoTimestamp(),
-      type: 'manual',
-      manual: {
-        summary: 'Ungrounded ' + source.type + ' claim downgraded: ' + source.description,
-        author: 'Muse Code',
-      },
-    });
-  }
-  const downgradedManual = (summary: string): Evidence =>
-    EvidenceSchema.parse({
-      schemaVersion: 1 as const,
-      id: createEvidenceId(),
-      qaRunId: request.qaRunId,
-      agentRunId: request.agentRunId,
-      strength: 'agent_reasoning',
-      environmentState: 'modified_workspace' as const,
-      description: source.description,
-      artifactIds: [],
-      createdAt: nowIsoTimestamp(),
-      type: 'manual',
-      manual: { summary, author: 'Muse Code' },
-    });
-  const base = {
-    schemaVersion: 1 as const,
-    id: createEvidenceId(),
-    qaRunId: request.qaRunId,
-    agentRunId: request.agentRunId,
-    strength: source.strength,
-    environmentState: 'modified_workspace' as const,
-    description: source.description,
-    artifactIds: [],
-    createdAt: nowIsoTimestamp(),
-  };
-  if (source.type === 'code_reference') {
-    const reference = await codeReference(request.workspace.runtimePath, source, observed.baseline);
-    return EvidenceSchema.parse({
-      ...base,
-      environmentState: reference.sourceState,
-      type: 'code_reference',
-      codeReference: reference,
-    });
-  }
-  if (source.type === 'command') {
-    // Canonical integrity: the OBSERVED operation is authoritative. When an
-    // operation link exists, command/exitCode/durationMs derive from it —
-    // model-authored text can never become the canonical execution record.
-    // Text mismatch policy (deterministic): reproduced claims are rejected
-    // as misrepresentation; weaker ones downgrade to manual reasoning.
-    // Exit-code alteration on a matched operation is always fatal (spoofing).
-    if (source.operationKey !== undefined) {
-      const linked = observed.operations.get(source.operationKey);
-      if (linked === undefined) {
-        throw new MuseHarnessError(
-          'MUSE_INVALID_RESULT',
-          'Command evidence references an unknown operation correlation key.',
-        );
-      }
-      if (linked.commandText === undefined || linked.exitCode !== source.exitCode) {
-        throw new MuseHarnessError(
-          'MUSE_INVALID_RESULT',
-          'Command evidence operation does not match the claimed exit code.',
-        );
-      }
-      if (
-        source.command !== undefined &&
-        normalizeCommandText(source.command) !== normalizeCommandText(linked.commandText)
-      ) {
-        if (isReproducedClaim) {
-          throw new MuseHarnessError(
-            'MUSE_INVALID_RESULT',
-            'Reproduced command evidence text does not match the linked observed operation.',
-          );
-        }
-        return downgradedManual(
-          'Command text differs from the linked observed operation; downgraded: ' +
-            source.description,
-        );
-      }
-      return EvidenceSchema.parse({
-        ...base,
-        type: 'command',
-        command: {
-          command: linked.commandText,
-          exitCode: linked.exitCode,
-          ...(linked.durationMs === undefined ? {} : { durationMs: linked.durationMs }),
-        },
-      });
-    } else if (
-      source.command === undefined ||
-      source.exitCode === undefined ||
-      !observed.observedCommands.has(commandIdentity(source.command, source.exitCode))
-    ) {
-      // Proportional policy (consistent with test/runtime/log handling): a
-      // non-matching command claim with reproduced strength is explicit
-      // misrepresentation and fails the run; a weaker one downgrades to
-      // manual reasoning so one paraphrased recon command cannot nuke the
-      // whole investigation. Identity for command-type evidence itself is
-      // never weakened. EXCEPTION (spoofing, always fatal): the claimed
-      // command text matches an observed execution but the exit code was
-      // altered — that is fabricated proof, regardless of strength.
-      const claimedText =
-        source.command === undefined ? undefined : normalizeCommandText(source.command);
-      const textObserved =
-        claimedText !== undefined &&
-        [...observed.observedCommands].some((entry) => {
-          try {
-            const parsed: unknown = JSON.parse(entry);
-            return Array.isArray(parsed) && parsed[0] === claimedText;
-          } catch {
-            return false;
-          }
-        });
-      if (textObserved) {
-        throw new MuseHarnessError(
-          'MUSE_INVALID_RESULT',
-          'Command evidence exit code does not match the observed execution.',
-        );
-      }
-      if (isReproducedClaim) {
-        const claimed =
-          source.command === undefined
-            ? 'missing'
-            : redactDiagnostic(source.command, observed.secrets ?? []).slice(0, 200);
-        throw new MuseHarnessError(
-          'MUSE_INVALID_RESULT',
-          'Reproduced command evidence does not match an observed Muse command execution ' +
-            '(claimed command=' +
-            claimed +
-            ' exitCode=' +
-            String(source.exitCode) +
-            ').',
-        );
-      }
-      return EvidenceSchema.parse({
-        schemaVersion: 1 as const,
-        id: createEvidenceId(),
-        qaRunId: request.qaRunId,
-        agentRunId: request.agentRunId,
-        strength: 'agent_reasoning',
-        environmentState: 'modified_workspace' as const,
-        description: source.description,
-        artifactIds: [],
-        createdAt: nowIsoTimestamp(),
-        type: 'manual',
-        manual: {
-          summary:
-            'Unmatched command claim downgraded (claimed command=' +
-            (source.command === undefined
-              ? 'missing'
-              : redactDiagnostic(source.command, observed.secrets ?? []).slice(0, 200)) +
-            ' exitCode=' +
-            String(source.exitCode) +
-            '): ' +
-            source.description,
-          author: 'Muse Code',
-        },
-      });
-    }
-    return EvidenceSchema.parse({
-      ...base,
-      type: 'command',
-      command: { command: source.command, exitCode: source.exitCode },
-    });
-  }
-  if (source.type === 'test') {
-    return EvidenceSchema.parse({
-      ...base,
-      type: 'test',
-      test: {
-        framework: source.framework,
-        name: source.name,
-        status: source.status,
-        summary: source.description,
-      },
-    });
-  }
-  if (source.type === 'runtime') {
-    return EvidenceSchema.parse({
-      ...base,
-      type: 'runtime',
-      runtime: { summary: source.description },
-    });
-  }
-  if (source.type === 'log') {
-    return EvidenceSchema.parse({
-      ...base,
-      type: 'log',
-      log: { source: source.source ?? 'muse', summary: source.description },
-    });
-  }
-  return EvidenceSchema.parse({
-    ...base,
-    type: 'manual',
-    manual: { summary: source.description, author: 'Muse Code' },
-  });
 }
 
 function planningPrompt(request: HarnessRunRequest): string {
@@ -943,7 +471,7 @@ export class MuseHarnessAdapter implements HarnessAdapter {
             commandText: command,
             ...(item.args === undefined ? {} : { argsText: item.args }),
             exitCode: item.exitCode,
-            isTestOperation: TEST_COMMAND_PATTERN.test(command),
+            isTestOperation: isTestCommand(command),
             ...(item.durationMs === undefined ? {} : { durationMs: item.durationMs }),
           });
           yield event(agentRunId, {
@@ -965,9 +493,7 @@ export class MuseHarnessAdapter implements HarnessAdapter {
             toolName: item.tool ?? 'unknown',
             ...(argsText === undefined ? {} : { argsText }),
             ...(item.exitCode === undefined ? {} : { exitCode: item.exitCode }),
-            isTestOperation:
-              TEST_COMMAND_PATTERN.test(item.tool ?? '') ||
-              TEST_COMMAND_PATTERN.test(argsText ?? ''),
+            isTestOperation: isTestCommand(item.tool ?? '') || isTestCommand(argsText ?? ''),
             ...(item.durationMs === undefined ? {} : { durationMs: item.durationMs }),
           });
         }
@@ -1033,8 +559,9 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         'planning',
       );
       assertCompleted(planning.outcome, 'planning');
+      const pipeline = pipelineContext(this.secrets);
       const planResult = SentryInvestigationPlanV1Schema.parse(
-        parseWholeJson(planning.text, 'planning', this.secrets),
+        parseWholeJson(planning.text, 'planning', pipeline),
       );
       const plan = {
         id: createInvestigationPlanId(),
@@ -1058,7 +585,7 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         session,
       );
       assertCompleted(execution.outcome, 'execution');
-      const result = parseAgentResult(execution.text, this.secrets);
+      const result = parseAgentResult(execution.text, pipeline);
       yield event(request.agentRunId, { type: 'agent.message', message: result.summary });
       for (const check of result.checks) {
         yield event(request.agentRunId, {
@@ -1090,21 +617,23 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         request.workspace.snapshotId,
       ).catch(() => undefined);
       for (const source of result.evidence) {
-        const converted = await convertEvidence(request, source, {
+        const converted = await convertEvidence(request, source, pipeline, {
           observedCommands: this.observedCommands,
           operations: this.observedOperations,
           ...(baselineIndex === undefined ? {} : { baseline: baselineIndex }),
-          secrets: this.secrets,
         });
         evidenceByKey.set(source.key, converted);
         yield event(request.agentRunId, { type: 'evidence.submitted', evidence: converted });
       }
-      validateProductionFindings(result.findings, evidenceByKey);
+      validateProductionFindings(result.findings, evidenceByKey, (message: string) =>
+        pipeline.errors.invalidResult(message),
+      );
       for (const source of result.findings) {
         for (const location of source.locations)
           await validateLocation(
             request.workspace.runtimePath,
             location.relativePath,
+            pipeline,
             location.lineStart,
             location.lineEnd,
           );

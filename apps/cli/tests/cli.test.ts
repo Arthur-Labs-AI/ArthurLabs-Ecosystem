@@ -87,7 +87,19 @@ describe('qa cli', () => {
     expect(listed.status).toBe(0);
     const listResponse = machine(listed, 'agent.list');
     expect(listResponse.ok && listResponse.data).toMatchObject({
-      agents: [{ id: 'muse', harness: 'muse-code', modelEnvironmentVariable: 'SENTRY_MUSE_MODEL' }],
+      agents: [
+        {
+          id: 'muse',
+          harness: 'muse-code',
+          modelEnvironmentVariable: 'SENTRY_MUSE_MODEL',
+        },
+        {
+          id: 'deepseek',
+          harness: 'deepseek-harness',
+          modelEnvironmentVariable: 'SENTRY_DEEPSEEK_MODEL',
+        },
+        { id: 'glm', harness: 'claude-code', modelEnvironmentVariable: 'SENTRY_GLM_MODEL' },
+      ],
     });
 
     const doctor = spawnSync(
@@ -112,6 +124,32 @@ describe('qa cli', () => {
       readiness: 'unavailable',
       runtimeVerified: false,
     });
+
+    for (const [agent, binaryVariable, sdkVersion] of [
+      ['deepseek', 'SENTRY_DEEPSEEK_BINARY', '0.1.5-rc.2'],
+      ['glm', 'SENTRY_CLAUDE_BINARY', '2.1.270'],
+    ] as const) {
+      const stackDoctor = spawnSync(
+        process.execPath,
+        ['--no-warnings', entry, 'agent', 'doctor', agent, '--json'],
+        {
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            SENTRY_DATA_ROOT: f.dataRoot,
+            [binaryVariable]: join(f.root, 'missing-' + agent),
+          },
+        },
+      );
+      expect(stackDoctor.status).toBe(0);
+      const stackResponse = machine(stackDoctor, 'agent.doctor');
+      expect(stackResponse.ok && stackResponse.data).toMatchObject({
+        agent,
+        status: 'unavailable',
+        sdkVersion,
+        runtimeVerified: false,
+      });
+    }
 
     const start = spawnSync(
       process.execPath,

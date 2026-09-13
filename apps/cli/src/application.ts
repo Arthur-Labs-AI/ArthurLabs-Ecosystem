@@ -10,6 +10,12 @@ import { createFakeHarnessRegistry, RunCoordinator } from '@qa/run-engine';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
 import { createMuseRegistration, doctorMuse, MUSE_SDK_VERSION } from '@qa/harness-muse';
 import {
+  createDeepSeekRegistration,
+  doctorDeepSeek,
+  DEEPSEEK_SDK_VERSION,
+} from '@qa/harness-deepseek';
+import { createGlmRegistration, doctorGlm, CLAUDE_CODE_VERSION } from '@qa/harness-claude-code';
+import {
   AgentStackDefinitionSchema,
   CLI_CONTRACT_VERSION,
   CliSuccessEnvelopeSchema,
@@ -95,32 +101,75 @@ export async function executeCommand(
         retestExecution: false,
         runCancellation: false,
       },
+      agentStacks: [
+        { id: 'muse', displayName: 'Muse QA Agent', harness: 'muse-code' },
+        { id: 'deepseek', displayName: 'DeepSeek QA Agent', harness: 'deepseek-harness' },
+        { id: 'glm', displayName: 'GLM QA Agent', harness: 'claude-code' },
+      ],
     });
   }
   if (input.command === 'agent.list') {
-    const health = await doctorMuse();
-    const pass = (name: string) =>
-      health.checks.some((check) => check.name === name && check.status === 'pass');
-    const configured = pass('model') && pass('binary');
+    const [museHealth, deepseekHealth, glmHealth] = await Promise.all([
+      doctorMuse(),
+      doctorDeepSeek(),
+      doctorGlm(),
+    ]);
+    const entry = (
+      health: {
+        readonly checks: ReadonlyArray<{
+          readonly name: string;
+          readonly status: 'pass' | 'fail' | 'warn';
+        }>;
+        readonly runtimeVerified?: boolean;
+        readonly readiness?: string;
+      },
+      id: string,
+      displayName: string,
+      harness: string,
+      modelEnvironmentVariable: string,
+    ) => {
+      const pass = (name: string) =>
+        health.checks.some((check) => check.name === name && check.status === 'pass');
+      const configured = pass('model') && pass('binary');
+      return {
+        id,
+        displayName,
+        harness,
+        available: configured,
+        configured,
+        binaryAvailable: pass('binary'),
+        runtimeVerified: health.runtimeVerified ?? false,
+        status: health.readiness ?? (configured ? 'configured' : 'unconfigured'),
+        modelEnvironmentVariable,
+      };
+    };
     return success(input.command, {
       agents: [
-        {
-          id: 'muse',
-          displayName: 'Muse QA Agent',
-          harness: 'muse-code',
-          // available stays boolean for contract stability; status carries
-          // the truthful readiness (configured vs actually verified/ready).
-          available: configured,
-          configured,
-          binaryAvailable: pass('binary'),
-          runtimeVerified: health.runtimeVerified ?? false,
-          status: health.readiness ?? (configured ? 'configured' : 'unconfigured'),
-          modelEnvironmentVariable: 'SENTRY_MUSE_MODEL',
-        },
+        entry(museHealth, 'muse', 'Muse QA Agent', 'muse-code', 'SENTRY_MUSE_MODEL'),
+        entry(
+          deepseekHealth,
+          'deepseek',
+          'DeepSeek QA Agent',
+          'deepseek-harness',
+          'SENTRY_DEEPSEEK_MODEL',
+        ),
+        entry(glmHealth, 'glm', 'GLM QA Agent', 'claude-code', 'SENTRY_GLM_MODEL'),
       ],
     });
   }
   if (input.command === 'agent.doctor') {
+    if (input.agent === 'deepseek') {
+      const result = await doctorDeepSeek();
+      return success(input.command, {
+        agent: 'deepseek',
+        ...result,
+        sdkVersion: DEEPSEEK_SDK_VERSION,
+      });
+    }
+    if (input.agent === 'glm') {
+      const result = await doctorGlm();
+      return success(input.command, { agent: 'glm', ...result, sdkVersion: CLAUDE_CODE_VERSION });
+    }
     const result = await doctorMuse();
     return success(input.command, { agent: 'muse', ...result, sdkVersion: MUSE_SDK_VERSION });
   }
@@ -211,12 +260,18 @@ export async function executeCommand(
   }
   if (input.command === 'run.start') {
     const projectId = ProjectIdSchema.parse(input.projectId);
-    const registry = new HarnessAdapterRegistry().register(createMuseRegistration());
+    const registry = new HarnessAdapterRegistry()
+      .register(createMuseRegistration())
+      .register(createDeepSeekRegistration())
+      .register(createGlmRegistration());
+    const requestedStackIds = input.agents.map((name) =>
+      AgentStackDefinitionSchema.shape.id.parse('stack_' + name + '_main'),
+    );
     return withMutationRuntime(
       async ({ runs }) => {
         const details = await runs.run(projectId, {
           executionKind: 'production',
-          agentStackIds: [AgentStackDefinitionSchema.shape.id.parse('stack_muse_main')],
+          agentStackIds: requestedStackIds,
           verificationLevel: 'strict',
           ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
           ...(input.runTimeoutMs === undefined ? {} : { runTimeoutMs: input.runTimeoutMs }),

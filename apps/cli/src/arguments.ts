@@ -17,10 +17,14 @@ interface BaseCommand<C extends CliCommand> {
   readonly command: C;
 }
 
+export type AgentName = 'muse' | 'deepseek' | 'glm';
+
+export const AGENT_NAMES: readonly AgentName[] = ['muse', 'deepseek', 'glm'];
+
 export type ParsedCliCommand =
   | BaseCommand<'capabilities'>
   | BaseCommand<'agent.list'>
-  | (BaseCommand<'agent.doctor'> & { readonly agent: 'muse' })
+  | (BaseCommand<'agent.doctor'> & { readonly agent: AgentName })
   | (BaseCommand<'project.add'> & { readonly sourcePath: string })
   | BaseCommand<'project.list'>
   | (BaseCommand<'project.show'> & { readonly projectId: string })
@@ -38,7 +42,7 @@ export type ParsedCliCommand =
   | (BaseCommand<'run.start'> & {
       readonly projectId: string;
       readonly mode: 'full';
-      readonly agents: 'muse';
+      readonly agents: readonly AgentName[];
       readonly wait: true;
       readonly instructions?: string;
       readonly runTimeoutMs?: number;
@@ -129,9 +133,10 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
   }
   if (area === 'agent' && action === 'doctor') {
     assertFlags(tail, []);
-    const [agent] = assertPositionals(tail, 1, 'qa agent doctor muse');
-    if (agent !== 'muse') fail('Only the Muse agent is available in Phase 3');
-    return { command: 'agent.doctor', agent: 'muse' };
+    const [agent] = assertPositionals(tail, 1, 'qa agent doctor muse|deepseek|glm');
+    if (agent !== 'muse' && agent !== 'deepseek' && agent !== 'glm')
+      fail('Unknown agent: ' + agent + ' (expected muse, deepseek, or glm)', agent);
+    return { command: 'agent.doctor', agent };
   }
   if (area === 'project' && action === 'add') {
     assertFlags(tail, []);
@@ -194,13 +199,27 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     assertFlags(tail, ['--mode', '--agents', '--wait', '--instructions', '--timeout-ms']);
     const [projectId] = positional(tail);
     if (projectId === undefined || positional(tail).length !== 1) {
-      fail('Usage: qa run start <project-id> --mode full --agents muse --wait');
+      fail('Usage: qa run start <project-id> --mode full [--agents muse,deepseek,glm] --wait');
     }
     const mode = option(tail, '--mode');
-    const agents = option(tail, '--agents');
+    const agentsText = option(tail, '--agents');
     if (mode !== 'full') fail('--mode must be full', '--mode');
-    if (agents !== 'muse') fail('--agents must be muse', '--agents');
-    if (!tail.includes('--wait')) fail('Phase 3 real runs require --wait', '--wait');
+    // Omitted --agents selects all three stable real AgentStacks.
+    const agents: AgentName[] =
+      agentsText === undefined
+        ? [...AGENT_NAMES]
+        : (agentsText
+            .split(',')
+            .map((value) => value.trim())
+            .filter((value) => value.length > 0) as AgentName[]);
+    if (agents.length === 0) fail('--agents requires at least one agent stack', '--agents');
+    for (const name of agents) {
+      if (name !== 'muse' && name !== 'deepseek' && name !== 'glm')
+        fail('Unknown agent: ' + name + ' (expected muse, deepseek, or glm)', '--agents');
+    }
+    if (new Set(agents).size !== agents.length)
+      fail('--agents lists a duplicate agent', '--agents');
+    if (!tail.includes('--wait')) fail('Real runs require --wait', '--wait');
     const instructions = option(tail, '--instructions');
     const timeoutText = option(tail, '--timeout-ms');
     const runTimeoutMs = timeoutText === undefined ? undefined : Number(timeoutText);
@@ -214,7 +233,7 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
       command: 'run.start',
       projectId,
       mode: 'full',
-      agents: 'muse',
+      agents,
       wait: true,
       ...(instructions === undefined ? {} : { instructions }),
       ...(runTimeoutMs === undefined ? {} : { runTimeoutMs }),
