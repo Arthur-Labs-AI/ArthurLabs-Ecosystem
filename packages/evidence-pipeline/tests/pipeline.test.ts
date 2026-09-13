@@ -123,6 +123,50 @@ describe('shared evidence pipeline', () => {
     }
   });
 
+  it('retains the canonical operation id on linked evidence, never the temp key', async () => {
+    const root = await workspace();
+    const grounding = groundingWithCommand('pnpm test', 0);
+    const operationId = grounding.operations.get('op_1')?.operationId;
+    expect(operationId).toBeDefined();
+    // Linked command evidence carries the canonical ID.
+    const command = {
+      key: 'cmd',
+      type: 'command',
+      strength: 'tool_diagnostic',
+      description: 'Suite ran.',
+      command: 'pnpm test',
+      exitCode: 0,
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    const commandEvidence = await convertEvidence(request(root), command, context, grounding);
+    expect(commandEvidence.groundingOperationIds).toEqual([operationId]);
+    // Linked test evidence carries the same canonical ID.
+    const test = {
+      key: 't',
+      type: 'test',
+      strength: 'tool_diagnostic',
+      description: 'Suite ran.',
+      framework: 'vitest',
+      name: 'suite',
+      status: 'passed',
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    const testEvidence = await convertEvidence(request(root), test, context, grounding);
+    expect(testEvidence.groundingOperationIds).toEqual([operationId]);
+    // Key-less identity matches and manual items carry no invented link.
+    const keyless = { ...command, operationKey: undefined } as SentryAgentEvidenceV1;
+    const keylessEvidence = await convertEvidence(request(root), keyless, context, grounding);
+    expect(keylessEvidence.groundingOperationIds).toEqual([]);
+    const manual = {
+      key: 'm',
+      type: 'manual',
+      strength: 'agent_reasoning',
+      description: 'Reasoning.',
+    } as SentryAgentEvidenceV1;
+    const manualEvidence = await convertEvidence(request(root), manual, context, grounding);
+    expect(manualEvidence.groundingOperationIds).toEqual([]);
+  });
+
   it('rejects exit-code spoofing on a linked operation', async () => {
     const root = await workspace();
     const source = {

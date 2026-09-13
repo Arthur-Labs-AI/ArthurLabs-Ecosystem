@@ -332,6 +332,7 @@ export async function convertEvidence(
       }
       return EvidenceSchema.parse({
         ...base,
+        groundingOperationIds: [linked.operationId],
         type: 'command',
         command: {
           command: linked.commandText,
@@ -391,9 +392,19 @@ export async function convertEvidence(
       command: { command: source.command, exitCode: source.exitCode },
     });
   }
+  // Durable provenance: validation above already established the link;
+  // record the CANONICAL operationId (never the temporary op_N key).
+  // Key-less matches and downgraded/manual items carry no link.
+  const groundingOperationIds =
+    source.operationKey === undefined
+      ? []
+      : [observed.operations.get(source.operationKey)?.operationId].filter(
+          (id): id is OperationId => id !== undefined,
+        );
   if (source.type === 'test') {
     return EvidenceSchema.parse({
       ...base,
+      groundingOperationIds,
       type: 'test',
       test: {
         framework: source.framework,
@@ -406,6 +417,7 @@ export async function convertEvidence(
   if (source.type === 'runtime') {
     return EvidenceSchema.parse({
       ...base,
+      groundingOperationIds,
       type: 'runtime',
       runtime: { summary: source.description },
     });
@@ -413,6 +425,7 @@ export async function convertEvidence(
   if (source.type === 'log') {
     return EvidenceSchema.parse({
       ...base,
+      groundingOperationIds,
       type: 'log',
       log: { source: source.source ?? context.authorLabel, summary: source.description },
     });

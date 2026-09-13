@@ -4,6 +4,7 @@ import {
   ArtifactIdSchema,
   EvidenceIdSchema,
   IsoTimestampSchema,
+  OperationIdSchema,
   QARunIdSchema,
   RelativePathSchema,
   SchemaVersionSchema,
@@ -119,6 +120,15 @@ export const BaseEvidenceSchema = z
     environmentState: z.enum(EVIDENCE_ENVIRONMENT_STATES),
     description: z.string().min(1).max(5000).optional(),
     artifactIds: z.array(ArtifactIdSchema).default([]),
+    /**
+     * Durable operation provenance: canonical OperationIds (`op_<ULID>`)
+     * of the observed harness operations that verified this evidence.
+     * Temporary model-facing keys (`op_1`) must never appear here; the
+     * schema's OperationId format rejects them. Empty when no observed
+     * operation backs the item (code references, manual reasoning).
+     * Additive and backwards-compatible (defaults to []).
+     */
+    groundingOperationIds: z.array(OperationIdSchema).default([]),
     createdAt: IsoTimestampSchema,
   })
   .strict();
