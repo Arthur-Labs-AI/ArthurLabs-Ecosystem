@@ -7,15 +7,22 @@ import { CLAUDE_CODE_VERSION } from './sdk.js';
 export function createGlmRegistration(
   options: ClaudeCodeHarnessAdapterOptions = {},
 ): HarnessAdapterRegistration {
-  const runtime = resolveGlmRuntime(options);
+  // Runtime config resolves lazily so registering an unselected stack
+  // never throws: only the selected stacks' preflight/adapter paths report
+  // GLM_MODEL_NOT_CONFIGURED.
+  let runtime: { modelId: string; executable: string } | undefined;
+  const resolveRuntime = () => (runtime ??= resolveGlmRuntime(options));
   const stack = AgentStackDefinitionSchema.parse({
     schemaVersion: 1,
     id: 'stack_glm_main',
     displayName: 'GLM QA Agent',
     enabled: true,
+    // Placeholder until preflight resolves the real model: the stack
+    // definition requires a non-empty modelId, and the authoritative
+    // configured value is reported by preflight/runtimeIdentity.
     model: {
       provider: 'zai-anthropic',
-      modelId: runtime.modelId,
+      modelId: 'unconfigured',
       displayName: 'GLM-5.3-Flash',
     },
     harness: { adapterId: 'claude-code', expectedProtocolVersion: 1 },
@@ -23,17 +30,18 @@ export function createGlmRegistration(
     policy: { id: 'qa-standard', version: 1 },
   });
   const runtimeIdentity: Partial<AgentRuntimeIdentity> = {
-    modelId: runtime.modelId,
     adapterId: 'claude-code',
     adapterVersion: '0.1.0',
     sdkVersion: CLAUDE_CODE_VERSION,
-    executable: runtime.executable,
   };
   return {
     stack,
     preflight: async () => {
+      const resolved = resolveRuntime();
+      runtimeIdentity.modelId = resolved.modelId;
+      runtimeIdentity.executable = resolved.executable;
       runtimeIdentity.executableVersion = await probeClaudeExecutable(
-        runtime.executable,
+        resolved.executable,
         options.environment ?? process.env,
       );
     },

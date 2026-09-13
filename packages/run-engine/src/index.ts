@@ -310,7 +310,18 @@ export class RunCoordinator {
     readonly onHarnessRequest?: (request: HarnessRunRequest) => void;
     readonly onHarnessEventPersisted?: (event: HarnessEvent, agentRun: AgentRun) => void;
   }): Promise<void> {
-    const stack = input.registration.stack;
+    // Preflight reports the authoritative configured model into
+    // registration.runtimeIdentity; reflect it on the stack view so
+    // requests, mission context, and persisted identity never carry the
+    // 'unconfigured' registration placeholder for a selected stack.
+    const resolvedModelId = input.registration.runtimeIdentity?.modelId;
+    const stack =
+      resolvedModelId === undefined
+        ? input.registration.stack
+        : {
+            ...input.registration.stack,
+            model: { ...input.registration.stack.model, modelId: resolvedModelId },
+          };
     const agentRunId = createAgentRunId();
     const startedAt = nowIsoTimestamp();
     let agentRun = AgentRunSchema.parse({

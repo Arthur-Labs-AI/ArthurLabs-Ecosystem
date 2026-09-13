@@ -7,15 +7,22 @@ import { DEEPSEEK_SDK_VERSION } from './sdk.js';
 export function createDeepSeekRegistration(
   options: DeepSeekHarnessAdapterOptions = {},
 ): HarnessAdapterRegistration {
-  const runtime = resolveDeepSeekRuntime(options);
+  // Runtime config resolves lazily so registering an unselected stack
+  // never throws: only the selected stacks' preflight/adapter paths report
+  // DEEPSEEK_MODEL_NOT_CONFIGURED.
+  let runtime: { modelId: string; executable: string } | undefined;
+  const resolveRuntime = () => (runtime ??= resolveDeepSeekRuntime(options));
   const stack = AgentStackDefinitionSchema.parse({
     schemaVersion: 1,
     id: 'stack_deepseek_main',
     displayName: 'DeepSeek QA Agent',
     enabled: true,
+    // Placeholder until preflight resolves the real model: the stack
+    // definition requires a non-empty modelId, and the authoritative
+    // configured value is reported by preflight/runtimeIdentity.
     model: {
       provider: 'deepseek',
-      modelId: runtime.modelId,
+      modelId: 'unconfigured',
       displayName: 'DeepSeek V4 Flash',
     },
     harness: { adapterId: 'deepseek-harness', expectedProtocolVersion: 1 },
@@ -23,17 +30,18 @@ export function createDeepSeekRegistration(
     policy: { id: 'qa-standard', version: 1 },
   });
   const runtimeIdentity: Partial<AgentRuntimeIdentity> = {
-    modelId: runtime.modelId,
     adapterId: 'deepseek-harness',
     adapterVersion: '0.1.0',
     sdkVersion: DEEPSEEK_SDK_VERSION,
-    executable: runtime.executable,
   };
   return {
     stack,
     preflight: async () => {
+      const resolved = resolveRuntime();
+      runtimeIdentity.modelId = resolved.modelId;
+      runtimeIdentity.executable = resolved.executable;
       runtimeIdentity.executableVersion = await probeDeepSeekExecutable(
-        runtime.executable,
+        resolved.executable,
         options.environment ?? process.env,
       );
     },

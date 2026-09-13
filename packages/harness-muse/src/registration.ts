@@ -7,29 +7,37 @@ import { MUSE_SDK_VERSION } from './sdk.js';
 export function createMuseRegistration(
   options: MuseHarnessAdapterOptions = {},
 ): HarnessAdapterRegistration {
-  const runtime = resolveMuseRuntime(options);
+  // Runtime config resolves lazily so registering an unselected stack never
+  // throws: only the selected stacks' preflight/adapter paths report
+  // MUSE_MODEL_NOT_CONFIGURED.
+  let runtime: { modelId: string; executable: string } | undefined;
+  const resolveRuntime = () => (runtime ??= resolveMuseRuntime(options));
   const stack = AgentStackDefinitionSchema.parse({
     schemaVersion: 1,
     id: 'stack_muse_main',
     displayName: 'Muse QA Agent',
     enabled: true,
-    model: { provider: 'meta', modelId: runtime.modelId, displayName: 'Muse 1.3 Contributor' },
+    // Placeholder until preflight resolves the real model: the stack
+    // definition requires a non-empty modelId, and the authoritative
+    // configured value is reported by preflight/runtimeIdentity.
+    model: { provider: 'meta', modelId: 'unconfigured', displayName: 'Muse 1.3 Contributor' },
     harness: { adapterId: 'muse-code', expectedProtocolVersion: 1 },
     execution: { supportsLocalExecution: true },
     policy: { id: 'qa-standard', version: 1 },
   });
   const runtimeIdentity: Partial<AgentRuntimeIdentity> = {
-    modelId: runtime.modelId,
     adapterId: 'muse-code',
     adapterVersion: '0.1.0',
     sdkVersion: MUSE_SDK_VERSION,
-    executable: runtime.executable,
   };
   return {
     stack,
     preflight: async () => {
+      const resolved = resolveRuntime();
+      runtimeIdentity.modelId = resolved.modelId;
+      runtimeIdentity.executable = resolved.executable;
       runtimeIdentity.executableVersion = await probeMuseExecutable(
-        runtime.executable,
+        resolved.executable,
         options.environment ?? process.env,
       );
     },
