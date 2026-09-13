@@ -441,8 +441,12 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       );
     }
     // Sandbox denials fail the run closed: an unenforceable sandbox must
-    // never degrade to unconfined execution.
+    // never degrade to unconfined execution. Scoped to TOOL events only:
+    // assistant/message text routinely discusses sandbox policy (including
+    // echoes of our own safety instructions, which contain both "sandbox"
+    // and "disabled") and must never trip the detector.
     if (
+      (kind === 'tool/call' || kind === 'tool/result') &&
       /sandbox/i.test(dataText) &&
       /denied|unavailable|not permitted|forbidden|disabled/i.test(dataText)
     ) {

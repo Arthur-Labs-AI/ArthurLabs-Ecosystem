@@ -341,6 +341,56 @@ describe('DeepSeekHarnessAdapter', () => {
     }
   });
 
+  it('ignores sandbox policy discussion in assistant text (no false fail-closed)', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-sandbox-words-'));
+    roots.push(root);
+    const input = await request(root);
+    let calls = 0;
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          runText: async () => {
+            calls += 1;
+            if (calls === 1) return planResult(validPlan());
+            // Model text echoing sandbox policy wording (as our own
+            // prompts contain "sandbox" + "disabled"): must not trip
+            // the denial detector, which is tool-event scoped.
+            return executionResult(validExecution(), [
+              {
+                type: 'assistant/message',
+                seq: 1,
+                time: 1,
+                data: {
+                  turn: 1,
+                  step: 1,
+                  message: {
+                    id: 'msg-1',
+                    role: 'assistant',
+                    content: [
+                      {
+                        type: 'text',
+                        text: 'I will work inside the sandbox and never retry with sandbox disabled.',
+                      },
+                    ],
+                    source: {},
+                  },
+                  stream: [],
+                },
+              },
+            ]);
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+  });
+
   it('disposes the owned client exactly once across cancel and dispose', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-cancel-'));
     roots.push(root);
