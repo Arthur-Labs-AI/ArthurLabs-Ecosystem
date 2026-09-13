@@ -118,6 +118,68 @@ function planTurn() {
   ];
 }
 
+function executionTurnWithEvidence(evidence: unknown[]) {
+  return [
+    evt('assistant', {
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            id: 'tu-1',
+            name: 'Bash',
+            input: { command: 'pnpm test' },
+          },
+        ],
+      },
+    }),
+    evt('user', {
+      message: {
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'tu-1',
+            content: [{ type: 'text', text: '12 passed' }],
+          },
+        ],
+      },
+    }),
+    evt('assistant', {
+      message: {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              schemaVersion: 1,
+              summary: 'Tool-backed finding.',
+              checks: [],
+              hypotheses: [],
+              evidence,
+              findings: [
+                {
+                  title: 'Suite green',
+                  category: 'testing',
+                  severity: 'info',
+                  confidence: 'strong',
+                  description: 'Observed green suite.',
+                  locations: [{ relativePath: 'README.md' }],
+                  evidenceKeys: ['cmd'],
+                  reproductionSteps: [],
+                },
+              ],
+              limitations: [],
+            }),
+          },
+        ],
+      },
+    }),
+    evt('result', {
+      is_error: false,
+      usage: { input_tokens: 100, output_tokens: 50 },
+      subagent_stats: { spawned: 0 },
+    }),
+  ];
+}
+
 function executionTurn(extra: ClaudeStreamEvent[] = []) {
   return [
     evt('assistant', {
@@ -263,6 +325,115 @@ describe('ClaudeCodeHarnessAdapter', () => {
     // Ephemeral config home destroyed after extraction.
     const { access } = await import('node:fs/promises');
     await expect(access(join(root, '..', '.sentry-claude-home'))).rejects.toThrow();
+  });
+
+  it('numbers operations monotonically across turns and grounds the ledger', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-ledger-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const planningWithRead = () => [
+      evt('assistant', {
+        message: {
+          content: [
+            {
+              type: 'tool_use',
+              id: 'tu-read',
+              name: 'Read',
+              input: { file_path: 'README.md' },
+            },
+          ],
+        },
+      }),
+      evt('user', {
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'tu-read',
+              content: [{ type: 'text', text: '# Fixture' }],
+            },
+          ],
+        },
+      }),
+      ...planTurn().filter((e) => e.type !== 'system' || (e.raw['subtype'] as string) === 'init'),
+    ];
+    let calls = 0;
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-1',
+        startSession: async () => ({
+          runText: async (text: string) => {
+            calls += 1;
+            prompts.push(text);
+            if (calls === 1) return planningWithRead();
+            // Execution references op_2 (its own Bash op), NOT a restarted op_1.
+            return executionTurnWithEvidence([
+              {
+                key: 'cmd',
+                type: 'command',
+                strength: 'tool_diagnostic',
+                description: 'Tests ran.',
+                command: 'pnpm test',
+                exitCode: 0,
+                operationKey: 'op_2',
+              },
+            ]);
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    // The execution prompt carried the authoritative ledger with the
+    // planning Read as op_1; the execution Bash then minted op_2
+    // (monotonic counter shared across turns — never restarted).
+    // Evidence citing op_2 grounds against that execution operation.
+    expect(prompts).toHaveLength(2);
+    expect(prompts[1]).toContain('op_1: Read');
+    expect(prompts[1]).not.toContain('op_2:');
+    expect(prompts[1]).toContain('NEVER restart numbering at op_1');
+    const executed = events.filter((e) => e.type === 'command.executed');
+    expect(executed).toHaveLength(1);
+    expect(executed[0]).toMatchObject({ command: 'pnpm test', exitCode: 0 });
+    // Fabricated keys still fail closed.
+    const root2 = await mkdtemp(join(tmpdir(), 'sentry-claude-ledger-bad-'));
+    roots.push(root2);
+    const input2 = await request(root2);
+    let calls2 = 0;
+    const bad = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-1',
+        startSession: async () => ({
+          runText: async () => {
+            calls2 += 1;
+            if (calls2 === 1) return planTurn();
+            return executionTurnWithEvidence([
+              {
+                key: 'cmd',
+                type: 'command',
+                strength: 'tool_diagnostic',
+                description: 'Tests ran.',
+                command: 'pnpm test',
+                exitCode: 0,
+                operationKey: 'op_99',
+              },
+            ]);
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    expect((await collect(bad, input2)).at(-1)).toMatchObject({ type: 'run.failed' });
+    await bad.dispose();
   });
 
   it('refuses forbidden tools at init and subagent use mid-turn', async () => {

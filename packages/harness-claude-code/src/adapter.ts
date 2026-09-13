@@ -138,7 +138,21 @@ function planningPrompt(request: HarnessRunRequest): string {
   ].join('\n');
 }
 
-function executionPrompt(plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>): string {
+function executionPrompt(
+  plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
+  observedOperations: ReadonlyMap<string, ObservedOperation>,
+): string {
+  // Authoritative operation ledger (same protection as DeepSeek): keys and
+  // exit codes are session-global (planning ops included), so the model
+  // never reconstructs numbering or recalls codes from memory. Compact:
+  // key, tool, command/target summary, exit code. No command output.
+  const ledger = [...observedOperations.values()]
+    .map(
+      (op) =>
+        `${op.operationKey}: ${op.toolName} ${op.commandText ?? op.argsText ?? '(no target)'} ` +
+        `(exit ${op.exitCode === undefined ? 'unknown' : op.exitCode})`,
+    )
+    .join('\n');
   return [
     'Execute the frozen investigation plan below as the sole investigator. Do not create or use subagents.',
     'Host safety is authoritative: remain inside the isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
@@ -152,9 +166,12 @@ function executionPrompt(plan: ReturnType<typeof SentryInvestigationPlanV1Schema
     'Return exactly one JSON document and no Markdown. Do not invent file paths or command results.',
     'Use temporary evidence keys only; Sentry owns all durable IDs.',
     'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info. Confidence MUST be exactly one of: confirmed, strong, probable, speculative.',
+    'Calibrate confidence honestly: confirmed requires at least one reproduced-strength or operation-linked command/test evidence item behind the finding — code references and manual reasoning support strong at most. Overconfident findings fail validation.',
     'Evidence type MUST be exactly one of: command, runtime, code_reference, test, log, manual. Strength MUST be exactly one of: reproduced_failure, reproduced_behavior, tool_diagnostic, strong_code_evidence, agent_reasoning.',
     'For command evidence, use ONLY short single-purpose commands you issued alone (never chains joined by &&, ;, or |, never pipelines): reproduce the command text EXACTLY character-for-character as you issued it, with the exact exit code you observed.',
-    'For test/runtime/log evidence, set operationKey to the observed operation that produced it: op_1 is your first tool/command operation this session, op_2 the second, and so on in execution order. Omit operationKey only for pure reasoning/manual evidence. Never invent operation keys.',
+    'For test/runtime/log evidence, set operationKey to the observed operation that produced it, using the EXACT keys and exit codes from the operation ledger below. Operation keys are session-global: planning-turn operations keep their keys, and execution-turn operations continue numbering. NEVER restart numbering at op_1 for the execution turn. Copy the exit code exactly as listed; if listed as unknown, do not guess a code.',
+    'Observed operation ledger (authoritative):\n' +
+      (ledger.length > 0 ? ledger : '(no operations observed yet)'),
     'Evidence item contract (every field the parser accepts; copy names exactly): ' +
       describeSentryAgentEvidenceContract(),
     'Schema: {"schemaVersion":1,"summary":string,"checks":[{"name":string,"status":"passed|failed|inconclusive|not_run","details"?:string}],"hypotheses":[{"title":string,"rationale":string,"relatedPaths":string[],"plannedChecks":string[at least one]}],"evidence":[<see Evidence item contract above>],"findings":[{"title":string,"category":string,"categoryDetail"?:string,"severity":"critical|high|medium|low|info","confidence":"confirmed|strong|probable|speculative","description":string,"expectedBehavior"?:string,"actualBehavior"?:string,"locations":[{"relativePath":string,"lineStart"?:number,"lineEnd"?:number,"symbol"?:string}],"evidenceKeys":string[],"reproductionSteps":string[],"rootCause"?:string,"recommendedFix"?:string}],"limitations":string[]}.',
@@ -209,7 +226,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   private readonly operationIds = new Map<string, OperationId>();
   private readonly pendingToolUses = new Map<
     string,
-    { operationId: OperationId; toolName: string; commandText?: string }
+    { operationId: OperationId; toolName: string; commandText?: string; argsText?: string }
   >();
   private readonly completedTools = new Set<string>();
   private readonly observedCommands = new Set<string>();
@@ -337,9 +354,18 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           const operationId = createOperationId();
           this.operationIds.set(toolUseId, operationId);
           const commandText = commandFromBashInput(toolName, record.input);
-          if (commandText !== undefined) {
-            this.pendingToolUses.set(toolUseId, { operationId, toolName, commandText });
-          }
+          // Every tool use gets a ledger entry (not just Bash): non-command
+          // tools carry a bounded args summary as their observable target.
+          const argsText =
+            commandText === undefined
+              ? redactDiagnostic(JSON.stringify(record.input ?? '').slice(0, 300), this.secrets)
+              : undefined;
+          this.pendingToolUses.set(toolUseId, {
+            operationId,
+            toolName,
+            ...(commandText === undefined ? {} : { commandText }),
+            ...(argsText === undefined ? {} : { argsText }),
+          });
           out.push(
             emit({
               type: 'tool.started',
@@ -389,6 +415,13 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           }),
         );
         const commandText = pending?.commandText;
+        const argsText = pending?.argsText;
+        // Every completed tool use mints a session-global operation (monotonic
+        // counter shared by planning and execution turns — never reset).
+        // Bash-family commands additionally record exit codes and command
+        // events; other tools record their observable target instead.
+        this.operationCounter += 1;
+        const operationKey = 'op_' + this.operationCounter;
         if (commandText !== undefined) {
           const command = redactDiagnostic(commandText, this.secrets);
           // Exit codes come only from structured tool metadata, never
@@ -397,8 +430,6 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           // error result proves non-success without a specific code.
           const exitCode = failed ? undefined : 0;
           if (exitCode !== undefined) this.observedCommands.add(commandIdentity(command, exitCode));
-          this.operationCounter += 1;
-          const operationKey = 'op_' + this.operationCounter;
           this.observedOperations.set(operationKey, {
             operationId,
             operationKey,
@@ -417,6 +448,14 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
               }),
             );
           }
+        } else {
+          this.observedOperations.set(operationKey, {
+            operationId,
+            operationKey,
+            toolName,
+            ...(argsText === undefined ? {} : { argsText }),
+            isTestOperation: isTestCommand(toolName + ' ' + (argsText ?? '')),
+          });
         }
         const resultText = textFromContentBlocks(
           Array.isArray(record.content) ? record.content : [record.content],
@@ -609,7 +648,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       });
       const execution = await this.runTurn(
         session,
-        executionPrompt(planResult),
+        executionPrompt(planResult, this.observedOperations),
         request.agentRunId,
         'execution',
       );
