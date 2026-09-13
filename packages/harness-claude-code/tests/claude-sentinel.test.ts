@@ -24,6 +24,7 @@ describe('Claude credential boundary', () => {
       settingsPath: '/tmp/claude-home/sentry-settings.json',
       initializeTimeoutMs: 30_000,
       turnTimeoutMs: 60_000,
+      shutdownTimeoutMs: 5_000,
     });
     expect(env['CLAUDE_CODE_SUBPROCESS_ENV_SCRUB']).toBe('1');
     expect(env['CLAUDE_CONFIG_DIR']).toBe('/tmp/claude-home');

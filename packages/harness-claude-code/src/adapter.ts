@@ -510,6 +510,14 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             );
           }),
         ]);
+      } catch (cause) {
+        // A timed-out turn abandons its child: terminate owned processes
+        // promptly instead of leaving them for coordinator teardown.
+        // Dispose is idempotent; the run aborts after this throw.
+        if (cause instanceof ClaudeTurnTimeoutError) {
+          await this.dispose().catch(() => undefined);
+        }
+        throw cause;
       } finally {
         if (timer !== undefined) clearTimeout(timer);
       }
@@ -561,6 +569,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         settingsPath,
         initializeTimeoutMs: 30_000,
         turnTimeoutMs: this.turnTimeoutMs,
+        shutdownTimeoutMs: this.shutdownTimeoutMs,
       };
       this.client = await this.clientFactory(spec);
       session = await this.client.startSession();
