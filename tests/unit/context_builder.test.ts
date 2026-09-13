@@ -190,6 +190,14 @@ test("history eligibility: bad turns do not consume the token budget", async () 
   assert.deepEqual(req.history.map((m) => m.content), ["keep me", "and me"]);
 });
 
+test("HR-02 Part H: system contract prefers one-sentence confirmations for simple successful actions", () => {
+  assert.match(SYSTEM_CONTRACT, /one short sentence/);
+  assert.match(SYSTEM_CONTRACT, /unrelated memory/);
+  // The guidance must not suppress failure/ambiguity detail.
+  assert.match(SYSTEM_CONTRACT, /failures.*ambiguity.*approvals/i);
+  assert.match(SYSTEM_CONTRACT, /never suppress an error explanation/);
+});
+
 test("history eligibility: needs_approval and in-progress-style statuses are excluded", async () => {
   const builder = new ContextBuilder({ historyMaxTurns: 20, tokenBudget: 10000 });
   const history: TurnRecord[] = [

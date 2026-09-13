@@ -25,7 +25,11 @@ arthur.local.json
 .local-capabilities/
 # AI harness runtime/task state is machine-local and controller-owned.
 .ai-harness/
-
+.venv-parakeet/
 # Whisper/voice model binaries are machine-local downloads (e.g.
 # ggml-large-v3-turbo.bin) - never commit them.
 models/
+
+# Python generated files
+__pycache__/
+*.py[cod]

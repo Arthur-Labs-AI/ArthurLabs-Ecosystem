@@ -19,9 +19,22 @@ export type VoiceProviderId = "local" | "fake";
  */
 export type WakeProviderId = "local" | "sherpa" | "fake";
 
+export type SttVoicePolicy = "cloud_preferred" | "local_only";
+export type TtsVoicePolicy = "cloud_preferred" | "local_only";
+
 export interface VoiceSettings {
   voiceEnabled: boolean;
   wakeEnabled: boolean;
+  /** HR-02 deterministic voice routing policies (default cloud_preferred). */
+  sttPolicy: SttVoicePolicy;
+  ttsPolicy: TtsVoicePolicy;
+  /** HR-02 cloud voice models (centralized, never hardcoded at call sites). */
+  cloudSttModel: string;
+  cloudTtsModel: string;
+  cloudTtsVoice: string;
+  /** HR-02 local STT selection (default parakeet) + model id. */
+  localSttProvider: string;
+  localSttModel: string;
   wakeWord: string;
   /** Wake provider only: "local" energy fallback | "sherpa" true KWS | "fake". */
   wakeProvider: WakeProviderId;
@@ -90,6 +103,13 @@ export interface VoiceSettings {
 export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   voiceEnabled: false,
   wakeEnabled: true,
+  sttPolicy: "cloud_preferred",
+  ttsPolicy: "cloud_preferred",
+  cloudSttModel: "gpt-4o-transcribe",
+  cloudTtsModel: "gpt-4o-mini-tts",
+  cloudTtsVoice: "alloy",
+  localSttProvider: "",
+  localSttModel: "nvidia/parakeet-tdt-0.6b-v3",
   wakeWord: "arthur",
   wakeProvider: "local",
   vadProvider: "local",
@@ -132,6 +152,13 @@ export interface VoiceSettingsOverrides {
   vadProvider?: string;
   sttProvider?: string;
   ttsProvider?: string;
+  sttPolicy?: string;
+  ttsPolicy?: string;
+  cloudSttModel?: string;
+  cloudTtsModel?: string;
+  cloudTtsVoice?: string;
+  localSttProvider?: string;
+  localSttModel?: string;
   sttLanguage?: string;
   sttInitialPrompt?: string;
   sttModelPath?: string;
@@ -227,6 +254,13 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
     vadProvider: pick("ARTHUR_VAD_PROVIDER", DEFAULT_VOICE_SETTINGS.vadProvider, "vadProvider"),
     sttProvider: pick("ARTHUR_STT_PROVIDER", DEFAULT_VOICE_SETTINGS.sttProvider, "sttProvider"),
     ttsProvider: pick("ARTHUR_TTS_PROVIDER", DEFAULT_VOICE_SETTINGS.ttsProvider, "ttsProvider"),
+    sttPolicy: pick("ARTHUR_STT_POLICY", DEFAULT_VOICE_SETTINGS.sttPolicy, "sttPolicy") as VoiceSettings["sttPolicy"],
+    ttsPolicy: pick("ARTHUR_TTS_POLICY", DEFAULT_VOICE_SETTINGS.ttsPolicy, "ttsPolicy") as VoiceSettings["ttsPolicy"],
+    cloudSttModel: pick("ARTHUR_CLOUD_STT_MODEL", DEFAULT_VOICE_SETTINGS.cloudSttModel, "cloudSttModel"),
+    cloudTtsModel: pick("ARTHUR_CLOUD_TTS_MODEL", DEFAULT_VOICE_SETTINGS.cloudTtsModel, "cloudTtsModel"),
+    cloudTtsVoice: pick("ARTHUR_CLOUD_TTS_VOICE", DEFAULT_VOICE_SETTINGS.cloudTtsVoice, "cloudTtsVoice"),
+    localSttProvider: pick("ARTHUR_LOCAL_STT_PROVIDER", DEFAULT_VOICE_SETTINGS.localSttProvider, "localSttProvider"),
+    localSttModel: pick("ARTHUR_LOCAL_STT_MODEL", DEFAULT_VOICE_SETTINGS.localSttModel, "localSttModel"),
     sttLanguage: pick("ARTHUR_STT_LANGUAGE", DEFAULT_VOICE_SETTINGS.sttLanguage, "sttLanguage"),
     sttInitialPrompt: pick("ARTHUR_STT_INITIAL_PROMPT", DEFAULT_VOICE_SETTINGS.sttInitialPrompt, "sttInitialPrompt"),
     sttModelPath: pick("ARTHUR_STT_MODEL_PATH", DEFAULT_VOICE_SETTINGS.sttModelPath, "sttModelPath"),
@@ -272,6 +306,25 @@ export function validateVoiceSettings(settings: VoiceSettings): string[] {
   }
   if (!providers.includes(settings.ttsProvider)) {
     problems.push(`ARTHUR_TTS_PROVIDER must be one of ${providers.join(", ")} (got "${settings.ttsProvider}")`);
+  }
+  // HR-02 routing policies fail closed on invalid enum values.
+  if (settings.sttPolicy !== "cloud_preferred" && settings.sttPolicy !== "local_only") {
+    problems.push(`ARTHUR_STT_POLICY must be one of cloud_preferred, local_only (got "${settings.sttPolicy}")`);
+  }
+  if (settings.ttsPolicy !== "cloud_preferred" && settings.ttsPolicy !== "local_only") {
+    problems.push(`ARTHUR_TTS_POLICY must be one of cloud_preferred, local_only (got "${settings.ttsPolicy}")`);
+  }
+  if (!settings.cloudSttModel || settings.cloudSttModel.trim() === "") {
+    problems.push("ARTHUR_CLOUD_STT_MODEL must be a non-empty model id");
+  }
+  if (!settings.cloudTtsModel || settings.cloudTtsModel.trim() === "") {
+    problems.push("ARTHUR_CLOUD_TTS_MODEL must be a non-empty model id");
+  }
+  if (!settings.cloudTtsVoice || settings.cloudTtsVoice.trim() === "") {
+    problems.push("ARTHUR_CLOUD_TTS_VOICE must be a non-empty voice");
+  }
+  if (!settings.localSttModel || settings.localSttModel.trim() === "") {
+    problems.push("ARTHUR_LOCAL_STT_MODEL must be a non-empty model id");
   }
   if (settings.sampleRateHz < 8000 || settings.sampleRateHz > 48000) {
     problems.push("ARTHUR_VOICE_SAMPLE_RATE must be within 8000..48000");

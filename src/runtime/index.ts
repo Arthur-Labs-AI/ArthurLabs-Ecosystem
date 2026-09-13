@@ -50,3 +50,19 @@ export {
 export { ModelRouter, type ModelRouterDeps } from "./model_router";
 export { SttRouter, type SttResult, type SttRouterDeps } from "./stt_router";
 export { TtsRouter, type TtsRouterDeps } from "./tts_router";
+export {
+  VOICE_FAILURE_CATEGORIES,
+  VoiceProviderError,
+  categorizeVoiceError,
+  isFallbackSafe,
+  isVoiceFailureCategory,
+  type VoiceFailureCategory,
+  type VoiceProviderFailure,
+} from "./voice_errors";
+export {
+  HR02_DEFAULTS,
+  type SttPolicy,
+  type TtsPolicy,
+  isSttPolicy,
+  isTtsPolicy,
+} from "./voice_policy";

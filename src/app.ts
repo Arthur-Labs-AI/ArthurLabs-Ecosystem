@@ -55,9 +55,12 @@ import { SherpaWakeWordProvider } from "./voice/wake/sherpa_provider";
 import { WakeWordGateway } from "./voice/wake/gateway";
 import { FakeSttProvider } from "./voice/stt/fake";
 import { LocalSttProvider } from "./voice/stt/local_provider";
+import { OpenAiSttProvider } from "./voice/stt/openai_provider";
+import { ParakeetSttProvider } from "./voice/stt/parakeet_provider";
 import { SttGateway } from "./voice/stt/gateway";
 import { FakeTtsProvider } from "./voice/tts/fake";
 import { LocalTtsProvider } from "./voice/tts/local_provider";
+import { OpenAiTtsProvider } from "./voice/tts/openai_provider";
 import { TtsGateway } from "./voice/tts/gateway";
 import { ModelRouter } from "./runtime/model_router";
 import { SttRouter } from "./runtime/stt_router";
@@ -161,6 +164,50 @@ export interface BuildDeps {
   };
 }
 
+function repoRoot(): string {
+  return process.cwd();
+}
+
+/** Default Parakeet worker argv: python + bundled worker script (trusted, no shell). */
+function defaultParakeetArgv(): string[] {
+  const path = require("node:path") as typeof import("node:path");
+  const worker = path.join(repoRoot(), "tools", "voice", "parakeet_worker.py");
+  return ["python", worker];
+}
+
+/** Tokenize a trusted engine command line into argv (no shell, mirrors process_util). */
+function tokenizeEngineCommand(command: string): string[] {
+  const tokens: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  let i = 0;
+  while (i < command.length) {
+    const ch = command[i] as string;
+    if (inQuotes) {
+      if (ch === '"') {
+        inQuotes = false;
+      } else if (ch === "\\" && command[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        current += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === " " || ch === "\t") {
+      if (current !== "") {
+        tokens.push(current);
+        current = "";
+      }
+    } else {
+      current += ch;
+    }
+    i += 1;
+  }
+  if (current !== "") tokens.push(current);
+  return tokens;
+}
+
 function vadConfigFrom(settings: Settings): VadConfig {
   const voice = settings.voice;
   return {
@@ -211,23 +258,58 @@ export function createVoiceController(
     (voice.vadProvider === "fake"
       ? new FakeVadProvider(vadConfig)
       : new LocalEnergyVadProvider(vadConfig));
-  const stt: SttProvider =
+  // HR-02 local STT backend: explicit ARTHUR_LOCAL_STT_PROVIDER=parakeet selects
+  // the Parakeet worker; any other value (including the legacy default empty)
+  // keeps the existing local engine (whisper etc.); "fake" keeps the test double.
+  // Default voice settings select the legacy local engine, so the default app
+  // shape is unchanged from HR-01 (local-stt); operators opt into Parakeet by
+  // setting ARTHUR_LOCAL_STT_PROVIDER=parakeet (documented in .env.example).
+  // Parakeet command resolution: explicit ARTHUR_STT_ENGINE_COMMAND wins (trusted
+  // startup config); otherwise the default worker argv (python + bundled script).
+  const parakeetArgv = defaultParakeetArgv();
+  const localStt: SttProvider =
     deps.voice?.stt ??
     (voice.sttProvider === "fake"
       ? new FakeSttProvider()
-      : new LocalSttProvider(voice.sttEngineCommand, voice.sttModelPath, voice.sttLanguage, {
-        initialPrompt: voice.sttInitialPrompt,
-        logger: logger.child("voice-stt"),
-        sanitizer,
-      }));
-  const tts: TtsProvider =
+      : voice.localSttProvider === "parakeet"
+        ? new ParakeetSttProvider({
+            command: voice.sttEngineCommand.trim() !== "" ? tokenizeEngineCommand(voice.sttEngineCommand) : parakeetArgv,
+            model: voice.localSttModel,
+            logger: logger.child("voice-stt"),
+            // Opt-in HR-02 crash diagnostics (ARTHUR_PARAKEET_DEBUG=1). Reuses
+            // the existing secret boundary; production logging is unchanged
+            // while the switch is unset.
+            sanitizer,
+          })
+        : new LocalSttProvider(voice.sttEngineCommand, voice.sttModelPath, voice.sttLanguage, {
+            initialPrompt: voice.sttInitialPrompt,
+            logger: logger.child("voice-stt"),
+            sanitizer,
+          }));
+  // HR-02 cloud STT backend (voice-only): OpenAI transcription. Unconfigured key
+  // => available=false => SttRouter treats cloud as unavailable (startup succeeds).
+  const cloudStt: SttProvider = new OpenAiSttProvider({
+    apiKey: settings.openaiApiKey,
+    model: voice.cloudSttModel,
+    initialPrompt: voice.sttInitialPrompt,
+    logger: logger.child("voice-stt"),
+  });
+  const localTts: TtsProvider =
     deps.voice?.tts ??
     (voice.ttsProvider === "fake"
       ? new FakeTtsProvider()
       : new LocalTtsProvider(voice.ttsEngineCommand, voice.ttsVoice, {
-        logger: logger.child("voice-tts"),
-        sanitizer,
-      }));
+          logger: logger.child("voice-tts"),
+          sanitizer,
+        }));
+  // HR-02 cloud TTS backend (speech renderer only): canonical final text in,
+  // audio out. Never tools, never memory, never a second conversation.
+  const cloudTts: TtsProvider = new OpenAiTtsProvider({
+    apiKey: settings.openaiApiKey,
+    model: voice.cloudTtsModel,
+    voice: voice.cloudTtsVoice,
+    logger: logger.child("voice-tts"),
+  });
   const wakeProvider: WakeWordProvider =
     deps.voice?.wake ??
     (voice.wakeProvider === "fake"
@@ -246,15 +328,47 @@ export function createVoiceController(
           })
         : new LocalWakeWordProvider());
   const wake = new WakeWordGateway(wakeProvider, { frameBased: true });
-  // HR-01 STT/TTS router seams: VoiceController -> SttRouter/TtsRouter ->
-  // SttProvider/TtsProvider. The routers resolve only the existing
-  // configured backends (behavior unchanged); the controller consumes the
-  // provider-neutral contracts and keeps no concrete provider knowledge.
-  // Locality is trusted construction metadata: both the local engine and
-  // the in-process fake execute on-device, so both report "local" — never
-  // inferred from provider ids, hosts, or the network.
-  const sttRouter = new SttRouter({ provider: new SttGateway(stt, metrics), locality: "local" });
-  const ttsRouter = new TtsRouter({ provider: new TtsGateway(tts, metrics), locality: "local" });
+  // HR-02 STT/TTS router seams: VoiceController -> SttRouter/TtsRouter ->
+  // (cloud OpenAI | local Parakeet/engine) behind provider-neutral contracts.
+  // The controller keeps no concrete provider knowledge. Locality is trusted
+  // construction metadata (cloud = remote API, local = on-device engine) —
+  // never inferred from ids, hosts, or the network. Reasoning stays on the
+  // configured ModelProvider (DeepSeek today): voice providers never receive
+  // tools, approvals, memory, or conversation ownership.
+  const injectedStt = deps.voice?.stt;
+  const sttRouter = injectedStt
+    ? new SttRouter({ provider: new SttGateway(injectedStt, metrics), locality: "local" })
+    : new SttRouter({
+        cloud: new SttGateway(cloudStt, metrics),
+        local: new SttGateway(localStt, metrics),
+        policy: voice.sttPolicy,
+        onEvent: (event) => {
+          metrics.counter("voice.stt." + event.type.slice("voice.stt.".length), 1, {
+            provider: event.provider_id,
+            reason: event.routing_reason,
+          });
+          if (event.type === "voice.stt.fallback") {
+            logger.child("voice-stt").warn("stt fallback to local", { routing_reason: event.routing_reason });
+          }
+        },
+      });
+  const injectedTts = deps.voice?.tts;
+  const ttsRouter = injectedTts
+    ? new TtsRouter({ provider: new TtsGateway(injectedTts, metrics), locality: "local" })
+    : new TtsRouter({
+        cloud: new TtsGateway(cloudTts, metrics),
+        local: new TtsGateway(localTts, metrics),
+        policy: voice.ttsPolicy,
+        onEvent: (event) => {
+          metrics.counter("voice.tts." + event.type.slice("voice.tts.".length), 1, {
+            provider: event.provider_id,
+            reason: event.routing_reason,
+          });
+          if (event.type === "voice.tts.fallback") {
+            logger.child("voice-tts").warn("tts fallback to local", { routing_reason: event.routing_reason });
+          }
+        },
+      });
   const controller = new VoiceTurnController({
     settings: voice,
     conversation,

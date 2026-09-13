@@ -1,11 +1,14 @@
 /**
- * HR-01: runtime routing decision contract + turn-level ownership.
+ * HR-01/HR-02: runtime routing decision contract + turn-level ownership.
  *
  * The decision records which provider was selected, in which runtime mode,
  * and why (bounded reason code, never prose). HR-01 only ever emits
- * `configured_default`; the remaining codes exist so future phases can add
- * CLOUD/LAN/LOCAL switching without changing this shape. No connectivity
- * probing or automatic failover exists in HR-01.
+ * `configured_default`. HR-02 adds deterministic cloud/local voice routing:
+ * `cloud_preferred` (try cloud, fall back to local on failure), `local_only`
+ * (local backend only), `cloud_unavailable` (cloud not configured/ready),
+ * `cloud_failed` (cloud attempted and failed, local fallback owns the
+ * utterance), `local_fallback` (local synthesis after pre-playback cloud
+ * failure). No connectivity probing or automatic recovery loops exist.
  *
  * Turn-level ownership (SC-06 semantics, binding on future phases):
  * - A selected model provider owns an entire model round/turn boundary.
@@ -24,8 +27,10 @@ export const ROUTING_REASONS = [
   "configured_default",
   "cloud_preferred",
   "cloud_unavailable",
-  "lan_preferred",
+  "cloud_failed",
+  "local_only",
   "local_fallback",
+  "lan_preferred",
   "forced_local",
 ] as const;
 

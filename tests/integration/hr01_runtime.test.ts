@@ -248,11 +248,17 @@ test("HR-01: provider status is representable without secrets or stack traces", 
 test("HR-01: routing decision exposes selected provider + bounded reason", () => {
   const app = buildTestApp();
   try {
-    for (const d of [app.modelRouter.routingDecision(), app.sttRouter.routingDecision(), app.ttsRouter.routingDecision()]) {
+    // HR-02 minimal integration correction: the default keyless app builds
+    // multi-provider voice routers, so STT/TTS report cloud_unavailable
+    // (HR-02 bounded vocabulary) instead of the HR-01 single-provider
+    // configured_default. The RoutingDecision contract shape is unchanged;
+    // legacy single-provider construction still yields configured_default.
+    assert.equal(app.modelRouter.routingDecision().reason, "configured_default");
+    for (const d of [app.sttRouter.routingDecision(), app.ttsRouter.routingDecision()]) {
       assert.ok(d.provider_id.length > 0);
       assert.ok(isRuntimeMode(d.runtime_mode));
       assert.ok(isRoutingReason(d.reason));
-      assert.equal(d.reason, "configured_default");
+      assert.equal(d.reason, "cloud_unavailable");
     }
   } finally {
     app.close();

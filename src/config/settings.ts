@@ -18,6 +18,8 @@ export interface Settings {
   modelName: string;
   deepseekApiKey: string;
   deepseekBaseUrl: string;
+  /** HR-02 cloud voice key (OPENAI_API_KEY only — no aliases, never logged). */
+  openaiApiKey: string;
   modelTimeoutSeconds: number;
   historyMaxTurns: number;
   reasoningProfile: ReasoningProfile;
@@ -80,6 +82,7 @@ const DEFAULTS_MAP: Settings = {
   modelName: "",
   deepseekApiKey: "",
   deepseekBaseUrl: "https://api.deepseek.com",
+  openaiApiKey: "",
   modelTimeoutSeconds: 60,
   historyMaxTurns: 20,
   reasoningProfile: "normal",
@@ -212,6 +215,7 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     ARTHUR_MODEL_PROVIDER: envStr("ARTHUR_MODEL_PROVIDER", DEFAULTS_MAP.modelProvider),
     ARTHUR_MODEL_NAME: envStr("ARTHUR_MODEL_NAME", DEFAULTS_MAP.modelName),
     DEEPSEEK_API_KEY: envStr("DEEPSEEK_API_KEY", DEFAULTS_MAP.deepseekApiKey),
+    OPENAI_API_KEY: envStr("OPENAI_API_KEY", DEFAULTS_MAP.openaiApiKey),
     DEEPSEEK_BASE_URL: envStr("DEEPSEEK_BASE_URL", DEFAULTS_MAP.deepseekBaseUrl),
     ARTHUR_MODEL_TIMEOUT_SECONDS: envInt("ARTHUR_MODEL_TIMEOUT_SECONDS", DEFAULTS_MAP.modelTimeoutSeconds),
     ARTHUR_HISTORY_MAX_TURNS: envInt("ARTHUR_HISTORY_MAX_TURNS", DEFAULTS_MAP.historyMaxTurns),
@@ -294,6 +298,7 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     modelProvider: String(raw["ARTHUR_MODEL_PROVIDER"]) as ModelProviderId,
     modelName: String(raw["ARTHUR_MODEL_NAME"]),
     deepseekApiKey: String(raw["DEEPSEEK_API_KEY"]),
+    openaiApiKey: String(raw["OPENAI_API_KEY"]),
     deepseekBaseUrl: String(raw["DEEPSEEK_BASE_URL"]),
     modelTimeoutSeconds: Number(raw["ARTHUR_MODEL_TIMEOUT_SECONDS"]),
     historyMaxTurns: Number(raw["ARTHUR_HISTORY_MAX_TURNS"]),
@@ -338,6 +343,9 @@ export function collectSecrets(settings: Settings): string[] {
   const secrets: string[] = [];
   if (settings.deepseekApiKey && settings.deepseekApiKey.length >= 4) {
     secrets.push(settings.deepseekApiKey);
+  }
+  if (settings.openaiApiKey && settings.openaiApiKey.length >= 4) {
+    secrets.push(settings.openaiApiKey);
   }
   return secrets;
 }
