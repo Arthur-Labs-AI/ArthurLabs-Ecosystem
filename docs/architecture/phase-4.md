@@ -181,6 +181,20 @@ cost tracking, hard token budgets, full Adaptive InvestigationDepth.
 - Deterministic gates: hygiene, format, lint, typecheck, test, build
   (see final report for exact totals).
 - Exact-HEAD CI: see final report.
-- Live: `qa agent doctor deepseek|glm`, individual DeepSeek smoke,
-  individual GLM smoke, and the three-agent parallel smoke on the
-  prepared host (see final report for identities and counts).
+- Live (2026-09-13, WSL2 Ubuntu host, no provider credentials configured):
+  - `qa agent doctor deepseek|glm` truthful: `unconfigured` without
+    model/binary, `configured` with real binaries (Claude Code
+    `2.1.270 (Claude Code)` detected; DeepSeek runtime `0.1.5-rc.2`
+    executes); no credential leaks; SDK pins reported.
+  - DeepSeek production factory verified against the real `0.1.5-rc.2`
+    runtime up to the provider boundary: clean typed `run.failed`
+    (no hang, no leak) without `DEEPSEEK_API_KEY`.
+  - Claude Code fail-closed path verified against the real `2.1.270`
+    binary: host lacks `socat` (bubblewrap present), so the binary
+    refuses to start with `sandbox.failIfUnavailable`; the adapter
+    maps this to `GLM_SANDBOX_UNAVAILABLE` exactly per spec.
+  - BLOCKED (external, honest): full DeepSeek smoke needs
+    `DEEPSEEK_API_KEY`; full GLM smoke needs the Z.AI auth token
+    plus `socat` on the host; three-agent parallel smoke needs both.
+    No fallback model was substituted; no success was faked.
+    Phase 4 stays IN PROGRESS until these three smokes pass.
