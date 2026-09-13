@@ -154,10 +154,14 @@ describe('qa cli', () => {
     // Register a real project first so project resolution succeeds and the
     // run reaches selected-agent preflight, where the emptied Muse model
     // must produce the typed config error (not PROJECT_NOT_FOUND).
-    const added = spawnSync(process.execPath, ['--no-warnings', entry, 'project', 'add', f.source, '--json'], {
-      encoding: 'utf8',
-      env: { ...process.env, SENTRY_DATA_ROOT: f.dataRoot },
-    });
+    const added = spawnSync(
+      process.execPath,
+      ['--no-warnings', entry, 'project', 'add', f.source, '--json'],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, SENTRY_DATA_ROOT: f.dataRoot },
+      },
+    );
     expect(added.status).toBe(0);
     const addedResponse = machine(added, 'project.add');
     if (!addedResponse.ok) throw new Error('Fixture project registration failed');

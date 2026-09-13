@@ -45,6 +45,8 @@ export function createFakeHarnessRegistry(scenario: SimulationScenario): Harness
             type: 'test',
             test: { framework: 'fake-harness', name: 'deterministic simulation', status: 'passed' },
             artifactIds: [],
+            // Fake simulation has no observed operations; never invent a link.
+            groundingOperationIds: [],
             createdAt,
           },
           finding: {
