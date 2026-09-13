@@ -158,7 +158,20 @@ function planningPrompt(request: HarnessRunRequest): string {
   ].join('\n');
 }
 
-function executionPrompt(plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>): string {
+function executionPrompt(
+  plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
+  observedOperations: ReadonlyMap<string, ObservedOperation>,
+): string {
+  // Ground the model with the exact operation ledger: keys and exit codes
+  // are session-global (planning ops included), so the model never has to
+  // reconstruct numbering or recall codes from memory.
+  const ledger = [...observedOperations.values()]
+    .map(
+      (op) =>
+        `${op.operationKey}: ${op.toolName} ${op.commandText ?? '(no command text)'} ` +
+        `(exit ${op.exitCode === undefined ? 'unknown' : op.exitCode})`,
+    )
+    .join('\n');
   return [
     'Execute the frozen investigation plan below as the sole investigator. Do not create or use subagents.',
     'Host safety is authoritative: remain inside the isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
@@ -174,7 +187,9 @@ function executionPrompt(plan: ReturnType<typeof SentryInvestigationPlanV1Schema
     'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info. Confidence MUST be exactly one of: confirmed, strong, probable, speculative.',
     'Evidence type MUST be exactly one of: command, runtime, code_reference, test, log, manual. Strength MUST be exactly one of: reproduced_failure, reproduced_behavior, tool_diagnostic, strong_code_evidence, agent_reasoning.',
     'For command evidence, use ONLY short single-purpose commands you issued alone (never chains joined by &&, ;, or |, never pipelines): reproduce the command text EXACTLY character-for-character as you issued it, with the exact exit code you observed.',
-    'For test/runtime/log evidence, set operationKey to the observed operation that produced it: op_1 is your first tool/command operation this session, op_2 the second, and so on in execution order. Omit operationKey only for pure reasoning/manual evidence. Never invent operation keys.',
+    'For test/runtime/log evidence, set operationKey to the observed operation that produced it, using the EXACT keys and exit codes from the operation ledger below. Operation keys are session-global: planning-turn operations keep their keys, and execution-turn operations continue numbering. NEVER restart numbering at op_1 for the execution turn. Copy the exit code exactly as listed; if listed as unknown, do not guess a code.',
+    'Observed operation ledger (authoritative):\n' +
+      (ledger.length > 0 ? ledger : '(no operations observed yet)'),
     'Evidence item contract (every field the parser accepts; copy names exactly): ' +
       describeSentryAgentEvidenceContract(),
     'Schema: {"schemaVersion":1,"summary":string,"checks":[{"name":string,"status":"passed|failed|inconclusive|not_run","details"?:string}],"hypotheses":[{"title":string,"rationale":string,"relatedPaths":string[],"plannedChecks":string[at least one]}],"evidence":[<see Evidence item contract above>],"findings":[{"title":string,"category":string,"categoryDetail"?:string,"severity":"critical|high|medium|low|info","confidence":"confirmed|strong|probable|speculative","description":string,"expectedBehavior"?:string,"actualBehavior"?:string,"locations":[{"relativePath":string,"lineStart"?:number,"lineEnd"?:number,"symbol"?:string}],"evidenceKeys":string[],"reproductionSteps":string[],"rootCause"?:string,"recommendedFix"?:string}],"limitations":string[]}.',
@@ -713,7 +728,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       });
       const execution = await this.runTurn(
         session,
-        executionPrompt(planResult),
+        executionPrompt(planResult, this.observedOperations),
         request.agentRunId,
         'execution',
       );
