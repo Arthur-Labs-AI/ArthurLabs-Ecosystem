@@ -73,7 +73,6 @@ function request(root: string) {
 }
 
 function groundingWithCommand(command: string, exitCode: number): ObservedEvidenceGrounding {
-  const base = emptyGrounding();
   const operationId = createOperationId();
   return {
     observedCommands: new Set([commandIdentity(command, exitCode)]),

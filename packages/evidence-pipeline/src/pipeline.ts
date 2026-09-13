@@ -16,7 +16,6 @@ import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { createEvidenceId, nowIsoTimestamp, type OperationId } from '@qa/shared';
 import {
   EvidenceSchema,
-  FindingSchema,
   type Evidence,
   type FindingConfidence,
   type HarnessRunRequest,
