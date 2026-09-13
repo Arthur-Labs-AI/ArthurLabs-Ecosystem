@@ -320,18 +320,40 @@ function lastPendingCall(
   return last;
 }
 
+/**
+ * Parse the dsh-shell exit-status marker contract (`\n[exit code: N]` /
+ * `\n[killed by signal: X]`, anchored to end of string). Mirrors
+ * parseExitStatus in @deepseek-ai/dsh-shell: the marker is the runtime's
+ * structured signal, and absent markers mean clean exit 0.
+ */
+function parseShellExitMarker(text: string): { exitCode: number } | { signal: string } | undefined {
+  const signal = /\n\[killed by signal: ([^\]\n]+)\]$/.exec(text);
+  if (signal?.[1] !== undefined) return { signal: signal[1] };
+  const exit = /\n\[exit code: (\d+)\]$/.exec(text);
+  if (exit?.[1] !== undefined) return { exitCode: Number(exit[1]) };
+  return undefined;
+}
+
 /** Flatten tool-result message content blocks to bounded text for diagnostics. */
 function textFromToolResultMessage(message: unknown): string {
   if (message === null || typeof message !== 'object' || Array.isArray(message)) return '';
   const content = (message as { content?: unknown }).content;
   if (!Array.isArray(content)) return '';
+  // Tool results nest text inside tool-result wrapper blocks
+  // ({type:'tool-result', content:[{type:'text',...}]}): recurse so exit-
+  // status markers on inner text remain visible to the marker parser.
   const parts: string[] = [];
-  for (const block of content) {
-    if (block === null || typeof block !== 'object' || Array.isArray(block)) continue;
-    const text = eventText((block as { text?: unknown }).text);
-    if (text !== undefined) parts.push(text);
-    if (parts.join('\n').length >= 4_000) break;
-  }
+  const visit = (blocks: unknown[]): void => {
+    for (const block of blocks) {
+      if (block === null || typeof block !== 'object' || Array.isArray(block)) continue;
+      const record = block as { text?: unknown; content?: unknown };
+      const text = eventText(record.text);
+      if (text !== undefined) parts.push(text);
+      if (Array.isArray(record.content)) visit(record.content);
+      if (parts.join('\n').length >= 4_000) break;
+    }
+  };
+  visit(content);
   return parts.join('\n').slice(0, 4_000);
 }
 
@@ -515,24 +537,36 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
     if (this.completedTools.has(itemId)) return [];
     this.completedTools.add(itemId);
     if (resultCallId !== undefined) this.pendingToolCalls.delete(resultCallId);
+    // Shell exit-status markers (dsh-shell render contract): the runtime
+    // appends `\n[exit code: N]` / `\n[killed by signal: X]` to
+    // model-facing shell results. Reading the marker is observation of the
+    // runtime's own structured signal — the same contract its terminal
+    // presentation parses — never inference from prose. Scoped to
+    // shell-family tools; other tools' text is never code-mined.
+    const marker = /^(bash|pwsh|powershell|shell|command)$/i.test(toolName)
+      ? parseShellExitMarker(resultText)
+      : undefined;
+    const signalKilled = marker !== undefined && 'signal' in marker;
+    const resolvedFailed = failed || signalKilled;
     const out: HarnessEvent[] = [
       emit({
         type: 'tool.completed',
         operationId,
-        tool: { name: toolName, ...(failed ? { exitCode: 1 } : {}) },
+        tool: { name: toolName, ...(resolvedFailed ? { exitCode: 1 } : {}) },
       }),
     ];
     if (commandText !== undefined && commandText.length > 0) {
       const command = redactDiagnostic(commandText, this.secrets);
-      // Exit codes are recorded ONLY from structured tool metadata, never
-      // inferred from result text: a failed tool-result (isError) proves
-      // non-success without proving a specific code. Successful shell text
-      // with no structured code stays code-less; command evidence then
-      // requires the model to cite an operation whose code is known.
+      // Exit codes come from structured tool metadata or the shell
+      // exit-status marker. A failed tool-result (isError) or kill signal
+      // without a code proves non-success without proving a specific
+      // code. Clean shell text with no marker means exit 0 (the runtime
+      // guarantees a marker on nonzero exits).
       const structuredExit = eventNumber(
         (data.meta as { exitCode?: unknown } | undefined)?.exitCode,
       );
-      const exitCode = structuredExit ?? (failed ? undefined : 0);
+      const markerExit = marker !== undefined && 'exitCode' in marker ? marker.exitCode : undefined;
+      const exitCode = structuredExit ?? markerExit ?? (resolvedFailed ? undefined : 0);
       if (exitCode !== undefined) this.observedCommands.add(commandIdentity(command, exitCode));
       this.operationCounter += 1;
       const operationKey = 'op_' + this.operationCounter;
