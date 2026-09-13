@@ -24,11 +24,11 @@ RAW INDEPENDENT RESULTS (separate plans, workspaces, evidence, findings)
 
 ## Stable AgentStacks (model-version independent)
 
-| Stack ID | Display | Harness package | Harness | Model (configured) |
-|---|---|---|---|---|
-| `stack_muse_main` | Muse QA Agent | `@qa/harness-muse` | Muse Code (`@muse-code/sdk@0.1.1`) | `SENTRY_MUSE_MODEL` |
-| `stack_deepseek_main` | DeepSeek QA Agent | `@qa/harness-deepseek` | DeepSeek Harness (`@deepseek-ai/dsh-sdk-client@0.1.5-rc.2`, `sdk-minimal` profile) | `SENTRY_DEEPSEEK_MODEL` (Flash line, e.g. `deepseek-v4-flash`) |
-| `stack_glm_main` | GLM QA Agent | `@qa/harness-claude-code` | Claude Code `2.1.270` via Z.AI Anthropic-compatible endpoint | `SENTRY_GLM_MODEL` (intended `GLM-5.3-Flash`; §"Model identity" below) |
+| Stack ID              | Display           | Harness package           | Harness                                                                            | Model (configured)                                                     |
+| --------------------- | ----------------- | ------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `stack_muse_main`     | Muse QA Agent     | `@qa/harness-muse`        | Muse Code (`@muse-code/sdk@0.1.1`)                                                 | `SENTRY_MUSE_MODEL`                                                    |
+| `stack_deepseek_main` | DeepSeek QA Agent | `@qa/harness-deepseek`    | DeepSeek Harness (`@deepseek-ai/dsh-sdk-client@0.1.5-rc.2`, `sdk-minimal` profile) | `SENTRY_DEEPSEEK_MODEL` (Flash line, e.g. `deepseek-v4-flash`)         |
+| `stack_glm_main`      | GLM QA Agent      | `@qa/harness-claude-code` | Claude Code `2.1.270` via Z.AI Anthropic-compatible endpoint                       | `SENTRY_GLM_MODEL` (intended `GLM-5.3-Flash`; §"Model identity" below) |
 
 ## Same full QA mission
 
@@ -98,16 +98,16 @@ owned client/session.
   wire, so cancellation closes the owned runtime.
 - Sentry-owned disposable `DSH_HOME` per run (never `~/.dsh`).
 - No internal JSONL/session-storage parsing: integration uses the
-documented SDK client (`DeepSeekHarness` run API over stdio JSON-RPC)
-and the documented `SessionEvent` envelope vocabulary.
+  documented SDK client (`DeepSeekHarness` run API over stdio JSON-RPC)
+  and the documented `SessionEvent` envelope vocabulary.
 
 ## Claude Code security boundary
 
 - Spawn: `claude -p --verbose --output-format stream-json --model …
-  --settings <per-run fail-closed JSON> --setting-sources ''
-  --strict-mcp-config --permission-mode dontAsk --permission-prompts
-  none --disallowedTools Agent,Task,WebFetch,WebSearch,Skill,Cron…
-  --session-id <uuid> [--resume <uuid>]` (flags verified on 2.1.270).
+--settings <per-run fail-closed JSON> --setting-sources ''
+--strict-mcp-config --permission-mode dontAsk --permission-prompts
+none --disallowedTools Agent,Task,WebFetch,WebSearch,Skill,Cron…
+--session-id <uuid> [--resume <uuid>]` (flags verified on 2.1.270).
 - Settings pin `sandbox.enabled/failIfUnavailable` true and
   `allowUnsandboxedCommands` false plus `disableBypassPermissionsMode`.
   Never `--dangerously-skip-permissions`.
@@ -115,8 +115,8 @@ and the documented `SessionEvent` envelope vocabulary.
   only canonical observable data persists.
 - `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` forced on every spawn (caller
   cannot override); the Z.AI credential (`ANTHROPIC_AUTH_TOKEN`)
-enters parent-process memory only. Deterministic tests prove the flag
-is forced; live Bash absence is verified with a sentinel during smoke.
+  enters parent-process memory only. Deterministic tests prove the flag
+  is forced; live Bash absence is verified with a sentinel during smoke.
 - Subagent proof is observable: init tool inventory must not list
   Agent/Task, `tool_use` with those names fails the run, and the
   terminal `result.subagent_stats.spawned` must stay zero.
