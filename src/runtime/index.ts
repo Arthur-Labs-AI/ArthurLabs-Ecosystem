@@ -66,3 +66,24 @@ export {
   isSttPolicy,
   isTtsPolicy,
 } from "./voice_policy";
+export type {
+  CapabilityState,
+  GpuVendor,
+  HardwareAccelerators,
+  HardwareArch,
+  HardwareGpu,
+  HardwareOs,
+  HardwareProbe,
+  HardwareProfile,
+  OsFacts,
+  ProbeDeps,
+} from "./hardware/index";
+export {
+  FakeHardwareProbe,
+  SystemHardwareProbe,
+  isCapabilityState,
+  isGpuVendor,
+  isHardwareArch,
+  isHardwareOs,
+  nodeOsFacts,
+} from "./hardware/index";
