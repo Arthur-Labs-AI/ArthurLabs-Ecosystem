@@ -183,6 +183,29 @@ describe('shared evidence pipeline', () => {
     expect(downgraded.strength).toBe('agent_reasoning');
   });
 
+  it('rejects reproduced test status mismatch but downgrades weak mismatch', async () => {
+    const root = await workspace();
+    // Observed exit 1 (failed) vs claimed passed.
+    const grounding = groundingWithCommand('pnpm test', 1);
+    const reproduced = {
+      key: 't',
+      type: 'test',
+      strength: 'reproduced_failure',
+      description: 'Failed.',
+      framework: 'vitest',
+      name: 'x',
+      status: 'passed',
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    await expect(convertEvidence(request(root), reproduced, context, grounding)).rejects.toThrow(
+      /status does not match/,
+    );
+    const weak = { ...reproduced, strength: 'tool_diagnostic' } as SentryAgentEvidenceV1;
+    const downgraded = await convertEvidence(request(root), weak, context, grounding);
+    expect(downgraded.type).toBe('manual');
+    expect(downgraded.strength).toBe('agent_reasoning');
+  });
+
   it('rejects unknown operation keys', async () => {
     const root = await workspace();
     const source = {

@@ -228,25 +228,6 @@ export async function convertEvidence(
     source.strength === 'reproduced_failure' || source.strength === 'reproduced_behavior';
   const needsOperation =
     source.type === 'test' || source.type === 'runtime' || source.type === 'log';
-  if (source.operationKey !== undefined) {
-    const correlated = observed.operations.get(source.operationKey);
-    if (correlated === undefined) {
-      throw fail('Evidence references an unknown operation correlation key.');
-    }
-    if (source.type === 'test' && !correlated.isTestOperation) {
-      throw fail('Test evidence references an operation that did not run tests.');
-    }
-    if (
-      source.type === 'test' &&
-      source.status !== undefined &&
-      correlated.exitCode !== undefined
-    ) {
-      const observedStatus = correlated.exitCode === 0 ? 'passed' : 'failed';
-      if (observedStatus !== source.status) {
-        throw fail('Test evidence status does not match the observed operation result.');
-      }
-    }
-  }
   const downgradedManual = (summary: string): Evidence =>
     EvidenceSchema.parse({
       schemaVersion: 1 as const,
@@ -261,6 +242,38 @@ export async function convertEvidence(
       type: 'manual',
       manual: { summary, author: context.authorLabel },
     });
+  if (source.operationKey !== undefined) {
+    const correlated = observed.operations.get(source.operationKey);
+    if (correlated === undefined) {
+      throw fail('Evidence references an unknown operation correlation key.');
+    }
+    if (source.type === 'test' && !correlated.isTestOperation) {
+      throw fail('Test evidence references an operation that did not run tests.');
+    }
+    if (
+      source.type === 'test' &&
+      source.status !== undefined &&
+      correlated.exitCode !== undefined
+    ) {
+      // Status mismatch mirrors the command-text policy: a reproduced claim
+      // asserting a contradicted outcome is misrepresentation (fatal);
+      // a weaker mischaracterization of a real observed run downgrades to
+      // manual reasoning instead of nuking the whole investigation.
+      // Exit-code fabrication on linked command evidence stays always
+      // fatal (see below); this only covers the status label.
+      const observedStatus = correlated.exitCode === 0 ? 'passed' : 'failed';
+      if (observedStatus !== source.status) {
+        if (isReproducedClaim) {
+          throw fail('Test evidence status does not match the observed operation result.');
+        }
+        return downgradedManual(
+          'Test status differs from the linked observed operation ' +
+            `(claimed=${source.status}, observed=${observedStatus}); downgraded: ` +
+            source.description,
+        );
+      }
+    }
+  }
   if (source.operationKey === undefined && needsOperation) {
     if (isReproducedClaim) {
       throw fail('Reproduced evidence strength requires a correlated observed operation.');
