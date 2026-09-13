@@ -481,6 +481,16 @@ export function parseWholeJson(
   try {
     return context.redactStructured(JSON.parse(text));
   } catch {
-    throw context.errors.invalidResult(phase + ' response was not one complete JSON document.');
+    // Diagnostic shape hint (redacted, bounded): distinguishes empty
+    // responses from prose from near-JSON without persisting model text.
+    const sample = context
+      .redactDiagnostic(text.slice(0, 300))
+      .replace(/[\r\n\t]+/g, ' ')
+      .trim()
+      .slice(0, 200);
+    const hint = sample.length === 0 ? 'empty response' : `response starts with: ${sample}`;
+    throw context.errors.invalidResult(
+      phase + ' response was not one complete JSON document (' + hint + ').',
+    );
   }
 }
