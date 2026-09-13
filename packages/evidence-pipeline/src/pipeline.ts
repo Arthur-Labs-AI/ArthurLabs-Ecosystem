@@ -253,6 +253,21 @@ export async function convertEvidence(
     if (
       source.type === 'test' &&
       source.status !== undefined &&
+      correlated.exitCode === undefined
+    ) {
+      // Sentry never observed this operation's code: a claimed test
+      // outcome is unverifiable here. Same policy as command codes.
+      if (isReproducedClaim) {
+        throw fail('Reproduced test evidence cites an operation whose exit code was not observed.');
+      }
+      return downgradedManual(
+        'Test evidence cites an operation with unobserved exit code; downgraded: ' +
+          source.description,
+      );
+    }
+    if (
+      source.type === 'test' &&
+      source.status !== undefined &&
       correlated.exitCode !== undefined
     ) {
       // Status mismatch mirrors the command-text policy: a reproduced claim
@@ -313,7 +328,24 @@ export async function convertEvidence(
       if (linked === undefined) {
         throw fail('Command evidence references an unknown operation correlation key.');
       }
-      if (linked.commandText === undefined || linked.exitCode !== source.exitCode) {
+      if (linked.commandText === undefined) {
+        throw fail('Command evidence operation has no observed command text.');
+      }
+      if (linked.exitCode === undefined) {
+        // Sentry never observed this operation's code: the claim is
+        // unverifiable here. Reproduced assertions without verifiable
+        // proof fail; weaker ones downgrade to manual reasoning.
+        if (isReproducedClaim) {
+          throw fail(
+            'Reproduced command evidence cites an operation whose exit code was not observed.',
+          );
+        }
+        return downgradedManual(
+          'Command evidence cites an operation with unobserved exit code; downgraded: ' +
+            source.description,
+        );
+      }
+      if (linked.exitCode !== source.exitCode) {
         throw fail('Command evidence operation does not match the claimed exit code.');
       }
       if (

@@ -390,6 +390,81 @@ describe('DeepSeekHarnessAdapter', () => {
     expect(executed[0]).toMatchObject({ command: 'pnpm test', exitCode: 1 });
   });
 
+  it('records no code without marker, meta, or error (unknown stays unknown)', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-nocode-'));
+    roots.push(root);
+    const input = await request(root);
+    let calls = 0;
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          runText: async () => {
+            calls += 1;
+            if (calls === 1) return planResult(validPlan());
+            // Clean output, no exit marker, no meta, no error: the op is
+            // recorded WITHOUT a code (never default 0), so no
+            // command.executed event fires for it.
+            return executionResult(
+              JSON.stringify({
+                schemaVersion: 1,
+                summary: 'Observed run.',
+                checks: [],
+                hypotheses: [],
+                evidence: [],
+                findings: [],
+                limitations: [],
+              }),
+              [
+                {
+                  type: 'tool/call',
+                  seq: 1,
+                  time: 1,
+                  data: {
+                    turn: 1,
+                    step: 1,
+                    callId: 'call-1',
+                    name: 'pwsh',
+                    arguments: JSON.stringify({ command: 'pnpm test' }),
+                  },
+                },
+                {
+                  type: 'tool/result',
+                  seq: 2,
+                  time: 2,
+                  data: {
+                    turn: 1,
+                    step: 1,
+                    message: {
+                      id: 'msg-1',
+                      role: 'user',
+                      content: [
+                        {
+                          type: 'tool-result',
+                          toolCallId: 'call-1',
+                          content: [{ type: 'text', text: 'some output' }],
+                        },
+                      ],
+                      source: { kind: 'tool', plugin: 'shell', tool: 'pwsh' },
+                    },
+                  },
+                },
+              ],
+            );
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(events.filter((e) => e.type === 'tool.completed')).toHaveLength(1);
+    expect(events.filter((e) => e.type === 'command.executed')).toHaveLength(0);
+  });
+
   it('fails closed on subagent fanout and sandbox denials', async () => {
     for (const hostile of [
       [{ type: 'subagent/started', seq: 1, time: 1, data: { child: 'x' } }],

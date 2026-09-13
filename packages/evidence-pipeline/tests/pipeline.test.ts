@@ -250,6 +250,47 @@ describe('shared evidence pipeline', () => {
     expect(downgraded.strength).toBe('agent_reasoning');
   });
 
+  it('downgrades weak claims on codeless operations but fails reproduced ones', async () => {
+    const root = await workspace();
+    const codeless = emptyGrounding();
+    const operationId = createOperationId();
+    codeless.operations.set('op_1', {
+      operationId,
+      operationKey: 'op_1',
+      toolName: 'shell',
+      commandText: 'pnpm test',
+      exitCode: undefined,
+      isTestOperation: true,
+    });
+    const weakCommand = {
+      key: 'cmd',
+      type: 'command',
+      strength: 'tool_diagnostic',
+      description: 'Suite ran.',
+      command: 'pnpm test',
+      exitCode: 1,
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    const downgraded = await convertEvidence(request(root), weakCommand, context, codeless);
+    expect(downgraded.type).toBe('manual');
+    const reproduced = { ...weakCommand, strength: 'reproduced_failure' } as SentryAgentEvidenceV1;
+    await expect(convertEvidence(request(root), reproduced, context, codeless)).rejects.toThrow(
+      /exit code was not observed/,
+    );
+    const weakTest = {
+      key: 't',
+      type: 'test',
+      strength: 'tool_diagnostic',
+      description: 'Suite ran.',
+      framework: 'vitest',
+      name: 'suite',
+      status: 'failed',
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    const downgradedTest = await convertEvidence(request(root), weakTest, context, codeless);
+    expect(downgradedTest.type).toBe('manual');
+  });
+
   it('rejects unknown operation keys', async () => {
     const root = await workspace();
     const source = {

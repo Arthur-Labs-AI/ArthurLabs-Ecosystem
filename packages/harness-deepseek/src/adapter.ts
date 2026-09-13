@@ -560,6 +560,10 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
     // runtime's own structured signal — the same contract its terminal
     // presentation parses — never inference from prose. Scoped to
     // shell-family tools; other tools' text is never code-mined.
+    // CRITICAL: unknown stays unknown. A result with no marker, no
+    // structured code, and no error field records NO code (never a
+    // default 0): fabricating success for unobserved codes is exactly
+    // the spoofing our own pipeline exists to reject.
     const marker = /^(bash|pwsh|powershell|shell|command)$/i.test(toolName)
       ? parseShellExitMarker(resultText)
       : undefined;
@@ -574,16 +578,16 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
     ];
     if (commandText !== undefined && commandText.length > 0) {
       const command = redactDiagnostic(commandText, this.secrets);
-      // Exit codes come from structured tool metadata or the shell
-      // exit-status marker. A failed tool-result (isError) or kill signal
-      // without a code proves non-success without proving a specific
-      // code. Clean shell text with no marker means exit 0 (the runtime
-      // guarantees a marker on nonzero exits).
+      // Exit codes come ONLY from structured tool metadata or the shell
+      // exit-status marker. No marker + no code + no error means UNKNOWN
+      // (never default 0): the code stays undefined, no command.executed
+      // event is emitted, and evidence citing a code for this operation
+      // downgrades (weak) or fails (reproduced) in the pipeline.
       const structuredExit = eventNumber(
         (data.meta as { exitCode?: unknown } | undefined)?.exitCode,
       );
       const markerExit = marker !== undefined && 'exitCode' in marker ? marker.exitCode : undefined;
-      const exitCode = structuredExit ?? markerExit ?? (resolvedFailed ? undefined : 0);
+      const exitCode = structuredExit ?? markerExit;
       if (exitCode !== undefined) this.observedCommands.add(commandIdentity(command, exitCode));
       this.operationCounter += 1;
       const operationKey = 'op_' + this.operationCounter;
