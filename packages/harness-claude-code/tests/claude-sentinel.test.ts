@@ -1,5 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { buildClaudeChildEnvironment, buildClaudeSpawnEnv } from '../src/index.js';
+import { buildClaudeArgs, buildClaudeChildEnvironment, buildClaudeSpawnEnv } from '../src/index.js';
+
+describe('Claude session flag shape', () => {
+  const base = {
+    modelId: 'glm-5.3-flash',
+    settingsPath: '/tmp/claude-home/sentry-settings.json',
+    sessionId: '11111111-1111-4111-8111-111111111111',
+  };
+
+  it('mints fresh sessions with --session-id and resumes with --resume alone', () => {
+    const fresh = buildClaudeArgs({ ...base, resume: false });
+    expect(fresh).toContain('--session-id');
+    expect(fresh).not.toContain('--resume');
+    const continued = buildClaudeArgs({ ...base, resume: true });
+    expect(continued).toContain('--resume');
+    // Combining --session-id with --resume is rejected without
+    // --fork-session (verified on 2.1.270); forking would copy instead
+    // of continuing the one logical session.
+    expect(continued).not.toContain('--session-id');
+    expect(continued).not.toContain('--fork-session');
+  });
+});
 
 // Credential-boundary sentinel tests for the Claude Code stack. A test-only
 // sentinel stands in for the Z.AI authorization credential: the Claude

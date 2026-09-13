@@ -103,9 +103,12 @@ export function buildClaudeArgs(input: {
     'none',
     '--disallowedTools',
     'Agent,Task,WebFetch,WebSearch,Skill,CronCreate,CronDelete,CronList,ScheduleWakeup,EnterWorktree,ExitWorktree',
-    '--session-id',
-    input.sessionId,
-    ...(input.resume ? ['--resume', input.sessionId] : []),
+    // Session identity: a fresh turn mints the id via --session-id; a
+    // continuing turn resumes via --resume ALONE. Combining --session-id
+    // with --resume is rejected without --fork-session (verified on
+    // 2.1.270), and forking would copy the session instead of continuing
+    // the one logical AgentRun session.
+    ...(input.resume ? ['--resume', input.sessionId] : ['--session-id', input.sessionId]),
   ];
 }
 
