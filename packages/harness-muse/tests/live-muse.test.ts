@@ -108,25 +108,28 @@ describe.skipIf(!liveEnabled || modelId.length === 0)(
         // run.failed). Zero findings remain allowed; failure does not.
         // Failure payloads log for diagnosis either way (no credentials).
         const failedEvent = details.events.find((e) => e.event.type === 'run.failed');
-        if (failedEvent?.type === 'run.failed') {
-          console.log('LIVE-FAILURE:' + JSON.stringify(failedEvent.failure).slice(0, 500));
-        }
+        const agentRun = details.agentRuns[0];
+        console.log(
+          'LIVE-RESULT:' +
+            JSON.stringify({
+              runStatus: details.run.status,
+              agentStatus: agentRun?.status,
+              failure:
+                (failedEvent?.type === 'run.failed' ? failedEvent.failure : null) ??
+                agentRun?.failure ??
+                null,
+              usage: agentRun?.usage ?? null,
+              evidence: details.evidence.map((e) => e.type + '/' + e.strength),
+              findings: details.findings.map((f) => f.confidence + '/' + f.category),
+            }).slice(0, 1200),
+        );
+        console.log('LIVE-EVENTS:' + details.events.map((e) => e.event.type).join(','));
         expect(details.run.status).toBe('completed');
         expect(details.events.some((e) => e.event.type === 'run.completed')).toBe(true);
         expect(failedEvent).toBeUndefined();
         expect(details.run.executionKind).toBe('production');
         expect(details.agentRuns).toHaveLength(1);
-        const agentRun = details.agentRuns[0];
         expect(agentRun?.status).toBe('completed');
-        console.log(
-          'LIVE-AGENT:' +
-            JSON.stringify({
-              status: agentRun?.status,
-              failure: agentRun?.failure ?? null,
-              usage: agentRun?.usage ?? null,
-            }).slice(0, 600),
-        );
-        console.log('LIVE-EVENTS:' + details.events.map((e) => e.event.type).join(','));
         expect(agentRun).toBeDefined();
         expect(agentRun?.agentStackId).toBe('stack_muse_main');
         expect(agentRun?.runtimeIdentity?.adapterId).toBe('muse-code');
