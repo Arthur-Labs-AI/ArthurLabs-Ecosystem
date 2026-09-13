@@ -181,20 +181,28 @@ cost tracking, hard token budgets, full Adaptive InvestigationDepth.
 - Deterministic gates: hygiene, format, lint, typecheck, test, build
   (see final report for exact totals).
 - Exact-HEAD CI: see final report.
-- Live (2026-09-13, WSL2 Ubuntu host, no provider credentials configured):
+- Live (2026-09-13, Windows native host for DeepSeek; WSL2 Ubuntu for tooling):
   - `qa agent doctor deepseek|glm` truthful: `unconfigured` without
     model/binary, `configured` with real binaries (Claude Code
     `2.1.270 (Claude Code)` detected; DeepSeek runtime `0.1.5-rc.2`
     executes); no credential leaks; SDK pins reported.
-  - DeepSeek production factory verified against the real `0.1.5-rc.2`
-    runtime up to the provider boundary: clean typed `run.failed`
-    (no hang, no leak) without `DEEPSEEK_API_KEY`.
+  - **DeepSeek individual smoke PASSED** (`run_01M2DVW6BG7Y7BCXDHEB80QRSV`):
+    status `completed`, agent `completed`, model `deepseek-v4-flash`,
+    SDK `0.1.5-rc.2`, runtime `0.1.5-rc.2`, 2 `confirmed` findings (real
+    divide-by-zero defect + testing finding, each backed by 3 evidence
+    including `reproduced_failure`/`reproduced_behavior`), 6 evidence
+    (2 code_reference/baseline + reproduced command/runtime), usage
+    5014 in / 26350 out / 40832 cached / 2 turns, workspace cleaned,
+    `json` + `log` exports. Four preceding runs each caught a real
+    discrepancy and drove a system fix (lazy registration, error-code
+    passthrough, EFTYPE probe hardening, sandbox-detector scoping,
+    marker observation, op ledger, calibration).
   - Claude Code fail-closed path verified against the real `2.1.270`
     binary: host lacks `socat` (bubblewrap present), so the binary
     refuses to start with `sandbox.failIfUnavailable`; the adapter
     maps this to `GLM_SANDBOX_UNAVAILABLE` exactly per spec.
-  - BLOCKED (external, honest): full DeepSeek smoke needs
-    `DEEPSEEK_API_KEY`; full GLM smoke needs the Z.AI auth token
-    plus `socat` on the host; three-agent parallel smoke needs both.
-    No fallback model was substituted; no success was faked.
-    Phase 4 stays IN PROGRESS until these three smokes pass.
+  - REMAINING (external, honest): full GLM smoke needs the Z.AI auth
+    token plus `socat` on the host; three-agent parallel smoke needs
+    GLM plus the already-passing Muse/DeepSeek stacks. No fallback
+    model was substituted; no success was faked. Phase 4 stays IN
+    PROGRESS until these smokes pass.
