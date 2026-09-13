@@ -3,6 +3,8 @@ import { ProjectManagerError } from '@qa/project-manager';
 import { RunEngineError } from '@qa/run-engine';
 import { HarnessProtocolError } from '@qa/harness-protocol';
 import { MuseHarnessError } from '@qa/harness-muse';
+import { DeepSeekHarnessError } from '@qa/harness-deepseek';
+import { ClaudeCodeHarnessError } from '@qa/harness-claude-code';
 import {
   CLI_CONTRACT_VERSION,
   CliErrorEnvelopeSchema,
@@ -94,6 +96,16 @@ function canonicalError(cause: unknown): CliError {
     };
   }
   if (cause instanceof MuseHarnessError) {
+    return {
+      code: cause.code,
+      message: bounded(cause.message),
+      retryable: cause.retryable,
+    };
+  }
+  // Vendor harness errors pass through with their typed codes so single-
+  // stack failures stay diagnosable instead of collapsing to
+  // INTERNAL_ERROR.
+  if (cause instanceof DeepSeekHarnessError || cause instanceof ClaudeCodeHarnessError) {
     return {
       code: cause.code,
       message: bounded(cause.message),
