@@ -87,3 +87,32 @@ export {
   isHardwareOs,
   nodeOsFacts,
 } from "./hardware/index";
+export type {
+  CompatibilityCheck,
+  CompatibilityReason,
+  CompatibilityResult,
+  LocalModelAccelerator,
+  LocalModelDefinition,
+  LocalModelId,
+  LocalModelKind,
+  ModelQualityTier,
+  ModelRecommendation,
+  ModelRequirements,
+  RecommendArgs,
+  RecommendationCandidate,
+  RecommendationProfile,
+  SupportMaturity,
+} from "./local-models/index";
+export {
+  LOCAL_MODEL_IDS,
+  evaluateCompatibility,
+  filterCompatible,
+  findLocalModel,
+  getLocalModelCatalog,
+  isLocalModelKind,
+  isModelQualityTier,
+  isRecommendationProfile,
+  isSupportMaturity,
+  recommendModel,
+  validateCatalog,
+} from "./local-models/index";
