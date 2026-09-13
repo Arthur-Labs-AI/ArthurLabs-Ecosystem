@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -394,6 +394,51 @@ describe('MuseHarnessAdapter', () => {
     expect(file({ kind: 'fileAccess' })).toMatchObject({ approved: false });
   });
 
+  it('denies non-existing targets beneath symlinks escaping the workspace', async () => {
+    const container = await mkdtemp(join(tmpdir(), 'sentry-approval-symlink-'));
+    roots.push(container);
+    const ws = join(container, 'project');
+    const outside = join(container, 'outside');
+    await mkdir(ws, { recursive: true });
+    await mkdir(outside, { recursive: true });
+    await writeFile(join(ws, 'real.txt'), 'inside');
+    const choices = [
+      { choiceId: 'once_allow', label: 'Allow once', decision: 'approved', scope: 'once' },
+      { choiceId: 'stop_it', label: 'Stop', decision: 'abort', scope: 'once' },
+    ];
+    const file = (subject: Record<string, unknown>) =>
+      decideMuseApproval(
+        { approvalId: 'f', toolName: 'read', availableChoices: choices, subject } as never,
+        ws,
+      );
+    // Existing normal file inside: allow.
+    expect(file({ kind: 'fileAccess', path: join(ws, 'real.txt') })).toMatchObject({
+      approved: true,
+    });
+    // Non-existing direct child of a safe existing parent: allow.
+    expect(file({ kind: 'fileAccess', path: join(ws, 'not-yet-created.txt') })).toMatchObject({
+      approved: true,
+    });
+    // Nested non-existing directories beneath a safe parent: allow.
+    expect(
+      file({ kind: 'fileAccess', path: join(ws, 'new-dir', 'nested', 'f.txt') }),
+    ).toMatchObject({ approved: true });
+    try {
+      await symlink(outside, join(ws, 'link'));
+    } catch {
+      if (process.platform === 'win32') return;
+      throw new Error('symlink setup failed on non-Windows platform');
+    }
+    // Existing symlink pointing outside: deny.
+    expect(file({ kind: 'fileAccess', path: join(ws, 'link') })).toMatchObject({
+      approved: false,
+    });
+    // CRITICAL: non-existing file beneath the escaping symlink: DENY.
+    expect(file({ kind: 'fileAccess', path: join(ws, 'link', 'new-file.txt') })).toMatchObject({
+      approved: false,
+    });
+  });
+
   it('surfaces session approval decisions as observable warning events', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-muse-approval-'));
     roots.push(root);
@@ -545,6 +590,76 @@ describe('MuseHarnessAdapter', () => {
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'warning', code: 'MUSE_APPROVAL_DENIED' }),
     );
+  });
+
+  it('fails fast when an unsafe approval has no safe denial choice', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-approval-fatal-'));
+    roots.push(root);
+    const input = await request(root);
+    let fatalHandler:
+      ((fatal: { approvalId: string; toolName: string; reason: string }) => void) | undefined;
+    const close = vi.fn(async () => undefined);
+    const hanging: MuseTurnView = {
+      items: () => {
+        const iterator: AsyncIterableIterator<MuseFoldedItem> = {
+          next: () => new Promise<IteratorResult<MuseFoldedItem>>(() => undefined),
+          [Symbol.asyncIterator]() {
+            return this;
+          },
+        };
+        return iterator;
+      },
+      completed: new Promise(() => undefined) as Promise<MuseTurnOutcome>,
+    };
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'model',
+      environment: {},
+      turnTimeoutMs: 60_000,
+      clientFactory: async () => ({
+        startSession: async () => ({
+          sendText: async () => hanging,
+          onFatalApproval: (
+            handler: (fatal: { approvalId: string; toolName: string; reason: string }) => void,
+          ) => {
+            fatalHandler = handler;
+          },
+        }),
+        close,
+      }),
+    });
+    const collected: HarnessEvent[] = [];
+    const runPromise = (async () => {
+      for await (const event of adapter.run(input)) collected.push(event);
+    })();
+    // Let the run reach the parked turn, then fire the fatal approval path.
+    // A small polling loop avoids arbitrary sleeps.
+    const start = Date.now();
+    while (fatalHandler === undefined && Date.now() - start < 5_000) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(fatalHandler).toBeDefined();
+    fatalHandler?.({
+      approvalId: 'appr_fatal',
+      toolName: 'bash',
+      reason: 'no safe server-offered choice',
+    });
+    const timeout = new Promise<never>((_resolve, reject) => {
+      setTimeout(() => reject(new Error('fail-fast path parked: regression')), 10_000);
+    });
+    await Promise.race([runPromise, timeout]);
+    await adapter.dispose();
+    // Structured fatal diagnostic recorded before the terminal failure.
+    expect(collected).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'MUSE_APPROVAL_FATAL' }),
+    );
+    expect(collected.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'MUSE_INVALID_RESULT' },
+    });
+    // Owned client closed promptly (fail-fast, not the 60s watchdog).
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(collected.filter((e) => e.type === 'run.failed')).toHaveLength(1);
   });
 
   it('bounds a hung turn with the per-turn watchdog', async () => {

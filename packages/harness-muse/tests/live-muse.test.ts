@@ -185,7 +185,9 @@ describe.skipIf(!liveEnabled || modelId.length === 0)(
           }
         }
         // Zero findings stay allowed (nondeterministic model), but the
-        // pipeline must still have produced evidence of completed work.
+        // fixture exists to exercise the evidence pipeline: durable
+        // evidence must be non-empty on a successful smoke.
+        expect(details.evidence.length).toBeGreaterThan(0);
 
         // Token usage recorded when the SDK reports it (never fabricated).
         const usageEvents = details.events.filter((e) => e.event.type === 'usage.updated');

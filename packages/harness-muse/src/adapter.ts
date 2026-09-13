@@ -48,6 +48,7 @@ import {
   createProductionMuseClient,
   type MuseClientFactory,
   type MuseClientView,
+  type MuseFatalApproval,
   type MuseHostCompatibility,
   type MuseSessionView,
   type MuseTurnOutcome,
@@ -726,6 +727,8 @@ export class MuseHarnessAdapter implements HarnessAdapter {
   private readonly observedOperations = new Map<string, ObservedOperation>();
   private operationCounter = 0;
   private readonly shutdownDiagnostics: HarnessDiagnostic[] = [];
+  private approvalFatal?: MuseHarnessError;
+  private approvalAbortReject?: (cause: MuseHarnessError) => void;
 
   constructor(private readonly options: MuseHarnessAdapterOptions = {}) {
     this.hostEnvironment = options.environment ?? process.env;
@@ -803,16 +806,22 @@ export class MuseHarnessAdapter implements HarnessAdapter {
     const nextWithDeadline = async (): Promise<IteratorResult<HarnessEvent, TurnCollection>> => {
       const budget = deadline - Date.now();
       if (budget <= 0) throw timeoutError();
+      if (this.approvalFatal !== undefined) throw this.approvalFatal;
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         return await Promise.race([
           inner.next(),
           new Promise<never>((_resolve, reject) => {
             timer = setTimeout(() => reject(timeoutError()), budget);
+            this.approvalAbortReject = (cause) => {
+              if (timer !== undefined) clearTimeout(timer);
+              reject(cause);
+            };
           }),
         ]);
       } finally {
         if (timer !== undefined) clearTimeout(timer);
+        delete this.approvalAbortReject;
       }
     };
     // Final drain helper: approval decisions buffer in the session and are
@@ -1009,6 +1018,12 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         workspaceRoot: request.workspace.runtimePath,
         modelId: this.runtime.modelId,
       });
+      // Fail fast on fatal approvals: tear down ONLY the owned client
+      // (bounded SDK close of the child it spawned) so the turn cannot park
+      // until the watchdog. Never kills by process name.
+      session.onFatalApproval?.((fatal: MuseFatalApproval) => {
+        this.triggerApprovalFailFast(fatal);
+      });
       // A real session started: ephemeral runtime verification for this process.
       markMuseRuntimeVerified();
       const planning = yield* this.streamTurn(
@@ -1137,6 +1152,13 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         ...(usage === undefined ? {} : { usage }),
       });
     } catch (cause) {
+      if (this.approvalFatal !== undefined) {
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'MUSE_APPROVAL_FATAL',
+          message: redactDiagnostic(this.approvalFatal.message, this.secrets),
+        });
+      }
       const typed =
         cause instanceof MuseHarnessError
           ? cause
@@ -1163,6 +1185,26 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         },
       });
     }
+  }
+
+  private triggerApprovalFailFast(fatal: MuseFatalApproval): void {
+    if (this.approvalFatal !== undefined) return;
+    const error = new MuseHarnessError(
+      'MUSE_INVALID_RESULT',
+      'Muse approval could not be satisfied safely (tool=' +
+        fatal.toolName +
+        '): ' +
+        fatal.reason +
+        '. Owned session terminated promptly.',
+    );
+    this.approvalFatal = error;
+    this.shutdownDiagnostics.push({
+      code: 'MUSE_APPROVAL_FATAL',
+      severity: 'error',
+      message: 'Fatal approval failure tore down the owned Muse session promptly: ' + fatal.reason,
+    });
+    this.approvalAbortReject?.(error);
+    void this.dispose().catch(() => undefined);
   }
 
   async cancel(_runId: AgentRunId): Promise<void> {

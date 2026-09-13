@@ -38,10 +38,23 @@ export interface MuseApprovalDecision {
   readonly reason: string;
 }
 
+export interface MuseFatalApproval {
+  readonly approvalId: string;
+  readonly toolName: string;
+  readonly reason: string;
+}
+
 export interface MuseSessionView {
   sendText(text: string): Promise<MuseTurnView>;
   /** Approval decisions made by the workspace-scoped auto-decider. */
   drainApprovalDecisions(): readonly MuseApprovalDecision[];
+  /**
+   * Registers a hook invoked when an approval round trip fails fatally
+   * (fail-closed refusal with no safe choice, or submit failure). The
+   * adapter uses this to tear down the owned session promptly instead of
+   * parking the turn until the watchdog. Optional for test fakes.
+   */
+  onFatalApproval?(handler: (fatal: MuseFatalApproval) => void): void;
 }
 
 /**
@@ -130,7 +143,7 @@ export function canonicalizeApprovalPath(value: string): string {
   return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
 }
 
-function realpathIfPresent(value: string): string | undefined {
+function realpathOfExisting(value: string): string | undefined {
   try {
     return canonicalizeApprovalPath(realpathSync.native(value));
   } catch {
@@ -138,15 +151,59 @@ function realpathIfPresent(value: string): string | undefined {
   }
 }
 
+function parentOf(canonicalSlashPath: string): string | undefined {
+  if (canonicalSlashPath === '/' || canonicalSlashPath === '.') return undefined;
+  const driveMatch = /^([A-Za-z]:)(\/.*)?$/.exec(canonicalSlashPath);
+  if (driveMatch !== null) {
+    const rest = driveMatch[2] ?? '';
+    if (rest === '' || rest === '/') return undefined;
+    const slash = rest.lastIndexOf('/');
+    if (slash <= 0) return driveMatch[1] + '/';
+    return driveMatch[1] + rest.slice(0, slash);
+  }
+  const trimmed = canonicalSlashPath.replace(/\/$/, '');
+  const slash = trimmed.lastIndexOf('/');
+  if (slash <= 0) return trimmed.startsWith('/') ? '/' : undefined;
+  return trimmed.slice(0, slash);
+}
+
 export function isPathInsideApprovalRoot(candidate: string, root: string): boolean {
   const base = canonicalizeApprovalPath(root);
-  const live = realpathIfPresent(candidate) ?? canonicalizeApprovalPath(candidate);
-  if (live === base) return true;
-  if (!live.startsWith(base.endsWith('/') ? base : base + '/')) return false;
-  const liveRoot = realpathIfPresent(root);
-  if (liveRoot !== undefined && liveRoot !== base) {
-    return live === liveRoot || live.startsWith(liveRoot.endsWith('/') ? liveRoot : liveRoot + '/');
+  const lexical = canonicalizeApprovalPath(candidate);
+  // Identical canonical strings denote the same path: the session workspace
+  // is Sentry-created, so no traversal is expressible.
+  if (lexical === base) return true;
+  // Lexical gate first: traversal and sibling-prefix escapes fail here even
+  // when nothing exists on disk.
+  const lexicallyInside = lexical.startsWith(base.endsWith('/') ? base : base + '/');
+  if (!lexicallyInside) return false;
+  // Trusted root resolves first: the workspace itself might be symlinked.
+  const liveRoot = realpathOfExisting(root) ?? base;
+  const insideLiveRoot = (resolved: string): boolean =>
+    resolved === liveRoot ||
+    resolved.startsWith(liveRoot.endsWith('/') ? liveRoot : liveRoot + '/');
+  // Walk upward to the nearest existing ancestor (the candidate itself when
+  // it exists) and resolve THAT. Components below it do not exist, so no
+  // symlink among them can redirect.
+  let cursor: string | undefined = lexical;
+  const seen = new Set<string>();
+  while (cursor !== undefined && !seen.has(cursor)) {
+    seen.add(cursor);
+    const resolved = realpathOfExisting(cursor);
+    if (resolved !== undefined) {
+      if (insideLiveRoot(resolved)) return true;
+      // Resolved outside: deny ONLY on proven redirection (the resolved
+      // form differs from the lexical ancestor, so a symlink diverted the
+      // path). A plain missing subtree under a real outside directory
+      // (e.g. unit fixtures) has no redirection: creating it is safe and
+      // the lexical verdict above already passed.
+      const canonicalAncestor = canonicalizeApprovalPath(cursor);
+      return resolved !== canonicalAncestor ? false : true;
+    }
+    cursor = parentOf(cursor);
   }
+  // Nothing on disk up to the filesystem root: nothing contradicts the
+  // lexical verdict.
   return true;
 }
 
@@ -232,6 +289,7 @@ export function decideMuseApproval(
 
 class ProductionSession implements MuseSessionView {
   private readonly decisions: MuseApprovalDecision[] = [];
+  private fatalHandler?: (fatal: MuseFatalApproval) => void;
 
   constructor(
     private readonly session: Awaited<ReturnType<MuseClient['startSession']>>,
@@ -253,14 +311,27 @@ class ProductionSession implements MuseSessionView {
       return { choiceId: verdict.choiceId, feedback: verdict.feedback ?? null };
     });
     inner.onApprovalError?.((failure) => {
+      const reason = 'approval round trip failed: ' + String(failure).slice(0, 300);
       this.decisions.push({
         approvalId: 'unknown',
         toolName: 'unknown',
         choiceId: 'error',
         approved: false,
-        reason: 'approval round trip failed: ' + String(failure).slice(0, 300),
+        reason,
       });
+      // Fail fast: an unanswered approval parks the turn indefinitely.
+      // The adapter tears down the owned session; the watchdog stays only
+      // as defense-in-depth.
+      try {
+        this.fatalHandler?.({ approvalId: 'unknown', toolName: 'unknown', reason });
+      } catch {
+        // never let observer errors mask the recorded decision
+      }
     });
+  }
+
+  onFatalApproval(handler: (fatal: MuseFatalApproval) => void): void {
+    this.fatalHandler = handler;
   }
 
   async sendText(text: string): Promise<Turn> {
