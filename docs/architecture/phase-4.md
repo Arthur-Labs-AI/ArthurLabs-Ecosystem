@@ -233,3 +233,11 @@ cost tracking, hard token budgets, full Adaptive InvestigationDepth.
     4 strong findings, 13 evidence incl. reproduced_behavior command
     items with canonical groundingOperationIds, 121659/16687/342208
     tokens, json+log exports.
+  - Muse Phase-4.2 regression PASSED (`run_01M2G4QXJAMPFT4EE9C2VFZP0S`):
+    completed/completed in 3 turns, model muse-spark-1.3-contributor
+    via Muse Code 1.2.1, 2 strong findings, 4 evidence, 43 events,
+    json+log exports.
+  - DeepSeek Phase-4.2 regression PASSED (`run_01M2G4YWHDJWDR3EENGPD4RMQS`):
+    completed/completed in 3 turns, model deepseek-v4-flash via
+    0.1.5-rc.2 runtime, 1 strong finding, 2 code_reference evidence,
+    honest usage (5918/22789/45440), 40 events, json+log exports.
