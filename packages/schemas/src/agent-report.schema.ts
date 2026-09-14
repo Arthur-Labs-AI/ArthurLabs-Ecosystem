@@ -283,11 +283,18 @@ export function describeSentryAgentReportContract(): string {
           extra.join(','),
       );
     }
+    // Strength vocabulary comes from the live schema (never a
+    // hand-maintained list): models must see the exact enum values.
+    const strengthField = shape['strength'];
+    let strengths = '';
+    if (strengthField instanceof z.ZodEnum) strengths = strengthField.options.join('|');
     return (
       kind +
       ': {"key","type":"' +
       kind +
-      '","strength","description"' +
+      '","strength":"' +
+      strengths +
+      '","description"' +
       expected
         .filter((field) => !['key', 'type', 'strength', 'description'].includes(field))
         .map((field) => ',"' + field + '"')

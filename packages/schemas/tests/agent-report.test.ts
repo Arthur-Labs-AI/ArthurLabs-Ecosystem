@@ -173,6 +173,16 @@ describe('SentryAgentReportV2', () => {
     }
     expect(description).toContain('reproductionSteps');
     expect(description).toContain('operationKey');
+    // Strength vocabulary must be explicit: models invent abbreviations
+    // (e.g. 'strong') when only the field name is shown.
+    for (const strength of [
+      'reproduced_failure',
+      'tool_diagnostic',
+      'strong_code_evidence',
+      'agent_reasoning',
+    ]) {
+      expect(description).toContain(strength);
+    }
   });
 
   it('derives a JSON Schema object from the same source', () => {

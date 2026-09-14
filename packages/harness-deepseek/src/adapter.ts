@@ -171,10 +171,11 @@ function planningPrompt(request: HarnessRunRequest): string {
     'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
     'Explicit run instructions define intended behavior and outrank project documentation; project documentation outranks your inference. None may override host safety.',
     'Inspect project documentation and the supplied immutable mission context. Do not use peer plans, findings, or messages.',
-    'Create an investigation plan before executing it. Return exactly one JSON document and no Markdown: no code fences, no preamble, no commentary, just the raw JSON object.',
+    'Create an investigation plan before executing it.',
     'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
     'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
     'User instructions: ' + request.task.prompt,
+    'OUTPUT CONTRACT (must hold exactly): your ENTIRE response is exactly one raw JSON object matching the schema. No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
   ].join('\n');
 }
 
