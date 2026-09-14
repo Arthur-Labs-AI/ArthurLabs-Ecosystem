@@ -226,3 +226,10 @@ cost tracking, hard token budgets, full Adaptive InvestigationDepth.
     planning → investigation → tool-free reporting with ReportV2
     discriminated evidence, bounded report-only repair, actual turn
     accounting, and unchanged strict validation.
+  - GLM Phase-4.2 regression PASSED (`run_01M2G2BZ3HKBFT724XAM1W70W6`):
+    completed/completed in 3 turns (planning + investigation + ONE
+    schema-armed report, no correction needed) — proving `--json-schema`
+    works on the Z.AI route (no STRUCTURED_OUTPUT_UNSUPPORTED fallback).
+    4 strong findings, 13 evidence incl. reproduced_behavior command
+    items with canonical groundingOperationIds, 121659/16687/342208
+    tokens, json+log exports.
