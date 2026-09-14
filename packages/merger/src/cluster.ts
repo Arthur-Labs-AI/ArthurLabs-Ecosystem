@@ -1,7 +1,6 @@
-import { createHash } from 'node:crypto';
 import type { Evidence, Finding } from '@qa/schemas';
 import { groundingOfEvidence } from '@qa/domain';
-import { MERGER_VERSION, NORMALIZER_VERSION, type AgreementState } from './schemas.js';
+import { MERGER_VERSION, type AgreementState } from './schemas.js';
 import { compareFindings } from './match.js';
 import { normalizeFinding, sha256Hex, type NormalizedFinding } from './normalize.js';
 

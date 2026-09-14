@@ -28,9 +28,7 @@ function agentRun(id: string, stack: string, status = 'completed'): AgentRun {
   } as unknown as AgentRun;
 }
 
-let evidenceSeq = 0;
 function codeEvidence(id: string, path: string, startLine?: number, endLine?: number): Evidence {
-  evidenceSeq += 1;
   return {
     schemaVersion: 1,
     id,
