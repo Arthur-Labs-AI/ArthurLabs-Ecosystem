@@ -217,3 +217,12 @@ cost tracking, hard token budgets, full Adaptive InvestigationDepth.
     evidence-field guard, execution contract).
   - REMAINING: three-agent parallel smoke (Muse + DeepSeek + GLM).
     No fallback model was substituted; no success was faked.
+  - Phase 4.2 (see `phase-4-2.md`): two-stage investigation/reporting
+    caused repeated live serialization failures because Sentry-owned
+    operation identities were created during the same turn in which the
+    model had to cite them. Phase 4.2 separates investigation from
+    reporting and provides the frozen post-investigation operation
+    ledger to the final report turn. All three adapters now run
+    planning → investigation → tool-free reporting with ReportV2
+    discriminated evidence, bounded report-only repair, actual turn
+    accounting, and unchanged strict validation.
