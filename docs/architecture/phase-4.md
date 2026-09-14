@@ -241,3 +241,7 @@ cost tracking, hard token budgets, full Adaptive InvestigationDepth.
     completed/completed in 3 turns, model deepseek-v4-flash via
     0.1.5-rc.2 runtime, 1 strong finding, 2 code_reference evidence,
     honest usage (5918/22789/45440), 40 events, json+log exports.
+  - Muse solo re-run PASSED (`run_01M2G93HSA5HEFYVK2M8JS3TH5`):
+    completed/completed in 3 turns (129s), 2 strong findings,
+    4 evidence, 37 events — proving the parallel-run hang was
+    transient Meta-side stalls, not systematic.
