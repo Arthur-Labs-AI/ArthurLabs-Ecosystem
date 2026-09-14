@@ -37,6 +37,12 @@ import {
 } from '@qa/schemas';
 import type { SentryDatabase } from './database.js';
 import { RuntimePersistenceError } from './errors.js';
+import {
+  FindingClusterSchema,
+  MergeResultSchema,
+  type FindingCluster,
+  type MergeResult,
+} from '@qa/schemas';
 
 interface Parser<T> {
   parse(value: unknown): T;
@@ -503,6 +509,111 @@ export class SentryRepository {
 
   iterateActivities(runId: QARunId): Iterable<RunActivity> {
     return this.iterateRunEntity('run_activities', runId, RunActivitySchema, 'RunActivity');
+  }
+
+  /** Atomic merge persistence: MergeResult + clusters + memberships +
+   *  evidence links + disagreements commit together or roll back together.
+   *  Callers compute the merge OUTSIDE the transaction (no long-held
+   *  write lock); this method only persists. Source findings/evidence
+   *  are never modified. */
+  saveMergeResult(result: MergeResult, members: ReadonlyMap<string, readonly string[]>): void {
+    this.transaction(() => {
+      this.database.connection
+        .prepare(
+          'INSERT INTO merge_results(id,qa_run_id,input_digest,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET qa_run_id=excluded.qa_run_id,input_digest=excluded.input_digest,payload=excluded.payload',
+        )
+        .run(result.id, result.qaRunId, result.inputDigest, encode(MergeResultSchema, result));
+      for (const cluster of result.clusters) {
+        this.database.connection
+          .prepare(
+            'INSERT INTO finding_clusters(id,qa_run_id,merge_result_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET qa_run_id=excluded.qa_run_id,merge_result_id=excluded.merge_result_id,payload=excluded.payload',
+          )
+          .run(cluster.id, cluster.qaRunId, result.id, encode(FindingClusterSchema, cluster));
+        const findingIds = members.get(cluster.id) ?? cluster.sourceFindingIds;
+        for (const findingId of findingIds) {
+          this.database.connection
+            .prepare(
+              'INSERT INTO finding_cluster_members(cluster_id,finding_id) VALUES (?,?) ON CONFLICT(cluster_id,finding_id) DO NOTHING',
+            )
+            .run(cluster.id, findingId);
+        }
+        for (const evidenceId of cluster.evidenceIds) {
+          this.database.connection
+            .prepare(
+              'INSERT INTO cluster_evidence(cluster_id,evidence_id) VALUES (?,?) ON CONFLICT(cluster_id,evidence_id) DO NOTHING',
+            )
+            .run(cluster.id, evidenceId);
+        }
+        for (const disagreement of cluster.fieldDisagreements) {
+          for (const [stackId, value] of Object.entries(disagreement.valuesByAgentStackId)) {
+            this.database.connection
+              .prepare(
+                'INSERT INTO cluster_disagreements(cluster_id,field,agent_stack_id,value) VALUES (?,?,?,?) ON CONFLICT(cluster_id,field,agent_stack_id) DO UPDATE SET value=excluded.value',
+              )
+              .run(cluster.id, disagreement.field, stackId, value);
+          }
+        }
+      }
+    });
+  }
+
+  getMergeResult(id: string): MergeResult | undefined {
+    return decode(
+      MergeResultSchema,
+      this.database.connection.prepare('SELECT payload FROM merge_results WHERE id=?').get(id) as
+        PayloadRow | undefined,
+      'MergeResult ' + id,
+    );
+  }
+
+  findMergeResultByDigest(runId: QARunId, inputDigest: string): MergeResult | undefined {
+    return decode(
+      MergeResultSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM merge_results WHERE qa_run_id=? AND input_digest=?')
+        .get(runId, inputDigest) as PayloadRow | undefined,
+      'MergeResult ' + runId + ' digest',
+    );
+  }
+
+  listMergeResults(runId: QARunId): MergeResult[] {
+    return decodeMany(
+      MergeResultSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM merge_results WHERE qa_run_id=? ORDER BY id')
+        .all(runId) as unknown as PayloadRow[],
+      'MergeResult',
+    );
+  }
+
+  *iterateMergeResults(runId: QARunId): Iterable<MergeResult> {
+    yield* decodeRows(
+      MergeResultSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM merge_results WHERE qa_run_id=? ORDER BY id')
+        .iterate(runId) as Iterable<PayloadRow>,
+      'MergeResult',
+    );
+  }
+
+  *iterateClusters(mergeResultId: string): Iterable<FindingCluster> {
+    yield* decodeRows(
+      FindingClusterSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM finding_clusters WHERE merge_result_id=? ORDER BY id')
+        .iterate(mergeResultId) as Iterable<PayloadRow>,
+      'FindingCluster',
+    );
+  }
+
+  listClusters(mergeResultId: string): FindingCluster[] {
+    return decodeMany(
+      FindingClusterSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM finding_clusters WHERE merge_result_id=? ORDER BY id')
+        .all(mergeResultId) as unknown as PayloadRow[],
+      'FindingCluster',
+    );
   }
 
   saveExport(value: RunExportManifest): void {

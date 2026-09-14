@@ -124,11 +124,50 @@ export class RunExporter {
       (run.executionKind === 'production' ? 'REAL AGENT RUN' : 'SIMULATED / FAKE HARNESS RUN') +
       ' created\n';
     for (const stored of this.repository.iterateRunEvents(runId)) yield eventLogLine(stored);
+    for (const merge of this.repository.iterateMergeResults(runId)) {
+      const at = nowIsoTimestamp();
+      const clusters = [...this.repository.iterateClusters(merge.id)];
+      yield `[${at}] [SENTRY] Merge result ${merge.id} (${clusters.length} clusters)\n`;
+      for (const cluster of clusters) yield* this.mergeClusterLines(at, cluster);
+    }
     yield '[' +
       (run.completedAt ?? nowIsoTimestamp()) +
       '] [SENTRY] Run status: ' +
       run.status +
       '\n';
+  }
+
+  private *mergeClusterLines(
+    at: string,
+    cluster: {
+      readonly id: string;
+      readonly agreementState: string;
+      readonly sourceAgentStackIds: readonly string[];
+      readonly unavailableAgentStackIds: readonly string[];
+      readonly sourceFindingIds: readonly string[];
+      readonly evidenceIds: readonly string[];
+      readonly representativeFindingId: string;
+      readonly fieldDisagreements: ReadonlyArray<{
+        readonly field: string;
+        readonly valuesByAgentStackId: Readonly<Record<string, string>>;
+      }>;
+    },
+  ): Generator<string> {
+    const reported = [...new Set(cluster.sourceAgentStackIds)].sort();
+    yield `[${at}] [SENTRY] Cluster ${cluster.id} [${cluster.agreementState}] support=${reported.join(',') || '(none)'}\n`;
+    const unavailable =
+      cluster.unavailableAgentStackIds.length > 0
+        ? cluster.unavailableAgentStackIds.join(',')
+        : '(none unavailable)';
+    yield `[${at}] [SENTRY] Not reported is not disagreement; unavailable: ${unavailable}\n`;
+    const severities = cluster.fieldDisagreements.find((d) => d.field === 'severity');
+    if (severities !== undefined) {
+      const parts = Object.entries(severities.valuesByAgentStackId)
+        .map(([stack, value]) => `${stack}: ${value}`)
+        .join('; ');
+      yield `[${at}] [SENTRY] Severity reports: ${parts}\n`;
+    }
+    yield `[${at}] [SENTRY] Source findings: ${cluster.sourceFindingIds.join(',')}; evidence: ${cluster.evidenceIds.join(',') || '(none)'}\n`;
   }
 
   private async *jsonSource(runId: QARunId): AsyncGenerator<string> {
@@ -177,6 +216,17 @@ export class RunExporter {
       yield part;
     for await (const part of section('evidence', this.repository.iterateEvidence(runId), true))
       yield part;
+    for await (const part of section(
+      'mergeResults',
+      this.repository.iterateMergeResults(runId),
+      true,
+    ))
+      yield part;
+    const clusterDocs: unknown[] = [];
+    for (const merge of this.repository.iterateMergeResults(runId)) {
+      for (const cluster of this.repository.iterateClusters(merge.id)) clusterDocs.push(cluster);
+    }
+    for await (const part of section('findingClusters', clusterDocs, true)) yield part;
     for await (const part of section('artifacts', this.repository.iterateArtifacts(runId), false))
       yield part;
     yield '}';

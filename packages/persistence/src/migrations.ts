@@ -99,4 +99,23 @@ WHEN NEW.qa_run_id IS NOT OLD.qa_run_id OR NEW.agent_run_id IS NOT OLD.agent_run
 BEGIN SELECT RAISE(ABORT,'ENTITY_OWNERSHIP_IMMUTABLE'); END;
 `,
   },
+  {
+    version: 3,
+    name: 'finding_merge_results',
+    sql: `
+CREATE TABLE merge_results (id TEXT PRIMARY KEY, qa_run_id TEXT NOT NULL REFERENCES qa_runs(id) ON DELETE CASCADE, input_digest TEXT NOT NULL, payload TEXT NOT NULL) STRICT;
+CREATE UNIQUE INDEX merge_results_run_digest_idx ON merge_results(qa_run_id,input_digest);
+CREATE TABLE finding_clusters (id TEXT PRIMARY KEY, qa_run_id TEXT NOT NULL REFERENCES qa_runs(id) ON DELETE CASCADE, merge_result_id TEXT NOT NULL REFERENCES merge_results(id) ON DELETE CASCADE, payload TEXT NOT NULL) STRICT;
+CREATE INDEX finding_clusters_merge_idx ON finding_clusters(merge_result_id);
+CREATE TABLE finding_cluster_members (cluster_id TEXT NOT NULL REFERENCES finding_clusters(id) ON DELETE CASCADE, finding_id TEXT NOT NULL REFERENCES findings(id) ON DELETE CASCADE, PRIMARY KEY (cluster_id,finding_id)) STRICT;
+CREATE TABLE cluster_evidence (cluster_id TEXT NOT NULL REFERENCES finding_clusters(id) ON DELETE CASCADE, evidence_id TEXT NOT NULL REFERENCES evidence(id) ON DELETE CASCADE, PRIMARY KEY (cluster_id,evidence_id)) STRICT;
+CREATE TABLE cluster_disagreements (cluster_id TEXT NOT NULL REFERENCES finding_clusters(id) ON DELETE CASCADE, field TEXT NOT NULL, agent_stack_id TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (cluster_id,field,agent_stack_id)) STRICT;
+CREATE TRIGGER merge_results_owner_update BEFORE UPDATE ON merge_results
+WHEN NEW.qa_run_id IS NOT OLD.qa_run_id OR NEW.input_digest IS NOT OLD.input_digest
+BEGIN SELECT RAISE(ABORT,'ENTITY_OWNERSHIP_IMMUTABLE'); END;
+CREATE TRIGGER finding_clusters_owner_update BEFORE UPDATE ON finding_clusters
+WHEN NEW.qa_run_id IS NOT OLD.qa_run_id OR NEW.merge_result_id IS NOT OLD.merge_result_id
+BEGIN SELECT RAISE(ABORT,'ENTITY_OWNERSHIP_IMMUTABLE'); END;
+`,
+  },
 ] as const;

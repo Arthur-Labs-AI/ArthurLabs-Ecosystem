@@ -19,6 +19,7 @@
   "dependencies": {
     "@qa/domain": "workspace:*",
     "@qa/harness-protocol": "workspace:*",
+    "@qa/merger": "workspace:*",
     "@qa/persistence": "workspace:*",
     "@qa/project-manager": "workspace:*",
     "@qa/schemas": "workspace:*",

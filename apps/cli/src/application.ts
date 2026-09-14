@@ -6,7 +6,13 @@ import {
   resolveSentryDataRoot,
 } from '@qa/persistence';
 import { ProjectManager, ProjectManagerError } from '@qa/project-manager';
-import { createFakeHarnessRegistry, RunCoordinator } from '@qa/run-engine';
+import {
+  createFakeHarnessRegistry,
+  mergeRun,
+  MergeServiceError,
+  RunCoordinator,
+  RunEngineError,
+} from '@qa/run-engine';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
 import { createMuseRegistration, doctorMuse, MUSE_SDK_VERSION } from '@qa/harness-muse';
 import {
@@ -319,6 +325,35 @@ export async function executeCommand(
   if (input.command === 'run.status') {
     const runId = QARunIdSchema.parse(input.runId);
     return withReadRuntime(async ({ runs }) => success(input.command, runs.getRunStatus(runId)));
+  }
+  if (input.command === 'run.merge') {
+    const mergeRunId = QARunIdSchema.parse(input.runId);
+    return withMutationRuntime(async ({ repository }) => {
+      try {
+        const { result, reused } = mergeRun(repository, mergeRunId);
+        return success(input.command, {
+          runId: mergeRunId,
+          mergeResultId: result.id,
+          reused,
+          clusters: result.clusterCount,
+          sourceFindings: result.sourceFindingCount,
+          usableAgents: result.usableAgentRunIds.length,
+          unavailableAgents: result.unavailableAgentStackIds,
+        });
+      } catch (cause) {
+        if (cause instanceof MergeServiceError) {
+          throw new RunEngineError(
+            cause.code === 'RUN_NOT_FOUND'
+              ? 'RUN_NOT_FOUND'
+              : cause.code === 'RUN_NOT_TERMINAL'
+                ? 'RUN_NOT_COMPLETE'
+                : 'RUN_EXECUTION_FAILED',
+            cause.message,
+          );
+        }
+        throw cause;
+      }
+    }, options);
   }
   const runId = QARunIdSchema.parse(input.runId);
   return withMutationRuntime(async ({ runs, repository, dataRoot }) => {

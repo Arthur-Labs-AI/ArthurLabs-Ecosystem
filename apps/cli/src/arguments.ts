@@ -50,7 +50,8 @@ export type ParsedCliCommand =
   | (BaseCommand<'run.list'> & { readonly projectId: string })
   | (BaseCommand<'run.show'> & { readonly runId: string })
   | (BaseCommand<'run.status'> & { readonly runId: string })
-  | (BaseCommand<'run.export'> & { readonly runId: string; readonly format: 'log' | 'json' });
+  | (BaseCommand<'run.export'> & { readonly runId: string; readonly format: 'log' | 'json' })
+  | (BaseCommand<'run.merge'> & { readonly runId: string });
 
 const SIMULATION_SCENARIOS = new Set<SimulationScenario>([
   'success',
@@ -112,6 +113,7 @@ export function commandHint(args: readonly string[]): CliCommand | 'unknown' {
     'run.show',
     'run.status',
     'run.export',
+    'run.merge',
   ]);
   return known.has(candidate as CliCommand) ? (candidate as CliCommand) : 'unknown';
 }
@@ -248,6 +250,11 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     assertFlags(tail, []);
     const [runId] = assertPositionals(tail, 1, 'qa run ' + action + ' <run-id>');
     return { command: action === 'show' ? 'run.show' : 'run.status', runId: runId as string };
+  }
+  if (area === 'run' && action === 'merge') {
+    assertFlags(tail, []);
+    const [runId] = assertPositionals(tail, 1, 'qa run merge <run-id>');
+    return { command: 'run.merge', runId: runId as string };
   }
   if (area === 'run' && action === 'export') {
     assertFlags(tail, ['--format']);

@@ -40,6 +40,7 @@ export const CLI_COMMANDS = [
   'run.show',
   'run.status',
   'run.export',
+  'run.merge',
 ] as const;
 export const CliCommandSchema = z.enum(CLI_COMMANDS);
 export type CliCommand = z.infer<typeof CliCommandSchema>;
@@ -340,6 +341,19 @@ export const RunExportResultSchema = z
   .strict();
 export type RunExportResult = z.infer<typeof RunExportResultSchema>;
 
+export const RunMergeResultSchema = z
+  .object({
+    runId: QARunIdSchema,
+    mergeResultId: z.string().regex(/^merge_[0-9A-HJKMNP-TV-Z]{26}$/),
+    reused: z.boolean(),
+    clusters: z.number().int().min(0),
+    sourceFindings: z.number().int().min(0),
+    usableAgents: z.number().int().min(0),
+    unavailableAgents: z.array(z.string().min(1).max(100)),
+  })
+  .strict();
+export type RunMergeResult = z.infer<typeof RunMergeResultSchema>;
+
 export const CapabilitiesResultSchema = z
   .object({
     cliContractVersion: z.literal(CLI_CONTRACT_VERSION),
@@ -385,6 +399,7 @@ export const CliResultSchemas = {
   'run.show': RunShowResultSchema,
   'run.status': RunStatusResultSchema,
   'run.export': RunExportResultSchema,
+  'run.merge': RunMergeResultSchema,
 } as const;
 
 function successEnvelope<C extends CliCommand>(

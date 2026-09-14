@@ -770,4 +770,5 @@ export * from './errors.js';
 
 export * from './activity-projector.js';
 export * from './exporters.js';
+export * from './merge-service.js';
 export * from './simulation.js';
