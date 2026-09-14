@@ -140,11 +140,21 @@ function messageOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
-/** Detect a --json-schema flag rejection (binary or route unsupported):
- *  the spawn fails with CLI usage vocabulary, never a model result. */
-function isJsonSchemaFlagRejection(cause: unknown): boolean {
+/** Detect a report-transport failure (spawn/CLI/route layer, no model
+ *  output): the schema-armed attempt deserves one flag-free retry.
+ *  Firewall denials, turn timeouts, and completed-turn results are report
+ *  signals, never transport failures. */
+function isReportTransportFailure(cause: unknown): boolean {
+  if (cause instanceof ClaudeCodeHarnessError) {
+    return (
+      cause.code !== 'GLM_REPORT_TOOL_FORBIDDEN' &&
+      cause.code !== 'GLM_SUBAGENT_FORBIDDEN' &&
+      cause.code !== 'GLM_INVALID_RESULT'
+    );
+  }
   const text = messageOf(cause);
-  return /json-schema|unknown option|unrecognized .*option|invalid option/i.test(text);
+  if (/exceeded its .* ms budget|timed out/i.test(text)) return false;
+  return true;
 }
 
 interface BuiltReportAttempt {
@@ -787,10 +797,14 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             { forbidTools: true, ...(useSchema ? { jsonSchema: reportSchema } : {}) },
           );
         } catch (cause) {
-          // Structural fallback: --json-schema rejected by this binary or
-          // route. Retry the SAME report turn without it (report-only;
-          // the ledger and investigation are untouched).
-          if (useSchema && isJsonSchemaFlagRejection(cause)) {
+          // Structural fallback: the schema-armed report spawn failed at
+          // the transport/CLI layer (flag rejected, route error, spawn
+          // failure) before any model output existed. Retry the SAME
+          // report turn without --json-schema (report-only; the ledger
+          // and investigation are untouched). Firewall, timeout, and
+          // completed-turn errors are real report signals, not transport
+          // failures, and propagate unchanged.
+          if (useSchema && isReportTransportFailure(cause)) {
             schemaSupported = false;
             yield event(request.agentRunId, {
               type: 'warning',
