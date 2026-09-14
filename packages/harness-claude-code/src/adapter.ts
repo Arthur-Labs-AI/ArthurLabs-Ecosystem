@@ -11,11 +11,17 @@ import {
   type OperationId,
 } from '@qa/shared';
 import {
+  boundCorrectionMessage,
+  buildReportCorrectionIntro,
   buildBaselineIndex,
   commandIdentity,
-  convertEvidence,
+  convertReportEvidence,
   isTestCommand,
+  MAX_REPORT_ATTEMPTS,
   parseWholeJson,
+  renderFrozenLedger,
+  REPORT_CONFIDENCE_CALIBRATION,
+  REPORT_LEDGER_RULES,
   summarizeSchemaIssues,
   validateLocation,
   validateProductionFindings,
@@ -23,16 +29,18 @@ import {
   type ObservedOperation,
 } from '@qa/evidence-pipeline';
 import {
-  describeSentryAgentEvidenceContract,
+  describeSentryAgentReportContract,
   FindingSchema,
+  type Finding,
   HarnessEventSchema,
-  SentryAgentResultV1Schema,
+  sentryAgentReportJsonSchema,
+  SentryAgentReportV2Schema,
   SentryInvestigationPlanV1Schema,
   type AgentUsage,
   type Evidence,
   type HarnessEvent,
   type HarnessRunRequest,
-  type SentryAgentResultV1,
+  type SentryAgentReportV2,
 } from '@qa/schemas';
 import type {
   HarnessAdapter,
@@ -113,15 +121,34 @@ function pipelineContext(secrets: readonly string[]): EvidencePipelineContext {
   };
 }
 
-function parseAgentResult(text: string, pipeline: EvidencePipelineContext): SentryAgentResultV1 {
-  const parsed = SentryAgentResultV1Schema.safeParse(parseWholeJson(text, 'execution', pipeline));
-  if (parsed.success) return parsed.data;
-  throw new ClaudeCodeHarnessError(
-    'GLM_INVALID_RESULT',
-    'Claude Code execution result did not match the required schema (' +
-      summarizeSchemaIssues(parsed.error) +
-      ').',
-  );
+type ReportAttempt = { ok: true; report: SentryAgentReportV2 } | { ok: false; errors: string[] };
+
+function parseReportAttempt(text: string, pipeline: EvidencePipelineContext): ReportAttempt {
+  let raw: unknown;
+  try {
+    raw = parseWholeJson(text, 'reporting', pipeline);
+  } catch (cause) {
+    return { ok: false, errors: [boundCorrectionMessage(messageOf(cause))] };
+  }
+  const parsed = SentryAgentReportV2Schema.safeParse(raw);
+  if (parsed.success) return { ok: true, report: parsed.data };
+  return { ok: false, errors: [boundCorrectionMessage(summarizeSchemaIssues(parsed.error))] };
+}
+
+function messageOf(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
+}
+
+/** Detect a --json-schema flag rejection (binary or route unsupported):
+ *  the spawn fails with CLI usage vocabulary, never a model result. */
+function isJsonSchemaFlagRejection(cause: unknown): boolean {
+  const text = messageOf(cause);
+  return /json-schema|unknown option|unrecognized .*option|invalid option/i.test(text);
+}
+
+interface BuiltReportAttempt {
+  readonly evidenceByKey: ReadonlyMap<string, Evidence>;
+  readonly findings: readonly Finding[];
 }
 
 function planningPrompt(request: HarnessRunRequest): string {
@@ -139,21 +166,9 @@ function planningPrompt(request: HarnessRunRequest): string {
   ].join('\n');
 }
 
-function executionPrompt(
+function investigationPrompt(
   plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
-  observedOperations: ReadonlyMap<string, ObservedOperation>,
 ): string {
-  // Authoritative operation ledger (same protection as DeepSeek): keys and
-  // exit codes are session-global (planning ops included), so the model
-  // never reconstructs numbering or recalls codes from memory. Compact:
-  // key, tool, command/target summary, exit code. No command output.
-  const ledger = [...observedOperations.values()]
-    .map(
-      (op) =>
-        `${op.operationKey}: ${op.toolName} ${op.commandText ?? op.argsText ?? '(no target)'} ` +
-        `(exit ${op.exitCode === undefined ? 'unknown' : op.exitCode})`,
-    )
-    .join('\n');
   return [
     'Execute the frozen investigation plan below as the sole investigator. Do not create or use subagents.',
     'Host safety is authoritative: remain inside the isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
@@ -164,21 +179,29 @@ function executionPrompt(
     'Do not silently obtain unrestricted network access. Record sandbox or network restrictions as limitations and never retry with sandbox disabled.',
     'Use only the repository toolchain already present in the workspace; do not download packages or install dependencies from the network (no npx fetches, no npm/pip installs). If a test runner is unavailable, record it as a limitation.',
     'Keep the investigation tight: a handful of targeted checks beats dozens of exploratory commands. Do not repeat commands that already produced results.',
-    'Return exactly one JSON document and no Markdown. Do not invent file paths or command results.',
-    'Use temporary evidence keys only; Sentry owns all durable IDs.',
-    'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info. Confidence MUST be exactly one of: confirmed, strong, probable, speculative.',
-    'Calibrate confidence honestly: confirmed requires at least one reproduced-strength or operation-linked command/test evidence item behind the finding — code references and manual reasoning support strong at most. Overconfident findings fail validation.',
-    'Evidence type MUST be exactly one of: command, runtime, code_reference, test, log, manual. Strength MUST be exactly one of: reproduced_failure, reproduced_behavior, tool_diagnostic, strong_code_evidence, agent_reasoning.',
-    'Evidence items accept ONLY the contract fields (key, type, strength, description, relativePath, lineStart, lineEnd, command, exitCode, framework, name, status, source, operationKey). Never add finding-location fields like symbol to evidence; symbol belongs on finding locations only. Unknown fields fail validation.',
-    'For command evidence, use ONLY short single-purpose commands you issued alone (never chains joined by &&, ;, or |, never pipelines): reproduce the command text EXACTLY character-for-character as you issued it, with the exact exit code you observed.',
-    'For test/runtime/log evidence, set operationKey to the observed operation that produced it, using the EXACT keys and exit codes from the operation ledger below. Operation keys are session-global: planning-turn operations keep their keys, and execution-turn operations continue numbering. NEVER restart numbering at op_1 for the execution turn. Copy the exit code exactly as listed; if listed as unknown, do not guess a code.',
-    'Observed operation ledger (authoritative):\n' +
-      (ledger.length > 0 ? ledger : '(no operations observed yet)'),
-    'Evidence item contract (every field the parser accepts; copy names exactly): ' +
-      describeSentryAgentEvidenceContract(),
-    'Schema: {"schemaVersion":1,"summary":string,"checks":[{"name":string,"status":"passed|failed|inconclusive|not_run","details"?:string}],"hypotheses":[{"title":string,"rationale":string,"relatedPaths":string[],"plannedChecks":string[at least one]}],"evidence":[<see Evidence item contract above>],"findings":[{"title":string,"category":string,"categoryDetail"?:string,"severity":"critical|high|medium|low|info","confidence":"confirmed|strong|probable|speculative","description":string,"expectedBehavior"?:string,"actualBehavior"?:string,"locations":[{"relativePath":string,"lineStart"?:number,"lineEnd"?:number,"symbol"?:string}],"evidenceKeys":string[],"reproductionSteps":string[],"rootCause"?:string,"recommendedFix"?:string}],"limitations":string[]}.',
+    'Do NOT produce the final Sentry JSON report yet. Investigate only, using permitted local tools as needed. When the investigation is complete, finish this turn with a short terminal message such as: Investigation complete.',
+    'Sentry will provide the authoritative operation ledger in the following reporting turn.',
     'Frozen plan: ' + JSON.stringify(plan),
-    'OUTPUT CONTRACT (must hold exactly): your ENTIRE response is exactly one raw JSON object matching the schema. No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
+  ].join('\n');
+}
+
+function reportPrompt(
+  plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
+  operations: ReadonlyMap<string, ObservedOperation>,
+  correction?: readonly string[],
+): string {
+  return [
+    'Serialize the investigation you just completed into exactly one Sentry report. No new QA: do not run commands, read files, or use any tools in this turn. Temporary evidence keys only; Sentry owns all durable IDs.',
+    ...(correction === undefined ? [] : [buildReportCorrectionIntro(correction)]),
+    REPORT_LEDGER_RULES,
+    REPORT_CONFIDENCE_CALIBRATION,
+    'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info.',
+    'Report evidence contract (exact fields per type; copy names exactly): ' +
+      describeSentryAgentReportContract(),
+    'Authoritative Sentry operation ledger (frozen after investigation):\n' +
+      renderFrozenLedger(operations),
+    'Frozen plan: ' + JSON.stringify(plan),
+    'OUTPUT CONTRACT (must hold exactly): your ENTIRE response is exactly one raw JSON object matching SentryAgentReportV2 (schemaVersion 2). No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
   ].join('\n');
 }
 
@@ -299,12 +322,69 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
    * - `assistant` text: accumulated model text
    * - `result`: terminal turn record (usage, subagent stats, errors)
    */
+  /** Convert + trust-validate a parsed report WITHOUT emitting events, so
+   *  a failed attempt leaves no partial durable history. Throws the
+   *  correction-grade error (caught by the repair loop). */
+  private async buildReportAttempt(
+    request: HarnessRunRequest,
+    result: SentryAgentReportV2,
+    pipeline: EvidencePipelineContext,
+  ): Promise<BuiltReportAttempt> {
+    const evidenceByKey = new Map<string, Evidence>();
+    const baselineIndex = await buildBaselineIndex(
+      request.workspace.runtimePath,
+      request.workspace.snapshotId,
+    ).catch(() => undefined);
+    for (const source of result.evidence) {
+      const converted = await convertReportEvidence(request, source, pipeline, {
+        observedCommands: this.observedCommands,
+        operations: this.observedOperations,
+        ...(baselineIndex === undefined ? {} : { baseline: baselineIndex }),
+      });
+      evidenceByKey.set(source.key, converted);
+    }
+    validateProductionFindings(result.findings, evidenceByKey, (message: string) =>
+      pipeline.errors.invalidResult(message),
+    );
+    const findings: Finding[] = [];
+    for (const source of result.findings) {
+      for (const location of source.locations)
+        await validateLocation(
+          request.workspace.runtimePath,
+          location.relativePath,
+          pipeline,
+          location.lineStart,
+          location.lineEnd,
+        );
+      const { evidenceKeys, locations, ...findingFields } = source;
+      findings.push(
+        FindingSchema.parse({
+          schemaVersion: 1,
+          id: createFindingId(),
+          qaRunId: request.qaRunId,
+          agentRunId: request.agentRunId,
+          sourceAgentStackId: request.agentStackId,
+          ...findingFields,
+          locations: locations.map(({ lineStart, lineEnd, ...location }) => ({
+            ...location,
+            ...(lineStart === undefined ? {} : { startLine: lineStart }),
+            ...(lineEnd === undefined ? {} : { endLine: lineEnd }),
+          })),
+          evidenceIds: evidenceKeys.map((key) => (evidenceByKey.get(key) as Evidence).id),
+          createdAt: nowIsoTimestamp(),
+        }),
+      );
+    }
+    return { evidenceByKey, findings };
+  }
+
   private observeStreamEvent(
     stream: ClaudeStreamEvent,
     agentRunId: AgentRunId,
     emit: (value: Readonly<Record<string, unknown>>) => HarnessEvent,
     text: { value: string },
     turnUsage: { usage?: AgentUsage },
+    forbidTools = false,
   ): HarnessEvent[] {
     const out: HarnessEvent[] = [];
     const raw = stream.raw;
@@ -345,6 +425,13 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           const chunk = eventText(record.text);
           if (chunk !== undefined) text.value += (text.value.length > 0 ? '\n' : '') + chunk;
         } else if (record.type === 'tool_use') {
+          // Reporting firewall: the frozen ledger must not mutate.
+          if (forbidTools) {
+            throw new ClaudeCodeHarnessError(
+              'GLM_REPORT_TOOL_FORBIDDEN',
+              'Claude Code attempted a tool call during the tool-free reporting turn.',
+            );
+          }
           const toolUseId = eventText(record.id) ?? 'tool-' + this.operationCounter;
           const toolName = eventText(record.name) ?? 'unknown';
           if (toolName === 'Agent' || toolName === 'Task') {
@@ -535,9 +622,18 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     text: string,
     agentRunId: AgentRunId,
     phase: string,
+    options?: { forbidTools?: boolean; jsonSchema?: Record<string, unknown> },
   ): Promise<CollectedTurn> {
     const deadline = Date.now() + this.turnTimeoutMs;
-    const runPromise = session.runText(text);
+    const forbidTools = options?.forbidTools === true;
+    const runPromise =
+      options?.jsonSchema === undefined
+        ? session.runText(text, forbidTools ? { phase: 'reporting', tools: 'none' } : undefined)
+        : session.runText(text, {
+            phase: 'reporting',
+            tools: 'none',
+            outputSchema: options.jsonSchema,
+          });
     const events = await (async (): Promise<ClaudeStreamEvent[]> => {
       const budget = deadline - Date.now();
       if (budget <= 0) throw new ClaudeTurnTimeoutError(phase, this.turnTimeoutMs);
@@ -573,7 +669,9 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     for (const stream of events) {
       try {
         if (stream.type === 'result') result = stream;
-        collected.push(...this.observeStreamEvent(stream, agentRunId, emit, textAcc, turnUsage));
+        collected.push(
+          ...this.observeStreamEvent(stream, agentRunId, emit, textAcc, turnUsage, forbidTools),
+        );
       } catch (cause) {
         if (cause instanceof ClaudeCodeHarnessError) throw cause;
         throw new ClaudeCodeHarnessError(
@@ -649,20 +747,109 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         status: 'investigating',
         message: 'Claude Code is executing the frozen plan.',
       });
-      const execution = await this.runTurn(
+      // STAGE 2 — investigation only. Terminal prose is ignored (never
+      // parsed as a result, never persisted as reasoning); tool events
+      // carry the evidentiary facts.
+      const investigation = await this.runTurn(
         session,
-        executionPrompt(planResult, this.observedOperations),
+        investigationPrompt(planResult),
         request.agentRunId,
-        'execution',
+        'investigation',
       );
-      for (const emitted of execution.events) yield emitted;
-      if (execution.text.trim().length === 0) {
-        throw new ClaudeCodeHarnessError(
-          'GLM_INVALID_RESULT',
-          'Claude Code execution turn produced no response.',
-        );
+      for (const emitted of investigation.events) yield emitted;
+      // STAGE 3 — reporting against the frozen ledger. The report turn
+      // attempts native structured output first (--json-schema with the
+      // SAME ReportV2 contract Sentry validates); when the binary or
+      // route rejects the flag, the SAME report retries without it
+      // (strict whole-document JSON fallback). Investigation never reruns.
+      yield event(request.agentRunId, {
+        type: 'agent.status',
+        status: 'reporting',
+        message: 'Claude Code is serializing the frozen investigation into a report.',
+      });
+      const reportSchema = sentryAgentReportJsonSchema();
+      const reportTurns: Array<{ usage?: AgentUsage }> = [];
+      let result: SentryAgentReportV2 | undefined;
+      let built: BuiltReportAttempt | undefined;
+      let correction: string[] | undefined;
+      let schemaSupported: boolean | undefined;
+      for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
+        const useSchema = schemaSupported !== false;
+        let reporting: CollectedTurn;
+        try {
+          reporting = await this.runTurn(
+            session,
+            reportPrompt(planResult, this.observedOperations, correction),
+            request.agentRunId,
+            'reporting',
+            { forbidTools: true, ...(useSchema ? { jsonSchema: reportSchema } : {}) },
+          );
+        } catch (cause) {
+          // Structural fallback: --json-schema rejected by this binary or
+          // route. Retry the SAME report turn without it (report-only;
+          // the ledger and investigation are untouched).
+          if (useSchema && isJsonSchemaFlagRejection(cause)) {
+            schemaSupported = false;
+            yield event(request.agentRunId, {
+              type: 'warning',
+              code: 'GLM_STRUCTURED_OUTPUT_UNSUPPORTED',
+              message:
+                'Claude Code rejected --json-schema; retrying the report turn with strict JSON fallback.',
+            });
+            reporting = await this.runTurn(
+              session,
+              reportPrompt(planResult, this.observedOperations, correction),
+              request.agentRunId,
+              'reporting',
+              { forbidTools: true },
+            );
+          } else {
+            throw cause;
+          }
+        }
+        for (const emitted of reporting.events) yield emitted;
+        if (reporting.usage === undefined) reportTurns.push({});
+        else reportTurns.push({ usage: reporting.usage });
+        const candidate = parseReportAttempt(reporting.text, pipeline);
+        let errors: string[] | undefined;
+        if (candidate.ok) {
+          try {
+            built = await this.buildReportAttempt(request, candidate.report, pipeline);
+          } catch (cause) {
+            errors = [boundCorrectionMessage(messageOf(cause))];
+          }
+        } else {
+          errors = candidate.errors;
+        }
+        if (errors === undefined) {
+          result = candidate.ok ? candidate.report : undefined;
+          break;
+        }
+        correction = errors;
+        if (attempt < MAX_REPORT_ATTEMPTS) {
+          yield event(request.agentRunId, {
+            type: 'warning',
+            code: 'GLM_REPORT_RETRY',
+            message:
+              'Claude Code report attempt ' +
+              attempt +
+              ' rejected; retrying report only (' +
+              errors.length +
+              ' issues).',
+          });
+        } else {
+          throw new ClaudeCodeHarnessError(
+            'GLM_INVALID_RESULT',
+            'Claude Code report failed after ' +
+              MAX_REPORT_ATTEMPTS +
+              ' attempts: ' +
+              errors.map(boundCorrectionMessage).join('; '),
+          );
+        }
       }
-      const result = parseAgentResult(execution.text, pipeline);
+      if (result === undefined || built === undefined)
+        throw new ClaudeCodeHarnessError('GLM_INVALID_RESULT', 'Claude Code produced no report.');
+      const attempt = built;
       yield event(request.agentRunId, { type: 'agent.message', message: result.summary });
       for (const check of result.checks) {
         yield event(request.agentRunId, {
@@ -688,59 +875,24 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           },
         });
       }
-      const evidenceByKey = new Map<string, Evidence>();
-      const baselineIndex = await buildBaselineIndex(
-        request.workspace.runtimePath,
-        request.workspace.snapshotId,
-      ).catch(() => undefined);
-      for (const source of result.evidence) {
-        const converted = await convertEvidence(request, source, pipeline, {
-          observedCommands: this.observedCommands,
-          operations: this.observedOperations,
-          ...(baselineIndex === undefined ? {} : { baseline: baselineIndex }),
-        });
-        evidenceByKey.set(source.key, converted);
-        yield event(request.agentRunId, { type: 'evidence.submitted', evidence: converted });
-      }
-      validateProductionFindings(result.findings, evidenceByKey, (message: string) =>
-        pipeline.errors.invalidResult(message),
-      );
-      for (const source of result.findings) {
-        for (const location of source.locations)
-          await validateLocation(
-            request.workspace.runtimePath,
-            location.relativePath,
-            pipeline,
-            location.lineStart,
-            location.lineEnd,
-          );
-        const { evidenceKeys, locations, ...findingFields } = source;
-        const finding = FindingSchema.parse({
-          schemaVersion: 1,
-          id: createFindingId(),
-          qaRunId: request.qaRunId,
-          agentRunId: request.agentRunId,
-          sourceAgentStackId: request.agentStackId,
-          ...findingFields,
-          locations: locations.map(({ lineStart, lineEnd, ...location }) => ({
-            ...location,
-            ...(lineStart === undefined ? {} : { startLine: lineStart }),
-            ...(lineEnd === undefined ? {} : { endLine: lineEnd }),
-          })),
-          evidenceIds: evidenceKeys.map((key) => (evidenceByKey.get(key) as Evidence).id),
-          createdAt: nowIsoTimestamp(),
-        });
+      for (const evidence of attempt.evidenceByKey.values())
+        yield event(request.agentRunId, { type: 'evidence.submitted', evidence });
+      for (const finding of attempt.findings)
         yield event(request.agentRunId, { type: 'finding.submitted', finding });
-      }
       for (const limitation of result.limitations)
         yield event(request.agentRunId, {
           type: 'warning',
           code: 'GLM_LIMITATION',
           message: limitation,
         });
+      // Actual turn accounting: planning + investigation + every report
+      // attempt (initial, schema-fallback retries, corrections). Never
+      // hardcoded.
+      let summed = sumUsage(planning.usage, investigation.usage ?? {});
+      for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
-        ...sumUsage(planning.usage, execution.usage ?? {}),
-        turns: 2,
+        ...summed,
+        turns: 2 + reportTurns.length,
       };
       yield event(request.agentRunId, { type: 'usage.updated', usage });
       yield event(request.agentRunId, {

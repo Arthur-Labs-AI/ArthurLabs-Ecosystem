@@ -7,6 +7,7 @@ export type ClaudeCodeHarnessErrorCode =
   | 'GLM_SANDBOX_UNAVAILABLE'
   | 'GLM_INVALID_RESULT'
   | 'GLM_SUBAGENT_FORBIDDEN'
+  | 'GLM_REPORT_TOOL_FORBIDDEN'
   | 'GLM_CANCEL_FAILED';
 
 export class ClaudeCodeHarnessError extends Error {

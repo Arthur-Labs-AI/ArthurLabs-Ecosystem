@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import type { ReportTurnOptions } from '@qa/evidence-pipeline';
 
 export const CLAUDE_CODE_VERSION = '2.1.270' as const;
 
@@ -10,7 +11,11 @@ export interface ClaudeStreamEvent {
 }
 
 export interface ClaudeSessionView {
-  runText(text: string): Promise<ClaudeStreamEvent[]>;
+  /** Phase-scoped run: reporting turns may request provider structured
+   *  output (`outputSchema` → `--json-schema`) and run tool-free (the
+   *  adapter firewall enforces tool denial; there is no native
+   *  empty-tools flag). */
+  runText(text: string, options?: ReportTurnOptions): Promise<ClaudeStreamEvent[]>;
 }
 
 export interface ClaudeClientView {
@@ -84,6 +89,8 @@ export function buildClaudeArgs(input: {
   readonly settingsPath: string;
   readonly sessionId: string;
   readonly resume: boolean;
+  /** Provider structured-output schema (reporting turn only). */
+  readonly jsonSchema?: Record<string, unknown>;
 }): string[] {
   return [
     '-p',
@@ -109,14 +116,18 @@ export function buildClaudeArgs(input: {
     // 2.1.270), and forking would copy the session instead of continuing
     // the one logical AgentRun session.
     ...(input.resume ? ['--resume', input.sessionId] : ['--session-id', input.sessionId]),
+    // Native structured output for the reporting turn when the provider
+    // route supports it (verified per binary; adapter falls back without
+    // it when the flag is rejected).
+    ...(input.jsonSchema === undefined ? [] : ['--json-schema', JSON.stringify(input.jsonSchema)]),
   ];
 }
 
 class ProductionSession implements ClaudeSessionView {
   constructor(private readonly owner: ClaudeClient) {}
 
-  async runText(text: string): Promise<ClaudeStreamEvent[]> {
-    return this.owner.runTurnText(text);
+  async runText(text: string, options?: ReportTurnOptions): Promise<ClaudeStreamEvent[]> {
+    return this.owner.runTurnText(text, options?.outputSchema);
   }
 }
 
@@ -163,6 +174,7 @@ function runClaudePrint(
   sessionId: string,
   continued: Set<string>,
   active: Set<ChildProcess>,
+  jsonSchema?: Record<string, unknown>,
 ): Promise<ClaudeStreamEvent[]> {
   return new Promise((resolve, reject) => {
     if (owner.isClosed) {
@@ -179,6 +191,7 @@ function runClaudePrint(
       settingsPath: spec.settingsPath,
       sessionId,
       resume,
+      ...(jsonSchema === undefined ? {} : { jsonSchema }),
     });
     let child: ChildProcess;
     try {
@@ -319,8 +332,19 @@ export class ClaudeClient implements ClaudeClientView {
     return new ProductionSession(this);
   }
 
-  async runTurnText(prompt: string): Promise<ClaudeStreamEvent[]> {
-    return runClaudePrint(this, this.spec, prompt, this.sessionId, this.continued, this.active);
+  async runTurnText(
+    prompt: string,
+    jsonSchema?: Record<string, unknown>,
+  ): Promise<ClaudeStreamEvent[]> {
+    return runClaudePrint(
+      this,
+      this.spec,
+      prompt,
+      this.sessionId,
+      this.continued,
+      this.active,
+      jsonSchema,
+    );
   }
 
   async close(): Promise<void> {

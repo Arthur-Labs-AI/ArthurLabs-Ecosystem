@@ -180,6 +180,115 @@ function executionTurnWithEvidence(evidence: unknown[]) {
   ];
 }
 
+/** Investigation turn: tool work plus terminal prose (never final JSON). */
+function investigationTurn(extra: ClaudeStreamEvent[] = []) {
+  return [
+    evt('assistant', {
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            id: 'tu-1',
+            name: 'Bash',
+            input: { command: 'pnpm test' },
+          },
+        ],
+      },
+    }),
+    evt('user', {
+      message: {
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'tu-1',
+            content: [{ type: 'text', text: '12 passed' }],
+          },
+        ],
+      },
+    }),
+    ...extra,
+    evt('assistant', {
+      message: { content: [{ type: 'text', text: 'Investigation complete.' }] },
+    }),
+    evt('result', {
+      is_error: false,
+      usage: { input_tokens: 100, output_tokens: 50 },
+      subagent_stats: { spawned: 0 },
+    }),
+  ];
+}
+
+/** Reporting turn: exactly one ReportV2 JSON document. */
+function reportTurn(reportJson: string) {
+  return [
+    evt('assistant', {
+      message: { content: [{ type: 'text', text: reportJson }] },
+    }),
+    evt('result', {
+      is_error: false,
+      usage: { input_tokens: 10, output_tokens: 5 },
+      subagent_stats: { spawned: 0 },
+    }),
+  ];
+}
+
+function validReportV2(
+  evidence: unknown[] = [
+    {
+      key: 'readme',
+      type: 'code_reference',
+      strength: 'strong_code_evidence',
+      description: 'Relevant line.',
+      relativePath: 'README.md',
+      lineStart: 2,
+      lineEnd: 2,
+    },
+  ],
+) {
+  return JSON.stringify({
+    schemaVersion: 2,
+    summary: 'One evidence-backed issue.',
+    checks: [{ name: 'Inspect README', status: 'passed' }],
+    hypotheses: [
+      {
+        title: 'Boundary risk',
+        rationale: 'The fixture is minimal.',
+        relatedPaths: ['README.md'],
+        plannedChecks: ['Inspect README'],
+      },
+    ],
+    evidence,
+    findings: [
+      {
+        title: 'Fixture issue',
+        category: 'documentation',
+        severity: 'low',
+        confidence: 'strong',
+        description: 'A deterministic fixture finding.',
+        locations: [{ relativePath: 'README.md', lineStart: 2 }],
+        evidenceKeys: ['readme'],
+        reproductionSteps: ['Open README.md'],
+      },
+    ],
+    limitations: [],
+  });
+}
+
+/** Three-stage dispatch: plan, then investigation, then report. */
+function threeStage(
+  plan: ClaudeStreamEvent[],
+  investigation: ClaudeStreamEvent[],
+  report: ClaudeStreamEvent[],
+) {
+  let calls = 0;
+  return async () => {
+    calls += 1;
+    if (calls === 1) return plan;
+    if (calls === 2) return investigation;
+    return report;
+  };
+}
+
 function executionTurn(extra: ClaudeStreamEvent[] = []) {
   return [
     evt('assistant', {
@@ -225,7 +334,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
     const prompts: string[] = [];
     let calls = 0;
     const reportJson = JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       summary: 'Ledger-grounded report.',
       checks: [],
       hypotheses: [],
@@ -325,16 +434,12 @@ describe('ClaudeCodeHarnessAdapter', () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-env-'));
     roots.push(root);
     const input = await request(root);
-    let calls = 0;
     const factory: ClaudeClientFactory = async (spec) => {
       seen.push(spec.environment);
       return {
         sessionId: 'session-1',
         startSession: async () => ({
-          runText: async () => {
-            calls += 1;
-            return calls === 1 ? planTurn() : executionTurn();
-          },
+          runText: threeStage(planTurn(), investigationTurn(), reportTurn(validReportV2())),
         }),
         close: async () => undefined,
       };
@@ -364,7 +469,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
     expect(child['SENTRY_GLM_MODEL']).toBe('glm-5.3-flash');
     const usage = events.find((e) => e.type === 'usage.updated');
     expect(usage).toMatchObject({
-      usage: { inputTokens: 110, outputTokens: 55, turns: 2 },
+      usage: { inputTokens: 120, outputTokens: 60, turns: 3 },
     });
   });
 
@@ -387,7 +492,6 @@ describe('ClaudeCodeHarnessAdapter', () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-tools-'));
     roots.push(root);
     const input = await request(root);
-    let calls = 0;
     const adapter = new ClaudeCodeHarnessAdapter({
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
@@ -395,10 +499,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
-          runText: async () => {
-            calls += 1;
-            return calls === 1 ? planTurn() : executionTurn();
-          },
+          runText: threeStage(planTurn(), investigationTurn(), reportTurn(validReportV2())),
         }),
         close: async () => undefined,
       }),
@@ -445,6 +546,56 @@ describe('ClaudeCodeHarnessAdapter', () => {
       }),
       ...planTurn().filter((e) => e.type !== 'system' || (e.raw['subtype'] as string) === 'init'),
     ];
+    const investigationWithBash = () => [
+      evt('assistant', {
+        message: {
+          content: [
+            {
+              type: 'tool_use',
+              id: 'tu-bash',
+              name: 'Bash',
+              input: { command: 'pnpm test' },
+            },
+          ],
+        },
+      }),
+      evt('user', {
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'tu-bash',
+              content: [{ type: 'text', text: '12 passed' }],
+            },
+          ],
+        },
+      }),
+      evt('assistant', {
+        message: { content: [{ type: 'text', text: 'Investigation complete.' }] },
+      }),
+      evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+    ];
+    // V2 command evidence cites op_2 (the investigation Bash); Sentry
+    // derives command/exit from the frozen operation.
+    const reportWithOp2 = reportTurn(
+      JSON.stringify({
+        schemaVersion: 2,
+        summary: 'Tool-backed finding.',
+        checks: [],
+        hypotheses: [],
+        evidence: [
+          {
+            key: 'cmd',
+            type: 'command',
+            strength: 'tool_diagnostic',
+            description: 'Tests ran.',
+            operationKey: 'op_2',
+          },
+        ],
+        findings: [],
+        limitations: [],
+      }),
+    );
     let calls = 0;
     const adapter = new ClaudeCodeHarnessAdapter({
       executable: 'claude-test',
@@ -457,18 +608,8 @@ describe('ClaudeCodeHarnessAdapter', () => {
             calls += 1;
             prompts.push(text);
             if (calls === 1) return planningWithRead();
-            // Execution references op_2 (its own Bash op), NOT a restarted op_1.
-            return executionTurnWithEvidence([
-              {
-                key: 'cmd',
-                type: 'command',
-                strength: 'tool_diagnostic',
-                description: 'Tests ran.',
-                command: 'pnpm test',
-                exitCode: 0,
-                operationKey: 'op_2',
-              },
-            ]);
+            if (calls === 2) return investigationWithBash();
+            return reportWithOp2;
           },
         }),
         close: async () => undefined,
@@ -477,14 +618,13 @@ describe('ClaudeCodeHarnessAdapter', () => {
     const events = await collect(adapter, input);
     await adapter.dispose();
     expect(events.at(-1)?.type).toBe('run.completed');
-    // The execution prompt carried the authoritative ledger with the
-    // planning Read as op_1; the execution Bash then minted op_2
-    // (monotonic counter shared across turns — never restarted).
-    // Evidence citing op_2 grounds against that execution operation.
-    expect(prompts).toHaveLength(2);
-    expect(prompts[1]).toContain('op_1: Read');
-    expect(prompts[1]).not.toContain('op_2:');
-    expect(prompts[1]).toContain('NEVER restart numbering at op_1');
+    // The REPORT prompt (built AFTER investigation) carries the frozen
+    // ledger: planning Read as op_1, investigation Bash as op_2
+    // (monotonic counter shared across stages — never restarted).
+    expect(prompts).toHaveLength(3);
+    expect(prompts[2]).toContain('op_1');
+    expect(prompts[2]).toContain('op_2');
+    expect(prompts[2]).toContain('pnpm test');
     const executed = events.filter((e) => e.type === 'command.executed');
     expect(executed).toHaveLength(1);
     expect(executed[0]).toMatchObject({ command: 'pnpm test', exitCode: 0 });
@@ -503,17 +643,26 @@ describe('ClaudeCodeHarnessAdapter', () => {
           runText: async () => {
             calls2 += 1;
             if (calls2 === 1) return planTurn();
-            return executionTurnWithEvidence([
-              {
-                key: 'cmd',
-                type: 'command',
-                strength: 'tool_diagnostic',
-                description: 'Tests ran.',
-                command: 'pnpm test',
-                exitCode: 0,
-                operationKey: 'op_99',
-              },
-            ]);
+            if (calls2 === 2) return investigationTurn();
+            return reportTurn(
+              JSON.stringify({
+                schemaVersion: 2,
+                summary: 'Bad report.',
+                checks: [],
+                hypotheses: [],
+                evidence: [
+                  {
+                    key: 'cmd',
+                    type: 'command',
+                    strength: 'tool_diagnostic',
+                    description: 'Tests ran.',
+                    operationKey: 'op_99',
+                  },
+                ],
+                findings: [],
+                limitations: [],
+              }),
+            );
           },
         }),
         close: async () => undefined,
@@ -547,7 +696,8 @@ describe('ClaudeCodeHarnessAdapter', () => {
             runText: async () => {
               calls += 1;
               if (calls === 1) return planTurn();
-              return [...hostile, ...executionTurn()];
+              if (calls === 2) return [...hostile, ...investigationTurn()];
+              return reportTurn(validReportV2());
             },
           }),
           close: async () => undefined,
@@ -575,6 +725,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
           runText: async () => {
             calls += 1;
             if (calls === 1) return planTurn();
+            if (calls === 2) return investigationTurn();
             return [
               evt('result', {
                 is_error: true,
@@ -597,7 +748,6 @@ describe('ClaudeCodeHarnessAdapter', () => {
     roots.push(root);
     const input = await request(root);
     const close = vi.fn(async () => undefined);
-    let calls = 0;
     const adapter = new ClaudeCodeHarnessAdapter({
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
@@ -605,10 +755,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
-          runText: async () => {
-            calls += 1;
-            return calls === 1 ? planTurn() : executionTurn();
-          },
+          runText: threeStage(planTurn(), investigationTurn(), reportTurn(validReportV2())),
         }),
         close,
       }),
