@@ -7,6 +7,7 @@ export type DeepSeekHarnessErrorCode =
   | 'DEEPSEEK_SANDBOX_UNAVAILABLE'
   | 'DEEPSEEK_INVALID_RESULT'
   | 'DEEPSEEK_SUBAGENT_FORBIDDEN'
+  | 'DEEPSEEK_REPORT_TOOL_FORBIDDEN'
   | 'DEEPSEEK_CANCEL_FAILED';
 
 export class DeepSeekHarnessError extends Error {

@@ -70,6 +70,71 @@ function executionResult(finalResponse: string, events: unknown[] = []) {
   } satisfies DeepSeekRunResult;
 }
 
+/** Investigation turn: tool events plus terminal prose (never final JSON). */
+function investigationResult(events: unknown[] = []) {
+  return executionResult('Investigation complete.', events);
+}
+
+/** Reporting turn: exactly one ReportV2 JSON document. */
+function reportResult(report: unknown) {
+  return executionResult(JSON.stringify(report));
+}
+
+/** Three-stage dispatch: plan, then investigation, then report. */
+function threeStage(
+  plan: DeepSeekRunResult,
+  investigation: DeepSeekRunResult,
+  report: DeepSeekRunResult,
+) {
+  let calls = 0;
+  return async () => {
+    calls += 1;
+    if (calls === 1) return plan;
+    if (calls === 2) return investigation;
+    return report;
+  };
+}
+
+function validReportV2() {
+  return {
+    schemaVersion: 2,
+    summary: 'One evidence-backed issue.',
+    checks: [{ name: 'Inspect README', status: 'passed' }],
+    hypotheses: [
+      {
+        title: 'Boundary risk',
+        rationale: 'The fixture is minimal.',
+        relatedPaths: ['README.md'],
+        plannedChecks: ['Inspect README'],
+      },
+    ],
+    evidence: [
+      {
+        key: 'readme',
+        type: 'code_reference',
+        strength: 'strong_code_evidence',
+        description: 'Relevant line.',
+        relativePath: 'README.md',
+        lineStart: 2,
+        lineEnd: 2,
+      },
+    ],
+    findings: [
+      {
+        title: 'Fixture issue',
+        category: 'documentation',
+        severity: 'low',
+        confidence: 'strong',
+        description: 'A deterministic fixture finding.',
+        locations: [{ relativePath: 'README.md', lineStart: 2 }],
+        evidenceKeys: ['readme'],
+        reproductionSteps: ['Open README.md'],
+      },
+    ],
+    limitations: [],
+  };
+}
+
 function validPlan() {
   return JSON.stringify({
     schemaVersion: 1,
@@ -131,10 +196,11 @@ describe('DeepSeekHarnessAdapter', () => {
       seen.push(spawnInput.environment);
       return {
         startSession: async () => ({
-          runText: async () => {
-            calls += 1;
-            return calls === 1 ? planResult(validPlan()) : executionResult(validExecution());
-          },
+          runText: threeStage(
+            planResult(validPlan()),
+            investigationResult(),
+            reportResult(validReportV2()),
+          ),
         }),
         close: async () => undefined,
       };
@@ -183,99 +249,91 @@ describe('DeepSeekHarnessAdapter', () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-tools-'));
     roots.push(root);
     const input = await request(root);
-    let calls = 0;
     const adapter = new DeepSeekHarnessAdapter({
       executable: 'dsh-test',
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
         startSession: async () => ({
-          runText: async () => {
-            calls += 1;
-            if (calls === 1) return planResult(validPlan());
-            return executionResult(
-              JSON.stringify({
-                schemaVersion: 1,
-                summary: 'Tool-backed finding.',
-                checks: [],
-                hypotheses: [],
-                evidence: [
-                  {
-                    key: 'cmd',
-                    type: 'command',
-                    strength: 'tool_diagnostic',
-                    description: 'Tests ran.',
-                    command: 'pnpm test',
-                    exitCode: 0,
-                    operationKey: 'op_1',
-                  },
-                ],
-                findings: [
-                  {
-                    title: 'Suite green',
-                    category: 'testing',
-                    severity: 'info',
-                    confidence: 'strong',
-                    description: 'Observed green suite.',
-                    locations: [{ relativePath: 'README.md' }],
-                    evidenceKeys: ['cmd'],
-                    reproductionSteps: [],
-                  },
-                ],
-                limitations: [],
-              }),
-              [
-                {
-                  type: 'tool/call',
-                  seq: 1,
-                  time: 1,
-                  data: {
-                    turn: 1,
-                    step: 1,
-                    callId: 'call-1',
-                    name: 'shell',
-                    arguments: JSON.stringify({ command: 'pnpm test' }),
-                  },
+          runText: threeStage(
+            planResult(validPlan()),
+            investigationResult([
+              {
+                type: 'tool/call',
+                seq: 1,
+                time: 1,
+                data: {
+                  turn: 2,
+                  step: 1,
+                  callId: 'call-1',
+                  name: 'shell',
+                  arguments: JSON.stringify({ command: 'pnpm test' }),
                 },
-                {
-                  type: 'tool/result',
-                  seq: 2,
-                  time: 2,
-                  data: {
-                    turn: 1,
-                    step: 1,
-                    message: {
-                      id: 'msg-1',
-                      role: 'user',
-                      content: [
-                        {
-                          type: 'tool-result',
-                          toolCallId: 'call-1',
-                          content: [{ type: 'text', text: '12 passed' }],
-                        },
-                      ],
-                      source: { kind: 'tool', plugin: 'shell', tool: 'shell' },
-                    },
-                    meta: { exitCode: 0 },
+              },
+              {
+                type: 'tool/result',
+                seq: 2,
+                time: 2,
+                data: {
+                  turn: 2,
+                  step: 1,
+                  message: {
+                    id: 'msg-1',
+                    role: 'user',
+                    content: [
+                      {
+                        type: 'tool-result',
+                        toolCallId: 'call-1',
+                        content: [{ type: 'text', text: '12 passed' }],
+                      },
+                    ],
+                    source: { kind: 'tool', plugin: 'shell', tool: 'shell' },
                   },
+                  meta: { exitCode: 0 },
                 },
+              },
+              {
+                type: 'assistant/message',
+                seq: 3,
+                time: 3,
+                data: {
+                  turn: 2,
+                  step: 2,
+                  message: { id: 'msg-2', role: 'assistant', content: [], source: {} },
+                  stream: [],
+                  usage: { inputTokens: 100, outputTokens: 50 },
+                },
+              },
+            ]),
+            reportResult({
+              schemaVersion: 2,
+              summary: 'Tool-backed finding.',
+              checks: [],
+              hypotheses: [],
+              evidence: [
                 {
-                  type: 'assistant/message',
-                  seq: 3,
-                  time: 3,
-                  data: {
-                    turn: 1,
-                    step: 2,
-                    message: { id: 'msg-2', role: 'assistant', content: [], source: {} },
-                    stream: [],
-                    usage: { inputTokens: 100, outputTokens: 50 },
-                  },
+                  key: 'cmd',
+                  type: 'command',
+                  strength: 'tool_diagnostic',
+                  description: 'Tests ran.',
+                  operationKey: 'op_1',
                 },
-                // Unknown shapes are ignored for evidence, never trusted.
-                { type: 'session/future-unknown', seq: 4, time: 4, data: { anything: true } },
               ],
-            );
-          },
+              findings: [
+                {
+                  title: 'Suite green',
+                  category: 'testing',
+                  severity: 'info',
+                  confidence: 'strong',
+                  description: 'Observed green suite.',
+                  locations: [{ relativePath: 'README.md' }],
+                  evidenceKeys: ['cmd'],
+                  reproductionSteps: [],
+                },
+              ],
+              limitations: [],
+            }),
+          ),
         }),
         close: async () => undefined,
       }),
@@ -289,7 +347,7 @@ describe('DeepSeekHarnessAdapter', () => {
     const usage = events.find((e) => e.type === 'usage.updated');
     expect(usage).toMatchObject({
       type: 'usage.updated',
-      usage: { inputTokens: 100, outputTokens: 50, turns: 2 },
+      usage: { inputTokens: 100, outputTokens: 50, turns: 3 },
     });
   });
 
@@ -297,87 +355,81 @@ describe('DeepSeekHarnessAdapter', () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-marker-'));
     roots.push(root);
     const input = await request(root);
-    let calls = 0;
     const adapter = new DeepSeekHarnessAdapter({
       executable: 'dsh-test',
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
         startSession: async () => ({
-          runText: async () => {
-            calls += 1;
-            if (calls === 1) return planResult(validPlan());
+          runText: threeStage(
+            planResult(validPlan()),
             // No meta.exitCode, no error field: the marker alone must
-            // provide the observed code. The model truthfully citing
-            // (command, 1) must ground instead of tripping spoofing.
-            return executionResult(
-              JSON.stringify({
-                schemaVersion: 1,
-                summary: 'Tool-backed finding.',
-                checks: [],
-                hypotheses: [],
-                evidence: [
-                  {
-                    key: 'cmd',
-                    type: 'command',
-                    strength: 'tool_diagnostic',
-                    description: 'Suite failed as expected.',
-                    command: 'pnpm test',
-                    exitCode: 1,
-                    operationKey: 'op_1',
-                  },
-                ],
-                findings: [
-                  {
-                    title: 'Suite red',
-                    category: 'testing',
-                    severity: 'info',
-                    confidence: 'strong',
-                    description: 'Observed red suite.',
-                    locations: [{ relativePath: 'README.md' }],
-                    evidenceKeys: ['cmd'],
-                    reproductionSteps: [],
-                  },
-                ],
-                limitations: [],
-              }),
-              [
-                {
-                  type: 'tool/call',
-                  seq: 1,
-                  time: 1,
-                  data: {
-                    turn: 1,
-                    step: 1,
-                    callId: 'call-1',
-                    name: 'pwsh',
-                    arguments: JSON.stringify({ command: 'pnpm test' }),
+            // provide the observed code. The model citing op_1 grounds
+            // with the marker-derived code instead of tripping spoofing.
+            investigationResult([
+              {
+                type: 'tool/call',
+                seq: 1,
+                time: 1,
+                data: {
+                  turn: 2,
+                  step: 1,
+                  callId: 'call-1',
+                  name: 'pwsh',
+                  arguments: JSON.stringify({ command: 'pnpm test' }),
+                },
+              },
+              {
+                type: 'tool/result',
+                seq: 2,
+                time: 2,
+                data: {
+                  turn: 2,
+                  step: 1,
+                  message: {
+                    id: 'msg-1',
+                    role: 'user',
+                    content: [
+                      {
+                        type: 'tool-result',
+                        toolCallId: 'call-1',
+                        content: [{ type: 'text', text: '1 failed\n[exit code: 1]' }],
+                      },
+                    ],
+                    source: { kind: 'tool', plugin: 'shell', tool: 'pwsh' },
                   },
                 },
+              },
+            ]),
+            reportResult({
+              schemaVersion: 2,
+              summary: 'Tool-backed finding.',
+              checks: [],
+              hypotheses: [],
+              evidence: [
                 {
-                  type: 'tool/result',
-                  seq: 2,
-                  time: 2,
-                  data: {
-                    turn: 1,
-                    step: 1,
-                    message: {
-                      id: 'msg-1',
-                      role: 'user',
-                      content: [
-                        {
-                          type: 'tool-result',
-                          toolCallId: 'call-1',
-                          content: [{ type: 'text', text: '1 failed\n[exit code: 1]' }],
-                        },
-                      ],
-                      source: { kind: 'tool', plugin: 'shell', tool: 'pwsh' },
-                    },
-                  },
+                  key: 'cmd',
+                  type: 'command',
+                  strength: 'tool_diagnostic',
+                  description: 'Suite failed as expected.',
+                  operationKey: 'op_1',
                 },
               ],
-            );
-          },
+              findings: [
+                {
+                  title: 'Suite red',
+                  category: 'testing',
+                  severity: 'info',
+                  confidence: 'strong',
+                  description: 'Observed red suite.',
+                  locations: [{ relativePath: 'README.md' }],
+                  evidenceKeys: ['cmd'],
+                  reproductionSteps: [],
+                },
+              ],
+              limitations: [],
+            }),
+          ),
         }),
         close: async () => undefined,
       }),
@@ -394,66 +446,62 @@ describe('DeepSeekHarnessAdapter', () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-nocode-'));
     roots.push(root);
     const input = await request(root);
-    let calls = 0;
     const adapter = new DeepSeekHarnessAdapter({
       executable: 'dsh-test',
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
         startSession: async () => ({
-          runText: async () => {
-            calls += 1;
-            if (calls === 1) return planResult(validPlan());
+          runText: threeStage(
+            planResult(validPlan()),
             // Clean output, no exit marker, no meta, no error: the op is
             // recorded WITHOUT a code (never default 0), so no
             // command.executed event fires for it.
-            return executionResult(
-              JSON.stringify({
-                schemaVersion: 1,
-                summary: 'Observed run.',
-                checks: [],
-                hypotheses: [],
-                evidence: [],
-                findings: [],
-                limitations: [],
-              }),
-              [
-                {
-                  type: 'tool/call',
-                  seq: 1,
-                  time: 1,
-                  data: {
-                    turn: 1,
-                    step: 1,
-                    callId: 'call-1',
-                    name: 'pwsh',
-                    arguments: JSON.stringify({ command: 'pnpm test' }),
+            investigationResult([
+              {
+                type: 'tool/call',
+                seq: 1,
+                time: 1,
+                data: {
+                  turn: 2,
+                  step: 1,
+                  callId: 'call-1',
+                  name: 'pwsh',
+                  arguments: JSON.stringify({ command: 'pnpm test' }),
+                },
+              },
+              {
+                type: 'tool/result',
+                seq: 2,
+                time: 2,
+                data: {
+                  turn: 2,
+                  step: 1,
+                  message: {
+                    id: 'msg-1',
+                    role: 'user',
+                    content: [
+                      {
+                        type: 'tool-result',
+                        toolCallId: 'call-1',
+                        content: [{ type: 'text', text: 'some output' }],
+                      },
+                    ],
+                    source: { kind: 'tool', plugin: 'shell', tool: 'pwsh' },
                   },
                 },
-                {
-                  type: 'tool/result',
-                  seq: 2,
-                  time: 2,
-                  data: {
-                    turn: 1,
-                    step: 1,
-                    message: {
-                      id: 'msg-1',
-                      role: 'user',
-                      content: [
-                        {
-                          type: 'tool-result',
-                          toolCallId: 'call-1',
-                          content: [{ type: 'text', text: 'some output' }],
-                        },
-                      ],
-                      source: { kind: 'tool', plugin: 'shell', tool: 'pwsh' },
-                    },
-                  },
-                },
-              ],
-            );
-          },
+              },
+            ]),
+            reportResult({
+              schemaVersion: 2,
+              summary: 'Observed run.',
+              checks: [],
+              hypotheses: [],
+              evidence: [],
+              findings: [],
+              limitations: [],
+            }),
+          ),
         }),
         close: async () => undefined,
       }),
@@ -521,7 +569,25 @@ describe('DeepSeekHarnessAdapter', () => {
                 },
               ]);
             }
-            return executionResult(validExecution());
+            // Report turn: V2 command evidence citing the
+            // investigation-stage op_1 (derived code 0 from meta).
+            return reportResult({
+              schemaVersion: 2,
+              summary: 'Ledger-grounded report.',
+              checks: [],
+              hypotheses: [],
+              evidence: [
+                {
+                  key: 'cmd',
+                  type: 'command',
+                  strength: 'tool_diagnostic',
+                  description: 'Probe ran.',
+                  operationKey: 'op_1',
+                },
+              ],
+              findings: [],
+              limitations: [],
+            });
           },
         }),
         close: async () => undefined,
@@ -530,9 +596,8 @@ describe('DeepSeekHarnessAdapter', () => {
     const events = await collect(adapter, input);
     await adapter.dispose();
     expect(events.at(-1)?.type).toBe('run.completed');
-    // The FINAL structured-output prompt (whichever turn carries it) must
-    // contain the investigation-stage operation. Today's two-turn
-    // architecture builds it before investigation, so this fails.
+    // The FINAL structured-output prompt (built AFTER investigation)
+    // contains the investigation-stage operation.
     expect(prompts.at(-1)).toContain('ledger-probe-command');
   });
 
@@ -561,19 +626,19 @@ describe('DeepSeekHarnessAdapter', () => {
       const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-hostile-'));
       roots.push(root);
       const input = await request(root);
-      let calls = 0;
       const adapter = new DeepSeekHarnessAdapter({
         executable: 'dsh-test',
         modelId: 'deepseek-v4-flash',
         environment: {},
         clientFactory: async () => ({
           startSession: async () => ({
-            runText: async () => {
-              calls += 1;
-              return calls === 1
-                ? planResult(validPlan())
-                : executionResult(validExecution(), hostile);
-            },
+            // Hostile signals surface during investigation (tools live
+            // there now); the run still fails closed.
+            runText: threeStage(
+              planResult(validPlan()),
+              investigationResult(hostile),
+              reportResult(validReportV2()),
+            ),
           }),
           close: async () => undefined,
         }),
@@ -588,20 +653,18 @@ describe('DeepSeekHarnessAdapter', () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-sandbox-words-'));
     roots.push(root);
     const input = await request(root);
-    let calls = 0;
     const adapter = new DeepSeekHarnessAdapter({
       executable: 'dsh-test',
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
         startSession: async () => ({
-          runText: async () => {
-            calls += 1;
-            if (calls === 1) return planResult(validPlan());
+          runText: threeStage(
+            planResult(validPlan()),
             // Model text echoing sandbox policy wording (as our own
             // prompts contain "sandbox" + "disabled"): must not trip
             // the denial detector, which is tool-event scoped.
-            return executionResult(validExecution(), [
+            investigationResult([
               {
                 type: 'assistant/message',
                 seq: 1,
@@ -623,8 +686,9 @@ describe('DeepSeekHarnessAdapter', () => {
                   stream: [],
                 },
               },
-            ]);
-          },
+            ]),
+            reportResult(validReportV2()),
+          ),
         }),
         close: async () => undefined,
       }),
@@ -639,15 +703,17 @@ describe('DeepSeekHarnessAdapter', () => {
     roots.push(root);
     const input = await request(root);
     const close = vi.fn(async () => undefined);
-    let calls = 0;
     const adapter = new DeepSeekHarnessAdapter({
       executable: 'dsh-test',
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
         startSession: async () => ({
-          runText: async () =>
-            calls++ === 0 ? planResult(validPlan()) : executionResult(validExecution()),
+          runText: threeStage(
+            planResult(validPlan()),
+            investigationResult(),
+            reportResult(validReportV2()),
+          ),
         }),
         close,
       }),
