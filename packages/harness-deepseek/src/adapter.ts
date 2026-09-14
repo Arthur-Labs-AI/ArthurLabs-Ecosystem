@@ -12,11 +12,13 @@ import {
 } from '@qa/shared';
 import {
   boundCorrectionMessage,
+  buildPlanningCorrectionIntro,
   buildReportCorrectionIntro,
   buildBaselineIndex,
   commandIdentity,
   convertReportEvidence,
   isTestCommand,
+  MAX_PLANNING_ATTEMPTS,
   MAX_REPORT_ATTEMPTS,
   parseWholeJson,
   renderFrozenLedger,
@@ -788,23 +790,58 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       });
       const session = await this.client.startSession({ sessionId: request.agentRunId });
       markDeepSeekRuntimeVerified();
-      const planning = await this.runTurn(
-        session,
-        planningPrompt(request),
-        request.agentRunId,
-        'planning',
-      );
-      for (const emitted of planning.events) yield emitted;
-      if (planning.text.trim().length === 0) {
-        throw new DeepSeekHarnessError(
-          'DEEPSEEK_INVALID_RESULT',
-          'DeepSeek planning turn produced no response.',
-        );
-      }
       const pipeline = pipelineContext(this.secrets);
-      const planResult = SentryInvestigationPlanV1Schema.parse(
-        parseWholeJson(planning.text, 'planning', pipeline),
-      );
+      // STAGE 1 — planning with one bounded correction. A prose-first or
+      // misshapen plan retries once in the same session with the parse
+      // error fed back; planning ops stay valid (ledger not frozen yet).
+      let planResult: ReturnType<typeof SentryInvestigationPlanV1Schema.parse> | undefined;
+      let planCorrection: string[] | undefined;
+      let planningUsage: AgentUsage | undefined;
+      let planningTurns = 0;
+      for (let attempt = 1; attempt <= MAX_PLANNING_ATTEMPTS; attempt += 1) {
+        const planning = await this.runTurn(
+          session,
+          planCorrection === undefined
+            ? planningPrompt(request)
+            : buildPlanningCorrectionIntro(planCorrection) +
+                '\nImmutable mission context: ' +
+                JSON.stringify(request.task.context ?? {}),
+          request.agentRunId,
+          'planning',
+        );
+        for (const emitted of planning.events) yield emitted;
+        planningTurns += 1;
+        planningUsage = sumUsage(planningUsage, planning.usage ?? {});
+        if (planning.text.trim().length === 0) {
+          planCorrection = ['Planning turn produced no response.'];
+        } else {
+          try {
+            planResult = SentryInvestigationPlanV1Schema.parse(
+              parseWholeJson(planning.text, 'planning', pipeline),
+            );
+            break;
+          } catch (cause) {
+            planCorrection = [boundCorrectionMessage(messageOf(cause))];
+          }
+        }
+        if (attempt < MAX_PLANNING_ATTEMPTS) {
+          yield event(request.agentRunId, {
+            type: 'warning',
+            code: 'DEEPSEEK_PLANNING_RETRY',
+            message: 'DeepSeek planning attempt ' + attempt + ' rejected; retrying planning only.',
+          });
+        } else {
+          throw new DeepSeekHarnessError(
+            'DEEPSEEK_INVALID_RESULT',
+            'DeepSeek planning failed after ' +
+              MAX_PLANNING_ATTEMPTS +
+              ' attempts: ' +
+              (planCorrection ?? []).map(boundCorrectionMessage).join('; '),
+          );
+        }
+      }
+      if (planResult === undefined)
+        throw new DeepSeekHarnessError('DEEPSEEK_INVALID_RESULT', 'DeepSeek produced no plan.');
       const plan = {
         id: createInvestigationPlanId(),
         qaRunId: request.qaRunId,
@@ -955,12 +992,12 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       // Token usage is first-class: per-step usage observed on
       // `assistant/message` events sums across ALL turns. Unknown stays
       // unknown (never fabricated zero); turns count actual model turns
-      // (planning + investigation + every report attempt).
-      let summed = sumUsage(planning.usage, investigation.usage ?? {});
+      // (every planning attempt + investigation + every report attempt).
+      let summed = sumUsage(planningUsage, investigation.usage ?? {});
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
         ...summed,
-        turns: 2 + reportTurns.length,
+        turns: planningTurns + 1 + reportTurns.length,
       };
       yield event(request.agentRunId, { type: 'usage.updated', usage });
       yield event(request.agentRunId, {

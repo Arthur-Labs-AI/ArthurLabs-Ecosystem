@@ -12,11 +12,13 @@ import {
 } from '@qa/shared';
 import {
   boundCorrectionMessage,
+  buildPlanningCorrectionIntro,
   buildReportCorrectionIntro,
   buildBaselineIndex,
   commandIdentity,
   convertReportEvidence,
   isTestCommand,
+  MAX_PLANNING_ATTEMPTS,
   MAX_REPORT_ATTEMPTS,
   parseWholeJson,
   renderFrozenLedger,
@@ -726,23 +728,61 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       this.client = await this.clientFactory(spec);
       session = await this.client.startSession();
       markGlmRuntimeVerified();
-      const planning = await this.runTurn(
-        session,
-        planningPrompt(request),
-        request.agentRunId,
-        'planning',
-      );
-      for (const emitted of planning.events) yield emitted;
-      if (planning.text.trim().length === 0) {
-        throw new ClaudeCodeHarnessError(
-          'GLM_INVALID_RESULT',
-          'Claude Code planning turn produced no response.',
-        );
-      }
       const pipeline = pipelineContext(this.secrets);
-      const planResult = SentryInvestigationPlanV1Schema.parse(
-        parseWholeJson(planning.text, 'planning', pipeline),
-      );
+      // STAGE 1 — planning with one bounded correction. A prose-first or
+      // misshapen plan retries once in the same session with the parse
+      // error fed back; planning ops stay valid (ledger not frozen yet).
+      // Each planning turn spawns its own owned child (same session id
+      // minted once; resume chain continues into investigation).
+      let planResult: ReturnType<typeof SentryInvestigationPlanV1Schema.parse> | undefined;
+      let planCorrection: string[] | undefined;
+      let planningTurns = 0;
+      let planningUsage: AgentUsage | undefined;
+      for (let attempt = 1; attempt <= MAX_PLANNING_ATTEMPTS; attempt += 1) {
+        const planning = await this.runTurn(
+          session,
+          planCorrection === undefined
+            ? planningPrompt(request)
+            : buildPlanningCorrectionIntro(planCorrection) +
+                '\nImmutable mission context: ' +
+                JSON.stringify(request.task.context ?? {}),
+          request.agentRunId,
+          'planning',
+        );
+        for (const emitted of planning.events) yield emitted;
+        planningTurns += 1;
+        planningUsage = sumUsage(planningUsage, planning.usage ?? {});
+        if (planning.text.trim().length === 0) {
+          planCorrection = ['Planning turn produced no response.'];
+        } else {
+          try {
+            planResult = SentryInvestigationPlanV1Schema.parse(
+              parseWholeJson(planning.text, 'planning', pipeline),
+            );
+            break;
+          } catch (cause) {
+            planCorrection = [boundCorrectionMessage(messageOf(cause))];
+          }
+        }
+        if (attempt < MAX_PLANNING_ATTEMPTS) {
+          yield event(request.agentRunId, {
+            type: 'warning',
+            code: 'GLM_PLANNING_RETRY',
+            message:
+              'Claude Code planning attempt ' + attempt + ' rejected; retrying planning only.',
+          });
+        } else {
+          throw new ClaudeCodeHarnessError(
+            'GLM_INVALID_RESULT',
+            'Claude Code planning failed after ' +
+              MAX_PLANNING_ATTEMPTS +
+              ' attempts: ' +
+              (planCorrection ?? []).map(boundCorrectionMessage).join('; '),
+          );
+        }
+      }
+      if (planResult === undefined)
+        throw new ClaudeCodeHarnessError('GLM_INVALID_RESULT', 'Claude Code produced no plan.');
       const plan = {
         id: createInvestigationPlanId(),
         qaRunId: request.qaRunId,
@@ -941,14 +981,14 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           code: 'GLM_LIMITATION',
           message: limitation,
         });
-      // Actual turn accounting: planning + investigation + every report
-      // attempt (initial, schema-fallback retries, corrections). Never
-      // hardcoded.
-      let summed = sumUsage(planning.usage, investigation.usage ?? {});
+      // Actual turn accounting: every planning attempt + investigation +
+      // every report attempt (initial, schema-fallback retries,
+      // corrections). Never hardcoded.
+      let summed = sumUsage(planningUsage, investigation.usage ?? {});
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
         ...summed,
-        turns: 2 + reportTurns.length,
+        turns: planningTurns + 1 + reportTurns.length,
       };
       yield event(request.agentRunId, { type: 'usage.updated', usage });
       yield event(request.agentRunId, {

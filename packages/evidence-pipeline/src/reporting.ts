@@ -10,6 +10,25 @@ import type { ObservedOperation } from './pipeline.js';
 /** Maximum report attempts per AgentRun: initial + one correction. */
 export const MAX_REPORT_ATTEMPTS = 2;
 
+/** Maximum planning attempts per AgentRun: initial + one correction.
+ *  Planning suffers the same prose-first variance as reporting; a failed
+ *  plan parse retries once in the same session with bounded feedback.
+ *  Safe: the ledger is not frozen yet and planning ops stay valid. */
+export const MAX_PLANNING_ATTEMPTS = 2;
+
+/** Bounded planning-correction prompt: schema/parse errors plus the
+ *  output contract reminder. Same session; investigation not started. */
+export function buildPlanningCorrectionIntro(errors: readonly string[]): string {
+  const bounded = errors.slice(0, 8).map((error, index) => `${index + 1}. ${error}`);
+  return (
+    'Your plan was rejected. Return ONLY the JSON investigation plan, using the schema already given.\n' +
+    'Correct these plan issues:\n' +
+    bounded.join('\n') +
+    '\nNo Markdown. No code fences. No preamble or commentary. ' +
+    'The first character is { and the last character is }.'
+  );
+}
+
 /**
  * Phase-scoped model-turn options (same shape for every harness session).
  * `tools: 'none'` marks a tool-free reporting turn; harnesses without a

@@ -874,6 +874,67 @@ describe('DeepSeekHarnessAdapter', () => {
     });
   });
 
+  it('recovers from a prose-first plan via bounded planning correction', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-planning-retry-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    let calls = 0;
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          runText: async (text: string) => {
+            calls += 1;
+            prompts.push(text);
+            if (calls === 1) return planResult('Here is my plan: inspect first.');
+            if (calls === 2) return planResult(validPlan());
+            if (calls === 3) return investigationResult();
+            return reportResult(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'DEEPSEEK_PLANNING_RETRY' }),
+    );
+    expect(prompts[1]).toContain('Your plan was rejected');
+    const usage = events.find((e) => e.type === 'usage.updated');
+    expect(usage).toMatchObject({
+      type: 'usage.updated',
+      usage: expect.objectContaining({ turns: 4 }),
+    });
+  });
+
+  it('fails closed when planning stays noncompliant after correction', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-planning-fatal-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          runText: async () => planResult('Still just prose, never JSON.'),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'DEEPSEEK_INVALID_RESULT' },
+    });
+  });
+
   it('states uniform confidence semantics in the report prompt', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-calibration-'));
     roots.push(root);

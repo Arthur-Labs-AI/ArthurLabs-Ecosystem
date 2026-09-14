@@ -359,6 +359,75 @@ describe('ClaudeCodeHarnessAdapter', () => {
     );
   });
 
+  it('recovers from a prose-first plan via bounded planning correction', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-planning-retry-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    let calls = 0;
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-1',
+        startSession: async () => ({
+          runText: async (text: string) => {
+            calls += 1;
+            prompts.push(text);
+            if (calls === 1)
+              return [
+                evt('assistant', {
+                  message: { content: [{ type: 'text', text: 'Here is my plan: inspect first.' }] },
+                }),
+                evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+              ];
+            if (calls === 2) return planTurn();
+            if (calls === 3) return investigationTurn();
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'GLM_PLANNING_RETRY' }),
+    );
+    expect(prompts[1]).toContain('Your plan was rejected');
+  });
+
+  it('fails closed when planning stays noncompliant after correction', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-planning-fatal-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-1',
+        startSession: async () => ({
+          runText: async () => [
+            evt('assistant', {
+              message: { content: [{ type: 'text', text: 'Still just prose.' }] },
+            }),
+            evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+          ],
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'GLM_INVALID_RESULT' },
+    });
+  });
+
   it('states uniform confidence semantics in the report prompt', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-calibration-'));
     roots.push(root);

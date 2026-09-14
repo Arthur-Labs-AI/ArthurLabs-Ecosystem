@@ -10,11 +10,13 @@ import {
 } from '@qa/shared';
 import {
   boundCorrectionMessage,
+  buildPlanningCorrectionIntro,
   buildReportCorrectionIntro,
   buildBaselineIndex,
   commandIdentity,
   convertReportEvidence,
   isTestCommand,
+  MAX_PLANNING_ATTEMPTS,
   MAX_REPORT_ATTEMPTS,
   parseWholeJson,
   renderFrozenLedger,
@@ -661,17 +663,50 @@ export class MuseHarnessAdapter implements HarnessAdapter {
       });
       // A real session started: ephemeral runtime verification for this process.
       markMuseRuntimeVerified();
-      const planning = yield* this.streamTurn(
-        await session.sendText(planningPrompt(request)),
-        request.agentRunId,
-        session,
-        'planning',
-      );
-      assertCompleted(planning.outcome, 'planning');
       const pipeline = pipelineContext(this.secrets);
-      const planResult = SentryInvestigationPlanV1Schema.parse(
-        parseWholeJson(planning.text, 'planning', pipeline),
-      );
+      // STAGE 1 — planning with one bounded correction. A prose-first or
+      // misshapen plan retries once in the same session with the parse
+      // error fed back; planning ops from both turns stay valid and
+      // numbered (the ledger is not frozen yet). Strict parse every time.
+      const planningOutcomes: Array<{ readonly outcome: MuseTurnOutcome }> = [];
+      let planResult: ReturnType<typeof SentryInvestigationPlanV1Schema.parse> | undefined;
+      let planCorrection: string[] | undefined;
+      for (let attempt = 1; attempt <= MAX_PLANNING_ATTEMPTS; attempt += 1) {
+        const planning = yield* this.streamTurn(
+          await session.sendText(
+            planCorrection === undefined
+              ? planningPrompt(request)
+              : buildPlanningCorrectionIntro(planCorrection) +
+                  '\nImmutable mission context: ' +
+                  JSON.stringify(request.task.context ?? {}),
+            { phase: 'planning', tools: 'normal' },
+          ),
+          request.agentRunId,
+          session,
+          'planning',
+        );
+        assertCompleted(planning.outcome, 'planning');
+        planningOutcomes.push({ outcome: planning.outcome });
+        try {
+          planResult = SentryInvestigationPlanV1Schema.parse(
+            parseWholeJson(planning.text, 'planning', pipeline),
+          );
+          break;
+        } catch (cause) {
+          planCorrection = [boundCorrectionMessage(messageOf(cause))];
+          if (attempt < MAX_PLANNING_ATTEMPTS) {
+            yield event(request.agentRunId, {
+              type: 'warning',
+              code: 'MUSE_PLANNING_RETRY',
+              message: 'Muse planning attempt ' + attempt + ' rejected; retrying planning only.',
+            });
+          } else {
+            throw cause;
+          }
+        }
+      }
+      if (planResult === undefined)
+        throw new MuseHarnessError('MUSE_INVALID_RESULT', 'Muse produced no plan.');
       const plan = {
         id: createInvestigationPlanId(),
         qaRunId: request.qaRunId,
@@ -832,10 +867,10 @@ export class MuseHarnessAdapter implements HarnessAdapter {
           message: diagnostic,
         });
       }
-      // Actual turn accounting: planning + investigation + every report
-      // attempt (initial and corrections). Never hardcoded.
+      // Actual turn accounting: every planning attempt + investigation +
+      // every report attempt (initial and corrections). Never hardcoded.
       const usage = aggregateTurnUsage([
-        { outcome: planning.outcome },
+        ...planningOutcomes,
         { outcome: investigation.outcome },
         ...reportOutcomes,
       ]);

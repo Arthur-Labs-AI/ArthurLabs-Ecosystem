@@ -611,6 +611,106 @@ describe('MuseHarnessAdapter', () => {
     expect(events.filter((event) => event.type === 'command.executed')).toHaveLength(1);
   });
 
+  it('recovers from a prose-first plan via bounded planning correction', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-planning-retry-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const planJson = JSON.stringify({
+      schemaVersion: 1,
+      projectUnderstanding: 'Small fixture',
+      criticalFlows: ['Read path'],
+      weakPoints: ['Boundary'],
+      plannedChecks: ['Inspect README'],
+    });
+    let calls = 0;
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'muse-spark-1.3-contributor',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          sendText: async (text: string) => {
+            calls += 1;
+            prompts.push(text);
+            // Attempt 1: prose-first plan (rejected). Attempt 2: valid plan.
+            if (calls === 1)
+              return turn([
+                {
+                  itemId: 'prose',
+                  revision: 1,
+                  kind: 'agentMessage',
+                  status: 'completed',
+                  turnId: 'plan',
+                  text: 'Here is my plan: inspect the README first.',
+                },
+              ]);
+            if (calls === 2)
+              return turn([
+                {
+                  itemId: 'plan-message',
+                  revision: 1,
+                  kind: 'agentMessage',
+                  status: 'completed',
+                  turnId: 'plan',
+                  text: planJson,
+                },
+              ]);
+            if (calls === 3) return investigationTurn();
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'MUSE_PLANNING_RETRY' }),
+    );
+    // The correction prompt carries the parse failure, not a new mission.
+    expect(prompts[1]).toContain('Your plan was rejected');
+    const usage = events.find((e) => e.type === 'usage.updated');
+    expect(usage).toMatchObject({
+      type: 'usage.updated',
+      usage: expect.objectContaining({ turns: 4 }),
+    });
+  });
+
+  it('fails closed when planning stays noncompliant after correction', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-planning-fatal-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'muse-spark-1.3-contributor',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          sendText: async () =>
+            turn([
+              {
+                itemId: 'prose',
+                revision: 1,
+                kind: 'agentMessage',
+                status: 'completed',
+                turnId: 'plan',
+                text: 'Still just prose, never JSON.',
+              },
+            ]),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'MUSE_INVALID_RESULT' },
+    });
+  });
+
   it('states uniform confidence semantics in the report prompt', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-muse-calibration-'));
     roots.push(root);
