@@ -1,7 +1,10 @@
 # Sentry Phase 4 — Three Independent Real AgentStacks
 
-Status: IN PROGRESS (implementation complete, deterministic gates green;
-real live validation pending provider auth on the prepared host).
+Status: COMPLETE (three-agent parallel smoke `run_01M2G9C6H4YVYX4F75CH1DHA36`
+passed live: completed 3/3 with 9 findings, 22 evidence, 152 events;
+see `phase-4-1.md` and `phase-4-test-history.md` for the full record).
+Phase 5 builds the deterministic Merger on top; execution behavior is
+frozen.
 
 Baseline: `0593ece2b6a89cb8a46ad855f4ec59d640d4d09a` (Phase 3.1.1 closed).
 

@@ -469,6 +469,9 @@ importers:
       '@qa/harness-protocol':
         specifier: workspace:*
         version: link:../harness-protocol
+      '@qa/merger':
+        specifier: workspace:*
+        version: link:../merger
       '@qa/persistence':
         specifier: workspace:*
         version: link:../persistence
