@@ -7,6 +7,7 @@ export type MuseHarnessErrorCode =
   | 'MUSE_SANDBOX_UNAVAILABLE'
   | 'MUSE_INVALID_RESULT'
   | 'MUSE_SUBAGENT_FORBIDDEN'
+  | 'MUSE_REPORT_TOOL_FORBIDDEN'
   | 'MUSE_CANCEL_FAILED';
 
 export class MuseHarnessError extends Error {

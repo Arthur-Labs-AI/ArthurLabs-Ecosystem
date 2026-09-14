@@ -7,6 +7,7 @@ import {
   type TurnOutcome,
 } from '@muse-code/sdk';
 import { realpathSync } from 'node:fs';
+import type { ReportTurnOptions } from '@qa/evidence-pipeline';
 import { MuseHarnessError } from './errors.js';
 
 type ApprovalRequest = Parameters<ApprovalHandler>[0];
@@ -45,7 +46,9 @@ export interface MuseFatalApproval {
 }
 
 export interface MuseSessionView {
-  sendText(text: string): Promise<MuseTurnView>;
+  /** Phase-scoped send: tools stay enabled for planning/investigation;
+   *  reporting turns run under the adapter-side tool firewall. */
+  sendText(text: string, options?: ReportTurnOptions): Promise<MuseTurnView>;
   /** Approval decisions made by the workspace-scoped auto-decider. */
   drainApprovalDecisions(): readonly MuseApprovalDecision[];
   /**
@@ -334,7 +337,11 @@ class ProductionSession implements MuseSessionView {
     this.fatalHandler = handler;
   }
 
-  async sendText(text: string): Promise<Turn> {
+  async sendText(text: string, options?: ReportTurnOptions): Promise<Turn> {
+    // The Muse SDK has no native empty-tools turn: tool denial during
+    // reporting is enforced by the adapter-side item firewall, not here.
+    // Options are accepted for the uniform phase-scoped API.
+    void options;
     return this.session.sendUserTurn({ input: [{ type: 'text', text }] });
   }
 

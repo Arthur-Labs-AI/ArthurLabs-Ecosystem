@@ -55,6 +55,89 @@ function turn(items: readonly unknown[], outcome: TurnOutcome = completed()): Mu
   };
 }
 
+/** Investigation turn: tool items plus terminal prose (never final JSON). */
+function investigationTurn(items: readonly unknown[] = []): MuseTurnView {
+  return turn([
+    ...items,
+    {
+      itemId: 'investigation-done',
+      revision: 1,
+      kind: 'agentMessage',
+      status: 'completed',
+      turnId: 'run',
+      text: 'Investigation complete.',
+    },
+  ]);
+}
+
+/** Reporting turn: exactly one ReportV2 JSON document. */
+function reportTurn(report: unknown): MuseTurnView {
+  return turn([
+    {
+      itemId: 'report-message',
+      revision: 1,
+      kind: 'agentMessage',
+      status: 'completed',
+      turnId: 'report',
+      text: JSON.stringify(report),
+    },
+  ]);
+}
+
+/** Three-stage sendText: plan, then investigation, then report. */
+function threeStage(plan: MuseTurnView, investigation: MuseTurnView, report: MuseTurnView) {
+  let index = 0;
+  return async () => {
+    index += 1;
+    if (index === 1) return plan;
+    if (index === 2) return investigation;
+    return report;
+  };
+}
+
+function validReportV2(
+  evidence: readonly unknown[] = [
+    {
+      key: 'readme',
+      type: 'code_reference',
+      strength: 'strong_code_evidence',
+      description: 'Relevant line.',
+      relativePath: 'README.md',
+      lineStart: 2,
+      lineEnd: 2,
+    },
+  ],
+  findings: readonly unknown[] = [
+    {
+      title: 'Fixture issue',
+      category: 'documentation',
+      severity: 'low',
+      confidence: 'strong',
+      description: 'A deterministic fixture finding.',
+      locations: [{ relativePath: 'README.md', lineStart: 2 }],
+      evidenceKeys: ['readme'],
+      reproductionSteps: ['Open README.md'],
+    },
+  ],
+) {
+  return {
+    schemaVersion: 2,
+    summary: 'One evidence-backed issue.',
+    checks: [{ name: 'Inspect README', status: 'passed' }],
+    hypotheses: [
+      {
+        title: 'Boundary risk',
+        rationale: 'The fixture is minimal.',
+        relatedPaths: ['README.md'],
+        plannedChecks: ['Inspect README'],
+      },
+    ],
+    evidence,
+    findings,
+    limitations: [],
+  };
+}
+
 async function request(root: string) {
   await mkdir(root, { recursive: true });
   await writeFile(join(root, 'README.md'), '# Fixture\nimportant line\n');
@@ -117,114 +200,116 @@ describe('MuseHarnessAdapter', () => {
                 },
               ]);
             }
-            return turn([
-              {
-                itemId: 'reasoning',
-                revision: 1,
-                kind: 'reasoning',
-                status: 'completed',
-                turnId: 'run',
-                text: 'hidden chain of thought',
-              },
-              {
-                itemId: 'future-item',
-                revision: 1,
-                kind: 'futureUnknownItem',
-                status: 'completed',
-                turnId: 'run',
-              },
-              {
-                itemId: 'tool-1',
-                revision: 1,
-                kind: 'toolCall',
-                status: 'inProgress',
-                turnId: 'run',
-                tool: 'read_file',
-                args: '{"path":"README.md"}',
-              },
-              {
-                itemId: 'tool-1',
-                revision: 2,
-                kind: 'toolCall',
-                status: 'completed',
-                turnId: 'run',
-                tool: 'read_file',
-                args: '{"path":"README.md"}',
-                durationMs: 3,
-              },
-              {
-                itemId: 'shell-1',
-                revision: 1,
-                kind: 'userShell',
-                status: 'inProgress',
-                turnId: 'run',
-                commandText: 'pnpm test',
-              },
-              {
-                itemId: 'shell-1',
-                revision: 2,
-                kind: 'userShell',
-                status: 'completed',
-                turnId: 'run',
-                commandText: 'pnpm test',
-                exitCode: 0,
-                durationMs: 12,
-              },
-              {
-                itemId: 'result-message',
-                revision: 1,
-                kind: 'agentMessage',
-                status: 'completed',
-                turnId: 'run',
-                text: JSON.stringify({
-                  schemaVersion: 1,
-                  summary: 'One evidence-backed issue.',
-                  checks: [{ name: 'Inspect README', status: 'passed' }],
-                  hypotheses: [
-                    {
-                      title: 'Boundary risk',
-                      rationale: 'The fixture is minimal.',
-                      relatedPaths: ['README.md'],
-                      plannedChecks: ['Inspect README'],
-                    },
-                  ],
-                  evidence: [
-                    {
-                      key: 'readme',
-                      type: 'code_reference',
-                      strength: 'strong_code_evidence',
-                      description: 'Relevant line.',
-                      relativePath: 'README.md',
-                      lineStart: 2,
-                      lineEnd: 2,
-                    },
-                    {
-                      key: 'tests',
-                      type: 'command',
-                      strength: 'tool_diagnostic',
-                      description: 'The test command completed successfully.',
-                      command: 'pnpm test',
-                      exitCode: 0,
-                    },
-                  ],
-                  findings: [
-                    {
-                      title: 'Fixture issue',
-                      category: 'documentation',
-                      severity: 'low',
-                      // Source-verified code reference grounds strong, not
-                      // confirmed (confirmed needs reproduced/operation proof).
-                      confidence: 'strong',
-                      description: 'A deterministic fixture finding.',
-                      locations: [{ relativePath: 'README.md', lineStart: 2 }],
-                      evidenceKeys: ['readme'],
-                      reproductionSteps: ['Open README.md'],
-                    },
-                  ],
-                  limitations: [],
-                }),
-              },
-            ]);
+            if (turnIndex === 2) {
+              return turn([
+                {
+                  itemId: 'reasoning',
+                  revision: 1,
+                  kind: 'reasoning',
+                  status: 'completed',
+                  turnId: 'run',
+                  text: 'hidden chain of thought',
+                },
+                {
+                  itemId: 'future-item',
+                  revision: 1,
+                  kind: 'futureUnknownItem',
+                  status: 'completed',
+                  turnId: 'run',
+                },
+                {
+                  itemId: 'tool-1',
+                  revision: 1,
+                  kind: 'toolCall',
+                  status: 'inProgress',
+                  turnId: 'run',
+                  tool: 'read_file',
+                  args: '{"path":"README.md"}',
+                },
+                {
+                  itemId: 'tool-1',
+                  revision: 2,
+                  kind: 'toolCall',
+                  status: 'completed',
+                  turnId: 'run',
+                  tool: 'read_file',
+                  args: '{"path":"README.md"}',
+                  durationMs: 3,
+                },
+                {
+                  itemId: 'shell-1',
+                  revision: 1,
+                  kind: 'userShell',
+                  status: 'inProgress',
+                  turnId: 'run',
+                  commandText: 'pnpm test',
+                },
+                {
+                  itemId: 'shell-1',
+                  revision: 2,
+                  kind: 'userShell',
+                  status: 'completed',
+                  turnId: 'run',
+                  commandText: 'pnpm test',
+                  exitCode: 0,
+                  durationMs: 12,
+                },
+                {
+                  itemId: 'investigation-done',
+                  revision: 1,
+                  kind: 'agentMessage',
+                  status: 'completed',
+                  turnId: 'run',
+                  text: 'Investigation complete.',
+                },
+              ]);
+            }
+            return reportTurn({
+              schemaVersion: 2,
+              summary: 'One evidence-backed issue.',
+              checks: [{ name: 'Inspect README', status: 'passed' }],
+              hypotheses: [
+                {
+                  title: 'Boundary risk',
+                  rationale: 'The fixture is minimal.',
+                  relatedPaths: ['README.md'],
+                  plannedChecks: ['Inspect README'],
+                },
+              ],
+              evidence: [
+                {
+                  key: 'readme',
+                  type: 'code_reference',
+                  strength: 'strong_code_evidence',
+                  description: 'Relevant line.',
+                  relativePath: 'README.md',
+                  lineStart: 2,
+                  lineEnd: 2,
+                },
+                {
+                  key: 'tests',
+                  type: 'command',
+                  strength: 'tool_diagnostic',
+                  description: 'The test command completed successfully.',
+                  operationKey: 'op_2',
+                },
+              ],
+              findings: [
+                {
+                  title: 'Fixture issue',
+                  category: 'documentation',
+                  severity: 'low',
+                  // Source-verified code reference grounds strong, not
+                  // confirmed (confirmed needs reproduced/operation proof).
+                  confidence: 'strong',
+                  description: 'A deterministic fixture finding.',
+                  locations: [{ relativePath: 'README.md', lineStart: 2 }],
+                  evidenceKeys: ['readme'],
+                  reproductionSteps: ['Open README.md'],
+                },
+              ],
+              limitations: [],
+            });
           },
         };
       },
@@ -237,8 +322,10 @@ describe('MuseHarnessAdapter', () => {
       environment: {},
     });
     const events = await collect(adapter, input);
-    expect(prompts).toHaveLength(2);
+    expect(prompts).toHaveLength(3);
     expect(prompts[1]).toContain('Frozen plan');
+    expect(prompts[2]).toContain('Authoritative');
+    expect(prompts[2]).toContain('op_2');
     expect(events.findIndex((event) => event.type === 'investigation.plan.created')).toBeLessThan(
       events.findIndex((event) => event.type === 'finding.submitted'),
     );
@@ -249,12 +336,12 @@ describe('MuseHarnessAdapter', () => {
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'agent.message', message: 'One evidence-backed issue.' }),
     );
-    // Both turns report identical usage in this fixture, so the aggregate
-    // doubles the single-turn fixture values (per-turn semantics, summed).
+    // Three turns report identical usage in this fixture; the aggregate
+    // sums per-turn values with the actual turn count (never hardcoded).
     expect(events).toContainEqual(
       expect.objectContaining({
         type: 'usage.updated',
-        usage: expect.objectContaining({ inputTokens: 20, outputTokens: 8, turns: 2 }),
+        usage: expect.objectContaining({ inputTokens: 30, outputTokens: 12, turns: 3 }),
       }),
     );
     const evidence = events.find((event) => event.type === 'evidence.submitted');
@@ -282,7 +369,7 @@ describe('MuseHarnessAdapter', () => {
     let turnIndex = 0;
     const close = vi.fn(async () => undefined);
     const reportJson = JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       summary: 'Ledger-grounded report.',
       checks: [],
       hypotheses: [],
@@ -668,14 +755,15 @@ describe('MuseHarnessAdapter', () => {
       },
       completed: Promise.resolve(completed()),
     };
-    let index = 0;
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
         startSession: async () => ({
-          sendText: async () => (++index === 1 ? plan : execution),
+          // Investigation turn carries the tail-drain fixture; its
+          // terminal prose is ignored. Report turn completes the run.
+          sendText: threeStage(plan, execution, reportTurn(validReportV2())),
           drainApprovalDecisions: () =>
             itemsExhausted
               ? [
@@ -1102,7 +1190,7 @@ describe('MuseHarnessAdapter', () => {
     expect(aggregateTurnUsage([])).toBeUndefined();
   });
 
-  it('reports aggregated planning + execution usage on real runs', async () => {
+  it('reports aggregated planning + investigation + reporting usage on real runs', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-muse-usage-'));
     roots.push(root);
     const input = await request(root);
@@ -1143,26 +1231,28 @@ describe('MuseHarnessAdapter', () => {
                   reasoningTokens: 0,
                 }),
               );
-            return turn(
-              [
-                {
-                  itemId: 'r',
-                  revision: 1,
-                  kind: 'agentMessage',
-                  status: 'completed',
-                  text: JSON.stringify({
-                    schemaVersion: 1,
-                    summary: 'usage check',
-                    checks: [],
-                    hypotheses: [],
-                    evidence: [],
-                    findings: [],
-                    limitations: [],
-                  }),
-                },
-              ],
-              completed({ inputTokens: 7, outputTokens: 3, cachedTokens: 5, reasoningTokens: 0 }),
-            );
+            if (index === 2)
+              return turn(
+                [
+                  {
+                    itemId: 'r',
+                    revision: 1,
+                    kind: 'agentMessage',
+                    status: 'completed',
+                    text: 'Investigation complete.',
+                  },
+                ],
+                completed({ inputTokens: 7, outputTokens: 3, cachedTokens: 5, reasoningTokens: 0 }),
+              );
+            return reportTurn({
+              schemaVersion: 2,
+              summary: 'usage check',
+              checks: [],
+              hypotheses: [],
+              evidence: [],
+              findings: [],
+              limitations: [],
+            });
           },
         }),
         close: async () => undefined,
@@ -1170,10 +1260,12 @@ describe('MuseHarnessAdapter', () => {
     });
     const events = await collect(adapter, input);
     await adapter.dispose();
+    // Actual turn accounting: planning (10/4) + investigation (7/3) +
+    // reporting (default 10/4 fixture) = 27/11 across 3 turns.
     expect(events).toContainEqual(
       expect.objectContaining({
         type: 'usage.updated',
-        usage: expect.objectContaining({ inputTokens: 17, outputTokens: 7, turns: 2 }),
+        usage: expect.objectContaining({ inputTokens: 27, outputTokens: 11, turns: 3 }),
       }),
     );
   });
@@ -1197,41 +1289,34 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const execution = turn([
-      {
-        itemId: 'r',
-        revision: 1,
-        kind: 'agentMessage',
-        status: 'completed',
-        text: JSON.stringify({
-          schemaVersion: 1,
-          summary: 'no evidence',
-          checks: [],
-          hypotheses: [],
-          evidence: [],
-          findings: [
-            {
-              title: 'Orphan',
-              category: 'logic',
-              severity: 'low',
-              confidence: 'probable',
-              description: 'no backing evidence',
-              locations: [{ relativePath: 'README.md' }],
-              evidenceKeys: [],
-              reproductionSteps: [],
-            },
-          ],
-          limitations: [],
-        }),
-      },
-    ]);
-    let index = 0;
+    const report = {
+      schemaVersion: 2,
+      summary: 'no evidence',
+      checks: [],
+      hypotheses: [],
+      evidence: [],
+      findings: [
+        {
+          title: 'Orphan',
+          category: 'logic',
+          severity: 'low',
+          confidence: 'probable',
+          description: 'no backing evidence',
+          locations: [{ relativePath: 'README.md' }],
+          evidenceKeys: [],
+          reproductionSteps: [],
+        },
+      ],
+      limitations: [],
+    };
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
-        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        startSession: async () => ({
+          sendText: threeStage(plan, investigationTurn(), reportTurn(report)),
+        }),
         close: async () => undefined,
       }),
     });
@@ -1262,43 +1347,36 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const execution = turn([
-      {
-        itemId: 'r',
-        revision: 1,
-        kind: 'agentMessage',
-        status: 'completed',
-        text: JSON.stringify({
-          schemaVersion: 1,
-          summary: 'manual only',
-          checks: [],
-          hypotheses: [],
-          evidence: [
-            { key: 'm1', type: 'manual', strength: 'agent_reasoning', description: 'I think so' },
-          ],
-          findings: [
-            {
-              title: 'Claim',
-              category: 'logic',
-              severity: 'low',
-              confidence: 'confirmed',
-              description: 'ungrounded confirmation',
-              locations: [{ relativePath: 'README.md' }],
-              evidenceKeys: ['m1'],
-              reproductionSteps: [],
-            },
-          ],
-          limitations: [],
-        }),
-      },
-    ]);
-    let index = 0;
+    const report = {
+      schemaVersion: 2,
+      summary: 'manual only',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        { key: 'm1', type: 'manual', strength: 'agent_reasoning', description: 'I think so' },
+      ],
+      findings: [
+        {
+          title: 'Claim',
+          category: 'logic',
+          severity: 'low',
+          confidence: 'confirmed',
+          description: 'ungrounded confirmation',
+          locations: [{ relativePath: 'README.md' }],
+          evidenceKeys: ['m1'],
+          reproductionSteps: [],
+        },
+      ],
+      limitations: [],
+    };
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
-        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        startSession: async () => ({
+          sendText: threeStage(plan, investigationTurn(), reportTurn(report)),
+        }),
         close: async () => undefined,
       }),
     });
@@ -1329,51 +1407,45 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const execution = turn([
-      {
-        itemId: 'r',
-        revision: 1,
-        kind: 'agentMessage',
-        status: 'completed',
-        text: JSON.stringify({
-          schemaVersion: 1,
-          summary: 'spoofed test',
-          checks: [],
-          hypotheses: [],
-          evidence: [
-            {
-              key: 't1',
-              type: 'test',
-              strength: 'reproduced_failure',
-              description: 'claimed failure',
-              framework: 'vitest',
-              name: 'suite',
-              status: 'failed',
-            },
-          ],
-          findings: [
-            {
-              title: 'Spoofed failure',
-              category: 'testing',
-              severity: 'high',
-              confidence: 'probable',
-              description: 'model-claimed failure with no tool run',
-              locations: [{ relativePath: 'README.md' }],
-              evidenceKeys: ['t1'],
-              reproductionSteps: [],
-            },
-          ],
-          limitations: [],
-        }),
-      },
-    ]);
-    let index = 0;
+    // V2 test evidence REQUIRES operationKey at schema level: a claimed
+    // failure with no tool run is rejected before trust validation.
+    const report = {
+      schemaVersion: 2,
+      summary: 'spoofed test',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 't1',
+          type: 'test',
+          strength: 'reproduced_failure',
+          description: 'claimed failure',
+          framework: 'vitest',
+          name: 'suite',
+        },
+      ],
+      findings: [
+        {
+          title: 'Spoofed failure',
+          category: 'testing',
+          severity: 'high',
+          confidence: 'probable',
+          description: 'model-claimed failure with no tool run',
+          locations: [{ relativePath: 'README.md' }],
+          evidenceKeys: ['t1'],
+          reproductionSteps: [],
+        },
+      ],
+      limitations: [],
+    };
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
-        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        startSession: async () => ({
+          sendText: threeStage(plan, investigationTurn(), reportTurn(report)),
+        }),
         close: async () => undefined,
       }),
     });
@@ -1406,7 +1478,7 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const execution = turn([
+    const investigation = investigationTurn([
       {
         itemId: 'shell-1',
         revision: 1,
@@ -1415,51 +1487,47 @@ describe('MuseHarnessAdapter', () => {
         commandText: 'pnpm test',
         exitCode: 1,
       },
-      {
-        itemId: 'r',
-        revision: 1,
-        kind: 'agentMessage',
-        status: 'completed',
-        text: JSON.stringify({
-          schemaVersion: 1,
-          summary: 'correlated test',
-          checks: [],
-          hypotheses: [],
-          evidence: [
-            {
-              key: 't1',
-              type: 'test',
-              strength: 'reproduced_failure',
-              description: 'pnpm test failed',
-              framework: 'vitest',
-              name: 'suite',
-              status: 'failed',
-              operationKey: 'op_1',
-            },
-          ],
-          findings: [
-            {
-              title: 'Real failure',
-              category: 'testing',
-              severity: 'high',
-              confidence: 'confirmed',
-              description: 'observed test failure',
-              locations: [{ relativePath: 'README.md' }],
-              evidenceKeys: ['t1'],
-              reproductionSteps: [],
-            },
-          ],
-          limitations: [],
-        }),
-      },
     ]);
-    let index = 0;
+    // V2 test evidence carries no status: Sentry derives failed from the
+    // observed exit 1 on op_1.
+    const report = {
+      schemaVersion: 2,
+      summary: 'correlated test',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 't1',
+          type: 'test',
+          strength: 'reproduced_failure',
+          description: 'pnpm test failed',
+          framework: 'vitest',
+          name: 'suite',
+          operationKey: 'op_1',
+        },
+      ],
+      findings: [
+        {
+          title: 'Real failure',
+          category: 'testing',
+          severity: 'high',
+          confidence: 'confirmed',
+          description: 'observed test failure',
+          locations: [{ relativePath: 'README.md' }],
+          evidenceKeys: ['t1'],
+          reproductionSteps: [],
+        },
+      ],
+      limitations: [],
+    };
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
-        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        startSession: async () => ({
+          sendText: threeStage(plan, investigation, reportTurn(report)),
+        }),
         close: async () => undefined,
       }),
     });
@@ -1494,51 +1562,43 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const lyingExecution = (strength: string) =>
-      turn([
+    // V2 command evidence carries NO text/code fields: the model cannot
+    // even author a lie — canonical fields derive from the linked op.
+    const investigation = investigationTurn([
+      {
+        itemId: 'shell-1',
+        revision: 1,
+        kind: 'userShell',
+        status: 'completed',
+        commandText: 'cat README.md',
+        exitCode: 0,
+      },
+    ]);
+    const reportFor = (strength: string) => ({
+      schemaVersion: 2,
+      summary: 'command report',
+      checks: [],
+      hypotheses: [],
+      evidence: [
         {
-          itemId: 'shell-1',
-          revision: 1,
-          kind: 'userShell',
-          status: 'completed',
-          commandText: 'cat README.md',
-          exitCode: 0,
+          key: 'c1',
+          type: 'command',
+          strength,
+          description: 'claimed command',
+          operationKey: 'op_1',
         },
-        {
-          itemId: 'r',
-          revision: 1,
-          kind: 'agentMessage',
-          status: 'completed',
-          text: JSON.stringify({
-            schemaVersion: 1,
-            summary: 'lying command',
-            checks: [],
-            hypotheses: [],
-            evidence: [
-              {
-                key: 'c1',
-                type: 'command',
-                strength,
-                description: 'claimed command',
-                command: 'rm -rf something',
-                exitCode: 0,
-                operationKey: 'op_1',
-              },
-            ],
-            findings: [],
-            limitations: [],
-          }),
-        },
-      ]);
+      ],
+      findings: [],
+      limitations: [],
+    });
     const runWith = async (strength: string) => {
-      let index = 0;
       const adapter = new MuseHarnessAdapter({
         executable: 'muse-test',
         modelId: 'model',
         environment: {},
         clientFactory: async () => ({
           startSession: async () => ({
-            sendText: async () => (++index === 1 ? plan : lyingExecution(strength)),
+            sendText: threeStage(plan, investigation, reportTurn(reportFor(strength))),
           }),
           close: async () => undefined,
         }),
@@ -1547,31 +1607,19 @@ describe('MuseHarnessAdapter', () => {
       await adapter.dispose();
       return events;
     };
-    // Reproduced lie: rejected, and the false text never becomes canonical
-    // command evidence (it may appear in the bounded failure diagnostic).
-    const rejected = await runWith('reproduced_failure');
-    expect(rejected.at(-1)).toMatchObject({
-      type: 'run.failed',
-      failure: { code: 'MUSE_INVALID_RESULT' },
-    });
-    const rejectedEvidence = rejected.filter((event) => event.type === 'evidence.submitted');
-    expect(rejectedEvidence).toHaveLength(0);
-    expect(
-      rejected.some(
-        (event) =>
-          event.type === 'evidence.submitted' &&
-          event.evidence.type === 'command' &&
-          event.evidence.command.command.includes('rm -rf'),
-      ),
-    ).toBe(false);
-    // Weak lie: downgraded to manual reasoning, never command evidence.
-    const downgraded = await runWith('tool_diagnostic');
-    expect(downgraded.at(-1)?.type).toBe('run.completed');
-    const submitted = downgraded.filter((event) => event.type === 'evidence.submitted');
-    expect(submitted).toHaveLength(1);
-    expect(submitted[0]?.type === 'evidence.submitted' && submitted[0].evidence.type).toBe(
-      'manual',
-    );
+    for (const strength of ['reproduced_failure', 'tool_diagnostic']) {
+      const events = await runWith(strength);
+      expect(events.at(-1)?.type).toBe('run.completed');
+      const submitted = events.filter((event) => event.type === 'evidence.submitted');
+      expect(submitted).toHaveLength(1);
+      const only = submitted[0];
+      expect(only?.type === 'evidence.submitted' && only.evidence.type).toBe('command');
+      expect(
+        only?.type === 'evidence.submitted' &&
+          only.evidence.type === 'command' &&
+          only.evidence.command.command,
+      ).toBe('cat README.md');
+    }
   });
 
   it('derives canonical command evidence from the observed operation', async () => {
@@ -1593,7 +1641,7 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const execution = turn([
+    const investigation = investigationTurn([
       {
         itemId: 'shell-1',
         revision: 1,
@@ -1603,39 +1651,32 @@ describe('MuseHarnessAdapter', () => {
         exitCode: 1,
         durationMs: 9,
       },
-      {
-        itemId: 'r',
-        revision: 1,
-        kind: 'agentMessage',
-        status: 'completed',
-        text: JSON.stringify({
-          schemaVersion: 1,
-          summary: 'linked command',
-          checks: [],
-          hypotheses: [],
-          evidence: [
-            {
-              key: 'c1',
-              type: 'command',
-              strength: 'reproduced_failure',
-              description: 'tests failed',
-              command: 'pnpm test',
-              exitCode: 1,
-              operationKey: 'op_1',
-            },
-          ],
-          findings: [],
-          limitations: [],
-        }),
-      },
     ]);
-    let index = 0;
+    const report = {
+      schemaVersion: 2,
+      summary: 'linked command',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 'c1',
+          type: 'command',
+          strength: 'reproduced_failure',
+          description: 'tests failed',
+          operationKey: 'op_1',
+        },
+      ],
+      findings: [],
+      limitations: [],
+    };
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
-        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        startSession: async () => ({
+          sendText: threeStage(plan, investigation, reportTurn(report)),
+        }),
         close: async () => undefined,
       }),
     });
@@ -1669,7 +1710,7 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const execution = turn([
+    const investigation = investigationTurn([
       {
         itemId: 'shell-1',
         revision: 1,
@@ -1678,40 +1719,34 @@ describe('MuseHarnessAdapter', () => {
         commandText: 'cat README.md',
         exitCode: 0,
       },
-      {
-        itemId: 'r',
-        revision: 1,
-        kind: 'agentMessage',
-        status: 'completed',
-        text: JSON.stringify({
-          schemaVersion: 1,
-          summary: 'unrelated grounding attempt',
-          checks: [],
-          hypotheses: [],
-          evidence: [
-            {
-              key: 't1',
-              type: 'test',
-              strength: 'reproduced_failure',
-              description: 'Database race reproduced',
-              framework: 'vitest',
-              name: 'race',
-              status: 'failed',
-              operationKey: 'op_1',
-            },
-          ],
-          findings: [],
-          limitations: [],
-        }),
-      },
     ]);
-    let index = 0;
+    const report = {
+      schemaVersion: 2,
+      summary: 'unrelated grounding attempt',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 't1',
+          type: 'test',
+          strength: 'reproduced_failure',
+          description: 'Database race reproduced',
+          framework: 'vitest',
+          name: 'race',
+          operationKey: 'op_1',
+        },
+      ],
+      findings: [],
+      limitations: [],
+    };
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
-        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        startSession: async () => ({
+          sendText: threeStage(plan, investigation, reportTurn(report)),
+        }),
         close: async () => undefined,
       }),
     });
@@ -1742,38 +1777,31 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const execution = turn([
-      {
-        itemId: 'r',
-        revision: 1,
-        kind: 'agentMessage',
-        status: 'completed',
-        text: JSON.stringify({
-          schemaVersion: 1,
-          summary: 'unknown op',
-          checks: [],
-          hypotheses: [],
-          evidence: [
-            {
-              key: 't1',
-              type: 'runtime',
-              strength: 'reproduced_behavior',
-              description: 'claimed runtime',
-              operationKey: 'op_99',
-            },
-          ],
-          findings: [],
-          limitations: [],
-        }),
-      },
-    ]);
-    let index = 0;
+    const report = {
+      schemaVersion: 2,
+      summary: 'unknown op',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 't1',
+          type: 'runtime',
+          strength: 'reproduced_behavior',
+          description: 'claimed runtime',
+          operationKey: 'op_99',
+        },
+      ],
+      findings: [],
+      limitations: [],
+    };
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
-        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        startSession: async () => ({
+          sendText: threeStage(plan, investigationTurn(), reportTurn(report)),
+        }),
         close: async () => undefined,
       }),
     });
@@ -1804,7 +1832,7 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const execution = turn([
+    const investigation = investigationTurn([
       {
         itemId: 'shell-1',
         revision: 1,
@@ -1813,59 +1841,54 @@ describe('MuseHarnessAdapter', () => {
         commandText: 'cat README.md',
         exitCode: 0,
       },
-      {
-        itemId: 'r',
-        revision: 1,
-        kind: 'agentMessage',
-        status: 'completed',
-        text: JSON.stringify({
-          schemaVersion: 1,
-          summary: 'mixed grounding',
-          checks: [],
-          hypotheses: [],
-          evidence: [
-            {
-              key: 'rt',
-              type: 'runtime',
-              strength: 'tool_diagnostic',
-              description: 'server started',
-            },
-            {
-              key: 'lg',
-              type: 'log',
-              strength: 'agent_reasoning',
-              description: 'saw something',
-            },
-            {
-              key: 'm1',
-              type: 'manual',
-              strength: 'agent_reasoning',
-              description: 'architectural concern',
-            },
-          ],
-          findings: [
-            {
-              title: 'Suspected race',
-              category: 'concurrency',
-              severity: 'medium',
-              confidence: 'probable',
-              description: 'needs follow-up',
-              locations: [{ relativePath: 'README.md' }],
-              evidenceKeys: ['m1'],
-              reproductionSteps: [],
-            },
-          ],
-          limitations: [],
-        }),
-      },
     ]);
-    let index = 0;
+    const report = {
+      schemaVersion: 2,
+      summary: 'mixed grounding',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 'rt',
+          type: 'runtime',
+          strength: 'tool_diagnostic',
+          description: 'server started',
+        },
+        {
+          key: 'lg',
+          type: 'log',
+          strength: 'agent_reasoning',
+          description: 'saw something',
+        },
+        {
+          key: 'm1',
+          type: 'manual',
+          strength: 'agent_reasoning',
+          description: 'architectural concern',
+        },
+      ],
+      findings: [
+        {
+          title: 'Suspected race',
+          category: 'concurrency',
+          severity: 'medium',
+          confidence: 'probable',
+          description: 'needs follow-up',
+          locations: [{ relativePath: 'README.md' }],
+          evidenceKeys: ['m1'],
+          reproductionSteps: [],
+        },
+      ],
+      limitations: [],
+    };
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
-        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        startSession: async () => ({
+          sendText: threeStage(plan, investigation, reportTurn(report)),
+        }),
         close: async () => undefined,
       }),
     });
@@ -1884,7 +1907,7 @@ describe('MuseHarnessAdapter', () => {
     );
   });
 
-  it('still rejects mismatched command evidence against observed exit codes', async () => {
+  it('derives the observed exit code so there is nothing to spoof', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-muse-cmdspoof-'));
     roots.push(root);
     const input = await request(root);
@@ -1903,7 +1926,11 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const execution = turn([
+    // V2 command evidence carries no code field: the canonical exit code
+    // always equals the observed one, so code spoofing is impossible by
+    // construction (the V1 rejection path it replaced is covered in
+    // evidence-pipeline unit tests).
+    const investigation = investigationTurn([
       {
         itemId: 'shell-1',
         revision: 1,
@@ -1912,47 +1939,43 @@ describe('MuseHarnessAdapter', () => {
         commandText: 'pnpm test',
         exitCode: 0,
       },
-      {
-        itemId: 'r',
-        revision: 1,
-        kind: 'agentMessage',
-        status: 'completed',
-        text: JSON.stringify({
-          schemaVersion: 1,
-          summary: 'exit mismatch',
-          checks: [],
-          hypotheses: [],
-          evidence: [
-            {
-              key: 'c1',
-              type: 'command',
-              strength: 'tool_diagnostic',
-              description: 'claimed failure',
-              command: 'pnpm test',
-              exitCode: 1,
-            },
-          ],
-          findings: [],
-          limitations: [],
-        }),
-      },
     ]);
-    let index = 0;
+    const report = {
+      schemaVersion: 2,
+      summary: 'observed code',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 'c1',
+          type: 'command',
+          strength: 'tool_diagnostic',
+          description: 'suite ran',
+          operationKey: 'op_1',
+        },
+      ],
+      findings: [],
+      limitations: [],
+    };
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
-        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        startSession: async () => ({
+          sendText: threeStage(plan, investigation, reportTurn(report)),
+        }),
         close: async () => undefined,
       }),
     });
     const events = await collect(adapter, input);
     await adapter.dispose();
-    expect(events.at(-1)).toMatchObject({
-      type: 'run.failed',
-      failure: { code: 'MUSE_INVALID_RESULT' },
-    });
+    expect(events.at(-1)?.type).toBe('run.completed');
+    const submitted = events.filter((event) => event.type === 'evidence.submitted');
+    expect(submitted).toHaveLength(1);
+    const evidence =
+      submitted[0]?.type === 'evidence.submitted' ? submitted[0].evidence : undefined;
+    expect(evidence?.type === 'command' && evidence.command.exitCode).toBe(0);
   });
 
   it('falls back to modified_workspace without a baseline sidecar', async () => {
@@ -1975,7 +1998,7 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const execution = turn([
+    const investigation = investigationTurn([
       {
         itemId: 'shell-1',
         revision: 1,
@@ -1984,48 +2007,43 @@ describe('MuseHarnessAdapter', () => {
         commandText: 'pnpm test',
         exitCode: 0,
       },
-      {
-        itemId: 'r',
-        revision: 1,
-        kind: 'agentMessage',
-        status: 'completed',
-        text: JSON.stringify({
-          schemaVersion: 1,
-          summary: 'provenance',
-          checks: [],
-          hypotheses: [],
-          evidence: [
-            {
-              key: 'base',
-              type: 'code_reference',
-              strength: 'strong_code_evidence',
-              description: 'unchanged file',
-              relativePath: 'README.md',
-              lineStart: 1,
-              lineEnd: 1,
-            },
-            {
-              key: 'gen',
-              type: 'code_reference',
-              strength: 'strong_code_evidence',
-              description: 'new file',
-              relativePath: 'generated.txt',
-              lineStart: 1,
-              lineEnd: 1,
-            },
-          ],
-          findings: [],
-          limitations: [],
-        }),
-      },
     ]);
-    let index = 0;
+    const report = {
+      schemaVersion: 2,
+      summary: 'provenance',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 'base',
+          type: 'code_reference',
+          strength: 'strong_code_evidence',
+          description: 'unchanged file',
+          relativePath: 'README.md',
+          lineStart: 1,
+          lineEnd: 1,
+        },
+        {
+          key: 'gen',
+          type: 'code_reference',
+          strength: 'strong_code_evidence',
+          description: 'new file',
+          relativePath: 'generated.txt',
+          lineStart: 1,
+          lineEnd: 1,
+        },
+      ],
+      findings: [],
+      limitations: [],
+    };
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
-        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        startSession: async () => ({
+          sendText: threeStage(plan, investigation, reportTurn(report)),
+        }),
         close: async () => undefined,
       }),
     });
@@ -2087,7 +2105,7 @@ describe('MuseHarnessAdapter', () => {
         }),
       },
     ]);
-    const execution = turn([
+    const investigation = investigationTurn([
       {
         itemId: 'shell-1',
         revision: 1,
@@ -2096,57 +2114,52 @@ describe('MuseHarnessAdapter', () => {
         commandText: 'pnpm test',
         exitCode: 0,
       },
-      {
-        itemId: 'r',
-        revision: 1,
-        kind: 'agentMessage',
-        status: 'completed',
-        text: JSON.stringify({
-          schemaVersion: 1,
-          summary: 'provenance',
-          checks: [],
-          hypotheses: [],
-          evidence: [
-            {
-              key: 'base',
-              type: 'code_reference',
-              strength: 'strong_code_evidence',
-              description: 'unchanged file',
-              relativePath: 'README.md',
-              lineStart: 1,
-              lineEnd: 1,
-            },
-            {
-              key: 'mod',
-              type: 'code_reference',
-              strength: 'strong_code_evidence',
-              description: 'modified file',
-              relativePath: 'modified.txt',
-              lineStart: 1,
-              lineEnd: 1,
-            },
-            {
-              key: 'gen',
-              type: 'code_reference',
-              strength: 'strong_code_evidence',
-              description: 'new file',
-              relativePath: 'generated.txt',
-              lineStart: 1,
-              lineEnd: 1,
-            },
-          ],
-          findings: [],
-          limitations: [],
-        }),
-      },
     ]);
-    let index = 0;
+    const report = {
+      schemaVersion: 2,
+      summary: 'provenance',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 'base',
+          type: 'code_reference',
+          strength: 'strong_code_evidence',
+          description: 'unchanged file',
+          relativePath: 'README.md',
+          lineStart: 1,
+          lineEnd: 1,
+        },
+        {
+          key: 'mod',
+          type: 'code_reference',
+          strength: 'strong_code_evidence',
+          description: 'modified file',
+          relativePath: 'modified.txt',
+          lineStart: 1,
+          lineEnd: 1,
+        },
+        {
+          key: 'gen',
+          type: 'code_reference',
+          strength: 'strong_code_evidence',
+          description: 'new file',
+          relativePath: 'generated.txt',
+          lineStart: 1,
+          lineEnd: 1,
+        },
+      ],
+      findings: [],
+      limitations: [],
+    };
     const adapter = new MuseHarnessAdapter({
       executable: 'muse-test',
       modelId: 'model',
       environment: {},
       clientFactory: async () => ({
-        startSession: async () => ({ sendText: async () => (++index === 1 ? plan : execution) }),
+        startSession: async () => ({
+          sendText: threeStage(plan, investigation, reportTurn(report)),
+        }),
         close: async () => undefined,
       }),
     });
