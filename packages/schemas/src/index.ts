@@ -8,6 +8,7 @@ export * from './context.schema.js';
 export * from './investigation.schema.js';
 export * from './agent.schema.js';
 export * from './agent-result.schema.js';
+export * from './agent-report.schema.js';
 export * from './run.schema.js';
 export * from './finding.schema.js';
 export * from './evidence.schema.js';
