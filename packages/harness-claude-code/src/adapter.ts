@@ -787,7 +787,8 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       let schemaSupported: boolean | undefined;
       for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
         const useSchema = schemaSupported !== false;
-        let reporting: CollectedTurn;
+        let reporting: CollectedTurn | undefined;
+        let errors: string[] | undefined;
         try {
           reporting = await this.runTurn(
             session,
@@ -797,14 +798,27 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             { forbidTools: true, ...(useSchema ? { jsonSchema: reportSchema } : {}) },
           );
         } catch (cause) {
-          // Structural fallback: the schema-armed report spawn failed at
-          // the transport/CLI layer (flag rejected, route error, spawn
-          // failure) before any model output existed. Retry the SAME
-          // report turn without --json-schema (report-only; the ledger
-          // and investigation are untouched). Firewall, timeout, and
-          // completed-turn errors are real report signals, not transport
-          // failures, and propagate unchanged.
-          if (useSchema && isReportTransportFailure(cause)) {
+          // Firewall trip: the model attempted a tool call in the
+          // tool-free turn. Per protocol this fails the REPORT ATTEMPT
+          // (not the run): the correction loop tells the model to
+          // serialize from the frozen ledger without tools.
+          if (
+            cause instanceof ClaudeCodeHarnessError &&
+            cause.code === 'GLM_REPORT_TOOL_FORBIDDEN'
+          ) {
+            errors = [
+              'Your report turn attempted a tool call. The reporting stage is tool-free: ' +
+                'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
+                'Do not run commands, read files, or use any tools.',
+            ];
+          } else if (useSchema && isReportTransportFailure(cause)) {
+            // Structural fallback: the schema-armed report spawn failed at
+            // the transport/CLI layer (flag rejected, route error, spawn
+            // failure) before any model output existed. Retry the SAME
+            // report turn without --json-schema (report-only; the ledger
+            // and investigation are untouched). Timeout and completed-turn
+            // errors are real report signals, not transport failures, and
+            // propagate unchanged.
             schemaSupported = false;
             yield event(request.agentRunId, {
               type: 'warning',
@@ -812,34 +826,60 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
               message:
                 'Claude Code rejected --json-schema; retrying the report turn with strict JSON fallback.',
             });
-            reporting = await this.runTurn(
-              session,
-              reportPrompt(planResult, this.observedOperations, correction),
-              request.agentRunId,
-              'reporting',
-              { forbidTools: true },
-            );
+            try {
+              reporting = await this.runTurn(
+                session,
+                reportPrompt(planResult, this.observedOperations, correction),
+                request.agentRunId,
+                'reporting',
+                { forbidTools: true },
+              );
+            } catch (retryCause) {
+              if (
+                retryCause instanceof ClaudeCodeHarnessError &&
+                retryCause.code === 'GLM_REPORT_TOOL_FORBIDDEN'
+              ) {
+                errors = [
+                  'Your report turn attempted a tool call. The reporting stage is tool-free: ' +
+                    'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
+                    'Do not run commands, read files, or use any tools.',
+                ];
+                reporting = undefined;
+              } else {
+                throw retryCause;
+              }
+            }
           } else {
             throw cause;
           }
         }
-        for (const emitted of reporting.events) yield emitted;
-        if (reporting.usage === undefined) reportTurns.push({});
-        else reportTurns.push({ usage: reporting.usage });
-        const candidate = parseReportAttempt(reporting.text, pipeline);
-        let errors: string[] | undefined;
-        if (candidate.ok) {
-          try {
-            built = await this.buildReportAttempt(request, candidate.report, pipeline);
-          } catch (cause) {
-            errors = [boundCorrectionMessage(messageOf(cause))];
+        // A completed report turn (including a firewall-tripped one on
+        // the schema-fallback retry) consumed a model turn: account it.
+        // Usage events already yielded stay persisted either way.
+        if (reporting !== undefined) {
+          for (const emitted of reporting.events) yield emitted;
+          if (reporting.usage === undefined) reportTurns.push({});
+          else reportTurns.push({ usage: reporting.usage });
+          const candidate = parseReportAttempt(reporting.text, pipeline);
+          if (!candidate.ok) {
+            errors = candidate.errors;
+          } else {
+            try {
+              built = await this.buildReportAttempt(request, candidate.report, pipeline);
+              result = candidate.report;
+              break;
+            } catch (cause) {
+              errors = [boundCorrectionMessage(messageOf(cause))];
+            }
           }
-        } else {
-          errors = candidate.errors;
         }
+        // Firewall trips (reporting undefined) arrive here with errors
+        // already set; parse/build failures arrive via the block above.
         if (errors === undefined) {
-          result = candidate.ok ? candidate.report : undefined;
-          break;
+          throw new ClaudeCodeHarnessError(
+            'GLM_INVALID_RESULT',
+            'Claude Code report attempt produced no result and no error.',
+          );
         }
         correction = errors;
         if (attempt < MAX_REPORT_ATTEMPTS) {

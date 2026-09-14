@@ -713,35 +713,56 @@ export class MuseHarnessAdapter implements HarnessAdapter {
       let built: BuiltReportAttempt | undefined;
       let correction: string[] | undefined;
       for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
-        const reporting = yield* this.streamTurn(
-          await session.sendText(reportPrompt(planResult, this.observedOperations, correction), {
-            phase: 'reporting',
-            tools: 'none',
-          }),
-          request.agentRunId,
-          session,
-          'reporting',
-          true,
-        );
-        assertCompleted(reporting.outcome, 'reporting');
-        reportOutcomes.push({ outcome: reporting.outcome });
-        // One attempt = strict parse + full conversion/trust validation,
-        // all without emitting events. Any failure becomes bounded
-        // correction feedback; the investigation never reruns.
-        const candidate = parseReportAttempt(reporting.text, pipeline);
+        // Firewall trip fails the REPORT ATTEMPT (not the run): the
+        // correction loop tells the model to serialize without tools.
+        let reporting: TurnCollection | undefined;
         let errors: string[] | undefined;
-        if (candidate.ok) {
-          try {
-            built = await this.buildReportAttempt(request, candidate.report, pipeline);
-          } catch (cause) {
-            errors = [boundCorrectionMessage(messageOf(cause))];
+        try {
+          reporting = yield* this.streamTurn(
+            await session.sendText(reportPrompt(planResult, this.observedOperations, correction), {
+              phase: 'reporting',
+              tools: 'none',
+            }),
+            request.agentRunId,
+            session,
+            'reporting',
+            true,
+          );
+        } catch (cause) {
+          if (cause instanceof MuseHarnessError && cause.code === 'MUSE_REPORT_TOOL_FORBIDDEN') {
+            errors = [
+              'Your report turn attempted a tool call. The reporting stage is tool-free: ' +
+                'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
+                'Do not run commands, read files, or use any tools.',
+            ];
+          } else {
+            throw cause;
           }
-        } else {
-          errors = candidate.errors;
+        }
+        if (reporting !== undefined) {
+          assertCompleted(reporting.outcome, 'reporting');
+          reportOutcomes.push({ outcome: reporting.outcome });
+          // One attempt = strict parse + full conversion/trust validation,
+          // all without emitting events. Any failure becomes bounded
+          // correction feedback; the investigation never reruns.
+          const candidate = parseReportAttempt(reporting.text, pipeline);
+          if (!candidate.ok) {
+            errors = candidate.errors;
+          } else {
+            try {
+              built = await this.buildReportAttempt(request, candidate.report, pipeline);
+              result = candidate.report;
+              break;
+            } catch (cause) {
+              errors = [boundCorrectionMessage(messageOf(cause))];
+            }
+          }
         }
         if (errors === undefined) {
-          result = candidate.ok ? candidate.report : undefined;
-          break;
+          throw new MuseHarnessError(
+            'MUSE_INVALID_RESULT',
+            'Muse report attempt produced no result and no error.',
+          );
         }
         correction = errors;
         if (attempt < MAX_REPORT_ATTEMPTS) {

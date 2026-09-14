@@ -731,8 +731,11 @@ describe('DeepSeekHarnessAdapter', () => {
     await adapter.dispose();
     expect(events.at(-1)).toMatchObject({
       type: 'run.failed',
-      failure: { code: 'DEEPSEEK_REPORT_TOOL_FORBIDDEN' },
+      failure: { code: 'DEEPSEEK_INVALID_RESULT' },
     });
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'DEEPSEEK_REPORT_RETRY' }),
+    );
     // Exactly one investigation operation observed; the sneaky reporting
     // call never became one.
     expect(events.filter((e) => e.type === 'tool.started')).toHaveLength(1);

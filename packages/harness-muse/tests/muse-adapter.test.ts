@@ -525,10 +525,88 @@ describe('MuseHarnessAdapter', () => {
     });
     const events = await collect(adapter, input);
     await adapter.dispose();
+    // A persistently sneaky reporter exhausts the bounded correction
+    // loop: the run fails on the report (never on investigation), the
+    // firewall trip is observable, and the ledger never mutates.
     expect(events.at(-1)).toMatchObject({
       type: 'run.failed',
-      failure: { code: 'MUSE_REPORT_TOOL_FORBIDDEN' },
+      failure: { code: 'MUSE_INVALID_RESULT' },
     });
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'MUSE_REPORT_RETRY' }),
+    );
+    expect(events.filter((event) => event.type === 'tool.started')).toHaveLength(1);
+    expect(events.filter((event) => event.type === 'command.executed')).toHaveLength(1);
+  });
+
+  it('recovers when a report attempt trips the firewall then complies', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-firewall-recovery-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = turn([
+      {
+        itemId: 'p',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          projectUnderstanding: 'x',
+          criticalFlows: [],
+          weakPoints: [],
+          plannedChecks: ['x'],
+        }),
+      },
+    ]);
+    const investigation = investigationTurn([
+      {
+        itemId: 'shell-1',
+        revision: 1,
+        kind: 'userShell',
+        status: 'completed',
+        turnId: 'run',
+        commandText: 'pnpm test',
+        exitCode: 0,
+      },
+    ]);
+    let calls = 0;
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'muse-spark-1.3-contributor',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          sendText: async () => {
+            calls += 1;
+            if (calls === 1) return plan;
+            if (calls === 2) return investigation;
+            // Attempt 1 sneaks a tool call (firewall → correction);
+            // attempt 2 serializes cleanly from the frozen ledger.
+            if (calls === 3)
+              return turn([
+                {
+                  itemId: 'shell-2',
+                  revision: 1,
+                  kind: 'userShell',
+                  status: 'completed',
+                  turnId: 'report',
+                  commandText: 'pnpm test',
+                  exitCode: 0,
+                },
+              ]);
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'MUSE_REPORT_RETRY' }),
+    );
+    // Investigation ran once; the sneaky call never became an operation.
     expect(events.filter((event) => event.type === 'tool.started')).toHaveLength(1);
     expect(events.filter((event) => event.type === 'command.executed')).toHaveLength(1);
   });

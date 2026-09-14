@@ -310,8 +310,11 @@ describe('ClaudeCodeHarnessAdapter', () => {
     await adapter.dispose();
     expect(events.at(-1)).toMatchObject({
       type: 'run.failed',
-      failure: { code: 'GLM_REPORT_TOOL_FORBIDDEN' },
+      failure: { code: 'GLM_INVALID_RESULT' },
     });
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'GLM_REPORT_RETRY' }),
+    );
     // Exactly one investigation operation observed; the sneaky reporting
     // call never became one.
     expect(events.filter((e) => e.type === 'tool.started')).toHaveLength(1);

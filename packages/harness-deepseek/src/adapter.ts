@@ -843,29 +843,53 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       let built: BuiltReportAttempt | undefined;
       let correction: string[] | undefined;
       for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
-        const reporting = await this.runTurn(
-          session,
-          reportPrompt(planResult, this.observedOperations, correction),
-          request.agentRunId,
-          'reporting',
-          true,
-        );
-        for (const emitted of reporting.events) yield emitted;
-        reportTurns.push(reporting.usage === undefined ? {} : { usage: reporting.usage });
-        const candidate = parseReportAttempt(reporting.text, pipeline);
+        // Firewall trip fails the REPORT ATTEMPT (not the run): the
+        // correction loop tells the model to serialize without tools.
+        let reporting: CollectedTurn | undefined;
         let errors: string[] | undefined;
-        if (candidate.ok) {
-          try {
-            built = await this.buildReportAttempt(request, candidate.report, pipeline);
-          } catch (cause) {
-            errors = [boundCorrectionMessage(messageOf(cause))];
+        try {
+          reporting = await this.runTurn(
+            session,
+            reportPrompt(planResult, this.observedOperations, correction),
+            request.agentRunId,
+            'reporting',
+            true,
+          );
+        } catch (cause) {
+          if (
+            cause instanceof DeepSeekHarnessError &&
+            cause.code === 'DEEPSEEK_REPORT_TOOL_FORBIDDEN'
+          ) {
+            errors = [
+              'Your report turn attempted a tool call. The reporting stage is tool-free: ' +
+                'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
+                'Do not run commands, read files, or use any tools.',
+            ];
+          } else {
+            throw cause;
           }
-        } else {
-          errors = candidate.errors;
+        }
+        if (reporting !== undefined) {
+          for (const emitted of reporting.events) yield emitted;
+          reportTurns.push(reporting.usage === undefined ? {} : { usage: reporting.usage });
+          const candidate = parseReportAttempt(reporting.text, pipeline);
+          if (!candidate.ok) {
+            errors = candidate.errors;
+          } else {
+            try {
+              built = await this.buildReportAttempt(request, candidate.report, pipeline);
+              result = candidate.report;
+              break;
+            } catch (cause) {
+              errors = [boundCorrectionMessage(messageOf(cause))];
+            }
+          }
         }
         if (errors === undefined) {
-          result = candidate.ok ? candidate.report : undefined;
-          break;
+          throw new DeepSeekHarnessError(
+            'DEEPSEEK_INVALID_RESULT',
+            'DeepSeek report attempt produced no result and no error.',
+          );
         }
         correction = errors;
         if (attempt < MAX_REPORT_ATTEMPTS) {
