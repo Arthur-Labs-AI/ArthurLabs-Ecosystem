@@ -439,11 +439,17 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           const chunk = eventText(record.text);
           if (chunk !== undefined) text.value += (text.value.length > 0 ? '\n' : '') + chunk;
         } else if (record.type === 'tool_use') {
-          // Reporting firewall: the frozen ledger must not mutate.
+          // Reporting firewall: the frozen ledger must not mutate. The
+          // attempted tool is named (bounded, redacted) so correction
+          // feedback and run history show what was refused.
           if (forbidTools) {
+            const attempted = redactDiagnostic(
+              eventText(record.name) ?? 'unknown',
+              this.secrets,
+            ).slice(0, 100);
             throw new ClaudeCodeHarnessError(
               'GLM_REPORT_TOOL_FORBIDDEN',
-              'Claude Code attempted a tool call during the tool-free reporting turn.',
+              "Claude Code attempted tool '" + attempted + "' during the tool-free reporting turn.",
             );
           }
           const toolUseId = eventText(record.id) ?? 'tool-' + this.operationCounter;
@@ -847,7 +853,8 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             cause.code === 'GLM_REPORT_TOOL_FORBIDDEN'
           ) {
             errors = [
-              'Your report turn attempted a tool call. The reporting stage is tool-free: ' +
+              boundCorrectionMessage(messageOf(cause)) +
+                ' The reporting stage is tool-free: ' +
                 'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
                 'Do not run commands, read files, or use any tools.',
             ];
@@ -880,7 +887,8 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
                 retryCause.code === 'GLM_REPORT_TOOL_FORBIDDEN'
               ) {
                 errors = [
-                  'Your report turn attempted a tool call. The reporting stage is tool-free: ' +
+                  boundCorrectionMessage(messageOf(retryCause)) +
+                    ' The reporting stage is tool-free: ' +
                     'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
                     'Do not run commands, read files, or use any tools.',
                 ];

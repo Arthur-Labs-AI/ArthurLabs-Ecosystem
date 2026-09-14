@@ -542,10 +542,17 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
     const kind = eventText(envelope.type) ?? '';
     // Reporting firewall: the frozen ledger must not mutate. Any tool call
     // during reporting fails the report turn (never silently incorporated).
+    // The attempted tool is named (bounded) for correction feedback.
     if (forbidTools && kind === 'tool/call') {
+      const attempted = eventText((eventData(raw) as { name?: unknown } | undefined)?.name)?.slice(
+        0,
+        100,
+      );
       throw new DeepSeekHarnessError(
         'DEEPSEEK_REPORT_TOOL_FORBIDDEN',
-        'DeepSeek attempted a tool call during the tool-free reporting turn.',
+        "DeepSeek attempted tool '" +
+          (attempted ?? 'unknown') +
+          "' during the tool-free reporting turn.",
       );
     }
     const lowered = kind.toLowerCase();
@@ -899,7 +906,8 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
             cause.code === 'DEEPSEEK_REPORT_TOOL_FORBIDDEN'
           ) {
             errors = [
-              'Your report turn attempted a tool call. The reporting stage is tool-free: ' +
+              boundCorrectionMessage(messageOf(cause)) +
+                ' The reporting stage is tool-free: ' +
                 'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
                 'Do not run commands, read files, or use any tools.',
             ];

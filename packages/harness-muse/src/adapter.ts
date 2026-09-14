@@ -537,11 +537,17 @@ export class MuseHarnessAdapter implements HarnessAdapter {
       if (item.kind === 'toolCall' || item.kind === 'userShell') {
         // Reporting firewall: the frozen ledger must not mutate. Any tool
         // attempt during reporting fails the report turn (never silently
-        // incorporated, never observed as a new operation).
+        // incorporated, never observed as a new operation). The
+        // attempted tool is named (bounded, redacted) for correction
+        // feedback and run history.
         if (forbidTools) {
+          const attempted = redactDiagnostic(
+            item.kind === 'userShell' ? 'shell' : (item.tool ?? 'unknown'),
+            this.secrets,
+          ).slice(0, 100);
           throw new MuseHarnessError(
             'MUSE_REPORT_TOOL_FORBIDDEN',
-            'Muse attempted a tool call during the tool-free reporting turn.',
+            "Muse attempted tool '" + attempted + "' during the tool-free reporting turn.",
           );
         }
       } else continue;
@@ -767,7 +773,8 @@ export class MuseHarnessAdapter implements HarnessAdapter {
         } catch (cause) {
           if (cause instanceof MuseHarnessError && cause.code === 'MUSE_REPORT_TOOL_FORBIDDEN') {
             errors = [
-              'Your report turn attempted a tool call. The reporting stage is tool-free: ' +
+              boundCorrectionMessage(messageOf(cause)) +
+                ' The reporting stage is tool-free: ' +
                 'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
                 'Do not run commands, read files, or use any tools.',
             ];
