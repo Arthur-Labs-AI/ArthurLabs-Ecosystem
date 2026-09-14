@@ -62,3 +62,17 @@ Next: provide credentials and `socat` on the prepared host, then run
 the three live smokes (`SENTRY_LIVE_MUSE_TEST=1` pattern per stack)
 and the `qa run start --agents muse,deepseek,glm` parallel smoke.
 Only then declare Phase 4 COMPLETE. Do not start the Merger.
+
+## Phase 4.2 update (2026-09-14)
+
+All three adapters refactored to planning → investigation → tool-free
+reporting with frozen post-investigation ledger, ReportV2
+discriminated evidence, bounded report-only repair, and actual turn
+accounting. Ledger-timing tests failed pre-refactor on all three
+(recorded: ff13172). Exact-head CI green on 06a5a89 (34838416753).
+Live validation order: Muse regression, DeepSeek regression, GLM
+regression (each must show planning/investigation/reporting stages,
+post-investigation ledger, no reporting tool use, cleanup), then ONE
+three-agent parallel smoke. Watch for: GLM --json-schema acceptance
+on the Z.AI route (fallback warning expected if unsupported), report
+repair telemetry, turn counts 3+.
