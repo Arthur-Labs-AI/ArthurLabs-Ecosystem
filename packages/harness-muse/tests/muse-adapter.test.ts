@@ -576,6 +576,8 @@ describe('MuseHarnessAdapter', () => {
     expect(report).toContain('confirmed requires genuinely reproduced');
     expect(report).toContain('strong requires grounded source');
     expect(report).toContain('The ledger below is the ONLY authoritative source');
+    expect(report).toContain('Report envelope (exact shapes');
+    expect(report).toContain('"checks":[{"name"');
   });
 
   it('decides approvals fail-closed on semantics, not label matching', () => {

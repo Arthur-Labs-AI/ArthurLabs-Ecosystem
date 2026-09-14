@@ -21,6 +21,7 @@ import {
   parseWholeJson,
   renderFrozenLedger,
   REPORT_CONFIDENCE_CALIBRATION,
+  REPORT_ENVELOPE_SCHEMA,
   REPORT_LEDGER_RULES,
   summarizeSchemaIssues,
   validateLocation,
@@ -209,6 +210,7 @@ function reportPrompt(
     'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info.',
     'Report evidence contract (exact fields per type; copy names exactly): ' +
       describeSentryAgentReportContract(),
+    REPORT_ENVELOPE_SCHEMA,
     'Authoritative Sentry operation ledger (frozen after investigation):\n' +
       renderFrozenLedger(operations),
     'Frozen plan: ' + JSON.stringify(plan),

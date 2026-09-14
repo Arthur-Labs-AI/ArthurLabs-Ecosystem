@@ -53,6 +53,22 @@ export const REPORT_LEDGER_RULES =
   'If exit is unknown, it is unknown: do not use an unknown-code operation as reproduced command or test proof requiring a known outcome. ' +
   'If adequate operation proof does not exist, use code_reference or manual evidence and calibrate confidence accordingly.';
 
+/** Compact report-envelope schema for reporting prompts: checks,
+ *  hypotheses, findings, and limitations shapes the evidence contract
+ *  does not cover. Rendered from the same ReportV2 source the parser
+ *  validates (field names fixed; bounds match the Zod schema). */
+export const REPORT_ENVELOPE_SCHEMA =
+  'Report envelope (exact shapes; copy names exactly): ' +
+  '{"schemaVersion":2,"summary":string,"checks":[{"name":string,"status":"passed|failed|inconclusive|not_run","details"?:string}],' +
+  '"hypotheses":[{"title":string,"rationale":string,"relatedPaths":string[],"plannedChecks":string[at least one]}],' +
+  '"evidence":[<see Evidence variants above>],' +
+  '"findings":[{"title":string,"category":string,"categoryDetail"?:string,"severity":"critical|high|medium|low|info",' +
+  '"confidence":"confirmed|strong|probable|speculative","description":string,' +
+  '"expectedBehavior"?:string,"actualBehavior"?:string,' +
+  '"locations":[{"relativePath":string,"lineStart"?:number,"lineEnd"?:number,"symbol"?:string}][at least one],' +
+  '"evidenceKeys":string[at least one],"reproductionSteps":string[] (always include, [] allowed),' +
+  '"rootCause"?:string,"recommendedFix"?:string}],"limitations":string[]}.';
+
 /** Bounded correction intro for report-only retries (§34). */
 export function buildReportCorrectionIntro(errors: readonly string[]): string {
   const bounded = errors.slice(0, 8).map((error, index) => `${index + 1}. ${error}`);
