@@ -158,6 +158,14 @@ function parseSelection(kind: LocalModelKind, raw: unknown, path: string): Model
   return { mode: 'auto' };
 }
 
+// Validate an in-memory lifecycle snapshot with the SAME invariants used
+// by persisted-state parsing (round-trips through parseLifecycle so the
+// two can never drift). Used by the installation service's internal
+// staging rollback; not a general mutation API.
+export function validateLifecycleSnapshot(modelId: string, snapshot: unknown, path: string): InstalledModelState {
+  return parseLifecycle(modelId, snapshot, path);
+}
+
 // Parse + validate a raw decoded JSON value into canonical state. Throws a
 // typed INVALID_CONFIG ArthurError naming the file path and reason. The
 // corrupted file is NEVER modified or deleted here.

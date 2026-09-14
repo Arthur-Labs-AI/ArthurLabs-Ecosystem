@@ -16,6 +16,11 @@
  *   ready=true  => installed=true AND configured=true
  *   installed=false => configured=false AND ready=false
  *   validation failed => ready=false, last_validation.status=failed
+ *
+ * Boundary note: `restoreModelStateInternal` is an @internal rollback primitive
+ * for the installation service's staging semantics. It is a method on
+ * this class (no store redesign) but is NOT part of the public barrel
+ * API surface and must not be used as a general mutation path.
  */
 
 import * as path from 'node:path';
@@ -26,6 +31,7 @@ import {
   defaultStateFile,
   parseStateFile,
   serializeStateFile,
+  validateLifecycleSnapshot,
   type InstalledModelState,
   type LocalModelStateFile,
   type ValidationStatus,
@@ -207,6 +213,24 @@ export class LocalModelStateStore {
   async removeModelState(modelId: string): Promise<LocalModelStateFile> {
     return this.mutate((draft) => {
       delete draft.models[modelId];
+    });
+  }
+
+  // INTERNAL rollback primitive for ModelInstallationService staging.
+  // Restores the pre-attempt snapshot when a reinstall/replacement fails
+  // before promotion. Not a general mutation API: it bypasses the
+  // step-by-step lifecycle transitions by design (that IS the rollback),
+  // so the snapshot is re-validated against the same lifecycle invariants
+  // used by persisted-state parsing. Only the installation service uses
+  // this in D1; it is intentionally absent from the public barrel API.
+  async restoreModelStateInternal(modelId: string, snapshot: InstalledModelState | null): Promise<LocalModelStateFile> {
+    const validated = snapshot === null ? null : validateLifecycleSnapshot(modelId, snapshot, this.statePath + ' (rollback)');
+    return this.mutate((draft) => {
+      if (validated === null) {
+        delete draft.models[modelId];
+        return;
+      }
+      draft.models[modelId] = JSON.parse(JSON.stringify(validated)) as InstalledModelState;
     });
   }
 
