@@ -24,19 +24,35 @@ describe('generic evidence trust policy', () => {
       id: 'ev_1' as never,
       type: 'manual' as const,
       strength: 'agent_reasoning' as const,
+      groundingOperationIds: [],
     };
     expect(
       validateFindingTrust({ confidence: 'confirmed', evidenceIds: ['ev_1' as never] }, [manual])
         .ok,
     ).toBe(false);
+    // Provenance dominates strength: an op-grounded command supports
+    // confirmed; the same label without durable operation IDs does not.
+    const opIds = ['op_01K7777777777777777777A8W1' as never];
     const command = {
       id: 'ev_1' as never,
       type: 'command' as const,
       strength: 'tool_diagnostic' as const,
+      groundingOperationIds: opIds,
     };
     expect(
       validateFindingTrust({ confidence: 'confirmed', evidenceIds: ['ev_1' as never] }, [command]),
     ).toEqual({ ok: true });
+    const ungrounded = {
+      id: 'ev_1' as never,
+      type: 'command' as const,
+      strength: 'tool_diagnostic' as const,
+      groundingOperationIds: [],
+    };
+    expect(
+      validateFindingTrust({ confidence: 'confirmed', evidenceIds: ['ev_1' as never] }, [
+        ungrounded,
+      ]).ok,
+    ).toBe(false);
   });
 
   it('requires grounded evidence for strong findings but allows weaker probable ones', () => {
@@ -44,6 +60,7 @@ describe('generic evidence trust policy', () => {
       id: 'ev_1' as never,
       type: 'manual' as const,
       strength: 'agent_reasoning' as const,
+      groundingOperationIds: [],
     };
     expect(
       validateFindingTrust({ confidence: 'strong', evidenceIds: ['ev_1' as never] }, [manual]).ok,
@@ -56,11 +73,39 @@ describe('generic evidence trust policy', () => {
     ).toEqual({ ok: true });
   });
 
-  it('treats tool-grounded types as grounded regardless of label', () => {
-    expect(isGroundedEvidence({ type: 'code_reference', strength: 'agent_reasoning' })).toBe(true);
-    expect(isGroundedEvidence({ type: 'test', strength: 'agent_reasoning' })).toBe(true);
-    expect(isGroundedEvidence({ type: 'manual', strength: 'agent_reasoning' })).toBe(false);
-    expect(isGroundedEvidence({ type: 'manual', strength: 'reproduced_behavior' })).toBe(true);
+  it('grounds evidence from provenance, never from the strength label', () => {
+    const opIds = ['op_01K7777777777777777777A8W1' as never];
+    expect(
+      isGroundedEvidence({
+        type: 'code_reference',
+        strength: 'agent_reasoning',
+        groundingOperationIds: [],
+      }),
+    ).toBe(true);
+    expect(
+      isGroundedEvidence({
+        type: 'test',
+        strength: 'agent_reasoning',
+        groundingOperationIds: opIds,
+      }),
+    ).toBe(true);
+    expect(
+      isGroundedEvidence({ type: 'test', strength: 'agent_reasoning', groundingOperationIds: [] }),
+    ).toBe(false);
+    expect(
+      isGroundedEvidence({
+        type: 'manual',
+        strength: 'agent_reasoning',
+        groundingOperationIds: [],
+      }),
+    ).toBe(false);
+    expect(
+      isGroundedEvidence({
+        type: 'manual',
+        strength: 'reproduced_behavior',
+        groundingOperationIds: [],
+      }),
+    ).toBe(false);
   });
 
   it('accepts strong + code_reference and confirmed + reproduced command failure', () => {
@@ -68,6 +113,7 @@ describe('generic evidence trust policy', () => {
       id: 'ev_1' as never,
       type: 'code_reference' as const,
       strength: 'strong_code_evidence' as const,
+      groundingOperationIds: [],
     };
     expect(
       validateFindingTrust({ confidence: 'strong', evidenceIds: ['ev_1' as never] }, [code]),
@@ -76,6 +122,7 @@ describe('generic evidence trust policy', () => {
       id: 'ev_1' as never,
       type: 'command' as const,
       strength: 'reproduced_failure' as const,
+      groundingOperationIds: ['op_01K7777777777777777777A8W1' as never],
     };
     expect(
       validateFindingTrust({ confidence: 'confirmed', evidenceIds: ['ev_1' as never] }, [command]),
@@ -83,23 +130,44 @@ describe('generic evidence trust policy', () => {
   });
 
   it('classifies grounding: reproduced, operation, source, model-reported', () => {
-    expect(groundingOfEvidence({ type: 'command', strength: 'reproduced_failure' })).toBe(
-      'reproduced',
-    );
-    expect(groundingOfEvidence({ type: 'command', strength: 'tool_diagnostic' })).toBe(
-      'operation_observed',
-    );
-    expect(groundingOfEvidence({ type: 'test', strength: 'agent_reasoning' })).toBe(
-      'operation_observed',
-    );
-    expect(groundingOfEvidence({ type: 'code_reference', strength: 'agent_reasoning' })).toBe(
-      'source_verified',
-    );
-    expect(groundingOfEvidence({ type: 'manual', strength: 'agent_reasoning' })).toBe(
-      'model_reported',
-    );
-    expect(groundingOfEvidence({ type: 'runtime', strength: 'reproduced_behavior' })).toBe(
-      'reproduced',
-    );
+    const opIds = ['op_01K7777777777777777777A8W1' as never];
+    expect(
+      groundingOfEvidence({
+        type: 'command',
+        strength: 'reproduced_failure',
+        groundingOperationIds: opIds,
+      }),
+    ).toBe('reproduced');
+    expect(
+      groundingOfEvidence({
+        type: 'command',
+        strength: 'tool_diagnostic',
+        groundingOperationIds: opIds,
+      }),
+    ).toBe('operation_observed');
+    expect(
+      groundingOfEvidence({ type: 'test', strength: 'agent_reasoning', groundingOperationIds: [] }),
+    ).toBe('model_reported');
+    expect(
+      groundingOfEvidence({
+        type: 'code_reference',
+        strength: 'agent_reasoning',
+        groundingOperationIds: [],
+      }),
+    ).toBe('source_verified');
+    expect(
+      groundingOfEvidence({
+        type: 'manual',
+        strength: 'agent_reasoning',
+        groundingOperationIds: [],
+      }),
+    ).toBe('model_reported');
+    expect(
+      groundingOfEvidence({
+        type: 'runtime',
+        strength: 'reproduced_behavior',
+        groundingOperationIds: opIds,
+      }),
+    ).toBe('reproduced');
   });
 });

@@ -8,34 +8,32 @@ const REPRODUCED_STRENGTHS: ReadonlySet<EvidenceStrength> = new Set([
   'reproduced_behavior',
 ]);
 
-const OPERATION_STRENGTHS: ReadonlySet<EvidenceStrength> = new Set([
-  'reproduced_failure',
-  'reproduced_behavior',
-  'tool_diagnostic',
-]);
-
 const SOURCE_TYPES: ReadonlySet<EvidenceType> = new Set([
   'code_reference',
   'static_analysis',
   'browser',
 ]);
 
-const OPERATION_TYPES: ReadonlySet<EvidenceType> = new Set(['command', 'test']);
-
+/** Provenance is what Sentry verified — never the model-selected label.
+ *  Manual reasoning is always model_reported; validated source types are
+ *  source_verified; command/test/runtime/log need durable canonical
+ *  operation IDs for operation_observed, plus a reproduced strength the
+ *  pipeline already vetted for reproduced. A strength label alone
+ *  manufactures nothing. */
 export function groundingOfEvidence(
-  evidence: Pick<Evidence, 'type' | 'strength'>,
+  evidence: Pick<Evidence, 'type' | 'strength' | 'groundingOperationIds'>,
 ): EvidenceGrounding {
-  if (REPRODUCED_STRENGTHS.has(evidence.strength as EvidenceStrength)) return 'reproduced';
-  if (
-    OPERATION_STRENGTHS.has(evidence.strength as EvidenceStrength) ||
-    OPERATION_TYPES.has(evidence.type as EvidenceType)
-  )
-    return 'operation_observed';
+  if (evidence.type === 'manual') return 'model_reported';
   if (SOURCE_TYPES.has(evidence.type as EvidenceType)) return 'source_verified';
-  return 'model_reported';
+  const operationGrounded = (evidence.groundingOperationIds?.length ?? 0) > 0;
+  if (!operationGrounded) return 'model_reported';
+  if (REPRODUCED_STRENGTHS.has(evidence.strength as EvidenceStrength)) return 'reproduced';
+  return 'operation_observed';
 }
 
-export function isGroundedEvidence(evidence: Pick<Evidence, 'type' | 'strength'>): boolean {
+export function isGroundedEvidence(
+  evidence: Pick<Evidence, 'type' | 'strength' | 'groundingOperationIds'>,
+): boolean {
   return groundingOfEvidence(evidence) !== 'model_reported';
 }
 
@@ -44,7 +42,7 @@ export type FindingTrustVerdict =
 
 export function validateFindingTrust(
   finding: Pick<Finding, 'confidence' | 'evidenceIds'>,
-  evidence: ReadonlyArray<Pick<Evidence, 'id' | 'type' | 'strength'>>,
+  evidence: ReadonlyArray<Pick<Evidence, 'id' | 'type' | 'strength' | 'groundingOperationIds'>>,
 ): FindingTrustVerdict {
   if (finding.evidenceIds.length === 0) {
     return { ok: false, reason: 'Finding has no evidence references' };
@@ -54,7 +52,7 @@ export function validateFindingTrust(
     if (!byId.has(id)) return { ok: false, reason: 'Finding references unknown evidence: ' + id };
   }
   const items = finding.evidenceIds.map((id) => byId.get(id)) as Array<
-    Pick<Evidence, 'id' | 'type' | 'strength'>
+    Pick<Evidence, 'id' | 'type' | 'strength' | 'groundingOperationIds'>
   >;
   const groundings = items.map(groundingOfEvidence);
   if (finding.confidence === 'confirmed') {

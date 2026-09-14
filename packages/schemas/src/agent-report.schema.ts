@@ -183,6 +183,26 @@ export const SentryAgentReportV2Schema = z
       keys.add(evidence.key);
       strengthByKey.set(evidence.key, evidence.strength);
       typeByKey.set(evidence.key, evidence.type);
+      // Impossible strength/type combos are rejected at the schema
+      // boundary: a strength label must never manufacture provenance
+      // (manual reasoning is never reproduced/tool/strong-source;
+      // code references are never runtime reproductions).
+      const impossible =
+        (evidence.type === 'manual' &&
+          (evidence.strength === 'reproduced_failure' ||
+            evidence.strength === 'reproduced_behavior' ||
+            evidence.strength === 'tool_diagnostic' ||
+            evidence.strength === 'strong_code_evidence')) ||
+        (evidence.type === 'code_reference' &&
+          (evidence.strength === 'reproduced_failure' ||
+            evidence.strength === 'reproduced_behavior'));
+      if (impossible)
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['evidence', index, 'strength'],
+          message:
+            'Strength ' + evidence.strength + ' is impossible for ' + evidence.type + ' evidence',
+        });
     }
     value.findings.forEach((finding, findingIndex) => {
       finding.evidenceKeys.forEach((key, keyIndex) => {
