@@ -20,6 +20,7 @@ import {
   type FindingConfidence,
   type HarnessRunRequest,
   type SentryAgentEvidenceV1,
+  type SentryAgentReportEvidenceV2,
 } from '@qa/schemas';
 import { validateFindingTrust } from '@qa/domain';
 
@@ -205,6 +206,148 @@ export async function buildBaselineIndex(
     return { fileHashByPath: map };
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Normalize a ReportV2 evidence item into the V1 model-facing shape, then
+ * delegate to the single trust core (convertEvidence). Sentry-owned facts
+ * (command text, exit codes, test status) are derived from the frozen
+ * observed operation — never repeated from model text. Unknown-exit
+ * operations cannot ground outcome claims: weak claims return a manual
+ * downgrade here, reproduced claims throw (consistent with V1 policy).
+ */
+export async function convertReportEvidence(
+  request: HarnessRunRequest,
+  source: SentryAgentReportEvidenceV2,
+  context: EvidencePipelineContext,
+  grounding: ObservedEvidenceGrounding,
+): Promise<Evidence> {
+  const fail = (message: string): Error => context.errors.invalidResult(message);
+  const isReproducedClaim =
+    source.strength === 'reproduced_failure' || source.strength === 'reproduced_behavior';
+  const weakDowngrade = (summary: string): Promise<Evidence> =>
+    convertEvidence(
+      request,
+      {
+        key: source.key,
+        type: 'manual',
+        strength: 'agent_reasoning',
+        description: source.description,
+      },
+      context,
+      grounding,
+    ).then((manual) => ({
+      ...manual,
+      manual: { summary, author: context.authorLabel },
+    }));
+  switch (source.type) {
+    case 'command': {
+      const linked = grounding.operations.get(source.operationKey);
+      if (linked === undefined) throw fail('Command evidence references an unknown operation.');
+      if (linked.commandText === undefined || linked.exitCode === undefined) {
+        if (isReproducedClaim)
+          throw fail(
+            'Reproduced command evidence cites an operation without observed command outcome.',
+          );
+        return weakDowngrade(
+          'Command evidence cites an operation with unobserved outcome; downgraded: ' +
+            source.description,
+        );
+      }
+      return convertEvidence(
+        request,
+        {
+          key: source.key,
+          type: 'command',
+          strength: source.strength,
+          description: source.description,
+          command: linked.commandText,
+          exitCode: linked.exitCode,
+          operationKey: source.operationKey,
+        },
+        context,
+        grounding,
+      );
+    }
+    case 'test': {
+      const linked = grounding.operations.get(source.operationKey);
+      if (linked === undefined) throw fail('Test evidence references an unknown operation.');
+      if (!linked.isTestOperation) throw fail('Test evidence references a non-test operation.');
+      if (linked.exitCode === undefined) {
+        if (isReproducedClaim)
+          throw fail(
+            'Reproduced test evidence cites an operation whose exit code was not observed.',
+          );
+        return weakDowngrade(
+          'Test evidence cites an operation with unobserved exit code; downgraded: ' +
+            source.description,
+        );
+      }
+      return convertEvidence(
+        request,
+        {
+          key: source.key,
+          type: 'test',
+          strength: source.strength,
+          description: source.description,
+          framework: source.framework ?? 'observed-operation',
+          name: source.name ?? source.description.slice(0, 200),
+          status: linked.exitCode === 0 ? 'passed' : 'failed',
+          operationKey: source.operationKey,
+        },
+        context,
+        grounding,
+      );
+    }
+    case 'runtime':
+    case 'log':
+      return convertEvidence(
+        request,
+        {
+          key: source.key,
+          type: source.type,
+          strength: source.strength,
+          description: source.description,
+          ...(source.operationKey === undefined ? {} : { operationKey: source.operationKey }),
+          ...(source.type === 'log' && source.source !== undefined
+            ? { source: source.source }
+            : {}),
+        },
+        context,
+        grounding,
+      );
+    case 'code_reference':
+      return convertEvidence(
+        request,
+        {
+          key: source.key,
+          type: 'code_reference',
+          strength: source.strength,
+          description: source.description,
+          relativePath: source.relativePath,
+          ...(source.lineStart === undefined ? {} : { lineStart: source.lineStart }),
+          ...(source.lineEnd === undefined ? {} : { lineEnd: source.lineEnd }),
+        },
+        context,
+        grounding,
+      );
+    case 'manual':
+      return convertEvidence(
+        request,
+        {
+          key: source.key,
+          type: 'manual',
+          strength: source.strength,
+          description: source.description,
+        },
+        context,
+        grounding,
+      );
+    default: {
+      const _exhaustive: never = source;
+      throw fail('Unknown report evidence type: ' + JSON.stringify(_exhaustive));
+    }
   }
 }
 

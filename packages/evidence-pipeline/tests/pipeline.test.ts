@@ -15,6 +15,7 @@ import {
   buildBaselineIndex,
   commandIdentity,
   convertEvidence,
+  convertReportEvidence,
   emptyGrounding,
   isTestCommand,
   normalizeCommandText,
@@ -289,6 +290,85 @@ describe('shared evidence pipeline', () => {
     } as SentryAgentEvidenceV1;
     const downgradedTest = await convertEvidence(request(root), weakTest, context, codeless);
     expect(downgradedTest.type).toBe('manual');
+  });
+
+  it('normalizes ReportV2 evidence by deriving Sentry-owned fields from operations', async () => {
+    const root = await workspace();
+    const grounding = groundingWithCommand('pnpm test', 1);
+    const operationId = grounding.operations.get('op_1')?.operationId;
+    // Command V2 carries no text/code: Sentry derives both from the op.
+    const command = await convertReportEvidence(
+      request(root),
+      {
+        key: 'cmd',
+        type: 'command',
+        strength: 'reproduced_failure',
+        description: 'Suite failed.',
+        operationKey: 'op_1',
+      },
+      context,
+      grounding,
+    );
+    expect(command.type).toBe('command');
+    if (command.type === 'command') {
+      expect(command.command.command).toBe('pnpm test');
+      expect(command.command.exitCode).toBe(1);
+    }
+    expect(command.groundingOperationIds).toEqual([operationId]);
+    // Test V2 carries no status: Sentry derives failed from exit 1.
+    const test = await convertReportEvidence(
+      request(root),
+      {
+        key: 't',
+        type: 'test',
+        strength: 'reproduced_failure',
+        description: 'Suite failed.',
+        operationKey: 'op_1',
+        framework: 'vitest',
+        name: 'suite',
+      },
+      context,
+      grounding,
+    );
+    expect(test.type).toBe('test');
+    if (test.type === 'test') expect(test.test.status).toBe('failed');
+    // Reproduced claims on codeless ops fail; weak ones downgrade.
+    const codeless = emptyGrounding();
+    codeless.operations.set('op_9', {
+      operationId: createOperationId(),
+      operationKey: 'op_9',
+      toolName: 'shell',
+      commandText: 'pnpm test',
+      exitCode: undefined,
+      isTestOperation: true,
+    });
+    await expect(
+      convertReportEvidence(
+        request(root),
+        {
+          key: 'c',
+          type: 'command',
+          strength: 'reproduced_failure',
+          description: 'x',
+          operationKey: 'op_9',
+        },
+        context,
+        codeless,
+      ),
+    ).rejects.toThrow(/without observed command outcome/);
+    const weak = await convertReportEvidence(
+      request(root),
+      {
+        key: 'w',
+        type: 'command',
+        strength: 'tool_diagnostic',
+        description: 'x',
+        operationKey: 'op_9',
+      },
+      context,
+      codeless,
+    );
+    expect(weak.type).toBe('manual');
   });
 
   it('rejects unknown operation keys', async () => {
