@@ -698,6 +698,250 @@ describe('DeepSeekHarnessAdapter', () => {
     expect(events.at(-1)?.type).toBe('run.completed');
   });
 
+  it('forbids tool calls during reporting without mutating the frozen ledger', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-report-firewall-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          runText: threeStage(
+            planResult(validPlan()),
+            investigationResult([
+              {
+                type: 'tool/call',
+                seq: 1,
+                time: 1,
+                data: {
+                  turn: 2,
+                  step: 1,
+                  callId: 'call-1',
+                  name: 'shell',
+                  arguments: JSON.stringify({ command: 'pnpm test' }),
+                },
+              },
+              {
+                type: 'tool/result',
+                seq: 2,
+                time: 2,
+                data: {
+                  turn: 2,
+                  step: 1,
+                  message: {
+                    id: 'msg-1',
+                    role: 'user',
+                    content: [
+                      {
+                        type: 'tool-result',
+                        toolCallId: 'call-1',
+                        content: [{ type: 'text', text: 'ok' }],
+                      },
+                    ],
+                    source: { kind: 'tool', plugin: 'shell', tool: 'shell' },
+                  },
+                  meta: { exitCode: 0 },
+                },
+              },
+            ]),
+            // Report turn attempts a fresh tool call: must fail with the
+            // firewall error; the investigation op must not be joined by
+            // a reporting-stage operation.
+            executionResult('Investigating further.', [
+              {
+                type: 'tool/call',
+                seq: 9,
+                time: 9,
+                data: {
+                  turn: 3,
+                  step: 1,
+                  callId: 'call-sneaky',
+                  name: 'shell',
+                  arguments: JSON.stringify({ command: 'rm -rf /tmp/x' }),
+                },
+              },
+            ]),
+          ),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'DEEPSEEK_REPORT_TOOL_FORBIDDEN' },
+    });
+    // Exactly one investigation operation observed; the sneaky reporting
+    // call never became one.
+    expect(events.filter((e) => e.type === 'tool.started')).toHaveLength(1);
+    expect(events.filter((e) => e.type === 'command.executed')).toHaveLength(1);
+  });
+
+  it('repairs a rejected report without rerunning the investigation', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-report-repair-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    let calls = 0;
+    const overconfident = {
+      schemaVersion: 2,
+      summary: 'Overconfident report.',
+      checks: [],
+      hypotheses: [],
+      evidence: [{ key: 'm1', type: 'manual', strength: 'agent_reasoning', description: 'Hunch.' }],
+      findings: [
+        {
+          title: 'Claim',
+          category: 'logic',
+          severity: 'low',
+          confidence: 'confirmed',
+          description: 'Ungrounded confirmation.',
+          locations: [{ relativePath: 'README.md' }],
+          evidenceKeys: ['m1'],
+          reproductionSteps: [],
+        },
+      ],
+      limitations: [],
+    };
+    const corrected = {
+      schemaVersion: 2,
+      summary: 'Calibrated report.',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 'ref',
+          type: 'code_reference',
+          strength: 'strong_code_evidence',
+          description: 'Relevant line.',
+          relativePath: 'README.md',
+          lineStart: 2,
+          lineEnd: 2,
+        },
+      ],
+      findings: [
+        {
+          title: 'Fixture issue',
+          category: 'documentation',
+          severity: 'low',
+          confidence: 'strong',
+          description: 'Grounded claim.',
+          locations: [{ relativePath: 'README.md', lineStart: 2 }],
+          evidenceKeys: ['ref'],
+          reproductionSteps: [],
+        },
+      ],
+      limitations: [],
+    };
+    const toolEvents = [
+      {
+        type: 'tool/call',
+        seq: 1,
+        time: 1,
+        data: {
+          turn: 2,
+          step: 1,
+          callId: 'call-1',
+          name: 'shell',
+          arguments: JSON.stringify({ command: 'pnpm test' }),
+        },
+      },
+      {
+        type: 'tool/result',
+        seq: 2,
+        time: 2,
+        data: {
+          turn: 2,
+          step: 1,
+          message: {
+            id: 'msg-1',
+            role: 'user',
+            content: [
+              {
+                type: 'tool-result',
+                toolCallId: 'call-1',
+                content: [{ type: 'text', text: 'ok' }],
+              },
+            ],
+            source: { kind: 'tool', plugin: 'shell', tool: 'shell' },
+          },
+          meta: { exitCode: 0 },
+        },
+      },
+    ];
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          runText: async (text: string) => {
+            calls += 1;
+            prompts.push(text);
+            if (calls === 1) return planResult(validPlan());
+            if (calls === 2) return investigationResult(toolEvents);
+            // Attempt 1: overconfident confirmed on manual evidence.
+            // Attempt 2 (correction): calibrated strong on code reference.
+            return executionResult(JSON.stringify(calls === 3 ? overconfident : corrected));
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    // Investigation executed once (one tool op); reporting ran twice.
+    expect(events.filter((e) => e.type === 'tool.started')).toHaveLength(1);
+    expect(events.filter((e) => e.type === 'command.executed')).toHaveLength(1);
+    expect(prompts).toHaveLength(4);
+    // The correction prompt carries bounded validation feedback.
+    expect(prompts[3]).toContain('Correct these report issues');
+    expect(prompts[3]).toContain('confirmed');
+    // Retry telemetry is observable.
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'DEEPSEEK_REPORT_RETRY' }),
+    );
+    const usage = events.find((e) => e.type === 'usage.updated');
+    expect(usage).toMatchObject({
+      type: 'usage.updated',
+      usage: expect.objectContaining({ turns: 4 }),
+    });
+  });
+
+  it('states uniform confidence semantics in the report prompt', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-calibration-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          runText: async (text: string) => {
+            prompts.push(text);
+            if (prompts.length === 1) return planResult(validPlan());
+            if (prompts.length === 2) return investigationResult();
+            return reportResult(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    const report = prompts.at(-1) ?? '';
+    expect(report).toContain('confirmed requires genuinely reproduced');
+    expect(report).toContain('strong requires grounded source');
+    expect(report).toContain('The ledger below is the ONLY authoritative source');
+  });
+
   it('disposes the owned client exactly once across cancel and dispose', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-cancel-'));
     roots.push(root);

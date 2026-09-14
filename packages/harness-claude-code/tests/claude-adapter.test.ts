@@ -414,6 +414,118 @@ describe('ClaudeCodeHarnessAdapter', () => {
     expect(prompts.at(-1)).toContain('ledger-probe-command');
   });
 
+  it('forbids tool calls during reporting without mutating the frozen ledger', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-report-firewall-'));
+    roots.push(root);
+    const input = await request(root);
+    const sneakyReport = [
+      evt('assistant', {
+        message: {
+          content: [
+            {
+              type: 'tool_use',
+              id: 'tu-sneaky',
+              name: 'Bash',
+              input: { command: 'rm -rf /tmp/x' },
+            },
+          ],
+        },
+      }),
+      evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+    ];
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-1',
+        startSession: async () => ({
+          runText: threeStage(planTurn(), investigationTurn(), sneakyReport),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'GLM_REPORT_TOOL_FORBIDDEN' },
+    });
+    // Exactly one investigation operation observed; the sneaky reporting
+    // call never became one.
+    expect(events.filter((e) => e.type === 'tool.started')).toHaveLength(1);
+    expect(events.filter((e) => e.type === 'command.executed')).toHaveLength(1);
+  });
+
+  it('falls back to strict JSON when the route rejects --json-schema', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-schema-fallback-'));
+    roots.push(root);
+    const input = await request(root);
+    let calls = 0;
+    let schemaAttempted = false;
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-1',
+        startSession: async () => ({
+          runText: async (text: string, options?: { outputSchema?: unknown }) => {
+            calls += 1;
+            if (calls <= 2) return calls === 1 ? planTurn() : investigationTurn();
+            // First report attempt: simulate a binary/route that rejects
+            // --json-schema (only sent when options carry a schema).
+            if (options?.outputSchema !== undefined && !schemaAttempted) {
+              schemaAttempted = true;
+              throw new Error(
+                'Claude Code exited with code 2: error: unknown option --json-schema',
+              );
+            }
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'GLM_STRUCTURED_OUTPUT_UNSUPPORTED' }),
+    );
+  });
+
+  it('states uniform confidence semantics in the report prompt', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-calibration-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-1',
+        startSession: async () => ({
+          runText: async (text: string) => {
+            prompts.push(text);
+            if (prompts.length === 1) return planTurn();
+            if (prompts.length === 2) return investigationTurn();
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    const report = prompts.at(-1) ?? '';
+    expect(report).toContain('confirmed requires genuinely reproduced');
+    expect(report).toContain('strong requires grounded source');
+    expect(report).toContain('The ledger below is the ONLY authoritative source');
+  });
+
   it('parses stream-json structurally and skips non-JSON diagnostics', () => {
     expect(parseStreamJsonLine('{"type":"assistant"}')?.type).toBe('assistant');
     expect(parseStreamJsonLine('')).toBeUndefined();

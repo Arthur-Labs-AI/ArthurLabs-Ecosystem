@@ -469,6 +469,115 @@ describe('MuseHarnessAdapter', () => {
     expect(prompts.at(-1)).toContain('ledger-probe-command');
   });
 
+  it('forbids tool calls during reporting without mutating the frozen ledger', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-report-firewall-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = turn([
+      {
+        itemId: 'p',
+        revision: 1,
+        kind: 'agentMessage',
+        status: 'completed',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          projectUnderstanding: 'x',
+          criticalFlows: [],
+          weakPoints: [],
+          plannedChecks: ['x'],
+        }),
+      },
+    ]);
+    const investigation = investigationTurn([
+      {
+        itemId: 'shell-1',
+        revision: 1,
+        kind: 'userShell',
+        status: 'completed',
+        turnId: 'run',
+        commandText: 'pnpm test',
+        exitCode: 0,
+      },
+    ]);
+    // Report turn attempts a fresh tool call: must fail with the
+    // firewall error; the investigation op must stand alone.
+    const sneakyReport = turn([
+      {
+        itemId: 'shell-2',
+        revision: 1,
+        kind: 'userShell',
+        status: 'completed',
+        turnId: 'report',
+        commandText: 'rm -rf /tmp/x',
+        exitCode: 0,
+      },
+    ]);
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'muse-spark-1.3-contributor',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          sendText: threeStage(plan, investigation, sneakyReport),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'MUSE_REPORT_TOOL_FORBIDDEN' },
+    });
+    expect(events.filter((event) => event.type === 'tool.started')).toHaveLength(1);
+    expect(events.filter((event) => event.type === 'command.executed')).toHaveLength(1);
+  });
+
+  it('states uniform confidence semantics in the report prompt', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-calibration-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'muse-spark-1.3-contributor',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          sendText: async (text: string) => {
+            prompts.push(text);
+            if (prompts.length === 1)
+              return turn([
+                {
+                  itemId: 'p',
+                  revision: 1,
+                  kind: 'agentMessage',
+                  status: 'completed',
+                  text: JSON.stringify({
+                    schemaVersion: 1,
+                    projectUnderstanding: 'x',
+                    criticalFlows: [],
+                    weakPoints: [],
+                    plannedChecks: ['x'],
+                  }),
+                },
+              ]);
+            if (prompts.length === 2) return investigationTurn();
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    const report = prompts.at(-1) ?? '';
+    expect(report).toContain('confirmed requires genuinely reproduced');
+    expect(report).toContain('strong requires grounded source');
+    expect(report).toContain('The ledger below is the ONLY authoritative source');
+  });
+
   it('decides approvals fail-closed on semantics, not label matching', () => {
     const ws = '/tmp/ws/project';
     const choices = [
