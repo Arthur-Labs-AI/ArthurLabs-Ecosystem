@@ -1,0 +1,301 @@
+/**
+ * HR-02.5D2: managed path service for provisioned model files.
+ *
+ * Layout under the managed root: models live under models/<key>/live,
+ * transient staging areas beside live, managed Python environments
+ * under runtimes/python/<runtime-id>, plus staging/ and cache/ areas.
+ *
+ * A catalog model id NEVER becomes a path directly: it maps through
+ * toStorageKey() (lowercase alnum + internal -/_ , max 64 chars) and
+ * every resolved path is containment-checked against the canonical
+ * managed root. Absolute/drive/UNC escapes, dot-dot segments, NUL bytes
+ * are rejected lexically; symlink/junction escapes are rejected via
+ * realpath inspection of existing prefixes on destructive and promotion
+ * operations (assertNoEscapeThroughLinks). The canonical root identity
+ * never depends on the process working directory.
+ */
+
+import * as path from 'node:path';
+
+import { ArthurError } from '../../../core/errors/errors';
+
+export const LOCAL_MODEL_DIRNAME = 'local-models';
+
+export const DEFAULT_MANAGED_ROOT_SEGMENTS = ['data', 'runtime', 'local-models'];
+
+/**
+ * Filesystem indirection inspector (production: node lstat/realpath;
+ * tests: in-memory symlinks). Only the prefix chain a caller is about
+ * to trust is inspected — no whole-tree walks.
+ */
+export interface Pathoscopy {
+  /** True when the path itself is a symlink/junction (lstat, never follows). */
+  isLink(p: string): boolean;
+  /** Canonical location of an existing path (realpath); null when absent. */
+  realpathOrNull(p: string): string | null;
+}
+
+export function nodePathoscopy(): Pathoscopy {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs');
+  return {
+    isLink(p: string): boolean {
+      try {
+        return fs.lstatSync(p).isSymbolicLink() || (!fs.statSync(p).isDirectory() && (fs.lstatSync(p) as unknown as { isJunction?: unknown }).isJunction === true);
+      } catch {
+        return false;
+      }
+    },
+    realpathOrNull(p: string): string | null {
+      try {
+        return fs.realpathSync(p);
+      } catch {
+        return null;
+      }
+    },
+  };
+}
+
+export function memoryPathoscopy(links: Record<string, string> = {}): Pathoscopy & { links: Map<string, string> } {
+  const norm = (p: string): string => path.normalize(p);
+  const table = new Map<string, string>(Object.entries(links).map(([k, v]) => [norm(k), norm(v)] as [string, string]));
+  return {
+    links: table,
+    isLink(p: string): boolean {
+      return table.has(norm(p));
+    },
+    realpathOrNull(p: string): string | null {
+      const n = norm(p);
+      // Longest linked prefix wins, mirroring realpath semantics.
+      let cur = n;
+      for (let i = 0; i < 64; i += 1) {
+        const hit = table.get(cur);
+        if (hit !== undefined) return norm(hit + n.slice(cur.length));
+        const parent = path.dirname(cur);
+        if (parent === cur) return n;
+        cur = parent;
+      }
+      return n;
+    },
+  };
+}
+
+export const STORAGE_KEY_PATTERN = /^[a-z0-9][a-z0-9_\-]{0,63}$/;
+export const MAX_STORAGE_KEY_CHARS = 64;
+
+export interface ManagedLayout {
+  root: string;
+  modelsDir: string;
+  runtimesDir: string;
+  stagingDir: string;
+  cacheDir: string;
+}
+
+export function toStorageKey(modelId: string): string {
+  if (typeof modelId !== 'string' || modelId.length === 0 || modelId.length > 256) {
+    throw new ArthurError('INVALID_CONFIG', 'invalid model id for storage key: must be 1..256 characters');
+  }
+  // Fail closed BEFORE sanitizing: path separators, drive/UNC shapes,
+  // parent segments, and NUL must never be laundered into an
+  // innocent-looking key (which could also collide two model ids).
+  if (modelId.includes('\0') || modelId.includes('/') || modelId.includes('\\') || /(^|[\s:])\.\.(\s|$|[/\\])/.test(modelId) || /^[a-zA-Z]:/.test(modelId.trim()) || modelId.trim().startsWith('\\\\')) {
+    throw new ArthurError('INVALID_CONFIG', 'model id ' + JSON.stringify(modelId) + ' cannot map to a safe storage key');
+  }
+  const key = modelId.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (key.length === 0 || key.length > MAX_STORAGE_KEY_CHARS || !STORAGE_KEY_PATTERN.test(key)) {
+    throw new ArthurError('INVALID_CONFIG', 'model id ' + JSON.stringify(modelId) + ' cannot map to a safe storage key');
+  }
+  return key;
+}
+
+export function resolveManagedRoot(rawRoot: string): string {
+  if (typeof rawRoot !== 'string' || rawRoot.trim() === '') {
+    throw new ArthurError('INVALID_CONFIG', 'managed root must be a non-empty path');
+  }
+  if (rawRoot.includes('\0')) {
+    throw new ArthurError('INVALID_CONFIG', 'managed root contains NUL');
+  }
+  return path.resolve(rawRoot);
+}
+
+/**
+ * Canonical root identity: absolute + normalized + realpath-resolved when
+ * the directory exists. Independent of process cwd: callers pass an
+ * absolute configured root (resolveAppDataRoot), so two processes with
+ * different cwds derive the same identity for the same configuration.
+ */
+export function canonicalizeRoot(rawRoot: string, scope: Pathoscopy | null): string {
+  const resolved = resolveManagedRoot(rawRoot);
+  if (scope) {
+    const real = scope.realpathOrNull(resolved);
+    if (typeof real === 'string' && real !== '') return path.normalize(real);
+  }
+  return path.normalize(resolved);
+}
+
+export interface AppDataRootArgs {
+  configured?: string;
+  env?: NodeJS.ProcessEnv;
+  platform?: NodeJS.Platform;
+}
+
+// Stable per-user application data root. Windows uses LOCALAPPDATA
+// (machine-local, non-roaming: model weights, Python runtimes, staging
+// and caches can be very large and must never live in the roaming
+// profile). Returns null when no stable location is discoverable — the
+// caller fails typed rather than falling back to temp storage (temp is
+// not durable: files may vanish while persisted state still claims the
+// model/runtime is installed). Tests may use temp dirs via an explicit
+// configured root.
+function userDataFallback(platform: NodeJS.Platform, env: NodeJS.ProcessEnv): string | null {
+  if (platform === 'win32') {
+    const base = env['LOCALAPPDATA'];
+    if (typeof base === 'string' && base.trim() !== '') return path.join(base, 'ARTHUR');
+    return null;
+  }
+  if (platform === 'darwin') {
+    const home = env['HOME'];
+    if (typeof home === 'string' && home.trim() !== '') return path.join(home, 'Library', 'Application Support', 'ARTHUR');
+    return null;
+  }
+  const xdg = env['XDG_DATA_HOME'];
+  if (typeof xdg === 'string' && xdg.trim() !== '') return path.join(xdg, 'arthur');
+  const home = env['HOME'];
+  if (typeof home === 'string' && home.trim() !== '') return path.join(home, '.local', 'share', 'arthur');
+  return null;
+}
+
+/**
+ * Resolve the ARTHUR application data root once: explicit configured
+ * root wins, then ARTHUR_DATA_DIR, else a stable OS-specific per-user
+ * application data directory. The fallback NEVER depends on
+ * process.cwd(): without an explicit root, two processes started from
+ * different directories resolve the same identity. When no stable
+ * location exists, resolution fails typed (INVALID_CONFIG) rather than
+ * silently using temp storage. Repo-local ./data remains available
+ * only as an explicit dev override (configured root or ARTHUR_DATA_DIR).
+ */
+export function resolveAppDataRoot(args: AppDataRootArgs = {}): string {
+  const env = args.env ?? process.env;
+  const platform = args.platform ?? process.platform;
+  const fromEnv = env['ARTHUR_DATA_DIR'];
+  if (args.configured !== undefined || (typeof fromEnv === 'string' && fromEnv.trim() !== '')) {
+    const raw = (args.configured ?? fromEnv) as string;
+    if (raw.includes('\0')) throw new ArthurError('INVALID_CONFIG', 'data root contains NUL');
+    return path.resolve(raw);
+  }
+  const fallback = userDataFallback(platform, env);
+  if (fallback === null) {
+    throw new ArthurError('INVALID_CONFIG', 'no stable application data directory available; set an explicit data root or ARTHUR_DATA_DIR');
+  }
+  return path.resolve(fallback);
+}
+
+export function defaultLocalModelRoot(args: AppDataRootArgs = {}, scope: Pathoscopy | null = null): string {
+  const canonical = canonicalizeRoot(resolveAppDataRoot(args), scope);
+  return path.join(canonical, 'runtime', LOCAL_MODEL_DIRNAME);
+}
+
+function insideLexical(rootNorm: string, candNorm: string): boolean {
+  return candNorm === rootNorm || candNorm.startsWith(rootNorm + path.sep);
+}
+
+/**
+ * Link-aware containment for destructive and promotion operations: after
+ * the lexical check, every EXISTING prefix of the candidate (and of the
+ * root itself) is inspected via realpath. If any existing prefix
+ * canonicalizes outside the canonical root, the operation is rejected.
+ * Non-existent tails cannot be links yet, so they are lexically bound to
+ * the trusted existing prefix instead.
+ */
+export function assertNoEscapeThroughLinks(canonicalRoot: string, candidate: string, what: string, scope: Pathoscopy): string {
+  const candNorm = path.normalize(path.resolve(candidate));
+  const rootNorm = path.normalize(canonicalRoot);
+  if (!insideLexical(rootNorm, candNorm)) {
+    throw new ArthurError('INVALID_CONFIG', what + ' escapes the managed root');
+  }
+  // The candidate itself must not be a link (it would redirect the whole
+  // subtree, including on Windows junctions).
+  if (scope.isLink(candNorm)) {
+    throw new ArthurError('INVALID_CONFIG', what + ' is a symlink or junction');
+  }
+  // Walk existing prefixes from the candidate upward: the first existing
+  // prefix decides the on-disk truth for the whole tail below it.
+  let cur = candNorm;
+  for (let i = 0; i < 64; i += 1) {
+    const real = scope.realpathOrNull(cur);
+    if (real !== null) {
+      const realNorm = path.normalize(real);
+      if (!insideLexical(rootNorm, realNorm)) {
+        throw new ArthurError('INVALID_CONFIG', what + ' escapes the managed root through a symlink or junction');
+      }
+      return candNorm;
+    }
+    const parent = path.dirname(cur);
+    if (parent === cur) return candNorm;
+    cur = parent;
+  }
+  return candNorm;
+}
+
+// Containment check: candidate must equal root or live strictly inside it
+// (separator-aware, case-aware per platform, symlink-aware when the path
+// exists via realpath). Throws INVALID_CONFIG otherwise.
+export function assertInsideRoot(root: string, candidate: string, what: string): string {
+  const resolved = path.resolve(candidate);
+  if (resolved.includes('\0')) {
+    throw new ArthurError('INVALID_CONFIG', what + ' contains NUL');
+  }
+  const rootNorm = path.normalize(root);
+  const candNorm = path.normalize(resolved);
+  const inside = candNorm === rootNorm || candNorm.startsWith(rootNorm + path.sep);
+  if (!inside) {
+    throw new ArthurError('INVALID_CONFIG', what + ' escapes the managed root');
+  }
+  return candNorm;
+}
+
+export class ManagedPathService {
+  readonly layout: ManagedLayout;
+
+  constructor(rawRoot: string) {
+    const root = resolveManagedRoot(rawRoot);
+    this.layout = {
+      root,
+      modelsDir: path.join(root, 'models'),
+      runtimesDir: path.join(root, 'runtimes'),
+      stagingDir: path.join(root, 'staging'),
+      cacheDir: path.join(root, 'cache'),
+    };
+  }
+
+  modelDir(storageKey: string): string {
+    this.checkKey(storageKey);
+    return assertInsideRoot(this.layout.root, path.join(this.layout.modelsDir, storageKey), 'model dir');
+  }
+
+  liveDir(storageKey: string): string {
+    this.checkKey(storageKey);
+    return assertInsideRoot(this.layout.root, path.join(this.layout.modelsDir, storageKey, 'live'), 'live dir');
+  }
+
+  runtimeDir(runtimeId: string): string {
+    if (typeof runtimeId !== 'string' || !STORAGE_KEY_PATTERN.test(runtimeId)) {
+      throw new ArthurError('INVALID_CONFIG', 'invalid runtime id ' + JSON.stringify(runtimeId));
+    }
+    return assertInsideRoot(this.layout.root, path.join(this.layout.runtimesDir, 'python', runtimeId), 'runtime dir');
+  }
+
+  cachePath(name: string): string {
+    if (typeof name !== 'string' || name.trim() === '' || name.includes('\0')) {
+      throw new ArthurError('INVALID_CONFIG', 'invalid cache name');
+    }
+    return assertInsideRoot(this.layout.root, path.join(this.layout.cacheDir, name), 'cache path');
+  }
+
+  private checkKey(storageKey: string): void {
+    if (typeof storageKey !== 'string' || !STORAGE_KEY_PATTERN.test(storageKey)) {
+      throw new ArthurError('INVALID_CONFIG', 'invalid storage key ' + JSON.stringify(storageKey));
+    }
+  }
+}
