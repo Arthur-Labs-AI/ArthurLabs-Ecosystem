@@ -68,46 +68,6 @@ function validPlan() {
   });
 }
 
-function validExecution() {
-  return JSON.stringify({
-    schemaVersion: 1,
-    summary: 'One evidence-backed issue.',
-    checks: [{ name: 'Inspect README', status: 'passed' }],
-    hypotheses: [
-      {
-        title: 'Boundary risk',
-        rationale: 'The fixture is minimal.',
-        relatedPaths: ['README.md'],
-        plannedChecks: ['Inspect README'],
-      },
-    ],
-    evidence: [
-      {
-        key: 'readme',
-        type: 'code_reference',
-        strength: 'strong_code_evidence',
-        description: 'Relevant line.',
-        relativePath: 'README.md',
-        lineStart: 2,
-        lineEnd: 2,
-      },
-    ],
-    findings: [
-      {
-        title: 'Fixture issue',
-        category: 'documentation',
-        severity: 'low',
-        confidence: 'strong',
-        description: 'A deterministic fixture finding.',
-        locations: [{ relativePath: 'README.md', lineStart: 2 }],
-        evidenceKeys: ['readme'],
-        reproductionSteps: ['Open README.md'],
-      },
-    ],
-    limitations: [],
-  });
-}
-
 function planTurn() {
   return [
     evt('system', { subtype: 'init', session_id: 's', tools: ['Bash', 'Read'], model: 'm' }),
@@ -115,68 +75,6 @@ function planTurn() {
       message: { content: [{ type: 'text', text: validPlan() }] },
     }),
     evt('result', { is_error: false, usage: { input_tokens: 10, output_tokens: 5 } }),
-  ];
-}
-
-function executionTurnWithEvidence(evidence: unknown[]) {
-  return [
-    evt('assistant', {
-      message: {
-        content: [
-          {
-            type: 'tool_use',
-            id: 'tu-1',
-            name: 'Bash',
-            input: { command: 'pnpm test' },
-          },
-        ],
-      },
-    }),
-    evt('user', {
-      message: {
-        content: [
-          {
-            type: 'tool_result',
-            tool_use_id: 'tu-1',
-            content: [{ type: 'text', text: '12 passed' }],
-          },
-        ],
-      },
-    }),
-    evt('assistant', {
-      message: {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              schemaVersion: 1,
-              summary: 'Tool-backed finding.',
-              checks: [],
-              hypotheses: [],
-              evidence,
-              findings: [
-                {
-                  title: 'Suite green',
-                  category: 'testing',
-                  severity: 'info',
-                  confidence: 'strong',
-                  description: 'Observed green suite.',
-                  locations: [{ relativePath: 'README.md' }],
-                  evidenceKeys: ['cmd'],
-                  reproductionSteps: [],
-                },
-              ],
-              limitations: [],
-            }),
-          },
-        ],
-      },
-    }),
-    evt('result', {
-      is_error: false,
-      usage: { input_tokens: 100, output_tokens: 50 },
-      subagent_stats: { spawned: 0 },
-    }),
   ];
 }
 
@@ -287,43 +185,6 @@ function threeStage(
     if (calls === 2) return investigation;
     return report;
   };
-}
-
-function executionTurn(extra: ClaudeStreamEvent[] = []) {
-  return [
-    evt('assistant', {
-      message: {
-        content: [
-          {
-            type: 'tool_use',
-            id: 'tu-1',
-            name: 'Bash',
-            input: { command: 'pnpm test' },
-          },
-        ],
-      },
-    }),
-    evt('user', {
-      message: {
-        content: [
-          {
-            type: 'tool_result',
-            tool_use_id: 'tu-1',
-            content: [{ type: 'text', text: '12 passed' }],
-          },
-        ],
-      },
-    }),
-    ...extra,
-    evt('assistant', {
-      message: { content: [{ type: 'text', text: validExecution() }] },
-    }),
-    evt('result', {
-      is_error: false,
-      usage: { input_tokens: 100, output_tokens: 50 },
-      subagent_stats: { spawned: 0 },
-    }),
-  ];
 }
 
 describe('ClaudeCodeHarnessAdapter', () => {

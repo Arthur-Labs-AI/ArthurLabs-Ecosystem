@@ -145,53 +145,12 @@ function validPlan() {
   });
 }
 
-function validExecution() {
-  return JSON.stringify({
-    schemaVersion: 1,
-    summary: 'One evidence-backed issue.',
-    checks: [{ name: 'Inspect README', status: 'passed' }],
-    hypotheses: [
-      {
-        title: 'Boundary risk',
-        rationale: 'The fixture is minimal.',
-        relatedPaths: ['README.md'],
-        plannedChecks: ['Inspect README'],
-      },
-    ],
-    evidence: [
-      {
-        key: 'readme',
-        type: 'code_reference',
-        strength: 'strong_code_evidence',
-        description: 'Relevant line.',
-        relativePath: 'README.md',
-        lineStart: 2,
-        lineEnd: 2,
-      },
-    ],
-    findings: [
-      {
-        title: 'Fixture issue',
-        category: 'documentation',
-        severity: 'low',
-        confidence: 'strong',
-        description: 'A deterministic fixture finding.',
-        locations: [{ relativePath: 'README.md', lineStart: 2 }],
-        evidenceKeys: ['readme'],
-        reproductionSteps: ['Open README.md'],
-      },
-    ],
-    limitations: [],
-  });
-}
-
 describe('DeepSeekHarnessAdapter', () => {
   it('never forwards unrelated host secrets to the DeepSeek child environment', async () => {
     const seen: Array<NodeJS.ProcessEnv | undefined> = [];
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-env-'));
     roots.push(root);
     const input = await request(root);
-    let calls = 0;
     const factory: DeepSeekClientFactory = async (spawnInput) => {
       seen.push(spawnInput.environment);
       return {
