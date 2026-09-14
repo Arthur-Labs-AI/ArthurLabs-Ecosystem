@@ -60,12 +60,12 @@ describe('Sentry persistence foundation', () => {
     });
     expect(
       first.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 2 });
+    ).toMatchObject({ count: 3 });
     first.close();
     const reopened = new SentryDatabase({ dataRoot });
     expect(
       reopened.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 2 });
+    ).toMatchObject({ count: 3 });
     expect(reopened.connection.prepare('PRAGMA busy_timeout').get()).toMatchObject({
       timeout: 5000,
     });
@@ -157,7 +157,7 @@ describe('Sentry persistence foundation', () => {
     const repository = new SentryRepository(upgraded);
     expect(
       upgraded.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 2 });
+    ).toMatchObject({ count: 3 });
     expect(repository.getProject(project.id)).toEqual(project);
     expect(repository.getRun(run.id)).toEqual(run);
     expect(repository.getAgentRun(agent.id)).toEqual(agent);
@@ -321,6 +321,209 @@ describe('Sentry persistence foundation', () => {
     await expect(store.delete(artifact)).rejects.toThrow();
     expect(repository.getArtifact(artifact.id)).toEqual(artifact);
     expect(await readFile(join(dataRoot, artifact.relativeStoragePath), 'utf8')).toBe('{}\n');
+    database.close();
+  });
+
+  it('persists merge results atomically and reuses them by input digest', async () => {
+    const dataRoot = await root();
+    const database = new SentryDatabase({ dataRoot });
+    const repository = new SentryRepository(database);
+    const {
+      QARunSchema: Run,
+      AgentRunSchema: Agent,
+      FindingSchema: Finding,
+      EvidenceSchema: Evidence,
+      ProjectRevisionSchema: Revision,
+      ArtifactSchema: Artifact,
+      ProjectSnapshotSchema: Snapshot,
+      ProjectContextSnapshotSchema: Context,
+    } = await import('@qa/schemas');
+    const revision = Revision.parse({
+      schemaVersion: 1,
+      id: 'rev_01K7777777777777777777A8W1',
+      projectId: 'proj_01K7777777777777777777A8W1',
+      sourcePath: '/tmp/fixture',
+      importedAt: '2026-09-14T00:00:00.000Z',
+      contentHash: 'b'.repeat(64),
+    });
+    const artifact = Artifact.parse({
+      schemaVersion: 1,
+      id: 'artifact_01K7777777777777777777A8W1' as never,
+      projectId: revision.projectId,
+      type: 'json',
+      relativeStoragePath: 'manifest.ndjson',
+      sizeBytes: 0,
+      sha256: revision.contentHash,
+      createdAt: '2026-09-14T00:00:00.000Z',
+    });
+    const snapshot = Snapshot.parse({
+      schemaVersion: 1,
+      id: 'snap_01K7777777777777777777A8W1',
+      projectId: revision.projectId,
+      projectRevisionId: revision.id,
+      createdAt: '2026-09-14T00:00:00.000Z',
+      sourceState: {},
+      manifest: {
+        entryCount: 0,
+        fileCount: 0,
+        directoryCount: 0,
+        symlinkCount: 0,
+        totalBytes: 0,
+        artifactId: artifact.id,
+      },
+      contentHash: revision.contentHash,
+    });
+    const context = Context.parse({
+      schemaVersion: 1,
+      id: 'ctx_01K7777777777777777777A8W1',
+      projectId: revision.projectId,
+      projectRevisionId: revision.id,
+      createdAt: '2026-09-14T00:00:00.000Z',
+    });
+    const run = Run.parse({
+      schemaVersion: 1,
+      id: 'run_01K7777777777777777777A8W1',
+      projectId: 'proj_01K7777777777777777777A8W1',
+      snapshotId: 'snap_01K7777777777777777777A8W1',
+      projectContextSnapshotId: 'ctx_01K7777777777777777777A8W1',
+      status: 'completed',
+      mode: 'full',
+      executionKind: 'production',
+      configuration: {
+        agentStackIds: ['stack_muse_main'],
+        verificationLevel: 'strict',
+        policy: { id: 'qa-standard', version: 1 },
+      },
+      createdAt: '2026-09-14T00:00:00.000Z',
+    });
+    const agent = Agent.parse({
+      schemaVersion: 1,
+      id: 'arun_01K7777777777777777777A8W1',
+      qaRunId: run.id,
+      agentStackId: 'stack_muse_main',
+      taskType: 'qa',
+      status: 'completed',
+      runtimeIdentity: {
+        adapterId: 'muse-code',
+        adapterVersion: '0.1.0',
+        policyId: 'qa-standard',
+        policyVersion: 1,
+      },
+    });
+    const finding = Finding.parse({
+      schemaVersion: 1,
+      id: 'find_01K7777777777777777777A8W1',
+      qaRunId: run.id,
+      agentRunId: agent.id,
+      sourceAgentStackId: 'stack_muse_main',
+      title: 'Lonely defect',
+      category: 'logic',
+      severity: 'medium',
+      confidence: 'strong',
+      description: 'A single-source defect.',
+      locations: [{ relativePath: 'src/a.ts' }],
+      evidenceIds: ['ev_01K7777777777777777777A8W1'],
+      reproductionSteps: [],
+      createdAt: '2026-09-14T00:00:00.000Z',
+    });
+    const evidence = Evidence.parse({
+      schemaVersion: 1,
+      id: 'ev_01K7777777777777777777A8W1',
+      qaRunId: run.id,
+      agentRunId: agent.id,
+      type: 'code_reference',
+      strength: 'strong_code_evidence',
+      environmentState: 'baseline',
+      description: 'source',
+      codeReference: { relativePath: 'src/a.ts' },
+      artifactIds: [],
+      groundingOperationIds: [],
+      createdAt: '2026-09-14T00:00:00.000Z',
+    });
+    // FK order: project → revision → artifact → snapshot/context →
+    // run → agent → finding/evidence.
+    const { ProjectSchema } = await import('@qa/schemas');
+    repository.saveProject(
+      ProjectSchema.parse({
+        schemaVersion: 1,
+        id: run.projectId,
+        name: 'fixture',
+        sourcePath: '/tmp/fixture',
+        createdAt: '2026-09-14T00:00:00.000Z',
+        updatedAt: '2026-09-14T00:00:00.000Z',
+      }),
+    );
+    repository.saveRevision(revision);
+    repository.saveArtifact(artifact);
+    repository.saveSnapshot(snapshot);
+    repository.saveContext(context);
+    repository.saveRun(run);
+    repository.saveAgentRun(agent);
+    repository.saveFinding(finding);
+    repository.saveEvidence(evidence);
+    const { MergeResultSchema } = await import('@qa/schemas');
+    const result = MergeResultSchema.parse({
+      schemaVersion: 1,
+      id: 'merge_01K7777777777777777777A8W1',
+      qaRunId: run.id,
+      projectSnapshotId: run.snapshotId,
+      mergerVersion: 1,
+      normalizerVersion: 1,
+      inputDigest: 'sha256:' + 'a'.repeat(64),
+      expectedAgentStackIds: ['stack_muse_main'],
+      usableAgentRunIds: [agent.id],
+      unavailableAgentStackIds: [],
+      sourceFindingCount: 1,
+      clusterCount: 1,
+      singleSourceCount: 1,
+      multiSourceCount: 0,
+      allAvailableCount: 0,
+      clusters: [
+        {
+          schemaVersion: 1,
+          id: 'cluster_01K7777777777777777777A8W1',
+          qaRunId: run.id,
+          projectSnapshotId: run.snapshotId,
+          mergerVersion: 1,
+          normalizerVersion: 1,
+          sourceFindingIds: [finding.id],
+          sourceAgentRunIds: [agent.id],
+          sourceAgentStackIds: ['stack_muse_main'],
+          representativeFindingId: finding.id,
+          agreementState: 'single_source',
+          expectedAgentCount: 1,
+          usableAgentCount: 1,
+          supportingAgentCount: 1,
+          unavailableAgentStackIds: [],
+          severityValues: ['medium'],
+          confidenceValues: ['strong'],
+          categoryValues: ['logic'],
+          evidenceIds: [evidence.id],
+          fieldDisagreements: [],
+          hasReproducedEvidence: false,
+          hasOperationEvidence: false,
+          hasSourceEvidence: true,
+          hasOnlyModelReasoning: false,
+          createdAt: '2026-09-14T00:00:00.000Z',
+        },
+      ],
+      durationMs: 3,
+      createdAt: '2026-09-14T00:00:00.000Z',
+    });
+    repository.saveMergeResult(result, new Map([[result.clusters[0]?.id as string, [finding.id]]]));
+    // Round-trip: result, digest lookup, clusters in deterministic order.
+    expect(repository.getMergeResult(result.id)).toEqual(result);
+    expect(repository.findMergeResultByDigest(run.id, result.inputDigest)?.id).toBe(result.id);
+    const clusters = repository.listClusters(result.id);
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0]?.sourceFindingIds).toEqual([finding.id]);
+    // Idempotent re-save: no duplicate rows.
+    repository.saveMergeResult(result, new Map([[result.clusters[0]?.id as string, [finding.id]]]));
+    expect(repository.listMergeResults(run.id)).toHaveLength(1);
+    expect(repository.listClusters(result.id)).toHaveLength(1);
+    // Source rows survive merge persistence untouched.
+    expect(repository.getRun(run.id)?.status).toBe('completed');
+    expect(repository.listFindings(run.id)).toHaveLength(1);
     database.close();
   });
 

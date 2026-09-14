@@ -284,6 +284,57 @@ describe('qa cli', () => {
     // timeouts are unchanged and assertions are not weakened.
   }, 60_000);
 
+  it('merges a simulated run deterministically with stable exit semantics', async () => {
+    const f = await fixture();
+    const add = invoke(['project', 'add', f.source, '--json'], f.dataRoot);
+    expect(add.status).toBe(0);
+    const added = machine(add, 'project.add');
+    if (!added.ok || added.command !== 'project.add') throw new Error('Unexpected response');
+    const simulate = invoke(
+      ['run', 'simulate', added.data.projectId, '--scenario', 'success', '--json'],
+      f.dataRoot,
+    );
+    expect(simulate.status).toBe(5);
+    const simulated = machine(simulate, 'run.simulate');
+    if (!simulated.ok || simulated.command !== 'run.simulate')
+      throw new Error('Unexpected response');
+    const runId = simulated.data.runId;
+    const merged = invoke(['run', 'merge', runId, '--json'], f.dataRoot);
+    expect(merged.status).toBe(0);
+    const mergeResponse = machine(merged, 'run.merge');
+    if (!mergeResponse.ok || mergeResponse.command !== 'run.merge') {
+      throw new Error('Unexpected response');
+    }
+    expect(mergeResponse.data).toMatchObject({
+      runId,
+      reused: false,
+      sourceFindings: 3,
+      usableAgents: 3,
+    });
+    expect(mergeResponse.data.clusters).toBeGreaterThan(0);
+    expect(mergeResponse.data.mergeResultId).toMatch(/^merge_/);
+    // Idempotent: second merge reuses the persisted result.
+    const remerged = invoke(['run', 'merge', runId, '--json'], f.dataRoot);
+    expect(remerged.status).toBe(0);
+    const remergeResponse = machine(remerged, 'run.merge');
+    if (!remergeResponse.ok || remergeResponse.command !== 'run.merge') {
+      throw new Error('Unexpected response');
+    }
+    expect(remergeResponse.data).toMatchObject({
+      runId,
+      reused: true,
+      mergeResultId: mergeResponse.data.mergeResultId,
+    });
+    // Unknown run maps to the established not-found exit category.
+    const missing = invoke(
+      ['run', 'merge', 'run_01K7777777777777777777A8W9', '--json'],
+      f.dataRoot,
+    );
+    expect(missing.status).toBe(3);
+    const missingResponse = machine(missing, 'run.merge');
+    expect(!missingResponse.ok && missingResponse.error.code).toBe('RUN_NOT_FOUND');
+  }, 60_000);
+
   it('returns typed machine errors and stable exit categories', async () => {
     const f = await fixture();
     const invalid = invoke(['project', 'add', '--json'], f.dataRoot);
