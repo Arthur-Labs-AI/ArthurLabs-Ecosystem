@@ -465,6 +465,77 @@ describe('DeepSeekHarnessAdapter', () => {
     expect(events.filter((e) => e.type === 'command.executed')).toHaveLength(0);
   });
 
+  it('builds the report prompt AFTER investigation with all observed operations', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-ledger-timing-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    let calls = 0;
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => ({
+          runText: async (text: string) => {
+            calls += 1;
+            prompts.push(text);
+            if (calls === 1) return planResult(validPlan());
+            if (calls === 2) {
+              // Investigation turn: real tool work, plain terminal prose
+              // (NOT final JSON). Creates op_1 during investigation.
+              return executionResult('Investigation complete.', [
+                {
+                  type: 'tool/call',
+                  seq: 1,
+                  time: 1,
+                  data: {
+                    turn: 2,
+                    step: 1,
+                    callId: 'call-ledger',
+                    name: 'shell',
+                    arguments: JSON.stringify({ command: 'ledger-probe-command' }),
+                  },
+                },
+                {
+                  type: 'tool/result',
+                  seq: 2,
+                  time: 2,
+                  data: {
+                    turn: 2,
+                    step: 1,
+                    message: {
+                      id: 'msg-ledger',
+                      role: 'user',
+                      content: [
+                        {
+                          type: 'tool-result',
+                          toolCallId: 'call-ledger',
+                          content: [{ type: 'text', text: 'probe ok' }],
+                        },
+                      ],
+                      source: { kind: 'tool', plugin: 'shell', tool: 'shell' },
+                    },
+                    meta: { exitCode: 0 },
+                  },
+                },
+              ]);
+            }
+            return executionResult(validExecution());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    // The FINAL structured-output prompt (whichever turn carries it) must
+    // contain the investigation-stage operation. Today's two-turn
+    // architecture builds it before investigation, so this fails.
+    expect(prompts.at(-1)).toContain('ledger-probe-command');
+  });
+
   it('fails closed on subagent fanout and sandbox denials', async () => {
     for (const hostile of [
       [{ type: 'subagent/started', seq: 1, time: 1, data: { child: 'x' } }],

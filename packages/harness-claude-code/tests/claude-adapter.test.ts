@@ -218,6 +218,93 @@ function executionTurn(extra: ClaudeStreamEvent[] = []) {
 }
 
 describe('ClaudeCodeHarnessAdapter', () => {
+  it('builds the report prompt AFTER investigation with all observed operations', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-ledger-timing-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    let calls = 0;
+    const reportJson = JSON.stringify({
+      schemaVersion: 1,
+      summary: 'Ledger-grounded report.',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 'cmd',
+          type: 'command',
+          strength: 'tool_diagnostic',
+          description: 'Probe ran.',
+          operationKey: 'op_1',
+        },
+      ],
+      findings: [],
+      limitations: [],
+    });
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-1',
+        startSession: async () => ({
+          runText: async (text: string) => {
+            calls += 1;
+            prompts.push(text);
+            if (calls === 1) return planTurn();
+            if (calls === 2) {
+              // Investigation turn: real tool work, terminal prose (NOT
+              // final JSON). Creates op_1 during investigation.
+              return [
+                evt('assistant', {
+                  message: {
+                    content: [
+                      {
+                        type: 'tool_use',
+                        id: 'tu-ledger',
+                        name: 'Bash',
+                        input: { command: 'ledger-probe-command' },
+                      },
+                    ],
+                  },
+                }),
+                evt('user', {
+                  message: {
+                    content: [
+                      {
+                        type: 'tool_result',
+                        tool_use_id: 'tu-ledger',
+                        content: [{ type: 'text', text: 'probe ok' }],
+                      },
+                    ],
+                  },
+                }),
+                evt('assistant', {
+                  message: { content: [{ type: 'text', text: 'Investigation complete.' }] },
+                }),
+                evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+              ];
+            }
+            return [
+              evt('assistant', {
+                message: { content: [{ type: 'text', text: reportJson }] },
+              }),
+              evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+            ];
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    // The FINAL structured-output prompt must contain the
+    // investigation-stage operation. Today's two-turn architecture builds
+    // it before investigation, so this fails.
+    expect(prompts.at(-1)).toContain('ledger-probe-command');
+  });
+
   it('parses stream-json structurally and skips non-JSON diagnostics', () => {
     expect(parseStreamJsonLine('{"type":"assistant"}')?.type).toBe('assistant');
     expect(parseStreamJsonLine('')).toBeUndefined();

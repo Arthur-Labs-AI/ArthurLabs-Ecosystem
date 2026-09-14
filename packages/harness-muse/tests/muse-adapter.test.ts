@@ -274,6 +274,114 @@ describe('MuseHarnessAdapter', () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
+  it('builds the report prompt AFTER investigation with all observed operations', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-muse-ledger-timing-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    let turnIndex = 0;
+    const close = vi.fn(async () => undefined);
+    const reportJson = JSON.stringify({
+      schemaVersion: 1,
+      summary: 'Ledger-grounded report.',
+      checks: [],
+      hypotheses: [],
+      evidence: [
+        {
+          key: 'cmd',
+          type: 'command',
+          strength: 'tool_diagnostic',
+          description: 'Probe ran.',
+          operationKey: 'op_1',
+        },
+      ],
+      findings: [],
+      limitations: [],
+    });
+    const factory: MuseClientFactory = async () => ({
+      startSession: async () => ({
+        sendText: async (text) => {
+          prompts.push(text);
+          turnIndex += 1;
+          if (turnIndex === 1) {
+            return turn([
+              {
+                itemId: 'plan-message',
+                revision: 1,
+                kind: 'agentMessage',
+                status: 'completed',
+                turnId: 'plan',
+                text: JSON.stringify({
+                  schemaVersion: 1,
+                  projectUnderstanding: 'Small fixture',
+                  criticalFlows: ['Read path'],
+                  weakPoints: ['Boundary'],
+                  plannedChecks: ['Inspect README'],
+                }),
+              },
+            ]);
+          }
+          if (turnIndex === 2) {
+            // Investigation turn: real tool work, terminal prose (NOT
+            // final JSON). Creates op_1 during investigation.
+            return turn([
+              {
+                itemId: 'shell-1',
+                revision: 1,
+                kind: 'userShell',
+                status: 'inProgress',
+                turnId: 'run',
+                commandText: 'ledger-probe-command',
+              },
+              {
+                itemId: 'shell-1',
+                revision: 2,
+                kind: 'userShell',
+                status: 'completed',
+                turnId: 'run',
+                commandText: 'ledger-probe-command',
+                exitCode: 0,
+                durationMs: 5,
+              },
+              {
+                itemId: 'investigation-done',
+                revision: 1,
+                kind: 'agentMessage',
+                status: 'completed',
+                turnId: 'run',
+                text: 'Investigation complete.',
+              },
+            ]);
+          }
+          return turn([
+            {
+              itemId: 'report-message',
+              revision: 1,
+              kind: 'agentMessage',
+              status: 'completed',
+              turnId: 'report',
+              text: reportJson,
+            },
+          ]);
+        },
+      }),
+      close,
+    });
+    const adapter = new MuseHarnessAdapter({
+      executable: 'muse-test',
+      modelId: 'muse-spark-1.3-contributor',
+      clientFactory: factory,
+      environment: {},
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    // The FINAL structured-output prompt must contain the
+    // investigation-stage operation. Today's two-turn architecture builds
+    // it before investigation, so this fails.
+    expect(prompts.at(-1)).toContain('ledger-probe-command');
+  });
+
   it('decides approvals fail-closed on semantics, not label matching', () => {
     const ws = '/tmp/ws/project';
     const choices = [
