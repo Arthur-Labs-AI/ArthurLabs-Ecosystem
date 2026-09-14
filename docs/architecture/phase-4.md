@@ -245,3 +245,14 @@ cost tracking, hard token budgets, full Adaptive InvestigationDepth.
     completed/completed in 3 turns (129s), 2 strong findings,
     4 evidence, 37 events — proving the parallel-run hang was
     transient Meta-side stalls, not systematic.
+  - **THREE-AGENT PARALLEL SMOKE PASSED** (`run_01M2G9C6H4YVYX4F75CH1DHA36`):
+    `completed`, production, 3/3 agents `completed` with zero repairs
+    needed (3 turns each): Muse (muse-spark-1.3-contributor, 180s),
+    DeepSeek (deepseek-v4-flash, 5845/18086/36736 tokens), GLM
+    (glm-5.3-flash via Claude Code 2.1.270, 120542/10736/142592).
+    9 findings (8 strong, 1 probable; no agreement required), 22
+    evidence incl. op-grounded command items with canonical
+    groundingOperationIds, 152 events with real overlap, same snapshot
+    `snap_01M2G9C6J2FTM4PFTAXGCCX6YB`, separate per-agent workspaces
+    (all removed), no stray processes, fixture intact, zero secret
+    hits in persisted data, `json` + `log` exports.
