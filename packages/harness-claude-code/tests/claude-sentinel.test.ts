@@ -8,6 +8,31 @@ describe('Claude session flag shape', () => {
     sessionId: '11111111-1111-4111-8111-111111111111',
   };
 
+  it('classifies investigation tools: web QA allowed, delegation denied (§27-30)', () => {
+    const args = buildClaudeArgs({ ...base, resume: false });
+    const flag = args[args.indexOf('--disallowedTools') + 1] as string;
+    const denied = new Set(flag.split(','));
+    // B: AI-agent delegation stays denied (independent-AgentStack semantics).
+    expect(denied.has('Agent')).toBe(true);
+    expect(denied.has('Task')).toBe(true);
+    // A: normal investigative QA tools stay available.
+    expect(denied.has('WebFetch')).toBe(false);
+    expect(denied.has('WebSearch')).toBe(false);
+    // C: persistent automation, worktree control, and uncontrolled
+    // extensions stay denied.
+    for (const tool of [
+      'Skill',
+      'CronCreate',
+      'CronDelete',
+      'CronList',
+      'ScheduleWakeup',
+      'EnterWorktree',
+      'ExitWorktree',
+    ]) {
+      expect(denied.has(tool)).toBe(true);
+    }
+  });
+
   it('mints fresh sessions with --session-id and resumes with --resume alone', () => {
     const fresh = buildClaudeArgs({ ...base, resume: false });
     expect(fresh).toContain('--session-id');

@@ -108,8 +108,17 @@ export function buildClaudeArgs(input: {
     'dontAsk',
     '--permission-prompts',
     'none',
+    // Tool classification (§27): Agent/Task stay denied (AI-agent
+    // delegation would break independent-AgentStack semantics; the
+    // adapter firewall additionally fails any report-turn tool use, so
+    // reporting/frozen-ledger semantics are untouched). Cron*/Schedule*
+    // stay denied (persistent automation is outside the QA mission).
+    // Enter/ExitWorktree stay denied (Sentry owns workspaces). Skill
+    // stays denied (uncontrolled host capability loading). WebFetch and
+    // WebSearch are ALLOWED: normal investigative QA tools, auditable
+    // via harness events and contained by the sandbox.
     '--disallowedTools',
-    'Agent,Task,WebFetch,WebSearch,Skill,CronCreate,CronDelete,CronList,ScheduleWakeup,EnterWorktree,ExitWorktree',
+    'Agent,Task,Skill,CronCreate,CronDelete,CronList,ScheduleWakeup,EnterWorktree,ExitWorktree',
     // Session identity: a fresh turn mints the id via --session-id; a
     // continuing turn resumes via --resume ALONE. Combining --session-id
     // with --resume is rejected without --fork-session (verified on
