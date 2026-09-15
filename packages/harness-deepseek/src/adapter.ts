@@ -802,6 +802,11 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       // startup and initialize handshake in client.start(), so that exact
       // operation stays inside the retry scope. Anything else, or a second timeout, fails the run with
       // the original typed error. Never loops.
+      // Budget note: 120s per attempt. Two consecutive 30s-cliff timeouts
+      // on WSL-against-/mnt/c checkouts (while Windows-native init is
+      // instant) indicate host startup over the 9P bridge can exceed 30s
+      // without being wedged; the retry alone cannot fix a too-small
+      // budget. Timeouts still enforced, just calibrated to the slow path.
       const createClient = () =>
         this.clientFactory({
           executable: this.runtime.executable,
@@ -811,7 +816,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           modelId: this.runtime.modelId,
           provider: this.runtime.provider,
           profilePatches: [profilePatchPath],
-          initializeTimeoutMs: 30_000,
+          initializeTimeoutMs: 120_000,
           shutdownTimeoutMs: this.shutdownTimeoutMs,
         });
       let session: DeepSeekSessionView;
