@@ -280,9 +280,12 @@ test('managed model cache stays inside the root', () => {
   const svc = new ManagedPathService(ROOT);
   assert.ok(svc.layout.hfCacheDir.startsWith(svc.layout.root));
   assert.ok(svc.layout.hfHubDir.startsWith(svc.layout.hfCacheDir));
+  assert.ok(svc.layout.hfXetDir.startsWith(svc.layout.hfCacheDir));
+  assert.ok(svc.layout.hfAssetsDir.startsWith(svc.layout.hfCacheDir));
   const env = svc.modelCacheEnv();
-  assert.equal(env.HF_HOME, svc.layout.hfCacheDir);
   assert.equal(env.HF_HUB_CACHE, svc.layout.hfHubDir);
+  assert.equal(env.HF_XET_CACHE, svc.layout.hfXetDir);
+  assert.equal(env.HF_ASSETS_CACHE, svc.layout.hfAssetsDir);
   assert.equal(env.TRANSFORMERS_CACHE, svc.layout.hfHubDir);
   for (const value of Object.values(env)) {
     assert.ok(path.normalize(value).startsWith(path.normalize(ROOT)));
@@ -293,17 +296,37 @@ test('ambient external HF cache variables cannot redirect managed env', () => {
   // Even with hostile ambient variables, the managed env builder emits
   // only containment-checked managed paths (callers use it as the
   // subprocess overlay, overriding ambient values).
-  process.env['HF_HOME'] = '/tmp/evil-external';
   process.env['HF_HUB_CACHE'] = '/tmp/evil-hub';
+  process.env['HF_XET_CACHE'] = '/tmp/evil-xet';
+  process.env['HF_ASSETS_CACHE'] = '/tmp/evil-assets';
+  process.env['TRANSFORMERS_CACHE'] = '/tmp/evil-tr';
   try {
     const svc = new ManagedPathService(ROOT);
     const env = svc.modelCacheEnv();
     assert.ok(!Object.values(env).some((v) => v.includes('evil')));
-    assert.equal(env.HF_HOME, svc.layout.hfCacheDir);
+    assert.equal(env.HF_HUB_CACHE, svc.layout.hfHubDir);
+    assert.equal(env.HF_XET_CACHE, svc.layout.hfXetDir);
   } finally {
-    delete process.env['HF_HOME'];
     delete process.env['HF_HUB_CACHE'];
+    delete process.env['HF_XET_CACHE'];
+    delete process.env['HF_ASSETS_CACHE'];
+    delete process.env['TRANSFORMERS_CACHE'];
   }
+});
+
+test('managed overlay leaves credential discovery intact and mints no token', () => {
+  // HF_HOME is absent (user token store + HF_TOKEN_PATH/HF_TOKEN keep
+  // working); HF_TOKEN is not a managed key and is never emitted.
+  const { isManagedEnvKey } = require('../../src/runtime/local-models/provisioning/paths') as typeof import('../../src/runtime/local-models/provisioning/paths');
+  assert.equal(isManagedEnvKey('HF_HOME'), false);
+  assert.equal(isManagedEnvKey('HF_TOKEN'), false);
+  assert.equal(isManagedEnvKey('HF_TOKEN_PATH'), false);
+  assert.equal(isManagedEnvKey('HF_HUB_CACHE'), true);
+  const svc = new ManagedPathService(ROOT);
+  const env = svc.modelCacheEnv();
+  assert.ok(!('HF_HOME' in env));
+  assert.ok(!('HF_TOKEN' in env));
+  assert.ok(JSON.stringify(env).toLowerCase().includes('token') === false);
 });
 
 test('backup recovery restores live only when unambiguous', () => {

@@ -28,6 +28,7 @@ import { createInterface } from "node:readline";
 
 import type { PcmFrame, SttEvent, SttOptions, SttProvider } from "../contracts";
 import type { LogSink, TextSanitizer } from "../process_util";
+import { shutdownChildGracefully } from "../process_util";
 import { VoiceProviderError } from "../../runtime/voice_errors";
 
 export const PARAKEET_STT_PROVIDER_ID = "parakeet-stt";
@@ -502,13 +503,15 @@ export class ParakeetSttProvider implements SttProvider {
     return this.stderrTail.toString("utf8");
   }
 
-  /** Shut the worker down (disable path). */
+  /**
+   * Bounded shutdown: settle pending, close stdin for graceful worker
+   * exit, await terminal close with kill escalation. Resolves only
+   * after the child is reaped (or both bounds expire) — never orphans.
+   */
   async shutdown(): Promise<void> {
     this.failAllPending(new VoiceProviderError("provider_cancelled", "parakeet: shutdown"));
     const child = this.child;
     this.child = undefined;
-    if (child && child.exitCode === null) {
-      try { child.kill(); } catch { /* best effort */ }
-    }
+    if (child) await shutdownChildGracefully(child);
   }
 }

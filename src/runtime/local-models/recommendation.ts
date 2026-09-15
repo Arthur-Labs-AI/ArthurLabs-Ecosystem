@@ -64,6 +64,23 @@ function compareCandidates(profile: RecommendationProfile, a: LocalModelDefiniti
   return 0;
 }
 
+/**
+ * Deterministic rank order of all models of a kind (profile tier ->
+ * maturity -> id), WITHOUT hardware filtering. E2 lazy legs use this
+ * synchronously to fix a stable selection identity before the async
+ * hardware probe runs; the async path then verifies the advertised
+ * model strictly (compatible + ready) and fails closed otherwise —
+ * never substituting a different model. Additive helper; recommendModel
+ * semantics unchanged.
+ */
+export function rankModelsOfKind(
+  catalog: readonly LocalModelDefinition[],
+  kind: LocalModelKind,
+  profile: RecommendationProfile,
+): LocalModelDefinition[] {
+  return catalog.filter((model) => model.kind === kind).sort((a, b) => compareCandidates(profile, a, b));
+}
+
 export function recommendModel(args: RecommendArgs): ModelRecommendation {
   const catalog = args.catalog ?? getLocalModelCatalog();
   const ofKind = catalog.filter((model) => model.kind === args.kind);

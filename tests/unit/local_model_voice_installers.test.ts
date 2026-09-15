@@ -18,10 +18,10 @@ import type { ModelInstallContext } from '../../src/runtime/local-models/install
 import { memoryProvisioningFs } from '../../src/runtime/local-models/provisioning/staging';
 import type { SpawnFn } from '../../src/runtime/local-models/provisioning/process_runner';
 import { LocalModelStateStore, memoryStateFileSystem } from '../../src/runtime/local-models/state_store';
-import { makeBgTts38mInstaller, BGTTS_CUDA_INDEX_URL, BGTTS_CUDA_PACKAGES, BGTTS_PACKAGES, BGTTS_MIOCODEC_ARCHIVE_URL, BGTTS_MIOCODEC_ARCHIVE_SHA256, BGTTS_MIOCODEC_ARCHIVE_LABEL } from '../../src/runtime/local-models/installers/bgtts_38m';
+import { makeBgTts38mInstaller, BGTTS_CUDA_INDEX_URL, BGTTS_CUDA_PACKAGES, BGTTS_PACKAGES, BGTTS_MIOCODEC_ARCHIVE_URL, BGTTS_MIOCODEC_ARCHIVE_SHA256, BGTTS_MIOCODEC_ARCHIVE_LABEL, BGTTS_WORKER_FILE } from '../../src/runtime/local-models/installers/bgtts_38m';
 import { memoryDownloadFs } from '../../src/runtime/local-models/provisioning/downloader';
 import { memoryVerifyFs } from '../../src/runtime/local-models/provisioning/verification';
-import { makeOmniVoiceBgInstaller, OMNI_AUTH_GUIDANCE, OMNIVOICE_CUDA_INDEX_URL, OMNIVOICE_CUDA_PACKAGES, OMNIVOICE_PACKAGES } from '../../src/runtime/local-models/installers/omnivoice_bg';
+import { makeOmniVoiceBgInstaller, OMNI_AUTH_GUIDANCE, OMNIVOICE_CUDA_INDEX_URL, OMNIVOICE_CUDA_PACKAGES, OMNIVOICE_PACKAGES, OMNIVOICE_WORKER_FILE } from '../../src/runtime/local-models/installers/omnivoice_bg';
 import { makeParakeetInstaller, PARAKEET_CUDA_INDEX_URL, PARAKEET_CUDA_PACKAGES, PARAKEET_HF_REPO, PARAKEET_PACKAGES } from '../../src/runtime/local-models/installers/parakeet';
 import { createDefaultModelInstallerRegistry, DEFAULT_INSTALLER_MODEL_IDS } from '../../src/runtime/local-models/installers/registry';
 import { SMOKE_BG_PHRASE, SMOKE_REQUEST_ID, smokeReferenceToneBytes } from '../../src/runtime/local-models/installers/smoke_fixtures';
@@ -215,11 +215,15 @@ test('omnivoice auth failure maps to auth_required with guidance', async () => {
 test('omnivoice stores no token anywhere in the result', async () => {
   const { run } = happyRun();
   const s = seams(run);
-  const installer = makeOmniVoiceBgInstaller({ run, fs: s.fs, venvFs: s.venvFs, systemPython: '/trusted/python3', writeFile: s.writeFile });
+  const installer = makeOmniVoiceBgInstaller({ run, fs: s.fs, venvFs: s.venvFs, systemPython: '/trusted/python3', writeFile: s.writeFile, readSourceFile: () => '# production worker' });
   const result = await installer.install(ctxFor('omnivoice-bg'));
   assert.equal(result.outcome, 'succeeded');
   const blob = JSON.stringify(result);
   assert.ok(!/token|bearer|hf_/i.test(blob));
+  // E2 production worker is staged into the install (promoted to live).
+  const staged = [...s.files.keys()].filter((p) => p.endsWith('/' + OMNIVOICE_WORKER_FILE) || p.endsWith('\\' + OMNIVOICE_WORKER_FILE));
+  assert.equal(staged.length, 1);
+  assert.equal(s.files.get(staged[0] as string), '# production worker');
 });
 
 test('omnivoice smoke failure keeps installed+configured, drops ready', async () => {
@@ -273,9 +277,13 @@ test('bgtts succeeds on the fake seams with live (not staging) evidence', async 
     return { code: 0, stdout: 'ok' };
   });
   const s = seams(run);
-  const installer = makeBgTts38mInstaller({ run, fs: s.fs, venvFs: s.venvFs, systemPython: '/trusted/python3', writeFile: s.writeFile, transport: fakeTransport('ok', 'unused') });
+  const installer = makeBgTts38mInstaller({ run, fs: s.fs, venvFs: s.venvFs, systemPython: '/trusted/python3', writeFile: s.writeFile, readSourceFile: () => '# production worker', transport: fakeTransport('ok', 'unused') });
   const result = await installer.install(ctxFor('bgtts-38m-v2'));
   assert.equal(result.outcome, 'succeeded');
+  // E2 production worker is staged into the install (promoted to live).
+  const staged = [...s.files.keys()].filter((p) => p.endsWith('/' + BGTTS_WORKER_FILE) || p.endsWith('\\' + BGTTS_WORKER_FILE));
+  assert.equal(staged.length, 1);
+  assert.equal(s.files.get(staged[0] as string), '# production worker');
   assert.ok(result.artifact && result.artifact.install_path && result.artifact.install_path.includes('live'));
   assert.ok(!String(result.artifact && result.artifact.install_path).includes('staging'));
 });

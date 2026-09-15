@@ -35,6 +35,10 @@ export interface VoiceSettings {
   /** HR-02 local STT selection (default parakeet) + model id. */
   localSttProvider: string;
   localSttModel: string;
+  /** HR-02.5E2 managed local-model root (explicit path; empty = D2 default). */
+  localModelRoot: string;
+  /** HR-02.5E2 persisted model-state file (empty = D2 default). */
+  localModelStatePath: string;
   wakeWord: string;
   /** Wake provider only: "local" energy fallback | "sherpa" true KWS | "fake". */
   wakeProvider: WakeProviderId;
@@ -110,6 +114,8 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   cloudTtsVoice: "alloy",
   localSttProvider: "",
   localSttModel: "nvidia/parakeet-tdt-0.6b-v3",
+  localModelRoot: "",
+  localModelStatePath: "",
   wakeWord: "arthur",
   wakeProvider: "local",
   vadProvider: "local",
@@ -159,6 +165,8 @@ export interface VoiceSettingsOverrides {
   cloudTtsVoice?: string;
   localSttProvider?: string;
   localSttModel?: string;
+  localModelRoot?: string;
+  localModelStatePath?: string;
   sttLanguage?: string;
   sttInitialPrompt?: string;
   sttModelPath?: string;
@@ -261,6 +269,8 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
     cloudTtsVoice: pick("ARTHUR_CLOUD_TTS_VOICE", DEFAULT_VOICE_SETTINGS.cloudTtsVoice, "cloudTtsVoice"),
     localSttProvider: pick("ARTHUR_LOCAL_STT_PROVIDER", DEFAULT_VOICE_SETTINGS.localSttProvider, "localSttProvider"),
     localSttModel: pick("ARTHUR_LOCAL_STT_MODEL", DEFAULT_VOICE_SETTINGS.localSttModel, "localSttModel"),
+    localModelRoot: pick("ARTHUR_LOCAL_MODEL_ROOT", DEFAULT_VOICE_SETTINGS.localModelRoot, "localModelRoot"),
+    localModelStatePath: pick("ARTHUR_LOCAL_MODEL_STATE", DEFAULT_VOICE_SETTINGS.localModelStatePath, "localModelStatePath"),
     sttLanguage: pick("ARTHUR_STT_LANGUAGE", DEFAULT_VOICE_SETTINGS.sttLanguage, "sttLanguage"),
     sttInitialPrompt: pick("ARTHUR_STT_INITIAL_PROMPT", DEFAULT_VOICE_SETTINGS.sttInitialPrompt, "sttInitialPrompt"),
     sttModelPath: pick("ARTHUR_STT_MODEL_PATH", DEFAULT_VOICE_SETTINGS.sttModelPath, "sttModelPath"),

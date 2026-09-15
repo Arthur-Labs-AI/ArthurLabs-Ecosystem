@@ -79,6 +79,8 @@ export const OMNIVOICE_PACKAGES = [
   'numpy==2.5.3',
 ];
 
+export const OMNIVOICE_WORKER_FILE = 'omnivoice_worker.py';
+
 export interface OmniVoiceInstallerDeps {
   run: SpawnFn;
   fs: ProvisioningFs;
@@ -88,10 +90,26 @@ export interface OmniVoiceInstallerDeps {
   harnessSourceDir?: string;
   smokeTimeoutMs?: number;
   writeFile?: WriteFileFn;
+  readSourceFile?: (filePath: string) => string;
 }
 
 function harnessSource(deps: OmniVoiceInstallerDeps): string {
   return (deps.harnessSourceDir ?? process.cwd()) + '/tools/voice/omnivoice_smoke.py';
+}
+
+/**
+ * Stage the versioned production worker (ARTHUR-owned trusted code)
+ * into the install so the promoted live dir contains everything E2
+ * needs. Mirrors the Parakeet worker-copy pattern.
+ */
+function copyProductionWorker(deps: OmniVoiceInstallerDeps, stagingDir: string): void {
+  const path = require('node:path') as typeof import('node:path');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const nodeFs = require('node:fs') as typeof import('node:fs');
+  const from = path.join(deps.harnessSourceDir ?? process.cwd(), 'tools', 'voice', OMNIVOICE_WORKER_FILE);
+  const raw = deps.readSourceFile ? deps.readSourceFile(from) : nodeFs.readFileSync(from, 'utf8');
+  const write = deps.writeFile ?? nodeWriteFile();
+  write(path.join(stagingDir, OMNIVOICE_WORKER_FILE), raw);
 }
 
 // Deterministic non-personal reference wav for smoke conditioning only.
@@ -138,6 +156,7 @@ export function makeOmniVoiceBgInstaller(deps: OmniVoiceInstallerDeps): ModelIns
       if (checkAborted(ctx)) return { outcome: 'cancelled', reason: 'cancelled before staging' };
       stage.say('preparing', 'staging omnivoice-bg install');
       const stagingDir = beginStaging(ctx.managed_root, deps.fs, stage.liveDir, 'omnivoice');
+      copyProductionWorker(deps, stagingDir);
       try {
         stage.say('installing', 'provisioning managed python runtime');
         const venv = await ensureManagedVenv({

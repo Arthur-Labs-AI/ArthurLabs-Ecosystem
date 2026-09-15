@@ -268,10 +268,10 @@ test('env overlay reaches the spawn boundary and is validated', async () => {
   const result = await runTrustedProcess(spawn, {
     executable: '/trusted/python',
     args: [],
-    env: { HF_HOME: '/managed/cache/huggingface', HF_HUB_CACHE: '/managed/cache/huggingface/hub' },
+    env: { HF_HUB_CACHE: '/managed/cache/huggingface/hub', HF_XET_CACHE: '/managed/cache/huggingface/xet' },
   });
   assert.equal(result.exit_code, 0);
-  assert.deepEqual(seenEnv, { HF_HOME: '/managed/cache/huggingface', HF_HUB_CACHE: '/managed/cache/huggingface/hub' });
+  assert.deepEqual(seenEnv, { HF_HUB_CACHE: '/managed/cache/huggingface/hub', HF_XET_CACHE: '/managed/cache/huggingface/xet' });
   // checkSpec throws synchronously (pre-existing runner behavior).
   assert.throws(
     () => runTrustedProcess(spawn, { executable: '/trusted/python', args: [], env: { '': 'x' } }),

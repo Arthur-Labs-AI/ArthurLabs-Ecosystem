@@ -93,24 +93,40 @@ export interface ManagedLayout {
   hfCacheDir: string;
   /** Shared ARTHUR-managed model hub directory (HF_HUB_CACHE). */
   hfHubDir: string;
+  /** Shared ARTHUR-managed Xet chunk cache (HF_XET_CACHE). */
+  hfXetDir: string;
+  /** Shared ARTHUR-managed HF assets cache (HF_ASSETS_CACHE). */
+  hfAssetsDir: string;
 }
 
 /** Managed model-cache directory names (code-owned literals). */
 export const HF_CACHE_DIRNAME = 'huggingface';
 export const HF_HUB_DIRNAME = 'hub';
+export const HF_XET_DIRNAME = 'xet';
+export const HF_ASSETS_DIRNAME = 'assets';
 
 /**
  * Code-owned subprocess environment overlay for model-cache variables.
- * Keys are a closed set; values are always containment-checked managed
- * paths. Never carries secrets, indexes, URLs, or caller data.
+ * Keys are a closed set of CACHE-LOCATION variables only; values are
+ * always containment-checked managed paths. Never carries secrets,
+ * indexes, URLs, or caller data.
+ *
+ * Credential separation (E2 correction): HF_HOME is deliberately ABSENT.
+ * Per Hugging Face semantics HF_HOME also controls the default token
+ * location ($HF_HOME/token), so overriding it would hide the user's
+ * normal credential discovery (~/.cache/huggingface/token, HF_TOKEN_PATH,
+ * HF_TOKEN) and break gated-repo access with spurious 401s. ARTHUR owns
+ * model/cache artifacts; the user's credential remains user-owned
+ * external auth state. HF_TOKEN must never appear here.
  */
 export interface ModelCacheEnv {
-  HF_HOME: string;
   HF_HUB_CACHE: string;
+  HF_XET_CACHE: string;
+  HF_ASSETS_CACHE: string;
   TRANSFORMERS_CACHE: string;
 }
 
-const MANAGED_ENV_KEYS = ['HF_HOME', 'HF_HUB_CACHE', 'TRANSFORMERS_CACHE'] as const;
+const MANAGED_ENV_KEYS = ['HF_HUB_CACHE', 'HF_XET_CACHE', 'HF_ASSETS_CACHE', 'TRANSFORMERS_CACHE'] as const;
 
 export function isManagedEnvKey(key: string): boolean {
   return (MANAGED_ENV_KEYS as readonly string[]).includes(key);
@@ -295,20 +311,25 @@ export class ManagedPathService {
       cacheDir,
       hfCacheDir,
       hfHubDir: path.join(hfCacheDir, HF_HUB_DIRNAME),
+      hfXetDir: path.join(hfCacheDir, HF_XET_DIRNAME),
+      hfAssetsDir: path.join(hfCacheDir, HF_ASSETS_DIRNAME),
     };
   }
 
   /**
    * ARTHUR-managed shared model cache env for model subprocesses.
    * Every value is containment-checked inside the managed root, so an
-   * ambient external HF_HOME / home-directory cache can never redirect
-   * a model install outside managed storage: callers pass the result as
-   * the subprocess env overlay (which overrides ambient values).
+   * ambient external HF_HUB_CACHE / HF_XET_CACHE / home-directory cache
+   * can never redirect a model install outside managed storage: callers
+   * pass the result as the subprocess env overlay (which overrides
+   * ambient values). HF_HOME is NOT set here: credential discovery
+   * (user token store, HF_TOKEN_PATH, HF_TOKEN) stays intact.
    */
   modelCacheEnv(): ModelCacheEnv {
-    const hfCacheDir = assertInsideRoot(this.layout.root, this.layout.hfCacheDir, 'model cache dir');
     const hfHubDir = assertInsideRoot(this.layout.root, this.layout.hfHubDir, 'model hub dir');
-    return { HF_HOME: hfCacheDir, HF_HUB_CACHE: hfHubDir, TRANSFORMERS_CACHE: hfHubDir };
+    const hfXetDir = assertInsideRoot(this.layout.root, this.layout.hfXetDir, 'model xet dir');
+    const hfAssetsDir = assertInsideRoot(this.layout.root, this.layout.hfAssetsDir, 'model assets dir');
+    return { HF_HUB_CACHE: hfHubDir, HF_XET_CACHE: hfXetDir, HF_ASSETS_CACHE: hfAssetsDir, TRANSFORMERS_CACHE: hfHubDir };
   }
 
   modelDir(storageKey: string): string {

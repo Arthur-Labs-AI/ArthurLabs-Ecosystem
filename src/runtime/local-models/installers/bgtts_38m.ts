@@ -52,6 +52,7 @@ import {
 export const BGTTS_MODEL_ID = 'bgtts-38m-v2';
 export const BGTTS_HF_REPO = 'beleata74/BgTTS-38M-V2';
 export const BGTTS_RUNTIME_ID = 'python/bgtts-38m-v2-v1';
+export const BGTTS_WORKER_FILE = 'bgtts_worker.py';
 export const BGTTS_PYTHON_MIN = '3.10.0';
 export const BGTTS_PYTHON_MAX_EXCLUSIVE = '3.14.0';
 // MioCodec is provisioned WITHOUT the git executable: the exact pinned
@@ -104,6 +105,7 @@ export interface BgTtsInstallerDeps {
   harnessSourceDir?: string;
   smokeTimeoutMs?: number;
   writeFile?: WriteFileFn;
+  readSourceFile?: (filePath: string) => string;
   /** D2 download seams (default node transport/fs; tests inject fakes). */
   transport?: HttpTransport;
   downloadFs?: DownloadFs;
@@ -113,6 +115,21 @@ export interface BgTtsInstallerDeps {
 
 function harnessSource(deps: BgTtsInstallerDeps): string {
   return (deps.harnessSourceDir ?? process.cwd()) + '/tools/voice/bgtts_smoke.py';
+}
+
+/**
+ * Stage the versioned production worker (ARTHUR-owned trusted code)
+ * into the install so the promoted live dir contains everything E2
+ * needs. Mirrors the Parakeet worker-copy pattern.
+ */
+function copyProductionWorker(deps: BgTtsInstallerDeps, stagingDir: string): void {
+  const path = require('node:path') as typeof import('node:path');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const nodeFs = require('node:fs') as typeof import('node:fs');
+  const from = path.join(deps.harnessSourceDir ?? process.cwd(), 'tools', 'voice', BGTTS_WORKER_FILE);
+  const raw = deps.readSourceFile ? deps.readSourceFile(from) : nodeFs.readFileSync(from, 'utf8');
+  const write = deps.writeFile ?? nodeWriteFile();
+  write(path.join(stagingDir, BGTTS_WORKER_FILE), raw);
 }
 
 function writeSmokeRefWav(nodeFs: { writeFileSync(p: string, d: Uint8Array): void }, refWav: string): void {
@@ -149,6 +166,7 @@ export function makeBgTts38mInstaller(deps: BgTtsInstallerDeps): ModelInstaller 
       if (checkAborted(ctx)) return { outcome: 'cancelled', reason: 'cancelled before staging' };
       stage.say('preparing', 'staging bgtts-38m-v2 install');
       const stagingDir = beginStaging(ctx.managed_root, deps.fs, stage.liveDir, 'bgtts');
+      copyProductionWorker(deps, stagingDir);
       try {
         stage.say('installing', 'provisioning managed python runtime');
         const venv = await ensureManagedVenv({

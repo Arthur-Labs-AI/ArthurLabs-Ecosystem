@@ -151,6 +151,26 @@ export function waitForClose(child: ChildProcess, timeoutMs: number): Promise<nu
 }
 
 /**
+ * Graceful worker shutdown: close stdin (JSONL workers exit on EOF),
+ * await `close` within the bound, escalate to kill + tree-kill, await
+ * terminal close, then return. Resolves only after the child reaches a
+ * terminal state or both bounds expire — never returns while the child
+ * may still be running. Never hangs, never throws.
+ */
+export async function shutdownChildGracefully(child: ChildProcess, gracefulMs = 3000, killGraceMs = 2000): Promise<void> {
+  if (child.exitCode !== null) return;
+  try {
+    // JSONL workers exit on stdin EOF: the graceful path needs no signal.
+    child.stdin?.end();
+  } catch {
+    // stdin already gone; fall through to close/kill steps.
+  }
+  const graceful = await waitForClose(child, Math.max(0, gracefulMs));
+  if (graceful !== null || child.exitCode !== null) return;
+  await terminateChild(child, Math.max(0, killGraceMs));
+}
+
+/**
  * Kill and reap a child within a bounded window, escalating to a tree-kill
  * on Windows if the direct kill did not settle in time. Never hangs.
  */

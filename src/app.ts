@@ -65,6 +65,12 @@ import { TtsGateway } from "./voice/tts/gateway";
 import { ModelRouter } from "./runtime/model_router";
 import { SttRouter } from "./runtime/stt_router";
 import { TtsRouter } from "./runtime/tts_router";
+import { DEFAULT_LOCAL_MODEL_STATE_PATH } from "./runtime/local-models/state_contracts";
+import { DEFAULT_MANAGED_ROOT } from "./runtime/local-models/install_service";
+import { SystemHardwareProbe } from "./runtime/hardware/probe";
+import { LocalModelStateStore } from "./runtime/local-models/state_store";
+import { tryCreateLocalSttProvider, tryCreateLocalTtsProvider } from "./runtime/local-models/runtime/factory";
+import { LazyLocalSttProvider, LazyLocalTtsProvider } from "./runtime/local-models/runtime/lazy";
 import { SpeechFormatter } from "./voice/speech/formatter";
 import { VoiceTurnController } from "./voice/controller";
 import { RealtimeVoiceServer } from "./voice/realtime/websocket";
@@ -175,6 +181,53 @@ function defaultParakeetArgv(): string[] {
   return ["python", worker];
 }
 
+/**
+ * HR-02.5E2 managed-leg resolvers (async, non-fatal, no mutations).
+ *
+ * Each probes live hardware, loads persisted model state, and asks the
+ * bounded E2 factory for the selected READY provider. Any failure
+ * (no selection, not ready, missing artifacts, probe/state errors)
+ * yields null so the pre-existing fallback leg stands. Never installs,
+ * repairs, downloads, or constructs cloud providers.
+ */
+async function resolveManagedStt(managedRoot: string, managedStatePath: string): Promise<SttProvider | null> {
+  try {
+    const hardware = await new SystemHardwareProbe().detect();
+    const store = LocalModelStateStore.load({ statePath: managedStatePath });
+    const ref = tryCreateLocalSttProvider({ hardware, state: store.snapshot(), managedRoot });
+    return ref ? ref.provider : null;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveManagedTts(managedRoot: string, managedStatePath: string): Promise<TtsProvider | null> {
+  try {
+    const hardware = await new SystemHardwareProbe().detect();
+    const store = LocalModelStateStore.load({ statePath: managedStatePath });
+    const ref = tryCreateLocalTtsProvider({ hardware, state: store.snapshot(), managedRoot });
+    return ref ? ref.provider : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Synchronous stable-identity snapshot for lazy legs (E2 §4): reads the
+ * persisted state file (sync fs) so the leg advertises its managed id
+ * from construction when a READY selection exists. Any read/parse
+ * failure yields undefined (leg keeps fallback identity). Never probes
+ * hardware, never mutates.
+ */
+function peekManagedState(managedStatePath: string): import("./runtime/local-models/state_contracts").LocalModelStateFile | undefined {
+  try {
+    const store = LocalModelStateStore.load({ statePath: managedStatePath });
+    return store.snapshot();
+  } catch {
+    return undefined;
+  }
+}
+
 /** Tokenize a trusted engine command line into argv (no shell, mirrors process_util). */
 function tokenizeEngineCommand(command: string): string[] {
   const tokens: string[] = [];
@@ -267,9 +320,9 @@ export function createVoiceController(
   // Parakeet command resolution: explicit ARTHUR_STT_ENGINE_COMMAND wins (trusted
   // startup config); otherwise the default worker argv (python + bundled script).
   const parakeetArgv = defaultParakeetArgv();
-  const localStt: SttProvider =
-    deps.voice?.stt ??
-    (voice.sttProvider === "fake"
+  // Pre-E2 fallback leg, unchanged: operator-configured engine/fake.
+  const localSttFallback: SttProvider =
+    voice.sttProvider === "fake"
       ? new FakeSttProvider()
       : voice.localSttProvider === "parakeet"
         ? new ParakeetSttProvider({
@@ -285,7 +338,7 @@ export function createVoiceController(
             initialPrompt: voice.sttInitialPrompt,
             logger: logger.child("voice-stt"),
             sanitizer,
-          }));
+          });
   // HR-02 cloud STT backend (voice-only): OpenAI transcription. Unconfigured key
   // => available=false => SttRouter treats cloud as unavailable (startup succeeds).
   const cloudStt: SttProvider = new OpenAiSttProvider({
@@ -294,14 +347,38 @@ export function createVoiceController(
     initialPrompt: voice.sttInitialPrompt,
     logger: logger.child("voice-stt"),
   });
-  const localTts: TtsProvider =
-    deps.voice?.tts ??
-    (voice.ttsProvider === "fake"
+  const localTtsBase: TtsProvider =
+    voice.ttsProvider === "fake"
       ? new FakeTtsProvider()
       : new LocalTtsProvider(voice.ttsEngineCommand, voice.ttsVoice, {
           logger: logger.child("voice-tts"),
           sanitizer,
-        }));
+        });
+  // HR-02.5E2 managed local voice legs (stable lifetime identity): the
+  // persisted state file is peeked SYNCHRONOUSLY so each leg advertises
+  // its managed provider id from construction when a READY model is
+  // selected (override/manual/rank-first-auto + READY lifecycle).
+  // Async hardware/artifact verification happens inside the first
+  // request and fails closed there — the id never flips mid-utterance.
+  // Without a READY selection the legs above stand unchanged.
+  // Test-injected providers (deps.voice.stt/tts) bypass E2 entirely.
+  const managedRoot = voice.localModelRoot.trim() !== "" ? voice.localModelRoot : DEFAULT_MANAGED_ROOT;
+  const managedStatePath = voice.localModelStatePath.trim() !== "" ? voice.localModelStatePath : DEFAULT_LOCAL_MODEL_STATE_PATH;
+  const stableState = peekManagedState(managedStatePath);
+  const localStt: SttProvider =
+    deps.voice?.stt ??
+    new LazyLocalSttProvider(
+      () => resolveManagedStt(managedRoot, managedStatePath),
+      localSttFallback,
+      stableState ? { kind: "stt", state: stableState } : undefined,
+    );
+  const localTts: TtsProvider =
+    deps.voice?.tts ??
+    new LazyLocalTtsProvider(
+      () => resolveManagedTts(managedRoot, managedStatePath),
+      localTtsBase,
+      stableState ? { kind: "tts", state: stableState } : undefined,
+    );
   // HR-02 cloud TTS backend (speech renderer only): canonical final text in,
   // audio out. Never tools, never memory, never a second conversation.
   const cloudTts: TtsProvider = new OpenAiTtsProvider({
