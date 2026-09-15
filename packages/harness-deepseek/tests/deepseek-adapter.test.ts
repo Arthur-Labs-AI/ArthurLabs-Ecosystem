@@ -1004,6 +1004,43 @@ describe('DeepSeekHarnessAdapter', () => {
     );
   });
 
+  it('retries when initialize times out lazily at startSession', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-init-lazy-'));
+    roots.push(root);
+    const input = await request(root);
+    let sessions = 0;
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        startSession: async () => {
+          sessions += 1;
+          if (sessions === 1) {
+            throw new Error(
+              'initialize timed out after 30000ms waiting for dsh profile "sdk-minimal"',
+            );
+          }
+          return {
+            runText: threeStage(
+              planResult(validPlan()),
+              investigationResult(),
+              reportResult(validReportV2()),
+            ),
+          };
+        },
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(sessions).toBe(2);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'DEEPSEEK_INIT_RETRY' }),
+    );
+  });
+
   it('fails closed when client initialize keeps timing out', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-init-fatal-'));
     roots.push(root);

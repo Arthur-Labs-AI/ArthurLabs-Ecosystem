@@ -790,13 +790,14 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         buildRestrictedProfilePatch(request.workspace.runtimePath),
         'utf8',
       );
-      // Bounded client-initialize retry: the vendor SDK occasionally
-      // fails to bring up the local host within its budget (observed
-      // live as 'initialize timed out' with no session started). One
-      // retry with a fresh client; anything else, or a second timeout,
-      // fails the run with the original typed error. Never loops.
-      try {
-        this.client = await this.clientFactory({
+      // Bounded client-initialize retry: the vendor host occasionally
+      // fails to come up within its budget (observed live as
+      // 'initialize timed out'). Initialization may complete inside the
+      // factory or lazily at startSession, so BOTH are inside the retry
+      // scope; anything else, or a second timeout, fails the run with
+      // the original typed error. Never loops.
+      const createClient = () =>
+        this.clientFactory({
           executable: this.runtime.executable,
           cwd: request.workspace.runtimePath,
           dshHome,
@@ -807,6 +808,10 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           initializeTimeoutMs: 30_000,
           shutdownTimeoutMs: this.shutdownTimeoutMs,
         });
+      let session: DeepSeekSessionView;
+      try {
+        this.client = await createClient();
+        session = await this.client.startSession({ sessionId: request.agentRunId });
       } catch (cause) {
         if (!isInitializeTimeout(cause)) throw cause;
         yield event(request.agentRunId, {
@@ -815,19 +820,9 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           message: 'DeepSeek client initialize timed out; retrying once with a fresh client.',
         });
         await this.client?.close().catch(() => undefined);
-        this.client = await this.clientFactory({
-          executable: this.runtime.executable,
-          cwd: request.workspace.runtimePath,
-          dshHome,
-          environment: this.environment,
-          modelId: this.runtime.modelId,
-          provider: this.runtime.provider,
-          profilePatches: [profilePatchPath],
-          initializeTimeoutMs: 30_000,
-          shutdownTimeoutMs: this.shutdownTimeoutMs,
-        });
+        this.client = await createClient();
+        session = await this.client.startSession({ sessionId: request.agentRunId });
       }
-      const session = await this.client.startSession({ sessionId: request.agentRunId });
       markDeepSeekRuntimeVerified();
       const pipeline = pipelineContext(this.secrets);
       // STAGE 1 — planning with one bounded correction. A prose-first or
