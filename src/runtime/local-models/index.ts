@@ -109,6 +109,7 @@ export {
   type ModelInstaller,
 } from './install_contracts';
 export { ModelInstallerRegistry } from './install_registry';
+export { removeManagedModel, nodeRemovalFs, type RemovalFs, type RemovalPlan, type RemovalResult, type RemoveModelArgs } from './removal';
 export {
   DEFAULT_MANAGED_ROOT,
   ModelInstallationService,

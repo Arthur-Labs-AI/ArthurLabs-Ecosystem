@@ -108,6 +108,15 @@ Usage:
   arthur session <id> [--json]
   arthur approve <approval-id>                            Approve one pending tool action
   arthur reject <approval-id>                             Reject one pending tool action
+  arthur models detect [--json] [--root <path>] [--state <path>]
+  arthur models list [--json] [--root <path>] [--state <path>]
+  arthur models recommend [--profile quality|balanced|lightweight] [--kind stt|tts] [--json]
+  arthur models install <model-id> [--reinstall] [--python <exe>] [--json]
+  arthur models select <model-id> [--json]
+  arthur models status [--json]
+  arthur models validate [model-id] [--json]
+  arthur models remove <model-id> [--yes] [--json]
+  arthur setup [--yes] [--stt-model <id>] [--tts-model <id>] [--json]
   arthur memory remember --session <id> [--type <t>] [--subject <k>] [--project <k>] "<text>"
   arthur memory search --session <id> "<query>"
   arthur memory list --session <id>
@@ -1026,6 +1035,31 @@ async function main(): Promise<void> {
         process.exitCode = await runReject(app, { id, io });
         break;
       }
+      case "models": {
+        const { modelsContext, runModelsDetect, runModelsList, runModelsRecommend, runModelsInstall, runModelsSelect, runModelsStatus, runModelsValidate, runModelsRemove } = await import("./models");
+        const ctx = modelsContext(app, flags, io);
+        const sub = positionals[1];
+        switch (sub) {
+          case "detect": process.exitCode = await runModelsDetect(app, ctx); break;
+          case "list": process.exitCode = await runModelsList(app, ctx); break;
+          case "recommend": process.exitCode = await runModelsRecommend(app, ctx, flags); break;
+          case "install": process.exitCode = await runModelsInstall(app, ctx, positionals[2] ?? "", flags); break;
+          case "select": process.exitCode = await runModelsSelect(app, ctx, positionals[2] ?? ""); break;
+          case "status": process.exitCode = await runModelsStatus(app, ctx); break;
+          case "validate": process.exitCode = await runModelsValidate(app, ctx, positionals[2]); break;
+          case "remove": process.exitCode = await runModelsRemove(app, ctx, positionals[2] ?? "", flags); break;
+          default:
+            io.err("usage: arthur models <detect|list|recommend|install|select|status|validate|remove> [--json]\n");
+            process.exitCode = 2;
+        }
+        break;
+      }
+      case "setup": {
+        const { modelsContext } = await import("./models");
+        const { runSetup } = await import("./setup");
+        process.exitCode = await runSetup(app, modelsContext(app, flags, io), flags);
+        break;
+      }
       case "memory": {
         await runMemoryCommands(app, positionals[1] ?? "", flags, positionals, io);
         break;
@@ -1045,6 +1079,11 @@ async function main(): Promise<void> {
   } finally {
     app.close();
   }
+}
+
+/** Entry for the `arthur` bin wrapper (`bin/arthur.js`) and `npm run cli`. */
+export async function runCli(): Promise<void> {
+  await main();
 }
 
 if (require.main === module) {
