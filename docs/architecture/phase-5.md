@@ -119,3 +119,41 @@ describe existing evidence; they are not confidence scores.
 MergeResult carries everything a verification mission needs:
 clusters, source findings/evidence, locations, reproduction steps,
 and disagreements. No transcripts required.
+
+## Phase 5.1 — pre-Verifier hardening
+
+Merger v2 (same-symbol false-positive hardening): equivalence now
+requires exactly one of four explicit cases (overlap+topical,
+symbol+topical, symbol+evidence+topical, near+topical-or-very-strong-
+behavior), where topical means title+behavior agreement OR a shared
+DISTINCTIVE token. A versioned generic vocabulary (request, handler,
+cache, parser, user, api, error, ...) can never satisfy a case.
+`MERGER_VERSION = 2`; `NORMALIZER_VERSION` stays 1. Historical v1
+rows remain valid and immutable. Complete-link clustering preserved;
+`sourceAgentRunIds` explicitly sorted (repository order never leaks).
+
+## Capability matrix (verified behavior, not aspiration)
+
+| Capability         | Muse | DeepSeek | GLM  |
+| ------------------ | ---- | -------- | ---- |
+| Read workspace     | yes  | yes      | yes  |
+| Write workspace    | yes  | yes      | yes  |
+| Shell              | yes  | yes      | yes  |
+| Run tests          | yes  | yes      | yes  |
+| Start servers      | yes  | yes      | yes  |
+| Localhost access   | yes  | yes*     | yes  |
+| Network QA         | yes* | yes*     | yes* |
+| Modify original    | no   | no       | no   |
+| Peer workspace     | no   | no       | no   |
+| Persistent policy  | no   | no       | no   |
+| Spawn AI subagents | no   | no       | no   |
+
+`*` qualifications (all tested): Muse network QA = loopback plus a
+versioned registry allowlist, one-action approvals only, general
+egress denied. DeepSeek localhost/network = subject to the vendor
+`workspace-write` runtime sandbox policy (Sentry adds no extra
+restriction and disables nothing). GLM network QA = WebFetch/
+WebSearch allowed during investigation only; the reporting firewall
+still blocks every tool in the report turn. Subagent denial is
+preserved on all stacks (Agent/Task denied + adapter firewalls);
+containment, credential isolation, and evidence trust are unchanged.

@@ -40,7 +40,8 @@ const FindingClusterBase = z
     id: z.string().regex(/^cluster_[0-9A-HJKMNP-TV-Z]{26}$/),
     qaRunId: QARunIdSchema,
     projectSnapshotId: SnapshotIdSchema,
-    mergerVersion: z.literal(MERGER_VERSION),
+    // Readable-history union (§10): v1 rows decode, new rows stamp v2.
+    mergerVersion: z.union([z.literal(1), z.literal(MERGER_VERSION)]),
     normalizerVersion: z.literal(NORMALIZER_VERSION),
     sourceFindingIds: z.array(FindingIdSchema).min(1),
     sourceAgentRunIds: z.array(AgentRunIdSchema).min(1),
@@ -99,7 +100,8 @@ const MergeResultBase = z
     qaRunId: QARunIdSchema,
     projectSnapshotId: SnapshotIdSchema,
     projectContextSnapshotId: ProjectContextSnapshotIdSchema.optional(),
-    mergerVersion: z.literal(MERGER_VERSION),
+    // Readable-history union (§10): v1 rows decode, new rows stamp v2.
+    mergerVersion: z.union([z.literal(1), z.literal(MERGER_VERSION)]),
     normalizerVersion: z.literal(NORMALIZER_VERSION),
     inputDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
     expectedAgentStackIds: z.array(AgentStackIdSchema),
