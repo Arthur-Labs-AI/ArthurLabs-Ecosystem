@@ -967,6 +967,60 @@ describe('DeepSeekHarnessAdapter', () => {
     expect(report).toContain('"checks":[{"name"');
   });
 
+  it('retries client initialize once on vendor init timeout, then proceeds', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-init-retry-'));
+    roots.push(root);
+    const input = await request(root);
+    let factories = 0;
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => {
+        factories += 1;
+        if (factories === 1) {
+          throw new Error(
+            'initialize timed out after 30000ms waiting for dsh profile "sdk-minimal"',
+          );
+        }
+        return {
+          startSession: async () => ({
+            runText: threeStage(
+              planResult(validPlan()),
+              investigationResult(),
+              reportResult(validReportV2()),
+            ),
+          }),
+          close: async () => undefined,
+        };
+      },
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(factories).toBe(2);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'DEEPSEEK_INIT_RETRY' }),
+    );
+  });
+
+  it('fails closed when client initialize keeps timing out', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-init-fatal-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => {
+        throw new Error('initialize timed out after 30000ms waiting for dsh profile "sdk-minimal"');
+      },
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({ type: 'run.failed' });
+  });
+
   it('disposes the owned client exactly once across cancel and dispose', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-cancel-'));
     roots.push(root);

@@ -161,6 +161,12 @@ function messageOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
+/** Vendor SDK initialize timeout (local host did not come up; no session
+ *  started, nothing to corrupt). Only this narrow signal retries. */
+function isInitializeTimeout(cause: unknown): boolean {
+  return /initialize timed out/i.test(messageOf(cause));
+}
+
 interface BuiltReportAttempt {
   readonly evidenceByKey: ReadonlyMap<string, Evidence>;
   readonly findings: readonly Finding[];
@@ -784,17 +790,43 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         buildRestrictedProfilePatch(request.workspace.runtimePath),
         'utf8',
       );
-      this.client = await this.clientFactory({
-        executable: this.runtime.executable,
-        cwd: request.workspace.runtimePath,
-        dshHome,
-        environment: this.environment,
-        modelId: this.runtime.modelId,
-        provider: this.runtime.provider,
-        profilePatches: [profilePatchPath],
-        initializeTimeoutMs: 30_000,
-        shutdownTimeoutMs: this.shutdownTimeoutMs,
-      });
+      // Bounded client-initialize retry: the vendor SDK occasionally
+      // fails to bring up the local host within its budget (observed
+      // live as 'initialize timed out' with no session started). One
+      // retry with a fresh client; anything else, or a second timeout,
+      // fails the run with the original typed error. Never loops.
+      try {
+        this.client = await this.clientFactory({
+          executable: this.runtime.executable,
+          cwd: request.workspace.runtimePath,
+          dshHome,
+          environment: this.environment,
+          modelId: this.runtime.modelId,
+          provider: this.runtime.provider,
+          profilePatches: [profilePatchPath],
+          initializeTimeoutMs: 30_000,
+          shutdownTimeoutMs: this.shutdownTimeoutMs,
+        });
+      } catch (cause) {
+        if (!isInitializeTimeout(cause)) throw cause;
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'DEEPSEEK_INIT_RETRY',
+          message: 'DeepSeek client initialize timed out; retrying once with a fresh client.',
+        });
+        await this.client?.close().catch(() => undefined);
+        this.client = await this.clientFactory({
+          executable: this.runtime.executable,
+          cwd: request.workspace.runtimePath,
+          dshHome,
+          environment: this.environment,
+          modelId: this.runtime.modelId,
+          provider: this.runtime.provider,
+          profilePatches: [profilePatchPath],
+          initializeTimeoutMs: 30_000,
+          shutdownTimeoutMs: this.shutdownTimeoutMs,
+        });
+      }
       const session = await this.client.startSession({ sessionId: request.agentRunId });
       markDeepSeekRuntimeVerified();
       const pipeline = pipelineContext(this.secrets);
