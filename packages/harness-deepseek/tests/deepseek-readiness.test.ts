@@ -19,6 +19,12 @@ describe('DeepSeek readiness semantics', () => {
     expect(doctor.configured).toBe(true);
     expect(doctor.binaryAvailable).toBe(true);
     expect(doctor.runtimeVerified).toBe(false);
+    expect(doctor.checks).toContainEqual({
+      name: 'model-alias',
+      status: 'warn',
+      message:
+        'Configured DeepSeek model uses legacy alias deepseek-v4-flash. Canonical tested route is deepseek-flash.',
+    });
     expect(doctor.checks.some((check) => check.name === 'environment')).toBe(true);
     expect(doctor.checks.some((check) => check.name === 'sdk')).toBe(true);
     expect(JSON.stringify(doctor)).not.toContain('do-not-leak');

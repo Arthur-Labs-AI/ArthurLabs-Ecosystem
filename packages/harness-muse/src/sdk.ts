@@ -7,6 +7,7 @@ import {
   type TurnOutcome,
 } from '@muse-code/sdk';
 import { realpathSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { ReportTurnOptions } from '@qa/evidence-pipeline';
 import { MuseHarnessError } from './errors.js';
 
@@ -171,8 +172,11 @@ function parentOf(canonicalSlashPath: string): string | undefined {
 }
 
 export function isPathInsideApprovalRoot(candidate: string, root: string): boolean {
-  const base = canonicalizeApprovalPath(root);
-  const lexical = canonicalizeApprovalPath(candidate);
+  // Compare host-absolute spellings. On Windows, a root-qualified path such
+  // as `/tmp/workspace` resolves onto the current drive; keeping it as `/tmp`
+  // while realpath returns `c:/tmp` creates a false symlink-escape verdict.
+  const base = canonicalizeApprovalPath(resolve(root));
+  const lexical = canonicalizeApprovalPath(resolve(candidate));
   // Identical canonical strings denote the same path: the session workspace
   // is Sentry-created, so no traversal is expressible.
   if (lexical === base) return true;

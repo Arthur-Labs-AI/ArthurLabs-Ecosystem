@@ -14,6 +14,7 @@ export interface DeepSeekSessionView {
 
 export interface DeepSeekClientView {
   readonly runtimeVersion?: string;
+  start(): Promise<void>;
   startSession(input?: { readonly sessionId?: string }): Promise<DeepSeekSessionView>;
   close(): Promise<void>;
 }
@@ -30,15 +31,32 @@ export type DeepSeekClientFactory = (input: {
   readonly shutdownTimeoutMs: number;
 }) => Promise<DeepSeekClientView>;
 
+interface ProductionHarnessView {
+  start(): Promise<void>;
+  run(text: string, options: { readonly sessionId: string }): Promise<RunResult>;
+  close(): Promise<void>;
+}
+
 class ProductionSession implements DeepSeekSessionView {
   constructor(
-    private readonly harness: DeepSeekHarness,
+    private readonly harness: ProductionHarnessView,
     private readonly sessionId: string,
   ) {}
 
   async runText(text: string, sessionId?: string): Promise<RunResult> {
     return this.harness.run(text, { sessionId: sessionId ?? this.sessionId });
   }
+}
+
+export function createDeepSeekClientFromHarness(
+  harness: ProductionHarnessView,
+): DeepSeekClientView {
+  return {
+    start: () => harness.start(),
+    startSession: async (input = {}) =>
+      new ProductionSession(harness, input.sessionId ?? 'sentry-' + Date.now().toString(36)),
+    close: () => harness.close(),
+  };
 }
 
 export const createProductionDeepSeekClient: DeepSeekClientFactory = async (input) => {
@@ -64,9 +82,5 @@ export const createProductionDeepSeekClient: DeepSeekClientFactory = async (inpu
     ...(explicitBin === undefined ? {} : { dshBin: explicitBin }),
   };
   const harness = new DeepSeekHarness(options);
-  return {
-    startSession: async (input = {}) =>
-      new ProductionSession(harness, input.sessionId ?? 'sentry-' + Date.now().toString(36)),
-    close: () => harness.close(),
-  };
+  return createDeepSeekClientFromHarness(harness);
 };

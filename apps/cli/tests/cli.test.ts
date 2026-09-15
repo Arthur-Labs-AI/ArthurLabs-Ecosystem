@@ -19,6 +19,7 @@ import {
   SentryRepository,
 } from '@qa/persistence';
 import { errorEnvelope, errorExitCode } from '../src/errors.js';
+import { summarizeRunStartAgents } from '../src/application.js';
 import { doctorLines, runCli, versionLine } from '../src/index.js';
 import { successExitCode } from '../src/output.js';
 
@@ -57,6 +58,85 @@ async function fixture() {
 }
 
 describe('qa cli', () => {
+  it('reports the exact per-agent outcome for a partial production run', () => {
+    const agents = summarizeRunStartAgents([
+      { agentStackId: 'stack_muse_main', status: 'completed' },
+      {
+        agentStackId: 'stack_deepseek_main',
+        status: 'failed',
+        failure: {
+          code: 'DEEPSEEK_START_FAILED',
+          message: 'initialize timed out; DEEPSEEK_API_KEY=must-not-leak',
+          retryable: true,
+        },
+      },
+      { agentStackId: 'stack_glm_main', status: 'completed' },
+    ]);
+
+    expect(agents).toMatchObject({
+      configured: 3,
+      completed: 2,
+      failed: 1,
+      timedOut: 0,
+      interrupted: 0,
+      cancelled: 0,
+      runs: [
+        { agentStackId: 'stack_muse_main', status: 'completed' },
+        {
+          agentStackId: 'stack_deepseek_main',
+          status: 'failed',
+          failure: { code: 'DEEPSEEK_START_FAILED', retryable: true },
+        },
+        { agentStackId: 'stack_glm_main', status: 'completed' },
+      ],
+    });
+    expect(JSON.stringify(agents)).not.toContain('must-not-leak');
+
+    const response = CliSuccessEnvelopeSchema.parse({
+      schemaVersion: 1,
+      command: 'run.start',
+      ok: true,
+      data: {
+        simulated: false,
+        runId: 'run_01K7777777777777777777A8W3',
+        projectId: 'proj_01K7777777777777777777A8W1',
+        status: 'partial',
+        agents,
+        findings: { total: 0 },
+      },
+    });
+    expect(response).toMatchObject({
+      schemaVersion: 1,
+      command: 'run.start',
+      ok: true,
+      data: { status: 'partial', agents: { configured: 3, completed: 2, failed: 1 } },
+    });
+  });
+
+  it('does not hide timed-out, interrupted, or cancelled agents in failed', () => {
+    const agents = summarizeRunStartAgents([
+      {
+        agentStackId: 'stack_deepseek_main',
+        status: 'timed_out',
+        failure: { code: 'AGENT_TIMEOUT', message: 'Timed out.', retryable: true },
+      },
+      {
+        agentStackId: 'stack_glm_main',
+        status: 'interrupted',
+        failure: { code: 'WORKER_DISCONNECTED', message: 'Interrupted.', retryable: true },
+      },
+      { agentStackId: 'stack_muse_main', status: 'cancelled' },
+    ]);
+    expect(agents).toMatchObject({
+      configured: 3,
+      completed: 0,
+      failed: 0,
+      timedOut: 1,
+      interrupted: 1,
+      cancelled: 1,
+    });
+  });
+
   it('--version prints qa version', () => {
     expect(versionLine()).toMatch(/^qa \d+\.\d+\.\d+$/);
   });

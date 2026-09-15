@@ -27,6 +27,7 @@ import {
   CliSuccessEnvelopeSchema,
   ProjectIdSchema,
   QARunIdSchema,
+  type AgentRun,
   type CliSuccessEnvelope,
 } from '@qa/schemas';
 import type { ParsedCliCommand } from './arguments.js';
@@ -90,6 +91,41 @@ function success(command: CliSuccessEnvelope['command'], data: unknown): CliSucc
     ok: true,
     data,
   });
+}
+
+function boundedRunFailureMessage(message: string): string {
+  return message
+    .replace(/\b(Bearer)\s+\S+/gi, '$1 [REDACTED]')
+    .replace(/\b([A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))\s*[:=]\s*([^\s,;]+)/gi, '$1=[REDACTED]')
+    .slice(0, 500);
+}
+
+export function summarizeRunStartAgents(
+  agentRuns: ReadonlyArray<
+    Pick<AgentRun, 'agentStackId' | 'status'> & { readonly failure?: AgentRun['failure'] }
+  >,
+) {
+  return {
+    configured: agentRuns.length,
+    completed: agentRuns.filter((agent) => agent.status === 'completed').length,
+    failed: agentRuns.filter((agent) => agent.status === 'failed').length,
+    timedOut: agentRuns.filter((agent) => agent.status === 'timed_out').length,
+    interrupted: agentRuns.filter((agent) => agent.status === 'interrupted').length,
+    cancelled: agentRuns.filter((agent) => agent.status === 'cancelled').length,
+    runs: agentRuns.map((agent) => ({
+      agentStackId: agent.agentStackId,
+      status: agent.status,
+      ...(agent.failure === undefined
+        ? {}
+        : {
+            failure: {
+              code: agent.failure.code,
+              message: boundedRunFailureMessage(agent.failure.message),
+              retryable: agent.failure.retryable,
+            },
+          }),
+    })),
+  };
 }
 
 export async function executeCommand(
@@ -287,11 +323,7 @@ export async function executeCommand(
           runId: details.run.id,
           projectId: details.run.projectId,
           status: details.run.status,
-          agents: {
-            configured: details.agentRuns.length,
-            completed: details.agentRuns.filter((agent) => agent.status === 'completed').length,
-            failed: details.agentRuns.filter((agent) => agent.status !== 'completed').length,
-          },
+          agents: summarizeRunStartAgents(details.agentRuns),
           findings: { total: details.findings.length },
         });
       },

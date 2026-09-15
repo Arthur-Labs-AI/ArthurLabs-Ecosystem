@@ -22,7 +22,15 @@ import { HarnessEventSchema, type HarnessEvent, type HarnessRunRequest } from '@
 import { RunCoordinator } from '../src/index.js';
 
 const roots: string[] = [];
+const resources: Array<{
+  readonly lease: RuntimeInstanceLease;
+  readonly database: SentryDatabase;
+}> = [];
 afterEach(async () => {
+  for (const resource of resources.splice(0)) {
+    resource.lease.release();
+    resource.database.close();
+  }
   await Promise.all(roots.splice(0).map((value) => rm(value, { recursive: true, force: true })));
 });
 
@@ -38,6 +46,7 @@ async function fixture() {
   const repository = new SentryRepository(database);
   const lease = new RuntimeInstanceLease(repository, { autoHeartbeat: false });
   lease.start();
+  resources.push({ lease, database });
   const manager = new ProjectManager(dataRoot, repository, { runtimeLease: lease });
   const added = await manager.addProject(source);
   return { root, source, dataRoot, database, repository, lease, added };

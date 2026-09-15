@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { AgentRunSchema } from './run.schema.js';
+import { AgentRunFailureSchema, AgentRunSchema } from './run.schema.js';
 import {
   ArtifactIdSchema,
+  AgentStackIdSchema,
   IsoTimestampSchema,
   ProjectContextSnapshotIdSchema,
   ProjectIdSchema,
@@ -265,6 +266,20 @@ export const RunStartResultSchema = z
         configured: NonNegativeIntSchema,
         completed: NonNegativeIntSchema,
         failed: NonNegativeIntSchema,
+        timedOut: NonNegativeIntSchema,
+        interrupted: NonNegativeIntSchema,
+        cancelled: NonNegativeIntSchema,
+        runs: z.array(
+          z
+            .object({
+              agentStackId: AgentStackIdSchema,
+              status: z.enum(AGENT_RUN_STATUSES),
+              failure: AgentRunFailureSchema.extend({ message: z.string().min(1).max(500) })
+                .strict()
+                .optional(),
+            })
+            .strict(),
+        ),
       })
       .strict(),
     findings: z.object({ total: NonNegativeIntSchema }).strict(),

@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RequestTimeoutError } from '@deepseek-ai/dsh-sdk-client';
 import { HarnessRunRequestSchema, type HarnessEvent } from '@qa/schemas';
 import {
   createAgentRunId,
@@ -12,6 +13,8 @@ import {
 import {
   buildDeepSeekChildEnvironment,
   DEEPSEEK_ALLOWED_SECRET_ENV_NAMES,
+  deepSeekReadinessFromChecks,
+  DeepSeekHarnessError,
   DeepSeekHarnessAdapter,
   type DeepSeekClientFactory,
   type DeepSeekRunResult,
@@ -146,6 +149,63 @@ function validPlan() {
 }
 
 describe('DeepSeekHarnessAdapter', () => {
+  it('marks runtime verified only after explicit startup succeeds', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-runtime-verified-'));
+    roots.push(root);
+    const input = await request(root);
+    const readiness = () =>
+      deepSeekReadinessFromChecks({ modelOk: true, binaryOk: true }).runtimeVerified;
+    expect(readiness()).toBe(false);
+
+    const failed = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        start: async () => {
+          expect(readiness()).toBe(false);
+          throw new DeepSeekHarnessError('DEEPSEEK_AUTH_FAILED', 'Authentication failed.');
+        },
+        startSession: async () => ({ runText: async () => planResult(validPlan()) }),
+        close: async () => undefined,
+      }),
+    });
+    expect((await collect(failed, input)).at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'DEEPSEEK_AUTH_FAILED' },
+    });
+    await failed.dispose();
+    expect(readiness()).toBe(false);
+
+    let sessions = 0;
+    const successful = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        start: async () => {
+          expect(readiness()).toBe(false);
+        },
+        startSession: async () => {
+          sessions += 1;
+          expect(readiness()).toBe(true);
+          return {
+            runText: threeStage(
+              planResult(validPlan()),
+              investigationResult(),
+              reportResult(validReportV2()),
+            ),
+          };
+        },
+        close: async () => undefined,
+      }),
+    });
+    expect((await collect(successful, input)).at(-1)?.type).toBe('run.completed');
+    await successful.dispose();
+    expect(sessions).toBe(1);
+    expect(readiness()).toBe(true);
+  });
+
   it('never forwards unrelated host secrets to the DeepSeek child environment', async () => {
     const seen: Array<NodeJS.ProcessEnv | undefined> = [];
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-env-'));
@@ -154,6 +214,7 @@ describe('DeepSeekHarnessAdapter', () => {
     const factory: DeepSeekClientFactory = async (spawnInput) => {
       seen.push(spawnInput.environment);
       return {
+        start: async () => undefined,
         startSession: async () => ({
           runText: threeStage(
             planResult(validPlan()),
@@ -213,6 +274,7 @@ describe('DeepSeekHarnessAdapter', () => {
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
+        start: async () => undefined,
         startSession: async () => ({
           runText: threeStage(
             planResult(validPlan()),
@@ -319,6 +381,7 @@ describe('DeepSeekHarnessAdapter', () => {
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
+        start: async () => undefined,
         startSession: async () => ({
           runText: threeStage(
             planResult(validPlan()),
@@ -410,6 +473,7 @@ describe('DeepSeekHarnessAdapter', () => {
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
+        start: async () => undefined,
         startSession: async () => ({
           runText: threeStage(
             planResult(validPlan()),
@@ -483,6 +547,7 @@ describe('DeepSeekHarnessAdapter', () => {
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
+        start: async () => undefined,
         startSession: async () => ({
           runText: async (text: string) => {
             calls += 1;
@@ -590,6 +655,7 @@ describe('DeepSeekHarnessAdapter', () => {
         modelId: 'deepseek-v4-flash',
         environment: {},
         clientFactory: async () => ({
+          start: async () => undefined,
           startSession: async () => ({
             // Hostile signals surface during investigation (tools live
             // there now); the run still fails closed.
@@ -617,6 +683,7 @@ describe('DeepSeekHarnessAdapter', () => {
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
+        start: async () => undefined,
         startSession: async () => ({
           runText: threeStage(
             planResult(validPlan()),
@@ -666,6 +733,7 @@ describe('DeepSeekHarnessAdapter', () => {
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
+        start: async () => undefined,
         startSession: async () => ({
           runText: threeStage(
             planResult(validPlan()),
@@ -839,6 +907,7 @@ describe('DeepSeekHarnessAdapter', () => {
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
+        start: async () => undefined,
         startSession: async () => ({
           runText: async (text: string) => {
             calls += 1;
@@ -885,6 +954,7 @@ describe('DeepSeekHarnessAdapter', () => {
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
+        start: async () => undefined,
         startSession: async () => ({
           runText: async (text: string) => {
             calls += 1;
@@ -921,6 +991,7 @@ describe('DeepSeekHarnessAdapter', () => {
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
+        start: async () => undefined,
         startSession: async () => ({
           runText: async () => planResult('Still just prose, never JSON.'),
         }),
@@ -945,6 +1016,7 @@ describe('DeepSeekHarnessAdapter', () => {
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
+        start: async () => undefined,
         startSession: async () => ({
           runText: async (text: string) => {
             prompts.push(text);
@@ -967,8 +1039,99 @@ describe('DeepSeekHarnessAdapter', () => {
     expect(report).toContain('"checks":[{"name"');
   });
 
-  it('retries client initialize once on vendor init timeout, then proceeds', async () => {
+  it('retries explicit startup once with a fresh client before planning', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-init-retry-'));
+    roots.push(root);
+    const input = await request(root);
+    const order: string[] = [];
+    let factories = 0;
+    let firstClosed = false;
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => {
+        factories += 1;
+        const clientNumber = factories;
+        order.push('create:' + clientNumber);
+        const runText = threeStage(
+          planResult(validPlan()),
+          investigationResult(),
+          reportResult(validReportV2()),
+        );
+        return {
+          start: async () => {
+            order.push('start:' + clientNumber);
+            if (clientNumber === 1)
+              throw new Error(
+                'initialize timed out after 30000ms waiting for dsh profile "sdk-minimal"',
+              );
+          },
+          startSession: async () => ({
+            runText: async (...args) => {
+              order.push('turn:' + clientNumber);
+              return runText(...args);
+            },
+          }),
+          close: async () => {
+            order.push('close:' + clientNumber);
+            if (clientNumber === 1) firstClosed = true;
+          },
+        };
+      },
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(factories).toBe(2);
+    expect(firstClosed).toBe(true);
+    expect(order.indexOf('close:1')).toBeLessThan(order.indexOf('create:2'));
+    expect(order.indexOf('start:2')).toBeLessThan(order.indexOf('turn:2'));
+    expect(
+      events.filter((e) => e.type === 'warning' && e.code === 'DEEPSEEK_INIT_RETRY'),
+    ).toHaveLength(1);
+  });
+
+  it('fails after exactly two explicit initialization timeouts', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-init-fatal-'));
+    roots.push(root);
+    const input = await request(root);
+    let factories = 0;
+    let closes = 0;
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => {
+        factories += 1;
+        return {
+          start: async () => {
+            throw new Error(
+              'initialize timed out after 30000ms waiting for dsh profile "sdk-minimal"',
+            );
+          },
+          startSession: async () => ({ runText: async () => planResult(validPlan()) }),
+          close: async () => {
+            closes += 1;
+          },
+        };
+      },
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'DEEPSEEK_START_FAILED' },
+    });
+    expect(factories).toBe(2);
+    expect(closes).toBe(2);
+    expect(
+      events.filter((e) => e.type === 'warning' && e.code === 'DEEPSEEK_INIT_RETRY'),
+    ).toHaveLength(1);
+  });
+
+  it('does not retry a non-initialization startup failure', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-init-auth-'));
     roots.push(root);
     const input = await request(root);
     let factories = 0;
@@ -978,84 +1141,57 @@ describe('DeepSeekHarnessAdapter', () => {
       environment: {},
       clientFactory: async () => {
         factories += 1;
-        if (factories === 1) {
-          throw new Error(
-            'initialize timed out after 30000ms waiting for dsh profile "sdk-minimal"',
-          );
-        }
         return {
-          startSession: async () => ({
-            runText: threeStage(
-              planResult(validPlan()),
-              investigationResult(),
-              reportResult(validReportV2()),
-            ),
-          }),
+          start: async () => {
+            throw new DeepSeekHarnessError('DEEPSEEK_AUTH_FAILED', 'Authentication failed.');
+          },
+          startSession: async () => ({ runText: async () => planResult(validPlan()) }),
           close: async () => undefined,
         };
       },
     });
     const events = await collect(adapter, input);
     await adapter.dispose();
-    expect(events.at(-1)?.type).toBe('run.completed');
-    expect(factories).toBe(2);
-    expect(events).toContainEqual(
-      expect.objectContaining({ type: 'warning', code: 'DEEPSEEK_INIT_RETRY' }),
-    );
-  });
-
-  it('retries when initialize times out lazily at startSession', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-init-lazy-'));
-    roots.push(root);
-    const input = await request(root);
-    let sessions = 0;
-    const adapter = new DeepSeekHarnessAdapter({
-      executable: 'dsh-test',
-      modelId: 'deepseek-v4-flash',
-      environment: {},
-      clientFactory: async () => ({
-        startSession: async () => {
-          sessions += 1;
-          if (sessions === 1) {
-            throw new Error(
-              'initialize timed out after 30000ms waiting for dsh profile "sdk-minimal"',
-            );
-          }
-          return {
-            runText: threeStage(
-              planResult(validPlan()),
-              investigationResult(),
-              reportResult(validReportV2()),
-            ),
-          };
-        },
-        close: async () => undefined,
-      }),
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'DEEPSEEK_AUTH_FAILED' },
     });
-    const events = await collect(adapter, input);
-    await adapter.dispose();
-    expect(events.at(-1)?.type).toBe('run.completed');
-    expect(sessions).toBe(2);
-    expect(events).toContainEqual(
-      expect.objectContaining({ type: 'warning', code: 'DEEPSEEK_INIT_RETRY' }),
+    expect(factories).toBe(1);
+    expect(events.some((e) => e.type === 'warning' && e.code === 'DEEPSEEK_INIT_RETRY')).toBe(
+      false,
     );
   });
 
-  it('fails closed when client initialize keeps timing out', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-init-fatal-'));
+  it('does not retry a typed SDK timeout for another request method', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-session-timeout-'));
     roots.push(root);
     const input = await request(root);
+    let factories = 0;
     const adapter = new DeepSeekHarnessAdapter({
       executable: 'dsh-test',
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => {
-        throw new Error('initialize timed out after 30000ms waiting for dsh profile "sdk-minimal"');
+        factories += 1;
+        return {
+          start: async () => {
+            throw new RequestTimeoutError('session/create timed out after 30000ms waiting for dsh');
+          },
+          startSession: async () => ({ runText: async () => planResult(validPlan()) }),
+          close: async () => undefined,
+        };
       },
     });
     const events = await collect(adapter, input);
     await adapter.dispose();
-    expect(events.at(-1)).toMatchObject({ type: 'run.failed' });
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'DEEPSEEK_START_FAILED' },
+    });
+    expect(factories).toBe(1);
+    expect(events.some((e) => e.type === 'warning' && e.code === 'DEEPSEEK_INIT_RETRY')).toBe(
+      false,
+    );
   });
 
   it('disposes the owned client exactly once across cancel and dispose', async () => {
@@ -1068,6 +1204,7 @@ describe('DeepSeekHarnessAdapter', () => {
       modelId: 'deepseek-v4-flash',
       environment: {},
       clientFactory: async () => ({
+        start: async () => undefined,
         startSession: async () => ({
           runText: threeStage(
             planResult(validPlan()),

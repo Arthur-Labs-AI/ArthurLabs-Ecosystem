@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { RequestTimeoutError } from '@deepseek-ai/dsh-sdk-client';
 import {
   createFindingId,
   createHarnessEventId,
@@ -164,7 +165,12 @@ function messageOf(cause: unknown): string {
 /** Vendor SDK initialize timeout (local host did not come up; no session
  *  started, nothing to corrupt). Only this narrow signal retries. */
 function isInitializeTimeout(cause: unknown): boolean {
-  return /initialize timed out/i.test(messageOf(cause));
+  const initializeTimeout = /^initialize timed out after \d+ms(?:\s|$)/i;
+  if (cause instanceof RequestTimeoutError) return initializeTimeout.test(cause.message);
+  // Some package managers can load a second SDK copy, making instanceof
+  // unreliable. Keep the fallback bound to the SDK's documented method-first
+  // timeout shape so unrelated request timeouts never restart the client.
+  return cause instanceof Error && initializeTimeout.test(cause.message);
 }
 
 interface BuiltReportAttempt {
@@ -792,9 +798,9 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       );
       // Bounded client-initialize retry: the vendor host occasionally
       // fails to come up within its budget (observed live as
-      // 'initialize timed out'). Initialization may complete inside the
-      // factory or lazily at startSession, so BOTH are inside the retry
-      // scope; anything else, or a second timeout, fails the run with
+      // 'initialize timed out'). The pinned SDK performs the real subprocess
+      // startup and initialize handshake in client.start(), so that exact
+      // operation stays inside the retry scope. Anything else, or a second timeout, fails the run with
       // the original typed error. Never loops.
       const createClient = () =>
         this.clientFactory({
@@ -811,6 +817,8 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       let session: DeepSeekSessionView;
       try {
         this.client = await createClient();
+        await this.client.start();
+        markDeepSeekRuntimeVerified();
         session = await this.client.startSession({ sessionId: request.agentRunId });
       } catch (cause) {
         if (!isInitializeTimeout(cause)) throw cause;
@@ -821,9 +829,10 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         });
         await this.client?.close().catch(() => undefined);
         this.client = await createClient();
+        await this.client.start();
+        markDeepSeekRuntimeVerified();
         session = await this.client.startSession({ sessionId: request.agentRunId });
       }
-      markDeepSeekRuntimeVerified();
       const pipeline = pipelineContext(this.secrets);
       // STAGE 1 — planning with one bounded correction. A prose-first or
       // misshapen plan retries once in the same session with the parse

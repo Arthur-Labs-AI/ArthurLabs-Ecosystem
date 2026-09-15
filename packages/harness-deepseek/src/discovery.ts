@@ -226,6 +226,14 @@ export async function doctorDeepSeek(
   try {
     runtime = resolveDeepSeekRuntime({ ...input, environment });
     checks.push({ name: 'model', status: 'pass', message: runtime.modelId });
+    if (runtime.modelId === 'deepseek-v4-flash') {
+      checks.push({
+        name: 'model-alias',
+        status: 'warn',
+        message:
+          'Configured DeepSeek model uses legacy alias deepseek-v4-flash. Canonical tested route is deepseek-flash.',
+      });
+    }
     checks.push({ name: 'provider', status: 'pass', message: runtime.provider });
   } catch (cause) {
     checks.push({ name: 'model', status: 'fail', message: redactDiagnostic(cause) });
