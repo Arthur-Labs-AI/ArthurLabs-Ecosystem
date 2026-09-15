@@ -5,11 +5,13 @@ import { compareFindings } from './match.js';
 import { normalizeFinding, sha256Hex, type NormalizedFinding } from './normalize.js';
 
 /**
- * Deterministic complete-link clustering (merger v1). A finding joins a
+ * Deterministic complete-link clustering (merger v2). A finding joins a
  * cluster only when compatible with EVERY existing member — this
  * prevents transitive chain-merging (A≈B, B≈C, A≉C never collapse).
  * Insertion order is the canonical finding-ID sort, so output is
- * order-invariant regardless of input permutation.
+ * order-invariant regardless of input permutation. Every derived list
+ * (stacks, severities, evidence, disagreements) is explicitly sorted;
+ * nothing depends on repository retrieval order.
  */
 
 export interface ClusterInput {

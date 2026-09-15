@@ -12,8 +12,11 @@ import {
 import { FINDING_CATEGORIES, FINDING_CONFIDENCES, FINDING_SEVERITIES } from './enums.js';
 
 /** Merger/normalizer versions: bumped when the algorithm changes so
- *  historical MergeResults are never silently reinterpreted. */
-export const MERGER_VERSION = 1 as const;
+ *  historical MergeResults are never silently reinterpreted.
+ *  v2: same-symbol false-positive hardening (four explicit equivalence
+ *  cases; sharedTopicToken demoted to a recorded-only signal).
+ *  Normalization unchanged, so NORMALIZER_VERSION stays 1. */
+export const MERGER_VERSION = 2 as const;
 export const NORMALIZER_VERSION = 1 as const;
 
 export const AgreementStateSchema = z.enum([

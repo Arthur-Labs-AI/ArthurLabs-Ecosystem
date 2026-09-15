@@ -125,11 +125,14 @@ export function mergeFindings(input: MergeInput): MergeOutput {
         mergerVersion: MERGER_VERSION,
         normalizerVersion: NORMALIZER_VERSION,
         sourceFindingIds: [...cluster.memberFindingIds] as FindingCluster['sourceFindingIds'],
+        // Explicit sort: usableRuns follows repository retrieval order,
+        // which must never leak into persisted MergeResult semantics (§18).
         sourceAgentRunIds: usableRuns
           .filter((run) =>
             cluster.memberFindingIds.some((id) => byId.get(id)?.agentRunId === run.id),
           )
-          .map((run) => run.id) as FindingCluster['sourceAgentRunIds'],
+          .map((run) => run.id)
+          .sort() as FindingCluster['sourceAgentRunIds'],
         sourceAgentStackIds: [
           ...cluster.memberAgentStackIds,
         ] as FindingCluster['sourceAgentStackIds'],

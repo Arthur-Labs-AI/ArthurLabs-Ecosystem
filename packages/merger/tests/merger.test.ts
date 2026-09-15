@@ -352,6 +352,160 @@ describe('deterministic merger', () => {
     expect(cluster?.fieldDisagreements.some((d) => d.field === 'severity')).toBe(true);
   });
 
+  it('keeps same-symbol different-bug findings apart (§12)', () => {
+    // The v1 false-positive: same file + same symbol + shared generic
+    // topic tokens (request/handler) merged two different defects.
+    const a = finding({
+      id: 'find_01K7777777777777777777A8W1',
+      agentRunId: RUNS[0]?.id as string,
+      stack: 'stack_muse_main',
+      title: 'Null dereference in request handler',
+      description: 'Missing null validation crashes request processing',
+      locations: [{ relativePath: 'src/api.ts', symbol: 'handleRequest', startLine: 20 }],
+    });
+    const b = finding({
+      id: 'find_01K7777777777777777777A8W2',
+      agentRunId: RUNS[1]?.id as string,
+      stack: 'stack_deepseek_main',
+      title: 'Request cancellation timeout in handler',
+      description: 'Request handler never cancels timed-out operation',
+      locations: [{ relativePath: 'src/api.ts', symbol: 'handleRequest', startLine: 80 }],
+    });
+    const { result } = mergeSetup([a, b]);
+    expect(result.clusterCount).toBe(2);
+  });
+
+  it('still merges same-symbol same-bug findings (§13)', () => {
+    const a = finding({
+      id: 'find_01K7777777777777777777A8W1',
+      agentRunId: RUNS[0]?.id as string,
+      stack: 'stack_muse_main',
+      title: 'Null dereference in request handler',
+      description: 'Missing null guard crashes handleRequest on empty payload',
+      locations: [{ relativePath: 'src/api.ts', symbol: 'handleRequest', startLine: 20 }],
+    });
+    const b = finding({
+      id: 'find_01K7777777777777777777A8W2',
+      agentRunId: RUNS[1]?.id as string,
+      stack: 'stack_deepseek_main',
+      title: 'Missing null guard crashes handleRequest',
+      description: 'Null dereference in request handler when payload is empty',
+      locations: [{ relativePath: 'src/api.ts', symbol: 'handleRequest', startLine: 22 }],
+    });
+    const { result } = mergeSetup([a, b]);
+    expect(result.clusterCount).toBe(1);
+    expect(result.clusters[0]?.supportingAgentCount).toBe(2);
+  });
+
+  it('keeps same-line clearly different bugs apart (§14)', () => {
+    const a = finding({
+      id: 'find_01K7777777777777777777A8W1',
+      agentRunId: RUNS[0]?.id as string,
+      stack: 'stack_muse_main',
+      title: 'Parser throws on empty input',
+      description: 'parseAndCache rejects empty input with uncaught exception',
+      locations: [{ relativePath: 'src/cache.ts', startLine: 42 }],
+    });
+    const b = finding({
+      id: 'find_01K7777777777777777777A8W2',
+      agentRunId: RUNS[1]?.id as string,
+      stack: 'stack_deepseek_main',
+      title: 'Cache race causes stale data',
+      description: 'concurrent writes race, readers observe stale entries',
+      locations: [{ relativePath: 'src/cache.ts', startLine: 42 }],
+    });
+    const { result } = mergeSetup([a, b]);
+    expect(result.clusterCount).toBe(2);
+  });
+
+  it('refuses equivalence from generic vocabulary alone (§15)', () => {
+    const a = finding({
+      id: 'find_01K7777777777777777777A8W1',
+      agentRunId: RUNS[0]?.id as string,
+      stack: 'stack_muse_main',
+      title: 'API request handler returns stale cache',
+      description: 'API request handler serves stale cache entries after invalidation',
+      locations: [{ relativePath: 'src/api.ts', symbol: 'handleRequest', startLine: 30 }],
+    });
+    const b = finding({
+      id: 'find_01K7777777777777777777A8W2',
+      agentRunId: RUNS[1]?.id as string,
+      stack: 'stack_deepseek_main',
+      title: 'API request handler leaks memory',
+      description: 'API request handler accumulates response buffers without release',
+      locations: [{ relativePath: 'src/api.ts', symbol: 'handleRequest', startLine: 90 }],
+    });
+    const { result } = mergeSetup([a, b]);
+    expect(result.clusterCount).toBe(2);
+  });
+
+  it('is invariant under agent-run permutation (§19)', () => {
+    const a = finding({
+      id: 'find_01K7777777777777777777A8W1',
+      agentRunId: 'arun_01K7777777777777777777A8W1',
+      stack: 'stack_muse_main',
+      title: 'Shared defect with disputed severity',
+      severity: 'high',
+      locations: [{ relativePath: 'src/s.ts', startLine: 1 }],
+    });
+    const b = finding({
+      id: 'find_01K7777777777777777777A8W2',
+      agentRunId: 'arun_01K7777777777777777777A8W3',
+      stack: 'stack_glm_main',
+      title: 'Shared defect with disputed severity',
+      severity: 'medium',
+      locations: [{ relativePath: 'src/s.ts', startLine: 1 }],
+    });
+    const run = (order: AgentRun[]) =>
+      mergeFindings({
+        qaRun: qaRun(),
+        agentRuns: order,
+        findings: [a, b],
+        evidence: [],
+        expectedAgentStackIds: STACKS,
+        now: '2026-09-14T01:00:00.000Z' as never,
+      });
+    const base = run(RUNS);
+    const permuted = run([RUNS[2] as AgentRun, RUNS[0] as AgentRun, RUNS[1] as AgentRun]);
+    expect(permuted.result.inputDigest).toBe(base.result.inputDigest);
+    expect(permuted.result.clusters.map((c) => c.id)).toEqual(
+      base.result.clusters.map((c) => c.id),
+    );
+    expect(permuted.result.clusters[0]?.sourceAgentRunIds).toEqual(
+      base.result.clusters[0]?.sourceAgentRunIds,
+    );
+    expect(permuted.result.clusters[0]?.representativeFindingId).toBe(
+      base.result.clusters[0]?.representativeFindingId,
+    );
+    expect(JSON.stringify(permuted.result.clusters)).toBe(JSON.stringify(base.result.clusters));
+  });
+
+  it('is invariant under evidence permutation (§20)', () => {
+    const ev1 = codeEvidence('ev_01K7777777777777777777A8W1', 'src/math.ts', 40, 44);
+    const ev2 = codeEvidence('ev_01K7777777777777777777A8W2', 'src/math.ts', 42, 42);
+    const a = finding({
+      id: 'find_01K7777777777777777777A8W1',
+      agentRunId: RUNS[0]?.id as string,
+      stack: 'stack_muse_main',
+      title: 'Division by zero crashes the request handler',
+      locations: [{ relativePath: 'src/math.ts', startLine: 42 }],
+      evidenceIds: [ev1.id, ev2.id],
+    });
+    const mk = (evidence: Evidence[]) =>
+      mergeFindings({
+        qaRun: qaRun(),
+        agentRuns: RUNS,
+        findings: [a],
+        evidence,
+        expectedAgentStackIds: STACKS,
+        now: '2026-09-14T01:00:00.000Z' as never,
+      });
+    const first = mk([ev1, ev2]);
+    const swapped = mk([ev2, ev1]);
+    expect(swapped.result.inputDigest).toBe(first.result.inputDigest);
+    expect(JSON.stringify(swapped.result.clusters)).toBe(JSON.stringify(first.result.clusters));
+  });
+
   it('never upgrades confidence from agreement (§72)', () => {
     const mkProbable = (n: number, stack: number) =>
       finding({
