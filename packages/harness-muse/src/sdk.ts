@@ -105,7 +105,11 @@ export type MuseClientFactory = (input: {
  * - known subject kind: shell | fileAccess | process | tool (unknown kinds
  *   are denied; the MSP subject union is open and future kinds are never
  *   inferred safe);
- * - no network: kind is not network and no host/port/protocol endpoint;
+ * - safe network only: kind is not network and no host/port/protocol
+ *   endpoint, UNLESS the endpoint is loopback (the agent's own servers,
+ *   localhost QA) or a versioned package-registry host (dependency QA);
+ *   every other network destination is denied — network access is
+ *   attributable QA capability, not a general egress grant;
  * - no protectedWrite, no judgeEscalated;
  * - POSITIVE containment proof: the subject workspace root canonicalizes
  *   inside the Sentry workspace (missing workspaceRoot denies unless another
@@ -124,7 +128,10 @@ export type MuseClientFactory = (input: {
  * This selects an approval policy; it never disables sandboxing. The host
  * enforces its sandbox on every approved command.
  */
-const APPROVABLE_SUBJECT_KINDS = new Set(['shell', 'fileAccess', 'process', 'tool']);
+// 'network' is listed so attributable QA endpoints (loopback, versioned
+// registries) can be approved below; every other network destination is
+// denied by the endpoint check, never by kind membership alone.
+const APPROVABLE_SUBJECT_KINDS = new Set(['shell', 'fileAccess', 'process', 'tool', 'network']);
 
 export function canonicalizeApprovalPath(value: string): string {
   const slashed = value.replace(/\\/g, '/');
@@ -214,6 +221,41 @@ export function isPathInsideApprovalRoot(candidate: string, root: string): boole
   return true;
 }
 
+/** Loopback hosts: the agent's own environment (local servers, DBs,
+ *  localhost QA). Safe regardless of port/protocol — loopback cannot
+ *  leave the machine, and the host sandbox still constrains the command. */
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.toLowerCase().replace(/\.$/, '');
+  if (normalized === 'localhost' || normalized === '::1' || normalized === '[::1]') return true;
+  const quad = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(normalized);
+  return quad !== null && quad[1] === '127';
+}
+
+/** Versioned package-registry hosts: dependency QA (npm install, pip
+ *  install, go mod download). Exact-host match only — host identity is
+ *  the control; ports/protocols are not separately constrained. */
+const QA_REGISTRY_HOSTS: ReadonlySet<string> = new Set([
+  'registry.npmjs.org',
+  'registry.yarnpkg.com',
+  'pypi.org',
+  'files.pythonhosted.org',
+  'proxy.golang.org',
+  'repo.maven.apache.org',
+  'repo1.maven.org',
+  'crates.io',
+  'static.crates.io',
+  'rubygems.org',
+]);
+
+/** Safe QA network endpoint: loopback (own servers) or a versioned
+ *  registry host. Everything else — including bare 'network' kinds
+ *  without an attributable host — is denied. */
+function isSafeQaNetworkEndpoint(subject: ApprovalSubjectView): boolean {
+  if (typeof subject.host !== 'string' || subject.host.length === 0) return false;
+  const host = subject.host.toLowerCase();
+  return isLoopbackHost(host) || QA_REGISTRY_HOSTS.has(host);
+}
+
 interface ApprovalSubjectView {
   readonly kind?: unknown;
   readonly workspaceRoot?: unknown;
@@ -260,9 +302,34 @@ export function decideMuseApproval(
     return deny('protected-write subjects are never auto-approved');
   if (request.judgeEscalated === true)
     return deny('judge-escalated subjects are never auto-approved');
-  if (subject.kind === 'network') return deny('network subjects are never auto-approved');
-  if (subject.host !== undefined || subject.port !== undefined || subject.protocol !== undefined)
-    return deny('subjects with network endpoints are never auto-approved');
+  // QA network attribution (§22-23): loopback (own servers) and versioned
+  // registry hosts are normal investigative capability; every other
+  // destination — including endpoint-less network kinds — stays denied.
+  // Safe network subjects carry their own containment (the destination
+  // is loopback or a versioned registry), so they resolve here without a
+  // workspace-root proof that network subjects never carry.
+  if (subject.kind === 'network') {
+    if (!isSafeQaNetworkEndpoint(subject))
+      return deny('non-QA network subjects are never auto-approved');
+    const once = choices.find(
+      (choice) => choice.decision === 'approved' && choice.scope === 'once',
+    );
+    if (once === undefined)
+      return deny('no server-offered one-action approval; persistent approvals are never chosen');
+    return {
+      choiceId: once.choiceId,
+      feedback: null,
+      approved: true as const,
+      reason: 'safe QA network endpoint auto-approved for one action',
+    };
+  } else if (
+    subject.host !== undefined ||
+    subject.port !== undefined ||
+    subject.protocol !== undefined
+  ) {
+    if (!isSafeQaNetworkEndpoint(subject))
+      return deny('subjects with non-QA network endpoints are never auto-approved');
+  }
   if (subject.kind === 'fileAccess') {
     const target =
       typeof subject.path === 'string'

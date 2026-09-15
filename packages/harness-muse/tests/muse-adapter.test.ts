@@ -878,6 +878,51 @@ describe('MuseHarnessAdapter', () => {
     expect(file({ kind: 'fileAccess' })).toMatchObject({ approved: false });
   });
 
+  it('allows safe QA network endpoints while denying general egress (§22-23)', () => {
+    const ws = '/tmp/ws/project';
+    const choices = [
+      { choiceId: 'once_allow', label: 'Allow once', decision: 'approved', scope: 'once' },
+      { choiceId: 'stop_it', label: 'Stop', decision: 'abort', scope: 'once' },
+    ];
+    const net = (subject: Record<string, unknown>) =>
+      decideMuseApproval(
+        { approvalId: 'n', toolName: 'fetch', availableChoices: choices, subject } as never,
+        ws,
+      );
+    // Loopback: the agent's own servers and localhost QA.
+    expect(net({ kind: 'network', host: 'localhost', port: 3000 })).toMatchObject({
+      choiceId: 'once_allow',
+      approved: true,
+    });
+    expect(net({ kind: 'network', host: '127.0.0.1', port: 5432 })).toMatchObject({
+      approved: true,
+    });
+    expect(net({ kind: 'network', host: '::1' })).toMatchObject({ approved: true });
+    // Versioned registry hosts: dependency QA.
+    expect(net({ kind: 'network', host: 'registry.npmjs.org' })).toMatchObject({
+      approved: true,
+    });
+    // General egress: still denied via the offered abort choice.
+    expect(net({ kind: 'network', host: 'example.com' })).toMatchObject({
+      choiceId: 'stop_it',
+      approved: false,
+    });
+    // Endpoint-less network kinds carry no attributable destination: deny.
+    expect(net({ kind: 'network' })).toMatchObject({ approved: false });
+    // Near-loopback spoofs are not loopback.
+    expect(net({ kind: 'network', host: 'localhost.example.com' })).toMatchObject({
+      approved: false,
+    });
+    expect(net({ kind: 'network', host: '128.0.0.1' })).toMatchObject({ approved: false });
+    // Non-network kinds with safe endpoints still need workspace proof.
+    expect(net({ kind: 'shell', host: 'localhost', port: 3000, workspaceRoot: ws })).toMatchObject({
+      approved: true,
+    });
+    expect(net({ kind: 'shell', host: 'example.com', workspaceRoot: ws })).toMatchObject({
+      approved: false,
+    });
+  });
+
   it('denies non-existing targets beneath symlinks escaping the workspace', async () => {
     const container = await mkdtemp(join(tmpdir(), 'sentry-approval-symlink-'));
     roots.push(container);
