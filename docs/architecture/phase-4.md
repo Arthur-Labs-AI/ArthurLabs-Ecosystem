@@ -259,3 +259,15 @@ cost tracking, hard token budgets, full Adaptive InvestigationDepth.
     `snap_01M2G9C6J2FTM4PFTAXGCCX6YB`, separate per-agent workspaces
     (all removed), no stray processes, fixture intact, zero secret
     hits in persisted data, `json` + `log` exports.
+  - DeepSeek model migration (2026-09-15, provider-verified): the official
+    DeepSeek API docs list `deepseek-flash` (MODEL VERSION
+    DeepSeek-V4.1-Flash) as canonical; `deepseek-v4-flash` is a retired
+    legacy alias still served by V4.1-Flash. The alias route hung a solo
+    run for the full 30-minute watchdog (`run_01M2GTX9T75A17MP4KZ47QSCAW`);
+    the canonical route completed normally (`run_01M2HPBXPEV1WT5A9G860GFJXZ`:
+    completed/completed, 3 turns, 2 strong findings, 7 evidence incl.
+    op-grounded runtime items, 6377/27235/62848 tokens, 55 events,
+    json+log exports). Historical `deepseek-v4-flash` entries above
+    remain as observed: that configured ID was valid at the time and the
+    provider served V4.1-Flash behind it. No adapter or contract changes
+    were needed — model identity stays in environment configuration.
