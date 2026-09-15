@@ -29,7 +29,7 @@ arthur.local.json
 # Whisper/voice model binaries are machine-local downloads (e.g.
 # ggml-large-v3-turbo.bin) - never commit them.
 models/
-
+.tmp/
 # Python generated files
 __pycache__/
 *.py[cod]
