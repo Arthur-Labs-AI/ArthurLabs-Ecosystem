@@ -1,17 +1,19 @@
 /**
- * HR-02.5B/C/D1: local model platform subsystem (public entry point).
+ * HR-02.5B/C/D1/D2/E1: local model platform subsystem (public entry).
  *
  * HardwareProfile (HR-02.5A) -> Catalog -> Compatibility -> Recommendation
  * -> Persistent State + Selection Resolver (HR-02.5C) -> Installation
- * Orchestration (HR-02.5D1). Generic orchestration plus durable
- * lifecycle/selection state: no real provisioning backends, no downloads,
- * no provider construction, no router wiring.
+ * Orchestration (HR-02.5D1) -> Provisioning Platform (HR-02.5D2) ->
+ * Real Voice Installers (HR-02.5E1: parakeet/omnivoice/bgtts).
+ * No provider construction, no router wiring (those are HR-02.5E2).
  */
 
 export {
   LOCAL_MODEL_ACCELERATORS,
   LOCAL_MODEL_KINDS,
   MODEL_INSTALLER_IDS,
+  PROVISIONING_BACKENDS,
+  isProvisioningBackend,
   MODEL_QUALITY_TIERS,
   RECOMMENDATION_PROFILES,
   SUPPORT_MATURITIES,
@@ -26,6 +28,7 @@ export {
   type LocalModelKind,
   type ModelInstallationDescriptor,
   type ModelInstallerId,
+  type ProvisioningBackend,
   type ModelQualityTier,
   type ModelRequirements,
   type RecommendationProfile,
@@ -112,6 +115,45 @@ export {
   type InstallationServiceDeps,
 } from './install_service';
 export {
+  BGTTS_CUDA_INDEX_URL,
+  BGTTS_CUDA_PACKAGES,
+  BGTTS_HF_REPO,
+  BGTTS_MIOCODEC_ARCHIVE_LABEL,
+  BGTTS_MIOCODEC_ARCHIVE_SHA256,
+  BGTTS_MIOCODEC_ARCHIVE_URL,
+  BGTTS_MIOCODEC_VERSION,
+  BGTTS_PACKAGES,
+  BGTTS_MODEL_ID,
+  BGTTS_RUNTIME_ID,
+  DEFAULT_INSTALLER_MODEL_IDS,
+  OMNIVOICE_CUDA_INDEX_URL,
+  OMNIVOICE_CUDA_PACKAGES,
+  OMNIVOICE_HF_REPO,
+  OMNIVOICE_MODEL_ID,
+  OMNIVOICE_PACKAGES,
+  OMNIVOICE_RUNTIME_ID,
+  PARAKEET_CUDA_INDEX_URL,
+  PARAKEET_CUDA_PACKAGES,
+  PARAKEET_HF_REPO,
+  PARAKEET_MODEL_ID,
+  PARAKEET_PACKAGES,
+  PARAKEET_RUNTIME_ID,
+  PARAKEET_WORKER_FILE,
+  SMOKE_BG_PHRASE,
+  createDefaultModelInstallerRegistry,
+  INSTALL_MANIFEST_FILENAME,
+  isValidSttSmokeResponse,
+  makeBgTts38mInstaller,
+  makeOmniVoiceBgInstaller,
+  makeParakeetInstaller,
+  smokeReferenceToneBytes,
+  smokeSilenceB64,
+  smokeSttRequest,
+  type InstallManifest,
+  type InstalledModelRuntimeDescriptor,
+  writeInstallManifest,
+} from './installers/registry_exports';
+export {
   DOWNLOAD_OUTCOMES,
   NO_CREDENTIALS,
   VERIFICATION_MODES,
@@ -174,17 +216,21 @@ export {
 } from './provisioning/index';
 export {
   DEFAULT_MANAGED_ROOT_SEGMENTS,
+  HF_CACHE_DIRNAME,
+  HF_HUB_DIRNAME,
   LOCAL_MODEL_DIRNAME,
   MAX_STORAGE_KEY_CHARS,
   STORAGE_KEY_PATTERN,
   assertNoEscapeThroughLinks,
   canonicalizeRoot,
   defaultLocalModelRoot,
+  isManagedEnvKey,
   memoryPathoscopy,
   nodePathoscopy,
   resolveAppDataRoot,
   resolveManagedRoot,
   toStorageKey,
+  type ModelCacheEnv,
   type Pathoscopy,
   type TrustedArtifactSource,
 } from './provisioning/index';

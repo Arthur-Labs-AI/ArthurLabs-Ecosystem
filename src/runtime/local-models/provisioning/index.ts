@@ -24,6 +24,8 @@ export {
 export { DOWNLOAD_OUTCOMES, VERIFICATION_MODES } from './contracts';
 export {
   DEFAULT_MANAGED_ROOT_SEGMENTS,
+  HF_CACHE_DIRNAME,
+  HF_HUB_DIRNAME,
   LOCAL_MODEL_DIRNAME,
   ManagedPathService,
   MAX_STORAGE_KEY_CHARS,
@@ -32,12 +34,14 @@ export {
   assertNoEscapeThroughLinks,
   canonicalizeRoot,
   defaultLocalModelRoot,
+  isManagedEnvKey,
   memoryPathoscopy,
   nodePathoscopy,
   resolveAppDataRoot,
   resolveManagedRoot,
   toStorageKey,
   type ManagedLayout,
+  type ModelCacheEnv,
   type Pathoscopy,
 } from './paths';
 export {

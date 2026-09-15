@@ -32,6 +32,14 @@ export interface RunSpec {
   maxStdoutBytes?: number;
   maxStderrBytes?: number;
   signal?: AbortSignal;
+  /**
+   * Code-owned environment overlay, merged over process.env (never a
+   * wholesale replacement: PATH/SystemRoot/etc. survive). Intended for
+   * the managed model-cache variables from ManagedPathService
+   * (modelCacheEnv); never user/LLM/state/downloaded data. Validated
+   * for NUL/empty keys and non-string values.
+   */
+  env?: Record<string, string>;
 }
 
 export interface RunResult {
@@ -46,13 +54,14 @@ export interface RunResult {
 export type SpawnFn = (
   executable: string,
   args: readonly string[],
-  options: { cwd?: string; signal?: AbortSignal },
+  options: { cwd?: string; signal?: AbortSignal; env?: Record<string, string> },
 ) => ChildProcess;
 
 export function nodeSpawnFn(): SpawnFn {
   return (executable, args, options) =>
     nodeSpawn(executable, [...args], {
       cwd: options.cwd,
+      env: options.env ? { ...process.env, ...options.env } : process.env,
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
       shell: false,
@@ -72,6 +81,19 @@ function checkSpec(spec: RunSpec): void {
   }
   for (const banned of ['cmd', 'cmd.exe', '/c', '-Command']) {
     void banned;
+  }
+  if (spec.env !== undefined) {
+    if (spec.env === null || typeof spec.env !== 'object' || Array.isArray(spec.env)) {
+      throw new ArthurError('INVALID_CONFIG', 'runner env overlay must be a string record');
+    }
+    for (const [key, value] of Object.entries(spec.env)) {
+      if (key.trim() === '' || key.includes('\0') || key.includes('=')) {
+        throw new ArthurError('INVALID_CONFIG', 'runner env overlay has an invalid key');
+      }
+      if (typeof value !== 'string' || value.includes('\0')) {
+        throw new ArthurError('INVALID_CONFIG', 'runner env overlay has an invalid value for ' + JSON.stringify(key));
+      }
+    }
   }
 }
 
@@ -103,7 +125,7 @@ export function runTrustedProcess(spawnFn: SpawnFn, spec: RunSpec): Promise<RunR
   return new Promise<RunResult>((resolve) => {
     let child: ChildProcess;
     try {
-      child = spawnFn(spec.executable, spec.args, { cwd: spec.cwd, signal: undefined });
+      child = spawnFn(spec.executable, spec.args, { cwd: spec.cwd, signal: undefined, env: spec.env });
     } catch (err) {
       resolve({ exit_code: null, signal: null, timed_out: false, aborted: false, stdout: '', stderr: '', });
       void err;

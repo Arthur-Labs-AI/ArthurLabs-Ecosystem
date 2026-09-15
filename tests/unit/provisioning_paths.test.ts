@@ -276,6 +276,36 @@ test('promotion with a linked staging dir is rejected', () => {
   assert.equal(result.outcome, 'failed');
 });
 
+test('managed model cache stays inside the root', () => {
+  const svc = new ManagedPathService(ROOT);
+  assert.ok(svc.layout.hfCacheDir.startsWith(svc.layout.root));
+  assert.ok(svc.layout.hfHubDir.startsWith(svc.layout.hfCacheDir));
+  const env = svc.modelCacheEnv();
+  assert.equal(env.HF_HOME, svc.layout.hfCacheDir);
+  assert.equal(env.HF_HUB_CACHE, svc.layout.hfHubDir);
+  assert.equal(env.TRANSFORMERS_CACHE, svc.layout.hfHubDir);
+  for (const value of Object.values(env)) {
+    assert.ok(path.normalize(value).startsWith(path.normalize(ROOT)));
+  }
+});
+
+test('ambient external HF cache variables cannot redirect managed env', () => {
+  // Even with hostile ambient variables, the managed env builder emits
+  // only containment-checked managed paths (callers use it as the
+  // subprocess overlay, overriding ambient values).
+  process.env['HF_HOME'] = '/tmp/evil-external';
+  process.env['HF_HUB_CACHE'] = '/tmp/evil-hub';
+  try {
+    const svc = new ManagedPathService(ROOT);
+    const env = svc.modelCacheEnv();
+    assert.ok(!Object.values(env).some((v) => v.includes('evil')));
+    assert.equal(env.HF_HOME, svc.layout.hfCacheDir);
+  } finally {
+    delete process.env['HF_HOME'];
+    delete process.env['HF_HUB_CACHE'];
+  }
+});
+
 test('backup recovery restores live only when unambiguous', () => {
   const fs = memoryProvisioningFs([ROOT]);
   const svc = new ManagedPathService(ROOT);

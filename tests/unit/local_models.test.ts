@@ -118,6 +118,10 @@ test('invalid and empty required fields are rejected', () => {
   assert.throws(() => validateCatalog([badAccel as unknown as LocalModelDefinition]), /accelerator/);
   const badMaturity = { ...parakeet(), id: 'x-bad-mat', support: { maturity: 'stable' } };
   assert.throws(() => validateCatalog([badMaturity as unknown as LocalModelDefinition]), /maturity/);
+  const badInstaller = { ...parakeet(), id: 'x-bad-inst', installation: { installer_id: 'python-worker', backend: 'python-worker' } };
+  assert.throws(() => validateCatalog([badInstaller as unknown as LocalModelDefinition]), /installer id/);
+  const badBackend = { ...parakeet(), id: 'x-bad-be', installation: { installer_id: 'parakeet-tdt-0.6b-v3', backend: 'bundled' } };
+  assert.throws(() => validateCatalog([badBackend as unknown as LocalModelDefinition]), /backend/);
 });
 
 // ---- compatibility: parakeet ------------------------------------------------

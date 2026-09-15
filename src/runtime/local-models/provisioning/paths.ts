@@ -89,6 +89,31 @@ export interface ManagedLayout {
   runtimesDir: string;
   stagingDir: string;
   cacheDir: string;
+  /** Shared ARTHUR-managed model (Hugging Face) cache. */
+  hfCacheDir: string;
+  /** Shared ARTHUR-managed model hub directory (HF_HUB_CACHE). */
+  hfHubDir: string;
+}
+
+/** Managed model-cache directory names (code-owned literals). */
+export const HF_CACHE_DIRNAME = 'huggingface';
+export const HF_HUB_DIRNAME = 'hub';
+
+/**
+ * Code-owned subprocess environment overlay for model-cache variables.
+ * Keys are a closed set; values are always containment-checked managed
+ * paths. Never carries secrets, indexes, URLs, or caller data.
+ */
+export interface ModelCacheEnv {
+  HF_HOME: string;
+  HF_HUB_CACHE: string;
+  TRANSFORMERS_CACHE: string;
+}
+
+const MANAGED_ENV_KEYS = ['HF_HOME', 'HF_HUB_CACHE', 'TRANSFORMERS_CACHE'] as const;
+
+export function isManagedEnvKey(key: string): boolean {
+  return (MANAGED_ENV_KEYS as readonly string[]).includes(key);
 }
 
 export function toStorageKey(modelId: string): string {
@@ -260,13 +285,30 @@ export class ManagedPathService {
 
   constructor(rawRoot: string) {
     const root = resolveManagedRoot(rawRoot);
+    const cacheDir = path.join(root, 'cache');
+    const hfCacheDir = path.join(cacheDir, HF_CACHE_DIRNAME);
     this.layout = {
       root,
       modelsDir: path.join(root, 'models'),
       runtimesDir: path.join(root, 'runtimes'),
       stagingDir: path.join(root, 'staging'),
-      cacheDir: path.join(root, 'cache'),
+      cacheDir,
+      hfCacheDir,
+      hfHubDir: path.join(hfCacheDir, HF_HUB_DIRNAME),
     };
+  }
+
+  /**
+   * ARTHUR-managed shared model cache env for model subprocesses.
+   * Every value is containment-checked inside the managed root, so an
+   * ambient external HF_HOME / home-directory cache can never redirect
+   * a model install outside managed storage: callers pass the result as
+   * the subprocess env overlay (which overrides ambient values).
+   */
+  modelCacheEnv(): ModelCacheEnv {
+    const hfCacheDir = assertInsideRoot(this.layout.root, this.layout.hfCacheDir, 'model cache dir');
+    const hfHubDir = assertInsideRoot(this.layout.root, this.layout.hfHubDir, 'model hub dir');
+    return { HF_HOME: hfCacheDir, HF_HUB_CACHE: hfHubDir, TRANSFORMERS_CACHE: hfHubDir };
   }
 
   modelDir(storageKey: string): string {
@@ -280,10 +322,25 @@ export class ManagedPathService {
   }
 
   runtimeDir(runtimeId: string): string {
-    if (typeof runtimeId !== 'string' || !STORAGE_KEY_PATTERN.test(runtimeId)) {
+    // Two accepted shapes (same directory for both): bare storage keys
+    // (D2 seam compat) and logical `python/<name>-vN` ids (§21). The
+    // `python/` boundary becomes a real directory; the remainder must be
+    // a strict storage key in both cases (no separators survive).
+    if (typeof runtimeId !== 'string' || runtimeId.includes('\0')) {
       throw new ArthurError('INVALID_CONFIG', 'invalid runtime id ' + JSON.stringify(runtimeId));
     }
-    return assertInsideRoot(this.layout.root, path.join(this.layout.runtimesDir, 'python', runtimeId), 'runtime dir');
+    let name = runtimeId;
+    if (runtimeId.includes('/')) {
+      const parts = runtimeId.split('/');
+      if (parts.length !== 2 || parts[0] !== 'python' || typeof parts[1] !== 'string') {
+        throw new ArthurError('INVALID_CONFIG', 'invalid runtime id ' + JSON.stringify(runtimeId));
+      }
+      name = parts[1] as string;
+    }
+    if (!STORAGE_KEY_PATTERN.test(name)) {
+      throw new ArthurError('INVALID_CONFIG', 'invalid runtime id ' + JSON.stringify(runtimeId));
+    }
+    return assertInsideRoot(this.layout.root, path.join(this.layout.runtimesDir, 'python', name), 'runtime dir');
   }
 
   cachePath(name: string): string {

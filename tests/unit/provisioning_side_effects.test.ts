@@ -259,6 +259,30 @@ test('argv are preserved and success is reported', async () => {
   assert.equal(describeRun('/trusted/python', result), '/trusted/python: ok'.replace('/trusted/', ''));
 });
 
+test('env overlay reaches the spawn boundary and is validated', async () => {
+  let seenEnv: Record<string, string> | undefined;
+  const spawn: SpawnFn = ((_exe, _args, options) => {
+    seenEnv = options.env;
+    return fakeSpawn(() => ({ code: 0, stdout: '', stderr: '' }))(_exe, _args, options);
+  }) as SpawnFn;
+  const result = await runTrustedProcess(spawn, {
+    executable: '/trusted/python',
+    args: [],
+    env: { HF_HOME: '/managed/cache/huggingface', HF_HUB_CACHE: '/managed/cache/huggingface/hub' },
+  });
+  assert.equal(result.exit_code, 0);
+  assert.deepEqual(seenEnv, { HF_HOME: '/managed/cache/huggingface', HF_HUB_CACHE: '/managed/cache/huggingface/hub' });
+  // checkSpec throws synchronously (pre-existing runner behavior).
+  assert.throws(
+    () => runTrustedProcess(spawn, { executable: '/trusted/python', args: [], env: { '': 'x' } }),
+    (e: unknown) => (e as ArthurError).code === 'INVALID_CONFIG',
+  );
+  assert.throws(
+    () => runTrustedProcess(spawn, { executable: '/trusted/python', args: [], env: { HF_HOME: 'a\0b' } }),
+    (e: unknown) => (e as ArthurError).code === 'INVALID_CONFIG',
+  );
+});
+
 test('non-zero exit is reported without output dumps', async () => {
   const spawn = fakeSpawn(() => ({ code: 3, stdout: 'o', stderr: 'e' }));
   const result = await runTrustedProcess(spawn, { executable: '/trusted/pip', args: [] });

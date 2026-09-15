@@ -28,7 +28,9 @@ import type { LocalModelDefinition } from './contracts';
 import {
   isLocalModelAccelerator,
   isLocalModelKind,
+  isModelInstallerId,
   isModelQualityTier,
+  isProvisioningBackend,
   isSupportMaturity,
 } from './contracts';
 
@@ -49,6 +51,7 @@ const PARAKEET_TDT_06B_V3: LocalModelDefinition = {
     maturity: 'validated',
     validated_platforms: ['windows-x64-cuda'],
   },
+  installation: { installer_id: 'parakeet-tdt-0.6b-v3', backend: 'python-worker' },
 };
 
 const OMNIVOICE_BG: LocalModelDefinition = {
@@ -67,6 +70,7 @@ const OMNIVOICE_BG: LocalModelDefinition = {
     maturity: 'validated',
     validated_platforms: ['windows-x64-cuda'],
   },
+  installation: { installer_id: 'omnivoice-bg', backend: 'huggingface-snapshot' },
 };
 
 const BGTTS_38M_V2: LocalModelDefinition = {
@@ -85,6 +89,7 @@ const BGTTS_38M_V2: LocalModelDefinition = {
     maturity: 'experimental',
     validated_platforms: ['windows-x64-cuda'],
   },
+  installation: { installer_id: 'bgtts-38m-v2', backend: 'python-worker' },
 };
 
 const DEFINITIONS: LocalModelDefinition[] = [PARAKEET_TDT_06B_V3, OMNIVOICE_BG, BGTTS_38M_V2];
@@ -143,6 +148,11 @@ export function validateCatalog(definitions: readonly LocalModelDefinition[]): v
       for (const p of def.support.validated_platforms) {
         if (typeof p !== 'string' || p.trim() === '') fail('empty validated platform for ' + JSON.stringify(def.id));
       }
+    }
+    if (def.installation !== undefined) {
+      if (!isRecord(def.installation)) fail('installation must be an object for ' + JSON.stringify(def.id));
+      if (!isModelInstallerId(def.installation.installer_id)) fail('unknown installer id for ' + JSON.stringify(def.id));
+      if (!isProvisioningBackend(def.installation.backend)) fail('unknown provisioning backend for ' + JSON.stringify(def.id));
     }
   }
 }

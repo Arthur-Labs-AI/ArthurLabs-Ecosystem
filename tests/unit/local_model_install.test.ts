@@ -44,7 +44,7 @@ function fakeModel(id: string, kind: 'stt' | 'tts' | 'model' = 'tts'): LocalMode
     languages: ['en'],
     requirements: { architectures: ['x64'], operating_systems: ['windows'], min_ram_mb: 1024 },
     support: { maturity: 'experimental' },
-    installation: { installer_id: 'test-fake' },
+    installation: { installer_id: 'test-fake', backend: 'python-worker' },
   };
 }
 
@@ -79,7 +79,9 @@ test('duplicate installer ids are rejected', () => {
 
 test('unknown installer id fails clearly', () => {
   const registry = new ModelInstallerRegistry();
-  assert.throws(() => registry.resolve('bundled'), (e: unknown) => codeOf(e) === 'INVALID_CONFIG');
+  assert.throws(() => registry.resolve('ghost-installer' as never), (e: unknown) => codeOf(e) === 'INVALID_CONFIG');
+  // Backend technique names are not registry keys.
+  assert.throws(() => registry.resolve('python-worker' as never), (e: unknown) => codeOf(e) === 'INVALID_CONFIG');
 });
 
 // ---- preflight gates ---------------------------------------------------------

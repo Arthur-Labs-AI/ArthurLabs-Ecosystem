@@ -23,10 +23,23 @@ export type RecommendationProfile = 'quality' | 'balanced' | 'lightweight';
 
 export type LocalModelAccelerator = 'cuda' | 'rocm' | 'vulkan' | 'directml' | 'cpu';
 
-export type ModelInstallerId = 'python-worker' | 'native-artifact' | 'huggingface-snapshot' | 'bundled' | 'test-fake';
+/**
+ * Concrete trusted installer identity: exactly one per real model
+ * (plus test-fake for unit seams). Registry keys identify the trusted
+ * IMPLEMENTATION, never a generic provisioning technique.
+ */
+export type ModelInstallerId = 'parakeet-tdt-0.6b-v3' | 'omnivoice-bg' | 'bgtts-38m-v2' | 'test-fake';
+
+/**
+ * Provisioning backend technique (metadata only, never a registry key).
+ * Describes HOW an installer provisions; resolution always uses the
+ * concrete ModelInstallerId above.
+ */
+export type ProvisioningBackend = 'python-worker' | 'huggingface-snapshot' | 'native-artifact';
 
 export interface ModelInstallationDescriptor {
   installer_id: ModelInstallerId;
+  backend: ProvisioningBackend;
 }
 
 export interface ModelRequirements {
@@ -63,7 +76,9 @@ export const SUPPORT_MATURITIES = ['experimental', 'validated'] as const;
 export const RECOMMENDATION_PROFILES = ['quality', 'balanced', 'lightweight'] as const;
 export const LOCAL_MODEL_ACCELERATORS = ['cuda', 'rocm', 'vulkan', 'directml', 'cpu'] as const;
 
-export const MODEL_INSTALLER_IDS = ['python-worker', 'native-artifact', 'huggingface-snapshot', 'bundled', 'test-fake'] as const;
+export const MODEL_INSTALLER_IDS = ['parakeet-tdt-0.6b-v3', 'omnivoice-bg', 'bgtts-38m-v2', 'test-fake'] as const;
+
+export const PROVISIONING_BACKENDS = ['python-worker', 'huggingface-snapshot', 'native-artifact'] as const;
 
 export function isLocalModelKind(value: unknown): value is LocalModelKind {
   return typeof value === 'string' && (LOCAL_MODEL_KINDS as readonly string[]).includes(value);
@@ -87,4 +102,8 @@ export function isLocalModelAccelerator(value: unknown): value is LocalModelAcce
 
 export function isModelInstallerId(value: unknown): value is ModelInstallerId {
   return typeof value === 'string' && (MODEL_INSTALLER_IDS as readonly string[]).includes(value);
+}
+
+export function isProvisioningBackend(value: unknown): value is ProvisioningBackend {
+  return typeof value === 'string' && (PROVISIONING_BACKENDS as readonly string[]).includes(value);
 }
