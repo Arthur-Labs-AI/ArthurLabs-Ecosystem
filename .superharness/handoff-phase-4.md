@@ -76,3 +76,15 @@ post-investigation ledger, no reporting tool use, cleanup), then ONE
 three-agent parallel smoke. Watch for: GLM --json-schema acceptance
 on the Z.AI route (fallback warning expected if unsupported), report
 repair telemetry, turn counts 3+.
+
+## Phase 5 update (2026-09-15) — COMPLETE pending exact-head CI
+
+Deterministic merger + agreement layer shipped: `@qa/merger`
+(normalize → match → complete-link cluster), canonical merge schemas
+in `@qa/schemas`, SQLite migration v3, `qa run merge` CLI (exit
+3/4/6), JSON merge sections + log cluster rendering, stale-aware
+export regeneration (merge-timestamp comparison; supersede, never
+mutate). Live proof: `run_01M2K4SNQFV5EBJPKGQBJ0VA9N` 3/3 →
+`merge_X7MJ4KN1Q8FBDM5CM1GB775CNM` (5 clusters). Execution paths
+(adapters, coordinator, contracts) untouched by the export fix;
+only `run-engine/exporters.ts` + one test added.
