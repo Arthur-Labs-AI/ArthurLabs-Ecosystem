@@ -87,8 +87,20 @@ export class RunExporter {
     const run = this.repository.getRun(runId);
     if (run === undefined) throw new Error('RUN_NOT_FOUND: ' + runId);
     const existing = this.repository.listExports(runId).find((item) => item.format === format);
-    if (existing !== undefined && this.repository.getArtifact(existing.artifactId) !== undefined) {
-      return existing;
+    // Exports are cached per (run, format), but a merge computed AFTER the
+    // cached export would otherwise be omitted forever. Regenerate only
+    // when merge state is newer than the cached artifact; execution data
+    // is immutable once the run is terminal, so merges are the sole
+    // staleness source. The superseded artifact is removed AFTER the new
+    // manifest lands: the old manifest row still references it until the
+    // upsert, so deletion must come second. Old exports are superseded,
+    // never mutated.
+    const superseded =
+      existing !== undefined && this.repository.getArtifact(existing.artifactId) !== undefined
+        ? existing
+        : undefined;
+    if (superseded !== undefined && !this.isExportStale(runId, superseded.createdAt)) {
+      return superseded;
     }
     const runPaths = runDataPaths(this.dataRoot, run.projectId, runId);
     const absolute = runPaths.exports + '/run.' + format;
@@ -112,7 +124,25 @@ export class RunExporter {
       createdAt: nowIsoTimestamp(),
     });
     this.repository.saveExport(manifest);
+    if (superseded !== undefined && superseded.artifactId !== artifact.id) {
+      // Drop only the superseded metadata row: both artifacts share the
+      // same stable file path (already overwritten with new content),
+      // so byte deletion would destroy the fresh export. FK-safe now
+      // that the manifest upsert no longer references the old row.
+      this.repository.deleteArtifact(superseded.artifactId);
+    }
     return manifest;
+  }
+
+  /** An export is stale only when a merge was persisted after it. Run
+   *  execution data is immutable once terminal, so merges are the sole
+   *  staleness source. String comparison is safe: all timestamps are
+   *  canonical ISO-8601 UTC with fixed width. */
+  private isExportStale(runId: QARunId, exportedAt: string): boolean {
+    for (const merge of this.repository.iterateMergeResults(runId)) {
+      if (merge.createdAt > exportedAt) return true;
+    }
+    return false;
   }
 
   private async *logSource(runId: QARunId): AsyncGenerator<string> {
