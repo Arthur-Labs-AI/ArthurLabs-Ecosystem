@@ -271,3 +271,10 @@ cost tracking, hard token budgets, full Adaptive InvestigationDepth.
     remain as observed: that configured ID was valid at the time and the
     provider served V4.1-Flash behind it. No adapter or contract changes
     were needed — model identity stays in environment configuration.
+  - DeepSeek init robustness (post-4.2 fixes): explicit `start()` call
+    in the retry scope (other-agent root-cause fix `66af7ba`), bounded
+    init retry, 120s init budget calibrated for slow WSL-bridge host
+    startup. Second 3/3 parallel (`run_01M2K4SNQFV5EBJPKGQBJ0VA9N`):
+    completed, all agents completed (Muse Code 1.3.0 noted), 11 findings
+    incl. one confirmed (6 evidence), 28 evidence, 186 events, merged
+    live into 5 clusters (`merge_X7MJ4KN1Q8FBDM5CM1GB775CNM`).
