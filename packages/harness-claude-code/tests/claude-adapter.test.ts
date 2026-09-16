@@ -364,6 +364,53 @@ describe('ClaudeCodeHarnessAdapter', () => {
     );
   });
 
+  it('requires report paths to resolve to regular files and repairs a directory reference', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-report-path-'));
+    roots.push(root);
+    await mkdir(join(root, 'node_modules', '.bin'), { recursive: true });
+    const input = await request(root);
+    const prompts: string[] = [];
+    let calls = 0;
+    const directoryEvidence = [
+      {
+        key: 'readme',
+        type: 'code_reference',
+        strength: 'strong_code_evidence',
+        description: 'Invalid directory reference.',
+        relativePath: 'node_modules/.bin',
+      },
+    ];
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-1',
+        startSession: async () => ({
+          runText: async (text: string) => {
+            calls += 1;
+            prompts.push(text);
+            if (calls === 1) return planTurn();
+            if (calls === 2) return investigationTurn();
+            if (calls === 3) return reportTurn(validReportV2(directoryEvidence));
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'GLM_REPORT_RETRY' }),
+    );
+    expect(prompts[2]).toContain('existing regular file');
+    expect(prompts[2]).toContain('never a directory');
+    expect(prompts[3]).toContain('Referenced evidence path is not a file: node_modules/.bin');
+    expect(prompts[3]).toContain('existing regular file');
+  });
+
   it('recovers from a prose-first plan via bounded planning correction', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-planning-retry-'));
     roots.push(root);

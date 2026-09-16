@@ -86,7 +86,10 @@ export const REPORT_ENVELOPE_SCHEMA =
   '"expectedBehavior"?:string,"actualBehavior"?:string,' +
   '"locations":[{"relativePath":string,"lineStart"?:number,"lineEnd"?:number,"symbol"?:string}][at least one],' +
   '"evidenceKeys":string[at least one],"reproductionSteps":string[] (always include, [] allowed),' +
-  '"rootCause"?:string,"recommendedFix"?:string}],"limitations":string[]}.';
+  '"rootCause"?:string,"recommendedFix"?:string}],"limitations":string[]}. ' +
+  'Every evidence relativePath and findings[].locations[].relativePath MUST identify an existing regular file inside the workspace; ' +
+  'never a directory, glob, or missing path. If investigation identified only a directory, cite a concrete file actually inspected inside it, ' +
+  'or omit unsupported evidence and findings rather than inventing a path.';
 
 /** Bounded correction intro for report-only retries (§34). */
 export function buildReportCorrectionIntro(errors: readonly string[]): string {
