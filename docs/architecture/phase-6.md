@@ -131,6 +131,43 @@ Recipes and assertions are designed for future replay against new
 revisions, but Phase 6 verifies the historical snapshot ONLY. No
 retest, no fix-state tracking, no UI.
 
+## Phase 6.1 — trust, isolation & historical hardening
+
+Execution containment is real: shell-less argv spawn inside the
+verifier workspace, preflight executable resolution (missing tools
+are `unsupported`, never exit-127 mismatches), disposable
+verifier-owned HOME (real user HOME never exposed), allowlisted
+env (credentials never forwarded), owned process-group tracking
+with deterministic dispose (never `pkill`/`killall`). Shell syntax
+in recorded commands refuses safely (`unsupported`) instead of
+spawning a shell.
+
+Reproduction requires identity: test replays match only when the
+expected test observably appears with the expected status
+(framework parsers for vitest/jest, pytest, dotnet; counts, never
+word presence — "Failed: 0" reads as passed). Exit-only agreement
+yields weak matches at most; only strong matches (identity, or
+exit plus identical original-evidence signature) are decisive.
+Command replays compare fresh sig2 fingerprints against
+redacted original-output signatures when canonical artifacts
+exist — otherwise weak, never pretended.
+
+Redaction precedes persistence: replay output is scrubbed before
+fingerprints, observations, and artifacts. Attempt ownership is
+try/finally (one cluster, one attempt ID; crashes terminalize the
+same attempt; runner dispose + workspace removal always run).
+Stale-lease running rows are swept to interrupted by
+`recoverVerifications` on coordinator startup. Source integrity
+computes whole-file byte hashes with evidence semantics and
+persists `contentHashMatch`.
+
+Historical revisions are retained immutably
+(`revisions/<revisionId>`, reflink/COW, post-commit only); the
+verifier materializes by `snapshot.projectRevisionId`, so project
+updates no longer break old verification. Pre-retention revisions
+verify as honest inconclusive. `VERIFIER/RECIPE/SIGNATURE_VERSION
+= 2`; v1 rows stay readable.
+
 ## Known limitations (v1, intentional)
 
 Only canonically replayable claims verify; exploratory, browser,
