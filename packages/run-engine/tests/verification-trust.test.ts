@@ -120,12 +120,21 @@ async function schemas() {
 /** Precondition for every test that needs REAL replay: the systemd
  *  sandbox must be available. Without it every replay degrades to
  *  unsupported (empty artifacts, honest inconclusive) and downstream
- *  assertions mislead — fail fast with the preflight reason instead. */
-function requireSandbox(run: { environmentFingerprint: { available: boolean; reason?: string } }) {
-  expect(
-    run.environmentFingerprint.available,
-    'sandbox unavailable: ' + (run.environmentFingerprint.reason ?? 'unknown reason'),
-  ).toBe(true);
+ *  assertions mislead — fail fast with the preflight reason instead.
+ *  Availability is encoded in the fingerprint runtimes[] strings
+ *  (sandboxAvailable=/sandboxReason=); the run warnings carry the
+ *  VERIFIER_SANDBOX_UNAVAILABLE detail. */
+function requireSandbox(run: {
+  environmentFingerprint: { runtimes: readonly string[] };
+  warnings: readonly { code: string; message: string }[];
+}) {
+  const runtimes = run.environmentFingerprint.runtimes;
+  const available = runtimes.some((entry) => entry === 'sandboxAvailable=true');
+  const reason =
+    runtimes.find((entry) => entry.startsWith('sandboxReason=')) ??
+    run.warnings.find((warning) => warning.code === 'VERIFIER_SANDBOX_UNAVAILABLE')?.message ??
+    'no preflight reason recorded';
+  expect(available, 'sandbox unavailable: ' + reason).toBe(true);
 }
 
 describe('verifier trust fixtures', () => {
