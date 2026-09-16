@@ -494,12 +494,18 @@ importers:
       '@qa/domain':
         specifier: workspace:*
         version: link:../domain
+      '@qa/evidence-pipeline':
+        specifier: workspace:*
+        version: link:../evidence-pipeline
       '@qa/harness-protocol':
         specifier: workspace:*
         version: link:../harness-protocol
       '@qa/merger':
         specifier: workspace:*
         version: link:../merger
+      '@qa/verifier':
+        specifier: workspace:*
+        version: link:../verifier
       '@qa/persistence':
         specifier: workspace:*
         version: link:../persistence
