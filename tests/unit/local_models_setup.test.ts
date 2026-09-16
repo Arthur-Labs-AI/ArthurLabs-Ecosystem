@@ -136,8 +136,9 @@ test('setup honors an operator-chosen compatible alternative', async () => {
   const code = await runSetup(fakeApp(), context, new Map([['yes', 'true'], ['tts-model', 'bgtts-38m-v2']]), { probe: PROBE, store: st, installService: service });
   assert.equal(code, CliExit.SUCCESS);
   assert.ok(sink.outText.includes('bgtts-38m-v2 (operator choice)'));
-  assert.ok(seen.includes('bgtts-38m-v2'));
+  assert.equal(seen.length, 0);
   assert.ok(!seen.includes('omnivoice-bg'));
+  assert.equal(st.snapshot().selections.tts.mode, 'manual');
   assert.ok(sink.outText.includes('local voice ready:'));
 });
 

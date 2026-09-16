@@ -21,6 +21,14 @@ import { ArthurError } from '../../../core/errors/errors';
 
 export const LOCAL_MODEL_DIRNAME = 'local-models';
 
+/** State filename under `<data-root>/runtime/` (single canonical default). */
+export const LOCAL_MODEL_STATE_FILENAME = 'models.json';
+
+/**
+ * @deprecated Legacy repo-relative segments from early D2 drafts. Never
+ * used by the canonical resolver (which derives every default from
+ * resolveAppDataRoot). Kept only for import compatibility.
+ */
 export const DEFAULT_MANAGED_ROOT_SEGMENTS = ['data', 'runtime', 'local-models'];
 
 /**
@@ -89,6 +97,8 @@ export interface ManagedLayout {
   runtimesDir: string;
   stagingDir: string;
   cacheDir: string;
+  /** Shared ARTHUR-managed torch hub cache (TORCH_HOME). */
+  torchCacheDir: string;
   /** Shared ARTHUR-managed model (Hugging Face) cache. */
   hfCacheDir: string;
   /** Shared ARTHUR-managed model hub directory (HF_HUB_CACHE). */
@@ -104,6 +114,8 @@ export const HF_CACHE_DIRNAME = 'huggingface';
 export const HF_HUB_DIRNAME = 'hub';
 export const HF_XET_DIRNAME = 'xet';
 export const HF_ASSETS_DIRNAME = 'assets';
+/** ARTHUR-managed torch hub cache (torch.hub / torchaudio pipelines). */
+export const TORCH_CACHE_DIRNAME = 'torch';
 
 /**
  * Code-owned subprocess environment overlay for model-cache variables.
@@ -124,9 +136,17 @@ export interface ModelCacheEnv {
   HF_XET_CACHE: string;
   HF_ASSETS_CACHE: string;
   TRANSFORMERS_CACHE: string;
+  /**
+   * ARTHUR-managed torch hub dir (TORCH_HOME). torchaudio pipelines
+   * (e.g. the Wav2Vec2 bundle MioCodec loads) download through
+   * torch.hub, which defaults to ~/.cache/torch — unmanaged home
+   * state outside containment. Overriding keeps ALL model weights
+   * inside the managed root. No credential semantics (unlike HF_HOME).
+   */
+  TORCH_HOME: string;
 }
 
-const MANAGED_ENV_KEYS = ['HF_HUB_CACHE', 'HF_XET_CACHE', 'HF_ASSETS_CACHE', 'TRANSFORMERS_CACHE'] as const;
+const MANAGED_ENV_KEYS = ['HF_HUB_CACHE', 'HF_XET_CACHE', 'HF_ASSETS_CACHE', 'TRANSFORMERS_CACHE', 'TORCH_HOME'] as const;
 
 export function isManagedEnvKey(key: string): boolean {
   return (MANAGED_ENV_KEYS as readonly string[]).includes(key);
@@ -174,67 +194,99 @@ export function canonicalizeRoot(rawRoot: string, scope: Pathoscopy | null): str
   return path.normalize(resolved);
 }
 
-export interface AppDataRootArgs {
-  configured?: string;
-  env?: NodeJS.ProcessEnv;
-  platform?: NodeJS.Platform;
-}
+/**
+ * Canonical app-data-root args — re-exported from the generic primitive
+ * (`runtime/app_data.ts`) so existing import sites keep working. New code
+ * SHOULD import from `runtime/app_data.ts` directly.
+ */
+import type { AppDataRootArgs } from '../../app_data';
+// Re-exported so existing import sites keep working. New code SHOULD
+// import the type from `runtime/app_data.ts` directly.
+export type { AppDataRootArgs } from '../../app_data';
 
-// Stable per-user application data root. Windows uses LOCALAPPDATA
-// (machine-local, non-roaming: model weights, Python runtimes, staging
-// and caches can be very large and must never live in the roaming
-// profile). Returns null when no stable location is discoverable — the
-// caller fails typed rather than falling back to temp storage (temp is
-// not durable: files may vanish while persisted state still claims the
-// model/runtime is installed). Tests may use temp dirs via an explicit
-// configured root.
-function userDataFallback(platform: NodeJS.Platform, env: NodeJS.ProcessEnv): string | null {
-  if (platform === 'win32') {
-    const base = env['LOCALAPPDATA'];
-    if (typeof base === 'string' && base.trim() !== '') return path.join(base, 'ARTHUR');
-    return null;
-  }
-  if (platform === 'darwin') {
-    const home = env['HOME'];
-    if (typeof home === 'string' && home.trim() !== '') return path.join(home, 'Library', 'Application Support', 'ARTHUR');
-    return null;
-  }
-  const xdg = env['XDG_DATA_HOME'];
-  if (typeof xdg === 'string' && xdg.trim() !== '') return path.join(xdg, 'arthur');
-  const home = env['HOME'];
-  if (typeof home === 'string' && home.trim() !== '') return path.join(home, '.local', 'share', 'arthur');
-  return null;
+/**
+ * Canonical app-data-root resolver — re-exported from the generic
+ * primitive (`runtime/app_data.ts`). Single implementation; this
+ * re-export exists only so existing import sites keep working. New
+ * code SHOULD import from `runtime/app_data.ts` directly.
+ */
+import { resolveAppDataRoot } from '../../app_data';
+// Re-exported so existing import sites keep working. New code SHOULD
+// import the resolver from `runtime/app_data.ts` directly.
+export { resolveAppDataRoot };
+
+export function defaultLocalModelRoot(args: AppDataRootArgs = {}, scope: Pathoscopy | null = null): string {
+  const pathImpl = args.pathImpl ?? path;
+  const canonical = canonicalizeRoot(resolveAppDataRoot(args), scope);
+  return pathImpl.join(canonical, 'runtime', LOCAL_MODEL_DIRNAME);
 }
 
 /**
- * Resolve the ARTHUR application data root once: explicit configured
- * root wins, then ARTHUR_DATA_DIR, else a stable OS-specific per-user
- * application data directory. The fallback NEVER depends on
- * process.cwd(): without an explicit root, two processes started from
- * different directories resolve the same identity. When no stable
- * location exists, resolution fails typed (INVALID_CONFIG) rather than
- * silently using temp storage. Repo-local ./data remains available
- * only as an explicit dev override (configured root or ARTHUR_DATA_DIR).
+ * HR-02.5F: canonical default state path. Same data-root contract as
+ * defaultLocalModelRoot: `<data-root>/runtime/models.json`. Never
+ * depends on process.cwd().
  */
-export function resolveAppDataRoot(args: AppDataRootArgs = {}): string {
-  const env = args.env ?? process.env;
-  const platform = args.platform ?? process.platform;
-  const fromEnv = env['ARTHUR_DATA_DIR'];
-  if (args.configured !== undefined || (typeof fromEnv === 'string' && fromEnv.trim() !== '')) {
-    const raw = (args.configured ?? fromEnv) as string;
-    if (raw.includes('\0')) throw new ArthurError('INVALID_CONFIG', 'data root contains NUL');
-    return path.resolve(raw);
-  }
-  const fallback = userDataFallback(platform, env);
-  if (fallback === null) {
-    throw new ArthurError('INVALID_CONFIG', 'no stable application data directory available; set an explicit data root or ARTHUR_DATA_DIR');
-  }
-  return path.resolve(fallback);
+export function defaultLocalModelStatePath(args: AppDataRootArgs = {}, scope: Pathoscopy | null = null): string {
+  const pathImpl = args.pathImpl ?? path;
+  const canonical = canonicalizeRoot(resolveAppDataRoot(args), scope);
+  return pathImpl.join(canonical, 'runtime', LOCAL_MODEL_STATE_FILENAME);
 }
 
-export function defaultLocalModelRoot(args: AppDataRootArgs = {}, scope: Pathoscopy | null = null): string {
-  const canonical = canonicalizeRoot(resolveAppDataRoot(args), scope);
-  return path.join(canonical, 'runtime', LOCAL_MODEL_DIRNAME);
+export interface LocalModelPathOverrides {
+  /** Explicit --root / caller configuration (highest precedence). */
+  managedRoot?: string;
+  /** Explicit --state / caller configuration (highest precedence). */
+  statePath?: string;
+}
+
+export interface ResolvedLocalModelPaths {
+  /** Effective absolute managed root actually in use. */
+  managedRoot: string;
+  /** Effective absolute state path actually in use. */
+  statePath: string;
+}
+
+function normalizeExplicitPath(raw: string, what: string): string {
+  if (typeof raw !== 'string' || raw.trim() === '') {
+    throw new ArthurError('INVALID_CONFIG', what + ' must be a non-empty path');
+  }
+  if (raw.indexOf(String.fromCharCode(0)) !== -1) {
+    throw new ArthurError('INVALID_CONFIG', what + ' contains NUL');
+  }
+  // Deterministic normalization: absolute stays absolute; relative
+  // explicit paths keep documented path.resolve semantics.
+  return path.resolve(raw);
+}
+
+/**
+ * HR-02.5F canonical local-model path contract — the ONE resolver used
+ * by CLI, setup, and app runtime.
+ *
+ * Precedence per field:
+ *   explicit override -> ARTHUR_DATA_DIR-derived default -> stable OS
+ *   user-data root.
+ *
+ * Defaults NEVER depend on process.cwd(). Returned paths are always
+ * absolute. Explicit relative paths preserve the existing documented
+ * path.resolve semantics but are normalized deterministically. No shell
+ * execution; no secret logging (only paths are returned).
+ */
+export function resolveLocalModelPaths(
+  overrides: LocalModelPathOverrides = {},
+  base: AppDataRootArgs = {},
+  scope: Pathoscopy | null = null,
+): ResolvedLocalModelPaths {
+  const managedRaw = overrides.managedRoot;
+  const stateRaw = overrides.statePath;
+  const managedRoot =
+    managedRaw !== undefined && managedRaw.trim() !== ''
+      ? normalizeExplicitPath(managedRaw, 'managed root')
+      : defaultLocalModelRoot(base, scope);
+  const statePath =
+    stateRaw !== undefined && stateRaw.trim() !== ''
+      ? normalizeExplicitPath(stateRaw, 'state path')
+      : defaultLocalModelStatePath(base, scope);
+  return { managedRoot, statePath };
 }
 
 function insideLexical(rootNorm: string, candNorm: string): boolean {
@@ -309,6 +361,7 @@ export class ManagedPathService {
       runtimesDir: path.join(root, 'runtimes'),
       stagingDir: path.join(root, 'staging'),
       cacheDir,
+      torchCacheDir: path.join(cacheDir, TORCH_CACHE_DIRNAME),
       hfCacheDir,
       hfHubDir: path.join(hfCacheDir, HF_HUB_DIRNAME),
       hfXetDir: path.join(hfCacheDir, HF_XET_DIRNAME),
@@ -329,7 +382,8 @@ export class ManagedPathService {
     const hfHubDir = assertInsideRoot(this.layout.root, this.layout.hfHubDir, 'model hub dir');
     const hfXetDir = assertInsideRoot(this.layout.root, this.layout.hfXetDir, 'model xet dir');
     const hfAssetsDir = assertInsideRoot(this.layout.root, this.layout.hfAssetsDir, 'model assets dir');
-    return { HF_HUB_CACHE: hfHubDir, HF_XET_CACHE: hfXetDir, HF_ASSETS_CACHE: hfAssetsDir, TRANSFORMERS_CACHE: hfHubDir };
+    const torchDir = assertInsideRoot(this.layout.root, this.layout.torchCacheDir, 'model torch dir');
+    return { HF_HUB_CACHE: hfHubDir, HF_XET_CACHE: hfXetDir, HF_ASSETS_CACHE: hfAssetsDir, TRANSFORMERS_CACHE: hfHubDir, TORCH_HOME: torchDir };
   }
 
   modelDir(storageKey: string): string {

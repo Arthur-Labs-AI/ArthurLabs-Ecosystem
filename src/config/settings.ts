@@ -5,7 +5,10 @@
  * Secrets are held in memory only and are never logged.
  */
 
+import * as path from "node:path";
+
 import type { ReasoningProfile } from "../models/contracts";
+import { resolveAppDataRoot } from "../runtime/app_data";
 import { DEFAULT_VOICE_SETTINGS, loadVoiceSettings, VoiceSettings, VoiceSettingsOverrides } from "../voice/config";
 
 export type ModelProviderId = "deepseek" | "fake";
@@ -75,6 +78,28 @@ export interface Settings {
   voice: VoiceSettings;
 }
 
+export const SESSION_DB_FILENAME = "arthur.db";
+export const MEMORY_PERSONAL_DB_FILENAME = "memory-personal.db";
+export const MEMORY_BUSINESS_DB_FILENAME = "memory-business.db";
+
+export function defaultSessionDbPath(): string {
+  return path.join(resolveAppDataRoot(), SESSION_DB_FILENAME);
+}
+
+export function defaultMemoryPersonalDbPath(): string {
+  return path.join(resolveAppDataRoot(), MEMORY_PERSONAL_DB_FILENAME);
+}
+
+export function defaultMemoryBusinessDbPath(): string {
+  return path.join(resolveAppDataRoot(), MEMORY_BUSINESS_DB_FILENAME);
+}
+
+// Note (HR-02.5F): the three dbPath entries below are historical
+// cwd-relative spellings, superseded by defaultSessionDbPath() and
+// friends (stable app-data-root defaults, resolved per loadSettings
+// call). They remain only so DEFAULTS_MAP stays a complete Settings;
+// loadSettings never uses them for the DB paths. Explicit values and
+// the in-memory special case keep their existing constructor semantics.
 const DEFAULTS_MAP: Settings = {
   env: "development",
   dbPath: "./data/arthur.db",
@@ -211,7 +236,7 @@ export type SettingsOverrides = {
 export function loadSettings(overrides: SettingsOverrides = {}): Settings {
   const raw: Record<string, string | number> = {
     ARTHUR_ENV: envStr("ARTHUR_ENV", DEFAULTS_MAP.env),
-    ARTHUR_DB_PATH: envStr("ARTHUR_DB_PATH", DEFAULTS_MAP.dbPath),
+    ARTHUR_DB_PATH: envStr("ARTHUR_DB_PATH", defaultSessionDbPath()),
     ARTHUR_MODEL_PROVIDER: envStr("ARTHUR_MODEL_PROVIDER", DEFAULTS_MAP.modelProvider),
     ARTHUR_MODEL_NAME: envStr("ARTHUR_MODEL_NAME", DEFAULTS_MAP.modelName),
     DEEPSEEK_API_KEY: envStr("DEEPSEEK_API_KEY", DEFAULTS_MAP.deepseekApiKey),
@@ -234,8 +259,8 @@ export function loadSettings(overrides: SettingsOverrides = {}): Settings {
     ARTHUR_BIND_HOST: envStr("ARTHUR_BIND_HOST", DEFAULTS_MAP.bindHost),
     ARTHUR_BIND_PORT: envInt("ARTHUR_BIND_PORT", DEFAULTS_MAP.bindPort),
     ARTHUR_MAX_MESSAGE_CHARS: envInt("ARTHUR_MAX_MESSAGE_CHARS", DEFAULTS_MAP.maxMessageChars),
-    ARTHUR_MEMORY_PERSONAL_DB_PATH: envStr("ARTHUR_MEMORY_PERSONAL_DB_PATH", DEFAULTS_MAP.memoryPersonalDbPath),
-    ARTHUR_MEMORY_BUSINESS_DB_PATH: envStr("ARTHUR_MEMORY_BUSINESS_DB_PATH", DEFAULTS_MAP.memoryBusinessDbPath),
+    ARTHUR_MEMORY_PERSONAL_DB_PATH: envStr("ARTHUR_MEMORY_PERSONAL_DB_PATH", defaultMemoryPersonalDbPath()),
+    ARTHUR_MEMORY_BUSINESS_DB_PATH: envStr("ARTHUR_MEMORY_BUSINESS_DB_PATH", defaultMemoryBusinessDbPath()),
     ARTHUR_EMBEDDING_PROVIDER: envStr("ARTHUR_EMBEDDING_PROVIDER", DEFAULTS_MAP.embeddingProvider),
     ARTHUR_EMBEDDING_MODEL: envStr("ARTHUR_EMBEDDING_MODEL", DEFAULTS_MAP.embeddingModel),
     ARTHUR_EMBEDDING_DIMENSIONS: envInt("ARTHUR_EMBEDDING_DIMENSIONS", DEFAULTS_MAP.embeddingDimensions),

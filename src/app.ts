@@ -65,8 +65,7 @@ import { TtsGateway } from "./voice/tts/gateway";
 import { ModelRouter } from "./runtime/model_router";
 import { SttRouter } from "./runtime/stt_router";
 import { TtsRouter } from "./runtime/tts_router";
-import { DEFAULT_LOCAL_MODEL_STATE_PATH } from "./runtime/local-models/state_contracts";
-import { DEFAULT_MANAGED_ROOT } from "./runtime/local-models/install_service";
+import { resolveLocalModelPaths } from "./runtime/local-models/provisioning/paths";
 import { SystemHardwareProbe } from "./runtime/hardware/probe";
 import { LocalModelStateStore } from "./runtime/local-models/state_store";
 import { tryCreateLocalSttProvider, tryCreateLocalTtsProvider } from "./runtime/local-models/runtime/factory";
@@ -362,8 +361,14 @@ export function createVoiceController(
   // request and fails closed there — the id never flips mid-utterance.
   // Without a READY selection the legs above stand unchanged.
   // Test-injected providers (deps.voice.stt/tts) bypass E2 entirely.
-  const managedRoot = voice.localModelRoot.trim() !== "" ? voice.localModelRoot : DEFAULT_MANAGED_ROOT;
-  const managedStatePath = voice.localModelStatePath.trim() !== "" ? voice.localModelStatePath : DEFAULT_LOCAL_MODEL_STATE_PATH;
+  // HR-02.5F: same canonical resolver as CLI/setup — explicit voice
+  // config wins, otherwise ARTHUR_DATA_DIR -> stable OS user-data root.
+  const resolved = resolveLocalModelPaths({
+    managedRoot: voice.localModelRoot.trim() !== "" ? voice.localModelRoot : undefined,
+    statePath: voice.localModelStatePath.trim() !== "" ? voice.localModelStatePath : undefined,
+  });
+  const managedRoot = resolved.managedRoot;
+  const managedStatePath = resolved.statePath;
   const stableState = peekManagedState(managedStatePath);
   const localStt: SttProvider =
     deps.voice?.stt ??

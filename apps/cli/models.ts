@@ -20,16 +20,17 @@ import { getLocalModelCatalog } from '../../src/runtime/local-models/catalog';
 import { evaluateCompatibility } from '../../src/runtime/local-models/compatibility';
 import { recommendModel } from '../../src/runtime/local-models/recommendation';
 import { resolveEffectiveSelection, resolveRunnableSelection } from '../../src/runtime/local-models/selection';
-import { DEFAULT_LOCAL_MODEL_STATE_PATH } from '../../src/runtime/local-models/state_contracts';
+import type { SelectionSource } from '../../src/runtime/local-models/state_contracts';
 import { LocalModelStateStore } from '../../src/runtime/local-models/state_store';
-import { ModelInstallationService, DEFAULT_MANAGED_ROOT } from '../../src/runtime/local-models/install_service';
+import { ModelInstallationService } from '../../src/runtime/local-models/install_service';
+import { resolveLocalModelPaths } from '../../src/runtime/local-models/provisioning/paths';
 import { createDefaultModelInstallerRegistry } from '../../src/runtime/local-models/installers/registry';
 import { nodeSpawnFn } from '../../src/runtime/local-models/provisioning/process_runner';
 import { nodeProvisioningFs } from '../../src/runtime/local-models/provisioning/staging';
 import { nodeVenvFs } from '../../src/runtime/local-models/provisioning/python';
 import { resolveRuntimeTarget } from '../../src/runtime/local-models/runtime/resolution';
 import { removeManagedModel, nodeRemovalFs, type RemovalFs } from '../../src/runtime/local-models/removal';
-import type { App } from '../../src/app';
+import type { Settings } from '../../src/config/settings';
 
 export interface ModelsDeps {
   probe?: { detect: () => Promise<HardwareProfile> };
@@ -39,6 +40,8 @@ export interface ModelsDeps {
   catalog?: readonly LocalModelDefinition[];
   systemPython?: string;
   confirm?: (prompt: string) => Promise<boolean>;
+  /** Optional structured progress sink (shared setup/install presenter). Never affects correctness. */
+  onProgress?: (event: { model_id: string; phase: string; message: string }) => void;
 }
 
 export interface ModelsContext {
@@ -48,11 +51,31 @@ export interface ModelsContext {
   io: CliIO;
 }
 
-export function modelsContext(app: App, flags: Map<string, string>, io: CliIO): ModelsContext {
+/**
+ * HR-02.5F: the ONE CLI path policy — delegates to the canonical
+ * resolveLocalModelPaths contract. Precedence per field: explicit flag
+ * -> caller configuration (voice.localModelRoot/StatePath) ->
+ * ARTHUR_DATA_DIR -> stable OS user-data root. Defaults never depend
+ * on process.cwd(); results are always absolute.
+ */
+export function modelsContext(app: { config: Settings }, flags: Map<string, string>, io: CliIO): ModelsContext {
   const voice = app.config.voice;
-  const managedRoot = flags.get('root')?.trim() || voice.localModelRoot.trim() || DEFAULT_MANAGED_ROOT;
-  const statePath = flags.get('state')?.trim() || voice.localModelStatePath.trim() || DEFAULT_LOCAL_MODEL_STATE_PATH;
+  const flagRoot = flags.get('root')?.trim() || undefined;
+  const flagState = flags.get('state')?.trim() || undefined;
+  const { managedRoot, statePath } = resolveLocalModelPaths({
+    managedRoot: flagRoot ?? (voice.localModelRoot.trim() !== '' ? voice.localModelRoot : undefined),
+    statePath: flagState ?? (voice.localModelStatePath.trim() !== '' ? voice.localModelStatePath : undefined),
+  });
   return { managedRoot, statePath, json: flags.get('json') === 'true', io };
+}
+
+/** CLI-facing selection provenance: `recommended` (resolver) -> `recommendation` (contract). */
+export type SelectionProvenance = 'environment' | 'manual' | 'recommendation' | 'none';
+
+export function provenanceOf(source: SelectionSource): SelectionProvenance {
+  if (source === 'override') return 'environment';
+  if (source === 'recommended') return 'recommendation';
+  return source;
 }
 
 function depsOf(ctx: ModelsContext, deps: ModelsDeps): Required<Pick<ModelsDeps, 'catalog'>> & ModelsDeps {
@@ -96,7 +119,7 @@ export function formatHardware(hardware: HardwareProfile): string {
   return lines.join('\n') + '\n';
 }
 
-export async function runModelsDetect(app: App, ctx: ModelsContext, deps: ModelsDeps = {}): Promise<number> {
+export async function runModelsDetect(app: { config: Settings }, ctx: ModelsContext, deps: ModelsDeps = {}): Promise<number> {
   void app;
   try {
     const probe = deps.probe ?? new SystemHardwareProbe();
@@ -120,10 +143,12 @@ export interface ModelListRow {
   configured: boolean;
   ready: boolean;
   selected: boolean;
+  /** HR-02.5F: effective-selection provenance for this kind (none when unselected). */
+  selection_source: SelectionProvenance;
   runnable: boolean;
 }
 
-export async function buildModelList(app: App, ctx: ModelsContext, deps: ModelsDeps = {}): Promise<{ hardware: HardwareProfile; rows: ModelListRow[] }> {
+export async function buildModelList(app: { config: Settings }, ctx: ModelsContext, deps: ModelsDeps = {}): Promise<{ hardware: HardwareProfile; rows: ModelListRow[] }> {
   void app;
   const { catalog } = depsOf(ctx, deps);
   const probe = deps.probe ?? new SystemHardwareProbe();
@@ -133,11 +158,12 @@ export async function buildModelList(app: App, ctx: ModelsContext, deps: ModelsD
   const rows: ModelListRow[] = catalog.map((def) => {
     const compat = evaluateCompatibility(def, hardware);
     const entry = snapshot.models[def.id];
-    const effective = resolveEffectiveSelection({ kind: def.kind, hardware, state: snapshot, catalog });
-    const runnable = resolveRunnableSelection({ kind: def.kind, hardware, state: snapshot, catalog });
+    const effective = resolveEffectiveSelection({ kind: def.kind, hardware, state: snapshot, catalog, env: process.env });
+    const runnable = resolveRunnableSelection({ kind: def.kind, hardware, state: snapshot, catalog, env: process.env });
     const failed = compat.reasons.filter((r) => r.result === 'fail');
     const blocking = failed.map((r) => r.requirement).join('; ');
     const unknownFacts = failed.filter((r) => r.observed.toLowerCase().includes('unknown')).map((r) => r.requirement).join('; ');
+    const isSelected = effective.model?.id === def.id;
     return {
       id: def.id,
       kind: def.kind,
@@ -148,7 +174,8 @@ export async function buildModelList(app: App, ctx: ModelsContext, deps: ModelsD
       installed: entry?.installed ?? false,
       configured: entry?.configured ?? false,
       ready: entry?.ready ?? false,
-      selected: effective.model?.id === def.id,
+      selected: isSelected,
+      selection_source: isSelected ? provenanceOf(effective.source) : 'none',
       runnable: runnable.model?.id === def.id && runnable.runnable,
     };
   });
@@ -162,13 +189,13 @@ export function formatModelList(rows: ModelListRow[]): string {
       row.id + ' [' + row.kind + '] tier=' + row.quality_tier + ' maturity=' + row.maturity + '\n' +
       '  compatible=' + String(row.compatible) + ' (' + row.compatibility_note + ')\n' +
       '  installed=' + String(row.installed) + ' configured=' + String(row.configured) + ' ready=' + String(row.ready) + '\n' +
-      '  selected=' + String(row.selected) + ' runnable=' + String(row.runnable) + '\n',
+      '  selected=' + String(row.selected) + ' source=' + row.selection_source + ' runnable=' + String(row.runnable) + '\n',
     );
   }
   return out.join('');
 }
 
-export async function runModelsList(app: App, ctx: ModelsContext, deps: ModelsDeps = {}): Promise<number> {
+export async function runModelsList(app: { config: Settings }, ctx: ModelsContext, deps: ModelsDeps = {}): Promise<number> {
   try {
     const { rows } = await buildModelList(app, ctx, deps);
     return emit(ctx, 'models list', { models: rows }, formatModelList(rows));
@@ -181,7 +208,7 @@ export async function runModelsList(app: App, ctx: ModelsContext, deps: ModelsDe
 
 const PROFILES: RecommendationProfile[] = ['quality', 'balanced', 'lightweight'];
 
-export async function runModelsRecommend(app: App, ctx: ModelsContext, flags: Map<string, string>, deps: ModelsDeps = {}): Promise<number> {
+export async function runModelsRecommend(app: { config: Settings }, ctx: ModelsContext, flags: Map<string, string>, deps: ModelsDeps = {}): Promise<number> {
   try {
     const { catalog } = depsOf(ctx, deps);
     const rawProfile = flags.get('profile') ?? 'quality';
@@ -254,7 +281,7 @@ export function installCodeFor(outcome: string): string {
   }
 }
 
-export async function runModelsInstall(app: App, ctx: ModelsContext, modelId: string, flags: Map<string, string>, deps: ModelsDeps = {}): Promise<number> {
+export async function runModelsInstall(app: { config: Settings }, ctx: ModelsContext, modelId: string, flags: Map<string, string>, deps: ModelsDeps = {}): Promise<number> {
   void app;
   try {
     const { catalog } = depsOf(ctx, deps);
@@ -280,13 +307,43 @@ export async function runModelsInstall(app: App, ctx: ModelsContext, modelId: st
       registry: createDefaultModelInstallerRegistry({ run: nodeSpawnFn(), fs: nodeProvisioningFs(), venvFs: nodeVenvFs(), systemPython }),
     });
     const events: Array<{ phase: string; message: string }> = [];
+    // Visible install UX (Part F): human TTY/non-TTY mode drives the SAME
+    // shared stage presenter live from structured events; JSON stays silent
+    // and an injected onProgress (setup wizard) owns presentation instead.
+    const live = !ctx.json && !deps.onProgress;
+    const ui = live ? await import('./setup_ui') : null;
+    const presenter = ui ? ui.createStagePresenter(ctx.io, { title: 'Installing ' + modelId }) : null;
+    const stageStarted: boolean[] = [false, false, false, false, false, false];
+    const begin = (i: number): void => { if (presenter && !stageStarted[i]) { stageStarted[i] = true; presenter.start(i); } };
+    if (presenter) ctx.io.out('\u2713 Compatibility validated\n');
+    const sink = (event: { phase: string; message: string }): void => {
+      events.push({ phase: event.phase, message: event.message });
+      try {
+        if (deps.onProgress) deps.onProgress({ model_id: modelId, phase: event.phase, message: event.message });
+      } catch {
+        // Progress sinks must never break the lifecycle.
+      }
+      if (presenter && ui) {
+        const idx = ui.stageIndexForPhase(event.phase, event.message);
+        for (let i = 0; i < idx; i += 1) { begin(i); presenter.complete(i); }
+        begin(idx);
+        if (event.phase === 'completed' || event.phase === 'failed' || event.phase === 'cancelled') {
+          if (event.phase === 'completed') { for (let i = 0; i <= idx; i += 1) { begin(i); presenter.complete(i); } presenter.finish(); }
+          else presenter.fail(idx, event.message);
+        }
+      }
+    };
     const result = await service.install({
       model_id: modelId,
       hardware,
       managed_root: ctx.managedRoot,
       force: flags.get('reinstall') === 'true',
-      onProgress: (event) => { events.push({ phase: event.phase, message: event.message }); },
+      onProgress: sink,
     });
+    if (presenter && (result.outcome === 'completed' || result.outcome === 'already_ready' || result.outcome === 'already_in_progress')) {
+      for (let i = 0; i < 6; i += 1) { begin(i); presenter.complete(i); }
+      presenter.finish();
+    }
     const data = { model_id: result.model_id, outcome: result.outcome, phase: result.phase, reason: result.reason, events };
     const text = modelId + ': ' + result.outcome + '\n  ' + result.reason + '\n';
     if (result.outcome === 'completed' || result.outcome === 'already_ready' || result.outcome === 'already_in_progress') {
@@ -300,7 +357,7 @@ export async function runModelsInstall(app: App, ctx: ModelsContext, modelId: st
 
 // ---- select -------------------------------------------------------------------------
 
-export async function runModelsSelect(app: App, ctx: ModelsContext, modelId: string, deps: ModelsDeps = {}): Promise<number> {
+export async function runModelsSelect(app: { config: Settings }, ctx: ModelsContext, modelId: string, deps: ModelsDeps = {}): Promise<number> {
   void app;
   try {
     const { catalog } = depsOf(ctx, deps);
@@ -337,6 +394,8 @@ export async function runModelsSelect(app: App, ctx: ModelsContext, modelId: str
 
 export interface KindStatus {
   selected: string | null;
+  /** HR-02.5F: effective-selection provenance (environment|manual|recommendation|none). */
+  selection_source: SelectionProvenance;
   installed: boolean;
   configured: boolean;
   ready: boolean;
@@ -346,7 +405,7 @@ export interface KindStatus {
   runnable: boolean;
 }
 
-export async function buildStatus(app: App, ctx: ModelsContext, deps: ModelsDeps = {}): Promise<{ managed_root: string; state_path: string; stt: KindStatus; tts: KindStatus }> {
+export async function buildStatus(app: { config: Settings }, ctx: ModelsContext, deps: ModelsDeps = {}): Promise<{ managed_root: string; state_path: string; stt: KindStatus; tts: KindStatus }> {
   void app;
   const { catalog } = depsOf(ctx, deps);
   const probe = deps.probe ?? new SystemHardwareProbe();
@@ -354,8 +413,8 @@ export async function buildStatus(app: App, ctx: ModelsContext, deps: ModelsDeps
   const store = deps.store ?? LocalModelStateStore.load({ statePath: ctx.statePath });
   const snapshot = store.snapshot();
   const one = (kind: 'stt' | 'tts'): KindStatus => {
-    const effective = resolveEffectiveSelection({ kind, hardware, state: snapshot, catalog });
-    const runnable = resolveRunnableSelection({ kind, hardware, state: snapshot, catalog });
+    const effective = resolveEffectiveSelection({ kind, hardware, state: snapshot, catalog, env: process.env });
+    const runnable = resolveRunnableSelection({ kind, hardware, state: snapshot, catalog, env: process.env });
     const modelId = effective.model ? effective.model.id : null;
     const entry = modelId ? snapshot.models[modelId] : undefined;
     let artifacts: boolean | null = null;
@@ -370,6 +429,7 @@ export async function buildStatus(app: App, ctx: ModelsContext, deps: ModelsDeps
     const validation = entry && entry.last_validation ? { status: entry.last_validation.status, reason: entry.last_validation.reason ?? null } : null;
     return {
       selected: modelId,
+      selection_source: provenanceOf(effective.source),
       installed: entry?.installed ?? false,
       configured: entry?.configured ?? false,
       ready: entry?.ready ?? false,
@@ -385,7 +445,7 @@ export async function buildStatus(app: App, ctx: ModelsContext, deps: ModelsDeps
 export function formatStatus(data: { managed_root: string; state_path: string; stt: KindStatus; tts: KindStatus }): string {
   const kind = (name: string, status: KindStatus): string => {
     const lines = [
-      name + ' selected: ' + String(status.selected ?? '(none)'),
+      name + ' selected: ' + String(status.selected ?? '(none)') + '\n  source: ' + status.selection_source,
       '  installed: ' + String(status.installed),
       '  configured: ' + String(status.configured),
       '  ready: ' + String(status.ready),
@@ -398,7 +458,7 @@ export function formatStatus(data: { managed_root: string; state_path: string; s
   return 'managed root: ' + data.managed_root + '\nstate: ' + data.state_path + '\n' + kind('STT', data.stt) + kind('TTS', data.tts);
 }
 
-export async function runModelsStatus(app: App, ctx: ModelsContext, deps: ModelsDeps = {}): Promise<number> {
+export async function runModelsStatus(app: { config: Settings }, ctx: ModelsContext, deps: ModelsDeps = {}): Promise<number> {
   try {
     const data = await buildStatus(app, ctx, deps);
     return emit(ctx, 'models status', data, formatStatus(data));
@@ -409,7 +469,7 @@ export async function runModelsStatus(app: App, ctx: ModelsContext, deps: Models
 
 // ---- validate -----------------------------------------------------------------------
 
-export async function runModelsValidate(app: App, ctx: ModelsContext, modelId: string | undefined, deps: ModelsDeps = {}): Promise<number> {
+export async function runModelsValidate(app: { config: Settings }, ctx: ModelsContext, modelId: string | undefined, deps: ModelsDeps = {}): Promise<number> {
   void app;
   try {
     const { catalog } = depsOf(ctx, deps);
@@ -427,7 +487,7 @@ export async function runModelsValidate(app: App, ctx: ModelsContext, modelId: s
     } else {
       const snapshot = store.snapshot();
       for (const kind of ['stt', 'tts'] as const) {
-        const effective = resolveEffectiveSelection({ kind, hardware, state: snapshot, catalog });
+        const effective = resolveEffectiveSelection({ kind, hardware, state: snapshot, catalog, env: process.env });
         if (effective.model) ids.push(effective.model.id);
       }
       if (ids.length === 0) {
@@ -481,7 +541,7 @@ export async function runModelsValidate(app: App, ctx: ModelsContext, modelId: s
 
 // ---- remove -------------------------------------------------------------------------
 
-export async function runModelsRemove(app: App, ctx: ModelsContext, modelId: string, flags: Map<string, string>, deps: ModelsDeps = {}): Promise<number> {
+export async function runModelsRemove(app: { config: Settings }, ctx: ModelsContext, modelId: string, flags: Map<string, string>, deps: ModelsDeps = {}): Promise<number> {
   void app;
   try {
     const { catalog } = depsOf(ctx, deps);

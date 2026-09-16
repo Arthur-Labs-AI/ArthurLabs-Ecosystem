@@ -11,12 +11,19 @@
  */
 
 import { ArthurError } from '../../core/errors/errors';
+import { defaultLocalModelStatePath } from './provisioning/paths';
 import { isLocalModelKind, type LocalModelKind } from './contracts';
 import { LOCAL_MODEL_KINDS } from './contracts';
 
 export const LOCAL_MODEL_STATE_VERSION = 1;
 
-export const DEFAULT_LOCAL_MODEL_STATE_PATH = './data/runtime/models.json';
+/**
+ * HR-02.5F: canonical default — `<data-root>/runtime/models.json`, never
+ * process.cwd().
+ * @deprecated Import defaultLocalModelStatePath/resolveLocalModelPaths
+ * from provisioning/paths instead. Kept for existing callers.
+ */
+export const DEFAULT_LOCAL_MODEL_STATE_PATH: string = defaultLocalModelStatePath();
 
 export type SelectionMode = 'auto' | 'manual';
 

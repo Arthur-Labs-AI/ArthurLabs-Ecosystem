@@ -38,7 +38,7 @@ export interface LocalRuntimeTarget {
   pythonExecutable: string;
   /** E1-managed worker entrypoint in the promoted live dir (existence-verified). */
   entrypoint: string;
-  /** Managed model-cache env overlay (HF_HOME/HF_HUB_CACHE/TRANSFORMERS_CACHE). */
+  /** Managed model-cache env overlay (HF_*_CACHE/TRANSFORMERS_CACHE/TORCH_HOME). */
   modelEnv: ModelCacheEnv;
   /** Installer-owned extra env (e.g. PARAKEET_MODEL/DEVICE); code-owned keys only. */
   extraEnv: Record<string, string>;

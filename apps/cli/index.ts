@@ -28,12 +28,13 @@
 
 import { createInterface } from "node:readline";
 
-import { buildApp } from "../../src/app";
 import { ArthurError, sanitizePublicError } from "../../src/core/errors/errors";
 import { isSecretLikeKey } from "../../src/security/redaction";
 import { SecretSanitizer } from "../../src/security/sanitize";
 import { isArthurMode, ArthurMode } from "../../src/core/modes/mode";
-import { loadDotEnv } from "../../src/config/settings";
+import { loadDotEnv, loadSettings } from "../../src/config/settings";
+import type { Settings } from "../../src/config/settings";
+import { validateSettings } from "../../src/config/validation";
 import { newId } from "../../src/observability/tracing";
 import { parseTypeLabel } from "../../src/memory/api";
 import type { MemoryStatusReport } from "../../src/memory/contracts";
@@ -111,12 +112,15 @@ Usage:
   arthur models detect [--json] [--root <path>] [--state <path>]
   arthur models list [--json] [--root <path>] [--state <path>]
   arthur models recommend [--profile quality|balanced|lightweight] [--kind stt|tts] [--json]
-  arthur models install <model-id> [--reinstall] [--python <exe>] [--json]
+  arthur models detect [--json] [--root <path>] [--state <path>]
+  arthur models list [--json] [--root <path>] [--state <path>]
+  arthur models recommend [--profile quality|balanced|lightweight] [--kind stt|tts] [--json]
+  arthur models install <model-id> [--reinstall] [--python <exe>] [--root <path>] [--state <path>] [--json]
   arthur models select <model-id> [--json]
   arthur models status [--json]
   arthur models validate [model-id] [--json]
   arthur models remove <model-id> [--yes] [--json]
-  arthur setup [--yes] [--stt-model <id>] [--tts-model <id>] [--json]
+  arthur setup [--yes] [--stt-model <id>] [--tts-model <id>] [--root <path>] [--state <path>] [--python <exe>] [--json]
   arthur memory remember --session <id> [--type <t>] [--subject <k>] [--project <k>] "<text>"
   arthur memory search --session <id> "<query>"
   arthur memory list --session <id>
@@ -883,14 +887,50 @@ function resolveModeFlag(
 async function main(): Promise<void> {
   const { command, flags, positionals } = parseArgs(process.argv.slice(2));
 
-  if (command === "" || command === "help" || command === "--help" || flags.get("help") === "true") {
-    process.stdout.write(HELP);
+  // Scoped help (HR-02.5F UX): models/setup own their help surface via
+  // model_branch.ts; the global shortcut must not swallow it.
+  if (command !== "models" && command !== "setup") {
+    if (command === "" || command === "help" || command === "--help" || flags.get("help") === "true") {
+      process.stdout.write(HELP);
+      return;
+    }
+  }
+
+  const io = PROCESS_IO;
+  const json = flags.get("json") === "true";
+  const verbose = flags.get("verbose") === "true";
+  const rawMode = flags.get("mode");
+
+  // HR-02.5F lazy subsystem initialization: model/setup commands never
+  // touch the session/memory SQLite databases, so they run on validated
+  // settings alone (no buildApp, no node:sqlite import). Every other
+  // command family takes the full DB-backed App via the dynamic import
+  // below — src/app.js is never statically reachable from this branch.
+  if (command === "models" || command === "setup") {
+    let settings: Settings;
+    try {
+      loadDotEnv();
+      settings = validateSettings(loadSettings());
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      printError(new ArthurError("INVALID_CONFIG", message));
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      const { runModelsOrSetup } = await import("./model_branch");
+      process.exitCode = await runModelsOrSetup({ config: settings }, command, flags, positionals, io);
+    } catch (err) {
+      printError(err, undefined, io);
+      process.exitCode = 1;
+    }
     return;
   }
 
   let app: App;
   try {
     loadDotEnv();
+    const { buildApp } = await import("../../src/app");
     app = buildApp();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -898,11 +938,6 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     return;
   }
-
-  const io = PROCESS_IO;
-  const json = flags.get("json") === "true";
-  const verbose = flags.get("verbose") === "true";
-  const rawMode = flags.get("mode");
 
   try {
     switch (command) {
@@ -1033,31 +1068,6 @@ async function main(): Promise<void> {
           return;
         }
         process.exitCode = await runReject(app, { id, io });
-        break;
-      }
-      case "models": {
-        const { modelsContext, runModelsDetect, runModelsList, runModelsRecommend, runModelsInstall, runModelsSelect, runModelsStatus, runModelsValidate, runModelsRemove } = await import("./models");
-        const ctx = modelsContext(app, flags, io);
-        const sub = positionals[1];
-        switch (sub) {
-          case "detect": process.exitCode = await runModelsDetect(app, ctx); break;
-          case "list": process.exitCode = await runModelsList(app, ctx); break;
-          case "recommend": process.exitCode = await runModelsRecommend(app, ctx, flags); break;
-          case "install": process.exitCode = await runModelsInstall(app, ctx, positionals[2] ?? "", flags); break;
-          case "select": process.exitCode = await runModelsSelect(app, ctx, positionals[2] ?? ""); break;
-          case "status": process.exitCode = await runModelsStatus(app, ctx); break;
-          case "validate": process.exitCode = await runModelsValidate(app, ctx, positionals[2]); break;
-          case "remove": process.exitCode = await runModelsRemove(app, ctx, positionals[2] ?? "", flags); break;
-          default:
-            io.err("usage: arthur models <detect|list|recommend|install|select|status|validate|remove> [--json]\n");
-            process.exitCode = 2;
-        }
-        break;
-      }
-      case "setup": {
-        const { modelsContext } = await import("./models");
-        const { runSetup } = await import("./setup");
-        process.exitCode = await runSetup(app, modelsContext(app, flags, io), flags);
         break;
       }
       case "memory": {

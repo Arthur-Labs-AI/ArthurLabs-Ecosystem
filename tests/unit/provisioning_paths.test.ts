@@ -191,9 +191,11 @@ test('default data root without explicit config never depends on cwd', () => {
   // stable per-user location. Different user env values change it
   // (different users), but cwd never does — resolveAppDataRoot takes
   // no cwd input at all (the type has no such field).
+  // HR-02.5F: win32 shape asserted through the path.win32 seam so it
+  // holds on Linux CI too (no host-path weakening).
   const winEnv = { LOCALAPPDATA: 'C:\\Users\\op\\AppData\\Local' };
-  const first = resolveAppDataRoot({ env: winEnv, platform: 'win32' });
-  const second = resolveAppDataRoot({ env: winEnv, platform: 'win32' });
+  const first = resolveAppDataRoot({ env: winEnv, platform: 'win32', pathImpl: path.win32 });
+  const second = resolveAppDataRoot({ env: winEnv, platform: 'win32', pathImpl: path.win32 });
   assert.equal(first, second);
   assert.ok(!first.includes('work'));
   const linuxEnv = { HOME: '/home/op' };
@@ -206,11 +208,14 @@ test('default data root without explicit config never depends on cwd', () => {
 });
 
 test('windows implicit root uses LOCALAPPDATA, never the roaming profile', () => {
+  // HR-02.5F isolation fix: win32 path semantics via the pathImpl seam
+  // (previously path.resolve on Linux mangled the backslash drive
+  // shape and this test failed on POSIX hosts).
   const env = { LOCALAPPDATA: 'C:\\Users\\op\\AppData\\Local', APPDATA: 'C:\\Users\\op\\AppData\\Roaming' };
-  const root = resolveAppDataRoot({ env, platform: 'win32' });
+  const root = resolveAppDataRoot({ env, platform: 'win32', pathImpl: path.win32 });
   assert.ok(root.includes('Local'));
   assert.ok(!root.includes('Roaming'));
-  assert.equal(root, path.resolve('C:\\Users\\op\\AppData\\Local\\ARTHUR'));
+  assert.equal(root, path.win32.resolve('C:\\Users\\op\\AppData\\Local\\ARTHUR'));
 });
 
 test('APPDATA alone does not satisfy the windows implicit root', () => {
@@ -282,11 +287,15 @@ test('managed model cache stays inside the root', () => {
   assert.ok(svc.layout.hfHubDir.startsWith(svc.layout.hfCacheDir));
   assert.ok(svc.layout.hfXetDir.startsWith(svc.layout.hfCacheDir));
   assert.ok(svc.layout.hfAssetsDir.startsWith(svc.layout.hfCacheDir));
+  assert.ok(svc.layout.torchCacheDir.startsWith(svc.layout.cacheDir));
   const env = svc.modelCacheEnv();
   assert.equal(env.HF_HUB_CACHE, svc.layout.hfHubDir);
   assert.equal(env.HF_XET_CACHE, svc.layout.hfXetDir);
   assert.equal(env.HF_ASSETS_CACHE, svc.layout.hfAssetsDir);
   assert.equal(env.TRANSFORMERS_CACHE, svc.layout.hfHubDir);
+  // torch.hub / torchaudio pipelines must resolve inside the root too
+  // (MioCodec's Wav2Vec2 bundle downloads through torch.hub).
+  assert.equal(env.TORCH_HOME, svc.layout.torchCacheDir);
   for (const value of Object.values(env)) {
     assert.ok(path.normalize(value).startsWith(path.normalize(ROOT)));
   }
@@ -300,17 +309,20 @@ test('ambient external HF cache variables cannot redirect managed env', () => {
   process.env['HF_XET_CACHE'] = '/tmp/evil-xet';
   process.env['HF_ASSETS_CACHE'] = '/tmp/evil-assets';
   process.env['TRANSFORMERS_CACHE'] = '/tmp/evil-tr';
+  process.env['TORCH_HOME'] = '/tmp/evil-torch';
   try {
     const svc = new ManagedPathService(ROOT);
     const env = svc.modelCacheEnv();
     assert.ok(!Object.values(env).some((v) => v.includes('evil')));
     assert.equal(env.HF_HUB_CACHE, svc.layout.hfHubDir);
     assert.equal(env.HF_XET_CACHE, svc.layout.hfXetDir);
+    assert.equal(env.TORCH_HOME, svc.layout.torchCacheDir);
   } finally {
     delete process.env['HF_HUB_CACHE'];
     delete process.env['HF_XET_CACHE'];
     delete process.env['HF_ASSETS_CACHE'];
     delete process.env['TRANSFORMERS_CACHE'];
+    delete process.env['TORCH_HOME'];
   }
 });
 
@@ -322,6 +334,7 @@ test('managed overlay leaves credential discovery intact and mints no token', ()
   assert.equal(isManagedEnvKey('HF_TOKEN'), false);
   assert.equal(isManagedEnvKey('HF_TOKEN_PATH'), false);
   assert.equal(isManagedEnvKey('HF_HUB_CACHE'), true);
+  assert.equal(isManagedEnvKey('TORCH_HOME'), true);
   const svc = new ManagedPathService(ROOT);
   const env = svc.modelCacheEnv();
   assert.ok(!('HF_HOME' in env));

@@ -31,6 +31,7 @@
  */
 
 import { ArthurError } from '../../core/errors/errors';
+import { defaultLocalModelRoot } from './provisioning/paths';
 import { evaluateCompatibility } from './compatibility';
 import { isModelInstallerId } from './contracts';
 import { getLocalModelCatalog } from './catalog';
@@ -44,7 +45,14 @@ import type {
 import type { ModelInstallerRegistry } from './install_registry';
 import type { LocalModelStateStore } from './state_store';
 
-export const DEFAULT_MANAGED_ROOT = './data/runtime/model-files';
+/**
+ * HR-02.5F: canonical default — derived from the single data-root
+ * contract (resolveAppDataRoot), never process.cwd().
+ * @deprecated Import defaultLocalModelRoot/resolveLocalModelPaths from
+ * provisioning/paths instead. Kept as a getter-compatible const for
+ * existing callers; its value is resolved once at module load.
+ */
+export const DEFAULT_MANAGED_ROOT: string = defaultLocalModelRoot();
 
 export interface InstallationServiceDeps {
   store: LocalModelStateStore;
