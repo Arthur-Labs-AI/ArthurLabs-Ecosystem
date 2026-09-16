@@ -65,10 +65,14 @@ describe('verification service', () => {
       expect(['reproduced', 'partially_verified', 'not_reproducible', 'inconclusive']).toContain(
         attempt.outcome,
       );
-      // Fresh workspace provenance recorded; workspace removed after attempt.
+      // Fresh workspace provenance recorded; the whole attempt
+      // directory (project copy AND parent) removed after attempt.
       expect(attempt.workspaceProvenance?.baselineMatch).toBe(true);
       expect(attempt.workspaceProvenance?.snapshotId).toBe(run.projectSnapshotId);
       await expect(stat(attempt.workspaceProvenance?.workspacePath as string)).rejects.toThrow();
+      await expect(
+        stat(join(f.dataRoot, 'projects', f.projectId, 'verifier-workspaces', attempt.id)),
+      ).rejects.toThrow();
       // Steps, observations, and assertions persisted incrementally.
       expect(f.repository.listVerificationSteps(attempt.id).length).toBeGreaterThan(0);
     }

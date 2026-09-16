@@ -204,8 +204,18 @@ async function readFileBytes(path: string): Promise<Buffer> {
 }
 
 async function destroyWorkspace(workspaceRoot: string): Promise<string | undefined> {
+  // Remove the whole attempt directory (project copy AND its parent),
+  // not just the project subtree — no empty litter remains. The path
+  // is constructed internally under verifier-workspaces, never from
+  // model or user input, so dirname() cannot escape Sentry storage.
+  const { dirname } = await import('node:path');
   try {
-    await rm(workspaceRoot, { recursive: true, force: true, maxRetries: 2, retryDelay: 50 });
+    await rm(dirname(workspaceRoot), {
+      recursive: true,
+      force: true,
+      maxRetries: 2,
+      retryDelay: 50,
+    });
     return undefined;
   } catch (cause) {
     return (
