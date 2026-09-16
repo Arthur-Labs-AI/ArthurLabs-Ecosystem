@@ -60,12 +60,12 @@ describe('Sentry persistence foundation', () => {
     });
     expect(
       first.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 3 });
+    ).toMatchObject({ count: 4 });
     first.close();
     const reopened = new SentryDatabase({ dataRoot });
     expect(
       reopened.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 3 });
+    ).toMatchObject({ count: 4 });
     expect(reopened.connection.prepare('PRAGMA busy_timeout').get()).toMatchObject({
       timeout: 5000,
     });
@@ -157,7 +157,7 @@ describe('Sentry persistence foundation', () => {
     const repository = new SentryRepository(upgraded);
     expect(
       upgraded.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 3 });
+    ).toMatchObject({ count: 4 });
     expect(repository.getProject(project.id)).toEqual(project);
     expect(repository.getRun(run.id)).toEqual(run);
     expect(repository.getAgentRun(agent.id)).toEqual(agent);
@@ -524,6 +524,293 @@ describe('Sentry persistence foundation', () => {
     // Source rows survive merge persistence untouched.
     expect(repository.getRun(run.id)?.status).toBe('completed');
     expect(repository.listFindings(run.id)).toHaveLength(1);
+    database.close();
+  });
+
+  it('persists verification runs, attempts, steps, and observations', async () => {
+    const dataRoot = await root();
+    const database = new SentryDatabase({ dataRoot });
+    const repository = new SentryRepository(database);
+    const {
+      QARunSchema: Run,
+      AgentRunSchema: Agent,
+      FindingSchema: Finding,
+      EvidenceSchema: Evidence,
+      ProjectRevisionSchema: Revision,
+      ArtifactSchema: Artifact,
+      ProjectSnapshotSchema: Snapshot,
+      ProjectContextSnapshotSchema: Context,
+      ProjectSchema,
+      MergeResultSchema,
+      VerificationRunSchema: VRun,
+      VerificationRunAttemptSchema: VAttempt,
+      VerificationRecipeStepSchema: VStep,
+      VerificationObservationSchema: VObservation,
+      VerificationAssertionSchema: VAssertion,
+    } = await import('@qa/schemas');
+    // FK chain: project → revision → artifact → snapshot/context →
+    // run → agent → finding/evidence → merge+cluster → verification.
+    const project = ProjectSchema.parse({
+      schemaVersion: 1,
+      id: 'proj_01K7777777777777777777A8W2',
+      name: 'verify-fixture',
+      sourcePath: '/tmp/verify-fixture',
+      createdAt: '2026-09-16T00:00:00.000Z',
+      updatedAt: '2026-09-16T00:00:00.000Z',
+    });
+    const revision = Revision.parse({
+      schemaVersion: 1,
+      id: 'rev_01K7777777777777777777A8W2',
+      projectId: project.id,
+      sourcePath: '/tmp/verify-fixture',
+      importedAt: '2026-09-16T00:00:00.000Z',
+      contentHash: 'c'.repeat(64),
+    });
+    const artifact = Artifact.parse({
+      schemaVersion: 1,
+      id: 'artifact_01K7777777777777777777A8W2' as never,
+      projectId: project.id,
+      type: 'json',
+      relativeStoragePath: 'manifest.ndjson',
+      sizeBytes: 0,
+      sha256: revision.contentHash,
+      createdAt: '2026-09-16T00:00:00.000Z',
+    });
+    const snapshot = Snapshot.parse({
+      schemaVersion: 1,
+      id: 'snap_01K7777777777777777777A8W2',
+      projectId: project.id,
+      projectRevisionId: revision.id,
+      createdAt: '2026-09-16T00:00:00.000Z',
+      sourceState: {},
+      manifest: {
+        entryCount: 0,
+        fileCount: 0,
+        directoryCount: 0,
+        symlinkCount: 0,
+        totalBytes: 0,
+        artifactId: artifact.id,
+      },
+      contentHash: revision.contentHash,
+    });
+    const context = Context.parse({
+      schemaVersion: 1,
+      id: 'ctx_01K7777777777777777777A8W2',
+      projectId: project.id,
+      projectRevisionId: revision.id,
+      createdAt: '2026-09-16T00:00:00.000Z',
+    });
+    const run = Run.parse({
+      schemaVersion: 1,
+      id: 'run_01K7777777777777777777A8W2',
+      projectId: project.id,
+      snapshotId: snapshot.id,
+      projectContextSnapshotId: context.id,
+      status: 'completed',
+      mode: 'full',
+      executionKind: 'production',
+      configuration: {
+        agentStackIds: ['stack_muse_main'],
+        verificationLevel: 'strict',
+        policy: { id: 'qa-standard', version: 1 },
+      },
+      createdAt: '2026-09-16T00:00:00.000Z',
+    });
+    const agent = Agent.parse({
+      schemaVersion: 1,
+      id: 'arun_01K7777777777777777777A8W2',
+      qaRunId: run.id,
+      agentStackId: 'stack_muse_main',
+      taskType: 'qa',
+      status: 'completed',
+      runtimeIdentity: {
+        adapterId: 'muse-code',
+        adapterVersion: '0.1.0',
+        policyId: 'qa-standard',
+        policyVersion: 1,
+      },
+    });
+    const finding = Finding.parse({
+      schemaVersion: 1,
+      id: 'find_01K7777777777777777777A8W2',
+      qaRunId: run.id,
+      agentRunId: agent.id,
+      sourceAgentStackId: 'stack_muse_main',
+      title: 'Verifiable defect',
+      category: 'logic',
+      severity: 'medium',
+      confidence: 'strong',
+      description: 'A defect with source evidence.',
+      locations: [{ relativePath: 'src/a.ts' }],
+      evidenceIds: ['ev_01K7777777777777777777A8W2'],
+      reproductionSteps: [],
+      createdAt: '2026-09-16T00:00:00.000Z',
+    });
+    const evidence = Evidence.parse({
+      schemaVersion: 1,
+      id: 'ev_01K7777777777777777777A8W2',
+      qaRunId: run.id,
+      agentRunId: agent.id,
+      type: 'code_reference',
+      strength: 'strong_code_evidence',
+      environmentState: 'baseline',
+      description: 'source',
+      codeReference: { relativePath: 'src/a.ts' },
+      artifactIds: [],
+      groundingOperationIds: [],
+      createdAt: '2026-09-16T00:00:00.000Z',
+    });
+    repository.saveProject(project);
+    repository.saveRevision(revision);
+    repository.saveArtifact(artifact);
+    repository.saveSnapshot(snapshot);
+    repository.saveContext(context);
+    repository.saveRun(run);
+    repository.saveAgentRun(agent);
+    repository.saveFinding(finding);
+    repository.saveEvidence(evidence);
+    const merge = MergeResultSchema.parse({
+      schemaVersion: 1,
+      id: 'merge_01K7777777777777777777A8W2',
+      qaRunId: run.id,
+      projectSnapshotId: snapshot.id,
+      mergerVersion: 2,
+      normalizerVersion: 1,
+      inputDigest: 'sha256:' + 'e'.repeat(64),
+      expectedAgentStackIds: ['stack_muse_main'],
+      usableAgentRunIds: [agent.id],
+      unavailableAgentStackIds: [],
+      sourceFindingCount: 1,
+      clusterCount: 1,
+      singleSourceCount: 1,
+      multiSourceCount: 0,
+      allAvailableCount: 0,
+      clusters: [
+        {
+          schemaVersion: 1,
+          id: 'cluster_01K7777777777777777777A8W2',
+          qaRunId: run.id,
+          projectSnapshotId: snapshot.id,
+          mergerVersion: 2,
+          normalizerVersion: 1,
+          sourceFindingIds: [finding.id],
+          sourceAgentRunIds: [agent.id],
+          sourceAgentStackIds: ['stack_muse_main'],
+          representativeFindingId: finding.id,
+          agreementState: 'single_source',
+          expectedAgentCount: 1,
+          usableAgentCount: 1,
+          supportingAgentCount: 1,
+          unavailableAgentStackIds: [],
+          severityValues: ['medium'],
+          confidenceValues: ['strong'],
+          categoryValues: ['logic'],
+          evidenceIds: [evidence.id],
+          fieldDisagreements: [],
+          hasReproducedEvidence: false,
+          hasOperationEvidence: false,
+          hasSourceEvidence: true,
+          hasOnlyModelReasoning: false,
+          createdAt: '2026-09-16T00:00:00.000Z',
+        },
+      ],
+      durationMs: 1,
+      createdAt: '2026-09-16T00:00:00.000Z',
+    });
+    repository.saveMergeResult(merge, new Map([[merge.clusters[0]?.id as string, [finding.id]]]));
+    const vrun = VRun.parse({
+      schemaVersion: 1,
+      id: 'vrun_01K7777777777777777777A8W1',
+      mergeResultId: merge.id,
+      qaRunId: run.id,
+      projectSnapshotId: snapshot.id,
+      verifierVersion: 1,
+      recipeVersion: 1,
+      signatureVersion: 1,
+      status: 'completed',
+      requestedClusterIds: [merge.clusters[0]?.id],
+      createdAt: '2026-09-16T00:00:00.000Z',
+      startedAt: '2026-09-16T00:00:00.000Z',
+      completedAt: '2026-09-16T00:00:01.000Z',
+    });
+    repository.saveVerificationRun(vrun);
+    expect(repository.getVerificationRun(vrun.id)).toEqual(vrun);
+    expect(repository.listVerificationRuns(merge.id)).toHaveLength(1);
+    const attempt = VAttempt.parse({
+      schemaVersion: 1,
+      id: 'vattempt_01K7777777777777777777A8W1',
+      verificationRunId: vrun.id,
+      findingClusterId: merge.clusters[0]?.id,
+      status: 'completed',
+      recipeVersion: 1,
+      recipeDigest: 'sha256:' + 'f'.repeat(64),
+      outcome: 'partially_verified',
+      steps: [],
+      sourceFindingIds: [finding.id],
+      sourceEvidenceIds: [evidence.id],
+      startedAt: '2026-09-16T00:00:00.000Z',
+      completedAt: '2026-09-16T00:00:01.000Z',
+    });
+    repository.saveVerificationAttempt(attempt);
+    expect(repository.getVerificationAttempt(attempt.id)).toEqual(attempt);
+    const step = VStep.parse({
+      id: 'vstep_01K7777777777777777777A8W1',
+      type: 'source_integrity',
+      recipeFingerprint: 'sha256:' + 'a'.repeat(64),
+      sourceEvidenceIds: [evidence.id],
+      sourceOperationIds: [],
+      expected: { relativePath: 'src/a.ts' },
+      status: 'completed',
+      outcome: 'matched',
+    });
+    repository.saveVerificationStep(attempt.id, step);
+    expect(repository.listVerificationSteps(attempt.id)).toHaveLength(1);
+    const observation = VObservation.parse({
+      schemaVersion: 1,
+      id: 'vobs_01K7777777777777777777A8W1',
+      verificationAttemptId: attempt.id,
+      stepId: step.id,
+      type: 'source_integrity',
+      sourceCheck: {
+        relativePath: 'src/a.ts',
+        exists: true,
+        isRegularFile: true,
+        lineRangePresent: true,
+      },
+      outcome: 'matched',
+      startedAt: '2026-09-16T00:00:00.000Z',
+      completedAt: '2026-09-16T00:00:00.000Z',
+    });
+    repository.saveVerificationObservation(attempt.id, observation);
+    expect(repository.listVerificationObservations(attempt.id)).toHaveLength(1);
+    const assertion = VAssertion.parse({
+      schemaVersion: 1,
+      verificationAttemptId: attempt.id,
+      subject: 'source_location',
+      state: 'confirmed',
+      detail: '1/1 source integrity checks matched.',
+      sourceEvidenceIds: [evidence.id],
+      observationIds: [observation.id],
+    });
+    repository.saveVerificationAssertion(attempt.id, assertion);
+    const assertions = repository.listVerificationAssertions(attempt.id);
+    expect(assertions).toHaveLength(1);
+    expect(assertions[0]?.state).toBe('confirmed');
+    // Ownership trigger: re-homing an attempt across runs aborts loudly
+    // (same pattern as agent_runs/findings ownership).
+    expect(() =>
+      repository.saveVerificationAttempt({
+        ...attempt,
+        verificationRunId: 'vrun_01K7777777777777777777A8W2' as never,
+      }),
+    ).toThrow(/ENTITY_OWNERSHIP_IMMUTABLE/);
+    expect(repository.getVerificationAttempt(attempt.id)?.verificationRunId).toBe(
+      attempt.verificationRunId,
+    );
+    // Source history untouched by verification persistence.
+    expect(repository.getRun(run.id)?.status).toBe('completed');
+    expect(repository.listFindings(run.id)).toHaveLength(1);
+    expect(repository.getMergeResult(merge.id)?.clusterCount).toBe(1);
     database.close();
   });
 

@@ -642,9 +642,9 @@ export class SentryRepository {
   getVerificationRun(id: string): VerificationRun | undefined {
     return decode(
       VerificationRunSchema,
-      this.database.connection.prepare('SELECT payload FROM verification_runs WHERE id=?').get(
-        id,
-      ) as PayloadRow | undefined,
+      this.database.connection
+        .prepare('SELECT payload FROM verification_runs WHERE id=?')
+        .get(id) as PayloadRow | undefined,
       'VerificationRun ' + id,
     );
   }
@@ -660,9 +660,12 @@ export class SentryRepository {
   }
 
   saveVerificationAttempt(value: VerificationRunAttempt): void {
+    // verification_run_id stays in the SET clause so the ownership
+    // trigger loudly rejects re-homing (column and payload can never
+    // silently diverge). Same pattern as the finding/agent ownership.
     this.database.connection
       .prepare(
-        'INSERT INTO verification_attempts(id,verification_run_id,finding_cluster_id,status,payload) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET status=excluded.status,payload=excluded.payload',
+        'INSERT INTO verification_attempts(id,verification_run_id,finding_cluster_id,status,payload) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET verification_run_id=excluded.verification_run_id,status=excluded.status,payload=excluded.payload',
       )
       .run(
         value.id,
@@ -687,7 +690,9 @@ export class SentryRepository {
     return decodeMany(
       VerificationRunAttemptSchema,
       this.database.connection
-        .prepare('SELECT payload FROM verification_attempts WHERE verification_run_id=? ORDER BY id')
+        .prepare(
+          'SELECT payload FROM verification_attempts WHERE verification_run_id=? ORDER BY id',
+        )
         .all(verificationRunId) as unknown as PayloadRow[],
       'VerificationRunAttempt',
     );
@@ -711,7 +716,9 @@ export class SentryRepository {
     return decodeMany(
       VerificationRecipeStepSchema,
       this.database.connection
-        .prepare('SELECT payload FROM verification_steps WHERE verification_attempt_id=? ORDER BY id')
+        .prepare(
+          'SELECT payload FROM verification_steps WHERE verification_attempt_id=? ORDER BY id',
+        )
         .all(attemptId) as unknown as PayloadRow[],
       'VerificationStep',
     );
@@ -761,7 +768,9 @@ export class SentryRepository {
     yield* decodeRows(
       VerificationRunAttemptSchema,
       this.database.connection
-        .prepare('SELECT payload FROM verification_attempts WHERE verification_run_id=? ORDER BY id')
+        .prepare(
+          'SELECT payload FROM verification_attempts WHERE verification_run_id=? ORDER BY id',
+        )
         .iterate(verificationRunId) as Iterable<PayloadRow>,
       'VerificationRunAttempt',
     );
