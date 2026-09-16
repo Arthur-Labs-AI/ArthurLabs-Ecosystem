@@ -406,10 +406,12 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       const tools = Array.isArray(raw['tools']) ? raw['tools'] : [];
       // Forbidden tools must stay absent even with --disallowedTools: a
       // present Agent/Task tool means the composition failed open.
+      // WebFetch/WebSearch are allowed investigative QA tools (§27-29)
+      // and must NOT trip this check; report-turn tool use is still
+      // failed by the reporting firewall.
       const forbiddenPresent = tools.filter(
         (tool): tool is string =>
-          typeof tool === 'string' &&
-          /^(agent|task|webfetch|websearch|skill|cron|schedulewakeup)$/i.test(tool),
+          typeof tool === 'string' && /^(agent|task|skill|cron|schedulewakeup)$/i.test(tool),
       );
       if (forbiddenPresent.length > 0) {
         throw new ClaudeCodeHarnessError(

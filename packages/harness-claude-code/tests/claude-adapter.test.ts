@@ -757,6 +757,45 @@ describe('ClaudeCodeHarnessAdapter', () => {
     }
   });
 
+  it('accepts allowed web QA tools at init without tripping the delegation check', async () => {
+    // Live regression: allowing WebFetch/WebSearch in --disallowedTools
+    // while the init-event check still rejected them failed the whole
+    // agent with GLM_SUBAGENT_FORBIDDEN. Both layers must agree.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-webtools-'));
+    roots.push(root);
+    const input = await request(root);
+    let calls = 0;
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-1',
+        startSession: async () => ({
+          runText: async () => {
+            calls += 1;
+            if (calls === 1)
+              return [
+                evt('system', {
+                  subtype: 'init',
+                  tools: ['Bash', 'Read', 'WebFetch', 'WebSearch'],
+                }),
+                ...planTurn().filter(
+                  (e) => e.type !== 'system' || (e.raw['subtype'] as string) === 'init',
+                ),
+              ];
+            if (calls === 2) return investigationTurn();
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+  });
+
   it('maps authentication failures to GLM_AUTH_FAILED', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-auth-'));
     roots.push(root);
