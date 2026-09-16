@@ -1,0 +1,131 @@
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { afterEach, describe, expect, it } from 'vitest';
+import { SentryDatabase, SentryRepository, RuntimeInstanceLease } from '@qa/persistence';
+import { ProjectManager } from '@qa/project-manager';
+import { createFakeHarnessRegistry, mergeRun, RunCoordinator, verifyMerge } from '../src/index.js';
+
+const roots: string[] = [];
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((value) => rm(value, { recursive: true, force: true })));
+});
+
+const T = '2026-09-16T00:00:00.000Z';
+
+/** Deterministic fixture project with a KNOWN failing test (pure node,
+ *  zero dependencies): `node tests/run-tests.mjs` exits 1 naming the
+ *  failing test. No network, no installs. */
+async function divideFixture() {
+  const root = await mkdtemp(join(tmpdir(), 'sentry-verify-trust-'));
+  roots.push(root);
+  const source = join(root, 'source');
+  const dataRoot = join(root, 'data');
+  await mkdir(join(source, 'src'), { recursive: true });
+  await mkdir(join(source, 'tests'), { recursive: true });
+  // Intentionally buggy: mirrors the real divide-by-zero sentinel defect.
+  await writeFile(
+    join(source, 'src', 'divide.mjs'),
+    'export function divide(a, b) { if (b === 0) return 0; return a / b; }\n',
+  );
+  await writeFile(
+    join(source, 'tests', 'run-tests.mjs'),
+    [
+      "import { divide } from '../src/divide.mjs';",
+      'const failures = [];',
+      'try { const r = divide(1, 0); if (r !== Infinity) failures.push("divide by zero must be Infinity"); } catch (e) { failures.push("divide by zero threw"); }',
+      'if (failures.length > 0) { for (const f of failures) console.log("× " + f); process.exit(1); }',
+      'console.log("✓ divide");',
+      '',
+    ].join('\n'),
+  );
+  await writeFile(
+    join(source, 'package.json'),
+    JSON.stringify({ name: 'divide-fixture', type: 'module' }),
+  );
+  const database = new SentryDatabase({ dataRoot });
+  const repository = new SentryRepository(database);
+  const lease = new RuntimeInstanceLease(repository, { autoHeartbeat: false });
+  lease.start();
+  const manager = new ProjectManager(dataRoot, repository, { runtimeLease: lease });
+  const added = await manager.addProject(source);
+  const coordinator = new RunCoordinator(
+    dataRoot,
+    repository,
+    lease,
+    createFakeHarnessRegistry('success'),
+  );
+  const result = await coordinator.run(added.project.id, { executionKind: 'simulation' });
+  return { dataRoot, database, repository, runId: result.run.id };
+}
+
+async function schemas() {
+  return import('@qa/schemas');
+}
+
+describe('verifier trust fixtures', () => {
+  it('reproduces a known failing test with strong identity (§50)', async () => {
+    const f = await divideFixture();
+    const { FindingSchema, EvidenceSchema, HarnessEventSchema } = await schemas();
+    const agents = f.repository.listAgentRuns(f.runId);
+    const agent = agents.find((a) => a.status === 'completed') ?? agents[0];
+    if (agent === undefined) throw new Error('No agent run');
+    const opId = 'op_01K7777777777777777777A8W1';
+    const evidence = EvidenceSchema.parse({
+      schemaVersion: 1,
+      id: 'ev_01K7777777777777777777A8W1',
+      qaRunId: f.runId,
+      agentRunId: agent.id,
+      type: 'test',
+      strength: 'strong_code_evidence',
+      environmentState: 'baseline',
+      description: 'failing test',
+      test: { framework: 'node', name: 'divide by zero must be Infinity', status: 'failed' },
+      artifactIds: [],
+      groundingOperationIds: [opId],
+      createdAt: T,
+    });
+    f.repository.saveEvidence(evidence);
+    const finding = FindingSchema.parse({
+      schemaVersion: 1,
+      id: 'find_01K7777777777777777777A8W1',
+      qaRunId: f.runId,
+      agentRunId: agent.id,
+      sourceAgentStackId: agent.agentStackId,
+      title: 'Divide by zero not Infinity',
+      category: 'logic',
+      severity: 'high',
+      confidence: 'strong',
+      description: 'divide(1,0) must be Infinity.',
+      locations: [{ relativePath: 'src/divide.mjs', startLine: 1 }],
+      evidenceIds: [evidence.id],
+      reproductionSteps: [],
+      createdAt: T,
+    });
+    f.repository.saveFinding(finding);
+    f.repository.appendHarnessEvent(
+      f.runId,
+      HarnessEventSchema.parse({
+        schemaVersion: 1,
+        eventId: 'evt_01K7777777777777777777A8W1',
+        agentRunId: agent.id,
+        timestamp: T,
+        type: 'command.executed',
+        operationId: opId,
+        command: 'node tests/run-tests.mjs',
+        exitCode: 1,
+      }),
+    );
+    const { result: merge } = mergeRun(f.repository, f.runId);
+    const { run, attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
+      commandTimeoutMs: 30000,
+    });
+    const target = attempts.find((a) => a.sourceFindingIds.includes(finding.id as never));
+    expect(target).toBeDefined();
+    expect(target?.status).toBe('completed');
+    // Strong identity: same test name + same failure status, fresh run.
+    expect(target?.outcome).toBe('reproduced');
+    expect(run.status).not.toBe('failed');
+    f.database.close();
+  }, 180000);
+});

@@ -200,6 +200,7 @@ export function buildRecipe(input: RecipeInput): BuiltRecipe {
                   testName: label,
                   testStatus: op?.testStatus ?? evidence.test.status,
                   ...(op?.command === undefined ? {} : { command: op.command }),
+                  ...(op?.exitCode === undefined ? {} : { exitCode: String(op.exitCode) }),
                 },
               ),
             );
