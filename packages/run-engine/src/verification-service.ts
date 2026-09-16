@@ -7,8 +7,9 @@ import {
   diagnosticFingerprint,
   executeReplay,
   executeSourceIntegrity,
-  prepareDisposableHome,
   redactSecrets,
+  SystemdSandboxBackend,
+  UnavailableSandboxBackend,
   VerificationCommandRunner,
   VERIFICATION_RECIPE_VERSION,
   VERIFICATION_SIGNATURE_VERSION,
@@ -125,19 +126,28 @@ export interface VerifyRunOptions {
    *  A sweeper marks stale-owned running rows interrupted (§64-65). */
   readonly runtimeInstanceId?: string;
   /** Test-only seam: override per-attempt runner construction.
-   *  Production always uses the contained VerificationCommandRunner. */
-  readonly createRunner?: (homeDir: string) => VerificationCommandRunner;
+   *  Production always builds sandbox-backed runners. */
+  readonly createRunner?: (attemptRoot: string) => VerificationCommandRunner;
 }
 
 const DEFAULT_COMMAND_TIMEOUT_MS = 120_000;
 
-function environmentFingerprint(): VerificationRun['environmentFingerprint'] {
+function environmentFingerprint(sandbox: {
+  backend: string;
+  available: boolean;
+  reason?: string;
+}): VerificationRun['environmentFingerprint'] {
   return {
     platform: process.platform,
     architecture: process.arch,
     nodeVersion: process.version,
     packageManagerVersions: {},
-    runtimes: [],
+    runtimes: [
+      'sandboxBackend=' + sandbox.backend,
+      'sandboxAvailable=' + String(sandbox.available),
+      'runtimeReplaySupported=' + String(sandbox.available),
+      ...(sandbox.reason === undefined ? [] : ['sandboxReason=' + sandbox.reason.slice(0, 200)]),
+    ],
   };
 }
 
@@ -394,6 +404,15 @@ export async function verifyMerge(
   const evidenceById = new Map<string, Evidence>(
     repository.listEvidence(merge.qaRunId).map((evidence) => [evidence.id, evidence]),
   );
+  // Backend selection first: preflight determines the environment
+  // fingerprint stamped on the run. Real sandbox when preflight
+  // passes, otherwise honest unavailable (§13, §71) — replay steps
+  // become unsupported, source integrity still runs. NEVER host fallback.
+  const probe = new SystemdSandboxBackend();
+  const availability = await probe.preflight(dataRoot);
+  const backend = availability.available
+    ? probe
+    : new UnavailableSandboxBackend(availability.reason ?? 'sandbox backend unavailable');
   const run: VerificationRun = {
     schemaVersion: 1,
     id: createVerificationRunId(),
@@ -413,15 +432,30 @@ export async function verifyMerge(
     requestedClusterIds: clusters.map(
       (cluster) => cluster.id,
     ) as VerificationRun['requestedClusterIds'],
-    environmentFingerprint: environmentFingerprint(),
+    environmentFingerprint: environmentFingerprint({
+      backend: probe.id,
+      available: availability.available,
+      ...(availability.reason === undefined ? {} : { reason: availability.reason }),
+    }),
     warnings: [],
     attemptIds: [],
     createdAt: now,
     startedAt: now,
   };
   repository.saveVerificationRun(run);
+  if (!availability.available) {
+    run.warnings.push({
+      code: 'VERIFIER_SANDBOX_UNAVAILABLE',
+      message:
+        'Replay sandbox unavailable (' +
+        backend.id +
+        '): ' +
+        (availability.reason ?? 'unknown reason'),
+    });
+  }
   const createRunner =
-    options.createRunner ?? ((homeDir: string) => new VerificationCommandRunner(homeDir));
+    options.createRunner ??
+    ((attemptRoot: string) => new VerificationCommandRunner(backend, attemptRoot));
   const attempts: VerificationRunAttempt[] = [];
   let completedCount = 0;
   let failedCount = 0;
@@ -495,7 +529,7 @@ async function verifyCluster(input: {
   readonly dataRoot: string;
   readonly snapshots: SnapshotEngine;
   readonly revisionMaterial: (projectId: string, revisionId: string) => Promise<string | undefined>;
-  readonly createRunner: (homeDir: string) => VerificationCommandRunner;
+  readonly createRunner: (attemptRoot: string) => VerificationCommandRunner;
   readonly run: VerificationRun;
   readonly clusterId: string;
   readonly findings: readonly Finding[];
@@ -571,8 +605,10 @@ async function verifyCluster(input: {
   // workspace removal across success, classifier failure, artifact
   // failure, repository failure, runner failure, timeout, and
   // unexpected exceptions.
-  const homeDir = await prepareDisposableHome(dirname(materialized.workspaceRoot));
-  const runner = input.createRunner(homeDir);
+  // The backend owns disposable HOME creation (inside createEnvironment);
+  // attemptRoot derives from the workspace path (both constructed
+  // internally, never from model/user input).
+  const runner = input.createRunner(dirname(materialized.workspaceRoot));
   try {
     return await executeAttemptSteps({
       repository: input.repository,

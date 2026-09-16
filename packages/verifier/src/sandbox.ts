@@ -1,0 +1,406 @@
+import { spawn, type ChildProcess } from 'node:child_process';
+import { access, constants, mkdir, realpath, stat } from 'node:fs/promises';
+import { delimiter, dirname, join } from 'node:path';
+import type { VerificationExecutionFailure } from './runner.js';
+
+export interface SandboxAvailability {
+  readonly available: boolean;
+  readonly backend: 'systemd' | 'none';
+  readonly reason?: string;
+}
+
+export interface SandboxCommandInput {
+  readonly executable: string;
+  readonly args: readonly string[];
+  readonly cwd: string;
+  readonly env: Record<string, string>;
+  readonly timeoutMs: number;
+}
+
+export interface SandboxCommandResult {
+  readonly exitCode?: number;
+  readonly stdout: string;
+  readonly stderr: string;
+  readonly timedOut: boolean;
+  readonly durationMs: number;
+  readonly failure?: VerificationExecutionFailure;
+}
+
+export interface SandboxEnvironmentInput {
+  readonly attemptRoot: string;
+  readonly workspaceRoot: string;
+  /** Resolved read-only runtime directories (toolchain locations). */
+  readonly runtimeBinds: readonly string[];
+}
+
+/** Generic verification execution boundary (§6-7). Verifier code
+ *  depends on this abstraction, never on provider harnesses or raw
+ *  spawn. Exactly one environment per attempt; dispose() ends it. */
+export interface VerificationSandboxBackend {
+  readonly id: 'systemd' | 'none';
+  /** Probe real isolation. probeParent must be a bindable directory
+   *  on the same filesystem family the verifier will use (the Sentry
+   *  dataRoot): the probe creates and removes a temp dir inside it.
+   *  os.tmpdir() and $HOME are NOT universally bindable (WSL2 private
+   *  /tmp; ProtectHome mount-order quirk) and must not be used. */
+  preflight(probeParent: string): Promise<SandboxAvailability>;
+  createEnvironment(input: SandboxEnvironmentInput): Promise<VerificationExecutionEnvironment>;
+}
+
+export interface VerificationExecutionEnvironment {
+  readonly sandboxId: string;
+  run(input: SandboxCommandInput): Promise<SandboxCommandResult>;
+  dispose(): Promise<'clean' | 'process_tree_cleanup_failed'>;
+}
+
+/** Probes a binary on PATH without spawning a shell. */
+async function probeBinary(name: string): Promise<string | undefined> {
+  const pathValue = process.env['PATH'] ?? '';
+  for (const dir of pathValue.split(delimiter).filter((d) => d.length > 0)) {
+    const full = join(dir, name);
+    try {
+      await access(full, constants.X_OK);
+      return full;
+    } catch {
+      // Keep searching.
+    }
+  }
+  return undefined;
+}
+
+/** systemd transient-service sandbox (§7-12): real mount/user/network
+ *  isolation via the user manager. Supported on Linux/WSL2 with a
+ *  running user manager; everywhere else preflight reports
+ *  unavailable and replay becomes honestly inconclusive (§13).
+ *  NEVER falls back to host execution (§71). */
+export class SystemdSandboxBackend implements VerificationSandboxBackend {
+  readonly id = 'systemd' as const;
+  private systemctl: string | undefined;
+  private systemdRun: string | undefined;
+
+  async preflight(probeParent: string): Promise<SandboxAvailability> {
+    this.systemdRun = await probeBinary('systemd-run');
+    this.systemctl = await probeBinary('systemctl');
+    if (this.systemdRun === undefined || this.systemctl === undefined) {
+      return { available: false, backend: 'none', reason: 'systemd user tools unavailable' };
+    }
+    try {
+      const stats = await stat(probeParent);
+      if (!stats.isDirectory()) throw new Error('not a directory');
+    } catch {
+      return { available: false, backend: 'none', reason: 'probe parent not usable' };
+    }
+    // Canary isolation proof: the probe root holds work/ (bound
+    // writable as the workspace) and secret/ (never exposed). The
+    // probe asserts work/ IS visible (execution works) AND secret/ is
+    // NOT (isolation works). A single exit 0 proves both.
+    // Probe inside probeParent (bindable, same fs family as the data
+    // root). Never os.tmpdir() (private to the user manager on WSL2)
+    // and never $HOME work dirs (ProtectHome mount-order quirk).
+    // Execution proof: work/ IS visible. Hiding proof: a marker under
+    // the REAL home is invisible (ProtectHome) — DrvFs/ext4 project
+    // paths are intentionally visible read-only, so the secret must
+    // live under the protected home tree.
+    const { mkdtemp, mkdir, writeFile, rm } = await import('node:fs/promises');
+    const { homedir } = await import('node:os');
+    const probeDir = await mkdtemp(join(probeParent, '.sentry-sandbox-probe-'));
+    const workDir = join(probeDir, 'work');
+    const homeBase = join(homedir(), '.cache', 'sentry-sandbox-probe');
+    const marker = join(homeBase, 'host-marker-' + process.pid);
+    try {
+      await mkdir(workDir, { recursive: true });
+      await mkdir(homeBase, { recursive: true });
+      await writeFile(marker, 'host', 'utf8');
+      const unitInput = {
+        executable: '/usr/bin/test',
+        cwd: workDir,
+        env: { PATH: '/usr/bin:/bin' },
+        timeoutMs: 15000,
+        workspaceRoot: workDir,
+        homeDir: workDir,
+        sandboxTmp: workDir,
+        runtimeBinds: [],
+      };
+      // Two shell-free assertions: work/ visible (execution works),
+      // host marker absent (isolation works).
+      const visible = await this.runUnit('sentry-probe-exec', {
+        ...unitInput,
+        args: ['-d', workDir],
+      });
+      const hidden = await this.runUnit('sentry-probe-hide', {
+        ...unitInput,
+        args: ['!', '-e', marker],
+      });
+      if (visible.exitCode !== 0 || hidden.exitCode !== 0) {
+        return {
+          available: false,
+          backend: 'none',
+          reason: 'sandbox isolation self-test failed (host file visible)',
+        };
+      }
+      return { available: true, backend: 'systemd' };
+    } catch {
+      return {
+        available: false,
+        backend: 'none',
+        reason: 'sandbox preflight execution failed',
+      };
+    } finally {
+      await rm(probeDir, { recursive: true, force: true }).catch(() => undefined);
+      await rm(marker, { force: true }).catch(() => undefined);
+    }
+  }
+
+  async createEnvironment(
+    input: SandboxEnvironmentInput,
+  ): Promise<VerificationExecutionEnvironment> {
+    const homeDir = join(input.attemptRoot, 'home');
+    await mkdir(join(homeDir, '.cache'), { recursive: true });
+    await mkdir(join(homeDir, '.config'), { recursive: true });
+    await mkdir(join(homeDir, '.npm'), { recursive: true });
+    const sandboxTmp = join(input.attemptRoot, 'tmp');
+    await mkdir(sandboxTmp, { recursive: true });
+    // Resolve runtime binds to real paths (no symlink escapes).
+    const binds: string[] = [];
+    for (const dir of input.runtimeBinds) {
+      try {
+        const stats = await stat(dir);
+        if (!stats.isDirectory()) continue;
+        binds.push(await realpath(dir));
+      } catch {
+        // Unresolvable bind source: skip (tool preflight covers absence).
+      }
+    }
+    return new SystemdSandboxEnvironment({
+      backend: this,
+      workspaceRoot: input.workspaceRoot,
+      homeDir,
+      sandboxTmp,
+      runtimeBinds: binds,
+    });
+  }
+
+  async runUnit(
+    unitName: string,
+    input: {
+      executable: string;
+      args: readonly string[];
+      cwd: string;
+      env: Record<string, string>;
+      timeoutMs: number;
+      workspaceRoot: string;
+      homeDir: string;
+      sandboxTmp: string;
+      runtimeBinds: readonly string[];
+    },
+  ): Promise<SandboxCommandResult> {
+    const startedAt = Date.now();
+    const done = (partial: Omit<SandboxCommandResult, 'durationMs'>): SandboxCommandResult => ({
+      ...partial,
+      durationMs: Math.max(0, Date.now() - startedAt),
+    });
+    if (this.systemdRun === undefined || this.systemctl === undefined) {
+      return done({ stdout: '', stderr: '', timedOut: false, failure: 'sandbox_failed' });
+    }
+    // WSL2 kernels reject PrivateTmp/TemporaryFileSystem combined with
+    // ReadWritePaths (226/NAMESPACE). Equivalent isolation: host /tmp is
+    // overmounted inaccessible (writes fail closed) while TMPDIR points
+    // at sandbox-owned attempt storage. Verified by bisect on this stack.
+    const properties: string[] = [
+      'ProtectSystem=strict',
+      'ProtectHome=yes',
+      'InaccessiblePaths=/tmp',
+      'PrivateNetwork=yes',
+      'NoNewPrivileges=yes',
+      'ProtectControlGroups=yes',
+      'ProtectKernelTunables=yes',
+      'ProtectKernelModules=yes',
+      'RestrictSUIDSGID=yes',
+      'WorkingDirectory=' + input.cwd,
+      'ReadWritePaths=' + input.workspaceRoot,
+      'ReadWritePaths=' + input.homeDir,
+      'ReadWritePaths=' + input.sandboxTmp,
+      'Environment=HOME=' + input.homeDir,
+      'Environment=USERPROFILE=' + input.homeDir,
+      'Environment=XDG_CONFIG_HOME=' + join(input.homeDir, '.config'),
+      'Environment=XDG_CACHE_HOME=' + join(input.homeDir, '.cache'),
+      'Environment=npm_config_cache=' + join(input.homeDir, '.npm'),
+      'Environment=TMPDIR=' + input.sandboxTmp,
+      'Environment=TMP=' + input.sandboxTmp,
+      'Environment=TEMP=' + input.sandboxTmp,
+    ];
+    for (const [key, value] of Object.entries(input.env)) {
+      if (key === 'HOME' || key === 'USERPROFILE') continue;
+      properties.push('Environment=' + key + '=' + value);
+    }
+    for (const bind of input.runtimeBinds) {
+      properties.push('BindReadOnlyPaths=' + bind);
+    }
+    const argv: string[] = ['--user', '--wait', '--pipe', '--collect', '--unit=' + unitName];
+    for (const property of properties) argv.push('-p', property);
+    argv.push('--', input.executable, ...input.args);
+    let child: ChildProcess;
+    try {
+      child = spawn(this.systemdRun, argv, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      });
+    } catch {
+      return done({ stdout: '', stderr: '', timedOut: false, failure: 'spawn_failed' });
+    }
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      stopUnit(this.systemctl as string, unitName);
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        // Client already gone; the unit stop owns cleanup.
+      }
+    }, input.timeoutMs);
+    if (timer.unref !== undefined) timer.unref();
+    child.stdout?.on('data', (chunk: Buffer) => {
+      if (stdout.length < 65536) stdout += chunk.toString('utf8').slice(0, 65536 - stdout.length);
+    });
+    child.stderr?.on('data', (chunk: Buffer) => {
+      if (stderr.length < 65536) stderr += chunk.toString('utf8').slice(0, 65536 - stderr.length);
+    });
+    const exitCode = await new Promise<number | undefined>((resolveExit) => {
+      child.on('error', () => resolveExit(undefined));
+      child.on('close', (code) => resolveExit(code ?? undefined));
+    });
+    clearTimeout(timer);
+    // systemd-run --pipe leaks unit lifecycle chatter on stderr
+    // (unit names, invocation IDs — nondeterministic). Strip it so
+    // captured output is exactly the replayed program's output.
+    stdout = stripUnitChatter(stdout);
+    stderr = stripUnitChatter(stderr);
+    if (timedOut) {
+      return done({ stdout, stderr, timedOut: true, failure: 'timed_out' });
+    }
+    if (exitCode === undefined) {
+      return done({ stdout, stderr, timedOut: false, failure: 'spawn_failed' });
+    }
+    return done({ exitCode, stdout, stderr, timedOut: false });
+  }
+}
+
+/** Remove systemd-run client lifecycle lines (never program output):
+ *  `Running as unit: ...`, `Finished with result: ...`, and the
+ *  indented `Main processes ... / Service runtime ... / CPU time ... /
+ *  Memory peak ...` accounting lines. */
+function stripUnitChatter(text: string): string {
+  return text
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('Running as unit:')) return false;
+      if (trimmed.startsWith('Finished with result:')) return false;
+      if (trimmed.startsWith('Main processes terminated with:')) return false;
+      if (trimmed.startsWith('Service runtime:')) return false;
+      if (trimmed.startsWith('CPU time consumed:')) return false;
+      if (trimmed.startsWith('Memory peak:')) return false;
+      return true;
+    })
+    .join('\n');
+}
+
+function stopUnit(systemctl: string, unitName: string): void {
+  try {
+    const killer = spawn(systemctl, ['--user', 'stop', unitName], {
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    killer.unref?.();
+  } catch {
+    // Best-effort; unit may already be gone.
+  }
+}
+
+class SystemdSandboxEnvironment implements VerificationExecutionEnvironment {
+  readonly sandboxId = 'systemd';
+  private disposed = false;
+  private sequence = 0;
+
+  constructor(
+    private readonly options: {
+      backend: SystemdSandboxBackend;
+      workspaceRoot: string;
+      homeDir: string;
+      sandboxTmp: string;
+      runtimeBinds: readonly string[];
+    },
+  ) {}
+
+  async run(input: SandboxCommandInput): Promise<SandboxCommandResult> {
+    if (this.disposed) {
+      return { stdout: '', stderr: '', timedOut: false, durationMs: 0, failure: 'sandbox_failed' };
+    }
+    this.sequence += 1;
+    const unitName = 'sentry-verify-' + process.pid + '-' + this.sequence;
+    return this.options.backend.runUnit(unitName, {
+      executable: input.executable,
+      args: input.args,
+      cwd: input.cwd,
+      env: input.env,
+      timeoutMs: input.timeoutMs,
+      workspaceRoot: this.options.workspaceRoot,
+      homeDir: this.options.homeDir,
+      sandboxTmp: this.options.sandboxTmp,
+      runtimeBinds: this.options.runtimeBinds,
+    });
+  }
+
+  async dispose(): Promise<'clean' | 'process_tree_cleanup_failed'> {
+    this.disposed = true;
+    // Transient units use --collect (auto-cleanup on exit) and each run
+    // stops its unit on timeout; the cgroup owns descendants, so no
+    // tracked PIDs can outlive disposal. Nothing further to kill.
+    return 'clean';
+  }
+}
+
+/** Unavailable backend: every replay becomes unsupported (§13, §71).
+ *  NEVER falls back to host execution. */
+export class UnavailableSandboxBackend implements VerificationSandboxBackend {
+  readonly id = 'none' as const;
+
+  constructor(private readonly reason: string) {}
+
+  async preflight(_probeParent: string): Promise<SandboxAvailability> {
+    return { available: false, backend: 'none', reason: this.reason };
+  }
+
+  async createEnvironment(
+    _input: SandboxEnvironmentInput,
+  ): Promise<VerificationExecutionEnvironment> {
+    throw new Error('Sandbox unavailable: ' + this.reason);
+  }
+}
+
+/** Constructed sandbox PATH: resolved toolchain dirs + system dirs.
+ *  The host PATH is NEVER inherited (WSL interop entries with spaces
+ *  break unit setup; Windows dirs must not leak inside). Executable
+ *  resolution always happens on the host before entering the sandbox. */
+export function sandboxEnv(
+  homeDir: string,
+  toolchainDirs: readonly string[],
+): Record<string, string> {
+  const path = [...toolchainDirs, '/usr/bin', '/bin'].filter((d) => d.length > 0).join(':');
+  return {
+    LANG: 'C.UTF-8',
+    CI: '1',
+    SENTRY_VERIFICATION: '1',
+    PATH: path,
+  };
+}
+
+export function attemptSandboxPaths(attemptRoot: string): { homeDir: string } {
+  return { homeDir: join(attemptRoot, 'home') };
+}
+
+export function sandboxParentDir(workspaceRoot: string): string {
+  return dirname(workspaceRoot);
+}

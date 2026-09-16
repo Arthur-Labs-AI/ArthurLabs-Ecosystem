@@ -52,6 +52,15 @@ export {
 export { classifyAttempt, type ClassifiedAttempt } from './classify.js';
 export { findTestIdentity, parseTestOutput, type ParsedTestResult } from './frameworks.js';
 export type { VerificationStrategy } from './strategy.js';
+export { SystemdSandboxBackend, UnavailableSandboxBackend, sandboxEnv } from './sandbox.js';
+export type {
+  SandboxAvailability,
+  SandboxCommandInput,
+  SandboxCommandResult,
+  SandboxEnvironmentInput,
+  VerificationExecutionEnvironment,
+  VerificationSandboxBackend,
+} from './sandbox.js';
 export {
   VerificationCommandRunner,
   executeSourceIntegrity,

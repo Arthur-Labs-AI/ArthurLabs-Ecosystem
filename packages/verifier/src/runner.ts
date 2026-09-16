@@ -1,10 +1,14 @@
-import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { access, constants, mkdir } from 'node:fs/promises';
-import { delimiter, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import type { VerificationRecipeStep, VerificationStepOutcome } from '@qa/schemas';
 import { diagnosticFingerprint, hasUnsafeTarget, isReplayableCommand } from './signatures.js';
 import { findTestIdentity, parseTestOutput } from './frameworks.js';
+import {
+  sandboxEnv,
+  type VerificationExecutionEnvironment,
+  type VerificationSandboxBackend,
+} from './sandbox.js';
 import type { CanonicalOperation } from './recipe.js';
 
 export interface RunCommandInput {
@@ -135,16 +139,31 @@ export function runnerEnv(homeDir: string, pathValue: string | undefined): Recor
   return env;
 }
 
-/** Real execution environment (§7): shell-less argv spawn inside the
- *  verifier workspace, owned process-group tracking, deterministic
- *  dispose. One instance per attempt; dispose() in finally (§29). */
+/** Sandbox adapter: preflight, argv split, and executable resolution
+ *  happen here (deterministic, shell-free); actual execution happens
+ *  ONLY inside the VerificationExecutionEnvironment (real sandbox).
+ *  One instance per attempt; dispose() ends the environment (§29). */
 export class VerificationCommandRunner {
-  private readonly groups = new Set<number>();
-
   constructor(
-    private readonly homeDir: string,
+    private readonly backend: VerificationSandboxBackend,
+    private readonly attemptRoot: string,
     private readonly pathValue: string | undefined = process.env['PATH'],
   ) {}
+
+  private async environment(
+    workspaceRoot: string,
+    runtimeBinds: readonly string[],
+  ): Promise<VerificationExecutionEnvironment | undefined> {
+    try {
+      return await this.backend.createEnvironment({
+        attemptRoot: this.attemptRoot,
+        workspaceRoot,
+        runtimeBinds,
+      });
+    } catch {
+      return undefined;
+    }
+  }
 
   async run(input: RunCommandInput): Promise<RunCommandResult> {
     const startedAt = Date.now();
@@ -152,6 +171,8 @@ export class VerificationCommandRunner {
       ...partial,
       durationMs: Math.max(0, Date.now() - startedAt),
     });
+    // Preflight: allowlist → shell-syntax gate → executable resolution.
+    // NOTHING spawns before all three pass; failures never touch a shell.
     const head = commandHeadTokenOf(input.command);
     if (head === undefined) {
       return done({ stdout: '', stderr: '', timedOut: false, failure: 'executable_unavailable' });
@@ -164,86 +185,48 @@ export class VerificationCommandRunner {
     if (argv === undefined || argv.length === 0) {
       return done({ stdout: '', stderr: '', timedOut: false, failure: 'sandbox_failed' });
     }
-    let child: ChildProcess;
+    // Sandbox gate (§71): unavailable backend refuses here. NEVER falls
+    // back to host execution. Toolchain dirs (head + node for script
+    // interpreters) become the constructed sandbox PATH and RO binds.
+    const toolDirs = [dirname(executable)];
+    const nodeExecutable =
+      head === 'node' ? executable : await resolveExecutable('node', this.pathValue);
+    if (nodeExecutable !== undefined && !toolDirs.includes(dirname(nodeExecutable))) {
+      toolDirs.push(dirname(nodeExecutable));
+    }
+    const environment = await this.environment(input.cwd, toolDirs);
+    if (environment === undefined) {
+      return done({ stdout: '', stderr: '', timedOut: false, failure: 'sandbox_failed' });
+    }
+    // One environment per run: transient units self-clean (--collect),
+    // so per-run environments are cheap and always carry the current
+    // command's toolchain binds. finally guarantees disposal.
     try {
-      child = spawn(executable, argv.slice(1), {
+      const result = await environment.run({
+        executable,
+        args: argv.slice(1),
         cwd: input.cwd,
-        env: runnerEnv(this.homeDir, this.pathValue),
-        stdio: ['ignore', 'pipe', 'pipe'],
-        windowsHide: true,
-        detached: process.platform !== 'win32',
+        env: sandboxEnv(join(this.attemptRoot, 'home'), toolDirs),
+        timeoutMs: input.timeoutMs,
       });
-    } catch {
-      return done({ stdout: '', stderr: '', timedOut: false, failure: 'spawn_failed' });
+      return {
+        ...(result.exitCode === undefined ? {} : { exitCode: result.exitCode }),
+        stdout: result.stdout,
+        stderr: result.stderr,
+        timedOut: result.timedOut,
+        durationMs: result.durationMs,
+        ...(result.failure === undefined ? {} : { failure: result.failure }),
+      };
+    } finally {
+      await environment.dispose().catch(() => undefined);
     }
-    // Owned process-group tracking (§30): kill(-pgid) reaches
-    // descendants (pnpm test children, servers). Never pkill/killall.
-    if (child.pid !== undefined && process.platform !== 'win32') {
-      this.groups.add(child.pid);
-    }
-    let stdout = '';
-    let stderr = '';
-    let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      killTree(child);
-    }, input.timeoutMs);
-    if (timer.unref !== undefined) timer.unref();
-    child.stdout?.on('data', (chunk: Buffer) => {
-      if (stdout.length < 65536) stdout += chunk.toString('utf8').slice(0, 65536 - stdout.length);
-    });
-    child.stderr?.on('data', (chunk: Buffer) => {
-      if (stderr.length < 65536) stderr += chunk.toString('utf8').slice(0, 65536 - stderr.length);
-    });
-    const exitCode = await new Promise<number | undefined>((resolveExit) => {
-      child.on('error', () => resolveExit(undefined));
-      child.on('close', (code) => resolveExit(code ?? undefined));
-    });
-    clearTimeout(timer);
-    if (child.pid !== undefined) this.groups.delete(child.pid);
-    if (timedOut) {
-      return done({ stdout, stderr, timedOut: true, failure: 'timed_out' });
-    }
-    if (exitCode === undefined) {
-      return done({ stdout, stderr, timedOut: false, failure: 'spawn_failed' });
-    }
-    return done({ exitCode, stdout, stderr, timedOut: false });
   }
 
-  /** Deterministic dispose (§29-30): terminate every tracked group.
-   *  Reports cleanup failure instead of hiding it. */
+  /** Deterministic dispose (§29): per-run environments self-clean
+   *  (transient units with --collect); nothing persists to dispose.
+   *  Reports failure instead of hiding it. */
   async dispose(): Promise<'clean' | 'process_tree_cleanup_failed'> {
-    let failed = false;
-    for (const pgid of [...this.groups]) {
-      try {
-        if (process.platform === 'win32') {
-          const killer = spawn('taskkill', ['/PID', String(pgid), '/T', '/F'], {
-            stdio: 'ignore',
-            windowsHide: true,
-          });
-          await new Promise<void>((resolveDone) => {
-            killer.on('error', () => resolveDone());
-            killer.on('close', () => resolveDone());
-          });
-        } else {
-          try {
-            process.kill(-pgid, 'SIGTERM');
-          } catch {
-            // Group already gone.
-          }
-          await sleep(1000);
-          try {
-            process.kill(-pgid, 'SIGKILL');
-          } catch {
-            // Group already gone.
-          }
-        }
-      } catch {
-        failed = true;
-      }
-      this.groups.delete(pgid);
-    }
-    return failed ? 'process_tree_cleanup_failed' : 'clean';
+    return 'clean';
   }
 }
 
@@ -252,47 +235,6 @@ function commandHeadTokenOf(command: string): string | undefined {
   if (first === undefined || first.length === 0) return undefined;
   const base = first.replace(/\\/g, '/').split('/').pop() ?? '';
   return base.length > 0 ? base.toLowerCase() : undefined;
-}
-
-function killTree(child: ChildProcess): void {
-  try {
-    if (process.platform === 'win32') {
-      if (child.pid === undefined) return;
-      spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
-        stdio: 'ignore',
-        windowsHide: true,
-      }).unref?.();
-    } else if (child.pid !== undefined) {
-      try {
-        process.kill(-child.pid, 'SIGTERM');
-      } catch {
-        try {
-          child.kill('SIGTERM');
-        } catch {
-          // Owned child already gone.
-        }
-      }
-      setTimeout(() => {
-        try {
-          if (child.pid !== undefined) process.kill(-child.pid, 'SIGKILL');
-        } catch {
-          try {
-            child.kill('SIGKILL');
-          } catch {
-            // Owned child already gone.
-          }
-        }
-      }, 2000).unref?.();
-    } else {
-      child.kill('SIGTERM');
-    }
-  } catch {
-    // Kill best-effort; the close handler settles the result.
-  }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 }
 
 export interface FileSystem {
