@@ -1,521 +1,785 @@
-# ARTHUR — Core Foundation (Phases 1–3)
+# A.R.T.H.U.R. — Hybrid Personal & Business AI Runtime
 
-ARTHUR is a small, testable conversational core: it accepts a text request,
-creates a conversation turn, calls a model through a provider-agnostic
-**Model Gateway**, and returns a structured response. Phase 1 implements the
-foundation only — clean boundaries over feature count — as specified by
-`ARTHUR_Phase_1_Core_DeepSeek_Implementation_Spec_v1.0`.
+A.R.T.H.U.R. is a provider-neutral conversational runtime with isolated
+Personal/Business memory, a secured tool-execution pipeline, cloud/local voice,
+and a CLI + HTTP API over the same core services.
 
-## What Phase 1 does
+The current development line has moved well beyond the original Phase 1 README.
+The important runtime shape today is:
 
-- Text chat through **DeepSeek V4 Flash** behind a provider-agnostic
-  `ModelGateway` (DeepSeek is replaceable behind an interface).
-- A deterministic **FakeProvider** for offline tests and demos.
-- Persistent sessions (SQLite) with an explicit **Personal / Business** mode.
-- A tool system with JSON-schema validation and an approval skeleton.
-- An approval-required **Harness stub** that cannot execute without bound,
-  explicit approval.
-- An **HTTP API** and a **CLI** that use the same core services.
-- Structured logging, tracing, usage capture, and secret redaction.
-- A **local voice layer** (Phase 3): wake word, VAD, local STT, streaming
-  TTS playback, barge-in, push-to-talk fallback, approval-by-voice, a
-  deterministic voice state machine, HTTP control endpoints, and a
-  dependency-free realtime WebSocket channel - all behind
-  provider-agnostic engine boundaries.
+```text
+Voice / Text input
+        |
+        v
+ConversationService
+        |
+        +--> ModelRouter --> DeepSeek (cloud today)
+        |
+        +--> ToolRegistry --> validation --> authorization/approval
+        |                     --> ToolExecutionCoordinator --> adapters
+        |
+        +--> isolated Personal / Business memory
 
-## Repository layout
+Voice input:
+mic --> STT router --> final transcript --> conversation
 
-```
-apps/
-  api/                  HTTP entry point
-  cli/                  local terminal client
-src/
-  core/
-    conversation/       service, models, context_builder, validation
-    modes/              ArthurMode
-    errors/             typed error model
-  models/               gateway, contracts, providers/{deepseek,fake}
-  tools/                registry, contracts, orchestrator, permissions,
-                        adapters/harness_stub, builtin
-  sessions/             SQLite store + migrations
-  observability/        logging, tracing, usage, metrics
-  config/               settings, validation
-  voice/                contracts, state machine, controller, audio,
-                        wake/vad/stt/tts providers + gateways, realtime WS
-  security/             redaction
-tests/
-  unit/ integration/ contract/
-docs/architecture/      phase1/2/3-decisions.md
+Voice output:
+final ARTHUR text --> TTS router --> speakers
 ```
 
-## Requirements
+Current hybrid voice backends:
 
-- Node.js **>= 22.5** (uses the built-in `node:sqlite`).
+- **Cloud STT:** OpenAI (`gpt-4o-transcribe` by default)
+- **Cloud TTS:** OpenAI (`gpt-4o-mini-tts` by default)
+- **Local STT:** NVIDIA Parakeet TDT 0.6B v3 on validated Windows/CUDA systems
+- **Local TTS:** OmniVoice BG on validated Windows/CUDA systems
+- **Lightweight local TTS:** BgTTS 38M v2 on Windows/Linux x64
+- **Reasoning:** DeepSeek cloud today; local/LAN reasoning belongs to HR-03
 
-## Setup
+> `arthur setup` currently configures **managed local voice models only**.
+> DeepSeek/OpenAI credentials still need to be configured separately as shown
+> below. Provider onboarding will be folded into setup later.
 
-```bash
-npm install
-cp .env.example .env   # optional; edit values
+---
+
+## Current status
+
+Implemented foundations include:
+
+- provider-neutral model / STT / TTS contracts and routers
+- DeepSeek model provider with streaming and tool-call normalization
+- OpenAI cloud STT and TTS providers
+- managed local model catalog, hardware detection, recommendation, installation,
+  validation, selection and persisted state
+- persistent managed Python runtimes for local voice models
+- isolated Personal / Business SQLite memory stores
+- bounded multi-tool conversation loop
+- explicit approval binding and durable tool execution lifecycle
+- local system/filesystem/application/browser capability host
+- read-only Git tool pack
+- voice state machine, PTT, wake/VAD seams, streaming speech, barge-in and
+  cloud/local fallback rules
+
+A full Windows cloud voice turn has been live-accepted through:
+
+```text
+microphone -> OpenAI STT -> DeepSeek -> OpenAI TTS -> ffplay -> speakers
 ```
 
-With no `.env`, ARTHUR runs against the offline `FakeProvider`. To use DeepSeek,
-set `ARTHUR_MODEL_PROVIDER=deepseek` and provide `DEEPSEEK_API_KEY`.
+Local Parakeet and local TTS installation/runtime paths have also been
+real-device validated on the supported platforms listed below.
 
-## Environment variables
+---
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `ARTHUR_ENV` | `development` | Runtime environment |
-| `ARTHUR_DB_PATH` | `./data/arthur.db` | SQLite database path |
-| `ARTHUR_MODEL_PROVIDER` | `fake` | `deepseek` \| `fake` |
-| `ARTHUR_MODEL_NAME` | *(empty)* | Model identifier (e.g. `deepseek-chat`) |
-| `DEEPSEEK_API_KEY` | *(empty)* | DeepSeek secret |
-| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | DeepSeek API base |
-| `ARTHUR_MODEL_TIMEOUT_SECONDS` | `60` | Connect/read timeout |
-| `ARTHUR_HISTORY_MAX_TURNS` | `20` | Prior turns in context |
-| `ARTHUR_REASONING_PROFILE` | `normal` | `fast` \| `normal` \| `deep` |
-| `ARTHUR_MODEL_RETRY_MAX_ATTEMPTS` | `3` | Retry budget (transient only) |
-| `ARTHUR_APPROVAL_TTL_SECONDS` | `300` | Approval expiry |
-| `ARTHUR_LOG_LEVEL` | `info` | Log level |
-| `ARTHUR_BIND_HOST` | `127.0.0.1` | API bind host (localhost only) |
-| `ARTHUR_BIND_PORT` | `8080` | API bind port |
-| `ARTHUR_MEMORY_PERSONAL_DB_PATH` | `./data/memory-personal.db` | Personal memory store (SQLite) |
-| `ARTHUR_MEMORY_BUSINESS_DB_PATH` | `./data/memory-business.db` | Business memory store (SQLite, physically separate) |
-| `ARTHUR_EMBEDDING_PROVIDER` | `local_multilingual` | `local_multilingual` \| `fake` |
-| `ARTHUR_EMBEDDING_MODEL` | `arthur-ngram-v1` | Local embedding model id |
-| `ARTHUR_EMBEDDING_DIMENSIONS` | `384` | Embedding dimensions (16–2048) |
-| `ARTHUR_MEMORY_MAX_RETRIEVAL_CANDIDATES` | `40` | Vector/FTS candidates before fusion |
-| `ARTHUR_MEMORY_MAX_RERANKED_RESULTS` | `12` | Memories injected per turn |
-| `ARTHUR_MEMORY_MAX_CONTEXT_TOKENS` | `1200` | Memory context token budget |
-| `ARTHUR_MEMORY_MAX_SINGLE_CHUNK_TOKENS` | `300` | Max tokens per snippet |
-| `ARTHUR_MEMORY_VECTOR_MIN_SIMILARITY` | `0.5` | Minimum cosine for vector candidates |
-| `ARTHUR_MEMORY_EXTRACTION_ENABLED` | `false` | Opt-in post-turn extraction |
-| `ARTHUR_MEMORY_EXTRACTION_CONFIDENCE_THRESHOLD` | `0.6` | Extraction confidence gate |
-| `ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD` | `0.2` | Extraction importance gate |
-| `ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS` | `86400` | TEMPORARY memory TTL |
+# Fresh setup
 
-Configuration is validated at startup; invalid configuration fails with an
-actionable message.
+## 1. Prerequisites
 
-## Run
+### Required everywhere
 
-```bash
+- **Git**
+- **Node.js >= 22.5**
+- **npm**
+
+ARTHUR uses Node's built-in `node:sqlite`.
+
+### Recommended Python
+
+For the managed local voice stack, use **Python 3.12** when possible.
+
+The Windows CUDA Parakeet and OmniVoice runtimes are validated on Python 3.12
+and require Python `>=3.10,<3.14`.
+
+On Windows, if the Microsoft Python launcher is installed:
+
+```powershell
+py -0p
+$Python = py -3.12 -c "import sys; print(sys.executable)"
+& $Python --version
+```
+
+Expected shape:
+
+```text
+Python 3.12.x
+```
+
+### Windows voice I/O
+
+For microphone capture and speaker playback, install an FFmpeg build that
+contains both `ffmpeg` and `ffplay`, then put them on `PATH`.
+
+Verify:
+
+```powershell
+ffmpeg -version
+ffplay -version
+```
+
+---
+
+## 2. Clone and build
+
+Current development branch:
+
+```powershell
+git clone https://github.com/Kaloyan3D/A.R.T.H.U.R.git
+cd A.R.T.H.U.R
+git switch feature/phase3-tool-runtime
+
+npm ci
 npm run build
+npm link
+```
+
+`npm link` exposes the global `arthur` command for development. It is optional;
+you can always use `npm run cli -- ...` instead.
+
+Verify:
+
+```powershell
+arthur --help
+arthur models detect
+```
+
+For TypeScript validation during development:
+
+```powershell
+npm run typecheck
+```
+
+---
+
+# Cloud configuration
+
+## 3. Configure DeepSeek + OpenAI
+
+The safest fresh setup is to create a **minimal** `.env` instead of copying old
+legacy voice settings you may already have from an earlier checkout.
+
+Create `D:\A.R.T.H.U.R\.env` (or `.env` in your checkout) with:
+
+```dotenv
+ARTHUR_MODEL_PROVIDER=deepseek
+ARTHUR_MODEL_NAME=deepseek-chat
+DEEPSEEK_API_KEY=YOUR_DEEPSEEK_KEY
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+
+OPENAI_API_KEY=YOUR_OPENAI_KEY
+
+ARTHUR_STT_POLICY=cloud_preferred
+ARTHUR_TTS_POLICY=cloud_preferred
+ARTHUR_CLOUD_STT_MODEL=gpt-4o-transcribe
+ARTHUR_CLOUD_TTS_MODEL=gpt-4o-mini-tts
+ARTHUR_CLOUD_TTS_VOICE=alloy
+```
+
+Never commit `.env`; it is git-ignored.
+
+The two credentials are intentionally separate:
+
+- `DEEPSEEK_API_KEY` is used for reasoning/model calls.
+- `OPENAI_API_KEY` is used only by the OpenAI voice providers.
+
+ARTHUR does not send raw microphone audio to DeepSeek. In cloud STT mode the
+audio is sent to OpenAI STT, then only the final transcript enters the
+conversation/model path. In cloud TTS mode the canonical final ARTHUR text is
+sent to OpenAI TTS for speech rendering.
+
+### `.env` lookup note
+
+The current runtime loads `.env` from the **current working directory**. If you
+rely on the repo `.env`, run `arthur` from the repo root. For use from arbitrary
+directories, configure the same values as process/user environment variables.
+
+---
+
+# Managed local voice models
+
+## 4. Inspect hardware and recommendations
+
+```powershell
+arthur models detect
+arthur models list
+arthur models recommend --profile quality
+arthur models status
+```
+
+The managed catalog currently contains:
+
+| Model ID | Kind | Validated target | Notes |
+| --- | --- | --- | --- |
+| `parakeet-tdt-0.6b-v3` | STT | Windows x64 + CUDA | high quality, >=8 GB RAM, >=4 GB VRAM |
+| `omnivoice-bg` | TTS | Windows x64 + CUDA | high quality Bulgarian, >=16 GB RAM, gated Hugging Face repo |
+| `bgtts-38m-v2` | TTS | Windows x64 / Linux x64 CPU | lightweight Bulgarian + English, experimental |
+
+The model IDs above are **ARTHUR catalog IDs**. For managed models, do not use
+Hugging Face repo names as selection IDs. For example use:
+
+```text
+parakeet-tdt-0.6b-v3
+```
+
+not:
+
+```text
+nvidia/parakeet-tdt-0.6b-v3
+```
+
+unless a lower-level provider setting explicitly asks for an upstream repo ID.
+
+---
+
+## 5. Run the local model setup wizard
+
+### Windows / NVIDIA
+
+Use the explicit Python 3.12 interpreter:
+
+```powershell
+$Python = py -3.12 -c "import sys; print(sys.executable)"
+arthur setup --python $Python
+```
+
+The wizard:
+
+1. detects OS/CPU/RAM/GPU/accelerators
+2. checks Python/runtime compatibility
+3. ranks compatible STT/TTS models
+4. shows the concrete installation plan
+5. asks for approval before mutation
+6. creates managed Python runtimes
+7. installs/downloads model artifacts
+8. runs real smoke validation
+9. promotes validated installs and persists selection
+
+On a validated NVIDIA Windows desktop, the quality recommendation is normally:
+
+```text
+STT  parakeet-tdt-0.6b-v3
+TTS  omnivoice-bg
+```
+
+### OmniVoice Hugging Face access
+
+`preslaff/omnivoice-bg` may require Hugging Face access. ARTHUR never stores or
+copies your Hugging Face token. Authenticate externally if needed:
+
+```powershell
+hf auth login
+```
+
+or:
+
+```powershell
+huggingface-cli login
+```
+
+Then rerun setup.
+
+### Non-interactive setup
+
+```powershell
+arthur setup --yes --python $Python
+```
+
+JSON mode is also non-interactive and requires `--yes`:
+
+```powershell
+arthur setup --yes --python $Python --json
+```
+
+### Explicit model selection
+
+```powershell
+arthur setup --python $Python `
+  --stt-model parakeet-tdt-0.6b-v3 `
+  --tts-model omnivoice-bg
+```
+
+---
+
+## 6. Verify local model state
+
+```powershell
+arthur models status
+arthur models list
+arthur models validate
+```
+
+A healthy selected model should report:
+
+```text
+installed: true
+configured: true
+ready: true
+current validation: passed
+runnable: true
+```
+
+Re-running setup is intended to be idempotent. READY models are skipped instead
+of being downloaded again.
+
+Individual lifecycle commands are available when needed:
+
+```powershell
+arthur models install <model-id> --python $Python
+arthur models select <model-id>
+arthur models validate [model-id]
+arthur models remove <model-id> --yes
+arthur models status --json
+arthur models list --json
+```
+
+---
+
+# Persistent data locations
+
+Unless overridden with `ARTHUR_DATA_DIR`, ARTHUR uses a stable per-user data
+root that does not depend on the repo/current directory.
+
+| Platform | Default data root |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\ARTHUR` |
+| Linux | `$XDG_DATA_HOME/arthur` or `~/.local/share/arthur` |
+| macOS | `~/Library/Application Support/ARTHUR` |
+
+Managed model paths live under:
+
+```text
+<ARTHUR data root>/runtime/local-models
+<ARTHUR data root>/runtime/models.json
+```
+
+Default SQLite files also derive from the same stable app-data root:
+
+```text
+arthur.db
+memory-personal.db
+memory-business.db
+```
+
+For isolated testing:
+
+```powershell
+$env:ARTHUR_DATA_DIR = "$env:TEMP\arthur-test"
+arthur models status
+```
+
+---
+
+# Windows microphone + speaker setup
+
+Managed STT/TTS models do not open Windows audio devices themselves. The voice
+controller uses configurable capture/playback process boundaries.
+
+## 7. Find the microphone
+
+```powershell
+ffmpeg -list_devices true -f dshow -i dummy
+```
+
+Look for an `(audio)` entry such as:
+
+```text
+"Microphone (High Definition Audio Device)" (audio)
+```
+
+Test it independently:
+
+```powershell
+$Mic = 'Microphone (High Definition Audio Device)'
+
+ffmpeg -hide_banner -loglevel error `
+  -f dshow `
+  -i "audio=$Mic" `
+  -t 3 `
+  -ac 1 `
+  -ar 16000 `
+  -y "$env:TEMP\arthur-mic-test.wav"
+
+ffplay -hide_banner -loglevel error -nodisp -autoexit `
+  "$env:TEMP\arthur-mic-test.wav"
+```
+
+Replace the microphone name with the exact device name on your system.
+
+---
+
+## 8. Configure capture + playback
+
+For a first full voice test, PTT is simpler than wake-word configuration:
+
+```dotenv
+ARTHUR_VOICE_ENABLED=true
+ARTHUR_WAKE_ENABLED=false
+
+ARTHUR_AUDIO_CAPTURE_COMMAND="ffmpeg -hide_banner -loglevel error -f dshow -i audio=\"Microphone (High Definition Audio Device)\" -ac 1 -ar 16000 -f s16le pipe:1"
+ARTHUR_AUDIO_PLAYBACK_COMMAND="ffplay -hide_banner -loglevel error -nodisp -autoexit -f s16le -ar 16000 -ch_layout mono -i -"
+```
+
+Important for current FFplay builds: use `-ch_layout mono` for raw PCM input.
+Do **not** use the old playback example with `-ac 1`; FFplay 8.x may reject it
+with `Option not found`.
+
+The internal voice format is mono 16 kHz signed 16-bit little-endian PCM.
+
+You can verify the playback contract directly:
+
+```powershell
+ffmpeg -hide_banner -loglevel error `
+  -f lavfi -i "sine=frequency=660:duration=2" `
+  -ac 1 -ar 16000 `
+  -f s16le -y "$env:TEMP\arthur-tone.pcm"
+
+cmd /c 'type "%TEMP%\arthur-tone.pcm" | ffplay -hide_banner -loglevel error -nodisp -autoexit -f s16le -ar 16000 -ch_layout mono -i -'
+```
+
+---
+
+# Voice routing modes
+
+## Cloud-preferred voice
+
+```dotenv
+ARTHUR_STT_POLICY=cloud_preferred
+ARTHUR_TTS_POLICY=cloud_preferred
+```
+
+Runtime shape:
+
+```text
+mic
+ |
+ v
+OpenAI STT --failure-before-final--> local STT fallback
+ |
+ v
+final transcript
+ |
+ v
+DeepSeek
+ |
+ v
+canonical response text
+ |
+ v
+OpenAI TTS --failure-before-playback--> local TTS fallback
+ |
+ v
+speakers
+```
+
+STT fallback reprocesses the same complete utterance; ARTHUR never stitches
+partial transcripts from multiple providers. TTS only falls back before usable
+playback begins; once speech has started, ARTHUR does not restart/stitch the
+same response with another provider.
+
+## Local-only voice
+
+```dotenv
+ARTHUR_STT_POLICY=local_only
+ARTHUR_TTS_POLICY=local_only
+```
+
+This keeps STT/TTS on the local voice providers and never calls OpenAI voice.
+
+**This is not yet a fully offline assistant.** In the current HR-02/HR-02.5
+runtime, reasoning is still DeepSeek unless you explicitly configure the fake
+provider. Local/LAN LLM routing is an HR-03 responsibility.
+
+---
+
+# Run ARTHUR
+
+## Text chat
+
+```powershell
+arthur chat --mode personal
+arthur chat --mode personal --verbose
+arthur chat --mode business --verbose
+```
+
+One-shot:
+
+```powershell
+arthur ask --mode personal "Hello Arthur"
+arthur ask --mode personal --verbose "Check the local system status."
+```
+
+The CLI and HTTP API use the same `ConversationService`; the CLI is not a
+second or bypass runtime.
+
+## Voice console
+
+After the `.env` above is configured:
+
+```powershell
+arthur voice --mode personal --verbose
+```
+
+The developer voice console uses the production `VoiceTurnController` path.
+For PTT:
+
+1. press **Enter** to start push-to-talk
+2. speak
+3. press **Enter** again to stop/finalize
+
+A successful cloud turn should look conceptually like:
+
+```text
+[state] listening (push_to_talk)
+[ptt] START
+[state] capturing
+...
+[ptt] STOP
+[stt.final] <transcript>
+[state] thinking
+...
+[state] speaking
+[tts] started
+...
+[tts] ended
+```
+
+---
+
+# Wake word
+
+PTT works independently of wake-word support.
+
+The production true wake-word path uses `sherpa-onnx` KWS. The legacy `local`
+wake provider is only an energy-burst compatibility fallback and is **not** a
+real keyword recognizer.
+
+For sherpa setup on a development machine:
+
+```powershell
+pip install sherpa-onnx click sentencepiece pypinyin
+powershell -ExecutionPolicy Bypass -File tools\voice\setup_sherpa_wake.ps1
+```
+
+Then configure:
+
+```dotenv
+ARTHUR_WAKE_ENABLED=true
+ARTHUR_WAKE_WORD=arthur
+ARTHUR_WAKE_PROVIDER=sherpa
+ARTHUR_WAKE_MODEL_DIR=models/wake/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01
+ARTHUR_WAKE_KEYWORDS_FILE=
+ARTHUR_WAKE_KEYWORDS_SCORE=1
+ARTHUR_WAKE_KEYWORDS_THRESHOLD=0.25
+ARTHUR_WAKE_NUM_THREADS=1
+```
+
+Tune thresholds only against a real microphone and prioritize low false
+positives over maximum detection rate.
+
+---
+
+# Linux notes
+
+The canonical application-data root and managed model platform are Linux-aware.
+Current proven Linux local-model support is intentionally narrower than Windows:
+
+- `bgtts-38m-v2`: validated on Linux x64 CPU
+- Parakeet: currently cataloged as Windows x64 CUDA only
+- OmniVoice: currently cataloged as Windows x64 CUDA only
+
+A Linux machine with no compatible STT may legitimately receive a TTS-only
+setup. That is a supported partial-capability state; STT can continue to use
+cloud/LAN until another validated local backend exists.
+
+Typical start:
+
+```bash
+npm ci
+npm run build
+npm link
+arthur models detect
+arthur setup --python "$(command -v python3)"
+arthur models status
+```
+
+---
+
+# Developer CLI reference
+
+```text
+arthur chat --mode personal|business [--session <id>] [--verbose]
+arthur ask --mode personal|business [--verbose] [--json] "<message>"
+arthur voice --mode personal|business [--session <id>] [--verbose]
+
+arthur tools [--mode personal|business] [--json]
+arthur tools inspect <tool-name> [--json]
+arthur status [--json]
+arthur session <id> [--json]
+arthur approve <approval-id>
+arthur reject <approval-id>
+
+arthur models detect [--json]
+arthur models list [--json]
+arthur models recommend [--profile quality|balanced|lightweight] [--kind stt|tts] [--json]
+arthur models install <model-id> [--reinstall] [--python <exe>] [--json]
+arthur models select <model-id> [--json]
+arthur models status [--json]
+arthur models validate [model-id] [--json]
+arthur models remove <model-id> [--yes] [--json]
+arthur setup [--yes] [--stt-model <id>] [--tts-model <id>] [--python <exe>] [--json]
+```
+
+Memory/documents commands remain available through the same CLI and API.
+
+---
 
 # HTTP API
-npm start
 
-# CLI
-npm run cli -- chat --mode personal
-npm run cli -- chat --mode personal --verbose
-npm run cli -- ask --mode personal "Hello"
-npm run cli -- tools
-npm run cli -- tools --mode business
-npm run cli -- tools inspect system.status
-npm run cli -- status --json
-npm run cli -- session <id>
-npm run cli -- approve <approval-id>
-npm run cli -- reject <approval-id>
-npm run cli -- memory remember --session <id> --type semantic "fact to remember"
-npm run cli -- memory search --session <id> "query"
-npm run cli -- memory list --session <id>
-npm run cli -- memory forget --session <id> <memory-id>
-npm run cli -- memory status --session <id>
-npm run cli -- documents add --session <id> --file notes.md --title "Notes"
-npm run cli -- documents list --session <id>
+Build and start:
+
+```powershell
+npm run build
+npm start
 ```
 
-See **Developer Console (CLI)** below for the observability commands
-(`--verbose`, `tools`, `tools inspect`, `ask`, `--json`).
+Default bind:
 
-Example API interaction:
+```text
+http://127.0.0.1:8080
+```
+
+Example turn:
 
 ```bash
 curl http://127.0.0.1:8080/v1/turns \
   -H "content-type: application/json" \
   -d '{"mode":"personal","message":"hello","client_request_id":"1"}'
-
-# Phase 2 memory endpoints (domain is resolved server-side from the session)
-curl http://127.0.0.1:8080/v1/memory/remember \
-  -H "content-type: application/json" \
-  -d '{"session_id":"<id>","client_request_id":"2","text":"remember this","type":"semantic"}'
-curl http://127.0.0.1:8080/v1/memory/search \
-  -H "content-type: application/json" \
-  -d '{"session_id":"<id>","query":"remember"}'
-curl "http://127.0.0.1:8080/v1/memory?session_id=<id>"
-curl -X DELETE "http://127.0.0.1:8080/v1/memory/<memory-id>?session_id=<id>"
-curl http://127.0.0.1:8080/v1/documents \
-  -H "content-type: application/json" \
-  -d '{"session_id":"<id>","client_request_id":"3","title":"Notes","source_type":"text","content":"..."}'
 ```
 
-## Developer Console (CLI)
-
-The CLI doubles as a developer console for manually observing and testing the
-runtime: conversation, model calls, tool proposals, tool execution, approvals,
-sessions, memory, and runtime status. It uses the same
-`buildApp() -> ConversationService -> ToolOrchestrator -> ToolExecutionService`
-path as the HTTP API - there is no second runtime, and the CLI never invokes
-tool executors directly.
-
-> The Developer Console is a thin observability and interaction surface over
-> the same ARTHUR runtime. It does not bypass the runtime's authorization or
-> execution boundaries.
-
-### Interactive chat
-
-```powershell
-npm run cli -- chat --mode personal --verbose
-```
+Voice control endpoints include:
 
 ```text
-ARTHUR Developer Console
-Mode: PERSONAL
-Provider: deepseek
-Model: deepseek-chat
-Session: new
-Verbose: ON
-
-Type /help for commands.
-
-you> What machine are you running on?
-
-[session] <session-id>
-[tool] system.status
-       status: completed
-       risk: read
-       summary: Local system: win32 x64, Node v22.18.0, 12 CPUs, 32 GB RAM
-
-arthur> I'm running on Windows x64 with 12 logical CPUs and 32 GB RAM.
-
-you>
+GET  /v1/voice/status
+POST /v1/voice/enable
+POST /v1/voice/disable
+GET  /v1/voice/devices
+POST /v1/voice/interrupt
+POST /v1/voice/ptt/start
+POST /v1/voice/ptt/stop
 ```
 
-Verbose mode shows the safe session id and every returned tool call (name,
-status, risk, sanitized result summary, and the approval id for pending
-actions) after each turn. Normal mode stays compact and renders every tool
-call on one line.
+Realtime voice events/commands use `/v1/voice/realtime`.
 
-Interactive slash commands inside chat:
+---
 
-| Command | Behavior |
-| --- | --- |
-| `/help` | Show the interactive command list |
-| `/status` | Safe runtime status: mode, session id, provider, model, memory flag |
-| `/session` | Current session id and mode (use `arthur session <id>` for the full dump) |
-| `/tools` | Tools available in the current mode (name + risk) |
-| `/tool <name>` | Safe manifest inspection of one tool |
-| `/new` | Start a new session on the next message; the previous session is kept |
-| `/exit` | Leave the console (`exit` also works) |
+# Testing
 
-### Tool catalog and inspection
+## Deterministic suites
 
 ```powershell
-npm run cli -- tools
-npm run cli -- tools --mode personal     # only tools allowed in that mode
-npm run cli -- tools --mode business
-npm run cli -- tools inspect system.status
-npm run cli -- tools inspect system.status --json
-```
-
-`tools` prints the safe catalog (NAME / VERSION / RISK / MODES);
-`tools inspect <name>` prints the manifest only: name, version, description,
-risk, allowed modes, and the input/output schemas. Executors, adapters,
-function source, filesystem paths, secrets, and approval internals are never
-part of the catalog or the inspection output.
-
-### One-shot ask
-
-```powershell
-npm run cli -- ask --mode personal "What system are you running on?"
-npm run cli -- ask --mode personal --verbose "Check the local system status."
-```
-
-`ask` runs exactly one turn through `ConversationService.handleTurn()`, prints
-the final answer, and with `--verbose` prints the same safe tool lifecycle
-plus the session id. There is deliberately no `arthur tool run ...` command:
-the model/conversation path remains the only way to execute a tool.
-
-### Machine-readable mode
-
-```powershell
-npm run cli -- status --json
-npm run cli -- tools --json
-npm run cli -- tools inspect system.status --json
-npm run cli -- ask --mode personal --json "Check the local system status."
-npm run cli -- session <id> --json
-```
-
-With `--json`, stdout contains exactly one valid JSON result, diagnostics and
-errors go to stderr, and there are no banners or ANSI decoration. (`chat`
-never has a JSON mode.)
-
-### Approvals stay explicit
-
-When verbose chat sees a pending approval it shows exactly how to continue:
-
-```text
-[pending approval]
-harness.create_job
-approve with:
-npm run cli -- approve <approval-id>
-```
-
-Approvals are never automatic and cannot be granted from inside chat: the
-signed `arthur approve <approval-id>` / `arthur reject <approval-id>`
-commands remain the only execution path for an approval-required action.
-
-### Console security invariants
-
-```text
-CLI visibility != permission
-CLI command != tool authorization
-Tool catalog != executable handle
-Verbose mode != debug secret dump
-```
-
-No developer flag bypasses mode restrictions, argument validation, risk
-policy, approvals, `ToolExecutionService`, or `ToolOrchestrator`. Verbose
-output never includes raw executor exceptions, stack traces, secrets,
-environment variables, approval tokens or signatures, internal adapter
-objects, or full model provider payloads.
-
-## Voice (Phase 3)
-
-Voice is **disabled by default** (`ARTHUR_VOICE_ENABLED=false`). Enable it in
-`.env`, then control it over HTTP:
-
-```bash
-curl http://127.0.0.1:8080/v1/voice/status
-curl -X POST http://127.0.0.1:8080/v1/voice/enable \
-  -H "content-type: application/json" -d '{"session_id":"<id>"}'
-curl -X POST http://127.0.0.1:8080/v1/voice/disable
-curl http://127.0.0.1:8080/v1/voice/devices
-curl -X POST http://127.0.0.1:8080/v1/voice/interrupt
-curl -X POST http://127.0.0.1:8080/v1/voice/ptt/start
-curl -X POST http://127.0.0.1:8080/v1/voice/ptt/stop
-```
-
-Realtime events/commands ride the WebSocket at `/v1/voice/realtime`
-(no external dependencies; RFC 6455 handshake + masked frames implemented
-in-repo). The same event stream is available via `app.voice.subscribe`.
-
-Engine selection: `ARTHUR_WAKE_PROVIDER`/`ARTHUR_VAD_PROVIDER`/
-`ARTHUR_STT_PROVIDER`/`ARTHUR_TTS_PROVIDER` = `local` (energy VAD,
-command-based STT/TTS, energy-burst wake), `sherpa` (wake only: True Wake
-Word v1, see below) or `fake` (deterministic offline stand-ins). Missing
-engines never fail startup: the status endpoint reports availability and
-never leaks commands, paths, keys, or raw audio. Raw audio is processed
-locally and never sent to DeepSeek - only the transcript enters the
-conversation (client_type=voice).
-
-The local wake provider is a documented energy-burst detector (not a
-keyword spotter); push-to-talk remains available as the fallback and the
-wake path is provider-abstracted.
-
-### True Wake Word v1 (sherpa-onnx KWS)
-
-`ARTHUR_WAKE_PROVIDER=sherpa` enables the production wake word: a fully
-local streaming keyword spotter (`sherpa-onnx-node`, pinned exact version)
-running the small English GigaSpeech zipformer KWS model in-process on the
-same PCM frames that already flow through the wake gateway. Detection is
-strictly the literal keyword (case/whitespace/BPE-marker-insensitive exact
-match) - random speech no longer wakes ARTHUR. After each detection the
-KWS stream is reset; during TTS playback the gateway keeps suppressing wake
-processing (echo protection); PTT stays fully independent of the KWS
-lifecycle, and a missing model/package degrades to PTT-only (never a crash,
-never a false wake).
-
-`local-energy-wake` = compatibility/fallback energy detector - NOT true
-keyword spotting. `sherpa-kws-wake` = production True Wake Word v1.
-
-Windows setup (model binaries stay machine-local; `models/` is git-ignored):
-
-1. Install the one-shot keyword converter tooling (runtime ARTHUR never
-   needs Python): `pip install sherpa-onnx click sentencepiece pypinyin`
-2. Download the model + generate the encoded keyword file (idempotent):
-   `powershell -ExecutionPolicy Bypass -File tools\voice\setup_sherpa_wake.ps1`
-   This fetches
-   `sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01` (INT8 + FP32
-   ONNX, ~18 MB) into `models/wake/`, writes `keywords_raw.txt`
-   (`Arthur @Arthur`) and converts it with the model's `tokens.txt` +
-   `bpe.model` via the official `sherpa-onnx-cli text2token` into
-   `keywords_arthur.txt`. The raw word can NEVER be written into the
-   keywords file directly - it must be BPE-encoded for the model.
-3. Configure in `.env`:
-   `ARTHUR_WAKE_PROVIDER=sherpa`,
-   `ARTHUR_WAKE_MODEL_DIR=models/wake/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01`,
-   `ARTHUR_WAKE_KEYWORDS_FILE=` (empty = keywords_arthur.txt in the model dir),
-   `ARTHUR_WAKE_KEYWORDS_SCORE=1`, `ARTHUR_WAKE_KEYWORDS_THRESHOLD=0.25`,
-   `ARTHUR_WAKE_NUM_THREADS=1`.
-4. Real-device acceptance (do not skip): say "banana" (no wake), "hello
-   there" (no wake), "Arthur" (wake), "Arthur, what is Nexus?" (full
-   turn), repeat "Arthur" at normal volume, and verify PTT. Tune
-   `ARTHUR_WAKE_KEYWORDS_SCORE`/`_THRESHOLD` only against the real
-   microphone - never against synthetic fixtures - prioritizing LOW false
-   positives over 100% detection.
-
-Native integration check (opt-in, never part of `npm test`): with the
-model, keywords file and `tests/fixtures/wake/*.wav` fixtures present, run
-`ARTHUR_SHERPA_WAKE_NATIVE_TEST=1 npm test` - the guarded tests feed the
-real KWS "Arthur" (must wake), "banana" and "hello there" (must not wake).
-
-### Voice - Windows setup (v1 reference)
-
-The local engines are plain child processes with a strict stdin/stdout
-contract (`child_process.spawn`, tokenized command lines, bounded buffers,
-timeouts, and tree-kill cleanup - see `src/voice/process_util.ts`). Any
-tool that matches the contract can be used directly; engines that do not
-are bridged by the zero-dependency wrapper scripts in `tools/voice/`
-(`stt_wrapper.cjs`, `tts_wrapper.cjs`).
-
-**1. FFmpeg (capture + playback)**
-
-- Install FFmpeg (https://www.gyan.dev/ffmpeg/builds/ - the "release"
-  build includes ffplay) and add `bin` to your PATH.
-- List your capture devices once:
-  `ffmpeg -list_devices true -f dshow -i dummy`
-- Capture - raw mono s16le at 16 kHz on stdout:
-  `ARTHUR_AUDIO_CAPTURE_COMMAND="C:\ffmpeg\bin\ffmpeg.exe -f dshow -i audio=\"Microphone (Realtek(R) Audio)\" -ac 1 -ar 16000 -f s16le pipe:1"`
-- Playback - read raw s16le from stdin until EOF:
-  `ARTHUR_AUDIO_PLAYBACK_COMMAND="C:\ffmpeg\bin\ffplay.exe -nodisp -autoexit -f s16le -ar 16000 -ac 1 -"`
-
-**2. whisper.cpp (STT)**
-
-- Build or download `whisper-cli` and a model (https://github.com/ggml-org/whisper.cpp).
-- Recommended primary desktop/server model: **ggml-large-v3-turbo.bin**
-  (https://huggingface.co/ggml-org/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin).
-  Model files are machine-local downloads - `models/` is git-ignored, never
-  commit one. A quantized model may be used on lower-resource future nodes;
-  any whisper.cpp-compatible `.bin` works via `ARTHUR_STT_MODEL_PATH`.
-- Language profiles (STT Quality v2): `ARTHUR_STT_LANGUAGE=en | bg | auto`.
-  Prefer an explicit profile whenever the expected language is known: Whisper
-  auto-detection is unstable for short accented utterances (real-device A/B:
-  short Bulgarian-accented English was transcribed partly as Japanese under
-  `auto`; `en` was clearly better). `auto` remains the code-level default for
-  unknown-language scenarios.
-- Domain initial prompt: `ARTHUR_STT_INITIAL_PROMPT` (e.g. "ARTHUR, Nexus,
-  AutoPulse, DeepSeek, GitHub, Engineering Mode") is passed to whisper-cli as
-  one `--prompt` data argument - spawned without a shell, bounded to 2048
-  characters (fail-closed), never logged, empty = disabled. Vocabulary lives
-  in configuration, never hardcoded in source.
-- Language/confidence observability: the wrapper JSON echoes an explicit
-  profile; under `auto` it reports the language whisper.cpp auto-detected
-  (parsed from its log line - which `-np` would suppress, so the wrapper no
-  longer passes `-np`; undefined if the engine logs no detection). whisper-cli
-  exposes no utterance-level transcript confidence in its text output, so
-  `confidence` stays undefined instead of being fabricated (future hook:
-  `--output-json-full` per-token probabilities; any primary/fallback retry
-  policy belongs ABOVE the wrapper, which stays single-shot).
-- The wrapper adapts whisper-cli's WAV-file workflow to ARTHUR's stdin PCM
-  contract (temp WAV, deleted before exit; segment text extracted; one JSON
-  line emitted):
-  - `WHISPER_CLI="C:\whisper\build\bin\Release\whisper-cli.exe"`
-  - `WHISPER_MODEL="C:\whisper\models\ggml-base.bin"`
-  - `ARTHUR_STT_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\stt_wrapper.cjs\""`
-
-**3. piper (TTS)**
-
-- Download the piper 1.2.0 Windows zip and a voice, e.g.
-  `en_US-lessac-medium` (https://github.com/rhasspy/piper/releases).
-- The wrapper feeds text straight to `piper --output_raw` and resamples its
-  native 22050 Hz output to ARTHUR's 16 kHz (streaming linear interpolation,
-  no dependencies):
-  - `PIPER_EXE="C:\piper\piper.exe"`
-  - `PIPER_MODEL="C:\piper\voices\en_US-lessac-medium.onnx"`
-  - `PIPER_VOICE_CONFIG="C:\piper\voices\en_US-lessac-medium.onnx.json"`
-  - `ARTHUR_TTS_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\tts_wrapper.cjs\""`
-
-**4. End-to-end `.env` (mic -> STT -> DeepSeek -> TTS -> speaker)**
-
-```dotenv
-DEEPSEEK_API_KEY=sk-...
-ARTHUR_MODEL_PROVIDER=deepseek
-ARTHUR_VOICE_ENABLED=true
-ARTHUR_WAKE_ENABLED=true
-ARTHUR_WAKE_WORD=arthur
-# local = energy-burst fallback; sherpa = True Wake Word v1 (see above)
-ARTHUR_WAKE_PROVIDER=local
-ARTHUR_VAD_PROVIDER=local
-ARTHUR_STT_PROVIDER=local
-ARTHUR_TTS_PROVIDER=local
-ARTHUR_STT_LANGUAGE=en
-ARTHUR_STT_MODEL_PATH=C:\whisper\models\ggml-large-v3-turbo.bin
-ARTHUR_STT_INITIAL_PROMPT=ARTHUR, Nexus, AutoPulse, DeepSeek, GitHub, Engineering Mode
-ARTHUR_TTS_VOICE=en_US-lessac-medium
-ARTHUR_AUDIO_INPUT_DEVICE=default
-ARTHUR_AUDIO_OUTPUT_DEVICE=default
-ARTHUR_AUDIO_CAPTURE_COMMAND="C:\ffmpeg\bin\ffmpeg.exe -f dshow -i audio=\"Microphone (Realtek(R) Audio)\" -ac 1 -ar 16000 -f s16le pipe:1"
-ARTHUR_AUDIO_PLAYBACK_COMMAND="C:\ffmpeg\bin\ffplay.exe -nodisp -autoexit -f s16le -ar 16000 -ac 1 -"
-ARTHUR_STT_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\stt_wrapper.cjs\""
-ARTHUR_TTS_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\tts_wrapper.cjs\""
-WHISPER_CLI=C:\whisper\build\bin\Release\whisper-cli.exe
-WHISPER_MODEL=C:\whisper\models\ggml-large-v3-turbo.bin
-PIPER_EXE=C:\piper\piper.exe
-PIPER_MODEL=C:\piper\voices\en_US-lessac-medium.onnx
-PIPER_VOICE_CONFIG=C:\piper\voices\en_US-lessac-medium.onnx.json
-```
-
-Start the app, then: `curl http://127.0.0.1:8080/v1/voice/status` should
-report every component available. Say "arthur" (or use
-`POST /v1/voice/ptt/start`), speak, and ARTHUR replies out loud. Replace
-`audio="Microphone (Realtek(R) Audio)"` with the device name from the
-`ffmpeg -list_devices` output, and adjust paths to your installs. Vosk or
-sherpa-onnx engines that emit the documented JSON line can replace the
-whisper wrapper; any `--output_raw`-style TTS can replace piper.
-See `docs/architecture/phase3-decisions.md` for the full decision record.
-
-## Test
-
-```bash
-npm test              # unit + integration (offline, deterministic)
+npm run typecheck
+npm run build
 npm run test:unit
 npm run test:integration
-npm run test:contract # live DeepSeek test; skipped unless DEEPSEEK_API_KEY is set
+npm test
 ```
 
-The normal test suite never depends on external API availability. The live
-DeepSeek contract test runs only when `DEEPSEEK_API_KEY` is present.
+The normal suite must not require internet access, cloud credentials or model
+downloads.
 
-## Architecture boundaries
+## DeepSeek live contract
 
-- **LLM independence** — no core/business logic imports a DeepSeek SDK; all
-  model calls go through `ModelGateway`.
-- **Local orchestration** — conversation state, permissions scaffolding, tool
-  routing scaffolding, logs, and configuration run locally.
-- **Minimal remote payload** — the provider receives only the assembled turn
-  context; secrets, environment, databases, and filesystem contents are never
-  sent.
-- **No silent tool execution** — model output cannot directly execute code,
-  shell commands, or network calls; only registered executors run, after
-  validation and permission checks.
-- **Fail closed** — invalid provider output, invalid tool calls, missing
-  permission, or malformed configuration return a controlled error.
-- **Phase 2 memory isolation** — two physically separate SQLite stores
-  (Personal/Business); the domain is derived only from the trusted server-side
-  session record. Clients/models cannot select a domain, database, or
-  namespace; any attempt fails closed (Phase 2 spec §5 North Star).
-- **Local RAG, remote reasoning** — embeddings, storage, and retrieval
-  (hybrid vector + FTS5 + reciprocal rank fusion + local reranker) run
-  locally; DeepSeek receives only assembled, budgeted, untrusted-labeled
-  memory snippets in a user-role block.
-- **Untrusted memory data** — retrieved memory cannot change the system
-  contract, mode contract, tool schemas, permissions, or approval rules;
-  credential-like content is rejected before persistence, and documents are
-  redacted with the Phase 1 sanitizer boundary.
-- **Local voice, remote reasoning** — wake/VAD/STT/TTS and playback run
-  locally; only the transcript reaches the model (client_type=voice); raw
-  audio is never persisted, logged, or transmitted.
-- **Fail-closed voice** — the deterministic state machine rejects illegal
-  transitions; missing engines disable only their component (PTT fallback),
-  never startup; voice errors map to stable HTTP status codes.
+With `DEEPSEEK_API_KEY` configured:
 
-See `docs/architecture/phase1-decisions.md`, `phase2-decisions.md`, and
-`phase3-decisions.md` for detailed decisions.
+```powershell
+npm run build:test
+node --env-file-if-exists=.env `
+  --disable-warning=ExperimentalWarning `
+  --experimental-test-isolation=none `
+  --test "dist/tests/contract/deepseek.live.test.js"
+```
 
-## Phase 1 non-goals
+## OpenAI live STT/TTS
 
-No wake word/voice, real Harness execution (stub only), autonomous agents, or
-polished UI. *(RAG/embeddings/memory were Phase 1 non-goals — implemented in
-Phase 2; the voice layer was a Phase 1 non-goal — implemented in Phase 3.)*
+```powershell
+$env:ARTHUR_LIVE_OPENAI_STT = "1"
+$env:ARTHUR_LIVE_OPENAI_TTS = "1"
+
+npm run build:test
+node --env-file-if-exists=.env `
+  --disable-warning=ExperimentalWarning `
+  --experimental-test-isolation=none `
+  --test "dist/tests/voice/hr02_live.optin.test.js"
+```
+
+These are paid/live opt-in tests and are not part of the normal deterministic
+suite.
+
+---
+
+# Security and runtime boundaries
+
+- **Provider-neutral core:** DeepSeek/OpenAI details live behind adapters.
+- **Personal/Business isolation:** separate physical memory stores; domain comes
+  from trusted session state, not model/user-selected database names.
+- **Tool authority stays local:** model output only proposes tool calls.
+  Registry validation, mode/risk policy, approval binding and execution stay in
+  ARTHUR.
+- **No approval bypass:** approval-required tools cannot execute directly from
+  a model response.
+- **Secrets are not model data:** keys are configuration, never tool/model
+  payload fields and never intentionally logged.
+- **Voice privacy is mode-dependent:** local-only STT keeps raw audio local;
+  cloud STT sends raw utterance audio to OpenAI. Raw audio is never sent to
+  DeepSeek. Cloud TTS sends final speakable text to OpenAI.
+- **Fail closed:** invalid configuration/provider responses/tool calls do not
+  silently widen authority.
+- **Stable app-data root:** persistent state does not depend on `cwd` unless the
+  operator explicitly overrides it.
+
+---
+
+# Repository layout
+
+```text
+apps/
+  api/                     HTTP entry point
+  cli/                     CLI, model commands, setup wizard
+
+src/
+  core/conversation/       conversation + multi-tool loop
+  models/                  provider-neutral model gateway/providers
+  runtime/                 routing, hardware discovery, local model platform
+  tools/                   registry, approvals, lifecycle, capability packs
+  sessions/                SQLite session store
+  memory/                  isolated Personal/Business memory + retrieval
+  voice/                   audio, wake, VAD, STT/TTS, controller, realtime
+  observability/           logs, metrics, usage, tracing
+  security/                sanitization/redaction boundaries
+  config/                  settings + validation
+
+tools/voice/               managed local voice workers/smoke utilities
+
+tests/
+  unit/
+  integration/
+  contract/
+  voice/
+
+docs/
+  architecture/
+```
+
+---
+
+# Current limitations / next runtime work
+
+- `arthur setup` installs/selects local voice models but does not yet onboard
+  DeepSeek/OpenAI credentials.
+- Fully offline/local reasoning is not implemented yet; HR-03 owns local/LAN
+  intelligence and capability routing.
+- Local model support is deliberately conservative: a model/platform is not
+  marked supported until that path has been validated.
+- Wake-word and audio-device setup remain machine-specific.
+
+For architecture decision records, see `docs/architecture/` and the HR-02
+hybrid voice documentation under `docs/`.
