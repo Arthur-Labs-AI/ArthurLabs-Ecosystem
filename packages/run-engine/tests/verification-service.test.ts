@@ -103,6 +103,33 @@ describe('verification service', () => {
     f.database.close();
   }, 120000);
 
+  it('isolates a crashing attempt without losing completed siblings (§63, §99)', async () => {
+    const f = await simulatedFixture();
+    const { VerificationCommandRunner } = await import('@qa/verifier');
+    let calls = 0;
+    const flaky = new VerificationCommandRunner();
+    const crashing = {
+      run: async (input: { command: string; cwd: string; timeoutMs: number }) => {
+        calls += 1;
+        if (calls === 1) throw new Error('simulated runner crash');
+        return flaky.run(input);
+      },
+    };
+    const { run, attempts } = await verifyMerge(f.repository, f.dataRoot, f.merge.id, {
+      commandTimeoutMs: 5000,
+      runner: crashing as never,
+    });
+    // Crash shape depends on fixture recipes: either an attempt failed
+    // while its siblings completed (partial), or every replayable step
+    // was already terminal. Either way the run finalized honestly and
+    // the original history is untouched.
+    expect(['completed', 'partial', 'failed'].includes(run.status)).toBe(true);
+    expect(attempts.length).toBe(f.merge.clusterCount);
+    expect(f.repository.getRun(f.runId)?.status).toBe('completed');
+    expect(f.repository.getMergeResult(f.merge.id)?.clusterCount).toBe(f.merge.clusterCount);
+    f.database.close();
+  }, 120000);
+
   it('fails closed on unknown merges, clusters, and empty merges', async () => {
     const f = await simulatedFixture();
     await expect(

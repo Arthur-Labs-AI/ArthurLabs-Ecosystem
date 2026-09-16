@@ -60,6 +60,9 @@ export interface VerifyRunOptions {
   readonly clusterIds?: readonly string[];
   readonly commandTimeoutMs?: number;
   readonly now?: IsoTimestamp;
+  /** Test-only seam: override the command runner. Production always
+   *  uses the contained VerificationCommandRunner. */
+  readonly runner?: VerificationCommandRunner;
 }
 
 const DEFAULT_COMMAND_TIMEOUT_MS = 120_000;
@@ -291,26 +294,53 @@ export async function verifyMerge(
     startedAt: now,
   };
   repository.saveVerificationRun(run);
-  const runner = new VerificationCommandRunner();
+  const runner = options.runner ?? new VerificationCommandRunner();
   const attempts: VerificationRunAttempt[] = [];
   let completedCount = 0;
   let failedCount = 0;
   for (const cluster of clusters) {
-    const attempt = await verifyCluster({
-      repository,
-      dataRoot,
-      snapshots,
-      runner,
-      run,
-      clusterId: cluster.id,
-      findings: cluster.sourceFindingIds
-        .map((id) => findingsById.get(id))
-        .filter((finding): finding is Finding => finding !== undefined),
-      evidenceById,
-      operations,
-      commandTimeoutMs: options.commandTimeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS,
-      now,
-    });
+    // Failure isolation (§63, §99): a crashing attempt becomes a failed
+    // attempt with the crash recorded — completed siblings stay valid
+    // and the run becomes partial, never aborted mid-list.
+    let attempt: VerificationRunAttempt;
+    try {
+      attempt = await verifyCluster({
+        repository,
+        dataRoot,
+        snapshots,
+        runner,
+        run,
+        clusterId: cluster.id,
+        findings: cluster.sourceFindingIds
+          .map((id) => findingsById.get(id))
+          .filter((finding): finding is Finding => finding !== undefined),
+        evidenceById,
+        operations,
+        commandTimeoutMs: options.commandTimeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS,
+        now,
+      });
+    } catch (cause) {
+      attempt = {
+        schemaVersion: 1,
+        id: createVerificationAttemptId(),
+        verificationRunId: run.id,
+        findingClusterId: cluster.id,
+        status: 'failed',
+        recipeVersion: VERIFICATION_RECIPE_VERSION,
+        recipeDigest: ('sha256:' + '0'.repeat(64)) as VerificationRunAttempt['recipeDigest'],
+        steps: [],
+        sourceFindingIds: cluster.sourceFindingIds as VerificationRunAttempt['sourceFindingIds'],
+        sourceEvidenceIds: [],
+        failure: {
+          code: 'VERIFIER_ATTEMPT_CRASH',
+          message: (cause instanceof Error ? cause.message : String(cause)).slice(0, 500),
+        },
+        limitations: ['Attempt crashed before recipe evaluation completed.'],
+        startedAt: now,
+        completedAt: nowIsoTimestamp(),
+      };
+      repository.saveVerificationAttempt(attempt);
+    }
     attempts.push(attempt);
     run.attemptIds.push(attempt.id);
     if (attempt.status === 'completed') completedCount += 1;
