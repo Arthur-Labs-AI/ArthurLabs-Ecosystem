@@ -817,11 +817,15 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         'investigation',
       );
       for (const emitted of investigation.events) yield emitted;
-      // STAGE 3 — reporting against the frozen ledger. The report turn
-      // attempts native structured output first (--json-schema with the
-      // SAME ReportV2 contract Sentry validates); when the binary or
-      // route rejects the flag, the SAME report retries without it
-      // (strict whole-document JSON fallback). Investigation never reruns.
+      // STAGE 3 — reporting against the frozen ledger. Strict whole-
+      // document JSON first (the fast path: every completed GLM run
+      // succeeded this way). Provider structured output (--json-schema
+      // with the SAME ReportV2 contract) is reserved as a repair aid
+      // when strict output fails to parse — schema-first hangs the run
+      // on routes whose StructuredOutput validator fights the model
+      // (observed live: ~24min schema fight → run timeout). When the
+      // binary or route rejects the flag, the SAME report retries
+      // without it. Investigation never reruns.
       yield event(request.agentRunId, {
         type: 'agent.status',
         status: 'reporting',
@@ -834,7 +838,9 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       let correction: string[] | undefined;
       let schemaSupported: boolean | undefined;
       for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
-        const useSchema = schemaSupported !== false;
+        // Strict first (fast path); schema only as a parse-failure repair
+        // aid (attempt 2+ with a correction to repair), never the default.
+        const useSchema = schemaSupported === true;
         let reporting: CollectedTurn | undefined;
         let errors: string[] | undefined;
         try {
@@ -861,7 +867,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
                 'Do not run commands, read files, or use any tools.',
             ];
           } else if (useSchema && isReportTransportFailure(cause)) {
-            // Structural fallback: the schema-armed report spawn failed at
+            // Structural fallback: the schema-armed repair spawn failed at
             // the transport/CLI layer (flag rejected, route error, spawn
             // failure) before any model output existed. Retry the SAME
             // report turn without --json-schema (report-only; the ledger
@@ -933,6 +939,11 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         }
         correction = errors;
         if (attempt < MAX_REPORT_ATTEMPTS) {
+          // Repair aid: the strict fast path failed to parse, so the next
+          // attempt uses provider-enforced shape (unless the route already
+          // proved it unsupported). Firewall trips also arrive here; the
+          // schema changes nothing about tool discipline.
+          if (!useSchema && schemaSupported !== false) schemaSupported = true;
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'GLM_REPORT_RETRY',
