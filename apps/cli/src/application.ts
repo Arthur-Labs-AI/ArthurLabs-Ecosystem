@@ -12,6 +12,8 @@ import {
   MergeServiceError,
   RunCoordinator,
   RunEngineError,
+  VerificationServiceError,
+  verifyMerge,
 } from '@qa/run-engine';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
 import { createMuseRegistration, doctorMuse, MUSE_SDK_VERSION } from '@qa/harness-muse';
@@ -386,6 +388,65 @@ export async function executeCommand(
         throw cause;
       }
     }, options);
+  }
+  if (input.command === 'verify.start') {
+    return withMutationRuntime(async ({ repository, dataRoot }) => {
+      try {
+        const clusterIds =
+          input.clusters === undefined
+            ? undefined
+            : input.clusters
+                .split(',')
+                .map((id) => id.trim())
+                .filter((id) => id.length > 0);
+        const { run, attempts } = await verifyMerge(repository, dataRoot, input.mergeResultId, {
+          ...(clusterIds === undefined ? {} : { clusterIds }),
+        });
+        const count = (outcome: string) => attempts.filter((a) => a.outcome === outcome).length;
+        return success(input.command, {
+          verificationRunId: run.id,
+          mergeResultId: run.mergeResultId,
+          status: run.status,
+          attempts: {
+            total: attempts.length,
+            reproduced: count('reproduced'),
+            partiallyVerified: count('partially_verified'),
+            notReproducible: count('not_reproducible'),
+            inconclusive: count('inconclusive'),
+            failed: attempts.filter((a) => a.status !== 'completed').length,
+          },
+        });
+      } catch (cause) {
+        if (cause instanceof VerificationServiceError) {
+          throw new RunEngineError(
+            cause.code === 'MERGE_RESULT_NOT_FOUND' || cause.code === 'CLUSTER_NOT_FOUND'
+              ? 'RUN_NOT_FOUND'
+              : cause.code === 'NO_VERIFIABLE_CLUSTERS'
+                ? 'RUN_EXECUTION_FAILED'
+                : 'RUN_NOT_COMPLETE',
+            cause.message,
+          );
+        }
+        throw cause;
+      }
+    }, options);
+  }
+  if (input.command === 'verify.show') {
+    return withReadRuntime(async ({ repository }) => {
+      const run = repository.getVerificationRun(input.verificationRunId);
+      if (run === undefined) {
+        throw new RunEngineError('RUN_NOT_FOUND', 'VerificationRun not found: ' + input.verificationRunId);
+      }
+      return success(input.command, {
+        run,
+        attempts: repository.listVerificationAttempts(run.id).map((attempt) => ({
+          ...attempt,
+          steps: repository.listVerificationSteps(attempt.id),
+          observations: repository.listVerificationObservations(attempt.id),
+          assertions: repository.listVerificationAssertions(attempt.id),
+        })),
+      });
+    });
   }
   const runId = QARunIdSchema.parse(input.runId);
   return withMutationRuntime(async ({ runs, repository, dataRoot }) => {

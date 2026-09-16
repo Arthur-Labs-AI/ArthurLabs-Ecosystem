@@ -134,13 +134,16 @@ export class RunExporter {
     return manifest;
   }
 
-  /** An export is stale only when a merge was persisted after it. Run
-   *  execution data is immutable once terminal, so merges are the sole
-   *  staleness source. String comparison is safe: all timestamps are
-   *  canonical ISO-8601 UTC with fixed width. */
+  /** An export is stale when a merge OR verification run was persisted
+   *  after it. Run execution data is immutable once terminal, so merges
+   *  and verifications are the only staleness sources. String comparison
+   *  is safe: all timestamps are canonical ISO-8601 UTC with fixed width. */
   private isExportStale(runId: QARunId, exportedAt: string): boolean {
     for (const merge of this.repository.iterateMergeResults(runId)) {
       if (merge.createdAt > exportedAt) return true;
+      for (const verificationRun of this.repository.listVerificationRuns(merge.id)) {
+        if (verificationRun.createdAt > exportedAt) return true;
+      }
     }
     return false;
   }
@@ -159,12 +162,34 @@ export class RunExporter {
       const clusters = [...this.repository.iterateClusters(merge.id)];
       yield `[${at}] [SENTRY] Merge result ${merge.id} (${clusters.length} clusters)\n`;
       for (const cluster of clusters) yield* this.mergeClusterLines(at, cluster);
+      for (const verificationRun of this.repository.listVerificationRuns(merge.id)) {
+        yield* this.verificationRunLines(at, verificationRun.id);
+      }
     }
     yield '[' +
       (run.completedAt ?? nowIsoTimestamp()) +
       '] [SENTRY] Run status: ' +
       run.status +
       '\n';
+  }
+
+  /** Log rendering keeps agreement visibly separate from verification
+   *  (§72): support lists come from the cluster, outcomes only from
+   *  fresh verification observations. */
+  private *verificationRunLines(at: string, verificationRunId: string): Generator<string> {
+    for (const attempt of this.repository.iterateVerificationAttempts(verificationRunId)) {
+      const outcome = (attempt.outcome ?? 'pending').toUpperCase().replace(/_/g, ' ');
+      yield `[${at}] [SENTRY] Verification\n`;
+      yield `[${at}] [SENTRY] Cluster: ${attempt.findingClusterId}\n`;
+      yield `[${at}] [SENTRY] Outcome: ${outcome}\n`;
+      for (const assertion of this.repository.listVerificationAssertions(attempt.id)) {
+        const mark =
+          assertion.state === 'confirmed' ? '✓' : assertion.state === 'contradicted' ? '✗' : '?';
+        yield `[${at}] [SENTRY] ${mark} ${assertion.subject}: ${assertion.detail}\n`;
+      }
+      const observations = this.repository.listVerificationObservations(attempt.id);
+      yield `[${at}] [SENTRY] Verification: ${observations.length} fresh observation${observations.length === 1 ? '' : 's'}\n`;
+    }
   }
 
   private *mergeClusterLines(
@@ -257,6 +282,32 @@ export class RunExporter {
       for (const cluster of this.repository.iterateClusters(merge.id)) clusterDocs.push(cluster);
     }
     for await (const part of section('findingClusters', clusterDocs, true)) yield part;
+    // Verification sections are additive; absent when nothing verified.
+    const verificationRuns: unknown[] = [];
+    const verificationAttempts: unknown[] = [];
+    const verificationObservations: unknown[] = [];
+    const verificationAssertions: unknown[] = [];
+    for (const merge of this.repository.iterateMergeResults(runId)) {
+      for (const verificationRun of this.repository.listVerificationRuns(merge.id)) {
+        verificationRuns.push(verificationRun);
+        for (const attempt of this.repository.iterateVerificationAttempts(verificationRun.id)) {
+          verificationAttempts.push(attempt);
+          for (const observation of this.repository.listVerificationObservations(attempt.id)) {
+            verificationObservations.push(observation);
+          }
+          for (const assertion of this.repository.listVerificationAssertions(attempt.id)) {
+            verificationAssertions.push(assertion);
+          }
+        }
+      }
+    }
+    for await (const part of section('verificationRuns', verificationRuns, true)) yield part;
+    for await (const part of section('verificationAttempts', verificationAttempts, true))
+      yield part;
+    for await (const part of section('verificationObservations', verificationObservations, true))
+      yield part;
+    for await (const part of section('verificationAssertions', verificationAssertions, true))
+      yield part;
     for await (const part of section('artifacts', this.repository.iterateArtifacts(runId), false))
       yield part;
     yield '}';

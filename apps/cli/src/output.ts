@@ -128,6 +128,27 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
       return;
     case 'run.export':
       io.stdout(response.data.path);
+      return;
+    case 'verify.start': {
+      const attempts = response.data.attempts as Record<string, number>;
+      io.stdout(
+        'VERIFICATION ' +
+          response.data.status +
+          '\nRun: ' +
+          response.data.verificationRunId +
+          '\nReproduced: ' +
+          attempts['reproduced'] +
+          '  Partially verified: ' +
+          attempts['partiallyVerified'] +
+          '  Not reproducible: ' +
+          attempts['notReproducible'] +
+          '  Inconclusive: ' +
+          attempts['inconclusive'],
+      );
+      return;
+    }
+    case 'verify.show':
+      io.stdout(JSON.stringify(response.data, null, 2));
   }
 }
 

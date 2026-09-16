@@ -51,7 +51,9 @@ export type ParsedCliCommand =
   | (BaseCommand<'run.show'> & { readonly runId: string })
   | (BaseCommand<'run.status'> & { readonly runId: string })
   | (BaseCommand<'run.export'> & { readonly runId: string; readonly format: 'log' | 'json' })
-  | (BaseCommand<'run.merge'> & { readonly runId: string });
+  | (BaseCommand<'run.merge'> & { readonly runId: string })
+  | (BaseCommand<'verify.start'> & { readonly mergeResultId: string; readonly clusters?: string })
+  | (BaseCommand<'verify.show'> & { readonly verificationRunId: string });
 
 const SIMULATION_SCENARIOS = new Set<SimulationScenario>([
   'success',
@@ -114,6 +116,8 @@ export function commandHint(args: readonly string[]): CliCommand | 'unknown' {
     'run.status',
     'run.export',
     'run.merge',
+    'verify.start',
+    'verify.show',
   ]);
   return known.has(candidate as CliCommand) ? (candidate as CliCommand) : 'unknown';
 }
@@ -265,6 +269,20 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     const format = option(tail, '--format');
     if (format !== 'log' && format !== 'json') fail('--format must be log or json', '--format');
     return { command: 'run.export', runId, format };
+  }
+  if (area === 'verify' && action === 'start') {
+    assertFlags(tail, ['--clusters', '--wait', '--json']);
+    const [mergeResultId] = positional(tail);
+    if (mergeResultId === undefined || positional(tail).length !== 1) {
+      fail('Usage: qa verify start <merge-result-id> [--clusters a,b]');
+    }
+    const clusters = option(tail, '--clusters');
+    return { command: 'verify.start', mergeResultId, ...(clusters === undefined ? {} : { clusters }) };
+  }
+  if (area === 'verify' && action === 'show') {
+    assertFlags(tail, ['--json']);
+    const [verificationRunId] = assertPositionals(tail, 1, 'qa verify show <verification-run-id>');
+    return { command: 'verify.show', verificationRunId: verificationRunId as string };
   }
   fail('Unknown command: ' + args.join(' '));
 }

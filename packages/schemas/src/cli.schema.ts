@@ -42,6 +42,8 @@ export const CLI_COMMANDS = [
   'run.status',
   'run.export',
   'run.merge',
+  'verify.start',
+  'verify.show',
 ] as const;
 export const CliCommandSchema = z.enum(CLI_COMMANDS);
 export type CliCommand = z.infer<typeof CliCommandSchema>;
@@ -369,6 +371,33 @@ export const RunMergeResultSchema = z
   .strict();
 export type RunMergeResult = z.infer<typeof RunMergeResultSchema>;
 
+export const VerifyStartResultSchema = z
+  .object({
+    verificationRunId: z.string().regex(/^vrun_[0-9A-HJKMNP-TV-Z]{26}$/),
+    mergeResultId: z.string().regex(/^merge_[0-9A-HJKMNP-TV-Z]{26}$/),
+    status: z.enum(['completed', 'partial', 'failed']),
+    attempts: z
+      .object({
+        total: NonNegativeIntSchema,
+        reproduced: NonNegativeIntSchema,
+        partiallyVerified: NonNegativeIntSchema,
+        notReproducible: NonNegativeIntSchema,
+        inconclusive: NonNegativeIntSchema,
+        failed: NonNegativeIntSchema,
+      })
+      .strict(),
+  })
+  .strict();
+export type VerifyStartResult = z.infer<typeof VerifyStartResultSchema>;
+
+export const VerifyShowResultSchema = z
+  .object({
+    run: z.unknown(),
+    attempts: z.array(z.unknown()),
+  })
+  .strict();
+export type VerifyShowResult = z.infer<typeof VerifyShowResultSchema>;
+
 export const CapabilitiesResultSchema = z
   .object({
     cliContractVersion: z.literal(CLI_CONTRACT_VERSION),
@@ -415,6 +444,8 @@ export const CliResultSchemas = {
   'run.status': RunStatusResultSchema,
   'run.export': RunExportResultSchema,
   'run.merge': RunMergeResultSchema,
+  'verify.start': VerifyStartResultSchema,
+  'verify.show': VerifyShowResultSchema,
 } as const;
 
 function successEnvelope<C extends CliCommand>(
