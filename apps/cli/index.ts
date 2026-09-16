@@ -117,6 +117,8 @@ Usage:
   arthur models status [--json]
   arthur models validate [model-id] [--json]
   arthur models remove <model-id> [--yes] [--json]
+  arthur config path [--json]
+  arthur config show [--json]
   arthur setup [--yes] [--stt-model <id>] [--tts-model <id>] [--root <path>] [--state <path>] [--python <exe>] [--json]
   arthur memory remember --session <id> [--type <t>] [--subject <k>] [--project <k>] "<text>"
   arthur memory search --session <id> "<query>"
@@ -884,9 +886,9 @@ function resolveModeFlag(
 async function main(): Promise<void> {
   const { command, flags, positionals } = parseArgs(process.argv.slice(2));
 
-  // Scoped help (HR-02.5F UX): models/setup own their help surface via
-  // model_branch.ts; the global shortcut must not swallow it.
-  if (command !== "models" && command !== "setup") {
+  // Scoped help (HR-02.5F UX): models/setup/config own their help surface
+  // via their branch modules; the global shortcut must not swallow it.
+  if (command !== "models" && command !== "setup" && command !== "config") {
     if (command === "" || command === "help" || command === "--help" || flags.get("help") === "true") {
       process.stdout.write(GLOBAL_HELP);
       return;
@@ -897,6 +899,22 @@ async function main(): Promise<void> {
   const json = flags.get("json") === "true";
   const verbose = flags.get("verbose") === "true";
   const rawMode = flags.get("mode");
+
+  // FRS-01: `arthur config path|show` are configuration-only introspection:
+  // they bootstrap the unified environment (ambient > repo .env > machine
+  // config.env) and render a secret-safe snapshot — no settings
+  // validation, no DB, no model state. `config path` performs no file IO
+  // at all beyond resolving the canonical path.
+  if (command === "config") {
+    try {
+      const { runConfig } = await import("./config");
+      process.exitCode = runConfig(command, flags, positionals, io);
+    } catch (err) {
+      printError(err, undefined, io);
+      process.exitCode = 1;
+    }
+    return;
+  }
 
   // HR-02.5F lazy subsystem initialization: model/setup commands never
   // touch the session/memory SQLite databases, so they run on validated

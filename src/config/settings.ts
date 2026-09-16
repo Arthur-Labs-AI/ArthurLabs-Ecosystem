@@ -172,18 +172,30 @@ function envBool(key: string, fallback: boolean): boolean {
 }
 
 /**
- * Optionally load a `.env` file from `cwd` if present. Missing file is not an
- * error (env may be provided by the process environment directly).
+ * FRS-01: unified configuration bootstrap for every real ARTHUR
+ * entrypoint (CLI, HTTP/API, production runners).
+ *
+ * Precedence (highest wins):
+ *
+ *   1. programmatic/test Settings overrides (applied later, in loadSettings)
+ *   2. ambient process environment (never overwritten here)
+ *   3. repo/CWD `.env` developer override
+ *   4. canonical machine config.env (<app-data-root>/config.env)
+ *   5. code-owned defaults (applied later, in loadSettings)
+ *
+ * Repo `.env` remains a supported developer override; it is no longer the
+ * production configuration identity. Machine config never overwrites the
+ * ambient environment, repo `.env` outranks machine config but never the
+ * ambient environment, and locating the machine config never depends on
+ * process.cwd(). Parsing uses Node's standard .env grammar via
+ * machine_config.ts (one policy implementation).
+ *
+ * Missing files are not errors; malformed content fails typed
+ * (INVALID_CONFIG) out of loadConfigurationEnvironment.
  */
 export function loadDotEnv(path = ".env"): void {
-  try {
-    const fs = require("node:fs") as typeof import("node:fs");
-    if (fs.existsSync(path)) {
-      (process as unknown as { loadEnvFile(p: string): void }).loadEnvFile(path);
-    }
-  } catch {
-    // .env is optional; ignore any load error.
-  }
+  const { loadConfigurationEnvironment } = require("./machine_config") as typeof import("./machine_config");
+  loadConfigurationEnvironment({ repoEnvPath: path });
 }
 
 export type SettingsOverrides = {

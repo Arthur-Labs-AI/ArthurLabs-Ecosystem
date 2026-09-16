@@ -139,8 +139,18 @@ Verify:
 
 ```powershell
 arthur --help
+arthur config path
+arthur setup          # currently local models; unified FRS setup coming
+arthur config show
 arthur models detect
 ```
+
+`arthur config path` prints the canonical machine config file
+(`<app-data>/config.env`); it is CWD-independent and creates no databases.
+`arthur config show` prints the effective configuration with secret values
+never shown (`configured` / `not configured` only). The upcoming FRS-02/03/04
+tasks populate machine config (provider credentials, voice/audio policies,
+wake/PTT settings); today `setup` configures managed local voice models only.
 
 For TypeScript validation during development:
 
@@ -186,11 +196,32 @@ audio is sent to OpenAI STT, then only the final transcript enters the
 conversation/model path. In cloud TTS mode the canonical final ARTHUR text is
 sent to OpenAI TTS for speech rendering.
 
-### `.env` lookup note
+### Configuration precedence
 
-The current runtime loads `.env` from the **current working directory**. If you
-rely on the repo `.env`, run `arthur` from the repo root. For use from arbitrary
-directories, configure the same values as process/user environment variables.
+```text
+process env
+  >
+repo `.env` developer override
+  >
+machine config (<app-data>/config.env)
+  >
+code defaults
+```
+
+The canonical machine config is `<app-data>/config.env` (see
+`arthur config path`): `%LOCALAPPDATA%\ARTHUR\config.env` on Windows,
+`$XDG_DATA_HOME/arthur/config.env` or `~/.local/share/arthur/config.env` on
+Linux, `~/Library/Application Support/ARTHUR/config.env` on macOS. It holds
+only explicit machine/user choices - unset entries fall back to code-owned
+defaults, so future default changes apply unless explicitly overridden.
+
+Repo `.env` remains a supported **developer override** (loaded from the
+current working directory), but it is no longer the production configuration
+identity: `arthur` launched from the repo root, home, or any temp directory
+observes the same machine config. Ambient process environment always wins
+over both files, and programmatic/test `loadSettings()` overrides win over
+everything. Existing `.env` installations keep working unchanged; FRS-02 may
+later offer explicit migration/onboarding into machine config.
 
 ---
 
@@ -626,6 +657,9 @@ arthur models status [--json]
 arthur models validate [model-id] [--json]
 arthur models remove <model-id> [--yes] [--json]
 arthur setup [--yes] [--stt-model <id>] [--tts-model <id>] [--python <exe>] [--json]
+
+arthur config path [--json]
+arthur config show [--json]
 ```
 
 Memory/documents commands remain available through the same CLI and API.
