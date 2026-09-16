@@ -756,9 +756,7 @@ export class RunCoordinator {
     // Verification crash recovery uses the same lease freshness — no
     // parallel lease system (§64). Stale-owned running verifications
     // become interrupted with completed observations preserved.
-    await recoverVerifications(this.repository, (instanceId) =>
-      lease.isFresh(instanceId as never),
-    );
+    await recoverVerifications(this.repository, (instanceId) => lease.isFresh(instanceId as never));
   }
 
   private requireRuntimeLease(): RuntimeInstanceLease {
