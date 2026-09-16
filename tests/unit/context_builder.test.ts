@@ -190,6 +190,38 @@ test("history eligibility: bad turns do not consume the token budget", async () 
   assert.deepEqual(req.history.map((m) => m.content), ["keep me", "and me"]);
 });
 
+test("approval proposal contract: proposing and approving are separate phases owned by ARTHUR Core", () => {
+  // Regression for the live DeepSeek approval failure (test C): the model
+  // read \"Requires explicit approval\" as \"do not call until approval
+  // exists\" and answered with text (completed) instead of proposing the
+  // tool (needs_approval). The provider-neutral contract must state that a
+  // tool call PROPOSES, ARTHUR owns approval/execution, and the model must
+  // still emit the call when the user requested the action.
+  assert.match(SYSTEM_CONTRACT, /PROPOSES the action/);
+  assert.match(SYSTEM_CONTRACT, /ARTHUR Core owns approval and execution/);
+  assert.match(SYSTEM_CONTRACT, /still emit the tool call when the user requested the action/);
+  assert.match(SYSTEM_CONTRACT, /Do not refuse to propose .* merely because approval is required/);
+  assert.match(SYSTEM_CONTRACT, /do not assume approval was already granted/);
+});
+
+test("approval tool description: proposing requests approval, never refuses for lack of it", () => {
+  // The canonical description travels verbatim into the provider tool
+  // schema, so assert it at the registration source: proposing requests
+  // approval, and the model must not refuse for lack of it.
+  const { ToolRegistry } = require("../../src/tools/registry") as typeof import("../../src/tools/registry");
+  const { HarnessStubAdapter } = require("../../src/tools/adapters/harness_stub") as typeof import("../../src/tools/adapters/harness_stub");
+  const { registerBuiltinTools } = require("../../src/tools/builtin") as typeof import("../../src/tools/builtin");
+  const registry = new ToolRegistry();
+  registerBuiltinTools(registry, new HarnessStubAdapter({ verificationSecret: "contract-test" }));
+  const def = registry.getDefinition("harness.create_job");
+  assert.ok(def);
+  assert.match(def.description, /Proposing this tool requests approval/);
+  assert.match(def.description, /Do not refuse to propose it for lack of approval/);
+  // Risk classification is unchanged: still approval-gated, business-only.
+  assert.equal(def.risk, "approval_required");
+  assert.deepEqual(def.allowed_modes, ["business"]);
+});
+
 test("HR-02 Part H: system contract prefers one-sentence confirmations for simple successful actions", () => {
   assert.match(SYSTEM_CONTRACT, /one short sentence/);
   assert.match(SYSTEM_CONTRACT, /unrelated memory/);

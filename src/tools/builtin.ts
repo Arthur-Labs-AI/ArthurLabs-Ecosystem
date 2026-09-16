@@ -177,7 +177,8 @@ function registerLegacyPacks(registry: ToolRegistry, harness: HarnessAdapter): v
     {
       name: "harness.create_job",
       version: "1.0.0",
-      description: "Create a job on the AI Harness. Requires explicit approval.",
+      description:
+        "Create a job on the AI Harness. Proposing this tool requests approval: emit the call with the job arguments and ARTHUR Core will pause for explicit approval before it runs. Do not refuse to propose it for lack of approval.",
       input_schema: {
         type: "object",
         properties: {
