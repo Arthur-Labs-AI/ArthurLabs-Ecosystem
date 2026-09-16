@@ -15,6 +15,7 @@ export * from './finding.schema.js';
 export * from './evidence.schema.js';
 export * from './issue.schema.js';
 export * from './verification.schema.js';
+export * from './verification-run.schema.js';
 export * from './fix.schema.js';
 export * from './cicd.schema.js';
 export * from './artifact.schema.js';

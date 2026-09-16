@@ -23,6 +23,10 @@ export type FindingId = Brand<string, 'FindingId'>;
 export type EvidenceId = Brand<string, 'EvidenceId'>;
 export type UnifiedIssueId = Brand<string, 'UnifiedIssueId'>;
 export type VerificationId = Brand<string, 'VerificationId'>;
+export type VerificationRunId = Brand<string, 'VerificationRunId'>;
+export type VerificationAttemptId = Brand<string, 'VerificationAttemptId'>;
+export type VerificationStepId = Brand<string, 'VerificationStepId'>;
+export type VerificationObservationId = Brand<string, 'VerificationObservationId'>;
 export type FixProposalId = Brand<string, 'FixProposalId'>;
 export type CICDPlanId = Brand<string, 'CICDPlanId'>;
 export type ArtifactId = Brand<string, 'ArtifactId'>;
@@ -45,6 +49,10 @@ export const ID_PREFIXES = {
   evidence: 'ev',
   unifiedIssue: 'issue',
   verification: 'verify',
+  verificationRun: 'vrun',
+  verificationAttempt: 'vattempt',
+  verificationStep: 'vstep',
+  verificationObservation: 'vobs',
   fixProposal: 'fix',
   cicdPlan: 'cicd',
   artifact: 'artifact',
@@ -132,6 +140,18 @@ export function createUnifiedIssueId(nowMs?: number): UnifiedIssueId {
 export function createVerificationId(nowMs?: number): VerificationId {
   return make(ID_PREFIXES.verification, nowMs) as VerificationId;
 }
+export function createVerificationRunId(nowMs?: number): VerificationRunId {
+  return make(ID_PREFIXES.verificationRun, nowMs) as VerificationRunId;
+}
+export function createVerificationAttemptId(nowMs?: number): VerificationAttemptId {
+  return make(ID_PREFIXES.verificationAttempt, nowMs) as VerificationAttemptId;
+}
+export function createVerificationStepId(nowMs?: number): VerificationStepId {
+  return make(ID_PREFIXES.verificationStep, nowMs) as VerificationStepId;
+}
+export function createVerificationObservationId(nowMs?: number): VerificationObservationId {
+  return make(ID_PREFIXES.verificationObservation, nowMs) as VerificationObservationId;
+}
 export function createFixProposalId(nowMs?: number): FixProposalId {
   return make(ID_PREFIXES.fixProposal, nowMs) as FixProposalId;
 }
@@ -195,6 +215,18 @@ export function isUnifiedIssueId(v: unknown): v is UnifiedIssueId {
 }
 export function isVerificationId(v: unknown): v is VerificationId {
   return isPrefixed(v, ID_PREFIXES.verification);
+}
+export function isVerificationRunId(v: unknown): v is VerificationRunId {
+  return isPrefixed(v, ID_PREFIXES.verificationRun);
+}
+export function isVerificationAttemptId(v: unknown): v is VerificationAttemptId {
+  return isPrefixed(v, ID_PREFIXES.verificationAttempt);
+}
+export function isVerificationStepId(v: unknown): v is VerificationStepId {
+  return isPrefixed(v, ID_PREFIXES.verificationStep);
+}
+export function isVerificationObservationId(v: unknown): v is VerificationObservationId {
+  return isPrefixed(v, ID_PREFIXES.verificationObservation);
 }
 export function isFixProposalId(v: unknown): v is FixProposalId {
   return isPrefixed(v, ID_PREFIXES.fixProposal);

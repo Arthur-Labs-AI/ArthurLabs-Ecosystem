@@ -23,6 +23,10 @@ import {
   isOperationId,
   isUnifiedIssueId,
   isVerificationId,
+  isVerificationRunId,
+  isVerificationAttemptId,
+  isVerificationStepId,
+  isVerificationObservationId,
   isCICDPlanId,
   isIsoTimestamp,
   isRuntimeInstanceId,
@@ -61,6 +65,22 @@ export const FindingIdSchema = idSchema(isFindingId, 'FindingId (find_...)');
 export const EvidenceIdSchema = idSchema(isEvidenceId, 'EvidenceId (ev_...)');
 export const UnifiedIssueIdSchema = idSchema(isUnifiedIssueId, 'UnifiedIssueId (issue_...)');
 export const VerificationIdSchema = idSchema(isVerificationId, 'VerificationId (verify_...)');
+export const VerificationRunIdSchema = idSchema(
+  isVerificationRunId,
+  'VerificationRunId (vrun_...)',
+);
+export const VerificationAttemptIdSchema = idSchema(
+  isVerificationAttemptId,
+  'VerificationAttemptId (vattempt_...)',
+);
+export const VerificationStepIdSchema = idSchema(
+  isVerificationStepId,
+  'VerificationStepId (vstep_...)',
+);
+export const VerificationObservationIdSchema = idSchema(
+  isVerificationObservationId,
+  'VerificationObservationId (vobs_...)',
+);
 export const FixProposalIdSchema = idSchema(isFixProposalId, 'FixProposalId (fix_...)');
 export const CICDPlanIdSchema = idSchema(isCICDPlanId, 'CICDPlanId (cicd_...)');
 export const ArtifactIdSchema = idSchema(isArtifactId, 'ArtifactId (artifact_...)');
