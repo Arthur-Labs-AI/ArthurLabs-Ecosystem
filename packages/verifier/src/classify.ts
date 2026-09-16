@@ -51,11 +51,10 @@ export interface ClassifiedAttempt {
  * - not_reproducible: ≥1 strong mismatched replay, all required
  *   decisive targets evaluated, 0 strong matches, 0
  *   unavailable/unsupported required steps.
- * - partially_verified: useful confirmed source/weak replay facts
+ * - partially_verified: useful confirmed source/weak command facts
  *   but no decisive behavior answer.
- * - inconclusive: target unobserved, tool/sandbox unavailable,
- *   timeout, environment problem, weak-only replay, or unsupported
- *   behavior.
+ * - inconclusive: required test target unobserved, tool/sandbox
+ *   unavailable, timeout, environment problem, or unsupported behavior.
  */
 export function classifyAttempt(steps: readonly VerificationRecipeStep[]): ClassifiedAttempt {
   const decisive = steps.filter(
@@ -77,9 +76,19 @@ export function classifyAttempt(steps: readonly VerificationRecipeStep[]): Class
       step.outcome === 'matched' &&
       step.matchStrength === 'strong_match',
   );
+  // A weak test result means the named target was never observed. It
+  // cannot be promoted by exit agreement, source integrity, or a
+  // different test's strong result in the same cluster.
+  const hasUnobservedTest = steps.some(
+    (step) =>
+      step.type === 'test_replay' &&
+      (step.matchStrength === 'weak_match' || step.matchStrength === 'weak_mismatch'),
+  );
   const decisiveTerminal = decisive.filter((step) => isTerminal(step.outcome));
   let outcome: VerificationOutcome;
-  if (hasDecisiveReproduction && !hasStrongContradiction) {
+  if (hasUnobservedTest) {
+    outcome = 'inconclusive';
+  } else if (hasDecisiveReproduction && !hasStrongContradiction) {
     outcome = 'reproduced';
   } else if (
     hasStrongContradiction &&

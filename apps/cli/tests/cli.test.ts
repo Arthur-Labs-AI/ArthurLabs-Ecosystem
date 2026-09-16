@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -30,14 +30,33 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((value) => rm(value, { recursive: true, force: true })));
 });
 
+/** Keep Vitest RPC and runtime-lease heartbeats responsive while a
+ *  CLI subprocess runs on slow WSL/DrvFs storage. */
 function invoke(args: readonly string[], dataRoot: string) {
-  return spawnSync(process.execPath, ['--no-warnings', entry, ...args], {
-    encoding: 'utf8',
-    env: { ...process.env, SENTRY_DATA_ROOT: dataRoot },
-  });
+  return new Promise<{ status: number | null; stdout: string; stderr: string }>(
+    (resolve, reject) => {
+      const child = spawn(process.execPath, ['--no-warnings', entry, ...args], {
+        env: { ...process.env, SENTRY_DATA_ROOT: dataRoot },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let stdout = '';
+      let stderr = '';
+      child.stdout.on('data', (chunk: Buffer) => {
+        stdout += chunk.toString('utf8');
+      });
+      child.stderr.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString('utf8');
+      });
+      child.on('error', reject);
+      child.on('close', (status) => resolve({ status, stdout, stderr }));
+    },
+  );
 }
 
-function machine(result: ReturnType<typeof invoke>, expectedCommand: string): CliEnvelope {
+function machine(
+  result: { status: number | null; stdout: string; stderr: string },
+  expectedCommand: string,
+): CliEnvelope {
   expect(result.stdout.trim().split(/\r?\n/)).toHaveLength(1);
   expect(result.stderr).toBe('');
   const parsed: unknown = JSON.parse(result.stdout);
@@ -163,7 +182,7 @@ describe('qa cli', () => {
 
   it('lists Muse, reports deterministic doctor failures, and types missing model configuration', async () => {
     const f = await fixture();
-    const listed = invoke(['agent', 'list', '--json'], f.dataRoot);
+    const listed = await invoke(['agent', 'list', '--json'], f.dataRoot);
     expect(listed.status).toBe(0);
     const listResponse = machine(listed, 'agent.list');
     expect(listResponse.ok && listResponse.data).toMatchObject({
@@ -275,7 +294,7 @@ describe('qa cli', () => {
 
   it('supports the complete subprocess JSON lifecycle with one document per command', async () => {
     const f = await fixture();
-    const capabilities = invoke(['capabilities', '--json'], f.dataRoot);
+    const capabilities = await invoke(['capabilities', '--json'], f.dataRoot);
     expect(capabilities.status).toBe(0);
     const capabilityResponse = machine(capabilities, 'capabilities');
     expect(capabilityResponse.ok && capabilityResponse.data).toMatchObject({
@@ -283,32 +302,32 @@ describe('qa cli', () => {
       features: { realAgentExecution: true, fakeRunSimulation: true },
     });
 
-    const add = invoke(['project', 'add', f.source, '--json'], f.dataRoot);
+    const add = await invoke(['project', 'add', f.source, '--json'], f.dataRoot);
     expect(add.status).toBe(0);
     const added = machine(add, 'project.add');
     expect(added.ok).toBe(true);
     if (!added.ok || added.command !== 'project.add') throw new Error('Unexpected response');
     const projectId = added.data.projectId;
 
-    const list = invoke(['project', 'list', '--json'], f.dataRoot);
+    const list = await invoke(['project', 'list', '--json'], f.dataRoot);
     expect(list.status).toBe(0);
     const listed = machine(list, 'project.list');
     expect(listed.ok && listed.command === 'project.list' && listed.data.projects).toHaveLength(1);
 
-    const show = invoke(['project', 'show', projectId, '--json'], f.dataRoot);
+    const show = await invoke(['project', 'show', projectId, '--json'], f.dataRoot);
     expect(show.status).toBe(0);
     const shown = machine(show, 'project.show');
     expect(shown.ok && shown.command === 'project.show' && shown.data.project.id).toBe(projectId);
 
     await writeFile(join(f.source, 'index.ts'), 'export const value = 1;\n');
-    const update = invoke(['project', 'update', projectId, '--json'], f.dataRoot);
+    const update = await invoke(['project', 'update', projectId, '--json'], f.dataRoot);
     expect(update.status).toBe(0);
     const updated = machine(update, 'project.update');
     expect(updated.ok && updated.command === 'project.update' && updated.data.revisionId).not.toBe(
       added.data.revisionId,
     );
 
-    const simulate = invoke(
+    const simulate = await invoke(
       ['run', 'simulate', projectId, '--scenario', 'success', '--json'],
       f.dataRoot,
     );
@@ -320,19 +339,19 @@ describe('qa cli', () => {
     expect(simulated.data.simulated).toBe(true);
     const runId = simulated.data.runId;
 
-    const runList = invoke(['run', 'list', projectId, '--json'], f.dataRoot);
+    const runList = await invoke(['run', 'list', projectId, '--json'], f.dataRoot);
     expect(runList.status).toBe(0);
     const runs = machine(runList, 'run.list');
     expect(runs.ok && runs.command === 'run.list' && runs.data.runs[0]?.runId).toBe(runId);
 
-    const runShow = invoke(['run', 'show', runId, '--json'], f.dataRoot);
+    const runShow = await invoke(['run', 'show', runId, '--json'], f.dataRoot);
     expect(runShow.status).toBe(0);
     const details = machine(runShow, 'run.show');
     expect(
       details.ok && details.command === 'run.show' && details.data.counts.events,
     ).toBeGreaterThan(0);
 
-    const status = invoke(['run', 'status', runId, '--json'], f.dataRoot);
+    const status = await invoke(['run', 'status', runId, '--json'], f.dataRoot);
     expect(status.status).toBe(0);
     const statusResponse = machine(status, 'run.status');
     expect(
@@ -345,7 +364,10 @@ describe('qa cli', () => {
       turns: 6,
     });
 
-    const exported = invoke(['run', 'export', runId, '--format', 'json', '--json'], f.dataRoot);
+    const exported = await invoke(
+      ['run', 'export', runId, '--format', 'json', '--json'],
+      f.dataRoot,
+    );
     expect(exported.status).toBe(0);
     const exportResponse = machine(exported, 'run.export');
     if (!exportResponse.ok || exportResponse.command !== 'run.export') {
@@ -355,23 +377,21 @@ describe('qa cli', () => {
       qaRun: { id: runId },
     });
 
-    const deleted = invoke(['project', 'delete', projectId, '--yes', '--json'], f.dataRoot);
+    const deleted = await invoke(['project', 'delete', projectId, '--yes', '--json'], f.dataRoot);
     expect(deleted.status).toBe(0);
     const deleteResponse = machine(deleted, 'project.delete');
     expect(deleteResponse.ok && deleteResponse.data).toMatchObject({ projectId, deleted: true });
-    // Test-only budget: this integration test launches many sequential Node
-    // subprocesses, which is slow on virtualized/9P storage (observed
-    // 76s locally vs 60s budget; green in CI). Production timeouts are
-    // unchanged and assertions are not weakened.
-  }, 120_000);
+    // Eleven sequential CLI subprocesses took 170s under parallel WSL/DrvFs
+    // load; the larger test-only budget leaves production timeouts unchanged.
+  }, 240_000);
 
   it('merges a simulated run deterministically with stable exit semantics', async () => {
     const f = await fixture();
-    const add = invoke(['project', 'add', f.source, '--json'], f.dataRoot);
+    const add = await invoke(['project', 'add', f.source, '--json'], f.dataRoot);
     expect(add.status).toBe(0);
     const added = machine(add, 'project.add');
     if (!added.ok || added.command !== 'project.add') throw new Error('Unexpected response');
-    const simulate = invoke(
+    const simulate = await invoke(
       ['run', 'simulate', added.data.projectId, '--scenario', 'success', '--json'],
       f.dataRoot,
     );
@@ -380,7 +400,7 @@ describe('qa cli', () => {
     if (!simulated.ok || simulated.command !== 'run.simulate')
       throw new Error('Unexpected response');
     const runId = simulated.data.runId;
-    const merged = invoke(['run', 'merge', runId, '--json'], f.dataRoot);
+    const merged = await invoke(['run', 'merge', runId, '--json'], f.dataRoot);
     expect(merged.status).toBe(0);
     const mergeResponse = machine(merged, 'run.merge');
     if (!mergeResponse.ok || mergeResponse.command !== 'run.merge') {
@@ -395,7 +415,7 @@ describe('qa cli', () => {
     expect(mergeResponse.data.clusters).toBeGreaterThan(0);
     expect(mergeResponse.data.mergeResultId).toMatch(/^merge_/);
     // Idempotent: second merge reuses the persisted result.
-    const remerged = invoke(['run', 'merge', runId, '--json'], f.dataRoot);
+    const remerged = await invoke(['run', 'merge', runId, '--json'], f.dataRoot);
     expect(remerged.status).toBe(0);
     const remergeResponse = machine(remerged, 'run.merge');
     if (!remergeResponse.ok || remergeResponse.command !== 'run.merge') {
@@ -407,7 +427,7 @@ describe('qa cli', () => {
       mergeResultId: mergeResponse.data.mergeResultId,
     });
     // Unknown run maps to the established not-found exit category.
-    const missing = invoke(
+    const missing = await invoke(
       ['run', 'merge', 'run_01K7777777777777777777A8W9', '--json'],
       f.dataRoot,
     );
@@ -418,11 +438,11 @@ describe('qa cli', () => {
 
   it('verifies a merged simulated run with stable exit semantics', async () => {
     const f = await fixture();
-    const add = invoke(['project', 'add', f.source, '--json'], f.dataRoot);
+    const add = await invoke(['project', 'add', f.source, '--json'], f.dataRoot);
     expect(add.status).toBe(0);
     const added = machine(add, 'project.add');
     if (!added.ok || added.command !== 'project.add') throw new Error('Unexpected response');
-    const simulate = invoke(
+    const simulate = await invoke(
       ['run', 'simulate', added.data.projectId, '--scenario', 'success', '--json'],
       f.dataRoot,
     );
@@ -430,13 +450,13 @@ describe('qa cli', () => {
     const simulated = machine(simulate, 'run.simulate');
     if (!simulated.ok || simulated.command !== 'run.simulate')
       throw new Error('Unexpected response');
-    const merged = invoke(['run', 'merge', simulated.data.runId, '--json'], f.dataRoot);
+    const merged = await invoke(['run', 'merge', simulated.data.runId, '--json'], f.dataRoot);
     expect(merged.status).toBe(0);
     const mergeResponse = machine(merged, 'run.merge');
     if (!mergeResponse.ok || mergeResponse.command !== 'run.merge') {
       throw new Error('Unexpected response');
     }
-    const started = invoke(
+    const started = await invoke(
       ['verify', 'start', mergeResponse.data.mergeResultId, '--json'],
       f.dataRoot,
     );
@@ -449,7 +469,7 @@ describe('qa cli', () => {
     expect(verifyResponse.data.verificationRunId).toMatch(/^vrun_/);
     expect(verifyResponse.data.attempts.total).toBeGreaterThan(0);
     // Verification outcomes never affect the exit code (§70).
-    const shown = invoke(
+    const shown = await invoke(
       ['verify', 'show', verifyResponse.data.verificationRunId, '--json'],
       f.dataRoot,
     );
@@ -460,7 +480,7 @@ describe('qa cli', () => {
     }
     expect(showResponse.data.attempts.length).toBe(verifyResponse.data.attempts.total);
     // Unknown merge result maps to the not-found exit category.
-    const missing = invoke(
+    const missing = await invoke(
       ['verify', 'start', 'merge_01K7777777777777777777A8W9', '--json'],
       f.dataRoot,
     );
@@ -471,12 +491,12 @@ describe('qa cli', () => {
 
   it('returns typed machine errors and stable exit categories', async () => {
     const f = await fixture();
-    const invalid = invoke(['project', 'add', '--json'], f.dataRoot);
+    const invalid = await invoke(['project', 'add', '--json'], f.dataRoot);
     expect(invalid.status).toBe(2);
     const invalidResponse = machine(invalid, 'project.add');
     expect(!invalidResponse.ok && invalidResponse.error.code).toBe('INVALID_ARGUMENT');
 
-    const missingProject = invoke(
+    const missingProject = await invoke(
       ['project', 'show', 'proj_01K7777777777777777777A8W1', '--json'],
       f.dataRoot,
     );
@@ -486,7 +506,7 @@ describe('qa cli', () => {
       'PROJECT_NOT_FOUND',
     );
 
-    const missingRun = invoke(
+    const missingRun = await invoke(
       ['run', 'status', 'run_01K7777777777777777777A8W3', '--json'],
       f.dataRoot,
     );
@@ -494,7 +514,10 @@ describe('qa cli', () => {
     const missingRunResponse = machine(missingRun, 'run.status');
     expect(!missingRunResponse.ok && missingRunResponse.error.code).toBe('RUN_NOT_FOUND');
 
-    const missingSource = invoke(['project', 'add', join(f.root, 'missing'), '--json'], f.dataRoot);
+    const missingSource = await invoke(
+      ['project', 'add', join(f.root, 'missing'), '--json'],
+      f.dataRoot,
+    );
     expect(missingSource.status).toBe(3);
     const missingSourceResponse = machine(missingSource, 'project.add');
     expect(!missingSourceResponse.ok && missingSourceResponse.error.code).toBe(
@@ -541,10 +564,13 @@ describe('qa cli', () => {
 
   it('status from another process does not recover a run with a healthy owner', async () => {
     const f = await fixture();
-    const add = machine(invoke(['project', 'add', f.source, '--json'], f.dataRoot), 'project.add');
+    const add = machine(
+      await invoke(['project', 'add', f.source, '--json'], f.dataRoot),
+      'project.add',
+    );
     if (!add.ok || add.command !== 'project.add') throw new Error('Unexpected response');
     const simulation = machine(
-      invoke(['run', 'simulate', add.data.projectId, '--json'], f.dataRoot),
+      await invoke(['run', 'simulate', add.data.projectId, '--json'], f.dataRoot),
       'run.simulate',
     );
     if (!simulation.ok || simulation.command !== 'run.simulate')
@@ -572,7 +598,7 @@ describe('qa cli', () => {
     projects.lockProjectForRun(active.projectId, active.id);
 
     try {
-      const status = invoke(['run', 'status', active.id, '--json'], f.dataRoot);
+      const status = await invoke(['run', 'status', active.id, '--json'], f.dataRoot);
       expect(status.status).toBe(0);
       const response = machine(status, 'run.status');
       expect(response.ok && response.command === 'run.status' && response.data.status).toBe(
@@ -590,7 +616,10 @@ describe('qa cli', () => {
         }),
       );
 
-      const blockedUpdate = invoke(['project', 'update', active.projectId, '--json'], f.dataRoot);
+      const blockedUpdate = await invoke(
+        ['project', 'update', active.projectId, '--json'],
+        f.dataRoot,
+      );
       expect(blockedUpdate.status).toBe(4);
       const conflict = machine(blockedUpdate, 'project.update');
       expect(!conflict.ok && conflict.error).toMatchObject({
@@ -598,7 +627,7 @@ describe('qa cli', () => {
         retryable: true,
       });
 
-      const activeExport = invoke(
+      const activeExport = await invoke(
         ['run', 'export', active.id, '--format', 'json', '--json'],
         f.dataRoot,
       );
@@ -620,7 +649,7 @@ describe('qa cli', () => {
       owner.release();
       database.close();
     }
-  }, 30_000);
+  }, 120_000);
 
   it('supports actual built CLI invocation', () => {
     const result = spawnSync(process.execPath, [entry, '--version'], { encoding: 'utf8' });

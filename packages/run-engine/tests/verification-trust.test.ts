@@ -32,6 +32,8 @@ async function divideFixture() {
   roots.push(root);
   const source = join(root, 'source');
   const dataRoot = join(root, 'data');
+  const peerMarker = join(root, 'peer-only-marker.txt');
+  await writeFile(peerMarker, 'peer-secret\n');
   await mkdir(join(source, 'src'), { recursive: true });
   await mkdir(join(source, 'tests'), { recursive: true });
   // Intentionally buggy: mirrors the real divide-by-zero sentinel defect.
@@ -63,6 +65,7 @@ async function divideFixture() {
       "import { readFileSync, writeFileSync } from 'node:fs';",
       'const hostMarker = ' + JSON.stringify(join(dataRoot, 'host-only-marker.txt')) + ';',
       'const dataFile = ' + JSON.stringify(join(dataRoot, 'sentry.db')) + ';',
+      'const peerMarker = ' + JSON.stringify(peerMarker) + ';',
       "const tmpMarker = '/tmp/sentry-escape-marker.txt';",
       'let hostRead = "unread";',
       'try { hostRead = readFileSync(hostMarker, "utf8"); } catch { hostRead = "blocked"; }',
@@ -70,6 +73,9 @@ async function divideFixture() {
       'let dataRead = "unread";',
       'try { dataRead = readFileSync(dataFile, "utf8").slice(0, 8); } catch { dataRead = "blocked"; }',
       'console.log("DATA_READ:" + dataRead);',
+      'let peerRead = "unread";',
+      'try { peerRead = readFileSync(peerMarker, "utf8"); } catch { peerRead = "blocked"; }',
+      'console.log("PEER_READ:" + String(peerRead).trim());',
       'let tmpWrite = "unwritten";',
       'try { writeFileSync(tmpMarker, "x"); tmpWrite = "written"; } catch { tmpWrite = "blocked"; }',
       'console.log("TMP_WRITE:" + tmpWrite);',
@@ -78,24 +84,16 @@ async function divideFixture() {
       '',
     ].join('\n'),
   );
-  // Descendant-cleanup probe ships too: parent.mjs spawns a detached
-  // child writing a marker after 8s, then exits immediately. The
-  // sandbox cgroup must kill the orphan (marker never appears).
-  const survivorMarker = join(dataRoot, 'survivor-marker.txt');
+  // Descendant-cleanup probe ships too: parent.mjs prints the PID of
+  // a detached child, then exits. The test checks /proc directly;
+  // a marker in the blocked data root would prove nothing.
   await writeFile(
     join(source, 'tests', 'parent.mjs'),
     [
       "import { spawn } from 'node:child_process';",
-      'const marker = ' + JSON.stringify(survivorMarker) + ';',
-      'const child = spawn(process.execPath, ["-e", ' +
-        JSON.stringify(
-          "setTimeout(() => { require('node:fs').writeFileSync(" +
-            JSON.stringify(survivorMarker) +
-            ', "survived"); }, 8000);',
-        ) +
-        '], { detached: true, stdio: "ignore" });',
+      'const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 8000)"], { detached: true, stdio: "ignore" });',
       'child.unref();',
-      'console.log("parent done");',
+      'console.log("CHILD_PID:" + child.pid);',
       '',
     ].join('\n'),
   );
@@ -432,8 +430,10 @@ describe('verifier trust fixtures', () => {
     }
     expect(replayText).toContain('HOST_READ:blocked');
     expect(replayText).toContain('DATA_READ:blocked');
+    expect(replayText).toContain('PEER_READ:blocked');
     expect(replayText).toContain('TMP_WRITE:blocked');
     expect(replayText).not.toContain('host-secret');
+    expect(replayText).not.toContain('peer-secret');
     await expect(stat(tmpMarker)).rejects.toThrow();
     f.database.close();
   }, 180000);
@@ -541,9 +541,6 @@ describe('verifier trust fixtures', () => {
 
   it('kills descendant processes that outlive their parent (§26, §67)', async () => {
     const f = await divideFixture();
-    const { stat, rm } = await import('node:fs/promises');
-    const marker = join(f.dataRoot, 'survivor-marker.txt');
-    await rm(marker, { force: true });
     const { FindingSchema: F4, EvidenceSchema: E4, HarnessEventSchema: H4 } = await schemas();
     const agents4 = f.repository.listAgentRuns(f.runId);
     const agent4 = agents4.find((a) => a.status === 'completed') ?? agents4[0];
@@ -595,10 +592,39 @@ describe('verifier trust fixtures', () => {
       }),
     );
     const { result: merge } = mergeRun(f.repository, f.runId);
-    await verifyMerge(f.repository, f.dataRoot, merge.id, { commandTimeoutMs: 30000 });
-    // Past the child's 8s delay: cgroup cleanup must have killed it.
-    await new Promise((resolve) => setTimeout(resolve, 12000));
-    await expect(stat(marker)).rejects.toThrow();
+    const { attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
+      commandTimeoutMs: 30000,
+    });
+    const target = attempts.find((attempt) =>
+      attempt.sourceFindingIds.includes(finding.id as never),
+    );
+    expect(target).toBeDefined();
+    const { resolveInside } = await import('@qa/persistence');
+    const { readFile } = await import('node:fs/promises');
+    let replayText = '';
+    for (const observation of f.repository.listVerificationObservations(target?.id as never)) {
+      for (const artifactId of observation.artifactIds) {
+        const artifact = f.repository.getArtifact(artifactId);
+        if (artifact !== undefined) {
+          replayText += await readFile(
+            resolveInside(f.dataRoot, artifact.relativeStoragePath),
+            'utf8',
+          );
+        }
+      }
+    }
+    const childPid = Number(/CHILD_PID:(\d+)/.exec(replayText)?.[1]);
+    expect(Number.isSafeInteger(childPid) && childPid > 0).toBe(true);
+    // The child would remain alive for 8 seconds if cgroup cleanup failed.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const processStat = await readFile('/proc/' + childPid + '/stat', 'utf8').catch(
+      () => undefined,
+    );
+    const state = processStat?.slice(
+      processStat.lastIndexOf(')') + 2,
+      processStat.lastIndexOf(')') + 3,
+    );
+    expect(state === undefined || state === 'Z').toBe(true);
     f.database.close();
   }, 180000);
 

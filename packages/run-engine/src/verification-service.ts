@@ -656,8 +656,9 @@ async function verifyCluster(input: {
   input.repository.saveVerificationAttempt(baseAttempt);
   for (const step of baseAttempt.steps) input.repository.saveVerificationStep(attemptId, step);
   // Ownership scope: one sandboxed runner per attempt. The execution
-  // root is the staging copy (outside the data root); the whole data
-  // root plus the real home are inaccessible inside. finally
+  // root is the staging copy (outside the data root); the empty-root
+  // sandbox leaves the data root and the real home unbound (invisible
+  // inside). finally
   // guarantees runner dispose, staging removal, and workspace removal
   // across every failure path. All paths constructed internally,
   // never from model/user input.

@@ -145,7 +145,30 @@ describe('deterministic verifier', () => {
       matchStrength: 'weak_match',
       observationIds: ['vobs_01K7777777777777777777A8W1'],
     } as unknown as VerificationRecipeStep;
-    expect(classifyAttempt([weakMatch]).outcome).toBe('partially_verified');
+    expect(classifyAttempt([weakMatch]).outcome).toBe('inconclusive');
+    expect(classifyAttempt([weakMatch, completedStep('source_integrity', 'matched')]).outcome).toBe(
+      'inconclusive',
+    );
+    expect(
+      classifyAttempt([
+        weakMatch,
+        {
+          ...completedStep('test_replay', 'matched'),
+          matchStrength: 'strong_match',
+          observationIds: ['vobs_01K7777777777777777777A8W2'],
+        } as VerificationRecipeStep,
+      ]).outcome,
+    ).toBe('inconclusive');
+    expect(
+      classifyAttempt([
+        weakMatch,
+        {
+          ...completedStep('test_replay', 'mismatched'),
+          matchStrength: 'strong_mismatch',
+          observationIds: ['vobs_01K7777777777777777777A8W2'],
+        } as VerificationRecipeStep,
+      ]).outcome,
+    ).toBe('inconclusive');
   });
 
   it('treats missing tooling as inconclusive, never not_reproducible (§88)', () => {

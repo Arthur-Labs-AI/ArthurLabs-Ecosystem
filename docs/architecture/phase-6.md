@@ -1,177 +1,104 @@
 # Phase 6 — Independent Evidence-First Verifier
 
-## Purpose
+## Purpose and trust boundary
 
-Consume a persisted Phase 5 MergeResult and independently check its
-FindingClusters against FRESH disposable workspaces created from the
-exact immutable ProjectSnapshot used by the original QA run. The
-Verifier answers whether Sentry can confirm, reproduce, partially
-validate, disprove through clean replay, or not reliably determine
-each merged issue from canonical evidence — with NEW observations,
-never agent agreement.
+The Verifier consumes a persisted Phase 5 MergeResult and checks each
+FindingCluster independently against the exact ProjectSnapshot used by its QA
+run. Fresh observations, not agent agreement, determine the outcome. Muse,
+DeepSeek, GLM, and Merger v2 are frozen; verification never reruns QA agents or
+uses an LLM judge. `inconclusive` is an honest first-class outcome.
 
-## Frozen foundation (non-negotiable)
+## Current architecture (Phase 6.1.1)
 
-`packages/harness-muse`, `packages/harness-deepseek`, and
-`packages/harness-claude-code` are frozen infrastructure: no prompt,
-policy, sandbox, or behavior changes in Phase 6. The Merger stays at
-v2. No rerun of the three QA agents as verification, no LLM judge,
-no embedding consensus, no majority voting.
+### Historical material and disposable workspaces
 
-## Trust model
+New project revisions commit only after immutable revision material has been
+retained and hash-validated. Retention failure rolls the update back. The
+Verifier validates retained material again before staging a fresh workspace
+for each cluster. Staging is outside the Sentry data root, so the whole data
+root can be blocked inside the sandbox. A historical revision A remains
+verifiable after the managed project advances to B. Pre-retention revisions
+without valid material fail honestly as `inconclusive`, never by substituting
+the current working copy.
 
-Agreement and verification are independent: `agreementState` never
-enters the outcome classifier. A single-source finding may reproduce
-perfectly; a 3/3 finding may fail clean replay. `inconclusive` is a
-first-class honest result — never upgraded from consensus.
+### Sandbox and process ownership
 
-## Workspace rule
+`VerificationSandboxBackend` is the execution boundary for runtime replay.
+On supported Linux hosts the systemd user-service backend preflights actual
+mount isolation and launches a distinct transient unit for each command.
+An empty root filesystem exposes only read-only system/toolchain directories
+and explicitly bound verifier workspace/HOME/tmp paths. `ProtectHome=yes`
+and a private network reinforce this boundary; the unbound Sentry data root,
+real HOME, host `/tmp`, and peer workspaces are invisible.
+The verifier
+uses an allowlisted environment and shell-less, bounded argv execution.
+Recorded path/shell checks are additional defenses, not the isolation
+boundary. If the backend or its preflight is unavailable, runtime replay is
+unsupported and verification fails closed; it never falls back to host
+execution. `qa verify doctor` reports backend availability without a paid
+agent run. Windows has no runtime-replay backend; run under a supported Linux
+environment (including a compatible WSL2 systemd user session).
 
-One fresh disposable workspace per FindingCluster, materialized from
-the managed working copy ONLY when it still sits at the snapshot's
-revision AND every baseline hash reproduces. Otherwise the attempt
-records SNAPSHOT_DRIFT and classifies `inconclusive` — Sentry
-verifies snapshot A or refuses; it never mistakes moved-on state B
-for A. Agent workspaces are never reused. Workspaces are removed
-after each attempt; owned processes are tracked and killed (never
-`pkill`/`taskkill /IM`).
+The transient unit owns the full replay process tree. Timeout and disposal
+stop that unit, then clean only verifier-owned staging. No global process
+kills are used. Each cluster receives exactly one durable attempt ID before
+fallible work; normal errors and unexpected crashes terminalize that same
+attempt. Stale running verification rows are recovered on coordinator
+startup, not by a background lease sweeper.
 
-Sentry stores hashes, not source duplicates, so post-fix state
-cannot be time-traveled: verification after project changes is
-honestly inconclusive, not silently wrong. This is an explicit
-Phase 6 v1 limitation, not a bug.
+### Deterministic recipe and replay
 
-## Recipe generation (deterministic, model-free)
+`buildRecipe` derives steps from canonical persisted evidence and grounded
+`command.executed`/`test.result` operations, never prose. Natural-language
+reproduction steps are non-executable context. Supported steps include
+source integrity, command replay, test replay, and unsupported claims.
+Commands replay from their recorded `cwdRelative`, resolved beneath the
+fresh workspace with traversal, symlink-escape, missing-directory and
+non-directory checks. Missing tools, unsupported shell syntax, browser-only
+claims, and unavailable sandbox capabilities remain `unsupported`, not
+synthetic mismatches.
 
-`buildRecipe` consumes cluster + source findings + evidence +
-canonical operations resolved from persisted `command.executed` /
-`test.result` events by `groundingOperationIds`. Never from prose.
-Natural-language `reproductionSteps` ride along as
-`nonExecutableInstructions` context; converting them into commands
-is forbidden.
+### Observation and outcomes
 
-Step types: `source_integrity` (file/regular-file/lines/hash),
-`command_replay`, `test_replay`, `environment_check` (reserved),
-`unsupported_claim` (manual/log/browser/static-analysis, dangling
-provenance). Same canonical operation from several findings dedupes
-to one step (recipe fingerprint). Priority orders the recipe only.
+Framework-aware test identity requires the exact target or a valid `.`,
+`::`, or `/` descendant boundary; substring matches do not count. An
+unobserved target yields only a weak exit observation and forces the attempt
+to `inconclusive`, even when other steps match. An observed
+target passing when failure was expected is a strong mismatch. Command
+replay uses a strong match or mismatch only when canonical original evidence
+supports a decisive comparison; exit-code-only observations are weak.
+`reproduced` requires a strong positive runtime observation, while
+`not_reproducible` requires a strong negative observation with no unresolved
+required steps. Weak, blocked, timed-out, or unsupported evidence yields
+`inconclusive` unless another supported outcome is justified. Source
+integrity alone cannot establish runtime reproduction.
 
-## Execution containment
+### Versioned signatures and persistence
 
-`VerificationCommandRunner`: cwd locked to the verifier workspace,
-allowlisted child env (secrets never forwarded), bounded output,
-timeouts kill only the owned child. Replay executes ONLY recorded
-commands headed by known test/build tooling (versioned allowlist);
-everything else becomes `unsupported`. Recorded host-escape paths
-(`..`, `~`, absolute outside workspace/`/tmp`) are `blocked`.
-String checks are defense-in-depth; cwd + env + timeouts are the
-real boundary.
+`VERIFIER_VERSION`, `VERIFICATION_RECIPE_VERSION`, and
+`VERIFICATION_SIGNATURE_VERSION` are all 3. `sig3` hashes the full normalized,
+redacted diagnostic content; its short preview is display-only and never an
+equality key. The prefix-collision fixture guards against treating equal
+previews as equal diagnostics. Versioned v1/v2 records remain readable and
+are not reinterpreted as v3 evidence.
 
-## Signatures (v1)
+The additive verification tables retain runs, ownership-immutable attempts,
+steps, insert-only observations, and assertions. Step observations and
+terminal outcomes are persisted incrementally. QARuns, MergeResults,
+Findings, and original Evidence are never mutated by verification.
 
-Matching compares exit code and test status against canonical
-expectations; a normalized diagnostic fingerprint (workspace root,
-timestamps, ANSI, temp prefixes stripped; semantic text preserved)
-is recorded for audit. Source integrity alone can never yield
-`reproduced` — only fresh runtime observation can.
+### CLI and scope boundary
 
-## Outcome semantics
+The v1 CLI contract remains intact. `qa verify start` and `qa verify show`
+remain explicit operations; `qa verify doctor` is additive. JSON and log
+exports expose verification records while keeping large replay output in
+the artifact store. No Phase 7 retest UX, fix-state tracking, or UI is part
+of Phase 6.1.1. Browser/external-service and prose-only claims remain
+inconclusive unless separately supported by canonical evidence.
 
-- `reproduced`: decisive independent replay matched, no contradiction.
-- `partially_verified`: meaningful matched checks (including
-  source-only integrity) without decisive reproduction.
-- `not_reproducible`: every decisive replay executed compatibly and
-  the bug signature was absent. Environment/tool failures NEVER
-  produce this — they produce `inconclusive`.
-- `inconclusive`: no replayable steps, errors, blocks, unsupported
-  claims, drift, or missing tooling.
+## Historical note
 
-Per-assertion dimensions (`behavior`, `source_location`,
-`test_failure`, `command_failure`, `root_cause`) stay separate;
-`root_cause` is always `inconclusive` in v1.
-
-## Identity, versions, idempotency
-
-`VERIFIER_VERSION = 1`, `RECIPE_VERSION = 1`, `SIGNATURE_VERSION = 1`;
-typed `vrun_`/`vattempt_`/`vstep_`/`vobs_` IDs; recipe digests cover
-versions + snapshot + cluster + sorted evidence/ops + expectations.
-Runs are intentional executions (no global dedup — history matters
-for Phase 7); recipes are deterministic for identical input.
-
-## Persistence
-
-Additive migration (v4): `verification_runs`,
-`verification_attempts` (ownership-immutable trigger),
-`verification_steps`, `verification_observations` (insert-only),
-`verification_assertions`. Incremental durability (run → attempt →
-step → observation → atomic attempt finalization); crash recovery
-marks expired-lease running attempts `interrupted` (to be wired to
-the lease monitor — see limitations). Source Findings/Evidence/
-Clusters/MergeResults/QARuns are never mutated by verification.
-
-## CLI and exports
-
-Explicit only: `qa verify start <merge-result-id> [--clusters …]`
-(exit 0 on successful execution regardless of outcomes; 3 not
-found, 4 non-verifiable state) and `qa verify show <run-id>`.
-JSON export gains additive `verificationRuns/Attempts/
-Observations/Assertions` sections; log export renders outcomes with
-agreement visibly separated from verification. Large replay output
-lives in the artifact store, never inline JSON.
-
-## Failure isolation and cleanup
-
-Per-attempt failure (one cluster's crash) leaves completed attempts
-valid; the run becomes `partial`. QARun/MergeResult status can
-never change from verification.
-
-## Phase 7 boundary
-
-Recipes and assertions are designed for future replay against new
-revisions, but Phase 6 verifies the historical snapshot ONLY. No
-retest, no fix-state tracking, no UI.
-
-## Phase 6.1 — trust, isolation & historical hardening
-
-Execution containment is real: shell-less argv spawn inside the
-verifier workspace, preflight executable resolution (missing tools
-are `unsupported`, never exit-127 mismatches), disposable
-verifier-owned HOME (real user HOME never exposed), allowlisted
-env (credentials never forwarded), owned process-group tracking
-with deterministic dispose (never `pkill`/`killall`). Shell syntax
-in recorded commands refuses safely (`unsupported`) instead of
-spawning a shell.
-
-Reproduction requires identity: test replays match only when the
-expected test observably appears with the expected status
-(framework parsers for vitest/jest, pytest, dotnet; counts, never
-word presence — "Failed: 0" reads as passed). Exit-only agreement
-yields weak matches at most; only strong matches (identity, or
-exit plus identical original-evidence signature) are decisive.
-Command replays compare fresh sig2 fingerprints against
-redacted original-output signatures when canonical artifacts
-exist — otherwise weak, never pretended.
-
-Redaction precedes persistence: replay output is scrubbed before
-fingerprints, observations, and artifacts. Attempt ownership is
-try/finally (one cluster, one attempt ID; crashes terminalize the
-same attempt; runner dispose + workspace removal always run).
-Stale-lease running rows are swept to interrupted by
-`recoverVerifications` on coordinator startup. Source integrity
-computes whole-file byte hashes with evidence semantics and
-persists `contentHashMatch`.
-
-Historical revisions are retained immutably
-(`revisions/<revisionId>`, reflink/COW, post-commit only); the
-verifier materializes by `snapshot.projectRevisionId`, so project
-updates no longer break old verification. Pre-retention revisions
-verify as honest inconclusive. `VERIFIER/RECIPE/SIGNATURE_VERSION
-= 2`; v1 rows stay readable.
-
-## Known limitations (v1, intentional)
-
-Only canonically replayable claims verify; exploratory, browser,
-external-service, or prose-only claims stay `inconclusive`. No
-concurrent cluster verification (sequential by default). No dynamic
-port orchestration (server replays unsupported). Crash recovery
-marks interruptions but has no active lease-expiry sweeper yet.
+Phase 6 initially used v1 signatures and current-revision-only material.
+Phase 6.1 introduced v2 identity, redaction, process cleanup, and initial
+retention. Those descriptions are historical; the v3 architecture above is
+the current contract. Old records retain their original version semantics.
