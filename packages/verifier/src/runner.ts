@@ -124,6 +124,13 @@ export interface ExecutedStep {
   readonly diagnosticFingerprint?: string;
   readonly artifactPayloads: { stdout: string; stderr: string }[];
   readonly detail: string;
+  readonly sourceCheck?: {
+    readonly relativePath: string;
+    readonly exists: boolean;
+    readonly isRegularFile: boolean;
+    readonly lineRangePresent: boolean;
+    readonly contentHashMatch?: boolean;
+  };
 }
 
 function insideWorkspace(workspaceRoot: string, relativePath: string): string | undefined {
@@ -151,7 +158,12 @@ export async function executeSourceIntegrity(
   try {
     stats = await ctx.fs.stat(absolute);
   } catch {
-    return { outcome: 'mismatched', artifactPayloads: [], detail: 'File absent: ' + relativePath };
+    return {
+      outcome: 'mismatched',
+      artifactPayloads: [],
+      detail: 'File absent: ' + relativePath,
+      sourceCheck: { relativePath, exists: false, isRegularFile: false, lineRangePresent: false },
+    };
   }
   // §98: a directory where a regular file is claimed is malformed
   // evidence — unevaluatable, hence unsupported (feeds inconclusive).
@@ -162,6 +174,7 @@ export async function executeSourceIntegrity(
       detail: stats.isDirectory
         ? 'Location is a directory, not a regular file: ' + relativePath
         : 'Location is not a regular file: ' + relativePath,
+      sourceCheck: { relativePath, exists: true, isRegularFile: false, lineRangePresent: false },
     };
   }
   const startLine =
@@ -174,6 +187,7 @@ export async function executeSourceIntegrity(
       outcome: 'mismatched',
       artifactPayloads: [],
       detail: 'Expected line range absent: ' + relativePath,
+      sourceCheck: { relativePath, exists: true, isRegularFile: true, lineRangePresent: false },
     };
   }
   if (lines.hashMatch === false) {
@@ -181,9 +195,15 @@ export async function executeSourceIntegrity(
       outcome: 'mismatched',
       artifactPayloads: [],
       detail: 'Content hash mismatch: ' + relativePath,
+      sourceCheck: { relativePath, exists: true, isRegularFile: true, lineRangePresent: true },
     };
   }
-  return { outcome: 'matched', artifactPayloads: [], detail: 'Source location confirmed.' };
+  return {
+    outcome: 'matched',
+    artifactPayloads: [],
+    detail: 'Source location confirmed.',
+    sourceCheck: { relativePath, exists: true, isRegularFile: true, lineRangePresent: true },
+  };
 }
 
 export interface ReplayExpectation {

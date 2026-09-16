@@ -500,7 +500,9 @@ async function verifyCluster(input: {
       status: 'completed',
       outcome: executedStep.outcome,
       observationIds:
-        executedStep.exitCode === undefined && executedStep.diagnosticFingerprint === undefined
+        executedStep.exitCode === undefined &&
+        executedStep.diagnosticFingerprint === undefined &&
+        executedStep.sourceCheck === undefined
           ? []
           : [createVerificationObservationId()],
       completedAt: nowIsoTimestamp(),
@@ -519,6 +521,9 @@ async function verifyCluster(input: {
         ...(executedStep.diagnosticFingerprint === undefined
           ? {}
           : { diagnosticFingerprint: executedStep.diagnosticFingerprint }),
+        ...(executedStep.sourceCheck === undefined
+          ? {}
+          : { sourceCheck: executedStep.sourceCheck }),
         startedAt: running.startedAt as IsoTimestamp,
         completedAt: finished.completedAt as IsoTimestamp,
         outcome: finished.outcome as VerificationObservation['outcome'],
