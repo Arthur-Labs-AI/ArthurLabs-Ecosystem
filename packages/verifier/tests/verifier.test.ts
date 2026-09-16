@@ -119,11 +119,33 @@ describe('deterministic verifier', () => {
     expect(assertions.find((a) => a.subject === 'root_cause')?.state).toBe('inconclusive');
   });
 
-  it('marks disappearing failures not_reproducible without deleting history (§87)', () => {
-    const done = completedStep('test_replay', 'mismatched');
+  it('marks a now-passing target not_reproducible via strong mismatch (§59)', () => {
+    // Same test observed passing (was failed): strong negative evidence.
+    const done = {
+      ...completedStep('test_replay', 'mismatched'),
+      matchStrength: 'strong_mismatch',
+      observationIds: ['vobs_01K7777777777777777777A8W1'],
+    } as unknown as VerificationRecipeStep;
     const { outcome, assertions } = classifyAttempt([done]);
     expect(outcome).toBe('not_reproducible');
     expect(assertions.find((a) => a.subject === 'behavior')?.state).toBe('contradicted');
+  });
+
+  it('marks an unobserved target inconclusive, never not_reproducible (§60)', () => {
+    // Target absent from fresh output (different test failed): no
+    // strong negative evidence exists → inconclusive.
+    const weak = {
+      ...completedStep('test_replay', 'mismatched'),
+      matchStrength: 'weak_mismatch',
+      observationIds: ['vobs_01K7777777777777777777A8W1'],
+    } as unknown as VerificationRecipeStep;
+    expect(classifyAttempt([weak]).outcome).toBe('inconclusive');
+    const weakMatch = {
+      ...completedStep('test_replay', 'matched'),
+      matchStrength: 'weak_match',
+      observationIds: ['vobs_01K7777777777777777777A8W1'],
+    } as unknown as VerificationRecipeStep;
+    expect(classifyAttempt([weakMatch]).outcome).toBe('partially_verified');
   });
 
   it('treats missing tooling as inconclusive, never not_reproducible (§88)', () => {
@@ -200,7 +222,7 @@ describe('deterministic verifier', () => {
     expect(hasUnsafeTarget('node ../../outside.js')).toBe(true);
   });
 
-  it('normalizes diagnostics deterministically (§41)', () => {
+  it('hashes full normalized diagnostics deterministically (sig3, §62)', () => {
     const a = diagnosticFingerprint(
       'Error at /ws/project/src/a.ts:12\n2026-09-16T00:00:00.000Z FAIL',
       '/ws/project',
@@ -210,8 +232,12 @@ describe('deterministic verifier', () => {
       '/ws/project',
     );
     expect(a).toBe(b);
-    expect(a).toContain('<ws>');
-    expect(a).toContain('<ts>');
+    expect(a).toMatch(/^sig3:[a-f0-9]{64}$/);
+    // Shared >500-char prefix, different suffix: sig3 MUST differ.
+    const prefix = 'x'.repeat(600);
+    const left = diagnosticFingerprint(prefix + 'FAIL-A', '/ws');
+    const right = diagnosticFingerprint(prefix + 'FAIL-B', '/ws');
+    expect(left).not.toBe(right);
   });
 
   it('redacts secret patterns from output (§102)', () => {
@@ -292,6 +318,53 @@ describe('deterministic verifier', () => {
     );
     expect(findTestIdentity(dotnet as never, 'RejectsExpired')?.status).toBe('passed');
     expect(parseTestOutput('some unstructured log line')).toBeUndefined();
+  });
+
+  it('rejects generic substrings but honors qualified-name boundaries (§35)', () => {
+    const parsed = {
+      framework: 'vitest',
+      tests: [
+        { name: 'auth', status: 'failed' },
+        { name: 'user login with invalid password', status: 'failed' },
+        { name: 'authtests.rejectsexpiredtoken', status: 'failed' },
+      ],
+    } as never;
+    // Prefix/generic containment must NOT match.
+    expect(findTestIdentity(parsed, 'auth rejects expired token')).toBeUndefined();
+    expect(findTestIdentity(parsed, 'user login')).toBeUndefined();
+    // Dot-boundary suffix MAY match.
+    expect(findTestIdentity(parsed, 'rejectsexpiredtoken')?.status).toBe('failed');
+    // Exact match always works.
+    expect(findTestIdentity(parsed, 'auth')?.status).toBe('failed');
+  });
+
+  it('resolves contained working directories without escaping (§39)', async () => {
+    const { mkdtemp, mkdir, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const root = await mkdtemp(join(tmpdir(), 'sentry-cwd-'));
+    await mkdir(join(root, 'frontend'), { recursive: true });
+    const { stat } = await import('node:fs/promises');
+    const ctx = {
+      workspaceRoot: root,
+      fs: {
+        stat: async (path: string) => {
+          const s = await stat(path);
+          return { isFile: s.isFile(), isDirectory: s.isDirectory() };
+        },
+      },
+    } as unknown as StepExecutionContext;
+    const { resolveContainedCwd } = await import('../src/index.js');
+    try {
+      expect(await resolveContainedCwd(ctx, '.')).toBe(root);
+      expect(await resolveContainedCwd(ctx, 'frontend')).toBe(join(root, 'frontend'));
+      expect(await resolveContainedCwd(ctx, '..')).toBeUndefined();
+      expect(await resolveContainedCwd(ctx, '/etc')).toBeUndefined();
+      expect(await resolveContainedCwd(ctx, 'frontend/../../etc')).toBeUndefined();
+      expect(await resolveContainedCwd(ctx, 'missing')).toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it('refuses shell syntax without a shell and resolves tools by preflight (§8, §12)', async () => {
@@ -395,7 +468,7 @@ describe('deterministic verifier', () => {
       }) as unknown as VerificationRecipeStep;
     const matched = await executeReplay(step({ command: 'pnpm test auth', exitCode: '1' }), ctx);
     expect(matched.outcome).toBe('matched');
-    expect(matched.diagnosticFingerprint).toMatch(/^sig2:/);
+    expect(matched.diagnosticFingerprint).toMatch(/^sig3:[a-f0-9]{64}$/);
     const mismatched = await executeReplay(step({ command: 'pnpm test auth', exitCode: '0' }), ctx);
     expect(mismatched.outcome).toBe('mismatched');
     const unknownHead = await executeReplay(step({ command: 'cat /etc/passwd' }), ctx);

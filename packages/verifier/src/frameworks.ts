@@ -149,9 +149,10 @@ export function parseTestOutput(text: string): ParsedTestResult | undefined {
 }
 
 /** Strict identity: exact normalized match, or a qualified-name
- *  suffix match ONLY at a dot boundary ("ns.class.test" matches
- *  "test", never "auth" matching "auth rejects expired token").
- *  No generic substring matching in either direction. */
+ *  suffix match ONLY at an identifier boundary — dot (dotnet/vitest
+ *  suites), double-colon or slash (pytest node IDs). "ns.class.test"
+ *  matches "test"; "auth" NEVER matches "auth rejects expired
+ *  token". No generic substring matching in either direction. */
 export function findTestIdentity(
   parsed: ParsedTestResult,
   expectedName: string,
@@ -162,8 +163,10 @@ export function findTestIdentity(
     if (test.name === wanted) return true;
     const longer = test.name.length >= wanted.length ? test.name : wanted;
     const shorter = test.name.length >= wanted.length ? wanted : test.name;
-    // Suffix rule: longer must END with "." + shorter at an
-    // identifier boundary (framework qualified names).
-    return longer.endsWith('.' + shorter);
+    return (
+      longer.endsWith('.' + shorter) ||
+      longer.endsWith('::' + shorter) ||
+      longer.endsWith('/' + shorter)
+    );
   });
 }

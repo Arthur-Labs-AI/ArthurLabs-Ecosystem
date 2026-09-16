@@ -68,6 +68,7 @@ export {
   executeReplay,
   contentHashOf,
   prepareDisposableHome,
+  resolveContainedCwd,
   resolveExecutable,
   splitArgv,
   type RunCommandInput,
