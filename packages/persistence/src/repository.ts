@@ -40,8 +40,18 @@ import { RuntimePersistenceError } from './errors.js';
 import {
   FindingClusterSchema,
   MergeResultSchema,
+  VerificationAssertionSchema,
+  VerificationObservationSchema,
+  VerificationRecipeStepSchema,
+  VerificationRunAttemptSchema,
+  VerificationRunSchema,
   type FindingCluster,
   type MergeResult,
+  type VerificationAssertion,
+  type VerificationObservation,
+  type VerificationRecipeStep,
+  type VerificationRun,
+  type VerificationRunAttempt,
 } from '@qa/schemas';
 
 interface Parser<T> {
@@ -613,6 +623,147 @@ export class SentryRepository {
         .prepare('SELECT payload FROM finding_clusters WHERE merge_result_id=? ORDER BY id')
         .all(mergeResultId) as unknown as PayloadRow[],
       'FindingCluster',
+    );
+  }
+
+  /** Verification persistence: runs/attempts upsert by id (incremental
+   *  durability); steps/observations/assertions are insert-only per
+   *  attempt. Completed attempts are never updated — finalization
+   *  writes the completed payload once via saveVerificationAttempt.
+   *  Status transitions go through saveVerificationRun/saveStepState. */
+  saveVerificationRun(value: VerificationRun): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO verification_runs(id,merge_result_id,qa_run_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload',
+      )
+      .run(value.id, value.mergeResultId, value.qaRunId, encode(VerificationRunSchema, value));
+  }
+
+  getVerificationRun(id: string): VerificationRun | undefined {
+    return decode(
+      VerificationRunSchema,
+      this.database.connection.prepare('SELECT payload FROM verification_runs WHERE id=?').get(
+        id,
+      ) as PayloadRow | undefined,
+      'VerificationRun ' + id,
+    );
+  }
+
+  listVerificationRuns(mergeResultId: string): VerificationRun[] {
+    return decodeMany(
+      VerificationRunSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM verification_runs WHERE merge_result_id=? ORDER BY id')
+        .all(mergeResultId) as unknown as PayloadRow[],
+      'VerificationRun',
+    );
+  }
+
+  saveVerificationAttempt(value: VerificationRunAttempt): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO verification_attempts(id,verification_run_id,finding_cluster_id,status,payload) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET status=excluded.status,payload=excluded.payload',
+      )
+      .run(
+        value.id,
+        value.verificationRunId,
+        value.findingClusterId,
+        value.status,
+        encode(VerificationRunAttemptSchema, value),
+      );
+  }
+
+  getVerificationAttempt(id: string): VerificationRunAttempt | undefined {
+    return decode(
+      VerificationRunAttemptSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM verification_attempts WHERE id=?')
+        .get(id) as PayloadRow | undefined,
+      'VerificationAttempt ' + id,
+    );
+  }
+
+  listVerificationAttempts(verificationRunId: string): VerificationRunAttempt[] {
+    return decodeMany(
+      VerificationRunAttemptSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM verification_attempts WHERE verification_run_id=? ORDER BY id')
+        .all(verificationRunId) as unknown as PayloadRow[],
+      'VerificationRunAttempt',
+    );
+  }
+
+  saveVerificationStep(attemptId: string, value: VerificationRecipeStep): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO verification_steps(id,verification_attempt_id,type,status,payload) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET type=excluded.type,status=excluded.status,payload=excluded.payload',
+      )
+      .run(
+        value.id,
+        attemptId,
+        value.type,
+        value.status,
+        encode(VerificationRecipeStepSchema, value),
+      );
+  }
+
+  listVerificationSteps(attemptId: string): VerificationRecipeStep[] {
+    return decodeMany(
+      VerificationRecipeStepSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM verification_steps WHERE verification_attempt_id=? ORDER BY id')
+        .all(attemptId) as unknown as PayloadRow[],
+      'VerificationStep',
+    );
+  }
+
+  saveVerificationObservation(attemptId: string, value: VerificationObservation): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO verification_observations(id,verification_attempt_id,step_id,payload) VALUES (?,?,?,?) ON CONFLICT(id) DO NOTHING',
+      )
+      .run(value.id, attemptId, value.stepId, encode(VerificationObservationSchema, value));
+  }
+
+  listVerificationObservations(attemptId: string): VerificationObservation[] {
+    return decodeMany(
+      VerificationObservationSchema,
+      this.database.connection
+        .prepare(
+          'SELECT payload FROM verification_observations WHERE verification_attempt_id=? ORDER BY id',
+        )
+        .all(attemptId) as unknown as PayloadRow[],
+      'VerificationObservation',
+    );
+  }
+
+  saveVerificationAssertion(attemptId: string, value: VerificationAssertion): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO verification_assertions(verification_attempt_id,subject,payload) VALUES (?,?,?) ON CONFLICT(verification_attempt_id,subject) DO UPDATE SET payload=excluded.payload',
+      )
+      .run(attemptId, value.subject, encode(VerificationAssertionSchema, value));
+  }
+
+  listVerificationAssertions(attemptId: string): VerificationAssertion[] {
+    return decodeMany(
+      VerificationAssertionSchema,
+      this.database.connection
+        .prepare(
+          'SELECT payload FROM verification_assertions WHERE verification_attempt_id=? ORDER BY subject',
+        )
+        .all(attemptId) as unknown as PayloadRow[],
+      'VerificationAssertion',
+    );
+  }
+
+  *iterateVerificationAttempts(verificationRunId: string): Iterable<VerificationRunAttempt> {
+    yield* decodeRows(
+      VerificationRunAttemptSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM verification_attempts WHERE verification_run_id=? ORDER BY id')
+        .iterate(verificationRunId) as Iterable<PayloadRow>,
+      'VerificationRunAttempt',
     );
   }
 

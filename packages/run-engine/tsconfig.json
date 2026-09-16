@@ -8,6 +8,8 @@
     { "path": "../domain" },
     { "path": "../harness-protocol" },
     { "path": "../merger" },
+    { "path": "../verifier" },
+    { "path": "../evidence-pipeline" },
     { "path": "../persistence" },
     { "path": "../project-manager" },
     { "path": "../snapshot-engine" },

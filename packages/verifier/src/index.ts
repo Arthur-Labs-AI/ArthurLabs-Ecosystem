@@ -1,3 +1,4 @@
+export { redactSecrets } from './redact.js';
 export {
   VERIFIER_VERSION,
   VERIFICATION_RECIPE_VERSION,

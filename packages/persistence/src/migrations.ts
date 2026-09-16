@@ -118,4 +118,22 @@ WHEN NEW.qa_run_id IS NOT OLD.qa_run_id OR NEW.merge_result_id IS NOT OLD.merge_
 BEGIN SELECT RAISE(ABORT,'ENTITY_OWNERSHIP_IMMUTABLE'); END;
 `,
   },
+  {
+    version: 4,
+    name: 'verification_runs',
+    sql: `
+CREATE TABLE verification_runs (id TEXT PRIMARY KEY, merge_result_id TEXT NOT NULL REFERENCES merge_results(id) ON DELETE CASCADE, qa_run_id TEXT NOT NULL REFERENCES qa_runs(id) ON DELETE CASCADE, payload TEXT NOT NULL) STRICT;
+CREATE INDEX verification_runs_merge_idx ON verification_runs(merge_result_id);
+CREATE TABLE verification_attempts (id TEXT PRIMARY KEY, verification_run_id TEXT NOT NULL REFERENCES verification_runs(id) ON DELETE CASCADE, finding_cluster_id TEXT NOT NULL REFERENCES finding_clusters(id) ON DELETE CASCADE, status TEXT NOT NULL, payload TEXT NOT NULL) STRICT;
+CREATE INDEX verification_attempts_run_idx ON verification_attempts(verification_run_id);
+CREATE TABLE verification_steps (id TEXT PRIMARY KEY, verification_attempt_id TEXT NOT NULL REFERENCES verification_attempts(id) ON DELETE CASCADE, type TEXT NOT NULL, status TEXT NOT NULL, payload TEXT NOT NULL) STRICT;
+CREATE INDEX verification_steps_attempt_idx ON verification_steps(verification_attempt_id);
+CREATE TABLE verification_observations (id TEXT PRIMARY KEY, verification_attempt_id TEXT NOT NULL REFERENCES verification_attempts(id) ON DELETE CASCADE, step_id TEXT NOT NULL REFERENCES verification_steps(id) ON DELETE CASCADE, payload TEXT NOT NULL) STRICT;
+CREATE INDEX verification_observations_attempt_idx ON verification_observations(verification_attempt_id);
+CREATE TABLE verification_assertions (verification_attempt_id TEXT NOT NULL REFERENCES verification_attempts(id) ON DELETE CASCADE, subject TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY (verification_attempt_id,subject)) STRICT;
+CREATE TRIGGER verification_attempts_owner_update BEFORE UPDATE ON verification_attempts
+WHEN NEW.verification_run_id IS NOT OLD.verification_run_id OR NEW.finding_cluster_id IS NOT OLD.finding_cluster_id
+BEGIN SELECT RAISE(ABORT,'ENTITY_OWNERSHIP_IMMUTABLE'); END;
+`,
+  },
 ] as const;
