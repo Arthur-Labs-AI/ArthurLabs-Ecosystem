@@ -108,7 +108,7 @@ function parseDotnet(text: string): ParsedTestResult | undefined {
   let passedCount: number | undefined;
   for (const line of text.split('\n')) {
     const trimmed = line.trim();
-    const result = /^(Passed|Failed|Skipped)\s+([^\[]+?)(?:\s*\[.*?\])?\s*$/.exec(trimmed);
+    const result = /^(Passed|Failed|Skipped)\s+([^[]+?)(?:\s*\[.*?\])?\s*$/.exec(trimmed);
     if (result !== null) {
       const status = result[1] as string;
       tests.push({

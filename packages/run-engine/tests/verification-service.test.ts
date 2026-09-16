@@ -88,22 +88,46 @@ describe('verification service', () => {
     f.database.close();
   }, 120000);
 
-  it('refuses wrong-state verification as inconclusive without verifying (§95)', async () => {
+  it('verifies old snapshots from retained bytes after project update (§42)', async () => {
     const f = await simulatedFixture();
-    // Mutate the managed copy past the snapshot revision (Phase 7 shape).
+    // Advance the managed copy past the snapshot revision: retained
+    // revision material must still serve the old snapshot exactly.
     await writeFile(join(f.source, 'src', 'b.ts'), 'export const added = 2;\n');
     await f.manager.updateProjectCopy(f.projectId);
     const { run, attempts } = await verifyMerge(f.repository, f.dataRoot, f.merge.id, {
       commandTimeoutMs: 5000,
     });
+    expect(attempts.length).toBe(f.merge.clusterCount);
+    for (const attempt of attempts) {
+      expect(attempt.status).toBe('completed');
+      expect(attempt.workspaceProvenance?.baselineMatch).toBe(true);
+    }
+    expect(['completed', 'partial'].includes(run.status)).toBe(true);
+    f.database.close();
+  }, 120000);
+
+  it('refuses verification without retained material as inconclusive (§43-44)', async () => {
+    const f = await simulatedFixture();
+    // Simulate a pre-retention revision: remove its material bytes.
+    // The verifier must refuse wrong-state verification honestly.
+    const qaRun = f.repository.getRun(f.runId);
+    const snapshot = f.repository.getSnapshot(qaRun?.snapshotId as never);
+    const { revisionMaterialPath } = await import('@qa/project-manager');
+    const { rm } = await import('node:fs/promises');
+    await rm(
+      revisionMaterialPath(f.dataRoot, f.projectId as never, snapshot?.projectRevisionId as string),
+      { recursive: true, force: true },
+    );
+    const { attempts } = await verifyMerge(f.repository, f.dataRoot, f.merge.id, {
+      commandTimeoutMs: 5000,
+    });
     expect(attempts.length).toBeGreaterThan(0);
     for (const attempt of attempts) {
       expect(attempt.outcome).toBe('inconclusive');
-      expect(attempt.limitations.some((limitation) => /drift|revision/i.test(limitation))).toBe(
-        true,
-      );
+      expect(
+        attempt.limitations.some((limitation) => /retained material|revision/i.test(limitation)),
+      ).toBe(true);
     }
-    expect(['completed', 'partial'].includes(run.status)).toBe(true);
     f.database.close();
   }, 120000);
 

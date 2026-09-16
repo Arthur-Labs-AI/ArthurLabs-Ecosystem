@@ -19,7 +19,6 @@ import {
 import {
   copyTree,
   FilesystemArtifactStore,
-  projectDataPaths,
   resolveInside,
   type SentryRepository,
 } from '@qa/persistence';
@@ -63,12 +62,8 @@ export async function recoverVerifications(
     // Unowned runs (no lease binding, e.g. tests) are left alone:
     // only stale-owned rows are recoverable crash evidence.
     if (owner === undefined) continue;
-    let completedCount = 0;
     for (const attempt of repository.listVerificationAttempts(run.id)) {
-      if (attempt.status === 'completed') {
-        completedCount += 1;
-        continue;
-      }
+      if (attempt.status === 'completed') continue;
       if (attempt.status === 'failed' || attempt.status === 'cancelled') continue;
       const interruptedSteps = attempt.steps.map((step) =>
         step.status === 'running'

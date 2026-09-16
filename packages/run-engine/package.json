@@ -27,12 +27,6 @@
     "@qa/schemas": "workspace:*",
     "@qa/shared": "workspace:*",
     "@qa/snapshot-engine": "workspace:*",
-    "@qa/workspace-factory": "workspace:*",
-    "@qa/persistence": "workspace:*",
-    "@qa/project-manager": "workspace:*",
-    "@qa/schemas": "workspace:*",
-    "@qa/shared": "workspace:*",
-    "@qa/snapshot-engine": "workspace:*",
     "@qa/workspace-factory": "workspace:*"
   },
   "devDependencies": {

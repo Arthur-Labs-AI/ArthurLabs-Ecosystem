@@ -67,7 +67,7 @@ export function diagnosticFingerprint(output: string, workspaceRoot: string): st
   text = text.replace(/(\S*tmp\S*?)([0-9A-Za-z]{6,})/g, '$1<rand>');
   // Path reduction: keep last two segments of absolute-looking tokens.
   text = text.replace(
-    /(^|[\s"'(\[])(\/(?:[^\s"')\]]+\/)+[^\s"')\]]+|[A-Za-z]:[\\/][^\s"')\]]+)/g,
+    /(^|[\s"'([])(\/(?:[^\s"')\]]+\/)+[^\s"')\]]+|[A-Za-z]:[\\/][^\s"')\]]+)/g,
     (_match, prefix: string, _path: string) => {
       const segments = _match
         .trim()
