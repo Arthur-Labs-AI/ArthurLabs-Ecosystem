@@ -56,6 +56,7 @@ export function hasUnsafeTarget(command: string): boolean {
  *  escapes, temp prefixes, whitespace). Semantic text is preserved.
  *  Returns a bounded fingerprint for audit, never a full log. */
 export function diagnosticFingerprint(output: string, workspaceRoot: string): string {
+  // eslint-disable-next-line no-control-regex -- intentional ANSI escape stripping for signatures.
   const noAnsi = output.replace(/\u001b\[[0-9;]*m/g, '');
   const rooted = workspaceRoot.replace(/\\/g, '/');
   let text = noAnsi.split(rooted).join('<ws>');

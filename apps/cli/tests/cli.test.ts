@@ -360,9 +360,10 @@ describe('qa cli', () => {
     const deleteResponse = machine(deleted, 'project.delete');
     expect(deleteResponse.ok && deleteResponse.data).toMatchObject({ projectId, deleted: true });
     // Test-only budget: this integration test launches many sequential Node
-    // subprocesses, which is slow on virtualized/9P storage. Production
-    // timeouts are unchanged and assertions are not weakened.
-  }, 60_000);
+    // subprocesses, which is slow on virtualized/9P storage (observed
+    // 76s locally vs 60s budget; green in CI). Production timeouts are
+    // unchanged and assertions are not weakened.
+  }, 120_000);
 
   it('merges a simulated run deterministically with stable exit semantics', async () => {
     const f = await fixture();

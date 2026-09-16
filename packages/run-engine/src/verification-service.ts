@@ -26,7 +26,6 @@ import {
   createVerificationAttemptId,
   createVerificationObservationId,
   createVerificationRunId,
-  createVerificationStepId,
   nowIsoTimestamp,
   type IsoTimestamp,
   type QARunId,

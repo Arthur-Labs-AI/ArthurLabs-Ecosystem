@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import { stat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import type { VerificationRecipeStep, VerificationStepOutcome } from '@qa/schemas';
