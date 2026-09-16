@@ -16,10 +16,14 @@ import {
 } from './primitives.js';
 
 /** Verifier/algorithm versions: bumped when behavior changes so
- *  historical VerificationResults are never silently reinterpreted. */
-export const VERIFIER_VERSION = 1 as const;
-export const VERIFICATION_RECIPE_VERSION = 1 as const;
-export const VERIFICATION_SIGNATURE_VERSION = 1 as const;
+ *  historical VerificationResults are never silently reinterpreted.
+ *  v2 (Phase 6.1): shell-less replay execution, preflight tool
+ *  resolution, identity-required reproduction matching, signature v2
+ *  (original-evidence comparison), redact-before-persist, contentHash
+ *  validation. v1 rows remain readable via the unions below. */
+export const VERIFIER_VERSION = 2 as const;
+export const VERIFICATION_RECIPE_VERSION = 2 as const;
+export const VERIFICATION_SIGNATURE_VERSION = 2 as const;
 
 export const VerificationRunStatusSchema = z.enum([
   'queued',
@@ -115,10 +119,14 @@ const VerificationRunBase = z
     qaRunId: QARunIdSchema,
     projectSnapshotId: SnapshotIdSchema,
     projectContextSnapshotId: ProjectContextSnapshotIdSchema.optional(),
-    verifierVersion: z.literal(VERIFIER_VERSION),
-    recipeVersion: z.literal(VERIFICATION_RECIPE_VERSION),
-    signatureVersion: z.literal(VERIFICATION_SIGNATURE_VERSION),
+    // Readable-history unions: v1 rows decode, new rows stamp v2.
+    verifierVersion: z.union([z.literal(1), z.literal(VERIFIER_VERSION)]),
+    recipeVersion: z.union([z.literal(1), z.literal(VERIFICATION_RECIPE_VERSION)]),
+    signatureVersion: z.union([z.literal(1), z.literal(VERIFICATION_SIGNATURE_VERSION)]),
     status: VerificationRunStatusSchema,
+    // Lease binding for crash recovery (§64-65): the owning runtime
+    // instance; a sweeper marks stale-owned running rows interrupted.
+    runtimeInstanceId: z.string().min(1).max(200).optional(),
     requestedClusterIds: z.array(z.string().regex(/^cluster_[0-9A-HJKMNP-TV-Z]{26}$/)),
     environmentFingerprint: VerificationEnvironmentFingerprintSchema.optional(),
     warnings: z.array(VerificationWarningSchema).default([]),
@@ -168,6 +176,9 @@ export const VerificationRecipeStepSchema = z
     expected: z.record(z.string(), z.string()).default({}),
     nonExecutableInstructions: z.array(z.string().min(1).max(5000)).default([]),
     status: VerificationAttemptStatusSchema,
+    // Internal match strength (§21): strong matches alone are decisive.
+    // Optional + additive; absent means unassessed (never weak by default).
+    matchStrength: z.enum(['strong_match', 'weak_match']).optional(),
     outcome: VerificationStepOutcomeSchema.optional(),
     observationIds: z.array(VerificationObservationIdSchema).default([]),
     startedAt: IsoTimestampSchema.optional(),
@@ -183,7 +194,7 @@ const VerificationRunAttemptBase = z
     verificationRunId: VerificationRunIdSchema,
     findingClusterId: z.string().regex(/^cluster_[0-9A-HJKMNP-TV-Z]{26}$/),
     status: VerificationAttemptStatusSchema,
-    recipeVersion: z.literal(VERIFICATION_RECIPE_VERSION),
+    recipeVersion: z.union([z.literal(1), z.literal(VERIFICATION_RECIPE_VERSION)]),
     recipeDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
     outcome: VerificationOutcomeSchema.optional(),
     steps: z.array(VerificationRecipeStepSchema),

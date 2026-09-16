@@ -28,6 +28,10 @@ export interface RecipeInput {
   readonly findings: readonly Finding[];
   readonly evidenceById: ReadonlyMap<string, Evidence>;
   readonly operationsById: ReadonlyMap<string, CanonicalOperation>;
+  /** Original-output signatures by evidence ID (§22): sig2 fingerprints
+   *  of canonical stdout/stderr artifacts, resolved by the service.
+   *  Absent → no signature comparison is pretended. */
+  readonly originalSignatures?: ReadonlyMap<string, string>;
 }
 
 export interface BuiltRecipe {
@@ -303,19 +307,33 @@ export function buildRecipe(input: RecipeInput): BuiltRecipe {
     const first = ordered[0] as DraftStep;
     first.nonExecutableInstructions = [...instructions].sort();
   }
-  const steps: VerificationRecipeStep[] = ordered.map((step) => ({
-    id: createVerificationStepId(),
-    type: step.type,
-    recipeFingerprint: step.fingerprint,
-    sourceEvidenceIds: [...step.evidenceIds].sort() as VerificationRecipeStep['sourceEvidenceIds'],
-    sourceOperationIds: [
-      ...step.operationIds,
-    ].sort() as VerificationRecipeStep['sourceOperationIds'],
-    expected: step.expected,
-    nonExecutableInstructions: step.nonExecutableInstructions,
-    status: 'queued' as const,
-    observationIds: [],
-  }));
+  const steps: VerificationRecipeStep[] = ordered.map((step) => {
+    // Original-output signature (§22): resolved by the service from
+    // canonical artifacts, attached when available. Absent → no
+    // signature comparison is pretended downstream.
+    const originalSignature =
+      (step.type === 'command_replay' || step.type === 'test_replay') && step.evidenceIds.length > 0
+        ? input.originalSignatures?.get(step.evidenceIds[0] as string)
+        : undefined;
+    return {
+      id: createVerificationStepId(),
+      type: step.type,
+      recipeFingerprint: step.fingerprint,
+      sourceEvidenceIds: [
+        ...step.evidenceIds,
+      ].sort() as VerificationRecipeStep['sourceEvidenceIds'],
+      sourceOperationIds: [
+        ...step.operationIds,
+      ].sort() as VerificationRecipeStep['sourceOperationIds'],
+      expected: {
+        ...step.expected,
+        ...(originalSignature === undefined ? {} : { originalSignature }),
+      },
+      nonExecutableInstructions: step.nonExecutableInstructions,
+      status: 'queued' as const,
+      observationIds: [],
+    };
+  });
   const digest = createHash('sha256')
     .update(
       JSON.stringify({

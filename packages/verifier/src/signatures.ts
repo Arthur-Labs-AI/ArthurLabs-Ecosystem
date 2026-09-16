@@ -51,17 +51,33 @@ export function hasUnsafeTarget(command: string): boolean {
   return false;
 }
 
-/** Deterministic diagnostic normalization (signature v1): strip clearly
- *  unstable information only (workspace root, ISO timestamps, ANSI
- *  escapes, temp prefixes, whitespace). Semantic text is preserved.
- *  Returns a bounded fingerprint for audit, never a full log. */
+/** Deterministic diagnostic normalization (signature v2): strip clearly
+ *  unstable information only. v2 adds path reduction: absolute path
+ *  tokens collapse to their last two segments, so original output
+ *  (unknown agent workspace root) compares with fresh output
+ *  (known verifier root) on project-relative structure. Semantic text
+ *  is preserved. Returns a bounded fingerprint for audit, never a
+ *  full log. */
 export function diagnosticFingerprint(output: string, workspaceRoot: string): string {
   // eslint-disable-next-line no-control-regex -- intentional ANSI escape stripping for signatures.
   const noAnsi = output.replace(/\u001b\[[0-9;]*m/g, '');
   const rooted = workspaceRoot.replace(/\\/g, '/');
-  let text = noAnsi.split(rooted).join('<ws>');
+  let text = rooted.length > 0 ? noAnsi.split(rooted).join('<ws>') : noAnsi;
   text = text.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z/g, '<ts>');
   text = text.replace(/(\S*tmp\S*?)([0-9A-Za-z]{6,})/g, '$1<rand>');
+  // Path reduction: keep last two segments of absolute-looking tokens.
+  text = text.replace(
+    /(^|[\s"'(\[])(\/(?:[^\s"')\]]+\/)+[^\s"')\]]+|[A-Za-z]:[\\/][^\s"')\]]+)/g,
+    (_match, prefix: string, _path: string) => {
+      const segments = _match
+        .trim()
+        .replace(/^[A-Za-z]:/, '')
+        .split(/[\\/]/)
+        .filter(Boolean);
+      const tail = segments.slice(-2).join('/');
+      return prefix + (tail.length > 0 ? tail : '<path>');
+    },
+  );
   text = text.replace(/\s+/g, ' ').trim();
   return 'sig' + VERIFICATION_SIGNATURE_VERSION + ':' + text.slice(0, 500);
 }

@@ -6,9 +6,13 @@ import {
   diagnosticFingerprint,
   executeReplay,
   executeSourceIntegrity,
+  findTestIdentity,
   hasUnsafeTarget,
   isReplayableCommand,
+  parseTestOutput,
   redactSecrets,
+  resolveExecutable,
+  splitArgv,
   type CanonicalOperation,
   type StepExecutionContext,
 } from '../src/index.js';
@@ -106,6 +110,7 @@ describe('deterministic verifier', () => {
       ...steps[0],
       status: 'completed',
       outcome: 'matched',
+      matchStrength: 'strong_match',
       observationIds: ['vobs_01K7777777777777777777A8W1'],
     };
     const { outcome, assertions } = classifyAttempt([done] as VerificationRecipeStep[]);
@@ -267,6 +272,95 @@ describe('deterministic verifier', () => {
     expect(escape.outcome).toBe('unsupported');
   });
 
+  it('parses framework output with counts, not word presence (§18, §53)', () => {
+    const vitest = parseTestOutput(
+      '✓ auth works (12ms)\n× login fails (3ms)\nTests  1 failed | 1 passed (2)',
+    );
+    expect(vitest?.tests).toHaveLength(2);
+    expect(findTestIdentity(vitest as never, 'login fails')?.status).toBe('failed');
+    expect(findTestIdentity(vitest as never, 'missing test')).toBeUndefined();
+    // "Failed: 0, Passed: 24" reads as passed, never failed.
+    const clean = parseTestOutput('Tests  Failed: 0, Passed: 24');
+    expect(clean?.failedCount).toBe(0);
+    expect(clean?.passedCount).toBe(24);
+    const pytest = parseTestOutput(
+      'test_auth.py::test_expired PASSED\ntest_auth.py::test_valid FAILED',
+    );
+    expect(findTestIdentity(pytest as never, 'test_expired')?.status).toBe('passed');
+    const dotnet = parseTestOutput(
+      'Passed AuthTests.RejectsExpired [12 ms]\nFailed AuthTests.AcceptsValid [3 ms]',
+    );
+    expect(findTestIdentity(dotnet as never, 'RejectsExpired')?.status).toBe('passed');
+    expect(parseTestOutput('some unstructured log line')).toBeUndefined();
+  });
+
+  it('refuses shell syntax without a shell and resolves tools by preflight (§8, §12)', async () => {
+    expect(splitArgv('pnpm test auth')).toEqual(['pnpm', 'test', 'auth']);
+    expect(splitArgv('pnpm test && cat "$HOME/.ssh/id_rsa"')).toBeUndefined();
+    expect(splitArgv('node -e "console.log(1)"')).toEqual(['node', '-e', 'console.log(1)']);
+    // Preflight against an empty controlled PATH: pytest unresolvable.
+    expect(await resolveExecutable('pytest', '/nonexistent-empty-dir')).toBeUndefined();
+    expect(await resolveExecutable('node', process.env['PATH'])).toContain('node');
+  });
+
+  it('requires test identity for strong matches (§15, §17)', async () => {
+    const ctx: StepExecutionContext = {
+      workspaceRoot: '/ws',
+      fs: {
+        stat: async () => ({ isFile: true, isDirectory: false }),
+        readLines: async () => ({ present: true }),
+      },
+      runner: {
+        // Different test fails (Test B), same exit: must NOT reproduce Test A.
+        run: async () => ({
+          exitCode: 1,
+          stdout: '× database connection failed (5ms)\nTests  1 failed | 0 passed (1)',
+          stderr: '',
+          timedOut: false,
+          durationMs: 5,
+        }),
+      },
+      operationsById: new Map(),
+      commandTimeoutMs: 1000,
+      redact: (value: string) => value,
+    };
+    const step = (expected: Record<string, string>): VerificationRecipeStep =>
+      ({
+        id: 'vstep_01K7777777777777777777A8W1',
+        type: 'test_replay',
+        recipeFingerprint: 'sha256:' + 'd'.repeat(64),
+        sourceEvidenceIds: [],
+        sourceOperationIds: [],
+        expected,
+        nonExecutableInstructions: [],
+        status: 'queued',
+        observationIds: [],
+      }) as unknown as VerificationRecipeStep;
+    const weak = await executeReplay(
+      step({
+        command: 'pnpm test auth',
+        exitCode: '1',
+        testName: 'auth rejects expired token',
+        testStatus: 'failed',
+      }),
+      ctx,
+    );
+    // Exit agrees but the expected test identity is absent: weak at most.
+    expect(weak.outcome).toBe('matched');
+    expect(weak.matchStrength).toBe('weak_match');
+    expect(
+      classifyAttempt([
+        {
+          ...step({}),
+          status: 'completed',
+          outcome: weak.outcome,
+          matchStrength: weak.matchStrength,
+          observationIds: ['vobs_01K7777777777777777777A8W1'],
+        },
+      ] as VerificationRecipeStep[]).outcome,
+    ).not.toBe('reproduced');
+  });
+
   it('replays commands with exit-code matching (§40)', async () => {
     const ctx: StepExecutionContext = {
       workspaceRoot: '/ws',
@@ -301,7 +395,7 @@ describe('deterministic verifier', () => {
       }) as unknown as VerificationRecipeStep;
     const matched = await executeReplay(step({ command: 'pnpm test auth', exitCode: '1' }), ctx);
     expect(matched.outcome).toBe('matched');
-    expect(matched.diagnosticFingerprint).toMatch(/^sig1:/);
+    expect(matched.diagnosticFingerprint).toMatch(/^sig2:/);
     const mismatched = await executeReplay(step({ command: 'pnpm test auth', exitCode: '0' }), ctx);
     expect(mismatched.outcome).toBe('mismatched');
     const unknownHead = await executeReplay(step({ command: 'cat /etc/passwd' }), ctx);

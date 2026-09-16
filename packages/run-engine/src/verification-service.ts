@@ -1,11 +1,13 @@
 import { mkdir, readFile, rm, stat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import {
   buildRecipe,
   classifyAttempt,
+  diagnosticFingerprint,
   executeReplay,
   executeSourceIntegrity,
+  prepareDisposableHome,
   redactSecrets,
   VerificationCommandRunner,
   VERIFICATION_RECIPE_VERSION,
@@ -28,6 +30,7 @@ import {
   createVerificationRunId,
   nowIsoTimestamp,
   type IsoTimestamp,
+  type ProjectId,
   type QARunId,
 } from '@qa/shared';
 import type {
@@ -59,9 +62,9 @@ export interface VerifyRunOptions {
   readonly clusterIds?: readonly string[];
   readonly commandTimeoutMs?: number;
   readonly now?: IsoTimestamp;
-  /** Test-only seam: override the command runner. Production always
-   *  uses the contained VerificationCommandRunner. */
-  readonly runner?: VerificationCommandRunner;
+  /** Test-only seam: override per-attempt runner construction.
+   *  Production always uses the contained VerificationCommandRunner. */
+  readonly createRunner?: (homeDir: string) => VerificationCommandRunner;
 }
 
 const DEFAULT_COMMAND_TIMEOUT_MS = 120_000;
@@ -203,6 +206,55 @@ async function readFileBytes(path: string): Promise<Buffer> {
   return readFile(path);
 }
 
+/** Load canonical original stdout/stderr artifacts for replayable
+ *  evidence and derive versioned signatures (§22). Bounded reads;
+ *  redacted before normalization; failures yield no entry (never
+ *  fabricated, never fatal). */
+async function resolveOriginalSignatures(
+  repository: SentryRepository,
+  dataRoot: string,
+  findings: readonly Finding[],
+  evidenceById: ReadonlyMap<string, Evidence>,
+): Promise<Map<string, string>> {
+  const store = new FilesystemArtifactStore(dataRoot, repository);
+  const signatures = new Map<string, string>();
+  const evidenceIds = new Set(findings.flatMap((finding) => finding.evidenceIds));
+  for (const evidenceId of evidenceIds) {
+    const evidence = evidenceById.get(evidenceId);
+    if (evidence === undefined) continue;
+    const artifactIds =
+      evidence.type === 'command'
+        ? [evidence.command.stdoutArtifactId, evidence.command.stderrArtifactId]
+        : evidence.type === 'runtime'
+          ? [evidence.runtime.logArtifactId]
+          : evidence.type === 'test'
+            ? [evidence.test.artifactId]
+            : [];
+    let combined = '';
+    for (const artifactId of artifactIds) {
+      if (artifactId === undefined) continue;
+      const artifact = repository.getArtifact(artifactId);
+      if (artifact === undefined) continue;
+      try {
+        const stream = store.open(artifact);
+        let bytes = 0;
+        for await (const chunk of stream) {
+          if (bytes >= 65536) break;
+          combined += (chunk as Buffer).toString('utf8').slice(0, 65536 - bytes);
+          bytes += (chunk as Buffer).length;
+        }
+        stream.destroy();
+      } catch {
+        // Unreadable original artifact: no signature, no failure.
+      }
+    }
+    if (combined.length > 0) {
+      signatures.set(evidenceId, diagnosticFingerprint(redactSecrets(combined), ''));
+    }
+  }
+  return signatures;
+}
+
 async function destroyWorkspace(workspaceRoot: string): Promise<string | undefined> {
   // Remove the whole attempt directory (project copy AND its parent),
   // not just the project subtree — no empty litter remains. The path
@@ -303,7 +355,8 @@ export async function verifyMerge(
     startedAt: now,
   };
   repository.saveVerificationRun(run);
-  const runner = options.runner ?? new VerificationCommandRunner();
+  const createRunner =
+    options.createRunner ?? ((homeDir: string) => new VerificationCommandRunner(homeDir));
   const attempts: VerificationRunAttempt[] = [];
   let completedCount = 0;
   let failedCount = 0;
@@ -317,7 +370,7 @@ export async function verifyMerge(
         repository,
         dataRoot,
         snapshots,
-        runner,
+        createRunner,
         run,
         clusterId: cluster.id,
         findings: cluster.sourceFindingIds
@@ -374,7 +427,7 @@ async function verifyCluster(input: {
   readonly repository: SentryRepository;
   readonly dataRoot: string;
   readonly snapshots: SnapshotEngine;
-  readonly runner: VerificationCommandRunner;
+  readonly createRunner: (homeDir: string) => VerificationCommandRunner;
   readonly run: VerificationRun;
   readonly clusterId: string;
   readonly findings: readonly Finding[];
@@ -399,12 +452,22 @@ async function verifyCluster(input: {
     snapshotId: input.run.projectSnapshotId,
     attemptId,
   });
+  // Original-output signatures (§22): load canonical stdout/stderr
+  // artifacts per evidence, redact + normalize with the versioned
+  // algorithm. Absent artifacts simply yield no comparison downstream.
+  const originalSignatures = await resolveOriginalSignatures(
+    input.repository,
+    input.dataRoot,
+    input.findings,
+    input.evidenceById,
+  );
   const { steps, digest, warnings } = buildRecipe({
     snapshotId: input.run.projectSnapshotId,
     clusterId: input.clusterId,
     findings: input.findings,
     evidenceById: input.evidenceById,
     operationsById: input.operations,
+    originalSignatures,
   });
   const baseAttempt: VerificationRunAttempt = {
     schemaVersion: 1,
@@ -434,27 +497,108 @@ async function verifyCluster(input: {
   };
   input.repository.saveVerificationAttempt(baseAttempt);
   for (const step of baseAttempt.steps) input.repository.saveVerificationStep(attemptId, step);
+  // Ownership scope (§27-29): one runner per attempt (disposable HOME
+  // + tracked process groups). finally guarantees runner dispose and
+  // workspace removal across success, classifier failure, artifact
+  // failure, repository failure, runner failure, timeout, and
+  // unexpected exceptions.
+  const homeDir = await prepareDisposableHome(dirname(materialized.workspaceRoot));
+  const runner = input.createRunner(homeDir);
+  try {
+    return await executeAttemptSteps({
+      repository: input.repository,
+      dataRoot: input.dataRoot,
+      runner,
+      run: input.run,
+      runQaRun: qaRun,
+      operations: input.operations,
+      commandTimeoutMs: input.commandTimeoutMs,
+      attemptId,
+      clusterId: input.clusterId,
+      findings: input.findings,
+      baseAttempt,
+      materialized,
+      warnings,
+    });
+  } finally {
+    const disposeState = await runner.dispose();
+    if (disposeState !== 'clean') {
+      input.run.warnings.push({
+        code: 'VERIFIER_PROCESS_CLEANUP_FAILED',
+        message: 'Verifier process tree cleanup reported leftovers for attempt ' + attemptId,
+      });
+    }
+    const cleanupWarning = await destroyWorkspace(materialized.workspaceRoot);
+    if (cleanupWarning !== undefined) {
+      input.run.warnings.push({ code: 'VERIFIER_CLEANUP_FAILED', message: cleanupWarning });
+    }
+  }
+}
+
+async function executeAttemptSteps(input: {
+  readonly repository: SentryRepository;
+  readonly dataRoot: string;
+  readonly runner: VerificationCommandRunner;
+  readonly run: VerificationRun;
+  readonly runQaRun: { readonly projectId: ProjectId };
+  readonly operations: ReadonlyMap<string, CanonicalOperation>;
+  readonly commandTimeoutMs: number;
+  readonly attemptId: VerificationRunAttempt['id'];
+  readonly clusterId: string;
+  readonly findings: readonly Finding[];
+  readonly baseAttempt: VerificationRunAttempt;
+  readonly materialized: {
+    readonly workspaceRoot: string;
+    readonly baselineMatch: boolean;
+    readonly driftWarning?: string;
+  };
+  readonly warnings: { code: string; message: string }[];
+}): Promise<VerificationRunAttempt> {
+  const attemptId = input.attemptId;
+  const qaRun = { projectId: input.runQaRun.projectId };
+  const materialized = input.materialized;
+  const warnings = input.warnings;
+  const baseAttempt = input.baseAttempt;
   // Snapshot drift refuses wrong-state verification (§95): the recipe
   // is recorded, every replayable step stays unevaluated, outcome is
-  // inconclusive with the drift limitation. Workspace still cleaned.
+  // inconclusive with the drift limitation. The outer finally still
+  // disposes the runner and removes the workspace.
   if (!materialized.baselineMatch) {
     for (const warning of warnings) input.run.warnings.push(warning);
     const classified = classifyAttempt(baseAttempt.steps);
-    return await finalizeAttempt(input, baseAttempt, materialized.workspaceRoot, classified);
+    return await finalizeAttempt(
+      {
+        repository: input.repository,
+        dataRoot: input.dataRoot,
+        run: input.run,
+      },
+      baseAttempt,
+      materialized.workspaceRoot,
+      classified,
+    );
   }
   const fs = {
     stat: async (path: string) => {
       const stats = await stat(path);
       return { isFile: stats.isFile(), isDirectory: stats.isDirectory() };
     },
-    readLines: async (path: string, startLine?: number, endLine?: number) => {
-      const content = await readFile(path, 'utf8');
-      const lines = content.split('\n');
+    readLines: async (
+      path: string,
+      startLine: number | undefined,
+      endLine: number | undefined,
+      expectedHash: string | undefined,
+    ) => {
+      // Whole-file byte hash with the exact evidence semantics
+      // (sha256 over raw bytes, §33): excerpts never substitute.
+      const bytes = await readFileBytes(path);
+      const lines = bytes.toString('utf8').split('\n');
       if (startLine !== undefined && (startLine < 1 || startLine > lines.length + 1)) {
         return { present: false };
       }
       if (endLine !== undefined && endLine < (startLine ?? 1)) return { present: false };
-      return { present: true };
+      if (expectedHash === undefined) return { present: true };
+      const actual = 'sha256:' + createHash('sha256').update(bytes).digest('hex');
+      return { present: true, hashMatch: actual.toLowerCase() === expectedHash.toLowerCase() };
     },
   };
   const executed: ExecutedStep[] = [];
@@ -499,6 +643,9 @@ async function verifyCluster(input: {
       ...running,
       status: 'completed',
       outcome: executedStep.outcome,
+      ...(executedStep.matchStrength === undefined
+        ? {}
+        : { matchStrength: executedStep.matchStrength }),
       observationIds:
         executedStep.exitCode === undefined &&
         executedStep.diagnosticFingerprint === undefined &&
@@ -507,6 +654,12 @@ async function verifyCluster(input: {
           : [createVerificationObservationId()],
       completedAt: nowIsoTimestamp(),
     };
+    if (executedStep.warningCode !== undefined) {
+      input.run.warnings.push({
+        code: executedStep.warningCode,
+        message: executedStep.detail.slice(0, 500),
+      });
+    }
     input.repository.saveVerificationStep(attemptId, finished);
     assertionSources.push(finished);
     if (finished.observationIds.length > 0) {

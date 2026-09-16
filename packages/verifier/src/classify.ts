@@ -12,13 +12,16 @@ function isTerminal(outcome: VerificationStepOutcome | undefined): boolean {
   return outcome === 'matched' || outcome === 'mismatched';
 }
 
-/** A decisive step independently reproduces runtime behavior
- *  (command/test replay that matched with a fresh observation).
- *  Source integrity alone is NEVER decisive (§28, §89). */
+/** A decisive step independently reproduces runtime behavior:
+ *  command/test replay, outcome matched, STRONG identity (§21),
+ *  fresh observation present. Weak matches (exit-only, unconfirmed
+ *  identity) are never decisive. Source integrity alone is NEVER
+ *  decisive (§28, §89). */
 function isDecisive(step: VerificationRecipeStep): boolean {
   return (
     (step.type === 'command_replay' || step.type === 'test_replay') &&
     step.outcome === 'matched' &&
+    step.matchStrength === 'strong_match' &&
     step.observationIds.length > 0
   );
 }

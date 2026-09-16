@@ -50,14 +50,19 @@ export {
   type RecipeInput,
 } from './recipe.js';
 export { classifyAttempt, type ClassifiedAttempt } from './classify.js';
+export { findTestIdentity, parseTestOutput, type ParsedTestResult } from './frameworks.js';
 export type { VerificationStrategy } from './strategy.js';
 export {
   VerificationCommandRunner,
   executeSourceIntegrity,
   executeReplay,
   contentHashOf,
+  prepareDisposableHome,
+  resolveExecutable,
+  splitArgv,
   type RunCommandInput,
   type RunCommandResult,
+  type VerificationExecutionFailure,
   type FileSystem,
   type StepExecutionContext,
   type ExecutedStep,
