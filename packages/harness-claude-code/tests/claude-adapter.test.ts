@@ -321,11 +321,11 @@ describe('ClaudeCodeHarnessAdapter', () => {
     expect(events.filter((e) => e.type === 'command.executed')).toHaveLength(1);
   });
 
-  it('reports strict-first and reserves schema for parse-failure repair', async () => {
-    // Live inversion: schema-first burns the run budget fighting the
-    // provider validator, so strict JSON is the default and --json-schema
-    // is sent only on the repair attempt after a strict parse failure.
-    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-schema-order-'));
+  it('reports strict-only and never sends --json-schema', async () => {
+    // Live removal: the schema path never produced a successful report
+    // and killed two runs fighting the provider validator, so report
+    // turns never carry a schema — including repair attempts.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-strict-only-'));
     roots.push(root);
     const input = await request(root);
     let calls = 0;
@@ -341,7 +341,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
             calls += 1;
             if (calls <= 2) return calls === 1 ? planTurn() : investigationTurn();
             // Report attempt 1 (strict): unparseable prose. Attempt 2
-            // (repair): valid report; record schema usage per attempt.
+            // (strict repair with correction): valid report.
             schemaOnAttempt.push(options?.outputSchema !== undefined);
             if (schemaOnAttempt.length === 1) {
               return [
@@ -358,52 +358,9 @@ describe('ClaudeCodeHarnessAdapter', () => {
     const events = await collect(adapter, input);
     await adapter.dispose();
     expect(events.at(-1)?.type).toBe('run.completed');
-    // Strict first (no schema), schema only on the repair attempt.
-    expect(schemaOnAttempt).toEqual([false, true]);
-  });
-
-  it('falls back to strict JSON when the repair route rejects --json-schema', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-schema-fallback-'));
-    roots.push(root);
-    const input = await request(root);
-    let calls = 0;
-    let reports = 0;
-    const adapter = new ClaudeCodeHarnessAdapter({
-      executable: 'claude-test',
-      modelId: 'glm-5.3-flash',
-      environment: {},
-      clientFactory: async () => ({
-        sessionId: 'session-1',
-        startSession: async () => ({
-          runText: async (text: string, options?: { outputSchema?: unknown }) => {
-            calls += 1;
-            if (calls <= 2) return calls === 1 ? planTurn() : investigationTurn();
-            reports += 1;
-            // Report attempt 1 (strict): unparseable, triggering the
-            // schema-armed repair. Repair: route rejects --json-schema,
-            // so the SAME report retries strict and completes.
-            if (reports === 1) {
-              return [
-                evt('assistant', { message: { content: [{ type: 'text', text: 'prose' }] } }),
-                evt('result', { is_error: false, usage: {} }),
-              ];
-            }
-            if (options?.outputSchema !== undefined && reports === 2) {
-              throw new Error(
-                'Claude Code exited with code 2: error: unknown option --json-schema',
-              );
-            }
-            return reportTurn(validReportV2());
-          },
-        }),
-        close: async () => undefined,
-      }),
-    });
-    const events = await collect(adapter, input);
-    await adapter.dispose();
-    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(schemaOnAttempt).toEqual([false, false]);
     expect(events).toContainEqual(
-      expect.objectContaining({ type: 'warning', code: 'GLM_STRUCTURED_OUTPUT_UNSUPPORTED' }),
+      expect.objectContaining({ type: 'warning', code: 'GLM_REPORT_RETRY' }),
     );
   });
 

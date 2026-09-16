@@ -36,7 +36,6 @@ import {
   FindingSchema,
   type Finding,
   HarnessEventSchema,
-  sentryAgentReportJsonSchema,
   SentryAgentReportV2Schema,
   SentryInvestigationPlanV1Schema,
   type AgentUsage,
@@ -140,23 +139,6 @@ function parseReportAttempt(text: string, pipeline: EvidencePipelineContext): Re
 
 function messageOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
-}
-
-/** Detect a report-transport failure (spawn/CLI/route layer, no model
- *  output): the schema-armed attempt deserves one flag-free retry.
- *  Firewall denials, turn timeouts, and completed-turn results are report
- *  signals, never transport failures. */
-function isReportTransportFailure(cause: unknown): boolean {
-  if (cause instanceof ClaudeCodeHarnessError) {
-    return (
-      cause.code !== 'GLM_REPORT_TOOL_FORBIDDEN' &&
-      cause.code !== 'GLM_SUBAGENT_FORBIDDEN' &&
-      cause.code !== 'GLM_INVALID_RESULT'
-    );
-  }
-  const text = messageOf(cause);
-  if (/exceeded its .* ms budget|timed out/i.test(text)) return false;
-  return true;
 }
 
 interface BuiltReportAttempt {
@@ -818,29 +800,22 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       );
       for (const emitted of investigation.events) yield emitted;
       // STAGE 3 — reporting against the frozen ledger. Strict whole-
-      // document JSON first (the fast path: every completed GLM run
-      // succeeded this way). Provider structured output (--json-schema
-      // with the SAME ReportV2 contract) is reserved as a repair aid
-      // when strict output fails to parse — schema-first hangs the run
-      // on routes whose StructuredOutput validator fights the model
-      // (observed live: ~24min schema fight → run timeout). When the
-      // binary or route rejects the flag, the SAME report retries
-      // without it. Investigation never reruns.
+      // document JSON only. Provider structured output (--json-schema)
+      // is REMOVED from the report flow: measured live, the schema path
+      // never produced a successful report and killed two runs (~20min
+      // validator fights → run timeout), in both default and repair
+      // positions. Parse failures recycle through the correction loop
+      // (bounded report attempts); investigation never reruns.
       yield event(request.agentRunId, {
         type: 'agent.status',
         status: 'reporting',
         message: 'Claude Code is serializing the frozen investigation into a report.',
       });
-      const reportSchema = sentryAgentReportJsonSchema();
       const reportTurns: Array<{ usage?: AgentUsage }> = [];
       let result: SentryAgentReportV2 | undefined;
       let built: BuiltReportAttempt | undefined;
       let correction: string[] | undefined;
-      let schemaSupported: boolean | undefined;
       for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
-        // Strict first (fast path); schema only as a parse-failure repair
-        // aid (attempt 2+ with a correction to repair), never the default.
-        const useSchema = schemaSupported === true;
         let reporting: CollectedTurn | undefined;
         let errors: string[] | undefined;
         try {
@@ -849,7 +824,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             reportPrompt(planResult, this.observedOperations, correction),
             request.agentRunId,
             'reporting',
-            { forbidTools: true, ...(useSchema ? { jsonSchema: reportSchema } : {}) },
+            { forbidTools: true },
           );
         } catch (cause) {
           // Firewall trip: the model attempted a tool call in the
@@ -866,52 +841,13 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
                 'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
                 'Do not run commands, read files, or use any tools.',
             ];
-          } else if (useSchema && isReportTransportFailure(cause)) {
-            // Structural fallback: the schema-armed repair spawn failed at
-            // the transport/CLI layer (flag rejected, route error, spawn
-            // failure) before any model output existed. Retry the SAME
-            // report turn without --json-schema (report-only; the ledger
-            // and investigation are untouched). Timeout and completed-turn
-            // errors are real report signals, not transport failures, and
-            // propagate unchanged.
-            schemaSupported = false;
-            yield event(request.agentRunId, {
-              type: 'warning',
-              code: 'GLM_STRUCTURED_OUTPUT_UNSUPPORTED',
-              message:
-                'Claude Code rejected --json-schema; retrying the report turn with strict JSON fallback.',
-            });
-            try {
-              reporting = await this.runTurn(
-                session,
-                reportPrompt(planResult, this.observedOperations, correction),
-                request.agentRunId,
-                'reporting',
-                { forbidTools: true },
-              );
-            } catch (retryCause) {
-              if (
-                retryCause instanceof ClaudeCodeHarnessError &&
-                retryCause.code === 'GLM_REPORT_TOOL_FORBIDDEN'
-              ) {
-                errors = [
-                  boundCorrectionMessage(messageOf(retryCause)) +
-                    ' The reporting stage is tool-free: ' +
-                    'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
-                    'Do not run commands, read files, or use any tools.',
-                ];
-                reporting = undefined;
-              } else {
-                throw retryCause;
-              }
-            }
           } else {
             throw cause;
           }
         }
-        // A completed report turn (including a firewall-tripped one on
-        // the schema-fallback retry) consumed a model turn: account it.
-        // Usage events already yielded stay persisted either way.
+        // A completed report turn (including a firewall-tripped one)
+        // consumed a model turn: account it. Usage events already yielded
+        // stay persisted either way.
         if (reporting !== undefined) {
           for (const emitted of reporting.events) yield emitted;
           if (reporting.usage === undefined) reportTurns.push({});
@@ -939,11 +875,6 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         }
         correction = errors;
         if (attempt < MAX_REPORT_ATTEMPTS) {
-          // Repair aid: the strict fast path failed to parse, so the next
-          // attempt uses provider-enforced shape (unless the route already
-          // proved it unsupported). Firewall trips also arrive here; the
-          // schema changes nothing about tool discipline.
-          if (!useSchema && schemaSupported !== false) schemaSupported = true;
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'GLM_REPORT_RETRY',
