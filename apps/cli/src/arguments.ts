@@ -277,7 +277,11 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
       fail('Usage: qa verify start <merge-result-id> [--clusters a,b]');
     }
     const clusters = option(tail, '--clusters');
-    return { command: 'verify.start', mergeResultId, ...(clusters === undefined ? {} : { clusters }) };
+    return {
+      command: 'verify.start',
+      mergeResultId,
+      ...(clusters === undefined ? {} : { clusters }),
+    };
   }
   if (area === 'verify' && action === 'show') {
     assertFlags(tail, ['--json']);

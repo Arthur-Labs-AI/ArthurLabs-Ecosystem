@@ -435,7 +435,10 @@ export async function executeCommand(
     return withReadRuntime(async ({ repository }) => {
       const run = repository.getVerificationRun(input.verificationRunId);
       if (run === undefined) {
-        throw new RunEngineError('RUN_NOT_FOUND', 'VerificationRun not found: ' + input.verificationRunId);
+        throw new RunEngineError(
+          'RUN_NOT_FOUND',
+          'VerificationRun not found: ' + input.verificationRunId,
+        );
       }
       return success(input.command, {
         run,
