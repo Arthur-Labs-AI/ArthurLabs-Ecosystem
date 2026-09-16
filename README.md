@@ -140,6 +140,8 @@ Verify:
 ```powershell
 arthur --help
 arthur config path
+arthur providers status
+arthur providers setup   # interactive provider onboarding (FRS-02)
 arthur setup          # currently local models; unified FRS setup coming
 arthur config show
 arthur models detect
@@ -148,9 +150,10 @@ arthur models detect
 `arthur config path` prints the canonical machine config file
 (`<app-data>/config.env`); it is CWD-independent and creates no databases.
 `arthur config show` prints the effective configuration with secret values
-never shown (`configured` / `not configured` only). The upcoming FRS-02/03/04
-tasks populate machine config (provider credentials, voice/audio policies,
-wake/PTT settings); today `setup` configures managed local voice models only.
+never shown (`configured` / `not configured` only). FRS-02 adds standalone
+provider onboarding (`arthur providers setup` / `arthur providers status`,
+see Cloud configuration below); FRS-03/04 handle audio hardware and the
+unified wizard. Today `setup` configures managed local voice models only.
 
 For TypeScript validation during development:
 
@@ -220,8 +223,47 @@ current working directory), but it is no longer the production configuration
 identity: `arthur` launched from the repo root, home, or any temp directory
 observes the same machine config. Ambient process environment always wins
 over both files, and programmatic/test `loadSettings()` overrides win over
-everything. Existing `.env` installations keep working unchanged; FRS-02 may
-later offer explicit migration/onboarding into machine config.
+everything. Existing `.env` installations keep working unchanged.
+
+### Provider onboarding (FRS-02)
+
+Standalone provider setup and status (a temporary surface the FRS-04 unified
+wizard will later embed; intentionally NOT merged into `arthur setup` yet):
+
+```powershell
+arthur providers status
+arthur providers status --json
+arthur providers setup
+```
+
+- `providers status` is safe and offline: configured/not configured plus the
+effective provider/model selection and where each value comes from
+(`process_env` / `repo_env` / `machine_config` / `code_default`). Secret
+values are never printed. `--json` emits exactly one JSON object with the
+same safe metadata.
+- `providers setup` is interactive-TTY-only for secret entry: credentials are
+typed hidden (masked, never echoed), validated with the provider BEFORE
+anything is saved, then persisted once at final approval through the atomic
+machine-config primitive. Cancel before Save means zero mutation; an invalid
+newly entered key is never persisted (retry / skip / cancel instead).
+- Secrets are never passed as flags: there is deliberately no
+`--deepseek-key` / `--openai-key` (shell history / process listing leakage).
+`providers setup --json` never prompts and fails typed
+(`INTERACTIVE_REQUIRED`) when credential entry would be needed.
+- Credentials entered here are currently stored in the private machine config
+(`<app-data>/config.env`); repo `.env` / process-env credentials remain
+supported and outrank machine config (status shows `environment` /
+`repo .env` sources, and setup asks before replacing them). A future SC-10
+task will move persistent credentials to OS credential storage; nothing here
+claims that exists yet.
+- Validation is explicit, not startup probing: DeepSeek proves authentication
++ minimal completion + tool-capable response path with one tiny request;
+OpenAI proves cloud STT and TTS separately (short fixed phrase for TTS,
+deterministic in-memory sample for STT, output discarded). Normal startup
+performs no network probing.
+- Provider setup does not configure microphones/speakers (FRS-03 handles
+audio hardware), does not set `ARTHUR_VOICE_ENABLED`, and does not install
+local models.
 
 ---
 
@@ -402,12 +444,36 @@ arthur models status
 # Windows microphone + speaker setup
 
 Managed STT/TTS models do not open Windows audio devices themselves. The voice
-controller uses configurable capture/playback process boundaries.
-
-## 7. Find the microphone
+controller uses configurable capture/playback process boundaries. The
+recommended path is the FRS-03 audio onboarding — no manual command crafting:
 
 ```powershell
-ffmpeg -list_devices true -f dshow -i dummy
+arthur audio detect
+arthur audio setup
+arthur audio status
+arthur audio test
+```
+
+- `audio detect` shows backend availability and discovered microphones.
+- `audio setup` discovers devices, lets you pick a microphone, validates
+  microphone transport (real PCM frames) and speaker transport (audible test
+  tone with human confirmation), then saves ONE atomic machine-config patch
+  with the generated commands. Cancel before Save means zero writes.
+- `audio status` shows the effective config plus source
+  (`process_env` / `repo_env` / `machine_config` / `code_default`).
+- `audio test` revalidates the current effective config without mutation.
+
+Windows v1 uses DirectShow capture (`ffmpeg -f dshow`) and ffplay playback
+through the system-default sink. Raw PCM stays local and memory-only (mono
+16 kHz s16le); normal startup never probes audio hardware. FRS-04 will unify
+audio/provider/model setup.
+
+Advanced troubleshooting (manual equivalents of what setup generates):
+
+## 7. Find the microphone manually
+
+```powershell
+ffmpeg -hide_banner -list_devices true -f dshow -i dummy
 ```
 
 Look for an `(audio)` entry such as:
@@ -437,9 +503,11 @@ Replace the microphone name with the exact device name on your system.
 
 ---
 
-## 8. Configure capture + playback
+## 8. Configure capture + playback manually (advanced)
 
-For a first full voice test, PTT is simpler than wake-word configuration:
+`arthur audio setup` writes these for you; manual values remain supported as
+an advanced override. For a first full voice test, PTT is simpler than
+wake-word configuration:
 
 ```dotenv
 ARTHUR_VOICE_ENABLED=true
@@ -660,6 +728,9 @@ arthur setup [--yes] [--stt-model <id>] [--tts-model <id>] [--python <exe>] [--j
 
 arthur config path [--json]
 arthur config show [--json]
+arthur providers setup [--json]
+arthur providers status [--json]
+arthur audio detect|setup|status|test [--json]
 ```
 
 Memory/documents commands remain available through the same CLI and API.

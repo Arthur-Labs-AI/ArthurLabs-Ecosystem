@@ -119,6 +119,9 @@ Usage:
   arthur models remove <model-id> [--yes] [--json]
   arthur config path [--json]
   arthur config show [--json]
+  arthur providers setup [--json]
+  arthur providers status [--json]
+  arthur audio detect|setup|status|test [--json]
   arthur setup [--yes] [--stt-model <id>] [--tts-model <id>] [--root <path>] [--state <path>] [--python <exe>] [--json]
   arthur memory remember --session <id> [--type <t>] [--subject <k>] [--project <k>] "<text>"
   arthur memory search --session <id> "<query>"
@@ -888,7 +891,7 @@ async function main(): Promise<void> {
 
   // Scoped help (HR-02.5F UX): models/setup/config own their help surface
   // via their branch modules; the global shortcut must not swallow it.
-  if (command !== "models" && command !== "setup" && command !== "config") {
+  if (command !== "models" && command !== "setup" && command !== "config" && command !== "providers" && command !== "audio") {
     if (command === "" || command === "help" || command === "--help" || flags.get("help") === "true") {
       process.stdout.write(GLOBAL_HELP);
       return;
@@ -909,6 +912,35 @@ async function main(): Promise<void> {
     try {
       const { runConfig } = await import("./config");
       process.exitCode = runConfig(command, flags, positionals, io);
+    } catch (err) {
+      printError(err, undefined, io);
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  // FRS-02: `arthur providers setup|status` are configuration-only
+  // provider onboarding: no settings validation, no DB, no model state,
+  // no startup network probing. Secrets enter interactively (masked TTY)
+  // and persist through the FRS-01 atomic machine-config primitive.
+  if (command === "providers") {
+    try {
+      const { runProviders } = await import("./providers");
+      process.exitCode = await runProviders({}, command, flags, positionals, io);
+    } catch (err) {
+      printError(err, undefined, io);
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  // FRS-03: `arthur audio detect|setup|status|test` are configuration-only
+  // audio onboarding: no settings validation, no DB, no model state, no
+  // startup probing. Discovery/test spawn ffmpeg/ffplay with argv arrays.
+  if (command === "audio") {
+    try {
+      const { runAudio } = await import("./audio");
+      process.exitCode = await runAudio({}, command, flags, positionals, io);
     } catch (err) {
       printError(err, undefined, io);
       process.exitCode = 1;
