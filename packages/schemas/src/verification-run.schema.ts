@@ -176,9 +176,12 @@ export const VerificationRecipeStepSchema = z
     expected: z.record(z.string(), z.string()).default({}),
     nonExecutableInstructions: z.array(z.string().min(1).max(5000)).default([]),
     status: VerificationAttemptStatusSchema,
-    // Internal match strength (§21): strong matches alone are decisive.
-    // Optional + additive; absent means unassessed (never weak by default).
-    matchStrength: z.enum(['strong_match', 'weak_match']).optional(),
+    // Internal comparison strength (§30): strong matches alone are
+    // decisive for reproduced; strong mismatches alone for
+    // not_reproducible. Optional + additive; absent means unassessed.
+    matchStrength: z
+      .enum(['strong_match', 'weak_match', 'strong_mismatch', 'weak_mismatch', 'unavailable'])
+      .optional(),
     outcome: VerificationStepOutcomeSchema.optional(),
     observationIds: z.array(VerificationObservationIdSchema).default([]),
     startedAt: IsoTimestampSchema.optional(),

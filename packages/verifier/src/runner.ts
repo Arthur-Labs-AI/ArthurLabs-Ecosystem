@@ -258,9 +258,15 @@ export interface StepExecutionContext {
 
 export interface ExecutedStep {
   readonly outcome: VerificationStepOutcome;
-  /** Internal match strength (§21): only strong matches are decisive.
-   *  Recorded in detail text; not a persisted probability. */
-  readonly matchStrength?: 'strong_match' | 'weak_match';
+  /** Internal comparison strength (§30): strong matches alone are
+   *  decisive for reproduced; strong mismatches alone are decisive
+   *  for not_reproducible. Not a persisted probability. */
+  readonly matchStrength?:
+    | 'strong_match'
+    | 'weak_match'
+    | 'strong_mismatch'
+    | 'weak_mismatch'
+    | 'unavailable';
   readonly warningCode?: 'VERIFIER_TOOL_UNAVAILABLE' | 'VERIFIER_REPLAY_TIMEOUT';
   readonly exitCode?: number;
   readonly diagnosticFingerprint?: string;
@@ -365,6 +371,7 @@ export interface ReplayExpectation {
   readonly exitCode?: number | undefined;
   readonly testName?: string | undefined;
   readonly testStatus?: 'passed' | 'failed' | 'skipped' | undefined;
+  readonly cwdRelative: string;
 }
 
 function expectationOf(step: VerificationRecipeStep): ReplayExpectation {
@@ -377,7 +384,39 @@ function expectationOf(step: VerificationRecipeStep): ReplayExpectation {
     ...(step.expected['testStatus'] === undefined
       ? {}
       : { testStatus: step.expected['testStatus'] as ReplayExpectation['testStatus'] }),
+    cwdRelative: step.expected['cwdRelative'] ?? '.',
   };
+}
+
+/** Resolve workspaceRoot + cwdRelative safely: rejects .., absolute
+ *  paths, symlink escapes (realpath must stay inside), and
+ *  non-directory targets. Returns undefined when unsafe. */
+export async function resolveContainedCwd(
+  ctx: StepExecutionContext,
+  cwdRelative: string,
+): Promise<string | undefined> {
+  if (cwdRelative === '.' || cwdRelative === '') return ctx.workspaceRoot;
+  if (cwdRelative.startsWith('/') || cwdRelative.includes('\\')) return undefined;
+  const segments = cwdRelative.split('/');
+  if (segments.includes('..') || segments.includes('')) return undefined;
+  // Inline containment (no persistence dependency): join + boundary.
+  const candidate = resolve(ctx.workspaceRoot, cwdRelative);
+  if (candidate !== ctx.workspaceRoot && !candidate.startsWith(ctx.workspaceRoot + '/')) {
+    return undefined;
+  }
+  try {
+    const stats = await ctx.fs.stat(candidate);
+    if (!stats.isDirectory) return undefined;
+    const { realpath } = await import('node:fs/promises');
+    const [realRoot, realCandidate] = await Promise.all([
+      realpath(ctx.workspaceRoot),
+      realpath(candidate),
+    ]);
+    if (realCandidate !== realRoot && !realCandidate.startsWith(realRoot + '/')) return undefined;
+    return candidate;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function executeReplay(
@@ -405,11 +444,25 @@ export async function executeReplay(
       detail: 'Recorded command targets paths outside the verifier workspace; blocked.',
     };
   }
+  // Contained cwd (§39): workspaceRoot + cwdRelative with safe
+  // relative-path semantics. .., absolute paths, symlink escapes,
+  // and non-directory targets refuse as unsupported (inconclusive).
+  const containedCwd = await resolveContainedCwd(ctx, expectation.cwdRelative);
+  if (containedCwd === undefined) {
+    return {
+      outcome: 'unsupported',
+      artifactPayloads: [],
+      detail:
+        'Recorded working directory "' +
+        expectation.cwdRelative +
+        '" is not a safe contained directory; refusing replay.',
+    };
+  }
   let result: RunCommandResult;
   try {
     result = await ctx.runner.run({
       command: expectation.command,
-      cwd: ctx.workspaceRoot,
+      cwd: containedCwd,
       timeoutMs: ctx.commandTimeoutMs,
     });
   } catch (cause) {
@@ -507,14 +560,18 @@ function evaluateTestReplay(
         ').',
     };
   }
+  // Strong contradiction (§28): the SAME test observed with a
+  // DIFFERENT status (expected failed, observed passed). This is
+  // strong negative evidence and may support not_reproducible.
   if (identity !== undefined && expectedStatus !== undefined) {
     return {
       outcome: 'mismatched',
+      matchStrength: 'strong_mismatch',
       exitCode,
       diagnosticFingerprint: fingerprint,
       artifactPayloads: payloads,
       detail:
-        'Expected test "' +
+        'Strong mismatch: expected test "' +
         expectation.testName +
         '" observed with status ' +
         identity.status +
@@ -525,7 +582,9 @@ function evaluateTestReplay(
         ').',
     };
   }
-  // No identity: exit agreement is weak evidence only (§15, §20).
+  // Target unobserved (§27, §60): the expected test never appeared.
+  // We do NOT know whether it passed — inconclusive, never
+  // not_reproducible. Exit agreement is weak evidence only (§15).
   if (expectation.exitCode !== undefined && exitCode === expectation.exitCode) {
     return {
       outcome: 'matched',
@@ -533,15 +592,22 @@ function evaluateTestReplay(
       exitCode,
       diagnosticFingerprint: fingerprint,
       artifactPayloads: payloads,
-      detail: 'Weak match: exit ' + exitCode + ' agrees but test identity unconfirmed.',
+      detail:
+        'Weak match: exit ' +
+        exitCode +
+        ' agrees but the expected test was never observed; target status unknown.',
     };
   }
   return {
     outcome: 'mismatched',
+    matchStrength: 'weak_mismatch',
     exitCode,
     diagnosticFingerprint: fingerprint,
     artifactPayloads: payloads,
-    detail: 'Test identity unconfirmed and exit ' + exitCode + ' does not match expectation.',
+    detail:
+      'Weak mismatch: expected test unobserved and exit ' +
+      exitCode +
+      ' differs; insufficient for a negative verdict.',
   };
 }
 
@@ -555,16 +621,35 @@ function evaluateCommandReplay(
   fingerprint: string,
   payloads: { stdout: string; stderr: string }[],
 ): ExecutedStep {
-  if (expectation.exitCode === undefined || exitCode !== expectation.exitCode) {
+  // No expected exit: the replay executed but there is no failure
+  // signature to contradict — weak mismatch at most (§29).
+  if (expectation.exitCode === undefined) {
     return {
       outcome: 'mismatched',
+      matchStrength: 'weak_mismatch',
+      exitCode,
+      diagnosticFingerprint: fingerprint,
+      artifactPayloads: payloads,
+      detail: 'Replay executed without an expected failure signature; no negative verdict claimed.',
+    };
+  }
+  // Exit differs: strong mismatch ONLY with an original signature to
+  // contradict against (§29); exit alone never proves bug absence.
+  if (exitCode !== expectation.exitCode) {
+    const original = step.expected['originalSignature'];
+    const strong = original !== undefined;
+    return {
+      outcome: 'mismatched',
+      matchStrength: strong ? 'strong_mismatch' : 'weak_mismatch',
       exitCode,
       diagnosticFingerprint: fingerprint,
       artifactPayloads: payloads,
       detail:
-        expectation.exitCode === undefined
-          ? 'Replay executed without an expected failure signature; no match claimed.'
-          : 'Expected exit ' + expectation.exitCode + ' but observed ' + exitCode + '.',
+        'Expected exit ' +
+        expectation.exitCode +
+        ' but observed ' +
+        exitCode +
+        (strong ? ' with an original signature to contradict.' : ' without an original signature; weak only.'),
     };
   }
   const original = step.expected['originalSignature'];

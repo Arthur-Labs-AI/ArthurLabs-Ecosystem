@@ -13,10 +13,10 @@ function isTerminal(outcome: VerificationStepOutcome | undefined): boolean {
 }
 
 /** A decisive step independently reproduces runtime behavior:
- *  command/test replay, outcome matched, STRONG identity (§21),
+ *  command/test replay, outcome matched, STRONG identity,
  *  fresh observation present. Weak matches (exit-only, unconfirmed
  *  identity) are never decisive. Source integrity alone is NEVER
- *  decisive (§28, §89). */
+ *  decisive. */
 function isDecisive(step: VerificationRecipeStep): boolean {
   return (
     (step.type === 'command_replay' || step.type === 'test_replay') &&
@@ -26,30 +26,42 @@ function isDecisive(step: VerificationRecipeStep): boolean {
   );
 }
 
+/** A strong contradiction positively observes the target NOT occurring
+ *  (same test now passes; same command with an original signature
+ *  producing a clearly different signature). Only these support
+ *  not_reproducible — never mere unobserved targets. */
+function isStrongContradiction(step: VerificationRecipeStep): boolean {
+  return (
+    (step.type === 'command_replay' || step.type === 'test_replay') &&
+    step.outcome === 'mismatched' &&
+    step.matchStrength === 'strong_mismatch' &&
+    step.observationIds.length > 0
+  );
+}
+
 export interface ClassifiedAttempt {
   readonly outcome: VerificationOutcome;
   readonly assertions: Omit<VerificationAssertion, 'schemaVersion' | 'verificationAttemptId'>[];
 }
 
-/** Deterministic outcome derivation (§46-47):
+/** Deterministic outcome derivation:
  *
- * - reproduced: ≥1 decisive independent reproduction, no required
- *   contradiction. Agreement count plays no role (§5).
- * - partially_verified: meaningful matched checks (incl. source-only
- *   integrity, §89) but no decisive reproduction.
- * - not_reproducible: ≥1 decisive-class replay step, ALL such steps
- *   terminally evaluated, none matched, no errors/blocks/unsupported
- *   anywhere (compatible environment executed the recipe and the bug
- *   signature was absent, §23).
- * - inconclusive: everything else — no replayable steps, errors,
- *   blocks, unsupported claims, or environment/tool failures (§24).
+ * - reproduced: ≥1 strong matched runtime replay AND no strong
+ *   contradiction. Agreement count plays no role.
+ * - not_reproducible: ≥1 strong mismatched replay, all required
+ *   decisive targets evaluated, 0 strong matches, 0
+ *   unavailable/unsupported required steps.
+ * - partially_verified: useful confirmed source/weak replay facts
+ *   but no decisive behavior answer.
+ * - inconclusive: target unobserved, tool/sandbox unavailable,
+ *   timeout, environment problem, weak-only replay, or unsupported
+ *   behavior.
  */
 export function classifyAttempt(steps: readonly VerificationRecipeStep[]): ClassifiedAttempt {
   const decisive = steps.filter(
     (step) => step.type === 'command_replay' || step.type === 'test_replay',
   );
   const matched = steps.filter((step) => step.outcome === 'matched');
-  const mismatched = steps.filter((step) => step.outcome === 'mismatched');
   const unresolved = steps.filter(
     (step) =>
       step.outcome === undefined ||
@@ -58,14 +70,22 @@ export function classifyAttempt(steps: readonly VerificationRecipeStep[]): Class
       step.outcome === 'unsupported',
   );
   const hasDecisiveReproduction = steps.some(isDecisive);
+  const hasStrongContradiction = steps.some(isStrongContradiction);
+  const hasStrongMatch = steps.some(
+    (step) =>
+      (step.type === 'command_replay' || step.type === 'test_replay') &&
+      step.outcome === 'matched' &&
+      step.matchStrength === 'strong_match',
+  );
   const decisiveTerminal = decisive.filter((step) => isTerminal(step.outcome));
   let outcome: VerificationOutcome;
-  if (hasDecisiveReproduction && mismatched.length === 0) {
+  if (hasDecisiveReproduction && !hasStrongContradiction) {
     outcome = 'reproduced';
   } else if (
+    hasStrongContradiction &&
+    !hasStrongMatch &&
     decisive.length > 0 &&
     decisiveTerminal.length === decisive.length &&
-    decisive.every((step) => step.outcome === 'mismatched') &&
     unresolved.length === 0
   ) {
     outcome = 'not_reproducible';

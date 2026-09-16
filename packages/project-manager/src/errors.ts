@@ -10,6 +10,7 @@ export type ProjectManagerErrorCode =
   | 'ACTIVE_RUN_EXISTS'
   | 'RUNTIME_LEASE_REQUIRED'
   | 'PROJECT_COPY_DRIFT'
+  | 'REVISION_MATERIAL_CORRUPT'
   | 'INSUFFICIENT_STORAGE';
 
 export class ProjectManagerError extends Error {

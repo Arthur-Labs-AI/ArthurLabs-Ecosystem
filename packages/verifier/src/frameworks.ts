@@ -148,13 +148,22 @@ export function parseTestOutput(text: string): ParsedTestResult | undefined {
   );
 }
 
-/** Identity check (§17): the expected test name must observably appear
- *  among parsed results. Normalized substring match, deterministic. */
+/** Strict identity: exact normalized match, or a qualified-name
+ *  suffix match ONLY at a dot boundary ("ns.class.test" matches
+ *  "test", never "auth" matching "auth rejects expired token").
+ *  No generic substring matching in either direction. */
 export function findTestIdentity(
   parsed: ParsedTestResult,
   expectedName: string,
 ): { name: string; status: 'passed' | 'failed' | 'skipped' } | undefined {
   const wanted = normalizeName(expectedName);
   if (wanted.length === 0) return undefined;
-  return parsed.tests.find((test) => test.name.includes(wanted) || wanted.includes(test.name));
+  return parsed.tests.find((test) => {
+    if (test.name === wanted) return true;
+    const longer = test.name.length >= wanted.length ? test.name : wanted;
+    const shorter = test.name.length >= wanted.length ? wanted : test.name;
+    // Suffix rule: longer must END with "." + shorter at an
+    // identifier boundary (framework qualified names).
+    return longer.endsWith('.' + shorter);
+  });
 }

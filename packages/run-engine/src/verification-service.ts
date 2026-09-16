@@ -460,9 +460,26 @@ export async function verifyMerge(
   let completedCount = 0;
   let failedCount = 0;
   for (const cluster of clusters) {
-    // Failure isolation (§63, §99): a crashing attempt becomes a failed
-    // attempt with the crash recorded — completed siblings stay valid
-    // and the run becomes partial, never aborted mid-list.
+    // One cluster = exactly one attempt ID (§17-20): the ID is created
+    // here, the running row persisted before any fallible work, and any
+    // crash terminalizes THIS id (never a second one). Siblings stay
+    // valid; the run becomes partial, never aborted mid-list.
+    const attemptId = createVerificationAttemptId();
+    const runningAttempt: VerificationRunAttempt = {
+      schemaVersion: 1,
+      id: attemptId,
+      verificationRunId: run.id,
+      findingClusterId: cluster.id,
+      status: 'running',
+      recipeVersion: VERIFICATION_RECIPE_VERSION,
+      recipeDigest: ('sha256:' + '0'.repeat(64)) as VerificationRunAttempt['recipeDigest'],
+      steps: [],
+      sourceFindingIds: cluster.sourceFindingIds as VerificationRunAttempt['sourceFindingIds'],
+      sourceEvidenceIds: [],
+      limitations: [],
+      startedAt: now,
+    };
+    repository.saveVerificationAttempt(runningAttempt);
     let attempt: VerificationRunAttempt;
     try {
       attempt = await verifyCluster({
@@ -473,6 +490,7 @@ export async function verifyMerge(
           projects.revisionMaterialRoot(projectId as never, revisionId),
         createRunner,
         run,
+        attemptId,
         clusterId: cluster.id,
         findings: cluster.sourceFindingIds
           .map((id) => findingsById.get(id))
@@ -483,23 +501,17 @@ export async function verifyMerge(
         now,
       });
     } catch (cause) {
+      // Same ID terminalizes as failed (§19-20): materialization,
+      // recipe, runner, artifact, classifier, or commit failure.
       attempt = {
-        schemaVersion: 1,
-        id: createVerificationAttemptId(),
-        verificationRunId: run.id,
-        findingClusterId: cluster.id,
+        ...runningAttempt,
         status: 'failed',
-        recipeVersion: VERIFICATION_RECIPE_VERSION,
-        recipeDigest: ('sha256:' + '0'.repeat(64)) as VerificationRunAttempt['recipeDigest'],
-        steps: [],
-        sourceFindingIds: cluster.sourceFindingIds as VerificationRunAttempt['sourceFindingIds'],
-        sourceEvidenceIds: [],
+        steps: repository.listVerificationSteps(attemptId),
         failure: {
           code: 'VERIFIER_ATTEMPT_CRASH',
           message: (cause instanceof Error ? cause.message : String(cause)).slice(0, 500),
         },
-        limitations: ['Attempt crashed before recipe evaluation completed.'],
-        startedAt: now,
+        limitations: [...runningAttempt.limitations, 'Attempt crashed before completion.'],
         completedAt: nowIsoTimestamp(),
       };
       repository.saveVerificationAttempt(attempt);
@@ -531,6 +543,7 @@ async function verifyCluster(input: {
   readonly revisionMaterial: (projectId: string, revisionId: string) => Promise<string | undefined>;
   readonly createRunner: (attemptRoot: string) => VerificationCommandRunner;
   readonly run: VerificationRun;
+  readonly attemptId: VerificationRunAttempt['id'];
   readonly clusterId: string;
   readonly findings: readonly Finding[];
   readonly evidenceById: ReadonlyMap<string, Evidence>;
@@ -538,7 +551,9 @@ async function verifyCluster(input: {
   readonly commandTimeoutMs: number;
   readonly now: IsoTimestamp;
 }): Promise<VerificationRunAttempt> {
-  const attemptId = createVerificationAttemptId();
+  // The attempt ID is owned by the caller (§18): this layer never
+  // creates one. The running row already exists.
+  const attemptId = input.attemptId;
   const qaRun = input.repository.getRun(input.run.qaRunId);
   if (qaRun === undefined) {
     throw new VerificationServiceError(

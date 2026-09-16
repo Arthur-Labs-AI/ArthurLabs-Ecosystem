@@ -51,13 +51,13 @@ export function hasUnsafeTarget(command: string): boolean {
   return false;
 }
 
-/** Deterministic diagnostic normalization (signature v2): strip clearly
- *  unstable information only. v2 adds path reduction: absolute path
- *  tokens collapse to their last two segments, so original output
- *  (unknown agent workspace root) compares with fresh output
- *  (known verifier root) on project-relative structure. Semantic text
- *  is preserved. Returns a bounded fingerprint for audit, never a
- *  full log. */
+/** Deterministic diagnostic normalization (signature v3): strip clearly
+ *  unstable information only — ANSI, workspace roots, timestamps,
+ *  random temp suffixes, absolute-path reduction to last two segments
+ *  (original output from unknown agent roots compares with fresh
+ *  output on project-relative structure). Semantic text is preserved.
+ *  v3 hashes the FULL normalized diagnostic (collision-resistant);
+ *  v2's 500-char prefix could collide on shared prefixes. */
 export function diagnosticFingerprint(output: string, workspaceRoot: string): string {
   // eslint-disable-next-line no-control-regex -- intentional ANSI escape stripping for signatures.
   const noAnsi = output.replace(/\u001b\[[0-9;]*m/g, '');
@@ -79,7 +79,13 @@ export function diagnosticFingerprint(output: string, workspaceRoot: string): st
     },
   );
   text = text.replace(/\s+/g, ' ').trim();
-  return 'sig' + VERIFICATION_SIGNATURE_VERSION + ':' + text.slice(0, 500);
+  return 'sig' + VERIFICATION_SIGNATURE_VERSION + ':' + sha256Hex(text);
+}
+
+/** Human-inspection preview of redacted output (first 500 chars).
+ *  Display only — NEVER used for equality proof (use the sig3 hash). */
+export function diagnosticPreview(output: string): string {
+  return output.replace(/\s+/g, ' ').trim().slice(0, 500);
 }
 
 /** Recipe-step dedup fingerprint (§50): identical canonical replay
@@ -92,6 +98,7 @@ export function recipeStepFingerprint(parts: {
   readonly evidenceIds: readonly string[];
   readonly path?: string;
   readonly lines?: string;
+  readonly cwdRelative?: string;
 }): string {
   const canonical = JSON.stringify({
     t: parts.type,
@@ -100,6 +107,7 @@ export function recipeStepFingerprint(parts: {
     ev: [...parts.evidenceIds].sort(),
     p: parts.path ?? '',
     l: parts.lines ?? '',
+    w: parts.cwdRelative ?? '.',
   });
   return 'sha256:' + sha256Hex(canonical);
 }

@@ -204,6 +204,7 @@ export class ProjectManager {
         ...(options.signal === undefined ? {} : { signal: options.signal }),
       });
       await this.retainRevisionMaterial(projectId, revisionId, paths.workingCopy);
+      await this.validateRetainedMaterial(projectId, revision, paths.workingCopy);
       return { project, managedCopy, revision, context };
     } catch (cause) {
       try {
@@ -221,12 +222,36 @@ export class ProjectManager {
     }
   }
 
-  /** Retain immutable revision bytes (§37-40): copy-once from the
-   *  committed working copy into revisions/<revisionId>. Reflink/COW
-   *  where the filesystem supports it, copy fallback otherwise; no
-   *  mutable hardlinks. Symlink policy matches agent workspaces
-   *  (inert-unsafe). Idempotent: existing material is left untouched.
-   *  Called post-commit only, so failures never orphan material. */
+  /** Validate retained material (§50): rescan the retained bytes and
+   *  compare contentHash with the revision record. Copy completion
+   *  alone is never trusted. Throws on mismatch. */
+  async validateRetainedMaterial(
+    projectId: ProjectId,
+    revision: { id: string; contentHash: string },
+    workingCopyPath: string,
+  ): Promise<void> {
+    void workingCopyPath;
+    const materialRoot = revisionMaterialPath(this.dataRoot, projectId, revision.id);
+    const scan = await this.snapshots.scanRevision(materialRoot);
+    if (scan.contentHash !== revision.contentHash) {
+      throw new ProjectManagerError(
+        'REVISION_MATERIAL_CORRUPT',
+        'Retained revision bytes do not match revision ' +
+          revision.id +
+          ' (expected ' +
+          revision.contentHash +
+          ', got ' +
+          scan.contentHash +
+          ')',
+      );
+    }
+  }
+
+  /** Retain immutable revision bytes: copy-once from the working copy
+   *  into revisions/<revisionId>. Reflink/COW where the filesystem
+   *  supports it, copy fallback otherwise; no mutable hardlinks.
+   *  Symlink policy matches agent workspaces (inert-unsafe).
+   *  Idempotent: existing material is left untouched. */
   async retainRevisionMaterial(
     projectId: ProjectId,
     revisionId: string,
@@ -405,6 +430,12 @@ export class ProjectManager {
       this.repository.saveRuntimeOperation(operation);
       await this.fault('after_staging_promoted');
       lease.assertHealthy();
+      // Atomic retention (§47): immutable material B is retained and
+      // hash-validated BEFORE the DB commits currentRevisionId = B.
+      // Retention failure throws here → catch restores working A,
+      // removes partial B material, revision B never commits.
+      await this.retainRevisionMaterial(projectId, revisionId, paths.workingCopy);
+      await this.validateRetainedMaterial(projectId, revision, paths.workingCopy);
       const project = ProjectSchema.parse({
         ...current.project,
         sourcePath: source,
@@ -438,7 +469,6 @@ export class ProjectManager {
       } catch {
         // The committed operation remains as a durable cleanup marker.
       }
-      await this.retainRevisionMaterial(projectId, revisionId, paths.workingCopy);
       return { project, managedCopy, revision, context: completedContext.context };
     } catch (cause) {
       if (databaseCommitted) throw cause;
@@ -448,6 +478,12 @@ export class ProjectManager {
           await rename(backup, paths.workingCopy);
         }
         await rm(staging, { recursive: true, force: true });
+        // Partial B material never becomes current: remove it so no
+        // orphan immutable bytes reference an uncommitted revision.
+        await rm(revisionMaterialPath(this.dataRoot, projectId, revisionId), {
+          recursive: true,
+          force: true,
+        });
         if (prepared !== undefined) await this.contexts.discard(prepared);
         this.repository.transaction(() => {
           this.repository.saveManagedCopy(

@@ -131,28 +131,35 @@ describe('verification service', () => {
     f.database.close();
   }, 120000);
 
-  it('isolates a crashing attempt without losing completed siblings (§63, §99)', async () => {
+  it('terminalizes the same attempt ID on crash, never a second one (§21)', async () => {
     const f = await simulatedFixture();
-    const { VerificationCommandRunner } = await import('@qa/verifier');
+    const { SystemdSandboxBackend, VerificationCommandRunner } = await import('@qa/verifier');
+    const backend = new SystemdSandboxBackend();
     let calls = 0;
-    const flaky = new VerificationCommandRunner();
-    const crashing = {
-      run: async (input: { command: string; cwd: string; timeoutMs: number }) => {
-        calls += 1;
-        if (calls === 1) throw new Error('simulated runner crash');
-        return flaky.run(input);
-      },
-    };
     const { run, attempts } = await verifyMerge(f.repository, f.dataRoot, f.merge.id, {
       commandTimeoutMs: 5000,
-      runner: crashing as never,
+      createRunner: (attemptRoot: string) => {
+        const runner = new VerificationCommandRunner(backend, attemptRoot);
+        const original = runner.run.bind(runner);
+        runner.run = async (input) => {
+          calls += 1;
+          if (calls === 1) throw new Error('simulated runner crash');
+          return original(input);
+        };
+        return runner;
+      },
     });
-    // Crash shape depends on fixture recipes: either an attempt failed
-    // while its siblings completed (partial), or every replayable step
-    // was already terminal. Either way the run finalized honestly and
-    // the original history is untouched.
     expect(['completed', 'partial', 'failed'].includes(run.status)).toBe(true);
     expect(attempts.length).toBe(f.merge.clusterCount);
+    // One cluster = exactly one attempt row, even across the crash.
+    for (const attempt of attempts) {
+      const rows = f.repository
+        .listVerificationAttempts(attempt.verificationRunId)
+        .filter((row) => row.findingClusterId === attempt.findingClusterId);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.id).toBe(attempt.id);
+      expect(['completed', 'failed', 'interrupted'].includes(rows[0]?.status as string)).toBe(true);
+    }
     expect(f.repository.getRun(f.runId)?.status).toBe('completed');
     expect(f.repository.getMergeResult(f.merge.id)?.clusterCount).toBe(f.merge.clusterCount);
     f.database.close();

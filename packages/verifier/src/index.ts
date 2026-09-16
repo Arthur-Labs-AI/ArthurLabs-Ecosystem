@@ -41,6 +41,7 @@ export {
   isReplayableCommand,
   hasUnsafeTarget,
   diagnosticFingerprint,
+  diagnosticPreview,
   recipeStepFingerprint,
 } from './signatures.js';
 export {

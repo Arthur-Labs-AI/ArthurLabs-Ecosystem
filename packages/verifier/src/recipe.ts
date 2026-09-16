@@ -142,6 +142,7 @@ export function buildRecipe(input: RecipeInput): BuiltRecipe {
           for (const opId of grounded) {
             const op = input.operationsById.get(opId);
             const command = op?.command ?? evidence.command.command;
+            const cwd = evidence.command.cwdRelative ?? '.';
             emit(
               draft(
                 'command_replay',
@@ -150,6 +151,7 @@ export function buildRecipe(input: RecipeInput): BuiltRecipe {
                   command,
                   operationIds: [opId],
                   evidenceIds: [evidence.id],
+                  cwdRelative: cwd,
                 }),
                 [evidence.id],
                 [opId],
@@ -158,6 +160,11 @@ export function buildRecipe(input: RecipeInput): BuiltRecipe {
                   ...(evidence.command.exitCode === undefined
                     ? {}
                     : { exitCode: String(evidence.command.exitCode) }),
+                  // Canonical working directory (§37): from evidence;
+                  // explicit workspace-root default recorded below.
+                  ...(evidence.command.cwdRelative === undefined
+                    ? { cwdRelative: '.' }
+                    : { cwdRelative: evidence.command.cwdRelative }),
                 },
               ),
             );
@@ -260,6 +267,7 @@ export function buildRecipe(input: RecipeInput): BuiltRecipe {
                   command,
                   operationIds: [opId],
                   evidenceIds: [evidence.id],
+                  cwdRelative: '.',
                 }),
                 [evidence.id],
                 [opId],
@@ -268,6 +276,7 @@ export function buildRecipe(input: RecipeInput): BuiltRecipe {
                   ...(evidence.runtime.exitCode === undefined
                     ? {}
                     : { exitCode: String(evidence.runtime.exitCode) }),
+                  cwdRelative: '.',
                 },
               ),
             );
