@@ -31,6 +31,9 @@ export interface SandboxEnvironmentInput {
   readonly workspaceRoot: string;
   /** Resolved read-only runtime directories (toolchain locations). */
   readonly runtimeBinds: readonly string[];
+  /** Host paths made entirely inaccessible. Holes are never punched
+   *  inside these — the workspace lives outside them (staging). */
+  readonly inaccessiblePaths: readonly string[];
 }
 
 /** Generic verification execution boundary (§6-7). Verifier code
@@ -120,6 +123,7 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
         homeDir: workDir,
         sandboxTmp: workDir,
         runtimeBinds: [],
+        inaccessiblePaths: [],
       };
       // Two shell-free assertions: work/ visible (execution works),
       // host marker absent (isolation works).
@@ -177,6 +181,7 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
       homeDir,
       sandboxTmp,
       runtimeBinds: binds,
+      inaccessiblePaths: input.inaccessiblePaths,
     });
   }
 
@@ -192,6 +197,7 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
       homeDir: string;
       sandboxTmp: string;
       runtimeBinds: readonly string[];
+      inaccessiblePaths: readonly string[];
     },
   ): Promise<SandboxCommandResult> {
     const startedAt = Date.now();
@@ -232,6 +238,9 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
     for (const [key, value] of Object.entries(input.env)) {
       if (key === 'HOME' || key === 'USERPROFILE') continue;
       properties.push('Environment=' + key + '=' + value);
+    }
+    for (const blocked of input.inaccessiblePaths) {
+      properties.push('InaccessiblePaths=' + blocked);
     }
     for (const bind of input.runtimeBinds) {
       properties.push('BindReadOnlyPaths=' + bind);
@@ -331,6 +340,7 @@ class SystemdSandboxEnvironment implements VerificationExecutionEnvironment {
       homeDir: string;
       sandboxTmp: string;
       runtimeBinds: readonly string[];
+      inaccessiblePaths: readonly string[];
     },
   ) {}
 
@@ -350,6 +360,7 @@ class SystemdSandboxEnvironment implements VerificationExecutionEnvironment {
       homeDir: this.options.homeDir,
       sandboxTmp: this.options.sandboxTmp,
       runtimeBinds: this.options.runtimeBinds,
+      inaccessiblePaths: this.options.inaccessiblePaths,
     });
   }
 

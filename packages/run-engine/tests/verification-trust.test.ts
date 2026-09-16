@@ -54,6 +54,30 @@ async function divideFixture() {
     join(source, 'package.json'),
     JSON.stringify({ name: 'divide-fixture', type: 'module' }),
   );
+  // Escape probe ships with the fixture source (retained material must
+  // contain it). Absolute host paths are baked in: dataRoot exists
+  // before import. Only the escape test executes this script.
+  await writeFile(
+    join(source, 'tests', 'escape.mjs'),
+    [
+      "import { readFileSync, writeFileSync } from 'node:fs';",
+      'const hostMarker = ' + JSON.stringify(join(dataRoot, 'host-only-marker.txt')) + ';',
+      'const dataFile = ' + JSON.stringify(join(dataRoot, 'sentry.db')) + ';',
+      "const tmpMarker = '/tmp/sentry-escape-marker.txt';",
+      'let hostRead = "unread";',
+      'try { hostRead = readFileSync(hostMarker, "utf8"); } catch { hostRead = "blocked"; }',
+      'console.log("HOST_READ:" + String(hostRead).trim());',
+      'let dataRead = "unread";',
+      'try { dataRead = readFileSync(dataFile, "utf8").slice(0, 8); } catch { dataRead = "blocked"; }',
+      'console.log("DATA_READ:" + dataRead);',
+      'let tmpWrite = "unwritten";',
+      'try { writeFileSync(tmpMarker, "x"); tmpWrite = "written"; } catch { tmpWrite = "blocked"; }',
+      'console.log("TMP_WRITE:" + tmpWrite);',
+      'console.log("HOME:" + process.env.HOME);',
+      'process.exit(1);',
+      '',
+    ].join('\n'),
+  );
   const database = new SentryDatabase({ dataRoot });
   const repository = new SentryRepository(database);
   const lease = new RuntimeInstanceLease(repository, { autoHeartbeat: false });
@@ -292,6 +316,104 @@ describe('verifier trust fixtures', () => {
         expect(JSON.stringify(assertion)).not.toContain(SECRET);
       }
     }
+    f.database.close();
+  }, 180000);
+
+  it('contains clean commands: project code cannot escape the sandbox (§16, §63)', async () => {
+    // escape.mjs is a CLEAN command (no shell syntax): it tries host
+    // reads/writes from inside its own code. The sandbox must block
+    // every one; the replay must not reproduce.
+    const f = await divideFixture();
+    const {
+      FindingSchema: FSchema,
+      EvidenceSchema: ESchema,
+      HarnessEventSchema: HSchema,
+    } = await schemas();
+    const sandboxAgents = f.repository.listAgentRuns(f.runId);
+    const sandboxAgent = sandboxAgents.find((a) => a.status === 'completed') ?? sandboxAgents[0];
+    if (sandboxAgent === undefined) throw new Error('No agent run');
+    // Host-only marker the sandbox must never let project code read.
+    await writeFile(join(f.dataRoot, 'host-only-marker.txt'), 'host-secret\n');
+    const tmpMarker = '/tmp/sentry-escape-marker.txt';
+    const escapeOpId = 'op_01K7777777777777777777A8W6';
+    const escapeEvidence = ESchema.parse({
+      schemaVersion: 1,
+      id: 'ev_01K7777777777777777777A8W6',
+      qaRunId: f.runId,
+      agentRunId: sandboxAgent.id,
+      type: 'command',
+      strength: 'strong_code_evidence',
+      environmentState: 'baseline',
+      description: 'escape probe',
+      command: { command: 'node tests/escape.mjs', exitCode: 1 },
+      artifactIds: [],
+      groundingOperationIds: [escapeOpId],
+      createdAt: T,
+    });
+    f.repository.saveEvidence(escapeEvidence);
+    const escapeFinding = FSchema.parse({
+      schemaVersion: 1,
+      id: 'find_01K7777777777777777777A8W6',
+      qaRunId: f.runId,
+      agentRunId: sandboxAgent.id,
+      sourceAgentStackId: sandboxAgent.agentStackId,
+      title: 'Escape probe finding',
+      category: 'logic',
+      severity: 'medium',
+      confidence: 'strong',
+      description: 'escape.',
+      locations: [{ relativePath: 'src/divide.mjs', startLine: 1 }],
+      evidenceIds: [escapeEvidence.id],
+      reproductionSteps: [],
+      createdAt: T,
+    });
+    f.repository.saveFinding(escapeFinding);
+    f.repository.appendHarnessEvent(
+      f.runId,
+      HSchema.parse({
+        schemaVersion: 1,
+        eventId: 'evt_01K7777777777777777777A8W6',
+        agentRunId: sandboxAgent.id,
+        timestamp: T,
+        type: 'command.executed',
+        operationId: escapeOpId,
+        command: 'node tests/escape.mjs',
+        exitCode: 1,
+      }),
+    );
+    const { result: escapeMerge } = mergeRun(f.repository, f.runId);
+    const { attempts: escapeAttempts } = await verifyMerge(
+      f.repository,
+      f.dataRoot,
+      escapeMerge.id,
+      {
+        commandTimeoutMs: 30000,
+      },
+    );
+    const escapeTarget = escapeAttempts.find((a) =>
+      a.sourceFindingIds.includes(escapeFinding.id as never),
+    );
+    expect(escapeTarget?.outcome).not.toBe('reproduced');
+    const { resolveInside } = await import('@qa/persistence');
+    const { readFile, stat } = await import('node:fs/promises');
+    let replayText = '';
+    for (const observation of f.repository.listVerificationObservations(
+      escapeTarget?.id as never,
+    )) {
+      for (const artifactId of observation.artifactIds) {
+        const artifact = f.repository.getArtifact(artifactId);
+        if (artifact === undefined) continue;
+        replayText += await readFile(
+          resolveInside(f.dataRoot, artifact.relativeStoragePath),
+          'utf8',
+        );
+      }
+    }
+    expect(replayText).toContain('HOST_READ:blocked');
+    expect(replayText).toContain('DATA_READ:blocked');
+    expect(replayText).toContain('TMP_WRITE:blocked');
+    expect(replayText).not.toContain('host-secret');
+    await expect(stat(tmpMarker)).rejects.toThrow();
     f.database.close();
   }, 180000);
 

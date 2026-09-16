@@ -122,7 +122,11 @@ const VerificationRunBase = z
     // Readable-history unions: v1+v2 rows decode, new rows stamp v3.
     verifierVersion: z.union([z.literal(1), z.literal(2), z.literal(VERIFIER_VERSION)]),
     recipeVersion: z.union([z.literal(1), z.literal(2), z.literal(VERIFICATION_RECIPE_VERSION)]),
-    signatureVersion: z.union([z.literal(1), z.literal(2), z.literal(VERIFICATION_SIGNATURE_VERSION)]),
+    signatureVersion: z.union([
+      z.literal(1),
+      z.literal(2),
+      z.literal(VERIFICATION_SIGNATURE_VERSION),
+    ]),
     status: VerificationRunStatusSchema,
     // Lease binding for crash recovery (§64-65): the owning runtime
     // instance; a sweeper marks stale-owned running rows interrupted.
@@ -207,6 +211,9 @@ const VerificationRunAttemptBase = z
       .object({
         snapshotId: SnapshotIdSchema,
         workspacePath: z.string().min(1).max(2000),
+        // Sandboxed execution root (staging copy outside the data
+        // root); additive in v3, absent in v1/v2 rows.
+        sandboxExecutionRoot: z.string().min(1).max(2000).optional(),
         materializedAt: IsoTimestampSchema,
         baselineMatch: z.boolean(),
       })

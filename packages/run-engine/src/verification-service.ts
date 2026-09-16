@@ -1,6 +1,7 @@
 import { mkdir, readFile, rm, stat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { dirname, resolve } from 'node:path';
+import { homedir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import {
   buildRecipe,
   classifyAttempt,
@@ -90,6 +91,10 @@ export async function recoverVerifications(
       ) {
         await rm(workspace, { recursive: true, force: true }).catch(() => undefined);
       }
+      // Staging is deterministic per attempt: remove it too.
+      await rm(verifierStagingRoot(attempt.id), { recursive: true, force: true }).catch(
+        () => undefined,
+      );
     }
     const remaining = repository.listVerificationAttempts(run.id);
     const completed = remaining.filter((a) => a.status === 'completed').length;
@@ -127,7 +132,11 @@ export interface VerifyRunOptions {
   readonly runtimeInstanceId?: string;
   /** Test-only seam: override per-attempt runner construction.
    *  Production always builds sandbox-backed runners. */
-  readonly createRunner?: (attemptRoot: string) => VerificationCommandRunner;
+  readonly createRunner?: (input: {
+    attemptRoot: string;
+    sandboxRoot: string;
+    inaccessiblePaths: readonly string[];
+  }) => VerificationCommandRunner;
 }
 
 const DEFAULT_COMMAND_TIMEOUT_MS = 120_000;
@@ -195,6 +204,13 @@ function resolveOperations(
  *  verification of A (§42). Missing/corrupt material refuses with a
  *  drift limitation (honest inconclusive, §43-44), never a wrong-state
  *  verification. */
+/** Sandbox staging root: outside the data root so the whole data
+ *  root can be made inaccessible without nesting holes. Deterministic
+ *  per attempt so crash recovery can remove it. */
+export function verifierStagingRoot(attemptId: string): string {
+  return join('/var/tmp', 'sentry-verify-' + attemptId);
+}
+
 async function materializeVerifierWorkspace(input: {
   readonly repository: SentryRepository;
   readonly snapshots: SnapshotEngine;
@@ -203,7 +219,12 @@ async function materializeVerifierWorkspace(input: {
   readonly projectId: string;
   readonly snapshotId: string;
   readonly attemptId: string;
-}): Promise<{ workspaceRoot: string; baselineMatch: boolean; driftWarning?: string }> {
+}): Promise<{
+  workspaceRoot: string;
+  stagingRoot?: string;
+  baselineMatch: boolean;
+  driftWarning?: string;
+}> {
   const snapshot = input.repository.getSnapshot(input.snapshotId as never);
   if (snapshot === undefined) {
     throw new VerificationServiceError(
@@ -270,7 +291,18 @@ async function materializeVerifierWorkspace(input: {
       };
     }
   }
-  return { workspaceRoot, baselineMatch: true };
+  // Stage outside the data root for sandboxed execution: the sandbox
+  // makes the entire data root inaccessible, so the execution copy
+  // must live elsewhere (no nested holes). Reflink keeps it cheap.
+  const stagingRoot = join(verifierStagingRoot(input.attemptId), 'project');
+  await rm(verifierStagingRoot(input.attemptId), { recursive: true, force: true });
+  await mkdir(stagingRoot, { recursive: true });
+  await copyTree(workspaceRoot, stagingRoot, {
+    preferReflink: true,
+    symlinkPolicy: 'inert-unsafe',
+    blockedLinkMetadataRoot: resolve(workspaceRoot, '..', '.sentry-blocked-links'),
+  });
+  return { workspaceRoot, stagingRoot, baselineMatch: true };
 }
 
 async function readFileBytes(path: string): Promise<Buffer> {
@@ -455,7 +487,8 @@ export async function verifyMerge(
   }
   const createRunner =
     options.createRunner ??
-    ((attemptRoot: string) => new VerificationCommandRunner(backend, attemptRoot));
+    ((input: { attemptRoot: string; sandboxRoot: string; inaccessiblePaths: readonly string[] }) =>
+      new VerificationCommandRunner(backend, input.sandboxRoot, input.inaccessiblePaths));
   const attempts: VerificationRunAttempt[] = [];
   let completedCount = 0;
   let failedCount = 0;
@@ -541,7 +574,11 @@ async function verifyCluster(input: {
   readonly dataRoot: string;
   readonly snapshots: SnapshotEngine;
   readonly revisionMaterial: (projectId: string, revisionId: string) => Promise<string | undefined>;
-  readonly createRunner: (attemptRoot: string) => VerificationCommandRunner;
+  readonly createRunner: (input: {
+    attemptRoot: string;
+    sandboxRoot: string;
+    inaccessiblePaths: readonly string[];
+  }) => VerificationCommandRunner;
   readonly run: VerificationRun;
   readonly attemptId: VerificationRunAttempt['id'];
   readonly clusterId: string;
@@ -605,6 +642,9 @@ async function verifyCluster(input: {
     workspaceProvenance: {
       snapshotId: input.run.projectSnapshotId,
       workspacePath: materialized.workspaceRoot,
+      ...(materialized.stagingRoot === undefined
+        ? {}
+        : { sandboxExecutionRoot: materialized.stagingRoot }),
       materializedAt: nowIsoTimestamp(),
       baselineMatch: materialized.baselineMatch,
     },
@@ -615,15 +655,21 @@ async function verifyCluster(input: {
   };
   input.repository.saveVerificationAttempt(baseAttempt);
   for (const step of baseAttempt.steps) input.repository.saveVerificationStep(attemptId, step);
-  // Ownership scope (§27-29): one runner per attempt (disposable HOME
-  // + tracked process groups). finally guarantees runner dispose and
-  // workspace removal across success, classifier failure, artifact
-  // failure, repository failure, runner failure, timeout, and
-  // unexpected exceptions.
-  // The backend owns disposable HOME creation (inside createEnvironment);
-  // attemptRoot derives from the workspace path (both constructed
-  // internally, never from model/user input).
-  const runner = input.createRunner(dirname(materialized.workspaceRoot));
+  // Ownership scope: one sandboxed runner per attempt. The execution
+  // root is the staging copy (outside the data root); the whole data
+  // root plus the real home are inaccessible inside. finally
+  // guarantees runner dispose, staging removal, and workspace removal
+  // across every failure path. All paths constructed internally,
+  // never from model/user input.
+  const sandboxRoot =
+    materialized.stagingRoot === undefined
+      ? dirname(materialized.workspaceRoot)
+      : dirname(materialized.stagingRoot);
+  const runner = input.createRunner({
+    attemptRoot: dirname(materialized.workspaceRoot),
+    sandboxRoot,
+    inaccessiblePaths: [input.dataRoot, homedir()],
+  });
   try {
     return await executeAttemptSteps({
       repository: input.repository,
@@ -652,6 +698,15 @@ async function verifyCluster(input: {
     if (cleanupWarning !== undefined) {
       input.run.warnings.push({ code: 'VERIFIER_CLEANUP_FAILED', message: cleanupWarning });
     }
+    // Staging lives outside the data root: remove it too. destroyWorkspace
+    // removes dirname(path), so pass the staging project dir (whose
+    // parent IS the staging root).
+    if (materialized.stagingRoot !== undefined) {
+      const stagingWarning = await destroyWorkspace(materialized.stagingRoot);
+      if (stagingWarning !== undefined) {
+        input.run.warnings.push({ code: 'VERIFIER_CLEANUP_FAILED', message: stagingWarning });
+      }
+    }
   }
 }
 
@@ -669,6 +724,7 @@ async function executeAttemptSteps(input: {
   readonly baseAttempt: VerificationRunAttempt;
   readonly materialized: {
     readonly workspaceRoot: string;
+    readonly stagingRoot?: string;
     readonly baselineMatch: boolean;
     readonly driftWarning?: string;
   };
@@ -697,6 +753,11 @@ async function executeAttemptSteps(input: {
       classified,
     );
   }
+  // Execution root: the staging copy outside the data root (the
+  // sandbox makes the whole data root inaccessible). Falls back to
+  // the canonical workspace only when staging is absent (drift path
+  // never reaches here, but defensiveness is free).
+  const executionRoot = materialized.stagingRoot ?? materialized.workspaceRoot;
   const fs = {
     stat: async (path: string) => {
       const stats = await stat(path);
@@ -733,7 +794,7 @@ async function executeAttemptSteps(input: {
     let executedStep: ExecutedStep;
     if (step.type === 'source_integrity') {
       executedStep = await executeSourceIntegrity(step, {
-        workspaceRoot: materialized.workspaceRoot,
+        workspaceRoot: executionRoot,
         fs,
         runner: input.runner,
         operationsById: input.operations,
@@ -742,7 +803,7 @@ async function executeAttemptSteps(input: {
       });
     } else if (step.type === 'command_replay' || step.type === 'test_replay') {
       executedStep = await executeReplay(step, {
-        workspaceRoot: materialized.workspaceRoot,
+        workspaceRoot: executionRoot,
         fs,
         runner: input.runner,
         operationsById: input.operations,

@@ -146,7 +146,8 @@ export function runnerEnv(homeDir: string, pathValue: string | undefined): Recor
 export class VerificationCommandRunner {
   constructor(
     private readonly backend: VerificationSandboxBackend,
-    private readonly attemptRoot: string,
+    private readonly sandboxRoot: string,
+    private readonly inaccessiblePaths: readonly string[] = [],
     private readonly pathValue: string | undefined = process.env['PATH'],
   ) {}
 
@@ -156,9 +157,10 @@ export class VerificationCommandRunner {
   ): Promise<VerificationExecutionEnvironment | undefined> {
     try {
       return await this.backend.createEnvironment({
-        attemptRoot: this.attemptRoot,
+        attemptRoot: this.sandboxRoot,
         workspaceRoot,
         runtimeBinds,
+        inaccessiblePaths: this.inaccessiblePaths,
       });
     } catch {
       return undefined;
@@ -206,7 +208,7 @@ export class VerificationCommandRunner {
         executable,
         args: argv.slice(1),
         cwd: input.cwd,
-        env: sandboxEnv(join(this.attemptRoot, 'home'), toolDirs),
+        env: sandboxEnv(join(this.sandboxRoot, 'home'), toolDirs),
         timeoutMs: input.timeoutMs,
       });
       return {
@@ -262,11 +264,7 @@ export interface ExecutedStep {
    *  decisive for reproduced; strong mismatches alone are decisive
    *  for not_reproducible. Not a persisted probability. */
   readonly matchStrength?:
-    | 'strong_match'
-    | 'weak_match'
-    | 'strong_mismatch'
-    | 'weak_mismatch'
-    | 'unavailable';
+    'strong_match' | 'weak_match' | 'strong_mismatch' | 'weak_mismatch' | 'unavailable';
   readonly warningCode?: 'VERIFIER_TOOL_UNAVAILABLE' | 'VERIFIER_REPLAY_TIMEOUT';
   readonly exitCode?: number;
   readonly diagnosticFingerprint?: string;
@@ -649,7 +647,9 @@ function evaluateCommandReplay(
         expectation.exitCode +
         ' but observed ' +
         exitCode +
-        (strong ? ' with an original signature to contradict.' : ' without an original signature; weak only.'),
+        (strong
+          ? ' with an original signature to contradict.'
+          : ' without an original signature; weak only.'),
     };
   }
   const original = step.expected['originalSignature'];
