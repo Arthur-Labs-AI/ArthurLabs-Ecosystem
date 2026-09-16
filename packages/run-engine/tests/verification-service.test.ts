@@ -1,6 +1,13 @@
 import { mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+
+/** Bindable fixture base (see verification-trust.test.ts). */
+async function fixtureBase(prefix: string): Promise<string> {
+  const base = join(fileURLToPath(new URL('../../../.tmp-sentry-test-fixtures', import.meta.url)));
+  await mkdir(base, { recursive: true });
+  return mkdtemp(join(base, prefix));
+}
 import { afterEach, describe, expect, it } from 'vitest';
 import { SentryDatabase, SentryRepository, RuntimeInstanceLease } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
@@ -18,7 +25,7 @@ afterEach(async () => {
 });
 
 async function simulatedFixture() {
-  const root = await mkdtemp(join(tmpdir(), 'sentry-verify-service-'));
+  const root = await fixtureBase('sentry-verify-service-');
   roots.push(root);
   const source = join(root, 'source');
   const dataRoot = join(root, 'data');

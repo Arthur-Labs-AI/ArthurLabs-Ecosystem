@@ -1,6 +1,17 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+
+/** Bindable fixture base: sandboxed units need a host path the sandbox
+ *  backend can bind. os.tmpdir() is invisible on WSL2 (private /tmp in
+ *  the user manager) and $HOME holes clash with ProtectHome, so
+ *  fixtures live repo-local (same fs family as real dataRoots) and are
+ *  removed in afterEach. */
+async function fixtureBase(prefix: string): Promise<string> {
+  const base = join(fileURLToPath(new URL('../../../.tmp-sentry-test-fixtures', import.meta.url)));
+  await mkdir(base, { recursive: true });
+  return mkdtemp(join(base, prefix));
+}
 import { afterEach, describe, expect, it } from 'vitest';
 import { SentryDatabase, SentryRepository, RuntimeInstanceLease } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
@@ -17,7 +28,7 @@ const T = '2026-09-16T00:00:00.000Z';
  *  zero dependencies): `node tests/run-tests.mjs` exits 1 naming the
  *  failing test. No network, no installs. */
 async function divideFixture() {
-  const root = await mkdtemp(join(tmpdir(), 'sentry-verify-trust-'));
+  const root = await fixtureBase('sentry-verify-trust-');
   roots.push(root);
   const source = join(root, 'source');
   const dataRoot = join(root, 'data');

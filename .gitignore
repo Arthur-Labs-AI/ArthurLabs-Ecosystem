@@ -1,3 +1,6 @@
+# Local verifier-test fixture roots (bindable fs, removed after each test)
+.tmp-sentry-test-fixtures/
+
 # Logs
 logs
 *.log
