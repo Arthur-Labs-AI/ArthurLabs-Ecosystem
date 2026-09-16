@@ -415,6 +415,59 @@ describe('qa cli', () => {
     expect(!missingResponse.ok && missingResponse.error.code).toBe('RUN_NOT_FOUND');
   }, 60_000);
 
+  it('verifies a merged simulated run with stable exit semantics', async () => {
+    const f = await fixture();
+    const add = invoke(['project', 'add', f.source, '--json'], f.dataRoot);
+    expect(add.status).toBe(0);
+    const added = machine(add, 'project.add');
+    if (!added.ok || added.command !== 'project.add') throw new Error('Unexpected response');
+    const simulate = invoke(
+      ['run', 'simulate', added.data.projectId, '--scenario', 'success', '--json'],
+      f.dataRoot,
+    );
+    expect(simulate.status).toBe(5);
+    const simulated = machine(simulate, 'run.simulate');
+    if (!simulated.ok || simulated.command !== 'run.simulate')
+      throw new Error('Unexpected response');
+    const merged = invoke(['run', 'merge', simulated.data.runId, '--json'], f.dataRoot);
+    expect(merged.status).toBe(0);
+    const mergeResponse = machine(merged, 'run.merge');
+    if (!mergeResponse.ok || mergeResponse.command !== 'run.merge') {
+      throw new Error('Unexpected response');
+    }
+    const started = invoke(
+      ['verify', 'start', mergeResponse.data.mergeResultId, '--json'],
+      f.dataRoot,
+    );
+    expect(started.status).toBe(0);
+    const verifyResponse = machine(started, 'verify.start');
+    if (!verifyResponse.ok || verifyResponse.command !== 'verify.start') {
+      throw new Error('Unexpected response');
+    }
+    expect(verifyResponse.data.mergeResultId).toBe(mergeResponse.data.mergeResultId);
+    expect(verifyResponse.data.verificationRunId).toMatch(/^vrun_/);
+    expect(verifyResponse.data.attempts.total).toBeGreaterThan(0);
+    // Verification outcomes never affect the exit code (§70).
+    const shown = invoke(
+      ['verify', 'show', verifyResponse.data.verificationRunId, '--json'],
+      f.dataRoot,
+    );
+    expect(shown.status).toBe(0);
+    const showResponse = machine(shown, 'verify.show');
+    if (!showResponse.ok || showResponse.command !== 'verify.show') {
+      throw new Error('Unexpected response');
+    }
+    expect(showResponse.data.attempts.length).toBe(verifyResponse.data.attempts.total);
+    // Unknown merge result maps to the not-found exit category.
+    const missing = invoke(
+      ['verify', 'start', 'merge_01K7777777777777777777A8W9', '--json'],
+      f.dataRoot,
+    );
+    expect(missing.status).toBe(3);
+    const missingResponse = machine(missing, 'verify.start');
+    expect(!missingResponse.ok && missingResponse.error.code).toBe('RUN_NOT_FOUND');
+  }, 120_000);
+
   it('returns typed machine errors and stable exit categories', async () => {
     const f = await fixture();
     const invalid = invoke(['project', 'add', '--json'], f.dataRoot);
