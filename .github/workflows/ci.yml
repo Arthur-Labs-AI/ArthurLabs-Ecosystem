@@ -21,6 +21,16 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Verifier trust tests execute real replay inside systemd user
+      # services (§7). Non-interactive sessions have no user bus unless
+      # the runner user lingers, so provision it like any other test
+      # prerequisite (cf. socat for the Phase 4 Claude sandbox tests).
+      # The bus check is informational; the trust tests assert sandbox
+      # availability themselves and report the preflight reason on failure.
+      - name: Enable systemd user lingering for sandbox tests
+        run: |
+          sudo loginctl enable-linger "$USER"
+          systemctl --user is-system-running || true
       - run: pnpm repository:check
       - run: pnpm format:check
       - run: pnpm lint

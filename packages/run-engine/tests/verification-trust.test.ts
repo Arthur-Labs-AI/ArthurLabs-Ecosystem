@@ -117,6 +117,17 @@ async function schemas() {
   return import('@qa/schemas');
 }
 
+/** Precondition for every test that needs REAL replay: the systemd
+ *  sandbox must be available. Without it every replay degrades to
+ *  unsupported (empty artifacts, honest inconclusive) and downstream
+ *  assertions mislead — fail fast with the preflight reason instead. */
+function requireSandbox(run: { environmentFingerprint: { available: boolean; reason?: string } }) {
+  expect(
+    run.environmentFingerprint.available,
+    'sandbox unavailable: ' + (run.environmentFingerprint.reason ?? 'unknown reason'),
+  ).toBe(true);
+}
+
 describe('verifier trust fixtures', () => {
   it('reproduces a known failing test with strong identity (§50)', async () => {
     const f = await divideFixture();
@@ -174,6 +185,7 @@ describe('verifier trust fixtures', () => {
     const { run, attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
       commandTimeoutMs: 30000,
     });
+    requireSandbox(run);
     const target = attempts.find((a) => a.sourceFindingIds.includes(finding.id as never));
     expect(target).toBeDefined();
     expect(target?.status).toBe('completed');
@@ -238,9 +250,10 @@ describe('verifier trust fixtures', () => {
       }),
     );
     const { result: merge } = mergeRun(f.repository, f.runId);
-    const { attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
+    const { run: mismatchRun, attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
       commandTimeoutMs: 30000,
     });
+    requireSandbox(mismatchRun);
     const target = attempts.find((a) => a.sourceFindingIds.includes(finding.id as never));
     // The replayed suite fails on the DIVIDE test, not the expected
     // negatives test: identity unconfirmed → never reproduced.
@@ -307,9 +320,10 @@ describe('verifier trust fixtures', () => {
       }),
     );
     const { result: merge } = mergeRun(f.repository, f.runId);
-    const { attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
+    const { run: secretRun, attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
       commandTimeoutMs: 30000,
     });
+    requireSandbox(secretRun);
     const SECRET = 'faketoken1234567890abcdef';
     const { resolveInside } = await import('@qa/persistence');
     const { readFile } = await import('node:fs/promises');
@@ -401,7 +415,7 @@ describe('verifier trust fixtures', () => {
       }),
     );
     const { result: escapeMerge } = mergeRun(f.repository, f.runId);
-    const { attempts: escapeAttempts } = await verifyMerge(
+    const { run: escapeRun, attempts: escapeAttempts } = await verifyMerge(
       f.repository,
       f.dataRoot,
       escapeMerge.id,
@@ -409,6 +423,7 @@ describe('verifier trust fixtures', () => {
         commandTimeoutMs: 30000,
       },
     );
+    requireSandbox(escapeRun);
     const escapeTarget = escapeAttempts.find((a) =>
       a.sourceFindingIds.includes(escapeFinding.id as never),
     );
@@ -527,9 +542,10 @@ describe('verifier trust fixtures', () => {
       }),
     );
     const { result: merge } = mergeRun(f.repository, f.runId);
-    const { attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
+    const { run: monoRun, attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
       commandTimeoutMs: 30000,
     });
+    requireSandbox(monoRun);
     const target = attempts.find((a) => a.sourceFindingIds.includes(finding.id as never));
     // Exit 0 observed from frontend/ with matching exit: weak match
     // (no original signature) → partially_verified. From the wrong cwd
@@ -592,9 +608,10 @@ describe('verifier trust fixtures', () => {
       }),
     );
     const { result: merge } = mergeRun(f.repository, f.runId);
-    const { attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
+    const { run: descendantRun, attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
       commandTimeoutMs: 30000,
     });
+    requireSandbox(descendantRun);
     const target = attempts.find((attempt) =>
       attempt.sourceFindingIds.includes(finding.id as never),
     );
