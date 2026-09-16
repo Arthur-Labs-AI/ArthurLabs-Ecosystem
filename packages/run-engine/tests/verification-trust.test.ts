@@ -56,7 +56,7 @@ async function divideFixture() {
     createFakeHarnessRegistry('success'),
   );
   const result = await coordinator.run(added.project.id, { executionKind: 'simulation' });
-  return { dataRoot, database, repository, runId: result.run.id };
+  return { dataRoot, database, repository, runId: result.run.id, source };
 }
 
 async function schemas() {
@@ -191,6 +191,161 @@ describe('verifier trust fixtures', () => {
     // The replayed suite fails on the DIVIDE test, not the expected
     // negatives test: identity unconfirmed → never reproduced.
     expect(target?.outcome).not.toBe('reproduced');
+    f.database.close();
+  }, 180000);
+
+  it('keeps fake secrets out of every persistence layer (§56)', async () => {
+    const f = await divideFixture();
+    const { FindingSchema, EvidenceSchema, HarnessEventSchema } = await schemas();
+    const agents = f.repository.listAgentRuns(f.runId);
+    const agent = agents.find((a) => a.status === 'completed') ?? agents[0];
+    if (agent === undefined) throw new Error('No agent run');
+    const opId = 'op_01K7777777777777777777A8W4';
+    // The replayed script prints a fake Bearer token: the redaction
+    // boundary must scrub it before ANY persistence layer.
+    await writeFile(
+      join(f.source, 'tests', 'leak.mjs'),
+      'console.log("Authorization: Bearer faketoken1234567890abcdef");\nprocess.exit(1);\n',
+    );
+    const evidence = EvidenceSchema.parse({
+      schemaVersion: 1,
+      id: 'ev_01K7777777777777777777A8W4',
+      qaRunId: f.runId,
+      agentRunId: agent.id,
+      type: 'command',
+      strength: 'strong_code_evidence',
+      environmentState: 'baseline',
+      description: 'leaky command',
+      command: { command: 'node tests/leak.mjs', exitCode: 1 },
+      artifactIds: [],
+      groundingOperationIds: [opId],
+      createdAt: T,
+    });
+    f.repository.saveEvidence(evidence);
+    const finding = FindingSchema.parse({
+      schemaVersion: 1,
+      id: 'find_01K7777777777777777777A8W4',
+      qaRunId: f.runId,
+      agentRunId: agent.id,
+      sourceAgentStackId: agent.agentStackId,
+      title: 'Leaky suite',
+      category: 'logic',
+      severity: 'medium',
+      confidence: 'strong',
+      description: 'prints secret.',
+      locations: [{ relativePath: 'src/divide.mjs', startLine: 1 }],
+      evidenceIds: [evidence.id],
+      reproductionSteps: [],
+      createdAt: T,
+    });
+    f.repository.saveFinding(finding);
+    f.repository.appendHarnessEvent(
+      f.runId,
+      HarnessEventSchema.parse({
+        schemaVersion: 1,
+        eventId: 'evt_01K7777777777777777777A8W4',
+        agentRunId: agent.id,
+        timestamp: T,
+        type: 'command.executed',
+        operationId: opId,
+        command: 'node tests/leak.mjs',
+        exitCode: 1,
+      }),
+    );
+    const { result: merge } = mergeRun(f.repository, f.runId);
+    const { attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
+      commandTimeoutMs: 30000,
+    });
+    const SECRET = 'faketoken1234567890abcdef';
+    const { resolveInside } = await import('@qa/persistence');
+    const { readFile } = await import('node:fs/promises');
+    for (const attempt of attempts) {
+      for (const step of f.repository.listVerificationSteps(attempt.id)) {
+        expect(JSON.stringify(step)).not.toContain(SECRET);
+      }
+      for (const observation of f.repository.listVerificationObservations(attempt.id)) {
+        expect(JSON.stringify(observation)).not.toContain(SECRET);
+        for (const artifactId of observation.artifactIds) {
+          const artifact = f.repository.getArtifact(artifactId);
+          expect(artifact).toBeDefined();
+          if (artifact !== undefined) {
+            const bytes = await readFile(
+              resolveInside(f.dataRoot, artifact.relativeStoragePath),
+              'utf8',
+            );
+            expect(bytes).not.toContain(SECRET);
+          }
+        }
+      }
+      for (const assertion of f.repository.listVerificationAssertions(attempt.id)) {
+        expect(JSON.stringify(assertion)).not.toContain(SECRET);
+      }
+    }
+    f.database.close();
+  }, 180000);
+
+  it('refuses shell-escaped replay without executing (§57)', async () => {
+    const f = await divideFixture();
+    const { FindingSchema, EvidenceSchema, HarnessEventSchema } = await schemas();
+    const agents = f.repository.listAgentRuns(f.runId);
+    const agent = agents.find((a) => a.status === 'completed') ?? agents[0];
+    if (agent === undefined) throw new Error('No agent run');
+    const opId = 'op_01K7777777777777777777A8W5';
+    const marker = join(f.dataRoot, 'escape-marker.txt');
+    const evidence = EvidenceSchema.parse({
+      schemaVersion: 1,
+      id: 'ev_01K7777777777777777777A8W5',
+      qaRunId: f.runId,
+      agentRunId: agent.id,
+      type: 'command',
+      strength: 'strong_code_evidence',
+      environmentState: 'baseline',
+      description: 'escaped command',
+      command: { command: 'node tests/run-tests.mjs && touch ' + marker, exitCode: 1 },
+      artifactIds: [],
+      groundingOperationIds: [opId],
+      createdAt: T,
+    });
+    f.repository.saveEvidence(evidence);
+    const finding = FindingSchema.parse({
+      schemaVersion: 1,
+      id: 'find_01K7777777777777777777A8W5',
+      qaRunId: f.runId,
+      agentRunId: agent.id,
+      sourceAgentStackId: agent.agentStackId,
+      title: 'Escaped suite',
+      category: 'logic',
+      severity: 'medium',
+      confidence: 'strong',
+      description: 'escaped.',
+      locations: [{ relativePath: 'src/divide.mjs', startLine: 1 }],
+      evidenceIds: [evidence.id],
+      reproductionSteps: [],
+      createdAt: T,
+    });
+    f.repository.saveFinding(finding);
+    f.repository.appendHarnessEvent(
+      f.runId,
+      HarnessEventSchema.parse({
+        schemaVersion: 1,
+        eventId: 'evt_01K7777777777777777777A8W5',
+        agentRunId: agent.id,
+        timestamp: T,
+        type: 'command.executed',
+        operationId: opId,
+        command: 'node tests/run-tests.mjs && touch ' + marker,
+        exitCode: 1,
+      }),
+    );
+    const { result: merge } = mergeRun(f.repository, f.runId);
+    const { attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
+      commandTimeoutMs: 30000,
+    });
+    const target = attempts.find((a) => a.sourceFindingIds.includes(finding.id as never));
+    expect(target?.outcome).not.toBe('reproduced');
+    // The escape never executed: marker absent.
+    const { stat } = await import('node:fs/promises');
+    await expect(stat(marker)).rejects.toThrow();
     f.database.close();
   }, 180000);
 
