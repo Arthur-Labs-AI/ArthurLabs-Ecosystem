@@ -659,6 +659,20 @@ export class SentryRepository {
     );
   }
 
+  /** Crash-recovery scan (§65): running/queued verification runs,
+   *  regardless of merge. Status lives in the JSON payload. */
+  listNonterminalVerificationRuns(): VerificationRun[] {
+    return decodeMany(
+      VerificationRunSchema,
+      this.database.connection
+        .prepare(
+          "SELECT payload FROM verification_runs WHERE json_extract(payload,'$.status') IN ('queued','running') ORDER BY id",
+        )
+        .all() as unknown as PayloadRow[],
+      'VerificationRun',
+    );
+  }
+
   saveVerificationAttempt(value: VerificationRunAttempt): void {
     // verification_run_id stays in the SET clause so the ownership
     // trigger loudly rejects re-homing (column and payload can never

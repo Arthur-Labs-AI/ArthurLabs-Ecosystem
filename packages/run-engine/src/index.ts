@@ -44,6 +44,7 @@ import { WorkspaceFactory } from '@qa/workspace-factory';
 import { RunActivityProjector } from './activity-projector.js';
 import { RunExporter } from './exporters.js';
 import { RunEngineError } from './errors.js';
+import { recoverVerifications } from './verification-service.js';
 
 export interface RunOptions {
   readonly agentStackIds?: readonly AgentStackId[];
@@ -752,6 +753,12 @@ export class RunCoordinator {
         }
       }
     }
+    // Verification crash recovery uses the same lease freshness — no
+    // parallel lease system (§64). Stale-owned running verifications
+    // become interrupted with completed observations preserved.
+    await recoverVerifications(this.repository, (instanceId) =>
+      lease.isFresh(instanceId as never),
+    );
   }
 
   private requireRuntimeLease(): RuntimeInstanceLease {

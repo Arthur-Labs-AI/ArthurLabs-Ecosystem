@@ -24,6 +24,7 @@ import {
   type SentryRepository,
 } from '@qa/persistence';
 import { SnapshotEngine } from '@qa/snapshot-engine';
+import { ProjectManager } from '@qa/project-manager';
 import {
   createVerificationAttemptId,
   createVerificationObservationId,
@@ -42,6 +43,69 @@ import type {
   VerificationRun,
   VerificationRunAttempt,
 } from '@qa/schemas';
+
+/** Crash recovery (§64-65): mark verification runs/attempts owned by
+ *  a stale runtime as interrupted. Completed observations are
+ *  preserved; abandoned verifier workspaces are removed where safely
+ *  attributable (path contains the attempt id under verifier-workspaces).
+ *  Uses the existing RuntimeInstanceLease freshness — no parallel lease
+ *  system. Called from RunCoordinator.recover(). */
+export async function recoverVerifications(
+  repository: SentryRepository,
+  isFresh: (instanceId: string) => boolean,
+): Promise<{ runs: number; attempts: number }> {
+  const now = nowIsoTimestamp();
+  let runs = 0;
+  let attempts = 0;
+  for (const run of repository.listNonterminalVerificationRuns()) {
+    const owner = run.runtimeInstanceId;
+    if (owner !== undefined && isFresh(owner)) continue;
+    // Unowned runs (no lease binding, e.g. tests) are left alone:
+    // only stale-owned rows are recoverable crash evidence.
+    if (owner === undefined) continue;
+    let completedCount = 0;
+    for (const attempt of repository.listVerificationAttempts(run.id)) {
+      if (attempt.status === 'completed') {
+        completedCount += 1;
+        continue;
+      }
+      if (attempt.status === 'failed' || attempt.status === 'cancelled') continue;
+      const interruptedSteps = attempt.steps.map((step) =>
+        step.status === 'running'
+          ? { ...step, status: 'interrupted' as const, completedAt: now }
+          : step,
+      );
+      for (const step of interruptedSteps) {
+        if (step.status === 'interrupted') repository.saveVerificationStep(attempt.id, step);
+      }
+      repository.saveVerificationAttempt({
+        ...attempt,
+        status: 'interrupted',
+        steps: interruptedSteps,
+        limitations: [...attempt.limitations, 'Sentry stopped before the attempt completed.'],
+        completedAt: now,
+      });
+      attempts += 1;
+      const workspace = attempt.workspaceProvenance?.workspacePath;
+      if (
+        workspace !== undefined &&
+        workspace.includes('verifier-workspaces') &&
+        workspace.includes(attempt.id)
+      ) {
+        await rm(workspace, { recursive: true, force: true }).catch(() => undefined);
+      }
+    }
+    const remaining = repository.listVerificationAttempts(run.id);
+    const completed = remaining.filter((a) => a.status === 'completed').length;
+    repository.saveVerificationRun({
+      ...run,
+      status: completed > 0 ? 'partial' : 'interrupted',
+      completedAt: now,
+    });
+    runs += 1;
+  }
+  return { runs, attempts };
+}
 
 export class VerificationServiceError extends Error {
   constructor(
@@ -62,6 +126,9 @@ export interface VerifyRunOptions {
   readonly clusterIds?: readonly string[];
   readonly commandTimeoutMs?: number;
   readonly now?: IsoTimestamp;
+  /** Lease binding for crash recovery: the owning runtime instance.
+   *  A sweeper marks stale-owned running rows interrupted (§64-65). */
+  readonly runtimeInstanceId?: string;
   /** Test-only seam: override per-attempt runner construction.
    *  Production always uses the contained VerificationCommandRunner. */
   readonly createRunner?: (homeDir: string) => VerificationCommandRunner;
@@ -116,22 +183,22 @@ function resolveOperations(
   return operations;
 }
 
-/** Materialize a fresh verifier workspace from the managed working copy
- *  and prove it matches the historical snapshot (§9, §95): the managed
- *  copy must still sit at the snapshot's revision AND every manifest
- *  baseline hash must reproduce. Anything else refuses with
- *  SNAPSHOT_DRIFT (honest inconclusive downstream), never a wrong-state
+/** Materialize a fresh verifier workspace from the RETAINED IMMUTABLE
+ *  revision bytes (§41) and prove it matches the historical snapshot:
+ *  every manifest baseline hash must reproduce. The managed working
+ *  copy is never consulted, so project updates (A → B) don't break
+ *  verification of A (§42). Missing/corrupt material refuses with a
+ *  drift limitation (honest inconclusive, §43-44), never a wrong-state
  *  verification. */
 async function materializeVerifierWorkspace(input: {
   readonly repository: SentryRepository;
   readonly snapshots: SnapshotEngine;
+  readonly revisionMaterial: (projectId: string, revisionId: string) => Promise<string | undefined>;
   readonly dataRoot: string;
   readonly projectId: string;
   readonly snapshotId: string;
   readonly attemptId: string;
 }): Promise<{ workspaceRoot: string; baselineMatch: boolean; driftWarning?: string }> {
-  const paths = projectDataPaths(input.dataRoot, input.projectId as never);
-  const managedCopy = input.repository.getManagedCopy(input.projectId as never);
   const snapshot = input.repository.getSnapshot(input.snapshotId as never);
   if (snapshot === undefined) {
     throw new VerificationServiceError(
@@ -147,21 +214,20 @@ async function materializeVerifierWorkspace(input: {
     input.attemptId,
     'project',
   );
-  if (managedCopy?.currentRevisionId !== snapshot.projectRevisionId) {
+  const materialRoot = await input.revisionMaterial(input.projectId, snapshot.projectRevisionId);
+  if (materialRoot === undefined) {
     return {
       workspaceRoot,
       baselineMatch: false,
       driftWarning:
-        'Managed copy revision ' +
-        (managedCopy?.currentRevisionId ?? '(none)') +
-        ' differs from snapshot revision ' +
+        'No retained material for revision ' +
         snapshot.projectRevisionId +
-        '; refusing wrong-state verification.',
+        ' (predates retention); refusing to verify from moved-on state.',
     };
   }
   await rm(workspaceRoot, { recursive: true, force: true });
   await mkdir(workspaceRoot, { recursive: true });
-  await copyTree(paths.workingCopy, workspaceRoot, {
+  await copyTree(materialRoot, workspaceRoot, {
     preferReflink: true,
     symlinkPolicy: 'inert-unsafe',
     blockedLinkMetadataRoot: resolve(workspaceRoot, '..', '.sentry-blocked-links'),
@@ -325,6 +391,7 @@ export async function verifyMerge(
     );
   }
   const snapshots = new SnapshotEngine(dataRoot, repository);
+  const projects = new ProjectManager(dataRoot, repository);
   const operations = resolveOperations(repository, merge.qaRunId);
   const findingsById = new Map<string, Finding>(
     repository.listFindings(merge.qaRunId).map((finding) => [finding.id, finding]),
@@ -345,6 +412,9 @@ export async function verifyMerge(
     recipeVersion: VERIFICATION_RECIPE_VERSION,
     signatureVersion: VERIFICATION_SIGNATURE_VERSION,
     status: 'running',
+    ...(options.runtimeInstanceId === undefined
+      ? {}
+      : { runtimeInstanceId: options.runtimeInstanceId }),
     requestedClusterIds: clusters.map(
       (cluster) => cluster.id,
     ) as VerificationRun['requestedClusterIds'],
@@ -370,6 +440,8 @@ export async function verifyMerge(
         repository,
         dataRoot,
         snapshots,
+        revisionMaterial: (projectId: string, revisionId: string) =>
+          projects.revisionMaterialRoot(projectId as never, revisionId),
         createRunner,
         run,
         clusterId: cluster.id,
@@ -427,6 +499,7 @@ async function verifyCluster(input: {
   readonly repository: SentryRepository;
   readonly dataRoot: string;
   readonly snapshots: SnapshotEngine;
+  readonly revisionMaterial: (projectId: string, revisionId: string) => Promise<string | undefined>;
   readonly createRunner: (homeDir: string) => VerificationCommandRunner;
   readonly run: VerificationRun;
   readonly clusterId: string;
@@ -447,6 +520,7 @@ async function verifyCluster(input: {
   const materialized = await materializeVerifierWorkspace({
     repository: input.repository,
     snapshots: input.snapshots,
+    revisionMaterial: input.revisionMaterial,
     dataRoot: input.dataRoot,
     projectId: qaRun.projectId,
     snapshotId: input.run.projectSnapshotId,

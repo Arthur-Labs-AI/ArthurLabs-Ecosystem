@@ -39,6 +39,7 @@ interface RuntimeContext {
   readonly projects: ProjectManager;
   readonly runs: RunCoordinator;
   readonly dataRoot: string;
+  readonly lease?: RuntimeInstanceLease;
 }
 
 export interface ExecuteOptions {
@@ -76,7 +77,7 @@ async function withMutationRuntime<T>(
     const projects = new ProjectManager(dataRoot, repository, { runtimeLease: lease });
     const runs = new RunCoordinator(dataRoot, repository, lease, registry);
     await runs.recover();
-    return await operation({ repository, projects, runs, dataRoot });
+    return await operation({ repository, projects, runs, dataRoot, lease });
   } finally {
     try {
       if (leaseStarted) lease.release();
@@ -390,7 +391,7 @@ export async function executeCommand(
     }, options);
   }
   if (input.command === 'verify.start') {
-    return withMutationRuntime(async ({ repository, dataRoot }) => {
+    return withMutationRuntime(async ({ repository, dataRoot, lease }) => {
       try {
         const clusterIds =
           input.clusters === undefined
@@ -401,6 +402,7 @@ export async function executeCommand(
                 .filter((id) => id.length > 0);
         const { run, attempts } = await verifyMerge(repository, dataRoot, input.mergeResultId, {
           ...(clusterIds === undefined ? {} : { clusterIds }),
+          ...(lease?.instanceId === undefined ? {} : { runtimeInstanceId: lease.instanceId }),
         });
         const count = (outcome: string) => attempts.filter((a) => a.outcome === outcome).length;
         return success(input.command, {

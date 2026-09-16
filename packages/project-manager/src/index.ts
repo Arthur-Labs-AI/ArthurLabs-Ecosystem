@@ -59,6 +59,19 @@ export interface ProjectManagerOptions {
   readonly faultInjector?: (stage: ProjectMutationStage) => void | Promise<void>;
 }
 
+/** Immutable revision material root: projects/<project>/revisions/<revisionId>.
+ *  Retained post-commit from the working copy (never from staging, so a
+ *  failed import/update leaves no orphan material). Absence means the
+ *  revision predates material retention (§44) — honestly unavailable,
+ *  never fabricated. */
+export function revisionMaterialPath(
+  dataRoot: string,
+  projectId: ProjectId,
+  revisionId: string,
+): string {
+  return resolve(projectDataPaths(dataRoot, projectId).revisions, revisionId);
+}
+
 async function validateSource(sourcePath: string): Promise<string> {
   const source = resolve(sourcePath);
   let sourceStat;
@@ -190,6 +203,7 @@ export class ProjectManager {
         workingCopyPath: paths.workingCopy,
         ...(options.signal === undefined ? {} : { signal: options.signal }),
       });
+      await this.retainRevisionMaterial(projectId, revisionId, paths.workingCopy);
       return { project, managedCopy, revision, context };
     } catch (cause) {
       try {
@@ -204,6 +218,55 @@ export class ProjectManager {
         'Failed to create the managed project copy',
         { cause },
       );
+    }
+  }
+
+  /** Retain immutable revision bytes (§37-40): copy-once from the
+   *  committed working copy into revisions/<revisionId>. Reflink/COW
+   *  where the filesystem supports it, copy fallback otherwise; no
+   *  mutable hardlinks. Symlink policy matches agent workspaces
+   *  (inert-unsafe). Idempotent: existing material is left untouched.
+   *  Called post-commit only, so failures never orphan material. */
+  async retainRevisionMaterial(
+    projectId: ProjectId,
+    revisionId: string,
+    workingCopyPath: string,
+  ): Promise<string> {
+    const materialRoot = revisionMaterialPath(this.dataRoot, projectId, revisionId);
+    try {
+      await access(materialRoot, constants.F_OK);
+      return materialRoot;
+    } catch {
+      // Absent: materialize below.
+    }
+    const staging = materialRoot + '.staging-' + revisionId.slice(-6);
+    await rm(staging, { recursive: true, force: true });
+    try {
+      await copyTree(workingCopyPath, staging, {
+        preferReflink: true,
+        symlinkPolicy: 'inert-unsafe',
+        blockedLinkMetadataRoot: resolve(materialRoot + '.blocked-links'),
+      });
+      await rename(staging, materialRoot);
+    } catch (cause) {
+      await rm(staging, { recursive: true, force: true }).catch(() => undefined);
+      throw cause;
+    }
+    return materialRoot;
+  }
+
+  /** Resolve retained material for a revision, or undefined when the
+   *  revision predates retention (§44). Never fabricates bytes. */
+  async revisionMaterialRoot(
+    projectId: ProjectId,
+    revisionId: string,
+  ): Promise<string | undefined> {
+    const materialRoot = revisionMaterialPath(this.dataRoot, projectId, revisionId);
+    try {
+      await access(materialRoot, constants.F_OK);
+      return materialRoot;
+    } catch {
+      return undefined;
     }
   }
 
@@ -375,6 +438,7 @@ export class ProjectManager {
       } catch {
         // The committed operation remains as a durable cleanup marker.
       }
+      await this.retainRevisionMaterial(projectId, revisionId, paths.workingCopy);
       return { project, managedCopy, revision, context: completedContext.context };
     } catch (cause) {
       if (databaseCommitted) throw cause;
