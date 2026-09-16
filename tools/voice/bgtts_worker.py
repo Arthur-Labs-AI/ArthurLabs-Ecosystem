@@ -28,6 +28,17 @@ MAX_NEW_TOKENS = 1024
 ERROR_CODES = {"bad_request", "torch-unavailable", "cuda-unavailable", "hub-unavailable", "load-failed", "condition-failed", "synth-failed", "empty-audio"}
 
 
+def pick_device():
+    # HR-02.5 Linux enablement: cuda when the torch build exposes it,
+    # otherwise cpu. Upstream model/codec/inference code is fully
+    # device-parameterized (generate documents "cuda/cpu").
+    try:
+        import torch
+    except Exception:
+        return None
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
 def err_line(req_id, code):
     if code not in ERROR_CODES:
         code = "synth-failed"
@@ -35,9 +46,9 @@ def err_line(req_id, code):
 
 
 def load_stack(snapshot_dir):
-    import torch
-    if not torch.cuda.is_available():
-        return None, "cuda-unavailable"
+    device = pick_device()
+    if device is None:
+        return None, "torch-unavailable"
     if not os.path.isdir(snapshot_dir):
         return None, "load-failed"
     sys.path.insert(0, snapshot_dir)
@@ -56,20 +67,21 @@ def load_stack(snapshot_dir):
         return None, "load-failed"
     try:
         ckpt_file = os.path.join(snapshot_dir, "checkpoint_inference.pt")
-        model = load_for_inference(ckpt_file, device="cuda")
+        model = load_for_inference(ckpt_file, device=device)
         tokenizer = TTSTokenizer()
-        codec = CodecV6(device="cuda")
-        return {"model": model, "tokenizer": tokenizer, "codec": codec, "generate": generate}, ""
+        codec = CodecV6(device=device)
+        return {"model": model, "tokenizer": tokenizer, "codec": codec, "generate": generate, "device": device}, ""
     except Exception:
         return None, "load-failed"
 
 
 def synthesize(stack, text, ref_wav, out_wav):
     import torch
+    device = stack.get("device") or pick_device() or "cpu"
     with torch.no_grad():
         enc = stack["codec"].encode(ref_wav)
-        spk = enc["global_embedding"].to("cuda")
-        codes = stack["generate"](stack["model"], stack["tokenizer"], text, spk, MAX_NEW_TOKENS, 0.7, 250, 0.95, 1.1, "cuda")
+        spk = enc["global_embedding"].to(device)
+        codes = stack["generate"](stack["model"], stack["tokenizer"], text, spk, MAX_NEW_TOKENS, 0.7, 250, 0.95, 1.1, device)
         if codes is None or len(codes) == 0:
             return None, "empty-audio"
         wav = stack["codec"].tokens_to_wav(codes, spk, out_wav)

@@ -18,7 +18,7 @@ import type { ModelInstallContext } from '../../src/runtime/local-models/install
 import { memoryProvisioningFs } from '../../src/runtime/local-models/provisioning/staging';
 import type { SpawnFn } from '../../src/runtime/local-models/provisioning/process_runner';
 import { LocalModelStateStore, memoryStateFileSystem } from '../../src/runtime/local-models/state_store';
-import { makeBgTts38mInstaller, BGTTS_CUDA_INDEX_URL, BGTTS_CUDA_PACKAGES, BGTTS_PACKAGES, BGTTS_MIOCODEC_ARCHIVE_URL, BGTTS_MIOCODEC_ARCHIVE_SHA256, BGTTS_MIOCODEC_ARCHIVE_LABEL, BGTTS_WORKER_FILE } from '../../src/runtime/local-models/installers/bgtts_38m';
+import { makeBgTts38mInstaller, BGTTS_CUDA_INDEX_URL, BGTTS_CUDA_PACKAGES, BGTTS_LINUX_CPU_INDEX_URL, BGTTS_LINUX_CPU_PACKAGES, BGTTS_LINUX_PYTHON_MAX_EXCLUSIVE, BGTTS_PACKAGES, BGTTS_PYTHON_MAX_EXCLUSIVE, BGTTS_MIOCODEC_ARCHIVE_URL, BGTTS_MIOCODEC_ARCHIVE_SHA256, BGTTS_MIOCODEC_ARCHIVE_LABEL, BGTTS_WORKER_FILE, bgttsPackageSetsFor, bgttsPythonSpecFor } from '../../src/runtime/local-models/installers/bgtts_38m';
 import { memoryDownloadFs } from '../../src/runtime/local-models/provisioning/downloader';
 import { memoryVerifyFs } from '../../src/runtime/local-models/provisioning/verification';
 import { makeOmniVoiceBgInstaller, OMNI_AUTH_GUIDANCE, OMNIVOICE_CUDA_INDEX_URL, OMNIVOICE_CUDA_PACKAGES, OMNIVOICE_PACKAGES, OMNIVOICE_WORKER_FILE } from '../../src/runtime/local-models/installers/omnivoice_bg';
@@ -56,6 +56,7 @@ function happyRun(): { run: SpawnFn; seen: Array<{ exe: string; args: readonly s
   const run = okSpawn((exe, args) => {
     seen.push({ exe, args });
     const flat = args.join(' ');
+    if (flat === '--version') return { code: 0, stdout: 'Python 3.12.10' };
     if (flat.includes('snapshot_download')) return { code: 0, stdout: '/managed/snap' };
     if (flat.includes('SMOKE_REQUEST_ID') || flat.includes(SMOKE_REQUEST_ID)) return { code: 0, stdout: JSON.stringify({ id: SMOKE_REQUEST_ID, ok: true, text: '' }) };
     if (flat.includes('SMOKE_BYTES')) return { code: 0, stdout: 'SMOKE_BYTES=48000' };
@@ -270,6 +271,7 @@ test('bgtts succeeds on the fake seams with live (not staging) evidence', async 
   // occurs (no network in unit tests); snapshot/smoke are faked.
   const run = okSpawn((exe, args) => {
     const flat = args.join(' ');
+    if (flat === '--version') return { code: 0, stdout: 'Python 3.12.10' };
     if (flat.includes('direct_url.json') || flat.includes('importlib.metadata')) return { code: 0, stdout: '0.1.0\n{"url": "file:///staged/miocodec-77473544.zip"}' };
     if (flat.includes('import miocodec')) return { code: 0, stdout: 'miocodec-import-ok' };
     if (flat.includes('snapshot_download')) return { code: 0, stdout: '/managed/snap' };
@@ -326,12 +328,93 @@ test('bgtts archive hash mismatch fails without false ready', async () => {
 });
 
 test('bgtts failed setup reports failed without false ready', async () => {
-  const run = okSpawn(() => ({ code: 1, stdout: 'nope' }));
+  const run = okSpawn((exe, args) => {
+    if (args.join(' ') === '--version') return { code: 0, stdout: 'Python 3.12.10' };
+    return { code: 1, stdout: 'nope' };
+  });
   const s = seams(run);
   const installer = makeBgTts38mInstaller({ run, fs: s.fs, venvFs: s.venvFs, systemPython: '/trusted/python3', writeFile: s.writeFile });
   const result = await installer.install(ctxFor('bgtts-38m-v2'));
   assert.equal(result.outcome, 'failed');
   assert.ok(!result.artifact || result.artifact.validation?.status !== 'passed');
+});
+
+test('bgtts platform recipes: windows keeps CUDA pins, linux uses CPU torch', () => {
+  // Windows recipe is byte-identical to the proven standalone venv.
+  assert.deepEqual(BGTTS_CUDA_PACKAGES, ['torch==2.14.0', 'torchaudio==2.11.0']);
+  assert.equal(BGTTS_CUDA_INDEX_URL, 'https://download.pytorch.org/whl/cu130');
+  // Linux CPU recipe: pinned +cpu torch from the code-owned PyTorch
+  // CPU index (default PyPI torch is the CUDA-bundled build and must
+  // never land on a CPU-only machine).
+  assert.deepEqual(BGTTS_LINUX_CPU_PACKAGES, ['torch==2.9.1+cpu', 'torchaudio==2.9.1+cpu']);
+  const win = bgttsPackageSetsFor('windows');
+  assert.deepEqual(win.packages, ['torch==2.14.0', 'torchaudio==2.11.0']);
+  assert.equal(win.indexUrl, BGTTS_CUDA_INDEX_URL);
+  const lin = bgttsPackageSetsFor('linux');
+  assert.deepEqual(lin.packages, ['torch==2.9.1+cpu', 'torchaudio==2.9.1+cpu']);
+  assert.equal(lin.indexUrl, BGTTS_LINUX_CPU_INDEX_URL);
+  assert.ok(!lin.packages.some((p) => p.includes('cu130')));
+});
+
+test('bgtts python spec: 3.14 accepted only for the linux CPU recipe', () => {
+  assert.equal(BGTTS_PYTHON_MAX_EXCLUSIVE, '3.14.0');
+  assert.equal(BGTTS_LINUX_PYTHON_MAX_EXCLUSIVE, '3.15.0');
+  // Windows/CUDA recipe keeps the proven 3.10-3.13 window.
+  assert.deepEqual(bgttsPythonSpecFor('windows'), { minVersion: '3.10.0', maxVersionExclusive: '3.14.0' });
+  assert.deepEqual(bgttsPythonSpecFor('darwin'), { minVersion: '3.10.0', maxVersionExclusive: '3.14.0' });
+  // Linux CPU recipe admits 3.14 (torch 2.9.1 ships cp314 linux wheels).
+  assert.deepEqual(bgttsPythonSpecFor('linux'), { minVersion: '3.10.0', maxVersionExclusive: '3.15.0' });
+});
+
+test('bgtts rejects unsupported bootstrap python before any download', async () => {
+  // Python 3.14 against the WINDOWS recipe must fail at the version
+  // gate — before staging side effects matter (no download attempted).
+  const seen: string[] = [];
+  const run = okSpawn((exe, args) => {
+    seen.push(args.join(' '));
+    const flat = args.join(' ');
+    if (flat === '--version') return { code: 0, stdout: 'Python 3.14.7' };
+    return { code: 0, stdout: 'ok' };
+  });
+  const s = seams(run);
+  const installer = makeBgTts38mInstaller({ run, fs: s.fs, venvFs: s.venvFs, systemPython: '/trusted/python3', writeFile: s.writeFile, readSourceFile: () => '# worker', transport: fakeTransport('fail', '') });
+  const result = await installer.install(ctxFor('bgtts-38m-v2'));
+  assert.equal(result.outcome, 'failed');
+  assert.ok((result.reason ?? '').includes('3.14'));
+  // The ONLY subprocess call was the version probe: no venv, no pip,
+  // no download, no smoke.
+  assert.deepEqual(seen, ['--version']);
+});
+
+test('bgtts linux recipe accepts 3.14 and installs CPU torch (no CUDA index)', async () => {
+  const seen: Array<{ exe: string; args: readonly string[] }> = [];
+  const run = okSpawn((exe, args) => {
+    seen.push({ exe, args });
+    const flat = args.join(' ');
+    if (flat === '--version') return { code: 0, stdout: 'Python 3.14.7' };
+    if (flat.includes('direct_url.json') || flat.includes('importlib.metadata')) return { code: 0, stdout: '0.1.0\n{"url": "file:///staged/miocodec-77473544.zip"}' };
+    if (flat.includes('import miocodec')) return { code: 0, stdout: 'miocodec-import-ok' };
+    if (flat.includes('snapshot_download')) return { code: 0, stdout: '/managed/snap' };
+    if (flat.includes('bgtts_smoke.py')) return { code: 0, stdout: 'SMOKE_BYTES=48000' };
+    return { code: 0, stdout: 'ok' };
+  });
+  const s = seams(run);
+  const installer = makeBgTts38mInstaller({ run, fs: s.fs, venvFs: s.venvFs, systemPython: '/trusted/python3', writeFile: s.writeFile, readSourceFile: () => '# production worker', transport: fakeTransport('ok', 'unused') });
+  const result = await installer.install(ctxFor('bgtts-38m-v2', cpuOnlyX64()));
+  assert.equal(result.outcome, 'succeeded');
+  const pipArgv = seen.filter((c) => c.args.includes('pip')).map((c) => [...c.args].join(' '));
+  assert.ok(pipArgv.some((a) => a.includes('torch==2.9.1+cpu') && a.includes('torchaudio==2.9.1+cpu')), 'cpu torch pins installed: ' + JSON.stringify(pipArgv));
+  assert.ok(pipArgv.some((a) => a.includes('download.pytorch.org/whl/cpu')), 'CPU index used on linux: ' + JSON.stringify(pipArgv));
+  assert.ok(!pipArgv.some((a) => a.includes('cu130')), 'no CUDA qualifier on linux: ' + JSON.stringify(pipArgv));
+});
+
+test('bgtts linux installer refuses arm64 and non-desktop os', async () => {
+  const { run } = happyRun();
+  const s = seams(run);
+  const installer = makeBgTts38mInstaller({ run, fs: s.fs, venvFs: s.venvFs, systemPython: '/trusted/python3', writeFile: s.writeFile });
+  const arm = await installer.install(ctxFor('bgtts-38m-v2', linuxArm64CpuOnly()));
+  assert.equal(arm.outcome, 'failed');
+  assert.ok((arm.reason ?? '').includes('x64'));
 });
 
 test('bgtts adds no ARM validation claim', async () => {
@@ -380,6 +463,7 @@ test('D1 end-to-end: omnivoice auth_required leaves no false ready', async () =>
 test('D1 end-to-end: bgtts success and reinstall-failure preservation', async () => {
   const goodRun = okSpawn((exe, args) => {
     const flat = args.join(' ');
+    if (flat === '--version') return { code: 0, stdout: 'Python 3.12.10' };
     if (flat.includes('direct_url.json') || flat.includes('importlib.metadata')) return { code: 0, stdout: '0.1.0\n{"url": "file:///staged/miocodec-77473544.zip"}' };
     if (flat.includes('import miocodec')) return { code: 0, stdout: 'miocodec-import-ok' };
     if (flat.includes('snapshot_download')) return { code: 0, stdout: '/managed/snap' };
@@ -394,7 +478,10 @@ test('D1 end-to-end: bgtts success and reinstall-failure preservation', async ()
   const first = await service.install({ model_id: 'bgtts-38m-v2', hardware: HW, managed_root: ROOT });
   assert.equal(first.outcome, 'completed');
   const before = store.getModelState('bgtts-38m-v2');
-  const bad = okSpawn(() => ({ code: 1, stdout: 'broken venv' }));
+  const bad = okSpawn((exe, args) => {
+    if (args.join(' ') === '--version') return { code: 0, stdout: 'Python 3.12.10' };
+    return { code: 1, stdout: 'broken venv' };
+  });
   const registry2 = createDefaultModelInstallerRegistry({ run: bad, fs: s.fs, venvFs: s.venvFs, systemPython: '/trusted/python3', harnessSourceDir: process.cwd(), readSourceFile: () => '# worker', writeFile: s.writeFile });
   const service2 = new ModelInstallationService({ store, registry: registry2 });
   const second = await service2.install({ model_id: 'bgtts-38m-v2', hardware: HW, managed_root: ROOT, force: true });

@@ -187,14 +187,26 @@ test('omnivoice + cpu-only is incompatible', () => {
 });
 
 test('bgtts cpu model stays compatible without any gpu', () => {
+  // HR-02.5 Linux enablement (BgTTS only): linux/x64/cpu-only IS a
+  // validated target now — no GPU and no CUDA required.
   const result = evaluateCompatibility(bgtts(), cpuOnlyX64());
-  // cpuOnlyX64 is linux/x64 while bgtts requires windows: documents that
-  // accelerator:cpu alone does not override the validated OS requirement.
-  assert.equal(result.compatible, false);
-  assert.ok(result.reasons.some((r) => r.requirement.startsWith('os:') && r.result === 'fail'));
+  assert.equal(result.compatible, true);
+  assert.ok(result.reasons.every((r) => r.result === 'pass'));
   const winCpu = withOverrides(windowsNvidiaCuda(), { gpus: [], accelerators: { cuda: 'unavailable', rocm: 'unavailable', vulkan: 'available', directml: 'available', npu: 'unknown' } });
   const cpuResult = evaluateCompatibility(bgtts(), winCpu);
   assert.equal(cpuResult.compatible, true);
+});
+
+test('bgtts accepts linux but parakeet/omnivoice stay windows-only', () => {
+  // Scope guard: only bgtts-38m-v2 gained linux support. Parakeet and
+  // OmniVoice keep their CUDA/Windows stacks (no fake ROCm/CUDA).
+  assert.ok((bgtts().requirements.operating_systems ?? []).includes('linux'));
+  assert.ok(bgtts().support.validated_platforms?.includes('linux-x64-cpu'));
+  for (const model of [parakeet(), omnivoice()]) {
+    assert.deepEqual(model.requirements.operating_systems, ['windows']);
+    assert.ok(!(model.support.validated_platforms ?? []).some((p) => p.includes('linux')));
+    assert.equal(evaluateCompatibility(model, cpuOnlyX64()).compatible, false);
+  }
 });
 
 // ---- compatibility: rocm / multi-gpu -----------------------------------------
@@ -271,7 +283,17 @@ test('balanced profile follows deterministic balanced preference', () => {
 });
 
 test('incompatible high-quality candidate is skipped', () => {
+  // HR-02.5 Linux enablement: on linux cpu-only, omnivoice (high/CUDA)
+  // stays incompatible and is skipped; bgtts (lightweight/CPU) is the
+  // compatible fallback — the high-quality candidate is still skipped.
   const rec = recommendModel({ kind: 'tts', profile: 'quality', hardware: cpuOnlyX64() });
+  assert.equal(rec.selected && rec.selected.id, 'bgtts-38m-v2');
+  const omni = rec.candidates.find((c) => c.model.id === 'omnivoice-bg');
+  assert.ok(omni && omni.compatibility.compatible === false);
+});
+
+test('linux cpu-only tts leaves no compatible high-tier model (stt unaffected)', () => {
+  const rec = recommendModel({ kind: 'stt', profile: 'quality', hardware: cpuOnlyX64() });
   assert.equal(rec.selected, null);
   assert.ok(rec.candidates.length > 0);
   assert.ok(rec.candidates.every((c) => c.compatibility.compatible === false));

@@ -22,14 +22,18 @@
  * conditioned on the deterministic ARTHUR sine fixture. Non-empty wav
  * proves runtime, checkpoint, conditioning, and generation. Temp wavs
  * deleted afterwards. ARM64 is NOT validated (no claim added).
- * Validated platform: windows-x64-cuda (experimental maturity).
+ * Validated platforms: windows-x64-cuda (torch 2.14.0+cu130) and
+ * linux-x64-cpu (torch 2.9.1 CPU, device-parameterized worker/smoke).
+ * Python bootstrap is version-gated BEFORE downloads (per-platform spec:
+ * Linux CPU accepts 3.10-<3.15, CUDA recipe keeps 3.10-<3.14).
+ * Experimental maturity.
  */
 
 import type { ModelInstallerId } from '../contracts';
 import type { InstallerResult, ModelInstaller, ModelInstallContext } from '../install_contracts';
 import { runTrustedProcess, type SpawnFn } from '../provisioning/process_runner';
 import type { ProvisioningFs } from '../provisioning/staging';
-import type { VenvFs } from '../provisioning/python';
+import { checkVersionSpec, type VenvFs } from '../provisioning/python';
 import { downloadArtifact, internalDefineTrustedArtifactSource, nodeDownloadFs, nodeHttpTransport, type DownloadFs, type HttpTransport } from '../provisioning/downloader';
 import { nodeVerifyFs, verifyArtifact, type VerifyFs } from '../provisioning/verification';
 import type { Pathoscopy } from '../provisioning/paths';
@@ -55,6 +59,20 @@ export const BGTTS_RUNTIME_ID = 'python/bgtts-38m-v2-v1';
 export const BGTTS_WORKER_FILE = 'bgtts_worker.py';
 export const BGTTS_PYTHON_MIN = '3.10.0';
 export const BGTTS_PYTHON_MAX_EXCLUSIVE = '3.14.0';
+// Linux x64 CPU recipe (HR-02.5 Linux enablement, first pass): the +cpu
+// torch/torchaudio pins below ship cp314 manylinux wheels on the
+// code-owned CPU index (verified 2026-09-16: torch/torchaudio 2.9.1+cpu
+// cp314-cp314-manylinux_2_28_x86_64), and the remaining pins are either
+// pure-Python or cp310-abi3/sdist-fallback. Python 3.14 is therefore an
+// accepted bootstrap ONLY for the Linux CPU recipe; the Windows CUDA
+// recipe keeps the proven 3.10-3.13 window (torch 2.14.0+cu130 has no
+// cp314 build and is unproven there).
+export const BGTTS_LINUX_PYTHON_MAX_EXCLUSIVE = '3.15.0';
+/** Bootstrap Python spec for the target platform (validated before ANY download). */
+export function bgttsPythonSpecFor(os: string): { minVersion: string; maxVersionExclusive: string } {
+  if (os === 'linux') return { minVersion: BGTTS_PYTHON_MIN, maxVersionExclusive: BGTTS_LINUX_PYTHON_MAX_EXCLUSIVE };
+  return { minVersion: BGTTS_PYTHON_MIN, maxVersionExclusive: BGTTS_PYTHON_MAX_EXCLUSIVE };
+}
 // MioCodec is provisioned WITHOUT the git executable: the exact pinned
 // commit is fetched as a code-owned trusted HTTPS source archive through
 // the D2 downloader boundary, SHA-256-verified (required), then installed
@@ -74,6 +92,21 @@ export const BGTTS_MIOCODEC_VERSION = '0.1.0';
 // the code-owned CUDA index; the remainder from default PyPI.
 export const BGTTS_CUDA_INDEX_URL = 'https://download.pytorch.org/whl/cu130';
 export const BGTTS_CUDA_PACKAGES = ['torch==2.14.0', 'torchaudio==2.11.0'];
+// Linux x64 CPU recipe (HR-02.5 Linux enablement): CPU torch wheels
+// from the code-owned PyTorch CPU index — the same trust shape as the
+// CUDA recipe's cu130 index. Default PyPI torch is the CUDA-bundled
+// build (~2.5 GB of nvidia-* wheels: cublas, cudnn, ...), which must
+// never land on a CPU-only machine. The pinned torch/torchaudio 2.9.1
+// publish +cpu cp314 manylinux x86_64 wheels on the CPU index; every
+// other pin is shared verbatim with the Windows recipe (BGTTS_PACKAGES).
+// Windows behavior is unchanged: the CUDA recipe below is untouched.
+export const BGTTS_LINUX_CPU_INDEX_URL = 'https://download.pytorch.org/whl/cpu';
+export const BGTTS_LINUX_CPU_PACKAGES = ['torch==2.9.1+cpu', 'torchaudio==2.9.1+cpu'];
+/** First package set for the target platform (indexUrl present = CUDA recipe). */
+export function bgttsPackageSetsFor(os: string): { packages: string[]; indexUrl?: string } {
+  if (os === 'linux') return { packages: [...BGTTS_LINUX_CPU_PACKAGES], indexUrl: BGTTS_LINUX_CPU_INDEX_URL };
+  return { packages: [...BGTTS_CUDA_PACKAGES], indexUrl: BGTTS_CUDA_INDEX_URL };
+}
 // The pinned MioCodec source declares its own PEP 517 backend
 // (`uv_build>=0.9.6,<0.10.0`); pip resolves it into the temporary
 // isolated build environment at install time, exactly as the proven
@@ -163,6 +196,35 @@ export function makeBgTts38mInstaller(deps: BgTtsInstallerDeps): ModelInstaller 
       if (ctx.model.id !== BGTTS_MODEL_ID) {
         return { outcome: 'failed', reason: 'bgtts installer cannot install ' + JSON.stringify(ctx.model.id) };
       }
+      // Linux x64 CPU recipe (HR-02.5 Linux enablement, BgTTS only):
+      // on linux the CPU torch recipe applies and no CUDA is required;
+      // every other OS keeps the proven Windows CUDA recipe. The target
+      // OS comes from the probed hardware profile — never process.platform
+      // (the machine being installed onto is ctx.hardware, not the host).
+      const targetOs = ctx.hardware.os;
+      if (targetOs !== 'windows' && targetOs !== 'linux') {
+        return { outcome: 'failed', reason: 'bgtts-38m-v2 supports windows and linux-x64-cpu only (observed os ' + JSON.stringify(targetOs) + ')' };
+      }
+      if (targetOs === 'linux' && ctx.hardware.arch !== 'x64') {
+        return { outcome: 'failed', reason: 'bgtts-38m-v2 linux support is x64 only (observed arch ' + JSON.stringify(ctx.hardware.arch) + ')' };
+      }
+      // Python version gate BEFORE any download: the bootstrap
+      // interpreter must satisfy the per-platform spec. Python 3.14 is
+      // accepted ONLY for the Linux CPU recipe (torch 2.9.1 publishes
+      // cp314 manylinux wheels); the CUDA recipe keeps 3.10-3.13.
+      const pythonSpec = bgttsPythonSpecFor(targetOs);
+      {
+        const probed = await runTrustedProcess(deps.run, {
+          executable: deps.systemPython,
+          args: ['--version'],
+          timeoutMs: 60000,
+          signal: ctx.signal,
+        });
+        const text = (probed.stdout + ' ' + probed.stderr).trim();
+        if (probed.exit_code !== 0 || !checkVersionSpec(text, pythonSpec)) {
+          return { outcome: 'failed', reason: 'bgtts-38m-v2 requires bootstrap Python ' + pythonSpec.minVersion + ' to <' + pythonSpec.maxVersionExclusive + ' (observed ' + JSON.stringify(text.slice(0, 64) || 'unknown') + ')' };
+        }
+      }
       if (checkAborted(ctx)) return { outcome: 'cancelled', reason: 'cancelled before staging' };
       stage.say('preparing', 'staging bgtts-38m-v2 install');
       const stagingDir = beginStaging(ctx.managed_root, deps.fs, stage.liveDir, 'bgtts');
@@ -174,7 +236,7 @@ export function makeBgTts38mInstaller(deps: BgTtsInstallerDeps): ModelInstaller 
           runtimeDir: stage.runtimeDir,
           runtimeId: BGTTS_RUNTIME_ID,
           systemPython: deps.systemPython,
-          packages: { packages: [...BGTTS_CUDA_PACKAGES], indexUrl: BGTTS_CUDA_INDEX_URL },
+          packages: bgttsPackageSetsFor(targetOs),
           extraPackageSets: [{ packages: [...BGTTS_PACKAGES] }],
           signal: ctx.signal,
           run: deps.run,

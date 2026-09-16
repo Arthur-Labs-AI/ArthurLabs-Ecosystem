@@ -21,16 +21,25 @@ def fail(code):
     sys.exit(1)
 
 
+def pick_device():
+    # HR-02.5 Linux enablement: cuda when the torch build exposes it,
+    # otherwise cpu. The upstream generate()/CodecV6/load_for_inference
+    # all accept a device string (generate documents "cuda/cpu").
+    try:
+        import torch  # noqa: F401
+    except Exception:
+        return None
+    import torch
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
 def main():
     if len(sys.argv) != 5:
         fail("usage: bgtts_smoke.py <snapshot-dir> <reference-wav> <text> <out-wav>")
     ckpt_dir, ref_wav, text, out_wav = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
-    try:
-        import torch
-    except Exception:
+    device = pick_device()
+    if device is None:
         fail("torch-unavailable")
-    if not torch.cuda.is_available():
-        fail("cuda-unavailable")
     if not os.path.isdir(ckpt_dir):
         fail("no-checkpoint-dir")
     sys.path.insert(0, ckpt_dir)
@@ -50,11 +59,11 @@ def main():
         sys.exit(2)
     try:
         ckpt_file = os.path.join(ckpt_dir, "checkpoint_inference.pt")
-        model = load_for_inference(ckpt_file, device="cuda")
+        model = load_for_inference(ckpt_file, device=device)
         tokenizer = TTSTokenizer()
-        codec = CodecV6(device="cuda")
-        spk = codec.encode(ref_wav)["global_embedding"].to("cuda")
-        codes = generate(model, tokenizer, text, spk, max_new_tokens=SMOKE_MAX_TOKENS, device="cuda")
+        codec = CodecV6(device=device)
+        spk = codec.encode(ref_wav)["global_embedding"].to(device)
+        codes = generate(model, tokenizer, text, spk, max_new_tokens=SMOKE_MAX_TOKENS, device=device)
         if codes is None or len(codes) == 0:
             fail("empty-codes")
         wav = codec.tokens_to_wav(codes, spk, out_wav)

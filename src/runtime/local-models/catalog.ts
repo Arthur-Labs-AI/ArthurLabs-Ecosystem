@@ -17,11 +17,11 @@
  *   OMITTED (unknown VRAM then fails closed per-check) and the desktop
  *   CUDA requirement is carried by accelerator + min_ram_mb instead.
  *   A benchmark-derived VRAM threshold is PENDING — do not invent one.
- * - bgtts-38m-v2: ~38M params, tested on Windows/NVIDIA, experimental.
- *   It CAN execute on CPU (accelerator: cpu) but that is a theoretical
- *   runtime capability, not a validated production target: validated
- *   platforms list Windows x64 / CUDA only. ARM64/Arthur Box are NOT
- *   validated — size alone proves nothing about the CPU execution path.
+ * - bgtts-38m-v2: ~38M params, experimental. Windows x64 / CUDA (proven
+ *   standalone venv, torch 2.14.0+cu130) AND Linux x64 / CPU (proven
+ *   2026-09-16 on CachyOS: torch 2.9.1 CPU, device-parameterized worker).
+ *   ARM64/Arthur Box are NOT validated — size alone proves nothing about
+ *   the CPU execution path there.
  */
 
 import type { LocalModelDefinition } from './contracts';
@@ -81,13 +81,17 @@ const BGTTS_38M_V2: LocalModelDefinition = {
   languages: ['bg', 'en'],
   requirements: {
     architectures: ['x64'],
-    operating_systems: ['windows'],
+    // HR-02.5 Linux enablement (first pass, BgTTS only): linux-x64-cpu
+    // is a proven target (CPU torch recipe + device-parameterized
+    // worker, accepted 2026-09-16 on CachyOS). Parakeet/OmniVoice stay
+    // Windows-only: their CUDA stacks are unproven on Linux.
+    operating_systems: ['windows', 'linux'],
     min_ram_mb: 4096,
     accelerator: 'cpu',
   },
   support: {
     maturity: 'experimental',
-    validated_platforms: ['windows-x64-cuda'],
+    validated_platforms: ['windows-x64-cuda', 'linux-x64-cpu'],
   },
   installation: { installer_id: 'bgtts-38m-v2', backend: 'python-worker' },
 };
