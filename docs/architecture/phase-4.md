@@ -4,7 +4,10 @@ Status: COMPLETE (three-agent parallel smoke `run_01M2G9C6H4YVYX4F75CH1DHA36`
 passed live: completed 3/3 with 9 findings, 22 evidence, 152 events;
 see `phase-4-1.md` and `phase-4-test-history.md` for the full record).
 Phase 5 builds the deterministic Merger on top; execution behavior is
-frozen.
+frozen. Phase 5 COMPLETE, Phase 5.1 COMPLETE (see `phase-5.md`):
+second 3/3 parallel `run_01M2K4SNQFV5EBJPKGQBJ0VA9N`, third 3/3
+`run_01M2MJ71E3VK8ZDTT20ABJ6R06` merged live under merger v2 into
+`merge_A6DM6D4MQ0PK1021CE0N7PG9VA` (3 clusters, no false merge).
 
 Baseline: `0593ece2b6a89cb8a46ad855f4ec59d640d4d09a` (Phase 3.1.1 closed).
 

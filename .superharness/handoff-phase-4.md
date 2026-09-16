@@ -88,3 +88,14 @@ mutate). Live proof: `run_01M2K4SNQFV5EBJPKGQBJ0VA9N` 3/3 →
 `merge_X7MJ4KN1Q8FBDM5CM1GB775CNM` (5 clusters). Execution paths
 (adapters, coordinator, contracts) untouched by the export fix;
 only `run-engine/exporters.ts` + one test added.
+
+## Phase 5.1 closure (2026-09-16) -- COMPLETE
+
+Exact-head CI success on `05fab58` (35067706289). Merger v2 hardened
+and live-proven: third 3/3 parallel `run_01M2MJ71E3VK8ZDTT20ABJ6R06`
+merged under v2 into `merge_A6DM6D4MQ0PK1021CE0N7PG9VA` (3 clusters,
+manual inspection found no false merge). Capability alignment shipped
+(Muse loopback+registry QA network, GLM web QA tools in investigation
+with Agent/Task still denied, DeepSeek workspace-write pinned) with
+containment, credential isolation, and evidence trust unchanged.
+Execution + Merger frozen; ready for Phase 6 (Independent Verifier).
