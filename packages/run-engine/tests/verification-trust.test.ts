@@ -128,4 +128,144 @@ describe('verifier trust fixtures', () => {
     expect(run.status).not.toBe('failed');
     f.database.close();
   }, 180000);
+
+  it('refuses to confirm a different failing test (§52)', async () => {
+    // Original: Test A fails. Fresh replay: Test A passes, Test B fails,
+    // same exit. Exit-only agreement must NOT reproduce.
+    const f = await divideFixture();
+    const { FindingSchema, EvidenceSchema, HarnessEventSchema } = await schemas();
+    const agents = f.repository.listAgentRuns(f.runId);
+    const agent = agents.find((a) => a.status === 'completed') ?? agents[0];
+    if (agent === undefined) throw new Error('No agent run');
+    const opId = 'op_01K7777777777777777777A8W2';
+    const evidence = EvidenceSchema.parse({
+      schemaVersion: 1,
+      id: 'ev_01K7777777777777777777A8W2',
+      qaRunId: f.runId,
+      agentRunId: agent.id,
+      type: 'test',
+      strength: 'strong_code_evidence',
+      environmentState: 'baseline',
+      description: 'failing test',
+      test: { framework: 'node', name: 'divide handles negatives', status: 'failed' },
+      artifactIds: [],
+      groundingOperationIds: [opId],
+      createdAt: T,
+    });
+    f.repository.saveEvidence(evidence);
+    const finding = FindingSchema.parse({
+      schemaVersion: 1,
+      id: 'find_01K7777777777777777777A8W2',
+      qaRunId: f.runId,
+      agentRunId: agent.id,
+      sourceAgentStackId: agent.agentStackId,
+      title: 'Divide negatives broken',
+      category: 'logic',
+      severity: 'high',
+      confidence: 'strong',
+      description: 'negatives fail.',
+      locations: [{ relativePath: 'src/divide.mjs', startLine: 1 }],
+      evidenceIds: [evidence.id],
+      reproductionSteps: [],
+      createdAt: T,
+    });
+    f.repository.saveFinding(finding);
+    f.repository.appendHarnessEvent(
+      f.runId,
+      HarnessEventSchema.parse({
+        schemaVersion: 1,
+        eventId: 'evt_01K7777777777777777777A8W2',
+        agentRunId: agent.id,
+        timestamp: T,
+        type: 'command.executed',
+        operationId: opId,
+        command: 'node tests/run-tests.mjs',
+        exitCode: 1,
+      }),
+    );
+    const { result: merge } = mergeRun(f.repository, f.runId);
+    const { attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
+      commandTimeoutMs: 30000,
+    });
+    const target = attempts.find((a) => a.sourceFindingIds.includes(finding.id as never));
+    // The replayed suite fails on the DIVIDE test, not the expected
+    // negatives test: identity unconfirmed → never reproduced.
+    expect(target?.outcome).not.toBe('reproduced');
+    f.database.close();
+  }, 180000);
+
+  it('marks missing tools inconclusive with a warning (§54)', async () => {
+    const f = await divideFixture();
+    const { FindingSchema, EvidenceSchema, HarnessEventSchema } = await schemas();
+    const agents = f.repository.listAgentRuns(f.runId);
+    const agent = agents.find((a) => a.status === 'completed') ?? agents[0];
+    if (agent === undefined) throw new Error('No agent run');
+    const opId = 'op_01K7777777777777777777A8W3';
+    const evidence = EvidenceSchema.parse({
+      schemaVersion: 1,
+      id: 'ev_01K7777777777777777777A8W3',
+      qaRunId: f.runId,
+      agentRunId: agent.id,
+      type: 'command',
+      strength: 'strong_code_evidence',
+      environmentState: 'baseline',
+      description: 'node suite fails',
+      command: { command: 'node tests/run-tests.mjs', exitCode: 1 },
+      artifactIds: [],
+      groundingOperationIds: [opId],
+      createdAt: T,
+    });
+    f.repository.saveEvidence(evidence);
+    const finding = FindingSchema.parse({
+      schemaVersion: 1,
+      id: 'find_01K7777777777777777777A8W3',
+      qaRunId: f.runId,
+      agentRunId: agent.id,
+      sourceAgentStackId: agent.agentStackId,
+      title: 'Node suite fails',
+      category: 'logic',
+      severity: 'high',
+      confidence: 'strong',
+      description: 'node fails.',
+      locations: [{ relativePath: 'src/divide.mjs', startLine: 1 }],
+      evidenceIds: [evidence.id],
+      reproductionSteps: [],
+      createdAt: T,
+    });
+    f.repository.saveFinding(finding);
+    f.repository.appendHarnessEvent(
+      f.runId,
+      HarnessEventSchema.parse({
+        schemaVersion: 1,
+        eventId: 'evt_01K7777777777777777777A8W3',
+        agentRunId: agent.id,
+        timestamp: T,
+        type: 'command.executed',
+        operationId: opId,
+        command: 'node tests/run-tests.mjs',
+        exitCode: 1,
+      }),
+    );
+    const { result: merge } = mergeRun(f.repository, f.runId);
+    // Hermetic tool absence: empty PATH makes even node unresolvable.
+    // Preflight must refuse without spawning (§12); the outcome must
+    // never be not_reproducible from tool absence (§11).
+    const savedPath = process.env['PATH'];
+    process.env['PATH'] = join(f.dataRoot, 'empty-bin');
+    let attempts;
+    let run;
+    try {
+      ({ run, attempts } = await verifyMerge(f.repository, f.dataRoot, merge.id, {
+        commandTimeoutMs: 30000,
+      }));
+    } finally {
+      if (savedPath === undefined) delete process.env['PATH'];
+      else process.env['PATH'] = savedPath;
+    }
+    const target = attempts.find((a) => a.sourceFindingIds.includes(finding.id as never));
+    expect(target?.outcome).toBe('inconclusive');
+    expect(target?.outcome).not.toBe('not_reproducible');
+    expect(run.warnings.some((w) => w.code === 'VERIFIER_TOOL_UNAVAILABLE')).toBe(true);
+    f.database.close();
+  }, 180000);
 });
