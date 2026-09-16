@@ -117,12 +117,13 @@ Usage:
   arthur models status [--json]
   arthur models validate [model-id] [--json]
   arthur models remove <model-id> [--yes] [--json]
+  arthur models setup [--yes] [--stt-model <id>] [--tts-model <id>] [--root <path>] [--state <path>] [--python <exe>] [--json]
   arthur config path [--json]
   arthur config show [--json]
   arthur providers setup [--json]
   arthur providers status [--json]
   arthur audio detect|setup|status|test [--json]
-  arthur setup [--yes] [--stt-model <id>] [--tts-model <id>] [--root <path>] [--state <path>] [--python <exe>] [--json]
+  arthur setup [--json]
   arthur memory remember --session <id> [--type <t>] [--subject <k>] [--project <k>] "<text>"
   arthur memory search --session <id> "<query>"
   arthur memory list --session <id>
@@ -889,7 +890,7 @@ function resolveModeFlag(
 async function main(): Promise<void> {
   const { command, flags, positionals } = parseArgs(process.argv.slice(2));
 
-  // Scoped help (HR-02.5F UX): models/setup/config own their help surface
+  // Scoped help: models/setup/config/providers/audio own their help surface
   // via their branch modules; the global shortcut must not swallow it.
   if (command !== "models" && command !== "setup" && command !== "config" && command !== "providers" && command !== "audio") {
     if (command === "" || command === "help" || command === "--help" || flags.get("help") === "true") {
@@ -948,12 +949,27 @@ async function main(): Promise<void> {
     return;
   }
 
-  // HR-02.5F lazy subsystem initialization: model/setup commands never
-  // touch the session/memory SQLite databases, so they run on validated
-  // settings alone (no buildApp, no node:sqlite import). Every other
-  // command family takes the full DB-backed App via the dynamic import
-  // below — src/app.js is never statically reachable from this branch.
-  if (command === "models" || command === "setup") {
+  // FRS-04: `arthur setup` is the unified first-run wizard (config-only:
+  // no settings validation, no DB, no model state — like providers/audio).
+  // The old local-model wizard moved to `arthur models setup` (same logic,
+  // same flags). The models branch keeps its validated-settings lazy path.
+  if (command === "setup") {
+    try {
+      const { runSetupCommand } = await import("./setup_unified");
+      process.exitCode = await runSetupCommand(flags, positionals, io);
+    } catch (err) {
+      printError(err, undefined, io);
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  // HR-02.5F lazy subsystem initialization: model commands never touch the
+  // session/memory SQLite databases, so they run on validated settings
+  // alone (no buildApp, no node:sqlite import). Every other command family
+  // takes the full DB-backed App via the dynamic import below — src/app.js
+  // is never statically reachable from this branch.
+  if (command === "models") {
     let settings: Settings;
     try {
       loadDotEnv();

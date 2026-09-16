@@ -36,9 +36,10 @@ Current hybrid voice backends:
 - **Lightweight local TTS:** BgTTS 38M v2 on Windows/Linux x64
 - **Reasoning:** DeepSeek cloud today; local/LAN reasoning belongs to HR-03
 
-> `arthur setup` currently configures **managed local voice models only**.
-> DeepSeek/OpenAI credentials still need to be configured separately as shown
-> below. Provider onboarding will be folded into setup later.
+> `arthur setup` is the unified first-run wizard: experience profile, provider
+> credentials, audio devices, local models (when required), activation, Review,
+> one atomic Apply. Component commands (`providers`, `audio`, `models`) remain
+> for advanced use.
 
 ---
 
@@ -142,7 +143,8 @@ arthur --help
 arthur config path
 arthur providers status
 arthur providers setup   # interactive provider onboarding (FRS-02)
-arthur setup          # currently local models; unified FRS setup coming
+arthur setup          # unified first-run wizard (FRS-04)
+arthur models setup   # local voice models only (moved from top-level setup)
 arthur config show
 arthur models detect
 ```
@@ -303,7 +305,24 @@ unless a lower-level provider setting explicitly asks for an upstream repo ID.
 
 ---
 
-## 5. Run the local model setup wizard
+## 5. Run setup
+
+The recommended first-run path is simply:
+
+```powershell
+arthur setup
+```
+
+Pick an experience: **Cloud voice** (DeepSeek + OpenAI voice, simplest), **Local
+voice** (local STT/TTS; reasoning still uses DeepSeek until HR-03 hybrid routing
+arrives — never described as offline mode), **Text only** (DeepSeek, no audio),
+or **Custom**. The wizard derives the required steps, validates providers and
+audio, plans local-model installs (shown with impact before downloads), then
+applies everything with one atomic config commit. Advanced users may configure
+components independently (`arthur providers setup`, `arthur audio setup`,
+`arthur models setup`).
+
+## 5b. Local model setup directly (advanced)
 
 ### Windows / NVIDIA
 
@@ -311,7 +330,7 @@ Use the explicit Python 3.12 interpreter:
 
 ```powershell
 $Python = py -3.12 -c "import sys; print(sys.executable)"
-arthur setup --python $Python
+arthur models setup --python $Python
 ```
 
 The wizard:
@@ -353,19 +372,19 @@ Then rerun setup.
 ### Non-interactive setup
 
 ```powershell
-arthur setup --yes --python $Python
+arthur models setup --yes --python $Python
 ```
 
 JSON mode is also non-interactive and requires `--yes`:
 
 ```powershell
-arthur setup --yes --python $Python --json
+arthur models setup --yes --python $Python --json
 ```
 
 ### Explicit model selection
 
 ```powershell
-arthur setup --python $Python `
+arthur models setup --python $Python `
   --stt-model parakeet-tdt-0.6b-v3 `
   --tts-model omnivoice-bg
 ```
@@ -696,7 +715,7 @@ npm ci
 npm run build
 npm link
 arthur models detect
-arthur setup --python "$(command -v python3)"
+arthur models setup --python "$(command -v python3)"
 arthur models status
 ```
 
@@ -724,7 +743,8 @@ arthur models select <model-id> [--json]
 arthur models status [--json]
 arthur models validate [model-id] [--json]
 arthur models remove <model-id> [--yes] [--json]
-arthur setup [--yes] [--stt-model <id>] [--tts-model <id>] [--python <exe>] [--json]
+arthur models setup [--yes] [--stt-model <id>] [--tts-model <id>] [--python <exe>] [--json]
+arthur setup [--json]
 
 arthur config path [--json]
 arthur config show [--json]
@@ -878,8 +898,8 @@ docs/
 
 # Current limitations / next runtime work
 
-- `arthur setup` installs/selects local voice models but does not yet onboard
-  DeepSeek/OpenAI credentials.
+- Fully offline/local reasoning is not implemented yet (local voice keeps cloud
+  DeepSeek reasoning); HR-03 owns local/LAN intelligence and capability routing.
 - Fully offline/local reasoning is not implemented yet; HR-03 owns local/LAN
   intelligence and capability routing.
 - Local model support is deliberately conservative: a model/platform is not

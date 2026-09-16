@@ -16,6 +16,8 @@ import type { CliIO } from "./index";
 export const MODELS_HELP = [
   'ARTHUR models - local voice model commands',
   '',
+  'Local model setup moved here from top-level setup: arthur models setup ...',
+  '',
   'Usage:',
   '  arthur models detect [--json] [--root <path>] [--state <path>]',
   '  arthur models list [--json] [--root <path>] [--state <path>]',
@@ -25,6 +27,7 @@ export const MODELS_HELP = [
   '  arthur models status [--json]',
   '  arthur models validate [model-id] [--json]',
   '  arthur models remove <model-id> [--yes] [--json]',
+  '  arthur models setup [--yes] [--stt-model <id>] [--tts-model <id>] [--root <path>] [--state <path>] [--python <exe>] [--json]',
   '',
 ].join('\n');
 
@@ -44,10 +47,10 @@ export const MODELS_INSTALL_HELP = [
 ].join('\n');
 
 export const SETUP_HELP = [
-  'ARTHUR setup - interactive local-voice setup wizard',
+  'ARTHUR models setup - interactive local-voice model setup wizard',
   '',
   'Usage:',
-  '  arthur setup [--yes] [--stt-model <id>] [--tts-model <id>] [--root <path>] [--state <path>] [--python <exe>] [--json]',
+  '  arthur models setup [--yes] [--stt-model <id>] [--tts-model <id>] [--root <path>] [--state <path>] [--python <exe>] [--json]',
   '',
   'Options:',
   '  --yes         Skip interactive pickers/approval (deterministic defaults)',
@@ -71,6 +74,9 @@ export async function runModelsOrSetup(
   positionals: string[],
   io: CliIO,
 ): Promise<number> {
+  // FRS-04: top-level `arthur setup` is the unified wizard (see
+  // apps/cli/setup_unified.ts). The local-model wizard lives on as
+  // `arthur models setup` — same implementation, same flags, no duplication.
   if (command === 'setup') {
     if (isHelp(flags, positionals)) { io.out(SETUP_HELP); return 0; }
     const { modelsContext } = await import('./models');
@@ -92,8 +98,13 @@ export async function runModelsOrSetup(
     case 'status': return runModelsStatus(holder, ctx);
     case 'validate': return runModelsValidate(holder, ctx, positionals[2]);
     case 'remove': return runModelsRemove(holder, ctx, positionals[2] ?? '', flags);
+    case 'setup': {
+      if (isHelp(flags, positionals)) { io.out(SETUP_HELP); return 0; }
+      const { runSetup } = await import('./setup');
+      return runSetup(holder, ctx, flags);
+    }
     default:
-      io.err('usage: arthur models <detect|list|recommend|install|select|status|validate|remove> [--json]\n');
+      io.err('usage: arthur models <detect|list|recommend|install|select|status|validate|remove|setup> [--json]\n');
       return 2;
   }
 }
