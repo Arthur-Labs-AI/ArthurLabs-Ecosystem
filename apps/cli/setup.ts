@@ -2,8 +2,8 @@
  * HR-02.5F UX (TASK-0008): interactive setup wizard.
  *
  * Detect -> Python/runtime check -> compatible STT/TTS pickers ->
- * explicit plan -> visible approval -> install+validate (shared stage
- * presenter) -> select -> final capability summary.
+ * explicit plan -> visible approval -> install+validate (fresh stage
+ * presenter per model) -> select -> final capability summary.
  *
  * Consumes existing catalog/compatibility/recommendation/install APIs;
  * no second detector/catalog/engine/store/installer. Never installs
@@ -13,7 +13,7 @@
  */
 
 import type { CliIO } from './index';
-import { CliExit } from '../../src/cli_exit';
+import { CliExit, exitCodeFor } from '../../src/cli_exit';
 import type { HardwareProfile } from '../../src/runtime/hardware/contracts';
 import type { LocalModelDefinition, LocalModelKind } from '../../src/runtime/local-models/contracts';
 import { evaluateCompatibility } from '../../src/runtime/local-models/compatibility';
@@ -21,7 +21,8 @@ import { recommendModel } from '../../src/runtime/local-models/recommendation';
 import { SystemHardwareProbe } from '../../src/runtime/hardware/probe';
 import { LocalModelStateStore } from '../../src/runtime/local-models/state_store';
 import { getLocalModelCatalog } from '../../src/runtime/local-models/catalog';
-import { discoverSystemPython, checkVersionSpec } from '../../src/runtime/local-models/provisioning/python';
+import { ArthurError } from '../../src/core/errors/errors';
+import { discoverSystemPython, checkVersionSpec, inspectPythonExecutable } from '../../src/runtime/local-models/provisioning/python';
 import { runTrustedProcess, nodeSpawnFn } from '../../src/runtime/local-models/provisioning/process_runner';
 import { buildStatus } from './models';
 import type { ModelsContext, ModelsDeps } from './models';
@@ -40,10 +41,9 @@ import {
   optionList,
   planSection,
   stageIndexForPhase,
-  statusLine,
 } from './setup_ui';
 
-export interface SetupDeps extends ModelsDeps {
+export interface SetupDeps extends ModelsDeps, PythonPreflight {
   readApprovalLine?: () => Promise<string>;
   /** TTY override for tests (default: process.stdout.isTTY via io). */
   tty?: boolean;
@@ -101,12 +101,67 @@ function validateFlagModel(
   return { def };
 }
 
-async function detectPython(deps: SetupDeps): Promise<string | null> {
+export interface PythonPreflight {
+  /** Pinned interpreter for the non-explicit path (test seam for ARTHUR_LOCAL_SYSTEM_PYTHON). */
+  pythonExecutable?: string;
+  /** Injected runner for BOTH the explicit inspection and PATH discovery. Tests fake both paths. */
+  runPythonVersion?: (exe: string, args: readonly string[]) => Promise<{ exit_code: number | null; stdout: string; stderr: string }>;
+}
+
+/**
+ * HR-02.5 acceptance cleanup (Bug 1): an explicit --python executable is
+ * authoritative. It is inspected directly (same parse/spec utilities as
+ * discovery, no fallback), and its version is what preflight validates
+ * and the plan displays. Only when no explicit exe exists does PATH
+ * discovery run. Installers keep receiving the exact same executable.
+ */
+export async function resolveSetupPython(
+  flags: Map<string, string>,
+  deps: SetupDeps,
+): Promise<{ executable: string | null; version: string | null }> {
+  const explicit = flags.get('python')?.trim() || undefined;
+  const run = deps.runPythonVersion ?? (async (exe: string, args: readonly string[]) => {
+    const r = await runTrustedProcess(nodeSpawnFn(), { executable: exe, args, timeoutMs: 30000 });
+    return { exit_code: r.exit_code, stdout: r.stdout, stderr: r.stderr };
+  });
+  const spec = { minVersion: '3.10.0', maxVersionExclusive: '3.15.0' };
+  const failInvalid = (code: 'INVALID_REQUEST' | 'TOOL_CAPABILITY_UNAVAILABLE', message: string): never => {
+    throw new ArthurError(code, message);
+  };
+  if (explicit) {
+    if (/\s/.test(explicit)) {
+      failInvalid('INVALID_REQUEST', 'invalid --python: a single executable path, not a command line');
+    }
+    const inspected = await inspectPythonExecutable(explicit, run, spec);
+    if (inspected.status === 'found') return { executable: explicit, version: inspected.version ?? null };
+    if (inspected.status === 'unsupported_version') {
+      failInvalid('TOOL_CAPABILITY_UNAVAILABLE', 'Python ' + (inspected.version ?? 'unknown') + ' from ' + JSON.stringify(explicit) + ' is unsupported; requires 3.10-<3.15');
+    }
+    failInvalid('INVALID_REQUEST', 'cannot use python executable ' + JSON.stringify(explicit) + ': ' + (inspected.reason ?? 'unusable interpreter'));
+  }
+  const exe = (deps.pythonExecutable ?? process.env['ARTHUR_LOCAL_SYSTEM_PYTHON']?.trim()) || undefined;
+  if (exe) {
+    const inspected = await inspectPythonExecutable(exe, run, spec);
+    if (inspected.status === 'found') return { executable: exe, version: inspected.version ?? null };
+    if (inspected.status === 'unsupported_version') {
+      throw new ArthurError('TOOL_CAPABILITY_UNAVAILABLE', 'Python ' + (inspected.version ?? 'unknown') + ' from ' + JSON.stringify(exe) + ' is unsupported; requires 3.10-<3.15');
+    }
+    // Unusable env-configured interpreter: fall through to PATH discovery
+    // (preserves existing behavior for the non-explicit path).
+  }
+  return { executable: null, version: await detectPython(deps, run) };
+}
+
+async function detectPython(deps: SetupDeps, run?: (exe: string, args: readonly string[]) => Promise<{ exit_code: number | null; stdout: string; stderr: string }>): Promise<string | null> {
   if (deps.pythonVersion !== undefined) return deps.pythonVersion;
   try {
-    const found = await discoverSystemPython(async (exe, args) => {
+    const runner = run ?? (async (exe: string, args: readonly string[]) => {
       const r = await runTrustedProcess(nodeSpawnFn(), { executable: exe, args, timeoutMs: 30000 });
-      return { exit_code: r.exit_code, signal: r.signal, timed_out: r.timed_out, aborted: r.aborted, stdout: r.stdout, stderr: r.stderr };
+      return { exit_code: r.exit_code, stdout: r.stdout, stderr: r.stderr };
+    });
+    const found = await discoverSystemPython(async (exe, args) => {
+      const r = await runner(exe, args);
+      return { exit_code: r.exit_code, signal: null, timed_out: false, aborted: false, stdout: r.stdout, stderr: r.stderr };
     }, {});
     return found.version ?? null;
   } catch {
@@ -144,9 +199,7 @@ async function installWithStages(
     if (event.phase === 'completed') { for (let i = 0; i < 4; i += 1) { begin(i); finish(i); } }
     if (event.phase === 'failed' || event.phase === 'cancelled') presenter.fail(idx, event.message);
   };
-  const installFlags = new Map<string, string>();
-  const py = flags.get('python');
-  if (py) installFlags.set('python', py);
+  const installFlags = setupInstallFlags(flags);
   const code = await runModelsInstall(app, ctx, modelId, installFlags, { ...deps, onProgress: progress });
   if (code !== CliExit.SUCCESS) {
     // Close any open stage with failure context from the install result.
@@ -155,6 +208,18 @@ async function installWithStages(
   }
   for (let i = 0; i < 4; i += 1) { begin(i); finish(i); }
   return CliExit.SUCCESS;
+}
+
+/**
+ * The exact --python forwarding contract: setup passes the operator's
+ * explicit executable through to each per-model install unchanged.
+ * No fallback, no rewrite — the installer receives the same exe.
+ */
+export function setupInstallFlags(flags: Map<string, string>): Map<string, string> {
+  const installFlags = new Map<string, string>();
+  const py = flags.get('python');
+  if (py) installFlags.set('python', py);
+  return installFlags;
 }
 
 export function failureBlock(modelId: string, stage: string, reason: string, preserved: boolean): string {
@@ -192,8 +257,22 @@ export async function runSetup(app: { config: Settings }, ctx: ModelsContext, fl
     return fail('USAGE', 'setup --json requires --yes (non-interactive; no prompts on stdout)', { approval_required: true }, CliExit.USAGE);
   }
 
-  // 1. Hardware + Python.
-  const pythonVersion = await detectPython(deps);
+  // 1. Hardware + Python. An explicit --python executable is
+  // authoritative: inspect THAT exe (same provisioning utilities, no
+  // fallback) and display/validate its version. Only without --python
+  // does PATH discovery run. Invalid explicit exes fail with typed CLI
+  // errors (no silent fallback to system Python).
+  let pythonVersion: string | null;
+  try {
+    const resolved = await resolveSetupPython(flags, deps);
+    pythonVersion = resolved.version;
+  } catch (err) {
+    if (err instanceof ArthurError) {
+      const code = err.code === 'TOOL_CAPABILITY_UNAVAILABLE' ? 'INCOMPATIBLE' : err.code;
+      return fail(code, err.message, { python: null }, exitCodeFor(err.code));
+    }
+    throw err;
+  }
   const pyCheck = checkPythonSupported(pythonVersion);
   if (!json) hardwareSection(io, hardware, pythonVersion);
   if (!pyCheck.ok) {
@@ -321,17 +400,22 @@ export async function runSetup(app: { config: Settings }, ctx: ModelsContext, fl
     ctx.io.out('Proceed? [Y/n] --yes: approved non-interactively\n\nStarting setup...\n');
   }
 
-  // 6. Install -> validate -> select per pick, sharing one presenter.
+  // 6. Install -> validate -> select per pick, with a FRESH stage
+  // presenter per model (acceptance Bug 2). Sharing one presenter across
+  // models leaked completed-stage state: the second model rendered the
+  // first model's stages as already done. Lifecycle semantics, state,
+  // and structured events are untouched — only presenter ownership /
+  // lifetime changes. JSON mode stays silent (no presenter at all).
   // JSON mode: inner commands run against a muted non-JSON child context
   // so stdout carries exactly ONE machine envelope (the final result).
   const mute: CliIO = { out: () => undefined, err: () => undefined };
   const inner: ModelsContext = json ? { managedRoot: ctx.managedRoot, statePath: ctx.statePath, json: false, io: mute } : ctx;
-  const presenter = json ? null : createStagePresenter(io, { title: 'Installing local voice', clock: deps.clock, tty: deps.tty });
   const failures: Array<{ modelId: string; stage: string; reason: string }> = [];
   for (const pick of picks) {
     const entry = store.snapshot().models[pick.def.id];
     const alreadyReady = Boolean(entry && entry.installed && entry.configured && entry.ready);
     if (!alreadyReady) {
+      const presenter = json ? null : createStagePresenter(io, { title: 'Installing ' + friendlyName(pick.def.id), clock: deps.clock, tty: deps.tty });
       if (presenter) {
         ctx.io.out('\nInstalling ' + friendlyName(pick.def.id) + ' (' + pick.def.id + ')\n');
       }

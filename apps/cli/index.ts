@@ -97,7 +97,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
   return { command: positionals[0] ?? "", flags, positionals };
 }
 
-const HELP = `ARTHUR CLI
+export const GLOBAL_HELP = `ARTHUR CLI
 
 Usage:
   arthur chat --mode personal|business [--session <id>] [--verbose]
@@ -109,9 +109,6 @@ Usage:
   arthur session <id> [--json]
   arthur approve <approval-id>                            Approve one pending tool action
   arthur reject <approval-id>                             Reject one pending tool action
-  arthur models detect [--json] [--root <path>] [--state <path>]
-  arthur models list [--json] [--root <path>] [--state <path>]
-  arthur models recommend [--profile quality|balanced|lightweight] [--kind stt|tts] [--json]
   arthur models detect [--json] [--root <path>] [--state <path>]
   arthur models list [--json] [--root <path>] [--state <path>]
   arthur models recommend [--profile quality|balanced|lightweight] [--kind stt|tts] [--json]
@@ -891,7 +888,7 @@ async function main(): Promise<void> {
   // model_branch.ts; the global shortcut must not swallow it.
   if (command !== "models" && command !== "setup") {
     if (command === "" || command === "help" || command === "--help" || flags.get("help") === "true") {
-      process.stdout.write(HELP);
+      process.stdout.write(GLOBAL_HELP);
       return;
     }
   }
@@ -1079,7 +1076,7 @@ async function main(): Promise<void> {
         break;
       }
       default: {
-        io.err(`unknown command: ${command}\n\n${HELP}`);
+        io.err(`unknown command: ${command}\n\n${GLOBAL_HELP}`);
         process.exitCode = 1;
       }
     }

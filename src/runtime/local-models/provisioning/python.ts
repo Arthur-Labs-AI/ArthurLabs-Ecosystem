@@ -81,13 +81,13 @@ function exeCandidates(): string[] {
 // the injected runner and classifies found / not_found /
 // unsupported_version. Never downloads Python itself.
 export async function discoverSystemPython(
-  run: (exe: string, args: readonly string[]) => Promise<RunResult>,
+  run: (exe: string, args: readonly string[]) => Promise<VersionProbeResult>,
   spec: PythonRuntimeSpec = {},
 ): Promise<PythonDiscovery> {
   const tried: string[] = [];
   for (const exe of exeCandidates()) {
     const args = exe === 'py' ? ['-3', '--version'] : ['--version'];
-    let result: RunResult;
+    let result: VersionProbeResult;
     try {
       result = await run(exe, args);
     } catch {
@@ -111,6 +111,46 @@ export async function discoverSystemPython(
     return { status: 'found', executable: exe, version };
   }
   return { status: 'not_found', reason: 'no usable python interpreter on PATH (tried ' + tried.join(', ') + ')' };
+}
+
+// Inspect ONE explicit interpreter executable: runs `<exe> --version` via
+// the injected runner and classifies found / not_found /
+// unsupported_version with the caller-supplied spec. This is the same
+// parse + spec mechanism discoverSystemPython uses (no second
+// implementation): only the candidate source differs (operator-supplied
+// exe instead of PATH candidate names). Never falls back to another
+// interpreter: an unusable explicit exe is reported honestly so callers
+// can fail closed.
+export interface VersionProbeResult {
+  exit_code: number | null;
+  stdout: string;
+  stderr: string;
+}
+
+export async function inspectPythonExecutable(
+  executable: string,
+  run: (exe: string, args: readonly string[]) => Promise<VersionProbeResult>,
+  spec: PythonRuntimeSpec = {},
+): Promise<PythonDiscovery> {
+  let result: VersionProbeResult;
+  try {
+    result = await run(executable, ['--version']);
+  } catch {
+    return { status: 'not_found', reason: 'python executable ' + JSON.stringify(executable) + ' could not be launched' };
+  }
+  if (result.exit_code !== 0) {
+    return { status: 'not_found', reason: 'python executable ' + JSON.stringify(executable) + ' exited ' + String(result.exit_code) };
+  }
+  const text = (result.stdout + ' ' + result.stderr).trim();
+  const parsed = parseVersion(text);
+  if (!parsed) {
+    return { status: 'not_found', reason: 'python executable ' + JSON.stringify(executable) + ' reported an unparsable version' };
+  }
+  const version = parsed.join('.');
+  if (!checkVersionSpec(version, spec)) {
+    return { status: 'unsupported_version', executable, version, reason: 'python ' + version + ' does not satisfy the runtime spec' };
+  }
+  return { status: 'found', executable, version };
 }
 
 export function environmentPython(root: string, runtimeDir: string): string {
