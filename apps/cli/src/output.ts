@@ -149,6 +149,20 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
     }
     case 'verify.show':
       io.stdout(JSON.stringify(response.data, null, 2));
+      return;
+    case 'verify.doctor': {
+      const available = response.data.sandboxAvailable as boolean;
+      io.stdout(
+        'VERIFIER SANDBOX ' +
+          (available ? 'available' : 'UNAVAILABLE') +
+          '\nBackend: ' +
+          response.data.sandboxBackend +
+          '\nRuntime replay: ' +
+          ((response.data.runtimeReplaySupported as boolean) ? 'supported' : 'inconclusive-only') +
+          (response.data.reason === undefined ? '' : '\nReason: ' + response.data.reason),
+      );
+      return;
+    }
   }
 }
 

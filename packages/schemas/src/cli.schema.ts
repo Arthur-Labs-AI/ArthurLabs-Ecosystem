@@ -44,6 +44,7 @@ export const CLI_COMMANDS = [
   'run.merge',
   'verify.start',
   'verify.show',
+  'verify.doctor',
 ] as const;
 export const CliCommandSchema = z.enum(CLI_COMMANDS);
 export type CliCommand = z.infer<typeof CliCommandSchema>;
@@ -398,6 +399,17 @@ export const VerifyShowResultSchema = z
   .strict();
 export type VerifyShowResult = z.infer<typeof VerifyShowResultSchema>;
 
+export const VerifyDoctorResultSchema = z
+  .object({
+    sandboxBackend: z.string().min(1).max(50),
+    sandboxAvailable: z.boolean(),
+    runtimeReplaySupported: z.boolean(),
+    reason: z.string().min(1).max(500).optional(),
+    supportedPlatforms: z.array(z.string().min(1).max(50)),
+  })
+  .strict();
+export type VerifyDoctorResult = z.infer<typeof VerifyDoctorResultSchema>;
+
 export const CapabilitiesResultSchema = z
   .object({
     cliContractVersion: z.literal(CLI_CONTRACT_VERSION),
@@ -446,6 +458,7 @@ export const CliResultSchemas = {
   'run.merge': RunMergeResultSchema,
   'verify.start': VerifyStartResultSchema,
   'verify.show': VerifyShowResultSchema,
+  'verify.doctor': VerifyDoctorResultSchema,
 } as const;
 
 function successEnvelope<C extends CliCommand>(

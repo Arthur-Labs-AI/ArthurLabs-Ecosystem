@@ -53,7 +53,8 @@ export type ParsedCliCommand =
   | (BaseCommand<'run.export'> & { readonly runId: string; readonly format: 'log' | 'json' })
   | (BaseCommand<'run.merge'> & { readonly runId: string })
   | (BaseCommand<'verify.start'> & { readonly mergeResultId: string; readonly clusters?: string })
-  | (BaseCommand<'verify.show'> & { readonly verificationRunId: string });
+  | (BaseCommand<'verify.show'> & { readonly verificationRunId: string })
+  | BaseCommand<'verify.doctor'>;
 
 const SIMULATION_SCENARIOS = new Set<SimulationScenario>([
   'success',
@@ -118,6 +119,7 @@ export function commandHint(args: readonly string[]): CliCommand | 'unknown' {
     'run.merge',
     'verify.start',
     'verify.show',
+    'verify.doctor',
   ]);
   return known.has(candidate as CliCommand) ? (candidate as CliCommand) : 'unknown';
 }
@@ -287,6 +289,11 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     assertFlags(tail, ['--json']);
     const [verificationRunId] = assertPositionals(tail, 1, 'qa verify show <verification-run-id>');
     return { command: 'verify.show', verificationRunId: verificationRunId as string };
+  }
+  if (area === 'verify' && action === 'doctor') {
+    assertFlags(tail, ['--json']);
+    assertPositionals(tail, 0, 'qa verify doctor');
+    return { command: 'verify.doctor' };
   }
   fail('Unknown command: ' + args.join(' '));
 }

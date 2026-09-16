@@ -143,6 +143,71 @@ describe('managed project lifecycle', () => {
     f.database.close();
   });
 
+  it('rolls the update back when revision retention fails (§52)', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    const revisionA = added.revision.id;
+    await writeFile(join(f.source, 'README.md'), '# Example v2\n\nChanged.');
+    const original = f.manager.retainRevisionMaterial.bind(f.manager);
+    f.manager.retainRevisionMaterial = async () => {
+      throw new Error('simulated retention failure');
+    };
+    // Rollback wraps the cause: update fails, previous copy preserved.
+    await expect(f.manager.updateProjectCopy(added.project.id)).rejects.toMatchObject({
+      code: 'PROJECT_UPDATE_FAILED',
+    });
+    f.manager.retainRevisionMaterial = original;
+    // Working copy restored to A, current revision still A, revision B
+    // never committed, partial B material removed, project usable.
+    expect(
+      await readFile(
+        join(projectDataPaths(f.dataRoot, added.project.id).workingCopy, 'README.md'),
+        'utf8',
+      ),
+    ).toContain('Factual sample purpose');
+    expect(f.manager.getManagedCopy(added.project.id).currentRevisionId).toBe(revisionA);
+    const { revisionMaterialPath } = await import('../src/index.js');
+    const { stat: statFile } = await import('node:fs/promises');
+    const revisions = f.repository.listRevisions(added.project.id);
+    expect(revisions.map((r) => r.id)).toEqual([revisionA]);
+    await expect(
+      statFile(revisionMaterialPath(f.dataRoot, added.project.id, revisionA + 'X')),
+    ).rejects.toThrow();
+    // Project remains usable: a fresh update succeeds.
+    const updated = await f.manager.updateProjectCopy(added.project.id);
+    expect(updated.revision.id).not.toBe(revisionA);
+    f.database.close();
+  });
+
+  it('retains hash-valid material for A and B and verifies A after B (§53)', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    const revisionA = added.revision.id;
+    await writeFile(join(f.source, 'README.md'), '# Example v2\n\nChanged.');
+    const updated = await f.manager.updateProjectCopy(added.project.id);
+    const revisionB = updated.revision.id;
+    const { revisionMaterialPath } = await import('../src/index.js');
+    const { readFile: readMaterial } = await import('node:fs/promises');
+    const materialA = revisionMaterialPath(f.dataRoot, added.project.id, revisionA);
+    const materialB = revisionMaterialPath(f.dataRoot, added.project.id, revisionB);
+    // Both materials exist with valid content.
+    expect(await readMaterial(join(materialA, 'README.md'), 'utf8')).toContain(
+      'Factual sample purpose',
+    );
+    expect(await readMaterial(join(materialB, 'README.md'), 'utf8')).toContain('Changed');
+    // Hash validation passes for the committed revision.
+    await f.manager.validateRetainedMaterial(added.project.id, updated.revision, '');
+    // Current revision is B; working copy is B.
+    expect(f.manager.getManagedCopy(added.project.id).currentRevisionId).toBe(revisionB);
+    expect(
+      await readMaterial(
+        join(projectDataPaths(f.dataRoot, added.project.id).workingCopy, 'README.md'),
+        'utf8',
+      ),
+    ).toContain('Changed');
+    f.database.close();
+  });
+
   it('does not expose staged revision/context rows when promotion fails', async () => {
     const f = await fixture((stage) => {
       if (stage === 'after_staging_promoted') throw new Error('injected promotion failure');

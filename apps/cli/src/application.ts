@@ -433,6 +433,19 @@ export async function executeCommand(
       }
     }, options);
   }
+  if (input.command === 'verify.doctor') {
+    return withReadRuntime(async ({ dataRoot }) => {
+      const { SystemdSandboxBackend } = await import('@qa/verifier');
+      const availability = await new SystemdSandboxBackend().preflight(dataRoot);
+      return success(input.command, {
+        sandboxBackend: 'systemd',
+        sandboxAvailable: availability.available,
+        runtimeReplaySupported: availability.available,
+        ...(availability.reason === undefined ? {} : { reason: availability.reason }),
+        supportedPlatforms: ['linux', 'wsl2'],
+      });
+    });
+  }
   if (input.command === 'verify.show') {
     return withReadRuntime(async ({ repository }) => {
       const run = repository.getVerificationRun(input.verificationRunId);
