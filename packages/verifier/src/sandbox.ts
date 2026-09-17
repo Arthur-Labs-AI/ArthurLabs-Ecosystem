@@ -132,25 +132,67 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
         runtimeBinds: [],
         inaccessiblePaths: [],
       };
+      // Bare startup probe (raw systemd-run, NO sandbox mounts):
+      // distinguishes "user units cannot start here" from
+      // mount/isolation failures in the checks below.
+      const bare = await this.runBare(probeUnitPrefix + '-bare');
+      if (!bare.ok) {
+        return {
+          available: false,
+          backend: 'none',
+          reason: 'sandbox user units cannot start: ' + bare.detail,
+        };
+      }
       // Shell-free assertions: work/ visible, unbound peer and host
       // HOME markers absent. A read-only host root would fail the peer.
+      // Each check reports separately so CI diagnostics name the
+      // failing mount instead of lumping all three together.
       const visible = await this.runUnit(probeUnitPrefix + '-exec', {
         ...unitInput,
         args: ['-d', workDir],
       });
+      if (visible.exitCode !== 0 || visible.failure !== undefined) {
+        return {
+          available: false,
+          backend: 'none',
+          reason:
+            'sandbox self-test: bound work dir not visible (exit ' +
+            String(visible.exitCode) +
+            (visible.failure === undefined ? '' : '/' + visible.failure) +
+            '): ' +
+            (visible.stderr.trim().slice(0, 300) || 'no stderr'),
+        };
+      }
       const hidden = await this.runUnit(probeUnitPrefix + '-hide', {
         ...unitInput,
         args: ['!', '-e', marker],
       });
+      if (hidden.exitCode !== 0 || hidden.failure !== undefined) {
+        return {
+          available: false,
+          backend: 'none',
+          reason:
+            'sandbox self-test: real-HOME marker visible (exit ' +
+            String(hidden.exitCode) +
+            (hidden.failure === undefined ? '' : '/' + hidden.failure) +
+            '): ' +
+            (hidden.stderr.trim().slice(0, 300) || 'no stderr'),
+        };
+      }
       const peerHidden = await this.runUnit(probeUnitPrefix + '-peer', {
         ...unitInput,
         args: ['!', '-e', peerMarker],
       });
-      if (visible.exitCode !== 0 || hidden.exitCode !== 0 || peerHidden.exitCode !== 0) {
+      if (peerHidden.exitCode !== 0 || peerHidden.failure !== undefined) {
         return {
           available: false,
           backend: 'none',
-          reason: 'sandbox isolation self-test failed (host or peer file visible)',
+          reason:
+            'sandbox self-test: unbound peer marker visible (exit ' +
+            String(peerHidden.exitCode) +
+            (peerHidden.failure === undefined ? '' : '/' + peerHidden.failure) +
+            '): ' +
+            (peerHidden.stderr.trim().slice(0, 300) || 'no stderr'),
         };
       }
       return { available: true, backend: 'systemd' };
@@ -193,6 +235,58 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
       sandboxTmp,
       runtimeBinds: binds,
       inaccessiblePaths: input.inaccessiblePaths,
+    });
+  }
+
+  /** Raw user-unit startup probe: `/usr/bin/true` with NO sandbox
+   *  mounts. Proves the user manager accepts transient units here;
+   *  mount/isolation failures are diagnosed by the checks below. */
+  private async runBare(unitName: string): Promise<{ ok: boolean; detail: string }> {
+    if (this.systemdRun === undefined) {
+      return { ok: false, detail: 'systemd-run not found' };
+    }
+    const systemdRun = this.systemdRun;
+    const done = (partial: { ok: boolean; detail: string }) => partial;
+    let child: ChildProcess;
+    try {
+      child = spawn(
+        systemdRun,
+        ['--user', '--wait', '--pipe', '--collect', '--unit=' + unitName, '--', '/usr/bin/true'],
+        {
+          stdio: ['ignore', 'pipe', 'pipe'],
+          windowsHide: true,
+        },
+      );
+    } catch {
+      return done({ ok: false, detail: 'spawn_failed' });
+    }
+    let stderr = '';
+    child.stderr?.on('data', (chunk: Buffer) => {
+      if (stderr.length < 2048) stderr += chunk.toString('utf8').slice(0, 2048 - stderr.length);
+    });
+    const exitCode = await new Promise<number | undefined>((resolveExit) => {
+      const timer = setTimeout(() => {
+        try {
+          child.kill('SIGKILL');
+        } catch {
+          // Already gone.
+        }
+        resolveExit(undefined);
+      }, 15000);
+      if (timer.unref !== undefined) timer.unref();
+      child.on('error', () => {
+        clearTimeout(timer);
+        resolveExit(undefined);
+      });
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        resolveExit(code ?? undefined);
+      });
+    });
+    if (exitCode === 0) return done({ ok: true, detail: '' });
+    return done({
+      ok: false,
+      detail: 'exit ' + String(exitCode) + ': ' + (stderr.trim().slice(0, 300) || 'no stderr'),
     });
   }
 
