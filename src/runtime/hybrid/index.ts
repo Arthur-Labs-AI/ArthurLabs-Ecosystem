@@ -71,4 +71,23 @@ export { validateProviderNodeBinding } from "./validation";export {
   HybridRegistryError,
   isHybridErrorReason,
   type HybridErrorReason,
-} from "./errors";
+} from "./errors";export {
+  DEFAULT_ROUTING_POLICY,
+  normalizeRoutingPolicy,
+  preferenceListFor,
+  preferenceRankOf,
+  type RoutingPolicy,
+  type RuntimePreferenceTable,
+} from "./routing_policy";
+export {
+  HybridRoutingEngine,
+  isNoEligibleTargetError,
+  isRejectionReason,
+  NO_ELIGIBLE_TARGET,
+  NoEligibleTargetError,
+  REJECTION_REASONS,
+  type EngineNodeCandidate,
+  type EngineProviderCandidate,
+  type HybridRoutingEngineDeps,
+  type RejectionReason,
+} from "./routing_engine";

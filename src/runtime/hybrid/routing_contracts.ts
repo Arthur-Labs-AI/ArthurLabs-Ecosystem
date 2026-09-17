@@ -104,6 +104,12 @@ function assertCapabilities(caps: unknown): RuntimeCapability[] {
 export interface RoutingConstraints {
   min_context_tokens?: number;
   needs_tools?: boolean;
+  /**
+   * HR-03B: exact tool identity for operation tool.execute.
+   * REQUIRED for tool.execute, MUST be absent for every other operation.
+   * Never inferred from capabilities or model text - explicit only.
+   */
+  tool_id?: string;
 }
 
 function assertConstraints(raw: unknown): RoutingConstraints | undefined {
@@ -123,6 +129,14 @@ function assertConstraints(raw: unknown): RoutingConstraints | undefined {
   if (input["needs_tools"] !== undefined) {
     if (typeof input["needs_tools"] !== "boolean") failRequest("needs_tools must be boolean");
     out.needs_tools = input["needs_tools"] as boolean;
+  }
+  if (input["tool_id"] !== undefined) {
+    if (typeof input["tool_id"] !== "string") failRequest("tool_id must be a string");
+    const trimmed = (input["tool_id"] as string).trim();
+    if (trimmed === "") failRequest("tool_id must be non-empty");
+    if (trimmed.length > MAX_ROUTING_ID_CHARS) failRequest("tool_id is too long");
+    if (CONTROL_CHAR_RE.test(trimmed)) failRequest("tool_id contains control characters");
+    out.tool_id = trimmed;
   }
   return out;
 }
@@ -164,6 +178,14 @@ export function normalizeRoutingRequest(request: RoutingRequest): RoutingRequest
   if (provider !== undefined) out.preferred_provider_id = provider;
   const constraints = assertConstraints(raw["constraints"]);
   if (constraints !== undefined) out.constraints = constraints;
+  const operation = raw["operation"] as RoutingOperation;
+  const hasToolId = constraints !== undefined && constraints.tool_id !== undefined;
+  if (operation === "tool.execute" && !hasToolId) {
+    failRequest("tool.execute requires constraints.tool_id");
+  }
+  if (operation !== "tool.execute" && hasToolId) {
+    failRequest("constraints.tool_id is only valid for tool.execute");
+  }
   return out;
 }
 
