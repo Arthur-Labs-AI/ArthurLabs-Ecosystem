@@ -152,6 +152,17 @@ describe('verification service', () => {
       expect(
         attempt.limitations.some((limitation) => /retained material|revision/i.test(limitation)),
       ).toBe(true);
+      // Refused steps must still terminalize: no queued/running step
+      // rows may survive a completed attempt (§19).
+      expect(attempt.steps.length).toBeGreaterThan(0);
+      for (const step of attempt.steps) {
+        expect(['completed', 'failed', 'cancelled', 'interrupted']).toContain(step.status);
+      }
+      const stored = f.repository.listVerificationSteps(attempt.id);
+      expect(stored.length).toBe(attempt.steps.length);
+      for (const step of stored) {
+        expect(['completed', 'failed', 'cancelled', 'interrupted']).toContain(step.status);
+      }
     }
     f.database.close();
   }, 120000);

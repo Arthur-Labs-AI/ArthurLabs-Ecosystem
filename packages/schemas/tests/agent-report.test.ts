@@ -173,6 +173,10 @@ describe('SentryAgentReportV2', () => {
     }
     expect(description).toContain('reproductionSteps');
     expect(description).toContain('operationKey');
+    // Live GLM runs failed twice with `symbol` on evidence entries
+    // (evidence.N: Unrecognized key(s) in object: 'symbol'): the
+    // contract must disambiguate symbol placement explicitly.
+    expect(description).toContain('symbol lives ONLY on finding locations');
     // Strength vocabulary must be explicit: models invent abbreviations
     // (e.g. 'strong') when only the field name is shown.
     for (const strength of [

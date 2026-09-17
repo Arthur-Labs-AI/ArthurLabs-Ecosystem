@@ -325,7 +325,8 @@ export function describeSentryAgentReportContract(): string {
   return (
     'Evidence variants (exact fields per type; unknown fields fail validation): ' +
     lines.join(' | ') +
-    '. Finding (required: title, category, severity, confidence, description, locations[>=1], evidenceKeys[>=1], reproductionSteps (always include, [] allowed)): locations entries accept relativePath, lineStart?, lineEnd?, symbol?.'
+    '. Finding (required: title, category, severity, confidence, description, locations[>=1], evidenceKeys[>=1], reproductionSteps (always include, [] allowed)): locations entries accept relativePath, lineStart?, lineEnd?, symbol?. ' +
+    'symbol lives ONLY on finding locations: never add symbol (or any location field) to an evidence entry.'
   );
 }
 

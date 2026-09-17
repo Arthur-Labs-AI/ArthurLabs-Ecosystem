@@ -763,18 +763,30 @@ async function executeAttemptSteps(input: {
   const baseAttempt = input.baseAttempt;
   // Snapshot drift refuses wrong-state verification (§95): the recipe
   // is recorded, every replayable step stays unevaluated, outcome is
-  // inconclusive with the drift limitation. The outer finally still
-  // disposes the runner and removes the workspace.
+  // inconclusive with the drift limitation. Refused steps still
+  // terminalize (completed/unsupported) so no queued rows survive a
+  // completed attempt (§19). The outer finally still disposes the
+  // runner and removes the workspace.
   if (!materialized.baselineMatch) {
     for (const warning of warnings) input.run.warnings.push(warning);
-    const classified = classifyAttempt(baseAttempt.steps);
+    const refusedAt = nowIsoTimestamp();
+    const refusedSteps = baseAttempt.steps.map((step) => ({
+      ...step,
+      status: 'completed' as const,
+      outcome: 'unsupported' as const,
+      startedAt: step.startedAt ?? refusedAt,
+      completedAt: refusedAt,
+    }));
+    for (const step of refusedSteps) input.repository.saveVerificationStep(attemptId, step);
+    const refusedAttempt: VerificationRunAttempt = { ...baseAttempt, steps: refusedSteps };
+    const classified = classifyAttempt(refusedSteps);
     return await finalizeAttempt(
       {
         repository: input.repository,
         dataRoot: input.dataRoot,
         run: input.run,
       },
-      baseAttempt,
+      refusedAttempt,
       materialized.workspaceRoot,
       classified,
     );

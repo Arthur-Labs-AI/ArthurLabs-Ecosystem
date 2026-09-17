@@ -1,6 +1,28 @@
-# Handoff — CI verifier sandbox probe (2026-09-17)
+# Handoff — Phase 6 final closure, CONDITIONAL (2026-09-17)
 
-Status: local fix and regression tests pass; changes are uncommitted and GitHub Actions is UNVERIFIED until review and a new run on the final SHA.
+Status: Phase 6.1.1 implementation reviewed. Production validation is CONDITIONAL: all non-paid gates pass, Merger v2 + Verifier v3 validated on the reference 3/3 run, one real correctness fix applied with regression test; the fresh paid FULL 3/3 run is PENDING (user deferred live runs to manual testing). Exact-head CI is UNVERIFIED for the new fix commit until review, push, and a new Actions run on the final SHA.
+
+Baseline: `e91f0e05368ad0166ccda7289f0af975e82ce6a7` (clean tree at validation start; exact-head CI `35193512641` completed/success covers this SHA). Working tree now carries the §40 fix (2 files, uncommitted): `packages/run-engine/src/verification-service.ts` + `packages/run-engine/tests/verification-service.test.ts`.
+
+Phase 6 closure validation (this session):
+
+- Local gates on final tree (Ubuntu WSL): repository:check PASS, format:check PASS, lint 17/17 PASS, typecheck 33/33 PASS, test 34/34 Turbo tasks PASS (run-engine 35/35 incl. 8 trust proofs, verifier 18/18, schemas 106/106, CLI 16/16), build 17/17 PASS.
+- Verifier doctor (Ubuntu WSL): sandboxBackend=systemd, sandboxAvailable=true, runtimeReplaySupported=true.
+- Paid runs: Muse-only probe `run_01M2Q58QXH6B37G4NNSXNNXNNP` completed 1/1 (2 findings). FULL attempt `run_01M2Q5G6J95H3QAB30H7V5VTQ9` partial 2/3 — Muse + DeepSeek completed, GLM failed `GLM_INVALID_RESULT` (model cited nonexistent `vitest.config.ts`; trust pipeline correctly rejected, no Sentry regression; tree clean at baseline). User then deferred all further live runs to manual testing; the retry job was killed. Fresh FULL 3/3 remains PENDING.
+- Reference 3/3 run `run_01M2MJ71E3VK8ZDTT20ABJ6R06` (9 findings, 22 evidence): merge reuses `merge_A6DM6D4MQ0PK1021CE0N7PG9VA` (mergerVersion=2, usableAgents=3, unavailable=[], 3 clusters: all_available_sources/multi_source/single_source; manual inspection found no false merge).
+- Verifier v3 on that merge: `vrun_01M2Q6RJJWT7TC0M8BWW0B2TKA` completed 3 attempts, 3 inconclusive (retained material for the Sept-13 revision aged out; fail-closed refusal, honest). Repeat after fix: `vrun_01M2Q7FSDZNXR17ZQSW8JGNJ95` completed, same outcomes, all 21 steps terminal.
+- Real bug fixed per §3/§40: drift-refusal path left recipe steps `queued` after completed attempts; now terminalize as completed/unsupported (outcome unchanged: inconclusive). Regression test RED→GREEN; targeted suites green; full gates green on final tree.
+- Integrity: managed working-copy hashes identical pre/post live runs; QA workspaces cleaned; no stray agent processes; verifier workspaces + staging cleaned for completed attempts (93 `/var/tmp/sentry-verify-*` orphans predate this session, Sept 16, no DB rows — environmental litter, not validation fallout); secret scan of persisted verification output clean; sig3 mechanism confirmed (`sig3:` prefix, trust suite proves strong-identity replay).
+- Export of the reference run is additive (mergeResults, findingClusters, verificationRuns incl. the new vrun, attempts, assertions).
+- Frozen dirs zero diff vs baseline: harness-muse/deepseek/claude-code, merger. Versions preserved: MERGER_VERSION=2, NORMALIZER_VERSION=1, VERIFIER_VERSION=3, RECIPE=3, SIGNATURE=3.
+
+Update 13:30Z — FRESH FULL 3/3 COMPLETE: user re-ran after the contract fix and `run_01M2Q9J43SH3XBPJHZ1MFG6X36` completed 3/3 (Muse 3 turns; DeepSeek 7079/23975 tokens 4 turns; GLM 39590/28089 tokens 4 turns — the `symbol` fix held on first attempt; 8 findings, 19 evidence; snapshot `snap_01M2Q9J45JTBW10DH6YRJDTMJ0`). Merge `merge_KDS6MZFP7VREMB9HN45MTCBHKF` (v2, usableAgents=3, unavailable=[], 2 clusters; manual inspection: cluster 1 all_available_sources bridges divide-bug + red-suite/toolchain findings via shared tests/math.test.ts locations, cluster 2 multi_source pure-divide — no false merge, merger untouched). Verifier `vrun_01M2QAS1V1HHR8YMS8W66BJX23` completed 2/2 inconclusive (v3/v3/v3, sandbox systemd available, fail-closed retention refusal; all 18 steps terminal — fix verified live). Export additive incl. the new vrun; working-copy hashes unchanged; workspaces/staging cleaned; no stray processes; secret scan 0 hits. Final gates on the fix tree: hygiene/format/lint 17/17/typecheck 33/33/test 34/34/build 17/17 ALL GREEN. Remaining: review + commit the 4-file fix set, push, record the new exact-head Actions run, then declare Phase 6 closed. Do NOT claim GitHub CI green for the fix SHA until that run completes. Do not start Phase 7 automatically.
+
+---
+
+# Previous handoff — CI verifier sandbox probe (2026-09-17)
+
+Prior status (superseded by the conditional-closure section above): local fix and regression tests pass; changes are uncommitted and GitHub Actions is UNVERIFIED until review and a new run on the final SHA.
 
 Baseline: `327804d395a4434a966febdc7d103e2721e97d7c` (`main` / `origin/main` at investigation start).
 
