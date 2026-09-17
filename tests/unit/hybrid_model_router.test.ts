@@ -42,8 +42,8 @@ function trio(t: { local?: { fail?: unknown; text?: string; tools?: boolean; ctx
   regModel(providers, gateways, 'local-qwen', 'local', 'laptop', a.gw, t.local || {});
   regModel(providers, gateways, 'server-qwen', 'lan', 'arthur-server', b.gw, t.lan || {});
   regModel(providers, gateways, 'deepseek', 'cloud', undefined, c.gw, t.cloud || {});
-  const seen: { provider_id: string; attempt: number; fallback: boolean }[] = [];
-  const router = new ModelRouter({ nodes, providers, gateways, observer: { onAttempt: (i) => { seen.push({ provider_id: i.provider_id, attempt: i.attempt, fallback: i.fallback }); } }, ...(t.locality ? { dataLocalityPolicy: t.locality } : {}) });
+  const seen: { provider_id: string; runtime_mode: string; reason: string; attempt: number; fallback: boolean }[] = [];
+  const router = new ModelRouter({ nodes, providers, gateways, observer: { onAttempt: (i) => { seen.push({ provider_id: i.provider_id, runtime_mode: i.runtime_mode, reason: i.reason, attempt: i.attempt, fallback: i.fallback }); } }, ...(t.locality ? { dataLocalityPolicy: t.locality } : {}) });
   return { router, seen, calls: { local: a.calls, lan: b.calls, cloud: c.calls } };
 }
 
@@ -98,6 +98,26 @@ test('C-E: unavailable primary falls back once to LAN alternative', async () => 
   assert.equal(lab.calls.cloud.n, 0);
   assert.equal(lab.seen.length, 2);
   assert.equal(lab.seen[1]?.fallback, true);
+  assert.equal(lab.seen[0]?.runtime_mode, 'local');
+  assert.equal(lab.seen[1]?.runtime_mode, 'lan');
+  assert.equal(lab.seen[1]?.provider_id, 'server-qwen');
+});
+
+test('C-E2: missing fallback gateway fails closed (no silent third-provider skip)', async () => {
+  const nodes = baseNodes();
+  const providers = new ProviderRegistry();
+  const gateways = new ModelGatewayRegistry();
+  const flaky = gwWith('flaky-local', { fail: new ProviderUnavailableError('down') });
+  const good = gwWith('good-cloud', {});
+  providers.register({ identity: { id: 'flaky-local', kind: 'model', runtime_mode: 'local' }, capabilities: ['model.generate'], node_id: 'laptop', model: { supports_tools: false, supports_reasoning: false, max_context_tokens: 8000 } });
+  providers.register({ identity: { id: 'ghost-lan', kind: 'model', runtime_mode: 'lan' }, capabilities: ['model.generate'], node_id: 'arthur-server', model: { supports_tools: false, supports_reasoning: false, max_context_tokens: 8000 } });
+  providers.register({ identity: { id: 'good-cloud', kind: 'model', runtime_mode: 'cloud' }, capabilities: ['model.generate'], model: { supports_tools: false, supports_reasoning: false, max_context_tokens: 8000 } });
+  gateways.register('flaky-local', flaky.gw);
+  gateways.register('good-cloud', good.gw);
+  const router = new ModelRouter({ nodes, providers, gateways });
+  await assert.rejects(() => router.generate(req()), /no executable gateway for provider "ghost-lan"/);
+  assert.equal(flaky.calls.n, 1);
+  assert.equal(good.calls.n, 0);
 });
 
 test('C-F: timeout primary falls back once', async () => {

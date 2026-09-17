@@ -251,10 +251,12 @@ export class ModelRouter implements ModelGateway {
       attempt += 1;
       const gateway = this.gateways.get(candidate.providerId);
       if (gateway === undefined) {
-        lastError = new HybridRegistryError("INVALID_PROVIDER_DESCRIPTOR", "no executable gateway for provider " + JSON.stringify(candidate.providerId));
-        continue;
+        // Registry inconsistency (metadata without an executable gateway)
+        // is a configuration/binding error, NOT provider availability:
+        // fail closed immediately, never continue to an alternative.
+        throw new HybridRegistryError("INVALID_PROVIDER_DESCRIPTOR", "no executable gateway for provider " + JSON.stringify(candidate.providerId));
       }
-      this.notify(decision, candidate.providerId, attempt, attempt > 1);
+      this.notify(candidate.providerId, this.modeOf(candidate.providerId), decision.reason, attempt, attempt > 1);
       try {
         return await gateway.generate(request);
       } catch (err) {
@@ -282,10 +284,9 @@ export class ModelRouter implements ModelGateway {
       attempt += 1;
       const gateway = this.gateways.get(providerId);
       if (gateway === undefined) {
-        lastError = new HybridRegistryError("INVALID_PROVIDER_DESCRIPTOR", "no executable gateway for provider " + JSON.stringify(providerId));
-        continue;
+        throw new HybridRegistryError("INVALID_PROVIDER_DESCRIPTOR", "no executable gateway for provider " + JSON.stringify(providerId));
       }
-      this.notify(decision, providerId, attempt, attempt > 1);
+      this.notify(providerId, this.modeOf(providerId), decision.reason, attempt, attempt > 1);
       let yielded = false;
       try {
         for await (const event of gateway.generateStream(request, signal)) {
@@ -310,10 +311,18 @@ export class ModelRouter implements ModelGateway {
     throw lastError;
   }
 
-  private notify(decision: HybridRoutingDecision, providerId: string, attempt: number, fallback: boolean): void {
+  private modeOf(providerId: string): RuntimeMode {
+    // Actual attempted-provider locality from trusted metadata, never the
+    // primary decision mode: a LAN fallback must report lan, not local.
+    const descriptor = this.providers.get(providerId);
+    if (descriptor !== undefined) return descriptor.identity.runtime_mode;
+    return "cloud";
+  }
+
+  private notify(providerId: string, mode: RuntimeMode, reason: HybridRoutingDecision["reason"], attempt: number, fallback: boolean): void {
     if (this.observer?.onAttempt === undefined) return;
     try {
-      this.observer.onAttempt({ provider_id: providerId, runtime_mode: decision.runtime_mode, reason: decision.reason, attempt, fallback });
+      this.observer.onAttempt({ provider_id: providerId, runtime_mode: mode, reason, attempt, fallback });
     } catch {
     }
   }
