@@ -1,4 +1,18 @@
-# Handoff — Phase 3 Muse execution foundation
+# Handoff — CI verifier sandbox probe (2026-09-17)
+
+Status: local fix and regression tests pass; changes are uncommitted and GitHub Actions is UNVERIFIED until review and a new run on the final SHA.
+
+Baseline: `327804d395a4434a966febdc7d103e2721e97d7c` (`main` / `origin/main` at investigation start).
+
+The reported Actions failure is `@qa/run-engine` verifier trust fixtures: sandbox preflight binds the data root under `/home/runner`, where `ProtectHome=yes` makes the work directory invisible (`226/NAMESPACE`). The real replay stages under `/var/tmp`. `verifyMerge` now preflights that same staging parent. A regression test first failed with the old data-root argument, then passed after the change. The temporary CI mount probe now reports the actual `systemd-run` exit status rather than the status of `tail`, and checks a `/var/tmp` bind with replay-equivalent sandbox properties.
+
+Local WSL validation: run-engine 35/35, CLI 16/16, full `pnpm test` 34/34 Turbo tasks. Two multi-subprocess CLI tests needed measured test-only budgets on this `/mnt/c` checkout (64s and 42s in isolation); no production timeout was changed. Repository, format, lint, typecheck, and build gate results are recorded in the latest ledger entry. Do not claim GitHub CI green until the final reviewed SHA has a successful Actions run. No paid agent runs were made.
+
+Next: review this diff, commit/push under the repository's main-branch review rule, inspect the new Actions `staged_exit` and `pnpm test` results, and investigate any remaining runner-specific sandbox restriction without weakening the trust tests or adding a host fallback.
+
+---
+
+# Historical handoff — Phase 3 Muse execution foundation
 
 Status: Phase 3 complete. Implementation is pushed to `main`, local gates pass,
 and GitHub Actions completed successfully.

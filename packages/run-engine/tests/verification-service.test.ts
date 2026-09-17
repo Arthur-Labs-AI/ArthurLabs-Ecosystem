@@ -8,15 +8,17 @@ async function fixtureBase(prefix: string): Promise<string> {
   await mkdir(base, { recursive: true });
   return mkdtemp(join(base, prefix));
 }
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SentryDatabase, SentryRepository, RuntimeInstanceLease } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
+import { SystemdSandboxBackend } from '@qa/verifier';
 import {
   createFakeHarnessRegistry,
   mergeRun,
   RunCoordinator,
   VerificationServiceError,
   verifyMerge,
+  verifierStagingParent,
 } from '../src/index.js';
 
 const roots: string[] = [];
@@ -59,6 +61,22 @@ async function simulatedFixture() {
 }
 
 describe('verification service', () => {
+  it('preflights the same parent used for staged replay', async () => {
+    const f = await simulatedFixture();
+    const preflight = vi.spyOn(SystemdSandboxBackend.prototype, 'preflight').mockResolvedValue({
+      available: false,
+      backend: 'none',
+      reason: 'controlled test backend',
+    });
+    try {
+      await verifyMerge(f.repository, f.dataRoot, f.merge.id, { commandTimeoutMs: 5000 });
+      expect(preflight).toHaveBeenCalledWith(verifierStagingParent(f.dataRoot));
+    } finally {
+      preflight.mockRestore();
+      f.database.close();
+    }
+  }, 120000);
+
   it('verifies a merged run with fresh workspaces and cleans up (§11-13, §79)', async () => {
     const f = await simulatedFixture();
     const { run, attempts } = await verifyMerge(f.repository, f.dataRoot, f.merge.id, {

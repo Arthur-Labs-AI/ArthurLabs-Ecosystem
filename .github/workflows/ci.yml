@@ -33,14 +33,27 @@ jobs:
           systemctl --user is-system-running || true
       - name: Probe user-unit mount capabilities (temporary CI debug)
         run: |
-          D=$(mktemp -d)
-          echo "probe dir: $D"
-          systemd-run --user --wait --pipe --collect --unit=ci-probe-bare -- /usr/bin/true 2>&1 | tail -2; echo "bare_exit=$?"
-          systemd-run --user --wait --pipe --collect --unit=ci-probe-tfs -p TemporaryFileSystem=/:ro -- /usr/bin/true 2>&1 | tail -2; echo "tfs_exit=$?"
-          systemd-run --user --wait --pipe --collect --unit=ci-probe-bind -p BindPaths="$D" -p WorkingDirectory="$D" -- /usr/bin/test -d "$D" 2>&1 | tail -2; echo "bind_exit=$?"
-          systemd-run --user --wait --pipe --collect --unit=ci-probe-tfsbind -p TemporaryFileSystem=/ -p BindPaths="$D" -p WorkingDirectory="$D" -- /usr/bin/test -d "$D" 2>&1 | tail -2; echo "tfsbind_exit=$?"
-          systemd-run --user --wait --pipe --collect --unit=ci-probe-protect -p ProtectSystem=strict -p ProtectHome=yes -p ReadWritePaths="$D" -p WorkingDirectory="$D" -- /usr/bin/test -d "$D" 2>&1 | tail -2; echo "protect_exit=$?"
-          rm -rf "$D"
+          probe_dir=$(mktemp -d /var/tmp/sentry-ci-probe.XXXXXX)
+          echo "probe dir: $probe_dir"
+          probe() {
+            label=$1
+            shift
+            if output=$("$@" 2>&1); then status=0; else status=$?; fi
+            printf '%s\n' "$output" | tail -6
+            printf '%s_exit=%s\n' "$label" "$status"
+          }
+          probe bare systemd-run --user --wait --pipe --collect --unit=ci-probe-bare -- /usr/bin/true
+          probe staged systemd-run --user --wait --pipe --collect --unit=ci-probe-staged \
+            -p TemporaryFileSystem=/ -p ProtectHome=yes -p PrivateNetwork=yes \
+            -p NoNewPrivileges=yes -p KillMode=control-group -p TimeoutStopSec=5s \
+            -p ProtectControlGroups=yes -p ProtectKernelTunables=yes \
+            -p ProtectKernelModules=yes -p RestrictSUIDSGID=yes \
+            -p ReadWritePaths="$probe_dir" -p BindPaths="$probe_dir" \
+            -p BindReadOnlyPaths=/usr/bin -p BindReadOnlyPaths=/usr/lib \
+            -p BindReadOnlyPaths=/usr/share -p BindReadOnlyPaths=/bin \
+            -p BindReadOnlyPaths=/lib -p BindReadOnlyPaths=/lib64 \
+            -p WorkingDirectory="$probe_dir" -- /usr/bin/test -d "$probe_dir"
+          rmdir "$probe_dir"
 
       - run: pnpm repository:check
       - run: pnpm format:check

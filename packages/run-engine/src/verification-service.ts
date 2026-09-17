@@ -461,7 +461,12 @@ export async function verifyMerge(
   // passes, otherwise honest unavailable (§13, §71) — replay steps
   // become unsupported, source integrity still runs. NEVER host fallback.
   const probe = new SystemdSandboxBackend();
-  const availability = await probe.preflight(dataRoot);
+  // Probe the same mount parent used by the staged execution copy.
+  // CI checkouts live under /home/runner, which ProtectHome hides;
+  // probing dataRoot there falsely reports 226/NAMESPACE even when
+  // the real /var/tmp execution bind is available.
+  const probeParent = verifierStagingParent(dataRoot);
+  const availability = await probe.preflight(probeParent);
   const backend = availability.available
     ? probe
     : new UnavailableSandboxBackend(availability.reason ?? 'sandbox backend unavailable');

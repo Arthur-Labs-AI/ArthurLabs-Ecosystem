@@ -290,7 +290,9 @@ describe('qa cli', () => {
     expect(start.status).toBe(6);
     const startResponse = machine(start, 'run.start');
     expect(!startResponse.ok && startResponse.error.code).toBe('MUSE_MODEL_NOT_CONFIGURED');
-  });
+    // Several CLI subprocesses took 64s on a WSL/DrvFs checkout; this
+    // test-only budget does not change production command deadlines.
+  }, 180_000);
 
   it('supports the complete subprocess JSON lifecycle with one document per command', async () => {
     const f = await fixture();
@@ -539,7 +541,8 @@ describe('qa cli', () => {
     );
     expect(busy.error).toMatchObject({ code: 'SQLITE_BUSY', retryable: true });
     expect(errorExitCode(busy.error)).toBe(4);
-  });
+    // Four CLI subprocesses took 42s on WSL/DrvFs even when run alone.
+  }, 120_000);
 
   it('distinguishes findings, execution failure, partial QA, and cancellation exits', () => {
     const response = (status: 'completed' | 'failed' | 'partial' | 'cancelled', findings: number) =>
