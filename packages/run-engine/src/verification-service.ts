@@ -91,7 +91,16 @@ export async function recoverVerifications(
       ) {
         await rm(workspace, { recursive: true, force: true }).catch(() => undefined);
       }
-      // Staging is deterministic per attempt: remove it too.
+      // Staging is deterministic per attempt: remove it too. The
+      // workspace path (<dataRoot>/projects/<id>/verifier-workspaces/
+      // <attempt>/project) encodes the data root, so re-derive the
+      // platform fallback parent from it when present.
+      const recoveryDataRoot =
+        workspace === undefined ? undefined : dirname(dirname(dirname(dirname(workspace))));
+      await rm(verifierStagingRoot(attempt.id, recoveryDataRoot), {
+        recursive: true,
+        force: true,
+      }).catch(() => undefined);
       await rm(verifierStagingRoot(attempt.id), { recursive: true, force: true }).catch(
         () => undefined,
       );
@@ -206,9 +215,18 @@ function resolveOperations(
  *  verification. */
 /** Sandbox staging root: outside the data root so the whole data
  *  root can be made inaccessible without nesting holes. Deterministic
- *  per attempt so crash recovery can remove it. */
-export function verifierStagingRoot(attemptId: string): string {
-  return join('/var/tmp', 'sentry-verify-' + attemptId);
+ *  per attempt so crash recovery can remove it. The staging parent is
+ *  bindable on the same filesystem family the sandbox backend can
+ *  mount: `/var/tmp` on Linux hosts, repo-local `.tmp-sentry-staging`
+ *  under the data root's parent otherwise (WSL2/odd layouts where
+ *  `/var/tmp` is not bindable into user units). */
+export function verifierStagingParent(dataRoot: string): string {
+  if (process.platform === 'linux') return '/var/tmp';
+  return join(resolve(dataRoot, '..'), '.tmp-sentry-staging');
+}
+export function verifierStagingRoot(attemptId: string, dataRoot?: string): string {
+  if (dataRoot === undefined) return join('/var/tmp', 'sentry-verify-' + attemptId);
+  return join(verifierStagingParent(dataRoot), 'sentry-verify-' + attemptId);
 }
 
 async function materializeVerifierWorkspace(input: {
@@ -294,8 +312,10 @@ async function materializeVerifierWorkspace(input: {
   // Stage outside the data root for sandboxed execution: the sandbox
   // makes the entire data root inaccessible, so the execution copy
   // must live elsewhere (no nested holes). Reflink keeps it cheap.
-  const stagingRoot = join(verifierStagingRoot(input.attemptId), 'project');
-  await rm(verifierStagingRoot(input.attemptId), { recursive: true, force: true });
+  // The parent is chosen on the same bindable filesystem family as
+  // the data root (see verifierStagingParent).
+  const stagingRoot = join(verifierStagingRoot(input.attemptId, input.dataRoot), 'project');
+  await rm(verifierStagingRoot(input.attemptId, input.dataRoot), { recursive: true, force: true });
   await mkdir(stagingRoot, { recursive: true });
   await copyTree(workspaceRoot, stagingRoot, {
     preferReflink: true,

@@ -436,7 +436,14 @@ export async function executeCommand(
   if (input.command === 'verify.doctor') {
     return withReadRuntime(async ({ dataRoot }) => {
       const { SystemdSandboxBackend } = await import('@qa/verifier');
-      const availability = await new SystemdSandboxBackend().preflight(dataRoot);
+      const { verifierStagingParent } = await import('@qa/run-engine');
+      // Probe the staging parent, not the raw data root: execution
+      // binds the staging copy, so availability must be measured
+      // where the mounts will actually land.
+      const { mkdir } = await import('node:fs/promises');
+      const probeParent = verifierStagingParent(dataRoot);
+      await mkdir(probeParent, { recursive: true });
+      const availability = await new SystemdSandboxBackend().preflight(probeParent);
       return success(input.command, {
         sandboxBackend: 'systemd',
         sandboxAvailable: availability.available,
