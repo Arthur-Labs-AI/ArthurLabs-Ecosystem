@@ -111,6 +111,40 @@ export function isEmptyUnifiedPlanPatch(patch: UnifiedMachinePatch): boolean {
   return Object.keys(patch.set).length === 0 && patch.remove.length === 0;
 }
 
+/**
+ * FRS-04 idempotency: prune a compiled desired machine patch down to its
+ * semantic delta against the persisted MACHINE layer only.
+ *
+ * SET KEY=value is kept only when layers.machine[KEY] !== value (or the
+ * key is absent); REMOVE KEY is kept only when the key exists in
+ * layers.machine. Comparison is value equality against the machine layer
+ * alone — never against effective precedence (ambient process env / repo
+ * .env). External credentials stay external (provider planner owned) and
+ * explicit machine choices must be persisted when not already persisted;
+ * the goal is avoiding redundant machine-config rewrites, not avoiding a
+ * write because repo_env happens to agree.
+ *
+ * Secret values are compared internally only and never rendered or logged.
+ */
+export function diffPatchAgainstMachine(
+  desiredPatch: UnifiedMachinePatch,
+  persistedMachine: Record<string, string>,
+): UnifiedMachinePatch {
+  const set: Record<string, string> = {};
+  for (const key of Object.keys(desiredPatch.set)) {
+    const desired = desiredPatch.set[key] as string;
+    const persisted = persistedMachine[key];
+    if (persisted === desired) continue;
+    set[key] = desired;
+  }
+  const remove: string[] = [];
+  for (const key of desiredPatch.remove) {
+    if (!(key in persistedMachine)) continue;
+    if (remove.indexOf(key) === -1) remove.push(key);
+  }
+  return { set, remove };
+}
+
 export function unifiedPatchSecretNames(patch: UnifiedMachinePatch): string[] {
   const names: string[] = [];
   if (patch.set['DEEPSEEK_API_KEY'] !== undefined) names.push('DEEPSEEK_API_KEY');

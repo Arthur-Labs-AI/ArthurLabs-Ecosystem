@@ -17,7 +17,7 @@ import { validatePlanSecrets } from '../providers/setup_plan';
 import type { EffectiveConfig } from '../providers/setup_plan';
 import { dependenciesFor, dependenciesForCustom, deriveCurrentProfile, isSetupProfile } from './profile';
 import type { CustomVoiceChoices, ProfileDependencies, SetupProfile } from './profile';
-import { compileUnifiedPatch, emptyUnifiedPlan, isEmptyUnifiedPlanPatch } from './plan';
+import { compileUnifiedPatch, diffPatchAgainstMachine, emptyUnifiedPlan, isEmptyUnifiedPlanPatch } from './plan';
 import type { UnifiedMachinePatch, UnifiedSetupPlan } from './plan';
 import { DEFAULT_VOICE_SETTINGS } from '../voice/config';
 import { DEEPSEEK_DEFAULT_BASE_URL } from '../models/providers/deepseek';
@@ -292,6 +292,10 @@ export interface UnifiedSetupResult {
   patch: UnifiedMachinePatch;
   installs: Array<{ modelId: string; ok: boolean; reason: string }>;
   committed: boolean;
+  /** True when the semantic config delta was non-empty (a write occurred or was required). */
+  configChanged: boolean;
+  /** True when at least one model install/download action ran (not already-installed). */
+  modelActionsOccurred: boolean;
 }
 
 export async function runUnifiedSetupFlow(args: { profile: SetupProfile; custom?: CustomVoiceChoices; layers: SetupLayers; seams: UnifiedSetupSeams; out: (text: string) => void; select: (prompt: string, count: number, defIndex: number) => Promise<number> }): Promise<UnifiedSetupResult> {
@@ -335,7 +339,7 @@ export async function runUnifiedSetupFlow(args: { profile: SetupProfile; custom?
     if (ttsLocal) plan.voice.ttsPolicy = 'local_only';
     else if (deps.openaiCredential) plan.voice.ttsPolicy = 'cloud_preferred';
   }
-  return { exitCode: 0, plan, patch: { set: {}, remove: [] }, installs: [], committed: false };
+  return { exitCode: 0, plan, patch: { set: {}, remove: [] }, installs: [], committed: false, configChanged: false, modelActionsOccurred: false };
 }
 
 function effectiveVoiceEnabled(layers: SetupLayers): boolean {
@@ -371,24 +375,36 @@ export function buildAudioPatch(plan: UnifiedSetupPlan): UnifiedMachinePatch {
 export async function applyUnifiedPlan(plan: UnifiedSetupPlan, layers: SetupLayers, seams: UnifiedSetupSeams, out: (text: string) => void): Promise<UnifiedSetupResult> {
   const effective = effectiveConfigOf(layers);
   const voice = effectiveVoiceOf(layers);
-  const patch = compileUnifiedPatch(plan, {
+  const desired = compileUnifiedPatch(plan, {
     providerPatch: buildProviderPatch(plan, effective),
     audioPatch: buildAudioPatch(plan),
     voiceDefaults: { voiceEnabled: DEFAULT_VOICE_SETTINGS.voiceEnabled, sttPolicy: DEFAULT_VOICE_SETTINGS.sttPolicy, ttsPolicy: DEFAULT_VOICE_SETTINGS.ttsPolicy, wakeEnabled: DEFAULT_VOICE_SETTINGS.wakeEnabled },
     effectiveVoice: { voiceEnabled: voice.voiceEnabled, sttPolicy: voice.sttPolicy, ttsPolicy: voice.ttsPolicy, wakeEnabled: voice.wakeEnabled },
   });
-  if (isEmptyUnifiedPlanPatch(patch)) return { exitCode: 0, plan, patch, installs: [], committed: false };
-  // Model installs FIRST (filesystem side effects, honestly reported).
+  // Semantic idempotency: prune the desired patch against the persisted
+  // MACHINE layer only. "No config changes" never gates model work below.
+  const patch = diffPatchAgainstMachine(desired, layers.machine);
+  const configChanged = !isEmptyUnifiedPlanPatch(patch);
+  // Model installs ALWAYS execute when required (filesystem side effects,
+  // honestly reported) — even when the semantic config delta is empty.
   const installs: Array<{ modelId: string; ok: boolean; reason: string }> = [];
+  let modelActionsOccurred = false;
   for (const item of plan.localModels) {
     if (item.alreadyReady) { installs.push({ modelId: item.modelId, ok: true, reason: 'already installed' }); continue; }
+    modelActionsOccurred = true;
     out('Installing ' + item.modelId + '...\n');
     const result = await seams.models.install(item.modelId);
     installs.push({ modelId: item.modelId, ok: result.ok, reason: result.reason });
     if (result.ok !== true) {
       out('Required model install failed: ' + item.modelId + ' (' + result.reason + '). Configuration was NOT saved.\n');
-      return { exitCode: 5, plan, patch, installs, committed: false };
+      return { exitCode: 5, plan, patch, installs, committed: false, configChanged, modelActionsOccurred };
     }
+  }
+  if (!configChanged) {
+    // "No config changes" does not mean "no model work": installs above
+    // already ran. Success with committed=false; the CLI renders the
+    // already-matches message (worded for whether models were installed).
+    return { exitCode: 0, plan, patch, installs, committed: false, configChanged: false, modelActionsOccurred };
   }
   // Exactly ONE atomic config commit after installs succeed.
   try {
@@ -400,10 +416,10 @@ export async function applyUnifiedPlan(plan: UnifiedSetupPlan, layers: SetupLaye
     }
   } catch (err) {
     out('Setup failed: configuration could not be saved (' + (err instanceof Error ? err.message : String(err)) + '). Installed models were kept.\n');
-    return { exitCode: 1, plan, patch, installs, committed: false };
+    return { exitCode: 1, plan, patch, installs, committed: false, configChanged: true, modelActionsOccurred };
   }
-  return { exitCode: 0, plan, patch, installs, committed: true };
+  return { exitCode: 0, plan, patch, installs, committed: true, configChanged: true, modelActionsOccurred };
 }
 
-export { compileUnifiedPatch, emptyUnifiedPlan, isEmptyUnifiedPlanPatch };
+export { compileUnifiedPatch, diffPatchAgainstMachine, emptyUnifiedPlan, isEmptyUnifiedPlanPatch };
 export type { SetupProfile };

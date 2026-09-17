@@ -278,7 +278,13 @@ async function runUnifiedSetupInteractive(io: CliIO, deps: UnifiedSetupDeps, lay
   const result = await applyUnifiedPlan(flow.plan, layers, { prompts, providers: providerSeams, audio: audioSeams, models: modelSeams, commitPatch: commit }, (text: string) => io.out(text));
   if (result.committed !== true) {
     if (result.installs.some((i) => i.ok !== true)) return CliExit.VALIDATION_FAILED;
-    if (result.patch.set !== undefined && Object.keys(result.patch.set).length === 0) { io.out('Nothing to save: configuration already matches the requested state.\n'); return CliExit.SUCCESS; }
+    if (result.configChanged !== true) {
+      // Semantic config delta empty (installs already ran honestly above).
+      // Do not falsely imply nothing happened when a model was installed.
+      if (result.modelActionsOccurred === true) io.out('Configuration already matches the requested state.\n');
+      else io.out('Nothing to save: configuration already matches the requested state.\n');
+      return CliExit.SUCCESS;
+    }
     return CliExit.INTERNAL;
   }
   io.out('ok Providers ready\n');

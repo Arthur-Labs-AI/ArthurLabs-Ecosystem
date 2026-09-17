@@ -5,8 +5,8 @@ import { CliExit } from '../../src/cli_exit';
 import type { CliIO } from '../../apps/cli/index';
 import { runUnifiedSetup } from '../../apps/cli/setup_unified';
 import { applyUnifiedPlan, buildAudioPatch, buildProviderPatch, runUnifiedSetupFlow } from '../../src/setup/unified_setup';
-import type { SetupLayers } from '../../src/setup/unified_setup';
-import { compileUnifiedPatch, emptyUnifiedPlan } from '../../src/setup/plan';
+import type { SetupLayers, UnifiedSetupSeams } from '../../src/setup/unified_setup';
+import { compileUnifiedPatch, diffPatchAgainstMachine, emptyUnifiedPlan, isEmptyUnifiedPlanPatch } from '../../src/setup/plan';
 import { dependenciesFor } from '../../src/setup/profile';
 
 const DS = 'sk-unified-deepseek-secret';
@@ -167,13 +167,14 @@ test('G1: rerun with everything configured preselects and rewrites nothing', asy
   let commits = 0;
   const machine = { DEEPSEEK_API_KEY: DS, OPENAI_API_KEY: OA, ARTHUR_MODEL_PROVIDER: 'deepseek', ARTHUR_MODEL_NAME: 'deepseek-chat', ARTHUR_AUDIO_INPUT_DEVICE: 'Mic A', ARTHUR_AUDIO_OUTPUT_DEVICE: 'default', ARTHUR_AUDIO_CAPTURE_COMMAND: 'ffmpeg -i mic', ARTHUR_AUDIO_PLAYBACK_COMMAND: 'ffplay -i -', ARTHUR_VOICE_ENABLED: 'true' };
   // Keep everything: profile cloud(1), keep DS(y default Enter), keep OA, mic default, heard y, wake y, Apply y.
-  // All sources already machine_config and values identical => patch empty => 'Nothing to save'.
+  // All sources already machine_config and values identical => semantic patch empty => 'Nothing to save'.
   const code = await runUnifiedSetup(new Map(), out, {
     ...cloudSeams({ answers: ['1', '', '', '', 'y', 'y', 'y'], secrets: [], commitPatch: () => { commits += 1; } }),
     layers: layersOf(machine),
   });
   assert.equal(code, CliExit.SUCCESS);
-  assert.ok(out.outText.includes('Nothing to save') || commits <= 1);
+  assert.equal(commits, 0);
+  assert.ok(out.outText.includes('Nothing to save: configuration already matches the requested state.'));
 });
 test('D1: models setup migration routes through model_branch', async () => {
   const { runModelsOrSetup } = await import('../../apps/cli/model_branch');
@@ -208,5 +209,172 @@ test('K1: standalone providers/audio behavior unchanged (imports intact)', async
   const audio = await import('../../apps/cli/audio');
   assert.equal(typeof providers.runProvidersSetup, 'function');
   assert.equal(typeof audio.runAudioSetup, 'function');
+});
+function applySeams(modelInstalls: string[], commitPatches: Array<{ set: Record<string, string>; remove: string[] }>, installImpl?: (modelId: string) => Promise<{ ok: boolean; reason: string }>): UnifiedSetupSeams {
+  return {
+    prompts: {
+      confirm: async () => true,
+      select: async () => 0,
+      secret: async () => ({ kind: 'empty' as const }),
+    },
+    providers: {
+      checkDeepseek: async () => ({ ready: true }),
+      checkOpenai: async () => ({ sttReady: true, ttsReady: true }),
+    },
+    audio: {
+      detect: async () => ({ available: true, captureAvailable: true, playbackAvailable: true }),
+      listInputDevices: async () => [],
+      buildCommands: () => ({ captureCommand: 'cap', playbackCommand: 'play' }),
+      validateCapture: async () => ({ transportReady: true, signalDetected: true, frames: 1 }),
+      validatePlayback: async () => ({ transportReady: true }),
+      confirmHeard: async () => true,
+    },
+    models: {
+      recommend: async () => null,
+      install: async (modelId: string) => { modelInstalls.push(modelId); if (installImpl) return installImpl(modelId); return { ok: true, reason: 'installed' }; },
+    },
+    commitPatch: (patch: { set: Record<string, string>; remove: string[] }) => { commitPatches.push(patch); },
+  };
+}
+
+test('FRS04-1: identical SET pruned to empty (machine-only comparison)', () => {
+  const pruned = diffPatchAgainstMachine({ set: { A: 'x' }, remove: [] }, { A: 'x' });
+  assert.ok(isEmptyUnifiedPlanPatch(pruned));
+});
+
+test('FRS04-2: changed SET kept', () => {
+  const pruned = diffPatchAgainstMachine({ set: { A: 'y' }, remove: [] }, { A: 'x' });
+  assert.deepEqual(pruned.set, { A: 'y' });
+  assert.deepEqual(pruned.remove, []);
+});
+
+test('FRS04-3: new SET kept', () => {
+  const pruned = diffPatchAgainstMachine({ set: { B: 'new' }, remove: [] }, { A: 'x' });
+  assert.deepEqual(pruned.set, { B: 'new' });
+});
+
+test('FRS04-4: REMOVE for absent key omitted', () => {
+  const pruned = diffPatchAgainstMachine({ set: {}, remove: ['GONE'] }, { A: 'x' });
+  assert.ok(isEmptyUnifiedPlanPatch(pruned));
+});
+
+test('FRS04-5: REMOVE for existing key kept', () => {
+  const pruned = diffPatchAgainstMachine({ set: {}, remove: ['A'] }, { A: 'x' });
+  assert.deepEqual(pruned.remove, ['A']);
+});
+
+test('FRS04-6: mixed patch retains only the semantic delta', () => {
+  const pruned = diffPatchAgainstMachine(
+    { set: { SAME: 'v', CHANGED: 'new', ADDED: 'a' }, remove: ['GONE', 'STALE'] },
+    { SAME: 'v', CHANGED: 'old', STALE: 's' },
+  );
+  assert.deepEqual(pruned.set, { CHANGED: 'new', ADDED: 'a' });
+  assert.deepEqual(pruned.remove, ['STALE']);
+});
+
+test('FRS04-7: empty semantic patch still installs a missing required model (zero config commits)', async () => {
+  const { dependenciesFor } = await import('../../src/setup/profile');
+  const plan = emptyUnifiedPlan('local_voice', dependenciesFor('local_voice'));
+  plan.audio = { captureReady: true, signalDetected: true, audibleConfirmed: true, inputId: 'Mic A', inputLabel: 'Mic A', outputId: 'default', captureCommand: 'ffmpeg -i mic', playbackCommand: 'ffplay -i -' };
+  plan.voice = { voiceEnabled: true, sttPolicy: 'local_only', ttsPolicy: 'local_only' };
+  plan.localModels = [{ kind: 'stt', modelId: 'parakeet-tdt-0.6b-v3', via: 'recommended', alreadyReady: false }];
+  const layers = layersOf({
+    ARTHUR_VOICE_ENABLED: 'true',
+    ARTHUR_STT_POLICY: 'local_only',
+    ARTHUR_TTS_POLICY: 'local_only',
+    ARTHUR_AUDIO_INPUT_DEVICE: 'Mic A',
+    ARTHUR_AUDIO_OUTPUT_DEVICE: 'default',
+    ARTHUR_AUDIO_CAPTURE_COMMAND: 'ffmpeg -i mic',
+    ARTHUR_AUDIO_PLAYBACK_COMMAND: 'ffplay -i -',
+  });
+  const installs: string[] = [];
+  const commits: Array<{ set: Record<string, string>; remove: string[] }> = [];
+  const texts: string[] = [];
+  const result = await applyUnifiedPlan(plan, layers, applySeams(installs, commits), (t: string) => { texts.push(t); });
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(installs, ['parakeet-tdt-0.6b-v3']);
+  assert.equal(commits.length, 0);
+  assert.equal(result.committed, false);
+  assert.equal(result.configChanged, false);
+  assert.equal(result.modelActionsOccurred, true);
+});
+
+test('FRS04-8: install failure with empty semantic patch reports failure and writes nothing', async () => {
+  const { dependenciesFor } = await import('../../src/setup/profile');
+  const plan = emptyUnifiedPlan('local_voice', dependenciesFor('local_voice'));
+  plan.audio = { captureReady: true, signalDetected: true, audibleConfirmed: true, inputId: 'Mic A', inputLabel: 'Mic A', outputId: 'default', captureCommand: 'ffmpeg -i mic', playbackCommand: 'ffplay -i -' };
+  plan.voice = { voiceEnabled: true, sttPolicy: 'local_only', ttsPolicy: 'local_only' };
+  plan.localModels = [{ kind: 'stt', modelId: 'parakeet-tdt-0.6b-v3', via: 'recommended', alreadyReady: false }];
+  const layers = layersOf({
+    ARTHUR_VOICE_ENABLED: 'true',
+    ARTHUR_STT_POLICY: 'local_only',
+    ARTHUR_TTS_POLICY: 'local_only',
+    ARTHUR_AUDIO_INPUT_DEVICE: 'Mic A',
+    ARTHUR_AUDIO_OUTPUT_DEVICE: 'default',
+    ARTHUR_AUDIO_CAPTURE_COMMAND: 'ffmpeg -i mic',
+    ARTHUR_AUDIO_PLAYBACK_COMMAND: 'ffplay -i -',
+  });
+  const installs: string[] = [];
+  const commits: Array<{ set: Record<string, string>; remove: string[] }> = [];
+  const texts: string[] = [];
+  const result = await applyUnifiedPlan(plan, layers, applySeams(installs, commits, async () => ({ ok: false, reason: 'disk full' })), (t: string) => { texts.push(t); });
+  assert.equal(result.exitCode, 5);
+  assert.deepEqual(installs, ['parakeet-tdt-0.6b-v3']);
+  assert.equal(commits.length, 0);
+  assert.equal(result.committed, false);
+  assert.ok(texts.join('').includes('Configuration was NOT saved'));
+});
+
+test('FRS04-9: changed configuration still commits exactly ONE pruned patch', async () => {
+  const { dependenciesFor } = await import('../../src/setup/profile');
+  const plan = emptyUnifiedPlan('cloud_voice', dependenciesFor('cloud_voice'));
+  plan.audio = { captureReady: true, signalDetected: true, audibleConfirmed: true, inputId: 'Mic B', inputLabel: 'Mic B', outputId: 'default', captureCommand: 'ffmpeg -i new', playbackCommand: 'ffplay -i -' };
+  plan.voice = { voiceEnabled: true };
+  const layers = layersOf({
+    ARTHUR_VOICE_ENABLED: 'true',
+    ARTHUR_AUDIO_INPUT_DEVICE: 'Mic A',
+    ARTHUR_AUDIO_OUTPUT_DEVICE: 'default',
+    ARTHUR_AUDIO_CAPTURE_COMMAND: 'ffmpeg -i mic',
+    ARTHUR_AUDIO_PLAYBACK_COMMAND: 'ffplay -i -',
+  });
+  const installs: string[] = [];
+  const commits: Array<{ set: Record<string, string>; remove: string[] }> = [];
+  const result = await applyUnifiedPlan(plan, layers, applySeams(installs, commits), () => undefined);
+  assert.equal(result.exitCode, 0);
+  assert.equal(commits.length, 1);
+  assert.equal(result.committed, true);
+  assert.equal(result.configChanged, true);
+  assert.equal(commits[0]?.set['ARTHUR_AUDIO_INPUT_DEVICE'], 'Mic B');
+  assert.equal(commits[0]?.set['ARTHUR_AUDIO_CAPTURE_COMMAND'], 'ffmpeg -i new');
+  assert.ok(!('ARTHUR_VOICE_ENABLED' in (commits[0]?.set as Record<string, string>)), 'unchanged voice flag must be pruned');
+});
+
+test('FRS04-10: semantic diff compares values internally and never renders secrets', () => {
+  const secret = 'sk-live-super-secret-value';
+  const same = diffPatchAgainstMachine({ set: { OPENAI_API_KEY: secret }, remove: [] }, { OPENAI_API_KEY: secret });
+  assert.ok(isEmptyUnifiedPlanPatch(same));
+  const changed = diffPatchAgainstMachine({ set: { OPENAI_API_KEY: secret }, remove: [] }, {});
+  assert.equal(changed.set['OPENAI_API_KEY'], secret);
+  // The returned patch carries the value (required for the atomic write)
+  // but no public rendering exists: unifiedPatchSecretNames exposes names only.
+  const { unifiedPatchSecretNames } = require('../../src/setup/plan') as typeof import('../../src/setup/plan');
+  assert.deepEqual(unifiedPatchSecretNames(changed), ['OPENAI_API_KEY']);
+});
+
+test('FRS04-LV: local voice maps local_only policies and never requires OpenAI solely for local voice', async () => {
+  const { dependenciesFor } = await import('../../src/setup/profile');
+  assert.deepEqual(dependenciesFor('local_voice').openaiCredential, false);
+  const plan = emptyUnifiedPlan('local_voice', dependenciesFor('local_voice'));
+  plan.audio = { captureReady: true, signalDetected: true, audibleConfirmed: true, inputId: 'Mic', inputLabel: 'Mic', outputId: 'default', captureCommand: 'ffmpeg -i x', playbackCommand: 'ffplay -i -' };
+  plan.voice = { voiceEnabled: true, sttPolicy: 'local_only', ttsPolicy: 'local_only' };
+  const patch = compileUnifiedPatch(plan, {
+    providerPatch: { set: {}, remove: [] },
+    audioPatch: { set: { ARTHUR_AUDIO_INPUT_DEVICE: 'Mic', ARTHUR_AUDIO_OUTPUT_DEVICE: 'default', ARTHUR_AUDIO_CAPTURE_COMMAND: 'ffmpeg -i x', ARTHUR_AUDIO_PLAYBACK_COMMAND: 'ffplay -i -' }, remove: [] },
+    voiceDefaults: { voiceEnabled: false, sttPolicy: 'cloud_preferred', ttsPolicy: 'cloud_preferred', wakeEnabled: true },
+    effectiveVoice: { voiceEnabled: false, sttPolicy: 'cloud_preferred', ttsPolicy: 'cloud_preferred', wakeEnabled: true },
+  });
+  assert.equal(patch.set['ARTHUR_STT_POLICY'], 'local_only');
+  assert.equal(patch.set['ARTHUR_TTS_POLICY'], 'local_only');
+  assert.ok(!('OPENAI_API_KEY' in patch.set), 'local voice must not persist OPENAI_API_KEY by itself');
 });
 /*TESTS*/
