@@ -510,8 +510,11 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
   const provider = deps.provider ?? createModelProvider(settings, logger.child("model-provider"));
   const gateway = new ModelGateway(provider);
   // HR-01 ModelRouter seam: ConversationService/ConversationLoopRunner ->
-  // ModelRouter -> ModelProvider. The router always resolves the configured
-  // provider (configured_default); DeepSeek configured today -> DeepSeek.
+  // ModelRouter -> ModelProvider. Single configured provider today, so the
+  // legacy single-provider form is used (id/capabilities/decision pass
+  // through; configured_default). The hybrid multi-provider form
+  // (HR-03C: nodes + providers + gateways + engine) activates when a
+  // second model provider exists; it is covered by focused HR-03C tests.
   // Locality is trusted configuration metadata (settings.modelProvider) —
   // DeepSeek executes as a remote API ("cloud"), the in-process fake
   // executes on-device ("local"). Never inferred from ids/names/hosts.

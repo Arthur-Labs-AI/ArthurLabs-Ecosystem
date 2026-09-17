@@ -280,6 +280,7 @@ test('I1: ModelRouter still emits configured_default; no route() engine exists',
     id: 'deepseek',
     capabilities: () => ({ supportsTools: true }),
     generate: async () => ({ assistant_text: 'hi', tool_calls: [] }),
+    generateStream: async function* () { yield { type: 'done', finish_reason: 'stop' }; },
   };
   const router = new ModelRouter({ gateway: fake as never, locality: 'cloud' });
   assert.equal(router.routingDecision().reason, 'configured_default');

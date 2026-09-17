@@ -380,6 +380,6 @@ test('K1: no ToolRegistry replacement, no execution, no SC-02/03 surface', async
 // ---- L. legacy -----------------------------------------------------------------------------------------------------------------
 
 test('L1: HR-01 ModelRouter still configured_default', () => {
-  const fake = { id: 'deepseek', capabilities: () => ({ supportsTools: false }), generate: async () => ({ assistant_text: 'x', tool_calls: [] }) };
+  const fake = { id: 'deepseek', capabilities: () => ({ supportsTools: false }), generate: async () => ({ assistant_text: 'x', tool_calls: [] }), generateStream: async function* () { yield { type: 'done', finish_reason: 'stop' }; } };
   assert.equal(new ModelRouter({ gateway: fake as never, locality: 'cloud' }).routingDecision().reason, 'configured_default');
 });

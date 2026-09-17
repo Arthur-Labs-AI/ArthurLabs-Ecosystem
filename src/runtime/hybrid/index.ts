@@ -90,4 +90,4 @@ export {
   type EngineProviderCandidate,
   type HybridRoutingEngineDeps,
   type RejectionReason,
-} from "./routing_engine";
+} from "./routing_engine";export { ModelGatewayRegistry } from "./gateway_registry";
