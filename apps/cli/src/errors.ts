@@ -83,9 +83,15 @@ function canonicalError(cause: unknown): CliError {
           ? 'RUN_NOT_COMPLETE'
           : cause.code === 'PROJECT_NOT_FOUND'
             ? 'PROJECT_NOT_FOUND'
-            : cause.code === 'AGENT_STACK_NOT_FOUND'
+            : cause.code === 'AGENT_STACK_NOT_FOUND' || cause.code === 'INVALID_TARGET'
               ? 'INVALID_ARGUMENT'
-              : 'RUN_EXECUTION_FAILED';
+              : cause.code === 'ISSUE_NOT_FOUND'
+                ? 'ISSUE_NOT_FOUND'
+                : cause.code === 'ISSUE_CONFLICT'
+                  ? 'ISSUE_CONFLICT'
+                  : cause.code === 'PROJECT_COPY_DRIFT'
+                    ? 'PROJECT_COPY_DRIFT'
+                    : 'RUN_EXECUTION_FAILED';
     return { code, message: bounded(cause.message), retryable: RETRYABLE.has(code) };
   }
   if (cause instanceof HarnessProtocolError) {
@@ -152,7 +158,11 @@ export function errorEnvelope(command: CliCommand | 'unknown', cause: unknown): 
 
 export function errorExitCode(error: CliError): number {
   if (error.code === 'INVALID_ARGUMENT') return CLI_EXIT.invalidArgument;
-  if (error.code === 'PROJECT_NOT_FOUND' || error.code === 'RUN_NOT_FOUND')
+  if (
+    error.code === 'PROJECT_NOT_FOUND' ||
+    error.code === 'RUN_NOT_FOUND' ||
+    error.code === 'ISSUE_NOT_FOUND'
+  )
     return CLI_EXIT.notFound;
   if (error.code === 'PROJECT_SOURCE_NOT_FOUND') return CLI_EXIT.notFound;
   if (RETRYABLE.has(error.code) || error.code === 'PROJECT_COPY_DRIFT') return CLI_EXIT.conflict;

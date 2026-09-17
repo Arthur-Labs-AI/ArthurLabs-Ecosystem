@@ -34,6 +34,11 @@ export type HarnessEventId = Brand<string, 'HarnessEventId'>;
 export type RunActivityId = Brand<string, 'RunActivityId'>;
 export type OperationId = Brand<string, 'OperationId'>;
 export type RuntimeInstanceId = Brand<string, 'RuntimeInstanceId'>;
+export type IssueId = Brand<string, 'IssueId'>;
+export type IssueOccurrenceId = Brand<string, 'IssueOccurrenceId'>;
+export type IssueEventId = Brand<string, 'IssueEventId'>;
+export type RetestRunId = Brand<string, 'RetestRunId'>;
+export type RetestAssessmentId = Brand<string, 'RetestAssessmentId'>;
 
 export const ID_PREFIXES = {
   project: 'proj',
@@ -60,6 +65,11 @@ export const ID_PREFIXES = {
   runActivity: 'activity',
   operation: 'op',
   runtimeInstance: 'runtime',
+  issue: 'issue',
+  issueOccurrence: 'occ',
+  issueEvent: 'iev',
+  retestRun: 'retest',
+  retestAssessment: 'reassess',
 } as const;
 
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -170,6 +180,21 @@ export function createRunActivityId(nowMs?: number): RunActivityId {
 export function createOperationId(nowMs?: number): OperationId {
   return make(ID_PREFIXES.operation, nowMs) as OperationId;
 }
+export function createIssueId(nowMs?: number): IssueId {
+  return make(ID_PREFIXES.issue, nowMs) as IssueId;
+}
+export function createIssueOccurrenceId(nowMs?: number): IssueOccurrenceId {
+  return make(ID_PREFIXES.issueOccurrence, nowMs) as IssueOccurrenceId;
+}
+export function createIssueEventId(nowMs?: number): IssueEventId {
+  return make(ID_PREFIXES.issueEvent, nowMs) as IssueEventId;
+}
+export function createRetestRunId(nowMs?: number): RetestRunId {
+  return make(ID_PREFIXES.retestRun, nowMs) as RetestRunId;
+}
+export function createRetestAssessmentId(nowMs?: number): RetestAssessmentId {
+  return make(ID_PREFIXES.retestAssessment, nowMs) as RetestAssessmentId;
+}
 export function createRuntimeInstanceId(nowMs?: number): RuntimeInstanceId {
   return make(ID_PREFIXES.runtimeInstance, nowMs) as RuntimeInstanceId;
 }
@@ -245,6 +270,21 @@ export function isRunActivityId(v: unknown): v is RunActivityId {
 }
 export function isOperationId(v: unknown): v is OperationId {
   return isPrefixed(v, ID_PREFIXES.operation);
+}
+export function isIssueId(v: unknown): v is IssueId {
+  return isPrefixed(v, ID_PREFIXES.issue);
+}
+export function isIssueOccurrenceId(v: unknown): v is IssueOccurrenceId {
+  return isPrefixed(v, ID_PREFIXES.issueOccurrence);
+}
+export function isIssueEventId(v: unknown): v is IssueEventId {
+  return isPrefixed(v, ID_PREFIXES.issueEvent);
+}
+export function isRetestRunId(v: unknown): v is RetestRunId {
+  return isPrefixed(v, ID_PREFIXES.retestRun);
+}
+export function isRetestAssessmentId(v: unknown): v is RetestAssessmentId {
+  return isPrefixed(v, ID_PREFIXES.retestAssessment);
 }
 export function isRuntimeInstanceId(v: unknown): v is RuntimeInstanceId {
   return isPrefixed(v, ID_PREFIXES.runtimeInstance);

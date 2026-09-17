@@ -22,6 +22,7 @@ import {
   copyTree,
   FilesystemArtifactStore,
   resolveInside,
+  SENTRY_VERIFICATION_COMMAND_TIMEOUT_MS,
   type SentryRepository,
 } from '@qa/persistence';
 import { SnapshotEngine } from '@qa/snapshot-engine';
@@ -148,7 +149,7 @@ export interface VerifyRunOptions {
   }) => VerificationCommandRunner;
 }
 
-const DEFAULT_COMMAND_TIMEOUT_MS = 120_000;
+const DEFAULT_COMMAND_TIMEOUT_MS = SENTRY_VERIFICATION_COMMAND_TIMEOUT_MS;
 
 function environmentFingerprint(sandbox: {
   backend: string;

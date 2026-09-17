@@ -1,4 +1,26 @@
-# Handoff — Phase 6 final closure, CONDITIONAL (2026-09-17)
+# Handoff — Phase 7 Stable Core / Private Beta, IN PROGRESS (2026-09-17)
+
+## Phase 6 CLOSED (recorded at Phase 7 start)
+
+Phase 6 closed at final SHA `b425d2496dbcbebb308e50c34c0f74fed48a130b` with
+GitHub Actions run `35209431594` (status completed, conclusion success).
+The stale conditional-closure header below is superseded; its detail is
+retained for history.
+
+## Phase 7 status (current attempt, UNCOMMITTED)
+
+Foundation + retest/ingest/hygiene/doctors/exports slices are implemented
+and locally verified (see latest ledger entry for gate evidence). Still
+required before any completion statement: paid FULL/TARGETED/retest live
+validation (§§99–101), large-repo smoke + soak (§§97–98, §103),
+restart/cleanup/process/secret live proof (§125), friend-readiness test
+(§§126–127), exact-head CI on the final SHA (§124), and commit/push.
+Frozen AgentStacks, Merger v2, and Verifier v3 remain untouched; no Phase 8
+UI and no Phase 9 installer work has started.
+
+---
+
+# Previous handoff — Phase 6 final closure, CONDITIONAL (2026-09-17)
 
 Status: Phase 6.1.1 implementation reviewed. Production validation is CONDITIONAL: all non-paid gates pass, Merger v2 + Verifier v3 validated on the reference 3/3 run, one real correctness fix applied with regression test; the fresh paid FULL 3/3 run is PENDING (user deferred live runs to manual testing). Exact-head CI is UNVERIFIED for the new fix commit until review, push, and a new Actions run on the final SHA.
 

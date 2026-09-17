@@ -4,6 +4,7 @@ import {
   nowIsoTimestamp,
   type AgentStackId,
   type ProjectId,
+  type ProjectRevisionId,
   type QARunId,
 } from '@qa/shared';
 import {
@@ -11,6 +12,7 @@ import {
   HarnessRunRequestSchema,
   QARunSchema,
   RunActivitySchema,
+  TargetSpecSchema,
   type AgentRun,
   type Evidence,
   type Finding,
@@ -18,6 +20,8 @@ import {
   type HarnessRunRequest,
   type HarnessWorkspace,
   type QARun,
+  type QARunLineage,
+  type TargetSpec,
   type VerificationLevel,
 } from '@qa/schemas';
 import {
@@ -36,6 +40,8 @@ import {
   projectDataPaths,
   RuntimeInstanceLease,
   RuntimePersistenceError,
+  SENTRY_PRODUCTION_RUN_TIMEOUT_MS,
+  SENTRY_SIMULATION_RUN_TIMEOUT_MS,
   type SentryRepository,
 } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
@@ -44,7 +50,16 @@ import { WorkspaceFactory } from '@qa/workspace-factory';
 import { RunActivityProjector } from './activity-projector.js';
 import { RunExporter } from './exporters.js';
 import { RunEngineError } from './errors.js';
+import { recoverRetests } from './retest-service.js';
 import { recoverVerifications } from './verification-service.js';
+
+export interface TargetedScope {
+  /** Project-relative target paths (§9-§10). Validated against the frozen
+   *  snapshot manifest before agents start; rejected when unknown. */
+  readonly includePaths: readonly string[];
+  readonly issueIds?: readonly string[];
+  readonly userInstructions?: string;
+}
 
 export interface RunOptions {
   readonly agentStackIds?: readonly AgentStackId[];
@@ -52,6 +67,17 @@ export interface RunOptions {
   readonly verificationLevel?: VerificationLevel;
   readonly instructions?: string;
   readonly runTimeoutMs?: number;
+  /** Phase 7 (§8-§13): TARGETED QA. Same independent agent architecture
+   *  and FULL-strength responsibility class, focused on a narrower scope.
+   *  Omitted (or mode 'full') preserves FULL semantics unchanged (§7). */
+  readonly mode?: 'full' | 'targeted';
+  readonly target?: TargetedScope;
+  /** Phase 7 run lineage (§37): e.g. FULL → TARGETED follow-up. */
+  readonly lineage?: {
+    readonly parentRunId?: QARunId;
+    readonly sourceRevisionId?: ProjectRevisionId;
+    readonly targetRevisionId?: ProjectRevisionId;
+  };
   readonly onHarnessRequest?: (request: HarnessRunRequest) => void;
   readonly onHarnessEventPersisted?: (event: HarnessEvent, agentRun: AgentRun) => void;
 }
@@ -151,6 +177,23 @@ export class RunCoordinator {
       return registration;
     });
     if (selected.length === 0) throw new Error('At least one agent stack must be selected');
+    // Phase 7 TARGETED validation (before any mutation): mode/target must
+    // agree, and target paths must be project-relative (TargetSpecSchema
+    // rejects absolute/.. entries; snapshot existence is checked after
+    // the freeze so validation always runs against the frozen manifest).
+    const mode = options.mode ?? 'full';
+    if (mode === 'targeted' && options.target === undefined) {
+      throw new RunEngineError(
+        'INVALID_TARGET',
+        'Targeted QA requires a target scope (includePaths)',
+      );
+    }
+    if (mode === 'full' && options.target !== undefined) {
+      throw new RunEngineError(
+        'INVALID_TARGET',
+        'Full QA takes no target scope; use mode targeted',
+      );
+    }
     for (const registration of selected) await registration.preflight?.();
     const runId = createQARunId();
     this.projects.lockProjectForRun(projectId, runId);
@@ -167,6 +210,65 @@ export class RunCoordinator {
       });
       if (snapshot.contentHash !== revision.contentHash) throw new Error('PROJECT_COPY_DRIFT');
       const createdAt = nowIsoTimestamp();
+      // Phase 7 TARGETED freeze (§9, §10, §77): validate target paths
+      // against the FROZEN snapshot manifest (never the live source),
+      // then persist the immutable TargetSpec before agents start.
+      let targetSpec: TargetSpec | undefined;
+      if (mode === 'targeted') {
+        const scope = options.target as TargetedScope;
+        const baseline = await this.snapshots.baselineFileHashes(snapshot.id);
+        const unknown = scope.includePaths.filter(
+          (candidate) =>
+            !baseline.has(candidate) &&
+            ![...baseline.keys()].some((file) => file.startsWith(candidate + '/')),
+        );
+        if (unknown.length > 0) {
+          throw new RunEngineError(
+            'INVALID_TARGET',
+            'Target paths not found in the frozen snapshot: ' + unknown.join(', '),
+          );
+        }
+        targetSpec = TargetSpecSchema.parse({
+          schemaVersion: 1,
+          qaRunId: runId,
+          snapshotId: snapshot.id,
+          includePaths: [...scope.includePaths],
+          issueIds: scope.issueIds === undefined ? [] : [...scope.issueIds],
+          ...(scope.userInstructions === undefined
+            ? {}
+            : { userInstructions: scope.userInstructions }),
+          createdAt,
+        });
+      }
+      // Generic scope preamble (§11-§12): identical for every selected
+      // stack, delivered through the standard instructions channel.
+      const targetedPreamble =
+        targetSpec === undefined
+          ? ''
+          : 'TARGETED QA SCOPE. Focus full-strength QA on: ' +
+            targetSpec.includePaths.join(', ') +
+            '. Inspect any dependency outside the scope as needed to understand the target; reported findings should relate to the target or a necessary dependency/consequence. ' +
+            (targetSpec.userInstructions === undefined
+              ? ''
+              : 'Target instructions: ' + targetSpec.userInstructions + ' ');
+      const instructionMessage =
+        targetSpec === undefined && options.instructions === undefined
+          ? undefined
+          : targetedPreamble + (options.instructions ?? 'No additional user instructions.');
+      const lineage: QARunLineage | undefined =
+        options.lineage === undefined
+          ? undefined
+          : {
+              ...(options.lineage.parentRunId === undefined
+                ? {}
+                : { parentRunId: options.lineage.parentRunId }),
+              ...(options.lineage.sourceRevisionId === undefined
+                ? {}
+                : { sourceRevisionId: options.lineage.sourceRevisionId }),
+              ...(options.lineage.targetRevisionId === undefined
+                ? {}
+                : { targetRevisionId: options.lineage.targetRevisionId }),
+            };
       let run = QARunSchema.parse({
         schemaVersion: 1,
         id: runId,
@@ -175,32 +277,38 @@ export class RunCoordinator {
         executionKind: options.executionKind,
         snapshotId: snapshot.id,
         projectContextSnapshotId: context.id,
-        mode: 'full',
+        mode,
         status: 'agents_running',
+        ...(lineage === undefined ? {} : { lineage }),
         configuration: {
           agentStackIds: selected.map((item) => item.stack.id),
           verificationLevel: options.verificationLevel ?? 'strict',
-          ...(options.instructions === undefined
+          ...(instructionMessage === undefined
             ? {}
-            : { instructions: { message: options.instructions, createdAt } }),
+            : { instructions: { message: instructionMessage, createdAt } }),
           policy: { id: 'qa-standard', version: 1 },
           executionSafeguards: {
             runTimeoutMs:
-              options.runTimeoutMs ?? (options.executionKind === 'production' ? 1_800_000 : 2_000),
+              options.runTimeoutMs ??
+              (options.executionKind === 'production'
+                ? SENTRY_PRODUCTION_RUN_TIMEOUT_MS
+                : SENTRY_SIMULATION_RUN_TIMEOUT_MS),
           },
         },
         createdAt,
         startedAt: createdAt,
       });
       this.repository.saveRun(run);
+      if (targetSpec !== undefined) this.repository.saveTargetSpec(targetSpec, projectId);
+      const scopeLabel = mode === 'targeted' ? 'Targeted QA' : 'Full QA';
       const root = this.activities.stage({
         qaRunId: runId,
         source: 'sentry',
         kind: 'run',
         title:
           options.executionKind === 'simulation'
-            ? 'Full QA — SIMULATED / FAKE HARNESS RUN'
-            : 'Full QA — REAL AGENT RUN',
+            ? scopeLabel + ' — SIMULATED / FAKE HARNESS RUN'
+            : scopeLabel + ' — REAL AGENT RUN',
         status: 'running',
       });
       for (const [kind, title] of [
@@ -673,6 +781,63 @@ export class RunCoordinator {
     return this.exporter.export(runId, format);
   }
 
+  /** Phase 7 stable cancellation (§45-§47). Marks a nonterminal run
+   *  cancelled: nonterminal AgentRuns become cancelled (completed runs
+   *  keep their status); completed Findings/Evidence are preserved (§47).
+   *  Only the owning runtime lease may cancel; terminal runs are
+   *  rejected. In-flight adapters are signalled by their owning worker
+   *  via cancel(); detached execution will extend this path. */
+  cancelRun(runId: QARunId): { runId: QARunId; status: 'cancelled'; cancelledAgents: number } {
+    const lease = this.requireRuntimeLease();
+    const run = this.repository.getRun(runId);
+    if (run === undefined) throw new RunEngineError('RUN_NOT_FOUND', 'Run not found: ' + runId);
+    if (['completed', 'partial', 'failed', 'cancelled'].includes(run.status)) {
+      throw new RunEngineError(
+        'RUN_NOT_COMPLETE',
+        'Run ' + runId + ' is already terminal (' + run.status + '); nothing to cancel',
+      );
+    }
+    if (run.runtimeInstanceId !== undefined && !lease.isFresh(run.runtimeInstanceId)) {
+      throw new RunEngineError(
+        'RUN_EXECUTION_FAILED',
+        'Run ' + runId + ' is owned by another runtime instance; cancellation refused',
+      );
+    }
+    const timestamp = nowIsoTimestamp();
+    let cancelledAgents = 0;
+    this.repository.transaction(() => {
+      for (const agentRun of this.repository.listAgentRuns(run.id)) {
+        if (
+          ['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(agentRun.status)
+        )
+          continue;
+        assertAgentRunTransition(agentRun.status, 'cancelled');
+        this.repository.saveAgentRun(
+          AgentRunSchema.parse({
+            ...agentRun,
+            status: 'cancelled',
+            completedAt: timestamp,
+          }),
+        );
+        cancelledAgents += 1;
+      }
+      for (const activity of this.repository.listActivities(run.id)) {
+        if (activity.status !== 'running' && activity.status !== 'waiting') continue;
+        this.repository.saveActivity({
+          ...activity,
+          status: 'failed',
+          title: (activity.title + ' — cancelled by operator').slice(0, 300),
+          completedAt: timestamp,
+        });
+      }
+      this.repository.saveRun(
+        QARunSchema.parse({ ...run, status: 'cancelled', completedAt: timestamp }),
+      );
+    });
+    this.projects.recoverAbandonedRunLock(run.projectId, run.id);
+    return { runId, status: 'cancelled', cancelledAgents };
+  }
+
   async recover(): Promise<void> {
     const lease = this.requireRuntimeLease();
     await this.projects.recoverAbandonedOperations(lease);
@@ -757,6 +922,9 @@ export class RunCoordinator {
     // parallel lease system (§64). Stale-owned running verifications
     // become interrupted with completed observations preserved.
     await recoverVerifications(this.repository, (instanceId) => lease.isFresh(instanceId as never));
+    // Retest crash recovery (§55): stale-owned nonterminal retest runs
+    // become interrupted; completed assessments and occurrences persist.
+    recoverRetests(this.repository, (instanceId) => lease.isFresh(instanceId as never));
   }
 
   private requireRuntimeLease(): RuntimeInstanceLease {
@@ -776,5 +944,7 @@ export * from './errors.js';
 export * from './activity-projector.js';
 export * from './exporters.js';
 export * from './merge-service.js';
+export * from './issue-service.js';
+export * from './retest-service.js';
 export * from './verification-service.js';
 export * from './simulation.js';

@@ -136,4 +136,33 @@ WHEN NEW.verification_run_id IS NOT OLD.verification_run_id OR NEW.finding_clust
 BEGIN SELECT RAISE(ABORT,'ENTITY_OWNERSHIP_IMMUTABLE'); END;
 `,
   },
+  {
+    version: 5,
+    name: 'phase7_issue_retest_lineage',
+    sql: `
+CREATE TABLE issues (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, payload TEXT NOT NULL) STRICT;
+CREATE INDEX issues_project_idx ON issues(project_id);
+CREATE TABLE issue_occurrences (id TEXT PRIMARY KEY, issue_id TEXT NOT NULL REFERENCES issues(id) ON DELETE CASCADE, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, qa_run_id TEXT NOT NULL REFERENCES qa_runs(id) ON DELETE CASCADE, merge_result_id TEXT NOT NULL REFERENCES merge_results(id) ON DELETE CASCADE, payload TEXT NOT NULL) STRICT;
+CREATE INDEX issue_occurrences_issue_idx ON issue_occurrences(issue_id);
+CREATE INDEX issue_occurrences_run_idx ON issue_occurrences(qa_run_id);
+CREATE TABLE issue_events (id TEXT PRIMARY KEY, issue_id TEXT NOT NULL REFERENCES issues(id) ON DELETE CASCADE, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, sequence INTEGER NOT NULL CHECK(sequence > 0), payload TEXT NOT NULL) STRICT;
+CREATE UNIQUE INDEX issue_events_issue_sequence_idx ON issue_events(issue_id,sequence);
+CREATE TABLE issue_ingest_keys (ingest_key TEXT PRIMARY KEY, issue_id TEXT NOT NULL REFERENCES issues(id) ON DELETE CASCADE, occurrence_id TEXT NOT NULL REFERENCES issue_occurrences(id) ON DELETE CASCADE) STRICT;
+CREATE TABLE target_specs (qa_run_id TEXT PRIMARY KEY REFERENCES qa_runs(id) ON DELETE CASCADE, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, payload TEXT NOT NULL) STRICT;
+CREATE TABLE retest_runs (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, issue_id TEXT NOT NULL REFERENCES issues(id) ON DELETE CASCADE, source_qa_run_id TEXT NOT NULL REFERENCES qa_runs(id) ON DELETE CASCADE, target_qa_run_id TEXT REFERENCES qa_runs(id) ON DELETE SET NULL, status TEXT NOT NULL, payload TEXT NOT NULL) STRICT;
+CREATE INDEX retest_runs_issue_idx ON retest_runs(issue_id);
+CREATE INDEX retest_runs_project_idx ON retest_runs(project_id);
+CREATE TABLE retest_assessments (id TEXT PRIMARY KEY, retest_run_id TEXT NOT NULL REFERENCES retest_runs(id) ON DELETE CASCADE, issue_id TEXT NOT NULL REFERENCES issues(id) ON DELETE CASCADE, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, payload TEXT NOT NULL) STRICT;
+CREATE INDEX retest_assessments_issue_idx ON retest_assessments(issue_id);
+CREATE TRIGGER issues_owner_update BEFORE UPDATE ON issues
+WHEN NEW.project_id IS NOT OLD.project_id
+BEGIN SELECT RAISE(ABORT,'ENTITY_OWNERSHIP_IMMUTABLE'); END;
+CREATE TRIGGER issue_occurrences_owner_update BEFORE UPDATE ON issue_occurrences
+WHEN NEW.issue_id IS NOT OLD.issue_id OR NEW.qa_run_id IS NOT OLD.qa_run_id OR NEW.merge_result_id IS NOT OLD.merge_result_id
+BEGIN SELECT RAISE(ABORT,'ENTITY_OWNERSHIP_IMMUTABLE'); END;
+CREATE TRIGGER retest_runs_owner_update BEFORE UPDATE ON retest_runs
+WHEN NEW.project_id IS NOT OLD.project_id OR NEW.issue_id IS NOT OLD.issue_id OR NEW.source_qa_run_id IS NOT OLD.source_qa_run_id
+BEGIN SELECT RAISE(ABORT,'ENTITY_OWNERSHIP_IMMUTABLE'); END;
+`,
+  },
 ] as const;

@@ -60,12 +60,12 @@ describe('Sentry persistence foundation', () => {
     });
     expect(
       first.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 4 });
+    ).toMatchObject({ count: 5 });
     first.close();
     const reopened = new SentryDatabase({ dataRoot });
     expect(
       reopened.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 4 });
+    ).toMatchObject({ count: 5 });
     expect(reopened.connection.prepare('PRAGMA busy_timeout').get()).toMatchObject({
       timeout: 5000,
     });
@@ -157,7 +157,7 @@ describe('Sentry persistence foundation', () => {
     const repository = new SentryRepository(upgraded);
     expect(
       upgraded.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 4 });
+    ).toMatchObject({ count: 5 });
     expect(repository.getProject(project.id)).toEqual(project);
     expect(repository.getRun(run.id)).toEqual(run);
     expect(repository.getAgentRun(agent.id)).toEqual(agent);
@@ -170,6 +170,27 @@ describe('Sentry persistence foundation', () => {
         .prepare("SELECT name FROM sqlite_master WHERE name='runtime_instances'")
         .get(),
     ).toBeDefined();
+    // Phase 7 migration honesty (§73, §105): pre-Phase-7 rows decode
+    // without fabricated lineage, and the new lineage tables exist empty.
+    expect(repository.getRun(run.id)?.lineage).toBeUndefined();
+    for (const table of [
+      'issues',
+      'issue_occurrences',
+      'issue_events',
+      'issue_ingest_keys',
+      'target_specs',
+      'retest_runs',
+      'retest_assessments',
+    ]) {
+      expect(
+        upgraded.connection
+          .prepare("SELECT name FROM sqlite_master WHERE name='" + table + "'")
+          .get(),
+      ).toBeDefined();
+      expect(
+        upgraded.connection.prepare('SELECT COUNT(*) count FROM ' + table).get(),
+      ).toMatchObject({ count: 0 });
+    }
     upgraded.close();
   });
 

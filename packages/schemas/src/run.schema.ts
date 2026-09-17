@@ -6,6 +6,7 @@ import {
   IsoTimestampSchema,
   ProjectContextSnapshotIdSchema,
   ProjectIdSchema,
+  ProjectRevisionIdSchema,
   QARunIdSchema,
   SchemaVersionSchema,
   SnapshotIdSchema,
@@ -80,6 +81,24 @@ export const RetestResultSchema = z
   .strict();
 export type RetestResult = z.infer<typeof RetestResultSchema>;
 
+/** Phase 7 run lineage (§37). Explicit links between related runs —
+ *  e.g. FULL → TARGETED follow-up, occurrence → RETEST run, Retest B →
+ *  Retest C. All optional: Phase 1–6 historical rows decode unchanged.
+ *  One field per semantic; never overloaded. */
+const QARunLineageSchema = z
+  .object({
+    parentRunId: QARunIdSchema.optional(),
+    sourceIssueId: UnifiedIssueIdSchema.optional(),
+    sourceOccurrenceId: z
+      .string()
+      .regex(/^occ_[0-9A-HJKMNP-TV-Z]{26}$/)
+      .optional(),
+    sourceRevisionId: ProjectRevisionIdSchema.optional(),
+    targetRevisionId: ProjectRevisionIdSchema.optional(),
+  })
+  .strict();
+export type QARunLineage = z.infer<typeof QARunLineageSchema>;
+
 const QARunBaseSchema = z
   .object({
     schemaVersion: SchemaVersionSchema,
@@ -91,6 +110,7 @@ const QARunBaseSchema = z
     executionKind: z.enum(['simulation', 'production']).optional(),
     status: z.enum(QARUN_STATUSES),
     configuration: QARunConfigurationSchema,
+    lineage: QARunLineageSchema.optional(),
     createdAt: IsoTimestampSchema,
     startedAt: IsoTimestampSchema.optional(),
     completedAt: IsoTimestampSchema.optional(),

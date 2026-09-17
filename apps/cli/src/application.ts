@@ -7,9 +7,12 @@ import {
 } from '@qa/persistence';
 import { ProjectManager, ProjectManagerError } from '@qa/project-manager';
 import {
+  cancelRetestRun,
   createFakeHarnessRegistry,
+  ingestMergeIssues,
   mergeRun,
   MergeServiceError,
+  retestIssue,
   RunCoordinator,
   RunEngineError,
   VerificationServiceError,
@@ -29,10 +32,12 @@ import {
   CliSuccessEnvelopeSchema,
   ProjectIdSchema,
   QARunIdSchema,
+  projectIssueState,
   type AgentRun,
   type CliSuccessEnvelope,
 } from '@qa/schemas';
 import type { ParsedCliCommand } from './arguments.js';
+import { cleanupReport, configReport, projectDoctor, storageReport } from './doctors.js';
 
 interface RuntimeContext {
   readonly repository: SentryRepository;
@@ -143,8 +148,10 @@ export async function executeCommand(
         runInspection: true,
         fakeRunSimulation: true,
         realAgentExecution: true,
-        retestExecution: false,
-        runCancellation: false,
+        retestExecution: true,
+        runCancellation: true,
+        targetedExecution: true,
+        issueLineage: true,
       },
       agentStacks: [
         { id: 'muse', displayName: 'Muse QA Agent', harness: 'muse-code' },
@@ -318,6 +325,20 @@ export async function executeCommand(
           executionKind: 'production',
           agentStackIds: requestedStackIds,
           verificationLevel: 'strict',
+          ...(input.mode === 'targeted'
+            ? {
+                mode: 'targeted' as const,
+                target: {
+                  includePaths: (input.paths ?? '')
+                    .split(',')
+                    .map((value) => value.trim())
+                    .filter((value) => value.length > 0),
+                  ...(input.instructions === undefined
+                    ? {}
+                    : { userInstructions: input.instructions }),
+                },
+              }
+            : {}),
           ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
           ...(input.runTimeoutMs === undefined ? {} : { runTimeoutMs: input.runTimeoutMs }),
         });
@@ -360,6 +381,190 @@ export async function executeCommand(
   if (input.command === 'run.status') {
     const runId = QARunIdSchema.parse(input.runId);
     return withReadRuntime(async ({ runs }) => success(input.command, runs.getRunStatus(runId)));
+  }
+  if (input.command === 'run.cancel') {
+    const runId = QARunIdSchema.parse(input.runId);
+    return withMutationRuntime(async ({ runs, repository }) => {
+      const outcome = runs.cancelRun(runId);
+      return success(input.command, {
+        runId: outcome.runId,
+        status: outcome.status,
+        cancelledAgents: outcome.cancelledAgents,
+        findings: { total: repository.countRunFindings(runId) },
+      });
+    }, options);
+  }
+  if (input.command === 'project.revisions') {
+    const projectId = ProjectIdSchema.parse(input.projectId);
+    return withReadRuntime(async ({ projects, repository }) => {
+      const record = projects.getProject(projectId);
+      if (record === undefined) {
+        throw new ProjectManagerError('PROJECT_NOT_FOUND', 'Project not found: ' + projectId);
+      }
+      const runsByRevision = new Map<string, string[]>();
+      for (const run of repository.listRuns(projectId)) {
+        const snapshot = repository.getSnapshot(run.snapshotId);
+        if (snapshot === undefined) continue;
+        const list = runsByRevision.get(snapshot.projectRevisionId) ?? [];
+        list.push(run.id);
+        runsByRevision.set(snapshot.projectRevisionId, list);
+      }
+      return success(input.command, {
+        projectId,
+        currentRevisionId: record.revision.id,
+        revisions: repository.listRevisions(projectId).map((revision) => ({
+          revisionId: revision.id,
+          importedAt: revision.importedAt,
+          contentHash: revision.contentHash,
+          current: revision.id === record.revision.id,
+          runIds: runsByRevision.get(revision.id) ?? [],
+        })),
+      });
+    });
+  }
+  if (input.command === 'issue.list') {
+    const projectId = ProjectIdSchema.parse(input.projectId);
+    return withReadRuntime(async ({ repository }) => {
+      if (repository.getProject(projectId) === undefined) {
+        throw new ProjectManagerError('PROJECT_NOT_FOUND', 'Project not found: ' + projectId);
+      }
+      return success(input.command, {
+        projectId,
+        issues: repository.listIssues(projectId).map((issue) => ({
+          issueId: issue.id,
+          projectId: issue.projectId,
+          title: issue.title,
+          currentState: projectIssueState(repository.listIssueEvents(issue.id)),
+          occurrenceCount: repository.listIssueOccurrences(issue.id).length,
+          updatedAt: issue.updatedAt,
+        })),
+      });
+    });
+  }
+  if (input.command === 'issue.show' || input.command === 'issue.history') {
+    const issueId = input.issueId;
+    if (!/^issue_[0-9A-HJKMNP-TV-Z]{26}$/.test(issueId)) {
+      throw new RunEngineError('ISSUE_NOT_FOUND', 'Issue not found: ' + issueId);
+    }
+    return withReadRuntime(async ({ repository }) => {
+      const issue = repository.getIssue(issueId);
+      if (issue === undefined) {
+        throw new RunEngineError('ISSUE_NOT_FOUND', 'Issue not found: ' + issueId);
+      }
+      const events = repository.listIssueEvents(issue.id);
+      const occurrences = repository.listIssueOccurrences(issue.id);
+      const assessments = repository.listRetestAssessments(issue.id);
+      const currentState = projectIssueState(events);
+      if (input.command === 'issue.show') {
+        return success(input.command, { issue, currentState, occurrences, assessments });
+      }
+      return success(input.command, { issue, currentState, events, occurrences, assessments });
+    });
+  }
+  if (input.command === 'issue.ingest') {
+    return withMutationRuntime(async ({ repository }) => {
+      const { mergeResultId, issues } = ingestMergeIssues(repository, input.mergeResultId);
+      return success(input.command, { mergeResultId, issues });
+    }, options);
+  }
+  if (input.command === 'retest.start') {
+    const registry = new HarnessAdapterRegistry()
+      .register(createMuseRegistration())
+      .register(createDeepSeekRegistration())
+      .register(createGlmRegistration());
+    const requestedStackIds = input.agents.map((name) =>
+      AgentStackDefinitionSchema.shape.id.parse('stack_' + name + '_main'),
+    );
+    return withMutationRuntime(
+      async ({ repository, dataRoot, lease }) => {
+        if (lease === undefined)
+          throw new RunEngineError(
+            'RUN_EXECUTION_FAILED',
+            'Retest requires an active runtime lease',
+          );
+        const result = await retestIssue({ dataRoot, repository, lease, registry }, input.issueId, {
+          agentStackIds: requestedStackIds,
+          ...(input.revision === undefined ? {} : { targetRevisionId: input.revision as never }),
+        });
+        return success(input.command, {
+          retestRunId: result.retestRun.id,
+          issueId: result.assessment.issueId,
+          status: result.retestRun.status,
+          assessmentId: result.assessment.id,
+          result: result.assessment.result,
+          targetRunId: result.targetRun.id,
+        });
+      },
+      options,
+      registry,
+    );
+  }
+  if (input.command === 'retest.show') {
+    return withReadRuntime(async ({ repository }) => {
+      const run = repository.getRetestRun(input.retestRunId);
+      if (run === undefined) {
+        throw new RunEngineError('RUN_NOT_FOUND', 'RetestRun not found: ' + input.retestRunId);
+      }
+      const assessments = repository.listRetestAssessmentsForRun(run.id);
+      return success(input.command, {
+        run,
+        ...(assessments.length === 0 ? {} : { assessment: assessments[assessments.length - 1] }),
+        assessments,
+      });
+    });
+  }
+  if (input.command === 'retest.cancel') {
+    return withMutationRuntime(async ({ repository, dataRoot, lease }) => {
+      if (lease === undefined)
+        throw new RunEngineError(
+          'RUN_EXECUTION_FAILED',
+          'Retest cancel requires an active runtime lease',
+        );
+      const registry = new HarnessAdapterRegistry();
+      const outcome = cancelRetestRun({ dataRoot, repository, lease, registry }, input.retestRunId);
+      return success(input.command, { retestRunId: outcome.retestRunId, status: outcome.status });
+    }, options);
+  }
+  if (input.command === 'doctor.storage') {
+    return withReadRuntime(async ({ repository, dataRoot }) => {
+      const report = await storageReport({ dataRoot, repository });
+      return success(input.command, {
+        dataRoot: report.dataRoot,
+        databaseBytes: report.databaseBytes,
+        artifactFiles: report.artifactFiles,
+        artifactBytes: report.artifactBytes,
+        projectsBytes: report.projectsBytes,
+        projects: report.projects,
+        revisions: report.revisions,
+        runs: report.runs,
+        issues: report.issues,
+        retests: report.retests,
+        orphans: report.orphans,
+      });
+    });
+  }
+  if (input.command === 'doctor.cleanup') {
+    return withMutationRuntime(async ({ repository, dataRoot }) => {
+      const report = await cleanupReport({ dataRoot, repository }, { apply: input.apply });
+      return success(input.command, report);
+    }, options);
+  }
+  if (input.command === 'doctor.config') {
+    return withReadRuntime(async ({ dataRoot }) => success(input.command, configReport(dataRoot)));
+  }
+  if (input.command === 'project.doctor') {
+    const projectId = ProjectIdSchema.parse(input.projectId);
+    return withReadRuntime(async ({ repository, dataRoot }) => {
+      try {
+        const report = await projectDoctor({ dataRoot, repository, projectId });
+        return success(input.command, report);
+      } catch (cause) {
+        if (cause instanceof Error && cause.message.startsWith('PROJECT_NOT_FOUND')) {
+          throw new ProjectManagerError('PROJECT_NOT_FOUND', 'Project not found: ' + projectId);
+        }
+        throw cause;
+      }
+    });
   }
   if (input.command === 'run.merge') {
     const mergeRunId = QARunIdSchema.parse(input.runId);

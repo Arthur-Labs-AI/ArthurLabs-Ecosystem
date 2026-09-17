@@ -41,17 +41,35 @@ export type ParsedCliCommand =
     })
   | (BaseCommand<'run.start'> & {
       readonly projectId: string;
-      readonly mode: 'full';
+      readonly mode: 'full' | 'targeted';
       readonly agents: readonly AgentName[];
       readonly wait: true;
       readonly instructions?: string;
       readonly runTimeoutMs?: number;
+      readonly paths?: string;
     })
   | (BaseCommand<'run.list'> & { readonly projectId: string })
   | (BaseCommand<'run.show'> & { readonly runId: string })
   | (BaseCommand<'run.status'> & { readonly runId: string })
   | (BaseCommand<'run.export'> & { readonly runId: string; readonly format: 'log' | 'json' })
   | (BaseCommand<'run.merge'> & { readonly runId: string })
+  | (BaseCommand<'run.cancel'> & { readonly runId: string })
+  | (BaseCommand<'project.revisions'> & { readonly projectId: string })
+  | (BaseCommand<'issue.list'> & { readonly projectId: string })
+  | (BaseCommand<'issue.show'> & { readonly issueId: string })
+  | (BaseCommand<'issue.history'> & { readonly issueId: string })
+  | (BaseCommand<'issue.ingest'> & { readonly mergeResultId: string })
+  | (BaseCommand<'retest.start'> & {
+      readonly issueId: string;
+      readonly revision?: string;
+      readonly agents: readonly AgentName[];
+    })
+  | (BaseCommand<'retest.show'> & { readonly retestRunId: string })
+  | (BaseCommand<'retest.cancel'> & { readonly retestRunId: string })
+  | BaseCommand<'doctor.storage'>
+  | (BaseCommand<'doctor.cleanup'> & { readonly apply: boolean })
+  | BaseCommand<'doctor.config'>
+  | (BaseCommand<'project.doctor'> & { readonly projectId: string })
   | (BaseCommand<'verify.start'> & { readonly mergeResultId: string; readonly clusters?: string })
   | (BaseCommand<'verify.show'> & { readonly verificationRunId: string })
   | BaseCommand<'verify.doctor'>;
@@ -108,6 +126,7 @@ export function commandHint(args: readonly string[]): CliCommand | 'unknown' {
     'project.show',
     'project.update',
     'project.delete',
+    'project.revisions',
     'agent.list',
     'agent.doctor',
     'run.simulate',
@@ -117,6 +136,18 @@ export function commandHint(args: readonly string[]): CliCommand | 'unknown' {
     'run.status',
     'run.export',
     'run.merge',
+    'run.cancel',
+    'issue.list',
+    'issue.show',
+    'issue.history',
+    'issue.ingest',
+    'retest.start',
+    'retest.show',
+    'retest.cancel',
+    'doctor.storage',
+    'doctor.cleanup',
+    'doctor.config',
+    'project.doctor',
     'verify.start',
     'verify.show',
     'verify.doctor',
@@ -204,14 +235,23 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     };
   }
   if (area === 'run' && action === 'start') {
-    assertFlags(tail, ['--mode', '--agents', '--wait', '--instructions', '--timeout-ms']);
+    assertFlags(tail, [
+      '--mode',
+      '--agents',
+      '--wait',
+      '--instructions',
+      '--timeout-ms',
+      '--paths',
+    ]);
     const [projectId] = positional(tail);
     if (projectId === undefined || positional(tail).length !== 1) {
-      fail('Usage: qa run start <project-id> --mode full [--agents muse,deepseek,glm] --wait');
+      fail(
+        'Usage: qa run start <project-id> --mode full|targeted [--agents muse,deepseek,glm] --wait [--paths a,b] [--instructions text]',
+      );
     }
     const mode = option(tail, '--mode');
     const agentsText = option(tail, '--agents');
-    if (mode !== 'full') fail('--mode must be full', '--mode');
+    if (mode !== 'full' && mode !== 'targeted') fail('--mode must be full or targeted', '--mode');
     // Omitted --agents selects all three stable real AgentStacks.
     const agents: AgentName[] =
       agentsText === undefined
@@ -237,14 +277,22 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     ) {
       fail('--timeout-ms must be an integer of at least 1000', '--timeout-ms');
     }
+    const paths = option(tail, '--paths');
+    if (mode === 'targeted' && (paths === undefined || paths.trim().length === 0)) {
+      fail('Targeted QA requires --paths <comma-separated project-relative paths>', '--paths');
+    }
+    if (mode === 'full' && paths !== undefined) {
+      fail('Full QA takes no --paths; use --mode targeted', '--paths');
+    }
     return {
       command: 'run.start',
       projectId,
-      mode: 'full',
+      mode: mode as 'full' | 'targeted',
       agents,
       wait: true,
       ...(instructions === undefined ? {} : { instructions }),
       ...(runTimeoutMs === undefined ? {} : { runTimeoutMs }),
+      ...(paths === undefined ? {} : { paths }),
     };
   }
   if (area === 'run' && action === 'list') {
@@ -261,6 +309,74 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     assertFlags(tail, []);
     const [runId] = assertPositionals(tail, 1, 'qa run merge <run-id>');
     return { command: 'run.merge', runId: runId as string };
+  }
+  if (area === 'run' && action === 'cancel') {
+    assertFlags(tail, []);
+    const [runId] = assertPositionals(tail, 1, 'qa run cancel <run-id>');
+    return { command: 'run.cancel', runId: runId as string };
+  }
+  if (area === 'project' && action === 'revisions') {
+    assertFlags(tail, []);
+    const [projectId] = assertPositionals(tail, 1, 'qa project revisions <project-id>');
+    return { command: 'project.revisions', projectId: projectId as string };
+  }
+  if (area === 'issue' && action === 'list') {
+    assertFlags(tail, []);
+    const [projectId] = assertPositionals(tail, 1, 'qa issue list <project-id>');
+    return { command: 'issue.list', projectId: projectId as string };
+  }
+  if (area === 'issue' && (action === 'show' || action === 'history')) {
+    assertFlags(tail, []);
+    const [issueId] = assertPositionals(tail, 1, 'qa issue ' + action + ' <issue-id>');
+    return {
+      command: action === 'show' ? 'issue.show' : 'issue.history',
+      issueId: issueId as string,
+    };
+  }
+  if (area === 'issue' && action === 'ingest') {
+    assertFlags(tail, []);
+    const [mergeResultId] = assertPositionals(tail, 1, 'qa issue ingest <merge-result-id>');
+    return { command: 'issue.ingest', mergeResultId: mergeResultId as string };
+  }
+  if (area === 'retest' && action === 'start') {
+    assertFlags(tail, ['--revision', '--agents', '--wait']);
+    const [issueId] = positional(tail);
+    if (issueId === undefined || positional(tail).length !== 1) {
+      fail(
+        'Usage: qa retest start <issue-id> [--revision <revision-id>] [--agents muse,deepseek,glm] --wait',
+      );
+    }
+    const revision = option(tail, '--revision');
+    const agentsText = option(tail, '--agents');
+    const agents: AgentName[] =
+      agentsText === undefined
+        ? [...AGENT_NAMES]
+        : (agentsText
+            .split(',')
+            .map((value) => value.trim())
+            .filter((value) => value.length > 0) as AgentName[]);
+    if (agents.length === 0) fail('--agents requires at least one agent stack', '--agents');
+    for (const name of agents) {
+      if (name !== 'muse' && name !== 'deepseek' && name !== 'glm')
+        fail('Unknown agent: ' + name + ' (expected muse, deepseek, or glm)', '--agents');
+    }
+    if (new Set(agents).size !== agents.length)
+      fail('--agents lists a duplicate agent', '--agents');
+    if (!tail.includes('--wait')) fail('Retest runs require --wait', '--wait');
+    return {
+      command: 'retest.start',
+      issueId,
+      ...(revision === undefined ? {} : { revision }),
+      agents,
+    };
+  }
+  if (area === 'retest' && (action === 'show' || action === 'cancel')) {
+    assertFlags(tail, []);
+    const [retestRunId] = assertPositionals(tail, 1, 'qa retest ' + action + ' <retest-run-id>');
+    return {
+      command: action === 'show' ? 'retest.show' : 'retest.cancel',
+      retestRunId: retestRunId as string,
+    };
   }
   if (area === 'run' && action === 'export') {
     assertFlags(tail, ['--format']);
@@ -294,6 +410,26 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     assertFlags(tail, ['--json']);
     assertPositionals(tail, 0, 'qa verify doctor');
     return { command: 'verify.doctor' };
+  }
+  if (area === 'doctor' && action === 'storage') {
+    assertFlags(tail, ['--json']);
+    assertPositionals(tail, 0, 'qa doctor storage');
+    return { command: 'doctor.storage' };
+  }
+  if (area === 'doctor' && action === 'cleanup') {
+    assertFlags(tail, ['--json', '--apply']);
+    assertPositionals(tail, 0, 'qa doctor cleanup [--apply]');
+    return { command: 'doctor.cleanup', apply: tail.includes('--apply') };
+  }
+  if (area === 'doctor' && action === 'config') {
+    assertFlags(tail, ['--json']);
+    assertPositionals(tail, 0, 'qa doctor config');
+    return { command: 'doctor.config' };
+  }
+  if (area === 'project' && action === 'doctor') {
+    assertFlags(tail, ['--json']);
+    const [projectId] = assertPositionals(tail, 1, 'qa project doctor <project-id>');
+    return { command: 'project.doctor', projectId: projectId as string };
   }
   fail('Unknown command: ' + args.join(' '));
 }

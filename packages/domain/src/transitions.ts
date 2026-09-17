@@ -7,6 +7,7 @@ import type {
   AgentRunStatus,
   ManagedProjectCopyState,
   QARunStatus,
+  RetestRunStatus,
   VerificationStatus,
 } from '@qa/schemas';
 import { InvalidStateTransitionError } from './errors.js';
@@ -51,6 +52,18 @@ const MANAGED_PROJECT_COPY_TRANSITIONS: Readonly<
   error: ['ready'],
 };
 
+const RETEST_RUN_TRANSITIONS: Readonly<Record<RetestRunStatus, readonly RetestRunStatus[]>> = {
+  created: ['agents_running', 'failed', 'cancelled'],
+  agents_running: ['merging', 'failed', 'cancelled', 'interrupted'],
+  merging: ['assessing', 'failed', 'cancelled', 'interrupted'],
+  assessing: ['completed', 'partial', 'failed', 'cancelled', 'interrupted'],
+  completed: [],
+  partial: [],
+  failed: [],
+  cancelled: [],
+  interrupted: [],
+};
+
 const VERIFICATION_TRANSITIONS: Readonly<
   Record<VerificationStatus, readonly VerificationStatus[]>
 > = {
@@ -82,6 +95,11 @@ const agent = makeHelpers(AGENT_RUN_TRANSITIONS, 'AgentRun');
 export const canTransitionAgentRun = agent.canTransition;
 export const assertAgentRunTransition = agent.assertTransition;
 export const AGENT_RUN_TRANSITIONS_MAP = AGENT_RUN_TRANSITIONS;
+
+const retest = makeHelpers(RETEST_RUN_TRANSITIONS, 'RetestRun');
+export const canTransitionRetestRun = retest.canTransition;
+export const assertRetestRunTransition = retest.assertTransition;
+export const RETEST_RUN_TRANSITIONS_MAP = RETEST_RUN_TRANSITIONS;
 
 const verification = makeHelpers(VERIFICATION_TRANSITIONS, 'VerificationAttempt');
 export const canTransitionVerification = verification.canTransition;

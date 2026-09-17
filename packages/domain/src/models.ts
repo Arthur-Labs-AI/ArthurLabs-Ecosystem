@@ -80,6 +80,19 @@ export type {
   RunActivitySource,
   RunActivityStatus,
   RunExportManifest,
+  QAMode,
+  TargetSpec,
+  Issue,
+  IssueState,
+  IssueOccurrence,
+  IssueEvent,
+  IssueEventKind,
+  RetestState,
+  RetestSpec,
+  RetestRun,
+  RetestRunStatus,
+  RetestAssessment,
+  QARunLineage,
 } from '@qa/schemas';
 export type {
   ProjectId,
@@ -101,5 +114,10 @@ export type {
   HarnessEventId,
   RunActivityId,
   OperationId,
+  IssueId,
+  IssueOccurrenceId,
+  IssueEventId,
+  RetestRunId,
+  RetestAssessmentId,
 } from '@qa/shared';
 export type { HarnessEvent, HarnessEventType, StructuredFailure } from '@qa/schemas';

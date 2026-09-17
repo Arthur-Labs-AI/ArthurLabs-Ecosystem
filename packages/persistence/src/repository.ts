@@ -39,14 +39,26 @@ import type { SentryDatabase } from './database.js';
 import { RuntimePersistenceError } from './errors.js';
 import {
   FindingClusterSchema,
+  IssueEventSchema,
+  IssueOccurrenceSchema,
+  IssueSchema,
   MergeResultSchema,
+  RetestAssessmentSchema,
+  RetestRunSchema,
+  TargetSpecSchema,
   VerificationAssertionSchema,
   VerificationObservationSchema,
   VerificationRecipeStepSchema,
   VerificationRunAttemptSchema,
   VerificationRunSchema,
   type FindingCluster,
+  type Issue,
+  type IssueEvent,
+  type IssueOccurrence,
   type MergeResult,
+  type RetestAssessment,
+  type RetestRun,
+  type TargetSpec,
   type VerificationAssertion,
   type VerificationObservation,
   type VerificationRecipeStep,
@@ -930,6 +942,245 @@ export class SentryRepository {
 
   deleteRuntimeOperation(id: string): void {
     this.database.connection.prepare('DELETE FROM runtime_operations WHERE id=?').run(id);
+  }
+
+  /** Phase 7 Issue lineage (§28-§36): append-oriented. Issues upsert by
+   *  id; occurrences and events are insert-only history — never updated,
+   *  never overwritten. currentState is derived, not stored. */
+  saveIssue(value: Issue): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO issues(id,project_id,payload) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload',
+      )
+      .run(value.id, value.projectId, encode(IssueSchema, value));
+  }
+
+  getIssue(id: string): Issue | undefined {
+    return decode(
+      IssueSchema,
+      this.database.connection.prepare('SELECT payload FROM issues WHERE id=?').get(id) as
+        PayloadRow | undefined,
+      'Issue ' + id,
+    );
+  }
+
+  listIssues(projectId: ProjectId): Issue[] {
+    return decodeMany(
+      IssueSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM issues WHERE project_id=? ORDER BY id')
+        .all(projectId) as unknown as PayloadRow[],
+      'Issue',
+    );
+  }
+
+  saveIssueOccurrence(value: IssueOccurrence): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO issue_occurrences(id,issue_id,project_id,qa_run_id,merge_result_id,payload) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING',
+      )
+      .run(
+        value.id,
+        value.issueId,
+        value.projectId,
+        value.qaRunId,
+        value.mergeResultId,
+        encode(IssueOccurrenceSchema, value),
+      );
+  }
+
+  getIssueOccurrence(id: string): IssueOccurrence | undefined {
+    return decode(
+      IssueOccurrenceSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM issue_occurrences WHERE id=?')
+        .get(id) as PayloadRow | undefined,
+      'IssueOccurrence ' + id,
+    );
+  }
+
+  listIssueOccurrences(issueId: string): IssueOccurrence[] {
+    return decodeMany(
+      IssueOccurrenceSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM issue_occurrences WHERE issue_id=? ORDER BY id')
+        .all(issueId) as unknown as PayloadRow[],
+      'IssueOccurrence',
+    );
+  }
+
+  /** Append-only event log: sequence is per-issue, assigned by the
+   *  writer inside the ingest/assess transaction. */
+  appendIssueEvent(value: IssueEvent): void {
+    const row = this.database.connection
+      .prepare('SELECT COUNT(*) AS count FROM issue_events WHERE issue_id=?')
+      .get(value.issueId) as { count: number };
+    this.database.connection
+      .prepare(
+        'INSERT INTO issue_events(id,issue_id,project_id,sequence,payload) VALUES (?,?,?,?,?)',
+      )
+      .run(
+        value.id,
+        value.issueId,
+        value.projectId,
+        row.count + 1,
+        encode(IssueEventSchema, value),
+      );
+  }
+
+  listIssueEvents(issueId: string): IssueEvent[] {
+    return decodeMany(
+      IssueEventSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM issue_events WHERE issue_id=? ORDER BY sequence')
+        .all(issueId) as unknown as PayloadRow[],
+      'IssueEvent',
+    );
+  }
+
+  /** Idempotent ingest guard (§74, §76): one (merge, cluster) pair maps
+   *  to exactly one occurrence; repeated ingest returns the original. */
+  getIngestKey(ingestKey: string): { issueId: string; occurrenceId: string } | undefined {
+    const row = this.database.connection
+      .prepare(
+        'SELECT issue_id AS issueId, occurrence_id AS occurrenceId FROM issue_ingest_keys WHERE ingest_key=?',
+      )
+      .get(ingestKey) as { issueId: string; occurrenceId: string } | undefined;
+    return row === undefined ? undefined : { ...row };
+  }
+
+  saveIngestKey(ingestKey: string, issueId: string, occurrenceId: string): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO issue_ingest_keys(ingest_key,issue_id,occurrence_id) VALUES (?,?,?) ON CONFLICT(ingest_key) DO NOTHING',
+      )
+      .run(ingestKey, issueId, occurrenceId);
+  }
+
+  /** TargetSpec: one immutable row per TARGETED run (§9). projectId is
+   *  passed explicitly so the spec can be staged in the same transaction
+   *  as its run without read-back coupling. */
+  saveTargetSpec(value: TargetSpec, projectId: ProjectId): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO target_specs(qa_run_id,project_id,payload) VALUES (?,?,?) ON CONFLICT(qa_run_id) DO NOTHING',
+      )
+      .run(value.qaRunId, projectId, encode(TargetSpecSchema, value));
+  }
+
+  getTargetSpec(qaRunId: QARunId): TargetSpec | undefined {
+    return decode(
+      TargetSpecSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM target_specs WHERE qa_run_id=?')
+        .get(qaRunId) as PayloadRow | undefined,
+      'TargetSpec ' + qaRunId,
+    );
+  }
+
+  /** Occurrences recorded against one QA run (source or retest target).
+   *  Powers run-scoped exports and staleness without scanning all issues. */
+  listOccurrencesForRun(qaRunId: QARunId): IssueOccurrence[] {
+    return decodeMany(
+      IssueOccurrenceSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM issue_occurrences WHERE qa_run_id=? ORDER BY id')
+        .all(qaRunId) as unknown as PayloadRow[],
+      'IssueOccurrence',
+    );
+  }
+
+  /** Phase 7 Retest domain (§24-§26): runs upsert by id (status
+   *  advances); assessments are insert-only deterministic records. */
+  saveRetestRun(value: RetestRun): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO retest_runs(id,project_id,issue_id,source_qa_run_id,target_qa_run_id,status,payload) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET target_qa_run_id=excluded.target_qa_run_id,status=excluded.status,payload=excluded.payload',
+      )
+      .run(
+        value.id,
+        value.projectId,
+        value.issueId,
+        value.sourceQaRunId,
+        value.targetQaRunId ?? null,
+        value.status,
+        encode(RetestRunSchema, value),
+      );
+  }
+
+  getRetestRun(id: string): RetestRun | undefined {
+    return decode(
+      RetestRunSchema,
+      this.database.connection.prepare('SELECT payload FROM retest_runs WHERE id=?').get(id) as
+        PayloadRow | undefined,
+      'RetestRun ' + id,
+    );
+  }
+
+  listRetestRuns(issueId: string): RetestRun[] {
+    return decodeMany(
+      RetestRunSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM retest_runs WHERE issue_id=? ORDER BY id')
+        .all(issueId) as unknown as PayloadRow[],
+      'RetestRun',
+    );
+  }
+
+  listNonterminalRetestRuns(): RetestRun[] {
+    return decodeMany(
+      RetestRunSchema,
+      this.database.connection
+        .prepare(
+          "SELECT payload FROM retest_runs WHERE json_extract(payload,'$.status') NOT IN ('completed','partial','failed','cancelled','interrupted') ORDER BY id",
+        )
+        .all() as unknown as PayloadRow[],
+      'RetestRun',
+    );
+  }
+
+  saveRetestAssessment(value: RetestAssessment): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO retest_assessments(id,retest_run_id,issue_id,project_id,payload) VALUES (?,?,?,?,?) ON CONFLICT(id) DO NOTHING',
+      )
+      .run(
+        value.id,
+        value.retestRunId,
+        value.issueId,
+        value.projectId,
+        encode(RetestAssessmentSchema, value),
+      );
+  }
+
+  getRetestAssessment(id: string): RetestAssessment | undefined {
+    return decode(
+      RetestAssessmentSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM retest_assessments WHERE id=?')
+        .get(id) as PayloadRow | undefined,
+      'RetestAssessment ' + id,
+    );
+  }
+
+  listRetestAssessments(issueId: string): RetestAssessment[] {
+    return decodeMany(
+      RetestAssessmentSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM retest_assessments WHERE issue_id=? ORDER BY id')
+        .all(issueId) as unknown as PayloadRow[],
+      'RetestAssessment',
+    );
+  }
+
+  listRetestAssessmentsForRun(retestRunId: string): RetestAssessment[] {
+    return decodeMany(
+      RetestAssessmentSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM retest_assessments WHERE retest_run_id=? ORDER BY id')
+        .all(retestRunId) as unknown as PayloadRow[],
+      'RetestAssessment',
+    );
   }
 
   agentProducedUsableOutput(agentRunId: AgentRunId): boolean {

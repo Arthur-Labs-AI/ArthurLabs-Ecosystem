@@ -654,6 +654,139 @@ describe('qa cli', () => {
     }
   }, 120_000);
 
+  it('serves Phase 7 targeted validation, cancel, revisions, and issue inspection', async () => {
+    const f = await fixture();
+    const add = machine(
+      await invoke(['project', 'add', f.source, '--json'], f.dataRoot),
+      'project.add',
+    );
+    if (!add.ok || add.command !== 'project.add') throw new Error('Unexpected response');
+    const projectId = add.data.projectId;
+
+    // Targeted mode requires --paths.
+    const noPaths = await invoke(
+      ['run', 'start', projectId, '--mode', 'targeted', '--wait', '--json'],
+      f.dataRoot,
+    );
+    expect(noPaths.status).toBe(2);
+    const noPathsResponse = machine(noPaths, 'run.start');
+    expect(!noPathsResponse.ok && noPathsResponse.error.code).toBe('INVALID_ARGUMENT');
+
+    // Full mode rejects --paths.
+    const fullPaths = await invoke(
+      ['run', 'start', projectId, '--mode', 'full', '--paths', 'src', '--wait', '--json'],
+      f.dataRoot,
+    );
+    expect(fullPaths.status).toBe(2);
+    const fullPathsResponse = machine(fullPaths, 'run.start');
+    expect(!fullPathsResponse.ok && fullPathsResponse.error.code).toBe('INVALID_ARGUMENT');
+
+    // Unknown command hint stays stable for the new areas.
+    const revisions = await invoke(['project', 'revisions', projectId, '--json'], f.dataRoot);
+    expect(revisions.status).toBe(0);
+    const revisionsResponse = machine(revisions, 'project.revisions');
+    expect(
+      revisionsResponse.ok &&
+        revisionsResponse.command === 'project.revisions' &&
+        revisionsResponse.data.revisions.length,
+    ).toBeGreaterThan(0);
+    expect(
+      revisionsResponse.ok &&
+        revisionsResponse.command === 'project.revisions' &&
+        revisionsResponse.data.revisions[0],
+    ).toMatchObject({ current: true, runIds: [] });
+
+    // No issues yet: empty list, stable not-found for show/history.
+    const empty = await invoke(['issue', 'list', projectId, '--json'], f.dataRoot);
+    expect(empty.status).toBe(0);
+    const emptyResponse = machine(empty, 'issue.list');
+    expect(
+      emptyResponse.ok && emptyResponse.command === 'issue.list' && emptyResponse.data.issues,
+    ).toEqual([]);
+    const missing = await invoke(
+      ['issue', 'show', 'issue_01K7777777777777777777A8W9', '--json'],
+      f.dataRoot,
+    );
+    expect(missing.status).toBe(3);
+    const missingResponse = machine(missing, 'issue.show');
+    expect(!missingResponse.ok && missingResponse.error.code).toBe('ISSUE_NOT_FOUND');
+    const missingHistory = await invoke(
+      ['issue', 'history', 'issue_01K7777777777777777777A8W9', '--json'],
+      f.dataRoot,
+    );
+    expect(missingHistory.status).toBe(3);
+
+    // Terminal runs refuse cancellation (state-conflict exit) with outputs intact.
+    const simulate = machine(
+      await invoke(['run', 'simulate', projectId, '--scenario', 'success', '--json'], f.dataRoot),
+      'run.simulate',
+    );
+    if (!simulate.ok || simulate.command !== 'run.simulate') throw new Error('Unexpected response');
+    const cancel = await invoke(['run', 'cancel', simulate.data.runId, '--json'], f.dataRoot);
+    expect(cancel.status).toBe(4);
+    const cancelResponse = machine(cancel, 'run.cancel');
+    expect(!cancelResponse.ok && cancelResponse.error.code).toBe('RUN_NOT_COMPLETE');
+
+    // Issue ingest creates one open issue per cluster, idempotently.
+    const merged = machine(
+      await invoke(['run', 'merge', simulate.data.runId, '--json'], f.dataRoot),
+      'run.merge',
+    );
+    if (!merged.ok || merged.command !== 'run.merge') throw new Error('Unexpected response');
+    const ingest = await invoke(
+      ['issue', 'ingest', merged.data.mergeResultId, '--json'],
+      f.dataRoot,
+    );
+    expect(ingest.status).toBe(0);
+    const ingestResponse = machine(ingest, 'issue.ingest');
+    expect(
+      ingestResponse.ok &&
+        ingestResponse.command === 'issue.ingest' &&
+        ingestResponse.data.issues.length,
+    ).toBeGreaterThan(0);
+    const reingest = await invoke(
+      ['issue', 'ingest', merged.data.mergeResultId, '--json'],
+      f.dataRoot,
+    );
+    expect(reingest.status).toBe(0);
+    const reingestResponse = machine(reingest, 'issue.ingest');
+    expect(
+      reingestResponse.ok &&
+        reingestResponse.command === 'issue.ingest' &&
+        reingestResponse.data.issues.every((issue: { created: boolean }) => !issue.created),
+    ).toBe(true);
+    const listed = machine(
+      await invoke(['issue', 'list', projectId, '--json'], f.dataRoot),
+      'issue.list',
+    );
+    expect(listed.ok && listed.command === 'issue.list' && listed.data.issues[0]).toMatchObject({
+      currentState: 'open',
+    });
+    const issueId = (
+      ingestResponse.ok && ingestResponse.command === 'issue.ingest'
+        ? ingestResponse.data.issues[0]
+        : undefined
+    ) as { issueId: string } | undefined;
+    if (issueId === undefined) throw new Error('ingest produced no issue');
+    const history = machine(
+      await invoke(['issue', 'history', issueId.issueId, '--json'], f.dataRoot),
+      'issue.history',
+    );
+    expect(
+      history.ok && history.command === 'issue.history' && history.data.events.length,
+    ).toBeGreaterThan(0);
+
+    // Retest guards: unknown issue → not-found; unknown retest run → not-found;
+    // retest start requires --wait.
+    const retestMissing = await invoke(
+      ['retest', 'show', 'retest_01K7777777777777777777A8W9', '--json'],
+      f.dataRoot,
+    );
+    expect(retestMissing.status).toBe(3);
+    const noWait = await invoke(['retest', 'start', issueId.issueId, '--json'], f.dataRoot);
+    expect(noWait.status).toBe(2);
+  }, 240_000);
+
   it('supports actual built CLI invocation', () => {
     const result = spawnSync(process.execPath, [entry, '--version'], { encoding: 'utf8' });
     expect(result.status).toBe(0);

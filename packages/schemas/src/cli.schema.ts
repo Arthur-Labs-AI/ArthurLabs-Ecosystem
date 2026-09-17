@@ -35,6 +35,7 @@ export const CLI_COMMANDS = [
   'project.show',
   'project.update',
   'project.delete',
+  'project.revisions',
   'run.simulate',
   'run.start',
   'run.list',
@@ -42,6 +43,18 @@ export const CLI_COMMANDS = [
   'run.status',
   'run.export',
   'run.merge',
+  'run.cancel',
+  'issue.list',
+  'issue.show',
+  'issue.history',
+  'issue.ingest',
+  'retest.start',
+  'retest.show',
+  'retest.cancel',
+  'doctor.storage',
+  'doctor.cleanup',
+  'doctor.config',
+  'project.doctor',
   'verify.start',
   'verify.show',
   'verify.doctor',
@@ -54,6 +67,8 @@ export const CLI_ERROR_CODES = [
   'PROJECT_NOT_FOUND',
   'RUN_NOT_FOUND',
   'RUN_NOT_COMPLETE',
+  'ISSUE_NOT_FOUND',
+  'ISSUE_CONFLICT',
   'PROJECT_LOCKED',
   'ACTIVE_RUN_EXISTS',
   'PROJECT_COPY_DRIFT',
@@ -372,6 +387,224 @@ export const RunMergeResultSchema = z
   .strict();
 export type RunMergeResult = z.infer<typeof RunMergeResultSchema>;
 
+export const RunCancelResultSchema = z
+  .object({
+    runId: QARunIdSchema,
+    status: z.literal('cancelled'),
+    cancelledAgents: NonNegativeIntSchema,
+    findings: z.object({ total: NonNegativeIntSchema }).strict(),
+  })
+  .strict();
+export type RunCancelResult = z.infer<typeof RunCancelResultSchema>;
+
+export const ProjectRevisionsResultSchema = z
+  .object({
+    projectId: ProjectIdSchema,
+    currentRevisionId: ProjectRevisionIdSchema,
+    revisions: z.array(
+      z
+        .object({
+          revisionId: ProjectRevisionIdSchema,
+          importedAt: IsoTimestampSchema,
+          contentHash: z.string().min(1).max(200),
+          current: z.boolean(),
+          runIds: z.array(QARunIdSchema),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+export type ProjectRevisionsResult = z.infer<typeof ProjectRevisionsResultSchema>;
+
+export const IssueListItemSchema = z
+  .object({
+    issueId: z.string().regex(/^issue_[0-9A-HJKMNP-TV-Z]{26}$/),
+    projectId: ProjectIdSchema,
+    title: z.string().min(1).max(200),
+    currentState: z.enum([
+      'open',
+      'still_reproducible',
+      'partially_fixed',
+      'fixed',
+      'inconclusive',
+    ]),
+    occurrenceCount: NonNegativeIntSchema,
+    updatedAt: IsoTimestampSchema,
+  })
+  .strict();
+export const IssueListResultSchema = z
+  .object({ projectId: ProjectIdSchema, issues: z.array(IssueListItemSchema) })
+  .strict();
+export type IssueListResult = z.infer<typeof IssueListResultSchema>;
+
+export const IssueShowResultSchema = z
+  .object({
+    issue: z.unknown(),
+    currentState: z.enum([
+      'open',
+      'still_reproducible',
+      'partially_fixed',
+      'fixed',
+      'inconclusive',
+    ]),
+    occurrences: z.array(z.unknown()),
+    assessments: z.array(z.unknown()),
+  })
+  .strict();
+export type IssueShowResult = z.infer<typeof IssueShowResultSchema>;
+
+export const IssueHistoryResultSchema = z
+  .object({
+    issue: z.unknown(),
+    currentState: z.enum([
+      'open',
+      'still_reproducible',
+      'partially_fixed',
+      'fixed',
+      'inconclusive',
+    ]),
+    events: z.array(z.unknown()),
+    occurrences: z.array(z.unknown()),
+    assessments: z.array(z.unknown()),
+  })
+  .strict();
+export type IssueHistoryResult = z.infer<typeof IssueHistoryResultSchema>;
+
+export const IssueIngestResultSchema = z
+  .object({
+    mergeResultId: z.string().regex(/^merge_[0-9A-HJKMNP-TV-Z]{26}$/),
+    issues: z.array(
+      z
+        .object({
+          issueId: z.string().regex(/^issue_[0-9A-HJKMNP-TV-Z]{26}$/),
+          occurrenceId: z.string().regex(/^occ_[0-9A-HJKMNP-TV-Z]{26}$/),
+          created: z.boolean(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+export type IssueIngestResult = z.infer<typeof IssueIngestResultSchema>;
+
+export const RetestStartResultSchema = z
+  .object({
+    retestRunId: z.string().regex(/^retest_[0-9A-HJKMNP-TV-Z]{26}$/),
+    issueId: z.string().regex(/^issue_[0-9A-HJKMNP-TV-Z]{26}$/),
+    status: z.enum([
+      'completed',
+      'partial',
+      'failed',
+      'cancelled',
+      'interrupted',
+      'created',
+      'agents_running',
+      'merging',
+      'assessing',
+    ]),
+    assessmentId: z.string().regex(/^reassess_[0-9A-HJKMNP-TV-Z]{26}$/),
+    result: z.enum(['fixed', 'still_reproducible', 'partially_fixed', 'inconclusive']),
+    targetRunId: QARunIdSchema,
+  })
+  .strict();
+export type RetestStartResult = z.infer<typeof RetestStartResultSchema>;
+
+export const RetestShowResultSchema = z
+  .object({
+    run: z.unknown(),
+    assessment: z.unknown().optional(),
+    assessments: z.array(z.unknown()),
+  })
+  .strict();
+export type RetestShowResult = z.infer<typeof RetestShowResultSchema>;
+
+export const RetestCancelResultSchema = z
+  .object({
+    retestRunId: z.string().regex(/^retest_[0-9A-HJKMNP-TV-Z]{26}$/),
+    status: z.literal('cancelled'),
+  })
+  .strict();
+export type RetestCancelResult = z.infer<typeof RetestCancelResultSchema>;
+
+export const OrphanReportSchema = z
+  .object({
+    pathClass: z.enum(['agent_workspace', 'verifier_workspace', 'verifier_staging']),
+    path: z.string().min(1).max(2000),
+    ageMs: NonNegativeIntSchema,
+    reason: z.string().min(1).max(500),
+  })
+  .strict();
+
+export const DoctorStorageResultSchema = z
+  .object({
+    dataRoot: z.string().min(1).max(2000),
+    databaseBytes: NonNegativeIntSchema,
+    artifactFiles: NonNegativeIntSchema,
+    artifactBytes: NonNegativeIntSchema,
+    projectsBytes: NonNegativeIntSchema,
+    projects: NonNegativeIntSchema,
+    revisions: NonNegativeIntSchema,
+    runs: NonNegativeIntSchema,
+    issues: NonNegativeIntSchema,
+    retests: NonNegativeIntSchema,
+    orphans: z.array(OrphanReportSchema),
+  })
+  .strict();
+export type DoctorStorageResult = z.infer<typeof DoctorStorageResultSchema>;
+
+export const DoctorCleanupResultSchema = z
+  .object({
+    applied: z.boolean(),
+    operationId: z.string().min(1).max(200),
+    orphans: z.array(
+      OrphanReportSchema.extend({
+        removed: z.boolean(),
+        detail: z.string().min(1).max(500).optional(),
+      }).strict(),
+    ),
+  })
+  .strict();
+export type DoctorCleanupResult = z.infer<typeof DoctorCleanupResultSchema>;
+
+export const DoctorConfigResultSchema = z
+  .object({
+    dataRoot: z.string().min(1).max(2000),
+    cliContractVersion: z.literal(CLI_CONTRACT_VERSION),
+    defaultAgents: z.array(z.string().min(1).max(100)),
+    runTimeoutMs: NonNegativeIntSchema,
+    simulationTimeoutMs: NonNegativeIntSchema,
+    verificationCommandTimeoutMs: NonNegativeIntSchema,
+    orphanMinAgeMs: NonNegativeIntSchema,
+    sandboxBackend: z.string().min(1).max(100),
+    supportedPlatforms: z.array(z.string().min(1).max(50)),
+  })
+  .strict();
+export type DoctorConfigResult = z.infer<typeof DoctorConfigResultSchema>;
+
+export const ProjectDoctorResultSchema = z
+  .object({
+    projectId: ProjectIdSchema,
+    ready: z.boolean(),
+    managedCopyState: z.string().min(1).max(100),
+    currentRevisionId: ProjectRevisionIdSchema.optional(),
+    revisionCount: NonNegativeIntSchema,
+    runCount: NonNegativeIntSchema,
+    issueCount: NonNegativeIntSchema,
+    detectedEcosystem: z.array(z.string().min(1).max(100)),
+    runtimes: z.array(
+      z.object({ name: z.string().min(1).max(100), available: z.boolean() }).strict(),
+    ),
+    verifier: z
+      .object({
+        sandboxAvailable: z.boolean(),
+        runtimeReplaySupported: z.boolean(),
+        reason: z.string().min(1).max(500).optional(),
+      })
+      .strict(),
+    warnings: z.array(z.string().min(1).max(1000)),
+  })
+  .strict();
+export type ProjectDoctorResult = z.infer<typeof ProjectDoctorResultSchema>;
+
 export const VerifyStartResultSchema = z
   .object({
     verificationRunId: z.string().regex(/^vrun_[0-9A-HJKMNP-TV-Z]{26}$/),
@@ -419,8 +652,10 @@ export const CapabilitiesResultSchema = z
         runInspection: z.literal(true),
         fakeRunSimulation: z.literal(true),
         realAgentExecution: z.literal(true),
-        retestExecution: z.literal(false),
-        runCancellation: z.literal(false),
+        retestExecution: z.literal(true),
+        runCancellation: z.literal(true),
+        targetedExecution: z.literal(true),
+        issueLineage: z.literal(true),
       })
       .strict(),
     // Additive Phase 4 extension: stable stack identities with their
@@ -456,6 +691,19 @@ export const CliResultSchemas = {
   'run.status': RunStatusResultSchema,
   'run.export': RunExportResultSchema,
   'run.merge': RunMergeResultSchema,
+  'run.cancel': RunCancelResultSchema,
+  'project.revisions': ProjectRevisionsResultSchema,
+  'issue.list': IssueListResultSchema,
+  'issue.show': IssueShowResultSchema,
+  'issue.history': IssueHistoryResultSchema,
+  'issue.ingest': IssueIngestResultSchema,
+  'retest.start': RetestStartResultSchema,
+  'retest.show': RetestShowResultSchema,
+  'retest.cancel': RetestCancelResultSchema,
+  'doctor.storage': DoctorStorageResultSchema,
+  'doctor.cleanup': DoctorCleanupResultSchema,
+  'doctor.config': DoctorConfigResultSchema,
+  'project.doctor': ProjectDoctorResultSchema,
   'verify.start': VerifyStartResultSchema,
   'verify.show': VerifyShowResultSchema,
   'verify.doctor': VerifyDoctorResultSchema,
