@@ -7,7 +7,15 @@ GitHub Actions run `35209431594` (status completed, conclusion success).
 The stale conditional-closure header below is superseded; its detail is
 retained for history.
 
-## Phase 7 status (commit bb192b3 pushed; CI in progress)
+## Phase 7 status (final: 3f5d279 pushed; exact-head CI green)
+
+Final SHA `3f5d279db5728327a292702e1b357929fc53d505`, CI run
+`35246872308` (status completed, conclusion success, updated
+2026-09-17T16:33:07Z). Working tree clean. Paid-agent live runs remain
+the single UNVERIFIED gate (no provider models/keys on this machine);
+everything else on the §128 checklist is evidenced below.
+
+## Phase 7 status (commit bb192b3 pushed; CI in progress) [SUPERSEDED]
 
 Foundation + retest/ingest/hygiene/doctors/exports slices are implemented
 and locally verified, committed as `bb192b3` ("Phase 7: targeted runs,
