@@ -7,16 +7,34 @@ GitHub Actions run `35209431594` (status completed, conclusion success).
 The stale conditional-closure header below is superseded; its detail is
 retained for history.
 
-## Phase 7 status (current attempt, UNCOMMITTED)
+## Phase 7 status (commit bb192b3 pushed; CI in progress)
 
 Foundation + retest/ingest/hygiene/doctors/exports slices are implemented
-and locally verified (see latest ledger entry for gate evidence). Still
+and locally verified, committed as `bb192b3` ("Phase 7: targeted runs,
+retest, and issue lineage") and pushed to `main`; CI run `35242396645`
+on the exact HEAD completed with conclusion `success` (headSha
+`bb192b30db842b009c7f429852065ca247a0bd5d`, updated 2026-09-17T15:50:15Z).
+Working tree now carries only this handoff file (modified, uncommitted)
+plus the recorded append-only ledger entry committed in `bb192b3`.
+
+## Live proof completed 2026-09-17 (unpaid, fresh data root)
+
+Small fixture project via built CLI: add → simulate 3/3 → merge
+(3 clusters) → `issue ingest` (3 open issues, idempotent) → `issue
+list/show` → `project revisions` (run linkage) → `project doctor`
+(ready, sandboxAvailable true) → `doctor storage/config` (found real
+pre-existing `/var/tmp/sentry-verify-*` orphans, correctly reported as
+unreferenced) → `run export` (lineage sections: 3 issues/occurrences/
+events) → restart re-read (history intact) → secret scan clean → no
+stray agent processes. Paid-agent runs, large-repo smoke/soak, and the
+friend-readiness test remain open (see below). Still
 required before any completion statement: paid FULL/TARGETED/retest live
 validation (§§99–101), large-repo smoke + soak (§§97–98, §103),
 restart/cleanup/process/secret live proof (§125), friend-readiness test
-(§§126–127), exact-head CI on the final SHA (§124), and commit/push.
-Frozen AgentStacks, Merger v2, and Verifier v3 remain untouched; no Phase 8
-UI and no Phase 9 installer work has started.
+(§§126–127), and exact-head CI success on the final SHA (§124).
+Frozen AgentStacks, Merger v2, and Verifier v3 remain untouched (zero diff
+`b425d24..bb192b3` in harness-muse/deepseek/claude-code, merger,
+verifier); no Phase 8 UI and no Phase 9 installer work has started.
 
 ---
 
