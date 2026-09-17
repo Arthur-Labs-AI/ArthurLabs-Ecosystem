@@ -14,7 +14,7 @@ import * as fs from 'node:fs';
 
 import { CliExit } from '../../src/cli_exit';
 import { readMachineConfig, resolveMachineConfigPath } from '../../src/config/machine_config';
-import { WindowsFfmpegAudioBackend } from '../../src/audio/ffmpeg_win';
+import { createAudioBackendForPlatform, isUnsupportedAudioBackend } from '../../src/audio/factory';
 import { validateCaptureTransport, validatePlaybackTransport } from '../../src/audio/validate';
 import { checkDeepSeekReadiness } from '../../src/providers/deepseek_readiness';
 import { checkOpenAiSttReadiness, checkOpenAiTtsReadiness } from '../../src/providers/openai_voice_readiness';
@@ -125,16 +125,19 @@ function snapshotDoctorFile(layers: DoctorLayerInput, deps: DoctorDeps): DoctorF
 
 async function snapshotDoctorAudio(layers: DoctorLayerInput, deps: DoctorDeps): Promise<DoctorAudioInput> {
   if (deps.audio) return deps.audio;
-  const backend = new WindowsFfmpegAudioBackend();
+  const backend = createAudioBackendForPlatform();
   let info;
   try {
     info = await backend.detect();
   } catch {
-    info = { id: 'ffmpeg-dshow', platform: process.platform, available: false, captureExecutable: 'ffmpeg', playbackExecutable: 'ffplay', captureAvailable: false, playbackAvailable: false, captureVersion: '', playbackVersion: '' };
+    info = { id: backend.id(), platform: process.platform, available: false, captureExecutable: '', playbackExecutable: '', captureAvailable: false, playbackAvailable: false, captureVersion: '', playbackVersion: '' };
   }
-  const discoverySupported = info.platform === 'win32';
+  // Capability comes from the backend itself (executables + discovery
+  // usable), never from a platform hardcode: an unsupported backend or
+  // a backend whose discovery is unavailable reports the boundary.
+  const discoverySupported = !isUnsupportedAudioBackend(backend) && info.captureAvailable;
   let inputs: DoctorAudioInput['inputs'] = [];
-  if (discoverySupported && info.captureAvailable) {
+  if (discoverySupported) {
     try {
       inputs = await backend.listInputDevices();
     } catch {

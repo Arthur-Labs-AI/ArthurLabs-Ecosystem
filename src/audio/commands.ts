@@ -59,6 +59,37 @@ function argvValue(argv: string[], flag: string): string | undefined {
 }
 
 /**
+ * Build the Linux capture command for a Pulse/PipeWire source. Same PCM
+ * contract as Windows (16 kHz mono s16le to stdout pipe); only the
+ * input demuxer differs (`-f pulse -i <source>` vs `-f dshow
+ * -i "audio=<name>"`). Source names are data: quoted with the same
+ * tokenizer-safe model and round-trip verified, so hostile names cannot
+ * inject extra argv. Throws INVALID_CONFIG (never a corrupt command)
+ * when the name cannot be represented safely.
+ */
+export function buildLinuxCaptureCommand(sourceId: string, ffmpegPath = CAPTURE_EXECUTABLE): string {
+  assertSafeDeviceName(sourceId);
+  const command = [
+    ffmpegPath,
+    '-hide_banner',
+    '-loglevel', 'error',
+    '-f', 'pulse',
+    '-i', quoteArgvSegment(sourceId),
+    '-ac', '1',
+    '-ar', String(AUDIO_SAMPLE_RATE_HZ),
+    '-f', 's16le',
+    'pipe:1',
+  ].join(' ');
+  // Round-trip proof: the generated text must tokenize back to the exact
+  // source id. A mismatch means the tokenizer cannot represent this name.
+  const argv = splitCommandLine(command);
+  if (argvValue(argv, '-i') !== sourceId) {
+    throw new ArthurError('INVALID_CONFIG', 'audio source name cannot be represented safely in the capture command');
+  }
+  return command;
+}
+
+/**
  * Build the Windows capture command for a dshow device. Throws
  * INVALID_CONFIG (never a corrupt command) when the name cannot be
  * represented safely by the spawnEngine tokenizer.
@@ -121,10 +152,18 @@ export function resolveCaptureDeviceName(device: AudioDevice): string {
   return device.id;
 }
 
-/** Build both runtime commands for a selected device. */
+/** Build both runtime commands for a selected device (Windows dshow path). */
 export function buildAudioCommands(device: AudioDevice, executables: { ffmpeg?: string; ffplay?: string } = {}): BuiltAudioCommands {
   return {
     captureCommand: buildWindowsCaptureCommand(resolveCaptureDeviceName(device), executables.ffmpeg ?? CAPTURE_EXECUTABLE),
+    playbackCommand: buildWindowsPlaybackCommand(executables.ffplay ?? PLAYBACK_EXECUTABLE),
+  };
+}
+
+/** Build both runtime commands for a selected Linux Pulse/PipeWire source. */
+export function buildLinuxAudioCommands(device: AudioDevice, executables: { ffmpeg?: string; ffplay?: string } = {}): BuiltAudioCommands {
+  return {
+    captureCommand: buildLinuxCaptureCommand(device.id, executables.ffmpeg ?? CAPTURE_EXECUTABLE),
     playbackCommand: buildWindowsPlaybackCommand(executables.ffplay ?? PLAYBACK_EXECUTABLE),
   };
 }

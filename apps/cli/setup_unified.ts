@@ -12,7 +12,7 @@ import { ArthurError } from '../../src/core/errors/errors';
 import { CliExit } from '../../src/cli_exit';
 import { readMachineConfig, updateMachineConfig } from '../../src/config/machine_config';
 import { DEFAULT_VOICE_SETTINGS } from '../../src/voice/config';
-import { WindowsFfmpegAudioBackend } from '../../src/audio/ffmpeg_win';
+import { createAudioBackendForPlatform } from '../../src/audio/factory';
 import { validateCaptureTransport, validatePlaybackTransport } from '../../src/audio/validate';
 import { checkDeepSeekReadiness } from '../../src/providers/deepseek_readiness';
 import { validatePlanSecrets } from '../../src/providers/setup_plan';
@@ -107,7 +107,7 @@ function realProviderSeams(fetchFn: typeof fetch | undefined, effective: { model
 }
 
 function realAudioSeams(deps: UnifiedSetupDeps, io: CliIO, ioDeps: { readApprovalLine?: () => Promise<string> }): { detect(): Promise<{ available: boolean; captureAvailable: boolean; playbackAvailable: boolean }>; listInputDevices(): Promise<Array<{ id: string; label: string; backend: string; alternateName?: string }>>; buildCommands(device: { id: string; label: string; backend: string; alternateName?: string }): { captureCommand: string; playbackCommand: string }; validateCapture(command: string): Promise<{ transportReady: boolean; signalDetected: boolean; frames: number; failure?: string }>; validatePlayback(command: string): Promise<{ transportReady: boolean; failure?: string }>; confirmHeard(prompt: string): Promise<boolean> } {
-  const backend = deps.audioBackend !== undefined ? deps.audioBackend : new WindowsFfmpegAudioBackend();
+  const backend = deps.audioBackend !== undefined ? deps.audioBackend : createAudioBackendForPlatform();
   const captureValidator = deps.captureValidator !== undefined ? deps.captureValidator : validateCaptureTransport;
   const playbackValidator = deps.playbackValidator !== undefined ? deps.playbackValidator : validatePlaybackTransport;
   return {
@@ -193,9 +193,9 @@ export async function runUnifiedSetup(flags: Map<string, string>, io: CliIO, dep
 async function runUnifiedSetupInteractive(io: CliIO, deps: UnifiedSetupDeps, layers: { ambient: Record<string, string>; repo: Record<string, string>; machine: Record<string, string>; machineConfigPath?: string }, ioDeps: { readApprovalLine?: () => Promise<string> }): Promise<number> {
   heading(io, 'ARTHUR Setup');
   io.out('\nSystem\n');
-  const backend = deps.audioBackend !== undefined ? deps.audioBackend : new WindowsFfmpegAudioBackend();
+  const backend = deps.audioBackend !== undefined ? deps.audioBackend : createAudioBackendForPlatform();
   const sysInfo = await backend.detect();
-  io.out('  Windows: ' + (process.platform === 'win32' ? 'READY' : 'other (' + process.platform + ')') + '\n');
+  io.out('  Platform: ' + process.platform + '\n');
   io.out('  ffmpeg: ' + (sysInfo.captureAvailable ? 'READY' : 'MISSING') + '\n');
   io.out('  ffplay: ' + (sysInfo.playbackAvailable ? 'READY' : 'MISSING') + '\n');
   const effective = effectiveConfigOf(layers);

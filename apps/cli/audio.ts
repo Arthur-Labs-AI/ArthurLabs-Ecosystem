@@ -21,7 +21,7 @@ import {
   type AudioBackend,
   type AudioDevice,
 } from '../../src/audio/backend';
-import { WindowsFfmpegAudioBackend } from '../../src/audio/ffmpeg_win';
+import { createAudioBackendForPlatform } from '../../src/audio/factory';
 import { notConfiguredReadiness, type AudioReadiness } from '../../src/audio/readiness';
 import { validateCaptureTransport, validatePlaybackTransport } from '../../src/audio/validate';
 import type { CliIO } from './index';
@@ -63,7 +63,7 @@ export interface AudioDeps {
 }
 
 function backendOf(deps: AudioDeps): AudioBackend {
-  return deps.backend !== undefined ? deps.backend : new WindowsFfmpegAudioBackend();
+  return deps.backend !== undefined ? deps.backend : createAudioBackendForPlatform();
 }
 
 function snapshotAudioLayers(deps: AudioDeps): { ambient: Record<string, string>; repo: Record<string, string>; machine: Record<string, string>; machineConfigPath?: string } {
@@ -271,7 +271,7 @@ async function commitAudioPlan(io: CliIO, ioDeps: { readApprovalLine?: () => Pro
   io.out('\nReview\n');
   io.out('  Input:  ' + device.label + '\n');
   io.out('  Output: System default\n');
-  io.out('  Capture backend: ffmpeg/dshow\n');
+  io.out('  Capture backend: ' + (device.backend === 'ffmpeg-pulse' ? 'ffmpeg/pulse' : 'ffmpeg/dshow') + '\n');
   io.out('  Playback backend: ffplay\n');
   io.out('  Capture:  ' + (captureOk ? 'READY' : 'DEGRADED') + '\n');
   io.out('  Playback: ' + (audible ? 'READY (confirmed)' : 'transport only (not confirmed)') + '\n\n');

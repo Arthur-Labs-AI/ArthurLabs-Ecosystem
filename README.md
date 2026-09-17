@@ -502,10 +502,14 @@ arthur audio test
   (`process_env` / `repo_env` / `machine_config` / `code_default`).
 - `audio test` revalidates the current effective config without mutation.
 
-Windows v1 uses DirectShow capture (`ffmpeg -f dshow`) and ffplay playback
-through the system-default sink. Raw PCM stays local and memory-only (mono
-16 kHz s16le); normal startup never probes audio hardware. FRS-04 will unify
-audio/provider/model setup.
+Windows uses DirectShow capture (`ffmpeg -f dshow`) and ffplay playback
+through the system-default sink. Modern Linux desktops use the
+Pulse/PipeWire compatibility backend (`ffmpeg -f pulse -i <source-name>`;
+requires a running PulseAudio or PipeWire-with-Pulse-compatibility server
+and `pactl` for discovery). Other configurations (ALSA-only, JACK, native
+PipeWire without Pulse compatibility, selectable output sinks) are not
+supported. Raw PCM stays local and memory-only (mono 16 kHz s16le) on both
+platforms; normal startup never probes audio hardware.
 
 Advanced troubleshooting (manual equivalents of what setup generates):
 
