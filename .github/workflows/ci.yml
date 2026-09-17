@@ -31,6 +31,17 @@ jobs:
         run: |
           sudo loginctl enable-linger "$USER"
           systemctl --user is-system-running || true
+      - name: Probe user-unit mount capabilities (temporary CI debug)
+        run: |
+          D=$(mktemp -d)
+          echo "probe dir: $D"
+          systemd-run --user --wait --pipe --collect --unit=ci-probe-bare -- /usr/bin/true 2>&1 | tail -2; echo "bare_exit=$?"
+          systemd-run --user --wait --pipe --collect --unit=ci-probe-tfs -p TemporaryFileSystem=/:ro -- /usr/bin/true 2>&1 | tail -2; echo "tfs_exit=$?"
+          systemd-run --user --wait --pipe --collect --unit=ci-probe-bind -p BindPaths="$D" -p WorkingDirectory="$D" -- /usr/bin/test -d "$D" 2>&1 | tail -2; echo "bind_exit=$?"
+          systemd-run --user --wait --pipe --collect --unit=ci-probe-tfsbind -p TemporaryFileSystem=/ -p BindPaths="$D" -p WorkingDirectory="$D" -- /usr/bin/test -d "$D" 2>&1 | tail -2; echo "tfsbind_exit=$?"
+          systemd-run --user --wait --pipe --collect --unit=ci-probe-protect -p ProtectSystem=strict -p ProtectHome=yes -p ReadWritePaths="$D" -p WorkingDirectory="$D" -- /usr/bin/test -d "$D" 2>&1 | tail -2; echo "protect_exit=$?"
+          rm -rf "$D"
+
       - run: pnpm repository:check
       - run: pnpm format:check
       - run: pnpm lint
