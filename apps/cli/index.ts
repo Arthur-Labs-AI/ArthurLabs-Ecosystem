@@ -67,7 +67,7 @@ interface ParsedArgs {
 }
 
 /** Flags that never consume the following token (arthur ask --verbose "msg"). */
-const BOOLEAN_FLAGS = new Set(["verbose", "json", "help"]);
+const BOOLEAN_FLAGS = new Set(["verbose", "json", "help", "live", "interactive"]);
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const positionals: string[] = [];
@@ -123,6 +123,7 @@ Usage:
   arthur providers setup [--json]
   arthur providers status [--json]
   arthur audio detect|setup|status|test [--json]
+  arthur doctor [--json] [--live [--interactive]]
   arthur setup [--json]
   arthur memory remember --session <id> [--type <t>] [--subject <k>] [--project <k>] "<text>"
   arthur memory search --session <id> "<query>"
@@ -892,7 +893,7 @@ async function main(): Promise<void> {
 
   // Scoped help: models/setup/config/providers/audio own their help surface
   // via their branch modules; the global shortcut must not swallow it.
-  if (command !== "models" && command !== "setup" && command !== "config" && command !== "providers" && command !== "audio") {
+  if (command !== "models" && command !== "setup" && command !== "config" && command !== "providers" && command !== "audio" && command !== "doctor") {
     if (command === "" || command === "help" || command === "--help" || flags.get("help") === "true") {
       process.stdout.write(GLOBAL_HELP);
       return;
@@ -942,6 +943,20 @@ async function main(): Promise<void> {
     try {
       const { runAudio } = await import("./audio");
       process.exitCode = await runAudio({}, command, flags, positionals, io);
+    } catch (err) {
+      printError(err, undefined, io);
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  // FRS-05: `arthur doctor` is the read-only machine diagnostic
+  // (config-only: no settings validation, no DB, no model state, no
+  // startup probing; --live adds bounded explicit checks only).
+  if (command === "doctor") {
+    try {
+      const { runDoctorCommand } = await import("./doctor");
+      process.exitCode = await runDoctorCommand(flags, positionals, io);
     } catch (err) {
       printError(err, undefined, io);
       process.exitCode = 1;

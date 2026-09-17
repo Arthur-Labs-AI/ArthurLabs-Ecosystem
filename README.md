@@ -322,6 +322,26 @@ applies everything with one atomic config commit. Advanced users may configure
 components independently (`arthur providers setup`, `arthur audio setup`,
 `arthur models setup`).
 
+Recommended onboarding after setup:
+
+```powershell
+arthur setup
+arthur doctor
+```
+
+`arthur doctor` is the read-only machine/config readiness diagnostic: it
+checks whether the currently configured experience is actually ready on
+this machine (config, credential presence + source, profile dependencies,
+executables, configured device presence, local model state, policy
+consistency). It performs no network requests, no microphone capture, and
+no audible playback by default. `arthur doctor --live` adds bounded active
+validation (provider readiness, capture transport, playback transport);
+`arthur doctor --live --interactive` may additionally play the deterministic
+test tone and ask for audible confirmation. Doctor diagnoses; setup repairs
+(`arthur setup`, `arthur providers setup`, `arthur audio setup`,
+`arthur models setup`). Linux voice discovery is not implemented: on Linux
+the doctor reports the capability boundary instead of "no microphones".
+
 ## 5b. Local model setup directly (advanced)
 
 ### Windows / NVIDIA
