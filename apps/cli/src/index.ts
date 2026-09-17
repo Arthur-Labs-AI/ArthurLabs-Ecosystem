@@ -118,8 +118,12 @@ function helpText(): string {
     '  qa retest show <retest-run-id> [--json]',
     '  qa retest cancel <retest-run-id> [--json]',
     '  qa run export <run-id> --format log|json [--json]',
+    '  qa run merge <run-id> [--json]',
+    '  qa verify start <merge-result-id> [--json]',
+    '  qa verify show <verification-run-id> [--json]',
+    '  qa verify doctor [--json]',
     '',
-    'run simulate is FAKE / DEVELOPMENT ONLY. run start executes one real Muse worker.',
+    'run simulate is FAKE / DEVELOPMENT ONLY. run start executes the selected real agent stacks.',
   ].join('\n');
 }
 
