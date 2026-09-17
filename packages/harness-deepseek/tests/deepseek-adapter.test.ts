@@ -724,6 +724,99 @@ describe('DeepSeekHarnessAdapter', () => {
     expect(events.at(-1)?.type).toBe('run.completed');
   });
 
+  it('does not treat tool calls as sandbox denials (live bug: two identical production refusals)', async () => {
+    // Production evidence (runs run_01M2RAF700V1XZNGRZWG0PWQ4G and
+    // run_01M2RB0RTFPD9W59VKB8PRDK2E, native /usr/bin/dsh): the denial
+    // detector tripped with zero mapped tool events persisted, i.e. on a
+    // `tool/call` request. A call is the model asking — never the runtime
+    // refusing — so calls must never trip the detector.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-call-words-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        start: async () => undefined,
+        startSession: async () => ({
+          runText: threeStage(
+            planResult(validPlan()),
+            investigationResult([
+              {
+                type: 'tool/call',
+                seq: 1,
+                time: 1,
+                data: {
+                  turn: 1,
+                  step: 1,
+                  callId: 'call-1',
+                  name: 'shell',
+                  arguments: 'check whether the sandbox is unavailable in this container',
+                },
+              },
+            ]),
+            reportResult(validReportV2()),
+          ),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+  });
+
+  it('does not treat successful tool results mentioning sandboxes as denials', async () => {
+    // A result WITHOUT structured error that merely discusses a sandbox
+    // is observation, not refusal: it must surface as a warning, never
+    // fail the run. Only error-carrying results keep fail-closed refusal.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-result-words-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        start: async () => undefined,
+        startSession: async () => ({
+          runText: threeStage(
+            planResult(validPlan()),
+            investigationResult([
+              {
+                type: 'tool/result',
+                seq: 1,
+                time: 1,
+                data: {
+                  turn: 1,
+                  step: 1,
+                  message: {
+                    id: 'msg-1',
+                    role: 'user',
+                    content: [
+                      {
+                        type: 'text',
+                        text: 'note: sandbox unavailable in this container, skipped that check',
+                      },
+                    ],
+                    source: {},
+                  },
+                },
+              },
+            ]),
+            reportResult(validReportV2()),
+          ),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(events.some((event) => event.type === 'warning')).toBe(true);
+  });
+
   it('forbids tool calls during reporting without mutating the frozen ledger', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-report-firewall-'));
     roots.push(root);

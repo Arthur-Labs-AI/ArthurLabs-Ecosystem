@@ -586,19 +586,49 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       );
     }
     // Sandbox denials fail the run closed: an unenforceable sandbox must
-    // never degrade to unconfined execution. Scoped to TOOL events only:
-    // assistant/message text routinely discusses sandbox policy (including
-    // echoes of our own safety instructions, which contain both "sandbox"
-    // and "disabled") and must never trip the detector.
+    // never degrade to unconfined execution. Scoped to FAILED tool results
+    // only: a `tool/call` is the model asking (never the runtime refusing),
+    // and result text that merely discusses sandboxes without a structured
+    // error is observation, not refusal — it surfaces as a warning.
+    // (Live evidence: two identical production refusals with zero mapped
+    // tool events tripped on call-side wording, blocking real runs.)
+    // assistant/message text never trips the detector.
     if (
-      (kind === 'tool/call' || kind === 'tool/result') &&
+      kind === 'tool/result' &&
       /sandbox/i.test(dataText) &&
       /denied|unavailable|not permitted|forbidden|disabled/i.test(dataText)
     ) {
-      throw new DeepSeekHarnessError(
-        'DEEPSEEK_SANDBOX_UNAVAILABLE',
-        'DeepSeek sandbox denied a workspace operation; failing closed.',
-      );
+      const errorBlock = (data as { error?: unknown } | undefined)?.error;
+      const errorName =
+        typeof errorBlock === 'object' && errorBlock !== null
+          ? (eventText((errorBlock as { name?: unknown }).name) ??
+            eventText((errorBlock as { code?: unknown }).code))
+          : undefined;
+      if (errorName !== undefined) {
+        const toolName = eventText((data as { name?: unknown } | undefined)?.name) ?? 'unknown';
+        throw new DeepSeekHarnessError(
+          'DEEPSEEK_SANDBOX_UNAVAILABLE',
+          'DeepSeek sandbox denied a workspace operation; failing closed. tool=' +
+            toolName.slice(0, 100) +
+            ' error=' +
+            errorName.slice(0, 100) +
+            ' detail=' +
+            redactDiagnostic(dataText, this.secrets).slice(0, 300),
+        );
+      }
+      return {
+        events: [
+          emit({
+            type: 'warning',
+            code: 'DEEPSEEK_SANDBOX_MENTION',
+            message: (
+              'Tool result mentions a sandbox limitation without a structured error; ' +
+              'treated as observation, not refusal. ' +
+              redactDiagnostic(dataText, this.secrets).slice(0, 300)
+            ).slice(0, 500),
+          }),
+        ],
+      };
     }
     if (kind === 'assistant/message' && data !== undefined) {
       const usage = tokenUsageFromEvent(data as AssistantMessageDataView);
