@@ -106,6 +106,27 @@ describe('Phase 7 TARGETED QA (§8-§13, §82)', () => {
     f.database.close();
   });
 
+  it('terminalizes the persisted QARun as failed on invalid target (final micro-fix §16)', async () => {
+    const f = await fixture();
+    const before = new Set(f.repository.listRuns(f.added.project.id).map((run) => run.id));
+    await expect(
+      f.runs.run(f.added.project.id, {
+        executionKind: 'simulation',
+        mode: 'targeted',
+        target: { includePaths: ['src/does-not-exist'] },
+      }),
+    ).rejects.toThrowError(/not found in the frozen snapshot/);
+    const fresh = f.repository.listRuns(f.added.project.id).filter((run) => !before.has(run.id));
+    expect(fresh).toHaveLength(1);
+    const failed = fresh[0];
+    expect(failed?.status).toBe('failed');
+    expect(failed?.completedAt).toBeDefined();
+    expect(f.repository.listAgentRuns(failed?.id as never)).toHaveLength(0);
+    expect(f.repository.getManagedCopy(f.added.project.id)?.state).toBe('ready');
+    expect(f.repository.getManagedCopy(f.added.project.id)?.lockedByQARunId).toBeUndefined();
+    f.database.close();
+  });
+
   it('rejects targeted mode without a scope and full mode with one', async () => {
     const f = await fixture();
     await expect(

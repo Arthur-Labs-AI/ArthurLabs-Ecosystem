@@ -234,6 +234,13 @@ export class RunCoordinator {
     for (const registration of selected) await registration.preflight?.();
     const runId = createQARunId();
     this.projects.lockProjectForRun(projectId, runId);
+    // Final micro-fix §7/§14: pre-execution boundary. The initial QARun row
+    // persists before the frozen hook (active-Retest fix — must remain), so
+    // any handled failure before worker launch must terminalize that same
+    // row as failed. Execution starts at first runAgent() launch only.
+    let runPersisted = false;
+    let executionStarted = false;
+    let stagedRoot: ReturnType<RunActivityProjector['stage']> | undefined;
     try {
       const revision = await this.projects.assertWorkingCopyIntegrity(projectId);
       const context = project.context ?? this.repository.getContextForRevision(revision.id);
@@ -297,6 +304,7 @@ export class RunCoordinator {
         startedAt: createdAt,
       });
       this.repository.saveRun(run);
+      runPersisted = true;
       // Frozen manifest file set: the immutable source of truth for scope
       // validation (never the mutable working copy).
       const frozenBaseline = await this.snapshots.baselineFileHashes(snapshot.id);
@@ -425,6 +433,7 @@ export class RunCoordinator {
             : scopeLabel + ' — REAL AGENT RUN',
         status: 'running',
       });
+      stagedRoot = root;
       for (const [kind, title] of [
         ['preparation', 'Preparation'],
         ['snapshot', 'Snapshot'],
@@ -453,6 +462,8 @@ export class RunCoordinator {
           });
         }
       }
+      // Final micro-fix §14: execution starts at first worker launch.
+      executionStarted = true;
       const workers =
         preAgentCancel !== undefined && preAgentCancel.completedAt === undefined
           ? []
@@ -558,6 +569,27 @@ export class RunCoordinator {
       await this.exporter.export(runId, 'log');
       await this.exporter.export(runId, 'json');
       return this.getRunDetails(runId);
+    } catch (cause) {
+      // Final micro-fix §7: a handled failure after QARun persistence but
+      // before worker launch must not leave a stale agents_running row.
+      // Worker-phase errors have their own lifecycle — only pre-execution
+      // failures terminalize here (§13); cancellation keeps its path (§15).
+      if (runPersisted && !executionStarted) {
+        const persisted = this.repository.getRun(runId);
+        if (
+          persisted !== undefined &&
+          !['completed', 'partial', 'failed', 'cancelled'].includes(persisted.status)
+        ) {
+          const completedAt = nowIsoTimestamp();
+          this.repository.saveRun(
+            QARunSchema.parse({ ...persisted, status: 'failed', completedAt }),
+          );
+          if (stagedRoot !== undefined) {
+            this.repository.saveActivity({ ...stagedRoot, status: 'failed', completedAt });
+          }
+        }
+      }
+      throw cause;
     } finally {
       this.projects.unlockProjectAfterRun(projectId, runId);
     }

@@ -7,6 +7,16 @@ cancellation, QARun mode=retest production use, source-fallback target
 lineage, and different-failure-as-fixed are HISTORICAL / SUPERSEDED by this
 document. The rest of `phase-7.md` remains current.
 
+## A0b. Micro-fix: pre-agent failures terminalize the persisted QARun
+
+- `run()` tracks `runPersisted` (set after the initial row save) and
+  `executionStarted` (set at first worker launch). A catch terminalizes the
+  same row as `failed` + `completedAt` when a handled error escapes after
+  persistence but before execution — never touching already-terminal rows
+  (cancellation preserved), creating no fake AgentRuns, finalizing the root
+  activity only if it was staged. Worker-phase errors keep their own
+  lifecycle; the project lock still releases in `finally`.
+
 ## A0. Micro-patch: active Retest exposes its child before agents run
 
 - `RunCoordinator.run()` persists the initial child QARun row BEFORE the

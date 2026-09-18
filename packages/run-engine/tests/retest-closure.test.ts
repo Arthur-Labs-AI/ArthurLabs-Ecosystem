@@ -651,6 +651,9 @@ describe('finish-pass §60: frozen revision race cannot run agents on C while cl
         },
       });
     }
+    const before = new Set(
+      f.repository.listRuns(f.added.project.id).map((run) => run.id as string),
+    );
     await expect(
       new RunCoordinator(f.dataRoot, f.repository, f.lease, counting).run(f.added.project.id, {
         executionKind: 'simulation',
@@ -665,6 +668,15 @@ describe('finish-pass §60: frozen revision race cannot run agents on C while cl
       }),
     ).rejects.toThrowError(RunEngineError);
     expect(adapterStarts).toBe(0);
+    // Final micro-fix §18: the persisted child row terminalizes as failed.
+    const fresh = f.repository
+      .listRuns(f.added.project.id)
+      .filter((run) => !before.has(run.id as string));
+    expect(fresh).toHaveLength(1);
+    expect(fresh[0]?.status).toBe('failed');
+    expect(fresh[0]?.completedAt).toBeDefined();
+    expect(f.repository.listAgentRuns(fresh[0]?.id as never)).toHaveLength(0);
+    expect(f.repository.getManagedCopy(f.added.project.id)?.state).toBe('ready');
     f.database.close();
   }, 120_000);
 });

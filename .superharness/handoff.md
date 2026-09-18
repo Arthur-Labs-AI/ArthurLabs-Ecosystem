@@ -2,13 +2,11 @@
 
 Phase 7 — DETERMINISTICALLY CLOSED
 
-Final SHA: `ae3af245462afa5a5b4c2b70064ae94527925cf2`
-Exact-head CI: run `35387225215` (status completed, conclusion success,
-updated 2026-09-18T19:44:08Z) — repository:check, format:check, lint,
-typecheck, degraded-lane tests (sandbox trust unverified on the hosted
-runner, exit 226), build all green.
-Previous exact-head CIs: `35350824372` and `35351420106` (completed/success)
-on `9b60bb5`/`733ebc6`.
+Final SHA: (pre-agent guard micro-fix pending — over baseline `5d6e961`, CI `35387679322` success)
+Exact-head CI: (pending new run — required for the micro-fix)
+Previous exact-head CIs: `35387225215` (completed/success) on `ae3af24`,
+`35350824372` and `35351420106` (completed/success) on `9b60bb5`/`733ebc6`,
+`35387679322` (completed/success) on `5d6e961`.
 
 Core contracts frozen (QARun full|targeted, RetestRun+RetestSpec v2,
 control requests, issues/occurrences/events, merge/verification lineage).
