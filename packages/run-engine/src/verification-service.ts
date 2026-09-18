@@ -169,11 +169,9 @@ function environmentFingerprint(sandbox: {
       // prefix plus a 200-char reason slice overflows the schema's 200-char
       // cap and crashes persistence before fail-closed verification. Bound
       // the total, never the slice alone.
-      ...(
-        sandbox.reason === undefined
-          ? []
-          : ['sandboxReason=' + sandbox.reason.slice(0, 200 - 'sandboxReason='.length)]
-      ),
+      ...(sandbox.reason === undefined
+        ? []
+        : ['sandboxReason=' + sandbox.reason.slice(0, 200 - 'sandboxReason='.length)]),
     ],
   };
 }
