@@ -716,16 +716,20 @@ describe('qa cli', () => {
     );
     expect(missingHistory.status).toBe(3);
 
-    // Terminal runs refuse cancellation (state-conflict exit) with outputs intact.
+    // Terminal runs report already_terminal (honest machine state, exit 0)
+    // with outputs intact — never a fake cancel, never a state-conflict error.
     const simulate = machine(
       await invoke(['run', 'simulate', projectId, '--scenario', 'success', '--json'], f.dataRoot),
       'run.simulate',
     );
     if (!simulate.ok || simulate.command !== 'run.simulate') throw new Error('Unexpected response');
     const cancel = await invoke(['run', 'cancel', simulate.data.runId, '--json'], f.dataRoot);
-    expect(cancel.status).toBe(4);
+    expect(cancel.status).toBe(0);
     const cancelResponse = machine(cancel, 'run.cancel');
-    expect(!cancelResponse.ok && cancelResponse.error.code).toBe('RUN_NOT_COMPLETE');
+    if (!cancelResponse.ok || cancelResponse.command !== 'run.cancel')
+      throw new Error('Unexpected response');
+    expect(cancelResponse.data.status).toBe('already_terminal');
+    expect(cancelResponse.data.ownerAcknowledged).toBe(false);
 
     // Issue ingest creates one open issue per cluster, idempotently.
     const merged = machine(
