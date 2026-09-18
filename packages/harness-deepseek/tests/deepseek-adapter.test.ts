@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RequestTimeoutError } from '@deepseek-ai/dsh-sdk-client';
+import { IncrementalHarnessEventValidator } from '@qa/harness-protocol';
 import { HarnessRunRequestSchema, type HarnessEvent } from '@qa/schemas';
 import {
   createAgentRunId,
@@ -815,6 +816,76 @@ describe('DeepSeekHarnessAdapter', () => {
     await adapter.dispose();
     expect(events.at(-1)?.type).toBe('run.completed');
     expect(events.some((event) => event.type === 'warning')).toBe(true);
+  });
+
+  it('keeps a sandbox-mention result paired with its tool call through the terminal event', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-sandbox-result-pair-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        start: async () => undefined,
+        startSession: async () => ({
+          runText: threeStage(
+            planResult(validPlan()),
+            investigationResult([
+              {
+                type: 'tool/call',
+                seq: 1,
+                time: 1,
+                data: {
+                  callId: 'call-sandbox-mention',
+                  name: 'bash',
+                  arguments: JSON.stringify({ command: 'inspect sandbox status' }),
+                },
+              },
+              {
+                type: 'tool/result',
+                seq: 2,
+                time: 2,
+                data: {
+                  message: {
+                    id: 'msg-sandbox-mention',
+                    role: 'user',
+                    content: [
+                      {
+                        type: 'tool-result',
+                        toolCallId: 'call-sandbox-mention',
+                        content: [
+                          { type: 'text', text: 'sandbox unavailable for one optional check' },
+                        ],
+                      },
+                    ],
+                    source: { kind: 'tool', plugin: 'shell', tool: 'bash' },
+                  },
+                },
+              },
+            ]),
+            reportResult(validReportV2()),
+          ),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    const validator = new IncrementalHarnessEventValidator(input.qaRunId, input.agentRunId);
+    expect(() => {
+      for (const observed of events) validator.accept(observed);
+      validator.finish();
+    }).not.toThrow();
+    const started = events.find((observed) => observed.type === 'tool.started');
+    expect(started).toBeDefined();
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'tool.completed', operationId: started?.operationId }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'DEEPSEEK_SANDBOX_MENTION' }),
+    );
+    expect(events.filter((observed) => observed.type === 'command.executed')).toHaveLength(0);
   });
 
   it('forbids tool calls during reporting without mutating the frozen ledger', async () => {

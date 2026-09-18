@@ -589,7 +589,8 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
     // never degrade to unconfined execution. Scoped to FAILED tool results
     // only: a `tool/call` is the model asking (never the runtime refusing),
     // and result text that merely discusses sandboxes without a structured
-    // error is observation, not refusal — it surfaces as a warning.
+    // error is observation, not refusal — it surfaces as a warning while
+    // the result still completes its matching tool operation.
     // (Live evidence: two identical production refusals with zero mapped
     // tool events tripped on call-side wording, blocking real runs.)
     // assistant/message text never trips the detector.
@@ -627,6 +628,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
               redactDiagnostic(dataText, this.secrets).slice(0, 300)
             ).slice(0, 500),
           }),
+          ...this.observeToolResult(data as ToolResultDataView, emit),
         ],
       };
     }

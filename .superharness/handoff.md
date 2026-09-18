@@ -1,4 +1,16 @@
-# Handoff — Phase 7 Stable Core / Private Beta, IN PROGRESS (2026-09-17)
+# Handoff — DeepSeek tool-result lifecycle (2026-09-18)
+
+Status: local fix verified, uncommitted on `main`; fresh paid DeepSeek validation and exact-head CI are UNVERIFIED.
+
+Baseline: `39afa814a1a930636d94b45d833ffd621e24915e`. The reported run `run_01M2SEPZ6TF06EDEQ8S4VSG5MM` persisted 94 `tool.started` events but only 90 matching `tool.completed` events. Each of the four unmatched `bash` starts was immediately followed by `DEEPSEEK_SANDBOX_MENTION`: the adapter emitted that warning and returned before processing the same `tool/result`. Its terminal event then correctly failed protocol validation. The adapter now preserves the warning and also processes the result, without fabricating an exit code or changing the validator.
+
+Regression: new fake-session test failed before the fix with `Terminal event cannot leave tool operations open`, then passed after the fix; the DeepSeek package passed 32/32 and the full repository `pnpm test` passed 34/34 Turbo tasks. Repository hygiene, format, lint (17/17), typecheck (33/33), and build (17/17) passed locally. No paid agent run was started. The user was advised to rotate the credential exposed in chat; do not copy it into any file or report.
+
+Next: review/commit/push the patch under the main-branch review rule, confirm exact-head CI, then run a new DeepSeek smoke with a rotated key. Do not reuse the exposed credential. The old failed run is historical and is not rewritten.
+
+---
+
+# Historical handoff — Phase 7 Stable Core / Private Beta, IN PROGRESS (2026-09-17)
 
 ## Phase 6 CLOSED (recorded at Phase 7 start)
 
