@@ -80,7 +80,7 @@ export function doctorLines(options: DoctorOptions = {}): string[] {
     'Schemas      ' + status(schemasReady),
     'Protocol     ' + status(protocolReady),
     '',
-    'Muse Code is the only real Phase 3 agent; use qa agent doctor muse for runtime checks.',
+    'Muse, DeepSeek, and GLM are the real agent stacks; use qa agent doctor muse|deepseek|glm for runtime checks.',
   ];
 }
 
@@ -92,7 +92,7 @@ function helpText(): string {
     '  qa doctor',
     '  qa capabilities [--json]',
     '  qa agent list [--json]',
-    '  qa agent doctor muse [--json]',
+    '  qa agent doctor muse|deepseek|glm [--json]',
     '  qa project add <path> [--json]',
     '  qa project list [--json]',
     '  qa project show <project-id> [--json]',
@@ -100,7 +100,7 @@ function helpText(): string {
     '  qa project delete <project-id> --yes [--json]',
     '  qa project revisions <project-id> [--json]',
     '  qa run simulate <project-id> [--scenario success|partial|all-fail|transport-loss|timeout|protocol-error] [--json]',
-    '  qa run start <project-id> --mode full --agents muse --wait [--instructions <text>] [--timeout-ms <ms>] [--json]',
+    '  qa run start <project-id> --mode full --agents muse,deepseek,glm --wait [--instructions <text>] [--timeout-ms <ms>] [--json]',
     '  qa run start <project-id> --mode targeted --paths src/auth,src/middleware --wait [--instructions <text>] [--json]',
     '  qa run list <project-id> [--json]',
     '  qa run show <run-id> [--json]',

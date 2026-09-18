@@ -133,10 +133,15 @@ function canonicalError(cause: unknown): CliError {
       retryable: RETRYABLE.has(code),
     };
   }
+  // A bare ZodError reaching here is an INTERNAL validation failure
+  // (domain/persistence decode), never a CLI argument problem:
+  // argument-bound parses throw CliUsageError above. Misreporting it as
+  // INVALID_ARGUMENT hides the real defect (live evidence: fingerprint
+  // overflow surfaced as invalid-argument instead of execution failure).
   if (cause instanceof Error && cause.name === 'ZodError') {
     return {
-      code: 'INVALID_ARGUMENT',
-      message: 'One or more arguments are invalid.',
+      code: 'RUN_EXECUTION_FAILED',
+      message: 'Sentry hit an internal validation failure.',
       retryable: false,
     };
   }

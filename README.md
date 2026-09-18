@@ -59,11 +59,15 @@ worker through the same coordinator used by fake simulation. See
 
 ## What is not implemented yet
 
-- DeepSeek V4 Flash integration: **NOT IMPLEMENTED YET**
-- GLM-5.3-Flash integration: **NOT IMPLEMENTED YET**
-- No DeepSeek/GLM calls, merger, independent verifier, retest execution,
-  automatic fixes, Docker, Playwright, Electron, REST, MCP, deduplication,
-  synthesis, or CI/CD generation.
+- Automatic fixes, Docker, Playwright, Electron, REST, MCP, cross-run issue
+  deduplication, synthesis, or CI/CD generation.
+- Desktop UI (Phase 8) and installer/setup/distribution (Phase 9).
+
+Shipped and live: Muse, DeepSeek, and GLM agent stacks; deterministic
+merger; independent evidence-first verifier; FULL, TARGETED, and RETEST
+QA modes with issue lineage and retest assessments. See
+[docs/architecture/phase-7.md](docs/architecture/phase-7.md) and the
+[private-beta quickstart](docs/private-beta/quickstart.md).
 
 ## Repository layout
 

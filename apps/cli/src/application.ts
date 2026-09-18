@@ -37,6 +37,20 @@ import {
   type CliSuccessEnvelope,
 } from '@qa/schemas';
 import type { ParsedCliCommand } from './arguments.js';
+import { CliUsageError } from './arguments.js';
+
+/** Parse user-supplied CLI arguments: Zod failures here are genuinely
+ *  invalid arguments. Internal domain/persistence Zod failures must NOT
+ *  route through here — they fall to the execution-failure envelope.
+ *  (Live evidence: an internal fingerprint overflow was misreported as
+ *  INVALID_ARGUMENT, hiding the real defect.) */
+function parseArgument<T>(schema: { parse(value: unknown): T }, value: unknown, name: string): T {
+  try {
+    return schema.parse(value);
+  } catch {
+    throw new CliUsageError('Invalid ' + name + ': ' + String(value).slice(0, 200));
+  }
+}
 import { cleanupReport, configReport, projectDoctor, storageReport } from './doctors.js';
 
 interface RuntimeContext {
@@ -256,7 +270,7 @@ export async function executeCommand(
     });
   }
   if (input.command === 'project.show') {
-    const projectId = ProjectIdSchema.parse(input.projectId);
+    const projectId = parseArgument(ProjectIdSchema, input.projectId, 'project-id');
     return withReadRuntime(async ({ projects }) => {
       const record = projects.getProject(projectId);
       if (record === undefined) {
@@ -266,7 +280,7 @@ export async function executeCommand(
     });
   }
   if (input.command === 'project.update') {
-    const projectId = ProjectIdSchema.parse(input.projectId);
+    const projectId = parseArgument(ProjectIdSchema, input.projectId, 'project-id');
     return withMutationRuntime(async ({ projects }) => {
       const updated = await projects.updateProjectCopy(projectId, input.sourcePath);
       return success(input.command, {
@@ -277,14 +291,14 @@ export async function executeCommand(
     }, options);
   }
   if (input.command === 'project.delete') {
-    const projectId = ProjectIdSchema.parse(input.projectId);
+    const projectId = parseArgument(ProjectIdSchema, input.projectId, 'project-id');
     return withMutationRuntime(async ({ projects }) => {
       await projects.deleteProject(projectId);
       return success(input.command, { projectId, deleted: true });
     }, options);
   }
   if (input.command === 'run.simulate') {
-    const projectId = ProjectIdSchema.parse(input.projectId);
+    const projectId = parseArgument(ProjectIdSchema, input.projectId, 'project-id');
     const agentStackIds = input.agents
       ?.split(',')
       .map((value) => value.trim())
@@ -311,7 +325,7 @@ export async function executeCommand(
     );
   }
   if (input.command === 'run.start') {
-    const projectId = ProjectIdSchema.parse(input.projectId);
+    const projectId = parseArgument(ProjectIdSchema, input.projectId, 'project-id');
     const registry = new HarnessAdapterRegistry()
       .register(createMuseRegistration())
       .register(createDeepSeekRegistration())
@@ -356,7 +370,7 @@ export async function executeCommand(
     );
   }
   if (input.command === 'run.list') {
-    const projectId = ProjectIdSchema.parse(input.projectId);
+    const projectId = parseArgument(ProjectIdSchema, input.projectId, 'project-id');
     return withReadRuntime(async ({ runs, repository }) => {
       if (repository.getProject(projectId) === undefined) {
         throw new ProjectManagerError('PROJECT_NOT_FOUND', 'Project not found: ' + projectId);
@@ -375,15 +389,15 @@ export async function executeCommand(
     });
   }
   if (input.command === 'run.show') {
-    const runId = QARunIdSchema.parse(input.runId);
+    const runId = parseArgument(QARunIdSchema, input.runId, 'run-id');
     return withReadRuntime(async ({ runs }) => success(input.command, runs.getRunSummary(runId)));
   }
   if (input.command === 'run.status') {
-    const runId = QARunIdSchema.parse(input.runId);
+    const runId = parseArgument(QARunIdSchema, input.runId, 'run-id');
     return withReadRuntime(async ({ runs }) => success(input.command, runs.getRunStatus(runId)));
   }
   if (input.command === 'run.cancel') {
-    const runId = QARunIdSchema.parse(input.runId);
+    const runId = parseArgument(QARunIdSchema, input.runId, 'run-id');
     return withMutationRuntime(async ({ runs, repository }) => {
       const outcome = runs.cancelRun(runId);
       return success(input.command, {
@@ -395,7 +409,7 @@ export async function executeCommand(
     }, options);
   }
   if (input.command === 'project.revisions') {
-    const projectId = ProjectIdSchema.parse(input.projectId);
+    const projectId = parseArgument(ProjectIdSchema, input.projectId, 'project-id');
     return withReadRuntime(async ({ projects, repository }) => {
       const record = projects.getProject(projectId);
       if (record === undefined) {
@@ -423,7 +437,7 @@ export async function executeCommand(
     });
   }
   if (input.command === 'issue.list') {
-    const projectId = ProjectIdSchema.parse(input.projectId);
+    const projectId = parseArgument(ProjectIdSchema, input.projectId, 'project-id');
     return withReadRuntime(async ({ repository }) => {
       if (repository.getProject(projectId) === undefined) {
         throw new ProjectManagerError('PROJECT_NOT_FOUND', 'Project not found: ' + projectId);
@@ -553,7 +567,7 @@ export async function executeCommand(
     return withReadRuntime(async ({ dataRoot }) => success(input.command, configReport(dataRoot)));
   }
   if (input.command === 'project.doctor') {
-    const projectId = ProjectIdSchema.parse(input.projectId);
+    const projectId = parseArgument(ProjectIdSchema, input.projectId, 'project-id');
     return withReadRuntime(async ({ repository, dataRoot }) => {
       try {
         const report = await projectDoctor({ dataRoot, repository, projectId });
@@ -567,7 +581,7 @@ export async function executeCommand(
     });
   }
   if (input.command === 'run.merge') {
-    const mergeRunId = QARunIdSchema.parse(input.runId);
+    const mergeRunId = parseArgument(QARunIdSchema, input.runId, 'run-id');
     return withMutationRuntime(async ({ repository }) => {
       try {
         const { result, reused } = mergeRun(repository, mergeRunId);
@@ -678,7 +692,7 @@ export async function executeCommand(
       });
     });
   }
-  const runId = QARunIdSchema.parse(input.runId);
+  const runId = parseArgument(QARunIdSchema, input.runId, 'run-id');
   return withMutationRuntime(async ({ runs, repository, dataRoot }) => {
     const manifest = await runs.exportRun(runId, input.format);
     const artifact = repository.getArtifact(manifest.artifactId);

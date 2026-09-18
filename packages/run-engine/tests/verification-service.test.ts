@@ -77,6 +77,32 @@ describe('verification service', () => {
     }
   }, 120000);
 
+  it('persists the run when the preflight reason exceeds the entry cap (live bug)', async () => {
+    // Live evidence (DeepSeek run_01M2SHCZHEHA45YVC7BWJZW900): a 235-char
+    // preflight reason plus the 15-char prefix overflowed the 200-char
+    // runtimes cap and crashed saveVerificationRun before fail-closed
+    // verification. The run must persist with a bounded entry instead.
+    const f = await simulatedFixture();
+    const preflight = vi.spyOn(SystemdSandboxBackend.prototype, 'preflight').mockResolvedValue({
+      available: false,
+      backend: 'none',
+      reason: 'x'.repeat(235),
+    });
+    try {
+      const { run } = await verifyMerge(f.repository, f.dataRoot, f.merge.id, {
+        commandTimeoutMs: 5000,
+      });
+      expect(run.environmentFingerprint?.runtimes.every((entry) => entry.length <= 200)).toBe(true);
+      expect(
+        run.environmentFingerprint?.runtimes.some((entry) => entry.startsWith('sandboxReason=')),
+      ).toBe(true);
+      expect(f.repository.getVerificationRun(run.id)?.id).toBe(run.id);
+    } finally {
+      preflight.mockRestore();
+      f.database.close();
+    }
+  }, 120000);
+
   it('verifies a merged run with fresh workspaces and cleans up (§11-13, §79)', async () => {
     const f = await simulatedFixture();
     const { run, attempts } = await verifyMerge(f.repository, f.dataRoot, f.merge.id, {
