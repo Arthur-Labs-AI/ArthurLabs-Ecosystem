@@ -85,6 +85,11 @@ export interface MuseRuntimeConfiguration {
   readonly discoverySource: 'explicit' | 'environment' | 'path';
 }
 
+/** `muse` on PATH may be the unrelated MusE music sequencer. */
+export function isMuseCodeVersion(version: string): boolean {
+  return /^Muse Code\s+v?\d+(?:\.\d+){1,2}\b/.test(version);
+}
+
 export function resolveMuseRuntime(
   input: {
     readonly executable?: string;
@@ -193,12 +198,22 @@ export async function probeMuseExecutable(
         );
         return;
       }
-      resolve(
-        redactDiagnostic(
-          (stdout || stderr).trim().slice(0, 200) || 'unknown',
-          secretValues(environment),
-        ),
+      const version = redactDiagnostic(
+        (stdout || stderr).trim().slice(0, 200) || 'unknown',
+        secretValues(environment),
       );
+      // Linux also ships an unrelated music sequencer named `muse`.
+      // A successful --version exit only proves that *some* binary exists.
+      if (!isMuseCodeVersion(version)) {
+        reject(
+          new MuseHarnessError(
+            'MUSE_START_FAILED',
+            'Expected the Meta Muse Code CLI. Set SENTRY_MUSE_BINARY to its executable.',
+          ),
+        );
+        return;
+      }
+      resolve(version);
     });
   });
 }

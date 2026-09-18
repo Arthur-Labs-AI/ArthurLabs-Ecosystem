@@ -1,13 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { doctorMuse, museReadinessFromChecks } from '../src/index.js';
+import {
+  doctorMuse,
+  isMuseCodeVersion,
+  museReadinessFromChecks,
+  probeMuseExecutable,
+} from '../src/index.js';
 
 // Separate file: runtime verification is process-scoped module state, and
 // adapter tests in muse-adapter.test.ts set it via real startSession calls.
 // Here it is guaranteed false, so doctor must stay honest about it.
 describe('Muse readiness semantics', () => {
-  it('reports configured readiness without claiming live verification', async () => {
-    // process.execPath --version exits 0, so the binary probe passes without
-    // any Muse installation; model + binary present but no live session yet.
+  it('recognizes the Muse Code host version, but not the Linux music sequencer', () => {
+    expect(isMuseCodeVersion('Muse Code 1.3.0 (1.3.0-R3057.1)')).toBe(true);
+    expect(isMuseCodeVersion('MusE 4.2.1')).toBe(false);
+    expect(isMuseCodeVersion('v22.23.2')).toBe(false);
+  });
+  it('rejects an unrelated program that responds to --version', async () => {
+    await expect(probeMuseExecutable(process.execPath)).rejects.toThrow(/Muse Code CLI/);
+  });
+  it('reports an unrelated executable as unavailable without claiming live verification', async () => {
+    // Node --version exits 0, but it is not the Muse Code host.
     const doctor = await doctorMuse({
       executable: process.execPath,
       modelId: 'model',
@@ -17,10 +29,9 @@ describe('Muse readiness semantics', () => {
         GITHUB_TOKEN: 'do-not-leak',
       },
     });
-    // model + binary present, no live session, no real warning -> configured.
-    expect(doctor.readiness).toBe('configured');
-    expect(doctor.configured).toBe(true);
-    expect(doctor.binaryAvailable).toBe(true);
+    expect(doctor.readiness).toBe('unavailable');
+    expect(doctor.configured).toBe(false);
+    expect(doctor.binaryAvailable).toBe(false);
     expect(doctor.runtimeVerified).toBe(false);
     expect(doctor.checks.some((check) => check.name === 'environment')).toBe(true);
     expect(doctor.checks.some((check) => check.name === 'sdk')).toBe(true);

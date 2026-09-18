@@ -1,7 +1,12 @@
 import { AgentStackDefinitionSchema, type AgentRuntimeIdentity } from '@qa/schemas';
 import type { HarnessAdapterRegistration } from '@qa/harness-protocol';
 import { ClaudeCodeHarnessAdapter, type ClaudeCodeHarnessAdapterOptions } from './adapter.js';
-import { probeClaudeExecutable, resolveGlmRuntime } from './discovery.js';
+import {
+  assertGlmAuthConfigured,
+  assertGlmEndpointConfigured,
+  probeClaudeExecutable,
+  resolveGlmRuntime,
+} from './discovery.js';
 import { CLAUDE_CODE_VERSION } from './sdk.js';
 
 export function createGlmRegistration(
@@ -38,6 +43,8 @@ export function createGlmRegistration(
     stack,
     preflight: async () => {
       const resolved = resolveRuntime();
+      assertGlmEndpointConfigured(options.environment ?? process.env);
+      assertGlmAuthConfigured(options.environment ?? process.env);
       runtimeIdentity.modelId = resolved.modelId;
       runtimeIdentity.executable = resolved.executable;
       runtimeIdentity.executableVersion = await probeClaudeExecutable(

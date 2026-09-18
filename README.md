@@ -158,6 +158,11 @@ Human-mode simulated runs print `SIMULATED / FAKE HARNESS RUN`; the machine
 response contains `"simulated": true`. Simulation is **FAKE / DEVELOPMENT ONLY**.
 Real execution requires `SENTRY_MUSE_MODEL` and a separately installed `muse`
 binary (or `SENTRY_MUSE_BINARY`); its response contains `"simulated": false`.
+On Linux, `muse` can resolve to the unrelated MusE music sequencer. Check that
+`muse --version` says `Muse Code`, or point `SENTRY_MUSE_BINARY` at the Meta
+Muse Code executable. For GLM via Claude Code, set `SENTRY_GLM_MODEL`,
+`ANTHROPIC_BASE_URL` (for example `https://api.z.ai/api/anthropic`), and
+`ANTHROPIC_AUTH_TOKEN` before running `qa agent doctor glm --json`.
 Exit 5 means QA completed and found issues, not that Sentry crashed. Set
 `SENTRY_DATA_ROOT` to override the OS data location. See
 `docs/architecture/phase-2-2.md` for the complete machine contract and deferred

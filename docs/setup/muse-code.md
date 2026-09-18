@@ -8,6 +8,9 @@ bundles, or silently substitutes a harness or model.
 1. Install and authenticate Muse Code using Meta's
    [official SDK and host instructions](https://github.com/meta-models/muse-code-sdk).
 2. Make `muse` available on `PATH`, or set `SENTRY_MUSE_BINARY` to the executable.
+   On Linux, `muse` may instead be the unrelated MusE music sequencer. Its
+   `--version` prints `MusE 4.2.1`, not `Muse Code ...`; set
+   `SENTRY_MUSE_BINARY` to the actual Meta Muse Code executable in that case.
 3. Set `SENTRY_MUSE_MODEL` to the exact model ID accepted by that installation.
    The intended Phase 3 configuration is `muse-spark-1.3-contributor`, but Sentry
    does not assume the host supports it.

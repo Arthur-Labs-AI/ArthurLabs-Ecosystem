@@ -71,6 +71,41 @@ export interface GlmRuntimeConfiguration {
   readonly discoverySource: 'explicit' | 'environment' | 'path';
 }
 
+/** A model ID alone cannot route Claude Code to Z.AI. Never use its default API. */
+export function assertGlmEndpointConfigured(environment: NodeJS.ProcessEnv = process.env): void {
+  const candidate = environment.ANTHROPIC_BASE_URL?.trim();
+  let valid = false;
+  if (candidate) {
+    try {
+      const endpoint = new URL(candidate);
+      const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(endpoint.hostname);
+      valid =
+        (endpoint.protocol === 'https:' || (endpoint.protocol === 'http:' && loopback)) &&
+        endpoint.hostname !== 'api.anthropic.com' &&
+        endpoint.username === '' &&
+        endpoint.password === '';
+    } catch {
+      // An invalid URL cannot establish the intended provider route.
+    }
+  }
+  if (!valid) {
+    throw new ClaudeCodeHarnessError(
+      'GLM_START_FAILED',
+      'GLM provider endpoint is not configured. Set ANTHROPIC_BASE_URL to a trusted Z.AI Anthropic-compatible endpoint (for example https://api.z.ai/api/anthropic).',
+    );
+  }
+}
+
+/** Sentry uses an isolated Claude config directory, so host login state is not inherited. */
+export function assertGlmAuthConfigured(environment: NodeJS.ProcessEnv = process.env): void {
+  if (!environment.ANTHROPIC_AUTH_TOKEN?.trim()) {
+    throw new ClaudeCodeHarnessError(
+      'GLM_AUTH_FAILED',
+      'GLM provider credential is not configured. Set ANTHROPIC_AUTH_TOKEN.',
+    );
+  }
+}
+
 export function resolveGlmRuntime(
   input: {
     readonly executable?: string;
@@ -223,6 +258,26 @@ export async function doctorGlm(
   } catch (cause) {
     checks.push({ name: 'model', status: 'fail', message: redactDiagnostic(cause) });
   }
+  try {
+    assertGlmEndpointConfigured(environment);
+    checks.push({
+      name: 'endpoint',
+      status: 'pass',
+      message: 'ANTHROPIC_BASE_URL is configured; live routing remains unverified.',
+    });
+  } catch (cause) {
+    checks.push({ name: 'endpoint', status: 'fail', message: redactDiagnostic(cause) });
+  }
+  try {
+    assertGlmAuthConfigured(environment);
+    checks.push({
+      name: 'authentication',
+      status: 'pass',
+      message: 'ANTHROPIC_AUTH_TOKEN is set; validity remains unverified until a live session.',
+    });
+  } catch (cause) {
+    checks.push({ name: 'authentication', status: 'fail', message: redactDiagnostic(cause) });
+  }
   const executable =
     input.executable?.trim() || environment.SENTRY_CLAUDE_BINARY?.trim() || 'claude';
   let executableVersion: string | undefined;
@@ -260,8 +315,15 @@ export async function doctorGlm(
     });
   }
   const modelOk = checks.some((check) => check.name === 'model' && check.status === 'pass');
+  const endpointOk = checks.some((check) => check.name === 'endpoint' && check.status === 'pass');
+  const authenticationOk = checks.some(
+    (check) => check.name === 'authentication' && check.status === 'pass',
+  );
   const binaryOk = checks.some((check) => check.name === 'binary' && check.status === 'pass');
-  const readiness = glmReadinessFromChecks({ modelOk, binaryOk });
+  const readiness = glmReadinessFromChecks({
+    modelOk: modelOk && endpointOk && authenticationOk,
+    binaryOk,
+  });
   const status = checks.some((check) => check.status === 'fail')
     ? 'unavailable'
     : checks.some((check) => check.status === 'warn')

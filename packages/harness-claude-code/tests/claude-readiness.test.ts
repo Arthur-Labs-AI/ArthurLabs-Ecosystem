@@ -1,16 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import { doctorGlm, glmReadinessFromChecks } from '../src/index.js';
+import { createGlmRegistration, doctorGlm, glmReadinessFromChecks } from '../src/index.js';
 
 // Separate file: runtime verification is process-scoped module state, and
 // adapter tests set it via real startSession calls. Here it is guaranteed
 // false, so doctor must stay honest about it.
 describe('GLM readiness semantics', () => {
+  it('does not claim a Z.AI route when ANTHROPIC_BASE_URL is absent', async () => {
+    const environment = { SENTRY_GLM_MODEL: 'glm-5.3-flash', PATH: '/usr/bin' };
+    const doctor = await doctorGlm({ executable: process.execPath, environment });
+    expect(doctor.configured).toBe(false);
+    expect(doctor.checks).toContainEqual(
+      expect.objectContaining({ name: 'endpoint', status: 'fail' }),
+    );
+    await expect(
+      createGlmRegistration({ executable: process.execPath, environment }).preflight?.(),
+    ).rejects.toThrow(/ANTHROPIC_BASE_URL/);
+  });
+  it('does not claim provider authentication when ANTHROPIC_AUTH_TOKEN is absent', async () => {
+    const environment = {
+      SENTRY_GLM_MODEL: 'glm-5.3-flash',
+      ANTHROPIC_BASE_URL: 'https://api.z.ai/api/anthropic',
+      PATH: '/usr/bin',
+    };
+    const doctor = await doctorGlm({ executable: process.execPath, environment });
+    expect(doctor.configured).toBe(false);
+    expect(doctor.checks).toContainEqual(
+      expect.objectContaining({ name: 'authentication', status: 'fail' }),
+    );
+    await expect(
+      createGlmRegistration({ executable: process.execPath, environment }).preflight?.(),
+    ).rejects.toThrow(/ANTHROPIC_AUTH_TOKEN/);
+  });
   it('reports configured readiness without claiming live verification', async () => {
     const doctor = await doctorGlm({
       executable: process.execPath,
       modelId: 'glm-5.3-flash',
       environment: {
         SENTRY_GLM_MODEL: 'glm-5.3-flash',
+        ANTHROPIC_BASE_URL: 'https://api.z.ai/api/anthropic',
+        ANTHROPIC_AUTH_TOKEN: 'test-credential-not-real',
         PATH: '/usr/bin',
         GITHUB_TOKEN: 'do-not-leak',
       },
@@ -22,13 +50,19 @@ describe('GLM readiness semantics', () => {
     expect(doctor.checks.some((check) => check.name === 'environment')).toBe(true);
     expect(doctor.checks.some((check) => check.name === 'sdk')).toBe(true);
     expect(JSON.stringify(doctor)).not.toContain('do-not-leak');
+    expect(JSON.stringify(doctor)).not.toContain('test-credential-not-real');
   });
 
   it('reports unavailable readiness when the binary is missing', async () => {
     const doctor = await doctorGlm({
       executable: 'claude-test-missing-binary',
       modelId: 'glm-5.3-flash',
-      environment: { SENTRY_GLM_MODEL: 'glm-5.3-flash', PATH: '/usr/bin' },
+      environment: {
+        SENTRY_GLM_MODEL: 'glm-5.3-flash',
+        ANTHROPIC_BASE_URL: 'https://api.z.ai/api/anthropic',
+        ANTHROPIC_AUTH_TOKEN: 'test-credential-not-real',
+        PATH: '/usr/bin',
+      },
     });
     expect(doctor.readiness).toBe('unavailable');
     expect(doctor.configured).toBe(false);
