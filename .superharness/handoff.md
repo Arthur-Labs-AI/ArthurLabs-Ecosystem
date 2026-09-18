@@ -2,8 +2,11 @@
 
 Phase 7 — DETERMINISTICALLY CLOSED
 
-Final SHA: (pending push — closure commit on `main` over baseline `0d87b8d`)
-Exact-head CI: (pending — required before Phase 8)
+Final SHA: `9b60bb5c5dbe9427b2601cd5202bfe177c198ebe`
+Exact-head CI: run `35350824372` (status completed, conclusion success,
+updated 2026-09-18T13:35:47Z) — repository:check, format:check, lint,
+typecheck, degraded-lane tests (sandbox trust unverified on the hosted
+runner, exit 226), build all green.
 
 Core contracts frozen (QARun full|targeted, RetestRun+RetestSpec v2,
 control requests, issues/occurrences/events, merge/verification lineage).
@@ -17,7 +20,7 @@ Deferred (provider budgets unavailable — not failed, not passed):
 Reason: provider budgets unavailable (explicit user decision; see
 docs/architecture/deferred-gates.md).
 
-Next: Phase 8 — Desktop UI (unlocked after exact-head CI green).
+Next: Phase 8 — Desktop UI (UNLOCKED).
 
 ---
 
