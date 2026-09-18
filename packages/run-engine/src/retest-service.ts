@@ -1,15 +1,24 @@
-/** Phase 7 cross-revision Retest orchestration (§14–§27, §90).
+/** Phase 7 closure cross-revision Retest orchestration.
  *
  *  Canonical flow: Issue occurrence on revision A → developer updates the
- *  managed project (new ProjectRevision B) → `retestIssue` freezes
- *  snapshot B through the standard RunCoordinator path (never the mutable
- *  working directory, never snapshot A), merges, verifies with the frozen
- *  Verifier v3 primitives, then records a deterministic RetestAssessment.
+ *  managed project (new ProjectRevision B) → `retestIssue` creates a
+ *  RetestRun, runs a child FULL/TARGETED QARun on B (never snapshot A),
+ *  freezes B, persists the immutable RetestSpec v2 + digest, merges,
+ *  verifies with frozen Verifier v3 primitives, then records a
+ *  deterministic RetestAssessment.
+ *
+ *  Invariants (closure):
+ *  - every RetestRun row terminalizes on every normal path (§18);
+ *  - pre-freeze failures carry no target snapshot (§20) + failure record;
+ *  - historical paths resolve deterministically (§23), absence never
+ *    equals fixed (§24), full-absence uses an explicit focused fallback;
+ *  - target IDs always refer to revision-B resources, never source (§27-29);
+ *  - RetestRun is the workflow; QARun modes are full|targeted (§30-33).
  *
  *  The verdict compares BEHAVIOR via exact ID-free replay intent
  *  (`compareRetestSteps`): source steps that strongly confirmed failure on
  *  A against target steps freshly observed on B. Agent consensus alone
- *  never decides; silence never means fixed.
+ *  never decides; silence never means fixed; deletion never means fixed.
  */
 import {
   createIssueEventId,
@@ -27,9 +36,11 @@ import {
   IssueOccurrenceSchema,
   RetestAssessmentSchema,
   RetestRunSchema,
+  RetestSpecSchema,
   RETEST_VERSION,
   issueIngestKey,
   projectIssueState,
+  retestInputDigest,
   type Finding,
   type Issue,
   type IssueOccurrence,
@@ -37,6 +48,7 @@ import {
   type QARun,
   type RetestAssessment,
   type RetestRun,
+  type RetestSpec,
   type VerificationRun,
   type VerificationRunAttempt,
 } from '@qa/schemas';
@@ -56,7 +68,7 @@ import { RunEngineError } from './errors.js';
 
 export interface RetestIssueOptions {
   readonly agentStackIds?: readonly AgentStackId[];
-  /** Default: current ready ProjectRevision (§41). Frozen into a new snapshot. */
+  /** Default: current ready ProjectRevision. Frozen into a new snapshot. */
   readonly targetRevisionId?: ProjectRevisionId;
   readonly runTimeoutMs?: number;
   readonly onHarnessRequest?: (request: import('@qa/schemas').HarnessRunRequest) => void;
@@ -70,8 +82,9 @@ export interface RetestIssueOptions {
 
 export interface RetestIssueResult {
   readonly retestRun: RetestRun;
-  readonly assessment: RetestAssessment;
-  readonly targetRun: QARun;
+  readonly assessment: RetestAssessment | undefined;
+  readonly spec: RetestSpec | undefined;
+  readonly targetRun: QARun | undefined;
   readonly targetMerge?: MergeResult;
   readonly targetVerification?: VerificationRun;
   readonly targetOccurrence?: IssueOccurrence;
@@ -82,6 +95,14 @@ export interface RetestServiceDeps {
   readonly repository: SentryRepository;
   readonly lease: RuntimeInstanceLease;
   readonly registry: HarnessAdapterRegistry;
+}
+
+export interface ResolvedRetestTargets {
+  readonly historicalPaths: readonly string[];
+  readonly resolvedTargetPaths: readonly string[];
+  readonly strategy: 'exact_paths' | 'nearest_ancestor' | 'full_snapshot_fallback';
+  readonly limitations: readonly string[];
+  readonly fullSnapshotFallback: boolean;
 }
 
 function latestOccurrence(occurrences: readonly IssueOccurrence[]): IssueOccurrence {
@@ -96,6 +117,7 @@ function retestMissionText(input: {
   readonly finding: Finding;
   readonly sourceRevisionId: string;
   readonly priorOutcome: string | undefined;
+  readonly resolutionNote: string;
 }): string {
   return (
     'RETEST MISSION. Re-examine this previously known issue on the current revision: ' +
@@ -119,11 +141,125 @@ function retestMissionText(input: {
     ': ' +
     (input.priorOutcome ?? 'unknown') +
     '. ' +
+    input.resolutionNote +
+    ' ' +
     'Focus: does this issue still exist? did the fix move the problem? is behavior partially ' +
     'corrected? did the change introduce a direct regression around this issue? ' +
     'Do not turn this into an unrelated repository-wide scan; directly related regressions ' +
     'may be reported.'
   );
+}
+
+/** Deterministic Retest target resolution (closure §23-§26): exact paths
+ *  first, else nearest existing ancestor directory, deduplicated. When no
+ *  ancestor exists, an explicit focused full-snapshot fallback is used
+ *  (never a random directory, never a crash). Path disappearance only
+ *  changes scope — never fix evidence (§24). */
+export function resolveRetestTargets(input: {
+  readonly historicalPaths: readonly string[];
+  readonly snapshotFiles: ReadonlySet<string>;
+}): ResolvedRetestTargets {
+  const historical = [...new Set(input.historicalPaths)];
+  if (historical.length === 0) {
+    return {
+      historicalPaths: [],
+      resolvedTargetPaths: [],
+      strategy: 'full_snapshot_fallback',
+      limitations: [
+        'RETEST_HISTORICAL_TARGETS_ABSENT: no historical paths; focused full-snapshot retest',
+      ],
+      fullSnapshotFallback: true,
+    };
+  }
+  const directories = new Set<string>();
+  for (const file of input.snapshotFiles) {
+    const slash = file.lastIndexOf('/');
+    if (slash > 0) directories.add(file.slice(0, slash));
+  }
+  const resolved = new Set<string>();
+  let usedAncestor = false;
+  for (const historicalPath of historical) {
+    if (input.snapshotFiles.has(historicalPath)) {
+      resolved.add(historicalPath);
+      continue;
+    }
+    const prefix = historicalPath + '/';
+    let covered = false;
+    for (const file of input.snapshotFiles) {
+      if (file.startsWith(prefix)) {
+        covered = true;
+        break;
+      }
+    }
+    if (covered) {
+      resolved.add(historicalPath);
+      continue;
+    }
+    let ancestor = historicalPath.includes('/')
+      ? historicalPath.slice(0, historicalPath.lastIndexOf('/'))
+      : '';
+    let found: string | undefined;
+    while (ancestor.length > 0) {
+      if (directories.has(ancestor)) {
+        found = ancestor;
+        break;
+      }
+      let coveredDir = false;
+      const dirPrefix = ancestor + '/';
+      for (const file of input.snapshotFiles) {
+        if (file.startsWith(dirPrefix)) {
+          coveredDir = true;
+          break;
+        }
+      }
+      if (coveredDir) {
+        found = ancestor;
+        break;
+      }
+      ancestor = ancestor.includes('/') ? ancestor.slice(0, ancestor.lastIndexOf('/')) : '';
+    }
+    if (found !== undefined) {
+      resolved.add(found);
+      usedAncestor = true;
+    }
+  }
+  if (resolved.size > 0) {
+    return {
+      historicalPaths: historical,
+      resolvedTargetPaths: [...resolved].sort(),
+      strategy: usedAncestor ? 'nearest_ancestor' : 'exact_paths',
+      limitations: usedAncestor
+        ? [
+            'Historical target path(s) absent on revision B; nearest existing ancestor scope used. Absence is not fix evidence.',
+          ]
+        : [],
+      fullSnapshotFallback: false,
+    };
+  }
+  return {
+    historicalPaths: historical,
+    resolvedTargetPaths: [],
+    strategy: 'full_snapshot_fallback',
+    limitations: [
+      'RETEST_HISTORICAL_TARGETS_ABSENT: no historical path or ancestor exists on revision B; explicit focused full-snapshot retest. Absence is not fix evidence.',
+    ],
+    fullSnapshotFallback: true,
+  };
+}
+
+function failRetestRun(
+  repository: SentryRepository,
+  run: RetestRun,
+  failure: { readonly code: string; readonly message: string; readonly retryable: boolean },
+): RetestRun {
+  const terminal = RetestRunSchema.parse({
+    ...run,
+    status: 'failed' as const,
+    failure,
+    completedAt: nowIsoTimestamp(),
+  });
+  repository.saveRetestRun(terminal);
+  return terminal;
 }
 
 export async function retestIssue(
@@ -182,8 +318,6 @@ export async function retestIssue(
       "Target revision is not part of this issue's project",
     );
   }
-  // The working copy must actually be at the target revision: retest
-  // freezes B through the standard snapshot path, never by assumption.
   const integrity = await projects.assertWorkingCopyIntegrity(record.project.id);
   if (integrity.id !== targetRevisionId) {
     throw new RunEngineError(
@@ -205,15 +339,9 @@ export async function retestIssue(
   const representative = findingsById.get(sourceCluster.representativeFindingId);
   if (representative === undefined)
     throw new RunEngineError('RUN_NOT_FOUND', 'Representative finding not found');
-  // Source baseline: persisted steps of the completed verification attempt
-  // for the source cluster (same snapshot-A semantics, never reinterpreted).
   const sourceSteps = loadSourceBaselineSteps(repository, source, sourceMerge.id);
   const createdAt = nowIsoTimestamp();
-  // The retest row is staged BEFORE the target freeze at status created
-  // (no target snapshot yet — honest, since no target work has started),
-  // then advanced as the pipeline proceeds. A crash before the freeze
-  // leaves a created row recovery can honestly interrupt.
-  let retestRun = RetestRunSchema.parse({
+  const initialRetestRun = RetestRunSchema.parse({
     schemaVersion: 1,
     id: createRetestRunId(),
     retestVersion: RETEST_VERSION,
@@ -230,7 +358,88 @@ export async function retestIssue(
     runtimeInstanceId: deps.lease.instanceId,
     createdAt,
   });
-  repository.saveRetestRun(retestRun);
+  repository.saveRetestRun(initialRetestRun);
+  // Lifecycle guard (§18): every normal path after this point terminalizes
+  // the SAME RetestRun. Only a hard process crash may leave it
+  // nonterminal, and lease-based recovery then interrupts it.
+  try {
+    return await executeRetestLifecycle(deps, {
+      issue,
+      source,
+      sourceMerge,
+      sourceCluster,
+      representative,
+      sourceSteps,
+      retestRun: initialRetestRun,
+      targetRevisionId,
+      options,
+    });
+  } catch (cause) {
+    const fresh = repository.getRetestRun(initialRetestRun.id);
+    const current = fresh ?? initialRetestRun;
+    if (['completed', 'partial', 'failed', 'cancelled', 'interrupted'].includes(current.status)) {
+      throw cause;
+    }
+    const failure =
+      cause instanceof RunEngineError && cause.code === 'RUN_CANCELLED'
+        ? {
+            code: 'RUN_CANCELLED',
+            message: 'Retest cancelled by operator.',
+            retryable: false as const,
+          }
+        : {
+            code:
+              cause instanceof RunEngineError
+                ? cause.code
+                : cause instanceof Error
+                  ? cause.name || 'RETEST_FAILED'
+                  : 'RETEST_FAILED',
+            message: (cause instanceof Error ? cause.message : String(cause)).slice(0, 1000),
+            retryable: false as const,
+          };
+    const failed = failRetestRun(repository, current, failure);
+    if (cause instanceof RunEngineError && cause.code === 'RUN_CANCELLED') {
+      const cancelled = RetestRunSchema.parse({
+        ...failed,
+        status: 'cancelled' as const,
+      });
+      repository.saveRetestRun(cancelled);
+      return {
+        retestRun: cancelled,
+        assessment: undefined,
+        spec: repository.getRetestSpec(cancelled.id),
+        targetRun: cancelled.targetQaRunId
+          ? repository.getRun(cancelled.targetQaRunId as QARunId)
+          : undefined,
+      };
+    }
+    return {
+      retestRun: failed,
+      assessment: undefined,
+      spec: repository.getRetestSpec(failed.id),
+      targetRun: failed.targetQaRunId
+        ? repository.getRun(failed.targetQaRunId as QARunId)
+        : undefined,
+    };
+  }
+}
+
+async function executeRetestLifecycle(
+  deps: RetestServiceDeps,
+  input: {
+    readonly issue: Issue;
+    readonly source: IssueOccurrence;
+    readonly sourceMerge: MergeResult;
+    readonly sourceCluster: { readonly id: string };
+    readonly representative: Finding;
+    readonly sourceSteps: { readonly steps: RetestReplayStep[]; readonly priorOutcome?: string };
+    retestRun: RetestRun;
+    readonly targetRevisionId: string;
+    readonly options: RetestIssueOptions;
+  },
+): Promise<RetestIssueResult> {
+  const { repository, dataRoot } = deps;
+  let retestRun = input.retestRun;
   const advance = (status: RetestRun['status']) => {
     assertRetestRunTransition(retestRun.status, status);
     retestRun = RetestRunSchema.parse({
@@ -243,41 +452,91 @@ export async function retestIssue(
     });
     repository.saveRetestRun(retestRun);
   };
+  const checkRetestCancelled = () => {
+    const request = repository.getRetestControlRequest(retestRun.id);
+    if (request === undefined || request.completedAt !== undefined) return;
+    throw new RunEngineError('RUN_CANCELLED', 'Retest cancelled by operator');
+  };
   advance('agents_running');
+  checkRetestCancelled();
   const coordinator = new RunCoordinator(dataRoot, repository, deps.lease, deps.registry);
-  const targetPaths = representative.locations.map((location) => location.relativePath);
-  const targetRunDetails = await coordinator.run(record.project.id, {
-    executionKind: 'production',
-    mode: 'targeted',
-    target: {
-      includePaths: targetPaths,
-      issueIds: [issue.id],
-      userInstructions:
-        'Historical issue under retest: ' +
-        issue.title +
-        '. ' +
-        representative.description.slice(0, 1000),
+  const historicalPaths = input.representative.locations.map((location) => location.relativePath);
+  // Target manifest is needed for deterministic resolution. Freeze a
+  // lightweight probe is wasteful; instead resolve after the child run
+  // freezes snapshot B. To validate scope BEFORE agents, resolve against
+  // the current working-copy file set at the target revision (the exact
+  // tree the child freeze will snapshot), falling back honestly.
+  const { scanTree } = await import('@qa/persistence');
+  const { projectDataPaths } = await import('@qa/persistence');
+  const record = new ProjectManager(dataRoot, repository, {
+    runtimeLease: deps.lease,
+  }).getProject(input.issue.projectId as ProjectId);
+  if (record === undefined) throw new RunEngineError('PROJECT_NOT_FOUND', 'Project vanished');
+  const workingCopy = projectDataPaths(dataRoot, input.issue.projectId as ProjectId).workingCopy;
+  const filePaths = new Set<string>();
+  await scanTree(workingCopy, {
+    onEntry: (entry) => {
+      if (entry.type === 'file') filePaths.add(entry.relativePath);
     },
-    agentStackIds: retestRun.agentStackIds as AgentStackId[],
-    instructions: retestMissionText({
-      issue,
-      finding: representative,
-      sourceRevisionId,
-      priorOutcome: sourceSteps.priorOutcome,
-    }),
-    lineage: {
-      parentRunId: source.qaRunId as QARunId,
-      sourceRevisionId: sourceRevisionId as ProjectRevisionId,
-      targetRevisionId: targetRevisionId as ProjectRevisionId,
-    },
-    ...(options.runTimeoutMs === undefined ? {} : { runTimeoutMs: options.runTimeoutMs }),
-    ...(options.onHarnessRequest === undefined
-      ? {}
-      : { onHarnessRequest: options.onHarnessRequest as never }),
-    ...(options.onHarnessEventPersisted === undefined
-      ? {}
-      : { onHarnessEventPersisted: options.onHarnessEventPersisted as never }),
   });
+  const snapshotFiles: ReadonlySet<string> = filePaths;
+  const resolved = resolveRetestTargets({ historicalPaths, snapshotFiles });
+  const targetScope = resolved.fullSnapshotFallback ? undefined : resolved.resolvedTargetPaths;
+  const resolutionNote =
+    'Target scope resolution (' +
+    resolved.strategy +
+    '): historical [' +
+    resolved.historicalPaths.join(', ') +
+    '] → resolved [' +
+    resolved.resolvedTargetPaths.join(', ') +
+    '].' +
+    (resolved.limitations.length === 0 ? '' : ' Limitation: ' + resolved.limitations.join(' '));
+  // Target setup failure (§17, §42) propagates to the lifecycle guard,
+  // which terminalizes the SAME RetestRun as failed with no target
+  // snapshot, no fake assessment. The coordinator releases its own
+  // project lock in its finally path, so no lock leaks.
+  const targetRunDetails: Awaited<ReturnType<RunCoordinator['run']>> = await coordinator.run(
+    record.project.id,
+    {
+      executionKind: 'production',
+      mode: resolved.fullSnapshotFallback ? 'full' : 'targeted',
+      ...(resolved.fullSnapshotFallback || targetScope === undefined || targetScope.length === 0
+        ? {}
+        : {
+            target: {
+              includePaths: [...targetScope],
+              issueIds: [input.issue.id],
+              userInstructions:
+                'Historical issue under retest: ' +
+                input.issue.title +
+                '. ' +
+                input.representative.description.slice(0, 1000),
+            },
+          }),
+      agentStackIds: retestRun.agentStackIds as AgentStackId[],
+      instructions: retestMissionText({
+        issue: input.issue,
+        finding: input.representative,
+        sourceRevisionId: input.source.projectRevisionId,
+        priorOutcome: input.sourceSteps.priorOutcome,
+        resolutionNote,
+      }),
+      lineage: {
+        parentRunId: input.source.qaRunId as QARunId,
+        sourceRevisionId: input.source.projectRevisionId as ProjectRevisionId,
+        targetRevisionId: input.targetRevisionId as ProjectRevisionId,
+      },
+      ...(input.options.runTimeoutMs === undefined
+        ? {}
+        : { runTimeoutMs: input.options.runTimeoutMs }),
+      ...(input.options.onHarnessRequest === undefined
+        ? {}
+        : { onHarnessRequest: input.options.onHarnessRequest as never }),
+      ...(input.options.onHarnessEventPersisted === undefined
+        ? {}
+        : { onHarnessEventPersisted: input.options.onHarnessEventPersisted as never }),
+    },
+  );
   const targetRun = targetRunDetails.run;
   retestRun = RetestRunSchema.parse({
     ...retestRun,
@@ -285,9 +544,48 @@ export async function retestIssue(
     targetQaRunId: targetRun.id,
   });
   repository.saveRetestRun(retestRun);
+  checkRetestCancelled();
+  // Immutable RetestSpec v2 (§35-§39): persisted once B is frozen, never mutated.
+  const digest = retestInputDigest({
+    issueId: input.issue.id,
+    sourceOccurrenceId: input.source.id,
+    sourceSnapshotId: input.source.projectSnapshotId,
+    targetSnapshotId: targetRun.snapshotId,
+    agentStackIds: [...retestRun.agentStackIds],
+    recipeVersion: 3,
+    sourceRevisionId: input.source.projectRevisionId,
+    targetRevisionId: input.targetRevisionId,
+    sourceMergeResultId: input.sourceMerge.id,
+    sourceFindingClusterId: input.sourceCluster.id,
+    resolvedTargetPaths: [...resolved.resolvedTargetPaths],
+    retestVersion: RETEST_VERSION,
+  });
+  const spec = RetestSpecSchema.parse({
+    schemaVersion: 1,
+    retestRunId: retestRun.id,
+    issueId: input.issue.id,
+    sourceOccurrenceId: input.source.id,
+    sourceSnapshotId: input.source.projectSnapshotId,
+    targetSnapshotId: targetRun.snapshotId,
+    sourceMergeResultId: input.sourceMerge.id,
+    sourceFindingClusterId: input.sourceCluster.id,
+    sourceRevisionId: input.source.projectRevisionId,
+    targetRevisionId: input.targetRevisionId,
+    agentStackIds: [...retestRun.agentStackIds],
+    historicalPaths: [...resolved.historicalPaths],
+    resolvedTargetPaths: [...resolved.resolvedTargetPaths],
+    resolutionStrategy: resolved.strategy,
+    recipeVersion: 3,
+    retestVersion: RETEST_VERSION,
+    inputDigest: digest,
+    limitations: [...resolved.limitations],
+    createdAt: nowIsoTimestamp(),
+  });
+  repository.saveRetestSpec(spec, input.issue.projectId as ProjectId);
   advance('merging');
+  checkRetestCancelled();
   let targetMerge: MergeResult | undefined;
-  const limitations: string[] = [];
+  const limitations: string[] = [...resolved.limitations];
   try {
     ({ result: targetMerge } = mergeRun(repository, targetRun.id));
   } catch (cause) {
@@ -297,10 +595,11 @@ export async function retestIssue(
     );
   }
   advance('assessing');
+  checkRetestCancelled();
   let targetVerification: VerificationRun | undefined;
   let targetAttempts: VerificationRunAttempt[] = [];
   if (targetMerge !== undefined) {
-    const verify = options.verify ?? verifyMerge;
+    const verify = input.options.verify ?? verifyMerge;
     try {
       const verified = await verify(repository, dataRoot, targetMerge.id, {
         ...(deps.lease.instanceId === undefined
@@ -324,25 +623,29 @@ export async function retestIssue(
       matchStrength: step.matchStrength as string | undefined,
     })),
   );
-  const compared = compareRetestSteps({ sourceSteps: sourceSteps.steps, targetSteps });
+  const compared = compareRetestSteps({ sourceSteps: input.sourceSteps.steps, targetSteps });
   const observed = targetVerification !== undefined && targetVerification.status !== 'failed';
   const classification = classifyRetest({
     assertions: compared.input.assertions,
     targetNotObservable: observed ? compared.input.targetNotObservable : true,
   });
+  // Closure §27-§29: target IDs stay absent when the target artifact is
+  // missing. Source IDs are recorded only in source fields — never
+  // substituted into target fields.
   const assessment = RetestAssessmentSchema.parse({
     schemaVersion: 1,
     id: createRetestAssessmentId(),
     retestVersion: RETEST_VERSION,
     retestRunId: retestRun.id,
-    issueId: issue.id,
-    projectId: issue.projectId,
-    sourceRevisionId,
-    targetRevisionId,
-    sourceOccurrenceId: source.id,
+    issueId: input.issue.id,
+    projectId: input.issue.projectId,
+    sourceRevisionId: input.source.projectRevisionId,
+    targetRevisionId: input.targetRevisionId,
+    sourceOccurrenceId: input.source.id,
+    sourceMergeResultId: input.sourceMerge.id,
     targetQaRunId: targetRun.id,
-    targetMergeResultId: (targetMerge?.id ??
-      sourceMerge.id) as RetestAssessment['targetMergeResultId'],
+    ...(targetMerge === undefined ? {} : { targetMergeResultId: targetMerge.id }),
+    ...(targetVerification === undefined ? {} : { targetVerificationRunId: targetVerification.id }),
     newEvidenceIds: targetRunDetails.evidence.map((evidence) => evidence.id),
     result: classification.result,
     rationale: classification.rationale,
@@ -350,33 +653,31 @@ export async function retestIssue(
     assessedAt: nowIsoTimestamp(),
   });
   repository.saveRetestAssessment(assessment);
-  // Explicit retest links are authoritative (§33): anchor the target
-  // observation to this issue via the best-overlap cluster, if any.
   let targetOccurrence: IssueOccurrence | undefined;
   if (targetMerge !== undefined && targetVerification !== undefined) {
     targetOccurrence = recordTargetOccurrence(repository, {
-      issue,
+      issue: input.issue,
       targetMerge,
       targetRun,
       targetVerificationRunId: targetVerification.id,
-      targetRevisionId,
+      targetRevisionId: input.targetRevisionId,
       baselineKeys: compared.baselineKeys,
       createdAt: nowIsoTimestamp(),
     });
   }
-  const previousState = projectIssueState(repository.listIssueEvents(issue.id));
+  const previousState = projectIssueState(repository.listIssueEvents(input.issue.id));
   if (targetOccurrence !== undefined) {
     repository.appendIssueEvent(
       IssueEventSchema.parse({
         schemaVersion: 1,
         id: createIssueEventId(),
-        issueId: issue.id,
-        projectId: issue.projectId,
+        issueId: input.issue.id,
+        projectId: input.issue.projectId,
         kind: 'occurrence_recorded',
         fromState: previousState,
         toState: previousState,
         occurrenceId: targetOccurrence.id,
-        message: 'Retest observed the issue on revision ' + targetRevisionId,
+        message: 'Retest observed the issue on revision ' + input.targetRevisionId,
         createdAt: nowIsoTimestamp(),
       }),
     );
@@ -385,23 +686,30 @@ export async function retestIssue(
     IssueEventSchema.parse({
       schemaVersion: 1,
       id: createIssueEventId(),
-      issueId: issue.id,
-      projectId: issue.projectId,
+      issueId: input.issue.id,
+      projectId: input.issue.projectId,
       kind: 'retest_assessed',
       fromState: previousState,
       toState: assessment.result,
       ...(targetOccurrence === undefined ? {} : { occurrenceId: targetOccurrence.id }),
       retestAssessmentId: assessment.id,
-      message: 'Retest ' + sourceRevisionId + ' → ' + targetRevisionId + ': ' + assessment.result,
+      message:
+        'Retest ' +
+        input.source.projectRevisionId +
+        ' → ' +
+        input.targetRevisionId +
+        ': ' +
+        assessment.result,
       createdAt: nowIsoTimestamp(),
     }),
   );
-  repository.saveIssue({ ...issue, updatedAt: nowIsoTimestamp() });
+  repository.saveIssue({ ...input.issue, updatedAt: nowIsoTimestamp() });
   const decisive = assessment.result === 'fixed' || assessment.result === 'still_reproducible';
   advance(targetRun.status === 'completed' && decisive ? 'completed' : 'partial');
   return {
     retestRun,
     assessment,
+    spec,
     targetRun,
     ...(targetMerge === undefined ? {} : { targetMerge }),
     ...(targetVerification === undefined ? {} : { targetVerification }),
@@ -409,17 +717,19 @@ export async function retestIssue(
   };
 }
 
+type RetestReplayStep = {
+  readonly type: string;
+  readonly expected: Record<string, string>;
+  readonly outcome?: string;
+  readonly matchStrength?: string;
+};
+
 function loadSourceBaselineSteps(
   repository: SentryRepository,
   source: IssueOccurrence,
   sourceMergeId: string,
 ): {
-  steps: {
-    type: string;
-    expected: Record<string, string>;
-    outcome?: string;
-    matchStrength?: string;
-  }[];
+  steps: RetestReplayStep[];
   priorOutcome?: string;
 } {
   const attemptIds: { attemptId: string; outcome: string | undefined }[] = [];
@@ -461,8 +771,6 @@ function recordTargetOccurrence(
   },
 ): IssueOccurrence | undefined {
   const keySet = new Set(input.baselineKeys);
-  // Deterministic best-overlap selection over target clusters using
-  // persisted verification steps keyed by exact replay intent.
   const scored: { clusterId: string; overlap: number }[] = [];
   for (const cluster of input.targetMerge.clusters) {
     const steps = repository
@@ -502,9 +810,101 @@ function recordTargetOccurrence(
   return occurrence;
 }
 
-/** Stable cancellation for top-level retest executions (§45): marks the
- *  retest run cancelled and best-effort cancels a nonterminal target QA
- *  run. Completed observations are preserved. */
+/** Cooperative retest cancellation (closure §47): persist a durable request,
+ *  cascade to the child target QARun when owned, then terminalize honestly.
+ *  Returns the durable request status — never fakes completion. */
+export function requestRetestCancellation(
+  deps: RetestServiceDeps,
+  retestRunId: string,
+): { retestRunId: string; status: 'cancellation_requested' | 'cancelled' | 'already_terminal' } {
+  deps.lease.assertHealthy();
+  const run = deps.repository.getRetestRun(retestRunId);
+  if (run === undefined)
+    throw new RunEngineError('RUN_NOT_FOUND', 'RetestRun not found: ' + retestRunId);
+  if (['completed', 'partial', 'failed', 'cancelled', 'interrupted'].includes(run.status)) {
+    return { retestRunId, status: 'already_terminal' };
+  }
+  const timestamp = nowIsoTimestamp();
+  const existing = deps.repository.getRetestControlRequest(retestRunId);
+  if (existing === undefined) {
+    deps.repository.saveRetestControlRequest({
+      id: 'rcancel_' + retestRunId.slice(7),
+      retestRunId,
+      projectId: run.projectId as ProjectId,
+      requestType: 'cancel',
+      requestingRuntimeId: deps.lease.instanceId,
+      requestedAt: timestamp,
+    });
+  }
+  if (run.targetQaRunId !== undefined) {
+    try {
+      new RunCoordinator(
+        deps.dataRoot,
+        deps.repository,
+        deps.lease,
+        deps.registry,
+      ).requestRunCancellation(run.targetQaRunId as QARunId);
+    } catch {
+      // Best-effort: the target run may already be terminal or foreign-owned.
+    }
+  }
+  const fresh = deps.repository.getRetestRun(retestRunId);
+  if (
+    fresh !== undefined &&
+    ['completed', 'partial', 'failed', 'cancelled', 'interrupted'].includes(fresh.status)
+  ) {
+    return { retestRunId, status: 'already_terminal' };
+  }
+  return { retestRunId, status: 'cancellation_requested' };
+}
+
+/** Owner-side retest acknowledge: cascade to the owned child run, then
+ *  terminalize the RetestRun as cancelled with completed observations kept. */
+export function acknowledgeRetestCancellation(
+  deps: RetestServiceDeps,
+  retestRunId: string,
+): { retestRunId: string; status: 'cancelled' } {
+  deps.lease.assertHealthy();
+  const run = deps.repository.getRetestRun(retestRunId);
+  if (run === undefined)
+    throw new RunEngineError('RUN_NOT_FOUND', 'RetestRun not found: ' + retestRunId);
+  if (['completed', 'partial', 'failed', 'cancelled', 'interrupted'].includes(run.status)) {
+    throw new RunEngineError(
+      'RUN_NOT_COMPLETE',
+      'RetestRun ' + retestRunId + ' is already terminal (' + run.status + ')',
+    );
+  }
+  if (run.targetQaRunId !== undefined) {
+    try {
+      new RunCoordinator(
+        deps.dataRoot,
+        deps.repository,
+        deps.lease,
+        deps.registry,
+      ).acknowledgeRunCancellation(run.targetQaRunId as QARunId);
+    } catch {
+      // Best-effort cascade; the retest still terminalizes honestly.
+    }
+  }
+  const pending = deps.repository.getRetestControlRequest(retestRunId);
+  const timestamp = nowIsoTimestamp();
+  if (pending !== undefined && pending.acknowledgedAt === undefined) {
+    deps.repository.saveRetestControlRequest({ ...pending, acknowledgedAt: timestamp });
+  }
+  assertRetestRunTransition(run.status, 'cancelled');
+  deps.repository.saveRetestRun(
+    RetestRunSchema.parse({ ...run, status: 'cancelled', completedAt: timestamp }),
+  );
+  const done = deps.repository.getRetestControlRequest(retestRunId);
+  if (done !== undefined && done.completedAt === undefined) {
+    deps.repository.saveRetestControlRequest({ ...done, completedAt: nowIsoTimestamp() });
+  }
+  return { retestRunId, status: 'cancelled' };
+}
+
+/** Stable cancellation for top-level retest executions: request + owner
+ *  acknowledge in one step for single-process callers. Cross-process
+ *  callers use requestRetestCancellation and let the owner acknowledge. */
 export function cancelRetestRun(
   deps: RetestServiceDeps,
   retestRunId: string,
@@ -525,38 +925,41 @@ export function cancelRetestRun(
       'RetestRun ' + retestRunId + ' is owned by another runtime instance',
     );
   }
-  if (run.targetQaRunId !== undefined) {
-    try {
-      new RunCoordinator(deps.dataRoot, deps.repository, deps.lease, deps.registry).cancelRun(
-        run.targetQaRunId as QARunId,
-      );
-    } catch {
-      // Best-effort: the target run may already be terminal.
-    }
-  }
-  assertRetestRunTransition(run.status, 'cancelled');
-  deps.repository.saveRetestRun(
-    RetestRunSchema.parse({ ...run, status: 'cancelled', completedAt: nowIsoTimestamp() }),
-  );
-  return { retestRunId, status: 'cancelled' };
+  requestRetestCancellation(deps, retestRunId);
+  return acknowledgeRetestCancellation(deps, retestRunId);
 }
 
 /** Crash recovery for retest executions: stale-owned nonterminal retest
- *  runs become interrupted with completed observations preserved. Called
- *  from RunCoordinator.recover() under the same lease freshness. */
+ *  runs become interrupted with completed observations preserved. Stale
+ *  pending cancel requests complete honestly as interrupted (never
+ *  fake-cancelled). Called from RunCoordinator.recover(). */
 export function recoverRetests(
   repository: SentryRepository,
   isFresh: (instanceId: string) => boolean,
 ): { runs: number } {
   let runs = 0;
+  const timestamp = nowIsoTimestamp();
   for (const run of repository.listNonterminalRetestRuns()) {
     const owner = run.runtimeInstanceId;
     if (owner !== undefined && isFresh(owner as never)) continue;
     if (owner === undefined) continue;
     assertRetestRunTransition(run.status, 'interrupted');
     repository.saveRetestRun(
-      RetestRunSchema.parse({ ...run, status: 'interrupted', completedAt: nowIsoTimestamp() }),
+      RetestRunSchema.parse({
+        ...run,
+        status: 'interrupted',
+        completedAt: timestamp,
+        failure: {
+          code: 'APP_INTERRUPTED',
+          message: 'Sentry stopped before the retest completed.',
+          retryable: true,
+        },
+      }),
     );
+    const pending = repository.getRetestControlRequest(run.id);
+    if (pending !== undefined && pending.completedAt === undefined) {
+      repository.saveRetestControlRequest({ ...pending, completedAt: timestamp });
+    }
     runs += 1;
   }
   return { runs };

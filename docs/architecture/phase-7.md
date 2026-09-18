@@ -13,16 +13,20 @@ Merger v2, and Verifier v3 foundations remain intact.
 Phase 8 builds the Desktop UI. Phase 9 builds installation, setup, packaging,
 onboarding, and distribution. Neither is implemented here.
 
-## QA modes
+## QA modes (closure: canonical)
 
-`QAMode = 'full' | 'targeted' | 'retest'` is persisted explicitly on every
+QARun execution modes are `full | targeted`, persisted explicitly on every
 QARun — never inferred from flags or instructions. FULL is unchanged:
 Muse, DeepSeek, and GLM independently perform the same complete QA against
 the frozen ProjectSnapshot. TARGETED is FULL-strength QA focused on a
 narrower scope: all selected agents receive the same snapshot, context,
-TargetSpec, instructions, and policy, with no peer visibility. RETEST
-compares a historical issue occurrence on revision A against a fresh
-snapshot of revision B.
+TargetSpec, instructions, and policy, with no peer visibility.
+
+RETEST is a first-class cross-revision _workflow_ (`RetestRun` + a child
+FULL/TARGETED QARun on revision B), not a QARun mode. Production never
+creates `QARun mode=retest`; the `retest` branch in `QARunSchema` is a
+LEGACY decoder for historical rows only. User workflows: FULL, TARGETED,
+RETEST.
 
 ## TargetSpec
 
@@ -66,16 +70,33 @@ own historical snapshot) and is never reinterpreted as cross-revision
 testing; retest reuses verifier trust primitives (recipe, sandbox, strict
 identity, sig3) where technically appropriate.
 
-`retestIssue` orchestration: resolve the latest explicit occurrence →
-freeze snapshot B through the standard coordinator path (working copy must
-be at the target revision) → targeted target run (scope from the source
-finding locations, historical issue context in the mission; all agents get
-identical inputs) → merge → `verifyMerge` on the target merge →
-`compareRetestSteps` → `classifyRetest` → assessment + target occurrence
-(best same-key cluster overlap) + `occurrence_recorded` / `retest_assessed`
-events. Cross-project revisions are rejected (`ISSUE_CONFLICT`).
-Top-level `cancelRetestRun` and lease-based `recoverRetests` mirror the
-run-level semantics.
+`retestIssue` orchestration (closure v2): resolve the latest explicit
+occurrence → create `RetestRun` (`created`) → resolve historical target
+paths deterministically (exact → nearest ancestor → explicit focused
+full-snapshot fallback `RETEST_HISTORICAL_TARGETS_ABSENT`; absence never
+means fixed) → child FULL/TARGETED run on B through the standard
+coordinator path (working copy must be at the target revision) → freeze B
+→ persist the immutable `RetestSpec` v2 + `inputDigest` → merge →
+`verifyMerge` on the target merge → `compareRetestSteps` →
+`classifyRetest` → assessment (target IDs always revision-B; absent
+targets stay absent, never source-substituted) + target occurrence (best
+same-key cluster overlap) + `occurrence_recorded` / `retest_assessed`
+events. Every normal path terminalizes the same RetestRun
+(`failed`/`cancelled` carry a bounded `failure` record; pre-freeze failures
+have no target snapshot); only a hard crash leaves it nonterminal, and
+lease-based `recoverRetests` then interrupts it. Cross-project revisions
+are rejected (`ISSUE_CONFLICT`). Cooperative `requestRetestCancellation` /
+`acknowledgeRetestCancellation` cascade to the child target run; legacy
+`cancelRetestRun` delegates to the same path for single-process callers.
+
+Retest audit chain: `IssueOccurrence A → RetestRun → Snapshot B →
+RetestSpec v2 → child FULL/TARGETED QARun → MergeResult B →
+VerificationRun B → cross-revision deterministic comparison →
+RetestAssessment → IssueEvent`.
+
+Different-failure rule (conservative): the same target still failing for a
+materially different reason is `inconclusive` (never fully `fixed`);
+`fixed` requires positive healthy target evidence.
 
 The `classifyRetest` classifier is deterministic: `fixed` requires strong
 active evidence the behavior no longer occurs; `still_reproducible` requires
@@ -108,12 +129,22 @@ its snapshot, runs, merges, verifications, and occurrences stay durable.
 
 ## Cancellation and crash recovery
 
-`qa run cancel` marks a nonterminal run cancelled: nonterminal AgentRuns
-become `cancelled`, completed Findings/Evidence are preserved, activities
-finalize honestly, and the project lock releases. Only the owning runtime
-lease may cancel; terminal runs are refused. Crash recovery (existing
-run/agent/verification sweeper plus the retest nonterminal scan) leaves no
-permanent fake running states and retains completed work.
+`qa run cancel` is real cooperative cancellation, never cosmetic state
+painting. Any live runtime persists a durable `run_control_requests` row
+(`cancellation_requested`, idempotent per run); the OWNING runtime observes
+it via per-worker watchers (500ms poll, no busy loop) while provider
+streams block, invokes `adapter.cancel()` on owned adapters/sessions only
+(never foreign PIDs), reconciles durable state before every terminal write
+(a durably `cancelled` row is never overwritten by stale local state),
+then terminalizes honestly: nonterminal AgentRuns become `cancelled`,
+completed runs keep `completed`, completed Findings/Evidence are preserved,
+workspaces are cleaned, and only then the project lock releases. The CLI
+distinguishes `cancellation_requested` / `cancelled` / `already_terminal`
+(additive shape, contract v1). A request whose owner died completes
+honestly on recovery while the run itself interrupts (never
+fake-cancelled). Crash recovery (existing run/agent/verification sweeper
+plus the retest nonterminal scan) leaves no permanent fake running states
+and retains completed work.
 
 ## Storage hygiene and configuration
 
@@ -157,6 +188,14 @@ one-JSON-stdout / stderr-diagnostics / stable-exit-code convention.
 `ISSUE_NOT_FOUND` exits 3 (not-found); terminal-cancel refusals exit 4
 (state conflict); `ISSUE_CONFLICT` and `PROJECT_COPY_DRIFT` are typed
 machine errors. `doctor cleanup` is dry-run unless `--apply` is passed.
+
+## Closure migration v6
+
+Forward-only, transactional, idempotent: un_control_requests +
+etest_control_requests (durable cooperative cancellation) and
+etest_specs (immutable, trigger-enforced; old RetestRuns read as
+legacy/absent, all new frozen-B Retests persist v2). Phase 6 and Phase 7-v1
+databases migrate cleanly with history readable.
 
 ## Private-beta boundaries
 

@@ -165,4 +165,21 @@ WHEN NEW.project_id IS NOT OLD.project_id OR NEW.issue_id IS NOT OLD.issue_id OR
 BEGIN SELECT RAISE(ABORT,'ENTITY_OWNERSHIP_IMMUTABLE'); END;
 `,
   },
+  {
+    version: 6,
+    name: 'phase7_closure_cancellation_retest_spec',
+    sql: `
+CREATE TABLE run_control_requests (id TEXT PRIMARY KEY, qa_run_id TEXT NOT NULL REFERENCES qa_runs(id) ON DELETE CASCADE, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, request_type TEXT NOT NULL CHECK(request_type IN ('cancel')), requesting_runtime_id TEXT NOT NULL, requested_at TEXT NOT NULL, acknowledged_at TEXT, completed_at TEXT, payload TEXT NOT NULL) STRICT;
+CREATE UNIQUE INDEX run_control_requests_run_type_idx ON run_control_requests(qa_run_id,request_type);
+CREATE INDEX run_control_requests_project_idx ON run_control_requests(project_id);
+CREATE TABLE retest_control_requests (id TEXT PRIMARY KEY, retest_run_id TEXT NOT NULL REFERENCES retest_runs(id) ON DELETE CASCADE, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, request_type TEXT NOT NULL CHECK(request_type IN ('cancel')), requesting_runtime_id TEXT NOT NULL, requested_at TEXT NOT NULL, acknowledged_at TEXT, completed_at TEXT, payload TEXT NOT NULL) STRICT;
+CREATE UNIQUE INDEX retest_control_requests_run_type_idx ON retest_control_requests(retest_run_id,request_type);
+CREATE INDEX retest_control_requests_project_idx ON retest_control_requests(project_id);
+CREATE TABLE retest_specs (retest_run_id TEXT PRIMARY KEY REFERENCES retest_runs(id) ON DELETE CASCADE, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, payload TEXT NOT NULL) STRICT;
+CREATE INDEX retest_specs_project_idx ON retest_specs(project_id);
+CREATE TRIGGER retest_specs_immutable BEFORE UPDATE ON retest_specs
+WHEN NEW.retest_run_id IS NOT OLD.retest_run_id OR NEW.project_id IS NOT OLD.project_id OR NEW.payload IS NOT OLD.payload
+BEGIN SELECT RAISE(ABORT,'RETEST_SPEC_IMMUTABLE'); END;
+`,
+  },
 ] as const;

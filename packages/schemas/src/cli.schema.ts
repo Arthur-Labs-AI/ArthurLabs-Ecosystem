@@ -390,8 +390,9 @@ export type RunMergeResult = z.infer<typeof RunMergeResultSchema>;
 export const RunCancelResultSchema = z
   .object({
     runId: QARunIdSchema,
-    status: z.literal('cancelled'),
+    status: z.enum(['cancellation_requested', 'cancelled', 'already_terminal']),
     cancelledAgents: NonNegativeIntSchema,
+    ownerAcknowledged: z.boolean().optional(),
     findings: z.object({ total: NonNegativeIntSchema }).strict(),
   })
   .strict();
@@ -501,9 +502,14 @@ export const RetestStartResultSchema = z
       'merging',
       'assessing',
     ]),
-    assessmentId: z.string().regex(/^reassess_[0-9A-HJKMNP-TV-Z]{26}$/),
-    result: z.enum(['fixed', 'still_reproducible', 'partially_fixed', 'inconclusive']),
-    targetRunId: QARunIdSchema,
+    // Absent when the retest terminalized before assessment (pre-freeze
+    // failure, cancellation): the RetestRun row carries the honest state.
+    assessmentId: z
+      .string()
+      .regex(/^reassess_[0-9A-HJKMNP-TV-Z]{26}$/)
+      .optional(),
+    result: z.enum(['fixed', 'still_reproducible', 'partially_fixed', 'inconclusive']).optional(),
+    targetRunId: QARunIdSchema.optional(),
   })
   .strict();
 export type RetestStartResult = z.infer<typeof RetestStartResultSchema>;
@@ -520,7 +526,7 @@ export type RetestShowResult = z.infer<typeof RetestShowResultSchema>;
 export const RetestCancelResultSchema = z
   .object({
     retestRunId: z.string().regex(/^retest_[0-9A-HJKMNP-TV-Z]{26}$/),
-    status: z.literal('cancelled'),
+    status: z.enum(['cancellation_requested', 'cancelled', 'already_terminal']),
   })
   .strict();
 export type RetestCancelResult = z.infer<typeof RetestCancelResultSchema>;

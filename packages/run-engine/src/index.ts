@@ -2,6 +2,7 @@ import {
   createAgentRunId,
   createQARunId,
   nowIsoTimestamp,
+  type AgentRunId,
   type AgentStackId,
   type ProjectId,
   type ProjectRevisionId,
@@ -140,12 +141,18 @@ export interface RunStatus {
 
 class RunTimeoutError extends Error {}
 
+export const CANCELLATION_POLL_INTERVAL_MS = 500;
+
 export class RunCoordinator {
   private readonly projects: ProjectManager;
   private readonly snapshots: SnapshotEngine;
   private readonly workspaces: WorkspaceFactory;
   private readonly activities: RunActivityProjector;
   private readonly exporter: RunExporter;
+  /** Runtime-local ownership (§10): adapters owned by THIS coordinator
+   *  instance only. Never persisted; the DB cancellation request bridges
+   *  processes to this map. */
+  private readonly activeAdapters = new Map<AgentRunId, HarnessAdapter>();
 
   constructor(
     private readonly dataRoot: string,
@@ -452,6 +459,7 @@ export class RunCoordinator {
     let workspace: HarnessWorkspace | undefined;
     let adapter: HarnessAdapter | undefined;
     const validator = new IncrementalHarnessEventValidator(input.run.id, agentRunId);
+    let cancelledByControlRequest = false;
     try {
       adapter = await input.registration.createAdapter({
         qaRunId: input.run.id,
@@ -480,6 +488,7 @@ export class RunCoordinator {
         workingCopyPath: input.workingCopy,
         baseline: { snapshotId: input.run.snapshotId, fileHashByPath: baselineHashes },
       });
+      this.activeAdapters.set(agentRunId, adapter);
       const request = HarnessRunRequestSchema.parse({
         schemaVersion: 1,
         agentRunId,
@@ -506,22 +515,40 @@ export class RunCoordinator {
       });
       input.onHarnessRequest?.(request);
       const timeoutMs = input.run.configuration.executionSafeguards?.runTimeoutMs ?? 2_000;
-      await this.consumeWithTimeout(adapter, request, timeoutMs, async (event) => {
-        this.requireRuntimeLease();
-        validator.accept(event);
-        this.repository.transaction(() => {
-          this.repository.appendHarnessEventWithinTransaction(input.run.id, event);
-          this.activities.project(event, input.run.id, input.rootActivityId);
-          if (event.type === 'investigation.plan.created') this.repository.savePlan(event.plan);
-          else if (event.type === 'investigation.hypothesis.discovered')
-            this.repository.saveHypothesis(event.hypothesis);
-          else if (event.type === 'finding.submitted') this.repository.saveFinding(event.finding);
-          else if (event.type === 'evidence.submitted')
-            this.repository.saveEvidence(event.evidence);
-          agentRun = this.projectAgentRunEvent(agentRun, event);
+      const consumeOutcome = await this.consumeWithTimeout(
+        adapter,
+        request,
+        timeoutMs,
+        async (event) => {
+          this.requireRuntimeLease();
+          validator.accept(event);
+          this.repository.transaction(() => {
+            this.repository.appendHarnessEventWithinTransaction(input.run.id, event);
+            this.activities.project(event, input.run.id, input.rootActivityId);
+            if (event.type === 'investigation.plan.created') this.repository.savePlan(event.plan);
+            else if (event.type === 'investigation.hypothesis.discovered')
+              this.repository.saveHypothesis(event.hypothesis);
+            else if (event.type === 'finding.submitted') this.repository.saveFinding(event.finding);
+            else if (event.type === 'evidence.submitted')
+              this.repository.saveEvidence(event.evidence);
+            agentRun = this.projectAgentRunEvent(agentRun, event);
+          });
+          input.onHarnessEventPersisted?.(event, agentRun);
+        },
+      );
+      if (consumeOutcome.cancelled) cancelledByControlRequest = true;
+      // Race safety (§12): reconcile against durable state before the
+      // terminal write — a control request may have terminalized this
+      // AgentRun as cancelled while the stream was finishing. A durably
+      // cancelled row must never be overwritten with completed.
+      agentRun = this.reconcileAgentRunBeforeTerminalWrite(agentRunId, agentRun);
+      if (cancelledByControlRequest && agentRun.status !== 'cancelled') {
+        agentRun = AgentRunSchema.parse({
+          ...agentRun,
+          status: 'cancelled',
+          completedAt: agentRun.completedAt ?? nowIsoTimestamp(),
         });
-        input.onHarnessEventPersisted?.(event, agentRun);
-      });
+      }
       agentRun = AgentRunSchema.parse({
         ...agentRun,
         runtimeIdentity: {
@@ -529,7 +556,7 @@ export class RunCoordinator {
           ...input.registration.runtimeIdentity,
         },
       });
-      this.repository.saveAgentRun(agentRun);
+      this.persistAgentRunUnlessCancelled(agentRunId, agentRun);
       validator.finish();
       const persisted = this.repository.getAgentRun(agentRunId);
       if (
@@ -581,7 +608,21 @@ export class RunCoordinator {
           retryable: typeof typed?.retryable === 'boolean' ? typed.retryable : !protocolViolation,
         },
       });
-      this.repository.saveAgentRun(agentRun);
+      // Race safety (§12): a durably cancelled row wins over a late local failure.
+      agentRun = this.reconcileAgentRunBeforeTerminalWrite(agentRunId, agentRun);
+      if (cancelledByControlRequest && agentRun.status !== 'cancelled') {
+        const reconciled = this.repository.getAgentRun(agentRunId);
+        if (reconciled === undefined || reconciled.status === agentRun.status) {
+          agentRun = AgentRunSchema.parse({
+            ...agentRun,
+            status: 'cancelled',
+            completedAt: agentRun.completedAt ?? nowIsoTimestamp(),
+          });
+        } else {
+          agentRun = reconciled;
+        }
+      }
+      this.persistAgentRunUnlessCancelled(agentRunId, agentRun);
       this.activities.finalizeAgent(
         agentRunId,
         'failed',
@@ -593,6 +634,7 @@ export class RunCoordinator {
             : 'Agent interrupted by transport loss',
       );
     } finally {
+      this.activeAdapters.delete(agentRunId);
       await adapter?.dispose();
       // Generic shutdown observability: after dispose(), surface any adapter
       // shutdown diagnostics as run warnings before workspace cleanup.
@@ -623,6 +665,26 @@ export class RunCoordinator {
         }
       }
     }
+  }
+
+  /** Race safety (§12): a durably terminal row (esp. cancelled) is never
+   *  overwritten by a stale local in-memory object. Returns the persisted
+   *  row when it is already terminal, otherwise the local candidate. */
+  private reconcileAgentRunBeforeTerminalWrite(agentRunId: AgentRunId, local: AgentRun): AgentRun {
+    const persisted = this.repository.getAgentRun(agentRunId);
+    if (persisted === undefined) return local;
+    if (
+      ['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(persisted.status)
+    ) {
+      return persisted;
+    }
+    return local;
+  }
+
+  private persistAgentRunUnlessCancelled(agentRunId: AgentRunId, local: AgentRun): void {
+    const persisted = this.repository.getAgentRun(agentRunId);
+    if (persisted !== undefined && persisted.status === 'cancelled') return;
+    this.repository.saveAgentRun(local);
   }
 
   private projectAgentRunEvent(agentRun: AgentRun, event: HarnessEvent): AgentRun {
@@ -658,26 +720,73 @@ export class RunCoordinator {
     return projected;
   }
 
+  /** Cooperative cancellation watcher (§9): polls the durable control
+   *  request while the provider stream blocks, then invokes adapter.cancel
+   *  on the OWNED adapter only. Returns true when a cancel was delivered
+   *  to this worker. */
+  private startCancellationWatcher(input: {
+    readonly qaRunId: QARunId;
+    readonly agentRunId: AgentRunId;
+    readonly adapter: HarnessAdapter;
+    readonly onCancelDelivered: () => void;
+  }): { stop: () => void; wasCancelDelivered: () => boolean } {
+    let delivered = false;
+    const timer = setInterval(() => {
+      try {
+        const request = this.repository.getRunControlRequest(input.qaRunId);
+        if (request === undefined || request.completedAt !== undefined) return;
+        const owned = this.activeAdapters.get(input.agentRunId);
+        if (owned === undefined || owned !== input.adapter) return;
+        if (delivered) return;
+        delivered = true;
+        input.onCancelDelivered();
+        void owned.cancel(input.agentRunId).catch(() => undefined);
+      } catch {
+        // Watcher must never break the worker stream; the owner still
+        // reconciles durable state at terminalization.
+      }
+    }, CANCELLATION_POLL_INTERVAL_MS);
+    if (typeof (timer as unknown as { unref?: unknown }).unref === 'function') {
+      (timer as unknown as { unref: () => void }).unref();
+    }
+    return { stop: () => clearInterval(timer), wasCancelDelivered: () => delivered };
+  }
+
   private async consumeWithTimeout(
     adapter: HarnessAdapter,
     request: ReturnType<typeof HarnessRunRequestSchema.parse>,
     timeoutMs: number,
     onEvent: (event: HarnessEvent) => Promise<void>,
-  ): Promise<void> {
+  ): Promise<{ cancelled: boolean }> {
     let timer: NodeJS.Timeout | undefined;
+    let watcher: { stop: () => void; wasCancelDelivered: () => boolean } | undefined;
+    let cancelDelivered = false;
     const timeout = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => reject(new RunTimeoutError()), timeoutMs);
     });
     try {
+      watcher = this.startCancellationWatcher({
+        qaRunId: request.qaRunId,
+        agentRunId: request.agentRunId,
+        adapter,
+        onCancelDelivered: () => {
+          cancelDelivered = true;
+        },
+      });
       const consume = (async () => {
-        for await (const event of adapter.run(request)) await onEvent(event);
+        for await (const event of adapter.run(request)) {
+          if (watcher?.wasCancelDelivered() === true) break;
+          await onEvent(event);
+        }
       })();
       await Promise.race([consume, timeout]);
+      return { cancelled: watcher?.wasCancelDelivered() === true || cancelDelivered };
     } catch (cause) {
       if (cause instanceof RunTimeoutError) await adapter.cancel(request.agentRunId);
       throw cause;
     } finally {
       if (timer !== undefined) clearTimeout(timer);
+      watcher?.stop();
     }
   }
 
@@ -781,40 +890,144 @@ export class RunCoordinator {
     return this.exporter.export(runId, format);
   }
 
-  /** Phase 7 stable cancellation (§45-§47). Marks a nonterminal run
-   *  cancelled: nonterminal AgentRuns become cancelled (completed runs
-   *  keep their status); completed Findings/Evidence are preserved (§47).
-   *  Only the owning runtime lease may cancel; terminal runs are
-   *  rejected. In-flight adapters are signalled by their owning worker
-   *  via cancel(); detached execution will extend this path. */
-  cancelRun(runId: QARunId): { runId: QARunId; status: 'cancelled'; cancelledAgents: number } {
+  /** Phase 7 closure cooperative cancellation (§5-§16).
+   *
+   *  Any live runtime may request cancellation: the request is persisted
+   *  durably (idempotent per run) and the OWNING runtime observes it via
+   *  its worker watchers, invokes adapter.cancel() on owned adapters,
+   *  then terminalizes honestly. When this coordinator IS the owner with
+   *  live adapters, it acknowledges and cancels synchronously; otherwise
+   *  it records `cancellation_requested` without faking terminal state.
+   *
+   *  Completed AgentRuns keep their status and completed
+   *  Findings/Evidence are preserved. Lock release happens only after
+   *  genuine terminalization (§49). */
+  requestRunCancellation(runId: QARunId): {
+    readonly runId: QARunId;
+    readonly status: 'cancellation_requested' | 'cancelled' | 'already_terminal';
+    readonly cancelledAgents: number;
+    readonly ownerAcknowledged: boolean;
+  } {
     const lease = this.requireRuntimeLease();
     const run = this.repository.getRun(runId);
     if (run === undefined) throw new RunEngineError('RUN_NOT_FOUND', 'Run not found: ' + runId);
     if (['completed', 'partial', 'failed', 'cancelled'].includes(run.status)) {
-      throw new RunEngineError(
-        'RUN_NOT_COMPLETE',
-        'Run ' + runId + ' is already terminal (' + run.status + '); nothing to cancel',
-      );
+      return { runId, status: 'already_terminal', cancelledAgents: 0, ownerAcknowledged: false };
     }
-    if (run.runtimeInstanceId !== undefined && !lease.isFresh(run.runtimeInstanceId)) {
-      throw new RunEngineError(
-        'RUN_EXECUTION_FAILED',
-        'Run ' + runId + ' is owned by another runtime instance; cancellation refused',
-      );
+    const existing = this.repository.getRunControlRequest(runId);
+    const timestamp = nowIsoTimestamp();
+    if (existing === undefined) {
+      this.repository.saveRunControlRequest({
+        id: 'cancel_' + runId.slice(4),
+        qaRunId: runId,
+        projectId: run.projectId,
+        requestType: 'cancel',
+        requestingRuntimeId: lease.instanceId,
+        requestedAt: timestamp,
+      });
+    }
+    const isOwner = this.ownsActiveRun(run);
+    if (!isOwner) {
+      return {
+        runId,
+        status: 'cancellation_requested',
+        cancelledAgents: 0,
+        ownerAcknowledged: false,
+      };
+    }
+    return this.acknowledgeRunCancellation(runId);
+  }
+
+  private ownsActiveRun(run: QARun): boolean {
+    const lease = this.requireRuntimeLease();
+    if (run.runtimeInstanceId !== undefined && lease.isFresh(run.runtimeInstanceId)) return true;
+    if (run.runtimeInstanceId !== undefined) return false;
+    const copy = this.repository.getManagedCopy(run.projectId);
+    if (
+      copy?.state === 'locked_for_run' &&
+      copy.lockedByQARunId === run.id &&
+      copy.runtimeInstanceId !== undefined &&
+      lease.isFresh(copy.runtimeInstanceId)
+    ) {
+      return true;
+    }
+    // Same-process owner: live adapters registered locally prove ownership
+    // even when the lease identity differs (tests, detached recovery).
+    for (const agentRun of this.repository.listAgentRuns(run.id)) {
+      if (this.activeAdapters.has(agentRun.id)) return true;
+    }
+    return false;
+  }
+
+  /** Owner-side acknowledge: cancel owned adapters, reconcile durable
+   *  state, terminalize honestly, clean workspaces, release the lock.
+   *  Only the owner calls this; it is idempotent. */
+  acknowledgeRunCancellation(runId: QARunId): {
+    readonly runId: QARunId;
+    readonly status: 'cancellation_requested' | 'cancelled' | 'already_terminal';
+    readonly cancelledAgents: number;
+    readonly ownerAcknowledged: boolean;
+  } {
+    const lease = this.requireRuntimeLease();
+    const run = this.repository.getRun(runId);
+    if (run === undefined) throw new RunEngineError('RUN_NOT_FOUND', 'Run not found: ' + runId);
+    if (['completed', 'partial', 'failed', 'cancelled'].includes(run.status)) {
+      const pending = this.repository.getRunControlRequest(runId);
+      if (pending !== undefined && pending.completedAt === undefined) {
+        this.repository.saveRunControlRequest({ ...pending, completedAt: nowIsoTimestamp() });
+      }
+      return { runId, status: 'already_terminal', cancelledAgents: 0, ownerAcknowledged: false };
     }
     const timestamp = nowIsoTimestamp();
+    const pending = this.repository.getRunControlRequest(runId);
+    if (pending !== undefined && pending.acknowledgedAt === undefined) {
+      this.repository.saveRunControlRequest({ ...pending, acknowledgedAt: timestamp });
+    }
+    // Cancel ONLY owned adapters (§11): never touch foreign processes.
+    const ownedAgentIds = this.repository
+      .listAgentRuns(run.id)
+      .filter((agentRun) => this.activeAdapters.has(agentRun.id))
+      .map((agentRun) => agentRun.id);
+    for (const agentRunId of ownedAgentIds) {
+      const adapter = this.activeAdapters.get(agentRunId);
+      if (adapter === undefined) continue;
+      try {
+        lease.assertHealthy();
+      } catch {
+        break;
+      }
+      void adapter.cancel(agentRunId).catch(() => undefined);
+    }
+    // Honest terminalization: completed agents keep completed (§15); only
+    // nonterminal agents become cancelled. Reconcile durable state first.
     let cancelledAgents = 0;
     this.repository.transaction(() => {
+      const fresh = this.repository.getRun(run.id);
+      if (
+        fresh !== undefined &&
+        ['completed', 'partial', 'failed', 'cancelled'].includes(fresh.status)
+      ) {
+        return;
+      }
       for (const agentRun of this.repository.listAgentRuns(run.id)) {
+        const reconciled = this.repository.getAgentRun(agentRun.id);
+        const current = reconciled ?? agentRun;
         if (
-          ['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(agentRun.status)
-        )
+          ['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(current.status)
+        ) {
           continue;
-        assertAgentRunTransition(agentRun.status, 'cancelled');
+        }
+        // Only terminalize agents this owner actually owns: either the
+        // adapter is (or was) locally registered, or no fresh owner exists.
+        const owned =
+          ownedAgentIds.includes(current.id) ||
+          run.runtimeInstanceId === undefined ||
+          !lease.isFresh(run.runtimeInstanceId as never);
+        if (!owned) continue;
+        assertAgentRunTransition(current.status, 'cancelled');
         this.repository.saveAgentRun(
           AgentRunSchema.parse({
-            ...agentRun,
+            ...current,
             status: 'cancelled',
             completedAt: timestamp,
           }),
@@ -834,14 +1047,78 @@ export class RunCoordinator {
         QARunSchema.parse({ ...run, status: 'cancelled', completedAt: timestamp }),
       );
     });
-    this.projects.recoverAbandonedRunLock(run.projectId, run.id);
-    return { runId, status: 'cancelled', cancelledAgents };
+    const terminal = this.repository.getRun(run.id);
+    if (
+      terminal !== undefined &&
+      ['completed', 'partial', 'failed', 'cancelled'].includes(terminal.status)
+    ) {
+      const done = this.repository.getRunControlRequest(runId);
+      if (done !== undefined && done.completedAt === undefined) {
+        this.repository.saveRunControlRequest({ ...done, completedAt: nowIsoTimestamp() });
+      }
+      // Lock release only after genuine terminalization (§49).
+      try {
+        this.projects.unlockProjectAfterRun(run.projectId, run.id);
+      } catch {
+        this.projects.recoverAbandonedRunLock(run.projectId, run.id);
+      }
+      return { runId, status: 'cancelled', cancelledAgents, ownerAcknowledged: true };
+    }
+    return { runId, status: 'cancellation_requested', cancelledAgents, ownerAcknowledged: true };
+  }
+
+  /** Legacy single-process cancel: request + immediately acknowledge as
+   *  owner. Preserved for in-process callers (tests, retest cascade).
+   *  Cross-process callers should use requestRunCancellation and let the
+   *  owner acknowledge. */
+  cancelRun(runId: QARunId): { runId: QARunId; status: 'cancelled'; cancelledAgents: number } {
+    const requested = this.requestRunCancellation(runId);
+    if (requested.status === 'already_terminal') {
+      const terminal = this.repository.getRun(runId);
+      throw new RunEngineError(
+        'RUN_NOT_COMPLETE',
+        'Run ' +
+          runId +
+          ' is already terminal (' +
+          (terminal?.status ?? 'unknown') +
+          '); nothing to cancel',
+      );
+    }
+    if (requested.status === 'cancelled') {
+      return { runId, status: 'cancelled' as const, cancelledAgents: requested.cancelledAgents };
+    }
+    const acknowledged = this.acknowledgeRunCancellation(runId);
+    if (acknowledged.status !== 'cancelled') {
+      throw new RunEngineError(
+        'RUN_EXECUTION_FAILED',
+        'Run ' + runId + ' cancellation requested; owner has not terminalized yet',
+      );
+    }
+    return { runId, status: 'cancelled' as const, cancelledAgents: acknowledged.cancelledAgents };
   }
 
   async recover(): Promise<void> {
     const lease = this.requireRuntimeLease();
     await this.projects.recoverAbandonedOperations(lease);
     const timestamp = nowIsoTimestamp();
+    // Closure §16: a cancellation request whose owner died must not stay
+    // `cancellation_requested` forever. If the requesting and owning
+    // runtimes are both stale, complete the request record honestly — the
+    // run itself terminalizes as interrupted below (never fake-cancelled).
+    for (const pending of this.repository.listPendingRunControlRequests()) {
+      const run = this.repository.getRun(pending.qaRunId as QARunId);
+      if (run === undefined) continue;
+      if (['completed', 'partial', 'failed', 'cancelled'].includes(run.status)) {
+        this.repository.saveRunControlRequest({ ...pending, completedAt: timestamp });
+        continue;
+      }
+      const ownerFresh =
+        (run.runtimeInstanceId !== undefined && lease.isFresh(run.runtimeInstanceId as never)) ||
+        lease.isFresh(pending.requestingRuntimeId as never);
+      if (!ownerFresh) {
+        this.repository.saveRunControlRequest({ ...pending, completedAt: timestamp });
+      }
+    }
     for (const run of this.repository.listNonterminalRuns()) {
       const managedCopy = this.repository.getManagedCopy(run.projectId);
       const lockOwner =

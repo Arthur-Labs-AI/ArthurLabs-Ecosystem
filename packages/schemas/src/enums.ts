@@ -2,6 +2,13 @@
 export const QARUN_MODES = ['quick', 'full', 'targeted', 'ci', 'verify', 'retest', 'cicd'] as const;
 export type QARunMode = (typeof QARUN_MODES)[number];
 
+/** Phase 7 closure (§30-§33): the canonical production QARun execution
+ *  modes are full | targeted. RETEST is a first-class cross-revision
+ *  workflow (RetestRun + child FULL/TARGETED QARun), not a QARun mode.
+ *  QARUN_MODES retains legacy IDs so historical rows still decode. */
+export const CANONICAL_QA_RUN_MODES = ['full', 'targeted'] as const;
+export type CanonicalQARunMode = (typeof CANONICAL_QA_RUN_MODES)[number];
+
 export const QARUN_STATUSES = [
   'created',
   'preflight',

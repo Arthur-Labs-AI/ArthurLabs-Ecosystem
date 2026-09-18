@@ -7,7 +7,6 @@ import {
 } from '@qa/persistence';
 import { ProjectManager, ProjectManagerError } from '@qa/project-manager';
 import {
-  cancelRetestRun,
   createFakeHarnessRegistry,
   ingestMergeIssues,
   mergeRun,
@@ -399,11 +398,19 @@ export async function executeCommand(
   if (input.command === 'run.cancel') {
     const runId = parseArgument(QARunIdSchema, input.runId, 'run-id');
     return withMutationRuntime(async ({ runs, repository }) => {
-      const outcome = runs.cancelRun(runId);
+      // Cooperative cross-process semantics (§8, §13): persist the durable
+      // request; acknowledge inline when this process owns the run.
+      // CLI_CONTRACT_VERSION stays 1 (additive shape).
+      const requested = runs.requestRunCancellation(runId);
+      const outcome =
+        requested.status === 'cancelled' || requested.status === 'already_terminal'
+          ? requested
+          : runs.acknowledgeRunCancellation(runId);
       return success(input.command, {
         runId: outcome.runId,
         status: outcome.status,
         cancelledAgents: outcome.cancelledAgents,
+        ownerAcknowledged: outcome.ownerAcknowledged,
         findings: { total: repository.countRunFindings(runId) },
       });
     }, options);
@@ -502,11 +509,11 @@ export async function executeCommand(
         });
         return success(input.command, {
           retestRunId: result.retestRun.id,
-          issueId: result.assessment.issueId,
+          issueId: result.retestRun.issueId,
           status: result.retestRun.status,
-          assessmentId: result.assessment.id,
-          result: result.assessment.result,
-          targetRunId: result.targetRun.id,
+          ...(result.assessment === undefined ? {} : { assessmentId: result.assessment.id }),
+          ...(result.assessment === undefined ? {} : { result: result.assessment.result }),
+          ...(result.targetRun === undefined ? {} : { targetRunId: result.targetRun.id }),
         });
       },
       options,
@@ -535,7 +542,22 @@ export async function executeCommand(
           'Retest cancel requires an active runtime lease',
         );
       const registry = new HarnessAdapterRegistry();
-      const outcome = cancelRetestRun({ dataRoot, repository, lease, registry }, input.retestRunId);
+      const { requestRetestCancellation, acknowledgeRetestCancellation } =
+        await import('@qa/run-engine');
+      const requested = requestRetestCancellation(
+        { dataRoot, repository, lease, registry },
+        input.retestRunId,
+      );
+      if (requested.status !== 'cancellation_requested') {
+        return success(input.command, {
+          retestRunId: requested.retestRunId,
+          status: requested.status,
+        });
+      }
+      const outcome = acknowledgeRetestCancellation(
+        { dataRoot, repository, lease, registry },
+        input.retestRunId,
+      );
       return success(input.command, { retestRunId: outcome.retestRunId, status: outcome.status });
     }, options);
   }

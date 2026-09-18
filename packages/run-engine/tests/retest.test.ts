@@ -352,7 +352,7 @@ describe('Phase 7 retest orchestration (§90)', () => {
       issueId,
       { verify: stubVerify('pass') as never, runTimeoutMs: 30_000 },
     );
-    expect(result.assessment.result).toBe('fixed');
+    expect(result.assessment?.result).toBe('fixed');
     expect(result.retestRun.status).toBe('completed');
     expect(result.retestRun.sourceSnapshotId).not.toBe(result.retestRun.targetSnapshotId);
     expect(result.targetOccurrence).toBeDefined();
@@ -394,7 +394,7 @@ describe('Phase 7 retest orchestration (§90)', () => {
       issueId,
       { verify: stubVerify('fail') as never, runTimeoutMs: 30_000 },
     );
-    expect(result.assessment.result).toBe('still_reproducible');
+    expect(result.assessment?.result).toBe('still_reproducible');
     expect(projectIssueState(f.repository.listIssueEvents(issueId))).toBe('still_reproducible');
     f.database.close();
   }, 180_000);

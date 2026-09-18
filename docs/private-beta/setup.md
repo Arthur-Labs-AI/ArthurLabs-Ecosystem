@@ -18,7 +18,7 @@ clone to a first verified run.
     `muse-spark-1.3-contributor`). See `docs/setup/muse-code.md`.
   - DeepSeek: DeepSeek Harness binary + `SENTRY_DEEPSEEK_MODEL` +
     `DEEPSEEK_API_KEY`.
-  - GLM: Claude Code binary + Z.AI configuration.
+  - GLM: Claude Code executable on PATH + SENTRY_GLM_MODEL (exact model id) + ANTHROPIC_BASE_URL (trusted Z.AI Anthropic-compatible endpoint, e.g. https://api.z.ai/api/anthropic) + ANTHROPIC_AUTH_TOKEN. Doctor checks presence/version; live authentication is proven only by a real session (configured != live-authenticated).
 
 Sentry is software-type agnostic: it never requires .NET, Python, Java,
 Node, or Docker globally. Project doctor reports only what looks applicable
@@ -46,6 +46,8 @@ qa agent doctor muse --json
 qa agent doctor deepseek --json
 qa agent doctor glm --json
 ```
+
+Configured is not live-authenticated: qa agent doctor reports configuration/binary presence truthfully (configured, inaryAvailable) and marks untimeVerified only after a real session.
 
 Unavailable stacks report `unavailable`; Sentry never substitutes another
 model behind your back.

@@ -7,6 +7,7 @@ export type RunEngineErrorCode =
   | 'ISSUE_NOT_FOUND'
   | 'ISSUE_CONFLICT'
   | 'PROJECT_COPY_DRIFT'
+  | 'RUN_CANCELLED'
   | 'RUN_EXECUTION_FAILED';
 
 export class RunEngineError extends Error {

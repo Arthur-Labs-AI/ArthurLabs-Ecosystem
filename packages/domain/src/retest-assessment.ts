@@ -233,18 +233,22 @@ export function compareRetestSteps(input: {
       if (failureSignature(target.expected) === failureSignature(sourceExpected)) {
         assertions.push({ assertionId: key, reproducesOnTarget: true, passesOnTarget: false });
       } else {
-        // Same command now fails differently: the original signature is
-        // gone (fixed w.r.t. the issue) but the moved problem is recorded.
+        // Closure §54-§55 (conservative): the same target still fails for
+        // a materially different reason. The original signature is absent
+        // but target behavior is unhealthy, so this is NOT fully fixed.
+        // Record it as an indecisive observation so the classifier yields
+        // inconclusive (never fixed); a human may refine to partially_fixed
+        // when additional assertions show genuine partial correction.
         limitations.push(
           'Target replay for ' +
             key +
-            ' fails with a different signature on revision B: ' +
+            ' still fails on revision B with a different signature: ' +
             failureSignature(target.expected) +
             ' (was ' +
             failureSignature(sourceExpected) +
-            ').',
+            '). Original signature absent but target unhealthy; not fixed.',
         );
-        assertions.push({ assertionId: key, reproducesOnTarget: false, passesOnTarget: true });
+        assertions.push({ assertionId: key, reproducesOnTarget: false, passesOnTarget: false });
       }
       continue;
     }

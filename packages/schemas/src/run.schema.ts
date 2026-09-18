@@ -118,19 +118,21 @@ const QARunBaseSchema = z
   })
   .strict();
 
-const STANDARD_QA_RUN_MODES = QARUN_MODES.filter((mode) => mode !== 'retest') as [
-  Exclude<(typeof QARUN_MODES)[number], 'retest'>,
-  ...Exclude<(typeof QARUN_MODES)[number], 'retest'>[],
-];
-
+/** Production QARun modes: full | targeted (§30-§33). The `retest`
+ *  branch below is a LEGACY decoder for historical rows only — production
+ *  must never create QARun mode=retest (use RetestRun + child run). */
 export const QARunSchema = z.discriminatedUnion('mode', [
-  QARunBaseSchema.extend({ mode: z.enum(STANDARD_QA_RUN_MODES) }).strict(),
+  QARunBaseSchema.extend({ mode: z.enum(['full', 'targeted'] as const) }).strict(),
   QARunBaseSchema.extend({
     mode: z.literal('retest'),
     retestTarget: RetestTargetSchema,
     retestResult: RetestResultSchema.optional(),
   }).strict(),
 ]);
+
+export const CanonicalQARunSchema = QARunBaseSchema.extend({
+  mode: z.enum(['full', 'targeted'] as const),
+}).strict();
 export type QARun = z.infer<typeof QARunSchema>;
 
 export const AgentRuntimeIdentitySchema = z

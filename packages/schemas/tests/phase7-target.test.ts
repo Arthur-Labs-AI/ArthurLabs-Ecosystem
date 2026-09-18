@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { QAModeSchema, QARunSchema, TargetSpecSchema, targetSpecDigest } from '../src/index.js';
+import {
+  CANONICAL_QA_MODES,
+  QAModeSchema,
+  QARunSchema,
+  TargetSpecSchema,
+  targetSpecDigest,
+} from '../src/index.js';
 
 const RUN = {
   schemaVersion: 1,
@@ -25,11 +31,12 @@ const SPEC = {
   createdAt: '2026-09-09T19:00:00.000Z',
 } as const;
 
-describe('Phase 7 canonical QA modes (§6)', () => {
-  it('accepts the three first-class modes explicitly', () => {
+describe('Phase 7 canonical QA modes (closure §30-§33)', () => {
+  it('accepts canonical execution modes; retest stays a legacy workflow label', () => {
     expect(QAModeSchema.parse('full')).toBe('full');
     expect(QAModeSchema.parse('targeted')).toBe('targeted');
     expect(QAModeSchema.parse('retest')).toBe('retest');
+    expect(CANONICAL_QA_MODES).toEqual(['full', 'targeted']);
   });
   it('rejects legacy inferred modes as QAMode', () => {
     for (const mode of ['quick', 'ci', 'verify', 'cicd']) {

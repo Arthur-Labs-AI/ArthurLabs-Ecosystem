@@ -45,6 +45,7 @@ import {
   MergeResultSchema,
   RetestAssessmentSchema,
   RetestRunSchema,
+  RetestSpecSchema,
   TargetSpecSchema,
   VerificationAssertionSchema,
   VerificationObservationSchema,
@@ -58,6 +59,7 @@ import {
   type MergeResult,
   type RetestAssessment,
   type RetestRun,
+  type RetestSpec,
   type TargetSpec,
   type VerificationAssertion,
   type VerificationObservation,
@@ -1180,6 +1182,165 @@ export class SentryRepository {
         .prepare('SELECT payload FROM retest_assessments WHERE retest_run_id=? ORDER BY id')
         .all(retestRunId) as unknown as PayloadRow[],
       'RetestAssessment',
+    );
+  }
+
+  /** Phase 7 closure (§7): durable cooperative cancellation requests.
+   *  Idempotent per (run, request_type): the owner runtime observes the
+   *  request, cancels owned adapters, then terminalizes. */
+  saveRunControlRequest(value: {
+    readonly id: string;
+    readonly qaRunId: string;
+    readonly projectId: string;
+    readonly requestType: string;
+    readonly requestingRuntimeId: string;
+    readonly requestedAt: string;
+    readonly acknowledgedAt?: string;
+    readonly completedAt?: string;
+  }): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO run_control_requests(id,qa_run_id,project_id,request_type,requesting_runtime_id,requested_at,acknowledged_at,completed_at,payload) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(qa_run_id,request_type) DO UPDATE SET acknowledged_at=excluded.acknowledged_at,completed_at=excluded.completed_at,payload=excluded.payload',
+      )
+      .run(
+        value.id,
+        value.qaRunId,
+        value.projectId,
+        value.requestType,
+        value.requestingRuntimeId,
+        value.requestedAt,
+        value.acknowledgedAt ?? null,
+        value.completedAt ?? null,
+        JSON.stringify(value),
+      );
+  }
+
+  getRunControlRequest(
+    qaRunId: string,
+    requestType = 'cancel',
+  ):
+    | {
+        readonly id: string;
+        readonly qaRunId: string;
+        readonly projectId: string;
+        readonly requestType: string;
+        readonly requestingRuntimeId: string;
+        readonly requestedAt: string;
+        readonly acknowledgedAt?: string;
+        readonly completedAt?: string;
+      }
+    | undefined {
+    const row = this.database.connection
+      .prepare('SELECT payload FROM run_control_requests WHERE qa_run_id=? AND request_type=?')
+      .get(qaRunId, requestType) as PayloadRow | undefined;
+    if (row === undefined) return undefined;
+    return JSON.parse(row.payload) as {
+      readonly id: string;
+      readonly qaRunId: string;
+      readonly projectId: string;
+      readonly requestType: string;
+      readonly requestingRuntimeId: string;
+      readonly requestedAt: string;
+      readonly acknowledgedAt?: string;
+      readonly completedAt?: string;
+    };
+  }
+
+  listPendingRunControlRequests(): Array<{
+    readonly id: string;
+    readonly qaRunId: string;
+    readonly projectId: string;
+    readonly requestType: string;
+    readonly requestingRuntimeId: string;
+    readonly requestedAt: string;
+    readonly acknowledgedAt?: string;
+    readonly completedAt?: string;
+  }> {
+    const rows = this.database.connection
+      .prepare(
+        'SELECT payload FROM run_control_requests WHERE completed_at IS NULL ORDER BY requested_at',
+      )
+      .all() as unknown as PayloadRow[];
+    return rows.map((row) => JSON.parse(row.payload));
+  }
+
+  saveRetestControlRequest(value: {
+    readonly id: string;
+    readonly retestRunId: string;
+    readonly projectId: string;
+    readonly requestType: string;
+    readonly requestingRuntimeId: string;
+    readonly requestedAt: string;
+    readonly acknowledgedAt?: string;
+    readonly completedAt?: string;
+  }): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO retest_control_requests(id,retest_run_id,project_id,request_type,requesting_runtime_id,requested_at,acknowledged_at,completed_at,payload) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(retest_run_id,request_type) DO UPDATE SET acknowledged_at=excluded.acknowledged_at,completed_at=excluded.completed_at,payload=excluded.payload',
+      )
+      .run(
+        value.id,
+        value.retestRunId,
+        value.projectId,
+        value.requestType,
+        value.requestingRuntimeId,
+        value.requestedAt,
+        value.acknowledgedAt ?? null,
+        value.completedAt ?? null,
+        JSON.stringify(value),
+      );
+  }
+
+  getRetestControlRequest(
+    retestRunId: string,
+    requestType = 'cancel',
+  ):
+    | {
+        readonly id: string;
+        readonly retestRunId: string;
+        readonly projectId: string;
+        readonly requestType: string;
+        readonly requestingRuntimeId: string;
+        readonly requestedAt: string;
+        readonly acknowledgedAt?: string;
+        readonly completedAt?: string;
+      }
+    | undefined {
+    const row = this.database.connection
+      .prepare(
+        'SELECT payload FROM retest_control_requests WHERE retest_run_id=? AND request_type=?',
+      )
+      .get(retestRunId, requestType) as PayloadRow | undefined;
+    if (row === undefined) return undefined;
+    return JSON.parse(row.payload) as {
+      readonly id: string;
+      readonly retestRunId: string;
+      readonly projectId: string;
+      readonly requestType: string;
+      readonly requestingRuntimeId: string;
+      readonly requestedAt: string;
+      readonly acknowledgedAt?: string;
+      readonly completedAt?: string;
+    };
+  }
+
+  /** Phase 7 closure (§35-§39): immutable RetestSpec per frozen target.
+   *  Insert-only; the v6 trigger rejects any mutation. */
+  saveRetestSpec(value: RetestSpec, projectId: ProjectId): void {
+    this.database.connection
+      .prepare(
+        'INSERT INTO retest_specs(retest_run_id,project_id,payload) VALUES (?,?,?) ON CONFLICT(retest_run_id) DO NOTHING',
+      )
+      .run(value.retestRunId, projectId, JSON.stringify(value));
+  }
+
+  getRetestSpec(retestRunId: string): RetestSpec | undefined {
+    return decode(
+      RetestSpecSchema,
+      this.database.connection
+        .prepare('SELECT payload FROM retest_specs WHERE retest_run_id=?')
+        .get(retestRunId) as PayloadRow | undefined,
+      'RetestSpec ' + retestRunId,
     );
   }
 

@@ -93,29 +93,49 @@ describe('Phase 7 retest classifier (§18-§22, §84-§87)', () => {
   });
 });
 
-describe('Phase 7 RetestSpec (§25, §78)', () => {
-  it('accepts a cross-revision spec with distinct snapshots', () => {
-    const spec = RetestSpecSchema.parse({
-      schemaVersion: 1,
+describe('Phase 7 RetestSpec v2 (closure §34-§39)', () => {
+  const SPEC = {
+    schemaVersion: 1,
+    retestRunId: 'retest_01K7777777777777777777B8WD',
+    issueId: 'issue_01K7777777777777777777B8W1',
+    sourceOccurrenceId: 'occ_01K7777777777777777777B8W2',
+    sourceSnapshotId: 'snap_01K7777777777777777777A8W2',
+    targetSnapshotId: 'snap_01K7777777777777777777B8WC',
+    sourceMergeResultId: 'merge_01K7777777777777777777B8WA',
+    sourceFindingClusterId: 'cluster_01K7777777777777777777B8WB',
+    sourceRevisionId: 'rev_01K7777777777777777777A8W9',
+    targetRevisionId: 'rev_01K7777777777777777777B8WE',
+    agentStackIds: ['stack_muse_main'],
+    historicalPaths: ['src/auth/legacy-token.ts'],
+    resolvedTargetPaths: ['src/auth'],
+    resolutionStrategy: 'nearest_ancestor',
+    recipeVersion: 3,
+    retestVersion: 2,
+    inputDigest: retestInputDigest({
       issueId: 'issue_01K7777777777777777777B8W1',
       sourceOccurrenceId: 'occ_01K7777777777777777777B8W2',
       sourceSnapshotId: 'snap_01K7777777777777777777A8W2',
       targetSnapshotId: 'snap_01K7777777777777777777B8WC',
+      agentStackIds: ['stack_muse_main'],
+      recipeVersion: 3,
+      sourceRevisionId: 'rev_01K7777777777777777777A8W9',
+      targetRevisionId: 'rev_01K7777777777777777777B8WE',
       sourceMergeResultId: 'merge_01K7777777777777777777B8WA',
       sourceFindingClusterId: 'cluster_01K7777777777777777777B8WB',
-    });
+      resolvedTargetPaths: ['src/auth'],
+      retestVersion: 2,
+    }),
+    createdAt: '2026-09-18T00:00:00.000Z',
+  } as const;
+  it('accepts a cross-revision spec with distinct snapshots', () => {
+    const spec = RetestSpecSchema.parse(SPEC);
     expect(spec.targetSnapshotId).not.toBe(spec.sourceSnapshotId);
   });
   it('rejects identical source and target snapshots (§15)', () => {
     expect(
       RetestSpecSchema.safeParse({
-        schemaVersion: 1,
-        issueId: 'issue_01K7777777777777777777B8W1',
-        sourceOccurrenceId: 'occ_01K7777777777777777777B8W2',
-        sourceSnapshotId: 'snap_01K7777777777777777777A8W2',
+        ...SPEC,
         targetSnapshotId: 'snap_01K7777777777777777777A8W2',
-        sourceMergeResultId: 'merge_01K7777777777777777777B8WA',
-        sourceFindingClusterId: 'cluster_01K7777777777777777777B8WB',
       }).success,
     ).toBe(false);
   });
@@ -138,7 +158,7 @@ describe('Phase 7 RetestRun lifecycle', () => {
   const RUN = {
     schemaVersion: 1,
     id: 'retest_01K7777777777777777777B8WD',
-    retestVersion: 1,
+    retestVersion: 2,
     projectId: 'proj_01K7777777777777777777A8W1',
     issueId: 'issue_01K7777777777777777777B8W1',
     sourceProjectRevisionId: 'rev_01K7777777777777777777A8W9',
@@ -175,7 +195,7 @@ describe('Phase 7 RetestRun lifecycle', () => {
     const assessment = RetestAssessmentSchema.parse({
       schemaVersion: 1,
       id: 'reassess_01K7777777777777777777B8WF',
-      retestVersion: 1,
+      retestVersion: 2,
       retestRunId: 'retest_01K7777777777777777777B8WD',
       issueId: 'issue_01K7777777777777777777B8W1',
       projectId: 'proj_01K7777777777777777777A8W1',
@@ -190,6 +210,27 @@ describe('Phase 7 RetestRun lifecycle', () => {
       assessedAt: '2026-09-10T19:00:00.000Z',
     });
     expect(assessment.result).toBe('fixed');
+  });
+  it('accepts an honest assessment with absent target merge (closure §28)', () => {
+    const assessment = RetestAssessmentSchema.parse({
+      schemaVersion: 1,
+      id: 'reassess_01K7777777777777777777B8WF',
+      retestVersion: 2,
+      retestRunId: 'retest_01K7777777777777777777B8WD',
+      issueId: 'issue_01K7777777777777777777B8W1',
+      projectId: 'proj_01K7777777777777777777A8W1',
+      sourceRevisionId: 'rev_01K7777777777777777777A8W9',
+      targetRevisionId: 'rev_01K7777777777777777777B8WE',
+      sourceOccurrenceId: 'occ_01K7777777777777777777B8W2',
+      sourceMergeResultId: 'merge_01K7777777777777777777B8WA',
+      targetQaRunId: 'run_01K7777777777777777777B8WG',
+      newEvidenceIds: [],
+      result: 'inconclusive',
+      rationale: 'Target merge failed.',
+      limitations: ['Target merge failed: boom'],
+      assessedAt: '2026-09-10T19:00:00.000Z',
+    });
+    expect(assessment.targetMergeResultId).toBeUndefined();
   });
 });
 
