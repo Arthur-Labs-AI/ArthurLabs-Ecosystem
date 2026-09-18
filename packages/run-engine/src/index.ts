@@ -247,6 +247,56 @@ export class RunCoordinator {
       });
       if (snapshot.contentHash !== revision.contentHash) throw new Error('PROJECT_COPY_DRIFT');
       const createdAt = nowIsoTimestamp();
+      const lineage: QARunLineage | undefined =
+        options.lineage === undefined
+          ? undefined
+          : {
+              ...(options.lineage.parentRunId === undefined
+                ? {}
+                : { parentRunId: options.lineage.parentRunId }),
+              ...(options.lineage.sourceRevisionId === undefined
+                ? {}
+                : { sourceRevisionId: options.lineage.sourceRevisionId }),
+              ...(options.lineage.targetRevisionId === undefined
+                ? {}
+                : { targetRevisionId: options.lineage.targetRevisionId }),
+            };
+      // Micro-patch §7: persist the initial child QARun row BEFORE the
+      // frozen hook so callbacks (Retest targetQaRunId) can reference it
+      // without violating the qa_runs FK. Status agents_running is the
+      // existing pre-execution state (minimum change — no new status).
+      // The hook may still adjust mode before agents begin (§8); the same
+      // row is updated, never a second QARun.
+      let run = QARunSchema.parse({
+        schemaVersion: 1,
+        id: runId,
+        projectId,
+        runtimeInstanceId: runtimeLease.instanceId,
+        executionKind: options.executionKind,
+        snapshotId: snapshot.id,
+        projectContextSnapshotId: context.id,
+        mode,
+        status: 'agents_running',
+        ...(lineage === undefined ? {} : { lineage }),
+        configuration: {
+          agentStackIds: selected.map((item) => item.stack.id),
+          verificationLevel: options.verificationLevel ?? 'strict',
+          ...(options.instructions === undefined
+            ? {}
+            : { instructions: { message: options.instructions, createdAt } }),
+          policy: { id: 'qa-standard', version: 1 },
+          executionSafeguards: {
+            runTimeoutMs:
+              options.runTimeoutMs ??
+              (options.executionKind === 'production'
+                ? SENTRY_PRODUCTION_RUN_TIMEOUT_MS
+                : SENTRY_SIMULATION_RUN_TIMEOUT_MS),
+          },
+        },
+        createdAt,
+        startedAt: createdAt,
+      });
+      this.repository.saveRun(run);
       // Frozen manifest file set: the immutable source of truth for scope
       // validation (never the mutable working copy).
       const frozenBaseline = await this.snapshots.baselineFileHashes(snapshot.id);
@@ -341,48 +391,26 @@ export class RunCoordinator {
         targetSpec === undefined && options.instructions === undefined
           ? undefined
           : targetedPreamble + (options.instructions ?? 'No additional user instructions.');
-      const lineage: QARunLineage | undefined =
-        options.lineage === undefined
-          ? undefined
-          : {
-              ...(options.lineage.parentRunId === undefined
-                ? {}
-                : { parentRunId: options.lineage.parentRunId }),
-              ...(options.lineage.sourceRevisionId === undefined
-                ? {}
-                : { sourceRevisionId: options.lineage.sourceRevisionId }),
-              ...(options.lineage.targetRevisionId === undefined
-                ? {}
-                : { targetRevisionId: options.lineage.targetRevisionId }),
-            };
-      let run = QARunSchema.parse({
-        schemaVersion: 1,
-        id: runId,
-        projectId,
-        runtimeInstanceId: runtimeLease.instanceId,
-        executionKind: options.executionKind,
-        snapshotId: snapshot.id,
-        projectContextSnapshotId: context.id,
+      // Micro-patch §8: the hook may flip targeted→full (explicit fallback).
+      // Update the SAME persisted row before agents begin — configuration
+      // preparation has not started execution, so no second QARun is created.
+      run = QARunSchema.parse({
+        ...run,
         mode: effectiveMode,
-        status: 'agents_running',
-        ...(lineage === undefined ? {} : { lineage }),
         configuration: {
-          agentStackIds: selected.map((item) => item.stack.id),
-          verificationLevel: options.verificationLevel ?? 'strict',
+          agentStackIds: run.configuration.agentStackIds,
+          verificationLevel: run.configuration.verificationLevel,
+          ...(run.configuration.policy === undefined ? {} : { policy: run.configuration.policy }),
+          ...(run.configuration.executionProfileId === undefined
+            ? {}
+            : { executionProfileId: run.configuration.executionProfileId }),
+          ...(run.configuration.executionSafeguards === undefined
+            ? {}
+            : { executionSafeguards: run.configuration.executionSafeguards }),
           ...(instructionMessage === undefined
             ? {}
             : { instructions: { message: instructionMessage, createdAt } }),
-          policy: { id: 'qa-standard', version: 1 },
-          executionSafeguards: {
-            runTimeoutMs:
-              options.runTimeoutMs ??
-              (options.executionKind === 'production'
-                ? SENTRY_PRODUCTION_RUN_TIMEOUT_MS
-                : SENTRY_SIMULATION_RUN_TIMEOUT_MS),
-          },
         },
-        createdAt,
-        startedAt: createdAt,
       });
       this.repository.saveRun(run);
       if (targetSpec !== undefined) this.repository.saveTargetSpec(targetSpec, projectId);
@@ -412,38 +440,56 @@ export class RunCoordinator {
         });
       }
 
-      const workers = selected.map((registration, index) =>
-        this.runAgent({
-          run,
-          registration,
-          index,
-          workingCopy,
-          rootActivityId: root.id,
-          missionContext: {
-            project: {
-              id: project.project.id,
-              name: project.project.name,
-              metadata: project.project.metadata,
-            },
-            revision: {
-              id: revision.id,
-              contentHash: revision.contentHash,
-              ...(revision.stats === undefined ? {} : { stats: revision.stats }),
-              ...(revision.sourceState === undefined ? {} : { sourceState: revision.sourceState }),
-            },
-            snapshot,
-            projectContext: context,
-            runInstructions: run.configuration.instructions ?? null,
-            qaPolicy: run.configuration.policy,
-          },
-          ...(options.onHarnessRequest === undefined
-            ? {}
-            : { onHarnessRequest: options.onHarnessRequest }),
-          ...(options.onHarnessEventPersisted === undefined
-            ? {}
-            : { onHarnessEventPersisted: options.onHarnessEventPersisted }),
-        }),
-      );
+      // Micro-patch §27: a cancellation request durable BEFORE any adapter
+      // starts short-circuits worker launch — no provider execution begins
+      // after cancellation was requested. The owner marks acknowledgedAt;
+      // completion follows terminalization below like the normal path.
+      const preAgentCancel = this.repository.getRunControlRequest(runId);
+      if (preAgentCancel !== undefined && preAgentCancel.completedAt === undefined) {
+        if (preAgentCancel.acknowledgedAt === undefined) {
+          this.repository.saveRunControlRequest({
+            ...preAgentCancel,
+            acknowledgedAt: nowIsoTimestamp(),
+          });
+        }
+      }
+      const workers =
+        preAgentCancel !== undefined && preAgentCancel.completedAt === undefined
+          ? []
+          : selected.map((registration, index) =>
+              this.runAgent({
+                run,
+                registration,
+                index,
+                workingCopy,
+                rootActivityId: root.id,
+                missionContext: {
+                  project: {
+                    id: project.project.id,
+                    name: project.project.name,
+                    metadata: project.project.metadata,
+                  },
+                  revision: {
+                    id: revision.id,
+                    contentHash: revision.contentHash,
+                    ...(revision.stats === undefined ? {} : { stats: revision.stats }),
+                    ...(revision.sourceState === undefined
+                      ? {}
+                      : { sourceState: revision.sourceState }),
+                  },
+                  snapshot,
+                  projectContext: context,
+                  runInstructions: run.configuration.instructions ?? null,
+                  qaPolicy: run.configuration.policy,
+                },
+                ...(options.onHarnessRequest === undefined
+                  ? {}
+                  : { onHarnessRequest: options.onHarnessRequest }),
+                ...(options.onHarnessEventPersisted === undefined
+                  ? {}
+                  : { onHarnessEventPersisted: options.onHarnessEventPersisted }),
+              }),
+            );
       await Promise.allSettled(workers);
       // Owner-driven finalization: after workers settle, reconcile the durable
       // cancellation request. Requested-or-cancelled terminalizes the parent as

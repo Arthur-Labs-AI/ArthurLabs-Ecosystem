@@ -409,6 +409,18 @@ export async function retestIssue(
         status: 'cancelled' as const,
       });
       repository.saveRetestRun(cancelled);
+      // Micro-patch §15: the Retest request completes only now — child is
+      // terminal and this RetestRun just terminalized as cancelled.
+      const pendingCancel = repository.getRetestControlRequest(cancelled.id);
+      if (pendingCancel !== undefined) {
+        repository.saveRetestControlRequest({
+          ...pendingCancel,
+          ...(pendingCancel.acknowledgedAt === undefined
+            ? { acknowledgedAt: nowIsoTimestamp() }
+            : {}),
+          completedAt: nowIsoTimestamp(),
+        });
+      }
       return {
         retestRun: cancelled,
         assessment: undefined,
@@ -457,6 +469,22 @@ async function executeRetestLifecycle(
     });
     repository.saveRetestRun(retestRun);
   };
+  /** Micro-patch §26: propagate a pending Retest cancellation request to
+   *  the known child QARun (request-only — the child's owner settles it).
+   *  Safe to call from the frozen hook: targetQaRunId is already durable. */
+  const propagatePendingRetestCancel = () => {
+    const request = repository.getRetestControlRequest(retestRun.id);
+    if (request === undefined || request.completedAt !== undefined) return;
+    if (retestRun.targetQaRunId === undefined) return;
+    try {
+      new RunCoordinator(dataRoot, repository, deps.lease, deps.registry).requestRunCancellation(
+        retestRun.targetQaRunId as QARunId,
+      );
+    } catch {
+      // Child may be terminal; the status check below handles settled state.
+    }
+  };
+
   /** Finish-pass §26: the owning Retest runtime observes its control
    *  request and propagates request-only to the child QARun (never
    *  foreign-acknowledging). It aborts only once the child's owner has
@@ -584,13 +612,18 @@ async function executeRetestLifecycle(
           createdAt: nowIsoTimestamp(),
         });
         repository.saveRetestSpec(hookSpec, input.issue.projectId as ProjectId);
-        // Record the frozen target snapshot now; targetQaRunId is attached
-        // only after the child run row exists (its FK requires qa_runs).
+        // Micro-patch §10: the child QARun row is durably persisted BEFORE
+        // this hook fires, so targetQaRunId is FK-safe to attach here —
+        // before any adapter starts. A pending Retest cancellation request
+        // cascades to the child immediately (§26), so no provider adapter
+        // begins after cancellation was requested (§27).
         retestRun = RetestRunSchema.parse({
           ...retestRun,
           targetSnapshotId: frozen.snapshot.id,
+          targetQaRunId: frozen.runId,
         });
         repository.saveRetestRun(retestRun);
+        propagatePendingRetestCancel();
         if (hookResolved.fullSnapshotFallback) {
           return { mode: 'full' as const };
         }
@@ -617,6 +650,15 @@ async function executeRetestLifecycle(
       'RUN_EXECUTION_FAILED',
       'Retest child snapshot diverged from frozen RetestSpec snapshot',
     );
+  }
+  // Micro-patch §14: a child cancelled under a pending Retest request ends
+  // the workflow here — no merge, no verification, no assessment. The
+  // lifecycle guard converts the throw into terminal cancelled.
+  if (targetRun.status === 'cancelled') {
+    const pendingCancel = repository.getRetestControlRequest(retestRun.id);
+    if (pendingCancel !== undefined && pendingCancel.completedAt === undefined) {
+      throw new RunEngineError('RUN_CANCELLED', 'Retest cancelled by operator');
+    }
   }
   observeRetestCancelRequest();
   // RetestSpec v2 was persisted by the frozen hook before agents;

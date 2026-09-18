@@ -327,6 +327,40 @@ describe('finish-pass §24/§56-§58: multi-agent cancel preserves completed', (
   }, 120_000);
 });
 
+describe('micro-patch §27: cancellation before adapter start launches no workers', () => {
+  it('hook-time self-cancel short-circuits provider execution', async () => {
+    const f = await fixture();
+    let adapterStarts = 0;
+    const counting = new HarnessAdapterRegistry();
+    for (const stack of INITIAL_AGENT_STACKS) {
+      counting.register({
+        stack,
+        runtimeIdentity: { modelId: stack.model.modelId, adapterId: 'x', adapterVersion: '0.1.0' },
+        createAdapter: () => {
+          adapterStarts += 1;
+          throw new Error('adapter must never start after pre-agent cancel');
+        },
+      });
+    }
+    const owner = new RunCoordinator(f.dataRoot, f.repository, f.lease, counting);
+    // Simulate a cancel landing after freeze but before workers: the hook
+    // requests cancellation of its own freshly persisted run row.
+    const details = await owner.run(f.added.project.id, {
+      executionKind: 'simulation',
+      runTimeoutMs: 30_000,
+      onSnapshotFrozen: (frozen) => {
+        owner.requestRunCancellation(frozen.runId);
+      },
+    });
+    expect(details.run.status).toBe('cancelled');
+    expect(adapterStarts).toBe(0);
+    expect(details.agentRuns).toHaveLength(0);
+    expect(f.repository.getRunControlRequest(details.run.id)?.completedAt).toBeDefined();
+    expect(f.repository.getManagedCopy(f.added.project.id)?.state).toBe('ready');
+    f.database.close();
+  }, 120_000);
+});
+
 describe('finish-pass §25: stale owner recovery is honest', () => {
   it('stale request completes; run interrupts (never fake-cancelled)', async () => {
     const f = await fixture();

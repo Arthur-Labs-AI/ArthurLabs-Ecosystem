@@ -7,6 +7,23 @@ cancellation, QARun mode=retest production use, source-fallback target
 lineage, and different-failure-as-fixed are HISTORICAL / SUPERSEDED by this
 document. The rest of `phase-7.md` remains current.
 
+## A0. Micro-patch: active Retest exposes its child before agents run
+
+- `RunCoordinator.run()` persists the initial child QARun row BEFORE the
+  `onSnapshotFrozen` hook (same row updated post-hook if the mode flips
+  targeted→full; never a second QARun; no new schema status).
+- The Retest frozen hook now persists `targetQaRunId` (FK-safe: the child
+  row exists) alongside `targetSnapshotId` + RetestSpec v2, then propagates
+  any pending Retest cancellation to the child immediately.
+- A cancellation durable before adapters start short-circuits worker launch
+  (no provider execution begins; acknowledgedAt marked; normal
+  terminalization path completes the request).
+- A cancelled child under a pending Retest request ends the workflow with
+  no merge, no verification, no assessment; audit history (Spec, B linkage)
+  is retained. Proven by
+  `packages/run-engine/tests/active-retest-cancel.test.ts` (blocking
+  adapter, foreign request, wait-only) and a pre-agent short-circuit test.
+
 ## A. Cancellation (real, cooperative, persisted)
 
 - `run_control_requests` / `retest_control_requests` (migration v6):
