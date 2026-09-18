@@ -7,6 +7,7 @@ export type RuntimeErrorCode =
   | 'RUNTIME_LEASE_LOST'
   | 'EVENT_CONFLICT'
   | 'RELATIONSHIP_CONFLICT'
+  | 'RETEST_SPEC_CONFLICT'
   | 'SQLITE_BUSY';
 
 export class RuntimePersistenceError extends Error {

@@ -78,6 +78,11 @@ export interface RetestIssueOptions {
   ) => void;
   /** Test seam: override target verification. Production always uses verifyMerge. */
   readonly verify?: typeof verifyMerge;
+  /** Test seam: wrapped around the child freeze hook. Throwing here simulates
+   *  a post-row target-setup failure (snapshot/validation crash). */
+  readonly onChildSnapshotFrozen?: (
+    frozen: import('./index.js').SnapshotFrozenContext,
+  ) => Promise<void> | void;
 }
 
 export interface RetestIssueResult {
@@ -452,79 +457,144 @@ async function executeRetestLifecycle(
     });
     repository.saveRetestRun(retestRun);
   };
-  const checkRetestCancelled = () => {
+  /** Finish-pass §26: the owning Retest runtime observes its control
+   *  request and propagates request-only to the child QARun (never
+   *  foreign-acknowledging). It aborts only once the child's owner has
+   *  settled the child as cancelled — the lifecycle guard then terminalizes
+   *  this RetestRun as cancelled. */
+  const observeRetestCancelRequest = () => {
     const request = repository.getRetestControlRequest(retestRun.id);
     if (request === undefined || request.completedAt !== undefined) return;
-    throw new RunEngineError('RUN_CANCELLED', 'Retest cancelled by operator');
+    if (retestRun.targetQaRunId !== undefined) {
+      try {
+        new RunCoordinator(dataRoot, repository, deps.lease, deps.registry).requestRunCancellation(
+          retestRun.targetQaRunId as QARunId,
+        );
+      } catch {
+        // Child may be terminal or foreign-owned; fall through to the
+        // status check below.
+      }
+      const child = repository.getRun(retestRun.targetQaRunId as QARunId);
+      if (child !== undefined && child.status === 'cancelled') {
+        throw new RunEngineError('RUN_CANCELLED', 'Retest cancelled by operator');
+      }
+      return;
+    }
+    // No child yet (pre-freeze): propagate at the next observation point.
   };
+
+  async function snapshotFileSet(snapshotId: string): Promise<ReadonlySet<string>> {
+    const { SnapshotEngine } = await import('@qa/snapshot-engine');
+    const engine = new SnapshotEngine(dataRoot, repository);
+    return new Set((await engine.baselineFileHashes(snapshotId as never)).keys());
+  }
   advance('agents_running');
-  checkRetestCancelled();
+  observeRetestCancelRequest();
   const coordinator = new RunCoordinator(dataRoot, repository, deps.lease, deps.registry);
   const historicalPaths = input.representative.locations.map((location) => location.relativePath);
-  // Target manifest is needed for deterministic resolution. Freeze a
-  // lightweight probe is wasteful; instead resolve after the child run
-  // freezes snapshot B. To validate scope BEFORE agents, resolve against
-  // the current working-copy file set at the target revision (the exact
-  // tree the child freeze will snapshot), falling back honestly.
-  const { scanTree } = await import('@qa/persistence');
-  const { projectDataPaths } = await import('@qa/persistence');
   const record = new ProjectManager(dataRoot, repository, {
     runtimeLease: deps.lease,
   }).getProject(input.issue.projectId as ProjectId);
   if (record === undefined) throw new RunEngineError('PROJECT_NOT_FOUND', 'Project vanished');
-  const workingCopy = projectDataPaths(dataRoot, input.issue.projectId as ProjectId).workingCopy;
-  const filePaths = new Set<string>();
-  await scanTree(workingCopy, {
-    onEntry: (entry) => {
-      if (entry.type === 'file') filePaths.add(entry.relativePath);
-    },
-  });
-  const snapshotFiles: ReadonlySet<string> = filePaths;
-  const resolved = resolveRetestTargets({ historicalPaths, snapshotFiles });
-  const targetScope = resolved.fullSnapshotFallback ? undefined : resolved.resolvedTargetPaths;
-  const resolutionNote =
-    'Target scope resolution (' +
-    resolved.strategy +
-    '): historical [' +
-    resolved.historicalPaths.join(', ') +
-    '] → resolved [' +
-    resolved.resolvedTargetPaths.join(', ') +
-    '].' +
-    (resolved.limitations.length === 0 ? '' : ' Limitation: ' + resolved.limitations.join(' '));
-  // Target setup failure (§17, §42) propagates to the lifecycle guard,
-  // which terminalizes the SAME RetestRun as failed with no target
-  // snapshot, no fake assessment. The coordinator releases its own
-  // project lock in its finally path, so no lock leaks.
+  const hookUserInstructions =
+    'Historical issue under retest: ' +
+    input.issue.title +
+    '. ' +
+    input.representative.description.slice(0, 1000);
+  // Target setup failures propagate to the lifecycle guard, which
+  // terminalizes the SAME RetestRun as failed with no target snapshot and
+  // no fake assessment. The coordinator releases its own project lock in
+  // its finally path, so no lock leaks.
   const targetRunDetails: Awaited<ReturnType<RunCoordinator['run']>> = await coordinator.run(
     record.project.id,
     {
       executionKind: 'production',
-      mode: resolved.fullSnapshotFallback ? 'full' : 'targeted',
-      ...(resolved.fullSnapshotFallback || targetScope === undefined || targetScope.length === 0
-        ? {}
-        : {
-            target: {
-              includePaths: [...targetScope],
-              issueIds: [input.issue.id],
-              userInstructions:
-                'Historical issue under retest: ' +
-                input.issue.title +
-                '. ' +
-                input.representative.description.slice(0, 1000),
-            },
-          }),
+      // Historical paths may vanish on B: pass them leniently; the frozen
+      // hook resolves canonically against the Snapshot B manifest (exact →
+      // nearest ancestor → explicit full fallback), never the mutable tree.
+      mode: 'targeted',
+      target: {
+        includePaths: [...historicalPaths],
+        issueIds: [input.issue.id],
+        userInstructions: hookUserInstructions,
+      },
       agentStackIds: retestRun.agentStackIds as AgentStackId[],
       instructions: retestMissionText({
         issue: input.issue,
         finding: input.representative,
         sourceRevisionId: input.source.projectRevisionId,
         priorOutcome: input.sourceSteps.priorOutcome,
-        resolutionNote,
+        resolutionNote: 'Target scope resolves after Snapshot B freezes (see RetestSpec).',
       }),
       lineage: {
         parentRunId: input.source.qaRunId as QARunId,
         sourceRevisionId: input.source.projectRevisionId as ProjectRevisionId,
         targetRevisionId: input.targetRevisionId as ProjectRevisionId,
+      },
+      onSnapshotFrozen: async (frozen) => {
+        if (input.options.onChildSnapshotFrozen !== undefined) {
+          await input.options.onChildSnapshotFrozen(frozen);
+        }
+        if (frozen.snapshot.projectRevisionId !== input.targetRevisionId) {
+          throw new RunEngineError(
+            'PROJECT_COPY_DRIFT',
+            'Retest target revision changed before freeze: expected ' +
+              input.targetRevisionId +
+              ', froze ' +
+              frozen.snapshot.projectRevisionId,
+          );
+        }
+        const hookResolved = resolveRetestTargets({
+          historicalPaths,
+          snapshotFiles: frozen.snapshotFiles,
+        });
+        const hookDigest = retestInputDigest({
+          issueId: input.issue.id,
+          sourceOccurrenceId: input.source.id,
+          sourceSnapshotId: input.source.projectSnapshotId,
+          targetSnapshotId: frozen.snapshot.id,
+          agentStackIds: [...retestRun.agentStackIds],
+          recipeVersion: 3,
+          sourceRevisionId: input.source.projectRevisionId,
+          targetRevisionId: input.targetRevisionId,
+          sourceMergeResultId: input.sourceMerge.id,
+          sourceFindingClusterId: input.sourceCluster.id,
+          resolvedTargetPaths: [...hookResolved.resolvedTargetPaths],
+          retestVersion: RETEST_VERSION,
+        });
+        const hookSpec = RetestSpecSchema.parse({
+          schemaVersion: 1,
+          retestRunId: retestRun.id,
+          issueId: input.issue.id,
+          sourceOccurrenceId: input.source.id,
+          sourceSnapshotId: input.source.projectSnapshotId,
+          targetSnapshotId: frozen.snapshot.id,
+          sourceMergeResultId: input.sourceMerge.id,
+          sourceFindingClusterId: input.sourceCluster.id,
+          sourceRevisionId: input.source.projectRevisionId,
+          targetRevisionId: input.targetRevisionId,
+          agentStackIds: [...retestRun.agentStackIds],
+          historicalPaths: [...hookResolved.historicalPaths],
+          resolvedTargetPaths: [...hookResolved.resolvedTargetPaths],
+          resolutionStrategy: hookResolved.strategy,
+          recipeVersion: 3,
+          retestVersion: RETEST_VERSION,
+          inputDigest: hookDigest,
+          limitations: [...hookResolved.limitations],
+          createdAt: nowIsoTimestamp(),
+        });
+        repository.saveRetestSpec(hookSpec, input.issue.projectId as ProjectId);
+        // Record the frozen target snapshot now; targetQaRunId is attached
+        // only after the child run row exists (its FK requires qa_runs).
+        retestRun = RetestRunSchema.parse({
+          ...retestRun,
+          targetSnapshotId: frozen.snapshot.id,
+        });
+        repository.saveRetestRun(retestRun);
+        if (hookResolved.fullSnapshotFallback) {
+          return { mode: 'full' as const };
+        }
+        return { overrideIncludePaths: [...hookResolved.resolvedTargetPaths] };
       },
       ...(input.options.runTimeoutMs === undefined
         ? {}
@@ -538,52 +608,22 @@ async function executeRetestLifecycle(
     },
   );
   const targetRun = targetRunDetails.run;
-  retestRun = RetestRunSchema.parse({
-    ...retestRun,
-    targetSnapshotId: targetRun.snapshotId,
-    targetQaRunId: targetRun.id,
+  const resolved = resolveRetestTargets({
+    historicalPaths,
+    snapshotFiles: await snapshotFileSet(targetRun.snapshotId),
   });
-  repository.saveRetestRun(retestRun);
-  checkRetestCancelled();
-  // Immutable RetestSpec v2 (§35-§39): persisted once B is frozen, never mutated.
-  const digest = retestInputDigest({
-    issueId: input.issue.id,
-    sourceOccurrenceId: input.source.id,
-    sourceSnapshotId: input.source.projectSnapshotId,
-    targetSnapshotId: targetRun.snapshotId,
-    agentStackIds: [...retestRun.agentStackIds],
-    recipeVersion: 3,
-    sourceRevisionId: input.source.projectRevisionId,
-    targetRevisionId: input.targetRevisionId,
-    sourceMergeResultId: input.sourceMerge.id,
-    sourceFindingClusterId: input.sourceCluster.id,
-    resolvedTargetPaths: [...resolved.resolvedTargetPaths],
-    retestVersion: RETEST_VERSION,
-  });
-  const spec = RetestSpecSchema.parse({
-    schemaVersion: 1,
-    retestRunId: retestRun.id,
-    issueId: input.issue.id,
-    sourceOccurrenceId: input.source.id,
-    sourceSnapshotId: input.source.projectSnapshotId,
-    targetSnapshotId: targetRun.snapshotId,
-    sourceMergeResultId: input.sourceMerge.id,
-    sourceFindingClusterId: input.sourceCluster.id,
-    sourceRevisionId: input.source.projectRevisionId,
-    targetRevisionId: input.targetRevisionId,
-    agentStackIds: [...retestRun.agentStackIds],
-    historicalPaths: [...resolved.historicalPaths],
-    resolvedTargetPaths: [...resolved.resolvedTargetPaths],
-    resolutionStrategy: resolved.strategy,
-    recipeVersion: 3,
-    retestVersion: RETEST_VERSION,
-    inputDigest: digest,
-    limitations: [...resolved.limitations],
-    createdAt: nowIsoTimestamp(),
-  });
-  repository.saveRetestSpec(spec, input.issue.projectId as ProjectId);
+  if (targetRun.snapshotId !== retestRun.targetSnapshotId) {
+    throw new RunEngineError(
+      'RUN_EXECUTION_FAILED',
+      'Retest child snapshot diverged from frozen RetestSpec snapshot',
+    );
+  }
+  observeRetestCancelRequest();
+  // RetestSpec v2 was persisted by the frozen hook before agents;
+  // read it back for the result (never re-persist: immutability).
+  const spec = repository.getRetestSpec(retestRun.id);
   advance('merging');
-  checkRetestCancelled();
+  observeRetestCancelRequest();
   let targetMerge: MergeResult | undefined;
   const limitations: string[] = [...resolved.limitations];
   try {
@@ -595,7 +635,7 @@ async function executeRetestLifecycle(
     );
   }
   advance('assessing');
-  checkRetestCancelled();
+  observeRetestCancelRequest();
   let targetVerification: VerificationRun | undefined;
   let targetAttempts: VerificationRunAttempt[] = [];
   if (targetMerge !== undefined) {
@@ -810,9 +850,30 @@ function recordTargetOccurrence(
   return occurrence;
 }
 
-/** Cooperative retest cancellation (closure §47): persist a durable request,
- *  cascade to the child target QARun when owned, then terminalize honestly.
- *  Returns the durable request status — never fakes completion. */
+/** Finish-pass §27: strict Retest owner identity — runtimeInstanceId
+ *  equality. Freshness is liveness, never ownership. Legacy runs without
+ *  an instanceId fall back to child-run local ownership. */
+export function isLocalRetestOwner(deps: RetestServiceDeps, run: RetestRun): boolean {
+  if (run.runtimeInstanceId !== undefined) {
+    return run.runtimeInstanceId === deps.lease.instanceId;
+  }
+  if (run.targetQaRunId !== undefined) {
+    const child = deps.repository.getRun(run.targetQaRunId as QARunId);
+    if (child !== undefined) {
+      return new RunCoordinator(
+        deps.dataRoot,
+        deps.repository,
+        deps.lease,
+        deps.registry,
+      ).isLocalRunOwner(child);
+    }
+  }
+  return false;
+}
+
+/** Cooperative retest cancellation: persist a durable request, cascade a
+ *  request-only child QARun cancellation (never foreign-acknowledge),
+ *  then return — never fake completion. */
 export function requestRetestCancellation(
   deps: RetestServiceDeps,
   retestRunId: string,
@@ -858,8 +919,10 @@ export function requestRetestCancellation(
   return { retestRunId, status: 'cancellation_requested' };
 }
 
-/** Owner-side retest acknowledge: cascade to the owned child run, then
- *  terminalize the RetestRun as cancelled with completed observations kept. */
+/** Owner-side retest acknowledge: only the verified local owner may call
+ *  this. Cascades request-only to the child (the child's owner settles it),
+ *  then terminalizes the RetestRun as cancelled. Foreign callers are
+ *  refused — a foreign CLI must stop at requestRetestCancellation. */
 export function acknowledgeRetestCancellation(
   deps: RetestServiceDeps,
   retestRunId: string,
@@ -874,16 +937,35 @@ export function acknowledgeRetestCancellation(
       'RetestRun ' + retestRunId + ' is already terminal (' + run.status + ')',
     );
   }
+  if (!isLocalRetestOwner(deps, run)) {
+    throw new RunEngineError(
+      'RUN_EXECUTION_FAILED',
+      'RetestRun ' + retestRunId + ' is owned by another runtime instance',
+    );
+  }
   if (run.targetQaRunId !== undefined) {
+    // Request-only cascade: the child's own owner settles it. Never
+    // acknowledge a foreign child's execution from here.
     try {
       new RunCoordinator(
         deps.dataRoot,
         deps.repository,
         deps.lease,
         deps.registry,
-      ).acknowledgeRunCancellation(run.targetQaRunId as QARunId);
+      ).requestRunCancellation(run.targetQaRunId as QARunId);
     } catch {
-      // Best-effort cascade; the retest still terminalizes honestly.
+      // Best-effort cascade; the retest still terminalizes honestly once
+      // its own child settles.
+    }
+    const child = deps.repository.getRun(run.targetQaRunId as QARunId);
+    if (
+      child !== undefined &&
+      !['completed', 'partial', 'failed', 'cancelled'].includes(child.status)
+    ) {
+      throw new RunEngineError(
+        'RUN_EXECUTION_FAILED',
+        'Child target run is still active; owner has not settled it yet',
+      );
     }
   }
   const pending = deps.repository.getRetestControlRequest(retestRunId);
@@ -919,7 +1001,7 @@ export function cancelRetestRun(
       'RetestRun ' + retestRunId + ' is already terminal (' + run.status + ')',
     );
   }
-  if (run.runtimeInstanceId !== undefined && !deps.lease.isFresh(run.runtimeInstanceId as never)) {
+  if (!isLocalRetestOwner(deps, run)) {
     throw new RunEngineError(
       'RUN_EXECUTION_FAILED',
       'RetestRun ' + retestRunId + ' is owned by another runtime instance',

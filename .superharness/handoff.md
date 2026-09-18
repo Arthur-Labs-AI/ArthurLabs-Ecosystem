@@ -1,4 +1,27 @@
-# Handoff — DeepSeek tool-result lifecycle (2026-09-18)
+# Handoff — Phase 7 DETERMINISTICALLY CLOSED (2026-09-18)
+
+Phase 7 — DETERMINISTICALLY CLOSED
+
+Final SHA: (pending push — closure commit on `main` over baseline `0d87b8d`)
+Exact-head CI: (pending — required before Phase 8)
+
+Core contracts frozen (QARun full|targeted, RetestRun+RetestSpec v2,
+control requests, issues/occurrences/events, merge/verification lineage).
+
+Deferred (provider budgets unavailable — not failed, not passed):
+
+- paid FULL 3/3
+- paid TARGETED 3/3
+- paid update→RETEST
+
+Reason: provider budgets unavailable (explicit user decision; see
+docs/architecture/deferred-gates.md).
+
+Next: Phase 8 — Desktop UI (unlocked after exact-head CI green).
+
+---
+
+# Previous handoff — DeepSeek tool-result lifecycle (2026-09-18)
 
 Status: local fix verified, uncommitted on `main`; fresh paid DeepSeek validation and exact-head CI are UNVERIFIED.
 

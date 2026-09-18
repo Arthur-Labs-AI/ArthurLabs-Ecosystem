@@ -87,12 +87,12 @@ describe('Phase 7 cross-revision comparison (§84–§87)', () => {
     expect(classifyRetest(compared.input).result).toBe('inconclusive');
   });
 
-  it('moved problem: different failure signature counts as fixed with a limitation (§17)', () => {
+  it('moved problem: different failure signature is inconclusive, never fixed (finish-pass §54)', () => {
     const compared = compareRetestSteps({
       sourceSteps: [failedCmd('pnpm test', '1')],
       targetSteps: [failedCmd('pnpm test', '2')],
     });
-    expect(classifyRetest(compared.input).result).toBe('fixed');
+    expect(classifyRetest(compared.input).result).toBe('inconclusive');
     expect(compared.limitations.join(' ')).toContain('different signature');
   });
 

@@ -398,14 +398,10 @@ export async function executeCommand(
   if (input.command === 'run.cancel') {
     const runId = parseArgument(QARunIdSchema, input.runId, 'run-id');
     return withMutationRuntime(async ({ runs, repository }) => {
-      // Cooperative cross-process semantics (§8, §13): persist the durable
-      // request; acknowledge inline when this process owns the run.
+      // Finish-pass request-only: a foreign CLI persists the durable request
+      // and stops. Only the owning runtime terminalizes live execution.
       // CLI_CONTRACT_VERSION stays 1 (additive shape).
-      const requested = runs.requestRunCancellation(runId);
-      const outcome =
-        requested.status === 'cancelled' || requested.status === 'already_terminal'
-          ? requested
-          : runs.acknowledgeRunCancellation(runId);
+      const outcome = runs.requestRunCancellation(runId);
       return success(input.command, {
         runId: outcome.runId,
         status: outcome.status,
@@ -542,23 +538,17 @@ export async function executeCommand(
           'Retest cancel requires an active runtime lease',
         );
       const registry = new HarnessAdapterRegistry();
-      const { requestRetestCancellation, acknowledgeRetestCancellation } =
-        await import('@qa/run-engine');
+      const { requestRetestCancellation } = await import('@qa/run-engine');
       const requested = requestRetestCancellation(
         { dataRoot, repository, lease, registry },
         input.retestRunId,
       );
-      if (requested.status !== 'cancellation_requested') {
-        return success(input.command, {
-          retestRunId: requested.retestRunId,
-          status: requested.status,
-        });
-      }
-      const outcome = acknowledgeRetestCancellation(
-        { dataRoot, repository, lease, registry },
-        input.retestRunId,
-      );
-      return success(input.command, { retestRunId: outcome.retestRunId, status: outcome.status });
+      // Finish-pass request-only: the owning Retest runtime propagates to
+      // the child run and terminalizes; a foreign CLI never acknowledges.
+      return success(input.command, {
+        retestRunId: requested.retestRunId,
+        status: requested.status,
+      });
     }, options);
   }
   if (input.command === 'doctor.storage') {

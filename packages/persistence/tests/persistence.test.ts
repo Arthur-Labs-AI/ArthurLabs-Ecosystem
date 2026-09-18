@@ -60,12 +60,12 @@ describe('Sentry persistence foundation', () => {
     });
     expect(
       first.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 5 });
+    ).toMatchObject({ count: 6 });
     first.close();
     const reopened = new SentryDatabase({ dataRoot });
     expect(
       reopened.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 5 });
+    ).toMatchObject({ count: 6 });
     expect(reopened.connection.prepare('PRAGMA busy_timeout').get()).toMatchObject({
       timeout: 5000,
     });
@@ -157,7 +157,7 @@ describe('Sentry persistence foundation', () => {
     const repository = new SentryRepository(upgraded);
     expect(
       upgraded.connection.prepare('SELECT COUNT(*) count FROM schema_migrations').get(),
-    ).toMatchObject({ count: 5 });
+    ).toMatchObject({ count: 6 });
     expect(repository.getProject(project.id)).toEqual(project);
     expect(repository.getRun(run.id)).toEqual(run);
     expect(repository.getAgentRun(agent.id)).toEqual(agent);

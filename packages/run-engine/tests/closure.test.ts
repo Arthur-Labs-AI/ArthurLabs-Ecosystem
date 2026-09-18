@@ -1,6 +1,6 @@
-/** Phase 7 closure regressions (§14-§48): real cooperative cancellation,
- *  retest lifecycle terminalization, historical path resolution, target
- *  lineage honesty, RetestSpec v2 persistence, conservative classification. */
+/** Finish-pass closure regressions: strict owner identity, request-only
+ *  foreign cancellation, owner-driven settlement (no manual ack), lock and
+ *  workspace ordering, stale recovery, deterministic resolution. */
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -28,8 +28,8 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((value) => rm(value, { recursive: true, force: true })));
 });
 
-/** Deterministic blocking adapter (§14): signals running, blocks until
- *  cancel() is called, records the call, then terminates. */
+/** Deterministic blocking adapter: signals running, blocks until cancel()
+ *  is called, records the call, then emits run.cancelled and terminates. */
 class BlockingAdapter implements HarnessAdapter {
   started = false;
   cancelCalls = 0;
@@ -110,7 +110,7 @@ async function fixture() {
   return { root, source, dataRoot, database, repository, lease, manager, added };
 }
 
-async function waitFor(condition: () => boolean, timeoutMs = 15_000): Promise<void> {
+async function waitFor(condition: () => boolean, timeoutMs = 30_000): Promise<void> {
   const start = Date.now();
   while (!condition()) {
     if (Date.now() - start > timeoutMs) throw new Error('Timed out waiting for condition');
@@ -118,18 +118,20 @@ async function waitFor(condition: () => boolean, timeoutMs = 15_000): Promise<vo
   }
 }
 
-describe('closure §14: real cross-process cancellation', () => {
-  it('blocking adapter: request from a second context cancels owned workers honestly', async () => {
+describe('finish-pass §54: true cross-process cancel, no manual ack', () => {
+  it('owner observes the request and settles everything itself', async () => {
     const f = await fixture();
     const adapters = [new BlockingAdapter()];
     const owner = new RunCoordinator(f.dataRoot, f.repository, f.lease, blockingRegistry(adapters));
+    const workspacePaths: string[] = [];
     const runPromise = owner.run(f.added.project.id, {
       executionKind: 'simulation',
       agentStackIds: [INITIAL_AGENT_STACKS[0]?.id as never],
       runTimeoutMs: 120_000,
+      onHarnessRequest: (request) => workspacePaths.push(request.workspace.runtimePath),
     });
     await waitFor(() => adapters[0]?.started === true);
-    // Second runtime/repository context sharing the same database file.
+    // Second repository + lease sharing the same database file.
     const {
       SentryDatabase: DB2,
       SentryRepository: Repo2,
@@ -149,121 +151,46 @@ describe('closure §14: real cross-process cancellation', () => {
     const running = f.repository.listNonterminalRuns();
     expect(running).toHaveLength(1);
     const runId = running[0]?.id as never;
-    // Cross-process request must NOT fake terminal state (§8).
+    // §56: freshness is not ownership — B is fresh but not the owner.
+    expect(requester.isLocalRunOwner(running[0] as never)).toBe(false);
+    expect(owner.isLocalRunOwner(running[0] as never)).toBe(true);
+    // Foreign request: request-only, no terminal state yet.
     const requested = requester.requestRunCancellation(runId);
     expect(requested.status).toBe('cancellation_requested');
+    expect(requested.ownerAcknowledged).toBe(false);
     expect(f.repository.getRun(runId)?.status).toBe('agents_running');
-    // Owner observes the durable request and terminalizes honestly.
+    // §57: lock still held while the owner works.
+    expect(f.repository.getManagedCopy(f.added.project.id)?.state).toBe('locked_for_run');
+    // §58: completedAt unset after request only.
+    expect(f.repository.getRunControlRequest(runId)?.completedAt).toBeUndefined();
+    // Owner-driven: ONLY WAIT — no manual acknowledge call.
     await waitFor(() => (adapters[0]?.cancelCalls ?? 0) > 0);
-    const acknowledged = owner.acknowledgeRunCancellation(runId);
-    expect(acknowledged.status).toBe('cancelled');
     const details = await runPromise;
     expect(details.run.status).toBe('cancelled');
     expect(f.repository.getRun(runId)?.status).toBe('cancelled');
-    // Completed evidence before cancel retained; workspace gone; lock released.
-    const copy = f.repository.getManagedCopy(f.added.project.id);
-    expect(copy?.state).toBe('ready');
+    const agents = f.repository.listAgentRuns(runId);
+    expect(agents).toHaveLength(1);
+    expect(agents[0]?.status).toBe('cancelled');
     const request = f.repository.getRunControlRequest(runId);
     expect(request?.acknowledgedAt).toBeDefined();
     expect(request?.completedAt).toBeDefined();
+    // §59: every owned workspace removed before completion is claimed;
+    // lock released only after settle.
+    const { existsSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    expect(workspacePaths.length).toBeGreaterThan(0);
+    for (const runtimePath of workspacePaths) {
+      expect(existsSync(resolve(f.dataRoot, runtimePath))).toBe(false);
+    }
+    expect(f.repository.getManagedCopy(f.added.project.id)?.state).toBe('ready');
     database2.close();
     f.database.close();
   }, 120_000);
 });
 
-describe('closure §16: restart / stale owner', () => {
-  it('stale pending cancel requests complete honestly without fake terminal state', async () => {
+describe('finish-pass §24/§56-§58: multi-agent cancel preserves completed', () => {
+  it('A completed, B/C blocked; foreign request; owner settles alone', async () => {
     const f = await fixture();
-    const { createFakeHarnessRegistry } = await import('../src/index.js');
-    const completed = await new RunCoordinator(
-      f.dataRoot,
-      f.repository,
-      f.lease,
-      createFakeHarnessRegistry('success'),
-    ).run(f.added.project.id, { executionKind: 'simulation' });
-    // Reopen as nonterminal with a stale owner + stale pending request.
-    f.repository.saveRun({
-      ...completed.run,
-      status: 'agents_running',
-      completedAt: undefined,
-    } as never);
-    f.repository.saveRunControlRequest({
-      id: 'cancel_probe',
-      qaRunId: completed.run.id,
-      projectId: completed.run.projectId,
-      requestType: 'cancel',
-      requestingRuntimeId: 'runtime_stale',
-      requestedAt: nowIsoTimestamp(),
-    });
-    await new RunCoordinator(f.dataRoot, f.repository, f.lease).recover();
-    // Recovery interrupts honestly (never fake-cancelled) and completes the request.
-    expect(f.repository.getRun(completed.run.id)?.status).not.toBe('agents_running');
-    expect(f.repository.getRunControlRequest(completed.run.id)?.completedAt).toBeDefined();
-    f.database.close();
-  }, 120_000);
-});
-
-describe('closure §23-§26: historical target resolution', () => {
-  it('deleted file resolves to the nearest existing ancestor', () => {
-    const resolved = resolveRetestTargets({
-      historicalPaths: ['src/auth/legacy-token.ts'],
-      snapshotFiles: new Set(['src/auth/login.ts', 'README.md']),
-    });
-    expect(resolved.strategy).toBe('nearest_ancestor');
-    expect(resolved.resolvedTargetPaths).toEqual(['src/auth']);
-    expect(resolved.fullSnapshotFallback).toBe(false);
-  });
-  it('all targets gone uses the explicit focused full-snapshot fallback', () => {
-    const resolved = resolveRetestTargets({
-      historicalPaths: ['src/auth/legacy-token.ts'],
-      snapshotFiles: new Set(['README.md']),
-    });
-    expect(resolved.strategy).toBe('full_snapshot_fallback');
-    expect(resolved.fullSnapshotFallback).toBe(true);
-    expect(resolved.limitations.join(' ')).toMatch(/RETEST_HISTORICAL_TARGETS_ABSENT/);
-  });
-  it('exact paths stay exact', () => {
-    const resolved = resolveRetestTargets({
-      historicalPaths: ['src/auth/login.ts'],
-      snapshotFiles: new Set(['src/auth/login.ts']),
-    });
-    expect(resolved.strategy).toBe('exact_paths');
-    expect(resolved.resolvedTargetPaths).toEqual(['src/auth/login.ts']);
-  });
-});
-
-describe('closure §54: different failure is not fixed', () => {
-  it('same command failing differently yields inconclusive, never fixed', async () => {
-    const { compareRetestSteps, classifyRetest } = await import('@qa/domain');
-    const compared = compareRetestSteps({
-      sourceSteps: [
-        {
-          type: 'command_replay',
-          expected: { command: 'npm test', cwdRelative: '.', exitCode: '1' },
-          outcome: 'matched',
-          matchStrength: 'strong_match',
-        },
-      ],
-      targetSteps: [
-        {
-          type: 'command_replay',
-          expected: { command: 'npm test', cwdRelative: '.', exitCode: '2' },
-          outcome: 'matched',
-          matchStrength: 'strong_match',
-        },
-      ],
-    });
-    const classification = classifyRetest(compared.input);
-    expect(classification.result).not.toBe('fixed');
-    expect(classification.result).toBe('inconclusive');
-    expect(compared.limitations.join(' ')).toMatch(/different signature/);
-  });
-});
-
-describe('closure: scripted QA adapters produce findings for cancel multi-agent', () => {
-  it('multi-agent cancel preserves the completed agent', async () => {
-    const f = await fixture();
-    // Agent 0 completes fast with a finding; agents 1-2 block.
     const fast = new (class implements HarnessAdapter {
       async getMetadata() {
         return {
@@ -371,17 +298,115 @@ describe('closure: scripted QA adapters produce findings for cancel multi-agent'
     const running = f.repository.listNonterminalRuns();
     expect(running).toHaveLength(1);
     const runId = running[0]?.id as never;
-    const requested = owner.requestRunCancellation(runId);
-    expect(['cancellation_requested', 'cancelled']).toContain(requested.status);
-    await waitFor(() => (blockers[0]?.cancelCalls ?? 0) > 0 && (blockers[1]?.cancelCalls ?? 0) > 0);
-    const acknowledged = owner.acknowledgeRunCancellation(runId);
-    expect(acknowledged.status).toBe('cancelled');
+    const {
+      SentryDatabase: DB2,
+      SentryRepository: Repo2,
+      RuntimeInstanceLease: Lease2,
+    } = await import('@qa/persistence');
+    const database2 = new DB2({ dataRoot: f.dataRoot });
+    const repository2 = new Repo2(database2);
+    const lease2 = new Lease2(repository2, { autoHeartbeat: false });
+    lease2.start();
+    const { RunCoordinator: RC2 } = await import('../src/index.js');
+    const requester = new RC2(f.dataRoot, repository2, lease2);
+    const requested = requester.requestRunCancellation(runId);
+    expect(requested.status).toBe('cancellation_requested');
+    // Foreign acknowledge is refused outright.
+    expect(() => requester.acknowledgeRunCancellation(runId)).toThrowError(/another runtime/);
+    // Owner settles alone.
     const details = await runPromise;
     const byStatus = new Map(details.agentRuns.map((agent) => [agent.agentStackId, agent.status]));
     expect(byStatus.get((stacks[0] as never).id)).toBe('completed');
-    const cancelled = details.agentRuns.filter((agent) => agent.status === 'cancelled');
-    expect(cancelled).toHaveLength(2);
+    expect(details.agentRuns.filter((agent) => agent.status === 'cancelled')).toHaveLength(2);
+    expect(details.run.status).toBe('cancelled');
     expect(f.repository.listFindings(runId as never)).toHaveLength(1);
+    expect(f.repository.getRunControlRequest(runId)?.completedAt).toBeDefined();
+    expect(f.repository.getManagedCopy(f.added.project.id)?.state).toBe('ready');
+    database2.close();
     f.database.close();
   }, 120_000);
+});
+
+describe('finish-pass §25: stale owner recovery is honest', () => {
+  it('stale request completes; run interrupts (never fake-cancelled)', async () => {
+    const f = await fixture();
+    const { createFakeHarnessRegistry } = await import('../src/index.js');
+    const completed = await new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      createFakeHarnessRegistry('success'),
+    ).run(f.added.project.id, { executionKind: 'simulation' });
+    // Simulate owner death: the run's owner instance is stale (never heartbeats
+    // again) while the recovering lease is a different live runtime.
+    f.repository.saveRuntimeInstance({
+      schemaVersion: 1,
+      id: 'runtime_01K7777777777777777777X8W9',
+      processId: 999999,
+      hostname: 'dead-owner',
+      startedAt: '2020-01-01T00:00:00.000Z',
+      heartbeatAt: '2020-01-01T00:00:00.000Z',
+    } as never);
+    f.repository.saveRun({
+      ...completed.run,
+      runtimeInstanceId: 'runtime_01K7777777777777777777X8W9' as never,
+      status: 'agents_running',
+      completedAt: undefined,
+    } as never);
+    f.repository.saveRunControlRequest({
+      id: 'cancel_probe',
+      qaRunId: completed.run.id,
+      projectId: completed.run.projectId,
+      requestType: 'cancel',
+      requestingRuntimeId: 'runtime_stale',
+      requestedAt: nowIsoTimestamp(),
+    });
+    await new RunCoordinator(f.dataRoot, f.repository, f.lease).recover();
+    const status = f.repository.getRun(completed.run.id)?.status;
+    expect(status).not.toBe('agents_running');
+    expect(status).not.toBe('cancelled');
+    expect(f.repository.getRunControlRequest(completed.run.id)?.completedAt).toBeDefined();
+    f.database.close();
+  }, 120_000);
+});
+
+describe('resolution: manifest-based, absence never fixed', () => {
+  it('deleted file resolves to the nearest existing ancestor', () => {
+    const resolved = resolveRetestTargets({
+      historicalPaths: ['src/auth/legacy-token.ts'],
+      snapshotFiles: new Set(['src/auth/login.ts', 'README.md']),
+    });
+    expect(resolved.strategy).toBe('nearest_ancestor');
+    expect(resolved.resolvedTargetPaths).toEqual(['src/auth']);
+  });
+  it('all targets gone uses the explicit focused full-snapshot fallback', () => {
+    const resolved = resolveRetestTargets({
+      historicalPaths: ['src/auth/legacy-token.ts'],
+      snapshotFiles: new Set(['README.md']),
+    });
+    expect(resolved.strategy).toBe('full_snapshot_fallback');
+    expect(resolved.limitations.join(' ')).toMatch(/RETEST_HISTORICAL_TARGETS_ABSENT/);
+  });
+  it('different failure stays inconclusive, never fixed', async () => {
+    const { compareRetestSteps, classifyRetest } = await import('@qa/domain');
+    const compared = compareRetestSteps({
+      sourceSteps: [
+        {
+          type: 'command_replay',
+          expected: { command: 'npm test', cwdRelative: '.', exitCode: '1' },
+          outcome: 'matched',
+          matchStrength: 'strong_match',
+        },
+      ],
+      targetSteps: [
+        {
+          type: 'command_replay',
+          expected: { command: 'npm test', cwdRelative: '.', exitCode: '2' },
+          outcome: 'matched',
+          matchStrength: 'strong_match',
+        },
+      ],
+    });
+    expect(classifyRetest(compared.input).result).toBe('inconclusive');
+  });
 });

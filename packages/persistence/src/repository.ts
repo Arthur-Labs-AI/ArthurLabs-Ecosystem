@@ -1324,14 +1324,27 @@ export class SentryRepository {
     };
   }
 
-  /** Phase 7 closure (§35-§39): immutable RetestSpec per frozen target.
-   *  Insert-only; the v6 trigger rejects any mutation. */
+  /** Finish-pass §38-39: immutable RetestSpec per frozen target. No row
+   *  → insert. Identical existing payload → idempotent success. Different
+   *  payload for the same RetestRun → RETEST_SPEC_CONFLICT (never silent).
+   *  The v6 trigger additionally rejects any row mutation. */
   saveRetestSpec(value: RetestSpec, projectId: ProjectId): void {
+    const existing = this.database.connection
+      .prepare('SELECT payload FROM retest_specs WHERE retest_run_id=?')
+      .get(value.retestRunId) as PayloadRow | undefined;
+    if (existing !== undefined) {
+      const same =
+        JSON.stringify(RetestSpecSchema.parse(JSON.parse(existing.payload))) ===
+        JSON.stringify(RetestSpecSchema.parse(value));
+      if (same) return;
+      throw new RuntimePersistenceError(
+        'RETEST_SPEC_CONFLICT',
+        'A different RetestSpec already exists for ' + value.retestRunId,
+      );
+    }
     this.database.connection
-      .prepare(
-        'INSERT INTO retest_specs(retest_run_id,project_id,payload) VALUES (?,?,?) ON CONFLICT(retest_run_id) DO NOTHING',
-      )
-      .run(value.retestRunId, projectId, JSON.stringify(value));
+      .prepare('INSERT INTO retest_specs(retest_run_id,project_id,payload) VALUES (?,?,?)')
+      .run(value.retestRunId, projectId, JSON.stringify(RetestSpecSchema.parse(value)));
   }
 
   getRetestSpec(retestRunId: string): RetestSpec | undefined {

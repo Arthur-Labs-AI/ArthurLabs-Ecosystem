@@ -333,12 +333,8 @@ describe('closure §42: pre-freeze target setup failure terminalizes honestly', 
     const { issueId } = await seedIssue(f, mergeA.id, clusterA.id, runA.run.id, verifiedA.run.id);
     await writeFile(join(f.source, 'src', 'auth', 'login.ts'), 'export const login = 2;\n');
     await f.manager.updateProjectCopy(f.added.project.id);
-    // Break the target freeze: point the working copy at garbage so snapshot creation fails.
-    // Simplest deterministic break: delete the managed working copy tree.
-    await rm(join(f.dataRoot, 'projects', f.added.project.id, 'working-copy'), {
-      recursive: true,
-      force: true,
-    });
+    // Break target setup AFTER the RetestRun row exists: the child-freeze
+    // seam throws inside the frozen boundary (post-row, pre-agents).
     const result = await retestIssue(
       {
         dataRoot: f.dataRoot,
@@ -347,7 +343,13 @@ describe('closure §42: pre-freeze target setup failure terminalizes honestly', 
         registry: scriptedRegistry('pass'),
       },
       issueId,
-      { verify: stubVerify('pass') as never, runTimeoutMs: 30_000 },
+      {
+        verify: stubVerify('pass') as never,
+        runTimeoutMs: 30_000,
+        onChildSnapshotFrozen: () => {
+          throw new Error('simulated snapshot B creation failure');
+        },
+      },
     );
     expect(result.retestRun.status).toBe('failed');
     expect(result.retestRun.targetSnapshotId).toBeUndefined();
@@ -548,6 +550,170 @@ describe('closure §47: retest cancel propagates to the target run', () => {
     expect(spec?.retestRunId).toBe(result.retestRun.id);
     expect(spec?.inputDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(spec?.targetSnapshotId).toBe(result.retestRun.targetSnapshotId);
+    f.database.close();
+  }, 180_000);
+});
+
+describe('finish-pass §61-§62: RetestSpec pre-agent persistence', () => {
+  it('spec exists when agents begin and survives post-freeze failure', async () => {
+    const f = await fixture();
+    const { RunCoordinator } = await import('../src/index.js');
+    const runA = await new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      scriptedRegistry('fail'),
+    ).run(f.added.project.id, { executionKind: 'simulation', runTimeoutMs: 30_000 });
+    const { result: mergeA } = mergeRun(f.repository, runA.run.id);
+    const verifiedA = await stubVerify('fail')(f.repository, f.dataRoot, mergeA.id);
+    const clusterA = mergeA.clusters[0];
+    if (clusterA === undefined) throw new Error('no cluster');
+    const { issueId } = await seedIssue(f, mergeA.id, clusterA.id, runA.run.id, verifiedA.run.id);
+    await writeFile(join(f.source, 'src', 'auth', 'login.ts'), 'export const login = 2;\n');
+    await f.manager.updateProjectCopy(f.added.project.id);
+    // Deterministic pre-agent proof: wrap saveRetestSpec + createAdapter to
+    // record wall-clock order. The spec save must precede every adapter start.
+    const order: string[] = [];
+    const origSave = f.repository.saveRetestSpec.bind(f.repository);
+    f.repository.saveRetestSpec = ((spec: never, projectId: never) => {
+      order.push('spec');
+      return origSave(spec, projectId);
+    }) as typeof f.repository.saveRetestSpec;
+    let childRunId: string | undefined;
+    const observing = new HarnessAdapterRegistry();
+    for (const stack of INITIAL_AGENT_STACKS) {
+      observing.register({
+        stack,
+        runtimeIdentity: {
+          modelId: stack.model.modelId,
+          adapterId: 'scripted',
+          adapterVersion: '0.1.0',
+        },
+        createAdapter: () => {
+          order.push('adapter');
+          return new ScriptedAdapter('pass') as never;
+        },
+      });
+    }
+    const result = await retestIssue(
+      { dataRoot: f.dataRoot, repository: f.repository, lease: f.lease, registry: observing },
+      issueId,
+      {
+        verify: stubVerify('pass') as never,
+        runTimeoutMs: 30_000,
+        onHarnessRequest: (request) => {
+          childRunId = request.qaRunId;
+        },
+      },
+    );
+    expect(result.spec).toBeDefined();
+    expect(result.targetRun).toBeDefined();
+    expect(childRunId).toBe(result.targetRun?.id);
+    expect(result.spec?.targetSnapshotId).toBe(result.targetRun?.snapshotId);
+    expect(order[0]).toBe('spec');
+    expect(order.filter((entry) => entry === 'adapter').length).toBeGreaterThan(0);
+    expect(order.indexOf('adapter')).toBeGreaterThan(order.indexOf('spec'));
+    // Post-freeze invariant (§43/§62): verifier crash keeps snapshot + spec.
+    const failingVerify = async () => {
+      throw new Error('simulated verifier crash');
+    };
+    await writeFile(join(f.source, 'src', 'auth', 'login.ts'), 'export const login = 3;\n');
+    await f.manager.updateProjectCopy(f.added.project.id);
+    const failed = await retestIssue(
+      { dataRoot: f.dataRoot, repository: f.repository, lease: f.lease, registry: observing },
+      issueId,
+      { verify: failingVerify as never, runTimeoutMs: 30_000 },
+    );
+    expect(failed.assessment?.result).toBe('inconclusive');
+    expect(failed.retestRun.targetSnapshotId).toBeDefined();
+    expect(failed.spec?.targetSnapshotId).toBe(failed.retestRun.targetSnapshotId);
+    f.database.close();
+  }, 240_000);
+});
+
+describe('finish-pass §60: frozen revision race cannot run agents on C while claiming B', () => {
+  it('hook revision mismatch aborts before any adapter starts', async () => {
+    const f = await fixture();
+    const { RunCoordinator } = await import('../src/index.js');
+    let adapterStarts = 0;
+    const counting = new HarnessAdapterRegistry();
+    for (const stack of INITIAL_AGENT_STACKS) {
+      counting.register({
+        stack,
+        runtimeIdentity: {
+          modelId: stack.model.modelId,
+          adapterId: 'scripted',
+          adapterVersion: '0.1.0',
+        },
+        createAdapter: () => {
+          adapterStarts += 1;
+          return new ScriptedAdapter('pass') as never;
+        },
+      });
+    }
+    await expect(
+      new RunCoordinator(f.dataRoot, f.repository, f.lease, counting).run(f.added.project.id, {
+        executionKind: 'simulation',
+        mode: 'targeted',
+        target: { includePaths: ['src/auth'] },
+        onSnapshotFrozen: (frozen) => {
+          // Simulate expecting B while C froze: hard mismatch.
+          if (frozen.snapshot.projectRevisionId !== 'rev_01K7777777777777777777B8WE') {
+            throw new RunEngineError('PROJECT_COPY_DRIFT', 'Retest target revision changed');
+          }
+        },
+      }),
+    ).rejects.toThrowError(RunEngineError);
+    expect(adapterStarts).toBe(0);
+    f.database.close();
+  }, 120_000);
+});
+
+describe('finish-pass §63: RetestSpec conflict handling', () => {
+  it('identical re-save is idempotent; different spec conflicts', async () => {
+    const f = await fixture();
+    const { RunCoordinator } = await import('../src/index.js');
+    const runA = await new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      scriptedRegistry('fail'),
+    ).run(f.added.project.id, { executionKind: 'simulation', runTimeoutMs: 30_000 });
+    const { result: mergeA } = mergeRun(f.repository, runA.run.id);
+    const verifiedA = await stubVerify('fail')(f.repository, f.dataRoot, mergeA.id);
+    const clusterA = mergeA.clusters[0];
+    if (clusterA === undefined) throw new Error('no cluster');
+    const { issueId } = await seedIssue(f, mergeA.id, clusterA.id, runA.run.id, verifiedA.run.id);
+    await writeFile(join(f.source, 'src', 'auth', 'login.ts'), 'export const login = 2;\n');
+    await f.manager.updateProjectCopy(f.added.project.id);
+    const result = await retestIssue(
+      {
+        dataRoot: f.dataRoot,
+        repository: f.repository,
+        lease: f.lease,
+        registry: scriptedRegistry('pass'),
+      },
+      issueId,
+      { verify: stubVerify('pass') as never, runTimeoutMs: 30_000 },
+    );
+    const spec = f.repository.getRetestSpec(result.retestRun.id);
+    if (spec === undefined) throw new Error('spec missing');
+    expect(() => f.repository.saveRetestSpec(spec, f.added.project.id)).not.toThrow();
+    expect(() =>
+      f.repository.saveRetestSpec(
+        { ...spec, limitations: [...spec.limitations, 'injected divergence'] },
+        f.added.project.id,
+      ),
+    ).toThrowError(/different RetestSpec already exists/);
+    try {
+      f.repository.saveRetestSpec(
+        { ...spec, limitations: [...spec.limitations, 'injected divergence'] },
+        f.added.project.id,
+      );
+      expect.unreachable('conflicting RetestSpec must be rejected');
+    } catch (cause) {
+      expect((cause as { code?: string }).code).toBe('RETEST_SPEC_CONFLICT');
+    }
     f.database.close();
   }, 180_000);
 });
