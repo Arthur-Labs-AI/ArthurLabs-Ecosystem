@@ -179,7 +179,7 @@ export function AgentInspector({ data }: { data: AgentInspectorData }): React.JS
         {view.cachedInputTokens !== undefined ? formatCount(view.cachedInputTokens) : '—'} · Total{' '}
         {view.totalTokens !== undefined ? formatCount(view.totalTokens) : '—'}
       </p>
-      {view.status === 'failed' && view.failure !== undefined ? (
+      {view.status === 'failed' && view.failure !== undefined && view.failure !== null ? (
         <div className="error-box">
           <strong>
             {view.failure.code}: {truncateMiddle(view.failure.message, 300)}

@@ -58,7 +58,7 @@ function registerDialogIpc(): void {
 async function boot(): Promise<void> {
   const dataRoot = process.env['SENTRY_DATA_ROOT'];
   try {
-    bootstrapped = bootstrapDesktop(dataRoot);
+    bootstrapped = await bootstrapDesktop(dataRoot);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await app.whenReady();

@@ -6,6 +6,7 @@ import { SentryDatabase, SentryRepository, RuntimeInstanceLease } from '@qa/pers
 import { ProjectManager } from '@qa/project-manager';
 import { RunCoordinator, createFakeHarnessRegistry } from '@qa/run-engine';
 import { DesktopApplicationService } from '../../src/main/services/desktop-service.js';
+import { ProviderCredentialService } from '../../src/main/services/provider-credentials.js';
 import { INITIAL_AGENT_STACKS } from '@qa/domain';
 
 const roots: string[] = [];
@@ -30,6 +31,9 @@ async function harness() {
   const registry = createFakeHarnessRegistry('success');
   const coordinator = new RunCoordinator(dataRoot, repository, lease, registry);
   const added = await projects.addProject(source);
+  const credentials = new ProviderCredentialService({
+    filePath: join(root, 'providers.env'),
+  });
   const service = new DesktopApplicationService({
     dataRoot,
     database,
@@ -38,6 +42,7 @@ async function harness() {
     projects,
     coordinator,
     registry,
+    credentials,
     agentStacks: [...INITIAL_AGENT_STACKS],
   });
   return {

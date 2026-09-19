@@ -29,6 +29,11 @@ export const IPC_CHANNELS = [
   'retests:get',
   'retests:cancel',
   'doctors:environment',
+  'providers:status',
+  'providers:set',
+  'providers:clear',
+  'providers:persist',
+  'providers:forget-file',
   'system:info',
   'system:active-runs',
 ] as const;
@@ -117,6 +122,13 @@ export interface SentryDesktopApi {
   };
   readonly doctors: {
     environment(): Promise<unknown>;
+  };
+  readonly providers: {
+    status(): Promise<Array<{ name: string; configured: boolean; source: string; hint: string }>>;
+    setKey(name: string, value: string): Promise<unknown>;
+    clearKey(name: string): Promise<unknown>;
+    persist(): Promise<{ path: string; keys: number }>;
+    forgetFile(): Promise<{ forgotten: boolean }>;
   };
   readonly system: {
     info(): Promise<{ dataRoot: string; versions: Record<string, string> }>;

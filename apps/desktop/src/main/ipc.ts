@@ -85,6 +85,13 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
   'retests:get': z.object({ retestRunId: z.string().min(1).max(100) }).strict(),
   'retests:cancel': z.object({ retestRunId: z.string().min(1).max(100) }).strict(),
   'doctors:environment': z.object({}).strict(),
+  'providers:status': z.object({}).strict(),
+  'providers:set': z
+    .object({ name: z.string().min(1).max(200), value: z.string().min(1).max(5000) })
+    .strict(),
+  'providers:clear': z.object({ name: z.string().min(1).max(200) }).strict(),
+  'providers:persist': z.object({}).strict(),
+  'providers:forget-file': z.object({}).strict(),
   'system:info': z.object({}).strict(),
   'system:active-runs': z.object({}).strict(),
 };
@@ -169,6 +176,16 @@ export function registerDesktopIpc(
           return service.cancelRetest(parsed['retestRunId'] as string);
         case 'doctors:environment':
           return service.environmentDoctors();
+        case 'providers:status':
+          return service.providerStatuses();
+        case 'providers:set':
+          return service.providerSetKey(parsed['name'] as string, parsed['value'] as string);
+        case 'providers:clear':
+          return service.providerClearKey(parsed['name'] as string);
+        case 'providers:persist':
+          return service.providerPersist();
+        case 'providers:forget-file':
+          return service.providerForgetFile();
         case 'system:info':
           return service.systemInfo();
         case 'system:active-runs':

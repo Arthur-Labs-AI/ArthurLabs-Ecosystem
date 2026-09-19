@@ -14,6 +14,10 @@ export function Settings(): React.JSX.Element {
   return (
     <div>
       <h1 style={{ marginTop: 0 }}>Settings</h1>
+      <p>
+        <a href="#/settings/providers">Provider keys →</a>{' '}
+        <span className="muted">(DeepSeek / GLM tokens, model overrides; values stay in main)</span>
+      </p>
       <div className="card">
         <h3>Data root</h3>
         <p className="mono">{data?.dataRoot ?? '—'}</p>

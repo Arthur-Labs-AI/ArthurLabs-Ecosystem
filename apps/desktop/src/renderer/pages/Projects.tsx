@@ -40,9 +40,9 @@ export function Projects(): React.JSX.Element {
           {error}
         </div>
       ) : null}
-      {add.error !== undefined && error === undefined ? (
+      {add.error !== undefined && add.error !== null && error === undefined ? (
         <div className="error-box" style={{ marginTop: 12 }} role="alert">
-          {String((add.error as Error).message)}
+          {String((add.error as { message?: unknown }).message ?? add.error)}
         </div>
       ) : null}
       {projects.isLoading ? (

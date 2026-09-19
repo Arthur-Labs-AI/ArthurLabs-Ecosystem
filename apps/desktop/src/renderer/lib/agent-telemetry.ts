@@ -407,7 +407,9 @@ export function projectAgentTelemetry(input: {
     displayName,
     model: agentRun.runtimeIdentity?.modelId ?? 'Model pending',
     status: agentRun.status,
-    ...(agentRun.failure === undefined ? {} : { failure: agentRun.failure }),
+    ...(agentRun.failure === undefined || agentRun.failure === null
+      ? {}
+      : { failure: agentRun.failure }),
     elapsedMs: elapsedMs(agentRun.startedAt, agentRun.completedAt ?? undefined, input.now),
     telemetry: {
       operations: events.length + activities.length,

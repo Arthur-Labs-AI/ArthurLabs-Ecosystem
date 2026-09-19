@@ -20,7 +20,7 @@ describe('desktop smoke: add → simulate → merge → issue → retest', () =>
     await writeFile(join(source, 'package.json'), JSON.stringify({ name: 'smoke' }));
     await writeFile(join(source, 'src', 'index.ts'), 'export const ok = true;');
     process.env['SENTRY_DATA_ROOT'] = dataRoot;
-    const app = bootstrapDesktop(dataRoot);
+    const app = await bootstrapDesktop(dataRoot);
     try {
       const added = (await app.service.addProject(source)) as { project: { id: string } };
       expect(added.project.id.startsWith('proj_')).toBe(true);

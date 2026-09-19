@@ -12,6 +12,7 @@ import { IssueDetail } from './pages/IssueDetail.js';
 import { RetestWorkspace } from './pages/RetestWorkspace.js';
 import { History } from './pages/History.js';
 import { Environment } from './pages/Environment.js';
+import { Providers } from './pages/Providers.js';
 import { Settings } from './pages/Settings.js';
 
 export function App(): React.JSX.Element {
@@ -31,6 +32,7 @@ export function App(): React.JSX.Element {
             <Route path="history" element={<History />} />
             <Route path="environment" element={<Environment />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="settings/providers" element={<Providers />} />
           </Route>
         </Routes>
       </HashRouter>

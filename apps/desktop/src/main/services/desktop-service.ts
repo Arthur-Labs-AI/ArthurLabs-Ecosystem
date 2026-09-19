@@ -16,6 +16,7 @@ import type { AgentStackDefinition } from '@qa/schemas';
 import { createQARunId, createRetestRunId, type ProjectId, type QARunId } from '@qa/shared';
 import type { HarnessAdapterRegistry } from '@qa/harness-protocol';
 import type { DesktopOperation, RetestSnapshot, RunSnapshot } from '../../shared/ipc-contract.js';
+import type { ProviderCredentialService } from './provider-credentials.js';
 
 export interface DesktopServiceDeps {
   readonly dataRoot: string;
@@ -26,6 +27,7 @@ export interface DesktopServiceDeps {
   readonly coordinator: RunCoordinator;
   readonly registry: HarnessAdapterRegistry;
   readonly agentStacks: readonly AgentStackDefinition[];
+  readonly credentials: ProviderCredentialService;
 }
 
 const ProjectIdInput = z.string().min(1).max(200);
@@ -453,6 +455,32 @@ export class DesktopApplicationService {
       simulation: { ready: true, label: 'Simulation mode — no provider tokens used' },
       dataRoot: this.deps.dataRoot,
     };
+  }
+
+  // ---- provider credentials (statuses only to renderer) ----
+  providerStatuses(): unknown {
+    return this.deps.credentials.statuses();
+  }
+
+  providerSetKey(name: string, value: string): unknown {
+    const parsed = z
+      .object({ name: z.string().min(1).max(200), value: z.string().min(1).max(5000) })
+      .strict()
+      .parse({ name, value });
+    return this.deps.credentials.setKey(parsed.name, parsed.value);
+  }
+
+  providerClearKey(name: string): unknown {
+    const parsed = z.string().min(1).max(200).parse(name);
+    return this.deps.credentials.clearKey(parsed);
+  }
+
+  providerPersist(): Promise<unknown> {
+    return this.deps.credentials.persist();
+  }
+
+  providerForgetFile(): Promise<unknown> {
+    return this.deps.credentials.forgetFile().then(() => ({ forgotten: true }));
   }
 
   systemInfo(): { dataRoot: string; versions: Record<string, string> } {

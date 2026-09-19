@@ -67,6 +67,13 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
   doctors: {
     environment: () => invoke('doctors:environment', {}),
   },
+  providers: {
+    status: () => invoke('providers:status', {}),
+    setKey: (name: string, value: string) => invoke('providers:set', { name, value }),
+    clearKey: (name: string) => invoke('providers:clear', { name }),
+    persist: () => invoke('providers:persist', {}),
+    forgetFile: () => invoke('providers:forget-file', {}),
+  },
   system: {
     info: () => invoke('system:info', {}),
     activeRuns: () => invoke('system:active-runs', {}),
