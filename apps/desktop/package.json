@@ -8,7 +8,7 @@
   "scripts": {
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
     "build:main": "tsc -p tsconfig.main.json",
-    "build:preload": "tsc -p tsconfig.preload.json",
+    "build:preload": "tsc -p tsconfig.preload.json && node scripts/fix-preload.mjs",
     "build:renderer": "vite build",
     "dev": "vite --port 5174",
     "dev:electron": "electron .",
