@@ -99,8 +99,14 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
     throw Object.assign(
       new Error(
         message +
-          (diagnostics.length > 0 ? ' Runtime output: ' + diagnostics : ' (no runtime output captured)') +
-          ' [distro=' + distro + ' entry=' + runtimeEntry + ']',
+          (diagnostics.length > 0
+            ? ' Runtime output: ' + diagnostics
+            : ' (no runtime output captured)') +
+          ' [distro=' +
+          distro +
+          ' entry=' +
+          runtimeEntry +
+          ']',
       ),
       { code: 'RUNTIME_OFFLINE' },
     );

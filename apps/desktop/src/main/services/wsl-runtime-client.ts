@@ -359,9 +359,7 @@ export class WslRuntimeManager {
 
   async defaultDistro(): Promise<string | undefined> {
     const distros = await this.listDistros().catch(() => []);
-    const usable = distros.filter(
-      (d) => d.version === 2 && !/^docker-desktop/i.test(d.name),
-    );
+    const usable = distros.filter((d) => d.version === 2 && !/^docker-desktop/i.test(d.name));
     // Prefer Ubuntu by name, then any running usable distro, then first usable.
     const named =
       usable.find((d) => d.name.toLowerCase() === 'ubuntu') ??
