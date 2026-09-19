@@ -7,7 +7,8 @@ rm -rf "$DEST.tmp"; mkdir -p "$DEST.tmp"
 cd "$SRC"
 for e in * .npmrc .nvmrc pnpm-workspace.yaml package.json tsconfig.base.json turbo.json eslint.config.js prettier.config.js; do
   [ -e "$e" ] || continue
-  cp -a "$e" "$DEST.tmp/"
+  case "$e" in node_modules|dist|.git|.turbo) continue;; esac
+  cp -r --no-preserve=all "$e" "$DEST.tmp/"
 done
 mkdir -p "$DEST.tmp/apps" "$DEST.tmp/packages"
 for a in apps/*/; do

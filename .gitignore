@@ -5,6 +5,9 @@
 .sentry-live/
 .sentry-data/
 sentry-data/
+# Stray Windows-path data dirs accidentally created by host tooling
+C*Tempsmoke-test/
+C\*Tempsmoke-test/
 
 # Logs
 logs

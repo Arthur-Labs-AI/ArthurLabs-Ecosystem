@@ -152,6 +152,37 @@ export class SentryRuntimeHost {
     return this.dataRoot;
   }
 
+  /**
+   * Legacy Windows data roots are never migrated automatically: detect and
+   * report them untouched. Historical simulation rows stay readable.
+   */
+  async legacyWindowsData(): Promise<unknown> {
+    const { access, constants } = await import('node:fs/promises');
+    const found: string[] = [];
+    // Conventional Windows-mounted locations that may hold pre-WSL Sentry data.
+    // Generic drive roots only — never user-specific paths.
+    for (const drive of ['c', 'd']) {
+      for (const tail of ['/Temp/sentry-live-data/sentry.db', '/Sentry/.sentry-live/sentry.db']) {
+        const candidate = '/mnt/' + drive + tail;
+        try {
+          await access(candidate, constants.R_OK);
+          found.push('/mnt/' + drive + tail.slice(0, tail.lastIndexOf('/')));
+        } catch {
+          // absent — nothing to report
+        }
+      }
+    }
+
+    return {
+      detected: found,
+      migrated: false,
+      note:
+        found.length === 0
+          ? 'No legacy Windows-runtime data detected.'
+          : 'Legacy Windows-runtime data detected. It has not been modified.',
+    };
+  }
+
   async recover(): Promise<void> {
     await this.coordinator.recover();
   }
@@ -999,6 +1030,7 @@ export async function serveStdio(options: RuntimeHostOptions = {}): Promise<void
   );
   const buffer = new RpcLineBuffer();
   let shuttingDown = false;
+  let inFlight = 0;
   const onData = (chunk: Buffer | string): void => {
     let messages: ReturnType<RpcLineBuffer['push']>;
     try {
@@ -1017,6 +1049,7 @@ export async function serveStdio(options: RuntimeHostOptions = {}): Promise<void
   };
   const handleRequest = async (message: RpcRequest): Promise<void> => {
     const startedAt = Date.now();
+    inFlight += 1;
     try {
       const { RUNTIME_METHODS } = await import('@qa/runtime-protocol');
       if (!(RUNTIME_METHODS as readonly string[]).includes(message.method)) {
@@ -1026,6 +1059,11 @@ export async function serveStdio(options: RuntimeHostOptions = {}): Promise<void
       emit({ type: 'response', id: message.id, ok: true, result: sanitize(result) });
       if (message.method === 'runtime.shutdown') {
         shuttingDown = true;
+        // Drain in-flight requests before closing (bounded 30 s).
+        const deadline = Date.now() + 30_000;
+        while (inFlight > 1 && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
         host.close();
         setImmediate(() => exit(0));
       }
@@ -1037,6 +1075,8 @@ export async function serveStdio(options: RuntimeHostOptions = {}): Promise<void
       } catch {
         log('rpc emit failed for ' + message.id);
       }
+    } finally {
+      inFlight = Math.max(0, inFlight - 1);
     }
   };
   input.on('data', onData);

@@ -11,4 +11,5 @@ $linuxSrc = (wsl.exe -d $Distro -- wslpath -u "$winSrcFwd").Trim()
 $deployScript = Join-Path $PSScriptRoot 'deploy-inner.sh'
 $deployLinux = ((wsl.exe -d $Distro -- wslpath -u (($deployScript -replace '\\', '/'))).Trim())
 wsl.exe -d $Distro -- bash $deployLinux $linuxSrc $Version
+if ($LASTEXITCODE -ne 0) { throw "WSL deploy failed with exit $LASTEXITCODE" }
 Write-Output '[sentry-runtime] deployed'

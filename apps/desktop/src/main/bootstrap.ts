@@ -13,6 +13,8 @@ export interface BootstrappedDesktop {
   readonly distro: string;
   readonly dataRoot: string;
   readonly recoveryWarnings: readonly string[];
+  /** Reconnect the runtime after a crash: respawn, handshake, reconfigure. */
+  reconnect(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -72,11 +74,21 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
   }
   const distro = await manager.resolveDistro();
   const runtimeEntry = await runtimeEntryForDistro(distro);
-  const dataRootOption = dataRootOverride ?? process.env['SENTRY_DATA_ROOT'];
+  // The runtime owns its Linux data root. A Windows-style path must never be
+  // forwarded as --data-root (backslashes mangle through wsl.exe and the Linux
+  // runtime cannot own a Windows path). Only absolute Linux paths override.
+  const rawOverride = dataRootOverride ?? process.env['SENTRY_DATA_ROOT'];
+  const linuxOverride =
+    rawOverride !== undefined && rawOverride.startsWith('/') ? rawOverride : undefined;
+  if (rawOverride !== undefined && linuxOverride === undefined) {
+    recoveryWarnings.push(
+      'Ignoring Windows-style SENTRY_DATA_ROOT for the Linux runtime; using the Linux-managed data root instead.',
+    );
+  }
   const client = new WslRuntimeClient({
     distro,
     runtimeEntry,
-    ...(dataRootOption === undefined ? {} : { dataRoot: dataRootOption }),
+    ...(linuxOverride === undefined ? {} : { dataRoot: linuxOverride }),
   });
   const hello = await client.start();
   const service = new DesktopApplicationService({
@@ -92,14 +104,16 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
         (error instanceof Error ? error.message : String(error)).slice(0, 200),
     );
   });
-  const distributable = hello.distro ?? distro;
-  void distributable;
   return {
     service,
     runtime: client,
     distro,
     dataRoot: hello.dataRoot,
     recoveryWarnings,
+    async reconnect() {
+      await client.start();
+      await service.pushRuntimeConfiguration();
+    },
     async close() {
       await client.stop();
     },
@@ -112,5 +126,5 @@ export async function runtimeEntryForDistro(distro: string): Promise<string> {
   if (override !== undefined && override.length > 0) return override;
   const { wslHomeDir } = await import('./services/wsl-runtime-client.js');
   const home = await wslHomeDir(distro);
-  return home.replace(/\/$/, '') + '/.local/share/sentry/runtime/current/dist/host.js';
+  return home.replace(/\/$/, '') + '/.local/share/sentry/runtime/current/apps/runtime/dist/host.js';
 }
