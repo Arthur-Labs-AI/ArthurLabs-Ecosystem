@@ -339,11 +339,41 @@ export class WslRuntimeManager {
     return distros;
   }
 
+  /**
+   * Probe whether a distro can host the runtime: node must resolve on the
+   * direct-exec path (no login shell). Never selects utility distros such as
+   * docker-desktop, which lack node and a Sentry home.
+   */
+  async distroReady(name: string): Promise<boolean> {
+    try {
+      const result = spawnSync('wsl.exe', ['-d', name, '--', 'node', '--version'], {
+        windowsHide: true,
+        encoding: 'utf8',
+        timeout: 20000,
+      });
+      return result.status === 0 && /^v\d+/.test(String(result.stdout ?? '').trim());
+    } catch {
+      return false;
+    }
+  }
+
   async defaultDistro(): Promise<string | undefined> {
     const distros = await this.listDistros().catch(() => []);
-    const usable = distros.filter((d) => d.version === 2);
-    const running = usable.find((d) => d.state === 'Running');
-    return (running ?? usable[0])?.name;
+    const usable = distros.filter(
+      (d) => d.version === 2 && !/^docker-desktop/i.test(d.name),
+    );
+    // Prefer Ubuntu by name, then any running usable distro, then first usable.
+    const named =
+      usable.find((d) => d.name.toLowerCase() === 'ubuntu') ??
+      usable.find((d) => d.state === 'Running') ??
+      usable[0];
+    if (named !== undefined && (await this.distroReady(named.name))) return named.name;
+    for (const candidate of usable) {
+      if (candidate.name !== named?.name && (await this.distroReady(candidate.name))) {
+        return candidate.name;
+      }
+    }
+    return named?.name;
   }
 
   async loadPreferredDistro(): Promise<string | undefined> {
@@ -370,7 +400,11 @@ export class WslRuntimeManager {
     await rename(tmp, this.preferencesFile);
   }
 
-  /** Resolve: preferred (if still present + v2) else default; throws when none. */
+  /**
+   * Resolve: stored preference (validated node-capable) else default.
+   * A stored distro that lost node (or vanished) falls through to default
+   * instead of failing closed on a stale preference.
+   */
   async resolveDistro(preferred?: string): Promise<string> {
     const stored = preferred ?? (await this.loadPreferredDistro());
     const distros = await this.listDistros();
@@ -380,7 +414,7 @@ export class WslRuntimeManager {
     }
     if (stored !== undefined) {
       const match = usable.find((d) => d.name === stored);
-      if (match !== undefined) return match.name;
+      if (match !== undefined && (await this.distroReady(match.name))) return match.name;
     }
     const fallback = await this.defaultDistro();
     if (fallback === undefined)
