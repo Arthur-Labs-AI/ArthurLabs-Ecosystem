@@ -41,6 +41,7 @@ describe('IPC security contract', () => {
     for (const channel of [
       'projects:list',
       'runs:start-simulation',
+      'runs:start-production',
       'runs:cancel',
       'runs:merge',
       'runs:verify',
@@ -49,6 +50,7 @@ describe('IPC security contract', () => {
       'projects:suggest-targets',
       'retests:cancel',
       'doctors:environment',
+      'production:readiness',
     ]) {
       expect(ipc).toContain(channel);
     }
@@ -64,11 +66,13 @@ describe('IPC security contract', () => {
       'issues:',
       'retests:',
       'doctors:',
+      'production:',
       'system:',
       'subscribe:',
     ]) {
       expect(preload).toContain(key);
     }
+    expect(preload).toContain('startProduction');
     expect(preload).not.toContain('shell');
     expect(preload).not.toContain('database');
     expect(preload).not.toContain('arbitrary');

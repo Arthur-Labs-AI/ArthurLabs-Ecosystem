@@ -51,6 +51,7 @@ const SimulationOptions = z
       .optional(),
     instructions: z.string().min(1).max(5000).optional(),
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
+    executionKind: z.enum(['simulation', 'production']).optional(),
   })
   .strict();
 
@@ -186,17 +187,37 @@ export class DesktopApplicationService {
   // ---- runs ----
   listRuns(projectId: string): unknown[] {
     const id = ProjectIdInput.parse(projectId) as ProjectId;
-    return this.deps.coordinator.listRuns(id).map((run) => ({
-      ...run,
-      agentSummary: this.deps.coordinator.getRunStatus(run.id).agents,
-      findingCount: this.deps.repository.countRunFindings(run.id),
-      issueCount: this.deps.repository.listOccurrencesForRun(run.id).length,
-    }));
+    const seen = new Map<string, unknown>();
+    for (const coordinator of [
+      this.deps.coordinator,
+      ...(this.deps.productionCoordinator === undefined ? [] : [this.deps.productionCoordinator]),
+    ]) {
+      for (const run of coordinator.listRuns(id)) {
+        if (seen.has(run.id)) continue;
+        seen.set(run.id, {
+          ...run,
+          agentSummary: coordinator.getRunStatus(run.id).agents,
+          findingCount: this.deps.repository.countRunFindings(run.id),
+          issueCount: this.deps.repository.listOccurrencesForRun(run.id).length,
+        });
+      }
+    }
+    return [...seen.values()];
+  }
+
+  /** Coordinator that owns a run: production runs live on the production
+   *  coordinator (disjoint live-adapter map); everything else is simulation. */
+  private coordinatorForRun(runId: QARunId): RunCoordinator {
+    const stored = this.deps.repository.getRun(runId);
+    if (stored?.executionKind === 'production' && this.deps.productionCoordinator !== undefined) {
+      return this.deps.productionCoordinator;
+    }
+    return this.deps.coordinator;
   }
 
   runSnapshot(runId: string): RunSnapshot {
     const id = RunIdInput.parse(runId) as QARunId;
-    const details = this.deps.coordinator.getRunDetails(id);
+    const details = this.coordinatorForRun(id).getRunDetails(id);
     const mergeResults = this.deps.repository.listMergeResults(id).map((merge) => ({
       ...merge,
       clusters: this.deps.repository.listClusters(merge.id),
@@ -249,23 +270,30 @@ export class DesktopApplicationService {
 
   runStatus(runId: string): unknown {
     const id = RunIdInput.parse(runId) as QARunId;
-    return this.deps.coordinator.getRunStatus(id);
+    return this.coordinatorForRun(id).getRunStatus(id);
   }
 
+  /**
+   * Start a QA run. `executionKind: 'production'` uses the production
+   * coordinator (provider registrations) and persists executionKind as
+   * production; anything else stays on the simulation coordinator. Backend
+   * remains authoritative — the coordinators share data root / repository /
+   * lease / project manager but own disjoint adapter sets.
+   */
   async startSimulation(projectId: string, options: unknown): Promise<DesktopOperation> {
     const id = ProjectIdInput.parse(projectId) as ProjectId;
     const parsed = SimulationOptions.parse(options);
-    const executionKind =
-      (options as { executionKind?: unknown } | undefined)?.executionKind === 'production'
-        ? 'production'
-        : 'simulation';
+    const executionKind = parsed.executionKind ?? 'simulation';
     const coordinator =
       executionKind === 'production' && this.deps.productionCoordinator !== undefined
         ? this.deps.productionCoordinator
         : this.deps.coordinator;
+    if (executionKind === 'production' && this.deps.productionCoordinator === undefined) {
+      throw toError('PRODUCTION_UNAVAILABLE', 'Production execution is not wired in this host');
+    }
     const operationId = 'dop_' + createQARunId().slice(4);
     const runPromise = coordinator.run(id, {
-      executionKind: 'simulation',
+      executionKind,
       mode: parsed.mode,
       ...(parsed.includePaths === undefined
         ? {}
@@ -299,14 +327,26 @@ export class DesktopApplicationService {
     return { operationId, ...(runId === undefined ? {} : { runId }) };
   }
 
+  private listAllRuns(projectId: ProjectId): Array<{ id: string }> {
+    const coordinators = [
+      this.deps.coordinator,
+      ...(this.deps.productionCoordinator === undefined ? [] : [this.deps.productionCoordinator]),
+    ];
+    const seen = new Map<string, { id: string }>();
+    for (const coordinator of coordinators) {
+      for (const run of coordinator.listRuns(projectId)) seen.set(run.id, run);
+    }
+    return [...seen.values()];
+  }
+
   private async detectCreatedRun(
     projectId: ProjectId,
     runPromise: Promise<{ run: { id: string } }>,
   ): Promise<string | undefined> {
-    const before = new Set(this.deps.coordinator.listRuns(projectId).map((r) => r.id));
+    const before = new Set(this.listAllRuns(projectId).map((r) => r.id));
     const deadline = Date.now() + 5000;
     while (Date.now() < deadline) {
-      const current = this.deps.coordinator.listRuns(projectId);
+      const current = this.listAllRuns(projectId);
       const created = current.find((r) => !before.has(r.id));
       if (created !== undefined) return created.id;
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -325,7 +365,9 @@ export class DesktopApplicationService {
   requestRunCancellation(runId: string): unknown {
     const id = RunIdInput.parse(runId) as QARunId;
     try {
-      return this.deps.coordinator.requestRunCancellation(id);
+      // requestRunCancellation is cross-process safe (durable request;
+      // the owning coordinator's workers drive terminalization).
+      return this.coordinatorForRun(id).requestRunCancellation(id);
     } catch (error) {
       const sanitized = sanitizeError(error);
       throw toError(sanitized.code, sanitized.message);
@@ -350,7 +392,7 @@ export class DesktopApplicationService {
   exportRun(runId: string, format: 'log' | 'json'): Promise<unknown> {
     const id = RunIdInput.parse(runId) as QARunId;
     const parsed = z.enum(['log', 'json']).parse(format);
-    return this.deps.coordinator.exportRun(id, parsed);
+    return this.coordinatorForRun(id).exportRun(id, parsed);
   }
 
   // ---- issues (backend-projected currentState; renderer never derives) ----
@@ -660,13 +702,24 @@ export class DesktopApplicationService {
     return this.deps.credentials.forgetAll();
   }
 
-  productionReadiness(): unknown {
+  productionReadiness(input?: { agentStackIds?: string[] }): unknown {
     const statuses = this.deps.credentials.statuses();
     const isConfigured = (name: string): boolean =>
       statuses.find((s) => s.name === name)?.configured === true;
+    const requested = input?.agentStackIds;
+    const wants = (stack: string): boolean => requested === undefined || requested.includes(stack);
     const reasons: string[] = [];
-    if (!isConfigured('DEEPSEEK_API_KEY')) reasons.push('DeepSeek credential missing');
-    if (!isConfigured('ANTHROPIC_AUTH_TOKEN')) reasons.push('GLM credential missing');
+    if (wants('stack_deepseek_main')) {
+      if (!isConfigured('DEEPSEEK_API_KEY')) reasons.push('DeepSeek credential missing');
+      if (!isConfigured('SENTRY_DEEPSEEK_MODEL')) reasons.push('DeepSeek model not set');
+    }
+    if (wants('stack_glm_main')) {
+      if (!isConfigured('ANTHROPIC_AUTH_TOKEN')) reasons.push('GLM credential missing');
+      if (!isConfigured('SENTRY_GLM_MODEL')) reasons.push('GLM model not set');
+    }
+    if (wants('stack_muse_main') && !isConfigured('SENTRY_MUSE_MODEL')) {
+      reasons.push('Muse model not set');
+    }
     return {
       ready: reasons.length === 0 && this.deps.productionRegistry !== undefined,
       reasons,

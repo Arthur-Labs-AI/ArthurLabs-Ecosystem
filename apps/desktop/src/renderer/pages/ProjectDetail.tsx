@@ -49,35 +49,42 @@ export function ProjectDetail(): React.JSX.Element {
     const base = selectedStacks ?? stacks.map((s) => s.id);
     setSelectedStacks(base.includes(id) ? base.filter((s) => s !== id) : [...base, id]);
   };
+  const [execution, setExecution] = React.useState<'simulation' | 'production'>('simulation');
+  const [confirmProduction, setConfirmProduction] = React.useState(false);
+  const startOptions = (mode: 'full' | 'targeted'): Record<string, unknown> => ({
+    mode,
+    ...(mode === 'targeted'
+      ? {
+          includePaths: targetPaths
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0),
+        }
+      : {}),
+    ...(effectiveStacks.length === 0 ? {} : { agentStackIds: effectiveStacks }),
+  });
+  const onStarted = (operation: unknown): void => {
+    const runId = (operation as { runId?: string }).runId;
+    if (runId !== undefined) navigate('/runs/' + runId);
+    setConfirmProduction(false);
+    void queryClient.invalidateQueries({ queryKey: ['project-runs', projectId] });
+  };
+  const onStartError = (e: unknown): void => setError(e instanceof Error ? e.message : String(e));
   const startFull = useMutation({
     mutationFn: () =>
-      sentryApi().runs.startSimulation(projectId as string, {
-        mode: 'full',
-        ...(effectiveStacks.length === 0 ? {} : { agentStackIds: effectiveStacks }),
-      }),
-    onSuccess: (operation) => {
-      const runId = (operation as { runId?: string }).runId;
-      if (runId !== undefined) navigate('/runs/' + runId);
-      void queryClient.invalidateQueries({ queryKey: ['project-runs', projectId] });
-    },
-    onError: (e) => setError(e instanceof Error ? e.message : String(e)),
+      execution === 'production'
+        ? sentryApi().runs.startProduction(projectId as string, startOptions('full') as never)
+        : sentryApi().runs.startSimulation(projectId as string, startOptions('full') as never),
+    onSuccess: onStarted,
+    onError: onStartError,
   });
   const startTargeted = useMutation({
     mutationFn: () =>
-      sentryApi().runs.startSimulation(projectId as string, {
-        mode: 'targeted',
-        includePaths: targetPaths
-          .split(',')
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0),
-        ...(effectiveStacks.length === 0 ? {} : { agentStackIds: effectiveStacks }),
-      }),
-    onSuccess: (operation) => {
-      const runId = (operation as { runId?: string }).runId;
-      if (runId !== undefined) navigate('/runs/' + runId);
-      void queryClient.invalidateQueries({ queryKey: ['project-runs', projectId] });
-    },
-    onError: (e) => setError(e instanceof Error ? e.message : String(e)),
+      execution === 'production'
+        ? sentryApi().runs.startProduction(projectId as string, startOptions('targeted') as never)
+        : sentryApi().runs.startSimulation(projectId as string, startOptions('targeted') as never),
+    onSuccess: onStarted,
+    onError: onStartError,
   });
   const update = useMutation({
     mutationFn: () => sentryApi().projects.update(projectId as string),
@@ -162,9 +169,16 @@ export function ProjectDetail(): React.JSX.Element {
           )}
         </div>
         <div className="card">
-          <h3>Start QA (simulation)</h3>
-          <p className="muted">Simulation mode — no provider tokens used.</p>
-          <ExecutionReadiness />
+          <h3>Start QA</h3>
+          <ExecutionSelector
+            execution={execution}
+            agentStackIds={effectiveStacks}
+            onChange={(next) => {
+              setExecution(next);
+              setConfirmProduction(false);
+              setError(undefined);
+            }}
+          />
           <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8 }}>
             <legend className="muted">Agents</legend>
             {stacks.length === 0 ? (
@@ -188,12 +202,28 @@ export function ProjectDetail(): React.JSX.Element {
               </p>
             ) : null}
           </fieldset>
+          {execution === 'production' && !confirmProduction ? (
+            <p className="error-box" style={{ marginBottom: 8 }} role="alert">
+              Production run: this calls the real provider APIs and consumes budget. Press Start
+              again to confirm.
+            </p>
+          ) : null}
           <button
             className="primary"
-            onClick={() => startFull.mutate()}
+            onClick={() => {
+              if (execution === 'production' && !confirmProduction) {
+                setConfirmProduction(true);
+                return;
+              }
+              startFull.mutate();
+            }}
             disabled={startFull.isPending || effectiveStacks.length === 0}
           >
-            Start Full QA
+            {execution === 'production'
+              ? confirmProduction
+                ? 'Confirm Production Full QA'
+                : 'Start Full QA (Production)'
+              : 'Start Full QA'}
           </button>
           <div style={{ marginTop: 8 }}>
             <TargetPathInput
@@ -205,10 +235,20 @@ export function ProjectDetail(): React.JSX.Element {
               Agents remain full-strength QA workers; findings should relate to the selected scope.
             </p>
             <button
-              onClick={() => startTargeted.mutate()}
+              onClick={() => {
+                if (execution === 'production' && !confirmProduction) {
+                  setConfirmProduction(true);
+                  return;
+                }
+                startTargeted.mutate();
+              }}
               disabled={startTargeted.isPending || effectiveStacks.length === 0}
             >
-              Start Targeted QA
+              {execution === 'production'
+                ? confirmProduction
+                  ? 'Confirm Production Targeted QA'
+                  : 'Start Targeted QA (Production)'
+                : 'Start Targeted QA'}
             </button>
           </div>
         </div>
@@ -241,32 +281,58 @@ export function ProjectDetail(): React.JSX.Element {
   );
 }
 
-function ExecutionReadiness(): React.JSX.Element {
+function ExecutionSelector({
+  execution,
+  onChange,
+  agentStackIds,
+}: {
+  execution: 'simulation' | 'production';
+  onChange: (next: 'simulation' | 'production') => void;
+  agentStackIds: string[];
+}): React.JSX.Element {
   const readiness = useQuery({
-    queryKey: ['production-readiness'],
-    queryFn: () => sentryApi().production.readiness(),
+    queryKey: ['production-readiness', [...agentStackIds].sort()],
+    queryFn: () => sentryApi().production.readiness({ agentStackIds }),
   });
   const info = readiness.data as
     { ready?: boolean; reasons?: string[]; productionWired?: boolean } | undefined;
   const reasons = info?.reasons ?? [];
+  const productionBlocked = info?.ready !== true;
   return (
     <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8 }}>
       <legend className="muted">Execution</legend>
       <label style={{ display: 'block' }}>
-        <input type="radio" name="execution" checked={true} readOnly /> Simulation{' '}
-        <span className="muted">(FakeHarness — never provider spend)</span>
+        <input
+          type="radio"
+          name="execution"
+          checked={execution === 'simulation'}
+          onChange={() => onChange('simulation')}
+        />{' '}
+        Simulation <span className="muted">(FakeHarness — never provider spend)</span>
       </label>
-      <label style={{ display: 'block', opacity: 0.75 }} title={reasons.join(' · ')}>
-        <input type="radio" name="execution" checked={false} disabled={true} /> Production{' '}
+      <label
+        style={{ display: 'block', opacity: productionBlocked ? 0.75 : 1 }}
+        title={reasons.join(' · ')}
+      >
+        <input
+          type="radio"
+          name="execution"
+          checked={execution === 'production'}
+          disabled={productionBlocked}
+          onChange={() => onChange('production')}
+        />{' '}
+        Production{' '}
         <span className="muted">
-          (requires explicit enablement — {reasons.length > 0 ? reasons.join(' · ') : 'checking…'})
+          (real provider run — consumes budget
+          {reasons.length > 0 ? ' — ' + reasons.join(' · ') : ''})
         </span>
       </label>
-      <p className="muted" style={{ marginBottom: 0, fontSize: 12 }}>
-        Production registry is wired ({info?.productionWired === true ? 'yes' : 'no'}) but desktop
-        starts run Simulation by default. Production runs require explicit user action and are
-        deferred while provider budgets are unavailable.
-      </p>
+      {execution === 'production' ? (
+        <p className="muted" style={{ marginBottom: 0, fontSize: 12 }}>
+          Provider-backed agents (Muse / DeepSeek / GLM). You confirm explicitly before anything
+          starts.
+        </p>
+      ) : null}
     </fieldset>
   );
 }

@@ -42,6 +42,8 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     status: (runId: string) => invoke('runs:status', { runId }),
     startSimulation: (projectId: string, options) =>
       invoke('runs:start-simulation', { projectId, ...options }),
+    startProduction: (projectId: string, options) =>
+      invoke('runs:start-production', { projectId, ...options }),
     cancel: (runId: string) => invoke('runs:cancel', { runId }),
     merge: (runId: string) => invoke('runs:merge', { runId }),
     verify: (mergeResultId: string) => invoke('runs:verify', { mergeResultId }),
@@ -55,13 +57,15 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
   },
   retests: {
     list: (issueId: string) => invoke('retests:list', { issueId }),
-    start: (issueId: string, options?: { revisionId?: string }) =>
-      invoke(
-        'retests:start',
-        options?.revisionId === undefined
-          ? { issueId }
-          : { issueId, revisionId: options.revisionId },
-      ),
+    start: (
+      issueId: string,
+      options?: { revisionId?: string | undefined; executionKind?: 'simulation' | 'production' },
+    ) =>
+      invoke('retests:start', {
+        issueId,
+        ...(options?.revisionId === undefined ? {} : { revisionId: options.revisionId }),
+        ...(options?.executionKind === undefined ? {} : { executionKind: options.executionKind }),
+      }),
     get: (retestRunId: string) => invoke('retests:get', { retestRunId }),
     cancel: (retestRunId: string) => invoke('retests:cancel', { retestRunId }),
   },
@@ -79,7 +83,11 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     forgetAll: () => invoke('providers:forget-all', {}),
   },
   production: {
-    readiness: () => invoke('production:readiness', {}),
+    readiness: (input?: { agentStackIds?: string[] }) =>
+      invoke(
+        'production:readiness',
+        input?.agentStackIds === undefined ? {} : { agentStackIds: input.agentStackIds },
+      ),
   },
   system: {
     info: () => invoke('system:info', {}),

@@ -17,6 +17,7 @@ export const IPC_CHANNELS = [
   'runs:get',
   'runs:status',
   'runs:start-simulation',
+  'runs:start-production',
   'runs:cancel',
   'runs:merge',
   'runs:verify',
@@ -116,6 +117,20 @@ export interface SentryDesktopApi {
         agentStackIds?: string[];
       },
     ): Promise<DesktopOperation>;
+    /**
+     * Start a REAL provider-backed run (Muse / DeepSeek / GLM). Consumes
+     * provider budget. Requires configured credentials; backend stays
+     * authoritative and surfaces structured errors.
+     */
+    startProduction(
+      projectId: string,
+      options: {
+        mode: 'full' | 'targeted';
+        includePaths?: string[];
+        instructions?: string;
+        agentStackIds?: string[];
+      },
+    ): Promise<DesktopOperation>;
     cancel(runId: string): Promise<unknown>;
     merge(runId: string): Promise<unknown>;
     verify(mergeResultId: string): Promise<unknown>;
@@ -131,7 +146,7 @@ export interface SentryDesktopApi {
     list(issueId: string): Promise<unknown[]>;
     start(
       issueId: string,
-      options?: { revisionId?: string | undefined },
+      options?: { revisionId?: string | undefined; executionKind?: 'simulation' | 'production' },
     ): Promise<DesktopOperation>;
     get(retestRunId: string): Promise<RetestSnapshot>;
     cancel(retestRunId: string): Promise<unknown>;
@@ -161,7 +176,9 @@ export interface SentryDesktopApi {
     forgetAll(): Promise<{ forgotten: boolean }>;
   };
   readonly production: {
-    readiness(): Promise<{ ready: boolean; reasons: string[]; productionWired: boolean }>;
+    readiness(input?: {
+      agentStackIds?: string[];
+    }): Promise<{ ready: boolean; reasons: string[]; productionWired: boolean }>;
   };
   readonly system: {
     info(): Promise<{ dataRoot: string; versions: Record<string, string> }>;

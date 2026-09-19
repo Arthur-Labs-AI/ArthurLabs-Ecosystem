@@ -162,6 +162,63 @@ describe('desktop cancellation UX states', () => {
     h.database.close();
   }, 60000);
 
+  it('routes production starts to the production coordinator with kind=production', async () => {
+    const h = await harness();
+    // Mock production coordinator: proves routing without provider spend.
+    const seen: Array<{ executionKind: string }> = [];
+    const mockProduction = {
+      run: async (projectId: string, options: { executionKind: string }) => {
+        seen.push({ executionKind: options.executionKind });
+        return h.coordinator.run(projectId as never, {
+          executionKind: 'simulation',
+          mode: 'full',
+        });
+      },
+      listRuns: (projectId: never) => h.coordinator.listRuns(projectId),
+    };
+    const withProduction = new DesktopApplicationService({
+      dataRoot: h.dataRoot,
+      database: h.database,
+      repository: h.repository,
+      lease: h.lease,
+      projects: h.projects,
+      coordinator: h.coordinator,
+      registry: createFakeHarnessRegistry('success'),
+      productionCoordinator: mockProduction as never,
+      productionRegistry: createFakeHarnessRegistry('success'),
+      credentials: new ProviderCredentialService({
+        filePath: join(h.dataRoot, 'providers-test.json'),
+      }),
+      agentStacks: [...INITIAL_AGENT_STACKS],
+    });
+    const operation = await withProduction.startSimulation(h.projectId, {
+      mode: 'full',
+      executionKind: 'production',
+    });
+    expect(operation.runId).toBeDefined();
+    expect(seen.map((s) => s.executionKind)).toEqual(['production']);
+    h.lease.release();
+    h.database.close();
+  });
+
+  it('rejects production starts when no production coordinator is wired', async () => {
+    const h = await harness();
+    const outcome = await h.service
+      .startSimulation(h.projectId, { mode: 'full', executionKind: 'production' })
+      .then(
+        () => ({ code: 'NO_ERROR' }),
+        (error: unknown) => ({
+          code:
+            typeof error === 'object' && error !== null && 'code' in error
+              ? String((error as { code?: unknown }).code)
+              : 'NO_CODE',
+        }),
+      );
+    expect(outcome.code).toBe('PRODUCTION_UNAVAILABLE');
+    h.lease.release();
+    h.database.close();
+  });
+
   it('merges, verifies, ingests, and retests through the desktop service', async () => {
     const h = await harness();
     const full = await h.coordinator.run(h.projectId, {

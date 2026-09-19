@@ -65,6 +65,16 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
         .optional(),
       instructions: z.string().min(1).max(5000).optional(),
       agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
+      executionKind: z.enum(['simulation', 'production']).optional(),
+    })
+    .strict(),
+  'runs:start-production': z
+    .object({
+      projectId: z.string().min(1).max(200),
+      mode: z.enum(['full', 'targeted']),
+      includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
+      instructions: z.string().min(1).max(5000).optional(),
+      agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
     })
     .strict(),
   'runs:cancel': z.object({ runId: z.string().min(1).max(100) }).strict(),
@@ -82,6 +92,7 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
     .object({
       issueId: z.string().min(1).max(100),
       revisionId: z.string().min(1).max(100).optional(),
+      executionKind: z.enum(['simulation', 'production']).optional(),
     })
     .strict(),
   'retests:get': z.object({ retestRunId: z.string().min(1).max(100) }).strict(),
@@ -101,7 +112,9 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
   'providers:persist': z.object({}).strict(),
   'providers:forget-file': z.object({}).strict(),
   'providers:forget-all': z.object({}).strict(),
-  'production:readiness': z.object({}).strict(),
+  'production:readiness': z
+    .object({ agentStackIds: z.array(z.string().min(1).max(200)).max(10).optional() })
+    .strict(),
   'system:info': z.object({}).strict(),
   'system:active-runs': z.object({}).strict(),
 };
@@ -149,6 +162,19 @@ export function registerDesktopIpc(
             scenario: parsed['scenario'],
             instructions: parsed['instructions'],
             agentStackIds: parsed['agentStackIds'],
+            executionKind: parsed['executionKind'] === 'production' ? 'production' : 'simulation',
+          });
+          if (operation.runId !== undefined)
+            hooks.onRunCreated?.(operation.runId, operation.operationId);
+          return operation;
+        }
+        case 'runs:start-production': {
+          const operation = await service.startSimulation(parsed['projectId'] as string, {
+            mode: parsed['mode'],
+            includePaths: parsed['includePaths'],
+            instructions: parsed['instructions'],
+            agentStackIds: parsed['agentStackIds'],
+            executionKind: 'production',
           });
           if (operation.runId !== undefined)
             hooks.onRunCreated?.(operation.runId, operation.operationId);
@@ -173,12 +199,14 @@ export function registerDesktopIpc(
         case 'retests:list':
           return service.listRetests(parsed['issueId'] as string);
         case 'retests:start': {
-          const operation = await service.startRetest(
-            parsed['issueId'] as string,
-            parsed['revisionId'] === undefined
-              ? undefined
-              : { revisionId: parsed['revisionId'] as string },
-          );
+          const operation = await service.startRetest(parsed['issueId'] as string, {
+            ...(parsed['revisionId'] === undefined
+              ? {}
+              : { revisionId: parsed['revisionId'] as string }),
+            ...(parsed['executionKind'] === undefined
+              ? {}
+              : { executionKind: parsed['executionKind'] as 'simulation' | 'production' }),
+          });
           if (operation.retestRunId !== undefined)
             hooks.onRetestCreated?.(operation.retestRunId, operation.operationId);
           return operation;
@@ -206,7 +234,11 @@ export function registerDesktopIpc(
         case 'providers:forget-all':
           return service.providerForgetAll();
         case 'production:readiness':
-          return service.productionReadiness();
+          return service.productionReadiness(
+            parsed['agentStackIds'] === undefined
+              ? undefined
+              : { agentStackIds: parsed['agentStackIds'] as string[] },
+          );
         case 'system:info':
           return service.systemInfo();
         case 'system:active-runs':
