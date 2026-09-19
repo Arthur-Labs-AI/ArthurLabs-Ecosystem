@@ -113,6 +113,26 @@ export class DesktopApplicationService {
     return this.deps.repository.listRevisions(id);
   }
 
+  /** Suggest top-level target paths from the current managed working copy (autocomplete only;
+   *  the frozen snapshot manifest stays authoritative at run start). */
+  async suggestTargets(projectId: string): Promise<unknown> {
+    const id = ProjectIdInput.parse(projectId) as ProjectId;
+    const record = this.deps.projects.getProject(id);
+    if (record === undefined) throw toError('PROJECT_NOT_FOUND', 'Project not found: ' + id);
+    const workingCopy = projectDataPaths(this.deps.dataRoot, record.project.id).workingCopy;
+    let entries: string[] = [];
+    try {
+      entries = (await readdir(workingCopy, { withFileTypes: true }))
+        .filter((e) => !e.name.startsWith('.'))
+        .map((e) => (e.isDirectory() ? e.name + '/' : e.name))
+        .sort()
+        .slice(0, 100);
+    } catch {
+      entries = [];
+    }
+    return { projectId: record.project.id, paths: entries };
+  }
+
   async updateProject(projectId: string, sourcePath?: string): Promise<unknown> {
     const id = ProjectIdInput.parse(projectId) as ProjectId;
     const parsedPath =
@@ -216,12 +236,27 @@ export class DesktopApplicationService {
         ? {}
         : { agentStackIds: [...parsed.agentStackIds] as never }),
     });
-    this.pendingRuns.set(operationId, runPromise);
-    const runId = await this.detectCreatedRun(id, runPromise);
-    void runPromise.then(
-      () => this.pendingRuns.delete(operationId),
-      () => this.pendingRuns.delete(operationId),
+    // Attach settlement cleanup FIRST so a fast rejection is never unhandled.
+    // The chained promise rethrows for the pre-row failure path below; the trailing
+    // sink guarantees a late background rejection (e.g. host teardown mid-run) can
+    // never surface as an unhandled rejection — persisted run truth stays authoritative
+    // and the UI reconciles it via polling/snapshots.
+    const settled = runPromise.then(
+      (details) => {
+        this.pendingRuns.delete(operationId);
+        return details;
+      },
+      (error: unknown) => {
+        this.pendingRuns.delete(operationId);
+        throw error;
+      },
     );
+    settled.then(undefined, () => undefined);
+    this.pendingRuns.set(operationId, settled);
+    const runId = await this.detectCreatedRun(id, settled);
+    // If the run failed before its row appeared, surface the structured backend error
+    // instead of a phantom operation without a run.
+    if (runId === undefined) await settled;
     return { operationId, ...(runId === undefined ? {} : { runId }) };
   }
 

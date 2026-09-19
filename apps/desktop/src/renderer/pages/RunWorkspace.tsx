@@ -268,6 +268,33 @@ export function RunWorkspace(): React.JSX.Element {
           </span>
         )}
       </div>
+      {data.run.status === 'failed' ? (
+        <div className="error-box" role="alert">
+          <strong>Run failed.</strong>{' '}
+          {(
+            data.agentRuns as Array<{
+              status?: string;
+              failure?: { code?: string; message?: string };
+            }>
+          )
+            .filter(
+              (a) =>
+                a.status === 'failed' || a.status === 'timed_out' || a.status === 'interrupted',
+            )
+            .map((a, i) => (
+              <span key={i}>
+                {a.failure?.code ?? 'AGENT_FAILED'}:{' '}
+                {a.failure?.message ?? 'agent did not complete'}.{' '}
+              </span>
+            ))}
+          {data.agentRuns.length === 0 ? (
+            <span>
+              No agents started — the failure happened before execution (e.g. locked project,
+              changed working copy, or invalid target). Check the project state and retry.
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {actionError !== undefined ? (
         <div className="error-box" role="alert">
           {actionError} <button onClick={() => setActionError(undefined)}>Dismiss</button>

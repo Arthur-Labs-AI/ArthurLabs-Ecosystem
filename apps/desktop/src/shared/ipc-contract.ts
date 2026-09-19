@@ -12,6 +12,7 @@ export const IPC_CHANNELS = [
   'projects:revisions',
   'projects:update',
   'projects:doctor',
+  'projects:suggest-targets',
   'runs:list',
   'runs:get',
   'runs:status',
@@ -86,6 +87,7 @@ export interface SentryDesktopApi {
     revisions(projectId: string): Promise<unknown[]>;
     update(projectId: string, sourcePath?: string): Promise<unknown>;
     doctor(projectId: string): Promise<unknown>;
+    suggestTargets(projectId: string): Promise<{ projectId: string; paths: string[] }>;
   };
   readonly runs: {
     list(projectId: string): Promise<unknown[]>;

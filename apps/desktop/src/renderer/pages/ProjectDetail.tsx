@@ -9,7 +9,7 @@ export function ProjectDetail(): React.JSX.Element {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = React.useState<string | undefined>(undefined);
-  const [targetPaths, setTargetPaths] = React.useState('src/auth');
+  const [targetPaths, setTargetPaths] = React.useState('');
   const detail = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => sentryApi().projects.get(projectId as string),
@@ -195,14 +195,11 @@ export function ProjectDetail(): React.JSX.Element {
             Start Full QA
           </button>
           <div style={{ marginTop: 8 }}>
-            <label>
-              Target paths (comma-separated)
-              <input
-                value={targetPaths}
-                onChange={(e) => setTargetPaths(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
-              />
-            </label>
+            <TargetPathInput
+              projectId={projectId as string}
+              value={targetPaths}
+              onChange={setTargetPaths}
+            />
             <p className="muted">
               Agents remain full-strength QA workers; findings should relate to the selected scope.
             </p>
@@ -240,5 +237,53 @@ export function ProjectDetail(): React.JSX.Element {
         </ul>
       )}
     </div>
+  );
+}
+
+function TargetPathInput({
+  projectId,
+  value,
+  onChange,
+}: {
+  projectId: string;
+  value: string;
+  onChange: (value: string) => void;
+}): React.JSX.Element {
+  const suggestions = useQuery({
+    queryKey: ['target-suggest', projectId],
+    queryFn: () => sentryApi().projects.suggestTargets(projectId),
+  });
+  const paths = ((suggestions.data as { paths?: string[] } | undefined)?.paths ?? []).filter((q) =>
+    q.endsWith('/'),
+  );
+  return (
+    <>
+      <label>
+        Target paths (comma-separated)
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={paths[0] ?? 'src/auth'}
+          style={{ width: '100%', marginTop: 4 }}
+        />
+      </label>
+      {paths.length > 0 ? (
+        <p className="muted">
+          In this project:{' '}
+          {paths.slice(0, 8).map((q) => (
+            <button
+              key={q}
+              onClick={() =>
+                onChange(value.trim().length === 0 ? q.slice(0, -1) : value + ',' + q.slice(0, -1))
+              }
+              title={'Add ' + q}
+              style={{ padding: '0 6px', fontSize: 11, marginRight: 4 }}
+            >
+              +{q}
+            </button>
+          ))}
+        </p>
+      ) : null}
+    </>
   );
 }

@@ -34,6 +34,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
         sourcePath === undefined ? { projectId } : { projectId, sourcePath },
       ),
     doctor: (projectId: string) => invoke('projects:doctor', { projectId }),
+    suggestTargets: (projectId: string) => invoke('projects:suggest-targets', { projectId }),
   },
   runs: {
     list: (projectId: string) => invoke('runs:list', { projectId }),

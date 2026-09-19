@@ -51,6 +51,7 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
     })
     .strict(),
   'projects:doctor': z.object({ projectId: z.string().min(1).max(200) }).strict(),
+  'projects:suggest-targets': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'runs:list': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'runs:get': z.object({ runId: z.string().min(1).max(100) }).strict(),
   'runs:status': z.object({ runId: z.string().min(1).max(100) }).strict(),
@@ -125,6 +126,8 @@ export function registerDesktopIpc(
           );
         case 'projects:doctor':
           return service.projectDoctor(parsed['projectId'] as string);
+        case 'projects:suggest-targets':
+          return service.suggestTargets(parsed['projectId'] as string);
         case 'runs:list':
           return service.listRuns(parsed['projectId'] as string);
         case 'runs:get':

@@ -46,6 +46,7 @@ describe('IPC security contract', () => {
       'runs:verify',
       'runs:ingest',
       'runs:export',
+      'projects:suggest-targets',
       'retests:cancel',
       'doctors:environment',
     ]) {
