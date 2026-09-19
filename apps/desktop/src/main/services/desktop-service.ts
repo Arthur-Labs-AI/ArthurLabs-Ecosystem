@@ -43,6 +43,7 @@ const SimulationOptions = z
       .enum(['success', 'partial', 'all-fail', 'transport-loss', 'timeout', 'protocol-error'])
       .optional(),
     instructions: z.string().min(1).max(5000).optional(),
+    agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
   })
   .strict();
 
@@ -211,6 +212,9 @@ export class DesktopApplicationService {
         ? {}
         : { target: { includePaths: [...parsed.includePaths] } }),
       ...(parsed.instructions === undefined ? {} : { instructions: parsed.instructions }),
+      ...(parsed.agentStackIds === undefined
+        ? {}
+        : { agentStackIds: [...parsed.agentStackIds] as never }),
     });
     this.pendingRuns.set(operationId, runPromise);
     const runId = await this.detectCreatedRun(id, runPromise);

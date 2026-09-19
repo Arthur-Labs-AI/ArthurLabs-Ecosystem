@@ -79,6 +79,34 @@ describe('desktop cancellation UX states', () => {
     h.database.close();
   });
 
+  it('starts a single-agent simulation run with only the selected stack', async () => {
+    const h = await harness();
+    const operation = await h.service.startSimulation(h.projectId, {
+      mode: 'full',
+      agentStackIds: ['stack_deepseek_main'],
+    });
+    expect(operation.runId).toBeDefined();
+    const snapshot = h.service.runSnapshot(operation.runId as string);
+    const runs = snapshot.agentRuns as Array<{ agentStackId: string }>;
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.agentStackId).toBe('stack_deepseek_main');
+    h.lease.release();
+    h.database.close();
+  });
+
+  it('rejects an empty agent selection', async () => {
+    const h = await harness();
+    let thrown: unknown = undefined;
+    try {
+      await h.service.startSimulation(h.projectId, { mode: 'full', agentStackIds: [] });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeDefined();
+    h.lease.release();
+    h.database.close();
+  });
+
   it('starts a simulation TARGETED run with a TargetSpec node', async () => {
     const h = await harness();
     const operation = await h.service.startSimulation(h.projectId, {

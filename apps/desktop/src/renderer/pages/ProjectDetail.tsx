@@ -30,8 +30,31 @@ export function ProjectDetail(): React.JSX.Element {
     queryFn: () => sentryApi().issues.list(projectId as string),
     enabled: projectId !== undefined,
   });
+  const environment = useQuery({
+    queryKey: ['environment'],
+    queryFn: () => sentryApi().doctors.environment(),
+  });
+  const stacks = (
+    (
+      environment.data as
+        { agentStacks?: Array<{ id: string; displayName: string; readiness?: string }> } | undefined
+    )?.agentStacks ?? []
+  ).filter(
+    (s) =>
+      s.id === 'stack_muse_main' || s.id === 'stack_deepseek_main' || s.id === 'stack_glm_main',
+  );
+  const [selectedStacks, setSelectedStacks] = React.useState<string[] | undefined>(undefined);
+  const effectiveStacks = selectedStacks ?? stacks.map((s) => s.id);
+  const toggleStack = (id: string): void => {
+    const base = selectedStacks ?? stacks.map((s) => s.id);
+    setSelectedStacks(base.includes(id) ? base.filter((s) => s !== id) : [...base, id]);
+  };
   const startFull = useMutation({
-    mutationFn: () => sentryApi().runs.startSimulation(projectId as string, { mode: 'full' }),
+    mutationFn: () =>
+      sentryApi().runs.startSimulation(projectId as string, {
+        mode: 'full',
+        ...(effectiveStacks.length === 0 ? {} : { agentStackIds: effectiveStacks }),
+      }),
     onSuccess: (operation) => {
       const runId = (operation as { runId?: string }).runId;
       if (runId !== undefined) navigate('/runs/' + runId);
@@ -47,6 +70,7 @@ export function ProjectDetail(): React.JSX.Element {
           .split(',')
           .map((s) => s.trim())
           .filter((s) => s.length > 0),
+        ...(effectiveStacks.length === 0 ? {} : { agentStackIds: effectiveStacks }),
       }),
     onSuccess: (operation) => {
       const runId = (operation as { runId?: string }).runId;
@@ -140,10 +164,33 @@ export function ProjectDetail(): React.JSX.Element {
         <div className="card">
           <h3>Start QA (simulation)</h3>
           <p className="muted">Simulation mode — no provider tokens used.</p>
+          <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8 }}>
+            <legend className="muted">Agents</legend>
+            {stacks.length === 0 ? (
+              <span className="muted">Loading agent readiness…</span>
+            ) : (
+              stacks.map((stack) => (
+                <label key={stack.id} style={{ display: 'block' }}>
+                  <input
+                    type="checkbox"
+                    checked={effectiveStacks.includes(stack.id)}
+                    onChange={() => toggleStack(stack.id)}
+                  />{' '}
+                  {stack.displayName}{' '}
+                  <span className="muted">({stack.readiness ?? 'unknown'})</span>
+                </label>
+              ))
+            )}
+            {stacks.length > 0 && effectiveStacks.length === 0 ? (
+              <p className="error-box" style={{ marginTop: 8 }}>
+                Select at least one agent to start a run.
+              </p>
+            ) : null}
+          </fieldset>
           <button
             className="primary"
             onClick={() => startFull.mutate()}
-            disabled={startFull.isPending}
+            disabled={startFull.isPending || effectiveStacks.length === 0}
           >
             Start Full QA
           </button>
@@ -159,7 +206,10 @@ export function ProjectDetail(): React.JSX.Element {
             <p className="muted">
               Agents remain full-strength QA workers; findings should relate to the selected scope.
             </p>
-            <button onClick={() => startTargeted.mutate()} disabled={startTargeted.isPending}>
+            <button
+              onClick={() => startTargeted.mutate()}
+              disabled={startTargeted.isPending || effectiveStacks.length === 0}
+            >
               Start Targeted QA
             </button>
           </div>

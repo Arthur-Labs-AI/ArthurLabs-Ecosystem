@@ -63,6 +63,7 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
         .enum(['success', 'partial', 'all-fail', 'transport-loss', 'timeout', 'protocol-error'])
         .optional(),
       instructions: z.string().min(1).max(5000).optional(),
+      agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
     })
     .strict(),
   'runs:cancel': z.object({ runId: z.string().min(1).max(100) }).strict(),
@@ -136,6 +137,7 @@ export function registerDesktopIpc(
             includePaths: parsed['includePaths'],
             scenario: parsed['scenario'],
             instructions: parsed['instructions'],
+            agentStackIds: parsed['agentStackIds'],
           });
           if (operation.runId !== undefined)
             hooks.onRunCreated?.(operation.runId, operation.operationId);

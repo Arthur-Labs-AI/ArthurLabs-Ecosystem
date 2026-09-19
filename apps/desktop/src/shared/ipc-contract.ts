@@ -98,6 +98,7 @@ export interface SentryDesktopApi {
         includePaths?: string[];
         scenario?: string;
         instructions?: string;
+        agentStackIds?: string[];
       },
     ): Promise<DesktopOperation>;
     cancel(runId: string): Promise<unknown>;
