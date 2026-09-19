@@ -13,6 +13,7 @@ import type { RunCoordinator } from '@qa/run-engine';
 import { mergeRun, verifyMerge, ingestMergeIssues, retestIssue } from '@qa/run-engine';
 import { requestRetestCancellation, cancelRetestRun } from '@qa/run-engine';
 import type { AgentStackDefinition } from '@qa/schemas';
+import { projectIssueState } from '@qa/schemas';
 import { createQARunId, createRetestRunId, type ProjectId, type QARunId } from '@qa/shared';
 import type { HarnessAdapterRegistry } from '@qa/harness-protocol';
 import type { DesktopOperation, RetestSnapshot, RunSnapshot } from '../../shared/ipc-contract.js';
@@ -24,8 +25,14 @@ export interface DesktopServiceDeps {
   readonly repository: SentryRepository;
   readonly lease: RuntimeInstanceLease;
   readonly projects: ProjectManager;
+  /** Simulation coordinator (FakeHarness only — never provider spend). */
   readonly coordinator: RunCoordinator;
+  /** Simulation registry (FakeHarness only). */
   readonly registry: HarnessAdapterRegistry;
+  /** Production coordinator (provider registrations). Optional until wired. */
+  readonly productionCoordinator?: RunCoordinator | undefined;
+  /** Production registry (Muse / DeepSeek / GLM registrations). */
+  readonly productionRegistry?: HarnessAdapterRegistry | undefined;
   readonly agentStacks: readonly AgentStackDefinition[];
   readonly credentials: ProviderCredentialService;
 }
@@ -70,8 +77,18 @@ function toError(code: string, message: string): Error {
 
 export class DesktopApplicationService {
   private readonly pendingRuns = new Map<string, Promise<unknown>>();
+  private readonly pendingRetests = new Map<string, Promise<unknown>>();
 
   constructor(private readonly deps: DesktopServiceDeps) {}
+
+  /** Production coordinator when wired; otherwise undefined. */
+  get productionCoordinator(): RunCoordinator | undefined {
+    return this.deps.productionCoordinator;
+  }
+
+  get productionRegistry(): HarnessAdapterRegistry | undefined {
+    return this.deps.productionRegistry;
+  }
 
   get dataRoot(): string {
     return this.deps.dataRoot;
@@ -202,8 +219,22 @@ export class DesktopApplicationService {
     } catch {
       targetSpec = undefined;
     }
+    // Lineage: project + immutable revision alongside the frozen snapshot.
+    const project = this.deps.repository.getProject(details.run.projectId as never) ?? undefined;
+    let revision: unknown;
+    try {
+      const snapshot = this.deps.repository.getSnapshot(details.run.snapshotId as never);
+      revision =
+        snapshot === undefined
+          ? undefined
+          : (this.deps.repository.getRevision(snapshot.projectRevisionId as never) ?? undefined);
+    } catch {
+      revision = undefined;
+    }
     return {
       run: details.run,
+      ...(project === undefined ? {} : { project }),
+      ...(revision === undefined ? {} : { revision }),
       agentRuns: details.agentRuns,
       findings: details.findings,
       evidence: details.evidence,
@@ -224,8 +255,16 @@ export class DesktopApplicationService {
   async startSimulation(projectId: string, options: unknown): Promise<DesktopOperation> {
     const id = ProjectIdInput.parse(projectId) as ProjectId;
     const parsed = SimulationOptions.parse(options);
+    const executionKind =
+      (options as { executionKind?: unknown } | undefined)?.executionKind === 'production'
+        ? 'production'
+        : 'simulation';
+    const coordinator =
+      executionKind === 'production' && this.deps.productionCoordinator !== undefined
+        ? this.deps.productionCoordinator
+        : this.deps.coordinator;
     const operationId = 'dop_' + createQARunId().slice(4);
-    const runPromise = this.deps.coordinator.run(id, {
+    const runPromise = coordinator.run(id, {
       executionKind: 'simulation',
       mode: parsed.mode,
       ...(parsed.includePaths === undefined
@@ -314,25 +353,33 @@ export class DesktopApplicationService {
     return this.deps.coordinator.exportRun(id, parsed);
   }
 
-  // ---- issues ----
+  // ---- issues (backend-projected currentState; renderer never derives) ----
   listIssues(projectId: string): unknown[] {
     const id = ProjectIdInput.parse(projectId) as ProjectId;
-    return this.deps.repository.listIssues(id);
+    return this.deps.repository.listIssues(id).map((issue) => ({
+      ...issue,
+      currentState: projectIssueState(this.deps.repository.listIssueEvents(issue.id)),
+    }));
   }
 
   getIssue(issueId: string): unknown {
     const id = IssueIdInput.parse(issueId);
     const issue = this.deps.repository.getIssue(id);
     if (issue === undefined) throw toError('ISSUE_NOT_FOUND', 'Issue not found: ' + id);
-    return issue;
+    return {
+      ...issue,
+      currentState: projectIssueState(this.deps.repository.listIssueEvents(id)),
+    };
   }
 
   issueHistory(issueId: string): unknown {
     const id = IssueIdInput.parse(issueId);
+    const events = this.deps.repository.listIssueEvents(id);
     return {
       issue: this.deps.repository.getIssue(id),
+      currentState: projectIssueState(events),
       occurrences: this.deps.repository.listIssueOccurrences(id),
-      events: this.deps.repository.listIssueEvents(id),
+      events,
       assessments: this.deps.repository.listRetestAssessments(id),
       retests: this.deps.repository.listRetestRuns(id),
     };
@@ -344,15 +391,28 @@ export class DesktopApplicationService {
     return this.deps.repository.listRetestRuns(id);
   }
 
-  async startRetest(issueId: string, options?: { revisionId?: string }): Promise<DesktopOperation> {
+  /**
+   * Async Retest start: returns the DesktopOperation as soon as the persisted
+   * RetestRun row exists; the long Retest promise stays owned by main.
+   * Retest v2 semantics are untouched — this only changes IPC timing.
+   */
+  async startRetest(
+    issueId: string,
+    options?: { revisionId?: string; executionKind?: 'simulation' | 'production' },
+  ): Promise<DesktopOperation> {
     const id = IssueIdInput.parse(issueId);
     const operationId = 'dop_' + createRetestRunId().slice(7);
-    const result = await retestIssue(
+    const executionKind = options?.executionKind ?? 'simulation';
+    const registry =
+      executionKind === 'production' && this.deps.productionRegistry !== undefined
+        ? this.deps.productionRegistry
+        : this.deps.registry;
+    const retestPromise = retestIssue(
       {
         dataRoot: this.deps.dataRoot,
         repository: this.deps.repository,
         lease: this.deps.lease,
-        registry: this.deps.registry,
+        registry,
       },
       id,
       {
@@ -361,7 +421,79 @@ export class DesktopApplicationService {
           : { targetRevisionId: options.revisionId as never }),
       },
     );
-    return { operationId, retestRunId: result.retestRun.id };
+    const settled = retestPromise.then(
+      (result) => {
+        this.pendingRetests.delete(operationId);
+        return result;
+      },
+      (error: unknown) => {
+        this.pendingRetests.delete(operationId);
+        throw error;
+      },
+    );
+    settled.then(undefined, () => undefined);
+    this.pendingRetests.set(operationId, settled);
+    const retestRunId = await this.detectCreatedRetest(id, settled);
+    if (retestRunId !== undefined) return { operationId, retestRunId };
+    // No RetestRun row appeared: surface the structured backend error instead
+    // of a phantom operation (bounded wait — never hang on settlement).
+    const timeoutOutcome: { ok: false; error: unknown } = await new Promise((resolve) =>
+      setTimeout(
+        () =>
+          resolve({
+            ok: false as const,
+            error: toError('RETEST_NOT_CREATED', 'RetestRun was not created'),
+          }),
+        1000,
+      ),
+    );
+    const outcome = await Promise.race([
+      settled.then(
+        (result) => ({ ok: true as const, id: result.retestRun.id }),
+        (error: unknown) => ({ ok: false as const, error }),
+      ),
+      Promise.resolve(timeoutOutcome),
+    ]);
+    if (outcome.ok) return { operationId, retestRunId: outcome.id };
+    throw outcome.error;
+  }
+
+  private async detectCreatedRetest(
+    issueId: string,
+    retestPromise: Promise<{ retestRun: { id: string } }>,
+  ): Promise<string | undefined> {
+    const before = new Set(this.deps.repository.listRetestRuns(issueId).map((r) => r.id));
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      const current = this.deps.repository.listRetestRuns(issueId);
+      const created = current.find((r) => !before.has(r.id));
+      if (created !== undefined) return created.id;
+      let finished = false;
+      void retestPromise.then(
+        () => {
+          finished = true;
+        },
+        () => {
+          finished = true;
+        },
+      );
+      if (finished) {
+        const after = this.deps.repository.listRetestRuns(issueId);
+        const late = after.find((r) => !before.has(r.id));
+        if (late !== undefined) return late.id;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    try {
+      const details = await Promise.race([
+        retestPromise,
+        new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 500)),
+      ]);
+      return details?.retestRun.id;
+    } catch {
+      return undefined;
+    }
   }
 
   retestSnapshot(retestRunId: string): RetestSnapshot {
@@ -376,27 +508,12 @@ export class DesktopApplicationService {
     } catch {
       spec = undefined;
     }
-    let targetRun: unknown;
+    // Typed DTO: targetRun is a nested DesktopRunSnapshot ({ run, agentRuns,
+    // ... }), never a flattened run. Renderer reads targetRun.run.id.
+    let targetRun: RunSnapshot | undefined;
     try {
       if (retestRun.targetQaRunId !== undefined) {
-        const details = this.deps.coordinator.getRunDetails(retestRun.targetQaRunId as QARunId);
-        const targetMerges = this.deps.repository
-          .listMergeResults(retestRun.targetQaRunId as QARunId)
-          .map((merge) => ({
-            ...merge,
-            clusters: this.deps.repository.listClusters(merge.id),
-          }));
-        const targetVerifications = targetMerges.flatMap((m) =>
-          this.deps.repository.listVerificationRuns(m.id).map((vrun) => ({
-            ...vrun,
-            attempts: this.deps.repository.listVerificationAttempts(vrun.id),
-          })),
-        );
-        targetRun = {
-          ...details,
-          mergeResults: targetMerges,
-          verificationRuns: targetVerifications,
-        };
+        targetRun = this.runSnapshot(retestRun.targetQaRunId as string);
       }
     } catch {
       targetRun = undefined;
@@ -496,30 +613,66 @@ export class DesktopApplicationService {
     };
   }
 
-  // ---- provider credentials (statuses only to renderer) ----
+  // ---- provider credentials (statuses only to renderer; never values) ----
   providerStatuses(): unknown {
     return this.deps.credentials.statuses();
   }
 
-  providerSetKey(name: string, value: string): unknown {
+  /** Secure default: encrypt + persist + load into runtime + refresh env. */
+  async providerSaveKey(name: string, value: string): Promise<unknown> {
     const parsed = z
       .object({ name: z.string().min(1).max(200), value: z.string().min(1).max(5000) })
       .strict()
       .parse({ name, value });
-    return this.deps.credentials.setKey(parsed.name, parsed.value);
+    return this.deps.credentials.saveKey(parsed.name, parsed.value);
   }
 
-  providerClearKey(name: string): unknown {
+  /** Explicit session-only variant (no persistence). */
+  providerSetSessionKey(name: string, value: string): unknown {
+    const parsed = z
+      .object({ name: z.string().min(1).max(200), value: z.string().min(1).max(5000) })
+      .strict()
+      .parse({ name, value });
+    return this.deps.credentials.setSessionKey(parsed.name, parsed.value);
+  }
+
+  /** Back-compat session set (older renderer). */
+  providerSetKey(name: string, value: string): unknown {
+    return this.providerSetSessionKey(name, value);
+  }
+
+  async providerClearKey(name: string): Promise<unknown> {
     const parsed = z.string().min(1).max(200).parse(name);
     return this.deps.credentials.clearKey(parsed);
   }
 
+  /** @deprecated Secure Save persists automatically; kept for older IPC callers. */
   providerPersist(): Promise<unknown> {
     return this.deps.credentials.persist();
   }
 
+  /** @deprecated Use forgetAll; kept for older IPC call sites. */
   providerForgetFile(): Promise<unknown> {
     return this.deps.credentials.forgetFile().then(() => ({ forgotten: true }));
+  }
+
+  async providerForgetAll(): Promise<unknown> {
+    return this.deps.credentials.forgetAll();
+  }
+
+  productionReadiness(): unknown {
+    const statuses = this.deps.credentials.statuses();
+    const isConfigured = (name: string): boolean =>
+      statuses.find((s) => s.name === name)?.configured === true;
+    const reasons: string[] = [];
+    if (!isConfigured('DEEPSEEK_API_KEY')) reasons.push('DeepSeek credential missing');
+    if (!isConfigured('ANTHROPIC_AUTH_TOKEN')) reasons.push('GLM credential missing');
+    return {
+      ready: reasons.length === 0 && this.deps.productionRegistry !== undefined,
+      reasons,
+      productionWired: this.deps.productionRegistry !== undefined,
+      note: 'Muse authenticates via local muse login; verify in Environment.',
+    };
   }
 
   systemInfo(): { dataRoot: string; versions: Record<string, string> } {

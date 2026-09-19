@@ -71,7 +71,7 @@ describe('agent telemetry projector', () => {
   });
 
   it('falls back to Working when telemetry is unavailable', () => {
-    const agentRun = makeAgentRun({ status: 'starting' });
+    const agentRun = makeAgentRun({ status: 'queued' });
     expect(projectCurrentOperation([], []).title).toBe('Working');
     const view = projectAgentTelemetry({
       agentRun,
@@ -81,6 +81,19 @@ describe('agent telemetry projector', () => {
       evidence: [],
     });
     expect(view.currentStage).toBe('working');
+  });
+
+  it('marks Preparation active for starting agents with no events (§10.1)', () => {
+    const agentRun = makeAgentRun({ status: 'starting' });
+    const view = projectAgentTelemetry({
+      agentRun,
+      events: [],
+      activities: [],
+      findings: [],
+      evidence: [],
+    });
+    expect(view.currentStage).toBe('preparation');
+    expect(view.stages.filter((s) => s.state === 'completed')).toHaveLength(0);
   });
 
   it('marks completed agents completed and counts severities honestly', () => {
@@ -120,8 +133,8 @@ describe('agent telemetry projector', () => {
   it('covers the full agent state matrix (§166)', () => {
     const matrix: Array<{ status: string; operation: string; stage: string }> = [
       { status: 'queued', operation: 'Working', stage: 'working' },
-      { status: 'starting', operation: 'Working', stage: 'working' },
-      { status: 'planning', operation: 'Working', stage: 'working' },
+      { status: 'starting', operation: 'Working', stage: 'preparation' },
+      { status: 'planning', operation: 'Working', stage: 'planning' },
     ];
     for (const entry of matrix) {
       const agentRun = makeAgentRun({ status: entry.status });
@@ -184,7 +197,8 @@ describe('agent telemetry projector', () => {
           evidence: [],
         }).currentStage,
       );
-    expect(frame([], 'starting')).toBe('working');
+    expect(frame([], 'starting')).toBe('preparation');
+    expect(frame([], 'queued')).toBe('working');
     expect(
       frame(
         [

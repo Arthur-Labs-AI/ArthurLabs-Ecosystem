@@ -31,7 +31,10 @@ All payloads are JSON-serializable; main validates every call with Zod before to
 ## retests
 
 - `list(issueId)` → `RetestRun[]`; `start(issueId, { revisionId? })` → `DesktopOperation { operationId, retestRunId }` (simulation registry; backend stays production-semantic).
-- `get(retestRunId)` → `RetestSnapshot` (retestRun, spec?, targetRun?, assessments). Spec/Snapshot-B/targetQaRunId survive cancellation.
+- `get(retestRunId)` → `DesktopRetestSnapshot` (retestRun, spec?, targetRun?: DesktopRunSnapshot, assessments). `targetRun` is nested (`targetRun.run.id`) — never flattened. Spec/Snapshot-B/targetQaRunId survive cancellation.
+- `get(runId)` → `DesktopRunSnapshot` (run, project?, revision?, agentRuns, findings, evidence, activities, events, mergeResults, verificationRuns, issues, targetSpec?).
+- Issue `list/get/history` carry backend-projected `currentState` (frozen projectIssueState); renderer never derives state.
+- `start` is async: returns `{ operationId, retestRunId }` as soon as the persisted RetestRun row exists; the workflow promise stays owned by main with bounded failure surfacing.
 - `cancel(retestRunId)` → request + owner-acknowledge cascade (child run gets request-only).
 
 ## doctors
@@ -43,9 +46,15 @@ All payloads are JSON-serializable; main validates every call with Zod before to
 - `info()` → `{ dataRoot, versions: { desktop, merger: '2', verifier: '3', retest: '2' } }`.
 - `activeRuns()` → nonterminal runs for the global strip.
 
+## providers & production
+
+- `providers.status()` → `{ name, configured, persistence: secure|session|environment|missing, source: stored|session|environment|missing, hint }`. Secrets render as fixed display text only — no values, prefixes, suffixes, or blobs.
+- `providers.save(name, value)` (secure default: encrypt + persist + load into runtime + env); `providers.session(name, value)` (explicit session-only); `providers.clear(name)` removes persisted + memory + env; `providers.forgetAll()` forgets all secrets with confirmation, preserving prefs.
+- `production.readiness()` → `{ ready, reasons, productionWired }`. Production registry uses the exact CLI registrations; desktop defaults to Simulation and Production requires explicit user action. Paid gates DEFERRED.
+
 ## subscriptions
 
-- `subscribe.onRunUpdate(cb)` → `cb({ kind, runId?, retestRunId?, operationId?, snapshot? })` for `run-created | run-snapshot | retest-created | retest-snapshot`. Payloads only — never Electron events.
+- `subscribe.onRunUpdate(cb)` → `cb({ kind, runId?, retestRunId?, operationId?, snapshot? })` for `run-created | run-snapshot | retest-created | retest-snapshot | active-runs`. Payloads only — never Electron events; incoming payloads validated at the preload boundary.
 - `sentry:watch-run` / `unwatch-run` / `watch-retest` orient the 500 ms poller; `sentry:active-runs` pushes the idle sweep.
 
 ## errors

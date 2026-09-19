@@ -1,16 +1,11 @@
 import React from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CopyId } from '../components/CopyId.js';
 import { sentryApi } from '../lib/sentry-api.js';
 
-function deriveIssueState(events: Array<{ toState?: string }>): string {
-  let state = 'open';
-  for (const event of events) {
-    if (event.toState !== undefined) state = event.toState;
-  }
-  return state;
-}
+// Issue state comes from the backend projector (projectIssueState in main).
+// The renderer never derives state from events on its own.
 
 export function IssueDetail(): React.JSX.Element {
   const { issueId } = useParams();
@@ -26,11 +21,15 @@ export function IssueDetail(): React.JSX.Element {
     queryFn: () => sentryApi().issues.history(issueId as string),
     enabled: issueId !== undefined,
   });
+  const navigate = useNavigate();
   const retest = useMutation({
     mutationFn: () => sentryApi().retests.start(issueId as string),
-    onSuccess: () => {
+    onSuccess: (operation) => {
       setError(undefined);
       void queryClient.invalidateQueries({ queryKey: ['issue-history', issueId] });
+      // Live Retest: navigate to the live Retest workspace immediately.
+      const retestRunId = (operation as { retestRunId?: string }).retestRunId;
+      if (retestRunId !== undefined) navigate('/retests/' + retestRunId);
     },
     onError: (e) => setError(e instanceof Error ? e.message : String(e)),
   });
@@ -67,7 +66,10 @@ export function IssueDetail(): React.JSX.Element {
         assessments: Array<{ id: string; result?: string; rationale?: string }>;
       }
     | undefined;
-  const state = deriveIssueState(historyData?.events ?? []);
+  const state =
+    (historyData as { currentState?: string } | undefined)?.currentState ??
+    (issue.data as { currentState?: string } | undefined)?.currentState ??
+    'open';
   return (
     <div>
       <p className="muted" style={{ margin: 0 }}>

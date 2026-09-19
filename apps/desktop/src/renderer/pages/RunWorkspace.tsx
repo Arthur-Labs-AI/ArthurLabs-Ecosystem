@@ -52,7 +52,18 @@ export function RunWorkspace(): React.JSX.Element {
   const merge = useMutation({
     mutationFn: () => sentryApi().runs.merge(runId as string),
     onSuccess: (result) => {
-      setActionNote('Merge completed: ' + JSON.stringify(result).slice(0, 200));
+      const info = result as { result?: { clusters?: unknown[] }; reused?: boolean };
+      const clusters = Array.isArray(info.result?.clusters)
+        ? info.result?.clusters?.length
+        : undefined;
+      setActionNote(
+        clusters !== undefined
+          ? 'Merge complete: ' +
+              String(clusters) +
+              ' cluster(s) produced' +
+              (info.reused === true ? ' (reused)' : '')
+          : 'Merge complete',
+      );
       refresh();
     },
     onError: fail,
@@ -69,7 +80,20 @@ export function RunWorkspace(): React.JSX.Element {
       return sentryApi().runs.verify(id);
     },
     onSuccess: (result) => {
-      setActionNote('Verify completed: ' + JSON.stringify(result).slice(0, 200));
+      const info = result as { attempts?: Array<{ outcome?: string }> };
+      if (Array.isArray(info.attempts)) {
+        const reproduced = info.attempts.filter((a) => a.outcome === 'reproduced').length;
+        const inconclusive = info.attempts.filter((a) => a.outcome === 'inconclusive').length;
+        setActionNote(
+          'Verification complete: ' +
+            String(reproduced) +
+            ' reproduced, ' +
+            String(inconclusive) +
+            ' inconclusive',
+        );
+      } else {
+        setActionNote('Verification complete');
+      }
       refresh();
     },
     onError: fail,
@@ -81,7 +105,12 @@ export function RunWorkspace(): React.JSX.Element {
       return sentryApi().runs.ingest(id);
     },
     onSuccess: (result) => {
-      setActionNote('Issues ingested: ' + JSON.stringify(result).slice(0, 200));
+      const info = result as { issues?: unknown[] };
+      setActionNote(
+        Array.isArray(info.issues)
+          ? 'Issues ingested: ' + String(info.issues.length) + ' issue occurrence(s) created'
+          : 'Issues ingested',
+      );
       refresh();
     },
     onError: fail,
@@ -89,7 +118,9 @@ export function RunWorkspace(): React.JSX.Element {
   const exportRun = useMutation({
     mutationFn: (format: 'log' | 'json') => sentryApi().runs.exportRun(runId as string, format),
     onSuccess: (result) => {
-      setActionNote('Export manifest: ' + JSON.stringify(result).slice(0, 300));
+      const info = result as { path?: string; exportId?: string };
+      setActionNote(info.path !== undefined ? 'Export ready: ' + info.path : 'Export ready');
+      void result;
       refresh();
     },
     onError: fail,

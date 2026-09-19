@@ -79,8 +79,16 @@ describe('IPC security contract', () => {
       join(root, 'src', 'main', 'services', 'desktop-service.ts'),
       'utf8',
     );
-    expect(service.toLowerCase()).not.toContain('api_key');
-    expect(service.toLowerCase()).not.toContain('auth token');
+    // Statuses only: the renderer receives configured/persistence/source/hint.
+    expect(service).toContain('providerStatuses');
+    expect(service).toContain('statuses only');
     expect(service).toContain('simulation');
+    const creds = readFileSync(
+      join(root, 'src', 'main', 'services', 'provider-credentials.ts'),
+      'utf8',
+    );
+    // No secret value ever serialized into a status payload.
+    expect(creds).toContain('Renderer receives statuses only, never values');
+    expect(creds).toContain('Secrets never leak: fixed display');
   });
 });

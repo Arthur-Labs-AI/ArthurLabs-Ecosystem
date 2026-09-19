@@ -3,6 +3,15 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { sentryApi } from '../lib/sentry-api.js';
 
+const STATE_FILTERS = [
+  { value: '', label: 'All states' },
+  { value: 'open', label: 'Open' },
+  { value: 'still_reproducible', label: 'Still reproducible' },
+  { value: 'partially_fixed', label: 'Partially fixed' },
+  { value: 'fixed', label: 'Fixed' },
+  { value: 'inconclusive', label: 'Inconclusive' },
+] as const;
+
 export function Issues(): React.JSX.Element {
   const [projectId, setProjectId] = React.useState('');
   const [stateFilter, setStateFilter] = React.useState('');
@@ -19,10 +28,19 @@ export function Issues(): React.JSX.Element {
   });
   const list = (
     (issues.data as
-      | Array<{ id: string; title: string; severity: string; state?: string; status?: string }>
+      | Array<{
+          id: string;
+          title: string;
+          severity: string;
+          currentState?: string;
+          state?: string;
+          status?: string;
+        }>
       | undefined) ?? []
   ).filter((issue) => {
-    if (stateFilter !== '' && (issue.state ?? issue.status) !== stateFilter) return false;
+    // Backend-projected currentState is authoritative; renderer never derives.
+    const state = issue.currentState ?? issue.state ?? issue.status;
+    if (stateFilter !== '' && state !== stateFilter) return false;
     if (severityFilter !== '' && issue.severity !== severityFilter) return false;
     if (search !== '' && !issue.title.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
@@ -47,11 +65,11 @@ export function Issues(): React.JSX.Element {
           onChange={(e) => setStateFilter(e.target.value)}
           aria-label="State filter"
         >
-          <option value="">All states</option>
-          <option value="open">open</option>
-          <option value="acknowledged">acknowledged</option>
-          <option value="resolved">resolved</option>
-          <option value="closed">closed</option>
+          {STATE_FILTERS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
         <select
           value={severityFilter}
@@ -92,7 +110,7 @@ export function Issues(): React.JSX.Element {
                 <td>
                   <Link to={'/issues/' + issue.id}>{issue.title}</Link>
                 </td>
-                <td>{issue.state ?? issue.status ?? '—'}</td>
+                <td>{issue.currentState ?? issue.state ?? issue.status ?? '—'}</td>
               </tr>
             ))}
           </tbody>

@@ -9,6 +9,8 @@ export function RunSummaryPanel({
   onFocusAgent?: (stackId: string) => void;
 }): React.JSX.Element {
   const run = snapshot['run'] as Record<string, unknown>;
+  const project = snapshot['project'] as Record<string, unknown> | undefined;
+  const revision = snapshot['revision'] as Record<string, unknown> | undefined;
   const agentRuns = (snapshot['agentRuns'] as Array<Record<string, unknown>>) ?? [];
   const findings = (snapshot['findings'] as unknown[]) ?? [];
   const evidence = (snapshot['evidence'] as unknown[]) ?? [];
@@ -27,6 +29,18 @@ export function RunSummaryPanel({
         <dd style={{ margin: 0 }}>{String(run['mode'] ?? '')}</dd>
         <dt className="faint">Kind</dt>
         <dd style={{ margin: 0 }}>{String(run['executionKind'] ?? 'simulation')}</dd>
+        <dt className="faint">Project</dt>
+        <dd style={{ margin: 0 }}>
+          {project !== undefined
+            ? String(project['name'] ?? run['projectId'] ?? '')
+            : String(run['projectId'] ?? '')}{' '}
+          <CopyId id={String(run['projectId'] ?? '')} />
+        </dd>
+        <dt className="faint">Revision</dt>
+        <dd style={{ margin: 0 }}>
+          <CopyId id={String(revision?.['id'] ?? run['projectRevisionId'] ?? '')} />
+          <span className="faint"> immutable imported revision</span>
+        </dd>
         <dt className="faint">Run</dt>
         <dd style={{ margin: 0 }}>
           <CopyId id={String(run['id'] ?? '')} />
@@ -34,6 +48,7 @@ export function RunSummaryPanel({
         <dt className="faint">Snapshot</dt>
         <dd style={{ margin: 0 }}>
           <CopyId id={String(run['snapshotId'] ?? '')} />
+          <span className="faint"> frozen</span>
         </dd>
         <dt className="faint">Started</dt>
         <dd style={{ margin: 0 }} className="mono">

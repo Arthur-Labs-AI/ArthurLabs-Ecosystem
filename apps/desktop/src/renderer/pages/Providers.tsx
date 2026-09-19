@@ -6,6 +6,7 @@ import { sentryApi } from '../lib/sentry-api.js';
 interface ProviderStatus {
   name: string;
   configured: boolean;
+  persistence: string;
   source: string;
   hint: string;
 }
@@ -26,6 +27,7 @@ export function Providers(): React.JSX.Element {
   const [values, setValues] = React.useState<Record<string, string>>({});
   const [note, setNote] = React.useState<string | undefined>(undefined);
   const [error, setError] = React.useState<string | undefined>(undefined);
+  const [confirmForget, setConfirmForget] = React.useState(false);
   const statuses = useQuery({
     queryKey: ['providers'],
     queryFn: () => sentryApi().providers.status(),
@@ -33,15 +35,35 @@ export function Providers(): React.JSX.Element {
   const refresh = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['providers'] });
     void queryClient.invalidateQueries({ queryKey: ['environment'] });
+    void queryClient.invalidateQueries({ queryKey: ['production-readiness'] });
   };
   const fail = (e: unknown): void => setError(e instanceof Error ? e.message : String(e));
   const save = useMutation({
     mutationFn: ({ name, value }: { name: string; value: string }) =>
-      sentryApi().providers.setKey(name, value),
-    onSuccess: (_result, input) => {
-      setValues((prev) => ({ ...prev, [input.name]: '' }));
+      sentryApi().providers.save(name, value),
+    onSuccess: () => {
+      setValues({});
       setError(undefined);
-      setNote('Saved for this session. Values never leave the desktop host process.');
+      setNote('Saved. Encrypted, persisted, and loaded into the desktop host process.');
+      refresh();
+    },
+    onError: (e) => {
+      const message = e instanceof Error ? e.message : String(e);
+      if (message.includes('Secure persistent storage unavailable')) {
+        setNote(
+          'Secure persistent storage unavailable. Credential can be used for this session only.',
+        );
+      }
+      fail(e);
+    },
+  });
+  const sessionOnly = useMutation({
+    mutationFn: ({ name, value }: { name: string; value: string }) =>
+      sentryApi().providers.session(name, value),
+    onSuccess: () => {
+      setValues({});
+      setError(undefined);
+      setNote('Saved for this session only (not persisted).');
       refresh();
     },
     onError: fail,
@@ -54,24 +76,11 @@ export function Providers(): React.JSX.Element {
     },
     onError: fail,
   });
-  const persist = useMutation({
-    mutationFn: () => sentryApi().providers.persist(),
-    onSuccess: (result) => {
-      const info = result as { path?: string; keys?: number };
-      setNote(
-        'Persisted ' +
-          String(info.keys ?? 0) +
-          ' value(s) to the user-level env file: ' +
-          String(info.path ?? ''),
-      );
-      refresh();
-    },
-    onError: fail,
-  });
-  const forget = useMutation({
-    mutationFn: () => sentryApi().providers.forgetFile(),
+  const forgetAll = useMutation({
+    mutationFn: () => sentryApi().providers.forgetAll(),
     onSuccess: () => {
-      setNote('Persisted env file removed. Session values remain until restart.');
+      setConfirmForget(false);
+      setNote('All provider credentials forgotten. App preferences were preserved.');
       refresh();
     },
     onError: fail,
@@ -84,10 +93,9 @@ export function Providers(): React.JSX.Element {
       </p>
       <h1 style={{ marginTop: 4 }}>Provider keys</h1>
       <p className="muted">
-        Values apply to this desktop session immediately (harness discovery reads them from the host
-        environment). Persisting writes them to a user-level env file outside the Sentry data root —
-        never into the database or git. The UI only ever shows configured/missing plus a last-4 hint
-        for secrets.
+        Save encrypts the credential with the OS keychain, persists it, and loads it into the host
+        process immediately — it survives application restarts. Secret values are never displayed
+        and never leave the desktop host process.
       </p>
       <p className="muted">
         Muse authenticates via your local <span className="mono">muse login</span> credential store
@@ -112,9 +120,7 @@ export function Providers(): React.JSX.Element {
           <p className="muted">{DESCRIPTIONS[item.name] ?? ''}</p>
           <p>
             Status: <strong>{item.configured ? 'Configured' : 'Missing'}</strong>{' '}
-            <span className="muted">
-              (source: {item.source}; hint: <span className="mono">{item.hint}</span>)
-            </span>
+            <span className="muted">({item.hint})</span>
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <input
@@ -131,8 +137,18 @@ export function Providers(): React.JSX.Element {
               className="primary"
               disabled={(values[item.name] ?? '').trim().length === 0 || save.isPending}
               onClick={() => save.mutate({ name: item.name, value: values[item.name] ?? '' })}
+              title="Encrypt, persist, and load into the host process"
             >
-              Save for session
+              Save
+            </button>
+            <button
+              disabled={(values[item.name] ?? '').trim().length === 0 || sessionOnly.isPending}
+              onClick={() =>
+                sessionOnly.mutate({ name: item.name, value: values[item.name] ?? '' })
+              }
+              title="Memory + process.env only; cleared on quit"
+            >
+              Use for this session only
             </button>
             <button
               disabled={!item.configured || clear.isPending}
@@ -144,19 +160,26 @@ export function Providers(): React.JSX.Element {
         </div>
       ))}
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Persistence</h3>
+        <h3 style={{ marginTop: 0 }}>Forget all provider credentials</h3>
         <p className="muted">
-          Keep values only in memory (cleared on quit), or persist them to the user-level env file
-          so they reload on next launch.
+          Removes every persisted secret plus session values. Model preferences and unrelated app
+          settings are preserved.
         </p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button disabled={persist.isPending} onClick={() => persist.mutate()}>
-            Persist to user env file
-          </button>
-          <button disabled={forget.isPending} onClick={() => forget.mutate()}>
-            Remove persisted file
-          </button>
-        </div>
+        {confirmForget ? (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <span>Forget all credentials?</span>
+            <button onClick={() => setConfirmForget(false)}>Keep</button>{' '}
+            <button
+              className="danger"
+              onClick={() => forgetAll.mutate()}
+              disabled={forgetAll.isPending}
+            >
+              Forget all
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmForget(true)}>Forget all provider credentials</button>
+        )}
       </div>
     </div>
   );

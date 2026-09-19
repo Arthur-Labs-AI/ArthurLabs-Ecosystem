@@ -5,8 +5,18 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { bootstrapDesktop } from '../../src/main/bootstrap.js';
 
 const roots: string[] = [];
+async function rmRoot(value: string): Promise<void> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await rm(value, { recursive: true, force: true });
+      return;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+    }
+  }
+}
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((value) => rm(value, { recursive: true, force: true })));
+  await Promise.all(roots.splice(0).map((value) => rmRoot(value)));
 });
 
 describe('desktop smoke: add → simulate → merge → issue → retest', () => {

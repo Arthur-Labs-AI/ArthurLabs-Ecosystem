@@ -79,6 +79,10 @@ async function boot(): Promise<void> {
     );
     return;
   }
+  for (const warning of bootstrapped.recoveryWarnings) {
+    // Bounded non-fatal boot warnings; Environment diagnostics surface them.
+    console.warn('[sentry] boot warning: ' + warning);
+  }
   liveUpdates = new DesktopLiveUpdates(() => mainWindow, bootstrapped.service);
   const updates: DesktopLiveUpdates = liveUpdates;
   registerDesktopIpc(bootstrapped.service, {

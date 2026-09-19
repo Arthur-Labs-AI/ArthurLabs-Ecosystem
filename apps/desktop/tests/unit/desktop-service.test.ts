@@ -10,8 +10,19 @@ import { ProviderCredentialService } from '../../src/main/services/provider-cred
 import { INITIAL_AGENT_STACKS } from '@qa/domain';
 
 const roots: string[] = [];
+async function rmRoot(value: string): Promise<void> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await rm(value, { recursive: true, force: true });
+      return;
+    } catch {
+      // Windows file-lock race on workspace cleanup; retry briefly.
+      await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+    }
+  }
+}
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((value) => rm(value, { recursive: true, force: true })));
+  await Promise.all(roots.splice(0).map((value) => rmRoot(value)));
 });
 
 async function harness() {
@@ -86,8 +97,14 @@ describe('desktop cancellation UX states', () => {
       agentStackIds: ['stack_deepseek_main'],
     });
     expect(operation.runId).toBeDefined();
-    const snapshot = h.service.runSnapshot(operation.runId as string);
-    const runs = snapshot.agentRuns as Array<{ agentStackId: string }>;
+    // Agent rows persist just after the run row; poll briefly (deterministic signal).
+    let runs: Array<{ agentStackId: string }> = [];
+    for (let i = 0; i < 50; i += 1) {
+      const snapshot = h.service.runSnapshot(operation.runId as string);
+      runs = snapshot.agentRuns as Array<{ agentStackId: string }>;
+      if (runs.length > 0) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
     expect(runs).toHaveLength(1);
     expect(runs[0]?.agentStackId).toBe('stack_deepseek_main');
     h.lease.release();

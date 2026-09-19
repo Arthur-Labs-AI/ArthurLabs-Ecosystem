@@ -19,4 +19,16 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ['apps/desktop/scripts/**/*.mjs', 'apps/desktop/scripts/**/*.js'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+      },
+    },
+  },
 );

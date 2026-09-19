@@ -91,9 +91,17 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
   'providers:set': z
     .object({ name: z.string().min(1).max(200), value: z.string().min(1).max(5000) })
     .strict(),
+  'providers:save': z
+    .object({ name: z.string().min(1).max(200), value: z.string().min(1).max(5000) })
+    .strict(),
+  'providers:session': z
+    .object({ name: z.string().min(1).max(200), value: z.string().min(1).max(5000) })
+    .strict(),
   'providers:clear': z.object({ name: z.string().min(1).max(200) }).strict(),
   'providers:persist': z.object({}).strict(),
   'providers:forget-file': z.object({}).strict(),
+  'providers:forget-all': z.object({}).strict(),
+  'production:readiness': z.object({}).strict(),
   'system:info': z.object({}).strict(),
   'system:active-runs': z.object({}).strict(),
 };
@@ -185,12 +193,20 @@ export function registerDesktopIpc(
           return service.providerStatuses();
         case 'providers:set':
           return service.providerSetKey(parsed['name'] as string, parsed['value'] as string);
+        case 'providers:save':
+          return service.providerSaveKey(parsed['name'] as string, parsed['value'] as string);
+        case 'providers:session':
+          return service.providerSetSessionKey(parsed['name'] as string, parsed['value'] as string);
         case 'providers:clear':
           return service.providerClearKey(parsed['name'] as string);
         case 'providers:persist':
           return service.providerPersist();
         case 'providers:forget-file':
           return service.providerForgetFile();
+        case 'providers:forget-all':
+          return service.providerForgetAll();
+        case 'production:readiness':
+          return service.productionReadiness();
         case 'system:info':
           return service.systemInfo();
         case 'system:active-runs':

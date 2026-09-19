@@ -60,17 +60,35 @@ export interface HarnessEventLike {
   readonly type: string;
   readonly agentRunId: string;
   readonly timestamp: string;
-  readonly tool?: { name?: string; inputSummary?: string; exitCode?: number };
+  readonly tool?: {
+    name?: string;
+    inputSummary?: string;
+    exitCode?: number;
+    durationMs?: number;
+  };
   readonly command?: string;
   readonly exitCode?: number;
+  readonly durationMs?: number;
   readonly relativePath?: string;
   readonly suite?: string;
   readonly passed?: number;
   readonly failed?: number;
+  readonly skipped?: number;
   readonly message?: string;
   readonly status?: string;
+  readonly code?: string;
   readonly operationId?: string;
-  readonly finding?: { title?: string; severity?: string };
+  readonly finding?: { id?: string; title?: string; severity?: string };
+  readonly evidence?: { id?: string; type?: string };
+  readonly failure?: { code: string; message: string; retryable?: boolean };
+  readonly reason?: string;
+  readonly usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    cachedInputTokens?: number;
+    turns?: number;
+    durationMs?: number;
+  };
 }
 
 export type AgentStageId =

@@ -70,10 +70,16 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
   },
   providers: {
     status: () => invoke('providers:status', {}),
+    save: (name: string, value: string) => invoke('providers:save', { name, value }),
+    session: (name: string, value: string) => invoke('providers:session', { name, value }),
     setKey: (name: string, value: string) => invoke('providers:set', { name, value }),
     clearKey: (name: string) => invoke('providers:clear', { name }),
     persist: () => invoke('providers:persist', {}),
     forgetFile: () => invoke('providers:forget-file', {}),
+    forgetAll: () => invoke('providers:forget-all', {}),
+  },
+  production: {
+    readiness: () => invoke('production:readiness', {}),
   },
   system: {
     info: () => invoke('system:info', {}),
@@ -81,12 +87,29 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
   },
   subscribe: {
     onRunUpdate: (callback: RunUpdateCallback) => {
+      const isRunUpdate = (value: unknown): value is Parameters<RunUpdateCallback>[0] => {
+        if (typeof value !== 'object' || value === null) return false;
+        const kind = (value as { kind?: unknown }).kind;
+        return (
+          kind === 'run-created' ||
+          kind === 'run-snapshot' ||
+          kind === 'retest-created' ||
+          kind === 'retest-snapshot'
+        );
+      };
       const listener = (_event: unknown, payload: unknown) => {
-        callback(payload as Parameters<RunUpdateCallback>[0]);
+        if (isRunUpdate(payload)) callback(payload);
       };
       ipcRenderer.on('sentry:run-update', listener as never);
       const activeListener = (_event: unknown, payload: unknown) => {
-        callback({ kind: 'run-snapshot', snapshot: { activeRuns: payload } } as never);
+        if (!Array.isArray(payload)) return;
+        const activeRuns = (payload as unknown[]).filter(
+          (item): item is { runId: string; projectId: string; status: string } =>
+            typeof item === 'object' &&
+            item !== null &&
+            typeof (item as { runId?: unknown }).runId === 'string',
+        );
+        callback({ kind: 'active-runs', snapshot: { activeRuns } } as never);
       };
       ipcRenderer.on('sentry:active-runs', activeListener as never);
       return () => {

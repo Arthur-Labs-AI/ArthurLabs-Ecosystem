@@ -32,9 +32,13 @@ export const IPC_CHANNELS = [
   'doctors:environment',
   'providers:status',
   'providers:set',
+  'providers:save',
+  'providers:session',
   'providers:clear',
   'providers:persist',
   'providers:forget-file',
+  'providers:forget-all',
+  'production:readiness',
   'system:info',
   'system:active-runs',
 ] as const;
@@ -47,7 +51,7 @@ export interface DesktopOperation {
   readonly retestRunId?: string | undefined;
 }
 
-export interface RunSnapshot {
+export interface DesktopRunSnapshot {
   readonly run: unknown;
   readonly agentRuns: unknown[];
   readonly findings: unknown[];
@@ -60,14 +64,23 @@ export interface RunSnapshot {
   readonly targetSpec?: unknown;
 }
 
-export interface RetestSnapshot {
+export type RunSnapshot = DesktopRunSnapshot;
+
+export interface DesktopRetestSnapshot {
   readonly retestRun: unknown;
   readonly spec?: unknown;
-  readonly targetRun?: unknown;
+  readonly targetRun?: DesktopRunSnapshot | undefined;
   readonly assessments: unknown[];
 }
 
-export type RunUpdateKind = 'run-created' | 'run-snapshot' | 'retest-created' | 'retest-snapshot';
+export type RetestSnapshot = DesktopRetestSnapshot;
+
+export type RunUpdateKind =
+  'run-created' | 'run-snapshot' | 'retest-created' | 'retest-snapshot' | 'active-runs';
+
+export interface ActiveRunsPayload {
+  readonly activeRuns: Array<{ runId: string; projectId: string; status: string }>;
+}
 
 export interface RunUpdatePayload {
   readonly kind: RunUpdateKind;
@@ -127,11 +140,28 @@ export interface SentryDesktopApi {
     environment(): Promise<unknown>;
   };
   readonly providers: {
-    status(): Promise<Array<{ name: string; configured: boolean; source: string; hint: string }>>;
+    status(): Promise<
+      Array<{
+        name: string;
+        configured: boolean;
+        persistence: string;
+        source: string;
+        hint: string;
+      }>
+    >;
+    /** Secure default: encrypt + persist + load into runtime. */
+    save(name: string, value: string): Promise<unknown>;
+    /** Explicit session-only (no persistence). */
+    session(name: string, value: string): Promise<unknown>;
+    /** Back-compat session set. */
     setKey(name: string, value: string): Promise<unknown>;
     clearKey(name: string): Promise<unknown>;
     persist(): Promise<{ path: string; keys: number }>;
     forgetFile(): Promise<{ forgotten: boolean }>;
+    forgetAll(): Promise<{ forgotten: boolean }>;
+  };
+  readonly production: {
+    readiness(): Promise<{ ready: boolean; reasons: string[]; productionWired: boolean }>;
   };
   readonly system: {
     info(): Promise<{ dataRoot: string; versions: Record<string, string> }>;

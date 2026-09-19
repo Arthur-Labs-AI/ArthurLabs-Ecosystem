@@ -2,16 +2,19 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { sentryApi } from './sentry-api.js';
 
+const RUN_TERMINAL = new Set(['completed', 'partial', 'failed', 'cancelled']);
+const RETEST_TERMINAL = new Set(['completed', 'partial', 'failed', 'cancelled', 'interrupted']);
+
 export function useRunSnapshot(runId: string | undefined, pollMs = 750) {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ['run', runId],
     queryFn: () => sentryApi().runs.get(runId as string),
     enabled: runId !== undefined,
-    refetchInterval: (data) => {
-      const status = (data as { run?: { status?: string } } | undefined)?.run?.status;
-      if (status !== undefined && ['completed', 'partial', 'failed', 'cancelled'].includes(status))
-        return false;
+    // TanStack Query v5: refetchInterval receives the query, not the data.
+    refetchInterval: (query) => {
+      const status = (query.state.data as { run?: { status?: string } } | undefined)?.run?.status;
+      if (status !== undefined && RUN_TERMINAL.has(status)) return false;
       return pollMs;
     },
   });
@@ -40,10 +43,10 @@ export function useRetestSnapshot(retestRunId: string | undefined, pollMs = 750)
     queryKey: ['retest', retestRunId],
     queryFn: () => sentryApi().retests.get(retestRunId as string),
     enabled: retestRunId !== undefined,
-    refetchInterval: (data) => {
-      const status = (data as { retestRun?: { status?: string } } | undefined)?.retestRun?.status;
-      if (status !== undefined && ['completed', 'partial', 'failed', 'cancelled'].includes(status))
-        return false;
+    refetchInterval: (query) => {
+      const status = (query.state.data as { retestRun?: { status?: string } } | undefined)
+        ?.retestRun?.status;
+      if (status !== undefined && RETEST_TERMINAL.has(status)) return false;
       return pollMs;
     },
   });

@@ -38,6 +38,8 @@ export interface RunGraphEdge {
 
 export interface RunWorkspaceInput {
   readonly run: RunLike;
+  /** True when an idempotent issue-ingest marker was observed (honest zero-issue ingest). */
+  readonly ingestRan?: boolean;
   readonly agentRuns: readonly AgentRunLike[];
   readonly findings: readonly FindingLike[];
   readonly evidence: readonly EvidenceLike[];
@@ -247,12 +249,25 @@ export function buildRunGraph(
 
   const mergerY = agentY + 300;
   const merge = input.mergeResults?.[0];
+  // Honest merger: COMPLETED only when a MergeResult exists. Terminal QARun
+  // without one is NOT completed (agents terminal → ready, else waiting).
+  const agentsTerminal =
+    input.agentRuns.length > 0 &&
+    input.agentRuns.every((a) =>
+      ['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(a.status),
+    );
+  const agentsActive = input.agentRuns.some(
+    (a) => !['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(a.status),
+  );
   const mergerStatus =
     merge !== undefined
       ? 'completed'
-      : ['completed', 'partial', 'failed', 'cancelled'].includes(runStatus)
-        ? 'completed'
-        : 'pending';
+      : agentsActive
+        ? 'waiting'
+        : agentsTerminal
+          ? 'ready'
+          : 'waiting';
+  void runStatus;
   const usableCount = merge?.usableAgentRunIds?.length;
   const expectedCount = merge?.expectedAgentStackIds?.length;
   nodes.push({
@@ -288,12 +303,10 @@ export function buildRunGraph(
   }
 
   const verification = input.verificationRuns?.[0];
+  // Honest verifier: no MergeResult → blocked; merge without verification →
+  // ready; active VerificationRun → running; terminal → persisted status.
   const verifierStatus =
-    verification !== undefined
-      ? verification.status
-      : mergerStatus === 'completed'
-        ? 'pending'
-        : 'pending';
+    verification !== undefined ? verification.status : merge !== undefined ? 'ready' : 'blocked';
   nodes.push({
     id: 'verifier',
     kind: 'verifier',
@@ -315,14 +328,20 @@ export function buildRunGraph(
     state: merge !== undefined ? 'completed' : 'pending',
   });
 
+  // Honest issues: no MergeResult → waiting; merge without ingest → ready;
+  // occurrences exist → completed. Zero-issue ingest still counts as ingest;
+  // callers pass ingestRan when the idempotent ingest marker was observed.
+  const ingestRan = (input as { ingestRan?: boolean }).ingestRan ?? (input.issueCount ?? 0) > 0;
+  const issuesStatus = merge === undefined ? 'waiting' : ingestRan ? 'completed' : 'ready';
   nodes.push({
     id: 'issues',
     kind: 'issues',
     label: 'Issues',
-    status: (input.issueCount ?? 0) > 0 ? 'completed' : runStatus,
+    status: issuesStatus,
     position: { x: 340, y: mergerY + 260 },
     data: {
       count: input.issueCount ?? 0,
+      ingestRan,
       findings: input.findings.map((f) => ({ severity: f.severity })),
     },
   });
@@ -339,7 +358,8 @@ export function buildRunGraph(
 export interface RetestWorkspaceInput extends RunWorkspaceInput {
   readonly sourceRevisionId: string;
   readonly targetRevisionId: string;
-  readonly assessment?: { outcome?: string };
+  /** Frozen backend field is `result`; `outcome` accepted as legacy alias. */
+  readonly assessment?: { result?: string; outcome?: string };
 }
 
 export function buildRetestGraph(
@@ -363,13 +383,14 @@ export function buildRetestGraph(
     position: { x: 40, y: 110 },
     data: { targetRevisionId: input.targetRevisionId },
   };
+  const assessmentResult = input.assessment?.result ?? input.assessment?.outcome;
   const assessmentNode: RunGraphNode = {
     id: 'retest-assessment',
     kind: 'retest-assessment',
     label: 'Retest Assessment',
-    status: input.assessment?.outcome ?? input.run.status,
+    status: assessmentResult ?? input.run.status,
     position: { x: 340, y: base.nodes[base.nodes.length - 1]?.position.y ?? 900 },
-    data: { outcome: input.assessment?.outcome },
+    data: { result: assessmentResult, outcome: assessmentResult },
   };
   return {
     agents: base.agents,

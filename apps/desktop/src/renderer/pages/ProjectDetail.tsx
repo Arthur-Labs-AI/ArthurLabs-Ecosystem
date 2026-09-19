@@ -164,6 +164,7 @@ export function ProjectDetail(): React.JSX.Element {
         <div className="card">
           <h3>Start QA (simulation)</h3>
           <p className="muted">Simulation mode — no provider tokens used.</p>
+          <ExecutionReadiness />
           <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8 }}>
             <legend className="muted">Agents</legend>
             {stacks.length === 0 ? (
@@ -240,6 +241,36 @@ export function ProjectDetail(): React.JSX.Element {
   );
 }
 
+function ExecutionReadiness(): React.JSX.Element {
+  const readiness = useQuery({
+    queryKey: ['production-readiness'],
+    queryFn: () => sentryApi().production.readiness(),
+  });
+  const info = readiness.data as
+    { ready?: boolean; reasons?: string[]; productionWired?: boolean } | undefined;
+  const reasons = info?.reasons ?? [];
+  return (
+    <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8 }}>
+      <legend className="muted">Execution</legend>
+      <label style={{ display: 'block' }}>
+        <input type="radio" name="execution" checked={true} readOnly /> Simulation{' '}
+        <span className="muted">(FakeHarness — never provider spend)</span>
+      </label>
+      <label style={{ display: 'block', opacity: 0.75 }} title={reasons.join(' · ')}>
+        <input type="radio" name="execution" checked={false} disabled={true} /> Production{' '}
+        <span className="muted">
+          (requires explicit enablement — {reasons.length > 0 ? reasons.join(' · ') : 'checking…'})
+        </span>
+      </label>
+      <p className="muted" style={{ marginBottom: 0, fontSize: 12 }}>
+        Production registry is wired ({info?.productionWired === true ? 'yes' : 'no'}) but desktop
+        starts run Simulation by default. Production runs require explicit user action and are
+        deferred while provider budgets are unavailable.
+      </p>
+    </fieldset>
+  );
+}
+
 function TargetPathInput({
   projectId,
   value,
@@ -253,29 +284,84 @@ function TargetPathInput({
     queryKey: ['target-suggest', projectId],
     queryFn: () => sentryApi().projects.suggestTargets(projectId),
   });
-  const paths = ((suggestions.data as { paths?: string[] } | undefined)?.paths ?? []).filter((q) =>
-    q.endsWith('/'),
+  const allPaths = ((suggestions.data as { paths?: string[] } | undefined)?.paths ?? []).map((q) =>
+    q.endsWith('/') ? q.slice(0, -1) : q,
   );
+  const [draft, setDraft] = React.useState('');
+  const [invalid, setInvalid] = React.useState<string | undefined>(undefined);
+  const chips = value
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  const addDraft = (raw: string): void => {
+    const candidate = raw.trim();
+    if (candidate.length === 0) return;
+    if (candidate.startsWith('/') || candidate.includes('..')) {
+      setInvalid('Paths must be project-relative (no leading / or ..): ' + candidate);
+      return;
+    }
+    setInvalid(undefined);
+    if (chips.includes(candidate)) {
+      setDraft('');
+      return;
+    }
+    onChange([...chips, candidate].join(','));
+    setDraft('');
+  };
+  const removeChip = (chip: string): void => {
+    onChange(chips.filter((c) => c !== chip).join(','));
+  };
   return (
-    <>
-      <label>
-        Target paths (comma-separated)
+    <div>
+      <div style={{ fontSize: 12 }} className="muted">
+        Target scope
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
         <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={paths[0] ?? 'src/auth'}
-          style={{ width: '100%', marginTop: 4 }}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addDraft(draft);
+            }
+          }}
+          placeholder="Search files… (e.g. src/auth/token.ts)"
+          aria-label="Add target path"
+          style={{ flex: 1 }}
         />
-      </label>
-      {paths.length > 0 ? (
+        <button onClick={() => addDraft(draft)} disabled={draft.trim().length === 0}>
+          Add path
+        </button>
+      </div>
+      {invalid !== undefined ? (
+        <p className="error-box" style={{ marginTop: 8 }} role="alert">
+          {invalid}
+        </p>
+      ) : null}
+      {chips.length > 0 ? (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+          {chips.map((chip) => (
+            <span key={chip} className="badge" title={chip}>
+              <span className="mono">{chip}</span>{' '}
+              <button
+                onClick={() => removeChip(chip)}
+                aria-label={'Remove ' + chip}
+                style={{ padding: '0 4px', fontSize: 11 }}
+              >
+                x
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {allPaths.length > 0 ? (
         <p className="muted">
           In this project:{' '}
-          {paths.slice(0, 8).map((q) => (
+          {allPaths.slice(0, 8).map((q) => (
             <button
               key={q}
-              onClick={() =>
-                onChange(value.trim().length === 0 ? q.slice(0, -1) : value + ',' + q.slice(0, -1))
-              }
+              onClick={() => addDraft(q)}
               title={'Add ' + q}
               style={{ padding: '0 6px', fontSize: 11, marginRight: 4 }}
             >
@@ -284,6 +370,9 @@ function TargetPathInput({
           ))}
         </p>
       ) : null}
-    </>
+      <p className="mono muted" style={{ fontSize: 11 }}>
+        TargetSpec preview: includePaths=[{chips.length === 0 ? '—' : chips.join(', ')}]
+      </p>
+    </div>
   );
 }

@@ -63,6 +63,10 @@ function eventCategory(event: HarnessEventLike): string {
     case 'run.cancelled':
     case 'agent.status':
       return 'Lifecycle';
+    case 'agent.message':
+      return 'Reporting';
+    case 'usage.updated':
+      return 'Usage';
     case 'file.read':
     case 'file.changed':
       return 'File';
@@ -160,11 +164,26 @@ function eventToOperation(event: HarnessEventLike): OperationView | undefined {
       return {
         kind: 'lifecycle',
         title: 'Agent failed',
-        detail: event.message,
+        detail: event.failure?.message ?? event.message,
         timestamp: event.timestamp,
       };
     case 'run.cancelled':
-      return { kind: 'lifecycle', title: 'Agent cancelled', timestamp: event.timestamp };
+      return {
+        kind: 'lifecycle',
+        title: 'Agent cancelled',
+        detail: event.reason ?? event.message,
+        timestamp: event.timestamp,
+      };
+    case 'agent.message':
+      // Observable persisted output only — never chain-of-thought. Bounded display.
+      return {
+        kind: 'lifecycle',
+        title: 'Preparing report',
+        detail: event.message?.slice(0, 200),
+        timestamp: event.timestamp,
+      };
+    case 'usage.updated':
+      return { kind: 'lifecycle', title: 'Usage updated', timestamp: event.timestamp };
     case 'warning':
       return { kind: 'lifecycle', title: event.message ?? 'Warning', timestamp: event.timestamp };
     default:
@@ -255,6 +274,11 @@ export function projectRecentActivity(
   return [...activities].reverse().slice(0, limit).map(activityToOperation);
 }
 
+/**
+ * Deterministic stage projection. Only persisted evidence advances stages:
+ * queued/starting with no events → 'working', never a completed future stage.
+ * 'completed' requires run.completed (or terminal AgentRun completed).
+ */
 function deriveStageStates(
   agentRun: AgentRunLike,
   events: readonly HarnessEventLike[],
@@ -263,9 +287,16 @@ function deriveStageStates(
 ): { states: Map<AgentStageId, StageState>; current: AgentStageId | 'working' } {
   const states = new Map<AgentStageId, StageState>(STAGE_ORDER.map((id) => [id, 'not_started']));
   const terminal = agentRun.status;
+  const completedTerminal =
+    terminal === 'completed' || events.some((e) => e.type === 'run.completed');
+  if (completedTerminal && terminal !== 'failed' && terminal !== 'timed_out') {
+    for (const stage of STAGE_ORDER) states.set(stage, 'completed');
+    return { states, current: 'completed' };
+  }
+  const reached = furthestStage(agentRun, events, findings, evidence);
+  if (reached === 'working') return { states, current: 'working' };
   if (['failed', 'timed_out'].includes(terminal)) {
     // Failure: mark the furthest reached stage failed; earlier ones completed.
-    const reached = furthestStage(events, findings, evidence);
     let failed = false;
     for (const stage of STAGE_ORDER) {
       if (stage === 'completed') {
@@ -282,7 +313,6 @@ function deriveStageStates(
     return { states, current: reached };
   }
   if (terminal === 'cancelled' || terminal === 'interrupted') {
-    const reached = furthestStage(events, findings, evidence);
     let cancelled = false;
     for (const stage of STAGE_ORDER) {
       if (stage === 'completed') {
@@ -298,11 +328,6 @@ function deriveStageStates(
     }
     return { states, current: reached };
   }
-  if (terminal === 'completed') {
-    for (const stage of STAGE_ORDER) states.set(stage, 'completed');
-    return { states, current: 'completed' };
-  }
-  const reached = furthestStage(events, findings, evidence);
   let seen = false;
   for (const stage of STAGE_ORDER) {
     if (stage === 'completed') {
@@ -316,27 +341,30 @@ function deriveStageStates(
       states.set(stage, 'completed');
     }
   }
-  // Preparation is trivially complete once the agent started.
-  if (['starting', 'planning', 'running', 'queued'].includes(terminal)) {
-    if (states.get('preparation') === 'not_started') states.set('preparation', 'completed');
-  }
   return { states, current: reached };
 }
 
 function furthestStage(
+  agentRun: AgentRunLike,
   events: readonly HarnessEventLike[],
   findings: readonly FindingLike[],
   evidence: readonly EvidenceLike[],
 ): AgentStageId | 'working' {
   const types = new Set(events.map((e) => e.type));
   if (types.has('run.completed')) return 'completed';
-  if (
+  // Reporting: observable report output after evidence.
+  const hasEvidence =
     findings.length > 0 ||
     evidence.length > 0 ||
     types.has('finding.submitted') ||
-    types.has('evidence.submitted')
-  )
-    return 'evidence';
+    types.has('evidence.submitted');
+  if (types.has('agent.message') || types.has('usage.updated')) {
+    if (hasEvidence) return 'reporting';
+    // usage alone without evidence is still runtime-adjacent progress;
+    // only treat an explicit report message as reporting.
+    if (types.has('agent.message')) return 'reporting';
+  }
+  if (hasEvidence) return 'evidence';
   if (
     types.has('tool.started') ||
     types.has('tool.completed') ||
@@ -344,7 +372,14 @@ function furthestStage(
     types.has('test.result')
   )
     return 'runtime';
-  if (types.has('investigation.plan.created') || types.has('file.read')) return 'investigation';
+  // Investigation: file I/O, investigation protocol events, investigating status.
+  if (
+    types.has('investigation.plan.created') ||
+    types.has('investigation.hypothesis.discovered') ||
+    types.has('file.read') ||
+    types.has('file.changed')
+  )
+    return 'investigation';
   if (types.has('agent.status')) {
     const lastStatus = [...events].reverse().find((e) => e.type === 'agent.status');
     if (
@@ -353,9 +388,23 @@ function furthestStage(
       lastStatus.status === 'planning'
     )
       return 'planning';
-    return 'investigation';
+    if (
+      lastStatus !== undefined &&
+      lastStatus.type === 'agent.status' &&
+      ['investigating', 'running'].includes(lastStatus.status ?? '')
+    )
+      return 'investigation';
+    return 'planning';
   }
-  if (events.length === 0) return 'working';
+  if (events.length === 0) {
+    // No observable events yet: map the persisted AgentRun status honestly.
+    // queued → Working (nothing started); starting/running → Preparation
+    // active; planning → Planning active. Nothing is marked completed.
+    if (agentRun.status === 'starting' || agentRun.status === 'running') return 'preparation';
+    if (agentRun.status === 'planning') return 'planning';
+    return 'working';
+  }
+  if (types.has('run.started')) return 'preparation';
   return 'planning';
 }
 

@@ -48,12 +48,14 @@ export function Environment(): React.JSX.Element {
             <h3>{stack.displayName}</h3>
             <p className="mono muted">{stack.modelId}</p>
             <p>
-              Harness: {stack.configured === true ? 'Ready' : 'Not configured'} · Binary:{' '}
-              {stack.binaryAvailable === true ? 'Found' : 'Missing'} · Model: {stack.modelId} ·
-              Credential: {stack.configured === true ? 'Configured' : 'Missing'} (value never
-              displayed)
+              Credential: {stack.configured === true ? 'Configured' : 'Missing'} · Binary:{' '}
+              {stack.binaryAvailable === true ? 'Available' : 'Missing'} · Runtime verification:{' '}
+              {stack.runtimeVerified === true ? 'Verified' : 'Not tested'}
             </p>
-            <p className="muted">Status: {stack.readiness ?? 'unknown'}</p>
+            <p className="muted">
+              Status: {stack.readiness ?? 'unknown'} — a saved credential does not imply the
+              provider works until a non-billable doctor verifies it.
+            </p>
           </div>
         ))}
         <div className="card">

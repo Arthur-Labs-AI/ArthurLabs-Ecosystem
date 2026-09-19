@@ -67,7 +67,11 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
       </div>
       <div className="node-sub mono">{view.model}</div>
       <div className="node-sub">
-        {statusGlyph(view.status)} {view.status.toUpperCase()} · <ElapsedMs ms={view.elapsedMs} />
+        {statusGlyph(view.status)} {view.status.toUpperCase()} ·{' '}
+        <TickingElapsed ms={view.elapsedMs} status={view.status} />
+      </div>
+      <div className="node-sub stage-current" title="Current stage">
+        <strong>{stageLabel(view.currentStage)}</strong>
       </div>
       <div
         className="node-sub wrap-anywhere"
@@ -89,16 +93,71 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
           </div>
         ))}
       </div>
+      <div className="node-sub" aria-label="Recent activity">
+        {view.recentActivity.slice(0, 3).map((activity, index) => (
+          <div key={index} className="mono wrap-anywhere" title={activity.title}>
+            {activity.title.slice(0, 80)}
+          </div>
+        ))}
+      </div>
       <div className="metrics">
         <span>{formatCount(view.findingsCount)} findings</span>
         <span>{formatCount(view.evidenceCount)} evidence</span>
         {view.turns !== undefined ? <span>{view.turns} turns</span> : null}
+        {view.totalTokens !== undefined ? (
+          <span>{formatTokens(view.totalTokens)} tokens</span>
+        ) : null}
       </div>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
 }
 
+function stageLabel(stage: string): string {
+  switch (stage) {
+    case 'runtime':
+      return 'RUNTIME VALIDATION';
+    case 'working':
+      return 'WAITING';
+    default:
+      return stage.toUpperCase();
+  }
+}
+
+function formatTokens(total: number): string {
+  if (total >= 1000) return Math.round(total / 100) / 10 + 'k';
+  return String(total);
+}
+
 function ElapsedMs({ ms }: { ms?: number | undefined }): React.JSX.Element {
   return <span>{formatElapsed(ms)}</span>;
+}
+
+const TERMINAL_NODE = new Set(['completed', 'failed', 'cancelled', 'timed_out', 'interrupted']);
+
+function TickingElapsed({
+  ms,
+  status,
+}: {
+  ms?: number | undefined;
+  status: string;
+}): React.JSX.Element {
+  // Presentation-only 1s clock for active agents: anchor to the last
+  // received value and advance with wall-clock time. Nothing persisted.
+  const [now, setNow] = React.useState(() => Date.now());
+  const anchor = React.useRef<{ ms: number; at: number } | undefined>(undefined);
+  const active = !TERMINAL_NODE.has(status);
+  React.useEffect(() => {
+    if (!active) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [active]);
+  if (ms === undefined) return <ElapsedMs ms={undefined} />;
+  const prev = anchor.current;
+  if (prev === undefined || prev.ms !== ms) {
+    anchor.current = { ms, at: Date.now() };
+    return <ElapsedMs ms={ms} />;
+  }
+  if (!active) return <ElapsedMs ms={ms} />;
+  return <ElapsedMs ms={ms + Math.max(0, now - prev.at)} />;
 }

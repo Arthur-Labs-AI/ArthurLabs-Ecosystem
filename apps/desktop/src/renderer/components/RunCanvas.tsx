@@ -39,8 +39,15 @@ export function RunCanvas({
   onSelectEdge?: (id: string | undefined) => void;
 }): React.JSX.Element {
   const flowRef = React.useRef<
-    { fitView: () => void; zoomIn: () => void; zoomOut: () => void } | undefined
+    | {
+        fitView: () => void;
+        zoomIn: () => void;
+        zoomOut: () => void;
+        setViewport: (viewport: { x: number; y: number; zoom: number }) => void;
+      }
+    | undefined
   >(undefined);
+  const [layoutKey, setLayoutKey] = React.useState(0);
 
   React.useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -54,6 +61,8 @@ export function RunCanvas({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  // Canonical node positions are deterministic (built by run-graph). A true
+  // layout reset restores them and refits the viewport (not just fitView).
   const flowNodes: Node[] = React.useMemo(
     () =>
       nodes.map((node) => ({
@@ -69,7 +78,7 @@ export function RunCanvas({
           selected: node.id === selectedId,
         },
       })),
-    [nodes, selectedId],
+    [nodes, selectedId, layoutKey],
   );
   const flowEdges: Edge[] = React.useMemo(
     () =>
@@ -102,9 +111,15 @@ export function RunCanvas({
           Fit
         </button>
         <button
-          onClick={() => flowRef.current?.fitView()}
+          onClick={() => {
+            // Deterministic reset: restore canonical positions, reset
+            // viewport, then fit. Keyed remount restores node positions.
+            flowRef.current?.setViewport({ x: 0, y: 0, zoom: 1 });
+            setLayoutKey((k) => k + 1);
+            window.setTimeout(() => flowRef.current?.fitView(), 0);
+          }}
           aria-label="Reset layout"
-          title="Reset layout (presentation only)"
+          title="Reset layout: restore canonical node positions and fit view"
         >
           Reset layout
         </button>
