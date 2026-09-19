@@ -43,10 +43,20 @@ async function run(electron, app, BrowserWindow) {
   const boot = await import(pathToFileURL(join(desktopRoot, 'dist', 'main', 'bootstrap.js')).href);
   try {
     const bootstrapped = await boot.bootstrapDesktop(dataRoot);
-    expect('bootstrap recovers and constructs service', true, '');
-    bootstrapped.close();
+    expect('bootstrap connects WSL runtime', true, '');
+    const status = bootstrapped.service.runtimeStatus();
+    const hello = status.hello || {};
+    expect('runtime platform is linux', hello.platform === 'linux', String(hello.platform));
+    expect(
+      'runtime host is not electron',
+      !String(hello.processExecPath || '')
+        .toLowerCase()
+        .endsWith('electron.exe'),
+      String(hello.processExecPath),
+    );
+    await bootstrapped.close();
   } catch (error) {
-    expect('bootstrap recovers and constructs service', false, String(error));
+    expect('bootstrap connects WSL runtime', false, String(error));
   }
   const win = new BrowserWindow({
     width: 1440,

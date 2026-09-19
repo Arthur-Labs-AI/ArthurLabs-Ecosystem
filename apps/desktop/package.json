@@ -32,6 +32,7 @@
     "@qa/persistence": "workspace:*",
     "@qa/project-manager": "workspace:*",
     "@qa/run-engine": "workspace:*",
+    "@qa/runtime-protocol": "workspace:*",
     "@qa/schemas": "workspace:*",
     "@qa/shared": "workspace:*",
     "@qa/verifier": "workspace:*",

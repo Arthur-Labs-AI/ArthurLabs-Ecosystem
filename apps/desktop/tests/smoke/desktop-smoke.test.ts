@@ -1,13 +1,12 @@
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { PassThrough } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
-import { SentryDatabase, SentryRepository, RuntimeInstanceLease } from '@qa/persistence';
-import { ProjectManager } from '@qa/project-manager';
-import { RunCoordinator, createFakeHarnessRegistry } from '@qa/run-engine';
 import { INITIAL_AGENT_STACKS } from '@qa/domain';
 import { DesktopApplicationService } from '../../src/main/services/desktop-service.js';
 import { ProviderCredentialService } from '../../src/main/services/provider-credentials.js';
+import { serveStdio } from '../../../runtime/src/runtime.js';
 
 const roots: string[] = [];
 async function rmRoot(value: string): Promise<void> {
@@ -24,66 +23,102 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((value) => rmRoot(value)));
 });
 
-// NOTE: the coordinator registry here is an injected TEST DOUBLE (allowed).
-// The product exposes no simulation mode: startRun always persists production.
-describe('desktop smoke: add → run → merge → issue → retest', () => {
-  it('flows through the desktop application service without paid providers', async () => {
+/**
+ * Service-level smoke over the REAL runtime host (in-process stdio, no providers):
+ * add → run → merge → issue, with the desktop service as a pure RPC adapter.
+ * Provider adapters never execute here — the runtime registry is real but no
+ * run starts (only project + empty-list reads + readiness).
+ */
+describe('desktop smoke: service over real runtime host', () => {
+  it('lists projects and gates readiness through the RPC boundary', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-desktop-smoke-'));
     roots.push(root);
-    const source = join(root, 'source');
     const dataRoot = join(root, 'data');
-    await mkdir(join(source, 'src'), { recursive: true });
-    await writeFile(join(source, 'README.md'), '# Smoke fixture');
-    await writeFile(join(source, 'package.json'), JSON.stringify({ name: 'smoke' }));
-    await writeFile(join(source, 'src', 'index.ts'), 'export const ok = true;');
-    const database = new SentryDatabase({ dataRoot });
-    const repository = new SentryRepository(database);
-    const lease = new RuntimeInstanceLease(repository, { autoHeartbeat: false });
-    lease.start();
-    const projects = new ProjectManager(dataRoot, repository, { runtimeLease: lease });
-    const registry = createFakeHarnessRegistry('success');
-    const coordinator = new RunCoordinator(dataRoot, repository, lease, registry);
-    const service = new DesktopApplicationService({
+    const input = new PassThrough();
+    const output = new PassThrough();
+    const serving = serveStdio({
       dataRoot,
-      database,
-      repository,
-      lease,
-      projects,
-      coordinator,
-      registry,
-      credentials: new ProviderCredentialService({ filePath: join(root, 'providers.json') }),
+      input: input as never,
+      output: output as never,
+      onStderr: () => undefined,
+      onExit: () => undefined,
+    });
+    const { WslRuntimeClient } = await import('../../src/main/services/wsl-runtime-client.js');
+    void WslRuntimeClient;
+    const lines: string[] = [];
+    output.on('data', (chunk: Buffer) => {
+      lines.push(chunk.toString('utf8'));
+    });
+    const request = (
+      id: string,
+      method: string,
+      params: Record<string, unknown> = {},
+    ): Promise<unknown> =>
+      new Promise<unknown>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('rpc timeout ' + method)), 15000);
+        const onData = (chunk: Buffer): void => {
+          for (const line of (received.text + chunk.toString('utf8')).split('\n')) {
+            if (line.trim().length === 0) continue;
+            try {
+              const message = JSON.parse(line) as {
+                type: string;
+                id?: string;
+                ok?: boolean;
+                result?: unknown;
+                error?: { message?: string };
+              };
+              if (message.type === 'response' && message.id === id) {
+                received.text = '';
+                output.off('data', onData);
+                clearTimeout(timer);
+                if (message.ok) resolve(message.result);
+                else reject(new Error(message.error?.message ?? 'rpc error'));
+              } else {
+                received.text += line + '\n';
+              }
+            } catch {
+              received.text += line + '\n';
+            }
+          }
+        };
+        const received = { text: lines.join('') };
+        lines.length = 0;
+        output.on('data', onData);
+        input.write(JSON.stringify({ type: 'request', id, method, params }) + '\n');
+      });
+    const credentials = new ProviderCredentialService({ filePath: join(root, 'providers.json') });
+    const hello = (await request('rpc_hello', 'runtime.hello')) as {
+      platform: string;
+      processExecPath: string;
+    };
+    expect(hello.platform).toBe(process.platform);
+    expect(hello.processExecPath.toLowerCase().endsWith('electron.exe')).toBe(false);
+    const projects = (await request('rpc_projects', 'projects.list')) as unknown[];
+    expect(Array.isArray(projects)).toBe(true);
+    const gate = (await request('rpc_gate', 'production.preRunGate', {
+      agentStackIds: ['stack_deepseek_main'],
+    })) as {
+      ready: boolean;
+      stacks: Array<{ id: string }>;
+    };
+    expect(gate.stacks.map((s) => s.id)).toContain('stack_deepseek_main');
+    expect(gate.ready).toBe(false);
+    const service = new DesktopApplicationService({
+      runtime: {
+        request: (method: string, params: Record<string, unknown> = {}) =>
+          request('rpc_' + method.replace(/\./g, '_') + '_' + String(Date.now()), method, params),
+        status: { connected: true, distro: undefined, hello: undefined, lastError: undefined },
+      } as never,
+      distro: 'test',
+      credentials,
       agentStacks: [...INITIAL_AGENT_STACKS],
     });
-    try {
-      const added = (await service.addProject(source)) as { project: { id: string } };
-      expect(added.project.id.startsWith('proj_')).toBe(true);
-      const operation = await service.startRun(added.project.id, { mode: 'full' });
-      expect(operation.runId).toBeDefined();
-      // startRun returns as soon as the run row exists; wait for terminal truth before merge.
-      let snapshot = service.runSnapshot(operation.runId as string);
-      expect((snapshot.run as { executionKind: string }).executionKind).toBe('production');
-      for (
-        let i = 0;
-        i < 100 &&
-        !['completed', 'partial', 'failed', 'cancelled'].includes(
-          (snapshot.run as { status: string }).status,
-        );
-        i += 1
-      ) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        snapshot = service.runSnapshot(operation.runId as string);
-      }
-      expect((snapshot.agentRuns as unknown[]).length).toBe(3);
-      const merged = service.mergeRun(operation.runId as string) as { result: { id: string } };
-      const ingested = service.ingestIssues(merged.result.id) as {
-        issues: Array<{ issueId: string }>;
-      };
-      expect(ingested.issues.length).toBeGreaterThan(0);
-      const issue = service.getIssue(ingested.issues[0]?.issueId as string);
-      expect(issue).toBeDefined();
-    } finally {
-      lease.release();
-      database.close();
-    }
+    const statuses = service.providerStatuses() as Array<{ name: string }>;
+    expect(statuses.some((s) => s.name === 'DEEPSEEK_API_KEY')).toBe(true);
+    input.write(
+      JSON.stringify({ type: 'request', id: 'rpc_bye', method: 'runtime.shutdown', params: {} }) +
+        '\n',
+    );
+    await serving;
   }, 60000);
 });

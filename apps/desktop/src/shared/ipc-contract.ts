@@ -43,6 +43,9 @@ export const IPC_CHANNELS = [
   'production:readiness',
   'system:info',
   'system:active-runs',
+  'runtime:status',
+  'runtime:distros',
+  'runtime:select-distro',
 ] as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[number];
@@ -183,6 +186,31 @@ export interface SentryDesktopApi {
     readiness(input?: {
       agentStackIds?: string[];
     }): Promise<{ ready: boolean; reasons: string[]; productionWired: boolean }>;
+  };
+  readonly runtime: {
+    status(): Promise<{
+      connected: boolean;
+      distro: string | undefined;
+      hello:
+        | {
+            protocolVersion: number;
+            runtimeVersion: string;
+            platform: string;
+            isWsl: boolean;
+            nodeVersion: string;
+            processExecPath: string;
+            distro?: string;
+            dataRoot: string;
+          }
+        | undefined;
+      lastError: string | undefined;
+    }>;
+    distros(): Promise<{
+      distros: Array<{ name: string; state: string; version: number }>;
+      preferred: string | null;
+      selected: string | null;
+    }>;
+    selectDistro(distro: string): Promise<{ saved: string; restartRequired: boolean }>;
   };
   readonly system: {
     info(): Promise<{ dataRoot: string; versions: Record<string, string> }>;

@@ -14,12 +14,19 @@ function toDisplayError(value: unknown): Error {
   }
 }
 
+/** Redact secret-looking values before they can reach localStorage/console diagnostics. */
+export function redactSensitiveText(value: string): string {
+  return value
+    .replace(/\b(Bearer)\s+\S+/gi, '$1 [REDACTED]')
+    .replace(/\b([A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))\s*[:=]\s*([^\s,;]+)/gi, '$1=[REDACTED]');
+}
+
 export function errorMessage(value: unknown): string {
-  if (value instanceof Error) return value.message;
-  if (typeof value === 'string') return value;
+  if (value instanceof Error) return redactSensitiveText(value.message);
+  if (typeof value === 'string') return redactSensitiveText(value);
   if (value === null || value === undefined) return 'Unknown error';
   try {
-    return JSON.stringify(value).slice(0, 500);
+    return redactSensitiveText(JSON.stringify(value).slice(0, 500));
   } catch {
     return 'Unknown error';
   }
@@ -44,7 +51,10 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Stat
         'sentry:last-error',
         JSON.stringify({
           message: errorMessage(error),
-          stack: error instanceof Error ? error.stack : undefined,
+          stack:
+            error instanceof Error && error.stack !== undefined
+              ? redactSensitiveText(error.stack.slice(0, 2000))
+              : undefined,
           at: new Date().toISOString(),
         }).slice(0, 4000),
       );

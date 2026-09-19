@@ -89,7 +89,10 @@ export function Providers(): React.JSX.Element {
     },
     onError: fail,
   });
-  const list = (statuses.data as ProviderStatus[] | undefined) ?? [];
+  // Binary overrides are advanced Linux-runtime paths; hidden from normal settings.
+  const list = ((statuses.data as ProviderStatus[] | undefined) ?? []).filter(
+    (item) => !item.name.endsWith('_BINARY'),
+  );
   return (
     <div>
       <p className="muted" style={{ margin: 0 }}>
@@ -105,7 +108,7 @@ export function Providers(): React.JSX.Element {
         Muse authenticates via your local <span className="mono">muse login</span> credential store
         — no key to paste here. See <Link to="/environment">Environment</Link> for live readiness.
       </p>
-      <HarnessBinaryCard onSaved={refresh} />
+      <HarnessBinaryCard />
 
       {error !== undefined ? (
         <div className="error-box" role="alert">
@@ -191,67 +194,15 @@ export function Providers(): React.JSX.Element {
   );
 }
 
-function HarnessBinaryCard({ onSaved }: { onSaved: () => void }): React.JSX.Element {
-  const queryClient = useQueryClient();
-  const [error, setError] = React.useState<string | undefined>(undefined);
-  const detection = useQuery({
-    queryKey: ['harness-binaries'],
-    queryFn: () => sentryApi().providers.detectBinaries(),
-  });
-  const info = detection.data as
-    | { deepseek: { detected: string | null; configured: string | null; effective: string } }
-    | undefined;
-  const saveDetected = useMutation({
-    mutationFn: (path: string) => sentryApi().providers.save('SENTRY_DEEPSEEK_BINARY', path),
-    onSuccess: () => {
-      setError(undefined);
-      void queryClient.invalidateQueries({ queryKey: ['providers'] });
-      void queryClient.invalidateQueries({ queryKey: ['environment'] });
-      void queryClient.invalidateQueries({ queryKey: ['production-readiness'] });
-      void queryClient.invalidateQueries({ queryKey: ['harness-binaries'] });
-      onSaved();
-    },
-    onError: (e) => setError(e instanceof Error ? e.message : String(e)),
-  });
-  const ds = info?.deepseek;
+function HarnessBinaryCard(): React.JSX.Element {
   return (
     <div className="card" style={{ marginBottom: 12 }}>
-      <h3 style={{ marginTop: 0 }}>Harness executables</h3>
+      <h3 style={{ marginTop: 0 }}>Execution runtime</h3>
       <p className="muted">
-        The desktop host resolves provider CLIs without a login shell, so a terminal PATH entry may
-        not apply. When detection finds the install, save it once as an absolute path override.
+        Provider CLIs (dsh, Muse, Claude Code) execute inside the WSL2 Sentry runtime on Linux.
+        Windows binary paths do not apply — see <Link to="/environment">Environment</Link> for the
+        runtime doctor state.
       </p>
-      {detection.isLoading ? <div className="skeleton">Detecting harness binaries…</div> : null}
-      {error !== undefined ? (
-        <div className="error-box" role="alert">
-          {error} <button onClick={() => setError(undefined)}>Dismiss</button>
-        </div>
-      ) : null}
-      {ds !== undefined ? (
-        <p>
-          <span className="mono">dsh</span> effective: <span className="mono">{ds.effective}</span>
-        </p>
-      ) : null}
-      {ds?.detected != null && ds.detected !== ds.configured ? (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span className="muted mono">{ds.detected}</span>
-          <button
-            className="primary"
-            disabled={saveDetected.isPending}
-            onClick={() => saveDetected.mutate(ds.detected as string)}
-            title="Persist this absolute dsh path for the desktop host"
-          >
-            Use detected dsh path
-          </button>
-        </div>
-      ) : null}
-      {ds !== undefined && ds.detected == null ? (
-        <p className="muted">
-          No dsh install detected. Install the DeepSeek harness globally, then enter
-          <span className="mono"> SENTRY_DEEPSEEK_BINARY </span>
-          below as an absolute path.
-        </p>
-      ) : null}
     </div>
   );
 }

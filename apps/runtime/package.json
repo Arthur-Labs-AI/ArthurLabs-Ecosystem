@@ -1,0 +1,40 @@
+{
+  "name": "@qa/runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sentry WSL/Linux execution runtime host (stdio RPC server).",
+  "bin": {
+    "sentry-runtime": "./dist/host.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/host.js --stdio"
+  },
+  "dependencies": {
+    "@qa/domain": "workspace:*",
+    "@qa/harness-claude-code": "workspace:*",
+    "@qa/harness-deepseek": "workspace:*",
+    "@qa/harness-muse": "workspace:*",
+    "@qa/harness-protocol": "workspace:*",
+    "@qa/merger": "workspace:*",
+    "@qa/persistence": "workspace:*",
+    "@qa/project-manager": "workspace:*",
+    "@qa/run-engine": "workspace:*",
+    "@qa/runtime-protocol": "workspace:*",
+    "@qa/schemas": "workspace:*",
+    "@qa/shared": "workspace:*",
+    "@qa/verifier": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

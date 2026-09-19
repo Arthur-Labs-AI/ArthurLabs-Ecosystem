@@ -1,10 +1,9 @@
 # Phase 8 — Handoff (Desktop UI & Live Run Canvas)
 
-> Status: **CI GREEN ON EXACT HEAD** — implementation through `32e653e`; exact-head CI
-> `35428303414` reports `status: completed`, `conclusion: success` (§279).
-> Caveat: this runner could not mount the verifier sandbox (exit 226), so the real-sandbox
-> trust test ran in the sanctioned fallback path (all other run-engine tests executed).
-> Paid production gates remain DEFERRED (§280).
+> Status: **RUNTIME ARCHITECTURE IN PROGRESS** — the Windows-Electron-hosted provider
+> execution model is being replaced by a WSL2 runtime (this document's older sections
+> below describe the retired architecture: `Simulation only`, `Paid gates DEFERRED`.
+> Do not treat those as current.)
 
 ## Baseline and head
 

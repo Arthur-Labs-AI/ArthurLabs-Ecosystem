@@ -14,6 +14,7 @@ import { History } from './pages/History.js';
 import { Environment } from './pages/Environment.js';
 import { Providers } from './pages/Providers.js';
 import { Settings } from './pages/Settings.js';
+import { RuntimeSettings } from './pages/RuntimeSettings.js';
 
 export function App(): React.JSX.Element {
   return (
@@ -33,6 +34,7 @@ export function App(): React.JSX.Element {
             <Route path="environment" element={<Environment />} />
             <Route path="settings" element={<Settings />} />
             <Route path="settings/providers" element={<Providers />} />
+            <Route path="settings/runtime" element={<RuntimeSettings />} />
           </Route>
         </Routes>
       </HashRouter>

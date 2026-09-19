@@ -114,6 +114,9 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
     .strict(),
   'system:info': z.object({}).strict(),
   'system:active-runs': z.object({}).strict(),
+  'runtime:status': z.object({}).strict(),
+  'runtime:distros': z.object({}).strict(),
+  'runtime:select-distro': z.object({ distro: z.string().min(1).max(200) }).strict(),
 };
 
 export interface DesktopIpcHooks {
@@ -154,7 +157,7 @@ export function registerDesktopIpc(
           return service.runStatus(parsed['runId'] as string);
         case 'runs:start':
         case 'runs:start-production': {
-          const gate = service.preRunGate(
+          const gate = await service.preRunGate(
             parsed['agentStackIds'] === undefined
               ? undefined
               : (parsed['agentStackIds'] as string[]),
@@ -243,6 +246,8 @@ export function registerDesktopIpc(
           return service.systemInfo();
         case 'system:active-runs':
           return service.activeRuns();
+        case 'runtime:status':
+          return service.runtimeStatus();
         default:
           throw Object.assign(new Error('Unknown IPC channel: ' + channel), {
             code: 'IPC_UNKNOWN_CHANNEL',

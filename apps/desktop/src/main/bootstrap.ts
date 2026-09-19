@@ -1,27 +1,19 @@
-import {
-  SentryDatabase,
-  SentryRepository,
-  RuntimeInstanceLease,
-  resolveSentryDataRoot,
-} from '@qa/persistence';
-import { ProjectManager } from '@qa/project-manager';
-import { RunCoordinator } from '@qa/run-engine';
 import { INITIAL_AGENT_STACKS } from '@qa/domain';
+import { resolveSentryDataRoot } from '@qa/persistence';
 import { DesktopApplicationService } from './services/desktop-service.js';
 import {
   ProviderCredentialService,
   type SafeStorageLike,
 } from './services/provider-credentials.js';
-import { createProductionRegistry } from './services/execution-registries.js';
-import { discoverDeepSeekBinary } from './services/harness-discovery.js';
+import { WslRuntimeClient, WslRuntimeManager } from './services/wsl-runtime-client.js';
 
 export interface BootstrappedDesktop {
   readonly service: DesktopApplicationService;
+  readonly runtime: WslRuntimeClient;
+  readonly distro: string;
   readonly dataRoot: string;
-  readonly database: SentryDatabase;
-  readonly lease: RuntimeInstanceLease;
   readonly recoveryWarnings: readonly string[];
-  close(): void;
+  close(): Promise<void>;
 }
 
 function userDataDir(): string | undefined {
@@ -35,9 +27,9 @@ function userDataDir(): string | undefined {
 }
 
 /**
- * Production-only boot order:
- * credentials -> model prefs -> production registry -> DB -> lease ->
- * coordinator -> AWAITED recovery -> service -> (caller creates window).
+ * Production boot order:
+ * credentials -> WSL distro -> spawn runtime -> handshake -> configure ->
+ * awaited recovery (inside runtime) -> service. No RunCoordinator on Windows.
  */
 export async function bootstrapDesktop(dataRootOverride?: string): Promise<BootstrappedDesktop> {
   const recoveryWarnings: string[] = [];
@@ -62,60 +54,63 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
     ...(safeStorageLike === undefined ? {} : { safeStorage: safeStorageLike }),
   });
   await credentials.load();
-  // Best-effort harness binary detection: GUI-launched Electron often misses
-  // the npm global bin dir on PATH. Fill SENTRY_DEEPSEEK_BINARY into the host
-  // env only when the user has not set it explicitly (persisted or ambient).
-  try {
-    if (
-      (process.env['SENTRY_DEEPSEEK_BINARY'] ?? '').trim().length === 0 &&
-      (credentials.getValue('SENTRY_DEEPSEEK_BINARY') ?? '').trim().length === 0
-    ) {
-      const detected = await discoverDeepSeekBinary();
-      if (detected !== undefined) process.env['SENTRY_DEEPSEEK_BINARY'] = detected;
-    }
-  } catch {
-    // Detection is advisory; the doctor reports honestly when nothing resolves.
-  }
+  // Provider executables resolve inside the WSL runtime; Windows binary
+  // discovery no longer drives production readiness.
   if (!credentials.secureStorageAvailable) {
     recoveryWarnings.push(
       'Secure persistent storage unavailable. Credentials can be used for this session only.',
     );
   }
-  const dataRoot = dataRootOverride ?? resolveSentryDataRoot();
-  const database = new SentryDatabase({ dataRoot });
-  const repository = new SentryRepository(database);
-  const lease = new RuntimeInstanceLease(repository);
-  lease.start();
-  const projects = new ProjectManager(dataRoot, repository, { runtimeLease: lease });
-  const registry = createProductionRegistry();
-  const coordinator = new RunCoordinator(dataRoot, repository, lease, registry);
-  try {
-    await coordinator.recover();
-  } catch (error) {
-    lease.release();
-    database.close();
-    throw error;
+  const manager = new WslRuntimeManager({ ...(dir === undefined ? {} : { userDataDir: dir }) });
+  if (!(await manager.wslAvailable())) {
+    throw Object.assign(
+      new Error("WSL2 is required for Sentry's production QA runtime, but wsl.exe is unavailable."),
+      {
+        code: 'WSL_UNAVAILABLE',
+      },
+    );
   }
+  const distro = await manager.resolveDistro();
+  const runtimeEntry = await runtimeEntryForDistro(distro);
+  const dataRootOption = dataRootOverride ?? process.env['SENTRY_DATA_ROOT'];
+  const client = new WslRuntimeClient({
+    distro,
+    runtimeEntry,
+    ...(dataRootOption === undefined ? {} : { dataRoot: dataRootOption }),
+  });
+  const hello = await client.start();
   const service = new DesktopApplicationService({
-    dataRoot,
-    database,
-    repository,
-    lease,
-    projects,
-    coordinator,
-    registry,
+    runtime: client,
+    distro,
     credentials,
     agentStacks: [...INITIAL_AGENT_STACKS],
+    legacyDataRoot: resolveSentryDataRoot(),
   });
+  await service.pushRuntimeConfiguration().catch((error: unknown) => {
+    recoveryWarnings.push(
+      'Runtime configuration push failed: ' +
+        (error instanceof Error ? error.message : String(error)).slice(0, 200),
+    );
+  });
+  const distributable = hello.distro ?? distro;
+  void distributable;
   return {
     service,
-    dataRoot,
-    database,
-    lease,
+    runtime: client,
+    distro,
+    dataRoot: hello.dataRoot,
     recoveryWarnings,
-    close() {
-      lease.release();
-      database.close();
+    async close() {
+      await client.stop();
     },
   };
+}
+
+/** Location of the deployed runtime entry inside the WSL distro. */
+export async function runtimeEntryForDistro(distro: string): Promise<string> {
+  const override = process.env['SENTRY_RUNTIME_ENTRY'];
+  if (override !== undefined && override.length > 0) return override;
+  const { wslHomeDir } = await import('./services/wsl-runtime-client.js');
+  const home = await wslHomeDir(distro);
+  return home.replace(/\/$/, '') + '/.local/share/sentry/runtime/current/dist/host.js';
 }

@@ -174,24 +174,60 @@ describe('live retest start', () => {
       runtimeIdentity: { modelId: (INITIAL_AGENT_STACKS[0] as never).model.modelId },
       createAdapter: () => slow as never,
     });
-    const coordinator = new RunCoordinator(dataRoot, repository, lease, slowRegistry);
+    // Desktop service as a pure RPC adapter over a fake transport whose
+    // retests.start returns the id before the (slow) workflow settles.
+    const { retestIssue } = await import('@qa/run-engine');
+    const retestPromise = retestIssue(
+      { dataRoot, repository, lease, registry: slowRegistry },
+      issueId,
+      {},
+    );
+    const settled = retestPromise.then(
+      (result) => result,
+      (error: unknown) => {
+        throw error;
+      },
+    );
+    settled.then(undefined, () => undefined);
+    const calls: string[] = [];
+    const runtime = {
+      request: async (method: string, params: Record<string, unknown> = {}) => {
+        calls.push(method);
+        if (method === 'retests.start') {
+          const before = new Set(repository.listRetestRuns(issueId).map((r) => r.id));
+          const deadline = Date.now() + 10000;
+          while (Date.now() < deadline) {
+            const created = repository.listRetestRuns(issueId).find((r) => !before.has(r.id));
+            if (created !== undefined) return { operationId: 'dop_test', retestRunId: created.id };
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+          const result = (await settled) as { retestRun: { id: string } };
+          return { operationId: 'dop_test', retestRunId: result.retestRun.id };
+        }
+        if (method === 'retests.get') {
+          const run = repository.getRetestRun(params['retestRunId'] as never);
+          return { retestRun: run, assessments: [], spec: undefined, targetRun: undefined };
+        }
+        return { ok: true };
+      },
+      status: { connected: true, distro: undefined, hello: undefined, lastError: undefined },
+    };
     const service = new DesktopApplicationService({
-      dataRoot,
-      database,
-      repository,
-      lease,
-      projects,
-      coordinator,
-      registry: slowRegistry,
+      runtime: runtime as never,
+      distro: 'test',
       credentials: new ProviderCredentialService({ filePath: join(root, 'providers.json') }),
       agentStacks: [...INITIAL_AGENT_STACKS],
     });
     const started = service.startRetest(issueId, {});
     const operation = await started;
     expect(operation.retestRunId).toBeDefined();
+    expect(calls).toContain('retests.start');
     // RetestRun row exists immediately, before the workflow settles.
-    const snapshot = service.retestSnapshot(operation.retestRunId as string);
-    expect((snapshot.retestRun as { id: string }).id).toBe(operation.retestRunId);
+    const snapshot = (await service.retestSnapshot(operation.retestRunId as string)) as {
+      retestRun: { id: string };
+      targetRun?: { run: { id: string } };
+    };
+    expect(snapshot.retestRun.id).toBe(operation.retestRunId);
     // Nested DTO: targetRun.run.id (never flattened).
     if (snapshot.targetRun !== undefined) {
       expect(typeof (snapshot.targetRun as { run: { id: string } }).run.id).toBe('string');

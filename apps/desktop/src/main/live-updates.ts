@@ -95,10 +95,15 @@ export class DesktopLiveUpdates {
     });
   }
 
+  /** Re-sweep active runs on runtime notification (runtime stays authoritative). */
+  refreshActiveRuns(): void {
+    void this.pollIdle();
+  }
+
   private async pollWatched(): Promise<void> {
     for (const watched of this.watchedRuns.values()) {
       try {
-        const snapshot = this.service.runSnapshot(watched.runId);
+        const snapshot = await this.service.runSnapshot(watched.runId);
         const payload = JSON.stringify(snapshot);
         if (payload === watched.lastPayload) continue;
         this.watchedRuns.set(watched.runId, { ...watched, lastPayload: payload });
@@ -113,7 +118,7 @@ export class DesktopLiveUpdates {
     }
     for (const watched of this.watchedRetests.values()) {
       try {
-        const snapshot = this.service.retestSnapshot(watched.retestRunId);
+        const snapshot = await this.service.retestSnapshot(watched.retestRunId);
         const payload = JSON.stringify(snapshot);
         if (payload === watched.lastPayload) continue;
         this.watchedRetests.set(watched.retestRunId, { ...watched, lastPayload: payload });
@@ -130,7 +135,7 @@ export class DesktopLiveUpdates {
 
   private async pollIdle(): Promise<void> {
     try {
-      const active = this.service.activeRuns();
+      const active = await this.service.activeRuns();
       const win = this.window();
       if (win !== undefined && !win.isDestroyed()) {
         win.webContents.send('sentry:active-runs', active);

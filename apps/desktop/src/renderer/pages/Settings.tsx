@@ -18,6 +18,10 @@ export function Settings(): React.JSX.Element {
         <a href="#/settings/providers">Provider keys →</a>{' '}
         <span className="muted">(DeepSeek / GLM tokens, model overrides; values stay in main)</span>
       </p>
+      <p>
+        <a href="#/settings/runtime">WSL runtime →</a>{' '}
+        <span className="muted">(distribution selection, connection status)</span>
+      </p>
       <div className="card">
         <h3>Data root</h3>
         <p className="mono">{data?.dataRoot ?? '—'}</p>
@@ -37,10 +41,7 @@ export function Settings(): React.JSX.Element {
           Enable developer diagnostics
         </label>
         {developerMode ? (
-          <p className="mono muted">
-            Seed fixtures via: pnpm --filter @qa/desktop seed. Raw event viewer lives in the run
-            inspector.
-          </p>
+          <p className="mono muted">Raw event viewer lives in the run inspector.</p>
         ) : null}
       </div>
     </div>

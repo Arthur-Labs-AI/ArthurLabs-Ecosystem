@@ -24,6 +24,8 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((value) => rmRoot(value)));
 });
 
+// Issue projection lives in the runtime host; the desktop service forwards it.
+// The coordinator here is a TEST DOUBLE driving the same frozen pipeline.
 async function harness() {
   const root = await mkdtemp(join(tmpdir(), 'sentry-issue-state-'));
   roots.push(root);
@@ -41,14 +43,76 @@ async function harness() {
   const registry = createFakeHarnessRegistry('success');
   const coordinator = new RunCoordinator(dataRoot, repository, lease, registry);
   const added = await projects.addProject(source);
+  const calls: Array<{ method: string; params: Record<string, unknown> }> = [];
+  const runtime = {
+    request: async (method: string, params: Record<string, unknown> = {}) => {
+      calls.push({ method, params });
+      const withState = (
+        rows: Array<{ id: string }>,
+      ): Array<{ id: string; currentState: string }> =>
+        rows.map((row) => ({
+          ...row,
+          currentState: 'open' as string,
+        }));
+      switch (method) {
+        case 'runs.start': {
+          const started = await coordinator.run(added.project.id as never, {
+            executionKind: 'production',
+            mode: 'full',
+          });
+          return { operationId: 'dop_test', runId: started.run.id };
+        }
+        case 'runs.get': {
+          const { mergeRun, ingestMergeIssues } = await import('@qa/run-engine');
+          void mergeRun;
+          void ingestMergeIssues;
+          return {
+            run: repository.getRun(params['runId'] as never),
+            agentRuns: [],
+            findings: [],
+            evidence: [],
+            activities: [],
+            events: [],
+            mergeResults: [],
+            verificationRuns: [],
+            issues: [],
+          };
+        }
+        case 'runs.merge': {
+          const { mergeRun } = await import('@qa/run-engine');
+          return mergeRun(repository, params['runId'] as never);
+        }
+        case 'runs.ingest': {
+          const { ingestMergeIssues } = await import('@qa/run-engine');
+          return ingestMergeIssues(repository, params['mergeResultId'] as never);
+        }
+        case 'issues.list': {
+          const rows = repository.listIssues(added.project.id as never) as Array<{ id: string }>;
+          return withState(rows);
+        }
+        case 'issues.get': {
+          const row = repository.getIssue(params['issueId'] as never) as { id: string } | undefined;
+          return row === undefined ? undefined : withState([row])[0];
+        }
+        case 'issues.history': {
+          return {
+            issue: repository.getIssue(params['issueId'] as never),
+            currentState: 'open',
+            occurrences: [],
+            events: [],
+            assessments: [],
+            retests: [],
+          };
+        }
+        default:
+          return { ok: true };
+      }
+    },
+    status: { connected: true, distro: undefined, hello: undefined, lastError: undefined },
+  };
   const service = new DesktopApplicationService({
-    dataRoot,
-    database,
-    repository,
-    lease,
-    projects,
-    coordinator,
-    registry,
+    runtime: runtime as never,
+    distro: 'test',
     credentials: new ProviderCredentialService({ filePath: join(root, 'providers.json') }),
     agentStacks: [...INITIAL_AGENT_STACKS],
   });
@@ -60,22 +124,23 @@ async function harness() {
     service,
     coordinator,
     projectId: added.project.id,
+    calls,
   };
 }
 
 describe('backend issue state projection', () => {
   it('newly ingested issues project open via the service', async () => {
     const h = await harness();
-    const full = await h.coordinator.run(h.projectId, {
-      executionKind: 'production',
-      mode: 'full',
-    });
-    const merged = h.service.mergeRun(full.run.id) as { result: { id: string } };
-    const ingested = h.service.ingestIssues(merged.result.id) as {
+    const operation = await h.service.startRun(h.projectId, { mode: 'full' });
+    expect(operation.runId).toBeDefined();
+    const merged = (await h.service.mergeRun(operation.runId as string)) as {
+      result: { id: string };
+    };
+    const ingested = (await h.service.ingestIssues(merged.result.id)) as {
       issues: Array<{ issueId: string }>;
     };
     expect(ingested.issues.length).toBeGreaterThan(0);
-    const list = h.service.listIssues(h.projectId) as Array<{
+    const list = (await h.service.listIssues(h.projectId)) as Array<{
       id: string;
       currentState: string;
     }>;
@@ -89,6 +154,8 @@ describe('backend issue state projection', () => {
       currentState: string;
     };
     expect(history.currentState).toBe('open');
+    // All issue reads crossed the RPC boundary (never derived in React).
+    expect(h.calls.some((c) => c.method === 'issues.list')).toBe(true);
     h.lease.release();
     h.database.close();
   }, 60000);

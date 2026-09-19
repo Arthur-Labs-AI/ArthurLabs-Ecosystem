@@ -52,6 +52,9 @@ describe('IPC security contract', () => {
       'doctors:environment',
       'production:readiness',
       'providers:detect-binaries',
+      'runtime:status',
+      'runtime:distros',
+      'runtime:select-distro',
     ]) {
       expect(ipc).toContain(channel);
     }
@@ -68,6 +71,7 @@ describe('IPC security contract', () => {
       'retests:',
       'doctors:',
       'production:',
+      'runtime:',
       'system:',
       'subscribe:',
     ]) {
@@ -75,6 +79,8 @@ describe('IPC security contract', () => {
     }
     expect(preload).toContain('runs:start');
     expect(preload).not.toContain('runs:start-simulation');
+    expect(preload).not.toContain('spawn(');
+    expect(preload).not.toContain('wsl.exe');
     expect(preload).not.toContain('startSimulation');
     expect(preload).not.toContain('shell');
     expect(preload).not.toContain('database');

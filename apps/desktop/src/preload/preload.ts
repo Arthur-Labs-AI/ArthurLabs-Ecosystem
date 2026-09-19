@@ -93,6 +93,11 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     info: () => invoke('system:info', {}),
     activeRuns: () => invoke('system:active-runs', {}),
   },
+  runtime: {
+    status: () => invoke('runtime:status', {}),
+    distros: () => invoke('runtime:distros', {}),
+    selectDistro: (distro: string) => invoke('runtime:select-distro', { distro }),
+  },
   subscribe: {
     onRunUpdate: (callback: RunUpdateCallback) => {
       const isRunUpdate = (value: unknown): value is Parameters<RunUpdateCallback>[0] => {
