@@ -271,6 +271,30 @@ textarea {
 .flow-node .node-sub {
   color: var(--text-muted);
   font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .canvas-host {
+    min-height: 480px;
+  }
 }
 .flow-node .stages {
   margin-top: 8px;

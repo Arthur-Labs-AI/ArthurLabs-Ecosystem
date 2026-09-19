@@ -87,9 +87,13 @@ export function AgentInspector({ data }: { data: AgentInspectorData }): React.JS
       <p>
         <strong>{view.currentStage === 'working' ? 'Working' : view.currentStage}</strong>
         <br />
-        <span className="muted">{view.currentOperation.title}</span>
+        <span className="muted wrap-anywhere">{view.currentOperation.title}</span>
         {view.currentOperation.detail !== undefined ? (
-          <span className="mono" style={{ display: 'block' }}>
+          <span
+            className="mono wrap-anywhere"
+            style={{ display: 'block' }}
+            title={view.currentOperation.detail}
+          >
             {view.currentOperation.detail}
           </span>
         ) : null}
@@ -129,7 +133,7 @@ export function AgentInspector({ data }: { data: AgentInspectorData }): React.JS
               >
                 {CATEGORY_ICON[item.category] ?? '\u25CF'}
               </button>
-              <span>
+              <span className="wrap-anywhere" title={item.title}>
                 {item.title}
                 <span className="faint"> · {item.category}</span>
               </span>

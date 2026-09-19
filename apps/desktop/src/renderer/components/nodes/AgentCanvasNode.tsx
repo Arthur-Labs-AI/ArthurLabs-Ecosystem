@@ -69,10 +69,16 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
       <div className="node-sub">
         {statusGlyph(view.status)} {view.status.toUpperCase()} · <ElapsedMs ms={view.elapsedMs} />
       </div>
-      <div className="node-sub" style={{ marginTop: 6 }}>
+      <div
+        className="node-sub wrap-anywhere"
+        style={{ marginTop: 6 }}
+        title={view.currentOperation.title}
+      >
         <strong>{view.currentOperation.title}</strong>
         {view.currentOperation.detail !== undefined ? (
-          <div className="mono">{view.currentOperation.detail}</div>
+          <div className="mono wrap-anywhere" title={view.currentOperation.detail}>
+            {view.currentOperation.detail}
+          </div>
         ) : null}
       </div>
       <div className="stages" aria-label="Stage progression">
