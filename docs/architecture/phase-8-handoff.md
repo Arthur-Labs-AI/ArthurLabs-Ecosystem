@@ -48,11 +48,13 @@
 
 ## Exact-head CI (observed)
 
-- Final SHA: `32e653ef7d32227f5471529e611da4077b6ca206`
-- GitHub Actions run: `35428303414` (workflow `ci`, `main`, push, created 2026-09-19T07:03:57Z)
+- Final SHA: `01a40c36f7238ab9a2f6b786952185216c0d6ed6`
+- GitHub Actions run: `35428675302` (workflow `ci`, `main`, push, created 2026-09-19T07:12:10Z)
 - Status / conclusion: **completed / success** (required: completed / success) — all steps green:
   install, systemd lingering, sandbox probe, `repository:check`, `format:check`, `lint`, `typecheck`,
   test fallback path, `build` (incl. `@qa/desktop#build` with `vite build`).
+- Prior head `32e653e` was likewise green (`35428303414`, completed / success); the delta to the
+  final head is docs-only (this handoff's CI section).
 - Sandbox caveat: probe reported `available=false` (exit 226); CI therefore ran
   `turbo run test --filter='!@qa/run-engine'` plus run-engine tests excluding
   `tests/verification-trust.test.ts`, exactly as the workflow prescribes for restricted runners.
