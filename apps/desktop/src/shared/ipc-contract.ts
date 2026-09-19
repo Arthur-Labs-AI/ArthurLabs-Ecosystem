@@ -39,6 +39,7 @@ export const IPC_CHANNELS = [
   'providers:persist',
   'providers:forget-file',
   'providers:forget-all',
+  'providers:detect-binaries',
   'production:readiness',
   'system:info',
   'system:active-runs',
@@ -174,6 +175,9 @@ export interface SentryDesktopApi {
     persist(): Promise<{ path: string; keys: number }>;
     forgetFile(): Promise<{ forgotten: boolean }>;
     forgetAll(): Promise<{ forgotten: boolean }>;
+    detectBinaries(): Promise<{
+      deepseek: { detected: string | null; configured: string | null; effective: string };
+    }>;
   };
   readonly production: {
     readiness(input?: {

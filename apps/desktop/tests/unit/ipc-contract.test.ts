@@ -51,6 +51,7 @@ describe('IPC security contract', () => {
       'retests:cancel',
       'doctors:environment',
       'production:readiness',
+      'providers:detect-binaries',
     ]) {
       expect(ipc).toContain(channel);
     }

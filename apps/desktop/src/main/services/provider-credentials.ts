@@ -26,6 +26,9 @@ export const MANAGED_PROVIDER_KEYS = [
   'SENTRY_DEEPSEEK_MODEL',
   'SENTRY_GLM_MODEL',
   'SENTRY_MUSE_MODEL',
+  'SENTRY_DEEPSEEK_BINARY',
+  'SENTRY_GLM_BINARY',
+  'SENTRY_MUSE_BINARY',
 ] as const;
 
 export type ManagedProviderKey = (typeof MANAGED_PROVIDER_KEYS)[number];
@@ -40,6 +43,9 @@ const MODEL_KEYS: ReadonlySet<string> = new Set([
   'SENTRY_DEEPSEEK_MODEL',
   'SENTRY_GLM_MODEL',
   'SENTRY_MUSE_MODEL',
+  'SENTRY_DEEPSEEK_BINARY',
+  'SENTRY_GLM_BINARY',
+  'SENTRY_MUSE_BINARY',
 ]);
 
 export interface SafeStorageLike {
@@ -290,6 +296,18 @@ export class ProviderCredentialService {
 
   statuses(): ProviderCredentialStatus[] {
     return MANAGED_PROVIDER_KEYS.map((name) => this.statusFor(name));
+  }
+
+  /**
+   * Main-process-only value read (for boot-time env wiring). Never exposed
+   * over IPC — the renderer sees statuses only.
+   */
+  getValue(name: string): string | undefined {
+    if (!(MANAGED_PROVIDER_KEYS as readonly string[]).includes(name)) return undefined;
+    const fromMemory = this.memory.get(name);
+    if (fromMemory !== undefined && fromMemory.length > 0) return fromMemory;
+    const envValue = process.env[name];
+    return envValue !== undefined && envValue.length > 0 ? envValue : undefined;
   }
 
   /**

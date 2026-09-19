@@ -660,6 +660,24 @@ export class DesktopApplicationService {
     return this.deps.credentials.forgetAll();
   }
 
+  /**
+   * Best-effort harness binary detection (PATH-independent): returns the
+   * absolute DeepSeek entry when found, or undefined with the searched
+   * explanation. Never writes; use providerSaveKey to persist an override.
+   */
+  async detectHarnessBinaries(): Promise<unknown> {
+    const { discoverDeepSeekBinary } = await import('./harness-discovery.js');
+    const deepseek = await discoverDeepSeekBinary();
+    const configured = this.deps.credentials.getValue('SENTRY_DEEPSEEK_BINARY');
+    return {
+      deepseek: {
+        detected: deepseek ?? null,
+        configured: configured ?? null,
+        effective: configured ?? deepseek ?? 'dsh',
+      },
+    };
+  }
+
   productionReadiness(input?: { agentStackIds?: string[] }): unknown {
     const statuses = this.deps.credentials.statuses();
     const isConfigured = (name: string): boolean =>

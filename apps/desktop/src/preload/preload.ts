@@ -80,6 +80,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     persist: () => invoke('providers:persist', {}),
     forgetFile: () => invoke('providers:forget-file', {}),
     forgetAll: () => invoke('providers:forget-all', {}),
+    detectBinaries: () => invoke('providers:detect-binaries', {}),
   },
   production: {
     readiness: (input?: { agentStackIds?: string[] }) =>

@@ -13,6 +13,7 @@ import {
   type SafeStorageLike,
 } from './services/provider-credentials.js';
 import { createProductionRegistry } from './services/execution-registries.js';
+import { discoverDeepSeekBinary } from './services/harness-discovery.js';
 
 export interface BootstrappedDesktop {
   readonly service: DesktopApplicationService;
@@ -61,6 +62,20 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
     ...(safeStorageLike === undefined ? {} : { safeStorage: safeStorageLike }),
   });
   await credentials.load();
+  // Best-effort harness binary detection: GUI-launched Electron often misses
+  // the npm global bin dir on PATH. Fill SENTRY_DEEPSEEK_BINARY into the host
+  // env only when the user has not set it explicitly (persisted or ambient).
+  try {
+    if (
+      (process.env['SENTRY_DEEPSEEK_BINARY'] ?? '').trim().length === 0 &&
+      (credentials.getValue('SENTRY_DEEPSEEK_BINARY') ?? '').trim().length === 0
+    ) {
+      const detected = await discoverDeepSeekBinary();
+      if (detected !== undefined) process.env['SENTRY_DEEPSEEK_BINARY'] = detected;
+    }
+  } catch {
+    // Detection is advisory; the doctor reports honestly when nothing resolves.
+  }
   if (!credentials.secureStorageAvailable) {
     recoveryWarnings.push(
       'Secure persistent storage unavailable. Credentials can be used for this session only.',

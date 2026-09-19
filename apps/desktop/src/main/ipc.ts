@@ -108,6 +108,7 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
   'providers:persist': z.object({}).strict(),
   'providers:forget-file': z.object({}).strict(),
   'providers:forget-all': z.object({}).strict(),
+  'providers:detect-binaries': z.object({}).strict(),
   'production:readiness': z
     .object({ agentStackIds: z.array(z.string().min(1).max(200)).max(10).optional() })
     .strict(),
@@ -230,6 +231,8 @@ export function registerDesktopIpc(
           return service.providerForgetFile();
         case 'providers:forget-all':
           return service.providerForgetAll();
+        case 'providers:detect-binaries':
+          return service.detectHarnessBinaries();
         case 'production:readiness':
           return service.productionReadiness(
             parsed['agentStackIds'] === undefined

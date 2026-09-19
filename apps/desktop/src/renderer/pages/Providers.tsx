@@ -18,6 +18,10 @@ const DESCRIPTIONS: Record<string, string> = {
   SENTRY_DEEPSEEK_MODEL: 'DeepSeek model id override (non-secret).',
   SENTRY_GLM_MODEL: 'GLM model id override (non-secret).',
   SENTRY_MUSE_MODEL: 'Muse model id override (non-secret).',
+  SENTRY_DEEPSEEK_BINARY:
+    'DeepSeek harness executable (non-secret). Absolute path to the dsh entry; needed when the desktop host PATH does not include it.',
+  SENTRY_GLM_BINARY: 'GLM harness executable override (non-secret).',
+  SENTRY_MUSE_BINARY: 'Muse harness executable override (non-secret).',
 };
 
 const SECRET_NAMES: ReadonlySet<string> = new Set(['DEEPSEEK_API_KEY', 'ANTHROPIC_AUTH_TOKEN']);
@@ -101,6 +105,8 @@ export function Providers(): React.JSX.Element {
         Muse authenticates via your local <span className="mono">muse login</span> credential store
         — no key to paste here. See <Link to="/environment">Environment</Link> for live readiness.
       </p>
+      <HarnessBinaryCard onSaved={refresh} />
+
       {error !== undefined ? (
         <div className="error-box" role="alert">
           {error} <button onClick={() => setError(undefined)}>Dismiss</button>
@@ -181,6 +187,71 @@ export function Providers(): React.JSX.Element {
           <button onClick={() => setConfirmForget(true)}>Forget all provider credentials</button>
         )}
       </div>
+    </div>
+  );
+}
+
+function HarnessBinaryCard({ onSaved }: { onSaved: () => void }): React.JSX.Element {
+  const queryClient = useQueryClient();
+  const [error, setError] = React.useState<string | undefined>(undefined);
+  const detection = useQuery({
+    queryKey: ['harness-binaries'],
+    queryFn: () => sentryApi().providers.detectBinaries(),
+  });
+  const info = detection.data as
+    | { deepseek: { detected: string | null; configured: string | null; effective: string } }
+    | undefined;
+  const saveDetected = useMutation({
+    mutationFn: (path: string) => sentryApi().providers.save('SENTRY_DEEPSEEK_BINARY', path),
+    onSuccess: () => {
+      setError(undefined);
+      void queryClient.invalidateQueries({ queryKey: ['providers'] });
+      void queryClient.invalidateQueries({ queryKey: ['environment'] });
+      void queryClient.invalidateQueries({ queryKey: ['production-readiness'] });
+      void queryClient.invalidateQueries({ queryKey: ['harness-binaries'] });
+      onSaved();
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : String(e)),
+  });
+  const ds = info?.deepseek;
+  return (
+    <div className="card" style={{ marginBottom: 12 }}>
+      <h3 style={{ marginTop: 0 }}>Harness executables</h3>
+      <p className="muted">
+        The desktop host resolves provider CLIs without a login shell, so a terminal PATH entry may
+        not apply. When detection finds the install, save it once as an absolute path override.
+      </p>
+      {detection.isLoading ? <div className="skeleton">Detecting harness binaries…</div> : null}
+      {error !== undefined ? (
+        <div className="error-box" role="alert">
+          {error} <button onClick={() => setError(undefined)}>Dismiss</button>
+        </div>
+      ) : null}
+      {ds !== undefined ? (
+        <p>
+          <span className="mono">dsh</span> effective: <span className="mono">{ds.effective}</span>
+        </p>
+      ) : null}
+      {ds?.detected != null && ds.detected !== ds.configured ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="muted mono">{ds.detected}</span>
+          <button
+            className="primary"
+            disabled={saveDetected.isPending}
+            onClick={() => saveDetected.mutate(ds.detected as string)}
+            title="Persist this absolute dsh path for the desktop host"
+          >
+            Use detected dsh path
+          </button>
+        </div>
+      ) : null}
+      {ds !== undefined && ds.detected == null ? (
+        <p className="muted">
+          No dsh install detected. Install the DeepSeek harness globally, then enter
+          <span className="mono"> SENTRY_DEEPSEEK_BINARY </span>
+          below as an absolute path.
+        </p>
+      ) : null}
     </div>
   );
 }

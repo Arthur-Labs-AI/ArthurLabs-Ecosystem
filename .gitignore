@@ -1,6 +1,11 @@
 # Local verifier-test fixture roots (bindable fs, removed after each test)
 .tmp-sentry-test-fixtures/
 
+# Live/manual acceptance data roots (never commit local run history)
+.sentry-live/
+.sentry-data/
+sentry-data/
+
 # Logs
 logs
 *.log
