@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.desktop.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src", "scripts", "vite.config.ts", "vitest.config.ts"],
+  "references": [
+    {
+      "path": "../../packages/schemas"
+    }
+  ]
+}

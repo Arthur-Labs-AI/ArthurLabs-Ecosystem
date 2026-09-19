@@ -1,0 +1,99 @@
+import { contextBridge, ipcRenderer } from 'electron';
+import type { RunUpdateCallback, SentryDesktopApi } from '../shared/ipc-contract.js';
+
+interface Envelope {
+  readonly ok: boolean;
+  readonly result?: unknown;
+  readonly error?: { code: string; message: string };
+}
+
+async function invoke(channel: string, payload: unknown): Promise<never> {
+  const response = (await ipcRenderer.invoke(channel, payload)) as Envelope;
+  if (response.ok) return response.result as never;
+  const error = Object.assign(new Error(response.error?.message ?? 'Desktop operation failed'), {
+    code: response.error?.code ?? 'DESKTOP_ERROR',
+  });
+  throw error;
+}
+
+async function pickDirectory(): Promise<string | null> {
+  const response = (await ipcRenderer.invoke('sentry:dialog:open-directory')) as Envelope;
+  if (response.ok) return (response.result ?? null) as string | null;
+  throw Object.assign(new Error('Directory picker failed'), { code: 'DIALOG_FAILED' });
+}
+
+const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | null> } } = {
+  projects: {
+    list: () => invoke('projects:list', {}),
+    add: (sourcePath: string) => invoke('projects:add', { sourcePath }),
+    get: (projectId: string) => invoke('projects:get', { projectId }),
+    revisions: (projectId: string) => invoke('projects:revisions', { projectId }),
+    update: (projectId: string, sourcePath?: string) =>
+      invoke(
+        'projects:update',
+        sourcePath === undefined ? { projectId } : { projectId, sourcePath },
+      ),
+    doctor: (projectId: string) => invoke('projects:doctor', { projectId }),
+  },
+  runs: {
+    list: (projectId: string) => invoke('runs:list', { projectId }),
+    get: (runId: string) => invoke('runs:get', { runId }),
+    status: (runId: string) => invoke('runs:status', { runId }),
+    startSimulation: (projectId: string, options) =>
+      invoke('runs:start-simulation', { projectId, ...options }),
+    cancel: (runId: string) => invoke('runs:cancel', { runId }),
+    merge: (runId: string) => invoke('runs:merge', { runId }),
+    verify: (mergeResultId: string) => invoke('runs:verify', { mergeResultId }),
+    ingest: (mergeResultId: string) => invoke('runs:ingest', { mergeResultId }),
+    exportRun: (runId: string, format: 'log' | 'json') => invoke('runs:export', { runId, format }),
+  },
+  issues: {
+    list: (projectId: string) => invoke('issues:list', { projectId }),
+    get: (issueId: string) => invoke('issues:get', { issueId }),
+    history: (issueId: string) => invoke('issues:history', { issueId }),
+  },
+  retests: {
+    list: (issueId: string) => invoke('retests:list', { issueId }),
+    start: (issueId: string, options?: { revisionId?: string }) =>
+      invoke(
+        'retests:start',
+        options?.revisionId === undefined
+          ? { issueId }
+          : { issueId, revisionId: options.revisionId },
+      ),
+    get: (retestRunId: string) => invoke('retests:get', { retestRunId }),
+    cancel: (retestRunId: string) => invoke('retests:cancel', { retestRunId }),
+  },
+  doctors: {
+    environment: () => invoke('doctors:environment', {}),
+  },
+  system: {
+    info: () => invoke('system:info', {}),
+    activeRuns: () => invoke('system:active-runs', {}),
+  },
+  subscribe: {
+    onRunUpdate: (callback: RunUpdateCallback) => {
+      const listener = (_event: unknown, payload: unknown) => {
+        callback(payload as Parameters<RunUpdateCallback>[0]);
+      };
+      ipcRenderer.on('sentry:run-update', listener as never);
+      const activeListener = (_event: unknown, payload: unknown) => {
+        callback({ kind: 'run-snapshot', snapshot: { activeRuns: payload } } as never);
+      };
+      ipcRenderer.on('sentry:active-runs', activeListener as never);
+      return () => {
+        ipcRenderer.removeListener('sentry:run-update', listener as never);
+        ipcRenderer.removeListener('sentry:active-runs', activeListener as never);
+      };
+    },
+  },
+  dialogs: { pickDirectory },
+};
+
+contextBridge.exposeInMainWorld('sentry', api);
+
+declare global {
+  interface Window {
+    readonly sentry: typeof api;
+  }
+}

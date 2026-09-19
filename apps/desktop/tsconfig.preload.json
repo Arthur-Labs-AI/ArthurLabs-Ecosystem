@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.desktop.json",
+  "compilerOptions": {
+    "outDir": "dist/preload",
+    "rootDir": "src",
+    "composite": true,
+    "types": ["node"]
+  },
+  "include": ["src/preload", "src/shared"]
+}

@@ -1,0 +1,43 @@
+export interface PaletteEntry {
+  readonly label: string;
+  readonly hint?: string;
+  readonly run: () => void;
+}
+
+export function buildPaletteEntries(
+  projects: ReadonlyArray<{ projectId: string; name: string }>,
+  go: (to: string) => void,
+): PaletteEntry[] {
+  return [
+    { label: 'Open Projects', run: () => go('/projects') },
+    { label: 'Open Runs', run: () => go('/runs') },
+    { label: 'Open Issues', run: () => go('/issues') },
+    { label: 'Open History', run: () => go('/history') },
+    { label: 'Open Environment', run: () => go('/environment') },
+    { label: 'Open Settings', run: () => go('/settings') },
+    ...projects.flatMap((project): PaletteEntry[] => [
+      {
+        label: 'Open Project — ' + project.name,
+        hint: project.projectId.slice(0, 12),
+        run: () => go('/projects/' + project.projectId),
+      },
+      {
+        label: 'Start Full QA — ' + project.name,
+        run: () => go('/projects/' + project.projectId),
+      },
+      {
+        label: 'Start Targeted QA — ' + project.name,
+        run: () => go('/projects/' + project.projectId),
+      },
+    ]),
+  ];
+}
+
+export function filterPaletteEntries(
+  entries: readonly PaletteEntry[],
+  query: string,
+): PaletteEntry[] {
+  const q = query.trim().toLowerCase();
+  if (q === '') return [...entries];
+  return entries.filter((e) => (e.label + ' ' + (e.hint ?? '')).toLowerCase().includes(q));
+}

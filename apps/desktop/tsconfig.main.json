@@ -1,0 +1,42 @@
+{
+  "extends": "./tsconfig.base.desktop.json",
+  "compilerOptions": {
+    "outDir": "dist/main",
+    "rootDir": "src",
+    "composite": true,
+    "types": ["node"]
+  },
+  "include": ["src/main", "src/shared"],
+  "references": [
+    {
+      "path": "../../packages/schemas"
+    },
+    {
+      "path": "../../packages/domain"
+    },
+    {
+      "path": "../../packages/harness-muse"
+    },
+    {
+      "path": "../../packages/harness-deepseek"
+    },
+    {
+      "path": "../../packages/harness-claude-code"
+    },
+    {
+      "path": "../../packages/harness-protocol"
+    },
+    {
+      "path": "../../packages/persistence"
+    },
+    {
+      "path": "../../packages/project-manager"
+    },
+    {
+      "path": "../../packages/run-engine"
+    },
+    {
+      "path": "../../packages/shared"
+    }
+  ]
+}

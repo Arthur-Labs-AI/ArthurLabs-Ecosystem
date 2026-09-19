@@ -1,0 +1,6 @@
+dist/
+coverage/
+node_modules/
+.test-shim/
+register-loader.mjs
+*.tsbuildinfo
