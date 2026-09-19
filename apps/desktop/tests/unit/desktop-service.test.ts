@@ -74,9 +74,9 @@ describe('desktop RPC adapter', () => {
     expect(start?.params).not.toHaveProperty('scenario');
   });
 
-  it('translates Windows source paths before RPC (never sends C:\\)', async () => {
+  it('rejects invalid source paths before RPC (wslpath covered by integration)', async () => {
     const h = await harness();
-    await expect(h.service.addProject('C:\\Users\\Mert\\Documents\\Project')).rejects.toThrow();
+    await expect(h.service.addProject('')).rejects.toThrow();
     expect(h.seen.filter((c) => c.method === 'projects.add')).toHaveLength(0);
   });
 

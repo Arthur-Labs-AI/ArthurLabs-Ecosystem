@@ -90,7 +90,21 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
     runtimeEntry,
     ...(linuxOverride === undefined ? {} : { dataRoot: linuxOverride }),
   });
-  const hello = await client.start();
+  let hello;
+  try {
+    hello = await client.start();
+  } catch (error) {
+    const diagnostics = client.stderrDiagnostics.join('\n').slice(0, 800);
+    const message = error instanceof Error ? error.message : String(error);
+    throw Object.assign(
+      new Error(
+        message +
+          (diagnostics.length > 0 ? ' Runtime output: ' + diagnostics : ' (no runtime output captured)') +
+          ' [distro=' + distro + ' entry=' + runtimeEntry + ']',
+      ),
+      { code: 'RUNTIME_OFFLINE' },
+    );
+  }
   const service = new DesktopApplicationService({
     runtime: client,
     distro,

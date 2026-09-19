@@ -66,7 +66,12 @@ async function boot(): Promise<void> {
         ? String((error as { code?: unknown }).code ?? '')
         : '';
     await app.whenReady();
-    const runtimeOffline = code === 'WSL_UNAVAILABLE' || code === 'WSL_NO_DISTRO';
+    const runtimeOffline =
+      code === 'WSL_UNAVAILABLE' ||
+      code === 'WSL_NO_DISTRO' ||
+      code === 'RUNTIME_OFFLINE' ||
+      code === 'RUNTIME_TIMEOUT' ||
+      /runtime|wsl|handshake/i.test(message);
     const fatal = new BrowserWindow({
       width: 640,
       height: runtimeOffline ? 420 : 320,
