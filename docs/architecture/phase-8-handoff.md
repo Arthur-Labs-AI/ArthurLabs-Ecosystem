@@ -1,8 +1,10 @@
 # Phase 8 — Handoff (Desktop UI & Live Run Canvas)
 
-> Status: **PENDING CI** — implementation is complete through `f92539d`; exact-head CI
-> (`status: completed`, `conclusion: success` on the final SHA, §279) has not been observed yet.
-> Do not treat Phase 8 as closed until that evidence is recorded below.
+> Status: **CI GREEN ON EXACT HEAD** — implementation through `32e653e`; exact-head CI
+> `35428303414` reports `status: completed`, `conclusion: success` (§279).
+> Caveat: this runner could not mount the verifier sandbox (exit 226), so the real-sandbox
+> trust test ran in the sanctioned fallback path (all other run-engine tests executed).
+> Paid production gates remain DEFERRED (§280).
 
 ## Baseline and head
 
@@ -44,11 +46,16 @@
   Desktop suite verified green through the in-process runner instead.
 - `pnpm repository:check` — cannot invoke git in this sandbox; requires CI confirmation.
 
-## Exact-head CI (to be filled after push)
+## Exact-head CI (observed)
 
-- Final SHA: _pending push_
-- GitHub Actions run: _pending_
-- Status / conclusion: _pending (required: completed / success)_
+- Final SHA: `32e653ef7d32227f5471529e611da4077b6ca206`
+- GitHub Actions run: `35428303414` (workflow `ci`, `main`, push, created 2026-09-19T07:03:57Z)
+- Status / conclusion: **completed / success** (required: completed / success) — all steps green:
+  install, systemd lingering, sandbox probe, `repository:check`, `format:check`, `lint`, `typecheck`,
+  test fallback path, `build` (incl. `@qa/desktop#build` with `vite build`).
+- Sandbox caveat: probe reported `available=false` (exit 226); CI therefore ran
+  `turbo run test --filter='!@qa/run-engine'` plus run-engine tests excluding
+  `tests/verification-trust.test.ts`, exactly as the workflow prescribes for restricted runners.
 
 ## Deferred gates (unchanged, do not block Phase 8)
 
