@@ -8,9 +8,11 @@
 import { access, constants } from 'node:fs/promises';
 import { delimiter, join } from 'node:path';
 
-async function existsExecutable(path: string): Promise<boolean> {
+async function existsUsable(path: string): Promise<boolean> {
+  // `.js` entries launch via node (R_OK suffices); native binaries need X_OK.
+  const mode = /\.[cm]?js$/i.test(path) ? constants.R_OK : constants.X_OK;
   try {
-    await access(path, constants.X_OK);
+    await access(path, mode);
     return true;
   } catch {
     return false;
@@ -47,7 +49,7 @@ export async function discoverDeepSeekBinary(): Promise<string | undefined> {
     candidates.push(join(t, 'dsh'));
   }
   for (const candidate of candidates) {
-    if (await existsExecutable(candidate)) return candidate;
+    if (await existsUsable(candidate)) return candidate;
   }
   return undefined;
 }
