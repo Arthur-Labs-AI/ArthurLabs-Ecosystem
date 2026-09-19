@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.base.desktop.json",
   "compilerOptions": {
-    "outDir": "dist/preload",
+    "outDir": "dist",
     "rootDir": "src",
     "composite": true,
     "types": ["node"]
