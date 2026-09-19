@@ -2,10 +2,16 @@
 
 Status: final fix pass (Phase 8 hardening). Baseline 333f71fab7f7343ef0730ba77e5ec68e7855e46a.
 
+Production-only decision: starting with the final Phase 8 Desktop architecture, Sentry
+exposes no simulation execution mode. Desktop QA execution always uses the configured
+production Muse, DeepSeek and GLM AgentStacks. Automated tests may use mocks/test doubles
+internally, but those are not persisted or exposed as a product execution mode.
+Historical simulation rows remain readable as LEGACY SIMULATION; no new ones can be created.
+
 Final fix pass delivered: secure persistent provider credentials (safeStorage-encrypted
 store under userData, no plaintext, secrets never to renderer, one-time legacy migration);
-simulation vs production registries (FakeHarness default, CLI-identical provider registrations
-wired, explicit user action required, paid gates DEFERRED); async live Retest start (RetestRun id
+single production registry (CLI-identical provider registrations, pre-run provider gate,
+two-step start confirm); async live Retest start (RetestRun id
 returned before workflow settles, immediate navigation to /retests/:id); typed nested
 DesktopRunSnapshot/DesktopRetestSnapshot DTOs; assessment `result` contract end-to-end;
 evidence-driven agent stages with Reporting (agent.message/usage.updated) and honest

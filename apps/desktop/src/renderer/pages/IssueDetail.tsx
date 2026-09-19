@@ -22,23 +22,12 @@ export function IssueDetail(): React.JSX.Element {
     enabled: issueId !== undefined,
   });
   const navigate = useNavigate();
-  const [retestExecution, setRetestExecution] = React.useState<'simulation' | 'production'>(
-    'simulation',
-  );
-  const [confirmProductionRetest, setConfirmProductionRetest] = React.useState(false);
-  const readiness = useQuery({
-    queryKey: ['production-readiness'],
-    queryFn: () => sentryApi().production.readiness(),
-  });
-  const productionBlocked = (readiness.data as { ready?: boolean } | undefined)?.ready !== true;
+  const [confirmRetest, setConfirmRetest] = React.useState(false);
   const retest = useMutation({
-    mutationFn: () =>
-      sentryApi().retests.start(issueId as string, {
-        ...(retestExecution === 'production' ? { executionKind: 'production' as const } : {}),
-      }),
+    mutationFn: () => sentryApi().retests.start(issueId as string),
     onSuccess: (operation) => {
       setError(undefined);
-      setConfirmProductionRetest(false);
+      setConfirmRetest(false);
       void queryClient.invalidateQueries({ queryKey: ['issue-history', issueId] });
       // Live Retest: navigate to the live Retest workspace immediately.
       const retestRunId = (operation as { retestRunId?: string }).retestRunId;
@@ -99,45 +88,20 @@ export function IssueDetail(): React.JSX.Element {
           {error}
         </div>
       ) : null}
-      <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8 }}>
-        <legend className="muted">Retest execution</legend>
-        <label style={{ display: 'block' }}>
-          <input
-            type="radio"
-            name="retest-execution"
-            checked={retestExecution === 'simulation'}
-            onChange={() => {
-              setRetestExecution('simulation');
-              setConfirmProductionRetest(false);
-            }}
-          />{' '}
-          Simulation <span className="muted">(FakeHarness — never provider spend)</span>
-        </label>
-        <label style={{ display: 'block', opacity: productionBlocked ? 0.75 : 1 }}>
-          <input
-            type="radio"
-            name="retest-execution"
-            checked={retestExecution === 'production'}
-            disabled={productionBlocked}
-            onChange={() => {
-              setRetestExecution('production');
-              setConfirmProductionRetest(false);
-            }}
-          />{' '}
-          Production <span className="muted">(real provider run — consumes budget)</span>
-        </label>
-      </fieldset>
-      {retestExecution === 'production' && !confirmProductionRetest ? (
+      <p className="muted" style={{ marginBottom: 8 }}>
+        Real provider retest — Muse, DeepSeek and GLM re-examine this issue and consume provider
+        budget.
+      </p>
+      {!confirmRetest ? (
         <p className="error-box" style={{ marginBottom: 8 }} role="alert">
-          Production retest: this calls the real provider APIs and consumes budget. Press Retest
-          again to confirm.
+          Press Retest Issue again to confirm the paid provider run.
         </p>
       ) : null}
       <button
         className="primary"
         onClick={() => {
-          if (retestExecution === 'production' && !confirmProductionRetest) {
-            setConfirmProductionRetest(true);
+          if (!confirmRetest) {
+            setConfirmRetest(true);
             return;
           }
           retest.mutate();
@@ -146,10 +110,8 @@ export function IssueDetail(): React.JSX.Element {
       >
         {retest.isPending
           ? 'Starting retest…'
-          : retestExecution === 'production'
-            ? confirmProductionRetest
-              ? 'Confirm Production Retest'
-              : 'Retest Issue (Production)'
+          : confirmRetest
+            ? 'Confirm Retest Issue'
             : 'Retest Issue'}
       </button>
       <h2>Occurrences</h2>

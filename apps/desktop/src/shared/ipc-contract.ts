@@ -16,7 +16,7 @@ export const IPC_CHANNELS = [
   'runs:list',
   'runs:get',
   'runs:status',
-  'runs:start-simulation',
+  'runs:start',
   'runs:start-production',
   'runs:cancel',
   'runs:merge',
@@ -107,21 +107,21 @@ export interface SentryDesktopApi {
     list(projectId: string): Promise<unknown[]>;
     get(runId: string): Promise<RunSnapshot>;
     status(runId: string): Promise<unknown>;
-    startSimulation(
+    /**
+     * Start a production QA run (the only execution mode). Consumes provider
+     * budget. Requires configured credentials; backend stays authoritative
+     * and surfaces structured errors.
+     */
+    start(
       projectId: string,
       options: {
         mode: 'full' | 'targeted';
         includePaths?: string[];
-        scenario?: string;
         instructions?: string;
         agentStackIds?: string[];
       },
     ): Promise<DesktopOperation>;
-    /**
-     * Start a REAL provider-backed run (Muse / DeepSeek / GLM). Consumes
-     * provider budget. Requires configured credentials; backend stays
-     * authoritative and surfaces structured errors.
-     */
+    /** Back-compat alias for start. */
     startProduction(
       projectId: string,
       options: {
@@ -146,7 +146,7 @@ export interface SentryDesktopApi {
     list(issueId: string): Promise<unknown[]>;
     start(
       issueId: string,
-      options?: { revisionId?: string | undefined; executionKind?: 'simulation' | 'production' },
+      options?: { revisionId?: string | undefined; agentStackIds?: string[] },
     ): Promise<DesktopOperation>;
     get(retestRunId: string): Promise<RetestSnapshot>;
     cancel(retestRunId: string): Promise<unknown>;

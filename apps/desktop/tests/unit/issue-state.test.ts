@@ -67,7 +67,7 @@ describe('backend issue state projection', () => {
   it('newly ingested issues project open via the service', async () => {
     const h = await harness();
     const full = await h.coordinator.run(h.projectId, {
-      executionKind: 'simulation',
+      executionKind: 'production',
       mode: 'full',
     });
     const merged = h.service.mergeRun(full.run.id) as { result: { id: string } };

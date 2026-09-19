@@ -23,7 +23,6 @@ export function Environment(): React.JSX.Element {
           runtimeReplaySupported?: boolean;
           reason?: string;
         };
-        simulation: { label: string };
       }
     | undefined;
   if (environment.isLoading) return <div className="skeleton">Loading environment…</div>;
@@ -70,8 +69,11 @@ export function Environment(): React.JSX.Element {
           ) : null}
         </div>
         <div className="card">
-          <h3>Simulation</h3>
-          <p>{data.simulation.label}</p>
+          <h3>Execution</h3>
+          <p>
+            Production only — every new FULL, TARGETED, and RETEST run uses the configured Muse,
+            DeepSeek, and GLM AgentStacks and consumes provider budget.
+          </p>
         </div>
       </div>
     </div>

@@ -18,7 +18,6 @@
     "typecheck:main": "tsc -p tsconfig.main.json --noEmit",
     "typecheck:preload": "tsc -p tsconfig.preload.json --noEmit",
     "typecheck:renderer": "tsc -p tsconfig.renderer.json --noEmit",
-    "seed": "node --experimental-strip-types --no-warnings scripts/seed.ts",
     "smoke": "vitest run tests/smoke",
     "smoke:electron": "electron --headless scripts/electron-smoke.mjs",
     "test:electron": "playwright test --config playwright.electron.config.ts"

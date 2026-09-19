@@ -1,4 +1,3 @@
-import { INITIAL_AGENT_STACKS } from '@qa/domain';
 import {
   SentryDatabase,
   SentryRepository,
@@ -7,15 +6,13 @@ import {
 } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
 import { RunCoordinator } from '@qa/run-engine';
+import { INITIAL_AGENT_STACKS } from '@qa/domain';
 import { DesktopApplicationService } from './services/desktop-service.js';
 import {
   ProviderCredentialService,
   type SafeStorageLike,
 } from './services/provider-credentials.js';
-import {
-  createProductionRegistry,
-  createSimulationRegistry,
-} from './services/execution-registries.js';
+import { createProductionRegistry } from './services/execution-registries.js';
 
 export interface BootstrappedDesktop {
   readonly service: DesktopApplicationService;
@@ -36,18 +33,13 @@ function userDataDir(): string | undefined {
   }
 }
 
+/**
+ * Production-only boot order:
+ * credentials -> model prefs -> production registry -> DB -> lease ->
+ * coordinator -> AWAITED recovery -> service -> (caller creates window).
+ */
 export async function bootstrapDesktop(dataRootOverride?: string): Promise<BootstrappedDesktop> {
   const recoveryWarnings: string[] = [];
-  const dataRoot = dataRootOverride ?? resolveSentryDataRoot();
-  const database = new SentryDatabase({ dataRoot });
-  const repository = new SentryRepository(database);
-  const lease = new RuntimeInstanceLease(repository);
-  lease.start();
-
-  // Provider credentials BEFORE doctors / registry construction / execution.
-  const dir = userDataDir();
-  // safeStorage is Electron-only; resolve lazily so node/vitest contexts run
-  // session-only without importing 'electron' at module load.
   let safeStorageLike: SafeStorageLike | undefined;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -63,29 +55,25 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
   } catch {
     safeStorageLike = undefined;
   }
+  const dir = userDataDir();
   const credentials = new ProviderCredentialService({
     ...(dir === undefined ? {} : { userDataDir: dir }),
     ...(safeStorageLike === undefined ? {} : { safeStorage: safeStorageLike }),
   });
-  // Load persisted secrets + model prefs + one-time legacy migration (never throws).
   await credentials.load();
   if (!credentials.secureStorageAvailable) {
     recoveryWarnings.push(
       'Secure persistent storage unavailable. Credentials can be used for this session only.',
     );
   }
-
+  const dataRoot = dataRootOverride ?? resolveSentryDataRoot();
+  const database = new SentryDatabase({ dataRoot });
+  const repository = new SentryRepository(database);
+  const lease = new RuntimeInstanceLease(repository);
+  lease.start();
   const projects = new ProjectManager(dataRoot, repository, { runtimeLease: lease });
-  // Simulation registry: FakeHarness only, never provider spend.
-  const registry = createSimulationRegistry('success');
-  // Production registry: exact CLI registrations (Muse / DeepSeek / GLM).
-  const productionRegistry = createProductionRegistry();
+  const registry = createProductionRegistry();
   const coordinator = new RunCoordinator(dataRoot, repository, lease, registry);
-  const productionCoordinator = new RunCoordinator(dataRoot, repository, lease, productionRegistry);
-  // Awaited recovery BEFORE presenting live state (includes retest +
-  // verification recovery through coordinator behavior). Errors are
-  // recorded, not swallowed: fatal failures throw and surface a startup
-  // error; bounded warnings ride to Environment diagnostics.
   try {
     await coordinator.recover();
   } catch (error) {
@@ -101,8 +89,6 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
     projects,
     coordinator,
     registry,
-    productionCoordinator,
-    productionRegistry,
     credentials,
     agentStacks: [...INITIAL_AGENT_STACKS],
   });

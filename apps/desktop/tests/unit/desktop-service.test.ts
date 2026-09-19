@@ -25,6 +25,9 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((value) => rmRoot(value)));
 });
 
+// NOTE: FakeHarnessRegistry here is a TEST DOUBLE for the coordinator seam —
+// the desktop product exposes no simulation mode. startRun always persists
+// executionKind 'production'.
 async function harness() {
   const root = await mkdtemp(join(tmpdir(), 'sentry-desktop-cancel-'));
   roots.push(root);
@@ -72,7 +75,7 @@ async function harness() {
 describe('desktop cancellation UX states', () => {
   it('requests cancellation and preserves durable state (requested → cancelled)', async () => {
     const h = await harness();
-    const started = h.coordinator.run(h.projectId, { executionKind: 'simulation', mode: 'full' });
+    const started = h.coordinator.run(h.projectId, { executionKind: 'production', mode: 'full' });
     let runId: string | undefined;
     for (let i = 0; i < 50 && runId === undefined; i += 1) {
       await new Promise((r) => setTimeout(r, 100));
@@ -90,9 +93,9 @@ describe('desktop cancellation UX states', () => {
     h.database.close();
   });
 
-  it('starts a single-agent simulation run with only the selected stack', async () => {
+  it('starts a single-agent production run with only the selected stack', async () => {
     const h = await harness();
-    const operation = await h.service.startSimulation(h.projectId, {
+    const operation = await h.service.startRun(h.projectId, {
       mode: 'full',
       agentStackIds: ['stack_deepseek_main'],
     });
@@ -107,6 +110,8 @@ describe('desktop cancellation UX states', () => {
     }
     expect(runs).toHaveLength(1);
     expect(runs[0]?.agentStackId).toBe('stack_deepseek_main');
+    const snapshot = h.service.runSnapshot(operation.runId as string);
+    expect((snapshot.run as { executionKind: string }).executionKind).toBe('production');
     h.lease.release();
     h.database.close();
   });
@@ -115,7 +120,7 @@ describe('desktop cancellation UX states', () => {
     const h = await harness();
     let thrown: unknown = undefined;
     try {
-      await h.service.startSimulation(h.projectId, { mode: 'full', agentStackIds: [] });
+      await h.service.startRun(h.projectId, { mode: 'full', agentStackIds: [] });
     } catch (error) {
       thrown = error;
     }
@@ -124,17 +129,17 @@ describe('desktop cancellation UX states', () => {
     h.database.close();
   });
 
-  it('starts a simulation TARGETED run with a TargetSpec node', async () => {
+  it('starts a production TARGETED run with a TargetSpec node', async () => {
     const h = await harness();
-    const operation = await h.service.startSimulation(h.projectId, {
+    const operation = await h.service.startRun(h.projectId, {
       mode: 'targeted',
       includePaths: ['src/auth'],
     });
     expect(operation.operationId.startsWith('dop_')).toBe(true);
-    // startSimulation awaits settlement (FakeHarness is fast); runId is detected.
     expect(operation.runId).toBeDefined();
     const snapshot = h.service.runSnapshot(operation.runId as string);
     expect(snapshot.targetSpec).toBeDefined();
+    expect((snapshot.run as { executionKind: string }).executionKind).toBe('production');
     h.lease.release();
     h.database.close();
   });
@@ -142,7 +147,7 @@ describe('desktop cancellation UX states', () => {
   it('preserves RetestSpec, Snapshot B, and targetQaRunId after retest cancellation (§169)', async () => {
     const h = await harness();
     const full = await h.coordinator.run(h.projectId, {
-      executionKind: 'simulation',
+      executionKind: 'production',
       mode: 'full',
     });
     const merged = h.service.mergeRun(full.run.id) as { result: { id: string } };
@@ -162,59 +167,14 @@ describe('desktop cancellation UX states', () => {
     h.database.close();
   }, 60000);
 
-  it('routes production starts to the production coordinator with kind=production', async () => {
+  it('blocks starts when the pre-run gate fails', async () => {
     const h = await harness();
-    // Mock production coordinator: proves routing without provider spend.
-    const seen: Array<{ executionKind: string }> = [];
-    const mockProduction = {
-      run: async (projectId: string, options: { executionKind: string }) => {
-        seen.push({ executionKind: options.executionKind });
-        return h.coordinator.run(projectId as never, {
-          executionKind: 'simulation',
-          mode: 'full',
-        });
-      },
-      listRuns: (projectId: never) => h.coordinator.listRuns(projectId),
+    const gate = h.service.preRunGate(['stack_deepseek_main']) as {
+      ready: boolean;
+      stacks: Array<{ id: string; ready: boolean; reasons: string[] }>;
     };
-    const withProduction = new DesktopApplicationService({
-      dataRoot: h.dataRoot,
-      database: h.database,
-      repository: h.repository,
-      lease: h.lease,
-      projects: h.projects,
-      coordinator: h.coordinator,
-      registry: createFakeHarnessRegistry('success'),
-      productionCoordinator: mockProduction as never,
-      productionRegistry: createFakeHarnessRegistry('success'),
-      credentials: new ProviderCredentialService({
-        filePath: join(h.dataRoot, 'providers-test.json'),
-      }),
-      agentStacks: [...INITIAL_AGENT_STACKS],
-    });
-    const operation = await withProduction.startSimulation(h.projectId, {
-      mode: 'full',
-      executionKind: 'production',
-    });
-    expect(operation.runId).toBeDefined();
-    expect(seen.map((s) => s.executionKind)).toEqual(['production']);
-    h.lease.release();
-    h.database.close();
-  });
-
-  it('rejects production starts when no production coordinator is wired', async () => {
-    const h = await harness();
-    const outcome = await h.service
-      .startSimulation(h.projectId, { mode: 'full', executionKind: 'production' })
-      .then(
-        () => ({ code: 'NO_ERROR' }),
-        (error: unknown) => ({
-          code:
-            typeof error === 'object' && error !== null && 'code' in error
-              ? String((error as { code?: unknown }).code)
-              : 'NO_CODE',
-        }),
-      );
-    expect(outcome.code).toBe('PRODUCTION_UNAVAILABLE');
+    expect(Array.isArray(gate.stacks)).toBe(true);
+    expect(gate.stacks.map((s) => s.id)).toContain('stack_deepseek_main');
     h.lease.release();
     h.database.close();
   });
@@ -222,7 +182,7 @@ describe('desktop cancellation UX states', () => {
   it('merges, verifies, ingests, and retests through the desktop service', async () => {
     const h = await harness();
     const full = await h.coordinator.run(h.projectId, {
-      executionKind: 'simulation',
+      executionKind: 'production',
       mode: 'full',
     });
     const merged = h.service.mergeRun(full.run.id) as { result: { id: string } };

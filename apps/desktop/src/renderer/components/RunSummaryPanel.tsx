@@ -27,8 +27,12 @@ export function RunSummaryPanel({
         <dd style={{ margin: 0 }}>{String(run['status'] ?? '')}</dd>
         <dt className="faint">Mode</dt>
         <dd style={{ margin: 0 }}>{String(run['mode'] ?? '')}</dd>
-        <dt className="faint">Kind</dt>
-        <dd style={{ margin: 0 }}>{String(run['executionKind'] ?? 'simulation')}</dd>
+        <dt className="faint">Execution</dt>
+        <dd style={{ margin: 0 }}>
+          {run['executionKind'] === 'production'
+            ? 'Production'
+            : 'Legacy simulation (historical — no new simulation runs can be created)'}
+        </dd>
         <dt className="faint">Project</dt>
         <dd style={{ margin: 0 }}>
           {project !== undefined

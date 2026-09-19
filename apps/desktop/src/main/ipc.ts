@@ -55,17 +55,13 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
   'runs:list': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'runs:get': z.object({ runId: z.string().min(1).max(100) }).strict(),
   'runs:status': z.object({ runId: z.string().min(1).max(100) }).strict(),
-  'runs:start-simulation': z
+  'runs:start': z
     .object({
       projectId: z.string().min(1).max(200),
       mode: z.enum(['full', 'targeted']),
       includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
-      scenario: z
-        .enum(['success', 'partial', 'all-fail', 'transport-loss', 'timeout', 'protocol-error'])
-        .optional(),
       instructions: z.string().min(1).max(5000).optional(),
       agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
-      executionKind: z.enum(['simulation', 'production']).optional(),
     })
     .strict(),
   'runs:start-production': z
@@ -92,7 +88,7 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
     .object({
       issueId: z.string().min(1).max(100),
       revisionId: z.string().min(1).max(100).optional(),
-      executionKind: z.enum(['simulation', 'production']).optional(),
+      agentStackIds: z.array(z.string().min(1).max(200)).max(10).optional(),
     })
     .strict(),
   'retests:get': z.object({ retestRunId: z.string().min(1).max(100) }).strict(),
@@ -155,26 +151,27 @@ export function registerDesktopIpc(
           return service.runSnapshot(parsed['runId'] as string);
         case 'runs:status':
           return service.runStatus(parsed['runId'] as string);
-        case 'runs:start-simulation': {
-          const operation = await service.startSimulation(parsed['projectId'] as string, {
-            mode: parsed['mode'],
-            includePaths: parsed['includePaths'],
-            scenario: parsed['scenario'],
-            instructions: parsed['instructions'],
-            agentStackIds: parsed['agentStackIds'],
-            executionKind: parsed['executionKind'] === 'production' ? 'production' : 'simulation',
-          });
-          if (operation.runId !== undefined)
-            hooks.onRunCreated?.(operation.runId, operation.operationId);
-          return operation;
-        }
+        case 'runs:start':
         case 'runs:start-production': {
-          const operation = await service.startSimulation(parsed['projectId'] as string, {
+          const gate = service.preRunGate(
+            parsed['agentStackIds'] === undefined
+              ? undefined
+              : (parsed['agentStackIds'] as string[]),
+          );
+          if (!gate.ready) {
+            const blocking = gate.stacks
+              .filter((s) => !s.ready)
+              .map((s) => s.id + ': ' + s.reasons.join('; '))
+              .join(' | ');
+            throw Object.assign(new Error('Cannot start QA — provider not ready: ' + blocking), {
+              code: 'PROVIDER_NOT_READY',
+            });
+          }
+          const operation = await service.startRun(parsed['projectId'] as string, {
             mode: parsed['mode'],
             includePaths: parsed['includePaths'],
             instructions: parsed['instructions'],
             agentStackIds: parsed['agentStackIds'],
-            executionKind: 'production',
           });
           if (operation.runId !== undefined)
             hooks.onRunCreated?.(operation.runId, operation.operationId);
@@ -203,9 +200,9 @@ export function registerDesktopIpc(
             ...(parsed['revisionId'] === undefined
               ? {}
               : { revisionId: parsed['revisionId'] as string }),
-            ...(parsed['executionKind'] === undefined
+            ...(parsed['agentStackIds'] === undefined
               ? {}
-              : { executionKind: parsed['executionKind'] as 'simulation' | 'production' }),
+              : { agentStackIds: parsed['agentStackIds'] as string[] }),
           });
           if (operation.retestRunId !== undefined)
             hooks.onRetestCreated?.(operation.retestRunId, operation.operationId);

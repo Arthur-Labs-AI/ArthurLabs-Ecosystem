@@ -66,7 +66,7 @@ function fullRunInput() {
       projectId: 'proj_01K7777777777777777777A8W1',
       mode: 'full',
       status: 'agents_running',
-      executionKind: 'simulation',
+      executionKind: 'production',
       snapshotId: 'snap_01K7777777777777777777A8W1',
       createdAt: '2026-09-18T22:14:08.000Z',
       startedAt: '2026-09-18T22:14:08.000Z',

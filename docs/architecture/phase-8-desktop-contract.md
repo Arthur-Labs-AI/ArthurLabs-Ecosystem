@@ -17,7 +17,7 @@ All payloads are JSON-serializable; main validates every call with Zod before to
 - `list(projectId)` → `QARun[]`.
 - `get(runId)` → `RunSnapshot` (run, agentRuns, findings, evidence, activities, events, mergeResults, verificationRuns, occurrences, targetSpec?).
 - `status(runId)` → `RunStatus` (agents by status, findings total, tokens).
-- `startSimulation(projectId, { mode, includePaths?, scenario?, instructions? })` → `DesktopOperation { operationId, runId? }`. Simulation only (FakeHarness); production controls stay disabled without providers.
+- `start(projectId, { mode, includePaths?, instructions?, agentStackIds? })` → `DesktopOperation { operationId, runId? }`. Production only — always persists `executionKind: 'production'`. The main handler enforces the pre-run provider gate (`PROVIDER_NOT_READY` with the blocking stack + reasons). `runs:start-production` is a back-compat alias.
 - `cancel(runId)` → `requestRunCancellation` result (`cancellation_requested` until terminal).
 - `merge(runId)` → `mergeRun` result (Merger v2).
 - `verify(mergeResultId)` → `verifyMerge` (Verifier v3).
@@ -30,7 +30,7 @@ All payloads are JSON-serializable; main validates every call with Zod before to
 
 ## retests
 
-- `list(issueId)` → `RetestRun[]`; `start(issueId, { revisionId? })` → `DesktopOperation { operationId, retestRunId }` (simulation registry; backend stays production-semantic).
+- `list(issueId)` → `RetestRun[]`; `start(issueId, { revisionId?, agentStackIds? })` → `DesktopOperation { operationId, retestRunId }` (production registry; async — returns as soon as the RetestRun row exists).
 - `get(retestRunId)` → `DesktopRetestSnapshot` (retestRun, spec?, targetRun?: DesktopRunSnapshot, assessments). `targetRun` is nested (`targetRun.run.id`) — never flattened. Spec/Snapshot-B/targetQaRunId survive cancellation.
 - `get(runId)` → `DesktopRunSnapshot` (run, project?, revision?, agentRuns, findings, evidence, activities, events, mergeResults, verificationRuns, issues, targetSpec?).
 - Issue `list/get/history` carry backend-projected `currentState` (frozen projectIssueState); renderer never derives state.
@@ -39,7 +39,7 @@ All payloads are JSON-serializable; main validates every call with Zod before to
 
 ## doctors
 
-- `environment()` → agent stack readiness (statuses only, never secrets), simulation label, data root.
+- `environment()` → agent stack readiness (statuses only, never secrets), verifier probe, data root.
 
 ## system
 
@@ -50,7 +50,7 @@ All payloads are JSON-serializable; main validates every call with Zod before to
 
 - `providers.status()` → `{ name, configured, persistence: secure|session|environment|missing, source: stored|session|environment|missing, hint }`. Secrets render as fixed display text only — no values, prefixes, suffixes, or blobs.
 - `providers.save(name, value)` (secure default: encrypt + persist + load into runtime + env); `providers.session(name, value)` (explicit session-only); `providers.clear(name)` removes persisted + memory + env; `providers.forgetAll()` forgets all secrets with confirmation, preserving prefs.
-- `production.readiness()` → `{ ready, reasons, productionWired }`. Production registry uses the exact CLI registrations; desktop defaults to Simulation and Production requires explicit user action. Paid gates DEFERRED.
+- `production.readiness({ agentStackIds? })` → `{ ready, reasons, productionWired }`. Per-stack credential/model checks against the single production registry (the exact CLI registrations). Historical simulation rows remain readable and render as LEGACY SIMULATION; no new simulation rows can be created.
 
 ## subscriptions
 

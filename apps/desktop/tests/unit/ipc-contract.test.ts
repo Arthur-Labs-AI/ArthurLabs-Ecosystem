@@ -40,7 +40,7 @@ describe('IPC security contract', () => {
     const ipc = readFileSync(join(root, 'src', 'main', 'ipc.ts'), 'utf8');
     for (const channel of [
       'projects:list',
-      'runs:start-simulation',
+      'runs:start',
       'runs:start-production',
       'runs:cancel',
       'runs:merge',
@@ -72,7 +72,9 @@ describe('IPC security contract', () => {
     ]) {
       expect(preload).toContain(key);
     }
-    expect(preload).toContain('startProduction');
+    expect(preload).toContain('runs:start');
+    expect(preload).not.toContain('runs:start-simulation');
+    expect(preload).not.toContain('startSimulation');
     expect(preload).not.toContain('shell');
     expect(preload).not.toContain('database');
     expect(preload).not.toContain('arbitrary');
@@ -86,7 +88,8 @@ describe('IPC security contract', () => {
     // Statuses only: the renderer receives configured/persistence/source/hint.
     expect(service).toContain('providerStatuses');
     expect(service).toContain('statuses only');
-    expect(service).toContain('simulation');
+    expect(service).toContain('startRun');
+    expect(service).not.toContain('startSimulation');
     const creds = readFileSync(
       join(root, 'src', 'main', 'services', 'provider-credentials.ts'),
       'utf8',

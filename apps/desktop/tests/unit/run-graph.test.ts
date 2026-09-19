@@ -6,7 +6,7 @@ const BASE_RUN = {
   projectId: 'proj_01K7777777777777777777A8W1',
   mode: 'full',
   status: 'completed',
-  executionKind: 'simulation',
+  executionKind: 'production',
   snapshotId: 'snap_01K7777777777777777777A8W1',
   createdAt: '2026-09-18T22:14:08.000Z',
   configuration: { agentStackIds: ['stack_muse_main', 'stack_deepseek_main', 'stack_glm_main'] },

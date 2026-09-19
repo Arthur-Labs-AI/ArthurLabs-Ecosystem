@@ -1,24 +1,14 @@
 /**
- * Simulation vs Production execution registries (desktop).
+ * Production-only execution registry (desktop).
  *
- * Simulation: FakeHarness adapters only — never provider spend.
- * Production: the exact CLI registrations (Muse / DeepSeek / GLM).
- * No new provider clients are implemented here.
+ * Sentry Desktop exposes no simulation mode: the single registry contains
+ * the real Muse / DeepSeek / GLM registrations proven by the CLI.
+ * No provider clients are implemented here.
  */
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
-import type { SimulationScenario } from '@qa/run-engine';
-import { createFakeHarnessRegistry } from '@qa/run-engine';
 import { createMuseRegistration } from '@qa/harness-muse';
 import { createDeepSeekRegistration } from '@qa/harness-deepseek';
 import { createGlmRegistration } from '@qa/harness-claude-code';
-
-export type DesktopExecutionKind = 'simulation' | 'production';
-
-export function createSimulationRegistry(
-  scenario: SimulationScenario = 'success',
-): HarnessAdapterRegistry {
-  return createFakeHarnessRegistry(scenario);
-}
 
 export function createProductionRegistry(): HarnessAdapterRegistry {
   return new HarnessAdapterRegistry()

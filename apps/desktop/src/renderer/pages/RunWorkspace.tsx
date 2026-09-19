@@ -241,13 +241,14 @@ export function RunWorkspace(): React.JSX.Element {
         <h1 style={{ margin: '4px 0' }}>
           {data.run.mode.toUpperCase()} QA <StatusLabel status={data.run.status} />
         </h1>
-        <span
-          className={
-            'badge ' + (data.run.executionKind === 'production' ? 'production' : 'simulation')
-          }
-        >
-          {data.run.executionKind === 'production' ? 'PRODUCTION' : 'SIMULATION'}
-        </span>
+        {data.run.executionKind === 'production' ? null : (
+          <span
+            className="badge legacy"
+            title="Historical development run — Sentry no longer creates simulation runs"
+          >
+            LEGACY SIMULATION
+          </span>
+        )}
         {isActive ? (
           confirmCancel ? (
             <span>

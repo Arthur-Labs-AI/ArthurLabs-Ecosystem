@@ -106,7 +106,7 @@ describe('live retest start', () => {
       createFakeHarnessRegistry('success'),
     );
     const runA = await seedCoordinator.run(added.project.id, {
-      executionKind: 'simulation',
+      executionKind: 'production',
       runTimeoutMs: 60_000,
     });
     const { result: mergeA } = mergeRun(repository, runA.run.id);

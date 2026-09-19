@@ -40,10 +40,9 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     list: (projectId: string) => invoke('runs:list', { projectId }),
     get: (runId: string) => invoke('runs:get', { runId }),
     status: (runId: string) => invoke('runs:status', { runId }),
-    startSimulation: (projectId: string, options) =>
-      invoke('runs:start-simulation', { projectId, ...options }),
+    start: (projectId: string, options) => invoke('runs:start', { projectId, ...options }),
     startProduction: (projectId: string, options) =>
-      invoke('runs:start-production', { projectId, ...options }),
+      invoke('runs:start', { projectId, ...options }),
     cancel: (runId: string) => invoke('runs:cancel', { runId }),
     merge: (runId: string) => invoke('runs:merge', { runId }),
     verify: (mergeResultId: string) => invoke('runs:verify', { mergeResultId }),
@@ -59,12 +58,12 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     list: (issueId: string) => invoke('retests:list', { issueId }),
     start: (
       issueId: string,
-      options?: { revisionId?: string | undefined; executionKind?: 'simulation' | 'production' },
+      options?: { revisionId?: string | undefined; agentStackIds?: string[] },
     ) =>
       invoke('retests:start', {
         issueId,
         ...(options?.revisionId === undefined ? {} : { revisionId: options.revisionId }),
-        ...(options?.executionKind === undefined ? {} : { executionKind: options.executionKind }),
+        ...(options?.agentStackIds === undefined ? {} : { agentStackIds: options.agentStackIds }),
       }),
     get: (retestRunId: string) => invoke('retests:get', { retestRunId }),
     cancel: (retestRunId: string) => invoke('retests:cancel', { retestRunId }),

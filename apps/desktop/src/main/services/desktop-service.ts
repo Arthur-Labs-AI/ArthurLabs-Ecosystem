@@ -25,14 +25,12 @@ export interface DesktopServiceDeps {
   readonly repository: SentryRepository;
   readonly lease: RuntimeInstanceLease;
   readonly projects: ProjectManager;
-  /** Simulation coordinator (FakeHarness only — never provider spend). */
+  /**
+   * Production-only desktop: exactly one coordinator backed by the real
+   * Muse / DeepSeek / GLM registrations. No simulation coordinator exists.
+   */
   readonly coordinator: RunCoordinator;
-  /** Simulation registry (FakeHarness only). */
   readonly registry: HarnessAdapterRegistry;
-  /** Production coordinator (provider registrations). Optional until wired. */
-  readonly productionCoordinator?: RunCoordinator | undefined;
-  /** Production registry (Muse / DeepSeek / GLM registrations). */
-  readonly productionRegistry?: HarnessAdapterRegistry | undefined;
   readonly agentStacks: readonly AgentStackDefinition[];
   readonly credentials: ProviderCredentialService;
 }
@@ -42,16 +40,12 @@ const RunIdInput = z.string().regex(/^run_[0-9A-HJKMNP-TV-Z]{26}$/);
 const IssueIdInput = z.string().regex(/^issue_[0-9A-HJKMNP-TV-Z]{26}$/);
 const RetestRunIdInput = z.string().regex(/^retest_[0-9A-HJKMNP-TV-Z]{26}$/);
 const MergeResultIdInput = z.string().regex(/^merge_[0-9A-HJKMNP-TV-Z]{26}$/);
-const SimulationOptions = z
+const StartRunOptions = z
   .object({
     mode: z.enum(['full', 'targeted']),
     includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
-    scenario: z
-      .enum(['success', 'partial', 'all-fail', 'transport-loss', 'timeout', 'protocol-error'])
-      .optional(),
     instructions: z.string().min(1).max(5000).optional(),
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
-    executionKind: z.enum(['simulation', 'production']).optional(),
   })
   .strict();
 
@@ -82,13 +76,12 @@ export class DesktopApplicationService {
 
   constructor(private readonly deps: DesktopServiceDeps) {}
 
-  /** Production coordinator when wired; otherwise undefined. */
-  get productionCoordinator(): RunCoordinator | undefined {
-    return this.deps.productionCoordinator;
+  get productionCoordinator(): RunCoordinator {
+    return this.deps.coordinator;
   }
 
-  get productionRegistry(): HarnessAdapterRegistry | undefined {
-    return this.deps.productionRegistry;
+  get productionRegistry(): HarnessAdapterRegistry {
+    return this.deps.registry;
   }
 
   get dataRoot(): string {
@@ -184,34 +177,19 @@ export class DesktopApplicationService {
     };
   }
 
-  // ---- runs ----
+  // ---- runs (production only; historical simulation rows stay readable) ----
   listRuns(projectId: string): unknown[] {
     const id = ProjectIdInput.parse(projectId) as ProjectId;
-    const seen = new Map<string, unknown>();
-    for (const coordinator of [
-      this.deps.coordinator,
-      ...(this.deps.productionCoordinator === undefined ? [] : [this.deps.productionCoordinator]),
-    ]) {
-      for (const run of coordinator.listRuns(id)) {
-        if (seen.has(run.id)) continue;
-        seen.set(run.id, {
-          ...run,
-          agentSummary: coordinator.getRunStatus(run.id).agents,
-          findingCount: this.deps.repository.countRunFindings(run.id),
-          issueCount: this.deps.repository.listOccurrencesForRun(run.id).length,
-        });
-      }
-    }
-    return [...seen.values()];
+    return this.deps.coordinator.listRuns(id).map((run) => ({
+      ...run,
+      agentSummary: this.deps.coordinator.getRunStatus(run.id).agents,
+      findingCount: this.deps.repository.countRunFindings(run.id),
+      issueCount: this.deps.repository.listOccurrencesForRun(run.id).length,
+    }));
   }
 
-  /** Coordinator that owns a run: production runs live on the production
-   *  coordinator (disjoint live-adapter map); everything else is simulation. */
-  private coordinatorForRun(runId: QARunId): RunCoordinator {
-    const stored = this.deps.repository.getRun(runId);
-    if (stored?.executionKind === 'production' && this.deps.productionCoordinator !== undefined) {
-      return this.deps.productionCoordinator;
-    }
+  /** Single production coordinator owns every run (live + historical). */
+  private coordinatorForRun(_runId: QARunId): RunCoordinator {
     return this.deps.coordinator;
   }
 
@@ -274,26 +252,17 @@ export class DesktopApplicationService {
   }
 
   /**
-   * Start a QA run. `executionKind: 'production'` uses the production
-   * coordinator (provider registrations) and persists executionKind as
-   * production; anything else stays on the simulation coordinator. Backend
-   * remains authoritative — the coordinators share data root / repository /
-   * lease / project manager but own disjoint adapter sets.
+   * Start a production QA run (the only execution mode). Always persists
+   * executionKind 'production'. Electron main owns the long-running promise;
+   * the runId returns as soon as the QARun row exists and the canvas goes
+   * live from persisted truth. Backend remains authoritative.
    */
-  async startSimulation(projectId: string, options: unknown): Promise<DesktopOperation> {
+  async startRun(projectId: string, options: unknown): Promise<DesktopOperation> {
     const id = ProjectIdInput.parse(projectId) as ProjectId;
-    const parsed = SimulationOptions.parse(options);
-    const executionKind = parsed.executionKind ?? 'simulation';
-    const coordinator =
-      executionKind === 'production' && this.deps.productionCoordinator !== undefined
-        ? this.deps.productionCoordinator
-        : this.deps.coordinator;
-    if (executionKind === 'production' && this.deps.productionCoordinator === undefined) {
-      throw toError('PRODUCTION_UNAVAILABLE', 'Production execution is not wired in this host');
-    }
+    const parsed = StartRunOptions.parse(options);
     const operationId = 'dop_' + createQARunId().slice(4);
-    const runPromise = coordinator.run(id, {
-      executionKind,
+    const runPromise = this.deps.coordinator.run(id, {
+      executionKind: 'production',
       mode: parsed.mode,
       ...(parsed.includePaths === undefined
         ? {}
@@ -328,15 +297,7 @@ export class DesktopApplicationService {
   }
 
   private listAllRuns(projectId: ProjectId): Array<{ id: string }> {
-    const coordinators = [
-      this.deps.coordinator,
-      ...(this.deps.productionCoordinator === undefined ? [] : [this.deps.productionCoordinator]),
-    ];
-    const seen = new Map<string, { id: string }>();
-    for (const coordinator of coordinators) {
-      for (const run of coordinator.listRuns(projectId)) seen.set(run.id, run);
-    }
-    return [...seen.values()];
+    return this.deps.coordinator.listRuns(projectId);
   }
 
   private async detectCreatedRun(
@@ -440,27 +401,25 @@ export class DesktopApplicationService {
    */
   async startRetest(
     issueId: string,
-    options?: { revisionId?: string; executionKind?: 'simulation' | 'production' },
+    options?: { revisionId?: string; agentStackIds?: string[] },
   ): Promise<DesktopOperation> {
     const id = IssueIdInput.parse(issueId);
     const operationId = 'dop_' + createRetestRunId().slice(7);
-    const executionKind = options?.executionKind ?? 'simulation';
-    const registry =
-      executionKind === 'production' && this.deps.productionRegistry !== undefined
-        ? this.deps.productionRegistry
-        : this.deps.registry;
     const retestPromise = retestIssue(
       {
         dataRoot: this.deps.dataRoot,
         repository: this.deps.repository,
         lease: this.deps.lease,
-        registry,
+        registry: this.deps.registry,
       },
       id,
       {
         ...(options?.revisionId === undefined
           ? {}
           : { targetRevisionId: options.revisionId as never }),
+        ...(options?.agentStackIds === undefined
+          ? {}
+          : { agentStackIds: [...options.agentStackIds] as never }),
       },
     );
     const settled = retestPromise.then(
@@ -650,7 +609,6 @@ export class DesktopApplicationService {
             : stackStatus(s.id, glm as never)),
       })),
       verifier,
-      simulation: { ready: true, label: 'Simulation mode — no provider tokens used' },
       dataRoot: this.deps.dataRoot,
     };
   }
@@ -721,11 +679,37 @@ export class DesktopApplicationService {
       reasons.push('Muse model not set');
     }
     return {
-      ready: reasons.length === 0 && this.deps.productionRegistry !== undefined,
+      ready: reasons.length === 0,
       reasons,
-      productionWired: this.deps.productionRegistry !== undefined,
+      productionWired: true,
       note: 'Muse authenticates via local muse login; verify in Environment.',
     };
+  }
+
+  /**
+   * Pre-run gate: every requested stack must be provider-ready, otherwise
+   * refuse to start a partial run silently. Returns the per-stack breakdown
+   * so the UI can show exactly which provider blocks the run.
+   */
+  preRunGate(agentStackIds?: string[]): {
+    readonly ready: boolean;
+    readonly stacks: ReadonlyArray<{
+      readonly id: string;
+      readonly ready: boolean;
+      readonly reasons: readonly string[];
+    }>;
+  } {
+    const stacks = this.deps.agentStacks
+      .map((s) => s.id)
+      .filter((id) => agentStackIds === undefined || agentStackIds.includes(id));
+    const per = stacks.map((id) => {
+      const check = this.productionReadiness({ agentStackIds: [id] }) as {
+        ready: boolean;
+        reasons: string[];
+      };
+      return { id, ready: check.ready, reasons: check.reasons };
+    });
+    return { ready: per.every((s) => s.ready), stacks: per };
   }
 
   systemInfo(): { dataRoot: string; versions: Record<string, string> } {
