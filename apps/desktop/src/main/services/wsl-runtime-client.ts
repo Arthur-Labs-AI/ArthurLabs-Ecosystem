@@ -472,9 +472,19 @@ export function wslHomeDir(distro: string): Promise<string> {
   });
 }
 
+/**
+ * wsl.exe re-parses argv after `--` with backslash-escape semantics, so a
+ * native `C:\...` path arrives mangled (`C:Users...`). Forward slashes
+ * survive intact and wslpath accepts them identically.
+ */
+export function toWslPathArg(windowsPath: string): string {
+  return windowsPath.replaceAll('\\', '/');
+}
+
 export function translateWindowsPathForWsl(windowsPath: string, distro: string): Promise<string> {
   return new Promise<string>((resolve, reject) => {
-    const child = spawn('wsl.exe', ['-d', distro, '--', 'wslpath', '-u', windowsPath], {
+    const forwardSlashed = toWslPathArg(windowsPath);
+    const child = spawn('wsl.exe', ['-d', distro, '--', 'wslpath', '-u', forwardSlashed], {
       windowsHide: true,
     });
     let stdout = '';

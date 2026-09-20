@@ -2,6 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { WslRuntimeClient } from '../../src/main/services/wsl-runtime-client.js';
 
 describe('wsl path translation contract', () => {
+  it('normalizes backslashes before wslpath (argv would otherwise mangle them)', async () => {
+    const { toWslPathArg } = await import(
+      '../../src/main/services/wsl-runtime-client.js'
+    );
+    // Regression: `C:\Users\...` arrived at wslpath as `C:Users...`.
+    expect(toWslPathArg('C:\\Users\\merte\\Documents\\GitHub\\Fener')).toBe(
+      'C:/Users/merte/Documents/GitHub/Fener',
+    );
+    expect(toWslPathArg('C:\\Users\\merte\\My Project')).toBe('C:/Users/merte/My Project');
+    expect(toWslPathArg('D:\\Code\\App')).toBe('D:/Code/App');
+    expect(toWslPathArg('/home/merte/project')).toBe('/home/merte/project');
+  });
+
   it('documents the supported Windows path shapes', () => {
     const cases = [
       'C:\\Users\\Mert\\Documents\\Project',
