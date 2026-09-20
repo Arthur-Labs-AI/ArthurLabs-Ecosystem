@@ -3,9 +3,7 @@ import { WslRuntimeClient } from '../../src/main/services/wsl-runtime-client.js'
 
 describe('wsl path translation contract', () => {
   it('normalizes backslashes before wslpath (argv would otherwise mangle them)', async () => {
-    const { toWslPathArg } = await import(
-      '../../src/main/services/wsl-runtime-client.js'
-    );
+    const { toWslPathArg } = await import('../../src/main/services/wsl-runtime-client.js');
     // Regression: `C:\Users\...` arrived at wslpath as `C:Users...`.
     expect(toWslPathArg('C:\\Users\\merte\\Documents\\GitHub\\Fener')).toBe(
       'C:/Users/merte/Documents/GitHub/Fener',
