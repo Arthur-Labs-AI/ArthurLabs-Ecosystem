@@ -105,6 +105,26 @@ describe('secure persistent provider credentials', () => {
     await expect(service.persist()).rejects.toThrow(/session only/);
   });
 
+  it('stores the GLM endpoint as a non-secret pref and restores it', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sentry-secure-'));
+    roots.push(dir);
+    const storage = fakeSafeStorage();
+    const first = new ProviderCredentialService({ userDataDir: dir, safeStorage: storage });
+    await first.load();
+    await first.saveKey('ANTHROPIC_BASE_URL', 'https://api.z.ai/api/anthropic');
+    expect(first.getValue('ANTHROPIC_BASE_URL')).toBe('https://api.z.ai/api/anthropic');
+    // Non-secret lane: plain prefs file, never the encrypted secrets store.
+    const rawSecrets = await readFile(join(dir, 'credentials', 'providers.json'), 'utf8').catch(
+      () => '{}',
+    );
+    expect(rawSecrets).not.toContain('api.z.ai');
+    delete process.env['ANTHROPIC_BASE_URL'];
+    const second = new ProviderCredentialService({ userDataDir: dir, safeStorage: storage });
+    await second.load();
+    expect(second.getValue('ANTHROPIC_BASE_URL')).toBe('https://api.z.ai/api/anthropic');
+    delete process.env['ANTHROPIC_BASE_URL'];
+  });
+
   it('migrates the legacy plaintext file then deletes it', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sentry-secure-'));
     roots.push(dir);

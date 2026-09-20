@@ -343,8 +343,10 @@ export class DesktopApplicationService {
     const providers: Record<string, string> = {};
     const deepseekKey = get('DEEPSEEK_API_KEY');
     const glmToken = get('ANTHROPIC_AUTH_TOKEN');
+    const glmEndpoint = get('ANTHROPIC_BASE_URL');
     if (deepseekKey !== undefined) providers['deepseekApiKey'] = deepseekKey;
     if (glmToken !== undefined) providers['anthropicAuthToken'] = glmToken;
+    if (glmEndpoint !== undefined) providers['anthropicBaseUrl'] = glmEndpoint;
     return this.call('runtime.configure', { models, providers });
   }
 

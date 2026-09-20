@@ -15,6 +15,8 @@ const DESCRIPTIONS: Record<string, string> = {
   DEEPSEEK_API_KEY: 'DeepSeek provider key (secret). Used by the DeepSeek harness host process.',
   ANTHROPIC_AUTH_TOKEN:
     'GLM/Claude-Code provider token (secret). Used by the Claude parent process.',
+  ANTHROPIC_BASE_URL:
+    'GLM endpoint override (non-secret). Trusted Z.AI Anthropic-compatible base URL, e.g. https://api.z.ai/api/anthropic.',
   SENTRY_DEEPSEEK_MODEL: 'DeepSeek model id override (non-secret).',
   SENTRY_GLM_MODEL: 'GLM model id override (non-secret).',
   SENTRY_MUSE_MODEL: 'Muse model id override (non-secret).',

@@ -23,6 +23,7 @@ import { dirname, join } from 'node:path';
 export const MANAGED_PROVIDER_KEYS = [
   'DEEPSEEK_API_KEY',
   'ANTHROPIC_AUTH_TOKEN',
+  'ANTHROPIC_BASE_URL',
   'SENTRY_DEEPSEEK_MODEL',
   'SENTRY_GLM_MODEL',
   'SENTRY_MUSE_MODEL',
@@ -40,6 +41,7 @@ export type SecretProviderKey = (typeof SECRET_PROVIDER_KEYS)[number];
 const SECRET_NAMES: ReadonlySet<string> = new Set(SECRET_PROVIDER_KEYS);
 
 const MODEL_KEYS: ReadonlySet<string> = new Set([
+  'ANTHROPIC_BASE_URL',
   'SENTRY_DEEPSEEK_MODEL',
   'SENTRY_GLM_MODEL',
   'SENTRY_MUSE_MODEL',
