@@ -40,8 +40,15 @@ export class SnapshotEngine {
     this.artifacts = new FilesystemArtifactStore(dataRoot, repository);
   }
 
-  scanRevision(root: string, signal?: AbortSignal): Promise<ScanTreeResult> {
-    return scanTree(root, { ...(signal === undefined ? {} : { signal }) });
+  scanRevision(
+    root: string,
+    signal?: AbortSignal,
+    options: { readonly exclude?: (relativePath: string) => boolean } = {},
+  ): Promise<ScanTreeResult> {
+    return scanTree(root, {
+      ...(signal === undefined ? {} : { signal }),
+      ...(options.exclude === undefined ? {} : { exclude: options.exclude }),
+    });
   }
 
   /**

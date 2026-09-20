@@ -442,6 +442,49 @@ describe('Phase 7 retest orchestration (§90)', () => {
     f.database.close();
   }, 180_000);
 
+  it('refuses retest across import hash versions (v1 source vs v2 target)', async () => {
+    // Mixed lineage: legacy full-tree import (v1, includeAll) for run A,
+    // then a default filtered update (v2) for B. Hashes are incomparable
+    // across versions, so retest must refuse honestly instead of comparing.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-retest-hashver-'));
+    roots.push(root);
+    const source = join(root, 'source');
+    const dataRoot = join(root, 'data');
+    await mkdir(join(source, 'src', 'auth'), { recursive: true });
+    await writeFile(join(source, 'README.md'), '# Fixture\n');
+    await writeFile(join(source, 'src', 'auth', 'login.ts'), 'export const login = 1;\n');
+    const database = new SentryDatabase({ dataRoot });
+    const repository = new SentryRepository(database);
+    const lease = new RuntimeInstanceLease(repository, { autoHeartbeat: false });
+    lease.start();
+    const manager = new ProjectManager(dataRoot, repository, { runtimeLease: lease });
+    const added = await manager.addProject(source, { includeAll: true });
+    expect(added.revision.hashVersion).toBeUndefined();
+    const { RunCoordinator } = await import('../src/index.js');
+    const runA = await new RunCoordinator(
+      dataRoot,
+      repository,
+      lease,
+      scriptedRegistry('fail'),
+    ).run(added.project.id, { executionKind: 'simulation', runTimeoutMs: 30_000 });
+    const { result: mergeA } = mergeRun(repository, runA.run.id);
+    const verifiedA = await stubVerify('fail')(repository, dataRoot, mergeA.id);
+    const clusterA = mergeA.clusters[0];
+    if (clusterA === undefined) throw new Error('no cluster');
+    const ff = { root, source, dataRoot, database, repository, lease, manager, added };
+    const { issueId } = await seedIssue(ff, mergeA.id, clusterA.id, runA.run.id, verifiedA.run.id);
+    await writeFile(join(source, 'src', 'auth', 'login.ts'), 'export const login = 2;\n');
+    const updated = await manager.updateProjectCopy(added.project.id);
+    expect(updated.revision.hashVersion).toBe(2);
+    await expect(
+      retestIssue({ dataRoot, repository, lease, registry: scriptedRegistry('pass') }, issueId, {
+        verify: stubVerify('pass') as never,
+        runTimeoutMs: 30_000,
+      }),
+    ).rejects.toMatchObject({ code: 'RETEST_HASH_VERSION_MISMATCH' });
+    database.close();
+  }, 180_000);
+
   it('cancels and recovers retest runs honestly', async () => {
     const f = await fixture();
     const { RunCoordinator } = await import('../src/index.js');

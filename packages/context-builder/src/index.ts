@@ -31,6 +31,7 @@ export interface BuildContextInput {
   readonly projectRevisionId: ProjectRevisionId;
   readonly workingCopyPath: string;
   readonly signal?: AbortSignal;
+  readonly exclude?: (relativePath: string) => boolean;
 }
 
 export interface PreparedProjectContext {
@@ -167,7 +168,10 @@ export class ProjectContextBuilder {
     let purpose: string | undefined;
 
     const materials = (async function* (): AsyncGenerator<string> {
-      for await (const entry of walkTree(input.workingCopyPath, input.signal)) {
+      for await (const entry of walkTree(input.workingCopyPath, {
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+        ...(input.exclude === undefined ? {} : { exclude: input.exclude }),
+      })) {
         if (entry.type !== 'file') continue;
         const extension = extname(entry.relativePath).toLowerCase();
         const language = LANGUAGE_BY_EXTENSION[extension];

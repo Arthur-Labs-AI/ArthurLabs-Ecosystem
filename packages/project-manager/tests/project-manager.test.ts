@@ -43,10 +43,10 @@ async function fixture(faultInjector?: (stage: ProjectMutationStage) => void) {
 }
 
 describe('managed project lifecycle', () => {
-  it('imports the complete source, locks mutations, and preserves original content', async () => {
+  it('imports the legacy full source with includeAll, locks mutations, preserves content', async () => {
     const f = await fixture();
     const original = await scanTree(f.source);
-    const added = await f.manager.addProject(f.source);
+    const added = await f.manager.addProject(f.source, { includeAll: true });
     const paths = projectDataPaths(f.dataRoot, added.project.id);
     expect(await readFile(join(paths.workingCopy, '.hidden'), 'utf8')).toBe('hidden');
     expect(await readFile(join(paths.workingCopy, '.git', 'HEAD'), 'utf8')).toContain(
@@ -55,6 +55,7 @@ describe('managed project lifecycle', () => {
     expect(
       await readFile(join(paths.workingCopy, 'node_modules', 'fixture', 'index.js'), 'utf8'),
     ).toContain('module.exports');
+    expect(added.revision.hashVersion).toBeUndefined();
     expect(added.context?.purpose).toBe('Factual sample purpose.');
     expect((await scanTree(f.source)).contentHash).toBe(original.contentHash);
 
@@ -64,6 +65,34 @@ describe('managed project lifecycle', () => {
       code: 'ACTIVE_RUN_EXISTS',
     });
     f.manager.unlockProjectAfterRun(added.project.id, runId);
+    f.database.close();
+  });
+
+  it('excludes junk dirs by default and records hashVersion 2', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    const paths = projectDataPaths(f.dataRoot, added.project.id);
+    expect(added.revision.hashVersion).toBe(2);
+    await expect(stat(join(paths.workingCopy, '.git'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(stat(join(paths.workingCopy, 'node_modules'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    expect(await readFile(join(paths.workingCopy, 'README.md'), 'utf8')).toContain(
+      'Factual sample',
+    );
+    expect(added.revision.stats?.fileCount).toBe(2);
+    // Integrity rescan applies the same exclusions: no phantom drift.
+    const checked = await f.manager.assertWorkingCopyIntegrity(added.project.id);
+    expect(checked.id).toBe(added.revision.id);
+    // Update keeps v2 and still excludes junk after source changes.
+    await writeFile(join(f.source, 'README.md'), '# Example\n\nVersion two.');
+    await writeFile(join(f.source, 'node_modules', 'fixture', 'index.js'), 'module.exports = 2');
+    const updated = await f.manager.updateProjectCopy(added.project.id);
+    expect(updated.revision.hashVersion).toBe(2);
+    expect(updated.revision.contentHash).not.toBe(added.revision.contentHash);
+    await expect(stat(join(paths.workingCopy, 'node_modules'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
     f.database.close();
   });
 

@@ -22,7 +22,9 @@ import {
 import {
   assertNoPathOverlap,
   copyTree,
+  DEFAULT_IMPORT_EXCLUSIONS,
   estimateTree,
+  matchImportExclusion,
   projectDataPaths,
   resolveInside,
   RuntimeInstanceLease,
@@ -43,6 +45,9 @@ export interface ProjectRecord {
 export interface ProjectOperationOptions {
   readonly signal?: AbortSignal;
   readonly onProgress?: (progress: CopyProgress) => void;
+  /** Opt out of the default import exclusion set (copies+hashes everything).
+   *  Recorded on the revision via hashVersion absence (legacy version 1). */
+  readonly includeAll?: boolean;
 }
 
 export type ProjectMutationStage =
@@ -106,6 +111,12 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+function exclusionPredicate(includeAll?: boolean): ((relativePath: string) => boolean) | undefined {
+  if (includeAll === true) return undefined;
+  const set = DEFAULT_IMPORT_EXCLUSIONS;
+  return (relativePath: string) => matchImportExclusion(relativePath, set);
+}
+
 export class ProjectManager {
   private readonly snapshots: SnapshotEngine;
   private readonly contexts: ProjectContextBuilder;
@@ -155,13 +166,22 @@ export class ProjectManager {
     const staging = resolve(paths.staging, 'import-' + revisionId);
     const timestamp = nowIsoTimestamp();
     try {
-      await this.preflightStorage(source, dirname(this.dataRoot), options.signal);
+      await this.preflightStorage(
+        source,
+        dirname(this.dataRoot),
+        options.signal,
+        exclusionPredicate(options.includeAll),
+      );
       await mkdir(paths.root, { recursive: true });
+      const exclude = exclusionPredicate(options.includeAll);
       const stats = await copyTree(source, staging, {
         ...(options.signal === undefined ? {} : { signal: options.signal }),
         ...(options.onProgress === undefined ? {} : { onProgress: options.onProgress }),
+        ...(exclude === undefined ? {} : { exclude }),
       });
-      const scan = await this.snapshots.scanRevision(staging, options.signal);
+      const scan = await this.snapshots.scanRevision(staging, options.signal, {
+        ...(exclude === undefined ? {} : { exclude }),
+      });
       await rename(staging, paths.workingCopy);
       const project = ProjectSchema.parse({
         schemaVersion: 1,
@@ -179,6 +199,7 @@ export class ProjectManager {
         sourcePath: source,
         importedAt: timestamp,
         contentHash: scan.contentHash,
+        ...(exclude === undefined ? {} : { hashVersion: 2 as const }),
         stats: {
           fileCount: stats.fileCount,
           directoryCount: stats.directoryCount,
@@ -202,6 +223,7 @@ export class ProjectManager {
         projectRevisionId: revisionId,
         workingCopyPath: paths.workingCopy,
         ...(options.signal === undefined ? {} : { signal: options.signal }),
+        ...(exclude === undefined ? {} : { exclude }),
       });
       await this.retainRevisionMaterial(projectId, revisionId, paths.workingCopy);
       await this.validateRetainedMaterial(projectId, revision, paths.workingCopy);
@@ -378,13 +400,22 @@ export class ProjectManager {
           { cause },
         );
       }
-      await this.preflightStorage(source, paths.root, options.signal);
+      await this.preflightStorage(
+        source,
+        paths.root,
+        options.signal,
+        exclusionPredicate(options.includeAll),
+      );
       await rm(staging, { recursive: true, force: true });
+      const exclude = exclusionPredicate(options.includeAll);
       const stats = await copyTree(source, staging, {
         ...(options.signal === undefined ? {} : { signal: options.signal }),
         ...(options.onProgress === undefined ? {} : { onProgress: options.onProgress }),
+        ...(exclude === undefined ? {} : { exclude }),
       });
-      const scan = await this.snapshots.scanRevision(staging, options.signal);
+      const scan = await this.snapshots.scanRevision(staging, options.signal, {
+        ...(exclude === undefined ? {} : { exclude }),
+      });
       const revision = ProjectRevisionSchema.parse({
         schemaVersion: 1,
         id: revisionId,
@@ -392,6 +423,7 @@ export class ProjectManager {
         sourcePath: source,
         importedAt: timestamp,
         contentHash: scan.contentHash,
+        ...(exclude === undefined ? {} : { hashVersion: 2 as const }),
         stats: {
           fileCount: stats.fileCount,
           directoryCount: stats.directoryCount,
@@ -403,6 +435,7 @@ export class ProjectManager {
         projectRevisionId: revisionId,
         workingCopyPath: staging,
         ...(options.signal === undefined ? {} : { signal: options.signal }),
+        ...(exclude === undefined ? {} : { exclude }),
       });
       operation = RuntimeOperationSchema.parse({
         ...operation,
@@ -566,8 +599,13 @@ export class ProjectManager {
     const current = this.getProject(projectId);
     if (current === undefined)
       throw new ProjectManagerError('PROJECT_NOT_FOUND', 'Project not found: ' + projectId);
+    // v2 revisions were hashed with the default exclusion set: the rescan
+    // must apply the same set or every check reports phantom drift.
+    const exclude = current.revision.hashVersion === 2 ? exclusionPredicate(undefined) : undefined;
     const actual = await this.snapshots.scanRevision(
       projectDataPaths(this.dataRoot, projectId).workingCopy,
+      undefined,
+      { ...(exclude === undefined ? {} : { exclude }) },
     );
     if (actual.contentHash !== current.revision.contentHash) {
       throw new ProjectManagerError(
@@ -757,8 +795,11 @@ export class ProjectManager {
     source: string,
     destination: string,
     signal?: AbortSignal,
+    exclude?: (relativePath: string) => boolean,
   ): Promise<void> {
-    const estimate = await estimateTree(source, signal);
+    const estimate = await estimateTree(source, signal, {
+      ...(exclude === undefined ? {} : { exclude }),
+    });
     try {
       const storage = await statfs(destination);
       const available = storage.bavail * storage.bsize;

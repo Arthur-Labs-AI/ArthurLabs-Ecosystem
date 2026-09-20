@@ -6,6 +6,7 @@ export * from './database.js';
 export * from './repository.js';
 export * from './artifact-store.js';
 export * from './filesystem.js';
+export * from './exclusions.js';
 export * from './runtime-lease.js';
 export * from './storage-health.js';
 export * from './config.js';

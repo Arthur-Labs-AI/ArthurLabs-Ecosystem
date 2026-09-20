@@ -27,6 +27,7 @@ export interface CopyProgress {
 export interface CopyTreeOptions {
   readonly concurrency?: number;
   readonly signal?: AbortSignal;
+  readonly exclude?: (relativePath: string) => boolean;
   readonly preferReflink?: boolean;
   readonly onProgress?: (progress: CopyProgress) => void;
   readonly symlinkPolicy?: 'preserve' | 'inert-unsafe';
@@ -65,8 +66,23 @@ async function sortedNames(directory: string): Promise<string[]> {
   return names;
 }
 
+export interface WalkTreeOptions {
+  readonly signal?: AbortSignal;
+  /** Skip entries whose relative path matches; excluded directories are pruned (never descended). */
+  readonly exclude?: (relativePath: string) => boolean;
+}
+
 /** Deterministic lstat traversal. Symlinks are yielded and never followed. */
-export async function* walkTree(root: string, signal?: AbortSignal): AsyncGenerator<WalkEntry> {
+export async function* walkTree(
+  root: string,
+  signalOrOptions?: AbortSignal | WalkTreeOptions,
+): AsyncGenerator<WalkEntry> {
+  const options: WalkTreeOptions =
+    signalOrOptions === undefined || signalOrOptions instanceof AbortSignal
+      ? { ...(signalOrOptions === undefined ? {} : { signal: signalOrOptions }) }
+      : signalOrOptions;
+  const signal = options.signal;
+  const exclude = options.exclude;
   const absoluteRoot = resolve(root);
   const canonicalRoot = await realpath(absoluteRoot);
 
@@ -115,6 +131,7 @@ export async function* walkTree(root: string, signal?: AbortSignal): AsyncGenera
       const absolutePath = join(directory, name);
       const stats = await lstat(absolutePath);
       const relativePath = relative(absoluteRoot, absolutePath).replaceAll('\\', '/');
+      if (exclude?.(relativePath) === true) continue;
       if (stats.isSymbolicLink()) {
         yield {
           absolutePath,
@@ -250,12 +267,19 @@ export interface ScanTreeResult extends TreeStats {
   readonly contentHash: string;
 }
 
-export async function estimateTree(root: string, signal?: AbortSignal): Promise<TreeStats> {
+export async function estimateTree(
+  root: string,
+  signal?: AbortSignal,
+  options: { readonly exclude?: (relativePath: string) => boolean } = {},
+): Promise<TreeStats> {
   let fileCount = 0;
   let directoryCount = 0;
   let symlinkCount = 0;
   let totalBytes = 0;
-  for await (const entry of walkTree(root, signal)) {
+  for await (const entry of walkTree(root, {
+    ...(signal === undefined ? {} : { signal }),
+    ...(options.exclude === undefined ? {} : { exclude: options.exclude }),
+  })) {
     if (entry.type === 'file') {
       fileCount += 1;
       totalBytes += entry.sizeBytes;
@@ -270,6 +294,7 @@ export async function scanTree(
   options: {
     readonly signal?: AbortSignal;
     readonly onEntry?: (entry: SnapshotFileEntry, canonicalLine: string) => void | Promise<void>;
+    readonly exclude?: (relativePath: string) => boolean;
   } = {},
 ): Promise<ScanTreeResult> {
   const aggregate = createHash('sha256');
@@ -278,7 +303,10 @@ export async function scanTree(
   let directoryCount = 0;
   let symlinkCount = 0;
   let totalBytes = 0;
-  for await (const walked of walkTree(root, options.signal)) {
+  for await (const walked of walkTree(root, {
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
+    ...(options.exclude === undefined ? {} : { exclude: options.exclude }),
+  })) {
     const entry = await snapshotEntry(walked, options.signal);
     const line = JSON.stringify(entry) + '\n';
     aggregate.update(line, 'utf8');
@@ -345,7 +373,10 @@ export async function copyTree(
   };
 
   try {
-    for await (const entry of walkTree(sourceRoot, options.signal)) {
+    for await (const entry of walkTree(sourceRoot, {
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
+      ...(options.exclude === undefined ? {} : { exclude: options.exclude }),
+    })) {
       throwIfAborted(options.signal);
       const destination = destinationForRelative(destinationRoot, entry.relativePath);
       if (entry.type === 'directory') {

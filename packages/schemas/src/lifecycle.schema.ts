@@ -35,7 +35,10 @@ export const ProjectRevisionSourceStateSchema = z
   .strict();
 export type ProjectRevisionSourceState = z.infer<typeof ProjectRevisionSourceStateSchema>;
 
-/** Immutable record of one atomically imported managed-copy state. */
+/** Immutable record of one atomically imported managed-copy state.
+ *  hashVersion 1 = legacy full-tree hash (no exclusions); 2 = default
+ *  import exclusion set applied. Hashes are only comparable within the
+ *  same version; lineage refuses cross-version comparison. */
 export const ProjectRevisionSchema = z
   .object({
     schemaVersion: SchemaVersionSchema,
@@ -44,6 +47,7 @@ export const ProjectRevisionSchema = z
     sourcePath: z.string().min(1).max(2000),
     importedAt: IsoTimestampSchema,
     contentHash: Sha256Schema,
+    hashVersion: z.literal(2).optional(),
     stats: ProjectRevisionStatsSchema.optional(),
     sourceState: ProjectRevisionSourceStateSchema.optional(),
   })

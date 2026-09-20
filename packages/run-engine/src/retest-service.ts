@@ -323,6 +323,24 @@ export async function retestIssue(
       "Target revision is not part of this issue's project",
     );
   }
+  const sourceRevision = repository.getRevision(sourceRevisionId);
+  if (
+    sourceRevision !== undefined &&
+    (sourceRevision.hashVersion ?? 1) !== (targetRevision.hashVersion ?? 1)
+  ) {
+    throw new RunEngineError(
+      'RETEST_HASH_VERSION_MISMATCH',
+      'Retest source revision ' +
+        sourceRevisionId +
+        ' (hash v' +
+        String(sourceRevision.hashVersion ?? 1) +
+        ') and target revision ' +
+        targetRevisionId +
+        ' (hash v' +
+        String(targetRevision.hashVersion ?? 1) +
+        ') were hashed with different import exclusion sets and must not be compared',
+    );
+  }
   const integrity = await projects.assertWorkingCopyIntegrity(record.project.id);
   if (integrity.id !== targetRevisionId) {
     throw new RunEngineError(

@@ -255,11 +255,18 @@ export class SentryRuntimeHost {
     });
   }
   // ---- projects ----
+  /** Opt-out of the default import exclusion set (full-tree v1 revisions). */
+  private importIncludeAll(): boolean {
+    return process.env['SENTRY_IMPORT_INCLUDE_ALL'] === '1';
+  }
+
   async addProject(sourcePath: string): Promise<unknown> {
     const input = z.string().min(1).max(2000).parse(sourcePath);
     const translated = translateWindowsPath(input);
     await assertReadableDir(translated);
-    return this.projects.addProject(translated);
+    return this.projects.addProject(translated, {
+      ...(this.importIncludeAll() ? { includeAll: true as const } : {}),
+    });
   }
 
   getProject(projectId: string): unknown {
@@ -309,11 +316,13 @@ export class SentryRuntimeHost {
     } catch {
       // Salvage is best-effort; the update below reports authoritatively.
     }
-    if (sourcePath === undefined) return this.projects.updateProjectCopy(id as never);
+    const includeAll = this.importIncludeAll() ? { includeAll: true as const } : {};
+    if (sourcePath === undefined)
+      return this.projects.updateProjectCopy(id as never, undefined, includeAll);
     const parsed = z.string().min(1).max(2000).parse(sourcePath);
     const translated = translateWindowsPath(parsed);
     await assertReadableDir(translated);
-    return this.projects.updateProjectCopy(id as never, translated);
+    return this.projects.updateProjectCopy(id as never, translated, includeAll);
   }
 
   async projectDoctor(projectId: string): Promise<unknown> {

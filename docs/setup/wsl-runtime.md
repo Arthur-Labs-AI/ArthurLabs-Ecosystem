@@ -23,6 +23,17 @@ No secrets below — substitute your own values where indicated.
 - This copies the tree (excluding `node_modules`/`dist`/`.git`) into
   `~/.local/share/sentry/runtime/0.1.0`, installs Linux dependencies there, builds
   `@qa/runtime-protocol` + `@qa/runtime`, and links `.../runtime/current`.
+
+## 3b. Project import exclusions (hash v2)
+
+- Project import/update applies the default import exclusion set before
+  copy+scan: `node_modules`, `.git`, `dist`, `build`, `coverage`, `.turbo`,
+  `.pnpm-store`, `.sentry-live`, `.tmp-sentry-test-fixtures`, `.ai-harness`,
+  `.superharness`, `.DS_Store`, `*.log` (matched at any depth, case-aware).
+- New revisions record `hashVersion: 2`; legacy full-tree revisions are v1.
+  Retest refuses cross-version A→B comparison (`RETEST_HASH_VERSION_MISMATCH`).
+- Opt out (full-tree v1 import) only for exotic layouts:
+  `SENTRY_IMPORT_INCLUDE_ALL=1` in the runtime environment.
 - Verify: `wsl -d Ubuntu -- node ~/.local/share/sentry/runtime/current/apps/runtime/dist/host.js --help`
   (exits 2 with usage) and `... --stdio` + `runtime.hello` handshake over stdin.
 
