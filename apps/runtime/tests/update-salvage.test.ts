@@ -31,13 +31,16 @@ describe('stale update salvage', () => {
     await writeFile(jn(source, 'package.json'), '{"name":"salvage"}');
     await writeFile(jn(source, 'src', 'a.ts'), 'export const a = 1;');
     // Seed via core (same-process), then fake a dead-instance update op.
-    const { SentryDatabase, SentryRepository, RuntimeInstanceLease } = await import('@qa/persistence');
+    const { SentryDatabase, SentryRepository, RuntimeInstanceLease } =
+      await import('@qa/persistence');
     const { ProjectManager } = await import('@qa/project-manager');
     const seedDb = new SentryDatabase({ dataRoot: jn(root, 'data') });
     const seedRepo = new SentryRepository(seedDb);
     const seedLease = new RuntimeInstanceLease(seedRepo, { autoHeartbeat: false });
     seedLease.start();
-    const seedProjects = new ProjectManager(jn(root, 'data'), seedRepo, { runtimeLease: seedLease });
+    const seedProjects = new ProjectManager(jn(root, 'data'), seedRepo, {
+      runtimeLease: seedLease,
+    });
     const added = await seedProjects.addProject(source);
     // Reuse the seed lease's instance id for the fake op row (FK): the lease
     // is released below, so the owner reads as dead to the host's recovery.
