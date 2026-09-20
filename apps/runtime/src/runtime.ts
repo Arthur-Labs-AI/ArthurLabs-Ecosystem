@@ -297,6 +297,18 @@ export class SentryRuntimeHost {
 
   async updateProject(projectId: string, sourcePath?: string): Promise<unknown> {
     const id = ProjectIdInput.parse(projectId);
+    // Salvage pass: a previous update killed mid-flight (client timeout,
+    // host teardown) leaves state=updating with a stale operation row.
+    // Reusing the boot-time recovery heals it when the owner is dead;
+    // a genuinely live owner is left untouched (freshness check inside).
+    try {
+      const copy = this.repository.getManagedCopy(id as never);
+      if (copy !== undefined && copy.state !== 'ready') {
+        await this.projects.recoverAbandonedOperations(this.lease);
+      }
+    } catch {
+      // Salvage is best-effort; the update below reports authoritatively.
+    }
     if (sourcePath === undefined) return this.projects.updateProjectCopy(id as never);
     const parsed = z.string().min(1).max(2000).parse(sourcePath);
     const translated = translateWindowsPath(parsed);

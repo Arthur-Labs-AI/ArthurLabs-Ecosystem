@@ -44,13 +44,18 @@ export interface RuntimeStatus {
 const REQUEST_TIMEOUT_MS = 60_000;
 const START_TIMEOUT_MS = 120_000;
 /**
- * Row-creation methods return at QARun/RetestRun persistence, but a large
- * project snapshot can legitimately take minutes before the row exists.
- * The runtime has no arbitrary deadline (poll-until-settled), so the client
- * grants these methods a long window; every other method stays at 60 s.
+ * Methods whose legitimate work scales with project size (full tree copy +
+ * content scan: a 60k-file project takes minutes) get a long window; every
+ * other method stays at 60 s. The runtime itself has no arbitrary deadline
+ * (poll-until-settled), so these windows only bound truly hung transports.
  */
 const ROW_CREATION_TIMEOUT_MS = 600_000;
-const ROW_CREATION_METHODS: ReadonlySet<string> = new Set(['runs.start', 'retests.start']);
+const ROW_CREATION_METHODS: ReadonlySet<string> = new Set([
+  'runs.start',
+  'retests.start',
+  'projects.add',
+  'projects.update',
+]);
 
 function nextId(prefix: string): string {
   return prefix + '_' + Date.now().toString(36) + Math.floor(Math.random() * 0xffffff).toString(36);
