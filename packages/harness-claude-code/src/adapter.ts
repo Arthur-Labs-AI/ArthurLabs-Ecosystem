@@ -259,6 +259,10 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   private lastFailureSignature: string | undefined;
   private consecutiveIdenticalFailures = 0;
   private loopCorrectionIssuedFor: string | undefined;
+  /** Failure-rate breaker: consecutive failures regardless of identity
+   *  (sweep loops hit distinct paths, so signature matching never trips). */
+  private consecutiveFailures = 0;
+  private rateCorrectionIssuedAt: number | undefined;
   private readonly shutdownDiagnostics: HarnessDiagnostic[] = [];
 
   constructor(private readonly options: ClaudeCodeHarnessAdapterOptions = {}) {
@@ -555,6 +559,42 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         } else {
           this.lastFailureSignature = undefined;
           this.consecutiveIdenticalFailures = 0;
+        }
+        // Rate breaker: N consecutive failures of any shape mean the
+        // investigation is thrashing (e.g. 184/190 Reads failing across
+        // distinct paths). Correct once at 15, abort at 25 — well below
+        // a productive run's budget, far above any healthy burst.
+        if (failed) {
+          this.consecutiveFailures += 1;
+        } else {
+          this.consecutiveFailures = 0;
+          this.rateCorrectionIssuedAt = undefined;
+        }
+        if (
+          failed &&
+          this.consecutiveFailures === 15 &&
+          this.rateCorrectionIssuedAt === undefined
+        ) {
+          this.rateCorrectionIssuedAt = this.consecutiveFailures;
+          out.push(
+            emit({
+              type: 'warning',
+              code: 'GLM_TOOL_LOOP_CORRECTION',
+              message: (
+                'Fifteen consecutive tool calls failed without a success; ' +
+                'the current approach is not working. List the workspace root, ' +
+                'read one concrete file that exists, and continue from evidence — ' +
+                'do not sweep further paths blindly.'
+              ).slice(0, 500),
+            }),
+          );
+        }
+        if (failed && this.consecutiveFailures >= 25) {
+          throw new ClaudeCodeHarnessError(
+            'GLM_TOOL_LOOP',
+            'Twenty-five consecutive tool calls failed without a success; ' +
+              'aborting the phase instead of burning the run budget.',
+          );
         }
         const commandText = pending?.commandText;
         const argsText = pending?.argsText;

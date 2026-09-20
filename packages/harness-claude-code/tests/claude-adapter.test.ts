@@ -244,6 +244,61 @@ describe('ClaudeCodeHarnessAdapter', () => {
     expect(failed.failure?.message).toContain('10 times with identical arguments');
   });
 
+  it('fails fast with GLM_TOOL_LOOP on 25 consecutive distinct-path failures', async () => {
+    // Regression for the sweep loop (184/190 Reads failing across distinct
+    // paths): signature matching never trips, so the rate breaker must.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-sweep-loop-'));
+    roots.push(root);
+    const input = await request(root);
+    const turn: ClaudeStreamEvent[] = [];
+    for (let i = 0; i < 25; i += 1) {
+      turn.push(
+        evt('assistant', {
+          message: {
+            content: [
+              {
+                type: 'tool_use',
+                id: 'tu-sweep-' + i,
+                name: 'Read',
+                input: { file_path: '/ws/project/file-' + i + '.ts' },
+              },
+            ],
+          },
+        }),
+        evt('user', {
+          message: {
+            content: [
+              {
+                type: 'tool_result',
+                tool_use_id: 'tu-sweep-' + i,
+                is_error: true,
+                content: [{ type: 'text', text: 'Error: file not found' }],
+              },
+            ],
+          },
+        }),
+      );
+    }
+    turn.push(evt('result', { is_error: false, subagent_stats: { spawned: 0 } }));
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-sweep',
+        startSession: async () => ({ runText: async () => turn }),
+        close: async () => undefined,
+      }),
+    });
+    const events: HarnessEvent[] = [];
+    for await (const event of adapter.run(input)) events.push(event);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.failed');
+    const failed = events.at(-1) as { failure?: { code?: string; message?: string } };
+    expect(failed.failure?.code).toBe('GLM_TOOL_LOOP');
+    expect(failed.failure?.message).toContain('Twenty-five consecutive tool calls failed');
+  });
+
   it('builds the report prompt AFTER investigation with all observed operations', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-ledger-timing-'));
     roots.push(root);
