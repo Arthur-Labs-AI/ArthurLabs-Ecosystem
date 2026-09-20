@@ -43,6 +43,14 @@ export interface RuntimeStatus {
 
 const REQUEST_TIMEOUT_MS = 60_000;
 const START_TIMEOUT_MS = 120_000;
+/**
+ * Row-creation methods return at QARun/RetestRun persistence, but a large
+ * project snapshot can legitimately take minutes before the row exists.
+ * The runtime has no arbitrary deadline (poll-until-settled), so the client
+ * grants these methods a long window; every other method stays at 60 s.
+ */
+const ROW_CREATION_TIMEOUT_MS = 600_000;
+const ROW_CREATION_METHODS: ReadonlySet<string> = new Set(['runs.start', 'retests.start']);
 
 function nextId(prefix: string): string {
   return prefix + '_' + Date.now().toString(36) + Math.floor(Math.random() * 0xffffff).toString(36);
@@ -210,7 +218,7 @@ export class WslRuntimeClient {
   request(
     method: string,
     params: Record<string, unknown> = {},
-    timeoutMs = REQUEST_TIMEOUT_MS,
+    timeoutMs = ROW_CREATION_METHODS.has(method) ? ROW_CREATION_TIMEOUT_MS : REQUEST_TIMEOUT_MS,
   ): Promise<unknown> {
     const child = this.child;
     if (child === undefined || child.stdin === undefined) {

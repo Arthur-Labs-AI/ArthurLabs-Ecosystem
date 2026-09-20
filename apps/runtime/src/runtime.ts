@@ -441,26 +441,37 @@ export class SentryRuntimeHost {
     return { operationId, runId: details.run.id };
   }
 
+  /**
+   * Row-or-settlement wait: polls until the QARun row appears (normal path,
+   * seconds — even behind a slow snapshot) or the workflow promise settles.
+   * Settlement-error throws the REAL backend error immediately instead of a
+   * client timeout; settlement-success returns the id. There is no arbitrary
+   * deadline here — the client's own timeout bounds the wait, and the desktop
+   * reconciles any timeout against persisted rows before reporting.
+   */
   private async detectCreatedRun(
     projectId: never,
     runPromise: Promise<unknown>,
   ): Promise<string | undefined> {
     const before = new Set(this.coordinator.listRuns(projectId).map((r) => r.id));
-    const deadline = Date.now() + 5000;
-    while (Date.now() < deadline) {
+    let settled: { done: boolean; value?: unknown; error?: unknown } = { done: false };
+    void runPromise.then(
+      (value) => {
+        settled = { done: true, value };
+      },
+      (error: unknown) => {
+        settled = { done: true, error };
+      },
+    );
+    for (;;) {
       const current = this.coordinator.listRuns(projectId);
       const created = current.find((r) => !before.has(r.id));
       if (created !== undefined) return created.id;
+      if (settled.done) {
+        if (settled.error !== undefined) throw settled.error;
+        return (settled.value as { run?: { id?: string } } | undefined)?.run?.id;
+      }
       await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-    try {
-      const details = await Promise.race([
-        runPromise,
-        new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 1000)),
-      ]);
-      return (details as { run?: { id?: string } } | undefined)?.run?.id;
-    } catch {
-      return undefined;
     }
   }
 
@@ -571,57 +582,36 @@ export class SentryRuntimeHost {
     settled.then(undefined, () => undefined);
     this.pendingRetests.set(operationId, { operationId, promise: settled });
     const retestRunId = await this.detectCreatedRetest(id as never, settled);
-    if (retestRunId !== undefined) {
-      this.notify('retest.created', { retestRunId, operationId });
-      return { operationId, retestRunId };
-    }
-    const timeoutOutcome: { ok: false; error: unknown } = await new Promise((resolve) =>
-      setTimeout(
-        () =>
-          resolve({
-            ok: false as const,
-            error: rpcError('RETEST_NOT_CREATED', 'RetestRun was not created'),
-          }),
-        1000,
-      ),
-    );
-    const outcome = await Promise.race([
-      settled.then(
-        (result) => ({
-          ok: true as const,
-          id: (result as { retestRun: { id: string } }).retestRun.id,
-        }),
-        (error: unknown) => ({ ok: false as const, error }),
-      ),
-      Promise.resolve(timeoutOutcome),
-    ]);
-    if (outcome.ok) {
-      this.notify('retest.created', { retestRunId: outcome.id, operationId });
-      return { operationId, retestRunId: outcome.id };
-    }
-    throw outcome.error;
+    this.notify('retest.created', { retestRunId, operationId });
+    return { operationId, retestRunId };
   }
 
+  /** Same row-or-settlement contract as runs: no arbitrary deadline. */
   private async detectCreatedRetest(
     issueId: never,
     retestPromise: Promise<unknown>,
-  ): Promise<string | undefined> {
+  ): Promise<string> {
     const before = new Set(this.repository.listRetestRuns(issueId).map((r) => r.id));
-    const deadline = Date.now() + 5000;
-    while (Date.now() < deadline) {
+    let settled: { done: boolean; value?: unknown; error?: unknown } = { done: false };
+    void retestPromise.then(
+      (value) => {
+        settled = { done: true, value };
+      },
+      (error: unknown) => {
+        settled = { done: true, error };
+      },
+    );
+    for (;;) {
       const current = this.repository.listRetestRuns(issueId);
       const created = current.find((r) => !before.has(r.id));
       if (created !== undefined) return created.id;
+      if (settled.done) {
+        if (settled.error !== undefined) throw settled.error;
+        const id = (settled.value as { retestRun?: { id?: string } } | undefined)?.retestRun?.id;
+        if (id !== undefined) return id;
+        throw rpcError('RETEST_NOT_CREATED', 'RetestRun was not created');
+      }
       await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-    try {
-      const details = await Promise.race([
-        retestPromise,
-        new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 500)),
-      ]);
-      return (details as { retestRun?: { id?: string } } | undefined)?.retestRun?.id;
-    } catch {
-      return undefined;
     }
   }
 

@@ -140,4 +140,56 @@ describe('stdio RPC loop', () => {
     );
     await serving;
   }, 30000);
+
+  it('startRun surfaces the real pre-row error instead of timing out', async () => {
+    // Regression for the 60 s client timeout: the old 5 s detection window
+    // fell through to awaiting full settlement (minutes). Poll-until-settled
+    // throws the REAL backend error immediately when the workflow fails
+    // before row creation (here: unconfigured providers in CI) instead of
+    // hanging until the client gives up.
+    const { SentryRuntimeHost } = await import('../src/runtime.js');
+    const { mkdtemp: mkdtemp2 } = await import('node:fs/promises');
+    const { tmpdir: tmpdir2 } = await import('node:os');
+    const { join: join2 } = await import('node:path');
+    const root = await mkdtemp2(join2(tmpdir2(), 'sentry-row-wait-'));
+    roots.push(root);
+    // Seed the project BEFORE constructing the host (same data dir, closed DB).
+    const { mkdir, writeFile } = await import('node:fs/promises');
+    const source = join2(root, 'source');
+    await mkdir(join2(source, 'src'), { recursive: true });
+    await writeFile(join2(source, 'package.json'), '{"name":"row-wait"}');
+    await writeFile(join2(source, 'src', 'a.ts'), 'export const a = 1;');
+    const { ProjectManager } = await import('@qa/project-manager');
+    const { SentryDatabase, SentryRepository, RuntimeInstanceLease } =
+      await import('@qa/persistence');
+    const seedDb = new SentryDatabase({ dataRoot: join2(root, 'data') });
+    const seedRepo = new SentryRepository(seedDb);
+    const seedLease = new RuntimeInstanceLease(seedRepo, { autoHeartbeat: false });
+    seedLease.start();
+    const seedProjects = new ProjectManager(join2(root, 'data'), seedRepo, {
+      runtimeLease: seedLease,
+    });
+    const added = await seedProjects.addProject(source);
+    seedLease.release();
+    seedDb.close();
+    const host = new SentryRuntimeHost(join2(root, 'data'), () => undefined);
+    try {
+      await host.recover();
+      const startedAt = Date.now();
+      let failureCode = '';
+      try {
+        await host.dispatch('runs.start', { projectId: added.project.id, mode: 'full' });
+      } catch (error) {
+        failureCode =
+          typeof error === 'object' && error !== null && 'code' in error
+            ? String((error as { code?: unknown }).code ?? '')
+            : '';
+      }
+      // Must settle in seconds with the backend truth, never hang for minutes.
+      expect(Date.now() - startedAt).toBeLessThan(120000);
+      expect(failureCode).toMatch(/MODEL_NOT_CONFIGURED|NOT_CONFIGURED|credential/i);
+    } finally {
+      host.close();
+    }
+  }, 180000);
 });
