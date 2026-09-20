@@ -402,7 +402,8 @@ export class DesktopApplicationService {
     } catch (error) {
       // Never a silent empty list: the UI must distinguish "none installed"
       // from "wsl.exe failed", otherwise users chase the wrong fix.
-      listError = error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300);
+      listError =
+        error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300);
     }
     const preferred = await manager.loadPreferredDistro().catch(() => undefined);
     return {
