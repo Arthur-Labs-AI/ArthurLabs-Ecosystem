@@ -188,6 +188,62 @@ function threeStage(
 }
 
 describe('ClaudeCodeHarnessAdapter', () => {
+  it('fails fast with GLM_TOOL_LOOP on 10 identical failing tool calls', async () => {
+    // Regression for the 166x Read-on-directory loop that burned a whole
+    // 30-minute run budget: the adapter aborts the phase with a clear
+    // diagnostic, surfaced as a terminal run.failed event (never a throw).
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-tool-loop-'));
+    roots.push(root);
+    const input = await request(root);
+    const turn: ClaudeStreamEvent[] = [];
+    for (let i = 0; i < 10; i += 1) {
+      turn.push(
+        evt('assistant', {
+          message: {
+            content: [
+              {
+                type: 'tool_use',
+                id: 'tu-loop-' + i,
+                name: 'Read',
+                input: { file_path: '/ws/project' },
+              },
+            ],
+          },
+        }),
+        evt('user', {
+          message: {
+            content: [
+              {
+                type: 'tool_result',
+                tool_use_id: 'tu-loop-' + i,
+                is_error: true,
+                content: [{ type: 'text', text: 'Error: is a directory' }],
+              },
+            ],
+          },
+        }),
+      );
+    }
+    turn.push(evt('result', { is_error: false, subagent_stats: { spawned: 0 } }));
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-loop',
+        startSession: async () => ({ runText: async () => turn }),
+        close: async () => undefined,
+      }),
+    });
+    const events: HarnessEvent[] = [];
+    for await (const event of adapter.run(input)) events.push(event);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.failed');
+    const failed = events.at(-1) as { failure?: { code?: string; message?: string } };
+    expect(failed.failure?.code).toBe('GLM_TOOL_LOOP');
+    expect(failed.failure?.message).toContain('10 times with identical arguments');
+  });
+
   it('builds the report prompt AFTER investigation with all observed operations', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-ledger-timing-'));
     roots.push(root);

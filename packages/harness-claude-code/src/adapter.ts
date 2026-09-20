@@ -255,6 +255,10 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   private readonly observedOperations = new Map<string, ObservedOperation>();
   private operationCounter = 0;
   private sandboxVerified = false;
+  /** Futile-loop breaker: consecutive identical failing tool calls. */
+  private lastFailureSignature: string | undefined;
+  private consecutiveIdenticalFailures = 0;
+  private loopCorrectionIssuedFor: string | undefined;
   private readonly shutdownDiagnostics: HarnessDiagnostic[] = [];
 
   constructor(private readonly options: ClaudeCodeHarnessAdapterOptions = {}) {
@@ -508,6 +512,50 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             tool: { name: toolName, ...(failed ? { exitCode: 1 } : {}) },
           }),
         );
+        // Futile-loop breaker: the same tool with the same args failing
+        // over and over (e.g. Read on a directory, 166x in one turn)
+        // burns the whole run budget achieving nothing. At 5 identical
+        // consecutive failures emit a correction warning; at 10 fail the
+        // phase fast with a clear diagnostic instead of looping to timeout.
+        const failureSignature =
+          toolName + '\0' + (pending?.commandText ?? pending?.argsText ?? '');
+        if (failed) {
+          if (this.lastFailureSignature === failureSignature) {
+            this.consecutiveIdenticalFailures += 1;
+          } else {
+            this.lastFailureSignature = failureSignature;
+            this.consecutiveIdenticalFailures = 1;
+          }
+          if (
+            this.consecutiveIdenticalFailures === 5 &&
+            this.loopCorrectionIssuedFor !== failureSignature
+          ) {
+            this.loopCorrectionIssuedFor = failureSignature;
+            out.push(
+              emit({
+                type: 'warning',
+                code: 'GLM_TOOL_LOOP_CORRECTION',
+                message: (
+                  "Tool '" +
+                  toolName +
+                  "' failed 5 times with identical arguments; vary the approach " +
+                  '(list the directory, or read a file inside it) instead of retrying.'
+                ).slice(0, 500),
+              }),
+            );
+          }
+          if (this.consecutiveIdenticalFailures >= 10) {
+            throw new ClaudeCodeHarnessError(
+              'GLM_TOOL_LOOP',
+              "Tool '" +
+                toolName +
+                "' failed 10 times with identical arguments (vary the approach: list the directory, or read a file inside it); aborting the phase instead of burning the run budget.",
+            );
+          }
+        } else {
+          this.lastFailureSignature = undefined;
+          this.consecutiveIdenticalFailures = 0;
+        }
         const commandText = pending?.commandText;
         const argsText = pending?.argsText;
         // Every completed tool use mints a session-global operation (monotonic

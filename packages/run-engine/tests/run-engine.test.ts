@@ -305,6 +305,138 @@ describe('fake end-to-end run engine', () => {
     f.database.close();
   });
 
+  it('kills on event silence but lets steady output earn more time', async () => {
+    const f = await fixture();
+    const { HarnessEventSchema } = await import('@qa/schemas');
+    const { createHarnessEventId: mkEvt } = await import('@qa/shared');
+    const drip = (count: number, gapMs: number) => ({
+      stack: {
+        id: 'stack_muse_main',
+        displayName: 'drip',
+        enabled: true,
+        model: { provider: 'fake', modelId: 'fake-drip' },
+        harness: { adapterId: 'fake', expectedProtocolVersion: 1 },
+        execution: { supportsLocalExecution: true },
+        policy: { id: 'qa-standard', version: 1 },
+      },
+      runtimeIdentity: { modelId: 'fake-drip', adapterId: 'fake', adapterVersion: '0.1.0' },
+      createAdapter: () => ({
+        getMetadata: async () => ({
+          adapterId: 'fake',
+          adapterVersion: '0.1.0',
+          protocolVersion: 1,
+          displayName: 'drip',
+          capabilities: {},
+        }),
+        healthCheck: async () => ({ status: 'healthy' as const, checks: [], checkedAt: 't' }),
+        run: async function* (request: { agentRunId: string; qaRunId: string }) {
+          yield HarnessEventSchema.parse({
+            schemaVersion: 1,
+            eventId: mkEvt(),
+            agentRunId: request.agentRunId,
+            timestamp: new Date().toISOString(),
+            type: 'run.started',
+          });
+          for (let i = 0; i < count; i += 1) {
+            await new Promise((r) => setTimeout(r, gapMs));
+            yield HarnessEventSchema.parse({
+              schemaVersion: 1,
+              eventId: mkEvt(),
+              agentRunId: request.agentRunId,
+              timestamp: new Date().toISOString(),
+              type: 'agent.message',
+              message: 'drip ' + i,
+            });
+          }
+          yield HarnessEventSchema.parse({
+            schemaVersion: 1,
+            eventId: mkEvt(),
+            agentRunId: request.agentRunId,
+            timestamp: new Date().toISOString(),
+            type: 'run.completed',
+          });
+        },
+        cancel: async () => undefined,
+        dispose: async () => undefined,
+      }),
+    });
+    const { HarnessAdapterRegistry } = await import('@qa/harness-protocol');
+    const silentRegistry = new HarnessAdapterRegistry();
+    // Silent worker: no events at all → dies at the silence window.
+    silentRegistry.register({
+      stack: {
+        id: 'stack_muse_main',
+        displayName: 'silent',
+        enabled: true,
+        model: { provider: 'fake', modelId: 'fake-silent' },
+        harness: { adapterId: 'fake', expectedProtocolVersion: 1 },
+        execution: { supportsLocalExecution: true },
+        policy: { id: 'qa-standard', version: 1 },
+      },
+      runtimeIdentity: { modelId: 'fake-silent', adapterId: 'fake', adapterVersion: '0.1.0' },
+      createAdapter: () => ({
+        getMetadata: async () => ({
+          adapterId: 'fake',
+          adapterVersion: '0.1.0',
+          protocolVersion: 1,
+          displayName: 'silent',
+          capabilities: {},
+        }),
+        healthCheck: async () => ({ status: 'healthy' as const, checks: [], checkedAt: 't' }),
+        run: async function* () {
+          await new Promise(() => undefined);
+          yield HarnessEventSchema.parse({
+            schemaVersion: 1,
+            eventId: mkEvt(),
+            agentRunId: 'x',
+            timestamp: new Date().toISOString(),
+            type: 'run.completed',
+          });
+        },
+        cancel: async () => undefined,
+        dispose: async () => undefined,
+      }),
+    });
+    const silentResult = await new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      silentRegistry,
+    ).run(f.added.project.id, {
+      executionKind: 'simulation',
+      agentStackIds: ['stack_muse_main'],
+      runTimeoutMs: 120,
+    });
+    const silentAgent = silentResult.agentRuns[0];
+    expect(silentAgent?.status).toBe('timed_out');
+    expect(silentAgent?.failure?.message).toContain('no events');
+    // Steady worker: 6 events 40ms apart (240ms span) with a 100ms silence
+    // window — a flat clock would kill it at 100ms; sliding survives.
+    const dripRegistry = new HarnessAdapterRegistry();
+    dripRegistry.register(drip(6, 40) as never);
+    const dripResult = await new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      dripRegistry,
+    ).run(f.added.project.id, {
+      executionKind: 'simulation',
+      agentStackIds: ['stack_muse_main'],
+      runTimeoutMs: 100,
+    });
+    // The drip stream spans 240ms against a 100ms silence window: sliding
+    // lets it finish the stream (no RUN_TIMEOUT); the minimal fake lacks
+    // plan/evidence for coordinator completion, which is out of scope here.
+    expect(dripResult.agentRuns[0]?.status).toBe('completed');
+    expect(dripResult.agentRuns[0]?.failure).toBeUndefined();
+    expect(
+      dripResult.events.filter(
+        (e) => e.event.type === 'agent.message' && String(e.event.message ?? '').startsWith('drip'),
+      ),
+    ).toHaveLength(6);
+    f.database.close();
+  });
+
   it('cleans up workspaces, releases the lock, and keeps partial events after a timeout', async () => {
     const f = await fixture();
     const result = await coordinator(f).simulate(f.added.project.id, {

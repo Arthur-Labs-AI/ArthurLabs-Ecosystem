@@ -774,7 +774,7 @@ export class RunCoordinator {
                 ? typed.code
                 : 'WORKER_DISCONNECTED',
           message: timedOut
-            ? 'Agent exceeded configured run timeout.'
+            ? 'Agent exceeded run budget (' + cause.message + ').'
             : zodFailure
               ? 'Agent output failed schema validation.'
               : protocolViolation
@@ -957,8 +957,29 @@ export class RunCoordinator {
       | { stop: () => void; wasCancelDelivered: () => boolean; delivery: () => Promise<void> }
       | undefined;
     let cancelDelivered = false;
+    // Activity-aware deadline: every persisted event re-earns a fresh
+    // silence window (thinking/planning turns emit nothing for minutes),
+    // bounded by an absolute cap so a chatty-but-stuck run still dies.
+    // A run emitting real work never trips; a wedged transport does.
+    const startedAt = Date.now();
+    const absoluteMaxMs = timeoutMs * 3;
+    let lastEventAt = startedAt;
     const timeout = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => reject(new RunTimeoutError()), timeoutMs);
+      const check = (): void => {
+        const now = Date.now();
+        if (now - startedAt >= absoluteMaxMs) {
+          reject(new RunTimeoutError('absolute cap ' + String(absoluteMaxMs) + ' ms reached'));
+          return;
+        }
+        if (now - lastEventAt >= timeoutMs) {
+          reject(new RunTimeoutError('no events for ' + String(timeoutMs) + ' ms'));
+          return;
+        }
+        timer = setTimeout(check, Math.min(30_000, timeoutMs));
+        (timer as unknown as { unref: () => void }).unref?.();
+      };
+      timer = setTimeout(check, Math.min(30_000, timeoutMs));
+      (timer as unknown as { unref: () => void }).unref?.();
     });
     try {
       watcher = this.startCancellationWatcher({
@@ -972,6 +993,7 @@ export class RunCoordinator {
       const consume = (async () => {
         for await (const event of adapter.run(request)) {
           if (watcher?.wasCancelDelivered() === true) break;
+          lastEventAt = Date.now();
           await onEvent(event);
         }
       })();

@@ -8,6 +8,7 @@ export type ClaudeCodeHarnessErrorCode =
   | 'GLM_INVALID_RESULT'
   | 'GLM_SUBAGENT_FORBIDDEN'
   | 'GLM_REPORT_TOOL_FORBIDDEN'
+  | 'GLM_TOOL_LOOP'
   | 'GLM_CANCEL_FAILED';
 
 export class ClaudeCodeHarnessError extends Error {
