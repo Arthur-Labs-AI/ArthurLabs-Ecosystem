@@ -59,8 +59,14 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
   // Provider executables resolve inside the WSL runtime; Windows binary
   // discovery no longer drives production readiness.
   if (!credentials.secureStorageAvailable) {
+    const reason =
+      safeStorageLike === undefined
+        ? 'Electron safeStorage bridge unavailable'
+        : 'OS encryption (DPAPI/keychain) reported unavailable';
     recoveryWarnings.push(
-      'Secure persistent storage unavailable. Credentials can be used for this session only.',
+      'Secure persistent storage unavailable (' +
+        reason +
+        '). Credentials can be used for this session only.',
     );
   }
   const manager = new WslRuntimeManager({ ...(dir === undefined ? {} : { userDataDir: dir }) });

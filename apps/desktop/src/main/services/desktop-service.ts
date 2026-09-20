@@ -149,16 +149,47 @@ export class DesktopApplicationService {
     return this.call('runs.status', { runId: id });
   }
 
-  startRun(projectId: string, options: unknown): Promise<DesktopOperation> {
+  async startRun(projectId: string, options: unknown): Promise<DesktopOperation> {
     const id = ProjectIdInput.parse(projectId);
     const parsed = StartRunOptions.parse(options);
-    return this.call('runs.start', {
-      projectId: id,
-      mode: parsed.mode,
-      ...(parsed.includePaths === undefined ? {} : { includePaths: [...parsed.includePaths] }),
-      ...(parsed.instructions === undefined ? {} : { instructions: parsed.instructions }),
-      ...(parsed.agentStackIds === undefined ? {} : { agentStackIds: [...parsed.agentStackIds] }),
-    }) as Promise<DesktopOperation>;
+    try {
+      return (await this.call('runs.start', {
+        projectId: id,
+        mode: parsed.mode,
+        ...(parsed.includePaths === undefined ? {} : { includePaths: [...parsed.includePaths] }),
+        ...(parsed.instructions === undefined ? {} : { instructions: parsed.instructions }),
+        ...(parsed.agentStackIds === undefined ? {} : { agentStackIds: [...parsed.agentStackIds] }),
+      })) as DesktopOperation;
+    } catch (error) {
+      // A client-side timeout does NOT mean the runtime didn't start the run:
+      // reconcile before reporting, so the UI never hides a paid run that is
+      // actually executing (and the user never double-starts blindly).
+      if (error instanceof Error && (error as { code?: unknown }).code === 'RUNTIME_TIMEOUT') {
+        const reconciled = await this.recentRunForProject(id).catch(() => undefined);
+        if (reconciled !== undefined) {
+          throw toError(
+            'RUN_MAY_HAVE_STARTED',
+            'Runtime request timed out, but a run (' +
+              reconciled +
+              ') appeared for this project — open Runs before retrying.',
+          );
+        }
+      }
+      throw error;
+    }
+  }
+
+  /** Most recent nonterminal run row for a project, if any (timeout reconciliation). */
+  private async recentRunForProject(projectId: string): Promise<string | undefined> {
+    const runs = (await this.call('runs.list', { projectId: projectId as string })) as Array<{
+      id: string;
+      status: string;
+      createdAt: string;
+    }>;
+    const active = runs
+      .filter((r) => !['completed', 'partial', 'failed', 'cancelled'].includes(r.status))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    return active[0]?.id;
   }
 
   requestRunCancellation(runId: string): Promise<unknown> {
@@ -364,9 +395,22 @@ export class DesktopApplicationService {
 
   async runtimeDistros(): Promise<unknown> {
     const manager = this.wslManager();
-    const distros = await manager.listDistros().catch(() => []);
+    let distros: Array<{ name: string; state: string; version: number }> = [];
+    let listError: string | undefined;
+    try {
+      distros = await manager.listDistros();
+    } catch (error) {
+      // Never a silent empty list: the UI must distinguish "none installed"
+      // from "wsl.exe failed", otherwise users chase the wrong fix.
+      listError = error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300);
+    }
     const preferred = await manager.loadPreferredDistro().catch(() => undefined);
-    return { distros, preferred: preferred ?? null, selected: this.deps.distro };
+    return {
+      distros,
+      preferred: preferred ?? null,
+      selected: this.deps.distro,
+      ...(listError === undefined ? {} : { listError }),
+    };
   }
 
   async runtimeSelectDistro(distro: string): Promise<unknown> {

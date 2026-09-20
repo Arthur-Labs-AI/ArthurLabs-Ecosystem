@@ -157,4 +157,17 @@ app.on('before-quit', () => {
   void bootstrapped?.close();
 });
 
-void boot();
+// Single instance: a second launch focuses the running window instead of
+// starting a second WSL runtime (dual leases corrupt run ownership and
+// produce phantom timeouts across both instances).
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+  void boot();
+}

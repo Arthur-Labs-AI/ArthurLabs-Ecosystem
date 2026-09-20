@@ -7,6 +7,7 @@ interface WslDistros {
   distros: Array<{ name: string; state: string; version: number }>;
   preferred: string | null;
   selected: string | null;
+  listError?: string;
 }
 
 export function RuntimeSettings(): React.JSX.Element {
@@ -59,8 +60,17 @@ export function RuntimeSettings(): React.JSX.Element {
       {distros.isLoading ? <div className="skeleton">Loading distributions…</div> : null}
       {(info?.distros ?? []).length === 0 && !distros.isLoading ? (
         <div className="error-box" role="alert">
-          No usable WSL2 distribution found. Install Ubuntu (wsl --install -d Ubuntu) and restart
-          Sentry. See docs/setup/wsl-runtime.md.
+          {info?.listError !== undefined ? (
+            <span>
+              Could not list WSL distributions: {info.listError} — the runtime itself is still
+              connected, so retry this page or restart Sentry.
+            </span>
+          ) : (
+            <span>
+              No usable WSL2 distribution found. Install Ubuntu (wsl --install -d Ubuntu) and
+              restart Sentry. See docs/setup/wsl-runtime.md.
+            </span>
+          )}
         </div>
       ) : null}
       <div className="card" style={{ marginBottom: 12 }}>
