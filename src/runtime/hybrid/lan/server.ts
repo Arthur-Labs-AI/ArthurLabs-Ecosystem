@@ -1,6 +1,8 @@
 export interface LanHandlerOptions {
   gateways: import("../gateway_registry").ModelGatewayRegistry;
   authToken: string;
+  /** HR-03E: optional explicitly bound remote-host tool executors. Absent = no remote tools executable. */
+  toolBindings?: import("./tool_bindings").ToolExecutorBindings;
 }
 
 export interface LanHttpRequest {
@@ -96,7 +98,7 @@ export function createLanRuntimeHandler(options: LanHandlerOptions): (req: LanHt
       errorResponse(outgoing, 401, "none", "UNAUTHORIZED");
       return;
     }
-    if (incoming.method === "GET" && path === LAN_INFO_PATH) {
+    if (incoming.method === "GET" && (path === LAN_INFO_PATH || path === "/v1/runtime/info")) {
       const providers: { id: string; capabilities: unknown }[] = [];
       for (const id of options.gateways.listIds()) {
         const gateway = options.gateways.get(id);
@@ -110,6 +112,32 @@ export function createLanRuntimeHandler(options: LanHandlerOptions): (req: LanHt
         providers.push({ id, capabilities });
       }
       jsonResponse(outgoing, 200, { protocol_version: ARTHUR_LAN_PROTOCOL_VERSION, providers });
+      return;
+    }
+    // HR-03E: tool execution route (same auth/TLS/bounds/redirect policy).
+    // Only explicitly bound capability adapters are executable; with no
+    // tool bindings supplied, no remote tools are executable (404).
+    const { matchToolRoute, handleToolExecute } =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("./tool_server") as typeof import("./tool_server");
+    const toolRoute = matchToolRoute(path);
+    if (toolRoute !== undefined) {
+      if (incoming.method !== "POST" && incoming.method !== "post") {
+        errorResponse(outgoing, 404, "none", "PROVIDER_NOT_FOUND");
+        return;
+      }
+      if (options.toolBindings === undefined) {
+        const { toolErrorBody, toolStatusFor } =
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          require("./tool_server") as typeof import("./tool_server");
+        const body = toolErrorBody("none", "TOOL_EXECUTOR_NOT_FOUND", "not_applied");
+        if (!outgoing.ended) {
+          outgoing.writeHead(toolStatusFor("TOOL_EXECUTOR_NOT_FOUND"), { "content-type": LAN_JSON_CONTENT_TYPE });
+          outgoing.end(JSON.stringify(body));
+        }
+        return;
+      }
+      await handleToolExecute(toolRoute, incoming, outgoing, { bindings: options.toolBindings });
       return;
     }
     const route = matchModelRoute(path);

@@ -4,3 +4,29 @@ export { LAN_AUTH_HEADER, LAN_BEARER_PREFIX, extractBearerToken, tokensEqualCons
 export { LanAuthenticationError, LanProtocolError, classifyServerError, throwForWireCode, LAN_AUTH_ERROR_MESSAGE, LAN_PROTOCOL_ERROR_MESSAGE } from "./errors";
 export { createLanRuntimeHandler, lanRequestId, type LanHandlerOptions, type LanHttpRequest, type LanHttpResponse } from "./server";
 export { LanModelGateway, assertLanBaseUrl, type LanClientOptions } from "./client";
+export {
+  ARTHUR_LAN_PROTOCOL_VERSION as LAN_TOOL_PROTOCOL_VERSION,
+  LAN_TOOL_EXECUTE_PREFIX,
+  LAN_TOOL_EXECUTE_SUFFIX,
+  TOOL_WIRE_ERROR_CODES,
+  isToolWireErrorCode,
+  lanToolExecutePath,
+  type LanToolErrorBody,
+  type LanToolExecuteRequest,
+  type LanToolExecuteResponse,
+  type LanToolExecutionBlock,
+  type ToolWireErrorCode,
+} from "./tool_protocol";
+export { ToolExecutorBindings, type BoundToolExecutor } from "./tool_bindings";
+export {
+  LAN_TOOL_MAX_ID_CHARS,
+  LAN_TOOL_MAX_REQUEST_ID_CHARS,
+  LAN_TOOL_MAX_SUMMARY_CHARS,
+  LAN_TOOL_MAX_VERSION_CHARS,
+  parseLanToolExecuteRequest,
+  parseLanToolResult,
+  type ParsedToolExecuteRequest,
+  type ParsedToolResult,
+} from "./tool_validation";
+export { LanToolExecutor, type LanToolExecutorOptions } from "./tool_client";
+export { handleToolExecute, matchToolRoute, toolErrorBody, toolStatusFor, type ToolHostOptions } from "./tool_server";

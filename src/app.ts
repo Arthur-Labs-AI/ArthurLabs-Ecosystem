@@ -157,6 +157,20 @@ export interface BuildDeps {
   approvalKeyProvider?: import("./tools/approval_keys").ApprovalKeyProvider;
   /** SC-02 trust ring override (key rotation tests). */
   approvalTrustedKeys?: import("./tools/approval_signer").ApprovalKeypair[];
+  /**
+   * HR-03E hybrid tool execution seam (explicit trusted injection only).
+   * When omitted the runtime stays local-only (createSingleAttemptService).
+   * A future HR-03H multi-machine runtime injects nodes + routing engine +
+   * local node id + remote node executor bindings; the registry builds the
+   * hybrid AttemptInvoker internally over its private executor closure, so
+   * raw executors never escape. No env, discovery, config, or persistence.
+   */
+  hybridTools?: {
+    nodes: import("./runtime/hybrid/node_registry").NodeRegistry;
+    routing: import("./runtime/hybrid/routing_engine").HybridRoutingEngine;
+    localNodeId: string;
+    remotes: import("./runtime/hybrid/tools/node_executor_bindings").NodeToolExecutionBindings;
+  };
   /** Phase 3 voice overrides (deterministic providers for tests). */
   voice?: {
     capture?: AudioCapture;
@@ -537,9 +551,47 @@ export function buildApp(overrides: SettingsOverrides = {}, deps: BuildDeps = {}
 
   const permissions = new PermissionService();
   const execution = registry.createExecutionService(permissions);
+  // HR-03E: default local-only; hybrid activates only via explicit
+  // deps.hybridTools (tests / future HR-03H runtime). The hybrid invoker
+  // is built inside the registry over its private executor closure.
+  let hybridCoordinator: import("./tools/execution_coordinator").ToolExecutionCoordinator | undefined;
+  if (deps.hybridTools !== undefined) {
+    const { HybridToolAttemptInvoker } =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("./runtime/hybrid/tools/attempt_router") as typeof import("./runtime/hybrid/tools/attempt_router");
+    const hybrid = deps.hybridTools;
+    const attempts = registry.createHybridSingleAttemptService(permissions, (localInvoke) => {
+      const invoker = new HybridToolAttemptInvoker({
+        nodes: hybrid.nodes,
+        routing: hybrid.routing,
+        localNodeId: hybrid.localNodeId,
+        remotes: hybrid.remotes,
+        localInvoke,
+        toolContract: (name: string) => registry.getToolContract(name),
+      });
+      return invoker.invoke;
+    });
+    const { ExecutionStore: HybridExecutionStore } =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("./sessions/execution_store") as typeof import("./sessions/execution_store");
+    const { ToolExecutionCoordinator: HybridCoordinator } =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("./tools/execution_coordinator") as typeof import("./tools/execution_coordinator");
+    hybridCoordinator = new HybridCoordinator(
+      store,
+      new HybridExecutionStore(store.unsafeDbHandle(), store.sanitizerHandle()),
+      registry,
+      permissions,
+      attempts,
+      sanitizer,
+      logger,
+      metrics,
+    );
+  }
   const orchestrator = new ToolOrchestrator({
     registry,
     execution,
+    ...(hybridCoordinator !== undefined ? { coordinator: hybridCoordinator } : {}),
     store,
     permissions,
     sanitizer,

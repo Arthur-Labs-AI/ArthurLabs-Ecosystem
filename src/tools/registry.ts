@@ -221,4 +221,38 @@ export class ToolRegistry {
     };
     return new SingleAttemptExecutionService(this, permissions, invoke);
   }
+
+  /**
+   * HR-03E: build the SC-03 single-attempt primitive with a hybrid
+   * AttemptInvoker routed AFTER authorization.
+   *
+   * The caller supplies a route-aware invoker factory that receives ONLY
+   * the private local-invoke closure (never the executor map): the
+   * ToolRegistry security seam is preserved - validation, PermissionService
+   * evaluation, and the SC-02 final approval verification in
+   * SingleAttemptExecutionService all run BEFORE the hybrid invoker is
+   * called. The default buildApp path never calls this: it stays local-only
+   * via createSingleAttemptService. A future HR-03H runtime injects the
+   * hybrid factory explicitly; no env/discovery/config is read here.
+   */
+  createHybridSingleAttemptService(
+    permissions: PermissionService,
+    buildHybridInvoker: (localInvoke: AttemptInvoker) => AttemptInvoker,
+  ): SingleAttemptExecutionService {
+    const localInvoke: AttemptInvoker = async (name, args, ctx, attempt) => {
+      const tool = this.tools.get(name);
+      if (!tool) {
+        throw new ArthurError("TOOL_NOT_FOUND", "Unknown tool: " + name);
+      }
+      return await tool.executor(args, ctx, attempt);
+    };
+    return new SingleAttemptExecutionService(this, permissions, buildHybridInvoker(localInvoke));
+  }
+
+  /** HR-03E: trusted contract identity for hybrid LAN dispatch binding. */
+  getToolContract(name: string): { version: string; definitionHash: string } | undefined {
+    const tool = this.tools.get(name);
+    if (!tool) return undefined;
+    return { version: tool.definition.version, definitionHash: tool.definitionHash };
+  }
 }
