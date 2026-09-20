@@ -13,6 +13,7 @@ import {
 } from '@qa/shared';
 import {
   buildBaselineIndex,
+  buildReportCorrectionIntro,
   commandIdentity,
   convertEvidence,
   convertReportEvidence,
@@ -20,6 +21,7 @@ import {
   isTestCommand,
   normalizeCommandText,
   parseWholeJson,
+  REPORT_STRENGTH_COMPATIBILITY,
   summarizeSchemaIssues,
   validateLocation,
   validateProductionFindings,
@@ -476,5 +478,19 @@ describe('shared evidence pipeline', () => {
     });
     expect(summary).toContain('evidence.0.type');
     expect(summary).not.toContain('sentry-test-secret');
+  });
+
+  it('appends the strength compatibility matrix only for strength rejections', () => {
+    const strengthErrors = [
+      'evidence.14.strength: Strength tool_diagnostic is impossible for manual evidence',
+    ];
+    const withMatrix = buildReportCorrectionIntro(strengthErrors);
+    expect(withMatrix).toContain('Correct these report issues');
+    expect(withMatrix).toContain(REPORT_STRENGTH_COMPATIBILITY.slice(0, 60));
+    expect(withMatrix).toContain('downgrade the strength');
+    const otherErrors = ['findings.0.locations: Unknown evidence key'];
+    const withoutMatrix = buildReportCorrectionIntro(otherErrors);
+    expect(withoutMatrix).toContain('Correct these report issues');
+    expect(withoutMatrix).not.toContain(REPORT_STRENGTH_COMPATIBILITY.slice(0, 60));
   });
 });

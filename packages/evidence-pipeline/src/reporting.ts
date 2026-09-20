@@ -91,13 +91,27 @@ export const REPORT_ENVELOPE_SCHEMA =
   'never a directory, glob, or missing path. If investigation identified only a directory, cite a concrete file actually inspected inside it, ' +
   'or omit unsupported evidence and findings rather than inventing a path.';
 
+/** Evidence strength/type compatibility matrix: a strength label must
+ *  never manufacture provenance. Appended to the correction intro when
+ *  the rejection concerns strength, so a weaker model gets the rule
+ *  instead of just the violation. */
+export const REPORT_STRENGTH_COMPATIBILITY =
+  'Evidence strength/type compatibility (exact rule): ' +
+  "manual evidence (your own reasoning notes) allows ONLY 'weak' or 'speculative' strength; " +
+  "code_reference evidence allows 'weak', 'speculative', or 'strong_code_evidence' (never reproduced_*); " +
+  "'reproduced_failure'/'reproduced_behavior' require a tool/test operation from the frozen ledger; " +
+  "'tool_diagnostic' requires a ledger operation with a known outcome. " +
+  'When in doubt, downgrade the strength or drop the evidence item — a weaker honest report passes; an overclaimed one is rejected.';
+
 /** Bounded correction intro for report-only retries (§34). */
 export function buildReportCorrectionIntro(errors: readonly string[]): string {
   const bounded = errors.slice(0, 8).map((error, index) => `${index + 1}. ${error}`);
+  const needsMatrix = errors.some((error) => /strength/i.test(error));
   return (
     'Your report was rejected. Do not investigate further. Do not use tools. No new operations will be observed.\n' +
     'Correct these report issues:\n' +
     bounded.join('\n') +
+    (needsMatrix ? '\n' + REPORT_STRENGTH_COMPATIBILITY : '') +
     '\nUse ONLY the frozen ledger below. Return the complete corrected report.'
   );
 }
