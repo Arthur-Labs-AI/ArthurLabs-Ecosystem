@@ -401,6 +401,10 @@ describe('Test F — cancellation while the turn is active', () => {
     roots.push(root);
     const input = await request(root);
     let owned: ChildProcess | undefined;
+    // Fixture emits observable tool activity (tool_use + successful
+    // result pairs): text-only chunks produce no harness events, so a
+    // text-only fixture would leave the 3rd iterator next() pending
+    // forever and the cancel below untested (pre-existing test bug).
     const script = [
       'const out = (o) => { process.stdout.write(JSON.stringify(o) + "\\n"); };',
       'out(' +
@@ -412,7 +416,12 @@ describe('Test F — cancellation while the turn is active', () => {
           model: 'm',
         }) +
         ');',
-      'setInterval(() => { out({ type: "assistant", message: { content: [{ type: "text", text: "still thinking" }] } }); }, 100);',
+      'let i = 0;',
+      'setInterval(() => {',
+      '  const id = "tu-cancel-" + (i++);',
+      '  out({ type: "assistant", message: { content: [{ type: "tool_use", id, name: "Bash", input: { command: "echo hi" } }] } });',
+      '  out({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, content: [{ type: "text", text: "hi" }] }] } });',
+      '}, 100);',
     ].join('\n');
     const adapter = new ClaudeCodeHarnessAdapter({
       executable: 'claude-test-fixture',

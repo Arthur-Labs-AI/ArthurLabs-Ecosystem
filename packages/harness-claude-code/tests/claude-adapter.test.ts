@@ -308,6 +308,213 @@ describe('ClaudeCodeHarnessAdapter', () => {
     expect(failed.failure?.message).toContain('Twenty-five consecutive tool calls failed');
   });
 
+  it('aborts on trailing-window rate despite sparse successes resetting the streak', async () => {
+    // Live regression (run_01M325QK0BR8H2SADF4YCJCDVA): 3 successes in
+    // ~50 calls kept resetting the consecutive streak while the turn
+    // thrashed at ~94% failure. The trailing window (34/40) aborts at
+    // the 40th completion regardless of interleaved resets.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-window-loop-'));
+    roots.push(root);
+    const input = await request(root);
+    const turn: ClaudeStreamEvent[] = [];
+    for (let i = 0; i < 60; i += 1) {
+      const ok = i % 12 === 11;
+      turn.push(
+        evt('assistant', {
+          message: {
+            content: [
+              {
+                type: 'tool_use',
+                id: 'tu-win-' + i,
+                name: 'Read',
+                input: { file_path: '/ws/project/file-' + i + '.ts' },
+              },
+            ],
+          },
+        }),
+        evt('user', {
+          message: {
+            content: [
+              {
+                type: 'tool_result',
+                tool_use_id: 'tu-win-' + i,
+                ...(ok ? {} : { is_error: true }),
+                content: [{ type: 'text', text: ok ? 'ok' : 'Error: file not found' }],
+              },
+            ],
+          },
+        }),
+      );
+    }
+    turn.push(evt('result', { is_error: false, subagent_stats: { spawned: 0 } }));
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-window',
+        startSession: async () => ({ runText: async () => turn }),
+        close: async () => undefined,
+      }),
+    });
+    const events: HarnessEvent[] = [];
+    for await (const event of adapter.run(input)) events.push(event);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.failed');
+    const failed = events.at(-1) as { failure?: { code?: string; message?: string } };
+    expect(failed.failure?.code).toBe('GLM_TOOL_LOOP');
+    expect(failed.failure?.message).toContain('of the last 40');
+    // Aborted at the 40th completion, not after all 60.
+    expect(events.filter((e) => e.type === 'tool.completed').length).toBeLessThan(60);
+  });
+
+  it('does not trip the window on a noisy-but-progressing turn', async () => {
+    // Alternating fail/success (50% rate) over 45 completions must NOT
+    // abort: the window needs >= 34/40 failures. Guards against
+    // false-positives on legitimately difficult investigations.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-window-noisy-'));
+    roots.push(root);
+    const input = await request(root);
+    const turn: ClaudeStreamEvent[] = [];
+    for (let i = 0; i < 45; i += 1) {
+      const ok = i % 2 === 1;
+      turn.push(
+        evt('assistant', {
+          message: {
+            content: [
+              {
+                type: 'tool_use',
+                id: 'tu-noisy-' + i,
+                name: 'Read',
+                input: { file_path: '/ws/project/file-' + i + '.ts' },
+              },
+            ],
+          },
+        }),
+        evt('user', {
+          message: {
+            content: [
+              {
+                type: 'tool_result',
+                tool_use_id: 'tu-noisy-' + i,
+                ...(ok ? {} : { is_error: true }),
+                content: [{ type: 'text', text: ok ? 'ok' : 'missing' }],
+              },
+            ],
+          },
+        }),
+      );
+    }
+    turn.push(
+      evt('assistant', {
+        message: { content: [{ type: 'text', text: 'Investigation complete.' }] },
+      }),
+      evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+    );
+    let calls = 0;
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-noisy',
+        startSession: async () => ({
+          runText: async () => {
+            calls += 1;
+            if (calls === 1) return planTurn();
+            if (calls === 2) return turn;
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+  });
+
+  it('resets loop state between turns so one turn never dooms the next', async () => {
+    // Two planning attempts with 20 distinct failures each: without a
+    // per-turn reset the trailing window would accumulate 40/40 and
+    // abort attempt 2; with it, attempt 2 parses its plan and the run
+    // continues. (Consecutive-25 never trips: each turn has only 20.)
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-window-reset-'));
+    roots.push(root);
+    const input = await request(root);
+    const failingPlan = (tag: string): ClaudeStreamEvent[] => {
+      const events: ClaudeStreamEvent[] = [];
+      for (let i = 0; i < 20; i += 1) {
+        events.push(
+          evt('assistant', {
+            message: {
+              content: [
+                {
+                  type: 'tool_use',
+                  id: 'tu-' + tag + '-' + i,
+                  name: 'Read',
+                  input: { file_path: '/ws/project/' + tag + '-' + i + '.ts' },
+                },
+              ],
+            },
+          }),
+          evt('user', {
+            message: {
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: 'tu-' + tag + '-' + i,
+                  is_error: true,
+                  content: [{ type: 'text', text: 'missing' }],
+                },
+              ],
+            },
+          }),
+        );
+      }
+      return events;
+    };
+    const planWithFailures = (tag: string): ClaudeStreamEvent[] => [
+      ...failingPlan(tag),
+      evt('assistant', {
+        message: { content: [{ type: 'text', text: validPlan() }] },
+      }),
+      evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+    ];
+    let calls = 0;
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-reset',
+        startSession: async () => ({
+          runText: async () => {
+            calls += 1;
+            // Attempt 1: prose (forces a planning retry, keeps its 20
+            // failures in turn state); attempt 2: 20 more failures PLUS
+            // a valid plan. Only per-turn reset lets attempt 2 survive.
+            if (calls === 1)
+              return [
+                ...failingPlan('a'),
+                evt('assistant', {
+                  message: { content: [{ type: 'text', text: 'prose, not JSON' }] },
+                }),
+                evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+              ];
+            if (calls === 2) return planWithFailures('b');
+            if (calls === 3) return investigationTurn();
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+  });
+
   it('builds the report prompt AFTER investigation with all observed operations', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-ledger-timing-'));
     roots.push(root);

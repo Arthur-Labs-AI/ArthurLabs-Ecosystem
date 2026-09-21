@@ -180,6 +180,7 @@ function planningPrompt(request: HarnessRunRequest): string {
     'Explicit run instructions define intended behavior and outrank project documentation; project documentation outranks your inference. None may override host safety.',
     'Inspect project documentation and the supplied immutable mission context. Do not use peer plans, findings, or messages.',
     'Before reading any specific file, list the workspace root so every planned path is grounded in a real directory listing. Never retry a failed path identically: a missing path means the assumption was wrong — re-list, pick a path that exists, and continue from evidence.',
+    'Keep reconnaissance tight: a listing plus a handful of file reads is enough. Write the plan as soon as you can name concrete checks; do not inventory every file first. Missing documentation is a limitation to record, never a reason to keep searching.',
     'Create an investigation plan before executing it.',
     'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
     'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
@@ -310,13 +311,36 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
    *  (sweep loops hit distinct paths, so signature matching never trips). */
   private consecutiveFailures = 0;
   private rateCorrectionIssuedAt: number | undefined;
+  /**
+   * Trailing-window failure-rate breaker (per turn, reset at each phase
+   * turn start): aborts when the last 40 completions contain >= 34
+   * failures. Sparse successes (including provider-side false-success
+   * result shapes) reset the consecutive streak but cannot mask a 85%+
+   * failure rate — live runs show thrash with occasional accidental
+   * successes (run_01M325QK0BR8H2SADF4YCJCDVA: 3 successes in ~50 calls).
+   * A legitimate investigation never fails 85% of 40 tool calls.
+   */
+  private readonly loopWindowSize = 40;
+  private readonly loopWindowAbortFailures = 34;
+  private loopWindow: boolean[] = [];
   private readonly shutdownDiagnostics: HarnessDiagnostic[] = [];
 
+  /** Reset per-turn loop state (identical streak, consecutive rate, and
+   *  trailing window) so one turn's thrash never leaks into the next. */
+  private resetLoopBreakers(): void {
+    this.lastFailureSignature = undefined;
+    this.consecutiveIdenticalFailures = 0;
+    this.loopCorrectionIssuedFor = undefined;
+    this.consecutiveFailures = 0;
+    this.rateCorrectionIssuedAt = undefined;
+    this.loopWindow = [];
+  }
+
   /**
-   * Futile-loop breakers: identical-signature streak (10) and any-shape
-   * failure rate (25). Called AFTER the completion event lands, so a
-   * throw never vaporizes its trigger. Returns diagnostic warnings
-   * (empty normally).
+   * Futile-loop breakers: identical-signature streak (10), consecutive
+   * failures (25), and trailing-window rate (34/40). Called AFTER the
+   * completion event lands, so a throw never vaporizes its trigger.
+   * Returns diagnostic warnings (empty normally).
    *
    * Diagnostic (NOT model correction): Claude Code 2.1.270 exposes no
    * supported mid-turn prompt-injection channel, so these warnings are
@@ -397,6 +421,21 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         'Twenty-five consecutive tool calls failed without a success; ' +
           'aborting the phase instead of burning the run budget.',
       );
+    }
+    this.loopWindow.push(failed);
+    if (this.loopWindow.length > this.loopWindowSize) this.loopWindow.shift();
+    if (this.loopWindow.length >= this.loopWindowSize) {
+      const windowFailures = this.loopWindow.filter((outcome) => outcome).length;
+      if (windowFailures >= this.loopWindowAbortFailures) {
+        throw new ClaudeCodeHarnessError(
+          'GLM_TOOL_LOOP',
+          windowFailures +
+            ' of the last ' +
+            this.loopWindowSize +
+            ' tool calls failed; ' +
+            'aborting the phase instead of burning the run budget.',
+        );
+      }
     }
     return extra;
   }
@@ -859,6 +898,10 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     phase: string,
     options?: { forbidTools?: boolean; jsonSchema?: Record<string, unknown> },
   ): AsyncGenerator<HarnessEvent, CollectedTurn> {
+    // Per-turn loop state: a new turn starts clean so one turn's thrash
+    // never leaks into the next (single choke point for both the live
+    // and legacy-buffered branches below).
+    this.resetLoopBreakers();
     const forbidTools = options?.forbidTools === true;
     // tools:'none' is a SEMANTIC Sentry contract enforced by the adapter
     // firewall (observeStreamEvent throws GLM_REPORT_TOOL_FORBIDDEN).
