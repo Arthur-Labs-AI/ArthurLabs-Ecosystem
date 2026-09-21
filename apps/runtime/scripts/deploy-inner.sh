@@ -27,7 +27,11 @@ export CI=true
 echo "[sentry-runtime] installing Linux dependencies..."
 pnpm install --prefer-offline --no-frozen-lockfile
 echo "[sentry-runtime] building runtime packages..."
-pnpm --filter @qa/runtime-protocol --filter @qa/runtime build
+# Build the runtime AND every workspace package it imports at runtime.
+# Relying on turbo's dependency inference left harness/pipeline dists
+# stale after a source sync (observed: freshly synced adapter.ts with a
+# previously built adapter.js). Explicit filters close that hole.
+pnpm --filter @qa/runtime-protocol --filter @qa/runtime --filter @qa/harness-claude-code --filter @qa/harness-deepseek --filter @qa/harness-muse --filter @qa/evidence-pipeline --filter @qa/merger --filter @qa/verifier build
 echo "[sentry-runtime] activating..."
 rm -rf "$DEST"; mv "$DEST.tmp" "$DEST"
 rm -f "$HOME/.local/share/sentry/runtime/current"
