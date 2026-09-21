@@ -9,7 +9,13 @@ export type ClaudeCodeHarnessErrorCode =
   | 'GLM_SUBAGENT_FORBIDDEN'
   | 'GLM_REPORT_TOOL_FORBIDDEN'
   | 'GLM_TOOL_LOOP'
-  | 'GLM_CANCEL_FAILED';
+  | 'GLM_CANCEL_FAILED'
+  | 'GLM_INIT_TIMEOUT'
+  | 'GLM_TURN_TIMEOUT'
+  | 'GLM_PROVIDER_RATE_LIMITED'
+  | 'GLM_PROVIDER_TRANSIENT'
+  | 'GLM_PROVIDER_BAD_REQUEST'
+  | 'GLM_BINARY_START_FAILED';
 
 export class ClaudeCodeHarnessError extends Error {
   constructor(

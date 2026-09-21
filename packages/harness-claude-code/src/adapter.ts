@@ -67,6 +67,7 @@ import {
   type ClaudeSessionView,
   type ClaudeSpawnSpec,
   type ClaudeStreamEvent,
+  type ClaudeTurnStream,
 } from './sdk.js';
 
 export interface ClaudeCodeHarnessAdapterOptions {
@@ -77,16 +78,30 @@ export interface ClaudeCodeHarnessAdapterOptions {
   readonly clientFactory?: ClaudeClientFactory;
   readonly shutdownTimeoutMs?: number;
   readonly turnTimeoutMs?: number;
+  readonly initializeTimeoutMs?: number;
   readonly onRuntimeIdentity?: (identity: {
     readonly harnessVersion?: string;
     readonly executableVersion?: string;
   }) => void;
 }
 
+export class ClaudeInitTimeoutError extends ClaudeCodeHarnessError {
+  constructor(budgetMs: number) {
+    super(
+      'GLM_INIT_TIMEOUT',
+      'Claude Code turn produced no initialization event within ' +
+        String(budgetMs) +
+        ' ms; aborting the owned turn instead of spending the turn budget on startup.',
+      true,
+    );
+    this.name = 'ClaudeInitTimeoutError';
+  }
+}
+
 export class ClaudeTurnTimeoutError extends ClaudeCodeHarnessError {
   constructor(phase: string, budgetMs: number) {
     super(
-      'GLM_START_FAILED',
+      'GLM_TURN_TIMEOUT',
       'Claude Code ' + phase + ' turn exceeded its ' + String(budgetMs) + ' ms budget.',
       true,
     );
@@ -253,6 +268,8 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   private readonly clientFactory: ClaudeClientFactory;
   private readonly shutdownTimeoutMs: number;
   private readonly turnTimeoutMs: number;
+  private readonly initializeTimeoutMs: number;
+  private activeTurn: ClaudeTurnStream | undefined;
   private readonly secrets: readonly string[];
   private client?: ClaudeClientView;
   private closePromise?: Promise<void>;
@@ -276,10 +293,20 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   private rateCorrectionIssuedAt: number | undefined;
   private readonly shutdownDiagnostics: HarnessDiagnostic[] = [];
 
-  /** Futile-loop breakers: identical-signature streak (10) and any-shape
-   *  failure rate (25). Called AFTER the completion event lands, so a
-   *  throw never vaporizes its trigger. Returns correction warnings
-   *  (empty normally). */
+  /**
+   * Futile-loop breakers: identical-signature streak (10) and any-shape
+   * failure rate (25). Called AFTER the completion event lands, so a
+   * throw never vaporizes its trigger. Returns diagnostic warnings
+   * (empty normally).
+   *
+   * Diagnostic (NOT model correction): Claude Code 2.1.270 exposes no
+   * supported mid-turn prompt-injection channel, so these warnings are
+   * coordinator-observable telemetry flushed into the live event stream —
+   * the model never receives them as turn feedback. The hard thresholds
+   * below abort the owned turn immediately (fail-fast); the soft
+   * thresholds (5 identical / 15 consecutive) only record that the turn
+   * is already thrashing so the run history shows it.
+   */
   private trackToolResult(
     toolName: string,
     signatureArgs: string,
@@ -303,12 +330,12 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         extra.push(
           emit({
             type: 'warning',
-            code: 'GLM_TOOL_LOOP_CORRECTION',
+            code: 'GLM_TOOL_LOOP_WARNING',
             message: (
               "Tool '" +
               toolName +
-              "' failed 5 times with identical arguments; vary the approach " +
-              '(list the directory, or read a file inside it) instead of retrying.'
+              "' failed 5 times with identical arguments; the turn is thrashing " +
+              '(run telemetry only — the model does not receive this warning mid-turn).'
             ).slice(0, 500),
           }),
         );
@@ -336,12 +363,11 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       extra.push(
         emit({
           type: 'warning',
-          code: 'GLM_TOOL_LOOP_CORRECTION',
+          code: 'GLM_TOOL_LOOP_WARNING',
           message: (
             'Fifteen consecutive tool calls failed without a success; ' +
-            'the current approach is not working. List the workspace root, ' +
-            'read one concrete file that exists, and continue from evidence — ' +
-            'do not sweep further paths blindly.'
+            'the turn is sweeping blindly ' +
+            '(run telemetry only — the model does not receive this warning mid-turn).'
           ).slice(0, 500),
         }),
       );
@@ -362,6 +388,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     this.clientFactory = options.clientFactory ?? createProductionClaudeClient;
     this.shutdownTimeoutMs = options.shutdownTimeoutMs ?? 10_000;
     this.turnTimeoutMs = options.turnTimeoutMs ?? 1_800_000;
+    this.initializeTimeoutMs = options.initializeTimeoutMs ?? 30_000;
     const child = buildClaudeChildEnvironment({ source: this.hostEnvironment });
     this.environment = child.environment;
     this.childEnvironmentReport = child;
@@ -489,10 +516,14 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // present Agent/Task tool means the composition failed open.
       // WebFetch/WebSearch are allowed investigative QA tools (§27-29)
       // and must NOT trip this check; report-turn tool use is still
-      // failed by the reporting firewall.
+      // failed by the reporting firewall. Artifact is denied: newer
+      // Claude Code tool outside the Z.AI route's supported vocabulary
+      // (provider 400 risk, no QA use) — present means composition
+      // failed open.
       const forbiddenPresent = tools.filter(
         (tool): tool is string =>
-          typeof tool === 'string' && /^(agent|task|skill|cron|schedulewakeup)$/i.test(tool),
+          typeof tool === 'string' &&
+          /^(agent|task|skill|cron|schedulewakeup|artifact)$/i.test(tool),
       );
       if (forbiddenPresent.length > 0) {
         throw new ClaudeCodeHarnessError(
@@ -739,6 +770,215 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     return out;
   }
 
+  /**
+   * Classify a raw transport/process failure into the most precise typed
+   * code available from STRUCTURED signals only (exit codes, error names,
+   * result-event payloads, timeout kinds). Human stderr/result text is
+   * used only as a last-resort hint and is always redacted; credentials
+   * never persist (all messages flow through redactDiagnostic).
+   */
+  private classifyTurnFailure(cause: unknown, phase: string): ClaudeCodeHarnessError {
+    if (cause instanceof ClaudeCodeHarnessError) return cause;
+    if (cause instanceof ClaudeTurnTimeoutError || cause instanceof ClaudeInitTimeoutError)
+      return cause;
+    const message = redactDiagnostic(cause, this.secrets);
+    const text = cause instanceof Error ? cause.message + ' ' + cause.name : String(cause);
+    if (/Claude client is closed/i.test(text))
+      return new ClaudeCodeHarnessError('GLM_CANCEL_FAILED', message, true);
+    if (/no initialization event within/i.test(text))
+      return new ClaudeInitTimeoutError(this.initializeTimeoutMs);
+    if (/exceeded its \d+ ms budget/i.test(text))
+      return new ClaudeTurnTimeoutError(phase, this.turnTimeoutMs);
+    if (/exited with code/i.test(text)) {
+      if (/ENOENT/i.test(text))
+        return new ClaudeCodeHarnessError(
+          'GLM_BINARY_START_FAILED',
+          'Claude Code binary could not be started: ' + message,
+          false,
+        );
+      if (/EACCES|EPERM/i.test(text))
+        return new ClaudeCodeHarnessError(
+          'GLM_BINARY_START_FAILED',
+          'Claude Code binary could not be executed: ' + message,
+          false,
+        );
+      if (/429|rate.?limit|too many requests/i.test(text))
+        return new ClaudeCodeHarnessError('GLM_PROVIDER_RATE_LIMITED', message, true);
+      if (
+        /50[023]|52[0-9]|gateway|overloaded|temporar|unavailable|timeout|ECONN|ENOTFOUND|socket/i.test(
+          text,
+        )
+      )
+        return new ClaudeCodeHarnessError('GLM_PROVIDER_TRANSIENT', message, true);
+      if (/40[01]|bad request|invalid|incompatib|unsupported|unrecognized/i.test(text))
+        return new ClaudeCodeHarnessError('GLM_PROVIDER_BAD_REQUEST', message, false);
+      return new ClaudeCodeHarnessError('GLM_START_FAILED', message, true);
+    }
+    if (cause instanceof Error && cause.name === 'ZodError')
+      return new ClaudeCodeHarnessError(
+        'GLM_INVALID_RESULT',
+        'Claude Code returned data that did not match the required schema.',
+      );
+    return new ClaudeCodeHarnessError('GLM_START_FAILED', message, true);
+  }
+
+  /**
+   * Live streaming turn: consumes the owned Claude child incrementally
+   * and yields each harness event to the coordinator as it is observed.
+   * Loop breakers abort the owned turn mid-flight (no waiting for Claude
+   * to finish); init/turn timeouts terminate the owned child; cancel
+   * closes the client. Yields NOTHING on entry — every yield below is a
+   * real observed event, so RunCoordinator's activity-aware timeout is
+   * refreshed by genuine GLM activity, not turn completion.
+   */
+  private async *streamTurn(
+    session: ClaudeSessionView,
+    text: string,
+    agentRunId: AgentRunId,
+    phase: string,
+    options?: { forbidTools?: boolean; jsonSchema?: Record<string, unknown> },
+  ): AsyncGenerator<HarnessEvent, CollectedTurn> {
+    const forbidTools = options?.forbidTools === true;
+    // tools:'none' is a SEMANTIC Sentry contract enforced by the adapter
+    // firewall (observeStreamEvent throws GLM_REPORT_TOOL_FORBIDDEN).
+    // Claude Code 2.1.270 exposes no trustworthy native empty-tools flag,
+    // so the production client deliberately does NOT translate it into CLI
+    // flags — only outputSchema affects the invocation. Do not pretend
+    // otherwise: inventing a --no-tools flag would silently mislead.
+    const turnOptions =
+      options?.jsonSchema === undefined
+        ? forbidTools
+          ? { phase: 'reporting' as const, tools: 'none' as const }
+          : undefined
+        : {
+            phase: 'reporting' as const,
+            tools: 'none' as const,
+            outputSchema: options.jsonSchema,
+          };
+    const emit = (value: Readonly<Record<string, unknown>>): HarnessEvent =>
+      event(agentRunId, value);
+    const collected: HarnessEvent[] = [];
+    const textAcc: { value: string } = { value: '' };
+    const turnUsage: { usage?: AgentUsage } = {};
+    let result: ClaudeStreamEvent | undefined;
+    let stream: ClaudeTurnStream | undefined;
+    let legacyBuffered: ClaudeStreamEvent[] | undefined;
+    try {
+      const started = session.runText(text, turnOptions) as
+        ClaudeTurnStream | Promise<ClaudeStreamEvent[]> | Promise<ClaudeTurnStream>;
+      if (started instanceof Promise) {
+        const awaited = await started;
+        if (Symbol.asyncIterator in Object(awaited)) {
+          stream = awaited as ClaudeTurnStream;
+        } else {
+          legacyBuffered = awaited as ClaudeStreamEvent[];
+        }
+      } else {
+        stream = started;
+      }
+    } catch (cause) {
+      throw this.classifyTurnFailure(cause, phase);
+    }
+    // Legacy fake-array sessions (existing unit tests): process the
+    // completed array through the same observer path. No live abort is
+    // possible there (nothing is running), but thresholds still throw
+    // GLM_TOOL_LOOP with identical semantics.
+    if (legacyBuffered !== undefined) {
+      for (const chunk of legacyBuffered) {
+        if (chunk.type === 'result') result = chunk;
+        let produced: HarnessEvent[];
+        try {
+          produced = this.observeStreamEvent(
+            chunk,
+            agentRunId,
+            emit,
+            textAcc,
+            turnUsage,
+            forbidTools,
+          );
+        } catch (cause) {
+          if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
+            throw Object.assign(cause, {
+              partialEvents: [...collected, ...partialTurnEvents(cause)],
+            });
+          }
+          throw cause instanceof ClaudeCodeHarnessError
+            ? cause
+            : new ClaudeCodeHarnessError(
+                'GLM_INVALID_RESULT',
+                'Claude Code stream event could not be interpreted.',
+              );
+        }
+        for (const emitted of produced) {
+          collected.push(emitted);
+          yield emitted;
+        }
+      }
+      return { text: textAcc.value, events: collected, usage: turnUsage.usage, result };
+    }
+    const live = stream as ClaudeTurnStream;
+    // Track the live turn so cancel() can abort it mid-flight without
+    // waiting for Claude to finish. Cleared in the finally below.
+    this.activeTurn = live;
+    try {
+      for await (const chunk of live) {
+        if (chunk.type === 'result') result = chunk;
+        let produced: HarnessEvent[];
+        try {
+          produced = this.observeStreamEvent(
+            chunk,
+            agentRunId,
+            emit,
+            textAcc,
+            turnUsage,
+            forbidTools,
+          );
+        } catch (cause) {
+          // Loop abort: flush the turn-so-far plus the trigger's buffer,
+          // THEN terminate the owned child so no further provider tokens
+          // burn. The model does not continue this turn after abort.
+          if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
+            const merged = [...collected, ...partialTurnEvents(cause)];
+            for (const emitted of merged.slice(collected.length)) {
+              collected.push(emitted);
+              yield emitted;
+            }
+            await live.abort().catch(() => undefined);
+            throw Object.assign(cause, { partialEvents: [...collected] });
+          }
+          await live.abort().catch(() => undefined);
+          throw cause instanceof ClaudeCodeHarnessError
+            ? cause
+            : new ClaudeCodeHarnessError(
+                'GLM_INVALID_RESULT',
+                'Claude Code stream event could not be interpreted.',
+              );
+        }
+        for (const emitted of produced) {
+          collected.push(emitted);
+          yield emitted;
+        }
+      }
+    } catch (cause) {
+      if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
+        if (!('partialEvents' in (cause as object))) {
+          throw Object.assign(cause, { partialEvents: [...collected] });
+        }
+        throw cause;
+      }
+      throw this.classifyTurnFailure(cause, phase);
+    } finally {
+      if (this.activeTurn === live) this.activeTurn = undefined;
+    }
+    return { text: textAcc.value, events: collected, usage: turnUsage.usage, result };
+  }
+
+  /**
+   * Buffered compatibility turn: collects the live stream (legacy fake
+   * sessions + non-streaming callers). Retained for compatibility;
+   * production phases use streamPhaseTurn so the coordinator observes
+   * every event mid-turn.
+   */
   private async runTurn(
     session: ClaudeSessionView,
     text: string,
@@ -746,70 +986,63 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     phase: string,
     options?: { forbidTools?: boolean; jsonSchema?: Record<string, unknown> },
   ): Promise<CollectedTurn> {
-    const deadline = Date.now() + this.turnTimeoutMs;
-    const forbidTools = options?.forbidTools === true;
-    const runPromise =
-      options?.jsonSchema === undefined
-        ? session.runText(text, forbidTools ? { phase: 'reporting', tools: 'none' } : undefined)
-        : session.runText(text, {
-            phase: 'reporting',
-            tools: 'none',
-            outputSchema: options.jsonSchema,
-          });
-    const events = await (async (): Promise<ClaudeStreamEvent[]> => {
-      const budget = deadline - Date.now();
-      if (budget <= 0) throw new ClaudeTurnTimeoutError(phase, this.turnTimeoutMs);
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      try {
-        return await Promise.race([
-          runPromise,
-          new Promise<never>((_resolve, reject) => {
-            timer = setTimeout(
-              () => reject(new ClaudeTurnTimeoutError(phase, this.turnTimeoutMs)),
-              budget,
-            );
-          }),
-        ]);
-      } catch (cause) {
-        // A timed-out turn abandons its child: terminate owned processes
-        // promptly instead of leaving them for coordinator teardown.
-        // Dispose is idempotent; the run aborts after this throw.
-        if (cause instanceof ClaudeTurnTimeoutError) {
-          await this.dispose().catch(() => undefined);
-        }
-        throw cause;
-      } finally {
-        if (timer !== undefined) clearTimeout(timer);
-      }
-    })();
-    const emit = (value: Readonly<Record<string, unknown>>): HarnessEvent =>
-      event(agentRunId, value);
     const collected: HarnessEvent[] = [];
-    const textAcc: { value: string } = { value: '' };
-    const turnUsage: { usage?: AgentUsage } = {};
-    let result: ClaudeStreamEvent | undefined;
-    for (const stream of events) {
-      try {
-        if (stream.type === 'result') result = stream;
-        collected.push(
-          ...this.observeStreamEvent(stream, agentRunId, emit, textAcc, turnUsage, forbidTools),
-        );
-      } catch (cause) {
-        // Loop abort: merge the turn-so-far (`collected`) with the throw
-        // site's in-flight buffer so no observed event vaporizes.
-        if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
-          throw Object.assign(cause, {
-            partialEvents: [...collected, ...partialTurnEvents(cause)],
-          });
-        }
-        if (cause instanceof ClaudeCodeHarnessError) throw cause;
-        throw new ClaudeCodeHarnessError(
-          'GLM_INVALID_RESULT',
-          'Claude Code stream event could not be interpreted.',
-        );
-      }
+    const gen = this.streamTurn(session, text, agentRunId, phase, options);
+    let step = await gen.next();
+    while (step.done !== true) {
+      collected.push(step.value);
+      step = await gen.next();
     }
-    return { text: textAcc.value, events: collected, usage: turnUsage.usage, result };
+    const final = step.value as CollectedTurn;
+    return { text: final.text, events: collected, usage: final.usage, result: final.result };
+  }
+
+  /**
+   * Live phase turn: yields every observed harness event IMMEDIATELY so
+   * the run() generator forwards it to the coordinator mid-turn (which
+   * persists it and refreshes the activity-aware timeout), and resolves
+   * the collected turn for phase parsing. On loop-abort the owned child
+   * is already terminated inside streamTurn; the throw's partialEvents
+   * carry only the unyielded tail (normally empty — streamTurn yields
+   * each event before the abort throw), so phase catch blocks flush
+   * without double-yielding.
+   */
+  private async *streamPhaseTurn(
+    session: ClaudeSessionView,
+    text: string,
+    agentRunId: AgentRunId,
+    phase: string,
+    options?: { forbidTools?: boolean; jsonSchema?: Record<string, unknown> },
+  ): AsyncGenerator<HarnessEvent, CollectedTurn> {
+    const gen = this.streamTurn(session, text, agentRunId, phase, options);
+    let step = await gen.next();
+    let delivered = 0;
+    const forwarded: HarnessEvent[] = [];
+    let final: CollectedTurn | undefined;
+    try {
+      while (step.done !== true) {
+        forwarded.push(step.value);
+        delivered += 1;
+        yield step.value;
+        step = await gen.next();
+      }
+      final = step.value as CollectedTurn;
+    } catch (cause) {
+      // Already yielded `delivered` events: only the unyielded tail
+      // (normally empty) may flush in the phase catch block.
+      if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
+        const all = [...partialTurnEvents(cause)];
+        throw Object.assign(cause, { partialEvents: all.slice(delivered) });
+      }
+      throw cause;
+    }
+    if (final === undefined) {
+      throw new ClaudeCodeHarnessError(
+        'GLM_INVALID_RESULT',
+        'Claude Code phase turn ended without a result.',
+      );
+    }
+    return { text: final.text, events: forwarded, usage: final.usage, result: final.result };
   }
 
   async *run(request: HarnessRunRequest): AsyncIterable<HarnessEvent> {
@@ -836,7 +1069,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         environment: this.environment,
         modelId: this.runtime.modelId,
         settingsPath,
-        initializeTimeoutMs: 30_000,
+        initializeTimeoutMs: this.initializeTimeoutMs,
         turnTimeoutMs: this.turnTimeoutMs,
         shutdownTimeoutMs: this.shutdownTimeoutMs,
       };
@@ -855,8 +1088,11 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       let planningUsage: AgentUsage | undefined;
       for (let attempt = 1; attempt <= MAX_PLANNING_ATTEMPTS; attempt += 1) {
         let planning: CollectedTurn;
-        try {
-          planning = await this.runTurn(
+        {
+          // Live: each observed event is yielded to the coordinator
+          // mid-turn (activity-aware timeout refresh); the resolved
+          // turn feeds plan parsing only (its events already yielded).
+          const live = this.streamPhaseTurn(
             session,
             planCorrection === undefined
               ? planningPrompt(request)
@@ -866,12 +1102,19 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             request.agentRunId,
             'planning',
           );
-        } catch (cause) {
-          // Loop abort carries its buffered events: flush before failing.
-          for (const emitted of partialTurnEvents(cause)) yield emitted;
-          throw cause;
+          try {
+            let step = await live.next();
+            while (step.done !== true) {
+              yield step.value;
+              step = await live.next();
+            }
+            planning = step.value;
+          } catch (cause) {
+            // Loop abort: unflushed tail only (live events already sent).
+            for (const emitted of partialTurnEvents(cause)) yield emitted;
+            throw cause;
+          }
         }
-        for (const emitted of planning.events) yield emitted;
         planningTurns += 1;
         planningUsage = sumUsage(planningUsage, planning.usage ?? {});
         if (planning.text.trim().length === 0) {
@@ -923,20 +1166,28 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       });
       // STAGE 2 — investigation only. Terminal prose is ignored (never
       // parsed as a result, never persisted as reasoning); tool events
-      // carry the evidentiary facts.
+      // carry the evidentiary facts. Live: yielded mid-turn so the
+      // coordinator's activity window tracks real tool work.
       let investigation: CollectedTurn;
-      try {
-        investigation = await this.runTurn(
+      {
+        const live = this.streamPhaseTurn(
           session,
           investigationPrompt(planResult),
           request.agentRunId,
           'investigation',
         );
-      } catch (cause) {
-        for (const emitted of partialTurnEvents(cause)) yield emitted;
-        throw cause;
+        try {
+          let step = await live.next();
+          while (step.done !== true) {
+            yield step.value;
+            step = await live.next();
+          }
+          investigation = step.value;
+        } catch (cause) {
+          for (const emitted of partialTurnEvents(cause)) yield emitted;
+          throw cause;
+        }
       }
-      for (const emitted of investigation.events) yield emitted;
       // STAGE 3 — reporting against the frozen ledger. Strict whole-
       // document JSON only. Provider structured output (--json-schema)
       // is REMOVED from the report flow: measured live, the schema path
@@ -957,13 +1208,21 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         let reporting: CollectedTurn | undefined;
         let errors: string[] | undefined;
         try {
-          reporting = await this.runTurn(
+          // Live: report-turn events stream mid-turn; the resolved turn
+          // feeds report parsing only (its events already yielded).
+          const live = this.streamPhaseTurn(
             session,
             reportPrompt(planResult, this.observedOperations, correction),
             request.agentRunId,
             'reporting',
             { forbidTools: true },
           );
+          let step = await live.next();
+          while (step.done !== true) {
+            yield step.value;
+            step = await live.next();
+          }
+          reporting = step.value;
         } catch (cause) {
           for (const emitted of partialTurnEvents(cause)) yield emitted;
           // Firewall trip: the model attempted a tool call in the
@@ -984,11 +1243,10 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             throw cause;
           }
         }
-        // A completed report turn (including a firewall-tripped one)
-        // consumed a model turn: account it. Usage events already yielded
-        // stay persisted either way.
+        // A completed report turn consumed a model turn: account it.
+        // Live events already yielded above stay persisted either way;
+        // the resolved turn feeds parsing only (never re-yielded).
         if (reporting !== undefined) {
-          for (const emitted of reporting.events) yield emitted;
           if (reporting.usage === undefined) reportTurns.push({});
           else reportTurns.push({ usage: reporting.usage });
           const candidate = parseReportAttempt(reporting.text, pipeline);
@@ -1087,25 +1345,31 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         usage,
       });
     } catch (cause) {
+      // Structured-first classification: typed harness errors (loop,
+      // firewall, timeouts) pass through verbatim; transport/process
+      // failures map via classifyTurnFailure. Auth/sandbox hints apply
+      // only when no precise signal exists.
       const typed =
         cause instanceof ClaudeCodeHarnessError
           ? cause
-          : cause instanceof Error && cause.name === 'ZodError'
-            ? new ClaudeCodeHarnessError(
-                'GLM_INVALID_RESULT',
-                'Claude Code returned data that did not match the required schema.',
-              )
-            : new ClaudeCodeHarnessError(
-                /auth|credential|sign in|api key|unauthorized|401|not logged in/i.test(
-                  String(cause),
+          : (() => {
+              const text = String(cause);
+              if (
+                /not logged in|login|authentication_failed|unauthorized|api key|credential|sign in|401/i.test(
+                  text,
                 )
-                  ? 'GLM_AUTH_FAILED'
-                  : /sandbox/i.test(String(cause))
-                    ? 'GLM_SANDBOX_UNAVAILABLE'
-                    : 'GLM_START_FAILED',
-                redactDiagnostic(cause, this.secrets),
-                true,
-              );
+              )
+                return new ClaudeCodeHarnessError(
+                  'GLM_AUTH_FAILED',
+                  redactDiagnostic(cause, this.secrets),
+                );
+              if (/sandbox/i.test(text))
+                return new ClaudeCodeHarnessError(
+                  'GLM_SANDBOX_UNAVAILABLE',
+                  redactDiagnostic(cause, this.secrets),
+                );
+              return this.classifyTurnFailure(cause, 'run');
+            })();
       yield event(request.agentRunId, {
         type: 'run.failed',
         failure: {
@@ -1124,6 +1388,11 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
 
   async cancel(_runId: AgentRunId): Promise<void> {
     try {
+      // Live cancel: abort the in-flight owned turn immediately so the
+      // child dies while the turn is active (not at process exit), then
+      // dispose the client. Owned handle only — never by process name.
+      const turn = this.activeTurn;
+      if (turn !== undefined) await turn.abort().catch(() => undefined);
       await this.dispose();
     } catch (cause) {
       throw new ClaudeCodeHarnessError(
@@ -1137,12 +1406,15 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   async dispose(): Promise<void> {
     if (this.closePromise !== undefined) return this.closePromise;
     const client = this.client;
-    if (client === undefined) {
+    const turn = this.activeTurn;
+    if (client === undefined && turn === undefined) {
       this.closePromise = Promise.resolve();
       return this.closePromise;
     }
     this.closePromise = (async () => {
-      await client.close();
+      if (turn !== undefined) await turn.abort().catch(() => undefined);
+      this.activeTurn = undefined;
+      if (client !== undefined) await client.close();
     })();
     return this.closePromise;
   }

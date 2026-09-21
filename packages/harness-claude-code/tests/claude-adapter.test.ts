@@ -248,7 +248,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
     expect(completed.length).toBeGreaterThanOrEqual(10);
     expect(
       events.some(
-        (e) => e.type === 'warning' && (e as { code?: string }).code === 'GLM_TOOL_LOOP_CORRECTION',
+        (e) => e.type === 'warning' && (e as { code?: string }).code === 'GLM_TOOL_LOOP_WARNING',
       ),
     ).toBe(true);
   });

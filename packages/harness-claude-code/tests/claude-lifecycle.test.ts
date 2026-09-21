@@ -1,6 +1,15 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { ClaudeClient, type ClaudeSpawnSpec } from '../src/index.js';
+import {
+  ClaudeClient,
+  type ClaudeSessionView,
+  type ClaudeSpawnSpec,
+  type ClaudeTurnStream,
+} from '../src/index.js';
+
+function liveStream(session: ClaudeSessionView, text: string): ClaudeTurnStream {
+  return session.runText(text) as ClaudeTurnStream;
+}
 
 /** A deliberately hanging fixture process (stands in for a live `claude -p`). */
 function spawnHanger(): ChildProcess {
@@ -41,6 +50,17 @@ async function waitUntilGone(child: ChildProcess, timeoutMs: number): Promise<bo
   }
 }
 
+/** Drain a live turn stream to settlement (hangers reject on close/abort). */
+async function settleStream(stream: AsyncIterable<unknown>): Promise<void> {
+  try {
+    for await (const _ of stream) {
+      void _;
+    }
+  } catch {
+    // turn aborted/closed — expected for hanger fixtures
+  }
+}
+
 describe('Claude owned-process lifecycle', () => {
   it('terminates the active child on close and proves it is gone at OS level', async () => {
     let owned: ChildProcess | undefined;
@@ -49,7 +69,8 @@ describe('Claude owned-process lifecycle', () => {
       spawnProcess: () => (owned = spawnHanger()),
     });
     const session = await client.startSession();
-    const turn = session.runText('hang');
+    const stream = liveStream(session, 'hang');
+    const draining = settleStream(stream);
     // Let the turn spawn and register its owned child.
     const deadline = Date.now() + 5_000;
     while (client.activeChildCount === 0 && Date.now() < deadline) {
@@ -62,10 +83,7 @@ describe('Claude owned-process lifecycle', () => {
     // OS-level proof: the exact owned child is dead, not just unregistered.
     expect(await waitUntilGone(owned as ChildProcess, 5_000)).toBe(true);
     // The abandoned turn settles (rejected) after close; observe, do not hang.
-    await turn.then(
-      () => undefined,
-      () => undefined,
-    );
+    await draining;
   });
 
   it('terminates via escalating SIGKILL when the child ignores SIGTERM', async () => {
@@ -81,7 +99,8 @@ describe('Claude owned-process lifecycle', () => {
       );
     const client = new ClaudeClient({ ...spec(), spawnProcess: () => immune() });
     const session = await client.startSession();
-    const turn = session.runText('hang-immune');
+    const stream = liveStream(session, 'hang-immune');
+    const draining = settleStream(stream);
     const deadline = Date.now() + 5_000;
     while (client.activeChildCount === 0 && Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, 25));
@@ -89,16 +108,14 @@ describe('Claude owned-process lifecycle', () => {
     expect(client.activeChildCount).toBe(1);
     await client.close();
     expect(client.activeChildCount).toBe(0);
-    await turn.then(
-      () => undefined,
-      () => undefined,
-    );
+    await draining;
   });
 
   it('close and dispose are idempotent and never double-kill', async () => {
     const client = new ClaudeClient(spec());
     const session = await client.startSession();
-    const turn = session.runText('hang');
+    const stream = liveStream(session, 'hang');
+    const draining = settleStream(stream);
     const deadline = Date.now() + 5_000;
     while (client.activeChildCount === 0 && Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, 25));
@@ -107,17 +124,14 @@ describe('Claude owned-process lifecycle', () => {
     await client.close();
     await client.close();
     expect(client.activeChildCount).toBe(0);
-    await turn.then(
-      () => undefined,
-      () => undefined,
-    );
+    await draining;
   });
 
   it('refuses new turns once closed', async () => {
     const client = new ClaudeClient(spec());
     await client.close();
     const session = await client.startSession();
-    await expect(session.runText('late')).rejects.toThrow(/closed/);
+    expect(() => session.runText('late')).toThrow(/closed/);
     expect(client.activeChildCount).toBe(0);
   });
 
