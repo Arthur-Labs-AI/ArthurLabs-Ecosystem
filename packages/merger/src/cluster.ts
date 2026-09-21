@@ -1,11 +1,11 @@
 import type { Evidence, Finding } from '@qa/schemas';
 import { groundingOfEvidence } from '@qa/domain';
 import { MERGER_VERSION, type AgreementState } from './schemas.js';
-import { compareFindings } from './match.js';
+import { compareFindings, type MatchCaseId } from './match.js';
 import { normalizeFinding, sha256Hex, type NormalizedFinding } from './normalize.js';
 
 /**
- * Deterministic complete-link clustering (merger v2). A finding joins a
+ * Deterministic complete-link clustering (merger v3). A finding joins a
  * cluster only when compatible with EVERY existing member — this
  * prevents transitive chain-merging (A≈B, B≈C, A≉C never collapse).
  * Insertion order is the canonical finding-ID sort, so output is
@@ -22,6 +22,11 @@ export interface ClusterInput {
   readonly expectedAgentStackIds: readonly string[];
   readonly usableAgentRuns: ReadonlyArray<{ agentRunId: string; agentStackId: string }>;
   readonly mergerVersion?: number;
+}
+
+export interface ClusterMatchDebug {
+  readonly pair: readonly [string, string];
+  readonly matchCase: MatchCaseId;
 }
 
 export interface BuiltCluster {
@@ -64,6 +69,32 @@ export function deterministicClusterId(
 ): string {
   const seed = [MERGER_VERSION, projectSnapshotId, ...sortedFindingIds].join('|');
   return 'cluster_' + crockfordFromHash(sha256Hex(seed));
+}
+
+/** Authoritative current MergeResult selection (merger v3, §12): among
+ *  all persisted MergeResults for the same canonical QARun input, the
+ *  current result is the one with the highest supported mergerVersion.
+ *  Ties break by input-digest recency is forbidden: identical input
+ *  digests are idempotent-reused, so ties mean distinct inputs and the
+ *  caller must disambiguate. Historical results stay readable. */
+export const SUPPORTED_MERGER_VERSIONS: readonly number[] = [1, 2, MERGER_VERSION];
+
+export function selectCurrentMergeResult<T extends { mergerVersion: number; inputDigest: string }>(
+  candidates: readonly T[],
+): T | undefined {
+  const supported = candidates.filter((candidate) =>
+    SUPPORTED_MERGER_VERSIONS.includes(candidate.mergerVersion),
+  );
+  if (supported.length === 0) return undefined;
+  return [...supported].sort((a, b) =>
+    b.mergerVersion !== a.mergerVersion
+      ? b.mergerVersion - a.mergerVersion
+      : a.inputDigest < b.inputDigest
+        ? -1
+        : a.inputDigest > b.inputDigest
+          ? 1
+          : 0,
+  )[0];
 }
 
 function distinctSorted(values: readonly string[]): string[] {
@@ -153,7 +184,9 @@ export function buildClusters(input: ClusterInput): BuiltCluster[] {
     byId.set(finding.id, finding);
     normalized.set(finding.id, normalizeFinding(finding, input.evidenceById));
   }
-  // Stable sorted insertion order → order-invariant output.
+  // Stable sorted insertion order → order-invariant output (merger v3
+  // keeps complete-link: a candidate joins only when equivalent to EVERY
+  // existing member; pairwise equivalence is the v3 strict rule).
   const ordered = [...input.findings].sort((a, b) => (a.id < b.id ? -1 : 1));
   const clusters: string[][] = [];
   for (const finding of ordered) {

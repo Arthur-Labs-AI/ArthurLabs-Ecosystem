@@ -30,9 +30,11 @@ function MergerSummary({ payload }: { payload: Record<string, unknown> }): React
   const usable = payload['usableAgentCount'] as number | undefined;
   const expected = payload['expectedAgentCount'] as number | undefined;
   const unavailable = (payload['unavailableAgentStackIds'] as string[] | undefined) ?? [];
+  const mergerVersion = payload['mergerVersion'] as number | undefined;
   return (
     <div className="node-sub" style={{ marginTop: 6 }}>
-      Merger v2 · {clusters.length} cluster{clusters.length === 1 ? '' : 's'}
+      Merger v{String(mergerVersion ?? 3)} · {clusters.length} cluster
+      {clusters.length === 1 ? '' : 's'}
       {usable !== undefined && expected !== undefined ? (
         <div>
           Agents usable {usable}/{expected}

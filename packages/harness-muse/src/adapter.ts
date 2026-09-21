@@ -21,6 +21,7 @@ import {
   parseWholeJson,
   renderFrozenLedger,
   REPORT_CONFIDENCE_CALIBRATION,
+  REPORT_REPRODUCTION_CONTRACT,
   REPORT_ENVELOPE_SCHEMA,
   REPORT_LEDGER_RULES,
   summarizeSchemaIssues,
@@ -249,6 +250,7 @@ function investigationPrompt(
     'Do not silently obtain unrestricted network access. Record sandbox or network restrictions as limitations and never retry with sandbox disabled.',
     'Use only the repository toolchain already present in the workspace; do not download packages or install dependencies from the network (no npx fetches, no npm/pip installs). If a test runner is unavailable, record it as a limitation.',
     'Keep the investigation tight: a handful of targeted checks beats dozens of exploratory commands. Do not repeat commands that already produced results.',
+    'For each significant candidate bug, determine whether its behavior can be safely reproduced in this workspace; when feasible, run a narrow focused reproduction command or test and observe the result (exploration commands like grep, cat, ls, or rg do not count as reproduction). Preserve the operation key: the frozen ledger in the reporting turn is the only provenance the final report may cite.',
     'Do NOT produce the final Sentry JSON report yet. Investigate only, using permitted local tools as needed. When the investigation is complete, finish this turn with a short terminal message such as: Investigation complete.',
     'Sentry will provide the authoritative operation ledger in the following reporting turn.',
     'Frozen plan: ' + JSON.stringify(plan),
@@ -264,6 +266,7 @@ function reportPrompt(
     'Serialize the investigation you just completed into exactly one Sentry report. No new QA: do not run commands, read files, or use any tools in this turn. Temporary evidence keys only; Sentry owns all durable IDs.',
     ...(correction === undefined ? [] : [buildReportCorrectionIntro(correction)]),
     REPORT_LEDGER_RULES,
+    REPORT_REPRODUCTION_CONTRACT,
     REPORT_CONFIDENCE_CALIBRATION,
     'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info.',
     'Report evidence contract (exact fields per type; copy names exactly): ' +

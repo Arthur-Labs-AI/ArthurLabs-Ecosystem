@@ -1,5 +1,6 @@
 /** Phase 7 issue ingest (§31, §74–§75). Deterministically creates Issue +
- *  IssueOccurrence rows from Merger v2 output. Idempotent: one
+ *  IssueOccurrence rows from versioned Merger output (v2 history preserved,
+ *  new ingest uses the current authoritative MergeResult). Idempotent: one
  *  (mergeResultId, clusterId) pair always maps to the same occurrence —
  *  repeated ingest returns the originals. Ingest consumes merger output;
  *  it never modifies clusters. Conservative by design (§32): every cluster

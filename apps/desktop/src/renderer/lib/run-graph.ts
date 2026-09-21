@@ -248,7 +248,18 @@ export function buildRunGraph(
   });
 
   const mergerY = agentY + 300;
-  const merge = input.mergeResults?.[0];
+  // Authoritative current MergeResult: highest supported mergerVersion.
+  // Never rely on repository ordering ([0]); history stays viewable.
+  const SUPPORTED_MERGER_VERSIONS = [1, 2, 3];
+  const merge =
+    input.mergeResults === undefined
+      ? undefined
+      : [...input.mergeResults]
+          .filter(
+            (m) =>
+              m.mergerVersion === undefined || SUPPORTED_MERGER_VERSIONS.includes(m.mergerVersion),
+          )
+          .sort((a, b) => (b.mergerVersion ?? 0) - (a.mergerVersion ?? 0))[0];
   // Honest merger: COMPLETED only when a MergeResult exists. Terminal QARun
   // without one is NOT completed (agents terminal → ready, else waiting).
   const agentsTerminal =
@@ -273,7 +284,7 @@ export function buildRunGraph(
   nodes.push({
     id: 'merger',
     kind: 'merger',
-    label: 'Merger v2',
+    label: merge?.mergerVersion !== undefined ? 'Merger v' + merge.mergerVersion : 'Merger v3',
     status: mergerStatus,
     position: { x: 340, y: mergerY },
     data: {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentRun, Evidence, Finding, QARun } from '@qa/schemas';
+import { MERGER_VERSION } from '@qa/schemas';
+import { compareFindings } from '../src/match.js';
+import { normalizeFinding } from '../src/normalize.js';
+import { selectCurrentMergeResult } from '../src/cluster.js';
 import { mergeFindings } from '../src/index.js';
 
 const RUN = 'run_01K7777777777777777777A8W1' as never;
@@ -504,6 +508,354 @@ describe('deterministic merger', () => {
     const swapped = mk([ev2, ev1]);
     expect(swapped.result.inputDigest).toBe(first.result.inputDigest);
     expect(JSON.stringify(swapped.result.clusters)).toBe(JSON.stringify(first.result.clusters));
+  });
+
+  it('stamps merger v3 and selects the highest supported version (§3, §12)', () => {
+    expect(MERGER_VERSION).toBe(3);
+    const a = finding({
+      id: 'find_01K7777777777777777777A8W1',
+      agentRunId: RUNS[0]?.id as string,
+      stack: 'stack_muse_main',
+      title: 'Version stamp probe',
+      locations: [{ relativePath: 'src/v.ts', startLine: 1 }],
+    });
+    const { result } = mergeSetup([a]);
+    expect(result.mergerVersion).toBe(3);
+    expect(result.normalizerVersion).toBe(1);
+    expect(result.clusters[0]?.mergerVersion).toBe(3);
+    const current = selectCurrentMergeResult([
+      { mergerVersion: 2, inputDigest: 'sha256:' + 'a'.repeat(64) },
+      { mergerVersion: 3, inputDigest: 'sha256:' + 'b'.repeat(64) },
+    ]);
+    expect(current?.mergerVersion).toBe(3);
+    const legacy = selectCurrentMergeResult([
+      { mergerVersion: 2, inputDigest: 'sha256:' + 'a'.repeat(64) },
+    ]);
+    expect(legacy?.mergerVersion).toBe(2);
+  });
+
+  describe('merger v3 production trust fix', () => {
+    function richFinding(partial: {
+      id: string;
+      agentRunId: string;
+      stack: string;
+      title: string;
+      category?: Finding['category'];
+      description?: string;
+      actualBehavior?: string;
+      expectedBehavior?: string;
+      rootCause?: string;
+      locations?: Finding['locations'];
+      evidenceIds?: string[];
+    }): Finding {
+      const base = finding({
+        id: partial.id,
+        agentRunId: partial.agentRunId,
+        stack: partial.stack,
+        title: partial.title,
+        category: partial.category,
+        description: partial.description,
+        locations: partial.locations,
+        evidenceIds: partial.evidenceIds,
+      });
+      return {
+        ...base,
+        ...(partial.actualBehavior === undefined ? {} : { actualBehavior: partial.actualBehavior }),
+        ...(partial.expectedBehavior === undefined
+          ? {}
+          : { expectedBehavior: partial.expectedBehavior }),
+        ...(partial.rootCause === undefined ? {} : { rootCause: partial.rootCause }),
+      } as Finding;
+    }
+
+    // Single-agent DeepSeek run: same file, overlapping lines, PostgreSQL-adjacent
+    // vocabulary — but sequence-reset vs divide-by-zero are different defects.
+    function transferPair() {
+      const runId = RUNS[1]?.id as string;
+      const stack = 'stack_deepseek_main';
+      const a = richFinding({
+        id: 'find_01K7777777777777777777A8WA1',
+        agentRunId: runId,
+        stack,
+        title:
+          'SQLite to PostgreSQL transfer copies explicit primary keys without resetting sequences',
+        category: 'database',
+        description:
+          'Bulk copy preserves explicit primary key values; PostgreSQL sequences stay behind',
+        actualBehavior:
+          'Inserted rows reuse key values while the sequence generator still points at the old value',
+        rootCause: 'Sequence generator state not reset after explicit key copy',
+        locations: [{ relativePath: 'transfer_sqlite.py', startLine: 40, endLine: 60 }],
+      });
+      const b = richFinding({
+        id: 'find_01K7777777777777777777A8WB1',
+        agentRunId: runId,
+        stack,
+        title: 'Pricing recomputation raises DivisionByZero when native quantity is zero',
+        category: 'logic',
+        description: 'Price recompute divides by native quantity without a zero guard',
+        actualBehavior:
+          'DivisionByZero raised when native_quantity equals zero during pricing recomputation',
+        rootCause: 'Missing zero guard before division in pricing path',
+        locations: [{ relativePath: 'transfer_sqlite.py', startLine: 52, endLine: 70 }],
+      });
+      return [a, b] as const;
+    }
+
+    it('keeps transfer_sqlite.py sequence-reset and divide-by-zero apart (false merge 1)', () => {
+      const [a, b] = transferPair();
+      const { result } = mergeSetup([a, b]);
+      expect(result.clusterCount).toBe(2);
+    });
+
+    it('keeps data.py CSV-guard crash and concurrency inconsistency apart (false merge 2)', () => {
+      const runId = RUNS[1]?.id as string;
+      const stack = 'stack_deepseek_main';
+      const a = richFinding({
+        id: 'find_01K7777777777777777777A8WA2',
+        agentRunId: runId,
+        stack,
+        title: 'CSV formula mitigation crashes export on non-string values',
+        category: 'logic',
+        description: 'CSV export guard assumes string cells and throws on numbers or nulls',
+        actualBehavior: 'Export raises TypeError when a cell value is not a string',
+        rootCause: 'Missing type check before string prefix inspection in CSV guard',
+        locations: [{ relativePath: 'data.py', startLine: 100, endLine: 120, symbol: 'exportCsv' }],
+      });
+      const b = richFinding({
+        id: 'find_01K7777777777777777777A8WB2',
+        agentRunId: runId,
+        stack,
+        title: 'Backup export snapshot can go inconsistent under concurrent writes',
+        category: 'concurrency',
+        description: 'Backup reads files while writers mutate them; no snapshot isolation',
+        actualBehavior: 'Concurrent writes during backup produce a mixed-revision export archive',
+        rootCause: 'No snapshot or lock around multi-file backup read path',
+        locations: [{ relativePath: 'data.py', startLine: 108, endLine: 130, symbol: 'exportCsv' }],
+      });
+      const { result } = mergeSetup([a, b]);
+      expect(result.clusterCount).toBe(2);
+    });
+
+    it('keeps manage.py CRLF env failure and pnpm fallback apart (false merge 3)', () => {
+      const runId = RUNS[1]?.id as string;
+      const stack = 'stack_deepseek_main';
+      const a = richFinding({
+        id: 'find_01K7777777777777777777A8WA3',
+        agentRunId: runId,
+        stack,
+        title: 'Env file generation fails with CRLF line endings and missing final newline',
+        category: 'configuration',
+        description: 'Secret replacement assumes LF endings and a trailing newline',
+        actualBehavior: 'Generated .env keeps carriage returns and drops the last variable',
+        rootCause: 'Line splitting does not normalize CRLF or enforce a final newline',
+        locations: [{ relativePath: 'manage.py', startLine: 30, endLine: 50 }],
+      });
+      const b = richFinding({
+        id: 'find_01K7777777777777777777A8WB3',
+        agentRunId: runId,
+        stack,
+        title: 'pnpm fallback throws KeyError and FileNotFoundError on malformed package.json',
+        category: 'dependency',
+        description: 'Fallback path indexes package.json fields without validation',
+        actualBehavior: 'Malformed or missing package.json raises KeyError or FileNotFoundError',
+        rootCause: 'Unvalidated field access in pnpm fallback for missing package metadata',
+        locations: [{ relativePath: 'manage.py', startLine: 38, endLine: 55 }],
+      });
+      const { result } = mergeSetup([a, b]);
+      expect(result.clusterCount).toBe(2);
+    });
+
+    it('keeps same-symbol SQL injection and null dereference apart (same-line different defect)', () => {
+      const a = richFinding({
+        id: 'find_01K7777777777777777777A8WA4',
+        agentRunId: RUNS[0]?.id as string,
+        stack: 'stack_muse_main',
+        title: 'SQL injection in saveUser query construction',
+        category: 'security',
+        description: 'User input is concatenated into SQL without parameterization',
+        actualBehavior: 'Crafted username input alters the executed SQL statement',
+        rootCause: 'String-concatenated SQL in saveUser without bound parameters',
+        locations: [
+          { relativePath: 'src/users.ts', symbol: 'saveUser', startLine: 50, endLine: 60 },
+        ],
+      });
+      const b = richFinding({
+        id: 'find_01K7777777777777777777A8WB4',
+        agentRunId: RUNS[1]?.id as string,
+        stack: 'stack_deepseek_main',
+        title: 'Null dereference in saveUser on missing profile',
+        category: 'runtime',
+        description: 'saveUser dereferences an optional profile without a null check',
+        actualBehavior: 'Missing profile triggers a null dereference crash in saveUser',
+        rootCause: 'Unchecked optional profile access in saveUser',
+        locations: [
+          { relativePath: 'src/users.ts', symbol: 'saveUser', startLine: 52, endLine: 62 },
+        ],
+      });
+      const { result } = mergeSetup([a, b]);
+      expect(result.clusterCount).toBe(2);
+    });
+
+    it('merges cross-agent refresh-token duplicates (positive)', () => {
+      const a = richFinding({
+        id: 'find_01K7777777777777777777A8WA5',
+        agentRunId: RUNS[0]?.id as string,
+        stack: 'stack_muse_main',
+        title: 'Refresh token remains reusable after rotation',
+        category: 'authentication',
+        description: 'Old refresh token still accepted after rotation at the session endpoint',
+        actualBehavior: 'Old refresh token can be used again after refresh at the session endpoint',
+        rootCause: 'Rotated refresh token not invalidated at the session endpoint',
+        locations: [{ relativePath: 'src/session.ts', startLine: 80, endLine: 95 }],
+      });
+      const b = richFinding({
+        id: 'find_01K7777777777777777777A8WB5',
+        agentRunId: RUNS[1]?.id as string,
+        stack: 'stack_deepseek_main',
+        title: 'Old refresh token can be used again after refresh',
+        category: 'authentication',
+        description: 'Session endpoint accepts the previous refresh token after rotation',
+        actualBehavior:
+          'Previous refresh token remains valid after refresh at the session endpoint',
+        rootCause: 'Previous refresh token never revoked at the session endpoint',
+        locations: [{ relativePath: 'src/session.ts', startLine: 82, endLine: 97 }],
+      });
+      const { result } = mergeSetup([a, b]);
+      expect(result.clusterCount).toBe(1);
+      expect(result.clusters[0]?.supportingAgentCount).toBe(2);
+      const byId = new Map<string, Evidence>();
+      const na = normalizeFinding(a as Finding, byId);
+      const nb = normalizeFinding(b as Finding, byId);
+      expect(compareFindings(na, nb).matchCase).toBe('cross_agent_behavior_rootcause');
+    });
+
+    it('merges cross-agent null-export duplicates with evidence (positive)', () => {
+      const ev1 = codeEvidence('ev_01K7777777777777777777A8WA6', 'src/export.ts', 20, 30);
+      const ev2 = codeEvidence('ev_01K7777777777777777777A8WB6', 'src/export.ts', 22, 28);
+      const a = richFinding({
+        id: 'find_01K7777777777777777777A8WA6',
+        agentRunId: RUNS[1]?.id as string,
+        stack: 'stack_deepseek_main',
+        title: 'None input crashes export with AttributeError',
+        category: 'runtime',
+        description: 'Export dereferences a null model name during serialization',
+        actualBehavior: 'Export raises AttributeError when the model name is null',
+        rootCause: 'Missing null guard before model name access in export',
+        locations: [{ relativePath: 'src/export.ts', startLine: 20, endLine: 30 }],
+        evidenceIds: [ev1.id],
+      });
+      const b = richFinding({
+        id: 'find_01K7777777777777777777A8WB6',
+        agentRunId: RUNS[2]?.id as string,
+        stack: 'stack_glm_main',
+        title: 'Export raises AttributeError when model name is null',
+        category: 'runtime',
+        description: 'Null model name crashes export serialization path',
+        actualBehavior: 'Export raises AttributeError when the model name is null',
+        rootCause: 'Export accesses model name without a null check',
+        locations: [{ relativePath: 'src/export.ts', startLine: 22, endLine: 28 }],
+        evidenceIds: [ev2.id],
+      });
+      const { result } = mergeSetup([a, b], [ev1, ev2]);
+      expect(result.clusterCount).toBe(1);
+    });
+
+    it('merges same-agent accidental duplicates under strong evidence (positive)', () => {
+      const runId = RUNS[1]?.id as string;
+      const stack = 'stack_deepseek_main';
+      const a = richFinding({
+        id: 'find_01K7777777777777777777A8WA7',
+        agentRunId: runId,
+        stack,
+        title: 'Division by zero crashes pricing when quantity is zero',
+        category: 'logic',
+        description: 'Pricing divides by quantity without guarding against zero',
+        actualBehavior:
+          'Pricing throws DivisionByZero when quantity equals zero in the pricing path',
+        rootCause: 'Missing zero guard before division in the pricing path',
+        locations: [{ relativePath: 'src/pricing.ts', startLine: 44, endLine: 52 }],
+      });
+      const b = richFinding({
+        id: 'find_01K7777777777777777777A8WB7',
+        agentRunId: runId,
+        stack,
+        title: 'Pricing throws DivisionByZero for zero quantity',
+        category: 'logic',
+        description: 'Zero quantity reaches the pricing divisor unchecked',
+        actualBehavior:
+          'Pricing throws DivisionByZero when quantity equals zero in the pricing path',
+        rootCause: 'Pricing path divides without a zero guard',
+        locations: [{ relativePath: 'src/pricing.ts', startLine: 44, endLine: 52 }],
+      });
+      const { result } = mergeSetup([a, b]);
+      expect(result.clusterCount).toBe(1);
+    });
+
+    it('exposes sameSourceAgent and matchCase deterministically', () => {
+      const [a, b] = transferPair();
+      const byId = new Map([
+        [a.id, a],
+        [b.id, b],
+      ]);
+      void byId;
+      const empty = new Map<string, Evidence>();
+      const na = normalizeFinding(a as Finding, empty);
+      const nb = normalizeFinding(b as Finding, empty);
+      const first = compareFindings(na, nb);
+      const swapped = compareFindings(nb, na);
+      expect(first.equivalent).toBe(false);
+      expect(first.matchCase).toBe('none');
+      expect(first.reasons.sameSourceAgent).toBe(true);
+      expect(first.reasons.sharedDistinctiveToken).toBe(true);
+      // Debug signal only: shared token must not flip equivalence.
+      expect(swapped.equivalent).toBe(first.equivalent);
+      expect(swapped.matchCase).toBe(first.matchCase);
+    });
+
+    it('keeps complete-link protection with v3 semantics', () => {
+      const a = richFinding({
+        id: 'find_01K7777777777777777777A8WA9',
+        agentRunId: RUNS[0]?.id as string,
+        stack: 'stack_muse_main',
+        title: 'Refresh token remains reusable after rotation',
+        category: 'authentication',
+        description: 'Old refresh token still accepted after rotation at the session endpoint',
+        actualBehavior: 'Old refresh token can be used again after refresh at the session endpoint',
+        rootCause: 'Rotated refresh token not invalidated at the session endpoint',
+        locations: [{ relativePath: 'src/session.ts', startLine: 80, endLine: 95 }],
+      });
+      const b = richFinding({
+        id: 'find_01K7777777777777777777A8WB9',
+        agentRunId: RUNS[1]?.id as string,
+        stack: 'stack_deepseek_main',
+        title: 'Old refresh token can be used again after refresh',
+        category: 'authentication',
+        description: 'Session endpoint accepts the previous refresh token after rotation',
+        actualBehavior:
+          'Previous refresh token remains valid after refresh at the session endpoint',
+        rootCause: 'Previous refresh token never revoked at the session endpoint',
+        locations: [{ relativePath: 'src/session.ts', startLine: 82, endLine: 97 }],
+      });
+      const c = richFinding({
+        id: 'find_01K7777777777777777777A8WC9',
+        agentRunId: RUNS[2]?.id as string,
+        stack: 'stack_glm_main',
+        title: 'Unrelated password expiry notice missing',
+        category: 'authentication',
+        description: 'Password expiry notice never rendered on the profile page',
+        actualBehavior: 'Profile page shows no password expiry notice before expiry',
+        rootCause: 'Missing expiry banner in profile rendering',
+        locations: [{ relativePath: 'src/session.ts', startLine: 400, endLine: 410 }],
+      });
+      const { result } = mergeSetup([a, b, c]);
+      expect(result.clusterCount).toBe(2);
+      const ab = result.clusters.find((cluster) =>
+        cluster.sourceFindingIds.includes(a.id as never),
+      );
+      expect(ab?.sourceFindingIds).toContain(b.id);
+      expect(ab?.sourceFindingIds).not.toContain(c.id);
+    });
   });
 
   it('never upgrades confidence from agreement (§72)', () => {

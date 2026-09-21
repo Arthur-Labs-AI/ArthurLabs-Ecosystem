@@ -32,6 +32,7 @@ import { createMuseRegistration } from '@qa/harness-muse';
 import { createDeepSeekRegistration } from '@qa/harness-deepseek';
 import { createGlmRegistration } from '@qa/harness-claude-code';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
+import { selectCurrentMergeResult } from '@qa/merger';
 import { projectIssueState } from '@qa/schemas';
 import { createQARunId, createRetestRunId } from '@qa/shared';
 import {
@@ -371,6 +372,10 @@ export class SentryRuntimeHost {
       ...merge,
       clusters: this.repository.listClusters(merge.id),
     }));
+    // Authoritative current MergeResult (§12): highest supported
+    // mergerVersion for this run — never repository ordering ([0]).
+    // Historical results remain viewable in mergeResults.
+    const currentMergeResultId = selectCurrentMergeResult(mergeResults)?.id;
     const verificationRuns = mergeResults.flatMap((m) =>
       this.repository.listVerificationRuns(m.id).map((vrun) => ({
         ...vrun,
@@ -410,6 +415,7 @@ export class SentryRuntimeHost {
       activities: details.activities,
       events: details.events.map((e) => e.event),
       mergeResults,
+      ...(currentMergeResultId === undefined ? {} : { currentMergeResultId }),
       verificationRuns,
       issues,
       ...(targetSpec === undefined ? {} : { targetSpec }),

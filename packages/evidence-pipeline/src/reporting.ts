@@ -41,20 +41,37 @@ export interface ReportTurnOptions {
   readonly outputSchema?: Record<string, unknown>;
 }
 
-/** Render the frozen post-investigation ledger (§8 format). */
+/** Render the frozen post-investigation ledger (§8 format). Each entry
+ *  carries the exact model-citable operation key plus the canonical
+ *  command/test identity Sentry derives provenance from. */
 export function renderFrozenLedger(operations: ReadonlyMap<string, ObservedOperation>): string {
   if (operations.size === 0) return '(no operations observed)';
   return [...operations.values()]
     .map(
       (op) =>
-        `${op.operationKey}\n` +
+        `Operation ${op.operationKey}\n` +
+        `type: ${op.isTestOperation ? 'test' : 'command'}\n` +
         `tool: ${op.toolName}\n` +
-        `target: ${op.commandText ?? op.argsText ?? '(no target)'}\n` +
-        `exit: ${op.exitCode === undefined ? 'unknown' : op.exitCode}\n` +
-        `testOperation: ${op.isTestOperation}`,
+        `command: ${op.commandText ?? op.argsText ?? '(no target)'}\n` +
+        `exitCode: ${op.exitCode === undefined ? 'unknown' : op.exitCode}\n` +
+        `cite: If this operation is evidence for a finding, cite '${op.operationKey}' in command/test evidence.`,
     )
     .join('\n\n');
 }
+
+/** Reproduction contract shared by all three harness prompts (§19-§20,
+ *  §23-§24, §34): attempt a focused safe reproducer for significant
+ *  candidate bugs, cite its operation key, and never invent proof. */
+export const REPORT_REPRODUCTION_CONTRACT =
+  'Behavioral reproduction: when a candidate defect can be safely demonstrated in the isolated workspace, ' +
+  'attempt a focused command or test that observes the claimed failure. Prefer minimal, deterministic ' +
+  'reproduction over broad exploratory commands. Preserve the corresponding operation key and cite it in ' +
+  'the final report as command/test evidence. Source inspection (grep, cat, sed, ls, rg, file reads) helps ' +
+  'investigation but is NOT behavior reproduction: never cite exploration commands as behavioral proof. ' +
+  'For critical/high findings, attempt safe behavioral reproduction whenever technically feasible before final ' +
+  'reporting; for medium/low findings also reproduce where practical without wasting excessive operations. ' +
+  'If the environment or missing dependencies prevent reproduction, do not invent success: submit ' +
+  'source/manual evidence and state the limitation.';
 
 /** Uniform confidence semantics for every reporting prompt (§32). */
 export const REPORT_CONFIDENCE_CALIBRATION =

@@ -15,8 +15,14 @@ import { FINDING_CATEGORIES, FINDING_CONFIDENCES, FINDING_SEVERITIES } from './e
  *  historical MergeResults are never silently reinterpreted.
  *  v2: same-symbol false-positive hardening (four explicit equivalence
  *  cases; sharedTopicToken demoted to a recorded-only signal).
+ *  v3: false-clustering trust fix — sharedDistinctiveToken demoted to a
+ *  recorded-only debug signal, root-cause similarity added, location
+ *  (sameFile/lineOverlap/lineNear/sameSymbol) never sufficient without
+ *  strong semantic agreement, and same-agent pairs require strictly
+ *  stronger evidence than cross-agent pairs. Complete-link clustering,
+ *  stable sort, order invariance, and deterministic IDs unchanged.
  *  Normalization unchanged, so NORMALIZER_VERSION stays 1. */
-export const MERGER_VERSION = 2 as const;
+export const MERGER_VERSION = 3 as const;
 export const NORMALIZER_VERSION = 1 as const;
 
 export const AgreementStateSchema = z.enum([
@@ -40,8 +46,8 @@ const FindingClusterBase = z
     id: z.string().regex(/^cluster_[0-9A-HJKMNP-TV-Z]{26}$/),
     qaRunId: QARunIdSchema,
     projectSnapshotId: SnapshotIdSchema,
-    // Readable-history union (§10): v1 rows decode, new rows stamp v2.
-    mergerVersion: z.union([z.literal(1), z.literal(MERGER_VERSION)]),
+    // Readable-history union (§10): v1/v2 rows decode, new rows stamp v3.
+    mergerVersion: z.union([z.literal(1), z.literal(2), z.literal(MERGER_VERSION)]),
     normalizerVersion: z.literal(NORMALIZER_VERSION),
     sourceFindingIds: z.array(FindingIdSchema).min(1),
     sourceAgentRunIds: z.array(AgentRunIdSchema).min(1),
@@ -100,8 +106,8 @@ const MergeResultBase = z
     qaRunId: QARunIdSchema,
     projectSnapshotId: SnapshotIdSchema,
     projectContextSnapshotId: ProjectContextSnapshotIdSchema.optional(),
-    // Readable-history union (§10): v1 rows decode, new rows stamp v2.
-    mergerVersion: z.union([z.literal(1), z.literal(MERGER_VERSION)]),
+    // Readable-history union (§10): v1/v2 rows decode, new rows stamp v3.
+    mergerVersion: z.union([z.literal(1), z.literal(2), z.literal(MERGER_VERSION)]),
     normalizerVersion: z.literal(NORMALIZER_VERSION),
     inputDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
     expectedAgentStackIds: z.array(AgentStackIdSchema),

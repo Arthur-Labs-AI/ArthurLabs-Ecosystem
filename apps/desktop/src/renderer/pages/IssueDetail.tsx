@@ -143,7 +143,16 @@ export function IssueDetail(): React.JSX.Element {
                     '—'
                   )}
                 </td>
-                <td className="mono">{(occ.verificationRunId ?? '—').slice(0, 14)}</td>
+                <td
+                  className="mono"
+                  title="Verification strength lives on the verification attempt; ingest records only the linkage."
+                >
+                  {occ.verificationRunId !== undefined
+                    ? 'Verification linked (' +
+                      (occ.verificationRunId ?? '').slice(0, 14) +
+                      ') — see run'
+                    : 'Source verified — behavior not independently reproduced'}
+                </td>
               </tr>
             ))}
           </tbody>

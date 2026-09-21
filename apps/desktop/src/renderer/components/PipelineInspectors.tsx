@@ -13,11 +13,13 @@ export function MergerInspector({
   const usable = payload['usableAgentCount'] as number | undefined;
   const expected = payload['expectedAgentCount'] as number | undefined;
   const unavailable = (payload['unavailableAgentStackIds'] as string[] | undefined) ?? [];
+  const mergerVersion = payload['mergerVersion'] as number | undefined;
   return (
     <div>
-      <h3 style={{ marginTop: 0 }}>Merger v2</h3>
+      <h3 style={{ marginTop: 0 }}>Merger v{String(mergerVersion ?? 3)}</h3>
       <p className="muted">
-        Merger Version 2 · Normalizer Version {String(payload['normalizerVersion'] ?? 1)}
+        Merger Version {String(mergerVersion ?? 3)} · Normalizer Version{' '}
+        {String(payload['normalizerVersion'] ?? 1)}
       </p>
       {mergeResultId !== undefined ? (
         <p>
@@ -41,10 +43,18 @@ export function MergerInspector({
             <CopyId id={String(cluster['id'])} />
           </p>
           <p className="muted">
-            Agreement: {String(cluster['agreementState'] ?? 'unknown')} ·{' '}
-            {String(cluster['supportingAgentCount'] ?? '?')} supporting /{' '}
-            {String(cluster['usableAgentCount'] ?? '?')} usable (expected{' '}
-            {String(cluster['expectedAgentCount'] ?? '?')})
+            {String(cluster['usableAgentCount'] ?? '?') === '1' ||
+            String(cluster['expectedAgentCount'] ?? '?') === '1'
+              ? 'Single-agent finding · 1/1 available source'
+              : 'Agreement: ' +
+                String(cluster['agreementState'] ?? 'unknown') +
+                ' · ' +
+                String(cluster['supportingAgentCount'] ?? '?') +
+                ' supporting / ' +
+                String(cluster['usableAgentCount'] ?? '?') +
+                ' usable (expected ' +
+                String(cluster['expectedAgentCount'] ?? '?') +
+                ')'}
           </p>
           <p className="muted">
             Reported by:{' '}
@@ -101,9 +111,31 @@ export function VerifierInspector({
                 .join(' · ')}
             </p>
           ) : null}
+          {attempt['outcome'] === 'partially_verified' ? (
+            <p className="muted">
+              PARTIALLY VERIFIED — source location confirmed. Behavior was not independently
+              reproduced. Reason: no replayable command/test evidence was submitted.
+            </p>
+          ) : null}
+          {attempt['outcome'] === 'reproduced' ? (
+            <p className="muted">REPRODUCED — fresh sandbox replay matched the original failure.</p>
+          ) : null}
           {attempt['outcome'] === 'inconclusive' ? (
             <p className="muted">? INCONCLUSIVE — runtime observation unavailable.</p>
           ) : null}
+          {(() => {
+            const steps = (attempt['steps'] as Array<Record<string, unknown>> | undefined) ?? [];
+            const replayable = steps.some(
+              (s) => s['type'] === 'command_replay' || s['type'] === 'test_replay',
+            );
+            return (
+              <p className="muted">
+                {replayable
+                  ? 'REPLAYABLE — command/test evidence available.'
+                  : 'SOURCE ONLY — no operation-grounded behavioral evidence.'}
+              </p>
+            );
+          })()}
         </div>
       ))}
       {attempts.length === 0 ? (
@@ -155,7 +187,9 @@ export function EdgeInspector({
         {edge.source} → {edge.target}
       </p>
       {edge.source.startsWith('agent-') && edge.target === 'merger' ? (
-        <p className="muted">Agent output flows into Merger v2 once the agent is terminal.</p>
+        <p className="muted">
+          Agent output flows into the current Merger version once the agent is terminal.
+        </p>
       ) : null}
       {edge.source === 'merger' && edge.target === 'verifier' ? (
         <p className="muted">
