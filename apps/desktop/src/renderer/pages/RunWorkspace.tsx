@@ -70,9 +70,33 @@ export function RunWorkspace(): React.JSX.Element {
   });
   const readMergeId = (): string | undefined => {
     const snap = queryClient.getQueryData(['run', runId]) as
-      { mergeResults?: Array<{ id: string }> } | undefined;
+      | {
+          currentMergeResultId?: string;
+          mergeResults?: Array<{ id: string }>;
+        }
+      | undefined;
+    // Authoritative current MergeResult (highest supported mergerVersion)
+    // from the runtime DTO — never repository ordering ([0]).
+    if (snap?.currentMergeResultId !== undefined) return snap.currentMergeResultId;
     return snap?.mergeResults?.[0]?.id;
   };
+  const ingest = useMutation({
+    mutationFn: async () => {
+      const id = readMergeId();
+      if (id === undefined) throw new Error('Merge first: no MergeResult yet');
+      return sentryApi().runs.ingest(id);
+    },
+    onSuccess: (result) => {
+      const info = result as { issues?: unknown[] };
+      setActionNote(
+        Array.isArray(info.issues)
+          ? 'Issues ingested: ' + String(info.issues.length) + ' issue occurrence(s) created'
+          : 'Issues ingested',
+      );
+      refresh();
+    },
+    onError: fail,
+  });
   const verify = useMutation({
     mutationFn: async () => {
       const id = readMergeId();
@@ -89,29 +113,16 @@ export function RunWorkspace(): React.JSX.Element {
             String(reproduced) +
             ' reproduced, ' +
             String(inconclusive) +
-            ' inconclusive',
+            ' inconclusive. Ingesting issues…',
         );
       } else {
-        setActionNote('Verification complete');
+        setActionNote('Verification complete. Ingesting issues…');
       }
       refresh();
-    },
-    onError: fail,
-  });
-  const ingest = useMutation({
-    mutationFn: async () => {
-      const id = readMergeId();
-      if (id === undefined) throw new Error('Merge first: no MergeResult yet');
-      return sentryApi().runs.ingest(id);
-    },
-    onSuccess: (result) => {
-      const info = result as { issues?: unknown[] };
-      setActionNote(
-        Array.isArray(info.issues)
-          ? 'Issues ingested: ' + String(info.issues.length) + ' issue occurrence(s) created'
-          : 'Issues ingested',
-      );
-      refresh();
+      // Close the gap: verified clusters become tracked issues without a
+      // second click. Ingest is idempotent, so the manual button below
+      // stays a safe fallback.
+      ingest.mutate();
     },
     onError: fail,
   });
