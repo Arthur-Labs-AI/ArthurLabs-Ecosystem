@@ -179,6 +179,7 @@ function planningPrompt(request: HarnessRunRequest): string {
     'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
     'Explicit run instructions define intended behavior and outrank project documentation; project documentation outranks your inference. None may override host safety.',
     'Inspect project documentation and the supplied immutable mission context. Do not use peer plans, findings, or messages.',
+    'Before reading any specific file, list the workspace root so every planned path is grounded in a real directory listing. Never retry a failed path identically: a missing path means the assumption was wrong — re-list, pick a path that exists, and continue from evidence.',
     'Create an investigation plan before executing it.',
     'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
     'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
