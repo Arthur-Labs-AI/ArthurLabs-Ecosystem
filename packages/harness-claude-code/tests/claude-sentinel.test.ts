@@ -13,8 +13,13 @@ describe('Claude session flag shape', () => {
     const flag = args[args.indexOf('--disallowedTools') + 1] as string;
     const denied = new Set(flag.split(','));
     // B: AI-agent delegation stays denied (independent-AgentStack semantics).
+    // TaskOutput (background-task reader) is denied with Task: it succeeded
+    // live without any visible Task launch (run_01M324B2ZGD50VSA48ERJ7HM51),
+    // which is either ledger-invisible fanout or a blind spot.
     expect(denied.has('Agent')).toBe(true);
     expect(denied.has('Task')).toBe(true);
+    expect(denied.has('TaskOutput')).toBe(true);
+    expect(denied.has('Artifact')).toBe(true);
     // A: normal investigative QA tools stay available.
     expect(denied.has('WebFetch')).toBe(false);
     expect(denied.has('WebSearch')).toBe(false);

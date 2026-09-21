@@ -894,9 +894,19 @@ describe('ClaudeCodeHarnessAdapter', () => {
   it('refuses forbidden tools at init and subagent use mid-turn', async () => {
     for (const hostile of [
       [evt('system', { subtype: 'init', tools: ['Bash', 'Agent'] })],
+      [evt('system', { subtype: 'init', tools: ['Bash', 'TaskOutput'] })],
       [
         evt('assistant', {
           message: { content: [{ type: 'tool_use', id: 'tu-x', name: 'Task', input: {} }] },
+        }),
+      ],
+      [
+        evt('assistant', {
+          message: {
+            content: [
+              { type: 'tool_use', id: 'tu-x', name: 'TaskOutput', input: { task_id: 'x' } },
+            ],
+          },
         }),
       ],
       [evt('result', { is_error: false, subagent_stats: { spawned: 1 } })],
@@ -927,6 +937,71 @@ describe('ClaudeCodeHarnessAdapter', () => {
       expect(events.at(-1)).toMatchObject({ type: 'run.failed' });
       expect(JSON.stringify(events.at(-1))).toMatch(/GLM_SUBAGENT_FORBIDDEN/);
     }
+  });
+
+  it('persists tool result text for string, nested, and classic block shapes', async () => {
+    // Live regression (run_01M324B2ZGD50VSA48ERJ7HM51): ZERO agent.message
+    // events across 68 tool results on 2.1.276 — the extractor only
+    // accepted `{type:'text', text}` blocks, so drifted wire shapes went
+    // blind. Every structural text carrier below must surface.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-result-text-'));
+    roots.push(root);
+    const input = await request(root);
+    const shapes: Array<{ id: string; content: unknown }> = [
+      { id: 'tu-classic', content: [{ type: 'text', text: 'classic out' }] },
+      { id: 'tu-string', content: 'plain string out' },
+      { id: 'tu-nested', content: [[{ type: 'text', text: 'nested out' }]] },
+    ];
+    const turn: ClaudeStreamEvent[] = [];
+    for (const shape of shapes) {
+      turn.push(
+        evt('assistant', {
+          message: {
+            content: [
+              { type: 'tool_use', id: shape.id, name: 'Bash', input: { command: 'echo hi' } },
+            ],
+          },
+        }),
+        evt('user', {
+          message: {
+            content: [{ type: 'tool_result', tool_use_id: shape.id, content: shape.content }],
+          },
+        }),
+      );
+    }
+    turn.push(
+      evt('assistant', {
+        message: { content: [{ type: 'text', text: 'Investigation complete.' }] },
+      }),
+      evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+    );
+    let calls = 0;
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-text',
+        startSession: async () => ({
+          runText: async () => {
+            calls += 1;
+            if (calls === 1) return planTurn();
+            if (calls === 2) return turn;
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    const messages = events
+      .filter((e) => e.type === 'agent.message')
+      .map((e) => (e as { message?: string }).message ?? '');
+    expect(messages.some((m) => m.includes('classic out'))).toBe(true);
+    expect(messages.some((m) => m.includes('plain string out'))).toBe(true);
+    expect(messages.some((m) => m.includes('nested out'))).toBe(true);
   });
 
   it('accepts allowed web QA tools at init without tripping the delegation check', async () => {

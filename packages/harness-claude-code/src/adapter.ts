@@ -236,18 +236,36 @@ function eventNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
-/** Extract final assistant text from stream-json content blocks. */
+/**
+ * Extract human-readable text from stream-json content blocks.
+ *
+ * Verified shape on 2.1.270: `{type:'text', text}` blocks. Production on
+ * 2.1.276 persisted ZERO result texts across three runs (68 tool results
+ * in run_01M324B2ZGD50VSA48ERJ7HM51 alone), so the wire shape drifted —
+ * most likely to a plain-string `content`. This extractor therefore
+ * accepts every structural text carrier (string content, `{text}` blocks
+ * of any block type, nested arrays) while still ignoring non-text blocks
+ * structurally. Callers bound the emitted length.
+ */
 function textFromContentBlocks(content: unknown): string {
-  if (!Array.isArray(content)) return '';
   const parts: string[] = [];
-  for (const block of content) {
-    if (block === null || typeof block !== 'object' || Array.isArray(block)) continue;
-    const record = block as { type?: unknown; text?: unknown };
-    if (record.type === 'text') {
-      const text = eventText(record.text);
-      if (text !== undefined) parts.push(text);
+  const visit = (node: unknown): void => {
+    const text = eventText(node);
+    if (text !== undefined) {
+      parts.push(text);
+      return;
     }
-  }
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item);
+      return;
+    }
+    if (node === null || typeof node !== 'object') return;
+    const record = node as { type?: unknown; text?: unknown; content?: unknown };
+    const inline = eventText(record.text);
+    if (inline !== undefined) parts.push(inline);
+    if (record.content !== undefined) visit(record.content);
+  };
+  visit(content);
   return parts.join('\n');
 }
 
@@ -520,11 +538,13 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // failed by the reporting firewall. Artifact is denied: newer
       // Claude Code tool outside the Z.AI route's supported vocabulary
       // (provider 400 risk, no QA use) — present means composition
-      // failed open.
+      // failed open. TaskOutput (background-task reader) is denied with
+      // Task: it succeeded live without any visible Task launch, which
+      // is either ledger-invisible subagent fanout or a blind spot.
       const forbiddenPresent = tools.filter(
         (tool): tool is string =>
           typeof tool === 'string' &&
-          /^(agent|task|skill|cron|schedulewakeup|artifact)$/i.test(tool),
+          /^(agent|task|taskoutput|skill|cron|schedulewakeup|artifact)$/i.test(tool),
       );
       if (forbiddenPresent.length > 0) {
         throw new ClaudeCodeHarnessError(
@@ -569,7 +589,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           }
           const toolUseId = eventText(record.id) ?? 'tool-' + this.operationCounter;
           const toolName = eventText(record.name) ?? 'unknown';
-          if (toolName === 'Agent' || toolName === 'Task') {
+          if (toolName === 'Agent' || toolName === 'Task' || toolName === 'TaskOutput') {
             throw new ClaudeCodeHarnessError(
               'GLM_SUBAGENT_FORBIDDEN',
               'Claude Code attempted forbidden subagent fanout.',
