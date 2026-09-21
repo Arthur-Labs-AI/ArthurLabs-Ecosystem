@@ -1273,15 +1273,25 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         }
         correction = errors;
         if (attempt < MAX_REPORT_ATTEMPTS) {
+          // Observability: persist the bounded rejection reasons (not just
+          // the count) so a failed correction loop is diagnosable from run
+          // history without the model's raw report text.
+          const reasonPreview = errors
+            .slice(0, 3)
+            .map((issue) => boundCorrectionMessage(issue))
+            .join('; ')
+            .slice(0, 1_500);
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'GLM_REPORT_RETRY',
-            message:
+            message: (
               'Claude Code report attempt ' +
               attempt +
               ' rejected; retrying report only (' +
               errors.length +
-              ' issues).',
+              ' issues): ' +
+              reasonPreview
+            ).slice(0, 2_000),
           });
         } else {
           throw new ClaudeCodeHarnessError(

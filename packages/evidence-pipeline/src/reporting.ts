@@ -113,9 +113,11 @@ export const REPORT_ENVELOPE_SCHEMA =
  *  the rejection concerns strength, so a weaker model gets the rule
  *  instead of just the violation. */
 export const REPORT_STRENGTH_COMPATIBILITY =
-  'Evidence strength/type compatibility (exact rule): ' +
-  "manual evidence (your own reasoning notes) allows ONLY 'weak' or 'speculative' strength; " +
-  "code_reference evidence allows 'weak', 'speculative', or 'strong_code_evidence' (never reproduced_*); " +
+  'Evidence strength/type compatibility (exact rule; strength MUST be one of ' +
+  "'reproduced_failure' | 'reproduced_behavior' | 'tool_diagnostic' | 'strong_code_evidence' | 'agent_reasoning' — " +
+  'no other value validates): ' +
+  "manual evidence (your own reasoning notes) allows ONLY 'agent_reasoning' strength; " +
+  "code_reference evidence allows 'strong_code_evidence', 'tool_diagnostic', or 'agent_reasoning' (never reproduced_*); " +
   "'reproduced_failure'/'reproduced_behavior' require a tool/test operation from the frozen ledger; " +
   "'tool_diagnostic' requires a ledger operation with a known outcome. " +
   'When in doubt, downgrade the strength or drop the evidence item — a weaker honest report passes; an overclaimed one is rejected.';

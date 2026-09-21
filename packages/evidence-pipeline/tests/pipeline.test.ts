@@ -480,6 +480,30 @@ describe('shared evidence pipeline', () => {
     expect(summary).not.toContain('sentry-test-secret');
   });
 
+  it('never teaches a strength value the evidence schema rejects', () => {
+    // Live regression (run_01M320451PT5WGWZ7M32F64JHV): the matrix named
+    // 'weak'/'speculative', which are not in EVIDENCE_STRENGTHS, so a model
+    // that obeyed the correction failed enum validation on retry. Every
+    // quoted strength-like token in the matrix must be a real enum value.
+    const quoted = [...REPORT_STRENGTH_COMPATIBILITY.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    const strengths = quoted.filter((token) =>
+      /^(reproduced|tool|strong|agent|weak|speculative)/.test(token ?? ''),
+    );
+    expect(strengths.length).toBeGreaterThan(0);
+    for (const token of strengths) {
+      expect(
+        [
+          'reproduced_failure',
+          'reproduced_behavior',
+          'tool_diagnostic',
+          'strong_code_evidence',
+          'agent_reasoning',
+        ].includes(token ?? ''),
+        'matrix teaches unknown strength: ' + token,
+      ).toBe(true);
+    }
+  });
+
   it('appends the strength compatibility matrix only for strength rejections', () => {
     const strengthErrors = [
       'evidence.14.strength: Strength tool_diagnostic is impossible for manual evidence',
