@@ -242,6 +242,15 @@ describe('ClaudeCodeHarnessAdapter', () => {
     const failed = events.at(-1) as { failure?: { code?: string; message?: string } };
     expect(failed.failure?.code).toBe('GLM_TOOL_LOOP');
     expect(failed.failure?.message).toContain('10 times with identical arguments');
+    // The abort flushes the turn's buffered evidence: tool completions
+    // plus the correction warning survive instead of vaporizing.
+    const completed = events.filter((e) => e.type === 'tool.completed');
+    expect(completed.length).toBeGreaterThanOrEqual(10);
+    expect(
+      events.some(
+        (e) => e.type === 'warning' && (e as { code?: string }).code === 'GLM_TOOL_LOOP_CORRECTION',
+      ),
+    ).toBe(true);
   });
 
   it('fails fast with GLM_TOOL_LOOP on 25 consecutive distinct-path failures', async () => {

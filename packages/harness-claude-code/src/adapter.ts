@@ -101,6 +101,17 @@ interface CollectedTurn {
   readonly result?: ClaudeStreamEvent | undefined;
 }
 
+/** Events buffered before a loop-breaker abort: flush so the run record
+ *  shows the thrash (and the model saw the correction) instead of 3
+ *  events for 25 tool calls. */
+function partialTurnEvents(cause: unknown): readonly HarnessEvent[] {
+  if (typeof cause === 'object' && cause !== null && 'partialEvents' in cause) {
+    const partial = (cause as { partialEvents?: unknown }).partialEvents;
+    if (Array.isArray(partial)) return partial as HarnessEvent[];
+  }
+  return [];
+}
+
 function event(agentRunId: AgentRunId, value: Readonly<Record<string, unknown>>): HarnessEvent {
   return HarnessEventSchema.parse({
     schemaVersion: 1,
@@ -264,6 +275,86 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   private consecutiveFailures = 0;
   private rateCorrectionIssuedAt: number | undefined;
   private readonly shutdownDiagnostics: HarnessDiagnostic[] = [];
+
+  /** Futile-loop breakers: identical-signature streak (10) and any-shape
+   *  failure rate (25). Called AFTER the completion event lands, so a
+   *  throw never vaporizes its trigger. Returns correction warnings
+   *  (empty normally). */
+  private trackToolResult(
+    toolName: string,
+    signatureArgs: string,
+    failed: boolean,
+    emit: (value: Readonly<Record<string, unknown>>) => HarnessEvent,
+  ): HarnessEvent[] {
+    const extra: HarnessEvent[] = [];
+    const failureSignature = toolName + '\0' + signatureArgs;
+    if (failed) {
+      if (this.lastFailureSignature === failureSignature) {
+        this.consecutiveIdenticalFailures += 1;
+      } else {
+        this.lastFailureSignature = failureSignature;
+        this.consecutiveIdenticalFailures = 1;
+      }
+      if (
+        this.consecutiveIdenticalFailures === 5 &&
+        this.loopCorrectionIssuedFor !== failureSignature
+      ) {
+        this.loopCorrectionIssuedFor = failureSignature;
+        extra.push(
+          emit({
+            type: 'warning',
+            code: 'GLM_TOOL_LOOP_CORRECTION',
+            message: (
+              "Tool '" +
+              toolName +
+              "' failed 5 times with identical arguments; vary the approach " +
+              '(list the directory, or read a file inside it) instead of retrying.'
+            ).slice(0, 500),
+          }),
+        );
+      }
+      if (this.consecutiveIdenticalFailures >= 10) {
+        throw new ClaudeCodeHarnessError(
+          'GLM_TOOL_LOOP',
+          "Tool '" +
+            toolName +
+            "' failed 10 times with identical arguments (vary the approach: list the directory, or read a file inside it); aborting the phase instead of burning the run budget.",
+        );
+      }
+    } else {
+      this.lastFailureSignature = undefined;
+      this.consecutiveIdenticalFailures = 0;
+    }
+    if (failed) {
+      this.consecutiveFailures += 1;
+    } else {
+      this.consecutiveFailures = 0;
+      this.rateCorrectionIssuedAt = undefined;
+    }
+    if (failed && this.consecutiveFailures === 15 && this.rateCorrectionIssuedAt === undefined) {
+      this.rateCorrectionIssuedAt = this.consecutiveFailures;
+      extra.push(
+        emit({
+          type: 'warning',
+          code: 'GLM_TOOL_LOOP_CORRECTION',
+          message: (
+            'Fifteen consecutive tool calls failed without a success; ' +
+            'the current approach is not working. List the workspace root, ' +
+            'read one concrete file that exists, and continue from evidence — ' +
+            'do not sweep further paths blindly.'
+          ).slice(0, 500),
+        }),
+      );
+    }
+    if (failed && this.consecutiveFailures >= 25) {
+      throw new ClaudeCodeHarnessError(
+        'GLM_TOOL_LOOP',
+        'Twenty-five consecutive tool calls failed without a success; ' +
+          'aborting the phase instead of burning the run budget.',
+      );
+    }
+    return extra;
+  }
 
   constructor(private readonly options: ClaudeCodeHarnessAdapterOptions = {}) {
     this.hostEnvironment = options.environment ?? process.env;
@@ -516,85 +607,24 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             tool: { name: toolName, ...(failed ? { exitCode: 1 } : {}) },
           }),
         );
-        // Futile-loop breaker: the same tool with the same args failing
-        // over and over (e.g. Read on a directory, 166x in one turn)
-        // burns the whole run budget achieving nothing. At 5 identical
-        // consecutive failures emit a correction warning; at 10 fail the
-        // phase fast with a clear diagnostic instead of looping to timeout.
-        const failureSignature =
-          toolName + '\0' + (pending?.commandText ?? pending?.argsText ?? '');
-        if (failed) {
-          if (this.lastFailureSignature === failureSignature) {
-            this.consecutiveIdenticalFailures += 1;
-          } else {
-            this.lastFailureSignature = failureSignature;
-            this.consecutiveIdenticalFailures = 1;
-          }
-          if (
-            this.consecutiveIdenticalFailures === 5 &&
-            this.loopCorrectionIssuedFor !== failureSignature
-          ) {
-            this.loopCorrectionIssuedFor = failureSignature;
-            out.push(
-              emit({
-                type: 'warning',
-                code: 'GLM_TOOL_LOOP_CORRECTION',
-                message: (
-                  "Tool '" +
-                  toolName +
-                  "' failed 5 times with identical arguments; vary the approach " +
-                  '(list the directory, or read a file inside it) instead of retrying.'
-                ).slice(0, 500),
-              }),
-            );
-          }
-          if (this.consecutiveIdenticalFailures >= 10) {
-            throw new ClaudeCodeHarnessError(
-              'GLM_TOOL_LOOP',
-              "Tool '" +
-                toolName +
-                "' failed 10 times with identical arguments (vary the approach: list the directory, or read a file inside it); aborting the phase instead of burning the run budget.",
-            );
-          }
-        } else {
-          this.lastFailureSignature = undefined;
-          this.consecutiveIdenticalFailures = 0;
-        }
-        // Rate breaker: N consecutive failures of any shape mean the
-        // investigation is thrashing (e.g. 184/190 Reads failing across
-        // distinct paths). Correct once at 15, abort at 25 — well below
-        // a productive run's budget, far above any healthy burst.
-        if (failed) {
-          this.consecutiveFailures += 1;
-        } else {
-          this.consecutiveFailures = 0;
-          this.rateCorrectionIssuedAt = undefined;
-        }
-        if (
-          failed &&
-          this.consecutiveFailures === 15 &&
-          this.rateCorrectionIssuedAt === undefined
-        ) {
-          this.rateCorrectionIssuedAt = this.consecutiveFailures;
+        // Futile-loop breakers run AFTER the completion lands in `out`
+        // (see trackToolResult below): a throw must never vaporize the
+        // very event that triggered it. On abort, the whole buffered `out`
+        // rides along for the phase boundary to flush.
+        try {
           out.push(
-            emit({
-              type: 'warning',
-              code: 'GLM_TOOL_LOOP_CORRECTION',
-              message: (
-                'Fifteen consecutive tool calls failed without a success; ' +
-                'the current approach is not working. List the workspace root, ' +
-                'read one concrete file that exists, and continue from evidence — ' +
-                'do not sweep further paths blindly.'
-              ).slice(0, 500),
-            }),
+            ...this.trackToolResult(
+              toolName,
+              pending?.commandText ?? pending?.argsText ?? '',
+              failed,
+              emit,
+            ),
           );
-        }
-        if (failed && this.consecutiveFailures >= 25) {
-          throw new ClaudeCodeHarnessError(
-            'GLM_TOOL_LOOP',
-            'Twenty-five consecutive tool calls failed without a success; ' +
-              'aborting the phase instead of burning the run budget.',
-          );
+        } catch (cause) {
+          if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
+            throw Object.assign(cause, { partialEvents: [...out] });
+          }
+          throw cause;
         }
         const commandText = pending?.commandText;
         const argsText = pending?.argsText;
@@ -765,6 +795,13 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           ...this.observeStreamEvent(stream, agentRunId, emit, textAcc, turnUsage, forbidTools),
         );
       } catch (cause) {
+        // Loop abort: merge the turn-so-far (`collected`) with the throw
+        // site's in-flight buffer so no observed event vaporizes.
+        if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
+          throw Object.assign(cause, {
+            partialEvents: [...collected, ...partialTurnEvents(cause)],
+          });
+        }
         if (cause instanceof ClaudeCodeHarnessError) throw cause;
         throw new ClaudeCodeHarnessError(
           'GLM_INVALID_RESULT',
@@ -817,16 +854,23 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       let planningTurns = 0;
       let planningUsage: AgentUsage | undefined;
       for (let attempt = 1; attempt <= MAX_PLANNING_ATTEMPTS; attempt += 1) {
-        const planning = await this.runTurn(
-          session,
-          planCorrection === undefined
-            ? planningPrompt(request)
-            : buildPlanningCorrectionIntro(planCorrection) +
-                '\nImmutable mission context: ' +
-                JSON.stringify(request.task.context ?? {}),
-          request.agentRunId,
-          'planning',
-        );
+        let planning: CollectedTurn;
+        try {
+          planning = await this.runTurn(
+            session,
+            planCorrection === undefined
+              ? planningPrompt(request)
+              : buildPlanningCorrectionIntro(planCorrection) +
+                  '\nImmutable mission context: ' +
+                  JSON.stringify(request.task.context ?? {}),
+            request.agentRunId,
+            'planning',
+          );
+        } catch (cause) {
+          // Loop abort carries its buffered events: flush before failing.
+          for (const emitted of partialTurnEvents(cause)) yield emitted;
+          throw cause;
+        }
         for (const emitted of planning.events) yield emitted;
         planningTurns += 1;
         planningUsage = sumUsage(planningUsage, planning.usage ?? {});
@@ -880,12 +924,18 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // STAGE 2 — investigation only. Terminal prose is ignored (never
       // parsed as a result, never persisted as reasoning); tool events
       // carry the evidentiary facts.
-      const investigation = await this.runTurn(
-        session,
-        investigationPrompt(planResult),
-        request.agentRunId,
-        'investigation',
-      );
+      let investigation: CollectedTurn;
+      try {
+        investigation = await this.runTurn(
+          session,
+          investigationPrompt(planResult),
+          request.agentRunId,
+          'investigation',
+        );
+      } catch (cause) {
+        for (const emitted of partialTurnEvents(cause)) yield emitted;
+        throw cause;
+      }
       for (const emitted of investigation.events) yield emitted;
       // STAGE 3 — reporting against the frozen ledger. Strict whole-
       // document JSON only. Provider structured output (--json-schema)
@@ -915,6 +965,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             { forbidTools: true },
           );
         } catch (cause) {
+          for (const emitted of partialTurnEvents(cause)) yield emitted;
           // Firewall trip: the model attempted a tool call in the
           // tool-free turn. Per protocol this fails the REPORT ATTEMPT
           // (not the run): the correction loop tells the model to
