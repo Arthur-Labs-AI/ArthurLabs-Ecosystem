@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { nowIsoTimestamp } from '@qa/shared';
 import type { HarnessHealthResult } from '@qa/harness-protocol';
 import { buildClaudeChildEnvironment } from './environment.js';
-import { CLAUDE_CODE_VERSION } from './sdk.js';
+import { CLAUDE_CODE_TESTED_VERSION } from './sdk.js';
 import { ClaudeCodeHarnessError } from './errors.js';
 import { redactDiagnostic, secretValues } from './redaction.js';
 
@@ -298,7 +298,16 @@ export async function doctorGlm(
       child.blockedNames.length +
       ' blocked); blocked names are never forwarded.',
   });
-  checks.push({ name: 'sdk', status: 'pass', message: CLAUDE_CODE_VERSION });
+  checks.push({
+    name: 'sdk',
+    status: 'pass',
+    message:
+      'Adapter validated against Claude Code ' +
+      CLAUDE_CODE_TESTED_VERSION +
+      ' (running ' +
+      (executableVersion ?? 'unknown') +
+      ')',
+  });
   checks.push({
     name: 'sandbox',
     status: 'warn',
@@ -336,7 +345,7 @@ export async function doctorGlm(
     executable,
     ...(executableVersion === undefined ? {} : { executableVersion }),
     ...(runtime === undefined ? {} : { modelId: runtime.modelId, provider: runtime.provider }),
-    sdkVersion: CLAUDE_CODE_VERSION,
+    sdkVersion: CLAUDE_CODE_TESTED_VERSION,
     readiness: readiness.readiness,
     configured: readiness.configured,
     binaryAvailable: readiness.binaryAvailable,

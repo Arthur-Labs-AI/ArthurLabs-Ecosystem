@@ -61,6 +61,7 @@ import { ClaudeCodeHarnessError } from './errors.js';
 import { redactDiagnostic, redactStructured, secretValues } from './redaction.js';
 import {
   buildClaudeSettings,
+  CLAUDE_CODE_TESTED_VERSION,
   createProductionClaudeClient,
   type ClaudeClientFactory,
   type ClaudeClientView,
@@ -79,6 +80,13 @@ export interface ClaudeCodeHarnessAdapterOptions {
   readonly shutdownTimeoutMs?: number;
   readonly turnTimeoutMs?: number;
   readonly initializeTimeoutMs?: number;
+  /**
+   * Actual probed executable version (e.g. '2.1.276 (Claude Code)'),
+   * wired from registration preflight. Compared against
+   * CLAUDE_CODE_TESTED_VERSION; a mismatch yields an informational
+   * GLM_CLAUDE_VERSION_UNVERIFIED warning (never a failure).
+   */
+  readonly executableVersion?: string;
   readonly onRuntimeIdentity?: (identity: {
     readonly harnessVersion?: string;
     readonly executableVersion?: string;
@@ -114,6 +122,19 @@ interface CollectedTurn {
   readonly events: readonly HarnessEvent[];
   readonly usage?: AgentUsage | undefined;
   readonly result?: ClaudeStreamEvent | undefined;
+}
+
+/**
+ * Turn-abort errors that must carry their trigger events (the abort
+ * throw site runs before the trigger is yielded, so without this the
+ * very event that tripped the breaker would vaporize). Loop aborts and
+ * the cold-start permission abort share this contract.
+ */
+function isEventCarryingAbort(cause: unknown): cause is ClaudeCodeHarnessError {
+  return (
+    cause instanceof ClaudeCodeHarnessError &&
+    (cause.code === 'GLM_TOOL_LOOP' || cause.code === 'GLM_TOOL_PERMISSION_UNAVAILABLE')
+  );
 }
 
 /** Events buffered before a loop-breaker abort: flush so the run record
@@ -323,11 +344,25 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   private readonly loopWindowSize = 40;
   private readonly loopWindowAbortFailures = 34;
   private loopWindow: boolean[] = [];
+  /**
+   * Cold-start preflight counters (per turn): completions, successes,
+   * and Bash failures since the turn started. If the first tools of a
+   * turn all fail including Bash (even `pwd && true`), the tool layer is
+   * broken (permissions/sandbox), not the model choice — abort with a
+   * precise code in seconds instead of burning 25 calls discovering it.
+   */
+  private turnCompletions = 0;
+  private turnSuccesses = 0;
+  private turnBashFailures = 0;
   private readonly shutdownDiagnostics: HarnessDiagnostic[] = [];
 
-  /** Reset per-turn loop state (identical streak, consecutive rate, and
-   *  trailing window) so one turn's thrash never leaks into the next. */
+  /** Reset per-turn loop state (identical streak, consecutive rate,
+   *  trailing window, and cold-start counters) so one turn's thrash
+   *  never leaks into the next. */
   private resetLoopBreakers(): void {
+    this.turnCompletions = 0;
+    this.turnSuccesses = 0;
+    this.turnBashFailures = 0;
     this.lastFailureSignature = undefined;
     this.consecutiveIdenticalFailures = 0;
     this.loopCorrectionIssuedFor = undefined;
@@ -357,6 +392,27 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     emit: (value: Readonly<Record<string, unknown>>) => HarnessEvent,
   ): HarnessEvent[] {
     const extra: HarnessEvent[] = [];
+    // Cold-start preflight accounting (per turn, reset in
+    // resetLoopBreakers): every completion counts; Bash failures are
+    // tracked separately because a broken tool layer fails Bash first.
+    this.turnCompletions += 1;
+    if (!failed) this.turnSuccesses += 1;
+    if (failed && /^(bash|powershell)$/i.test(toolName)) this.turnBashFailures += 1;
+    // Cold-start abort: the first tools of a turn all fail and Bash is
+    // among them (even trivial commands). The tool layer — permissions,
+    // sandbox, cwd — is broken, not the model choice. Abort with a
+    // precise code in seconds (verified live: `pwd && true` failing is
+    // the signature) instead of burning 25 calls discovering it.
+    if (this.turnCompletions >= 3 && this.turnSuccesses === 0 && this.turnBashFailures >= 1) {
+      throw new ClaudeCodeHarnessError(
+        'GLM_TOOL_PERMISSION_UNAVAILABLE',
+        'The first ' +
+          this.turnCompletions +
+          ' tool calls of the turn all failed, including Bash; ' +
+          'the Claude tool layer (permissions/sandbox/workspace) is unavailable. ' +
+          'Repair the tool configuration instead of retrying model turns.',
+      );
+    }
     const failureSignature = toolName + '\0' + signatureArgs;
     if (failed) {
       if (this.lastFailureSignature === failureSignature) {
@@ -580,15 +636,34 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // failed open. TaskOutput (background-task reader) is denied with
       // Task: it succeeded live without any visible Task launch, which
       // is either ledger-invisible subagent fanout or a blind spot.
+      // TaskStop (background-task control) joins the fanout family: no QA
+      // use, present in the 2.1.276 inventory.
       const forbiddenPresent = tools.filter(
         (tool): tool is string =>
           typeof tool === 'string' &&
-          /^(agent|task|taskoutput|skill|cron|schedulewakeup|artifact)$/i.test(tool),
+          /^(agent|task|taskoutput|taskstop|skill|cron|schedulewakeup|artifact)$/i.test(tool),
       );
       if (forbiddenPresent.length > 0) {
         throw new ClaudeCodeHarnessError(
           'GLM_SUBAGENT_FORBIDDEN',
           'Claude Code session exposes forbidden tools: ' + forbiddenPresent.join(', '),
+        );
+      }
+      // Preflight (deterministic, no model turns burned): the init
+      // inventory must expose the required QA tools. Failing here — before
+      // planning spends provider budget discovering it — with a precise code.
+      const present = new Set(
+        tools
+          .filter((tool): tool is string => typeof tool === 'string')
+          .map((tool) => tool.toLowerCase()),
+      );
+      const missing = ['bash', 'read'].filter((tool) => !present.has(tool));
+      if (missing.length > 0) {
+        throw new ClaudeCodeHarnessError(
+          'GLM_TOOL_PERMISSION_UNAVAILABLE',
+          'Claude Code session does not expose required QA tools: ' +
+            missing.join(', ') +
+            ' (failing fast before planning burns budget).',
         );
       }
       return out;
@@ -628,7 +703,12 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           }
           const toolUseId = eventText(record.id) ?? 'tool-' + this.operationCounter;
           const toolName = eventText(record.name) ?? 'unknown';
-          if (toolName === 'Agent' || toolName === 'Task' || toolName === 'TaskOutput') {
+          if (
+            toolName === 'Agent' ||
+            toolName === 'Task' ||
+            toolName === 'TaskOutput' ||
+            toolName === 'TaskStop'
+          ) {
             throw new ClaudeCodeHarnessError(
               'GLM_SUBAGENT_FORBIDDEN',
               'Claude Code attempted forbidden subagent fanout.',
@@ -691,11 +771,46 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         if (pending !== undefined) this.pendingToolUses.delete(toolUseId);
         const toolName = pending?.toolName ?? 'unknown';
         const failed = record.is_error === true;
+        const isBashLike = /^(bash|powershell)$/i.test(toolName);
+        // Observable result text (bounded later, redacted at emit).
+        // Computed BEFORE the completion event so failures carry their
+        // real diagnostic instead of only a bare exit code.
+        const rawResultText = textFromContentBlocks(
+          Array.isArray(record.content) ? record.content : [record.content],
+        );
+        // A tool_result with is_error:true is NOT a shell exit code.
+        // Only a provider-reported `Exit code N` prefix (verified 2.1.276
+        // Bash shape) yields a numeric code; everything else stays
+        // unknown with the reason in errorPreview. A non-error Bash
+        // result proves execution (exit 0); other tools have no exit
+        // concept at all.
+        const exitMatch = /^Exit code (\d+)/.exec(rawResultText);
+        const reportedExitCode =
+          exitMatch?.[1] === undefined ? undefined : Number.parseInt(exitMatch[1], 10);
+        const exitCode = failed
+          ? isBashLike &&
+            reportedExitCode !== undefined &&
+            Number.isInteger(reportedExitCode) &&
+            reportedExitCode >= 0 &&
+            reportedExitCode <= 255
+            ? reportedExitCode
+            : undefined
+          : isBashLike
+            ? 0
+            : undefined;
+        const errorPreview =
+          failed && rawResultText.length > 0
+            ? redactDiagnostic(rawResultText, this.secrets).slice(0, 1000)
+            : undefined;
         out.push(
           emit({
             type: 'tool.completed',
             operationId,
-            tool: { name: toolName, ...(failed ? { exitCode: 1 } : {}) },
+            tool: {
+              name: toolName,
+              ...(exitCode === undefined ? {} : { exitCode }),
+              ...(errorPreview === undefined ? {} : { errorPreview }),
+            },
           }),
         );
         // Futile-loop breakers run AFTER the completion lands in `out`
@@ -712,7 +827,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             ),
           );
         } catch (cause) {
-          if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
+          if (isEventCarryingAbort(cause)) {
             throw Object.assign(cause, { partialEvents: [...out] });
           }
           throw cause;
@@ -727,11 +842,9 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         const operationKey = 'op_' + this.operationCounter;
         if (commandText !== undefined) {
           const command = redactDiagnostic(commandText, this.secrets);
-          // Exit codes come only from structured tool metadata, never
-          // inferred from result text: Bash results carry stdout/stderr text,
-          // not codes. A non-error Bash result proves success (code 0); an
-          // error result proves non-success without a specific code.
-          const exitCode = failed ? undefined : 0;
+          // `exitCode` is the outer honest value: real provider-reported
+          // codes (including real nonzero Bash failures) ground the ledger;
+          // unknown stays unknown and never fabricates a code.
           if (exitCode !== undefined) this.observedCommands.add(commandIdentity(command, exitCode));
           this.observedOperations.set(operationKey, {
             operationId,
@@ -760,14 +873,13 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             isTestOperation: isTestCommand(toolName + ' ' + (argsText ?? '')),
           });
         }
-        const resultText = textFromContentBlocks(
-          Array.isArray(record.content) ? record.content : [record.content],
-        );
-        if (resultText.length > 0) {
+        // rawResultText computed above (same extraction); agent.message
+        // persists the bounded observable text for run-history diagnosis.
+        if (rawResultText.length > 0) {
           out.push(
             emit({
               type: 'agent.message',
-              message: ('tool ' + toolName + ' result: ' + resultText).slice(0, 2_000),
+              message: ('tool ' + toolName + ' result: ' + rawResultText).slice(0, 2_000),
             }),
           );
         }
@@ -905,15 +1017,16 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     const forbidTools = options?.forbidTools === true;
     // tools:'none' is a SEMANTIC Sentry contract enforced by the adapter
     // firewall (observeStreamEvent throws GLM_REPORT_TOOL_FORBIDDEN).
-    // Claude Code 2.1.270 exposes no trustworthy native empty-tools flag,
-    // so the production client deliberately does NOT translate it into CLI
-    // flags — only outputSchema affects the invocation. Do not pretend
-    // otherwise: inventing a --no-tools flag would silently mislead.
+    // Phase reaches the process boundary (the SDK maps it to explicit
+    // per-phase --allowedTools). Reporting stays tool-free: Claude Code
+    // 2.1.276 offers no trustworthy native empty-tools mechanism (an
+    // empty --allowedTools value is ignored), so the adapter firewall
+    // owns tools:none. Do not pretend otherwise.
     const turnOptions =
       options?.jsonSchema === undefined
         ? forbidTools
           ? { phase: 'reporting' as const, tools: 'none' as const }
-          : undefined
+          : { phase: phase as 'planning' | 'investigation', tools: 'normal' as const }
         : {
             phase: 'reporting' as const,
             tools: 'none' as const,
@@ -961,7 +1074,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             forbidTools,
           );
         } catch (cause) {
-          if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
+          if (isEventCarryingAbort(cause)) {
             throw Object.assign(cause, {
               partialEvents: [...collected, ...partialTurnEvents(cause)],
             });
@@ -1001,7 +1114,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           // Loop abort: flush the turn-so-far plus the trigger's buffer,
           // THEN terminate the owned child so no further provider tokens
           // burn. The model does not continue this turn after abort.
-          if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
+          if (isEventCarryingAbort(cause)) {
             const merged = [...collected, ...partialTurnEvents(cause)];
             for (const emitted of merged.slice(collected.length)) {
               collected.push(emitted);
@@ -1024,7 +1137,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         }
       }
     } catch (cause) {
-      if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
+      if (isEventCarryingAbort(cause)) {
         if (!('partialEvents' in (cause as object))) {
           throw Object.assign(cause, { partialEvents: [...collected] });
         }
@@ -1094,7 +1207,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     } catch (cause) {
       // Already yielded `delivered` events: only the unyielded tail
       // (normally empty) may flush in the phase catch block.
-      if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_TOOL_LOOP') {
+      if (isEventCarryingAbort(cause)) {
         const all = [...partialTurnEvents(cause)];
         throw Object.assign(cause, { partialEvents: all.slice(delivered) });
       }
@@ -1111,6 +1224,24 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
 
   async *run(request: HarnessRunRequest): AsyncIterable<HarnessEvent> {
     yield event(request.agentRunId, { type: 'run.started' });
+    // Version honesty: sdkVersion carries the TESTED Claude version
+    // (CLAUDE_CODE_TESTED_VERSION); the actual binary may be newer. A
+    // mismatch is informational only — never a failure — but it must be
+    // visible in run history when diagnosing version-drift behavior.
+    const actualVersion = this.options.executableVersion;
+    if (actualVersion !== undefined && !actualVersion.startsWith(CLAUDE_CODE_TESTED_VERSION)) {
+      yield event(request.agentRunId, {
+        type: 'warning',
+        code: 'GLM_CLAUDE_VERSION_UNVERIFIED',
+        message: (
+          'Claude Code executable reports version ' +
+          actualVersion.slice(0, 100) +
+          '; Sentry validated adapter behavior against ' +
+          CLAUDE_CODE_TESTED_VERSION +
+          '. Continuing: newer versions are used opportunistically, not failed.'
+        ).slice(0, 500),
+      });
+    }
     yield event(request.agentRunId, {
       type: 'agent.status',
       status: 'planning',

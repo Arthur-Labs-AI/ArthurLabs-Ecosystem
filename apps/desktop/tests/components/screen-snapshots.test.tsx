@@ -163,6 +163,7 @@ describe('screen snapshots: FULL run workspace', () => {
       React.createElement(MergerInspector, {
         payload: {
           mergeResultId: 'merge_01K7777777777777777777A8W1',
+          mergerVersion: 2,
           usableAgentCount: 2,
           expectedAgentCount: 3,
           unavailableAgentStackIds: ['stack_glm_main'],

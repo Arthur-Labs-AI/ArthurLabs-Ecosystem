@@ -105,7 +105,11 @@ function eventToOperation(event: HarnessEventLike): OperationView | undefined {
         kind: 'command',
         title: 'Tool completed: ' + (event.tool?.name ?? 'unknown'),
         detail:
-          event.tool?.exitCode === undefined ? undefined : 'exit ' + String(event.tool.exitCode),
+          event.tool?.errorPreview !== undefined
+            ? event.tool.errorPreview
+            : event.tool?.exitCode === undefined
+              ? undefined
+              : 'exit ' + String(event.tool.exitCode),
         timestamp: event.timestamp,
       };
     case 'command.executed':

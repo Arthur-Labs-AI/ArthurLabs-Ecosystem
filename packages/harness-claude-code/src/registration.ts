@@ -7,7 +7,7 @@ import {
   probeClaudeExecutable,
   resolveGlmRuntime,
 } from './discovery.js';
-import { CLAUDE_CODE_VERSION } from './sdk.js';
+import { CLAUDE_CODE_TESTED_VERSION } from './sdk.js';
 
 export function createGlmRegistration(
   options: ClaudeCodeHarnessAdapterOptions = {},
@@ -37,7 +37,11 @@ export function createGlmRegistration(
   const runtimeIdentity: Partial<AgentRuntimeIdentity> = {
     adapterId: 'claude-code',
     adapterVersion: '0.1.0',
-    sdkVersion: CLAUDE_CODE_VERSION,
+    // sdkVersion names the TESTED Claude version (honest label: this is
+    // what Sentry validated, not necessarily what runs). The actual
+    // binary version rides in executableVersion (probed) and in the
+    // GLM_CLAUDE_VERSION_UNVERIFIED run warning on drift.
+    sdkVersion: CLAUDE_CODE_TESTED_VERSION,
   };
   return {
     stack,
@@ -55,6 +59,11 @@ export function createGlmRegistration(
     createAdapter: () =>
       new ClaudeCodeHarnessAdapter({
         ...options,
+        // Probed at preflight (runs before createAdapter): lets the run
+        // emit GLM_CLAUDE_VERSION_UNVERIFIED on tested/actual drift.
+        ...(runtimeIdentity.executableVersion === undefined
+          ? {}
+          : { executableVersion: runtimeIdentity.executableVersion }),
         onRuntimeIdentity: (identity) => {
           if (identity.harnessVersion !== undefined)
             runtimeIdentity.harnessVersion = identity.harnessVersion;

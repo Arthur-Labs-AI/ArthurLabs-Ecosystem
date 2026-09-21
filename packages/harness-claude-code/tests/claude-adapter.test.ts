@@ -1102,6 +1102,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
     for (const hostile of [
       [evt('system', { subtype: 'init', tools: ['Bash', 'Agent'] })],
       [evt('system', { subtype: 'init', tools: ['Bash', 'TaskOutput'] })],
+      [evt('system', { subtype: 'init', tools: ['Bash', 'Read', 'TaskStop'] })],
       [
         evt('assistant', {
           message: { content: [{ type: 'tool_use', id: 'tu-x', name: 'Task', input: {} }] },
@@ -1113,6 +1114,13 @@ describe('ClaudeCodeHarnessAdapter', () => {
             content: [
               { type: 'tool_use', id: 'tu-x', name: 'TaskOutput', input: { task_id: 'x' } },
             ],
+          },
+        }),
+      ],
+      [
+        evt('assistant', {
+          message: {
+            content: [{ type: 'tool_use', id: 'tu-x', name: 'TaskStop', input: {} }],
           },
         }),
       ],
@@ -1144,6 +1152,221 @@ describe('ClaudeCodeHarnessAdapter', () => {
       expect(events.at(-1)).toMatchObject({ type: 'run.failed' });
       expect(JSON.stringify(events.at(-1))).toMatch(/GLM_SUBAGENT_FORBIDDEN/);
     }
+  });
+
+  it('persists failed-tool diagnostics without fabricating exit codes', async () => {
+    // Definition-of-done 8+9 (run_01M326QHGF26YRV9Z314V4GCN6): a failed
+    // tool must persist its bounded redacted reason; is_error:true must
+    // NOT become a fabricated exitCode 1. Verified 2.1.276 shapes: Bash
+    // 'Exit code 3' keeps its REAL code; Read EACCES and bwrap failures
+    // carry errorPreview with exitCode undefined.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-exit-honesty-'));
+    roots.push(root);
+    const input = await request(root);
+    const fail = (id: string, name: string, inputValue: unknown, content: unknown) => [
+      evt('assistant', {
+        message: { content: [{ type: 'tool_use', id, name, input: inputValue }] },
+      }),
+      evt('user', {
+        message: {
+          content: [{ type: 'tool_result', tool_use_id: id, is_error: true, content }],
+        },
+      }),
+    ];
+    // A leading success keeps the cold-start preflight (3 completions,
+    // zero successes, a Bash failure) from firing: this test exercises
+    // exit-code honesty, not the cold-start abort.
+    const turn: ClaudeStreamEvent[] = [
+      evt('assistant', {
+        message: {
+          content: [{ type: 'tool_use', id: 'tu-ok', name: 'Bash', input: { command: 'true' } }],
+        },
+      }),
+      evt('user', {
+        message: {
+          content: [{ type: 'tool_result', tool_use_id: 'tu-ok', content: 'ok' }],
+        },
+      }),
+      ...fail('tu-bash-code', 'Bash', { command: 'exit 3' }, 'Exit code 3'),
+      ...fail(
+        'tu-read-eacces',
+        'Read',
+        { file_path: 'locked.txt' },
+        "EACCES: permission denied, open 'locked.txt'",
+      ),
+      ...fail(
+        'tu-bash-bwrap',
+        'Bash',
+        { command: 'pwd' },
+        'Exit code 1\nbwrap: ' + "Can't create file at /managed-settings.json: Permission denied",
+      ),
+      evt('assistant', {
+        message: { content: [{ type: 'text', text: 'Investigation complete.' }] },
+      }),
+      evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+    ];
+    let calls = 0;
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-exit',
+        startSession: async () => ({
+          runText: async () => {
+            calls += 1;
+            if (calls === 1) return planTurn();
+            if (calls === 2) return turn;
+            return reportTurn(validReportV2());
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    const completed = events.filter((e) => e.type === 'tool.completed') as Array<{
+      tool?: { name?: string; exitCode?: number; errorPreview?: string };
+    }>;
+    expect(completed).toHaveLength(4);
+    // Real provider-reported code survives...
+    expect(completed[1]?.tool).toMatchObject({ name: 'Bash', exitCode: 3 });
+    // ...but non-code failures never fabricate one, and carry the reason.
+    expect(completed[2]?.tool?.exitCode).toBeUndefined();
+    expect(completed[2]?.tool?.errorPreview).toContain('EACCES');
+    expect(completed[3]?.tool).toMatchObject({ exitCode: 1 });
+    expect(completed[3]?.tool?.errorPreview).toContain('bwrap');
+    // The reason is also visible as an agent.message (run-history UX).
+    const messages = events
+      .filter((e) => e.type === 'agent.message')
+      .map((e) => (e as { message?: string }).message ?? '');
+    expect(messages.some((m) => m.includes('EACCES'))).toBe(true);
+  });
+
+  it('aborts cold-start tool-layer failure with a precise code', async () => {
+    // run_01M326QHGF26YRV9Z314V4GCN6: `pwd && true` itself failed — the
+    // tool layer (permissions/sandbox), not the model choice. Three
+    // completions, zero successes, a Bash failure among them →
+    // GLM_TOOL_PERMISSION_UNAVAILABLE in seconds, not 25 calls later.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-coldstart-'));
+    roots.push(root);
+    const input = await request(root);
+    const turn: ClaudeStreamEvent[] = [];
+    const cmds = ['ls -la', 'pwd && true', 'ls -la .'];
+    cmds.forEach((command, i) => {
+      turn.push(
+        evt('assistant', {
+          message: {
+            content: [{ type: 'tool_use', id: 'tu-cold-' + i, name: 'Bash', input: { command } }],
+          },
+        }),
+        evt('user', {
+          message: {
+            content: [
+              {
+                type: 'tool_result',
+                tool_use_id: 'tu-cold-' + i,
+                is_error: true,
+                content: 'Exit code 1\nbwrap: sandbox unavailable',
+              },
+            ],
+          },
+        }),
+      );
+    });
+    turn.push(evt('result', { is_error: false, subagent_stats: { spawned: 0 } }));
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-cold',
+        startSession: async () => ({ runText: async () => turn }),
+        close: async () => undefined,
+      }),
+    });
+    const events: HarnessEvent[] = [];
+    for await (const event of adapter.run(input)) events.push(event);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'GLM_TOOL_PERMISSION_UNAVAILABLE' },
+    });
+    expect(events.filter((e) => e.type === 'tool.completed')).toHaveLength(3);
+  });
+
+  it('fails fast when the init inventory lacks required QA tools', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-preflight-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-preflight',
+        startSession: async () => ({
+          runText: async () => [
+            evt('system', { subtype: 'init', tools: ['WebFetch'], model: 'm' }),
+            evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+          ],
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events: HarnessEvent[] = [];
+    for await (const event of adapter.run(input)) events.push(event);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'GLM_TOOL_PERMISSION_UNAVAILABLE' },
+    });
+  });
+
+  it('warns (never fails) on Claude version drift', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-version-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      executableVersion: '2.1.276 (Claude Code)',
+      clientFactory: async () => ({
+        sessionId: 'session-version',
+        startSession: async () => ({
+          runText: threeStage(planTurn(), investigationTurn(), reportTurn(validReportV2())),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'GLM_CLAUDE_VERSION_UNVERIFIED' }),
+    );
+    const matching = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      executableVersion: '2.1.270',
+      clientFactory: async () => ({
+        sessionId: 'session-version-ok',
+        startSession: async () => ({
+          runText: threeStage(planTurn(), investigationTurn(), reportTurn(validReportV2())),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const root2 = await mkdtemp(join(tmpdir(), 'sentry-claude-version-ok-'));
+    roots.push(root2);
+    const events2 = await collect(matching, await request(root2));
+    await matching.dispose();
+    expect(
+      events2.some((e) => (e as { code?: string }).code === 'GLM_CLAUDE_VERSION_UNVERIFIED'),
+    ).toBe(false);
   });
 
   it('persists tool result text for string, nested, and classic block shapes', async () => {

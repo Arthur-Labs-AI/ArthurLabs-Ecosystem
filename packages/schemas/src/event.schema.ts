@@ -67,6 +67,11 @@ export const ToolCompletedEventSchema = HarnessEventBaseSchema.extend({
       name: z.string().min(1).max(100),
       exitCode: z.number().int().optional(),
       durationMs: NonNegativeIntSchema.optional(),
+      // Bounded redacted provider/tool diagnostic for failed calls
+      // (e.g. permission denial, sandbox refusal). tool_result
+      // is_error does NOT imply a shell exit code, so the reason lives
+      // here rather than in a fabricated exitCode.
+      errorPreview: z.string().min(1).max(1000).optional(),
     })
     .strict(),
 }).strict();

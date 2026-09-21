@@ -65,6 +65,7 @@ export interface HarnessEventLike {
     inputSummary?: string;
     exitCode?: number;
     durationMs?: number;
+    errorPreview?: string;
   };
   readonly command?: string;
   readonly exitCode?: number;

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildClaudeArgs, buildClaudeChildEnvironment, buildClaudeSpawnEnv } from '../src/index.js';
+import {
+  buildClaudeArgs,
+  buildClaudeChildEnvironment,
+  buildClaudeSpawnEnv,
+  CLAUDE_INVESTIGATION_ALLOWED_TOOLS,
+  CLAUDE_PLANNING_ALLOWED_TOOLS,
+} from '../src/index.js';
 
 describe('Claude session flag shape', () => {
   const base = {
@@ -15,10 +21,12 @@ describe('Claude session flag shape', () => {
     // B: AI-agent delegation stays denied (independent-AgentStack semantics).
     // TaskOutput (background-task reader) is denied with Task: it succeeded
     // live without any visible Task launch (run_01M324B2ZGD50VSA48ERJ7HM51),
-    // which is either ledger-invisible fanout or a blind spot.
+    // which is either ledger-invisible fanout or a blind spot. TaskStop
+    // (background-task control) joins the fanout family.
     expect(denied.has('Agent')).toBe(true);
     expect(denied.has('Task')).toBe(true);
     expect(denied.has('TaskOutput')).toBe(true);
+    expect(denied.has('TaskStop')).toBe(true);
     expect(denied.has('Artifact')).toBe(true);
     // A: normal investigative QA tools stay available.
     expect(denied.has('WebFetch')).toBe(false);
@@ -35,6 +43,32 @@ describe('Claude session flag shape', () => {
       'ExitWorktree',
     ]) {
       expect(denied.has(tool)).toBe(true);
+    }
+  });
+
+  it('emits phase-scoped explicit allowlists (verified --allowedTools syntax)', () => {
+    // Root-cause fix (run_01M326QHGF26YRV9Z314V4GCN6): with
+    // CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 and no allowlist, Claude forces
+    // permissionMode=default and every would-prompt Bash call is denied
+    // (verified live against 2.1.276: even `pwd && true` fails). Comma-
+    // separated bare names is the verified syntax; other shapes do not
+    // satisfy the hardening.
+    expect(CLAUDE_PLANNING_ALLOWED_TOOLS).toBe('Bash,Read,WebFetch,WebSearch');
+    expect(CLAUDE_INVESTIGATION_ALLOWED_TOOLS).toBe('Bash,Read,Edit,Write,WebFetch,WebSearch');
+    const planning = buildClaudeArgs({ ...base, resume: false, allowedTools: 'Bash,Read' });
+    const flagAt = planning.indexOf('--allowedTools');
+    expect(flagAt).toBeGreaterThan(-1);
+    expect(planning[flagAt + 1]).toBe('Bash,Read');
+    // Reporting passes none: tool-free is firewall-enforced (an empty
+    // --allowedTools value is ignored by Claude — verified, not assumed).
+    const reporting = buildClaudeArgs({ ...base, resume: true });
+    expect(reporting).not.toContain('--allowedTools');
+    // Forbidden tools are never allowlisted, even by accident.
+    for (const args of [planning]) {
+      const value = String(args[args.indexOf('--allowedTools') + 1] ?? '');
+      for (const forbidden of ['Agent', 'Task', 'Skill', 'Artifact']) {
+        expect(value.split(',')).not.toContain(forbidden);
+      }
     }
   });
 

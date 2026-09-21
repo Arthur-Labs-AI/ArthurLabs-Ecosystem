@@ -135,7 +135,7 @@ describe('Test C — live event delivery while the turn is running', () => {
           type: 'system',
           subtype: 'init',
           session_id: 's',
-          tools: ['Bash'],
+          tools: ['Bash', 'Read'],
           model: 'm',
         }) +
         ');',
@@ -255,7 +255,7 @@ describe('Test D — activity-aware timeout integration', () => {
           type: 'system',
           subtype: 'init',
           session_id: 's',
-          tools: ['Bash'],
+          tools: ['Bash', 'Read'],
           model: 'm',
         }) +
         ');',
@@ -298,7 +298,7 @@ describe('Test D — activity-aware timeout integration', () => {
           type: 'system',
           subtype: 'init',
           session_id: 's',
-          tools: ['Bash'],
+          tools: ['Bash', 'Read'],
           model: 'm',
         }) +
         ');',
@@ -350,7 +350,7 @@ describe('Test E — initialization timeout', () => {
           type: 'system',
           subtype: 'init',
           session_id: 's',
-          tools: ['Bash'],
+          tools: ['Bash', 'Read'],
           model: 'm',
         }) +
         ');',

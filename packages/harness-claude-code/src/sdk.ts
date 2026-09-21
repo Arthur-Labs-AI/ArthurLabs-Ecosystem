@@ -4,6 +4,21 @@ import type { ReportTurnOptions } from '@qa/evidence-pipeline';
 
 export const CLAUDE_CODE_VERSION = '2.1.270' as const;
 
+/** Claude Code version Sentry validated this adapter against. */
+export const CLAUDE_CODE_TESTED_VERSION = CLAUDE_CODE_VERSION;
+
+/**
+ * Phase-scoped explicit QA allowlists (comma-separated bare tool names —
+ * the verified --allowedTools syntax). Least privilege per phase:
+ * planning needs reconnaissance only; investigation adds workspace-local
+ * editing; reporting passes NONE (adapter firewall owns tool-free).
+ * Tool inventory verified against the 2.1.276 init event: Glob/Grep do
+ * not exist (nothing to allow); TaskStop joins the denied fanout family.
+ */
+export const CLAUDE_PLANNING_ALLOWED_TOOLS = 'Bash,Read,WebFetch,WebSearch' as const;
+export const CLAUDE_INVESTIGATION_ALLOWED_TOOLS =
+  'Bash,Read,Edit,Write,WebFetch,WebSearch' as const;
+
 /** One parsed stream-json line (structural parse only, never scraped text). */
 export interface ClaudeStreamEvent {
   readonly type: string;
@@ -130,7 +145,12 @@ export function buildClaudeSettings(): Record<string, unknown> {
   };
 }
 
-/** CLI flags shared by every Sentry Claude invocation (verified on 2.1.270). */
+/**
+ * CLI flags shared by every Sentry Claude invocation (verified on 2.1.276
+ * against the real binary via a stub provider: comma-separated bare tool
+ * names register as allow rules; space-separated single values and
+ * settings-file permissions.allow do NOT satisfy the SCRUB hardening).
+ */
 export function buildClaudeArgs(input: {
   readonly modelId: string;
   readonly settingsPath: string;
@@ -138,6 +158,15 @@ export function buildClaudeArgs(input: {
   readonly resume: boolean;
   /** Provider structured-output schema (reporting turn only). */
   readonly jsonSchema?: Record<string, unknown>;
+  /**
+   * Explicit allowlist for this turn (comma-separated bare tool names).
+   * Required: with CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 and no allowlist,
+   * Claude forces permissionMode=default and every would-prompt Bash call
+   * is denied (verified: even `pwd && true` fails). Read is unaffected
+   * (no prompt by default) but listed for explicitness and forward
+   * compatibility. Reporting passes none (firewall-enforced tool-free).
+   */
+  readonly allowedTools?: string;
 }): string[] {
   return [
     '-p',
@@ -171,8 +200,15 @@ export function buildClaudeArgs(input: {
     // vocabulary, so exposing it risks provider 400s for zero benefit.
     // WebFetch and WebSearch are ALLOWED: normal investigative QA tools,
     // auditable via harness events and contained by the sandbox.
+    // Explicit QA allowlist (phase-scoped by the adapter): without it,
+    // the SCRUB hardening forces permissionMode=default and Bash calls
+    // die as permission denials. Comma-separated bare names is the
+    // verified syntax. Forbidden tools stay denied (disallowed wins on
+    // overlap; TaskStop joins the fanout family: background-task control
+    // with no QA use).
+    ...(input.allowedTools === undefined ? [] : ['--allowedTools', input.allowedTools]),
     '--disallowedTools',
-    'Agent,Task,TaskOutput,Skill,CronCreate,CronDelete,CronList,ScheduleWakeup,EnterWorktree,ExitWorktree,Artifact',
+    'Agent,Task,TaskOutput,TaskStop,Skill,CronCreate,CronDelete,CronList,ScheduleWakeup,EnterWorktree,ExitWorktree,Artifact',
     // Session identity: a fresh turn mints the id via --session-id; a
     // continuing turn resumes via --resume ALONE. Combining --session-id
     // with --resume is rejected without --fork-session (verified on
@@ -190,7 +226,17 @@ class ProductionSession implements ClaudeSessionView {
   constructor(private readonly owner: ClaudeClient) {}
 
   runText(text: string, options?: ReportTurnOptions): ClaudeTurnStream {
-    return this.owner.streamTurnText(text, options?.outputSchema);
+    // Phase reaches the process boundary here (previously only
+    // outputSchema survived): explicit per-phase allowlists, reporting
+    // tool-free via the adapter firewall (no native empty-tools flag).
+    const phase = options?.phase;
+    const allowedTools =
+      phase === undefined || phase === 'planning'
+        ? CLAUDE_PLANNING_ALLOWED_TOOLS
+        : phase === 'investigation'
+          ? CLAUDE_INVESTIGATION_ALLOWED_TOOLS
+          : undefined;
+    return this.owner.streamTurnText(text, options?.outputSchema, allowedTools);
   }
 
   async collectText(text: string, options?: ReportTurnOptions): Promise<ClaudeStreamEvent[]> {
@@ -421,6 +467,7 @@ function spawnOwnedClaudeTurn(
   continued: Set<string>,
   active: Set<ChildProcess>,
   jsonSchema?: Record<string, unknown>,
+  allowedTools?: string,
 ): LiveClaudeTurn {
   if (owner.isClosed) {
     throw new Error('Claude client is closed; refusing to start a new turn.');
@@ -436,6 +483,7 @@ function spawnOwnedClaudeTurn(
     sessionId,
     resume,
     ...(jsonSchema === undefined ? {} : { jsonSchema }),
+    ...(allowedTools === undefined ? {} : { allowedTools }),
   });
   const spawnFn =
     spec.spawnProcess ??
@@ -510,7 +558,11 @@ export class ClaudeClient implements ClaudeClientView {
   }
 
   /** Live streaming turn (production path: incremental delivery). */
-  streamTurnText(prompt: string, jsonSchema?: Record<string, unknown>): ClaudeTurnStream {
+  streamTurnText(
+    prompt: string,
+    jsonSchema?: Record<string, unknown>,
+    allowedTools?: string,
+  ): ClaudeTurnStream {
     return spawnOwnedClaudeTurn(
       this,
       this.spec,
@@ -519,6 +571,7 @@ export class ClaudeClient implements ClaudeClientView {
       this.continued,
       this.active,
       jsonSchema,
+      allowedTools,
     );
   }
 
@@ -530,9 +583,11 @@ export class ClaudeClient implements ClaudeClientView {
   async runTurnText(
     prompt: string,
     jsonSchema?: Record<string, unknown>,
+    allowedTools?: string,
   ): Promise<ClaudeStreamEvent[]> {
     const out: ClaudeStreamEvent[] = [];
-    for await (const event of this.streamTurnText(prompt, jsonSchema)) out.push(event);
+    for await (const event of this.streamTurnText(prompt, jsonSchema, allowedTools))
+      out.push(event);
     return out;
   }
 
