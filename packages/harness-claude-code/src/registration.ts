@@ -1,10 +1,12 @@
 import { AgentStackDefinitionSchema, type AgentRuntimeIdentity } from '@qa/schemas';
 import type { HarnessAdapterRegistration } from '@qa/harness-protocol';
+import { ClaudeCodeHarnessError } from './errors.js';
 import { ClaudeCodeHarnessAdapter, type ClaudeCodeHarnessAdapterOptions } from './adapter.js';
 import {
   assertGlmAuthConfigured,
   assertGlmEndpointConfigured,
   probeClaudeExecutable,
+  resolveClaudeExecutableIdentity,
   resolveGlmRuntime,
 } from './discovery.js';
 import { CLAUDE_CODE_TESTED_VERSION } from './sdk.js';
@@ -51,10 +53,20 @@ export function createGlmRegistration(
       assertGlmAuthConfigured(options.environment ?? process.env);
       runtimeIdentity.modelId = resolved.modelId;
       runtimeIdentity.executable = resolved.executable;
-      runtimeIdentity.executableVersion = await probeClaudeExecutable(
-        resolved.executable,
-        options.environment ?? process.env,
-      );
+      try {
+        const identity = await resolveClaudeExecutableIdentity(
+          resolved.executable,
+          options.environment ?? process.env,
+        );
+        runtimeIdentity.executable = identity.resolved;
+        if (identity.version !== undefined) runtimeIdentity.executableVersion = identity.version;
+      } catch (identityError) {
+        if (identityError instanceof ClaudeCodeHarnessError) throw identityError;
+        runtimeIdentity.executableVersion = await probeClaudeExecutable(
+          resolved.executable,
+          options.environment ?? process.env,
+        );
+      }
     },
     createAdapter: () =>
       new ClaudeCodeHarnessAdapter({

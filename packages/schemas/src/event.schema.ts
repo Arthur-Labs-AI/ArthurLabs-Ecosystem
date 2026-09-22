@@ -72,6 +72,11 @@ export const ToolCompletedEventSchema = HarnessEventBaseSchema.extend({
       // is_error does NOT imply a shell exit code, so the reason lives
       // here rather than in a fabricated exitCode.
       errorPreview: z.string().min(1).max(1000).optional(),
+      // True when the tool result proves sandbox/bootstrap failure
+      // before the actual command executed (e.g. bubblewrap could not
+      // initialize). Such completions are infrastructure failures, never
+      // reproduced-success evidence; exitCode stays undefined.
+      infrastructureFailure: z.boolean().optional(),
     })
     .strict(),
 }).strict();

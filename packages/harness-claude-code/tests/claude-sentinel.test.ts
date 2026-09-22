@@ -5,6 +5,7 @@ import {
   buildClaudeSpawnEnv,
   CLAUDE_INVESTIGATION_ALLOWED_TOOLS,
   CLAUDE_PLANNING_ALLOWED_TOOLS,
+  describeClaudeHeadlessEnvironment,
 } from '../src/index.js';
 
 describe('Claude session flag shape', () => {
@@ -180,5 +181,118 @@ describe('Claude credential boundary', () => {
       platform: 'win32',
     });
     expect(child.environment['USERPROFILE']).toBe('C:\\Users\\qa');
+  });
+});
+
+describe('Claude headless IDE isolation', () => {
+  it('strips IDE/host-bridge inputs from the Linux worker environment', () => {
+    const child = buildClaudeChildEnvironment({
+      source: {
+        PATH: '/usr/bin',
+        HOME: '/tmp/sentry-home',
+        ENABLE_IDE_INTEGRATION: '1',
+        CLAUDE_CODE_SSE_PORT: '12345',
+        VSCODE_IPC_HOOK_CLI: '/mnt/c/hooks',
+        VSCODE_CWD: '/mnt/c/work',
+        TERM_PROGRAM: 'vscode',
+        IDEA_INITIAL_DIRECTORY: 'C:\\JetBrains',
+        JETBRAINS_IDE: 'idea',
+        ANTHROPIC_AUTH_TOKEN: 'sentry-test-sentinel-credential',
+      },
+      platform: 'linux',
+    });
+    for (const name of [
+      'ENABLE_IDE_INTEGRATION',
+      'CLAUDE_CODE_SSE_PORT',
+      'VSCODE_IPC_HOOK_CLI',
+      'VSCODE_CWD',
+      'TERM_PROGRAM',
+      'IDEA_INITIAL_DIRECTORY',
+      'JETBRAINS_IDE',
+    ]) {
+      expect(child.environment[name]).toBeUndefined();
+      expect(child.blockedNames).toContain(name);
+    }
+    expect(child.environment['ANTHROPIC_AUTH_TOKEN']).toBe('sentry-test-sentinel-credential');
+  });
+
+  it('does not strip IDE inputs for native Windows execution', () => {
+    const child = buildClaudeChildEnvironment({
+      source: { PATH: 'C:\\Windows\\System32', TERM_PROGRAM: 'vscode' },
+      platform: 'win32',
+    });
+    expect(child.environment['TERM_PROGRAM']).toBe('vscode');
+  });
+
+  it('reports headless environment metadata without secret values', () => {
+    const spawnEnv = buildClaudeSpawnEnv({
+      executable: 'claude-test',
+      cwd: '/tmp/ws',
+      configDir: '/tmp/claude-home/config',
+      homeDir: '/tmp/claude-home/home',
+      environment: { PATH: '/usr/bin', ANTHROPIC_AUTH_TOKEN: 'sentry-test-sentinel-credential' },
+      modelId: 'glm-5.3-flash',
+      settingsPath: '/tmp/claude-home/config/sentry-settings.json',
+      initializeTimeoutMs: 30_000,
+      turnTimeoutMs: 60_000,
+      shutdownTimeoutMs: 5_000,
+    });
+    const diagnosis = describeClaudeHeadlessEnvironment({
+      spawnEnv,
+      source: {
+        HOME: '/mnt/c/Users/CodexSandboxOffline',
+        USERPROFILE: 'C:\\Users\\CodexSandboxOffline',
+        VSCODE_CWD: '/mnt/c/work',
+      },
+      platform: 'linux',
+      configDir: '/tmp/claude-home/config',
+    });
+    expect(diagnosis.homeIsWindowsMounted).toBe(false);
+    expect(diagnosis.configDirIsWindowsMounted).toBe(false);
+    expect(diagnosis.windowsProfilePresent).toContain('USERPROFILE');
+    expect(diagnosis.ideBridgeBlocked).toContain('VSCODE_CWD');
+    expect(JSON.stringify(diagnosis)).not.toContain('sentry-test-sentinel-credential');
+  });
+});
+
+describe('Claude executable runtime identity', () => {
+  it('fails closed when Linux resolves to a Windows-mounted executable', async () => {
+    const { resolveClaudeExecutableIdentity } = await import('../src/index.js');
+    await expect(
+      resolveClaudeExecutableIdentity(
+        '/mnt/c/Program Files/claude.exe',
+        { PATH: '/usr/bin' },
+        'linux',
+      ),
+    ).rejects.toThrow(/GLM_CLAUDE_RUNTIME_MISMATCH/);
+  });
+
+  it('classifies versions data-driven: tested ready, 2.1.276 blocked, unknown unverified', async () => {
+    const { classifyClaudeCodeVersion, parseClaudeCodeVersion } = await import('../src/index.js');
+    expect(parseClaudeCodeVersion('2.1.270 (Claude Code)')).toBe('2.1.270');
+    expect(parseClaudeCodeVersion(undefined)).toBeUndefined();
+    expect(classifyClaudeCodeVersion('2.1.270 (Claude Code)')).toBe('ready');
+    expect(classifyClaudeCodeVersion('2.1.276 (Claude Code)')).toBe('blocked');
+    expect(classifyClaudeCodeVersion('9.9.999 (Claude Code)')).toBe('unverified');
+    expect(classifyClaudeCodeVersion(undefined)).toBe('unverified');
+  });
+
+  it('detects sandbox bootstrap markers without flagging ordinary errors', async () => {
+    const { isSandboxBootstrapFailureText } = await import('../src/index.js');
+    expect(
+      isSandboxBootstrapFailureText(
+        "bwrap: Can't mkdir /mnt/c/Users/CodexSandboxOffline/.claude: Permission denied",
+      ),
+    ).toBe(true);
+    expect(
+      isSandboxBootstrapFailureText(
+        "bwrap: Can't create file at /mnt/c/Users/CodexSandboxOffline/.claude/ide: Permission denied",
+      ),
+    ).toBe(true);
+    expect(isSandboxBootstrapFailureText('Exit code 1\nbwrap: sandbox unavailable')).toBe(true);
+    expect(isSandboxBootstrapFailureText('File does not exist: README.md')).toBe(false);
+    expect(isSandboxBootstrapFailureText('Exit code 3')).toBe(false);
+    expect(isSandboxBootstrapFailureText('EACCES: permission denied')).toBe(false);
+    expect(isSandboxBootstrapFailureText('12 passed')).toBe(false);
   });
 });

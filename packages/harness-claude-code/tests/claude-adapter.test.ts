@@ -1158,8 +1158,10 @@ describe('ClaudeCodeHarnessAdapter', () => {
     // Definition-of-done 8+9 (run_01M326QHGF26YRV9Z314V4GCN6): a failed
     // tool must persist its bounded redacted reason; is_error:true must
     // NOT become a fabricated exitCode 1. Verified 2.1.276 shapes: Bash
-    // 'Exit code 3' keeps its REAL code; Read EACCES and bwrap failures
-    // carry errorPreview with exitCode undefined.
+    // 'Exit code 3' keeps its REAL code; Read EACCES carries errorPreview
+    // with exitCode undefined. A bwrap bootstrap failure aborts the turn
+    // immediately with GLM_SANDBOX_UNAVAILABLE (TASK-0012): it rides in
+    // its own turn below, not in this honesty turn.
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-exit-honesty-'));
     roots.push(root);
     const input = await request(root);
@@ -1194,12 +1196,9 @@ describe('ClaudeCodeHarnessAdapter', () => {
         { file_path: 'locked.txt' },
         "EACCES: permission denied, open 'locked.txt'",
       ),
-      ...fail(
-        'tu-bash-bwrap',
-        'Bash',
-        { command: 'pwd' },
-        'Exit code 1\nbwrap: ' + "Can't create file at /managed-settings.json: Permission denied",
-      ),
+      // Ordinary nonzero shell failure (the shell RAN and exited 1):
+      // keeps its real code, never infrastructure failure.
+      ...fail('tu-bash-one', 'Bash', { command: 'false' }, 'Exit code 1'),
       evt('assistant', {
         message: { content: [{ type: 'text', text: 'Investigation complete.' }] },
       }),
@@ -1230,13 +1229,13 @@ describe('ClaudeCodeHarnessAdapter', () => {
       tool?: { name?: string; exitCode?: number; errorPreview?: string };
     }>;
     expect(completed).toHaveLength(4);
-    // Real provider-reported code survives...
+    // Real provider-reported codes survive...
     expect(completed[1]?.tool).toMatchObject({ name: 'Bash', exitCode: 3 });
     // ...but non-code failures never fabricate one, and carry the reason.
     expect(completed[2]?.tool?.exitCode).toBeUndefined();
     expect(completed[2]?.tool?.errorPreview).toContain('EACCES');
-    expect(completed[3]?.tool).toMatchObject({ exitCode: 1 });
-    expect(completed[3]?.tool?.errorPreview).toContain('bwrap');
+    expect(completed[3]?.tool).toMatchObject({ name: 'Bash', exitCode: 1 });
+    expect(completed[3]?.tool?.errorPreview).toContain('Exit code 1');
     // The reason is also visible as an agent.message (run-history UX).
     const messages = events
       .filter((e) => e.type === 'agent.message')
@@ -1249,6 +1248,9 @@ describe('ClaudeCodeHarnessAdapter', () => {
     // tool layer (permissions/sandbox), not the model choice. Three
     // completions, zero successes, a Bash failure among them →
     // GLM_TOOL_PERMISSION_UNAVAILABLE in seconds, not 25 calls later.
+    // NOTE: sandbox/bootstrap markers (bwrap/…) now abort even earlier
+    // with GLM_SANDBOX_UNAVAILABLE (TASK-0012), so this permission-shape
+    // turn uses plain denial text without bootstrap markers.
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-coldstart-'));
     roots.push(root);
     const input = await request(root);
@@ -1268,7 +1270,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
                 type: 'tool_result',
                 tool_use_id: 'tu-cold-' + i,
                 is_error: true,
-                content: 'Exit code 1\nbwrap: sandbox unavailable',
+                content: 'Exit code 1\npermission denied by tool policy',
               },
             ],
           },
@@ -1294,6 +1296,60 @@ describe('ClaudeCodeHarnessAdapter', () => {
       failure: { code: 'GLM_TOOL_PERMISSION_UNAVAILABLE' },
     });
     expect(events.filter((e) => e.type === 'tool.completed')).toHaveLength(3);
+  });
+
+  it('aborts a bwrap bootstrap failure on the first Bash call with GLM_SANDBOX_UNAVAILABLE', async () => {
+    // TASK-0012 production shape: bubblewrap dies before the shell
+    // starts. One proven bootstrap failure aborts immediately — no
+    // waiting for two more unrelated failures.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-coldstart-bwrap-'));
+    roots.push(root);
+    const input = await request(root);
+    const turn: ClaudeStreamEvent[] = [
+      evt('assistant', {
+        message: {
+          content: [
+            {
+              type: 'tool_use',
+              id: 'tu-cold-bwrap',
+              name: 'Bash',
+              input: { command: 'pwd && true' },
+            },
+          ],
+        },
+      }),
+      evt('user', {
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'tu-cold-bwrap',
+              is_error: true,
+              content: 'Exit code 1\nbwrap: sandbox unavailable',
+            },
+          ],
+        },
+      }),
+      evt('result', { is_error: false, subagent_stats: { spawned: 0 } }),
+    ];
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      clientFactory: async () => ({
+        sessionId: 'session-cold-bwrap',
+        startSession: async () => ({ runText: async () => turn }),
+        close: async () => undefined,
+      }),
+    });
+    const events: HarnessEvent[] = [];
+    for await (const event of adapter.run(input)) events.push(event);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'GLM_SANDBOX_UNAVAILABLE' },
+    });
+    expect(events.filter((e) => e.type === 'tool.completed')).toHaveLength(1);
   });
 
   it('fails fast when the init inventory lacks required QA tools', async () => {
@@ -1324,7 +1380,10 @@ describe('ClaudeCodeHarnessAdapter', () => {
     });
   });
 
-  it('warns (never fails) on Claude version drift', async () => {
+  it('fails closed on a live-proven incompatible version, warns on unknown drift', async () => {
+    // TASK-0012 version policy: 2.1.276 is live-proven incompatible with
+    // the WSL/bubblewrap sandbox → GLM_CLAUDE_VERSION_UNSUPPORTED before
+    // any provider budget burns. Unknown newer versions still warn + run.
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-version-'));
     roots.push(root);
     const input = await request(root);
@@ -1343,8 +1402,29 @@ describe('ClaudeCodeHarnessAdapter', () => {
     });
     const events = await collect(adapter, input);
     await adapter.dispose();
-    expect(events.at(-1)?.type).toBe('run.completed');
-    expect(events).toContainEqual(
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'GLM_CLAUDE_VERSION_UNSUPPORTED' },
+    });
+    const drifted = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      executableVersion: '9.9.999 (Claude Code)',
+      clientFactory: async () => ({
+        sessionId: 'session-version-drift',
+        startSession: async () => ({
+          runText: threeStage(planTurn(), investigationTurn(), reportTurn(validReportV2())),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const rootDrift = await mkdtemp(join(tmpdir(), 'sentry-claude-version-drift-'));
+    roots.push(rootDrift);
+    const driftEvents = await collect(drifted, await request(rootDrift));
+    await drifted.dispose();
+    expect(driftEvents.at(-1)?.type).toBe('run.completed');
+    expect(driftEvents).toContainEqual(
       expect.objectContaining({ type: 'warning', code: 'GLM_CLAUDE_VERSION_UNVERIFIED' }),
     );
     const matching = new ClaudeCodeHarnessAdapter({

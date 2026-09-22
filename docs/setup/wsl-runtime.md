@@ -58,4 +58,39 @@ No secrets below — substitute your own values where indicated.
 - Sentry Desktop → Environment shows the WSL runtime section (distro, Node, protocol,
   data root, systemd, verifier sandbox) plus per-stack Muse/DeepSeek/GLM readiness.
 - CLI equivalent inside WSL: run the doctors from the deployed tree.
+
+## 7. GLM Claude Code Bash sandbox gate (TASK-0012, authoritative)
+
+Green CI does NOT prove GLM Bash works: the live smoke below runs in the SAME
+WSL environment Desktop Sentry uses (Windows Electron → wsl.exe → Sentry
+runtime → real Claude Code binary → Sentry ephemeral HOME/config → real
+bubblewrap → real Bash). A mocked child process or plain Linux CI runner is
+not equivalent.
+
+From Windows PowerShell (replace Ubuntu if your distro differs):
+
+```powershell
+wsl -d Ubuntu -- bash -c 'cd /mnt/c/<path-to>/Sentry && SENTRY_LIVE_CLAUDE=1 pnpm --filter @qa/harness-claude-code test -- tests/claude-live.test.ts -t "real bwrap sandbox"'
+```
+
+Expected:
+
+- Bash tool starts, sandbox initializes, `printf sentry-bash-ok` runs, exit 0.
+- Output contains `sentry-bash-ok`; no `/mnt/c/.../.claude` error.
+- Terminal event is `run.completed` (never `GLM_SANDBOX_UNAVAILABLE` or
+  `GLM_CLAUDE_VERSION_UNSUPPORTED`).
+
+Version policy (data-driven): the adapter runs fail-closed on live-proven
+incompatible Claude Code versions (currently 2.1.276) with
+`GLM_CLAUDE_VERSION_UNSUPPORTED`; unknown newer versions warn
+(`GLM_CLAUDE_VERSION_UNVERIFIED`) and continue. Validated version: 2.1.270
+(`SENTRY_CLAUDE_BINARY` selects the binary; preflight fails closed with
+`GLM_CLAUDE_RUNTIME_MISMATCH` if a Linux/WSL process would launch a
+Windows-mounted executable or shim).
+
+Safe diagnostics (names/paths only, never secret values):
+`qa agent doctor glm` reports the resolved executable, realpath, version,
+platform/WSL facts, effective HOME/CLAUDE_CONFIG_DIR, and stripped Windows
+profile / IDE-bridge inputs.
+
 - Opening Environment never spends provider budget; only FULL/TARGETED/RETEST start paid runs.

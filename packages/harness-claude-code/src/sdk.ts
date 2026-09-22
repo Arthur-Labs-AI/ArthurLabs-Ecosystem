@@ -8,6 +8,42 @@ export const CLAUDE_CODE_VERSION = '2.1.270' as const;
 export const CLAUDE_CODE_TESTED_VERSION = CLAUDE_CODE_VERSION;
 
 /**
+ * Claude Code versions with live-proven sandbox regressions against
+ * Sentry's WSL/bubblewrap worker. Evidence-gated: entries require a
+ * reproduced failing live smoke (bwrap bootstrap failure on an
+ * otherwise-correct Sentry environment) plus a healthy control on the
+ * tested version. 2.1.276 fails the `printf sentry-bash-ok` smoke with
+ * `bwrap: Can't mkdir /mnt/c/.../.claude: Permission denied` while
+ * 2.1.270 runs it clean (TASK-0012 live-smoke matrix).
+ */
+export const CLAUDE_CODE_KNOWN_INCOMPATIBLE_VERSIONS: readonly string[] = ['2.1.276'] as const;
+
+/** Extract `major.minor.patch` from a `--version` string, if present. */
+export function parseClaudeCodeVersion(version: string | undefined): string | undefined {
+  if (version === undefined) return undefined;
+  const match = /(\d+\.\d+\.\d+)/.exec(version);
+  return match?.[1];
+}
+
+export type ClaudeCodeVersionPolicy = 'ready' | 'blocked' | 'unverified';
+
+/**
+ * Data-driven version policy: the tested version is ready, live-proven
+ * incompatible versions are blocked, everything else is unverified
+ * (warning + continue, never silent).
+ */
+export function classifyClaudeCodeVersion(version: string | undefined): ClaudeCodeVersionPolicy {
+  const parsed = parseClaudeCodeVersion(version);
+  if (parsed === CLAUDE_CODE_TESTED_VERSION) return 'ready';
+  if (
+    parsed !== undefined &&
+    (CLAUDE_CODE_KNOWN_INCOMPATIBLE_VERSIONS as readonly string[]).includes(parsed)
+  )
+    return 'blocked';
+  return 'unverified';
+}
+
+/**
  * Phase-scoped explicit QA allowlists (comma-separated bare tool names —
  * the verified --allowedTools syntax). Least privilege per phase:
  * planning needs reconnaissance only; investigation adds workspace-local

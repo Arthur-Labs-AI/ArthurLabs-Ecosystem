@@ -292,6 +292,10 @@ describe.skipIf(!LIVE)('GLM live binary smoke (opt-in)', () => {
     // run and report exit 0 with observable output. Any bwrap/Can't
     // mkdir/Permission denied/sandbox-unavailable marker fails the test —
     // never tolerated as an environmental flake.
+    // TASK-0012 authoritative gate: Desktop Sentry → WSL runtime → real
+    // Claude Code → Sentry isolated HOME/config → real bubblewrap → real
+    // Bash → `printf sentry-bash-ok` → exit 0. Run from WSL:
+    // wsl -d Ubuntu -- bash -c 'cd /mnt/c/.../Sentry && SENTRY_LIVE_CLAUDE=1 pnpm --filter @qa/harness-claude-code test -- tests/claude-live.test.ts -t "real bwrap sandbox"'
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-live-bash-'));
     roots.push(root);
     const { url } = await startStub([
@@ -304,15 +308,26 @@ describe.skipIf(!LIVE)('GLM live binary smoke (opt-in)', () => {
     const events: HarnessEvent[] = [];
     for await (const event of adapter.run(request)) events.push(event);
     await adapter.dispose();
+    // No infrastructure short-circuit: sandbox/version gates must not fire
+    // on a healthy worker (their codes here mean the gate itself regressed).
+    const terminal = events.at(-1) as { failure?: { code?: string } } | undefined;
+    expect(terminal?.failure?.code ?? 'none').not.toBe('GLM_SANDBOX_UNAVAILABLE');
+    expect(terminal?.failure?.code ?? 'none').not.toBe('GLM_CLAUDE_VERSION_UNSUPPORTED');
     expect(events.at(-1)?.type).toBe('run.completed');
     const completed = events.filter((event) => event.type === 'tool.completed') as Array<{
-      tool?: { name?: string; exitCode?: number; errorPreview?: string };
+      tool?: {
+        name?: string;
+        exitCode?: number;
+        errorPreview?: string;
+        infrastructureFailure?: boolean;
+      };
     }>;
     const bash = completed.filter((event) => event.tool?.name === 'Bash');
     expect(bash.length).toBeGreaterThanOrEqual(1);
     for (const event of bash) {
       expect(event.tool?.exitCode).toBe(0);
       expect(event.tool?.errorPreview).toBeUndefined();
+      expect(event.tool?.infrastructureFailure).toBeUndefined();
     }
     const messages = events
       .filter((event) => event.type === 'agent.message')

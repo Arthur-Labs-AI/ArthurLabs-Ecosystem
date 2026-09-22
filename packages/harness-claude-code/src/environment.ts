@@ -76,6 +76,21 @@ function isSecretName(name: string): boolean {
   return SECRET_NAME_PATTERN.test(name);
 }
 
+/**
+ * True when a variable name is a headless-blocked IDE/host-bridge input
+ * (exact entry or `PREFIX_*` entry in LINUX_BLOCKED_IDE_BRIDGE_NAMES).
+ * These never reach a Linux Claude worker regardless of allowlists:
+ * they are host IDE discovery state, not QA configuration.
+ */
+function isBlockedIdeBridgeName(name: string): boolean {
+  const upper = name.toUpperCase();
+  return (LINUX_BLOCKED_IDE_BRIDGE_NAMES as readonly string[]).some((entry) => {
+    const pattern = entry.toUpperCase();
+    if (pattern.endsWith('*')) return upper.startsWith(pattern.slice(0, -1));
+    return upper === pattern;
+  });
+}
+
 function isClaudeConfigName(name: string): boolean {
   const upper = name.toUpperCase();
   if ((EXPLICIT_CLAUDE_NAMES as readonly string[]).some((known) => known === upper)) return true;
@@ -90,6 +105,24 @@ function isClaudeConfigName(name: string): boolean {
  * and reported as such. Verified live: an inherited Windows HOME breaks
  * every Bash call before the command runs (run_01M33YXNW80W2Q7H1HK5EA5K7Q).
  */
+/**
+ * IDE/host-bridge inputs that must never reach a headless Linux Claude
+ * worker. Sentry runs Claude Code as a headless QA process (no VS Code,
+ * JetBrains, or Windows IDE bridge); forwarding host IDE discovery state
+ * lets Claude resolve Windows-side `.claude/ide` paths that bubblewrap
+ * then fails to initialize (observed: `/mnt/c/.../.claude/ide`).
+ * Exact names plus structural prefixes (a trailing `*` marks a prefix).
+ */
+export const LINUX_BLOCKED_IDE_BRIDGE_NAMES: readonly string[] = [
+  'ENABLE_IDE_INTEGRATION',
+  'CLAUDE_CODE_SSE_PORT',
+  'VSCODE_*',
+  'VSCODE_IPC_HOOK_CLI',
+  'TERM_PROGRAM',
+  'IDEA_*',
+  'JETBRAINS_*',
+] as const;
+
 export const LINUX_BLOCKED_WINDOWS_PROFILE_NAMES: readonly string[] = [
   'USERPROFILE',
   'LOCALAPPDATA',
@@ -134,6 +167,14 @@ export function buildClaudeChildEnvironment(
     seen.add(upper);
     // Platform boundary: Windows profile state never enters Linux workers.
     if (blockedProfile.has(upper)) {
+      blockedNames.push(name);
+      return;
+    }
+    // Headless boundary: host IDE discovery state never enters Linux
+    // workers (it lets Claude resolve Windows-side `.claude/ide` paths
+    // that bubblewrap then fails to initialize). Not bypassable via
+    // extraAllowedNames: headless QA has no IDE bridge.
+    if (platform !== 'win32' && isBlockedIdeBridgeName(name)) {
       blockedNames.push(name);
       return;
     }
@@ -194,5 +235,50 @@ export function buildClaudeChildEnvironment(
     environment: Object.fromEntries(allowed),
     allowedNames: [...allowed.keys()].sort(),
     blockedNames: blockedNames.sort(),
+  };
+}
+
+/**
+ * Safe headless-worker environment metadata: path/config facts only,
+ * never secret values. Powers `qa agent doctor glm` diagnostics.
+ */
+export interface ClaudeHeadlessEnvironmentDiagnosis {
+  readonly platform: NodeJS.Platform;
+  readonly effectiveHome: string | undefined;
+  readonly effectiveConfigDir: string | undefined;
+  readonly homeIsWindowsMounted: boolean;
+  readonly configDirIsWindowsMounted: boolean;
+  readonly ideBridgeBlocked: readonly string[];
+  readonly windowsProfilePresent: readonly string[];
+}
+
+export function describeClaudeHeadlessEnvironment(input: {
+  readonly spawnEnv: NodeJS.ProcessEnv;
+  readonly source?: NodeJS.ProcessEnv;
+  readonly platform?: NodeJS.Platform;
+  readonly configDir?: string;
+}): ClaudeHeadlessEnvironmentDiagnosis {
+  const platform = input.platform ?? process.platform;
+  const home = input.spawnEnv['HOME'];
+  const configDir = input.configDir ?? input.spawnEnv['CLAUDE_CONFIG_DIR'];
+  const isWindowsMounted = (value: string | undefined): boolean =>
+    typeof value === 'string' && /^\/mnt\//i.test(value);
+  const source = input.source ?? {};
+  const ideBridgeBlocked = Object.keys(source).filter((name) => isBlockedIdeBridgeName(name));
+  const windowsProfilePresent = Object.keys(source).filter((name) =>
+    (LINUX_BLOCKED_WINDOWS_PROFILE_NAMES as readonly string[]).some(
+      (blocked) => blocked.toUpperCase() === name.toUpperCase(),
+    ),
+  );
+  return {
+    platform,
+    effectiveHome: typeof home === 'string' ? home : undefined,
+    effectiveConfigDir: typeof configDir === 'string' ? configDir : undefined,
+    homeIsWindowsMounted: isWindowsMounted(home),
+    configDirIsWindowsMounted: isWindowsMounted(
+      typeof configDir === 'string' ? configDir : undefined,
+    ),
+    ideBridgeBlocked: [...ideBridgeBlocked].sort(),
+    windowsProfilePresent: [...windowsProfilePresent].sort(),
   };
 }

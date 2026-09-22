@@ -62,6 +62,7 @@ import { redactDiagnostic, redactStructured, secretValues } from './redaction.js
 import {
   buildClaudeSettings,
   CLAUDE_CODE_TESTED_VERSION,
+  classifyClaudeCodeVersion,
   createProductionClaudeClient,
   type ClaudeClientFactory,
   type ClaudeClientView,
@@ -133,7 +134,9 @@ interface CollectedTurn {
 function isEventCarryingAbort(cause: unknown): cause is ClaudeCodeHarnessError {
   return (
     cause instanceof ClaudeCodeHarnessError &&
-    (cause.code === 'GLM_TOOL_LOOP' || cause.code === 'GLM_TOOL_PERMISSION_UNAVAILABLE')
+    (cause.code === 'GLM_TOOL_LOOP' ||
+      cause.code === 'GLM_TOOL_PERMISSION_UNAVAILABLE' ||
+      cause.code === 'GLM_SANDBOX_UNAVAILABLE')
   );
 }
 
@@ -289,6 +292,23 @@ function textFromContentBlocks(content: unknown): string {
   };
   visit(content);
   return parts.join('\n');
+}
+
+/**
+ * True when Bash-like tool result text proves sandbox/bootstrap failure
+ * before the actual shell command executed (bubblewrap could not
+ * initialize). Conservative by design: anchored to bootstrap markers
+ * (`bwrap:`, bind/mount/mkdir failures, sandbox-unavailable), never to
+ * model-chosen command output. Ordinary nonzero exits and missing-file
+ * errors are NOT infrastructure failures.
+ */
+export function isSandboxBootstrapFailureText(text: string): boolean {
+  if (/\bbwrap:/i.test(text)) return true;
+  if (/can'?t\s+(mkdir|create\s+file|mount|bind|chdir|pivot|clone|unshare)/i.test(text))
+    return true;
+  if (/sandbox\s+unavailable/i.test(text)) return true;
+  if (/bubblewrap.*(permission denied|failed)/i.test(text)) return true;
+  return false;
 }
 
 /** Extract a shell command from Bash tool input, if the tool is Bash-like. */
@@ -770,34 +790,44 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         const pending = this.pendingToolUses.get(toolUseId);
         if (pending !== undefined) this.pendingToolUses.delete(toolUseId);
         const toolName = pending?.toolName ?? 'unknown';
-        const failed = record.is_error === true;
         const isBashLike = /^(bash|powershell)$/i.test(toolName);
+        const rawResultForFailure = textFromContentBlocks(
+          Array.isArray(record.content) ? record.content : [record.content],
+        );
+        // Sandbox/bootstrap failures (bubblewrap dies before the shell
+        // starts) are failures even when Claude Code does not set
+        // is_error: the command never executed, so exit 0 must never be
+        // recorded. Ordinary model errors (missing files, bad paths) stay
+        // ordinary — only proven bootstrap markers qualify.
+        const sandboxFailure = isBashLike && isSandboxBootstrapFailureText(rawResultForFailure);
+        const failed = record.is_error === true || sandboxFailure;
         // Observable result text (bounded later, redacted at emit).
         // Computed BEFORE the completion event so failures carry their
         // real diagnostic instead of only a bare exit code.
-        const rawResultText = textFromContentBlocks(
-          Array.isArray(record.content) ? record.content : [record.content],
-        );
+        const rawResultText = rawResultForFailure;
         // A tool_result with is_error:true is NOT a shell exit code.
         // Only a provider-reported `Exit code N` prefix (verified 2.1.276
         // Bash shape) yields a numeric code; everything else stays
         // unknown with the reason in errorPreview. A non-error Bash
-        // result proves execution (exit 0); other tools have no exit
-        // concept at all.
+        // result WITHOUT bootstrap markers proves execution (exit 0); a
+        // sandbox/bootstrap failure never yields an exit code — the shell
+        // never started. Other tools have no exit concept at all.
         const exitMatch = /^Exit code (\d+)/.exec(rawResultText);
         const reportedExitCode =
           exitMatch?.[1] === undefined ? undefined : Number.parseInt(exitMatch[1], 10);
-        const exitCode = failed
-          ? isBashLike &&
-            reportedExitCode !== undefined &&
-            Number.isInteger(reportedExitCode) &&
-            reportedExitCode >= 0 &&
-            reportedExitCode <= 255
-            ? reportedExitCode
-            : undefined
-          : isBashLike
-            ? 0
-            : undefined;
+        const exitCode = sandboxFailure
+          ? undefined
+          : failed
+            ? isBashLike &&
+              reportedExitCode !== undefined &&
+              Number.isInteger(reportedExitCode) &&
+              reportedExitCode >= 0 &&
+              reportedExitCode <= 255
+              ? reportedExitCode
+              : undefined
+            : isBashLike
+              ? 0
+              : undefined;
         const errorPreview =
           failed && rawResultText.length > 0
             ? redactDiagnostic(rawResultText, this.secrets).slice(0, 1000)
@@ -810,9 +840,26 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
               name: toolName,
               ...(exitCode === undefined ? {} : { exitCode }),
               ...(errorPreview === undefined ? {} : { errorPreview }),
+              ...(sandboxFailure ? { infrastructureFailure: true } : {}),
             },
           }),
         );
+        // Proven sandbox/bootstrap failure aborts the turn immediately
+        // with a precise infrastructure code: continuing to guess project
+        // structure with Read while Bash cannot start wastes budget and
+        // produces degraded evidence. The completion above stays in `out`
+        // so run history shows the trigger.
+        if (sandboxFailure) {
+          throw Object.assign(
+            new ClaudeCodeHarnessError(
+              'GLM_SANDBOX_UNAVAILABLE',
+              'Claude Code sandbox failed to initialize (' +
+                redactDiagnostic(rawResultText, this.secrets).slice(0, 300) +
+                '); the shell command never executed. Repair the sandbox instead of retrying model turns.',
+            ),
+            { partialEvents: [...out] },
+          );
+        }
         // Futile-loop breakers run AFTER the completion lands in `out`
         // (see trackToolResult below): a throw must never vaporize the
         // very event that triggered it. On abort, the whole buffered `out`
@@ -1224,12 +1271,32 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
 
   async *run(request: HarnessRunRequest): AsyncIterable<HarnessEvent> {
     yield event(request.agentRunId, { type: 'run.started' });
-    // Version honesty: sdkVersion carries the TESTED Claude version
-    // (CLAUDE_CODE_TESTED_VERSION); the actual binary may be newer. A
-    // mismatch is informational only — never a failure — but it must be
-    // visible in run history when diagnosing version-drift behavior.
+    // Version policy (data-driven, TASK-0012): the tested version is
+    // ready; live-proven incompatible versions fail closed BEFORE any
+    // provider budget burns; unknown newer versions warn and continue
+    // (never silent). Credential scrubbing and the fail-closed sandbox
+    // apply in every branch — version handling never weakens them.
     const actualVersion = this.options.executableVersion;
-    if (actualVersion !== undefined && !actualVersion.startsWith(CLAUDE_CODE_TESTED_VERSION)) {
+    const policy = classifyClaudeCodeVersion(actualVersion);
+    if (policy === 'blocked') {
+      yield event(request.agentRunId, {
+        type: 'run.failed',
+        failure: {
+          code: 'GLM_CLAUDE_VERSION_UNSUPPORTED',
+          message: (
+            'Claude Code executable reports version ' +
+            (actualVersion ?? 'unknown').slice(0, 100) +
+            ', which Sentry live smoke proved incompatible with the WSL/bubblewrap Bash sandbox; ' +
+            'Sentry validated adapter behavior against ' +
+            CLAUDE_CODE_TESTED_VERSION +
+            '. Set SENTRY_CLAUDE_BINARY to the validated binary.'
+          ).slice(0, 500),
+          retryable: false,
+        },
+      });
+      return;
+    }
+    if (actualVersion !== undefined && policy === 'unverified') {
       yield event(request.agentRunId, {
         type: 'warning',
         code: 'GLM_CLAUDE_VERSION_UNVERIFIED',

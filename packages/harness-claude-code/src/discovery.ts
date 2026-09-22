@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
+import { release } from 'node:os';
 import { nowIsoTimestamp } from '@qa/shared';
 import type { HarnessHealthResult } from '@qa/harness-protocol';
 import { buildClaudeChildEnvironment } from './environment.js';
-import { CLAUDE_CODE_TESTED_VERSION } from './sdk.js';
+import { CLAUDE_CODE_TESTED_VERSION, classifyClaudeCodeVersion } from './sdk.js';
 import { ClaudeCodeHarnessError } from './errors.js';
 import { redactDiagnostic, secretValues } from './redaction.js';
 
@@ -132,6 +133,121 @@ export function resolveGlmRuntime(
     provider,
     discoverySource: explicit ? 'explicit' : fromEnvironment ? 'environment' : 'path',
   };
+}
+
+export interface ClaudeExecutableIdentity {
+  /** The executable string Sentry was configured to launch. */
+  readonly configured: string;
+  /** PATH-resolved executable path (where/from resolution when known). */
+  readonly resolved: string;
+  /** Filesystem realpath of the resolved executable, when resolvable. */
+  readonly realpath: string | undefined;
+  /** `claude --version` output (probed), when the binary runs. */
+  readonly version: string | undefined;
+  /** Runtime platform of the Sentry process. */
+  readonly platform: NodeJS.Platform;
+  /** True when running inside WSL (Linux + WSL markers). */
+  readonly isWsl: boolean;
+  /** True when the resolved executable lives under /mnt/* or is a Windows shim. */
+  readonly isWindowsMounted: boolean;
+}
+
+function detectWsl(environment: NodeJS.ProcessEnv, platform: NodeJS.Platform): boolean {
+  if (platform !== 'linux') return false;
+  let kernel = '';
+  try {
+    kernel = release().toLowerCase();
+  } catch {
+    kernel = '';
+  }
+  if (kernel.includes('microsoft') || kernel.includes('wsl')) return true;
+  const interop = environment['WSL_INTEROP'];
+  const distro = environment['WSL_DISTRO_NAME'];
+  return (
+    (typeof interop === 'string' && interop.length > 0) ||
+    (typeof distro === 'string' && distro.length > 0)
+  );
+}
+
+function isWindowsMountedExecutable(resolved: string, realpath: string | undefined): boolean {
+  const candidates = realpath === undefined ? [resolved] : [resolved, realpath];
+  return candidates.some((candidate) => {
+    const normalized = candidate.replace(/\\/g, '/');
+    if (/^\/mnt\//i.test(normalized)) return true;
+    return /\.(exe|cmd|bat|ps1)$/i.test(normalized);
+  });
+}
+
+/**
+ * Resolve the exact Claude executable Sentry will launch: configured
+ * string, PATH-resolved path, filesystem realpath, probed version, and
+ * platform/WSL facts. Persist only this metadata (never credentials).
+ *
+ * Throws GLM_CLAUDE_RUNTIME_MISMATCH when a Linux/WSL Sentry process
+ * would launch a Windows-mounted executable or shim: mixed
+ * Windows/Linux Claude execution is never allowed silently.
+ */
+export async function resolveClaudeExecutableIdentity(
+  executable: string,
+  environment: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+): Promise<ClaudeExecutableIdentity> {
+  const { execFileSync } = await import('node:child_process');
+  const { realpathSync } = await import('node:fs');
+  let resolved = executable;
+  try {
+    // PATH resolution honors the caller environment: the binary Sentry
+    // actually spawns is resolved the way the OS resolves it.
+    const out = execFileSync(
+      platform === 'win32' ? 'where' : 'sh',
+      platform === 'win32' ? [executable] : ['-c', 'command -v ' + JSON.stringify(executable)],
+      {
+        env: environment as Record<string, string>,
+        windowsHide: true,
+        timeout: 5_000,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      },
+    )
+      .toString('utf8')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    if (out.length > 0 && out[0] !== undefined) resolved = out[0];
+  } catch {
+    // Resolution failure is non-fatal here: `resolved` stays the
+    // configured string and the version probe below reports availability.
+  }
+  let realpath: string | undefined;
+  try {
+    realpath = realpathSync(resolved);
+  } catch {
+    realpath = undefined;
+  }
+  let version: string | undefined;
+  try {
+    version = await probeClaudeExecutable(executable, environment);
+  } catch {
+    version = undefined;
+  }
+  const identity: ClaudeExecutableIdentity = {
+    configured: executable,
+    resolved,
+    realpath,
+    version,
+    platform,
+    isWsl: detectWsl(environment, platform),
+    isWindowsMounted: isWindowsMountedExecutable(resolved, realpath),
+  };
+  if (platform !== 'win32' && identity.isWindowsMounted) {
+    throw new ClaudeCodeHarnessError(
+      'GLM_CLAUDE_RUNTIME_MISMATCH',
+      'Claude Code executable resolves to Windows-mounted state (' +
+        resolved +
+        '); Sentry on Linux/WSL requires a native Linux Claude binary. ' +
+        'Set SENTRY_CLAUDE_BINARY to the Linux binary.',
+    );
+  }
+  return identity;
 }
 
 export async function probeClaudeExecutable(
@@ -281,13 +397,46 @@ export async function doctorGlm(
   const executable =
     input.executable?.trim() || environment.SENTRY_CLAUDE_BINARY?.trim() || 'claude';
   let executableVersion: string | undefined;
+  let executableIdentity: ClaudeExecutableIdentity | undefined;
   try {
-    executableVersion = await probeClaudeExecutable(executable, environment);
-    checks.push({ name: 'binary', status: 'pass', message: executableVersion });
+    executableIdentity = await resolveClaudeExecutableIdentity(executable, environment);
+    executableVersion = executableIdentity.version;
+    if (executableVersion === undefined)
+      executableVersion = await probeClaudeExecutable(executable, environment);
+    checks.push({
+      name: 'binary',
+      status: 'pass',
+      message:
+        executableVersion +
+        ' @ ' +
+        executableIdentity.resolved +
+        (executableIdentity.isWsl ? ' (WSL)' : ''),
+    });
   } catch (cause) {
-    checks.push({ name: 'binary', status: 'fail', message: redactDiagnostic(cause) });
+    if (cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_CLAUDE_RUNTIME_MISMATCH') {
+      checks.push({ name: 'binary', status: 'fail', message: redactDiagnostic(cause) });
+    } else {
+      try {
+        executableVersion = await probeClaudeExecutable(executable, environment);
+        checks.push({ name: 'binary', status: 'pass', message: executableVersion });
+      } catch (inner) {
+        checks.push({ name: 'binary', status: 'fail', message: redactDiagnostic(inner) });
+      }
+    }
   }
   const child = buildClaudeChildEnvironment({ source: environment });
+  // Safe isolation metadata (names only, never values): headless worker
+  // must not inherit Windows profile or IDE-bridge state on Linux.
+  const hostileProfile = child.blockedNames.filter((name) =>
+    ['USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'HOMEDRIVE', 'HOMEPATH'].some(
+      (blocked) => blocked === name.toUpperCase(),
+    ),
+  );
+  const hostileIde = child.blockedNames.filter(
+    (name) =>
+      /^VSCODE_/i.test(name) ||
+      /^(ENABLE_IDE_INTEGRATION|CLAUDE_CODE_SSE_PORT|TERM_PROGRAM|IDEA_|JETBRAINS_)/i.test(name),
+  );
   checks.push({
     name: 'environment',
     status: 'pass',
@@ -296,7 +445,11 @@ export async function doctorGlm(
       child.allowedNames.length +
       ' allowed, ' +
       child.blockedNames.length +
-      ' blocked); blocked names are never forwarded.',
+      ' blocked); blocked names are never forwarded.' +
+      (hostileProfile.length > 0
+        ? ' Windows profile stripped: ' + hostileProfile.join(',') + '.'
+        : '') +
+      (hostileIde.length > 0 ? ' IDE bridge stripped: ' + hostileIde.join(',') + '.' : ''),
   });
   checks.push({
     name: 'sdk',
@@ -308,13 +461,25 @@ export async function doctorGlm(
       (executableVersion ?? 'unknown') +
       ')',
   });
+  // Honest version-gated sandbox readiness: a live-proven incompatible
+  // binary is reported unavailable (not ready); otherwise the sandbox is
+  // unverified until a real `printf` smoke succeeds inside Claude/bwrap.
+  const versionPolicy =
+    executableVersion === undefined ? 'unverified' : classifyClaudeCodeVersion(executableVersion);
   checks.push({
     name: 'sandbox',
-    status: 'warn',
+    status:
+      executableVersion === undefined || versionPolicy === 'blocked' ? 'fail' : ('warn' as const),
     message:
       executableVersion === undefined
         ? 'Sandbox startup probe cannot run until Claude Code is available.'
-        : 'Sandbox: not yet verified. Sandbox enforcement is validated by Claude Code at real session startup; Sentry passes no sandbox-disable flags.',
+        : versionPolicy === 'blocked'
+          ? 'Claude Code ' +
+            executableVersion +
+            ' is live-proven incompatible with the WSL/bubblewrap Bash sandbox; use ' +
+            'the validated binary instead. Sandbox: unavailable.'
+          : 'Sandbox: unverified. Run the real WSL Bash smoke (`printf sentry-bash-ok` inside Claude/bwrap) ' +
+            'before trusting Bash; Sentry passes no sandbox-disable flags.',
   });
   if (!runtimeVerifiedThisProcess) {
     checks.push({
