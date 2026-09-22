@@ -23,11 +23,12 @@ import { ClaudeCodeHarnessAdapter } from '../src/index.js';
  * lets trivial Bash execute and known files be read (Tests 2+3), and that
  * forbidden tools stay denied (Test 4 live shape).
  *
- * Read assertions are deterministic (Read never touches bwrap). Bash
- * assertions tolerate the documented bwrap/Windows-bind environmental
- * flake by asserting execution was ATTEMPTED with the allowlist present
- * (init permissionMode + tool events) rather than success specifically —
- * success is asserted when the sandbox is healthy.
+ * Read assertions are deterministic (Read never touches bwrap). The Bash
+ * smoke requires REAL bwrap execution with exit 0: with the Sentry-owned
+ * ephemeral HOME, the sandbox initializes instead of dying on
+ * Windows-mounted host profiles. If Bash cannot execute, the GLM stack
+ * is not production-ready — this test fails loudly (it is opt-in so a
+ * broken TUNNEL machine never blocks normal CI).
  */
 
 // Live tests need a Linux runtime: the `claude` binary, its sandbox, and
@@ -282,6 +283,44 @@ describe.skipIf(!LIVE)('GLM live binary smoke (opt-in)', () => {
     // Read carries no fabricated exit code (honesty invariant, live shape).
     for (const event of completed) {
       expect((event as { tool?: { exitCode?: number } }).tool?.exitCode).toBeUndefined();
+    }
+  }, 120_000);
+
+  it('executes Bash through the real bwrap sandbox with exit 0', async () => {
+    // Fix-5 proof (run_01M33YXNW80W2Q7H1HK5EA5K7Q): Bash is core QA
+    // capability. The ephemeral HOME lets bwrap initialize; printf must
+    // run and report exit 0 with observable output. Any bwrap/Can't
+    // mkdir/Permission denied/sandbox-unavailable marker fails the test —
+    // never tolerated as an environmental flake.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-live-bash-'));
+    roots.push(root);
+    const { url } = await startStub([
+      { tool: 'Bash', input: { command: 'printf sentry-bash-ok' } },
+      { text: validPlanJson() },
+      { text: 'Investigation complete.' },
+      { text: validEmptyReportJson() },
+    ]);
+    const { request, adapter } = await liveRequest(root, url);
+    const events: HarnessEvent[] = [];
+    for await (const event of adapter.run(request)) events.push(event);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    const completed = events.filter((event) => event.type === 'tool.completed') as Array<{
+      tool?: { name?: string; exitCode?: number; errorPreview?: string };
+    }>;
+    const bash = completed.filter((event) => event.tool?.name === 'Bash');
+    expect(bash.length).toBeGreaterThanOrEqual(1);
+    for (const event of bash) {
+      expect(event.tool?.exitCode).toBe(0);
+      expect(event.tool?.errorPreview).toBeUndefined();
+    }
+    const messages = events
+      .filter((event) => event.type === 'agent.message')
+      .map((event) => (event as { message?: string }).message ?? '');
+    expect(messages.some((message) => message.includes('sentry-bash-ok'))).toBe(true);
+    const blob = JSON.stringify(events);
+    for (const marker of ['bwrap:', "Can't mkdir", 'Permission denied', 'sandbox unavailable']) {
+      expect(blob).not.toContain(marker);
     }
   }, 120_000);
 

@@ -85,6 +85,14 @@ export interface ClaudeSpawnSpec {
   readonly executable: string;
   readonly cwd: string;
   readonly configDir: string;
+  /**
+   * Sentry-owned ephemeral Linux-native home for this AgentRun
+   * (pre-created with `.claude/`). Overrides any inherited host HOME so
+   * the worker never resolves profiles under /mnt/c/... or the user's
+   * ordinary ~/.claude. Optional for backward-compatible test seams;
+   * the production adapter always sets it.
+   */
+  readonly homeDir?: string;
   readonly environment: NodeJS.ProcessEnv;
   readonly modelId: string;
   readonly settingsPath: string;
@@ -510,10 +518,17 @@ function spawnOwnedClaudeTurn(
  * flag is FORCED (caller input cannot disable it): model-controlled
  * Bash/hooks/MCP children must not inherit provider credentials.
  * Verified live with a test-only sentinel during the GLM smoke.
+ *
+ * HOME is FORCED to the Sentry-owned ephemeral home when the spec
+ * carries one (production always does): an inherited Windows-mounted
+ * HOME (e.g. /mnt/c/Users/...) makes Claude resolve $HOME/.claude
+ * there and bwrap fails before any tool runs. The ephemeral value wins
+ * over anything in spec.environment (spread first, overridden after).
  */
 export function buildClaudeSpawnEnv(spec: ClaudeSpawnSpec): NodeJS.ProcessEnv {
   return {
     ...spec.environment,
+    ...(spec.homeDir === undefined ? {} : { HOME: spec.homeDir }),
     CLAUDE_CONFIG_DIR: spec.configDir,
     CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1',
   };

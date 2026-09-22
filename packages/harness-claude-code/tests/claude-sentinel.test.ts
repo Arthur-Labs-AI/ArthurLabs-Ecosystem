@@ -133,4 +133,52 @@ describe('Claude credential boundary', () => {
     expect(child.environment['AWS_SECRET_ACCESS_KEY']).toBeUndefined();
     expect(child.environment['ANTHROPIC_API_KEY']).toBeUndefined();
   });
+
+  it('replaces a hostile Windows HOME at spawn and never forwards profile state on Linux', () => {
+    // Regression for run_01M33YXNW80W2Q7H1HK5EA5K7Q: the host runtime
+    // carried a Windows-mounted HOME and Claude resolved $HOME/.claude
+    // there, so bwrap failed before any tool ran. The spawn env must
+    // carry the Sentry-owned ephemeral home instead.
+    const hostile = {
+      PATH: '/usr/bin',
+      HOME: '/mnt/c/Users/CodexSandboxOffline',
+      USERPROFILE: 'C:\\Users\\CodexSandboxOffline',
+      APPDATA: 'C:\\Users\\CodexSandboxOffline\\AppData\\Roaming',
+      LOCALAPPDATA: 'C:\\Users\\CodexSandboxOffline\\AppData\\Local',
+      ANTHROPIC_AUTH_TOKEN: SENTINEL_VALUE,
+    };
+    const child = buildClaudeChildEnvironment({ source: hostile, platform: 'linux' });
+    expect(child.blockedNames).toContain('USERPROFILE');
+    expect(child.blockedNames).toContain('APPDATA');
+    expect(child.blockedNames).toContain('LOCALAPPDATA');
+    expect(child.environment['USERPROFILE']).toBeUndefined();
+    expect(child.environment['APPDATA']).toBeUndefined();
+    expect(child.environment['LOCALAPPDATA']).toBeUndefined();
+    // Provider auth still flows to the parent (credential boundary intact).
+    expect(child.environment['ANTHROPIC_AUTH_TOKEN']).toBe(SENTINEL_VALUE);
+    const spawnEnv = buildClaudeSpawnEnv({
+      executable: 'claude-test',
+      cwd: '/tmp/ws',
+      configDir: '/tmp/claude-home/config',
+      homeDir: '/tmp/claude-home/home',
+      environment: child.environment,
+      modelId: 'glm-5.3-flash',
+      settingsPath: '/tmp/claude-home/config/sentry-settings.json',
+      initializeTimeoutMs: 30_000,
+      turnTimeoutMs: 60_000,
+      shutdownTimeoutMs: 5_000,
+    });
+    expect(spawnEnv['HOME']).toBe('/tmp/claude-home/home');
+    expect(spawnEnv['CLAUDE_CONFIG_DIR']).toBe('/tmp/claude-home/config');
+    expect(spawnEnv['CLAUDE_CODE_SUBPROCESS_ENV_SCRUB']).toBe('1');
+    expect(spawnEnv['ANTHROPIC_AUTH_TOKEN']).toBe(SENTINEL_VALUE);
+  });
+
+  it('keeps Windows profile variables for native Windows execution', () => {
+    const child = buildClaudeChildEnvironment({
+      source: { PATH: 'C:\\Windows\\System32', USERPROFILE: 'C:\\Users\\qa' },
+      platform: 'win32',
+    });
+    expect(child.environment['USERPROFILE']).toBe('C:\\Users\\qa');
+  });
 });

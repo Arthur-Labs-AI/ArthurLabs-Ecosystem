@@ -133,7 +133,7 @@ describe('agent stage truth', () => {
       evidence: [],
     });
     expect(view.currentStage).toBe('reporting');
-    expect(view.currentOperation.title).toBe('Preparing report');
+    expect(view.currentOperation.title).toBe('Agent message');
   });
 
   it('usage.updated after evidence activates Reporting', () => {
@@ -174,6 +174,58 @@ describe('agent stage truth', () => {
     });
     expect(view.currentStage).toBe('completed');
     expect(view.stages.every((s) => s.state === 'completed')).toBe(true);
+  });
+
+  it('planning tool failures with messages stay in Planning, never Reporting', () => {
+    // Production regression (run_01M33YXNW80W2Q7H1HK5EA5K7Q): planning Bash
+    // failures emit agent.message tool-result texts. Those must not
+    // promote the run to Reporting nor complete later stages.
+    const agentRun = makeAgentRun({ status: 'failed' });
+    const base = { agentRunId: agentRun.id, timestamp: '2026-09-22T07:05:31.000Z' };
+    const view = projectAgentTelemetry({
+      agentRun,
+      events: [
+        { type: 'run.started', ...base },
+        { type: 'agent.status', ...base, status: 'planning' },
+        { type: 'tool.started', ...base, operationId: 'op1', tool: { name: 'Bash' } },
+        {
+          type: 'tool.completed',
+          ...base,
+          operationId: 'op1',
+          tool: { name: 'Bash', errorPreview: "Exit code 1 bwrap: Can't mkdir X" },
+        },
+        { type: 'agent.message', ...base, message: 'tool Bash result: bwrap ...' },
+        { type: 'tool.started', ...base, operationId: 'op2', tool: { name: 'Bash' } },
+        {
+          type: 'tool.completed',
+          ...base,
+          operationId: 'op2',
+          tool: { name: 'Bash', errorPreview: "Exit code 1 bwrap: Can't mkdir X" },
+        },
+        { type: 'tool.started', ...base, operationId: 'op3', tool: { name: 'Bash' } },
+        {
+          type: 'tool.completed',
+          ...base,
+          operationId: 'op3',
+          tool: { name: 'Bash', errorPreview: "Exit code 1 bwrap: Can't mkdir X" },
+        },
+        {
+          type: 'run.failed',
+          ...base,
+          failure: { code: 'GLM_TOOL_PERMISSION_UNAVAILABLE', message: 'tool layer down' },
+        },
+      ],
+      activities: [],
+      findings: [],
+      evidence: [],
+    });
+    const byId = new Map(view.stages.map((s) => [s.id, s.state]));
+    expect(byId.get('preparation')).toBe('completed');
+    expect(byId.get('planning')).toBe('failed');
+    for (const id of ['investigation', 'runtime', 'evidence', 'reporting', 'completed']) {
+      expect(byId.get(id)).toBe('not_started');
+    }
+    expect(view.currentStage).toBe('planning');
   });
 
   it('failure never completes future stages', () => {

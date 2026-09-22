@@ -31,11 +31,6 @@ const BASE_RUNTIME_NAMES = [
   'TMP',
   'TMPDIR',
   'HOME',
-  'USERPROFILE',
-  'LOCALAPPDATA',
-  'APPDATA',
-  'HOMEDRIVE',
-  'HOMEPATH',
   'USER',
   'LOGNAME',
   'LANG',
@@ -87,19 +82,69 @@ function isClaudeConfigName(name: string): boolean {
   return CLAUDE_CONFIG_PREFIXES.some((prefix) => upper.startsWith(prefix));
 }
 
+/**
+ * Windows profile variables that must never reach a Linux Claude worker:
+ * they reintroduce Windows-mounted host state ($HOME/.claude resolution,
+ * IDE/policy discovery) that bwrap then chokes on. On win32 (native
+ * Windows Claude execution) they stay allowed; on Linux they are blocked
+ * and reported as such. Verified live: an inherited Windows HOME breaks
+ * every Bash call before the command runs (run_01M33YXNW80W2Q7H1HK5EA5K7Q).
+ */
+export const LINUX_BLOCKED_WINDOWS_PROFILE_NAMES: readonly string[] = [
+  'USERPROFILE',
+  'LOCALAPPDATA',
+  'APPDATA',
+  'HOMEDRIVE',
+  'HOMEPATH',
+] as const;
+
+/**
+ * Windows profile variables stay allowed for native Windows Claude
+ * execution (removed from the shared base list so Linux blocks them).
+ */
+const WIN32_PROFILE_NAMES: readonly string[] = [
+  'USERPROFILE',
+  'LOCALAPPDATA',
+  'APPDATA',
+  'HOMEDRIVE',
+  'HOMEPATH',
+] as const;
+
 export function buildClaudeChildEnvironment(
   input: ClaudeChildEnvironmentInput = {},
 ): ClaudeChildEnvironmentReport {
   const source = input.source ?? process.env;
+  const platform = input.platform ?? process.platform;
+  const blockedProfile =
+    platform === 'win32'
+      ? new Set<string>()
+      : new Set<string>(LINUX_BLOCKED_WINDOWS_PROFILE_NAMES.map((name) => name.toUpperCase()));
   const extra = new Set((input.extraAllowedNames ?? []).map((name) => name.toUpperCase()));
   const allowed = new Map<string, string>();
   const blockedNames: string[] = [];
   const seen = new Set<string>();
+  const win32Profile =
+    platform === 'win32'
+      ? new Set<string>(WIN32_PROFILE_NAMES.map((entry) => entry.toUpperCase()))
+      : new Set<string>();
   const consider = (name: string, value: string | undefined) => {
     if (value === undefined) return;
     const upper = name.toUpperCase();
     if (seen.has(upper)) return;
     seen.add(upper);
+    // Platform boundary: Windows profile state never enters Linux workers.
+    if (blockedProfile.has(upper)) {
+      blockedNames.push(name);
+      return;
+    }
+    if (win32Profile.has(upper)) {
+      if (isSecretName(name)) {
+        blockedNames.push(name);
+        return;
+      }
+      allowed.set(name, value);
+      return;
+    }
     const exactBase = (BASE_RUNTIME_NAMES as readonly string[]).some(
       (allowedName) => allowedName.toUpperCase() === upper,
     );

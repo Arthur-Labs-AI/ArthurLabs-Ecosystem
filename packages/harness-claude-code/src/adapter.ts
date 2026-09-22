@@ -1247,20 +1247,26 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       status: 'planning',
       message: 'Claude Code is creating a frozen investigation plan.',
     });
-    // Ephemeral Sentry-owned config boundary: every Claude session state
-    // (history, transcripts, plugins, skills, hooks, MCP config, memory,
-    // settings) lives beneath this disposable directory and is destroyed
-    // after extraction. Never the user's ordinary Claude environment.
-    const configDir = join(dirname(request.workspace.runtimePath), '.sentry-claude-home');
+    // Ephemeral Sentry-owned home+config boundary: the Claude worker must
+    // never depend on the host user's profile directory (a Windows-mounted
+    // or corrupt HOME makes bwrap fail before any tool runs). Both HOME
+    // and CLAUDE_CONFIG_DIR point beneath this disposable directory and
+    // are destroyed after extraction. Never the user's ordinary environment.
+    const claudeHome = join(dirname(request.workspace.runtimePath), '.sentry-claude-home');
+    const ephemeralHome = join(claudeHome, 'home');
+    const ephemeralClaudeDir = join(ephemeralHome, '.claude');
+    const configDir = join(claudeHome, 'config');
     const settingsPath = join(configDir, 'sentry-settings.json');
     let session: ClaudeSessionView | undefined;
     try {
+      await mkdir(ephemeralClaudeDir, { recursive: true });
       await mkdir(configDir, { recursive: true });
       await writeFile(settingsPath, JSON.stringify(buildClaudeSettings()), 'utf8');
       const spec: ClaudeSpawnSpec = {
         executable: this.runtime.executable,
         cwd: request.workspace.runtimePath,
         configDir,
+        homeDir: ephemeralHome,
         environment: this.environment,
         modelId: this.runtime.modelId,
         settingsPath,
@@ -1584,10 +1590,11 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         },
       });
     } finally {
-      // Ephemeral state destroyed after extraction: transcripts, plugins,
-      // skills, hooks, MCP config, memory, settings. Only canonical
-      // observable data already persisted by the coordinator survives.
-      await rm(configDir, { recursive: true, force: true }).catch(() => undefined);
+      // Ephemeral state destroyed after extraction: home profile,
+      // transcripts, plugins, skills, hooks, MCP config, memory, settings.
+      // Only canonical observable data already persisted by the
+      // coordinator survives.
+      await rm(claudeHome, { recursive: true, force: true }).catch(() => undefined);
     }
   }
 

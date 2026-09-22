@@ -1529,4 +1529,60 @@ describe('ClaudeCodeHarnessAdapter', () => {
     await adapter.dispose();
     expect(close).toHaveBeenCalledTimes(1);
   });
+
+  it('creates a Sentry-owned ephemeral HOME and destroys it with the run', async () => {
+    // run_01M33YXNW80W2Q7H1HK5EA5K7Q: inherited Windows HOME poisoned the
+    // sandbox. The adapter must mint home/.claude + config/settings before
+    // the session starts, hand them to the client, and remove the whole
+    // boundary afterwards (stateless AgentRun semantics preserved).
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-home-'));
+    roots.push(root);
+    const input = await request(root);
+    let seenHomeDir: unknown;
+    let seenBoundary: unknown;
+    let homeExistedDuringRun = false;
+    let settingsExistedDuringRun = false;
+    const { access } = await import('node:fs/promises');
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: { HOME: '/mnt/c/Users/CodexSandboxOffline' },
+      clientFactory: async (spec) => {
+        seenHomeDir = (spec as { homeDir?: unknown }).homeDir;
+        seenBoundary = join(String((spec as { configDir?: unknown }).configDir ?? ''), '..');
+        const home = String((spec as { homeDir?: unknown }).homeDir ?? '');
+        try {
+          await access(join(home, '.claude'));
+          homeExistedDuringRun = true;
+        } catch {
+          homeExistedDuringRun = false;
+        }
+        try {
+          await access(
+            join(String((spec as { configDir?: unknown }).configDir ?? ''), 'sentry-settings.json'),
+          );
+          settingsExistedDuringRun = true;
+        } catch {
+          settingsExistedDuringRun = false;
+        }
+        return {
+          sessionId: 'session-home',
+          startSession: async () => ({
+            runText: threeStage(planTurn(), investigationTurn(), reportTurn(validReportV2())),
+          }),
+          close: async () => undefined,
+        };
+      },
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(typeof seenHomeDir).toBe('string');
+    expect(String(seenHomeDir)).toContain('.sentry-claude-home');
+    expect(String(seenHomeDir)).not.toContain('CodexSandboxOffline');
+    expect(homeExistedDuringRun).toBe(true);
+    expect(settingsExistedDuringRun).toBe(true);
+    // Cleanup destroyed the whole boundary (parent of config + home).
+    await expect(access(String(seenBoundary))).rejects.toThrow();
+  });
 });

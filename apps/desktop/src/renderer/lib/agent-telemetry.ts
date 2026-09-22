@@ -179,10 +179,13 @@ function eventToOperation(event: HarnessEventLike): OperationView | undefined {
         timestamp: event.timestamp,
       };
     case 'agent.message':
-      // Observable persisted output only — never chain-of-thought. Bounded display.
+      // Observable persisted output only — never chain-of-thought. A generic
+      // agent.message is NOT report evidence (planning tool-result texts
+      // arrive here too); 'Preparing report' shows only with an explicit
+      // agent.status = reporting stage (see furthestStage).
       return {
         kind: 'lifecycle',
-        title: 'Preparing report',
+        title: 'Agent message',
         detail: event.message?.slice(0, 200),
         timestamp: event.timestamp,
       };
@@ -356,6 +359,15 @@ function furthestStage(
 ): AgentStageId | 'working' {
   const types = new Set(events.map((e) => e.type));
   if (types.has('run.completed')) return 'completed';
+  // Explicit lifecycle truth outranks derived signals: tool/message
+  // events describe activity INSIDE the current phase and must never
+  // advance it (a planning tool-result message is not Reporting).
+  const lastStatus = [...events].reverse().find((e) => e.type === 'agent.status');
+  if (lastStatus !== undefined && lastStatus.type === 'agent.status') {
+    if (lastStatus.status === 'reporting') return 'reporting';
+    if (['investigating', 'running'].includes(lastStatus.status ?? '')) return 'investigation';
+    if (lastStatus.status === 'planning') return 'planning';
+  }
   // Reporting: observable report output after evidence.
   const hasEvidence =
     findings.length > 0 ||
@@ -364,9 +376,6 @@ function furthestStage(
     types.has('evidence.submitted');
   if (types.has('agent.message') || types.has('usage.updated')) {
     if (hasEvidence) return 'reporting';
-    // usage alone without evidence is still runtime-adjacent progress;
-    // only treat an explicit report message as reporting.
-    if (types.has('agent.message')) return 'reporting';
   }
   if (hasEvidence) return 'evidence';
   if (
