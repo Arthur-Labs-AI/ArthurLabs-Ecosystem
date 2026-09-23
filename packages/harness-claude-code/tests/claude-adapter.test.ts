@@ -1,3 +1,4 @@
+import { mkdtempSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -56,6 +57,24 @@ async function collect(
 
 function evt(type: string, raw: Record<string, unknown>): ClaudeStreamEvent {
   return { type, raw };
+}
+
+/**
+ * Hermetic Windows-profile root for the sandbox preflight: an empty dir
+ * can never contain blockers, so unit tests stay deterministic on every
+ * host — including WSL machines with traverse-only Windows profiles
+ * (which would otherwise fail every adapter run at preflight with
+ * GLM_SANDBOX_UNAVAILABLE before any scripted turn runs).
+ */
+let hermeticRoot: string | undefined;
+function hermeticUsersRoot(): string {
+  if (hermeticRoot === undefined) {
+    // Sync creation: adapter options are sync constructor inputs.
+    // Deletion stays async via the shared afterEach `roots` cleanup.
+    hermeticRoot = mkdtempSync(join(tmpdir(), 'sentry-hermetic-users-'));
+    roots.push(hermeticRoot);
+  }
+  return hermeticRoot;
 }
 
 function validPlan() {
@@ -229,6 +248,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-loop',
         startSession: async () => ({ runText: async () => turn }),
@@ -293,6 +313,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-sweep',
         startSession: async () => ({ runText: async () => turn }),
@@ -351,6 +372,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-window',
         startSession: async () => ({ runText: async () => turn }),
@@ -416,6 +438,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-noisy',
         startSession: async () => ({
@@ -486,6 +509,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-reset',
         startSession: async () => ({
@@ -542,6 +566,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -625,6 +650,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -661,6 +687,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -711,6 +738,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -748,6 +776,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -786,6 +815,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -816,6 +846,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -881,6 +912,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
         ANTHROPIC_API_KEY: 'do-not-leak',
         SENTRY_GLM_MODEL: 'glm-5.3-flash',
       },
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: factory,
     });
     const events = await collect(adapter, input);
@@ -922,6 +954,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -1027,6 +1060,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -1063,6 +1097,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -1134,6 +1169,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
         executable: 'claude-test',
         modelId: 'glm-5.3-flash',
         environment: {},
+        windowsUsersRoot: hermeticUsersRoot(),
         clientFactory: async () => ({
           sessionId: 'session-1',
           startSession: async () => ({
@@ -1209,6 +1245,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-exit',
         startSession: async () => ({
@@ -1282,6 +1319,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-cold',
         startSession: async () => ({ runText: async () => turn }),
@@ -1336,6 +1374,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-cold-bwrap',
         startSession: async () => ({ runText: async () => turn }),
@@ -1360,6 +1399,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-preflight',
         startSession: async () => ({
@@ -1391,6 +1431,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       executableVersion: '2.1.276 (Claude Code)',
       clientFactory: async () => ({
         sessionId: 'session-version',
@@ -1410,6 +1451,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       executableVersion: '9.9.999 (Claude Code)',
       clientFactory: async () => ({
         sessionId: 'session-version-drift',
@@ -1431,6 +1473,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       executableVersion: '2.1.270',
       clientFactory: async () => ({
         sessionId: 'session-version-ok',
@@ -1446,6 +1489,91 @@ describe('ClaudeCodeHarnessAdapter', () => {
     await matching.dispose();
     expect(
       events2.some((e) => (e as { code?: string }).code === 'GLM_CLAUDE_VERSION_UNVERIFIED'),
+    ).toBe(false);
+  });
+
+  it.runIf(process.platform === 'linux')(
+    'fails fast with GLM_SANDBOX_UNAVAILABLE when a Windows profile blocks bwrap',
+    async () => {
+      // Live root cause (run_01M36F7FXZQYZT1KJ6CXNPTF61): a traverse-only
+      // /mnt/c/Users/<profile> makes Claude's unconditional IDE bind
+      // fail every Bash call. The adapter must name the profile and fail
+      // BEFORE spawning any turn (zero provider spend), not after.
+      const { chmod } = await import('node:fs/promises');
+      const usersRoot = await mkdtemp(join(tmpdir(), 'sentry-fake-users-'));
+      roots.push(usersRoot);
+      await mkdir(join(usersRoot, 'StaleAccount'));
+      await chmod(join(usersRoot, 'StaleAccount'), 0o111);
+      const root = await mkdtemp(join(tmpdir(), 'sentry-claude-profile-preflight-'));
+      roots.push(root);
+      const input = await request(root);
+      let spawned = 0;
+      const adapter = new ClaudeCodeHarnessAdapter({
+        executable: 'claude-test',
+        modelId: 'glm-5.3-flash',
+        environment: {},
+        executableVersion: '2.1.270',
+        windowsUsersRoot: usersRoot,
+        clientFactory: async () => {
+          spawned += 1;
+          return {
+            sessionId: 'session-never',
+            startSession: async () => ({
+              runText: threeStage(planTurn(), investigationTurn(), reportTurn(validReportV2())),
+            }),
+            close: async () => undefined,
+          };
+        },
+      });
+      try {
+        const events = await collect(adapter, input);
+        await adapter.dispose();
+        expect(spawned).toBe(0);
+        expect(events.at(-1)).toMatchObject({
+          type: 'run.failed',
+          failure: { code: 'GLM_SANDBOX_UNAVAILABLE' },
+        });
+        expect(JSON.stringify(events.at(-1))).toContain('StaleAccount');
+        expect(events.some((e) => e.type === 'tool.started')).toBe(false);
+      } finally {
+        await chmod(join(usersRoot, 'StaleAccount'), 0o755).catch(() => undefined);
+      }
+    },
+  );
+
+  it('self-probes the binary when preflight did not wire a version', async () => {
+    // Production regression (TASK-0012 follow-up): runtimes call
+    // createAdapter without preflight, so executableVersion is absent.
+    // The adapter must probe `claude --version` itself: a missing binary
+    // degrades gracefully (probe failure => proceed to the typed spawn
+    // path), never silently, never crashing the run.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-version-selfprobe-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test-missing-binary',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
+      clientFactory: async () => ({
+        sessionId: 'session-selfprobe',
+        startSession: async () => ({
+          runText: threeStage(planTurn(), investigationTurn(), reportTurn(validReportV2())),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    // Probe of a missing binary failed silently => no version gate fired
+    // (neither block nor warning) and the scripted run completed.
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(
+      events.some(
+        (e) =>
+          (e as { code?: string }).code === 'GLM_CLAUDE_VERSION_UNSUPPORTED' ||
+          (e as { code?: string }).code === 'GLM_CLAUDE_VERSION_UNVERIFIED',
+      ),
     ).toBe(false);
   });
 
@@ -1490,6 +1618,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-text',
         startSession: async () => ({
@@ -1526,6 +1655,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -1562,6 +1692,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -1595,6 +1726,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-1',
         startSession: async () => ({
@@ -1627,6 +1759,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: { HOME: '/mnt/c/Users/CodexSandboxOffline' },
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async (spec) => {
         seenHomeDir = (spec as { homeDir?: unknown }).homeDir;
         seenBoundary = join(String((spec as { configDir?: unknown }).configDir ?? ''), '..');

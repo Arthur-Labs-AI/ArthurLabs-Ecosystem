@@ -132,6 +132,16 @@ export const LINUX_BLOCKED_WINDOWS_PROFILE_NAMES: readonly string[] = [
 ] as const;
 
 /**
+ * Non-secret host terminal/IDE metadata that stays allowed for native
+ * Windows Claude execution only. Sentry never forwards these to a Linux
+ * worker (see LINUX_BLOCKED_IDE_BRIDGE_NAMES); stripping them natively
+ * would needlessly diverge the child from its host terminal. Narrow and
+ * value-agnostic: names carry no credentials and no paths into the
+ * sandbox by themselves.
+ */
+const WIN32_PASSTHROUGH_NAMES: readonly string[] = ['TERM_PROGRAM'] as const;
+
+/**
  * Windows profile variables stay allowed for native Windows Claude
  * execution (removed from the shared base list so Linux blocks them).
  */
@@ -179,6 +189,19 @@ export function buildClaudeChildEnvironment(
       return;
     }
     if (win32Profile.has(upper)) {
+      if (isSecretName(name)) {
+        blockedNames.push(name);
+        return;
+      }
+      allowed.set(name, value);
+      return;
+    }
+    if (
+      platform === 'win32' &&
+      (WIN32_PASSTHROUGH_NAMES as readonly string[]).some(
+        (allowedName) => allowedName.toUpperCase() === upper,
+      )
+    ) {
       if (isSecretName(name)) {
         blockedNames.push(name);
         return;

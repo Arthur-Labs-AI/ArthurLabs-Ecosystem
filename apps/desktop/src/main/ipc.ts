@@ -248,6 +248,10 @@ export function registerDesktopIpc(
           return service.activeRuns();
         case 'runtime:status':
           return service.runtimeStatus();
+        case 'runtime:distros':
+          return service.runtimeDistros();
+        case 'runtime:select-distro':
+          return service.runtimeSelectDistro(parsed['distro'] as string);
         default:
           throw Object.assign(new Error('Unknown IPC channel: ' + channel), {
             code: 'IPC_UNKNOWN_CHANNEL',

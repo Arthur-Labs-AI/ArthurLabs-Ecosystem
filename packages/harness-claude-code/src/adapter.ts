@@ -53,6 +53,8 @@ import type {
 import {
   doctorGlm,
   markGlmRuntimeVerified,
+  probeClaudeExecutable,
+  probeWindowsProfileSandboxBlockers,
   resolveGlmRuntime,
   type GlmRuntimeConfiguration,
 } from './discovery.js';
@@ -83,11 +85,21 @@ export interface ClaudeCodeHarnessAdapterOptions {
   readonly initializeTimeoutMs?: number;
   /**
    * Actual probed executable version (e.g. '2.1.276 (Claude Code)'),
-   * wired from registration preflight. Compared against
-   * CLAUDE_CODE_TESTED_VERSION; a mismatch yields an informational
-   * GLM_CLAUDE_VERSION_UNVERIFIED warning (never a failure).
+   * wired from registration preflight when it ran. The adapter does NOT
+   * depend on preflight having run: when this is absent, run() probes
+   * the binary itself (bounded, cached per adapter) so the version
+   * policy (fail-closed on live-proven incompatible versions) holds on
+   * every construction path, including runtimes that call createAdapter
+   * without preflight.
    */
   readonly executableVersion?: string;
+  /**
+   * Test seam for the Windows-profile sandbox preflight (fixture Users
+   * root with controlled permissions). Production never sets this; the
+   * real `/mnt/c/Users` is inspected. Mirrors the `spawnProcess` seam
+   * precedent in `ClaudeSpawnSpec`.
+   */
+  readonly windowsUsersRoot?: string;
   readonly onRuntimeIdentity?: (identity: {
     readonly harnessVersion?: string;
     readonly executableVersion?: string;
@@ -516,6 +528,9 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     return extra;
   }
 
+  private probedExecutableVersion: string | undefined;
+  private executableVersionProbed = false;
+
   constructor(private readonly options: ClaudeCodeHarnessAdapterOptions = {}) {
     this.hostEnvironment = options.environment ?? process.env;
     this.runtime = resolveGlmRuntime({ ...options, environment: this.hostEnvironment });
@@ -527,6 +542,31 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     this.environment = child.environment;
     this.childEnvironmentReport = child;
     this.secrets = secretValues(this.hostEnvironment);
+    if (options.executableVersion !== undefined) {
+      this.probedExecutableVersion = options.executableVersion;
+      this.executableVersionProbed = true;
+    }
+  }
+
+  /**
+   * Effective binary version: the preflight-wired value when present,
+   * otherwise a single bounded self-probe (`claude --version`, 5 s cap).
+   * Never throws: probe failure yields undefined and the run proceeds to
+   * the normal spawn path, where absence surfaces with typed errors.
+   * Never consults the network; never persists credentials.
+   */
+  private async effectiveExecutableVersion(): Promise<string | undefined> {
+    if (this.executableVersionProbed) return this.probedExecutableVersion;
+    this.executableVersionProbed = true;
+    try {
+      this.probedExecutableVersion = await probeClaudeExecutable(
+        this.runtime.executable,
+        this.hostEnvironment,
+      );
+    } catch {
+      this.probedExecutableVersion = undefined;
+    }
+    return this.probedExecutableVersion;
   }
 
   childEnvironmentNames(): {
@@ -1274,9 +1314,12 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     // Version policy (data-driven, TASK-0012): the tested version is
     // ready; live-proven incompatible versions fail closed BEFORE any
     // provider budget burns; unknown newer versions warn and continue
-    // (never silent). Credential scrubbing and the fail-closed sandbox
-    // apply in every branch — version handling never weakens them.
-    const actualVersion = this.options.executableVersion;
+    // (never silent). The version is self-probed when preflight did not
+    // wire one in (production runtimes call createAdapter directly), so
+    // a blocked binary can never slip through on an unwired path.
+    // Credential scrubbing and the fail-closed sandbox apply in every
+    // branch — version handling never weakens them.
+    const actualVersion = await this.effectiveExecutableVersion();
     const policy = classifyClaudeCodeVersion(actualVersion);
     if (policy === 'blocked') {
       yield event(request.agentRunId, {
@@ -1308,6 +1351,40 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           '. Continuing: newer versions are used opportunistically, not failed.'
         ).slice(0, 500),
       });
+    }
+    // Windows-profile sandbox preflight (Linux/WSL only, read-only):
+    // Claude Code binds every enumerated `/mnt/c/Users/*/.claude/ide`
+    // into bubblewrap unconditionally, so a traverse-only profile fails
+    // EVERY Bash call before the shell starts. Fail here in seconds with
+    // the exact profile names instead of burning provider budget proving
+    // it one `ls` at a time. Detection never throws: failure to inspect
+    // proceeds to the normal path (the first real Bash result still
+    // classifies honestly via isSandboxBootstrapFailureText).
+    let profileBlockers: readonly string[] = [];
+    try {
+      const usersRoot = this.options.windowsUsersRoot;
+      profileBlockers = await probeWindowsProfileSandboxBlockers(
+        usersRoot === undefined ? {} : { usersRoot },
+      );
+    } catch {
+      profileBlockers = [];
+    }
+    if (profileBlockers.length > 0) {
+      yield event(request.agentRunId, {
+        type: 'run.failed',
+        failure: {
+          code: 'GLM_SANDBOX_UNAVAILABLE',
+          message: (
+            'Claude Code bubblewrap sandbox cannot initialize: Windows profiles ' +
+            profileBlockers.join(', ') +
+            ' under /mnt/c/Users are inaccessible to the worker, and Claude Code binds every ' +
+            'enumerated profile /.claude/ide into the sandbox unconditionally. ' +
+            'Fix host ACLs or remove stale profiles instead of retrying model turns.'
+          ).slice(0, 500),
+          retryable: false,
+        },
+      });
+      return;
     }
     yield event(request.agentRunId, {
       type: 'agent.status',

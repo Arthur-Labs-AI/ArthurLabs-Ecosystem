@@ -13,8 +13,14 @@ export const CLAUDE_CODE_TESTED_VERSION = CLAUDE_CODE_VERSION;
  * reproduced failing live smoke (bwrap bootstrap failure on an
  * otherwise-correct Sentry environment) plus a healthy control on the
  * tested version. 2.1.276 fails the `printf sentry-bash-ok` smoke with
- * `bwrap: Can't mkdir /mnt/c/.../.claude: Permission denied` while
- * 2.1.270 runs it clean (TASK-0012 live-smoke matrix).
+ * `bwrap: Can't mkdir /mnt/c/.../.claude: Permission denied` on hosts
+ * where every Windows profile is accessible; 2.1.270 is the validated
+ * baseline on such hosts. NOTE: NEITHER version survives traverse-only
+ * Windows profiles (e.g. `d--x--x--x /mnt/c/Users/<name>`): Claude's
+ * `RPe()` binds every enumerated profile `/.claude/ide` unconditionally,
+ * which is environmental, not version-specific — see
+ * `probeWindowsProfileSandboxBlockers`, which fails fast on exactly
+ * that condition instead of blaming the binary.
  */
 export const CLAUDE_CODE_KNOWN_INCOMPATIBLE_VERSIONS: readonly string[] = ['2.1.276'] as const;
 

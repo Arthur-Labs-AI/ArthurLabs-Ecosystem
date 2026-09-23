@@ -169,13 +169,59 @@ function detectWsl(environment: NodeJS.ProcessEnv, platform: NodeJS.Platform): b
   );
 }
 
+/**
+ * True only for PROVEN Windows execution: a path under /mnt/* (WSL
+ * Windows mount) or a Windows script shim (.cmd/.bat/.ps1). A bare
+ * `.exe` suffix is NOT proof: npm ships native Linux ELF binaries named
+ * `claude.exe` (verified: `/usr/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe`
+ * is an x86-64 ELF). Extension alone must never block a run; when the
+ * extension is the only signal, read the file magic instead of failing.
+ */
 function isWindowsMountedExecutable(resolved: string, realpath: string | undefined): boolean {
   const candidates = realpath === undefined ? [resolved] : [resolved, realpath];
   return candidates.some((candidate) => {
     const normalized = candidate.replace(/\\/g, '/');
     if (/^\/mnt\//i.test(normalized)) return true;
-    return /\.(exe|cmd|bat|ps1)$/i.test(normalized);
+    return /\.(cmd|bat|ps1)$/i.test(normalized);
   });
+}
+
+/** First bytes of a file (for magic-byte inspection), or undefined. */
+async function readFileMagic(path: string, length = 4): Promise<Buffer | undefined> {
+  try {
+    const { open } = await import('node:fs/promises');
+    const handle = await open(path, 'r');
+    try {
+      const buffer = Buffer.alloc(length);
+      const { bytesRead } = await handle.read(buffer, 0, length, 0);
+      return bytesRead > 0 ? buffer.subarray(0, bytesRead) : undefined;
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return undefined;
+  }
+}
+
+/** True for a Windows PE binary (`MZ` magic). Native Linux ELF (`\\x7fELF`) is NOT Windows. */
+function isWindowsBinaryMagic(magic: Buffer | undefined): boolean {
+  return magic !== undefined && magic.length >= 2 && magic[0] === 0x4d && magic[1] === 0x5a;
+}
+
+/** True for a Windows batch/powershell shim by content (never by name alone). */
+async function isWindowsShimContent(path: string): Promise<boolean> {
+  try {
+    const { readFile } = await import('node:fs/promises');
+    const head = (await readFile(path, 'utf8')).slice(0, 512).toLowerCase();
+    return (
+      head.includes('@echo off') ||
+      head.includes('powershell') ||
+      head.includes('cmd.exe') ||
+      (head.startsWith('#!') === false && (head.includes('wine') || head.includes('c:\\windows')))
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -229,6 +275,24 @@ export async function resolveClaudeExecutableIdentity(
   } catch {
     version = undefined;
   }
+  let windowsMounted = isWindowsMountedExecutable(resolved, realpath);
+  // Ambiguous `.exe` suffix on Linux (npm's native ELF `claude.exe`):
+  // inspect content instead of failing on the name. Block only proven
+  // Windows execution (PE magic or Windows shim text); a native ELF or
+  // shebang script passes regardless of suffix.
+  if (windowsMounted === false && platform !== 'win32') {
+    const inspectPath = realpath ?? resolved;
+    if (/\.exe$/i.test(inspectPath)) {
+      const magic = await readFileMagic(inspectPath);
+      if (isWindowsBinaryMagic(magic)) {
+        windowsMounted = true;
+      } else if (magic !== undefined) {
+        windowsMounted = false;
+      } else {
+        windowsMounted = await isWindowsShimContent(inspectPath);
+      }
+    }
+  }
   const identity: ClaudeExecutableIdentity = {
     configured: executable,
     resolved,
@@ -236,7 +300,7 @@ export async function resolveClaudeExecutableIdentity(
     version,
     platform,
     isWsl: detectWsl(environment, platform),
-    isWindowsMounted: isWindowsMountedExecutable(resolved, realpath),
+    isWindowsMounted: windowsMounted,
   };
   if (platform !== 'win32' && identity.isWindowsMounted) {
     throw new ClaudeCodeHarnessError(
@@ -248,6 +312,57 @@ export async function resolveClaudeExecutableIdentity(
     );
   }
   return identity;
+}
+
+/**
+ * Windows user profiles whose `.claude/ide` Claude Code unconditionally
+ * binds into the bubblewrap sandbox on WSL (verified against the 2.1.270
+ * binary: `RPe()` enumerates every dirent of `/mnt/c/Users` except
+ * Public/Default/Default User/All Users, plus the USERPROFILE-derived
+ * path, with no settings/env gate). A profile that exists but is not
+ * readable+writable by the worker makes bwrap fail (`Can't mkdir ...
+ * Permission denied`) before the shell starts — HOME isolation cannot
+ * prevent this. Read-only detection only: never creates, modifies, or
+ * repairs host state. Returns the blocking profile NAMES (never full
+ * user data), empty when nothing blocks or when not on Linux/WSL.
+ */
+export async function probeWindowsProfileSandboxBlockers(
+  input: {
+    readonly platform?: NodeJS.Platform;
+    readonly usersRoot?: string;
+  } = {},
+): Promise<readonly string[]> {
+  const platform = input.platform ?? process.platform;
+  if (platform !== 'linux') return [];
+  const usersRoot = input.usersRoot ?? '/mnt/c/Users';
+  const { readdir, access, constants } = await import('node:fs/promises');
+  let entries;
+  try {
+    entries = await readdir(usersRoot, { withFileTypes: true });
+  } catch {
+    // Not a WSL mount layout (or unreadable root): nothing to report.
+    // Detection failure must never block a run by itself.
+    return [];
+  }
+  const skipped = new Set(['Public', 'Default', 'Default User', 'All Users']);
+  const blockers: string[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+    if (skipped.has(entry.name)) continue;
+    // Mirror Claude's target: the profile must accept a `.claude`
+    // mountpoint. A profile dir without read+write access guarantees the
+    // bwrap failure observed live (traverse-only `d--x--x--x` still
+    // lists in readdir but rejects every mkdir/stat inside).
+    try {
+      await access(
+        entry.name === '' ? usersRoot : usersRoot + '/' + entry.name,
+        constants.R_OK | constants.W_OK,
+      );
+    } catch {
+      blockers.push(entry.name);
+    }
+  }
+  return blockers;
 }
 
 export async function probeClaudeExecutable(
@@ -461,6 +576,28 @@ export async function doctorGlm(
       (executableVersion ?? 'unknown') +
       ')',
   });
+  // Windows-profile sandbox blockers (Linux/WSL only, read-only): Claude
+  // Code binds every enumerated `/mnt/c/Users/*/.claude/ide` into bwrap
+  // unconditionally, so a traverse-only profile fails every Bash call.
+  // Report names only (never profile contents); detection failure (~[])
+  // never blocks the doctor by itself.
+  let profileBlockers: readonly string[] = [];
+  try {
+    profileBlockers = await probeWindowsProfileSandboxBlockers();
+  } catch {
+    profileBlockers = [];
+  }
+  if (profileBlockers.length > 0) {
+    checks.push({
+      name: 'wsl-profiles',
+      status: 'fail',
+      message:
+        'Inaccessible Windows profiles would fail the bubblewrap sandbox ' +
+        '(`RPe()` binds every /mnt/c/Users/*/.claude/ide): ' +
+        profileBlockers.join(', ') +
+        '. Fix host ACLs or remove stale profiles before trusting Bash.',
+    });
+  }
   // Honest version-gated sandbox readiness: a live-proven incompatible
   // binary is reported unavailable (not ready); otherwise the sandbox is
   // unverified until a real `printf` smoke succeeds inside Claude/bwrap.

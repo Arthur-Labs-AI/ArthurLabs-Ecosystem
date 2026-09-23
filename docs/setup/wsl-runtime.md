@@ -88,9 +88,29 @@ incompatible Claude Code versions (currently 2.1.276) with
 `GLM_CLAUDE_RUNTIME_MISMATCH` if a Linux/WSL process would launch a
 Windows-mounted executable or shim).
 
+Windows-profile prerequisite (live root cause, run_01M36F7FXZQYZT1KJ6CXNPTF61):
+Claude Code binds every enumerated `/mnt/c/Users/*/.claude/ide` into
+bubblewrap unconditionally (its `RPe()` IDE path list — no settings/env
+gate; independent of Sentry's ephemeral HOME). A traverse-only profile
+(`d--x--x--x`, e.g. a stale sandbox account) fails EVERY Bash call with
+`bwrap: Can't mkdir /mnt/c/Users/<name>/.claude: Permission denied`.
+Check yours from WSL before trusting Bash:
+
+```bash
+ls -la /mnt/c/Users/
+```
+
+Every listed profile directory must be readable+writable by the worker;
+stale or ACL-blocked profiles must be fixed or removed on the host.
+Sentry detects this read-only and fails fast: `qa agent doctor glm`
+reports a `wsl-profiles` check naming the blockers, and the adapter
+aborts the run with `GLM_SANDBOX_UNAVAILABLE` (naming the profiles)
+before any provider budget burns. No sudo/chmod from inside WSL can fix
+it — the ACLs live on the Windows side.
+
 Safe diagnostics (names/paths only, never secret values):
 `qa agent doctor glm` reports the resolved executable, realpath, version,
-platform/WSL facts, effective HOME/CLAUDE_CONFIG_DIR, and stripped Windows
-profile / IDE-bridge inputs.
+platform/WSL facts, effective HOME/CLAUDE_CONFIG_DIR, stripped Windows
+profile / IDE-bridge inputs, and the `wsl-profiles` sandbox-blocker check.
 
 - Opening Environment never spends provider budget; only FULL/TARGETED/RETEST start paid runs.

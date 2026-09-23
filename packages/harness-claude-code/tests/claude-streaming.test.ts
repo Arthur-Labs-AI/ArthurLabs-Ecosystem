@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { mkdtempSync } from 'node:fs';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -42,6 +43,21 @@ const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
+
+/**
+ * Hermetic Windows-profile root for the sandbox preflight (see
+ * claude-adapter.test.ts): an empty dir never blocks, keeping these
+ * live-child tests deterministic on WSL hosts with traverse-only
+ * Windows profiles.
+ */
+let hermeticRoot: string | undefined;
+function hermeticUsersRoot(): string {
+  if (hermeticRoot === undefined) {
+    hermeticRoot = mkdtempSync(join(tmpdir(), 'sentry-hermetic-users-'));
+    roots.push(hermeticRoot);
+  }
+  return hermeticRoot;
+}
 
 function baseSpec(overrides: Partial<ClaudeSpawnSpec> = {}): ClaudeSpawnSpec {
   return {
@@ -217,6 +233,7 @@ describe('Test A — live identical-failure loop aborts mid-turn', () => {
       executable: 'claude-test-fixture',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       initializeTimeoutMs: 2_000,
       turnTimeoutMs: 60_000,
       shutdownTimeoutMs: 2_000,
@@ -427,6 +444,7 @@ describe('Test F — cancellation while the turn is active', () => {
       executable: 'claude-test-fixture',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       initializeTimeoutMs: 2_000,
       turnTimeoutMs: 60_000,
       shutdownTimeoutMs: 2_000,
@@ -486,6 +504,7 @@ describe('Test B — live distinct-path sweep aborts at the consecutive threshol
       executable: 'claude-test-fixture',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       initializeTimeoutMs: 2_000,
       turnTimeoutMs: 60_000,
       shutdownTimeoutMs: 2_000,
@@ -567,6 +586,7 @@ describe('live abort wiring via controllable in-process stream (sandbox-safe)', 
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-fake-live',
         startSession: async () => ({ runText: () => firstStream }),
@@ -644,6 +664,7 @@ describe('live abort wiring via controllable in-process stream (sandbox-safe)', 
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
       environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
       clientFactory: async () => ({
         sessionId: 'session-fake-live-full',
         startSession: async () => ({ runText: () => fakeStream }),

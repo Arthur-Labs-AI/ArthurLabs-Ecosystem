@@ -1,3 +1,4 @@
+import { mkdtempSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,6 +16,18 @@ const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
+
+/** Hermetic Windows-profile root for the sandbox preflight (empty dir
+ * never blocks; keeps truthfulness tests deterministic on WSL hosts
+ * with traverse-only Windows profiles). */
+let hermeticRoot: string | undefined;
+function hermeticUsersRoot(): string {
+  if (hermeticRoot === undefined) {
+    hermeticRoot = mkdtempSync(join(tmpdir(), 'sentry-hermetic-users-'));
+    roots.push(hermeticRoot);
+  }
+  return hermeticRoot;
+}
 
 async function request(root: string) {
   await mkdir(root, { recursive: true });
@@ -174,6 +187,7 @@ function adapterWithTurns(turns: ClaudeStreamEvent[][]) {
     executable: 'claude-test',
     modelId: 'glm-5.3-flash',
     environment: {},
+    windowsUsersRoot: hermeticUsersRoot(),
     clientFactory: async () => ({
       sessionId: 'session-sandbox-truth',
       startSession: async () => ({

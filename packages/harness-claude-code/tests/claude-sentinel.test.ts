@@ -258,13 +258,63 @@ describe('Claude headless IDE isolation', () => {
 describe('Claude executable runtime identity', () => {
   it('fails closed when Linux resolves to a Windows-mounted executable', async () => {
     const { resolveClaudeExecutableIdentity } = await import('../src/index.js');
+    // The typed code rides on error.code (not the message text).
     await expect(
       resolveClaudeExecutableIdentity(
         '/mnt/c/Program Files/claude.exe',
         { PATH: '/usr/bin' },
         'linux',
       ),
-    ).rejects.toThrow(/GLM_CLAUDE_RUNTIME_MISMATCH/);
+    ).rejects.toMatchObject({ code: 'GLM_CLAUDE_RUNTIME_MISMATCH' });
+  });
+
+  it('accepts a native Linux ELF binary even when npm names it claude.exe', async () => {
+    // Production regression: /usr/bin/claude is a symlink to npm's
+    // `.../bin/claude.exe`, which `file` proves is an x86-64 ELF. The
+    // `.exe` suffix alone must never raise GLM_CLAUDE_RUNTIME_MISMATCH.
+    const { mkdtemp, rm, symlink, writeFile } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { resolveClaudeExecutableIdentity } = await import('../src/index.js');
+    const dir = await mkdtemp(join(tmpdir(), 'sentry-claude-exe-'));
+    try {
+      const target = join(dir, 'claude.exe');
+      await writeFile(
+        target,
+        Buffer.concat([Buffer.from([0x7f, 0x45, 0x4c, 0x46]), Buffer.from('fake-elf')]),
+      );
+      const link = join(dir, 'claude');
+      await symlink(target, link);
+      const identity = await resolveClaudeExecutableIdentity(link, { PATH: '/usr/bin' }, 'linux');
+      expect(identity.isWindowsMounted).toBe(false);
+      expect(identity.realpath).toContain('claude.exe');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('still rejects a real Windows PE binary named .exe on Linux', async () => {
+    const { mkdtemp, rm, writeFile } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { resolveClaudeExecutableIdentity } = await import('../src/index.js');
+    const dir = await mkdtemp(join(tmpdir(), 'sentry-claude-pe-'));
+    try {
+      const fake = join(dir, 'claude.exe');
+      await writeFile(fake, Buffer.concat([Buffer.from([0x4d, 0x5a]), Buffer.from('fake-pe')]));
+      await expect(
+        resolveClaudeExecutableIdentity(fake, { PATH: '/usr/bin' }, 'linux'),
+      ).rejects.toMatchObject({ code: 'GLM_CLAUDE_RUNTIME_MISMATCH' });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects Windows script shims (.cmd/.bat/.ps1) on Linux by extension', async () => {
+    const { resolveClaudeExecutableIdentity } = await import('../src/index.js');
+    await expect(
+      resolveClaudeExecutableIdentity('/opt/claude.cmd', { PATH: '/usr/bin' }, 'linux'),
+    ).rejects.toMatchObject({ code: 'GLM_CLAUDE_RUNTIME_MISMATCH' });
   });
 
   it('classifies versions data-driven: tested ready, 2.1.276 blocked, unknown unverified', async () => {
@@ -275,6 +325,61 @@ describe('Claude executable runtime identity', () => {
     expect(classifyClaudeCodeVersion('2.1.276 (Claude Code)')).toBe('blocked');
     expect(classifyClaudeCodeVersion('9.9.999 (Claude Code)')).toBe('unverified');
     expect(classifyClaudeCodeVersion(undefined)).toBe('unverified');
+  });
+
+  // chmod-based traverse-only fixtures are only faithful on POSIX.
+  it.runIf(process.platform !== 'win32')(
+    'reports traverse-only Windows profiles as sandbox blockers (read-only)',
+    async () => {
+      // Live root cause (run_01M36F7FXZQYZT1KJ6CXNPTF61): Claude Code binds
+      // every enumerated /mnt/c/Users/*/.claude/ide into bwrap
+      // unconditionally. A traverse-only profile (`d--x--x--x`) lists in
+      // readdir but rejects every mkdir inside, failing EVERY Bash call.
+      // Detection must be read-only: no host state created or repaired.
+      const { mkdtemp, rm, mkdir, chmod } = await import('node:fs/promises');
+      const { tmpdir } = await import('node:os');
+      const { join } = await import('node:path');
+      const { probeWindowsProfileSandboxBlockers } = await import('../src/index.js');
+      const root = await mkdtemp(join(tmpdir(), 'sentry-fake-users-'));
+      try {
+        await mkdir(join(root, 'HealthyUser'));
+        await mkdir(join(root, 'StaleAccount'));
+        await chmod(join(root, 'StaleAccount'), 0o111);
+        await mkdir(join(root, 'Public'));
+        const before = await readdirNames(root);
+        expect(before).toContain('StaleAccount');
+        const blockers = await probeWindowsProfileSandboxBlockers({
+          platform: 'linux',
+          usersRoot: root,
+        });
+        expect(blockers).toContain('StaleAccount');
+        expect(blockers).not.toContain('HealthyUser');
+        expect(blockers).not.toContain('Public');
+        // Read-only proof: the fixture tree is byte-identical afterwards.
+        expect(await readdirNames(root)).toEqual(before);
+      } finally {
+        await chmod(join(root, 'StaleAccount'), 0o755).catch(() => undefined);
+        await rm(root, { recursive: true, force: true });
+      }
+
+      async function readdirNames(dir: string): Promise<string[]> {
+        const { readdir } = await import('node:fs/promises');
+        return (await readdir(dir)).slice().sort();
+      }
+    },
+  );
+
+  it('returns no blockers off Linux or when the Users root is absent', async () => {
+    const { probeWindowsProfileSandboxBlockers } = await import('../src/index.js');
+    await expect(
+      probeWindowsProfileSandboxBlockers({ platform: 'win32', usersRoot: '/mnt/c/Users' }),
+    ).resolves.toEqual([]);
+    await expect(
+      probeWindowsProfileSandboxBlockers({
+        platform: 'linux',
+        usersRoot: '/definitely/not/here/sentry-probe',
+      }),
+    ).resolves.toEqual([]);
   });
 
   it('detects sandbox bootstrap markers without flagging ordinary errors', async () => {
