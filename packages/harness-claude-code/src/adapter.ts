@@ -52,13 +52,17 @@ import type {
 } from '@qa/harness-protocol';
 import {
   doctorGlm,
+  isWslEnvironment,
   markGlmRuntimeVerified,
   probeClaudeExecutable,
+  probeClaudeWslMountIsolation,
   probeWindowsProfileSandboxBlockers,
   resolveGlmRuntime,
+  type ClaudeWslIsolationReport,
   type GlmRuntimeConfiguration,
 } from './discovery.js';
 import { buildClaudeChildEnvironment } from './environment.js';
+import { SystemdIsolatedClaudeProcessLauncher, type ClaudeProcessLauncher } from './launcher.js';
 import { ClaudeCodeHarnessError } from './errors.js';
 import { redactDiagnostic, redactStructured, secretValues } from './redaction.js';
 import {
@@ -100,6 +104,13 @@ export interface ClaudeCodeHarnessAdapterOptions {
    * precedent in `ClaudeSpawnSpec`.
    */
   readonly windowsUsersRoot?: string;
+  /**
+   * Test seam for the WSL mount-isolation preflight. When set, run()
+   * treats the worker as a WSL worker and uses this report INSTEAD of
+   * spawning real transient units — deterministic on any platform.
+   * Production never sets this; the real preflight always runs.
+   */
+  readonly wslMountIsolationOverride?: ClaudeWslIsolationReport | undefined;
   readonly onRuntimeIdentity?: (identity: {
     readonly harnessVersion?: string;
     readonly executableVersion?: string;
@@ -1352,14 +1363,48 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         ).slice(0, 500),
       });
     }
-    // Windows-profile sandbox preflight (Linux/WSL only, read-only):
-    // Claude Code binds every enumerated `/mnt/c/Users/*/.claude/ide`
-    // into bubblewrap unconditionally, so a traverse-only profile fails
-    // EVERY Bash call before the shell starts. Fail here in seconds with
-    // the exact profile names instead of burning provider budget proving
-    // it one `ls` at a time. Detection never throws: failure to inspect
-    // proceeds to the normal path (the first real Bash result still
-    // classifies honestly via isSandboxBootstrapFailureText).
+    // WSL mount-isolation preflight (no provider spend): when this worker
+    // runs on WSL, Claude must start inside a mount namespace where
+    // `/mnt/c` is shadowed — otherwise its unconditional Windows-profile
+    // enumeration feeds inaccessible `/.claude/ide` paths to bubblewrap
+    // and every Bash call dies before the shell starts. The launcher
+    // selected here governs every turn spawned below via the spec.
+    const isolationOverride = this.options.wslMountIsolationOverride;
+    const wslWorker =
+      isolationOverride !== undefined || isWslEnvironment(this.hostEnvironment, process.platform);
+    let launcher: ClaudeProcessLauncher | undefined;
+    if (wslWorker) {
+      const isolation =
+        isolationOverride !== undefined
+          ? isolationOverride
+          : await probeClaudeWslMountIsolation({
+              executable: this.runtime.executable,
+              workspaceDir: request.workspace.runtimePath,
+              environment: this.hostEnvironment,
+            });
+      if (isolation.status !== 'available') {
+        yield event(request.agentRunId, {
+          type: 'run.failed',
+          failure: {
+            code: 'GLM_SANDBOX_UNAVAILABLE',
+            message: (
+              'Claude Code WSL mount isolation is unavailable (' +
+              isolation.reason +
+              '); the worker could not hide Windows host mounts before Claude startup. ' +
+              'No provider turn was started.'
+            ).slice(0, 500),
+            retryable: false,
+          },
+        });
+        return;
+      }
+      launcher = new SystemdIsolatedClaudeProcessLauncher();
+    }
+    // Windows-profile diagnostic (read-only, names only): with mount
+    // isolation healthy the blockers below are IRRELEVANT to Claude (it
+    // cannot see /mnt/c at all) and are reported informationally; they
+    // stay fatal only when isolation itself is unavailable — which
+    // already returned above. Never repair host ACLs for these.
     let profileBlockers: readonly string[] = [];
     try {
       const usersRoot = this.options.windowsUsersRoot;
@@ -1371,20 +1416,15 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     }
     if (profileBlockers.length > 0) {
       yield event(request.agentRunId, {
-        type: 'run.failed',
-        failure: {
-          code: 'GLM_SANDBOX_UNAVAILABLE',
-          message: (
-            'Claude Code bubblewrap sandbox cannot initialize: Windows profiles ' +
-            profileBlockers.join(', ') +
-            ' under /mnt/c/Users are inaccessible to the worker, and Claude Code binds every ' +
-            'enumerated profile /.claude/ide into the sandbox unconditionally. ' +
-            'Fix host ACLs or remove stale profiles instead of retrying model turns.'
-          ).slice(0, 500),
-          retryable: false,
-        },
+        type: 'warning',
+        code: 'GLM_WINDOWS_PROFILES_HIDDEN',
+        message: (
+          'Host Windows profiles detected (' +
+          profileBlockers.join(', ') +
+          ') but hidden from the Claude worker namespace by mount isolation; ' +
+          'no host repair needed.'
+        ).slice(0, 500),
       });
-      return;
     }
     yield event(request.agentRunId, {
       type: 'agent.status',
@@ -1417,6 +1457,10 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         initializeTimeoutMs: this.initializeTimeoutMs,
         turnTimeoutMs: this.turnTimeoutMs,
         shutdownTimeoutMs: this.shutdownTimeoutMs,
+        // WSL workers launch isolated (mount namespace hides /mnt/c);
+        // every other platform spawns direct. Test seams (spawnProcess)
+        // take precedence inside the client regardless.
+        ...(launcher === undefined ? {} : { launcher }),
       };
       this.client = await this.clientFactory(spec);
       session = await this.client.startSession();

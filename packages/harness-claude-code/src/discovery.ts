@@ -152,6 +152,14 @@ export interface ClaudeExecutableIdentity {
   readonly isWindowsMounted: boolean;
 }
 
+/** Public WSL probe for launcher selection: true only on Linux under WSL. */
+export function isWslEnvironment(
+  environment: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+): boolean {
+  return detectWsl(environment, platform);
+}
+
 function detectWsl(environment: NodeJS.ProcessEnv, platform: NodeJS.Platform): boolean {
   if (platform !== 'linux') return false;
   let kernel = '';
@@ -363,6 +371,174 @@ export async function probeWindowsProfileSandboxBlockers(
     }
   }
   return blockers;
+}
+
+export type ClaudeWslIsolationStatus = 'available' | 'unavailable' | 'not-required';
+
+export interface ClaudeWslIsolationReport {
+  readonly status: ClaudeWslIsolationStatus;
+  /** Bounded human-readable reason (names/paths only, never secrets). */
+  readonly reason: string;
+  readonly backend?: 'systemd' | undefined;
+  /** True when /mnt/c/Users was proven absent inside the probe unit. */
+  readonly windowsMountsHidden?: boolean | undefined;
+}
+
+/**
+ * Real mount-isolation preflight (no provider spend, no secrets).
+ * Starts transient user units shadowing `/mnt/c` and proves:
+ * systemd user units start here, `/mnt/c/Users` is absent inside,
+ * the workspace stays visible, and the resolved Claude binary runs.
+ * Non-WSL Linux returns `not-required`; any failure step returns
+ * `unavailable` with the exact step named. Never throws.
+ */
+export async function probeClaudeWslMountIsolation(
+  input: {
+    readonly executable?: string;
+    readonly workspaceDir?: string;
+    readonly environment?: NodeJS.ProcessEnv;
+    readonly platform?: NodeJS.Platform;
+    readonly timeoutMs?: number;
+  } = {},
+): Promise<ClaudeWslIsolationReport> {
+  const platform = input.platform ?? process.platform;
+  const environment = input.environment ?? process.env;
+  if (platform !== 'linux' || !detectWsl(environment, platform)) {
+    return { status: 'not-required', reason: 'mount isolation applies to WSL workers only' };
+  }
+  const timeoutMs = Math.max(1_000, input.timeoutMs ?? 30_000);
+  const { access, constants } = await import('node:fs/promises');
+  const findBinary = async (name: string): Promise<string | undefined> => {
+    const pathValue = environment['PATH'] ?? process.env['PATH'] ?? '';
+    for (const dir of pathValue.split(':').filter((d) => d.length > 0)) {
+      try {
+        await access(dir + '/' + name, constants.X_OK);
+        return dir + '/' + name;
+      } catch {
+        // Keep searching.
+      }
+    }
+    return undefined;
+  };
+  const systemdRun = await findBinary('systemd-run');
+  const systemctl = await findBinary('systemctl');
+  if (systemdRun === undefined || systemctl === undefined) {
+    return {
+      status: 'unavailable',
+      reason: 'systemd user tools unavailable in worker PATH',
+    };
+  }
+  const runProbeUnit = (
+    unit: string,
+    extraProps: readonly string[],
+    executable: string,
+    args: readonly string[],
+  ): Promise<{ exit: number | undefined; stderr: string }> =>
+    new Promise((resolve) => {
+      let child: ReturnType<typeof spawn>;
+      try {
+        child = spawn(
+          systemdRun,
+          [
+            '--user',
+            '--wait',
+            '--pipe',
+            '--collect',
+            '--quiet',
+            '--unit=' + unit,
+            ...extraProps.flatMap((p) => ['-p', p]),
+            '--',
+            executable,
+            ...args,
+          ],
+          { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
+        );
+      } catch {
+        resolve({ exit: undefined, stderr: 'spawn_failed' });
+        return;
+      }
+      let stderr = '';
+      child.stderr?.on('data', (chunk: Buffer) => {
+        if (stderr.length < 1024) stderr += chunk.toString('utf8').slice(0, 1024 - stderr.length);
+      });
+      const timer = setTimeout(() => {
+        try {
+          child.kill('SIGKILL');
+        } catch {
+          // Already gone.
+        }
+        resolve({ exit: undefined, stderr: 'probe_timeout' });
+      }, timeoutMs);
+      if (timer.unref !== undefined) timer.unref();
+      child.on('error', () => {
+        clearTimeout(timer);
+        resolve({ exit: undefined, stderr: 'spawn_failed' });
+      });
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        resolve({ exit: code ?? undefined, stderr: stderr.trim().slice(0, 300) });
+      });
+    });
+  const tag = 'sentry-glm-preflight-' + String(process.pid) + '-' + Date.now().toString(36);
+  const bare = await runProbeUnit(tag + '-bare', [], '/usr/bin/true', []);
+  if (bare.exit !== 0) {
+    return {
+      status: 'unavailable',
+      reason:
+        'systemd user units cannot start here (exit ' +
+        String(bare.exit) +
+        (bare.stderr.length > 0 ? ': ' + bare.stderr : '') +
+        ')',
+    };
+  }
+  const shadow = ['TemporaryFileSystem=/mnt/c'];
+  const hidden = await runProbeUnit(tag + '-hide', shadow, '/usr/bin/test', [
+    '!',
+    '-e',
+    '/mnt/c/Users',
+  ]);
+  if (hidden.exit !== 0) {
+    return {
+      status: 'unavailable',
+      backend: 'systemd',
+      reason:
+        '/mnt/c/Users still visible inside the shadowed unit (exit ' +
+        String(hidden.exit) +
+        '); mount isolation cannot hide Windows profiles here',
+    };
+  }
+  if (input.workspaceDir !== undefined) {
+    const visible = await runProbeUnit(tag + '-work', shadow, '/usr/bin/test', [
+      '-d',
+      input.workspaceDir,
+    ]);
+    if (visible.exit !== 0) {
+      return {
+        status: 'unavailable',
+        backend: 'systemd',
+        reason: 'workspace not visible inside the shadowed unit; refusing an unsafe launch',
+      };
+    }
+  }
+  if (input.executable !== undefined) {
+    const runnable = await runProbeUnit(tag + '-bin', shadow, input.executable, ['--version']);
+    if (runnable.exit !== 0) {
+      return {
+        status: 'unavailable',
+        backend: 'systemd',
+        reason:
+          'Claude binary does not execute inside the shadowed unit (exit ' +
+          String(runnable.exit) +
+          ')',
+      };
+    }
+  }
+  return {
+    status: 'available',
+    backend: 'systemd',
+    windowsMountsHidden: true,
+    reason: 'transient units start; /mnt/c/Users hidden; workspace and binary verified',
+  };
 }
 
 export async function probeClaudeExecutable(
@@ -587,16 +763,51 @@ export async function doctorGlm(
   } catch {
     profileBlockers = [];
   }
-  if (profileBlockers.length > 0) {
+  // Mount-isolation state decides what profile blockers MEAN. With a
+  // healthy isolated launcher the blockers are invisible to Claude
+  // (informational only — never repair host ACLs for them); without
+  // isolation they explain why a direct launch must not proceed.
+  let isolation: ClaudeWslIsolationReport;
+  try {
+    isolation = await probeClaudeWslMountIsolation({ executable, environment });
+  } catch {
+    isolation = { status: 'unavailable', reason: 'isolation preflight threw unexpectedly' };
+  }
+  if (isolation.status === 'available') {
     checks.push({
-      name: 'wsl-profiles',
-      status: 'fail',
+      name: 'wsl-isolation',
+      status: 'pass',
       message:
-        'Inaccessible Windows profiles would fail the bubblewrap sandbox ' +
-        '(`RPe()` binds every /mnt/c/Users/*/.claude/ide): ' +
-        profileBlockers.join(', ') +
-        '. Fix host ACLs or remove stale profiles before trusting Bash.',
+        'Mount isolation healthy (systemd backend): /mnt/c hidden from the Claude worker namespace. ' +
+        isolation.reason,
     });
+    if (profileBlockers.length > 0) {
+      checks.push({
+        name: 'wsl-profiles',
+        status: 'pass',
+        message:
+          'Host Windows profiles detected (' +
+          profileBlockers.join(', ') +
+          ') with zero impact — hidden from Claude by mount isolation; no host repair needed.',
+      });
+    }
+  } else if (isolation.status === 'unavailable') {
+    checks.push({
+      name: 'wsl-isolation',
+      status: 'fail',
+      message: 'Mount isolation unavailable: ' + isolation.reason,
+    });
+    if (profileBlockers.length > 0) {
+      checks.push({
+        name: 'wsl-profiles',
+        status: 'fail',
+        message:
+          'Inaccessible Windows profiles would fail the bubblewrap sandbox ' +
+          '(`RPe()` binds every /mnt/c/Users/*/.claude/ide): ' +
+          profileBlockers.join(', ') +
+          '. Without mount isolation a direct launch must not proceed.',
+      });
+    }
   }
   // Honest version-gated sandbox readiness: a live-proven incompatible
   // binary is reported unavailable (not ready); otherwise the sandbox is

@@ -1492,13 +1492,13 @@ describe('ClaudeCodeHarnessAdapter', () => {
     ).toBe(false);
   });
 
-  it.runIf(process.platform === 'linux')(
-    'fails fast with GLM_SANDBOX_UNAVAILABLE when a Windows profile blocks bwrap',
+  it.runIf(process.platform !== 'win32')(
+    'fails closed when mount isolation is unavailable despite blocked profiles',
     async () => {
-      // Live root cause (run_01M36F7FXZQYZT1KJ6CXNPTF61): a traverse-only
-      // /mnt/c/Users/<profile> makes Claude's unconditional IDE bind
-      // fail every Bash call. The adapter must name the profile and fail
-      // BEFORE spawning any turn (zero provider spend), not after.
+      // Test A (mount-isolation policy): blocked profiles exist AND the
+      // isolated launcher cannot start here. The run must fail closed
+      // with GLM_SANDBOX_UNAVAILABLE before any turn spawns (zero
+      // provider spend). The chmod fixture needs POSIX semantics.
       const { chmod } = await import('node:fs/promises');
       const usersRoot = await mkdtemp(join(tmpdir(), 'sentry-fake-users-'));
       roots.push(usersRoot);
@@ -1514,6 +1514,10 @@ describe('ClaudeCodeHarnessAdapter', () => {
         environment: {},
         executableVersion: '2.1.270',
         windowsUsersRoot: usersRoot,
+        wslMountIsolationOverride: {
+          status: 'unavailable',
+          reason: 'test fixture: no systemd user manager',
+        },
         clientFactory: async () => {
           spawned += 1;
           return {
@@ -1533,8 +1537,67 @@ describe('ClaudeCodeHarnessAdapter', () => {
           type: 'run.failed',
           failure: { code: 'GLM_SANDBOX_UNAVAILABLE' },
         });
-        expect(JSON.stringify(events.at(-1))).toContain('StaleAccount');
         expect(events.some((e) => e.type === 'tool.started')).toBe(false);
+      } finally {
+        await chmod(join(usersRoot, 'StaleAccount'), 0o755).catch(() => undefined);
+      }
+    },
+  );
+
+  it.runIf(process.platform !== 'win32')(
+    'proceeds despite blocked profiles when mount isolation is healthy',
+    async () => {
+      // Test B (mount-isolation policy): the host reports blocked
+      // profiles, BUT the launcher guarantees /mnt/c is hidden from
+      // Claude — so the run must NOT be rejected for host state outside
+      // its namespace. Informational warning only; the scripted run
+      // completes normally.
+      const { chmod } = await import('node:fs/promises');
+      const usersRoot = await mkdtemp(join(tmpdir(), 'sentry-fake-users-'));
+      roots.push(usersRoot);
+      await mkdir(join(usersRoot, 'StaleAccount'));
+      await chmod(join(usersRoot, 'StaleAccount'), 0o111);
+      const root = await mkdtemp(join(tmpdir(), 'sentry-claude-profile-hidden-'));
+      roots.push(root);
+      const input = await request(root);
+      let launcherKind: string | undefined;
+      const adapter = new ClaudeCodeHarnessAdapter({
+        executable: 'claude-test',
+        modelId: 'glm-5.3-flash',
+        environment: {},
+        executableVersion: '2.1.270',
+        windowsUsersRoot: usersRoot,
+        wslMountIsolationOverride: {
+          status: 'available',
+          backend: 'systemd',
+          windowsMountsHidden: true,
+          reason: 'test fixture: /mnt/c hidden',
+        },
+        clientFactory: async (spec) => {
+          launcherKind = spec.launcher?.kind;
+          return {
+            sessionId: 'session-hidden',
+            startSession: async () => ({
+              runText: threeStage(planTurn(), investigationTurn(), reportTurn(validReportV2())),
+            }),
+            close: async () => undefined,
+          };
+        },
+      });
+      try {
+        const events = await collect(adapter, input);
+        await adapter.dispose();
+        expect(events.at(-1)?.type).toBe('run.completed');
+        // The WSL worker launched isolated even though host profiles are
+        // blocked: hidden from Claude, never repaired.
+        expect(launcherKind).toBe('wsl-isolated');
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            type: 'warning',
+            code: 'GLM_WINDOWS_PROFILES_HIDDEN',
+          }),
+        );
+        expect(JSON.stringify(events)).toContain('StaleAccount');
       } finally {
         await chmod(join(usersRoot, 'StaleAccount'), 0o755).catch(() => undefined);
       }

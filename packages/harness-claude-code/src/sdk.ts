@@ -1,6 +1,11 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import type { ReportTurnOptions } from '@qa/evidence-pipeline';
+import {
+  DirectClaudeProcessLauncher,
+  type ClaudeProcessLauncher,
+  type OwnedClaudeProcess,
+} from './launcher.js';
 
 export const CLAUDE_CODE_VERSION = '2.1.270' as const;
 
@@ -153,6 +158,14 @@ export interface ClaudeSpawnSpec {
     args: readonly string[],
     options: { cwd: string; env: NodeJS.ProcessEnv },
   ) => ChildProcess;
+  /**
+   * Process launcher boundary (TASK-0012 mount isolation). When set,
+   * every turn spawns through it instead of direct `spawn`; the
+   * launcher owns unit lifecycle (stop on abort/timeout/close).
+   * The adapter sets a systemd-isolated launcher on WSL workers;
+   * tests either omit this (direct) or inject fakes.
+   */
+  readonly launcher?: ClaudeProcessLauncher | undefined;
 }
 
 export type ClaudeClientFactory = (spec: ClaudeSpawnSpec) => Promise<ClaudeClientView>;
@@ -447,16 +460,22 @@ class LiveClaudeTurn implements ClaudeTurnStream {
     clearTimeout(this.initTimer);
     clearTimeout(this.turnTimer);
     this.active.delete(this.child);
+    // Normal exits self-collect via --collect: drop the stop entry so a
+    // later close() never touches a recycled unit name. Abnormal exits
+    // keep theirs: abort()/close() stop the cgroup explicitly.
+    if (outcome.kind === 'exited') this.owner.forgetOwnedUnit(this.child);
     if (outcome.kind === 'exited') this.continued.add(this.sessionId);
-    // A failed turn must not linger: terminate the owned handle promptly
-    // (graceful SIGTERM here; abort()/close() escalate when needed). The
-    // consumer still drains every event queued before this outcome.
+    // A failed turn must not linger. For unit-backed turns this ALSO
+    // stops the transient service/cgroup: killing only the systemd-run
+    // client would orphan the unit (verified live: init-timeout left
+    // sentry-glm-* running). terminateOwnedChild is idempotent (unit
+    // entry deleted on first use; handle kills are caught), so the
+    // abort()/close() paths that already terminated simply no-op here.
+    // Fire-and-forget: settlement must never wait on unit stop; the
+    // consumer still drains every event queued before this outcome, and
+    // abort()/close() await the same termination when they own it.
     if (outcome.kind === 'failed' && !this.aborted) {
-      try {
-        this.child.kill();
-      } catch {
-        // already gone; close event settles the handle
-      }
+      this.owner.terminateOwnedChild(this.child).catch(() => undefined);
     }
     const waiter = this.waiters.shift();
     if (waiter !== undefined) waiter();
@@ -535,23 +554,33 @@ function spawnOwnedClaudeTurn(
     ...(jsonSchema === undefined ? {} : { jsonSchema }),
     ...(allowedTools === undefined ? {} : { allowedTools }),
   });
-  const spawnFn =
-    spec.spawnProcess ??
-    ((command: string, argv: readonly string[], options: { cwd: string; env: NodeJS.ProcessEnv }) =>
-      spawn(command, [...argv], {
-        cwd: options.cwd,
-        env: options.env,
-        windowsHide: true,
-        shell: false,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      }));
-  const child = spawnFn(spec.executable, [...args, prompt], {
-    cwd: spec.cwd,
-    env: buildClaudeSpawnEnv(spec),
-  });
+  // Process boundary: the test seam wins when present; otherwise the
+  // spec launcher (systemd-isolated on WSL workers) or direct spawn.
+  // No shell anywhere: argv arrays end to end.
+  let owned: OwnedClaudeProcess;
+  if (spec.spawnProcess !== undefined) {
+    const child = spec.spawnProcess(spec.executable, [...args, prompt], {
+      cwd: spec.cwd,
+      env: buildClaudeSpawnEnv(spec),
+    });
+    owned = { child, unitName: undefined, stopOwnedUnit: async () => true };
+  } else {
+    const launcher: ClaudeProcessLauncher = spec.launcher ?? new DirectClaudeProcessLauncher();
+    owned = launcher.launch({
+      executable: spec.executable,
+      argv: [...args, prompt],
+      cwd: spec.cwd,
+      env: buildClaudeSpawnEnv(spec),
+    });
+  }
+  const child = owned.child;
   // Owned from birth: every active child is registered until it settles,
   // so close()/cancel()/abort() can terminate exactly these processes.
+  // Unit-backed turns additionally register their stop handle so abort
+  // and close terminate the whole transient unit/cgroup, not just the
+  // systemd-run client.
   active.add(child);
+  owner.trackOwnedUnit(child, owned);
   return new LiveClaudeTurn(child, owner, spec, sessionId, continued, active);
 }
 
@@ -596,8 +625,27 @@ export class ClaudeClient implements ClaudeClientView {
   readonly sessionId = mintClaudeSessionId();
   private readonly continued = new Set<string>();
   private readonly active = new Set<ChildProcess>();
+  private readonly unitStops = new Map<ChildProcess, () => Promise<boolean>>();
   private closed = false;
   private closePromise?: Promise<void>;
+
+  /** Register a launcher-owned unit stop for a live child handle. */
+  trackOwnedUnit(child: ChildProcess, owned: OwnedClaudeProcess): void {
+    if (owned.unitName !== undefined) this.unitStops.set(child, () => owned.stopOwnedUnit());
+  }
+
+  /** Forget a settled child's unit entry (normal exits self-collect). */
+  forgetOwnedUnit(child: ChildProcess): void {
+    this.unitStops.delete(child);
+  }
+
+  /** Stop exactly the owned transient unit behind a child (no-op direct). */
+  private async stopChildUnit(child: ChildProcess): Promise<void> {
+    const stop = this.unitStops.get(child);
+    if (stop === undefined) return;
+    this.unitStops.delete(child);
+    await stop().catch(() => false);
+  }
 
   constructor(private readonly spec: ClaudeSpawnSpec) {}
 
@@ -650,6 +698,9 @@ export class ClaudeClient implements ClaudeClientView {
 
   /** Graceful-then-escalating termination of ONE owned child. */
   async terminateOwnedChild(child: ChildProcess): Promise<void> {
+    // Unit-backed turns die as a cgroup (Claude + inner bwrap + Bash
+    // together); the client-handle kill below then reaps promptly.
+    await this.stopChildUnit(child);
     try {
       child.kill();
     } catch {
@@ -671,6 +722,7 @@ export class ClaudeClient implements ClaudeClientView {
     this.closed = true;
     this.closePromise = (async () => {
       const owned = [...this.active];
+      await Promise.all(owned.map((child) => this.stopChildUnit(child)));
       for (const child of owned) {
         try {
           child.kill();

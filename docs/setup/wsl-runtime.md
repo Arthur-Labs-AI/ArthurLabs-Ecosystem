@@ -59,26 +59,38 @@ No secrets below — substitute your own values where indicated.
   data root, systemd, verifier sandbox) plus per-stack Muse/DeepSeek/GLM readiness.
 - CLI equivalent inside WSL: run the doctors from the deployed tree.
 
-## 7. GLM Claude Code Bash sandbox gate (TASK-0012, authoritative)
+## 7. GLM Claude Code Bash sandbox gate (mount isolation architecture)
 
 Green CI does NOT prove GLM Bash works: the live smoke below runs in the SAME
 WSL environment Desktop Sentry uses (Windows Electron → wsl.exe → Sentry
-runtime → real Claude Code binary → Sentry ephemeral HOME/config → real
+runtime → systemd-isolated Claude worker → real Claude Code binary → real
 bubblewrap → real Bash). A mocked child process or plain Linux CI runner is
 not equivalent.
 
-From Windows PowerShell (replace Ubuntu if your distro differs):
+Sentry isolates Claude from Windows mounts. On WSL workers every Claude
+turn spawns inside a transient systemd user unit whose mount namespace
+shadows `/mnt/c` with an empty tmpfs (`TemporaryFileSystem=/mnt/c`).
+Claude's unconditional Windows-profile enumeration therefore finds nothing,
+so stale or ACL-blocked host profiles (e.g. `CodexSandboxOffline`) cannot
+affect the run. The host profiles are not part of the Claude QA runtime —
+no ACL repair, account deletion, or `.claude` seeding is ever required.
+The rest of Sentry (project import, runtime, other harnesses) keeps normal
+`/mnt/c` access; only the Claude worker is isolated. Claude's own inner
+bubblewrap sandbox and `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` remain fully
+enforced inside the outer namespace.
 
-```powershell
-wsl -d Ubuntu -- bash -c 'cd /mnt/c/<path-to>/Sentry && SENTRY_LIVE_CLAUDE=1 pnpm --filter @qa/harness-claude-code test -- tests/claude-live.test.ts -t "real bwrap sandbox"'
+From a Linux checkout with dependencies installed (replace Ubuntu if your
+distro differs):
+
+```bash
+SENTRY_LIVE_CLAUDE=1 ./node_modules/.bin/vitest run tests/claude-live.test.ts
 ```
 
-Expected:
-
-- Bash tool starts, sandbox initializes, `printf sentry-bash-ok` runs, exit 0.
-- Output contains `sentry-bash-ok`; no `/mnt/c/.../.claude` error.
-- Terminal event is `run.completed` (never `GLM_SANDBOX_UNAVAILABLE` or
-  `GLM_CLAUDE_VERSION_UNSUPPORTED`).
+Expected: all smoke tests pass, including `sentry-wsl-isolation-ok` (nested
+bwrap Bash exit 0 with no `/mnt/c` profile names in Claude Bash output),
+cancel/loop-breaker/init-timeout unit cleanup, and planning completion.
+Terminal event is `run.completed` (never `GLM_SANDBOX_UNAVAILABLE` or
+`GLM_CLAUDE_VERSION_UNSUPPORTED`).
 
 Version policy (data-driven): the adapter runs fail-closed on live-proven
 incompatible Claude Code versions (currently 2.1.276) with
@@ -88,29 +100,20 @@ incompatible Claude Code versions (currently 2.1.276) with
 `GLM_CLAUDE_RUNTIME_MISMATCH` if a Linux/WSL process would launch a
 Windows-mounted executable or shim).
 
-Windows-profile prerequisite (live root cause, run_01M36F7FXZQYZT1KJ6CXNPTF61):
+Windows-profile troubleshooting (fallback information only):
 Claude Code binds every enumerated `/mnt/c/Users/*/.claude/ide` into
 bubblewrap unconditionally (its `RPe()` IDE path list — no settings/env
-gate; independent of Sentry's ephemeral HOME). A traverse-only profile
-(`d--x--x--x`, e.g. a stale sandbox account) fails EVERY Bash call with
-`bwrap: Can't mkdir /mnt/c/Users/<name>/.claude: Permission denied`.
-Check yours from WSL before trusting Bash:
-
-```bash
-ls -la /mnt/c/Users/
-```
-
-Every listed profile directory must be readable+writable by the worker;
-stale or ACL-blocked profiles must be fixed or removed on the host.
-Sentry detects this read-only and fails fast: `qa agent doctor glm`
-reports a `wsl-profiles` check naming the blockers, and the adapter
-aborts the run with `GLM_SANDBOX_UNAVAILABLE` (naming the profiles)
-before any provider budget burns. No sudo/chmod from inside WSL can fix
-it — the ACLs live on the Windows side.
+gate; independent of Sentry's ephemeral HOME). With mount isolation
+healthy this is invisible to Claude and needs no action. If isolation is
+unavailable, `qa agent doctor glm` reports a failing `wsl-isolation`
+check plus a `wsl-profiles` check naming the profiles that would block a
+direct launch — treat that as an isolation outage, not a request to
+repair host ACLs.
 
 Safe diagnostics (names/paths only, never secret values):
 `qa agent doctor glm` reports the resolved executable, realpath, version,
 platform/WSL facts, effective HOME/CLAUDE_CONFIG_DIR, stripped Windows
-profile / IDE-bridge inputs, and the `wsl-profiles` sandbox-blocker check.
+profile / IDE-bridge inputs, mount-isolation status (`wsl-isolation`),
+and host profile state (`wsl-profiles`, informational while isolated).
 
 - Opening Environment never spends provider budget; only FULL/TARGETED/RETEST start paid runs.
