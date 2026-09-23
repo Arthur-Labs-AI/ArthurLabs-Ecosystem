@@ -283,7 +283,7 @@ describe('parallel three-agent execution', () => {
     );
     expect(details.run.status).toBe('partial');
     const byStack = new Map(details.agentRuns.map((agent) => [agent.agentStackId, agent.status]));
-    expect(byStack.get('stack_muse_main')).toBe('completed');
+    expect(byStack.get('stack_opencode_main')).toBe('completed');
     expect(byStack.get('stack_deepseek_main')).toBe('failed');
     expect(byStack.get('stack_glm_main')).toBe('completed');
   });
@@ -298,7 +298,7 @@ describe('parallel three-agent execution', () => {
     );
     expect(details.run.status).toBe('partial');
     const byStack = new Map(details.agentRuns.map((agent) => [agent.agentStackId, agent.status]));
-    expect(byStack.get('stack_muse_main')).toBe('completed');
+    expect(byStack.get('stack_opencode_main')).toBe('completed');
     expect(byStack.get('stack_deepseek_main')).toBe('completed');
     expect(['timed_out', 'interrupted', 'failed']).toContain(byStack.get('stack_glm_main'));
   });
@@ -323,12 +323,12 @@ describe('parallel three-agent execution', () => {
       // Each request names exactly one stack (its own, in agentStackId
       // and the mirrored context entry) and carries no peer display
       // names, peer findings, or peer evidence.
-      const stacks = (serialized.match(/stack_(muse|deepseek|glm)_main/g) ?? []).sort();
+      const stacks = (serialized.match(/stack_(opencode|deepseek|glm)_main/g) ?? []).sort();
       expect(new Set(stacks).size).toBe(1);
       expect(serialized).not.toMatch(
-        /Muse QA Agent.*DeepSeek QA Agent|DeepSeek QA Agent.*GLM QA Agent|Muse QA Agent.*GLM QA Agent/,
+        /OpenCode QA Agent.*DeepSeek QA Agent|DeepSeek QA Agent.*GLM QA Agent|OpenCode QA Agent.*GLM QA Agent/,
       );
-      expect(serialized).not.toMatch(/another agent|peer|Muse found|agree\?/i);
+      expect(serialized).not.toMatch(/another agent|peer|agree\?/i);
     }
   });
 

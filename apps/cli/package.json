@@ -16,7 +16,7 @@
     "@qa/domain": "workspace:*",
     "@qa/harness-claude-code": "workspace:*",
     "@qa/harness-deepseek": "workspace:*",
-    "@qa/harness-muse": "workspace:*",
+    "@qa/harness-opencode": "workspace:*",
     "@qa/harness-protocol": "workspace:*",
     "@qa/persistence": "workspace:*",
     "@qa/project-manager": "workspace:*",

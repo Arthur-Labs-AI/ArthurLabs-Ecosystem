@@ -129,9 +129,6 @@ export function Environment(): React.JSX.Element {
               Status: {stack.readiness ?? 'unknown'} — a saved credential does not imply the
               provider works until a non-billable doctor verifies it inside the WSL runtime.
             </p>
-            {stack.id === 'stack_muse_main' && stack.configured !== true ? (
-              <p className="muted">Run `muse login` inside the selected Sentry WSL distro.</p>
-            ) : null}
           </div>
         ))}
         <div className="card">

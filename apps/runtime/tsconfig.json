@@ -10,7 +10,7 @@
     { "path": "../../packages/domain" },
     { "path": "../../packages/harness-claude-code" },
     { "path": "../../packages/harness-deepseek" },
-    { "path": "../../packages/harness-muse" },
+    { "path": "../../packages/harness-opencode" },
     { "path": "../../packages/harness-protocol" },
     { "path": "../../packages/persistence" },
     { "path": "../../packages/project-manager" },

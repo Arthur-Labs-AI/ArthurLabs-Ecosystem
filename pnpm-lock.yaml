@@ -59,9 +59,9 @@ importers:
       '@qa/harness-deepseek':
         specifier: workspace:*
         version: link:../../packages/harness-deepseek
-      '@qa/harness-muse':
+      '@qa/harness-opencode':
         specifier: workspace:*
-        version: link:../../packages/harness-muse
+        version: link:../../packages/harness-opencode
       '@qa/harness-protocol':
         specifier: workspace:*
         version: link:../../packages/harness-protocol
@@ -111,9 +111,6 @@ importers:
       '@qa/harness-deepseek':
         specifier: workspace:*
         version: link:../../packages/harness-deepseek
-      '@qa/harness-muse':
-        specifier: workspace:*
-        version: link:../../packages/harness-muse
       '@qa/harness-protocol':
         specifier: workspace:*
         version: link:../../packages/harness-protocol
@@ -217,9 +214,9 @@ importers:
       '@qa/harness-deepseek':
         specifier: workspace:*
         version: link:../../packages/harness-deepseek
-      '@qa/harness-muse':
+      '@qa/harness-opencode':
         specifier: workspace:*
-        version: link:../../packages/harness-muse
+        version: link:../../packages/harness-opencode
       '@qa/harness-protocol':
         specifier: workspace:*
         version: link:../../packages/harness-protocol
@@ -461,11 +458,8 @@ importers:
         specifier: 'catalog:'
         version: 2.1.9(@types/node@22.20.2)(jsdom@26.0.0)
 
-  packages/harness-muse:
+  packages/harness-opencode:
     dependencies:
-      '@muse-code/sdk':
-        specifier: 0.1.1
-        version: 0.1.1
       '@qa/domain':
         specifier: workspace:*
         version: link:../domain
@@ -3595,10 +3589,6 @@ packages:
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
-
-  '@muse-code/sdk@0.1.1':
-    resolution: {integrity: sha512-kis3zolvwlExDeX9F1f3KVSSdCWTgF2TdbGcMJIb0HGkQNrX+qTmel6U9sC9ylHtFizxqOZ/yxGv1cvbcRywiQ==}
-    engines: {node: '>=20'}
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
@@ -10067,8 +10057,6 @@ snapshots:
       zod-to-json-schema: 3.25.2(zod@4.6.0)
     transitivePeerDependencies:
       - supports-color
-
-  '@muse-code/sdk@0.1.1': {}
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true

@@ -40,23 +40,23 @@ No secrets below — substitute your own values where indicated.
 ## 4. Provider CLIs in the same distro
 
 - DeepSeek: install the `dsh` harness so `wsl -d Ubuntu -- which dsh` resolves.
-- Muse: install Muse Code in WSL and run `muse login` **inside that distro**
-  (Windows login state does not transfer).
+- OpenCode: install OpenCode in WSL so `wsl -d Ubuntu -- which opencode` resolves
+  (no login step for the OpenRouter API-key path). See `docs/setup/opencode.md`.
 - GLM: install Claude Code in WSL (`which claude`), used with the trusted Z.AI endpoint.
 
 ## 5. Provider model configuration
 
-- In Sentry Desktop: Settings → Providers. Save `SENTRY_DEEPSEEK_MODEL` (e.g.
-  `deepseek-flash`), `SENTRY_GLM_MODEL` (e.g. `glm-5.3-flash`), `SENTRY_MUSE_MODEL` (e.g.
-  `muse-spark-1.3-contributor`), plus `DEEPSEEK_API_KEY` / `ANTHROPIC_AUTH_TOKEN` and
-  `ANTHROPIC_BASE_URL` as applicable.
+- In Sentry Desktop: Settings → Providers. Save `SENTRY_OPENCODE_MODEL` (an exact
+  OpenRouter model id), `SENTRY_DEEPSEEK_MODEL` (e.g. `deepseek-flash`),
+  `SENTRY_GLM_MODEL` (e.g. `glm-5.3-flash`), plus `OPENROUTER_API_KEY` /
+  `DEEPSEEK_API_KEY` / `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL` as applicable.
 - Desktop pushes them into runtime memory via `runtime.configure` (no restart needed).
 - Secrets stay encrypted in Windows safeStorage; WSL keeps them memory-only.
 
 ## 6. Checking doctors
 
 - Sentry Desktop → Environment shows the WSL runtime section (distro, Node, protocol,
-  data root, systemd, verifier sandbox) plus per-stack Muse/DeepSeek/GLM readiness.
+  data root, systemd, verifier sandbox) plus per-stack OpenCode/DeepSeek/GLM readiness.
 - CLI equivalent inside WSL: run the doctors from the deployed tree.
 
 ## 7. GLM Claude Code Bash sandbox gate (mount isolation architecture)

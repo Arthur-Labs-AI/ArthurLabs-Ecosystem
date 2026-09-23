@@ -89,7 +89,7 @@ export function IssueDetail(): React.JSX.Element {
         </div>
       ) : null}
       <p className="muted" style={{ marginBottom: 8 }}>
-        Real provider retest — Muse, DeepSeek and GLM re-examine this issue and consume provider
+        Real provider retest — OpenCode, DeepSeek and GLM re-examine this issue and consume provider
         budget.
       </p>
       {!confirmRetest ? (

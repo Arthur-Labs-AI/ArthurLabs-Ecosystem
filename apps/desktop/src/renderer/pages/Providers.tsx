@@ -12,6 +12,10 @@ interface ProviderStatus {
 }
 
 const DESCRIPTIONS: Record<string, string> = {
+  OPENROUTER_API_KEY:
+    'OpenRouter provider key (secret). Used by the OpenCode harness host process inside the WSL runtime. Never shown, never leaves the desktop host process except over the encrypted runtime channel.',
+  SENTRY_OPENCODE_MODEL:
+    'OpenCode model id (non-secret). An exact OpenRouter model id, e.g. anthropic/claude-opus-4-6. The harness is OpenCode, the provider is OpenRouter, the model is your selection.',
   DEEPSEEK_API_KEY: 'DeepSeek provider key (secret). Used by the DeepSeek harness host process.',
   ANTHROPIC_AUTH_TOKEN:
     'GLM/Claude-Code provider token (secret). Used by the Claude parent process.',
@@ -19,14 +23,17 @@ const DESCRIPTIONS: Record<string, string> = {
     'GLM endpoint override (non-secret). Trusted Z.AI Anthropic-compatible base URL, e.g. https://api.z.ai/api/anthropic.',
   SENTRY_DEEPSEEK_MODEL: 'DeepSeek model id override (non-secret).',
   SENTRY_GLM_MODEL: 'GLM model id override (non-secret).',
-  SENTRY_MUSE_MODEL: 'Muse model id override (non-secret).',
   SENTRY_DEEPSEEK_BINARY:
     'DeepSeek harness executable (non-secret). Absolute path to the dsh entry; needed when the desktop host PATH does not include it.',
   SENTRY_GLM_BINARY: 'GLM harness executable override (non-secret).',
-  SENTRY_MUSE_BINARY: 'Muse harness executable override (non-secret).',
+  SENTRY_OPENCODE_BINARY: 'OpenCode harness executable override (non-secret).',
 };
 
-const SECRET_NAMES: ReadonlySet<string> = new Set(['DEEPSEEK_API_KEY', 'ANTHROPIC_AUTH_TOKEN']);
+const SECRET_NAMES: ReadonlySet<string> = new Set([
+  'OPENROUTER_API_KEY',
+  'DEEPSEEK_API_KEY',
+  'ANTHROPIC_AUTH_TOKEN',
+]);
 
 export function Providers(): React.JSX.Element {
   const queryClient = useQueryClient();
@@ -105,10 +112,6 @@ export function Providers(): React.JSX.Element {
         Save encrypts the credential with the OS keychain, persists it, and loads it into the host
         process immediately — it survives application restarts. Secret values are never displayed
         and never leave the desktop host process.
-      </p>
-      <p className="muted">
-        Muse authenticates via your local <span className="mono">muse login</span> credential store
-        — no key to paste here. See <Link to="/environment">Environment</Link> for live readiness.
       </p>
       <HarnessBinaryCard />
 
@@ -201,7 +204,7 @@ function HarnessBinaryCard(): React.JSX.Element {
     <div className="card" style={{ marginBottom: 12 }}>
       <h3 style={{ marginTop: 0 }}>Execution runtime</h3>
       <p className="muted">
-        Provider CLIs (dsh, Muse, Claude Code) execute inside the WSL2 Sentry runtime on Linux.
+        Provider CLIs (opencode, dsh, Claude Code) execute inside the WSL2 Sentry runtime on Linux.
         Windows binary paths do not apply — see <Link to="/environment">Environment</Link> for the
         runtime doctor state.
       </p>

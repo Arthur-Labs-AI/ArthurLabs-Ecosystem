@@ -189,7 +189,7 @@ describe('fake end-to-end run engine', () => {
       createFakeHarnessRegistry('success'),
     ).run(f.added.project.id, {
       executionKind: 'production',
-      agentStackIds: ['stack_muse_main'],
+      agentStackIds: ['stack_deepseek_main'],
       runTimeoutMs: 2_000,
     });
     expect(result.run.executionKind).toBe('production');
@@ -218,9 +218,9 @@ describe('fake end-to-end run engine', () => {
     const originalBefore = await scanTree(f.source);
     const managedPath = projectDataPaths(f.dataRoot, f.added.project.id).workingCopy;
     const managedBefore = await scanTree(managedPath);
-    const base = createFakeHarnessRegistry('success').resolve('stack_muse_main');
+    const base = createFakeHarnessRegistry('success').resolve('stack_deepseek_main');
     expect(base).toBeDefined();
-    if (base === undefined) throw new Error('Muse fixture registration missing');
+    if (base === undefined) throw new Error('DeepSeek fixture registration missing');
     const delegate = new FakeHarnessAdapter({ scenario: 'success' });
     let workspacePath: string | undefined;
     const lifecycle: string[] = [];
@@ -248,7 +248,7 @@ describe('fake end-to-end run engine', () => {
       f.added.project.id,
       {
         executionKind: 'production',
-        agentStackIds: ['stack_muse_main'],
+        agentStackIds: ['stack_deepseek_main'],
         runTimeoutMs: 2_000,
       },
     );
@@ -311,7 +311,7 @@ describe('fake end-to-end run engine', () => {
     const { createHarnessEventId: mkEvt } = await import('@qa/shared');
     const drip = (count: number, gapMs: number) => ({
       stack: {
-        id: 'stack_muse_main',
+        id: 'stack_deepseek_main',
         displayName: 'drip',
         enabled: true,
         model: { provider: 'fake', modelId: 'fake-drip' },
@@ -365,7 +365,7 @@ describe('fake end-to-end run engine', () => {
     // Silent worker: no events at all → dies at the silence window.
     silentRegistry.register({
       stack: {
-        id: 'stack_muse_main',
+        id: 'stack_deepseek_main',
         displayName: 'silent',
         enabled: true,
         model: { provider: 'fake', modelId: 'fake-silent' },
@@ -404,7 +404,7 @@ describe('fake end-to-end run engine', () => {
       silentRegistry,
     ).run(f.added.project.id, {
       executionKind: 'simulation',
-      agentStackIds: ['stack_muse_main'],
+      agentStackIds: ['stack_deepseek_main'],
       runTimeoutMs: 120,
     });
     const silentAgent = silentResult.agentRuns[0];
@@ -421,7 +421,7 @@ describe('fake end-to-end run engine', () => {
       dripRegistry,
     ).run(f.added.project.id, {
       executionKind: 'simulation',
-      agentStackIds: ['stack_muse_main'],
+      agentStackIds: ['stack_deepseek_main'],
       runTimeoutMs: 100,
     });
     // The drip stream spans 240ms against a 100ms silence window: sliding
@@ -441,7 +441,7 @@ describe('fake end-to-end run engine', () => {
     const f = await fixture();
     const result = await coordinator(f).simulate(f.added.project.id, {
       scenario: 'timeout',
-      agentStackIds: ['stack_muse_main'],
+      agentStackIds: ['stack_deepseek_main'],
       runTimeoutMs: 25,
     });
     const timedOut = result.agentRuns.find((item) => item.status === 'timed_out');
@@ -479,7 +479,7 @@ describe('fake end-to-end run engine', () => {
   it('recovers nonterminal persisted state and unlocks the managed copy', async () => {
     const f = await fixture();
     const snapshotRun = await coordinator(f).simulate(f.added.project.id, {
-      agentStackIds: ['stack_muse_main'],
+      agentStackIds: ['stack_deepseek_main'],
     });
     const runId = createQARunId();
     const timestamp = nowIsoTimestamp();
@@ -500,7 +500,7 @@ describe('fake end-to-end run engine', () => {
         schemaVersion: 1,
         id: agentRunId,
         qaRunId: runId,
-        agentStackId: 'stack_muse_main',
+        agentStackId: 'stack_deepseek_main',
         taskType: 'qa',
         status: 'running',
         startedAt: timestamp,
@@ -573,7 +573,7 @@ describe('fake end-to-end run engine', () => {
   it('does not recover state owned by a fresh runtime, then recovers it after release', async () => {
     const f = await fixture();
     const completed = await coordinator(f).simulate(f.added.project.id, {
-      agentStackIds: ['stack_muse_main'],
+      agentStackIds: ['stack_deepseek_main'],
     });
     const runId = createQARunId();
     const timestamp = nowIsoTimestamp();
@@ -594,7 +594,7 @@ describe('fake end-to-end run engine', () => {
         schemaVersion: 1,
         id: createAgentRunId(),
         qaRunId: runId,
-        agentStackId: 'stack_muse_main',
+        agentStackId: 'stack_deepseek_main',
         taskType: 'qa',
         status: 'running',
         startedAt: timestamp,
@@ -624,7 +624,7 @@ describe('fake end-to-end run engine', () => {
     const f = await fixture();
     const result = await coordinator(f).simulate(f.added.project.id, {
       scenario: 'protocol-error',
-      agentStackIds: ['stack_muse_main'],
+      agentStackIds: ['stack_deepseek_main'],
     });
     expect(result.run.status).toBe('failed');
     expect(result.agentRuns[0]).toMatchObject({
@@ -660,7 +660,7 @@ describe('fake end-to-end run engine', () => {
   it('streams large exports through repository iterators without list materialization', async () => {
     const f = await fixture();
     const result = await coordinator(f).simulate(f.added.project.id, {
-      agentStackIds: ['stack_muse_main'],
+      agentStackIds: ['stack_deepseek_main'],
     });
     const agentRunId = result.agentRuns[0]?.id;
     expect(agentRunId).toBeDefined();

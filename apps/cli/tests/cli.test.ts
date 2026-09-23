@@ -79,7 +79,7 @@ async function fixture() {
 describe('qa cli', () => {
   it('reports the exact per-agent outcome for a partial production run', () => {
     const agents = summarizeRunStartAgents([
-      { agentStackId: 'stack_muse_main', status: 'completed' },
+      { agentStackId: 'stack_opencode_main', status: 'completed' },
       {
         agentStackId: 'stack_deepseek_main',
         status: 'failed',
@@ -100,7 +100,7 @@ describe('qa cli', () => {
       interrupted: 0,
       cancelled: 0,
       runs: [
-        { agentStackId: 'stack_muse_main', status: 'completed' },
+        { agentStackId: 'stack_opencode_main', status: 'completed' },
         {
           agentStackId: 'stack_deepseek_main',
           status: 'failed',
@@ -144,7 +144,7 @@ describe('qa cli', () => {
         status: 'interrupted',
         failure: { code: 'WORKER_DISCONNECTED', message: 'Interrupted.', retryable: true },
       },
-      { agentStackId: 'stack_muse_main', status: 'cancelled' },
+      { agentStackId: 'stack_opencode_main', status: 'cancelled' },
     ]);
     expect(agents).toMatchObject({
       configured: 3,
@@ -160,12 +160,12 @@ describe('qa cli', () => {
     expect(versionLine()).toMatch(/^qa \d+\.\d+\.\d+$/);
   });
 
-  it('doctor reports runtime foundation OK and points to Muse diagnostics', () => {
+  it('doctor reports runtime foundation OK and points to agent diagnostics', () => {
     const lines = doctorLines();
     expect(lines[0]).toBe('Sentry');
     expect(lines.join('\n')).toContain('Domain       OK');
     expect(lines.join('\n')).not.toContain('ERROR');
-    expect(lines.join('\n')).toContain('qa agent doctor muse');
+    expect(lines.join('\n')).toContain('qa agent doctor opencode');
     expect(lines.join('\n')).toContain('SQLite       OK');
   });
 
@@ -180,7 +180,7 @@ describe('qa cli', () => {
     error.mockRestore();
   });
 
-  it('lists Muse, reports deterministic doctor failures, and types missing model configuration', async () => {
+  it('lists agents, reports deterministic doctor failures, and types missing model configuration', async () => {
     const f = await fixture();
     const listed = await invoke(['agent', 'list', '--json'], f.dataRoot);
     expect(listed.status).toBe(0);
@@ -188,9 +188,9 @@ describe('qa cli', () => {
     expect(listResponse.ok && listResponse.data).toMatchObject({
       agents: [
         {
-          id: 'muse',
-          harness: 'muse-code',
-          modelEnvironmentVariable: 'SENTRY_MUSE_MODEL',
+          id: 'opencode',
+          harness: 'opencode',
+          modelEnvironmentVariable: 'SENTRY_OPENCODE_MODEL',
         },
         {
           id: 'deepseek',
@@ -203,24 +203,24 @@ describe('qa cli', () => {
 
     const doctor = spawnSync(
       process.execPath,
-      ['--no-warnings', entry, 'agent', 'doctor', 'muse', '--json'],
+      ['--no-warnings', entry, 'agent', 'doctor', 'opencode', '--json'],
       {
         encoding: 'utf8',
         env: {
           ...process.env,
           SENTRY_DATA_ROOT: f.dataRoot,
-          SENTRY_MUSE_BINARY: join(f.root, 'missing-muse'),
-          SENTRY_MUSE_MODEL: 'muse-spark-1.3-contributor',
+          SENTRY_OPENCODE_BINARY: join(f.root, 'missing-opencode'),
+          SENTRY_OPENCODE_MODEL: 'openrouter-test-model',
         },
       },
     );
     expect(doctor.status).toBe(0);
     const doctorResponse = machine(doctor, 'agent.doctor');
     expect(doctorResponse.ok && doctorResponse.data).toMatchObject({
-      agent: 'muse',
+      agent: 'opencode',
       status: 'unavailable',
-      sdkVersion: '0.1.1',
-      readiness: 'unavailable',
+      readiness: 'unconfigured',
+      credentialConfigured: false,
       runtimeVerified: false,
     });
 
@@ -251,7 +251,7 @@ describe('qa cli', () => {
     }
 
     // Register a real project first so project resolution succeeds and the
-    // run reaches selected-agent preflight, where the emptied Muse model
+    // run reaches selected-agent preflight, where the emptied OpenCode model
     // must produce the typed config error (not PROJECT_NOT_FOUND).
     const added = spawnSync(
       process.execPath,
@@ -278,18 +278,18 @@ describe('qa cli', () => {
         '--mode',
         'full',
         '--agents',
-        'muse',
+        'opencode',
         '--wait',
         '--json',
       ],
       {
         encoding: 'utf8',
-        env: { ...process.env, SENTRY_DATA_ROOT: f.dataRoot, SENTRY_MUSE_MODEL: '' },
+        env: { ...process.env, SENTRY_DATA_ROOT: f.dataRoot, SENTRY_OPENCODE_MODEL: '' },
       },
     );
     expect(start.status).toBe(6);
     const startResponse = machine(start, 'run.start');
-    expect(!startResponse.ok && startResponse.error.code).toBe('MUSE_MODEL_NOT_CONFIGURED');
+    expect(!startResponse.ok && startResponse.error.code).toBe('OPENCODE_MODEL_NOT_CONFIGURED');
     // Several CLI subprocesses took 64s on a WSL/DrvFs checkout; this
     // test-only budget does not change production command deadlines.
   }, 180_000);

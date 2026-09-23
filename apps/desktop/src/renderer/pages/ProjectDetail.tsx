@@ -41,7 +41,7 @@ export function ProjectDetail(): React.JSX.Element {
     )?.agentStacks ?? []
   ).filter(
     (s) =>
-      s.id === 'stack_muse_main' || s.id === 'stack_deepseek_main' || s.id === 'stack_glm_main',
+      s.id === 'stack_opencode_main' || s.id === 'stack_deepseek_main' || s.id === 'stack_glm_main',
   );
   const [selectedStacks, setSelectedStacks] = React.useState<string[] | undefined>(undefined);
   const effectiveStacks = selectedStacks ?? stacks.map((s) => s.id);
@@ -173,7 +173,7 @@ export function ProjectDetail(): React.JSX.Element {
         <div className="card">
           <h3>Start QA</h3>
           <p className="muted" style={{ marginTop: 0 }}>
-            Real provider run — Muse, DeepSeek and GLM agents execute against this project and
+            Real provider run — OpenCode, DeepSeek and GLM agents execute against this project and
             consume provider budget.
           </p>
           {gate !== undefined && gate.ready !== true ? (

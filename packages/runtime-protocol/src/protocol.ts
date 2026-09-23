@@ -154,9 +154,13 @@ export type RuntimeHelloResult = z.infer<typeof RuntimeHelloResultSchema>;
 
 export const RuntimeConfigureParamsSchema = z
   .object({
+    // Historical note: `models.muse` existed until the Muse → OpenCode
+    // migration and was removed. Old senders must stop sending it (strict
+    // object: unknown keys are rejected); historical RUN rows are unaffected
+    // (runtime configuration is ephemeral, never persisted).
     models: z
       .object({
-        muse: z.string().min(1).max(300).optional(),
+        opencode: z.string().min(1).max(300).optional(),
         deepseek: z.string().min(1).max(300).optional(),
         glm: z.string().min(1).max(300).optional(),
       })
@@ -164,6 +168,7 @@ export const RuntimeConfigureParamsSchema = z
       .default({}),
     providers: z
       .object({
+        openRouterApiKey: z.string().min(1).max(5000).optional(),
         deepseekApiKey: z.string().min(1).max(5000).optional(),
         anthropicAuthToken: z.string().min(1).max(5000).optional(),
         anthropicBaseUrl: z.string().min(1).max(2000).optional(),

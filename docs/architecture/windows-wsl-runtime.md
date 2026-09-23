@@ -1,6 +1,6 @@
 # Windows ↔ WSL2 Sentry Runtime
 
-> Starting with the final Phase 8 Desktop architecture, Sentry exposes no simulation execution mode. Desktop QA execution always uses the configured production Muse, DeepSeek and GLM AgentStacks. Automated tests may use mocks/test doubles internally, but those are not persisted or exposed as a product execution mode.
+> Starting with the final Phase 8 Desktop architecture, Sentry exposes no simulation execution mode. Desktop QA execution always uses the configured production OpenCode, DeepSeek and GLM AgentStacks. Automated tests may use mocks/test doubles internally, but those are not persisted or exposed as a product execution mode.
 
 ## Why WSL exists
 
@@ -23,7 +23,7 @@ So: Windows owns presentation, WSL2 owns execution.
 ### WSL2 (Sentry runtime, `@qa/runtime`)
 
 - `SentryDatabase`, `SentryRepository`, `RuntimeInstanceLease`, `ProjectManager`.
-- `HarnessAdapterRegistry` with the real Muse / DeepSeek / GLM registrations.
+- `HarnessAdapterRegistry` with the real OpenCode / DeepSeek / GLM registrations.
 - `RunCoordinator` execution, agent workspaces, Merger v2, Verifier v3 (systemd),
   Issues, Retest workflows, doctors.
 - Linux-native data root `~/.local/share/sentry` (database, managed copies,
@@ -66,7 +66,8 @@ So: Windows owns presentation, WSL2 owns execution.
 
 - DeepSeek `dsh` resolves inside WSL (`which dsh` / SDK-bundled); `process.execPath` is
   Linux Node. Probe timeout is bounded (10–15 s) with runtime/executable/phase diagnostics.
-- Muse runs in WSL; `muse login` happens inside the selected distro.
+- OpenCode runs in WSL; the OpenRouter API key is pushed into runtime memory via
+  `runtime.configure` (no login step for the API-key path).
 - GLM/Claude Code runs in WSL with the trusted Z.AI endpoint validation intact.
 
 ## Verifier

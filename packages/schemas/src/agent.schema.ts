@@ -1,5 +1,5 @@
 /**
- * Agent Stack: stable product identity (e.g. 'Muse QA Agent') decoupled
+ * Agent Stack: stable product identity (e.g. 'OpenCode QA Agent') decoupled
  * from replaceable configuration (model version + harness adapter).
  * No hard-coded model unions exist anywhere: provider/modelId/adapterId
  * are open strings validated for shape, never enumerated.

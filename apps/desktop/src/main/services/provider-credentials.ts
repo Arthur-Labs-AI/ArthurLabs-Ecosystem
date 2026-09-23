@@ -8,7 +8,7 @@
  * - Renderer receives statuses only, never values.
  *
  * Storage:
- * - Secrets (DEEPSEEK_API_KEY, ANTHROPIC_AUTH_TOKEN) → encrypted JSON store
+ * - Secrets (OPENROUTER_API_KEY, DEEPSEEK_API_KEY, ANTHROPIC_AUTH_TOKEN) → encrypted JSON store
  *   under the app userData directory (or explicit override), encrypted with
  *   Electron safeStorage. Atomic write (tmp + rename). Base64 blobs in JSON.
  * - Non-secret model ids (SENTRY_*_MODEL) → plain JSON preferences file.
@@ -21,20 +21,25 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 export const MANAGED_PROVIDER_KEYS = [
+  'OPENROUTER_API_KEY',
   'DEEPSEEK_API_KEY',
   'ANTHROPIC_AUTH_TOKEN',
   'ANTHROPIC_BASE_URL',
+  'SENTRY_OPENCODE_MODEL',
   'SENTRY_DEEPSEEK_MODEL',
   'SENTRY_GLM_MODEL',
-  'SENTRY_MUSE_MODEL',
+  'SENTRY_OPENCODE_BINARY',
   'SENTRY_DEEPSEEK_BINARY',
   'SENTRY_GLM_BINARY',
-  'SENTRY_MUSE_BINARY',
 ] as const;
 
 export type ManagedProviderKey = (typeof MANAGED_PROVIDER_KEYS)[number];
 
-export const SECRET_PROVIDER_KEYS = ['DEEPSEEK_API_KEY', 'ANTHROPIC_AUTH_TOKEN'] as const;
+export const SECRET_PROVIDER_KEYS = [
+  'OPENROUTER_API_KEY',
+  'DEEPSEEK_API_KEY',
+  'ANTHROPIC_AUTH_TOKEN',
+] as const;
 
 export type SecretProviderKey = (typeof SECRET_PROVIDER_KEYS)[number];
 
@@ -42,12 +47,12 @@ const SECRET_NAMES: ReadonlySet<string> = new Set(SECRET_PROVIDER_KEYS);
 
 const MODEL_KEYS: ReadonlySet<string> = new Set([
   'ANTHROPIC_BASE_URL',
+  'SENTRY_OPENCODE_MODEL',
   'SENTRY_DEEPSEEK_MODEL',
   'SENTRY_GLM_MODEL',
-  'SENTRY_MUSE_MODEL',
+  'SENTRY_OPENCODE_BINARY',
   'SENTRY_DEEPSEEK_BINARY',
   'SENTRY_GLM_BINARY',
-  'SENTRY_MUSE_BINARY',
 ]);
 
 export interface SafeStorageLike {

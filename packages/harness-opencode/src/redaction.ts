@@ -14,7 +14,7 @@ export function redactDiagnostic(value: unknown, secrets: readonly string[] = []
   return (
     redactText(valueText, secrets)
       .replace(/[\r\n\t]+/g, ' ')
-      .slice(0, 2_000) || 'Muse operation failed'
+      .slice(0, 2_000) || 'OpenCode operation failed'
   );
 }
 

@@ -18,7 +18,11 @@ import {
   verifyMerge,
 } from '@qa/run-engine';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
-import { createMuseRegistration, doctorMuse, MUSE_SDK_VERSION } from '@qa/harness-muse';
+import {
+  createOpenCodeRegistration,
+  doctorOpenCode,
+  OPENCODE_TESTED_VERSION,
+} from '@qa/harness-opencode';
 import {
   createDeepSeekRegistration,
   doctorDeepSeek,
@@ -167,15 +171,15 @@ export async function executeCommand(
         issueLineage: true,
       },
       agentStacks: [
-        { id: 'muse', displayName: 'Muse QA Agent', harness: 'muse-code' },
+        { id: 'opencode', displayName: 'OpenCode QA Agent', harness: 'opencode' },
         { id: 'deepseek', displayName: 'DeepSeek QA Agent', harness: 'deepseek-harness' },
         { id: 'glm', displayName: 'GLM QA Agent', harness: 'claude-code' },
       ],
     });
   }
   if (input.command === 'agent.list') {
-    const [museHealth, deepseekHealth, glmHealth] = await Promise.all([
-      doctorMuse(),
+    const [opencodeHealth, deepseekHealth, glmHealth] = await Promise.all([
+      doctorOpenCode(),
       doctorDeepSeek(),
       doctorGlm(),
     ]);
@@ -210,7 +214,7 @@ export async function executeCommand(
     };
     return success(input.command, {
       agents: [
-        entry(museHealth, 'muse', 'Muse QA Agent', 'muse-code', 'SENTRY_MUSE_MODEL'),
+        entry(opencodeHealth, 'opencode', 'OpenCode QA Agent', 'opencode', 'SENTRY_OPENCODE_MODEL'),
         entry(
           deepseekHealth,
           'deepseek',
@@ -223,6 +227,14 @@ export async function executeCommand(
     });
   }
   if (input.command === 'agent.doctor') {
+    if (input.agent === 'opencode') {
+      const result = await doctorOpenCode();
+      return success(input.command, {
+        agent: 'opencode',
+        ...result,
+        testedVersion: OPENCODE_TESTED_VERSION,
+      });
+    }
     if (input.agent === 'deepseek') {
       const result = await doctorDeepSeek();
       return success(input.command, {
@@ -235,8 +247,7 @@ export async function executeCommand(
       const result = await doctorGlm();
       return success(input.command, { agent: 'glm', ...result, sdkVersion: CLAUDE_CODE_VERSION });
     }
-    const result = await doctorMuse();
-    return success(input.command, { agent: 'muse', ...result, sdkVersion: MUSE_SDK_VERSION });
+    throw new CliUsageError('Unknown agent: ' + input.agent);
   }
   if (input.command === 'project.add') {
     return withMutationRuntime(async ({ projects }) => {
@@ -326,7 +337,7 @@ export async function executeCommand(
   if (input.command === 'run.start') {
     const projectId = parseArgument(ProjectIdSchema, input.projectId, 'project-id');
     const registry = new HarnessAdapterRegistry()
-      .register(createMuseRegistration())
+      .register(createOpenCodeRegistration())
       .register(createDeepSeekRegistration())
       .register(createGlmRegistration());
     const requestedStackIds = input.agents.map((name) =>
@@ -486,7 +497,7 @@ export async function executeCommand(
   }
   if (input.command === 'retest.start') {
     const registry = new HarnessAdapterRegistry()
-      .register(createMuseRegistration())
+      .register(createOpenCodeRegistration())
       .register(createDeepSeekRegistration())
       .register(createGlmRegistration());
     const requestedStackIds = input.agents.map((name) =>

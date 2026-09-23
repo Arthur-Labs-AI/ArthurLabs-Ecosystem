@@ -14,8 +14,8 @@ clone to a first verified run.
   under `/var/tmp` and uses systemd transient units). There is no native
   Windows runtime verifier — `qa verify doctor` reports honestly.
 - Provider access for the agent stacks you intend to use:
-  - Muse: installed `muse` CLI + `SENTRY_MUSE_MODEL` (intended:
-    `muse-spark-1.3-contributor`). See `docs/setup/muse-code.md`.
+  - OpenCode: installed `opencode` CLI + `SENTRY_OPENCODE_MODEL` (an exact
+    OpenRouter model id) + `OPENROUTER_API_KEY`. See `docs/setup/opencode.md`.
   - DeepSeek: DeepSeek Harness binary + `SENTRY_DEEPSEEK_MODEL` +
     `DEEPSEEK_API_KEY`.
   - GLM: Claude Code executable on PATH + SENTRY_GLM_MODEL (exact model id) + ANTHROPIC_BASE_URL (trusted Z.AI Anthropic-compatible endpoint, e.g. https://api.z.ai/api/anthropic) + ANTHROPIC_AUTH_TOKEN. Doctor checks presence/version; live authentication is proven only by a real session (configured != live-authenticated).
@@ -42,7 +42,7 @@ truthfully (no silent fallback between stacks):
 
 ```sh
 qa agent list --json
-qa agent doctor muse --json
+qa agent doctor opencode --json
 qa agent doctor deepseek --json
 qa agent doctor glm --json
 ```
@@ -79,7 +79,7 @@ qa run start <project-id> --mode full --wait --json
 ```
 
 Defaults to all three agent stacks; narrow with
-`--agents muse,glm` when needed. Then:
+`--agents opencode,glm` when needed. Then:
 
 ```sh
 qa run merge <run-id> --json
@@ -112,7 +112,7 @@ qa issue history <issue-id> --json
 ```
 
 Retest defaults to the current ready revision (`--revision <revision-id>`
-overrides) and to all three agents (`--agents muse,glm` narrows). Verdicts
+overrides) and to all three agents (`--agents opencode,glm` narrows). Verdicts
 are `fixed`, `still_reproducible`, `partially_fixed`, or `inconclusive` —
 never inferred from agent silence.
 

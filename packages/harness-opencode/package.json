@@ -1,7 +1,8 @@
 {
-  "name": "@qa/harness-muse",
+  "name": "@qa/harness-opencode",
   "version": "0.1.0",
   "type": "module",
+  "description": "Sentry OpenCode harness adapter (OpenRouter provider path). CLI-driven, no vendor SDK dependency.",
   "exports": {
     ".": "./dist/index.js"
   },
@@ -17,7 +18,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@muse-code/sdk": "0.1.1",
     "@qa/domain": "workspace:*",
     "@qa/evidence-pipeline": "workspace:*",
     "@qa/harness-protocol": "workspace:*",

@@ -12,7 +12,7 @@
 import { resolveSentryDataRoot } from './data-root.js';
 import { ORPHAN_MIN_AGE_MS } from './storage-health.js';
 
-export const SENTRY_DEFAULT_AGENTS = ['muse', 'deepseek', 'glm'] as const;
+export const SENTRY_DEFAULT_AGENTS = ['opencode', 'deepseek', 'glm'] as const;
 export const SENTRY_PRODUCTION_RUN_TIMEOUT_MS = 1_800_000;
 export const SENTRY_SIMULATION_RUN_TIMEOUT_MS = 2_000;
 export const SENTRY_VERIFICATION_COMMAND_TIMEOUT_MS = 120_000;

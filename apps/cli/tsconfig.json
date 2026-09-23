@@ -17,7 +17,7 @@
       "path": "../../packages/harness-protocol"
     },
     {
-      "path": "../../packages/harness-muse"
+      "path": "../../packages/harness-opencode"
     },
     {
       "path": "../../packages/harness-deepseek"

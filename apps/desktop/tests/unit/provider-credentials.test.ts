@@ -63,6 +63,27 @@ describe('provider credentials', () => {
     expect(process.env['DEEPSEEK_API_KEY']).toBeUndefined();
   });
 
+  it('stores the OpenRouter key as a session secret, never displayed', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sentry-prov-'));
+    roots.push(dir);
+    const service = new ProviderCredentialService({ filePath: join(dir, 'providers.json') });
+    const updated = service.setKey('OPENROUTER_API_KEY', 'sk-or-test-12345678');
+    expect(updated.configured).toBe(true);
+    expect(updated.source).toBe('session');
+    expect(JSON.stringify(updated)).not.toContain('sk-or-test-12345678');
+    expect(updated.hint).not.toContain('5678');
+    expect(process.env['OPENROUTER_API_KEY']).toBe('sk-or-test-12345678');
+    delete process.env['OPENROUTER_API_KEY'];
+  });
+
+  it('rejects legacy Muse keys as unsupported', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sentry-prov-'));
+    roots.push(dir);
+    const service = new ProviderCredentialService({ filePath: join(dir, 'providers.json') });
+    expect(() => service.setKey('SENTRY_MUSE_MODEL', 'x')).toThrow();
+    expect(() => service.setKey('SENTRY_MUSE_BINARY', 'x')).toThrow();
+  });
+
   it('persists non-secret model ids as plain JSON prefs', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sentry-prov-'));
     roots.push(dir);

@@ -6,7 +6,7 @@ Local desktop QA workspace built on the frozen Stable Core.
 - Renderer is presentation only: no Node access, no direct SQLite.
 - Typed IPC via preload window.sentry (validated with Zod in main).
 - Live updates poll persisted truth (500 ms active / 5 s idle); renderer polling is a fallback.
-- Production only: every new FULL, TARGETED, and RETEST run uses the configured Muse, DeepSeek, and GLM AgentStacks and consumes provider budget. No simulation mode exists.
+- Production only: every new FULL, TARGETED, and RETEST run uses the configured OpenCode, DeepSeek, and GLM AgentStacks and consumes provider budget. No simulation mode exists.
 - Provider credentials persist securely: Electron safeStorage-encrypted store under userData (no plaintext, no DB, no localStorage); secrets never return to the renderer. Without OS encryption, session-only with an explicit warning.
 - Retest start is async: the desktop returns the RetestRun id immediately and the workspace goes live; assessment uses the frozen backend `result` field.
 - Agent stage projection is evidence-driven with a Reporting stage (agent.message / usage.updated); pipeline nodes (Merger / Verifier / Issues) reflect actual artifact existence.

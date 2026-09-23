@@ -33,8 +33,8 @@ The repository now implements the first real local runtime foundation:
 - `@qa/workspace-factory`: reflink-first isolated writable copies without hardlinks;
 - `@qa/run-engine`: registry-driven real or fake workers, incremental events, activity tree,
   failure isolation, timeouts, recovery, cleanup, and log/JSON exports;
-- `@qa/harness-muse`: the isolated Muse Code SDK adapter and structured plan/result boundary;
-- `qa` CLI project lifecycle, simulated runs, and one-worker real Muse runs;
+- `@qa/harness-opencode`: the isolated OpenCode harness adapter and structured plan/result boundary;
+- `qa` CLI project lifecycle, simulated runs, and real OpenCode/DeepSeek/GLM runs;
 - versioned `--json` machine responses, typed errors, stable exit codes,
   lightweight status polling, and truthful capability discovery;
 - unit, filesystem, SQLite, integration, recovery, and fake end-to-end tests.
@@ -50,22 +50,26 @@ same application services and read/mutation boundary. See
 [docs/architecture/phase-2-2.md](docs/architecture/phase-2-2.md) and
 [ADR-0011](docs/adr/0011-headless-cli-automation-contract.md).
 
-Phase 3 adds the first real AgentStack execution path. It pins
-`@muse-code/sdk@0.1.1`, requires an exact configured model, and runs one Muse
-worker through the same coordinator used by fake simulation. See
-[docs/architecture/phase-3.md](docs/architecture/phase-3.md),
-[ADR-0012](docs/adr/0012-muse-code-sdk-adapter-boundary.md), and the
-[Muse setup guide](docs/setup/muse-code.md).
+Phase 3 added the first real AgentStack execution path (Muse Code, since replaced by OpenCode). It pinned
+`@muse-code/sdk@0.1.1`, required an exact configured model, and ran one Muse
+worker through the same coordinator used by fake simulation. The Muse harness
+has since been removed from the active product and replaced by the OpenCode
+harness (OpenRouter provider path); historical Muse runs remain readable. See
+[docs/setup/opencode.md](docs/setup/opencode.md) and
+[ADR-0014](docs/adr/0014-opencode-harness-and-provider-separation.md).
+Historical Phase 3 notes live in [docs/architecture/phase-3.md](docs/architecture/phase-3.md)
+and [ADR-0012](docs/adr/0012-muse-code-sdk-adapter-boundary.md).
 
 ## What is not implemented yet
 
 - Automatic fixes, Docker, Playwright, Electron, REST, MCP, cross-run issue
   deduplication, synthesis, or CI/CD generation.
-- Desktop UI (Phase 8) and installer/setup/distribution (Phase 9).
+- Installer/setup/distribution (Phase 9).
 
-Shipped and live: Muse, DeepSeek, and GLM agent stacks; deterministic
-merger; independent evidence-first verifier; FULL, TARGETED, and RETEST
-QA modes with issue lineage and retest assessments. See
+Shipped and live: OpenCode (via OpenRouter), DeepSeek, and GLM agent stacks
+in the Sentry Desktop app backed by the WSL2 Linux execution runtime;
+deterministic merger; independent evidence-first verifier; FULL, TARGETED, and
+RETEST QA modes with issue lineage and retest assessments. See
 [docs/architecture/phase-7.md](docs/architecture/phase-7.md) and the
 [private-beta quickstart](docs/private-beta/quickstart.md).
 
@@ -77,7 +81,7 @@ packages/shared          # IDs, timestamps
 packages/schemas         # Zod source of truth + inferred types
 packages/domain          # errors, transitions, fixtures, parse boundary
 packages/harness-protocol# adapter contract, fake adapter, NDJSON helpers
-packages/harness-muse    # sole @muse-code/sdk integration boundary
+packages/harness-opencode  # sole OpenCode integration boundary (OpenRouter path)
 packages/persistence     # SQLite, data root, artifacts, filesystem engine
 packages/project-manager # managed project lifecycle
 packages/snapshot-engine # deterministic streamed snapshots
@@ -87,7 +91,7 @@ packages/run-engine      # generic coordinator, registry composition, recovery, 
 packages/domain/tests/fixtures          # contract fixtures + relationship graph
 packages/harness-protocol/tests/fixtures/harness  # golden NDJSON event streams
 docs/architecture        # domain, lifecycle, protocol, Phase 1/1.1/2 baselines
-docs/adr                 # 0001–0013
+docs/adr                 # 0001–0014
 .github/workflows/ci.yml# install → format:check → lint → typecheck → test → build
 ```
 
@@ -111,10 +115,11 @@ Requires Node.js 22+ and pnpm 9.
   with infrastructure (adapters, Git, SQLite, Docker, Playwright) pointing inward.
   The domain never imports vendor SDKs, Electron, React, Docker, SQLite, or Git.
 - **Agent stacks are configuration**: `AgentStack = Model + Harness + Execution
-Requirements + QA Policy`, with optional operational `ExecutionSafeguards`. No `if (model === 'muse')` branching exists
-  anywhere; vendor logic belongs only in future adapters.
-- **Stable identity vs replaceable model**: “Muse QA Agent” is the stable stack;
-  “Muse 1.3 Contributor + Muse Code” is today's replaceable configuration.
+Requirements + QA Policy`, with optional operational `ExecutionSafeguards`. No `if (model === 'opencode')` branching exists
+  anywhere; vendor logic belongs only in adapters.
+- **Stable identity vs replaceable model**: “OpenCode QA Agent” is the stable stack;
+  “selected OpenRouter model + OpenCode” is today's replaceable configuration.
+  (Historical: “Muse QA Agent” / “Muse 1.3 Contributor + Muse Code”.)
 - **Semantic separation**: Finding (one agent's claim) ≠ Evidence (support) ≠
   UnifiedIssue (platform grouping) ≠ VerificationAttempt (independent check) ≠
   FixProposal (advice only; never automatic application).
@@ -138,13 +143,13 @@ Requirements + QA Policy`, with optional operational `ExecutionSafeguards`. No `
 qa doctor
 qa capabilities --json
 qa agent list --json
-qa agent doctor muse --json
+qa agent doctor opencode --json
 qa project add ./sample-project
 qa project list --json
 qa project show <project-id> --json
 qa run simulate <project-id> --scenario success
 qa run simulate <project-id> --scenario partial
-qa run start <project-id> --mode full --agents muse --wait
+qa run start <project-id> --mode full --agents opencode --wait
 qa run list <project-id>
 qa run show <run-id>
 qa run status <run-id> --json
@@ -156,11 +161,9 @@ qa project delete <project-id> --yes --json
 
 Human-mode simulated runs print `SIMULATED / FAKE HARNESS RUN`; the machine
 response contains `"simulated": true`. Simulation is **FAKE / DEVELOPMENT ONLY**.
-Real execution requires `SENTRY_MUSE_MODEL` and a separately installed `muse`
-binary (or `SENTRY_MUSE_BINARY`); its response contains `"simulated": false`.
-On Linux, `muse` can resolve to the unrelated MusE music sequencer. Check that
-`muse --version` says `Muse Code`, or point `SENTRY_MUSE_BINARY` at the Meta
-Muse Code executable. For GLM via Claude Code, set `SENTRY_GLM_MODEL`,
+Real execution with OpenCode requires `SENTRY_OPENCODE_MODEL` (an exact OpenRouter model id), `OPENROUTER_API_KEY`, and a separately installed `opencode`
+binary (or `SENTRY_OPENCODE_BINARY`); its response contains `"simulated": false`.
+See [docs/setup/opencode.md](docs/setup/opencode.md). For GLM via Claude Code, set `SENTRY_GLM_MODEL`,
 `ANTHROPIC_BASE_URL` (for example `https://api.z.ai/api/anthropic`), and
 `ANTHROPIC_AUTH_TOKEN` before running `qa agent doctor glm --json`.
 Exit 5 means QA completed and found issues, not that Sentry crashed. Set
@@ -170,12 +173,13 @@ scope.
 
 ## Initial Agent Stacks (configuration fixtures)
 
-| Stack             | Model                | Harness          |
-| ----------------- | -------------------- | ---------------- |
-| Muse QA Agent     | Muse 1.3 Contributor | Muse Code        |
-| DeepSeek QA Agent | DeepSeek V4 Flash    | DeepSeek Harness |
-| GLM QA Agent      | GLM-5.3-Flash        | Claude Code      |
+| Stack             | Model                         | Harness          |
+| ----------------- | ----------------------------- | ---------------- |
+| OpenCode QA Agent | Configurable OpenRouter model | OpenCode         |
+| DeepSeek QA Agent | DeepSeek V4 Flash             | DeepSeek Harness |
+| GLM QA Agent      | GLM-5.3-Flash                 | Claude Code      |
 
 These are replaceable configurations (see `docs/architecture/agent-stack.md`).
-Future stacks (new models, OpenCode, Kimi, future harnesses) validate without
+Future stacks (new models, new providers, Kimi, future harnesses) validate without
 domain changes — proven by `stack-future.json` + the future-agent test.
+Historical Muse runs (`stack_muse_main`) remain readable but are no longer runnable.

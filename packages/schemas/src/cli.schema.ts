@@ -85,6 +85,19 @@ export const CLI_ERROR_CODES = [
   'HARNESS_PROTOCOL_VIOLATION',
   'RUN_EXECUTION_FAILED',
   'AGENT_STACK_UNAVAILABLE',
+  // Historical: Muse harness removed (Muse → OpenCode migration). Codes retained so
+  // previously emitted CLI error envelopes still validate; never produced for new runs.
+  'OPENCODE_BINARY_NOT_FOUND',
+  'OPENCODE_STACK_UNAVAILABLE',
+  'OPENCODE_MODEL_NOT_CONFIGURED',
+  'OPENCODE_CREDENTIAL_MISSING',
+  'OPENCODE_START_FAILED',
+  'OPENCODE_AUTH_FAILED',
+  'OPENCODE_SANDBOX_UNAVAILABLE',
+  'OPENCODE_INVALID_RESULT',
+  'OPENCODE_SUBAGENT_FORBIDDEN',
+  'OPENCODE_REPORT_TOOL_FORBIDDEN',
+  'OPENCODE_CANCEL_FAILED',
   'MUSE_BINARY_NOT_FOUND',
   'MUSE_STACK_UNAVAILABLE',
   'MUSE_MODEL_NOT_CONFIGURED',
@@ -351,7 +364,8 @@ export type AgentListResult = z.infer<typeof AgentListResultSchema>;
 
 export const AgentDoctorResultSchema = z
   .object({
-    agent: z.enum(['muse', 'deepseek', 'glm']),
+    // 'muse' retained historically: old envelopes still validate.
+    agent: z.enum(['muse', 'opencode', 'deepseek', 'glm']),
     status: z.enum(['healthy', 'degraded', 'unavailable']),
     checks: z.array(
       z
@@ -367,7 +381,11 @@ export const AgentDoctorResultSchema = z
     executableVersion: z.string().optional(),
     modelId: z.string().optional(),
     provider: z.string().optional(),
-    sdkVersion: z.string(),
+    // sdkVersion names the pinned SDK where one exists (deepseek/glm).
+    // The SDK-less OpenCode harness reports testedVersion instead.
+    sdkVersion: z.string().optional(),
+    testedVersion: z.string().optional(),
+    credentialConfigured: z.boolean().optional(),
     readiness: AgentReadinessSchema.optional(),
     configured: z.boolean().optional(),
     binaryAvailable: z.boolean().optional(),

@@ -17,9 +17,9 @@ interface BaseCommand<C extends CliCommand> {
   readonly command: C;
 }
 
-export type AgentName = 'muse' | 'deepseek' | 'glm';
+export type AgentName = 'opencode' | 'deepseek' | 'glm';
 
-export const AGENT_NAMES: readonly AgentName[] = ['muse', 'deepseek', 'glm'];
+export const AGENT_NAMES: readonly AgentName[] = ['opencode', 'deepseek', 'glm'];
 
 export type ParsedCliCommand =
   | BaseCommand<'capabilities'>
@@ -172,9 +172,9 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
   }
   if (area === 'agent' && action === 'doctor') {
     assertFlags(tail, []);
-    const [agent] = assertPositionals(tail, 1, 'qa agent doctor muse|deepseek|glm');
-    if (agent !== 'muse' && agent !== 'deepseek' && agent !== 'glm')
-      fail('Unknown agent: ' + agent + ' (expected muse, deepseek, or glm)', agent);
+    const [agent] = assertPositionals(tail, 1, 'qa agent doctor opencode|deepseek|glm');
+    if (agent !== 'opencode' && agent !== 'deepseek' && agent !== 'glm')
+      fail('Unknown agent: ' + agent + ' (expected opencode, deepseek, or glm)', agent);
     return { command: 'agent.doctor', agent };
   }
   if (area === 'project' && action === 'add') {
@@ -246,13 +246,13 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     const [projectId] = positional(tail);
     if (projectId === undefined || positional(tail).length !== 1) {
       fail(
-        'Usage: qa run start <project-id> --mode full|targeted [--agents muse,deepseek,glm] --wait [--paths a,b] [--instructions text]',
+        'Usage: qa run start <project-id> --mode full|targeted [--agents opencode,deepseek,glm] --wait [--paths a,b] [--instructions text]',
       );
     }
     const mode = option(tail, '--mode');
     const agentsText = option(tail, '--agents');
     if (mode !== 'full' && mode !== 'targeted') fail('--mode must be full or targeted', '--mode');
-    // Omitted --agents selects all three stable real AgentStacks.
+    // Omitted --agents selects all stable real AgentStacks.
     const agents: AgentName[] =
       agentsText === undefined
         ? [...AGENT_NAMES]
@@ -262,8 +262,8 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
             .filter((value) => value.length > 0) as AgentName[]);
     if (agents.length === 0) fail('--agents requires at least one agent stack', '--agents');
     for (const name of agents) {
-      if (name !== 'muse' && name !== 'deepseek' && name !== 'glm')
-        fail('Unknown agent: ' + name + ' (expected muse, deepseek, or glm)', '--agents');
+      if (name !== 'opencode' && name !== 'deepseek' && name !== 'glm')
+        fail('Unknown agent: ' + name + ' (expected opencode, deepseek, or glm)', '--agents');
     }
     if (new Set(agents).size !== agents.length)
       fail('--agents lists a duplicate agent', '--agents');
@@ -343,7 +343,7 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     const [issueId] = positional(tail);
     if (issueId === undefined || positional(tail).length !== 1) {
       fail(
-        'Usage: qa retest start <issue-id> [--revision <revision-id>] [--agents muse,deepseek,glm] --wait',
+        'Usage: qa retest start <issue-id> [--revision <revision-id>] [--agents opencode,deepseek,glm] --wait',
       );
     }
     const revision = option(tail, '--revision');
@@ -357,8 +357,8 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
             .filter((value) => value.length > 0) as AgentName[]);
     if (agents.length === 0) fail('--agents requires at least one agent stack', '--agents');
     for (const name of agents) {
-      if (name !== 'muse' && name !== 'deepseek' && name !== 'glm')
-        fail('Unknown agent: ' + name + ' (expected muse, deepseek, or glm)', '--agents');
+      if (name !== 'opencode' && name !== 'deepseek' && name !== 'glm')
+        fail('Unknown agent: ' + name + ' (expected opencode, deepseek, or glm)', '--agents');
     }
     if (new Set(agents).size !== agents.length)
       fail('--agents lists a duplicate agent', '--agents');

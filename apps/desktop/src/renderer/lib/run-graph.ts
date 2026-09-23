@@ -220,7 +220,7 @@ export function buildRunGraph(
   const stacksToRender =
     configuredStacks.length > 0
       ? configuredStacks
-      : ['stack_muse_main', 'stack_deepseek_main', 'stack_glm_main'];
+      : ['stack_opencode_main', 'stack_deepseek_main', 'stack_glm_main'];
   const agentY = input.run.mode === 'targeted' ? 470 : 360;
   stacksToRender.forEach((stackId, index) => {
     const view = agents.find((a) => a.agentStackId === stackId);

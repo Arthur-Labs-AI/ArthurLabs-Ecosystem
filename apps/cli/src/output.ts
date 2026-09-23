@@ -30,7 +30,7 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
           'Project lifecycle: yes',
           'Run inspection: yes',
           'Fake simulation: yes',
-          'Real agent execution: yes (Muse Code)',
+          'Real agent execution: yes (OpenCode, DeepSeek, GLM)',
           'Retest execution: no',
           'Run cancellation: no',
         ].join('\n'),
@@ -57,7 +57,7 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
       return;
     case 'agent.doctor':
       io.stdout(
-        ['Muse doctor: ' + response.data.status]
+        ['Agent doctor: ' + response.data.status]
           .concat(
             response.data.checks.map(
               (check) =>
@@ -108,9 +108,7 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
       );
       return;
     case 'run.start':
-      io.stdout(
-        'REAL MUSE QA RUN\nRun: ' + response.data.runId + '\nStatus: ' + response.data.status,
-      );
+      io.stdout('REAL QA RUN\nRun: ' + response.data.runId + '\nStatus: ' + response.data.status);
       return;
     case 'run.list':
       io.stdout(

@@ -2,7 +2,7 @@ import { RuntimePersistenceError } from '@qa/persistence';
 import { ProjectManagerError } from '@qa/project-manager';
 import { RunEngineError } from '@qa/run-engine';
 import { HarnessProtocolError } from '@qa/harness-protocol';
-import { MuseHarnessError } from '@qa/harness-muse';
+import { OpenCodeHarnessError } from '@qa/harness-opencode';
 import { DeepSeekHarnessError } from '@qa/harness-deepseek';
 import { ClaudeCodeHarnessError } from '@qa/harness-claude-code';
 import {
@@ -101,7 +101,7 @@ function canonicalError(cause: unknown): CliError {
       retryable: false,
     };
   }
-  if (cause instanceof MuseHarnessError) {
+  if (cause instanceof OpenCodeHarnessError) {
     return {
       code: cause.code,
       message: bounded(cause.message),
@@ -174,7 +174,7 @@ export function errorExitCode(error: CliError): number {
   if (
     error.code === 'RUN_EXECUTION_FAILED' ||
     error.code === 'HARNESS_PROTOCOL_VIOLATION' ||
-    error.code.startsWith('MUSE_') ||
+    error.code.startsWith('OPENCODE_') ||
     error.code === 'AGENT_STACK_UNAVAILABLE'
   ) {
     return CLI_EXIT.executionFailed;

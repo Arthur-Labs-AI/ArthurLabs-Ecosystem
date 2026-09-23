@@ -88,6 +88,23 @@ describe('desktop RPC adapter', () => {
     expect(configured?.params).toMatchObject({ models: { deepseek: 'deepseek-flash' } });
   });
 
+  it('forwards the OpenCode model and OpenRouter key without exposing the secret', async () => {
+    const h = await harness();
+    await h.service.providerSaveKey('SENTRY_OPENCODE_MODEL', 'anthropic/claude-test');
+    h.service.providerSetKey('OPENROUTER_API_KEY', 'sk-or-test-12345678');
+    await h.service.pushRuntimeConfiguration();
+    const configured = h.seen.filter((c) => c.method === 'runtime.configure').at(-1);
+    expect(configured?.params).toMatchObject({
+      models: { opencode: 'anthropic/claude-test' },
+      providers: { openRouterApiKey: 'sk-or-test-12345678' },
+    });
+    const statuses = h.service.providerStatuses() as Array<{ name: string }>;
+    expect(statuses.some((status) => status.name === 'OPENROUTER_API_KEY')).toBe(true);
+    expect(JSON.stringify(statuses)).not.toContain('sk-or-test-12345678');
+    delete process.env['OPENROUTER_API_KEY'];
+    delete process.env['SENTRY_OPENCODE_MODEL'];
+  });
+
   it('never exposes secret values through statuses', async () => {
     const h = await harness();
     await h.service.providerSaveKey('SENTRY_DEEPSEEK_MODEL', 'deepseek-flash');

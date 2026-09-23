@@ -17,7 +17,10 @@ import type {
 } from './types.js';
 
 export const AGENT_DISPLAY_NAMES: Record<string, string> = {
+  // stack_muse_main is historical (Muse → OpenCode migration): old runs keep
+  // their label; it is never offered as a runnable stack.
   stack_muse_main: 'Muse',
+  stack_opencode_main: 'OpenCode',
   stack_deepseek_main: 'DeepSeek',
   stack_glm_main: 'GLM',
 };

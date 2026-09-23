@@ -5,9 +5,9 @@ work around them.
 
 ## Provider unavailable
 
-`qa agent doctor <muse|deepseek|glm>` reports `unavailable`. Check the
+`qa agent doctor <opencode|deepseek|glm>` reports `unavailable`. Check the
 binary path, the model environment variable, and authentication for that
-provider. Sentry never falls back to another stack silently — select only
+provider (OpenCode needs `OPENROUTER_API_KEY` plus `SENTRY_OPENCODE_MODEL`). Sentry never falls back to another stack silently — select only
 configured stacks with `--agents`.
 
 ## Agent invalid report rejected

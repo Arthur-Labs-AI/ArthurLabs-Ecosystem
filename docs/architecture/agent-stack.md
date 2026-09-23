@@ -7,7 +7,7 @@ AgentStack = Model + Harness + Execution Requirements + QA Policy
 
 The stack is the unit the QA Core schedules: one `AgentRun` = one stack × one
 task inside one `QARun`. The domain reasons about stacks generically — there is
-no `if (model === 'muse')` anywhere; vendor specifics belong in future adapters.
+no `if (model === 'opencode')` anywhere; vendor specifics belong in adapters.
 
 `ExecutionSafeguards` contains operational controls only: `runTimeoutMs` and
 `commandTimeoutMs`. They are process safety boundaries, not product quotas.
@@ -15,8 +15,8 @@ Turn, token, and monetary limits are deliberately absent.
 
 ## Today's configurations (fixtures, not product constants)
 
-- **Muse QA Agent** = Muse 1.3 Contributor (`provider: meta`) + Muse Code
-  (`adapterId: muse-code`) — `stack_muse_main`
+- **OpenCode QA Agent** = configured OpenRouter model (`provider: openrouter`) +
+  OpenCode (`adapterId: opencode`) — `stack_opencode_main`
 - **DeepSeek QA Agent** = DeepSeek V4 Flash (`provider: deepseek`) + DeepSeek
   Harness (`adapterId: deepseek-harness`) — `stack_deepseek_main`
 - **GLM QA Agent** = GLM-5.3-Flash (`provider: zai`) + Claude Code
@@ -28,12 +28,13 @@ can prove them; Phase 1 does not claim local or OS support.
 
 ## Stable identity vs replaceable model
 
-“Muse QA Agent” is the stable product identity. “Muse 1.3 Contributor” is today's
-model configuration. When Muse 1.4 ships, only the fixture's `model.modelId`
-changes — no domain code, no schema change, no branching. The same holds for
-harnesses: swapping `muse-code` for a future harness edits configuration only,
-because `ModelDefinition.provider/modelId` and `HarnessDefinition.adapterId` are
-open strings (shape-validated, never enumerated).
+“OpenCode QA Agent” is the stable product identity. The configured OpenRouter
+model is today's model configuration: changing it edits configuration only —
+no domain code, no schema change, no branching. The same holds for harnesses:
+`ModelDefinition.provider/modelId` and `HarnessDefinition.adapterId` are open
+strings (shape-validated, never enumerated). Historical note: the first stack
+was “Muse QA Agent” (`stack_muse_main`, adapter `muse-code`); old rows stay
+readable and are never rewritten to the new stack id.
 
 ## Replacement proof
 
@@ -46,7 +47,7 @@ unions are forbidden by design and by test.
 
 Runtime-generated entities use opaque, sortable ULID-shaped IDs. Agent Stack IDs
 are configuration keys, so validated stable human-authored forms such as
-`stack_muse_main` are deliberately allowed. This exception applies only to
+`stack_opencode_main` are deliberately allowed. This exception applies only to
 AgentStack IDs; it does not loosen any runtime entity ID schema.
 
 ## Traceability

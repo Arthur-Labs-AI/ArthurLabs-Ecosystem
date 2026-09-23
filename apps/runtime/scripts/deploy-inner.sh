@@ -31,7 +31,7 @@ echo "[sentry-runtime] building runtime packages..."
 # Relying on turbo's dependency inference left harness/pipeline dists
 # stale after a source sync (observed: freshly synced adapter.ts with a
 # previously built adapter.js). Explicit filters close that hole.
-pnpm --filter @qa/runtime-protocol --filter @qa/runtime --filter @qa/harness-claude-code --filter @qa/harness-deepseek --filter @qa/harness-muse --filter @qa/evidence-pipeline --filter @qa/merger --filter @qa/verifier build
+pnpm --filter @qa/runtime-protocol --filter @qa/runtime --filter @qa/harness-claude-code --filter @qa/harness-deepseek --filter @qa/harness-opencode --filter @qa/evidence-pipeline --filter @qa/merger --filter @qa/verifier build
 echo "[sentry-runtime] activating..."
 rm -rf "$DEST"; mv "$DEST.tmp" "$DEST"
 rm -f "$HOME/.local/share/sentry/runtime/current"

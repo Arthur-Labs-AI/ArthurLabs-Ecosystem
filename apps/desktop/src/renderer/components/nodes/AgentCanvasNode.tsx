@@ -6,6 +6,7 @@ import { formatCount, formatElapsed } from '../../lib/agent-telemetry.js';
 
 const ACCENTS: Record<string, string> = {
   stack_muse_main: 'var(--muse)',
+  stack_opencode_main: 'var(--opencode, var(--muse))',
   stack_deepseek_main: 'var(--deepseek)',
   stack_glm_main: 'var(--glm)',
 };

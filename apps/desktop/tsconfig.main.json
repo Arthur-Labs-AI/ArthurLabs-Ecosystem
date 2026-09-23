@@ -15,9 +15,6 @@
       "path": "../../packages/domain"
     },
     {
-      "path": "../../packages/harness-muse"
-    },
-    {
       "path": "../../packages/harness-deepseek"
     },
     {

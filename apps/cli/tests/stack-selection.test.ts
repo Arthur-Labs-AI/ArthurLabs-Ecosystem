@@ -7,7 +7,7 @@ import { RuntimeInstanceLease, SentryDatabase, SentryRepository } from '@qa/pers
 import { FakeHarnessAdapter, HarnessAdapterRegistry } from '@qa/harness-protocol';
 import type { HarnessRunRequest } from '@qa/schemas';
 import { RunCoordinator } from '@qa/run-engine';
-import { createMuseRegistration } from '@qa/harness-muse';
+import { createOpenCodeRegistration } from '@qa/harness-opencode';
 import { createDeepSeekRegistration } from '@qa/harness-deepseek';
 import { createGlmRegistration } from '@qa/harness-claude-code';
 
@@ -37,7 +37,6 @@ describe('stack subset selection', () => {
     const f = await fixture();
     const environment = {
       ...process.env,
-      SENTRY_MUSE_MODEL: '',
       SENTRY_DEEPSEEK_MODEL: 'deepseek-test-model',
       // node --version exits 0: satisfies the executable probe without
       // needing the real dsh binary on PATH.
@@ -47,9 +46,10 @@ describe('stack subset selection', () => {
     // Registration alone must never throw for unselected stacks: config
     // errors surface only when a stack is actually selected.
     const registry = new HarnessAdapterRegistry()
-      .register(createMuseRegistration({ environment }))
+      .register(createOpenCodeRegistration({ environment }))
       .register(createDeepSeekRegistration({ environment }))
       .register(createGlmRegistration({ environment }));
+    expect(registry.resolve('stack_opencode_main')).toBeDefined();
     const deepseek = registry.resolve('stack_deepseek_main');
     expect(deepseek).toBeDefined();
     // The placeholder keeps the stack definition valid until preflight.
@@ -94,15 +94,14 @@ describe('stack subset selection', () => {
     const f = await fixture();
     const environment = {
       ...process.env,
-      SENTRY_MUSE_MODEL: '',
       SENTRY_DEEPSEEK_MODEL: 'deepseek-test-model',
       SENTRY_DEEPSEEK_BINARY: process.execPath,
     };
-    const muse = createMuseRegistration({ environment });
+    const glm = createGlmRegistration({ environment });
     const deepseek = createDeepSeekRegistration({ environment });
-    // Muse is registered but NOT selected: resolving its config must not
+    // GLM is registered but NOT selected: resolving its config must not
     // block the DeepSeek run. Only the selected preflight runs.
-    const registry = new HarnessAdapterRegistry().register(muse).register(deepseek);
+    const registry = new HarnessAdapterRegistry().register(glm).register(deepseek);
     const delegate = new FakeHarnessAdapter({ scenario: 'success' });
     const scoped = new HarnessAdapterRegistry().register({
       stack: deepseek.stack,
@@ -116,7 +115,7 @@ describe('stack subset selection', () => {
       }),
       runtimeIdentity: deepseek.runtimeIdentity,
     });
-    expect(registry.resolve('stack_muse_main')).toBeDefined();
+    expect(registry.resolve('stack_glm_main')).toBeDefined();
     const result = await new RunCoordinator(f.dataRoot, f.repository, f.lease, scoped).run(
       f.added.project.id,
       {

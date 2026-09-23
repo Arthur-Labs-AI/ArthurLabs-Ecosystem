@@ -80,7 +80,7 @@ export function doctorLines(options: DoctorOptions = {}): string[] {
     'Schemas      ' + status(schemasReady),
     'Protocol     ' + status(protocolReady),
     '',
-    'Muse, DeepSeek, and GLM are the real agent stacks; use qa agent doctor muse|deepseek|glm for runtime checks.',
+    'OpenCode, DeepSeek, and GLM are the real agent stacks; use qa agent doctor opencode|deepseek|glm for runtime checks.',
   ];
 }
 
@@ -92,7 +92,7 @@ function helpText(): string {
     '  qa doctor',
     '  qa capabilities [--json]',
     '  qa agent list [--json]',
-    '  qa agent doctor muse|deepseek|glm [--json]',
+    '  qa agent doctor opencode|deepseek|glm [--json]',
     '  qa project add <path> [--json]',
     '  qa project list [--json]',
     '  qa project show <project-id> [--json]',
@@ -100,7 +100,7 @@ function helpText(): string {
     '  qa project delete <project-id> --yes [--json]',
     '  qa project revisions <project-id> [--json]',
     '  qa run simulate <project-id> [--scenario success|partial|all-fail|transport-loss|timeout|protocol-error] [--json]',
-    '  qa run start <project-id> --mode full --agents muse,deepseek,glm --wait [--instructions <text>] [--timeout-ms <ms>] [--json]',
+    '  qa run start <project-id> --mode full --agents opencode,deepseek,glm --wait [--instructions <text>] [--timeout-ms <ms>] [--json]',
     '  qa run start <project-id> --mode targeted --paths src/auth,src/middleware --wait [--instructions <text>] [--json]',
     '  qa run list <project-id> [--json]',
     '  qa run show <run-id> [--json]',
@@ -114,7 +114,7 @@ function helpText(): string {
     '  qa doctor config [--json]',
     '  qa project doctor <project-id> [--json]',
     '  qa issue ingest <merge-result-id> [--json]',
-    '  qa retest start <issue-id> [--revision <revision-id>] [--agents muse,deepseek,glm] --wait [--json]',
+    '  qa retest start <issue-id> [--revision <revision-id>] [--agents opencode,deepseek,glm] --wait [--json]',
     '  qa retest show <retest-run-id> [--json]',
     '  qa retest cancel <retest-run-id> [--json]',
     '  qa run export <run-id> --format log|json [--json]',

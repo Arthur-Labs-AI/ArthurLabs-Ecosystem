@@ -28,7 +28,7 @@ import {
   requestRetestCancellation,
   cancelRetestRun,
 } from '@qa/run-engine';
-import { createMuseRegistration } from '@qa/harness-muse';
+import { createOpenCodeRegistration } from '@qa/harness-opencode';
 import { createDeepSeekRegistration } from '@qa/harness-deepseek';
 import { createGlmRegistration } from '@qa/harness-claude-code';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
@@ -121,7 +121,7 @@ export class SentryRuntimeHost {
   private readonly pendingRuns = new Map<string, PendingRun>();
   private readonly pendingRetests = new Map<string, PendingRun>();
   private readonly notify: (event: string, payload?: unknown) => void;
-  private configuredModels: { muse?: string; deepseek?: string; glm?: string } = {};
+  private configuredModels: { opencode?: string; deepseek?: string; glm?: string } = {};
   private closed = false;
 
   constructor(
@@ -138,7 +138,7 @@ export class SentryRuntimeHost {
       runtimeLease: this.lease,
     });
     this.registry = new HarnessAdapterRegistry()
-      .register(createMuseRegistration())
+      .register(createOpenCodeRegistration())
       .register(createDeepSeekRegistration())
       .register(createGlmRegistration());
     this.coordinator = new RunCoordinator(
@@ -213,9 +213,9 @@ export class SentryRuntimeHost {
 
   configure(params: unknown): unknown {
     const parsed = RuntimeConfigureParamsSchema.parse(params ?? {});
-    if (parsed.models.muse !== undefined) {
-      process.env['SENTRY_MUSE_MODEL'] = parsed.models.muse;
-      this.configuredModels = { ...this.configuredModels, muse: parsed.models.muse };
+    if (parsed.models.opencode !== undefined) {
+      process.env['SENTRY_OPENCODE_MODEL'] = parsed.models.opencode;
+      this.configuredModels = { ...this.configuredModels, opencode: parsed.models.opencode };
     }
     if (parsed.models.deepseek !== undefined) {
       process.env['SENTRY_DEEPSEEK_MODEL'] = parsed.models.deepseek;
@@ -224,6 +224,11 @@ export class SentryRuntimeHost {
     if (parsed.models.glm !== undefined) {
       process.env['SENTRY_GLM_MODEL'] = parsed.models.glm;
       this.configuredModels = { ...this.configuredModels, glm: parsed.models.glm };
+    }
+    // Secrets live in runtime process memory only: never persisted to
+    // SQLite, events, artifacts, or logs (sanitized at the RPC boundary).
+    if (parsed.providers.openRouterApiKey !== undefined) {
+      process.env['OPENROUTER_API_KEY'] = parsed.providers.openRouterApiKey;
     }
     if (parsed.providers.deepseekApiKey !== undefined) {
       process.env['DEEPSEEK_API_KEY'] = parsed.providers.deepseekApiKey;
@@ -687,13 +692,13 @@ export class SentryRuntimeHost {
   }
   // ---- doctors / system (all inside the Linux runtime) ----
   async environmentDoctors(): Promise<unknown> {
-    const [{ doctorMuse }, { doctorDeepSeek }, { doctorGlm }] = await Promise.all([
-      import('@qa/harness-muse'),
+    const [{ doctorOpenCode }, { doctorDeepSeek }, { doctorGlm }] = await Promise.all([
+      import('@qa/harness-opencode'),
       import('@qa/harness-deepseek'),
       import('@qa/harness-claude-code'),
     ]);
-    const [muse, deepseek, glm] = await Promise.all([
-      doctorMuse().catch(() => undefined),
+    const [opencode, deepseek, glm] = await Promise.all([
+      doctorOpenCode().catch(() => undefined),
       doctorDeepSeek().catch(() => undefined),
       doctorGlm().catch(() => undefined),
     ]);
@@ -747,8 +752,8 @@ export class SentryRuntimeHost {
         displayName: s.displayName,
         modelId: s.model.modelId,
         provider: s.model.provider,
-        ...(s.id === 'stack_muse_main'
-          ? stackStatus(s.id, muse as never)
+        ...(s.id === 'stack_opencode_main'
+          ? stackStatus(s.id, opencode as never)
           : s.id === 'stack_deepseek_main'
             ? stackStatus(s.id, deepseek as never)
             : stackStatus(s.id, glm as never)),
@@ -793,6 +798,16 @@ export class SentryRuntimeHost {
       reasons.push(...missing);
       stacks.push({ id, ready: missing.length === 0, reasons: missing });
     };
+    checkStack('stack_opencode_main', [
+      {
+        present: (env['OPENROUTER_API_KEY'] ?? '').length > 0,
+        reason: 'OpenCode credential missing (OPENROUTER_API_KEY)',
+      },
+      {
+        present: (env['SENTRY_OPENCODE_MODEL'] ?? '').length > 0,
+        reason: 'OpenCode model not set',
+      },
+    ]);
     checkStack('stack_deepseek_main', [
       {
         present: (env['DEEPSEEK_API_KEY'] ?? '').length > 0,
@@ -806,9 +821,6 @@ export class SentryRuntimeHost {
     checkStack('stack_glm_main', [
       { present: (env['ANTHROPIC_AUTH_TOKEN'] ?? '').length > 0, reason: 'GLM credential missing' },
       { present: (env['SENTRY_GLM_MODEL'] ?? '').length > 0, reason: 'GLM model not set' },
-    ]);
-    checkStack('stack_muse_main', [
-      { present: (env['SENTRY_MUSE_MODEL'] ?? '').length > 0, reason: 'Muse model not set' },
     ]);
     return { ready: reasons.length === 0, reasons, productionWired: true, stacks };
   }

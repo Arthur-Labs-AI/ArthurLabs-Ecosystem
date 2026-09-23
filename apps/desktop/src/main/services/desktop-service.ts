@@ -334,16 +334,18 @@ export class DesktopApplicationService {
   async pushRuntimeConfiguration(): Promise<unknown> {
     const get = (name: string): string | undefined => this.deps.credentials.getValue(name);
     const models: Record<string, string> = {};
-    const muse = get('SENTRY_MUSE_MODEL');
+    const opencode = get('SENTRY_OPENCODE_MODEL');
     const deepseek = get('SENTRY_DEEPSEEK_MODEL');
     const glm = get('SENTRY_GLM_MODEL');
-    if (muse !== undefined) models['muse'] = muse;
+    if (opencode !== undefined) models['opencode'] = opencode;
     if (deepseek !== undefined) models['deepseek'] = deepseek;
     if (glm !== undefined) models['glm'] = glm;
     const providers: Record<string, string> = {};
+    const openRouterKey = get('OPENROUTER_API_KEY');
     const deepseekKey = get('DEEPSEEK_API_KEY');
     const glmToken = get('ANTHROPIC_AUTH_TOKEN');
     const glmEndpoint = get('ANTHROPIC_BASE_URL');
+    if (openRouterKey !== undefined) providers['openRouterApiKey'] = openRouterKey;
     if (deepseekKey !== undefined) providers['deepseekApiKey'] = deepseekKey;
     if (glmToken !== undefined) providers['anthropicAuthToken'] = glmToken;
     if (glmEndpoint !== undefined) providers['anthropicBaseUrl'] = glmEndpoint;
