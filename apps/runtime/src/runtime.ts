@@ -28,7 +28,7 @@ import {
   requestRetestCancellation,
   cancelRetestRun,
 } from '@qa/run-engine';
-import { createOpenCodeRegistration } from '@qa/harness-opencode';
+import { createOpenCodeRegistration, managedOpenCodeExecutable } from '@qa/harness-opencode';
 import { createDeepSeekRegistration } from '@qa/harness-deepseek';
 import { createGlmRegistration } from '@qa/harness-claude-code';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
@@ -110,6 +110,11 @@ interface PendingRun {
   readonly promise: Promise<unknown>;
 }
 
+function applyBinaryOverride(name: string, value: string | undefined): void {
+  if (value !== undefined) process.env[name] = value;
+  else delete process.env[name];
+}
+
 export class SentryRuntimeHost {
   private readonly dataRoot: string;
   private readonly database: SentryDatabase;
@@ -138,7 +143,11 @@ export class SentryRuntimeHost {
       runtimeLease: this.lease,
     });
     this.registry = new HarnessAdapterRegistry()
-      .register(createOpenCodeRegistration())
+      .register(
+        createOpenCodeRegistration({
+          managedExecutable: managedOpenCodeExecutable(this.dataRoot),
+        }),
+      )
       .register(createDeepSeekRegistration())
       .register(createGlmRegistration());
     this.coordinator = new RunCoordinator(
@@ -239,14 +248,14 @@ export class SentryRuntimeHost {
     if (parsed.providers.anthropicBaseUrl !== undefined) {
       process.env['ANTHROPIC_BASE_URL'] = parsed.providers.anthropicBaseUrl;
     }
-    if (parsed.binaries.opencode !== undefined) {
-      process.env['SENTRY_OPENCODE_BINARY'] = parsed.binaries.opencode;
-    }
-    if (parsed.binaries.deepseek !== undefined) {
-      process.env['SENTRY_DEEPSEEK_BINARY'] = parsed.binaries.deepseek;
-    }
-    if (parsed.binaries.glm !== undefined) {
-      process.env['SENTRY_GLM_BINARY'] = parsed.binaries.glm;
+    // Full-state binary overrides: the desktop always pushes its complete
+    // current set, so a present block with an absent key clears a stale
+    // override (Clear button works without restart). A missing block
+    // leaves the environment untouched.
+    if (parsed.binaries !== undefined) {
+      applyBinaryOverride('SENTRY_OPENCODE_BINARY', parsed.binaries.opencode);
+      applyBinaryOverride('SENTRY_DEEPSEEK_BINARY', parsed.binaries.deepseek);
+      applyBinaryOverride('SENTRY_GLM_BINARY', parsed.binaries.glm);
     }
     return { configured: true };
   }
@@ -707,7 +716,9 @@ export class SentryRuntimeHost {
       import('@qa/harness-claude-code'),
     ]);
     const [opencode, deepseek, glm] = await Promise.all([
-      doctorOpenCode().catch(() => undefined),
+      doctorOpenCode({
+        managedExecutable: managedOpenCodeExecutable(this.dataRoot),
+      }).catch(() => undefined),
       doctorDeepSeek().catch(() => undefined),
       doctorGlm().catch(() => undefined),
     ]);

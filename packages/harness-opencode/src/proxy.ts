@@ -91,7 +91,14 @@ export async function startOpenCodeAuthProxy(input: {
         sendJson(res, 400, errorEnvelope('Invalid proxy request body.'));
         return;
       }
-      if (model !== input.allowedModel) {
+      // The native provider SDK sends the provider-local model id
+      // (`meta/muse-spark-1.3-contributor`), not the effective Sentry id
+      // (`openrouter/meta/muse-spark-1.3-contributor`). Accept exactly the
+      // allowed id in either form — nothing else.
+      const allowed = new Set([input.allowedModel]);
+      const slash = input.allowedModel.indexOf('/');
+      if (slash >= 0) allowed.add(input.allowedModel.slice(slash + 1));
+      if (typeof model !== 'string' || !allowed.has(model)) {
         counters.rejected += 1;
         sendJson(res, 403, errorEnvelope('Model not allowed through this proxy.'));
         return;

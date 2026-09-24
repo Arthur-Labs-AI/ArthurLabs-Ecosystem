@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { accessSync, constants, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { nowIsoTimestamp } from '@qa/shared';
 import type { HarnessHealthResult } from '@qa/harness-protocol';
 import { buildOpenCodeModelId } from './model.js';
@@ -77,6 +79,117 @@ export function openCodeReadinessFromChecks(input: {
   };
 }
 
+export type OpenCodeExecutableSource = 'explicit' | 'environment' | 'managed' | 'path';
+
+/** Sentry-managed OpenCode layout under a data root (never hardcode a home directory). */
+export const MANAGED_OPENCODE_TOOL_SEGMENTS = [
+  'tools',
+  'opencode',
+  'node_modules',
+  '.bin',
+  'opencode',
+] as const;
+
+/** Derive the managed OpenCode executable from a Sentry data root. */
+export function managedOpenCodeExecutable(dataRoot: string): string {
+  return join(dataRoot, ...MANAGED_OPENCODE_TOOL_SEGMENTS);
+}
+
+export interface OpenCodeExecutableResolution {
+  readonly executable: string;
+  readonly source: OpenCodeExecutableSource;
+  /** Managed candidate that was considered (for diagnostics, even when unused). */
+  readonly managedCandidate?: string | undefined;
+}
+
+/** True iff the path exists, is a file (or link to one), and is executable. */
+export function isExecutableFileSync(candidate: string): boolean {
+  try {
+    const info = statSync(candidate);
+    if (!info.isFile()) return false;
+    accessSync(candidate, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Executable discovery order (no silent fallback past an explicit source):
+ * explicit argument > SENTRY_OPENCODE_BINARY > verified managed
+ * installation > PATH lookup. Explicit/environment values win
+ * unconditionally — a broken explicit override fails closed at the probe
+ * instead of silently falling through to managed/PATH.
+ */
+export function resolveOpenCodeExecutable(
+  input: {
+    readonly executable?: string;
+    readonly environment?: NodeJS.ProcessEnv;
+    readonly managedExecutable?: string;
+  } = {},
+): OpenCodeExecutableResolution {
+  const environment = input.environment ?? process.env;
+  const explicit = input.executable?.trim();
+  if (explicit !== undefined && explicit.length > 0) {
+    return {
+      executable: explicit,
+      source: 'explicit',
+      ...(input.managedExecutable === undefined
+        ? {}
+        : { managedCandidate: input.managedExecutable }),
+    };
+  }
+  const fromEnvironment = environment.SENTRY_OPENCODE_BINARY?.trim();
+  if (fromEnvironment !== undefined && fromEnvironment.length > 0) {
+    return {
+      executable: fromEnvironment,
+      source: 'environment',
+      ...(input.managedExecutable === undefined
+        ? {}
+        : { managedCandidate: input.managedExecutable }),
+    };
+  }
+  const managed = input.managedExecutable?.trim();
+  if (managed !== undefined && managed.length > 0 && isExecutableFileSync(managed)) {
+    return { executable: managed, source: 'managed', managedCandidate: managed };
+  }
+  return {
+    executable: 'opencode',
+    source: 'path',
+    ...(input.managedExecutable === undefined ? {} : { managedCandidate: input.managedExecutable }),
+  };
+}
+
+/** Actionable diagnosis when every candidate failed (no secrets included). */
+export function describeOpenCodeExecutableFailure(input: {
+  readonly environment?: NodeJS.ProcessEnv;
+  readonly managedCandidate?: string;
+}): string {
+  const environment = input.environment ?? process.env;
+  const override = environment.SENTRY_OPENCODE_BINARY?.trim();
+  const lines = [
+    'OpenCode executable was not found.',
+    'Checked:',
+    '- SENTRY_OPENCODE_BINARY: ' +
+      (override !== undefined && override.length > 0 ? override : 'not configured'),
+  ];
+  const managed = input.managedCandidate?.trim();
+  if (managed !== undefined && managed.length > 0) {
+    lines.push(
+      '- Sentry-managed installation: ' +
+        managed +
+        (isExecutableFileSync(managed) ? ' (present)' : ' (not found/not executable)'),
+    );
+  } else {
+    lines.push('- Sentry-managed installation: no candidate (data root unknown)');
+  }
+  lines.push('- PATH: `opencode` not found');
+  lines.push(
+    'Install OpenCode inside the selected WSL distro or configure an absolute Linux executable path.',
+  );
+  return lines.join('\n').slice(0, 2000);
+}
+
 export interface OpenCodeRuntimeConfiguration {
   readonly executable: string;
   /** Configured model id as entered (e.g. `anthropic/claude-x`). */
@@ -85,7 +198,9 @@ export interface OpenCodeRuntimeConfiguration {
   readonly provider: string;
   /** Effective `--model` identifier (`provider/model`, e.g. `openrouter/anthropic/claude-x`). */
   readonly effectiveModelId: string;
-  readonly discoverySource: 'explicit' | 'environment' | 'path';
+  readonly discoverySource: OpenCodeExecutableSource;
+  /** Managed candidate considered (diagnostics even when unused). */
+  readonly managedCandidate?: string | undefined;
 }
 
 export function resolveOpenCodeRuntime(
@@ -94,21 +209,31 @@ export function resolveOpenCodeRuntime(
     readonly modelId?: string;
     readonly provider?: string;
     readonly environment?: NodeJS.ProcessEnv;
+    /** Sentry-managed candidate (derived from the runtime data root). */
+    readonly managedExecutable?: string;
   } = {},
 ): OpenCodeRuntimeConfiguration {
   const environment = input.environment ?? process.env;
-  const explicit = input.executable?.trim();
-  const fromEnvironment = environment.SENTRY_OPENCODE_BINARY?.trim();
+  const resolved = resolveOpenCodeExecutable({
+    ...(input.executable === undefined ? {} : { executable: input.executable }),
+    environment,
+    ...(input.managedExecutable === undefined
+      ? {}
+      : { managedExecutable: input.managedExecutable }),
+  });
   const identity = buildOpenCodeModelId(
     input.provider ?? environment.SENTRY_OPENCODE_PROVIDER,
     input.modelId ?? environment.SENTRY_OPENCODE_MODEL,
   );
   return {
-    executable: explicit || fromEnvironment || 'opencode',
+    executable: resolved.executable,
     modelId: identity.configuredModel,
     provider: identity.provider,
     effectiveModelId: identity.effectiveModelId,
-    discoverySource: explicit ? 'explicit' : fromEnvironment ? 'environment' : 'path',
+    discoverySource: resolved.source,
+    ...(resolved.managedCandidate === undefined
+      ? {}
+      : { managedCandidate: resolved.managedCandidate }),
   };
 }
 
@@ -248,6 +373,8 @@ export async function probeOpenCodeSandbox(
 export async function probeOpenCodeExecutable(
   executable: string,
   environment: NodeJS.ProcessEnv = process.env,
+  /** Precomputed candidate diagnosis, used for actionable NOT_FOUND errors. */
+  detail?: string,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const spawnChild = () =>
@@ -266,7 +393,7 @@ export async function probeOpenCodeExecutable(
         new OpenCodeHarnessError(
           code === 'ENOENT' ? 'OPENCODE_BINARY_NOT_FOUND' : 'OPENCODE_START_FAILED',
           code === 'ENOENT'
-            ? 'OpenCode executable was not found: ' + executable
+            ? (detail ?? 'OpenCode executable was not found: ' + executable)
             : redactDiagnostic(cause, secretValues(environment)),
           code !== 'ENOENT',
         ),
@@ -300,7 +427,7 @@ export async function probeOpenCodeExecutable(
         new OpenCodeHarnessError(
           cause.code === 'ENOENT' ? 'OPENCODE_BINARY_NOT_FOUND' : 'OPENCODE_START_FAILED',
           cause.code === 'ENOENT'
-            ? 'OpenCode executable was not found: ' + executable
+            ? (detail ?? 'OpenCode executable was not found: ' + executable)
             : redactDiagnostic(cause, secretValues(environment)),
           cause.code !== 'ENOENT',
         ),
@@ -339,10 +466,12 @@ export async function doctorOpenCode(
     readonly modelId?: string;
     readonly provider?: string;
     readonly environment?: NodeJS.ProcessEnv;
+    readonly managedExecutable?: string;
   } = {},
 ): Promise<
   HarnessHealthResult & {
     readonly executable?: string;
+    readonly executableSource?: OpenCodeExecutableSource;
     readonly executableVersion?: string;
     readonly modelId?: string;
     readonly provider?: string;
@@ -383,8 +512,28 @@ export async function doctorOpenCode(
   let binaryVersion: string | undefined;
   let binaryOk = false;
   if (runtime !== undefined) {
+    // Effective discovery truth: path + source (managed/PATH/override).
+    checks.push({
+      name: 'executable',
+      status: 'pass',
+      message:
+        runtime.executable +
+        ' (source: ' +
+        runtime.discoverySource +
+        (runtime.discoverySource === 'managed' ? ', Sentry-managed installation' : '') +
+        ')',
+    });
     try {
-      binaryVersion = await probeOpenCodeExecutable(runtime.executable, environment);
+      binaryVersion = await probeOpenCodeExecutable(
+        runtime.executable,
+        environment,
+        describeOpenCodeExecutableFailure({
+          environment,
+          ...(runtime.managedCandidate === undefined
+            ? {}
+            : { managedCandidate: runtime.managedCandidate }),
+        }),
+      );
       binaryOk = true;
       checks.push({ name: 'binary', status: 'pass', message: binaryVersion });
       // Wire-format policy: the JSONL parser is built for the tested
@@ -466,6 +615,7 @@ export async function doctorOpenCode(
       ? {}
       : {
           executable: runtime.executable,
+          executableSource: runtime.discoverySource,
           modelId: runtime.effectiveModelId,
           provider: runtime.provider,
         }),

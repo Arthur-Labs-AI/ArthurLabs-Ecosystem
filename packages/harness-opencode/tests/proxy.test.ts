@@ -47,6 +47,15 @@ describe('localhost auth proxy', () => {
       expect(seen[0]?.auth).toBe('Bearer ' + FAKE_KEY);
       expect(seen[0]?.model).toBe('openrouter/anthropic/x');
       expect(proxy.relayedRequests()).toBe(1);
+      // The provider-local id (what the native SDK actually sends) relays too.
+      const local = await fetch(proxy.baseUrl + '/chat/completions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'anthropic/x', messages: [] }),
+      });
+      expect(local.status).toBe(200);
+      expect(seen).toHaveLength(2);
+      expect(proxy.relayedRequests()).toBe(2);
       // Any other model is rejected before anything goes upstream.
       const denied = await fetch(proxy.baseUrl + '/chat/completions', {
         method: 'POST',
@@ -54,7 +63,7 @@ describe('localhost auth proxy', () => {
         body: JSON.stringify({ model: 'evil/other', messages: [] }),
       });
       expect(denied.status).toBe(403);
-      expect(seen).toHaveLength(1);
+      expect(seen).toHaveLength(2);
       // Unknown routes are rejected.
       const missing = await fetch(proxy.baseUrl + '/v1/secrets', { method: 'POST' });
       expect(missing.status).toBe(404);

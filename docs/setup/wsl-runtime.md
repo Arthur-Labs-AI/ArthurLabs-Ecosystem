@@ -40,8 +40,11 @@ No secrets below — substitute your own values where indicated.
 ## 4. Provider CLIs in the same distro
 
 - DeepSeek: install the `dsh` harness so `wsl -d Ubuntu -- which dsh` resolves.
-- OpenCode: install OpenCode in WSL so `wsl -d Ubuntu -- which opencode` resolves
-  (no login step for the OpenRouter API-key path). See `docs/setup/opencode.md`.
+- OpenCode: install OpenCode in WSL (`npm install opencode-ai@1.18.32` in
+  `~/.local/share/sentry/tools/opencode` is enough — no sudo, no global
+  install, no `PATH` changes; Sentry discovers its managed installation
+  automatically). A global `opencode` on `PATH` also works, as does an
+  explicit override in Settings → Providers. See `docs/setup/opencode.md`.
 - GLM: install Claude Code in WSL (`which claude`), used with the trusted Z.AI endpoint.
 
 ## 5. Provider model configuration

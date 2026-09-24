@@ -183,6 +183,9 @@ export const RuntimeConfigureParamsSchema = z
     // Harness executable overrides (non-secret absolute paths inside the
     // runtime environment, e.g. a user-local opencode install). Ephemeral
     // like everything else here; additive, so the version stays 1.
+    // Optional WITHOUT a default: present-but-key-absent means the sender
+    // cleared that override (full-state push), while a missing `binaries`
+    // block leaves runtime env untouched (old senders stay compatible).
     binaries: z
       .object({
         opencode: z.string().min(1).max(2000).optional(),
@@ -190,7 +193,7 @@ export const RuntimeConfigureParamsSchema = z
         glm: z.string().min(1).max(2000).optional(),
       })
       .strict()
-      .default({}),
+      .optional(),
   })
   .strict();
 export type RuntimeConfigureParams = z.infer<typeof RuntimeConfigureParamsSchema>;

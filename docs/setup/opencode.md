@@ -18,11 +18,14 @@ Verify:
 opencode --version
 ```
 
-If the binary is not on `PATH`, paste its absolute Linux path into
-Settings → Providers (“OpenCode harness executable override”); Desktop
-pushes it into runtime memory via `runtime.configure`, so no restart is
-needed. There is no fallback model or fake execution: real runs require
-the real binary.
+Executable discovery order (no restart needed for changes): explicit
+adapter config → `SENTRY_OPENCODE_BINARY` (Settings → Providers →
+“OpenCode executable”, pushed into runtime memory) → Sentry-managed
+installation (`<dataRoot>/tools/opencode/node_modules/.bin/opencode`)
+→ `opencode` on `PATH`. A user-local install under the data root needs
+no `PATH` changes, no sudo, and no shell-profile edits. An explicit
+override that is broken fails closed (no silent fallback). There is no
+fallback model or fake execution: real runs require the real binary.
 
 ## 2. Set the provider, model, and credential
 

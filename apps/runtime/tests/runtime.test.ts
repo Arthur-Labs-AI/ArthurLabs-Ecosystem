@@ -49,6 +49,13 @@ describe('runtime host identity', () => {
       expect(process.env['DEEPSEEK_API_KEY']).toBe('sk-test-fake-secret');
       await host.configure({ binaries: { opencode: '/home/u/tools/opencode' } });
       expect(process.env['SENTRY_OPENCODE_BINARY']).toBe('/home/u/tools/opencode');
+      // Full-state semantics: clearing removes the override without restart.
+      await host.configure({ binaries: {} });
+      expect(process.env['SENTRY_OPENCODE_BINARY']).toBeUndefined();
+      // A missing block leaves existing environment untouched.
+      process.env['SENTRY_OPENCODE_BINARY'] = '/home/u/keep';
+      await host.configure({ models: {}, providers: {} });
+      expect(process.env['SENTRY_OPENCODE_BINARY']).toBe('/home/u/keep');
       delete process.env['SENTRY_OPENCODE_BINARY'];
       const gate = (await host.productionReadiness(['stack_deepseek_main'])) as { ready: boolean };
       expect(gate.ready).toBe(true);

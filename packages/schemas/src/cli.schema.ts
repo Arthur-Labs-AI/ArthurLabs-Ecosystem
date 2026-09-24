@@ -382,6 +382,7 @@ export const AgentDoctorResultSchema = z
     ),
     checkedAt: IsoTimestampSchema,
     executable: z.string().optional(),
+    executableSource: z.enum(['explicit', 'environment', 'managed', 'path']).optional(),
     executableVersion: z.string().optional(),
     modelId: z.string().optional(),
     provider: z.string().optional(),

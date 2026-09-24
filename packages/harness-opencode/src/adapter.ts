@@ -85,6 +85,13 @@ import type { OpenCodeToolObservation } from './wire.js';
 
 export interface OpenCodeHarnessAdapterOptions {
   readonly executable?: string;
+  /**
+   * Sentry-managed candidate (derived from the runtime data root by the
+   * host, e.g. `<dataRoot>/tools/opencode/...`). Used only when neither
+   * an explicit executable nor SENTRY_OPENCODE_BINARY is set, and only
+   * when it exists and is executable; never silently overrides config.
+   */
+  readonly managedExecutable?: string;
   readonly modelId?: string;
   /** Provider id for the OpenCode session; default 'openrouter'. */
   readonly provider?: string;

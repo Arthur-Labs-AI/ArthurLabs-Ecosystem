@@ -59,9 +59,14 @@ describe('runtime protocol framing', () => {
       providers: {},
       binaries: { opencode: '/home/u/tools/opencode' },
     });
-    expect(parsed.binaries.opencode).toBe('/home/u/tools/opencode');
-    expect(parsed.binaries.deepseek).toBeUndefined();
+    expect(parsed.binaries?.opencode).toBe('/home/u/tools/opencode');
+    expect(parsed.binaries?.deepseek).toBeUndefined();
     expect(RUNTIME_PROTOCOL_VERSION).toBe(1);
+  });
+
+  it('leaves binaries undefined when the sender omits the block', () => {
+    const parsed = RuntimeConfigureParamsSchema.parse({ models: {}, providers: {} });
+    expect(parsed.binaries).toBeUndefined();
   });
 
   it('buffers partial lines and drops oversize input', () => {

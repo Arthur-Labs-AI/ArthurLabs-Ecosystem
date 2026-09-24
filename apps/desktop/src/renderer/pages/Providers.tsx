@@ -113,7 +113,16 @@ export function Providers(): React.JSX.Element {
         process immediately — it survives application restarts. Secret values are never displayed
         and never leave the desktop host process.
       </p>
-      <HarnessBinaryCard />
+      <HarnessBinaryCard
+        statuses={(statuses.data as ProviderStatus[] | undefined) ?? []}
+        values={values}
+        setValues={setValues}
+        onSave={(name, value) => save.mutate({ name, value })}
+        onClear={(name) => clear.mutate(name)}
+        savePending={save.isPending}
+        clearPending={clear.isPending}
+        onError={fail}
+      />
 
       {error !== undefined ? (
         <div className="error-box" role="alert">
@@ -199,15 +208,91 @@ export function Providers(): React.JSX.Element {
   );
 }
 
-function HarnessBinaryCard(): React.JSX.Element {
+const BINARY_FIELDS = [
+  { name: 'SENTRY_OPENCODE_BINARY', label: 'OpenCode executable' },
+  { name: 'SENTRY_DEEPSEEK_BINARY', label: 'DeepSeek executable' },
+  { name: 'SENTRY_GLM_BINARY', label: 'Claude Code executable' },
+] as const;
+
+function HarnessBinaryCard(props: {
+  readonly statuses: ProviderStatus[];
+  readonly values: Record<string, string>;
+  readonly setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  readonly onSave: (name: string, value: string) => void;
+  readonly onClear: (name: string) => void;
+  readonly savePending: boolean;
+  readonly clearPending: boolean;
+  readonly onError: (e: unknown) => void;
+}): React.JSX.Element {
+  const looksWindowsPath = (value: string): boolean => /^[A-Za-z]:[\\/]/.test(value.trim());
   return (
     <div className="card" style={{ marginBottom: 12 }}>
       <h3 style={{ marginTop: 0 }}>Execution runtime</h3>
       <p className="muted">
         Provider CLIs (opencode, dsh, Claude Code) execute inside the WSL2 Sentry runtime on Linux.
-        Windows binary paths do not apply — see <Link to="/environment">Environment</Link> for the
-        runtime doctor state.
+        Optional absolute Linux paths below override PATH lookup; leaving a field empty keeps
+        automatic discovery. Paths refer to the selected WSL Linux runtime — Windows paths (C:\…) do
+        not apply. See <Link to="/environment">Environment</Link> for the runtime doctor state.
       </p>
+      {BINARY_FIELDS.map((field) => {
+        const status = props.statuses.find((s) => s.name === field.name);
+        const current = props.values[field.name] ?? '';
+        const windowsPath = looksWindowsPath(current);
+        return (
+          <div key={field.name} style={{ marginBottom: 12 }}>
+            <strong>{field.label}</strong>{' '}
+            <span className="muted">
+              ({status?.configured === true ? 'Configured' : 'Not set'}
+              {status?.hint !== undefined && status.hint.length > 0 ? '; ' + status.hint : ''})
+            </span>
+            <p className="muted" style={{ margin: '4px 0' }}>
+              {DESCRIPTIONS[field.name] ?? ''}
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input
+                type="text"
+                value={current}
+                onChange={(e) =>
+                  props.setValues((prev) => ({ ...prev, [field.name]: e.target.value }))
+                }
+                placeholder="/home/…/.local/share/sentry/tools/opencode/node_modules/.bin/opencode"
+                aria-label={'Value for ' + field.name}
+                autoComplete="off"
+                spellCheck={false}
+                style={{ minWidth: 280 }}
+              />
+              <button
+                className="primary"
+                disabled={current.trim().length === 0 || windowsPath || props.savePending}
+                onClick={() => {
+                  if (windowsPath) {
+                    props.onError(
+                      new Error(field.label + ': use an absolute Linux path, not a Windows path.'),
+                    );
+                    return;
+                  }
+                  props.onSave(field.name, current);
+                }}
+                title="Persist and load into the runtime (no restart needed)"
+              >
+                Save
+              </button>
+              <button
+                disabled={status?.configured !== true || props.clearPending}
+                onClick={() => props.onClear(field.name)}
+              >
+                Clear
+              </button>
+            </div>
+            {windowsPath ? (
+              <p className="error-box" style={{ marginTop: 4 }}>
+                Windows paths do not apply inside the Linux runtime — enter an absolute Linux path
+                (e.g. /home/…/opencode).
+              </p>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }

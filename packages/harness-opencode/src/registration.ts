@@ -3,6 +3,7 @@ import type { HarnessAdapterRegistration } from '@qa/harness-protocol';
 import { OpenCodeHarnessAdapter, type OpenCodeHarnessAdapterOptions } from './adapter.js';
 import {
   assertTestedOpenCodeVersion,
+  describeOpenCodeExecutableFailure,
   OPENCODE_TESTED_VERSION,
   openCodeSandboxBypassed,
   openRouterCredentialPresent,
@@ -18,8 +19,10 @@ export function createOpenCodeRegistration(
   // Runtime config resolves lazily so registering an unselected stack
   // never throws: only the selected stacks' preflight/adapter paths report
   // OPENCODE_MODEL_NOT_CONFIGURED / OPENCODE_CREDENTIAL_MISSING.
-  let runtime: { effectiveModelId: string; provider: string; executable: string } | undefined;
-  const resolveRuntime = () => (runtime ??= resolveOpenCodeRuntime(options));
+  // Deliberately NOT memoized: runtime.configure can change the binary
+  // override after startup, and the next preflight must observe it without
+  // a process restart.
+  const resolveRuntime = () => resolveOpenCodeRuntime(options);
   const stack = AgentStackDefinitionSchema.parse({
     schemaVersion: 1,
     id: 'stack_opencode_main',
@@ -58,7 +61,16 @@ export function createOpenCodeRegistration(
       runtimeIdentity.provider = resolved.provider;
       runtimeIdentity.executable = resolved.executable;
       const environment = options.environment ?? process.env;
-      const executableVersion = await probeOpenCodeExecutable(resolved.executable, environment);
+      const executableVersion = await probeOpenCodeExecutable(
+        resolved.executable,
+        environment,
+        describeOpenCodeExecutableFailure({
+          environment,
+          ...(resolved.managedCandidate === undefined
+            ? {}
+            : { managedCandidate: resolved.managedCandidate }),
+        }),
+      );
       runtimeIdentity.executableVersion = executableVersion;
       // Fail closed on unverified wire/security contracts.
       assertTestedOpenCodeVersion(executableVersion, environment);
