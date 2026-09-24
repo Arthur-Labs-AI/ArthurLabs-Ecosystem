@@ -79,22 +79,26 @@ jobs:
       # ONLY these names with continue-on-error. When a quarantined test is
       # fixed in code, remove its § marker from BOTH patterns below so it
       # rejoins the required suite.
-      # NOTE: pnpm consumes one `--` separator itself, so turbo
-      # passthrough needs `-- --` for vitest to receive its pattern.
+      # NOTE: exactly one `--` separates turbo flags from vitest
+      # passthrough args. Proven on Linux (pnpm forwards verbatim, turbo
+      # consumes the marker): doubling it forwards a literal `--` into
+      # vitest, which then silently ignores the pattern. Windows pwsh
+      # needs the doubled form instead; this file serves ubuntu runners.
       - name: Test (required, quarantined names excluded)
         if: steps.sandbox.outputs.available == 'true'
         run: |
-          pnpm exec turbo run test -- -- --testNamePattern='^(?!.*(§61|§67|§13|§28|§39)).*$'
+          pnpm exec turbo run test -- --testNamePattern='^(?!.*(§61|§67|§13|§28|§39)).*$'
       # The real-sandbox fixture requires user-unit mounts. Keep it mandatory
       # wherever the runner can provide them; on restricted hosted runners,
       # run every other package and run-engine test without hiding the gap.
       - name: Test (required, sandbox trust unverified on this runner)
         if: steps.sandbox.outputs.available != 'true'
         run: |
-          pnpm exec turbo run test --filter='!@qa/run-engine' -- -- --testNamePattern='^(?!.*(§61|§67|§13|§28|§39)).*$'
+          pnpm exec turbo run test --filter='!@qa/run-engine' -- --testNamePattern='^(?!.*(§61|§67|§13|§28|§39)).*$'
           pnpm --filter @qa/run-engine exec vitest run --exclude tests/verification-trust.test.ts --testNamePattern='^(?!.*(§61|§67|§13|§28|§39)).*$'
       - name: Test (quarantined pre-existing failures, informational)
+        if: always()
         continue-on-error: true
         run: |
-          pnpm exec turbo run test --filter=@qa/merger --filter=@qa/verifier -- -- --testNamePattern='(§61|§67|§13|§28|§39)'
+          pnpm exec turbo run test --filter=@qa/merger --filter=@qa/verifier -- --testNamePattern='(§61|§67|§13|§28|§39)'
       - run: pnpm build
