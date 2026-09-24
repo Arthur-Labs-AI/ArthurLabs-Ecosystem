@@ -360,7 +360,9 @@ export class DesktopApplicationService {
     if (glmBinary !== undefined) binaries['glm'] = glmBinary;
     const openCodeProvider = get('SENTRY_OPENCODE_PROVIDER');
     const provider =
-      openCodeProvider === 'openrouter' || openCodeProvider === 'opencode'
+      openCodeProvider === 'openrouter' ||
+      openCodeProvider === 'opencode' ||
+      openCodeProvider === 'opencode-go'
         ? { openCodeProvider }
         : {};
     return this.call('runtime.configure', { models, providers, binaries, ...provider });

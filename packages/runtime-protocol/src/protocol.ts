@@ -183,7 +183,7 @@ export const RuntimeConfigureParamsSchema = z
       .default({}),
     // OpenCode upstream provider selection (openrouter|opencode). Ephemeral
     // like everything else here; additive, so the version stays 1.
-    openCodeProvider: z.enum(['openrouter', 'opencode']).optional(),
+    openCodeProvider: z.enum(['openrouter', 'opencode', 'opencode-go']).optional(),
     // Harness executable overrides (non-secret absolute paths inside the
     // runtime environment, e.g. a user-local opencode install). Ephemeral
     // like everything else here; additive, so the version stays 1.

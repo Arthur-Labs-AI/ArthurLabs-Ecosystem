@@ -29,7 +29,8 @@ fallback model or fake execution: real runs require the real binary.
 
 ## 2. Set the provider, model, and credential
 
-Upstream provider (`openrouter` for OpenRouter, `opencode` for OpenCode Zen):
+Upstream provider (`openrouter` for OpenRouter, `opencode` for OpenCode Zen,
+`opencode-go` for the Go subscription gateway):
 
 ```bash
 SENTRY_OPENCODE_PROVIDER=opencode

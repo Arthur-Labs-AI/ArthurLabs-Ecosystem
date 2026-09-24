@@ -261,6 +261,12 @@ export const OPENCODE_PROVIDER_SPECS: Record<string, OpenCodeProviderSpec> = {
     nativeSdk: false,
     displayName: 'OpenCode Zen',
   },
+  'opencode-go': {
+    credentialEnv: 'OPENCODE_API_KEY',
+    upstreamBaseUrl: 'https://opencode.ai/zen/go/v1',
+    nativeSdk: false,
+    displayName: 'OpenCode Go',
+  },
 };
 
 export function openCodeProviderSpec(provider: string): OpenCodeProviderSpec | undefined {
@@ -275,7 +281,7 @@ export function assertSupportedOpenCodeProvider(provider: string, customEndpoint
       'OPENCODE_MODEL_NOT_CONFIGURED',
       'Unsupported OpenCode provider: ' +
         provider +
-        '. Supported: openrouter, opencode. Set SENTRY_OPENCODE_PROVIDER.',
+        '. Supported: openrouter, opencode, opencode-go. Set SENTRY_OPENCODE_PROVIDER.',
     );
   }
 }

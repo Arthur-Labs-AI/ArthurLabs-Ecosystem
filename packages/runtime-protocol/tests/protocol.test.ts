@@ -77,6 +77,13 @@ describe('runtime protocol framing', () => {
     });
     expect(parsed.providers.openCodeApiKey).toBe('zen-test-key');
     expect(parsed.openCodeProvider).toBe('opencode');
+    expect(
+      RuntimeConfigureParamsSchema.parse({
+        models: {},
+        providers: {},
+        openCodeProvider: 'opencode-go',
+      }).openCodeProvider,
+    ).toBe('opencode-go');
     expect(RUNTIME_PROTOCOL_VERSION).toBe(1);
   });
 

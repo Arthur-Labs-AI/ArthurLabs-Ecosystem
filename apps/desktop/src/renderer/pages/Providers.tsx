@@ -30,7 +30,7 @@ const DESCRIPTIONS: Record<string, string> = {
   OPENCODE_API_KEY:
     'OpenCode Zen provider key (secret). Used when the OpenCode provider is opencode.',
   SENTRY_OPENCODE_PROVIDER:
-    'OpenCode upstream provider (non-secret): openrouter or opencode (Zen).',
+    'OpenCode upstream provider (non-secret): openrouter, opencode (Zen), or opencode-go (Go subscription gateway).',
 };
 
 const SECRET_NAMES: ReadonlySet<string> = new Set([

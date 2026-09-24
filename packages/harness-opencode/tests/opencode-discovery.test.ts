@@ -158,6 +158,11 @@ describe('OpenCode executable discovery', () => {
     expect(openCodeProviderSpec('openrouter')?.credentialEnv).toBe('OPENROUTER_API_KEY');
     expect(openCodeProviderSpec('opencode')?.credentialEnv).toBe('OPENCODE_API_KEY');
     expect(openCodeProviderSpec('opencode')?.upstreamBaseUrl).toBe('https://opencode.ai/zen/v1');
+    expect(openCodeProviderSpec('opencode-go')?.credentialEnv).toBe('OPENCODE_API_KEY');
+    expect(openCodeProviderSpec('opencode-go')?.upstreamBaseUrl).toBe(
+      'https://opencode.ai/zen/go/v1',
+    );
+    expect(openCodeUpstreamBaseUrl('opencode-go')).toBe('https://opencode.ai/zen/go/v1');
     expect(openCodeProviderSpec('nope')).toBeUndefined();
     const env = { OPENROUTER_API_KEY: 'sk-or-x', OPENCODE_API_KEY: 'zen-key' };
     expect(openCodeCredential('openrouter', env)).toBe('sk-or-x');
