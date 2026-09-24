@@ -47,6 +47,9 @@ describe('runtime host identity', () => {
       });
       expect(process.env['SENTRY_DEEPSEEK_MODEL']).toBe('deepseek-flash');
       expect(process.env['DEEPSEEK_API_KEY']).toBe('sk-test-fake-secret');
+      await host.configure({ binaries: { opencode: '/home/u/tools/opencode' } });
+      expect(process.env['SENTRY_OPENCODE_BINARY']).toBe('/home/u/tools/opencode');
+      delete process.env['SENTRY_OPENCODE_BINARY'];
       const gate = (await host.productionReadiness(['stack_deepseek_main'])) as { ready: boolean };
       expect(gate.ready).toBe(true);
     } finally {

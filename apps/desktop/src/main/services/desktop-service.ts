@@ -330,7 +330,7 @@ export class DesktopApplicationService {
     });
   }
 
-  /** Push models + secrets (memory-only) to the runtime after handshake/changes. */
+  /** Push models + secrets + binary overrides (memory-only) to the runtime. */
   async pushRuntimeConfiguration(): Promise<unknown> {
     const get = (name: string): string | undefined => this.deps.credentials.getValue(name);
     const models: Record<string, string> = {};
@@ -349,7 +349,14 @@ export class DesktopApplicationService {
     if (deepseekKey !== undefined) providers['deepseekApiKey'] = deepseekKey;
     if (glmToken !== undefined) providers['anthropicAuthToken'] = glmToken;
     if (glmEndpoint !== undefined) providers['anthropicBaseUrl'] = glmEndpoint;
-    return this.call('runtime.configure', { models, providers });
+    const binaries: Record<string, string> = {};
+    const opencodeBinary = get('SENTRY_OPENCODE_BINARY');
+    const deepseekBinary = get('SENTRY_DEEPSEEK_BINARY');
+    const glmBinary = get('SENTRY_GLM_BINARY');
+    if (opencodeBinary !== undefined) binaries['opencode'] = opencodeBinary;
+    if (deepseekBinary !== undefined) binaries['deepseek'] = deepseekBinary;
+    if (glmBinary !== undefined) binaries['glm'] = glmBinary;
+    return this.call('runtime.configure', { models, providers, binaries });
   }
 
   productionReadiness(input?: { agentStackIds?: string[] }): Promise<unknown> {

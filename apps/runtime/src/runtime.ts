@@ -239,6 +239,15 @@ export class SentryRuntimeHost {
     if (parsed.providers.anthropicBaseUrl !== undefined) {
       process.env['ANTHROPIC_BASE_URL'] = parsed.providers.anthropicBaseUrl;
     }
+    if (parsed.binaries.opencode !== undefined) {
+      process.env['SENTRY_OPENCODE_BINARY'] = parsed.binaries.opencode;
+    }
+    if (parsed.binaries.deepseek !== undefined) {
+      process.env['SENTRY_DEEPSEEK_BINARY'] = parsed.binaries.deepseek;
+    }
+    if (parsed.binaries.glm !== undefined) {
+      process.env['SENTRY_GLM_BINARY'] = parsed.binaries.glm;
+    }
     return { configured: true };
   }
 

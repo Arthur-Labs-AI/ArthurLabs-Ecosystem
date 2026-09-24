@@ -18,8 +18,10 @@ Verify:
 opencode --version
 ```
 
-If the binary is not on `PATH`, set `SENTRY_OPENCODE_BINARY` to the
-executable. There is no fallback model or fake execution: real runs require
+If the binary is not on `PATH`, paste its absolute Linux path into
+Settings → Providers (“OpenCode harness executable override”); Desktop
+pushes it into runtime memory via `runtime.configure`, so no restart is
+needed. There is no fallback model or fake execution: real runs require
 the real binary.
 
 ## 2. Set the provider, model, and credential

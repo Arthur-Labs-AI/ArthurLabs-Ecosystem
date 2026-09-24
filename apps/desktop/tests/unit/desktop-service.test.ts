@@ -98,6 +98,12 @@ describe('desktop RPC adapter', () => {
       models: { opencode: 'anthropic/claude-test' },
       providers: { openRouterApiKey: 'sk-or-test-12345678' },
     });
+    await h.service.providerSaveKey('SENTRY_OPENCODE_BINARY', '/home/u/tools/opencode');
+    await h.service.pushRuntimeConfiguration();
+    const reconfigured = h.seen.filter((c) => c.method === 'runtime.configure').at(-1);
+    expect(reconfigured?.params).toMatchObject({
+      binaries: { opencode: '/home/u/tools/opencode' },
+    });
     const statuses = h.service.providerStatuses() as Array<{ name: string }>;
     expect(statuses.some((status) => status.name === 'OPENROUTER_API_KEY')).toBe(true);
     expect(JSON.stringify(statuses)).not.toContain('sk-or-test-12345678');

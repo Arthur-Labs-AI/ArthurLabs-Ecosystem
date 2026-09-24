@@ -180,6 +180,17 @@ export const RuntimeConfigureParamsSchema = z
       })
       .strict()
       .default({}),
+    // Harness executable overrides (non-secret absolute paths inside the
+    // runtime environment, e.g. a user-local opencode install). Ephemeral
+    // like everything else here; additive, so the version stays 1.
+    binaries: z
+      .object({
+        opencode: z.string().min(1).max(2000).optional(),
+        deepseek: z.string().min(1).max(2000).optional(),
+        glm: z.string().min(1).max(2000).optional(),
+      })
+      .strict()
+      .default({}),
   })
   .strict();
 export type RuntimeConfigureParams = z.infer<typeof RuntimeConfigureParamsSchema>;

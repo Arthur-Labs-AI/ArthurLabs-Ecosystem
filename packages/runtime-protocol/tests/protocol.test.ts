@@ -53,6 +53,17 @@ describe('runtime protocol framing', () => {
     expect(RUNTIME_PROTOCOL_VERSION).toBe(1);
   });
 
+  it('accepts harness binary overrides without a version bump', () => {
+    const parsed = RuntimeConfigureParamsSchema.parse({
+      models: {},
+      providers: {},
+      binaries: { opencode: '/home/u/tools/opencode' },
+    });
+    expect(parsed.binaries.opencode).toBe('/home/u/tools/opencode');
+    expect(parsed.binaries.deepseek).toBeUndefined();
+    expect(RUNTIME_PROTOCOL_VERSION).toBe(1);
+  });
+
   it('buffers partial lines and drops oversize input', () => {
     const buffer = new RpcLineBuffer();
     const first = buffer.push('{"type":"notifica');
