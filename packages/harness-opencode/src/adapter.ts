@@ -52,6 +52,7 @@ import type {
 import {
   doctorOpenCode,
   markOpenCodeRuntimeVerified,
+  openCodeSandboxBypassed,
   resolveOpenCodeRuntime,
   type OpenCodeRuntimeConfiguration,
 } from './discovery.js';
@@ -70,6 +71,9 @@ import {
   maskProjectOpenCodeConfig,
   type OpenCodeRunScope,
 } from './scope.js';
+import { findExecutable } from './process.js';
+import { SENTRY_PROXY_DUMMY_KEY, startOpenCodeAuthProxy, type OpenCodeAuthProxy } from './proxy.js';
+import { computeToolHiddenPaths, writeToolShellWrapper } from './toolshell.js';
 import {
   createProductionOpenCodeClient,
   type OpenCodeClientFactory,
@@ -85,10 +89,10 @@ export interface OpenCodeHarnessAdapterOptions {
   /** Provider id for the OpenCode session; default 'openrouter'. */
   readonly provider?: string;
   /**
-   * Advanced: custom provider endpoint (OpenAI-compatible base URL,
-   * e.g. an enterprise gateway or the zero-credit test stub). When set,
-   * the provider config also carries the SDK loader + model table.
-   * Production OpenRouter path leaves these unset.
+   * Advanced: upstream endpoint override for the localhost auth proxy
+   * (e.g. the zero-credit test stub). Production OpenRouter path leaves
+   * these unset; `providerNpm`/`providerModels` additionally override the
+   * SDK loader and model table for the stub provider.
    */
   readonly providerBaseUrl?: string;
   readonly providerNpm?: string;
@@ -130,9 +134,11 @@ interface OpenCodeRunEntry {
   /** Turns already issued: every turn after the first must continue the captured session. */
   turnsIssued: number;
   scope?: OpenCodeRunScope | undefined;
+  proxy?: OpenCodeAuthProxy | undefined;
   session?: OpenCodeSessionView | undefined;
   client?: OpenCodeClientView | undefined;
   maskedConfig: readonly string[];
+  turnBase?: NodeJS.ProcessEnv | undefined;
   readonly controller: AbortController;
 }
 
@@ -452,18 +458,103 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     return out;
   }
 
-  private turnEnvironment(forbidTools: boolean): NodeJS.ProcessEnv {
-    return applyOpenCodeTurnEnvironment(this.baseEnvironment, {
-      configContent: buildOpenCodeProviderConfig({
-        provider: this.runtime.provider,
-        ...(this.options.providerBaseUrl === undefined
-          ? {}
-          : { baseUrl: this.options.providerBaseUrl }),
-        ...(this.options.providerNpm === undefined ? {} : { npm: this.options.providerNpm }),
-        ...(this.options.providerModels === undefined
-          ? {}
-          : { models: this.options.providerModels }),
-      }),
+  /**
+   * Build the per-run turn base: scope dirs, localhost proxy endpoint,
+   * tool shell wrapper (Linux), all baked into turn config content.
+   * The real credential never leaves proxy/runtime memory.
+   */
+  private async buildTurnBase(
+    request: HarnessRunRequest,
+    scope: OpenCodeRunScope,
+    proxy: OpenCodeAuthProxy,
+  ): Promise<NodeJS.ProcessEnv> {
+    const scoped = applyOpenCodeScopeEnvironment(this.baseEnvironment, scope);
+    let shell: string | undefined;
+    if (process.platform === 'linux') {
+      shell = await this.buildToolShell(request, scope);
+    } else {
+      this.shutdownDiagnostics.push({
+        code: 'OPENCODE_DIRECT_SHELL',
+        severity: 'warning',
+        message:
+          'Tool shell namespace unavailable off Linux: model shells run without mount isolation (development only).',
+        retryable: false,
+      });
+    }
+    // Production: native provider SDK redirected at the localhost proxy
+    // with a dummy key (the proxy swaps the real one). The models table is
+    // omitted so the built-in catalog resolves capabilities; test seams
+    // may override loader/table for the stub provider.
+    const directEndpoint = this.options.providerBaseUrl;
+    const configContent = buildOpenCodeProviderConfig({
+      provider: this.runtime.provider,
+      baseUrl: directEndpoint ?? proxy.baseUrl,
+      // Dummy key satisfies SDK key requirements; the proxy swaps the real one.
+      // Omitted for direct endpoints that need no key at all.
+      ...(directEndpoint === undefined ? { apiKey: SENTRY_PROXY_DUMMY_KEY } : {}),
+      ...(this.options.providerNpm === undefined ? {} : { npm: this.options.providerNpm }),
+      ...(this.options.providerModels === undefined ? {} : { models: this.options.providerModels }),
+      ...(shell === undefined ? {} : { shell }),
+    });
+    return { ...scoped, OPENCODE_CONFIG_CONTENT: configContent };
+  }
+
+  /**
+   * Generate the bwrap tool shell wrapper (Linux production only).
+   * Returns undefined only when weaker execution is explicitly allowed
+   * (SENTRY_OPENCODE_ALLOW_DIRECT=1, development/test only).
+   */
+  private async buildToolShell(
+    request: HarnessRunRequest,
+    scope: OpenCodeRunScope,
+  ): Promise<string | undefined> {
+    if (openCodeSandboxBypassed(this.hostEnvironment)) {
+      this.shutdownDiagnostics.push({
+        code: 'OPENCODE_DIRECT_SHELL',
+        severity: 'warning',
+        message: 'Tool shell namespace bypassed by explicit opt-in (development only).',
+        retryable: false,
+      });
+      return undefined;
+    }
+    const bwrap = await findExecutable(['/usr/bin/bwrap', '/bin/bwrap', 'bwrap']);
+    if (bwrap === undefined) {
+      throw new OpenCodeHarnessError(
+        'OPENCODE_SANDBOX_UNAVAILABLE',
+        'bubblewrap is required for OpenCode tool isolation on Linux.',
+      );
+    }
+    const realShell = await findExecutable(['/bin/bash', '/usr/bin/bash', 'bash']);
+    if (realShell === undefined) {
+      throw new OpenCodeHarnessError(
+        'OPENCODE_SANDBOX_UNAVAILABLE',
+        'A POSIX shell is required for OpenCode tool isolation on Linux.',
+      );
+    }
+    const realHome = this.hostEnvironment.HOME;
+    return writeToolShellWrapper({
+      scopeBinDir: scope.binDir,
+      spec: {
+        realShell,
+        bwrap,
+        hidePaths: computeToolHiddenPaths({
+          scopeDir: scope.directory,
+          workspace: request.workspace.runtimePath,
+          ...(realHome === undefined || realHome.length === 0 ? {} : { realHome }),
+        }),
+        runTmp: scope.runTmp,
+        scopeHome: scope.home,
+        workspace: request.workspace.runtimePath,
+      },
+    });
+  }
+
+  private turnEnvironment(entry: OpenCodeRunEntry, forbidTools: boolean): NodeJS.ProcessEnv {
+    const base = entry.turnBase ?? this.baseEnvironment;
+    return applyOpenCodeTurnEnvironment(base, {
+      configContent:
+        base['OPENCODE_CONFIG_CONTENT'] ??
+        buildOpenCodeProviderConfig({ provider: this.runtime.provider }),
       forbidTools,
     });
   }
@@ -486,7 +577,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     // continue the captured OpenCode session, never silently start fresh.
     if (entry.turnsIssued > 0 && entry.openCodeSessionId === undefined) {
       throw new OpenCodeHarnessError(
-        'OPENCODE_START_FAILED',
+        'OPENCODE_SESSION_MISMATCH',
         'OpenCode turn ' + phase + ' has no session to continue.',
         true,
       );
@@ -501,7 +592,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           timeoutMs: budget,
           signal: entry.controller.signal,
           ...(entry.openCodeSessionId === undefined ? {} : { sessionId: entry.openCodeSessionId }),
-          environment: this.turnEnvironment(forbidTools),
+          environment: this.turnEnvironment(entry, forbidTools),
         }),
         new Promise<never>((_resolve, reject) => {
           timer = setTimeout(
@@ -510,8 +601,23 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           );
         }),
       ]);
-      if (entry.openCodeSessionId === undefined && result.sessionId !== undefined) {
+      if (entry.openCodeSessionId === undefined) {
+        // First turn must establish the session; later turns must return it.
+        if (result.sessionId === undefined) {
+          throw new OpenCodeHarnessError(
+            'OPENCODE_SESSION_MISMATCH',
+            'OpenCode turn ' + phase + ' established no session.',
+            true,
+          );
+        }
         entry.openCodeSessionId = result.sessionId;
+      } else if (result.sessionId !== undefined && result.sessionId !== entry.openCodeSessionId) {
+        throw new OpenCodeHarnessError(
+          'OPENCODE_SESSION_MISMATCH',
+          'OpenCode turn ' +
+            phase +
+            ' returned an unexpected session; refusing to switch conversations.',
+        );
       }
       entry.turnsIssued += 1;
       if (forbidTools && result.toolCalls.length > 0) {
@@ -621,7 +727,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       }
       // Neutralize project-controlled OpenCode configuration inside the
       // disposable workspace (proven: suppression flags alone do not stop
-      // project plugin auto-discovery in 1.18.32). Originals outside
+      // project plugin auto-discovery in 1.18.32). FAIL-CLOSED: any
+      // masking failure aborts before OpenCode launches. Originals outside
       // Sentry are untouched; the masked content stays readable for QA.
       entry.maskedConfig = await maskProjectOpenCodeConfig(request.workspace.runtimePath);
       if (entry.maskedConfig.length > 0) {
@@ -633,18 +740,30 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
             entry.maskedConfig.join(', '),
         });
       }
-      // Disposable HOME/XDG scope with the file-based provider auth.
+      // Disposable HOME/XDG scope (no credential material anywhere).
       const scope = await createOpenCodeRunScope({
         workspacePath: request.workspace.runtimePath,
         runId: request.agentRunId,
-        apiKey,
       });
       entry.scope = scope;
-      const scopedEnvironment = applyOpenCodeScopeEnvironment(this.baseEnvironment, scope);
+      // Localhost auth proxy: the real key lives only in its closure.
+      // OpenCode receives the proxy endpoint plus a dummy key.
+      const proxy = await startOpenCodeAuthProxy({
+        apiKey,
+        allowedModel: this.runtime.effectiveModelId,
+        ...(this.options.providerBaseUrl === undefined
+          ? {}
+          : { upstreamBaseUrl: this.options.providerBaseUrl }),
+      });
+      entry.proxy = proxy;
+      // Tool shell wrapper (Linux production): bwrap namespace per shell
+      // invocation. Fail closed unless explicitly bypassed for dev/test.
+      const turnBase = await this.buildTurnBase(request, scope, proxy);
+      entry.turnBase = turnBase;
       const client = await this.clientFactory({
         executable: this.runtime.executable,
         cwd: request.workspace.runtimePath,
-        environment: scopedEnvironment,
+        environment: turnBase,
         modelId: this.runtime.effectiveModelId,
         shutdownTimeoutMs: this.shutdownTimeoutMs,
       });
@@ -917,6 +1036,22 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         });
       }
     }
+    // Auth proxy stops before scope cleanup: no new upstream use, and the
+    // key leaves memory with the closure. Scope removal follows.
+    if (entry?.proxy !== undefined) {
+      const proxy = entry.proxy;
+      entry.proxy = undefined;
+      try {
+        await proxy.close();
+      } catch (cause) {
+        this.shutdownDiagnostics.push({
+          code: 'OPENCODE_SHUTDOWN_ISSUE',
+          severity: 'warning',
+          message: redactDiagnostic(cause, this.secrets),
+          retryable: false,
+        });
+      }
+    }
     if (entry?.scope !== undefined) {
       const scope = entry.scope;
       entry.scope = undefined;
@@ -989,6 +1124,11 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         const client = entry.client;
         entry.client = undefined;
         closers.push(client.close().catch(() => undefined));
+      }
+      if (entry.proxy !== undefined) {
+        const proxy = entry.proxy;
+        entry.proxy = undefined;
+        closers.push(proxy.close().catch(() => undefined));
       }
       if (entry.scope !== undefined) {
         const scope = entry.scope;

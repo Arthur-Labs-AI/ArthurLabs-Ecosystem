@@ -241,19 +241,35 @@ export function applyOpenCodeTurnEnvironment(
   };
 }
 
-/** Base provider config content (OpenRouter path; no secrets). */
+/**
+ * Turn config content (no secrets — the only credential-adjacent value is
+ * the dummy proxy key). Carries the provider endpoint (localhost proxy in
+ * production, stub/direct endpoint in tests), the tool shell wrapper path
+ * where applicable, and nothing else.
+ */
 export function buildOpenCodeProviderConfig(input: {
   readonly provider: string;
   readonly baseUrl?: string;
+  readonly apiKey?: string;
   /** SDK loader override (test stub path only; production uses bundled providers). */
   readonly npm?: string;
   readonly models?: Readonly<Record<string, Record<string, unknown>>>;
+  /** Sentry-owned tool shell wrapper (Linux production; undefined elsewhere). */
+  readonly shell?: string;
 }): string {
   return JSON.stringify({
+    ...(input.shell === undefined ? {} : { shell: input.shell }),
     provider: {
       [input.provider]: {
         ...(input.npm === undefined ? {} : { npm: input.npm }),
-        ...(input.baseUrl === undefined ? {} : { options: { baseURL: input.baseUrl } }),
+        ...(input.baseUrl === undefined && input.apiKey === undefined
+          ? {}
+          : {
+              options: {
+                ...(input.baseUrl === undefined ? {} : { baseURL: input.baseUrl }),
+                ...(input.apiKey === undefined ? {} : { apiKey: input.apiKey }),
+              },
+            }),
         ...(input.models === undefined ? {} : { models: { ...input.models } }),
       },
     },

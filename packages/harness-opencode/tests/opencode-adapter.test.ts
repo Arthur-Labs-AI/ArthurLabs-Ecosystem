@@ -304,7 +304,32 @@ describe('OpenCodeHarnessAdapter', () => {
       ]),
     });
     const events = await collect(adapter, input);
-    expect(events.at(-1)?.type).toBe('run.failed');
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_SESSION_MISMATCH' },
+    });
+    await adapter.dispose();
+  });
+
+  it('rejects a mismatched OpenCode session instead of switching conversations', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-sesmatch-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'anthropic/claude-test',
+      environment: testEnv(),
+      clientFactory: scriptedFactory([
+        textTurn(validPlan(), FAKE_SESSION),
+        textTurn('Investigation complete.', 'ses_different_2222222222222222'),
+        textTurn(JSON.stringify(validReportV2())),
+      ]),
+    });
+    const events = await collect(adapter, input);
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_SESSION_MISMATCH' },
+    });
     await adapter.dispose();
   });
 
@@ -534,6 +559,55 @@ describe('OpenCodeHarnessAdapter', () => {
       type: 'run.failed',
       failure: { code: 'OPENCODE_START_FAILED' },
     });
+    await adapter.dispose();
+  });
+
+  it('fails closed before launch when workspace masking is impossible', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-maskfail-'));
+    roots.push(root);
+    // A FILE as workspace path: inspection fails, nothing may launch.
+    const notADir = join(root, 'file-not-dir');
+    await writeFile(notADir, 'x');
+    let factoryCalled = false;
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'anthropic/claude-test',
+      environment: testEnv(),
+      clientFactory: (async () => {
+        factoryCalled = true;
+        throw new Error('must not launch');
+      }) as OpenCodeClientFactory,
+    });
+    const base = await request(root);
+    const input = { ...base, workspace: { ...base.workspace, runtimePath: notADir } };
+    const events = await collect(adapter, input as typeof base);
+    expect(factoryCalled).toBe(false);
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_PROJECT_CONFIG_ISOLATION_FAILED' },
+    });
+    await adapter.dispose();
+  });
+
+  it('cleans the scope when the binary fails to start', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-binerr-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'anthropic/claude-test',
+      environment: testEnv(),
+      clientFactory: async () => {
+        throw new Error('spawn ENOENT');
+      },
+    });
+    const events = await collect(adapter, input);
+    expect(events.at(-1)?.type).toBe('run.failed');
+    const scopeDir = join(
+      dirname(root),
+      '.sentry-opencode-' + input.agentRunId.replace(/[^A-Za-z0-9_-]/g, '_'),
+    );
+    await expect(stat(scopeDir)).rejects.toThrow();
     await adapter.dispose();
   });
 });

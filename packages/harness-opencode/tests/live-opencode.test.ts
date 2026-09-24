@@ -5,11 +5,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   applyOpenCodeScopeEnvironment,
   buildOpenCodeModelId,
+  buildOpenCodeProviderConfig,
   cleanupOpenCodeRunScope,
   createOpenCodeRunScope,
   createProductionOpenCodeClient,
   doctorOpenCode,
   OPENCODE_TESTED_VERSION,
+  SENTRY_PROXY_DUMMY_KEY,
+  startOpenCodeAuthProxy,
 } from '../src/index.js';
 
 // Opt-in live smoke: never runs in normal CI (no provider credit spent by
@@ -48,20 +51,30 @@ describe('live OpenCode smoke (opt-in)', () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-live-opencode-'));
     roots.push(root);
     await writeFile(join(root, 'README.md'), '# Live probe\n');
-    // Production path: file-based auth scope, key in no environment.
-    const scope = await createOpenCodeRunScope({
-      workspacePath: root,
-      runId: 'live-probe',
+    // Production path: localhost auth proxy; the real key lives only in
+    // the proxy closure, never in any environment or file near OpenCode.
+    const identity = buildOpenCodeModelId(
+      process.env['SENTRY_OPENCODE_PROVIDER'],
+      process.env['SENTRY_OPENCODE_MODEL'],
+    );
+    const scope = await createOpenCodeRunScope({ workspacePath: root, runId: 'live-probe' });
+    const proxy = await startOpenCodeAuthProxy({
       apiKey: process.env['OPENROUTER_API_KEY'] ?? '',
+      allowedModel: identity.effectiveModelId,
     });
     const client = await createProductionOpenCodeClient({
       executable: process.env['SENTRY_OPENCODE_BINARY']?.trim() || 'opencode',
       cwd: root,
-      environment: applyOpenCodeScopeEnvironment({ PATH: process.env.PATH ?? '' }, scope),
-      modelId: buildOpenCodeModelId(
-        process.env['SENTRY_OPENCODE_PROVIDER'],
-        process.env['SENTRY_OPENCODE_MODEL'],
-      ).effectiveModelId,
+      environment: {
+        ...applyOpenCodeScopeEnvironment({ PATH: process.env.PATH ?? '' }, scope),
+        OPENCODE_CONFIG_CONTENT: buildOpenCodeProviderConfig({
+          provider: identity.provider,
+          baseUrl: proxy.baseUrl,
+          apiKey: SENTRY_PROXY_DUMMY_KEY,
+        }),
+        OPENCODE_DISABLE_PROJECT_CONFIG: '1',
+      },
+      modelId: identity.effectiveModelId,
       shutdownTimeoutMs: 10_000,
     });
     try {
@@ -72,8 +85,10 @@ describe('live OpenCode smoke (opt-in)', () => {
       expect(result.text).toContain('LIVE-OK');
       expect(result.sessionId).toMatch(/^ses_/);
       expect(result.envelopes).toBeGreaterThan(0);
+      expect(proxy.relayedRequests()).toBeGreaterThan(0);
     } finally {
       await client.close();
+      await proxy.close();
       await cleanupOpenCodeRunScope(scope);
     }
   });

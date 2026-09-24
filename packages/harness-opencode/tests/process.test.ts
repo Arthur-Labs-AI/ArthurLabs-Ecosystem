@@ -3,8 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  buildSystemdRunArgv,
   DirectOpenCodeProcessLauncher,
   mintIsolatedUnitName,
+  probeSystemdUser,
   stripSystemdClientChatter,
   SystemdOpenCodeProcessLauncher,
 } from '../src/index.js';
@@ -101,6 +103,64 @@ describe('owned process boundary', () => {
     } else {
       // Windows: group kill unavailable; at minimum the owned child ended.
       expect(owned.child.exitCode !== null || owned.child.signalCode !== null).toBe(true);
+    }
+  });
+
+  it('systemd argv carries explicit env names only (values never on command lines)', () => {
+    const argv = buildSystemdRunArgv(
+      {
+        executable: '/bin/true',
+        argv: ['--format', 'json'],
+        cwd: '/tmp/sentry-test',
+        env: { FOO: 'bar', PATH: '/usr/bin' },
+      },
+      'sentry-opencode-test-unit',
+    );
+    expect(argv).toContain('--setenv=FOO');
+    expect(argv).toContain('--setenv=PATH');
+    expect(argv).toContain('--unit=sentry-opencode-test-unit');
+    expect(argv).toContain('KillMode=control-group');
+    expect(argv).toContain('TimeoutStopSec=10s');
+    expect(argv).toContain('--');
+    // Names only: values travel in the client env, never argv.
+    expect(argv).not.toContain('bar');
+    expect(argv).not.toContain('/usr/bin');
+  });
+
+  it('real systemd user service sees exactly the intended environment', async () => {
+    if (!(await probeSystemdUser())) return;
+    const root = await mkdtemp(join(tmpdir(), 'sentry-proc-svc-'));
+    roots.push(root);
+    const outFile = join(root, 'env.txt');
+    const CANARY = 'sentry-test-canary-should-never-propagate';
+    process.env['SENTRY_TEST_LEAK_CANARY'] = CANARY;
+    try {
+      const launcher = new SystemdOpenCodeProcessLauncher({
+        mintUnitName: () => 'sentry-opencode-test-env-' + String(Date.now()),
+      });
+      const owned = launcher.launch({
+        executable: '/bin/sh',
+        argv: ['-c', `env | sort > "${outFile}"`],
+        cwd: root,
+        env: { FOO: 'bar', XDG_DATA_HOME: '/tmp/sentry-test-xdg' },
+      });
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('unit did not finish')), 30_000);
+        owned.child.on('close', () => {
+          clearTimeout(timer);
+          resolve();
+        });
+        owned.child.on('error', reject);
+      });
+      const text = await readFile(outFile, 'utf8');
+      expect(text).toContain('FOO=bar');
+      expect(text).toContain('XDG_DATA_HOME=/tmp/sentry-test-xdg');
+      expect(text).not.toContain(CANARY);
+      expect(text).not.toContain('SENTRY_TEST_LEAK_CANARY');
+      expect(text).not.toContain('OPENROUTER_API_KEY');
+      expect(await owned.stop()).toBe(true);
+    } finally {
+      delete process.env['SENTRY_TEST_LEAK_CANARY'];
     }
   });
 });

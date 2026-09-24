@@ -27,41 +27,50 @@ intact.
    report...), cwd set to the AgentRun's isolated workspace, Sentry-built
    sanitized environment. Session continuity is real: turn 1 creates the
    OpenCode session, its `sessionID` is captured from the JSONL envelopes,
-   and later turns pass `--session` (fail-closed if no session exists).
-   Sentry and OpenCode IDs are tracked independently. No TUI scraping, no
+   and later turns pass `--session`, with every later turn verifying the
+   returned sessionID equals the expected one (`OPENCODE_SESSION_MISMATCH`
+   otherwise — never silently switching conversations). Sentry and
+   OpenCode IDs are tracked independently. No TUI scraping, no
    shared daemon, no vendor SDK dependency. The exact flags live in
    `packages/harness-opencode/src/client.ts`. Verification is executable:
    real wire fixtures (`tests/fixtures/*.jsonl`, captured from the binary),
    a zero-credit stub-provider suite (`SENTRY_OPENCODE_STUB_TESTS=1`), and
    an opt-in paid live turn (`SENTRY_LIVE_OPENCODE_RUN=1`).
-3. **Credential flow.** `OPENROUTER_API_KEY` travels Desktop safeStorage →
-   encrypted store → `runtime.configure` (`providers.openRouterApiKey`) → WSL
-   runtime process memory. Per AgentRun the adapter builds a disposable
-   scope beside (never inside) the agent workspace: `home/`, `config/`,
-   `data/opencode/auth.json` (`{"openrouter": {"type": "api",
-"key": "..."}}`, mode `0o600`), `state/`, `cache/` — wired via
-   `HOME` + `XDG_*_HOME`. Provider auth resolves from that file, so the key
-   is in NO child environment. The scope (auth file included) is removed
-   when the run settles (run `finally` + adapter `dispose` backstop, with
-   retry). The key is never persisted to SQLite, events, artifacts,
-   exports, logs, OpenCode config files, or the project workspace.
-4. **Secret isolation (layered, verified).** (a) File-based auth: the key
-   is in no environment, so inherited tool shells cannot observe it.
-   (b) Upstream permission containment: reads outside the project and
-   other gated operations are auto-rejected in headless mode (verified:
-   `bash cat ../secret` → error state, secret not read). (c) Project
-   plugin/config neutralization: the disposable workspace's `.opencode`
-   and root `opencode.json[c]` are renamed (readable, undiscoverable)
-   before launch — suppression flags alone do NOT stop project plugin
-   auto-discovery in 1.18.32 (proven by evil-plugin test), so masking is
-   mandatory. (d) Global state neutralization: redirected HOME/XDG keeps
-   user plugins/configs/sessions out. (e) Reporting firewall: the
-   reporting turn sets `OPENCODE_PERMISSION='{"*":"deny"}'`, which
-   removes all tools from the model (verified), plus the adapter-side tool
-   firewall as backup. An opt-in evil-plugin suite proves no execution and
-   no credential access with the real binary. Known limits: Sentry does not
-   mount-isolate OpenCode tools (unlike the Claude worker); containment
-   rests on the layers above plus prompt constraints.
+3. **Credential flow (no credential near OpenCode).** `OPENROUTER_API_KEY`
+   travels Desktop safeStorage → encrypted store → `runtime.configure`
+   (`providers.openRouterApiKey`) → WSL runtime process memory — and stops
+   there. Per AgentRun the adapter starts a localhost auth proxy whose
+   closure alone holds the key; OpenCode is configured with the NATIVE
+   OpenRouter SDK redirected at the proxy (`baseURL`, dummy apiKey), so
+   the proxy swaps in the real `Authorization` server-side and relays
+   (model allowlist, loopback-only, per-run port, no body logging). There
+   is NO `auth.json` and NO key in any environment, file, or command line
+   near OpenCode: stealing files, scraping environments, or reading
+   OpenCode config yields at most the dummy. The proxy dies with the run
+   (run `finally` + adapter `dispose` backstop). The key is never
+   persisted to SQLite, events, artifacts, exports, logs, OpenCode config
+   files, or the project workspace.
+4. **Filesystem isolation (OS-enforced for shells).** Model-controlled
+   shells run through a Sentry-owned wrapper (`shell` config) that enters
+   a bubblewrap mount namespace per invocation: scope, workspace parent
+   (Sentry data root, siblings), and developer HOME become empty tmpfs;
+   workspace and scope home are re-bound; per-run private `/tmp` is
+   bound. Verified live with the real binary (theft/discovery/evil-npm
+   suites). (a) In-process file tools cannot be namespaced (same process
+   as the host): they are contained by explicit deny rules plus upstream
+   ask-to-reject — and can only ever observe the dummy credential.
+   (b) Project plugin/config neutralization: workspace `.opencode` /
+   root `opencode.json[c]` are masked to randomized destinations with
+   lstat verification, fail-closed
+   (`OPENCODE_PROJECT_CONFIG_ISOLATION_FAILED`); collisions, symlinks,
+   and failures abort before launch. Suppression flags alone do NOT stop
+   project plugin auto-discovery in 1.18.32 (proven by evil-plugin test).
+   (c) Global state: redirected HOME/XDG per run. (d) Reporting firewall:
+   the reporting turn sets `OPENCODE_PERMISSION='{"*":"deny"}'`,
+   which removes all tools upstream (verified), plus the adapter-side
+   tool firewall as backup. Known limits: in-process reads of
+   NON-credential paths rest on permission layers; /proc-based memory
+   reads are out of scope (same as all local harnesses).
 5. **Event translation (real wire format).** CLI envelopes
    `{type, timestamp, sessionID, part}` with `part.type` of `text`,
    `tool`, `step-start`, `step-finish`, `reasoning`, or top-level `error`.
@@ -90,10 +99,28 @@ intact.
    through; double prefixes are impossible by construction. Runtime
    identity persists the effective id plus the provider.
 10. **Process ownership.** One owned boundary per turn: systemd transient
-    unit (`KillMode=control-group`) when available, else an owned process
-    group (POSIX) or PID-tree kill (Windows). Cancellation stops exactly
-    the owned boundary (TERM → bounded wait → verify → KILL), never by
-    process name.
+    unit (`KillMode=control-group`, explicit `--setenv` of the sanitized
+    env only — never raw `process.env`) when available on Linux, otherwise
+    the run is refused unless `SENTRY_OPENCODE_ALLOW_DIRECT=1` explicitly
+    opts into weaker execution (dev/test). Fallback elsewhere is an owned
+    process group (POSIX) or PID-tree kill (Windows, dev only).
+    Cancellation stops exactly the owned boundary (TERM → bounded wait →
+    verify → KILL), never by process name; `setsid`-escaped descendants
+    still die under the cgroup (proven by test on Linux). One unit per
+    turn (not per AgentRun): turns are sequential anyway, and per-turn
+    units keep ownership, environment (reporting deny), and cleanup
+    precisely scoped.
+11. **Version policy.** The wire parser and security assumptions are
+    verified against one tested release (`OPENCODE_TESTED_VERSION`). Any
+    other version degrades the doctor and is refused at preflight unless
+    `SENTRY_OPENCODE_ALLOW_UNTESTED_VERSION=1` explicitly allows it
+    (dev/test). Warnings alone never bypass the wire/security contract.
+12. **Sandbox readiness.** The doctor probes containment prerequisites
+    (functional bubblewrap namespace, systemd user manager, masking
+    primitive) without spending credit; readiness is `unavailable` when
+    masking is broken and degraded when isolation pieces are missing.
+    The adapter preflight blocks production Linux execution unless the
+    full boundary is present.
 
 ## Consequences
 

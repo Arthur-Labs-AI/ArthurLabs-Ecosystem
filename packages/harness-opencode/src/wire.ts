@@ -137,7 +137,20 @@ export interface OpenCodeToolObservation {
   readonly durationMs?: number | undefined;
 }
 
+export type OpenCodeTurnOutcome =
+  /** Valid wire envelopes observed (text may legitimately be empty). */
+  | 'ok'
+  /** No output at all from the turn process. */
+  | 'empty'
+  /** Output exists but nothing parses as JSON. */
+  | 'malformed'
+  /** JSON parses but nothing validates as an OpenCode envelope. */
+  | 'unknown-protocol'
+  /** Valid envelopes, but none usable (no text/tools/steps/session). */
+  | 'no-content';
+
 export interface ParsedOpenCodeTurn {
+  readonly outcome: OpenCodeTurnOutcome;
   /** Concatenated finished assistant text parts (user echoes never appear on this wire). */
   readonly text: string;
   readonly tools: readonly OpenCodeToolObservation[];
@@ -211,7 +224,14 @@ function errorText(value: unknown): string {
   }
 }
 
-/** Parse one `opencode run --format json` turn (fail-closed, typed). */
+/**
+ * Parse one `opencode run --format json` turn (fail-closed, typed).
+ *
+ * There is deliberately NO raw-stdout fallback: when no valid OpenCode
+ * envelope parses, the outcome distinguishes empty/malformed/unknown
+ * output so the adapter fails closed with OPENCODE_PROTOCOL_INVALID
+ * instead of treating arbitrary process output as model text.
+ */
 export function parseOpenCodeTurn(stdout: string): ParsedOpenCodeTurn {
   let text = '';
   const tools: OpenCodeToolObservation[] = [];
@@ -221,10 +241,12 @@ export function parseOpenCodeTurn(stdout: string): ParsedOpenCodeTurn {
   const errors: string[] = [];
   let envelopes = 0;
   let skippedLines = 0;
-  let parsedAny = false;
+  let jsonLines = 0;
+  let hasOutput = false;
   for (const line of stdout.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (trimmed.length === 0) continue;
+    hasOutput = true;
     let raw: unknown;
     try {
       raw = JSON.parse(trimmed);
@@ -232,12 +254,12 @@ export function parseOpenCodeTurn(stdout: string): ParsedOpenCodeTurn {
       skippedLines += 1;
       continue;
     }
+    jsonLines += 1;
     const envelope = WireEnvelopeSchema.safeParse(raw);
     if (!envelope.success) {
       skippedLines += 1;
       continue;
     }
-    parsedAny = true;
     envelopes += 1;
     const env = envelope.data;
     if (sessionId === undefined && env.sessionID !== undefined) sessionId = env.sessionID;
@@ -290,6 +312,20 @@ export function parseOpenCodeTurn(stdout: string): ParsedOpenCodeTurn {
     // step-start, snapshot/patch/agent/retry/compaction and any future
     // part type: observed for session continuity only, never evidence.
   }
-  if (!parsedAny) text = stdout.trim().slice(0, MAX_TEXT);
-  return { text, tools, usage, steps, sessionId, errors, envelopes, skippedLines };
+  const hasContent =
+    text.trim().length > 0 ||
+    tools.length > 0 ||
+    steps > 0 ||
+    sessionId !== undefined ||
+    errors.length > 0;
+  const outcome: OpenCodeTurnOutcome = !hasOutput
+    ? 'empty'
+    : envelopes > 0
+      ? hasContent
+        ? 'ok'
+        : 'no-content'
+      : jsonLines > 0
+        ? 'unknown-protocol'
+        : 'malformed';
+  return { outcome, text, tools, usage, steps, sessionId, errors, envelopes, skippedLines };
 }

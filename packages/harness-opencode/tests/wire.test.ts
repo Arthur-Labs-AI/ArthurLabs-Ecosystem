@@ -99,9 +99,42 @@ describe('real OpenCode wire parsing', () => {
     expect(parsed.tools[0]?.tool).toBe('read');
   });
 
-  it('falls back to raw text when nothing parses', () => {
+  it('rejects plain terminal prose as protocol-invalid', () => {
     const parsed = parseOpenCodeTurn('plain terminal prose');
-    expect(parsed.text).toBe('plain terminal prose');
+    expect(parsed.outcome).toBe('malformed');
+    expect(parsed.text).toBe('');
     expect(parsed.tools).toEqual([]);
+  });
+
+  it('rejects empty output and arbitrary JSON distinctly', () => {
+    expect(parseOpenCodeTurn('').outcome).toBe('empty');
+    expect(parseOpenCodeTurn('   \n  ').outcome).toBe('empty');
+    expect(parseOpenCodeTurn('{"hello":"world"}').outcome).toBe('unknown-protocol');
+    expect(parseOpenCodeTurn('not json\n{{{').outcome).toBe('malformed');
+  });
+
+  it('marks valid envelopes without usable content separately', () => {
+    const parsed = parseOpenCodeTurn(
+      JSON.stringify({ type: 'step_start', timestamp: 1, part: { type: 'step-start' } }),
+    );
+    expect(parsed.outcome).toBe('no-content');
+    expect(parsed.sessionId).toBeUndefined();
+  });
+
+  it('treats a session-bearing envelope as usable continuity', () => {
+    const parsed = parseOpenCodeTurn(
+      JSON.stringify({
+        type: 'step_start',
+        timestamp: 1,
+        sessionID: 'ses_x',
+        part: { type: 'step-start' },
+      }),
+    );
+    expect(parsed.outcome).toBe('ok');
+    expect(parsed.sessionId).toBe('ses_x');
+  });
+
+  it('marks real turns ok', () => {
+    expect(parseOpenCodeTurn(load('planning-output.jsonl')).outcome).toBe('ok');
   });
 });

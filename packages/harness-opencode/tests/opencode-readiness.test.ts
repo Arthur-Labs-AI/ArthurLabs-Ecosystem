@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  assertTestedOpenCodeVersion,
   doctorOpenCode,
   OPENCODE_TESTED_VERSION,
   openCodeReadinessFromChecks,
@@ -71,6 +72,33 @@ describe('OpenCode discovery', () => {
     expect(result.testedVersion).toBe(OPENCODE_TESTED_VERSION);
     // No secret value may appear in doctor output.
     expect(JSON.stringify(result)).not.toContain('sentry-test-sentinel-credential');
+  });
+
+  it('enforces the tested-version policy fail-closed', () => {
+    expect(() => assertTestedOpenCodeVersion(OPENCODE_TESTED_VERSION, {})).not.toThrow();
+    try {
+      assertTestedOpenCodeVersion('9.9.9', {});
+      expect.unreachable('must throw');
+    } catch (cause) {
+      expect((cause as { code?: unknown }).code).toBe('OPENCODE_VERSION_MISMATCH');
+    }
+    expect(() =>
+      assertTestedOpenCodeVersion('9.9.9', { SENTRY_OPENCODE_ALLOW_UNTESTED_VERSION: '1' }),
+    ).not.toThrow();
+  });
+
+  it('marks readiness unavailable when masking is broken', () => {
+    expect(
+      openCodeReadinessFromChecks({ modelOk: true, credentialOk: true, binaryOk: true }).readiness,
+    ).not.toBe('unavailable');
+    expect(
+      openCodeReadinessFromChecks({
+        modelOk: true,
+        credentialOk: true,
+        binaryOk: true,
+        sandboxOk: false,
+      }).readiness,
+    ).toBe('unavailable');
   });
 
   it('doctor reports unconfigured credential without a key', async () => {

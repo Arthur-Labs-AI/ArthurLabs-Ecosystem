@@ -1,5 +1,27 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { access, constants } from 'node:fs/promises';
+
+/**
+ * Resolve the first executable candidate (absolute paths checked for
+ * executability; bare names resolved optimistically for PATH lookup).
+ * Returns undefined when nothing is usable.
+ */
+export async function findExecutable(candidates: readonly string[]): Promise<string | undefined> {
+  for (const candidate of candidates) {
+    if (candidate.includes('/') || candidate.includes('\\')) {
+      try {
+        await access(candidate, constants.X_OK);
+        return candidate;
+      } catch {
+        continue;
+      }
+    } else if (candidate.trim().length > 0) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
 
 /**
  * Owned OpenCode process boundary.
@@ -131,6 +153,37 @@ export interface SystemdLauncherOptions {
   readonly mintUnitName?: () => string;
 }
 
+export interface SystemdLaunchInput {
+  readonly executable: string;
+  readonly argv: readonly string[];
+  readonly cwd: string;
+  readonly env: NodeJS.ProcessEnv;
+}
+
+/** Pure argv assembly (unit-tested on every platform; no processes). */
+export function buildSystemdRunArgv(input: SystemdLaunchInput, unitName: string): string[] {
+  const argv: string[] = [
+    '--user',
+    '--wait',
+    '--pipe',
+    '--collect',
+    '--quiet',
+    '--unit=' + unitName,
+    '-p',
+    'KillMode=control-group',
+    '-p',
+    'TimeoutStopSec=10s',
+    '-p',
+    'WorkingDirectory=' + input.cwd,
+  ];
+  for (const name of Object.keys(input.env)) {
+    if (input.env[name] === undefined) continue;
+    argv.push('--setenv=' + name);
+  }
+  argv.push('--', input.executable, ...input.argv);
+  return argv;
+}
+
 /** Transient user unit per launch; cgroup owns the whole tree. */
 export class SystemdOpenCodeProcessLauncher implements OpenCodeProcessLauncher {
   readonly kind = 'systemd-unit' as const;
@@ -147,28 +200,21 @@ export class SystemdOpenCodeProcessLauncher implements OpenCodeProcessLauncher {
     const systemctl = this.options.systemctl ?? 'systemctl';
     const stopTimeoutMs = this.options.stopTimeoutMs ?? 10_000;
     const unitName = (this.options.mintUnitName ?? mintIsolatedUnitName)();
-    // argv carries --setenv NAMES only for isolation-relevant scoping;
-    // values travel in the client env (never on command lines).
-    const argv: string[] = [
-      '--user',
-      '--wait',
-      '--pipe',
-      '--collect',
-      '--quiet',
-      '--unit=' + unitName,
-      '-p',
-      'KillMode=control-group',
-      '-p',
-      'TimeoutStopSec=10s',
-      '-p',
-      'WorkingDirectory=' + input.cwd,
-      '--',
-      input.executable,
-      ...input.argv,
-    ];
+    // The transient UNIT receives exactly the sanitized input env via
+    // --setenv=NAME (values travel in the client env, never on command
+    // lines, never in journald/unit metadata). The CLIENT process itself
+    // gets the same sanitized env plus only the bus address it needs to
+    // reach the user manager — never raw process.env (which may hold
+    // provider secrets or desktop credentials).
+    const argv = buildSystemdRunArgv(input, unitName);
+    const busEnv: NodeJS.ProcessEnv = {};
+    for (const name of ['XDG_RUNTIME_DIR', 'DBUS_SESSION_BUS_ADDRESS']) {
+      const value = process.env[name];
+      if (value !== undefined) busEnv[name] = value;
+    }
     const child = spawn(systemdRun, argv, {
       cwd: input.cwd,
-      env: { ...process.env, ...input.env },
+      env: { ...input.env, ...busEnv },
       windowsHide: true,
       shell: false,
       stdio: ['pipe', 'pipe', 'pipe'],

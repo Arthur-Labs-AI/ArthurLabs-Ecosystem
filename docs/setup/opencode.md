@@ -68,24 +68,29 @@ qa run start <project-id> --mode full --agents opencode --wait
 
 ## Credential isolation
 
-`OPENROUTER_API_KEY` exists in Sentry runtime host memory and, per run, in
-one Sentry-owned ephemeral scope beside the agent workspace (HOME/XDG
-redirects plus `auth.json`, removed when the run settles). It is in NO
-child process environment: OpenCode reads provider auth from that file, so
-model-controlled tool/shell executions — which inherit the host process
-environment — cannot observe it. Reads outside the project are rejected
-by upstream permissions, and the reporting turn runs tool-free. Never
-place the key in a project `.env` file. See
+`OPENROUTER_API_KEY` exists in Sentry runtime host memory — and stops
+there. Per run, the adapter starts a localhost auth proxy whose closure
+alone holds the key; OpenCode talks to the proxy with a dummy key, and
+the proxy swaps in the real credential server-side. There is NO `auth.json`
+and NO key in any environment, file, or command line near OpenCode.
+The reporting turn runs tool-free. Never place the key in a project
+`.env` file. See
 [ADR-0014](../adr/0014-opencode-harness-and-provider-separation.md).
 
 ## Untrusted projects
 
-The target repository is treated as untrusted data: its `.opencode`
-configuration and plugins are masked inside the disposable workspace
-before launch (they stay readable for QA findings), your global OpenCode
-state is never loaded, and each run gets isolated sessions and an owned
-process boundary. Suppression flags alone do not stop project plugin
-loading — masking is mandatory (proven by test).
+The target repository is treated as untrusted data. Model-controlled
+shells run inside a bubblewrap mount namespace (scope, sibling
+workspaces, data root, and developer HOME hidden; workspace re-bound),
+project `.opencode` configuration and plugins are masked to randomized
+destinations with verification before launch (fail-closed: any masking
+failure aborts the run), your global OpenCode state is never loaded, and
+each run gets isolated sessions and an exactly-owned process boundary
+(systemd cgroup on Linux; weaker execution elsewhere is development
+only). Suppression flags alone do not stop project plugin loading —
+masking is mandatory (proven by test). On Linux without systemd +
+bubblewrap, production execution is refused (`OPENCODE_SANDBOX_UNAVAILABLE`)
+unless `SENTRY_OPENCODE_ALLOW_DIRECT=1` explicitly opts in for dev/test.
 
 ## Opt-in live smoke
 

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { lstat, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -10,7 +10,6 @@ import {
   cleanupOpenCodeRunScope,
   createOpenCodeRunScope,
   maskProjectOpenCodeConfig,
-  readOpenCodeAuthFile,
 } from '../src/index.js';
 
 const SENTINEL_VALUE = 'sentry-test-sentinel-credential';
@@ -21,21 +20,19 @@ afterEach(async () => {
 });
 
 describe('disposable run scope', () => {
-  it('creates HOME/XDG scope with the auth file outside the workspace', async () => {
+  it('creates HOME/XDG scope beside the workspace with no credential material', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-scope-'));
     roots.push(root);
     const workspace = join(root, 'workspace');
     const scope = await createOpenCodeRunScope({
       workspacePath: workspace,
       runId: 'arun_01K7777777777777777777A8W4',
-      apiKey: SENTINEL_VALUE,
     });
     try {
       expect(scope.directory.startsWith(root)).toBe(true);
       expect(scope.directory.startsWith(workspace + '/')).toBe(false);
-      expect(scope.authFile).toBe(join(scope.dataHome, 'opencode', 'auth.json'));
-      const parsed = (await readOpenCodeAuthFile(scope.authFile)) as Record<string, unknown>;
-      expect(parsed).toEqual({ openrouter: { type: 'api', key: SENTINEL_VALUE } });
+      expect(scope.binDir).toBe(join(scope.directory, 'bin'));
+      expect(scope.runTmp).toBe(join(scope.directory, 'run-tmp'));
       const env = applyOpenCodeScopeEnvironment({ PATH: '/usr/bin' }, scope);
       expect(env['HOME']).toBe(scope.home);
       expect(env['XDG_DATA_HOME']).toBe(scope.dataHome);
@@ -47,24 +44,99 @@ describe('disposable run scope', () => {
     await expect(stat(scope.directory)).rejects.toThrow();
   });
 
-  it('masks project .opencode content by rename (readable, undiscoverable)', async () => {
+  it('masks project .opencode content to randomized destinations', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-mask-'));
     roots.push(root);
     const workspace = join(root, 'workspace');
-    const { mkdir } = await import('node:fs/promises');
+    const { mkdir, readdir } = await import('node:fs/promises');
     await mkdir(join(workspace, '.opencode', 'plugins'), { recursive: true });
     await writeFile(join(workspace, '.opencode', 'plugins', 'evil.js'), 'evil');
     await writeFile(join(workspace, 'opencode.json'), '{}');
     await writeFile(join(workspace, 'README.md'), '# hi\n');
     const masked = await maskProjectOpenCodeConfig(workspace);
-    expect(masked.sort()).toEqual(['.opencode', 'opencode.json']);
-    // Renamed, not deleted: QA can still inspect the content.
-    expect(
-      await readFile(join(workspace, '.opencode.sentry-masked', 'plugins', 'evil.js'), 'utf8'),
-    ).toBe('evil');
+    expect([...masked].sort()).toEqual(['.opencode', 'opencode.json']);
+    // Sources verified gone (lstat: symlinks count too).
+    await expect(lstat(join(workspace, '.opencode'))).rejects.toThrow();
+    await expect(lstat(join(workspace, 'opencode.json'))).rejects.toThrow();
+    // Content preserved under a randomized staging dir, still inspectable.
+    const staging = join(workspace, '.sentry-masked-project-config');
+    const buckets = await readdir(staging);
+    expect(buckets.length).toBeGreaterThanOrEqual(2);
+    let found = 0;
+    for (const bucket of buckets) {
+      try {
+        if (
+          (await readFile(join(staging, bucket, '.opencode', 'plugins', 'evil.js'), 'utf8')) ===
+          'evil'
+        )
+          found += 1;
+      } catch {
+        // Other buckets hold other entries.
+      }
+    }
+    expect(found).toBe(1);
     // Product files untouched.
     expect(await readFile(join(workspace, 'README.md'), 'utf8')).toBe('# hi\n');
-    await expect(stat(join(workspace, '.opencode'))).rejects.toThrow();
+  });
+
+  it('ignores legacy predictable mask destinations (old bypass inert)', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-mask-collision-'));
+    roots.push(root);
+    const workspace = join(root, 'workspace');
+    const { mkdir } = await import('node:fs/promises');
+    await mkdir(join(workspace, '.opencode', 'plugins'), { recursive: true });
+    await writeFile(join(workspace, '.opencode', 'plugins', 'evil.js'), 'evil');
+    // A malicious repo pre-occupying the OLD predictable destination.
+    await mkdir(join(workspace, '.opencode.sentry-masked'), { recursive: true });
+    await writeFile(join(workspace, '.opencode.sentry-masked', 'decoy'), 'decoy');
+    const masked = await maskProjectOpenCodeConfig(workspace);
+    expect(masked).toContain('.opencode');
+    // Decoy untouched; real config masked elsewhere.
+    expect(await readFile(join(workspace, '.opencode.sentry-masked', 'decoy'), 'utf8')).toBe(
+      'decoy',
+    );
+    await expect(lstat(join(workspace, '.opencode'))).rejects.toThrow();
+  });
+
+  it('masks symlinked and broken-symlink config entries', async () => {
+    if (process.platform === 'win32') return;
+    const root = await mkdtemp(join(tmpdir(), 'sentry-mask-link-'));
+    roots.push(root);
+    const workspace = join(root, 'workspace');
+    const { mkdir } = await import('node:fs/promises');
+    await mkdir(workspace, { recursive: true });
+    await mkdir(join(root, 'real-config'));
+    await writeFile(join(root, 'real-config', 'x.json'), '{}');
+    await symlink(join(root, 'real-config'), join(workspace, '.opencode'));
+    await symlink(join(root, 'does-not-exist'), join(workspace, 'opencode.json'));
+    const masked = await maskProjectOpenCodeConfig(workspace);
+    expect([...masked].sort()).toEqual(['.opencode', 'opencode.json']);
+    await expect(lstat(join(workspace, '.opencode'))).rejects.toThrow();
+    await expect(lstat(join(workspace, 'opencode.json'))).rejects.toThrow();
+    // The link TARGET outside the workspace is untouched.
+    expect(await readFile(join(root, 'real-config', 'x.json'), 'utf8')).toBe('{}');
+  });
+
+  it('fails closed when the workspace cannot be inspected', async () => {
+    const missing = join(tmpdir(), 'sentry-mask-missing-' + String(Date.now()));
+    try {
+      await maskProjectOpenCodeConfig(missing);
+      expect.unreachable('masking must fail closed');
+    } catch (cause) {
+      expect((cause as { code?: unknown }).code).toBe('OPENCODE_PROJECT_CONFIG_ISOLATION_FAILED');
+    }
+  });
+
+  it('leaves nested .opencode directories alone (only root level is discovered)', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-mask-nested-'));
+    roots.push(root);
+    const workspace = join(root, 'workspace');
+    const { mkdir } = await import('node:fs/promises');
+    await mkdir(join(workspace, 'sub', '.opencode'), { recursive: true });
+    await writeFile(join(workspace, 'sub', '.opencode', 'note.md'), 'note');
+    const masked = await maskProjectOpenCodeConfig(workspace);
+    expect(masked).toEqual([]);
+    expect(await readFile(join(workspace, 'sub', '.opencode', 'note.md'), 'utf8')).toBe('note');
   });
 
   it('never inherits user OpenCode control variables or HOME/XDG', () => {

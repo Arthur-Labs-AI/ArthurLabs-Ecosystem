@@ -2,9 +2,12 @@ import { AgentStackDefinitionSchema, type AgentRuntimeIdentity } from '@qa/schem
 import type { HarnessAdapterRegistration } from '@qa/harness-protocol';
 import { OpenCodeHarnessAdapter, type OpenCodeHarnessAdapterOptions } from './adapter.js';
 import {
+  assertTestedOpenCodeVersion,
   OPENCODE_TESTED_VERSION,
+  openCodeSandboxBypassed,
   openRouterCredentialPresent,
   probeOpenCodeExecutable,
+  probeOpenCodeSandbox,
   resolveOpenCodeRuntime,
 } from './discovery.js';
 import { OpenCodeHarnessError } from './errors.js';
@@ -54,10 +57,29 @@ export function createOpenCodeRegistration(
       runtimeIdentity.modelId = resolved.effectiveModelId;
       runtimeIdentity.provider = resolved.provider;
       runtimeIdentity.executable = resolved.executable;
-      runtimeIdentity.executableVersion = await probeOpenCodeExecutable(
-        resolved.executable,
-        options.environment ?? process.env,
-      );
+      const environment = options.environment ?? process.env;
+      const executableVersion = await probeOpenCodeExecutable(resolved.executable, environment);
+      runtimeIdentity.executableVersion = executableVersion;
+      // Fail closed on unverified wire/security contracts.
+      assertTestedOpenCodeVersion(executableVersion, environment);
+      // Fail closed on missing OS containment (production Linux).
+      // Explicit SENTRY_OPENCODE_ALLOW_DIRECT=1 opts into weaker
+      // execution for development/test only.
+      if (process.platform === 'linux' && !openCodeSandboxBypassed(environment)) {
+        const sandbox = await probeOpenCodeSandbox({ environment });
+        if (!sandbox.systemdUser || !sandbox.bubblewrap || !sandbox.masking) {
+          throw new OpenCodeHarnessError(
+            'OPENCODE_SANDBOX_UNAVAILABLE',
+            'OpenCode OS containment unavailable (systemd=' +
+              String(sandbox.systemdUser) +
+              ' bwrap=' +
+              String(sandbox.bubblewrap) +
+              ' masking=' +
+              String(sandbox.masking) +
+              '); refusing production execution.',
+          );
+        }
+      }
     },
     createAdapter: () =>
       new OpenCodeHarnessAdapter({

@@ -2,7 +2,9 @@ import type { AgentUsage } from '@qa/schemas';
 import { OpenCodeHarnessError } from './errors.js';
 import {
   DirectOpenCodeProcessLauncher,
+  probeSystemdUser,
   stripSystemdClientChatter,
+  SystemdOpenCodeProcessLauncher,
   type OpenCodeProcessLauncher,
   type OwnedOpenCodeProcess,
 } from './process.js';
@@ -83,6 +85,35 @@ export type OpenCodeClientFactory = (input: {
   readonly shutdownTimeoutMs: number;
   readonly launcher?: OpenCodeProcessLauncher;
 }) => Promise<OpenCodeClientView>;
+
+let systemdProbe: Promise<boolean> | undefined;
+
+/**
+ * Production launcher selection (fail-closed).
+ *
+ * - Linux with a working systemd user manager → transient unit with
+ *   `KillMode=control-group` (owned cgroup per turn).
+ * - Anywhere else → direct launcher ONLY with explicit
+ *   `SENTRY_OPENCODE_ALLOW_DIRECT=1` (development/test opt-in to weaker
+ *   execution) — otherwise OPENCODE_SANDBOX_UNAVAILABLE. Production
+ *   Sentry runtime is Linux; silent fallback never happens there.
+ */
+export async function selectProductionLauncher(
+  environment: NodeJS.ProcessEnv,
+): Promise<OpenCodeProcessLauncher> {
+  if (process.platform === 'linux') {
+    systemdProbe ??= probeSystemdUser();
+    if (await systemdProbe) return new SystemdOpenCodeProcessLauncher();
+    if (environment['SENTRY_OPENCODE_ALLOW_DIRECT'] === '1') {
+      return new DirectOpenCodeProcessLauncher();
+    }
+    throw new OpenCodeHarnessError(
+      'OPENCODE_SANDBOX_UNAVAILABLE',
+      'OpenCode requires a systemd user runtime on Linux; no weaker fallback is permitted in production.',
+    );
+  }
+  return new DirectOpenCodeProcessLauncher();
+}
 
 class ProductionSession implements OpenCodeSessionView {
   private owned: OwnedOpenCodeProcess | undefined;
@@ -258,9 +289,10 @@ class ProductionSession implements OpenCodeSessionView {
           const parsed = parseOpenCodeTurn(
             stripChatter ? stripSystemdClientChatter(stdout) : stdout,
           );
-          if (code !== 0) {
-            const detail =
-              parsed.errors.length > 0 ? parsed.errors.join('; ') : stderr || 'OpenCode run failed';
+          // Error envelopes fail the turn even on exit 0: they carry
+          // provider/auth failures, never model output.
+          if (parsed.errors.length > 0) {
+            const detail = parsed.errors.join('; ');
             const authLike = /auth|credential|sign in|unauthorized|401|api key|apicallerror/i.test(
               detail + '\n' + parsed.text,
             );
@@ -269,6 +301,36 @@ class ProductionSession implements OpenCodeSessionView {
                 authLike ? 'OPENCODE_AUTH_FAILED' : 'OPENCODE_START_FAILED',
                 redactDiagnostic(detail, secrets),
                 !authLike,
+              ),
+            );
+            return;
+          }
+          if (code !== 0) {
+            const detail = stderr || 'OpenCode run exited with code ' + String(code);
+            const authLike = /auth|credential|sign in|unauthorized|401|api key|apicallerror/i.test(
+              detail + '\n' + parsed.text,
+            );
+            reject(
+              new OpenCodeHarnessError(
+                authLike ? 'OPENCODE_AUTH_FAILED' : 'OPENCODE_START_FAILED',
+                redactDiagnostic(detail, secrets),
+                !authLike,
+              ),
+            );
+            return;
+          }
+          // Fail closed on unparseable output: 'no-content' (valid wire,
+          // empty text) still resolves so planning/reporting handle empty
+          // text via their correction loops; every other outcome throws
+          // OPENCODE_PROTOCOL_INVALID with a bounded redacted sample.
+          if (parsed.outcome !== 'ok' && parsed.outcome !== 'no-content') {
+            reject(
+              new OpenCodeHarnessError(
+                'OPENCODE_PROTOCOL_INVALID',
+                'OpenCode turn output is not valid OpenCode JSONL (' +
+                  parsed.outcome +
+                  '): ' +
+                  redactDiagnostic(stdout.trim().slice(0, 500), secrets),
               ),
             );
             return;
@@ -288,7 +350,7 @@ class ProductionSession implements OpenCodeSessionView {
 }
 
 export const createProductionOpenCodeClient: OpenCodeClientFactory = async (input) => {
-  const launcher = input.launcher ?? new DirectOpenCodeProcessLauncher();
+  const launcher = input.launcher ?? (await selectProductionLauncher(input.environment));
   const sessions = new Set<ProductionSession>();
   let closed = false;
   return {
