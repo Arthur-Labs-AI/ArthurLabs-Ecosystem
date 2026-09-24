@@ -342,10 +342,12 @@ export class DesktopApplicationService {
     if (glm !== undefined) models['glm'] = glm;
     const providers: Record<string, string> = {};
     const openRouterKey = get('OPENROUTER_API_KEY');
+    const openCodeKey = get('OPENCODE_API_KEY');
     const deepseekKey = get('DEEPSEEK_API_KEY');
     const glmToken = get('ANTHROPIC_AUTH_TOKEN');
     const glmEndpoint = get('ANTHROPIC_BASE_URL');
     if (openRouterKey !== undefined) providers['openRouterApiKey'] = openRouterKey;
+    if (openCodeKey !== undefined) providers['openCodeApiKey'] = openCodeKey;
     if (deepseekKey !== undefined) providers['deepseekApiKey'] = deepseekKey;
     if (glmToken !== undefined) providers['anthropicAuthToken'] = glmToken;
     if (glmEndpoint !== undefined) providers['anthropicBaseUrl'] = glmEndpoint;
@@ -356,7 +358,12 @@ export class DesktopApplicationService {
     if (opencodeBinary !== undefined) binaries['opencode'] = opencodeBinary;
     if (deepseekBinary !== undefined) binaries['deepseek'] = deepseekBinary;
     if (glmBinary !== undefined) binaries['glm'] = glmBinary;
-    return this.call('runtime.configure', { models, providers, binaries });
+    const openCodeProvider = get('SENTRY_OPENCODE_PROVIDER');
+    const provider =
+      openCodeProvider === 'openrouter' || openCodeProvider === 'opencode'
+        ? { openCodeProvider }
+        : {};
+    return this.call('runtime.configure', { models, providers, binaries, ...provider });
   }
 
   productionReadiness(input?: { agentStackIds?: string[] }): Promise<unknown> {

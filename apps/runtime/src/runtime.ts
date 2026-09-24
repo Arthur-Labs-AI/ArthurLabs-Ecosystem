@@ -28,7 +28,13 @@ import {
   requestRetestCancellation,
   cancelRetestRun,
 } from '@qa/run-engine';
-import { createOpenCodeRegistration, managedOpenCodeExecutable } from '@qa/harness-opencode';
+import {
+  createOpenCodeRegistration,
+  credentialEnvForProvider,
+  managedOpenCodeExecutable,
+  normalizeOpenCodeProvider,
+  openCodeCredentialPresent,
+} from '@qa/harness-opencode';
 import { createDeepSeekRegistration } from '@qa/harness-deepseek';
 import { createGlmRegistration } from '@qa/harness-claude-code';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
@@ -238,6 +244,12 @@ export class SentryRuntimeHost {
     // SQLite, events, artifacts, or logs (sanitized at the RPC boundary).
     if (parsed.providers.openRouterApiKey !== undefined) {
       process.env['OPENROUTER_API_KEY'] = parsed.providers.openRouterApiKey;
+    }
+    if (parsed.providers.openCodeApiKey !== undefined) {
+      process.env['OPENCODE_API_KEY'] = parsed.providers.openCodeApiKey;
+    }
+    if (parsed.openCodeProvider !== undefined) {
+      process.env['SENTRY_OPENCODE_PROVIDER'] = parsed.openCodeProvider;
     }
     if (parsed.providers.deepseekApiKey !== undefined) {
       process.env['DEEPSEEK_API_KEY'] = parsed.providers.deepseekApiKey;
@@ -820,8 +832,14 @@ export class SentryRuntimeHost {
     };
     checkStack('stack_opencode_main', [
       {
-        present: (env['OPENROUTER_API_KEY'] ?? '').length > 0,
-        reason: 'OpenCode credential missing (OPENROUTER_API_KEY)',
+        present: openCodeCredentialPresent(
+          normalizeOpenCodeProvider(env['SENTRY_OPENCODE_PROVIDER']),
+          env,
+        ),
+        reason:
+          'OpenCode credential missing (' +
+          credentialEnvForProvider(normalizeOpenCodeProvider(env['SENTRY_OPENCODE_PROVIDER'])) +
+          ')',
       },
       {
         present: (env['SENTRY_OPENCODE_MODEL'] ?? '').length > 0,

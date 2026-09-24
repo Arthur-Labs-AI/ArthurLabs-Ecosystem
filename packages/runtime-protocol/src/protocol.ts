@@ -174,12 +174,16 @@ export const RuntimeConfigureParamsSchema = z
     providers: z
       .object({
         openRouterApiKey: z.string().min(1).max(5000).optional(),
+        openCodeApiKey: z.string().min(1).max(5000).optional(),
         deepseekApiKey: z.string().min(1).max(5000).optional(),
         anthropicAuthToken: z.string().min(1).max(5000).optional(),
         anthropicBaseUrl: z.string().min(1).max(2000).optional(),
       })
       .strict()
       .default({}),
+    // OpenCode upstream provider selection (openrouter|opencode). Ephemeral
+    // like everything else here; additive, so the version stays 1.
+    openCodeProvider: z.enum(['openrouter', 'opencode']).optional(),
     // Harness executable overrides (non-secret absolute paths inside the
     // runtime environment, e.g. a user-local opencode install). Ephemeral
     // like everything else here; additive, so the version stays 1.

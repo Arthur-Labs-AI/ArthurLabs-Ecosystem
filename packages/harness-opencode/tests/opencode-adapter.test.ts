@@ -610,4 +610,76 @@ describe('OpenCodeHarnessAdapter', () => {
     await expect(stat(scopeDir)).rejects.toThrow();
     await adapter.dispose();
   });
+
+  it('routes the opencode provider through the generic loader with a models table', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-zen-'));
+    roots.push(root);
+    const input = await request(root);
+    const seen = { turns: [] as SeenTurn[], modelIds: [] as string[] };
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'muse-spark-1.3-contributor-free',
+      provider: 'opencode',
+      environment: {
+        PATH: '/usr/bin',
+        OPENCODE_API_KEY: 'sentry-test-zen-key',
+        SENTRY_OPENCODE_PROVIDER: 'opencode',
+      },
+      clientFactory: scriptedFactory(
+        [
+          textTurn(validPlan()),
+          textTurn('Investigation complete.'),
+          textTurn(JSON.stringify(validReportV2())),
+        ],
+        seen,
+      ),
+    });
+    const events = await collect(adapter, input);
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(seen.modelIds).toEqual(['opencode/muse-spark-1.3-contributor-free']);
+    const config = JSON.parse(
+      (seen.turns[0]?.environment?.['OPENCODE_CONFIG_CONTENT'] as string) ?? '{}',
+    ) as {
+      provider?: Record<
+        string,
+        {
+          npm?: string;
+          options?: { baseURL?: string; apiKey?: string };
+          models?: Record<string, unknown>;
+        }
+      >;
+    };
+    expect(config.provider?.['opencode']?.npm).toBe('@ai-sdk/openai-compatible');
+    expect(config.provider?.['opencode']?.options?.baseURL).toMatch(
+      /^http:\/\/127\.0\.0\.1:\d+\/v1$/,
+    );
+    expect(
+      config.provider?.['opencode']?.models?.['muse-spark-1.3-contributor-free'],
+    ).toBeDefined();
+    expect(JSON.stringify(events)).not.toContain('sentry-test-zen-key');
+    await adapter.dispose();
+  });
+
+  it('names the Zen credential when the opencode provider key is missing', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-zennokey-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'muse-spark-1.3-contributor-free',
+      provider: 'opencode',
+      environment: { PATH: '/usr/bin', SENTRY_OPENCODE_PROVIDER: 'opencode' },
+      clientFactory: scriptedFactory([]),
+    });
+    const events = await collect(adapter, input);
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_CREDENTIAL_MISSING' },
+    });
+    const failed = events.find((e) => e.type === 'run.failed') as {
+      failure?: { message?: string };
+    };
+    expect(failed.failure?.message).toContain('OPENCODE_API_KEY');
+    await adapter.dispose();
+  });
 });

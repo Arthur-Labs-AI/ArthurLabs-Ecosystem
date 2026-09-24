@@ -8,6 +8,10 @@ import {
   doctorOpenCode,
   isExecutableFileSync,
   managedOpenCodeExecutable,
+  openCodeCredential,
+  openCodeCredentialPresent,
+  openCodeProviderSpec,
+  openCodeUpstreamBaseUrl,
   resolveOpenCodeExecutable,
 } from '../src/index.js';
 
@@ -111,6 +115,21 @@ describe('OpenCode executable discovery', () => {
     expect(executableCheck?.message).toContain('managed');
     expect(result.executable).toBe(managed);
     expect(result.executableSource).toBe('managed');
+    const zenMissing = await doctorOpenCode({
+      modelId: 'muse-spark-1.3-contributor-free',
+      provider: 'opencode',
+      environment: { PATH: '/usr/bin' },
+    });
+    const zenCredential = zenMissing.checks.find((c) => c.name === 'credential');
+    expect(zenCredential?.status).toBe('fail');
+    expect(zenCredential?.message).toContain('OPENCODE_API_KEY');
+    const zenPresent = await doctorOpenCode({
+      modelId: 'muse-spark-1.3-contributor-free',
+      provider: 'opencode',
+      environment: { PATH: '/usr/bin', OPENCODE_API_KEY: 'zen-test-key' },
+    });
+    expect(zenPresent.checks.find((c) => c.name === 'credential')?.status).toBe('pass');
+    expect(JSON.stringify(zenPresent)).not.toContain('zen-test-key');
   });
 
   it('observes binary override updates without restart (no stale memoization)', async () => {
@@ -133,5 +152,20 @@ describe('OpenCode executable discovery', () => {
     );
     expect(second).toContain('/missing/opencode-second');
     expect(second).not.toContain('/missing/opencode-first');
+  });
+
+  it('resolves credentials and upstreams per provider', () => {
+    expect(openCodeProviderSpec('openrouter')?.credentialEnv).toBe('OPENROUTER_API_KEY');
+    expect(openCodeProviderSpec('opencode')?.credentialEnv).toBe('OPENCODE_API_KEY');
+    expect(openCodeProviderSpec('opencode')?.upstreamBaseUrl).toBe('https://opencode.ai/zen/v1');
+    expect(openCodeProviderSpec('nope')).toBeUndefined();
+    const env = { OPENROUTER_API_KEY: 'sk-or-x', OPENCODE_API_KEY: 'zen-key' };
+    expect(openCodeCredential('openrouter', env)).toBe('sk-or-x');
+    expect(openCodeCredential('opencode', env)).toBe('zen-key');
+    expect(openCodeCredentialPresent('opencode', {})).toBe(false);
+    expect(openCodeUpstreamBaseUrl('opencode')).toBe('https://opencode.ai/zen/v1');
+    expect(openCodeUpstreamBaseUrl('opencode', 'http://localhost:9/v1')).toBe(
+      'http://localhost:9/v1',
+    );
   });
 });

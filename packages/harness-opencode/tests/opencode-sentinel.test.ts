@@ -6,13 +6,15 @@ import {
   OpenCodeHarnessAdapter,
 } from '../src/index.js';
 
-// Credential-boundary sentinel tests for the OpenCode harness. A test-only
-// sentinel stands in for OPENROUTER_API_KEY. The key travels ONLY in the
-// Sentry-owned scope auth file — never in any child environment — so
-// model-controlled shell tools (which inherit the host process environment)
-// cannot observe it. Never a real credential here.
+// Credential-boundary sentinel tests for the OpenCode harness. Test-only
+// sentinels stand in for provider keys (OPENROUTER_API_KEY, OPENCODE_API_KEY).
+// Keys travel ONLY in Sentry runtime/proxy memory — never in any child
+// environment — so model-controlled shells cannot observe them.
+// Never a real credential here.
 const SENTINEL_NAME = 'OPENROUTER_API_KEY';
 const SENTINEL_VALUE = 'sentry-test-sentinel-credential';
+const ZEN_SENTINEL_NAME = 'OPENCODE_API_KEY';
+const ZEN_SENTINEL_VALUE = 'sentry-test-sentinel-zen-credential';
 
 describe('OpenCode credential boundary', () => {
   it('allows no secret-bearing names into any child environment', () => {
@@ -26,6 +28,21 @@ describe('OpenCode credential boundary', () => {
     expect(child.environment[SENTINEL_NAME]).toBeUndefined();
     expect(child.blockedNames).toContain(SENTINEL_NAME);
     expect(JSON.stringify(child.environment)).not.toContain(SENTINEL_VALUE);
+  });
+
+  it('blocks the OpenCode Zen key from host and tool environments', () => {
+    const child = buildOpenCodeChildEnvironment({
+      source: { PATH: '/usr/bin', [ZEN_SENTINEL_NAME]: ZEN_SENTINEL_VALUE },
+    });
+    expect(child.environment[ZEN_SENTINEL_NAME]).toBeUndefined();
+    expect(child.blockedNames).toContain(ZEN_SENTINEL_NAME);
+    expect(JSON.stringify(child.environment)).not.toContain(ZEN_SENTINEL_VALUE);
+    const tools = buildOpenCodeToolEnvironment({
+      PATH: '/usr/bin',
+      [ZEN_SENTINEL_NAME]: ZEN_SENTINEL_VALUE,
+    });
+    expect(tools.environment[ZEN_SENTINEL_NAME]).toBeUndefined();
+    expect(JSON.stringify(tools.environment)).not.toContain(ZEN_SENTINEL_VALUE);
   });
 
   it('blocks user OpenCode control variables and scope-owned HOME/XDG', () => {

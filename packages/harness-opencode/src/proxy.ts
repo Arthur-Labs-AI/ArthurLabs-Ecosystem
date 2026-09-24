@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { request as httpRequest } from 'node:http';
+import { OpenCodeHarnessError } from './errors.js';
 
 /**
  * In-process localhost auth proxy: the OpenRouter credential never leaves
@@ -58,6 +59,14 @@ export async function startOpenCodeAuthProxy(input: {
   readonly allowedModel: string;
   readonly upstreamBaseUrl?: string;
 }): Promise<OpenCodeAuthProxy> {
+  // Fail closed: an empty key would relay as `Bearer ` and produce a
+  // confusing upstream 401 instead of a clear credential error.
+  if (input.apiKey.trim().length === 0) {
+    throw new OpenCodeHarnessError(
+      'OPENCODE_CREDENTIAL_MISSING',
+      'Auth proxy requires a non-empty provider key.',
+    );
+  }
   const upstream = (input.upstreamBaseUrl ?? OPENROUTER_UPSTREAM_BASE_URL).replace(/\/+$/, '');
   const useTls = upstream.startsWith('https://');
   const counters: ProxyCounters = { relayed: 0, rejected: 0 };

@@ -2,11 +2,13 @@ import { AgentStackDefinitionSchema, type AgentRuntimeIdentity } from '@qa/schem
 import type { HarnessAdapterRegistration } from '@qa/harness-protocol';
 import { OpenCodeHarnessAdapter, type OpenCodeHarnessAdapterOptions } from './adapter.js';
 import {
+  assertSupportedOpenCodeProvider,
   assertTestedOpenCodeVersion,
+  credentialEnvForProvider,
   describeOpenCodeExecutableFailure,
   OPENCODE_TESTED_VERSION,
+  openCodeCredentialPresent,
   openCodeSandboxBypassed,
-  openRouterCredentialPresent,
   probeOpenCodeExecutable,
   probeOpenCodeSandbox,
   resolveOpenCodeRuntime,
@@ -49,10 +51,15 @@ export function createOpenCodeRegistration(
     stack,
     preflight: async () => {
       const resolved = resolveRuntime();
-      if (!openRouterCredentialPresent(options.environment ?? process.env)) {
+      assertSupportedOpenCodeProvider(resolved.provider, options.providerBaseUrl !== undefined);
+      if (!openCodeCredentialPresent(resolved.provider, options.environment ?? process.env)) {
         throw new OpenCodeHarnessError(
           'OPENCODE_CREDENTIAL_MISSING',
-          'OpenCode credential is missing. Set OPENROUTER_API_KEY.',
+          'OpenCode credential is missing. Set ' +
+            credentialEnvForProvider(resolved.provider) +
+            ' for provider ' +
+            resolved.provider +
+            '.',
         );
       }
       // Truthful identity: the EFFECTIVE OpenCode model id (what --model

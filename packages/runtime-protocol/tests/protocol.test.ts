@@ -69,6 +69,17 @@ describe('runtime protocol framing', () => {
     expect(parsed.binaries).toBeUndefined();
   });
 
+  it('accepts the opencode provider key and selection', () => {
+    const parsed = RuntimeConfigureParamsSchema.parse({
+      models: {},
+      providers: { openCodeApiKey: 'zen-test-key' },
+      openCodeProvider: 'opencode',
+    });
+    expect(parsed.providers.openCodeApiKey).toBe('zen-test-key');
+    expect(parsed.openCodeProvider).toBe('opencode');
+    expect(RUNTIME_PROTOCOL_VERSION).toBe(1);
+  });
+
   it('buffers partial lines and drops oversize input', () => {
     const buffer = new RpcLineBuffer();
     const first = buffer.push('{"type":"notifica');

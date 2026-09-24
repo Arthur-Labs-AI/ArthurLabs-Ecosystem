@@ -66,6 +66,31 @@ describe('runtime host identity', () => {
     }
   });
 
+  it('gates opencode readiness on the selected provider credential', async () => {
+    const host = new SentryRuntimeHost(await tempDataRoot(), () => undefined);
+    try {
+      await host.recover();
+      process.env['SENTRY_OPENCODE_MODEL'] = 'muse-spark-1.3-contributor-free';
+      process.env['SENTRY_OPENCODE_PROVIDER'] = 'opencode';
+      const missing = (await host.productionReadiness(['stack_opencode_main'])) as {
+        ready: boolean;
+        stacks: Array<{ reasons: string[] }>;
+      };
+      expect(missing.ready).toBe(false);
+      expect(JSON.stringify(missing.stacks)).toContain('OPENCODE_API_KEY');
+      process.env['OPENCODE_API_KEY'] = 'zen-test-key';
+      const ready = (await host.productionReadiness(['stack_opencode_main'])) as {
+        ready: boolean;
+      };
+      expect(ready.ready).toBe(true);
+    } finally {
+      delete process.env['SENTRY_OPENCODE_MODEL'];
+      delete process.env['SENTRY_OPENCODE_PROVIDER'];
+      delete process.env['OPENCODE_API_KEY'];
+      host.close();
+    }
+  });
+
   it('rejects unknown methods with UNKNOWN_METHOD', async () => {
     const host = new SentryRuntimeHost(await tempDataRoot(), () => undefined);
     try {

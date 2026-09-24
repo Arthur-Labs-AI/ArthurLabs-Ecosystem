@@ -29,29 +29,35 @@ fallback model or fake execution: real runs require the real binary.
 
 ## 2. Set the provider, model, and credential
 
-Provider (default `openrouter`; rarely changed):
+Upstream provider (`openrouter` for OpenRouter, `opencode` for OpenCode Zen):
 
 ```bash
-SENTRY_OPENCODE_PROVIDER=openrouter
+SENTRY_OPENCODE_PROVIDER=opencode
 ```
 
 Model id (examples only — use a currently available id). Sentry composes
 the effective OpenCode id as `provider/model`:
 
 ```bash
-SENTRY_OPENCODE_MODEL=anthropic/claude-opus-4-6
-# effective: openrouter/anthropic/claude-opus-4-6
+SENTRY_OPENCODE_MODEL=muse-spark-1.3-contributor-free
+# effective: opencode/muse-spark-1.3-contributor-free
 ```
 
-Set the provider credential (memory-only in the runtime; never persisted to
-SQLite, events, artifacts, or logs):
+Set the matching provider credential (memory-only in the runtime; never
+persisted to SQLite, events, artifacts, or logs):
 
 ```bash
+# OpenRouter path:
 OPENROUTER_API_KEY=<your key>
+# OpenCode Zen path:
+OPENCODE_API_KEY=<your key>
 ```
 
-In Sentry Desktop, paste the key on the Providers page (encrypted with the OS
-keychain) and set the model id there. The renderer never receives the secret.
+In Sentry Desktop, paste the model id, provider, and key on the Providers
+page (encrypted with the OS keychain). The renderer never receives secrets.
+OpenRouter uses its native SDK; OpenCode Zen uses the generic
+OpenAI-compatible loader — both go through the localhost credential proxy,
+so the real key never reaches OpenCode tooling.
 
 No OpenCode account/login is required for the OpenRouter API-key path.
 

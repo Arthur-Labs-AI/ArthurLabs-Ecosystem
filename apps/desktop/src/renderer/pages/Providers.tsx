@@ -27,10 +27,15 @@ const DESCRIPTIONS: Record<string, string> = {
     'DeepSeek harness executable (non-secret). Absolute path to the dsh entry; needed when the desktop host PATH does not include it.',
   SENTRY_GLM_BINARY: 'GLM harness executable override (non-secret).',
   SENTRY_OPENCODE_BINARY: 'OpenCode harness executable override (non-secret).',
+  OPENCODE_API_KEY:
+    'OpenCode Zen provider key (secret). Used when the OpenCode provider is opencode.',
+  SENTRY_OPENCODE_PROVIDER:
+    'OpenCode upstream provider (non-secret): openrouter or opencode (Zen).',
 };
 
 const SECRET_NAMES: ReadonlySet<string> = new Set([
   'OPENROUTER_API_KEY',
+  'OPENCODE_API_KEY',
   'DEEPSEEK_API_KEY',
   'ANTHROPIC_AUTH_TOKEN',
 ]);

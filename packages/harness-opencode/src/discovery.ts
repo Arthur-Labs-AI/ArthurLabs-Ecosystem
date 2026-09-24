@@ -237,6 +237,85 @@ export function resolveOpenCodeRuntime(
   };
 }
 
+/** OpenCode upstream providers (verified against models.dev + tagged source). */
+export interface OpenCodeProviderSpec {
+  /** Environment variable holding this provider's key (never forwarded). */
+  readonly credentialEnv: string;
+  /** Default upstream base URL (overridable for tests/gateways). */
+  readonly upstreamBaseUrl: string;
+  /** True when OpenCode ships a native SDK (OpenRouter); else generic. */
+  readonly nativeSdk: boolean;
+  readonly displayName: string;
+}
+
+export const OPENCODE_PROVIDER_SPECS: Record<string, OpenCodeProviderSpec> = {
+  openrouter: {
+    credentialEnv: 'OPENROUTER_API_KEY',
+    upstreamBaseUrl: 'https://openrouter.ai/api/v1',
+    nativeSdk: true,
+    displayName: 'OpenRouter',
+  },
+  opencode: {
+    credentialEnv: 'OPENCODE_API_KEY',
+    upstreamBaseUrl: 'https://opencode.ai/zen/v1',
+    nativeSdk: false,
+    displayName: 'OpenCode Zen',
+  },
+};
+
+export function openCodeProviderSpec(provider: string): OpenCodeProviderSpec | undefined {
+  return OPENCODE_PROVIDER_SPECS[provider];
+}
+
+/** Supported provider ids for production runs (test seams use explicit endpoints). */
+export function assertSupportedOpenCodeProvider(provider: string, customEndpoint: boolean): void {
+  if (customEndpoint) return;
+  if (openCodeProviderSpec(provider) === undefined) {
+    throw new OpenCodeHarnessError(
+      'OPENCODE_MODEL_NOT_CONFIGURED',
+      'Unsupported OpenCode provider: ' +
+        provider +
+        '. Supported: openrouter, opencode. Set SENTRY_OPENCODE_PROVIDER.',
+    );
+  }
+}
+
+/** Trimmed credential for the provider (possibly empty; never logged). */
+export function openCodeCredential(
+  provider: string,
+  environment: NodeJS.ProcessEnv = process.env,
+): string {
+  const spec = openCodeProviderSpec(provider);
+  if (spec === undefined) return (environment.OPENROUTER_API_KEY ?? '').trim();
+  return (environment[spec.credentialEnv] ?? '').trim();
+}
+
+export function openCodeCredentialPresent(
+  provider: string,
+  environment: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return openCodeCredential(provider, environment).length > 0;
+}
+
+export function credentialEnvForProvider(provider: string): string {
+  return openCodeProviderSpec(provider)?.credentialEnv ?? 'OPENROUTER_API_KEY';
+}
+
+/** Upstream base URL for a provider (explicit test/gateway override wins). */
+export function openCodeUpstreamBaseUrl(provider: string, override?: string): string {
+  if (override !== undefined && override.trim().length > 0) return override.trim();
+  return openCodeProviderSpec(provider)?.upstreamBaseUrl ?? 'https://openrouter.ai/api/v1';
+}
+
+/** Host-only form of a URL for diagnostics (never query, keys, or paths). */
+export function upstreamHostForDiagnostics(url: string): string {
+  try {
+    return new URL(url).host || 'unknown-upstream';
+  } catch {
+    return 'unknown-upstream';
+  }
+}
+
 export function openRouterCredentialPresent(environment: NodeJS.ProcessEnv = process.env): boolean {
   return (environment.OPENROUTER_API_KEY ?? '').trim().length > 0;
 }
@@ -503,11 +582,15 @@ export async function doctorOpenCode(
   }
   // Credential presence only (never values, never a live probe): opening
   // Settings/Environment must not spend provider credit.
-  const credentialOk = openRouterCredentialPresent(environment);
+  const providerId = runtime?.provider ?? 'openrouter';
+  const credentialEnv = credentialEnvForProvider(providerId);
+  const credentialOk = openCodeCredentialPresent(providerId, environment);
   checks.push({
     name: 'credential',
     status: credentialOk ? 'pass' : 'fail',
-    message: credentialOk ? 'OPENROUTER_API_KEY present' : 'OPENROUTER_API_KEY missing',
+    message: credentialOk
+      ? credentialEnv + ' present (provider ' + providerId + ')'
+      : credentialEnv + ' missing (provider ' + providerId + ')',
   });
   let binaryVersion: string | undefined;
   let binaryOk = false;
