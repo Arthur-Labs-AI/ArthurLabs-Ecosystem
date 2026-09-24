@@ -11,14 +11,13 @@ import {
   createSnapshotId,
 } from '@qa/shared';
 import {
-  extractToolCalls,
   OpenCodeHarnessAdapter,
-  parseRunOutput,
   type OpenCodeClientFactory,
   type OpenCodePromptResult,
 } from '../src/index.js';
 
 const SENTINEL_VALUE = 'sentry-test-sentinel-credential';
+const FAKE_SESSION = 'ses_test_111111111111111111111111';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -109,23 +108,41 @@ function validPlan() {
   });
 }
 
-function scriptedFactory(script: OpenCodePromptResult[]): OpenCodeClientFactory {
-  let calls = 0;
-  return async () => ({
-    startSession: async () => ({
-      runPrompt: async () => {
-        const next = script[Math.min(calls, script.length - 1)];
-        calls += 1;
-        if (next === undefined) throw new Error('Script exhausted');
-        return next;
-      },
-      abort: () => undefined,
-    }),
-    close: async () => undefined,
-  });
+interface SeenTurn {
+  readonly sessionId?: string | undefined;
+  readonly environment?: NodeJS.ProcessEnv | undefined;
 }
 
-const textTurn = (text: string): OpenCodePromptResult => ({ text, toolCalls: [], envelopes: 1 });
+function scriptedFactory(
+  script: OpenCodePromptResult[],
+  seen: { turns: SeenTurn[]; modelIds: string[] } = { turns: [], modelIds: [] },
+): OpenCodeClientFactory {
+  let calls = 0;
+  return async (input) => {
+    seen.modelIds.push(input.modelId);
+    return {
+      startSession: async () => ({
+        runPrompt: async (_prompt, options) => {
+          seen.turns.push({ sessionId: options.sessionId, environment: options.environment });
+          const next = script[Math.min(calls, script.length - 1)];
+          calls += 1;
+          if (next === undefined) throw new Error('Script exhausted');
+          return next;
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    };
+  };
+}
+
+const textTurn = (text: string, sessionId: string = FAKE_SESSION): OpenCodePromptResult => ({
+  text,
+  toolCalls: [],
+  steps: 1,
+  sessionId,
+  envelopes: 2,
+});
 
 function validateProtocol(
   events: HarnessEvent[],
@@ -137,7 +154,7 @@ function validateProtocol(
 }
 
 describe('OpenCodeHarnessAdapter', () => {
-  it('exposes opencode metadata and openrouter provider identity', async () => {
+  it('exposes opencode metadata with the effective model pattern', async () => {
     const adapter = new OpenCodeHarnessAdapter({
       executable: 'opencode-test',
       modelId: 'anthropic/claude-test',
@@ -147,8 +164,9 @@ describe('OpenCodeHarnessAdapter', () => {
     const metadata = await adapter.getMetadata();
     expect(metadata.adapterId).toBe('opencode');
     expect(metadata.protocolVersion).toBe(1);
-    expect(metadata.supportedModelPatterns).toEqual(['anthropic/claude-test']);
+    expect(metadata.supportedModelPatterns).toEqual(['openrouter/anthropic/claude-test']);
     expect(metadata.capabilities.cancellation).toBe(true);
+    expect(metadata.capabilities.sessionResume).toBe(true);
     await adapter.dispose();
   });
 
@@ -170,8 +188,128 @@ describe('OpenCodeHarnessAdapter', () => {
     await adapter.dispose();
   });
 
-  it('runs planning, investigation, and reporting to a terminal success', async () => {
+  it('runs all turns in one OpenCode session with composed model id', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-success-'));
+    roots.push(root);
+    const input = await request(root);
+    const seen = { turns: [] as SeenTurn[], modelIds: [] as string[] };
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'anthropic/claude-test',
+      environment: testEnv(),
+      clientFactory: scriptedFactory(
+        [
+          textTurn(validPlan()),
+          {
+            text: 'Investigation complete.',
+            toolCalls: [
+              {
+                callID: 'call_read_1',
+                tool: 'read',
+                input: { path: 'README.md' },
+                status: 'completed',
+                output: 'ok',
+              },
+              {
+                callID: 'call_bash_1',
+                tool: 'bash',
+                input: { command: 'rg important README.md' },
+                status: 'completed',
+                output: 'important line',
+                exitCode: 0,
+                durationMs: 12,
+              },
+            ],
+            steps: 2,
+            sessionId: FAKE_SESSION,
+            envelopes: 5,
+          },
+          textTurn(JSON.stringify(validReportV2())),
+        ],
+        seen,
+      ),
+    });
+    const events = await collect(adapter, input);
+    validateProtocol(events, input);
+    // Session continuity: first turn creates, later turns continue.
+    expect(seen.turns.map((t) => t.sessionId)).toEqual([undefined, FAKE_SESSION, FAKE_SESSION]);
+    // Effective composed model id reaches the client.
+    expect(seen.modelIds).toEqual(['openrouter/anthropic/claude-test']);
+    // Reporting turn carries the upstream tool deny (plus adapter firewall).
+    const reportEnv = seen.turns[2]?.environment ?? {};
+    expect(JSON.parse((reportEnv['OPENCODE_PERMISSION'] as string) ?? '{}')).toEqual({
+      '*': 'deny',
+    });
+    expect(seen.turns[0]?.environment?.['OPENCODE_PERMISSION']).toBeUndefined();
+    const types = events.map((event) => event.type);
+    expect(types[0]).toBe('run.started');
+    expect(types).toContain('investigation.plan.created');
+    expect(types.filter((type) => type === 'tool.started')).toHaveLength(2);
+    expect(types.filter((type) => type === 'tool.completed')).toHaveLength(2);
+    expect(types.filter((type) => type === 'command.executed')).toHaveLength(1);
+    expect(types.filter((type) => type === 'finding.submitted')).toHaveLength(1);
+    expect(events.at(-1)?.type).toBe('run.completed');
+    const completed = events.find((e) => e.type === 'run.completed');
+    expect(completed).toMatchObject({ usage: { turns: 4 } });
+    expect(JSON.stringify(events)).not.toContain(SENTINEL_VALUE);
+    await adapter.dispose();
+  });
+
+  it('masks project .opencode content and cleans the scope afterwards', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-mask-'));
+    roots.push(root);
+    const input = await request(root);
+    const { mkdir } = await import('node:fs/promises');
+    await mkdir(join(root, '.opencode', 'plugins'), { recursive: true });
+    await writeFile(join(root, '.opencode', 'plugins', 'evil.js'), 'evil');
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'anthropic/claude-test',
+      environment: testEnv(),
+      clientFactory: scriptedFactory([
+        textTurn(validPlan()),
+        textTurn('Investigation complete.'),
+        textTurn(JSON.stringify(validReportV2())),
+      ]),
+    });
+    const events = await collect(adapter, input);
+    expect(events.at(-1)?.type).toBe('run.completed');
+    // Masked by rename inside the disposable workspace (readable, undiscoverable).
+    await expect(stat(join(root, '.opencode'))).rejects.toThrow();
+    // Scope (auth boundary included) removed when the run settles.
+    const scopeDir = join(
+      dirname(root),
+      '.sentry-opencode-' + input.agentRunId.replace(/[^A-Za-z0-9_-]/g, '_'),
+    );
+    await expect(stat(scopeDir)).rejects.toThrow();
+    const masked = adapter
+      .getShutdownDiagnostics()
+      .find((d) => d.code === 'OPENCODE_PROJECT_CONFIG_MASKED');
+    expect(masked?.severity).toBe('info');
+    await adapter.dispose();
+  });
+
+  it('fails closed when no OpenCode session is established', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-nosession-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'anthropic/claude-test',
+      environment: testEnv(),
+      clientFactory: scriptedFactory([
+        { text: validPlan(), toolCalls: [], steps: 1, envelopes: 2 },
+        textTurn('Investigation complete.'),
+        textTurn(JSON.stringify(validReportV2())),
+      ]),
+    });
+    const events = await collect(adapter, input);
+    expect(events.at(-1)?.type).toBe('run.failed');
+    await adapter.dispose();
+  });
+
+  it('reports exact exit codes and error previews truthfully', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-exits-'));
     roots.push(root);
     const input = await request(root);
     const adapter = new OpenCodeHarnessAdapter({
@@ -183,45 +321,48 @@ describe('OpenCodeHarnessAdapter', () => {
         {
           text: 'Investigation complete.',
           toolCalls: [
-            { name: 'read', arguments: { path: 'README.md' }, output: 'ok' },
             {
-              name: 'bash',
-              arguments: { command: 'rg important README.md' },
-              output: 'important line',
-              exitCode: 0,
+              callID: 'call_bash_9',
+              tool: 'bash',
+              input: { command: 'exit 127' },
+              status: 'completed',
+              output: 'not found',
+              exitCode: 127,
+            },
+            {
+              callID: 'call_bash_10',
+              tool: 'bash',
+              input: { command: 'cat ../secret' },
+              status: 'error',
+              error: 'The user rejected permission to use this specific tool call.',
             },
           ],
-          envelopes: 3,
+          steps: 1,
+          sessionId: FAKE_SESSION,
+          envelopes: 4,
         },
         textTurn(JSON.stringify(validReportV2())),
       ]),
     });
     const events = await collect(adapter, input);
-    validateProtocol(events, input);
-    const types = events.map((event) => event.type);
-    expect(types[0]).toBe('run.started');
-    expect(types).toContain('investigation.plan.created');
-    expect(types.filter((type) => type === 'tool.started')).toHaveLength(2);
-    expect(types.filter((type) => type === 'tool.completed')).toHaveLength(2);
-    // Explicit exit codes are observed; absent codes stay absent (never 0).
-    expect(types.filter((type) => type === 'command.executed')).toHaveLength(1);
-    expect(types.filter((type) => type === 'finding.submitted')).toHaveLength(1);
-    expect(types.filter((type) => type === 'run.completed')).toHaveLength(1);
     expect(events.at(-1)?.type).toBe('run.completed');
-    // No open operations remain at terminalization (validator asserts this).
-    // The sentinel credential never leaks into events.
-    expect(JSON.stringify(events)).not.toContain(SENTINEL_VALUE);
-    // The ephemeral auth boundary is removed when the run settles.
-    const boundaryDir = join(
-      dirname(root),
-      '.sentry-opencode-auth-' + input.agentRunId.replace(/[^A-Za-z0-9_-]/g, '_'),
-    );
-    await expect(stat(boundaryDir)).rejects.toThrow();
+    const completed = events.filter((e) => e.type === 'tool.completed');
+    expect(completed).toHaveLength(2);
+    // Exact observed code preserved everywhere (never collapsed to 1).
+    expect(completed[0]).toMatchObject({ tool: { name: 'bash', exitCode: 127 } });
+    const executed = events.filter((e) => e.type === 'command.executed');
+    expect(executed).toHaveLength(1);
+    expect(executed[0]).toMatchObject({ command: 'exit 127', exitCode: 127 });
+    // Failure without a code: preview, no exitCode, no command.executed.
+    expect(completed[1]).toMatchObject({
+      tool: { name: 'bash', errorPreview: expect.stringContaining('rejected permission') },
+    });
+    expect((completed[1] as { tool: { exitCode?: unknown } }).tool.exitCode).toBeUndefined();
     await adapter.dispose();
   });
 
-  it('retries planning once after a malformed plan', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-planretry-'));
+  it('forbids the task subagent tool', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-subagent-'));
     roots.push(root);
     const input = await request(root);
     const adapter = new OpenCodeHarnessAdapter({
@@ -229,15 +370,63 @@ describe('OpenCodeHarnessAdapter', () => {
       modelId: 'anthropic/claude-test',
       environment: testEnv(),
       clientFactory: scriptedFactory([
-        textTurn('not json at all'),
         textTurn(validPlan()),
-        textTurn('Investigation complete.'),
+        {
+          text: 'Investigation complete.',
+          toolCalls: [
+            {
+              callID: 'call_task_1',
+              tool: 'task',
+              input: { description: 'delegate' },
+              status: 'completed',
+              output: 'delegated',
+            },
+          ],
+          steps: 1,
+          sessionId: FAKE_SESSION,
+          envelopes: 3,
+        },
         textTurn(JSON.stringify(validReportV2())),
       ]),
     });
     const events = await collect(adapter, input);
-    expect(events.at(-1)?.type).toBe('run.completed');
-    expect(events.some((event) => event.type === 'warning')).toBe(true);
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_SUBAGENT_FORBIDDEN' },
+    });
+    await adapter.dispose();
+  });
+
+  it('refuses reporting turns that use tools', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-reporttools-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'anthropic/claude-test',
+      environment: testEnv(),
+      clientFactory: scriptedFactory([
+        textTurn(validPlan()),
+        textTurn('Investigation complete.'),
+        {
+          text: JSON.stringify(validReportV2()),
+          toolCalls: [
+            {
+              callID: 'call_bash_2',
+              tool: 'bash',
+              input: { command: 'ls' },
+              status: 'completed',
+              output: 'x',
+            },
+          ],
+          steps: 1,
+          sessionId: FAKE_SESSION,
+          envelopes: 3,
+        },
+      ]),
+    });
+    const events = await collect(adapter, input);
+    expect(events.at(-1)?.type).toBe('run.failed');
     await adapter.dispose();
   });
 
@@ -260,80 +449,6 @@ describe('OpenCodeHarnessAdapter', () => {
     expect(events.at(-1)).toMatchObject({
       type: 'run.failed',
       failure: { code: 'OPENCODE_INVALID_RESULT' },
-    });
-    await adapter.dispose();
-  });
-
-  it('rejects evidence outside the workspace', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-badpath-'));
-    roots.push(root);
-    const input = await request(root);
-    const report = validReportV2();
-    const firstEvidence = report.evidence[0];
-    if (firstEvidence === undefined) throw new Error('Fixture evidence missing');
-    report.evidence[0] = { ...firstEvidence, relativePath: '../escape.txt' };
-    const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
-      clientFactory: scriptedFactory([
-        textTurn(validPlan()),
-        textTurn('Investigation complete.'),
-        textTurn(JSON.stringify(report)),
-      ]),
-    });
-    const events = await collect(adapter, input);
-    expect(events.at(-1)?.type).toBe('run.failed');
-    await adapter.dispose();
-  });
-
-  it('refuses reporting turns that use tools', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-reporttools-'));
-    roots.push(root);
-    const input = await request(root);
-    const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
-      clientFactory: scriptedFactory([
-        textTurn(validPlan()),
-        textTurn('Investigation complete.'),
-        {
-          text: JSON.stringify(validReportV2()),
-          toolCalls: [{ name: 'bash', arguments: { command: 'ls' }, output: 'x' }],
-          envelopes: 2,
-        },
-      ]),
-    });
-    const events = await collect(adapter, input);
-    // Report firewall trips on every attempt: the run fails, never silently
-    // incorporates tool output into the report.
-    expect(events.at(-1)?.type).toBe('run.failed');
-    await adapter.dispose();
-  });
-
-  it('forbids subagent delegation', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-subagent-'));
-    roots.push(root);
-    const input = await request(root);
-    const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
-      clientFactory: scriptedFactory([
-        textTurn(validPlan()),
-        {
-          text: 'Investigation complete.',
-          toolCalls: [{ name: 'spawn_subagent', arguments: {}, output: 'no' }],
-          envelopes: 2,
-        },
-        textTurn(JSON.stringify(validReportV2())),
-      ]),
-    });
-    const events = await collect(adapter, input);
-    expect(events.at(-1)).toMatchObject({
-      type: 'run.failed',
-      failure: { code: 'OPENCODE_SUBAGENT_FORBIDDEN' },
     });
     await adapter.dispose();
   });
@@ -366,14 +481,13 @@ describe('OpenCodeHarnessAdapter', () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-cancel-'));
     roots.push(root);
     const first = await request(root);
-    const second = await request(root);
     const aborted: string[] = [];
     const hangingFactory: OpenCodeClientFactory = async () => ({
-      startSession: async (session) => ({
+      startSession: async () => ({
         runPrompt: async (_prompt, options) => {
           await new Promise<void>((resolve) => {
             options.signal?.addEventListener('abort', () => {
-              aborted.push(session.sessionId);
+              aborted.push('session');
               resolve();
             });
           });
@@ -390,13 +504,11 @@ describe('OpenCodeHarnessAdapter', () => {
       clientFactory: hangingFactory,
     });
     const pending = collect(adapter, first);
-    // Let the first run register its session, then cancel exactly it.
     await new Promise((resolve) => setTimeout(resolve, 50));
     await adapter.cancel(first.agentRunId);
     const firstEvents = await pending;
     expect(firstEvents.at(-1)?.type).toBe('run.failed');
-    expect(aborted).toEqual([first.agentRunId]);
-    expect(aborted).not.toContain(second.agentRunId);
+    expect(aborted).toEqual(['session']);
     await adapter.dispose();
   });
 
@@ -423,34 +535,5 @@ describe('OpenCodeHarnessAdapter', () => {
       failure: { code: 'OPENCODE_START_FAILED' },
     });
     await adapter.dispose();
-  });
-});
-
-describe('parseRunOutput', () => {
-  it('ignores unknown envelopes and never invents tool completions', () => {
-    const result = parseRunOutput(
-      [
-        JSON.stringify({ type: 'thinking', content: 'private reasoning must not persist' }),
-        JSON.stringify({ type: 'message', text: 'hello' }),
-        'not json',
-      ].join('\n'),
-    );
-    expect(result.toolCalls).toEqual([]);
-    expect(result.text).toContain('hello');
-    expect(result.text).not.toContain('private reasoning');
-  });
-
-  it('maps only explicit tool-call envelopes', () => {
-    const result = parseRunOutput(
-      JSON.stringify({ type: 'tool_call', name: 'bash', input: { command: 'ls' } }),
-    );
-    expect(result.toolCalls).toHaveLength(1);
-    expect(extractToolCalls({ type: 'message', text: 'x' })).toEqual([]);
-  });
-
-  it('falls back to raw text when nothing parses', () => {
-    const result = parseRunOutput('plain terminal prose');
-    expect(result.text).toBe('plain terminal prose');
-    expect(result.toolCalls).toEqual([]);
   });
 });

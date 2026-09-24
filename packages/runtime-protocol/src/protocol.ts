@@ -154,12 +154,17 @@ export type RuntimeHelloResult = z.infer<typeof RuntimeHelloResultSchema>;
 
 export const RuntimeConfigureParamsSchema = z
   .object({
-    // Historical note: `models.muse` existed until the Muse → OpenCode
-    // migration and was removed. Old senders must stop sending it (strict
-    // object: unknown keys are rejected); historical RUN rows are unaffected
-    // (runtime configuration is ephemeral, never persisted).
+    // Compatibility: `models.muse` existed until the Muse → OpenCode
+    // migration. It is still ACCEPTED but deprecated and IGNORED (never
+    // activates anything) so a new runtime keeps working with an old
+    // sender instead of rejecting its configure call. Runtime
+    // configuration is ephemeral and never persisted; historical RUN rows
+    // are unaffected. RUNTIME_PROTOCOL_VERSION stays 1: the transport and
+    // framing contract is unchanged, and every previously valid NEW field
+    // still validates.
     models: z
       .object({
+        muse: z.string().min(1).max(300).optional(),
         opencode: z.string().min(1).max(300).optional(),
         deepseek: z.string().min(1).max(300).optional(),
         glm: z.string().min(1).max(300).optional(),

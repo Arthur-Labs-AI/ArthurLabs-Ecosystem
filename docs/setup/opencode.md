@@ -22,13 +22,20 @@ If the binary is not on `PATH`, set `SENTRY_OPENCODE_BINARY` to the
 executable. There is no fallback model or fake execution: real runs require
 the real binary.
 
-## 2. Set the model and credential
+## 2. Set the provider, model, and credential
 
-Set an exact OpenRouter model id (examples only — use a currently available
-id):
+Provider (default `openrouter`; rarely changed):
+
+```bash
+SENTRY_OPENCODE_PROVIDER=openrouter
+```
+
+Model id (examples only — use a currently available id). Sentry composes
+the effective OpenCode id as `provider/model`:
 
 ```bash
 SENTRY_OPENCODE_MODEL=anthropic/claude-opus-4-6
+# effective: openrouter/anthropic/claude-opus-4-6
 ```
 
 Set the provider credential (memory-only in the runtime; never persisted to
@@ -62,12 +69,23 @@ qa run start <project-id> --mode full --agents opencode --wait
 ## Credential isolation
 
 `OPENROUTER_API_KEY` exists in Sentry runtime host memory and, per run, in
-one Sentry-owned ephemeral `auth.json` beside the agent workspace (removed
-when the run settles). It is in NO child process environment: OpenCode
-reads provider auth from that file, so model-controlled tool/shell
-executions — which inherit the host process environment — cannot observe
-the credential. Never place the key in a project `.env` file. See
+one Sentry-owned ephemeral scope beside the agent workspace (HOME/XDG
+redirects plus `auth.json`, removed when the run settles). It is in NO
+child process environment: OpenCode reads provider auth from that file, so
+model-controlled tool/shell executions — which inherit the host process
+environment — cannot observe it. Reads outside the project are rejected
+by upstream permissions, and the reporting turn runs tool-free. Never
+place the key in a project `.env` file. See
 [ADR-0014](../adr/0014-opencode-harness-and-provider-separation.md).
+
+## Untrusted projects
+
+The target repository is treated as untrusted data: its `.opencode`
+configuration and plugins are masked inside the disposable workspace
+before launch (they stay readable for QA findings), your global OpenCode
+state is never loaded, and each run gets isolated sessions and an owned
+process boundary. Suppression flags alone do not stop project plugin
+loading — masking is mandatory (proven by test).
 
 ## Opt-in live smoke
 
@@ -80,6 +98,15 @@ SENTRY_LIVE_OPENCODE=1 OPENROUTER_API_KEY=... SENTRY_OPENCODE_MODEL=... \
 
 Add `SENTRY_LIVE_OPENCODE_RUN=1` to additionally execute one minimal
 headless turn (spends OpenRouter credit).
+
+A zero-credit real-binary suite (local stub provider, no OpenRouter
+spend) covers wire format, session continuity, plugin isolation, and
+process cleanup wherever the `opencode` binary is installed:
+
+```bash
+SENTRY_OPENCODE_STUB_TESTS=1 SENTRY_OPENCODE_BINARY=$(which opencode) \
+  pnpm --filter @qa/harness-opencode test
+```
 
 ## Historical Muse runs
 

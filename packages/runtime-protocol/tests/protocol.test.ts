@@ -3,6 +3,7 @@ import {
   RUNTIME_PROTOCOL_VERSION,
   RpcFramingError,
   RpcLineBuffer,
+  RuntimeConfigureParamsSchema,
   encodeRpcLine,
   parseRpcLine,
 } from '../src/index.js';
@@ -40,6 +41,16 @@ describe('runtime protocol framing', () => {
       parseRpcLine('{"type":"response","id":"a","ok":true,"error":{"code":"X","message":"Y"}}'),
     ).toThrow(RpcFramingError);
     expect(() => parseRpcLine('{"type":"response","id":"a","ok":false}')).toThrow(RpcFramingError);
+  });
+
+  it('accepts the deprecated muse model field but ignores it (v1 compat)', () => {
+    const parsed = RuntimeConfigureParamsSchema.parse({
+      models: { muse: 'muse-spark-1.3-contributor', opencode: 'anthropic/x' },
+      providers: {},
+    });
+    expect(parsed.models.muse).toBe('muse-spark-1.3-contributor');
+    expect(parsed.models.opencode).toBe('anthropic/x');
+    expect(RUNTIME_PROTOCOL_VERSION).toBe(1);
   });
 
   it('buffers partial lines and drops oversize input', () => {

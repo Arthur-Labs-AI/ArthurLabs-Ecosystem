@@ -1,69 +1,77 @@
-import { spawn, type ChildProcess } from 'node:child_process';
 import type { AgentUsage } from '@qa/schemas';
 import { OpenCodeHarnessError } from './errors.js';
+import {
+  DirectOpenCodeProcessLauncher,
+  stripSystemdClientChatter,
+  type OpenCodeProcessLauncher,
+  type OwnedOpenCodeProcess,
+} from './process.js';
 import { redactDiagnostic, secretValues } from './redaction.js';
+import { parseOpenCodeTurn, type OpenCodeToolObservation } from './wire.js';
 
 /**
- * OpenCode integration mechanism (verified September 2026 against
- * `opencode-ai@1.18.32` and current OpenCode source):
+ * OpenCode integration mechanism (verified against opencode-ai 1.18.32:
+ * release binary behavior plus the tagged source).
  *
- * - The `opencode` binary runs headless and non-interactive:
- *   `opencode run [--model <id>] [--format json] "<prompt>"`.
- * - Sentry drives one owned `opencode run` child process per prompt turn
- *   (planning / investigation / report...), with cwd set to the AgentRun's
- *   isolated workspace and a Sentry-built sanitized environment.
- * - Provider auth is file-based, never env-based: the adapter writes the
- *   OpenRouter key to a Sentry-owned `auth.json` (`{"openrouter":
- *   {"type": "api", "key": "..."}}`) in a disposable directory and
- *   points the child at it via `XDG_DATA_HOME` (honored by OpenCode's
- *   global data path). OpenCode passes the stored key to its model SDK as
- *   `options.apiKey`, so `OPENROUTER_API_KEY` appears in NO child
- *   environment — and OpenCode shell tools, which inherit the host
- *   process environment, cannot observe it. Isolation by construction.
- * - No TUI scraping, no shared daemon: each AgentRun owns its processes,
- *   cancellation kills only the owned child, cleanup (including the auth
- *   boundary) is deterministic.
- * - A live smoke (`SENTRY_LIVE_OPENCODE=1`) confirms the exact flags
- *   against the installed binary; see tests/live-opencode.test.ts. If the
- *   installed OpenCode changes its headless flags, the smoke fails loud
- *   and this module is updated — never worked around in the adapter.
- *
- * Tool-call envelopes: `opencode run --format json` emits NDJSON. Only
- * explicitly recognized tool-call envelopes become Sentry tool events
- * (fail-closed: unknown envelopes contribute bounded text, never tool
- * completions — the adapter must never invent tool activity).
+ * - Headless turns: `opencode run --pure --model <provider/model>
+ *   --format json [--session <id>]` with the prompt on STDIN (never argv,
+ *   so prompts stay out of process listings). One owned child process per
+ *   turn; cwd is the AgentRun's isolated workspace.
+ * - Session continuity: the first turn creates the session; its
+ *   `sessionID` is captured from the JSONL envelopes and passed back via
+ *   `--session` on every later turn of the same AgentRun.
+ * - Provider auth is file-based (`<XDG_DATA_HOME>/opencode/auth.json`);
+ *   the key is in NO environment. Reporting turns additionally set
+ *   `OPENCODE_PERMISSION='{"*":"deny"}'`, which removes all tools from
+ *   the model (verified: "Available tools: .").
+ * - Process ownership: systemd transient unit with
+ *   `KillMode=control-group` when available, else an owned process group.
+ *   Cancellation stops exactly the owned boundary (never by process name)
+ *   with TERM → bounded wait → verify → KILL escalation.
+ * - A live smoke (`SENTRY_LIVE_OPENCODE=1`, paid runs only with
+ *   `SENTRY_LIVE_OPENCODE_RUN=1`) plus the zero-credit stub suite
+ *   (`SENTRY_OPENCODE_STUB_TESTS=1` with a local stub provider) confirm
+ *   this contract against the installed binary.
  */
 export const OPENCODE_RUN_SUBCOMMAND = 'run' as const;
 export const OPENCODE_JSON_FORMAT_FLAG = '--format' as const;
 export const OPENCODE_MODEL_FLAG = '--model' as const;
-
-export interface OpenCodeObservedToolCall {
-  readonly name: string;
-  readonly arguments?: unknown;
-  readonly output?: string;
-  readonly exitCode?: number;
-}
+export const OPENCODE_SESSION_FLAG = '--session' as const;
+export const OPENCODE_PURE_FLAG = '--pure' as const;
 
 export interface OpenCodePromptResult {
   readonly text: string;
-  readonly toolCalls: readonly OpenCodeObservedToolCall[];
+  readonly toolCalls: readonly OpenCodeToolObservation[];
   readonly usage?: AgentUsage | undefined;
-  /** Count of NDJSON envelopes observed (diagnostic only). */
+  /** Model steps observed (step-finish count). */
+  readonly steps: number;
+  /** OpenCode-owned session id captured from this turn's envelopes. */
+  readonly sessionId?: string | undefined;
   readonly envelopes: number;
 }
 
 export interface OpenCodeRunPromptOptions {
   readonly timeoutMs: number;
   readonly signal?: AbortSignal;
+  /** Continue an existing OpenCode session (turns 2+). */
+  readonly sessionId?: string;
+  /**
+   * Per-turn environment override, merged over the session base (used
+   * for turn-scoped Sentry controls such as the reporting permission
+   * ruleset). Values never include secrets.
+   */
+  readonly environment?: NodeJS.ProcessEnv;
 }
 
 export interface OpenCodeSessionView {
   runPrompt(prompt: string, options: OpenCodeRunPromptOptions): Promise<OpenCodePromptResult>;
   abort(): void;
+  /** Resolve when the owned boundary terminated (optional for test fakes). */
+  settled?(): Promise<void>;
 }
 
 export interface OpenCodeClientView {
-  startSession(input: { readonly sessionId: string }): Promise<OpenCodeSessionView>;
+  startSession(): Promise<OpenCodeSessionView>;
   close(): Promise<void>;
 }
 
@@ -72,118 +80,12 @@ export type OpenCodeClientFactory = (input: {
   readonly cwd: string;
   readonly environment: NodeJS.ProcessEnv;
   readonly modelId: string;
-  readonly provider: string;
-  /** Sentry-owned disposable data dir holding the auth boundary file. */
-  readonly xdgDataHome: string;
   readonly shutdownTimeoutMs: number;
+  readonly launcher?: OpenCodeProcessLauncher;
 }) => Promise<OpenCodeClientView>;
 
-const MAX_TEXT = 200_000;
-const MAX_TOOL_CALLS = 200;
-
-function boundedAppend(current: string, chunk: string): string {
-  if (current.length >= MAX_TEXT) return current;
-  return (current + chunk).slice(0, MAX_TEXT);
-}
-
-function eventText(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
-}
-
-/**
- * Recognize an explicit tool-call envelope. ONLY these shapes map to tool
- * events; everything else is text. Shapes accepted:
- * - { type: 'tool_call'|'tool_use'|'tool-call', name|tool, input|arguments, output?, exitCode? }
- * - { tool_calls: [...] } summary envelopes with the same item shape.
- */
-export function extractToolCalls(envelope: unknown): OpenCodeObservedToolCall[] {
-  if (envelope === null || typeof envelope !== 'object' || Array.isArray(envelope)) return [];
-  const record = envelope as Record<string, unknown>;
-  const items: unknown[] = [];
-  const type = typeof record['type'] === 'string' ? (record['type'] as string) : '';
-  if (type === 'tool_call' || type === 'tool_use' || type === 'tool-call') items.push(record);
-  const nested = record['tool_calls'];
-  if (Array.isArray(nested)) items.push(...nested);
-  const out: OpenCodeObservedToolCall[] = [];
-  for (const item of items) {
-    if (item === null || typeof item !== 'object' || Array.isArray(item)) continue;
-    const entry = item as Record<string, unknown>;
-    const name =
-      eventText(entry['name']) ?? eventText(entry['tool']) ?? eventText(entry['toolName']);
-    if (name === undefined) continue;
-    const output = eventText(entry['output']) ?? eventText(entry['result']);
-    const exitCode = typeof entry['exitCode'] === 'number' ? entry['exitCode'] : undefined;
-    out.push({
-      name: name.slice(0, 200),
-      ...(entry['input'] === undefined && entry['arguments'] === undefined
-        ? {}
-        : { arguments: entry['input'] ?? entry['arguments'] }),
-      ...(output === undefined ? {} : { output: output.slice(0, 8_000) }),
-      ...(exitCode === undefined ? {} : { exitCode }),
-    });
-    if (out.length >= MAX_TOOL_CALLS) break;
-  }
-  return out;
-}
-
-/**
- * Envelope types carrying private model reasoning. Their fields are NEVER
- * mapped to persisted text: Sentry prohibits exposing or persisting
- * chain-of-thought (only observable execution and product-safe summaries
- * persist). Unknown types stay text-eligible only through the explicit
- * safe-field list below — reasoning-suffixed types are denied first.
- */
-const REASONING_ENVELOPE_TYPES = new Set([
-  'thinking',
-  'reasoning',
-  'thought',
-  'internal',
-  'reasoning_content',
-  'thinking_content',
-]);
-
-export function extractText(envelope: unknown): string | undefined {
-  if (typeof envelope === 'string') return eventText(envelope);
-  if (envelope === null || typeof envelope !== 'object' || Array.isArray(envelope))
-    return undefined;
-  const record = envelope as Record<string, unknown>;
-  const type = typeof record['type'] === 'string' ? (record['type'] as string) : '';
-  if (type === 'tool_call' || type === 'tool_use' || type === 'tool-call') return undefined;
-  if (REASONING_ENVELOPE_TYPES.has(type)) return undefined;
-  return (
-    eventText(record['text']) ??
-    eventText(record['content']) ??
-    eventText(record['message']) ??
-    eventText(record['output']) ??
-    eventText(record['result'])
-  );
-}
-
-export function extractUsage(envelope: unknown): AgentUsage | undefined {
-  if (envelope === null || typeof envelope !== 'object' || Array.isArray(envelope))
-    return undefined;
-  const record = envelope as Record<string, unknown>;
-  const usage = record['usage'];
-  if (usage === null || typeof usage !== 'object' || Array.isArray(usage)) return undefined;
-  const view = usage as Record<string, unknown>;
-  const num = (value: unknown): number | undefined =>
-    typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-  const out: AgentUsage = {
-    ...(num(view['inputTokens']) === undefined ? {} : { inputTokens: num(view['inputTokens']) }),
-    ...(num(view['outputTokens']) === undefined ? {} : { outputTokens: num(view['outputTokens']) }),
-    ...(num(view['cachedInputTokens']) === undefined
-      ? {}
-      : { cachedInputTokens: num(view['cachedInputTokens']) }),
-    ...(num(view['turns']) === undefined ? {} : { turns: num(view['turns']) }),
-    ...(num(view['durationMs']) === undefined ? {} : { durationMs: num(view['durationMs']) }),
-  };
-  return Object.keys(out).length === 0 ? undefined : out;
-}
-
 class ProductionSession implements OpenCodeSessionView {
-  private activeChild: ChildProcess | undefined;
+  private owned: OwnedOpenCodeProcess | undefined;
   private aborted = false;
 
   constructor(
@@ -191,51 +93,50 @@ class ProductionSession implements OpenCodeSessionView {
     private readonly cwd: string,
     private readonly environment: NodeJS.ProcessEnv,
     private readonly modelId: string,
-    private readonly xdgDataHome: string,
+    private readonly launcher: OpenCodeProcessLauncher,
   ) {}
+
+  private stopPromise: Promise<boolean> | undefined;
 
   abort(): void {
     this.aborted = true;
-    try {
-      this.activeChild?.kill('SIGTERM');
-    } catch {
-      // Kill is best-effort; the timeout path below guarantees boundedness.
+    const owned = this.owned;
+    this.owned = undefined;
+    if (owned !== undefined) {
+      this.stopPromise = owned.stop().catch(() => false);
     }
   }
 
+  /** Resolve when the owned boundary has actually terminated. */
+  async settled(): Promise<void> {
+    await this.stopPromise?.catch(() => undefined);
+  }
+
   runPrompt(prompt: string, options: OpenCodeRunPromptOptions): Promise<OpenCodePromptResult> {
-    const secrets = secretValues(this.environment);
+    const secrets = secretValues({ ...this.environment, ...options.environment });
     return new Promise((resolve, reject) => {
       if (this.aborted) {
         reject(new OpenCodeHarnessError('OPENCODE_CANCEL_FAILED', 'OpenCode session was aborted.'));
         return;
       }
-      let child: ChildProcess;
+      const argv = [
+        OPENCODE_RUN_SUBCOMMAND,
+        OPENCODE_PURE_FLAG,
+        OPENCODE_MODEL_FLAG,
+        this.modelId,
+        OPENCODE_JSON_FORMAT_FLAG,
+        'json',
+        ...(options.sessionId === undefined ? [] : [OPENCODE_SESSION_FLAG, options.sessionId]),
+      ];
+      const turnEnvironment = { ...this.environment, ...options.environment };
+      let owned: OwnedOpenCodeProcess;
       try {
-        child = spawn(
-          this.executable,
-          [
-            OPENCODE_RUN_SUBCOMMAND,
-            OPENCODE_MODEL_FLAG,
-            this.modelId,
-            OPENCODE_JSON_FORMAT_FLAG,
-            'json',
-            prompt,
-          ],
-          {
-            cwd: this.cwd,
-            env: {
-              ...this.environment,
-              // Sentry-owned auth scope: OpenCode resolves its provider
-              // credential from `<XDG_DATA_HOME>/opencode/auth.json`.
-              // The secret itself is in no environment (see auth.ts).
-              XDG_DATA_HOME: this.xdgDataHome,
-            },
-            windowsHide: true,
-            shell: false,
-            stdio: ['ignore', 'pipe', 'pipe'],
-          },
-        );
+        owned = this.launcher.launch({
+          executable: this.executable,
+          argv,
+          cwd: this.cwd,
+          env: turnEnvironment,
+        });
       } catch (cause) {
         const code = (cause as NodeJS.ErrnoException | undefined)?.code;
         reject(
@@ -249,37 +150,34 @@ class ProductionSession implements OpenCodeSessionView {
         );
         return;
       }
-      this.activeChild = child;
+      this.owned = owned;
+      const child = owned.child;
+      const stripChatter = owned.kind === 'systemd-unit';
       let stdout = '';
       let stderr = '';
       let settled = false;
+      let stdinFailed = false;
       const settle = (conclude: () => void): void => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
         options.signal?.removeEventListener('abort', onAbort);
-        if (this.activeChild === child) this.activeChild = undefined;
+        if (this.owned === owned) this.owned = undefined;
         conclude();
       };
       const onAbort = (): void => {
+        const stop = owned.stop();
         settle(() => {
-          try {
-            child.kill('SIGTERM');
-          } catch {
-            // Ignored: the run already concluded as cancelled.
-          }
+          void stop.catch(() => undefined);
           reject(
             new OpenCodeHarnessError('OPENCODE_CANCEL_FAILED', 'OpenCode turn was cancelled.'),
           );
         });
       };
       const timer = setTimeout(() => {
+        const stop = owned.stop();
         settle(() => {
-          try {
-            child.kill('SIGTERM');
-          } catch {
-            // Ignored: watchdog already owns the outcome.
-          }
+          void stop.catch(() => undefined);
           reject(
             new OpenCodeHarnessError(
               'OPENCODE_START_FAILED',
@@ -294,14 +192,46 @@ class ProductionSession implements OpenCodeSessionView {
         onAbort();
         return;
       }
+      // Prompt on stdin: identical semantics to the message positional
+      // (`message + "\\n" + piped`) while keeping prompts out of `ps`.
+      try {
+        if (child.stdin === null || child.stdin === undefined) {
+          stdinFailed = true;
+        } else {
+          child.stdin.on('error', () => {
+            stdinFailed = true;
+          });
+          child.stdin.end(prompt, 'utf8');
+        }
+      } catch {
+        stdinFailed = true;
+      }
+      if (stdinFailed) {
+        settle(() => {
+          void owned.stop().catch(() => undefined);
+          reject(
+            new OpenCodeHarnessError(
+              'OPENCODE_START_FAILED',
+              'OpenCode turn could not deliver its prompt.',
+              true,
+            ),
+          );
+        });
+        return;
+      }
       child.stdout?.on('data', (chunk: Buffer) => {
-        stdout = boundedAppend(stdout, chunk.toString('utf8'));
+        const text = chunk.toString('utf8');
+        stdout += stripChatter ? stripSystemdClientChatter(text) : text;
+        if (stdout.length > 2_000_000) stdout = stdout.slice(-2_000_000);
       });
       child.stderr?.on('data', (chunk: Buffer) => {
-        stderr = boundedAppend(stderr, chunk.toString('utf8'));
+        stderr += chunk.toString('utf8');
+        if (stderr.length > 200_000) stderr = stderr.slice(-200_000);
       });
       child.once('error', (cause: NodeJS.ErrnoException) => {
+        const stop = owned.stop();
         settle(() => {
+          void stop.catch(() => undefined);
           reject(
             new OpenCodeHarnessError(
               cause.code === 'ENOENT' ? 'OPENCODE_BINARY_NOT_FOUND' : 'OPENCODE_START_FAILED',
@@ -325,60 +255,40 @@ class ProductionSession implements OpenCodeSessionView {
             );
             return;
           }
+          const parsed = parseOpenCodeTurn(
+            stripChatter ? stripSystemdClientChatter(stdout) : stdout,
+          );
           if (code !== 0) {
-            const authLike = /auth|credential|sign in|unauthorized|401|api key/i.test(
-              stderr + '\n' + stdout,
+            const detail =
+              parsed.errors.length > 0 ? parsed.errors.join('; ') : stderr || 'OpenCode run failed';
+            const authLike = /auth|credential|sign in|unauthorized|401|api key|apicallerror/i.test(
+              detail + '\n' + parsed.text,
             );
             reject(
               new OpenCodeHarnessError(
                 authLike ? 'OPENCODE_AUTH_FAILED' : 'OPENCODE_START_FAILED',
-                redactDiagnostic(
-                  stderr || 'OpenCode run exited with code ' + String(code),
-                  secrets,
-                ),
+                redactDiagnostic(detail, secrets),
                 !authLike,
               ),
             );
             return;
           }
-          resolve(parseRunOutput(stdout));
+          resolve({
+            text: parsed.text,
+            toolCalls: parsed.tools,
+            usage: parsed.usage,
+            steps: parsed.steps,
+            sessionId: parsed.sessionId,
+            envelopes: parsed.envelopes,
+          });
         });
       });
     });
   }
 }
 
-/** Parse `opencode run --format json` NDJSON output (fail-closed). */
-export function parseRunOutput(stdout: string): OpenCodePromptResult {
-  let text = '';
-  let toolCalls: OpenCodeObservedToolCall[] = [];
-  let usage: AgentUsage | undefined;
-  let envelopes = 0;
-  const lines = stdout.split(/\r?\n/);
-  let parsedAny = false;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.length === 0) continue;
-    let envelope: unknown;
-    try {
-      envelope = JSON.parse(trimmed);
-    } catch {
-      continue;
-    }
-    parsedAny = true;
-    envelopes += 1;
-    const calls = extractToolCalls(envelope);
-    if (calls.length > 0) toolCalls = toolCalls.concat(calls).slice(0, MAX_TOOL_CALLS);
-    const fragment = extractText(envelope);
-    if (fragment !== undefined) text = boundedAppend(text + (text ? '\n' : ''), fragment);
-    const observed = extractUsage(envelope);
-    if (observed !== undefined) usage = observed;
-  }
-  if (!parsedAny) text = stdout.trim().slice(0, MAX_TEXT);
-  return { text, toolCalls, usage, envelopes };
-}
-
 export const createProductionOpenCodeClient: OpenCodeClientFactory = async (input) => {
+  const launcher = input.launcher ?? new DirectOpenCodeProcessLauncher();
   const sessions = new Set<ProductionSession>();
   let closed = false;
   return {
@@ -391,7 +301,7 @@ export const createProductionOpenCodeClient: OpenCodeClientFactory = async (inpu
         input.cwd,
         input.environment,
         input.modelId,
-        input.xdgDataHome,
+        launcher,
       );
       sessions.add(session);
       return session;
@@ -399,8 +309,10 @@ export const createProductionOpenCodeClient: OpenCodeClientFactory = async (inpu
     close: async () => {
       closed = true;
       for (const session of sessions) session.abort();
+      // Await real process termination before releasing the client so
+      // scope cleanup never races a dying OpenCode file watcher/DB.
+      await Promise.all([...sessions].map((session) => session.settled?.()));
       sessions.clear();
-      await new Promise((resolve) => setTimeout(resolve, 0));
     },
   };
 };

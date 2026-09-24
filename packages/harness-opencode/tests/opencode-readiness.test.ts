@@ -65,7 +65,8 @@ describe('OpenCode discovery', () => {
     expect(result.status).toBe('unavailable');
     expect(result.readiness).toBe('unavailable');
     expect(result.credentialConfigured).toBe(true);
-    expect(result.modelId).toBe('anthropic/claude-test');
+    // Doctor reports the EFFECTIVE model id (what --model receives).
+    expect(result.modelId).toBe('openrouter/anthropic/claude-test');
     expect(result.provider).toBe('openrouter');
     expect(result.testedVersion).toBe(OPENCODE_TESTED_VERSION);
     // No secret value may appear in doctor output.

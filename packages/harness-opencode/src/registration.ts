@@ -15,7 +15,7 @@ export function createOpenCodeRegistration(
   // Runtime config resolves lazily so registering an unselected stack
   // never throws: only the selected stacks' preflight/adapter paths report
   // OPENCODE_MODEL_NOT_CONFIGURED / OPENCODE_CREDENTIAL_MISSING.
-  let runtime: { modelId: string; provider: string; executable: string } | undefined;
+  let runtime: { effectiveModelId: string; provider: string; executable: string } | undefined;
   const resolveRuntime = () => (runtime ??= resolveOpenCodeRuntime(options));
   const stack = AgentStackDefinitionSchema.parse({
     schemaVersion: 1,
@@ -49,7 +49,10 @@ export function createOpenCodeRegistration(
           'OpenCode credential is missing. Set OPENROUTER_API_KEY.',
         );
       }
-      runtimeIdentity.modelId = resolved.modelId;
+      // Truthful identity: the EFFECTIVE OpenCode model id (what --model
+      // receives) plus the provider it was composed with.
+      runtimeIdentity.modelId = resolved.effectiveModelId;
+      runtimeIdentity.provider = resolved.provider;
       runtimeIdentity.executable = resolved.executable;
       runtimeIdentity.executableVersion = await probeOpenCodeExecutable(
         resolved.executable,

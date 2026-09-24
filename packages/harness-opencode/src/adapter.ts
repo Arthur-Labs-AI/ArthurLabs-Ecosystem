@@ -56,26 +56,43 @@ import {
   type OpenCodeRuntimeConfiguration,
 } from './discovery.js';
 import {
-  cleanupOpenCodeAuthBoundary,
-  writeOpenCodeAuthBoundary,
-  type OpenCodeAuthBoundary,
-} from './auth.js';
-import { buildOpenCodeChildEnvironment, buildOpenCodeToolEnvironment } from './environment.js';
+  applyOpenCodeScopeEnvironment,
+  applyOpenCodeTurnEnvironment,
+  buildOpenCodeChildEnvironment,
+  buildOpenCodeProviderConfig,
+  buildOpenCodeToolEnvironment,
+} from './environment.js';
 import { OpenCodeHarnessError } from './errors.js';
 import { redactDiagnostic, redactStructured, secretValues } from './redaction.js';
+import {
+  cleanupOpenCodeRunScope,
+  createOpenCodeRunScope,
+  maskProjectOpenCodeConfig,
+  type OpenCodeRunScope,
+} from './scope.js';
 import {
   createProductionOpenCodeClient,
   type OpenCodeClientFactory,
   type OpenCodeClientView,
-  type OpenCodeObservedToolCall,
+  type OpenCodePromptResult,
   type OpenCodeSessionView,
 } from './client.js';
+import type { OpenCodeToolObservation } from './wire.js';
 
 export interface OpenCodeHarnessAdapterOptions {
   readonly executable?: string;
   readonly modelId?: string;
   /** Provider id for the OpenCode session; default 'openrouter'. */
   readonly provider?: string;
+  /**
+   * Advanced: custom provider endpoint (OpenAI-compatible base URL,
+   * e.g. an enterprise gateway or the zero-credit test stub). When set,
+   * the provider config also carries the SDK loader + model table.
+   * Production OpenRouter path leaves these unset.
+   */
+  readonly providerBaseUrl?: string;
+  readonly providerNpm?: string;
+  readonly providerModels?: Readonly<Record<string, Record<string, unknown>>>;
   readonly environment?: NodeJS.ProcessEnv;
   readonly clientFactory?: OpenCodeClientFactory;
   readonly shutdownTimeoutMs?: number;
@@ -99,9 +116,24 @@ export class OpenCodeTurnTimeoutError extends OpenCodeHarnessError {
 
 interface CollectedTurn {
   readonly text: string;
-  readonly toolCalls: readonly OpenCodeObservedToolCall[];
+  readonly observations: readonly OpenCodeToolObservation[];
   readonly events: readonly HarnessEvent[];
   readonly usage?: AgentUsage | undefined;
+  readonly steps: number;
+}
+
+/** Owned per-AgentRun execution state (Sentry IDs and OpenCode IDs tracked separately). */
+interface OpenCodeRunEntry {
+  readonly agentRunId: AgentRunId;
+  /** OpenCode-owned conversation id, captured from turn 1 envelopes. Never forced equal to agentRunId. */
+  openCodeSessionId?: string | undefined;
+  /** Turns already issued: every turn after the first must continue the captured session. */
+  turnsIssued: number;
+  scope?: OpenCodeRunScope | undefined;
+  session?: OpenCodeSessionView | undefined;
+  client?: OpenCodeClientView | undefined;
+  maskedConfig: readonly string[];
+  readonly controller: AbortController;
 }
 
 function sumUsage(first: AgentUsage | undefined, second: AgentUsage): AgentUsage {
@@ -163,14 +195,6 @@ interface BuiltReportAttempt {
   readonly findings: readonly Finding[];
 }
 
-/** Owned per-AgentRun execution state: exactly one session, client, and auth boundary. */
-interface OpenCodeRunEntry {
-  session?: OpenCodeSessionView | undefined;
-  client?: OpenCodeClientView | undefined;
-  authBoundary?: OpenCodeAuthBoundary | undefined;
-  readonly controller: AbortController;
-}
-
 function planningPrompt(request: HarnessRunRequest): string {
   return [
     'You are the sole QA investigator. Do not create, delegate to, or message subagents.',
@@ -182,7 +206,7 @@ function planningPrompt(request: HarnessRunRequest): string {
     'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
     'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
     'User instructions: ' + request.task.prompt,
-    'OUTPUT CONTRACT (must hold exactly): your ENTIRE response is exactly one raw JSON object matching the schema. No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
+    'OUTPUT CONTRACT (must hold exactly): your ENTIRE final response is exactly one raw JSON object matching the schema. No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
   ].join('\n');
 }
 
@@ -224,35 +248,27 @@ function reportPrompt(
     'Authoritative Sentry operation ledger (frozen after investigation):\n' +
       renderFrozenLedger(operations),
     'Frozen plan: ' + JSON.stringify(plan),
-    'OUTPUT CONTRACT (must hold exactly): your ENTIRE response is exactly one raw JSON object matching SentryAgentReportV2 (schemaVersion 2). No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
+    'OUTPUT CONTRACT (must hold exactly): your ENTIRE final response is exactly one raw JSON object matching SentryAgentReportV2 (schemaVersion 2). No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
   ].join('\n');
 }
 
-/** Extract a shell command or file path from tool-call arguments, if present. */
-function commandFromToolArguments(toolName: string, args: unknown): string | undefined {
-  if (typeof args === 'string') {
-    const trimmed = args.trim();
-    if (trimmed.length === 0) return undefined;
-    try {
-      return commandFromToolArguments(toolName, JSON.parse(trimmed)) ?? trimmed.slice(0, 500);
-    } catch {
-      return trimmed.slice(0, 500);
-    }
-  }
-  if (args === null || typeof args !== 'object' || Array.isArray(args)) return undefined;
-  const record = args as Record<string, unknown>;
+/** Extract a shell command or file path from tool-call input, if present. */
+function commandFromToolInput(
+  toolName: string,
+  input: Readonly<Record<string, unknown>>,
+): string | undefined {
   for (const key of ['command', 'cmd', 'script']) {
-    const candidate = typeof record[key] === 'string' ? (record[key] as string).trim() : '';
+    const candidate = typeof input[key] === 'string' ? (input[key] as string).trim() : '';
     if (candidate.length > 0) return candidate.slice(0, 500);
   }
-  const argv = record['argv'];
+  const argv = input['argv'];
   if (Array.isArray(argv)) {
     const parts = argv.filter((entry): entry is string => typeof entry === 'string');
     if (parts.length > 0) return parts.join(' ').slice(0, 500);
   }
   if (/file|read|write|edit|search|glob|patch/i.test(toolName)) {
     for (const key of ['path', 'file', 'filePath', 'pattern', 'query']) {
-      const candidate = typeof record[key] === 'string' ? (record[key] as string).trim() : '';
+      const candidate = typeof input[key] === 'string' ? (input[key] as string).trim() : '';
       if (candidate.length > 0) return candidate.slice(0, 500);
     }
   }
@@ -261,7 +277,7 @@ function commandFromToolArguments(toolName: string, args: unknown): string | und
 
 export class OpenCodeHarnessAdapter implements HarnessAdapter {
   private readonly hostEnvironment: NodeJS.ProcessEnv;
-  private readonly environment: NodeJS.ProcessEnv;
+  private readonly baseEnvironment: NodeJS.ProcessEnv;
   private readonly childEnvironmentReport: {
     readonly allowedNames: readonly string[];
     readonly blockedNames: readonly string[];
@@ -272,7 +288,6 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
   private readonly turnTimeoutMs: number;
   private readonly secrets: readonly string[];
   private readonly sessions = new Map<string, OpenCodeRunEntry>();
-  private readonly authBoundaries = new Map<string, OpenCodeAuthBoundary>();
   private readonly observedCommands = new Set<string>();
   private readonly observedOperations = new Map<string, ObservedOperation>();
   private operationCounter = 0;
@@ -286,7 +301,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     this.shutdownTimeoutMs = options.shutdownTimeoutMs ?? 10_000;
     this.turnTimeoutMs = options.turnTimeoutMs ?? 1_800_000;
     const child = buildOpenCodeChildEnvironment({ source: this.hostEnvironment });
-    this.environment = child.environment;
+    this.baseEnvironment = child.environment;
     this.childEnvironmentReport = child;
     this.secrets = secretValues(this.hostEnvironment);
   }
@@ -306,7 +321,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     readonly allowed: readonly string[];
     readonly blocked: readonly string[];
   } {
-    const tool = buildOpenCodeToolEnvironment(this.environment);
+    const tool = buildOpenCodeToolEnvironment(this.baseEnvironment);
     return { allowed: tool.allowedNames, blocked: tool.blockedNames };
   }
 
@@ -323,11 +338,11 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         filesystemWrite: true,
         shell: true,
         browser: false,
-        sessionResume: false,
+        sessionResume: true,
         structuredOutput: true,
         usageReporting: true,
       },
-      supportedModelPatterns: [this.runtime.modelId],
+      supportedModelPatterns: [this.runtime.effectiveModelId],
       supportedOperatingSystems: ['windows', 'linux', 'macos'],
     };
   }
@@ -342,85 +357,115 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
   }
 
   /**
-   * Map one observed OpenCode tool call to correlated Sentry events.
-   * The call and its result arrive together (discrete headless turns), so
-   * tool.started + tool.completed share one Sentry operation id. Exit
-   * codes come ONLY from explicit structured exit codes — unknown stays
-   * unknown (never default 0), so unobserved success is never fabricated.
+   * Map one observed terminal OpenCode tool execution to correlated Sentry
+   * events. `tool.started` + `tool.completed` are normalized together from
+   * the single terminal observation (documented normalization: OpenCode's
+   * headless stream reports terminal tool states, not live transitions;
+   * event timestamps are Sentry observation times by construction).
+   * Correlation uses one fresh Sentry operation id per observation; the
+   * OpenCode `callID` is carried for diagnostics only.
+   *
+   * Exit codes come ONLY from `state.metadata.exit` (observed, exact).
+   * Unknown stays unknown: no `command.executed`, no exit code anywhere.
+   * Failures without exit codes carry a redacted `errorPreview` instead —
+   * the schema's designated channel, never a fabricated code.
    */
-  private observeToolCall(
-    call: OpenCodeObservedToolCall,
+  private observeTool(
+    observation: OpenCodeToolObservation,
     agentRunId: AgentRunId,
     emit: (value: Readonly<Record<string, unknown>>) => HarnessEvent,
   ): HarnessEvent[] {
-    if (/subagent/i.test(call.name)) {
+    if (observation.tool === 'task') {
+      // The `task` tool spawns autonomous subagent sessions (verified:
+      // child session with parentSessionId). Sentry agents stay independent.
       throw new OpenCodeHarnessError(
         'OPENCODE_SUBAGENT_FORBIDDEN',
-        'OpenCode attempted subagent delegation, which Sentry forbids.',
+        'OpenCode attempted subagent delegation (task tool), which Sentry forbids.',
       );
     }
     const operationId: OperationId = createOperationId();
-    const commandText = commandFromToolArguments(call.name, call.arguments) ?? '';
+    const commandText = commandFromToolInput(observation.tool, observation.input) ?? '';
     const out: HarnessEvent[] = [
       emit({
         type: 'tool.started',
         operationId,
         tool: {
-          name: call.name,
+          name: observation.tool,
           ...(commandText.length === 0
             ? {}
             : { inputSummary: redactDiagnostic(commandText, this.secrets) }),
         },
       }),
     ];
-    const failed = call.exitCode !== undefined && call.exitCode !== 0;
+    const exitCode = observation.exitCode;
+    const errorPreview =
+      observation.error === undefined
+        ? undefined
+        : redactDiagnostic(observation.error, this.secrets).slice(0, 1000);
     out.push(
       emit({
         type: 'tool.completed',
         operationId,
-        tool: { name: call.name, ...(failed ? { exitCode: 1 } : {}) },
+        tool: {
+          name: observation.tool,
+          ...(exitCode === undefined ? {} : { exitCode }),
+          ...(observation.durationMs === undefined ? {} : { durationMs: observation.durationMs }),
+          ...(errorPreview === undefined || errorPreview.length === 0 ? {} : { errorPreview }),
+        },
       }),
     );
-    if (commandText.length > 0) {
+    if (commandText.length > 0 && observation.tool !== 'invalid') {
       const command = redactDiagnostic(commandText, this.secrets);
-      if (call.exitCode !== undefined)
-        this.observedCommands.add(commandIdentity(command, call.exitCode));
-      this.operationCounter += 1;
-      const operationKey = 'op_' + this.operationCounter;
-      this.observedOperations.set(operationKey, {
-        operationId,
-        operationKey,
-        toolName: call.name,
-        commandText: command,
-        ...(call.exitCode === undefined ? {} : { exitCode: call.exitCode }),
-        isTestOperation: isTestCommand(call.name + ' ' + command),
-      });
-      if (call.exitCode !== undefined) {
+      if (exitCode !== undefined) {
+        this.observedCommands.add(commandIdentity(command, exitCode));
         out.push(
           emit({
             type: 'command.executed',
             operationId,
             command,
-            exitCode: call.exitCode,
+            exitCode,
+          }),
+        );
+      }
+      this.operationCounter += 1;
+      const operationKey = 'op_' + this.operationCounter;
+      this.observedOperations.set(operationKey, {
+        operationId,
+        operationKey,
+        toolName: observation.tool,
+        commandText: command,
+        ...(exitCode === undefined ? {} : { exitCode }),
+        isTestOperation: isTestCommand(observation.tool + ' ' + command),
+      });
+    }
+    if (observation.status === 'completed' && observation.output !== undefined) {
+      const summary = redactDiagnostic(observation.output.trim(), this.secrets).slice(0, 1000);
+      if (summary.length > 0) {
+        out.push(
+          emit({
+            type: 'agent.message',
+            message: ('observed tool ' + observation.tool + ' output: ' + summary).slice(0, 2000),
           }),
         );
       }
     }
-    const resultText = (call.output ?? '').trim().slice(0, 2_000);
-    if (resultText.length > 0) {
-      out.push(
-        emit({
-          type: 'agent.message',
-          message: (
-            'tool ' +
-            call.name +
-            ' result: ' +
-            redactDiagnostic(resultText, this.secrets)
-          ).slice(0, 2_000),
-        }),
-      );
-    }
     return out;
+  }
+
+  private turnEnvironment(forbidTools: boolean): NodeJS.ProcessEnv {
+    return applyOpenCodeTurnEnvironment(this.baseEnvironment, {
+      configContent: buildOpenCodeProviderConfig({
+        provider: this.runtime.provider,
+        ...(this.options.providerBaseUrl === undefined
+          ? {}
+          : { baseUrl: this.options.providerBaseUrl }),
+        ...(this.options.providerNpm === undefined ? {} : { npm: this.options.providerNpm }),
+        ...(this.options.providerModels === undefined
+          ? {}
+          : { models: this.options.providerModels }),
+      }),
+      forbidTools,
+    });
   }
 
   private async runTurn(
@@ -437,13 +482,27 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         'OpenCode session ended before the ' + phase + ' turn.',
       );
     }
+    // Fail closed on lost continuity: every turn after the first must
+    // continue the captured OpenCode session, never silently start fresh.
+    if (entry.turnsIssued > 0 && entry.openCodeSessionId === undefined) {
+      throw new OpenCodeHarnessError(
+        'OPENCODE_START_FAILED',
+        'OpenCode turn ' + phase + ' has no session to continue.',
+        true,
+      );
+    }
     const deadline = Date.now() + this.turnTimeoutMs;
     const budget = deadline - Date.now();
     if (budget <= 0) throw new OpenCodeTurnTimeoutError(phase, this.turnTimeoutMs);
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const result = await Promise.race([
-        session.runPrompt(text, { timeoutMs: budget, signal: entry.controller.signal }),
+      const result: OpenCodePromptResult = await Promise.race([
+        session.runPrompt(text, {
+          timeoutMs: budget,
+          signal: entry.controller.signal,
+          ...(entry.openCodeSessionId === undefined ? {} : { sessionId: entry.openCodeSessionId }),
+          environment: this.turnEnvironment(forbidTools),
+        }),
         new Promise<never>((_resolve, reject) => {
           timer = setTimeout(
             () => reject(new OpenCodeTurnTimeoutError(phase, this.turnTimeoutMs)),
@@ -451,7 +510,14 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           );
         }),
       ]);
+      if (entry.openCodeSessionId === undefined && result.sessionId !== undefined) {
+        entry.openCodeSessionId = result.sessionId;
+      }
+      entry.turnsIssued += 1;
       if (forbidTools && result.toolCalls.length > 0) {
+        // Upstream deny-all should already have prevented execution; this
+        // firewall rejects anything that slipped through (never silently
+        // incorporated into the report).
         throw new OpenCodeHarnessError(
           'OPENCODE_REPORT_TOOL_FORBIDDEN',
           'OpenCode used tools during the reporting turn, which must serialize from the frozen ledger only.',
@@ -460,14 +526,15 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       const emit = (value: Readonly<Record<string, unknown>>): HarnessEvent =>
         event(agentRunId, value);
       const collected: HarnessEvent[] = [];
-      for (const call of result.toolCalls) {
-        collected.push(...this.observeToolCall(call, agentRunId, emit));
+      for (const observation of result.toolCalls) {
+        collected.push(...this.observeTool(observation, agentRunId, emit));
       }
       return {
         text: result.text,
-        toolCalls: result.toolCalls,
+        observations: result.toolCalls,
         events: collected,
         usage: result.usage,
+        steps: result.steps,
       };
     } finally {
       if (timer !== undefined) clearTimeout(timer);
@@ -534,7 +601,12 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       status: 'planning',
       message: 'OpenCode is creating a frozen investigation plan.',
     });
-    const entry: OpenCodeRunEntry = { controller: new AbortController() };
+    const entry: OpenCodeRunEntry = {
+      agentRunId: request.agentRunId,
+      turnsIssued: 0,
+      maskedConfig: [],
+      controller: new AbortController(),
+    };
     this.sessions.set(request.agentRunId, entry);
     try {
       if (this.cancelledRuns.has(request.agentRunId)) {
@@ -547,32 +619,44 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           'OpenCode credential is missing. Set OPENROUTER_API_KEY.',
         );
       }
-      // Sentry-owned auth boundary beside (never inside) the workspace.
-      // The key lives in that file only — in no child environment.
-      const authBoundary = await writeOpenCodeAuthBoundary({
+      // Neutralize project-controlled OpenCode configuration inside the
+      // disposable workspace (proven: suppression flags alone do not stop
+      // project plugin auto-discovery in 1.18.32). Originals outside
+      // Sentry are untouched; the masked content stays readable for QA.
+      entry.maskedConfig = await maskProjectOpenCodeConfig(request.workspace.runtimePath);
+      if (entry.maskedConfig.length > 0) {
+        this.shutdownDiagnostics.push({
+          code: 'OPENCODE_PROJECT_CONFIG_MASKED',
+          severity: 'info',
+          message:
+            'Masked project OpenCode configuration in the disposable workspace: ' +
+            entry.maskedConfig.join(', '),
+        });
+      }
+      // Disposable HOME/XDG scope with the file-based provider auth.
+      const scope = await createOpenCodeRunScope({
         workspacePath: request.workspace.runtimePath,
         runId: request.agentRunId,
         apiKey,
       });
-      entry.authBoundary = authBoundary;
-      this.authBoundaries.set(request.agentRunId, authBoundary);
-      entry.client = await this.clientFactory({
+      entry.scope = scope;
+      const scopedEnvironment = applyOpenCodeScopeEnvironment(this.baseEnvironment, scope);
+      const client = await this.clientFactory({
         executable: this.runtime.executable,
         cwd: request.workspace.runtimePath,
-        environment: this.environment,
-        modelId: this.runtime.modelId,
-        provider: this.runtime.provider,
-        xdgDataHome: authBoundary.directory,
+        environment: scopedEnvironment,
+        modelId: this.runtime.effectiveModelId,
         shutdownTimeoutMs: this.shutdownTimeoutMs,
       });
-      entry.session = await entry.client.startSession({ sessionId: request.agentRunId });
+      entry.client = client;
+      entry.session = await client.startSession();
       markOpenCodeRuntimeVerified();
       this.options.onRuntimeIdentity?.({});
       const pipeline = pipelineContext(this.secrets);
       let planResult: ReturnType<typeof SentryInvestigationPlanV1Schema.parse> | undefined;
       let planCorrection: string[] | undefined;
       let planningUsage: AgentUsage | undefined;
-      let planningTurns = 0;
+      let planningSteps = 0;
       for (let attempt = 1; attempt <= MAX_PLANNING_ATTEMPTS; attempt += 1) {
         const planning = await this.runTurn(
           entry,
@@ -585,7 +669,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           'planning',
         );
         for (const emitted of planning.events) yield emitted;
-        planningTurns += 1;
+        planningSteps += planning.steps;
         planningUsage = sumUsage(planningUsage, planning.usage ?? {});
         if (planning.text.trim().length === 0) {
           planCorrection = ['Planning turn produced no response.'];
@@ -645,7 +729,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         status: 'reporting',
         message: 'OpenCode is serializing the frozen investigation into a report.',
       });
-      const reportTurns: Array<{ usage?: AgentUsage }> = [];
+      const reportTurns: Array<{ usage?: AgentUsage; steps: number }> = [];
       let result: SentryAgentReportV2 | undefined;
       let built: BuiltReportAttempt | undefined;
       let correction: string[] | undefined;
@@ -677,7 +761,10 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         }
         if (reporting !== undefined) {
           for (const emitted of reporting.events) yield emitted;
-          reportTurns.push(reporting.usage === undefined ? {} : { usage: reporting.usage });
+          reportTurns.push({
+            ...(reporting.usage === undefined ? {} : { usage: reporting.usage }),
+            steps: reporting.steps,
+          });
           const candidate = parseReportAttempt(reporting.text, pipeline);
           if (!candidate.ok) {
             errors = candidate.errors;
@@ -761,10 +848,13 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
         ...summed,
-        turns: planningTurns + 1 + reportTurns.length,
+        turns: planningSteps + investigation.steps + reportTurns.reduce((n, t) => n + t.steps, 0),
       };
       yield event(request.agentRunId, { type: 'usage.updated', usage });
-      yield event(request.agentRunId, { type: 'run.completed', usage });
+      yield event(request.agentRunId, {
+        type: 'run.completed',
+        usage,
+      });
     } catch (cause) {
       if (cause instanceof OpenCodeHarnessError && cause.code === 'OPENCODE_CANCEL_FAILED') {
         yield event(request.agentRunId, {
@@ -786,7 +876,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
                 'OpenCode returned data that did not match the required schema.',
               )
             : new OpenCodeHarnessError(
-                /auth|credential|sign in|api key|unauthorized|401/i.test(
+                /auth|credential|sign in|api key|unauthorized|401|apicallerror/i.test(
                   String(cause) + ' ' + messageOf(cause),
                 )
                   ? 'OPENCODE_AUTH_FAILED'
@@ -809,12 +899,10 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     }
   }
 
-  /** Close a run's owned client and remove its auth boundary (best-effort). */
+  /** Close a run's owned client and remove its disposable scope (best-effort). */
   private async closeRunEntry(agentRunId: AgentRunId): Promise<void> {
     const entry = this.sessions.get(agentRunId);
     this.sessions.delete(agentRunId);
-    const boundary = this.authBoundaries.get(agentRunId);
-    this.authBoundaries.delete(agentRunId);
     if (entry?.client !== undefined) {
       const client = entry.client;
       entry.client = undefined;
@@ -829,15 +917,26 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         });
       }
     }
-    if (boundary !== undefined) {
-      await cleanupOpenCodeAuthBoundary(boundary).catch(() => undefined);
+    if (entry?.scope !== undefined) {
+      const scope = entry.scope;
+      entry.scope = undefined;
+      try {
+        await cleanupOpenCodeRunScope(scope);
+      } catch (cause) {
+        this.shutdownDiagnostics.push({
+          code: 'OPENCODE_SCOPE_CLEANUP_FAILED',
+          severity: 'error',
+          message: redactDiagnostic(cause, this.secrets),
+          retryable: false,
+        });
+      }
     }
   }
 
   /**
    * Cancel exactly the OpenCode execution owned by this AgentRun: abort
-   * its controller (in-flight turn settles promptly) and kill its owned
-   * session child. Never touches other runs' processes (no broad pkill).
+   * its controller (in-flight turn settles promptly) and stop its owned
+   * process boundary. Never touches other runs (no broad pkill).
    */
   async cancel(runId: AgentRunId): Promise<void> {
     const entry = this.sessions.get(runId);
@@ -891,6 +990,20 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         entry.client = undefined;
         closers.push(client.close().catch(() => undefined));
       }
+      if (entry.scope !== undefined) {
+        const scope = entry.scope;
+        entry.scope = undefined;
+        closers.push(
+          cleanupOpenCodeRunScope(scope).catch((cause: unknown) => {
+            this.shutdownDiagnostics.push({
+              code: 'OPENCODE_SCOPE_CLEANUP_FAILED',
+              severity: 'error',
+              message: redactDiagnostic(cause, this.secrets),
+              retryable: false,
+            });
+          }),
+        );
+      }
     }
     if (closers.length > 0) {
       try {
@@ -912,12 +1025,6 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         });
       }
     }
-    // Backstop: no auth boundary may survive the adapter, even if a run
-    // generator was abandoned without settling its finally block.
-    for (const [, boundary] of this.authBoundaries) {
-      await cleanupOpenCodeAuthBoundary(boundary).catch(() => undefined);
-    }
-    this.authBoundaries.clear();
   }
 
   getShutdownDiagnostics(): readonly HarnessDiagnostic[] {

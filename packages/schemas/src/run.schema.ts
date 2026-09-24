@@ -137,6 +137,10 @@ export type QARun = z.infer<typeof QARunSchema>;
 export const AgentRuntimeIdentitySchema = z
   .object({
     modelId: z.string().min(1).max(200).optional(),
+    // Provider id when the harness separates provider from model
+    // (e.g. OpenCode harness + OpenRouter provider). Optional and
+    // additive: historical rows without it still validate.
+    provider: z.string().min(1).max(100).optional(),
     modelVersion: z.string().min(1).max(100).optional(),
     adapterId: z.string().min(1).max(100).optional(),
     adapterVersion: z.string().min(1).max(100).optional(),

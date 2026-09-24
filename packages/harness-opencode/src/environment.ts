@@ -1,31 +1,31 @@
+import type { OpenCodeRunScope } from './scope.js';
+
 /**
  * Sanitized environments for the OpenCode QA worker.
  *
  * The provider credential NEVER enters any child environment: OpenCode
- * authenticates from the Sentry-owned auth boundary file
- * (`writeOpenCodeAuthBoundary`, honored via `XDG_DATA_HOME`), so
+ * authenticates from the Sentry-owned scope auth file, so
  * `OPENROUTER_API_KEY` is blocked here by construction. OpenCode shell
  * tools inherit the host process environment, which therefore contains no
- * provider credential at all — isolation holds even if a tool escapes
- * workspace assumptions.
+ * provider credential at all.
  *
- * Two constructors:
+ * Three layers:
  *
- * 1. Host environment (`buildOpenCodeChildEnvironment`): the `opencode`
- *    child process env. Sentry passes `env` explicitly at spawn, so raw
- *    `process.env` is never forwarded. The allowlist covers OS process
- *    execution plus Sentry's own non-secret OpenCode configuration.
- *    `XDG_DATA_HOME` (Sentry-owned auth scope) is forwarded when set.
- *    Values stay in memory for the spawn call; only NAMES are reported.
+ * 1. `buildOpenCodeChildEnvironment`: allowlisted base (OS runtime +
+ *    Sentry non-secret config). HOME/XDG and OpenCode CONTROL variables
+ *    are NEVER taken from the source environment (see blocklists below).
+ * 2. `applyOpenCodeScopeEnvironment`: Sentry-owned scope values (HOME,
+ *    XDG_* pointing at the disposable run scope) layered on top.
+ * 3. `applyOpenCodeTurnEnvironment`: per-turn Sentry-owned OpenCode
+ *    controls (`OPENCODE_CONFIG_CONTENT` with provider + permission
+ *    rules, `OPENCODE_DISABLE_PROJECT_CONFIG=1`, download guards).
+ *    Reporting turns additionally get a tool-denying permission ruleset.
  *
- * 2. Tool environment (`buildOpenCodeToolEnvironment`): the environment
- *    model-controlled tool/shell executions may observe. Secrets are NEVER
- *    present here (absent upstream already; this is the enforced second
- *    boundary, proven by sentinel tests).
+ * `buildOpenCodeToolEnvironment` remains the enforced second boundary for
+ * anything model-controlled tools may observe (proven by sentinel tests).
  *
- * Secrets are never persisted outside the ephemeral auth boundary file:
- * only names and inclusion decisions leave this module. Never place
- * provider credentials in project `.env` files.
+ * Only variable NAMES are ever reported; values stay in spawn memory.
+ * Never place provider credentials in project `.env` files.
  */
 export interface OpenCodeChildEnvironmentInput {
   readonly source?: NodeJS.ProcessEnv;
@@ -47,7 +47,6 @@ const BASE_RUNTIME_NAMES = [
   'TEMP',
   'TMP',
   'TMPDIR',
-  'HOME',
   'USERPROFILE',
   'LOCALAPPDATA',
   'APPDATA',
@@ -61,13 +60,39 @@ const BASE_RUNTIME_NAMES = [
   'TERM',
   'TZ',
   'NODE_PATH',
-  'XDG_DATA_HOME',
   'SENTRY_OPENCODE_MODEL',
   'SENTRY_OPENCODE_PROVIDER',
   'SENTRY_OPENCODE_BINARY',
 ] as const;
 
-/** Explicit OpenCode/provider configuration prefixes (non-secret). */
+/**
+ * OpenCode CONTROL variables: Sentry-owned, never inherited from the
+ * surrounding environment. A developer's own OpenCode configuration must
+ * never steer Sentry runs (config file/content paths, auth content,
+ * permission rulesets, plugin metadata, purity/project-config toggles).
+ */
+const OPENCODE_CONTROLLED_NAMES = [
+  'OPENCODE_CONFIG',
+  'OPENCODE_CONFIG_DIR',
+  'OPENCODE_CONFIG_CONTENT',
+  'OPENCODE_TUI_CONFIG',
+  'OPENCODE_AUTH_CONTENT',
+  'OPENCODE_PERMISSION',
+  'OPENCODE_PURE',
+  'OPENCODE_DISABLE_PROJECT_CONFIG',
+  'OPENCODE_PLUGIN_META_FILE',
+] as const;
+
+/** HOME/XDG scope: always Sentry-owned per AgentRun, never inherited. */
+const SCOPE_OWNED_NAMES = [
+  'HOME',
+  'XDG_CONFIG_HOME',
+  'XDG_DATA_HOME',
+  'XDG_STATE_HOME',
+  'XDG_CACHE_HOME',
+] as const;
+
+/** Explicit non-secret OpenCode/provider tunables that may pass through. */
 const OPENCODE_CONFIG_PREFIXES = ['OPENCODE_'] as const;
 
 const EXPLICIT_OPENCODE_NAMES = ['OPENROUTER_BASE_URL'] as const;
@@ -78,10 +103,8 @@ const SECRET_NAME_PATTERN =
 /**
  * Exact secret-bearing names allowed into the OpenCode HOST process
  * environment. Intentionally EMPTY: the host authenticates from the
- * Sentry-owned auth boundary file, so no provider credential belongs in
- * ANY child environment. Kept as a named list so a future provider path
- * that genuinely requires host-env auth can extend it explicitly — with
- * sentinel tests proving the tool boundary still strips it.
+ * Sentry-owned scope auth file, so no provider credential belongs in
+ * ANY child environment.
  */
 export const OPENCODE_ALLOWED_SECRET_ENV_NAMES: readonly string[] = [] as const;
 
@@ -95,6 +118,14 @@ export interface OpenCodeChildEnvironmentReport {
 
 function isSecretName(name: string): boolean {
   return SECRET_NAME_PATTERN.test(name);
+}
+
+function isControlledName(upper: string): boolean {
+  return (OPENCODE_CONTROLLED_NAMES as readonly string[]).some((known) => known === upper);
+}
+
+function isScopeOwnedName(upper: string): boolean {
+  return (SCOPE_OWNED_NAMES as readonly string[]).some((known) => known === upper);
 }
 
 function isOpenCodeConfigName(name: string): boolean {
@@ -116,6 +147,12 @@ export function buildOpenCodeChildEnvironment(
     const upper = name.toUpperCase();
     if (seen.has(upper)) return;
     seen.add(upper);
+    // Controlled and scope-owned names are never inherited: Sentry sets
+    // exactly the values its own boundary requires.
+    if (isControlledName(upper) || isScopeOwnedName(upper)) {
+      blockedNames.push(name);
+      return;
+    }
     const exactBase = (BASE_RUNTIME_NAMES as readonly string[]).some(
       (allowedName) => allowedName.toUpperCase() === upper,
     );
@@ -166,6 +203,61 @@ export function buildOpenCodeChildEnvironment(
     allowedNames: [...allowed.keys()].sort(),
     blockedNames: blockedNames.sort(),
   };
+}
+
+/** Layer the disposable run scope (HOME/XDG) over the child environment. */
+export function applyOpenCodeScopeEnvironment(
+  environment: NodeJS.ProcessEnv,
+  scope: OpenCodeRunScope,
+): NodeJS.ProcessEnv {
+  return {
+    ...environment,
+    HOME: scope.home,
+    XDG_CONFIG_HOME: scope.configHome,
+    XDG_DATA_HOME: scope.dataHome,
+    XDG_STATE_HOME: scope.stateHome,
+    XDG_CACHE_HOME: scope.cacheHome,
+  };
+}
+
+/**
+ * Sentry-owned per-turn OpenCode controls. `configContent` carries the
+ * provider (and optional extra config) for THIS turn; reporting turns
+ * pass a tool-denying permission ruleset instead of the default allow.
+ */
+export function applyOpenCodeTurnEnvironment(
+  environment: NodeJS.ProcessEnv,
+  input: {
+    readonly configContent: string;
+    readonly forbidTools?: boolean;
+  },
+): NodeJS.ProcessEnv {
+  return {
+    ...environment,
+    OPENCODE_CONFIG_CONTENT: input.configContent,
+    OPENCODE_DISABLE_PROJECT_CONFIG: '1',
+    OPENCODE_DISABLE_LSP_DOWNLOAD: '1',
+    ...(input.forbidTools === true ? { OPENCODE_PERMISSION: '{"*":"deny"}' } : {}),
+  };
+}
+
+/** Base provider config content (OpenRouter path; no secrets). */
+export function buildOpenCodeProviderConfig(input: {
+  readonly provider: string;
+  readonly baseUrl?: string;
+  /** SDK loader override (test stub path only; production uses bundled providers). */
+  readonly npm?: string;
+  readonly models?: Readonly<Record<string, Record<string, unknown>>>;
+}): string {
+  return JSON.stringify({
+    provider: {
+      [input.provider]: {
+        ...(input.npm === undefined ? {} : { npm: input.npm }),
+        ...(input.baseUrl === undefined ? {} : { options: { baseURL: input.baseUrl } }),
+        ...(input.models === undefined ? {} : { models: { ...input.models } }),
+      },
+    },
+  });
 }
 
 /**

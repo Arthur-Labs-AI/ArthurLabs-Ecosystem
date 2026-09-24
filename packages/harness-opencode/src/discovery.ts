@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { nowIsoTimestamp } from '@qa/shared';
 import type { HarnessHealthResult } from '@qa/harness-protocol';
+import { buildOpenCodeModelId } from './model.js';
 import { OpenCodeHarnessError } from './errors.js';
 import { redactDiagnostic, secretValues } from './redaction.js';
 
@@ -68,9 +69,12 @@ export function openCodeReadinessFromChecks(input: {
 
 export interface OpenCodeRuntimeConfiguration {
   readonly executable: string;
+  /** Configured model id as entered (e.g. `anthropic/claude-x`). */
   readonly modelId: string;
   /** Provider id for the OpenCode session (initial production path: 'openrouter'). */
   readonly provider: string;
+  /** Effective `--model` identifier (`provider/model`, e.g. `openrouter/anthropic/claude-x`). */
+  readonly effectiveModelId: string;
   readonly discoverySource: 'explicit' | 'environment' | 'path';
 }
 
@@ -85,19 +89,15 @@ export function resolveOpenCodeRuntime(
   const environment = input.environment ?? process.env;
   const explicit = input.executable?.trim();
   const fromEnvironment = environment.SENTRY_OPENCODE_BINARY?.trim();
-  const modelId = input.modelId?.trim() || environment.SENTRY_OPENCODE_MODEL?.trim();
-  if (modelId === undefined || modelId.length === 0) {
-    throw new OpenCodeHarnessError(
-      'OPENCODE_MODEL_NOT_CONFIGURED',
-      'OpenCode model is not configured. Set SENTRY_OPENCODE_MODEL to an exact OpenRouter model id.',
-    );
-  }
-  const provider =
-    input.provider?.trim() || environment.SENTRY_OPENCODE_PROVIDER?.trim() || 'openrouter';
+  const identity = buildOpenCodeModelId(
+    input.provider ?? environment.SENTRY_OPENCODE_PROVIDER,
+    input.modelId ?? environment.SENTRY_OPENCODE_MODEL,
+  );
   return {
     executable: explicit || fromEnvironment || 'opencode',
-    modelId,
-    provider,
+    modelId: identity.configuredModel,
+    provider: identity.provider,
+    effectiveModelId: identity.effectiveModelId,
     discoverySource: explicit ? 'explicit' : fromEnvironment ? 'environment' : 'path',
   };
 }
@@ -220,7 +220,11 @@ export async function doctorOpenCode(
   let runtime: OpenCodeRuntimeConfiguration | undefined;
   try {
     runtime = resolveOpenCodeRuntime({ ...input, environment });
-    checks.push({ name: 'model', status: 'pass', message: runtime.modelId });
+    checks.push({
+      name: 'model',
+      status: 'pass',
+      message: runtime.modelId + ' => ' + runtime.effectiveModelId,
+    });
     checks.push({ name: 'provider', status: 'pass', message: runtime.provider });
   } catch (cause) {
     checks.push({
@@ -244,11 +248,19 @@ export async function doctorOpenCode(
       binaryVersion = await probeOpenCodeExecutable(runtime.executable, environment);
       binaryOk = true;
       checks.push({ name: 'binary', status: 'pass', message: binaryVersion });
+      // Wire-format policy: the JSONL parser is built for the tested
+      // release. An exact match is ready; anything else is degraded —
+      // never silently run an untested wire format as healthy.
       if (!binaryVersion.includes(OPENCODE_TESTED_VERSION)) {
         checks.push({
           name: 'version',
           status: 'warn',
-          message: 'OpenCode ' + binaryVersion + ' differs from tested ' + OPENCODE_TESTED_VERSION,
+          message:
+            'OpenCode ' +
+            binaryVersion +
+            ' differs from tested ' +
+            OPENCODE_TESTED_VERSION +
+            '; wire format may differ',
         });
       } else {
         checks.push({ name: 'version', status: 'pass', message: binaryVersion });
@@ -279,7 +291,7 @@ export async function doctorOpenCode(
       ? {}
       : {
           executable: runtime.executable,
-          modelId: runtime.modelId,
+          modelId: runtime.effectiveModelId,
           provider: runtime.provider,
         }),
     ...(binaryVersion === undefined ? {} : { executableVersion: binaryVersion }),

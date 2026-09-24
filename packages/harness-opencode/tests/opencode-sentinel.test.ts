@@ -1,28 +1,18 @@
-import { mkdtemp, rm, stat } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   buildOpenCodeChildEnvironment,
   buildOpenCodeToolEnvironment,
-  cleanupOpenCodeAuthBoundary,
   OPENCODE_ALLOWED_SECRET_ENV_NAMES,
-  readOpenCodeAuthFile,
-  writeOpenCodeAuthBoundary,
+  OpenCodeHarnessAdapter,
 } from '../src/index.js';
 
 // Credential-boundary sentinel tests for the OpenCode harness. A test-only
 // sentinel stands in for OPENROUTER_API_KEY. The key travels ONLY in the
-// Sentry-owned auth boundary file — never in any child environment — so
+// Sentry-owned scope auth file — never in any child environment — so
 // model-controlled shell tools (which inherit the host process environment)
 // cannot observe it. Never a real credential here.
 const SENTINEL_NAME = 'OPENROUTER_API_KEY';
 const SENTINEL_VALUE = 'sentry-test-sentinel-credential';
-
-const roots: string[] = [];
-afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
-});
 
 describe('OpenCode credential boundary', () => {
   it('allows no secret-bearing names into any child environment', () => {
@@ -36,6 +26,24 @@ describe('OpenCode credential boundary', () => {
     expect(child.environment[SENTINEL_NAME]).toBeUndefined();
     expect(child.blockedNames).toContain(SENTINEL_NAME);
     expect(JSON.stringify(child.environment)).not.toContain(SENTINEL_VALUE);
+  });
+
+  it('blocks user OpenCode control variables and scope-owned HOME/XDG', () => {
+    const child = buildOpenCodeChildEnvironment({
+      source: {
+        PATH: '/usr/bin',
+        HOME: '/home/user',
+        XDG_DATA_HOME: '/home/user/.local/share',
+        OPENCODE_CONFIG_CONTENT: '{"plugin":[]}',
+        OPENCODE_PERMISSION: '{"*":"allow"}',
+        OPENCODE_DISABLE_PROJECT_CONFIG: '0',
+      },
+    });
+    expect(child.environment['HOME']).toBeUndefined();
+    expect(child.environment['XDG_DATA_HOME']).toBeUndefined();
+    expect(child.environment['OPENCODE_CONFIG_CONTENT']).toBeUndefined();
+    expect(child.environment['OPENCODE_PERMISSION']).toBeUndefined();
+    expect(child.environment['OPENCODE_DISABLE_PROJECT_CONFIG']).toBeUndefined();
   });
 
   it('blocks unrelated secret-shaped names from the host environment', () => {
@@ -63,28 +71,23 @@ describe('OpenCode credential boundary', () => {
     expect(tool.environment['PATH']).toBe('/usr/bin');
   });
 
-  it('writes the sentinel only to a Sentry-owned auth file beside the workspace', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-auth-'));
-    roots.push(root);
-    const workspace = join(root, 'workspace');
-    const boundary = await writeOpenCodeAuthBoundary({
-      workspacePath: workspace,
-      runId: 'arun_01K7777777777777777777A8W4',
-      apiKey: SENTINEL_VALUE,
+  it('the adapter tool boundary never exposes the sentinel', () => {
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'anthropic/claude-test',
+      environment: { PATH: '/usr/bin', [SENTINEL_NAME]: SENTINEL_VALUE },
+      clientFactory: async () => ({
+        startSession: async () => ({
+          runPrompt: async () => ({ text: '', toolCalls: [], steps: 0, envelopes: 0 }),
+          abort: () => undefined,
+        }),
+        close: async () => undefined,
+      }),
     });
-    try {
-      // Sibling of the workspace, never inside it.
-      expect(boundary.directory.startsWith(root)).toBe(true);
-      expect(boundary.authFile).toBe(join(boundary.directory, 'opencode', 'auth.json'));
-      const parsed = (await readOpenCodeAuthFile(boundary.authFile)) as Record<string, unknown>;
-      expect(parsed).toEqual({
-        openrouter: { type: 'api', key: SENTINEL_VALUE },
-      });
-      // The workspace tree itself never receives the credential.
-      expect(boundary.directory.startsWith(workspace + '/')).toBe(false);
-    } finally {
-      await cleanupOpenCodeAuthBoundary(boundary);
-    }
-    await expect(stat(boundary.directory)).rejects.toThrow();
+    const tool = adapter.toolEnvironmentNames();
+    // The credential never reaches adapter-held environments at all, so
+    // neither list names it — and no value may leak anywhere.
+    expect(tool.allowed).not.toContain(SENTINEL_NAME);
+    expect(JSON.stringify(tool)).not.toContain(SENTINEL_VALUE);
   });
 });
