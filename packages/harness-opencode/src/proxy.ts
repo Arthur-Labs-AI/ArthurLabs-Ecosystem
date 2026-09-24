@@ -54,10 +54,19 @@ function errorEnvelope(message: string): unknown {
   return { error: { message, type: 'sentry_proxy_error', code: 'proxy_rejected' } };
 }
 
+/** Client identity sent upstream (the Go gateway asks for a real user agent). */
+export const SENTRY_PROXY_USER_AGENT = 'sentry-qa-opencode/0.1.0' as const;
+
 export async function startOpenCodeAuthProxy(input: {
   readonly apiKey: string;
   readonly allowedModel: string;
   readonly upstreamBaseUrl?: string;
+  /**
+   * Stable per-conversation id relayed as `x-opencode-session` (required
+   * by the Go gateway for routing/caching). The adapter passes the
+   * AgentRun id: unique per run, stable across all its turns.
+   */
+  readonly sessionId: string;
 }): Promise<OpenCodeAuthProxy> {
   // Fail closed: an empty key would relay as `Bearer ` and produce a
   // confusing upstream 401 instead of a clear credential error.
@@ -125,6 +134,8 @@ export async function startOpenCodeAuthProxy(input: {
             authorization: 'Bearer ' + input.apiKey,
             'HTTP-Referer': 'https://opencode.ai/',
             'X-Title': 'opencode',
+            'user-agent': SENTRY_PROXY_USER_AGENT,
+            'x-opencode-session': input.sessionId,
           },
         },
         (upstreamRes) => {

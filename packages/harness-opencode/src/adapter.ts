@@ -793,6 +793,9 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         apiKey,
         allowedModel: this.runtime.effectiveModelId,
         upstreamBaseUrl,
+        // Stable per-conversation id for upstream routing/caching
+        // (required as x-opencode-session by the Go gateway).
+        sessionId: request.agentRunId,
       });
       entry.proxy = proxy;
       this.shutdownDiagnostics.push({

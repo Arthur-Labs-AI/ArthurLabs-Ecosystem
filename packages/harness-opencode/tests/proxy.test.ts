@@ -6,7 +6,13 @@ const FAKE_KEY = 'sentry-test-sentinel-credential';
 
 describe('localhost auth proxy', () => {
   it('relays with the real key while the client only ever sees the dummy', async () => {
-    const seen: Array<{ url?: string; auth?: unknown; model?: unknown }> = [];
+    const seen: Array<{
+      url?: string;
+      auth?: unknown;
+      model?: unknown;
+      session?: unknown;
+      agent?: unknown;
+    }> = [];
     const upstream = createServer((req: IncomingMessage, res: ServerResponse) => {
       let body = '';
       req.on('data', (chunk: Buffer) => (body += chunk.toString('utf8')));
@@ -15,6 +21,8 @@ describe('localhost auth proxy', () => {
           url: req.url,
           auth: req.headers['authorization'],
           model: (JSON.parse(body) as { model?: unknown }).model,
+          session: req.headers['x-opencode-session'],
+          agent: req.headers['user-agent'],
         });
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ object: 'list', data: [] }));
@@ -27,6 +35,7 @@ describe('localhost auth proxy', () => {
       apiKey: FAKE_KEY,
       allowedModel: 'openrouter/anthropic/x',
       upstreamBaseUrl: 'http://127.0.0.1:' + String(port) + '/v1',
+      sessionId: 'arun_test_session_1',
     });
     try {
       expect(proxy.baseUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/v1$/);
@@ -46,6 +55,10 @@ describe('localhost auth proxy', () => {
       expect(seen).toHaveLength(1);
       expect(seen[0]?.auth).toBe('Bearer ' + FAKE_KEY);
       expect(seen[0]?.model).toBe('openrouter/anthropic/x');
+      expect(seen[0]?.session).toBe('arun_test_session_1');
+      expect(typeof seen[0]?.agent === 'string' && (seen[0]?.agent as string).length > 0).toBe(
+        true,
+      );
       expect(proxy.relayedRequests()).toBe(1);
       // The provider-local id (what the native SDK actually sends) relays too.
       const local = await fetch(proxy.baseUrl + '/chat/completions', {

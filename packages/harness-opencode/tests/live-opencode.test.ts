@@ -61,6 +61,7 @@ describe('live OpenCode smoke (opt-in)', () => {
     const proxy = await startOpenCodeAuthProxy({
       apiKey: process.env['OPENROUTER_API_KEY'] ?? '',
       allowedModel: identity.effectiveModelId,
+      sessionId: 'live-probe-session',
     });
     const client = await createProductionOpenCodeClient({
       executable: process.env['SENTRY_OPENCODE_BINARY']?.trim() || 'opencode',
