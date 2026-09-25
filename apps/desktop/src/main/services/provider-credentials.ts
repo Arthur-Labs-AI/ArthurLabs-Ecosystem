@@ -169,6 +169,14 @@ export class ProviderCredentialService {
     return this.secureAvailable;
   }
 
+  /** Concrete reason saves are refused, if they are. Surfaced in errors
+   *  so a blocked user sees the cause, not a generic sentence. */
+  secureUnavailableReason(): string | undefined {
+    if (this.secureAvailable) return undefined;
+    if (this.safeStorage === undefined) return 'Electron safeStorage bridge unavailable';
+    return 'OS encryption (DPAPI/keychain) reported unavailable';
+  }
+
   refreshSecureAvailability(): boolean {
     this.secureAvailable = this.safeStorage?.isEncryptionAvailable() ?? false;
     return this.secureAvailable;
@@ -340,7 +348,14 @@ export class ProviderCredentialService {
     }
     if (isSecretName(name) && (!this.secureAvailable || this.safeStorage === undefined)) {
       throw Object.assign(
-        new Error('Secure persistent storage unavailable. The credential was not saved.'),
+        new Error(
+          'Secure persistent storage unavailable' +
+            (this.secureUnavailableReason() === undefined
+              ? '. The credential was not saved.'
+              : ' (' +
+                (this.secureUnavailableReason() as string) +
+                '). The credential was not saved.'),
+        ),
         { code: 'SECURE_STORAGE_UNAVAILABLE' },
       );
     }
@@ -385,9 +400,15 @@ export class ProviderCredentialService {
       await this.writeModelPrefs();
       return { path: this.credentialPath, keys: this.persistedSecrets.size };
     }
-    throw Object.assign(new Error('Secure persistent storage unavailable.'), {
-      code: 'SECURE_STORAGE_UNAVAILABLE',
-    });
+    const reason = this.secureUnavailableReason();
+    throw Object.assign(
+      new Error(
+        reason === undefined
+          ? 'Secure persistent storage unavailable.'
+          : 'Secure persistent storage unavailable (' + reason + ').',
+      ),
+      { code: 'SECURE_STORAGE_UNAVAILABLE' },
+    );
   }
 
   async forgetAll(): Promise<{ forgotten: boolean }> {

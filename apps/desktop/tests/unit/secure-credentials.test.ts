@@ -100,7 +100,7 @@ describe('secure persistent provider credentials', () => {
     });
     await service.load();
     await expect(service.saveKey('DEEPSEEK_API_KEY', 'sk-refused')).rejects.toThrow(
-      /Secure persistent storage unavailable/,
+      /Secure persistent storage unavailable \(OS encryption \(DPAPI\/keychain\) reported unavailable\)/,
     );
     const status = service.statuses().find((s) => s.name === 'DEEPSEEK_API_KEY');
     expect(status?.configured).toBe(false);

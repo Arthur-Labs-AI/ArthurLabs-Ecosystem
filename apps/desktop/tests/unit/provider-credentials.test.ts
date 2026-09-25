@@ -61,7 +61,7 @@ describe('provider credentials', () => {
     const filePath = join(dir, 'providers.json');
     const service = new ProviderCredentialService({ filePath });
     await expect(service.saveKey('DEEPSEEK_API_KEY', 'sk-no-store')).rejects.toThrow(
-      /Secure persistent storage unavailable/,
+      /Secure persistent storage unavailable \(Electron safeStorage bridge unavailable\)/,
     );
     expect(process.env['DEEPSEEK_API_KEY']).toBeUndefined();
     // Without safeStorage there is no plaintext fallback: persist rejects.
