@@ -43,18 +43,25 @@ export function RunWorkspace(): React.JSX.Element {
     },
     onError: fail,
   });
+  const [savedPath, setSavedPath] = React.useState<string | undefined>(undefined);
   const exportSave = useMutation({
     mutationFn: (format: 'log' | 'json') => sentryApi().runs.exportSave(runId as string, format),
     onSuccess: (result, format) => {
       // Save As cancellation is a normal outcome: silent, no error, no file.
       if (result.status === 'cancelled') {
         setActionNote(undefined);
+        setSavedPath(undefined);
         return;
       }
       const label = format === 'json' ? 'JSON' : 'Log';
       setActionNote('Saved ' + label + ' export to: ' + result.path);
+      setSavedPath(result.path);
       refresh();
     },
+    onError: fail,
+  });
+  const revealExport = useMutation({
+    mutationFn: (path: string) => sentryApi().runs.revealExport(path),
     onError: fail,
   });
 
@@ -263,7 +270,23 @@ export function RunWorkspace(): React.JSX.Element {
       ) : null}
       {actionNote !== undefined ? (
         <div className="card" style={{ marginBottom: 12 }}>
-          {actionNote} <button onClick={() => setActionNote(undefined)}>Dismiss</button>
+          {actionNote}{' '}
+          {savedPath === undefined ? null : (
+            <button
+              onClick={() => revealExport.mutate(savedPath)}
+              disabled={revealExport.isPending}
+            >
+              Show in folder
+            </button>
+          )}{' '}
+          <button
+            onClick={() => {
+              setActionNote(undefined);
+              setSavedPath(undefined);
+            }}
+          >
+            Dismiss
+          </button>
         </div>
       ) : null}
       {graph === undefined ? (

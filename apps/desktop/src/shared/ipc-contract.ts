@@ -21,6 +21,7 @@ export const IPC_CHANNELS = [
   'runs:cancel',
   'runs:export',
   'runs:export-save',
+  'runs:export-reveal',
   'issues:list',
   'issues:get',
   'issues:history',
@@ -144,6 +145,11 @@ export interface SentryDesktopApi {
       runId: string,
       format: 'log' | 'json',
     ): Promise<{ status: 'saved'; path: string } | { status: 'cancelled' }>;
+    /**
+     * Show in folder: reveals a destination this session saved via
+     * Export in the OS file manager. Unknown paths are rejected.
+     */
+    revealExport(path: string): Promise<{ status: 'shown' }>;
   };
   readonly issues: {
     list(projectId: string): Promise<unknown[]>;

@@ -47,6 +47,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     exportRun: (runId: string, format: 'log' | 'json') => invoke('runs:export', { runId, format }),
     exportSave: (runId: string, format: 'log' | 'json') =>
       invoke('runs:export-save', { runId, format }),
+    revealExport: (path: string) => invoke('runs:export-reveal', { path }),
   },
   issues: {
     list: (projectId: string) => invoke('issues:list', { projectId }),

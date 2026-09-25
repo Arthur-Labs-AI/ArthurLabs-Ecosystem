@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  isSavedExport,
+  revealSavedExport,
   saveExportRun,
   saveOptionsForFormat,
   writeAtomically,
@@ -103,6 +105,43 @@ describe('native Save As export', () => {
     } as never);
     expect(result).toEqual({ status: 'saved', path: destination });
     expect(written).toEqual([destination]);
+  });
+
+  it('registers the saved destination for Show in folder', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-save-'));
+    roots.push(root);
+    const destination = join(root, 'sentry-run.json');
+    expect(isSavedExport(destination)).toBe(false);
+    const shown: string[] = [];
+    const result = await saveExportRun(RUN_ID, 'json', {
+      ...deps({ dialogResult: destination }),
+      writeDestination: writeAtomically,
+    });
+    expect(result).toEqual({ status: 'saved', path: destination });
+    expect(isSavedExport(destination)).toBe(true);
+    await expect(
+      revealSavedExport(destination, {
+        showInFolder: (path) => {
+          shown.push(path);
+        },
+      }),
+    ).resolves.toEqual({ status: 'shown' });
+    expect(shown).toEqual([destination]);
+  });
+
+  it('rejects Show in folder for paths this session never saved', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-save-'));
+    roots.push(root);
+    await expect(
+      revealSavedExport(join(root, 'evil.log'), {
+        showInFolder: () => undefined,
+      }),
+    ).rejects.toMatchObject({ code: 'REVEAL_NOT_PERMITTED' });
+    await expect(
+      revealSavedExport('C:\\Windows\\System32\\drivers\\etc\\hosts', {
+        showInFolder: () => undefined,
+      }),
+    ).rejects.toMatchObject({ code: 'REVEAL_NOT_PERMITTED' });
   });
 
   it('failed writes leave no partial file at the destination', async () => {

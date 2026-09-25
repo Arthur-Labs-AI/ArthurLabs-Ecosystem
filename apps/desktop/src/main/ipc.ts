@@ -1,7 +1,11 @@
-import { ipcMain } from 'electron';
+import { ipcMain, shell } from 'electron';
 import { z } from 'zod';
 import type { DesktopApplicationService } from './services/desktop-service.js';
-import { saveExportRun, type SaveDialogOptions } from './services/export-save.js';
+import {
+  revealSavedExport,
+  saveExportRun,
+  type SaveDialogOptions,
+} from './services/export-save.js';
 
 function ok(result: unknown): { ok: true; result: unknown } {
   return { ok: true, result };
@@ -83,6 +87,9 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
   'runs:export-save': z
     .object({ runId: z.string().min(1).max(100), format: z.enum(['log', 'json']) })
     .strict(),
+  // Show in folder: the path must be a destination this session saved
+  // via Export (guarded in export-save.ts) — never an arbitrary path.
+  'runs:export-reveal': z.object({ path: z.string().min(1).max(2000) }).strict(),
   'issues:list': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'issues:get': z.object({ issueId: z.string().min(1).max(100) }).strict(),
   'issues:history': z.object({ issueId: z.string().min(1).max(100) }).strict(),
@@ -200,6 +207,11 @@ export function registerDesktopIpc(
           return saveExportRun(parsed['runId'] as string, parsed['format'] as 'log' | 'json', {
             requestSavePath,
             fetchContent: (runId, format) => service.exportContent(runId, format),
+          });
+        }
+        case 'runs:export-reveal': {
+          return revealSavedExport(parsed['path'] as string, {
+            showInFolder: (path) => shell.showItemInFolder(path),
           });
         }
         case 'issues:list':

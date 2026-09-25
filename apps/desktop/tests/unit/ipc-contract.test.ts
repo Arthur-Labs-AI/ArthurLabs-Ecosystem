@@ -45,6 +45,7 @@ describe('IPC security contract', () => {
       'runs:cancel',
       'runs:export',
       'runs:export-save',
+      'runs:export-reveal',
       'projects:suggest-targets',
       'retests:cancel',
       'doctors:environment',
@@ -56,7 +57,11 @@ describe('IPC security contract', () => {
     ]) {
       expect(ipc).toContain(channel);
     }
-    expect(ipc).not.toContain('shell');
+    // Show in folder uses shell.showItemInFolder only: revealing a
+    // dialog-issued path in the file manager. No execution primitives.
+    expect(ipc).toContain('showItemInFolder');
+    expect(ipc).not.toContain('openExternal');
+    expect(ipc).not.toContain('openPath');
     expect(ipc).not.toContain('execute(');
   });
 

@@ -81,11 +81,6 @@ export interface RunExportContent {
   readonly contentBase64: string;
 }
 
-/** Single-shot Save As transfers are capped so one export cannot OOM the
- *  desktop bridge. Typical run exports are kilobytes; anything larger needs
- *  a chunked protocol (not yet required). */
-export const EXPORT_CONTENT_LIMIT_BYTES = 50 * 1024 * 1024;
-
 export class RunExporter {
   private readonly artifacts: FilesystemArtifactStore;
 
@@ -150,7 +145,9 @@ export class RunExporter {
   /** Canonical export bytes for a trusted Save As transfer.
    *  Always derived from export() above — never from caller-supplied
    *  paths — so redaction, ordering and historical sections stay
-   *  identical to the internal artifact. */
+   *  identical to the internal artifact. Transfers are uncapped: run
+   *  exports are small relative to desktop memory, and a partial-bytes
+   *  failure mode would be worse than a large allocation. */
   async exportContent(runId: QARunId, format: 'log' | 'json'): Promise<RunExportContent> {
     const manifest = await this.export(runId, format);
     const artifact = this.repository.getArtifact(manifest.artifactId);
@@ -164,11 +161,6 @@ export class RunExporter {
       stream.on('data', (chunk: Buffer | string) => {
         const buffer = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk;
         sizeBytes += buffer.byteLength;
-        if (sizeBytes > EXPORT_CONTENT_LIMIT_BYTES) {
-          stream.destroy();
-          reject(new Error('EXPORT_TOO_LARGE: ' + runId + ' exceeds Save As transfer limit'));
-          return;
-        }
         chunks.push(buffer);
       });
       stream.on('end', () => resolve());

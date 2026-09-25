@@ -81,5 +81,37 @@ export async function saveExportRun(
   const content = await deps.fetchContent(runId, format);
   const bytes = Buffer.from(content.contentBase64, 'base64');
   await (deps.writeDestination ?? writeAtomically)(destination, bytes);
+  noteSavedExport(destination);
   return { status: 'saved', path: destination };
+}
+
+/** Destinations the native dialog issued in this session. Only these may
+ *  ever be revealed to the OS shell: the renderer can ask for Show in
+ *  folder, but it can never smuggle an arbitrary path through. */
+const savedExportPaths = new Set<string>();
+
+export function noteSavedExport(path: string): void {
+  savedExportPaths.add(path);
+}
+
+export function isSavedExport(path: string): boolean {
+  return savedExportPaths.has(path);
+}
+
+export interface RevealDeps {
+  readonly showInFolder: (path: string) => void;
+}
+
+export async function revealSavedExport(
+  path: string,
+  deps: RevealDeps,
+): Promise<{ readonly status: 'shown' }> {
+  if (!isSavedExport(path)) {
+    throw Object.assign(
+      new Error('Show in folder is only available for files this session saved via Export'),
+      { code: 'REVEAL_NOT_PERMITTED' },
+    );
+  }
+  await deps.showInFolder(path);
+  return { status: 'shown' };
 }
