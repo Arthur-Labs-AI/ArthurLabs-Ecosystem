@@ -33,14 +33,39 @@ export interface AgentInspectorData {
     evidence?: { id?: string; type?: string };
     failure?: { code: string; message: string; retryable?: boolean };
   }[];
-  readonly findings?: readonly {
-    id: string;
-    title: string;
-    severity: string;
-    category?: string;
-    description?: string;
+  readonly findings?: readonly InspectorFinding[];
+  readonly evidence?: readonly InspectorEvidence[];
+}
+
+export interface InspectorFinding {
+  readonly id: string;
+  readonly agentRunId?: string;
+  readonly sourceAgentStackId?: string;
+  readonly title: string;
+  readonly severity: string;
+  readonly confidence?: string;
+  readonly category?: string;
+  readonly categoryDetail?: string;
+  readonly description?: string;
+  readonly expectedBehavior?: string;
+  readonly actualBehavior?: string;
+  readonly rootCause?: string;
+  readonly recommendedFix?: string;
+  readonly reproductionSteps?: readonly string[];
+  readonly locations?: readonly {
+    relativePath: string;
+    startLine?: number;
+    endLine?: number;
+    symbol?: string;
+    message?: string;
   }[];
-  readonly evidence?: readonly { id: string; type: string; strength?: string }[];
+  readonly evidenceIds?: readonly string[];
+}
+
+export interface InspectorEvidence {
+  readonly id: string;
+  readonly type: string;
+  readonly strength?: string;
 }
 
 const CATEGORY_ICON: Record<string, string> = {
@@ -149,15 +174,7 @@ export function AgentInspector({ data }: { data: AgentInspectorData }): React.JS
         {formatCount(view.findingsCount)} findings · {formatCount(view.evidenceCount)} evidence
       </p>
       {(data.findings ?? []).map((finding) => (
-        <div key={finding.id} className="card" style={{ marginBottom: 8 }}>
-          <strong>
-            [{finding.severity.toUpperCase()}] {finding.title}
-          </strong>
-          {finding.description !== undefined ? (
-            <p className="muted">{truncateMiddle(finding.description, 240)}</p>
-          ) : null}
-          <CopyId id={finding.id} />
-        </div>
+        <FindingCard key={finding.id} finding={finding} evidence={data.evidence ?? []} />
       ))}
       {Object.keys(view.severityCounts).length > 0 ? (
         <p className="mono muted">
@@ -212,6 +229,181 @@ export function AgentInspector({ data }: { data: AgentInspectorData }): React.JS
           <p className="muted">Sentry stopped before completion.</p>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+const FINDING_PREVIEW_CHARS = 200;
+
+function formatLocation(location: NonNullable<InspectorFinding['locations']>[number]): string {
+  const range =
+    location.startLine !== undefined
+      ? ':' +
+        String(location.startLine) +
+        (location.endLine !== undefined && location.endLine !== location.startLine
+          ? '\u2013' + String(location.endLine)
+          : '')
+      : '';
+  const symbol = location.symbol !== undefined ? ' ' + location.symbol : '';
+  return location.relativePath + range + symbol;
+}
+
+export function FindingCard({
+  finding,
+  evidence,
+}: {
+  finding: InspectorFinding;
+  evidence: readonly InspectorEvidence[];
+}): React.JSX.Element {
+  const [expanded, setExpanded] = React.useState(false);
+  const category =
+    finding.category !== undefined ? finding.category.toUpperCase() : 'UNCATEGORIZED';
+  const preview =
+    finding.description !== undefined && finding.description.length > FINDING_PREVIEW_CHARS
+      ? finding.description.slice(0, FINDING_PREVIEW_CHARS) + '\u2026'
+      : finding.description;
+  return (
+    <div className="card" style={{ marginBottom: 8 }}>
+      <p className="mono faint" style={{ margin: '0 0 4px', fontSize: 11 }}>
+        {finding.severity.toUpperCase()}
+        {' \u00B7 '}
+        {category}
+      </p>
+      <strong>{finding.title}</strong>
+      {preview !== undefined ? <p className="muted">{preview}</p> : null}
+      {finding.locations !== undefined && finding.locations.length > 0 ? (
+        <p className="mono faint" style={{ fontSize: 11 }}>
+          {formatLocation(
+            finding.locations[0] as NonNullable<InspectorFinding['locations']>[number],
+          )}
+          {finding.locations.length > 1
+            ? ' (+' + String(finding.locations.length - 1) + ' more)'
+            : ''}
+        </p>
+      ) : null}
+      <button onClick={() => setExpanded((v) => !v)} style={{ fontSize: 11 }}>
+        {expanded ? 'Hide details' : 'View details'}
+      </button>{' '}
+      <CopyId id={finding.id} />
+      {expanded ? <FindingDetail finding={finding} evidence={evidence} /> : null}
+    </div>
+  );
+}
+
+export function FindingDetail({
+  finding,
+  evidence,
+}: {
+  finding: InspectorFinding;
+  evidence: readonly InspectorEvidence[];
+}): React.JSX.Element {
+  const missing = <span className="muted">Not provided by this agent.</span>;
+  const section = (label: string, body: React.ReactNode): React.JSX.Element => (
+    <div style={{ marginTop: 8 }}>
+      <p className="faint" style={{ margin: '0 0 2px', fontSize: 11 }}>
+        {label}
+      </p>
+      <div>{body}</div>
+    </div>
+  );
+  const pre = (text: string): React.JSX.Element => (
+    <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', margin: 0 }}>{text}</p>
+  );
+  const evidenceById = new Map(evidence.map((item) => [item.id, item]));
+  return (
+    <div style={{ marginTop: 8, borderTop: '1px solid #2a3348', paddingTop: 8 }}>
+      <h4 style={{ margin: '0 0 4px' }}>{finding.title}</h4>
+      {section('Severity', <span>{finding.severity.toUpperCase()}</span>)}
+      {section(
+        'Confidence',
+        finding.confidence !== undefined ? (
+          <span>{finding.confidence.toUpperCase()}</span>
+        ) : (
+          missing
+        ),
+      )}
+      {section(
+        'Category',
+        finding.category !== undefined ? (
+          <span>
+            {finding.category}
+            {finding.categoryDetail !== undefined ? ' — ' + finding.categoryDetail : ''}
+          </span>
+        ) : (
+          missing
+        ),
+      )}
+      {finding.sourceAgentStackId !== undefined
+        ? section('Agent', <CopyId id={finding.sourceAgentStackId} />)
+        : null}
+      {section(
+        'Description',
+        finding.description !== undefined ? pre(finding.description) : missing,
+      )}
+      {section(
+        'Expected behavior',
+        finding.expectedBehavior !== undefined ? pre(finding.expectedBehavior) : missing,
+      )}
+      {section(
+        'Actual behavior',
+        finding.actualBehavior !== undefined ? pre(finding.actualBehavior) : missing,
+      )}
+      {section('Root cause', finding.rootCause !== undefined ? pre(finding.rootCause) : missing)}
+      {section(
+        'Reproduction steps',
+        finding.reproductionSteps !== undefined && finding.reproductionSteps.length > 0 ? (
+          <ol style={{ margin: 0, paddingLeft: 18 }}>
+            {finding.reproductionSteps.map((step, index) => (
+              <li key={index} style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                {step}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          missing
+        ),
+      )}
+      {section(
+        'Recommended fix',
+        finding.recommendedFix !== undefined ? pre(finding.recommendedFix) : missing,
+      )}
+      {section(
+        'Locations',
+        finding.locations !== undefined && finding.locations.length > 0 ? (
+          <ul className="mono" style={{ margin: 0, paddingLeft: 18, fontSize: 11 }}>
+            {finding.locations.map((location, index) => (
+              <li key={index} style={{ overflowWrap: 'anywhere' }}>
+                {formatLocation(location)}
+                {location.message !== undefined ? ' — ' + location.message : ''}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          missing
+        ),
+      )}
+      {section(
+        'Evidence',
+        finding.evidenceIds !== undefined && finding.evidenceIds.length > 0 ? (
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {finding.evidenceIds.map((id) => {
+              const record = evidenceById.get(id);
+              return (
+                <li key={id}>
+                  <CopyId id={id} />{' '}
+                  <span className="muted">
+                    {record !== undefined
+                      ? record.type + (record.strength !== undefined ? ' · ' + record.strength : '')
+                      : 'linked by this agent; record not in this snapshot'}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          missing
+        ),
+      )}
     </div>
   );
 }

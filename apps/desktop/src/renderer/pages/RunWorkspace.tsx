@@ -87,10 +87,26 @@ export function RunWorkspace(): React.JSX.Element {
         findings: Array<{
           id: string;
           agentRunId: string;
+          sourceAgentStackId?: string;
           severity: string;
           title: string;
+          confidence?: string;
           category?: string;
+          categoryDetail?: string;
           description?: string;
+          expectedBehavior?: string;
+          actualBehavior?: string;
+          rootCause?: string;
+          recommendedFix?: string;
+          reproductionSteps?: string[];
+          locations?: Array<{
+            relativePath: string;
+            startLine?: number;
+            endLine?: number;
+            symbol?: string;
+            message?: string;
+          }>;
+          evidenceIds?: string[];
         }>;
         evidence: Array<{ id: string; agentRunId: string; type: string; strength?: string }>;
         activities: Array<{
