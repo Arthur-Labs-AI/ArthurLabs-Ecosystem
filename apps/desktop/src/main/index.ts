@@ -19,8 +19,8 @@ async function createWindow(): Promise<void> {
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
-    minWidth: 1280,
-    minHeight: 720,
+    minWidth: 960,
+    minHeight: 680,
     title: 'Sentry',
     backgroundColor: '#0b0e14',
     webPreferences: {
