@@ -34,14 +34,16 @@ const AGENTS = [
 ];
 
 describe('pipeline state honesty', () => {
-  it('terminal QARun without MergeResult does NOT complete the merger', () => {
+  it('terminal QARun ends at independent agents: no merger/verifier/issues nodes', () => {
     const graph = buildRunGraph({ run: BASE_RUN, agentRuns: AGENTS, findings: [], evidence: [] });
-    const merger = graph.nodes.find((n) => n.kind === 'merger');
-    expect(merger?.status).not.toBe('completed');
-    expect(['ready', 'waiting']).toContain(merger?.status);
+    const kinds = graph.nodes.map((n) => n.kind);
+    expect(kinds).not.toContain('merger');
+    expect(kinds).not.toContain('verifier');
+    expect(kinds).not.toContain('issues');
+    expect(graph.nodes).toHaveLength(6);
   });
 
-  it('MergeResult without VerificationRun leaves the verifier ready', () => {
+  it('historical MergeResult input creates no merger node (ignored, still accepted)', () => {
     const graph = buildRunGraph({
       run: BASE_RUN,
       agentRuns: AGENTS,
@@ -49,48 +51,34 @@ describe('pipeline state honesty', () => {
       evidence: [],
       mergeResults: [{ id: 'merge_01K7777777777777777777A8W1' }],
     });
-    const verifier = graph.nodes.find((n) => n.kind === 'verifier');
-    expect(verifier?.status).toBe('ready');
-    const merger = graph.nodes.find((n) => n.kind === 'merger');
-    expect(merger?.status).toBe('completed');
+    expect(graph.nodes.find((n) => n.kind === 'merger')).toBeUndefined();
+    expect(graph.nodes.find((n) => n.kind === 'verifier')).toBeUndefined();
   });
 
-  it('no MergeResult blocks the verifier', () => {
+  it('active runs show agents without any downstream pipeline state', () => {
     const graph = buildRunGraph({
       run: { ...BASE_RUN, status: 'agents_running' },
       agentRuns: [],
       findings: [],
       evidence: [],
     });
-    expect(graph.nodes.find((n) => n.kind === 'verifier')?.status).toBe('blocked');
-    expect(graph.nodes.find((n) => n.kind === 'issues')?.status).toBe('waiting');
+    expect(graph.nodes.find((n) => n.kind === 'verifier')).toBeUndefined();
+    expect(graph.nodes.find((n) => n.kind === 'issues')).toBeUndefined();
   });
 
-  it('merge without ingest leaves issues ready, not completed', () => {
+  it('targeted runs add TargetSpec but still no downstream nodes', () => {
     const graph = buildRunGraph({
-      run: BASE_RUN,
+      run: { ...BASE_RUN, mode: 'targeted' },
       agentRuns: AGENTS,
       findings: [],
       evidence: [],
-      mergeResults: [{ id: 'merge_01K7777777777777777777A8W1' }],
+      targetSpec: { includePaths: ['src/auth'] },
     });
-    expect(graph.nodes.find((n) => n.kind === 'issues')?.status).toBe('ready');
+    expect(graph.nodes.some((n) => n.kind === 'target')).toBe(true);
+    expect(graph.nodes.find((n) => n.kind === 'issues')).toBeUndefined();
   });
 
-  it('honest zero-issue ingest completes issues via ingestRan', () => {
-    const graph = buildRunGraph({
-      run: BASE_RUN,
-      agentRuns: AGENTS,
-      findings: [],
-      evidence: [],
-      mergeResults: [{ id: 'merge_01K7777777777777777777A8W1' }],
-      issueCount: 0,
-      ingestRan: true,
-    });
-    expect(graph.nodes.find((n) => n.kind === 'issues')?.status).toBe('completed');
-  });
-
-  it('assessment result=fixed drives a FIXED assessment node', () => {
+  it('assessment result=fixed drives a FIXED assessment node hung off the snapshot', () => {
     const graph = buildRetestGraph({
       run: BASE_RUN,
       agentRuns: AGENTS,
@@ -103,5 +91,8 @@ describe('pipeline state honesty', () => {
     const node = graph.nodes.find((n) => n.kind === 'retest-assessment');
     expect(node?.status).toBe('fixed');
     expect(node?.data['result']).toBe('fixed');
+    const edge = graph.edges.find((e) => e.target === 'retest-assessment');
+    expect(edge?.source).toBe('snapshot');
+    expect(graph.nodes.find((n) => n.id === edge?.source)).toBeDefined();
   });
 });

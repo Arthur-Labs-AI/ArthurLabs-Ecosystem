@@ -133,10 +133,14 @@ describe('backend issue state projection', () => {
     const h = await harness();
     const operation = await h.service.startRun(h.projectId, { mode: 'full' });
     expect(operation.runId).toBeDefined();
-    const merged = (await h.service.mergeRun(operation.runId as string)) as {
+    // Merger/ingest RPCs are retired from the desktop bridge; historical
+    // engine paths stay covered directly (implementations retained for
+    // historical inspection).
+    const { mergeRun, ingestMergeIssues } = await import('@qa/run-engine');
+    const merged = mergeRun(h.repository, operation.runId as never) as {
       result: { id: string };
     };
-    const ingested = (await h.service.ingestIssues(merged.result.id)) as {
+    const ingested = ingestMergeIssues(h.repository, merged.result.id as never) as {
       issues: Array<{ issueId: string }>;
     };
     expect(ingested.issues.length).toBeGreaterThan(0);

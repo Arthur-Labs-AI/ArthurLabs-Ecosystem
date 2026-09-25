@@ -19,11 +19,11 @@ qa agent list --json            # which stacks are actually configured
 qa verify doctor --json         # sandboxAvailable should be true
 qa project add /path/to/project --json
 qa run start <project-id> --mode full --wait --json
-qa run merge <run-id> --json
-qa verify start <merge-result-id> --json
-qa issue ingest <merge-result-id> --json   # first occurrence per cluster
-qa issue list <project-id> --json
+qa run show <run-id> --json   # three independent agent results; no merge step
 ```
+
+Historical runs may still carry merger/verifier/issues rows; those stay
+readable via `qa run show`, `qa verify show`, and `qa issue show`.
 
 No providers configured? `agent list` shows all three unavailable. Use a
 dry run instead of `run start` (fake agents, real pipeline):

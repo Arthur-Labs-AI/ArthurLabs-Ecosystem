@@ -11,7 +11,7 @@ export function buildPaletteEntries(
   return [
     { label: 'Open Projects', run: () => go('/projects') },
     { label: 'Open Runs', run: () => go('/runs') },
-    { label: 'Open Issues', run: () => go('/issues') },
+    { label: 'Open Issues (Legacy)', run: () => go('/issues') },
     { label: 'Open History', run: () => go('/history') },
     { label: 'Open Environment', run: () => go('/environment') },
     { label: 'Open Settings', run: () => go('/settings') },

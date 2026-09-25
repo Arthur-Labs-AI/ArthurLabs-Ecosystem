@@ -90,16 +90,18 @@ function fullRunInput() {
 }
 
 describe('screen snapshots: FULL run workspace', () => {
-  it('renders three agent branches plus pipeline nodes', () => {
+  it('renders three agent branches with no downstream pipeline nodes', () => {
     const graph = buildRunGraph(fullRunInput());
     const kinds = graph.nodes.map((n) => n.kind);
     expect(kinds).toContain('project');
     expect(kinds).toContain('revision');
     expect(kinds).toContain('snapshot');
     expect(kinds.filter((k) => k === 'agent')).toHaveLength(3);
-    expect(kinds).toContain('merger');
-    expect(kinds).toContain('verifier');
-    expect(kinds).toContain('issues');
+    // Retired pipeline: terminal runs expose Export JSON / Export Log /
+    // Open Project — never Merge / Verify / Ingest Issues nodes.
+    expect(kinds).not.toContain('merger');
+    expect(kinds).not.toContain('verifier');
+    expect(kinds).not.toContain('issues');
     // Failed agent stays visible.
     expect(graph.nodes.find((n) => n.id === 'agent-stack_glm_main')?.status).toBe('failed');
   });

@@ -67,9 +67,12 @@ and [ADR-0012](docs/adr/0012-muse-code-sdk-adapter-boundary.md).
 - Installer/setup/distribution (Phase 9).
 
 Shipped and live: OpenCode (via OpenRouter), DeepSeek, and GLM agent stacks
-in the Sentry Desktop app backed by the WSL2 Linux execution runtime;
-deterministic merger; independent evidence-first verifier; FULL, TARGETED, and
-RETEST QA modes with issue lineage and retest assessments. See
+run as independent QA investigators against the same immutable snapshot in
+the Sentry Desktop app backed by the WSL2 Linux execution runtime. A run is
+done when its AgentRuns are terminal; each agent's findings and evidence are
+preserved exactly as reported — no automatic merge, deduplication, consensus,
+or unified issues. Historical merger/verifier/issues/retest rows from older
+runs remain readable and exportable. See
 [docs/architecture/phase-7.md](docs/architecture/phase-7.md) and the
 [private-beta quickstart](docs/private-beta/quickstart.md).
 

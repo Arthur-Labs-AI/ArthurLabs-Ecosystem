@@ -247,122 +247,17 @@ export function buildRunGraph(
     });
   });
 
-  const mergerY = agentY + 300;
-  // Authoritative current MergeResult: highest supported mergerVersion.
-  // Never rely on repository ordering ([0]); history stays viewable.
-  const SUPPORTED_MERGER_VERSIONS = [1, 2, 3];
-  const merge =
-    input.mergeResults === undefined
-      ? undefined
-      : [...input.mergeResults]
-          .filter(
-            (m) =>
-              m.mergerVersion === undefined || SUPPORTED_MERGER_VERSIONS.includes(m.mergerVersion),
-          )
-          .sort((a, b) => (b.mergerVersion ?? 0) - (a.mergerVersion ?? 0))[0];
-  // Honest merger: COMPLETED only when a MergeResult exists. Terminal QARun
-  // without one is NOT completed (agents terminal → ready, else waiting).
-  const agentsTerminal =
-    input.agentRuns.length > 0 &&
-    input.agentRuns.every((a) =>
-      ['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(a.status),
-    );
-  const agentsActive = input.agentRuns.some(
-    (a) => !['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(a.status),
-  );
-  const mergerStatus =
-    merge !== undefined
-      ? 'completed'
-      : agentsActive
-        ? 'waiting'
-        : agentsTerminal
-          ? 'ready'
-          : 'waiting';
+  // Product direction change: a QA run ends at the independent agent
+  // fan-out. Merger / Verifier / Issues nodes are retired from the active
+  // graph — new runs never emit them. Historical mergeResults /
+  // verificationRuns / issueCount inputs stay accepted (persistence and
+  // export compatibility) but are intentionally ignored here.
+  void input.mergeResults;
+  void input.verificationRuns;
+  void input.findingsById;
+  void input.issueCount;
+  void (input as { ingestRan?: boolean }).ingestRan;
   void runStatus;
-  const usableCount = merge?.usableAgentRunIds?.length;
-  const expectedCount = merge?.expectedAgentStackIds?.length;
-  nodes.push({
-    id: 'merger',
-    kind: 'merger',
-    label: merge?.mergerVersion !== undefined ? 'Merger v' + merge.mergerVersion : 'Merger v3',
-    status: mergerStatus,
-    position: { x: 340, y: mergerY },
-    data: {
-      mergeResultId: merge?.id,
-      clusters: merge?.clusters ?? [],
-      mergerVersion: merge?.mergerVersion,
-      normalizerVersion: merge?.normalizerVersion,
-      ...(usableCount === undefined ? {} : { usableAgentCount: usableCount }),
-      ...(expectedCount === undefined ? {} : { expectedAgentCount: expectedCount }),
-      unavailableAgentStackIds: merge?.unavailableAgentStackIds ?? [],
-    },
-  });
-  for (const stackId of stacksToRender) {
-    edges.push({
-      id: 'e-agent-' + stackId + '-merger',
-      source: 'agent-' + stackId,
-      target: 'merger',
-      state:
-        merge !== undefined
-          ? 'completed'
-          : (() => {
-              const view = agents.find((a) => a.agentStackId === stackId);
-              if (view === undefined) return 'pending' as const;
-              return TERMINAL_AGENT.has(view.status) ? edgeStateFor(view.status) : 'active';
-            })(),
-    });
-  }
-
-  const verification = input.verificationRuns?.[0];
-  // Honest verifier: no MergeResult → blocked; merge without verification →
-  // ready; active VerificationRun → running; terminal → persisted status.
-  const verifierStatus =
-    verification !== undefined ? verification.status : merge !== undefined ? 'ready' : 'blocked';
-  nodes.push({
-    id: 'verifier',
-    kind: 'verifier',
-    label: 'Verifier v3',
-    status: verifierStatus,
-    position: { x: 340, y: mergerY + 130 },
-    data: {
-      verificationRunId: verification?.id,
-      attempts: verification?.attempts ?? [],
-      verifierVersion: verification?.verifierVersion,
-      recipeVersion: verification?.recipeVersion,
-      signatureVersion: verification?.signatureVersion,
-    },
-  });
-  edges.push({
-    id: 'e-merger-verifier',
-    source: 'merger',
-    target: 'verifier',
-    state: merge !== undefined ? 'completed' : 'pending',
-  });
-
-  // Honest issues: no MergeResult → waiting; merge without ingest → ready;
-  // occurrences exist → completed. Zero-issue ingest still counts as ingest;
-  // callers pass ingestRan when the idempotent ingest marker was observed.
-  const ingestRan = (input as { ingestRan?: boolean }).ingestRan ?? (input.issueCount ?? 0) > 0;
-  const issuesStatus = merge === undefined ? 'waiting' : ingestRan ? 'completed' : 'ready';
-  nodes.push({
-    id: 'issues',
-    kind: 'issues',
-    label: 'Issues',
-    status: issuesStatus,
-    position: { x: 340, y: mergerY + 260 },
-    data: {
-      count: input.issueCount ?? 0,
-      ingestRan,
-      findings: input.findings.map((f) => ({ severity: f.severity })),
-    },
-  });
-  edges.push({
-    id: 'e-verifier-issues',
-    source: 'verifier',
-    target: 'issues',
-    state: verification !== undefined ? edgeStateFor(verification.status) : 'pending',
-  });
-
   return { nodes, edges, agents };
 }
 
@@ -421,8 +316,10 @@ export function buildRetestGraph(
       },
       ...base.edges,
       {
-        id: 'e-issues-assessment',
-        source: 'issues',
+        // Merger / Issues nodes are retired: the historical assessment hangs
+        // off the snapshot instead of a dangling 'issues' source.
+        id: 'e-snapshot-assessment',
+        source: 'snapshot',
         target: 'retest-assessment',
         state: edgeStateFor(input.run.status),
       },

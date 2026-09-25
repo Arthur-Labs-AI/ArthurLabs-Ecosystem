@@ -265,7 +265,7 @@ export function RetestWorkspace(): React.JSX.Element {
             ) : selectedEdge !== undefined ? (
               <EdgeInspector edge={selectedEdge} />
             ) : (
-              <p className="muted">Select an agent, merger, verifier, or assessment node.</p>
+              <p className="muted">Select an agent or assessment node.</p>
             )}
           </div>
         </div>

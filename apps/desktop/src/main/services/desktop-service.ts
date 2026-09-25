@@ -28,7 +28,6 @@ const ProjectIdInput = z.string().min(1).max(200);
 const RunIdInput = z.string().regex(/^run_[0-9A-HJKMNP-TV-Z]{26}$/);
 const IssueIdInput = z.string().regex(/^issue_[0-9A-HJKMNP-TV-Z]{26}$/);
 const RetestRunIdInput = z.string().regex(/^retest_[0-9A-HJKMNP-TV-Z]{26}$/);
-const MergeResultIdInput = z.string().regex(/^merge_[0-9A-HJKMNP-TV-Z]{26}$/);
 const StartRunOptions = z
   .object({
     mode: z.enum(['full', 'targeted']),
@@ -195,21 +194,6 @@ export class DesktopApplicationService {
   requestRunCancellation(runId: string): Promise<unknown> {
     const id = RunIdInput.parse(runId);
     return this.call('runs.cancel', { runId: id });
-  }
-
-  mergeRun(runId: string): Promise<unknown> {
-    const id = RunIdInput.parse(runId);
-    return this.call('runs.merge', { runId: id });
-  }
-
-  verifyMerge(mergeResultId: string): Promise<unknown> {
-    const id = MergeResultIdInput.parse(mergeResultId);
-    return this.call('runs.verify', { mergeResultId: id });
-  }
-
-  ingestIssues(mergeResultId: string): Promise<unknown> {
-    const id = MergeResultIdInput.parse(mergeResultId);
-    return this.call('runs.ingest', { mergeResultId: id });
   }
 
   exportRun(runId: string, format: 'log' | 'json'): Promise<unknown> {

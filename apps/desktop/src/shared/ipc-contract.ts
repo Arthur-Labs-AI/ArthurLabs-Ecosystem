@@ -19,9 +19,6 @@ export const IPC_CHANNELS = [
   'runs:start',
   'runs:start-production',
   'runs:cancel',
-  'runs:merge',
-  'runs:verify',
-  'runs:ingest',
   'runs:export',
   'issues:list',
   'issues:get',
@@ -136,9 +133,6 @@ export interface SentryDesktopApi {
       },
     ): Promise<DesktopOperation>;
     cancel(runId: string): Promise<unknown>;
-    merge(runId: string): Promise<unknown>;
-    verify(mergeResultId: string): Promise<unknown>;
-    ingest(mergeResultId: string): Promise<unknown>;
     exportRun(runId: string, format: 'log' | 'json'): Promise<unknown>;
   };
   readonly issues: {

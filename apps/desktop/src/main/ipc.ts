@@ -74,9 +74,6 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
     })
     .strict(),
   'runs:cancel': z.object({ runId: z.string().min(1).max(100) }).strict(),
-  'runs:merge': z.object({ runId: z.string().min(1).max(100) }).strict(),
-  'runs:verify': z.object({ mergeResultId: z.string().min(1).max(100) }).strict(),
-  'runs:ingest': z.object({ mergeResultId: z.string().min(1).max(100) }).strict(),
   'runs:export': z
     .object({ runId: z.string().min(1).max(100), format: z.enum(['log', 'json']) })
     .strict(),
@@ -183,12 +180,6 @@ export function registerDesktopIpc(
         }
         case 'runs:cancel':
           return service.requestRunCancellation(parsed['runId'] as string);
-        case 'runs:merge':
-          return service.mergeRun(parsed['runId'] as string);
-        case 'runs:verify':
-          return service.verifyMerge(parsed['mergeResultId'] as string);
-        case 'runs:ingest':
-          return service.ingestIssues(parsed['mergeResultId'] as string);
         case 'runs:export':
           return service.exportRun(parsed['runId'] as string, parsed['format'] as 'log' | 'json');
         case 'issues:list':

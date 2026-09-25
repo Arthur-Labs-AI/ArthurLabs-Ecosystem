@@ -1,5 +1,6 @@
 import React from 'react';
 import { CopyId } from './CopyId.js';
+import { AGENT_DISPLAY_NAMES } from '../lib/agent-telemetry.js';
 
 export function RunSummaryPanel({
   snapshot,
@@ -14,9 +15,11 @@ export function RunSummaryPanel({
   const agentRuns = (snapshot['agentRuns'] as Array<Record<string, unknown>>) ?? [];
   const findings = (snapshot['findings'] as unknown[]) ?? [];
   const evidence = (snapshot['evidence'] as unknown[]) ?? [];
-  const mergeResults = (snapshot['mergeResults'] as Array<Record<string, unknown>>) ?? [];
-  const verificationRuns = (snapshot['verificationRuns'] as unknown[]) ?? [];
-  const issues = (snapshot['issues'] as unknown[]) ?? [];
+  // Historical merger/verifier/issues payloads may still be present on old
+  // runs; the active product reports independent per-agent results instead.
+  void (snapshot['mergeResults'] as unknown);
+  void (snapshot['verificationRuns'] as unknown);
+  void (snapshot['issues'] as unknown);
   return (
     <div>
       <h3 style={{ marginTop: 0 }}>Run summary</h3>
@@ -85,14 +88,33 @@ export function RunSummaryPanel({
           <li className="muted">No agent runs yet — agents are waiting.</li>
         ) : null}
       </ul>
-      <h4>Pipeline</h4>
+      <h4>Independent agent results</h4>
       <ul style={{ paddingLeft: 18 }}>
-        <li>Findings: {findings.length}</li>
-        <li>Evidence: {evidence.length}</li>
-        <li>Merge results: {mergeResults.length}</li>
-        <li>Verification runs: {verificationRuns.length}</li>
-        <li>Occurrences: {issues.length}</li>
+        {agentRuns.map((agent) => {
+          const stackId = String(agent['agentStackId']);
+          const id = String(agent['id']);
+          const count = findings.filter(
+            (finding) =>
+              typeof finding === 'object' &&
+              finding !== null &&
+              (finding as Record<string, unknown>)['agentRunId'] === id,
+          ).length;
+          return (
+            <li key={id}>
+              {AGENT_DISPLAY_NAMES[stackId] ?? stackId} — {count} finding
+              {count === 1 ? '' : 's'}
+            </li>
+          );
+        })}
+        {agentRuns.length === 0 ? (
+          <li className="muted">No agent runs yet — agents are waiting.</li>
+        ) : null}
       </ul>
+      <p className="muted">
+        {findings.length} total finding{findings.length === 1 ? '' : 's'} across {agentRuns.length}{' '}
+        independent agent{agentRuns.length === 1 ? '' : 's'} · {evidence.length} evidence record
+        {evidence.length === 1 ? '' : 's'}
+      </p>
     </div>
   );
 }

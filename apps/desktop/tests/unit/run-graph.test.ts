@@ -41,15 +41,19 @@ describe('run graph builder', () => {
     expect(first).toEqual(second);
     const kinds = first.nodes.map((n) => n.kind);
     expect(kinds).toContain('project');
+    expect(kinds).toContain('revision');
     expect(kinds).toContain('snapshot');
     expect(kinds.filter((k) => k === 'agent')).toHaveLength(3);
-    expect(kinds).toContain('merger');
-    expect(kinds).toContain('verifier');
-    expect(kinds).toContain('issues');
     expect(kinds).not.toContain('target');
+    // Retired pipeline: no automatic merge / verify / issues nodes.
+    expect(kinds).not.toContain('merger');
+    expect(kinds).not.toContain('verifier');
+    expect(kinds).not.toContain('issues');
+    expect(first.nodes).toHaveLength(6);
+    expect(first.edges).toHaveLength(5);
   });
 
-  it('keeps failed agents visible and reports partial merger usability', () => {
+  it('terminalizes from AgentRuns alone: failed agents stay visible, no downstream nodes', () => {
     const graph = buildRunGraph({
       run: { ...BASE_RUN, status: 'partial' },
       agentRuns: AGENTS,
@@ -58,7 +62,11 @@ describe('run graph builder', () => {
     });
     const failed = graph.nodes.find((n) => n.id === 'agent-stack_glm_main');
     expect(failed?.status).toBe('failed');
-    expect(graph.nodes).toHaveLength(9);
+    expect(graph.nodes).toHaveLength(6);
+    const kinds = graph.nodes.map((n) => n.kind);
+    expect(kinds).not.toContain('merger');
+    expect(kinds).not.toContain('verifier');
+    expect(kinds).not.toContain('issues');
   });
 
   it('adds the TargetSpec node for TARGETED runs', () => {
@@ -74,10 +82,20 @@ describe('run graph builder', () => {
     expect(target?.data['includePaths'] as string[]).toEqual(['src/auth']);
   });
 
-  it('renders zero findings honestly', () => {
-    const graph = buildRunGraph({ run: BASE_RUN, agentRuns: AGENTS, findings: [], evidence: [] });
-    const issues = graph.nodes.find((n) => n.kind === 'issues');
-    expect(issues?.data['count']).toBe(0);
+  it('keeps findings independently associated with their agentRunId', () => {
+    const graph = buildRunGraph({
+      run: BASE_RUN,
+      agentRuns: AGENTS,
+      findings: [
+        { id: 'f1', agentRunId: AGENTS[0]?.id ?? '', severity: 'critical', title: 't' },
+        { id: 'f2', agentRunId: AGENTS[1]?.id ?? '', severity: 'high', title: 't' },
+      ],
+      evidence: [],
+    });
+    const counts = Object.fromEntries(graph.agents.map((a) => [a.agentStackId, a.findingsCount]));
+    expect(counts['stack_muse_main']).toBe(1);
+    expect(counts['stack_deepseek_main']).toBe(1);
+    expect(counts['stack_glm_main']).toBe(0);
   });
 
   it('renders waiting placeholders before AgentRuns exist', () => {
@@ -92,14 +110,11 @@ describe('run graph builder', () => {
     );
   });
 
-  it('passes merger usability and verifier versions into node payloads', () => {
+  it('ignores historical merger/verifier payloads without creating pipeline nodes', () => {
     const graph = buildRunGraph({
       run: BASE_RUN,
       agentRuns: AGENTS,
-      findings: [
-        { id: 'f1', agentRunId: AGENTS[0]?.id ?? '', severity: 'critical', title: 't' },
-        { id: 'f2', agentRunId: AGENTS[1]?.id ?? '', severity: 'high', title: 't' },
-      ],
+      findings: [],
       evidence: [],
       mergeResults: [
         {
@@ -126,14 +141,13 @@ describe('run graph builder', () => {
           attempts: [{ outcome: 'reproduced' }, { outcome: 'inconclusive' }],
         },
       ],
+      issueCount: 3,
     });
-    const merger = graph.nodes.find((n) => n.kind === 'merger');
-    expect(merger?.data['usableAgentCount']).toBe(2);
-    expect(merger?.data['expectedAgentCount']).toBe(3);
-    const verifier = graph.nodes.find((n) => n.kind === 'verifier');
-    expect(verifier?.data['verifierVersion']).toBe(3);
-    const issues = graph.nodes.find((n) => n.kind === 'issues');
-    expect((issues?.data['findings'] as Array<unknown>).length).toBe(2);
+    const kinds = graph.nodes.map((n) => n.kind);
+    expect(kinds).not.toContain('merger');
+    expect(kinds).not.toContain('verifier');
+    expect(kinds).not.toContain('issues');
+    expect(graph.nodes).toHaveLength(6);
   });
 
   it('renders retest cancelled/failed runs with preserved lineage (§171)', () => {

@@ -1416,6 +1416,10 @@ export class RunCoordinator {
     // Verification crash recovery uses the same lease freshness — no
     // parallel lease system (§64). Stale-owned running verifications
     // become interrupted with completed observations preserved.
+    // Product note: new runs no longer create verification runs, but this
+    // compatibility path stays so historical nonterminal verification rows
+    // can never corrupt boot recovery. Do not remove while historical
+    // VerificationRun rows remain readable.
     await recoverVerifications(this.repository, (instanceId) => lease.isFresh(instanceId as never));
     // Retest crash recovery (§55): stale-owned nonterminal retest runs
     // become interrupted; completed assessments and occurrences persist.

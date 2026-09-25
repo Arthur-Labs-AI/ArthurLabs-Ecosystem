@@ -911,12 +911,9 @@ export class SentryRuntimeHost {
       }
       case 'runs.cancel':
         return this.requestRunCancellation(requireString(params, 'runId'));
-      case 'runs.merge':
-        return this.mergeRun(requireString(params, 'runId'));
-      case 'runs.verify':
-        return this.verifyMerge(requireString(params, 'mergeResultId'));
-      case 'runs.ingest':
-        return this.ingestIssues(requireString(params, 'mergeResultId'));
+      // Merger / Verifier / issue-ingest RPCs are retired from the active
+      // product. The class methods below stay for CLI + historical
+      // compatibility but are no longer reachable over the WSL bridge.
       case 'runs.export':
         return this.exportRun(requireString(params, 'runId'), requireString(params, 'format'));
       case 'issues.list':

@@ -8,7 +8,7 @@ const NAV: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/projects', label: 'Projects' },
   { to: '/runs', label: 'Runs' },
-  { to: '/issues', label: 'Issues' },
+  { to: '/issues', label: 'Issues (Legacy)' },
   { to: '/history', label: 'History' },
   { to: '/environment', label: 'Environment' },
   { to: '/settings', label: 'Settings' },

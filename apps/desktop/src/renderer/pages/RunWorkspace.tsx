@@ -6,13 +6,7 @@ import { AgentInspector } from '../components/AgentInspector.js';
 import { RunSummaryPanel } from '../components/RunSummaryPanel.js';
 import { StatusLabel } from '../components/StatusGlyph.js';
 import { CopyId } from '../components/CopyId.js';
-import {
-  EdgeInspector,
-  IssuesInspector,
-  MergerInspector,
-  NodeStatusHeader,
-  VerifierInspector,
-} from '../components/PipelineInspectors.js';
+import { EdgeInspector, NodeStatusHeader } from '../components/PipelineInspectors.js';
 import { buildRunGraph } from '../lib/run-graph.js';
 import { useRunSnapshot } from '../lib/use-live-run.js';
 import { sentryApi } from '../lib/sentry-api.js';
@@ -46,83 +40,6 @@ export function RunWorkspace(): React.JSX.Element {
     onSuccess: () => {
       setConfirmCancel(false);
       refresh();
-    },
-    onError: fail,
-  });
-  const merge = useMutation({
-    mutationFn: () => sentryApi().runs.merge(runId as string),
-    onSuccess: (result) => {
-      const info = result as { result?: { clusters?: unknown[] }; reused?: boolean };
-      const clusters = Array.isArray(info.result?.clusters)
-        ? info.result?.clusters?.length
-        : undefined;
-      setActionNote(
-        clusters !== undefined
-          ? 'Merge complete: ' +
-              String(clusters) +
-              ' cluster(s) produced' +
-              (info.reused === true ? ' (reused)' : '')
-          : 'Merge complete',
-      );
-      refresh();
-    },
-    onError: fail,
-  });
-  const readMergeId = (): string | undefined => {
-    const snap = queryClient.getQueryData(['run', runId]) as
-      | {
-          currentMergeResultId?: string;
-          mergeResults?: Array<{ id: string }>;
-        }
-      | undefined;
-    // Authoritative current MergeResult (highest supported mergerVersion)
-    // from the runtime DTO — never repository ordering ([0]).
-    if (snap?.currentMergeResultId !== undefined) return snap.currentMergeResultId;
-    return snap?.mergeResults?.[0]?.id;
-  };
-  const ingest = useMutation({
-    mutationFn: async () => {
-      const id = readMergeId();
-      if (id === undefined) throw new Error('Merge first: no MergeResult yet');
-      return sentryApi().runs.ingest(id);
-    },
-    onSuccess: (result) => {
-      const info = result as { issues?: unknown[] };
-      setActionNote(
-        Array.isArray(info.issues)
-          ? 'Issues ingested: ' + String(info.issues.length) + ' issue occurrence(s) created'
-          : 'Issues ingested',
-      );
-      refresh();
-    },
-    onError: fail,
-  });
-  const verify = useMutation({
-    mutationFn: async () => {
-      const id = readMergeId();
-      if (id === undefined) throw new Error('Merge first: no MergeResult yet');
-      return sentryApi().runs.verify(id);
-    },
-    onSuccess: (result) => {
-      const info = result as { attempts?: Array<{ outcome?: string }> };
-      if (Array.isArray(info.attempts)) {
-        const reproduced = info.attempts.filter((a) => a.outcome === 'reproduced').length;
-        const inconclusive = info.attempts.filter((a) => a.outcome === 'inconclusive').length;
-        setActionNote(
-          'Verification complete: ' +
-            String(reproduced) +
-            ' reproduced, ' +
-            String(inconclusive) +
-            ' inconclusive. Ingesting issues…',
-        );
-      } else {
-        setActionNote('Verification complete. Ingesting issues…');
-      }
-      refresh();
-      // Close the gap: verified clusters become tracked issues without a
-      // second click. Ingest is idempotent, so the manual button below
-      // stays a safe fallback.
-      ingest.mutate();
     },
     onError: fail,
   });
@@ -188,13 +105,8 @@ export function RunWorkspace(): React.JSX.Element {
           Record<string, unknown> & { type: string; agentRunId: string; timestamp: string }
         >;
         targetSpec?: { includePaths?: string[]; userInstructions?: string };
-        mergeResults?: Array<{ id: string; clusters?: Array<{ id: string }> }>;
-        verificationRuns?: Array<{
-          id: string;
-          status: string;
-          attempts?: Array<{ outcome?: string }>;
-        }>;
-        issues?: unknown[];
+        // Historical merger/verifier/issues payloads may still arrive from
+        // older runs via runs:get; the active product ignores them.
       }
     | undefined;
 
@@ -218,9 +130,6 @@ export function RunWorkspace(): React.JSX.Element {
         eventsByAgent: eventsByAgent as never,
         activitiesByAgent: activitiesByAgent as never,
         ...(data.targetSpec === undefined ? {} : { targetSpec: data.targetSpec }),
-        ...(data.mergeResults === undefined ? {} : { mergeResults: data.mergeResults }),
-        ...(data.verificationRuns === undefined ? {} : { verificationRuns: data.verificationRuns }),
-        issueCount: data.issues?.length ?? 0,
       },
       Date.now(),
     );
@@ -288,15 +197,6 @@ export function RunWorkspace(): React.JSX.Element {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
         {terminal ? (
           <>
-            <button onClick={() => merge.mutate()} disabled={merge.isPending}>
-              Merge
-            </button>
-            <button onClick={() => verify.mutate()} disabled={verify.isPending}>
-              Verify
-            </button>
-            <button onClick={() => ingest.mutate()} disabled={ingest.isPending}>
-              Ingest Issues
-            </button>
             <button onClick={() => exportRun.mutate('json')} disabled={exportRun.isPending}>
               Export JSON
             </button>
@@ -306,9 +206,7 @@ export function RunWorkspace(): React.JSX.Element {
             <Link to={'/projects/' + data.run.projectId}>Open Project</Link>
           </>
         ) : (
-          <span className="muted">
-            Merge, Verify, Ingest, and Export unlock at terminal status.
-          </span>
+          <span className="muted">Export unlocks at terminal status.</span>
         )}
       </div>
       {data.run.status === 'failed' ? (
@@ -396,7 +294,6 @@ export function RunWorkspace(): React.JSX.Element {
                 label={selectedNode.label}
                 status={selectedNode.status}
                 payload={selectedNode.data}
-                occurrences={data.issues ?? []}
               />
             ) : selectedEdge !== undefined ? (
               <EdgeInspector edge={selectedEdge} />
@@ -415,17 +312,12 @@ function SelectedNodeInspector({
   label,
   status,
   payload,
-  occurrences,
 }: {
   nodeId: string;
   label: string;
   status: string;
   payload: Record<string, unknown>;
-  occurrences: unknown[];
 }): React.JSX.Element {
-  if (nodeId === 'merger') return <MergerInspector payload={payload} />;
-  if (nodeId === 'verifier') return <VerifierInspector payload={payload} />;
-  if (nodeId === 'issues') return <IssuesInspector payload={payload} occurrences={occurrences} />;
   return (
     <div>
       <NodeStatusHeader label={label} status={status} />

@@ -44,9 +44,6 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     startProduction: (projectId: string, options) =>
       invoke('runs:start', { projectId, ...options }),
     cancel: (runId: string) => invoke('runs:cancel', { runId }),
-    merge: (runId: string) => invoke('runs:merge', { runId }),
-    verify: (mergeResultId: string) => invoke('runs:verify', { mergeResultId }),
-    ingest: (mergeResultId: string) => invoke('runs:ingest', { mergeResultId }),
     exportRun: (runId: string, format: 'log' | 'json') => invoke('runs:export', { runId, format }),
   },
   issues: {
