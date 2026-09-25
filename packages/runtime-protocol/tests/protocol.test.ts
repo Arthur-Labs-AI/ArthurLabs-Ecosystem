@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  RUNTIME_METHODS,
   RUNTIME_PROTOCOL_VERSION,
   RpcFramingError,
   RpcLineBuffer,
@@ -32,6 +33,17 @@ describe('runtime protocol framing', () => {
     expect(parseRpcLine(encodeRpcLine(note as never).trim())).toMatchObject({
       type: 'notification',
     });
+  });
+
+  it('gates Save As bytes while retired merger methods stay out', () => {
+    // The stdio host rejects anything outside this list before dispatch.
+    // runs.exportContent must be present or desktop Save As fails with
+    // UNKNOWN_METHOD against an otherwise current runtime.
+    expect(RUNTIME_METHODS).toContain('runs.exportContent');
+    expect(RUNTIME_METHODS).toContain('runs.export');
+    expect(RUNTIME_METHODS).not.toContain('runs.merge');
+    expect(RUNTIME_METHODS).not.toContain('runs.verify');
+    expect(RUNTIME_METHODS).not.toContain('runs.ingest');
   });
 
   it('rejects malformed JSON and unknown shapes', () => {
