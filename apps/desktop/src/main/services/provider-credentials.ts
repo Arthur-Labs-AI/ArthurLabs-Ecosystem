@@ -68,9 +68,9 @@ export interface SafeStorageLike {
 export interface ProviderCredentialStatus {
   readonly name: string;
   readonly configured: boolean;
-  /** 'secure' = encrypted store, 'session' = memory-only, 'environment' = pre-existing env. */
-  readonly persistence: 'secure' | 'session' | 'environment' | 'missing';
-  readonly source: 'stored' | 'session' | 'environment' | 'missing';
+  /** 'secure' = encrypted store, 'persisted' = plain prefs file, 'environment' = pre-existing env. */
+  readonly persistence: 'secure' | 'persisted' | 'environment' | 'missing';
+  readonly source: 'stored' | 'persisted' | 'environment' | 'missing';
   readonly hint: string;
 }
 
@@ -136,6 +136,8 @@ export class ProviderCredentialService {
   private readonly memory = new Map<string, string>();
   /** Secret names currently backed by the encrypted store. */
   private readonly persistedSecrets = new Set<string>();
+  /** Non-secret names currently backed by the plain prefs file. */
+  private readonly persistedPrefs = new Set<string>();
   private readonly credentialPath: string;
   private readonly modelPrefsPath: string;
   private readonly legacyPath: string | undefined;
@@ -206,6 +208,7 @@ export class ProviderCredentialService {
       const parsed = JSON.parse(text) as Partial<ModelPrefsFile>;
       for (const [name, value] of Object.entries(parsed.models ?? {})) {
         if (!isModelName(name) || typeof value !== 'string' || value.length === 0) continue;
+        this.persistedPrefs.add(name);
         if (!this.memory.has(name)) {
           this.memory.set(name, value);
           if (process.env[name] === undefined || process.env[name] === '')
@@ -303,6 +306,7 @@ export class ProviderCredentialService {
     }
     const payload: ModelPrefsFile = { version: 1, models };
     await atomicWriteJson(this.modelPrefsPath, payload);
+    for (const name of Object.keys(models)) this.persistedPrefs.add(name);
   }
 
   statuses(): ProviderCredentialStatus[] {
@@ -322,9 +326,9 @@ export class ProviderCredentialService {
   }
 
   /**
-   * Save (default): encrypt + persist + load into runtime + refresh env.
-   * Secrets require secure storage; without it they are session-only and
-   * the status reports persistence 'session'. Model ids persist as prefs.
+   * Save (the only mode): encrypt + persist + load into runtime + refresh
+   * env. Secrets require secure storage — without it the save is refused
+   * instead of silently degrading. Non-secret values persist as prefs.
    */
   async saveKey(name: string, value: string): Promise<ProviderCredentialStatus> {
     this.assertManaged(name);
@@ -334,44 +338,28 @@ export class ProviderCredentialService {
         code: 'PROVIDER_KEY_INVALID',
       });
     }
+    if (isSecretName(name) && (!this.secureAvailable || this.safeStorage === undefined)) {
+      throw Object.assign(
+        new Error('Secure persistent storage unavailable. The credential was not saved.'),
+        { code: 'SECURE_STORAGE_UNAVAILABLE' },
+      );
+    }
     this.memory.set(name, trimmed);
     process.env[name] = trimmed;
     if (isSecretName(name)) {
-      if (this.secureAvailable && this.safeStorage !== undefined) {
-        this.persistedSecrets.add(name);
-        await this.writeEncryptedStore();
-      } else {
-        this.persistedSecrets.delete(name);
-      }
+      this.persistedSecrets.add(name);
+      await this.writeEncryptedStore();
     } else if (isModelName(name)) {
       await this.writeModelPrefs();
     }
     return this.statusFor(name);
   }
 
-  /** Session-only variant: memory + process.env, never persisted. */
-  setSessionKey(name: string, value: string): ProviderCredentialStatus {
-    this.assertManaged(name);
-    const trimmed = value.trim();
-    if (trimmed.length === 0 || trimmed.length > 5000) {
-      throw Object.assign(new Error('Provider key value is empty or too long'), {
-        code: 'PROVIDER_KEY_INVALID',
-      });
-    }
-    this.memory.set(name, trimmed);
-    process.env[name] = trimmed;
-    return this.statusFor(name);
-  }
-
-  /** Back-compat alias used by older call sites: session-only set. */
-  setKey(name: string, value: string): ProviderCredentialStatus {
-    return this.setSessionKey(name, value);
-  }
-
   async clearKey(name: string): Promise<ProviderCredentialStatus> {
     this.assertManaged(name);
     this.memory.delete(name);
     this.persistedSecrets.delete(name);
+    this.persistedPrefs.delete(name);
     delete process.env[name];
     if (isSecretName(name) && this.secureAvailable) {
       try {
@@ -390,19 +378,16 @@ export class ProviderCredentialService {
     return this.statusFor(name);
   }
 
-  /** @deprecated Use saveKey (secure persist) or setSessionKey explicitly. */
+  /** @deprecated Use saveKey (persist); kept for older IPC call sites. */
   async persist(): Promise<{ path: string; keys: number }> {
     if (this.secureAvailable && this.safeStorage !== undefined) {
       await this.writeEncryptedStore();
       await this.writeModelPrefs();
       return { path: this.credentialPath, keys: this.persistedSecrets.size };
     }
-    throw Object.assign(
-      new Error(
-        'Secure persistent storage unavailable. Credential can be used for this session only.',
-      ),
-      { code: 'SECURE_STORAGE_UNAVAILABLE' },
-    );
+    throw Object.assign(new Error('Secure persistent storage unavailable.'), {
+      code: 'SECURE_STORAGE_UNAVAILABLE',
+    });
   }
 
   async forgetAll(): Promise<{ forgotten: boolean }> {
@@ -464,28 +449,28 @@ export class ProviderCredentialService {
           hint: 'Configured · Stored securely',
         };
       }
-      if (fromMemory !== undefined) {
-        return {
-          name,
-          configured: true,
-          persistence: 'session',
-          source: 'session',
-          hint: 'Configured · Session only',
-        };
-      }
       return {
         name,
         configured: true,
         persistence: 'environment',
         source: 'environment',
-        hint: 'Configured · Session only',
+        hint: 'Configured · From environment',
+      };
+    }
+    if (this.persistedPrefs.has(name) && fromMemory !== undefined) {
+      return {
+        name,
+        configured: true,
+        persistence: 'persisted',
+        source: 'persisted',
+        hint: effective ?? 'missing',
       };
     }
     return {
       name,
       configured: true,
-      persistence: fromMemory !== undefined ? 'session' : 'environment',
-      source: fromMemory !== undefined ? 'session' : 'environment',
+      persistence: 'environment',
+      source: 'environment',
       hint: effective ?? 'missing',
     };
   }

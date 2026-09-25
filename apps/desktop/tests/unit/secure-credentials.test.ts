@@ -87,7 +87,7 @@ describe('secure persistent provider credentials', () => {
     expect(reloaded.statuses().find((s) => s.name === 'DEEPSEEK_API_KEY')?.configured).toBe(false);
   });
 
-  it('secure storage unavailable never falls back to plaintext', async () => {
+  it('secure storage unavailable refuses secrets, never session fallback', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sentry-secure-'));
     roots.push(dir);
     const service = new ProviderCredentialService({
@@ -99,10 +99,13 @@ describe('secure persistent provider credentials', () => {
       },
     });
     await service.load();
-    await service.saveKey('DEEPSEEK_API_KEY', 'sk-session-only');
+    await expect(service.saveKey('DEEPSEEK_API_KEY', 'sk-refused')).rejects.toThrow(
+      /Secure persistent storage unavailable/,
+    );
     const status = service.statuses().find((s) => s.name === 'DEEPSEEK_API_KEY');
-    expect(status?.persistence).toBe('session');
-    await expect(service.persist()).rejects.toThrow(/session only/);
+    expect(status?.configured).toBe(false);
+    expect(process.env['DEEPSEEK_API_KEY']).toBeUndefined();
+    await expect(service.persist()).rejects.toThrow(/Secure persistent storage unavailable/);
   });
 
   it('stores the GLM endpoint as a non-secret pref and restores it', async () => {

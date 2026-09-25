@@ -48,8 +48,8 @@ All payloads are JSON-serializable; main validates every call with Zod before to
 
 ## providers & production
 
-- `providers.status()` → `{ name, configured, persistence: secure|session|environment|missing, source: stored|session|environment|missing, hint }`. Secrets render as fixed display text only — no values, prefixes, suffixes, or blobs.
-- `providers.save(name, value)` (secure default: encrypt + persist + load into runtime + env); `providers.session(name, value)` (explicit session-only); `providers.clear(name)` removes persisted + memory + env; `providers.forgetAll()` forgets all secrets with confirmation, preserving prefs.
+- `providers.status()` → `{ name, configured, persistence: secure|persisted|environment|missing, source: stored|persisted|environment|missing, hint }`. Secrets render as fixed display text only — no values, prefixes, suffixes, or blobs.
+- `providers.save(name, value)` (the only write mode: encrypt + persist + load into runtime + env; secrets require secure storage and the save is refused without it); `providers.clear(name)` removes persisted + memory + env; `providers.forgetAll()` forgets all secrets with confirmation, preserving prefs.
 - `production.readiness({ agentStackIds? })` → `{ ready, reasons, productionWired }`. Per-stack credential/model checks against the single production registry (the exact CLI registrations). Historical simulation rows remain readable and render as LEGACY SIMULATION; no new simulation rows can be created.
 
 ## subscriptions

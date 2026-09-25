@@ -31,9 +31,7 @@ export const IPC_CHANNELS = [
   'retests:cancel',
   'doctors:environment',
   'providers:status',
-  'providers:set',
   'providers:save',
-  'providers:session',
   'providers:clear',
   'providers:persist',
   'providers:forget-file',
@@ -178,12 +176,8 @@ export interface SentryDesktopApi {
         hint: string;
       }>
     >;
-    /** Secure default: encrypt + persist + load into runtime. */
+    /** Encrypt + persist + load into runtime. The only write mode. */
     save(name: string, value: string): Promise<unknown>;
-    /** Explicit session-only (no persistence). */
-    session(name: string, value: string): Promise<unknown>;
-    /** Back-compat session set. */
-    setKey(name: string, value: string): Promise<unknown>;
     clearKey(name: string): Promise<unknown>;
     persist(): Promise<{ path: string; keys: number }>;
     forgetFile(): Promise<{ forgotten: boolean }>;

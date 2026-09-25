@@ -295,20 +295,6 @@ export class DesktopApplicationService {
     return status;
   }
 
-  async providerSetSessionKey(name: string, value: string): Promise<unknown> {
-    const parsed = z
-      .object({ name: z.string().min(1).max(200), value: z.string().min(1).max(5000) })
-      .strict()
-      .parse({ name, value });
-    const status = this.deps.credentials.setSessionKey(parsed.name, parsed.value);
-    await this.pushRuntimeConfiguration().catch(() => undefined);
-    return status;
-  }
-
-  providerSetKey(name: string, value: string): Promise<unknown> {
-    return this.providerSetSessionKey(name, value);
-  }
-
   async providerClearKey(name: string): Promise<unknown> {
     const parsed = z.string().min(1).max(200).parse(name);
     const status = await this.deps.credentials.clearKey(parsed);

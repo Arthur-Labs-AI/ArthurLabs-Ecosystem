@@ -74,8 +74,6 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
   providers: {
     status: () => invoke('providers:status', {}),
     save: (name: string, value: string) => invoke('providers:save', { name, value }),
-    session: (name: string, value: string) => invoke('providers:session', { name, value }),
-    setKey: (name: string, value: string) => invoke('providers:set', { name, value }),
     clearKey: (name: string) => invoke('providers:clear', { name }),
     persist: () => invoke('providers:persist', {}),
     forgetFile: () => invoke('providers:forget-file', {}),

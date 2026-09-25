@@ -65,25 +65,6 @@ export function Providers(): React.JSX.Element {
       setNote('Saved. Encrypted, persisted, and loaded into the desktop host process.');
       refresh();
     },
-    onError: (e) => {
-      const message = e instanceof Error ? e.message : String(e);
-      if (message.includes('Secure persistent storage unavailable')) {
-        setNote(
-          'Secure persistent storage unavailable. Credential can be used for this session only.',
-        );
-      }
-      fail(e);
-    },
-  });
-  const sessionOnly = useMutation({
-    mutationFn: ({ name, value }: { name: string; value: string }) =>
-      sentryApi().providers.session(name, value),
-    onSuccess: () => {
-      setValues({});
-      setError(undefined);
-      setNote('Saved for this session only (not persisted).');
-      refresh();
-    },
     onError: fail,
   });
   const clear = useMutation({
@@ -170,15 +151,6 @@ export function Providers(): React.JSX.Element {
               Save
             </button>
             <button
-              disabled={(values[item.name] ?? '').trim().length === 0 || sessionOnly.isPending}
-              onClick={() =>
-                sessionOnly.mutate({ name: item.name, value: values[item.name] ?? '' })
-              }
-              title="Memory + process.env only; cleared on quit"
-            >
-              Use for this session only
-            </button>
-            <button
               disabled={!item.configured || clear.isPending}
               onClick={() => clear.mutate(item.name)}
             >
@@ -190,8 +162,8 @@ export function Providers(): React.JSX.Element {
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Forget all provider credentials</h3>
         <p className="muted">
-          Removes every persisted secret plus session values. Model preferences and unrelated app
-          settings are preserved.
+          Removes every persisted secret and clears loaded values. Model preferences and unrelated
+          app settings are preserved.
         </p>
         {confirmForget ? (
           <div style={{ display: 'flex', gap: 8 }}>

@@ -48,10 +48,21 @@ function fakeService(calls: Array<{ method: string; params: Record<string, unkno
   return { runtime, calls };
 }
 
+function fakeSafeStorage() {
+  return {
+    isEncryptionAvailable: () => true,
+    encryptString: (value: string) => Buffer.from('enc:' + value, 'utf8'),
+    decryptString: (buffer: Buffer) => buffer.toString('utf8').slice(4),
+  };
+}
+
 async function harness() {
   const root = await mkdtemp(join(tmpdir(), 'sentry-desktop-rpc-'));
   roots.push(root);
-  const credentials = new ProviderCredentialService({ filePath: join(root, 'providers.json') });
+  const credentials = new ProviderCredentialService({
+    filePath: join(root, 'providers.json'),
+    safeStorage: fakeSafeStorage(),
+  });
   const seen: Array<{ method: string; params: Record<string, unknown> }> = [];
   const { runtime } = fakeService(seen);
   const service = new DesktopApplicationService({
@@ -91,7 +102,7 @@ describe('desktop RPC adapter', () => {
   it('forwards the OpenCode model and OpenRouter key without exposing the secret', async () => {
     const h = await harness();
     await h.service.providerSaveKey('SENTRY_OPENCODE_MODEL', 'anthropic/claude-test');
-    h.service.providerSetKey('OPENROUTER_API_KEY', 'sk-or-test-12345678');
+    await h.service.providerSaveKey('OPENROUTER_API_KEY', 'sk-or-test-12345678');
     await h.service.pushRuntimeConfiguration();
     const configured = h.seen.filter((c) => c.method === 'runtime.configure').at(-1);
     expect(configured?.params).toMatchObject({
