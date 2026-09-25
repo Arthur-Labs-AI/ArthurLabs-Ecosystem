@@ -1,7 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowRight, FolderKanban, Plus } from 'lucide-react';
 import { pickDirectory, sentryApi } from '../lib/sentry-api.js';
+import { PageHeader } from '../components/ui/PageHeader.js';
+import { StatusPill } from '../components/ui/StatusPill.js';
+import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
+import { CopyId } from '../components/CopyId.js';
+import { EmptyState } from '../components/ui/EmptyState.js';
 
 export function Projects(): React.JSX.Element {
   const queryClient = useQueryClient();
@@ -48,83 +54,106 @@ export function Projects(): React.JSX.Element {
       | undefined) ?? [];
   const listError = projects.error as unknown;
   return (
-    <div>
-      <h1 style={{ marginTop: 0 }}>Projects</h1>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <button className="primary" onClick={() => add.mutate(undefined)} disabled={add.isPending}>
-          {add.isPending ? 'Adding…' : 'Add Project'}
-        </button>
-        <input
-          value={manualPath}
-          onChange={(e) => setManualPath(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && manualPath.trim().length > 0 && !add.isPending) {
-              add.mutate(manualPath);
-            }
-          }}
-          placeholder="Or paste a folder path, then Enter"
-          aria-label="Project folder path"
-          style={{ minWidth: 280 }}
-        />
-        <button
-          disabled={manualPath.trim().length === 0 || add.isPending}
-          onClick={() => add.mutate(manualPath)}
-        >
-          Add by path
-        </button>
-      </div>
+    <div className="page">
+      <PageHeader
+        title="Projects"
+        subtitle="Local repositories under independent AI QA."
+        actions={
+          <button className="primary" onClick={() => add.mutate(undefined)} disabled={add.isPending}>
+            <Plus size={15} /> {add.isPending ? 'Adding…' : 'Add Project'}
+          </button>
+        }
+      />
       {add.isPending ? (
-        <p className="muted">
+        <p className="muted" aria-live="polite">
           Copying project into the Sentry store… {Math.round(addElapsed / 1000)}s elapsed. Large
           folders (especially ones containing node_modules) can take a while.
         </p>
       ) : null}
       {error !== undefined ? (
-        <div className="error-box" style={{ marginTop: 12 }} role="alert">
-          {error}
+        <div className="error-box" role="alert">
+          {error}{' '}
+          <button className="compact ghost" onClick={() => setError(undefined)}>
+            Dismiss
+          </button>
         </div>
       ) : null}
       {add.error !== undefined && add.error !== null && error === undefined ? (
-        <div className="error-box" style={{ marginTop: 12 }} role="alert">
+        <div className="error-box" role="alert">
           {String((add.error as { message?: unknown }).message ?? add.error)}
         </div>
       ) : null}
       {projects.isLoading ? (
         <div className="skeleton">Loading projects…</div>
       ) : projects.isError ? (
-        <div className="error-box" style={{ marginTop: 12 }} role="alert">
+        <div className="error-box" role="alert">
           Could not load projects:{' '}
           {listError instanceof Error ? listError.message : String(listError ?? 'unknown error')}
         </div>
       ) : list.length === 0 ? (
-        <div className="empty" style={{ marginTop: 12 }}>
-          No projects yet. Add a local project to start QA.
-        </div>
+        <EmptyState
+          title="No projects yet"
+          body="Add a local repository and run your first independent AI QA scan."
+          action={
+            <button className="primary" onClick={() => add.mutate(undefined)}>
+              <Plus size={15} /> Add Project
+            </button>
+          }
+        />
       ) : (
-        <table className="table" style={{ marginTop: 12 }}>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>State</th>
-              <th>Revision</th>
-              <th>Runs</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((project) => (
-              <tr key={project.projectId}>
-                <td>
-                  <Link to={'/projects/' + project.projectId}>{project.name}</Link>{' '}
-                  <span className="mono faint">{project.projectId.slice(0, 12)}</span>
-                </td>
-                <td>{project.state}</td>
-                <td className="mono">{project.currentRevisionId.slice(0, 14)}</td>
-                <td>{project.runCount}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="project-grid">
+          {list.map((project) => (
+            <article className="card" key={project.projectId} aria-label={project.name}>
+              <div className="agent-row">
+                <FolderKanban size={16} aria-hidden="true" className="faint" />
+                <span className="grow truncate card-title" title={project.name}>
+                  {project.name}
+                </span>
+                <StatusPill status={project.state} />
+              </div>
+              <dl className="kv" style={{ marginTop: 10 }}>
+                <dt>Revision</dt>
+                <dd>
+                  <CopyId id={project.currentRevisionId} />
+                </dd>
+                <dt>Runs</dt>
+                <dd>
+                  {project.runCount} run{project.runCount === 1 ? '' : 's'}
+                </dd>
+              </dl>
+              <div style={{ marginTop: 10 }}>
+                <Link to={'/projects/' + project.projectId}>
+                  <button className="compact primary">
+                    Open <ArrowRight size={13} />
+                  </button>
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
       )}
+      <CollapsibleSection title="Advanced: add by path">
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+          <input
+            value={manualPath}
+            onChange={(e) => setManualPath(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && manualPath.trim().length > 0 && !add.isPending) {
+                add.mutate(manualPath);
+              }
+            }}
+            placeholder="Paste a folder path, then Enter"
+            aria-label="Project folder path"
+            style={{ minWidth: 280, flex: 1 }}
+          />
+          <button
+            disabled={manualPath.trim().length === 0 || add.isPending}
+            onClick={() => add.mutate(manualPath)}
+          >
+            Add by path
+          </button>
+        </div>
+      </CollapsibleSection>
     </div>
   );
 }

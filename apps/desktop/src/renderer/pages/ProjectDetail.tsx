@@ -1,14 +1,27 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowRight, Check, FlaskConical } from 'lucide-react';
 import { CopyId } from '../components/CopyId.js';
+import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
+import { StatusPill, dotClassForStatus } from '../components/ui/StatusPill.js';
+import { SegmentedControl } from '../components/ui/Tabs.js';
 import { sentryApi } from '../lib/sentry-api.js';
+
+const AGENT_ORDER = ['stack_opencode_main', 'stack_deepseek_main', 'stack_glm_main'];
+
+function shortModel(modelId: string | undefined): string {
+  if (modelId === undefined || modelId === '') return 'Default model';
+  const parts = modelId.split('/');
+  return parts[parts.length - 1] ?? modelId;
+}
 
 export function ProjectDetail(): React.JSX.Element {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = React.useState<string | undefined>(undefined);
+  const [mode, setMode] = React.useState<'full' | 'targeted'>('full');
   const [targetPaths, setTargetPaths] = React.useState('');
   const detail = useQuery({
     queryKey: ['project', projectId],
@@ -25,11 +38,6 @@ export function ProjectDetail(): React.JSX.Element {
     queryFn: () => sentryApi().projects.revisions(projectId as string),
     enabled: projectId !== undefined,
   });
-  const issues = useQuery({
-    queryKey: ['project-issues', projectId],
-    queryFn: () => sentryApi().issues.list(projectId as string),
-    enabled: projectId !== undefined,
-  });
   const environment = useQuery({
     queryKey: ['environment'],
     queryFn: () => sentryApi().doctors.environment(),
@@ -37,12 +45,24 @@ export function ProjectDetail(): React.JSX.Element {
   const stacks = (
     (
       environment.data as
-        { agentStacks?: Array<{ id: string; displayName: string; readiness?: string }> } | undefined
+        | {
+            agentStacks?: Array<{
+              id: string;
+              displayName: string;
+              readiness?: string;
+              modelId?: string;
+            }>;
+          }
+        | undefined
     )?.agentStacks ?? []
-  ).filter(
-    (s) =>
-      s.id === 'stack_opencode_main' || s.id === 'stack_deepseek_main' || s.id === 'stack_glm_main',
-  );
+  )
+    .filter(
+      (s) =>
+        s.id === 'stack_opencode_main' ||
+        s.id === 'stack_deepseek_main' ||
+        s.id === 'stack_glm_main',
+    )
+    .sort((a, b) => AGENT_ORDER.indexOf(a.id) - AGENT_ORDER.indexOf(b.id));
   const [selectedStacks, setSelectedStacks] = React.useState<string[] | undefined>(undefined);
   const effectiveStacks = selectedStacks ?? stacks.map((s) => s.id);
   const toggleStack = (id: string): void => {
@@ -57,10 +77,11 @@ export function ProjectDetail(): React.JSX.Element {
     queryFn: () => sentryApi().production.readiness({ agentStackIds: effectiveStacks }),
   });
   const gate = readiness.data as
-    { ready?: boolean; reasons?: string[]; productionWired?: boolean } | undefined;
-  const startOptions = (mode: 'full' | 'targeted'): Record<string, unknown> => ({
-    mode,
-    ...(mode === 'targeted'
+    | { ready?: boolean; reasons?: string[]; productionWired?: boolean }
+    | undefined;
+  const startOptions = (runMode: 'full' | 'targeted'): Record<string, unknown> => ({
+    mode: runMode,
+    ...(runMode === 'targeted'
       ? {
           includePaths: targetPaths
             .split(',')
@@ -121,63 +142,87 @@ export function ProjectDetail(): React.JSX.Element {
     (runs.data as Array<{ id: string; mode: string; status: string }> | undefined) ?? [];
   const revisionList =
     (revisions.data as Array<{ id: string; importedAt: string }> | undefined) ?? [];
-  const issueList = (issues.data as unknown[] | undefined) ?? [];
+  const pendingStart = confirmStart !== undefined;
+  const startPending = startFull.isPending || startTargeted.isPending;
   return (
-    <div>
-      <p className="muted" style={{ margin: 0 }}>
-        <Link to="/projects">Projects</Link> / {record?.project.name ?? projectId}
-      </p>
-      <h1 style={{ marginTop: 4 }}>{record?.project.name ?? 'Project'}</h1>
-      {error !== undefined ? (
-        <div className="error-box" role="alert">
-          {error}
-        </div>
-      ) : null}
-      <div className="cards">
-        <div className="card">
-          <h3>Overview</h3>
-          <p className="mono muted">{record?.project.sourcePath ?? ''}</p>
-          <p>State: {record?.managedCopy.state ?? '—'}</p>
-          <p className="mono">
-            Revision: <CopyId id={record?.revision.id ?? ''} />
-          </p>
-          <p>Open issues: {issueList.length}</p>
+    <div className="page">
+      <PageHeader
+        title={record?.project.name ?? 'Project'}
+        subtitle={record?.project.sourcePath ?? projectId}
+        crumbs={
+          <>
+            <Link to="/projects">Projects</Link> / {record?.project.name ?? 'Project'}
+          </>
+        }
+        actions={
           <button onClick={() => update.mutate()} disabled={update.isPending}>
             {update.isPending ? 'Updating…' : 'Update Project'}
           </button>
-          {record?.managedCopy.state === 'locked_for_run' ? (
-            <p className="error-box" style={{ marginTop: 8 }}>
-              Project is currently used by {record?.managedCopy.lockedByQARunId ?? 'an active run'}.
-              Update cannot start until the run finishes.
-            </p>
-          ) : null}
+        }
+      />
+      {error !== undefined ? (
+        <div className="error-box" role="alert">
+          {error}{' '}
+          <button className="compact ghost" onClick={() => setError(undefined)}>
+            Dismiss
+          </button>
         </div>
-        <div className="card">
-          <h3>Readiness</h3>
-          {doctorData === undefined ? (
-            <p className="muted">Probing…</p>
-          ) : (
-            <>
-              <p>Ready: {doctorData.ready === true ? 'yes' : 'no'}</p>
-              <p className="muted">
-                Ecosystem: {(doctorData.detectedEcosystem ?? []).join(', ') || '—'}
-              </p>
-              {(doctorData.warnings ?? []).map((warning) => (
-                <p key={warning} className="muted">
-                  ! {warning}
+      ) : null}
+      {record?.managedCopy.state === 'locked_for_run' ? (
+        <div className="inline-notice tone-warning" role="status">
+          Project is in use by {record?.managedCopy.lockedByQARunId ?? 'an active run'}. Update
+          cannot start until the run finishes.
+        </div>
+      ) : null}
+      <PageSection title="Overview">
+        <div className="cards">
+          <div className="card">
+            <h3 className="card-title">Project state</h3>
+            <div style={{ marginTop: 8 }}>
+              <StatusPill status={record?.managedCopy.state ?? 'unknown'} />
+            </div>
+            <dl className="kv" style={{ marginTop: 8 }}>
+              <dt>Revision</dt>
+              <dd>
+                <CopyId id={record?.revision.id ?? ''} />
+              </dd>
+              <dt>Runs</dt>
+              <dd>{runList.length}</dd>
+            </dl>
+          </div>
+          <div className="card">
+            <h3 className="card-title">Readiness</h3>
+            {doctorData === undefined ? (
+              <p className="muted">Probing…</p>
+            ) : (
+              <>
+                <div style={{ marginTop: 8 }}>
+                  <StatusPill
+                    status={doctorData.ready === true ? 'ready' : 'not ready'}
+                    label={doctorData.ready === true ? 'Ready' : 'Not ready'}
+                  />
+                </div>
+                <p className="metadata">
+                  Ecosystem: {(doctorData.detectedEcosystem ?? []).join(', ') || '—'}
                 </p>
-              ))}
-            </>
-          )}
+                {(doctorData.warnings ?? []).map((warning) => (
+                  <p key={warning} className="metadata">
+                    ! {warning}
+                  </p>
+                ))}
+              </>
+            )}
+          </div>
         </div>
+      </PageSection>
+      <PageSection title="Run QA">
         <div className="card">
-          <h3>Start QA</h3>
-          <p className="muted" style={{ marginTop: 0 }}>
-            Real provider run — OpenCode, DeepSeek and GLM agents execute against this project and
-            consume provider budget.
+          <p className="body-secondary" style={{ marginTop: 0 }}>
+            Real provider run — selected agents execute against this project and consume provider
+            budget.
           </p>
           {gate !== undefined && gate.ready !== true ? (
-            <div className="error-box" role="alert" style={{ marginBottom: 8 }}>
+            <div className="error-box" role="alert" style={{ marginBottom: 12 }}>
               <strong>Cannot start QA</strong>
               <ul style={{ margin: '4px 0 8px', paddingLeft: 18 }}>
                 {(gate.reasons ?? []).map((reason) => (
@@ -190,104 +235,177 @@ export function ProjectDetail(): React.JSX.Element {
               </span>
             </div>
           ) : null}
-          <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8 }}>
-            <legend className="muted">Agents</legend>
-            {stacks.length === 0 ? (
-              <span className="muted">Loading agent readiness…</span>
-            ) : (
-              stacks.map((stack) => (
-                <label key={stack.id} style={{ display: 'block' }}>
-                  <input
-                    type="checkbox"
-                    checked={effectiveStacks.includes(stack.id)}
-                    onChange={() => toggleStack(stack.id)}
-                  />{' '}
-                  {stack.displayName}{' '}
-                  <span className="muted">({stack.readiness ?? 'unknown'})</span>
-                </label>
-              ))
-            )}
-            {stacks.length > 0 && effectiveStacks.length === 0 ? (
-              <p className="error-box" style={{ marginTop: 8 }}>
-                Select at least one agent to start a run.
-              </p>
-            ) : null}
-          </fieldset>
-          {confirmStart === 'full' ? (
-            <p className="error-box" style={{ marginBottom: 8 }} role="alert">
-              This starts a real provider run and consumes budget. Press Start Full QA again to
-              confirm.
+          <SegmentedControl
+            label="QA mode"
+            value={mode}
+            onChange={(value) => setMode(value as 'full' | 'targeted')}
+            options={[
+              { value: 'full', label: 'Full QA' },
+              { value: 'targeted', label: 'Targeted QA' },
+            ]}
+          />
+          <div className="metadata" style={{ margin: '12px 0 6px' }}>
+            Agents
+          </div>
+          {stacks.length === 0 ? (
+            <span className="muted">Loading agent readiness…</span>
+          ) : (
+            <div className="project-grid">
+              {stacks.map((stack) => {
+                const selected = effectiveStacks.includes(stack.id);
+                return (
+                  <button
+                    key={stack.id}
+                    className="card agent-card"
+                    aria-pressed={selected}
+                    onClick={() => toggleStack(stack.id)}
+                    title={(selected ? 'Deselect ' : 'Select ') + stack.displayName}
+                    style={
+                      selected ? { borderColor: 'var(--accent)' } : undefined
+                    }
+                  >
+                    <span
+                      className={dotClassForStatus(stack.readiness ?? '')}
+                      aria-hidden="true"
+                      style={{ marginTop: 4 }}
+                    />
+                    <span className="grow">
+                      <span className="card-title" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {selected ? <Check size={14} aria-hidden="true" /> : null}
+                        {stack.displayName}
+                      </span>
+                      <span
+                        className="mono metadata truncate"
+                        style={{ display: 'block' }}
+                        title={stack.modelId ?? 'Default model'}
+                      >
+                        {shortModel(stack.modelId)}
+                      </span>
+                      <span className="metadata">{stack.readiness ?? 'unknown'}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {stacks.length > 0 && effectiveStacks.length === 0 ? (
+            <p className="error-box" style={{ marginTop: 8 }} role="alert">
+              Select at least one agent to start a run.
             </p>
           ) : null}
-          <button
-            className="primary"
-            onClick={() => {
-              if (confirmStart !== 'full') {
-                setConfirmStart('full');
-                return;
-              }
-              startFull.mutate();
-            }}
-            disabled={startFull.isPending || effectiveStacks.length === 0 || gate?.ready !== true}
-          >
-            {confirmStart === 'full' ? 'Confirm Start Full QA' : 'Start Full QA'}
-          </button>
-          <div style={{ marginTop: 8 }}>
-            <TargetPathInput
-              projectId={projectId as string}
-              value={targetPaths}
-              onChange={setTargetPaths}
-            />
-            <p className="muted">
-              Agents remain full-strength QA workers; findings should relate to the selected scope.
-            </p>
-            {confirmStart === 'targeted' ? (
-              <p className="error-box" style={{ marginBottom: 8 }} role="alert">
-                This starts a real provider run and consumes budget. Press Start Targeted QA again
-                to confirm.
+          {mode === 'targeted' ? (
+            <div style={{ marginTop: 12 }}>
+              <TargetPathInput
+                projectId={projectId as string}
+                value={targetPaths}
+                onChange={setTargetPaths}
+              />
+              <p className="metadata">
+                Agents remain full-strength QA workers; findings should relate to the selected
+                scope.
               </p>
-            ) : null}
+            </div>
+          ) : null}
+          <div style={{ marginTop: 12 }}>
             <button
-              onClick={() => {
-                if (confirmStart !== 'targeted') {
-                  setConfirmStart('targeted');
-                  return;
-                }
-                startTargeted.mutate();
-              }}
-              disabled={
-                startTargeted.isPending || effectiveStacks.length === 0 || gate?.ready !== true
-              }
+              className="primary"
+              onClick={() => setConfirmStart(mode)}
+              disabled={startPending || effectiveStacks.length === 0 || gate?.ready !== true}
             >
-              {confirmStart === 'targeted' ? 'Confirm Start Targeted QA' : 'Start Targeted QA'}
+              <FlaskConical size={15} />{' '}
+              {mode === 'full' ? 'Start Full QA' : 'Start Targeted QA'}
             </button>
           </div>
         </div>
-      </div>
-      <h2>Revisions</h2>
-      <div className="timeline">
-        {revisionList.map((revision) => (
-          <div key={revision.id} className="item">
-            <CopyId id={revision.id} />
-            <span className="time">{revision.importedAt}</span>
+      </PageSection>
+      <PageSection title="Recent runs">
+        {runList.length === 0 ? (
+          <div className="empty">No QA runs yet.</div>
+        ) : (
+          <div className="project-grid">
+            {runList.slice(0, 6).map((run) => (
+              <article className="card" key={run.id} aria-label={run.mode + ' QA ' + run.status}>
+                <div className="chip-row">
+                  <span className="badge">{run.mode.toUpperCase()} QA</span>
+                  <StatusPill status={run.status} />
+                </div>
+                <div className="metadata mono truncate" style={{ margin: '8px 0' }} title={run.id}>
+                  {run.id}
+                </div>
+                <Link to={'/runs/' + run.id}>
+                  <button className="compact primary">
+                    Open <ArrowRight size={13} />
+                  </button>
+                </Link>
+              </article>
+            ))}
           </div>
-        ))}
-      </div>
-      <h2>Runs</h2>
-      {runList.length === 0 ? (
-        <div className="empty">No QA runs yet.</div>
-      ) : (
-        <ul>
-          {runList.map((run) => (
-            <li key={run.id}>
-              <Link to={'/runs/' + run.id}>
-                {run.mode} — {run.status}
-              </Link>{' '}
-              <span className="mono faint">{run.id.slice(0, 14)}</span>
-            </li>
+        )}
+      </PageSection>
+      <PageSection title="Revisions">
+        <div className="timeline">
+          {revisionList.map((revision) => (
+            <div key={revision.id} className="item">
+              <CopyId id={revision.id} />
+              <span className="time">{revision.importedAt}</span>
+            </div>
           ))}
-        </ul>
-      )}
+          {revisionList.length === 0 ? <p className="muted">No revisions yet.</p> : null}
+        </div>
+      </PageSection>
+      {pendingStart ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={'Confirm start ' + confirmStart + ' QA'}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            zIndex: 60,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={() => setConfirmStart(undefined)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setConfirmStart(undefined);
+          }}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: 420, width: '100%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="section-title">
+              Start {confirmStart === 'full' ? 'Full' : 'Targeted'} QA?
+            </h2>
+            <p className="body-secondary">
+              {effectiveStacks.length} agent{effectiveStacks.length === 1 ? '' : 's'} · uses real
+              provider budget.
+            </p>
+            {confirmStart === 'targeted' && targetPaths.trim() !== '' ? (
+              <p className="mono metadata">Scope: {targetPaths}</p>
+            ) : null}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button className="ghost" onClick={() => setConfirmStart(undefined)}>
+                Cancel
+              </button>
+              <button
+                className="primary"
+                autoFocus
+                disabled={startPending}
+                onClick={() =>
+                  confirmStart === 'full' ? startFull.mutate() : startTargeted.mutate()
+                }
+              >
+                {startPending ? 'Starting…' : 'Start QA'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -334,9 +452,7 @@ function TargetPathInput({
   };
   return (
     <div>
-      <div style={{ fontSize: 12 }} className="muted">
-        Target scope
-      </div>
+      <div className="metadata">Target scope</div>
       <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
         <input
           value={draft}
@@ -361,39 +477,38 @@ function TargetPathInput({
         </p>
       ) : null}
       {chips.length > 0 ? (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+        <div className="chip-row" style={{ marginTop: 8 }}>
           {chips.map((chip) => (
-            <span key={chip} className="badge" title={chip}>
-              <span className="mono">{chip}</span>{' '}
-              <button
-                onClick={() => removeChip(chip)}
-                aria-label={'Remove ' + chip}
-                style={{ padding: '0 4px', fontSize: 11 }}
-              >
-                x
+            <span key={chip} className="copy-chip" title={chip}>
+              <span className="truncate" style={{ maxWidth: 220 }}>
+                {chip}
+              </span>
+              <button onClick={() => removeChip(chip)} aria-label={'Remove ' + chip}>
+                ×
               </button>
             </span>
           ))}
         </div>
       ) : null}
       {allPaths.length > 0 ? (
-        <p className="muted">
-          In this project:{' '}
+        <div className="chip-row" style={{ marginTop: 8 }}>
+          <span className="metadata">In this project:</span>
           {allPaths.slice(0, 8).map((q) => (
             <button
               key={q}
+              className="compact ghost"
               onClick={() => addDraft(q)}
               title={'Add ' + q}
-              style={{ padding: '0 6px', fontSize: 11, marginRight: 4 }}
             >
               +{q}
             </button>
           ))}
-        </p>
+        </div>
       ) : null}
-      <p className="mono muted" style={{ fontSize: 11 }}>
+      <p className="mono metadata" style={{ fontSize: 11 }}>
         TargetSpec preview: includePaths=[{chips.length === 0 ? '—' : chips.join(', ')}]
       </p>
     </div>
   );
 }
+

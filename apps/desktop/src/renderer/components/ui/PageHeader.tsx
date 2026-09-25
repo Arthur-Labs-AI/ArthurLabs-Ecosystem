@@ -7,9 +7,9 @@ export function PageHeader({
   crumbs,
 }: {
   title: string;
-  subtitle?: string;
-  actions?: React.ReactNode;
-  crumbs?: React.ReactNode;
+  subtitle?: string | undefined;
+  actions?: React.ReactNode | undefined;
+  crumbs?: React.ReactNode | undefined;
 }): React.JSX.Element {
   return (
     <div className="page-header">
