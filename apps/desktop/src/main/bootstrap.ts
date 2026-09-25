@@ -66,14 +66,10 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
   await credentials.load();
   // Provider executables resolve inside the WSL runtime; Windows binary
   // discovery no longer drives production readiness.
-  if (!credentials.secureStorageAvailable) {
-    const reason = credentials.secureUnavailableReason();
-    recoveryWarnings.push(
-      reason === undefined
-        ? 'Secure persistent storage unavailable. Secret saves will be refused.'
-        : 'Secure persistent storage unavailable (' + reason + '). Secret saves will be refused.',
-    );
-  }
+  // No secure-storage warning here: this runs before app-ready, when
+  // Electron's crypto backend is not up yet, so any verdict would be stale.
+  // Availability is evaluated lazily at save time (see secureStorageAvailable),
+  // and a genuine failure surfaces live in the save error itself.
   const manager = new WslRuntimeManager({ ...(dir === undefined ? {} : { userDataDir: dir }) });
   if (!(await manager.wslAvailable())) {
     throw Object.assign(

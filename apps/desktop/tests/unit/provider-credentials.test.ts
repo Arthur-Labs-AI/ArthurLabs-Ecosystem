@@ -72,6 +72,25 @@ describe('provider credentials', () => {
     expect(status?.configured).toBe(false);
   });
 
+  it('re-evaluates availability at save time, never a stale boot verdict', async () => {
+    // Boot constructs the service before Electron app-ready, when the
+    // crypto backend is not up yet. A cached pre-ready verdict must never
+    // refuse saves after the backend comes up.
+    let available = false;
+    const dir = await mkdtemp(join(tmpdir(), 'sentry-prov-'));
+    roots.push(dir);
+    const service = new ProviderCredentialService({
+      filePath: join(dir, 'providers.json'),
+      safeStorage: { ...fakeSafeStorage(), isEncryptionAvailable: () => available },
+    });
+    await service.load();
+    await expect(service.saveKey('DEEPSEEK_API_KEY', 'sk-late')).rejects.toThrow(/OS encryption/);
+    available = true;
+    const status = await service.saveKey('DEEPSEEK_API_KEY', 'sk-late');
+    expect(status.configured).toBe(true);
+    expect(status.persistence).toBe('secure');
+  });
+
   it('persists model ids without secure storage', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sentry-prov-'));
     roots.push(dir);

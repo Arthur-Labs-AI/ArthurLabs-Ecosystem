@@ -170,20 +170,27 @@ export class ProviderCredentialService {
     return this.credentialPath;
   }
 
+  /** Live availability, never a cached boot verdict: Electron's crypto
+   *  backend is not up before app-ready, and the service is constructed
+   *  during pre-ready boot. Every consumer below re-evaluates. */
   get secureStorageAvailable(): boolean {
-    return this.secureAvailable;
+    return this.refreshSecureAvailability();
   }
 
   /** Concrete reason saves are refused, if they are. Surfaced in errors
    *  so a blocked user sees the cause, not a generic sentence. */
   secureUnavailableReason(): string | undefined {
-    if (this.secureAvailable) return undefined;
+    if (this.refreshSecureAvailability()) return undefined;
     if (this.safeStorage === undefined) return 'Electron safeStorage bridge unavailable';
     return 'OS encryption (DPAPI/keychain) reported unavailable';
   }
 
   refreshSecureAvailability(): boolean {
-    this.secureAvailable = this.safeStorage?.isEncryptionAvailable() ?? false;
+    try {
+      this.secureAvailable = this.safeStorage?.isEncryptionAvailable() ?? false;
+    } catch {
+      this.secureAvailable = false;
+    }
     return this.secureAvailable;
   }
 
@@ -351,7 +358,10 @@ export class ProviderCredentialService {
         code: 'PROVIDER_KEY_INVALID',
       });
     }
-    if (isSecretName(name) && (!this.secureAvailable || this.safeStorage === undefined)) {
+    if (
+      isSecretName(name) &&
+      (!this.refreshSecureAvailability() || this.safeStorage === undefined)
+    ) {
       throw Object.assign(
         new Error(
           'Secure persistent storage unavailable' +
@@ -400,7 +410,7 @@ export class ProviderCredentialService {
 
   /** @deprecated Use saveKey (persist); kept for older IPC call sites. */
   async persist(): Promise<{ path: string; keys: number }> {
-    if (this.secureAvailable && this.safeStorage !== undefined) {
+    if (this.refreshSecureAvailability() && this.safeStorage !== undefined) {
       await this.writeEncryptedStore();
       await this.writeModelPrefs();
       return { path: this.credentialPath, keys: this.persistedSecrets.size };
