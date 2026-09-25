@@ -1,7 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Check, X } from 'lucide-react';
 import { sentryApi } from '../lib/sentry-api.js';
+import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
+import { StatusPill } from '../components/ui/StatusPill.js';
+import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
 
 interface RuntimeStatus {
   connected: boolean;
@@ -19,6 +23,29 @@ interface RuntimeStatus {
       }
     | undefined;
   lastError: string | undefined;
+}
+
+interface AgentStackHealth {
+  id: string;
+  displayName: string;
+  modelId: string;
+  configured?: boolean;
+  binaryAvailable?: boolean;
+  runtimeVerified?: boolean;
+  readiness?: string;
+}
+
+function HealthRow({ ok, label }: { ok: boolean; label: string }): React.JSX.Element {
+  return (
+    <div className="metadata" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      {ok ? (
+        <Check size={13} aria-label="yes" color="var(--success)" />
+      ) : (
+        <X size={13} aria-label="no" color="var(--text-tertiary)" />
+      )}
+      {label}
+    </div>
+  );
 }
 
 export function Environment(): React.JSX.Element {
@@ -43,20 +70,7 @@ export function Environment(): React.JSX.Element {
           distro?: string;
           dataRoot: string;
         };
-        agentStacks: Array<{
-          id: string;
-          displayName: string;
-          modelId: string;
-          configured?: boolean;
-          binaryAvailable?: boolean;
-          runtimeVerified?: boolean;
-          readiness?: string;
-        }>;
-        verifier?: {
-          sandboxAvailable?: boolean;
-          runtimeReplaySupported?: boolean;
-          reason?: string;
-        };
+        agentStacks: AgentStackHealth[];
       }
     | undefined;
   const status = runtime.data as RuntimeStatus | undefined;
@@ -65,91 +79,107 @@ export function Environment(): React.JSX.Element {
   if (environment.isLoading) return <div className="skeleton">Loading environment…</div>;
   if (environment.isError || data === undefined)
     return (
-      <div>
-        <h1 style={{ marginTop: 0 }}>Environment</h1>
+      <div className="page">
+        <PageHeader title="Environment" subtitle="Runtime and agent health." />
         <div className="error-box" role="alert">
           <strong>Sentry Runtime Offline.</strong> Sentry Desktop is running, but the WSL2 execution
           runtime could not be reached.
-          {status?.lastError !== undefined ? ' ' + status.lastError : ''}
-          <span>
-            ' QA execution is disabled. '<Link to="/settings">Runtime settings</Link>
-          </span>
+          {status?.lastError !== undefined ? ' ' + status.lastError : ''}{' '}
+          QA execution is disabled. <Link to="/settings">Runtime settings</Link>
         </div>
       </div>
     );
   return (
-    <div>
-      <h1 style={{ marginTop: 0 }}>Environment</h1>
+    <div className="page">
+      <PageHeader title="Environment" subtitle="Runtime and agent health." />
       {!connected ? (
         <div className="error-box" style={{ marginBottom: 12 }} role="alert">
           <strong>Sentry Runtime Offline.</strong> QA execution is disabled until the WSL2 runtime
-          reconnects. {status?.lastError ?? ''}
+          reconnects. {status?.lastError ?? ''}{' '}
+          <button className="compact ghost" onClick={() => void runtime.refetch()}>
+            Retry
+          </button>
         </div>
       ) : null}
-      <div className="card" style={{ marginBottom: 12 }}>
-        <h3 style={{ marginTop: 0 }}>Sentry runtime</h3>
-        <p className="mono muted">
-          Windows Desktop: connected · WSL2 distribution: {status?.distro ?? hello?.distro ?? '—'}
-          {' · '}Status: {connected ? 'Connected' : 'Offline'}
-        </p>
-        {hello !== undefined ? (
-          <p className="mono muted">
-            Runtime: Node {hello.nodeVersion} · Protocol v{hello.protocolVersion} · Sentry Runtime{' '}
-            {hello.runtimeVersion}
-          </p>
-        ) : null}
-        {hello !== undefined ? (
-          <p className="mono muted">
-            platform: {hello.platform}
-            {hello.isWsl ? ' (WSL)' : ''} · Node host: {hello.processExecPath}
-          </p>
-        ) : null}
-        {hello !== undefined ? (
-          <p className="mono muted">Filesystem: Linux-managed data root {hello.dataRoot}</p>
-        ) : null}
-      </div>
-      {data.verifier?.sandboxAvailable === false ? (
-        <div className="error-box" style={{ marginBottom: 12 }}>
-          Verifier sandbox unavailable — {data.verifier.reason ?? 'sandbox unavailable'}. WSL2 is
-          installed, but systemd user services may be unavailable; Sentry requires systemd for
-          isolated runtime verification. See docs/setup/wsl-runtime.md.
-        </div>
-      ) : null}
-      <div className="cards">
-        {(data.agentStacks ?? []).map((stack) => (
-          <div className="card" key={stack.id}>
-            <h3>{stack.displayName}</h3>
-            <p className="mono muted">{stack.modelId}</p>
-            <p>
-              Credential: {stack.configured === true ? 'Configured' : 'Missing'} · Binary:{' '}
-              {stack.binaryAvailable === true ? 'Available' : 'Missing'} · Runtime verification:{' '}
-              {stack.runtimeVerified === true ? 'Verified' : 'Not tested'}
-            </p>
-            <p className="muted">
-              Status: {stack.readiness ?? 'unknown'} — a saved credential does not imply the
-              provider works until a non-billable doctor verifies it inside the WSL runtime.
-            </p>
+      <PageSection title="Runtime health">
+        <div className="card">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <StatusPill
+              status={connected ? 'connected' : 'offline'}
+              label={connected ? 'Runtime connected' : 'Runtime offline'}
+              pulse={connected}
+            />
+            <span className="metadata">WSL distribution: {status?.distro ?? hello?.distro ?? '—'}</span>
           </div>
-        ))}
-        <div className="card">
-          <h3>Verifier</h3>
-          <p>
-            {data.verifier?.sandboxAvailable === true ? '✓' : '!'} systemd sandbox:{' '}
-            {data.verifier?.sandboxAvailable === true ? 'available' : 'unavailable'} · Runtime
-            replay: {data.verifier?.runtimeReplaySupported === true ? 'supported' : 'unsupported'}
-          </p>
-          {data.verifier?.reason !== undefined ? (
-            <p className="muted">{data.verifier.reason}</p>
+          {hello !== undefined ? (
+            <dl className="kv" style={{ marginTop: 10 }}>
+              <dt>Runtime</dt>
+              <dd className="mono">
+                Node {hello.nodeVersion} · Protocol v{hello.protocolVersion} · Sentry{' '}
+                {hello.runtimeVersion}
+              </dd>
+              <dt>Platform</dt>
+              <dd className="mono">
+                {hello.platform}
+                {hello.isWsl ? ' (WSL)' : ''}
+              </dd>
+            </dl>
           ) : null}
+          <CollapsibleSection title="Advanced details">
+            <dl className="kv" style={{ marginTop: 8 }}>
+              {hello !== undefined ? (
+                <>
+                  <dt>Node host path</dt>
+                  <dd className="mono truncate" title={hello.processExecPath}>
+                    {hello.processExecPath}
+                  </dd>
+                  <dt>Data root</dt>
+                  <dd className="mono truncate" title={hello.dataRoot}>
+                    {hello.dataRoot}
+                  </dd>
+                  <dt>Protocol version</dt>
+                  <dd className="mono">v{hello.protocolVersion}</dd>
+                </>
+              ) : (
+                <>
+                  <dt>Status</dt>
+                  <dd className="metadata">Runtime details unavailable while offline.</dd>
+                </>
+              )}
+            </dl>
+          </CollapsibleSection>
         </div>
+      </PageSection>
+      <PageSection title="Agent health">
+        <div className="cards">
+          {(data.agentStacks ?? []).map((stack) => (
+            <div className="card" key={stack.id}>
+              <div className="agent-row">
+                <span className="grow card-title">{stack.displayName}</span>
+                <StatusPill status={stack.readiness ?? 'unknown'} />
+              </div>
+              <div className="mono metadata truncate" style={{ margin: '4px 0 8px' }} title={stack.modelId}>
+                {stack.modelId}
+              </div>
+              <HealthRow ok={stack.configured === true} label={'Credential ' + (stack.configured === true ? 'saved' : 'missing')} />
+              <HealthRow ok={stack.binaryAvailable === true} label={'Binary ' + (stack.binaryAvailable === true ? 'available' : 'missing')} />
+              <HealthRow ok={stack.runtimeVerified === true} label={'Runtime ' + (stack.runtimeVerified === true ? 'verified' : 'not tested')} />
+              <p className="metadata" style={{ marginBottom: 0 }}>
+                A saved credential does not imply the provider works until a non-billable doctor
+                verifies it inside the WSL runtime.
+              </p>
+            </div>
+          ))}
+        </div>
+      </PageSection>
+      <PageSection title="Execution">
         <div className="card">
-          <h3>Execution</h3>
-          <p>
-            Production only — every new FULL, TARGETED, and RETEST run executes inside the WSL2
-            runtime and consumes provider budget.
+          <p className="body-secondary" style={{ margin: 0 }}>
+            Production only — FULL and TARGETED runs execute inside the WSL2 runtime and consume
+            provider budget.
           </p>
         </div>
-      </div>
+      </PageSection>
     </div>
   );
 }

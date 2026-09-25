@@ -1,7 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check } from 'lucide-react';
 import { sentryApi } from '../lib/sentry-api.js';
+import { PageHeader } from '../components/ui/PageHeader.js';
+import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
 
 interface ProviderStatus {
   name: string;
@@ -39,6 +42,42 @@ const SECRET_NAMES: ReadonlySet<string> = new Set([
   'DEEPSEEK_API_KEY',
   'ANTHROPIC_AUTH_TOKEN',
 ]);
+
+interface AgentCardSpec {
+  readonly title: string;
+  readonly subtitle: string;
+  readonly fields: ReadonlyArray<{ name: string; label: string }>;
+}
+
+const AGENT_CARDS: readonly AgentCardSpec[] = [
+  {
+    title: 'OpenCode',
+    subtitle: 'Primary coding agent · OpenRouter or Zen transport',
+    fields: [
+      { name: 'SENTRY_OPENCODE_PROVIDER', label: 'Provider' },
+      { name: 'SENTRY_OPENCODE_MODEL', label: 'Model' },
+      { name: 'OPENROUTER_API_KEY', label: 'API key' },
+      { name: 'OPENCODE_API_KEY', label: 'Zen API key' },
+    ],
+  },
+  {
+    title: 'DeepSeek',
+    subtitle: 'Second reviewer · DeepSeek API',
+    fields: [
+      { name: 'SENTRY_DEEPSEEK_MODEL', label: 'Model' },
+      { name: 'DEEPSEEK_API_KEY', label: 'API key' },
+    ],
+  },
+  {
+    title: 'GLM',
+    subtitle: 'Third reviewer · Claude Code harness on Z.AI endpoint',
+    fields: [
+      { name: 'SENTRY_GLM_MODEL', label: 'Model' },
+      { name: 'ANTHROPIC_BASE_URL', label: 'Endpoint' },
+      { name: 'ANTHROPIC_AUTH_TOKEN', label: 'Token' },
+    ],
+  },
+];
 
 export function Providers(): React.JSX.Element {
   const queryClient = useQueryClient();
@@ -84,91 +123,88 @@ export function Providers(): React.JSX.Element {
     },
     onError: fail,
   });
-  // Binary overrides are advanced Linux-runtime paths; hidden from normal settings.
-  const list = ((statuses.data as ProviderStatus[] | undefined) ?? []).filter(
-    (item) => !item.name.endsWith('_BINARY'),
+  const byName = new Map(
+    (((statuses.data as ProviderStatus[] | undefined) ?? []).map((item) => [item.name, item])),
   );
+  const fieldProps = {
+    values,
+    setValues,
+    onSave: (name: string, value: string) => save.mutate({ name, value }),
+    onClear: (name: string) => clear.mutate(name),
+    savePending: save.isPending,
+    clearPending: clear.isPending,
+    byName,
+  };
   return (
-    <div>
-      <p className="muted" style={{ margin: 0 }}>
-        <Link to="/settings">Settings</Link> / Providers
-      </p>
-      <h1 style={{ marginTop: 4 }}>Provider keys</h1>
-      <p className="muted">
+    <div className="page">
+      <PageHeader
+        title="Providers"
+        subtitle="API keys, models, and harness transports for the three QA agents."
+        crumbs={
+          <>
+            <Link to="/settings">Settings</Link> / Providers
+          </>
+        }
+      />
+      <p className="body-secondary" style={{ margin: 0 }}>
         Save encrypts the credential with the OS keychain, persists it, and loads it into the host
         process immediately — it survives application restarts. Secret values are never displayed
         and never leave the desktop host process.
       </p>
-      <HarnessBinaryCard
-        statuses={(statuses.data as ProviderStatus[] | undefined) ?? []}
-        values={values}
-        setValues={setValues}
-        onSave={(name, value) => save.mutate({ name, value })}
-        onClear={(name) => clear.mutate(name)}
-        savePending={save.isPending}
-        clearPending={clear.isPending}
-        onError={fail}
-      />
-
       {error !== undefined ? (
         <div className="error-box" role="alert">
-          {error} <button onClick={() => setError(undefined)}>Dismiss</button>
+          {error}{' '}
+          <button className="compact ghost" onClick={() => setError(undefined)}>
+            Dismiss
+          </button>
         </div>
       ) : null}
       {note !== undefined ? (
-        <div className="card" style={{ marginBottom: 12 }}>
-          {note} <button onClick={() => setNote(undefined)}>Dismiss</button>
+        <div className="inline-notice" role="status">
+          {note}{' '}
+          <button className="compact ghost" onClick={() => setNote(undefined)}>
+            Dismiss
+          </button>
         </div>
       ) : null}
       {statuses.isLoading ? <div className="skeleton">Loading provider status…</div> : null}
-      {list.map((item) => (
-        <div key={item.name} className="card" style={{ marginBottom: 12 }}>
-          <h3 style={{ marginTop: 0 }} className="mono">
-            {item.name}
-          </h3>
-          <p className="muted">{DESCRIPTIONS[item.name] ?? ''}</p>
-          <p>
-            Status: <strong>{item.configured ? 'Configured' : 'Missing'}</strong>{' '}
-            <span className="muted">({item.hint})</span>
-          </p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <input
-              type={SECRET_NAMES.has(item.name) ? 'password' : 'text'}
-              value={values[item.name] ?? ''}
-              onChange={(e) => setValues((prev) => ({ ...prev, [item.name]: e.target.value }))}
-              placeholder={SECRET_NAMES.has(item.name) ? 'Paste new secret value' : 'Enter value'}
-              aria-label={'Value for ' + item.name}
-              autoComplete="off"
-              spellCheck={false}
-              style={{ minWidth: 280 }}
-            />
-            <button
-              className="primary"
-              disabled={(values[item.name] ?? '').trim().length === 0 || save.isPending}
-              onClick={() => save.mutate({ name: item.name, value: values[item.name] ?? '' })}
-              title="Encrypt, persist, and load into the host process"
-            >
-              Save
-            </button>
-            <button
-              disabled={!item.configured || clear.isPending}
-              onClick={() => clear.mutate(item.name)}
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-      ))}
+      <div className="cards">
+        {AGENT_CARDS.map((card) => (
+          <section className="card" key={card.title} aria-label={card.title + ' provider settings'}>
+            <h2 className="section-title">{card.title}</h2>
+            <p className="metadata" style={{ margin: '4px 0 12px' }}>
+              {card.subtitle}
+            </p>
+            {card.fields.map((field) => (
+              <CredentialField key={field.name} label={field.label} name={field.name} {...fieldProps} />
+            ))}
+          </section>
+        ))}
+      </div>
+      <CollapsibleSection title="Advanced runtime binaries">
+        <HarnessBinaryCard
+          statuses={(statuses.data as ProviderStatus[] | undefined) ?? []}
+          values={values}
+          setValues={setValues}
+          onSave={(name, value) => save.mutate({ name, value })}
+          onClear={(name) => clear.mutate(name)}
+          savePending={save.isPending}
+          clearPending={clear.isPending}
+          onError={fail}
+        />
+      </CollapsibleSection>
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Forget all provider credentials</h3>
-        <p className="muted">
+        <h2 className="section-title">Forget all provider credentials</h2>
+        <p className="body-secondary">
           Removes every persisted secret and clears loaded values. Model preferences and unrelated
           app settings are preserved.
         </p>
         {confirmForget ? (
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span>Forget all credentials?</span>
-            <button onClick={() => setConfirmForget(false)}>Keep</button>{' '}
+            <button className="ghost" onClick={() => setConfirmForget(false)}>
+              Keep
+            </button>{' '}
             <button
               className="danger"
               onClick={() => forgetAll.mutate()}
@@ -178,9 +214,89 @@ export function Providers(): React.JSX.Element {
             </button>
           </div>
         ) : (
-          <button onClick={() => setConfirmForget(true)}>Forget all provider credentials</button>
+          <button className="danger" onClick={() => setConfirmForget(true)}>
+            Forget all provider credentials
+          </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function CredentialField(props: {
+  readonly label: string;
+  readonly name: string;
+  readonly values: Record<string, string>;
+  readonly setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  readonly onSave: (name: string, value: string) => void;
+  readonly onClear: (name: string) => void;
+  readonly savePending: boolean;
+  readonly clearPending: boolean;
+  readonly byName: Map<string, ProviderStatus>;
+}): React.JSX.Element {
+  const item = props.byName.get(props.name);
+  const secret = SECRET_NAMES.has(props.name);
+  const current = props.values[props.name] ?? '';
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <label htmlFor={'provider-' + props.name} className="card-title">
+          {props.label}
+        </label>
+        {item?.configured === true ? (
+          <span className="metadata" title="Saved securely in OS keychain storage">
+            <Check size={12} aria-hidden="true" /> Saved securely
+          </span>
+        ) : (
+          <span className="metadata faint">Not set</span>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
+        <input
+          id={'provider-' + props.name}
+          type={secret ? 'password' : 'text'}
+          value={current}
+          onChange={(e) =>
+            props.setValues((prev) => ({ ...prev, [props.name]: e.target.value }))
+          }
+          placeholder={
+            secret
+              ? '••••••••••'
+              : item?.hint !== undefined && item.hint !== ''
+                ? item.hint
+                : 'Enter value'
+          }
+          aria-label={'Value for ' + props.name}
+          autoComplete="off"
+          spellCheck={false}
+          style={{ minWidth: 200, flex: 1 }}
+        />
+        <button
+          className="primary compact"
+          disabled={current.trim().length === 0 || props.savePending}
+          onClick={() => props.onSave(props.name, current)}
+          title="Encrypt, persist, and load into the host process"
+        >
+          Save
+        </button>
+        <button
+          className="compact ghost"
+          disabled={item?.configured !== true || props.clearPending}
+          onClick={() => props.onClear(props.name)}
+        >
+          Clear
+        </button>
+      </div>
+      <details style={{ marginTop: 4 }}>
+        <summary className="metadata">Advanced</summary>
+        <p className="metadata mono" style={{ margin: '4px 0' }}>
+          {props.name}
+          {item !== undefined ? ' · ' + item.persistence + ' · ' + item.source : ''}
+        </p>
+        <p className="metadata" style={{ margin: 0 }}>
+          {DESCRIPTIONS[props.name] ?? ''}
+        </p>
+      </details>
     </div>
   );
 }
@@ -191,7 +307,7 @@ const BINARY_FIELDS = [
   { name: 'SENTRY_GLM_BINARY', label: 'Claude Code executable' },
 ] as const;
 
-function HarnessBinaryCard(props: {
+export function HarnessBinaryCard(props: {
   readonly statuses: ProviderStatus[];
   readonly values: Record<string, string>;
   readonly setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -203,13 +319,14 @@ function HarnessBinaryCard(props: {
 }): React.JSX.Element {
   const looksWindowsPath = (value: string): boolean => /^[A-Za-z]:[\\/]/.test(value.trim());
   return (
-    <div className="card" style={{ marginBottom: 12 }}>
-      <h3 style={{ marginTop: 0 }}>Execution runtime</h3>
-      <p className="muted">
+    <div className="card" style={{ marginBottom: 12, marginTop: 8 }}>
+      <h3 className="card-title">Execution runtime</h3>
+      <p className="body-secondary">
         Provider CLIs (opencode, dsh, Claude Code) execute inside the WSL2 Sentry runtime on Linux.
         Optional absolute Linux paths below override PATH lookup; leaving a field empty keeps
-        automatic discovery. Paths refer to the selected WSL Linux runtime — Windows paths (C:\…) do
-        not apply. See <Link to="/environment">Environment</Link> for the runtime doctor state.
+        automatic discovery. Paths refer to the selected WSL Linux runtime — Windows paths (C:…
+        ) do not apply. See <Link to="/environment">Environment</Link> for the runtime doctor
+        state.
       </p>
       {BINARY_FIELDS.map((field) => {
         const status = props.statuses.find((s) => s.name === field.name);
