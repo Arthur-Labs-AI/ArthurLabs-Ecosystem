@@ -1,5 +1,15 @@
+import { createRequire } from 'node:module';
 import { INITIAL_AGENT_STACKS } from '@qa/domain';
 import { resolveSentryDataRoot } from '@qa/persistence';
+
+/**
+ * The desktop main process is ESM (package type: module), where bare
+ * `require` does not exist. Electron's API must be reached through a
+ * scoped require — a bare require('electron') throws ReferenceError,
+ * which the try/catch below would silently convert into 'safeStorage
+ * bridge unavailable' (and an undefined userData dir).
+ */
+const require = createRequire(import.meta.url);
 import { DesktopApplicationService } from './services/desktop-service.js';
 import {
   ProviderCredentialService,
@@ -20,7 +30,6 @@ export interface BootstrappedDesktop {
 
 function userDataDir(): string | undefined {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const electron = require('electron') as typeof import('electron');
     return electron.app.getPath('userData');
   } catch {
@@ -37,7 +46,6 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
   const recoveryWarnings: string[] = [];
   let safeStorageLike: SafeStorageLike | undefined;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const electron = require('electron') as typeof import('electron');
     const ss = electron.safeStorage;
     if (ss !== undefined) {
