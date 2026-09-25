@@ -130,34 +130,46 @@ describe('screen snapshots: FULL run workspace', () => {
     expect(html).not.toContain('minutes remaining');
   });
 
-  it('agent inspector exposes timeline, telemetry, findings, tokens', () => {
+  it('agent inspector exposes tabbed timeline, telemetry, findings, tokens', () => {
     const view = makeAgentNodeView({ status: 'running' });
-    const html = renderToStaticMarkup(
-      React.createElement(AgentInspector, {
-        data: {
-          view,
-          events: [
-            {
-              type: 'run.started',
-              agentRunId: view.agentRunId,
-              timestamp: '2026-09-18T22:14:08.000Z',
-            },
-            {
-              type: 'file.read',
-              agentRunId: view.agentRunId,
-              timestamp: '2026-09-18T22:14:19.000Z',
-              relativePath: 'src/auth/session.ts',
-            },
-          ],
-          findings: [{ id: 'f1', title: 'Refresh token reuse', severity: 'high' }],
-          evidence: [{ id: 'e1', type: 'test' }],
+    const data = {
+      view,
+      events: [
+        {
+          type: 'run.started',
+          agentRunId: view.agentRunId,
+          timestamp: '2026-09-18T22:14:08.000Z',
         },
-      }),
+        {
+          type: 'file.read',
+          agentRunId: view.agentRunId,
+          timestamp: '2026-09-18T22:14:19.000Z',
+          relativePath: 'src/auth/session.ts',
+        },
+      ],
+      findings: [{ id: 'f1', title: 'Refresh token reuse', severity: 'high' }],
+      evidence: [{ id: 'e1', type: 'test' }],
+    };
+    // Overview tab: status, model, metrics including tokens.
+    const overview = renderToStaticMarkup(
+      React.createElement(AgentInspector, { data, initialTab: 'overview' }),
     );
-    expect(html).toContain('Timeline');
-    expect(html).toContain('Telemetry');
-    expect(html).toContain('Tokens');
-    expect(html).toContain('Refresh token reuse');
+    expect(overview).toContain('Overview');
+    expect(overview).toContain('Activity');
+    expect(overview).toContain('Evidence');
+    expect(overview).toContain('Tokens');
+    // Findings tab keeps the full finding accessible.
+    const findings = renderToStaticMarkup(
+      React.createElement(AgentInspector, { data, initialTab: 'findings' }),
+    );
+    expect(findings).toContain('Refresh token reuse');
+    // Activity tab keeps the interactive timeline with category filters.
+    const activity = renderToStaticMarkup(
+      React.createElement(AgentInspector, { data, initialTab: 'activity' }),
+    );
+    expect(activity).toContain('Files');
+    expect(activity).toContain('Commands');
+    expect(activity).toContain('src/auth/session.ts');
   });
 
   it('merger inspector shows usable/unavailable without confidence conflation', () => {

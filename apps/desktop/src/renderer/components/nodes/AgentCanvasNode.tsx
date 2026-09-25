@@ -2,6 +2,7 @@ import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { AgentNodeView } from '../../lib/types.js';
 import { statusGlyph } from '../StatusGlyph.js';
+import { dotClassForStatus } from '../ui/StatusPill.js';
 import { formatCount, formatElapsed } from '../../lib/agent-telemetry.js';
 
 const ACCENTS: Record<string, string> = {
@@ -11,20 +12,16 @@ const ACCENTS: Record<string, string> = {
   stack_glm_main: 'var(--glm)',
 };
 
-function stageMark(state: string): string {
+function stageTone(state: string): string {
   switch (state) {
     case 'completed':
-      return '\u2713';
+      return 'done';
     case 'active':
-      return '\u25CF';
+      return 'active';
     case 'failed':
-      return '\u00D7';
-    case 'cancelled':
-      return '\u25A0';
-    case 'warning':
-      return '!';
+      return 'failed';
     default:
-      return '\u25CB';
+      return '';
   }
 }
 
@@ -43,6 +40,12 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
       </div>
     );
   }
+  const activeLine =
+    !['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(view.status) &&
+    view.currentOperation.title !== undefined &&
+    view.currentOperation.title !== ''
+    ? view.currentOperation.title
+    : undefined;
   return (
     <div
       className={'flow-node' + ((data['selected'] as boolean) ? ' selected' : '')}
@@ -51,83 +54,51 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
     >
       <Handle type="target" position={Position.Top} />
       <div className="node-title">
-        <span
-          className={
-            'status-dot ' +
-            (view.status === 'completed'
-              ? 'status-completed'
-              : view.status === 'failed'
-                ? 'status-failed'
-                : view.status === 'cancelled'
-                  ? 'status-cancelled'
-                  : 'status-running') +
-            (['running', 'planning', 'starting'].includes(view.status) ? ' pulse' : '')
-          }
-        />
+        <span className={dotClassForStatus(view.status)} aria-hidden="true" />
         {view.displayName}
+        <span className="faint" aria-hidden="true" style={{ marginLeft: 'auto' }}>
+          {statusGlyph(view.status)}
+        </span>
       </div>
-      <div className="node-sub mono">{view.model}</div>
+      <div className="node-model" title={view.model}>
+        {view.model}
+      </div>
       <div className="node-sub">
-        {statusGlyph(view.status)} {view.status.toUpperCase()} ·{' '}
-        <TickingElapsed ms={view.elapsedMs} status={view.status} />
-      </div>
-      <div className="node-sub stage-current" title="Current stage">
-        <strong>{stageLabel(view.currentStage)}</strong>
+        {view.status.toUpperCase()} · <TickingElapsed ms={view.elapsedMs} status={view.status} />
       </div>
       <div
-        className="node-sub wrap-anywhere"
-        style={{ marginTop: 6 }}
-        title={view.currentOperation.title}
+        className="stage-dots"
+        role="img"
+        aria-label={
+          'Stage: ' +
+          view.stages
+            .map((stage) => stage.label + ' ' + stage.state)
+            .join(', ')
+        }
       >
-        <strong>{view.currentOperation.title}</strong>
-        {view.currentOperation.detail !== undefined ? (
-          <div className="mono wrap-anywhere" title={view.currentOperation.detail}>
-            {view.currentOperation.detail}
-          </div>
-        ) : null}
-      </div>
-      <div className="stages" aria-label="Stage progression">
-        {view.stages.slice(1, 6).map((stage) => (
-          <div key={stage.id} className="stage">
-            <span aria-hidden="true">{stageMark(stage.state)}</span>
-            <span className={stage.state === 'active' ? '' : 'muted'}>{stage.label}</span>
-          </div>
+        {view.stages.map((stage) => (
+          <i key={stage.id} className={stageTone(stage.state)} title={stage.label + ' — ' + stage.state} />
         ))}
       </div>
-      <div className="node-sub" aria-label="Recent activity">
-        {view.recentActivity.slice(0, 3).map((activity, index) => (
-          <div key={index} className="mono wrap-anywhere" title={activity.title}>
-            {activity.title.slice(0, 80)}
-          </div>
-        ))}
-      </div>
+      {activeLine !== undefined ? (
+        <div className="node-sub truncate" title={activeLine} style={{ marginTop: 6 }}>
+          {activeLine}
+        </div>
+      ) : null}
       <div className="metrics">
-        <span>{formatCount(view.findingsCount)} findings</span>
-        <span>{formatCount(view.evidenceCount)} evidence</span>
-        {view.turns !== undefined ? <span>{view.turns} turns</span> : null}
-        {view.totalTokens !== undefined ? (
-          <span>{formatTokens(view.totalTokens)} tokens</span>
-        ) : null}
+        <span className="metric-chip" title="Findings reported by this agent">
+          {formatCount(view.findingsCount)} findings
+        </span>
+        <span className="metric-chip" title="Evidence records captured by this agent">
+          {formatCount(view.evidenceCount)} evidence
+        </span>
+        <span className="metric-chip" title="Elapsed time">
+          {formatElapsed(view.elapsedMs)}
+        </span>
       </div>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
-}
-
-function stageLabel(stage: string): string {
-  switch (stage) {
-    case 'runtime':
-      return 'RUNTIME VALIDATION';
-    case 'working':
-      return 'WAITING';
-    default:
-      return stage.toUpperCase();
-  }
-}
-
-function formatTokens(total: number): string {
-  if (total >= 1000) return Math.round(total / 100) / 10 + 'k';
-  return String(total);
 }
 
 function ElapsedMs({ ms }: { ms?: number | undefined }): React.JSX.Element {

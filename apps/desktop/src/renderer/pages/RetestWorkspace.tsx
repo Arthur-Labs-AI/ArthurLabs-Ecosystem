@@ -229,6 +229,7 @@ export function RetestWorkspace(): React.JSX.Element {
         <div className="workspace" style={{ height: 'calc(100vh - 340px)', minHeight: 420 }}>
           <div style={{ flex: 1, minWidth: 0, height: '100%' }}>
             <RunCanvas
+              runId={'retest-' + String(data.retestRun.id ?? retestRunId ?? 'unknown')}
               nodes={graph.nodes}
               edges={graph.edges}
               selectedId={selectedId}

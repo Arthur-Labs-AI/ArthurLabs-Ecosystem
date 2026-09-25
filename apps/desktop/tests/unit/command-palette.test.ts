@@ -10,10 +10,11 @@ describe('command palette (§117)', () => {
     );
     const labels = entries.map((e) => e.label);
     expect(labels).toContain('Open Projects');
-    expect(labels).toContain('Open Runs');
-    expect(labels).toContain('Open Issues (Legacy)');
-    expect(labels).toContain('Open History');
+    expect(labels).not.toContain('Open Runs');
+    expect(labels).not.toContain('Open Issues (Legacy)');
+    expect(labels).not.toContain('Open History');
     expect(labels).toContain('Open Environment');
+    expect(labels).toContain('Open Settings');
     expect(labels).toContain('Start Full QA — AutoPulse');
     expect(labels).toContain('Start Targeted QA — AutoPulse');
     entries.find((e) => e.label === 'Open Environment')?.run();

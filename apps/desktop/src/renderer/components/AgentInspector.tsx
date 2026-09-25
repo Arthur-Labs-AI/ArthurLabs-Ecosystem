@@ -7,7 +7,9 @@ import {
   truncateMiddle,
 } from '../lib/agent-telemetry.js';
 import { CopyId } from './CopyId.js';
-import { StatusLabel } from './StatusGlyph.js';
+import { StatusPill } from './ui/StatusPill.js';
+import { Tabs } from './ui/Tabs.js';
+import { useDeveloperMode } from '../lib/developer-mode.js';
 
 export interface AgentInspectorData {
   readonly view: AgentNodeView;
@@ -80,122 +82,167 @@ const CATEGORY_ICON: Record<string, string> = {
   Runtime: '\u25CC',
 };
 
-export function AgentInspector({ data }: { data: AgentInspectorData }): React.JSX.Element {
+const ACTIVITY_FILTERS = ['All', 'Files', 'Commands', 'Tests', 'Findings', 'Warnings'] as const;
+
+function activityMatches(item: TimelineItem, filter: (typeof ACTIVITY_FILTERS)[number]): boolean {
+  switch (filter) {
+    case 'All':
+      return true;
+    case 'Files':
+      return item.category === 'File';
+    case 'Commands':
+      return item.category === 'Command';
+    case 'Tests':
+      return item.category === 'Test';
+    case 'Findings':
+      return item.category === 'Finding' || item.category === 'Evidence';
+    case 'Warnings':
+      return item.category === 'Warning';
+  }
+}
+
+const SEVERITIES = ['Critical', 'High', 'Medium', 'Low', 'Info'] as const;
+
+export function AgentInspector({
+  data,
+  initialTab,
+}: {
+  data: AgentInspectorData;
+  initialTab?: string;
+}): React.JSX.Element {
   const { view } = data;
-  const [selectedEvent, setSelectedEvent] = React.useState<number | undefined>(undefined);
-  const timeline: readonly TimelineItem[] = React.useMemo(
-    () => projectTimeline((data.events ?? []) as never, []),
-    [data.events],
-  );
+  const developerMode = useDeveloperMode();
+  const findings = data.findings ?? [];
+  const evidence = data.evidence ?? [];
+  const tabs = React.useMemo(() => {
+    const list = [
+      { id: 'overview', label: 'Overview' },
+      { id: 'findings', label: 'Findings' + (findings.length > 0 ? ' (' + findings.length + ')' : '') },
+      { id: 'activity', label: 'Activity' },
+      { id: 'evidence', label: 'Evidence' + (evidence.length > 0 ? ' (' + evidence.length + ')' : '') },
+    ];
+    if (developerMode) list.push({ id: 'diagnostics', label: 'Diagnostics' });
+    return list;
+  }, [findings.length, evidence.length, developerMode]);
+  const [tab, setTab] = React.useState(initialTab ?? 'overview');
+  const activeTab = tabs.some((t) => t.id === tab) ? tab : 'overview';
   return (
-    <div>
-      <h3 style={{ margin: '0 0 4px' }}>{view.displayName} QA</h3>
-      <p className="muted" style={{ marginTop: 0 }}>
-        <StatusLabel status={view.status} />
-      </p>
-      <dl
-        className="mono"
-        style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px' }}
-      >
-        <dt className="faint">Model</dt>
-        <dd style={{ margin: 0 }}>{view.model}</dd>
-        <dt className="faint">Agent run</dt>
-        <dd style={{ margin: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+      <div>
+        <h3 className="card-title" style={{ fontSize: 15 }}>
+          {view.displayName} QA
+        </h3>
+        <div style={{ marginTop: 6 }}>
+          <StatusPill status={view.status} />
+        </div>
+      </div>
+      <Tabs tabs={tabs} active={activeTab} onChange={setTab} label="Agent details" />
+      <div style={{ minHeight: 0 }}>
+        {activeTab === 'overview' ? <OverviewTab view={view} /> : null}
+        {activeTab === 'findings' ? <FindingsTab findings={findings} evidence={evidence} /> : null}
+        {activeTab === 'activity' ? (
+          <ActivityTab events={data.events ?? []} developerMode={developerMode} />
+        ) : null}
+        {activeTab === 'evidence' ? (
+          <EvidenceTab evidence={evidence} findings={findings} />
+        ) : null}
+        {activeTab === 'diagnostics' && developerMode ? (
+          <DiagnosticsTab view={view} events={data.events ?? []} />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <dl className="kv">
+        <dt>Model</dt>
+        <dd className="mono truncate" title={view.model}>
+          {view.model}
+        </dd>
+        <dt>Agent run</dt>
+        <dd>
           <CopyId id={view.agentRunId} />
         </dd>
-        <dt className="faint">Elapsed</dt>
-        <dd style={{ margin: 0 }}>{formatElapsed(view.elapsedMs)}</dd>
-        <dt className="faint">Turns</dt>
-        <dd style={{ margin: 0 }}>{view.turns ?? '—'}</dd>
+        <dt>Elapsed</dt>
+        <dd>{formatElapsed(view.elapsedMs)}</dd>
+        <dt>Stage</dt>
+        <dd>{view.currentStage === 'working' ? 'Working' : view.currentStage}</dd>
       </dl>
-      <h4>Current stage</h4>
-      <p>
-        <strong>{view.currentStage === 'working' ? 'Working' : view.currentStage}</strong>
-        <br />
-        <span className="muted wrap-anywhere">{view.currentOperation.title}</span>
+      <div>
+        <div className="metadata">Current operation</div>
+        <div className="wrap-anywhere">{view.currentOperation.title}</div>
         {view.currentOperation.detail !== undefined ? (
-          <span
-            className="mono wrap-anywhere"
-            style={{ display: 'block' }}
-            title={view.currentOperation.detail}
-          >
+          <div className="mono wrap-anywhere metadata" title={view.currentOperation.detail}>
             {view.currentOperation.detail}
-          </span>
+          </div>
         ) : null}
-      </p>
-      <h4>Stages</h4>
-      <ul style={{ listStyle: 'none', padding: 0 }}>
-        {view.stages.map((stage) => (
-          <li key={stage.id}>
-            {stage.state === 'completed'
-              ? '\u2713'
-              : stage.state === 'active'
-                ? '\u25CF'
-                : stage.state === 'failed'
-                  ? '\u00D7'
-                  : stage.state === 'cancelled'
-                    ? '\u25A0'
-                    : stage.state === 'warning'
-                      ? '!'
-                      : '\u25CB'}{' '}
-            {stage.label} — {stage.state}
-          </li>
-        ))}
-      </ul>
-      <h4>Timeline</h4>
-      {timeline.length === 0 ? (
-        <p className="muted">Activity unavailable.</p>
-      ) : (
-        <div className="timeline">
-          {timeline.map((item, index) => (
-            <div key={index} className="item">
-              <span className="time">{(item.timestamp ?? '').slice(11, 19)}</span>
-              <button
-                onClick={() => setSelectedEvent(selectedEvent === index ? undefined : index)}
-                aria-label={'Inspect event ' + item.title}
-                title={item.title}
-                style={{ padding: '0 6px', fontSize: 11 }}
-              >
-                {CATEGORY_ICON[item.category] ?? '\u25CF'}
-              </button>
-              <span className="wrap-anywhere" title={item.title}>
-                {item.title}
-                <span className="faint"> · {item.category}</span>
-              </span>
-            </div>
-          ))}
+      </div>
+      <div>
+        <div className="metadata" style={{ marginBottom: 4 }}>
+          Stages
         </div>
-      )}
-      {selectedEvent !== undefined && data.events?.[selectedEvent] !== undefined ? (
-        <EventDetail event={data.events[selectedEvent] as Record<string, unknown>} />
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {view.stages.map((stage) => (
+            <li key={stage.id} className="metadata">
+              {stage.state === 'completed'
+                ? '\u2713'
+                : stage.state === 'active'
+                  ? '\u25CF'
+                  : stage.state === 'failed'
+                    ? '\u00D7'
+                    : stage.state === 'cancelled'
+                      ? '\u25A0'
+                      : stage.state === 'warning'
+                        ? '!'
+                        : '\u25CB'}{' '}
+              {stage.label} — {stage.state}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="metric-grid">
+        <div className="metric-card">
+          <div className="metric-value">{formatCount(view.turns ?? 0)}</div>
+          <div className="metric-label">Turns</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-value">{formatCount(view.totalTokens ?? 0)}</div>
+          <div className="metric-label">Tokens</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-value">{formatCount(view.telemetry.filesInspected)}</div>
+          <div className="metric-label">Files</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-value">{formatCount(view.telemetry.commands)}</div>
+          <div className="metric-label">Commands</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-value">{formatCount(view.telemetry.tests)}</div>
+          <div className="metric-label">Tests</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-value">{formatCount(view.findingsCount)}</div>
+          <div className="metric-label">Findings</div>
+        </div>
+      </div>
+      {view.inputTokens !== undefined || view.outputTokens !== undefined ? (
+        <p className="mono metadata" style={{ margin: 0 }}>
+          Input {view.inputTokens !== undefined ? formatCount(view.inputTokens) : '\u2014'} ·
+          Output {view.outputTokens !== undefined ? formatCount(view.outputTokens) : '\u2014'} ·
+          Cached {view.cachedInputTokens !== undefined ? formatCount(view.cachedInputTokens) : '\u2014'}
+        </p>
       ) : null}
-      <h4>Findings & evidence</h4>
-      <p>
-        {formatCount(view.findingsCount)} findings · {formatCount(view.evidenceCount)} evidence
-      </p>
-      {(data.findings ?? []).map((finding) => (
-        <FindingCard key={finding.id} finding={finding} evidence={data.evidence ?? []} />
-      ))}
       {Object.keys(view.severityCounts).length > 0 ? (
-        <p className="mono muted">
+        <p className="mono metadata" style={{ margin: 0 }}>
           {Object.entries(view.severityCounts)
             .map(([severity, count]) => severity + ': ' + String(count))
             .join(' · ')}
         </p>
       ) : null}
-      <h4>Telemetry</h4>
-      <p className="mono">
-        Operations {formatCount(view.telemetry.operations)} · Files{' '}
-        {formatCount(view.telemetry.filesInspected)} · Commands{' '}
-        {formatCount(view.telemetry.commands)} · Tests {formatCount(view.telemetry.tests)}
-      </p>
-      <h4>Tokens</h4>
-      <p className="mono">
-        Input {view.inputTokens !== undefined ? formatCount(view.inputTokens) : '—'} · Output{' '}
-        {view.outputTokens !== undefined ? formatCount(view.outputTokens) : '—'} · Cached{' '}
-        {view.cachedInputTokens !== undefined ? formatCount(view.cachedInputTokens) : '—'} · Total{' '}
-        {view.totalTokens !== undefined ? formatCount(view.totalTokens) : '—'}
-      </p>
       {view.status === 'failed' && view.failure !== undefined && view.failure !== null ? (
         <div className="error-box">
           <strong>
@@ -205,30 +252,234 @@ export function AgentInspector({ data }: { data: AgentInspectorData }): React.JS
         </div>
       ) : view.status === 'failed' ? (
         <div className="error-box">
-          <strong>Agent failed.</strong> Structured failure unavailable — see timeline.
+          <strong>Agent failed.</strong> Structured failure unavailable — see Activity.
         </div>
       ) : null}
       {view.status === 'cancelled' ? (
-        <div className="card">
+        <div className="inline-notice">
           <strong>■ Cancelled by user.</strong>
-          <p className="muted">
+          <span className="muted">
+            {' '}
             Completed before cancellation: {formatCount(view.findingsCount)} findings ·{' '}
             {formatCount(view.evidenceCount)} evidence.
-          </p>
+          </span>
         </div>
       ) : null}
       {view.status === 'timed_out' ? (
-        <div className="card">
-          <strong>TIMED OUT</strong>
-          <p className="muted">Distinct from failure: the agent exceeded its time budget.</p>
+        <div className="inline-notice tone-warning">
+          <strong>Timed out.</strong>{' '}
+          <span className="muted">Distinct from failure: the agent exceeded its time budget.</span>
         </div>
       ) : null}
       {view.status === 'interrupted' ? (
-        <div className="card">
-          <strong>INTERRUPTED</strong>
-          <p className="muted">Sentry stopped before completion.</p>
+        <div className="inline-notice">
+          <strong>Interrupted.</strong> <span className="muted">Sentry stopped before completion.</span>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function FindingsTab({
+  findings,
+  evidence,
+}: {
+  findings: readonly InspectorFinding[];
+  evidence: readonly InspectorEvidence[];
+}): React.JSX.Element {
+  const [severity, setSeverity] = React.useState<string>('All');
+  const available = React.useMemo(
+    () => new Set(findings.map((f) => f.severity.toLowerCase())),
+    [findings],
+  );
+  const showFilter = findings.length > 1;
+  const visible = severity === 'All' ? findings : findings.filter((f) => f.severity.toLowerCase() === severity.toLowerCase());
+  if (findings.length === 0) {
+    return <p className="muted">No findings reported by this agent yet.</p>;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {showFilter ? (
+        <div className="filter-row" role="group" aria-label="Filter findings by severity">
+          {['All' as const, ...SEVERITIES.filter((s) => available.has(s.toLowerCase()))].map(
+            (option) => (
+              <button
+                key={option}
+                className="compact"
+                aria-pressed={severity === option}
+                onClick={() => setSeverity(option)}
+                style={
+                  severity === option
+                    ? { borderColor: 'var(--accent)', background: 'var(--bg-panel)' }
+                    : undefined
+                }
+              >
+                {option}
+              </button>
+            ),
+          )}
+        </div>
+      ) : null}
+      {visible.map((finding) => (
+        <FindingCard key={finding.id} finding={finding} evidence={evidence} />
+      ))}
+      {visible.length === 0 ? (
+        <p className="muted">No {severity.toLowerCase()} findings from this agent.</p>
+      ) : null}
+    </div>
+  );
+}
+
+type InspectorEvent = NonNullable<AgentInspectorData['events']>[number];
+
+function ActivityTab({
+  events,
+  developerMode,
+}: {
+  events: readonly InspectorEvent[];
+  developerMode: boolean;
+}): React.JSX.Element {
+  const [filter, setFilter] = React.useState<(typeof ACTIVITY_FILTERS)[number]>('All');
+  const [selectedEvent, setSelectedEvent] = React.useState<number | undefined>(undefined);
+  const timeline: readonly TimelineItem[] = React.useMemo(
+    () => projectTimeline((events ?? []) as never, []),
+    [events],
+  );
+  const visible = timeline
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => activityMatches(item, filter));
+  React.useEffect(() => {
+    setSelectedEvent(undefined);
+  }, [filter]);
+  if (timeline.length === 0) {
+    return <p className="muted">Activity unavailable.</p>;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="filter-row" role="group" aria-label="Filter activity by category">
+        {ACTIVITY_FILTERS.map((option) => (
+          <button
+            key={option}
+            className="compact"
+            aria-pressed={filter === option}
+            onClick={() => setFilter(option)}
+            style={
+              filter === option
+                ? { borderColor: 'var(--accent)', background: 'var(--bg-panel)' }
+                : undefined
+            }
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+      <div className="timeline">
+        {visible.map(({ item, index }) => (
+          <div key={index} className="item">
+            <span className="time">{(item.timestamp ?? '').slice(11, 19)}</span>
+            <button
+              className="icon-btn ghost compact"
+              onClick={() => setSelectedEvent(selectedEvent === index ? undefined : index)}
+              aria-label={'Inspect event ' + item.title}
+              aria-expanded={selectedEvent === index}
+              title={item.title}
+            >
+              {CATEGORY_ICON[item.category] ?? '\u25CF'}
+            </button>
+            <button
+              className="ghost event-row"
+              onClick={() => setSelectedEvent(selectedEvent === index ? undefined : index)}
+              aria-expanded={selectedEvent === index}
+            >
+              <span className="wrap-anywhere" title={item.title}>
+                {item.title}
+                <span className="faint"> · {item.category}</span>
+              </span>
+            </button>
+          </div>
+        ))}
+      </div>
+      {visible.length === 0 ? <p className="muted">No {filter.toLowerCase()} activity.</p> : null}
+      {selectedEvent !== undefined && events?.[selectedEvent] !== undefined ? (
+        <EventDetail event={events[selectedEvent] as Record<string, unknown>} showRaw={developerMode} />
+      ) : null}
+    </div>
+  );
+}
+
+function EvidenceTab({
+  evidence,
+  findings,
+}: {
+  evidence: readonly InspectorEvidence[];
+  findings: readonly InspectorFinding[];
+}): React.JSX.Element {
+  if (evidence.length === 0) {
+    return <p className="muted">No evidence records captured by this agent yet.</p>;
+  }
+  const linkedFinding = (id: string): InspectorFinding | undefined =>
+    findings.find((f) => f.evidenceIds?.includes(id));
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {evidence.map((item) => {
+        const finding = linkedFinding(item.id);
+        return (
+          <div key={item.id} className="finding-card">
+            <div className="chip-row">
+              <span className="badge">{item.type}</span>
+              {item.strength !== undefined ? (
+                <span className="badge">{item.strength}</span>
+              ) : null}
+            </div>
+            {finding !== undefined ? (
+              <div className="finding-title truncate" title={finding.title}>
+                Linked: {finding.title}
+              </div>
+            ) : null}
+            <div>
+              <CopyId id={item.id} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DiagnosticsTab({
+  view,
+  events,
+}: {
+  view: AgentNodeView;
+  events: readonly Record<string, unknown>[];
+}): React.JSX.Element {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <p className="metadata" style={{ margin: 0 }}>
+        Developer diagnostics. Hidden unless developer mode is enabled in Settings.
+      </p>
+      <dl className="kv">
+        <dt>Agent run</dt>
+        <dd>
+          <CopyId id={view.agentRunId} />
+        </dd>
+        <dt>Stack</dt>
+        <dd className="mono">{view.agentStackId}</dd>
+        <dt>Status</dt>
+        <dd className="mono">{view.status}</dd>
+      </dl>
+      <details>
+        <summary className="muted">Agent view JSON</summary>
+        <pre className="mono" style={{ whiteSpace: 'pre-wrap', fontSize: 11 }}>
+          {JSON.stringify(view, null, 2).slice(0, 6000)}
+        </pre>
+      </details>
+      <details>
+        <summary className="muted">Raw events ({events.length})</summary>
+        <pre className="mono" style={{ whiteSpace: 'pre-wrap', fontSize: 11 }}>
+          {JSON.stringify(events, null, 2).slice(0, 8000)}
+        </pre>
+      </details>
     </div>
   );
 }
@@ -262,29 +513,38 @@ export function FindingCard({
     finding.description !== undefined && finding.description.length > FINDING_PREVIEW_CHARS
       ? finding.description.slice(0, FINDING_PREVIEW_CHARS) + '\u2026'
       : finding.description;
+  const linkedCount = finding.evidenceIds?.length ?? 0;
+  const locationCount = finding.locations?.length ?? 0;
   return (
-    <div className="card" style={{ marginBottom: 8 }}>
-      <p className="mono faint" style={{ margin: '0 0 4px', fontSize: 11 }}>
-        {finding.severity.toUpperCase()}
-        {' \u00B7 '}
-        {category}
-      </p>
-      <strong>{finding.title}</strong>
-      {preview !== undefined ? <p className="muted">{preview}</p> : null}
+    <div className="finding-card">
+      <div className="chip-row">
+        <span className="badge">{finding.severity.toUpperCase()}</span>
+        <span className="badge">{category}</span>
+      </div>
+      <div className="finding-title">{finding.title}</div>
+      {preview !== undefined ? <div className="body-secondary">{preview}</div> : null}
+      <div className="metadata">
+        {locationCount > 0
+          ? locationCount + ' location' + (locationCount === 1 ? '' : 's') + ' · '
+          : ''}
+        {linkedCount} evidence
+      </div>
       {finding.locations !== undefined && finding.locations.length > 0 ? (
-        <p className="mono faint" style={{ fontSize: 11 }}>
+        <div className="mono faint truncate" style={{ fontSize: 11 }} title={formatLocation(finding.locations[0] as NonNullable<InspectorFinding['locations']>[number])}>
           {formatLocation(
             finding.locations[0] as NonNullable<InspectorFinding['locations']>[number],
           )}
           {finding.locations.length > 1
             ? ' (+' + String(finding.locations.length - 1) + ' more)'
             : ''}
-        </p>
+        </div>
       ) : null}
-      <button onClick={() => setExpanded((v) => !v)} style={{ fontSize: 11 }}>
-        {expanded ? 'Hide details' : 'View details'}
-      </button>{' '}
-      <CopyId id={finding.id} />
+      <div>
+        <button className="compact" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
+          {expanded ? 'Hide details' : 'View details'}
+        </button>{' '}
+        <CopyId id={finding.id} />
+      </div>
       {expanded ? <FindingDetail finding={finding} evidence={evidence} /> : null}
     </div>
   );
@@ -408,7 +668,7 @@ export function FindingDetail({
   );
 }
 
-function EventDetail({ event }: { event: Record<string, unknown> }): React.JSX.Element {
+function EventDetail({ event, showRaw }: { event: Record<string, unknown>; showRaw: boolean }): React.JSX.Element {
   const type = String(event['type'] ?? 'event');
   const rows: Array<[string, string]> = [];
   const push = (label: string, value: unknown): void => {
@@ -454,24 +714,23 @@ function EventDetail({ event }: { event: Record<string, unknown> }): React.JSX.E
   }
   return (
     <div className="card" style={{ marginTop: 8 }}>
-      <h4 style={{ marginTop: 0 }}>Operation detail</h4>
-      <dl
-        className="mono"
-        style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px' }}
-      >
+      <h4 className="card-title">Operation detail</h4>
+      <dl className="mono kv" style={{ marginTop: 8 }}>
         {rows.map(([label, value]) => (
           <React.Fragment key={label}>
             <dt className="faint">{label}</dt>
-            <dd style={{ margin: 0, overflowWrap: 'anywhere' }}>{value}</dd>
+            <dd style={{ overflowWrap: 'anywhere' }}>{value}</dd>
           </React.Fragment>
         ))}
       </dl>
-      <details>
-        <summary className="muted">Raw event</summary>
-        <pre className="mono" style={{ whiteSpace: 'pre-wrap', fontSize: 11 }}>
-          {JSON.stringify(event, null, 2).slice(0, 4000)}
-        </pre>
-      </details>
+      {showRaw ? (
+        <details>
+          <summary className="muted">Raw event</summary>
+          <pre className="mono" style={{ whiteSpace: 'pre-wrap', fontSize: 11 }}>
+            {JSON.stringify(event, null, 2).slice(0, 4000)}
+          </pre>
+        </details>
+      ) : null}
     </div>
   );
 }
