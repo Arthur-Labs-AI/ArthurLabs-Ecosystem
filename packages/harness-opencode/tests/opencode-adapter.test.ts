@@ -649,13 +649,15 @@ describe('OpenCodeHarnessAdapter', () => {
         }
       >;
     };
-    expect(config.provider?.['opencode']?.npm).toBe('@ai-sdk/openai-compatible');
+    // Catalog-preserving config: connection options only (baseURL to the
+    // localhost proxy, dummy key). No npm/models overrides, so OpenCode
+    // keeps its built-in per-model transport metadata.
+    expect(config.provider?.['opencode']?.npm).toBeUndefined();
+    expect(config.provider?.['opencode']?.models).toBeUndefined();
     expect(config.provider?.['opencode']?.options?.baseURL).toMatch(
       /^http:\/\/127\.0\.0\.1:\d+\/v1$/,
     );
-    expect(
-      config.provider?.['opencode']?.models?.['muse-spark-1.3-contributor-free'],
-    ).toBeDefined();
+    expect(config.provider?.['opencode']?.options?.apiKey).toBe('sentry-managed-proxy-key');
     expect(JSON.stringify(events)).not.toContain('sentry-test-zen-key');
     await adapter.dispose();
   });

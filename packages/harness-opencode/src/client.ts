@@ -1,5 +1,5 @@
 import type { AgentUsage } from '@qa/schemas';
-import { OpenCodeHarnessError } from './errors.js';
+import { OpenCodeHarnessError, type OpenCodeHarnessErrorCode } from './errors.js';
 import {
   DirectOpenCodeProcessLauncher,
   probeSystemdUser,
@@ -52,11 +52,136 @@ export interface OpenCodePromptResult {
   readonly envelopes: number;
 }
 
+export interface OpenCodeTurnFailureClassification {
+  readonly code: OpenCodeHarnessErrorCode;
+  readonly message: string;
+  readonly retryable: boolean;
+}
+
+function extractQuotedField(detail: string, key: string): string | undefined {
+  const marker = '"' + key + '":"';
+  const start = detail.indexOf(marker);
+  if (start < 0) return undefined;
+  const end = detail.indexOf('"', start + marker.length);
+  if (end < 0) return undefined;
+  const value = detail.slice(start + marker.length, end);
+  return value.length > 0 && value.length <= 200 ? value : undefined;
+}
+
+function extractStatusCode(detail: string): number | undefined {
+  const marker = '"statusCode":';
+  const start = detail.indexOf(marker);
+  if (start < 0) return undefined;
+  const rest = detail.slice(start + marker.length).trimStart();
+  const digits = /^\d{3}/.exec(rest)?.[0];
+  return digits === undefined ? undefined : Number(digits);
+}
+
+function extractRetryable(detail: string): boolean | undefined {
+  if (detail.includes('"isRetryable":true')) return true;
+  if (detail.includes('"isRetryable":false')) return false;
+  return undefined;
+}
+
+/**
+ * Classify a failed turn's error detail (pure, unit-tested). OpenCode
+ * STARTED correctly in these cases — the failure happened at the
+ * provider/wire layer — so they must not be labeled OPENCODE_START_FAILED:
+ * authentication problems become OPENCODE_AUTH_FAILED, Sentry proxy
+ * rejections stay precise internal failures, and upstream/gateway failures
+ * become OPENCODE_UPSTREAM_FAILED with preserved retryability.
+ */
+export function classifyOpenCodeTurnFailure(input: {
+  readonly detail: string;
+  readonly provider: string;
+  readonly model: string;
+}): OpenCodeTurnFailureClassification {
+  const detail = input.detail.slice(0, 4000);
+  const lowered = detail.toLowerCase();
+  if (
+    lowered.includes('sentry_proxy_error') ||
+    lowered.includes('proxy_rejected') ||
+    lowered.includes('model not allowed through this proxy') ||
+    lowered.includes('unknown proxy route')
+  ) {
+    return {
+      code: 'OPENCODE_START_FAILED',
+      message: 'OpenCode proxy rejected the request: ' + detail.slice(0, 300),
+      retryable: false,
+    };
+  }
+  const status = extractStatusCode(detail);
+  const envelopeRetryable = extractRetryable(detail);
+  const upstreamMessage = extractQuotedField(detail, 'message');
+  const correlation: string[] = [];
+  const ray = extractQuotedField(detail, 'cf-ray');
+  if (ray !== undefined) correlation.push('cf-ray ' + ray);
+  const logId = extractQuotedField(detail, 'x-opencode-log-id');
+  if (logId !== undefined) correlation.push('log ' + logId);
+  const suffix = correlation.length > 0 ? ' [' + correlation.join(', ') + ']' : '';
+  const authLike =
+    status === 401 ||
+    lowered.includes('unauthorized') ||
+    lowered.includes('sign in') ||
+    lowered.includes('apicallerror') ||
+    lowered.includes('api key') ||
+    lowered.includes('apikey') ||
+    lowered.includes('credential');
+  if (authLike) {
+    return {
+      code: 'OPENCODE_AUTH_FAILED',
+      message:
+        'OpenCode ' +
+        input.provider +
+        ' rejected the credential for ' +
+        input.model +
+        (status === undefined ? '' : ' (HTTP ' + String(status) + ')') +
+        '.' +
+        suffix,
+      retryable: false,
+    };
+  }
+  const upstreamLike =
+    status === 429 ||
+    (status !== undefined && status >= 500) ||
+    lowered.includes('upstream') ||
+    lowered.includes('gateway') ||
+    lowered.includes('endpoint is unavailable') ||
+    lowered.includes('endpoint unavailable') ||
+    lowered.includes('server_error');
+  if (upstreamLike) {
+    const retryable =
+      envelopeRetryable ?? (status === 429 || (status !== undefined && status >= 500));
+    return {
+      code: 'OPENCODE_UPSTREAM_FAILED',
+      message:
+        'OpenCode ' +
+        input.provider +
+        ' failed ' +
+        input.model +
+        (status === undefined ? '' : ' (HTTP ' + String(status) + ')') +
+        (upstreamMessage === undefined ? '.' : ': ' + upstreamMessage) +
+        ' Provider marked ' +
+        (retryable ? 'retryable' : 'non-retryable') +
+        '.' +
+        suffix,
+      retryable,
+    };
+  }
+  return {
+    code: 'OPENCODE_START_FAILED',
+    message: 'OpenCode turn failed: ' + detail.slice(0, 300),
+    retryable: envelopeRetryable ?? true,
+  };
+}
+
 export interface OpenCodeRunPromptOptions {
   readonly timeoutMs: number;
   readonly signal?: AbortSignal;
   /** Continue an existing OpenCode session (turns 2+). */
   readonly sessionId?: string;
+  /** Provider/model context for truthful provider-error classification. */
+  readonly context?: { readonly provider: string; readonly model: string };
   /**
    * Per-turn environment override, merged over the session base (used
    * for turn-scoped Sentry controls such as the reporting permission
@@ -290,19 +415,15 @@ class ProductionSession implements OpenCodeSessionView {
             stripChatter ? stripSystemdClientChatter(stdout) : stdout,
           );
           // Error envelopes fail the turn even on exit 0: they carry
-          // provider/auth failures, never model output.
+          // provider/auth failures, never model output. Classified so
+          // upstream failures are never mislabeled as startup failures.
           if (parsed.errors.length > 0) {
-            const detail = parsed.errors.join('; ');
-            const authLike = /auth|credential|sign in|unauthorized|401|api key|apicallerror/i.test(
-              detail + '\n' + parsed.text,
-            );
-            reject(
-              new OpenCodeHarnessError(
-                authLike ? 'OPENCODE_AUTH_FAILED' : 'OPENCODE_START_FAILED',
-                redactDiagnostic(detail, secrets),
-                !authLike,
-              ),
-            );
+            const failure = classifyOpenCodeTurnFailure({
+              detail: redactDiagnostic(parsed.errors.join('; '), secrets),
+              provider: options.context?.provider ?? 'opencode',
+              model: options.context?.model ?? this.modelId,
+            });
+            reject(new OpenCodeHarnessError(failure.code, failure.message, failure.retryable));
             return;
           }
           if (code !== 0) {

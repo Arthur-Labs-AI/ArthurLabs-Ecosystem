@@ -13,7 +13,8 @@ export type OpenCodeHarnessErrorCode =
   | 'OPENCODE_PROJECT_CONFIG_ISOLATION_FAILED'
   | 'OPENCODE_SESSION_MISMATCH'
   | 'OPENCODE_PROTOCOL_INVALID'
-  | 'OPENCODE_VERSION_MISMATCH';
+  | 'OPENCODE_VERSION_MISMATCH'
+  | 'OPENCODE_UPSTREAM_FAILED';
 
 export class OpenCodeHarnessError extends Error {
   constructor(

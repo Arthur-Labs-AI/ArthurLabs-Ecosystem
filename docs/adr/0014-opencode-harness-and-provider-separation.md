@@ -36,20 +36,30 @@ intact.
    real wire fixtures (`tests/fixtures/*.jsonl`, captured from the binary),
    a zero-credit stub-provider suite (`SENTRY_OPENCODE_STUB_TESTS=1`), and
    an opt-in paid live turn (`SENTRY_LIVE_OPENCODE_RUN=1`).
-3. **Credential flow (no credential near OpenCode).** `OPENROUTER_API_KEY`
-   travels Desktop safeStorage → encrypted store → `runtime.configure`
-   (`providers.openRouterApiKey`) → WSL runtime process memory — and stops
-   there. Per AgentRun the adapter starts a localhost auth proxy whose
-   closure alone holds the key; OpenCode is configured with the NATIVE
-   OpenRouter SDK redirected at the proxy (`baseURL`, dummy apiKey), so
-   the proxy swaps in the real `Authorization` server-side and relays
-   (model allowlist, loopback-only, per-run port, no body logging). There
+3. **Credential flow (no credential near OpenCode).** Provider keys travel
+   Desktop safeStorage → encrypted store → `runtime.configure` → WSL
+   runtime process memory — and stop there. Per AgentRun the adapter starts
+   a localhost auth proxy whose closure alone holds the key; OpenCode is
+   configured with its provider SDK redirected at the proxy (`baseURL`,
+   dummy apiKey), so the proxy swaps in the real credential server-side
+   and relays the request unchanged (model allowlist, strict route
+   allowlist, loopback-only, per-run port, no body logging). There
    is NO `auth.json` and NO key in any environment, file, or command line
    near OpenCode: stealing files, scraping environments, or reading
    OpenCode config yields at most the dummy. The proxy dies with the run
-   (run `finally` + adapter `dispose` backstop). The key is never
+   (run `finally` + adapter `dispose` backstop). Keys are never
    persisted to SQLite, events, artifacts, exports, logs, OpenCode config
    files, or the project workspace.
+   3b. **Transport preservation.** Sentry never replaces a provider's SDK
+   or model table: `opencode`/`opencode-go` configs override ONLY
+   connection options, so OpenCode's own catalog selects each model's
+   verified transport (`responses` for Muse via `@ai-sdk/openai`,
+   `chat/completions` for compatible models, `messages` for Anthropic
+   ones — proven by real-binary captures). The proxy accepts exactly
+   those three route families and maps each to its explicit upstream
+   path; OpenCode's native session id and user agent are forwarded (with
+   per-run fallbacks), and observed routes are recorded as run
+   diagnostics.
 4. **Filesystem isolation (OS-enforced for shells).** Model-controlled
    shells run through a Sentry-owned wrapper (`shell` config) that enters
    a bubblewrap mount namespace per invocation: scope, workspace parent

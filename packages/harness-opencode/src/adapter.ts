@@ -54,8 +54,8 @@ import {
   credentialEnvForProvider,
   doctorOpenCode,
   markOpenCodeRuntimeVerified,
+  openCodeCatalogMode,
   openCodeCredential,
-  openCodeProviderSpec,
   openCodeSandboxBypassed,
   openCodeUpstreamBaseUrl,
   resolveOpenCodeRuntime,
@@ -102,12 +102,18 @@ export interface OpenCodeHarnessAdapterOptions {
   /** Provider id for the OpenCode session; default 'openrouter'. */
   readonly provider?: string;
   /**
-   * Advanced: upstream endpoint override for the localhost auth proxy
-   * (e.g. the zero-credit test stub). Production OpenRouter path leaves
-   * these unset; `providerNpm`/`providerModels` additionally override the
-   * SDK loader and model table for the stub provider.
+   * Advanced: direct provider endpoint (OpenAI-compatible base URL) that
+   * BYPASSES the localhost proxy in turn config, e.g. the zero-credit
+   * test stub. Implies custom SDK/table handling via `providerNpm` /
+   * `providerModels`. Production paths leave this unset.
    */
   readonly providerBaseUrl?: string;
+  /**
+   * Advanced: upstream override for the localhost proxy itself, keeping
+   * the production config shape (options-only). Used by transport
+   * contract tests to capture real-binary routes without provider credit.
+   */
+  readonly proxyUpstreamBaseUrl?: string;
   readonly providerNpm?: string;
   readonly providerModels?: Readonly<Record<string, Record<string, unknown>>>;
   readonly environment?: NodeJS.ProcessEnv;
@@ -494,34 +500,47 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         retryable: false,
       });
     }
-    // Provider SDK selection: OpenRouter uses its native SDK redirected at
-    // the localhost proxy (full fidelity, proven); OpenCode Zen has no
-    // bundled native loader, so it uses the generic OpenAI-compatible
-    // loader with an explicit models table (same shape as the proven stub
-    // path). The dummy key satisfies SDK requirements; the proxy swaps
-    // the real one. Test seams may override loader/table/endpoint.
+    // SDK/transport selection preserves OpenCode's own catalog: native and
+    // opencode-catalog modes override ONLY connection options (baseURL to
+    // the localhost proxy, dummy key, shell) so each model keeps its
+    // verified SDK + wire protocol (responses/chat/messages). Only explicit
+    // test/gateway seams inject npm/models/endpoint (custom mode).
     const directEndpoint = this.options.providerBaseUrl;
-    const spec = openCodeProviderSpec(this.runtime.provider);
-    const useGenericLoader = directEndpoint !== undefined || spec?.nativeSdk === false;
-    const slash = this.runtime.effectiveModelId.indexOf('/');
-    const modelPart =
-      slash >= 0 ? this.runtime.effectiveModelId.slice(slash + 1) : this.runtime.effectiveModelId;
+    const catalogMode = openCodeCatalogMode({
+      provider: this.runtime.provider,
+      ...(this.options.providerNpm === undefined ? {} : { customNpm: this.options.providerNpm }),
+      ...(this.options.providerModels === undefined
+        ? {}
+        : { customModels: this.options.providerModels }),
+      ...(directEndpoint === undefined ? {} : { directEndpoint }),
+    });
+    this.shutdownDiagnostics.push({
+      code: 'OPENCODE_PROVIDER_TRANSPORT',
+      severity: 'info',
+      message:
+        'OpenCode provider ' +
+        this.runtime.provider +
+        ' model ' +
+        this.runtime.effectiveModelId +
+        ' catalog mode ' +
+        catalogMode +
+        ' (names only, no credentials).',
+      retryable: false,
+    });
     const configContent = buildOpenCodeProviderConfig({
       provider: this.runtime.provider,
       baseUrl: directEndpoint ?? proxy.baseUrl,
       // Dummy key satisfies SDK key requirements; the proxy swaps the real one.
       // Omitted for direct endpoints that need no key at all.
       ...(directEndpoint === undefined ? { apiKey: SENTRY_PROXY_DUMMY_KEY } : {}),
-      ...(this.options.providerNpm === undefined
-        ? useGenericLoader
-          ? { npm: '@ai-sdk/openai-compatible' }
-          : {}
-        : { npm: this.options.providerNpm }),
-      ...(this.options.providerModels === undefined
-        ? useGenericLoader
-          ? { models: { [modelPart]: { name: modelPart } } }
-          : {}
-        : { models: this.options.providerModels }),
+      ...(catalogMode === 'custom'
+        ? {
+            ...(this.options.providerNpm === undefined ? {} : { npm: this.options.providerNpm }),
+            ...(this.options.providerModels === undefined
+              ? {}
+              : { models: this.options.providerModels }),
+          }
+        : {}),
       ...(shell === undefined ? {} : { shell }),
     });
     return { ...scoped, OPENCODE_CONFIG_CONTENT: configContent };
@@ -621,6 +640,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           signal: entry.controller.signal,
           ...(entry.openCodeSessionId === undefined ? {} : { sessionId: entry.openCodeSessionId }),
           environment: this.turnEnvironment(entry, forbidTools),
+          context: { provider: this.runtime.provider, model: this.runtime.effectiveModelId },
         }),
         new Promise<never>((_resolve, reject) => {
           timer = setTimeout(
@@ -787,7 +807,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       // follows the configured provider (OpenRouter vs OpenCode Zen).
       const upstreamBaseUrl = openCodeUpstreamBaseUrl(
         this.runtime.provider,
-        this.options.providerBaseUrl,
+        this.options.proxyUpstreamBaseUrl ?? this.options.providerBaseUrl,
       );
       const proxy = await startOpenCodeAuthProxy({
         apiKey,
@@ -1085,6 +1105,28 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           code: 'OPENCODE_SHUTDOWN_ISSUE',
           severity: 'warning',
           message: redactDiagnostic(cause, this.secrets),
+          retryable: false,
+        });
+      }
+    }
+    // Observed transport evidence: which proxy routes actually relayed
+    // (truthful per-model transport without duplicating OpenCode's catalog).
+    if (entry?.proxy !== undefined) {
+      const routes = entry.proxy.relayedRoutes();
+      const observed = (Object.entries(routes) as Array<[string, number]>)
+        .filter(([, count]) => count > 0)
+        .map(([route, count]) => route + 'x' + String(count))
+        .join(',');
+      if (observed.length > 0) {
+        this.shutdownDiagnostics.push({
+          code: 'OPENCODE_PROVIDER_TRANSPORT_OBSERVED',
+          severity: 'info',
+          message:
+            'Observed upstream routes for ' +
+            this.runtime.effectiveModelId +
+            ': ' +
+            observed +
+            ' (names only, no credentials).',
           retryable: false,
         });
       }

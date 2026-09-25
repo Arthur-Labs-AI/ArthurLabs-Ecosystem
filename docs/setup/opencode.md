@@ -56,9 +56,12 @@ OPENCODE_API_KEY=<your key>
 
 In Sentry Desktop, paste the model id, provider, and key on the Providers
 page (encrypted with the OS keychain). The renderer never receives secrets.
-OpenRouter uses its native SDK; OpenCode Zen uses the generic
-OpenAI-compatible loader — both go through the localhost credential proxy,
-so the real key never reaches OpenCode tooling.
+OpenRouter uses its native SDK; OpenCode Zen/Go keep OpenCode's built-in
+per-model transports (`responses` for Muse, `chat/completions` for
+compatible models, `messages` for Anthropic ones) — all go through the
+localhost credential proxy, so the real key never reaches OpenCode tooling.
+Provider-side failures surface as `OPENCODE_UPSTREAM_FAILED` (with HTTP
+status, retryability, and safe correlation ids), never as startup failures.
 
 No OpenCode account/login is required for the OpenRouter API-key path.
 

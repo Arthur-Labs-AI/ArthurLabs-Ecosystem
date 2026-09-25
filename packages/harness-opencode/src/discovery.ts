@@ -237,14 +237,23 @@ export function resolveOpenCodeRuntime(
   };
 }
 
-/** OpenCode upstream providers (verified against models.dev + tagged source). */
+/**
+ * OpenCode upstream providers (verified against models.dev + tagged
+ * source + live captures). Transport is per provider+model, resolved by
+ * OpenCode's own catalog — never provider-alone:
+ * - `native-openrouter`: OpenCode ships a native SDK; Sentry redirects it.
+ * - `opencode-catalog`: OpenCode's built-in provider/model metadata owns
+ *   SDK + wire protocol (responses/chat/messages per model); Sentry
+ *   overrides ONLY connection options (baseURL/apiKey/shell).
+ * - `custom`: explicit test/gateway seams (npm/models/endpoint) take over.
+ */
+export type OpenCodeCatalogMode = 'native-openrouter' | 'opencode-catalog' | 'custom';
+
 export interface OpenCodeProviderSpec {
   /** Environment variable holding this provider's key (never forwarded). */
   readonly credentialEnv: string;
   /** Default upstream base URL (overridable for tests/gateways). */
   readonly upstreamBaseUrl: string;
-  /** True when OpenCode ships a native SDK (OpenRouter); else generic. */
-  readonly nativeSdk: boolean;
   readonly displayName: string;
 }
 
@@ -252,22 +261,37 @@ export const OPENCODE_PROVIDER_SPECS: Record<string, OpenCodeProviderSpec> = {
   openrouter: {
     credentialEnv: 'OPENROUTER_API_KEY',
     upstreamBaseUrl: 'https://openrouter.ai/api/v1',
-    nativeSdk: true,
     displayName: 'OpenRouter',
   },
   opencode: {
     credentialEnv: 'OPENCODE_API_KEY',
     upstreamBaseUrl: 'https://opencode.ai/zen/v1',
-    nativeSdk: false,
     displayName: 'OpenCode Zen',
   },
   'opencode-go': {
     credentialEnv: 'OPENCODE_API_KEY',
     upstreamBaseUrl: 'https://opencode.ai/zen/go/v1',
-    nativeSdk: false,
     displayName: 'OpenCode Go',
   },
 };
+
+/** Resolve how a provider's SDK/transport is selected (never guess per model). */
+export function openCodeCatalogMode(input: {
+  readonly provider: string;
+  readonly customNpm?: string;
+  readonly customModels?: Readonly<Record<string, Record<string, unknown>>>;
+  readonly directEndpoint?: string;
+}): OpenCodeCatalogMode {
+  if (
+    input.customNpm !== undefined ||
+    input.customModels !== undefined ||
+    input.directEndpoint !== undefined
+  ) {
+    return 'custom';
+  }
+  if (input.provider === 'openrouter') return 'native-openrouter';
+  return 'opencode-catalog';
+}
 
 export function openCodeProviderSpec(provider: string): OpenCodeProviderSpec | undefined {
   return OPENCODE_PROVIDER_SPECS[provider];

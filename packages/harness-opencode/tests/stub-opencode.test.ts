@@ -607,4 +607,133 @@ describe.skipIf(!ENABLED)('real-binary stub suite (zero credit)', () => {
       await stub.close();
     }
   }, 240_000);
+
+  it('production transport contract: opencode-go muse uses responses, not chat', async () => {
+    const binary = resolveBinary();
+    if (binary === undefined) return;
+    const root = await mkdtemp(join(tmpdir(), 'sentry-stub-contract-'));
+    roots.push(root);
+    const workspace = join(root, 'workspace');
+    const { mkdir } = await import('node:fs/promises');
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, 'README.md'), '# Fixture\nimportant line\n');
+    // Capture upstream: scripted texts served as Responses SSE, every
+    // request recorded (route, model, session, auth presence).
+    const seen: Array<{ url?: string; model?: unknown; session?: unknown; auth?: unknown }> = [];
+    const script = ['Contract session', validPlan(), 'Investigation complete.', validReport()];
+    let calls = 0;
+    const { createServer } = await import('node:http');
+    const capture = createServer((req, res) => {
+      let body = '';
+      req.on('data', (chunk: Buffer) => (body += chunk.toString('utf8')));
+      req.on('end', () => {
+        let model: unknown = '?';
+        try {
+          model = (JSON.parse(body) as { model?: unknown }).model ?? '?';
+        } catch {
+          // Non-JSON bodies keep the placeholder.
+        }
+        seen.push({
+          url: req.url,
+          model,
+          session: req.headers['x-opencode-session'],
+          auth: req.headers['authorization'],
+        });
+        const text = script[Math.min(calls, script.length - 1)] ?? '';
+        calls += 1;
+        const chunks = [
+          { type: 'response.created', response: { id: 'resp_contract', object: 'response' } },
+          {
+            type: 'response.output_item.added',
+            output_index: 0,
+            item: { type: 'message', id: 'msg_contract', role: 'assistant', content: [] },
+          },
+          {
+            type: 'response.output_text.delta',
+            item_id: 'msg_contract',
+            output_index: 0,
+            delta: text,
+          },
+          {
+            type: 'response.output_item.done',
+            output_index: 0,
+            item: {
+              type: 'message',
+              id: 'msg_contract',
+              role: 'assistant',
+              content: [{ type: 'output_text', text, annotations: [] }],
+            },
+          },
+          {
+            type: 'response.completed',
+            response: { usage: { input_tokens: 5, output_tokens: 3, total_tokens: 8 } },
+          },
+        ];
+        res.writeHead(200, { 'content-type': 'text/event-stream' });
+        res.end(
+          chunks.map((c) => 'data: ' + JSON.stringify(c) + '\n\n').join('') + 'data: [DONE]\n\n',
+        );
+      });
+    });
+    await new Promise<void>((resolve) => capture.listen(0, '127.0.0.1', resolve));
+    const address = capture.address();
+    const port = typeof address === 'object' && address !== null ? address.port : 0;
+    const captureUrl = 'http://127.0.0.1:' + String(port) + '/v1';
+    try {
+      const adapter = new OpenCodeHarnessAdapter({
+        executable: binary,
+        modelId: 'muse-spark-1.3-contributor',
+        provider: 'opencode-go',
+        proxyUpstreamBaseUrl: captureUrl,
+        environment: { ...stubHostEnv(), OPENCODE_API_KEY: 'stub-fake-key' },
+        turnTimeoutMs: 120_000,
+      });
+      const agentRunId = createAgentRunId();
+      const input = HarnessRunRequestSchema.parse({
+        schemaVersion: 1,
+        agentRunId,
+        qaRunId: createQARunId(),
+        agentStackId: 'stack_opencode_main',
+        projectContextSnapshotId: createProjectContextSnapshotId(),
+        workspace: {
+          runtimePath: workspace,
+          snapshotId: createSnapshotId(),
+          writable: true,
+          isolated: true,
+        },
+        model: { provider: 'opencode-go', modelId: 'muse-spark-1.3-contributor' },
+        task: {
+          type: 'qa',
+          prompt: 'Inspect the fixture.',
+          policyId: 'qa-standard',
+          policyVersion: 1,
+        },
+        executionSafeguards: { runTimeoutMs: 300_000 },
+      });
+      const events: unknown[] = [];
+      for await (const event of adapter.run(input)) events.push(event);
+      expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+      // Transport proof: responses route used, chat route never touched.
+      const urls = seen.map((s) => s.url);
+      expect(urls.length).toBeGreaterThan(0);
+      expect(urls.every((u) => u !== undefined && u.endsWith('/responses'))).toBe(true);
+      expect(urls.some((u) => u !== undefined && u.includes('chat/completions'))).toBe(false);
+      // Session identity: present on every request (OpenCode's native
+      // session, stable across the whole AgentRun).
+      expect(seen.every((s) => typeof s.session === 'string' && s.session.length > 0)).toBe(true);
+      expect(new Set(seen.map((s) => s.session)).size).toBe(1);
+      // Credential swap: the configured test key reaches upstream, the
+      // dummy never does, and no key material lands in Sentry events.
+      expect(seen.every((s) => s.auth === 'Bearer stub-fake-key')).toBe(true);
+      expect(JSON.stringify(seen)).not.toContain('sentry-managed-proxy-key');
+      expect(JSON.stringify(events)).not.toContain('stub-fake-key');
+      // Observed-transport diagnostic recorded.
+      const diagnostics = adapter.getShutdownDiagnostics();
+      const transport = diagnostics.find((d) => d.code === 'OPENCODE_PROVIDER_TRANSPORT_OBSERVED');
+      expect(transport?.message).toContain('responses');
+      await adapter.dispose();
+    } finally {
+      await new Promise<void>((resolve) => capture.close(() => resolve()));
+    }
+  }, 240_000);
 });
