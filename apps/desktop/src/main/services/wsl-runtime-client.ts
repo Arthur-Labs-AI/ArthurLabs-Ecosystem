@@ -305,7 +305,10 @@ export class WslRuntimeManager {
       options.preferencesFile ??
       (options.userDataDir === undefined
         ? undefined
-        : join(options.userDataDir, 'preferences', 'wsl-runtime.json'));
+        : // Never a directory named preferences: collides with Chromium's
+          // Preferences file on case-insensitive filesystems (see
+          // provider-credentials).
+          join(options.userDataDir, 'sentry-prefs', 'wsl-runtime.json'));
   }
 
   async wslAvailable(): Promise<boolean> {
@@ -406,7 +409,7 @@ export class WslRuntimeManager {
     const { mkdir, writeFile, rename } = await import('node:fs/promises');
     const { dirname } = await import('node:path');
     await mkdir(dirname(this.preferencesFile), { recursive: true });
-    const tmp = this.preferencesFile + '.tmp-' + String(process.pid);
+    const tmp = this.preferencesFile + '.tmp-' + String(process.pid) + '-' + String(Date.now());
     await writeFile(tmp, JSON.stringify({ version: 1, wslDistro: distro }, null, 2) + '\n');
     await rename(tmp, this.preferencesFile);
   }

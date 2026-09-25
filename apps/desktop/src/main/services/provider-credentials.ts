@@ -109,9 +109,12 @@ function parseLegacyEnvFile(text: string): Map<string, string> {
   return out;
 }
 
+let atomicWriteCounter = 0;
+
 async function atomicWriteJson(filePath: string, payload: unknown): Promise<void> {
   await mkdir(dirname(filePath), { recursive: true });
-  const tmp = filePath + '.tmp-' + process.pid;
+  // Unique per call: concurrent same-file writers must never share a tmp path.
+  const tmp = filePath + '.tmp-' + String(process.pid) + '-' + String(atomicWriteCounter++);
   await writeFile(tmp, JSON.stringify(payload, null, 2) + '\n', { mode: 0o600 });
   try {
     await chmod(tmp, 0o600);
@@ -151,9 +154,11 @@ export class ProviderCredentialService {
       (dir !== undefined
         ? join(dir, 'credentials', 'providers.json')
         : join(tmpdir(), 'sentry-credentials', 'providers.json'));
+    // Never a directory named preferences: on case-insensitive filesystems
+    // that collides with Chromium's own Preferences file in Electron userData.
     this.modelPrefsPath =
       dir !== undefined
-        ? join(dir, 'preferences', 'models.json')
+        ? join(dir, 'sentry-prefs', 'models.json')
         : join(tmpdir(), 'sentry-credentials', 'models.json');
     this.legacyPath = options.legacyEnvPath ?? defaultLegacyPath();
     // Never collide the new encrypted store with the legacy plaintext path.

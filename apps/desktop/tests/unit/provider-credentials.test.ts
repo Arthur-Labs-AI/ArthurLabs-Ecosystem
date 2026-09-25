@@ -130,7 +130,7 @@ describe('provider credentials', () => {
     roots.push(dir);
     const service = new ProviderCredentialService({ userDataDir: dir });
     await service.saveKey('SENTRY_DEEPSEEK_MODEL', 'model-x');
-    const raw = await readFile(join(dir, 'preferences', 'models.json'), 'utf8');
+    const raw = await readFile(join(dir, 'sentry-prefs', 'models.json'), 'utf8');
     expect(raw).toContain('model-x');
   });
 });
