@@ -133,6 +133,17 @@ describe('desktop RPC adapter', () => {
     expect(h.service.runtimeStatus()).toMatchObject({ connected: true, distro: 'Ubuntu' });
   });
 
+  it('forwards export content with runId + format only (no renderer paths)', async () => {
+    const h = await harness();
+    const content = await h.service.exportContent('run_01K7777777777777777777A8W1', 'json');
+    expect(content).toMatchObject({ ok: true });
+    const call = h.seen.find((c) => c.method === 'runs.exportContent');
+    expect(call?.params).toEqual({
+      runId: 'run_01K7777777777777777777A8W1',
+      format: 'json',
+    });
+  });
+
   it('pre-run gate delegates to the runtime (no local provider spawning)', async () => {
     const h = await harness();
     const gate = await h.service.preRunGate(['stack_deepseek_main']);

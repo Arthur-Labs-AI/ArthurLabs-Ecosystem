@@ -196,6 +196,29 @@ export class DesktopApplicationService {
     return this.call('runs.cancel', { runId: id });
   }
 
+  /** Canonical export bytes for Save As. Renderer controls runId + format
+   *  only; the destination always originates from the native dialog. */
+  exportContent(
+    runId: string,
+    format: 'log' | 'json',
+  ): Promise<{
+    filename: string;
+    mimeType: string;
+    format: string;
+    sizeBytes: number;
+    contentBase64: string;
+  }> {
+    const id = RunIdInput.parse(runId);
+    const parsed = z.enum(['log', 'json']).parse(format);
+    return this.call('runs.exportContent', { runId: id, format: parsed }) as Promise<{
+      filename: string;
+      mimeType: string;
+      format: string;
+      sizeBytes: number;
+      contentBase64: string;
+    }>;
+  }
+
   exportRun(runId: string, format: 'log' | 'json'): Promise<unknown> {
     const id = RunIdInput.parse(runId);
     const parsed = z.enum(['log', 'json']).parse(format);

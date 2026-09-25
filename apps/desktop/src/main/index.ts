@@ -121,6 +121,20 @@ async function boot(): Promise<void> {
     onRunCreated: (runId, operationId) => updates.notifyRunCreated(runId, operationId),
     onRetestCreated: (retestRunId, operationId) =>
       updates.notifyRetestCreated(retestRunId, operationId),
+    requestSavePath: async ({ suggestedFilename, filters }) => {
+      const win = mainWindow;
+      if (win === undefined) return null;
+      const result = await dialog.showSaveDialog(win, {
+        defaultPath: suggestedFilename,
+        filters: filters.map((filter) => ({
+          name: filter.name,
+          extensions: [...filter.extensions],
+        })),
+        properties: ['createDirectory', 'showOverwriteConfirmation'],
+      });
+      if (result.canceled) return null;
+      return result.filePath ?? null;
+    },
   });
   registerDialogIpc();
   liveUpdates.start();

@@ -73,6 +73,19 @@ function section(name: string, values: Iterable<unknown>, comma: boolean): Async
   })();
 }
 
+export interface RunExportContent {
+  readonly filename: string;
+  readonly mimeType: string;
+  readonly format: 'log' | 'json';
+  readonly sizeBytes: number;
+  readonly contentBase64: string;
+}
+
+/** Single-shot Save As transfers are capped so one export cannot OOM the
+ *  desktop bridge. Typical run exports are kilobytes; anything larger needs
+ *  a chunked protocol (not yet required). */
+export const EXPORT_CONTENT_LIMIT_BYTES = 50 * 1024 * 1024;
+
 export class RunExporter {
   private readonly artifacts: FilesystemArtifactStore;
 
@@ -134,6 +147,42 @@ export class RunExporter {
     return manifest;
   }
 
+  /** Canonical export bytes for a trusted Save As transfer.
+   *  Always derived from export() above — never from caller-supplied
+   *  paths — so redaction, ordering and historical sections stay
+   *  identical to the internal artifact. */
+  async exportContent(runId: QARunId, format: 'log' | 'json'): Promise<RunExportContent> {
+    const manifest = await this.export(runId, format);
+    const artifact = this.repository.getArtifact(manifest.artifactId);
+    if (artifact === undefined) {
+      throw new Error('EXPORT_ARTIFACT_MISSING: ' + manifest.artifactId);
+    }
+    const stream = this.artifacts.open(artifact);
+    const chunks: Buffer[] = [];
+    let sizeBytes = 0;
+    await new Promise<void>((resolve, reject) => {
+      stream.on('data', (chunk: Buffer | string) => {
+        const buffer = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk;
+        sizeBytes += buffer.byteLength;
+        if (sizeBytes > EXPORT_CONTENT_LIMIT_BYTES) {
+          stream.destroy();
+          reject(new Error('EXPORT_TOO_LARGE: ' + runId + ' exceeds Save As transfer limit'));
+          return;
+        }
+        chunks.push(buffer);
+      });
+      stream.on('end', () => resolve());
+      stream.on('error', (cause: unknown) => reject(cause));
+    });
+    return {
+      filename: 'sentry-' + runId + '.' + format,
+      mimeType: format === 'log' ? 'text/plain' : 'application/json',
+      format,
+      sizeBytes,
+      contentBase64: Buffer.concat(chunks).toString('base64'),
+    };
+  }
+
   /** An export is stale when a merge, verification, issue ingest, or
    *  retest assessment touching this run was persisted after it. Run
    *  execution data is immutable once terminal, so these are the only
@@ -167,6 +216,20 @@ export class RunExporter {
       (run.executionKind === 'production' ? 'REAL AGENT RUN' : 'SIMULATED / FAKE HARNESS RUN') +
       ' created\n';
     for (const stored of this.repository.iterateRunEvents(runId)) yield eventLogLine(stored);
+    // Independent-agents product: the human log leads with one block per
+    // agent (never a merged/deduplicated view). Merge / verification /
+    // issue sections below only appear when historical rows exist.
+    const logAt = nowIsoTimestamp();
+    yield `[${logAt}] [SENTRY] ${run.mode.toUpperCase()} QA RUN — independent agent results\n`;
+    for (const agentRun of this.repository.iterateAgentRuns(runId)) {
+      const agentFindings = [...this.repository.iterateFindings(runId)].filter(
+        (finding) => finding.agentRunId === agentRun.id,
+      );
+      yield `[${logAt}] [SENTRY] Agent ${agentRun.agentStackId} (${agentRun.status}): ${agentFindings.length} finding${agentFindings.length === 1 ? '' : 's'}\n`;
+      for (const finding of agentFindings) {
+        yield `[${logAt}] [SENTRY] Finding [${finding.severity.toUpperCase()}] ${finding.title}\n`;
+      }
+    }
     for (const merge of this.repository.iterateMergeResults(runId)) {
       const at = nowIsoTimestamp();
       const clusters = [...this.repository.iterateClusters(merge.id)];

@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import { z } from 'zod';
 import type { DesktopApplicationService } from './services/desktop-service.js';
+import { saveExportRun, type SaveDialogOptions } from './services/export-save.js';
 
 function ok(result: unknown): { ok: true; result: unknown } {
   return { ok: true, result };
@@ -77,6 +78,11 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
   'runs:export': z
     .object({ runId: z.string().min(1).max(100), format: z.enum(['log', 'json']) })
     .strict(),
+  // Renderer controls runId + format ONLY. The save destination always
+  // originates from the main-process native dialog (see requestSavePath).
+  'runs:export-save': z
+    .object({ runId: z.string().min(1).max(100), format: z.enum(['log', 'json']) })
+    .strict(),
   'issues:list': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'issues:get': z.object({ issueId: z.string().min(1).max(100) }).strict(),
   'issues:history': z.object({ issueId: z.string().min(1).max(100) }).strict(),
@@ -119,6 +125,8 @@ const PayloadSchemas: Record<string, z.ZodTypeAny> = {
 export interface DesktopIpcHooks {
   readonly onRunCreated?: (runId: string, operationId?: string) => void;
   readonly onRetestCreated?: (retestRunId: string, operationId?: string) => void;
+  /** Native Save As dialog owned by the main process. Null = cancelled. */
+  readonly requestSavePath?: (options: SaveDialogOptions) => Promise<string | null>;
 }
 
 export function registerDesktopIpc(
@@ -182,6 +190,18 @@ export function registerDesktopIpc(
           return service.requestRunCancellation(parsed['runId'] as string);
         case 'runs:export':
           return service.exportRun(parsed['runId'] as string, parsed['format'] as 'log' | 'json');
+        case 'runs:export-save': {
+          const requestSavePath = hooks.requestSavePath;
+          if (requestSavePath === undefined) {
+            throw Object.assign(new Error('Save dialog unavailable'), {
+              code: 'DIALOG_UNAVAILABLE',
+            });
+          }
+          return saveExportRun(parsed['runId'] as string, parsed['format'] as 'log' | 'json', {
+            requestSavePath,
+            fetchContent: (runId, format) => service.exportContent(runId, format),
+          });
+        }
         case 'issues:list':
           return service.listIssues(parsed['projectId'] as string);
         case 'issues:get':

@@ -562,6 +562,15 @@ export class SentryRuntimeHost {
     return ingestMergeIssues(this.repository, id as never);
   }
 
+  /** Narrow Save As source: validated runId + format only. No caller-
+   *  supplied paths ever reach the filesystem; bytes always come from the
+   *  canonical RunExporter artifact for this run + format. */
+  exportContent(runId: string, format: string): Promise<unknown> {
+    const id = RunIdInput.parse(runId);
+    const parsed = z.enum(['log', 'json']).parse(format);
+    return this.coordinator.exportContent(id as never, parsed);
+  }
+
   exportRun(runId: string, format: string): Promise<unknown> {
     const id = RunIdInput.parse(runId);
     const parsed = z.enum(['log', 'json']).parse(format);
@@ -916,6 +925,8 @@ export class SentryRuntimeHost {
       // compatibility but are no longer reachable over the WSL bridge.
       case 'runs.export':
         return this.exportRun(requireString(params, 'runId'), requireString(params, 'format'));
+      case 'runs.exportContent':
+        return this.exportContent(requireString(params, 'runId'), requireString(params, 'format'));
       case 'issues.list':
         return this.listIssues(requireString(params, 'projectId'));
       case 'issues.get':

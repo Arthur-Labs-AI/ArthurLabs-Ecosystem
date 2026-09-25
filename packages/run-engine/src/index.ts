@@ -1097,6 +1097,20 @@ export class RunCoordinator {
     return this.repository.listRuns(projectId);
   }
 
+  exportContent(runId: QARunId, format: 'log' | 'json') {
+    const run = this.repository.getRun(runId);
+    if (run === undefined) {
+      throw new RunEngineError('RUN_NOT_FOUND', 'Run not found: ' + runId);
+    }
+    if (!['completed', 'partial', 'failed', 'cancelled'].includes(run.status)) {
+      throw new RunEngineError(
+        'RUN_NOT_COMPLETE',
+        'Run export is available after the run reaches a terminal status',
+      );
+    }
+    return this.exporter.exportContent(runId, format);
+  }
+
   exportRun(runId: QARunId, format: 'log' | 'json') {
     const run = this.repository.getRun(runId);
     if (run === undefined) {

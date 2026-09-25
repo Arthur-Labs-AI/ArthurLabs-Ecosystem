@@ -20,6 +20,7 @@ export const IPC_CHANNELS = [
   'runs:start-production',
   'runs:cancel',
   'runs:export',
+  'runs:export-save',
   'issues:list',
   'issues:get',
   'issues:history',
@@ -134,6 +135,15 @@ export interface SentryDesktopApi {
     ): Promise<DesktopOperation>;
     cancel(runId: string): Promise<unknown>;
     exportRun(runId: string, format: 'log' | 'json'): Promise<unknown>;
+    /**
+     * Native Save As: main shows the dialog, streams the canonical
+     * export bytes, and writes the chosen destination atomically.
+     * Cancelled dialogs resolve { status: 'cancelled' } — never an error.
+     */
+    exportSave(
+      runId: string,
+      format: 'log' | 'json',
+    ): Promise<{ status: 'saved'; path: string } | { status: 'cancelled' }>;
   };
   readonly issues: {
     list(projectId: string): Promise<unknown[]>;

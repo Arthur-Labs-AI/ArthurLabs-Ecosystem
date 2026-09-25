@@ -43,12 +43,16 @@ export function RunWorkspace(): React.JSX.Element {
     },
     onError: fail,
   });
-  const exportRun = useMutation({
-    mutationFn: (format: 'log' | 'json') => sentryApi().runs.exportRun(runId as string, format),
-    onSuccess: (result) => {
-      const info = result as { path?: string; exportId?: string };
-      setActionNote(info.path !== undefined ? 'Export ready: ' + info.path : 'Export ready');
-      void result;
+  const exportSave = useMutation({
+    mutationFn: (format: 'log' | 'json') => sentryApi().runs.exportSave(runId as string, format),
+    onSuccess: (result, format) => {
+      // Save As cancellation is a normal outcome: silent, no error, no file.
+      if (result.status === 'cancelled') {
+        setActionNote(undefined);
+        return;
+      }
+      const label = format === 'json' ? 'JSON' : 'Log';
+      setActionNote('Saved ' + label + ' export to: ' + result.path);
       refresh();
     },
     onError: fail,
@@ -213,10 +217,10 @@ export function RunWorkspace(): React.JSX.Element {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
         {terminal ? (
           <>
-            <button onClick={() => exportRun.mutate('json')} disabled={exportRun.isPending}>
+            <button onClick={() => exportSave.mutate('json')} disabled={exportSave.isPending}>
               Export JSON
             </button>
-            <button onClick={() => exportRun.mutate('log')} disabled={exportRun.isPending}>
+            <button onClick={() => exportSave.mutate('log')} disabled={exportSave.isPending}>
               Export Log
             </button>
             <Link to={'/projects/' + data.run.projectId}>Open Project</Link>
