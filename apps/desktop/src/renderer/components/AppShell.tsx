@@ -14,7 +14,12 @@ import { sentryApi } from '../lib/sentry-api.js';
 import { CommandPalette } from './CommandPalette.js';
 
 const NAV: Array<{ to: string; label: string; end?: boolean; icon: React.ReactNode }> = [
-  { to: '/', label: 'Dashboard', end: true, icon: React.createElement(LayoutDashboard, { size: 17 }) },
+  {
+    to: '/',
+    label: 'Dashboard',
+    end: true,
+    icon: React.createElement(LayoutDashboard, { size: 17 }),
+  },
   { to: '/projects', label: 'Projects', icon: React.createElement(FolderKanban, { size: 17 }) },
   { to: '/environment', label: 'Environment', icon: React.createElement(ServerCog, { size: 17 }) },
   { to: '/settings', label: 'Settings', icon: React.createElement(SettingsIcon, { size: 17 }) },
@@ -198,9 +203,7 @@ export function AppShell(): React.JSX.Element {
           >
             <span
               className={
-                runtimeConnected
-                  ? 'status-dot status-completed'
-                  : 'status-dot status-failed'
+                runtimeConnected ? 'status-dot status-completed' : 'status-dot status-failed'
               }
               aria-hidden="true"
             />

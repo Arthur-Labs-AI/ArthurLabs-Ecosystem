@@ -95,7 +95,11 @@ export function RunWorkspace(): React.JSX.Element {
     void queryClient.invalidateQueries({ queryKey: ['run', runId] });
   };
   const fail = (e: unknown): void =>
-    pushToast({ tone: 'danger', title: 'Action failed', body: e instanceof Error ? e.message : String(e) });
+    pushToast({
+      tone: 'danger',
+      title: 'Action failed',
+      body: e instanceof Error ? e.message : String(e),
+    });
   const cancel = useMutation({
     mutationFn: () => sentryApi().runs.cancel(runId as string),
     onSuccess: () => {
@@ -362,7 +366,10 @@ export function RunWorkspace(): React.JSX.Element {
           <span title={'Started ' + String(data.run.startedAt ?? data.run.createdAt)}>
             Started {formatClock(data.run.startedAt ?? data.run.createdAt)}
           </span>
-          <span>Duration {formatDuration(data.run.startedAt ?? data.run.createdAt, data.run.completedAt)}</span>
+          <span>
+            Duration{' '}
+            {formatDuration(data.run.startedAt ?? data.run.createdAt, data.run.completedAt)}
+          </span>
           <span>
             {data.agentRuns.length} agent{data.agentRuns.length === 1 ? '' : 's'}
           </span>
@@ -432,9 +439,7 @@ export function RunWorkspace(): React.JSX.Element {
           ) : null}
         </div>
       ) : null}
-      {!terminal ? (
-        <div className="inline-notice">Export unlocks at terminal status.</div>
-      ) : null}
+      {!terminal ? <div className="inline-notice">Export unlocks at terminal status.</div> : null}
       {graph === undefined ? (
         <div className="skeleton">Building execution graph…</div>
       ) : (

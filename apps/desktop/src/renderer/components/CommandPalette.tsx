@@ -30,7 +30,7 @@ export function CommandPalette({
       setSelected(0);
       setTimeout(() => inputRef.current?.focus(), 0);
     }
-  }, [open ]);
+  }, [open]);
 
   const go = React.useCallback(
     (to: string) => {
@@ -49,9 +49,7 @@ export function CommandPalette({
   }, [query]);
 
   React.useEffect(() => {
-    listRef.current
-      ?.querySelector('[data-selected="true"]')
-      ?.scrollIntoView({ block: 'nearest' });
+    listRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'nearest' });
   }, [selected]);
 
   if (!open) return null;
@@ -94,15 +92,27 @@ export function CommandPalette({
           }}
           placeholder="Type a command or project name…"
           aria-label="Command palette input"
-          aria-activedescendant={visible[selected] !== undefined ? 'palette-' + selected : undefined}
+          aria-activedescendant={
+            visible[selected] !== undefined ? 'palette-' + selected : undefined
+          }
           aria-expanded="true"
           aria-controls="palette-list"
           role="combobox"
           style={{ width: '100%' }}
         />
-        <ul ref={listRef} id="palette-list" role="listbox" style={{ listStyle: 'none', padding: 0 }}>
+        <ul
+          ref={listRef}
+          id="palette-list"
+          role="listbox"
+          style={{ listStyle: 'none', padding: 0 }}
+        >
           {visible.map((entry, index) => (
-            <li key={entry.label} role="option" id={'palette-' + index} aria-selected={index === selected}>
+            <li
+              key={entry.label}
+              role="option"
+              id={'palette-' + index}
+              aria-selected={index === selected}
+            >
               <button
                 onClick={entry.run}
                 onMouseEnter={() => setSelected(index)}

@@ -124,7 +124,7 @@ export function Providers(): React.JSX.Element {
     onError: fail,
   });
   const byName = new Map(
-    (((statuses.data as ProviderStatus[] | undefined) ?? []).map((item) => [item.name, item])),
+    ((statuses.data as ProviderStatus[] | undefined) ?? []).map((item) => [item.name, item]),
   );
   const fieldProps = {
     values,
@@ -176,7 +176,12 @@ export function Providers(): React.JSX.Element {
               {card.subtitle}
             </p>
             {card.fields.map((field) => (
-              <CredentialField key={field.name} label={field.label} name={field.name} {...fieldProps} />
+              <CredentialField
+                key={field.name}
+                label={field.label}
+                name={field.name}
+                {...fieldProps}
+              />
             ))}
           </section>
         ))}
@@ -251,14 +256,14 @@ function CredentialField(props: {
           <span className="metadata faint">Not set</span>
         )}
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
+      <div
+        style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}
+      >
         <input
           id={'provider-' + props.name}
           type={secret ? 'password' : 'text'}
           value={current}
-          onChange={(e) =>
-            props.setValues((prev) => ({ ...prev, [props.name]: e.target.value }))
-          }
+          onChange={(e) => props.setValues((prev) => ({ ...prev, [props.name]: e.target.value }))}
           placeholder={
             secret
               ? '••••••••••'
@@ -324,9 +329,8 @@ export function HarnessBinaryCard(props: {
       <p className="body-secondary">
         Provider CLIs (opencode, dsh, Claude Code) execute inside the WSL2 Sentry runtime on Linux.
         Optional absolute Linux paths below override PATH lookup; leaving a field empty keeps
-        automatic discovery. Paths refer to the selected WSL Linux runtime — Windows paths (C:…
-        ) do not apply. See <Link to="/environment">Environment</Link> for the runtime doctor
-        state.
+        automatic discovery. Paths refer to the selected WSL Linux runtime — Windows paths (C:… ) do
+        not apply. See <Link to="/environment">Environment</Link> for the runtime doctor state.
       </p>
       {BINARY_FIELDS.map((field) => {
         const status = props.statuses.find((s) => s.name === field.name);

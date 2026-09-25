@@ -50,7 +50,9 @@ export function Dashboard(): React.JSX.Element {
       />
       <div className="metric-grid" role="list" aria-label="Workspace metrics">
         <div className="metric-card" role="listitem">
-          <div className="metric-value">{projects.data === undefined ? '—' : projectList.length}</div>
+          <div className="metric-value">
+            {projects.data === undefined ? '—' : projectList.length}
+          </div>
           <div className="metric-label">Projects</div>
         </div>
         <div className="metric-card" role="listitem">
@@ -138,7 +140,8 @@ export function Dashboard(): React.JSX.Element {
                   ) : null}
                   {project.currentRevisionId !== undefined && project.currentRevisionId !== '' ? (
                     <span className="mono" title={project.currentRevisionId}>
-                      {' '}· rev {project.currentRevisionId.slice(0, 12)}
+                      {' '}
+                      · rev {project.currentRevisionId.slice(0, 12)}
                     </span>
                   ) : null}
                 </div>

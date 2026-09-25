@@ -59,7 +59,11 @@ export function Projects(): React.JSX.Element {
         title="Projects"
         subtitle="Local repositories under independent AI QA."
         actions={
-          <button className="primary" onClick={() => add.mutate(undefined)} disabled={add.isPending}>
+          <button
+            className="primary"
+            onClick={() => add.mutate(undefined)}
+            disabled={add.isPending}
+          >
             <Plus size={15} /> {add.isPending ? 'Adding…' : 'Add Project'}
           </button>
         }
@@ -133,7 +137,9 @@ export function Projects(): React.JSX.Element {
         </div>
       )}
       <CollapsibleSection title="Advanced: add by path">
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+        <div
+          style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}
+        >
           <input
             value={manualPath}
             onChange={(e) => setManualPath(e.target.value)}

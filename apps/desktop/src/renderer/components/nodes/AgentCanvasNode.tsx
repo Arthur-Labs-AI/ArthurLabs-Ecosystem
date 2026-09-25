@@ -44,8 +44,8 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
     !['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(view.status) &&
     view.currentOperation.title !== undefined &&
     view.currentOperation.title !== ''
-    ? view.currentOperation.title
-    : undefined;
+      ? view.currentOperation.title
+      : undefined;
   return (
     <div
       className={'flow-node' + ((data['selected'] as boolean) ? ' selected' : '')}
@@ -70,14 +70,15 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
         className="stage-dots"
         role="img"
         aria-label={
-          'Stage: ' +
-          view.stages
-            .map((stage) => stage.label + ' ' + stage.state)
-            .join(', ')
+          'Stage: ' + view.stages.map((stage) => stage.label + ' ' + stage.state).join(', ')
         }
       >
         {view.stages.map((stage) => (
-          <i key={stage.id} className={stageTone(stage.state)} title={stage.label + ' — ' + stage.state} />
+          <i
+            key={stage.id}
+            className={stageTone(stage.state)}
+            title={stage.label + ' — ' + stage.state}
+          />
         ))}
       </div>
       {activeLine !== undefined ? (

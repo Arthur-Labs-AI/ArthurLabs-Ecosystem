@@ -141,7 +141,6 @@ export function RunCanvas({
         };
       }),
     // resetKey restores canonical positions after a reset.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [nodes, selectedId, overrides, resetKey],
   );
   const flowEdges: Edge[] = React.useMemo(
@@ -172,11 +171,7 @@ export function RunCanvas({
         let changed = false;
         for (const node of next) {
           const prior = prev[node.id] ?? nodes.find((n) => n.id === node.id)?.position;
-          if (
-            prior === undefined ||
-            node.position.x !== prior.x ||
-            node.position.y !== prior.y
-          ) {
+          if (prior === undefined || node.position.x !== prior.x || node.position.y !== prior.y) {
             merged[node.id] = { ...node.position };
             changed = true;
           }

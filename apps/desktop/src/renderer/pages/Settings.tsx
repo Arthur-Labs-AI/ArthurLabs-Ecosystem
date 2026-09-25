@@ -30,9 +30,7 @@ export function Settings(): React.JSX.Element {
                 <span className="card-title" style={{ display: 'block' }}>
                   Providers
                 </span>
-                <span className="body-secondary">
-                  API keys, models, and harness transports
-                </span>
+                <span className="body-secondary">API keys, models, and harness transports</span>
               </span>
               <ArrowRight size={15} aria-hidden="true" className="faint" />
             </div>

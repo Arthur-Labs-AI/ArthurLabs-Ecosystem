@@ -138,7 +138,7 @@ function SystemIdSummary({
   if (id === '') return <span />;
   return (
     <div className="node-sub mono truncate" title={id} style={{ marginTop: 2 }}>
-    {kind === 'project' ? id : truncateMiddle(id, 18)}
+      {kind === 'project' ? id : truncateMiddle(id, 18)}
     </div>
   );
 }

@@ -28,8 +28,7 @@ export function RuntimeSettings(): React.JSX.Element {
   const info = distros.data as WslDistros | undefined;
   const [selected, setSelected] = React.useState<string | undefined>(undefined);
   const effective = selected ?? info?.selected ?? info?.preferred ?? undefined;
-  const connected =
-    (status.data as { connected?: boolean } | undefined)?.connected === true;
+  const connected = (status.data as { connected?: boolean } | undefined)?.connected === true;
   const save = async (distro: string): Promise<void> => {
     try {
       setError(undefined);
@@ -97,7 +96,15 @@ export function RuntimeSettings(): React.JSX.Element {
             <dt>Current</dt>
             <dd>{info?.selected ?? info?.preferred ?? '—'}</dd>
           </dl>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              marginTop: 10,
+            }}
+          >
             <select
               value={effective ?? ''}
               onChange={(e) => setSelected(e.target.value)}
@@ -111,7 +118,9 @@ export function RuntimeSettings(): React.JSX.Element {
             </select>
             <button
               className="primary"
-              disabled={effective === undefined || effective === (info?.preferred ?? info?.selected)}
+              disabled={
+                effective === undefined || effective === (info?.preferred ?? info?.selected)
+              }
               onClick={() => {
                 if (effective !== undefined) void save(effective);
               }}

@@ -84,8 +84,8 @@ export function Environment(): React.JSX.Element {
         <div className="error-box" role="alert">
           <strong>Sentry Runtime Offline.</strong> Sentry Desktop is running, but the WSL2 execution
           runtime could not be reached.
-          {status?.lastError !== undefined ? ' ' + status.lastError : ''}{' '}
-          QA execution is disabled. <Link to="/settings">Runtime settings</Link>
+          {status?.lastError !== undefined ? ' ' + status.lastError : ''} QA execution is disabled.{' '}
+          <Link to="/settings">Runtime settings</Link>
         </div>
       </div>
     );
@@ -109,7 +109,9 @@ export function Environment(): React.JSX.Element {
               label={connected ? 'Runtime connected' : 'Runtime offline'}
               pulse={connected}
             />
-            <span className="metadata">WSL distribution: {status?.distro ?? hello?.distro ?? '—'}</span>
+            <span className="metadata">
+              WSL distribution: {status?.distro ?? hello?.distro ?? '—'}
+            </span>
           </div>
           {hello !== undefined ? (
             <dl className="kv" style={{ marginTop: 10 }}>
@@ -158,12 +160,25 @@ export function Environment(): React.JSX.Element {
                 <span className="grow card-title">{stack.displayName}</span>
                 <StatusPill status={stack.readiness ?? 'unknown'} />
               </div>
-              <div className="mono metadata truncate" style={{ margin: '4px 0 8px' }} title={stack.modelId}>
+              <div
+                className="mono metadata truncate"
+                style={{ margin: '4px 0 8px' }}
+                title={stack.modelId}
+              >
                 {stack.modelId}
               </div>
-              <HealthRow ok={stack.configured === true} label={'Credential ' + (stack.configured === true ? 'saved' : 'missing')} />
-              <HealthRow ok={stack.binaryAvailable === true} label={'Binary ' + (stack.binaryAvailable === true ? 'available' : 'missing')} />
-              <HealthRow ok={stack.runtimeVerified === true} label={'Runtime ' + (stack.runtimeVerified === true ? 'verified' : 'not tested')} />
+              <HealthRow
+                ok={stack.configured === true}
+                label={'Credential ' + (stack.configured === true ? 'saved' : 'missing')}
+              />
+              <HealthRow
+                ok={stack.binaryAvailable === true}
+                label={'Binary ' + (stack.binaryAvailable === true ? 'available' : 'missing')}
+              />
+              <HealthRow
+                ok={stack.runtimeVerified === true}
+                label={'Runtime ' + (stack.runtimeVerified === true ? 'verified' : 'not tested')}
+              />
               <p className="metadata" style={{ marginBottom: 0 }}>
                 A saved credential does not imply the provider works until a non-billable doctor
                 verifies it inside the WSL runtime.

@@ -117,9 +117,15 @@ export function AgentInspector({
   const tabs = React.useMemo(() => {
     const list = [
       { id: 'overview', label: 'Overview' },
-      { id: 'findings', label: 'Findings' + (findings.length > 0 ? ' (' + findings.length + ')' : '') },
+      {
+        id: 'findings',
+        label: 'Findings' + (findings.length > 0 ? ' (' + findings.length + ')' : ''),
+      },
       { id: 'activity', label: 'Activity' },
-      { id: 'evidence', label: 'Evidence' + (evidence.length > 0 ? ' (' + evidence.length + ')' : '') },
+      {
+        id: 'evidence',
+        label: 'Evidence' + (evidence.length > 0 ? ' (' + evidence.length + ')' : ''),
+      },
     ];
     if (developerMode) list.push({ id: 'diagnostics', label: 'Diagnostics' });
     return list;
@@ -143,9 +149,7 @@ export function AgentInspector({
         {activeTab === 'activity' ? (
           <ActivityTab events={data.events ?? []} developerMode={developerMode} />
         ) : null}
-        {activeTab === 'evidence' ? (
-          <EvidenceTab evidence={evidence} findings={findings} />
-        ) : null}
+        {activeTab === 'evidence' ? <EvidenceTab evidence={evidence} findings={findings} /> : null}
         {activeTab === 'diagnostics' && developerMode ? (
           <DiagnosticsTab view={view} events={data.events ?? []} />
         ) : null}
@@ -184,7 +188,16 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
         <div className="metadata" style={{ marginBottom: 4 }}>
           Stages
         </div>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <ul
+          style={{
+            listStyle: 'none',
+            padding: 0,
+            margin: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+        >
           {view.stages.map((stage) => (
             <li key={stage.id} className="metadata">
               {stage.state === 'completed'
@@ -231,9 +244,9 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
       </div>
       {view.inputTokens !== undefined || view.outputTokens !== undefined ? (
         <p className="mono metadata" style={{ margin: 0 }}>
-          Input {view.inputTokens !== undefined ? formatCount(view.inputTokens) : '\u2014'} ·
-          Output {view.outputTokens !== undefined ? formatCount(view.outputTokens) : '\u2014'} ·
-          Cached {view.cachedInputTokens !== undefined ? formatCount(view.cachedInputTokens) : '\u2014'}
+          Input {view.inputTokens !== undefined ? formatCount(view.inputTokens) : '\u2014'} · Output{' '}
+          {view.outputTokens !== undefined ? formatCount(view.outputTokens) : '\u2014'} · Cached{' '}
+          {view.cachedInputTokens !== undefined ? formatCount(view.cachedInputTokens) : '\u2014'}
         </p>
       ) : null}
       {Object.keys(view.severityCounts).length > 0 ? (
@@ -273,7 +286,8 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
       ) : null}
       {view.status === 'interrupted' ? (
         <div className="inline-notice">
-          <strong>Interrupted.</strong> <span className="muted">Sentry stopped before completion.</span>
+          <strong>Interrupted.</strong>{' '}
+          <span className="muted">Sentry stopped before completion.</span>
         </div>
       ) : null}
     </div>
@@ -293,7 +307,10 @@ function FindingsTab({
     [findings],
   );
   const showFilter = findings.length > 1;
-  const visible = severity === 'All' ? findings : findings.filter((f) => f.severity.toLowerCase() === severity.toLowerCase());
+  const visible =
+    severity === 'All'
+      ? findings
+      : findings.filter((f) => f.severity.toLowerCase() === severity.toLowerCase());
   if (findings.length === 0) {
     return <p className="muted">No findings reported by this agent yet.</p>;
   }
@@ -401,7 +418,10 @@ function ActivityTab({
       </div>
       {visible.length === 0 ? <p className="muted">No {filter.toLowerCase()} activity.</p> : null}
       {selectedEvent !== undefined && events?.[selectedEvent] !== undefined ? (
-        <EventDetail event={events[selectedEvent] as Record<string, unknown>} showRaw={developerMode} />
+        <EventDetail
+          event={events[selectedEvent] as Record<string, unknown>}
+          showRaw={developerMode}
+        />
       ) : null}
     </div>
   );
@@ -427,9 +447,7 @@ function EvidenceTab({
           <div key={item.id} className="finding-card">
             <div className="chip-row">
               <span className="badge">{item.type}</span>
-              {item.strength !== undefined ? (
-                <span className="badge">{item.strength}</span>
-              ) : null}
+              {item.strength !== undefined ? <span className="badge">{item.strength}</span> : null}
             </div>
             {finding !== undefined ? (
               <div className="finding-title truncate" title={finding.title}>
@@ -517,9 +535,13 @@ export function FindingCard({
   const locationCount = finding.locations?.length ?? 0;
   return (
     <div className="finding-card">
-      <div className="chip-row">
-        <span className="badge">{finding.severity.toUpperCase()}</span>
-        <span className="badge">{category}</span>
+      <div className="chip-row" aria-label={finding.severity.toUpperCase() + ' · ' + category}>
+        <span className="badge" aria-hidden="true">
+          {finding.severity.toUpperCase()}
+        </span>
+        <span className="badge" aria-hidden="true">
+          {category}
+        </span>
       </div>
       <div className="finding-title">{finding.title}</div>
       {preview !== undefined ? <div className="body-secondary">{preview}</div> : null}
@@ -530,7 +552,13 @@ export function FindingCard({
         {linkedCount} evidence
       </div>
       {finding.locations !== undefined && finding.locations.length > 0 ? (
-        <div className="mono faint truncate" style={{ fontSize: 11 }} title={formatLocation(finding.locations[0] as NonNullable<InspectorFinding['locations']>[number])}>
+        <div
+          className="mono faint truncate"
+          style={{ fontSize: 11 }}
+          title={formatLocation(
+            finding.locations[0] as NonNullable<InspectorFinding['locations']>[number],
+          )}
+        >
           {formatLocation(
             finding.locations[0] as NonNullable<InspectorFinding['locations']>[number],
           )}
@@ -668,7 +696,13 @@ export function FindingDetail({
   );
 }
 
-function EventDetail({ event, showRaw }: { event: Record<string, unknown>; showRaw: boolean }): React.JSX.Element {
+function EventDetail({
+  event,
+  showRaw,
+}: {
+  event: Record<string, unknown>;
+  showRaw: boolean;
+}): React.JSX.Element {
   const type = String(event['type'] ?? 'event');
   const rows: Array<[string, string]> = [];
   const push = (label: string, value: unknown): void => {

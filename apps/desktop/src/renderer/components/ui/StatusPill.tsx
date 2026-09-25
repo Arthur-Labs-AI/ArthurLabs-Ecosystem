@@ -4,7 +4,8 @@ export type StatusTone = 'success' | 'info' | 'warning' | 'danger' | 'muted';
 
 export function toneForStatus(status: string): StatusTone {
   const key = status.toLowerCase();
-  if (key.includes('complet') || key === 'ready' || key === 'connected' || key === 'passed') return 'success';
+  if (key.includes('complet') || key === 'ready' || key === 'connected' || key === 'passed')
+    return 'success';
   if (key.includes('fail') || key.includes('error')) return 'danger';
   if (key.includes('cancel') || key.includes('interrupt')) return 'muted';
   if (key.includes('partial') || key.includes('warn') || key === 'degraded') return 'warning';
@@ -42,7 +43,10 @@ export function StatusPill({
   const tone = toneForStatus(status);
   return (
     <span className={'status-pill tone-' + tone} title={status}>
-      <span className={dotClassForStatus(status) + (pulse === true ? ' pulse' : '')} aria-hidden="true" />
+      <span
+        className={dotClassForStatus(status) + (pulse === true ? ' pulse' : '')}
+        aria-hidden="true"
+      />
       {GLYPHS[tone]} {label ?? status}
     </span>
   );

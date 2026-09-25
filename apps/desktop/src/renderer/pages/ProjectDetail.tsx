@@ -77,8 +77,7 @@ export function ProjectDetail(): React.JSX.Element {
     queryFn: () => sentryApi().production.readiness({ agentStackIds: effectiveStacks }),
   });
   const gate = readiness.data as
-    | { ready?: boolean; reasons?: string[]; productionWired?: boolean }
-    | undefined;
+    { ready?: boolean; reasons?: string[]; productionWired?: boolean } | undefined;
   const startOptions = (runMode: 'full' | 'targeted'): Record<string, unknown> => ({
     mode: runMode,
     ...(runMode === 'targeted'
@@ -260,9 +259,7 @@ export function ProjectDetail(): React.JSX.Element {
                     aria-pressed={selected}
                     onClick={() => toggleStack(stack.id)}
                     title={(selected ? 'Deselect ' : 'Select ') + stack.displayName}
-                    style={
-                      selected ? { borderColor: 'var(--accent)' } : undefined
-                    }
+                    style={selected ? { borderColor: 'var(--accent)' } : undefined}
                   >
                     <span
                       className={dotClassForStatus(stack.readiness ?? '')}
@@ -270,7 +267,10 @@ export function ProjectDetail(): React.JSX.Element {
                       style={{ marginTop: 4 }}
                     />
                     <span className="grow">
-                      <span className="card-title" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span
+                        className="card-title"
+                        style={{ display: 'flex', gap: 6, alignItems: 'center' }}
+                      >
                         {selected ? <Check size={14} aria-hidden="true" /> : null}
                         {stack.displayName}
                       </span>
@@ -312,8 +312,7 @@ export function ProjectDetail(): React.JSX.Element {
               onClick={() => setConfirmStart(mode)}
               disabled={startPending || effectiveStacks.length === 0 || gate?.ready !== true}
             >
-              <FlaskConical size={15} />{' '}
-              {mode === 'full' ? 'Start Full QA' : 'Start Targeted QA'}
+              <FlaskConical size={15} /> {mode === 'full' ? 'Start Full QA' : 'Start Targeted QA'}
             </button>
           </div>
         </div>
@@ -511,4 +510,3 @@ function TargetPathInput({
     </div>
   );
 }
-

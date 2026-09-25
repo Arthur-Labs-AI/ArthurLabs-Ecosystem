@@ -67,9 +67,7 @@ export function RunSummaryPanel({
                     className={dotClassForStatus(String(agent['status'] ?? ''))}
                     aria-hidden="true"
                   />
-                  <span className="grow truncate">
-                    {AGENT_DISPLAY_NAMES[stackId] ?? stackId}
-                  </span>
+                  <span className="grow truncate">{AGENT_DISPLAY_NAMES[stackId] ?? stackId}</span>
                   <span className="metric-chip">
                     {formatCount(count)} finding{count === 1 ? '' : 's'}
                   </span>
