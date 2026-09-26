@@ -18,7 +18,7 @@ function Invoke-SentrySetup {
   $prevDistro = ''
   if ($prevCfg['selectedDistro']) { $prevDistro = [string]$prevCfg['selectedDistro'] }
   $wslResult = Ensure-SentryWslDistro -Explicit $DistroFlag -NonInteractive $NonInteractive -Previous $prevDistro
-  if ($wslResult.RebootRequired) { return $script:SentryRebootExitCode }
+  if ($wslResult.RebootRequired) { return (Get-SentryRebootExitCode) }
   if (-not $wslResult.Distro) { Write-SentryFail 'No usable WSL2 distro.'; return 1 }
   $distro = $wslResult.Distro
   Set-SentryLauncherConfig @{ selectedDistro = $distro }
@@ -212,11 +212,14 @@ function Invoke-SentryStatus {
     if (([string]$sd.Stdout).Trim() -eq 'SYSTEMD_OK') { $systemd = 'ready' } else { $systemd = 'unavailable' }
     $dse = Get-SentryExpectedDeepSeekVersion -RepoRoot $RepoRoot
     $dsr = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-deepseek.sh' -ScriptArgs @($dse) -TimeoutSec 60
+    $dsManaged = ''
     foreach ($line in (([string]$dsr.Stdout) -split "`n")) {
       $t = $line.Trim()
-      if ($t.StartsWith('DSH_MANAGED=')) { $toolDs = ($t.Substring(12) + ' @ ' + $dse) }
+      if ($t.StartsWith('DSH_MANAGED=')) { $dsManaged = $t.Substring(12) }
     }
-    if (-not $toolDs) { $toolDs = 'missing' }
+    if (([string]$dsr.Stdout).Contains('DSH_OK')) { $toolDs = ($dse + ' managed') }
+    elseif ($dsManaged) { $toolDs = ($dse + ' issue') }
+    else { $toolDs = 'missing' }
     $ocr = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-opencode.sh' -TimeoutSec 60
     if (([string]$ocr.Stdout).Contains('1.18.32')) { $toolOc = '1.18.32' } else { $toolOc = 'missing/unverified' }
     $ccr = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-claude.sh' -ScriptArgs @('2.1.270') -TimeoutSec 60

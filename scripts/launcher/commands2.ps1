@@ -208,9 +208,25 @@ function Invoke-SentryPostUpdate {
   $hello = Invoke-SentryRuntimeHandshake -Distro $distro
   if (-not $hello) { return 1 }
   [void](Sync-SentryDistroPreference -RepoRoot $RepoRoot -Distro $distro)
-  [void](Invoke-SentryToolRevalidation -Distro $distro -RepoRoot $RepoRoot)
+  Write-SentrySection 'Agent tools (re-provision after update)'
+  $oc = Ensure-SentryOpenCode -Distro $distro
+  $ds = Ensure-SentryDeepSeek -Distro $distro -RepoRoot $RepoRoot
+  $cc = Ensure-SentryClaudeCode -Distro $distro -RepoRoot $RepoRoot
   Install-SentryShim -RepoRoot $RepoRoot
   Set-SentryLauncherConfig @{ setupVersion = (Get-SentryProductVersion -RepoRoot $RepoRoot); setupCommit = $NewSha }
+  if (-not ($oc -and $ds -and $cc)) {
+    Write-SentryFail 'Sentry source was updated, but agent tooling is not fully ready.'
+    Write-Host 'Agent readiness:'
+    if ($oc) { Write-Host '  OpenCode PASS' } else { Write-Host '  OpenCode FAIL' }
+    if ($ds) { Write-Host '  DeepSeek PASS' } else { Write-Host '  DeepSeek FAIL' }
+    if ($cc) { Write-Host '  GLM PASS' } else { Write-Host '  GLM FAIL' }
+    Write-Host 'Git was advanced and the previous runtime was preserved; nothing was reset.'
+    Write-Host 'Provider settings and projects were preserved.'
+    Write-Host 'Run:'
+    Write-Host '    sentry doctor'
+    Write-Host 'Sentry stays stopped until tooling is ready.'
+    return 2
+  }
   Write-Host ('Updated: ' + $OldSha + ' -> ' + $NewSha) -ForegroundColor Green
   Write-Host 'Provider settings and projects were preserved (no migration in this release).'
   $shaChanged = ($OldSha -cne $NewSha)

@@ -118,22 +118,9 @@ function Ensure-SentryClaudeCode {
   return $false
 }
 
-function Invoke-SentryToolRevalidation {
-  param([string]$Distro, [string]$RepoRoot)
-  Write-SentryInfo 'Revalidating managed agent tools against the active runtime...'
-  $ok = $true
-  $expected = Get-SentryExpectedDeepSeekVersion -RepoRoot $RepoRoot
-  $d = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-deepseek.sh' -ScriptArgs @($expected) -TimeoutSec 60
-  if (-not ([string]$d.Stdout).Contains('DSH_OK')) { Write-SentryWarn 'DeepSeek managed binary needs attention (see sentry doctor).'; $ok = $false }
-  else { Write-SentryOk 'DeepSeek managed binary verified' }
-  $c = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-claude.sh' -ScriptArgs @('2.1.270') -TimeoutSec 60
-  if (-not (([string]$c.Stdout).Contains('MANAGED_OK') -or ([string]$c.Stdout).Contains('PATH_OK'))) { Write-SentryWarn 'Claude managed binary needs attention (see sentry doctor).'; $ok = $false }
-  else { Write-SentryOk 'Claude binary verified' }
-  $o = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-opencode.sh' -TimeoutSec 60
-  if (-not ([string]$o.Stdout).Contains('1.18.32')) { Write-SentryWarn 'OpenCode binary needs attention (see sentry doctor).'; $ok = $false }
-  else { Write-SentryOk 'OpenCode binary verified' }
-  return $ok
-}
+# NOTE: post-update re-provisions tools via Ensure-SentryOpenCode,
+# Ensure-SentryDeepSeek, and Ensure-SentryClaudeCode (authoritative).
+# The old check-only Invoke-SentryToolRevalidation was removed.
 
 function Invoke-SentryRuntimeDeploy {
   param([string]$Distro, [string]$RepoRoot, [string]$ProductVersion = '', [string]$Sha = '')
