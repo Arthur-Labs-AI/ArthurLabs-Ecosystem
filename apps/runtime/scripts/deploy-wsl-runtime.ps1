@@ -11,6 +11,8 @@
 param([string]$Distro = 'Ubuntu', [string]$Version = '')
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+Import-Module (Join-Path $repoRoot 'scripts/launcher/SentryLauncher.psm1') -Force -DisableNameChecking
+. (Join-Path $repoRoot 'scripts/launcher/wsl-setup.ps1')
 if (-not $Version) {
   $product = '0.1.0-beta.1'
   try { $pkg = Get-Content (Join-Path $repoRoot 'package.json') -Raw | ConvertFrom-Json; if ($pkg.version) { $product = [string]$pkg.version } } catch { }
@@ -27,9 +29,10 @@ $deployScript = Join-Path $PSScriptRoot 'deploy-inner.sh'
 $deployLinux = ((wsl.exe -d $Distro -- wslpath -u (($deployScript -replace '\\', '/'))).Trim())
 $wrapScript = Join-Path $repoRoot 'scripts/launcher/linux/deploy-wrap.sh'
 $wrapLinux = ((wsl.exe -d $Distro -- wslpath -u (($wrapScript -replace '\\', '/'))).Trim())
-$logLinux = '$HOME/sentry-deploy-' + $Version + '.log'
+$logLinux = Get-SentryDeployLogPath -Distro $Distro -Version $Version
+if (-not $logLinux) { throw 'WSL deploy aborted: could not resolve the distro user HOME for the deploy log (previous runtime untouched)' }
 & wsl.exe -d $Distro -- bash $wrapLinux $deployLinux $linuxSrc $Version $logLinux
 if ($LASTEXITCODE -ne 0) { throw "WSL deploy failed with exit $LASTEXITCODE (previous runtime untouched; log: $logLinux inside $Distro)" }
-$logTail = (wsl.exe -d $Distro -- bash -c ('tail -n 15 ' + $logLinux)).Trim()
-Write-Output $logTail
+$logTail = Invoke-SentryWsl -Distro $Distro -LinuxArgs @('tail', '-n', '15', $logLinux) -TimeoutSec 60
+Write-Output ([string]$logTail.Stdout).Trim()
 Write-Output '[sentry-runtime] deployed'

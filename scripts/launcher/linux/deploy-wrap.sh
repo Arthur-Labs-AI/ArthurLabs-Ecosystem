@@ -4,9 +4,17 @@
 # then reports a machine-readable exit marker. All shell logic lives here so
 # no quoting or $ expansion crosses the wsl.exe command-line boundary.
 # $1 = inner script (Linux path), $2 = source tree (Linux path),
-# $3 = version, $4 = log file (Linux path).
+# $3 = version, $4 = log file (absolute Linux path, already resolved).
 set -u
 INNER="$1"; SRC="$2"; VERSION="$3"; LOG="$4"
+case "$LOG" in
+  *'$HOME'*) echo "invalid deploy log path (unexpanded HOME): $LOG" >&2; exit 90 ;;
+esac
+case "$LOG" in
+  /*) ;;
+  *) echo "invalid deploy log path (not absolute): $LOG" >&2; exit 90 ;;
+esac
+mkdir -p "$(dirname "$LOG")" || { echo "cannot create deploy log dir" >&2; exit 90; }
 rm -f "$LOG"
 bash "$INNER" "$SRC" "$VERSION" > "$LOG" 2>&1
 code=$?

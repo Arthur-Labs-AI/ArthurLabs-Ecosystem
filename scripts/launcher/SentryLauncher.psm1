@@ -8,6 +8,13 @@ $script:SentryReleaseTitle = 'Sentry v0.1 Beta'
 $script:SentryRequiredNodeMajor = 22
 $script:SentryRebootExitCode = 75
 
+# Cross-boundary constants MUST be exposed as functions: dot-sourced scripts
+# (prerequisites/wsl-setup/commands) run in the CALLER's scope, where the
+# module's $script: variables are invisible (they silently read as $null).
+function Get-SentryRequiredNodeMajor { return $script:SentryRequiredNodeMajor }
+function Get-SentryRebootExitCode { return $script:SentryRebootExitCode }
+function Get-SentryReleaseTitle { return $script:SentryReleaseTitle }
+
 function Get-SentryRepoRoot {
   $here = $PSScriptRoot
   if ([string]::IsNullOrEmpty($here)) { $here = (Get-Location).Path }
@@ -107,7 +114,7 @@ function Invoke-SentryNative {
 }
 
 function Invoke-SentryWslFile {
-  param([string]$Distro, [string]$ScriptName, [string[]]$ScriptArgs = @(), [int]$TimeoutSec = 300)
+  param([string]$Distro, [string]$ScriptName, [string[]]$ScriptArgs = @(), [int]$TimeoutSec = 300, [bool]$AsRoot = $false)
   $scriptPath = Join-Path $PSScriptRoot ('linux/' + $ScriptName)
   if (-not (Test-Path $scriptPath)) { return @{ ExitCode = -1; Stdout = ''; Stderr = ('missing launcher script: ' + $ScriptName) } }
   $fwd = ((Resolve-Path $scriptPath).Path -replace '\\', '/')
@@ -115,7 +122,9 @@ function Invoke-SentryWslFile {
   $linuxPath = ([string]$lp.Stdout).Trim()
   if (-not $linuxPath) { return @{ ExitCode = -1; Stdout = ''; Stderr = 'wslpath failed' } }
   $bashArgs = @()
-  $bashArgs += '-d'; $bashArgs += $Distro; $bashArgs += '--'; $bashArgs += 'bash'; $bashArgs += $linuxPath
+  $bashArgs += '-d'; $bashArgs += $Distro
+  if ($AsRoot) { $bashArgs += '-u'; $bashArgs += 'root' }
+  $bashArgs += '--'; $bashArgs += 'bash'; $bashArgs += $linuxPath
   foreach ($a in $ScriptArgs) { $bashArgs += $a }
   return Invoke-SentryNative -FilePath 'wsl.exe' -Arguments $bashArgs -TimeoutSec $TimeoutSec
 }

@@ -96,6 +96,21 @@ function Invoke-SentryWsl {
   return Invoke-SentryNative -FilePath 'wsl.exe' -Arguments $wslArgs -TimeoutSec $TimeoutSec
 }
 
+function Get-SentryDeployLogPath {
+  param([string]$Distro, [string]$Version)
+  try {
+    $r = Invoke-SentryNative -FilePath 'wsl.exe' -Arguments @('-d', $Distro, '--', 'printenv', 'HOME') -TimeoutSec 30
+    if ($r.ExitCode -ne 0) { return '' }
+    $home_ = ([string]$r.Stdout).Trim()
+    if ([string]::IsNullOrEmpty($home_)) { return '' }
+    if (-not $home_.StartsWith('/')) { return '' }
+    if ($home_.Contains('$')) { return '' }
+    $safeVersion = ([string]$Version) -replace '[^A-Za-z0-9._-]', '_'
+    if ([string]::IsNullOrEmpty($safeVersion)) { return '' }
+    return ($home_.TrimEnd('/') + '/sentry-deploy-' + $safeVersion + '.log')
+  } catch { return '' }
+}
+
 function Get-SentryDistroClass {
   param($Distros)
   $usable = @()
@@ -265,7 +280,7 @@ function Ensure-SentrySystemd {
   if (([string]$probe.Stdout).Trim() -eq 'SYSTEMD_OK') { Write-SentryOk 'systemd user services'; return $true }
   Write-SentryWarn 'systemd user services are not enabled in this distro.'
   Write-SentryInfo 'Sentry will enable systemd in /etc/wsl.conf (backup first, other settings preserved).'
-  $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'enable-systemd.sh' -TimeoutSec 60
+  $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'enable-systemd.sh' -TimeoutSec 60 -AsRoot $true
   Write-SentryLog ('wsl.conf update exit=' + $r.ExitCode) 'setup'
   Write-SentryInfo ('Restarting distro ' + $Distro + ' (terminate only this distro)...')
   [void](Invoke-SentryNative -FilePath 'wsl.exe' -Arguments @('--terminate', $Distro))
@@ -287,14 +302,14 @@ function Ensure-SentryLinuxNode {
   param([string]$Distro)
   $ver = Get-SentryLinuxNodeVersion -Distro $Distro
   if ($ver -match '^v?(\d+)\.') {
-    if ([int]$Matches[1] -ge $script:SentryRequiredNodeMajor) { Write-SentryOk ('Linux Node ' + $ver); return $true }
+    if ([int]$Matches[1] -ge (Get-SentryRequiredNodeMajor)) { Write-SentryOk ('Linux Node ' + $ver); return $true }
     Write-SentryWarn ('Linux Node ' + $ver + ' is too old; installing Node 22...')
   } else { Write-SentryInfo 'Installing Linux Node 22 (NodeSource, official builds)...' }
-  $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'install-node.sh' -TimeoutSec 600
+  $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'install-node.sh' -TimeoutSec 600 -AsRoot $true
   Write-SentryLog ('linux node install exit=' + $r.ExitCode) 'setup'
   $ver2 = Get-SentryLinuxNodeVersion -Distro $Distro
   if ($ver2 -match '^v?(\d+)\.') {
-    if ([int]$Matches[1] -ge $script:SentryRequiredNodeMajor) { Write-SentryOk ('Linux Node ' + $ver2); return $true }
+    if ([int]$Matches[1] -ge (Get-SentryRequiredNodeMajor)) { Write-SentryOk ('Linux Node ' + $ver2); return $true }
   }
   Write-SentryFail 'Linux Node >= 22 could not be installed automatically (non-apt distro or network issue).'
   Write-SentryInfo 'Install Node 22 manually inside the distro so that direct execution works.'
@@ -307,7 +322,7 @@ function Ensure-SentryLinuxPnpm {
   $r = Invoke-SentryWsl -Distro $Distro -LinuxArgs @('pnpm', '--version') -TimeoutSec 30
   if ($r.ExitCode -eq 0 -and ([string]$r.Stdout).Trim() -eq $pinned) { Write-SentryOk ('Linux pnpm ' + $pinned); return $true }
   Write-SentryInfo ('Installing pinned Linux pnpm ' + $pinned + ' (npm -g, direct-exec visible)...')
-  $r2 = Invoke-SentryWslFile -Distro $Distro -ScriptName 'install-pnpm.sh' -ScriptArgs @($pinned) -TimeoutSec 300
+  $r2 = Invoke-SentryWslFile -Distro $Distro -ScriptName 'install-pnpm.sh' -ScriptArgs @($pinned) -TimeoutSec 300 -AsRoot $true
   Write-SentryLog ('linux pnpm install exit=' + $r2.ExitCode) 'setup'
   $r3 = Invoke-SentryWsl -Distro $Distro -LinuxArgs @('pnpm', '--version') -TimeoutSec 30
   if ($r3.ExitCode -eq 0 -and ([string]$r3.Stdout).Trim() -eq $pinned) { Write-SentryOk ('Linux pnpm ' + $pinned); return $true }
@@ -335,7 +350,7 @@ function Ensure-SentryLinuxDeps {
   Write-SentryInfo ('Installing missing Linux packages: ' + $missingText + ' (apt only, nothing removed)...')
   $instArgs = @()
   foreach ($m in $missingPkgs) { $instArgs += $m }
-  $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'install-deps.sh' -ScriptArgs $instArgs -TimeoutSec 600
+  $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'install-deps.sh' -ScriptArgs $instArgs -TimeoutSec 600 -AsRoot $true
   if ($r.ExitCode -ne 0) { Write-SentryFail 'Could not install Linux packages (see log). Non-apt distros must be prepared manually.'; return $false }
   Write-SentryOk 'Linux dependencies installed'
   return $true
