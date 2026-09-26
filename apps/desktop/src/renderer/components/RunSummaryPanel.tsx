@@ -32,6 +32,7 @@ export function RunSummaryPanel({
       countsByAgent.set(agentRunId, (countsByAgent.get(agentRunId) ?? 0) + 1);
     }
   }
+  const completedAgentCount = agentRuns.filter((agent) => agent['status'] === 'completed').length;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <section aria-label="Run status">
@@ -48,6 +49,31 @@ export function RunSummaryPanel({
         <div className="section-title" style={{ marginBottom: 8 }}>
           Results
         </div>
+        {agentRuns.length > 0 ? (
+          <div
+            className="result-observation"
+            role="img"
+            aria-label={
+              completedAgentCount + ' of ' + agentRuns.length + ' agent executions completed'
+            }
+          >
+            <div className="result-observation-count">
+              <strong>
+                {completedAgentCount} <span>/ {agentRuns.length}</span>
+              </strong>
+              <small>AGENT EXECUTIONS COMPLETE</small>
+            </div>
+            <div className="result-observation-track" aria-hidden="true">
+              {agentRuns.map((agent) => (
+                <span
+                  key={String(agent['id'])}
+                  className={'result-observation-node ' + String(agent['status'] ?? '')}
+                  title={String(agent['status'] ?? '')}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
         {agentRuns.length === 0 ? (
           <p className="metadata">No agent runs yet — agents are waiting.</p>
         ) : (

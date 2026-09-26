@@ -102,9 +102,13 @@ export function AppShell(): React.JSX.Element {
       <aside className={'sidebar' + (collapsed ? ' collapsed' : '')} aria-label="Primary">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">
-            S
+            <img src="./sentry-logo.png" alt="" />
           </span>
-          {collapsed ? null : <span className="brand-text">SENTRY</span>}
+          {collapsed ? null : (
+            <span className="brand-text">
+              SENTRY<small>OBSERVATION SYSTEM</small>
+            </span>
+          )}
         </div>
         {collapsed ? null : <div className="nav-group">Overview</div>}
         <nav aria-label="Primary navigation">

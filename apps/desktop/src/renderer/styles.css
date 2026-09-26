@@ -1,44 +1,48 @@
 :root {
-  /* Surfaces (dark-first) */
-  --surface-0: #0b0e14;
-  --surface-1: #11151d;
-  --surface-2: #151a24;
-  --surface-3: #1b2230;
+  /* Sentry observation environment */
+  --sentry-green: #4e7d48;
+  --sentry-yellow: #d4c00b;
+  --sentry-green-light: #8eae82;
+  --sentry-danger: #b96462;
+  --surface-0: #0d100d;
+  --surface-1: #121712;
+  --surface-2: #171d17;
+  --surface-3: #1d241d;
   --bg: var(--surface-0);
   --bg-elevated: var(--surface-1);
   --bg-panel: var(--surface-2);
   /* Borders */
-  --border-subtle: #1a2130;
-  --border-default: #232a38;
-  --border-strong: #33405a;
+  --border-subtle: rgba(160, 190, 160, 0.1);
+  --border-default: rgba(160, 190, 160, 0.15);
+  --border-strong: rgba(160, 190, 160, 0.28);
   --border: var(--border-default);
   /* Text */
-  --text-primary: #e6e9f0;
-  --text-secondary: #9aa3b5;
-  --text-tertiary: #6b7484;
+  --text-primary: #eef1eb;
+  --text-secondary: #a8b0a5;
+  --text-tertiary: #737d71;
   --text: var(--text-primary);
   --text-muted: var(--text-secondary);
   --text-faint: var(--text-tertiary);
   /* Accent + status */
-  --accent: #38bdf8;
-  --accent-dim: #0e7490;
-  --muse: #a78bfa;
-  --opencode: #34d399;
-  --deepseek: #22d3ee;
-  --glm: #f59e0b;
-  --success: #22c55e;
-  --running: #38bdf8;
-  --warning: #f59e0b;
-  --danger: #ef4444;
+  --accent: var(--sentry-green);
+  --accent-dim: #365b35;
+  --muse: #91a887;
+  --opencode: #75a16c;
+  --deepseek: #749b91;
+  --glm: #b5aa66;
+  --success: #6d9b66;
+  --running: var(--sentry-yellow);
+  --warning: #c2a760;
+  --danger: var(--sentry-danger);
   --failed: var(--danger);
-  --cancelled: #6b7280;
-  --inconclusive: #a78bfa;
+  --cancelled: #737d71;
+  --inconclusive: #a99870;
   /* Radius / shadow / space */
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.28);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;

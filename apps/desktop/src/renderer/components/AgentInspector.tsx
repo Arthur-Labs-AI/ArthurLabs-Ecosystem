@@ -599,7 +599,7 @@ export function FindingDetail({
   );
   const evidenceById = new Map(evidence.map((item) => [item.id, item]));
   return (
-    <div style={{ marginTop: 8, borderTop: '1px solid #2a3348', paddingTop: 8 }}>
+    <div style={{ marginTop: 8, borderTop: '1px solid var(--border-default)', paddingTop: 8 }}>
       <h4 style={{ margin: '0 0 4px' }}>{finding.title}</h4>
       {section('Severity', <span>{finding.severity.toUpperCase()}</span>)}
       {section(

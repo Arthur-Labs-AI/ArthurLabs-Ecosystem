@@ -23,14 +23,6 @@ export function dotClassForStatus(status: string): string {
   return 'status-dot status-running';
 }
 
-const GLYPHS: Record<StatusTone, string> = {
-  success: '\u2713',
-  info: '\u25CF',
-  warning: '!',
-  danger: '\u00D7',
-  muted: '\u25A0',
-};
-
 export function StatusPill({
   status,
   label,
@@ -47,7 +39,7 @@ export function StatusPill({
         className={dotClassForStatus(status) + (pulse === true ? ' pulse' : '')}
         aria-hidden="true"
       />
-      {GLYPHS[tone]} {label ?? status}
+      {label ?? status}
     </span>
   );
 }

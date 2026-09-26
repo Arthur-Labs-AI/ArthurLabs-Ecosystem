@@ -22,7 +22,8 @@ async function createWindow(): Promise<void> {
     minWidth: 960,
     minHeight: 680,
     title: 'Sentry',
-    backgroundColor: '#0b0e14',
+    icon: resolveAsset('../../assets/sentry-icon.png'),
+    backgroundColor: '#0d100d',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -76,12 +77,13 @@ async function boot(): Promise<void> {
       width: 640,
       height: runtimeOffline ? 420 : 320,
       title: runtimeOffline ? 'Sentry — runtime offline' : 'Sentry — data store unavailable',
-      backgroundColor: '#0b0e14',
+      icon: resolveAsset('../../assets/sentry-icon.png'),
+      backgroundColor: '#0d100d',
     });
     await fatal.loadURL(
       'data:text/html;charset=utf-8,' +
         encodeURIComponent(
-          "<body style='background:#0b0e14;color:#e6e9f0;font-family:sans-serif;padding:32px'>" +
+          "<body style='background:#0d100d;color:#eef1eb;font-family:sans-serif;padding:32px'>" +
             (runtimeOffline
               ? '<h1>Sentry Runtime Offline</h1><p>Sentry Desktop is running, but the WSL2 execution runtime could not start.</p><p>' +
                 message.replace(/</g, '&lt;') +

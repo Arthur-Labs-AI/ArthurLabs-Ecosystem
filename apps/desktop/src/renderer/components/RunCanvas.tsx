@@ -21,15 +21,15 @@ const nodeTypes = {
 function edgeStyle(state: RunGraphEdge['state']): { stroke: string; animated: boolean } {
   switch (state) {
     case 'completed':
-      return { stroke: '#22c55e', animated: false };
+      return { stroke: '#6d9b66', animated: false };
     case 'active':
-      return { stroke: '#38bdf8', animated: true };
+      return { stroke: '#d4c00b', animated: true };
     case 'failed':
-      return { stroke: '#ef4444', animated: false };
+      return { stroke: '#b96462', animated: false };
     case 'blocked':
-      return { stroke: '#6b7280', animated: false };
+      return { stroke: '#737d71', animated: false };
     default:
-      return { stroke: '#39414f', animated: false };
+      return { stroke: '#3c4c3a', animated: false };
   }
 }
 
@@ -283,7 +283,7 @@ export function RunCanvas({
         attributionPosition="bottom-right"
         onlyRenderVisibleElements={false}
       >
-        <Background gap={24} color="#1c2330" />
+        <Background gap={24} color="#243124" />
       </ReactFlow>
     </div>
   );
