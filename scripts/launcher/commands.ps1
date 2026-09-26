@@ -53,14 +53,14 @@ function Invoke-SentrySetup {
   Write-SentrySection '[6/7] Agent tools'
   $oc = Ensure-SentryOpenCode -Distro $distro
   $ds = Ensure-SentryDeepSeek -Distro $distro -RepoRoot $RepoRoot
-  $cc = Ensure-SentryClaudeCode -Distro $distro
+  $cc = Ensure-SentryClaudeCode -Distro $distro -RepoRoot $RepoRoot
   Write-SentrySection '[7/7] Launcher'
   Install-SentryShim -RepoRoot $RepoRoot
   Write-SentryOk 'sentry command installed (user PATH; restart terminal if not recognized)'
   Set-SentryLauncherConfig @{ setupVersion = $version; setupCommit = (Get-SentryShortSha -RepoRoot $RepoRoot) }
   Show-SentrySetupSummary -Distro $distro -OpenCode $oc -DeepSeek $ds -Claude $cc
   if ($oc -and $ds -and $cc) { return 0 }
-  return 0
+  return 2
 }
 
 function Show-SentrySetupSummary {
@@ -96,9 +96,16 @@ function Show-SentrySetupSummary {
     Write-Host 'Run: sentry open'
     Write-Host 'Then configure provider accounts in: Settings -> Providers'
   } else {
-    Write-Host 'Sentry core setup completed, but one agent tool is missing.' -ForegroundColor Yellow
+    Write-Host 'Sentry core setup completed.' -ForegroundColor Yellow
+    Write-Host 'Agent readiness:'
+    if ($OpenCode) { Write-Host '  OpenCode PASS' } else { Write-Host '  OpenCode FAIL' }
+    if ($DeepSeek) { Write-Host '  DeepSeek PASS' } else { Write-Host '  DeepSeek FAIL' }
+    if ($Claude) { Write-Host '  GLM PASS' } else { Write-Host '  GLM FAIL' }
+    Write-Host ''
+    Write-Host 'Full 3-agent QA is NOT ready.' -ForegroundColor Yellow
     Write-Host 'Sentry can open; affected runs stay unavailable until the tool is installed.'
-    Write-Host 'Run: sentry doctor'
+    Write-Host 'Run:'
+    Write-Host '    sentry doctor'
   }
 }
 
@@ -188,9 +195,35 @@ function Invoke-SentryStatus {
   $distro = [string]$cfg['selectedDistro']
   $lNode = ''
   $rtSha = ''
+  $wslVer = ''
+  $systemd = ''
+  $toolOc = ''
+  $toolDs = ''
+  $toolCc = ''
   if ($distro) {
     $lNode = Get-SentryLinuxNodeVersion -Distro $distro
     $rtSha = Get-SentryRuntimeCurrent -Distro $distro
+    try {
+      $all = @(Get-SentryWslDistros)
+      $hit = @($all | Where-Object { $_.Name -ceq $distro })[0]
+      if ($hit) { $wslVer = 'WSL' + $hit.Version }
+    } catch { }
+    $sd = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-systemd.sh' -TimeoutSec 60
+    if (([string]$sd.Stdout).Trim() -eq 'SYSTEMD_OK') { $systemd = 'ready' } else { $systemd = 'unavailable' }
+    $dse = Get-SentryExpectedDeepSeekVersion -RepoRoot $RepoRoot
+    $dsr = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-deepseek.sh' -ScriptArgs @($dse) -TimeoutSec 60
+    foreach ($line in (([string]$dsr.Stdout) -split "`n")) {
+      $t = $line.Trim()
+      if ($t.StartsWith('DSH_MANAGED=')) { $toolDs = ($t.Substring(12) + ' @ ' + $dse) }
+    }
+    if (-not $toolDs) { $toolDs = 'missing' }
+    $ocr = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-opencode.sh' -TimeoutSec 60
+    if (([string]$ocr.Stdout).Contains('1.18.32')) { $toolOc = '1.18.32' } else { $toolOc = 'missing/unverified' }
+    $ccr = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-claude.sh' -ScriptArgs @('2.1.270') -TimeoutSec 60
+    $cct = [string]$ccr.Stdout
+    if ($cct.Contains('MANAGED_OK')) { $toolCc = '2.1.270 managed' }
+    elseif ($cct.Contains('PATH_OK')) { $toolCc = '2.1.270 reused' }
+    else { $toolCc = 'missing/unverified' }
   }
   $desktopBuilt = (Test-Path (Join-Path $RepoRoot 'apps/desktop/dist/main/index.js')) -and (Test-Path (Join-Path $RepoRoot 'apps/desktop/dist/renderer/index.html'))
   $running = @(Get-SentryDesktopProcesses).Count -gt 0
@@ -198,8 +231,8 @@ function Invoke-SentryStatus {
     $obj = @{
       product = 'Sentry'; release = 'v0.1 Beta'; version = $version; commit = $sha; branch = $branch; clean = $clean;
       windows = @{ node = $wNode; pnpm = $wPnpm };
-      wsl = @{ distro = $distro; node = $lNode };
-      sentry = @{ desktopBuilt = $desktopBuilt; runtime = $rtSha; running = $running }
+      wsl = @{ distro = $distro; wslVersion = $wslVer; node = $lNode; systemd = $systemd };
+      sentry = @{ desktopBuilt = $desktopBuilt; runtime = $rtSha; running = $running; tools = @{ opencode = $toolOc; deepseek = $toolDs; claude = $toolCc } }
     }
     Write-Host ($obj | ConvertTo-Json -Depth 5)
     return 0
@@ -217,11 +250,17 @@ function Invoke-SentryStatus {
   Write-Host ('  pnpm        ' + $wPnpm)
   Write-Host 'WSL'
   Write-Host ('  Distro      ' + $distro)
+  Write-Host ('  Version     ' + $wslVer)
   Write-Host ('  Node        ' + $lNode)
+  Write-Host ('  systemd     ' + $systemd)
   Write-Host 'Sentry'
   $builtText = 'not built'; if ($desktopBuilt) { $builtText = 'built' }
   Write-Host ('  Desktop     ' + $builtText)
   Write-Host ('  Runtime     ' + $rtSha)
+  Write-Host 'Agent tools'
+  Write-Host ('  OpenCode    ' + $toolOc)
+  Write-Host ('  DeepSeek    ' + $toolDs)
+  Write-Host ('  Claude Code ' + $toolCc)
   $runningText = 'no'; if ($running) { $runningText = 'yes' }
   Write-Host ('  Running     ' + $runningText)
   return 0

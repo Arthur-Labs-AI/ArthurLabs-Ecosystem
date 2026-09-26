@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Install the adapter-tested Claude Code from the official npm registry.
-# $1 = version (e.g. 2.1.270). Must resolve to a native Linux binary.
-set -e
+# Sentry-managed Claude Code install: local npm prefix only.
+# NO sudo, NO global npm modification — the user's global Claude is untouched.
+# $1 = version (e.g. 2.1.270).
+set -euo pipefail
 VERSION="$1"
-sudo npm install -g "@anthropic-ai/claude-code@${VERSION}" 2>&1 | tail -2
-p="$(command -v claude)"
-echo "PATH=$p"
-claude --version 2>&1 | head -1
+TOOLS="$HOME/.local/share/sentry/tools/claude-code"
+mkdir -p "$TOOLS"
+cd "$TOOLS"
+[ -f package.json ] || npm init -y >/dev/null 2>&1
+npm install "@anthropic-ai/claude-code@${VERSION}" 2>&1 | tail -2
+BIN="$TOOLS/node_modules/.bin/claude"
+"$BIN" --version
+echo "MANAGED_CLAUDE=$BIN"

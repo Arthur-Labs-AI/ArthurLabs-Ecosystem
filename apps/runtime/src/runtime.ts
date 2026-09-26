@@ -268,6 +268,11 @@ export class SentryRuntimeHost {
       applyBinaryOverride('SENTRY_OPENCODE_BINARY', parsed.binaries.opencode);
       applyBinaryOverride('SENTRY_DEEPSEEK_BINARY', parsed.binaries.deepseek);
       applyBinaryOverride('SENTRY_GLM_BINARY', parsed.binaries.glm);
+      // The GLM harness resolves its executable from SENTRY_CLAUDE_BINARY
+      // (or PATH `claude`). Mirror the pushed GLM override there so the
+      // Desktop's persisted SENTRY_GLM_BINARY actually takes effect.
+      // Harness discovery itself is untouched.
+      applyBinaryOverride('SENTRY_CLAUDE_BINARY', parsed.binaries.glm);
     }
     return { configured: true };
   }

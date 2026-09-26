@@ -6,6 +6,8 @@ describe('parseSentryControlArgs', () => {
     expect(parseSentryControlArgs(['electron', '.'])).toEqual({
       mode: undefined,
       setupDistro: undefined,
+      providerBinary: undefined,
+      credentialStatus: false,
     });
     expect(parseSentryControlArgs(['electron', '.', '--sentry-app']).mode).toBeUndefined();
   });
@@ -36,6 +38,61 @@ describe('parseSentryControlArgs', () => {
     expect(
       parseSentryControlArgs(['electron', '.', '--sentry-setup-distro']).setupDistro,
     ).toBeUndefined();
+  });
+
+  it('parses provider binary overrides with an allowlist', () => {
+    expect(
+      parseSentryControlArgs([
+        'electron',
+        '.',
+        '--sentry-setup-provider-binary',
+        'SENTRY_DEEPSEEK_BINARY',
+        '/home/u/.local/share/sentry/tools/deepseek/bin/dsh',
+      ]).providerBinary,
+    ).toEqual({
+      key: 'SENTRY_DEEPSEEK_BINARY',
+      value: '/home/u/.local/share/sentry/tools/deepseek/bin/dsh',
+    });
+    expect(
+      parseSentryControlArgs([
+        'electron',
+        '.',
+        '--sentry-setup-provider-binary',
+        'SENTRY_GLM_BINARY',
+        '/home/u/.local/share/sentry/tools/claude-code/node_modules/.bin/claude',
+      ]).providerBinary?.key,
+    ).toBe('SENTRY_GLM_BINARY');
+  });
+
+  it('rejects secret keys and non-path values for provider binaries', () => {
+    expect(
+      parseSentryControlArgs([
+        'electron',
+        '.',
+        '--sentry-setup-provider-binary',
+        'ANTHROPIC_AUTH_TOKEN',
+        'sk-secret',
+      ]).providerBinary,
+    ).toBeUndefined();
+    expect(
+      parseSentryControlArgs([
+        'electron',
+        '.',
+        '--sentry-setup-provider-binary',
+        'SENTRY_DEEPSEEK_BINARY',
+        'relative/path',
+      ]).providerBinary,
+    ).toBeUndefined();
+    expect(
+      parseSentryControlArgs(['electron', '.', '--sentry-setup-provider-binary']).providerBinary,
+    ).toBeUndefined();
+  });
+
+  it('detects the credential-status flag', () => {
+    expect(
+      parseSentryControlArgs(['electron', '.', '--sentry-credential-status']).credentialStatus,
+    ).toBe(true);
+    expect(parseSentryControlArgs(['electron', '.']).credentialStatus).toBe(false);
   });
 
   it('stop while not running must not carry a window request', () => {

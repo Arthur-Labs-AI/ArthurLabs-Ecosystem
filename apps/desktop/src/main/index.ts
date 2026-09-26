@@ -213,6 +213,60 @@ if (sentryControl.mode === 'stop') {
         });
     });
   }
+} else if (sentryControl.providerBinary !== undefined) {
+  // Provider binary override (`sentry setup`): persist a NON-SECRET
+  // executable path through the existing plain-prefs mechanism, then quit.
+  // Secret keys are rejected by the parser allowlist; values are Linux
+  // paths, never credentials.
+  const binaryToSave = sentryControl.providerBinary;
+  if (!app.requestSingleInstanceLock()) {
+    app.quit();
+  } else {
+    void app.whenReady().then(() => {
+      import('./services/provider-credentials.js')
+        .then(async ({ ProviderCredentialService }) => {
+          const credentials = new ProviderCredentialService({
+            userDataDir: app.getPath('userData'),
+          });
+          await credentials.load();
+          await credentials.saveKey(binaryToSave.key, binaryToSave.value);
+          console.log('Saved provider binary override: ' + binaryToSave.key);
+          app.quit();
+        })
+        .catch((error: unknown) => {
+          console.error('Failed to save provider binary: ' + String(error));
+          app.exit(1);
+        });
+    });
+  }
+} else if (sentryControl.credentialStatus) {
+  // Presence-only credential diagnostic (`sentry doctor`): prints booleans
+  // only — never values, blobs, prefixes, or paths.
+  if (!app.requestSingleInstanceLock()) {
+    app.quit();
+  } else {
+    void app.whenReady().then(() => {
+      import('./services/provider-credentials.js')
+        .then(async ({ ProviderCredentialService }) => {
+          const credentials = new ProviderCredentialService({
+            userDataDir: app.getPath('userData'),
+          });
+          await credentials.load();
+          const isSet = (name: string): boolean => (credentials.getValue(name) ?? '').length > 0;
+          const report = {
+            opencode: isSet('OPENROUTER_API_KEY') || isSet('OPENCODE_API_KEY'),
+            deepseek: isSet('DEEPSEEK_API_KEY'),
+            glm: isSet('ANTHROPIC_AUTH_TOKEN'),
+          };
+          console.log('SENTRY_CREDENTIAL_STATUS=' + JSON.stringify(report));
+          app.quit();
+        })
+        .catch((error: unknown) => {
+          console.error('Failed to read credential status: ' + String(error));
+          app.exit(1);
+        });
+    });
+  }
 } else if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
