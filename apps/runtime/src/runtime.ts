@@ -9,6 +9,7 @@
  * as soon as the row exists; the promise stays owned here. Live state flows
  * via notifications plus renderer polling.
  */
+import { spawnSync } from 'node:child_process';
 import { isAbsolute, join } from 'node:path';
 import { z } from 'zod';
 import { INITIAL_AGENT_STACKS } from '@qa/domain';
@@ -119,6 +120,109 @@ interface PendingRun {
 function applyBinaryOverride(name: string, value: string | undefined): void {
   if (value !== undefined) process.env[name] = value;
   else delete process.env[name];
+}
+
+export interface SandboxDepsStatus {
+  readonly socat: boolean;
+  readonly bwrap: boolean;
+  readonly socatVersion: string;
+  readonly bwrapVersion: string;
+  readonly initOk: boolean;
+  readonly initDetail: string;
+}
+
+/**
+ * GLM sandbox prerequisites, probed in the runtime host (not in harness
+ * code): the pinned Claude sandbox runs fail-closed and needs `socat` +
+ * `bwrap` plus a working user-namespace sandbox init. No model contact,
+ * bounded synchronous probes, never throws — unknown means unverified.
+ */
+export function probeSandboxDeps(): SandboxDepsStatus {
+  const missing: SandboxDepsStatus = {
+    socat: false,
+    bwrap: false,
+    socatVersion: '',
+    bwrapVersion: '',
+    initOk: false,
+    initDetail: 'unverified',
+  };
+  try {
+    const has = (bin: string): boolean => {
+      try {
+        const r = spawnSync('sh', ['-c', 'command -v ' + bin], {
+          encoding: 'utf8',
+          timeout: 5000,
+        });
+        return r.status === 0;
+      } catch {
+        return false;
+      }
+    };
+    const socat = has('socat');
+    const bwrap = has('bwrap');
+    let socatVersion = '';
+    let bwrapVersion = '';
+    let initOk = false;
+    let initDetail = 'unverified';
+    if (socat) {
+      try {
+        const r = spawnSync('socat', ['-V'], { encoding: 'utf8', timeout: 5000 });
+        socatVersion = (
+          String(r.stdout ?? r.stderr ?? '').split('\n')[0] ?? ''
+        ).trim().slice(0, 120);
+      } catch {
+        socatVersion = '';
+      }
+    }
+    if (bwrap) {
+      try {
+        const r = spawnSync('bwrap', ['--version'], { encoding: 'utf8', timeout: 5000 });
+        bwrapVersion = (String(r.stdout ?? '').split('\n')[0] ?? '').trim().slice(0, 120);
+      } catch {
+        bwrapVersion = '';
+      }
+      try {
+        const smoke = spawnSync(
+          'bwrap',
+          ['--ro-bind', '/usr', '/usr', '--proc', '/proc', '--dev', '/dev', '/usr/bin/true'],
+          { encoding: 'utf8', timeout: 10000 },
+        );
+        initOk = smoke.status === 0;
+        initDetail = smoke.status === 0 ? 'smoke passed' : 'exit ' + String(smoke.status);
+      } catch {
+        initOk = false;
+        initDetail = 'spawn failed';
+      }
+    } else {
+      initDetail = 'bwrap-missing';
+    }
+    return { socat, bwrap, socatVersion, bwrapVersion, initOk, initDetail };
+  } catch {
+    return missing;
+  }
+}
+
+/** Sentry-managed DeepSeek wrapper path (the Bash CLI entry operators use). */
+export function deepseekManagedWrapperPath(dataRoot: string): string {
+  return join(dataRoot, 'tools', 'deepseek', 'bin', 'dsh');
+}
+
+/**
+ * GLM-specific environment extras: when the fail-closed sandbox cannot be
+ * established, readiness is downgraded (never upgraded) with a specific
+ * note, so the UI shows WHY instead of a generic unavailable state.
+ */
+export function glmSandboxStatus(deps: SandboxDepsStatus): Record<string, unknown> {
+  if (deps.socat && deps.bwrap && deps.initOk) return {};
+  const missing: string[] = [];
+  if (!deps.socat) missing.push('`socat` is not installed in Ubuntu');
+  if (!deps.bwrap) missing.push('`bubblewrap` is not installed in Ubuntu');
+  if (deps.socat && deps.bwrap && !deps.initOk)
+    missing.push('bubblewrap cannot initialize (' + deps.initDetail + ')');
+  return {
+    readiness: 'sandbox-unavailable',
+    note: 'Sandbox unavailable: ' + missing.join('; ') + '.',
+  };
 }
 
 export class SentryRuntimeHost {
@@ -741,6 +845,10 @@ export class SentryRuntimeHost {
       import('@qa/harness-deepseek'),
       import('@qa/harness-claude-code'),
     ]);
+    // Sandbox prerequisites for the fail-closed GLM sandbox, probed here
+    // (not in harness code): presence + versions + a minimal no-model
+    // bubblewrap init smoke. Never throws; unknown means unverified.
+    const sandboxDeps = probeSandboxDeps();
     const [opencode, deepseek, glm] = await Promise.all([
       doctorOpenCode({
         managedExecutable: managedOpenCodeExecutable(this.dataRoot),
@@ -791,19 +899,36 @@ export class SentryRuntimeHost {
         reason: error instanceof Error ? error.message.slice(0, 300) : 'probe failed',
       };
     }
-    return {
-      runtime: await this.runtimeIdentity(),
-      agentStacks: INITIAL_AGENT_STACKS.map((s) => ({
+    const stacks = INITIAL_AGENT_STACKS.map((s) => {
+      const base =
+        s.id === 'stack_opencode_main'
+          ? {
+              ...stackStatus(s.id, opencode as never),
+              executionPath: managedOpenCodeExecutable(this.dataRoot),
+            }
+          : s.id === 'stack_deepseek_main'
+            ? {
+                ...stackStatus(s.id, deepseek as never),
+                executionPath: deepseekManagedWrapperPath(this.dataRoot),
+                wrapperNote:
+                  'Managed wrapper available; production SDK runtime resolves separately at startup.',
+              }
+            : {
+                ...stackStatus(s.id, glm as never),
+                ...glmSandboxStatus(sandboxDeps),
+              };
+      return {
         id: s.id,
         displayName: s.displayName,
         modelId: s.model.modelId,
         provider: s.model.provider,
-        ...(s.id === 'stack_opencode_main'
-          ? stackStatus(s.id, opencode as never)
-          : s.id === 'stack_deepseek_main'
-            ? stackStatus(s.id, deepseek as never)
-            : stackStatus(s.id, glm as never)),
-      })),
+        ...base,
+      };
+    });
+    return {
+      runtime: await this.runtimeIdentity(),
+      agentStacks: stacks,
+      sandboxDeps,
       verifier,
       dataRoot: this.dataRoot,
     };

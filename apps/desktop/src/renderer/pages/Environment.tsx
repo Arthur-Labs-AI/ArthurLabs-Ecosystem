@@ -33,6 +33,9 @@ interface AgentStackHealth {
   binaryAvailable?: boolean;
   runtimeVerified?: boolean;
   readiness?: string;
+  executionPath?: string;
+  wrapperNote?: string;
+  note?: string;
 }
 
 function HealthRow({ ok, label }: { ok: boolean; label: string }): React.JSX.Element {
@@ -179,6 +182,21 @@ export function Environment(): React.JSX.Element {
                 ok={stack.runtimeVerified === true}
                 label={'Runtime ' + (stack.runtimeVerified === true ? 'verified' : 'not tested')}
               />
+              {stack.executionPath !== undefined && stack.executionPath !== '' ? (
+                <div className="mono metadata truncate" title={stack.executionPath}>
+                  {'Execution runtime: ' + stack.executionPath}
+                </div>
+              ) : null}
+              {stack.wrapperNote !== undefined && stack.wrapperNote !== '' ? (
+                <p className="metadata" style={{ marginBottom: 0 }}>
+                  {stack.wrapperNote}
+                </p>
+              ) : null}
+              {stack.note !== undefined && stack.note !== '' ? (
+                <p className="metadata" style={{ marginBottom: 0 }}>
+                  {stack.note}
+                </p>
+              ) : null}
               <p className="metadata" style={{ marginBottom: 0 }}>
                 A saved credential does not imply the provider works until a non-billable doctor
                 verifies it inside the WSL runtime.
