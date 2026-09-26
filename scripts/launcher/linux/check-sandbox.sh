@@ -17,7 +17,9 @@ else
   echo 'MISS-bwrap'
 fi
 if command -v bwrap >/dev/null 2>&1; then
-  if bwrap --ro-bind /usr /usr --proc /proc --dev /dev /usr/bin/true >/dev/null 2>&1; then
+  # Minimal init smoke: proves user namespaces + mounts initialize by
+  # running only /usr/bin/true (no model, no network, no secrets).
+  if bwrap --dev-bind / / --proc /proc /usr/bin/true >/dev/null 2>&1; then
     echo 'SANDBOX_INIT_OK'
   else
     echo 'SANDBOX_INIT_FAIL=user-namespaces-or-mounts-unavailable'

@@ -167,9 +167,9 @@ export function probeSandboxDeps(): SandboxDepsStatus {
     if (socat) {
       try {
         const r = spawnSync('socat', ['-V'], { encoding: 'utf8', timeout: 5000 });
-        socatVersion = (
-          String(r.stdout ?? r.stderr ?? '').split('\n')[0] ?? ''
-        ).trim().slice(0, 120);
+        socatVersion = (String(r.stdout ?? r.stderr ?? '').split('\n')[0] ?? '')
+          .trim()
+          .slice(0, 120);
       } catch {
         socatVersion = '';
       }
@@ -184,7 +184,7 @@ export function probeSandboxDeps(): SandboxDepsStatus {
       try {
         const smoke = spawnSync(
           'bwrap',
-          ['--ro-bind', '/usr', '/usr', '--proc', '/proc', '--dev', '/dev', '/usr/bin/true'],
+          ['--dev-bind', '/', '/', '--proc', '/proc', '/usr/bin/true'],
           { encoding: 'utf8', timeout: 10000 },
         );
         initOk = smoke.status === 0;
