@@ -1,11 +1,11 @@
 # Release checklist — Sentry v0.1 Beta (`v0.1.0-beta.1`)
 
 Check an item only after actually performing it. Evidence first.
-Status as of the final hardening pass (code validated at 79b417c, 2026-09-26; this commit is checklist-docs only).
+Status as of the IO-drain final pass (code validated at 8e38ab9, 2026-09-26; this commit is checklist-docs only).
 
 - [x] tree clean (`git status --porcelain` empty) — verified clean
 - [ ] latest `main` checked out and pushed — fix commits since e350150 are LOCAL, not pushed
-- [ ] CI green (Linux quality + Windows launcher job) — not yet run on this HEAD (see validation notes)
+- [ ] CI green (Linux quality + Windows launcher job) — must be read from GitHub Actions on the final HEAD (see validation notes)
 - [x] `pnpm repository:check` passes
 - [x] `pnpm format:check` passes
 - [x] `pnpm lint` passes (20/20)
