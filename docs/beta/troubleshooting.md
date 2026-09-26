@@ -56,6 +56,43 @@ wsl -d Ubuntu -- node --version   # must print v22+
 Setup installs Node 22 via NodeSource on apt distros. On non-apt distros,
 install Node >= 22 manually so the command above works, then rerun setup.
 
+## GLM sandbox: `socat` / `bubblewrap` missing
+
+The GLM sandbox runs fail-closed: if `socat` or `bubblewrap` is missing
+(or bubblewrap cannot initialize), GLM runs fail instead of running
+unsandboxed. `sentry doctor` reports exactly which piece is missing.
+
+Check (Ubuntu / WSL — run these **inside** Ubuntu, not in Windows
+PowerShell):
+
+```bash
+command -v socat
+command -v bwrap
+```
+
+Install (Ubuntu / WSL):
+
+```bash
+sudo apt update
+sudo apt install -y socat bubblewrap
+```
+
+Then rerun `sentry doctor`. `sentry setup` installs these automatically on
+apt distros; on other distros install them manually. Never disable the
+sandbox to work around this (`sandbox.failIfUnavailable` stays on).
+
+> Windows `winget` commands run in **Windows PowerShell** only — never
+> inside Ubuntu. Conversely `sudo apt ...` runs **inside Ubuntu** only.
+
+## Per-tool probes (Ubuntu / WSL)
+
+```bash
+$HOME/.local/share/sentry/tools/opencode/node_modules/.bin/opencode --version
+$HOME/.local/share/sentry/tools/deepseek/bin/dsh --version
+```
+
+`$HOME` avoids username-specific paths entirely.
+
 ## systemd unavailable
 
 Sentry uses systemd user services for worker isolation. Setup enables

@@ -45,6 +45,13 @@ or:
 echo "$HOME"
 ```
 
+Prefer `$HOME` in shell commands where possible so the username never
+appears at all:
+
+```bash
+$HOME/.local/share/sentry/tools/opencode/node_modules/.bin/opencode --version
+```
+
 Executable discovery order (no restart needed for changes): explicit
 adapter config → `SENTRY_OPENCODE_BINARY` (Settings → Providers →
 “OpenCode executable”, pushed into runtime memory) → Sentry-managed

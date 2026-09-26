@@ -2,9 +2,15 @@
 
 No secrets below — substitute your own values where indicated.
 
+> Normal path: `sentry setup` automates everything below. This page is the
+> manual reference. Commands marked **Windows PowerShell** run on the host;
+> commands marked **Ubuntu / WSL** run inside the distro. `winget` is a
+> Windows-only tool (never inside Ubuntu); `sudo apt ...` runs inside
+> Ubuntu only.
+
 ## 1. WSL2 + Ubuntu + systemd
 
-- Install WSL2 with Ubuntu from an elevated PowerShell: `wsl --install -d Ubuntu`.
+- Install WSL2 with Ubuntu (**Windows PowerShell**, elevated): `wsl --install -d Ubuntu`.
 - Ensure WSL2 (not WSL1): `wsl --list --verbose` must show version 2.
 - Ensure systemd is active inside the distro:
   `wsl -d Ubuntu -- systemctl --user show-environment` should succeed, and

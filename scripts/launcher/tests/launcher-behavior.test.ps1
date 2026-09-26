@@ -140,6 +140,7 @@ function Get-SentryLauncherConfig { return @{ selectedDistro = 'Ubuntu' } }
 function Write-SentryLog { param($Message, $Kind) return }
 function Get-SentryProductVersion { param($RepoRoot) return '0.1.0-beta.1' }
 $script:NativeStubs = @{ '*' = @{ ExitCode = 0; Stdout = ''; Stderr = '' } }
+$script:WslFileStubs = @{ 'check-sandbox.sh' = @{ ExitCode = 0; Stdout = ("HAVE-socat`nHAVE-bwrap`nSANDBOX_INIT_OK"); Stderr = '' } }
 $script:OpenCalled = 0
 $script:MockTools = @{ oc = $true; ds = $true; cc = $true }
 $updOk = Invoke-SentryPostUpdate -RepoRoot $repoRoot -OldSha 'aaa' -NewSha 'bbb' -WasRunning $true
@@ -185,6 +186,39 @@ $env:PATH = ($env:PATH + ';' + $sentinelDir)
 Assert-True 'path-refresh-keeps-session-entry' (($env:PATH -split ';') -contains $sentinelDir)
 Assert-True 'path-refresh-no-dupes' (((@($env:PATH -split ';' | Where-Object { $_ -ne '' }).Count) -eq (@($env:PATH -split ';' | Where-Object { $_ -ne '' } | Select-Object -Unique).Count)))
 $env:PATH = ((@($env:PATH -split ';' | Where-Object { $_ -ne $sentinelDir }) -join ';'))
+# ---- 15. sandbox status parsing drives honest GLM gating (mocked) ----
+$script:WslFileStubs = @{ 'check-sandbox.sh' = @{ ExitCode = 0; Stdout = ("HAVE-socat`nSOCAT_VERSION=socat version 1.8.0.3`nHAVE-bwrap`nBWRAP_VERSION=bubblewrap 0.10.1`nSANDBOX_INIT_OK"); Stderr = '' } }
+$sbOk = Get-SentrySandboxStatus -Distro 'Ubuntu'
+Assert-Equal 'sandbox-all-present' (([bool]$sbOk.Socat -and [bool]$sbOk.Bwrap -and [bool]$sbOk.InitOk)) $true
+$script:WslFileStubs = @{ 'check-sandbox.sh' = @{ ExitCode = 0; Stdout = ("MISS-socat`nHAVE-bwrap`nBWRAP_VERSION=bubblewrap 0.10.1`nSANDBOX_INIT_OK"); Stderr = '' } }
+$sbNoSoc = Get-SentrySandboxStatus -Distro 'Ubuntu'
+Assert-Equal 'sandbox-socat-missing-detected' $sbNoSoc.Socat $false
+Assert-Equal 'sandbox-bwrap-still-present' $sbNoSoc.Bwrap $true
+$script:WslFileStubs = @{ 'check-sandbox.sh' = @{ ExitCode = 0; Stdout = ("MISS-socat`nMISS-bwrap`nSANDBOX_INIT_FAIL=bwrap-missing"); Stderr = '' } }
+$sbBoth = Get-SentrySandboxStatus -Distro 'Ubuntu'
+Assert-Equal 'sandbox-both-missing' (([bool](-not $sbBoth.Socat) -and [bool](-not $sbBoth.Bwrap))) $true
+# ---- 16. noninteractive install failure reports the apt command (E) ----
+$script:WslFileStubs = @{
+  'check-deps.sh' = @{ ExitCode = 0; Stdout = ("HAVE-git`nHAVE-curl`nHAVE-ca-certificates`nHAVE-bwrap`nMISS-socat"); Stderr = '' };
+  'install-deps.sh' = @{ ExitCode = 1; Stdout = ''; Stderr = 'apt failed' }
+}
+$depsFail = Ensure-SentryLinuxDeps -Distro 'Ubuntu' -RepoRoot $repoRoot
+Assert-Equal 'deps-install-failure-honest' $depsFail $false
+# ---- 17. idempotency: PATH dedupe, no reinstall when healthy ----
+Assert-Equal 'path-dedupe-hit' (Test-SentryPathEntry -PathText 'C:\A;C:\Users\x\AppData\Local\Sentry\bin;C:\B' -Dir 'C:\Users\x\AppData\Local\Sentry\bin') $true
+Assert-Equal 'path-dedupe-trailing-slash' (Test-SentryPathEntry -PathText 'C:\A' -Dir 'C:\A\') $true
+Assert-Equal 'path-dedupe-miss' (Test-SentryPathEntry -PathText 'C:\A;C:\B' -Dir 'C:\C') $false
+Assert-Equal 'path-dedupe-empty' (Test-SentryPathEntry -PathText '' -Dir 'C:\C') $false
+$script:WslFileCalls = @()
+$script:WslFileStubs = @{ 'check-opencode.sh' = @{ ExitCode = 0; Stdout = ("CANDIDATE opencode opencode version 1.18.32`n"); Stderr = '' } }
+$ocSkip = Ensure-SentryOpenCode -Distro 'Ubuntu'
+Assert-Equal 'opencode-healthy-no-reinstall' $ocSkip $true
+Assert-True 'opencode-install-not-invoked' ((@($script:WslFileCalls) | Where-Object { $_ -like 'install-opencode.sh*' }).Count -eq 0)
+$script:WslFileCalls = @()
+$script:WslFileStubs = @{ 'check-claude.sh' = @{ ExitCode = 0; Stdout = ("MANAGED=/home/u/.local/share/sentry/tools/claude-code/node_modules/.bin/claude`nMANAGED_VERSION=2.1.270 (Claude Code)`nMANAGED_NATIVE=linux`nMANAGED_OK"); Stderr = '' } }
+$ccSkip = Ensure-SentryClaudeCode -Distro 'Ubuntu' -RepoRoot $repoRoot
+Assert-Equal 'claude-managed-no-reinstall' $ccSkip $true
+Assert-True 'claude-install-not-invoked' ((@($script:WslFileCalls) | Where-Object { $_ -like 'install-claude.sh*' }).Count -eq 0)
 # ---- 10. no host mutations: user PATH untouched by tests ----
 $before = [Environment]::GetEnvironmentVariable('PATH', 'User')
 Assert-True 'user-path-untouched' (([Environment]::GetEnvironmentVariable('PATH', 'User')) -eq $before)
