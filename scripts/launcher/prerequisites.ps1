@@ -25,7 +25,7 @@ function Test-SentryWindowsNode {
   $ver = Get-SentryWindowsNodeVersion
   if ($ver -match '^v?(\d+)\.') {
     $major = [int]$Matches[1]
-    if ($major -ge $script:SentryRequiredNodeMajor) { Write-SentryOk ('Node ' + $ver); return $true }
+    if ($major -ge (Get-SentryRequiredNodeMajor)) { Write-SentryOk ('Node ' + $ver); return $true }
     Write-SentryWarn ('Node ' + $ver + ' is too old; Sentry requires Node >= 22.')
   } else {
     Write-SentryWarn 'Node.js was not found on PATH.'
@@ -40,7 +40,7 @@ function Test-SentryWindowsNode {
     } catch { Write-SentryLog ('winget failed: ' + $_.Exception.Message) 'setup' }
     $ver2 = Get-SentryWindowsNodeVersion
     if ($ver2 -match '^v?(\d+)\.') {
-      if ([int]$Matches[1] -ge $script:SentryRequiredNodeMajor) { Write-SentryOk ('Node ' + $ver2); return $true }
+      if ([int]$Matches[1] -ge (Get-SentryRequiredNodeMajor)) { Write-SentryOk ('Node ' + $ver2); return $true }
     }
   }
   Write-SentryFail 'Node >= 22 is required.'

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Install missing apt packages. Args: package names.
+# Install missing system packages.
+# Runs as root via `wsl -d <distro> -u root` (no interactive sudo).
+# Args: package names.
 set -e
-sudo apt-get update
-sudo apt-get install -y "$@"
+apt-get update
+apt-get install -y "$@"
