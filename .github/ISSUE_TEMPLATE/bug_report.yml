@@ -1,0 +1,79 @@
+name: Bug report
+description: Report a Sentry Beta problem (no secrets, ever).
+title: '[beta]: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: '## ⚠️ Do not paste API keys, provider tokens, or secrets. `sentry doctor` never prints them — keep it that way here too.'
+  - type: input
+    id: version
+    attributes:
+      label: Sentry version
+      description: Output of `sentry version`.
+      placeholder: '0.1.0-beta.1'
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: The commit line from `sentry version`.
+      placeholder: 'e9e0b80'
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: 'Windows 11 23H2'
+    validations:
+      required: true
+  - type: input
+    id: wsl
+    attributes:
+      label: WSL distro
+      description: From `sentry status` (e.g. Ubuntu, WSL2).
+      placeholder: 'Ubuntu (WSL2)'
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: What command failed
+      placeholder: 'sentry setup'
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: sentry status output
+      description: Paste `sentry status -Json` output.
+      render: json
+    validations:
+      required: false
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Relevant sentry doctor FAIL/WARN lines
+      render: text
+    validations:
+      required: false

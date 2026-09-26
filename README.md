@@ -1,188 +1,138 @@
 # Sentry
 
-A local-first AI software QA system for comprehensive, evidence-backed testing
-of local software projects using independent AI Agent Stacks.
+Sentry is a local-first AI software QA desktop application that runs
+multiple independent AI QA agents against the same immutable project snapshot.
 
-Sentry's contracted architecture imports a local folder into a managed project
-copy, records immutable project revisions, locks an exact run-start snapshot,
-and gives each selected agent a private plan and isolated writable workspace.
-Full QA is broad; Retest follows an earlier issue onto the current revision.
-Evidence-first reporting preserves disagreement, token usage, and complete
-observable run history until the user explicitly deletes it.
+Current release: v0.1 Beta
+Platform: Windows 11 + WSL2
 
-## What Phases 2–3 implement
+Three agents run independently against every project snapshot — no agent sees
+another agent's conclusions before reporting its own:
 
-The repository now implements the first real local runtime foundation:
+- **OpenCode** — broad QA coverage through the OpenCode harness (OpenRouter provider path).
+- **DeepSeek** — independent QA pass through the DeepSeek harness SDK.
+- **GLM** — independent QA pass through the Claude Code adapter (GLM provider).
 
-- pnpm workspaces + Turborepo monorepo with strict TypeScript, ESLint, Prettier;
-- `@qa/shared`: centralized opaque branded IDs and calendar-valid ISO UTC timestamps;
-- `@qa/schemas`: strict Zod contracts for managed copies, revisions, snapshots,
-  context, instructions, runs/retests, independent plans and hypotheses,
-  activities, findings, evidence, issues, advisory fixes, exports, and events;
-- `@qa/domain`: error taxonomy, pure state-transition helpers, stack fixtures,
-  relationship/outcome/usage helpers, parse boundary, coherent fixtures;
-- `@qa/harness-protocol`: `HarnessAdapter` semantic contract, metadata,
-  private single-agent requests, correlated operations, safe NDJSON/sequence
-  validation, investigation events, and `FakeHarnessAdapter`;
-- `@qa/persistence`: centralized data root, migrated SQLite repositories,
-  filesystem artifacts, deterministic traversal, streamed/bounded copies;
-- `@qa/project-manager`: full import, recoverable update, locks, integrity checks,
-  storage preflight, progress, cancellation, deletion, and update recovery;
-- `@qa/snapshot-engine`: deterministic hashes and streamed NDJSON manifests;
-- `@qa/context-builder`: factual context plus progressive material indexes;
-- `@qa/workspace-factory`: reflink-first isolated writable copies without hardlinks;
-- `@qa/run-engine`: registry-driven real or fake workers, incremental events, activity tree,
-  failure isolation, timeouts, recovery, cleanup, and log/JSON exports;
-- `@qa/harness-opencode`: the isolated OpenCode harness adapter and structured plan/result boundary;
-- `qa` CLI project lifecycle, simulated runs, and real OpenCode/DeepSeek/GLM runs;
-- versioned `--json` machine responses, typed errors, stable exit codes,
-  lightweight status polling, and truthful capability discovery;
-- unit, filesystem, SQLite, integration, recovery, and fake end-to-end tests.
+Each agent produces its own findings with evidence. Sentry preserves
+agreement AND disagreement: nothing is merged away, every finding keeps its
+source, token usage, and observable run history until you delete it.
 
-Phase 2.1 hardens this runtime for concurrent local processes and large runs:
-durable leases, abandoned-only recovery, atomic project locking, operation
-journals, workspace symlink isolation, incremental transactional event ingestion,
-live/recovered activity state, and iterator-backed exports. See
-[docs/architecture/phase-2-1.md](docs/architecture/phase-2-1.md).
+## Quick start
 
-Phase 2.2 makes the CLI a first-class automation interface while preserving the
-same application services and read/mutation boundary. See
-[docs/architecture/phase-2-2.md](docs/architecture/phase-2-2.md) and
-[ADR-0011](docs/adr/0011-headless-cli-automation-contract.md).
-
-Phase 3 added the first real AgentStack execution path (Muse Code, since replaced by OpenCode). It pinned
-`@muse-code/sdk@0.1.1`, required an exact configured model, and ran one Muse
-worker through the same coordinator used by fake simulation. The Muse harness
-has since been removed from the active product and replaced by the OpenCode
-harness (OpenRouter provider path); historical Muse runs remain readable. See
-[docs/setup/opencode.md](docs/setup/opencode.md) and
-[ADR-0014](docs/adr/0014-opencode-harness-and-provider-separation.md).
-Historical Phase 3 notes live in [docs/architecture/phase-3.md](docs/architecture/phase-3.md)
-and [ADR-0012](docs/adr/0012-muse-code-sdk-adapter-boundary.md).
-
-## What is not implemented yet
-
-- Automatic fixes, Docker, Playwright, Electron, REST, MCP, cross-run issue
-  deduplication, synthesis, or CI/CD generation.
-- Installer/setup/distribution (Phase 9).
-
-Shipped and live: OpenCode (via OpenRouter), DeepSeek, and GLM agent stacks
-run as independent QA investigators against the same immutable snapshot in
-the Sentry Desktop app backed by the WSL2 Linux execution runtime. A run is
-done when its AgentRuns are terminal; each agent's findings and evidence are
-preserved exactly as reported — no automatic merge, deduplication, consensus,
-or unified issues. Historical merger/verifier/issues/retest rows from older
-runs remain readable and exportable. See
-[docs/architecture/phase-7.md](docs/architecture/phase-7.md) and the
-[private-beta quickstart](docs/private-beta/quickstart.md).
-
-## Repository layout
-
-```text
-apps/cli                 # thin qa project/run CLI
-packages/shared          # IDs, timestamps
-packages/schemas         # Zod source of truth + inferred types
-packages/domain          # errors, transitions, fixtures, parse boundary
-packages/harness-protocol# adapter contract, fake adapter, NDJSON helpers
-packages/harness-opencode  # sole OpenCode integration boundary (OpenRouter path)
-packages/persistence     # SQLite, data root, artifacts, filesystem engine
-packages/project-manager # managed project lifecycle
-packages/snapshot-engine # deterministic streamed snapshots
-packages/context-builder # factual context/material index
-packages/workspace-factory # isolated writable agent copies
-packages/run-engine      # generic coordinator, registry composition, recovery, exports
-packages/domain/tests/fixtures          # contract fixtures + relationship graph
-packages/harness-protocol/tests/fixtures/harness  # golden NDJSON event streams
-docs/architecture        # domain, lifecycle, protocol, Phase 1/1.1/2 baselines
-docs/adr                 # 0001–0014
-.github/workflows/ci.yml# install → format:check → lint → typecheck → test → build
+```powershell
+git clone https://github.com/Mert1026/Sentry.git
+cd Sentry
+.\sentry.ps1 setup
+sentry open
 ```
 
-## Development commands
+Then:
 
-```bash
-pnpm install        # install workspace dependencies
-pnpm build          # build all packages (turbo)
-pnpm test           # run all tests (turbo + vitest)
-pnpm lint           # eslint all packages
-pnpm typecheck      # tsc --noEmit all packages
-pnpm format         # prettier write
-pnpm format:check   # prettier check
+1. Open Settings → Providers and configure your provider accounts.
+2. Open Environment and verify readiness.
+3. Add a project.
+4. Start Full or Targeted QA.
+
+Use `git clone`, not a ZIP download: `sentry update` needs a Git checkout.
+
+## Requirements
+
+- Windows 11 with internet access during setup.
+- WSL2 (see below) — the execution runtime is Linux.
+- Node >= 22 and pnpm 9.12.3 on Windows (setup installs pnpm if missing and
+  guides you if Node needs attention).
+- Provider accounts / API credentials for the agents you want to run.
+- Administrator approval may be needed when WSL itself must be installed;
+  a reboot may be required — setup tells you and resumes afterwards.
+
+### If WSL2 already exists
+
+If WSL2 already exists, Sentry reuses a compatible distribution and does not
+reinstall WSL. Your default distro, home files, and installed packages are
+left alone; setup only adds the missing Sentry prerequisites (Node >= 22
+visible to direct `wsl.exe` execution, pnpm, systemd user services,
+sandbox utilities, the Sentry runtime, and the tested agent tools).
+Utility distros such as `docker-desktop` are ignored.
+
+### If WSL is missing
+
+If WSL is missing, setup can install WSL2 + Ubuntu for you with
+`wsl --install -d Ubuntu`. Windows may require a reboot; rerun
+`sentry setup` afterwards and setup resumes where it left off.
+A brand-new Ubuntu may ask you to create a Linux username/password once.
+
+## Everyday commands
+
+After setup, `sentry` works from any directory:
+
+```powershell
+sentry open      # launch Sentry Desktop
+sentry update    # pull latest commits and update Sentry
+sentry stop      # gracefully stop Sentry (only Sentry, never other apps)
+sentry status    # fast installation status (add -Json for machine-readable)
+sentry doctor    # detailed diagnostics (no paid API calls, no secrets printed)
+sentry version   # product version + commit
+sentry help      # all commands
 ```
 
-Requires Node.js 22+ and pnpm 9.
+The classic developer workflow still works and is never required to change:
 
-## Architecture principles
-
-- **Ports & adapters / hexagonal**: UI/CLI/REST/MCP → application → QA domain,
-  with infrastructure (adapters, Git, SQLite, Docker, Playwright) pointing inward.
-  The domain never imports vendor SDKs, Electron, React, Docker, SQLite, or Git.
-- **Agent stacks are configuration**: `AgentStack = Model + Harness + Execution
-Requirements + QA Policy`, with optional operational `ExecutionSafeguards`. No `if (model === 'opencode')` branching exists
-  anywhere; vendor logic belongs only in adapters.
-- **Stable identity vs replaceable model**: “OpenCode QA Agent” is the stable stack;
-  “selected OpenRouter model + OpenCode” is today's replaceable configuration.
-  (Historical: “Muse QA Agent” / “Muse 1.3 Contributor + Muse Code”.)
-- **Semantic separation**: Finding (one agent's claim) ≠ Evidence (support) ≠
-  UnifiedIssue (platform grouping) ≠ VerificationAttempt (independent check) ≠
-  FixProposal (advice only; never automatic application).
-- **References, not embedding**: issues hold `findingIds`, not `Finding[]`;
-  large outputs are `ArtifactId` references, never inline blobs.
-- **Evidence is discriminated**: every evidence `type` requires exactly its matching
-  strict payload; contradictory subtype payloads are rejected.
-- **Protocol identity is singular**: submitted Finding/Evidence IDs come only from
-  the embedded DTO, usage is token/runtime data only, and collected streams
-  enforce one AgentRun plus one final terminal event.
-- **Agent independence is structural**: an individual harness request names one
-  AgentRun and one AgentStack and contains no peer agents, plans, findings, or evidence.
-- **Local trusted product boundary**: local folders only; no Sentry auth, RBAC,
-  multitenancy, billing, quotas, cloud import, or project-size cap.
-- **Zod at boundaries**: untrusted transport and persisted JSON are validated;
-  corrupted stored rows fail with an entity-specific error.
-
-## Runtime CLI
-
-```bash
-qa doctor
-qa capabilities --json
-qa agent list --json
-qa agent doctor opencode --json
-qa project add ./sample-project
-qa project list --json
-qa project show <project-id> --json
-qa run simulate <project-id> --scenario success
-qa run simulate <project-id> --scenario partial
-qa run start <project-id> --mode full --agents opencode --wait
-qa run list <project-id>
-qa run show <run-id>
-qa run status <run-id> --json
-qa run export <run-id> --format log
-qa run export <run-id> --format json --json
-qa project update <project-id> ./sample-project
-qa project delete <project-id> --yes --json
+```powershell
+pnpm --filter @qa/desktop build
+pnpm --filter @qa/desktop dev:electron
 ```
 
-Human-mode simulated runs print `SIMULATED / FAKE HARNESS RUN`; the machine
-response contains `"simulated": true`. Simulation is **FAKE / DEVELOPMENT ONLY**.
-Real execution with OpenCode requires `SENTRY_OPENCODE_MODEL` (an exact OpenRouter model id), `OPENROUTER_API_KEY`, and a separately installed `opencode`
-binary (or `SENTRY_OPENCODE_BINARY`); its response contains `"simulated": false`.
-See [docs/setup/opencode.md](docs/setup/opencode.md). For GLM via Claude Code, set `SENTRY_GLM_MODEL`,
-`ANTHROPIC_BASE_URL` (for example `https://api.z.ai/api/anthropic`), and
-`ANTHROPIC_AUTH_TOKEN` before running `qa agent doctor glm --json`.
-Exit 5 means QA completed and found issues, not that Sentry crashed. Set
-`SENTRY_DATA_ROOT` to override the OS data location. See
-`docs/architecture/phase-2-2.md` for the complete machine contract and deferred
-scope.
+## Updating
 
-## Initial Agent Stacks (configuration fixtures)
+`sentry update` tracks the latest Git commits from `main` — it does NOT
+update from GitHub Releases yet. This is intentional for v0.1 Beta:
+Releases mark milestones and carry notes, while day-to-day Beta fixes flow
+through commits. Update refuses to run with local changes (commit, stash,
+or discard them first); it never resets or stashes for you.
 
-| Stack             | Model                         | Harness          |
-| ----------------- | ----------------------------- | ---------------- |
-| OpenCode QA Agent | Configurable OpenRouter model | OpenCode         |
-| DeepSeek QA Agent | DeepSeek V4 Flash             | DeepSeek Harness |
-| GLM QA Agent      | GLM-5.3-Flash                 | Claude Code      |
+See [docs/beta/updating.md](docs/beta/updating.md).
 
-These are replaceable configurations (see `docs/architecture/agent-stack.md`).
-Future stacks (new models, new providers, Kimi, future harnesses) validate without
-domain changes — proven by `stack-future.json` + the future-agent test.
-Historical Muse runs (`stack_muse_main`) remain readable but are no longer runnable.
+## Provider security
+
+- API keys are entered in the Desktop UI (Settings → Providers).
+- Secrets use Electron safeStorage / Windows DPAPI on this machine.
+- PowerShell setup never asks for, stores, or logs provider credentials.
+- WSL receives credentials only at runtime where the existing execution
+  architecture requires it; setup/doctor output never contains secrets.
+
+## What you get
+
+- Desktop QA workspace (projects, run workspace, finding inspection).
+- Full QA and Targeted QA across OpenCode, DeepSeek, and GLM.
+- Independent findings with evidence, JSON/log export, native Save As.
+- WSL2 execution runtime with isolated agent workspaces.
+- Secure provider settings, responsive redesigned UI.
+
+## Documentation
+
+- [docs/beta/getting-started.md](docs/beta/getting-started.md) — from a fresh
+  Windows machine to your first Full QA run.
+- [docs/beta/troubleshooting.md](docs/beta/troubleshooting.md) — common
+  failures; run `sentry doctor` first.
+- [docs/beta/updating.md](docs/beta/updating.md) — Beta update policy.
+- [docs/releases/v0.1.0-beta.1.md](docs/releases/v0.1.0-beta.1.md) — release notes.
+- [CHANGELOG.md](CHANGELOG.md) — user-facing changelog.
+
+Historical architecture records (`docs/architecture`, `docs/adr`) describe
+how Sentry was built, including retired workflows. They are history, not
+current instructions.
+
+## Beta limitations
+
+- Windows + WSL2 only for this Beta.
+- Source-based installation (`git clone` + `sentry setup`); no signed
+  installer yet.
+- Installing WSL may require a Windows reboot.
+- Provider access/keys are required to run agents.
+- Updates track latest `main` commits (see above).
+- Beta software: report bugs with `sentry status` output and the
+  FAIL/WARN lines from `sentry doctor` (never paste API keys).
+
+## License
+
+See [LICENSE](LICENSE).

@@ -105,3 +105,37 @@ jobs:
         run: |
           pnpm exec turbo run test --filter=@qa/merger --filter=@qa/verifier --filter=@qa/harness-claude-code -- --testNamePattern='(§61|§67|§13|§28|§39|name-only secret transport)'
       - run: pnpm build
+
+  launcher-windows:
+    name: launcher (windows, no WSL)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @qa/desktop build
+      - name: Launcher PowerShell syntax
+        shell: powershell
+        run: |
+          $files = @('sentry.ps1', 'scripts/launcher/SentryLauncher.psm1', 'scripts/launcher/prerequisites.ps1', 'scripts/launcher/wsl-setup.ps1', 'scripts/launcher/agent-tools.ps1', 'scripts/launcher/commands.ps1', 'scripts/launcher/commands2.ps1')
+          foreach ($f in $files) {
+            $tokens = $null; $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($f, [ref]$tokens, [ref]$errors)
+            if ($errors.Count -ne 0) { throw "syntax errors in $f" }
+          }
+      - name: Launcher decision-logic tests (no WSL)
+        run: node --test scripts/launcher/tests/launcher-logic.test.mjs
+      - name: Launcher PowerShell smoke (no WSL)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher/tests/launcher-smoke.ps1
+      - name: Desktop control-parser tests
+        run: pnpm --filter @qa/desktop exec vitest run tests/unit/sentry-control.test.ts
+      - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 help
+      - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 version
+      - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 status
