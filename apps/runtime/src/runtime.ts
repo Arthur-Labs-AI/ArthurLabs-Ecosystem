@@ -52,7 +52,7 @@ import {
   type RpcResponse,
 } from '@qa/runtime-protocol';
 
-export const RUNTIME_VERSION = '0.1.0' as const;
+export const RUNTIME_VERSION = '0.1.0-beta.1' as const;
 
 const ProjectIdInput = z.string().min(1).max(200);
 const RunIdInput = z.string().regex(/^run_[0-9A-HJKMNP-TV-Z]{26}$/);
