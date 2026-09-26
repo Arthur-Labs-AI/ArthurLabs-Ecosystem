@@ -1,7 +1,7 @@
 # Release checklist — Sentry v0.1 Beta (`v0.1.0-beta.1`)
 
 Check an item only after actually performing it. Evidence first.
-Status as of the IO-drain final pass (code validated at 8e38ab9, 2026-09-26; this commit is checklist-docs only).
+Status as of the sandbox-bootstrap pass (code validated at 0c4c68e, 2026-09-27; this commit is checklist-docs only).
 
 - [x] tree clean (`git status --porcelain` empty) — verified clean
 - [ ] latest `main` checked out and pushed — fix commits since e350150 are LOCAL, not pushed
@@ -19,7 +19,7 @@ Status as of the IO-drain final pass (code validated at 8e38ab9, 2026-09-26; thi
 - [x] `sentry open` tested (launches; second `open` focuses — single instance verified)
 - [x] `sentry stop` tested (graceful; marker-specific, never taskkill; idle-stop clean)
 - [x] `sentry update` tested (origin/main merge, dirty-tree refusal, wrong-branch refusal, no-update path, handoff rebuild + redeploy + revalidate; reopen-when-running not live-fired)
-- [x] `sentry doctor` tested (zero paid calls, no secrets — READY with honest CONFIGURATION state)
+- [x] `sentry doctor` tested (zero paid calls, no secrets — READY with honest CONFIGURATION state; socat/bwrap/init rows green)
 - [x] provider settings persist across update (models.json overrides merged, user models untouched)
 - [ ] OpenCode real run passes — NOT performed (no provider credentials in this session)
 - [ ] DeepSeek real run passes — NOT performed (no provider credentials in this session)
