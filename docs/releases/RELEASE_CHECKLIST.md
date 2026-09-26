@@ -1,7 +1,7 @@
 # Release checklist — Sentry v0.1 Beta (`v0.1.0-beta.1`)
 
 Check an item only after actually performing it. Evidence first.
-Status as of the final hardening pass (HEAD 79b417c, 2026-09-26).
+Status as of the final hardening pass (code validated at 79b417c, 2026-09-26; this commit is checklist-docs only).
 
 - [x] tree clean (`git status --porcelain` empty) — verified clean
 - [ ] latest `main` checked out and pushed — fix commits since e350150 are LOCAL, not pushed
