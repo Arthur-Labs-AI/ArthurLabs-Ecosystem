@@ -9,7 +9,8 @@ param(
   [string]$Distro = '',
   [switch]$Json,
   [switch]$Repair,
-  [switch]$NonInteractive
+  [switch]$NonInteractive,
+  [switch]$WasRunning
 )
 $ErrorActionPreference = 'Stop'
 
@@ -31,7 +32,7 @@ switch ($cmd) {
   'open' { $exitCode = Invoke-SentryOpen -RepoRoot $repoRoot }
   '__open-detached' { $exitCode = Invoke-SentryOpenDetached -RepoRoot $repoRoot }
   'update' { $exitCode = Invoke-SentryUpdate -RepoRoot $repoRoot -Repair ([bool]$Repair) }
-  '__post-update' { $exitCode = Invoke-SentryPostUpdate -RepoRoot $repoRoot -OldSha $Arg1 -NewSha $Arg2 -Repair ([bool]$Repair) }
+  '__post-update' { $exitCode = Invoke-SentryPostUpdate -RepoRoot $repoRoot -OldSha $Arg1 -NewSha $Arg2 -Repair ([bool]$Repair) -WasRunning ([bool]$WasRunning) }
   'stop' { $exitCode = Invoke-SentryStop -RepoRoot $repoRoot }
   'status' { $exitCode = Invoke-SentryStatus -RepoRoot $repoRoot -AsJson ([bool]$Json) }
   'doctor' { $exitCode = Invoke-SentryDoctor }

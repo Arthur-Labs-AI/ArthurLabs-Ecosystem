@@ -41,20 +41,53 @@ function Invoke-SentryDoctor {
     if ($hello) { &$add 'runtime.hello handshake' 'PASS' 'protocol 1 / linux' } else { &$add 'runtime.hello handshake' 'FAIL' 'handshake failed' }
     $oc = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-opencode.sh' -TimeoutSec 30
     $oct = ([string]$oc.Stdout).Trim()
-    if ($oct.Contains('1.18.32')) { &$add 'OpenCode 1.18.32' 'PASS' 'verified' } elseif ($oct.Contains('ABSENT')) { &$add 'OpenCode' 'WARN' 'not installed' } else { &$add 'OpenCode' 'WARN' 'untested version' }
-    $cl = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-claude.sh' -TimeoutSec 60
+    if ($oct.Contains('1.18.32')) { &$add 'OpenCode executable' 'PASS' '1.18.32 preflight-probed' } elseif ($oct.Contains('ABSENT')) { &$add 'OpenCode executable' 'FAIL' 'not installed' } else { &$add 'OpenCode executable' 'WARN' 'untested version' }
+    $dse = Get-SentryExpectedDeepSeekVersion -RepoRoot $RepoRoot
+    $ds = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-deepseek.sh' -ScriptArgs @($dse) -TimeoutSec 60
+    $dst = [string]$ds.Stdout
+    if ($dst.Contains('DSH_OK')) { &$add 'DeepSeek runtime' 'PASS' ($dse + ' managed, preflight-probed') }
+    elseif ($dst.Contains('DSH_DRIFT')) { &$add 'DeepSeek runtime' 'FAIL' 'managed binary version drift' }
+    elseif ($dst.Contains('DSH_BROKEN')) { &$add 'DeepSeek runtime' 'FAIL' 'managed binary does not execute' }
+    else { &$add 'DeepSeek runtime' 'FAIL' 'managed dsh executable missing' }
+    $cl = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-claude.sh' -ScriptArgs @('2.1.270') -TimeoutSec 60
     $clt = [string]$cl.Stdout
-    if ($clt.Contains('2.1.270') -and -not $clt.Contains('/mnt/c')) { &$add 'Claude Code 2.1.270' 'PASS' 'native linux' }
-    elseif ($clt.Contains('2.1.276')) { &$add 'Claude Code' 'FAIL' 'known-incompatible 2.1.276 installed' }
-    elseif ($clt.Contains('/mnt/c')) { &$add 'Claude Code' 'FAIL' 'Windows mount on PATH; need native Linux binary' }
-    else { &$add 'Claude Code' 'WARN' 'not installed or unverified' }
-    &$add 'DeepSeek SDK 0.1.5-rc.2' 'PASS' 'bundled via runtime (see setup log)'
-    &$add 'Provider credentials' 'PASS' 'presence-only: configured in Desktop Settings (never printed here)'
+    if ($clt.Contains('MANAGED_OK')) { &$add 'Claude Code' 'PASS' '2.1.270 Sentry-managed native Linux' }
+    elseif ($clt.Contains('PATH_OK') -and $clt.Contains('PATH_NATIVE=linux')) { &$add 'Claude Code' 'PASS' '2.1.270 existing native install (global untouched)' }
+    elseif ($clt.Contains('2.1.276')) { &$add 'Claude Code' 'FAIL' 'known-incompatible 2.1.276; Sentry-managed 2.1.270 required' }
+    elseif ($clt.Contains('windows-mount')) { &$add 'Claude Code' 'FAIL' 'Windows mount on PATH; Sentry-managed native binary required' }
+    else { &$add 'Claude Code' 'FAIL' 'no usable 2.1.270 binary' }
+    Add-SentryCredentialReport -Add $add -RepoRoot $RepoRoot
   }
   Show-SentryDoctorResults $results
   $fails = @($results | Where-Object { $_.Level -eq 'FAIL' })
   if ($fails.Count -eq 0) { return 0 }
   return 1
+}
+
+function Add-SentryCredentialReport {
+  param($Add, [string]$RepoRoot)
+  $exe = Get-SentryElectronExe -RepoRoot $RepoRoot
+  if (-not $exe) {
+    &$Add 'Provider credentials' 'INFO' 'verify in Desktop -> Settings -> Providers / Environment'
+    return
+  }
+  $appDir = Join-Path $RepoRoot 'apps/desktop'
+  $r = Invoke-SentryNative -FilePath $exe -Arguments @('.', '--sentry-credential-status') -Workdir $appDir -TimeoutSec 120 -NoRedirect $false
+  $line = @(([string]$r.Stdout -split "`n") | Where-Object { $_.Contains('SENTRY_CREDENTIAL_STATUS=') })[0]
+  if ((-not $line) -or ($r.ExitCode -ne 0)) {
+    &$Add 'Provider credentials' 'INFO' 'verify in Desktop -> Settings -> Providers / Environment'
+    return
+  }
+  try { $status = ($line.Substring($line.IndexOf('=') + 1) | ConvertFrom-Json) } catch {
+    &$Add 'Provider credentials' 'INFO' 'verify in Desktop -> Settings -> Providers / Environment'
+    return
+  }
+  $missing = @()
+  if ($status.opencode) { &$Add 'OpenCode credential' 'PASS' 'configured' } else { &$Add 'OpenCode credential' 'WARN' 'not configured'; $missing += 'OpenCode' }
+  if ($status.deepseek) { &$Add 'DeepSeek credential' 'PASS' 'configured' } else { &$Add 'DeepSeek credential' 'WARN' 'not configured'; $missing += 'DeepSeek' }
+  if ($status.glm) { &$Add 'GLM credential' 'PASS' 'configured' } else { &$Add 'GLM credential' 'WARN' 'not configured'; $missing += 'GLM' }
+  if ($missing.Count -eq 0) { &$Add 'Agent configuration' 'PASS' 'all three provider credentials present' }
+  else { &$Add 'Agent configuration' 'INFO' ('missing: ' + ($missing -join ', ') + ' — configure in Desktop Settings') }
 }
 
 function Show-SentryDoctorResults {
@@ -66,8 +99,12 @@ function Show-SentryDoctorResults {
     Write-Host ('  [' + $r.Level + '] ' + $r.Check + $(if ($r.Detail) { ' — ' + $r.Detail })) -ForegroundColor $color
   }
   $fails = @($Results | Where-Object { $_.Level -eq 'FAIL' })
+  $warns = @($Results | Where-Object { $_.Level -eq 'WARN' })
   Write-Host ''
-  if ($fails.Count -eq 0) { Write-Host 'Doctor result: READY' -ForegroundColor Green }
+  if ($fails.Count -eq 0) {
+    Write-Host 'Doctor result: READY (core infrastructure)' -ForegroundColor Green
+    if ($warns.Count -gt 0) { Write-Host 'Configuration: some provider credentials are missing — configure them in Desktop Settings -> Providers.' -ForegroundColor Yellow }
+  }
   else {
     Write-Host 'Doctor result: NOT READY' -ForegroundColor Red
     Write-Host 'Fix:'
@@ -76,12 +113,30 @@ function Show-SentryDoctorResults {
   }
 }
 
+function Test-SentryUpdateBranch {
+  param([string]$Branch)
+  if ($Branch -ceq 'main') { return '' }
+  return ('Sentry Beta updates track origin/main.' + "`n`n" + 'Current branch:' + "`n" + '    ' + $Branch + "`n`n" + 'Switch to main and rerun:' + "`n" + '    git switch main' + "`n" + '    sentry update')
+}
+
+function Test-SentryUpdateNeeded {
+  param([string]$HeadSha, [string]$RemoteSha)
+  if (-not $HeadSha -or -not $RemoteSha) { return $true }
+  return ($HeadSha -cne $RemoteSha)
+}
+
 function Invoke-SentryUpdate {
   param([string]$RepoRoot, [bool]$Repair = $false)
   Write-Host ''
-  Write-Host 'Sentry update (tracks latest main commits; Releases are milestones only)' -ForegroundColor Cyan
+  Write-Host 'Sentry update (tracks latest origin/main commits; Releases are milestones only)' -ForegroundColor Cyan
   try { $branch = ([string](& git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null)).Trim() } catch { $branch = '' }
-  try { $oldSha = ([string](& git -C $RepoRoot rev-parse --short HEAD 2>$null)).Trim() } catch { $oldSha = 'unknown' }
+  $branchRefusal = Test-SentryUpdateBranch -Branch $branch
+  if ($branchRefusal) {
+    Write-SentryFail $branchRefusal
+    Write-SentryInfo 'Zero Git mutations were made.'
+    return 1
+  }
+  try { $oldSha = ([string](& git -C $RepoRoot rev-parse HEAD 2>$null)).Trim() } catch { $oldSha = '' }
   $porcelain = ''
   try { $porcelain = & git -C $RepoRoot status --porcelain 2>$null } catch { }
   if ($porcelain) {
@@ -91,23 +146,30 @@ function Invoke-SentryUpdate {
     Write-Host 'Sentry never resets or stashes your changes automatically.'
     return 1
   }
-  Write-SentryInfo ('Branch ' + $branch + ' at ' + $oldSha + '; stopping Sentry...')
-  Stop-SentryDesktopIfRunning -RepoRoot $RepoRoot
-  Write-SentryInfo 'git fetch --prune origin ...'
-  $f = Invoke-SentryNative -FilePath 'git' -Arguments @('-C', $RepoRoot, 'fetch', '--prune', 'origin')
+  Write-SentryInfo 'git fetch --prune origin main ...'
+  $f = Invoke-SentryNative -FilePath 'git' -Arguments @('-C', $RepoRoot, 'fetch', '--prune', 'origin', 'main')
   if ($f.ExitCode -ne 0) { Write-SentryFail 'git fetch failed (network or remote issue).'; return 1 }
-  Write-SentryInfo 'git pull --ff-only ...'
-  $p = Invoke-SentryNative -FilePath 'git' -Arguments @('-C', $RepoRoot, 'pull', '--ff-only')
-  if ($p.ExitCode -ne 0) {
-    Write-SentryFail 'Fast-forward pull failed (local branch diverged). Resolve manually, then rerun.'
-    return 1
-  }
-  try { $newSha = ([string](& git -C $RepoRoot rev-parse --short HEAD 2>$null)).Trim() } catch { $newSha = 'unknown' }
-  if (($oldSha -eq $newSha) -and (-not $Repair)) {
-    Write-Host ('Sentry is already up to date (' + $newSha + ').')
+  try { $remoteSha = ([string](& git -C $RepoRoot rev-parse origin/main 2>$null)).Trim() } catch { $remoteSha = '' }
+  if (-not $remoteSha) { Write-SentryFail 'origin/main is unavailable after fetch.'; return 1 }
+  $wasRunning = (@(Get-SentryDesktopProcesses).Count -gt 0)
+  if ((-not (Test-SentryUpdateNeeded -HeadSha $oldSha -RemoteSha $remoteSha)) -and (-not $Repair)) {
+    if ($wasRunning) { Write-Host ('Sentry is already up to date (' + $oldSha.Substring(0, [Math]::Min(9, $oldSha.Length)) + '). Sentry left running.') }
+    else { Write-Host ('Sentry is already up to date (' + $oldSha.Substring(0, [Math]::Min(9, $oldSha.Length)) + ').') }
     return 0
   }
-  Write-Host ('Updated: ' + $oldSha + ' -> ' + $newSha)
+  if ($wasRunning) {
+    Write-SentryInfo 'An update is available; stopping Sentry...'
+    Stop-SentryDesktopIfRunning -RepoRoot $RepoRoot
+  }
+  Write-SentryInfo 'git merge --ff-only origin/main ...'
+  $p = Invoke-SentryNative -FilePath 'git' -Arguments @('-C', $RepoRoot, 'merge', '--ff-only', 'origin/main')
+  if ($p.ExitCode -ne 0) {
+    Write-SentryFail 'Fast-forward to origin/main failed (local main diverged). Resolve manually, then rerun.'
+    Write-SentryInfo 'Sentry was stopped; reopen it with: sentry open'
+    return 1
+  }
+  try { $newSha = ([string](& git -C $RepoRoot rev-parse HEAD 2>$null)).Trim() } catch { $newSha = $remoteSha }
+  Write-Host ('Updated: ' + $oldSha.Substring(0, [Math]::Min(9, $oldSha.Length)) + ' -> ' + $newSha.Substring(0, [Math]::Min(9, $newSha.Length)))
   Write-SentryInfo 'Re-executing the updated launcher for install/build/deploy...'
   $newLauncher = Join-Path $RepoRoot 'sentry.ps1'
   $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -118,6 +180,7 @@ function Invoke-SentryUpdate {
   $handoffArgs += '-File'; $handoffArgs += $newLauncher; $handoffArgs += '__post-update'
   $handoffArgs += $oldSha; $handoffArgs += $newSha
   if ($Repair) { $handoffArgs += '-Repair' }
+  if ($wasRunning) { $handoffArgs += '-WasRunning' }
   $psi.Arguments = (Get-SentryQuotedArguments $handoffArgs)
   $proc = [System.Diagnostics.Process]::Start($psi)
   $proc.WaitForExit()
@@ -125,7 +188,7 @@ function Invoke-SentryUpdate {
 }
 
 function Invoke-SentryPostUpdate {
-  param([string]$RepoRoot, [string]$OldSha, [string]$NewSha, [bool]$Repair = $false)
+  param([string]$RepoRoot, [string]$OldSha, [string]$NewSha, [bool]$Repair = $false, [bool]$WasRunning = $false)
   Write-SentryLog ('post-update ' + $OldSha + ' -> ' + $NewSha) 'update'
   $cfg = Get-SentryLauncherConfig
   $distro = [string]$cfg['selectedDistro']
@@ -145,11 +208,14 @@ function Invoke-SentryPostUpdate {
   $hello = Invoke-SentryRuntimeHandshake -Distro $distro
   if (-not $hello) { return 1 }
   [void](Sync-SentryDistroPreference -RepoRoot $RepoRoot -Distro $distro)
+  [void](Invoke-SentryToolRevalidation -Distro $distro -RepoRoot $RepoRoot)
   Install-SentryShim -RepoRoot $RepoRoot
   Set-SentryLauncherConfig @{ setupVersion = (Get-SentryProductVersion -RepoRoot $RepoRoot); setupCommit = $NewSha }
   Write-Host ('Updated: ' + $OldSha + ' -> ' + $NewSha) -ForegroundColor Green
   Write-Host 'Provider settings and projects were preserved (no migration in this release).'
-  [void](Invoke-SentryOpen -RepoRoot $RepoRoot)
+  $shaChanged = ($OldSha -cne $NewSha)
+  if ($WasRunning -or $shaChanged) { [void](Invoke-SentryOpen -RepoRoot $RepoRoot) }
+  else { Write-Host 'Sentry was not running before; leaving it stopped.' }
   return 0
 }
 
@@ -187,6 +253,6 @@ function Show-SentryHelp {
   Write-Host '  sentry open'
   Write-Host '  sentry update'
   Write-Host ''
-  Write-Host 'Flags: -Distro <name> (setup), -Json (status), -Repair (update), -NonInteractive'
+  Write-Host 'Flags: -Distro <name> (setup), -Json (status), -Repair (update rebuild), -NonInteractive'
   return 0
 }

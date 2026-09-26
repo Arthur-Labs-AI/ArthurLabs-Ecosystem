@@ -84,8 +84,8 @@ pnpm --filter @qa/desktop dev:electron
 
 ## Updating
 
-`sentry update` tracks the latest Git commits from `main` — it does NOT
-update from GitHub Releases yet. This is intentional for v0.1 Beta:
+`sentry update` tracks `origin/main` explicitly (branch `main` required) —
+it does NOT update from GitHub Releases yet. This is intentional for v0.1 Beta:
 Releases mark milestones and carry notes, while day-to-day Beta fixes flow
 through commits. Update refuses to run with local changes (commit, stash,
 or discard them first); it never resets or stashes for you.

@@ -1,6 +1,6 @@
 # Sentry Beta — Updating
 
-For v0.1 Beta, `sentry update` tracks the **latest Git commits from `main`**:
+For v0.1 Beta, `sentry update` tracks **`origin/main`** explicitly:
 
 ```powershell
 sentry update
@@ -9,25 +9,31 @@ sentry update
 It does NOT update from GitHub Releases yet. This is intentional:
 Releases are milestones with notes; Beta fixes flow through commits.
 
+Beta updates require branch `main`. On any other branch, update refuses
+immediately (zero Git mutations) and tells you to `git switch main`.
+
 ## What update does
 
-1. Records the current commit; refuses if the tree is dirty (commit, stash,
-   or discard first — Sentry never resets or stashes for you).
-2. Gracefully stops Sentry (`sentry stop` semantics).
-3. `git fetch --prune origin` then `git pull --ff-only` (fast-forward only;
-   a diverged branch must be resolved manually).
-4. If already up to date, reports so (unless `-Repair` forces a rebuild).
-5. Hands off to the **new** launcher code (the update may have changed the
-   launcher itself), then: `pnpm install --frozen-lockfile`, `pnpm build`,
-   versioned WSL runtime redeploy, distro-preference sync, handshake check.
-6. Reopens Sentry. Provider settings, projects, and run history are
-   preserved — no reconfiguration needed.
+1. Refuses on a non-`main` branch or a dirty tree (commit, stash, or
+   discard first — Sentry never resets, stashes, or rebases for you).
+2. `git fetch --prune origin main` and compares `HEAD` with `origin/main`.
+3. If already up to date, reports so and **leaves a running Sentry alone**
+   (unless `-Repair` forces a rebuild).
+4. If an update is available: gracefully stops Sentry, then
+   `git merge --ff-only origin/main` (a diverged `main` must be resolved
+   manually).
+5. Hands off to the **new** launcher code, then: `pnpm install
+--frozen-lockfile`, `pnpm build`, versioned WSL runtime redeploy,
+   distro-preference sync, handshake check, managed-tool revalidation.
+6. Reopens Sentry (or restores its prior stopped state after `-Repair`).
+   Provider settings, projects, and run history are preserved.
 
 Update prints the transition, e.g. `Updated: e9e0b80 → a1b2c3d`.
 
 ## Requirements
 
 - Install from `git clone` (a ZIP download has no remote to pull from).
+- Branch `main` tracking `origin/main`.
 - A clean tree: `git status --porcelain` must be empty.
 - Internet access to fetch `origin`.
 
