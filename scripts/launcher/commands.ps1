@@ -28,6 +28,21 @@ function Invoke-SentrySetup {
   if (-not (Ensure-SentryLinuxPnpm -Distro $distro -RepoRoot $RepoRoot)) { $failed = $true }
   if (-not (Ensure-SentryLinuxDeps -Distro $distro -RepoRoot $RepoRoot)) { $failed = $true }
   if ($failed) { Write-SentryFail 'Linux toolchain incomplete. See messages above.'; return 1 }
+  $sandbox = Get-SentrySandboxStatus -Distro $distro
+  if (-not ($sandbox.Socat -and $sandbox.Bwrap)) {
+    $missingSb = @()
+    if (-not $sandbox.Socat) { $missingSb += 'socat' }
+    if (-not $sandbox.Bwrap) { $missingSb += 'bubblewrap' }
+    Write-SentryFail 'GLM sandbox prerequisites are missing after installation.'
+    Show-SentryAptInstallHelp $missingSb
+    return 1
+  }
+  Write-SentryOk 'Sandbox prerequisites (socat, bubblewrap)'
+  $sandboxReady = [bool]$sandbox.InitOk
+  if (-not $sandbox.InitOk) {
+    Write-SentryWarn ('Sandbox init probe did not pass (' + $sandbox.InitDetail + '). GLM runs will stay unavailable until the sandbox can initialize.')
+    Write-SentryInfo 'Continuing setup; run: sentry doctor'
+  } else { Write-SentryOk 'Sandbox init probe passed' }
   Write-SentrySection '[4/7] Sentry dependencies'
   Write-SentryInfo 'pnpm install --frozen-lockfile ...'
   $r = Invoke-SentryNative -FilePath 'pnpm' -Arguments @('install', '--frozen-lockfile') -Workdir $RepoRoot
@@ -58,8 +73,9 @@ function Invoke-SentrySetup {
   Install-SentryShim -RepoRoot $RepoRoot
   Write-SentryOk 'sentry command installed (user PATH; restart terminal if not recognized)'
   Set-SentryLauncherConfig @{ setupVersion = $version; setupCommit = (Get-SentryShortSha -RepoRoot $RepoRoot) }
-  Show-SentrySetupSummary -Distro $distro -OpenCode $oc -DeepSeek $ds -Claude $cc
-  if ($oc -and $ds -and $cc) { return 0 }
+  $glmReady = ([bool]$cc) -and $sandboxReady
+  Show-SentrySetupSummary -Distro $distro -OpenCode $oc -DeepSeek $ds -Claude $glmReady
+  if ($oc -and $ds -and $glmReady) { return 0 }
   return 2
 }
 
@@ -83,7 +99,7 @@ function Show-SentrySetupSummary {
   Write-Host 'Agent Tools'
   if ($OpenCode) { Write-SentryOk 'OpenCode 1.18.32' } else { Write-SentryFail 'OpenCode (missing)' }
   if ($DeepSeek) { Write-SentryOk 'DeepSeek harness 0.1.5-rc.2' } else { Write-SentryFail 'DeepSeek (missing)' }
-  if ($Claude) { Write-SentryOk 'Claude Code 2.1.270' } else { Write-SentryFail 'Claude Code (missing)' }
+  if ($Claude) { Write-SentryOk 'Claude Code 2.1.270 + sandbox' } else { Write-SentryFail 'Claude Code (missing or sandbox unavailable)' }
   Write-Host 'Sentry'
   Write-SentryOk 'Dependencies installed'
   Write-SentryOk 'Desktop built'

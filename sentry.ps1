@@ -29,6 +29,10 @@ if ($cmd -eq '') { $cmd = 'help' }
 $exitCode = 0
 switch ($cmd) {
   'setup' { $exitCode = Invoke-SentrySetup -RepoRoot $repoRoot -DistroFlag $Distro -NonInteractive ([bool]$NonInteractive) }
+  'repair' {
+    Write-Host 'Sentry repair reruns every prerequisite check and fixes only what failed (idempotent; same engine as setup).'
+    $exitCode = Invoke-SentrySetup -RepoRoot $repoRoot -DistroFlag $Distro -NonInteractive ([bool]$NonInteractive)
+  }
   'open' { $exitCode = Invoke-SentryOpen -RepoRoot $repoRoot }
   '__open-detached' { $exitCode = Invoke-SentryOpenDetached -RepoRoot $repoRoot }
   'update' { $exitCode = Invoke-SentryUpdate -RepoRoot $repoRoot -Repair ([bool]$Repair) }

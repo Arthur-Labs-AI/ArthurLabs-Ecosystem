@@ -240,15 +240,20 @@ function Install-SentryShim {
   Write-SentryLog ('shim installed: ' + $shim + ' -> ' + $target) 'launcher'
 }
 
+function Test-SentryPathEntry {
+  param([string]$PathText, [string]$Dir)
+  $parts = ([string]$PathText) -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
+  foreach ($p in $parts) { if ($p.TrimEnd('\') -ieq $Dir.TrimEnd('\')) { return $true } }
+  return $false
+}
+
 function Add-SentryUserPath {
   param([string]$Dir)
   $regPath = 'HKCU:\Environment'
   $current = ''
   try { $current = (Get-ItemProperty -Path $regPath -Name Path -ErrorAction Stop).Path } catch { }
   if ([string]::IsNullOrEmpty($current)) { $current = $env:PATH }
-  $parts = $current -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
-  $already = $false
-  foreach ($p in $parts) { if ($p.TrimEnd('\') -ieq $Dir.TrimEnd('\')) { $already = $true } }
+  $already = Test-SentryPathEntry -PathText $current -Dir $Dir
   if (-not $already) {
     $newPath = ($current.TrimEnd(';') + ';' + $Dir)
     Set-ItemProperty -Path $regPath -Name Path -Value $newPath

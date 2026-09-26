@@ -330,28 +330,64 @@ function Ensure-SentryLinuxPnpm {
   return $false
 }
 
-function Ensure-SentryLinuxDeps {
-  param([string]$Distro, [string]$RepoRoot)
-  $needed = @('git', 'curl', 'ca-certificates', 'bwrap')
-  try {
-    $hits = Select-String -Path (Join-Path $RepoRoot 'packages/harness-claude-code/src/*.ts'), (Join-Path $RepoRoot 'apps/runtime/src/*.ts') -Pattern '\bsocat\b' -ErrorAction SilentlyContinue
-    if ($hits) { $needed += 'socat' }
-  } catch { }
-  $socatArg = @()
-  if ($needed -contains 'socat') { $socatArg += 'with-socat' }
-  $chk = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-deps.sh' -ScriptArgs $socatArg -TimeoutSec 60
+function Get-SentryMissingLinuxDeps {
+  param($CheckOutput)
   $missingPkgs = @()
-  foreach ($line in (([string]$chk.Stdout) -split "`n")) {
+  foreach ($line in (([string]$CheckOutput) -split "`n")) {
     $t = $line.Trim()
     if ($t.StartsWith('MISS-')) { $missingPkgs += $t.Substring(5) }
   }
-  if ($missingPkgs.Count -eq 0) { Write-SentryOk 'Linux dependencies (git, curl, ca-certificates, bubblewrap)'; return $true }
+  return $missingPkgs
+}
+
+function Get-SentrySandboxStatus {
+  param([string]$Distro)
+  $status = @{ Socat = $false; Bwrap = $false; SocatVersion = ''; BwrapVersion = ''; InitOk = $false; InitDetail = '' }
+  $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-sandbox.sh' -TimeoutSec 60
+  foreach ($line in (([string]$r.Stdout) -split "`n")) {
+    $t = $line.Trim()
+    if ($t -eq 'HAVE-socat') { $status.Socat = $true }
+    elseif ($t -eq 'HAVE-bwrap') { $status.Bwrap = $true }
+    elseif ($t.StartsWith('SOCAT_VERSION=')) { $status.SocatVersion = $t.Substring(14) }
+    elseif ($t.StartsWith('BWRAP_VERSION=')) { $status.BwrapVersion = $t.Substring(14) }
+    elseif ($t -eq 'SANDBOX_INIT_OK') { $status.InitOk = $true }
+    elseif ($t.StartsWith('SANDBOX_INIT_FAIL')) { $status.InitDetail = $t }
+  }
+  return $status
+}
+
+function Show-SentryAptInstallHelp {
+  param([string[]]$Packages)
+  Write-Host 'Missing WSL sandbox dependencies:'
+  foreach ($p in $Packages) { Write-Host ('  - ' + $p) }
+  Write-Host 'Install with (inside Ubuntu/WSL, not Windows PowerShell):'
+  Write-Host '  sudo apt update'
+  Write-Host ('  sudo apt install -y ' + ($Packages -join ' '))
+}
+
+function Ensure-SentryLinuxDeps {
+  param([string]$Distro, [string]$RepoRoot)
+  # socat + bubblewrap are first-class sandbox prerequisites: the pinned
+  # Claude Code sandbox runs fail-closed and its own startup requires both
+  # (observed live: missing socat fails GLM runs; fixed by apt install).
+  $needed = @('git', 'curl', 'ca-certificates', 'bwrap', 'socat')
+  $chk = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-deps.sh' -TimeoutSec 60
+  $missingPkgs = @(Get-SentryMissingLinuxDeps -CheckOutput ([string]$chk.Stdout))
+  if ($missingPkgs.Count -eq 0) { Write-SentryOk 'Linux dependencies (git, curl, ca-certificates, bubblewrap, socat)'; return $true }
   $missingText = ($missingPkgs -join ' ')
   Write-SentryInfo ('Installing missing Linux packages: ' + $missingText + ' (apt only, nothing removed)...')
   $instArgs = @()
   foreach ($m in $missingPkgs) { $instArgs += $m }
   $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'install-deps.sh' -ScriptArgs $instArgs -TimeoutSec 600 -AsRoot $true
-  if ($r.ExitCode -ne 0) { Write-SentryFail 'Could not install Linux packages (see log). Non-apt distros must be prepared manually.'; return $false }
-  Write-SentryOk 'Linux dependencies installed'
-  return $true
+  if ($r.ExitCode -ne 0) {
+    Write-SentryFail 'Could not install Linux packages automatically.'
+    Show-SentryAptInstallHelp $missingPkgs
+    return $false
+  }
+  $recheck = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-deps.sh' -TimeoutSec 60
+  $stillMissing = @(Get-SentryMissingLinuxDeps -CheckOutput ([string]$recheck.Stdout))
+  if ($stillMissing.Count -eq 0) { Write-SentryOk 'Linux dependencies installed and verified'; return $true }
+  Write-SentryFail 'Some Linux packages are still missing after installation.'
+  Show-SentryAptInstallHelp $stillMissing
+  return $false
 }

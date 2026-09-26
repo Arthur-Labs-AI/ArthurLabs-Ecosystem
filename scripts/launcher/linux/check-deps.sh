@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Print HAVE-<bin> / MISS-<pkg> lines for each required tool.
+# Print HAVE-<pkg> / MISS-<pkg> lines for required host tools.
+# socat and bubblewrap are first-class sandbox prerequisites: the pinned
+# Claude Code sandbox (fail-closed) requires both at runtime.
 set -u
 check() {
   bin="$1"; pkg="$2"
@@ -9,4 +11,4 @@ check git git
 check curl curl
 check update-ca-certificates ca-certificates
 check bwrap bwrap
-if [ "${1:-}" = "with-socat" ]; then check socat socat; fi
+check socat socat

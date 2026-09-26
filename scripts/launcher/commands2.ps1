@@ -33,8 +33,13 @@ function Invoke-SentryDoctor {
     if ($lp.ExitCode -eq 0) { &$add 'Linux pnpm' 'PASS' (([string]$lp.Stdout).Trim()) } else { &$add 'Linux pnpm' 'FAIL' 'missing' }
     $sd = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-systemd.sh' -TimeoutSec 60
     if (([string]$sd.Stdout).Trim() -eq 'SYSTEMD_OK') { &$add 'systemd user services' 'PASS' 'ready' } else { &$add 'systemd user services' 'FAIL' 'unavailable' }
-    $bw = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-deps.sh' -TimeoutSec 30
-    if (([string]$bw.Stdout).Contains('HAVE-bwrap')) { &$add 'bubblewrap' 'PASS' 'present' } else { &$add 'bubblewrap' 'FAIL' 'missing' }
+    $sb = Get-SentrySandboxStatus -Distro $distro
+    if ($sb.Socat) { &$add 'socat' 'PASS' $sb.SocatVersion } else { &$add 'socat' 'FAIL' 'not installed in Ubuntu (GLM sandbox requires it)' }
+    if ($sb.Bwrap) { &$add 'bubblewrap' 'PASS' $sb.BwrapVersion } else { &$add 'bubblewrap' 'FAIL' 'not installed in Ubuntu (GLM sandbox requires it)' }
+    if ($sb.Socat -and $sb.Bwrap) {
+      if ($sb.InitOk) { &$add 'Claude sandbox init' 'PASS' 'bubblewrap smoke passed (no model contact)' }
+      else { &$add 'Claude sandbox init' 'FAIL' ('bubblewrap cannot initialize: ' + $sb.InitDetail) }
+    }
     $cur = Get-SentryRuntimeCurrent -Distro $distro
     if ($cur -and $cur -ne 'NONE') { &$add 'Deployed runtime' 'PASS' $cur } else { &$add 'Deployed runtime' 'FAIL' 'none deployed' }
     $hello = Invoke-SentryRuntimeHandshake -Distro $distro
@@ -51,8 +56,17 @@ function Invoke-SentryDoctor {
     else { &$add 'DeepSeek runtime' 'FAIL' 'managed dsh executable missing' }
     $cl = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-claude.sh' -ScriptArgs @('2.1.270') -TimeoutSec 60
     $clt = [string]$cl.Stdout
-    if ($clt.Contains('MANAGED_OK')) { &$add 'Claude Code' 'PASS' '2.1.270 Sentry-managed native Linux' }
-    elseif ($clt.Contains('PATH_OK') -and $clt.Contains('PATH_NATIVE=linux')) { &$add 'Claude Code' 'PASS' '2.1.270 existing native install (global untouched)' }
+    $claudeBinary = ''
+    if ($clt.Contains('MANAGED_OK')) { $claudeBinary = '2.1.270 Sentry-managed native Linux' }
+    elseif ($clt.Contains('PATH_OK') -and $clt.Contains('PATH_NATIVE=linux')) { $claudeBinary = '2.1.270 existing native install (global untouched)' }
+    if ($claudeBinary -and (-not ($sb.Socat -and $sb.Bwrap -and $sb.InitOk))) {
+      $missingSandbox = @()
+      if (-not $sb.Socat) { $missingSandbox += '`socat` is not installed in Ubuntu' }
+      if (-not $sb.Bwrap) { $missingSandbox += '`bubblewrap` is not installed in Ubuntu' }
+      if (($sb.Socat -and $sb.Bwrap) -and (-not $sb.InitOk)) { $missingSandbox += 'bubblewrap cannot initialize (' + $sb.InitDetail + ')' }
+      &$add 'Claude Code' 'FAIL' ('Sandbox unavailable: ' + ($missingSandbox -join '; ') + '. GLM runs will fail closed.')
+    }
+    elseif ($claudeBinary) { &$add 'Claude Code' 'PASS' ($claudeBinary + '; sandbox ready') }
     elseif ($clt.Contains('2.1.276')) { &$add 'Claude Code' 'FAIL' 'known-incompatible 2.1.276; Sentry-managed 2.1.270 required' }
     elseif ($clt.Contains('windows-mount')) { &$add 'Claude Code' 'FAIL' 'Windows mount on PATH; Sentry-managed native binary required' }
     else { &$add 'Claude Code' 'FAIL' 'no usable 2.1.270 binary' }
@@ -212,6 +226,9 @@ function Invoke-SentryPostUpdate {
   $oc = Ensure-SentryOpenCode -Distro $distro
   $ds = Ensure-SentryDeepSeek -Distro $distro -RepoRoot $RepoRoot
   $cc = Ensure-SentryClaudeCode -Distro $distro -RepoRoot $RepoRoot
+  $updSandbox = Get-SentrySandboxStatus -Distro $distro
+  $cc = ([bool]$cc) -and $updSandbox.Socat -and $updSandbox.Bwrap -and $updSandbox.InitOk
+  if (-not $cc) { Write-SentryWarn 'GLM sandbox not fully ready (see sentry doctor).' }
   Install-SentryShim -RepoRoot $RepoRoot
   Set-SentryLauncherConfig @{ setupVersion = (Get-SentryProductVersion -RepoRoot $RepoRoot); setupCommit = $NewSha }
   if (-not ($oc -and $ds -and $cc)) {
@@ -256,6 +273,7 @@ function Show-SentryHelp {
   Write-Host ''
   Write-Host 'Commands:'
   Write-Host '  setup     Prepare Windows, WSL and Sentry'
+  Write-Host '  repair    Rerun prerequisite checks and fix failures (idempotent)'
   Write-Host '  open      Launch Sentry Desktop'
   Write-Host '  update    Pull latest commits and update Sentry'
   Write-Host '  stop      Gracefully stop Sentry'
