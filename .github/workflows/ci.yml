@@ -142,6 +142,9 @@ jobs:
       - name: Launcher production-behavior tests, mocked boundaries (no WSL)
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher/tests/launcher-behavior.test.ps1
+      - name: Launcher process IO stress test (no WSL)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher/tests/io-stress.test.ps1
       - name: Desktop control-parser tests
         run: pnpm --filter @qa/desktop exec vitest run tests/unit/sentry-control.test.ts
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 help

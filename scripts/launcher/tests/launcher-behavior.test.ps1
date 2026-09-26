@@ -178,6 +178,13 @@ Assert-Equal 'node-version-probe-stays-user' $nodeVer 'v20.1.0'
 $script:WslFileCalls = @()
 $r = Invoke-SentryWslFile -Distro 'Ubuntu' -ScriptName 'check-deepseek.sh' -ScriptArgs @('0.1.5-rc.2') -TimeoutSec 60
 Assert-True 'tool-check-stays-user' ((@($script:WslFileCalls) | Where-Object { $_ -like 'check-deepseek.sh root=False' }).Count -gt 0)
+# ---- 14. PATH refresh merges machine/user without losing session entries ----
+$sentinelDir = 'C:\SentryTestSentinelPath'
+$env:PATH = ($env:PATH + ';' + $sentinelDir)
+[void](Update-SentryProcessPath)
+Assert-True 'path-refresh-keeps-session-entry' (($env:PATH -split ';') -contains $sentinelDir)
+Assert-True 'path-refresh-no-dupes' (((@($env:PATH -split ';' | Where-Object { $_ -ne '' }).Count) -eq (@($env:PATH -split ';' | Where-Object { $_ -ne '' } | Select-Object -Unique).Count)))
+$env:PATH = ((@($env:PATH -split ';' | Where-Object { $_ -ne $sentinelDir }) -join ';'))
 # ---- 10. no host mutations: user PATH untouched by tests ----
 $before = [Environment]::GetEnvironmentVariable('PATH', 'User')
 Assert-True 'user-path-untouched' (([Environment]::GetEnvironmentVariable('PATH', 'User')) -eq $before)

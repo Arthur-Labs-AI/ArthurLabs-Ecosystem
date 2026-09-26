@@ -7,7 +7,7 @@ set -u
 EXPECTED="$1"
 RT=$(readlink -f "$HOME/.local/share/sentry/runtime/current" 2>/dev/null || true)
 if [ -z "$RT" ] || [ ! -d "$RT" ]; then echo DSH_ENTRY_MISSING; exit 3; fi
-ENTRY=$(find -L "$RT" -path '*@deepseek-ai/dsh/lib/bin.js' 2>/dev/null | head -n 1)
+ENTRY=$(find -L "$RT" -path '*@deepseek-ai/dsh/lib/bin.js' -type f -print -quit 2>/dev/null)
 if [ -z "$ENTRY" ]; then echo DSH_ENTRY_MISSING; exit 5; fi
 PKG=$(dirname "$(dirname "$ENTRY")")/package.json
 VER=$(node -p "require('$PKG').version" 2>/dev/null || true)

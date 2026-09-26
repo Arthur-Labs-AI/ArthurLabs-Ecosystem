@@ -9,7 +9,7 @@ set -euo pipefail
 EXPECTED="$1"
 TOOLS="$HOME/.local/share/sentry/tools/deepseek"
 RT=$(readlink -f "$HOME/.local/share/sentry/runtime/current")
-ENTRY=$(find -L "$RT" -path '*@deepseek-ai/dsh/lib/bin.js' -type f 2>/dev/null | head -n 1)
+ENTRY=$(find -L "$RT" -path '*@deepseek-ai/dsh/lib/bin.js' -type f -print -quit 2>/dev/null)
 [ -n "$ENTRY" ] || { echo DSH_ENTRY_MISSING; exit 5; }
 PKG=$(dirname "$(dirname "$ENTRY")")/package.json
 VER=$(node -p "require('$PKG').version")
@@ -28,7 +28,7 @@ cat > "$TOOLS/bin/dsh" <<'WRAPPER'
 set -euo pipefail
 RT_LIVE=$(readlink -f "$HOME/.local/share/sentry/runtime/current" 2>/dev/null || true)
 [ -n "$RT_LIVE" ] && [ -d "$RT_LIVE" ] || { echo "Sentry runtime/current missing" >&2; exit 127; }
-ENTRY_LIVE=$(find -L "$RT_LIVE" -path '*@deepseek-ai/dsh/lib/bin.js' -type f 2>/dev/null | head -n 1)
+ENTRY_LIVE=$(find -L "$RT_LIVE" -path '*@deepseek-ai/dsh/lib/bin.js' -type f -print -quit 2>/dev/null)
 [ -n "$ENTRY_LIVE" ] || { echo "Sentry-managed DeepSeek runtime missing" >&2; exit 127; }
 exec node "$ENTRY_LIVE" "$@"
 WRAPPER
