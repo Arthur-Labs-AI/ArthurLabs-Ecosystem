@@ -11,4 +11,4 @@ VER=$("$BIN" --version 2>&1 | head -n 1)
 CODE=$?
 echo "DSH_VERSION=$VER"
 if [ $CODE -ne 0 ]; then echo DSH_BROKEN; exit 0; fi
-if [ "$VER" = "$EXPECTED" ]; then echo DSH_OK; else echo DSH_DRIFT; fi
+if [ "$VER" = "$EXPECTED" ]; then echo "DSH_OK current-runtime"; else echo DSH_DRIFT; fi
