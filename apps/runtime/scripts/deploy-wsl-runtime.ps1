@@ -4,6 +4,9 @@
 # Versioned: <product-version>-<short-git-sha> (e.g. 0.1.0-beta.1-e9e0b80).
 # Activation is atomic: build+validate happen before `current` moves, so a
 # failed deploy leaves the previous runtime usable.
+# Stdio is decoupled via scripts/launcher/linux/deploy-wrap.sh (log file):
+# lingering build grandchildren can never hold the launcher's pipes open,
+# and no shell quoting crosses the wsl.exe boundary (argv array only).
 # Usage: ./scripts/deploy-wsl-runtime.ps1 [-Distro Ubuntu] [-Version 0.1.0-beta.1-abc1234]
 param([string]$Distro = 'Ubuntu', [string]$Version = '')
 $ErrorActionPreference = 'Stop'
@@ -22,6 +25,11 @@ $winSrcFwd = $winSrc -replace '\\', '/'
 $linuxSrc = (wsl.exe -d $Distro -- wslpath -u "$winSrcFwd").Trim()
 $deployScript = Join-Path $PSScriptRoot 'deploy-inner.sh'
 $deployLinux = ((wsl.exe -d $Distro -- wslpath -u (($deployScript -replace '\\', '/'))).Trim())
-wsl.exe -d $Distro -- bash $deployLinux $linuxSrc $Version
-if ($LASTEXITCODE -ne 0) { throw "WSL deploy failed with exit $LASTEXITCODE (previous runtime untouched)" }
+$wrapScript = Join-Path $repoRoot 'scripts/launcher/linux/deploy-wrap.sh'
+$wrapLinux = ((wsl.exe -d $Distro -- wslpath -u (($wrapScript -replace '\\', '/'))).Trim())
+$logLinux = '$HOME/sentry-deploy-' + $Version + '.log'
+& wsl.exe -d $Distro -- bash $wrapLinux $deployLinux $linuxSrc $Version $logLinux
+if ($LASTEXITCODE -ne 0) { throw "WSL deploy failed with exit $LASTEXITCODE (previous runtime untouched; log: $logLinux inside $Distro)" }
+$logTail = (wsl.exe -d $Distro -- bash -c ('tail -n 15 ' + $logLinux)).Trim()
+Write-Output $logTail
 Write-Output '[sentry-runtime] deployed'

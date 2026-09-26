@@ -9,7 +9,7 @@ if [ -x "$MANAGED" ]; then
   MV=$("$MANAGED" --version 2>&1 | head -n 1)
   echo "MANAGED_VERSION=$MV"
   case "$MANAGED" in /mnt/c*) echo MANAGED_NATIVE=windows-mount;; *) echo MANAGED_NATIVE=linux;; esac
-  if [ "$MV" = "$EXPECTED" ]; then echo MANAGED_OK; else echo MANAGED_DRIFT; fi
+  case "$MV" in "$EXPECTED"*) echo MANAGED_OK;; *) echo MANAGED_DRIFT;; esac
 else
   echo MANAGED=missing
 fi
@@ -23,5 +23,5 @@ esac
 if [ "$P" != MISSING ]; then
   PV=$(claude --version 2>&1 | head -n 1)
   echo "PATH_VERSION=$PV"
-  if [ "$PV" = "$EXPECTED" ]; then echo PATH_OK; else echo PATH_DRIFT; fi
+  case "$PV" in "$EXPECTED"*) echo PATH_OK;; *) echo PATH_DRIFT;; esac
 fi
