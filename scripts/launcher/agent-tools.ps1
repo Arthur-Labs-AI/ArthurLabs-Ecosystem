@@ -122,11 +122,19 @@ function Get-SentryRuntimeCurrent {
 function Sync-SentryDistroPreference {
   param([string]$RepoRoot, [string]$Distro)
   Write-SentryInfo ('Saving distro preference via Desktop mechanism: ' + $Distro)
-  $cfgArgs = @('--filter', '@qa/desktop', 'configure:distro', '--', $Distro)
-  $r = Invoke-SentryNative -FilePath 'pnpm' -Arguments $cfgArgs -Workdir $RepoRoot -TimeoutSec 300
+  # Invoke electron.exe directly (not via pnpm/cmd shims): the shim chain can
+  # stall under hidden-window launches, while direct spawn exits promptly.
+  $exe = Get-SentryElectronExe -RepoRoot $RepoRoot
+  if (-not $exe) {
+    Write-SentryWarn 'Electron binary not found; skipping distro-preference sync.'
+    return $false
+  }
+  $appDir = Join-Path $RepoRoot 'apps/desktop'
+  $syncArgs = @('.', '--sentry-setup-distro', $Distro)
+  $r = Invoke-SentryNative -FilePath $exe -Arguments $syncArgs -Workdir $appDir -TimeoutSec 120 -NoRedirect $true
   if ($r.ExitCode -ne 0) {
     Write-SentryWarn 'Distro sync was slow; retrying once...'
-    $r = Invoke-SentryNative -FilePath 'pnpm' -Arguments $cfgArgs -Workdir $RepoRoot -TimeoutSec 300
+    $r = Invoke-SentryNative -FilePath $exe -Arguments $syncArgs -Workdir $appDir -TimeoutSec 120 -NoRedirect $true
   }
   Write-SentryLog ('configure:distro exit=' + $r.ExitCode) 'setup'
   if ($r.ExitCode -eq 0) { Write-SentryOk 'Distro preference saved'; return $true }

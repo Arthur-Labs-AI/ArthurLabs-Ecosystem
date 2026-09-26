@@ -75,14 +75,17 @@ function Resolve-SentryExecutable {
 }
 
 function Invoke-SentryNative {
-  param([string]$FilePath, [string[]]$Arguments = @(), [string]$Workdir = '', [int]$TimeoutSec = 0)
+  param([string]$FilePath, [string[]]$Arguments = @(), [string]$Workdir = '', [int]$TimeoutSec = 0, [bool]$NoRedirect = $false)
   $resolved = $FilePath
   if ($FilePath -notmatch '[\\/:]') { $resolved = Resolve-SentryExecutable $FilePath }
   $psi = New-Object System.Diagnostics.ProcessStartInfo
   $psi.FileName = $resolved
   $psi.Arguments = (Get-SentryQuotedArguments $Arguments)
-  $psi.RedirectStandardOutput = $true
-  $psi.RedirectStandardError = $true
+  # NoRedirect: child inherits the console (no pipes). Use for spawns whose
+  # grandchildren may linger (Electron helpers): inherited pipes would keep
+  # our own output stream open and block setup completion.
+  $psi.RedirectStandardOutput = (-not $NoRedirect)
+  $psi.RedirectStandardError = (-not $NoRedirect)
   $psi.UseShellExecute = $false
   $psi.CreateNoWindow = $true
   if ($Workdir) { $psi.WorkingDirectory = $Workdir }
@@ -93,8 +96,12 @@ function Invoke-SentryNative {
       return @{ ExitCode = -1; Stdout = ''; Stderr = 'timed out' }
     }
   }
-  $stdout = $p.StandardOutput.ReadToEnd()
-  $stderr = $p.StandardError.ReadToEnd()
+  $stdout = ''
+  $stderr = ''
+  if (-not $NoRedirect) {
+    $stdout = $p.StandardOutput.ReadToEnd()
+    $stderr = $p.StandardError.ReadToEnd()
+  }
   if ($TimeoutSec -le 0) { $p.WaitForExit() }
   return @{ ExitCode = $p.ExitCode; Stdout = $stdout; Stderr = $stderr }
 }
