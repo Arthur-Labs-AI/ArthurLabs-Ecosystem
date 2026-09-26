@@ -81,6 +81,13 @@ function Resolve-SentryExecutable {
   return $Name
 }
 
+function Get-SentryTail {
+  param([string]$Text, [int]$MaxChars = 1048576)
+  if ([string]::IsNullOrEmpty($Text)) { return '' }
+  if ($Text.Length -le $MaxChars) { return $Text }
+  return ('[...truncated to last ' + $MaxChars + ' chars...]' + "`n" + $Text.Substring($Text.Length - $MaxChars))
+}
+
 function Invoke-SentryNative {
   param([string]$FilePath, [string[]]$Arguments = @(), [string]$Workdir = '', [int]$TimeoutSec = 0, [bool]$NoRedirect = $false)
   $resolved = $FilePath
@@ -97,19 +104,51 @@ function Invoke-SentryNative {
   $psi.CreateNoWindow = $true
   if ($Workdir) { $psi.WorkingDirectory = $Workdir }
   $p = [System.Diagnostics.Process]::Start($psi)
+  # Drain BOTH redirected streams concurrently from process start: a child
+  # that fills an OS pipe would otherwise deadlock against WaitForExit.
+  # ReadToEndAsync + GetResult are available on .NET Framework 4.5+,
+  # i.e. Windows PowerShell 5.1 (Kill() is the Framework-compatible
+  # parameterless overload; Kill($true) needs .NET Core and is avoided).
+  $stdoutTask = $null
+  $stderrTask = $null
+  if (-not $NoRedirect) {
+    $stdoutTask = $p.StandardOutput.ReadToEndAsync()
+    $stderrTask = $p.StandardError.ReadToEndAsync()
+  }
+  $timedOut = $false
   if ($TimeoutSec -gt 0) {
     if (-not $p.WaitForExit($TimeoutSec * 1000)) {
+      $timedOut = $true
       try { $p.Kill() } catch { }
-      return @{ ExitCode = -1; Stdout = ''; Stderr = 'timed out' }
+      try { [void]$p.WaitForExit(10000) } catch { }
     }
+  } else {
+    $p.WaitForExit()
   }
   $stdout = ''
   $stderr = ''
   if (-not $NoRedirect) {
-    $stdout = $p.StandardOutput.ReadToEnd()
-    $stderr = $p.StandardError.ReadToEnd()
+    # After exit (or kill + bounded wait) the streams normally close and the
+    # pending reads complete within milliseconds. A foreign lingering
+    # grandchild can hold a pipe open; bound that wait, then abandon the
+    # reads rather than blocking forever.
+    $drainDeadline = [DateTime]::UtcNow.AddSeconds(30)
+    while (((-not $stdoutTask.IsCompleted) -or (-not $stderrTask.IsCompleted)) -and ([DateTime]::UtcNow -lt $drainDeadline)) {
+      Start-Sleep -Milliseconds 50
+    }
+    if ($stdoutTask.IsCompleted) {
+      try { $stdout = [string]$stdoutTask.GetAwaiter().GetResult() } catch { $stdout = '' }
+    }
+    if ($stderrTask.IsCompleted) {
+      try { $stderr = [string]$stderrTask.GetAwaiter().GetResult() } catch { $stderr = '' }
+    }
+    $stdout = Get-SentryTail $stdout
+    $stderr = Get-SentryTail $stderr
   }
-  if ($TimeoutSec -le 0) { $p.WaitForExit() }
+  if ($timedOut) {
+    $note = "`n[sentry] process timed out after " + $TimeoutSec + 's (output above is what was captured before termination)'
+    return @{ ExitCode = -1; Stdout = $stdout; Stderr = ($stderr + $note) }
+  }
   return @{ ExitCode = $p.ExitCode; Stdout = $stdout; Stderr = $stderr }
 }
 
