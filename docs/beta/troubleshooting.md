@@ -37,9 +37,11 @@ distro exists, then asks you to rerun setup. Utility distros such as
 
 ## WSL distro is WSL1
 
-Sentry requires WSL2. Setup offers to convert the selected distro with
-`wsl --set-version <distro> 2` (only that distro, with your confirmation
-via the setup flow). Re-run setup after conversion.
+Setup detects a WSL1-only distro and asks for confirmation before
+converting exactly that distro (`wsl --set-version <distro> 2`); it never
+installs a duplicate Ubuntu first. Non-interactive setup converts only a
+distro named with `-Distro`. The conversion result is re-checked before
+setup continues.
 
 ## Node missing in WSL
 
@@ -77,12 +79,17 @@ executable is not `electron.exe`. If the handshake fails after a deploy:
 - **OpenCode**: setup installs tested `1.18.32` into the Sentry-managed
   location (`~/.local/share/sentry/tools/opencode`) and reuses an existing
   compatible install.
-- **DeepSeek**: runs through the runtime-bundled SDK client (`0.1.5-rc.2`);
-  a separate `dsh` binary is optional, not required.
-- **Claude**: setup installs adapter-tested `2.1.270` as a native Linux
-  binary. Version `2.1.276` is known-incompatible and is refused. A `claude`
-  resolved from `/mnt/c/...` (Windows mount) is refused — install the Linux
-  build inside WSL instead.
+- **DeepSeek**: setup resolves the pinned DSH runtime (`0.1.5-rc.2`) from
+  the deployed Linux runtime and exposes it at the Sentry-managed
+  `~/.local/share/sentry/tools/deepseek/bin/dsh`, then persists that path
+  as the `SENTRY_DEEPSEEK_BINARY` override. Setup reports DeepSeek ready
+  only after the managed binary answers its version probe (the same probe
+  production preflight performs).
+- **Claude**: setup uses adapter-tested `2.1.270` from a Sentry-managed
+  install (`~/.local/share/sentry/tools/claude-code`) and never touches
+  your global `claude` (no sudo, no global npm changes). An existing exact
+  native install may be reused; version `2.1.276` is known-incompatible. A
+  `claude` resolved from `/mnt/c/...` (Windows mount) is refused.
 
 After installing a tool manually, rerun `sentry doctor` to verify.
 
@@ -93,11 +100,13 @@ safeStorage / Windows DPAPI). Setup and doctor never handle secrets; an
 agent that reports "unconfigured" needs its provider saved in the UI.
 Provider settings survive `sentry update`.
 
-## Dirty Git tree blocks update
+## Update refuses (branch / dirty tree)
 
-`sentry update` refuses when `git status --porcelain` shows anything.
-Commit, stash, or discard your changes first — Sentry never resets,
-cleans, or stashes automatically.
+Beta updates track `origin/main` only: on any other branch, `sentry update`
+refuses and tells you to `git switch main` (it never switches branches for
+you). It also refuses when `git status --porcelain` shows anything —
+commit, stash, or discard first. Sentry never resets, cleans, rebases, or
+stashes automatically, and a refused update leaves a running Sentry alone.
 
 ## Desktop already running
 

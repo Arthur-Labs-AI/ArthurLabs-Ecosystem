@@ -96,48 +96,158 @@ function Invoke-SentryWsl {
   return Invoke-SentryNative -FilePath 'wsl.exe' -Arguments $wslArgs -TimeoutSec $TimeoutSec
 }
 
+function Get-SentryDistroClass {
+  param($Distros)
+  $usable = @()
+  $wsl1 = @()
+  $utility = @()
+  foreach ($d in @($Distros)) {
+    if ($d.Name -match '^docker-desktop') { $utility += $d }
+    elseif ($d.Version -eq 2) { $usable += $d }
+    else { $wsl1 += $d }
+  }
+  return @{ Usable = $usable; Wsl1 = $wsl1; Utility = $utility }
+}
+
+function Request-SentryWsl1Conversion {
+  param($Convertible, [string]$Explicit = '', [bool]$NonInteractive = $false)
+  $names = (($Convertible | ForEach-Object { $_.Name }) -join ', ')
+  if ($Explicit) {
+    $match = @($Convertible | Where-Object { $_.Name -ieq $Explicit })
+    if ($match.Count -eq 0) {
+      Write-SentryFail ('Requested distro is not available for conversion: ' + $Explicit)
+      return ''
+    }
+  } elseif ($NonInteractive) {
+    Write-SentryFail ('Only WSL1 distro(s) found (' + $names + '). Rerun with -Distro <name> to convert, or convert manually: wsl --set-version <distro> 2')
+    return ''
+  } else {
+    $first = $Convertible[0].Name
+    Write-Host ''
+    Write-Host ('Found ' + $first + ' using WSL1.') -ForegroundColor Yellow
+    Write-Host 'Sentry requires WSL2.'
+    $answer = Read-Host ('Convert ' + $first + ' to WSL2? [Y/n]')
+    if ($answer.Trim() -eq '') { $answer = 'Y' }
+    if ($answer.Trim().ToLowerInvariant() -notin @('y', 'yes')) {
+      Write-SentryInfo 'Conversion declined. Convert manually (wsl --set-version <distro> 2) and rerun setup.'
+      return ''
+    }
+    $match = @($Convertible | Where-Object { $_.Name -ceq $first })
+  }
+  $target = $match[0].Name
+  Write-SentryInfo ('Converting ' + $target + ' to WSL2 (this may take a while)...')
+  $r = Invoke-SentryNative -FilePath 'wsl.exe' -Arguments @('--set-version', $target, '2') -TimeoutSec 900
+  Write-SentryLog ('wsl --set-version exit=' + $r.ExitCode) 'setup'
+  if ($r.ExitCode -ne 0) { Write-SentryFail ('Could not convert ' + $target + ' to WSL2.'); return '' }
+  $recheck = @(Get-SentryWslDistros | Where-Object { ($_.Name -ceq $target) -and ($_.Version -eq 2) })
+  if ($recheck.Count -eq 0) { Write-SentryFail ('Conversion reported success but ' + $target + ' is still not WSL2.'); return '' }
+  Write-SentryOk ($target + ' converted to WSL2.')
+  return $target
+}
+
+function Install-SentryWslUbuntu {
+  param([bool]$Elevate = $true)
+  $tmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), ('sentry-wsl-install-' + [System.Guid]::NewGuid().ToString('N') + '.ps1'))
+  [System.IO.File]::WriteAllText($tmp, 'wsl.exe --install -d Ubuntu' + [Environment]::NewLine + 'exit $LASTEXITCODE', (New-Object System.Text.UTF8Encoding $false))
+  try {
+    if ($Elevate) {
+      Write-SentryInfo 'Requesting Administrator approval to install WSL2 + Ubuntu (only this step elevates)...'
+      try {
+        $argLine = '-NoProfile -ExecutionPolicy Bypass -File "' + $tmp + '"'
+        $proc = Start-Process 'powershell.exe' -ArgumentList $argLine -Verb RunAs -Wait -PassThru -ErrorAction Stop
+      } catch {
+        Write-SentryLog 'elevated WSL install cancelled or failed to start' 'setup'
+        return 'cancelled'
+      }
+      $code = $proc.ExitCode
+    } else {
+      $r = Invoke-SentryNative -FilePath 'wsl.exe' -Arguments @('--install', '-d', 'Ubuntu') -TimeoutSec 600
+      $code = $r.ExitCode
+    }
+    Write-SentryLog ('wsl --install exit=' + $code) 'setup'
+    if (($code -ne 0) -and ($code -ne 3010)) {
+      Write-SentryFail ('WSL installation failed with exit code ' + $code + '.')
+      return 'failed'
+    }
+    Start-Sleep -Seconds 5
+    if (Test-SentryWslAvailable) {
+      $after = @(Get-SentryWslDistros)
+      $ready = @($after | Where-Object { ($_.Name -ieq 'Ubuntu') -and ($_.Version -eq 2) })
+      if ($ready.Count -gt 0) {
+        $probe = Invoke-SentryWsl -Distro 'Ubuntu' -LinuxArgs @('printf', 'init-ok') -TimeoutSec 60
+        if ($probe.ExitCode -eq 0) { return 'ready' }
+      }
+    }
+    return 'reboot'
+  } finally {
+    Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+  }
+}
+
 function Ensure-SentryWslDistro {
   param([string]$Explicit = '', [bool]$NonInteractive = $false, [string]$Previous = '')
   if (-not (Test-SentryWslAvailable)) {
     Write-SentryWarn 'WSL is not installed.'
-    Write-SentryInfo 'Requesting WSL2 + Ubuntu via: wsl --install -d Ubuntu'
-    Write-SentryInfo 'This step may require Administrator approval and a Windows reboot.'
-    try {
-      $r = Invoke-SentryNative -FilePath 'wsl.exe' -Arguments @('--install', '-d', 'Ubuntu')
-      Write-SentryLog ('wsl --install exit=' + $r.ExitCode) 'setup'
-    } catch { Write-SentryLog ('wsl --install failed: ' + $_.Exception.Message) 'setup' }
+    $installResult = Install-SentryWslUbuntu -Elevate $true
+    if ($installResult -eq 'cancelled') {
+      Write-SentryFail 'WSL installation was cancelled.'
+      Write-Host 'Sentry setup cannot continue until WSL2 is installed.'
+      Write-Host 'Run:'
+      Write-Host '    sentry setup'
+      Write-Host 'again when ready.'
+      return @{ Distro = ''; RebootRequired = $false }
+    }
+    if ($installResult -eq 'failed') {
+      Write-SentryFail 'WSL installation failed (see messages above). Fix WSL manually, then rerun sentry setup.'
+      return @{ Distro = ''; RebootRequired = $false }
+    }
+    if ($installResult -eq 'ready') {
+      Write-SentryOk 'WSL2 + Ubuntu installed and ready; continuing setup immediately.'
+      return @{ Distro = 'Ubuntu'; RebootRequired = $false }
+    }
     Write-Host ''
-    Write-Host 'WSL2 installation has been requested.' -ForegroundColor Yellow
-    Write-Host 'Windows may need to restart before Sentry setup can continue.'
+    Write-Host 'WSL2 installation was accepted.' -ForegroundColor Yellow
+    Write-Host 'Windows must restart before Sentry setup can continue.'
     Write-Host 'After restarting, rerun from this repository:'
     Write-Host '    .\sentry.ps1 setup'
     return @{ Distro = ''; RebootRequired = $true }
   }
   $distros = @(Get-SentryWslDistros)
-  $usable = @(Get-SentryUsableDistros $distros)
+  $class = Get-SentryDistroClass $distros
+  $usable = @($class.Usable)
+  $convertible = @($class.Wsl1)
+  if (($usable.Count -eq 0) -and ($convertible.Count -gt 0)) {
+    $choice = Request-SentryWsl1Conversion -Convertible $convertible -Explicit $Explicit -NonInteractive $NonInteractive
+    if (-not $choice) { return @{ Distro = ''; RebootRequired = $false } }
+    $distros = @(Get-SentryWslDistros)
+    $class = Get-SentryDistroClass $distros
+    $usable = @($class.Usable)
+  }
   if ($usable.Count -eq 0) {
     Write-SentryWarn 'WSL exists but no usable WSL2 distro was found.'
-    Write-SentryInfo 'Installing Ubuntu via: wsl --install -d Ubuntu (may need reboot)...'
-    try {
-      $r = Invoke-SentryNative -FilePath 'wsl.exe' -Arguments @('--install', '-d', 'Ubuntu')
-      Write-SentryLog ('wsl --install ubuntu exit=' + $r.ExitCode) 'setup'
-    } catch { }
+    $installResult = Install-SentryWslUbuntu -Elevate $false
+    if ($installResult -eq 'ready') {
+      Write-SentryOk 'Ubuntu installed and ready; continuing setup immediately.'
+      return @{ Distro = 'Ubuntu'; RebootRequired = $false }
+    }
+    if ($installResult -eq 'failed') {
+      Write-SentryFail 'Ubuntu installation failed. Install a WSL2 distro manually, then rerun sentry setup.'
+      return @{ Distro = ''; RebootRequired = $false }
+    }
     Write-Host 'After Ubuntu finishes installing (and any reboot), rerun: .\sentry.ps1 setup'
     return @{ Distro = ''; RebootRequired = $true }
   }
   $choice = Select-SentryDistro -Distros $distros -Previous $Previous -Explicit $Explicit -NonInteractive $NonInteractive
   if (-not $choice) { return @{ Distro = ''; RebootRequired = $false } }
   $entry = @($distros | Where-Object { $_.Name -ceq $choice })[0]
-  if ($entry -and $entry.Version -ne 2) {
-    Write-SentryWarn ($choice + ' is WSL1; Sentry requires WSL2. Converting (this may take a while)...')
-    $r = Invoke-SentryNative -FilePath 'wsl.exe' -Arguments @('--set-version', $choice, '2')
-    if ($r.ExitCode -ne 0) { Write-SentryFail ('Could not convert ' + $choice + ' to WSL2.'); return @{ Distro = ''; RebootRequired = $false } }
-    Write-SentryOk ($choice + ' converted to WSL2.')
+  if ($entry -and ($entry.Version -ne 2)) {
+    Write-SentryFail ('Selected distro ' + $choice + ' is not WSL2 (selection bug). Aborting safely.')
+    return @{ Distro = ''; RebootRequired = $false }
   }
   $probe = Invoke-SentryWsl -Distro $choice -LinuxArgs @('printf', 'init-ok') -TimeoutSec 60
   if ($probe.ExitCode -ne 0) {
     Write-Host ''
-    Write-Host 'Ubuntu must complete first-time initialization.' -ForegroundColor Yellow
+    Write-Host ($choice + ' must complete first-time initialization.') -ForegroundColor Yellow
     Write-Host 'A WSL window will open. Create your Linux username/password, then return here.'
     [void](Start-Process 'wsl.exe' -ArgumentList @('-d', $choice))
     Write-Host 'Press Enter here after finishing initialization...'
