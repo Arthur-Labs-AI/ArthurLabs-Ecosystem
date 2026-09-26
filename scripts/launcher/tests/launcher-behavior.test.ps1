@@ -104,12 +104,12 @@ Assert-True 'wsl1-used-set-version' ((@($script:NativeCalls) | Where-Object { $_
 $conv2 = Request-SentryWsl1Conversion -Convertible @($onlyWsl1) -NonInteractive $true
 Assert-Equal 'wsl1-silent-refuses' $conv2 ''
 # ---- 9. DeepSeek ensure uses the managed check (mocked boundary) ----
-$script:WslFileStubs = @{ 'check-deepseek.sh' = @{ ExitCode = 0; Stdout = ("DSH_MANAGED=/home/u/.local/share/sentry/tools/deepseek/bin/dsh`nDSH_VERSION=0.1.5-rc.2`nDSH_OK"); Stderr = '' } }
+$script:WslFileStubs = @{ 'install-deepseek-tool.sh' = @{ ExitCode = 0; Stdout = ("0.1.5-rc.2`nMANAGED_DSH=/home/u/.local/share/sentry/tools/deepseek/bin/dsh"); Stderr = '' } }
 $script:NativeStubs = @{ '*' = @{ ExitCode = 0; Stdout = ''; Stderr = '' } }
 $ds = Ensure-SentryDeepSeek -Distro 'Ubuntu' -RepoRoot $repoRoot
 Assert-Equal 'deepseek-managed-ok' $ds $true
-Assert-True 'deepseek-ran-managed-check' ((@($script:WslFileCalls) | Where-Object { $_ -like 'check-deepseek.sh root=*' }).Count -gt 0)
-$script:WslFileStubs = @{ 'check-deepseek.sh' = @{ ExitCode = 0; Stdout = 'DSH_MANAGED=missing'; Stderr = '' }; 'install-deepseek-tool.sh' = @{ ExitCode = 1; Stdout = 'DSH_ENTRY_MISSING'; Stderr = '' } }
+Assert-True 'deepseek-installs-live-wrapper' ((@($script:WslFileCalls) | Where-Object { $_ -like 'install-deepseek-tool.sh root=*' }).Count -gt 0)
+$script:WslFileStubs = @{ 'install-deepseek-tool.sh' = @{ ExitCode = 1; Stdout = 'DSH_ENTRY_MISSING'; Stderr = '' } }
 $ds2 = Ensure-SentryDeepSeek -Distro 'Ubuntu' -RepoRoot $repoRoot
 Assert-Equal 'deepseek-missing-fails-honest' $ds2 $false
 # ---- 11. deploy log path: absolute HOME resolution, never literal $HOME ----

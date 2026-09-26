@@ -47,15 +47,6 @@ function Save-SentryProviderBinary {
 function Ensure-SentryDeepSeek {
   param([string]$Distro, [string]$RepoRoot)
   $expected = Get-SentryExpectedDeepSeekVersion -RepoRoot $RepoRoot
-  $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-deepseek.sh' -ScriptArgs @($expected) -TimeoutSec 60
-  $out = [string]$r.Stdout
-  if ($out.Contains('DSH_OK')) {
-    $managed = ''
-    foreach ($line in ($out -split "`n")) { if ($line.Trim().StartsWith('DSH_MANAGED=')) { $managed = $line.Trim().Substring(12) } }
-    Write-SentryOk ('DeepSeek runtime ' + $expected + ' (managed, preflight-probed)')
-    if ($managed) { [void](Save-SentryProviderBinary -RepoRoot $RepoRoot -Key 'SENTRY_DEEPSEEK_BINARY' -LinuxPath $managed) }
-    return $true
-  }
   Write-SentryInfo ('Preparing Sentry-managed DeepSeek runtime ' + $expected + ' (from the deployed runtime; no sudo, no network)...')
   $r2 = Invoke-SentryWslFile -Distro $Distro -ScriptName 'install-deepseek-tool.sh' -ScriptArgs @($expected) -TimeoutSec 300
   Write-SentryLog ('deepseek tool install exit=' + $r2.ExitCode) 'setup'
