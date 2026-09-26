@@ -122,15 +122,39 @@ export const REPORT_STRENGTH_COMPATIBILITY =
   "'tool_diagnostic' requires a ledger operation with a known outcome. " +
   'When in doubt, downgrade the strength or drop the evidence item — a weaker honest report passes; an overclaimed one is rejected.';
 
+/**
+ * When a strength fix interacts with finding confidence (live regression
+ * run_01M3FSEE1VGJSP00BJEGQM2WDB): downgrading an evidence strength to
+ * 'agent_reasoning' removes that item as grounding, so a finding that cited
+ * it at strong/confirmed confidence fails next with a confidence violation
+ * the previous correction never mentioned. Strength and confidence fixes
+ * must therefore be applied atomically in the single retry: re-check every
+ * strong/confirmed finding against the corrected evidence in the same pass.
+ */
+export const REPORT_STRENGTH_CONFIDENCE_ATOMICITY =
+  'Strength and confidence interact — fix them together in this one correction: ' +
+  'a finding with strong or confirmed confidence needs at least one cited evidence item that stays grounded, ' +
+  "i.e. strength 'reproduced_failure', 'reproduced_behavior', 'tool_diagnostic' or 'strong_code_evidence', " +
+  'or type command, code_reference or test. ' +
+  "Downgrading an evidence strength to 'agent_reasoning' removes its grounding: " +
+  'in the same correction, downgrade the confidence of every finding that cited it, ' +
+  'cite different grounded evidence instead, or drop the finding.';
+
 /** Bounded correction intro for report-only retries (§34). */
 export function buildReportCorrectionIntro(errors: readonly string[]): string {
   const bounded = errors.slice(0, 8).map((error, index) => `${index + 1}. ${error}`);
-  const needsMatrix = errors.some((error) => /strength/i.test(error));
+  // The matrix is needed not only for strength rejections: a confidence
+  // rejection ('... require at least one grounded evidence item') means the
+  // model does not know what WOULD ground the finding, so teach the matrix
+  // there too instead of letting the retry guess.
+  const needsMatrix = errors.some((error) => /strength|confidence|grounded/i.test(error));
   return (
     'Your report was rejected. Do not investigate further. Do not use tools. No new operations will be observed.\n' +
     'Correct these report issues:\n' +
     bounded.join('\n') +
-    (needsMatrix ? '\n' + REPORT_STRENGTH_COMPATIBILITY : '') +
+    (needsMatrix
+      ? '\n' + REPORT_STRENGTH_COMPATIBILITY + '\n' + REPORT_STRENGTH_CONFIDENCE_ATOMICITY
+      : '') +
     '\nUse ONLY the frozen ledger below. Return the complete corrected report.'
   );
 }

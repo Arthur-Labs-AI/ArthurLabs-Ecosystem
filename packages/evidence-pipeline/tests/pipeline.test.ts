@@ -14,6 +14,7 @@ import {
 import {
   buildBaselineIndex,
   buildReportCorrectionIntro,
+  REPORT_STRENGTH_CONFIDENCE_ATOMICITY,
   commandIdentity,
   convertEvidence,
   convertReportEvidence,
@@ -500,6 +501,54 @@ describe('shared evidence pipeline', () => {
           'agent_reasoning',
         ].includes(token ?? ''),
         'matrix teaches unknown strength: ' + token,
+      ).toBe(true);
+    }
+  });
+
+  it('teaches the matrix for confidence rejections and warns about interacting fixes', () => {
+    // Live regression (run_01M3FSEE1VGJSP00BJEGQM2WDB): attempt 1 failed on
+    // evidence strength; the retry downgraded to agent_reasoning, which
+    // ungrounded a strong finding that then failed attempt 2 with no
+    // attempts left. The correction must teach atomic strength+confidence
+    // repair, including when the rejection itself is confidence-only.
+    const confidenceErrors = [
+      'findings.4.confidence: strong findings require at least one grounded evidence item',
+    ];
+    const withAtomicity = buildReportCorrectionIntro(confidenceErrors);
+    expect(withAtomicity).toContain(REPORT_STRENGTH_COMPATIBILITY.slice(0, 60));
+    expect(withAtomicity).toContain('fix them together in this one correction');
+    expect(withAtomicity).toContain('downgrade the confidence');
+    const strengthErrors = [
+      'evidence.9.strength: Strength strong_code_evidence is impossible for manual evidence',
+    ];
+    expect(buildReportCorrectionIntro(strengthErrors)).toContain(
+      'fix them together in this one correction',
+    );
+    const unrelated = buildReportCorrectionIntro(['findings.0.locations: Unknown evidence key']);
+    expect(unrelated).not.toContain(REPORT_STRENGTH_COMPATIBILITY.slice(0, 60));
+    expect(unrelated).not.toContain('fix them together in this one correction');
+  });
+
+  it('quotes only valid enum strengths in the atomicity guidance', () => {
+    // Same guard as the matrix itself: correction text must never teach a
+    // strength token the evidence schema rejects.
+    const quoted = [...REPORT_STRENGTH_CONFIDENCE_ATOMICITY.matchAll(/'([a-z_]+)'/g)].map(
+      (m) => m[1],
+    );
+    const strengths = quoted.filter((token) =>
+      /^(reproduced|tool|strong|agent|weak|speculative)/.test(token ?? ''),
+    );
+    expect(strengths.length).toBeGreaterThan(0);
+    for (const token of strengths) {
+      expect(
+        [
+          'reproduced_failure',
+          'reproduced_behavior',
+          'tool_diagnostic',
+          'strong_code_evidence',
+          'agent_reasoning',
+        ].includes(token ?? ''),
+        'atomicity guidance teaches unknown strength: ' + token,
       ).toBe(true);
     }
   });
