@@ -18,6 +18,33 @@ Verify:
 opencode --version
 ```
 
+The Sentry-managed execution runtime lives under the Linux user's data
+root. With the default data root it is:
+
+```text
+/home/<ubuntu-username>/.local/share/sentry/tools/opencode/node_modules/.bin/opencode
+```
+
+For example, if your WSL/Ubuntu username is `mert`:
+
+```text
+/home/mert/.local/share/sentry/tools/opencode/node_modules/.bin/opencode
+```
+
+Replace `<ubuntu-username>` with your actual WSL/Ubuntu username — do not
+copy a `/home/mert` or `/home/merte` path verbatim onto another machine.
+Find yours with:
+
+```bash
+whoami
+```
+
+or:
+
+```bash
+echo "$HOME"
+```
+
 Executable discovery order (no restart needed for changes): explicit
 adapter config → `SENTRY_OPENCODE_BINARY` (Settings → Providers →
 “OpenCode executable”, pushed into runtime memory) → Sentry-managed

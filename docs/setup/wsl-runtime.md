@@ -39,7 +39,13 @@ No secrets below — substitute your own values where indicated.
 
 ## 4. Provider CLIs in the same distro
 
-- DeepSeek: install the `dsh` harness so `wsl -d Ubuntu -- which dsh` resolves.
+- DeepSeek: `sentry setup` provisions the Sentry-managed `bin/dsh` at
+  `~/.local/share/sentry/tools/deepseek/bin/dsh`. That file is a Bash
+  wrapper (resolves the pinned DSH runtime from `runtime/current` at every
+  invocation) used for `--version` probes and diagnostics — do NOT replace
+  it with a JavaScript file. At startup the vendor SDK resolves and launches
+  its own pinned compatible DSH runtime unless explicitly given a real
+  `.js` runtime entrypoint; the wrapper itself is never passed to Node.
 - OpenCode: install OpenCode in WSL (`npm install opencode-ai@1.18.32` in
   `~/.local/share/sentry/tools/opencode` is enough — no sudo, no global
   install, no `PATH` changes; Sentry discovers its managed installation

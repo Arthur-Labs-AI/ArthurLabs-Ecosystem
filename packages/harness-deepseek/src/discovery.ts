@@ -3,7 +3,7 @@ import { isAbsolute } from 'node:path';
 import { nowIsoTimestamp } from '@qa/shared';
 import type { HarnessHealthResult } from '@qa/harness-protocol';
 import { buildDeepSeekChildEnvironment } from './environment.js';
-import { DEEPSEEK_SDK_VERSION } from './sdk.js';
+import { DEEPSEEK_SDK_VERSION, resolveExplicitDshEntry } from './sdk.js';
 import { DeepSeekHarnessError } from './errors.js';
 import { redactDiagnostic, secretValues } from './redaction.js';
 
@@ -108,7 +108,9 @@ export async function probeDeepSeekExecutable(
     // Mirror the SDK client: the dsh runtime ships as a .js entry point
     // launched via node (see resolveDshLaunch in dsh-sdk-client). Spawning
     // a script path directly throws synchronously on Windows (EFTYPE).
-    const isScript = /\.[cm]?js$/i.test(executable);
+    // Shell wrappers (e.g. Sentry's managed bin/dsh) execute directly —
+    // the same executable-vs-entrypoint distinction as resolveExplicitDshEntry.
+    const isScript = resolveExplicitDshEntry(executable) !== undefined;
     const command = isScript ? process.execPath : executable;
     const args = isScript ? [executable, '--version'] : ['--version'];
     // Narrow wrapper preserves the piped-stdio overload type (non-null
