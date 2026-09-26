@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bootstrapDesktop, type BootstrappedDesktop } from './bootstrap.js';
+import { parseSentryControlArgs } from './sentry-control.js';
 import { registerDesktopIpc } from './ipc.js';
 import { DesktopLiveUpdates } from './live-updates.js';
 
@@ -176,10 +177,50 @@ app.on('before-quit', () => {
 // Single instance: a second launch focuses the running window instead of
 // starting a second WSL runtime (dual leases corrupt run ownership and
 // produce phantom timeouts across both instances).
-if (!app.requestSingleInstanceLock()) {
+const sentryControl = parseSentryControlArgs(process.argv);
+if (sentryControl.mode === 'stop') {
+  // Graceful stop (`sentry stop`): never kill processes, never boot the UI.
+  if (!app.requestSingleInstanceLock()) {
+    // A Sentry instance is running; it receives this argv via
+    // 'second-instance' and quits through the normal before-quit path
+    // (DesktopLiveUpdates.stop() -> runtime.close() -> runtime.shutdown).
+    app.quit();
+  } else {
+    // No instance holds the lock: report cleanly without launching Desktop.
+    void app.whenReady().then(() => {
+      console.log('Sentry is not currently running.');
+      app.quit();
+    });
+  }
+} else if (sentryControl.setupDistro !== undefined) {
+  // Distro preference sync (`sentry setup`): persist through the existing
+  // WslRuntimeManager so the JSON format stays authoritative, then quit.
+  const distroToSave = sentryControl.setupDistro;
+  if (!app.requestSingleInstanceLock()) {
+    app.quit();
+  } else {
+    void app.whenReady().then(() => {
+      import('./services/wsl-runtime-client.js')
+        .then(async ({ WslRuntimeManager }) => {
+          const manager = new WslRuntimeManager({ userDataDir: app.getPath('userData') });
+          await manager.savePreferredDistro(distroToSave);
+          console.log('Saved WSL distro preference: ' + distroToSave);
+          app.quit();
+        })
+        .catch((error: unknown) => {
+          console.error('Failed to save distro preference: ' + String(error));
+          app.exit(1);
+        });
+    });
+  }
+} else if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv) => {
+    if (parseSentryControlArgs(argv).mode === 'stop') {
+      app.quit();
+      return;
+    }
     if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
