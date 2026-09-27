@@ -1091,8 +1091,7 @@ export class SentryRuntimeHost {
         s.id === 'stack_opencode_main'
           ? {
               ...stackStatus(s.id, opencode as never),
-              executionPath:
-                opencodeDoctor?.executable ?? managedOpenCodeExecutable(this.dataRoot),
+              executionPath: opencodeDoctor?.executable ?? managedOpenCodeExecutable(this.dataRoot),
               ...(opencodeDoctor?.executableSource === undefined
                 ? {}
                 : { executableSource: opencodeDoctor.executableSource }),
