@@ -381,10 +381,12 @@ export class DesktopApplicationService {
       ...(agentStackIds === undefined ? {} : { agentStackIds: [...agentStackIds] }),
     }) as Promise<{
       readonly ready: boolean;
+      readonly warnings: readonly string[];
       readonly stacks: ReadonlyArray<{
         readonly id: string;
         readonly ready: boolean;
         readonly reasons: readonly string[];
+        readonly warnings: readonly string[];
       }>;
     }>;
   }
