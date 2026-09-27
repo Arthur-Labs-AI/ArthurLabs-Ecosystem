@@ -55,6 +55,9 @@ wsl -d Ubuntu -- node --version   # must print v22+
 
 Setup installs Node 22 via NodeSource on apt distros. On non-apt distros,
 install Node >= 22 manually so the command above works, then rerun setup.
+A missing `systemd` binary set is repaired by setup (apt install) where
+possible; that is a different state from systemd being installed but
+disabled in `/etc/wsl.conf`, which setup enables and re-probes.
 
 ## GLM sandbox: `socat` / `bubblewrap` missing
 
@@ -130,8 +133,12 @@ executable is not `electron.exe`. If the handshake fails after a deploy:
 - **Claude**: setup uses adapter-tested `2.1.270` from a Sentry-managed
   install (`~/.local/share/sentry/tools/claude-code`) and never touches
   your global `claude` (no sudo, no global npm changes). An existing exact
-  native install may be reused; version `2.1.276` is known-incompatible. A
-  `claude` resolved from `/mnt/c/...` (Windows mount) is refused.
+  native install may be reused; version `2.1.276` is known-incompatible and
+  blocked, while other unknown versions warn but allow a first run. A `claude`
+  resolved from `/mnt/c/...` (Windows mount) is refused. GLM runs also
+  require `ANTHROPIC_BASE_URL` set to a trusted Z.AI-compatible endpoint
+  (the default `api.anthropic.com` route is refused) plus the sandbox
+  prerequisites above.
 
 After installing a tool manually, rerun `sentry doctor` to verify.
 

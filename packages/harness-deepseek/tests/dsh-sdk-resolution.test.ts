@@ -6,7 +6,10 @@ import { DEEPSEEK_SDK_VERSION } from '../src/sdk.js';
 const requirePkg = createRequire(import.meta.url);
 
 describe('vendor SDK self-resolution (no mocks, no spawn, no network)', () => {
-  it('E: constructing a harness without dshBin resolves the pinned runtime', async () => {
+  it('E: constructing a harness without dshBin resolves the pinned runtime (would throw if unresolvable)', async () => {
+    // resolveDshLaunch runs inside the constructor and version-checks the
+    // manifests: success proves local resolvability, not a live startup.
+    // No subprocess is spawned and no provider request is made here.
     const harness = new DeepSeekHarness({});
     expect(harness).toBeDefined();
     await harness.close();

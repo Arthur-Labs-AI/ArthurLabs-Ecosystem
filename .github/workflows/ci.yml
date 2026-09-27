@@ -109,6 +109,8 @@ jobs:
         run: bash scripts/launcher/tests/test-dsh-switch.sh
       - name: Sandbox prerequisite matrix (no WSL)
         run: bash scripts/launcher/tests/test-sandbox-prereqs.sh
+      - name: Pre-run readiness gate matrix (no WSL)
+        run: pnpm --filter @qa/runtime exec vitest run tests/readiness-gate.test.ts tests/sandbox-deps.test.ts
 
   launcher-windows:
     name: launcher (windows, no WSL)

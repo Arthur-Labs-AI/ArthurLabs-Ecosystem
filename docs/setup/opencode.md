@@ -56,9 +56,14 @@ Executable discovery order (no restart needed for changes): explicit
 adapter config → `SENTRY_OPENCODE_BINARY` (Settings → Providers →
 “OpenCode executable”, pushed into runtime memory) → Sentry-managed
 installation (`<dataRoot>/tools/opencode/node_modules/.bin/opencode`)
-→ `opencode` on `PATH`. A user-local install under the data root needs
-no `PATH` changes, no sudo, and no shell-profile edits. An explicit
-override that is broken fails closed (no silent fallback). There is no
+→ `opencode` on `PATH` (a valid global/native install is reused when no
+managed install or override exists; an explicit override that is broken
+fails closed with no silent fallback to managed/PATH). A user-local install
+under the data root needs no `PATH` changes, no sudo, and no shell-profile
+edits. Production execution additionally requires working sandbox/isolation
+(functional bubblewrap sandbox, systemd user isolation, and project-config
+masking); the pre-run gate verifies the same executable and sandbox the
+run would use. There is no
 fallback model or fake execution: real runs require the real binary.
 
 ## 2. Set the provider, model, and credential
