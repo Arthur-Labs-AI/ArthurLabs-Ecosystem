@@ -68,6 +68,7 @@ After setup, `sentry` works from any directory:
 ```powershell
 sentry open      # launch Sentry Desktop
 sentry update    # pull latest commits and update Sentry
+sentry repair    # safely rerun setup and validation end to end (idempotent)
 sentry stop      # gracefully stop Sentry (only Sentry, never other apps)
 sentry status    # fast installation status (add -Json for machine-readable)
 sentry doctor    # detailed diagnostics (no paid API calls, no secrets printed)

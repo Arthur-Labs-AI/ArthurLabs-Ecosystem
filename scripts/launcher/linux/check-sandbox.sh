@@ -11,10 +11,10 @@ else
   echo 'MISS-socat'
 fi
 if command -v bwrap >/dev/null 2>&1; then
-  echo 'HAVE-bwrap'
+  echo 'HAVE-bubblewrap'
   echo "BWRAP_VERSION=$(bwrap --version 2>&1 | head -n 1)"
 else
-  echo 'MISS-bwrap'
+  echo 'MISS-bubblewrap'
 fi
 if command -v bwrap >/dev/null 2>&1; then
   # Minimal init smoke: proves user namespaces + mounts initialize by

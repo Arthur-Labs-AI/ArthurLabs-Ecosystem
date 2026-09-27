@@ -107,6 +107,8 @@ jobs:
       - run: pnpm build
       - name: Managed DeepSeek current-switch regression (no WSL)
         run: bash scripts/launcher/tests/test-dsh-switch.sh
+      - name: Sandbox prerequisite matrix (no WSL)
+        run: bash scripts/launcher/tests/test-sandbox-prereqs.sh
 
   launcher-windows:
     name: launcher (windows, no WSL)
@@ -147,6 +149,8 @@ jobs:
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher/tests/io-stress.test.ps1
       - name: Desktop control-parser tests
         run: pnpm --filter @qa/desktop exec vitest run tests/unit/sentry-control.test.ts
+      - name: DeepSeek dshBin regression tests (no WSL)
+        run: pnpm --filter @qa/harness-deepseek exec vitest run tests/dsh-bin-selection.test.ts tests/dsh-sdk-resolution.test.ts
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 help
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 version
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 status

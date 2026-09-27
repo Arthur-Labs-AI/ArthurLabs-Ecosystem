@@ -35,19 +35,19 @@ mkbin "$T/a" bwrap 'if [ "$1" = "--version" ]; then echo "bubblewrap 0.10.1"; ex
 # NOTE: single quotes above are literal; $1/--version stay intact for the stub shell
 out=$(PATH="$T/a" run_check)
 check 'A-socat-have' test "$(echo "$out" | grep -c '^HAVE-socat$')" = 1
-check 'A-bwrap-have' test "$(echo "$out" | grep -c '^HAVE-bwrap$')" = 1
+check 'A-bwrap-have' test "$(echo "$out" | grep -c '^HAVE-bubblewrap$')" = 1
 check 'A-init-ok' test "$(echo "$out" | grep -c '^SANDBOX_INIT_OK$')" = 1
 # B. socat missing (isolated PATH: real /usr/bin/socat cannot leak in)
 mkcase "$T/b"
 mkbin "$T/b" bwrap 'exit 0'
 out=$(PATH="$T/b" run_check)
 check 'B-socat-miss' test "$(echo "$out" | grep -c '^MISS-socat$')" = 1
-check 'B-bwrap-still-have' test "$(echo "$out" | grep -c '^HAVE-bwrap$')" = 1
+check 'B-bwrap-still-have' test "$(echo "$out" | grep -c '^HAVE-bubblewrap$')" = 1
 # C. bwrap missing
 mkcase "$T/c"
 mkbin "$T/c" socat 'echo "socat version 1.8.0.3"; exit 0'
 out=$(PATH="$T/c" run_check)
-check 'C-bwrap-miss' test "$(echo "$out" | grep -c '^MISS-bwrap$')" = 1
+check 'C-bwrap-miss' test "$(echo "$out" | grep -c '^MISS-bubblewrap$')" = 1
 check 'C-init-fail-names-bwrap' test "$(echo "$out" | grep -c 'bwrap-missing')" = 1
 check 'C-socat-still-have' test "$(echo "$out" | grep -c '^HAVE-socat$')" = 1
 # D. both missing
@@ -61,5 +61,6 @@ mkbin "$T/e" bwrap 'if [ "$1" = "--version" ]; then echo "bubblewrap 0.10.1"; ex
 out=$(PATH="$T/e" run_check)
 check 'E-init-fail-reported' test "$(echo "$out" | grep -c '^SANDBOX_INIT_FAIL=')" = 1
 check 'E-binaries-still-have' test "$(echo "$out" | grep -c '^HAVE-')" = 2
+check 'E-no-bare-bwrap-token' test "$(echo "$out" | grep -c '^HAVE-bwrap$')" = 0
 echo "sandbox-prereqs: pass=$pass fail=$fail"
 [ "$fail" -eq 0 ]

@@ -5,18 +5,22 @@ import { join } from 'node:path';
 
 const seenOptions: unknown[] = [];
 
-vi.mock('@deepseek-ai/dsh-sdk-client', () => ({
-  DeepSeekHarness: class {
-    constructor(options: unknown) {
-      seenOptions.push(options);
-    }
-    async start() {}
-    async run() {
-      return { sessionId: 's', finalResponse: '', events: [] };
-    }
-    async close() {}
-  },
-}));
+vi.mock('@deepseek-ai/dsh-sdk-client', async (importOriginal) => {
+  const original = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...original,
+    DeepSeekHarness: class {
+      constructor(options: unknown) {
+        seenOptions.push(options);
+      }
+      async start() {}
+      async run() {
+        return { sessionId: 's', finalResponse: '', events: [] };
+      }
+      async close() {}
+    },
+  };
+});
 
 import { createProductionDeepSeekClient } from '../src/sdk.js';
 

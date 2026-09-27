@@ -121,9 +121,12 @@ executable is not `electron.exe`. If the handshake fails after a deploy:
   `~/.local/share/sentry/tools/deepseek/bin/dsh`, then persists that path
   as the `SENTRY_DEEPSEEK_BINARY` override. Setup reports DeepSeek ready
   only after the managed binary answers its version probe (the same probe
-  production preflight performs). That managed file is a Bash wrapper that
-  follows `runtime/current`; the SDK launches its own pinned DSH runtime
-  from it at startup. Do not replace the wrapper with a JavaScript file.
+  production preflight performs). That managed file is a Bash wrapper used
+  for diagnostics, version probing, and following `runtime/current`.
+  Production SDK startup does not pass this wrapper as `dshBin`; the SDK
+  resolves a compatible JavaScript DSH runtime independently unless
+  explicitly given a real `.js/.mjs/.cjs` entrypoint. Do not replace the
+  wrapper with a JavaScript file.
 - **Claude**: setup uses adapter-tested `2.1.270` from a Sentry-managed
   install (`~/.local/share/sentry/tools/claude-code`) and never touches
   your global `claude` (no sudo, no global npm changes). An existing exact
