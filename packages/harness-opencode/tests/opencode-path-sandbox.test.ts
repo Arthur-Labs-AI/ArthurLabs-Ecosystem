@@ -7,6 +7,7 @@ import { createOpenCodeRegistration } from '../src/registration.js';
 import {
   classifyOpenCodeVersion,
   doctorOpenCode,
+  isBlockingContainmentFailure,
   probeOpenCodeSandbox,
   probeResolvedOpenCodeExecutable,
 } from '../src/discovery.js';
@@ -122,7 +123,7 @@ describe('functional systemd probe (no mocks)', () => {
   it('systemd-run --version success with failing unit launch reads as unavailable', async () => {
     const fakeDir = await fakeBinDir(systemdFakes());
     const env = withFakePath(fakeDir);
-    expect(await probeSystemdUser(5_000)).toBe(false);
+    expect(await probeSystemdUser(5_000, env)).toBe(false);
     const sandbox = await probeOpenCodeSandbox({ environment: env });
     expect(sandbox.systemdUser).toBe(false);
   });
@@ -193,10 +194,12 @@ describe('direct dev bypass consistency (no mocks)', () => {
     const warned = (doctor.checks ?? []).some(
       (check) => check.status === 'warn' && (check.message ?? '').includes('ALLOW_DIRECT'),
     );
+    const directMode = (doctor.checks ?? []).find((check) => check.name === 'direct-mode');
     const failed = (doctor.checks ?? []).some((check) => check.status === 'fail');
     // Masking uses real fs and passes here, so bypass must warn, never fail hard.
     expect(failed).toBe(false);
     expect(warned).toBe(true);
+    expect(directMode?.status).toBe('warn');
   });
 
   it('masking failure under bypass still blocks everywhere', async () => {
@@ -224,6 +227,68 @@ describe('direct dev bypass consistency (no mocks)', () => {
         code: 'OPENCODE_SANDBOX_UNAVAILABLE',
       });
     }
+  });
+});
+
+describe('containment blocking policy (pure)', () => {
+  it('healthy host without bypass never blocks', () => {
+    expect(
+      isBlockingContainmentFailure({
+        bypassed: false,
+        toolNamespace: 'pass',
+        processBoundary: 'pass',
+        configMasking: 'pass',
+      }),
+    ).toBe(false);
+  });
+
+  it('healthy probes with direct bypass do not block (warning path)', () => {
+    expect(
+      isBlockingContainmentFailure({
+        bypassed: true,
+        toolNamespace: 'pass',
+        processBoundary: 'pass',
+        configMasking: 'pass',
+      }),
+    ).toBe(false);
+  });
+
+  it('failed probes with direct bypass do not block except masking', () => {
+    expect(
+      isBlockingContainmentFailure({
+        bypassed: true,
+        toolNamespace: 'warn',
+        processBoundary: 'warn',
+        configMasking: 'pass',
+      }),
+    ).toBe(false);
+    expect(
+      isBlockingContainmentFailure({
+        bypassed: true,
+        toolNamespace: 'pass',
+        processBoundary: 'pass',
+        configMasking: 'fail',
+      }),
+    ).toBe(true);
+  });
+
+  it('failed probes without bypass block', () => {
+    expect(
+      isBlockingContainmentFailure({
+        bypassed: false,
+        toolNamespace: 'fail',
+        processBoundary: 'pass',
+        configMasking: 'pass',
+      }),
+    ).toBe(true);
+    expect(
+      isBlockingContainmentFailure({
+        bypassed: false,
+        toolNamespace: 'pass',
+        processBoundary: 'fail',
+        configMasking: 'pass',
+      }),
+    ).toBe(true);
   });
 });
 
@@ -276,8 +341,11 @@ describe('version policy matrix (no mocks)', () => {
     // Isolate version policy from host sandbox state.
     env['SENTRY_OPENCODE_ALLOW_DIRECT'] = '1';
     const doctor = await doctorOpenCode({ environment: env });
-    expect(doctor.checks?.find((check) => check.name === 'version')?.status).toBe('warn');
-    expect(['degraded', 'configured']).toContain(doctor.readiness);
+    const versionCheck = doctor.checks?.find((check) => check.name === 'version');
+    expect(versionCheck?.status).toBe('warn');
+    expect(versionCheck?.message ?? '').toContain('SENTRY_OPENCODE_ALLOW_UNTESTED_VERSION=1');
+    expect(doctor.status).toBe('degraded');
+    expect(doctor.readiness).toBe('degraded');
     if (process.platform === 'linux') {
       const registration = createOpenCodeRegistration({ environment: env });
       await registration.preflight();

@@ -192,6 +192,18 @@ describe('pre-run gate: OpenCode hard local readiness', () => {
     expect(evaluateOpencodeGate(OC_BASE).ready).toBe(true);
   });
 
+  it('direct mode with all probes healthy still warns and stays ready', () => {
+    const verdict = evaluateOpencodeGate({
+      ...OC_BASE,
+      sandboxBypassed: true,
+      sandbox: { systemdUser: true, bubblewrap: true, masking: true },
+    });
+    expect(verdict.ready).toBe(true);
+    expect(verdict.warnings.length).toBeGreaterThan(0);
+    expect(verdict.warnings.join(';')).toContain('ALLOW_DIRECT');
+    expect(verdict.reasons).toEqual([]);
+  });
+
   it('dev bypass warns on systemd/bubblewrap but stays ready', () => {
     const verdict = evaluateOpencodeGate({
       ...OC_BASE,

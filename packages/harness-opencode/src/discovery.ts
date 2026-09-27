@@ -435,6 +435,24 @@ export function openCodeUntestedVersionAllowed(
   return environment['SENTRY_OPENCODE_ALLOW_UNTESTED_VERSION'] === '1';
 }
 
+/**
+ * Pure containment policy: masking failure always blocks; systemd and
+ * bubblewrap failures block only outside the explicit dev bypass (where
+ * they warn instead). Deterministic on every platform; unit-tested as a
+ * matrix including healthy-host direct mode.
+ */
+export function isBlockingContainmentFailure(input: {
+  readonly bypassed: boolean;
+  readonly toolNamespace: string;
+  readonly processBoundary: string;
+  readonly configMasking: string;
+}): boolean {
+  if (input.configMasking === 'fail') return true;
+  if (!input.bypassed && input.toolNamespace === 'fail') return true;
+  if (!input.bypassed && input.processBoundary === 'fail') return true;
+  return false;
+}
+
 export type OpenCodeVersionClassification = 'tested' | 'blocked' | 'override-allowed';
 
 /**
@@ -805,6 +823,18 @@ export async function doctorOpenCode(
   // while masking stays hard (the adapter masks fail-closed regardless of
   // launcher).
   const bypassed = openCodeSandboxBypassed(environment);
+  // The bypass flag itself is always a visible degradation: the adapter
+  // intentionally skips the Bubblewrap tool-shell namespace in direct mode
+  // even when every probe below passes.
+  if (bypassed) {
+    checks.push({
+      name: 'direct-mode',
+      status: 'warn',
+      message:
+        'SENTRY_OPENCODE_ALLOW_DIRECT=1 enables development-only weaker execution; ' +
+        'the OpenCode production sandbox/tool namespace is intentionally bypassed.',
+    });
+  }
   try {
     const sandbox = await probeOpenCodeSandbox({ environment });
     const systemdStatus = sandbox.systemdUser ? 'pass' : bypassed ? 'warn' : 'fail';
@@ -845,10 +875,12 @@ export async function doctorOpenCode(
   // A blocked version also blocks. Warnings otherwise degrade.
   const checkStatus = (name: string): string =>
     checks.find((check) => check.name === name)?.status ?? 'fail';
-  const blockingContainmentFailure =
-    checkStatus('config-masking') === 'fail' ||
-    (!bypassed && checkStatus('tool-namespace') === 'fail') ||
-    (!bypassed && checkStatus('process-boundary') === 'fail');
+  const blockingContainmentFailure = isBlockingContainmentFailure({
+    bypassed,
+    toolNamespace: checkStatus('tool-namespace'),
+    processBoundary: checkStatus('process-boundary'),
+    configMasking: checkStatus('config-masking'),
+  });
   const versionBlocked = checkStatus('version') === 'fail';
   const summary = openCodeReadinessFromChecks({
     modelOk: runtime !== undefined,
