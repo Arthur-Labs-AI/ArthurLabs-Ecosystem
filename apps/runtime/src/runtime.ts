@@ -10,7 +10,9 @@
  * via notifications plus renderer polling.
  */
 import { spawnSync } from 'node:child_process';
-import { isAbsolute, join } from 'node:path';
+import { accessSync, constants, readFileSync, statSync } from 'node:fs';
+import { isAbsolute, join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { INITIAL_AGENT_STACKS } from '@qa/domain';
 import {
@@ -35,9 +37,14 @@ import {
   managedOpenCodeExecutable,
   normalizeOpenCodeProvider,
   openCodeCredentialPresent,
+  OPENCODE_TESTED_VERSION,
 } from '@qa/harness-opencode';
-import { createDeepSeekRegistration } from '@qa/harness-deepseek';
-import { createGlmRegistration } from '@qa/harness-claude-code';
+import { createDeepSeekRegistration, DEEPSEEK_SDK_VERSION } from '@qa/harness-deepseek';
+import {
+  createGlmRegistration,
+  CLAUDE_CODE_TESTED_VERSION,
+  CLAUDE_CODE_KNOWN_INCOMPATIBLE_VERSIONS,
+} from '@qa/harness-claude-code';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
 import { selectCurrentMergeResult } from '@qa/merger';
 import { projectIssueState } from '@qa/schemas';
@@ -223,6 +230,121 @@ export function glmSandboxStatus(deps: SandboxDepsStatus): Record<string, unknow
     readiness: 'sandbox-unavailable',
     note: 'Sandbox unavailable: ' + missing.join('; ') + '.',
   };
+}
+
+export interface OpencodeGateInput {
+  readonly credential: boolean;
+  readonly credentialName: string;
+  readonly model: boolean;
+  readonly executable: string;
+  readonly exists: boolean;
+  readonly version: string | undefined;
+  readonly testedVersion: string;
+  readonly sandboxBwrap: boolean;
+}
+
+export interface DeepseekGateInput {
+  readonly credential: boolean;
+  readonly model: boolean;
+  readonly wrapperPath: string;
+  readonly wrapperExists: boolean;
+  readonly wrapperVersion: string | undefined;
+  readonly expectedVersion: string;
+  readonly dshPackageVersion: string | undefined;
+}
+
+export interface GlmGateInput {
+  readonly credential: boolean;
+  readonly model: boolean;
+  readonly executable: string | undefined;
+  readonly windowsMounted: boolean;
+  readonly version: string | undefined;
+  readonly testedVersion: string;
+  readonly knownBadVersions: readonly string[];
+  readonly socat: boolean;
+  readonly bwrap: boolean;
+  readonly sandboxInitOk: boolean;
+  readonly sandboxDetail: string;
+  readonly systemdOk: boolean;
+}
+
+export interface GateVerdict {
+  readonly ready: boolean;
+  readonly reasons: string[];
+}
+
+/**
+ * Pure pre-run readiness evaluators (no fs, no spawn, no network): HARD
+ * FAILURE vs UNVERIFIED vs first-run-allowed, unit-tested as a matrix.
+ * `runtimeVerified` is intentionally not an input — a live session having
+ * never succeeded must not block the first run.
+ */
+export function evaluateOpencodeGate(input: OpencodeGateInput): GateVerdict {
+  const reasons: string[] = [];
+  if (!input.credential) reasons.push('OpenCode credential missing (' + input.credentialName + ')');
+  if (!input.model) reasons.push('OpenCode model not set');
+  if (!input.exists) reasons.push('OpenCode executable not found: ' + input.executable);
+  else if (input.version === undefined)
+    reasons.push('OpenCode executable did not answer its version probe: ' + input.executable);
+  else if (!input.version.includes(input.testedVersion))
+    reasons.push(
+      'OpenCode version ' + input.version + ' is not the tested ' + input.testedVersion,
+    );
+  if (!input.sandboxBwrap)
+    reasons.push('bubblewrap is not installed in Ubuntu (OpenCode sandbox unavailable)');
+  return { ready: reasons.length === 0, reasons };
+}
+
+export function evaluateDeepseekGate(input: DeepseekGateInput): GateVerdict {
+  const reasons: string[] = [];
+  if (!input.credential) reasons.push('DeepSeek credential missing');
+  if (!input.model) reasons.push('DeepSeek model not set');
+  if (!input.wrapperExists) reasons.push('managed DeepSeek wrapper unavailable: ' + input.wrapperPath);
+  else if (input.wrapperVersion === undefined)
+    reasons.push('managed DeepSeek wrapper did not answer its version probe');
+  else if (!input.wrapperVersion.includes(input.expectedVersion))
+    reasons.push(
+      'managed DeepSeek wrapper reports ' +
+        input.wrapperVersion +
+        ', expected ' +
+        input.expectedVersion,
+    );
+  if (input.dshPackageVersion === undefined)
+    reasons.push('compatible vendor DSH runtime is not locally resolvable');
+  else if (input.dshPackageVersion !== input.expectedVersion)
+    reasons.push(
+      'local DSH runtime is ' +
+        input.dshPackageVersion +
+        ', expected SDK pin ' +
+        input.expectedVersion,
+    );
+  return { ready: reasons.length === 0, reasons };
+}
+
+export function evaluateGlmGate(input: GlmGateInput): GateVerdict {
+  const reasons: string[] = [];
+  if (!input.credential) reasons.push('GLM credential missing');
+  if (!input.model) reasons.push('GLM model not set');
+  if (input.executable === undefined) reasons.push('Claude Code executable not found');
+  else {
+    if (input.windowsMounted) reasons.push('Claude Code resolves to a Windows mount; need a native Linux binary');
+    if (input.version === undefined)
+      reasons.push('Claude Code executable did not answer its version probe');
+    else {
+      if (input.knownBadVersions.some((bad) => input.version?.includes(bad)))
+        reasons.push('Claude Code ' + input.version + ' is a known-incompatible version');
+      else if (!input.version.includes(input.testedVersion))
+        reasons.push(
+          'Claude Code version ' + input.version + ' is not the tested ' + input.testedVersion,
+        );
+    }
+  }
+  if (!input.socat) reasons.push('socat is not installed');
+  if (!input.bwrap) reasons.push('bubblewrap is not installed');
+  if (input.socat && input.bwrap && !input.sandboxInitOk)
+    reasons.push('Claude sandbox unavailable (' + input.sandboxDetail + ')');
+  if (!input.systemdOk) reasons.push('systemd user isolation unavailable');
+  return { ready: reasons.length === 0, reasons };
 }
 
 export class SentryRuntimeHost {
@@ -953,9 +1075,86 @@ export class SentryRuntimeHost {
   }
 
   /**
+   * Hard local readiness probes for the pre-run gate. Pure filesystem and
+   * bounded local spawns only: no model contact, no network, no paid calls.
+   * `runtimeVerified` (a live session ever succeeding) is deliberately NOT
+   * consulted here so first runs are never deadlocked by history.
+   */
+  static probeLocalExecutable(path: string): { exists: boolean; version: string | undefined } {
+    try {
+      accessSync(path, constants.X_OK);
+      if (!statSync(path).isFile()) return { exists: false, version: undefined };
+    } catch {
+      return { exists: false, version: undefined };
+    }
+    try {
+      const r = spawnSync(path, ['--version'], { encoding: 'utf8', timeout: 8000 });
+      if (r.status !== 0) return { exists: true, version: undefined };
+      const line = String(r.stdout ?? '')
+        .split('\n')[0]
+        ?.trim()
+        .slice(0, 200);
+      return { exists: true, version: line !== undefined && line.length > 0 ? line : undefined };
+    } catch {
+      return { exists: true, version: undefined };
+    }
+  }
+
+  static findOnPath(name: string, env: NodeJS.ProcessEnv): string | undefined {
+    const pathVar = env['PATH'] ?? '';
+    const sep = process.platform === 'win32' ? ';' : ':';
+    for (const dir of pathVar.split(sep)) {
+      if (dir.length === 0) continue;
+      const candidate = join(dir, name);
+      try {
+        accessSync(candidate, constants.X_OK);
+        if (statSync(candidate).isFile()) return candidate;
+      } catch {
+        continue;
+      }
+    }
+    return undefined;
+  }
+
+  static resolveDshPackage(): { entry: string; version: string } | undefined {
+    try {
+      const entryUrl = new URL(import.meta.resolve('@deepseek-ai/dsh/lib/bin.js'));
+      if (entryUrl.protocol !== 'file:') return undefined;
+      const entry = fileURLToPath(entryUrl);
+      const manifest = join(dirname(entry), '..', 'package.json');
+      const parsed = JSON.parse(readFileSync(manifest, 'utf8')) as { version?: unknown };
+      if (typeof parsed.version !== 'string') return undefined;
+      return { entry, version: parsed.version };
+    } catch {
+      return undefined;
+    }
+  }
+
+  static probeSandbox(): SandboxDepsStatus {
+    return probeSandboxDeps();
+  }
+
+  static systemdUserReady(): boolean {
+    try {
+      const a = spawnSync('systemctl', ['--user', 'show-environment'], {
+        encoding: 'utf8',
+        timeout: 8000,
+      });
+      if (a.status !== 0) return false;
+      const b = spawnSync('systemd-run', ['--user', '--pipe', '--wait', '/usr/bin/true'], {
+        encoding: 'utf8',
+        timeout: 10000,
+      });
+      return b.status === 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Pre-run provider gate from LIVE runtime state: configured env (pushed via
-   * runtime.configure) plus doctor binary/model evidence. Never inferred from
-   * credential presence alone.
+   * runtime.configure) plus hard local binary/sandbox evidence. Never inferred
+   * from credential presence alone.
    */
   async productionReadiness(agentStackIds?: string[]): Promise<unknown> {
     const wants = (stack: string): boolean =>
@@ -963,42 +1162,73 @@ export class SentryRuntimeHost {
     const env = process.env;
     const reasons: string[] = [];
     const stacks: Array<{ id: string; ready: boolean; reasons: string[] }> = [];
-    const checkStack = (id: string, needs: Array<{ present: boolean; reason: string }>): void => {
-      if (!wants(id)) return;
-      const missing = needs.filter((n) => !n.present).map((n) => n.reason);
-      reasons.push(...missing);
-      stacks.push({ id, ready: missing.length === 0, reasons: missing });
-    };
-    checkStack('stack_opencode_main', [
-      {
-        present: openCodeCredentialPresent(
-          normalizeOpenCodeProvider(env['SENTRY_OPENCODE_PROVIDER']),
-          env,
-        ),
-        reason:
-          'OpenCode credential missing (' +
-          credentialEnvForProvider(normalizeOpenCodeProvider(env['SENTRY_OPENCODE_PROVIDER'])) +
-          ')',
-      },
-      {
-        present: (env['SENTRY_OPENCODE_MODEL'] ?? '').length > 0,
-        reason: 'OpenCode model not set',
-      },
-    ]);
-    checkStack('stack_deepseek_main', [
-      {
-        present: (env['DEEPSEEK_API_KEY'] ?? '').length > 0,
-        reason: 'DeepSeek credential missing',
-      },
-      {
-        present: (env['SENTRY_DEEPSEEK_MODEL'] ?? '').length > 0,
-        reason: 'DeepSeek model not set',
-      },
-    ]);
-    checkStack('stack_glm_main', [
-      { present: (env['ANTHROPIC_AUTH_TOKEN'] ?? '').length > 0, reason: 'GLM credential missing' },
-      { present: (env['SENTRY_GLM_MODEL'] ?? '').length > 0, reason: 'GLM model not set' },
-    ]);
+    const sandboxDeps = wants('stack_glm_main')
+      ? SentryRuntimeHost.probeSandbox()
+      : { socat: true, bwrap: true, socatVersion: '', bwrapVersion: '', initOk: true, initDetail: '' };
+    const systemdOk = wants('stack_glm_main') ? SentryRuntimeHost.systemdUserReady() : true;
+    if (wants('stack_opencode_main')) {
+      const provider = normalizeOpenCodeProvider(env['SENTRY_OPENCODE_PROVIDER']);
+      const executable = env['SENTRY_OPENCODE_BINARY']?.trim() || managedOpenCodeExecutable(this.dataRoot);
+      const probed = SentryRuntimeHost.probeLocalExecutable(executable);
+      const verdict = evaluateOpencodeGate({
+        credential: openCodeCredentialPresent(provider, env),
+        credentialName: credentialEnvForProvider(provider),
+        model: (env['SENTRY_OPENCODE_MODEL'] ?? '').length > 0,
+        executable,
+        exists: probed.exists,
+        version: probed.version,
+        testedVersion: OPENCODE_TESTED_VERSION,
+        sandboxBwrap: sandboxDeps.bwrap,
+      });
+      reasons.push(...verdict.reasons);
+      stacks.push({ id: 'stack_opencode_main', ready: verdict.ready, reasons: verdict.reasons });
+    }
+    if (wants('stack_deepseek_main')) {
+      const wrapperPath =
+        env['SENTRY_DEEPSEEK_BINARY']?.trim() || deepseekManagedWrapperPath(this.dataRoot);
+      const probed = SentryRuntimeHost.probeLocalExecutable(wrapperPath);
+      const dshPackage = SentryRuntimeHost.resolveDshPackage();
+      const verdict = evaluateDeepseekGate({
+        credential: (env['DEEPSEEK_API_KEY'] ?? '').length > 0,
+        model: (env['SENTRY_DEEPSEEK_MODEL'] ?? '').length > 0,
+        wrapperPath,
+        wrapperExists: probed.exists,
+        wrapperVersion: probed.version,
+        expectedVersion: DEEPSEEK_SDK_VERSION,
+        dshPackageVersion: dshPackage?.version,
+      });
+      reasons.push(...verdict.reasons);
+      stacks.push({ id: 'stack_deepseek_main', ready: verdict.ready, reasons: verdict.reasons });
+    }
+    if (wants('stack_glm_main')) {
+      const override = env['SENTRY_CLAUDE_BINARY']?.trim() || undefined;
+      const onPath =
+        override === undefined ? SentryRuntimeHost.findOnPath('claude', env) : undefined;
+      const executable = override ?? onPath;
+      const windowsMounted =
+        executable !== undefined &&
+        (executable.startsWith('/mnt/') || executable.includes(':/'));
+      const probed =
+        executable === undefined
+          ? { exists: false, version: undefined as string | undefined }
+          : SentryRuntimeHost.probeLocalExecutable(executable);
+      const verdict = evaluateGlmGate({
+        credential: (env['ANTHROPIC_AUTH_TOKEN'] ?? '').length > 0,
+        model: (env['SENTRY_GLM_MODEL'] ?? '').length > 0,
+        executable: probed.exists ? executable : undefined,
+        windowsMounted,
+        version: probed.version,
+        testedVersion: CLAUDE_CODE_TESTED_VERSION,
+        knownBadVersions: CLAUDE_CODE_KNOWN_INCOMPATIBLE_VERSIONS,
+        socat: sandboxDeps.socat,
+        bwrap: sandboxDeps.bwrap,
+        sandboxInitOk: sandboxDeps.initOk,
+        sandboxDetail: sandboxDeps.initDetail,
+        systemdOk,
+      });
+      reasons.push(...verdict.reasons);
+      stacks.push({ id: 'stack_glm_main', ready: verdict.ready, reasons: verdict.reasons });
+    }
     return { ready: reasons.length === 0, reasons, productionWired: true, stacks };
   }
 

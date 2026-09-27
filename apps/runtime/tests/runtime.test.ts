@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RUNTIME_PROTOCOL_VERSION } from '@qa/runtime-protocol';
 import { SentryRuntimeHost, serveStdio } from '../src/runtime.js';
 
@@ -57,8 +57,46 @@ describe('runtime host identity', () => {
       await host.configure({ models: {}, providers: {} });
       expect(process.env['SENTRY_OPENCODE_BINARY']).toBe('/home/u/keep');
       delete process.env['SENTRY_OPENCODE_BINARY'];
-      const gate = (await host.productionReadiness(['stack_deepseek_main'])) as { ready: boolean };
-      expect(gate.ready).toBe(true);
+      const gate = (await host.productionReadiness(['stack_deepseek_main'])) as {
+        ready: boolean;
+        stacks: Array<{ reasons: string[] }>;
+      };
+      expect(gate.ready).toBe(false);
+      expect(JSON.stringify(gate.stacks)).toContain('managed DeepSeek wrapper unavailable');
+    } finally {
+      delete process.env['SENTRY_DEEPSEEK_MODEL'];
+      delete process.env['DEEPSEEK_API_KEY'];
+      host.close();
+    }
+  });
+
+  it('deepseek gate requires hard local readiness beyond credentials', async () => {
+    const host = new SentryRuntimeHost(await tempDataRoot(), () => undefined);
+    try {
+      await host.recover();
+      process.env['SENTRY_DEEPSEEK_MODEL'] = 'deepseek-test-model';
+      process.env['DEEPSEEK_API_KEY'] = 'sk-test-fake-secret';
+      const unready = (await host.productionReadiness(['stack_deepseek_main'])) as {
+        ready: boolean;
+        stacks: Array<{ reasons: string[] }>;
+      };
+      expect(unready.ready).toBe(false);
+      expect(JSON.stringify(unready.stacks)).toContain('managed DeepSeek wrapper unavailable');
+      const probe = vi
+        .spyOn(SentryRuntimeHost, 'probeLocalExecutable')
+        .mockReturnValue({ exists: true, version: '0.1.5-rc.2' });
+      const pkg = vi
+        .spyOn(SentryRuntimeHost, 'resolveDshPackage')
+        .mockReturnValue({ entry: '/x/dsh/lib/bin.js', version: '0.1.5-rc.2' });
+      try {
+        const ready = (await host.productionReadiness(['stack_deepseek_main'])) as {
+          ready: boolean;
+        };
+        expect(ready.ready).toBe(true);
+      } finally {
+        probe.mockRestore();
+        pkg.mockRestore();
+      }
     } finally {
       delete process.env['SENTRY_DEEPSEEK_MODEL'];
       delete process.env['DEEPSEEK_API_KEY'];
@@ -79,10 +117,32 @@ describe('runtime host identity', () => {
       expect(missing.ready).toBe(false);
       expect(JSON.stringify(missing.stacks)).toContain('OPENCODE_API_KEY');
       process.env['OPENCODE_API_KEY'] = 'zen-test-key';
-      const ready = (await host.productionReadiness(['stack_opencode_main'])) as {
+      const withoutBinary = (await host.productionReadiness(['stack_opencode_main'])) as {
         ready: boolean;
+        stacks: Array<{ reasons: string[] }>;
       };
-      expect(ready.ready).toBe(true);
+      expect(withoutBinary.ready).toBe(false);
+      expect(JSON.stringify(withoutBinary.stacks)).toContain('OpenCode executable not found');
+      const probe = vi
+        .spyOn(SentryRuntimeHost, 'probeLocalExecutable')
+        .mockReturnValue({ exists: true, version: 'opencode version 1.18.32' });
+      const sandbox = vi.spyOn(SentryRuntimeHost, 'probeSandbox').mockReturnValue({
+        socat: true,
+        bwrap: true,
+        socatVersion: 'socat version 1.8.0.3',
+        bwrapVersion: 'bubblewrap 0.10.1',
+        initOk: true,
+        initDetail: 'smoke passed',
+      });
+      try {
+        const ready = (await host.productionReadiness(['stack_opencode_main'])) as {
+          ready: boolean;
+        };
+        expect(ready.ready).toBe(true);
+      } finally {
+        probe.mockRestore();
+        sandbox.mockRestore();
+      }
     } finally {
       delete process.env['SENTRY_OPENCODE_MODEL'];
       delete process.env['SENTRY_OPENCODE_PROVIDER'];
