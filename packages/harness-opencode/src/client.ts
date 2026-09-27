@@ -211,12 +211,24 @@ export type OpenCodeClientFactory = (input: {
   readonly launcher?: OpenCodeProcessLauncher;
 }) => Promise<OpenCodeClientView>;
 
-// Process-lifetime cache: safe because Sentry setup/repair always restarts
-// (and redeploys) the runtime after repairing the environment, so a freshly
-// started process never inherits a stale probe. Within one process the
-// manager state does not flap for the owned-cgroup decision, and caching
-// avoids a transient-unit spawn per session start.
-let systemdProbe: Promise<boolean> | undefined;
+// Process-lifetime cache keyed on the minimal environment affecting systemd
+// readiness (manager address, binary lookup). Safe because Sentry
+// setup/repair always restarts (and redeploys) the runtime after repairing
+// the environment, so a freshly started process never inherits a stale
+// probe; within one process the manager state does not flap for the
+// owned-cgroup decision, and caching avoids a transient-unit spawn per
+// session start.
+const systemdProbes = new Map<string, Promise<boolean>>();
+
+function systemdProbeKey(environment: NodeJS.ProcessEnv): string {
+  return [
+    environment['PATH'],
+    environment['XDG_RUNTIME_DIR'],
+    environment['DBUS_SESSION_BUS_ADDRESS'],
+  ]
+    .map((value) => value ?? '')
+    .join('\u0000');
+}
 
 /**
  * Production launcher selection (fail-closed).
@@ -232,8 +244,13 @@ export async function selectProductionLauncher(
   environment: NodeJS.ProcessEnv,
 ): Promise<OpenCodeProcessLauncher> {
   if (process.platform === 'linux') {
-    systemdProbe ??= probeSystemdUser();
-    if (await systemdProbe) return new SystemdOpenCodeProcessLauncher();
+    const key = systemdProbeKey(environment);
+    let cached = systemdProbes.get(key);
+    if (cached === undefined) {
+      cached = probeSystemdUser(5_000, environment);
+      systemdProbes.set(key, cached);
+    }
+    if (await cached) return new SystemdOpenCodeProcessLauncher();
     if (environment['SENTRY_OPENCODE_ALLOW_DIRECT'] === '1') {
       return new DirectOpenCodeProcessLauncher();
     }

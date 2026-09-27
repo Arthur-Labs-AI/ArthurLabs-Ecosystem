@@ -82,19 +82,27 @@ export function createOpenCodeRegistration(
       // Fail closed on unverified wire/security contracts.
       assertTestedOpenCodeVersion(executableVersion, environment);
       // Fail closed on missing OS containment (production Linux).
-      // Explicit SENTRY_OPENCODE_ALLOW_DIRECT=1 opts into weaker
-      // execution for development/test only.
-      if (process.platform === 'linux' && !openCodeSandboxBypassed(environment)) {
+      // Masking always stays hard: the adapter masks fail-closed on every
+      // path. SENTRY_OPENCODE_ALLOW_DIRECT=1 (development/test only)
+      // relaxes systemd/bubblewrap to warnings, never masking.
+      if (process.platform === 'linux') {
         const sandbox = await probeOpenCodeSandbox({ environment });
-        if (!sandbox.systemdUser || !sandbox.bubblewrap || !sandbox.masking) {
+        const bypassed = openCodeSandboxBypassed(environment);
+        const unavailable = (name: string, value: boolean): string =>
+          name + '=' + String(value) + (bypassed ? ' (bypassed for development)' : '');
+        if (!sandbox.masking) {
           throw new OpenCodeHarnessError(
             'OPENCODE_SANDBOX_UNAVAILABLE',
-            'OpenCode OS containment unavailable (systemd=' +
-              String(sandbox.systemdUser) +
-              ' bwrap=' +
-              String(sandbox.bubblewrap) +
-              ' masking=' +
-              String(sandbox.masking) +
+            'OpenCode project-config masking unavailable; refusing execution.',
+          );
+        }
+        if (!bypassed && (!sandbox.systemdUser || !sandbox.bubblewrap)) {
+          throw new OpenCodeHarnessError(
+            'OPENCODE_SANDBOX_UNAVAILABLE',
+            'OpenCode OS containment unavailable (' +
+              unavailable('systemd', sandbox.systemdUser) +
+              ' ' +
+              unavailable('bwrap', sandbox.bubblewrap) +
               '); refusing production execution.',
           );
         }

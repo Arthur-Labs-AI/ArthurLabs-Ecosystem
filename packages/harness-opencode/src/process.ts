@@ -363,12 +363,16 @@ export class DirectOpenCodeProcessLauncher implements OpenCodeProcessLauncher {
  * sufficient (it never contacts the manager). No unit name is supplied so
  * systemd auto-generates one; `--wait --collect` leaves nothing behind.
  */
-export async function probeSystemdUser(timeoutMs = 5_000): Promise<boolean> {
+export async function probeSystemdUser(
+  timeoutMs = 5_000,
+  environment: NodeJS.ProcessEnv = process.env,
+): Promise<boolean> {
   const runBounded = (executable: string, argv: readonly string[]): Promise<boolean> =>
     new Promise<boolean>((resolve) => {
       let child: ChildProcess;
       try {
         child = spawn(executable, [...argv], {
+          env: environment,
           stdio: 'ignore',
           windowsHide: true,
           shell: false,

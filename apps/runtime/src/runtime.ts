@@ -39,7 +39,7 @@ import {
   openCodeSandboxBypassed,
   probeOpenCodeSandbox,
   probeResolvedOpenCodeExecutable,
-  assertTestedOpenCodeVersion,
+  classifyOpenCodeVersion,
   OPENCODE_TESTED_VERSION,
 } from '@qa/harness-opencode';
 import {
@@ -1280,15 +1280,15 @@ export class SentryRuntimeHost {
         managedOpenCodeExecutable(this.dataRoot),
       );
       const version = probed.available ? probed.version : undefined;
-      let versionPolicy: 'ready' | 'mismatch-blocked' | 'mismatch-allowed' = 'ready';
-      if (version !== undefined && !version.includes(OPENCODE_TESTED_VERSION)) {
-        try {
-          assertTestedOpenCodeVersion(version, env);
-          versionPolicy = 'mismatch-allowed';
-        } catch {
-          versionPolicy = 'mismatch-blocked';
-        }
-      }
+      // Shared version policy (tested / blocked / override-allowed).
+      const classification =
+        version === undefined ? 'tested' : classifyOpenCodeVersion(version, env);
+      const versionPolicy: 'ready' | 'mismatch-blocked' | 'mismatch-allowed' =
+        classification === 'blocked'
+          ? 'mismatch-blocked'
+          : classification === 'override-allowed'
+            ? 'mismatch-allowed'
+            : 'ready';
       const linux = process.platform === 'linux';
       const bypassed = openCodeSandboxBypassed(env);
       // Single sandbox authority: probeOpenCodeSandbox is functionally

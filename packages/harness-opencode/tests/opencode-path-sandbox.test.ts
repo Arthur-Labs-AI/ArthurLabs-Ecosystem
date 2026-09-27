@@ -2,9 +2,10 @@ import { chmod, copyFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createOpenCodeRegistration } from '../src/registration.js';
 import { probeSystemdUser } from '../src/process.js';
+import { createOpenCodeRegistration } from '../src/registration.js';
 import {
+  classifyOpenCodeVersion,
   doctorOpenCode,
   probeOpenCodeSandbox,
   probeResolvedOpenCodeExecutable,
@@ -126,6 +127,29 @@ describe('functional systemd probe (no mocks)', () => {
     expect(sandbox.systemdUser).toBe(false);
   });
 
+  it('functional systemd success reads as available (positive control)', async () => {
+    const fakeDir = await (async () => {
+      const dir = await fakeBinDir({});
+      if (isWindows) {
+        await writeFile(join(dir, 'systemctl.cmd'), '@echo fake-systemctl\r\n');
+        await writeFile(join(dir, 'systemd-run.cmd'), '@echo ok\r\n');
+      } else {
+        await writeFile(join(dir, 'systemctl'), '#!/bin/sh\nexit 0\n');
+        await chmod(join(dir, 'systemctl'), 0o700);
+        await writeFile(join(dir, 'systemd-run'), '#!/bin/sh\nexit 0\n');
+        await chmod(join(dir, 'systemd-run'), 0o700);
+      }
+      return dir;
+    })();
+    // Positive control only proves the fake can spawn: unit launch exit 0.
+    // (On Windows the extensionless fakes cannot spawn, so this asserts the
+    // probe shape rather than true availability there.)
+    const env = withFakePath(fakeDir);
+    const result = await probeSystemdUser(5_000, env);
+    if (!isWindows) expect(result).toBe(true);
+    else expect(typeof result).toBe('boolean');
+  });
+
   it('registration preflight blocks when functional systemd is unavailable', async () => {
     if (process.platform !== 'linux') return;
     const fakeDir = await fakeBinDir(systemdFakes());
@@ -152,14 +176,20 @@ describe('direct dev bypass consistency (no mocks)', () => {
   it('preflight passes under bypass while doctor degrades with an explicit warning', async () => {
     const fakeDir = await fakeBinDir({});
     await fakeOpenCodeBinary(fakeDir);
-    const env = credentialEnv(withFakePath(fakeDir, { SENTRY_OPENCODE_ALLOW_DIRECT: '1' }));
+    const env = credentialEnv(
+      withFakePath(fakeDir, {
+        SENTRY_OPENCODE_ALLOW_DIRECT: '1',
+        SENTRY_OPENCODE_ALLOW_UNTESTED_VERSION: '1',
+      }),
+    );
     delete env['SENTRY_OPENCODE_BINARY'];
     if (process.platform === 'linux') {
       const registration = createOpenCodeRegistration({ environment: env });
       await registration.preflight();
     }
     const doctor = await doctorOpenCode({ environment: env });
-    expect(['degraded', 'unavailable']).toContain(doctor.readiness);
+    expect(doctor.status).toBe('degraded');
+    expect(doctor.readiness).toBe('degraded');
     const warned = (doctor.checks ?? []).some(
       (check) => check.status === 'warn' && (check.message ?? '').includes('ALLOW_DIRECT'),
     );
@@ -167,5 +197,106 @@ describe('direct dev bypass consistency (no mocks)', () => {
     // Masking uses real fs and passes here, so bypass must warn, never fail hard.
     expect(failed).toBe(false);
     expect(warned).toBe(true);
+  });
+
+  it('masking failure under bypass still blocks everywhere', async () => {
+    const fakeDir = await fakeBinDir({});
+    await fakeOpenCodeBinary(fakeDir);
+    const deadTmp = join(fakeDir, 'no-such-tmp');
+    const env = credentialEnv(
+      withFakePath(fakeDir, {
+        SENTRY_OPENCODE_ALLOW_DIRECT: '1',
+        SENTRY_OPENCODE_ALLOW_UNTESTED_VERSION: '1',
+        TMPDIR: deadTmp,
+        TEMP: deadTmp,
+        TMP: deadTmp,
+      }),
+    );
+    delete env['SENTRY_OPENCODE_BINARY'];
+    const sandbox = await probeOpenCodeSandbox({ environment: env });
+    expect(sandbox.masking).toBe(false);
+    const doctor = await doctorOpenCode({ environment: env });
+    expect(doctor.status).toBe('unavailable');
+    expect(doctor.readiness).toBe('unavailable');
+    if (process.platform === 'linux') {
+      const registration = createOpenCodeRegistration({ environment: env });
+      await expect(registration.preflight()).rejects.toMatchObject({
+        code: 'OPENCODE_SANDBOX_UNAVAILABLE',
+      });
+    }
+  });
+});
+
+describe('version policy matrix (no mocks)', () => {
+  it('classifier: tested, blocked, override-allowed', () => {
+    expect(classifyOpenCodeVersion('opencode version 1.18.32', {})).toBe('tested');
+    expect(classifyOpenCodeVersion('opencode version 1.19.0', {})).toBe('blocked');
+    expect(
+      classifyOpenCodeVersion('opencode version 1.19.0', {
+        SENTRY_OPENCODE_ALLOW_UNTESTED_VERSION: '1',
+      }),
+    ).toBe('override-allowed');
+  });
+
+  async function versionFixture(version: string): Promise<{
+    dir: string;
+    env: NodeJS.ProcessEnv;
+  }> {
+    const dir = await fakeBinDir({});
+    if (isWindows) {
+      await copyFile(process.execPath, join(dir, 'opencode.exe'));
+    } else {
+      await writeFile(
+        join(dir, 'opencode'),
+        '#!/bin/sh\nif [ "$1" = "--version" ]; then echo "' + version + '"; fi\nexit 0\n',
+      );
+      await chmod(join(dir, 'opencode'), 0o700);
+    }
+    const env = credentialEnv(withFakePath(dir));
+    delete env['SENTRY_OPENCODE_BINARY'];
+    return { dir, env };
+  }
+
+  it('CASE B: untested version without override blocks everywhere', async () => {
+    const { env } = await versionFixture('opencode version 1.19.0');
+    const doctor = await doctorOpenCode({ environment: env });
+    expect(doctor.checks?.find((check) => check.name === 'version')?.status).toBe('fail');
+    expect(doctor.readiness).toBe('unavailable');
+    if (process.platform === 'linux') {
+      const registration = createOpenCodeRegistration({ environment: env });
+      await expect(registration.preflight()).rejects.toMatchObject({
+        code: 'OPENCODE_VERSION_MISMATCH',
+      });
+    }
+  });
+
+  it('CASE C: untested version with override degrades but allows', async () => {
+    const { env } = await versionFixture('opencode version 1.19.0');
+    env['SENTRY_OPENCODE_ALLOW_UNTESTED_VERSION'] = '1';
+    // Isolate version policy from host sandbox state.
+    env['SENTRY_OPENCODE_ALLOW_DIRECT'] = '1';
+    const doctor = await doctorOpenCode({ environment: env });
+    expect(doctor.checks?.find((check) => check.name === 'version')?.status).toBe('warn');
+    expect(['degraded', 'configured']).toContain(doctor.readiness);
+    if (process.platform === 'linux') {
+      const registration = createOpenCodeRegistration({ environment: env });
+      await registration.preflight();
+    }
+  });
+
+  it('CASE A: tested version passes version policy', async () => {
+    if (isWindows) {
+      // No exact-version fixture possible without a real binary; the
+      // classifier unit test above covers the tested mapping on Windows.
+      expect(classifyOpenCodeVersion('opencode version 1.18.32', {})).toBe('tested');
+      return;
+    }
+    const { env } = await versionFixture('opencode version 1.18.32');
+    const doctor = await doctorOpenCode({ environment: env });
+    expect(doctor.checks?.find((check) => check.name === 'version')?.status).toBe('pass');
+    if (process.platform === 'linux') {
+      const registration = createOpenCodeRegistration({ environment: env });
+      await registration.preflight();
+    }
   });
 });

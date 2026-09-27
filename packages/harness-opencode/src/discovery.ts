@@ -435,6 +435,24 @@ export function openCodeUntestedVersionAllowed(
   return environment['SENTRY_OPENCODE_ALLOW_UNTESTED_VERSION'] === '1';
 }
 
+export type OpenCodeVersionClassification = 'tested' | 'blocked' | 'override-allowed';
+
+/**
+ * Single shared OpenCode version policy: tested releases pass; anything
+ * else is blocked unless SENTRY_OPENCODE_ALLOW_UNTESTED_VERSION=1
+ * explicitly permits it (warning/degraded, never silently healthy).
+ * Used by assertTestedOpenCodeVersion, doctorOpenCode, and the runtime
+ * pre-run gate so all three agree.
+ */
+export function classifyOpenCodeVersion(
+  versionText: string,
+  environment: NodeJS.ProcessEnv = process.env,
+): OpenCodeVersionClassification {
+  if (versionText.includes(OPENCODE_TESTED_VERSION)) return 'tested';
+  if (openCodeUntestedVersionAllowed(environment)) return 'override-allowed';
+  return 'blocked';
+}
+
 /**
  * Version policy: the wire parser and security assumptions are verified
  * against OPENCODE_TESTED_VERSION. Anything else fails closed unless
@@ -444,8 +462,7 @@ export function assertTestedOpenCodeVersion(
   versionText: string,
   environment: NodeJS.ProcessEnv = process.env,
 ): void {
-  if (versionText.includes(OPENCODE_TESTED_VERSION)) return;
-  if (openCodeUntestedVersionAllowed(environment)) return;
+  if (classifyOpenCodeVersion(versionText, environment) !== 'blocked') return;
   throw new OpenCodeHarnessError(
     'OPENCODE_VERSION_MISMATCH',
     'OpenCode ' +
@@ -456,16 +473,22 @@ export function assertTestedOpenCodeVersion(
   );
 }
 
-/** Cheap local probe helper: run argv, true iff it exits 0 within budget. */
+/**
+ * Cheap local probe helper: run argv, true iff it exits 0 within budget.
+ * Uses the supplied environment (same PATH/runtime context production
+ * execution would see) rather than implicitly inheriting process.env.
+ */
 async function probeCommand(
   executable: string,
   argv: readonly string[],
   timeoutMs: number,
+  environment: NodeJS.ProcessEnv = process.env,
 ): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     let child: ReturnType<typeof spawn>;
     try {
       child = spawn(executable, [...argv], {
+        env: environment,
         stdio: 'ignore',
         windowsHide: true,
         shell: false,
@@ -516,24 +539,32 @@ export async function probeOpenCodeSandbox(
   readonly masking: boolean;
 }> {
   const timeoutMs = input.timeoutMs ?? 8_000;
+  const environment = input.environment ?? process.env;
   const [systemdUser, bubblewrap, masking] = await Promise.all([
     // Functional: a transient user unit must actually launch (the exact
     // mechanism production execution depends on), shared with launcher
     // selection via probeSystemdUser.
-    probeSystemdUser(timeoutMs),
+    probeSystemdUser(timeoutMs, environment),
     // Functional probe (not just presence): userns + mount must actually work.
     // Absolute /usr/bin/true: the sandbox PATH is not guaranteed.
     probeCommand(
       'bwrap',
       ['--ro-bind', '/', '/', '--tmpfs', '/tmp', '--proc', '/proc', '/usr/bin/true'],
       timeoutMs,
+      environment,
     ),
     (async () => {
       const { mkdtemp, rename, rm, stat } = await import('node:fs/promises');
       const { tmpdir } = await import('node:os');
       const { join } = await import('node:path');
-      const root = await mkdtemp(join(tmpdir(), 'sentry-mask-probe-'));
+      // Honor the evaluated environment's temp dir (production passes the
+      // real runtime env, so behavior is unchanged there) so the probe
+      // reflects the same filesystem context execution would see.
+      const tmpParent =
+        environment['TMPDIR'] ?? environment['TEMP'] ?? environment['TMP'] ?? tmpdir();
+      let root: string | undefined;
       try {
+        root = await mkdtemp(join(tmpParent, 'sentry-mask-probe-'));
         const from = join(root, '.opencode');
         const { mkdir, writeFile } = await import('node:fs/promises');
         await mkdir(from, { recursive: true });
@@ -550,7 +581,8 @@ export async function probeOpenCodeSandbox(
       } catch {
         return false;
       } finally {
-        await rm(root, { recursive: true, force: true }).catch(() => undefined);
+        if (root !== undefined)
+          await rm(root, { recursive: true, force: true }).catch(() => undefined);
       }
     })(),
   ]);
@@ -726,10 +758,12 @@ export async function doctorOpenCode(
       binaryVersion = probed.version;
       binaryOk = true;
       checks.push({ name: 'binary', status: 'pass', message: binaryVersion });
-      // Wire-format policy: the JSONL parser is built for the tested
-      // release. An exact match is ready; anything else is degraded —
-      // never silently run an untested wire format as healthy.
-      if (!binaryVersion.includes(OPENCODE_TESTED_VERSION)) {
+      // Shared version policy: tested passes, blocked fails (preflight
+      // refuses it), override-allowed warns (explicit dev opt-in).
+      const classification = classifyOpenCodeVersion(binaryVersion, environment);
+      if (classification === 'tested') {
+        checks.push({ name: 'version', status: 'pass', message: binaryVersion });
+      } else if (classification === 'override-allowed') {
         checks.push({
           name: 'version',
           status: 'warn',
@@ -738,10 +772,19 @@ export async function doctorOpenCode(
             binaryVersion +
             ' differs from tested ' +
             OPENCODE_TESTED_VERSION +
-            '; wire format may differ',
+            '; allowed only because SENTRY_OPENCODE_ALLOW_UNTESTED_VERSION=1 is set',
         });
       } else {
-        checks.push({ name: 'version', status: 'pass', message: binaryVersion });
+        checks.push({
+          name: 'version',
+          status: 'fail',
+          message:
+            'OpenCode ' +
+            binaryVersion +
+            ' differs from tested ' +
+            OPENCODE_TESTED_VERSION +
+            '; production preflight will refuse this runtime',
+        });
       }
     } else {
       checks.push({
@@ -797,15 +840,21 @@ export async function doctorOpenCode(
       message: 'Containment probes could not run; OpenCode must not launch.',
     });
   }
-  const containmentOk =
-    checks.find((check) => check.name === 'tool-namespace')?.status === 'pass' &&
-    checks.find((check) => check.name === 'process-boundary')?.status === 'pass' &&
-    checks.find((check) => check.name === 'config-masking')?.status === 'pass';
+  // Blocking vs warning evaluation: masking is always blocking; systemd and
+  // bubblewrap block only outside the explicit dev bypass (where they warn).
+  // A blocked version also blocks. Warnings otherwise degrade.
+  const checkStatus = (name: string): string =>
+    checks.find((check) => check.name === name)?.status ?? 'fail';
+  const blockingContainmentFailure =
+    checkStatus('config-masking') === 'fail' ||
+    (!bypassed && checkStatus('tool-namespace') === 'fail') ||
+    (!bypassed && checkStatus('process-boundary') === 'fail');
+  const versionBlocked = checkStatus('version') === 'fail';
   const summary = openCodeReadinessFromChecks({
     modelOk: runtime !== undefined,
     credentialOk,
     binaryOk,
-    sandboxOk: containmentOk,
+    sandboxOk: !blockingContainmentFailure && !versionBlocked,
     realWarning: checks.some((check) => check.status === 'warn'),
   });
   const failed = checks.some((check) => check.status === 'fail');
