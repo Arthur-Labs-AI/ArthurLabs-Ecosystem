@@ -2,7 +2,6 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { nowIsoTimestamp } from '@qa/shared';
 import type { HarnessHealthResult } from '@qa/harness-protocol';
 import { buildDeepSeekChildEnvironment } from './environment.js';

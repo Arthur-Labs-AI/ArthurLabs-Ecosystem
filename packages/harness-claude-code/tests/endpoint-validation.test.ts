@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  assertGlmEndpointConfigured,
-  validateGlmEndpoint,
-} from '../src/discovery.js';
+import { assertGlmEndpointConfigured, validateGlmEndpoint } from '../src/discovery.js';
 
 describe('validateGlmEndpoint agrees with the adapter assertion', () => {
   it('accepts a trusted Z.AI-compatible endpoint', () => {
