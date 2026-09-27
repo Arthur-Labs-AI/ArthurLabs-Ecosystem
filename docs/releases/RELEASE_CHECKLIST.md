@@ -4,7 +4,7 @@ Check an item only after actually performing it. Evidence first.
 Status as of the readiness-integration pass (code validated at 283c917, 2026-09-27; this commit is checklist-docs only).
 
 - [x] tree clean (`git status --porcelain` empty) — verified clean
-- [ ] latest `main` checked out and pushed — fix commits since e350150 are LOCAL, not pushed
+- [x] latest `main` checked out and pushed — verified at 0e7649c (local main == origin/main, clean tree)
 - [ ] CI green (Linux quality + Windows launcher job) — must be read from GitHub Actions on the final HEAD (see validation notes)
 - [x] `pnpm repository:check` passes
 - [x] `pnpm format:check` passes

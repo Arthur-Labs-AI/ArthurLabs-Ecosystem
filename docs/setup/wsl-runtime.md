@@ -15,7 +15,7 @@ No secrets below — substitute your own values where indicated.
 - Ensure systemd is active inside the distro:
   `wsl -d Ubuntu -- systemctl --user show-environment` should succeed, and
   `wsl -d Ubuntu -- systemd-run --user --pipe --wait echo ok` should print `ok`.
-- Do not edit `/etc/wsl.conf` automatically in Phase 8; enable systemd manually if needed.
+- `sentry setup` distinguishes missing systemd binaries, systemd disabled in WSL, and an unavailable user manager. On supported Ubuntu/WSL installs it repairs missing packages where possible, backs up `/etc/wsl.conf`, enables `systemd=true`, terminates only the selected distro, and revalidates the user manager.
 
 ## 2. Node + pnpm in WSL
 
