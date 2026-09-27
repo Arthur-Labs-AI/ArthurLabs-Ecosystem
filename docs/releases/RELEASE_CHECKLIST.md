@@ -1,7 +1,7 @@
 # Release checklist — Sentry v0.1 Beta (`v0.1.0-beta.1`)
 
 Check an item only after actually performing it. Evidence first.
-Status as of the OpenCode integration pass (code validated at 00cb8db, 2026-09-27; this commit is checklist-docs only).
+Status as of the OpenCode policy pass (code validated at 027ad9a, 2026-09-27; this commit is checklist-docs only).
 
 - [x] tree clean (`git status --porcelain` empty) — verified clean
 - [x] latest `main` checked out and pushed — verified at 0e7649c (local main == origin/main, clean tree)
