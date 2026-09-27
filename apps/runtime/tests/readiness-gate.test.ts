@@ -14,7 +14,6 @@ const OC_BASE = {
   testedVersion: '1.18.32',
   sandboxBypassed: false,
   sandbox: OC_SANDBOX,
-  functionalSystemd: true,
 };
 
 const DS_BASE = {
@@ -154,21 +153,10 @@ describe('pre-run gate: OpenCode hard local readiness', () => {
     expect(verdict.reasons.join(';')).toContain('bubblewrap sandbox unavailable');
   });
 
-  it('bwrap binary exists but functional init fails -> ready=false', () => {
-    const verdict = evaluateOpencodeGate({
-      ...OC_BASE,
-      sandbox: { systemdUser: true, bubblewrap: true, masking: true },
-      functionalSystemd: false,
-    });
-    expect(verdict.ready).toBe(false);
-    expect(verdict.reasons.join(';')).toContain('systemd user isolation unavailable');
-  });
-
-  it('systemd user unavailable -> ready=false', () => {
+  it('functional systemd failure (unit launch fails) -> ready=false', () => {
     const verdict = evaluateOpencodeGate({
       ...OC_BASE,
       sandbox: { systemdUser: false, bubblewrap: true, masking: true },
-      functionalSystemd: false,
     });
     expect(verdict.ready).toBe(false);
     expect(verdict.reasons.join(';')).toContain('systemd user isolation unavailable');
@@ -204,15 +192,25 @@ describe('pre-run gate: OpenCode hard local readiness', () => {
     expect(evaluateOpencodeGate(OC_BASE).ready).toBe(true);
   });
 
-  it('dev bypass warns instead of blocking sandbox legs', () => {
+  it('dev bypass warns on systemd/bubblewrap but stays ready', () => {
     const verdict = evaluateOpencodeGate({
       ...OC_BASE,
       sandboxBypassed: true,
-      sandbox: undefined,
-      functionalSystemd: true,
+      sandbox: { systemdUser: false, bubblewrap: false, masking: true },
     });
     expect(verdict.ready).toBe(true);
     expect(verdict.warnings.join(';')).toContain('ALLOW_DIRECT');
+    expect(verdict.reasons).toEqual([]);
+  });
+
+  it('dev bypass still blocks on broken masking', () => {
+    const verdict = evaluateOpencodeGate({
+      ...OC_BASE,
+      sandboxBypassed: true,
+      sandbox: { systemdUser: false, bubblewrap: false, masking: false },
+    });
+    expect(verdict.ready).toBe(false);
+    expect(verdict.reasons.join(';')).toContain('masking unavailable');
   });
 
   it('managed binary missing but PATH form resolves -> evaluated, not skipped', () => {

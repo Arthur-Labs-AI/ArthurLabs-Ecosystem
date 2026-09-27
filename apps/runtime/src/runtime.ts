@@ -37,9 +37,8 @@ import {
   normalizeOpenCodeProvider,
   openCodeCredentialPresent,
   openCodeSandboxBypassed,
-  probeOpenCodeExecutable,
   probeOpenCodeSandbox,
-  resolveOpenCodeExecutable,
+  probeResolvedOpenCodeExecutable,
   assertTestedOpenCodeVersion,
   OPENCODE_TESTED_VERSION,
 } from '@qa/harness-opencode';
@@ -261,7 +260,6 @@ export interface OpencodeGateInput {
   readonly testedVersion: string;
   readonly sandboxBypassed: boolean;
   readonly sandbox: OpencodeSandboxGateInput | undefined;
-  readonly functionalSystemd: boolean;
 }
 
 export interface DeepseekGateInput {
@@ -317,13 +315,29 @@ export function evaluateOpencodeGate(input: OpencodeGateInput): GateVerdict {
     warnings.push(
       'OpenCode version ' + input.version + ' differs from tested ' + input.testedVersion,
     );
-  if (input.sandboxBypassed) {
-    warnings.push('SENTRY_OPENCODE_ALLOW_DIRECT=1 bypasses production sandbox (development only)');
-  } else if (input.sandbox !== undefined) {
-    if (!input.sandbox.bubblewrap) reasons.push('bubblewrap sandbox unavailable');
-    if (!input.sandbox.systemdUser || !input.functionalSystemd)
-      reasons.push('systemd user isolation unavailable');
+  // Masking stays hard even under the dev bypass: the adapter masks
+  // fail-closed regardless of launcher. systemd/bubblewrap downgrade to
+  // warnings under bypass; without bypass all three block.
+  if (input.sandbox !== undefined) {
+    if (!input.sandbox.bubblewrap) {
+      if (input.sandboxBypassed)
+        warnings.push('bubblewrap unavailable: bypassed for development-only direct execution');
+      else reasons.push('bubblewrap sandbox unavailable');
+    }
+    if (!input.sandbox.systemdUser) {
+      if (input.sandboxBypassed)
+        warnings.push(
+          'systemd user isolation unavailable: bypassed for development-only direct execution',
+        );
+      else reasons.push('systemd user isolation unavailable');
+    }
     if (!input.sandbox.masking) reasons.push('OpenCode project-config masking unavailable');
+    if (input.sandboxBypassed)
+      warnings.push(
+        'SENTRY_OPENCODE_ALLOW_DIRECT=1 bypasses production sandbox (development only)',
+      );
+  } else if (input.sandboxBypassed) {
+    warnings.push('SENTRY_OPENCODE_ALLOW_DIRECT=1 bypasses production sandbox (development only)');
   }
   return { ready: reasons.length === 0, reasons, warnings };
 }
@@ -1061,11 +1075,28 @@ export class SentryRuntimeHost {
       };
     }
     const stacks = INITIAL_AGENT_STACKS.map((s) => {
+      const opencodeDoctor = opencode as
+        | {
+            executable?: string;
+            executableSource?: string;
+            checks?: Array<{ name: string; status: string; message?: string }>;
+          }
+        | undefined;
+      const opencodeNote = (opencodeDoctor?.checks ?? [])
+        .filter((check) => check.status === 'fail')
+        .map((check) => check.message ?? check.name)
+        .slice(0, 3)
+        .join('; ');
       const base =
         s.id === 'stack_opencode_main'
           ? {
               ...stackStatus(s.id, opencode as never),
-              executionPath: managedOpenCodeExecutable(this.dataRoot),
+              executionPath:
+                opencodeDoctor?.executable ?? managedOpenCodeExecutable(this.dataRoot),
+              ...(opencodeDoctor?.executableSource === undefined
+                ? {}
+                : { executableSource: opencodeDoctor.executableSource }),
+              ...(opencodeNote.length === 0 ? {} : { note: opencodeNote }),
             }
           : s.id === 'stack_deepseek_main'
             ? {
@@ -1139,22 +1170,6 @@ export class SentryRuntimeHost {
     }
   }
 
-  static findOnPath(name: string, env: NodeJS.ProcessEnv): string | undefined {
-    const pathVar = env['PATH'] ?? '';
-    const sep = process.platform === 'win32' ? ';' : ':';
-    for (const dir of pathVar.split(sep)) {
-      if (dir.length === 0) continue;
-      const candidate = join(dir, name);
-      try {
-        accessSync(candidate, constants.X_OK);
-        if (statSync(candidate).isFile()) return candidate;
-      } catch {
-        continue;
-      }
-    }
-    return undefined;
-  }
-
   static resolveDshPackage(): { entry: string; version: string } | undefined {
     try {
       return resolveInstalledDshPackage();
@@ -1167,15 +1182,17 @@ export class SentryRuntimeHost {
     return probeSandboxDeps();
   }
 
-  static async probeOpencodeVersion(
-    executable: string,
+  static async probeOpencodeResolved(
     env: NodeJS.ProcessEnv,
-  ): Promise<string | undefined> {
-    try {
-      return await probeOpenCodeExecutable(executable, env);
-    } catch {
-      return undefined;
-    }
+    managedExecutable: string,
+  ): Promise<{
+    executable: string;
+    source: string;
+    available: boolean;
+    version?: string | undefined;
+    failureReason?: string | undefined;
+  }> {
+    return probeResolvedOpenCodeExecutable({ environment: env, managedExecutable });
   }
 
   static async probeOpencodeSandbox(env: NodeJS.ProcessEnv): Promise<{
@@ -1256,16 +1273,14 @@ export class SentryRuntimeHost {
     // never defaulted to true for unprobed providers.
     if (wants('stack_opencode_main')) {
       const provider = normalizeOpenCodeProvider(env['SENTRY_OPENCODE_PROVIDER']);
-      // Same discovery production execution uses: explicit override > env
-      // override > verified managed install > PATH lookup (fail-closed).
-      const resolved = resolveOpenCodeExecutable({
-        environment: env,
-        managedExecutable: managedOpenCodeExecutable(this.dataRoot),
-      });
-      const probed = SentryRuntimeHost.probeLocalExecutable(resolved.executable);
-      const version = probed.exists
-        ? await SentryRuntimeHost.probeOpencodeVersion(resolved.executable, env)
-        : undefined;
+      // Shared resolution+probe: the exact executable production execution
+      // would launch, probed with the spawn-based helper (PATH-aware — the
+      // same effective runtime environment production uses).
+      const probed = await SentryRuntimeHost.probeOpencodeResolved(
+        env,
+        managedOpenCodeExecutable(this.dataRoot),
+      );
+      const version = probed.available ? probed.version : undefined;
       let versionPolicy: 'ready' | 'mismatch-blocked' | 'mismatch-allowed' = 'ready';
       if (version !== undefined && !version.includes(OPENCODE_TESTED_VERSION)) {
         try {
@@ -1277,22 +1292,22 @@ export class SentryRuntimeHost {
       }
       const linux = process.platform === 'linux';
       const bypassed = openCodeSandboxBypassed(env);
-      const sandbox =
-        linux && !bypassed ? await SentryRuntimeHost.probeOpencodeSandbox(env) : undefined;
+      // Single sandbox authority: probeOpenCodeSandbox is functionally
+      // complete (transient unit launch, bwrap smoke, masking primitive).
+      const sandbox = linux ? await SentryRuntimeHost.probeOpencodeSandbox(env) : undefined;
       pushVerdict(
         'stack_opencode_main',
         evaluateOpencodeGate({
           credential: openCodeCredentialPresent(provider, env),
           credentialName: credentialEnvForProvider(provider),
           model: (env['SENTRY_OPENCODE_MODEL'] ?? '').length > 0,
-          executable: resolved.executable,
-          exists: probed.exists,
+          executable: probed.executable,
+          exists: probed.available,
           version,
           versionPolicy,
           testedVersion: OPENCODE_TESTED_VERSION,
           sandboxBypassed: bypassed,
           sandbox,
-          functionalSystemd: !linux || bypassed ? true : SentryRuntimeHost.systemdUserReady(),
         }),
       );
     }

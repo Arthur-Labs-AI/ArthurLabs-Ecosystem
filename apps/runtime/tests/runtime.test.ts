@@ -123,28 +123,25 @@ describe('runtime host identity', () => {
       };
       expect(withoutBinary.ready).toBe(false);
       expect(JSON.stringify(withoutBinary.stacks)).toContain('OpenCode executable not found');
-      const probe = vi
-        .spyOn(SentryRuntimeHost, 'probeLocalExecutable')
-        .mockReturnValue({ exists: true, version: 'opencode version 1.18.32' });
-      const ocVersion = vi
-        .spyOn(SentryRuntimeHost, 'probeOpencodeVersion')
-        .mockResolvedValue('opencode version 1.18.32');
+      const resolved = vi.spyOn(SentryRuntimeHost, 'probeOpencodeResolved').mockResolvedValue({
+        executable: '/fake/tools/opencode',
+        source: 'managed',
+        available: true,
+        version: 'opencode version 1.18.32',
+      });
       const ocSandbox = vi.spyOn(SentryRuntimeHost, 'probeOpencodeSandbox').mockResolvedValue({
         systemdUser: true,
         bubblewrap: true,
         masking: true,
       });
-      const systemd = vi.spyOn(SentryRuntimeHost, 'systemdUserReady').mockReturnValue(true);
       try {
         const ready = (await host.productionReadiness(['stack_opencode_main'])) as {
           ready: boolean;
         };
         expect(ready.ready).toBe(true);
       } finally {
-        probe.mockRestore();
-        ocVersion.mockRestore();
+        resolved.mockRestore();
         ocSandbox.mockRestore();
-        systemd.mockRestore();
       }
     } finally {
       delete process.env['SENTRY_OPENCODE_MODEL'];

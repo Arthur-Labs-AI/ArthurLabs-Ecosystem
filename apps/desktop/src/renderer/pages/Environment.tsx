@@ -34,6 +34,7 @@ interface AgentStackHealth {
   runtimeVerified?: boolean;
   readiness?: string;
   executionPath?: string;
+  executableSource?: string;
   wrapperNote?: string;
   note?: string;
 }
@@ -184,7 +185,11 @@ export function Environment(): React.JSX.Element {
               />
               {stack.executionPath !== undefined && stack.executionPath !== '' ? (
                 <div className="mono metadata truncate" title={stack.executionPath}>
-                  {'Execution runtime: ' + stack.executionPath}
+                  {'Execution runtime: ' +
+                    stack.executionPath +
+                    (stack.executableSource !== undefined && stack.executableSource !== ''
+                      ? ' (source: ' + stack.executableSource + ')'
+                      : '')}
                 </div>
               ) : null}
               {stack.wrapperNote !== undefined && stack.wrapperNote !== '' ? (
