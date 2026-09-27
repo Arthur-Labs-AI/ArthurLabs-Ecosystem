@@ -96,11 +96,16 @@ export function resolveInstalledDshPackage(
   try {
     const requireFromHere = createRequire(fromUrl);
     const clientManifest = requireFromHere.resolve('@deepseek-ai/dsh-sdk-client/package.json');
-    // dirname(manifest) already ends at .../node_modules/@deepseek-ai, so the
-    // sibling dsh package sits directly beneath it (no extra '..').
-    const sibling = join(dirname(clientManifest), 'dsh', 'package.json');
-    const viaSibling = entryFor(sibling);
-    if (viaSibling !== undefined) return viaSibling;
+    // dirname(manifest) ends at .../node_modules/@deepseek-ai/<pkg> when the
+    // path is a realpath, or at .../node_modules/@deepseek-ai when a symlink
+    // is preserved: try both sibling shapes so either pnpm layout resolves.
+    for (const candidate of [
+      join(dirname(clientManifest), '..', 'dsh', 'package.json'),
+      join(dirname(clientManifest), 'dsh', 'package.json'),
+    ]) {
+      const viaSibling = entryFor(candidate);
+      if (viaSibling !== undefined) return viaSibling;
+    }
   } catch {
     // Fall through to direct resolution below.
   }
