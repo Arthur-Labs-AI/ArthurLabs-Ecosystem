@@ -10,9 +10,8 @@
  * via notifications plus renderer polling.
  */
 import { spawnSync } from 'node:child_process';
-import { accessSync, constants, readFileSync, statSync } from 'node:fs';
-import { isAbsolute, join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { accessSync, constants, statSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
 import { z } from 'zod';
 import { INITIAL_AGENT_STACKS } from '@qa/domain';
 import {
@@ -44,7 +43,11 @@ import {
   assertTestedOpenCodeVersion,
   OPENCODE_TESTED_VERSION,
 } from '@qa/harness-opencode';
-import { createDeepSeekRegistration, DEEPSEEK_SDK_VERSION } from '@qa/harness-deepseek';
+import {
+  createDeepSeekRegistration,
+  DEEPSEEK_SDK_VERSION,
+  resolveInstalledDshPackage,
+} from '@qa/harness-deepseek';
 import {
   createGlmRegistration,
   resolveClaudeExecutableIdentity,
@@ -1154,13 +1157,7 @@ export class SentryRuntimeHost {
 
   static resolveDshPackage(): { entry: string; version: string } | undefined {
     try {
-      const entryUrl = new URL(import.meta.resolve('@deepseek-ai/dsh/lib/bin.js'));
-      if (entryUrl.protocol !== 'file:') return undefined;
-      const entry = fileURLToPath(entryUrl);
-      const manifest = join(dirname(entry), '..', 'package.json');
-      const parsed = JSON.parse(readFileSync(manifest, 'utf8')) as { version?: unknown };
-      if (typeof parsed.version !== 'string') return undefined;
-      return { entry, version: parsed.version };
+      return resolveInstalledDshPackage();
     } catch {
       return undefined;
     }

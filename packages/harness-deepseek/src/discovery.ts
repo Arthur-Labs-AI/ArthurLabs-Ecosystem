@@ -1,5 +1,8 @@
 import { spawn } from 'node:child_process';
-import { isAbsolute } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, isAbsolute, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { nowIsoTimestamp } from '@qa/shared';
 import type { HarnessHealthResult } from '@qa/harness-protocol';
 import { buildDeepSeekChildEnvironment } from './environment.js';
@@ -63,6 +66,49 @@ export function deepSeekReadinessFromChecks(input: {
     binaryAvailable: true,
     runtimeVerified: false,
   };
+}
+
+/**
+ * Resolve the installed `@deepseek-ai/dsh` package (entry + version) from
+ * the harness's own module tree, where pnpm links the SDK client's declared
+ * dependencies. Resolving from any other package root cannot traverse
+ * pnpm's virtual store, so this helper is the single authority for "is a
+ * compatible vendor runtime locally installed". No spawn, no network.
+ */
+export function resolveInstalledDshPackage(
+  fromUrl: string = import.meta.url,
+): { readonly entry: string; readonly version: string } | undefined {
+  // createRequire (not import.meta.resolve) so this also works under
+  // bundlers/test runners without import.meta.resolve, matching how the
+  // vendor client itself resolves. Pure path/manifest reads: no spawn.
+  const readVersion = (manifest: string): string | undefined => {
+    try {
+      const parsed = JSON.parse(readFileSync(manifest, 'utf8')) as { version?: unknown };
+      return typeof parsed.version === 'string' ? parsed.version : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const entryFor = (manifest: string): { entry: string; version: string } | undefined => {
+    const version = readVersion(manifest);
+    if (version === undefined) return undefined;
+    return { entry: join(dirname(manifest), 'lib', 'bin.js'), version };
+  };
+  try {
+    const requireFromHere = createRequire(fromUrl);
+    const clientManifest = requireFromHere.resolve('@deepseek-ai/dsh-sdk-client/package.json');
+    const sibling = join(dirname(clientManifest), '..', '@deepseek-ai', 'dsh', 'package.json');
+    const viaSibling = entryFor(sibling);
+    if (viaSibling !== undefined) return viaSibling;
+  } catch {
+    // Fall through to direct resolution below.
+  }
+  try {
+    const requireFromHere = createRequire(fromUrl);
+    return entryFor(requireFromHere.resolve('@deepseek-ai/dsh/package.json'));
+  } catch {
+    return undefined;
+  }
 }
 
 export interface DeepSeekRuntimeConfiguration {

@@ -19,4 +19,14 @@ describe('vendor SDK self-resolution (no mocks, no spawn, no network)', () => {
     const manifest = requirePkg('@deepseek-ai/dsh/package.json') as { version?: unknown };
     expect(manifest.version).toBe(DEEPSEEK_SDK_VERSION);
   });
+
+  it('G: resolveInstalledDshPackage finds a real entry at the pinned version', async () => {
+    const { resolveInstalledDshPackage } = await import('../src/discovery.js');
+    const resolved = resolveInstalledDshPackage();
+    expect(resolved).toBeDefined();
+    expect(resolved?.entry.endsWith('.js')).toBe(true);
+    expect(resolved?.version).toBe(DEEPSEEK_SDK_VERSION);
+    const { stat } = await import('node:fs/promises');
+    expect((await stat(resolved?.entry ?? '')).isFile()).toBe(true);
+  });
 });
