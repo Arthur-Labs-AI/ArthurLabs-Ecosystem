@@ -1181,9 +1181,7 @@ export class SentryRuntimeHost {
     }
   }
 
-  static async probeOpencodeSandbox(
-    env: NodeJS.ProcessEnv,
-  ): Promise<{
+  static async probeOpencodeSandbox(env: NodeJS.ProcessEnv): Promise<{
     readonly systemdUser: boolean;
     readonly bubblewrap: boolean;
     readonly masking: boolean;

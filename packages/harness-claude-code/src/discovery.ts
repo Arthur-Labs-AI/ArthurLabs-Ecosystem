@@ -102,9 +102,10 @@ export function assertGlmEndpointConfigured(environment: NodeJS.ProcessEnv = pro
  * surfaces: identical policy (the assertion is the single source of truth),
  * safe reason string, no network, no secrets (hostnames only).
  */
-export function validateGlmEndpoint(
-  environment: NodeJS.ProcessEnv = process.env,
-): { readonly valid: boolean; readonly reason?: string } {
+export function validateGlmEndpoint(environment: NodeJS.ProcessEnv = process.env): {
+  readonly valid: boolean;
+  readonly reason?: string;
+} {
   try {
     assertGlmEndpointConfigured(environment);
     return { valid: true };
