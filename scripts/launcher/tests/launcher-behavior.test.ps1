@@ -36,7 +36,8 @@ function Invoke-SentryWsl {
 }
 function Invoke-SentryWslFile {
   param($Distro, $ScriptName, $ScriptArgs = @(), $TimeoutSec = 60, $AsRoot = $false)
-  $script:WslFileCalls += @($ScriptName + ' root=' + [string]$AsRoot)
+  $argText = (($ScriptArgs | ForEach-Object { [string]$_ }) -join ',')
+  $script:WslFileCalls += @($ScriptName + ' root=' + [string]$AsRoot + ' args=[' + $argText + ']')
   foreach ($pat in $script:WslFileStubs.Keys) { if ($ScriptName -like $pat) { return $script:WslFileStubs[$pat] } }
   return @{ ExitCode = 0; Stdout = ''; Stderr = '' }
 }
@@ -140,7 +141,7 @@ function Get-SentryLauncherConfig { return @{ selectedDistro = 'Ubuntu' } }
 function Write-SentryLog { param($Message, $Kind) return }
 function Get-SentryProductVersion { param($RepoRoot) return '0.1.0-beta.1' }
 $script:NativeStubs = @{ '*' = @{ ExitCode = 0; Stdout = ''; Stderr = '' } }
-$script:WslFileStubs = @{ 'check-sandbox.sh' = @{ ExitCode = 0; Stdout = ("HAVE-socat`nHAVE-bwrap`nSANDBOX_INIT_OK"); Stderr = '' } }
+$script:WslFileStubs = @{ 'check-sandbox.sh' = @{ ExitCode = 0; Stdout = ("HAVE-socat`nHAVE-bubblewrap`nSANDBOX_INIT_OK"); Stderr = '' } }
 $script:OpenCalled = 0
 $script:MockTools = @{ oc = $true; ds = $true; cc = $true }
 $updOk = Invoke-SentryPostUpdate -RepoRoot $repoRoot -OldSha 'aaa' -NewSha 'bbb' -WasRunning $true
@@ -159,26 +160,63 @@ Assert-Equal 'postupdate-idle-no-open' $script:OpenCalled 0
 # ---- 13. privilege boundary: root only where required ----
 function Invoke-SentryWsl {
   param($Distro, $LinuxArgs, $TimeoutSec = 60)
-  if ($LinuxArgs[0] -eq 'node') { return @{ ExitCode = 0; Stdout = 'v20.1.0'; Stderr = '' } }
+  if ($LinuxArgs[0] -eq 'node') { return @{ ExitCode = 0; Stdout = $script:MockNodeVer; Stderr = '' } }
+  if ($LinuxArgs[0] -eq 'npm') {
+    if ($script:MockNpmMode -eq 'ok') { return @{ ExitCode = 0; Stdout = '10.8.2'; Stderr = '' } }
+    return @{ ExitCode = 1; Stdout = ''; Stderr = '' }
+  }
   if ($LinuxArgs[0] -eq 'pnpm') { return @{ ExitCode = 1; Stdout = ''; Stderr = '' } }
+  if (($LinuxArgs[0] -eq 'sh') -and ($script:MockNpmMode -eq 'missing')) { return @{ ExitCode = 1; Stdout = ''; Stderr = '' } }
   return @{ ExitCode = 0; Stdout = 'init-ok'; Stderr = '' }
 }
+$script:MockNodeVer = 'v20.1.0'
+$script:MockNpmMode = 'ok'
 $script:WslFileCalls = @()
 $script:WslFileStubs = @{ 'check-systemd.sh' = @{ ExitCode = 0; Stdout = 'SYSTEMD_MISSING'; Stderr = '' } }
 [void](Ensure-SentrySystemd -Distro 'Ubuntu')
-Assert-True 'systemd-enable-runs-as-root' ((@($script:WslFileCalls) | Where-Object { $_ -like 'enable-systemd.sh root=True' }).Count -gt 0)
-Assert-True 'systemd-check-stays-user' ((@($script:WslFileCalls) | Where-Object { $_ -eq 'check-systemd.sh root=False' }).Count -gt 0)
+Assert-True 'systemd-enable-runs-as-root' ((@($script:WslFileCalls) | Where-Object { $_ -like 'enable-systemd.sh root=True*' }).Count -gt 0)
+Assert-True 'systemd-check-stays-user' ((@($script:WslFileCalls) | Where-Object { $_ -like 'check-systemd.sh root=False*' }).Count -gt 0)
 $script:WslFileCalls = @()
 [void](Ensure-SentryLinuxNode -Distro 'Ubuntu')
-Assert-True 'node-install-runs-as-root' ((@($script:WslFileCalls) | Where-Object { $_ -like 'install-node.sh root=True' }).Count -gt 0)
+Assert-True 'node-install-runs-as-root' ((@($script:WslFileCalls) | Where-Object { $_ -like 'install-node.sh root=True*' }).Count -gt 0)
 $script:WslFileCalls = @()
 [void](Ensure-SentryLinuxPnpm -Distro 'Ubuntu' -RepoRoot $repoRoot)
-Assert-True 'pnpm-install-runs-as-root' ((@($script:WslFileCalls) | Where-Object { $_ -like 'install-pnpm.sh root=True' }).Count -gt 0)
+Assert-True 'pnpm-install-runs-as-root' ((@($script:WslFileCalls) | Where-Object { $_ -like 'install-pnpm.sh root=True*' }).Count -gt 0)
 $nodeVer = Get-SentryLinuxNodeVersion -Distro 'Ubuntu'
 Assert-Equal 'node-version-probe-stays-user' $nodeVer 'v20.1.0'
 $script:WslFileCalls = @()
 $r = Invoke-SentryWslFile -Distro 'Ubuntu' -ScriptName 'check-deepseek.sh' -ScriptArgs @('0.1.5-rc.2') -TimeoutSec 60
-Assert-True 'tool-check-stays-user' ((@($script:WslFileCalls) | Where-Object { $_ -like 'check-deepseek.sh root=False' }).Count -gt 0)
+Assert-True 'tool-check-stays-user' ((@($script:WslFileCalls) | Where-Object { $_ -like 'check-deepseek.sh root=False*' }).Count -gt 0)
+# ---- 20. npm readiness: toolchain states and repair ----
+$script:MockNodeVer = 'v22.14.0'
+$script:MockNpmMode = 'ok'
+$tcOk = Test-SentryLinuxNodeToolchain -Distro 'Ubuntu'
+Assert-Equal 'toolchain-node22-npm-ok' $tcOk.Ready $true
+$script:MockNpmMode = 'missing'
+$tcMiss = Test-SentryLinuxNodeToolchain -Distro 'Ubuntu'
+Assert-Equal 'toolchain-npm-missing-not-ready' $tcMiss.Ready $false
+Assert-Equal 'toolchain-npm-missing-reason' $tcMiss.Reason 'npm-missing'
+$script:MockNpmMode = 'broken'
+$tcBroken = Test-SentryLinuxNodeToolchain -Distro 'Ubuntu'
+Assert-Equal 'toolchain-npm-broken-not-ready' $tcBroken.Ready $false
+Assert-Equal 'toolchain-npm-broken-reason' $tcBroken.Reason 'npm-broken'
+$script:WslFileCalls = @()
+$script:WslFileStubs = @{}
+$nodeRepair = Ensure-SentryLinuxNode -Distro 'Ubuntu'
+Assert-Equal 'toolchain-repair-verifies-both' $nodeRepair $false
+Assert-True 'toolchain-repair-reinstalls-node' ((@($script:WslFileCalls) | Where-Object { $_ -like 'install-node.sh root=True*' }).Count -gt 0)
+$script:MockNpmMode = 'ok'
+$script:MockNodeVer = 'v20.1.0'
+# ---- 21. base utilities and systemd states ----
+$script:WslFileStubs = @{ 'check-base.sh' = @{ ExitCode = 0; Stdout = ("HAVE-bash`nHAVE-find`nHAVE-readlink`nHAVE-timeout`nHAVE-grep`nHAVE-sed`nHAVE-systemctl`nHAVE-systemd-run"); Stderr = '' } }
+$baseOk = Get-SentryBaseToolStatus -Distro 'Ubuntu'
+Assert-Equal 'base-all-present' $baseOk.Missing.Count 0
+$script:WslFileStubs = @{ 'check-base.sh' = @{ ExitCode = 0; Stdout = ("HAVE-bash`nMISS-timeout`nMISS-systemd-run"); Stderr = '' } }
+$baseMiss = Get-SentryBaseToolStatus -Distro 'Ubuntu'
+Assert-Equal 'base-missing-listed' ($baseMiss.Missing -join ',') 'timeout,systemd-run'
+$script:WslFileStubs = @{ 'check-systemd.sh' = @{ ExitCode = 0; Stdout = 'SYSTEMD_BIN_MISSING'; Stderr = '' }; 'install-deps.sh' = @{ ExitCode = 0; Stdout = ''; Stderr = '' } }
+$sysBin = Ensure-SentrySystemd -Distro 'Ubuntu'
+Assert-True 'systemd-bin-missing-tries-install' ((@($script:WslFileCalls) | Where-Object { $_ -like 'install-deps.sh root=True*' }).Count -gt 0)
 # ---- 14. PATH refresh merges machine/user without losing session entries ----
 $sentinelDir = 'C:\SentryTestSentinelPath'
 $env:PATH = ($env:PATH + ';' + $sentinelDir)
@@ -187,10 +225,10 @@ Assert-True 'path-refresh-keeps-session-entry' (($env:PATH -split ';') -contains
 Assert-True 'path-refresh-no-dupes' (((@($env:PATH -split ';' | Where-Object { $_ -ne '' }).Count) -eq (@($env:PATH -split ';' | Where-Object { $_ -ne '' } | Select-Object -Unique).Count)))
 $env:PATH = ((@($env:PATH -split ';' | Where-Object { $_ -ne $sentinelDir }) -join ';'))
 # ---- 15. sandbox status parsing drives honest GLM gating (mocked) ----
-$script:WslFileStubs = @{ 'check-sandbox.sh' = @{ ExitCode = 0; Stdout = ("HAVE-socat`nSOCAT_VERSION=socat version 1.8.0.3`nHAVE-bwrap`nBWRAP_VERSION=bubblewrap 0.10.1`nSANDBOX_INIT_OK"); Stderr = '' } }
+$script:WslFileStubs = @{ 'check-sandbox.sh' = @{ ExitCode = 0; Stdout = ("HAVE-socat`nSOCAT_VERSION=socat version 1.8.0.3`nHAVE-bubblewrap`nBWRAP_VERSION=bubblewrap 0.10.1`nSANDBOX_INIT_OK"); Stderr = '' } }
 $sbOk = Get-SentrySandboxStatus -Distro 'Ubuntu'
 Assert-Equal 'sandbox-all-present' (([bool]$sbOk.Socat -and [bool]$sbOk.Bwrap -and [bool]$sbOk.InitOk)) $true
-$script:WslFileStubs = @{ 'check-sandbox.sh' = @{ ExitCode = 0; Stdout = ("MISS-socat`nHAVE-bwrap`nBWRAP_VERSION=bubblewrap 0.10.1`nSANDBOX_INIT_OK"); Stderr = '' } }
+$script:WslFileStubs = @{ 'check-sandbox.sh' = @{ ExitCode = 0; Stdout = ("MISS-socat`nHAVE-bubblewrap`nBWRAP_VERSION=bubblewrap 0.10.1`nSANDBOX_INIT_OK"); Stderr = '' } }
 $sbNoSoc = Get-SentrySandboxStatus -Distro 'Ubuntu'
 Assert-Equal 'sandbox-socat-missing-detected' $sbNoSoc.Socat $false
 Assert-Equal 'sandbox-bwrap-still-present' $sbNoSoc.Bwrap $true
@@ -199,7 +237,7 @@ $sbBoth = Get-SentrySandboxStatus -Distro 'Ubuntu'
 Assert-Equal 'sandbox-both-missing' (([bool](-not $sbBoth.Socat) -and [bool](-not $sbBoth.Bwrap))) $true
 # ---- 16. noninteractive install failure reports the apt command (E) ----
 $script:WslFileStubs = @{
-  'check-deps.sh' = @{ ExitCode = 0; Stdout = ("HAVE-git`nHAVE-curl`nHAVE-ca-certificates`nHAVE-bwrap`nMISS-socat"); Stderr = '' };
+  'check-deps.sh' = @{ ExitCode = 0; Stdout = ("HAVE-git`nHAVE-curl`nHAVE-ca-certificates`nHAVE-bubblewrap`nMISS-socat"); Stderr = '' };
   'install-deps.sh' = @{ ExitCode = 1; Stdout = ''; Stderr = 'apt failed' }
 }
 $depsFail = Ensure-SentryLinuxDeps -Distro 'Ubuntu' -RepoRoot $repoRoot
@@ -219,7 +257,15 @@ $script:WslFileStubs = @{ 'check-claude.sh' = @{ ExitCode = 0; Stdout = ("MANAGE
 $ccSkip = Ensure-SentryClaudeCode -Distro 'Ubuntu' -RepoRoot $repoRoot
 Assert-Equal 'claude-managed-no-reinstall' $ccSkip $true
 Assert-True 'claude-install-not-invoked' ((@($script:WslFileCalls) | Where-Object { $_ -like 'install-claude.sh*' }).Count -eq 0)
-# ---- 10. no host mutations: user PATH untouched by tests ----
+# ---- 19. install receives Ubuntu package names, never bare executables ----
+$script:WslFileCalls = @()
+$script:WslFileStubs = @{
+  'check-deps.sh' = @{ ExitCode = 0; Stdout = ("HAVE-git`nHAVE-curl`nHAVE-ca-certificates`nMISS-bubblewrap`nMISS-socat"); Stderr = '' };
+  'install-deps.sh' = @{ ExitCode = 0; Stdout = ''; Stderr = '' }
+}
+[void](Ensure-SentryLinuxDeps -Distro 'Ubuntu' -RepoRoot $repoRoot)
+$installCall = @($script:WslFileCalls | Where-Object { $_ -like 'install-deps.sh*' })[0]
+Assert-Equal 'install-args-use-package-names' ([string]$installCall) 'install-deps.sh root=True args=[bubblewrap,socat]'
 $before = [Environment]::GetEnvironmentVariable('PATH', 'User')
 Assert-True 'user-path-untouched' (([Environment]::GetEnvironmentVariable('PATH', 'User')) -eq $before)
 if ($script:failures -gt 0) { Write-Host ([string]("BEHAVIOR-FAIL " + $script:failures)); exit 1 }

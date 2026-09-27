@@ -277,7 +277,31 @@ function Ensure-SentryWslDistro {
 function Ensure-SentrySystemd {
   param([string]$Distro)
   $probe = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-systemd.sh' -TimeoutSec 60
-  if (([string]$probe.Stdout).Trim() -eq 'SYSTEMD_OK') { Write-SentryOk 'systemd user services'; return $true }
+  $state = ([string]$probe.Stdout).Trim()
+  if ($state -eq 'SYSTEMD_OK') { Write-SentryOk 'systemd user services'; return $true }
+  if ($state -eq 'SYSTEMD_BIN_MISSING') {
+    Write-SentryWarn 'systemd executables are absent from this distro; attempting system install...'
+    $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'install-deps.sh' -ScriptArgs @('systemd') -TimeoutSec 600 -AsRoot $true
+    $recheck = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-systemd.sh' -TimeoutSec 60
+    $state2 = ([string]$recheck.Stdout).Trim()
+    if (($r.ExitCode -eq 0) -and (($state2 -eq 'SYSTEMD_OK') -or ($state2 -eq 'SYSTEMD_DISABLED') -or ($state2 -eq 'SYSTEMD_USER_UNAVAILABLE'))) {
+      Write-SentryInfo 'systemd binaries installed; continuing with enablement check...'
+    } else {
+      Write-SentryFail 'systemd is not installed in this distro and could not be installed automatically.'
+      Write-SentryInfo 'Install systemd inside the distro (Ubuntu/WSL: sudo apt install -y systemd), then rerun setup.'
+      return $false
+    }
+    $state = $state2
+  }
+  if ($state -eq 'SYSTEMD_USER_UNAVAILABLE') {
+    Write-SentryWarn 'systemd is enabled but the user manager is not responding; restarting only this distro...'
+    [void](Invoke-SentryNative -FilePath 'wsl.exe' -Arguments @('--terminate', $Distro))
+    Start-Sleep -Seconds 5
+    $probeU = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-systemd.sh' -TimeoutSec 90
+    if (([string]$probeU.Stdout).Trim() -eq 'SYSTEMD_OK') { Write-SentryOk 'systemd user services recovered'; return $true }
+    Write-SentryFail 'systemd user manager is unavailable even after restarting the distro. See docs/beta/troubleshooting.md (systemd section).'
+    return $false
+  }
   Write-SentryWarn 'systemd user services are not enabled in this distro.'
   Write-SentryInfo 'Sentry will enable systemd in /etc/wsl.conf (backup first, other settings preserved).'
   $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'enable-systemd.sh' -TimeoutSec 60 -AsRoot $true
@@ -298,20 +322,45 @@ function Get-SentryLinuxNodeVersion {
   return ([string]$r.Stdout).Trim()
 }
 
-function Ensure-SentryLinuxNode {
+function Get-SentryLinuxNpmVersion {
+  param([string]$Distro)
+  $r = Invoke-SentryWsl -Distro $Distro -LinuxArgs @('npm', '--version') -TimeoutSec 30
+  if ($r.ExitCode -ne 0) { return '' }
+  return ([string]$r.Stdout).Trim()
+}
+
+function Test-SentryLinuxNodeToolchain {
   param([string]$Distro)
   $ver = Get-SentryLinuxNodeVersion -Distro $Distro
-  if ($ver -match '^v?(\d+)\.') {
-    if ([int]$Matches[1] -ge (Get-SentryRequiredNodeMajor)) { Write-SentryOk ('Linux Node ' + $ver); return $true }
-    Write-SentryWarn ('Linux Node ' + $ver + ' is too old; installing Node 22...')
-  } else { Write-SentryInfo 'Installing Linux Node 22 (NodeSource, official builds)...' }
+  $major = -1
+  if ($ver -match '^v?(\d+)\.') { $major = [int]$Matches[1] }
+  if ($major -lt (Get-SentryRequiredNodeMajor)) { return @{ Ready = $false; Reason = 'node'; Node = $ver; Npm = '' } }
+  $npm = Get-SentryLinuxNpmVersion -Distro $Distro
+  if ($npm -eq '') {
+    $presence = Invoke-SentryWsl -Distro $Distro -LinuxArgs @('sh', '-c', 'command -v npm') -TimeoutSec 30
+    if ($presence.ExitCode -ne 0) { return @{ Ready = $false; Reason = 'npm-missing'; Node = $ver; Npm = '' } }
+    return @{ Ready = $false; Reason = 'npm-broken'; Node = $ver; Npm = '' }
+  }
+  return @{ Ready = $true; Reason = ''; Node = $ver; Npm = $npm }
+}
+
+function Ensure-SentryLinuxNode {
+  param([string]$Distro)
+  $check = Test-SentryLinuxNodeToolchain -Distro $Distro
+  if ($check.Ready) { Write-SentryOk ('Linux Node ' + $check.Node + ' + npm ' + $check.Npm); return $true }
+  if ($check.Reason -eq 'node') {
+    if ($check.Node) { Write-SentryWarn ('Linux Node ' + $check.Node + ' is too old; installing Node 22...') }
+    else { Write-SentryInfo 'Installing Linux Node 22 (NodeSource, official builds)...' }
+  } elseif ($check.Reason -eq 'npm-missing') {
+    Write-SentryWarn ('Linux Node ' + $check.Node + ' is present but npm is missing; repairing the tested NodeSource Node 22 toolchain (never a mismatched standalone npm)...')
+  } else {
+    Write-SentryWarn ('Linux Node ' + $check.Node + ' is present but npm is unusable; repairing the tested NodeSource Node 22 toolchain...')
+  }
   $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'install-node.sh' -TimeoutSec 600 -AsRoot $true
   Write-SentryLog ('linux node install exit=' + $r.ExitCode) 'setup'
-  $ver2 = Get-SentryLinuxNodeVersion -Distro $Distro
-  if ($ver2 -match '^v?(\d+)\.') {
-    if ([int]$Matches[1] -ge (Get-SentryRequiredNodeMajor)) { Write-SentryOk ('Linux Node ' + $ver2); return $true }
-  }
-  Write-SentryFail 'Linux Node >= 22 could not be installed automatically (non-apt distro or network issue).'
+  $check2 = Test-SentryLinuxNodeToolchain -Distro $Distro
+  if ($check2.Ready) { Write-SentryOk ('Linux Node ' + $check2.Node + ' + npm ' + $check2.Npm); return $true }
+  Write-SentryFail 'Linux Node >= 22 with usable npm could not be installed automatically (non-apt distro or network issue).'
   Write-SentryInfo 'Install Node 22 manually inside the distro so that direct execution works.'
   return $false
 }
@@ -330,6 +379,19 @@ function Ensure-SentryLinuxPnpm {
   return $false
 }
 
+# Explicit executable -> Ubuntu package model. The executable name is NOT
+# always the package name (bwrap lives in bubblewrap); installation must
+# use Package, never the bare executable token.
+function Get-SentryLinuxDepModel {
+  return @(
+    @{ Exe = 'git'; Package = 'git'; For = 'toolchain' },
+    @{ Exe = 'curl'; Package = 'curl'; For = 'toolchain' },
+    @{ Exe = 'update-ca-certificates'; Package = 'ca-certificates'; For = 'tls' },
+    @{ Exe = 'bwrap'; Package = 'bubblewrap'; For = 'sandbox' },
+    @{ Exe = 'socat'; Package = 'socat'; For = 'sandbox' }
+  )
+}
+
 function Get-SentryMissingLinuxDeps {
   param($CheckOutput)
   $missingPkgs = @()
@@ -340,6 +402,18 @@ function Get-SentryMissingLinuxDeps {
   return $missingPkgs
 }
 
+function Get-SentryBaseToolStatus {
+  param([string]$Distro)
+  $tools = @('bash', 'find', 'readlink', 'timeout', 'grep', 'sed', 'systemctl', 'systemd-run')
+  $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-base.sh' -TimeoutSec 60
+  $missing = @()
+  foreach ($line in (([string]$r.Stdout) -split "`n")) {
+    $t = $line.Trim()
+    if ($t.StartsWith('MISS-')) { $missing += $t.Substring(5) }
+  }
+  return @{ Tools = $tools; Missing = $missing }
+}
+
 function Get-SentrySandboxStatus {
   param([string]$Distro)
   $status = @{ Socat = $false; Bwrap = $false; SocatVersion = ''; BwrapVersion = ''; InitOk = $false; InitDetail = '' }
@@ -347,7 +421,7 @@ function Get-SentrySandboxStatus {
   foreach ($line in (([string]$r.Stdout) -split "`n")) {
     $t = $line.Trim()
     if ($t -eq 'HAVE-socat') { $status.Socat = $true }
-    elseif ($t -eq 'HAVE-bwrap') { $status.Bwrap = $true }
+    elseif (($t -eq 'HAVE-bwrap') -or ($t -eq 'HAVE-bubblewrap')) { $status.Bwrap = $true }
     elseif ($t.StartsWith('SOCAT_VERSION=')) { $status.SocatVersion = $t.Substring(14) }
     elseif ($t.StartsWith('BWRAP_VERSION=')) { $status.BwrapVersion = $t.Substring(14) }
     elseif ($t -eq 'SANDBOX_INIT_OK') { $status.InitOk = $true }
@@ -370,7 +444,8 @@ function Ensure-SentryLinuxDeps {
   # socat + bubblewrap are first-class sandbox prerequisites: the pinned
   # Claude Code sandbox runs fail-closed and its own startup requires both
   # (observed live: missing socat fails GLM runs; fixed by apt install).
-  $needed = @('git', 'curl', 'ca-certificates', 'bwrap', 'socat')
+  # check-deps.sh already reports Ubuntu PACKAGE names (bwrap -> bubblewrap),
+  # so MISS entries install verbatim — never translate back to executables.
   $chk = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-deps.sh' -TimeoutSec 60
   $missingPkgs = @(Get-SentryMissingLinuxDeps -CheckOutput ([string]$chk.Stdout))
   if ($missingPkgs.Count -eq 0) { Write-SentryOk 'Linux dependencies (git, curl, ca-certificates, bubblewrap, socat)'; return $true }

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Print HAVE-<pkg> / MISS-<pkg> lines for required host tools.
-# socat and bubblewrap are first-class sandbox prerequisites: the pinned
-# Claude Code sandbox (fail-closed) requires both at runtime.
+# Report Linux host dependencies as HAVE-<package> / MISS-<package>.
+# Names are Ubuntu PACKAGE names (what apt installs), not executables:
+#   executable bwrap  -> package bubblewrap
+#   executable socat  -> package socat
+# Probes use the executables; output uses the package for installation.
 set -u
 check() {
   bin="$1"; pkg="$2"
@@ -10,5 +12,5 @@ check() {
 check git git
 check curl curl
 check update-ca-certificates ca-certificates
-check bwrap bwrap
+check bwrap bubblewrap
 check socat socat
