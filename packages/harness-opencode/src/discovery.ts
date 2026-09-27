@@ -5,6 +5,7 @@ import { nowIsoTimestamp } from '@qa/shared';
 import type { HarnessHealthResult } from '@qa/harness-protocol';
 import { buildOpenCodeModelId } from './model.js';
 import { OpenCodeHarnessError } from './errors.js';
+import { probeSystemdUser } from './process.js';
 import { redactDiagnostic, secretValues } from './redaction.js';
 
 /** OpenCode release this adapter was designed and tested against. */
@@ -30,7 +31,10 @@ export function openCodeReadinessFromChecks(input: {
   readonly modelOk: boolean;
   readonly credentialOk: boolean;
   readonly binaryOk: boolean;
-  /** Masking primitive works; false means OpenCode must not launch. */
+  /**
+   * Production containment triple (systemd user units, bubblewrap sandbox,
+   * config masking) all functional; false means OpenCode must not launch.
+   */
   readonly sandboxOk?: boolean;
   readonly runtimeVerified?: boolean;
   readonly realWarning?: boolean;
@@ -188,6 +192,76 @@ export function describeOpenCodeExecutableFailure(input: {
     'Install OpenCode inside the selected WSL distro or configure an absolute Linux executable path.',
   );
   return lines.join('\n').slice(0, 2000);
+}
+
+export interface ResolvedOpenCodeExecutable {
+  /** The exact executable string production execution would launch. */
+  readonly executable: string;
+  readonly source: OpenCodeExecutableSource;
+  /** Managed candidate considered (diagnostics even when unused). */
+  readonly managedCandidate?: string | undefined;
+  /** True when `--version` probing succeeded (spawn-based: PATH-aware). */
+  readonly available: boolean;
+  /** Probed version text, when available. */
+  readonly version?: string | undefined;
+  /** Human-readable probe failure, when unavailable (no secrets). */
+  readonly failureReason?: string | undefined;
+  /** Original probe error for callers that must preserve typed failures. */
+  readonly error?: unknown;
+}
+
+/**
+ * Shared executable resolution + availability probe: the same discovery
+ * production execution uses (explicit > env override > verified managed >
+ * PATH lookup, fail-closed) combined with the spawn-based version probe
+ * (PATH-aware, unlike filesystem-only checks). Used by doctor, pre-run
+ * readiness, and registration preflight so all three probe the same
+ * executable semantics. No provider contact, no model credit.
+ */
+export async function probeResolvedOpenCodeExecutable(
+  input: {
+    readonly executable?: string;
+    readonly environment?: NodeJS.ProcessEnv;
+    readonly managedExecutable?: string;
+  } = {},
+): Promise<ResolvedOpenCodeExecutable> {
+  const environment = input.environment ?? process.env;
+  const resolved = resolveOpenCodeExecutable({
+    ...(input.executable === undefined ? {} : { executable: input.executable }),
+    environment,
+    ...(input.managedExecutable === undefined
+      ? {}
+      : { managedExecutable: input.managedExecutable }),
+  });
+  const detail = describeOpenCodeExecutableFailure({
+    environment,
+    ...(resolved.managedCandidate === undefined
+      ? {}
+      : { managedCandidate: resolved.managedCandidate }),
+  });
+  try {
+    const version = await probeOpenCodeExecutable(resolved.executable, environment, detail);
+    return {
+      executable: resolved.executable,
+      source: resolved.source,
+      ...(resolved.managedCandidate === undefined
+        ? {}
+        : { managedCandidate: resolved.managedCandidate }),
+      available: true,
+      version,
+    };
+  } catch (cause) {
+    return {
+      executable: resolved.executable,
+      source: resolved.source,
+      ...(resolved.managedCandidate === undefined
+        ? {}
+        : { managedCandidate: resolved.managedCandidate }),
+      available: false,
+      failureReason: cause instanceof Error ? cause.message.slice(0, 500) : 'probe failed',
+      error: cause,
+    };
+  }
 }
 
 export interface OpenCodeRuntimeConfiguration {
@@ -443,11 +517,15 @@ export async function probeOpenCodeSandbox(
 }> {
   const timeoutMs = input.timeoutMs ?? 8_000;
   const [systemdUser, bubblewrap, masking] = await Promise.all([
-    probeCommand('systemd-run', ['--user', '--version'], timeoutMs),
+    // Functional: a transient user unit must actually launch (the exact
+    // mechanism production execution depends on), shared with launcher
+    // selection via probeSystemdUser.
+    probeSystemdUser(timeoutMs),
     // Functional probe (not just presence): userns + mount must actually work.
+    // Absolute /usr/bin/true: the sandbox PATH is not guaranteed.
     probeCommand(
       'bwrap',
-      ['--ro-bind', '/', '/', '--tmpfs', '/tmp', '--proc', '/proc', 'true'],
+      ['--ro-bind', '/', '/', '--tmpfs', '/tmp', '--proc', '/proc', '/usr/bin/true'],
       timeoutMs,
     ),
     (async () => {
@@ -625,28 +703,27 @@ export async function doctorOpenCode(
   let binaryVersion: string | undefined;
   let binaryOk = false;
   if (runtime !== undefined) {
-    // Effective discovery truth: path + source (managed/PATH/override).
+    // Effective discovery truth: path + source (managed/PATH/override),
+    // probed with the shared spawn-based helper (PATH-aware).
+    const probed = await probeResolvedOpenCodeExecutable({
+      ...(input.executable === undefined ? {} : { executable: input.executable }),
+      environment,
+      ...(runtime.managedCandidate === undefined
+        ? {}
+        : { managedExecutable: runtime.managedCandidate }),
+    });
     checks.push({
       name: 'executable',
       status: 'pass',
       message:
-        runtime.executable +
+        probed.executable +
         ' (source: ' +
-        runtime.discoverySource +
-        (runtime.discoverySource === 'managed' ? ', Sentry-managed installation' : '') +
+        probed.source +
+        (probed.source === 'managed' ? ', Sentry-managed installation' : '') +
         ')',
     });
-    try {
-      binaryVersion = await probeOpenCodeExecutable(
-        runtime.executable,
-        environment,
-        describeOpenCodeExecutableFailure({
-          environment,
-          ...(runtime.managedCandidate === undefined
-            ? {}
-            : { managedCandidate: runtime.managedCandidate }),
-        }),
-      );
+    if (probed.available && probed.version !== undefined) {
+      binaryVersion = probed.version;
       binaryOk = true;
       checks.push({ name: 'binary', status: 'pass', message: binaryVersion });
       // Wire-format policy: the JSONL parser is built for the tested
@@ -666,11 +743,11 @@ export async function doctorOpenCode(
       } else {
         checks.push({ name: 'version', status: 'pass', message: binaryVersion });
       }
-    } catch (cause) {
+    } else {
       checks.push({
         name: 'binary',
         status: 'fail',
-        message: cause instanceof Error ? cause.message : 'OpenCode binary unavailable',
+        message: probed.failureReason ?? 'OpenCode binary unavailable',
       });
     }
   } else {
@@ -678,23 +755,33 @@ export async function doctorOpenCode(
   }
   // Containment prerequisites (all local, non-billable): the production
   // security boundary needs a working mount namespace, an owned process
-  // boundary, and a working masking primitive. Missing pieces degrade
-  // readiness; the adapter preflight blocks execution regardless.
+  // boundary, and a working masking primitive. All three are hard failures
+  // (registration preflight throws OPENCODE_SANDBOX_UNAVAILABLE when any is
+  // missing), except under the explicit SENTRY_OPENCODE_ALLOW_DIRECT=1
+  // development bypass, which downgrades systemd/bubblewrap to warnings
+  // while masking stays hard (the adapter masks fail-closed regardless of
+  // launcher).
+  const bypassed = openCodeSandboxBypassed(environment);
   try {
     const sandbox = await probeOpenCodeSandbox({ environment });
+    const systemdStatus = sandbox.systemdUser ? 'pass' : bypassed ? 'warn' : 'fail';
     checks.push({
       name: 'tool-namespace',
-      status: sandbox.bubblewrap ? 'pass' : 'warn',
+      status: sandbox.bubblewrap ? 'pass' : bypassed ? 'warn' : 'fail',
       message: sandbox.bubblewrap
         ? 'bubblewrap mount namespace functional'
-        : 'bubblewrap unavailable: tool filesystem isolation missing',
+        : bypassed
+          ? 'bubblewrap unavailable: bypassed for development-only direct execution (SENTRY_OPENCODE_ALLOW_DIRECT=1)'
+          : 'bubblewrap unavailable: tool filesystem isolation missing',
     });
     checks.push({
       name: 'process-boundary',
-      status: sandbox.systemdUser ? 'pass' : 'warn',
+      status: systemdStatus,
       message: sandbox.systemdUser
         ? 'systemd user transient units available'
-        : 'systemd user unavailable: cgroup ownership falls back to process groups',
+        : bypassed
+          ? 'systemd user unavailable: bypassed for development-only direct execution (SENTRY_OPENCODE_ALLOW_DIRECT=1)'
+          : 'systemd user transient units unavailable: registration preflight blocks execution',
     });
     checks.push({
       name: 'config-masking',
@@ -706,16 +793,19 @@ export async function doctorOpenCode(
   } catch {
     checks.push({
       name: 'sandbox',
-      status: 'warn',
-      message: 'Containment probes could not run; assuming weakest boundary.',
+      status: 'fail',
+      message: 'Containment probes could not run; OpenCode must not launch.',
     });
   }
-  const maskingCheck = checks.find((check) => check.name === 'config-masking');
+  const containmentOk =
+    checks.find((check) => check.name === 'tool-namespace')?.status === 'pass' &&
+    checks.find((check) => check.name === 'process-boundary')?.status === 'pass' &&
+    checks.find((check) => check.name === 'config-masking')?.status === 'pass';
   const summary = openCodeReadinessFromChecks({
     modelOk: runtime !== undefined,
     credentialOk,
     binaryOk,
-    ...(maskingCheck === undefined ? {} : { sandboxOk: maskingCheck.status === 'pass' }),
+    sandboxOk: containmentOk,
     realWarning: checks.some((check) => check.status === 'warn'),
   });
   const failed = checks.some((check) => check.status === 'fail');

@@ -356,46 +356,55 @@ export class DirectOpenCodeProcessLauncher implements OpenCodeProcessLauncher {
   }
 }
 
-/** Probe systemd user units (cheap, non-billable); resolves the binary or undefined. */
+/**
+ * Functional systemd user-unit probe (cheap, non-billable): proves the user
+ * manager answers AND a transient user unit actually launches — the exact
+ * mechanism production execution depends on. `--version` alone is NOT
+ * sufficient (it never contacts the manager). No unit name is supplied so
+ * systemd auto-generates one; `--wait --collect` leaves nothing behind.
+ */
 export async function probeSystemdUser(timeoutMs = 5_000): Promise<boolean> {
-  return new Promise<boolean>((resolve) => {
-    let child: ChildProcess;
-    try {
-      child = spawn('systemd-run', ['--user', '--version'], {
-        stdio: 'ignore',
-        windowsHide: true,
-        shell: false,
-      });
-    } catch {
-      resolve(false);
-      return;
-    }
-    let settled = false;
-    const timer = setTimeout(
-      () => {
+  const runBounded = (executable: string, argv: readonly string[]): Promise<boolean> =>
+    new Promise<boolean>((resolve) => {
+      let child: ChildProcess;
+      try {
+        child = spawn(executable, [...argv], {
+          stdio: 'ignore',
+          windowsHide: true,
+          shell: false,
+        });
+      } catch {
+        resolve(false);
+        return;
+      }
+      let settled = false;
+      const timer = setTimeout(
+        () => {
+          if (settled) return;
+          settled = true;
+          try {
+            child.kill('SIGKILL');
+          } catch {
+            // Ignored.
+          }
+          resolve(false);
+        },
+        Math.max(1, timeoutMs),
+      );
+      if (timer.unref !== undefined) timer.unref();
+      child.on('error', () => {
         if (settled) return;
         settled = true;
-        try {
-          child.kill('SIGKILL');
-        } catch {
-          // Ignored.
-        }
+        clearTimeout(timer);
         resolve(false);
-      },
-      Math.max(1, timeoutMs),
-    );
-    if (timer.unref !== undefined) timer.unref();
-    child.on('error', () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve(false);
+      });
+      child.on('close', (code) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(code === 0);
+      });
     });
-    child.on('close', (code) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve(code === 0);
-    });
-  });
+  if (!(await runBounded('systemctl', ['--user', 'show-environment']))) return false;
+  return runBounded('systemd-run', ['--user', '--pipe', '--wait', '--collect', '/usr/bin/true']);
 }

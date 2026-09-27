@@ -211,6 +211,11 @@ export type OpenCodeClientFactory = (input: {
   readonly launcher?: OpenCodeProcessLauncher;
 }) => Promise<OpenCodeClientView>;
 
+// Process-lifetime cache: safe because Sentry setup/repair always restarts
+// (and redeploys) the runtime after repairing the environment, so a freshly
+// started process never inherits a stale probe. Within one process the
+// manager state does not flap for the owned-cgroup decision, and caching
+// avoids a transient-unit spawn per session start.
 let systemdProbe: Promise<boolean> | undefined;
 
 /**

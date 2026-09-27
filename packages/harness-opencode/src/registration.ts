@@ -5,12 +5,11 @@ import {
   assertSupportedOpenCodeProvider,
   assertTestedOpenCodeVersion,
   credentialEnvForProvider,
-  describeOpenCodeExecutableFailure,
   OPENCODE_TESTED_VERSION,
   openCodeCredentialPresent,
   openCodeSandboxBypassed,
-  probeOpenCodeExecutable,
   probeOpenCodeSandbox,
+  probeResolvedOpenCodeExecutable,
   resolveOpenCodeRuntime,
 } from './discovery.js';
 import { OpenCodeHarnessError } from './errors.js';
@@ -68,16 +67,17 @@ export function createOpenCodeRegistration(
       runtimeIdentity.provider = resolved.provider;
       runtimeIdentity.executable = resolved.executable;
       const environment = options.environment ?? process.env;
-      const executableVersion = await probeOpenCodeExecutable(
-        resolved.executable,
+      // Shared resolution+probe: the exact executable production launches.
+      // Rethrow the original typed probe error so failure codes are unchanged.
+      const probed = await probeResolvedOpenCodeExecutable({
+        ...(options.executable === undefined ? {} : { executable: options.executable }),
         environment,
-        describeOpenCodeExecutableFailure({
-          environment,
-          ...(resolved.managedCandidate === undefined
-            ? {}
-            : { managedCandidate: resolved.managedCandidate }),
-        }),
-      );
+        ...(resolved.managedCandidate === undefined
+          ? {}
+          : { managedExecutable: resolved.managedCandidate }),
+      });
+      if (!probed.available || probed.version === undefined) throw probed.error;
+      const executableVersion = probed.version;
       runtimeIdentity.executableVersion = executableVersion;
       // Fail closed on unverified wire/security contracts.
       assertTestedOpenCodeVersion(executableVersion, environment);
