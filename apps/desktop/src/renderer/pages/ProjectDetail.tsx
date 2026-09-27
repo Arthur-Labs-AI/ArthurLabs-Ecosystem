@@ -77,7 +77,13 @@ export function ProjectDetail(): React.JSX.Element {
     queryFn: () => sentryApi().production.readiness({ agentStackIds: effectiveStacks }),
   });
   const gate = readiness.data as
-    { ready?: boolean; reasons?: string[]; productionWired?: boolean } | undefined;
+    | {
+        ready?: boolean;
+        reasons?: string[];
+        warnings?: string[];
+        productionWired?: boolean;
+      }
+    | undefined;
   const startOptions = (runMode: 'full' | 'targeted'): Record<string, unknown> => ({
     mode: runMode,
     ...(runMode === 'targeted'
@@ -228,6 +234,16 @@ export function ProjectDetail(): React.JSX.Element {
                   <li key={reason}>{reason}</li>
                 ))}
               </ul>
+              {(gate.warnings ?? []).length > 0 ? (
+                <>
+                  <strong>Warnings (non-blocking)</strong>
+                  <ul style={{ margin: '4px 0 8px', paddingLeft: 18 }}>
+                    {(gate.warnings ?? []).map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
               <span>
                 <Link to="/settings">Open Provider Settings</Link> ·{' '}
                 <Link to="/environment">Open Environment</Link>

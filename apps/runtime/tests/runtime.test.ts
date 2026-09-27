@@ -126,14 +126,15 @@ describe('runtime host identity', () => {
       const probe = vi
         .spyOn(SentryRuntimeHost, 'probeLocalExecutable')
         .mockReturnValue({ exists: true, version: 'opencode version 1.18.32' });
-      const sandbox = vi.spyOn(SentryRuntimeHost, 'probeSandbox').mockReturnValue({
-        socat: true,
-        bwrap: true,
-        socatVersion: 'socat version 1.8.0.3',
-        bwrapVersion: 'bubblewrap 0.10.1',
-        initOk: true,
-        initDetail: 'smoke passed',
+      const ocVersion = vi
+        .spyOn(SentryRuntimeHost, 'probeOpencodeVersion')
+        .mockResolvedValue('opencode version 1.18.32');
+      const ocSandbox = vi.spyOn(SentryRuntimeHost, 'probeOpencodeSandbox').mockResolvedValue({
+        systemdUser: true,
+        bubblewrap: true,
+        masking: true,
       });
+      const systemd = vi.spyOn(SentryRuntimeHost, 'systemdUserReady').mockReturnValue(true);
       try {
         const ready = (await host.productionReadiness(['stack_opencode_main'])) as {
           ready: boolean;
@@ -141,7 +142,9 @@ describe('runtime host identity', () => {
         expect(ready.ready).toBe(true);
       } finally {
         probe.mockRestore();
-        sandbox.mockRestore();
+        ocVersion.mockRestore();
+        ocSandbox.mockRestore();
+        systemd.mockRestore();
       }
     } finally {
       delete process.env['SENTRY_OPENCODE_MODEL'];

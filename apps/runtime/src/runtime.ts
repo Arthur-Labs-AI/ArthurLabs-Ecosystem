@@ -37,13 +37,22 @@ import {
   managedOpenCodeExecutable,
   normalizeOpenCodeProvider,
   openCodeCredentialPresent,
+  openCodeSandboxBypassed,
+  probeOpenCodeExecutable,
+  probeOpenCodeSandbox,
+  resolveOpenCodeExecutable,
+  assertTestedOpenCodeVersion,
   OPENCODE_TESTED_VERSION,
 } from '@qa/harness-opencode';
 import { createDeepSeekRegistration, DEEPSEEK_SDK_VERSION } from '@qa/harness-deepseek';
 import {
   createGlmRegistration,
+  resolveClaudeExecutableIdentity,
+  resolveGlmRuntime,
+  validateGlmEndpoint,
+  classifyClaudeCodeVersion,
   CLAUDE_CODE_TESTED_VERSION,
-  CLAUDE_CODE_KNOWN_INCOMPATIBLE_VERSIONS,
+  type ClaudeExecutableIdentity,
 } from '@qa/harness-claude-code';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
 import { selectCurrentMergeResult } from '@qa/merger';
@@ -232,6 +241,12 @@ export function glmSandboxStatus(deps: SandboxDepsStatus): Record<string, unknow
   };
 }
 
+export interface OpencodeSandboxGateInput {
+  readonly systemdUser: boolean;
+  readonly bubblewrap: boolean;
+  readonly masking: boolean;
+}
+
 export interface OpencodeGateInput {
   readonly credential: boolean;
   readonly credentialName: string;
@@ -239,8 +254,11 @@ export interface OpencodeGateInput {
   readonly executable: string;
   readonly exists: boolean;
   readonly version: string | undefined;
+  readonly versionPolicy: 'ready' | 'mismatch-blocked' | 'mismatch-allowed';
   readonly testedVersion: string;
-  readonly sandboxBwrap: boolean;
+  readonly sandboxBypassed: boolean;
+  readonly sandbox: OpencodeSandboxGateInput | undefined;
+  readonly functionalSystemd: boolean;
 }
 
 export interface DeepseekGateInput {
@@ -256,11 +274,13 @@ export interface DeepseekGateInput {
 export interface GlmGateInput {
   readonly credential: boolean;
   readonly model: boolean;
+  readonly endpointValid: boolean;
+  readonly endpointReason: string;
   readonly executable: string | undefined;
   readonly windowsMounted: boolean;
   readonly version: string | undefined;
+  readonly versionPolicy: 'ready' | 'blocked' | 'unverified';
   readonly testedVersion: string;
-  readonly knownBadVersions: readonly string[];
   readonly socat: boolean;
   readonly bwrap: boolean;
   readonly sandboxInitOk: boolean;
@@ -271,6 +291,7 @@ export interface GlmGateInput {
 export interface GateVerdict {
   readonly ready: boolean;
   readonly reasons: string[];
+  readonly warnings: string[];
 }
 
 /**
@@ -281,16 +302,27 @@ export interface GateVerdict {
  */
 export function evaluateOpencodeGate(input: OpencodeGateInput): GateVerdict {
   const reasons: string[] = [];
+  const warnings: string[] = [];
   if (!input.credential) reasons.push('OpenCode credential missing (' + input.credentialName + ')');
   if (!input.model) reasons.push('OpenCode model not set');
   if (!input.exists) reasons.push('OpenCode executable not found: ' + input.executable);
   else if (input.version === undefined)
     reasons.push('OpenCode executable did not answer its version probe: ' + input.executable);
-  else if (!input.version.includes(input.testedVersion))
+  else if (input.versionPolicy === 'mismatch-blocked')
     reasons.push('OpenCode version ' + input.version + ' is not the tested ' + input.testedVersion);
-  if (!input.sandboxBwrap)
-    reasons.push('bubblewrap is not installed in Ubuntu (OpenCode sandbox unavailable)');
-  return { ready: reasons.length === 0, reasons };
+  else if (input.versionPolicy === 'mismatch-allowed')
+    warnings.push(
+      'OpenCode version ' + input.version + ' differs from tested ' + input.testedVersion,
+    );
+  if (input.sandboxBypassed) {
+    warnings.push('SENTRY_OPENCODE_ALLOW_DIRECT=1 bypasses production sandbox (development only)');
+  } else if (input.sandbox !== undefined) {
+    if (!input.sandbox.bubblewrap) reasons.push('bubblewrap sandbox unavailable');
+    if (!input.sandbox.systemdUser || !input.functionalSystemd)
+      reasons.push('systemd user isolation unavailable');
+    if (!input.sandbox.masking) reasons.push('OpenCode project-config masking unavailable');
+  }
+  return { ready: reasons.length === 0, reasons, warnings };
 }
 
 export function evaluateDeepseekGate(input: DeepseekGateInput): GateVerdict {
@@ -317,34 +349,38 @@ export function evaluateDeepseekGate(input: DeepseekGateInput): GateVerdict {
         ', expected SDK pin ' +
         input.expectedVersion,
     );
-  return { ready: reasons.length === 0, reasons };
+  return { ready: reasons.length === 0, reasons, warnings: [] };
 }
 
 export function evaluateGlmGate(input: GlmGateInput): GateVerdict {
   const reasons: string[] = [];
+  const warnings: string[] = [];
   if (!input.credential) reasons.push('GLM credential missing');
   if (!input.model) reasons.push('GLM model not set');
+  if (!input.endpointValid) reasons.push(input.endpointReason);
   if (input.executable === undefined) reasons.push('Claude Code executable not found');
   else {
     if (input.windowsMounted)
       reasons.push('Claude Code resolves to a Windows mount; need a native Linux binary');
     if (input.version === undefined)
       reasons.push('Claude Code executable did not answer its version probe');
-    else {
-      if (input.knownBadVersions.some((bad) => input.version?.includes(bad)))
-        reasons.push('Claude Code ' + input.version + ' is a known-incompatible version');
-      else if (!input.version.includes(input.testedVersion))
-        reasons.push(
-          'Claude Code version ' + input.version + ' is not the tested ' + input.testedVersion,
-        );
-    }
+    else if (input.versionPolicy === 'blocked')
+      reasons.push('Claude Code ' + input.version + ' is a known-incompatible version');
+    else if (input.versionPolicy === 'unverified')
+      warnings.push(
+        'Claude Code version ' +
+          input.version +
+          ' is unverified (tested: ' +
+          input.testedVersion +
+          '); first run allowed',
+      );
   }
   if (!input.socat) reasons.push('socat is not installed');
   if (!input.bwrap) reasons.push('bubblewrap is not installed');
   if (input.socat && input.bwrap && !input.sandboxInitOk)
     reasons.push('Claude sandbox unavailable (' + input.sandboxDetail + ')');
   if (!input.systemdOk) reasons.push('systemd user isolation unavailable');
-  return { ready: reasons.length === 0, reasons };
+  return { ready: reasons.length === 0, reasons, warnings };
 }
 
 export class SentryRuntimeHost {
@@ -1134,6 +1170,46 @@ export class SentryRuntimeHost {
     return probeSandboxDeps();
   }
 
+  static async probeOpencodeVersion(
+    executable: string,
+    env: NodeJS.ProcessEnv,
+  ): Promise<string | undefined> {
+    try {
+      return await probeOpenCodeExecutable(executable, env);
+    } catch {
+      return undefined;
+    }
+  }
+
+  static async probeOpencodeSandbox(
+    env: NodeJS.ProcessEnv,
+  ): Promise<{
+    readonly systemdUser: boolean;
+    readonly bubblewrap: boolean;
+    readonly masking: boolean;
+  }> {
+    try {
+      return await probeOpenCodeSandbox({ environment: env });
+    } catch {
+      return { systemdUser: false, bubblewrap: false, masking: false };
+    }
+  }
+
+  static async probeClaudeIdentity(
+    executable: string,
+    env: NodeJS.ProcessEnv,
+  ): Promise<{ identity: ClaudeExecutableIdentity | undefined; windowsMounted: boolean }> {
+    try {
+      const identity = await resolveClaudeExecutableIdentity(executable, env);
+      return { identity, windowsMounted: identity.isWindowsMounted };
+    } catch (cause) {
+      const code = (cause as { code?: unknown } | null)?.code;
+      if (code === 'GLM_CLAUDE_RUNTIME_MISMATCH')
+        return { identity: undefined, windowsMounted: true };
+      return { identity: undefined, windowsMounted: false };
+    }
+  }
+
   static systemdUserReady(): boolean {
     try {
       const a = spawnSync('systemctl', ['--user', 'show-environment'], {
@@ -1161,35 +1237,69 @@ export class SentryRuntimeHost {
       agentStackIds === undefined || agentStackIds.includes(stack);
     const env = process.env;
     const reasons: string[] = [];
-    const stacks: Array<{ id: string; ready: boolean; reasons: string[] }> = [];
-    const sandboxDeps = wants('stack_glm_main')
-      ? SentryRuntimeHost.probeSandbox()
-      : {
-          socat: true,
-          bwrap: true,
-          socatVersion: '',
-          bwrapVersion: '',
-          initOk: true,
-          initDetail: '',
-        };
-    const systemdOk = wants('stack_glm_main') ? SentryRuntimeHost.systemdUserReady() : true;
+    const warnings: string[] = [];
+    const stacks: Array<{
+      id: string;
+      ready: boolean;
+      reasons: string[];
+      warnings: string[];
+    }> = [];
+    const pushVerdict = (
+      id: string,
+      verdict: { ready: boolean; reasons: string[]; warnings: string[] },
+    ): void => {
+      reasons.push(...verdict.reasons);
+      warnings.push(...verdict.warnings);
+      stacks.push({
+        id,
+        ready: verdict.ready,
+        reasons: verdict.reasons,
+        warnings: verdict.warnings,
+      });
+    };
+    // Sandbox/isolation probes run per requested provider that needs them —
+    // never defaulted to true for unprobed providers.
     if (wants('stack_opencode_main')) {
       const provider = normalizeOpenCodeProvider(env['SENTRY_OPENCODE_PROVIDER']);
-      const executable =
-        env['SENTRY_OPENCODE_BINARY']?.trim() || managedOpenCodeExecutable(this.dataRoot);
-      const probed = SentryRuntimeHost.probeLocalExecutable(executable);
-      const verdict = evaluateOpencodeGate({
-        credential: openCodeCredentialPresent(provider, env),
-        credentialName: credentialEnvForProvider(provider),
-        model: (env['SENTRY_OPENCODE_MODEL'] ?? '').length > 0,
-        executable,
-        exists: probed.exists,
-        version: probed.version,
-        testedVersion: OPENCODE_TESTED_VERSION,
-        sandboxBwrap: sandboxDeps.bwrap,
+      // Same discovery production execution uses: explicit override > env
+      // override > verified managed install > PATH lookup (fail-closed).
+      const resolved = resolveOpenCodeExecutable({
+        environment: env,
+        managedExecutable: managedOpenCodeExecutable(this.dataRoot),
       });
-      reasons.push(...verdict.reasons);
-      stacks.push({ id: 'stack_opencode_main', ready: verdict.ready, reasons: verdict.reasons });
+      const probed = SentryRuntimeHost.probeLocalExecutable(resolved.executable);
+      const version = probed.exists
+        ? await SentryRuntimeHost.probeOpencodeVersion(resolved.executable, env)
+        : undefined;
+      let versionPolicy: 'ready' | 'mismatch-blocked' | 'mismatch-allowed' = 'ready';
+      if (version !== undefined && !version.includes(OPENCODE_TESTED_VERSION)) {
+        try {
+          assertTestedOpenCodeVersion(version, env);
+          versionPolicy = 'mismatch-allowed';
+        } catch {
+          versionPolicy = 'mismatch-blocked';
+        }
+      }
+      const linux = process.platform === 'linux';
+      const bypassed = openCodeSandboxBypassed(env);
+      const sandbox =
+        linux && !bypassed ? await SentryRuntimeHost.probeOpencodeSandbox(env) : undefined;
+      pushVerdict(
+        'stack_opencode_main',
+        evaluateOpencodeGate({
+          credential: openCodeCredentialPresent(provider, env),
+          credentialName: credentialEnvForProvider(provider),
+          model: (env['SENTRY_OPENCODE_MODEL'] ?? '').length > 0,
+          executable: resolved.executable,
+          exists: probed.exists,
+          version,
+          versionPolicy,
+          testedVersion: OPENCODE_TESTED_VERSION,
+          sandboxBypassed: bypassed,
+          sandbox,
+          functionalSystemd: !linux || bypassed ? true : SentryRuntimeHost.systemdUserReady(),
+        }),
+      );
     }
     if (wants('stack_deepseek_main')) {
       const wrapperPath =
@@ -1205,46 +1315,51 @@ export class SentryRuntimeHost {
         expectedVersion: DEEPSEEK_SDK_VERSION,
         dshPackageVersion: dshPackage?.version,
       });
-      reasons.push(...verdict.reasons);
-      stacks.push({ id: 'stack_deepseek_main', ready: verdict.ready, reasons: verdict.reasons });
+      pushVerdict('stack_deepseek_main', verdict);
     }
     if (wants('stack_glm_main')) {
-      const override = env['SENTRY_CLAUDE_BINARY']?.trim() || undefined;
-      const onPath =
-        override === undefined ? SentryRuntimeHost.findOnPath('claude', env) : undefined;
-      const executable = override ?? onPath;
-      const windowsMounted =
-        executable !== undefined && (executable.startsWith('/mnt/') || executable.includes(':/'));
-      const probed =
-        executable === undefined
-          ? { exists: false, version: undefined as string | undefined }
-          : SentryRuntimeHost.probeLocalExecutable(executable);
-      const verdict = evaluateGlmGate({
-        credential: (env['ANTHROPIC_AUTH_TOKEN'] ?? '').length > 0,
-        model: (env['SENTRY_GLM_MODEL'] ?? '').length > 0,
-        executable: probed.exists ? executable : undefined,
-        windowsMounted,
-        version: probed.version,
-        testedVersion: CLAUDE_CODE_TESTED_VERSION,
-        knownBadVersions: CLAUDE_CODE_KNOWN_INCOMPATIBLE_VERSIONS,
-        socat: sandboxDeps.socat,
-        bwrap: sandboxDeps.bwrap,
-        sandboxInitOk: sandboxDeps.initOk,
-        sandboxDetail: sandboxDeps.initDetail,
-        systemdOk,
-      });
-      reasons.push(...verdict.reasons);
-      stacks.push({ id: 'stack_glm_main', ready: verdict.ready, reasons: verdict.reasons });
+      const endpoint = validateGlmEndpoint(env);
+      const glmSandbox = SentryRuntimeHost.probeSandbox();
+      const glmSystemd = SentryRuntimeHost.systemdUserReady();
+      // Same resolution production preflight uses (env override or PATH).
+      let glmRuntime: { executable: string };
+      try {
+        glmRuntime = resolveGlmRuntime({ environment: env });
+      } catch {
+        glmRuntime = { executable: env['SENTRY_CLAUDE_BINARY']?.trim() || 'claude' };
+      }
+      const probed = await SentryRuntimeHost.probeClaudeIdentity(glmRuntime.executable, env);
+      const version = probed.identity?.version;
+      pushVerdict(
+        'stack_glm_main',
+        evaluateGlmGate({
+          credential: (env['ANTHROPIC_AUTH_TOKEN'] ?? '').length > 0,
+          model: (env['SENTRY_GLM_MODEL'] ?? '').length > 0,
+          endpointValid: endpoint.valid,
+          endpointReason: endpoint.reason ?? 'GLM provider endpoint is not configured',
+          executable: probed.identity === undefined ? undefined : probed.identity.resolved,
+          windowsMounted: probed.windowsMounted,
+          version,
+          versionPolicy: version === undefined ? 'unverified' : classifyClaudeCodeVersion(version),
+          testedVersion: CLAUDE_CODE_TESTED_VERSION,
+          socat: glmSandbox.socat,
+          bwrap: glmSandbox.bwrap,
+          sandboxInitOk: glmSandbox.initOk,
+          sandboxDetail: glmSandbox.initDetail,
+          systemdOk: glmSystemd,
+        }),
+      );
     }
-    return { ready: reasons.length === 0, reasons, productionWired: true, stacks };
+    return { ready: reasons.length === 0, reasons, warnings, productionWired: true, stacks };
   }
 
   async preRunGate(agentStackIds?: string[]): Promise<unknown> {
     const gate = (await this.productionReadiness(agentStackIds)) as {
       ready: boolean;
-      stacks: Array<{ id: string; ready: boolean; reasons: string[] }>;
+      warnings: string[];
+      stacks: Array<{ id: string; ready: boolean; reasons: string[]; warnings: string[] }>;
     };
-    return { ready: gate.ready, stacks: gate.stacks };
+    return { ready: gate.ready, warnings: gate.warnings, stacks: gate.stacks };
   }
 
   async dispatch(method: string, params: Record<string, unknown>): Promise<unknown> {

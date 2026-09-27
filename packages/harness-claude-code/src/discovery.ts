@@ -97,6 +97,28 @@ export function assertGlmEndpointConfigured(environment: NodeJS.ProcessEnv = pro
   }
 }
 
+/**
+ * Non-throwing form of assertGlmEndpointConfigured for readiness/doctor
+ * surfaces: identical policy (the assertion is the single source of truth),
+ * safe reason string, no network, no secrets (hostnames only).
+ */
+export function validateGlmEndpoint(
+  environment: NodeJS.ProcessEnv = process.env,
+): { readonly valid: boolean; readonly reason?: string } {
+  try {
+    assertGlmEndpointConfigured(environment);
+    return { valid: true };
+  } catch (cause) {
+    return {
+      valid: false,
+      reason:
+        cause instanceof Error
+          ? cause.message.slice(0, 300)
+          : 'GLM provider endpoint is not configured',
+    };
+  }
+}
+
 /** Sentry uses an isolated Claude config directory, so host login state is not inherited. */
 export function assertGlmAuthConfigured(environment: NodeJS.ProcessEnv = process.env): void {
   if (!environment.ANTHROPIC_AUTH_TOKEN?.trim()) {

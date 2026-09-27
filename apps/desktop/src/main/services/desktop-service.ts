@@ -369,10 +369,12 @@ export class DesktopApplicationService {
 
   preRunGate(agentStackIds?: string[]): Promise<{
     readonly ready: boolean;
+    readonly warnings: readonly string[];
     readonly stacks: ReadonlyArray<{
       readonly id: string;
       readonly ready: boolean;
       readonly reasons: readonly string[];
+      readonly warnings: readonly string[];
     }>;
   }> {
     return this.call('production.preRunGate', {
