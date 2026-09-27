@@ -31,8 +31,18 @@ function Invoke-SentryDoctor {
     else { &$add 'Linux Node (direct exec)' 'FAIL' 'node not directly executable' }
     $lp = Invoke-SentryWsl -Distro $distro -LinuxArgs @('pnpm', '--version') -TimeoutSec 30
     if ($lp.ExitCode -eq 0) { &$add 'Linux pnpm' 'PASS' (([string]$lp.Stdout).Trim()) } else { &$add 'Linux pnpm' 'FAIL' 'missing' }
+    $lnpm = Invoke-SentryWsl -Distro $distro -LinuxArgs @('npm', '--version') -TimeoutSec 30
+    if ($lnpm.ExitCode -eq 0) { &$add 'Linux npm (direct exec)' 'PASS' (([string]$lnpm.Stdout).Trim()) } else { &$add 'Linux npm (direct exec)' 'FAIL' 'npm missing or unusable (Node toolchain incomplete)' }
+    $base = Get-SentryBaseToolStatus -Distro $distro
+    if ($base.Missing.Count -eq 0) { &$add 'Base Linux utilities' 'PASS' 'bash, find, readlink, timeout, grep, sed, systemctl, systemd-run' }
+    else { &$add 'Base Linux utilities' 'FAIL' ('missing: ' + ($base.Missing -join ', ')) }
     $sd = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-systemd.sh' -TimeoutSec 60
-    if (([string]$sd.Stdout).Trim() -eq 'SYSTEMD_OK') { &$add 'systemd user services' 'PASS' 'ready' } else { &$add 'systemd user services' 'FAIL' 'unavailable' }
+    $sdState = ([string]$sd.Stdout).Trim()
+    if ($sdState -eq 'SYSTEMD_OK') { &$add 'systemd user services' 'PASS' 'ready' }
+    elseif ($sdState -eq 'SYSTEMD_BIN_MISSING') { &$add 'systemd user services' 'FAIL' 'systemd binaries missing (distinct from disabled)' }
+    elseif ($sdState -eq 'SYSTEMD_DISABLED') { &$add 'systemd user services' 'FAIL' 'installed but not enabled in /etc/wsl.conf' }
+    elseif ($sdState -eq 'SYSTEMD_USER_UNAVAILABLE') { &$add 'systemd user services' 'FAIL' 'enabled but user manager not responding' }
+    else { &$add 'systemd user services' 'FAIL' 'unavailable' }
     $sb = Get-SentrySandboxStatus -Distro $distro
     if ($sb.Socat) { &$add 'socat' 'PASS' $sb.SocatVersion } else { &$add 'socat' 'FAIL' 'not installed in Ubuntu (GLM sandbox requires it)' }
     if ($sb.Bwrap) { &$add 'bubblewrap' 'PASS' $sb.BwrapVersion } else { &$add 'bubblewrap' 'FAIL' 'not installed in Ubuntu (GLM sandbox requires it)' }
@@ -43,7 +53,12 @@ function Invoke-SentryDoctor {
     $cur = Get-SentryRuntimeCurrent -Distro $distro
     if ($cur -and $cur -ne 'NONE') { &$add 'Deployed runtime' 'PASS' $cur } else { &$add 'Deployed runtime' 'FAIL' 'none deployed' }
     $hello = Invoke-SentryRuntimeHandshake -Distro $distro
-    if ($hello) { &$add 'runtime.hello handshake' 'PASS' 'protocol 1 / linux' } else { &$add 'runtime.hello handshake' 'FAIL' 'handshake failed' }
+    if ($hello) {
+      &$add 'runtime.hello handshake' 'PASS' 'protocol 1 / linux'
+      &$add 'Runtime protocol' 'PASS' ('v' + [string]$hello.protocolVersion)
+      &$add 'Runtime Node/platform' 'PASS' ([string]$hello.nodeVersion + ' / ' + [string]$hello.platform)
+      &$add 'Sentry data root' 'PASS' ([string]$hello.dataRoot)
+    } else { &$add 'runtime.hello handshake' 'FAIL' 'handshake failed' }
     $oc = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-opencode.sh' -TimeoutSec 30
     $oct = ([string]$oc.Stdout).Trim()
     if ($oct.Contains('1.18.32')) { &$add 'OpenCode executable' 'PASS' '1.18.32 preflight-probed' } elseif ($oct.Contains('ABSENT')) { &$add 'OpenCode executable' 'FAIL' 'not installed' } else { &$add 'OpenCode executable' 'WARN' 'untested version' }
@@ -273,7 +288,7 @@ function Show-SentryHelp {
   Write-Host ''
   Write-Host 'Commands:'
   Write-Host '  setup     Prepare Windows, WSL and Sentry'
-  Write-Host '  repair    Rerun prerequisite checks and fix failures (idempotent)'
+  Write-Host '  repair    Rerun setup and validation safely (idempotent)'
   Write-Host '  open      Launch Sentry Desktop'
   Write-Host '  update    Pull latest commits and update Sentry'
   Write-Host '  stop      Gracefully stop Sentry'

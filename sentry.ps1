@@ -30,7 +30,7 @@ $exitCode = 0
 switch ($cmd) {
   'setup' { $exitCode = Invoke-SentrySetup -RepoRoot $repoRoot -DistroFlag $Distro -NonInteractive ([bool]$NonInteractive) }
   'repair' {
-    Write-Host 'Sentry repair reruns every prerequisite check and fixes only what failed (idempotent; same engine as setup).'
+    Write-Host 'Sentry repair safely reruns setup and validation end to end (idempotent): every check reruns, only failures are repaired, then the workspace is rebuilt, the runtime redeployed, and tools revalidated.'
     $exitCode = Invoke-SentrySetup -RepoRoot $repoRoot -DistroFlag $Distro -NonInteractive ([bool]$NonInteractive)
   }
   'open' { $exitCode = Invoke-SentryOpen -RepoRoot $repoRoot }

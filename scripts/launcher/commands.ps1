@@ -23,6 +23,13 @@ function Invoke-SentrySetup {
   $distro = $wslResult.Distro
   Set-SentryLauncherConfig @{ selectedDistro = $distro }
   Write-SentrySection '[3/7] Linux toolchain'
+  $baseTools = Get-SentryBaseToolStatus -Distro $distro
+  if ($baseTools.Missing.Count -gt 0) {
+    Write-SentryFail ('Base Linux utilities missing: ' + ($baseTools.Missing -join ', ') + '.')
+    Write-SentryInfo 'These come from standard Ubuntu packages (bash, coreutils, findutils, grep, sed, systemd). Repair or reinstall the distro minimal environment, then rerun setup.'
+    return 1
+  }
+  Write-SentryOk 'Base Linux utilities (bash, find, readlink, timeout, grep, sed, systemd)'
   if (-not (Ensure-SentrySystemd -Distro $distro)) { $failed = $true }
   if (-not (Ensure-SentryLinuxNode -Distro $distro)) { $failed = $true }
   if (-not (Ensure-SentryLinuxPnpm -Distro $distro -RepoRoot $RepoRoot)) { $failed = $true }
