@@ -1,5 +1,5 @@
 import { mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { IncrementalHarnessEventValidator } from '@qa/harness-protocol';
@@ -185,6 +185,44 @@ describe('OpenCodeHarnessAdapter', () => {
       type: 'run.failed',
       failure: { code: 'OPENCODE_CREDENTIAL_MISSING' },
     });
+    await adapter.dispose();
+  });
+
+  it('run() pre-selects the launcher from the host environment, not the turn env', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-launcher-'));
+    roots.push(root);
+    const input = await request(root);
+    // Always-true systemd fakes keep Linux CI deterministic with or without
+    // a real user manager; the point is WHICH environment is probed.
+    const fakeDir = await mkdtemp(join(tmpdir(), 'sentry-oc-launcher-bin-'));
+    roots.push(fakeDir);
+    await writeFile(join(fakeDir, 'systemctl'), '#!/bin/sh\nexit 0\n');
+    await writeFile(join(fakeDir, 'systemd-run'), '#!/bin/sh\nexit 0\n');
+    const seen: { launcherKind?: string } = {};
+    const factory: OpenCodeClientFactory = async (factoryInput) => {
+      seen.launcherKind = factoryInput.launcher?.kind;
+      throw new Error('sentry-test-sentinel-factory-stop');
+    };
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'anthropic/claude-test',
+      environment: {
+        ...testEnv(),
+        PATH: fakeDir + delimiter + (process.env['PATH'] ?? ''),
+        DBUS_SESSION_BUS_ADDRESS: 'unix:path=/run/user/1000/bus',
+        XDG_RUNTIME_DIR: '/run/user/1000',
+      },
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_START_FAILED' },
+    });
+    // The factory received a pre-selected launcher chosen from the host
+    // environment. On Linux with a working user manager this is the
+    // systemd-unit launcher even though the turn env is bus-scrubbed.
+    expect(seen.launcherKind).toBe(process.platform === 'linux' ? 'systemd-unit' : 'direct');
     await adapter.dispose();
   });
 

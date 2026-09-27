@@ -4,6 +4,7 @@ import { delimiter, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { probeSystemdUser } from '../src/process.js';
 import { createOpenCodeRegistration } from '../src/registration.js';
+import { selectProductionLauncher } from '../src/client.js';
 import {
   classifyOpenCodeVersion,
   doctorOpenCode,
@@ -289,6 +290,40 @@ describe('containment blocking policy (pure)', () => {
         configMasking: 'pass',
       }),
     ).toBe(true);
+  });
+});
+
+describe('launcher selection uses the host environment (no mocks)', () => {
+  async function busSensitiveDir(): Promise<string> {
+    const dir = await fakeBinDir({});
+    if (isWindows) return dir;
+    await writeFile(join(dir, 'systemctl'), '#!/bin/sh\nexit 0\n');
+    await chmod(join(dir, 'systemctl'), 0o700);
+    // Bus-sensitive like production: without a session bus address the
+    // user manager is unreachable even though the binaries exist.
+    await writeFile(
+      join(dir, 'systemd-run'),
+      '#!/bin/sh\nif [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then exit 1; fi\nexit 0\n',
+    );
+    await chmod(join(dir, 'systemd-run'), 0o700);
+    return dir;
+  }
+
+  it('selects the systemd launcher with bus vars, throws without them', async () => {
+    if (process.platform !== 'linux') return;
+    const fakeDir = await busSensitiveDir();
+    const withBus = withFakePath(fakeDir, {
+      DBUS_SESSION_BUS_ADDRESS: 'unix:path=/run/user/1000/bus',
+      XDG_RUNTIME_DIR: '/run/user/1000',
+    });
+    const launcher = await selectProductionLauncher(withBus);
+    expect(launcher.kind).toBe('systemd-unit');
+    const scrubbed = withFakePath(fakeDir);
+    delete scrubbed['DBUS_SESSION_BUS_ADDRESS'];
+    delete scrubbed['XDG_RUNTIME_DIR'];
+    await expect(selectProductionLauncher(scrubbed)).rejects.toMatchObject({
+      code: 'OPENCODE_SANDBOX_UNAVAILABLE',
+    });
   });
 });
 

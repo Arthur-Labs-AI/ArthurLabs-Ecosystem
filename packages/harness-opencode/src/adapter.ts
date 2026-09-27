@@ -82,6 +82,7 @@ import { SENTRY_PROXY_DUMMY_KEY, startOpenCodeAuthProxy, type OpenCodeAuthProxy 
 import { computeToolHiddenPaths, writeToolShellWrapper } from './toolshell.js';
 import {
   createProductionOpenCodeClient,
+  selectProductionLauncher,
   type OpenCodeClientFactory,
   type OpenCodeClientView,
   type OpenCodePromptResult,
@@ -833,12 +834,20 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       // invocation. Fail closed unless explicitly bypassed for dev/test.
       const turnBase = await this.buildTurnBase(request, scope, proxy);
       entry.turnBase = turnBase;
+      // Launcher selection is a HOST capability decision (user-manager
+      // reachability), not a turn-scoped one: the turn environment is
+      // scrubbed of session-bus coordinates, so probing it would always
+      // fail even though the real launcher re-adds bus vars from the host
+      // process env at spawn time. Select here from the host environment
+      // and hand the chosen launcher to the session factory.
+      const launcher = await selectProductionLauncher(this.hostEnvironment);
       const client = await this.clientFactory({
         executable: this.runtime.executable,
         cwd: request.workspace.runtimePath,
         environment: turnBase,
         modelId: this.runtime.effectiveModelId,
         shutdownTimeoutMs: this.shutdownTimeoutMs,
+        launcher,
       });
       entry.client = client;
       entry.session = await client.startSession();
