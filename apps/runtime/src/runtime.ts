@@ -287,9 +287,7 @@ export function evaluateOpencodeGate(input: OpencodeGateInput): GateVerdict {
   else if (input.version === undefined)
     reasons.push('OpenCode executable did not answer its version probe: ' + input.executable);
   else if (!input.version.includes(input.testedVersion))
-    reasons.push(
-      'OpenCode version ' + input.version + ' is not the tested ' + input.testedVersion,
-    );
+    reasons.push('OpenCode version ' + input.version + ' is not the tested ' + input.testedVersion);
   if (!input.sandboxBwrap)
     reasons.push('bubblewrap is not installed in Ubuntu (OpenCode sandbox unavailable)');
   return { ready: reasons.length === 0, reasons };
@@ -299,7 +297,8 @@ export function evaluateDeepseekGate(input: DeepseekGateInput): GateVerdict {
   const reasons: string[] = [];
   if (!input.credential) reasons.push('DeepSeek credential missing');
   if (!input.model) reasons.push('DeepSeek model not set');
-  if (!input.wrapperExists) reasons.push('managed DeepSeek wrapper unavailable: ' + input.wrapperPath);
+  if (!input.wrapperExists)
+    reasons.push('managed DeepSeek wrapper unavailable: ' + input.wrapperPath);
   else if (input.wrapperVersion === undefined)
     reasons.push('managed DeepSeek wrapper did not answer its version probe');
   else if (!input.wrapperVersion.includes(input.expectedVersion))
@@ -327,7 +326,8 @@ export function evaluateGlmGate(input: GlmGateInput): GateVerdict {
   if (!input.model) reasons.push('GLM model not set');
   if (input.executable === undefined) reasons.push('Claude Code executable not found');
   else {
-    if (input.windowsMounted) reasons.push('Claude Code resolves to a Windows mount; need a native Linux binary');
+    if (input.windowsMounted)
+      reasons.push('Claude Code resolves to a Windows mount; need a native Linux binary');
     if (input.version === undefined)
       reasons.push('Claude Code executable did not answer its version probe');
     else {
@@ -1164,11 +1164,19 @@ export class SentryRuntimeHost {
     const stacks: Array<{ id: string; ready: boolean; reasons: string[] }> = [];
     const sandboxDeps = wants('stack_glm_main')
       ? SentryRuntimeHost.probeSandbox()
-      : { socat: true, bwrap: true, socatVersion: '', bwrapVersion: '', initOk: true, initDetail: '' };
+      : {
+          socat: true,
+          bwrap: true,
+          socatVersion: '',
+          bwrapVersion: '',
+          initOk: true,
+          initDetail: '',
+        };
     const systemdOk = wants('stack_glm_main') ? SentryRuntimeHost.systemdUserReady() : true;
     if (wants('stack_opencode_main')) {
       const provider = normalizeOpenCodeProvider(env['SENTRY_OPENCODE_PROVIDER']);
-      const executable = env['SENTRY_OPENCODE_BINARY']?.trim() || managedOpenCodeExecutable(this.dataRoot);
+      const executable =
+        env['SENTRY_OPENCODE_BINARY']?.trim() || managedOpenCodeExecutable(this.dataRoot);
       const probed = SentryRuntimeHost.probeLocalExecutable(executable);
       const verdict = evaluateOpencodeGate({
         credential: openCodeCredentialPresent(provider, env),
@@ -1206,8 +1214,7 @@ export class SentryRuntimeHost {
         override === undefined ? SentryRuntimeHost.findOnPath('claude', env) : undefined;
       const executable = override ?? onPath;
       const windowsMounted =
-        executable !== undefined &&
-        (executable.startsWith('/mnt/') || executable.includes(':/'));
+        executable !== undefined && (executable.startsWith('/mnt/') || executable.includes(':/'));
       const probed =
         executable === undefined
           ? { exists: false, version: undefined as string | undefined }

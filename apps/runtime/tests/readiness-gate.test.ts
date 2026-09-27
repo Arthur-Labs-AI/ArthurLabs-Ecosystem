@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  evaluateDeepseekGate,
-  evaluateGlmGate,
-  evaluateOpencodeGate,
-} from '../src/runtime.js';
+import { evaluateDeepseekGate, evaluateGlmGate, evaluateOpencodeGate } from '../src/runtime.js';
 
 const OC_BASE = {
   credential: true,
