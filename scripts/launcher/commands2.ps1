@@ -34,7 +34,7 @@ function Invoke-SentryDoctor {
     $lnpm = Invoke-SentryWsl -Distro $distro -LinuxArgs @('npm', '--version') -TimeoutSec 30
     if ($lnpm.ExitCode -eq 0) { &$add 'Linux npm (direct exec)' 'PASS' (([string]$lnpm.Stdout).Trim()) } else { &$add 'Linux npm (direct exec)' 'FAIL' 'npm missing or unusable (Node toolchain incomplete)' }
     $base = Get-SentryBaseToolStatus -Distro $distro
-    if ($base.Missing.Count -eq 0) { &$add 'Base Linux utilities' 'PASS' 'bash, find, readlink, timeout, grep, sed, systemctl, systemd-run' }
+    if ($base.Missing.Count -eq 0) { &$add 'Base Linux utilities' 'PASS' 'bash, find, readlink, timeout, grep, sed' }
     else { &$add 'Base Linux utilities' 'FAIL' ('missing: ' + ($base.Missing -join ', ')) }
     $sd = Invoke-SentryWslFile -Distro $distro -ScriptName 'check-systemd.sh' -TimeoutSec 60
     $sdState = ([string]$sd.Stdout).Trim()
@@ -288,7 +288,7 @@ function Show-SentryHelp {
   Write-Host ''
   Write-Host 'Commands:'
   Write-Host '  setup     Prepare Windows, WSL and Sentry'
-  Write-Host '  repair    Rerun setup and validation safely (idempotent)'
+  Write-Host '  repair    Rerun full setup/validation flow (idempotent; repairs what failed)'
   Write-Host '  open      Launch Sentry Desktop'
   Write-Host '  update    Pull latest commits and update Sentry'
   Write-Host '  stop      Gracefully stop Sentry'

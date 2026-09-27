@@ -208,7 +208,7 @@ Assert-True 'toolchain-repair-reinstalls-node' ((@($script:WslFileCalls) | Where
 $script:MockNpmMode = 'ok'
 $script:MockNodeVer = 'v20.1.0'
 # ---- 21. base utilities and systemd states ----
-$script:WslFileStubs = @{ 'check-base.sh' = @{ ExitCode = 0; Stdout = ("HAVE-bash`nHAVE-find`nHAVE-readlink`nHAVE-timeout`nHAVE-grep`nHAVE-sed`nHAVE-systemctl`nHAVE-systemd-run"); Stderr = '' } }
+$script:WslFileStubs = @{ 'check-base.sh' = @{ ExitCode = 0; Stdout = ("HAVE-bash`nHAVE-find`nHAVE-readlink`nHAVE-timeout`nHAVE-grep`nHAVE-sed"); Stderr = '' } }
 $baseOk = Get-SentryBaseToolStatus -Distro 'Ubuntu'
 Assert-Equal 'base-all-present' $baseOk.Missing.Count 0
 $script:WslFileStubs = @{ 'check-base.sh' = @{ ExitCode = 0; Stdout = ("HAVE-bash`nMISS-timeout`nMISS-systemd-run"); Stderr = '' } }
@@ -235,6 +235,18 @@ Assert-Equal 'sandbox-bwrap-still-present' $sbNoSoc.Bwrap $true
 $script:WslFileStubs = @{ 'check-sandbox.sh' = @{ ExitCode = 0; Stdout = ("MISS-socat`nMISS-bwrap`nSANDBOX_INIT_FAIL=bwrap-missing"); Stderr = '' } }
 $sbBoth = Get-SentrySandboxStatus -Distro 'Ubuntu'
 Assert-Equal 'sandbox-both-missing' (([bool](-not $sbBoth.Socat) -and [bool](-not $sbBoth.Bwrap))) $true
+# ---- 22. setup order: missing systemd binaries reach systemd repair ----
+$script:MockNodeVer = 'v22.14.0'
+$script:MockNpmMode = 'ok'
+$script:WslFileCalls = @()
+$script:WslFileStubs = @{
+  'check-base.sh' = @{ ExitCode = 0; Stdout = ("HAVE-bash`nHAVE-find`nHAVE-readlink`nHAVE-timeout`nHAVE-grep`nHAVE-sed"); Stderr = '' };
+  'check-systemd.sh' = @{ ExitCode = 0; Stdout = 'SYSTEMD_BIN_MISSING'; Stderr = '' };
+  'install-deps.sh' = @{ ExitCode = 0; Stdout = ''; Stderr = '' }
+}
+[void](Invoke-SentryToolchainPhase -Distro 'Ubuntu' -RepoRoot $repoRoot)
+Assert-True 'order-base-ran' ((@($script:WslFileCalls) | Where-Object { $_ -like 'check-base.sh*' }).Count -gt 0)
+Assert-True 'order-systemd-repair-reached' ((@($script:WslFileCalls) | Where-Object { $_ -like 'install-deps.sh root=True*systemd*' }).Count -gt 0)
 # ---- 16. noninteractive install failure reports the apt command (E) ----
 $script:WslFileStubs = @{
   'check-deps.sh' = @{ ExitCode = 0; Stdout = ("HAVE-git`nHAVE-curl`nHAVE-ca-certificates`nHAVE-bubblewrap`nMISS-socat"); Stderr = '' };

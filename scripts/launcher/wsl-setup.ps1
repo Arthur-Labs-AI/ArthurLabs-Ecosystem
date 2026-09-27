@@ -402,9 +402,27 @@ function Get-SentryMissingLinuxDeps {
   return $missingPkgs
 }
 
+function Invoke-SentryToolchainPhase {
+  param([string]$Distro, [string]$RepoRoot)
+  $failed = $false
+  $baseTools = Get-SentryBaseToolStatus -Distro $Distro
+  if ($baseTools.Missing.Count -gt 0) {
+    Write-SentryFail ('Base Linux utilities missing: ' + ($baseTools.Missing -join ', ') + '.')
+    Write-SentryInfo 'These come from standard Ubuntu packages (bash, coreutils, findutils, grep, sed). Repair or reinstall the distro minimal environment, then rerun setup.'
+    return $false
+  }
+  Write-SentryOk 'Base Linux utilities (bash, find, readlink, timeout, grep, sed)'
+  if (-not (Ensure-SentrySystemd -Distro $Distro)) { $failed = $true }
+  if (-not (Ensure-SentryLinuxNode -Distro $Distro)) { $failed = $true }
+  if (-not (Ensure-SentryLinuxPnpm -Distro $Distro -RepoRoot $RepoRoot)) { $failed = $true }
+  if (-not (Ensure-SentryLinuxDeps -Distro $Distro -RepoRoot $RepoRoot)) { $failed = $true }
+  if ($failed) { Write-SentryFail 'Linux toolchain incomplete. See messages above.'; return $false }
+  return $true
+}
+
 function Get-SentryBaseToolStatus {
   param([string]$Distro)
-  $tools = @('bash', 'find', 'readlink', 'timeout', 'grep', 'sed', 'systemctl', 'systemd-run')
+  $tools = @('bash', 'find', 'readlink', 'timeout', 'grep', 'sed')
   $r = Invoke-SentryWslFile -Distro $Distro -ScriptName 'check-base.sh' -TimeoutSec 60
   $missing = @()
   foreach ($line in (([string]$r.Stdout) -split "`n")) {
