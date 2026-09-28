@@ -30,7 +30,10 @@ function handle(channel: string, listener: (payload: unknown) => Promise<unknown
 
 // Renderer IPC is a transport over the shared desktop command router:
 // validation, readiness gates, and error mapping live in one place.
-export function registerDesktopIpc(service: DesktopApplicationService, hooks: CommandRouterHooks = {}): void {
+export function registerDesktopIpc(
+  service: DesktopApplicationService,
+  hooks: CommandRouterHooks = {},
+): void {
   for (const channel of Object.keys(DesktopChannelSchemas)) {
     if (channel === 'cli:status') continue;
     handle(channel, (payload: unknown) =>
@@ -40,5 +43,7 @@ export function registerDesktopIpc(service: DesktopApplicationService, hooks: Co
       }),
     );
   }
-  handle('cli:status', (payload: unknown) => dispatchDesktopCommand(service, 'cli:status', payload, hooks));
+  handle('cli:status', (payload: unknown) =>
+    dispatchDesktopCommand(service, 'cli:status', payload, hooks),
+  );
 }

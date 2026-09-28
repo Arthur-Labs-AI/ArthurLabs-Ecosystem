@@ -3,6 +3,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bootstrapDesktop, type BootstrappedDesktop } from './bootstrap.js';
 import { parseSentryControlArgs } from './sentry-control.js';
+import { dispatchDesktopCommand } from './desktop-command-router.js';
+import { SentryCliServer } from './cli-server.js';
 import { registerDesktopIpc } from './ipc.js';
 import { DesktopLiveUpdates } from './live-updates.js';
 
@@ -11,6 +13,7 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 let bootstrapped: BootstrappedDesktop | undefined;
 let mainWindow: BrowserWindow | undefined;
 let liveUpdates: DesktopLiveUpdates | undefined;
+let cliServer: SentryCliServer | undefined;
 
 function resolveAsset(...segments: string[]): string {
   return join(currentDir, ...segments);
@@ -120,10 +123,31 @@ async function boot(): Promise<void> {
   bootstrapped.runtime.onExit(() => {
     liveUpdates?.stop();
   });
+  cliServer = new SentryCliServer({
+    dispatch: (command, payload) =>
+      dispatchDesktopCommand(
+        bootstrapped?.service as never,
+        command,
+        payload,
+        {
+          onRunCreated: (runId, operationId) => updates.notifyRunCreated(runId, operationId),
+          onRetestCreated: (retestRunId, operationId) =>
+            updates.notifyRetestCreated(retestRunId, operationId),
+        },
+        { external: true },
+      ),
+    onStatusChange: () => {
+      if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('sentry:cli-status', cliServer?.status);
+      }
+    },
+  });
+  const broker = cliServer;
   registerDesktopIpc(bootstrapped.service, {
     onRunCreated: (runId, operationId) => updates.notifyRunCreated(runId, operationId),
     onRetestCreated: (retestRunId, operationId) =>
       updates.notifyRetestCreated(retestRunId, operationId),
+    cliStatus: () => broker.status,
     requestSavePath: async ({ suggestedFilename, filters }) => {
       const win = mainWindow;
       if (win === undefined) return null;
@@ -141,6 +165,10 @@ async function boot(): Promise<void> {
   });
   registerDialogIpc();
   liveUpdates.start();
+  const cliStatus = await cliServer.start();
+  if (!cliStatus.started) {
+    console.warn('[sentry] CLI broker unavailable: ' + (cliStatus.error ?? 'unknown'));
+  }
 
   ipcMain.handle('sentry:watch-run', (_event, payload: unknown) => {
     const runId = (payload as { runId?: unknown }).runId;
@@ -171,7 +199,10 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   liveUpdates?.stop();
-  void bootstrapped?.close();
+  void (async () => {
+    await cliServer?.stop();
+    await bootstrapped?.close();
+  })();
 });
 
 // Single instance: a second launch focuses the running window instead of

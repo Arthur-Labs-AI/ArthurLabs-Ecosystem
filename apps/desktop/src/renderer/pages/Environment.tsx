@@ -62,6 +62,14 @@ export function Environment(): React.JSX.Element {
     queryFn: () => sentryApi().runtime.status(),
     refetchInterval: 5000,
   });
+  const cli = useQuery({
+    queryKey: ['cli-status'],
+    queryFn: () => sentryApi().cli.status(),
+    refetchInterval: 3000,
+  });
+  const cliStatus = cli.data as
+    | { started: boolean; error?: string; connectedClients: Array<{ id: string; name: string }> }
+    | undefined;
   const data = environment.data as
     | {
         runtime?: {
@@ -154,6 +162,35 @@ export function Environment(): React.JSX.Element {
               )}
             </dl>
           </CollapsibleSection>
+        </div>
+      </PageSection>
+      <PageSection title="Local CLI">
+        <div className="card">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <StatusPill
+              status={cliStatus?.started === true ? 'connected' : 'offline'}
+              label={cliStatus?.started === true ? 'CLI started' : 'CLI unavailable'}
+              pulse={cliStatus?.started === true}
+            />
+            {(cliStatus?.connectedClients ?? []).map((client) => (
+              <span key={client.id} className="metadata">
+                {client.name} connected
+              </span>
+            ))}
+            {(cliStatus?.connectedClients ?? []).length === 0 && cliStatus?.started === true ? (
+              <span className="metadata">No external clients</span>
+            ) : null}
+          </div>
+          {cliStatus?.error !== undefined ? (
+            <p className="metadata" style={{ marginBottom: 0 }}>
+              {cliStatus.error}
+            </p>
+          ) : (
+            <p className="metadata" style={{ marginBottom: 0 }}>
+              External automation (for example Nexus) can drive this same Sentry instance with
+              `sentry cli ...` while the Desktop stays open.
+            </p>
+          )}
         </div>
       </PageSection>
       <PageSection title="Agent health">

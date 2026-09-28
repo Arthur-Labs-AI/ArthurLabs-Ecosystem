@@ -43,6 +43,7 @@ export const IPC_CHANNELS = [
   'runtime:status',
   'runtime:distros',
   'runtime:select-distro',
+  'cli:status',
 ] as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[number];
@@ -219,6 +220,14 @@ export interface SentryDesktopApi {
   readonly system: {
     info(): Promise<{ dataRoot: string; versions: Record<string, string> }>;
     activeRuns(): Promise<Array<{ runId: string; projectId: string; status: string }>>;
+  };
+  readonly cli: {
+    status(): Promise<{
+      started: boolean;
+      pipePath: string;
+      error?: string;
+      connectedClients: Array<{ id: string; name: string; version?: string; connectedAt: string }>;
+    }>;
   };
   readonly subscribe: {
     onRunUpdate(callback: RunUpdateCallback): () => void;

@@ -91,6 +91,9 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     info: () => invoke('system:info', {}),
     activeRuns: () => invoke('system:active-runs', {}),
   },
+  cli: {
+    status: () => invoke('cli:status', {}),
+  },
   runtime: {
     status: () => invoke('runtime:status', {}),
     distros: () => invoke('runtime:distros', {}),
