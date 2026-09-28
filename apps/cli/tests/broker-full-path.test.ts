@@ -140,6 +140,8 @@ async function harness(): Promise<FullPathHarness> {
           onRunCreated: (runId, operationId) => {
             createdRuns.push({ runId, operationId });
           },
+          // Mirrors production wiring in apps/desktop/src/main/index.ts.
+          cliStatus: () => server.status,
         },
         { external: true },
       ),
@@ -344,6 +346,24 @@ describe('full production path: cli to canonical runtime', () => {
       }
       expect(h.server.status.connectedClients).toEqual([]);
     } finally {
+      await h.close();
+    }
+  });
+
+  it('serves broker self-status with connected client names', async () => {
+    const h = await harness();
+    const client = h.client();
+    try {
+      await client.connect();
+      const status = (await client.request('cli:status', {})) as {
+        started?: boolean;
+        connectedClients?: Array<{ name?: string; version?: string }>;
+      };
+      expect(status.started).toBe(true);
+      expect(status.connectedClients?.map((entry) => entry.name)).toContain('Nexus');
+      expect(status.connectedClients?.map((entry) => entry.version)).toContain('0.1.0');
+    } finally {
+      await client.close();
       await h.close();
     }
   });

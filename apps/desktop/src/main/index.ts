@@ -134,6 +134,9 @@ async function boot(): Promise<void> {
           onRunCreated: (runId, operationId) => updates.notifyRunCreated(runId, operationId),
           onRetestCreated: (retestRunId, operationId) =>
             updates.notifyRetestCreated(retestRunId, operationId),
+          // Self-status: external clients may inspect broker liveness and
+          // (non-secret) client names; the payload carries no credentials.
+          cliStatus: () => cliServer?.status ?? { started: false },
         },
         { external: true },
       ),
