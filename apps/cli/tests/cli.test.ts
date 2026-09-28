@@ -36,7 +36,9 @@ function invoke(args: readonly string[], dataRoot: string) {
   return new Promise<{ status: number | null; stdout: string; stderr: string }>(
     (resolve, reject) => {
       const child = spawn(process.execPath, ['--no-warnings', entry, ...args], {
-        env: { ...process.env, SENTRY_DATA_ROOT: dataRoot },
+        // Legacy direct-execution suite: production defaults to the Desktop
+        // broker, so these subprocesses pin the development-only transport.
+        env: { ...process.env, SENTRY_DATA_ROOT: dataRoot, SENTRY_CLI_TRANSPORT: 'direct' },
         stdio: ['ignore', 'pipe', 'pipe'],
       });
       let stdout = '';
@@ -209,6 +211,7 @@ describe('qa cli', () => {
         env: {
           ...process.env,
           SENTRY_DATA_ROOT: f.dataRoot,
+          SENTRY_CLI_TRANSPORT: 'direct',
           SENTRY_OPENCODE_BINARY: join(f.root, 'missing-opencode'),
           SENTRY_OPENCODE_MODEL: 'openrouter-test-model',
         },
@@ -237,6 +240,7 @@ describe('qa cli', () => {
             ...process.env,
             SENTRY_DATA_ROOT: f.dataRoot,
             [binaryVariable]: join(f.root, 'missing-' + agent),
+          SENTRY_CLI_TRANSPORT: 'direct',
           },
         },
       );
@@ -258,7 +262,7 @@ describe('qa cli', () => {
       ['--no-warnings', entry, 'project', 'add', f.source, '--json'],
       {
         encoding: 'utf8',
-        env: { ...process.env, SENTRY_DATA_ROOT: f.dataRoot },
+        env: { ...process.env, SENTRY_DATA_ROOT: f.dataRoot, SENTRY_CLI_TRANSPORT: 'direct' },
       },
     );
     expect(added.status).toBe(0);
@@ -284,7 +288,12 @@ describe('qa cli', () => {
       ],
       {
         encoding: 'utf8',
-        env: { ...process.env, SENTRY_DATA_ROOT: f.dataRoot, SENTRY_OPENCODE_MODEL: '' },
+        env: {
+          ...process.env,
+          SENTRY_DATA_ROOT: f.dataRoot,
+          SENTRY_OPENCODE_MODEL: '',
+          SENTRY_CLI_TRANSPORT: 'direct',
+        },
       },
     );
     expect(start.status).toBe(6);

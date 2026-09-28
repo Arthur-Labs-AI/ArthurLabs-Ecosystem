@@ -715,6 +715,23 @@ export async function executeCommand(
       });
     });
   }
+  if (input.command === 'run.result') {
+    const resultRunId = parseArgument(QARunIdSchema, input.runId, 'run-id');
+    return withReadRuntime(async ({ runs }) => {
+      const exported = (await runs.exportContent(resultRunId, 'json')) as {
+        contentBase64?: string;
+      };
+      if (typeof exported.contentBase64 !== 'string') throw new Error('Export bytes missing');
+      return success(input.command, {
+        runId: resultRunId,
+        format: 'json' as const,
+        result: JSON.parse(
+          Buffer.from(exported.contentBase64, 'base64').toString('utf8'),
+        ) as unknown,
+      });
+    });
+  }
+  if (input.command !== 'run.export') throw new CliUsageError('Unknown command');
   const runId = parseArgument(QARunIdSchema, input.runId, 'run-id');
   return withMutationRuntime(async ({ runs, repository, dataRoot }) => {
     const manifest = await runs.exportRun(runId, input.format);

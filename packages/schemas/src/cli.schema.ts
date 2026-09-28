@@ -41,6 +41,7 @@ export const CLI_COMMANDS = [
   'run.list',
   'run.show',
   'run.status',
+  'run.result',
   'run.export',
   'run.merge',
   'run.cancel',
@@ -146,6 +147,10 @@ export const CLI_ERROR_CODES = [
   'GLM_PROVIDER_BAD_REQUEST',
   'GLM_BINARY_START_FAILED',
   'INTERNAL_ERROR',
+  'SENTRY_DESKTOP_NOT_RUNNING',
+  'PROVIDER_NOT_READY',
+  'RUN_MAY_HAVE_STARTED',
+  'CLI_COMMAND_FORBIDDEN',
 ] as const;
 export const CliErrorCodeSchema = z.enum(CLI_ERROR_CODES);
 export type CliErrorCode = z.infer<typeof CliErrorCodeSchema>;
@@ -309,6 +314,10 @@ export const RunStartResultSchema = z
     runId: QARunIdSchema,
     projectId: ProjectIdSchema,
     status: z.enum(QARUN_STATUSES),
+    // Async Nexus flow: runId + operationId return as soon as the row
+    // exists while the WSL runtime owns the run. The per-agent breakdown
+    // and findings arrive after terminal status (or via --wait).
+    operationId: z.string().min(1).max(200).optional(),
     agents: z
       .object({
         configured: NonNegativeIntSchema,
@@ -329,8 +338,9 @@ export const RunStartResultSchema = z
             .strict(),
         ),
       })
-      .strict(),
-    findings: z.object({ total: NonNegativeIntSchema }).strict(),
+      .strict()
+      .optional(),
+    findings: z.object({ total: NonNegativeIntSchema }).strict().optional(),
   })
   .strict();
 export type RunStartResult = z.infer<typeof RunStartResultSchema>;
@@ -400,11 +410,24 @@ export const AgentDoctorResultSchema = z
   .strict();
 export type AgentDoctorResult = z.infer<typeof AgentDoctorResultSchema>;
 
+export const RunResultResultSchema = z
+  .object({
+    runId: QARunIdSchema,
+    format: z.literal('json'),
+    // The canonical structured JSON result for exactly this run, decoded
+    // from the runtime runs.exportContent bytes. No competing format.
+    result: z.unknown(),
+  })
+  .strict();
+export type RunResultResult = z.infer<typeof RunResultResultSchema>;
+
 export const RunExportResultSchema = z
   .object({
     runId: QARunIdSchema,
     format: z.enum(['log', 'json']),
-    artifactId: ArtifactIdSchema,
+    // Broker-mediated exports materialize bytes at the requested --out
+    // path; there is no Windows artifact path to report.
+    artifactId: ArtifactIdSchema.optional(),
     path: z.string().min(1).max(2000),
   })
   .strict();
@@ -713,6 +736,13 @@ export const CapabilitiesResultSchema = z
           .strict(),
       )
       .optional(),
+    // Nexus probes these before issuing commands. Optional so older
+    // machine consumers keep parsing.
+    runResultExport: z.literal(true).optional(),
+    runCancellation: z.literal(true).optional(),
+    asyncRunStart: z.literal(true).optional(),
+    ipcProtocolVersion: z.number().int().optional(),
+    productVersion: z.string().min(1).max(100).optional(),
   })
   .strict();
 export type CapabilitiesResult = z.infer<typeof CapabilitiesResultSchema>;
@@ -731,6 +761,7 @@ export const CliResultSchemas = {
   'run.list': RunListResultSchema,
   'run.show': RunShowResultSchema,
   'run.status': RunStatusResultSchema,
+  'run.result': RunResultResultSchema,
   'run.export': RunExportResultSchema,
   'run.merge': RunMergeResultSchema,
   'run.cancel': RunCancelResultSchema,

@@ -10,7 +10,8 @@ param(
   [switch]$Json,
   [switch]$Repair,
   [switch]$NonInteractive,
-  [switch]$WasRunning
+  [switch]$WasRunning,
+  [Parameter(ValueFromRemainingArguments = $true)][string[]]$RemainingArgs = @()
 )
 $ErrorActionPreference = 'Stop'
 
@@ -39,6 +40,19 @@ switch ($cmd) {
   '__post-update' { $exitCode = Invoke-SentryPostUpdate -RepoRoot $repoRoot -OldSha $Arg1 -NewSha $Arg2 -Repair ([bool]$Repair) -WasRunning ([bool]$WasRunning) }
   'stop' { $exitCode = Invoke-SentryStop -RepoRoot $repoRoot }
   'status' { $exitCode = Invoke-SentryStatus -RepoRoot $repoRoot -AsJson ([bool]$Json) }
+  'cli' {
+    $cliArgs = @()
+    if ($Arg1 -ne '') { $cliArgs += $Arg1 }
+    if ($Arg2 -ne '') { $cliArgs += $Arg2 }
+    foreach ($rest in $RemainingArgs) { $cliArgs += $rest }
+    if ([bool]$Json) { $cliArgs += '--json' }
+    if ($Distro -ne '' -or [bool]$Repair -or [bool]$NonInteractive -or [bool]$WasRunning) {
+      Write-Host 'sentry cli does not accept launcher flags (-Distro/-Repair/-NonInteractive/-WasRunning).' -ForegroundColor Red
+      $exitCode = 1
+    } else {
+      $exitCode = Invoke-SentryCli -RepoRoot $repoRoot -CliArgs $cliArgs
+    }
+  }
   'doctor' { $exitCode = Invoke-SentryDoctor }
   'version' { $exitCode = Invoke-SentryVersion -RepoRoot $RepoRoot }
   'help' { $exitCode = Show-SentryHelp }

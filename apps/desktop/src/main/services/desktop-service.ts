@@ -120,6 +120,11 @@ export class DesktopApplicationService {
     return this.call('projects.update', { projectId: id, sourcePath: translated });
   }
 
+  deleteProject(projectId: string): Promise<unknown> {
+    const id = ProjectIdInput.parse(projectId);
+    return this.call('projects.delete', { projectId: id });
+  }
+
   projectDoctor(projectId: string): Promise<unknown> {
     const id = ProjectIdInput.parse(projectId);
     return this.call('projects.doctor', { projectId: id });

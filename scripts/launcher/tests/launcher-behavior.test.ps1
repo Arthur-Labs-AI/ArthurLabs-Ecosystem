@@ -280,6 +280,23 @@ $installCall = @($script:WslFileCalls | Where-Object { $_ -like 'install-deps.sh
 Assert-Equal 'install-args-use-package-names' ([string]$installCall) 'install-deps.sh root=True args=[bubblewrap,socat]'
 $before = [Environment]::GetEnvironmentVariable('PATH', 'User')
 Assert-True 'user-path-untouched' (([Environment]::GetEnvironmentVariable('PATH', 'User')) -eq $before)
+# ---- 20. sentry cli forwards argv intact to the built CLI (no string concat) ----
+$script:NativeCalls = @()
+$cliHelpCode = Invoke-SentryCli -RepoRoot $repoRoot -CliArgs @()
+Assert-Equal 'cli-noargs-help' $cliHelpCode 0
+$script:NativeCalls = @()
+$script:NativeStubs = @{ 'node *' = @{ ExitCode = 0; Stdout = ''; Stderr = '' } }
+$cliCode = Invoke-SentryCli -RepoRoot $repoRoot -CliArgs @('project', 'add', 'C:\Users\User Name\Projects\Test App', '--json')
+Assert-Equal 'cli-passthrough-exit' $cliCode 0
+$nodeCall = @($script:NativeCalls | Where-Object { $_ -like 'node *' })[0]
+Assert-True 'cli-uses-node-entry' ($nodeCall -like '*apps*cli*dist*index.js*project*add*--json*')
+Assert-True 'cli-keeps-spaced-path' ($nodeCall.Contains('C:\Users\User Name\Projects\Test App'))
+$script:NativeCalls = @()
+[void](Invoke-SentryCli -RepoRoot $repoRoot -CliArgs @('run', 'start', 'proj_01K7777777777777777777A8W1', '--instructions', 'Check authentication and API validation', '--json'))
+$runCall = @($script:NativeCalls | Where-Object { $_ -like 'node *' })[0]
+Assert-True 'cli-keeps-instructions' ($runCall.Contains('Check authentication and API validation'))
+Assert-Equal 'cli-quoting-spaces' (Get-SentryQuotedArguments @('a b', 'e')) '"a b" e'
+Assert-Equal 'cli-quoting-passthrough' (Get-SentryQuotedArguments @('project', 'add', 'C:\P\Test App')) 'project add "C:\P\Test App"'
 if ($script:failures -gt 0) { Write-Host ([string]("BEHAVIOR-FAIL " + $script:failures)); exit 1 }
 Write-Host 'BEHAVIOR-OK'
 exit 0

@@ -10,6 +10,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
   'projects:add': z.object({ sourcePath: z.string().min(1).max(2000) }).strict(),
   'projects:get': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:revisions': z.object({ projectId: z.string().min(1).max(200) }).strict(),
+  'projects:delete': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:update': z
     .object({
       projectId: z.string().min(1).max(200),
@@ -93,6 +94,7 @@ export const CLI_ALLOWED_CHANNELS: ReadonlySet<string> = new Set([
   'projects:add',
   'projects:get',
   'projects:revisions',
+  'projects:delete',
   'projects:update',
   'projects:doctor',
   'projects:suggest-targets',
@@ -180,6 +182,8 @@ export async function dispatchDesktopCommand(
       return service.getProject(parsed['projectId'] as string);
     case 'projects:revisions':
       return service.listRevisions(parsed['projectId'] as string);
+    case 'projects:delete':
+      return service.deleteProject(parsed['projectId'] as string);
     case 'projects:update':
       return service.updateProject(
         parsed['projectId'] as string,

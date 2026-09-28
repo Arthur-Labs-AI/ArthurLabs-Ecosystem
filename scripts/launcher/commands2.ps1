@@ -267,6 +267,64 @@ function Invoke-SentryPostUpdate {
   return 0
 }
 
+function Show-SentryCliHelp {
+  Write-Host ''
+  Write-Host 'Sentry CLI (same runtime as Desktop)' -ForegroundColor Cyan
+  Write-Host ''
+  Write-Host 'Usage:'
+  Write-Host '  sentry cli <command>'
+  Write-Host ''
+  Write-Host 'Sentry Desktop must be running (sentry open). The CLI is a frontend:'
+  Write-Host 'it never opens the database or starts its own runtime.'
+  Write-Host ''
+  Write-Host 'Commands:'
+  Write-Host '  capabilities [--json]'
+  Write-Host '  project list [--json]'
+  Write-Host '  project add "<windows-path>" [--json]'
+  Write-Host '  project show <project-id> [--json]'
+  Write-Host '  project update <project-id> [path] [--json]'
+  Write-Host '  project delete <project-id> --yes [--json]'
+  Write-Host '  project revisions <project-id> [--json]'
+  Write-Host '  project doctor <project-id> [--json]'
+  Write-Host '  agent list [--json]'
+  Write-Host '  agent doctor opencode|deepseek|glm [--json]'
+  Write-Host '  run start <project-id> --mode full|targeted [--agents opencode,deepseek,glm] [--paths a,b] [--wait] [--json]'
+  Write-Host '  run list <project-id> [--json]'
+  Write-Host '  run show <run-id> [--json]'
+  Write-Host '  run status <run-id> [--json]'
+  Write-Host '  run cancel <run-id> [--json]'
+  Write-Host '  run result <run-id> [--json]'
+  Write-Host '  run export <run-id> --format log|json --out <path> [--json]'
+  Write-Host '  issue list <project-id> [--json]'
+  Write-Host '  issue show <issue-id> [--json]'
+  Write-Host '  issue history <issue-id> [--json]'
+  Write-Host '  retest start <issue-id> [--revision <id>] [--agents opencode,deepseek,glm] --wait [--json]'
+  Write-Host '  retest show <retest-run-id> [--json]'
+  Write-Host '  retest cancel <retest-run-id> [--json]'
+  Write-Host ''
+  Write-Host 'Automation (Nexus): always pass --json and parse stdout with JSON.parse.'
+  Write-Host 'Start async, poll status, then fetch the result:'
+  Write-Host '  sentry cli run start <project> --mode full --json'
+  Write-Host '  sentry cli run status <run-id> --json'
+  Write-Host '  sentry cli run result <run-id> --json'
+  return 0
+}
+
+function Invoke-SentryCli {
+  param([string]$RepoRoot, [string[]]$CliArgs = @())
+  if ($CliArgs.Count -eq 0 -or $CliArgs -contains '--help' -or $CliArgs -contains '-h') {
+    return (Show-SentryCliHelp)
+  }
+  $entry = Join-Path $RepoRoot 'apps/cli/dist/index.js'
+  if (-not (Test-Path $entry)) {
+    Write-Host 'Sentry CLI is not built. Run: sentry setup' -ForegroundColor Red
+    return 1
+  }
+  $nodeArgs = @($entry) + $CliArgs
+  $r = Invoke-SentryNative -FilePath 'node' -Arguments $nodeArgs -NoRedirect $true
+  return $r.ExitCode
+}
+
 function Invoke-SentryVersion {
   param([string]$RepoRoot)
   $version = Get-SentryProductVersion -RepoRoot $RepoRoot
@@ -292,6 +350,7 @@ function Show-SentryHelp {
   Write-Host '  open      Launch Sentry Desktop'
   Write-Host '  update    Pull latest commits and update Sentry'
   Write-Host '  stop      Gracefully stop Sentry'
+  Write-Host '  cli       Control the running Desktop (same runtime; automation uses --json)'
   Write-Host '  status    Show installation status'
   Write-Host '  doctor    Run detailed diagnostics'
   Write-Host '  version   Show version and commit'

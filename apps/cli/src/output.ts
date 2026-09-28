@@ -29,10 +29,12 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
           '',
           'Project lifecycle: yes',
           'Run inspection: yes',
-          'Fake simulation: yes',
+          'Fake simulation: yes (development transport only)',
           'Real agent execution: yes (OpenCode, DeepSeek, GLM)',
-          'Retest execution: no',
-          'Run cancellation: no',
+          'Retest execution: yes',
+          'Run cancellation: yes',
+          'Run result export: yes (run result)',
+          'Async run start: yes (default; pass --wait to observe)',
         ].join('\n'),
       );
       return;
@@ -107,8 +109,22 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
           response.data.status,
       );
       return;
-    case 'run.start':
-      io.stdout('REAL QA RUN\nRun: ' + response.data.runId + '\nStatus: ' + response.data.status);
+    case 'run.start': {
+      const operation =
+        'operationId' in response.data && typeof response.data.operationId === 'string'
+          ? '\nOperation: ' + response.data.operationId
+          : '';
+      io.stdout(
+        'REAL QA RUN\nRun: ' +
+          response.data.runId +
+          '\nStatus: ' +
+          response.data.status +
+          operation,
+      );
+      return;
+    }
+    case 'run.result':
+      io.stdout(JSON.stringify((response.data as { result?: unknown }).result ?? null, null, 2));
       return;
     case 'run.list':
       io.stdout(
@@ -174,6 +190,10 @@ export function successExitCode(response: CliSuccessEnvelope): number {
   if (response.data.status === 'cancelled') return CLI_EXIT.cancelled;
   if (response.data.status === 'failed') return CLI_EXIT.executionFailed;
   if (response.data.status === 'partial') return CLI_EXIT.partial;
-  if (response.data.findings.total > 0) return CLI_EXIT.findings;
+  const total =
+    'findings' in response.data && response.data.findings !== undefined
+      ? (response.data.findings.total ?? 0)
+      : 0;
+  if (total > 0) return CLI_EXIT.findings;
   return CLI_EXIT.success;
 }

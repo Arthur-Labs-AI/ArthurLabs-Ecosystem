@@ -645,6 +645,12 @@ export class SentryRuntimeHost {
     return this.projects.updateProjectCopy(id as never, translated, includeAll);
   }
 
+  async deleteProject(projectId: string): Promise<unknown> {
+    const id = ProjectIdInput.parse(projectId);
+    await this.projects.deleteProject(id as never);
+    return { projectId: id, deleted: true };
+  }
+
   async projectDoctor(projectId: string): Promise<unknown> {
     const id = ProjectIdInput.parse(projectId);
     const record = this.projects.getProject(id as never);
@@ -724,6 +730,10 @@ export class SentryRuntimeHost {
     } catch {
       revision = undefined;
     }
+    // exports + counts ride along so canonical run inspection (Desktop
+    // and the external CLI run.show) shares one shape with the local
+    // RunCoordinator.getRunSummary contract.
+    const exports = this.repository.listExports(id as never);
     return {
       run: details.run,
       ...(project === undefined ? {} : { project }),
@@ -731,6 +741,15 @@ export class SentryRuntimeHost {
       agentRuns: details.agentRuns,
       findings: details.findings,
       evidence: details.evidence,
+      exports,
+      counts: {
+        agentRuns: details.agentRuns.length,
+        findings: details.findings.length,
+        evidence: details.evidence.length,
+        activities: details.activities.length,
+        events: details.events.length,
+        exports: exports.length,
+      },
       activities: details.activities,
       events: details.events.map((e) => e.event),
       mergeResults,
@@ -1394,6 +1413,8 @@ export class SentryRuntimeHost {
           requireString(params, 'projectId'),
           optionalString(params, 'sourcePath'),
         );
+      case 'projects.delete':
+        return this.deleteProject(requireString(params, 'projectId'));
       case 'projects.doctor':
         return this.projectDoctor(requireString(params, 'projectId'));
       case 'projects.suggestTargets':

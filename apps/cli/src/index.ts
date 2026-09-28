@@ -8,6 +8,7 @@ import { SentryDatabase, resolveSentryDataRoot } from '@qa/persistence';
 import { AgentStackDefinitionSchema, HarnessEventSchema, ProjectSchema } from '@qa/schemas';
 import { commandHint, parseCommand } from './arguments.js';
 import { executeCommand } from './application.js';
+import { executeFrontendCommand, frontendErrorEnvelope } from './frontend-application.js';
 import { errorEnvelope, errorExitCode } from './errors.js';
 import {
   consoleIo,
@@ -100,8 +101,8 @@ function helpText(): string {
     '  qa project delete <project-id> --yes [--json]',
     '  qa project revisions <project-id> [--json]',
     '  qa run simulate <project-id> [--scenario success|partial|all-fail|transport-loss|timeout|protocol-error] [--json]',
-    '  qa run start <project-id> --mode full --agents opencode,deepseek,glm --wait [--instructions <text>] [--timeout-ms <ms>] [--json]',
-    '  qa run start <project-id> --mode targeted --paths src/auth,src/middleware --wait [--instructions <text>] [--json]',
+    '  qa run start <project-id> --mode full --agents opencode,deepseek,glm [--wait] [--instructions <text>] [--timeout-ms <ms>] [--json]',
+    '  qa run start <project-id> --mode targeted --paths src/auth,src/middleware [--wait] [--instructions <text>] [--json]',
     '  qa run list <project-id> [--json]',
     '  qa run show <run-id> [--json]',
     '  qa run status <run-id> [--json]',
@@ -116,11 +117,14 @@ function helpText(): string {
     '  qa retest start <issue-id> [--revision <revision-id>] [--agents opencode,deepseek,glm] --wait [--json]',
     '  qa retest show <retest-run-id> [--json]',
     '  qa retest cancel <retest-run-id> [--json]',
-    '  qa run export <run-id> --format log|json [--json]',
+    '  qa run result <run-id> [--json]',
+    '  qa run export <run-id> --format log|json [--out <path>] [--json]',
     '  qa verify show <verification-run-id> [--json]',
     '  qa verify doctor [--json]',
     '',
     'run simulate is FAKE / DEVELOPMENT ONLY. run start executes the selected real agent stacks.',
+    'Production commands run against the Desktop broker (sentry open must be running).',
+    'Set SENTRY_CLI_TRANSPORT=direct for development-only direct execution.',
   ].join('\n');
 }
 
@@ -152,14 +156,23 @@ export function runCli(argv: readonly string[], io: CliIo = consoleIo): number |
     return errorExitCode(response.error);
   }
 
-  return executeCommand(parsed, { onDiagnostic: io.stderr })
+  // Production path: the CLI is a frontend of the running Desktop broker.
+  // SENTRY_CLI_TRANSPORT=direct keeps the historical direct execution for
+  // deterministic development/test use only; it is never the production path.
+  const direct = (process.env['SENTRY_CLI_TRANSPORT'] ?? '').toLowerCase() === 'direct';
+  const pending = direct
+    ? executeCommand(parsed, { onDiagnostic: io.stderr })
+    : executeFrontendCommand(parsed, { onDiagnostic: io.stderr });
+  return pending
     .then((response) => {
       if (machine) emitMachine(response, io);
       else emitHumanSuccess(response, io);
       return successExitCode(response);
     })
     .catch((cause: unknown) => {
-      const response = errorEnvelope(parsed.command, cause);
+      const response = direct
+        ? errorEnvelope(parsed.command, cause)
+        : frontendErrorEnvelope(parsed.command, cause);
       if (machine) emitMachine(response, io);
       else emitHumanError(response, io);
       return errorExitCode(response.error);

@@ -43,7 +43,7 @@ export type ParsedCliCommand =
       readonly projectId: string;
       readonly mode: 'full' | 'targeted';
       readonly agents: readonly AgentName[];
-      readonly wait: true;
+      readonly wait: boolean;
       readonly instructions?: string;
       readonly runTimeoutMs?: number;
       readonly paths?: string;
@@ -51,7 +51,12 @@ export type ParsedCliCommand =
   | (BaseCommand<'run.list'> & { readonly projectId: string })
   | (BaseCommand<'run.show'> & { readonly runId: string })
   | (BaseCommand<'run.status'> & { readonly runId: string })
-  | (BaseCommand<'run.export'> & { readonly runId: string; readonly format: 'log' | 'json' })
+  | (BaseCommand<'run.export'> & {
+      readonly runId: string;
+      readonly format: 'log' | 'json';
+      readonly out?: string;
+    })
+  | (BaseCommand<'run.result'> & { readonly runId: string })
   | (BaseCommand<'run.merge'> & { readonly runId: string })
   | (BaseCommand<'run.cancel'> & { readonly runId: string })
   | (BaseCommand<'project.revisions'> & { readonly projectId: string })
@@ -134,6 +139,7 @@ export function commandHint(args: readonly string[]): CliCommand | 'unknown' {
     'run.list',
     'run.show',
     'run.status',
+    'run.result',
     'run.export',
     'run.merge',
     'run.cancel',
@@ -239,6 +245,7 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
       '--mode',
       '--agents',
       '--wait',
+      '--no-wait',
       '--instructions',
       '--timeout-ms',
       '--paths',
@@ -267,7 +274,11 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     }
     if (new Set(agents).size !== agents.length)
       fail('--agents lists a duplicate agent', '--agents');
-    if (!tail.includes('--wait')) fail('Real runs require --wait', '--wait');
+    // Async start is the default machine flow: the runtime owns the run and
+    // the CLI exits. --wait observes the canonical run until it terminalizes.
+    if (tail.includes('--wait') && tail.includes('--no-wait'))
+      fail('--wait and --no-wait are mutually exclusive', '--wait');
+    const wait = tail.includes('--wait');
     const instructions = option(tail, '--instructions');
     const timeoutText = option(tail, '--timeout-ms');
     const runTimeoutMs = timeoutText === undefined ? undefined : Number(timeoutText);
@@ -289,7 +300,7 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
       projectId,
       mode: mode as 'full' | 'targeted',
       agents,
-      wait: true,
+      wait,
       ...(instructions === undefined ? {} : { instructions }),
       ...(runTimeoutMs === undefined ? {} : { runTimeoutMs }),
       ...(paths === undefined ? {} : { paths }),
@@ -379,14 +390,20 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     };
   }
   if (area === 'run' && action === 'export') {
-    assertFlags(tail, ['--format']);
+    assertFlags(tail, ['--format', '--out']);
     const [runId] = positional(tail);
     if (runId === undefined || positional(tail).length !== 1) {
-      fail('Usage: qa run export <run-id> --format log|json');
+      fail('Usage: qa run export <run-id> --format log|json [--out <path>]');
     }
     const format = option(tail, '--format');
     if (format !== 'log' && format !== 'json') fail('--format must be log or json', '--format');
-    return { command: 'run.export', runId, format };
+    const out = option(tail, '--out');
+    return { command: 'run.export', runId, format, ...(out === undefined ? {} : { out }) };
+  }
+  if (area === 'run' && action === 'result') {
+    assertFlags(tail, []);
+    const [runId] = assertPositionals(tail, 1, 'qa run result <run-id>');
+    return { command: 'run.result', runId: runId as string };
   }
   if (area === 'verify' && action === 'start') {
     assertFlags(tail, ['--clusters', '--wait', '--json']);

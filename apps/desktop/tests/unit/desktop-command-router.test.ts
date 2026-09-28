@@ -144,6 +144,7 @@ describe('shared desktop command router', () => {
   });
 
   it('exposes cli:status to external clients but keeps provider writes out of the allowlist', () => {
+    expect(isCliAllowed('projects:delete')).toBe(true);
     expect(isCliAllowed('cli:status')).toBe(true);
     expect(isCliAllowed('providers:save')).toBe(false);
     expect(CLI_ALLOWED_CHANNELS.has('runs:export-content')).toBe(true);
