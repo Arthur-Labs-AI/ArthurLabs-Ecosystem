@@ -201,27 +201,26 @@ nameless handshakes are rejected. Never put secrets in client metadata.
 
 ## Named-pipe security model
 
-- Transport is a local named pipe only (`\\.\pipe\sentry-cli-v1-<scope>`);
-  the implementation creates no TCP listener. (No network transport exists
-  to expose; that is a property of the implementation, not of the pipe
-  name.)
-- Node creates the pipe with default Windows security: no custom DACL API
-  is available without native dependencies, so no explicit per-user ACL is
-  established by the app. The default descriptor grants access to the
-  creating user, SYSTEM, and administrators; treat broader isolation (other
-  users, remote access) as NOT guaranteed by the app. Low-integrity
-  processes are additionally constrained by mandatory integrity control.
-  See [Named Pipe Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights).
-- The hashed `<scope>` is NOT an authorization boundary (any local process
-  can recompute it); it only scopes the pipe per user/install. Client
-  names are informational identity, never authentication. The enforced
-  controls are the explicit command allowlist, strict payload validation,
-  no provider-secret methods or credentials on the pipe, and secret-free
-  broker logs.
-- Same-user local processes are within the current Beta trust boundary
-  (Nexus runs as the user). A same-user-readable handshake secret would
-  not meaningfully raise the bar, so none is added; revisit if the product
-  ever needs cross-user local access or a stricter boundary.
+Sentry itself creates no TCP listener. The CLI broker uses a Windows
+named pipe. Windows may provide remote named-pipe semantics depending
+on system services and ACL configuration; this Beta does not install a
+custom DACL that explicitly denies remote identities.
+
+The current Beta trust boundary assumes Nexus and Sentry run under the
+same Windows user. Security additionally relies on the explicit command
+allowlist, strict payload validation, absence of credential-management
+commands from the external surface, and the fact that provider secrets
+are never transmitted through the CLI protocol.
+
+Preserved facts: client names are informational identity, never
+authentication; the pipe scope hash is not authentication; same-user
+processes are inside the Beta trust boundary. No current-user-only ACL,
+session-only access, LAN-impossible, or remote-impossible behavior is
+claimed, because the implementation does not explicitly enforce it. No
+handshake secret is added: a same-user-readable secret would not
+meaningfully improve this threat model, and no native ACL dependency is
+introduced for this cleanup.
+See [Named Pipe Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights).
 
 ## Size limits
 
