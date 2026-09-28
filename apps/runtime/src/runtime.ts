@@ -101,6 +101,26 @@ function toError(error: unknown): { code: string; message: string } {
   };
 }
 
+function sanitizeBranch(value: unknown): unknown {
+  // Under a secret-shaped key only actual secret strings are redacted:
+  // usage counters and other non-string leaves (notably the run-status
+  // `tokens` object) pass through, so strict consumers keep validating.
+  if (typeof value === 'string') return '[REDACTED]';
+  if (Array.isArray(value)) return value.map((entry) => sanitizeBranch(entry));
+  if (typeof value === 'object' && value !== null) {
+    const out: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+      out[key] = sanitizeBranch(entry);
+    }
+    return out;
+  }
+  return value;
+}
+
+export function sanitizeRpcValue(value: unknown): unknown {
+  return sanitize(value);
+}
+
 function sanitize(value: unknown): unknown {
   // Defense in depth: never let KEY/TOKEN/SECRET-looking values reach stdout.
   if (typeof value === 'string') {
@@ -116,7 +136,7 @@ function sanitize(value: unknown): unknown {
     const out: Record<string, unknown> = {};
     for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
       if (/KEY|TOKEN|SECRET|PASSWORD|apiKey|authToken/i.test(key)) {
-        out[key] = '[REDACTED]';
+        out[key] = sanitizeBranch(entry);
       } else {
         out[key] = sanitize(entry);
       }
