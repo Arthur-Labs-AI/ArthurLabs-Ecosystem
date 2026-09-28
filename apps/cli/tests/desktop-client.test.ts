@@ -20,7 +20,7 @@ function brokerPipe(): string {
 }
 
 async function startRawBroker(
-  onLine: (line: string, send: (frame: unknown) => void) => void,
+  onLine: (line: string, send: (frame: unknown) => void, sendRaw: (bytes: Buffer) => void) => void,
 ): Promise<{ pipePath: string; seenNames: string[] }> {
   const dir = await mkdtemp(join(tmpdir(), 'sentry-raw-broker-'));
   const pipePath = process.platform === 'win32' ? brokerPipe() : join(dir, 'broker.sock');
@@ -38,7 +38,11 @@ async function startRawBroker(
         if (line.trim().length > 0) {
           const frame = JSON.parse(line) as { client?: { name?: string } };
           if (typeof frame.client?.name === 'string') seenNames.push(frame.client.name);
-          onLine(line, (response: unknown) => socket.write(JSON.stringify(response) + '\n'));
+          onLine(
+            line,
+            (response: unknown) => socket.write(JSON.stringify(response) + '\n'),
+            (bytes: Buffer) => socket.write(bytes),
+          );
         }
         index = buffer.indexOf('\n');
       }
@@ -102,19 +106,44 @@ describe('sentry desktop client', () => {
         send({ type: 'welcome', protocolVersion: 1 });
         return;
       }
-      // 20 emoji = 20 chars but 80 UTF-8 bytes: over a 64-byte bound while
-      // a .length comparison would still admit it.
+      // 20 emoji add 20 chars but 80 UTF-8 bytes: the complete line is
+      // ~80 chars (under a 128-char comparison) but ~140 bytes (over the
+      // 128-byte bound), proving byte enforcement.
       send({ type: 'response', id: frame.id, ok: true, result: { note: '😀'.repeat(20) } });
     });
     const client = new SentryDesktopClient({
       pipePath,
       timeoutMs: 5000,
-      limits: { maxLineBytes: 32, maxResponseBytes: 32 },
+      limits: { maxLineBytes: 32, maxResponseBytes: 128 },
     });
     await client.connect();
     await expect(client.request('runs:status', { runId: 'run_x' })).rejects.toMatchObject({
       code: 'MESSAGE_TOO_LARGE',
     });
+    await client.close();
+  });
+
+  it('reassembles a broker response split mid-Cyrillic across writes', async () => {
+    const { pipePath } = await startRawBroker((line, _send, sendRaw) => {
+      const frame = JSON.parse(line) as { type?: string; id?: string };
+      if (frame.type === 'hello') {
+        sendRaw(
+          Buffer.from(JSON.stringify({ type: 'welcome', protocolVersion: 1 }) + '\n', 'utf8'),
+        );
+        return;
+      }
+      const response = Buffer.from(
+        JSON.stringify({ type: 'response', id: frame.id, ok: true, result: { note: 'Проверка' } }) +
+          '\n',
+        'utf8',
+      );
+      const cut = response.indexOf(Buffer.from([0xd0]));
+      sendRaw(response.subarray(0, cut + 1));
+      setTimeout(() => sendRaw(response.subarray(cut + 1)), 20);
+    });
+    const client = new SentryDesktopClient({ pipePath, timeoutMs: 5000 });
+    await client.connect();
+    await expect(client.request('runs:status', {})).resolves.toEqual({ note: 'Проверка' });
     await client.close();
   });
 

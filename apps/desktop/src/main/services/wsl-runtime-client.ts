@@ -125,7 +125,7 @@ export class WslRuntimeClient {
           ];
     const child = spawn('wsl.exe', args, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     this.child = child;
-    child.stdout?.on('data', (chunk: Buffer) => this.onStdout(chunk.toString('utf8')));
+    child.stdout?.on('data', (chunk: Buffer) => this.onStdout(chunk));
     child.stderr?.on('data', (chunk: Buffer) => {
       const text = chunk.toString('utf8');
       for (const line of text.split('\n')) {
@@ -253,12 +253,29 @@ export class WslRuntimeClient {
     });
   }
 
-  private onStdout(text: string): void {
+  private onStdout(chunk: Buffer | string): void {
     let messages: ReturnType<RpcLineBuffer['push']>;
     try {
-      messages = this.buffer.push(text);
+      messages = this.buffer.push(chunk);
     } catch {
       return;
+    }
+    // An oversize response frame must fail its request deterministically
+    // instead of hanging until RUNTIME_TIMEOUT: the id is recovered from
+    // the dropped line so exactly the affected request fails.
+    for (const id of this.buffer.drainOversizeIds()) {
+      const entry = this.pending.get(id);
+      if (entry === undefined) continue;
+      this.pending.delete(id);
+      clearTimeout(entry.timer);
+      entry.reject(
+        Object.assign(
+          new Error(
+            'Runtime response exceeded the bounded transport size; refine the request (large run exports are capped)',
+          ),
+          { code: 'RUNTIME_MESSAGE_TOO_LARGE' },
+        ),
+      );
     }
     for (const message of messages) {
       if (message.type === 'response') {

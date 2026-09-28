@@ -14,6 +14,7 @@ import {
   parseHelloMessage,
   parseRequestMessage,
   sanitizeBrokerField,
+  Utf8LineBuffer,
   utf8ByteLength,
   type CliClientIdentity,
   type CliIpcLimits,
@@ -152,7 +153,7 @@ export class SentryCliServer {
 
   private handleConnection(socket: Socket): void {
     const id = 'cli_' + randomUUID().slice(0, 8);
-    let buffer = '';
+    const lines = new Utf8LineBuffer();
     let identity: CliClientIdentity | undefined;
     let closed = false;
     const send = (frame: unknown): boolean => {
@@ -175,16 +176,13 @@ export class SentryCliServer {
       }
     };
     socket.on('data', (chunk: Buffer) => {
-      buffer += chunk.toString('utf8');
-      if (utf8ByteLength(buffer) > this.limits.maxLineBytes + this.limits.maxRequestBytes) {
+      const framed = lines.push(chunk);
+      if (lines.pendingByteLength > this.limits.maxLineBytes + this.limits.maxRequestBytes) {
         this.log('[sentry-cli] oversized frame from ' + sanitizeBrokerField(identity?.name ?? id));
         fail('MESSAGE_TOO_LARGE', 'CLI message exceeds the bounded frame size');
         return;
       }
-      let index = buffer.indexOf('\n');
-      while (index >= 0) {
-        const line = buffer.slice(0, index);
-        buffer = buffer.slice(index + 1);
+      for (const line of framed) {
         this.handleLine({
           line,
           send,
@@ -203,7 +201,6 @@ export class SentryCliServer {
           },
         });
         if (closed) return;
-        index = buffer.indexOf('\n');
       }
     });
     const forget = (): void => {

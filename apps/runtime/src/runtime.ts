@@ -18,6 +18,7 @@ import {
   SentryDatabase,
   SentryRepository,
   RuntimeInstanceLease,
+  resolveInside,
   resolveSentryDataRoot,
 } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
@@ -66,11 +67,13 @@ import {
   createRetestRunId,
 } from '@qa/shared';
 import {
+  RUNTIME_EXPORT_MAX_RAW_BYTES,
   RUNTIME_PROTOCOL_VERSION,
   RpcLineBuffer,
   RuntimeConfigureParamsSchema,
   RuntimeHelloResultSchema,
   encodeRpcLine,
+  exportSizeAllowed,
   type RpcNotification,
   type RpcRequest,
   type RpcResponse,
@@ -119,6 +122,26 @@ function sanitizeBranch(value: unknown): unknown {
 
 export function sanitizeRpcValue(value: unknown): unknown {
   return sanitize(value);
+}
+
+/**
+ * Enforce the single-response export ceiling before bytes are materialized
+ * or emitted. Oversized canonical exports fail here with EXPORT_TOO_LARGE
+ * instead of being silently dropped by line framing downstream (which
+ * would surface as an ambiguous RUNTIME_TIMEOUT).
+ */
+export function assertExportTransportSize(sizeBytes: number, runId: string): void {
+  if (exportSizeAllowed(sizeBytes)) return;
+  throw rpcError(
+    'EXPORT_TOO_LARGE',
+    'Canonical export for ' +
+      runId +
+      ' is ' +
+      sizeBytes +
+      ' bytes, above the ' +
+      RUNTIME_EXPORT_MAX_RAW_BYTES +
+      '-byte runtime transport bound for single-response export. Inspect large runs in the Desktop run workspace.',
+  );
 }
 
 function sanitize(value: unknown): unknown {
@@ -908,10 +931,27 @@ export class SentryRuntimeHost {
 
   /** Narrow Save As source: validated runId + format only. No caller-
    *  supplied paths ever reach the filesystem; bytes always come from the
-   *  canonical RunExporter artifact for this run + format. */
-  exportContent(runId: string, format: string): Promise<unknown> {
+   *  canonical RunExporter artifact for this run + format. The artifact
+   *  size is gated BEFORE materializing bytes: the NDJSON runtime
+   *  transport caps response lines, so an oversized export fails here with
+   *  EXPORT_TOO_LARGE instead of being silently dropped downstream (which
+   *  would surface as an ambiguous RUNTIME_TIMEOUT). */
+  async exportContent(runId: string, format: string): Promise<unknown> {
     const id = RunIdInput.parse(runId);
     const parsed = z.enum(['log', 'json']).parse(format);
+    const manifest = (await this.coordinator.exportRun(id as never, parsed)) as {
+      artifactId: string;
+    };
+    const artifact = this.repository.getArtifact(manifest.artifactId as never);
+    if (artifact !== undefined) {
+      let sizeBytes = -1;
+      try {
+        sizeBytes = statSync(resolveInside(this.dataRoot, artifact.relativeStoragePath)).size;
+      } catch {
+        sizeBytes = -1;
+      }
+      if (sizeBytes >= 0) assertExportTransportSize(sizeBytes, id);
+    }
     return this.coordinator.exportContent(id as never, parsed);
   }
 
@@ -1663,7 +1703,7 @@ export async function serveStdio(options: RuntimeHostOptions = {}): Promise<void
   const onData = (chunk: Buffer | string): void => {
     let messages: ReturnType<RpcLineBuffer['push']>;
     try {
-      messages = buffer.push(typeof chunk === 'string' ? chunk : chunk.toString('utf8'));
+      messages = buffer.push(chunk);
     } catch (error) {
       log(
         'rpc framing dropped input: ' +

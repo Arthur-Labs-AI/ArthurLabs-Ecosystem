@@ -19,6 +19,7 @@ interface TestClient {
   nextLine(timeoutMs?: number): Promise<string>;
   send(frame: unknown): void;
   sendRaw(text: string): void;
+  sendBytes(bytes: Buffer): void;
   close(): void;
 }
 
@@ -67,6 +68,9 @@ async function connect(pipe: string): Promise<TestClient> {
     },
     sendRaw: (text: string) => {
       socket.write(text);
+    },
+    sendBytes: (bytes: Buffer) => {
+      socket.write(bytes);
     },
     close: () => {
       socket.destroy();
@@ -252,6 +256,28 @@ describe('sentry CLI broker', () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(settled).toBe(true);
     expect(server.status.started).toBe(true);
+  });
+
+  it('reassembles a handshake split mid-emoji across TCP chunks', async () => {
+    const server = await startServer('split');
+    const client = await connect(server.status.pipePath);
+    try {
+      const frame = JSON.stringify({
+        type: 'hello',
+        protocolVersion: 1,
+        client: { type: 'cli', name: 'Nexus 😀' },
+      });
+      const bytes = Buffer.from(frame + '\n', 'utf8');
+      const emojiAt = bytes.indexOf(Buffer.from([0xf0]));
+      client.sendBytes(bytes.subarray(0, emojiAt + 2));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      client.sendBytes(bytes.subarray(emojiAt + 2));
+      const welcome = JSON.parse(await client.nextLine()) as { type?: string };
+      expect(welcome.type).toBe('welcome');
+      expect(server.status.connectedClients.map((c) => c.name)).toEqual(['Nexus 😀']);
+    } finally {
+      client.close();
+    }
   });
 
   it('fails safely when no Desktop owns the pipe', async () => {

@@ -6,6 +6,7 @@ import { createConnection, type Socket } from 'node:net';
 import {
   CLI_IPC_LIMITS,
   CLI_IPC_PROTOCOL_VERSION,
+  Utf8LineBuffer,
   cliPipePath,
   utf8ByteLength,
   type CliIpcLimits,
@@ -40,7 +41,6 @@ const DEFAULT_TIMEOUT_MS = 600_000;
 let requestCounter = 0;
 export class SentryDesktopClient {
   private socket: Socket | undefined;
-  private buffer = '';
   private readonly pending = new Map<
     string,
     { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }
@@ -81,7 +81,7 @@ export class SentryDesktopClient {
     if (this.socket !== undefined) return;
     const socket = createConnection(this.pipePath);
     this.socket = socket;
-    socket.on('data', (chunk: Buffer) => this.onData(chunk.toString('utf8')));
+    socket.on('data', (chunk: Buffer) => this.onData(chunk));
     socket.on('error', () => {
       /* connect failure surfaces via once-error below; mid-session errors fail pending */
     });
@@ -184,28 +184,36 @@ export class SentryDesktopClient {
   private readonly lineQueue: string[] = [];
   private readonly lineWaiters: Array<(line: string) => void> = [];
 
-  private onData(text: string): void {
-    this.buffer += text;
-    // Defensive bound against a runaway broker: the Desktop is trusted local
-    // software, but the CLI must never grow memory without bound.
-    if (utf8ByteLength(this.buffer) > this.limits.maxLineBytes + this.limits.maxResponseBytes) {
-      this.fatal = new DesktopProtocolError(
-        'MESSAGE_TOO_LARGE',
-        'Sentry Desktop sent a message exceeding the bounded frame size',
-      );
-      try {
-        this.socket?.destroy();
-      } catch {
-        /* closing */
-      }
-      return;
+  private readonly lines = new Utf8LineBuffer();
+
+  private killOversize(): void {
+    this.fatal = new DesktopProtocolError(
+      'MESSAGE_TOO_LARGE',
+      'Sentry Desktop sent a message exceeding the bounded frame size',
+    );
+    try {
+      this.socket?.destroy();
+    } catch {
+      /* closing */
     }
-    let index = this.buffer.indexOf('\n');
-    while (index >= 0) {
-      const line = this.buffer.slice(0, index);
-      this.buffer = this.buffer.slice(index + 1);
+  }
+
+  private onData(chunk: Buffer): void {
+    const framed = this.lines.push(chunk);
+    // Defensive bounds against a runaway broker: the Desktop is trusted
+    // local software, but the CLI must never grow memory without bound.
+    // Complete lines are capped at the response bound; newline-less
+    // accumulation is capped separately so a missing newline cannot hide
+    // unbounded growth.
+    for (const line of framed) {
+      if (utf8ByteLength(line) > this.limits.maxResponseBytes) {
+        this.killOversize();
+        return;
+      }
       if (line.trim().length > 0) this.routeLine(line);
-      index = this.buffer.indexOf('\n');
+    }
+    if (this.lines.pendingByteLength > this.limits.maxLineBytes + this.limits.maxResponseBytes) {
+      this.killOversize();
     }
   }
 

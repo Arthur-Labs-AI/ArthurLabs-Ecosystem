@@ -153,6 +153,8 @@ export const CLI_ERROR_CODES = [
   'CLI_COMMAND_FORBIDDEN',
   'RESPONSE_TOO_LARGE',
   'PROTOCOL_VERSION_MISMATCH',
+  'EXPORT_TOO_LARGE',
+  'RUNTIME_MESSAGE_TOO_LARGE',
 ] as const;
 export const CliErrorCodeSchema = z.enum(CLI_ERROR_CODES);
 export type CliErrorCode = z.infer<typeof CliErrorCodeSchema>;
