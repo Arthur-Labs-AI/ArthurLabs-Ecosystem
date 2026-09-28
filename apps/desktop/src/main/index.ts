@@ -123,10 +123,11 @@ async function boot(): Promise<void> {
   bootstrapped.runtime.onExit(() => {
     liveUpdates?.stop();
   });
+  const desktopService = bootstrapped.service;
   cliServer = new SentryCliServer({
     dispatch: (command, payload) =>
       dispatchDesktopCommand(
-        bootstrapped?.service as never,
+        desktopService,
         command,
         payload,
         {

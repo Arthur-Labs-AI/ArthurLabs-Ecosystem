@@ -89,7 +89,7 @@ function Get-SentryTail {
 }
 
 function Invoke-SentryNative {
-  param([string]$FilePath, [string[]]$Arguments = @(), [string]$Workdir = '', [int]$TimeoutSec = 0, [bool]$NoRedirect = $false)
+  param([string]$FilePath, [string[]]$Arguments = @(), [string]$Workdir = '', [int]$TimeoutSec = 0, [bool]$NoRedirect = $false, [bool]$NoTruncate = $false)
   $resolved = $FilePath
   if ($FilePath -notmatch '[\\/:]') { $resolved = Resolve-SentryExecutable $FilePath }
   $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -142,8 +142,12 @@ function Invoke-SentryNative {
     if ($stderrTask.IsCompleted) {
       try { $stderr = [string]$stderrTask.GetAwaiter().GetResult() } catch { $stderr = '' }
     }
-    $stdout = Get-SentryTail $stdout
-    $stderr = Get-SentryTail $stderr
+    # NoTruncate: machine-output passthrough (sentry cli --json) must forward
+    # every byte; the tail cap would corrupt JSON documents.
+    if (-not $NoTruncate) {
+      $stdout = Get-SentryTail $stdout
+      $stderr = Get-SentryTail $stderr
+    }
   }
   if ($timedOut) {
     $note = "`n[sentry] process timed out after " + $TimeoutSec + 's (output above is what was captured before termination)'

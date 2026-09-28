@@ -320,8 +320,14 @@ function Invoke-SentryCli {
     Write-Host 'Sentry CLI is not built. Run: sentry setup' -ForegroundColor Red
     return 1
   }
+  # Capture-and-forward (never inherit): under programmatic capture (Nexus
+  # process execution, CI, this harness) an inheriting grandchild's stdout can
+  # be lost entirely, and Nexus must always receive exactly one JSON document
+  # on stdout for --json. NoTruncate keeps large canonical results intact.
   $nodeArgs = @($entry) + $CliArgs
-  $r = Invoke-SentryNative -FilePath 'node' -Arguments $nodeArgs -NoRedirect $true
+  $r = Invoke-SentryNative -FilePath 'node' -Arguments $nodeArgs -NoTruncate $true
+  if ($r.Stdout -ne '') { [Console]::Out.Write($r.Stdout) }
+  if ($r.Stderr -ne '') { [Console]::Error.Write($r.Stderr) }
   return $r.ExitCode
 }
 

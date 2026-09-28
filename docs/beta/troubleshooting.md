@@ -10,6 +10,13 @@ sentry status -Json   # attach this (with FAIL/WARN lines) to bug reports
 
 Never paste API keys, provider tokens, or credential files into bug reports.
 
+## `sentry cli` says Desktop is not running
+
+`sentry cli` is a frontend: it needs the broker inside the running Desktop.
+Start it first with `sentry open`, then retry. The Environment page shows
+`CLI started` when the broker is listening. Automation should match on the
+`SENTRY_DESKTOP_NOT_RUNNING` error code, not on message text.
+
 ## `sentry` command not found
 
 The shim lives at `%LOCALAPPDATA%\Sentry\bin\sentry.cmd` with that

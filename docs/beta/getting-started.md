@@ -63,7 +63,7 @@ For a narrower question, use **Targeted QA** with specific paths.
 
 ## Next steps
 
-- `sentry status` — fast installation overview (`-Json` for bug reports).
+- `sentry cli` — drive the same running instance from a terminal or automation ([CLI guide](cli.md)).
 - `sentry update` — pull the latest Beta commits (see updating.md).
 - `sentry stop` — gracefully stop Sentry when you are done.
 - [troubleshooting.md](troubleshooting.md) — when something fails, run

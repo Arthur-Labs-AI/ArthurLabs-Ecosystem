@@ -240,7 +240,7 @@ describe('qa cli', () => {
             ...process.env,
             SENTRY_DATA_ROOT: f.dataRoot,
             [binaryVariable]: join(f.root, 'missing-' + agent),
-          SENTRY_CLI_TRANSPORT: 'direct',
+            SENTRY_CLI_TRANSPORT: 'direct',
           },
         },
       );

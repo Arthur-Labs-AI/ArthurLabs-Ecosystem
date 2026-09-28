@@ -1,3 +1,7 @@
+// Development-only direct execution (SENTRY_CLI_TRANSPORT=direct). This module
+// opens the Windows database and constructs RunCoordinator/harness adapters
+// for deterministic local tests. It is NOT the production path: production
+// `sentry cli` always goes through the Desktop broker (frontend-application).
 import {
   SentryDatabase,
   SentryRepository,

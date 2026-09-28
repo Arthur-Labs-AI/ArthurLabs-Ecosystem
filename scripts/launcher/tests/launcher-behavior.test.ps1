@@ -23,7 +23,8 @@ function Assert-Equal { param($Name, $Actual, $Expected) if ([string]$Actual -ne
 function Assert-True { param($Name, $Actual) if (-not $Actual) { Write-Host ([string]("FAIL " + $Name + " expected true")); $script:failures++ } else { Write-Host ([string]("PASS " + $Name)) } }
 # ---- mocked process boundaries (production code calls THESE names) ----
 function Invoke-SentryNative {
-  param($FilePath, $Arguments, $Workdir, $TimeoutSec = 0, $NoRedirect = $false)
+  param($FilePath, $Arguments, $Workdir, $TimeoutSec = 0, $NoRedirect = $false, $NoTruncate = $false)
+  $script:LastNativeFlags = @{ NoRedirect = $NoRedirect; NoTruncate = $NoTruncate }
   $script:NativeCalls += @(($FilePath + ' ' + (($Arguments | ForEach-Object { [string]$_ }) -join ' ')))
   $key = $FilePath + ' ' + (($Arguments | ForEach-Object { [string]$_ }) -join ' ')
   foreach ($pat in $script:NativeStubs.Keys) { if ($key -like $pat) { return $script:NativeStubs[$pat] } }
@@ -295,6 +296,20 @@ $script:NativeCalls = @()
 [void](Invoke-SentryCli -RepoRoot $repoRoot -CliArgs @('run', 'start', 'proj_01K7777777777777777777A8W1', '--instructions', 'Check authentication and API validation', '--json'))
 $runCall = @($script:NativeCalls | Where-Object { $_ -like 'node *' })[0]
 Assert-True 'cli-keeps-instructions' ($runCall.Contains('Check authentication and API validation'))
+Assert-Equal 'cli-captures-output' $script:LastNativeFlags['NoRedirect'] $false
+Assert-Equal 'cli-no-truncate' $script:LastNativeFlags['NoTruncate'] $true
+$script:NativeStubs = @{ 'node *' = @{ ExitCode = 3; Stdout = '{"ok":false}'; Stderr = 'diag' } }
+$swOut = New-Object System.IO.StringWriter
+$swErr = New-Object System.IO.StringWriter
+$oldOut = [Console]::Out
+$oldErr = [Console]::Error
+[Console]::SetOut($swOut)
+[Console]::SetError($swErr)
+try { $fwdCode = Invoke-SentryCli -RepoRoot $repoRoot -CliArgs @('run', 'status', 'run_x') }
+finally { [Console]::SetOut($oldOut); [Console]::SetError($oldErr) }
+Assert-Equal 'cli-forwards-exit' $fwdCode 3
+Assert-Equal 'cli-forwards-stdout' ($swOut.ToString()) '{"ok":false}'
+Assert-Equal 'cli-forwards-stderr' ($swErr.ToString()) 'diag'
 Assert-Equal 'cli-quoting-spaces' (Get-SentryQuotedArguments @('a b', 'e')) '"a b" e'
 Assert-Equal 'cli-quoting-passthrough' (Get-SentryQuotedArguments @('project', 'add', 'C:\P\Test App')) 'project add "C:\P\Test App"'
 if ($script:failures -gt 0) { Write-Host ([string]("BEHAVIOR-FAIL " + $script:failures)); exit 1 }
