@@ -261,8 +261,10 @@ export class WslRuntimeClient {
       return;
     }
     // An oversize response frame must fail its request deterministically
-    // instead of hanging until RUNTIME_TIMEOUT: the id is recovered from
-    // the dropped line so exactly the affected request fails.
+    // instead of hanging until RUNTIME_TIMEOUT: the id is recovered from a
+    // bounded prefix so exactly the affected request fails. An unroutable
+    // oversize frame fails the transport (all remaining pending requests)
+    // deterministically.
     for (const id of this.buffer.drainOversizeIds()) {
       const entry = this.pending.get(id);
       if (entry === undefined) continue;
@@ -274,6 +276,16 @@ export class WslRuntimeClient {
             'Runtime response exceeded the bounded transport size; refine the request (large run exports are capped)',
           ),
           { code: 'RUNTIME_MESSAGE_TOO_LARGE' },
+        ),
+      );
+    }
+    if (this.buffer.drainTransportOverflow()) {
+      this.failAllPending(
+        Object.assign(
+          new Error('Runtime transport overflow: oversized frame without recoverable id'),
+          {
+            code: 'RUNTIME_MESSAGE_TOO_LARGE',
+          },
         ),
       );
     }

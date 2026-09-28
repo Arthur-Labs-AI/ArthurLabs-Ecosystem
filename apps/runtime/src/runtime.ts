@@ -1704,6 +1704,13 @@ export async function serveStdio(options: RuntimeHostOptions = {}): Promise<void
     let messages: ReturnType<RpcLineBuffer['push']>;
     try {
       messages = buffer.push(chunk);
+      // Host tracks no pending requests: oversize ids and unroutable
+      // overflow are drained and counted here so the buffers stay bounded.
+      // Oversize notifications are advisory-only; desktop polling reconciles.
+      buffer.drainOversizeIds();
+      if (buffer.drainTransportOverflow()) {
+        log('rpc transport overflow: dropped unroutable oversize frame');
+      }
     } catch (error) {
       log(
         'rpc framing dropped input: ' +
