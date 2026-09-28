@@ -37,7 +37,7 @@ describe('IPC security contract', () => {
   });
 
   it('registers only known channels', () => {
-    const ipc = readFileSync(join(root, 'src', 'main', 'ipc.ts'), 'utf8');
+    const ipc = readFileSync(join(root, 'src', 'main', 'desktop-command-router.ts'), 'utf8');
     for (const channel of [
       'projects:list',
       'runs:start',
@@ -57,12 +57,14 @@ describe('IPC security contract', () => {
     ]) {
       expect(ipc).toContain(channel);
     }
-    // Show in folder uses shell.showItemInFolder only: revealing a
-    // dialog-issued path in the file manager. No execution primitives.
-    expect(ipc).toContain('showItemInFolder');
     expect(ipc).not.toContain('openExternal');
     expect(ipc).not.toContain('openPath');
     expect(ipc).not.toContain('execute(');
+    // Show in folder uses shell.showItemInFolder only: revealing a
+    // dialog-issued path in the file manager. No execution primitives.
+    const transport = readFileSync(join(root, 'src', 'main', 'ipc.ts'), 'utf8');
+    expect(transport).toContain('showItemInFolder');
+    expect(transport).toContain('dispatchDesktopCommand');
   });
 
   it('exposes exactly the expected preload API keys (§175)', () => {
@@ -76,6 +78,7 @@ describe('IPC security contract', () => {
       'production:',
       'runtime:',
       'system:',
+      'cli:',
       'subscribe:',
     ]) {
       expect(preload).toContain(key);
