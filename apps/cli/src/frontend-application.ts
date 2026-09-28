@@ -459,7 +459,7 @@ export async function executeFrontendCommand(
         ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
         agentStackIds: input.agents.map((name) => stackIdForAgent(name)),
         ...(input.runTimeoutMs === undefined ? {} : { runTimeoutMs: input.runTimeoutMs }),
-      })) as { operationId?: string; runId?: string } & Record<string, unknown>;
+      })) as { operationId?: string; runId?: string; status?: string } & Record<string, unknown>;
       if (typeof started.runId !== 'string') {
         throw new DesktopProtocolError(
           'DESKTOP_ERROR',
@@ -467,15 +467,22 @@ export async function executeFrontendCommand(
         );
       }
       if (input.wait !== true) {
-        const status = (await broker.request('runs:status', { runId: started.runId })) as {
-          status?: string;
-          findings?: { total?: number };
-        } & Record<string, unknown>;
+        // Nexus safety: the paid run may already be executing. Return the
+        // created runId immediately with the persisted initial status from
+        // the start response. No follow-up request is allowed to turn this
+        // success into a failure (pipe cut, restart, timeout would otherwise
+        // hide the run and invite a duplicate paid retry).
+        // Older runtimes omit status; the engine always persists the row as
+        // agents_running before the start response can return.
+        const initialStatus =
+          typeof started.status === 'string' && started.status.length > 0
+            ? started.status
+            : 'agents_running';
         return success(input.command, {
           simulated: false,
           runId: started.runId,
           projectId: input.projectId,
-          status: status.status,
+          status: initialStatus,
           ...(started.operationId === undefined ? {} : { operationId: started.operationId }),
         });
       }

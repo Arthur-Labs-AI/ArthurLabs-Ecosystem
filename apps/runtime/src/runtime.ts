@@ -793,7 +793,7 @@ export class SentryRuntimeHost {
   async startRun(
     projectId: string,
     params: unknown,
-  ): Promise<{ operationId: string; runId?: string }> {
+  ): Promise<{ operationId: string; runId?: string; status?: string }> {
     const id = ProjectIdInput.parse(projectId);
     const parsed = StartRunParamsSchema.parse(params ?? {});
     const operationId = 'dop_' + createQARunId().slice(4);
@@ -825,11 +825,26 @@ export class SentryRuntimeHost {
     const runId = await this.detectCreatedRun(id as never, settled);
     if (runId !== undefined) {
       this.notify('run.created', { runId, operationId });
-      return { operationId, runId };
+      return { operationId, runId, status: this.persistedRunStatus(runId) };
     }
     const details = await settled.then((value) => value as { run: { id: string } });
     this.notify('run.created', { runId: details.run.id, operationId });
-    return { operationId, runId: details.run.id };
+    return { operationId, runId: details.run.id, status: this.persistedRunStatus(details.run.id) };
+  }
+
+  /**
+   * Persisted initial status for an async start response. Callers (notably
+   * the CLI Nexus flow) must return the created runId without a follow-up
+   * request, so the status travels with the start response. A missing row
+   * means the start did not actually persist: report failure, never a
+   * runId without truth behind it.
+   */
+  private persistedRunStatus(runId: string): string {
+    const row = this.repository.getRun(runId as never);
+    if (row === undefined) {
+      throw rpcError('RUN_NOT_FOUND', 'Run row missing immediately after start: ' + runId);
+    }
+    return row.status;
   }
 
   /**

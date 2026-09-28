@@ -244,6 +244,29 @@ describe('cli frontend over the desktop broker', () => {
     }
   });
 
+  it('never loses a created runId to a later transport failure', async () => {
+    const broker = await startFakeBroker((command) => {
+      // Older runtimes omit the initial status; the failure below must still
+      // not touch the already-created run.
+      if (command === 'runs:start') return { operationId: 'dop_test', runId: RUN_ID };
+      throw Object.assign(new Error('pipe cut after start'), { code: 'DESKTOP_DISCONNECTED' });
+    });
+    try {
+      const started = await executeFrontendCommand(
+        parseCommand(['run', 'start', PROJECT_ID, '--mode', 'full']),
+        { createClient: () => clientFor(broker) },
+      );
+      expect(started).toMatchObject({
+        command: 'run.start',
+        ok: true,
+        data: { runId: RUN_ID, operationId: 'dop_test', status: 'agents_running' },
+      });
+      expect(broker.seen.map((call) => call.command)).toEqual(['runs:start']);
+    } finally {
+      await broker.close();
+    }
+  });
+
   it('starts async, survives CLI disconnect, and polls the same run later', async () => {
     let runs = 0;
     const broker = await startFakeBroker((command) => {

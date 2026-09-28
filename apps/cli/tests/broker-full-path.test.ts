@@ -73,7 +73,8 @@ async function harness(): Promise<FullPathHarness> {
     request: async (method: string, params: Record<string, unknown> = {}) => {
       seenRuntime.push({ method, params });
       if (method === 'production.preRunGate') return { ready: true, warnings: [], stacks: [] };
-      if (method === 'runs.start') return { operationId: 'dop_e2e', runId: RUN_ID };
+      if (method === 'runs.start')
+        return { operationId: 'dop_e2e', runId: RUN_ID, status: 'agents_running' };
       if (method === 'runs.status') {
         // Small delay keeps the client connection observable mid-flight for
         // the identity test; the lifecycle still completes in milliseconds.
@@ -209,7 +210,7 @@ describe('full production path: cli to canonical runtime', () => {
       expect(started).toMatchObject({
         command: 'run.start',
         ok: true,
-        data: { runId: RUN_ID, operationId: 'dop_e2e' },
+        data: { runId: RUN_ID, operationId: 'dop_e2e', status: 'agents_running' },
       });
       // The shared router fired run-created hooks, so Desktop live updates
       // track this CLI-started run exactly like a UI-started run.

@@ -52,6 +52,9 @@ export interface DesktopOperation {
   readonly operationId: string;
   readonly runId?: string | undefined;
   readonly retestRunId?: string | undefined;
+  // Persisted initial status for async starts (e.g. agents_running): lets
+  // CLI callers return the created runId without a follow-up status request.
+  readonly status?: string | undefined;
 }
 
 export interface DesktopRunSnapshot {
