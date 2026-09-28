@@ -94,6 +94,28 @@ describe('shared desktop command router', () => {
     expect(blocked.seen.some((c) => c.method === 'runs.start')).toBe(false);
   });
 
+  it('propagates a bounded run timeout and rejects out-of-range values', async () => {
+    const h = await harness(true);
+    await dispatchDesktopCommand(
+      h.service,
+      'runs:start',
+      { projectId: 'proj_01K7777777777777777777A8W1', mode: 'full', runTimeoutMs: 600000 },
+      {},
+      { external: true },
+    );
+    const start = h.seen.find((c) => c.method === 'runs.start');
+    expect(start?.params['runTimeoutMs']).toBe(600000);
+    await expect(
+      dispatchDesktopCommand(
+        h.service,
+        'runs:start',
+        { projectId: 'proj_01K7777777777777777777A8W1', mode: 'full', runTimeoutMs: 99999999999 },
+        {},
+        { external: true },
+      ),
+    ).rejects.toThrow();
+  });
+
   it('fires run-created hooks for CLI-started runs (Desktop live updates stay truthful)', async () => {
     const h = await harness(true);
     const onRunCreated = vi.fn();

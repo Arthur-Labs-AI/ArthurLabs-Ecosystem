@@ -8,6 +8,7 @@
  * live-update fan-out. Secrets stay in main; renderer receives statuses.
  */
 import { z } from 'zod';
+import { RUN_TIMEOUT_MS_MAX, RUN_TIMEOUT_MS_MIN } from '@qa/shared';
 import type { AgentStackDefinition } from '@qa/schemas';
 import type { DesktopOperation, RetestSnapshot, RunSnapshot } from '../../shared/ipc-contract.js';
 import type { ProviderCredentialService } from './provider-credentials.js';
@@ -34,6 +35,7 @@ const StartRunOptions = z
     includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
     instructions: z.string().min(1).max(5000).optional(),
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
+    runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
   })
   .strict();
 
@@ -163,6 +165,7 @@ export class DesktopApplicationService {
         ...(parsed.includePaths === undefined ? {} : { includePaths: [...parsed.includePaths] }),
         ...(parsed.instructions === undefined ? {} : { instructions: parsed.instructions }),
         ...(parsed.agentStackIds === undefined ? {} : { agentStackIds: [...parsed.agentStackIds] }),
+        ...(parsed.runTimeoutMs === undefined ? {} : { runTimeoutMs: parsed.runTimeoutMs }),
       })) as DesktopOperation;
     } catch (error) {
       // A client-side timeout does NOT mean the runtime didn't start the run:

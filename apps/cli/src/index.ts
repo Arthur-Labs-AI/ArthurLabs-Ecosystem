@@ -124,7 +124,10 @@ function helpText(): string {
     '',
     'run simulate is FAKE / DEVELOPMENT ONLY. run start executes the selected real agent stacks.',
     'Production commands run against the Desktop broker (sentry open must be running).',
-    'Set SENTRY_CLI_TRANSPORT=direct for development-only direct execution.',
+    '--timeout-ms (1000-43200000) overrides the engine run timeout; omitted keeps the 30-minute default.',
+    'Identify automation with SENTRY_CLI_CLIENT_NAME / SENTRY_CLI_CLIENT_VERSION (shown in Desktop, never a secret).',
+    'SENTRY_CLI_TRANSPORT=direct is development-only: it does not represent Desktop state, may use',
+    'Windows-local data, is not supported for Nexus, and must not be used as production automation.',
   ].join('\n');
 }
 

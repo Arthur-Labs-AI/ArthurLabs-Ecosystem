@@ -9,9 +9,67 @@ import { join } from 'node:path';
 
 export const CLI_IPC_PROTOCOL_VERSION = 1 as const;
 export const CLI_IPC_PIPE_TAG = 'sentry-cli-v1' as const;
+// Canonical external broker vocabulary: the exact Desktop IPC channel names
+// an external CLI client may invoke. Single source shared by the Electron
+// broker allowlist and the CLI frontend, so a rename on one side breaks a
+// static check on the other instead of failing at runtime through the pipe.
+// WSL runtime RPC names (dots, e.g. runs.exportContent) are a different
+// protocol boundary and must never appear here.
+export const CLI_BROKER_COMMANDS: readonly string[] = [
+  'projects:list',
+  'projects:add',
+  'projects:get',
+  'projects:revisions',
+  'projects:delete',
+  'projects:update',
+  'projects:doctor',
+  'projects:suggest-targets',
+  'runs:list',
+  'runs:get',
+  'runs:status',
+  'runs:start',
+  'runs:start-production',
+  'runs:cancel',
+  'runs:export',
+  'runs:export-content',
+  'issues:list',
+  'issues:get',
+  'issues:history',
+  'retests:list',
+  'retests:start',
+  'retests:get',
+  'retests:cancel',
+  'doctors:environment',
+  'providers:status',
+  'providers:detect-binaries',
+  'production:readiness',
+  'system:info',
+  'system:active-runs',
+  'runtime:status',
+  'runtime:distros',
+  'cli:status',
+];
 export const CLI_IPC_MAX_REQUEST_BYTES = 256 * 1024;
 export const CLI_IPC_MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 export const CLI_IPC_MAX_LINE_BYTES = 32 * 1024 * 1024;
+
+// Byte limits are UTF-8 bytes, not JS string length: measure with this
+// helper everywhere, so non-ASCII payloads are bounded correctly.
+export function utf8ByteLength(value: string): number {
+  return Buffer.byteLength(value, 'utf8');
+}
+
+export interface CliIpcLimits {
+  readonly maxLineBytes: number;
+  readonly maxRequestBytes: number;
+  readonly maxResponseBytes: number;
+}
+
+export const CLI_IPC_LIMITS: CliIpcLimits = {
+  maxLineBytes: CLI_IPC_MAX_LINE_BYTES,
+  maxRequestBytes: CLI_IPC_MAX_REQUEST_BYTES,
+  maxResponseBytes: CLI_IPC_MAX_RESPONSE_BYTES,
+};
 
 function launcherHomeScope(): string {
   const local = process.env['LOCALAPPDATA'];

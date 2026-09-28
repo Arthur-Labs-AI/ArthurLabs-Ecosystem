@@ -30,6 +30,8 @@
     "eslint": "catalog:",
     "typescript-eslint": "catalog:",
     "vitest": "catalog:",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "@qa/runtime-protocol": "workspace:*",
+    "zod": "catalog:"
   }
 }

@@ -258,4 +258,34 @@ describe('sentry CLI broker', () => {
     const missing = pipePath('nothing-listening');
     await expect(connect(missing)).rejects.toThrow();
   });
+
+  it('enforces line limits in UTF-8 bytes, not JS character count', async () => {
+    const server = new SentryCliServer({
+      pipePath: pipePath('bytes'),
+      dispatch: async () => ({ ok: true }),
+      limits: { maxLineBytes: 128, maxRequestBytes: 128, maxResponseBytes: 4096 },
+    });
+    servers.push(server);
+    await server.start();
+    const client = await connect(server.status.pipePath);
+    try {
+      await hello(client);
+      // 30 chars of two-byte text: 105 JS chars but 135 UTF-8 bytes.
+      // A .length comparison would admit this line; the byte bound rejects it.
+      const wide = 'é'.repeat(30);
+      const line = JSON.stringify({
+        type: 'request',
+        id: 'r1',
+        command: 'runs:status',
+        payload: { note: wide },
+      });
+      expect(line.length).toBeLessThanOrEqual(128);
+      expect(Buffer.byteLength(line, 'utf8')).toBeGreaterThan(128);
+      client.sendRaw(line + '\n');
+      const frame = JSON.parse(await client.nextLine()) as { code?: string };
+      expect(frame['code']).toBe('MESSAGE_TOO_LARGE');
+    } finally {
+      client.close();
+    }
+  });
 });

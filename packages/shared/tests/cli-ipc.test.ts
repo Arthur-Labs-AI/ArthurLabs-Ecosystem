@@ -8,6 +8,7 @@ import {
   parseHelloMessage,
   parseRequestMessage,
   sanitizeBrokerField,
+  utf8ByteLength,
 } from '../src/cli-ipc.js';
 
 describe('cli ipc contract', () => {
@@ -79,6 +80,13 @@ describe('cli ipc contract', () => {
     expect(containsSecretShapedValue('DEEPSEEK_API_KEY=hunter2')).toBe(true);
     expect(sanitizeBrokerField('DEEPSEEK_API_KEY=hunter2')).toBe('[redacted]');
     expect(sanitizeBrokerField('Nexus')).toBe('Nexus');
+  });
+
+  it('measures limits in UTF-8 bytes rather than JS characters', () => {
+    expect(utf8ByteLength('Nexus')).toBe(5);
+    expect(utf8ByteLength('é')).toBe(2);
+    expect(utf8ByteLength('😀')).toBe(4);
+    expect(utf8ByteLength('é'.repeat(30))).toBe(60);
   });
 
   it('pins the protocol version', () => {

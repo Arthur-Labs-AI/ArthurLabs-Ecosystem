@@ -1,6 +1,7 @@
 // Shared desktop command router: single validated dispatch path for Renderer IPC
 // and the external CLI broker. One behavior, one backend per command.
 import { z } from 'zod';
+import { CLI_BROKER_COMMANDS, RUN_TIMEOUT_MS_MAX, RUN_TIMEOUT_MS_MIN } from '@qa/shared';
 import type { DesktopApplicationService } from './services/desktop-service.js';
 import type { SaveDialogOptions } from './services/export-save.js';
 import { revealSavedExport, saveExportRun } from './services/export-save.js';
@@ -29,6 +30,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
       includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
       instructions: z.string().min(1).max(5000).optional(),
       agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
+      runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
     })
     .strict(),
   'runs:start-production': z
@@ -38,6 +40,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
       includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
       instructions: z.string().min(1).max(5000).optional(),
       agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
+      runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
     })
     .strict(),
   'runs:cancel': z.object({ runId: z.string().min(1).max(100) }).strict(),
@@ -86,43 +89,12 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
 };
 export type DesktopChannel = keyof typeof DesktopChannelSchemas;
 
-// External CLI allowlist: operational commands only. Provider-secret
-// mutation and admin/distro selection stay renderer-only. Native-dialog
-// flows are meaningless over a pipe; CLI file output uses export-content.
-export const CLI_ALLOWED_CHANNELS: ReadonlySet<string> = new Set([
-  'projects:list',
-  'projects:add',
-  'projects:get',
-  'projects:revisions',
-  'projects:delete',
-  'projects:update',
-  'projects:doctor',
-  'projects:suggest-targets',
-  'runs:list',
-  'runs:get',
-  'runs:status',
-  'runs:start',
-  'runs:start-production',
-  'runs:cancel',
-  'runs:export',
-  'runs:export-content',
-  'issues:list',
-  'issues:get',
-  'issues:history',
-  'retests:list',
-  'retests:start',
-  'retests:get',
-  'retests:cancel',
-  'doctors:environment',
-  'providers:status',
-  'providers:detect-binaries',
-  'production:readiness',
-  'system:info',
-  'system:active-runs',
-  'runtime:status',
-  'runtime:distros',
-  'cli:status',
-]);
+// External CLI allowlist: operational commands only. Derived from the
+// shared CLI_BROKER_COMMANDS vocabulary so broker and frontend agree by
+// construction. Provider-secret mutation and admin/distro selection stay
+// renderer-only. Native-dialog flows are meaningless over a pipe; CLI file
+// output uses export-content.
+export const CLI_ALLOWED_CHANNELS: ReadonlySet<string> = new Set(CLI_BROKER_COMMANDS);
 
 export function isCliAllowed(channel: string): boolean {
   return CLI_ALLOWED_CHANNELS.has(channel);
@@ -218,6 +190,7 @@ export async function dispatchDesktopCommand(
         includePaths: parsed['includePaths'],
         instructions: parsed['instructions'],
         agentStackIds: parsed['agentStackIds'],
+        runTimeoutMs: parsed['runTimeoutMs'],
       });
       if (operation.runId !== undefined)
         hooks.onRunCreated?.(operation.runId, operation.operationId);

@@ -319,6 +319,12 @@ export async function executeFrontendCommand(
         asyncRunStart: true,
         ipcProtocolVersion: CLI_IPC_PROTOCOL_VERSION,
         ...(broker.productVersion === undefined ? {} : { productVersion: broker.productVersion }),
+        productionCommands: {
+          runSimulation: false,
+          realRunExecution: true,
+          runResult: true,
+          runExport: true,
+        },
       });
     }
     if (input.command === 'agent.list') {
@@ -452,6 +458,7 @@ export async function executeFrontendCommand(
             }),
         ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
         agentStackIds: input.agents.map((name) => stackIdForAgent(name)),
+        ...(input.runTimeoutMs === undefined ? {} : { runTimeoutMs: input.runTimeoutMs }),
       })) as { operationId?: string; runId?: string } & Record<string, unknown>;
       if (typeof started.runId !== 'string') {
         throw new DesktopProtocolError(
@@ -520,7 +527,7 @@ export async function executeFrontendCommand(
       return success(input.command, await broker.request('runs:status', { runId: input.runId }));
     }
     if (input.command === 'run.result') {
-      const exported = (await broker.request('runs:exportContent', {
+      const exported = (await broker.request('runs:export-content', {
         runId: input.runId,
         format: 'json',
       })) as { contentBase64?: string } & Record<string, unknown>;
@@ -544,7 +551,7 @@ export async function executeFrontendCommand(
           'run export writes through the Desktop broker: pass --out <path>, or use run result --json for the canonical JSON on stdout.',
         );
       }
-      const exported = (await broker.request('runs:exportContent', {
+      const exported = (await broker.request('runs:export-content', {
         runId: input.runId,
         format: input.format,
       })) as { contentBase64?: string } & Record<string, unknown>;

@@ -1,5 +1,6 @@
 import type { CliCommand } from '@qa/schemas';
 import type { SimulationScenario } from '@qa/run-engine';
+import { RUN_TIMEOUT_MS_MAX, RUN_TIMEOUT_MS_MIN } from '@qa/shared';
 
 export class CliUsageError extends Error {
   readonly code = 'INVALID_ARGUMENT';
@@ -284,9 +285,17 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     const runTimeoutMs = timeoutText === undefined ? undefined : Number(timeoutText);
     if (
       runTimeoutMs !== undefined &&
-      (!Number.isSafeInteger(runTimeoutMs) || runTimeoutMs < 1_000)
+      (!Number.isSafeInteger(runTimeoutMs) ||
+        runTimeoutMs < RUN_TIMEOUT_MS_MIN ||
+        runTimeoutMs > RUN_TIMEOUT_MS_MAX)
     ) {
-      fail('--timeout-ms must be an integer of at least 1000', '--timeout-ms');
+      fail(
+        '--timeout-ms must be an integer between ' +
+          RUN_TIMEOUT_MS_MIN +
+          ' and ' +
+          RUN_TIMEOUT_MS_MAX,
+        '--timeout-ms',
+      );
     }
     const paths = option(tail, '--paths');
     if (mode === 'targeted' && (paths === undefined || paths.trim().length === 0)) {

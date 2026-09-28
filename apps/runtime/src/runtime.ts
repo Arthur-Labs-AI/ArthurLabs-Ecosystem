@@ -59,7 +59,12 @@ import {
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
 import { selectCurrentMergeResult } from '@qa/merger';
 import { projectIssueState } from '@qa/schemas';
-import { createQARunId, createRetestRunId } from '@qa/shared';
+import {
+  RUN_TIMEOUT_MS_MAX,
+  RUN_TIMEOUT_MS_MIN,
+  createQARunId,
+  createRetestRunId,
+} from '@qa/shared';
 import {
   RUNTIME_PROTOCOL_VERSION,
   RpcLineBuffer,
@@ -782,6 +787,7 @@ export class SentryRuntimeHost {
       ...(parsed.agentStackIds === undefined
         ? {}
         : { agentStackIds: [...parsed.agentStackIds] as never }),
+      ...(parsed.runTimeoutMs === undefined ? {} : { runTimeoutMs: parsed.runTimeoutMs }),
     });
     const settled = runPromise.then(
       (details) => {
@@ -1480,6 +1486,7 @@ const StartRunParamsSchema = z
     includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
     instructions: z.string().min(1).max(5000).optional(),
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
+    runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
   })
   .strict();
 

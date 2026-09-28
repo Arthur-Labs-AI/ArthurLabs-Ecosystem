@@ -3,7 +3,13 @@
 // protocol to the Electron broker. The CLI never opens SQLite, never owns
 // leases, never instantiates harnesses, and never carries provider secrets.
 import { createConnection, type Socket } from 'node:net';
-import { CLI_IPC_PROTOCOL_VERSION, cliPipePath } from '@qa/shared';
+import {
+  CLI_IPC_LIMITS,
+  CLI_IPC_PROTOCOL_VERSION,
+  cliPipePath,
+  utf8ByteLength,
+  type CliIpcLimits,
+} from '@qa/shared';
 
 export class DesktopNotRunningError extends Error {
   readonly code = 'SENTRY_DESKTOP_NOT_RUNNING' as const;
@@ -27,6 +33,7 @@ export interface DesktopClientOptions {
   readonly clientName?: string;
   readonly clientVersion?: string;
   readonly timeoutMs?: number;
+  readonly limits?: Partial<CliIpcLimits>;
 }
 
 const DEFAULT_TIMEOUT_MS = 600_000;
@@ -45,6 +52,7 @@ export class SentryDesktopClient {
   private readonly clientName: string;
   private readonly clientVersion: string | undefined;
   private readonly timeoutMs: number;
+  private readonly limits: CliIpcLimits;
 
   constructor(options: DesktopClientOptions = {}) {
     // SENTRY_CLI_PIPE_PATH is a test hook so the frontend suite can point at
@@ -62,6 +70,7 @@ export class SentryDesktopClient {
         ? undefined
         : version.trim().slice(0, 50);
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.limits = { ...CLI_IPC_LIMITS, ...options.limits };
   }
 
   get productVersion(): string | undefined {
@@ -177,6 +186,20 @@ export class SentryDesktopClient {
 
   private onData(text: string): void {
     this.buffer += text;
+    // Defensive bound against a runaway broker: the Desktop is trusted local
+    // software, but the CLI must never grow memory without bound.
+    if (utf8ByteLength(this.buffer) > this.limits.maxLineBytes + this.limits.maxResponseBytes) {
+      this.fatal = new DesktopProtocolError(
+        'MESSAGE_TOO_LARGE',
+        'Sentry Desktop sent a message exceeding the bounded frame size',
+      );
+      try {
+        this.socket?.destroy();
+      } catch {
+        /* closing */
+      }
+      return;
+    }
     let index = this.buffer.indexOf('\n');
     while (index >= 0) {
       const line = this.buffer.slice(0, index);

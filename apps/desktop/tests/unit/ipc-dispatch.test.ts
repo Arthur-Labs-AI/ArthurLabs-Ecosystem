@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CLI_BROKER_COMMANDS } from '@qa/shared';
+import { DesktopChannelSchemas, isCliAllowed } from '../../src/main/desktop-command-router.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -33,6 +35,13 @@ describe('runtime distros IPC dispatch', () => {
     expect(channels.length).toBeGreaterThan(0);
     const missing = channels.filter((c) => router.indexOf("case '" + c + "':") < 0);
     expect(missing).toEqual([]);
+  });
+
+  it('serves the entire shared external vocabulary with validation', () => {
+    for (const command of CLI_BROKER_COMMANDS) {
+      expect(DesktopChannelSchemas[command] !== undefined, command).toBe(true);
+      expect(isCliAllowed(command), command).toBe(true);
+    }
   });
 
   it('renderer IPC delegates every channel to the shared router', () => {

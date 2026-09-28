@@ -141,6 +141,12 @@ describe('cli frontend over the desktop broker', () => {
           asyncRunStart: true,
           runResultExport: true,
           ipcProtocolVersion: 1,
+          productionCommands: {
+            runSimulation: false,
+            realRunExecution: true,
+            runResult: true,
+            runExport: true,
+          },
         },
       });
       expect(broker.clients).toEqual(['Nexus']);
@@ -193,6 +199,46 @@ describe('cli frontend over the desktop broker', () => {
         ok: true,
         data: { runId: RUN_ID, status: 'completed' },
       });
+    } finally {
+      await broker.close();
+    }
+  });
+
+  it('preserves every public broker error code for Nexus branching', async () => {
+    const broker = await startFakeBroker(() => {
+      throw Object.assign(new Error('boom'), { code: 'RUN_NOT_COMPLETE' });
+    });
+    try {
+      const parsed = parseCommand(['run', 'result', RUN_ID]);
+      await expect(
+        executeFrontendCommand(parsed, { createClient: () => clientFor(broker) }),
+      ).rejects.toMatchObject({ code: 'RUN_NOT_COMPLETE' });
+      const table: Array<{ code: string; exit: number }> = [
+        { code: 'PROJECT_NOT_FOUND', exit: 3 },
+        { code: 'RUN_NOT_FOUND', exit: 3 },
+        { code: 'RUN_NOT_COMPLETE', exit: 4 },
+        { code: 'PROVIDER_NOT_READY', exit: 6 },
+        { code: 'ACTIVE_RUN_EXISTS', exit: 4 },
+        { code: 'PROJECT_LOCKED', exit: 4 },
+        { code: 'CLI_COMMAND_FORBIDDEN', exit: 2 },
+        { code: 'SENTRY_DESKTOP_NOT_RUNNING', exit: 1 },
+        { code: 'RESPONSE_TOO_LARGE', exit: 4 },
+        { code: 'PROTOCOL_VERSION_MISMATCH', exit: 1 },
+        { code: 'RUN_MAY_HAVE_STARTED', exit: 4 },
+      ];
+      for (const { code, exit } of table) {
+        const envelope = frontendErrorEnvelope(
+          'run.status',
+          Object.assign(new Error('x'), { code }),
+        );
+        expect(envelope.error.code).toBe(code);
+        expect(errorExitCode(envelope.error)).toBe(exit);
+      }
+      const unknown = frontendErrorEnvelope(
+        'run.status',
+        Object.assign(new Error('x'), { code: 'SOME_FUTURE_CODE' }),
+      );
+      expect(unknown.error.code).toBe('INTERNAL_ERROR');
     } finally {
       await broker.close();
     }
@@ -318,7 +364,7 @@ describe('cli frontend over the desktop broker', () => {
   it('returns the canonical export bytes for run result without reformatting', async () => {
     const canonical = { runId: RUN_ID, status: 'completed', findings: [{ id: 'f1', title: 'X' }] };
     const broker = await startFakeBroker((command) => {
-      if (command === 'runs:exportContent')
+      if (command === 'runs:export-content')
         return {
           filename: 'sentry-' + RUN_ID + '.json',
           mimeType: 'application/json',
@@ -340,7 +386,7 @@ describe('cli frontend over the desktop broker', () => {
         data: { runId: RUN_ID, format: 'json', result: canonical },
       });
       expect(broker.seen).toHaveLength(1);
-      expect(broker.seen[0]?.command).toBe('runs:exportContent');
+      expect(broker.seen[0]?.command).toBe('runs:export-content');
     } finally {
       await broker.close();
     }
@@ -466,7 +512,7 @@ describe('cli frontend over the desktop broker', () => {
   it('routes run export through export bytes with an explicit --out', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sentry-export-'));
     const broker = await startFakeBroker((command) => {
-      if (command === 'runs:exportContent')
+      if (command === 'runs:export-content')
         return {
           filename: 'run.log',
           mimeType: 'text/plain',

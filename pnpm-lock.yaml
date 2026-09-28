@@ -84,6 +84,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/verifier
     devDependencies:
+      '@qa/runtime-protocol':
+        specifier: workspace:*
+        version: link:../../packages/runtime-protocol
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.2
@@ -99,6 +102,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 2.1.9(@types/node@22.20.2)(jsdom@26.0.0)
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
 
   apps/desktop:
     dependencies:

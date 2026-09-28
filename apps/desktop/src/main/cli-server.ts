@@ -8,15 +8,15 @@ import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { createServer, type Server, type Socket } from 'node:net';
 import {
-  CLI_IPC_MAX_LINE_BYTES,
-  CLI_IPC_MAX_REQUEST_BYTES,
-  CLI_IPC_MAX_RESPONSE_BYTES,
+  CLI_IPC_LIMITS,
   CLI_IPC_PROTOCOL_VERSION,
   cliPipePath,
   parseHelloMessage,
   parseRequestMessage,
   sanitizeBrokerField,
+  utf8ByteLength,
   type CliClientIdentity,
+  type CliIpcLimits,
 } from '@qa/shared';
 
 export interface CliServerClient {
@@ -39,6 +39,7 @@ export interface CliServerOptions {
   readonly dispatch: (command: string, payload: Record<string, unknown>) => Promise<unknown>;
   readonly logger?: (message: string) => void;
   readonly onStatusChange?: (status: CliServerStatus) => void;
+  readonly limits?: Partial<CliIpcLimits>;
 }
 
 interface TrackedClient extends CliServerClient {
@@ -57,6 +58,7 @@ export class SentryCliServer {
   private readonly notify: ((status: CliServerStatus) => void) | undefined;
   private lastError: string | undefined;
   private listening = false;
+  private readonly limits: CliIpcLimits;
 
   constructor(options: CliServerOptions) {
     this.pipePath = options.pipePath ?? cliPipePath();
@@ -64,6 +66,7 @@ export class SentryCliServer {
     this.dispatchFn = options.dispatch;
     this.log = options.logger ?? (() => undefined);
     this.notify = options.onStatusChange;
+    this.limits = { ...CLI_IPC_LIMITS, ...options.limits };
   }
 
   get status(): CliServerStatus {
@@ -155,7 +158,7 @@ export class SentryCliServer {
     const send = (frame: unknown): boolean => {
       if (closed) return false;
       const line = JSON.stringify(frame) + '\n';
-      if (line.length > CLI_IPC_MAX_RESPONSE_BYTES) return false;
+      if (utf8ByteLength(line) > this.limits.maxResponseBytes) return false;
       try {
         socket.write(line);
         return true;
@@ -173,7 +176,7 @@ export class SentryCliServer {
     };
     socket.on('data', (chunk: Buffer) => {
       buffer += chunk.toString('utf8');
-      if (buffer.length > CLI_IPC_MAX_LINE_BYTES + CLI_IPC_MAX_REQUEST_BYTES) {
+      if (utf8ByteLength(buffer) > this.limits.maxLineBytes + this.limits.maxRequestBytes) {
         this.log('[sentry-cli] oversized frame from ' + sanitizeBrokerField(identity?.name ?? id));
         fail('MESSAGE_TOO_LARGE', 'CLI message exceeds the bounded frame size');
         return;
@@ -224,7 +227,7 @@ export class SentryCliServer {
     onHello: (identity: CliClientIdentity) => void;
   }): void {
     const { line, send, fail, getIdentity, onHello } = ctx;
-    if (line.length > CLI_IPC_MAX_LINE_BYTES) {
+    if (utf8ByteLength(line) > this.limits.maxLineBytes) {
       fail('MESSAGE_TOO_LARGE', 'CLI message exceeds the bounded frame size');
       return;
     }
@@ -261,7 +264,7 @@ export class SentryCliServer {
       });
       return;
     }
-    if (JSON.stringify(request.message.payload).length > CLI_IPC_MAX_REQUEST_BYTES) {
+    if (utf8ByteLength(JSON.stringify(request.message.payload)) > this.limits.maxRequestBytes) {
       send({
         type: 'response',
         id: request.message.id,
@@ -299,14 +302,17 @@ export class SentryCliServer {
     }
     let frame: unknown = { type: 'response', id: message.id, ok: true, result };
     try {
-      if (JSON.stringify(frame).length > CLI_IPC_MAX_RESPONSE_BYTES) {
+      if (utf8ByteLength(JSON.stringify(frame)) > this.limits.maxResponseBytes) {
         frame = {
           type: 'response',
           id: message.id,
           ok: false,
           error: {
             code: 'RESPONSE_TOO_LARGE',
-            message: 'Response exceeds the bounded size; refine the request',
+            message:
+              'Response exceeds the bounded size (' +
+              Math.round(this.limits.maxResponseBytes / 1048576) +
+              ' MiB). For oversized run exports, use Desktop Export with Save As, which streams canonical bytes without an IPC limit.',
           },
         };
       }

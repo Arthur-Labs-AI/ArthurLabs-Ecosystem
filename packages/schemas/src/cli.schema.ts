@@ -151,6 +151,8 @@ export const CLI_ERROR_CODES = [
   'PROVIDER_NOT_READY',
   'RUN_MAY_HAVE_STARTED',
   'CLI_COMMAND_FORBIDDEN',
+  'RESPONSE_TOO_LARGE',
+  'PROTOCOL_VERSION_MISMATCH',
 ] as const;
 export const CliErrorCodeSchema = z.enum(CLI_ERROR_CODES);
 export type CliErrorCode = z.infer<typeof CliErrorCodeSchema>;
@@ -743,6 +745,19 @@ export const CapabilitiesResultSchema = z
     asyncRunStart: z.literal(true).optional(),
     ipcProtocolVersion: z.number().int().optional(),
     productVersion: z.string().min(1).max(100).optional(),
+    // Production truth: which commands the Desktop broker actually serves.
+    // `features.fakeRunSimulation` stays true for contract history (it
+    // describes the direct/development transport); Nexus must consult
+    // productionCommands to decide what production `sentry cli` supports.
+    productionCommands: z
+      .object({
+        runSimulation: z.literal(false),
+        realRunExecution: z.literal(true),
+        runResult: z.literal(true),
+        runExport: z.literal(true),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 export type CapabilitiesResult = z.infer<typeof CapabilitiesResultSchema>;

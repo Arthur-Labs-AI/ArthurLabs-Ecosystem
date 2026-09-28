@@ -165,7 +165,9 @@ export function errorExitCode(error: CliError): number {
   if (error.code === 'INVALID_ARGUMENT' || error.code === 'CLI_COMMAND_FORBIDDEN')
     return CLI_EXIT.invalidArgument;
   if (error.code === 'SENTRY_DESKTOP_NOT_RUNNING') return CLI_EXIT.internal;
-  if (error.code === 'RUN_MAY_HAVE_STARTED') return CLI_EXIT.conflict;
+  if (error.code === 'RUN_MAY_HAVE_STARTED' || error.code === 'RESPONSE_TOO_LARGE')
+    return CLI_EXIT.conflict;
+  if (error.code === 'PROTOCOL_VERSION_MISMATCH') return CLI_EXIT.internal;
   if (error.code === 'PROVIDER_NOT_READY') return CLI_EXIT.executionFailed;
   if (
     error.code === 'PROJECT_NOT_FOUND' ||
