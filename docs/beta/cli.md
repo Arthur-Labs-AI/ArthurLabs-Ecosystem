@@ -66,8 +66,11 @@ sentry cli project list --json
 sentry cli run start proj_... --mode full --agents opencode,deepseek,glm --json
 ```
 
-Async start returns `runId` + `operationId` immediately; the CLI process may
-exit and the WSL runtime keeps owning the run. Poll, then fetch the result:
+Async start returns `runId` + `operationId` plus the persisted initial run
+status immediately; the CLI performs no follow-up request, so a later pipe
+cut, restart, or timeout can never hide an already-created (possibly paid)
+run or invite a duplicate retry. The CLI process may exit and the WSL
+runtime keeps owning the run. Poll, then fetch the result:
 
 ```powershell
 sentry cli run status run_... --json
@@ -199,30 +202,51 @@ nameless handshakes are rejected. Never put secrets in client metadata.
 ## Named-pipe security model
 
 - Transport is a local named pipe only (`\\.\pipe\sentry-cli-v1-<scope>`);
-  there is no TCP listener and no LAN exposure.
-- Node creates the pipe with default Windows security (no custom ACL API
-  exists without native dependencies): the creating user, SYSTEM, and
-  administrators can open it; other non-admin users/sessions cannot.
-  Low-integrity processes are additionally blocked by mandatory integrity
-  control. See [Named Pipe Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights).
+  the implementation creates no TCP listener. (No network transport exists
+  to expose; that is a property of the implementation, not of the pipe
+  name.)
+- Node creates the pipe with default Windows security: no custom DACL API
+  is available without native dependencies, so no explicit per-user ACL is
+  established by the app. The default descriptor grants access to the
+  creating user, SYSTEM, and administrators; treat broader isolation (other
+  users, remote access) as NOT guaranteed by the app. Low-integrity
+  processes are additionally constrained by mandatory integrity control.
+  See [Named Pipe Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights).
 - The hashed `<scope>` is NOT an authorization boundary (any local process
-  can recompute it); it only scopes the pipe per user/install. The real
-  controls are OS identity isolation plus the explicit command allowlist,
-  strict payload validation, no provider credentials on the pipe, and
-  secret-free broker logs.
-- Same-user processes are trusted by design (Nexus runs as the user); a
-  per-install handshake secret would only re-authenticate the same identity
-  the OS already established, so none is added. Revisit if the product ever
-  needs cross-user local access.
+  can recompute it); it only scopes the pipe per user/install. Client
+  names are informational identity, never authentication. The enforced
+  controls are the explicit command allowlist, strict payload validation,
+  no provider-secret methods or credentials on the pipe, and secret-free
+  broker logs.
+- Same-user local processes are within the current Beta trust boundary
+  (Nexus runs as the user). A same-user-readable handshake secret would
+  not meaningfully raise the bar, so none is added; revisit if the product
+  ever needs cross-user local access or a stricter boundary.
 
 ## Size limits
 
-All IPC bounds are UTF-8 bytes: 256 KiB per request, 32 MiB per response
-and per NDJSON line. Canonical run results travel base64-encoded (4/3
-expansion plus JSON framing), so JSON exports up to roughly 20 MiB fit the
-32 MiB response bound. Larger exports deterministically return
-`RESPONSE_TOO_LARGE` (exit 4) with guidance to use Desktop Export with Save
-As, which streams canonical bytes without an IPC limit. JSON is never
+All IPC bounds are UTF-8 bytes (never JS character counts). The external
+CLI broker allows 256 KiB per request and 32 MiB per response/line, but the
+effective bound for run exports is set by the lower WSL runtime transport,
+whose NDJSON lines are capped at 8 MiB:
+
+```text
+RunExporter artifact
+  -> base64 (4/3 expansion, JSON-safe alphabet)
+  -> runtime RPC response line (max 8 MiB)
+  -> WslRuntimeClient -> Desktop service -> CLI broker (max 32 MiB)
+  -> SentryDesktopClient -> Nexus JSON
+```
+
+Canonical exports up to 6,000,000 raw bytes are proven to fit (exactly
+8,000,000 base64 chars plus framing stays below the 8 MiB line cap); the
+runtime refuses anything larger with `EXPORT_TOO_LARGE` (exit 4) before
+bytes are materialized. Desktop Export with Save As uses the same
+`runs.exportContent` bytes and therefore shares the same deterministic
+bound — it does not bypass it. `RESPONSE_TOO_LARGE` remains the outer
+broker-level guard. An oversized frame on the runtime transport fails
+exactly the affected request instead of hanging until timeout; oversize
+notifications are dropped as hints and reconciled by polling. JSON is never
 silently truncated.
 
 ## Public error codes
@@ -232,6 +256,7 @@ WSL runtime → Desktop service → router → broker → CLI:
 `PROJECT_NOT_FOUND`, `RUN_NOT_FOUND`, `RUN_NOT_COMPLETE`, `ISSUE_NOT_FOUND`,
 `PROVIDER_NOT_READY`, `ACTIVE_RUN_EXISTS`, `PROJECT_LOCKED`,
 `CLI_COMMAND_FORBIDDEN`, `SENTRY_DESKTOP_NOT_RUNNING`, `RESPONSE_TOO_LARGE`,
+`EXPORT_TOO_LARGE`, `RUNTIME_MESSAGE_TOO_LARGE`,
 `PROTOCOL_VERSION_MISMATCH`, `RUN_MAY_HAVE_STARTED`, plus the historical
 harness codes. Unknown future codes collapse to `INTERNAL_ERROR`; messages
 are human diagnostics and must not be parsed.
