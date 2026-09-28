@@ -151,3 +151,94 @@ carry `ok` plus `result` or a coded `error`. Provider-secret and admin
 channels (`providers:save/clear/*`, `runtime:select-distro`) are rejected
 with `CLI_COMMAND_FORBIDDEN`; external clients only reach the operational
 allowlist.
+
+## Capabilities: production truth
+
+`features.fakeRunSimulation` stays `true` for contract history: it describes
+the development/direct transport, not production. Nexus must consult
+`productionCommands` to decide what production `sentry cli` supports:
+
+```json
+{
+  "cliContractVersion": 1,
+  "productionCommands": {
+    "runSimulation": false,
+    "realRunExecution": true,
+    "runResult": true,
+    "runExport": true
+  }
+}
+```
+
+The CLI contract version stays 1; all new fields are additive and optional.
+
+## Run timeouts
+
+`run start --timeout-ms <ms>` (integer, 1000–43200000) overrides the engine
+run timeout for that run and propagates canonically:
+CLI parser → frontend → Desktop `runs:start` → WSL `runs.start` →
+RunCoordinator execution safeguards. Omitted keeps the 30-minute production
+default, so UI-started runs are unaffected. Out-of-range values fail with
+`INVALID_ARGUMENT` at the parser; nothing is silently ignored.
+
+## Client identity (Nexus)
+
+Nexus should identify itself so Desktop shows `Nexus connected` while a
+command is active. Supported mechanism (documented, tested, no secrets):
+
+```powershell
+$env:SENTRY_CLI_CLIENT_NAME = 'Nexus'
+$env:SENTRY_CLI_CLIENT_VERSION = '0.1.0'
+sentry cli run status run_... --json
+```
+
+Names are informational identity only, never authentication: they are
+truncated to 100/50 characters, extra handshake fields are ignored, and
+nameless handshakes are rejected. Never put secrets in client metadata.
+
+## Named-pipe security model
+
+- Transport is a local named pipe only (`\\.\pipe\sentry-cli-v1-<scope>`);
+  there is no TCP listener and no LAN exposure.
+- Node creates the pipe with default Windows security (no custom ACL API
+  exists without native dependencies): the creating user, SYSTEM, and
+  administrators can open it; other non-admin users/sessions cannot.
+  Low-integrity processes are additionally blocked by mandatory integrity
+  control. See [Named Pipe Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights).
+- The hashed `<scope>` is NOT an authorization boundary (any local process
+  can recompute it); it only scopes the pipe per user/install. The real
+  controls are OS identity isolation plus the explicit command allowlist,
+  strict payload validation, no provider credentials on the pipe, and
+  secret-free broker logs.
+- Same-user processes are trusted by design (Nexus runs as the user); a
+  per-install handshake secret would only re-authenticate the same identity
+  the OS already established, so none is added. Revisit if the product ever
+  needs cross-user local access.
+
+## Size limits
+
+All IPC bounds are UTF-8 bytes: 256 KiB per request, 32 MiB per response
+and per NDJSON line. Canonical run results travel base64-encoded (4/3
+expansion plus JSON framing), so JSON exports up to roughly 20 MiB fit the
+32 MiB response bound. Larger exports deterministically return
+`RESPONSE_TOO_LARGE` (exit 4) with guidance to use Desktop Export with Save
+As, which streams canonical bytes without an IPC limit. JSON is never
+silently truncated.
+
+## Public error codes
+
+Nexus branches on `error.code` only. Stable across
+WSL runtime → Desktop service → router → broker → CLI:
+`PROJECT_NOT_FOUND`, `RUN_NOT_FOUND`, `RUN_NOT_COMPLETE`, `ISSUE_NOT_FOUND`,
+`PROVIDER_NOT_READY`, `ACTIVE_RUN_EXISTS`, `PROJECT_LOCKED`,
+`CLI_COMMAND_FORBIDDEN`, `SENTRY_DESKTOP_NOT_RUNNING`, `RESPONSE_TOO_LARGE`,
+`PROTOCOL_VERSION_MISMATCH`, `RUN_MAY_HAVE_STARTED`, plus the historical
+harness codes. Unknown future codes collapse to `INTERNAL_ERROR`; messages
+are human diagnostics and must not be parsed.
+
+## Development transport warning
+
+`SENTRY_CLI_TRANSPORT=direct` executes against Windows-local state with its
+own database and harness construction. It does not represent Desktop state,
+may use Windows-local data, is not supported for Nexus, and must not be used
+as production automation.
