@@ -11,8 +11,10 @@ import {
   createSnapshotId,
 } from '@qa/shared';
 import {
+  DirectOpenCodeProcessLauncher,
   OpenCodeHarnessAdapter,
   type OpenCodeClientFactory,
+  type OpenCodeHarnessAdapterOptions,
   type OpenCodePromptResult,
 } from '../src/index.js';
 
@@ -26,6 +28,33 @@ afterEach(async () => {
 
 function testEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return { PATH: '/usr/bin', OPENROUTER_API_KEY: SENTINEL_VALUE, ...extra };
+}
+
+/**
+ * Deterministic fake containment for LOGICAL adapter tests (session
+ * continuity, masking, validation, cancellation, provider composition).
+ *
+ * A direct launcher plus a skipped tool shell lets the test reach its fake
+ * client without probing the real host for systemd/bubblewrap — the exact
+ * probes that fail on restricted CI hosts with OPENCODE_SANDBOX_UNAVAILABLE.
+ * Masking, scope creation, the auth proxy, version/credential gates, and all
+ * adapter logic still run for real. Production containment stays covered by
+ * the dedicated fail-closed tests below and opencode-path-sandbox.test.ts.
+ *
+ * Fakes are explicit per instance and always win over caller extras, so a
+ * logical test can never accidentally exercise host containment.
+ */
+function logicalAdapterDefaults(
+  extra: OpenCodeHarnessAdapterOptions = {},
+): OpenCodeHarnessAdapterOptions {
+  return {
+    executable: 'opencode-test',
+    modelId: 'anthropic/claude-test',
+    environment: testEnv(),
+    ...extra,
+    launcherSelector: async () => new DirectOpenCodeProcessLauncher(),
+    toolShellBuilder: async () => undefined,
+  };
 }
 
 async function request(root: string) {
@@ -115,11 +144,15 @@ interface SeenTurn {
 
 function scriptedFactory(
   script: OpenCodePromptResult[],
-  seen: { turns: SeenTurn[]; modelIds: string[] } = { turns: [], modelIds: [] },
+  seen: { turns: SeenTurn[]; modelIds: string[]; launcherKinds?: string[] } = {
+    turns: [],
+    modelIds: [],
+  },
 ): OpenCodeClientFactory {
   let calls = 0;
   return async (input) => {
     seen.modelIds.push(input.modelId);
+    seen.launcherKinds?.push(input.launcher?.kind ?? 'none');
     return {
       startSession: async () => ({
         runPrompt: async (_prompt, options) => {
@@ -156,9 +189,7 @@ function validateProtocol(
 describe('OpenCodeHarnessAdapter', () => {
   it('exposes opencode metadata with the effective model pattern', async () => {
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: scriptedFactory([]),
     });
     const metadata = await adapter.getMetadata();
@@ -230,11 +261,13 @@ describe('OpenCodeHarnessAdapter', () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-success-'));
     roots.push(root);
     const input = await request(root);
-    const seen = { turns: [] as SeenTurn[], modelIds: [] as string[] };
+    const seen = {
+      turns: [] as SeenTurn[],
+      modelIds: [] as string[],
+      launcherKinds: [] as string[],
+    };
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: scriptedFactory(
         [
           textTurn(validPlan()),
@@ -273,6 +306,10 @@ describe('OpenCodeHarnessAdapter', () => {
     expect(seen.turns.map((t) => t.sessionId)).toEqual([undefined, FAKE_SESSION, FAKE_SESSION]);
     // Effective composed model id reaches the client.
     expect(seen.modelIds).toEqual(['openrouter/anthropic/claude-test']);
+    // The factory received the INJECTED fake launcher (direct), never a
+    // production host probe: on Linux production would select systemd-unit
+    // or fail closed, so this pins the test-isolation seam.
+    expect(seen.launcherKinds).toEqual([new DirectOpenCodeProcessLauncher().kind]);
     // Reporting turn carries the upstream tool deny (plus adapter firewall).
     const reportEnv = seen.turns[2]?.environment ?? {};
     expect(JSON.parse((reportEnv['OPENCODE_PERMISSION'] as string) ?? '{}')).toEqual({
@@ -301,9 +338,7 @@ describe('OpenCodeHarnessAdapter', () => {
     await mkdir(join(root, '.opencode', 'plugins'), { recursive: true });
     await writeFile(join(root, '.opencode', 'plugins', 'evil.js'), 'evil');
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: scriptedFactory([
         textTurn(validPlan()),
         textTurn('Investigation complete.'),
@@ -332,9 +367,7 @@ describe('OpenCodeHarnessAdapter', () => {
     roots.push(root);
     const input = await request(root);
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: scriptedFactory([
         { text: validPlan(), toolCalls: [], steps: 1, envelopes: 2 },
         textTurn('Investigation complete.'),
@@ -354,9 +387,7 @@ describe('OpenCodeHarnessAdapter', () => {
     roots.push(root);
     const input = await request(root);
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: scriptedFactory([
         textTurn(validPlan(), FAKE_SESSION),
         textTurn('Investigation complete.', 'ses_different_2222222222222222'),
@@ -376,9 +407,7 @@ describe('OpenCodeHarnessAdapter', () => {
     roots.push(root);
     const input = await request(root);
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: scriptedFactory([
         textTurn(validPlan()),
         {
@@ -429,9 +458,7 @@ describe('OpenCodeHarnessAdapter', () => {
     roots.push(root);
     const input = await request(root);
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: scriptedFactory([
         textTurn(validPlan()),
         {
@@ -465,9 +492,7 @@ describe('OpenCodeHarnessAdapter', () => {
     roots.push(root);
     const input = await request(root);
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: scriptedFactory([
         textTurn(validPlan()),
         textTurn('Investigation complete.'),
@@ -499,9 +524,7 @@ describe('OpenCodeHarnessAdapter', () => {
     const input = await request(root);
     const bad = { ...validReportV2(), findings: [{ title: 'Missing everything' }] };
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: scriptedFactory([
         textTurn(validPlan()),
         textTurn('Investigation complete.'),
@@ -521,9 +544,7 @@ describe('OpenCodeHarnessAdapter', () => {
     roots.push(root);
     const input = await request(root);
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: async () => ({
         startSession: async () => ({
           runPrompt: async () => {
@@ -561,9 +582,7 @@ describe('OpenCodeHarnessAdapter', () => {
       close: async () => undefined,
     });
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: hangingFactory,
     });
     const pending = collect(adapter, first);
@@ -580,9 +599,7 @@ describe('OpenCodeHarnessAdapter', () => {
     roots.push(root);
     const input = await request(root);
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       turnTimeoutMs: 50,
       clientFactory: async () => ({
         startSession: async () => ({
@@ -608,9 +625,7 @@ describe('OpenCodeHarnessAdapter', () => {
     await writeFile(notADir, 'x');
     let factoryCalled = false;
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: (async () => {
         factoryCalled = true;
         throw new Error('must not launch');
@@ -632,9 +647,7 @@ describe('OpenCodeHarnessAdapter', () => {
     roots.push(root);
     const input = await request(root);
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'anthropic/claude-test',
-      environment: testEnv(),
+      ...logicalAdapterDefaults(),
       clientFactory: async () => {
         throw new Error('spawn ENOENT');
       },
@@ -655,14 +668,15 @@ describe('OpenCodeHarnessAdapter', () => {
     const input = await request(root);
     const seen = { turns: [] as SeenTurn[], modelIds: [] as string[] };
     const adapter = new OpenCodeHarnessAdapter({
-      executable: 'opencode-test',
-      modelId: 'muse-spark-1.3-contributor-free',
-      provider: 'opencode',
-      environment: {
-        PATH: '/usr/bin',
-        OPENCODE_API_KEY: 'sentry-test-zen-key',
-        SENTRY_OPENCODE_PROVIDER: 'opencode',
-      },
+      ...logicalAdapterDefaults({
+        modelId: 'muse-spark-1.3-contributor-free',
+        provider: 'opencode',
+        environment: {
+          PATH: '/usr/bin',
+          OPENCODE_API_KEY: 'sentry-test-zen-key',
+          SENTRY_OPENCODE_PROVIDER: 'opencode',
+        },
+      }),
       clientFactory: scriptedFactory(
         [
           textTurn(validPlan()),
@@ -720,6 +734,97 @@ describe('OpenCodeHarnessAdapter', () => {
       failure?: { message?: string };
     };
     expect(failed.failure?.message).toContain('OPENCODE_API_KEY');
+    await adapter.dispose();
+  });
+
+  it('production launcher fails closed on Linux without functional systemd', async () => {
+    // No injected fakes: the production launcherSelector runs. On a host
+    // without a functional systemd user manager this must fail closed with
+    // OPENCODE_SANDBOX_UNAVAILABLE before the client factory runs. Hosts
+    // that genuinely provide containment skip here — the real production
+    // path covers them, and opencode-path-sandbox.test.ts pins the
+    // selection policy deterministically with fakes.
+    if (process.platform !== 'linux') return;
+    const { selectProductionLauncher } = await import('../src/index.js');
+    try {
+      await selectProductionLauncher(testEnv());
+      return;
+    } catch {
+      // No functional containment: assert the adapter fails closed too.
+    }
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-nosystemd-'));
+    roots.push(root);
+    const input = await request(root);
+    let factoryCalled = false;
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'anthropic/claude-test',
+      environment: testEnv(),
+      clientFactory: (async () => {
+        factoryCalled = true;
+        throw new Error('must not launch');
+      }) as OpenCodeClientFactory,
+    });
+    const events = await collect(adapter, input);
+    expect(factoryCalled).toBe(false);
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_SANDBOX_UNAVAILABLE' },
+    });
+    await adapter.dispose();
+  });
+
+  it('masking still fails closed in direct/dev mode', async () => {
+    // SENTRY_OPENCODE_ALLOW_DIRECT=1 relaxes systemd/bubblewrap only.
+    // Project-config masking stays mandatory and blocks before even fake
+    // containment is consulted.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-directmask-'));
+    roots.push(root);
+    const notADir = join(root, 'file-not-dir');
+    await writeFile(notADir, 'x');
+    let factoryCalled = false;
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults({
+        environment: testEnv({ SENTRY_OPENCODE_ALLOW_DIRECT: '1' }),
+      }),
+      clientFactory: (async () => {
+        factoryCalled = true;
+        throw new Error('must not launch');
+      }) as OpenCodeClientFactory,
+    });
+    const base = await request(root);
+    const input = { ...base, workspace: { ...base.workspace, runtimePath: notADir } };
+    const events = await collect(adapter, input as typeof base);
+    expect(factoryCalled).toBe(false);
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_PROJECT_CONFIG_ISOLATION_FAILED' },
+    });
+    await adapter.dispose();
+  });
+
+  it('direct mode reaches the fake client with production defaults and warns', async () => {
+    // The ONLY bypass: the explicit SENTRY_OPENCODE_ALLOW_DIRECT=1
+    // development/test override. Production containment decisions run
+    // (no injected fakes), weaker execution is chosen openly, and the
+    // degradation is recorded as a warning diagnostic.
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-directok-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new OpenCodeHarnessAdapter({
+      executable: 'opencode-test',
+      modelId: 'anthropic/claude-test',
+      environment: testEnv({ SENTRY_OPENCODE_ALLOW_DIRECT: '1' }),
+      clientFactory: scriptedFactory([
+        textTurn(validPlan()),
+        textTurn('Investigation complete.'),
+        textTurn(JSON.stringify(validReportV2())),
+      ]),
+    });
+    const events = await collect(adapter, input);
+    expect(events.at(-1)?.type).toBe('run.completed');
+    const direct = adapter.getShutdownDiagnostics().find((d) => d.code === 'OPENCODE_DIRECT_SHELL');
+    expect(direct?.severity).toBe('warning');
     await adapter.dispose();
   });
 });

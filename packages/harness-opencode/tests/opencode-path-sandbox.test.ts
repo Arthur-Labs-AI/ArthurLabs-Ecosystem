@@ -397,8 +397,15 @@ describe('version policy matrix (no mocks)', () => {
     const { env } = await versionFixture('opencode version 1.18.32');
     const doctor = await doctorOpenCode({ environment: env });
     expect(doctor.checks?.find((check) => check.name === 'version')?.status).toBe('pass');
+    // Version policy must not depend on unrelated host sandbox state: a
+    // restricted CI host without systemd/bubblewrap reports containment
+    // failures elsewhere, but the VERSION verdict stays 'pass'. Prove the
+    // tested version itself never blocks preflight by isolating containment
+    // with the explicit dev bypass (version + containment interaction is
+    // covered separately by the preflight/doctor sandbox tests above).
     if (process.platform === 'linux') {
-      const registration = createOpenCodeRegistration({ environment: env });
+      const isolated = { ...env, SENTRY_OPENCODE_ALLOW_DIRECT: '1' };
+      const registration = createOpenCodeRegistration({ environment: isolated });
       await registration.preflight();
     }
   });

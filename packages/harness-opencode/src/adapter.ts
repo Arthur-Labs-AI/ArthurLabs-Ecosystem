@@ -77,7 +77,7 @@ import {
   maskProjectOpenCodeConfig,
   type OpenCodeRunScope,
 } from './scope.js';
-import { findExecutable } from './process.js';
+import { findExecutable, type OpenCodeProcessLauncher } from './process.js';
 import { SENTRY_PROXY_DUMMY_KEY, startOpenCodeAuthProxy, type OpenCodeAuthProxy } from './proxy.js';
 import { computeToolHiddenPaths, writeToolShellWrapper } from './toolshell.js';
 import {
@@ -119,6 +119,22 @@ export interface OpenCodeHarnessAdapterOptions {
   readonly providerModels?: Readonly<Record<string, Record<string, unknown>>>;
   readonly environment?: NodeJS.ProcessEnv;
   readonly clientFactory?: OpenCodeClientFactory;
+  /**
+   * Test seam for the production-only containment decisions (host launcher
+   * selection and tool-shell construction). Logical adapter tests inject
+   * deterministic fakes here so they never probe the real host; every
+   * other concern (masking, scope, auth proxy, version policy, session
+   * continuity, validation) still runs for real.
+   *
+   * Both default to the production fail-closed implementations
+   * (`selectProductionLauncher` + bubblewrap tool-shell resolution), so
+   * every production call site — including `createOpenCodeRegistration` —
+   * keeps the exact current behavior. Fakes are constructor-only: they
+   * cannot be selected through environment variables, user configuration,
+   * or any runtime request field.
+   */
+  readonly launcherSelector?: OpenCodeLauncherSelector;
+  readonly toolShellBuilder?: OpenCodeToolShellBuilder;
   readonly shutdownTimeoutMs?: number;
   readonly turnTimeoutMs?: number;
   readonly onRuntimeIdentity?: (identity: {
@@ -126,6 +142,35 @@ export interface OpenCodeHarnessAdapterOptions {
     readonly executableVersion?: string;
   }) => void;
 }
+
+/**
+ * Production-only OpenCode execution containment, injectable for tests.
+ *
+ * - `selectLauncher` chooses the owned process boundary. The default is
+ *   `selectProductionLauncher` (systemd transient unit on Linux, fail-closed
+ *   with OPENCODE_SANDBOX_UNAVAILABLE; explicit SENTRY_OPENCODE_ALLOW_DIRECT=1
+ *   alone permits the weaker direct launcher).
+ * - `buildToolShell` generates the bubblewrap tool-shell wrapper. The default
+ *   resolves the real bwrap/shell and fails closed with
+ *   OPENCODE_SANDBOX_UNAVAILABLE; the explicit SENTRY_OPENCODE_ALLOW_DIRECT=1
+ *   opt-in alone permits skipping it (masking stays mandatory regardless).
+ *
+ * Defaults preserve production behavior exactly. Test fakes (e.g. a direct
+ * launcher plus `async () => undefined` tool shell) live in test code only
+ * and are injected explicitly per adapter instance — never via environment.
+ */
+export type OpenCodeLauncherSelector = (
+  environment: NodeJS.ProcessEnv,
+) => Promise<OpenCodeProcessLauncher>;
+
+export interface OpenCodeToolShellRequest {
+  readonly scope: OpenCodeRunScope;
+  readonly workspacePath: string;
+}
+
+export type OpenCodeToolShellBuilder = (
+  input: OpenCodeToolShellRequest,
+) => Promise<string | undefined>;
 
 export class OpenCodeTurnTimeoutError extends OpenCodeHarnessError {
   constructor(phase: string, budgetMs: number) {
@@ -491,7 +536,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     const scoped = applyOpenCodeScopeEnvironment(this.baseEnvironment, scope);
     let shell: string | undefined;
     if (process.platform === 'linux') {
-      shell = await this.buildToolShell(request, scope);
+      shell = await this.buildToolShell(scope, request.workspace.runtimePath);
     } else {
       this.shutdownDiagnostics.push({
         code: 'OPENCODE_DIRECT_SHELL',
@@ -548,13 +593,26 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
   }
 
   /**
+   * Tool-shell construction seam: an injected test fake wins; otherwise the
+   * production implementation below runs unchanged.
+   */
+  private async buildToolShell(
+    scope: OpenCodeRunScope,
+    workspacePath: string,
+  ): Promise<string | undefined> {
+    const builder = this.options.toolShellBuilder;
+    if (builder !== undefined) return builder({ scope, workspacePath });
+    return this.buildProductionToolShell(scope, workspacePath);
+  }
+
+  /**
    * Generate the bwrap tool shell wrapper (Linux production only).
    * Returns undefined only when weaker execution is explicitly allowed
    * (SENTRY_OPENCODE_ALLOW_DIRECT=1, development/test only).
    */
-  private async buildToolShell(
-    request: HarnessRunRequest,
+  private async buildProductionToolShell(
     scope: OpenCodeRunScope,
+    workspacePath: string,
   ): Promise<string | undefined> {
     if (openCodeSandboxBypassed(this.hostEnvironment)) {
       this.shutdownDiagnostics.push({
@@ -587,12 +645,12 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         bwrap,
         hidePaths: computeToolHiddenPaths({
           scopeDir: scope.directory,
-          workspace: request.workspace.runtimePath,
+          workspace: workspacePath,
           ...(realHome === undefined || realHome.length === 0 ? {} : { realHome }),
         }),
         runTmp: scope.runTmp,
         scopeHome: scope.home,
-        workspace: request.workspace.runtimePath,
+        workspace: workspacePath,
       },
     });
   }
@@ -839,8 +897,11 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       // scrubbed of session-bus coordinates, so probing it would always
       // fail even though the real launcher re-adds bus vars from the host
       // process env at spawn time. Select here from the host environment
-      // and hand the chosen launcher to the session factory.
-      const launcher = await selectProductionLauncher(this.hostEnvironment);
+      // and hand the chosen launcher to the session factory. Tests inject
+      // a deterministic launcherSelector; production defaults to
+      // selectProductionLauncher (fail-closed, never bypassed implicitly).
+      const launcherSelector = this.options.launcherSelector ?? selectProductionLauncher;
+      const launcher = await launcherSelector(this.hostEnvironment);
       const client = await this.clientFactory({
         executable: this.runtime.executable,
         cwd: request.workspace.runtimePath,
