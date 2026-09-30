@@ -14,6 +14,7 @@ import {
   isCachyOsSupported,
   cachyosPackagesFor,
   setupPhaseNames,
+  validateRuntimeHelloLine,
   CACHYOS_PACKAGES,
   SENTRY_PRODUCT_VERSION,
 } from '../launcher-logic.mjs';
@@ -183,6 +184,29 @@ describe('runtime naming and tool versions', () => {
     });
   });
 
+  it('validates runtime hello lines for setup gating', () => {
+    const good = JSON.stringify({
+      type: 'response',
+      id: 'hs',
+      ok: true,
+      result: {
+        protocolVersion: 1,
+        platform: 'linux',
+        isWsl: false,
+        isElectron: false,
+        nodeVersion: 'v22.4.0',
+        processExecPath: '/usr/bin/node',
+      },
+    });
+    assert.equal(validateRuntimeHelloLine(good).ok, true);
+    assert.equal(validateRuntimeHelloLine('not json').ok, false);
+    const electron = JSON.stringify({
+      result: { protocolVersion: 1, platform: 'linux', isWsl: false, isElectron: true },
+    });
+    assert.match(validateRuntimeHelloLine(electron).reason, /isElectron/);
+    const wsl = JSON.stringify({ result: { protocolVersion: 1, platform: 'linux', isWsl: true } });
+    assert.match(validateRuntimeHelloLine(wsl).reason, /isWsl/);
+  });
   it('classifies claude versions incl. known-incompatible', () => {
     assert.equal(classifyClaudeVersion('2.1.270'), 'ready');
     assert.equal(classifyClaudeVersion('2.1.276'), 'incompatible');

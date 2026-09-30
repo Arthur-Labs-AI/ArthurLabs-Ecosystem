@@ -25,9 +25,9 @@ cmd_status() {
   local clean="yes"
   if [ -n "$(git -C "$repo" status --porcelain 2>/dev/null || true)" ]; then clean="no"; fi
   local pretty="$(sentry_os_pretty)"
-  local pretty="$(sentry_os_pretty)"
+  local preferred_node="$(sentry_preferred_node)"
   local node_info="missing"
-  if command -v node >/dev/null 2>&1; then node_info="$(node --version 2>/dev/null | head -n 1) ($(command -v node))"; fi
+  if [ -n "$preferred_node" ]; then node_info="$("$preferred_node" --version 2>/dev/null | head -n 1) ($preferred_node)"; fi
   local systemd="unknown"
   local sys_state="$(bash "$linux_dir/check-systemd.sh" 2>/dev/null | tail -n 1 || true)"
   if [ "$sys_state" = "SYSTEMD_OK" ]; then systemd="ready"; else systemd="unavailable"; fi

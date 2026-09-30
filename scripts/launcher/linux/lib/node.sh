@@ -24,6 +24,30 @@ sentry_node_major() {
   printf '%s\n' "$major"
 }
 
+# Preferred Node for launcher commands: setup-persisted config first, then
+# an explicitly exported SENTRY_NODE_BINARY, then PATH. The configured path
+# is verified executable every time — never trusted stale.
+sentry_preferred_node() {
+  local cfg="$(sentry_config_get SENTRY_NODE_BINARY)"
+  if [ -n "$cfg" ] && [ -x "$cfg" ]; then printf '%s\n' "$cfg"; return 0; fi
+  if [ -n "${SENTRY_NODE_BINARY:-}" ] && [ -x "$SENTRY_NODE_BINARY" ]; then
+    printf '%s\n' "$SENTRY_NODE_BINARY"
+    return 0
+  fi
+  local found="$(command -v node || true)"
+  if [ -n "$found" ]; then printf '%s\n' "$found"; fi
+  return 0
+}
+
+# Export SENTRY_NODE_BINARY from launcher config when unset and valid.
+sentry_seed_node_env() {
+  if [ -z "${SENTRY_NODE_BINARY:-}" ]; then
+    local cfg="$(sentry_config_get SENTRY_NODE_BINARY)"
+    if [ -n "$cfg" ] && [ -x "$cfg" ]; then export SENTRY_NODE_BINARY="$cfg"; fi
+  fi
+  return 0
+}
+
 # Resolve to an absolute executable path (empty when unresolvable).
 sentry_node_resolve() {
   local candidate="$1"

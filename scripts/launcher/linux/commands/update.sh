@@ -8,6 +8,7 @@ set -u
 
 cmd_update() {
   local repo="$REPO_ROOT"
+  sentry_seed_node_env
   echo ""
   echo "Sentry update (tracks latest origin/main commits)"
   local branch=""
@@ -81,6 +82,7 @@ cmd_post_update() {
   local new_sha="${2:-unknown}"
   local was_running=0
   if [ "${3:-}" = "--was-running" ]; then was_running=1; fi
+  sentry_seed_node_env
   local version="$(sentry_product_version "$repo")"
   export SENTRY_NON_INTERACTIVE="${SENTRY_NON_INTERACTIVE:-0}"
   # Re-resolve toolchain from the UPDATED tree: pins may have changed, so

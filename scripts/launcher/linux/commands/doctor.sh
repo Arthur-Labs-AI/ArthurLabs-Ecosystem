@@ -37,12 +37,7 @@ cmd_doctor() {
 
   echo "Runtime"
   echo "-------"
-  local node_bin=""
-  if [ -n "${SENTRY_NODE_BINARY:-}" ] && [ -x "$SENTRY_NODE_BINARY" ]; then
-    node_bin="$SENTRY_NODE_BINARY"
-  elif command -v node >/dev/null 2>&1; then
-    node_bin="$(command -v node)"
-  fi
+  local node_bin="$(sentry_preferred_node)"
   if [ -n "$node_bin" ]; then
     local nver=""
     nver=$("$node_bin" --version 2>/dev/null || true)

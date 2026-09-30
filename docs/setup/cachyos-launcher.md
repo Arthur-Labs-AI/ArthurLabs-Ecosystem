@@ -30,9 +30,12 @@ off CachyOS before doing anything.
 node, pnpm, systemd-sandbox, dependencies, build, deploy, verify, agents, shim.
 
 Rerunning setup is safe: valid state is reused, only missing pieces are
-installed, and `runtime/current` moves only after the new deploy passes
-the real `runtime.hello` handshake (protocol 1, linux, non-Windows,
-non-Electron). On verification failure the previous runtime is restored.
+installed, deployment is two-phase (deploy-inner activates `current` after
+its build/entry validation, then an external `runtime.hello` handshake
+checks protocol 1, linux, non-Windows, non-Electron). On verification
+failure the previous target is restored — or `current` is removed when no
+previous runtime existed — while the failed version directory is retained
+for diagnostics.
 
 ## Privilege model
 

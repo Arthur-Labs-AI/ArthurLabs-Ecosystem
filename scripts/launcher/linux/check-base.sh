@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Base Linux utility validation for the Sentry launcher/runtime scripts.
-# Emits HAVE-<tool> / MISS-<tool>. These come from standard Ubuntu packages
-# (bash, coreutils, findutils, grep, sed); absence means a broken minimal
-# image, so setup must fail with an actionable message, not install blindly.
+# Emits HAVE-<tool> / MISS-<tool>. These come from standard core packages
+# (bash, coreutils, findutils, grep, sed on every supported distro);
+# absence means a broken minimal image, so setup must fail with an
+# actionable message, not install blindly.
 # NOTE: systemctl/systemd-run are intentionally NOT checked here — systemd
 # has its own repair flow (Ensure-SentrySystemd) that must stay reachable.
 set -u

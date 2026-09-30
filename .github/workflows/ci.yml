@@ -184,6 +184,11 @@ jobs:
           bash scripts/launcher/tests/test-node-resolve.sh
           bash scripts/launcher/tests/test-lifecycle-shim.sh
           bash scripts/launcher/tests/test-update-safety.sh
+          bash scripts/launcher/tests/test-package-capabilities.sh
+          bash scripts/launcher/tests/test-pnpm-resolve.sh
+          bash scripts/launcher/tests/test-deploy-pnpm.sh
+          bash scripts/launcher/tests/test-agent-provision.sh
+          bash scripts/launcher/tests/test-config.sh
       - name: Native entrypoint smoke (host-independent + gate proof)
         run: |
           ./sentry help

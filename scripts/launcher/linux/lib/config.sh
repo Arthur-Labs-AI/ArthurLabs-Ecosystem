@@ -28,10 +28,15 @@ sentry_config_set() {
       ;;
   esac
   local file="$(sentry_config_path)"
-  mkdir -p "$(dirname "$file")"
-  local tmp="$(mktemp)"
+  local dir="$(dirname "$file")"
+  mkdir -p "$dir"
+  # Same-directory temp file: rename(2) stays atomic on one filesystem
+  # (mktemp(1) alone could land on another mount via TMPDIR).
+  local tmp="$(mktemp "$dir/.sentry-conf.XXXXXX")"
   if [ -f "$file" ]; then grep -v "^$key=" "$file" > "$tmp" || true; fi
   printf "%s='%s'\n" "$key" "$value" >> "$tmp"
+  chmod 0600 "$tmp"
   mv "$tmp" "$file"
+  chmod 0600 "$file"
 }
 

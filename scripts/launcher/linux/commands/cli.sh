@@ -57,10 +57,8 @@ cmd_cli() {
     sentry_fail "Sentry CLI is not built. Run: sentry setup"
     return 1
   fi
-  local node_bin="node"
-  if [ -n "${SENTRY_NODE_BINARY:-}" ] && [ -x "$SENTRY_NODE_BINARY" ]; then
-    node_bin="$SENTRY_NODE_BINARY"
-  fi
+  local node_bin="$(sentry_preferred_node)"
+  if [ -z "$node_bin" ]; then node_bin="node"; fi
   "$node_bin" "$entry" "$@"
   return "$?"
 }
