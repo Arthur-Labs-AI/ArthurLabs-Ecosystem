@@ -189,9 +189,9 @@ export function setupPhaseNames() {
   return [
     'host',
     'base',
+    'packages',
     'node',
     'pnpm',
-    'packages',
     'systemd-sandbox',
     'dependencies',
     'build',
@@ -200,6 +200,31 @@ export function setupPhaseNames() {
     'agents',
     'shim',
   ];
+}
+
+
+/**
+ * Validate one runtime.hello response line (setup/update gate, no providers).
+ * Returns { ok: true, nodeVersion, dataRoot } or { ok: false, reason }.
+ */
+export function validateRuntimeHelloLine(line) {
+  let msg;
+  try {
+    msg = JSON.parse(String(line === undefined || line === null ? '' : line));
+  } catch {
+    return { ok: false, reason: 'not JSON' };
+  }
+  const h = (msg && msg.result) || msg || {};
+  const bad = [];
+  if (h.protocolVersion !== 1) bad.push('protocol=' + h.protocolVersion);
+  if (h.platform !== 'linux') bad.push('platform=' + h.platform);
+  if (h.isWsl !== false) bad.push('isWsl=' + h.isWsl);
+  if (h.isElectron !== false) bad.push('isElectron=' + h.isElectron);
+  if (typeof h.processExecPath === 'string' && /electron/i.test(h.processExecPath)) {
+    bad.push('execPath');
+  }
+  if (bad.length > 0) return { ok: false, reason: bad.join(';') };
+  return { ok: true, nodeVersion: h.nodeVersion, dataRoot: h.dataRoot };
 }
 
 export function classifyClaudeVersion(output) {

@@ -10,7 +10,16 @@ export SENTRY_REPO_ROOT="$REPO_ROOT"
 
 . "$LINUX_DIR/lib/common.sh"
 . "$LINUX_DIR/lib/host-gate.sh"
+. "$LINUX_DIR/lib/config.sh"
+. "$LINUX_DIR/lib/shim.sh"
+. "$LINUX_DIR/lib/node.sh"
+. "$LINUX_DIR/lib/pnpm.sh"
+. "$LINUX_DIR/lib/deploy.sh"
+. "$LINUX_DIR/lib/verify.sh"
+. "$LINUX_DIR/lib/desktop-ctl.sh"
+. "$LINUX_DIR/distros/cachyos.sh"
 . "$LINUX_DIR/commands/version.sh"
+. "$LINUX_DIR/commands/setup.sh"
 
 cmd_help() {
   echo ""
@@ -44,6 +53,10 @@ case "$cmd" in
   version | -v | --version)
     cmd_version "$REPO_ROOT"
     exit 0
+    ;;
+  setup)
+    cmd_setup "$@"
+    exit "$?"
     ;;
   *)
     echo "Unknown command: $cmd" >&2

@@ -43,9 +43,19 @@ sentry_pinned_pnpm() {
 
 # Pin constants live in scripts/launcher/launcher-logic.mjs (single source);
 # bash reads them through node only when node is already guaranteed.
+# file:// URL for dynamic import (handles either path spelling, including
+# git-bash lowercase drive prefixes like /c/..., which Node requires as /C:/).
+sentry_file_url() {
+  local path="${1//\\//}"
+  if [[ "$path" =~ ^/([a-zA-Z])/(.*)$ ]]; then
+    path="/${BASH_REMATCH[1]^^}:/${BASH_REMATCH[2]}"
+  fi
+  printf 'file://%s\n' "$path"
+}
+
 sentry_logic_pin() {
   local root="$1"
   local name="$2"
-  node -e "import('$root/scripts/launcher/launcher-logic.mjs').then((m) => console.log(m['$name'] ?? ''))" 2>/dev/null
+  node -e 'import(process.argv[1]).then((m) => console.log(m[process.argv[2]] ?? ""))' -- "$(sentry_file_url "$root/scripts/launcher/launcher-logic.mjs")" "$name" 2>/dev/null
 }
 

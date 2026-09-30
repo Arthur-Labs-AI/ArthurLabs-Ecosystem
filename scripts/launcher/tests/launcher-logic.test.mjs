@@ -165,9 +165,9 @@ describe('native os-release decisions', () => {
     assert.deepEqual(setupPhaseNames(), [
       'host',
       'base',
+      'packages',
       'node',
       'pnpm',
-      'packages',
       'systemd-sandbox',
       'dependencies',
       'build',
