@@ -46,6 +46,7 @@ const TEST_HELLO: RuntimeHello = {
   runtimeVersion: 'test-0.0.0',
   platform: 'linux',
   isWsl: false,
+  isElectron: false,
   nodeVersion: 'v22.0.0',
   processExecPath: '/usr/bin/node',
   dataRoot: '/tmp/sentry-test-data',
@@ -302,9 +303,14 @@ describe('stdio runtime transport', () => {
     });
   });
 
-  it('rejects a runtime accidentally launched under Electron', async () => {
+  it('rejects a legacy runtime under Electron via the executable path fallback', async () => {
+    // Legacy runtimes omit isElectron: the execPath guard stays authoritative for them.
     await expect(
-      launchStarted({ ...TEST_HELLO, processExecPath: 'C:\\host\\electron.exe' }),
+      launchStarted({
+        ...TEST_HELLO,
+        isElectron: undefined,
+        processExecPath: 'C:\\host\\electron.exe',
+      }),
     ).rejects.toMatchObject({ code: 'RUNTIME_UNDER_ELECTRON' });
   });
 
@@ -417,7 +423,9 @@ describe('stdio runtime transport', () => {
     const contracts = await readFile(join(dir, 'runtime-client.ts'), 'utf8');
     expect(transport).not.toContain('wsl');
     expect(transport).not.toContain('distro');
-    expect(contracts).not.toContain('wsl');
+    // The contract names the execution modes ('wsl2' included) but must
+    // never reference the WSL launcher executable itself.
+    expect(contracts).not.toContain('wsl.exe');
   });
 });
 
@@ -586,6 +594,76 @@ describe('stdio runtime reconnect lifecycle', () => {
     started.catch(() => undefined);
     expect(outcome).toBe('connected');
     expect(client.status.connected).toBe(true);
+    await client.stop();
+  });
+});
+
+describe('stdio runtime electron guard', () => {
+  async function handshakeWith(
+    hello: Record<string, unknown>,
+  ): Promise<{ client: StdioRuntimeClient; fake: FakeChild }> {
+    let active: FakeChild | undefined;
+    const client = new StdioRuntimeClient({
+      launch: () => {
+        const fake = new FakeChild();
+        fake.onWrite = (line) => {
+          const parsed = JSON.parse(line) as { id?: unknown; method?: unknown };
+          if (parsed.method === 'runtime.shutdown') {
+            queueMicrotask(() => {
+              fake.emit('exit', 0);
+            });
+          }
+        };
+        active = fake;
+        return asChild(fake);
+      },
+    });
+    const starting = client.start();
+    if (active === undefined) throw new Error('launcher did not produce a child');
+    const sentId = lastSentId(active);
+    active.stdout.emit(
+      'data',
+      Buffer.from(
+        JSON.stringify({ type: 'response', id: sentId, ok: true, result: hello }) + '\n',
+        'utf8',
+      ),
+    );
+    await expect(starting).rejects.toMatchObject({ code: 'RUNTIME_UNDER_ELECTRON' });
+    return { client, fake: active };
+  }
+
+  const baseHello = (): Record<string, unknown> => ({
+    protocolVersion: RUNTIME_PROTOCOL_VERSION,
+    runtimeVersion: 'test-0.0.0',
+    platform: 'linux',
+    isWsl: false,
+    nodeVersion: 'v22.0.0',
+    processExecPath: '/usr/bin/node',
+    dataRoot: '/tmp/sentry-test-data',
+  });
+
+  it('rejects a positively detected Electron runtime regardless of filename', async () => {
+    await handshakeWith({ ...baseHello(), isElectron: true });
+  });
+
+  it('keeps rejecting legacy runtimes via the executable path fallback', async () => {
+    await handshakeWith({ ...baseHello(), processExecPath: 'C:\\host\\electron.exe' });
+  });
+
+  it('accepts an explicit non-Electron signal from a new runtime', async () => {
+    let active: FakeChild | undefined;
+    const client = new StdioRuntimeClient({
+      launch: () => {
+        const fake = new FakeChild();
+        installResponder(fake);
+        active = fake;
+        return asChild(fake);
+      },
+    });
+    const hello = await client.start();
+    expect(hello.isElectron).toBe(false);
+    expect(client.status.connected).toBe(true);
+    if (active === undefined) throw new Error('launcher did not produce a child');
     await client.stop();
   });
 });

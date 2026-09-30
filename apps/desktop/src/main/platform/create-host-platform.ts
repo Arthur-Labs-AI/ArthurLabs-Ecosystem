@@ -6,6 +6,12 @@
  * can prove routing without mutating the CI host.
  */
 import type { HostPlatform } from './host-platform.js';
+import {
+  detectLinuxDistribution,
+  isCachyOs,
+  unsupportedDistroError,
+} from './linux/linux-host-info.js';
+import { NativeLinuxPlatform } from './linux/native-linux-platform.js';
 import { WindowsWslPlatform } from './windows/windows-wsl-platform.js';
 
 export interface CreateHostPlatformOptions {
@@ -44,6 +50,25 @@ export async function createHostPlatform(
       ...(options.userDataDir === undefined ? {} : { userDataDir: options.userDataDir }),
       ...(options.env === undefined ? {} : { env: options.env }),
       ...(options.dataRoot === undefined ? {} : { dataRoot: options.dataRoot }),
+    });
+  }
+  if (platform === 'linux') {
+    // Fail fast on non-CachyOS hosts: detection runs here (routing) and
+    // again lazily inside the platform (enforcement for direct use).
+    const detected =
+      options.readOsRelease === undefined
+        ? await detectLinuxDistribution()
+        : await detectLinuxDistribution(options.readOsRelease);
+    if (detected === undefined || !isCachyOs(detected)) {
+      throw unsupportedDistroError(detected?.prettyName ?? 'unknown');
+    }
+    return new NativeLinuxPlatform({
+      ...(options.env === undefined ? {} : { env: options.env }),
+      ...(options.dataRoot === undefined ? {} : { dataRoot: options.dataRoot }),
+      ...(options.nodeExecutable === undefined ? {} : { nodeExecutable: options.nodeExecutable }),
+      ...(options.runtimeEntry === undefined ? {} : { runtimeEntry: options.runtimeEntry }),
+      ...(options.readOsRelease === undefined ? {} : { readOsRelease: options.readOsRelease }),
+      distribution: detected,
     });
   }
   throw unsupportedPlatform(platform);

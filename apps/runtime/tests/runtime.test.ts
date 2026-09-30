@@ -27,11 +27,15 @@ describe('runtime host identity', () => {
         platform: string;
         processExecPath: string;
         nodeVersion: string;
+        isElectron: boolean;
       };
       expect(hello.protocolVersion).toBe(RUNTIME_PROTOCOL_VERSION);
       expect(hello.platform).toBe(process.platform);
       expect(hello.processExecPath.toLowerCase().endsWith('electron.exe')).toBe(false);
       expect(hello.nodeVersion).toBe(process.version);
+      // Plain Node has no Electron in process.versions: the desktop guard
+      // treats this explicit signal (not the filename) as authoritative.
+      expect(hello.isElectron).toBe(false);
     } finally {
       host.close();
     }

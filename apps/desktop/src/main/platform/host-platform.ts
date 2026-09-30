@@ -27,6 +27,8 @@ export interface HostRuntimeInfo {
   readonly distribution?: HostDistributionInfo;
   /** Resolved runtime entry, when the platform has launched or probed it. */
   readonly runtimeEntry?: string;
+  /** Resolved standalone Node binary (native Linux only). */
+  readonly node?: { readonly executable: string; readonly version: string };
 }
 
 /**

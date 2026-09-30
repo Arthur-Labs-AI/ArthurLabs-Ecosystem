@@ -143,6 +143,10 @@ export const RuntimeHelloResultSchema = z
     runtimeVersion: z.string().min(1).max(50),
     platform: z.string().min(1).max(50),
     isWsl: z.boolean(),
+    // Additive cross-platform Electron signal (protocol stays v1): new
+    // runtimes always emit it; desktops treat a missing field as a legacy
+    // runtime and fall back to the processExecPath guard.
+    isElectron: z.boolean().optional(),
     nodeVersion: z.string().min(1).max(50),
     processExecPath: z.string().min(1).max(500),
     distro: z.string().min(1).max(200).optional(),

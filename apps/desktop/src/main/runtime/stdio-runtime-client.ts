@@ -193,10 +193,14 @@ export class StdioRuntimeClient implements RuntimeClient {
           code: 'RUNTIME_NOT_LINUX',
         });
       }
-      if (
+      // The runtime's own isElectron signal is authoritative when present
+      // (works on every OS regardless of executable naming). Legacy
+      // runtimes omit it, so the execPath guard stays as a fallback — but a
+      // positively detected Electron host is never allowed silently.
+      const electronExecPath =
         typeof hello.processExecPath === 'string' &&
-        hello.processExecPath.toLowerCase().endsWith('electron.exe')
-      ) {
+        hello.processExecPath.toLowerCase().endsWith('electron.exe');
+      if (hello.isElectron === true || (hello.isElectron === undefined && electronExecPath)) {
         throw Object.assign(new Error(this.electronGuardMessage), {
           code: 'RUNTIME_UNDER_ELECTRON',
         });

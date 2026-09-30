@@ -538,11 +538,17 @@ export class SentryRuntimeHost {
   }
 
   hello(): unknown {
+    // Positive Electron detection independent of executable naming:
+    // under Electron, process.versions.electron is set; under standalone
+    // Node it is absent. The desktop treats this as authoritative and only
+    // falls back to the execPath guard for legacy runtimes that omit it.
+    const versions = process.versions as { electron?: unknown };
     const hello = {
       protocolVersion: RUNTIME_PROTOCOL_VERSION,
       runtimeVersion: RUNTIME_VERSION,
       platform: process.platform,
       isWsl: isWslEnvironment(),
+      isElectron: typeof versions.electron === 'string',
       nodeVersion: process.version,
       processExecPath: process.execPath,
       dataRoot: this.dataRoot,
