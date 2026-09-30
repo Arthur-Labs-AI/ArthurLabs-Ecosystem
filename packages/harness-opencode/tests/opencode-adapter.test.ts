@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { delimiter, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -223,12 +223,20 @@ describe('OpenCodeHarnessAdapter', () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-launcher-'));
     roots.push(root);
     const input = await request(root);
-    // Always-true systemd fakes keep Linux CI deterministic with or without
-    // a real user manager; the point is WHICH environment is probed.
+    // Bus-sensitive systemd fakes keep Linux CI deterministic with or
+    // without a real user manager, and prove WHICH environment is probed:
+    // only the host environment carries the session-bus address the fakes
+    // require, while the sanitized turn environment is bus-scrubbed.
     const fakeDir = await mkdtemp(join(tmpdir(), 'sentry-oc-launcher-bin-'));
     roots.push(fakeDir);
-    await writeFile(join(fakeDir, 'systemctl'), '#!/bin/sh\nexit 0\n');
-    await writeFile(join(fakeDir, 'systemd-run'), '#!/bin/sh\nexit 0\n');
+    if (process.platform === 'linux') {
+      const busSensitive =
+        '#!/bin/sh\nif [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then exit 1; fi\nexit 0\n';
+      await writeFile(join(fakeDir, 'systemctl'), busSensitive);
+      await writeFile(join(fakeDir, 'systemd-run'), busSensitive);
+      await chmod(join(fakeDir, 'systemctl'), 0o700);
+      await chmod(join(fakeDir, 'systemd-run'), 0o700);
+    }
     const seen: { launcherKind?: string } = {};
     const factory: OpenCodeClientFactory = async (factoryInput) => {
       seen.launcherKind = factoryInput.launcher?.kind;
@@ -243,6 +251,10 @@ describe('OpenCodeHarnessAdapter', () => {
         DBUS_SESSION_BUS_ADDRESS: 'unix:path=/run/user/1000/bus',
         XDG_RUNTIME_DIR: '/run/user/1000',
       },
+      // Isolate ONLY the unrelated tool-shell/bwrap prerequisite. No
+      // launcherSelector: the REAL selectProductionLauncher must execute
+      // against the host environment above.
+      toolShellBuilder: async () => undefined,
       clientFactory: factory,
     });
     const events = await collect(adapter, input);
@@ -251,8 +263,10 @@ describe('OpenCodeHarnessAdapter', () => {
       failure: { code: 'OPENCODE_START_FAILED' },
     });
     // The factory received a pre-selected launcher chosen from the host
-    // environment. On Linux with a working user manager this is the
-    // systemd-unit launcher even though the turn env is bus-scrubbed.
+    // environment. On Linux the bus-sensitive fakes only succeed with the
+    // host session-bus address, so systemd-unit proves host selection: had
+    // the scrubbed turn env been probed instead, the run would have failed
+    // closed with OPENCODE_SANDBOX_UNAVAILABLE.
     expect(seen.launcherKind).toBe(process.platform === 'linux' ? 'systemd-unit' : 'direct');
     await adapter.dispose();
   });
