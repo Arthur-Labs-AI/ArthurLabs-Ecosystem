@@ -107,6 +107,8 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
           (info.distribution === undefined ? '' : ' distro=' + info.distribution.id) +
           (info.runtimeEntry === undefined ? '' : ' entry=' + info.runtimeEntry) +
           ']';
+    // Structured host identity survives the wrap so the fatal screen can
+    // show native Linux guidance on CachyOS instead of WSL instructions.
     throw Object.assign(
       new Error(
         message +
@@ -117,6 +119,8 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
       ),
       {
         code: 'RUNTIME_OFFLINE',
+        hostPlatform: host.hostKind,
+        executionMode: host.executionMode,
       },
     );
   }

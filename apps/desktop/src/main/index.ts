@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bootstrapDesktop, type BootstrappedDesktop } from './bootstrap.js';
+import { classifyBootFailure, fatalScreenCopy } from './boot-failure.js';
 import { parseSentryControlArgs } from './sentry-control.js';
 import { dispatchDesktopCommand } from './desktop-command-router.js';
 import { SentryCliServer } from './cli-server.js';
@@ -65,28 +66,16 @@ async function boot(): Promise<void> {
   try {
     bootstrapped = await bootstrapDesktop(dataRoot);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const code =
-      typeof error === 'object' && error !== null && 'code' in error
-        ? String((error as { code?: unknown }).code ?? '')
-        : '';
+    const classified = classifyBootFailure(error);
+    const message = classified.message;
     await app.whenReady();
-    const nativeHostFailure =
-      code === 'LINUX_DISTRO_UNSUPPORTED' ||
-      code === 'LINUX_NODE_UNAVAILABLE' ||
-      code === 'LINUX_NODE_UNSUPPORTED' ||
-      code === 'HOST_PLATFORM_UNSUPPORTED';
-    const runtimeOffline =
-      code === 'WSL_UNAVAILABLE' ||
-      code === 'WSL_NO_DISTRO' ||
-      code === 'RUNTIME_OFFLINE' ||
-      code === 'RUNTIME_TIMEOUT' ||
-      nativeHostFailure ||
-      /runtime|wsl|handshake|cachyos|native linux/i.test(message);
+    const copy = fatalScreenCopy(classified.kind);
+    const nativeHostFailure = classified.kind === 'native-runtime-offline';
+    const runtimeOffline = classified.kind !== 'data-store';
     const fatal = new BrowserWindow({
       width: 640,
       height: runtimeOffline ? 420 : 320,
-      title: runtimeOffline ? 'Sentry — runtime offline' : 'Sentry — data store unavailable',
+      title: copy.title,
       icon: resolveAsset('../../assets/sentry-icon.png'),
       backgroundColor: '#0d100d',
     });
@@ -95,16 +84,32 @@ async function boot(): Promise<void> {
         encodeURIComponent(
           "<body style='background:#0d100d;color:#eef1eb;font-family:sans-serif;padding:32px'>" +
             (nativeHostFailure
-              ? '<h1>Sentry Runtime Offline</h1><p>Sentry Desktop is running, but the native Linux runtime could not start.</p><p>' +
+              ? '<h1>' +
+                copy.heading +
+                '</h1><p>' +
+                copy.intro +
+                '</p><p>' +
                 message.replace(/</g, '&lt;') +
-                '</p><p>QA execution is disabled. Native Linux support currently targets CachyOS only.</p>'
+                '</p><p>' +
+                copy.help +
+                '</p>'
               : runtimeOffline
-                ? '<h1>Sentry Runtime Offline</h1><p>Sentry Desktop is running, but the WSL2 execution runtime could not start.</p><p>' +
+                ? '<h1>' +
+                  copy.heading +
+                  '</h1><p>' +
+                  copy.intro +
+                  '</p><p>' +
                   message.replace(/</g, '&lt;') +
-                  '</p><p>QA execution is disabled. See docs/setup/wsl-runtime.md for setup instructions.</p>'
-                : '<h1>Sentry could not open its data store.</h1><p>' +
+                  '</p><p>' +
+                  copy.help +
+                  '</p>'
+                : '<h1>' +
+                  copy.heading +
+                  '</h1><p>' +
                   message.replace(/</g, '&lt;') +
-                  '</p><p>Fix the data root (SENTRY_DATA_ROOT) and retry.</p>') +
+                  '</p><p>' +
+                  copy.help +
+                  '</p>') +
             '</body>',
         ),
     );
@@ -220,7 +225,7 @@ app.on('before-quit', () => {
 });
 
 // Single instance: a second launch focuses the running window instead of
-// starting a second WSL runtime (dual leases corrupt run ownership and
+// starting a second runtime (dual leases corrupt run ownership and
 // produce phantom timeouts across both instances).
 const sentryControl = parseSentryControlArgs(process.argv);
 if (sentryControl.mode === 'stop') {

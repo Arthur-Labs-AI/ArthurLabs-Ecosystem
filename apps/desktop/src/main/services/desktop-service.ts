@@ -21,8 +21,6 @@ export interface DesktopServiceDeps {
   readonly agentStacks: readonly AgentStackDefinition[];
   readonly credentials: ProviderCredentialService;
   readonly legacyDataRoot?: string;
-  /** Electron userData dir: persists the WSL distro preference. */
-  readonly userDataDir?: string;
 }
 
 const ProjectIdInput = z.string().min(1).max(200);
@@ -136,7 +134,7 @@ export class DesktopApplicationService {
     return this.deps.host.prepareSourcePath(input);
   }
 
-  // ---- runs (all inside the WSL runtime) ----
+  // ---- runs (all inside the Linux execution runtime) ----
   listRuns(projectId: string): Promise<unknown[]> {
     const id = ProjectIdInput.parse(projectId);
     return this.call('runs.list', { projectId: id }) as Promise<unknown[]>;
@@ -324,7 +322,7 @@ export class DesktopApplicationService {
   detectHarnessBinaries(): Promise<unknown> {
     return Promise.resolve({
       deepseek: { detected: null, configured: null, effective: 'linux-runtime' },
-      note: 'Provider executables resolve inside the WSL runtime; Windows paths do not apply.',
+      note: 'Provider executables resolve inside the Linux execution runtime; host paths do not apply.',
     });
   }
 

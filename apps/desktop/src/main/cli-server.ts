@@ -2,7 +2,7 @@
 // by the running Electron main process. External CLI clients handshake and
 // issue operational commands; every request dispatches through the shared
 // desktop command router with external:true, so CLI and Renderer share one
-// behavior and one backend. Runs are owned by the WSL runtime: a dropped
+// behavior and one backend. Runs are owned by the Linux execution runtime: a dropped
 // client connection never cancels anything.
 import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
