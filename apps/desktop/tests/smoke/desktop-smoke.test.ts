@@ -109,7 +109,20 @@ describe('desktop smoke: service over real runtime host', () => {
           request('rpc_' + method.replace(/\./g, '_') + '_' + String(Date.now()), method, params),
         status: { connected: true, distro: undefined, hello: undefined, lastError: undefined },
       } as never,
-      distro: 'test',
+      host: {
+        hostKind: 'linux',
+        executionMode: 'native-linux',
+        createRuntimeClient: () => {
+          throw new Error('test seam: no runtime launch');
+        },
+        prepareSourcePath: (path: string) => Promise.resolve(path),
+        runtimeEnvironmentInfo: () =>
+          Promise.resolve({ hostPlatform: 'linux', executionMode: 'native-linux' }),
+        runtimeDistros: () => Promise.resolve({ distros: [], preferred: null, selected: null }),
+        runtimeSelectDistro: () => {
+          throw Object.assign(new Error('unsupported'), { code: 'DISTRO_SELECTION_UNSUPPORTED' });
+        },
+      } as never,
       credentials,
       agentStacks: [...INITIAL_AGENT_STACKS],
     });

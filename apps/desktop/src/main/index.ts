@@ -71,12 +71,18 @@ async function boot(): Promise<void> {
         ? String((error as { code?: unknown }).code ?? '')
         : '';
     await app.whenReady();
+    const nativeHostFailure =
+      code === 'LINUX_DISTRO_UNSUPPORTED' ||
+      code === 'LINUX_NODE_UNAVAILABLE' ||
+      code === 'LINUX_NODE_UNSUPPORTED' ||
+      code === 'HOST_PLATFORM_UNSUPPORTED';
     const runtimeOffline =
       code === 'WSL_UNAVAILABLE' ||
       code === 'WSL_NO_DISTRO' ||
       code === 'RUNTIME_OFFLINE' ||
       code === 'RUNTIME_TIMEOUT' ||
-      /runtime|wsl|handshake/i.test(message);
+      nativeHostFailure ||
+      /runtime|wsl|handshake|cachyos|native linux/i.test(message);
     const fatal = new BrowserWindow({
       width: 640,
       height: runtimeOffline ? 420 : 320,
@@ -88,13 +94,17 @@ async function boot(): Promise<void> {
       'data:text/html;charset=utf-8,' +
         encodeURIComponent(
           "<body style='background:#0d100d;color:#eef1eb;font-family:sans-serif;padding:32px'>" +
-            (runtimeOffline
-              ? '<h1>Sentry Runtime Offline</h1><p>Sentry Desktop is running, but the WSL2 execution runtime could not start.</p><p>' +
+            (nativeHostFailure
+              ? '<h1>Sentry Runtime Offline</h1><p>Sentry Desktop is running, but the native Linux runtime could not start.</p><p>' +
                 message.replace(/</g, '&lt;') +
-                '</p><p>QA execution is disabled. See docs/setup/wsl-runtime.md for setup instructions.</p>'
-              : '<h1>Sentry could not open its data store.</h1><p>' +
-                message.replace(/</g, '&lt;') +
-                '</p><p>Fix the data root (SENTRY_DATA_ROOT) and retry.</p>') +
+                '</p><p>QA execution is disabled. Native Linux support currently targets CachyOS only.</p>'
+              : runtimeOffline
+                ? '<h1>Sentry Runtime Offline</h1><p>Sentry Desktop is running, but the WSL2 execution runtime could not start.</p><p>' +
+                  message.replace(/</g, '&lt;') +
+                  '</p><p>QA execution is disabled. See docs/setup/wsl-runtime.md for setup instructions.</p>'
+                : '<h1>Sentry could not open its data store.</h1><p>' +
+                  message.replace(/</g, '&lt;') +
+                  '</p><p>Fix the data root (SENTRY_DATA_ROOT) and retry.</p>') +
             '</body>',
         ),
     );
@@ -228,25 +238,33 @@ if (sentryControl.mode === 'stop') {
     });
   }
 } else if (sentryControl.setupDistro !== undefined) {
-  // Distro preference sync (`sentry setup`): persist through the existing
-  // WslRuntimeManager so the JSON format stays authoritative, then quit.
-  const distroToSave = sentryControl.setupDistro;
-  if (!app.requestSingleInstanceLock()) {
-    app.quit();
-  } else {
+  // Distro preference sync (`sentry setup`): Windows-only. Persist through
+  // the existing WslRuntimeManager so the JSON format stays authoritative,
+  // then quit.
+  if (process.platform !== 'win32') {
     void app.whenReady().then(() => {
-      import('./services/wsl-runtime-client.js')
-        .then(async ({ WslRuntimeManager }) => {
-          const manager = new WslRuntimeManager({ userDataDir: app.getPath('userData') });
-          await manager.savePreferredDistro(distroToSave);
-          console.log('Saved WSL distro preference: ' + distroToSave);
-          app.quit();
-        })
-        .catch((error: unknown) => {
-          console.error('Failed to save distro preference: ' + String(error));
-          app.exit(1);
-        });
+      console.error('Distro preference sync applies to Windows (WSL) only.');
+      app.exit(1);
     });
+  } else {
+    const distroToSave = sentryControl.setupDistro;
+    if (!app.requestSingleInstanceLock()) {
+      app.quit();
+    } else {
+      void app.whenReady().then(() => {
+        import('./services/wsl-runtime-client.js')
+          .then(async ({ WslRuntimeManager }) => {
+            const manager = new WslRuntimeManager({ userDataDir: app.getPath('userData') });
+            await manager.savePreferredDistro(distroToSave);
+            console.log('Saved WSL distro preference: ' + distroToSave);
+            app.quit();
+          })
+          .catch((error: unknown) => {
+            console.error('Failed to save distro preference: ' + String(error));
+            app.exit(1);
+          });
+      });
+    }
   }
 } else if (sentryControl.providerBinary !== undefined) {
   // Provider binary override (`sentry setup`): persist a NON-SECRET

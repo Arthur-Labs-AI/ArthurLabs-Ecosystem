@@ -1,10 +1,10 @@
 /**
- * Desktop application service: typed RPC adapter over the WSL runtime.
+ * Desktop application service: typed RPC adapter over the host runtime.
  *
  * Production-only desktop: Electron main owns NO Sentry domain state — no
  * database, no RunCoordinator, no provider adapters. Every QA operation is
  * a typed `RuntimeClient.request()` over the shared stdio transport to the long-lived Linux runtime.
- * Windows keeps: safeStorage credentials, WSL lifecycle, path translation,
+ * Host keeps: safeStorage credentials, runtime lifecycle, path preparation,
  * live-update fan-out. Secrets stay in main; renderer receives statuses.
  */
 import { z } from 'zod';
@@ -13,11 +13,11 @@ import type { AgentStackDefinition } from '@qa/schemas';
 import type { DesktopOperation, RetestSnapshot, RunSnapshot } from '../../shared/ipc-contract.js';
 import type { ProviderCredentialService } from './provider-credentials.js';
 import type { RuntimeClient } from '../runtime/runtime-client.js';
-import { translateWindowsPathForWsl, WslRuntimeManager } from './wsl-runtime-client.js';
+import type { HostPlatform } from '../platform/host-platform.js';
 
 export interface DesktopServiceDeps {
   readonly runtime: RuntimeClient;
-  readonly distro: string;
+  readonly host: HostPlatform;
   readonly agentStacks: readonly AgentStackDefinition[];
   readonly credentials: ProviderCredentialService;
   readonly legacyDataRoot?: string;
@@ -133,10 +133,7 @@ export class DesktopApplicationService {
   }
 
   private async translateSourcePath(input: string): Promise<string> {
-    if (/^[A-Za-z]:[\\/]/.test(input)) {
-      return translateWindowsPathForWsl(input, this.deps.distro);
-    }
-    return input;
+    return this.deps.host.prepareSourcePath(input);
   }
 
   // ---- runs (all inside the WSL runtime) ----
@@ -412,41 +409,16 @@ export class DesktopApplicationService {
     >;
   }
 
-  private wslManager(): WslRuntimeManager {
-    return new WslRuntimeManager(
-      this.deps.userDataDir === undefined ? {} : { userDataDir: this.deps.userDataDir },
-    );
-  }
-
+  /**
+   * Runtime target choices live behind the host platform: WSL distro data
+   * on Windows, normalized native host info on Linux (no distro to pick).
+   */
   async runtimeDistros(): Promise<unknown> {
-    const manager = this.wslManager();
-    let distros: Array<{ name: string; state: string; version: number }> = [];
-    let listError: string | undefined;
-    try {
-      distros = await manager.listDistros();
-    } catch (error) {
-      // Never a silent empty list: the UI must distinguish "none installed"
-      // from "wsl.exe failed", otherwise users chase the wrong fix.
-      listError =
-        error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300);
-    }
-    const preferred = await manager.loadPreferredDistro().catch(() => undefined);
-    return {
-      distros,
-      preferred: preferred ?? null,
-      selected: this.deps.distro,
-      ...(listError === undefined ? {} : { listError }),
-    };
+    return this.deps.host.runtimeDistros();
   }
 
   async runtimeSelectDistro(distro: string): Promise<unknown> {
     const parsed = z.string().min(1).max(200).parse(distro);
-    const manager = this.wslManager();
-    const usable = (await manager.listDistros()).filter((d) => d.version === 2);
-    if (!usable.some((d) => d.name === parsed)) {
-      throw toError('WSL_NO_DISTRO', 'Not a usable WSL2 distribution: ' + parsed);
-    }
-    await manager.savePreferredDistro(parsed);
-    return { saved: parsed, restartRequired: true };
+    return this.deps.host.runtimeSelectDistro(parsed);
   }
 }

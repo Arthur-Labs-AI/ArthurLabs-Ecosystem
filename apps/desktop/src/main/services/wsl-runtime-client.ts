@@ -87,6 +87,8 @@ export class WslRuntimeClient implements RuntimeClient {
       distro: this.distro,
       hello: base.hello,
       lastError: base.lastError,
+      hostPlatform: 'windows',
+      executionMode: 'wsl2',
     };
   }
 

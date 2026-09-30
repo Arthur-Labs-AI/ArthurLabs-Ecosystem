@@ -13,12 +13,26 @@ import type { RuntimeHelloResult } from '@qa/runtime-protocol';
 /** Hello payload validated by the runtime; single source of truth is the protocol package. */
 export type RuntimeHello = RuntimeHelloResult;
 
+export type HostKind = 'windows' | 'linux';
+export type ExecutionMode = 'wsl2' | 'native-linux';
+
+export interface HostDistributionInfo {
+  readonly id: string;
+  readonly prettyName: string;
+}
+
 export interface RuntimeStatus {
   readonly connected: boolean;
   /** Host-specific runtime label (the WSL distro on Windows). Optional for compatibility. */
   readonly distro?: string | undefined;
   readonly hello: RuntimeHello | undefined;
   readonly lastError: string | undefined;
+  /** Host that owns the runtime process. Additive; older consumers ignore it. */
+  readonly hostPlatform?: HostKind;
+  /** How the runtime process is launched. Additive; older consumers ignore it. */
+  readonly executionMode?: ExecutionMode;
+  /** Native Linux distribution facts. Present only on native Linux. */
+  readonly distribution?: HostDistributionInfo;
 }
 
 /**

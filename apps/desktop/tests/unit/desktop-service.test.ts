@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DesktopApplicationService } from '../../src/main/services/desktop-service.js';
+import type { HostPlatform } from '../../src/main/platform/host-platform.js';
 import { ProviderCredentialService } from '../../src/main/services/provider-credentials.js';
 import { INITIAL_AGENT_STACKS } from '@qa/domain';
 
@@ -65,9 +66,22 @@ async function harness() {
   });
   const seen: Array<{ method: string; params: Record<string, unknown> }> = [];
   const { runtime } = fakeService(seen);
+  const host: HostPlatform = {
+    hostKind: 'windows',
+    executionMode: 'wsl2',
+    createRuntimeClient: () => {
+      throw new Error('test seam: no runtime launch');
+    },
+    prepareSourcePath: (path: string) => Promise.resolve(path),
+    runtimeEnvironmentInfo: () =>
+      Promise.resolve({ hostPlatform: 'windows', executionMode: 'wsl2', distro: 'Ubuntu' }),
+    runtimeDistros: () => Promise.resolve({ distros: [], preferred: null, selected: 'Ubuntu' }),
+    runtimeSelectDistro: (distro: string) =>
+      Promise.resolve({ saved: distro, restartRequired: true }),
+  };
   const service = new DesktopApplicationService({
     runtime: runtime as never,
-    distro: 'Ubuntu',
+    host,
     credentials,
     agentStacks: [...INITIAL_AGENT_STACKS],
   });

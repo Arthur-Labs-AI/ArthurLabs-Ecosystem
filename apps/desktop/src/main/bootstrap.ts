@@ -15,12 +15,14 @@ import {
   ProviderCredentialService,
   type SafeStorageLike,
 } from './services/provider-credentials.js';
-import { WslRuntimeClient, WslRuntimeManager } from './services/wsl-runtime-client.js';
+import type { RuntimeClient } from './runtime/runtime-client.js';
+import type { HostPlatform } from './platform/host-platform.js';
+import { createHostPlatform } from './platform/create-host-platform.js';
 
 export interface BootstrappedDesktop {
   readonly service: DesktopApplicationService;
-  readonly runtime: WslRuntimeClient;
-  readonly distro: string;
+  readonly runtime: RuntimeClient;
+  readonly host: HostPlatform;
   readonly dataRoot: string;
   readonly recoveryWarnings: readonly string[];
   /** Reconnect the runtime after a crash: respawn, handshake, reconfigure. */
@@ -39,8 +41,9 @@ function userDataDir(): string | undefined {
 
 /**
  * Production boot order:
- * credentials -> WSL distro -> spawn runtime -> handshake -> configure ->
- * awaited recovery (inside runtime) -> service. No RunCoordinator on Windows.
+ * credentials -> host platform -> runtime client -> handshake -> configure ->
+ * awaited recovery (inside runtime) -> service. No RunCoordinator on any host.
+ * Windows resolves a WSL distro; native Linux requires CachyOS.
  */
 export async function bootstrapDesktop(dataRootOverride?: string): Promise<BootstrappedDesktop> {
   const recoveryWarnings: string[] = [];
@@ -64,23 +67,12 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
     ...(safeStorageLike === undefined ? {} : { safeStorage: safeStorageLike }),
   });
   await credentials.load();
-  // Provider executables resolve inside the WSL runtime; Windows binary
+  // Provider executables resolve inside the Linux runtime; host binary
   // discovery no longer drives production readiness.
   // No secure-storage warning here: this runs before app-ready, when
   // Electron's crypto backend is not up yet, so any verdict would be stale.
   // Availability is evaluated lazily at save time (see secureStorageAvailable),
   // and a genuine failure surfaces live in the save error itself.
-  const manager = new WslRuntimeManager({ ...(dir === undefined ? {} : { userDataDir: dir }) });
-  if (!(await manager.wslAvailable())) {
-    throw Object.assign(
-      new Error("WSL2 is required for Sentry's production QA runtime, but wsl.exe is unavailable."),
-      {
-        code: 'WSL_UNAVAILABLE',
-      },
-    );
-  }
-  const distro = await manager.resolveDistro();
-  const runtimeEntry = await runtimeEntryForDistro(distro);
   // The runtime owns its Linux data root. A Windows-style path must never be
   // forwarded as --data-root (backslashes mangle through wsl.exe and the Linux
   // runtime cannot own a Windows path). Only absolute Linux paths override.
@@ -92,35 +84,45 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
       'Ignoring Windows-style SENTRY_DATA_ROOT for the Linux runtime; using the Linux-managed data root instead.',
     );
   }
-  const client = new WslRuntimeClient({
-    distro,
-    runtimeEntry,
+  const host = await createHostPlatform({
+    ...(dir === undefined ? {} : { userDataDir: dir }),
     ...(linuxOverride === undefined ? {} : { dataRoot: linuxOverride }),
   });
+  const client = await host.createRuntimeClient();
   let hello;
   try {
     hello = await client.start();
   } catch (error) {
     const diagnostics = client.stderrDiagnostics.join('\n').slice(0, 800);
     const message = error instanceof Error ? error.message : String(error);
+    const info = await host.runtimeEnvironmentInfo().catch(() => undefined);
+    const where =
+      info === undefined
+        ? ''
+        : ' [host=' +
+          info.hostPlatform +
+          '/' +
+          info.executionMode +
+          (info.distro === undefined ? '' : ' distro=' + info.distro) +
+          (info.distribution === undefined ? '' : ' distro=' + info.distribution.id) +
+          (info.runtimeEntry === undefined ? '' : ' entry=' + info.runtimeEntry) +
+          ']';
     throw Object.assign(
       new Error(
         message +
           (diagnostics.length > 0
             ? ' Runtime output: ' + diagnostics
             : ' (no runtime output captured)') +
-          ' [distro=' +
-          distro +
-          ' entry=' +
-          runtimeEntry +
-          ']',
+          where,
       ),
-      { code: 'RUNTIME_OFFLINE' },
+      {
+        code: 'RUNTIME_OFFLINE',
+      },
     );
   }
   const service = new DesktopApplicationService({
     runtime: client,
-    distro,
+    host,
     credentials,
     agentStacks: [...INITIAL_AGENT_STACKS],
     legacyDataRoot: resolveSentryDataRoot(),
@@ -134,7 +136,7 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
   return {
     service,
     runtime: client,
-    distro,
+    host,
     dataRoot: hello.dataRoot,
     recoveryWarnings,
     async reconnect() {
@@ -145,13 +147,4 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
       await client.stop();
     },
   };
-}
-
-/** Location of the deployed runtime entry inside the WSL distro. */
-export async function runtimeEntryForDistro(distro: string): Promise<string> {
-  const override = process.env['SENTRY_RUNTIME_ENTRY'];
-  if (override !== undefined && override.length > 0) return override;
-  const { wslHomeDir } = await import('./services/wsl-runtime-client.js');
-  const home = await wslHomeDir(distro);
-  return home.replace(/\/$/, '') + '/.local/share/sentry/runtime/current/apps/runtime/dist/host.js';
 }
