@@ -8,17 +8,10 @@
  * executables, distributions, or argv construction.
  */
 import type { ChildProcess } from 'node:child_process';
+import type { RuntimeHelloResult } from '@qa/runtime-protocol';
 
-export interface RuntimeHello {
-  readonly protocolVersion: number;
-  readonly runtimeVersion: string;
-  readonly platform: string;
-  readonly isWsl: boolean;
-  readonly nodeVersion: string;
-  readonly processExecPath: string;
-  readonly distro?: string;
-  readonly dataRoot: string;
-}
+/** Hello payload validated by the runtime; single source of truth is the protocol package. */
+export type RuntimeHello = RuntimeHelloResult;
 
 export interface RuntimeStatus {
   readonly connected: boolean;

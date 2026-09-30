@@ -420,3 +420,172 @@ describe('stdio runtime transport', () => {
     expect(contracts).not.toContain('wsl');
   });
 });
+
+describe('stdio runtime reconnect lifecycle', () => {
+  /**
+   * Launcher yielding one fake child per start(). Index 0 is child A, index
+   * 1 is child B, and so on. Every child answers runtime.hello; only children
+   * accepted by exitOnShutdown exit when asked to shut down, so child A can
+   * linger and emit late events after child B has taken over.
+   */
+  function sequenceClient(exitOnShutdown: (index: number) => boolean): {
+    client: StdioRuntimeClient;
+    fakes: FakeChild[];
+  } {
+    const fakes: FakeChild[] = [];
+    const client = new StdioRuntimeClient({
+      launch: () => {
+        const index = fakes.length;
+        const fake = new FakeChild();
+        const shouldExit = exitOnShutdown(index);
+        fake.onWrite = (line) => {
+          const parsed = JSON.parse(line) as { id?: unknown; method?: unknown };
+          if (parsed.method === 'runtime.hello' && typeof parsed.id === 'string') {
+            const id = parsed.id;
+            queueMicrotask(() => {
+              fake.stdout.emit('data', Buffer.from(helloLine(id), 'utf8'));
+            });
+          }
+          if (parsed.method === 'runtime.shutdown' && shouldExit) {
+            queueMicrotask(() => {
+              fake.emit('exit', 0);
+            });
+          }
+        };
+        fakes.push(fake);
+        return asChild(fake);
+      },
+    });
+    return { client, fakes };
+  }
+
+  function fakeAt(fakes: FakeChild[], index: number): FakeChild {
+    const fake = fakes[index];
+    if (fake === undefined) throw new Error('missing fake child ' + String(index));
+    return fake;
+  }
+
+  /** Bounded watchdog: the reconnect handshake must settle in milliseconds. */
+  function watchdog(ms: number): Promise<'timed-out'> {
+    return new Promise((resolve) => {
+      setTimeout(() => resolve('timed-out'), ms);
+    });
+  }
+
+  /** Stop a child that ignores runtime.shutdown via the bounded kill fallback. */
+  async function stopIgnoringShutdown(client: StdioRuntimeClient): Promise<void> {
+    vi.useFakeTimers();
+    try {
+      const stopping = client.stop();
+      await vi.advanceTimersByTimeAsync(STDIO_SHUTDOWN_GRACE_MS);
+      await stopping;
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  function respond(fake: FakeChild, id: string, result: unknown): void {
+    fake.stdout.emit(
+      'data',
+      Buffer.from(JSON.stringify({ type: 'response', id, ok: true, result }) + '\n', 'utf8'),
+    );
+  }
+
+  it('does not let a stale partial frame poison the reconnect handshake', async () => {
+    const { client, fakes } = sequenceClient(() => true);
+    await client.start();
+    const fakeA = fakeAt(fakes, 0);
+    fakeA.stdout.emit('data', Buffer.from('{"type":"notification","event":', 'utf8'));
+    fakeA.emit('exit', 1);
+    const started = client.start();
+    const outcome = await Promise.race([
+      started.then((): 'connected' => 'connected'),
+      watchdog(2000),
+    ]);
+    started.catch(() => undefined);
+    expect(outcome).toBe('connected');
+    expect(client.status.connected).toBe(true);
+    await client.stop();
+  });
+
+  it('ignores a late exit from a replaced child', async () => {
+    const { client, fakes } = sequenceClient((index) => index > 0);
+    await client.start();
+    const fakeA = fakeAt(fakes, 0);
+    await stopIgnoringShutdown(client);
+    expect(fakeA.killed).toBe(true);
+    await client.start();
+    const fakeB = fakeAt(fakes, 1);
+    expect(client.status.connected).toBe(true);
+    const exits: Array<number | null> = [];
+    client.onExit((code) => {
+      exits.push(code);
+    });
+    fakeA.emit('exit', 0);
+    expect(client.status.connected).toBe(true);
+    expect(client.status.hello?.platform).toBe('linux');
+    expect(exits).toEqual([]);
+    const pending = client.request('runs.list', {}, 5000);
+    respond(fakeB, lastSentId(fakeB), { runs: [] });
+    await expect(pending).resolves.toEqual({ runs: [] });
+    await client.stop();
+  });
+
+  it('does not reject the new child requests on a stale exit', async () => {
+    const { client, fakes } = sequenceClient((index) => index > 0);
+    await client.start();
+    const fakeA = fakeAt(fakes, 0);
+    await stopIgnoringShutdown(client);
+    await client.start();
+    const fakeB = fakeAt(fakes, 1);
+    const pending = client.request('runs.list', {}, 5000);
+    const sentId = lastSentId(fakeB);
+    fakeA.emit('exit', 0);
+    respond(fakeB, sentId, { runs: [] });
+    await expect(pending).resolves.toEqual({ runs: [] });
+    await client.stop();
+  });
+
+  it('ignores a late error from a replaced child', async () => {
+    const { client, fakes } = sequenceClient((index) => index > 0);
+    await client.start();
+    const fakeA = fakeAt(fakes, 0);
+    await stopIgnoringShutdown(client);
+    await client.start();
+    const fakeB = fakeAt(fakes, 1);
+    fakeA.emit('error', new Error('stale boom'));
+    expect(client.status.connected).toBe(true);
+    expect(client.status.lastError).toBeUndefined();
+    const pending = client.request('runs.list', {}, 5000);
+    respond(fakeB, lastSentId(fakeB), { runs: [] });
+    await expect(pending).resolves.toEqual({ runs: [] });
+    await client.stop();
+  });
+
+  it('resets framing after a failed handshake so the next child connects', async () => {
+    const fakes: FakeChild[] = [];
+    const client = new StdioRuntimeClient({
+      launch: () => {
+        const fake = new FakeChild();
+        // Only the replacement child answers; child A crashes mid-handshake.
+        if (fakes.length > 0) installResponder(fake);
+        fakes.push(fake);
+        return asChild(fake);
+      },
+    });
+    const starting = client.start();
+    const fakeA = fakeAt(fakes, 0);
+    fakeA.stdout.emit('data', Buffer.from('{"type":"notification","event":', 'utf8'));
+    fakeA.emit('exit', 1);
+    await expect(starting).rejects.toThrow('Runtime exited before handshake');
+    const started = client.start();
+    const outcome = await Promise.race([
+      started.then((): 'connected' => 'connected'),
+      watchdog(2000),
+    ]);
+    started.catch(() => undefined);
+    expect(outcome).toBe('connected');
+    expect(client.status.connected).toBe(true);
+    await client.stop();
+  });
+});

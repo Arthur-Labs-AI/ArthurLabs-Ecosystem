@@ -3,7 +3,7 @@
  *
  * Production-only desktop: Electron main owns NO Sentry domain state — no
  * database, no RunCoordinator, no provider adapters. Every QA operation is
- * a typed `WslRuntimeClient.request()` to the long-lived Linux runtime.
+ * a typed `RuntimeClient.request()` over the shared stdio transport to the long-lived Linux runtime.
  * Windows keeps: safeStorage credentials, WSL lifecycle, path translation,
  * live-update fan-out. Secrets stay in main; renderer receives statuses.
  */

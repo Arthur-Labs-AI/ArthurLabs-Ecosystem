@@ -77,7 +77,7 @@ const DEFAULT_ELECTRON_GUARD_MESSAGE = 'Runtime runs under Electron — host bou
 
 export class StdioRuntimeClient implements RuntimeClient {
   private child: ChildProcess | undefined;
-  private readonly buffer = new RpcLineBuffer();
+  private buffer = new RpcLineBuffer();
   private readonly pending = new Map<
     string,
     { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }
@@ -87,6 +87,12 @@ export class StdioRuntimeClient implements RuntimeClient {
   private stderrTail: string[] = [];
   private hello: RuntimeHello | undefined;
   private lastError: string | undefined;
+  /**
+   * Connection generation, bumped for every spawned child. A late event
+   * from a replaced child carries an older generation and must never
+   * mutate the active connection's framing, status, or pending requests.
+   */
+  private generation = 0;
   private readonly launch: RuntimeProcessLauncher;
   private readonly spawnErrorPrefix: string;
   private readonly offlineMessage: string;
@@ -126,9 +132,19 @@ export class StdioRuntimeClient implements RuntimeClient {
       throw Object.assign(new Error('Runtime is starting'), { code: 'RUNTIME_STARTING' });
     }
     const child = this.launch();
+    this.generation += 1;
+    const generation = this.generation;
+    // Framing state belongs to one runtime process: every spawned child
+    // gets a fresh decoder before any stdout handler can feed it, so stale
+    // bytes from a previous child can never merge with the new handshake.
+    this.buffer = new RpcLineBuffer();
     this.child = child;
-    child.stdout?.on('data', (chunk: Buffer) => this.onStdout(chunk));
+    child.stdout?.on('data', (chunk: Buffer) => {
+      if (generation !== this.generation) return;
+      this.onStdout(chunk);
+    });
     child.stderr?.on('data', (chunk: Buffer) => {
+      if (generation !== this.generation) return;
       const text = chunk.toString('utf8');
       for (const line of text.split('\n')) {
         const trimmed = line.trim();
@@ -138,6 +154,7 @@ export class StdioRuntimeClient implements RuntimeClient {
       }
     });
     child.on('error', (error: Error) => {
+      if (generation !== this.generation) return;
       this.lastError =
         this.spawnErrorPrefix + error.message.slice(0, STDIO_SPAWN_ERROR_PREVIEW_CHARS);
       this.failAllPending(new Error(this.lastError));
@@ -145,6 +162,7 @@ export class StdioRuntimeClient implements RuntimeClient {
       this.exitHandler?.(null);
     });
     child.on('exit', (code) => {
+      if (generation !== this.generation) return;
       if (this.hello === undefined && this.lastError === undefined) {
         this.lastError = 'Runtime exited before handshake (code ' + String(code) + ')';
       }
@@ -187,7 +205,10 @@ export class StdioRuntimeClient implements RuntimeClient {
       this.lastError = undefined;
       return hello;
     } catch (error) {
-      this.stop();
+      // Deterministic cleanup: when start() rejects, the failed child has
+      // fully exited (or been killed) before the error propagates, so it
+      // can never linger into — or corrupt — a replacement connection.
+      await this.stop();
       throw error;
     }
   }
@@ -319,6 +340,11 @@ export class StdioRuntimeClient implements RuntimeClient {
     }
   }
 
+  /**
+   * Settle every outstanding request. Only ever called for the active
+   * connection (detach in stop(), or a generation-guarded child event),
+   * so a stale child can never reject requests belonging to its replacement.
+   */
   private failAllPending(error: Error): void {
     for (const [id, entry] of this.pending) {
       this.pending.delete(id);
