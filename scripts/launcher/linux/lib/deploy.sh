@@ -33,3 +33,17 @@ sentry_runtime_deploy() {
   return 0
 }
 
+# Restore runtime/current to a previous target after a failed verification.
+# The previous version directory is always retained, so this never loses data.
+# Use the NONE sentinel when no previous deployment existed (nothing to restore).
+sentry_rollback_runtime() {
+  local prev="$1"
+  if [ "$prev" = "NONE" ] || [ -z "$prev" ]; then
+    echo "  No previous runtime to restore."
+    return 0
+  fi
+  ln -sfn "$prev" "$HOME/.local/share/sentry/runtime/current"
+  echo "  Rolled runtime/current back to $prev."
+  return 0
+}
+

@@ -143,10 +143,7 @@ cmd_setup() {
   local hello_line=""
   hello_line=$(sentry_verify_runtime "$entry" "$node_bin" "$repo") || {
     printf '%s\n' "$hello_line"
-    if [ "$prev_current" != "NONE" ]; then
-      ln -sfn "$prev_current" "$HOME/.local/share/sentry/runtime/current"
-      echo "  Rolled runtime/current back to $prev_current."
-    fi
+    sentry_rollback_runtime "$prev_current"
     sentry_fail "Runtime verification failed (previous runtime preserved)."
     return 1
   }

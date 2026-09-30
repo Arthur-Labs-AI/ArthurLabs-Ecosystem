@@ -17,8 +17,16 @@ export SENTRY_REPO_ROOT="$REPO_ROOT"
 . "$LINUX_DIR/lib/deploy.sh"
 . "$LINUX_DIR/lib/verify.sh"
 . "$LINUX_DIR/lib/desktop-ctl.sh"
+. "$LINUX_DIR/lib/broker.sh"
 . "$LINUX_DIR/distros/cachyos.sh"
+. "$LINUX_DIR/lib/broker.sh"
 . "$LINUX_DIR/commands/version.sh"
+. "$LINUX_DIR/commands/doctor.sh"
+. "$LINUX_DIR/commands/status.sh"
+. "$LINUX_DIR/commands/open.sh"
+. "$LINUX_DIR/commands/stop.sh"
+. "$LINUX_DIR/commands/update.sh"
+. "$LINUX_DIR/commands/cli.sh"
 . "$LINUX_DIR/commands/setup.sh"
 
 cmd_help() {
@@ -56,6 +64,41 @@ case "$cmd" in
     ;;
   setup)
     cmd_setup "$@"
+    exit "$?"
+    ;;
+  doctor)
+    sentry_require_cachyos || exit 3
+    cmd_doctor "$@"
+    exit "$?"
+    ;;
+  open)
+    sentry_require_cachyos || exit 3
+    cmd_open "$@"
+    exit "$?"
+    ;;
+  stop)
+    sentry_require_cachyos || exit 3
+    cmd_stop "$@"
+    exit "$?"
+    ;;
+  status)
+    sentry_require_cachyos || exit 3
+    cmd_status "$@"
+    exit "$?"
+    ;;
+  update)
+    sentry_require_cachyos || exit 3
+    cmd_update "$@"
+    exit "$?"
+    ;;
+  __post-update)
+    sentry_require_cachyos || exit 3
+    cmd_post_update "$@"
+    exit "$?"
+    ;;
+  cli)
+    sentry_require_cachyos || exit 3
+    cmd_cli "$@"
     exit "$?"
     ;;
   *)
