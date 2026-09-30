@@ -1661,9 +1661,13 @@ function translateWindowsPath(input: string): string {
   return input;
 }
 
-/** Agent workspaces must live under the Linux data root — never /mnt/c sources. */
+/**
+ * Agent workspaces must live under the Linux data root. Under WSL, /mnt/*
+ * is a Windows mount (non-native sources are refused); on native Linux
+ * /mnt/* is an ordinary location, so this guard applies only under WSL.
+ */
 function assertLinuxNative(path: string, what: string): void {
-  if (path.startsWith('/mnt/')) {
+  if (isWslEnvironment() && path.startsWith('/mnt/')) {
     throw rpcError(
       'NON_NATIVE_' + what.toUpperCase().replace(/[^A-Z]+/g, '_'),
       what + ' must not live under /mnt: ' + path.slice(0, 200),

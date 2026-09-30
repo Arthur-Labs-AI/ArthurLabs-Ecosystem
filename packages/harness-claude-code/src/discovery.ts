@@ -171,7 +171,7 @@ export interface ClaudeExecutableIdentity {
   readonly platform: NodeJS.Platform;
   /** True when running inside WSL (Linux + WSL markers). */
   readonly isWsl: boolean;
-  /** True when the resolved executable lives under /mnt/* or is a Windows shim. */
+  /** True when the executable is on a Windows mount (WSL) or is a Windows shim. */
   readonly isWindowsMounted: boolean;
 }
 
@@ -201,18 +201,24 @@ function detectWsl(environment: NodeJS.ProcessEnv, platform: NodeJS.Platform): b
 }
 
 /**
- * True only for PROVEN Windows execution: a path under /mnt/* (WSL
- * Windows mount) or a Windows script shim (.cmd/.bat/.ps1). A bare
+ * True only for PROVEN Windows execution: a path under /mnt/* — but only
+ * when actually running under WSL, where /mnt/* is the Windows mount —
+ * or a Windows script shim (.cmd/.bat/.ps1). On native Linux /mnt/* is an
+ * ordinary location (e.g. /mnt/tools/claude) and must not count. A bare
  * `.exe` suffix is NOT proof: npm ships native Linux ELF binaries named
  * `claude.exe` (verified: `/usr/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe`
  * is an x86-64 ELF). Extension alone must never block a run; when the
  * extension is the only signal, read the file magic instead of failing.
  */
-function isWindowsMountedExecutable(resolved: string, realpath: string | undefined): boolean {
+function isWindowsMountedExecutable(
+  resolved: string,
+  realpath: string | undefined,
+  isWsl: boolean,
+): boolean {
   const candidates = realpath === undefined ? [resolved] : [resolved, realpath];
   return candidates.some((candidate) => {
     const normalized = candidate.replace(/\\/g, '/');
-    if (/^\/mnt\//i.test(normalized)) return true;
+    if (isWsl && /^\/mnt\//i.test(normalized)) return true;
     return /\.(cmd|bat|ps1)$/i.test(normalized);
   });
 }
@@ -306,7 +312,8 @@ export async function resolveClaudeExecutableIdentity(
   } catch {
     version = undefined;
   }
-  let windowsMounted = isWindowsMountedExecutable(resolved, realpath);
+  const wsl = detectWsl(environment, platform);
+  let windowsMounted = isWindowsMountedExecutable(resolved, realpath, wsl);
   // Ambiguous `.exe` suffix on Linux (npm's native ELF `claude.exe`):
   // inspect content instead of failing on the name. Block only proven
   // Windows execution (PE magic or Windows shim text); a native ELF or
@@ -330,7 +337,7 @@ export async function resolveClaudeExecutableIdentity(
     realpath,
     version,
     platform,
-    isWsl: detectWsl(environment, platform),
+    isWsl: wsl,
     isWindowsMounted: windowsMounted,
   };
   if (platform !== 'win32' && identity.isWindowsMounted) {

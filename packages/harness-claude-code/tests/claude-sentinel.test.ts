@@ -256,16 +256,30 @@ describe('Claude headless IDE isolation', () => {
 });
 
 describe('Claude executable runtime identity', () => {
-  it('fails closed when Linux resolves to a Windows-mounted executable', async () => {
+  it('fails closed when WSL resolves to a Windows-mounted executable', async () => {
     const { resolveClaudeExecutableIdentity } = await import('../src/index.js');
-    // The typed code rides on error.code (not the message text).
+    // The typed code rides on error.code (not the message text). /mnt/*
+    // proves a Windows mount only under WSL, so the env carries WSL markers.
     await expect(
       resolveClaudeExecutableIdentity(
         '/mnt/c/Program Files/claude.exe',
-        { PATH: '/usr/bin' },
+        { PATH: '/usr/bin', WSL_DISTRO_NAME: 'Ubuntu' },
         'linux',
       ),
     ).rejects.toMatchObject({ code: 'GLM_CLAUDE_RUNTIME_MISMATCH' });
+  });
+
+  it('accepts a native Linux executable under /mnt outside WSL', async () => {
+    // On native Linux /mnt/* is an ordinary location, not a Windows mount:
+    // no WSL markers in env means no rejection for the location alone.
+    const { resolveClaudeExecutableIdentity } = await import('../src/index.js');
+    const identity = await resolveClaudeExecutableIdentity(
+      '/mnt/tools/claude',
+      { PATH: '/usr/bin' },
+      'linux',
+    );
+    expect(identity.isWsl).toBe(false);
+    expect(identity.isWindowsMounted).toBe(false);
   });
 
   it('accepts a native Linux ELF binary even when npm names it claude.exe', async () => {
