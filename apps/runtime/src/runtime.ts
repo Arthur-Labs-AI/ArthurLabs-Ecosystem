@@ -497,19 +497,21 @@ export class SentryRuntimeHost {
 
   /**
    * Legacy Windows data roots are never migrated automatically: detect and
-   * report them untouched. Historical simulation rows stay readable.
+   * report them untouched. Historical simulation rows stay readable. The
+   * /mnt/c and /mnt/d locations are Windows mounts only under WSL — a
+   * native Linux machine may legitimately mount disks there — so outside
+   * WSL the probe is skipped and the normalized empty result is returned.
    */
   async legacyWindowsData(): Promise<unknown> {
-    const { access, constants } = await import('node:fs/promises');
     const found: string[] = [];
-    // Conventional Windows-mounted locations that may hold pre-WSL Sentry data.
-    // Generic drive roots only — never user-specific paths.
-    for (const drive of ['c', 'd']) {
-      for (const tail of ['/Temp/sentry-live-data/sentry.db', '/Sentry/.sentry-live/sentry.db']) {
-        const candidate = '/mnt/' + drive + tail;
+    if (isWslEnvironment()) {
+      const { access, constants } = await import('node:fs/promises');
+      // Conventional Windows-mounted locations that may hold pre-WSL Sentry data.
+      // Generic drive roots only — never user-specific paths.
+      for (const candidate of legacyWindowsCandidates(true)) {
         try {
           await access(candidate, constants.R_OK);
-          found.push('/mnt/' + drive + tail.slice(0, tail.lastIndexOf('/')));
+          found.push(candidate.slice(0, candidate.lastIndexOf('/')));
         } catch {
           // absent — nothing to report
         }
@@ -1596,6 +1598,22 @@ export function defaultLinuxDataRoot(): string {
   const home = process.env['HOME'];
   if (home !== undefined && home.length > 0) return join(home, '.local', 'share', 'sentry');
   return resolveSentryDataRoot();
+}
+
+/**
+ * Legacy Windows-era data locations (/mnt/c, /mnt/d). Meaningful only
+ * under WSL, where /mnt/* is the Windows mount; empty elsewhere so native
+ * Linux disks mounted at /mnt are never misread as Windows data.
+ */
+export function legacyWindowsCandidates(isWsl: boolean): string[] {
+  if (!isWsl) return [];
+  const candidates: string[] = [];
+  for (const drive of ['c', 'd']) {
+    for (const tail of ['/Temp/sentry-live-data/sentry.db', '/Sentry/.sentry-live/sentry.db']) {
+      candidates.push('/mnt/' + drive + tail);
+    }
+  }
+  return candidates;
 }
 
 export function isWslEnvironment(): boolean {

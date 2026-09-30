@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtemp, writeFile, chmod, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { isAbsolute, posix } from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createHostPlatform } from '../../src/main/platform/create-host-platform.js';
 import {
   detectLinuxDistribution,
@@ -7,6 +10,7 @@ import {
 } from '../../src/main/platform/linux/linux-host-info.js';
 import { NativeLinuxPlatform } from '../../src/main/platform/linux/native-linux-platform.js';
 import {
+  assertSupportedNodeVersion,
   parseNodeMajor,
   resolveNativeNodeExecutable,
   resolveNativeRuntimeEntry,
@@ -74,6 +78,48 @@ describe('linux host detection', () => {
   });
 });
 
+/**
+ * spawnSync is mocked so version validation is hermetic on every host: the
+ * PATH search itself still hits the real filesystem (a temp dir holding a
+ * `node` placeholder), while `--version` answers a fixed modern version.
+ * Real spawnSync ENOENT/status semantics belong to Node stdlib, not to the
+ * resolution decisions under test here.
+ */
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return {
+    ...actual,
+    spawnSync: (command: string, args: readonly string[]) => {
+      if (command.includes('nonexistent') || command.includes('no-such-binary')) {
+        return { error: new Error('spawnSync ENOENT'), status: null, stdout: '' };
+      }
+      if (args.includes('--version')) {
+        return { status: 0, stdout: 'v22.4.0\n' };
+      }
+      throw new Error('unexpected spawnSync in test: ' + command);
+    },
+  };
+});
+
+const pathProbeRoots: string[] = [];
+afterEach(async () => {
+  while (pathProbeRoots.length > 0) {
+    const root = pathProbeRoots.pop();
+    if (root === undefined) break;
+    await rm(root, { recursive: true, force: true }).catch(() => undefined);
+  }
+});
+
+/** Temp dir containing an executable placeholder named `node`. */
+async function fakeNodeDir(): Promise<string> {
+  const { join } = await import('node:path');
+  const dir = await mkdtemp(join(tmpdir(), 'sentry-path-node-'));
+  pathProbeRoots.push(dir);
+  await writeFile(join(dir, 'node'), 'placeholder');
+  await chmod(join(dir, 'node'), 0o755);
+  return dir;
+}
+
 describe('native node resolution', () => {
   it('parses node version output into majors', () => {
     expect(parseNodeMajor('v22.4.0\n')).toBe(22);
@@ -81,15 +127,47 @@ describe('native node resolution', () => {
     expect(parseNodeMajor('not-node')).toBeUndefined();
   });
 
-  it('accepts the current standalone node binary', () => {
-    const resolved = resolveNativeNodeExecutable({ executable: process.execPath });
+  it('accepts the current standalone node binary', async () => {
+    const resolved = await resolveNativeNodeExecutable({ executable: process.execPath });
+    expect(resolved.executable).toBe(process.execPath);
     expect(resolved.major).toBeGreaterThanOrEqual(22);
   });
 
-  it('fails closed when no node executable exists', () => {
-    expect(() =>
+  it('resolves PATH node to an absolute validated executable', async () => {
+    const dir = await fakeNodeDir();
+    const resolved = await resolveNativeNodeExecutable({
+      executable: 'node',
+      env: { PATH: dir },
+    });
+    expect(resolved.executable).toBe(posix.join(dir, 'node'));
+    // Platform-aware: posix-absolute on Linux, drive-absolute on Windows.
+    expect(isAbsolute(resolved.executable)).toBe(true);
+    expect(resolved.major).toBe(22);
+  });
+
+  it('fails closed when no node executable exists', async () => {
+    await expect(
+      resolveNativeNodeExecutable({
+        executable: 'sentry-test-no-such-binary',
+        env: { PATH: '' },
+      }),
+    ).rejects.toMatchObject({ code: 'LINUX_NODE_UNAVAILABLE' });
+    await expect(
       resolveNativeNodeExecutable({ executable: '/nonexistent/sentry-test-node' }),
-    ).toThrowError(expect.objectContaining({ code: 'LINUX_NODE_UNAVAILABLE' }));
+    ).rejects.toMatchObject({ code: 'LINUX_NODE_UNAVAILABLE' });
+  });
+
+  it('rejects old or unparsable node versions', () => {
+    expect(assertSupportedNodeVersion('v22.4.0\n', 'node')).toMatchObject({
+      version: 'v22.4.0',
+      major: 22,
+    });
+    expect(() => assertSupportedNodeVersion('v20.19.0', 'node')).toThrowError(
+      expect.objectContaining({ code: 'LINUX_NODE_UNSUPPORTED' }),
+    );
+    expect(() => assertSupportedNodeVersion('not-node', 'node')).toThrowError(
+      expect.objectContaining({ code: 'LINUX_NODE_UNSUPPORTED' }),
+    );
   });
 
   it('resolves the native runtime entry from override or HOME layout', () => {

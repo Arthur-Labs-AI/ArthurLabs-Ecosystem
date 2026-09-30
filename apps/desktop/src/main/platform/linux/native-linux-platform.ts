@@ -50,27 +50,114 @@ export function parseNodeMajor(versionOutput: string): number | undefined {
 }
 
 /**
- * Resolve the standalone Node executable: explicit override first, else
- * PATH `node` (resolved by the OS at spawn — no shell involved). Fails
- * closed when Node is missing or older than the supported major.
+ * Enforce the supported Node major on `--version` output (pure, unit-tested).
  */
-export function resolveNativeNodeExecutable(options: {
+export function assertSupportedNodeVersion(
+  versionOutput: string,
+  executable: string,
+): { version: string; major: number } {
+  const version = versionOutput.trim();
+  const major = parseNodeMajor(version);
+  if (major === undefined || major < NATIVE_NODE_MIN_MAJOR) {
+    throw Object.assign(
+      new Error(
+        'Standalone Node.js ' +
+          version.slice(0, 50) +
+          ' is too old: Sentry requires Node >= ' +
+          String(NATIVE_NODE_MIN_MAJOR) +
+          '. ' +
+          executable,
+      ),
+      { code: 'LINUX_NODE_UNSUPPORTED' },
+    );
+  }
+  return { version, major };
+}
+
+/**
+ * Direct PATH search (colon-separated, executable bit) — no shell, no
+ * `command -v`. Returns undefined when the command resolves nowhere.
+ */
+/**
+ * Split a PATH value on colons, keeping a Windows drive prefix (`C:`)
+ * attached to the segment it introduces. Plain POSIX entries never take
+ * that shape, so native Linux lists are unaffected.
+ */
+function splitPathList(pathValue: string): string[] {
+  const raw = pathValue.split(':');
+  const dirs: string[] = [];
+  for (let index = 0; index < raw.length; index += 1) {
+    const segment = raw[index];
+    const next = raw[index + 1];
+    if (
+      segment !== undefined &&
+      /^[A-Za-z]$/.test(segment) &&
+      next !== undefined &&
+      (next.startsWith('/') || next.startsWith('\\'))
+    ) {
+      dirs.push(segment + ':' + next);
+      index += 1;
+    } else if (segment !== undefined && segment.length > 0) {
+      dirs.push(segment);
+    }
+  }
+  return dirs;
+}
+
+async function findExecutableOnPath(
+  command: string,
+  env: NodeJS.ProcessEnv | undefined,
+): Promise<string | undefined> {
+  const pathValue = env?.['PATH'] ?? process.env['PATH'] ?? '';
+  const { access, constants } = await import('node:fs/promises');
+  for (const dir of splitPathList(pathValue)) {
+    // POSIX join deliberately: this resolves native Linux executables even
+    // when its tests execute on a Windows dev machine.
+    const candidate = posix.join(dir, command);
+    try {
+      await access(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // Not executable here — keep searching.
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Resolve the standalone Node executable to an absolute validated path:
+ * explicit override first (absolute overrides stay absolute), else a PATH
+ * search for `node`. No shell is ever executed; the launcher spawns the
+ * resolved path directly. Fails closed when Node is missing or too old.
+ */
+export async function resolveNativeNodeExecutable(options: {
   readonly executable?: string;
   readonly env?: NodeJS.ProcessEnv;
-}): NativeNodeResolution {
+}): Promise<NativeNodeResolution> {
   const configured = (options.executable ?? options.env?.['SENTRY_NODE_BINARY'] ?? 'node').trim();
   if (configured.length === 0) {
     throw Object.assign(new Error('No standalone Node.js executable configured.'), {
       code: 'LINUX_NODE_UNAVAILABLE',
     });
   }
-  const env = options.env;
+  // Either slash marks an explicit path (POSIX or Windows spelling); only
+  // bare names go through the PATH search.
+  const executable =
+    configured.includes('/') || configured.includes('\\')
+      ? configured
+      : await findExecutableOnPath(configured, options.env);
+  if (executable === undefined) {
+    throw Object.assign(
+      new Error('No standalone Node.js executable found on PATH (' + configured + ').'),
+      { code: 'LINUX_NODE_UNAVAILABLE' },
+    );
+  }
   let output: string;
   try {
-    const result = spawnSync(configured, ['--version'], {
+    const result = spawnSync(executable, ['--version'], {
       encoding: 'utf8',
       timeout: 15000,
-      ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
+      ...(options.env === undefined ? {} : { env: { ...process.env, ...options.env } }),
     });
     if (result.error !== undefined || result.status !== 0) {
       throw new Error(String(result.error ?? 'exit ' + String(result.status)));
@@ -80,28 +167,15 @@ export function resolveNativeNodeExecutable(options: {
     throw Object.assign(
       new Error(
         'No standalone Node.js executable found (' +
-          configured +
+          executable +
           '): ' +
           (error instanceof Error ? error.message : String(error)).slice(0, 200),
       ),
       { code: 'LINUX_NODE_UNAVAILABLE' },
     );
   }
-  const major = parseNodeMajor(output);
-  if (major === undefined || major < NATIVE_NODE_MIN_MAJOR) {
-    throw Object.assign(
-      new Error(
-        'Standalone Node.js ' +
-          output.trim().slice(0, 50) +
-          ' is too old: Sentry requires Node >= ' +
-          String(NATIVE_NODE_MIN_MAJOR) +
-          '. ' +
-          configured,
-      ),
-      { code: 'LINUX_NODE_UNSUPPORTED' },
-    );
-  }
-  return { executable: configured, version: output.trim(), major };
+  const { version, major } = assertSupportedNodeVersion(output, executable);
+  return { executable, version, major };
 }
 
 /**
@@ -148,7 +222,7 @@ export class NativeLinuxPlatform implements HostPlatform {
 
   async createRuntimeClient(): Promise<RuntimeClient> {
     const distribution = await this.requireCachyOs();
-    const node = this.nodeResolution();
+    const node = await this.nodeResolution();
     const runtimeEntry = this.entryResolution();
     return new NativeLinuxRuntimeClient({
       nodeExecutable: node.executable,
@@ -178,7 +252,7 @@ export class NativeLinuxPlatform implements HostPlatform {
 
   async runtimeEnvironmentInfo(): Promise<HostRuntimeInfo> {
     const distribution = await this.requireCachyOs();
-    const node = this.nodeResolution();
+    const node = await this.nodeResolution();
     return {
       hostPlatform: 'linux',
       executionMode: 'native-linux',
@@ -227,9 +301,9 @@ export class NativeLinuxPlatform implements HostPlatform {
     return this.distributionCache;
   }
 
-  private nodeResolution(): NativeNodeResolution {
+  private async nodeResolution(): Promise<NativeNodeResolution> {
     if (this.nodeCache === undefined) {
-      this.nodeCache = resolveNativeNodeExecutable({
+      this.nodeCache = await resolveNativeNodeExecutable({
         ...(this.nodeExecutable === undefined ? {} : { executable: this.nodeExecutable }),
         env: this.env,
       });
