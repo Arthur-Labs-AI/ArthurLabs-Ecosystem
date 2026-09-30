@@ -190,4 +190,3 @@ jobs:
           ./sentry version
           if ./sentry status; then echo 'Ubuntu must fail closed, never claim support'; exit 1; fi
           ./sentry status 2>&1 | grep -q 'CachyOS only'
-

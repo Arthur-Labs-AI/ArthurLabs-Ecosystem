@@ -131,53 +131,57 @@ describe('runtime naming and tool versions', () => {
     assert.equal(versionContains('1.18.3', '1.18.32'), false);
   });
 
-describe('native os-release decisions', () => {
-  it('accepts the CachyOS fixture, rejects others', async () => {
-    const cachy = parseOsRelease('NAME="CachyOS Linux"\nPRETTY_NAME="CachyOS"\nID=cachyos\nID_LIKE=arch\n');
-    assert.equal(cachy.id, 'cachyos');
-    assert.equal(cachy.prettyName, 'CachyOS');
-    assert.equal(isCachyOsSupported(cachy), true);
-    assert.equal(
-      isCachyOsSupported(parseOsRelease('ID=ubuntu\nID_LIKE=debian\nPRETTY_NAME="Ubuntu 24.04 LTS"\n')),
-      false,
-    );
-    assert.equal(
-      isCachyOsSupported(parseOsRelease('ID=arch\nPRETTY_NAME="Arch Linux"\n')),
-      false,
-    );
-    assert.equal(isCachyOsSupported(parseOsRelease('')), false);
-    assert.equal(isCachyOsSupported(null), false);
-    assert.deepEqual(cachyosPackagesFor(['git', 'bwrap', 'socat', 'git']), [
-      'git',
-      'bubblewrap',
-      'socat',
-    ]);
-    assert.deepEqual(cachyosPackagesFor(['nope']), []);
-    assert.deepEqual(Object.keys(CACHYOS_PACKAGES).sort(), [
-      'bwrap',
-      'ca-certificates',
-      'curl',
-      'git',
-      'node',
-      'npm',
-      'socat',
-    ]);
-    assert.deepEqual(setupPhaseNames(), [
-      'host',
-      'base',
-      'packages',
-      'node',
-      'pnpm',
-      'systemd-sandbox',
-      'dependencies',
-      'build',
-      'deploy',
-      'verify',
-      'agents',
-      'shim',
-    ]);
+  describe('native os-release decisions', () => {
+    it('accepts the CachyOS fixture, rejects others', async () => {
+      const cachy = parseOsRelease(
+        'NAME="CachyOS Linux"\nPRETTY_NAME="CachyOS"\nID=cachyos\nID_LIKE=arch\n',
+      );
+      assert.equal(cachy.id, 'cachyos');
+      assert.equal(cachy.prettyName, 'CachyOS');
+      assert.equal(isCachyOsSupported(cachy), true);
+      assert.equal(
+        isCachyOsSupported(
+          parseOsRelease('ID=ubuntu\nID_LIKE=debian\nPRETTY_NAME="Ubuntu 24.04 LTS"\n'),
+        ),
+        false,
+      );
+      assert.equal(
+        isCachyOsSupported(parseOsRelease('ID=arch\nPRETTY_NAME="Arch Linux"\n')),
+        false,
+      );
+      assert.equal(isCachyOsSupported(parseOsRelease('')), false);
+      assert.equal(isCachyOsSupported(null), false);
+      assert.deepEqual(cachyosPackagesFor(['git', 'bwrap', 'socat', 'git']), [
+        'git',
+        'bubblewrap',
+        'socat',
+      ]);
+      assert.deepEqual(cachyosPackagesFor(['nope']), []);
+      assert.deepEqual(Object.keys(CACHYOS_PACKAGES).sort(), [
+        'bwrap',
+        'ca-certificates',
+        'curl',
+        'git',
+        'node',
+        'npm',
+        'socat',
+      ]);
+      assert.deepEqual(setupPhaseNames(), [
+        'host',
+        'base',
+        'packages',
+        'node',
+        'pnpm',
+        'systemd-sandbox',
+        'dependencies',
+        'build',
+        'deploy',
+        'verify',
+        'agents',
+        'shim',
+      ]);
+    });
   });
-});
 
   it('classifies claude versions incl. known-incompatible', () => {
     assert.equal(classifyClaudeVersion('2.1.270'), 'ready');

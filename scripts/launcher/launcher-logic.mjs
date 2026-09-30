@@ -125,7 +125,6 @@ export function versionContains(output, version) {
   return String(output === undefined || output === null ? '' : output).includes(version);
 }
 
-
 /**
  * Native Linux (CachyOS) decisions. Pure and testable; the bash launcher
  * implements the effects. os-release parsing mirrors
@@ -201,7 +200,6 @@ export function setupPhaseNames() {
     'shim',
   ];
 }
-
 
 /**
  * Validate one runtime.hello response line (setup/update gate, no providers).
