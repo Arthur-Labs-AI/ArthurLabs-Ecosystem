@@ -32,10 +32,12 @@ export type MatchCaseId =
   | 'same_agent_exact_behavior'
   | 'same_agent_overlapping_semantics'
   | 'same_agent_evidence_backed'
+  | 'same_agent_exact_duplicate'
   | 'cross_agent_same_location_semantics'
   | 'cross_agent_behavior_rootcause'
   | 'cross_agent_symbol_evidence_behavior'
   | 'cross_agent_evidence_behavior'
+  | 'cross_agent_structural_identity'
   | 'none';
 
 export interface MatchReasons {
@@ -47,6 +49,8 @@ export interface MatchReasons {
   readonly categoryEqual: boolean;
   readonly categoryConflict: boolean;
   readonly titleSimilar: boolean;
+  /** Normalized title token sets are exactly equal (non-empty). */
+  readonly titleIdentical: boolean;
   readonly behaviorSimilar: boolean;
   readonly rootCauseSimilar: boolean;
   readonly sharedTopicToken: boolean;
@@ -159,6 +163,13 @@ export function compareFindings(a: NormalizedFinding, b: NormalizedFinding): Mat
     (a.titleTokens.size > 0 &&
       b.titleTokens.size > 0 &&
       [...b.titleTokens].every((token) => a.titleTokens.has(token)));
+  // Exact title duplicates (same agent double-reporting the same defect
+  // twice): non-empty normalized title sets that are exactly equal. Empty
+  // sets carry no signal and never count, as with every other text signal.
+  const titleIdentical =
+    a.titleTokens.size > 0 &&
+    a.titleTokens.size === b.titleTokens.size &&
+    [...a.titleTokens].every((token) => b.titleTokens.has(token));
   const behaviorSimilar =
     (a.actualTokens.size > 0 &&
       b.actualTokens.size > 0 &&
@@ -213,6 +224,7 @@ export function compareFindings(a: NormalizedFinding, b: NormalizedFinding): Mat
     categoryEqual,
     categoryConflict,
     titleSimilar,
+    titleIdentical,
     behaviorSimilar,
     rootCauseSimilar,
     sharedTopicToken,
@@ -221,11 +233,16 @@ export function compareFindings(a: NormalizedFinding, b: NormalizedFinding): Mat
     evidenceOverlap,
     sameSourceAgent,
   };
-  // Merger v3 equivalence: exactly one of five cases must hold. Location
+  // Merger v3 equivalence: exactly one of seven cases must hold. Location
   // is supporting evidence only — every case requires strong semantic
-  // agreement first. lineNear NEVER enables equivalence on its own; it
-  // only narrows an already-established semantic + same-file match.
-  // sharedDistinctiveToken is debug-only and appears in NO case.
+  // agreement first, except the two structural identity cases: an exact
+  // same-agent title duplicate at an overlapping location, and a
+  // cross-agent paraphrase bound by same-file location precision plus a
+  // shared distinctive token. lineNear NEVER enables equivalence on its
+  // own; it only narrows an already-established semantic + same-file match
+  // (or pairs with the same symbol in the structural case). A shared
+  // distinctive token enables ONLY the structural case — everywhere else
+  // it stays a debug-only signal.
   // Category conflict raises the bar: conflicting categories require
   // veryStrongSemanticAgreement instead of strongSemanticAgreement.
   const semanticBar = (base: boolean): boolean =>
@@ -286,6 +303,28 @@ export function compareFindings(a: NormalizedFinding, b: NormalizedFinding): Mat
   // Behavior-only pairs WITHOUT location or evidence stay separate:
   // strong behavior prose alone is not duplicate proof.
   const crossAgentEvidence = !sameSourceAgent && evidenceOverlap && semanticBar(behaviorSimilar);
+  // SAME-AGENT CASE C: exact duplicate double-report — identical
+  // normalized titles at an overlapping location in the same category.
+  // One agent deliberately emitted two findings; identical titles at the
+  // same place are the duplicate itself, so behavior/root-cause prose is
+  // not demanded again. Title equality is exact (never fuzzy), which is
+  // why paraphrased same-agent pairs still need cases A/A2/B.
+  const sameAgentExactDuplicate =
+    sameSourceAgent && location.sameFile && location.lineOverlap && titleIdentical && categoryEqual;
+  // CROSS-AGENT CASE F: structural identity for paraphrased duplicates —
+  // same file, overlapping (or same-symbol nearby) location, same
+  // category, plus a shared distinctive (non-generic-vocabulary) token.
+  // Titles may diverge completely; the shared distinctive token binds the
+  // same underlying defect instead. Location precision is load-bearing:
+  // bare nearness without the same symbol never suffices, and generic QA
+  // vocabulary (request/handler/cache/...) never counts, so same-line
+  // distinct bugs (§14) and same-symbol distinct bugs (§12) stay apart.
+  const crossAgentStructural =
+    !sameSourceAgent &&
+    location.sameFile &&
+    (location.lineOverlap || (location.lineNear && location.sameSymbol)) &&
+    categoryEqual &&
+    sharedDistinctiveToken;
   const equivalent =
     sameAgentExact ||
     sameAgentOverlapping ||
@@ -293,7 +332,9 @@ export function compareFindings(a: NormalizedFinding, b: NormalizedFinding): Mat
     crossAgentLocation ||
     crossAgentBehaviorCause ||
     crossAgentSymbol ||
-    crossAgentEvidence;
+    crossAgentEvidence ||
+    sameAgentExactDuplicate ||
+    crossAgentStructural;
   if (sameAgentExact) matchCase = 'same_agent_exact_behavior';
   else if (sameAgentOverlapping) matchCase = 'same_agent_overlapping_semantics';
   else if (sameAgentEvidence) matchCase = 'same_agent_evidence_backed';
@@ -301,5 +342,7 @@ export function compareFindings(a: NormalizedFinding, b: NormalizedFinding): Mat
   else if (crossAgentBehaviorCause) matchCase = 'cross_agent_behavior_rootcause';
   else if (crossAgentSymbol) matchCase = 'cross_agent_symbol_evidence_behavior';
   else if (crossAgentEvidence) matchCase = 'cross_agent_evidence_behavior';
+  else if (sameAgentExactDuplicate) matchCase = 'same_agent_exact_duplicate';
+  else if (crossAgentStructural) matchCase = 'cross_agent_structural_identity';
   return { equivalent, reasons, matchCase };
 }

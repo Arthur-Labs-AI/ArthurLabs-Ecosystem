@@ -262,6 +262,50 @@ describe('deterministic merger', () => {
     expect(result.clusters[0]?.sourceFindingIds).toHaveLength(2);
   });
 
+  it('keeps same-agent identical titles at different locations apart', () => {
+    // Guards the exact-duplicate case: identical titles alone never merge
+    // without the same file and an overlapping location.
+    const a = finding({
+      id: 'find_01K7777777777777777777A8W1',
+      agentRunId: RUNS[0]?.id as string,
+      stack: 'stack_muse_main',
+      title: 'Duplicated defect report',
+      locations: [{ relativePath: 'src/dup-a.ts', startLine: 3 }],
+    });
+    const b = finding({
+      id: 'find_01K7777777777777777777A8W2',
+      agentRunId: RUNS[0]?.id as string,
+      stack: 'stack_muse_main',
+      title: 'Duplicated defect report',
+      locations: [{ relativePath: 'src/dup-b.ts', startLine: 7 }],
+    });
+    const { result } = mergeSetup([a, b]);
+    expect(result.clusterCount).toBe(2);
+  });
+
+  it('keeps nearby same-category findings without a shared distinctive token apart', () => {
+    // Guards the structural-identity case: location precision plus the
+    // same category is not enough without a shared non-generic token.
+    const a = finding({
+      id: 'find_01K7777777777777777777A8W1',
+      agentRunId: RUNS[0]?.id as string,
+      stack: 'stack_muse_main',
+      title: 'Scheduler drops delayed jobs',
+      description: 'Timer wheel discards postponed tasks silently',
+      locations: [{ relativePath: 'src/near.ts', startLine: 50 }],
+    });
+    const b = finding({
+      id: 'find_01K7777777777777777777A8W2',
+      agentRunId: RUNS[1]?.id as string,
+      stack: 'stack_deepseek_main',
+      title: 'Renderer flickers on resize',
+      description: 'Viewport repaints tear during window resize',
+      locations: [{ relativePath: 'src/near.ts', startLine: 55 }],
+    });
+    const { result } = mergeSetup([a, b]);
+    expect(result.clusterCount).toBe(2);
+  });
+
   it('is order-invariant across permutations (§68)', () => {
     const mk = (n: number, stack: number, file: string, line: number, title: string) =>
       finding({
