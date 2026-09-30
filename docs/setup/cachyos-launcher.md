@@ -1,0 +1,58 @@
+# CachyOS native launcher
+
+Native Linux support: **CachyOS only** (`ID=cachyos` in `/etc/os-release`).
+Ubuntu, Arch, Fedora, and Debian are rejected with `LINUX_DISTRO_UNSUPPORTED`;
+CI on `ubuntu-latest` proves generic-Linux code paths, never Ubuntu support.
+
+## Commands
+
+From a clone, or from anywhere after setup installs the user shim:
+
+```bash
+./sentry setup     # idempotent: host, packages, node, pnpm, build, deploy, verify, agents, shim
+./sentry open      # launch Sentry Desktop (detached; single-instance focuses)
+./sentry status    # installation status (broker handshake proves liveness)
+./sentry stop      # graceful shutdown through the running instance (never killall)
+./sentry doctor    # non-destructive diagnostics, no secrets printed
+./sentry update    # fast-forward origin/main, rebuild, redeploy, revalidate
+./sentry cli ...   # automation CLI, same contract as Desktop (uses --json)
+./sentry version   # product version, commit, branch
+./sentry help
+```
+
+`help` and `version` work on any host. Every other command fails closed
+off CachyOS before doing anything.
+
+## Setup phases
+
+`sentry setup --list-phases` prints the ordered phases (kept in sync with
+`scripts/launcher/launcher-logic.mjs` by test): host, base, packages,
+node, pnpm, systemd-sandbox, dependencies, build, deploy, verify, agents, shim.
+
+Rerunning setup is safe: valid state is reused, only missing pieces are
+installed, and `runtime/current` moves only after the new deploy passes
+the real `runtime.hello` handshake (protocol 1, linux, non-Windows,
+non-Electron). On verification failure the previous runtime is restored.
+
+## Privilege model
+
+Setup never uses hidden sudo. Missing system packages print the exact
+`sudo pacman -S --needed ...` command and either ask explicitly
+(interactive TTY) or fail closed with `--non-interactive`. Agent tools
+install into rootless user prefixes; the `~/.local/bin/sentry` shim is a
+user-owned symlink and shell rc files are never edited.
+
+## State layout (all user-owned)
+
+- Runtime deployments: `~/.local/share/sentry/runtime/<version>/`, `current` symlink
+- Launcher state (node path, repo path, no secrets): `~/.local/share/sentry/launcher/`
+- Command shim: `~/.local/bin/sentry`
+- Logs: `~/.local/share/sentry/logs/`
+
+## Acceptance (clean CachyOS machine)
+
+See the Stage 3 report for the full checklist: clone, `./sentry setup`,
+`sentry doctor`, `sentry open`, `sentry status`, `sentry stop`,
+`sentry update`, `sentry version`, `sentry help`, then runtime hello,
+native host status, project import, CLI broker, and provider readiness.
+CachyOS setup is not production-ready until those steps pass on real hardware.

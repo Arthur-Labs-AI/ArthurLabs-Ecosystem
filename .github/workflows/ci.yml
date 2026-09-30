@@ -156,3 +156,38 @@ jobs:
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 help
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 version
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 status
+
+  launcher-linux:
+    # Native launcher on generic Linux (no CachyOS): proves the framework,
+    # decision logic, fixture tests, and the CachyOS-only gate. Ubuntu must
+    # fail closed here — this job never implies Ubuntu product support.
+    name: launcher (linux, no CachyOS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Linux launcher shell syntax
+        run: |
+          for f in sentry scripts/launcher/linux/launcher.sh scripts/launcher/linux/lib/*.sh scripts/launcher/linux/distros/*.sh scripts/launcher/linux/commands/*.sh scripts/launcher/tests/test-*.sh; do
+            bash -n "$f" || exit 1
+          done
+      - name: Launcher Linux decision-logic tests
+        run: node --test scripts/launcher/tests/launcher-logic.test.mjs
+      - name: Launcher Linux shell tests (fixtures, no sudo)
+        run: |
+          bash scripts/launcher/tests/test-linux-host-gate.sh
+          bash scripts/launcher/tests/test-linux-framework.sh
+          bash scripts/launcher/tests/test-package-map-sync.sh
+          bash scripts/launcher/tests/test-setup-phases.sh
+          bash scripts/launcher/tests/test-node-resolve.sh
+          bash scripts/launcher/tests/test-lifecycle-shim.sh
+          bash scripts/launcher/tests/test-update-safety.sh
+      - name: Native entrypoint smoke (host-independent + gate proof)
+        run: |
+          ./sentry help
+          ./sentry version
+          if ./sentry status; then echo 'Ubuntu must fail closed, never claim support'; exit 1; fi
+          ./sentry status 2>&1 | grep -q 'CachyOS only'
+
