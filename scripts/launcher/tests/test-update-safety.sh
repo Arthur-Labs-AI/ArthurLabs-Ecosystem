@@ -62,8 +62,9 @@ if [ -L "$T/probe-link" ]; then
   sentry_rollback_runtime A >/dev/null
   [ "$(readlink "$T/.local/share/sentry/runtime/current")" = "A" ] || fail "rollback did not restore A"
   [ -d "$T/.local/share/sentry/runtime/B" ] || fail "rollback deleted the new version"
-  sentry_rollback_runtime NONE >/dev/null || fail "rollback NONE"
-  [ "$(readlink "$T/.local/share/sentry/runtime/current")" = "A" ] || fail "rollback NONE moved current"
+  # NONE means no previous runtime existed: current must go away entirely.
+  # (An earlier assertion expecting current to survive rollback NONE
+  # encoded the obsolete semantics and was removed.)
   # NONE active, B failed verification: current must not remain on B, and
   # the failed version directory is retained for diagnostics.
   rm -f "$T/.local/share/sentry/runtime/current"
@@ -71,6 +72,9 @@ if [ -L "$T/probe-link" ]; then
   sentry_rollback_runtime NONE >/dev/null || fail "rollback NONE-after-failure"
   [ ! -e "$T/.local/share/sentry/runtime/current" ] || fail "NONE left current on failed B"
   [ -d "$T/.local/share/sentry/runtime/B" ] || fail "failed B directory removed"
+  # Rollback with current already absent stays safe and idempotent.
+  sentry_rollback_runtime NONE >/dev/null || fail "rollback on absent current"
+  [ ! -e "$T/.local/share/sentry/runtime/current" ] || fail "rollback created current"
 else
   echo "  (rollback asserts skipped: no symlink privilege on this host)"
 fi

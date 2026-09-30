@@ -66,5 +66,30 @@ sentry_desktop_persist_binary() { return 1; }
 sentry_provision_agents "$REPO" > "$T/out2.txt" || fail "provision failed"
 grep -q '^AGENTS_CLAUDE=0$' "$T/out2.txt" || fail "persist failure still ready"
 grep -q 'SENTRY_GLM_BINARY was not persisted' "$T/out2.txt" || fail "persist warn missing"
+# Case 3: managed already installed (MANAGED_OK) + persist fails -> not ready.
+# (Second setup after case-2-like state must not flip to ready silently.)
+seed_common "$T/home3"
+export HOME="$T/home3"
+mkdir -p "$HOME"
+MGD="$T/home3/.local/share/sentry/tools/claude-code/node_modules/.bin"
+mkdir -p "$MGD"
+printf '#!/bin/sh\necho %s\n' "$PIN_CC" > "$MGD/claude"
+chmod +x "$MGD/claude"
+sentry_desktop_persist_binary() { return 1; }
+sentry_provision_agents "$REPO" > "$T/out3.txt" || fail "provision failed"
+grep -q '^AGENTS_CLAUDE=0$' "$T/out3.txt" || fail "managed persist failure still ready"
+grep -q 'could not be persisted' "$T/out3.txt" || fail "managed persist warn missing"
+# Case 4: PATH-native Claude + persist fails -> still ready via PATH, warned.
+mkdir -p "$T/pathbin"
+printf '#!/bin/sh\necho %s\n' "$PIN_CC" > "$T/pathbin/claude"
+chmod +x "$T/pathbin/claude"
+seed_common "$T/home4"
+export HOME="$T/home4"
+mkdir -p "$HOME" 
+export PATH="$T/pathbin:$T/fakebin:$OLD_PATH"
+sentry_desktop_persist_binary() { return 1; }
+sentry_provision_agents "$REPO" > "$T/out4.txt" || fail "provision failed"
+grep -q '^AGENTS_CLAUDE=1$' "$T/out4.txt" || fail "PATH claude not ready"
+grep -q 'from PATH' "$T/out4.txt" || fail "PATH warn missing"
 export PATH="$OLD_PATH"
 echo AGENTPROV-OK

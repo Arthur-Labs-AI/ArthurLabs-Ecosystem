@@ -13,11 +13,13 @@ sentry_electron_binary() {
 }
 
 # PIDs of Sentry Desktop processes (launcher marker only). Empty when idle.
-# The pattern is assembled so this script never matches its own command line.
+# The pattern is assembled so this script never matches its own command line,
+# and `--` terminates pgrep option parsing: without it procps treats a
+# leading `--sentry-app` pattern as an (invalid) option and reports nothing.
 sentry_desktop_pids() {
   if ! command -v pgrep >/dev/null 2>&1; then return 0; fi
   local marker="--sentry-"app
-  pgrep -f "$marker" 2>/dev/null || true
+  pgrep -f -- "$marker" 2>/dev/null || true
   return 0
 }
 

@@ -48,14 +48,31 @@ sentry_provision_agents() {
   local cl_out="$(bash "$linux_dir/check-claude.sh" "$pinned_cc")"
   if printf '%s\n' "$cl_out" | grep -q 'MANAGED_OK'; then
     local managed_cc="$(printf '%s\n' "$cl_out" | sed -n 's/^MANAGED=//p' | head -n 1)"
-    sentry_ok "Claude Code $pinned_cc (Sentry-managed native Linux)"
-    if [ -n "$managed_cc" ] && [ "$managed_cc" != "missing" ]; then sentry_desktop_persist_binary "$repo" SENTRY_GLM_BINARY "$managed_cc" || true; fi
-    cc_ready=1
+    # The managed layout is NOT on normal PATH and the runtime has no
+    # data-root fallback for it: without a persisted SENTRY_GLM_BINARY the
+    # runtime cannot resolve this binary, so persistence gates readiness.
+    if [ -n "$managed_cc" ] && [ "$managed_cc" != "missing" ] && sentry_desktop_persist_binary "$repo" SENTRY_GLM_BINARY "$managed_cc"; then
+      sentry_ok "Claude Code $pinned_cc (Sentry-managed native Linux)"
+      cc_ready=1
+    else
+      sentry_warn "Managed Claude Code is installed, but its binary path could not be persisted."
+      sentry_warn "GLM runs remain unavailable until SENTRY_GLM_BINARY is configured."
+    fi
   elif printf '%s\n' "$cl_out" | grep -q 'PATH_OK' && printf '%s\n' "$cl_out" | grep -q 'PATH_NATIVE=linux'; then
     local reuse_cc="$(printf '%s\n' "$cl_out" | sed -n 's/^PATH_CLAUDE=//p' | head -n 1)"
-    sentry_ok "Claude Code $pinned_cc (reusing existing native install; global untouched)"
-    if [ -n "$reuse_cc" ] && [ "$reuse_cc" != "MISSING" ]; then sentry_desktop_persist_binary "$repo" SENTRY_GLM_BINARY "$reuse_cc" || true; fi
-    cc_ready=1
+    if [ -n "$reuse_cc" ] && [ "$reuse_cc" != "MISSING" ] && sentry_desktop_persist_binary "$repo" SENTRY_GLM_BINARY "$reuse_cc"; then
+      sentry_ok "Claude Code $pinned_cc (reusing existing native install; global untouched)"
+      cc_ready=1
+    elif [ -n "$reuse_cc" ] && [ "$reuse_cc" != "MISSING" ] && [ -x "$reuse_cc" ] && "$reuse_cc" --version 2>/dev/null | grep -q "$pinned_cc"; then
+      # Persistence failed, but this exact absolute binary is executable
+      # and version-matched right now: it resolves via runtime PATH
+      # independently of PATH inheritance, so readiness holds with a warning.
+      sentry_warn "Claude Code path not persisted; reusing $reuse_cc from PATH."
+      sentry_ok "Claude Code $pinned_cc (reusing existing native install; global untouched)"
+      cc_ready=1
+    else
+      sentry_warn "Claude Code on PATH is not provably usable; GLM runs stay unavailable."
+    fi
   else
     echo "  Installing Sentry-managed Claude Code $pinned_cc (local npm prefix only)..."
     local cl_inst_out=""

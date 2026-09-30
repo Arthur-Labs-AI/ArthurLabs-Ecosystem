@@ -38,11 +38,15 @@ cmd_status() {
   local running="no"
   local sock="$(sentry_broker_socket 2>/dev/null || true)"
   if [ -n "$sock" ] && sentry_broker_probe "$sock" >/dev/null 2>&1; then running="yes"; fi
+  # Agent pins come from the current tree (same helpers as setup/doctor),
+  # never hardcoded here, so pin updates cannot silently go stale.
+  local pinned_oc="$(sentry_logic_pin "$repo" PINNED_OPENCODE_VERSION || true)"
+  local pinned_cc="$(sentry_logic_pin "$repo" PINNED_CLAUDE_CODE_VERSION || true)"
   local tool_oc="unchecked" tool_ds="unchecked" tool_cc="unchecked"
-  if bash "$linux_dir/check-opencode.sh" 2>/dev/null | grep -q '1.18.32'; then tool_oc="1.18.32"; else tool_oc="missing/unverified"; fi
+  if [ -n "$pinned_oc" ] && bash "$linux_dir/check-opencode.sh" 2>/dev/null | grep -q "$pinned_oc"; then tool_oc="$pinned_oc"; else tool_oc="missing/unverified"; fi
   local dse="$(sed -n "s/.*DEEPSEEK_SDK_VERSION = '\([^']*\)'.*/\1/p" "$repo/packages/harness-deepseek/src/sdk.ts" | head -n 1)"
   if bash "$linux_dir/check-deepseek.sh" "$dse" 2>/dev/null | grep -q 'DSH_OK'; then tool_ds="$dse managed"; else tool_ds="missing"; fi
-  if bash "$linux_dir/check-claude.sh" 2.1.270 2>/dev/null | grep -q 'MANAGED_OK\|PATH_OK'; then tool_cc="2.1.270"; else tool_cc="missing/unverified"; fi
+  if [ -n "$pinned_cc" ] && bash "$linux_dir/check-claude.sh" "$pinned_cc" 2>/dev/null | grep -q 'MANAGED_OK\|PATH_OK'; then tool_cc="$pinned_cc"; else tool_cc="missing/unverified"; fi
   if [ "$as_json" = "1" ]; then
     printf '{"product":"Sentry","release":"v0.1 Beta","version":"%s","commit":"%s","branch":"%s","clean":%s,' "$version" "$sha" "$branch" "$([ "$clean" = "yes" ] && echo true || echo false)"
     printf '"host":{"platform":"linux","distribution":"%s"},' "$pretty"
