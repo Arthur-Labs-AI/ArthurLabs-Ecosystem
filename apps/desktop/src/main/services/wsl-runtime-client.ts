@@ -1,21 +1,23 @@
 /**
- * WSL runtime manager + typed RPC client (Electron main).
+ * WSL runtime manager + thin WSL specialization of the stdio runtime client.
  *
- * Owns one long-lived `wsl.exe -d <distro> -- node <runtimeEntry> --stdio`
- * process. Argv-based invocation only — no shell, no string-built commands.
- * stdout is protocol NDJSON (validated); stderr is bounded diagnostics.
- * Secrets travel via runtime.configure AFTER the handshake — never argv.
+ * Transport ownership (NDJSON framing, pending requests, handshake,
+ * shutdown) lives in the platform-neutral StdioRuntimeClient. This module
+ * only supplies the Windows/WSL launch behavior: distro, wsl.exe argv
+ * construction, and WSL-specific spawn error text.
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { join } from 'node:path';
-import {
-  RUNTIME_PROTOCOL_VERSION,
-  RpcLineBuffer,
-  encodeRpcLine,
-  type RpcNotification,
-  type RpcRequest,
-  type RpcResponse,
-} from '@qa/runtime-protocol';
+import { StdioRuntimeClient } from '../runtime/stdio-runtime-client.js';
+import type {
+  RuntimeClient,
+  RuntimeHello,
+  RuntimeProcessLauncher,
+  RuntimeStatus,
+} from '../runtime/runtime-client.js';
+
+export type { RuntimeClient, RuntimeHello, RuntimeStatus };
+export type { RuntimeProcessLauncher };
 
 export interface WslDistroInfo {
   readonly name: string;
@@ -23,300 +25,87 @@ export interface WslDistroInfo {
   readonly version: number;
 }
 
-export interface RuntimeHello {
-  readonly protocolVersion: number;
-  readonly runtimeVersion: string;
-  readonly platform: string;
-  readonly isWsl: boolean;
-  readonly nodeVersion: string;
-  readonly processExecPath: string;
-  readonly distro?: string;
-  readonly dataRoot: string;
+export interface WslRuntimeClientOptions {
+  readonly distro: string;
+  readonly runtimeEntry: string;
+  readonly dataRoot?: string;
+  /** Test seam: override child creation (production always spawns wsl.exe). */
+  readonly launcher?: RuntimeProcessLauncher;
 }
 
-export interface RuntimeStatus {
-  readonly connected: boolean;
-  readonly distro: string | undefined;
-  readonly hello: RuntimeHello | undefined;
-  readonly lastError: string | undefined;
-}
-
-const REQUEST_TIMEOUT_MS = 60_000;
-const START_TIMEOUT_MS = 120_000;
 /**
- * Methods whose legitimate work scales with project size (full tree copy +
- * content scan: a 60k-file project takes minutes) get a long window; every
- * other method stays at 60 s. The runtime itself has no arbitrary deadline
- * (poll-until-settled), so these windows only bound truly hung transports.
+ * Argv for 'wsl.exe -d <distro> -- node <runtimeEntry> --stdio'
+ * plus '--data-root <linux path>' when configured. Argv-based invocation
+ * only — no shell, no string-built commands. Secrets travel via
+ * runtime.configure AFTER the handshake — never argv.
  */
-const ROW_CREATION_TIMEOUT_MS = 600_000;
-const ROW_CREATION_METHODS: ReadonlySet<string> = new Set([
-  'runs.start',
-  'retests.start',
-  'projects.add',
-  'projects.update',
-]);
-
-function nextId(prefix: string): string {
-  return prefix + '_' + Date.now().toString(36) + Math.floor(Math.random() * 0xffffff).toString(36);
+export function buildWslArgs(distro: string, runtimeEntry: string, dataRoot?: string): string[] {
+  if (dataRoot === undefined) {
+    return ['-d', distro, '--', 'node', runtimeEntry, '--stdio'];
+  }
+  return ['-d', distro, '--', 'node', runtimeEntry, '--stdio', '--data-root', dataRoot];
 }
 
-export class WslRuntimeClient {
-  private child: ChildProcess | undefined;
-  private readonly buffer = new RpcLineBuffer();
-  private readonly pending = new Map<
-    string,
-    { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }
-  >();
-  private notificationHandler: ((event: string, payload: unknown) => void) | undefined;
-  private exitHandler: ((code: number | null) => void) | undefined;
-  private stderrTail: string[] = [];
-  private hello: RuntimeHello | undefined;
-  private lastError: string | undefined;
+/** Thin Windows/WSL specialization: distro launch over the shared transport. */
+export class WslRuntimeClient implements RuntimeClient {
+  private readonly inner: StdioRuntimeClient;
   private readonly distro: string;
-  private readonly entry: string;
-  private readonly dataRootOverride: string | undefined;
 
-  constructor(options: { distro: string; runtimeEntry: string; dataRoot?: string }) {
+  constructor(options: WslRuntimeClientOptions) {
     this.distro = options.distro;
-    this.entry = options.runtimeEntry;
-    this.dataRootOverride = options.dataRoot;
+    const entry = options.runtimeEntry;
+    const dataRoot = options.dataRoot;
+    const distro = options.distro;
+    const launcher =
+      options.launcher ??
+      ((): ChildProcess => {
+        return spawn('wsl.exe', buildWslArgs(distro, entry, dataRoot), {
+          windowsHide: true,
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+      });
+    this.inner = new StdioRuntimeClient({
+      launch: launcher,
+      spawnErrorPrefix: 'wsl.exe spawn failed: ',
+      offlineMessage: 'WSL runtime unavailable',
+      electronGuardMessage: 'Runtime runs under Electron — WSL boundary violated',
+    });
   }
 
   onNotification(handler: (event: string, payload: unknown) => void): void {
-    this.notificationHandler = handler;
+    this.inner.onNotification(handler);
   }
 
   onExit(handler: (code: number | null) => void): void {
-    this.exitHandler = handler;
+    this.inner.onExit(handler);
   }
 
   get status(): RuntimeStatus {
+    const base = this.inner.status;
     return {
-      connected: this.child !== undefined && this.hello !== undefined,
+      connected: base.connected,
       distro: this.distro,
-      hello: this.hello,
-      lastError: this.lastError,
+      hello: base.hello,
+      lastError: base.lastError,
     };
   }
 
   get stderrDiagnostics(): readonly string[] {
-    return this.stderrTail;
+    return this.inner.stderrDiagnostics;
   }
 
   /** Spawn the runtime and complete the handshake. Rejects on timeout/mismatch. */
-  async start(): Promise<RuntimeHello> {
-    if (this.child !== undefined) {
-      if (this.hello !== undefined) return this.hello;
-      throw Object.assign(new Error('Runtime is starting'), { code: 'RUNTIME_STARTING' });
-    }
-    const args =
-      this.dataRootOverride === undefined
-        ? ['-d', this.distro, '--', 'node', this.entry, '--stdio']
-        : [
-            '-d',
-            this.distro,
-            '--',
-            'node',
-            this.entry,
-            '--stdio',
-            '--data-root',
-            this.dataRootOverride,
-          ];
-    const child = spawn('wsl.exe', args, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
-    this.child = child;
-    child.stdout?.on('data', (chunk: Buffer) => this.onStdout(chunk));
-    child.stderr?.on('data', (chunk: Buffer) => {
-      const text = chunk.toString('utf8');
-      for (const line of text.split('\n')) {
-        const trimmed = line.trim();
-        if (trimmed.length === 0) continue;
-        this.stderrTail.push(trimmed.slice(0, 500));
-        if (this.stderrTail.length > 50) this.stderrTail.shift();
-      }
-    });
-    child.on('error', (error: Error) => {
-      this.lastError = 'wsl.exe spawn failed: ' + error.message.slice(0, 300);
-      this.failAllPending(new Error(this.lastError));
-      this.child = undefined;
-      this.exitHandler?.(null);
-    });
-    child.on('exit', (code) => {
-      if (this.hello === undefined && this.lastError === undefined) {
-        this.lastError = 'Runtime exited before handshake (code ' + String(code) + ')';
-      }
-      this.failAllPending(new Error(this.lastError ?? 'Runtime exited'));
-      this.child = undefined;
-      this.hello = undefined;
-      this.exitHandler?.(code);
-    });
-    try {
-      const hello = (await this.request('runtime.hello', {}, START_TIMEOUT_MS)) as RuntimeHello;
-      if (hello.protocolVersion !== RUNTIME_PROTOCOL_VERSION) {
-        throw Object.assign(
-          new Error(
-            'Runtime protocol mismatch: got ' +
-              String(hello.protocolVersion) +
-              ', want ' +
-              String(RUNTIME_PROTOCOL_VERSION),
-          ),
-          { code: 'RUNTIME_PROTOCOL_MISMATCH' },
-        );
-      }
-      if (hello.platform !== 'linux') {
-        throw Object.assign(new Error('Runtime is not Linux: ' + hello.platform), {
-          code: 'RUNTIME_NOT_LINUX',
-        });
-      }
-      if (
-        typeof hello.processExecPath === 'string' &&
-        hello.processExecPath.toLowerCase().endsWith('electron.exe')
-      ) {
-        throw Object.assign(new Error('Runtime runs under Electron — WSL boundary violated'), {
-          code: 'RUNTIME_UNDER_ELECTRON',
-        });
-      }
-      this.hello = hello;
-      this.lastError = undefined;
-      return hello;
-    } catch (error) {
-      this.stop();
-      throw error;
-    }
+  start(): Promise<RuntimeHello> {
+    return this.inner.start();
   }
 
   /** Graceful shutdown; falls back to kill after a bounded wait. */
-  async stop(): Promise<void> {
-    const child = this.child;
-    this.child = undefined;
-    this.hello = undefined;
-    this.failAllPending(new Error('Runtime stopped'));
-    if (child === undefined) return;
-    try {
-      child.stdin?.write(
-        JSON.stringify({
-          type: 'request',
-          id: nextId('rpc'),
-          method: 'runtime.shutdown',
-          params: {},
-        }) + '\n',
-      );
-    } catch {
-      // transport already broken
-    }
-    await new Promise<void>((resolve) => {
-      const timer = setTimeout(() => {
-        try {
-          child.kill();
-        } catch {
-          // already gone
-        }
-        resolve();
-      }, 5000);
-      child.once('exit', () => {
-        clearTimeout(timer);
-        resolve();
-      });
-    });
+  stop(): Promise<void> {
+    return this.inner.stop();
   }
 
-  request(
-    method: string,
-    params: Record<string, unknown> = {},
-    timeoutMs = ROW_CREATION_METHODS.has(method) ? ROW_CREATION_TIMEOUT_MS : REQUEST_TIMEOUT_MS,
-  ): Promise<unknown> {
-    const child = this.child;
-    if (child === undefined || child.stdin === undefined) {
-      return Promise.reject(
-        Object.assign(new Error('WSL runtime unavailable'), { code: 'RUNTIME_OFFLINE' }),
-      );
-    }
-    const id = nextId('rpc');
-    const message: RpcRequest = { type: 'request', id, method, params };
-    return new Promise<unknown>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        reject(
-          Object.assign(new Error('Runtime request timed out: ' + method), {
-            code: 'RUNTIME_TIMEOUT',
-          }),
-        );
-      }, timeoutMs);
-      this.pending.set(id, { resolve, reject, timer });
-      try {
-        child.stdin?.write(encodeRpcLine(message as never));
-      } catch (error) {
-        this.pending.delete(id);
-        clearTimeout(timer);
-        reject(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
-  }
-
-  private onStdout(chunk: Buffer | string): void {
-    let messages: ReturnType<RpcLineBuffer['push']>;
-    try {
-      messages = this.buffer.push(chunk);
-    } catch {
-      return;
-    }
-    // An oversize response frame must fail its request deterministically
-    // instead of hanging until RUNTIME_TIMEOUT: the id is recovered from a
-    // bounded prefix so exactly the affected request fails. An unroutable
-    // oversize frame fails the transport (all remaining pending requests)
-    // deterministically.
-    for (const id of this.buffer.drainOversizeIds()) {
-      const entry = this.pending.get(id);
-      if (entry === undefined) continue;
-      this.pending.delete(id);
-      clearTimeout(entry.timer);
-      entry.reject(
-        Object.assign(
-          new Error(
-            'Runtime response exceeded the bounded transport size; refine the request (large run exports are capped)',
-          ),
-          { code: 'RUNTIME_MESSAGE_TOO_LARGE' },
-        ),
-      );
-    }
-    if (this.buffer.drainTransportOverflow()) {
-      this.failAllPending(
-        Object.assign(
-          new Error('Runtime transport overflow: oversized frame without recoverable id'),
-          {
-            code: 'RUNTIME_MESSAGE_TOO_LARGE',
-          },
-        ),
-      );
-    }
-    for (const message of messages) {
-      if (message.type === 'response') {
-        const entry = this.pending.get((message as RpcResponse).id);
-        if (entry === undefined) continue;
-        this.pending.delete((message as RpcResponse).id);
-        clearTimeout(entry.timer);
-        const response = message as RpcResponse;
-        if (response.ok) entry.resolve(response.result);
-        else {
-          entry.reject(
-            Object.assign(new Error(response.error?.message ?? 'Runtime error'), {
-              code: response.error?.code ?? 'RUNTIME_ERROR',
-            }),
-          );
-        }
-      } else if (message.type === 'notification') {
-        const note = message as RpcNotification;
-        this.notificationHandler?.(note.event, note.payload);
-      }
-    }
-  }
-
-  private failAllPending(error: Error): void {
-    for (const [id, entry] of this.pending) {
-      this.pending.delete(id);
-      clearTimeout(entry.timer);
-      entry.reject(error);
-    }
+  request(method: string, params?: Record<string, unknown>, timeoutMs?: number): Promise<unknown> {
+    return this.inner.request(method, params, timeoutMs);
   }
 }
 

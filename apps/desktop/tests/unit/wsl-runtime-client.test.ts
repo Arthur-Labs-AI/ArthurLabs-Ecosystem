@@ -1,90 +1,175 @@
-import { describe, expect, it } from 'vitest';
-import { WslRuntimeClient, WslRuntimeManager } from '../../src/main/services/wsl-runtime-client.js';
+import { EventEmitter } from 'node:events';
+import type { ChildProcess } from 'node:child_process';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { RUNTIME_PROTOCOL_VERSION } from '@qa/runtime-protocol';
+import {
+  buildWslArgs,
+  WslRuntimeClient,
+  WslRuntimeManager,
+} from '../../src/main/services/wsl-runtime-client.js';
+import type { RuntimeHello } from '../../src/main/runtime/runtime-client.js';
 
-// Test seam: drive stdout framing without spawning wsl.exe. Private access
-// is contained to this test; production code paths are unchanged.
-interface FramingHarness {
-  onStdout(chunk: Buffer | string): void;
-  request(method: string, params?: Record<string, unknown>, timeoutMs?: number): Promise<unknown>;
-}
+/** Capture the effective wsl.exe invocation without spawning anything real. */
+const spawnCell = vi.hoisted(() => ({
+  last: undefined as { command: string; args: readonly string[] } | undefined,
+  child: undefined as unknown,
+}));
 
-function framingClient(): { client: WslRuntimeClient; framing: FramingHarness } {
-  const client = new WslRuntimeClient({ distro: 'Ubuntu', runtimeEntry: '/nonexistent/host.js' });
-  const framing = client as unknown as FramingHarness;
-  return { client, framing };
-}
-
-function pendingRequest(
-  framing: FramingHarness,
-  method: string,
-): { promise: Promise<unknown>; sentId: () => string } {
-  let sentId = '';
-  const child = {
-    stdin: {
-      write: (line: string) => {
-        sentId = (JSON.parse(String(line)) as { id?: string }).id ?? '';
-        return true;
-      },
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return {
+    ...actual,
+    spawn: (command: string, args: readonly string[]) => {
+      spawnCell.last = { command, args };
+      return spawnCell.child;
     },
   };
-  (framing as unknown as { child: unknown }).child = child;
-  return { promise: framing.request(method, {}, 5000), sentId: () => sentId };
+});
+
+/** Fake WSL child: records stdin, emits stdout/stderr/exit on demand. */
+class FakeWslChild extends EventEmitter {
+  readonly stdout = new EventEmitter();
+  readonly stderr = new EventEmitter();
+  readonly stdinWrites: string[] = [];
+  killed = false;
+  onWrite: ((line: string) => void) | undefined;
+  readonly stdin = {
+    write: (line: string): boolean => {
+      const text = String(line);
+      this.stdinWrites.push(text);
+      this.onWrite?.(text);
+      return true;
+    },
+  };
+
+  kill(): boolean {
+    this.killed = true;
+    return true;
+  }
 }
 
-describe('wsl runtime client', () => {
-  it('fails closed with RUNTIME_OFFLINE when no runtime is started', async () => {
-    const client = new WslRuntimeClient({ distro: 'Ubuntu', runtimeEntry: '/nonexistent/host.js' });
-    await expect(client.request('system.info')).rejects.toMatchObject({ code: 'RUNTIME_OFFLINE' });
+const ENTRY = '/home/test/.local/share/sentry/runtime/current/apps/runtime/dist/host.js';
+
+const TEST_HELLO: RuntimeHello = {
+  protocolVersion: RUNTIME_PROTOCOL_VERSION,
+  runtimeVersion: 'test-0.0.0',
+  platform: 'linux',
+  isWsl: true,
+  nodeVersion: 'v22.0.0',
+  processExecPath: '/usr/bin/node',
+  distro: 'Ubuntu',
+  dataRoot: '/home/test/.local/share/sentry',
+};
+
+function installResponder(fake: FakeWslChild): void {
+  fake.onWrite = (line) => {
+    const parsed = JSON.parse(line) as { id?: unknown; method?: unknown };
+    if (parsed.method === 'runtime.hello' && typeof parsed.id === 'string') {
+      const id = parsed.id;
+      queueMicrotask(() => {
+        fake.stdout.emit(
+          'data',
+          Buffer.from(
+            JSON.stringify({ type: 'response', id, ok: true, result: TEST_HELLO }) + '\n',
+            'utf8',
+          ),
+        );
+      });
+    }
+    if (parsed.method === 'runtime.shutdown') {
+      queueMicrotask(() => {
+        fake.emit('exit', 0);
+      });
+    }
+  };
+}
+
+beforeEach(() => {
+  spawnCell.last = undefined;
+  spawnCell.child = undefined;
+});
+
+describe('wsl runtime launch', () => {
+  it('builds the stdio argv without a data root', () => {
+    expect(buildWslArgs('Ubuntu', ENTRY)).toEqual(['-d', 'Ubuntu', '--', 'node', ENTRY, '--stdio']);
+  });
+
+  it('forwards --data-root when configured', () => {
+    expect(buildWslArgs('Ubuntu', ENTRY, '/home/test/.data')).toEqual([
+      '-d',
+      'Ubuntu',
+      '--',
+      'node',
+      ENTRY,
+      '--stdio',
+      '--data-root',
+      '/home/test/.data',
+    ]);
+  });
+
+  it('spawns wsl.exe with the distro and runtime entry', async () => {
+    const fake = new FakeWslChild();
+    installResponder(fake);
+    spawnCell.child = fake;
+    const client = new WslRuntimeClient({ distro: 'Ubuntu', runtimeEntry: ENTRY });
+    const hello = await client.start();
+    expect(spawnCell.last?.command).toBe('wsl.exe');
+    expect(spawnCell.last?.args).toEqual(['-d', 'Ubuntu', '--', 'node', ENTRY, '--stdio']);
+    expect(hello.platform).toBe('linux');
+    expect(client.status).toMatchObject({ connected: true, distro: 'Ubuntu' });
+    await client.stop();
+  });
+
+  it('passes --data-root through to the spawned runtime', async () => {
+    const fake = new FakeWslChild();
+    installResponder(fake);
+    spawnCell.child = fake;
+    const client = new WslRuntimeClient({
+      distro: 'Ubuntu',
+      runtimeEntry: ENTRY,
+      dataRoot: '/home/test/.data',
+    });
+    await client.start();
+    expect(spawnCell.last?.command).toBe('wsl.exe');
+    expect(spawnCell.last?.args).toEqual([
+      '-d',
+      'Ubuntu',
+      '--',
+      'node',
+      ENTRY,
+      '--stdio',
+      '--data-root',
+      '/home/test/.data',
+    ]);
+    await client.stop();
+  });
+
+  it('fails closed with the WSL offline error before start', async () => {
+    const client = new WslRuntimeClient({ distro: 'Ubuntu', runtimeEntry: ENTRY });
+    const failure = await client.request('system.info').catch((error: unknown) => error);
+    expect(failure).toMatchObject({ code: 'RUNTIME_OFFLINE' });
+    if (!(failure instanceof Error)) throw new Error('expected an Error');
+    expect(failure.message).toContain('WSL runtime unavailable');
+    expect(spawnCell.last).toBeUndefined();
     expect(client.status.connected).toBe(false);
   });
 
-  it('fails exactly the oversized request instead of timing out', async () => {
-    const { framing } = framingClient();
-    const { promise, sentId } = pendingRequest(framing, 'runs.export');
-    const big = 'x'.repeat(9 * 1024 * 1024);
-    const line = JSON.stringify({
-      type: 'response',
-      id: sentId(),
-      ok: true,
-      result: { blob: big },
+  it('reports wsl.exe spawn failures with WSL-specific text', async () => {
+    const fake = new FakeWslChild();
+    const client = new WslRuntimeClient({
+      distro: 'Ubuntu',
+      runtimeEntry: ENTRY,
+      launcher: () => fake as unknown as ChildProcess,
     });
-    framing.onStdout(Buffer.from(line + '\n', 'utf8'));
-    await expect(promise).rejects.toMatchObject({ code: 'RUNTIME_MESSAGE_TOO_LARGE' });
-  });
-
-  it('fails the transport when an oversize id cannot be recovered', async () => {
-    const { framing } = framingClient();
-    const first = pendingRequest(framing, 'runs.list');
-    const second = pendingRequest(framing, 'system.info');
-    framing.onStdout(Buffer.from('z'.repeat(9 * 1024 * 1024), 'utf8'));
-    framing.onStdout(Buffer.from('zzz\n', 'utf8'));
-    await expect(first.promise).rejects.toMatchObject({ code: 'RUNTIME_MESSAGE_TOO_LARGE' });
-    await expect(second.promise).rejects.toMatchObject({ code: 'RUNTIME_MESSAGE_TOO_LARGE' });
-  });
-
-  it('drops oversized notifications without harming healthy requests', async () => {
-    const { framing } = framingClient();
-    const { promise, sentId } = pendingRequest(framing, 'runs.list');
-    const big = 'y'.repeat(9 * 1024 * 1024);
-    framing.onStdout(
-      Buffer.from(
-        JSON.stringify({ type: 'notification', event: 'e', payload: { blob: big } }) + '\n',
-        'utf8',
-      ),
-    );
-    framing.onStdout(
-      Buffer.from(
-        JSON.stringify({ type: 'response', id: sentId(), ok: true, result: { runs: [] } }) + '\n',
-        'utf8',
-      ),
-    );
-    await expect(promise).resolves.toEqual({ runs: [] });
-  });
-
-  it('parses wsl --list --verbose output', async () => {
-    const manager = new WslRuntimeManager();
-    void manager;
-    expect(typeof WslRuntimeClient).toBe('function');
+    const exits: Array<number | null> = [];
+    client.onExit((code) => {
+      exits.push(code);
+    });
+    const starting = client.start();
+    fake.emit('error', new Error('boom'));
+    await expect(starting).rejects.toThrow('wsl.exe spawn failed: boom');
+    expect(client.status.lastError).toContain('wsl.exe spawn failed: ');
+    expect(exits).toEqual([null]);
   });
 });
 

@@ -1,0 +1,422 @@
+import { EventEmitter } from 'node:events';
+import type { ChildProcess } from 'node:child_process';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RUNTIME_PROTOCOL_VERSION } from '@qa/runtime-protocol';
+import {
+  STDIO_REQUEST_TIMEOUT_MS,
+  STDIO_ROW_CREATION_TIMEOUT_MS,
+  STDIO_SHUTDOWN_GRACE_MS,
+  StdioRuntimeClient,
+  resolveRequestTimeout,
+} from '../../src/main/runtime/stdio-runtime-client.js';
+import type { RuntimeHello } from '../../src/main/runtime/runtime-client.js';
+
+/**
+ * Generic transport tests: the stdio client is driven through a fake
+ * child-process seam (no WSL, no real spawn). Every behavior here must
+ * hold for any future launcher that reuses this transport.
+ */
+class FakeChild extends EventEmitter {
+  readonly stdout = new EventEmitter();
+  readonly stderr = new EventEmitter();
+  readonly stdinWrites: string[] = [];
+  killed = false;
+  onWrite: ((line: string) => void) | undefined;
+  readonly stdin = {
+    write: (line: string): boolean => {
+      const text = String(line);
+      this.stdinWrites.push(text);
+      this.onWrite?.(text);
+      return true;
+    },
+  };
+
+  kill(): boolean {
+    this.killed = true;
+    return true;
+  }
+}
+
+function asChild(fake: FakeChild): ChildProcess {
+  return fake as unknown as ChildProcess;
+}
+
+const TEST_HELLO: RuntimeHello = {
+  protocolVersion: RUNTIME_PROTOCOL_VERSION,
+  runtimeVersion: 'test-0.0.0',
+  platform: 'linux',
+  isWsl: false,
+  nodeVersion: 'v22.0.0',
+  processExecPath: '/usr/bin/node',
+  dataRoot: '/tmp/sentry-test-data',
+};
+
+function helloLine(id: string, hello: RuntimeHello = TEST_HELLO): string {
+  return JSON.stringify({ type: 'response', id, ok: true, result: hello }) + '\n';
+}
+
+function lastSentId(fake: FakeChild): string {
+  const raw = fake.stdinWrites.at(-1);
+  if (raw === undefined) throw new Error('expected a sent request line');
+  const parsed = JSON.parse(raw) as { id?: unknown };
+  if (typeof parsed.id !== 'string') throw new Error('sent line has no request id');
+  return parsed.id;
+}
+
+/**
+ * Auto-answer runtime.hello (and runtime.shutdown when asked) the way a
+ * healthy runtime host would, so start()/stop() settle deterministically.
+ */
+function installResponder(fake: FakeChild, hello: RuntimeHello = TEST_HELLO): void {
+  fake.onWrite = (line) => {
+    const parsed = JSON.parse(line) as { id?: unknown; method?: unknown };
+    if (parsed.method === 'runtime.hello' && typeof parsed.id === 'string') {
+      const id = parsed.id;
+      queueMicrotask(() => {
+        fake.stdout.emit('data', Buffer.from(helloLine(id, hello), 'utf8'));
+      });
+    }
+    if (parsed.method === 'runtime.shutdown') {
+      queueMicrotask(() => {
+        fake.emit('exit', 0);
+      });
+    }
+  };
+}
+
+async function launchStarted(
+  hello: RuntimeHello = TEST_HELLO,
+): Promise<{ client: StdioRuntimeClient; fake: FakeChild }> {
+  let active: FakeChild | undefined;
+  const client = new StdioRuntimeClient({
+    launch: () => {
+      const fake = new FakeChild();
+      installResponder(fake, hello);
+      active = fake;
+      return asChild(fake);
+    },
+  });
+  const started = await client.start();
+  if (active === undefined) throw new Error('launcher did not produce a child');
+  expect(started.platform).toBe(hello.platform);
+  return { client, fake: active };
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe('stdio runtime transport', () => {
+  it('fails closed with RUNTIME_OFFLINE before start', async () => {
+    const client = new StdioRuntimeClient({
+      launch: () => {
+        throw new Error('must not launch');
+      },
+    });
+    await expect(client.request('system.info')).rejects.toMatchObject({
+      code: 'RUNTIME_OFFLINE',
+    });
+    expect(client.status.connected).toBe(false);
+  });
+
+  it('correlates concurrent responses out of order', async () => {
+    const { client, fake } = await launchStarted();
+    try {
+      const first = client.request('runs.list', {}, 5000);
+      const second = client.request('system.info', {}, 5000);
+      const ids = fake.stdinWrites.slice(-2).map((line) => (JSON.parse(line) as { id: string }).id);
+      const firstId = ids[0];
+      const secondId = ids[1];
+      if (firstId === undefined || secondId === undefined) {
+        throw new Error('expected two sent request ids');
+      }
+      fake.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({ type: 'response', id: secondId, ok: true, result: { info: 2 } }) + '\n',
+          'utf8',
+        ),
+      );
+      fake.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({ type: 'response', id: firstId, ok: true, result: { runs: [] } }) + '\n',
+          'utf8',
+        ),
+      );
+      await expect(second).resolves.toEqual({ info: 2 });
+      await expect(first).resolves.toEqual({ runs: [] });
+    } finally {
+      await client.stop();
+    }
+  });
+
+  it('delivers runtime notifications to the registered handler', async () => {
+    const { client, fake } = await launchStarted();
+    try {
+      const seen: Array<{ event: string; payload: unknown }> = [];
+      client.onNotification((event, payload) => {
+        seen.push({ event, payload });
+      });
+      fake.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'notification',
+            event: 'run.snapshot',
+            payload: { runId: 'run_01K7777777777777777777A8W1' },
+          }) + '\n',
+          'utf8',
+        ),
+      );
+      expect(seen).toEqual([
+        { event: 'run.snapshot', payload: { runId: 'run_01K7777777777777777777A8W1' } },
+      ]);
+    } finally {
+      await client.stop();
+    }
+  });
+
+  it('reassembles a response split mid-codepoint across chunks', async () => {
+    const { client, fake } = await launchStarted();
+    try {
+      const pending = client.request('runs.list', {}, 5000);
+      const sentId = lastSentId(fake);
+      const full =
+        JSON.stringify({
+          type: 'response',
+          id: sentId,
+          ok: true,
+          result: { text: 'hello \uD83D\uDE00 world' },
+        }) + '\n';
+      const bytes = Buffer.from(full, 'utf8');
+      const emojiAt = bytes.indexOf(Buffer.from('\uD83D\uDE00', 'utf8'));
+      expect(emojiAt).toBeGreaterThan(0);
+      fake.stdout.emit('data', bytes.subarray(0, emojiAt + 1));
+      fake.stdout.emit('data', bytes.subarray(emojiAt + 1));
+      await expect(pending).resolves.toEqual({ text: 'hello \uD83D\uDE00 world' });
+    } finally {
+      await client.stop();
+    }
+  });
+
+  it('fails exactly the oversized request instead of timing out', async () => {
+    const { client, fake } = await launchStarted();
+    try {
+      const pending = client.request('runs.export', {}, 5000);
+      const sentId = lastSentId(fake);
+      const big = 'x'.repeat(9 * 1024 * 1024);
+      const line = JSON.stringify({
+        type: 'response',
+        id: sentId,
+        ok: true,
+        result: { blob: big },
+      });
+      fake.stdout.emit('data', Buffer.from(line + '\n', 'utf8'));
+      await expect(pending).rejects.toMatchObject({ code: 'RUNTIME_MESSAGE_TOO_LARGE' });
+    } finally {
+      await client.stop();
+    }
+  });
+
+  it('fails the transport when an oversize id cannot be recovered', async () => {
+    const { client, fake } = await launchStarted();
+    try {
+      const first = client.request('runs.list', {}, 5000);
+      const second = client.request('system.info', {}, 5000);
+      fake.stdout.emit('data', Buffer.from('z'.repeat(9 * 1024 * 1024), 'utf8'));
+      fake.stdout.emit('data', Buffer.from('zzz\n', 'utf8'));
+      await expect(first).rejects.toMatchObject({ code: 'RUNTIME_MESSAGE_TOO_LARGE' });
+      await expect(second).rejects.toMatchObject({ code: 'RUNTIME_MESSAGE_TOO_LARGE' });
+    } finally {
+      await client.stop();
+    }
+  });
+
+  it('drops oversized notifications without harming healthy requests', async () => {
+    const { client, fake } = await launchStarted();
+    try {
+      const pending = client.request('runs.list', {}, 5000);
+      const sentId = lastSentId(fake);
+      const big = 'y'.repeat(9 * 1024 * 1024);
+      fake.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({ type: 'notification', event: 'e', payload: { blob: big } }) + '\n',
+          'utf8',
+        ),
+      );
+      fake.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({ type: 'response', id: sentId, ok: true, result: { runs: [] } }) + '\n',
+          'utf8',
+        ),
+      );
+      await expect(pending).resolves.toEqual({ runs: [] });
+    } finally {
+      await client.stop();
+    }
+  });
+
+  it('rejects a normal request after its timeout', async () => {
+    const { client } = await launchStarted();
+    try {
+      await expect(client.request('runs.list', {}, 30)).rejects.toMatchObject({
+        code: 'RUNTIME_TIMEOUT',
+      });
+    } finally {
+      await client.stop();
+    }
+  });
+
+  it('selects the long timeout only for row-creation methods', () => {
+    for (const method of ['runs.start', 'retests.start', 'projects.add', 'projects.update']) {
+      expect(resolveRequestTimeout(method)).toBe(STDIO_ROW_CREATION_TIMEOUT_MS);
+    }
+    for (const method of ['runs.list', 'system.info', 'runtime.hello', 'projects.delete']) {
+      expect(resolveRequestTimeout(method)).toBe(STDIO_REQUEST_TIMEOUT_MS);
+    }
+    expect(resolveRequestTimeout('runs.start', 25)).toBe(25);
+    expect(STDIO_ROW_CREATION_TIMEOUT_MS).toBe(600_000);
+  });
+
+  it('rejects pending requests when the runtime exits', async () => {
+    const { client, fake } = await launchStarted();
+    const pending = client.request('runs.list', {}, 5000);
+    fake.emit('exit', 1);
+    await expect(pending).rejects.toThrow('Runtime exited');
+    expect(client.status.connected).toBe(false);
+    await client.stop();
+  });
+
+  it('rejects the handshake on protocol mismatch', async () => {
+    await expect(launchStarted({ ...TEST_HELLO, protocolVersion: 999 })).rejects.toMatchObject({
+      code: 'RUNTIME_PROTOCOL_MISMATCH',
+    });
+  });
+
+  it('requires a Linux runtime platform', async () => {
+    await expect(launchStarted({ ...TEST_HELLO, platform: 'win32' })).rejects.toMatchObject({
+      code: 'RUNTIME_NOT_LINUX',
+    });
+  });
+
+  it('rejects a runtime accidentally launched under Electron', async () => {
+    await expect(
+      launchStarted({ ...TEST_HELLO, processExecPath: 'C:\\host\\electron.exe' }),
+    ).rejects.toMatchObject({ code: 'RUNTIME_UNDER_ELECTRON' });
+  });
+
+  it('shuts down gracefully without killing a cooperative runtime', async () => {
+    const { client, fake } = await launchStarted();
+    const writesBefore = fake.stdinWrites.length;
+    await client.stop();
+    expect(fake.killed).toBe(false);
+    const shutdownLine = fake.stdinWrites.at(writesBefore);
+    if (shutdownLine === undefined) throw new Error('expected a shutdown request');
+    expect(JSON.parse(shutdownLine) as unknown).toMatchObject({
+      type: 'request',
+      method: 'runtime.shutdown',
+    });
+    expect(client.status.connected).toBe(false);
+  });
+
+  it('falls back to kill after a bounded wait when the runtime ignores shutdown', async () => {
+    const fake = new FakeChild();
+    fake.onWrite = (line) => {
+      const parsed = JSON.parse(line) as { id?: unknown; method?: unknown };
+      if (parsed.method === 'runtime.hello' && typeof parsed.id === 'string') {
+        const id = parsed.id;
+        queueMicrotask(() => {
+          fake.stdout.emit('data', Buffer.from(helloLine(id), 'utf8'));
+        });
+      }
+      // runtime.shutdown is deliberately ignored: the client must kill.
+    };
+    const client = new StdioRuntimeClient({ launch: () => asChild(fake) });
+    await client.start();
+    vi.useFakeTimers();
+    try {
+      const stopping = client.stop();
+      await vi.advanceTimersByTimeAsync(STDIO_SHUTDOWN_GRACE_MS);
+      await stopping;
+      expect(fake.killed).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('bounds stderr diagnostics in count and line length', async () => {
+    const { client, fake } = await launchStarted();
+    try {
+      for (let index = 0; index < 60; index += 1) {
+        fake.stderr.emit('data', Buffer.from('line ' + String(index) + '\n', 'utf8'));
+      }
+      expect(client.stderrDiagnostics).toHaveLength(50);
+      expect(client.stderrDiagnostics[0]).toBe('line 10');
+      fake.stderr.emit('data', Buffer.from('x'.repeat(600) + '\n', 'utf8'));
+      const tail = client.stderrDiagnostics;
+      const lastLine = tail[tail.length - 1];
+      expect(lastLine?.length).toBe(500);
+      expect(client.stderrDiagnostics).toHaveLength(50);
+    } finally {
+      await client.stop();
+    }
+  });
+
+  it('returns the same hello on repeated start after connect', async () => {
+    const { client } = await launchStarted();
+    try {
+      const first = await client.start();
+      const second = await client.start();
+      expect(second).toBe(first);
+    } finally {
+      await client.stop();
+    }
+  });
+
+  it('rejects a second start while the handshake is in flight', async () => {
+    const fake = new FakeChild();
+    const client = new StdioRuntimeClient({ launch: () => asChild(fake) });
+    const first = client.start();
+    await expect(client.start()).rejects.toMatchObject({ code: 'RUNTIME_STARTING' });
+    const sentId = lastSentId(fake);
+    fake.stdout.emit('data', Buffer.from(helloLine(sentId), 'utf8'));
+    const hello = await first;
+    expect(hello.platform).toBe('linux');
+    const stopping = client.stop();
+    fake.emit('exit', 0);
+    await stopping;
+  });
+
+  it('restarts cleanly after stop', async () => {
+    const fakes: FakeChild[] = [];
+    const client = new StdioRuntimeClient({
+      launch: () => {
+        const fake = new FakeChild();
+        installResponder(fake);
+        fakes.push(fake);
+        return asChild(fake);
+      },
+    });
+    const first = await client.start();
+    await client.stop();
+    const second = await client.start();
+    expect(fakes.length).toBe(2);
+    expect(second).toEqual(first);
+    await client.stop();
+  });
+
+  it('carries no host launch knowledge in the generic transport', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const dir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'main', 'runtime');
+    const transport = await readFile(join(dir, 'stdio-runtime-client.ts'), 'utf8');
+    const contracts = await readFile(join(dir, 'runtime-client.ts'), 'utf8');
+    expect(transport).not.toContain('wsl');
+    expect(transport).not.toContain('distro');
+    expect(contracts).not.toContain('wsl');
+  });
+});

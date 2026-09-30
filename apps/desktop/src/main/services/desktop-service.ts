@@ -12,11 +12,11 @@ import { RUN_TIMEOUT_MS_MAX, RUN_TIMEOUT_MS_MIN } from '@qa/shared';
 import type { AgentStackDefinition } from '@qa/schemas';
 import type { DesktopOperation, RetestSnapshot, RunSnapshot } from '../../shared/ipc-contract.js';
 import type { ProviderCredentialService } from './provider-credentials.js';
-import type { WslRuntimeClient } from './wsl-runtime-client.js';
+import type { RuntimeClient } from '../runtime/runtime-client.js';
 import { translateWindowsPathForWsl, WslRuntimeManager } from './wsl-runtime-client.js';
 
 export interface DesktopServiceDeps {
-  readonly runtime: WslRuntimeClient;
+  readonly runtime: RuntimeClient;
   readonly distro: string;
   readonly agentStacks: readonly AgentStackDefinition[];
   readonly credentials: ProviderCredentialService;
