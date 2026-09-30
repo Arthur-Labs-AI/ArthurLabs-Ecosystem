@@ -172,6 +172,31 @@ describe('functional systemd probe (no mocks)', () => {
     const doctor = await doctorOpenCode({ environment: env });
     expect(doctor.readiness).toBe('unavailable');
   });
+
+  it('registration preflight blocks when bubblewrap is missing (systemd healthy)', async () => {
+    // Missing-bwrap fail-closed, isolated from systemd state: working
+    // systemd fakes plus a PATH containing ONLY the fake dir (no bwrap
+    // anywhere) proves the bwrap prerequisite blocks on its own.
+    if (process.platform !== 'linux') return;
+    const fakeDir = await fakeBinDir({});
+    await writeFile(join(fakeDir, 'systemctl'), '#!/bin/sh\nexit 0\n');
+    await chmod(join(fakeDir, 'systemctl'), 0o700);
+    await writeFile(join(fakeDir, 'systemd-run'), '#!/bin/sh\nexit 0\n');
+    await chmod(join(fakeDir, 'systemd-run'), 0o700);
+    await fakeOpenCodeBinary(fakeDir);
+    const env = credentialEnv({ PATH: fakeDir });
+    delete env['SENTRY_OPENCODE_BINARY'];
+    const sandbox = await probeOpenCodeSandbox({ environment: env });
+    expect(sandbox.systemdUser).toBe(true);
+    expect(sandbox.bubblewrap).toBe(false);
+    const registration = createOpenCodeRegistration({ environment: env });
+    await expect(registration.preflight()).rejects.toMatchObject({
+      code: 'OPENCODE_SANDBOX_UNAVAILABLE',
+    });
+    const doctor = await doctorOpenCode({ environment: env });
+    expect(doctor.checks?.find((check) => check.name === 'tool-namespace')?.status).toBe('fail');
+    expect(doctor.readiness).toBe('unavailable');
+  });
 });
 
 describe('direct dev bypass consistency (no mocks)', () => {

@@ -32,6 +32,10 @@ describe('tool shell wrapper', () => {
       workspace: '/tmp/data/w1',
     });
     expect(script).toContain('--ro-bind / /');
+    // Network isolation: model-controlled shells enter a fresh network
+    // namespace (no host loopback, no proxy reachability), while the
+    // OpenCode parent keeps host networking. No toggle exists by design.
+    expect(script).toContain('--unshare-net');
     expect(script).toContain("--tmpfs '/tmp/.sentry-opencode-r1'");
     expect(script).toContain("--tmpfs '/home/user'");
     expect(script).toContain("SENTRY_WORKSPACE='/tmp/data/w1'");

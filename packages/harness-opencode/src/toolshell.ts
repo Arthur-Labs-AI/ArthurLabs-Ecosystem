@@ -17,6 +17,17 @@ import { dirname, join } from 'node:path';
  * - per-run private tmp â†’ bound at /tmp.
  * - everything else (toolchain, libraries) â†’ read-only bind of `/`.
  *
+ * Network (`--unshare-net`): every tool shell ALSO enters a fresh network
+ * namespace with no routes, so model-controlled shell/project code cannot
+ * reach the Sentry localhost auth proxy (127.0.0.1 ephemeral port), other
+ * host-local services, or the public network — even though the OpenCode
+ * PARENT keeps host networking and reaches the proxy normally (the parent
+ * is spawned by the process launcher and never exec'd through this
+ * wrapper). Same-namespace loopback still works, so a shell that starts
+ * its own local server and probes it keeps functioning; only HOST network
+ * access is removed. There is intentionally no toggle: network access for
+ * model-controlled shells is deny-by-default and Sentry-owned.
+ *
  * In-process file tools (`read`/`edit`) do NOT pass through here; they are
  * contained by explicit deny rules plus upstream ask-to-reject, and they
  * can only ever observe the dummy proxy credential (never the real key).
@@ -122,6 +133,7 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
     'fi',
     'exec "$SENTRY_BWRAP" \\',
     '  --ro-bind / / \\',
+    '  --unshare-net \\',
     '  --dev /dev \\',
     '  --proc /proc \\',
     '  --bind "$SENTRY_RUN_TMP" /tmp \\',

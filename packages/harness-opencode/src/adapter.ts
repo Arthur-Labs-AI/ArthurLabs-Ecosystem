@@ -542,7 +542,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         code: 'OPENCODE_DIRECT_SHELL',
         severity: 'warning',
         message:
-          'Tool shell namespace unavailable off Linux: model shells run without mount isolation (development only).',
+          'Tool shell namespace unavailable off Linux: model shells run without mount or network isolation (development only).',
         retryable: false,
       });
     }
@@ -618,7 +618,9 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       this.shutdownDiagnostics.push({
         code: 'OPENCODE_DIRECT_SHELL',
         severity: 'warning',
-        message: 'Tool shell namespace bypassed by explicit opt-in (development only).',
+        message:
+          'Tool shell namespace bypassed by explicit opt-in (development only): ' +
+          'model shells keep host filesystem mounts and host networking; this is never production containment.',
         retryable: false,
       });
       return undefined;

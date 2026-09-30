@@ -565,9 +565,22 @@ export async function probeOpenCodeSandbox(
     probeSystemdUser(timeoutMs, environment),
     // Functional probe (not just presence): userns + mount must actually work.
     // Absolute /usr/bin/true: the sandbox PATH is not guaranteed.
+    // --unshare-net is included because the tool-shell boundary depends on
+    // network-namespace isolation too: a host that cannot provide it must
+    // fail closed here, never silently run model shells with host networking.
     probeCommand(
       'bwrap',
-      ['--ro-bind', '/', '/', '--tmpfs', '/tmp', '--proc', '/proc', '/usr/bin/true'],
+      [
+        '--ro-bind',
+        '/',
+        '/',
+        '--unshare-net',
+        '--tmpfs',
+        '/tmp',
+        '--proc',
+        '/proc',
+        '/usr/bin/true',
+      ],
       timeoutMs,
       environment,
     ),
