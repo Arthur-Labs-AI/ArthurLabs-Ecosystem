@@ -125,6 +125,83 @@ export function versionContains(output, version) {
   return String(output === undefined || output === null ? '' : output).includes(version);
 }
 
+
+/**
+ * Native Linux (CachyOS) decisions. Pure and testable; the bash launcher
+ * implements the effects. os-release parsing mirrors
+ * scripts/launcher/linux/lib/host-gate.sh; the package table mirrors
+ * scripts/launcher/linux/distros/cachyos.sh. Both sides cross-check the
+ * table in scripts/launcher/tests/test-package-map-sync.sh.
+ */
+
+/** Parse /etc/os-release content into { id, idLike, prettyName }. */
+export function parseOsRelease(content) {
+  const fields = {};
+  if (typeof content !== 'string') return { id: '', idLike: '', prettyName: 'unknown' };
+  for (const line of content.split('\n')) {
+    const match = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(line.trim());
+    if (!match) continue;
+    let raw = match[2].trim();
+    if (raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')) {
+      raw = raw.slice(1, -1);
+    }
+    fields[match[1]] = raw;
+  }
+  const id = String(fields.ID || '').toLowerCase();
+  const idLike = String(fields.ID_LIKE || '').toLowerCase();
+  const prettyName = fields.PRETTY_NAME || fields.NAME || id || 'unknown';
+  return { id, idLike, prettyName };
+}
+
+/** Product support: ID=cachyos only. ID_LIKE is never sufficient. */
+export function isCachyOsSupported(osRelease) {
+  return osRelease !== null && osRelease !== undefined && osRelease.id === 'cachyos';
+}
+
+/**
+ * CachyOS/Arch (pacman) package names for Sentry's Linux prerequisites,
+ * keyed by the executable (or capability) the checks probe. Verified
+ * against the Arch extra/core repositories; the bash adapter owns runtime
+ * installation from this same table.
+ */
+export const CACHYOS_PACKAGES = {
+  git: 'git',
+  curl: 'curl',
+  'ca-certificates': 'ca-certificates',
+  node: 'nodejs',
+  npm: 'npm',
+  bwrap: 'bubblewrap',
+  socat: 'socat',
+};
+
+/** Map missing executables/capabilities to pacman package names. */
+export function cachyosPackagesFor(missing) {
+  const pkgs = [];
+  for (const name of missing || []) {
+    const pkg = CACHYOS_PACKAGES[name];
+    if (pkg && !pkgs.includes(pkg)) pkgs.push(pkg);
+  }
+  return pkgs;
+}
+
+/** Ordered native setup phases (mirrors commands/setup.sh sections). */
+export function setupPhaseNames() {
+  return [
+    'host',
+    'base',
+    'node',
+    'pnpm',
+    'packages',
+    'systemd-sandbox',
+    'dependencies',
+    'build',
+    'deploy',
+    'verify',
+    'agents',
+    'shim',
+  ];
+}
+
 export function classifyClaudeVersion(output) {
   const bad = KNOWN_BAD_CLAUDE_CODE_VERSIONS.some(function (b) {
     return versionContains(output, b);
