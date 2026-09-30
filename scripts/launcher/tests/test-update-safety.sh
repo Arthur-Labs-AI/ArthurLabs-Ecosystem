@@ -64,6 +64,13 @@ if [ -L "$T/probe-link" ]; then
   [ -d "$T/.local/share/sentry/runtime/B" ] || fail "rollback deleted the new version"
   sentry_rollback_runtime NONE >/dev/null || fail "rollback NONE"
   [ "$(readlink "$T/.local/share/sentry/runtime/current")" = "A" ] || fail "rollback NONE moved current"
+  # NONE active, B failed verification: current must not remain on B, and
+  # the failed version directory is retained for diagnostics.
+  rm -f "$T/.local/share/sentry/runtime/current"
+  ln -s B "$T/.local/share/sentry/runtime/current"
+  sentry_rollback_runtime NONE >/dev/null || fail "rollback NONE-after-failure"
+  [ ! -e "$T/.local/share/sentry/runtime/current" ] || fail "NONE left current on failed B"
+  [ -d "$T/.local/share/sentry/runtime/B" ] || fail "failed B directory removed"
 else
   echo "  (rollback asserts skipped: no symlink privilege on this host)"
 fi

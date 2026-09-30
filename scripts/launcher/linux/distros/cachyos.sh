@@ -6,6 +6,11 @@
 # Package names are Arch extra/core names shared by CachyOS.
 set -u
 
+# Capability list for setup: executable/capability tokens (NOT package names).
+# The adapter converts node -> nodejs, bwrap -> bubblewrap, socat -> socat.
+# ca-certificates has no executable and is package-checked by design.
+SENTRY_CACHYOS_CAPABILITIES=(git curl ca-certificates node npm bwrap socat)
+
 # Map a probed executable/capability to its pacman package. Returns 1 when unknown.
 sentry_cachyos_package_for() {
   case "$1" in

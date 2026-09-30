@@ -9,6 +9,10 @@
 # Activation is atomic: build+validate happen before `current` moves.
 set -euo pipefail
 SRC="$1"; VERSION="$2"
+# Optional explicit pnpm executable (native launcher passes the resolved
+# pinned binary). Defaults to PATH pnpm so the historical 2-arg Windows
+# invocation behaves exactly as before.
+PNPM_BIN="${3:-pnpm}"
 BASE="$HOME/.local/share/sentry/runtime"
 DEST="$BASE/$VERSION"
 mkdir -p "$BASE"
@@ -60,9 +64,9 @@ echo STAGE_CLEAN_OK
 cd "$DEST.tmp"
 export CI=true
 echo "[sentry-runtime] installing Linux dependencies (frozen lockfile)..."
-pnpm install --frozen-lockfile
+"$PNPM_BIN" install --frozen-lockfile
 echo '[sentry-runtime] building runtime + transitive workspace dependencies (monorepo graph)...'
-pnpm exec turbo run build --filter=@qa/runtime...
+"$PNPM_BIN" exec turbo run build --filter=@qa/runtime...
 echo '[sentry-runtime] validating entry...'
 test -f "$DEST.tmp/apps/runtime/dist/host.js"
 echo ENTRY_OK

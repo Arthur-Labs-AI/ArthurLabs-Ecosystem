@@ -83,20 +83,31 @@ cmd_post_update() {
   if [ "${3:-}" = "--was-running" ]; then was_running=1; fi
   local version="$(sentry_product_version "$repo")"
   export SENTRY_NON_INTERACTIVE="${SENTRY_NON_INTERACTIVE:-0}"
-  echo "  pnpm install --frozen-lockfile ..."
-  if ! (cd "$repo" && pnpm install --frozen-lockfile); then
+  # Re-resolve toolchain from the UPDATED tree: pins may have changed, so
+  # setup-time binaries are re-validated, never blindly trusted.
+  local node_line=""
+  node_line=$(sentry_ensure_node) || { printf '%s\n' "$node_line"; return 1; }
+  printf '%s\n' "$node_line"
+  local node_bin="$(printf '%s\n' "$node_line" | sed -n 's/^SENTRY_NODE_RESOLVED=//p' | head -n 1)"
+  if [ -z "$node_bin" ]; then sentry_fail "Node resolution produced no executable."; return 1; fi
+  export SENTRY_NODE_BINARY="$node_bin"
+  export PATH="$(dirname "$node_bin"):$PATH"
+  local pnpm_line=""
+  pnpm_line=$(sentry_ensure_pnpm "$repo") || { printf '%s\n' "$pnpm_line"; return 1; }
+  printf '%s\n' "$pnpm_line"
+  local pnpm_bin="$(printf '%s\n' "$pnpm_line" | sed -n 's/^PNPM_RESOLVED=//p' | head -n 1)"
+  if [ -z "$pnpm_bin" ]; then sentry_fail "pnpm resolution produced no executable."; return 1; fi
+  if ! sentry_pnpm_install "$repo" "$pnpm_bin"; then
     sentry_fail "pnpm install failed after update (previous runtime preserved)."
     return 1
   fi
-  echo "  pnpm build ..."
-  if ! (cd "$repo" && pnpm build); then
+  if ! sentry_pnpm_build "$repo" "$pnpm_bin"; then
     sentry_fail "pnpm build failed after update (previous runtime preserved)."
     return 1
   fi
-  local prev_current="$(readlink "$HOME/.local/share/sentry/runtime/current" 2>/dev/null || echo NONE)"
-  if ! sentry_runtime_deploy "$repo" "${version}-${new_sha}"; then return 1; fi
-  local node_bin="$(sentry_config_get SENTRY_NODE_BINARY)"
-  if [ -z "$node_bin" ]; then node_bin="node"; fi
+  local prev_current="NONE"
+  prev_current=$(readlink "$HOME/.local/share/sentry/runtime/current" 2>/dev/null || echo NONE)
+  if ! sentry_runtime_deploy "$repo" "${version}-${new_sha}" "$pnpm_bin"; then return 1; fi
   local entry="$HOME/.local/share/sentry/runtime/current/apps/runtime/dist/host.js"
   local hello_line=""
   if ! hello_line=$(sentry_verify_runtime "$entry" "$node_bin" "$repo"); then
@@ -106,7 +117,14 @@ cmd_post_update() {
     return 1
   fi
   printf '%s\n' "$hello_line"
+  # Agent pins may have changed with the update: reprovision (check first,
+  # install on drift) so update never reports ready on stale binaries.
+  local agents_out=""
+  agents_out=$(sentry_provision_agents "$repo") || { printf '%s\n' "$agents_out"; return 1; }
+  printf '%s\n' "$agents_out"
   sentry_install_shim "$repo"
+  sentry_config_set SENTRY_NODE_BINARY "$node_bin"
+  sentry_config_set SENTRY_PNPM_BINARY "$pnpm_bin"
   sentry_config_set SENTRY_SETUP_VERSION "$version"
   sentry_config_set SENTRY_SETUP_COMMIT "$new_sha"
   echo "Updated: ${old_sha:0:9} -> ${new_sha:0:9}"
