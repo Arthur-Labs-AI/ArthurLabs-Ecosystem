@@ -108,4 +108,21 @@ grep -q 'sentry_pnpm_install "$repo" "$pnpm_bin"' "$REPO/scripts/launcher/linux/
 grep -q 'sentry_pnpm_build "$repo" "$pnpm_bin"' "$REPO/scripts/launcher/linux/commands/setup.sh" || fail "setup exact build"
 grep -q '"$pnpm_bin" install --frozen-lockfile' "$REPO/scripts/launcher/linux/lib/pnpm.sh" || fail "helper exact install"
 grep -q 'sentry_ensure_pnpm "$repo"' "$REPO/scripts/launcher/linux/commands/update.sh" || fail "update re-resolves"
+# Grandchild PATH visibility (turbo spawns `pnpm` per task via PATH lookup):
+# the fixture mimics turbo — install proceeds only when `pnpm` resolves to
+# itself. Helpers must export the binary's directory for their subtree.
+mkdir -p "$T/pbindir" "$T/emptyrepo"
+cat > "$T/pbindir/pnpm" <<'FIXPNPM'
+#!/bin/sh
+# Fixture pnpm with turbo-like PATH dependence.
+if [ "$1" = "--version" ]; then echo "@PIN@"; exit 0; fi
+selfdir="$(cd "$(dirname "$0")" && pwd)"
+found="$(command -v pnpm || true)"
+if [ "$found" != "$selfdir/pnpm" ]; then echo "PNPM-NOT-ON-PATH"; exit 9; fi
+exit 0
+FIXPNPM
+sed -i "s/@PIN@/$PIN/" "$T/pbindir/pnpm"
+chmod +x "$T/pbindir/pnpm"
+sentry_pnpm_install "$T/emptyrepo" "$T/pbindir/pnpm" >/dev/null || fail "grandchild PATH export"
+sentry_pnpm_build "$T/emptyrepo" "$T/pbindir/pnpm" >/dev/null || fail "grandchild PATH export (build)"
 echo PNPMRESOLVE-OK

@@ -13,6 +13,12 @@ SRC="$1"; VERSION="$2"
 # pinned binary). Defaults to PATH pnpm so the historical 2-arg Windows
 # invocation behaves exactly as before.
 PNPM_BIN="${3:-pnpm}"
+# Turbo grandchildren spawn `pnpm` via PATH lookup: when an explicit path
+# was given, its directory leads PATH for this deploy subtree. A bare name
+# needs no export (it already came from PATH).
+case "$PNPM_BIN" in
+  */*) export PATH="$(dirname "$PNPM_BIN"):$PATH" ;;
+esac
 BASE="$HOME/.local/share/sentry/runtime"
 DEST="$BASE/$VERSION"
 mkdir -p "$BASE"

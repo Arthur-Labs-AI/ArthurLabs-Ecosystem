@@ -55,10 +55,22 @@ sentry_ensure_pnpm() {
   return 1
 }
 
+# Grandchildren (turbo spawns `pnpm` per task via PATH lookup) must resolve
+# the same binary. This export runs in the caller's shell — never inside
+# command substitution — so it persists for setup/update and their children.
+# Bare names (no slash) need no export: they already came from PATH.
+sentry_pnpm_bindir_on_path() {
+  case "$1" in
+    */*) export PATH="$(dirname "$1"):$PATH" ;;
+  esac
+  return 0
+}
+
 # Install repo dependencies with an explicit pnpm executable (never bare pnpm).
 sentry_pnpm_install() {
   local repo="$1"
   local pnpm_bin="$2"
+  sentry_pnpm_bindir_on_path "$pnpm_bin"
   echo "  $pnpm_bin install --frozen-lockfile ..."
   if ! (cd "$repo" && "$pnpm_bin" install --frozen-lockfile); then
     sentry_fail "pnpm install failed."
@@ -71,6 +83,7 @@ sentry_pnpm_install() {
 sentry_pnpm_build() {
   local repo="$1"
   local pnpm_bin="$2"
+  sentry_pnpm_bindir_on_path "$pnpm_bin"
   echo "  $pnpm_bin build ..."
   if ! (cd "$repo" && "$pnpm_bin" build); then
     sentry_fail "pnpm build failed."
