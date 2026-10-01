@@ -8,7 +8,9 @@ TOOLS="$HOME/.local/share/sentry/tools/claude-code"
 mkdir -p "$TOOLS"
 cd "$TOOLS"
 [ -f package.json ] || npm init -y >/dev/null 2>&1
-npm install "@anthropic-ai/claude-code@${VERSION}" 2>&1 | tail -2
+# --no-ignore-scripts: see install-opencode.sh — the managed binary needs its
+# install scripts, and this prefix is Sentry-owned.
+npm install --no-ignore-scripts "@anthropic-ai/claude-code@${VERSION}" 2>&1 | tail -2
 BIN="$TOOLS/node_modules/.bin/claude"
 "$BIN" --version
 echo "MANAGED_CLAUDE=$BIN"

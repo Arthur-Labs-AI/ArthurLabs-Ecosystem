@@ -7,5 +7,8 @@ VERSION="$1"
 mkdir -p "$HOME/.local/share/sentry/tools/opencode"
 cd "$HOME/.local/share/sentry/tools/opencode"
 if [ ! -f package.json ]; then npm init -y >/dev/null 2>&1; fi
-npm install "opencode-ai@${VERSION}" 2>&1 | tail -2
+# --no-ignore-scripts: the managed binary requires its install scripts, so a
+# user/global npm ignore-scripts=true config must not silently skip them.
+# Scoped to this prefix only; the user's own config is never modified.
+npm install --no-ignore-scripts "opencode-ai@${VERSION}" 2>&1 | tail -2
 ./node_modules/.bin/opencode --version

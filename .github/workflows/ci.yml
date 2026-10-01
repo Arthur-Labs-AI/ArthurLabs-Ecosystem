@@ -191,6 +191,7 @@ jobs:
           bash scripts/launcher/tests/test-config.sh
           bash scripts/launcher/tests/test-desktop-marker.sh
           bash scripts/launcher/tests/test-status-pins.sh
+          bash scripts/launcher/tests/test-npm-ignore-scripts.sh
       - name: Native entrypoint smoke (host-independent + gate proof)
         run: |
           ./sentry help
