@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# test-npm-ignore-scripts.sh — managed agent installs must survive a user
-# npm config with ignore-scripts=true. The fixture npm models that config:
-# package installs WITHOUT --no-ignore-scripts create nothing (silent
-# skip, like real npm); WITH the flag they materialize the binary.
+# test-npm-ignore-scripts.sh — managed agent installs survive restrictive
+# npm configurations, modeled on npm >= 12 allowScripts behavior:
+# `install` links binaries but runs NO install scripts; scripts execute
+# only via `rebuild` after `install-scripts approve <name>`. A binary whose
+# payload is missing fails `--version`, exactly like the real managed
+# packages whose postinstall was skipped.
 # Fixture HOME/bin only; no registry, no network, no sudo.
 # Run: bash scripts/launcher/tests/test-npm-ignore-scripts.sh   (repo root)
 set -euo pipefail
@@ -15,37 +17,64 @@ trap 'rm -rf "$T"' EXIT
 mkdir -p "$T/fakebin"
 cat > "$T/fakebin/npm" <<'NPMFIX'
 #!/bin/sh
-# Fixture npm with global ignore-scripts semantics.
+# Fixture npm with npm>=12 approval semantics (see file header).
 if [ "$1" = "init" ]; then echo '{}' > package.json; exit 0; fi
-allow=""
+if [ "$1" = "install-scripts" ]; then
+  if [ "$2" = "approve" ] && [ -n "${3:-}" ]; then
+    printf '%s\n' "$3" >> "$FIXTURE_APPROVALS"
+    exit 0
+  fi
+  echo "unknown install-scripts usage" >&2
+  exit 1
+fi
+if [ "$1" = "rebuild" ]; then
+  name="$2"
+  case "$name" in
+    opencode-ai) bin=opencode ;;
+    @anthropic-ai/claude-code) bin=claude ;;
+    *) echo "unknown package $name" >&2; exit 1 ;;
+  esac
+  if grep -qxF "$name" "$FIXTURE_APPROVALS" 2>/dev/null; then
+    # Approved: the postinstall payload materializes beside the binary.
+    printf 'payload' > "node_modules/.bin/payload-$bin"
+    exit 0
+  fi
+  echo "scripts blocked for $name" >&2
+  exit 1
+fi
+# Plain install: link a payload-gated binary stub, run no scripts.
 spec=""
 for a in "$@"; do
   case "$a" in
-    --no-ignore-scripts) allow=1 ;;
     *@*) spec="$a" ;;
   esac
 done
-if [ -z "$allow" ]; then echo "skipped scripts for $spec"; exit 0; fi
 ver="${spec##*@}"
 case "$spec" in
-  *opencode-ai*) name=opencode ;;
-  *claude-code*) name=claude ;;
-  *) echo "unknown package $spec"; exit 1 ;;
+  *opencode-ai*) bin=opencode ;;
+  *claude-code*) bin=claude ;;
+  *) echo "unknown package $spec" >&2; exit 1 ;;
 esac
 mkdir -p node_modules/.bin
-printf '#!/bin/sh\necho %s\n' "$ver" > "node_modules/.bin/$name"
-chmod +x "node_modules/.bin/$name"
+# The stub resolves its payload next to itself: installers and tests may
+# invoke it from any working directory.
+printf '#!/bin/sh\nd="$(cd "$(dirname "$0")" && pwd)"\nif [ -f "$d/payload-%s" ]; then echo %s\nelse echo "bin broken (payload missing)" >&2; exit 1\nfi\n' "$bin" "$ver" > "node_modules/.bin/$bin"
+chmod +x "node_modules/.bin/$bin"
 NPMFIX
 chmod +x "$T/fakebin/npm"
 OLD_PATH="$PATH"
 export PATH="$T/fakebin:$OLD_PATH"
 export HOME="$T"
-# Negative control: without the flag the fixture (like real npm with
-# ignore-scripts=true) creates nothing — this is the bug being modeled.
-mkdir -p "$T/neg"
-(cd "$T/neg" && npm install "opencode-ai@9.9.9" >/dev/null 2>&1)
-[ ! -e "$T/neg/node_modules/.bin/opencode" ] || fail "fixture does not model the skip"
-# Real installers defeat the strict config via --no-ignore-scripts.
+export FIXTURE_APPROVALS="$T/approvals"
+: > "$FIXTURE_APPROVALS"
+# Static: installers keep the legacy --no-ignore-scripts override (old npm
+# with ignore-scripts=true) AND the npm>=12 approve+rebuild flow.
+for script in install-opencode.sh install-claude.sh; do
+  grep -q -- '--no-ignore-scripts' "$L/$script" || fail "$script lost --no-ignore-scripts"
+  grep -q 'install-scripts approve' "$L/$script" || fail "$script lost approve"
+  grep -q 'npm rebuild' "$L/$script" || fail "$script lost rebuild"
+done
+# Functional: real installers produce working binaries under the fixture.
 OC_PIN="1.18.32"
 bash "$L/install-opencode.sh" "$OC_PIN" >/dev/null || fail "opencode install"
 OC_BIN="$T/.local/share/sentry/tools/opencode/node_modules/.bin/opencode"

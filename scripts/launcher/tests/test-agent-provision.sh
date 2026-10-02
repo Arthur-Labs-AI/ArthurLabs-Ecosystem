@@ -21,6 +21,15 @@ mkdir -p "$T/fakebin" "$T/tools/claude-code"
 printf '{"name":"x"}' > "$T/tools/claude-code/package.json"
 cat > "$T/fakebin/npm" <<'NPMFIX'
 #!/bin/sh
+# approve/rebuild are no-ops here: the install below already materializes a
+# working binary, and strict npm>=12 approval modeling lives in
+# test-npm-ignore-scripts.sh. Unknown subcommands fail (old-npm modeling).
+if [ "$1" = "init" ]; then echo '{}' > package.json; exit 0; fi
+if [ "$1" = "install-scripts" ]; then
+  [ "$2" = "approve" ] && [ -n "${3:-}" ] && exit 0
+  exit 1
+fi
+if [ "$1" = "rebuild" ]; then exit 0; fi
 spec=""
 for a in "$@"; do
   case "$a" in
@@ -48,7 +57,12 @@ seed_common() {
   chmod +x "$dsd/lib/bin.js"
 }
 OLD_PATH="$PATH"
-export PATH="$T/fakebin:$OLD_PATH"
+# Shadow any real system `claude`: the fresh-install cases below require
+# PATH resolution to MISS the pin, deterministically on every host.
+mkdir -p "$T/shadow"
+printf '#!/bin/sh\necho 0.0.0\n' > "$T/shadow/claude"
+chmod +x "$T/shadow/claude"
+export PATH="$T/fakebin:$T/shadow:$OLD_PATH"
 # Case 1: persist succeeds -> managed path recorded, GLM ready.
 seed_common "$T/home1"
 export HOME="$T/home1"
@@ -86,7 +100,7 @@ chmod +x "$T/pathbin/claude"
 seed_common "$T/home4"
 export HOME="$T/home4"
 mkdir -p "$HOME" 
-export PATH="$T/pathbin:$T/fakebin:$OLD_PATH"
+export PATH="$T/pathbin:$T/fakebin:$T/shadow:$OLD_PATH"
 sentry_desktop_persist_binary() { return 1; }
 sentry_provision_agents "$REPO" > "$T/out4.txt" || fail "provision failed"
 grep -q '^AGENTS_CLAUDE=1$' "$T/out4.txt" || fail "PATH claude not ready"
