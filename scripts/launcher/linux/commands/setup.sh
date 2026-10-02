@@ -130,6 +130,7 @@ cmd_setup() {
     return 1
   fi
   sentry_ok "Dependencies installed; Desktop built"
+  if ! sentry_ensure_electron "$repo" "$pnpm_bin"; then return 1; fi
 
   sentry_section "[9/12] Native runtime"
   local deploy_version="${version}-${sha}"

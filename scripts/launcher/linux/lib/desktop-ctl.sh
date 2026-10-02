@@ -12,6 +12,32 @@ sentry_electron_binary() {
   return 0
 }
 
+# Ensure the Electron binary exists, repairing once via a scoped rebuild.
+# A gutted electron/dist (postinstall that never landed the binary) blocks
+# `sentry open`; reinstalling the whole tree for it is wasteful, so one
+# bounded `pnpm rebuild electron` is attempted before failing closed with an
+# actionable message. Never touches any other package.
+sentry_ensure_electron() {
+  local repo="$1"
+  local pnpm_bin="$2"
+  local exe="$(sentry_electron_binary "$repo")"
+  if [ -n "$exe" ]; then
+    echo "  [OK] Electron binary"
+    return 0
+  fi
+  echo "  Electron binary missing; attempting one repair (rebuild electron)..."
+  if (cd "$repo/apps/desktop" && "$pnpm_bin" rebuild electron >/dev/null 2>&1); then
+    exe="$(sentry_electron_binary "$repo")"
+    if [ -n "$exe" ]; then
+      echo "  [OK] Electron binary (repaired)"
+      return 0
+    fi
+  fi
+  echo "  [X] Electron binary still missing after rebuild."
+  echo "  Remove apps/desktop/node_modules/electron and rerun: sentry setup"
+  return 1
+}
+
 # PIDs of Sentry Desktop processes (launcher marker only). Empty when idle.
 # The pattern is assembled so this script never matches its own command line,
 # and `--` terminates pgrep option parsing: without it procps treats a
