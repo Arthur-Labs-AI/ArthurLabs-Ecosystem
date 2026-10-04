@@ -5,7 +5,7 @@ use std::time::Duration;
 use serde::Deserialize;
 
 use crate::async_util::BoxFuture;
-use crate::providers::chat::{self, ChatFailure, ChatRequest};
+use crate::providers::chat::{self, ChatFailure, ChatRequest, Sampling};
 use crate::providers::credentials::CredentialSource;
 use crate::providers::http;
 
@@ -37,7 +37,7 @@ impl OpenAiDistiller {
         let content = chat::complete_json(
             &self.client,
             self.credentials.as_ref(),
-            ChatRequest { endpoint: &self.endpoint, model: &self.model, system: SYSTEM_PROMPT, user: &user, schema_name: "distillation", schema: response_schema() },
+            ChatRequest { endpoint: &self.endpoint, model: &self.model, system: SYSTEM_PROMPT, user: &user, schema_name: "distillation", schema: response_schema(), sampling: Sampling::Deterministic },
         )
         .await?;
         parse_candidates(&content)

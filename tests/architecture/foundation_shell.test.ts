@@ -18,10 +18,12 @@ import {
   KNOWLEDGE_OBJECT_KINDS,
   MAX_CAPTURE_CONTENT_CHARS,
   MAX_INFERENCE_CANDIDATES,
+  MAX_INFERENCE_REQUESTS,
   MAX_KNOWLEDGE_BODY_CHARS,
   MAX_KNOWLEDGE_TITLE_CHARS,
   MAX_OBJECTS_PER_DISTILLATION,
   MAX_RELATIONS_PER_INFERENCE,
+  MAX_RELATION_PROPOSALS,
   RELATION_ERROR_CODES,
   RELATION_KINDS,
   RELATION_ORIGINS,
@@ -321,11 +323,18 @@ test("relation kinds, symmetry, origins and limits agree across the contract, Ru
   const prompt = readText(tauriDir, "src/graph/prompt.rs");
   const offered = /"kind": \{ "type": "string", "enum": \[([^\]]*)\]/.exec(prompt)?.[1] ?? "";
   assert.deepEqual(quoted(offered), [...RELATION_KINDS], "the model is offered exactly these kinds");
+  const verifyPrompt = readText(tauriDir, "src/graph/verify_prompt.rs");
+  const verifierKinds = /"kind": \{ "type": "string", "enum": \[([^\]]*)\]/.exec(verifyPrompt)?.[1] ?? "";
+  assert.deepEqual(quoted(verifierKinds), [...RELATION_KINDS], "the verifier is offered exactly these kinds");
+  const semantics = readText(tauriDir, "src/graph/semantics.rs");
+  assert.deepEqual([...semantics.matchAll(/kind: "([a-z_]+)",/g)].map((m) => m[1]), [...RELATION_KINDS], "one shared definition per kind, in contract order");
 
   assert.equal(Number(/pub const MAX_INFERENCE_CANDIDATES: usize = ([\d_]+);/.exec(readText(tauriDir, "src/graph/candidates.rs"))?.[1]?.replaceAll("_", "")), MAX_INFERENCE_CANDIDATES);
   assert.equal(Number(/pub const MAX_RELATIONS_PER_BATCH: usize = ([\d_]+);/.exec(store)?.[1]?.replaceAll("_", "")), MAX_RELATIONS_PER_INFERENCE);
 
   const graph = readText(tauriDir, "src/graph/mod.rs");
+  assert.equal(Number(/pub const MAX_RELATION_PROPOSALS: usize = ([\d_]+);/.exec(graph)?.[1]), MAX_RELATION_PROPOSALS);
+  assert.equal(Number(/pub const MAX_PROVIDER_REQUESTS_PER_RUN: usize = ([\d_]+);/.exec(graph)?.[1]), MAX_INFERENCE_REQUESTS);
   const codes = graph.slice(graph.indexOf("pub fn code"), graph.indexOf("pub fn message"));
   assert.deepEqual([...new Set([...codes.matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...RELATION_ERROR_CODES].sort());
 });
@@ -345,22 +354,41 @@ test("graph schema: foreign keys to knowledge objects, canonical identity, index
 });
 
 test("the model never writes to the graph: the provider client and prompt cannot reach the store", () => {
-  for (const file of ["src/graph/openai.rs", "src/graph/prompt.rs", "src/graph/validate.rs", "src/graph/candidates.rs"]) {
+  for (const file of ["src/graph/openai.rs", "src/graph/prompt.rs", "src/graph/validate.rs", "src/graph/candidates.rs", "src/graph/verify.rs", "src/graph/verify_prompt.rs", "src/graph/semantics.rs"]) {
     const production = productionCode(readText(tauriDir, file));
     assert.doesNotMatch(production, /rusqlite|CaptureStore|record_relations|create_relation|\.execute\(/, `${file} must not write to storage`);
   }
   // Only the service persists, and only through the all-or-nothing store call, after validation.
   const production = productionCode(readText(tauriDir, "src/graph/mod.rs"));
-  assert.match(production, /store\.record_relations\(accepted, "model"\)/);
-  assert.ok(production.indexOf("validate::validate_proposals") < production.indexOf("store.record_relations"), "validation precedes persistence");
+  assert.match(production, /store\.record_relations\(verified, "model"\)/);
+  // Stage A -> structural validation -> Stage B votes -> gates -> final validation -> persistence.
+  const steps = ["self.proposer.propose", "validate::validate_proposals", "self.verifier.verify", "verify::apply_votes", "validate::validate_edges", "store.record_relations"];
+  const positions = steps.map((step) => production.indexOf(step));
+  assert.ok(positions.every((at) => at >= 0), `a pipeline step is missing: ${steps.filter((_, i) => (positions[i] as number) < 0).join(", ")}`);
+  assert.deepEqual([...positions].sort((x, y) => x - y), positions, `pipeline steps are out of order: ${steps.join(" -> ")}`);
+  assert.equal([...production.matchAll(/self\.verifier\.verify\(/g)].length, 2, "exactly two verification votes: a fixed request count, no loop over the provider");
+  assert.equal([...production.matchAll(/self\.proposer\.propose\(/g)].length, 1);
+  assert.doesNotMatch(production, /\bfor\b[^\n]*\.(verify|propose)\(|\bloop\b|\bwhile\b/, "no provider call can sit inside a loop");
   assert.doesNotMatch(production, /INSERT|UPDATE|DELETE|\.execute\(/);
   // The provider reply is parsed strictly: unknown fields are an error, not silently ignored.
   assert.match(readText(tauriDir, "src/graph/openai.rs"), /deny_unknown_fields/);
 });
 
 test("relation inference sends knowledge objects only, never raw captures", () => {
-  const production = productionCode(readText(tauriDir, "src/graph/prompt.rs"));
-  assert.doesNotMatch(production, /provenance|capture_id|\.content/, "the proposer prompt does not read capture text or provenance");
+  for (const file of ["src/graph/prompt.rs", "src/graph/verify_prompt.rs"]) {
+    const production = productionCode(readText(tauriDir, file));
+    assert.doesNotMatch(production, /provenance|capture_id|\.content/, `${file} does not read capture text or provenance`);
+  }
+});
+
+test("the verifier is shown no direction and no Stage A reasoning", () => {
+  const production = productionCode(readText(tauriDir, "src/graph/verify_prompt.rs"));
+  assert.doesNotMatch(production, /"source":|"target":/, "the candidate JSON has first/second, not source/target");
+  assert.doesNotMatch(production, /\.reason\b/, "Stage A's reason is not forwarded");
+  // Direction is derived from ratings in native code, never from lexical id order.
+  const verify = productionCode(readText(tauriDir, "src/graph/verify.rs"));
+  assert.match(verify, /pub fn orient\(/);
+  assert.doesNotMatch(verify, /\.id\s*[<>]=?\s*[a-z_.]*\.id|source_object_id\s*[<>]|target_object_id\s*[<>]/, "no id-order comparison decides a direction in the verifier");
 });
 
 test("graph relations are never derived from Capture provenance in code", () => {

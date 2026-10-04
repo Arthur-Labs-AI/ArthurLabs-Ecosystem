@@ -172,6 +172,13 @@ export type CognitiveRelationOrigin = (typeof RELATION_ORIGINS)[number];
 /** Mirrored by the native store; keep both in sync. */
 export const MAX_INFERENCE_CANDIDATES = 40;
 export const MAX_RELATIONS_PER_INFERENCE = 30;
+/**
+ * Cost bounds of one inference run (M02.1). Stage A proposes at most `MAX_RELATION_PROPOSALS` relations; Stage B
+ * verifies each of them twice in two batched requests; so a run makes at most `MAX_INFERENCE_REQUESTS`
+ * provider requests (one proposal, two verification votes), however many objects or relations are involved.
+ */
+export const MAX_RELATION_PROPOSALS = 20;
+export const MAX_INFERENCE_REQUESTS = 3;
 
 export interface CognitiveRelation {
   /** Assigned by the store; unique and stable. */

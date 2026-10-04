@@ -2,6 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  MAX_INFERENCE_CANDIDATES,
+  MAX_INFERENCE_REQUESTS,
+  MAX_RELATIONS_PER_INFERENCE,
+  MAX_RELATION_PROPOSALS,
   RELATION_DIRECTIONS,
   RELATION_ERROR_CODES,
   RELATION_KINDS,
@@ -84,4 +88,11 @@ test("relation error guards", () => {
   for (const bad of [null, "llm_failed", {}, { code: "llm_failed" }, { code: "nope", message: "x" }, { code: "llm_failed", message: 1 }]) {
     assert.equal(isRelationErrorPayload(bad), false, JSON.stringify(bad));
   }
+});
+
+test("an inference run has a fixed, small upper bound on cost", () => {
+  assert.equal(MAX_INFERENCE_CANDIDATES, 40);
+  assert.equal(MAX_RELATION_PROPOSALS, 20);
+  assert.ok(MAX_RELATION_PROPOSALS <= MAX_RELATIONS_PER_INFERENCE, "proposals fit in one store batch");
+  assert.equal(MAX_INFERENCE_REQUESTS, 3, "one proposal request and two verification votes, independent of the number of objects");
 });

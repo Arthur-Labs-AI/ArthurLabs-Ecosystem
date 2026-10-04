@@ -202,7 +202,7 @@ cannot change the output format, escape provenance, or add content the capture d
 
 `GraphPanel` -> `ArthurClient.createRelation / listRelations / getObjectRelations / getObjectNeighbors /
 inferRelations` -> Tauri commands -> `storage::relation_store` (manual) or
-`graph::GraphService` -> cloud LLM (candidates only) -> deterministic validator -> `record_relations` (one transaction).
+`graph::GraphService` -> cloud LLM (propose, then verify) -> deterministic validation -> `record_relations` (one transaction).
 
 **Two separate systems.** Capture provenance is `KnowledgeObject -> exact span of a Capture` (`object_sources`,
 M01D). The graph is `KnowledgeObject -> KnowledgeObject` (`relations`). Provenance is never stored as a
@@ -247,24 +247,92 @@ CHECK symmetric kinds are in canonical order, UNIQUE(kind, source, target))` plu
 one-hop neighbours. A symmetric relation counts as both incoming and outgoing for each of its objects. No
 multi-hop traversal, ranking or search.
 
-**Inference.** The model proposes `{ sourceObjectId, targetObjectId, kind, reason }` and nothing else; it
-never writes. The validator requires every id to be in the candidate set that was sent, source != target, a valid
-kind, and no duplicate proposal (a symmetric pair stated both ways counts as a duplicate). One invalid candidate
-rejects the whole run and nothing is saved; nothing is silently repaired. A proposal identical to an edge that
-already exists is not a hallucination, so it is skipped rather than rejected: running inference twice adds nothing
-the second time. `reason` is parsed, validated as a string, and discarded; it is never stored. Zero relations is a
-valid result.
+**Inference (M02.1: two stages, no storage change).** The model never writes to the graph.
 
-**Candidate selection** (`graph/candidates.rs`, no embeddings or retrieval): the objects the caller asked about,
-then the most recent other objects, up to a hard limit of **40**. With no request, the 40 most recent objects. A
-run with fewer than two candidates does not call the model. At most **30** relations are accepted per run.
-The model sees only knowledge objects (id, kind, title, body) and the existing edges among them, never raw captures.
+```text
+bounded candidate objects (<= 40: the ones you ask about, then the most recent)
+  -> Stage A   model proposes relation candidates (<= 20)                       [request 1]
+  -> validate  ids, kinds, no self edge, no duplicate, inside the candidate set
+  -> drop      candidates that are already durable edges (no verification, no write)
+  -> Stage B   model verifies kind + direction of every survivor, twice:         [requests 2, 3]
+               one batch per vote, the pair listed in opposite orders
+  -> gates     deterministic rules over each vote, then agreement between the votes
+  -> validate  the same structural checks again, on the verified set
+  -> store     one transaction (`record_relations`)
+```
 
-**Provider.** Same as distillation: OpenAI `gpt-4.1-mini`, strict JSON schema, `temperature: 0`, no tools, shared
-`providers/chat.rs` plumbing and the same app-private credential. The prompt (`graph/prompt.rs`) tells the model to
-use only supplied objects, never self-relate, use only the allowed kinds, prefer no relation over a weak one, not
-use `related_to` as a fallback, reserve `duplicates`, `contradicts` and `supersedes` for the strong cases, and
-preserve direction.
+Stage A (`graph/prompt.rs`) is told to prefer a short list of strong candidates; Stage B (`graph/verify_prompt.rs`)
+re-judges each one from the two objects' own text. Both prompts render their kind definitions from one table
+(`graph/semantics.rs`), so they cannot disagree. The model sees only knowledge objects (id, kind, title, body), never raw
+captures; the verifier additionally never sees Stage A's reasoning or the direction Stage A chose.
+
+**Why the verifier is built this way (measured, not assumed).** With real calls on a controlled dataset:
+a verifier shown Stage A's `source -> target` was *anchored* by it and confirmed a backwards dependency; asking it to
+*pick* a direction (`first|second`) showed a position bias; a single sample sometimes flipped a correct direction.
+So the verifier is shown each pair in a neutral order, rates the two claims `first KIND second` and
+`second KIND first` separately (`strong|weak|none`), and native code (`verify::orient`) derives the direction from the
+ratings. The batch is verified twice with the pair listed in opposite orders, and an edge is kept only if both votes
+reach the same kind and direction. Whether a result counts as accepted, reversed or reclassified is computed by comparing
+with Stage A, not taken from a label the model writes. Direction is never inferred from id order; lexical order is used
+only by storage canonicalization of symmetric kinds.
+
+**Gates** (all must hold for a verdict to become an edge; otherwise it is a semantic rejection):
+
+1. confidence is `high`. `medium` and `low` are rejected. Confidence is a decision for the run, never stored.
+2. `explicitLink`: the objects' own words state or clearly imply the link. A shared project, topic, product or
+   vocabulary, mere recency, or the model's outside knowledge is not enough.
+3. the chosen orientation is rated `strong`.
+4. for a directional kind (`extends`, `depends_on`, `derived_from`, `supersedes`) the opposite orientation is not
+   also `strong`. If both are, the direction is ambiguous and the edge is rejected; if neither is, there is no
+   defensible direction. A reversal happens only when the opposite direction is clearly the supported one.
+5. `supersedes` additionally requires the replacement not to be older than what it replaces (recency alone never
+   proves replacement, but replacement by an older object is rejected outright).
+6. the decision label must agree with the kind it names, otherwise that verdict is dropped.
+7. both votes must agree on kind and direction; a vote that keeps and a vote that rejects count as disagreement.
+
+**Relation-specific rules** (the shared table, used by both prompts):
+
+| kind | use only when | do not use when |
+|---|---|---|
+| `related_to` | the text states or clearly implies a specific link that would help recall, and no stronger kind applies | they only share a project, topic, theme or vocabulary; never a fallback |
+| `extends` | A clearly enriches a more general B | both merely discuss similar things, or B is the richer one |
+| `depends_on` | A could not work, be true or be carried out without B, and B does not equally need A | B merely helps, or each needs the other; a note that X must come before Y is about X, and Y depends on X |
+| `contradicts` | accepting one means rejecting the other | they simply differ or cover different parts of a subject |
+| `derived_from` | A is a real conceptual consequence of B | they share a topic, or came from related captures |
+| `duplicates` | meaning and intent are near-equivalent | one adds detail or scope (that is `extends`) |
+| `supersedes` | the text shows A replaces, updates or reverses B | A is merely newer or on the same subject |
+
+**Two kinds of "no".** *Malformed* output from either stage (bad JSON, an out-of-vocabulary value, a missing,
+duplicate or out-of-range verdict, an unknown kind, more proposals than the cap) and any provider failure reject the
+whole run: nothing is written and the error is retryable. A candidate that the verifier *legitimately declines*
+(reject, medium/low confidence, no explicit link, unclear or disputed direction, disagreeing votes, a self-contradicting
+label) is not an error: it is dropped and only the verified remainder is persisted. Zero relations is a valid result,
+and an edge that already exists is skipped, so repeating inference never duplicates anything.
+
+**Cost bound.** Candidates <= 40; Stage A relations <= 20; verified relations <= 20 (each judged by two votes in two
+batched requests); provider requests per run **<= 3** (1 proposal + 2 votes), however many objects there are. Nothing loops
+over the provider (an architecture test pins the call sites). With nothing proposed, or every candidate already stored,
+the verifier is not called (1 request). Fixed prompt text is ~1.3k tokens per request plus ~100 tokens per object or
+candidate; a run took about 10 s end to end.
+
+**Models** (`providers/chat.rs`, `graph/openai.rs`). Stage A: `gpt-4.1-mini`, strict JSON schema, `temperature: 0`.
+Stage B: `gpt-5-mini` with `reasoning_effort: low` (a reasoning model takes an effort instead of a temperature). No tools,
+the same app-private credential. Measured on the same two controlled datasets (A: the M02 acceptance objects plus weak
+same-project pairs; B: relations stated explicitly in the objects' text; "wanted" = a correct edge persisted):
+
+| verifier (rating-based design) | runs per dataset | forbidden edges persisted | wanted edges found |
+|---|---|---|---|
+| `gpt-4.1-mini` | 8 | 0 | 3 / 32 |
+| `gpt-4.1` | 8 | 0 | 7 / 32 |
+| `gpt-5` (effort low) | 6 | 0 | 9 / 24 |
+| `gpt-5-mini` (effort low) | 6 | 0 | 13 / 24 |
+
+Every configuration was safe; they differ in how many correct edges survive the two-vote agreement. Earlier verifier
+designs, before the ratings/neutral-order redesign above, did persist a reversed dependency (1 in 10 runs).
+Occasionally Stage A copies an id wrongly, which rejects that run as malformed (about 1 in 20 Stage A calls).
+
+The shipped configuration (`gpt-4.1-mini` proposer, `gpt-5-mini` verifier) over 20 further runs (10 per dataset): 0 forbidden
+edges, 0 technical failures, exactly 3 requests per run, 16 / 40 wanted edges.
 
 **UI.** Plain SVG, deterministic circular layout (no graph library, no physics). Each kind has its own colour and
 line style, directional kinds have an arrowhead, and each edge is labelled with its kind. Selecting a node shows
@@ -274,5 +342,8 @@ listed as text and can be selected from the list. There is a manual relation for
 To try the model against the real prompt without a device:
 
 ```bash
-ARTHUR_LIVE_KEY_FILE=/path/to/key cargo test live_inference -- --ignored --nocapture
+ARTHUR_LIVE_KEY_FILE=/path/to/key ARTHUR_LIVE_RUNS=10 cargo test live_inference -- --ignored --nocapture
 ```
+
+The harness runs both controlled datasets, prints what each stage proposed and judged in the same run, fails on any forbidden
+edge, and accepts `ARTHUR_LIVE_PROPOSER_MODEL` / `ARTHUR_LIVE_VERIFIER_MODEL` to compare models.

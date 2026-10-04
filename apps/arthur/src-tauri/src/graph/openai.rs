@@ -3,24 +3,62 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serde::Deserialize;
+use serde_json::Value;
 
 use crate::async_util::BoxFuture;
-use crate::providers::chat::{self, ChatRequest, DEFAULT_ENDPOINT, DEFAULT_MODEL};
+use crate::providers::chat::{self, ChatRequest, Sampling, DEFAULT_ENDPOINT, DEFAULT_MODEL};
 use crate::providers::credentials::CredentialSource;
 use crate::providers::http;
 use crate::storage::knowledge_store::KnowledgeObject;
 use crate::storage::relation_store::Relation;
 
-use super::prompt::{response_schema, user_message, SYSTEM_PROMPT};
+use super::prompt::{response_schema, system_prompt, user_message};
+use super::verify::{orient, Confidence, Decision, Presentation, RelationVerifier, Support, Verdict, VerifyCandidate};
+use super::verify_prompt;
 use super::{RelationCandidate, RelationError, RelationProposer};
 
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(90);
+/// Reasoning models think before answering, so allow for it.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
+/// Stage B is the safety-critical judgement and is one small batched request, so it uses a stronger model than
+/// Stage A. Chosen by measurement (see apps/arthur/README.md), not by assumption.
+pub const VERIFIER_MODEL: &str = "gpt-5-mini";
+const VERIFIER_REASONING_EFFORT: &str = "low";
 
-pub struct OpenAiRelationProposer {
+/// One strict-JSON chat completion. Shared by the proposer and the verifier, which differ only in
+/// what they ask and how they read the answer.
+struct Backend {
     client: reqwest::Client,
     endpoint: String,
     model: String,
+    sampling: Sampling,
     credentials: Arc<dyn CredentialSource>,
+}
+
+impl Backend {
+    fn new(credentials: Arc<dyn CredentialSource>, endpoint: &str, model: &str, sampling: Sampling) -> Result<Self, reqwest::Error> {
+        Ok(Self { client: http::client(REQUEST_TIMEOUT)?, endpoint: endpoint.to_string(), model: model.to_string(), sampling, credentials })
+    }
+
+    async fn complete(&self, system: &str, user: &str, schema_name: &str, schema: Value) -> Result<String, RelationError> {
+        Ok(chat::complete_json(
+            &self.client,
+            self.credentials.as_ref(),
+            ChatRequest { endpoint: &self.endpoint, model: &self.model, system, user, schema_name, schema, sampling: self.sampling },
+        )
+        .await?)
+    }
+}
+
+impl fmt::Debug for Backend {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Backend").field("endpoint", &self.endpoint).field("model", &self.model).finish_non_exhaustive()
+    }
+}
+
+/// Stage A: proposes relation candidates.
+#[derive(Debug)]
+pub struct OpenAiRelationProposer {
+    backend: Backend,
 }
 
 impl OpenAiRelationProposer {
@@ -29,17 +67,11 @@ impl OpenAiRelationProposer {
     }
 
     pub fn with_endpoint(credentials: Arc<dyn CredentialSource>, endpoint: &str, model: &str) -> Result<Self, reqwest::Error> {
-        Ok(Self { client: http::client(REQUEST_TIMEOUT)?, endpoint: endpoint.to_string(), model: model.to_string(), credentials })
+        Ok(Self { backend: Backend::new(credentials, endpoint, model, Sampling::Deterministic)? })
     }
 
     async fn request(&self, objects: &[KnowledgeObject], existing: &[Relation]) -> Result<Vec<RelationCandidate>, RelationError> {
-        let user = user_message(objects, existing);
-        let content = chat::complete_json(
-            &self.client,
-            self.credentials.as_ref(),
-            ChatRequest { endpoint: &self.endpoint, model: &self.model, system: SYSTEM_PROMPT, user: &user, schema_name: "relations", schema: response_schema() },
-        )
-        .await?;
+        let content = self.backend.complete(&system_prompt(), &user_message(objects, existing), "relations", response_schema()).await?;
         parse_candidates(&content)
     }
 }
@@ -50,9 +82,35 @@ impl RelationProposer for OpenAiRelationProposer {
     }
 }
 
-impl fmt::Debug for OpenAiRelationProposer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OpenAiRelationProposer").field("endpoint", &self.endpoint).field("model", &self.model).finish_non_exhaustive()
+/// Stage B: judges the kind and direction of every candidate, in one request.
+#[derive(Debug)]
+pub struct OpenAiRelationVerifier {
+    backend: Backend,
+}
+
+impl OpenAiRelationVerifier {
+    pub fn new(credentials: Arc<dyn CredentialSource>) -> Result<Self, reqwest::Error> {
+        Self::with_endpoint(credentials, DEFAULT_ENDPOINT, VERIFIER_MODEL)
+    }
+
+    /// The sampling mode follows the model family: a reasoning model (gpt-5*, o*) takes a reasoning effort
+    /// instead of `temperature: 0`.
+    pub fn with_endpoint(credentials: Arc<dyn CredentialSource>, endpoint: &str, model: &str) -> Result<Self, reqwest::Error> {
+        let reasoning = model.starts_with("gpt-5") || model.starts_with('o');
+        let sampling = if reasoning { Sampling::Reasoning(VERIFIER_REASONING_EFFORT) } else { Sampling::Deterministic };
+        Ok(Self { backend: Backend::new(credentials, endpoint, model, sampling)? })
+    }
+
+    async fn request(&self, candidates: &[VerifyCandidate], presentation: Presentation) -> Result<Vec<Verdict>, RelationError> {
+        let user = verify_prompt::user_message(candidates, presentation);
+        let content = self.backend.complete(&verify_prompt::system_prompt(), &user, "relation_verdicts", verify_prompt::response_schema()).await?;
+        parse_verdicts(&content, candidates, presentation)
+    }
+}
+
+impl RelationVerifier for OpenAiRelationVerifier {
+    fn verify<'a>(&'a self, candidates: &'a [VerifyCandidate], presentation: Presentation) -> BoxFuture<'a, Result<Vec<Verdict>, RelationError>> {
+        Box::pin(self.request(candidates, presentation))
     }
 }
 
@@ -79,6 +137,56 @@ fn parse_candidates(content: &str) -> Result<Vec<RelationCandidate>, RelationErr
         .into_iter()
         .map(|raw| RelationCandidate { source_object_id: raw.source_object_id, target_object_id: raw.target_object_id, kind: raw.kind, reason: raw.reason })
         .collect())
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct VerifyOutput {
+    verdicts: Vec<RawVerdict>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct RawVerdict {
+    index: usize,
+    decision: Decision,
+    kind: String,
+    confidence: Confidence,
+    /// Support for "first KIND second", where first/second are in the order that was SENT.
+    first_to_second: Support,
+    second_to_first: Support,
+    explicit_link: bool,
+}
+
+/// Strict, like the proposer: any missing, extra, mistyped or out-of-vocabulary field rejects the whole
+/// answer. The model never copies ids and never picks a direction: the two ratings are turned into a
+/// direction by `verify::orient`, using the same listing order that was sent.
+fn parse_verdicts(content: &str, candidates: &[VerifyCandidate], presentation: Presentation) -> Result<Vec<Verdict>, RelationError> {
+    let output: VerifyOutput = serde_json::from_str(content).map_err(|_| RelationError::InvalidOutput("not the requested structure".into()))?;
+    output
+        .verdicts
+        .into_iter()
+        .map(|raw| {
+            let candidate = candidates.get(raw.index).ok_or_else(|| RelationError::InvalidOutput("a verdict has an index that was not asked about".into()))?;
+            if !crate::storage::relation_store::KINDS.contains(&raw.kind.as_str()) {
+                return Err(RelationError::InvalidOutput("unknown relation kind".into()));
+            }
+            let (first, second) = verify_prompt::presented(candidate, presentation);
+            let (first_is_source, forward_support, reverse_support) = orient(&raw.kind, raw.first_to_second, raw.second_to_first);
+            let (source, target) = if first_is_source { (first, second) } else { (second, first) };
+            Ok(Verdict {
+                index: raw.index,
+                decision: raw.decision,
+                kind: raw.kind,
+                source_object_id: source.id.clone(),
+                target_object_id: target.id.clone(),
+                confidence: raw.confidence,
+                forward_support,
+                reverse_support,
+                explicit_link: raw.explicit_link,
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -134,7 +242,7 @@ mod tests {
         let body: Value = serde_json::from_str(&wire[find(&raw, b"\r\n\r\n").unwrap() + 4..]).unwrap();
         assert_eq!(body["model"], DEFAULT_MODEL);
         assert_eq!(body["temperature"], 0);
-        assert_eq!(body["messages"][0]["content"], SYSTEM_PROMPT);
+        assert_eq!(body["messages"][0]["content"], system_prompt());
         let user = body["messages"][1]["content"].as_str().unwrap();
         assert!(user.contains(A) && user.contains(B) && user.contains("<<<OBJECTS"));
         assert_eq!(body["response_format"]["type"], "json_schema");
@@ -217,5 +325,122 @@ mod tests {
     #[test]
     fn debug_output_exposes_no_key() {
         assert!(!format!("{:?}", proposer("http://x/y", Some("sk-super-secret"))).contains("super-secret"));
+    }
+
+    // --- Stage B client -------------------------------------------------------------------------
+
+    fn verifier(url: &str, key: Option<&'static str>) -> OpenAiRelationVerifier {
+        OpenAiRelationVerifier::with_endpoint(Arc::new(FixedKey(key)), url, DEFAULT_MODEL).unwrap()
+    }
+
+    fn candidate() -> VerifyCandidate {
+        VerifyCandidate { index: 0, source: object(A, "first"), target: object(B, "second"), kind: "depends_on".into() }
+    }
+
+    fn run_verify(verifier: &OpenAiRelationVerifier) -> Result<Vec<Verdict>, RelationError> {
+        tauri::async_runtime::block_on(verifier.verify(&[candidate()], Presentation::LowerIdFirst))
+    }
+
+    fn one_verdict() -> String {
+        // Listed lower id first (A, then B). The verifier rates "second depends_on first" strong and the opposite none.
+        r#"{"verdicts":[{"index":0,"decision":"accept","kind":"depends_on","confidence":"high","firstToSecond":"none","secondToFirst":"strong","explicitLink":true}]}"#.to_string()
+    }
+
+    #[test]
+    fn the_verifier_sends_the_documented_request_and_parses_the_verdicts() {
+        let (url, request) = serve_once(PATH, "200 OK", completion(&one_verdict()));
+        let verdicts = run_verify(&verifier(&url, Some("sk-test-key"))).unwrap();
+
+        assert_eq!(verdicts.len(), 1);
+        assert_eq!((verdicts[0].source_object_id.as_str(), verdicts[0].target_object_id.as_str()), (B, A), "the direction is derived from the two ratings and the order that was sent");
+        assert_eq!((verdicts[0].decision, verdicts[0].confidence, verdicts[0].forward_support, verdicts[0].reverse_support, verdicts[0].explicit_link), (Decision::Accept, Confidence::High, Support::Strong, Support::None, true));
+
+        let raw = request.recv().unwrap();
+        let wire = String::from_utf8_lossy(&raw).to_string();
+        assert!(wire.to_lowercase().contains("authorization: bearer sk-test-key"));
+        let body: Value = serde_json::from_str(&wire[find(&raw, b"\r\n\r\n").unwrap() + 4..]).unwrap();
+        assert_eq!(body["model"], DEFAULT_MODEL);
+        assert_eq!(body["temperature"], 0);
+        assert_eq!(body["messages"][0]["content"], verify_prompt::system_prompt());
+        let user = body["messages"][1]["content"].as_str().unwrap();
+        assert!(user.contains("<<<CANDIDATES") && user.contains("\"proposedKind\":\"depends_on\""));
+        assert!(!user.contains("\"source\"") && !user.contains("\"target\""), "no direction is shown");
+        assert_eq!(body["response_format"]["json_schema"]["name"], "relation_verdicts");
+        assert_eq!(body["response_format"]["json_schema"]["strict"], true);
+        assert!(body.get("tools").is_none() && body.get("functions").is_none(), "the verifier gets no tools");
+    }
+
+    #[test]
+    fn verifier_failures_are_classified_and_never_leak_provider_detail() {
+        assert_eq!(run_verify(&verifier("http://127.0.0.1:9/x", None)), Err(RelationError::NotConfigured));
+        for (status, expected) in [("401 Unauthorized", RelationError::Auth(401)), ("429 Too Many Requests", RelationError::Provider(429)), ("500 Internal Server Error", RelationError::Provider(500))] {
+            let (url, _request) = serve_once(PATH, status, r#"{"error":{"message":"secret detail"}}"#.into());
+            assert_eq!(run_verify(&verifier(&url, Some("sk-k"))), Err(expected), "{status}");
+        }
+        assert_eq!(run_verify(&verifier(&dead_endpoint(PATH), Some("sk-k"))), Err(RelationError::Network));
+    }
+
+    #[test]
+    fn malformed_verifier_json_and_out_of_vocabulary_values_are_rejected() {
+        let good = |patch: &dyn Fn(&str) -> String| patch(&one_verdict());
+        for content in [
+            "not json".to_string(),
+            "".to_string(),
+            "{}".to_string(),
+            r#"{"verdicts":"nope"}"#.to_string(),
+            r#"{"verdicts":[],"summary":"extra"}"#.to_string(),
+            good(&|s| s.replace("\"accept\"", "\"maybe\"")),
+            good(&|s| s.replace("\"accept\"", "\"reverse\"")),
+            good(&|s| s.replace("\"secondToFirst\":\"strong\"", "\"secondToFirst\":\"very\"")),
+            good(&|s| s.replace("\"firstToSecond\":\"none\",", "")),
+            good(&|s| s.replace("\"firstToSecond\"", "\"source\"")),
+            good(&|s| s.replace("\"kind\":\"depends_on\"", "\"kind\":\"friends_with\"")),
+            good(&|s| s.replace("\"firstToSecond\":\"none\"", "\"firstToSecond\":\"none\",\"sourceObjectId\":\"x\"")),
+            good(&|s| s.replace("\"index\":0", "\"index\":5")),
+            good(&|s| s.replace("\"high\"", "\"certain\"")),
+            good(&|s| s.replace("\"strong\"", "\"very\"")),
+            good(&|s| s.replace("\"index\":0", "\"index\":-1")),
+            good(&|s| s.replace("\"index\":0", "\"index\":\"0\"")),
+            good(&|s| s.replace("\"explicitLink\":true", "\"explicitLink\":\"yes\"")),
+            good(&|s| s.replace(",\"explicitLink\":true", "")),
+            good(&|s| s.replace("\"explicitLink\":true", "\"explicitLink\":true,\"why\":\"x\"")),
+            format!("```json\n{}\n```", one_verdict()),
+        ] {
+            let (url, _request) = serve_once(PATH, "200 OK", completion(&content));
+            assert!(matches!(run_verify(&verifier(&url, Some("sk-k"))), Err(RelationError::InvalidOutput(_))), "{content}");
+        }
+    }
+
+    #[test]
+    fn a_verifier_refusal_is_reported_as_such_and_debug_exposes_no_key() {
+        let refusal = json!({ "choices": [{ "finish_reason": "stop", "message": { "content": null, "refusal": "no" } }] }).to_string();
+        let (url, _request) = serve_once(PATH, "200 OK", refusal);
+        assert_eq!(run_verify(&verifier(&url, Some("sk-k"))), Err(RelationError::Refused));
+        assert!(!format!("{:?}", verifier("http://x/y", Some("sk-super-secret"))).contains("super-secret"));
+    }
+
+    #[test]
+    fn a_reasoning_verifier_is_steered_by_effort_and_a_standard_one_by_temperature() {
+        for (model, reasoning) in [("gpt-5-mini", true), ("gpt-5", true), ("o4-mini", true), ("gpt-4.1", false), ("gpt-4.1-mini", false)] {
+            let (url, request) = serve_once(PATH, "200 OK", completion(&one_verdict()));
+            let verifier = OpenAiRelationVerifier::with_endpoint(Arc::new(FixedKey(Some("sk-k"))), &url, model).unwrap();
+            run_verify(&verifier).unwrap();
+            let raw = request.recv().unwrap();
+            let body: Value = serde_json::from_str(&String::from_utf8_lossy(&raw)[find(&raw, b"\r\n\r\n").unwrap() + 4..]).unwrap();
+            assert_eq!(body["model"], model);
+            if reasoning {
+                assert_eq!(body["reasoning_effort"], "low", "{model}");
+                assert!(body.get("temperature").is_none(), "{model}: reasoning models reject temperature");
+            } else {
+                assert_eq!(body["temperature"], 0, "{model}");
+                assert!(body.get("reasoning_effort").is_none(), "{model}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_default_verifier_is_a_stronger_model_than_the_proposer() {
+        assert_eq!(VERIFIER_MODEL, "gpt-5-mini");
+        assert_ne!(VERIFIER_MODEL, DEFAULT_MODEL);
     }
 }

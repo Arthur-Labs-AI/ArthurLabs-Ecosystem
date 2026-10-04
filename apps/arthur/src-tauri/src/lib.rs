@@ -18,7 +18,7 @@ use audio::recorder::Recorder;
 use audio::voice_capture::VoiceCaptureService;
 use distillation::openai::OpenAiDistiller;
 use distillation::DistillationService;
-use graph::openai::OpenAiRelationProposer;
+use graph::openai::{OpenAiRelationProposer, OpenAiRelationVerifier};
 use graph::GraphService;
 use storage::capture_store::CaptureStore;
 use providers::credentials::FileCredentialSource;
@@ -53,7 +53,7 @@ pub fn run() {
             let credentials = Arc::new(FileCredentialSource::new(credentials_dir.join("openai_api_key")));
             let transcriber = Arc::new(OpenAiTranscriber::new(credentials.clone())?);
             app.manage(DistillationService::new(Arc::new(OpenAiDistiller::new(credentials.clone())?)));
-            app.manage(GraphService::new(Arc::new(OpenAiRelationProposer::new(credentials)?)));
+            app.manage(GraphService::new(Arc::new(OpenAiRelationProposer::new(credentials.clone())?), Arc::new(OpenAiRelationVerifier::new(credentials)?)));
 
             // Recordings are transient, so they go in the cache directory.
             let recordings_dir = app.path().app_cache_dir()?.join("recordings");

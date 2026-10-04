@@ -23,6 +23,14 @@ pub enum ChatFailure {
     Unreadable(String),
 }
 
+/// How the model is sampled. A non-reasoning model is made deterministic with `temperature: 0`; a reasoning
+/// model rejects that parameter and is steered with a reasoning effort instead.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Sampling {
+    Deterministic,
+    Reasoning(&'static str),
+}
+
 pub struct ChatRequest<'a> {
     pub endpoint: &'a str,
     pub model: &'a str,
@@ -30,15 +38,15 @@ pub struct ChatRequest<'a> {
     pub user: &'a str,
     pub schema_name: &'a str,
     pub schema: Value,
+    pub sampling: Sampling,
 }
 
 /// Sends the request and returns the text of the model's answer.
 pub async fn complete_json(client: &reqwest::Client, credentials: &dyn CredentialSource, request: ChatRequest<'_>) -> Result<String, ChatFailure> {
     let key = credentials.api_key().ok_or(ChatFailure::NotConfigured)?;
 
-    let body = json!({
+    let mut body = json!({
         "model": request.model,
-        "temperature": 0,
         "messages": [
             { "role": "system", "content": request.system },
             { "role": "user", "content": request.user },
@@ -48,6 +56,10 @@ pub async fn complete_json(client: &reqwest::Client, credentials: &dyn Credentia
             "json_schema": { "name": request.schema_name, "strict": true, "schema": request.schema },
         },
     });
+    match request.sampling {
+        Sampling::Deterministic => body["temperature"] = json!(0),
+        Sampling::Reasoning(effort) => body["reasoning_effort"] = json!(effort),
+    }
 
     let response = client.post(request.endpoint).bearer_auth(key.expose()).json(&body).send().await.map_err(|_| ChatFailure::Network)?;
 
