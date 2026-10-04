@@ -20,7 +20,7 @@ export interface CapturesState {
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
-export function useCaptures(): CapturesState {
+export function useCapturesState(): CapturesState {
   const client = useArthurClient();
   const [status, setStatus] = useState<CapturesState["status"]>("loading");
   const [captures, setCaptures] = useState<Capture[]>([]);

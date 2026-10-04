@@ -4,7 +4,7 @@ import { createMobileClient } from "./mobile-client";
 import { createPreviewClient } from "./preview-client";
 import { isTauriRuntime, type Invoke } from "./tauri-ipc";
 
-export { VoiceCaptureError } from "./arthur-client";
+export { DistillationError, VoiceCaptureError } from "./arthur-client";
 export type { ArthurClient, ArthurClientCapabilities, ArthurClientKind } from "./arthur-client";
 
 export interface ClientEnvironment {

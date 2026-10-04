@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { createArthurClient } from "../client";
 import type { ArthurClient } from "../client/arthur-client";
+import { CapturesProvider } from "../features/capture/captures-context";
 import { ArthurClientContext } from "../hooks/use-arthur-client";
 
 interface ArthurProvidersProps {
@@ -11,5 +12,9 @@ interface ArthurProvidersProps {
 
 export function ArthurProviders({ client, children }: ArthurProvidersProps) {
   const resolved = useMemo(() => client ?? createArthurClient(), [client]);
-  return <ArthurClientContext.Provider value={resolved}>{children}</ArthurClientContext.Provider>;
+  return (
+    <ArthurClientContext.Provider value={resolved}>
+      <CapturesProvider>{children}</CapturesProvider>
+    </ArthurClientContext.Provider>
+  );
 }

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useArthurClient } from "../../hooks/use-arthur-client";
-import { useCaptures, type VoiceState } from "./use-captures";
+import { useCaptures } from "./captures-context";
+import type { VoiceState } from "./use-captures";
 
 const VOICE_STATUS: Partial<Record<VoiceState, string>> = {
   starting: "Starting the microphone…",

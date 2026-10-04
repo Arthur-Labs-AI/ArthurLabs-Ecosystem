@@ -1,5 +1,12 @@
 import { VoiceCaptureError, type ArthurClient } from "./arthur-client";
-import { createCaptureOverIpc, fetchRuntimeInfo, listCapturesOverIpc, type Invoke } from "./tauri-ipc";
+import {
+  createCaptureOverIpc,
+  distillCaptureOverIpc,
+  fetchRuntimeInfo,
+  listCapturesOverIpc,
+  listKnowledgeObjectsOverIpc,
+  type Invoke,
+} from "./tauri-ipc";
 
 const voiceUnavailable = () => Promise.reject(new VoiceCaptureError("voice_unavailable", "Voice capture is not available on this device."));
 
@@ -18,5 +25,7 @@ export function createDesktopClient(call?: Invoke): ArthurClient {
     startVoiceCapture: voiceUnavailable,
     finishVoiceCapture: voiceUnavailable,
     cancelVoiceCapture: () => Promise.resolve(),
+    distillCapture: (captureId) => distillCaptureOverIpc(captureId, call),
+    listKnowledgeObjects: () => listKnowledgeObjectsOverIpc(call),
   };
 }

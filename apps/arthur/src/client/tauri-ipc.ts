@@ -2,13 +2,16 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   describeCreateCaptureInputProblem,
   isCapture,
+  isDistillationErrorPayload,
+  isKnowledgeObject,
   isRuntimeInfo,
   isVoiceCaptureErrorPayload,
   type Capture,
   type CreateCaptureInput,
+  type KnowledgeObject,
   type RuntimeInfo,
 } from "@arthur/contracts";
-import { VoiceCaptureError } from "./arthur-client";
+import { DistillationError, VoiceCaptureError } from "./arthur-client";
 
 /**
  * The single module allowed to import `@tauri-apps/*`.
@@ -81,4 +84,32 @@ export async function cancelVoiceCaptureOverIpc(call: Invoke = invoke): Promise<
   } catch (failure) {
     throw toVoiceCaptureError(failure);
   }
+}
+
+/** The native layer rejects distillation failures with `{ code, message }`; anything else is passed through. */
+function toDistillationError(failure: unknown): unknown {
+  if (isDistillationErrorPayload(failure)) return new DistillationError(failure.code, failure.message);
+  return failure;
+}
+
+export async function distillCaptureOverIpc(captureId: string, call: Invoke = invoke): Promise<KnowledgeObject[]> {
+  if (typeof captureId !== "string" || captureId.length === 0) throw new Error("Invalid capture id");
+  let payload: unknown;
+  try {
+    payload = await call("distill_capture", { captureId });
+  } catch (failure) {
+    throw toDistillationError(failure);
+  }
+  if (!Array.isArray(payload) || !payload.every(isKnowledgeObject)) {
+    throw new Error("Native layer returned invalid knowledge objects");
+  }
+  return payload;
+}
+
+export async function listKnowledgeObjectsOverIpc(call: Invoke = invoke): Promise<KnowledgeObject[]> {
+  const payload = await call("list_knowledge_objects");
+  if (!Array.isArray(payload) || !payload.every(isKnowledgeObject)) {
+    throw new Error("Native layer returned invalid knowledge objects");
+  }
+  return payload;
 }

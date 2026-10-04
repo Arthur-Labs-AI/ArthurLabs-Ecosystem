@@ -11,7 +11,17 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import * as path from "node:path";
 
-import { ARTHUR_PLATFORMS, CAPTURE_SOURCE_KINDS, MAX_CAPTURE_CONTENT_CHARS, VOICE_CAPTURE_ERROR_CODES } from "../../packages/contracts";
+import {
+  ARTHUR_PLATFORMS,
+  CAPTURE_SOURCE_KINDS,
+  DISTILLATION_ERROR_CODES,
+  KNOWLEDGE_OBJECT_KINDS,
+  MAX_CAPTURE_CONTENT_CHARS,
+  MAX_KNOWLEDGE_BODY_CHARS,
+  MAX_KNOWLEDGE_TITLE_CHARS,
+  MAX_OBJECTS_PER_DISTILLATION,
+  VOICE_CAPTURE_ERROR_CODES,
+} from "../../packages/contracts";
 import { findRepoRoot } from "./import_graph";
 
 const root = findRepoRoot();
@@ -131,6 +141,8 @@ test("every IPC command agrees between the TypeScript client and the Rust handle
     start_voice_capture: "src/commands/voice.rs",
     finish_voice_capture: "src/commands/voice.rs",
     cancel_voice_capture: "src/commands/voice.rs",
+    distill_capture: "src/commands/distill.rs",
+    list_knowledge_objects: "src/commands/distill.rs",
   };
   for (const [command, rustFile] of Object.entries(commandSources)) {
     assert.match(ipc, new RegExp(`call\\("${command}"`), `${command} is not called by tauri-ipc.ts`);
@@ -159,7 +171,7 @@ test("the native capture store enforces the same limits and sources as the contr
 
   const sources = /const SOURCES: \[&str; \d+\] = \[([^\]]*)\];/.exec(store)?.[1] ?? "";
   assert.deepEqual([...sources.matchAll(/"([a-z]+)"/g)].map((m) => m[1]), [...CAPTURE_SOURCE_KINDS]);
-  assert.match(store, /CHECK \(source IN \('text', 'voice', 'emg'\)\)/);
+  assert.match(readText(tauriDir, "src/storage/migrations.rs"), /CHECK \(source IN \('text', 'voice', 'emg'\)\)/);
 });
 
 test("packages/contracts declares no dependencies", () => {
@@ -212,16 +224,63 @@ test("voice error codes agree across the contract, the Rust service and the Kotl
 test("HTTP, credentials and the microphone are confined to their modules", () => {
   const src = path.join(tauriDir, "src");
   const files = rustFiles(src).map((file) => ({ rel: path.relative(src, file).split(path.sep).join("/"), text: readFileSync(file, "utf8") }));
+  const providerModules = /^(providers|stt|distillation)\//;
 
   for (const { rel, text } of files) {
-    if (/\breqwest\b/.test(text)) assert.match(rel, /^stt\//, `${rel} must not make HTTP calls`);
-    if (/openai_api_key|api_key\(\)/.test(text)) assert.match(rel, /^(stt\/|lib\.rs$)/, `${rel} must not touch credentials`);
+    if (/\breqwest\b/.test(text)) assert.match(rel, providerModules, `${rel} must not make HTTP calls`);
+    if (/openai_api_key|api_key\(\)/.test(text)) assert.match(rel, /^(providers\/|stt\/|distillation\/|lib\.rs$)/, `${rel} must not touch credentials`);
     if (/run_mobile_plugin/.test(text)) assert.equal(rel, "audio/android.rs", `${rel} must not call the microphone plugin`);
   }
 
-  // Nothing in the speech module may log: it handles the API key and the user's speech.
-  for (const { rel, text } of files.filter((f) => f.rel.startsWith("stt/"))) {
+  // Nothing that handles the API key, the user's speech or their thoughts may log.
+  for (const { rel, text } of files.filter((f) => providerModules.test(f.rel) && !f.rel.endsWith("test_support.rs"))) {
     const production = text.slice(0, text.indexOf("#[cfg(test)]") === -1 ? undefined : text.indexOf("#[cfg(test)]"));
     assert.doesNotMatch(production, /\b(println|eprintln|dbg|print|eprint)!|\btracing::|\blog::/, `${rel} must not log`);
+  }
+});
+
+test("the model never writes to storage: the provider client cannot reach the store", () => {
+  for (const file of ["src/distillation/openai.rs", "src/distillation/prompt.rs"]) {
+    assert.doesNotMatch(readText(tauriDir, file), /\bstorage::|rusqlite|CaptureStore/, `${file} must not touch storage`);
+  }
+  // Only the service persists, and only through the all-or-nothing store call.
+  const service = readText(tauriDir, "src/distillation/mod.rs");
+  assert.match(service, /store\.record_distillation\(/);
+  assert.doesNotMatch(service.slice(0, service.indexOf("#[cfg(test)]")), /INSERT|UPDATE|DELETE|\.execute\(/);
+});
+
+test("knowledge kinds, limits and error codes agree across the contract, Rust, SQL and the model schema", () => {
+  const store = readText(tauriDir, "src/storage/knowledge_store.rs");
+  const rustKinds = /pub const KINDS: \[&str; \d+\] = \[([^\]]*)\];/.exec(store)?.[1] ?? "";
+  assert.deepEqual([...rustKinds.matchAll(/"([a-z]+)"/g)].map((m) => m[1]), [...KNOWLEDGE_OBJECT_KINDS]);
+
+  const sqlList = [...KNOWLEDGE_OBJECT_KINDS].map((kind) => `'${kind}'`).join(", ");
+  assert.ok(readText(tauriDir, "src/storage/migrations.rs").includes(`kind IN (${sqlList})`), "the SQL CHECK lists the same kinds");
+
+  const schema = readText(tauriDir, "src/distillation/prompt.rs");
+  const enumList = /"enum": \[([^\]]*)\]/.exec(schema)?.[1] ?? "";
+  assert.deepEqual([...enumList.matchAll(/"([a-z]+)"/g)].map((m) => m[1]), [...KNOWLEDGE_OBJECT_KINDS], "the model is offered exactly these kinds");
+
+  const limit = (name: string): number => Number(new RegExp(`pub const ${name}: usize = ([\\d_]+);`).exec(store)?.[1]?.replaceAll("_", ""));
+  assert.equal(limit("MAX_TITLE_CHARS"), MAX_KNOWLEDGE_TITLE_CHARS);
+  assert.equal(limit("MAX_BODY_CHARS"), MAX_KNOWLEDGE_BODY_CHARS);
+  assert.equal(limit("MAX_OBJECTS_PER_DISTILLATION"), MAX_OBJECTS_PER_DISTILLATION);
+
+  const distill = readText(tauriDir, "src/distillation/mod.rs");
+  const codes = distill.slice(distill.indexOf("pub fn code"), distill.indexOf("pub fn message"));
+  assert.deepEqual([...new Set([...codes.matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...DISTILLATION_ERROR_CODES].sort());
+});
+
+test("the schema is changed only through ordered, transactional migration steps", () => {
+  const migrations = readText(tauriDir, "src/storage/migrations.rs");
+  assert.match(migrations, /pub const STEPS: \[Step; 2\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\)\];/);
+  assert.match(migrations, /connection\.transaction\(\)/);
+  for (const table of ["distillation_runs", "knowledge_objects", "object_sources"]) assert.match(migrations, new RegExp(`CREATE TABLE ${table}\\b`));
+  assert.match(migrations, /REFERENCES captures\(id\)/);
+  assert.match(migrations, /captures_are_immutable/);
+  assert.match(readText(tauriDir, "src/storage/capture_store.rs"), /foreign_keys/);
+  // Other modules never run schema statements.
+  for (const file of rustFiles(path.join(tauriDir, "src")).filter((f) => !/storage[\\/]/.test(f))) {
+    assert.doesNotMatch(readFileSync(file, "utf8"), /CREATE TABLE|ALTER TABLE|DROP TABLE|PRAGMA user_version/, `${file} must not change the schema`);
   }
 });

@@ -13,25 +13,15 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::migrations::migrate;
+#[cfg(test)]
+use super::migrations::SCHEMA_VERSION;
+
 /// Mirrors `MAX_CAPTURE_CONTENT_CHARS` in `packages/contracts/capture.ts`.
 pub const MAX_CAPTURE_CONTENT_CHARS: usize = 20_000;
 
 /// Mirrors `CAPTURE_SOURCE_KINDS` in `packages/contracts/capture.ts`.
 const SOURCES: [&str; 3] = ["text", "voice", "emg"];
-
-const SCHEMA_VERSION: i64 = 1;
-
-/// `seq` gives a total insertion order, so listing is deterministic even when
-/// two captures share a timestamp.
-const SCHEMA_V1: &str = "
-CREATE TABLE IF NOT EXISTS captures (
-    seq        INTEGER PRIMARY KEY AUTOINCREMENT,
-    id         TEXT    NOT NULL UNIQUE CHECK (length(id) > 0),
-    source     TEXT    NOT NULL CHECK (source IN ('text', 'voice', 'emg')),
-    content    TEXT    NOT NULL CHECK (length(content) > 0),
-    created_at TEXT    NOT NULL CHECK (length(created_at) > 0)
-);
-";
 
 /// Mirrors `Capture` in `packages/contracts/capture.ts`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -81,7 +71,7 @@ impl From<rusqlite::Error> for StoreError {
 }
 
 pub struct CaptureStore {
-    connection: Mutex<Connection>,
+    pub(super) connection: Mutex<Connection>,
 }
 
 impl CaptureStore {
@@ -99,6 +89,8 @@ impl CaptureStore {
     fn from_connection(mut connection: Connection) -> Result<Self, StoreError> {
         // A successful insert must be on disk before `create` returns.
         connection.pragma_update(None, "synchronous", "FULL")?;
+        // SQLite ignores foreign keys unless asked, per connection.
+        connection.pragma_update(None, "foreign_keys", "ON")?;
         migrate(&mut connection)?;
         Ok(Self { connection: Mutex::new(connection) })
     }
@@ -109,9 +101,7 @@ impl CaptureStore {
             id: Uuid::new_v4().to_string(),
             source: input.source,
             content: input.content,
-            created_at: OffsetDateTime::now_utc()
-                .format(&Rfc3339)
-                .map_err(|error| StoreError::Corrupt(format!("cannot format timestamp: {error}")))?,
+            created_at: now_rfc3339()?,
         };
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         // Autocommit: the row is committed (and synced) when this returns.
@@ -120,6 +110,23 @@ impl CaptureStore {
             params![capture.id, capture.source, capture.content, capture.created_at],
         )?;
         Ok(capture)
+    }
+
+    pub fn get_capture(&self, id: &str) -> Result<Option<Capture>, StoreError> {
+        let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
+        let found = connection
+            .query_row("SELECT id, source, content, created_at FROM captures WHERE id = ?1", [id], |row| {
+                Ok(Capture { id: row.get(0)?, source: row.get(1)?, content: row.get(2)?, created_at: row.get(3)? })
+            })
+            .map(Some)
+            .or_else(|error| match error {
+                rusqlite::Error::QueryReturnedNoRows => Ok(None),
+                other => Err(other),
+            })?;
+        if let Some(capture) = &found {
+            validate_stored(capture)?;
+        }
+        Ok(found)
     }
 
     /// Newest first. Fails as a whole if any stored row is malformed.
@@ -140,21 +147,10 @@ impl CaptureStore {
     }
 }
 
-fn migrate(connection: &mut Connection) -> Result<(), StoreError> {
-    let version: i64 = connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-    match version {
-        0 => {
-            let transaction = connection.transaction()?;
-            transaction.execute_batch(SCHEMA_V1)?;
-            transaction.pragma_update(None, "user_version", SCHEMA_VERSION)?;
-            transaction.commit()?;
-            Ok(())
-        }
-        SCHEMA_VERSION => Ok(()),
-        other => Err(StoreError::Corrupt(format!(
-            "schema version {other} is newer than the supported version {SCHEMA_VERSION}"
-        ))),
-    }
+pub(super) fn now_rfc3339() -> Result<String, StoreError> {
+    OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .map_err(|error| StoreError::Corrupt(format!("cannot format timestamp: {error}")))
 }
 
 fn validate_input(input: &CreateCaptureInput) -> Result<(), StoreError> {

@@ -2,9 +2,11 @@ import type { ArthurClient } from "./arthur-client";
 import {
   cancelVoiceCaptureOverIpc,
   createCaptureOverIpc,
+  distillCaptureOverIpc,
   fetchRuntimeInfo,
   finishVoiceCaptureOverIpc,
   listCapturesOverIpc,
+  listKnowledgeObjectsOverIpc,
   startVoiceCaptureOverIpc,
   type Invoke,
 } from "./tauri-ipc";
@@ -25,5 +27,7 @@ export function createMobileClient(call?: Invoke): ArthurClient {
     startVoiceCapture: () => startVoiceCaptureOverIpc(call),
     finishVoiceCapture: () => finishVoiceCaptureOverIpc(call),
     cancelVoiceCapture: () => cancelVoiceCaptureOverIpc(call),
+    distillCapture: (captureId) => distillCaptureOverIpc(captureId, call),
+    listKnowledgeObjects: () => listKnowledgeObjectsOverIpc(call),
   };
 }

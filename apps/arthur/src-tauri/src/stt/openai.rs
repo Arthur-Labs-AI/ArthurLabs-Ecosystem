@@ -3,11 +3,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use reqwest::multipart::{Form, Part};
-use reqwest::redirect::Policy;
 
 use crate::async_util::BoxFuture;
 
-use super::credentials::CredentialSource;
+use crate::providers::credentials::CredentialSource;
+use crate::providers::http;
 use super::{SttError, Transcriber};
 
 pub const DEFAULT_ENDPOINT: &str = "https://api.openai.com/v1/audio/transcriptions";
@@ -15,7 +15,6 @@ pub const DEFAULT_ENDPOINT: &str = "https://api.openai.com/v1/audio/transcriptio
 pub const DEFAULT_MODEL: &str = "gpt-4o-transcribe";
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 
 pub struct OpenAiTranscriber {
     client: reqwest::Client,
@@ -30,12 +29,7 @@ impl OpenAiTranscriber {
     }
 
     pub fn with_endpoint(credentials: Arc<dyn CredentialSource>, endpoint: &str, model: &str) -> Result<Self, reqwest::Error> {
-        let client = reqwest::Client::builder()
-            .timeout(REQUEST_TIMEOUT)
-            .connect_timeout(CONNECT_TIMEOUT)
-            // The credential must never follow a redirect to another host.
-            .redirect(Policy::none())
-            .build()?;
+        let client = http::client(REQUEST_TIMEOUT)?;
         Ok(Self { client, endpoint: endpoint.to_string(), model: model.to_string(), credentials })
     }
 
@@ -106,56 +100,14 @@ fn mime_for(file_name: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stt::credentials::ApiKey;
-    use std::io::{Read, Write};
-    use std::net::TcpListener;
-    use std::sync::mpsc;
-    use std::thread;
+    use crate::providers::credentials::ApiKey;
+    use crate::test_support::{dead_endpoint, find, serve_once};
 
     struct FixedKey(Option<&'static str>);
     impl CredentialSource for FixedKey {
         fn api_key(&self) -> Option<ApiKey> {
             self.0.and_then(ApiKey::parse)
         }
-    }
-
-    fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-        haystack.windows(needle.len()).position(|w| w == needle)
-    }
-
-    /// Serves exactly one HTTP request, replying with `status` and `body`.
-    /// Returns the base URL and a channel that yields the raw request bytes.
-    fn serve_once(status: &'static str, body: &'static str) -> (String, mpsc::Receiver<Vec<u8>>) {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let url = format!("http://{}/v1/audio/transcriptions", listener.local_addr().unwrap());
-        let (tx, rx) = mpsc::channel();
-        thread::spawn(move || {
-            let (mut stream, _) = listener.accept().unwrap();
-            let mut request = Vec::new();
-            let mut chunk = [0u8; 4096];
-            loop {
-                let n = stream.read(&mut chunk).unwrap();
-                if n == 0 {
-                    break;
-                }
-                request.extend_from_slice(&chunk[..n]);
-                if let Some(end) = find(&request, b"\r\n\r\n") {
-                    let head = String::from_utf8_lossy(&request[..end]).to_lowercase();
-                    let have = request.len() - (end + 4);
-                    if let Some(len) = head.lines().find_map(|l| l.strip_prefix("content-length:")) {
-                        if have >= len.trim().parse::<usize>().unwrap() {
-                            break;
-                        }
-                    } else if head.contains("transfer-encoding: chunked") && request.ends_with(b"0\r\n\r\n") {
-                        break;
-                    }
-                }
-            }
-            tx.send(request).unwrap();
-            let response = format!("HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
-            stream.write_all(response.as_bytes()).unwrap();
-        });
-        (url, rx)
     }
 
     fn transcriber(url: &str, key: Option<&'static str>) -> OpenAiTranscriber {
@@ -168,7 +120,7 @@ mod tests {
 
     #[test]
     fn sends_the_documented_request_and_returns_the_transcript() {
-        let (url, request) = serve_once("200 OK", r#"{"text":" hello arthur"}"#);
+        let (url, request) = serve_once("/v1/audio/transcriptions", "200 OK", r#"{"text":" hello arthur"}"#.into());
         let text = run(&transcriber(&url, Some("sk-test-key")), b"FAKE-AUDIO-BYTES").unwrap();
         assert_eq!(text, " hello arthur");
 
@@ -201,7 +153,7 @@ mod tests {
             ("429 Too Many Requests", SttError::Provider(429)),
             ("500 Internal Server Error", SttError::Provider(500)),
         ] {
-            let (url, _request) = serve_once(status, r#"{"error":{"message":"secret detail"}}"#);
+            let (url, _request) = serve_once("/v1/audio/transcriptions", status, r#"{"error":{"message":"secret detail"}}"#.into());
             assert_eq!(run(&transcriber(&url, Some("sk-k")), b"audio"), Err(expected), "{status}");
         }
     }
@@ -209,16 +161,14 @@ mod tests {
     #[test]
     fn a_success_response_that_is_not_a_transcript_is_a_protocol_error() {
         for body in ["not json", "[]", "{}", r#"{"text":42}"#, r#"{"text":null}"#] {
-            let (url, _request) = serve_once("200 OK", body);
+            let (url, _request) = serve_once("/v1/audio/transcriptions", "200 OK", body.to_string());
             assert_eq!(run(&transcriber(&url, Some("sk-k")), b"audio"), Err(SttError::Protocol), "{body}");
         }
     }
 
     #[test]
     fn an_unreachable_provider_is_a_network_error() {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let url = format!("http://{}/v1/audio/transcriptions", listener.local_addr().unwrap());
-        drop(listener);
+        let url = dead_endpoint("/v1/audio/transcriptions");
         assert_eq!(run(&transcriber(&url, Some("sk-k")), b"audio"), Err(SttError::Network));
     }
 

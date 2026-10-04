@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createArthurClient, selectClientKind } from "./index";
-import { VoiceCaptureError } from "./arthur-client";
+import { DistillationError, VoiceCaptureError } from "./arthur-client";
 import { createPreviewClient } from "./preview-client";
 import type { Invoke } from "./tauri-ipc";
 
@@ -255,5 +255,129 @@ describe("preview client voice capture", () => {
     await client.cancelVoiceCapture();
     await expect(client.finishVoiceCapture()).rejects.toMatchObject({ code: "not_recording" });
     expect(await client.listCaptures()).toEqual([]);
+  });
+});
+
+const TEXT = "I want to improve the Arthur capture screen. Tomorrow I also need to email Ignatov.";
+const knowledgeObject = {
+  id: "0b8f3c1e-0000-4000-8000-0000000000bb",
+  kind: "idea",
+  title: "Improve capture screen",
+  body: "Improve the Arthur capture screen.",
+  createdAt: "2026-10-04T12:00:00.5Z",
+  provenance: { captureId: stored.id, sourceStart: 10, sourceEnd: 44 },
+};
+
+describe("distillation over IPC (mobile and desktop)", () => {
+  it.each([
+    ["mobile", androidEnv],
+    ["desktop", { isTauri: true, tauriPlatform: "linux" }],
+  ] as const)("the %s client calls the native commands with only a capture id", async (_kind, env) => {
+    const call = vi.fn<Invoke>().mockResolvedValueOnce([knowledgeObject]).mockResolvedValueOnce([knowledgeObject]);
+    const client = createArthurClient(env, call);
+
+    await expect(client.distillCapture(stored.id)).resolves.toEqual([knowledgeObject]);
+    await expect(client.listKnowledgeObjects()).resolves.toEqual([knowledgeObject]);
+
+    expect(call.mock.calls).toEqual([["distill_capture", { captureId: stored.id }], ["list_knowledge_objects"]]);
+  });
+
+  it("rejects an empty capture id without calling the native layer", async () => {
+    const call = vi.fn<Invoke>();
+    await expect(createArthurClient(androidEnv, call).distillCapture("")).rejects.toThrow("Invalid capture id");
+    expect(call).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["capture_not_found", "That capture no longer exists."],
+    ["llm_failed", "Could not reach the language model."],
+    ["llm_invalid_output", "The language model returned something that could not be trusted."],
+    ["llm_not_configured", "The language model is not configured on this device."],
+  ] as const)("turns the native %s rejection into a typed DistillationError", async (code, message) => {
+    const client = createArthurClient(androidEnv, vi.fn<Invoke>().mockRejectedValue({ code, message }));
+    const failure = await client.distillCapture(stored.id).then(() => null, (error: unknown) => error);
+    expect(failure).toBeInstanceOf(DistillationError);
+    expect(failure).toMatchObject({ code, message });
+  });
+
+  it("passes unrecognised native failures through unchanged", async () => {
+    await expect(createArthurClient(androidEnv, vi.fn<Invoke>().mockRejectedValue("boom")).distillCapture(stored.id)).rejects.toBe("boom");
+  });
+
+  it("fails safely on malformed native responses, including broken provenance", async () => {
+    const malformed = [
+      null,
+      {},
+      [{}],
+      [{ ...knowledgeObject, kind: "gizmo" }],
+      [{ ...knowledgeObject, title: "  " }],
+      [{ ...knowledgeObject, provenance: undefined }],
+      [{ ...knowledgeObject, provenance: { ...knowledgeObject.provenance, sourceEnd: 10 } }],
+      [{ ...knowledgeObject, provenance: { ...knowledgeObject.provenance, sourceStart: -1 } }],
+      [{ ...knowledgeObject, provenance: { captureId: "", sourceStart: 0, sourceEnd: 3 } }],
+      [knowledgeObject, { nope: true }],
+    ];
+    for (const bad of malformed) {
+      const client = createArthurClient(androidEnv, vi.fn<Invoke>().mockResolvedValue(bad));
+      await expect(client.distillCapture(stored.id)).rejects.toThrow("invalid knowledge objects");
+      await expect(client.listKnowledgeObjects()).rejects.toThrow("invalid knowledge objects");
+    }
+  });
+});
+
+describe("preview client distillation", () => {
+  async function withCapture(content: string, options = {}) {
+    let n = 0;
+    const client = createPreviewClient({ newId: () => `id-${++n}`, now: () => new Date(Date.UTC(2026, 9, 4, 12, 0, n)), ...options });
+    return { client, capture: await client.createCapture({ source: "text", content }) };
+  }
+
+  it("turns a capture into objects whose provenance resolves to the raw text, in reading order", async () => {
+    const { client, capture } = await withCapture(TEXT, {
+      distillation: {
+        candidates: () => [
+          { kind: "task", title: "Email Ignatov", body: "Email Ignatov.", evidence: "email Ignatov" },
+          { kind: "idea", title: "Improve capture screen", body: "Improve it.", evidence: "improve the Arthur capture screen" },
+        ],
+      },
+    });
+
+    const objects = await client.distillCapture(capture.id);
+
+    expect(objects.map((o) => o.kind)).toEqual(["idea", "task"]);
+    const characters = [...TEXT];
+    for (const object of objects) {
+      expect(object.provenance.captureId).toBe(capture.id);
+      const { sourceStart, sourceEnd } = object.provenance;
+      expect(characters.slice(sourceStart, sourceEnd).join("")).toBe(object.kind === "idea" ? "improve the Arthur capture screen" : "email Ignatov");
+    }
+    expect(await client.listKnowledgeObjects()).toEqual(objects);
+  });
+
+  it("distilling twice returns the same set and never duplicates", async () => {
+    const { client, capture } = await withCapture(TEXT);
+    const first = await client.distillCapture(capture.id);
+    expect(await client.distillCapture(capture.id)).toEqual(first);
+    expect(await client.listKnowledgeObjects()).toHaveLength(first.length);
+  });
+
+  it("reports an unknown capture, a provider failure that can be retried, and untrustworthy evidence", async () => {
+    const { client, capture } = await withCapture(TEXT, { distillation: { error: new DistillationError("llm_failed", "offline"), once: true } });
+    await expect(client.distillCapture("nope")).rejects.toMatchObject({ code: "capture_not_found" });
+    await expect(client.distillCapture(capture.id)).rejects.toMatchObject({ code: "llm_failed" });
+    expect(await client.listKnowledgeObjects()).toEqual([]);
+    await expect(client.distillCapture(capture.id)).resolves.toHaveLength(1);
+
+    const bad = await withCapture(TEXT, { distillation: { candidates: () => [{ kind: "note" as const, title: "x", body: "x", evidence: "never said this" }] } });
+    await expect(bad.client.distillCapture(bad.capture.id)).rejects.toMatchObject({ code: "llm_invalid_output" });
+    expect(await bad.client.listKnowledgeObjects()).toEqual([]);
+  });
+
+  it("lists the newest distillation first", async () => {
+    const { client, capture: first } = await withCapture("alpha beta");
+    const second = await client.createCapture({ source: "voice", content: "gamma delta" });
+    await client.distillCapture(first.id);
+    await client.distillCapture(second.id);
+    expect((await client.listKnowledgeObjects()).map((o) => o.provenance.captureId)).toEqual([second.id, first.id]);
   });
 });

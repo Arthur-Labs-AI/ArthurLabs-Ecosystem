@@ -137,6 +137,11 @@ export const BOUNDARY_RULES: BoundaryRule[] = [
       /\bBearer\b/,
       /\bwhisper\b/i,
       /audio\/transcriptions/,
+      /chat\/completions/,
+      /json_schema/,
+      /\bgpt-/i,
+      /deepseek/i,
+      /anthropic/i,
     ],
   },
   {

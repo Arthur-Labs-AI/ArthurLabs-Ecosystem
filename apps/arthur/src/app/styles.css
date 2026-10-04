@@ -196,3 +196,103 @@ body {
   margin: 0;
   color: var(--muted);
 }
+
+.distill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.distill-row .capture-content {
+  flex: 1 1 12rem;
+}
+
+.distill-row button {
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 0.5rem;
+}
+
+.distill-row button:disabled {
+  opacity: 0.5;
+}
+
+.knowledge-list {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.knowledge-item {
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.knowledge-heading,
+.knowledge-body {
+  margin: 0 0 0.25rem;
+}
+
+.kind {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 0.75rem;
+}
+
+.kind-task {
+  background: #2e7d32;
+}
+
+.kind-decision {
+  background: #6a1b9a;
+}
+
+.kind-question {
+  background: #ef6c00;
+}
+
+.kind-note {
+  background: #546e7a;
+}
+
+.link-button {
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+}
+
+.source-view {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-left: 3px solid var(--accent);
+  background: var(--bg);
+}
+
+.source-view mark {
+  color: inherit;
+  background: #ffe082;
+  padding: 0 0.1rem;
+  border-radius: 0.15rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .source-view mark {
+    background: #8a6d00;
+  }
+}

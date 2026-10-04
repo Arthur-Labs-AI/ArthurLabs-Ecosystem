@@ -6,7 +6,6 @@
 //! endpoint, `gpt-4o-transcribe`, language left on auto, strictly parsed
 //! `{ text }` response.
 
-pub mod credentials;
 pub mod openai;
 
 use crate::async_util::BoxFuture;

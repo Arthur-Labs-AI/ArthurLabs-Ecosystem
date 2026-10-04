@@ -1,4 +1,11 @@
-import type { Capture, CreateCaptureInput, RuntimeInfo, VoiceCaptureErrorCode } from "@arthur/contracts";
+import type {
+  Capture,
+  CreateCaptureInput,
+  DistillationErrorCode,
+  KnowledgeObject,
+  RuntimeInfo,
+  VoiceCaptureErrorCode,
+} from "@arthur/contracts";
 
 /**
  * Which implementation backs the UI.
@@ -20,6 +27,17 @@ export class VoiceCaptureError extends Error {
   constructor(code: VoiceCaptureErrorCode, message: string) {
     super(message);
     this.name = "VoiceCaptureError";
+    this.code = code;
+  }
+}
+
+/** A distillation attempt failed. `code` says why; `message` is safe to show to the user. */
+export class DistillationError extends Error {
+  readonly code: DistillationErrorCode;
+
+  constructor(code: DistillationErrorCode, message: string) {
+    super(message);
+    this.name = "DistillationError";
     this.code = code;
   }
 }
@@ -50,4 +68,13 @@ export interface ArthurClient {
   finishVoiceCapture(): Promise<Capture>;
   /** Discards an in-progress recording without transcribing it. */
   cancelVoiceCapture(): Promise<void>;
+
+  /**
+   * Turns one persisted capture into structured knowledge objects, each pointing at the exact
+   * text it came from. Distilling a capture twice returns the same objects; it never
+   * duplicates them. Rejects with a `DistillationError`.
+   */
+  distillCapture(captureId: string): Promise<KnowledgeObject[]>;
+  /** Every knowledge object: newest distillation first, in reading order within one. */
+  listKnowledgeObjects(): Promise<KnowledgeObject[]>;
 }

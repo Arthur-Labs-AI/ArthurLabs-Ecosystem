@@ -38,7 +38,14 @@ test("runtime info guard validates payloads that crossed a process boundary", ()
 
 test("seed capture and knowledge contracts compile and expose the documented kinds", () => {
   const capture: Capture = { id: "cap-1", source: "voice", content: "benchmark EMG latency", createdAt: new Date(0).toISOString() };
-  const idea: KnowledgeObject = { id: "k-1", kind: "idea", title: "EMG capture", body: "...", createdAt: capture.createdAt };
+  const idea: KnowledgeObject = {
+    id: "k-1",
+    kind: "idea",
+    title: "EMG capture",
+    body: "...",
+    createdAt: capture.createdAt,
+    provenance: { captureId: capture.id, sourceStart: 0, sourceEnd: 9 },
+  };
 
   assert.deepEqual([...CAPTURE_SOURCE_KINDS], ["text", "voice", "emg"]);
   assert.deepEqual([...KNOWLEDGE_OBJECT_KINDS], ["idea", "task", "decision", "question", "note"]);

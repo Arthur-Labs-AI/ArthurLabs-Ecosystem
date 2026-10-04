@@ -149,9 +149,13 @@ const SYNTHETIC: Record<string, { violating: RuleCase[]; allowed: RuleCase[] }> 
       { file: "apps/arthur/src/hooks/h.ts", source: "const r = new MediaRecorder(stream);" },
       { file: "apps/arthur/src/features/capture/x.ts", source: 'const key = process_env.OPENAI_API_KEY;' },
       { file: "apps/arthur/src/features/capture/x.ts", source: 'headers.set("Authorization", `Bearer ${token}`);' },
+      { file: "apps/arthur/src/features/knowledge/x.ts", source: 'const model = "gpt-4.1-mini";' },
+      { file: "apps/arthur/src/features/knowledge/x.ts", source: 'const url = "https://api.openai.com/v1/chat/completions";' },
+      { file: "apps/arthur/src/hooks/h.ts", source: "const format = { type: \"json_schema\" };" },
     ],
     allowed: [
       { file: "apps/arthur/src/features/capture/use-captures.ts", source: "await client.startVoiceCapture();" },
+      { file: "apps/arthur/src/features/knowledge/use-knowledge.ts", source: "await client.distillCapture(captureId);" },
       { file: "apps/arthur/src/features/capture/x.test.tsx", source: 'const fake = "openai api key";' },
     ],
   },
