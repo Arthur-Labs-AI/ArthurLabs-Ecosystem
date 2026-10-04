@@ -17,9 +17,15 @@ import {
   DISTILLATION_ERROR_CODES,
   KNOWLEDGE_OBJECT_KINDS,
   MAX_CAPTURE_CONTENT_CHARS,
+  MAX_INFERENCE_CANDIDATES,
   MAX_KNOWLEDGE_BODY_CHARS,
   MAX_KNOWLEDGE_TITLE_CHARS,
   MAX_OBJECTS_PER_DISTILLATION,
+  MAX_RELATIONS_PER_INFERENCE,
+  RELATION_ERROR_CODES,
+  RELATION_KINDS,
+  RELATION_ORIGINS,
+  SYMMETRIC_RELATION_KINDS,
   VOICE_CAPTURE_ERROR_CODES,
 } from "../../packages/contracts";
 import { findRepoRoot } from "./import_graph";
@@ -143,9 +149,14 @@ test("every IPC command agrees between the TypeScript client and the Rust handle
     cancel_voice_capture: "src/commands/voice.rs",
     distill_capture: "src/commands/distill.rs",
     list_knowledge_objects: "src/commands/distill.rs",
+    create_relation: "src/commands/graph.rs",
+    list_relations: "src/commands/graph.rs",
+    get_object_relations: "src/commands/graph.rs",
+    get_object_neighbors: "src/commands/graph.rs",
+    infer_relations: "src/commands/graph.rs",
   };
   for (const [command, rustFile] of Object.entries(commandSources)) {
-    assert.match(ipc, new RegExp(`call\\("${command}"`), `${command} is not called by tauri-ipc.ts`);
+    assert.match(ipc, new RegExp(`(?:call|relationCall)\\(\\s*"${command}"`), `${command} is not called by tauri-ipc.ts`);
     assert.match(readText(tauriDir, rustFile), new RegExp(`pub (async )?fn ${command}\\(`));
     assert.match(libRs, new RegExp(`commands::\\w+::${command}\\b`), `${command} is not registered in lib.rs`);
   }
@@ -224,11 +235,11 @@ test("voice error codes agree across the contract, the Rust service and the Kotl
 test("HTTP, credentials and the microphone are confined to their modules", () => {
   const src = path.join(tauriDir, "src");
   const files = rustFiles(src).map((file) => ({ rel: path.relative(src, file).split(path.sep).join("/"), text: readFileSync(file, "utf8") }));
-  const providerModules = /^(providers|stt|distillation)\//;
+  const providerModules = /^(providers|stt|distillation|graph)\//;
 
   for (const { rel, text } of files) {
     if (/\breqwest\b/.test(text)) assert.match(rel, providerModules, `${rel} must not make HTTP calls`);
-    if (/openai_api_key|api_key\(\)/.test(text)) assert.match(rel, /^(providers\/|stt\/|distillation\/|lib\.rs$)/, `${rel} must not touch credentials`);
+    if (/openai_api_key|api_key\(\)/.test(text)) assert.match(rel, /^(providers\/|stt\/|distillation\/|graph\/|lib\.rs$)/, `${rel} must not touch credentials`);
     if (/run_mobile_plugin/.test(text)) assert.equal(rel, "audio/android.rs", `${rel} must not call the microphone plugin`);
   }
 
@@ -273,9 +284,9 @@ test("knowledge kinds, limits and error codes agree across the contract, Rust, S
 
 test("the schema is changed only through ordered, transactional migration steps", () => {
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  assert.match(migrations, /pub const STEPS: \[Step; 2\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\)\];/);
+  assert.match(migrations, /pub const STEPS: \[Step; 3\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\)\];/);
   assert.match(migrations, /connection\.transaction\(\)/);
-  for (const table of ["distillation_runs", "knowledge_objects", "object_sources"]) assert.match(migrations, new RegExp(`CREATE TABLE ${table}\\b`));
+  for (const table of ["distillation_runs", "knowledge_objects", "object_sources", "relations"]) assert.match(migrations, new RegExp(`CREATE TABLE ${table}\\b`));
   assert.match(migrations, /REFERENCES captures\(id\)/);
   assert.match(migrations, /captures_are_immutable/);
   assert.match(readText(tauriDir, "src/storage/capture_store.rs"), /foreign_keys/);
@@ -283,4 +294,99 @@ test("the schema is changed only through ordered, transactional migration steps"
   for (const file of rustFiles(path.join(tauriDir, "src")).filter((f) => !/storage[\\/]/.test(f))) {
     assert.doesNotMatch(readFileSync(file, "utf8"), /CREATE TABLE|ALTER TABLE|DROP TABLE|PRAGMA user_version/, `${file} must not change the schema`);
   }
+});
+
+/** Rust source before its test module, with comment lines removed, so prose cannot trip a code check. */
+const productionCode = (source: string): string =>
+  (source.indexOf("#[cfg(test)]") === -1 ? source : source.slice(0, source.indexOf("#[cfg(test)]")))
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("//"))
+    .join("\n");
+
+const nativeConst = (source: string, name: string): string => new RegExp(`pub const ${name}: \\[&str; \\d+\\] = \\[([^\\]]*)\\];`).exec(source)?.[1] ?? "";
+const quoted = (list: string): string[] => [...list.matchAll(/"([a-z_]+)"/g)].map((m) => m[1] as string);
+
+test("relation kinds, symmetry, origins and limits agree across the contract, Rust, SQL and the model schema", () => {
+  const store = readText(tauriDir, "src/storage/relation_store.rs");
+  assert.deepEqual(quoted(nativeConst(store, "KINDS")), [...RELATION_KINDS]);
+  assert.deepEqual(quoted(nativeConst(store, "SYMMETRIC_KINDS")), [...SYMMETRIC_RELATION_KINDS]);
+  assert.deepEqual(quoted(nativeConst(store, "ORIGINS")), [...RELATION_ORIGINS]);
+
+  const sql = readText(tauriDir, "src/storage/migrations.rs");
+  const list = (values: readonly string[]): string => values.map((value) => `'${value}'`).join(", ");
+  assert.ok(sql.includes(`kind IN (${list(RELATION_KINDS)})`), "the SQL CHECK lists the same relation kinds");
+  assert.ok(sql.includes(`kind NOT IN (${list(SYMMETRIC_RELATION_KINDS)})`), "the SQL canonical-order CHECK lists the same symmetric kinds");
+  assert.ok(sql.includes(`origin IN (${list(RELATION_ORIGINS)})`));
+
+  const prompt = readText(tauriDir, "src/graph/prompt.rs");
+  const offered = /"kind": \{ "type": "string", "enum": \[([^\]]*)\]/.exec(prompt)?.[1] ?? "";
+  assert.deepEqual(quoted(offered), [...RELATION_KINDS], "the model is offered exactly these kinds");
+
+  assert.equal(Number(/pub const MAX_INFERENCE_CANDIDATES: usize = ([\d_]+);/.exec(readText(tauriDir, "src/graph/candidates.rs"))?.[1]?.replaceAll("_", "")), MAX_INFERENCE_CANDIDATES);
+  assert.equal(Number(/pub const MAX_RELATIONS_PER_BATCH: usize = ([\d_]+);/.exec(store)?.[1]?.replaceAll("_", "")), MAX_RELATIONS_PER_INFERENCE);
+
+  const graph = readText(tauriDir, "src/graph/mod.rs");
+  const codes = graph.slice(graph.indexOf("pub fn code"), graph.indexOf("pub fn message"));
+  assert.deepEqual([...new Set([...codes.matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...RELATION_ERROR_CODES].sort());
+});
+
+test("graph schema: foreign keys to knowledge objects, canonical identity, indexes, and no lineage tables yet", () => {
+  const migrations = readText(tauriDir, "src/storage/migrations.rs");
+  const v3 = migrations.slice(migrations.indexOf("pub const SCHEMA_V3"), migrations.indexOf("pub type Step"));
+  assert.equal([...v3.matchAll(/REFERENCES knowledge_objects\(id\) ON DELETE CASCADE/g)].length, 2, "both ends are foreign keys that cascade, so an edge can never dangle");
+  assert.match(v3, /UNIQUE \(kind, source_object_id, target_object_id\)/);
+  assert.match(v3, /CHECK \(source_object_id <> target_object_id\)/);
+  assert.match(v3, /CREATE INDEX relations_by_source ON relations\(source_object_id\)/);
+  assert.match(v3, /CREATE INDEX relations_by_target ON relations\(target_object_id\)/);
+  // Graph relations and Capture provenance are separate systems: a relation never points at a capture.
+  assert.doesNotMatch(v3, /captures/);
+  // Out of scope for M02.
+  assert.doesNotMatch(migrations, /lineage|revision|embedding|outbox/i);
+});
+
+test("the model never writes to the graph: the provider client and prompt cannot reach the store", () => {
+  for (const file of ["src/graph/openai.rs", "src/graph/prompt.rs", "src/graph/validate.rs", "src/graph/candidates.rs"]) {
+    const production = productionCode(readText(tauriDir, file));
+    assert.doesNotMatch(production, /rusqlite|CaptureStore|record_relations|create_relation|\.execute\(/, `${file} must not write to storage`);
+  }
+  // Only the service persists, and only through the all-or-nothing store call, after validation.
+  const production = productionCode(readText(tauriDir, "src/graph/mod.rs"));
+  assert.match(production, /store\.record_relations\(accepted, "model"\)/);
+  assert.ok(production.indexOf("validate::validate_proposals") < production.indexOf("store.record_relations"), "validation precedes persistence");
+  assert.doesNotMatch(production, /INSERT|UPDATE|DELETE|\.execute\(/);
+  // The provider reply is parsed strictly: unknown fields are an error, not silently ignored.
+  assert.match(readText(tauriDir, "src/graph/openai.rs"), /deny_unknown_fields/);
+});
+
+test("relation inference sends knowledge objects only, never raw captures", () => {
+  const production = productionCode(readText(tauriDir, "src/graph/prompt.rs"));
+  assert.doesNotMatch(production, /provenance|capture_id|\.content/, "the proposer prompt does not read capture text or provenance");
+});
+
+test("graph relations are never derived from Capture provenance in code", () => {
+  const knowledge = productionCode(readText(tauriDir, "src/storage/knowledge_store.rs"));
+  assert.doesNotMatch(knowledge, /relations/, "distillation does not write graph edges");
+  const production = productionCode(readText(tauriDir, "src/storage/relation_store.rs"));
+  assert.doesNotMatch(production, /object_sources|captures/, "the graph store does not read provenance or captures");
+});
+
+test("the Cognitive Graph UI depends only on React, the contracts and the ArthurClient interface", () => {
+  const graphDir = path.join(app, "src/features/graph");
+  const files = readdirSync(graphDir).filter((name) => /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name));
+  assert.ok(files.length >= 4, "expected the graph feature files");
+  for (const file of files) {
+    const source = readText(graphDir, file);
+    for (const [, specifier] of source.matchAll(/from "([^"]+)"/g)) {
+      assert.match(
+        specifier as string,
+        /^(react|@arthur\/contracts|\.{1,2}\/.*)$/,
+        `${file} imports "${specifier}"; the graph UI may use only react, @arthur/contracts and relative modules`,
+      );
+      assert.doesNotMatch(specifier as string, /client\/(tauri-ipc|desktop-client|mobile-client|preview-client)|storage|distillation|providers/, `${file} reaches below the ArthurClient interface`);
+    }
+    assert.doesNotMatch(source, /invoke\(|@tauri-apps|sqlite|rusqlite|openai|chat\/completions/i, `${file} must not touch the native layer, storage or a provider`);
+  }
+  // The graph is drawn with plain SVG: no graph library was added for this milestone.
+  const manifest = readJson<{ dependencies: Record<string, string> }>(app, "package.json");
+  assert.deepEqual(Object.keys(manifest.dependencies).sort(), ["@tauri-apps/api", "react", "react-dom"]);
 });

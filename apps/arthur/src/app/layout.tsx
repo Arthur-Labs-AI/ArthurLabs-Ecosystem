@@ -8,7 +8,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <p className="app-subtitle">Cognitive Runtime</p>
       </header>
       <main className="app-main">{children}</main>
-      <footer className="app-footer">Local capture only. Graph, sync and devices are not implemented yet.</footer>
+      <footer className="app-footer">Local only. Sync, lineage, recall and devices are not implemented yet.</footer>
     </div>
   );
 }

@@ -296,3 +296,239 @@ body {
     background: #8a6d00;
   }
 }
+
+/* Cognitive Graph */
+:root {
+  --edge-related_to: #6b7686;
+  --edge-extends: #2f5bea;
+  --edge-depends_on: #d4620a;
+  --edge-contradicts: #c62828;
+  --edge-derived_from: #8e44ad;
+  --edge-duplicates: #00897b;
+  --edge-supersedes: #2e7d32;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --edge-related_to: #9aa6b8;
+    --edge-extends: #7c9bff;
+    --edge-depends_on: #ff9d4d;
+    --edge-contradicts: #ff6b6b;
+    --edge-derived_from: #c58be0;
+    --edge-duplicates: #4fd1c1;
+    --edge-supersedes: #6fcf75;
+  }
+}
+
+.graph-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.graph-toolbar button,
+.graph-form button {
+  padding: 0.5rem 1rem;
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 0.5rem;
+}
+
+.graph-toolbar button:disabled,
+.graph-form button:disabled {
+  opacity: 0.5;
+}
+
+.graph-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.graph-node {
+  cursor: pointer;
+  outline: none;
+}
+
+.graph-node circle {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 3;
+}
+
+.graph-node.kind-node-task circle {
+  fill: #2e7d32;
+}
+
+.graph-node.kind-node-decision circle {
+  fill: #6a1b9a;
+}
+
+.graph-node.kind-node-question circle {
+  fill: #ef6c00;
+}
+
+.graph-node.kind-node-note circle {
+  fill: #546e7a;
+}
+
+.graph-node.selected circle,
+.graph-node:focus-visible circle {
+  stroke: var(--text);
+  stroke-width: 4;
+}
+
+.graph-node-label,
+.graph-edge-label {
+  fill: var(--text);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.graph-edge-label {
+  font-size: 11px;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+}
+
+.graph-edge-line {
+  fill: none;
+  stroke-width: 2.5;
+  pointer-events: none;
+}
+
+.graph-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 22;
+  cursor: pointer;
+  outline: none;
+}
+
+.graph-edge.selected .graph-edge-line {
+  stroke-width: 4.5;
+}
+
+.graph-edge-hit:focus-visible {
+  stroke: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* One colour AND one line style per kind, so no meaning rests on colour alone. */
+.edge-related_to {
+  --edge: var(--edge-related_to);
+  --dash: 2 6;
+}
+.edge-extends {
+  --edge: var(--edge-extends);
+  --dash: none;
+}
+.edge-depends_on {
+  --edge: var(--edge-depends_on);
+  --dash: 10 4;
+}
+.edge-contradicts {
+  --edge: var(--edge-contradicts);
+  --dash: 6 4;
+}
+.edge-derived_from {
+  --edge: var(--edge-derived_from);
+  --dash: 10 3 2 3;
+}
+.edge-duplicates {
+  --edge: var(--edge-duplicates);
+  --dash: 14 3;
+}
+.edge-supersedes {
+  --edge: var(--edge-supersedes);
+  --dash: none;
+}
+
+.graph-edge-line,
+.graph-legend-line {
+  stroke: var(--edge);
+  stroke-dasharray: var(--dash);
+}
+
+.graph-arrow path {
+  fill: var(--edge);
+}
+
+.graph-legend-line {
+  stroke-width: 3;
+}
+
+.graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.graph-details {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.graph-mini-list,
+.graph-relations {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.graph-relations {
+  list-style: none;
+  padding-left: 0;
+}
+
+.graph-relations li {
+  padding: 0.3rem 0;
+  overflow-wrap: anywhere;
+}
+
+.graph-subtitle {
+  margin: 1rem 0 0.25rem;
+  font-size: 1rem;
+}
+
+.graph-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.graph-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.graph-form select {
+  width: 100%;
+  padding: 0.5rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.graph-form button {
+  align-self: flex-start;
+}

@@ -63,14 +63,41 @@ CREATE TABLE object_sources (
 CREATE INDEX object_sources_by_capture ON object_sources(capture_id);
 ";
 
+/// v3 (M02): the Cognitive Graph. Typed edges between knowledge objects.
+///
+/// Distinct from `object_sources`: that table is Capture provenance (object -> raw text span);
+/// this one relates objects to objects. Existing captures and objects are not touched.
+///
+/// The CHECKs repeat the domain invariants so a faulty writer cannot persist a malformed edge:
+/// no self edge, and a symmetric kind is stored once with the smaller object id as the source
+/// (SQLite's default BINARY collation orders text exactly as Rust compares `str`).
+pub const SCHEMA_V3: &str = "
+CREATE TABLE relations (
+    seq              INTEGER PRIMARY KEY AUTOINCREMENT,
+    id               TEXT    NOT NULL UNIQUE CHECK (length(id) > 0),
+    kind             TEXT    NOT NULL CHECK (kind IN ('related_to', 'extends', 'depends_on', 'contradicts', 'derived_from', 'duplicates', 'supersedes')),
+    source_object_id TEXT    NOT NULL REFERENCES knowledge_objects(id) ON DELETE CASCADE,
+    target_object_id TEXT    NOT NULL REFERENCES knowledge_objects(id) ON DELETE CASCADE,
+    origin           TEXT    NOT NULL CHECK (origin IN ('model', 'user', 'system')),
+    created_at       TEXT    NOT NULL CHECK (length(created_at) > 0),
+    CHECK (source_object_id <> target_object_id),
+    CHECK (kind NOT IN ('related_to', 'contradicts', 'duplicates') OR source_object_id < target_object_id),
+    -- Canonical identity of an edge. A pair may carry several kinds, but never the same one twice.
+    UNIQUE (kind, source_object_id, target_object_id)
+);
+
+CREATE INDEX relations_by_source ON relations(source_object_id);
+CREATE INDEX relations_by_target ON relations(target_object_id);
+";
+
 pub type Step = (i64, &'static str);
 
 /// Ordered migration steps: `(version after the step, SQL)`.
-pub const STEPS: [Step; 2] = [(1, SCHEMA_V1), (2, SCHEMA_V2)];
+pub const STEPS: [Step; 3] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3)];
 
 /// The version `STEPS` ends at; asserted against `STEPS` by a test.
 #[cfg(test)]
-pub const SCHEMA_VERSION: i64 = 2;
+pub const SCHEMA_VERSION: i64 = 3;
 
 pub fn migrate(connection: &mut Connection) -> Result<(), StoreError> {
     migrate_with(connection, &STEPS)
@@ -120,7 +147,7 @@ mod tests {
     }
 
     #[test]
-    fn a_v1_database_upgrades_to_v2_and_keeps_every_capture() {
+    fn a_v1_database_upgrades_to_the_latest_version_and_keeps_every_capture() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
         v1_database(&path);
@@ -131,7 +158,7 @@ mod tests {
         assert_eq!(captures.iter().map(|c| (c.id.as_str(), c.source.as_str(), c.content.as_str())).collect::<Vec<_>>(), [("c2", "voice", "второ нещо 😀"), ("c1", "text", "first thought")]);
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION);
-        for table in ["distillation_runs", "knowledge_objects", "object_sources"] {
+        for table in ["distillation_runs", "knowledge_objects", "object_sources", "relations"] {
             assert!(has_object(&connection, "table", table), "{table}");
         }
         // And the upgraded database is fully usable for the new feature.
@@ -139,6 +166,124 @@ mod tests {
             .record_distillation("c2", vec![crate::storage::knowledge_store::NewKnowledgeObject { kind: "note".into(), title: "t".into(), body: "b".into(), source_start: 0, source_end: 5 }])
             .unwrap();
         assert_eq!(stored.len(), 1);
+    }
+
+    /// A database exactly as M01D left it: schema v2 with two captures, three objects and their provenance.
+    fn v2_database(path: &std::path::Path) {
+        let connection = Connection::open(path).unwrap();
+        connection
+            .execute_batch(&format!(
+                "{SCHEMA_V1}
+                 INSERT INTO captures (id, source, content, created_at) VALUES ('c1', 'text', 'first thought here', '2026-10-04T10:00:00Z');
+                 INSERT INTO captures (id, source, content, created_at) VALUES ('c2', 'voice', 'второ нещо 😀', '2026-10-04T10:05:00Z');
+                 PRAGMA user_version = 1;"
+            ))
+            .unwrap();
+        connection
+            .execute_batch(&format!(
+                "{SCHEMA_V2}
+                 INSERT INTO distillation_runs (capture_id, created_at) VALUES ('c1', '2026-10-04T10:01:00Z');
+                 INSERT INTO distillation_runs (capture_id, created_at) VALUES ('c2', '2026-10-04T10:06:00Z');
+                 INSERT INTO knowledge_objects (id, kind, title, body, created_at) VALUES ('11111111-1111-4111-8111-111111111111', 'idea', 'first', 'body one', '2026-10-04T10:01:00Z');
+                 INSERT INTO knowledge_objects (id, kind, title, body, created_at) VALUES ('22222222-2222-4222-8222-222222222222', 'task', 'thought', 'body two', '2026-10-04T10:01:00Z');
+                 INSERT INTO knowledge_objects (id, kind, title, body, created_at) VALUES ('33333333-3333-4333-8333-333333333333', 'note', 'нещо', 'body три', '2026-10-04T10:06:00Z');
+                 INSERT INTO object_sources VALUES ('11111111-1111-4111-8111-111111111111', 'c1', 0, 5);
+                 INSERT INTO object_sources VALUES ('22222222-2222-4222-8222-222222222222', 'c1', 6, 13);
+                 INSERT INTO object_sources VALUES ('33333333-3333-4333-8333-333333333333', 'c2', 6, 10);
+                 PRAGMA user_version = 2;"
+            ))
+            .unwrap();
+    }
+
+    #[test]
+    fn a_v2_database_upgrades_to_v3_and_keeps_every_capture_object_and_provenance_row() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v2_database(&path);
+        let before = {
+            let store = Connection::open(&path).unwrap();
+            dump(&store)
+        };
+
+        let store = CaptureStore::open(&path).unwrap();
+
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 3);
+        assert_eq!(dump(&connection), before, "captures, objects and provenance are byte-for-byte unchanged");
+        assert!(has_object(&connection, "table", "relations"));
+        for index in ["relations_by_source", "relations_by_target"] {
+            assert!(has_object(&connection, "index", index), "{index}");
+        }
+        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(integrity, "ok");
+        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(violations, 0);
+        // The existing M01 reads still work, and the new graph is empty but usable on the migrated data.
+        assert_eq!(store.list().unwrap().len(), 2);
+        let objects = store.list_knowledge_objects().unwrap();
+        assert_eq!(objects.len(), 3);
+        assert!(store.list_relations().unwrap().is_empty());
+        let relation = store
+            .create_relation(
+                crate::storage::relation_store::NewRelation { kind: "extends".into(), source_object_id: objects[0].id.clone(), target_object_id: objects[1].id.clone() },
+                "user",
+            )
+            .unwrap();
+        assert_eq!(store.list_relations().unwrap(), vec![relation]);
+    }
+
+    fn dump(connection: &Connection) -> Vec<String> {
+        let mut rows = Vec::new();
+        for (table, columns) in [
+            ("captures", "id || '|' || source || '|' || content || '|' || created_at"),
+            ("distillation_runs", "capture_id || '|' || created_at"),
+            ("knowledge_objects", "id || '|' || kind || '|' || title || '|' || body || '|' || created_at"),
+            ("object_sources", "object_id || '|' || capture_id || '|' || source_start || '|' || source_end"),
+        ] {
+            let mut statement = connection.prepare(&format!("SELECT {columns} FROM {table} ORDER BY 1")).unwrap();
+            rows.extend(statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|row| format!("{table}:{}", row.unwrap())));
+        }
+        rows
+    }
+
+    #[test]
+    fn a_failing_v3_upgrade_rolls_back_completely_and_leaves_v2_usable() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v2_database(&path);
+        let before = dump(&Connection::open(&path).unwrap());
+        {
+            // A foreign table named like the one v3 creates, with an index name v3 also needs,
+            // so the step fails after its first statement has already run.
+            let connection = Connection::open(&path).unwrap();
+            connection.execute_batch("CREATE TABLE zzz (x); CREATE INDEX relations_by_target ON zzz(x);").unwrap();
+        }
+
+        assert!(CaptureStore::open(&path).is_err());
+
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 2, "still v2");
+        assert!(!has_object(&connection, "table", "relations"), "the step's earlier statements were rolled back");
+        assert!(!has_object(&connection, "index", "relations_by_source"));
+        assert_eq!(dump(&connection), before);
+        // v2 is still fully writable.
+        connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('c3', 'text', 'still works', '2026-10-04T11:00:00Z')", []).unwrap();
+    }
+
+    #[test]
+    fn a_database_newer_than_v3_is_refused_untouched() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v2_database(&path);
+        Connection::open(&path).unwrap().pragma_update(None, "user_version", 4).unwrap();
+        let before = dump(&Connection::open(&path).unwrap());
+
+        assert!(matches!(CaptureStore::open(&path), Err(StoreError::Corrupt(_))));
+
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 4);
+        assert!(!has_object(&connection, "table", "relations"));
+        assert_eq!(dump(&connection), before);
     }
 
     #[test]

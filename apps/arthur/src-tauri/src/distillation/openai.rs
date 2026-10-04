@@ -3,18 +3,16 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serde::Deserialize;
-use serde_json::{json, Value};
 
 use crate::async_util::BoxFuture;
+use crate::providers::chat::{self, ChatFailure, ChatRequest};
 use crate::providers::credentials::CredentialSource;
 use crate::providers::http;
 
 use super::prompt::{response_schema, user_message, SYSTEM_PROMPT};
 use super::{Candidate, DistillError, Distiller};
 
-pub const DEFAULT_ENDPOINT: &str = "https://api.openai.com/v1/chat/completions";
-/// Non-reasoning model with strict JSON-schema output and a deterministic temperature.
-pub const DEFAULT_MODEL: &str = "gpt-4.1-mini";
+pub use crate::providers::chat::{DEFAULT_ENDPOINT, DEFAULT_MODEL};
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
@@ -35,42 +33,27 @@ impl OpenAiDistiller {
     }
 
     async fn request(&self, capture: &str) -> Result<Vec<Candidate>, DistillError> {
-        let key = self.credentials.api_key().ok_or(DistillError::NotConfigured)?;
+        let user = user_message(capture);
+        let content = chat::complete_json(
+            &self.client,
+            self.credentials.as_ref(),
+            ChatRequest { endpoint: &self.endpoint, model: &self.model, system: SYSTEM_PROMPT, user: &user, schema_name: "distillation", schema: response_schema() },
+        )
+        .await?;
+        parse_candidates(&content)
+    }
+}
 
-        let body = json!({
-            "model": self.model,
-            "temperature": 0,
-            "messages": [
-                { "role": "system", "content": SYSTEM_PROMPT },
-                { "role": "user", "content": user_message(capture) },
-            ],
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": { "name": "distillation", "strict": true, "schema": response_schema() },
-            },
-        });
-
-        let response = self
-            .client
-            .post(&self.endpoint)
-            .bearer_auth(key.expose())
-            .json(&body)
-            .send()
-            .await
-            .map_err(|_| DistillError::Network)?;
-
-        let status = response.status().as_u16();
-        if status == 401 || status == 403 {
-            return Err(DistillError::Auth(status));
+impl From<ChatFailure> for DistillError {
+    fn from(failure: ChatFailure) -> Self {
+        match failure {
+            ChatFailure::NotConfigured => DistillError::NotConfigured,
+            ChatFailure::Network => DistillError::Network,
+            ChatFailure::Auth(status) => DistillError::Auth(status),
+            ChatFailure::Provider(status) => DistillError::Provider(status),
+            ChatFailure::Refused => DistillError::Refused,
+            ChatFailure::Unreadable(reason) => DistillError::InvalidOutput(reason),
         }
-        if !(200..300).contains(&status) {
-            return Err(DistillError::Provider(status));
-        }
-
-        let envelope: Value = response.json().await.map_err(|error| {
-            if error.is_decode() { DistillError::InvalidOutput("unreadable response".into()) } else { DistillError::Network }
-        })?;
-        parse_envelope(&envelope)
     }
 }
 
@@ -88,23 +71,6 @@ impl fmt::Debug for OpenAiDistiller {
 
 fn unreadable(reason: &str) -> DistillError {
     DistillError::InvalidOutput(reason.into())
-}
-
-/// Reads the chat-completion envelope and returns the candidates inside it.
-fn parse_envelope(envelope: &Value) -> Result<Vec<Candidate>, DistillError> {
-    let choice = envelope.get("choices").and_then(Value::as_array).and_then(|choices| choices.first()).ok_or_else(|| unreadable("no completion"))?;
-    let message = choice.get("message").ok_or_else(|| unreadable("no message"))?;
-
-    if message.get("refusal").is_some_and(|refusal| refusal.as_str().is_some_and(|text| !text.is_empty())) {
-        return Err(DistillError::Refused);
-    }
-    match choice.get("finish_reason").and_then(Value::as_str) {
-        Some("content_filter") => return Err(DistillError::Refused),
-        Some("length") => return Err(unreadable("the answer was cut off")),
-        _ => {}
-    }
-    let content = message.get("content").and_then(Value::as_str).ok_or_else(|| unreadable("no content"))?;
-    parse_candidates(content)
 }
 
 #[derive(Deserialize)]
@@ -145,6 +111,7 @@ fn parse_candidates(content: &str) -> Result<Vec<Candidate>, DistillError> {
 mod tests {
     use super::*;
     use crate::providers::credentials::ApiKey;
+    use serde_json::{json, Value};
     use crate::test_support::{dead_endpoint, find, serve_once};
 
     struct FixedKey(Option<&'static str>);

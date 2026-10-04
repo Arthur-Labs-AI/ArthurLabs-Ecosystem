@@ -761,7 +761,7 @@ For competition v1, the authoritative raw source is primarily the **original tra
 
 This preserves the existing Arthur privacy property that raw PCM audio is not permanently stored.
 
-A derived object stores its origin:
+A derived object stores its origin as Capture provenance (a source span, not a graph relation; see section 17):
 
 ```text
 Task:
@@ -830,7 +830,17 @@ Idea A
  ├── DEPENDS_ON ───→ Task D
  ├── CONTRADICTS ──→ Decision E
  ├── DUPLICATES ───→ Idea F
- └── DERIVED_FROM ─→ Capture G
+ └── DERIVED_FROM ─→ Idea G
+```
+
+Every edge connects two knowledge objects. `DERIVED_FROM` means one object was derived from the
+knowledge in another object. It is **not** Capture provenance.
+
+Capture provenance is a separate system and is never a graph relation:
+
+```text
+Provenance (section 15):     KnowledgeObject ─→ exact Capture source span
+Cognitive Graph (this section): KnowledgeObject ─→ KnowledgeObject
 ```
 
 Suggested initial relationship taxonomy:

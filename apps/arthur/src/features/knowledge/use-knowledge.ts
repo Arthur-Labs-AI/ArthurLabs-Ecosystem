@@ -16,7 +16,7 @@ export interface KnowledgeState {
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
-export function useKnowledge(): KnowledgeState {
+export function useKnowledgeState(): KnowledgeState {
   const client = useArthurClient();
   const [status, setStatus] = useState<KnowledgeState["status"]>("loading");
   const [objects, setObjects] = useState<KnowledgeObject[]>([]);

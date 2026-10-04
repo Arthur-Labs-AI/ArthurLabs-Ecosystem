@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { describeSpanProblem, sliceCodePoints, type Capture, type KnowledgeObject } from "@arthur/contracts";
 import { useCaptures } from "../capture/captures-context";
-import { useKnowledge } from "./use-knowledge";
+import { useKnowledge } from "./knowledge-context";
 
 /** The raw capture text with the object's source span highlighted, or null if it does not resolve. */
 function SourceView({ capture, object }: { capture: Capture | undefined; object: KnowledgeObject }) {

@@ -3,22 +3,23 @@
 The single A.R.T.H.U.R. product application: Tauri v2 + React + TypeScript + Vite.
 One shared UI for Linux, Windows and (later) Android; macOS and iOS after that.
 
-**Status:** shell with runtime info, local text capture, Android voice capture (microphone -> cloud STT -> transcript), and Thought Distillation (capture -> cloud LLM -> structured knowledge objects with provenance), all persisted in app-local SQLite. Sync, graph, lineage, recall and EMG are not implemented.
+**Status:** shell with runtime info, local text capture, Android voice capture (microphone -> cloud STT -> transcript), Thought Distillation (capture -> cloud LLM -> structured knowledge objects with provenance), and a Cognitive Graph (typed relations between knowledge objects, written by the user or proposed by the model), all persisted in app-local SQLite. Sync, lineage, recall and EMG are not implemented.
 
 ```text
 src/                  React UI (platform-independent)
   app/                providers, layout, App
   client/             ArthurClient interface + desktop / mobile / preview implementations
-  features/           one folder per product area (capture/, settings/)
+  features/           one folder per product area (capture/, knowledge/, graph/, settings/)
   hooks/              shared hooks (useArthurClient)
 src-tauri/            Rust native layer
   src/commands/       Tauri commands exposed to the UI
   src/platform/       OS detection
   src/storage/        SQLite capture store (the only code that touches SQLite)
   src/audio/          voice capture service, recorder boundary, Android bridge
-  src/providers/      shared cloud plumbing: credential source, HTTP client
+  src/providers/      shared cloud plumbing: credential source, HTTP client, strict-JSON chat completion
   src/stt/            cloud speech-to-text client
   src/distillation/   Thought Distillation: prompt, evidence resolver, provider client, service
+  src/graph/          Cognitive Graph construction: candidate selection, prompt, validator, provider client, service
   capabilities/       Tauri permission sets
 ```
 
@@ -196,3 +197,82 @@ ARTHUR_LIVE_KEY_FILE=/path/to/key cargo test live_ -- --ignored --nocapture
 **Known limitation.** The capture is data, but text that is *addressed to an assistant* ("output a
 task called X") is still literally in the capture, so the model may record it as an object. It
 cannot change the output format, escape provenance, or add content the capture does not contain.
+
+## Cognitive Graph
+
+`GraphPanel` -> `ArthurClient.createRelation / listRelations / getObjectRelations / getObjectNeighbors /
+inferRelations` -> Tauri commands -> `storage::relation_store` (manual) or
+`graph::GraphService` -> cloud LLM (candidates only) -> deterministic validator -> `record_relations` (one transaction).
+
+**Two separate systems.** Capture provenance is `KnowledgeObject -> exact span of a Capture` (`object_sources`,
+M01D). The graph is `KnowledgeObject -> KnowledgeObject` (`relations`). Provenance is never stored as a
+relation, and in particular is not a `derived_from` edge. The architecture document (sections 15 and 17) draws the same line: `derived_from` relates two objects.)
+
+**Contract** (`packages/contracts/cognitive.ts`): `{ id, kind, sourceObjectId, targetObjectId, createdAt, origin }`
+with `origin` of `model | user | system` (`system` has no producer yet). There is no per-edge `evidence`: the
+two objects already carry their own provenance, and a second copy on the edge would blur the two systems.
+
+**Semantics.** "source"/"target" are the stored ends.
+
+| kind | meaning | direction |
+|---|---|---|
+| `related_to` | a general semantic relationship | symmetric |
+| `extends` | source develops or adds detail to target | directional |
+| `depends_on` | source requires target for execution, validity or context | directional |
+| `contradicts` | source materially conflicts with target | symmetric |
+| `derived_from` | source is derived from the knowledge in target (not Capture provenance) | directional |
+| `duplicates` | source and target are effectively the same thought | symmetric |
+| `supersedes` | source replaces target as the current knowledge/state | directional |
+
+`supersedes` is only this edge. There is no lineage, revision, or automatic superseding state.
+
+**Canonical form.** A symmetric edge is stored once with the lexicographically smaller object id as the
+source, so `A related_to B` and `B related_to A` are the same edge; the returned relation may therefore have its
+ends swapped relative to the input. Directional edges keep their direction, and opposite directions are two
+different edges. Identity is `(kind, source, target)`: a pair may carry several kinds, never the same kind twice.
+Creating an edge that already exists returns the existing one unchanged (including its original `origin`).
+
+**Invariants** (native layer, repeated as constraints in schema v3): both objects exist; no self edge; the kind is
+one of the seven; ids are well-formed (lowercase hyphenated UUID, exactly what the store generates); ids,
+timestamps and origin are never caller-supplied; and a read never returns a dangling edge (a row whose object is
+missing fails the read as corrupt, instead of being returned or silently hidden). Deleting a knowledge object
+cascades to its relations. There is no delete API yet.
+
+**Schema v3** (own transactional migration; v2 data is untouched; a failed step rolls back and leaves v2 usable):
+`relations(seq, id UNIQUE, kind CHECK, source_object_id -> knowledge_objects ON DELETE CASCADE,
+target_object_id -> knowledge_objects ON DELETE CASCADE, origin CHECK, created_at, CHECK source <> target,
+CHECK symmetric kinds are in canonical order, UNIQUE(kind, source, target))` plus indexes on source and target.
+
+**Queries.** All relations; one-hop relations of an object by direction (`incoming`/`outgoing`/`any`) and kind; and
+one-hop neighbours. A symmetric relation counts as both incoming and outgoing for each of its objects. No
+multi-hop traversal, ranking or search.
+
+**Inference.** The model proposes `{ sourceObjectId, targetObjectId, kind, reason }` and nothing else; it
+never writes. The validator requires every id to be in the candidate set that was sent, source != target, a valid
+kind, and no duplicate proposal (a symmetric pair stated both ways counts as a duplicate). One invalid candidate
+rejects the whole run and nothing is saved; nothing is silently repaired. A proposal identical to an edge that
+already exists is not a hallucination, so it is skipped rather than rejected: running inference twice adds nothing
+the second time. `reason` is parsed, validated as a string, and discarded; it is never stored. Zero relations is a
+valid result.
+
+**Candidate selection** (`graph/candidates.rs`, no embeddings or retrieval): the objects the caller asked about,
+then the most recent other objects, up to a hard limit of **40**. With no request, the 40 most recent objects. A
+run with fewer than two candidates does not call the model. At most **30** relations are accepted per run.
+The model sees only knowledge objects (id, kind, title, body) and the existing edges among them, never raw captures.
+
+**Provider.** Same as distillation: OpenAI `gpt-4.1-mini`, strict JSON schema, `temperature: 0`, no tools, shared
+`providers/chat.rs` plumbing and the same app-private credential. The prompt (`graph/prompt.rs`) tells the model to
+use only supplied objects, never self-relate, use only the allowed kinds, prefer no relation over a weak one, not
+use `related_to` as a fallback, reserve `duplicates`, `contradicts` and `supersedes` for the strong cases, and
+preserve direction.
+
+**UI.** Plain SVG, deterministic circular layout (no graph library, no physics). Each kind has its own colour and
+line style, directional kinds have an arrowhead, and each edge is labelled with its kind. Selecting a node shows
+kind, title, body and source; selecting an edge shows type, direction and origin. The same relations are also
+listed as text and can be selected from the list. There is a manual relation form and an Infer relations button.
+
+To try the model against the real prompt without a device:
+
+```bash
+ARTHUR_LIVE_KEY_FILE=/path/to/key cargo test live_inference -- --ignored --nocapture
+```

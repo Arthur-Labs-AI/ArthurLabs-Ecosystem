@@ -2,9 +2,14 @@ import { VoiceCaptureError, type ArthurClient } from "./arthur-client";
 import {
   createCaptureOverIpc,
   distillCaptureOverIpc,
+  createRelationOverIpc,
   fetchRuntimeInfo,
+  getObjectNeighborsOverIpc,
+  getObjectRelationsOverIpc,
+  inferRelationsOverIpc,
   listCapturesOverIpc,
   listKnowledgeObjectsOverIpc,
+  listRelationsOverIpc,
   type Invoke,
 } from "./tauri-ipc";
 
@@ -27,5 +32,10 @@ export function createDesktopClient(call?: Invoke): ArthurClient {
     cancelVoiceCapture: () => Promise.resolve(),
     distillCapture: (captureId) => distillCaptureOverIpc(captureId, call),
     listKnowledgeObjects: () => listKnowledgeObjectsOverIpc(call),
+    createRelation: (input) => createRelationOverIpc(input, call),
+    listRelations: () => listRelationsOverIpc(call),
+    getObjectRelations: (objectId, filter) => getObjectRelationsOverIpc(objectId, filter, call),
+    getObjectNeighbors: (objectId, filter) => getObjectNeighborsOverIpc(objectId, filter, call),
+    inferRelations: (objectIds) => inferRelationsOverIpc(objectIds, call),
   };
 }

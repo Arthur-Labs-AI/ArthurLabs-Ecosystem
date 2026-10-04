@@ -1,17 +1,23 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   describeCreateCaptureInputProblem,
+  describeCreateRelationInputProblem,
   isCapture,
+  isCognitiveRelation,
   isDistillationErrorPayload,
   isKnowledgeObject,
+  isRelationErrorPayload,
   isRuntimeInfo,
   isVoiceCaptureErrorPayload,
   type Capture,
+  type CognitiveRelation,
   type CreateCaptureInput,
+  type CreateRelationInput,
   type KnowledgeObject,
+  type RelationFilter,
   type RuntimeInfo,
 } from "@arthur/contracts";
-import { DistillationError, VoiceCaptureError } from "./arthur-client";
+import { DistillationError, RelationError, VoiceCaptureError } from "./arthur-client";
 
 /**
  * The single module allowed to import `@tauri-apps/*`.
@@ -112,4 +118,69 @@ export async function listKnowledgeObjectsOverIpc(call: Invoke = invoke): Promis
     throw new Error("Native layer returned invalid knowledge objects");
   }
   return payload;
+}
+
+/** The native layer rejects relation failures with `{ code, message }`; anything else is passed through. */
+function toRelationError(failure: unknown): unknown {
+  if (isRelationErrorPayload(failure)) return new RelationError(failure.code, failure.message);
+  return failure;
+}
+
+async function relationCall(command: string, args: Record<string, unknown> | undefined, call: Invoke): Promise<unknown> {
+  try {
+    return await call(command, args);
+  } catch (failure) {
+    throw toRelationError(failure);
+  }
+}
+
+function readRelations(payload: unknown): CognitiveRelation[] {
+  if (!Array.isArray(payload) || !payload.every(isCognitiveRelation)) {
+    throw new Error("Native layer returned invalid relations");
+  }
+  return payload;
+}
+
+/** Only fields that are set are sent, so the native defaults (any direction, any kind) apply otherwise. */
+function filterArgs(objectId: string, filter: RelationFilter | undefined): Record<string, unknown> {
+  if (typeof objectId !== "string" || objectId.length === 0) throw new Error("Invalid object id");
+  return {
+    objectId,
+    ...(filter?.direction !== undefined ? { direction: filter.direction } : {}),
+    ...(filter?.kind !== undefined ? { kind: filter.kind } : {}),
+  };
+}
+
+export async function createRelationOverIpc(input: CreateRelationInput, call: Invoke = invoke): Promise<CognitiveRelation> {
+  const problem = describeCreateRelationInputProblem(input);
+  if (problem) throw new RelationError("invalid_relation", `That relation is not valid: ${problem}.`);
+  // Only the contract fields are sent, so a caller cannot smuggle in an id, timestamp or origin.
+  const payload = await relationCall(
+    "create_relation",
+    { input: { kind: input.kind, sourceObjectId: input.sourceObjectId, targetObjectId: input.targetObjectId } },
+    call,
+  );
+  if (!isCognitiveRelation(payload)) throw new Error("Native layer returned an invalid relation");
+  return payload;
+}
+
+export async function listRelationsOverIpc(call: Invoke = invoke): Promise<CognitiveRelation[]> {
+  return readRelations(await relationCall("list_relations", undefined, call));
+}
+
+export async function getObjectRelationsOverIpc(objectId: string, filter: RelationFilter | undefined, call: Invoke = invoke): Promise<CognitiveRelation[]> {
+  return readRelations(await relationCall("get_object_relations", filterArgs(objectId, filter), call));
+}
+
+export async function getObjectNeighborsOverIpc(objectId: string, filter: RelationFilter | undefined, call: Invoke = invoke): Promise<KnowledgeObject[]> {
+  const payload = await relationCall("get_object_neighbors", filterArgs(objectId, filter), call);
+  if (!Array.isArray(payload) || !payload.every(isKnowledgeObject)) throw new Error("Native layer returned invalid knowledge objects");
+  return payload;
+}
+
+export async function inferRelationsOverIpc(objectIds: string[] | undefined, call: Invoke = invoke): Promise<CognitiveRelation[]> {
+  if (objectIds !== undefined && (!Array.isArray(objectIds) || objectIds.some((id) => typeof id !== "string" || id.length === 0))) {
+    throw new Error("Invalid object ids");
+  }
+  return readRelations(await relationCall("infer_relations", objectIds === undefined ? undefined : { objectIds }, call));
 }

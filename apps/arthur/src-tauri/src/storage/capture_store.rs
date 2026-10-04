@@ -43,8 +43,10 @@ pub struct CreateCaptureInput {
 
 #[derive(Debug)]
 pub enum StoreError {
-    /// The caller supplied an invalid capture.
+    /// The caller supplied something invalid (a capture, an object, a relation).
     Invalid(String),
+    /// The caller referred to a knowledge object that does not exist.
+    NotFound(String),
     /// The database holds data this version cannot safely interpret.
     Corrupt(String),
     Database(rusqlite::Error),
@@ -55,6 +57,7 @@ impl fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StoreError::Invalid(message) => write!(f, "invalid capture: {message}"),
+            StoreError::NotFound(message) => write!(f, "not found: {message}"),
             StoreError::Corrupt(message) => write!(f, "capture database is unreadable: {message}"),
             StoreError::Database(error) => write!(f, "capture database error: {error}"),
             StoreError::Poisoned => write!(f, "capture store is unavailable"),
@@ -84,6 +87,12 @@ impl CaptureStore {
     #[cfg(test)]
     pub fn open_in_memory() -> Result<Self, StoreError> {
         Self::from_connection(Connection::open_in_memory()?)
+    }
+
+    /// Lets other modules' tests inject faults (triggers, corruption) without owning the connection.
+    #[cfg(test)]
+    pub fn execute_sql_for_test(&self, sql: &str) {
+        self.connection.lock().unwrap().execute_batch(sql).unwrap();
     }
 
     fn from_connection(mut connection: Connection) -> Result<Self, StoreError> {

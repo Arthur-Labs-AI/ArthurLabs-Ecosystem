@@ -1,14 +1,25 @@
 import {
+  MAX_INFERENCE_CANDIDATES,
+  MAX_RELATIONS_PER_INFERENCE,
+  canonicalRelationEnds,
   describeCreateCaptureInputProblem,
+  describeCreateRelationInputProblem,
   describeSpanProblem,
+  isRelationKind,
+  isSymmetricRelationKind,
   sliceCodePoints,
   type Capture,
+  type CognitiveRelation,
+  type CognitiveRelationOrigin,
   type CreateCaptureInput,
+  type CreateRelationInput,
   type KnowledgeObject,
   type KnowledgeObjectKind,
+  type RelationErrorCode,
+  type RelationFilter,
   type RuntimeInfo,
 } from "@arthur/contracts";
-import { DistillationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
+import { DistillationError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
 
 const DEFAULT_PREVIEW_INFO: RuntimeInfo = { appVersion: "0.0.0-preview", platform: "unknown" };
 
@@ -37,10 +48,26 @@ export interface PreviewDistillationOptions {
   once?: boolean;
 }
 
+/** What the fake language model proposes. Untrusted, like the native model output: `kind` is a plain string. */
+export interface PreviewRelationProposal {
+  sourceObjectId: string;
+  targetObjectId: string;
+  kind: string;
+}
+
+export interface PreviewInferenceOptions {
+  /** Default: no relations, which is a valid answer. `objects` is the bounded candidate set. */
+  proposals?: (objects: KnowledgeObject[], existing: CognitiveRelation[]) => PreviewRelationProposal[];
+  /** Make `inferRelations` fail, e.g. to simulate a provider error. Cleared after one use when `once` is true. */
+  error?: RelationError;
+  once?: boolean;
+}
+
 export interface PreviewClientOptions {
   info?: RuntimeInfo;
   voice?: PreviewVoiceOptions;
   distillation?: PreviewDistillationOptions;
+  inference?: PreviewInferenceOptions;
   /** Injectable for deterministic tests. */
   newId?: () => string;
   now?: () => Date;
@@ -53,15 +80,73 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
   const now = options.now ?? (() => new Date());
   const voice = options.voice ?? {};
   const distillation = { ...options.distillation };
+  const inference = { ...options.inference };
   const captures: Capture[] = [];
   /** Newest distillation first, like the native store. Zero-object runs are remembered too. */
   const runs: { captureId: string; objects: KnowledgeObject[] }[] = [];
+  /** Oldest first, like the native store. */
+  const relations: CognitiveRelation[] = [];
   let recording = false;
 
   const append = (input: CreateCaptureInput): Capture => {
     const capture: Capture = { id: newId(), source: input.source, content: input.content, createdAt: now().toISOString() };
     captures.unshift(capture);
     return capture;
+  };
+
+  const allObjects = (): KnowledgeObject[] => runs.flatMap((run) => run.objects);
+
+  /**
+   * Same rules as the native store: validate everything first, then write everything. Returns
+   * every edge the inputs resolve to, and whether each was newly created.
+   */
+  const commitRelations = (
+    inputs: CreateRelationInput[],
+    origin: CognitiveRelationOrigin,
+    invalid: RelationErrorCode,
+  ): { relation: CognitiveRelation; created: boolean }[] => {
+    const fail = (code: RelationErrorCode, reason: string): never => {
+      throw new RelationError(code, `That relation is not valid: ${reason}.`);
+    };
+    const known = new Set(allObjects().map((object) => object.id));
+    const seen = new Set<string>();
+    const planned = inputs.map((input, index) => {
+      const problem = describeCreateRelationInputProblem(input);
+      if (problem) return fail(invalid, `relation ${index}: ${problem}`);
+      if (!known.has(input.sourceObjectId) || !known.has(input.targetObjectId)) {
+        throw new RelationError("object_not_found", "One of those knowledge objects no longer exists.");
+      }
+      const ends = canonicalRelationEnds(input.kind, input.sourceObjectId, input.targetObjectId);
+      const key = `${input.kind}|${ends.sourceObjectId}|${ends.targetObjectId}`;
+      if (seen.has(key)) return fail(invalid, `relation ${index} is a duplicate`);
+      seen.add(key);
+      return { kind: input.kind, ...ends };
+    });
+
+    return planned.map((ends) => {
+      const existing = relations.find((r) => r.kind === ends.kind && r.sourceObjectId === ends.sourceObjectId && r.targetObjectId === ends.targetObjectId);
+      if (existing) return { relation: existing, created: false };
+      const relation: CognitiveRelation = { id: newId(), ...ends, createdAt: now().toISOString(), origin };
+      relations.push(relation);
+      return { relation, created: true };
+    });
+  };
+
+  const touches = (relation: CognitiveRelation, objectId: string, direction: NonNullable<RelationFilter["direction"]>): boolean => {
+    const symmetric = isSymmetricRelationKind(relation.kind);
+    const outgoing = relation.sourceObjectId === objectId || (symmetric && relation.targetObjectId === objectId);
+    const incoming = relation.targetObjectId === objectId || (symmetric && relation.sourceObjectId === objectId);
+    return direction === "outgoing" ? outgoing : direction === "incoming" ? incoming : outgoing || incoming;
+  };
+
+  const relationsOf = (objectId: string, filter: RelationFilter | undefined): CognitiveRelation[] => {
+    if (!allObjects().some((object) => object.id === objectId)) {
+      throw new RelationError("object_not_found", "One of those knowledge objects no longer exists.");
+    }
+    if (filter?.kind !== undefined && !isRelationKind(filter.kind)) {
+      throw new RelationError("invalid_relation", "That relation is not valid: unknown relation kind.");
+    }
+    return relations.filter((r) => touches(r, objectId, filter?.direction ?? "any") && (filter?.kind === undefined || r.kind === filter.kind));
   };
 
   return {
@@ -140,7 +225,70 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       runs.unshift({ captureId, objects });
       return Promise.resolve([...objects]);
     },
-    listKnowledgeObjects: () => Promise.resolve(runs.flatMap((run) => run.objects)),
+    listKnowledgeObjects: () => Promise.resolve(allObjects()),
+
+    createRelation: (input) => {
+      try {
+        const [only] = commitRelations([input], "user", "invalid_relation");
+        return Promise.resolve(only!.relation);
+      } catch (failure) {
+        return Promise.reject(failure);
+      }
+    },
+    listRelations: () => Promise.resolve([...relations]),
+    getObjectRelations: (objectId, filter) => {
+      try {
+        return Promise.resolve(relationsOf(objectId, filter));
+      } catch (failure) {
+        return Promise.reject(failure);
+      }
+    },
+    getObjectNeighbors: (objectId, filter) => {
+      try {
+        const neighborIds = new Set(relationsOf(objectId, filter).map((r) => (r.sourceObjectId === objectId ? r.targetObjectId : r.sourceObjectId)));
+        return Promise.resolve(allObjects().filter((object) => neighborIds.has(object.id)));
+      } catch (failure) {
+        return Promise.reject(failure);
+      }
+    },
+    inferRelations: (objectIds) => {
+      try {
+        if (inference.error) {
+          const failure = inference.error;
+          if (inference.once) delete inference.error;
+          throw failure;
+        }
+        // Candidate set: requested objects first, then the most recent others, up to the hard limit.
+        const everything = allObjects();
+        const requested = new Set(objectIds ?? []);
+        if (requested.size > MAX_INFERENCE_CANDIDATES) throw new RelationError("invalid_relation", "That relation is not valid: too many objects requested.");
+        if ([...requested].some((id) => !everything.some((object) => object.id === id))) {
+          throw new RelationError("object_not_found", "One of those knowledge objects no longer exists.");
+        }
+        let room = MAX_INFERENCE_CANDIDATES - requested.size;
+        const candidates = everything.filter((object) => requested.has(object.id) || (room > 0 && (room -= 1, true)));
+        if (candidates.length < 2) return Promise.resolve([]);
+
+        const ids = new Set(candidates.map((object) => object.id));
+        const existing = relations.filter((r) => ids.has(r.sourceObjectId) && ids.has(r.targetObjectId));
+        const proposals = inference.proposals?.(candidates, existing) ?? [];
+
+        // Never trust the model: any bad proposal rejects the whole set.
+        const untrusted = (reason: string): never => {
+          throw new RelationError("llm_invalid_output", `The language model returned something that could not be trusted (${reason}). Nothing was saved. Try again.`);
+        };
+        if (proposals.length > MAX_RELATIONS_PER_INFERENCE) untrusted("too many relations");
+        const valid = proposals.map((proposal, index) => {
+          if (!isRelationKind(proposal.kind)) return untrusted(`relation ${index}: unknown relation kind`);
+          if (!ids.has(proposal.sourceObjectId) || !ids.has(proposal.targetObjectId)) return untrusted(`relation ${index}: refers to an object that was not supplied`);
+          return { kind: proposal.kind, sourceObjectId: proposal.sourceObjectId, targetObjectId: proposal.targetObjectId };
+        });
+        const added = commitRelations(valid, "model", "llm_invalid_output").filter((item) => item.created);
+        return Promise.resolve(added.map((item) => item.relation));
+      } catch (failure) {
+        return Promise.reject(failure);
+      }
+    },
   };
 }
 
