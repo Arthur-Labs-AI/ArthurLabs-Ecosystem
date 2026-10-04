@@ -16,6 +16,11 @@ export interface CapturesState {
   startVoice: () => Promise<void>;
   /** Stops recording and waits for the transcript to be saved as a capture. */
   stopVoice: () => Promise<void>;
+  /**
+   * Runs `listener` once for every capture that was durably saved (typed or voice), AFTER it is persisted and shown.
+   * A listener can never fail or delay a capture: its errors are swallowed here. Returns the unsubscribe function.
+   */
+  subscribe: (listener: (capture: Capture) => void) => () => void;
 }
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
@@ -55,10 +60,26 @@ export function useCapturesState(): CapturesState {
     };
   }, [client]);
 
+  const listeners = useRef(new Set<(capture: Capture) => void>());
+  const subscribe = useCallback((listener: (capture: Capture) => void) => {
+    listeners.current.add(listener);
+    return () => {
+      listeners.current.delete(listener);
+    };
+  }, []);
+
   const addCapture = useCallback((created: Capture) => {
     setCaptures((current) => [created, ...current]);
     setError(null);
     setStatus("ready");
+    // The capture is persisted and visible. Whatever follows (auto-organizing) must never be able to undo or fail it.
+    for (const listener of [...listeners.current]) {
+      try {
+        listener(created);
+      } catch {
+        /* a subscriber's problem is not the capture's */
+      }
+    }
   }, []);
 
   const save = useCallback(
@@ -120,5 +141,5 @@ export function useCapturesState(): CapturesState {
     };
   }, [client, changeVoiceState]);
 
-  return { status, captures, saving, error, save, voiceState, startVoice, stopVoice };
+  return { status, captures, saving, error, save, voiceState, startVoice, stopVoice, subscribe };
 }

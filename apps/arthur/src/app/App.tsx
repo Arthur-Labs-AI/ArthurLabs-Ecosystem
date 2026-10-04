@@ -1,18 +1,22 @@
-import { CapturePanel } from "../features/capture/CapturePanel";
-import { GraphPanel } from "../features/graph/GraphPanel";
-import { LineagePanel } from "../features/lineage/LineagePanel";
-import { KnowledgePanel } from "../features/knowledge/KnowledgePanel";
-import { RuntimePanel } from "../features/settings/RuntimePanel";
-import { AppLayout } from "./layout";
+import { CaptureDialog } from "../features/capture/CaptureDialog";
+import { ConnectionsScreen } from "../features/graph/ConnectionsScreen";
+import { HomeScreen } from "../features/home/HomeScreen";
+import { IdeasScreen } from "../features/ideas/IdeasScreen";
+import { EvolutionScreen } from "../features/lineage/EvolutionScreen";
+import { SettingsScreen } from "../features/settings/SettingsScreen";
+import { useNavigation } from "./navigation";
+import { Shell } from "./Shell";
 
 export function App() {
+  const { screen } = useNavigation();
   return (
-    <AppLayout>
-      <CapturePanel />
-      <KnowledgePanel />
-      <LineagePanel />
-      <GraphPanel />
-      <RuntimePanel />
-    </AppLayout>
+    <Shell>
+      {screen === "home" && <HomeScreen />}
+      {screen === "ideas" && <IdeasScreen />}
+      {screen === "connections" && <ConnectionsScreen />}
+      {screen === "evolution" && <EvolutionScreen />}
+      {screen === "settings" && <SettingsScreen />}
+      <CaptureDialog />
+    </Shell>
   );
 }

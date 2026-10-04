@@ -12,7 +12,8 @@ export interface GraphState {
   notice: string | null;
   error: string | null;
   refresh: () => Promise<void>;
-  infer: () => Promise<void>;
+  /** Asks the model to propose connections; `objectIds` widens the candidate set to include those objects. */
+  infer: (objectIds?: string[]) => Promise<void>;
   /** Resolves true when the relation was stored. */
   create: (input: CreateRelationInput) => Promise<boolean>;
 }
@@ -59,14 +60,14 @@ export function useGraph(): GraphState {
     }
   }, [client]);
 
-  const infer = useCallback(async () => {
+  const infer = useCallback(async (objectIds?: string[]) => {
     if (inferring) return;
     setInferring(true);
     setError(null);
     setNotice(null);
     try {
-      const added = await client.inferRelations();
-      setNotice(added.length === 0 ? "No new relations found." : `Added ${added.length} ${added.length === 1 ? "relation" : "relations"}.`);
+      const added = await client.inferRelations(objectIds);
+      setNotice(added.length === 0 ? "No new connections found." : `Added ${added.length} ${added.length === 1 ? "connection" : "connections"}.`);
       await refresh();
     } catch (failure) {
       setError(messageOf(failure));
@@ -83,7 +84,7 @@ export function useGraph(): GraphState {
       setNotice(null);
       try {
         await client.createRelation(input);
-        setNotice("Relation saved.");
+        setNotice("Connection saved.");
         await refresh();
         return true;
       } catch (failure) {

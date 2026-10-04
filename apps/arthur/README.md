@@ -7,9 +7,11 @@ One shared UI for Linux, Windows and (later) Android; macOS and iOS after that.
 
 ```text
 src/                  React UI (platform-independent)
-  app/                providers, layout, App
+  app/                providers, navigation, shell (rail + global Capture), App, design tokens (app/styles)
+  assets/fonts/       bundled Newsreader, Hanken Grotesk and their Cyrillic fallbacks (OFL licences alongside)
   client/             ArthurClient interface + desktop / mobile / preview implementations
-  features/           one folder per product area (capture/, knowledge/, graph/, lineage/, settings/)
+  components/         shared presentational pieces (icons, kind glyphs, margin, source quote, relation art, time wording)
+  features/           one folder per product area (capture/, home/, ideas/, knowledge/, graph/, lineage/, settings/)
   hooks/              shared hooks (useArthurClient)
 src-tauri/            Rust native layer
   src/commands/       Tauri commands exposed to the UI
@@ -26,6 +28,31 @@ src-tauri/            Rust native layer
 
 Shared data shapes live in [`packages/contracts`](../../packages/contracts) and
 are imported as `@arthur/contracts`.
+
+## Desktop UI ("Marginalia")
+
+The UI implements the frozen design specification in [`docs/design/exploration`](../../docs/design/exploration)
+(read its README first). Deviations from it, and why, are in
+[`docs/design/implementation-notes.md`](../../docs/design/implementation-notes.md).
+
+Screens: **Home** (composer, today's captures grouped by capture, a connected-thinking preview, recently evolving),
+**Ideas** (list + inspector), **Connections** (the map), **Evolution** (revision rail), **Settings**. Capture is a global
+action (Ctrl/⌘ N), not a screen.
+
+**Auto-organize.** After a Capture is persisted (typed or voice), the UI starts distilling it. The order and guarantees:
+
+1. `createCapture` / `finishVoiceCapture` persist the raw Capture first. Nothing else has happened yet.
+2. Only after that resolves does `AutoOrganize` ask `useKnowledge().distill(captureId)`. It is a subscriber that cannot fail or
+   delay a capture (its errors are swallowed in `useCaptures`).
+3. Requests are served one at a time, in order. Home shows "Arthur is organizing…" (or "Waiting to organize…").
+4. A failure becomes that capture's retryable job ("Couldn't organize this capture. Your words are saved."). The Capture is
+   untouched. The UI never builds a knowledge object: it only shows what `listKnowledgeObjects` returns, so a failed or
+   untrustworthy run leaves no partial objects (the native distillation is all-or-nothing).
+5. Captures that already existed when the app opened are **not** organized automatically. They show "Not organized yet" with
+   an Organize button.
+
+Colour means a relation or a state, never a category: idea kinds are shapes, relation kinds are line geometry
+(`RELATION_GEOMETRY`), the single accent marks current / focus / selection. Do not add colour per kind.
 
 ## Rules
 
@@ -90,11 +117,11 @@ Captures are stored by the native layer in SQLite (`arthur.db` in the app data
 directory; on Android `/data/user/0/dev.kaloyan.arthur/arthur.db`, app-private).
 The schema is versioned with `PRAGMA user_version` and created on first launch.
 This is app-local storage, not the future Home Node Cognitive Store. The UI never
-touches it: `CapturePanel` -> `ArthurClient` -> Tauri command -> `src-tauri/src/storage`.
+touches it: `CaptureComposer` -> `ArthurClient` -> Tauri command -> `src-tauri/src/storage`.
 
 ## Voice capture (Android)
 
-`CapturePanel` -> `ArthurClient.startVoiceCapture / finishVoiceCapture` -> mobile client ->
+`CaptureComposer` -> `ArthurClient.startVoiceCapture / finishVoiceCapture` -> mobile client ->
 Tauri commands -> `audio::VoiceCaptureService` -> Kotlin `AudioPlugin` (microphone) and
 `stt::OpenAiTranscriber` (cloud) -> `CaptureStore` as a `source: "voice"` capture.
 
@@ -147,7 +174,7 @@ PipeWire host, so injection is the reliable route.
 
 ## Thought Distillation
 
-`KnowledgePanel` -> `ArthurClient.distillCapture / listKnowledgeObjects` -> Tauri commands ->
+`AutoOrganize` / `useKnowledge` -> `ArthurClient.distillCapture / listKnowledgeObjects` -> Tauri commands ->
 `distillation::DistillationService` -> cloud LLM (candidates only) -> deterministic resolver ->
 `CaptureStore.record_distillation` (one transaction).
 
@@ -201,7 +228,7 @@ cannot change the output format, escape provenance, or add content the capture d
 
 ## Cognitive Graph
 
-`GraphPanel` -> `ArthurClient.createRelation / listRelations / getObjectRelations / getObjectNeighbors /
+`ConnectionsScreen` -> `ArthurClient.createRelation / listRelations / getObjectRelations / getObjectNeighbors /
 inferRelations` -> Tauri commands -> `storage::relation_store` (manual) or
 `graph::GraphService` -> cloud LLM (propose, then verify) -> deterministic validation -> `record_relations` (one transaction).
 
@@ -351,7 +378,7 @@ edge, and accepts `ARTHUR_LIVE_PROPOSER_MODEL` / `ARTHUR_LIVE_VERIFIER_MODEL` to
 
 ## Thought Lineage
 
-`LineagePanel` -> `ArthurClient.getObjectLineage / updateKnowledgeObject / createRevisionFrom / mergeRevisions /
+`EvolutionScreen` -> `ArthurClient.getObjectLineage / updateKnowledgeObject / createRevisionFrom / mergeRevisions /
 diffRevisions / ...` -> Tauri commands -> `storage::lineage_store` (the only code that writes revisions) and
 `lineage::diff` (the deterministic diff).
 
@@ -428,7 +455,9 @@ implementation (`lineage/diff.rs`) are both tested against one fixture file, `te
 rewrites or re-targets a relation, and nothing re-runs graph inference. A relation can therefore become semantically stale
 after an object's text changes (for example an `extends` that no longer holds); reconciling that is future work.
 
-**UI.** `LineagePanel`: pick an object; a compact revision DAG (arrows run parent -> child; the current revision has a heavy
-ring and a "current" label); a text list of the same revisions (with merge tick-boxes); the selected revision's kind, title,
-body, origin, provenance (or an explicit "no direct Capture source"), parents, and the diff against each parent; and forms to edit
-(a new current revision), branch from the selected revision (not current) and merge the ticked ones.
+**UI.** `EvolutionScreen`: pick an idea in the list; a left-to-right rail of its revisions in lanes (the line of thought, then
+branches; right-angle rails run parent -> child; the current revision is filled and labelled "current"); the selected
+revision's kind, title, body, origin, provenance (or an explicit "no capture source"), parents, and the diff against each parent
+(a merge can be compared with each parent in turn); and Revise (a new current revision), Branch from the selected revision (not
+current) and Merge (select two or more revisions on the rail). Captions under each revision are derived from the diff
+(`+15 −0 words · title`); revisions carry no message, so none is invented.

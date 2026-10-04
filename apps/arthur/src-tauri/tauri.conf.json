@@ -13,9 +13,11 @@
     "windows": [
       {
         "label": "main",
-        "title": "A.R.T.H.U.R.",
-        "width": 1100,
-        "height": 760
+        "title": "Arthur",
+        "width": 1280,
+        "minWidth": 1000,
+        "height": 800,
+        "minHeight": 640
       }
     ],
     "security": {
