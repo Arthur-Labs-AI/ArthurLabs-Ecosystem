@@ -47,6 +47,8 @@ pub enum StoreError {
     Invalid(String),
     /// The caller referred to a knowledge object that does not exist.
     NotFound(String),
+    /// The caller referred to a revision that does not exist.
+    MissingRevision(String),
     /// The database holds data this version cannot safely interpret.
     Corrupt(String),
     Database(rusqlite::Error),
@@ -58,6 +60,7 @@ impl fmt::Display for StoreError {
         match self {
             StoreError::Invalid(message) => write!(f, "invalid capture: {message}"),
             StoreError::NotFound(message) => write!(f, "not found: {message}"),
+            StoreError::MissingRevision(message) => write!(f, "revision not found: {message}"),
             StoreError::Corrupt(message) => write!(f, "capture database is unreadable: {message}"),
             StoreError::Database(error) => write!(f, "capture database error: {error}"),
             StoreError::Poisoned => write!(f, "capture store is unavailable"),
@@ -289,7 +292,7 @@ mod tests {
             let connection = Connection::open(&path).unwrap();
             connection
                 .execute_batch(
-                    "CREATE TABLE captures (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT, source TEXT, content TEXT, created_at TEXT);
+                    "CREATE TABLE captures (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE, source TEXT, content TEXT, created_at TEXT);
                      INSERT INTO captures (id, source, content, created_at) VALUES ('x1', 'carrier-pigeon', 'hi', 'not a date');
                      PRAGMA user_version = 1;",
                 )

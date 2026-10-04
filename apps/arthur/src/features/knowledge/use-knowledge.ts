@@ -12,6 +12,8 @@ export interface KnowledgeState {
   emptyResults: ReadonlySet<string>;
   error: string | null;
   distill: (captureId: string) => Promise<void>;
+  /** Re-reads the objects, e.g. after an edit changed their current text. */
+  refresh: () => Promise<void>;
 }
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
@@ -64,5 +66,14 @@ export function useKnowledgeState(): KnowledgeState {
     [client, distilling],
   );
 
-  return { status, objects, distilling, emptyResults, error, distill };
+  const refresh = useCallback(async () => {
+    try {
+      setObjects(await client.listKnowledgeObjects());
+      setStatus("ready");
+    } catch (failure) {
+      setError(messageOf(failure));
+    }
+  }, [client]);
+
+  return { status, objects, distilling, emptyResults, error, distill, refresh };
 }

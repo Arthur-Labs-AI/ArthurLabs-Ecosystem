@@ -90,14 +90,129 @@ CREATE INDEX relations_by_source ON relations(source_object_id);
 CREATE INDEX relations_by_target ON relations(target_object_id);
 ";
 
+/// v4 (M03): Thought Lineage. A DAG of immutable revisions per knowledge object.
+///
+/// AUTHORITY. `thought_revisions` is the history; `knowledge_objects.current_revision_id` says which revision the
+/// object currently is. The object's kind/title/body columns stay (every existing read path keeps working) as a
+/// PROJECTION of that revision. A trigger refuses any write that would make them differ from it, and reads verify it
+/// again, so the two cannot drift.
+///
+/// SEPARATE FROM the graph (`relations`) and from Capture provenance (`object_sources`): a revision never
+/// references a relation, and a revision's own `capture_id` span is set only when that revision's text was
+/// genuinely interpreted from that Capture.
+///
+/// BOOTSTRAP. Every existing object gets exactly one initial revision, derived deterministically in SQL: its id is
+/// the object's id with the UUID version nibble set to 8 (a valid UUID, unique because the mapping is injective),
+/// so re-deriving it always yields the same id, it needs no random source, and nothing depends on migration order.
+/// Its content, timestamp and source span are copied from the object and `object_sources`; nothing existing is
+/// modified except the new `current_revision_id` pointer.
+pub const SCHEMA_V4: &str = "
+CREATE TABLE thought_revisions (
+    seq          INTEGER PRIMARY KEY AUTOINCREMENT,
+    id           TEXT    NOT NULL UNIQUE CHECK (length(id) > 0),
+    object_id    TEXT    NOT NULL REFERENCES knowledge_objects(id) ON DELETE CASCADE,
+    kind         TEXT    NOT NULL CHECK (kind IN ('idea', 'task', 'decision', 'question', 'note')),
+    title        TEXT    NOT NULL CHECK (length(trim(title)) > 0),
+    body         TEXT    NOT NULL CHECK (length(trim(body)) > 0),
+    origin       TEXT    NOT NULL CHECK (origin IN ('initial', 'user_edit', 'distillation', 'merge', 'system')),
+    created_at   TEXT    NOT NULL CHECK (length(created_at) > 0),
+    -- Where THIS revision's text came from in a raw capture, if it genuinely did. All three or none.
+    capture_id   TEXT    REFERENCES captures(id),
+    source_start INTEGER,
+    source_end   INTEGER,
+    CHECK (
+        (capture_id IS NULL AND source_start IS NULL AND source_end IS NULL)
+        OR (capture_id IS NOT NULL AND source_start >= 0 AND source_end > source_start)
+    )
+);
+
+CREATE INDEX thought_revisions_by_object ON thought_revisions(object_id, seq);
+-- An object has exactly one root.
+CREATE UNIQUE INDEX one_initial_revision_per_object ON thought_revisions(object_id) WHERE origin = 'initial';
+
+CREATE TABLE revision_parents (
+    child_revision_id  TEXT NOT NULL REFERENCES thought_revisions(id) ON DELETE CASCADE,
+    parent_revision_id TEXT NOT NULL REFERENCES thought_revisions(id) ON DELETE CASCADE,
+    PRIMARY KEY (child_revision_id, parent_revision_id),
+    CHECK (child_revision_id <> parent_revision_id)
+) WITHOUT ROWID;
+
+CREATE INDEX revision_parents_by_parent ON revision_parents(parent_revision_id);
+
+ALTER TABLE knowledge_objects ADD COLUMN current_revision_id TEXT REFERENCES thought_revisions(id);
+
+-- Bootstrap: one initial revision per existing object, in object order.
+INSERT INTO thought_revisions (id, object_id, kind, title, body, origin, created_at, capture_id, source_start, source_end)
+SELECT substr(o.id, 1, 14) || '8' || substr(o.id, 16), o.id, o.kind, o.title, o.body, 'initial', o.created_at,
+       s.capture_id, s.source_start, s.source_end
+FROM knowledge_objects o
+LEFT JOIN object_sources s ON s.object_id = o.id
+ORDER BY o.seq;
+
+UPDATE knowledge_objects SET current_revision_id = substr(id, 1, 14) || '8' || substr(id, 16);
+
+-- History is append-only.
+CREATE TRIGGER thought_revisions_are_immutable BEFORE UPDATE ON thought_revisions
+BEGIN
+    SELECT RAISE(ABORT, 'revisions are immutable');
+END;
+
+CREATE TRIGGER revision_parents_are_immutable BEFORE UPDATE ON revision_parents
+BEGIN
+    SELECT RAISE(ABORT, 'revision parents are immutable');
+END;
+
+-- A parent belongs to the same object as its child, and is OLDER than it. Because every edge points to an older
+-- revision, a cycle is structurally impossible; the explicit cycle check below says so in words and also
+-- covers a faulty writer that disables the ordering.
+CREATE TRIGGER revision_parents_same_object BEFORE INSERT ON revision_parents
+WHEN (SELECT object_id FROM thought_revisions WHERE id = NEW.child_revision_id)
+     IS NOT (SELECT object_id FROM thought_revisions WHERE id = NEW.parent_revision_id)
+BEGIN
+    SELECT RAISE(ABORT, 'a parent revision must belong to the same object');
+END;
+
+CREATE TRIGGER revision_parents_parent_is_older BEFORE INSERT ON revision_parents
+WHEN (SELECT seq FROM thought_revisions WHERE id = NEW.parent_revision_id)
+     >= (SELECT seq FROM thought_revisions WHERE id = NEW.child_revision_id)
+BEGIN
+    SELECT RAISE(ABORT, 'a parent revision must be older than its child');
+END;
+
+CREATE TRIGGER revision_parents_are_acyclic BEFORE INSERT ON revision_parents
+WHEN EXISTS (
+    WITH RECURSIVE descendants(id) AS (
+        SELECT NEW.child_revision_id
+        UNION
+        SELECT p.child_revision_id FROM revision_parents p JOIN descendants d ON p.parent_revision_id = d.id
+    )
+    SELECT 1 FROM descendants WHERE id = NEW.parent_revision_id
+)
+BEGIN
+    SELECT RAISE(ABORT, 'a revision cannot be its own ancestor');
+END;
+
+-- The projection guard: an object's kind/title/body always equal its current revision, which belongs to it.
+CREATE TRIGGER knowledge_objects_equal_their_current_revision
+BEFORE UPDATE OF kind, title, body, current_revision_id ON knowledge_objects
+WHEN NOT EXISTS (
+    SELECT 1 FROM thought_revisions r
+    WHERE r.id = NEW.current_revision_id AND r.object_id = NEW.id
+      AND r.kind = NEW.kind AND r.title = NEW.title AND r.body = NEW.body
+)
+BEGIN
+    SELECT RAISE(ABORT, 'an object must equal its current revision');
+END;
+";
+
 pub type Step = (i64, &'static str);
 
 /// Ordered migration steps: `(version after the step, SQL)`.
-pub const STEPS: [Step; 3] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3)];
+pub const STEPS: [Step; 4] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4)];
 
 /// The version `STEPS` ends at; asserted against `STEPS` by a test.
 #[cfg(test)]
-pub const SCHEMA_VERSION: i64 = 3;
+pub const SCHEMA_VERSION: i64 = 4;
 
 pub fn migrate(connection: &mut Connection) -> Result<(), StoreError> {
     migrate_with(connection, &STEPS)
@@ -208,7 +323,7 @@ mod tests {
         let store = CaptureStore::open(&path).unwrap();
 
         let connection = Connection::open(&path).unwrap();
-        assert_eq!(user_version(&connection), 3);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION);
         assert_eq!(dump(&connection), before, "captures, objects and provenance are byte-for-byte unchanged");
         assert!(has_object(&connection, "table", "relations"));
         for index in ["relations_by_source", "relations_by_target"] {
@@ -271,19 +386,141 @@ mod tests {
     }
 
     #[test]
-    fn a_database_newer_than_v3_is_refused_untouched() {
+    fn a_database_newer_than_the_latest_is_refused_untouched() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
         v2_database(&path);
-        Connection::open(&path).unwrap().pragma_update(None, "user_version", 4).unwrap();
+        Connection::open(&path).unwrap().pragma_update(None, "user_version", SCHEMA_VERSION + 1).unwrap();
         let before = dump(&Connection::open(&path).unwrap());
 
         assert!(matches!(CaptureStore::open(&path), Err(StoreError::Corrupt(_))));
 
         let connection = Connection::open(&path).unwrap();
-        assert_eq!(user_version(&connection), 4);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION + 1);
         assert!(!has_object(&connection, "table", "relations"));
         assert_eq!(dump(&connection), before);
+    }
+
+    /// A database exactly as M02/M02.1 left it: schema v3 with captures, objects, provenance and graph relations.
+    fn v3_database(path: &std::path::Path) {
+        v2_database(path);
+        let connection = Connection::open(path).unwrap();
+        connection
+            .execute_batch(&format!(
+                "{SCHEMA_V3}
+                 INSERT INTO relations (id, kind, source_object_id, target_object_id, origin, created_at) VALUES ('rel-1', 'extends', '22222222-2222-4222-8222-222222222222', '11111111-1111-4111-8111-111111111111', 'user', '2026-10-04T10:10:00Z');
+                 INSERT INTO relations (id, kind, source_object_id, target_object_id, origin, created_at) VALUES ('rel-2', 'related_to', '11111111-1111-4111-8111-111111111111', '33333333-3333-4333-8333-333333333333', 'model', '2026-10-04T10:11:00Z');
+                 PRAGMA user_version = 3;"
+            ))
+            .unwrap();
+    }
+
+    fn relations_dump(connection: &Connection) -> Vec<String> {
+        let mut statement = connection.prepare("SELECT id || '|' || kind || '|' || source_object_id || '|' || target_object_id || '|' || origin || '|' || created_at FROM relations ORDER BY seq").unwrap();
+        statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|r| r.unwrap()).collect()
+    }
+
+    #[test]
+    fn a_v3_database_upgrades_to_v4_and_gives_every_object_exactly_one_initial_revision() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v3_database(&path);
+        let (before, before_relations) = {
+            let connection = Connection::open(&path).unwrap();
+            assert_eq!(user_version(&connection), 3);
+            (dump(&connection), relations_dump(&connection))
+        };
+
+        let store = CaptureStore::open(&path).unwrap();
+
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 4);
+        assert_eq!(dump(&connection), before, "captures, runs, objects and provenance are unchanged");
+        assert_eq!(relations_dump(&connection), before_relations, "graph relations are unchanged");
+        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(integrity, "ok");
+        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(violations, 0);
+        for table in ["thought_revisions", "revision_parents"] {
+            assert!(has_object(&connection, "table", table), "{table}");
+        }
+        for index in ["thought_revisions_by_object", "revision_parents_by_parent", "one_initial_revision_per_object"] {
+            assert!(has_object(&connection, "index", index), "{index}");
+        }
+
+        // Exactly one initial revision per object, deterministic id, copied content, time and source span.
+        let objects: i64 = connection.query_row("SELECT count(*) FROM knowledge_objects", [], |r| r.get(0)).unwrap();
+        let revisions: i64 = connection.query_row("SELECT count(*) FROM thought_revisions", [], |r| r.get(0)).unwrap();
+        assert_eq!((objects, revisions), (3, 3));
+        let mismatched: i64 = connection
+            .query_row(
+                "SELECT count(*) FROM knowledge_objects o
+                 LEFT JOIN thought_revisions r ON r.id = o.current_revision_id
+                 LEFT JOIN object_sources s ON s.object_id = o.id
+                 WHERE r.id IS NULL OR r.object_id <> o.id OR r.origin <> 'initial'
+                    OR r.id <> substr(o.id, 1, 14) || '8' || substr(o.id, 16)
+                    OR r.kind <> o.kind OR r.title <> o.title OR r.body <> o.body OR r.created_at <> o.created_at
+                    OR r.capture_id IS NOT s.capture_id OR r.source_start IS NOT s.source_start OR r.source_end IS NOT s.source_end",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(mismatched, 0);
+        let parents: i64 = connection.query_row("SELECT count(*) FROM revision_parents", [], |r| r.get(0)).unwrap();
+        assert_eq!(parents, 0, "initial revisions have no parents");
+        // The existing reads still work on the upgraded data.
+        assert_eq!(store.list_knowledge_objects().unwrap().len(), 3);
+        assert_eq!(store.list_relations().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn the_bootstrap_is_deterministic_idempotent_and_survives_repeated_opens() {
+        let revision_rows = |path: &std::path::Path| -> Vec<String> {
+            let connection = Connection::open(path).unwrap();
+            let mut statement = connection.prepare("SELECT id || '|' || object_id || '|' || origin || '|' || created_at || '|' || ifnull(capture_id, '-') FROM thought_revisions ORDER BY seq").unwrap();
+            statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|r| r.unwrap()).collect()
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let (first, second) = (dir.path().join("a.db"), dir.path().join("b.db"));
+        v3_database(&first);
+        v3_database(&second);
+        CaptureStore::open(&first).unwrap();
+        CaptureStore::open(&second).unwrap();
+        assert_eq!(revision_rows(&first), revision_rows(&second), "two independent migrations derive identical revisions");
+
+        let once = revision_rows(&first);
+        for _ in 0..4 {
+            CaptureStore::open(&first).unwrap();
+        }
+        assert_eq!(revision_rows(&first), once, "re-opening never adds or changes a revision");
+        assert_eq!(user_version(&Connection::open(&first).unwrap()), 4);
+    }
+
+    #[test]
+    fn a_failing_v4_upgrade_rolls_back_completely_and_leaves_v3_usable() {
+        for blocker in ["CREATE TABLE thought_revisions (precious TEXT); INSERT INTO thought_revisions VALUES ('keep me');", "CREATE TABLE revision_parents (precious TEXT); INSERT INTO revision_parents VALUES ('keep me');"] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("arthur.db");
+            v3_database(&path);
+            let before = {
+                let connection = Connection::open(&path).unwrap();
+                connection.execute_batch(blocker).unwrap();
+                (dump(&connection), relations_dump(&connection))
+            };
+
+            assert!(CaptureStore::open(&path).is_err(), "{blocker}");
+
+            let connection = Connection::open(&path).unwrap();
+            assert_eq!(user_version(&connection), 3, "still v3");
+            assert_eq!((dump(&connection), relations_dump(&connection)), before, "nothing of the failed step survived");
+            for trigger in ["knowledge_objects_equal_their_current_revision", "thought_revisions_are_immutable", "revision_parents_are_acyclic"] {
+                assert!(!has_object(&connection, "trigger", trigger), "{trigger} was rolled back");
+            }
+            let has_pointer: i64 = connection.query_row("SELECT count(*) FROM pragma_table_info('knowledge_objects') WHERE name = 'current_revision_id'", [], |r| r.get(0)).unwrap();
+            assert_eq!(has_pointer, 0, "the new column was rolled back too");
+            // v3 is still fully writable.
+            connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('c3', 'text', 'still works', '2026-10-04T11:00:00Z')", []).unwrap();
+        }
     }
 
     #[test]

@@ -2,6 +2,10 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   describeCreateCaptureInputProblem,
   describeCreateRelationInputProblem,
+  isLineageErrorPayload,
+  isObjectLineage,
+  isRevisionDiff,
+  isThoughtRevision,
   isCapture,
   isCognitiveRelation,
   isDistillationErrorPayload,
@@ -13,11 +17,17 @@ import {
   type CognitiveRelation,
   type CreateCaptureInput,
   type CreateRelationInput,
+  type CreateRevisionInput,
+  type MergeRevisionsInput,
+  type ObjectLineage,
+  type RevisionChanges,
+  type RevisionDiff,
+  type ThoughtRevision,
   type KnowledgeObject,
   type RelationFilter,
   type RuntimeInfo,
 } from "@arthur/contracts";
-import { DistillationError, RelationError, VoiceCaptureError } from "./arthur-client";
+import { DistillationError, LineageError, RelationError, VoiceCaptureError } from "./arthur-client";
 
 /**
  * The single module allowed to import `@tauri-apps/*`.
@@ -183,4 +193,112 @@ export async function inferRelationsOverIpc(objectIds: string[] | undefined, cal
     throw new Error("Invalid object ids");
   }
   return readRelations(await relationCall("infer_relations", objectIds === undefined ? undefined : { objectIds }, call));
+}
+
+// --- Thought Lineage ---------------------------------------------------------------------------------------------
+
+/** The native layer rejects lineage failures with `{ code, message }`; anything else is passed through. */
+async function lineageCall(command: string, args: Record<string, unknown> | undefined, call: Invoke): Promise<unknown> {
+  try {
+    return await call(command, args);
+  } catch (failure) {
+    if (isLineageErrorPayload(failure)) throw new LineageError(failure.code, failure.message);
+    throw failure;
+  }
+}
+
+const requireId = (value: unknown, what: string): string => {
+  if (typeof value !== "string" || value.length === 0) throw new Error(`Invalid ${what}`);
+  return value;
+};
+
+/** Only the contract fields are sent, so a caller cannot smuggle in an id, a timestamp, an origin or provenance. */
+function changesArgs(changes: RevisionChanges): RevisionChanges {
+  if (typeof changes !== "object" || changes === null) throw new LineageError("invalid_revision", "That revision is not valid: changes must be an object.");
+  return {
+    ...(changes.kind !== undefined ? { kind: changes.kind } : {}),
+    ...(changes.title !== undefined ? { title: changes.title } : {}),
+    ...(changes.body !== undefined ? { body: changes.body } : {}),
+  };
+}
+
+function readRevision(payload: unknown): ThoughtRevision {
+  if (!isThoughtRevision(payload)) throw new Error("Native layer returned an invalid revision");
+  return payload;
+}
+
+function readRevisions(payload: unknown): ThoughtRevision[] {
+  if (!Array.isArray(payload) || !payload.every(isThoughtRevision)) throw new Error("Native layer returned invalid revisions");
+  return payload;
+}
+
+export async function getObjectLineageOverIpc(objectId: string, call: Invoke = invoke): Promise<ObjectLineage> {
+  const payload = await lineageCall("get_object_lineage", { objectId: requireId(objectId, "object id") }, call);
+  if (!isObjectLineage(payload)) throw new Error("Native layer returned an invalid lineage");
+  return payload;
+}
+
+export async function listRevisionsOverIpc(objectId: string, call: Invoke = invoke): Promise<ThoughtRevision[]> {
+  return readRevisions(await lineageCall("list_revisions", { objectId: requireId(objectId, "object id") }, call));
+}
+
+export async function getRevisionOverIpc(revisionId: string, call: Invoke = invoke): Promise<ThoughtRevision> {
+  return readRevision(await lineageCall("get_revision", { revisionId: requireId(revisionId, "revision id") }, call));
+}
+
+export async function getRevisionParentsOverIpc(revisionId: string, call: Invoke = invoke): Promise<ThoughtRevision[]> {
+  return readRevisions(await lineageCall("get_revision_parents", { revisionId: requireId(revisionId, "revision id") }, call));
+}
+
+export async function getRevisionChildrenOverIpc(revisionId: string, call: Invoke = invoke): Promise<ThoughtRevision[]> {
+  return readRevisions(await lineageCall("get_revision_children", { revisionId: requireId(revisionId, "revision id") }, call));
+}
+
+export async function updateKnowledgeObjectOverIpc(objectId: string, changes: RevisionChanges, call: Invoke = invoke): Promise<ThoughtRevision> {
+  return readRevision(await lineageCall("update_knowledge_object", { objectId: requireId(objectId, "object id"), changes: changesArgs(changes) }, call));
+}
+
+export async function createRevisionFromOverIpc(input: CreateRevisionInput, call: Invoke = invoke): Promise<ThoughtRevision> {
+  return readRevision(
+    await lineageCall(
+      "create_revision_from",
+      {
+        input: {
+          objectId: requireId(input?.objectId, "object id"),
+          parentRevisionId: requireId(input?.parentRevisionId, "revision id"),
+          changes: changesArgs(input.changes),
+          ...(input.makeCurrent !== undefined ? { makeCurrent: input.makeCurrent === true } : {}),
+        },
+      },
+      call,
+    ),
+  );
+}
+
+export async function mergeRevisionsOverIpc(input: MergeRevisionsInput, call: Invoke = invoke): Promise<ThoughtRevision> {
+  const parents = input?.parentRevisionIds;
+  if (!Array.isArray(parents) || parents.length < 2 || parents.some((id) => typeof id !== "string" || id.length === 0)) {
+    throw new LineageError("invalid_revision", "That revision is not valid: a merge needs two or more parent revisions.");
+  }
+  const { kind, title, body } = input.result ?? ({} as MergeRevisionsInput["result"]);
+  return readRevision(
+    await lineageCall(
+      "merge_revisions",
+      {
+        input: {
+          objectId: requireId(input.objectId, "object id"),
+          parentRevisionIds: parents,
+          result: { kind, title, body },
+          ...(input.makeCurrent !== undefined ? { makeCurrent: input.makeCurrent === true } : {}),
+        },
+      },
+      call,
+    ),
+  );
+}
+
+export async function diffRevisionsOverIpc(oldRevisionId: string, newRevisionId: string, call: Invoke = invoke): Promise<RevisionDiff> {
+  const payload = await lineageCall("diff_revisions", { oldRevisionId: requireId(oldRevisionId, "revision id"), newRevisionId: requireId(newRevisionId, "revision id") }, call);
+  if (!isRevisionDiff(payload)) throw new Error("Native layer returned an invalid diff");
+  return payload;
 }

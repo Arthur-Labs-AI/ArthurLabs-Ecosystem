@@ -16,17 +16,21 @@ import {
   CAPTURE_SOURCE_KINDS,
   DISTILLATION_ERROR_CODES,
   KNOWLEDGE_OBJECT_KINDS,
+  LINEAGE_ERROR_CODES,
   MAX_CAPTURE_CONTENT_CHARS,
   MAX_INFERENCE_CANDIDATES,
   MAX_INFERENCE_REQUESTS,
   MAX_KNOWLEDGE_BODY_CHARS,
   MAX_KNOWLEDGE_TITLE_CHARS,
+  MAX_MERGE_PARENTS,
   MAX_OBJECTS_PER_DISTILLATION,
   MAX_RELATIONS_PER_INFERENCE,
   MAX_RELATION_PROPOSALS,
+  MAX_REVISIONS_PER_OBJECT,
   RELATION_ERROR_CODES,
   RELATION_KINDS,
   RELATION_ORIGINS,
+  REVISION_ORIGINS,
   SYMMETRIC_RELATION_KINDS,
   VOICE_CAPTURE_ERROR_CODES,
 } from "../../packages/contracts";
@@ -156,9 +160,18 @@ test("every IPC command agrees between the TypeScript client and the Rust handle
     get_object_relations: "src/commands/graph.rs",
     get_object_neighbors: "src/commands/graph.rs",
     infer_relations: "src/commands/graph.rs",
+    get_object_lineage: "src/commands/lineage.rs",
+    list_revisions: "src/commands/lineage.rs",
+    get_revision: "src/commands/lineage.rs",
+    get_revision_parents: "src/commands/lineage.rs",
+    get_revision_children: "src/commands/lineage.rs",
+    update_knowledge_object: "src/commands/lineage.rs",
+    create_revision_from: "src/commands/lineage.rs",
+    merge_revisions: "src/commands/lineage.rs",
+    diff_revisions: "src/commands/lineage.rs",
   };
   for (const [command, rustFile] of Object.entries(commandSources)) {
-    assert.match(ipc, new RegExp(`(?:call|relationCall)\\(\\s*"${command}"`), `${command} is not called by tauri-ipc.ts`);
+    assert.match(ipc, new RegExp(`(?:call|relationCall|lineageCall)\\(\\s*"${command}"`), `${command} is not called by tauri-ipc.ts`);
     assert.match(readText(tauriDir, rustFile), new RegExp(`pub (async )?fn ${command}\\(`));
     assert.match(libRs, new RegExp(`commands::\\w+::${command}\\b`), `${command} is not registered in lib.rs`);
   }
@@ -286,9 +299,9 @@ test("knowledge kinds, limits and error codes agree across the contract, Rust, S
 
 test("the schema is changed only through ordered, transactional migration steps", () => {
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  assert.match(migrations, /pub const STEPS: \[Step; 3\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\)\];/);
+  assert.match(migrations, /pub const STEPS: \[Step; 4\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\), \(4, SCHEMA_V4\)\];/);
   assert.match(migrations, /connection\.transaction\(\)/);
-  for (const table of ["distillation_runs", "knowledge_objects", "object_sources", "relations"]) assert.match(migrations, new RegExp(`CREATE TABLE ${table}\\b`));
+  for (const table of ["distillation_runs", "knowledge_objects", "object_sources", "relations", "thought_revisions", "revision_parents"]) assert.match(migrations, new RegExp(`CREATE TABLE ${table}\\b`));
   assert.match(migrations, /REFERENCES captures\(id\)/);
   assert.match(migrations, /captures_are_immutable/);
   assert.match(readText(tauriDir, "src/storage/capture_store.rs"), /foreign_keys/);
@@ -339,9 +352,9 @@ test("relation kinds, symmetry, origins and limits agree across the contract, Ru
   assert.deepEqual([...new Set([...codes.matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...RELATION_ERROR_CODES].sort());
 });
 
-test("graph schema: foreign keys to knowledge objects, canonical identity, indexes, and no lineage tables yet", () => {
+test("graph schema: foreign keys to knowledge objects, canonical identity, indexes, and no lineage in it", () => {
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  const v3 = migrations.slice(migrations.indexOf("pub const SCHEMA_V3"), migrations.indexOf("pub type Step"));
+  const v3 = migrations.slice(migrations.indexOf("pub const SCHEMA_V3"), migrations.indexOf("/// v4 (M03)"));
   assert.equal([...v3.matchAll(/REFERENCES knowledge_objects\(id\) ON DELETE CASCADE/g)].length, 2, "both ends are foreign keys that cascade, so an edge can never dangle");
   assert.match(v3, /UNIQUE \(kind, source_object_id, target_object_id\)/);
   assert.match(v3, /CHECK \(source_object_id <> target_object_id\)/);
@@ -349,8 +362,10 @@ test("graph schema: foreign keys to knowledge objects, canonical identity, index
   assert.match(v3, /CREATE INDEX relations_by_target ON relations\(target_object_id\)/);
   // Graph relations and Capture provenance are separate systems: a relation never points at a capture.
   assert.doesNotMatch(v3, /captures/);
-  // Out of scope for M02.
-  assert.doesNotMatch(migrations, /lineage|revision|embedding|outbox/i);
+  // Out of scope so far.
+  assert.doesNotMatch(migrations, /embedding|outbox/i);
+  // The graph schema does not know about revisions.
+  assert.doesNotMatch(v3, /revision/i);
 });
 
 test("the model never writes to the graph: the provider client and prompt cannot reach the store", () => {
@@ -417,4 +432,97 @@ test("the Cognitive Graph UI depends only on React, the contracts and the Arthur
   // The graph is drawn with plain SVG: no graph library was added for this milestone.
   const manifest = readJson<{ dependencies: Record<string, string> }>(app, "package.json");
   assert.deepEqual(Object.keys(manifest.dependencies).sort(), ["@tauri-apps/api", "react", "react-dom"]);
+});
+
+// --- Thought Lineage (M03) ---------------------------------------------------------------------------------------
+
+const v4Sql = (): string => {
+  const migrations = readText(tauriDir, "src/storage/migrations.rs");
+  return migrations.slice(migrations.indexOf("pub const SCHEMA_V4"), migrations.indexOf("pub type Step"));
+};
+
+test("revision origins, limits and error codes agree across the contract, Rust and SQL", () => {
+  const store = readText(tauriDir, "src/storage/lineage_store.rs");
+  assert.deepEqual(quoted(nativeConst(store, "ORIGINS")), [...REVISION_ORIGINS]);
+  const list = [...REVISION_ORIGINS].map((origin) => `'${origin}'`).join(", ");
+  assert.ok(v4Sql().includes(`origin IN (${list})`), "the SQL CHECK lists the same origins");
+  const limit = (name: string): number => Number(new RegExp(`pub const ${name}: usize = ([\\d_]+);`).exec(store)?.[1]?.replaceAll("_", ""));
+  assert.equal(limit("MAX_MERGE_PARENTS"), MAX_MERGE_PARENTS);
+  assert.equal(limit("MAX_REVISIONS_PER_OBJECT"), MAX_REVISIONS_PER_OBJECT);
+
+  const lineage = readText(tauriDir, "src/lineage/mod.rs");
+  const codes = lineage.slice(lineage.indexOf("pub fn code"), lineage.indexOf("pub fn message"));
+  assert.deepEqual([...new Set([...codes.matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...LINEAGE_ERROR_CODES].sort());
+});
+
+test("schema v4: an append-only revision DAG with a guarded projection and a deterministic bootstrap", () => {
+  const sql = v4Sql();
+  for (const table of ["thought_revisions", "revision_parents"]) assert.match(sql, new RegExp(`CREATE TABLE ${table}\\b`));
+  assert.match(sql, /object_id\s+TEXT\s+NOT NULL REFERENCES knowledge_objects\(id\) ON DELETE CASCADE/);
+  assert.match(sql, /capture_id\s+TEXT\s+REFERENCES captures\(id\)/);
+  assert.match(sql, /PRIMARY KEY \(child_revision_id, parent_revision_id\)/, "a duplicate parent edge is impossible");
+  assert.match(sql, /CHECK \(child_revision_id <> parent_revision_id\)/, "a revision cannot be its own parent");
+  assert.match(sql, /CREATE UNIQUE INDEX one_initial_revision_per_object ON thought_revisions\(object_id\) WHERE origin = 'initial'/);
+  assert.match(sql, /CREATE INDEX thought_revisions_by_object/);
+  assert.match(sql, /CREATE INDEX revision_parents_by_parent/);
+  assert.match(sql, /ALTER TABLE knowledge_objects ADD COLUMN current_revision_id TEXT REFERENCES thought_revisions\(id\)/);
+  for (const trigger of ["thought_revisions_are_immutable", "revision_parents_are_immutable", "revision_parents_same_object", "revision_parents_parent_is_older", "revision_parents_are_acyclic", "knowledge_objects_equal_their_current_revision"]) {
+    assert.match(sql, new RegExp(`CREATE TRIGGER ${trigger}\\b`), trigger);
+  }
+  // Bootstrap: exactly one initial revision per existing object, derived without any random source.
+  assert.match(sql, /substr\(o\.id, 1, 14\) \|\| '8' \|\| substr\(o\.id, 16\)/);
+  assert.doesNotMatch(sql, /random\(|randomblob|hex\(|uuid/i);
+  // Revisions never reference the graph; provenance on a revision is its own, optional, all-or-nothing span.
+  assert.doesNotMatch(sql, /relations/);
+  assert.match(sql, /capture_id IS NULL AND source_start IS NULL AND source_end IS NULL/);
+});
+
+test("lineage is a separate system: it neither reads nor writes graph relations or Capture provenance, and vice versa", () => {
+  const lineage = productionCode(readText(tauriDir, "src/storage/lineage_store.rs"));
+  assert.doesNotMatch(lineage, /\brelations\b|relation_store|NewRelation/, "lineage code does not touch graph relations");
+  assert.doesNotMatch(lineage, /object_sources/, "lineage code does not rewrite object-level provenance");
+  assert.doesNotMatch(lineage, /UPDATE captures|DELETE FROM captures/, "captures stay immutable");
+  const graph = productionCode(readText(tauriDir, "src/storage/relation_store.rs"));
+  assert.doesNotMatch(graph, /thought_revisions|revision_parents|lineage_store/, "graph code does not touch revisions");
+  for (const file of ["src/graph/mod.rs", "src/graph/validate.rs", "src/graph/verify.rs"]) {
+    assert.doesNotMatch(productionCode(readText(tauriDir, file)), /thought_revisions|revision_parents|lineage/, `${file} does not know about lineage`);
+  }
+  // Only the storage module writes revisions; commands go through the store's semantic operations.
+  for (const file of rustFiles(path.join(tauriDir, "src")).filter((f) => !/storage[\\/]/.test(f))) {
+    assert.doesNotMatch(readFileSync(file, "utf8"), /INSERT INTO thought_revisions|INSERT INTO revision_parents|UPDATE knowledge_objects/, `${file} must not write lineage tables`);
+  }
+  // The only code that points an object at a revision is the single insertion path.
+  assert.equal([...lineage.matchAll(/UPDATE knowledge_objects SET/g)].length, 1, "one place moves the current pointer");
+  assert.equal([...lineage.matchAll(/INSERT INTO thought_revisions/g)].length, 1, "one place creates a revision");
+  assert.equal([...lineage.matchAll(/INSERT INTO revision_parents/g)].length, 1, "one place links a parent");
+});
+
+test("the TypeScript and native diffs are checked against the same shared fixture file", () => {
+  assert.ok(existsSync(path.join(root, "tests/fixtures/revision_diff_cases.json")));
+  assert.match(readText(tauriDir, "src/lineage/diff.rs"), /include_str!\("[./]*tests\/fixtures\/revision_diff_cases\.json"\)/);
+  assert.match(readText(root, "tests/unit/contracts_lineage.test.ts"), /revision_diff_cases\.json/);
+  // No model anywhere near the canonical diff.
+  const diff = productionCode(readText(tauriDir, "src/lineage/diff.rs"));
+  assert.doesNotMatch(diff, /reqwest|chat::|openai|providers|async/i);
+});
+
+test("the lineage UI depends only on React, the contracts and the ArthurClient interface", () => {
+  const dir = path.join(app, "src/features/lineage");
+  const files = readdirSync(dir).filter((name) => /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name));
+  assert.ok(files.length >= 4, "expected the lineage feature files");
+  for (const file of files) {
+    const source = readText(dir, file);
+    for (const [, specifier] of source.matchAll(/from "([^"]+)"/g)) {
+      assert.match(specifier as string, /^(react|@arthur\/contracts|\.{1,2}\/.*)$/, `${file} imports "${specifier}"`);
+      assert.doesNotMatch(specifier as string, /client\/(tauri-ipc|desktop-client|mobile-client|preview-client)|storage|distillation|providers/, `${file} reaches below the ArthurClient interface`);
+    }
+    assert.doesNotMatch(source, /invoke\(|@tauri-apps|sqlite|rusqlite|openai|chat\/completions/i, `${file} must not touch the native layer, storage or a provider`);
+  }
+});
+
+test("M03 adds no dependency and no later-milestone machinery", () => {
+  const manifest = readJson<{ dependencies: Record<string, string> }>(app, "package.json");
+  assert.deepEqual(Object.keys(manifest.dependencies).sort(), ["@tauri-apps/api", "react", "react-dom"]);
+  const sources = rustFiles(path.join(tauriDir, "src")).filter((f) => /lineage/.test(f)).map((f) => productionCode(readFileSync(f, "utf8"))).join("\n");
+  assert.doesNotMatch(sources, /embedding|vector|recall|outbox|tailscale/i);
 });

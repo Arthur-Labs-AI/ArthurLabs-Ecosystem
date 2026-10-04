@@ -50,10 +50,11 @@ pub struct NewKnowledgeObject {
     pub source_end: i64,
 }
 
-const OBJECT_COLUMNS: &str = "o.id, o.kind, o.title, o.body, o.created_at, s.capture_id, s.source_start, s.source_end, length(c.content)";
+const OBJECT_COLUMNS: &str = "o.id, o.kind, o.title, o.body, o.created_at, s.capture_id, s.source_start, s.source_end, length(c.content), cr.kind, cr.title, cr.body";
 const OBJECT_JOINS: &str = "knowledge_objects o \
      LEFT JOIN object_sources s ON s.object_id = o.id \
-     LEFT JOIN captures c ON c.id = s.capture_id";
+     LEFT JOIN captures c ON c.id = s.capture_id \
+     LEFT JOIN thought_revisions cr ON cr.id = o.current_revision_id AND cr.object_id = o.id";
 
 impl CaptureStore {
     /// `None` when the capture has never been distilled; `Some(vec![])` when it was and yielded nothing.
@@ -111,6 +112,14 @@ impl CaptureStore {
                 "INSERT INTO object_sources (object_id, capture_id, source_start, source_end) VALUES (?1, ?2, ?3, ?4)",
                 params![id, capture_id, object.source_start, object.source_end],
             )?;
+            // Every object starts its history with one initial revision, which keeps the original source span.
+            super::lineage_store::create_initial_revision(
+                &transaction,
+                &id,
+                (&object.kind, &object.title, &object.body),
+                &created_at,
+                Some((capture_id, object.source_start, object.source_end)),
+            )?;
             stored.push(KnowledgeObject {
                 id,
                 kind: object.kind,
@@ -167,12 +176,13 @@ fn read_objects<P: rusqlite::Params>(connection: &Connection, sql: &str, params:
             row.get::<_, Option<i64>>(6)?,
             row.get::<_, Option<i64>>(7)?,
             row.get::<_, Option<i64>>(8)?,
+            (row.get::<_, Option<String>>(9)?, row.get::<_, Option<String>>(10)?, row.get::<_, Option<String>>(11)?),
         ))
     })?;
 
     let mut objects = Vec::new();
     for row in rows {
-        let (id, kind, title, body, created_at, capture_id, start, end, capture_len) = row?;
+        let (id, kind, title, body, created_at, capture_id, start, end, capture_len, current) = row?;
         let corrupt = |reason: &str| StoreError::Corrupt(format!("knowledge object {id:?}: {reason}"));
         let (Some(capture_id), Some(source_start), Some(source_end), Some(capture_len)) = (capture_id, start, end, capture_len) else {
             return Err(corrupt("provenance does not resolve to a capture"));
@@ -188,6 +198,12 @@ fn read_objects<P: rusqlite::Params>(connection: &Connection, sql: &str, params:
         }
         if source_start < 0 || source_end <= source_start || source_end > capture_len {
             return Err(corrupt("source span is outside its capture"));
+        }
+        // The object is a projection of its current revision (schema v4). They can never differ.
+        match &current {
+            (Some(k), Some(t), Some(b)) if *k == kind && *t == title && *b == body => {}
+            (None, _, _) | (_, None, _) | (_, _, None) => return Err(corrupt("it has no current revision")),
+            _ => return Err(corrupt("it differs from its current revision")),
         }
         objects.push(KnowledgeObject {
             id,
@@ -218,7 +234,11 @@ fn validate_new(content: &str, object: &NewKnowledgeObject) -> Result<(), String
         return Err(format!("body exceeds {MAX_BODY_CHARS} characters"));
     }
 
-    let (start, end) = (object.source_start, object.source_end);
+    validate_span(content, object.source_start, object.source_end)
+}
+
+/// A span is a half-open range of Unicode code points inside `content`, and contains some text.
+pub fn validate_span(content: &str, start: i64, end: i64) -> Result<(), String> {
     let length = content.chars().count() as i64;
     if start < 0 {
         return Err("source span starts before the capture".into());

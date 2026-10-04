@@ -1,5 +1,6 @@
 import { CapturePanel } from "../features/capture/CapturePanel";
 import { GraphPanel } from "../features/graph/GraphPanel";
+import { LineagePanel } from "../features/lineage/LineagePanel";
 import { KnowledgePanel } from "../features/knowledge/KnowledgePanel";
 import { RuntimePanel } from "../features/settings/RuntimePanel";
 import { AppLayout } from "./layout";
@@ -9,6 +10,7 @@ export function App() {
     <AppLayout>
       <CapturePanel />
       <KnowledgePanel />
+      <LineagePanel />
       <GraphPanel />
       <RuntimePanel />
     </AppLayout>

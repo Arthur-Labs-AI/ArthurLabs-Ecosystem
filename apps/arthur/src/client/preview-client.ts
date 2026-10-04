@@ -1,10 +1,18 @@
 import {
   MAX_INFERENCE_CANDIDATES,
+  MAX_KNOWLEDGE_BODY_CHARS,
+  MAX_KNOWLEDGE_TITLE_CHARS,
+  MAX_MERGE_PARENTS,
   MAX_RELATIONS_PER_INFERENCE,
+  MAX_REVISIONS_PER_OBJECT,
   canonicalRelationEnds,
+  codePointLength,
   describeCreateCaptureInputProblem,
   describeCreateRelationInputProblem,
+  describeRevisionChangesProblem,
   describeSpanProblem,
+  diffRevisionContent,
+  isKnowledgeObjectKind,
   isRelationKind,
   isSymmetricRelationKind,
   sliceCodePoints,
@@ -13,13 +21,19 @@ import {
   type CognitiveRelationOrigin,
   type CreateCaptureInput,
   type CreateRelationInput,
+  type CreateRevisionInput,
   type KnowledgeObject,
   type KnowledgeObjectKind,
+  type MergeRevisionsInput,
+  type ObjectLineage,
   type RelationErrorCode,
   type RelationFilter,
+  type RevisionChanges,
+  type RevisionOrigin,
   type RuntimeInfo,
+  type ThoughtRevision,
 } from "@arthur/contracts";
-import { DistillationError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
+import { DistillationError, LineageError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
 
 const DEFAULT_PREVIEW_INFO: RuntimeInfo = { appVersion: "0.0.0-preview", platform: "unknown" };
 
@@ -86,6 +100,8 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
   const runs: { captureId: string; objects: KnowledgeObject[] }[] = [];
   /** Oldest first, like the native store. */
   const relations: CognitiveRelation[] = [];
+  /** Per object: its revisions (oldest first) and which one is current. The object in `runs` is a projection of it. */
+  const lineages = new Map<string, { revisions: ThoughtRevision[]; current: string }>();
   let recording = false;
 
   const append = (input: CreateCaptureInput): Capture => {
@@ -147,6 +163,79 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       throw new RelationError("invalid_relation", "That relation is not valid: unknown relation kind.");
     }
     return relations.filter((r) => touches(r, objectId, filter?.direction ?? "any") && (filter?.kind === undefined || r.kind === filter.kind));
+  };
+
+  // --- Thought Lineage: the same rules as the native store, in memory ---------------------------------------
+  const lineageProblem = (reason: string): LineageError => new LineageError("invalid_revision", `That revision is not valid: ${reason}.`);
+  const lineageOf = (objectId: string): { revisions: ThoughtRevision[]; current: string } => {
+    const lineage = lineages.get(objectId);
+    if (!lineage) throw new LineageError("object_not_found", "That knowledge object no longer exists.");
+    return lineage;
+  };
+  const findRevision = (revisionId: string): ThoughtRevision => {
+    for (const lineage of lineages.values()) {
+      const found = lineage.revisions.find((revision) => revision.id === revisionId);
+      if (found) return found;
+    }
+    throw new LineageError("revision_not_found", "That revision no longer exists.");
+  };
+  const ownRevision = (objectId: string, revisionId: string): ThoughtRevision => {
+    const revision = findRevision(revisionId);
+    if (revision.objectId !== objectId) throw lineageProblem("that revision belongs to a different object");
+    return revision;
+  };
+  const validateContent = (content: { kind: unknown; title: unknown; body: unknown }): void => {
+    if (!isKnowledgeObjectKind(content.kind)) throw lineageProblem("unknown kind");
+    if (typeof content.title !== "string" || content.title.trim().length === 0) throw lineageProblem("title is empty");
+    if (codePointLength(content.title) > MAX_KNOWLEDGE_TITLE_CHARS) throw lineageProblem("title is too long");
+    if (typeof content.body !== "string" || content.body.trim().length === 0) throw lineageProblem("body is empty");
+    if (codePointLength(content.body) > MAX_KNOWLEDGE_BODY_CHARS) throw lineageProblem("body is too long");
+  };
+  /** The one way a later revision comes into existence: validate everything, then write revision and pointer together. */
+  const addRevision = (
+    objectId: string,
+    content: { kind: ThoughtRevision["kind"]; title: string; body: string },
+    origin: RevisionOrigin,
+    parents: ThoughtRevision[],
+    makeCurrent: boolean,
+  ): ThoughtRevision => {
+    const lineage = lineageOf(objectId);
+    if (lineage.revisions.length >= MAX_REVISIONS_PER_OBJECT) throw lineageProblem(`an object has at most ${MAX_REVISIONS_PER_OBJECT} revisions`);
+    validateContent(content);
+    if (origin === "merge" ? parents.length < 2 || parents.length > MAX_MERGE_PARENTS : parents.length !== 1) throw lineageProblem("wrong number of parent revisions");
+    if (new Set(parents.map((parent) => parent.id)).size !== parents.length) throw lineageProblem("a parent revision is listed twice");
+    const revision: ThoughtRevision = {
+      id: `${objectId}:rev${lineage.revisions.length + 1}`,
+      objectId,
+      kind: content.kind,
+      title: content.title,
+      body: content.body,
+      createdAt: now().toISOString(),
+      origin,
+      // Oldest parent first, whatever order the caller gave them.
+      parentRevisionIds: [...parents].sort((a, b) => lineage.revisions.indexOf(a) - lineage.revisions.indexOf(b)).map((parent) => parent.id),
+    };
+    lineage.revisions.push(revision);
+    if (makeCurrent) {
+      lineage.current = revision.id;
+      for (const run of runs) {
+        const at = run.objects.findIndex((object) => object.id === objectId);
+        if (at >= 0) run.objects[at] = { ...(run.objects[at] as KnowledgeObject), kind: revision.kind, title: revision.title, body: revision.body };
+      }
+    }
+    return { ...revision };
+  };
+  const applyChanges = (base: ThoughtRevision, changes: RevisionChanges): { kind: ThoughtRevision["kind"]; title: string; body: string } => {
+    const problem = describeRevisionChangesProblem(base, changes);
+    if (problem) throw lineageProblem(problem);
+    return { kind: changes.kind ?? base.kind, title: changes.title ?? base.title, body: changes.body ?? base.body };
+  };
+  const lineageResult = <T,>(work: () => T): Promise<T> => {
+    try {
+      return Promise.resolve(work());
+    } catch (failure) {
+      return Promise.reject(failure);
+    }
   };
 
   return {
@@ -222,6 +311,20 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
         });
       }
       objects.sort((a, b) => a.provenance.sourceStart - b.provenance.sourceStart);
+      for (const object of objects) {
+        const initial: ThoughtRevision = {
+          id: `${object.id}:rev1`,
+          objectId: object.id,
+          kind: object.kind,
+          title: object.title,
+          body: object.body,
+          createdAt: object.createdAt,
+          origin: "initial",
+          provenance: { ...object.provenance },
+          parentRevisionIds: [],
+        };
+        lineages.set(object.id, { revisions: [initial], current: initial.id });
+      }
       runs.unshift({ captureId, objects });
       return Promise.resolve([...objects]);
     },
@@ -289,6 +392,46 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
         return Promise.reject(failure);
       }
     },
+    getObjectLineage: (objectId) =>
+      lineageResult((): ObjectLineage => {
+        const lineage = lineageOf(objectId);
+        return { objectId, currentRevisionId: lineage.current, revisions: lineage.revisions.map((revision) => ({ ...revision })) };
+      }),
+    listRevisions: (objectId) => lineageResult(() => lineageOf(objectId).revisions.map((revision) => ({ ...revision }))),
+    getRevision: (revisionId) => lineageResult(() => ({ ...findRevision(revisionId) })),
+    getRevisionParents: (revisionId) => lineageResult(() => findRevision(revisionId).parentRevisionIds.map((id) => ({ ...findRevision(id) }))),
+    getRevisionChildren: (revisionId) =>
+      lineageResult(() => {
+        const revision = findRevision(revisionId);
+        return lineageOf(revision.objectId)
+          .revisions.filter((candidate) => candidate.parentRevisionIds.includes(revisionId))
+          .map((child) => ({ ...child }));
+      }),
+    updateKnowledgeObject: (objectId, changes) =>
+      lineageResult(() => {
+        const lineage = lineageOf(objectId);
+        const current = ownRevision(objectId, lineage.current);
+        return addRevision(objectId, applyChanges(current, changes), "user_edit", [current], true);
+      }),
+    createRevisionFrom: (input: CreateRevisionInput) =>
+      lineageResult(() => {
+        lineageOf(input.objectId);
+        const parent = ownRevision(input.objectId, input.parentRevisionId);
+        return addRevision(input.objectId, applyChanges(parent, input.changes), "user_edit", [parent], input.makeCurrent === true);
+      }),
+    mergeRevisions: (input: MergeRevisionsInput) =>
+      lineageResult(() => {
+        lineageOf(input.objectId);
+        const parents = input.parentRevisionIds.map((id) => ownRevision(input.objectId, id));
+        return addRevision(input.objectId, input.result, "merge", parents, input.makeCurrent === true);
+      }),
+    diffRevisions: (oldRevisionId, newRevisionId) =>
+      lineageResult(() => {
+        const older = findRevision(oldRevisionId);
+        const newer = findRevision(newRevisionId);
+        if (older.objectId !== newer.objectId) throw lineageProblem("revisions of different objects cannot be compared");
+        return diffRevisionContent(older, newer);
+      }),
   };
 }
 

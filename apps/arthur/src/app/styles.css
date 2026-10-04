@@ -532,3 +532,144 @@ body {
 .graph-form button {
   align-self: flex-start;
 }
+
+/* Thought Lineage */
+.lineage-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.lineage-picker select,
+.graph-form input,
+.graph-form textarea {
+  width: 100%;
+  padding: 0.5rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.lineage-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 50vh;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.lineage-edge {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+}
+
+.lineage-arrow path {
+  fill: var(--muted);
+}
+
+.lineage-node {
+  cursor: pointer;
+  outline: none;
+}
+
+.lineage-node circle {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 3;
+}
+
+.lineage-node.origin-merge circle {
+  fill: #6a1b9a;
+}
+
+.lineage-node.origin-distillation circle {
+  fill: #2e7d32;
+}
+
+.lineage-node.current circle {
+  stroke: var(--text);
+  stroke-width: 5;
+}
+
+.lineage-node.selected circle,
+.lineage-node:focus-visible circle {
+  stroke-dasharray: 4 3;
+  stroke: var(--text);
+  stroke-width: 4;
+}
+
+.lineage-node-label {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.lineage-current-label {
+  fill: var(--text);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.lineage-list {
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lineage-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0;
+}
+
+.lineage-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.lineage-diff {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+}
+
+.lineage-diff-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.lineage-diff ins {
+  text-decoration: none;
+  background: #c8e6c9;
+  color: #14301a;
+}
+
+.lineage-diff del {
+  background: #ffcdd2;
+  color: #4a1313;
+}
+
+@media (prefers-color-scheme: dark) {
+  .lineage-diff ins {
+    background: #1e4d2b;
+    color: #d7f5dd;
+  }
+
+  .lineage-diff del {
+    background: #5b2227;
+    color: #ffd9dc;
+  }
+}

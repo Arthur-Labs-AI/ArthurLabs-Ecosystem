@@ -3,6 +3,7 @@ mod audio;
 mod commands;
 mod distillation;
 mod graph;
+mod lineage;
 mod platform;
 mod providers;
 mod storage;
@@ -74,6 +75,15 @@ pub fn run() {
             commands::graph::get_object_relations,
             commands::graph::get_object_neighbors,
             commands::graph::infer_relations,
+            commands::lineage::get_object_lineage,
+            commands::lineage::list_revisions,
+            commands::lineage::get_revision,
+            commands::lineage::get_revision_parents,
+            commands::lineage::get_revision_children,
+            commands::lineage::update_knowledge_object,
+            commands::lineage::create_revision_from,
+            commands::lineage::merge_revisions,
+            commands::lineage::diff_revisions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the Arthur application");
