@@ -1,0 +1,8 @@
+{
+  "name": "@arthur/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure TypeScript data contracts shared by the Arthur UI, Home Node, API, sync protocol and tests. No runtime dependencies.",
+  "license": "UNLICENSED",
+  "sideEffects": false
+}

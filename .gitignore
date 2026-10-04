@@ -33,3 +33,8 @@ models/
 # Python generated files
 __pycache__/
 *.py[cod]
+
+# Tauri/Rust build output and generated capability schemas for the Arthur app.
+# (node_modules/ and dist/ above already cover the app's JS output.)
+apps/arthur/src-tauri/target/
+apps/arthur/src-tauri/gen/schemas/
