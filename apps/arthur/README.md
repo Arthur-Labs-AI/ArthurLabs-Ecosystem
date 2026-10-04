@@ -3,18 +3,18 @@
 The single A.R.T.H.U.R. product application: Tauri v2 + React + TypeScript + Vite.
 One shared UI for Linux, Windows and (later) Android; macOS and iOS after that.
 
-**Status:** foundation shell. It renders runtime information obtained through
-`ArthurClient`. Capture, graph, sync, voice and EMG are not implemented.
+**Status:** shell with runtime info and local text capture (create + list, persisted in app-local SQLite). Voice, sync, graph and EMG are not implemented.
 
 ```text
 src/                  React UI (platform-independent)
   app/                providers, layout, App
   client/             ArthurClient interface + desktop / mobile / preview implementations
-  features/           one folder per product area (only settings/ so far)
+  features/           one folder per product area (capture/, settings/)
   hooks/              shared hooks (useArthurClient)
 src-tauri/            Rust native layer
   src/commands/       Tauri commands exposed to the UI
   src/platform/       OS detection
+  src/storage/        SQLite capture store (the only code that touches SQLite)
   capabilities/       Tauri permission sets
 ```
 
@@ -56,9 +56,32 @@ listed in the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 Commit `src-tauri/Cargo.lock` after the first native build.
 
-## Android (not set up yet)
+## Android
 
-The crate is already structured for mobile (`cdylib`/`staticlib` library and a
-`mobile_entry_point`). To add Android later, install the Android SDK and NDK,
-add the Rust Android targets, then run `npm run tauri android init`. Commit the
-generated `src-tauri/gen/android`; `src-tauri/gen/schemas` stays ignored.
+The Android project is generated into `src-tauri/gen/android` (committed;
+`gen/schemas` stays ignored). The application id is `dev.kaloyan.arthur`.
+
+One-time setup: JDK 17+, the Android SDK and NDK (tested with NDK 27.1), and
+the Rust Android targets:
+
+```bash
+rustup target add aarch64-linux-android x86_64-linux-android
+export ANDROID_HOME=~/Android/Sdk NDK_HOME=$ANDROID_HOME/ndk/27.1.12297006
+```
+
+```bash
+npm run tauri android build -- --debug --target x86_64 --apk   # emulator
+npm run tauri android build -- --debug --target aarch64 --apk  # physical device
+adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
+```
+
+`build.rs` links the native library with 16 KB page alignment, which newer
+Android devices and Google Play require.
+
+## Local capture storage
+
+Captures are stored by the native layer in SQLite (`arthur.db` in the app data
+directory; on Android `/data/user/0/dev.kaloyan.arthur/arthur.db`, app-private).
+The schema is versioned with `PRAGMA user_version` and created on first launch.
+This is app-local storage, not the future Home Node Cognitive Store. The UI never
+touches it: `CapturePanel` -> `ArthurClient` -> Tauri command -> `src-tauri/src/storage`.

@@ -8,10 +8,10 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import * as path from "node:path";
 
-import { ARTHUR_PLATFORMS } from "../../packages/contracts";
+import { ARTHUR_PLATFORMS, CAPTURE_SOURCE_KINDS, MAX_CAPTURE_CONTENT_CHARS } from "../../packages/contracts";
 import { findRepoRoot } from "./import_graph";
 
 const root = findRepoRoot();
@@ -122,10 +122,41 @@ test("the Rust platform names are exactly the contract's ArthurPlatform values",
   assert.deepEqual([...new Set(returned)].sort(), [...ARTHUR_PLATFORMS].sort());
 });
 
-test("the IPC command name agrees between the TypeScript client and the Rust handler", () => {
-  assert.match(readText(app, "src/client/tauri-ipc.ts"), /call\("get_runtime_info"\)/);
-  assert.match(readText(tauriDir, "src/commands/runtime_info.rs"), /pub fn get_runtime_info\(\)/);
-  assert.match(libRs, /commands::runtime_info::get_runtime_info/);
+test("every IPC command agrees between the TypeScript client and the Rust handlers", () => {
+  const ipc = readText(app, "src/client/tauri-ipc.ts");
+  const commandSources: Record<string, string> = {
+    get_runtime_info: "src/commands/runtime_info.rs",
+    create_capture: "src/commands/captures.rs",
+    list_captures: "src/commands/captures.rs",
+  };
+  for (const [command, rustFile] of Object.entries(commandSources)) {
+    assert.match(ipc, new RegExp(`call\\("${command}"`), `${command} is not called by tauri-ipc.ts`);
+    assert.match(readText(tauriDir, rustFile), new RegExp(`pub fn ${command}\\(`));
+    assert.match(libRs, new RegExp(`commands::\\w+::${command}\\b`), `${command} is not registered in lib.rs`);
+  }
+});
+
+function rustFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? rustFiles(path.join(dir, entry.name)) : entry.name.endsWith(".rs") ? [path.join(dir, entry.name)] : [],
+  );
+}
+
+test("SQLite is confined to the native storage module", () => {
+  const users = rustFiles(path.join(tauriDir, "src"))
+    .filter((file) => /\brusqlite\b/.test(readFileSync(file, "utf8")))
+    .map((file) => path.relative(path.join(tauriDir, "src"), file).split(path.sep).join("/"));
+  assert.ok(users.length > 0, "expected the storage module to use rusqlite");
+  for (const file of users) assert.match(file, /^storage\//, `${file} must not touch SQLite directly`);
+});
+
+test("the native capture store enforces the same limits and sources as the contract", () => {
+  const store = readText(tauriDir, "src/storage/capture_store.rs");
+  assert.equal(Number(/MAX_CAPTURE_CONTENT_CHARS: usize = ([\d_]+);/.exec(store)?.[1]?.replaceAll("_", "")), MAX_CAPTURE_CONTENT_CHARS);
+
+  const sources = /const SOURCES: \[&str; \d+\] = \[([^\]]*)\];/.exec(store)?.[1] ?? "";
+  assert.deepEqual([...sources.matchAll(/"([a-z]+)"/g)].map((m) => m[1]), [...CAPTURE_SOURCE_KINDS]);
+  assert.match(store, /CHECK \(source IN \('text', 'voice', 'emg'\)\)/);
 });
 
 test("packages/contracts declares no dependencies", () => {

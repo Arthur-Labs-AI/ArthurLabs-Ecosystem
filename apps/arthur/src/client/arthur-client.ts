@@ -1,4 +1,4 @@
-import type { RuntimeInfo } from "@arthur/contracts";
+import type { Capture, CreateCaptureInput, RuntimeInfo } from "@arthur/contracts";
 
 /**
  * Which implementation backs the UI.
@@ -18,4 +18,8 @@ export type ArthurClientKind = "desktop" | "mobile" | "preview";
 export interface ArthurClient {
   readonly kind: ArthurClientKind;
   getRuntimeInfo(): Promise<RuntimeInfo>;
+  /** Persists a capture before resolving; the store assigns its id and timestamp. */
+  createCapture(input: CreateCaptureInput): Promise<Capture>;
+  /** All persisted captures, newest first. */
+  listCaptures(): Promise<Capture[]>;
 }

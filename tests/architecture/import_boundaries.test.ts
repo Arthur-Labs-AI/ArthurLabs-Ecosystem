@@ -132,6 +132,17 @@ const SYNTHETIC: Record<string, { violating: RuleCase[]; allowed: RuleCase[] }> 
       { file: "apps/arthur/src/app/App.test.tsx", source: 'import { c } from "../client/preview-client";' },
     ],
   },
+  "ui-does-not-detect-platform": {
+    violating: [
+      { file: "apps/arthur/src/features/capture/x.tsx", source: 'const mobile = navigator.userAgent.includes("Android");' },
+      { file: "apps/arthur/src/hooks/h.ts", source: 'if (platform === "android") {}' },
+      { file: "apps/arthur/src/app/App.tsx", source: "const p = import.meta.env.TAURI_ENV_PLATFORM;" },
+    ],
+    allowed: [
+      { file: "apps/arthur/src/features/settings/RuntimePanel.tsx", source: "const p = state.info.platform;" },
+      { file: "apps/arthur/src/features/capture/x.test.tsx", source: 'const env = { tauriPlatform: "android" };' },
+    ],
+  },
   "ui-has-no-network-details": {
     violating: [
       { file: "apps/arthur/src/features/x/y.ts", source: 'const r = await fetch("/api/ideas");' },

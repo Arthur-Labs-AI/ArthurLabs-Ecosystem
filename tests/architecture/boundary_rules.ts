@@ -116,6 +116,13 @@ export const BOUNDARY_RULES: BoundaryRule[] = [
     allowInternal: [/^apps\/arthur\/src\/client\/arthur-client$/],
   },
   {
+    id: "ui-does-not-detect-platform",
+    why: "Platform selection happens once, inside the client layer; components never branch on Android or the build environment (Rule 5).",
+    roots: UI_FEATURE_ROOTS,
+    exempt: [TEST_FILE],
+    forbidText: [/\bandroid\b/i, /\bios\b/i, /userAgent/, /TAURI_ENV/, /import\.meta\.env/, /\bisTauri\b/],
+  },
+  {
     id: "ui-has-no-network-details",
     why: "React code must not talk to localhost HTTP, Tailscale addresses or raw sockets directly (Rule 5).",
     roots: UI_FEATURE_ROOTS,

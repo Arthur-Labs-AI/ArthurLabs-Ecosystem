@@ -8,7 +8,7 @@ import { ArthurProviders } from "./providers";
 
 describe("App shell", () => {
   it("shows runtime information obtained through the ArthurClient", async () => {
-    const client = createPreviewClient({ appVersion: "9.9.9", platform: "android" });
+    const client = createPreviewClient({ info: { appVersion: "9.9.9", platform: "android" } });
     render(
       <ArthurProviders client={client}>
         <App />
@@ -16,7 +16,7 @@ describe("App shell", () => {
     );
 
     expect(screen.getByRole("heading", { name: "A.R.T.H.U.R." })).toBeTruthy();
-    expect(screen.getByRole("status")).toBeTruthy();
+    expect(screen.getByText("Loading runtime information…")).toBeTruthy();
 
     expect(await screen.findByText("9.9.9")).toBeTruthy();
     expect(screen.getByText("android")).toBeTruthy();
@@ -25,6 +25,7 @@ describe("App shell", () => {
 
   it("surfaces a native failure instead of crashing", async () => {
     const failing: ArthurClient = {
+      ...createPreviewClient(),
       kind: "desktop",
       getRuntimeInfo: () => Promise.reject(new Error("ipc down")),
     };
