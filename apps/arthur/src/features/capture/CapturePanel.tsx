@@ -1,8 +1,16 @@
 import { useState, type FormEvent } from "react";
-import { useCaptures } from "./use-captures";
+import { useArthurClient } from "../../hooks/use-arthur-client";
+import { useCaptures, type VoiceState } from "./use-captures";
+
+const VOICE_STATUS: Partial<Record<VoiceState, string>> = {
+  starting: "Starting the microphone…",
+  recording: "Recording…",
+  transcribing: "Transcribing…",
+};
 
 export function CapturePanel() {
-  const { status, captures, saving, error, save } = useCaptures();
+  const client = useArthurClient();
+  const { status, captures, saving, error, save, voiceState, startVoice, stopVoice } = useCaptures();
   const [draft, setDraft] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -16,6 +24,26 @@ export function CapturePanel() {
       <h2 id="capture-heading" className="panel-title">
         Capture
       </h2>
+
+      {client.capabilities.voiceCapture && (
+        <div className="voice-controls">
+          {voiceState === "recording" ? (
+            <button type="button" className="recording" onClick={() => void stopVoice()}>
+              Stop recording
+            </button>
+          ) : (
+            <button type="button" onClick={() => void startVoice()} disabled={voiceState !== "idle"}>
+              Start recording
+            </button>
+          )}
+          {VOICE_STATUS[voiceState] && (
+            <p role="status" className="voice-status">
+              {VOICE_STATUS[voiceState]}
+            </p>
+          )}
+        </div>
+      )}
+
       <form className="capture-form" onSubmit={handleSubmit}>
         <label htmlFor="capture-input" className="visually-hidden">
           Thought
@@ -41,7 +69,7 @@ export function CapturePanel() {
             <li key={capture.id} className="capture-item">
               <p className="capture-content">{capture.content}</p>
               <p className="capture-meta">
-                <time dateTime={capture.createdAt}>{capture.createdAt}</time> · {capture.id.slice(0, 8)}
+                <time dateTime={capture.createdAt}>{capture.createdAt}</time> · {capture.source} · {capture.id.slice(0, 8)}
               </p>
             </li>
           ))}

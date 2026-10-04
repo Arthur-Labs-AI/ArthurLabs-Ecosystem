@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createArthurClient, selectClientKind } from "./index";
+import { VoiceCaptureError } from "./arthur-client";
 import { createPreviewClient } from "./preview-client";
 import type { Invoke } from "./tauri-ipc";
 
@@ -138,5 +139,121 @@ describe("preview client captures", () => {
     const client = createPreviewClient();
     await expect(client.createCapture({ source: "text", content: " \n" })).rejects.toThrow("Invalid capture");
     await expect(client.listCaptures()).resolves.toEqual([]);
+  });
+});
+
+const voiceCapture = { ...stored, id: "0b8f3c1e-0000-4000-8000-0000000000aa", source: "voice", content: "spoken words" };
+
+describe("mobile client voice capture", () => {
+  it("advertises voice capture, and the desktop client does not", () => {
+    expect(createArthurClient(androidEnv).capabilities.voiceCapture).toBe(true);
+    expect(createArthurClient({ isTauri: true, tauriPlatform: "linux" }).capabilities.voiceCapture).toBe(false);
+  });
+
+  it("drives the native voice commands and resolves with the persisted voice capture", async () => {
+    const call = vi.fn<Invoke>().mockResolvedValueOnce(undefined).mockResolvedValueOnce(voiceCapture);
+    const client = createArthurClient(androidEnv, call);
+
+    await client.startVoiceCapture();
+    await expect(client.finishVoiceCapture()).resolves.toEqual(voiceCapture);
+    expect(call.mock.calls).toEqual([["start_voice_capture"], ["finish_voice_capture"]]);
+  });
+
+  it("cancels through the native layer", async () => {
+    const call = vi.fn<Invoke>().mockResolvedValue(undefined);
+    await createArthurClient(androidEnv, call).cancelVoiceCapture();
+    expect(call).toHaveBeenCalledExactlyOnceWith("cancel_voice_capture");
+  });
+
+  it.each([
+    ["microphone_permission_denied", "Microphone permission was denied."],
+    ["stt_failed", "Could not reach the speech service."],
+    ["empty_transcript", "No speech was recognised."],
+  ] as const)("turns the native %s rejection into a typed VoiceCaptureError", async (code, message) => {
+    const call = vi.fn<Invoke>().mockRejectedValue({ code, message });
+    const client = createArthurClient(androidEnv, call);
+
+    const failure = await client.startVoiceCapture().then(() => null, (error: unknown) => error);
+    expect(failure).toBeInstanceOf(VoiceCaptureError);
+    expect(failure).toMatchObject({ code, message });
+    await expect(client.finishVoiceCapture()).rejects.toMatchObject({ code, message });
+  });
+
+  it("passes unrecognised native failures through unchanged", async () => {
+    const client = createArthurClient(androidEnv, vi.fn<Invoke>().mockRejectedValue("boom"));
+    await expect(client.startVoiceCapture()).rejects.toBe("boom");
+  });
+
+  it("only accepts a well-formed capture whose source is voice", async () => {
+    for (const bad of [null, {}, { ...voiceCapture, source: "text" }, { ...voiceCapture, id: "" }, { ...voiceCapture, createdAt: "later" }]) {
+      const client = createArthurClient(androidEnv, vi.fn<Invoke>().mockResolvedValue(bad));
+      await expect(client.finishVoiceCapture()).rejects.toThrow("invalid voice capture");
+    }
+  });
+
+  it("hands the native layer nothing but the command name: no paths, audio or credentials", async () => {
+    const call = vi.fn<Invoke>().mockResolvedValue(voiceCapture);
+    const client = createArthurClient(androidEnv, call);
+    await client.startVoiceCapture();
+    await client.finishVoiceCapture();
+    await client.cancelVoiceCapture();
+    expect(call.mock.calls.every((args) => args.length === 1)).toBe(true);
+  });
+});
+
+describe("desktop client voice capture", () => {
+  it("reports voice_unavailable without touching the native layer", async () => {
+    const call = vi.fn<Invoke>();
+    const client = createArthurClient({ isTauri: true, tauriPlatform: "linux" }, call);
+
+    await expect(client.startVoiceCapture()).rejects.toMatchObject({ code: "voice_unavailable" });
+    await expect(client.finishVoiceCapture()).rejects.toMatchObject({ code: "voice_unavailable" });
+    await expect(client.cancelVoiceCapture()).resolves.toBeUndefined();
+    expect(call).not.toHaveBeenCalled();
+  });
+});
+
+describe("preview client voice capture", () => {
+  it("records, transcribes and stores a voice capture next to text captures", async () => {
+    const client = createPreviewClient({ voice: { transcript: () => "  hello from the mock \n" } });
+    await client.createCapture({ source: "text", content: "typed" });
+
+    await client.startVoiceCapture();
+    const spoken = await client.finishVoiceCapture();
+
+    expect(spoken).toMatchObject({ source: "voice", content: "hello from the mock" });
+    expect((await client.listCaptures()).map((c) => c.source)).toEqual(["voice", "text"]);
+  });
+
+  it("enforces start/stop ordering", async () => {
+    const client = createPreviewClient();
+    await expect(client.finishVoiceCapture()).rejects.toMatchObject({ code: "not_recording" });
+    await client.startVoiceCapture();
+    await expect(client.startVoiceCapture()).rejects.toMatchObject({ code: "already_recording" });
+    await client.finishVoiceCapture();
+    await expect(client.finishVoiceCapture()).rejects.toMatchObject({ code: "not_recording" });
+  });
+
+  it("can simulate denial, provider failure and empty transcripts, and recovers afterwards", async () => {
+    const denied = createPreviewClient({ voice: { startError: new VoiceCaptureError("microphone_permission_denied", "denied") } });
+    await expect(denied.startVoiceCapture()).rejects.toMatchObject({ code: "microphone_permission_denied" });
+
+    const offline = createPreviewClient({ voice: { finishError: new VoiceCaptureError("stt_failed", "offline") } });
+    await offline.startVoiceCapture();
+    await expect(offline.finishVoiceCapture()).rejects.toMatchObject({ code: "stt_failed" });
+    await offline.startVoiceCapture();
+
+    const silent = createPreviewClient({ voice: { transcript: () => "  " } });
+    await silent.startVoiceCapture();
+    await expect(silent.finishVoiceCapture()).rejects.toMatchObject({ code: "empty_transcript" });
+    expect(await silent.listCaptures()).toEqual([]);
+  });
+
+  it("cancel discards the recording without storing anything", async () => {
+    const client = createPreviewClient();
+    await client.startVoiceCapture();
+    await client.cancelVoiceCapture();
+    await expect(client.finishVoiceCapture()).rejects.toMatchObject({ code: "not_recording" });
+    expect(await client.listCaptures()).toEqual([]);
   });
 });

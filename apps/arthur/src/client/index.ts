@@ -4,7 +4,8 @@ import { createMobileClient } from "./mobile-client";
 import { createPreviewClient } from "./preview-client";
 import { isTauriRuntime, type Invoke } from "./tauri-ipc";
 
-export type { ArthurClient, ArthurClientKind } from "./arthur-client";
+export { VoiceCaptureError } from "./arthur-client";
+export type { ArthurClient, ArthurClientCapabilities, ArthurClientKind } from "./arthur-client";
 
 export interface ClientEnvironment {
   /** True when running inside a Tauri webview. */

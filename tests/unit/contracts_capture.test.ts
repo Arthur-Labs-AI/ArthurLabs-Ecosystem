@@ -7,6 +7,8 @@ import {
   isCapture,
   isCaptureSourceKind,
   isCaptureTimestamp,
+  isVoiceCaptureErrorCode,
+  isVoiceCaptureErrorPayload,
 } from "../../packages/contracts";
 
 const valid = { id: "0b8f3c1e-0000-4000-8000-000000000001", source: "text", content: "idea", createdAt: "2026-10-04T12:00:00.123456789Z" };
@@ -63,4 +65,15 @@ test("source and timestamp guards", () => {
   assert.equal(isCaptureSourceKind("EMG"), false);
   assert.equal(isCaptureTimestamp("2026-10-04T12:00:00Z"), true);
   assert.equal(isCaptureTimestamp("2026-10-04"), false);
+});
+
+test("voice capture error guards", () => {
+  assert.equal(isVoiceCaptureErrorCode("microphone_permission_denied"), true);
+  assert.equal(isVoiceCaptureErrorCode("stt_failed"), true);
+  assert.equal(isVoiceCaptureErrorCode("boom"), false);
+
+  assert.equal(isVoiceCaptureErrorPayload({ code: "stt_failed", message: "Could not reach the speech service." }), true);
+  for (const bad of [null, "stt_failed", {}, { code: "stt_failed" }, { code: "nope", message: "x" }, { code: "stt_failed", message: 1 }]) {
+    assert.equal(isVoiceCaptureErrorPayload(bad), false, JSON.stringify(bad));
+  }
 });

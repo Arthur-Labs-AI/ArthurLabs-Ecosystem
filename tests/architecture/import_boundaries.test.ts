@@ -143,6 +143,18 @@ const SYNTHETIC: Record<string, { violating: RuleCase[]; allowed: RuleCase[] }> 
       { file: "apps/arthur/src/features/capture/x.test.tsx", source: 'const env = { tauriPlatform: "android" };' },
     ],
   },
+  "ui-has-no-audio-or-provider-details": {
+    violating: [
+      { file: "apps/arthur/src/features/capture/x.tsx", source: "const s = await navigator.mediaDevices.getUserMedia({ audio: true });" },
+      { file: "apps/arthur/src/hooks/h.ts", source: "const r = new MediaRecorder(stream);" },
+      { file: "apps/arthur/src/features/capture/x.ts", source: 'const key = process_env.OPENAI_API_KEY;' },
+      { file: "apps/arthur/src/features/capture/x.ts", source: 'headers.set("Authorization", `Bearer ${token}`);' },
+    ],
+    allowed: [
+      { file: "apps/arthur/src/features/capture/use-captures.ts", source: "await client.startVoiceCapture();" },
+      { file: "apps/arthur/src/features/capture/x.test.tsx", source: 'const fake = "openai api key";' },
+    ],
+  },
   "ui-has-no-network-details": {
     violating: [
       { file: "apps/arthur/src/features/x/y.ts", source: 'const r = await fetch("/api/ideas");' },

@@ -3,10 +3,12 @@ import {
   describeCreateCaptureInputProblem,
   isCapture,
   isRuntimeInfo,
+  isVoiceCaptureErrorPayload,
   type Capture,
   type CreateCaptureInput,
   type RuntimeInfo,
 } from "@arthur/contracts";
+import { VoiceCaptureError } from "./arthur-client";
 
 /**
  * The single module allowed to import `@tauri-apps/*`.
@@ -44,4 +46,39 @@ export async function listCapturesOverIpc(call: Invoke = invoke): Promise<Captur
     throw new Error("Native layer returned an invalid capture list");
   }
   return payload;
+}
+
+/** The native layer rejects voice failures with `{ code, message }`; anything else is passed through. */
+function toVoiceCaptureError(failure: unknown): unknown {
+  if (isVoiceCaptureErrorPayload(failure)) return new VoiceCaptureError(failure.code, failure.message);
+  return failure;
+}
+
+export async function startVoiceCaptureOverIpc(call: Invoke = invoke): Promise<void> {
+  try {
+    await call("start_voice_capture");
+  } catch (failure) {
+    throw toVoiceCaptureError(failure);
+  }
+}
+
+export async function finishVoiceCaptureOverIpc(call: Invoke = invoke): Promise<Capture> {
+  let payload: unknown;
+  try {
+    payload = await call("finish_voice_capture");
+  } catch (failure) {
+    throw toVoiceCaptureError(failure);
+  }
+  if (!isCapture(payload) || payload.source !== "voice") {
+    throw new Error("Native layer returned an invalid voice capture");
+  }
+  return payload;
+}
+
+export async function cancelVoiceCaptureOverIpc(call: Invoke = invoke): Promise<void> {
+  try {
+    await call("cancel_voice_capture");
+  } catch (failure) {
+    throw toVoiceCaptureError(failure);
+  }
 }

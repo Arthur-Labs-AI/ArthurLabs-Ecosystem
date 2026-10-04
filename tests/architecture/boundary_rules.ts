@@ -123,6 +123,23 @@ export const BOUNDARY_RULES: BoundaryRule[] = [
     forbidText: [/\bandroid\b/i, /\bios\b/i, /userAgent/, /TAURI_ENV/, /import\.meta\.env/, /\bisTauri\b/],
   },
   {
+    id: "ui-has-no-audio-or-provider-details",
+    why: "Microphone access, speech providers and credentials stay behind ArthurClient and the native layer (Rule 5, M01C).",
+    roots: UI_FEATURE_ROOTS,
+    exempt: [TEST_FILE],
+    forbidText: [
+      /getUserMedia/,
+      /\bMediaRecorder\b/,
+      /mediaDevices/,
+      /\bAudioContext\b/,
+      /openai/i,
+      /api[_-]?key/i,
+      /\bBearer\b/,
+      /\bwhisper\b/i,
+      /audio\/transcriptions/,
+    ],
+  },
+  {
     id: "ui-has-no-network-details",
     why: "React code must not talk to localhost HTTP, Tailscale addresses or raw sockets directly (Rule 5).",
     roots: UI_FEATURE_ROOTS,

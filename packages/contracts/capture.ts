@@ -64,3 +64,38 @@ export function isCapture(value: unknown): value is Capture {
     isCaptureTimestamp(candidate.createdAt)
   );
 }
+
+/**
+ * Why a voice capture attempt failed. The native layer reports exactly one of these
+ * codes so the UI can react without knowing about permissions, providers or files.
+ */
+export const VOICE_CAPTURE_ERROR_CODES = [
+  "voice_unavailable",
+  "microphone_permission_denied",
+  "already_recording",
+  "not_recording",
+  "recording_failed",
+  "recording_interrupted",
+  "stt_not_configured",
+  "stt_failed",
+  "empty_transcript",
+  "capture_failed",
+] as const;
+
+export type VoiceCaptureErrorCode = (typeof VOICE_CAPTURE_ERROR_CODES)[number];
+
+export interface VoiceCaptureErrorPayload {
+  code: VoiceCaptureErrorCode;
+  /** Safe to show to the user. Never contains credentials, paths or provider bodies. */
+  message: string;
+}
+
+export function isVoiceCaptureErrorCode(value: unknown): value is VoiceCaptureErrorCode {
+  return typeof value === "string" && (VOICE_CAPTURE_ERROR_CODES as readonly string[]).includes(value);
+}
+
+export function isVoiceCaptureErrorPayload(value: unknown): value is VoiceCaptureErrorPayload {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return isVoiceCaptureErrorCode(candidate.code) && typeof candidate.message === "string";
+}

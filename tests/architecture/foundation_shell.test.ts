@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import * as path from "node:path";
 
-import { ARTHUR_PLATFORMS, CAPTURE_SOURCE_KINDS, MAX_CAPTURE_CONTENT_CHARS } from "../../packages/contracts";
+import { ARTHUR_PLATFORMS, CAPTURE_SOURCE_KINDS, MAX_CAPTURE_CONTENT_CHARS, VOICE_CAPTURE_ERROR_CODES } from "../../packages/contracts";
 import { findRepoRoot } from "./import_graph";
 
 const root = findRepoRoot();
@@ -128,10 +128,13 @@ test("every IPC command agrees between the TypeScript client and the Rust handle
     get_runtime_info: "src/commands/runtime_info.rs",
     create_capture: "src/commands/captures.rs",
     list_captures: "src/commands/captures.rs",
+    start_voice_capture: "src/commands/voice.rs",
+    finish_voice_capture: "src/commands/voice.rs",
+    cancel_voice_capture: "src/commands/voice.rs",
   };
   for (const [command, rustFile] of Object.entries(commandSources)) {
     assert.match(ipc, new RegExp(`call\\("${command}"`), `${command} is not called by tauri-ipc.ts`);
-    assert.match(readText(tauriDir, rustFile), new RegExp(`pub fn ${command}\\(`));
+    assert.match(readText(tauriDir, rustFile), new RegExp(`pub (async )?fn ${command}\\(`));
     assert.match(libRs, new RegExp(`commands::\\w+::${command}\\b`), `${command} is not registered in lib.rs`);
   }
 });
@@ -163,5 +166,62 @@ test("packages/contracts declares no dependencies", () => {
   const manifest = readJson<Record<string, unknown>>(root, "packages/contracts/package.json");
   for (const field of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
     assert.equal(manifest[field], undefined, `contracts must not declare ${field}`);
+  }
+});
+
+const androidSrc = path.join(tauriDir, "gen/android/app/src/main");
+const manifest = readText(androidSrc, "AndroidManifest.xml");
+const audioPlugin = readText(androidSrc, "java/dev/kaloyan/arthur/AudioPlugin.kt");
+
+test("the Android manifest asks for the microphone and network, and for nothing that enables background recording or file access", () => {
+  const permissions = [...manifest.matchAll(/<uses-permission android:name="([^"]+)"/g)].map((m) => m[1]).sort();
+  assert.deepEqual(permissions, ["android.permission.INTERNET", "android.permission.RECORD_AUDIO"]);
+  assert.match(manifest, /android\.hardware\.microphone"\s+android:required="false"/, "devices without a microphone can still install");
+  assert.doesNotMatch(manifest, /foregroundServiceType|<service\b/);
+});
+
+test("app data (captures, credentials) is excluded from Android cloud backup", () => {
+  assert.match(manifest, /<application[^>]*android:allowBackup="false"/);
+});
+
+test("the Kotlin recorder is foreground-only, cache-confined and requests the permission at use", () => {
+  assert.match(audioPlugin, /override fun onPause\(\)/, "recording must stop when the app leaves the foreground");
+  assert.match(audioPlugin, /cacheDir/);
+  assert.doesNotMatch(audioPlugin, /getExternalFilesDir|getExternalStorage|ExternalCacheDir|MediaStore|Service\b/);
+  assert.match(audioPlugin, /requestPermissionForAlias\(MICROPHONE/);
+  assert.match(audioPlugin, /Manifest\.permission\.RECORD_AUDIO/);
+  assert.match(libRs, /audio::android::init\(\)/, "the plugin must be registered on Android");
+});
+
+test("voice error codes agree across the contract, the Rust service and the Kotlin plugin", () => {
+  const rust = readText(tauriDir, "src/audio/error.rs");
+  const rustCodes = [...rust.slice(rust.indexOf("pub fn code"), rust.indexOf("pub fn message")).matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]);
+  assert.deepEqual([...rustCodes].sort(), [...VOICE_CAPTURE_ERROR_CODES].sort());
+
+  const kotlinCodes = [...audioPlugin.matchAll(/invoke\.reject\([^,]+,\s*"([a-z_]+)"/g)].map((m) => m[1] as string);
+  assert.ok(kotlinCodes.length > 0);
+  for (const code of kotlinCodes) assert.ok((VOICE_CAPTURE_ERROR_CODES as readonly string[]).includes(code), `Kotlin rejects with unknown code ${code}`);
+
+  // recording_failed is the bridge's default arm; every other code must be mapped explicitly.
+  const bridge = readText(tauriDir, "src/audio/android.rs");
+  for (const code of new Set(kotlinCodes)) {
+    if (code !== "recording_failed") assert.match(bridge, new RegExp(`"${code}"`), `${code} is not mapped by the Rust bridge`);
+  }
+});
+
+test("HTTP, credentials and the microphone are confined to their modules", () => {
+  const src = path.join(tauriDir, "src");
+  const files = rustFiles(src).map((file) => ({ rel: path.relative(src, file).split(path.sep).join("/"), text: readFileSync(file, "utf8") }));
+
+  for (const { rel, text } of files) {
+    if (/\breqwest\b/.test(text)) assert.match(rel, /^stt\//, `${rel} must not make HTTP calls`);
+    if (/openai_api_key|api_key\(\)/.test(text)) assert.match(rel, /^(stt\/|lib\.rs$)/, `${rel} must not touch credentials`);
+    if (/run_mobile_plugin/.test(text)) assert.equal(rel, "audio/android.rs", `${rel} must not call the microphone plugin`);
+  }
+
+  // Nothing in the speech module may log: it handles the API key and the user's speech.
+  for (const { rel, text } of files.filter((f) => f.rel.startsWith("stt/"))) {
+    const production = text.slice(0, text.indexOf("#[cfg(test)]") === -1 ? undefined : text.indexOf("#[cfg(test)]"));
+    assert.doesNotMatch(production, /\b(println|eprintln|dbg|print|eprint)!|\btracing::|\blog::/, `${rel} must not log`);
   }
 });

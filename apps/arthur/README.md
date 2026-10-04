@@ -3,7 +3,7 @@
 The single A.R.T.H.U.R. product application: Tauri v2 + React + TypeScript + Vite.
 One shared UI for Linux, Windows and (later) Android; macOS and iOS after that.
 
-**Status:** shell with runtime info and local text capture (create + list, persisted in app-local SQLite). Voice, sync, graph and EMG are not implemented.
+**Status:** shell with runtime info, local text capture, and Android voice capture (microphone -> cloud STT -> transcript, persisted in app-local SQLite). Sync, graph, distillation and EMG are not implemented.
 
 ```text
 src/                  React UI (platform-independent)
@@ -15,6 +15,8 @@ src-tauri/            Rust native layer
   src/commands/       Tauri commands exposed to the UI
   src/platform/       OS detection
   src/storage/        SQLite capture store (the only code that touches SQLite)
+  src/audio/          voice capture service, recorder boundary, Android bridge
+  src/stt/            cloud speech-to-text client and credential source (the only HTTP code)
   capabilities/       Tauri permission sets
 ```
 
@@ -85,3 +87,56 @@ directory; on Android `/data/user/0/dev.kaloyan.arthur/arthur.db`, app-private).
 The schema is versioned with `PRAGMA user_version` and created on first launch.
 This is app-local storage, not the future Home Node Cognitive Store. The UI never
 touches it: `CapturePanel` -> `ArthurClient` -> Tauri command -> `src-tauri/src/storage`.
+
+## Voice capture (Android)
+
+`CapturePanel` -> `ArthurClient.startVoiceCapture / finishVoiceCapture` -> mobile client ->
+Tauri commands -> `audio::VoiceCaptureService` -> Kotlin `AudioPlugin` (microphone) and
+`stt::OpenAiTranscriber` (cloud) -> `CaptureStore` as a `source: "voice"` capture.
+
+The UI only sees `ArthurClient` and its `capabilities.voiceCapture` flag. It never sees
+Tauri, the microphone, file paths, the provider or the credential. The desktop client
+reports the capability as unavailable.
+
+**Permission model.** `RECORD_AUDIO` is requested at runtime, the first time the user taps
+Start recording, and a denial is reported as `microphone_permission_denied`. There is no
+foreground service and no background recording: if the app leaves the foreground the
+recording is discarded and the user is told. Recordings are capped at 120 s.
+
+**Audio lifecycle (audio is transient; the transcript is the only thing kept).**
+
+1. Start: Rust picks a file in the app *cache* directory; Kotlin records AAC/m4a (16 kHz mono) to it.
+   The path never leaves the native layer.
+2. Stop: the file is finalized, read, and uploaded for transcription.
+3. The file is deleted on every exit path: success, any failure, an interrupted recording, and
+   cancel. A drop-guard enforces this. Files left by a crash are purged on the next launch.
+4. Only the trimmed transcript is stored, as an ordinary capture in the existing store.
+   An empty transcript is rejected and nothing is stored. A failed attempt is not retried
+   automatically; the user records again.
+
+**STT provider.** OpenAI `gpt-4o-transcribe` over `/v1/audio/transcriptions`, language on auto,
+matching the TypeScript `OpenAiSttProvider` (`src/voice/stt`). That provider cannot run inside
+the app (no Node), so `src-tauri/src/stt` follows its wire contract natively rather than
+routing through the frozen voice runtime.
+
+**Credential.** The key is read on every request from the app-private file
+`<app data dir>/credentials/openai_api_key` (on Android
+`/data/user/0/dev.kaloyan.arthur/credentials/openai_api_key`). It is never in the frontend
+bundle, the APK, the repository, logs or UI state. For Android testing, copy the key from
+Arthur's machine config into the app-private directory without printing it:
+
+```bash
+node -e "const {readMachineConfig}=require('./dist/src/config/machine_config');process.stdout.write(readMachineConfig().OPENAI_API_KEY)" \
+  | adb shell "run-as dev.kaloyan.arthur sh -c 'cat > credentials/openai_api_key && chmod 600 credentials/openai_api_key'"
+```
+
+A settings screen backed by the Android Keystore is the intended production path.
+Cloud backup is disabled (`allowBackup="false"`) so captures and the key never leave the device.
+
+## Testing speech on an emulator
+
+The emulator's virtual microphone accepts audio over its gRPC `injectAudio` call (the same
+feature as Extended Controls > Virtual microphone). The authentication token is
+per-instance and advertised in `/run/user/<uid>/avd/running/pid_<pid>.ini`; send it as
+`authorization: Bearer <token>`. The host-audio drivers (`pa`) did not initialise on a
+PipeWire host, so injection is the reliable route.

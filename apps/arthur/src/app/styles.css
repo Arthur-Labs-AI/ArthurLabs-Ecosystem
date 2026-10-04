@@ -165,3 +165,34 @@ body {
   color: var(--muted);
   font-size: 0.75rem;
 }
+
+.voice-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.voice-controls button {
+  padding: 0.55rem 1rem;
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 0.5rem;
+}
+
+.voice-controls button:disabled {
+  opacity: 0.5;
+}
+
+.voice-controls button.recording {
+  color: #fff;
+  background: #c62828;
+  border-color: #c62828;
+}
+
+.voice-status {
+  margin: 0;
+  color: var(--muted);
+}
