@@ -99,6 +99,8 @@ impl CaptureStore {
             "INSERT INTO distillation_runs (capture_id, created_at) VALUES (?1, ?2)",
             params![capture_id, now_rfc3339()?],
         )?;
+        // A success supersedes any recorded failure, in the same transaction, so the two never disagree.
+        transaction.execute("DELETE FROM organization_failures WHERE capture_id = ?1", [capture_id])?;
 
         let mut stored = Vec::with_capacity(objects.len());
         for object in objects {

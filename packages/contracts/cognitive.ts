@@ -125,6 +125,57 @@ export function isDistillationErrorPayload(value: unknown): value is Distillatio
   return isDistillationErrorCode(candidate.code) && typeof candidate.message === "string";
 }
 
+/**
+ * Whether a capture has been organized into knowledge objects. Durable, and never inferred from how many objects
+ * exist: a capture organized into nothing is `succeeded` with `objectCount` 0.
+ *
+ * - `pending`: never organized (or the app died before an attempt finished).
+ * - `running`: this process is organizing it right now.
+ * - `succeeded`: organized. `objectCount` 0 means nothing worth structuring was found.
+ * - `failed`: the latest attempt failed; `failure` says why. It survives a restart and can be retried.
+ */
+export const ORGANIZATION_STATUSES = ["pending", "running", "succeeded", "failed"] as const;
+
+export type OrganizationStatus = (typeof ORGANIZATION_STATUSES)[number];
+
+export interface OrganizationFailure {
+  code: Exclude<DistillationErrorCode, "capture_not_found">;
+  /** Safe to show to the user. */
+  message: string;
+  /** ISO-8601 time of the latest failed attempt. */
+  failedAt: string;
+}
+
+export interface OrganizationState {
+  captureId: string;
+  status: OrganizationStatus;
+  /** Knowledge objects that came from this capture. */
+  objectCount: number;
+  /** Present only when `status` is `failed`. */
+  failure?: OrganizationFailure | null;
+}
+
+export function isOrganizationStatus(value: unknown): value is OrganizationStatus {
+  return typeof value === "string" && (ORGANIZATION_STATUSES as readonly string[]).includes(value);
+}
+
+/**
+ * What a list row needs about one object, read in one request instead of one per object.
+ * Not an analytics layer: counts and the time of the last change, nothing cached.
+ */
+export interface KnowledgeSummary {
+  objectId: string;
+  /** Relations the object is an end of. A symmetric relation counts once for each of its objects. */
+  relationCount: number;
+  revisionCount: number;
+  /** When the current revision was created: the last time the object changed. */
+  updatedAt: string;
+  currentRevisionId: string;
+}
+
+/** Mirrored by the native store. Asking for no ids means every object. */
+export const MAX_SUMMARY_IDS = 1_000;
+
 // ---------------------------------------------------------------------------------------------
 // Cognitive Graph (M02): typed relations between KnowledgeObjects.
 //

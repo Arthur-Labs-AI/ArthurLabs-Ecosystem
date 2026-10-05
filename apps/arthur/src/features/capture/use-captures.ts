@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Capture, VoiceCaptureErrorCode } from "@arthur/contracts";
+import type { Capture, MicrophonePermissionState, VoiceCaptureErrorCode } from "@arthur/contracts";
 import { VoiceCaptureError } from "../../client/arthur-client";
 import { useArthurClient } from "../../hooks/use-arthur-client";
 
@@ -21,10 +21,22 @@ export interface CapturesState {
   voiceFailure: VoiceFailure | null;
   dismissVoiceFailure: () => void;
   /**
-   * True once the microphone was successfully started in THIS app run, and not refused since. It is deliberately not
-   * persisted and not a permission query: ArthurClient cannot ask the system, so this only says "it worked a moment ago".
+   * The microphone permission as the platform reports it, read without asking (see `ArthurClient.getMicrophonePermission`).
+   * Refreshed on launch, when the app comes back to the foreground (for example from the system settings), and after
+   * every start attempt. `unknown` until the first answer, and on platforms without voice.
    */
+  micPermission: MicrophonePermissionState;
+  /** True when recording can start immediately, with no dialog. */
   micKnownGranted: boolean;
+  /** Opens this app's page in the system settings, where a permanently refused microphone can be allowed. */
+  openAppSettings: () => Promise<void>;
+  /**
+   * Transcribes again the recording that was kept after a retryable failure (`voiceFailure.code === "stt_retryable"`),
+   * without recording again.
+   */
+  retryVoice: () => Promise<void>;
+  /** Deletes the recording kept for a retry, and clears the failure that offered it. */
+  discardVoice: () => Promise<void>;
   /** Discards an in-progress recording without transcribing it. */
   cancelVoice: () => Promise<void>;
   /** Resolves true when the capture was durably saved. */
@@ -51,7 +63,9 @@ export function useCapturesState(): CapturesState {
   const [error, setError] = useState<string | null>(null);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [voiceFailure, setVoiceFailure] = useState<VoiceFailure | null>(null);
-  const [micKnownGranted, setMicKnownGranted] = useState(false);
+  // Mirrors "a recording is kept for a retry", so leaving the retry flow by any route can delete it.
+  const keptRef = useRef(false);
+  const [micPermission, setMicPermission] = useState<MicrophonePermissionState>("unknown");
   // Mirrors `voiceState` so event handlers and cleanup see the current value.
   const voiceRef = useRef<VoiceState>("idle");
   const changeVoiceState = useCallback((next: VoiceState) => {
@@ -80,6 +94,34 @@ export function useCapturesState(): CapturesState {
     };
   }, [client]);
 
+  // The permission is only ever READ here: reading must never prompt. It is re-read when the app returns to the
+  // foreground, which is how a user who just allowed the microphone in the system settings is noticed.
+  const refreshMicPermission = useCallback(async () => {
+    if (!client.capabilities.voiceCapture) return;
+    try {
+      setMicPermission(await client.getMicrophonePermission());
+    } catch {
+      /* an unreadable permission is the same as an unknown one */
+    }
+  }, [client]);
+  useEffect(() => {
+    void refreshMicPermission();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refreshMicPermission();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refreshMicPermission]);
+
+  useEffect(() => {
+    keptRef.current = voiceFailure?.code === "stt_retryable";
+  }, [voiceFailure]);
+
+  // A refusal that has since been undone (the user allowed the microphone in the system settings) is no longer true.
+  useEffect(() => {
+    if (micPermission === "granted") setVoiceFailure((current) => (current?.code === "microphone_permission_denied" ? null : current));
+  }, [micPermission]);
+
   const listeners = useRef(new Set<(capture: Capture) => void>());
   const subscribe = useCallback((listener: (capture: Capture) => void) => {
     listeners.current.add(listener);
@@ -107,7 +149,9 @@ export function useCapturesState(): CapturesState {
     async (content: string): Promise<boolean> => {
       setSaving(true);
       try {
+        const wasKept = keptRef.current;
         addCapture(await client.createCapture({ source: "text", content }));
+        if (wasKept) void client.discardVoiceRecording().catch(() => undefined); // typing it instead leaves the retry flow
         return true;
       } catch (failure) {
         setError(messageOf(failure));
@@ -126,16 +170,16 @@ export function useCapturesState(): CapturesState {
     setVoiceFailure(null);
     try {
       await client.startVoiceCapture();
-      setMicKnownGranted(true);
+      setMicPermission("granted");
       changeVoiceState("recording");
     } catch (failure) {
       setError(messageOf(failure));
       const reason = failureOf(failure);
       setVoiceFailure(reason);
-      if (reason.code === "microphone_permission_denied") setMicKnownGranted(false);
       changeVoiceState("idle");
+      if (reason.code === "microphone_permission_denied") void refreshMicPermission();
     }
-  }, [client, changeVoiceState]);
+  }, [client, changeVoiceState, refreshMicPermission]);
 
   const stopVoice = useCallback(async () => {
     if (voiceRef.current !== "recording") return;
@@ -150,13 +194,46 @@ export function useCapturesState(): CapturesState {
     }
   }, [client, addCapture, changeVoiceState]);
 
+  const retryVoice = useCallback(async () => {
+    if (voiceRef.current !== "idle") return;
+    changeVoiceState("transcribing");
+    setError(null);
+    setVoiceFailure(null);
+    try {
+      addCapture(await client.retryVoiceTranscription());
+    } catch (failure) {
+      setError(messageOf(failure));
+      setVoiceFailure(failureOf(failure));
+    } finally {
+      changeVoiceState("idle");
+    }
+  }, [client, addCapture, changeVoiceState]);
+
+  const discardVoice = useCallback(async () => {
+    setVoiceFailure((current) => (current?.code === "stt_retryable" ? null : current));
+    setError(null);
+    await client.discardVoiceRecording().catch(() => undefined);
+  }, [client]);
+
+  const openAppSettings = useCallback(async () => {
+    try {
+      await client.openAppSettings();
+    } catch (failure) {
+      setError(messageOf(failure));
+    }
+  }, [client]);
+
   const cancelVoice = useCallback(async () => {
     if (voiceRef.current !== "recording") return;
     changeVoiceState("idle");
     await client.cancelVoiceCapture().catch(() => undefined);
   }, [client, changeVoiceState]);
 
-  const dismissVoiceFailure = useCallback(() => setVoiceFailure(null), []);
+  const dismissVoiceFailure = useCallback(() => {
+    // Dismissing the retry card is leaving the retry flow: the kept recording goes with it.
+    if (keptRef.current) void client.discardVoiceRecording().catch(() => undefined);
+    setVoiceFailure(null);
+  }, [client]);
 
   // Recording never continues in the background: if the screen is left or hidden, discard it.
   useEffect(() => {
@@ -177,5 +254,5 @@ export function useCapturesState(): CapturesState {
     };
   }, [client, changeVoiceState]);
 
-  return { status, captures, saving, error, save, voiceState, startVoice, stopVoice, voiceFailure, dismissVoiceFailure, micKnownGranted, cancelVoice, subscribe };
+  return { status, captures, saving, error, save, voiceState, startVoice, stopVoice, voiceFailure, dismissVoiceFailure, micPermission, micKnownGranted: micPermission === "granted", openAppSettings, retryVoice, discardVoice, cancelVoice, subscribe };
 }

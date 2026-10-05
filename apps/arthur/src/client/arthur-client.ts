@@ -6,9 +6,12 @@ import type {
   CreateRevisionInput,
   DistillationErrorCode,
   KnowledgeObject,
+  KnowledgeSummary,
   LineageErrorCode,
+  MicrophonePermissionState,
   MergeRevisionsInput,
   ObjectLineage,
+  OrganizationState,
   RelationErrorCode,
   RelationFilter,
   RevisionChanges,
@@ -101,6 +104,19 @@ export interface ArthurClient {
   finishVoiceCapture(): Promise<Capture>;
   /** Discards an in-progress recording without transcribing it. */
   cancelVoiceCapture(): Promise<void>;
+  /**
+   * Transcribes again the recording the native layer kept after `finishVoiceCapture` failed with `stt_retryable`,
+   * without recording again. Resolves with the persisted `source: "voice"` capture, and the audio is deleted.
+   * Rejects with `stt_retryable` again (the recording is still kept, until its original deadline), with another
+   * `VoiceCaptureError` (final: the audio is deleted), or `no_retained_recording` if there is nothing to retry.
+   */
+  retryVoiceTranscription(): Promise<Capture>;
+  /** Deletes the recording kept for a retry. Never fails; there may be nothing to delete. */
+  discardVoiceRecording(): Promise<void>;
+  /** The microphone permission, read without asking. Never shows a system dialog. */
+  getMicrophonePermission(): Promise<MicrophonePermissionState>;
+  /** Opens this app's page in the system settings, where a permanently refused microphone can be allowed again. */
+  openAppSettings(): Promise<void>;
 
   /**
    * Turns one persisted capture into structured knowledge objects, each pointing at the exact
@@ -110,6 +126,16 @@ export interface ArthurClient {
   distillCapture(captureId: string): Promise<KnowledgeObject[]>;
   /** Every knowledge object: newest distillation first, in reading order within one. */
   listKnowledgeObjects(): Promise<KnowledgeObject[]>;
+  /**
+   * Whether each capture is pending, running, succeeded (maybe with zero objects) or failed. Durable: a failed
+   * attempt is still `failed` after the app restarts, and `distillCapture` is the retry. One read for all captures.
+   */
+  listOrganizationStates(): Promise<OrganizationState[]>;
+  /**
+   * Connection and revision counts (and last-changed time) for many objects in ONE request. `objectIds` omitted:
+   * every object. At most `MAX_SUMMARY_IDS` ids.
+   */
+  getKnowledgeSummaries(objectIds?: string[]): Promise<KnowledgeSummary[]>;
 
   /**
    * Creates a user-authored relation between two existing knowledge objects. Id, timestamp and

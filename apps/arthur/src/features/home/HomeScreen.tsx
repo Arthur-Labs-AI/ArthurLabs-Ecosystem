@@ -10,7 +10,7 @@ import { GraphCanvas } from "../graph/GraphCanvas";
 import { useRelationIndex } from "../graph/relation-index";
 import { useKnowledge } from "../knowledge/knowledge-context";
 import { LineageSketch } from "../lineage/LineageRail";
-import { useLineageSummaries } from "../lineage/lineage-summaries";
+import { useLineageSummaries, useObjectLineage } from "../lineage/lineage-summaries";
 import type { OrganizeJob } from "../knowledge/use-knowledge";
 import "./home.css";
 
@@ -121,6 +121,12 @@ function ConnectedThinking() {
   );
 }
 
+/** The little history shape of one idea, read when it is drawn (an idea that was never edited needs no read). */
+function EvolvingSketch({ objectId }: { objectId: string }) {
+  const lineage = useObjectLineage(objectId);
+  return lineage ? <LineageSketch revisions={lineage.revisions} currentRevisionId={lineage.currentRevisionId} /> : <span aria-hidden="true" style={{ width: 104, height: 14, display: "inline-block" }} />;
+}
+
 function RecentlyEvolving() {
   const { objects } = useKnowledge();
   const { byObject } = useLineageSummaries();
@@ -147,7 +153,7 @@ function RecentlyEvolving() {
             <li key={object.id}>
               <button type="button" className="evo" onClick={() => go("evolution", object.id)}>
                 <span className="t">{object.title}</span>
-                <LineageSketch revisions={summary.lineage.revisions} currentRevisionId={summary.lineage.currentRevisionId} />
+                <EvolvingSketch objectId={object.id} />
                 <span className="m">
                   r{summary.revisionCount} current · {relativeAge(summary.updatedAt)}
                 </span>
@@ -162,7 +168,7 @@ function RecentlyEvolving() {
 
 export function HomeScreen() {
   const { status, captures } = useCaptures();
-  const { objects, jobs, distill, status: knowledgeStatus, error: knowledgeError } = useKnowledge();
+  const { objects, jobs, distill, organizationLoaded, status: knowledgeStatus, error: knowledgeError } = useKnowledge();
   const index = useRelationIndex();
   const { byObject } = useLineageSummaries();
   const { go } = useNavigation();
@@ -238,7 +244,7 @@ export function HomeScreen() {
                         <Margin source={capture.source} showSource={false} connections={index.countOf(object.id)} revisions={byObject.get(object.id)?.revisionCount} />
                       </button>
                     ))}
-                    <CaptureOutcome capture={capture} objects={mine} job={jobs.get(capture.id)} ready={knowledgeStatus === "ready"} onRetry={() => void distill(capture.id)} />
+                    <CaptureOutcome capture={capture} objects={mine} job={jobs.get(capture.id)} ready={knowledgeStatus === "ready" && organizationLoaded} onRetry={() => void distill(capture.id)} />
                   </article>
                 );
               })}

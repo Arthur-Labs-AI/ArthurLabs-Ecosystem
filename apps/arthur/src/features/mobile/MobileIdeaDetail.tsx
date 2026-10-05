@@ -30,6 +30,7 @@ export function MobileIdeaDetail({ objectId }: { objectId: string }) {
   const { closePage, closeAllPages, setConnectionsView, openIdea } = useMobileNav();
   const object = objects.find((candidate) => candidate.id === objectId);
   const lineage = useLineage(objectId, null, refresh);
+  const history = lineage.lineage ?? undefined; // the page's own read of this one idea's history
   const [sheet, setSheet] = useState<"revise" | "branch" | null>(null);
   const [edge, setEdge] = useState<string | null>(null);
 
@@ -53,11 +54,11 @@ export function MobileIdeaDetail({ objectId }: { objectId: string }) {
 
   const capture = captures.find((candidate) => candidate.id === object.provenance.captureId);
   const edges = index.edgesOf(object.id);
-  const revisions = summary?.lineage.revisions ?? [];
+  const revisions = history?.revisions ?? [];
   const labels = new Map(revisions.map((revision, i) => [revision.id, `R${i + 1}`]));
   const revisionById = new Map(revisions.map((revision) => [revision.id, revision]));
   const lastThree = revisions.slice(-3);
-  const current = revisions.find((revision) => revision.id === summary?.lineage.currentRevisionId);
+  const current = revisions.find((revision) => revision.id === history?.currentRevisionId);
   const source = capture?.source ?? "text";
 
   const leaveTo = (screen: "connections" | "evolution", view?: "list" | "map") => {
@@ -187,7 +188,7 @@ export function MobileIdeaDetail({ objectId }: { objectId: string }) {
               </button>
             )}
           </div>
-          {summary && revisions.length > 1 ? (
+          {history && revisions.length > 1 ? (
             <ul className="m-minirail" aria-label="Revisions">
               {revisions.length > 3 && (
                 <li className="m-mr more">
@@ -196,7 +197,7 @@ export function MobileIdeaDetail({ objectId }: { objectId: string }) {
                 </li>
               )}
               {lastThree.map((revision) => {
-                const isCurrent = revision.id === summary.lineage.currentRevisionId;
+                const isCurrent = revision.id === history?.currentRevisionId;
                 return (
                   <li key={revision.id} className={isCurrent ? "m-mr cur" : "m-mr"}>
                     <span className="m-b">{labels.get(revision.id)}</span>

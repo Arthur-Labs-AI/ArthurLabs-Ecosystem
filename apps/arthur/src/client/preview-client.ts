@@ -24,6 +24,9 @@ import {
   type CreateRevisionInput,
   type KnowledgeObject,
   type KnowledgeObjectKind,
+  type KnowledgeSummary,
+  type MicrophonePermissionState,
+  type OrganizationState,
   type MergeRevisionsInput,
   type ObjectLineage,
   type RelationErrorCode,
@@ -42,8 +45,25 @@ export interface PreviewVoiceOptions {
   transcript?: () => string;
   /** Make `startVoiceCapture` fail, e.g. to simulate a denied microphone permission. */
   startError?: VoiceCaptureError;
-  /** Make `finishVoiceCapture` fail, e.g. to simulate a network failure. */
+  /**
+   * Make `finishVoiceCapture` fail, e.g. to simulate a network failure. A `stt_retryable` error behaves like the
+   * native layer: the recording is kept for `retryVoiceTranscription` / `discardVoiceRecording`. Any other error is
+   * final and keeps nothing.
+   */
   finishError?: VoiceCaptureError;
+  /**
+   * What a retry does, in order, one entry per call; once the list is empty the retry succeeds. An entry is an error
+   * to reject with (`stt_retryable` keeps the recording, anything else deletes it).
+   */
+  retryErrors?: VoiceCaptureError[];
+  /**
+   * The microphone permission the device reports. Shared, so a test can change it (for example after the user
+   * "allowed" it in settings). Default `unknown`. A successful start makes it `granted`; a refused start makes it
+   * `denied` unless the error says otherwise.
+   */
+  permission?: { current: MicrophonePermissionState };
+  /** Called each time `openAppSettings` is used. */
+  onOpenSettings?: () => void;
 }
 
 /** What the fake language model proposes. `evidence` must be a verbatim quote of the capture. */
@@ -103,6 +123,17 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
   /** Per object: its revisions (oldest first) and which one is current. The object in `runs` is a projection of it. */
   const lineages = new Map<string, { revisions: ThoughtRevision[]; current: string }>();
   let recording = false;
+  /** A recording kept after a retryable transcription failure. Nothing about the audio itself is modelled. */
+  let kept = false;
+  const retryErrors = [...(voice.retryErrors ?? [])];
+  const permission = voice.permission ?? { current: "unknown" as MicrophonePermissionState };
+  /** The latest failure per capture, like the native `organization_failures`. A success clears it. */
+  const failures = new Map<string, NonNullable<OrganizationState["failure"]>>();
+
+  const remember = (captureId: string, failure: DistillationError): void => {
+    if (failure.code === "capture_not_found") return;
+    failures.set(captureId, { code: failure.code, message: failure.message, failedAt: now().toISOString() });
+  };
 
   const append = (input: CreateCaptureInput): Capture => {
     const capture: Capture = { id: newId(), source: input.source, content: input.content, createdAt: now().toISOString() };
@@ -251,14 +282,22 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
 
     startVoiceCapture: () => {
       if (recording) return Promise.reject(new VoiceCaptureError("already_recording", "A recording is already in progress."));
-      if (voice.startError) return Promise.reject(voice.startError);
+      kept = false; // starting over leaves the retry flow
+      if (voice.startError) {
+        if (permission.current !== "denied_permanently") permission.current = "denied";
+        return Promise.reject(voice.startError);
+      }
+      permission.current = "granted";
       recording = true;
       return Promise.resolve();
     },
     finishVoiceCapture: () => {
       if (!recording) return Promise.reject(new VoiceCaptureError("not_recording", "There is no recording in progress."));
       recording = false;
-      if (voice.finishError) return Promise.reject(voice.finishError);
+      if (voice.finishError) {
+        kept = voice.finishError.code === "stt_retryable";
+        return Promise.reject(voice.finishError);
+      }
       const transcript = (voice.transcript?.() ?? "Preview voice capture.").trim();
       if (transcript.length === 0) {
         return Promise.reject(new VoiceCaptureError("empty_transcript", "No speech was recognised. Nothing was saved."));
@@ -267,6 +306,27 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
     },
     cancelVoiceCapture: () => {
       recording = false;
+      return Promise.resolve();
+    },
+    retryVoiceTranscription: () => {
+      if (!kept) return Promise.reject(new VoiceCaptureError("no_retained_recording", "That recording is no longer kept. Record it again, or type it."));
+      const failure = retryErrors.shift();
+      if (failure) {
+        kept = failure.code === "stt_retryable";
+        return Promise.reject(failure);
+      }
+      kept = false;
+      const transcript = (voice.transcript?.() ?? "Preview voice capture.").trim();
+      if (transcript.length === 0) return Promise.reject(new VoiceCaptureError("empty_transcript", "No speech was recognised. Nothing was saved."));
+      return Promise.resolve(append({ source: "voice", content: transcript }));
+    },
+    discardVoiceRecording: () => {
+      kept = false;
+      return Promise.resolve();
+    },
+    getMicrophonePermission: () => Promise.resolve(permission.current),
+    openAppSettings: () => {
+      voice.onOpenSettings?.();
       return Promise.resolve();
     },
 
@@ -279,6 +339,7 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       if (distillation.error) {
         const failure = distillation.error;
         if (distillation.once) delete distillation.error;
+        remember(captureId, failure);
         return Promise.reject(failure);
       }
 
@@ -299,7 +360,9 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
         }
         const end = start + needle.length;
         if (needle.length === 0 || start < 0 || describeSpanProblem(capture.content, start, end) !== null) {
-          return Promise.reject(new DistillationError("llm_invalid_output", "The language model returned something that could not be trusted. Nothing was saved."));
+          const invalid = new DistillationError("llm_invalid_output", "The language model returned something that could not be trusted. Nothing was saved.");
+          remember(captureId, invalid);
+          return Promise.reject(invalid);
         }
         objects.push({
           id: newId(),
@@ -326,9 +389,32 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
         lineages.set(object.id, { revisions: [initial], current: initial.id });
       }
       runs.unshift({ captureId, objects });
+      failures.delete(captureId); // a success supersedes any failure
       return Promise.resolve([...objects]);
     },
     listKnowledgeObjects: () => Promise.resolve(allObjects()),
+    listOrganizationStates: () =>
+      Promise.resolve(
+        captures.map((capture): OrganizationState => {
+          const run = runs.find((candidate) => candidate.captureId === capture.id);
+          if (run) return { captureId: capture.id, status: "succeeded", objectCount: run.objects.length };
+          const failure = failures.get(capture.id);
+          return failure ? { captureId: capture.id, status: "failed", objectCount: 0, failure } : { captureId: capture.id, status: "pending", objectCount: 0 };
+        }),
+      ),
+    getKnowledgeSummaries: (objectIds) => {
+      const wanted = objectIds === undefined ? null : new Set(objectIds);
+      const summaries: KnowledgeSummary[] = [];
+      for (const object of allObjects()) {
+        if (wanted && !wanted.has(object.id)) continue;
+        const lineage = lineages.get(object.id);
+        const current = lineage?.revisions.find((revision) => revision.id === lineage.current);
+        if (!lineage || !current) continue;
+        const relationCount = relations.filter((relation) => relation.sourceObjectId === object.id || relation.targetObjectId === object.id).length;
+        summaries.push({ objectId: object.id, relationCount, revisionCount: lineage.revisions.length, updatedAt: current.createdAt, currentRevisionId: current.id });
+      }
+      return Promise.resolve(summaries);
+    },
 
     createRelation: (input) => {
       try {

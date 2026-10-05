@@ -3,6 +3,7 @@ mod audio;
 mod commands;
 mod distillation;
 mod graph;
+mod lifecycle;
 mod lineage;
 mod platform;
 mod providers;
@@ -68,8 +69,14 @@ pub fn run() {
             commands::voice::start_voice_capture,
             commands::voice::finish_voice_capture,
             commands::voice::cancel_voice_capture,
+            commands::voice::retry_voice_transcription,
+            commands::voice::discard_voice_recording,
+            commands::voice::get_microphone_permission,
+            commands::voice::open_app_settings,
             commands::distill::distill_capture,
             commands::distill::list_knowledge_objects,
+            commands::distill::list_organization_states,
+            commands::distill::get_knowledge_summaries,
             commands::graph::create_relation,
             commands::graph::list_relations,
             commands::graph::get_object_relations,
@@ -85,6 +92,12 @@ pub fn run() {
             commands::lineage::merge_revisions,
             commands::lineage::diff_revisions,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running the Arthur application");
+        .build(tauri::generate_context!())
+        .expect("error while building the Arthur application")
+        .run(|_app, event| {
+            if let tauri::RunEvent::Exit = event {
+                lifecycle::leave_process();
+            }
+        });
 }
+

@@ -8,7 +8,7 @@ import { useCaptures } from "../capture/captures-context";
 import { useKnowledge } from "../knowledge/knowledge-context";
 import { LineageRail, LineageSketch } from "./LineageRail";
 import { RevisionForm } from "./RevisionForm";
-import { useLineageSummaries } from "./lineage-summaries";
+import { useLineageSummaries, useObjectLineage } from "./lineage-summaries";
 import { ORIGIN_LABELS, captionFor, statsFromDiff } from "./revision-captions";
 import { useLineage } from "./use-lineage";
 import "./lineage.css";
@@ -31,6 +31,12 @@ function Segments({ segments }: { segments: DiffSegment[] }) {
 }
 
 type Mode = null | "revise" | "branch" | "merge";
+
+/** The history shape in the picker. Read lazily; an idea that was never edited needs no read. */
+function PickerSketch({ objectId }: { objectId: string }) {
+  const lineage = useObjectLineage(objectId);
+  return lineage ? <LineageSketch revisions={lineage.revisions} currentRevisionId={lineage.currentRevisionId} /> : <span aria-hidden="true" style={{ width: 104, height: 14, display: "inline-block" }} />;
+}
 
 function History({ objectId, title }: { objectId: string; title: string }) {
   const { refresh } = useKnowledge();
@@ -359,7 +365,7 @@ export function EvolutionScreen() {
               <li key={object.id}>
                 <button type="button" className={(summary?.revisionCount ?? 1) > 1 ? "pick" : "pick single"} aria-pressed={chosen?.id === object.id} onClick={() => focus(object.id)}>
                   <span className="t">{object.title}</span>
-                  {summary && <LineageSketch revisions={summary.lineage.revisions} currentRevisionId={summary.lineage.currentRevisionId} />}
+                  {summary && <PickerSketch objectId={object.id} />}
                   <span className="m">
                     {summary ? `r${summary.revisionCount} · ${relativeAge(summary.updatedAt)}` : ""}
                   </span>

@@ -205,14 +205,31 @@ BEGIN
 END;
 ";
 
+/// v5 (M03.1B-2): durable organization failures.
+///
+/// Whether a capture was organized is already durable: `distillation_runs` has a row exactly when a distillation
+/// succeeded, including one that found no objects. What was missing is a failed attempt, so a failure survived only
+/// in memory and a relaunch could not tell "organizing failed" from "never tried". This table records the latest
+/// failure per capture and nothing else: no job queue, no attempt history, and no copy of the capture or the model's
+/// output. A success deletes the row in the same transaction that writes the run, so the two can never disagree.
+/// Existing tables and rows are not touched. `capture_not_found` is not storable: there is no capture to attach it to.
+pub const SCHEMA_V5: &str = "
+CREATE TABLE organization_failures (
+    capture_id TEXT PRIMARY KEY REFERENCES captures(id),
+    code       TEXT NOT NULL CHECK (code IN ('llm_not_configured', 'llm_failed', 'llm_refused', 'llm_invalid_output', 'storage_failed')),
+    message    TEXT NOT NULL CHECK (length(message) > 0),
+    failed_at  TEXT NOT NULL CHECK (length(failed_at) > 0)
+);
+";
+
 pub type Step = (i64, &'static str);
 
 /// Ordered migration steps: `(version after the step, SQL)`.
-pub const STEPS: [Step; 4] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4)];
+pub const STEPS: [Step; 5] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4), (5, SCHEMA_V5)];
 
 /// The version `STEPS` ends at; asserted against `STEPS` by a test.
 #[cfg(test)]
-pub const SCHEMA_VERSION: i64 = 4;
+pub const SCHEMA_VERSION: i64 = 5;
 
 pub fn migrate(connection: &mut Connection) -> Result<(), StoreError> {
     migrate_with(connection, &STEPS)
@@ -434,7 +451,7 @@ mod tests {
         let store = CaptureStore::open(&path).unwrap();
 
         let connection = Connection::open(&path).unwrap();
-        assert_eq!(user_version(&connection), 4);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION);
         assert_eq!(dump(&connection), before, "captures, runs, objects and provenance are unchanged");
         assert_eq!(relations_dump(&connection), before_relations, "graph relations are unchanged");
         let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
@@ -493,7 +510,7 @@ mod tests {
             CaptureStore::open(&first).unwrap();
         }
         assert_eq!(revision_rows(&first), once, "re-opening never adds or changes a revision");
-        assert_eq!(user_version(&Connection::open(&first).unwrap()), 4);
+        assert_eq!(user_version(&Connection::open(&first).unwrap()), SCHEMA_VERSION);
     }
 
     #[test]
@@ -521,6 +538,78 @@ mod tests {
             // v3 is still fully writable.
             connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('c3', 'text', 'still works', '2026-10-04T11:00:00Z')", []).unwrap();
         }
+    }
+
+    /// A database exactly as M03 left it: schema v4 with captures, objects, provenance, relations and revisions.
+    fn v4_database(path: &std::path::Path) {
+        v3_database(path);
+        let mut connection = Connection::open(path).unwrap();
+        migrate_with(&mut connection, &STEPS[..4]).unwrap();
+        assert_eq!(user_version(&connection), 4);
+    }
+
+    #[test]
+    fn a_v4_database_upgrades_to_v5_and_every_existing_row_is_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v4_database(&path);
+        let (before, before_relations, revisions) = {
+            let connection = Connection::open(&path).unwrap();
+            let revisions: i64 = connection.query_row("SELECT count(*) FROM thought_revisions", [], |r| r.get(0)).unwrap();
+            (dump(&connection), relations_dump(&connection), revisions)
+        };
+
+        let store = CaptureStore::open(&path).unwrap();
+
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 5);
+        assert!(has_object(&connection, "table", "organization_failures"));
+        assert_eq!(dump(&connection), before, "captures, runs, objects and provenance are unchanged");
+        assert_eq!(relations_dump(&connection), before_relations, "graph relations are unchanged");
+        let after: i64 = connection.query_row("SELECT count(*) FROM thought_revisions", [], |r| r.get(0)).unwrap();
+        assert_eq!(after, revisions, "lineage is unchanged");
+        let failures: i64 = connection.query_row("SELECT count(*) FROM organization_failures", [], |r| r.get(0)).unwrap();
+        assert_eq!(failures, 0, "the upgrade invents no failure");
+        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(integrity, "ok");
+        // Existing runs read as succeeded, and a capture without one as pending: nothing was lost or invented.
+        let states = store.list_organization_states().unwrap();
+        assert!(states.iter().all(|s| s.status == "succeeded" || s.status == "pending"));
+    }
+
+    #[test]
+    fn a_failing_v5_upgrade_rolls_back_completely_and_leaves_v4_usable() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v4_database(&path);
+        let before = {
+            let connection = Connection::open(&path).unwrap();
+            connection.execute_batch("CREATE TABLE organization_failures (precious TEXT); INSERT INTO organization_failures VALUES ('keep me');").unwrap();
+            (dump(&connection), relations_dump(&connection))
+        };
+
+        assert!(CaptureStore::open(&path).is_err());
+
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 4, "still v4");
+        assert_eq!((dump(&connection), relations_dump(&connection)), before);
+        let kept: String = connection.query_row("SELECT precious FROM organization_failures", [], |r| r.get(0)).unwrap();
+        assert_eq!(kept, "keep me");
+        connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('c9', 'text', 'still works', '2026-10-04T12:00:00Z')", []).unwrap();
+    }
+
+    #[test]
+    fn a_database_newer_than_v5_is_refused_untouched_by_the_v5_code() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v4_database(&path);
+        Connection::open(&path).unwrap().pragma_update(None, "user_version", 6).unwrap();
+        let before = dump(&Connection::open(&path).unwrap());
+        assert!(matches!(CaptureStore::open(&path), Err(StoreError::Corrupt(_))));
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 6);
+        assert!(!has_object(&connection, "table", "organization_failures"));
+        assert_eq!(dump(&connection), before);
     }
 
     #[test]

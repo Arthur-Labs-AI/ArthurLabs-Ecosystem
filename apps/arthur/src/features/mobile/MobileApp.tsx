@@ -142,11 +142,17 @@ function TabBar() {
 function Frame() {
   const { screen } = useNavigation();
   const { pages, typing } = useMobileNav();
-  const { voiceState } = useCaptures();
+  const { voiceState, voiceFailure, discardVoice } = useCaptures();
   const { height, keyboardOpen } = useViewport();
   const top = pages.at(-1);
   const tab: Tab = screen === "settings" ? "home" : screen;
   const recording = voiceState === "recording" || voiceState === "starting";
+  // The retry card lives on Home. Leaving Home (another tab, a page, Settings) leaves the retry flow, and the
+  // recording kept for it is deleted: it is never held for a user who has gone elsewhere.
+  const retryOpenHere = voiceFailure?.code === "stt_retryable" && tab === "home" && top === undefined;
+  useEffect(() => {
+    if (voiceFailure?.code === "stt_retryable" && !retryOpenHere && voiceState === "idle") void discardVoice();
+  }, [voiceFailure, retryOpenHere, voiceState, discardVoice]);
   const hideBar = keyboardOpen || top !== undefined || (typing && tab === "home");
 
   return (

@@ -2,8 +2,12 @@ package dev.kaloyan.arthur
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.media.MediaRecorder
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import app.tauri.PermissionState
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -11,6 +15,7 @@ import app.tauri.annotation.Permission
 import app.tauri.annotation.PermissionCallback
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
+import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import java.io.File
 
@@ -23,7 +28,7 @@ class StartRecordingArgs {
  * Minimal microphone recorder driven by the Rust `AndroidRecorder`.
  *
  * - Records AAC/m4a (16 kHz mono) to a file the Rust side chose inside the app cache directory.
- * - Asks for RECORD_AUDIO only when recording is started.
+ * - Asks for RECORD_AUDIO only when recording is started. Reading the permission (`getMicrophonePermission`) never asks.
  * - Never records in the background: if the activity pauses, the recording is discarded.
  * - Rejects with the codes in packages/contracts/capture.ts (VOICE_CAPTURE_ERROR_CODES).
  *
@@ -48,8 +53,43 @@ class AudioPlugin(private val activity: Activity) : Plugin(activity) {
         }
     }
 
+    /**
+     * The microphone permission as one of four words, without showing any dialog:
+     * `granted`; `unknown` (not granted and never asked, so Speak may ask); `denied` (asked and refused, the system
+     * will still show its dialog); `denied_permanently` (refused for good: only the app's settings can change it).
+     *
+     * Android cannot tell "never asked" from "asked and told not to ask again" by itself, so whether Arthur has asked
+     * before is remembered in the app's private preferences.
+     */
+    @Command
+    fun getMicrophonePermission(invoke: Invoke) {
+        val state = when {
+            getPermissionState(MICROPHONE) == PermissionState.GRANTED -> "granted"
+            !preferences().getBoolean(ASKED_KEY, false) -> "unknown"
+            activity.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) -> "denied"
+            else -> "denied_permanently"
+        }
+        val result = JSObject()
+        result.put("state", state)
+        invoke.resolve(result)
+    }
+
+    /** Opens this app's own page in the system settings. The UI never sees an intent or a package name. */
+    @Command
+    fun openAppSettings(invoke: Invoke) {
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", activity.packageName, null))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            activity.startActivity(intent)
+            invoke.resolve()
+        } catch (e: Exception) {
+            invoke.reject("Settings could not be opened", "recording_failed", e)
+        }
+    }
+
     @PermissionCallback
     fun onMicrophonePermissionResult(invoke: Invoke) {
+        preferences().edit().putBoolean(ASKED_KEY, true).apply()
         if (getPermissionState(MICROPHONE) == PermissionState.GRANTED) {
             begin(invoke)
         } else {
@@ -104,6 +144,8 @@ class AudioPlugin(private val activity: Activity) : Plugin(activity) {
     override fun onDestroy() {
         synchronized(lock) { discard() }
     }
+
+    private fun preferences() = activity.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 
     private fun begin(invoke: Invoke) {
         synchronized(lock) {
@@ -173,6 +215,8 @@ class AudioPlugin(private val activity: Activity) : Plugin(activity) {
 
     private companion object {
         const val MICROPHONE = "microphone"
+        const val PREFERENCES = "arthur-audio"
+        const val ASKED_KEY = "microphone-permission-asked"
         const val SAMPLE_RATE_HZ = 16_000
         const val BIT_RATE = 64_000
         /** Matches the 120 s cap of the existing cloud STT provider. */

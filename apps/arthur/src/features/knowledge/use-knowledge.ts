@@ -22,6 +22,11 @@ export interface KnowledgeState {
   distilling: string | null;
   /** Per capture: queued, organizing, failed (retry with `distill`) or empty (nothing to structure). */
   jobs: ReadonlyMap<string, OrganizeJob>;
+  /**
+   * True once the durable organization state of every capture has been read. Until then a capture without ideas must
+   * not be called "not organized yet": it may have been organized into nothing, or have a failure to show.
+   */
+  organizationLoaded: boolean;
   /** Failure to LOAD or re-read knowledge. Distillation failures are per capture, in `jobs`. */
   error: string | null;
   /**
@@ -42,6 +47,7 @@ export function useKnowledgeState(): KnowledgeState {
   const [objects, setObjects] = useState<KnowledgeObject[]>([]);
   const [distilling, setDistilling] = useState<string | null>(null);
   const [jobs, setJobs] = useState<ReadonlyMap<string, OrganizeJob>>(new Map());
+  const [organizationLoaded, setOrganizationLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Mirrors for the serial queue, which must see the current values between awaits.
@@ -72,6 +78,33 @@ export function useKnowledgeState(): KnowledgeState {
         if (cancelled) return;
         setError(messageOf(failure));
         setStatus("error");
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
+
+  // What the previous run left behind: failures that must still offer a retry, and captures that were organized into
+  // nothing. Both are durable in the native store, so this is read, not remembered. A read that fails changes nothing:
+  // the screens then behave exactly as they did before this state existed.
+  useEffect(() => {
+    let cancelled = false;
+    client.listOrganizationStates().then(
+      (states) => {
+        if (cancelled) return;
+        const next = new Map(jobsRef.current);
+        for (const state of states) {
+          if (next.has(state.captureId)) continue; // something is happening to it right now in this session
+          if (state.status === "failed" && state.failure) next.set(state.captureId, { status: "failed", message: state.failure.message });
+          else if (state.status === "succeeded" && state.objectCount === 0) next.set(state.captureId, { status: "empty" });
+        }
+        jobsRef.current = next;
+        setJobs(next);
+        setOrganizationLoaded(true);
+      },
+      () => {
+        if (!cancelled) setOrganizationLoaded(true);
       },
     );
     return () => {
@@ -142,5 +175,5 @@ export function useKnowledgeState(): KnowledgeState {
     }
   }, [client]);
 
-  return { status, objects, distilling, jobs, error, distill, refresh };
+  return { status, objects, distilling, jobs, organizationLoaded, error, distill, refresh };
 }

@@ -78,6 +78,8 @@ export const VOICE_CAPTURE_ERROR_CODES = [
   "recording_interrupted",
   "stt_not_configured",
   "stt_failed",
+  "stt_retryable",
+  "no_retained_recording",
   "empty_transcript",
   "capture_failed",
 ] as const;
@@ -98,4 +100,21 @@ export function isVoiceCaptureErrorPayload(value: unknown): value is VoiceCaptur
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Record<string, unknown>;
   return isVoiceCaptureErrorCode(candidate.code) && typeof candidate.message === "string";
+}
+
+/**
+ * What the app may do about the microphone, as the platform sees it. Semantic only: no platform names, no intents.
+ * Reading it never asks the user for anything.
+ *
+ * - `unknown`: not granted and never asked (or the platform cannot say). Speak may ask.
+ * - `granted`: recording can start immediately.
+ * - `denied`: refused, but the system will still show its dialog if asked again.
+ * - `denied_permanently`: refused for good. Only the app's page in the system settings can change it.
+ */
+export const MICROPHONE_PERMISSION_STATES = ["unknown", "granted", "denied", "denied_permanently"] as const;
+
+export type MicrophonePermissionState = (typeof MICROPHONE_PERMISSION_STATES)[number];
+
+export function isMicrophonePermissionState(value: unknown): value is MicrophonePermissionState {
+  return typeof value === "string" && (MICROPHONE_PERMISSION_STATES as readonly string[]).includes(value);
 }

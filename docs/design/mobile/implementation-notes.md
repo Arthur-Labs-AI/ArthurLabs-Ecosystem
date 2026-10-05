@@ -95,14 +95,14 @@ Pixel_10 x86_64 emulator, API 37, debug build, software GPU, demo database (49 o
 | – | Offline organizing | "Your thought is saved. … Nothing was lost." + Retry organizing; retry succeeded once back online |
 | – | Software keyboard | Capture/Cancel visible above it; one tap saves; Revise sheet actions above it (3-button navigation too) |
 | – | Back | Closes page → tab, sheet → page, filter sheet; never leaves while a layer is open |
-| – | **Back at the root** | **Native abort still occurs**: `FORTIFY: pthread_mutex_lock called on a destroyed mutex`, process dies. Pre-existing, not touched here. |
+| – | **Back at the root** | The native abort occurred here (`FORTIFY: pthread_mutex_lock called on a destroyed mutex`). Pre-existing; **fixed in M03.1B-2** (see `hardening-notes.md`). |
 
 One first-attempt STT call failed with a network error on a fresh process and succeeded on retry; shown honestly by the UI, cause not
 investigated. Typing-mode Back and the 360/412 keyboard cases were not exercised on the device.
 
 Screenshots from the device are in `android/`.
 
-## What stays for M03.1B-2
+## What stayed for M03.1B-2 (now done)
 
 The five items in `FOLLOW-UPS.md` are untouched: durable organization state, recoverable organization failure, batched counts,
 Open Settings / permission recovery (plus a permission query so the Capture tab can know without a first Speak), and

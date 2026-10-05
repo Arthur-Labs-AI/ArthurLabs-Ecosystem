@@ -10,6 +10,8 @@ import {
   isCognitiveRelation,
   isDistillationErrorPayload,
   isKnowledgeObject,
+  isMicrophonePermissionState,
+  isOrganizationStatus,
   isRelationErrorPayload,
   isRuntimeInfo,
   isVoiceCaptureErrorPayload,
@@ -24,6 +26,9 @@ import {
   type RevisionDiff,
   type ThoughtRevision,
   type KnowledgeObject,
+  type KnowledgeSummary,
+  type MicrophonePermissionState,
+  type OrganizationState,
   type RelationFilter,
   type RuntimeInfo,
 } from "@arthur/contracts";
@@ -102,6 +107,46 @@ export async function cancelVoiceCaptureOverIpc(call: Invoke = invoke): Promise<
   }
 }
 
+export async function retryVoiceTranscriptionOverIpc(call: Invoke = invoke): Promise<Capture> {
+  let payload: unknown;
+  try {
+    payload = await call("retry_voice_transcription");
+  } catch (failure) {
+    throw toVoiceCaptureError(failure);
+  }
+  if (!isCapture(payload) || payload.source !== "voice") {
+    throw new Error("Native layer returned an invalid voice capture");
+  }
+  return payload;
+}
+
+export async function discardVoiceRecordingOverIpc(call: Invoke = invoke): Promise<void> {
+  try {
+    await call("discard_voice_recording");
+  } catch (failure) {
+    throw toVoiceCaptureError(failure);
+  }
+}
+
+export async function getMicrophonePermissionOverIpc(call: Invoke = invoke): Promise<MicrophonePermissionState> {
+  let payload: unknown;
+  try {
+    payload = await call("get_microphone_permission");
+  } catch (failure) {
+    throw toVoiceCaptureError(failure);
+  }
+  if (!isMicrophonePermissionState(payload)) throw new Error("Native layer returned an invalid microphone permission");
+  return payload;
+}
+
+export async function openAppSettingsOverIpc(call: Invoke = invoke): Promise<void> {
+  try {
+    await call("open_app_settings");
+  } catch (failure) {
+    throw toVoiceCaptureError(failure);
+  }
+}
+
 /** The native layer rejects distillation failures with `{ code, message }`; anything else is passed through. */
 function toDistillationError(failure: unknown): unknown {
   if (isDistillationErrorPayload(failure)) return new DistillationError(failure.code, failure.message);
@@ -127,6 +172,38 @@ export async function listKnowledgeObjectsOverIpc(call: Invoke = invoke): Promis
   if (!Array.isArray(payload) || !payload.every(isKnowledgeObject)) {
     throw new Error("Native layer returned invalid knowledge objects");
   }
+  return payload;
+}
+
+function isOrganizationState(value: unknown): value is OrganizationState {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  if (typeof candidate.captureId !== "string" || candidate.captureId.length === 0) return false;
+  if (!isOrganizationStatus(candidate.status)) return false;
+  if (typeof candidate.objectCount !== "number" || !Number.isInteger(candidate.objectCount) || candidate.objectCount < 0) return false;
+  if (candidate.status === "failed") {
+    const failure = candidate.failure as Record<string, unknown> | null | undefined;
+    return typeof failure === "object" && failure !== null && typeof failure.code === "string" && typeof failure.message === "string" && typeof failure.failedAt === "string";
+  }
+  return candidate.failure === undefined || candidate.failure === null;
+}
+
+export async function listOrganizationStatesOverIpc(call: Invoke = invoke): Promise<OrganizationState[]> {
+  const payload = await call("list_organization_states");
+  if (!Array.isArray(payload) || !payload.every(isOrganizationState)) throw new Error("Native layer returned invalid organization states");
+  return payload;
+}
+
+function isKnowledgeSummary(value: unknown): value is KnowledgeSummary {
+  if (typeof value !== "object" || value === null) return false;
+  const c = value as Record<string, unknown>;
+  const count = (n: unknown): boolean => typeof n === "number" && Number.isInteger(n) && n >= 0;
+  return typeof c.objectId === "string" && c.objectId.length > 0 && count(c.relationCount) && count(c.revisionCount) && typeof c.updatedAt === "string" && c.updatedAt.length > 0 && typeof c.currentRevisionId === "string" && c.currentRevisionId.length > 0;
+}
+
+export async function getKnowledgeSummariesOverIpc(objectIds: string[] | undefined, call: Invoke = invoke): Promise<KnowledgeSummary[]> {
+  const payload = await call("get_knowledge_summaries", objectIds === undefined ? {} : { objectIds });
+  if (!Array.isArray(payload) || !payload.every(isKnowledgeSummary)) throw new Error("Native layer returned invalid knowledge summaries");
   return payload;
 }
 

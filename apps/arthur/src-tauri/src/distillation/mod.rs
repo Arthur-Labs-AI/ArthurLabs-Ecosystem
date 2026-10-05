@@ -10,8 +10,9 @@ pub mod openai;
 pub mod prompt;
 pub mod resolve;
 
+use std::collections::HashSet;
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
@@ -19,6 +20,7 @@ use serde::{Serialize, Serializer};
 use crate::async_util::BoxFuture;
 use crate::storage::capture_store::{CaptureStore, StoreError};
 use crate::storage::knowledge_store::KnowledgeObject;
+use crate::storage::organization_store::OrganizationState;
 
 /// What the model proposed. Untrusted: nothing here is stored as-is.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,25 +113,64 @@ pub trait Distiller: Send + Sync {
 
 pub struct DistillationService {
     distiller: Arc<dyn Distiller>,
+    /// Captures this process is working on right now. Memory only: "running" must never outlive the process.
+    running: Mutex<HashSet<String>>,
+}
+
+/// Removes a capture from `running` however the attempt ends.
+struct RunningGuard<'a> {
+    running: &'a Mutex<HashSet<String>>,
+    capture_id: String,
+}
+
+impl Drop for RunningGuard<'_> {
+    fn drop(&mut self) {
+        self.running.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).remove(&self.capture_id);
+    }
 }
 
 impl DistillationService {
     pub fn new(distiller: Arc<dyn Distiller>) -> Self {
-        Self { distiller }
+        Self { distiller, running: Mutex::new(HashSet::new()) }
     }
 
     /// Distills a capture, once. A capture that already has a distillation (including one that
     /// yielded no objects) returns that set without calling the model or writing anything.
+    ///
+    /// A failed attempt is remembered durably (`organization_failures`), so it survives a restart and can be retried.
+    /// Recording it can never fail the call or touch the capture: the original error is what the caller gets.
     pub async fn distill(&self, store: &CaptureStore, capture_id: &str) -> Result<Vec<KnowledgeObject>, DistillError> {
         let capture = store.get_capture(capture_id)?.ok_or(DistillError::CaptureNotFound)?;
         if let Some(existing) = store.distillation_for(capture_id)? {
             return Ok(existing);
         }
 
-        let candidates = self.distiller.distill(&capture.content).await?;
-        let objects = resolve::resolve_candidates(&capture.content, candidates)?;
-        // All-or-nothing. If a concurrent call finished first, this returns its set.
+        self.running.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(capture_id.to_string());
+        let _running = RunningGuard { running: &self.running, capture_id: capture_id.to_string() };
+
+        let result = self.attempt(store, capture_id, &capture.content).await;
+        if let Err(error) = &result {
+            let _ = store.record_organization_failure(capture_id, error.code(), &error.message());
+        }
+        result
+    }
+
+    async fn attempt(&self, store: &CaptureStore, capture_id: &str, content: &str) -> Result<Vec<KnowledgeObject>, DistillError> {
+        let candidates = self.distiller.distill(content).await?;
+        let objects = resolve::resolve_candidates(content, candidates)?;
+        // All-or-nothing. If a concurrent call finished first, this returns its set. A success also clears any failure.
         Ok(store.record_distillation(capture_id, objects)?)
+    }
+
+    /// Every capture's organization state, durable ones from the store plus "running" for what is in flight now.
+    pub fn organization_states(&self, store: &CaptureStore) -> Result<Vec<OrganizationState>, StoreError> {
+        let running = self.running.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone();
+        let mut states = store.list_organization_states()?;
+        for state in states.iter_mut().filter(|state| state.status != "succeeded" && running.contains(&state.capture_id)) {
+            state.status = "running";
+            state.failure = None;
+        }
+        Ok(states)
     }
 }
 
@@ -238,6 +279,79 @@ mod tests {
         fake.set(Ok(vec![candidate("idea", "Screen", "capture screen")]));
         assert_eq!(run(&service, &store, &capture.id).unwrap().len(), 1);
         assert_eq!(fake.calls(), 2);
+    }
+
+    #[test]
+    fn a_failure_is_recorded_durably_and_a_retry_that_succeeds_clears_it_without_duplicating_anything() {
+        let (service, fake, store, capture) = setup(TEXT, Err(DistillError::Network));
+        let state = |store: &CaptureStore| service.organization_states(store).unwrap().into_iter().find(|s| s.capture_id == capture.id).unwrap();
+        assert_eq!(state(&store).status, "pending");
+
+        run(&service, &store, &capture.id).unwrap_err();
+        let failed = state(&store);
+        assert_eq!(failed.status, "failed");
+        let failure = failed.failure.unwrap();
+        assert_eq!(failure.code, "llm_failed");
+        assert!(failure.message.contains("Could not reach the language model"));
+        assert_eq!(store.list().unwrap().len(), 1, "the capture is untouched and not duplicated");
+
+        fake.set(Ok(vec![candidate("idea", "Screen", "capture screen")]));
+        assert_eq!(run(&service, &store, &capture.id).unwrap().len(), 1);
+        let done = state(&store);
+        assert_eq!((done.status, done.object_count, done.failure), ("succeeded", 1, None));
+        run(&service, &store, &capture.id).unwrap();
+        assert_eq!(store.list_knowledge_objects().unwrap().len(), 1, "retrying a finished capture adds nothing");
+        assert_eq!(store.list().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_failure_survives_closing_and_reopening_the_database() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        let id = {
+            let store = CaptureStore::open(&path).unwrap();
+            let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into() }).unwrap();
+            let service = DistillationService::new(FakeDistiller::returning(Err(DistillError::Provider(503))));
+            run(&service, &store, &capture.id).unwrap_err();
+            capture.id
+        };
+        let store = CaptureStore::open(&path).unwrap();
+        let service = DistillationService::new(FakeDistiller::returning(Ok(vec![candidate("idea", "Screen", "capture screen")])));
+        let state = service.organization_states(&store).unwrap().remove(0);
+        assert_eq!((state.status, state.failure.as_ref().map(|f| f.code.as_str())), ("failed", Some("llm_failed")));
+        assert_eq!(run(&service, &store, &id).unwrap().len(), 1, "the retry reuses the same capture");
+        assert_eq!(store.list().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_capture_organized_into_nothing_is_succeeded_and_never_asks_to_be_organized_again() {
+        let (service, _fake, store, capture) = setup("hmm", Ok(vec![]));
+        run(&service, &store, &capture.id).unwrap();
+        let state = service.organization_states(&store).unwrap().remove(0);
+        assert_eq!((state.status, state.object_count, state.failure), ("succeeded", 0, None));
+    }
+
+    #[test]
+    fn a_capture_being_organized_right_now_reads_as_running_and_stops_when_the_attempt_ends() {
+        let store = CaptureStore::open_in_memory().unwrap();
+        let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into() }).unwrap();
+        let service = DistillationService::new(FakeDistiller::returning(Err(DistillError::Network)));
+        service.running.lock().unwrap().insert(capture.id.clone());
+        assert_eq!(service.organization_states(&store).unwrap()[0].status, "running");
+        service.running.lock().unwrap().clear();
+        assert_eq!(service.organization_states(&store).unwrap()[0].status, "pending");
+        run(&service, &store, &capture.id).unwrap_err();
+        assert!(service.running.lock().unwrap().is_empty(), "the guard released it on failure");
+    }
+
+    #[test]
+    fn organization_failure_from_the_store_or_an_untrusted_model_is_recorded_too() {
+        for (failure, code) in [(Ok(vec![candidate("idea", "Real", "call the minister")]), "llm_invalid_output"), (Err(DistillError::NotConfigured), "llm_not_configured")] {
+            let (service, _fake, store, capture) = setup(TEXT, failure);
+            run(&service, &store, &capture.id).unwrap_err();
+            let state = service.organization_states(&store).unwrap().remove(0);
+            assert_eq!(state.failure.unwrap().code, code);
+        }
     }
 
     #[test]

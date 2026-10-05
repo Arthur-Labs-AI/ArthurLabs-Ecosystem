@@ -12,7 +12,7 @@ import { GraphCanvas } from "../graph/GraphCanvas";
 import { useRelationIndex } from "../graph/relation-index";
 import { useKnowledge } from "../knowledge/knowledge-context";
 import { RevisionForm } from "../lineage/RevisionForm";
-import { useLineageSummaries } from "../lineage/lineage-summaries";
+import { useLineageSummaries, useObjectLineage } from "../lineage/lineage-summaries";
 import { useLineage } from "../lineage/use-lineage";
 import { ORIGIN_LABELS, captionFor } from "../lineage/revision-captions";
 import { ORIGIN_LABELS as RELATION_ORIGIN_LABELS, relationVerbFrom } from "../graph/relation-style";
@@ -32,6 +32,7 @@ function IdeaInspector({ object }: { object: KnowledgeObject }) {
   useEffect(() => setRevising(false), [object.id]);
 
   const summary = byObject.get(object.id);
+  const lineage = useObjectLineage(object.id);
   const capture = captures.find((candidate) => candidate.id === object.provenance.captureId);
   const edges = index.edgesOf(object.id);
   const byId = useMemo(() => new Map(objects.map((candidate) => [candidate.id, candidate])), [objects]);
@@ -39,9 +40,9 @@ function IdeaInspector({ object }: { object: KnowledgeObject }) {
     const ids = new Set([object.id, ...edges.flatMap((relation) => [relation.sourceObjectId, relation.targetObjectId])]);
     return { objects: objects.filter((candidate) => ids.has(candidate.id)), relations: edges };
   }, [object.id, edges, objects]);
-  const revisions = summary ? [...summary.lineage.revisions].reverse() : [];
-  const labels = new Map((summary?.lineage.revisions ?? []).map((revision, i) => [revision.id, `R${i + 1}`]));
-  const revisionById = new Map((summary?.lineage.revisions ?? []).map((revision) => [revision.id, revision]));
+  const revisions = lineage ? [...lineage.revisions].reverse() : [];
+  const labels = new Map((lineage?.revisions ?? []).map((revision, i) => [revision.id, `R${i + 1}`]));
+  const revisionById = new Map((lineage?.revisions ?? []).map((revision) => [revision.id, revision]));
 
   return (
     <aside className="inspector" aria-label="Idea details">
@@ -153,10 +154,10 @@ function IdeaInspector({ object }: { object: KnowledgeObject }) {
             Open in Evolution <Icon name="arrow" />
           </button>
         </div>
-        {summary && (
+        {lineage && (
           <ul className="spine" aria-label="Revisions">
             {revisions.map((revision) => {
-              const current = revision.id === summary.lineage.currentRevisionId;
+              const current = revision.id === lineage.currentRevisionId;
               return (
                 <li key={revision.id}>
                   <div className={current ? "rv-row cur" : "rv-row"}>

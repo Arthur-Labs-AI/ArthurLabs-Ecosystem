@@ -1,5 +1,8 @@
 # Marginalia Mobile: implementation follow-ups
 
+> **Status: all five items below were implemented in M03.1B-2.** See `hardening-notes.md` for what was built, how it was
+> verified on a device, and what is still open. The table is kept as the record of why each was needed.
+
 Recorded separately from the design decisions (`DECISIONS.md`). None of these is implemented. None is required for the design to be correct; each is required for the production mobile build to behave as designed. `apps/arthur` and the native layer are unchanged.
 
 | # | Follow-up | Why the mobile design needs it | Touches |

@@ -17,6 +17,8 @@ import {
   DISTILLATION_ERROR_CODES,
   KNOWLEDGE_OBJECT_KINDS,
   LINEAGE_ERROR_CODES,
+  MICROPHONE_PERMISSION_STATES,
+  ORGANIZATION_STATUSES,
   MAX_CAPTURE_CONTENT_CHARS,
   MAX_INFERENCE_CANDIDATES,
   MAX_INFERENCE_REQUESTS,
@@ -25,6 +27,7 @@ import {
   MAX_MERGE_PARENTS,
   MAX_OBJECTS_PER_DISTILLATION,
   MAX_RELATIONS_PER_INFERENCE,
+  MAX_SUMMARY_IDS,
   MAX_RELATION_PROPOSALS,
   MAX_REVISIONS_PER_OBJECT,
   RELATION_ERROR_CODES,
@@ -299,7 +302,7 @@ test("knowledge kinds, limits and error codes agree across the contract, Rust, S
 
 test("the schema is changed only through ordered, transactional migration steps", () => {
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  assert.match(migrations, /pub const STEPS: \[Step; 4\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\), \(4, SCHEMA_V4\)\];/);
+  assert.match(migrations, /pub const STEPS: \[Step; 5\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\), \(4, SCHEMA_V4\), \(5, SCHEMA_V5\)\];/);
   assert.match(migrations, /connection\.transaction\(\)/);
   for (const table of ["distillation_runs", "knowledge_objects", "object_sources", "relations", "thought_revisions", "revision_parents"]) assert.match(migrations, new RegExp(`CREATE TABLE ${table}\\b`));
   assert.match(migrations, /REFERENCES captures\(id\)/);
@@ -525,4 +528,75 @@ test("M03 adds no dependency and no later-milestone machinery", () => {
   assert.deepEqual(Object.keys(manifest.dependencies).sort(), ["@tauri-apps/api", "react", "react-dom"]);
   const sources = rustFiles(path.join(tauriDir, "src")).filter((f) => /lineage/.test(f)).map((f) => productionCode(readFileSync(f, "utf8"))).join("\n");
   assert.doesNotMatch(sources, /embedding|vector|recall|outbox|tailscale/i);
+});
+
+test("microphone permission states agree across the contract, the Rust enum and the Kotlin plugin", () => {
+  const recorder = readText(tauriDir, "src/audio/recorder.rs");
+  const variants = [...recorder.slice(recorder.indexOf("pub enum MicrophonePermission")).split("}")[0]!.matchAll(/^\s+([A-Z][A-Za-z]+),/gm)].map((m) => (m[1] as string).replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase());
+  assert.deepEqual([...variants].sort(), [...MICROPHONE_PERMISSION_STATES].sort(), "Rust variants (snake_case on the wire)");
+
+  const kotlinStates = [...audioPlugin.slice(audioPlugin.indexOf("fun getMicrophonePermission")).split("openAppSettings")[0]!.matchAll(/-> "([a-z_]+)"/g)].map((m) => m[1] as string);
+  assert.deepEqual([...new Set(kotlinStates)].sort(), [...MICROPHONE_PERMISSION_STATES].filter((state) => state !== "unknown" || kotlinStates.includes("unknown")).sort());
+  assert.match(readText(tauriDir, "src/audio/android.rs"), /"denied_permanently" => MicrophonePermission::DeniedPermanently/);
+});
+
+test("the microphone is only ever READ by the permission query, and Open Settings exposes no intent to the UI", () => {
+  assert.doesNotMatch(audioPlugin.slice(audioPlugin.indexOf("fun getMicrophonePermission"), audioPlugin.indexOf("fun openAppSettings")), /requestPermission|requestPermissionForAlias/);
+  const uiFiles = uiSourceFiles(path.join(app, "src"));
+  for (const { rel, text } of uiFiles) assert.doesNotMatch(text, /android\.settings|Intent\(|ACTION_APPLICATION_DETAILS_SETTINGS|dev\.kaloyan\.arthur"/, `${rel} must not know about intents or package names`);
+});
+
+test("organization states, durable failures and summaries agree across the contract, Rust and SQL", () => {
+  const store = readText(tauriDir, "src/storage/organization_store.rs");
+  const statuses = [...new Set([...store.slice(0, store.indexOf("#[cfg(test)]")).matchAll(/"(pending|running|succeeded|failed)"/g)].map((m) => m[1]))];
+  const service = readText(tauriDir, "src/distillation/mod.rs");
+  const all = new Set([...statuses, ...(service.includes('"running"') ? ["running"] : [])]);
+  assert.deepEqual([...all].sort(), [...ORGANIZATION_STATUSES].sort());
+
+  const migrations = readText(tauriDir, "src/storage/migrations.rs");
+  const failures = migrations.slice(migrations.indexOf("CREATE TABLE organization_failures"));
+  const sqlCodes = [...failures.slice(0, failures.indexOf(");")).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  assert.deepEqual([...sqlCodes].sort(), DISTILLATION_ERROR_CODES.filter((code) => code !== "capture_not_found").sort(), "the failures table accepts exactly the storable distillation codes");
+
+  const summaries = readText(tauriDir, "src/storage/summary_store.rs");
+  assert.match(summaries, new RegExp(`MAX_SUMMARY_IDS: usize = ${String(MAX_SUMMARY_IDS).replace(/(\d)(?=(\d{3})+$)/g, "$1_")}`));
+});
+
+/** Every TypeScript and CSS source file (not tests) under a directory, as { rel, text }. */
+function uiSourceFiles(dir: string): { rel: string; text: string }[] {
+  const out: { rel: string; text: string }[] = [];
+  const walk = (current: string) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(tsx?|css)$/.test(entry.name) && !/\.test\./.test(entry.name)) out.push({ rel: path.relative(dir, full), text: readFileSync(full, "utf8") });
+    }
+  };
+  walk(dir);
+  return out;
+}
+
+test("Back at the root sends Arthur to the background, and the process never ends through exit() with the WebView alive", () => {
+  const activity = readText(androidSrc, "java/dev/kaloyan/arthur/MainActivity.kt");
+  assert.match(activity, /override fun onBackPressed\(\)\s*\{\s*moveTaskToBack\(true\)\s*\}/, "root Back backgrounds the task");
+  assert.doesNotMatch(activity.replace(/\/\*[\s\S]*?\*\//g, ""), /\bfinish\(|finishAffinity|super\.onBackPressed/, "root Back must not finish the Activity");
+
+  const lifecycle = readText(tauriDir, "src/lifecycle.rs");
+  assert.match(lifecycle, /libc::_exit\(0\)/, "the exit path skips the destructors that abort the process");
+  assert.match(readText(tauriDir, "src/lib.rs"), /RunEvent::Exit[\s\S]*lifecycle::leave_process\(\)/);
+  assert.match(readText(tauriDir, "Cargo.toml"), /\[target\.'cfg\(target_os = "android"\)'\.dependencies\]\s*libc/);
+});
+
+test("temporary audio is bounded, app-private, never logged and never stored", () => {
+  const voice = readText(tauriDir, "src/audio/voice_capture.rs");
+  const production = voice.slice(0, voice.indexOf("#[cfg(test)]"));
+  assert.match(production, /RETRY_TTL: Duration = Duration::from_secs\(15 \* 60\)/, "15 minutes");
+  assert.doesNotMatch(production, /\b(println|eprintln|dbg|print|eprint)!|\btracing::|\blog::/, "audio handling must not log");
+  assert.doesNotMatch(production, /rusqlite|INSERT INTO|execute\(/, "audio is never written to the database");
+  // The only way a path leaves the module is as a file name sent to speech-to-text; commands never return one.
+  const commands = readText(tauriDir, "src/commands/voice.rs");
+  assert.doesNotMatch(commands, /PathBuf|\.path|display\(\)/);
+  assert.match(production, /purge_stale_recordings\(&recordings_dir\)/, "stale audio is purged at startup");
+  // Backups are off, so the cache directory is not copied anywhere.
+  assert.match(readText(androidSrc, "AndroidManifest.xml"), /android:allowBackup="false"/);
 });

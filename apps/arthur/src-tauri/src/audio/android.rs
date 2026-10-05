@@ -4,14 +4,14 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::plugin::{Builder, PluginHandle, TauriPlugin};
 use tauri::{Manager, Wry};
 
 use crate::async_util::BoxFuture;
 
 use super::error::VoiceError;
-use super::recorder::Recorder;
+use super::recorder::{MicrophonePermission, Recorder};
 
 const PLUGIN_IDENTIFIER: &str = "dev.kaloyan.arthur";
 const PLUGIN_CLASS: &str = "AudioPlugin";
@@ -23,6 +23,11 @@ pub struct AndroidRecorder {
 #[derive(Serialize)]
 struct StartArgs<'a> {
     path: &'a str,
+}
+
+#[derive(Deserialize)]
+struct PermissionPayload {
+    state: String,
 }
 
 impl AndroidRecorder {
@@ -66,6 +71,31 @@ impl Recorder for AndroidRecorder {
         Box::pin(async move {
             let _ = self.call("cancelRecording", ()).await;
         })
+    }
+
+    fn permission<'a>(&'a self) -> BoxFuture<'a, Result<MicrophonePermission, VoiceError>> {
+        Box::pin(async move {
+            let payload = self
+                .handle
+                .run_mobile_plugin_async::<PermissionPayload>("getMicrophonePermission", ())
+                .await
+                .map_err(|error| map_plugin_error(&error))?;
+            Ok(parse_permission(&payload.state))
+        })
+    }
+
+    fn open_settings<'a>(&'a self) -> BoxFuture<'a, Result<(), VoiceError>> {
+        Box::pin(self.call("openAppSettings", ()))
+    }
+}
+
+/// The plugin reports one of four words. Anything else is treated as "unknown", which only means Speak may ask.
+fn parse_permission(state: &str) -> MicrophonePermission {
+    match state {
+        "granted" => MicrophonePermission::Granted,
+        "denied" => MicrophonePermission::Denied,
+        "denied_permanently" => MicrophonePermission::DeniedPermanently,
+        _ => MicrophonePermission::Unknown,
     }
 }
 

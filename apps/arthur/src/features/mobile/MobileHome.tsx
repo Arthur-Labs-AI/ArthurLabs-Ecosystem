@@ -36,6 +36,11 @@ function describe(failure: VoiceFailure): { title: string; body: string; canReco
       return { title: "Recording stopped", body: failure.message, canRecord: true };
     case "empty_transcript":
       return { title: "No speech recognised", body: failure.message, canRecord: true };
+    case "stt_retryable":
+      // The native message names the cause and says the recording is kept, and for how long.
+      return { title: "Couldn’t transcribe yet", body: failure.message, canRecord: false };
+    case "no_retained_recording":
+      return { title: "That recording is gone", body: failure.message, canRecord: true };
     case "stt_failed":
     case "stt_not_configured":
       return { title: "Couldn’t transcribe", body: `${failure.message} The recording isn’t kept, so say it again or type it.`, canRecord: failure.code === "stt_failed" };
@@ -46,9 +51,29 @@ function describe(failure: VoiceFailure): { title: string; body: string; canReco
   }
 }
 
-function VoiceFailureCard({ failure, onRecord, onType, onDismiss, voiceAvailable }: { failure: VoiceFailure; onRecord: () => void; onType: () => void; onDismiss: () => void; voiceAvailable: boolean }) {
+function VoiceFailureCard({
+  failure,
+  onRecord,
+  onType,
+  onDismiss,
+  onRetry,
+  onDiscard,
+  onOpenSettings,
+  voiceAvailable,
+}: {
+  failure: VoiceFailure;
+  onRecord: () => void;
+  onType: () => void;
+  onDismiss: () => void;
+  onRetry: () => void;
+  onDiscard: () => void;
+  /** Present only when the system will no longer ask, so the app's settings are the only way back. */
+  onOpenSettings?: (() => void) | undefined;
+  voiceAvailable: boolean;
+}) {
   const view = describe(failure);
-  const warm = failure.code === "microphone_permission_denied";
+  const retryable = failure.code === "stt_retryable";
+  const warm = failure.code === "microphone_permission_denied" || retryable;
   return (
     <div className={warm ? "m-note-block" : "m-note-block err"} role="alert" data-code={failure.code}>
       <Icon name="warn" />
@@ -56,18 +81,38 @@ function VoiceFailureCard({ failure, onRecord, onType, onDismiss, voiceAvailable
         <b>{view.title}</b>
         {view.body}
         <div className="m-row-acts">
+          {retryable && (
+            <>
+              <button type="button" className="m-pbtn sm primary" onClick={onRetry}>
+                <Icon name="retry" small />
+                Retry transcription
+              </button>
+              <button type="button" className="m-pbtn sm" onClick={onDiscard}>
+                Discard recording
+              </button>
+            </>
+          )}
+          {onOpenSettings && (
+            <button type="button" className="m-pbtn sm primary" onClick={onOpenSettings}>
+              Open settings
+            </button>
+          )}
           {voiceAvailable && view.canRecord && (
             <button type="button" className="m-pbtn sm" onClick={onRecord}>
               <Icon name="mic" />
               Record again
             </button>
           )}
-          <button type="button" className={warm ? "m-pbtn sm primary" : "m-pbtn sm"} onClick={onType}>
-            Type instead
-          </button>
-          <button type="button" className="m-pbtn sm ghost" onClick={onDismiss}>
-            Dismiss
-          </button>
+          {!retryable && (
+            <button type="button" className={warm && !onOpenSettings ? "m-pbtn sm primary" : "m-pbtn sm"} onClick={onType}>
+              Type instead
+            </button>
+          )}
+          {!retryable && (
+            <button type="button" className="m-pbtn sm ghost" onClick={onDismiss}>
+              Dismiss
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -279,7 +324,7 @@ function Outcome({ capture, objects, job, ready, onRetry, organized }: { capture
 
 function Stream() {
   const { status, captures } = useCaptures();
-  const { objects, jobs, distill, status: knowledgeStatus, error: knowledgeError } = useKnowledge();
+  const { objects, jobs, distill, organizationLoaded, status: knowledgeStatus, error: knowledgeError } = useKnowledge();
   const index = useRelationIndex();
   const { byObject } = useLineageSummaries();
   const { openIdea } = useMobileNav();
@@ -346,7 +391,7 @@ function Stream() {
                     ))}
                   </div>
                 )}
-                <Outcome capture={capture} objects={mine} job={job} ready={knowledgeStatus === "ready"} onRetry={() => void distill(capture.id)} organized={drawn} />
+                <Outcome capture={capture} objects={mine} job={job} ready={knowledgeStatus === "ready" && organizationLoaded} onRetry={() => void distill(capture.id)} organized={drawn} />
               </article>
             );
           })}
@@ -371,9 +416,16 @@ function AllIdeas({ count }: { count: number }) {
 
 export function MobileHome() {
   const client = useArthurClient();
-  const { voiceFailure, dismissVoiceFailure, startVoice } = useCaptures();
+  const { voiceFailure, dismissVoiceFailure, startVoice, micPermission, retryVoice, discardVoice, openAppSettings } = useCaptures();
   const { typing, setTyping, micHint } = useMobileNav();
+  const [hidRecovery, setHidRecovery] = useState(false);
   const voice = client.capabilities.voiceCapture;
+  // Refused for good: the system will not ask again, so say so up front (not only after a failed attempt) and offer the way back.
+  const settingsOnly = voice && micPermission === "denied_permanently";
+  useEffect(() => {
+    if (!settingsOnly) setHidRecovery(false);
+  }, [settingsOnly]);
+  const failure: VoiceFailure | null = voiceFailure ?? (settingsOnly && !hidRecovery ? { code: "microphone_permission_denied", message: "The microphone is turned off for Arthur, and the system won’t ask again. Allow it in the system settings, then come back." } : null);
 
   return (
     <div className={typing ? "m-scroll m-home typing" : "m-scroll m-home"} data-screen="home">
@@ -394,16 +446,23 @@ export function MobileHome() {
           Tap Speak and the microphone will be requested. Nothing is recorded until then.
         </p>
       )}
-      {voiceFailure && (
+      {failure && (
         <VoiceFailureCard
-          failure={voiceFailure}
+          failure={failure}
           voiceAvailable={voice}
           onRecord={() => void startVoice()}
           onType={() => {
             dismissVoiceFailure();
+            setHidRecovery(true);
             setTyping(true);
           }}
-          onDismiss={dismissVoiceFailure}
+          onDismiss={() => {
+            dismissVoiceFailure();
+            setHidRecovery(true);
+          }}
+          onRetry={() => void retryVoice()}
+          onDiscard={() => void discardVoice()}
+          onOpenSettings={failure.code === "microphone_permission_denied" && settingsOnly ? () => void openAppSettings() : undefined}
         />
       )}
       {!typing && <Stream />}

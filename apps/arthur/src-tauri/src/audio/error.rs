@@ -22,6 +22,11 @@ pub enum VoiceError {
     RecordingInterrupted,
     SttNotConfigured,
     SttFailed(SttError),
+    /// A transcription failed in a way that may pass (no connection, a busy provider). The recording is kept, for a
+    /// limited time and only inside this process, so it can be transcribed again without speaking again.
+    SttRetryable(SttError),
+    /// There is no kept recording to retry: it was discarded, expired, or never existed.
+    NoRetainedRecording,
     EmptyTranscript,
     CaptureFailed(String),
 }
@@ -37,6 +42,8 @@ impl VoiceError {
             VoiceError::RecordingInterrupted => "recording_interrupted",
             VoiceError::SttNotConfigured => "stt_not_configured",
             VoiceError::SttFailed(_) => "stt_failed",
+            VoiceError::SttRetryable(_) => "stt_retryable",
+            VoiceError::NoRetainedRecording => "no_retained_recording",
             VoiceError::EmptyTranscript => "empty_transcript",
             VoiceError::CaptureFailed(_) => "capture_failed",
         }
@@ -55,13 +62,9 @@ impl VoiceError {
                 "Recording was interrupted because Arthur left the foreground. Nothing was saved.".into()
             }
             VoiceError::SttNotConfigured => "Speech-to-text is not configured on this device.".into(),
-            VoiceError::SttFailed(cause) => match cause {
-                SttError::Network => "Could not reach the speech service. Check the connection and try again.".into(),
-                SttError::Auth(_) => "The speech service rejected the configured credentials.".into(),
-                SttError::Provider(status) => format!("The speech service failed (HTTP {status}). Try again."),
-                SttError::Protocol => "The speech service returned an unreadable response.".into(),
-                SttError::NotConfigured => "Speech-to-text is not configured on this device.".into(),
-            },
+            VoiceError::SttFailed(cause) => stt_cause_message(cause),
+            VoiceError::SttRetryable(cause) => format!("{} {}", stt_cause_message(cause), super::voice_capture::retry_note()),
+            VoiceError::NoRetainedRecording => "That recording is no longer kept. Record it again, or type it.".into(),
             VoiceError::EmptyTranscript => "No speech was recognised. Nothing was saved.".into(),
             VoiceError::CaptureFailed(reason) => format!("The transcript could not be saved: {reason}"),
         }
@@ -92,5 +95,16 @@ impl Serialize for VoiceError {
         state.serialize_field("code", self.code())?;
         state.serialize_field("message", &self.message())?;
         state.end()
+    }
+}
+
+/// What went wrong with the speech service, in words that are safe to show.
+fn stt_cause_message(cause: &SttError) -> String {
+    match cause {
+        SttError::Network => "Could not reach the speech service. Check the connection and try again.".into(),
+        SttError::Auth(_) => "The speech service rejected the configured credentials.".into(),
+        SttError::Provider(status) => format!("The speech service failed (HTTP {status}). Try again."),
+        SttError::Protocol => "The speech service returned an unreadable response.".into(),
+        SttError::NotConfigured => "Speech-to-text is not configured on this device.".into(),
     }
 }
