@@ -31,6 +31,8 @@ const positions = () => [...map().querySelectorAll(".node")].map((n) => n.getAtt
 const open = async (client: ArthurClient) => {
   renderApp(client, "connections");
   await screen.findByRole("group", { name: "Knowledge map" });
+  // Ideas and relations load independently: the map can exist before its edges do, so wait for both.
+  await waitFor(() => expect(screen.queryByText("Loading connections…")).toBeNull());
 };
 
 describe("ConnectionsScreen", () => {
@@ -246,11 +248,13 @@ describe("ConnectionsScreen", () => {
     await client.createRelation({ kind: "extends", sourceObjectId: by("Faster capture").id, targetObjectId: by("Graph notes").id });
     const first = renderApp(client, "connections");
     await screen.findByRole("group", { name: "Knowledge map" });
+    await waitFor(() => expect(screen.queryByText("Loading connections…")).toBeNull());
     const html = map().innerHTML;
     first.unmount();
 
     renderApp(client, "connections");
     await screen.findByRole("group", { name: "Knowledge map" });
+    await waitFor(() => expect(screen.queryByText("Loading connections…")).toBeNull());
     expect(map().innerHTML).toBe(html);
   });
 
