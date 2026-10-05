@@ -22,6 +22,7 @@ Project -> KnowledgeObjects -> Graph -> Lineage -> Provenance -> grounded answer
 | [benchmark-plan.md](benchmark-plan.md) | Dataset, configurations, metrics, acceptance thresholds, what each benchmark decides |
 | [failure-model.md](failure-model.md) | Layered failure and degradation behaviour |
 | [m04b-implementation-notes.md](m04b-implementation-notes.md) | What M04B built, deviations from this design, measured results |
+| [m04c-implementation-notes.md](m04c-implementation-notes.md) | What M04C built (graph, lineage, provenance, strength, context, synthesis, `ask`), gates, live results |
 
 No Mermaid: the repo uses plain-text diagrams only, so these do too.
 

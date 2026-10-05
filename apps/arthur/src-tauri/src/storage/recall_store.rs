@@ -171,6 +171,160 @@ pub struct ScanCost {
     pub micros: u128,
 }
 
+
+/// A knowledge object with what enrichment needs beyond retrieval: its project (name, archived), how its current revision came to be,
+/// where the object originally came from, and how many revisions it has. Not scoped by project (a graph neighbour may be elsewhere).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjectDetail {
+    pub object: CurrentObject,
+    pub project_name: String,
+    pub project_archived: bool,
+    /// `initial`, `user_edit`, `distillation`, `merge` or `system`: how the CURRENT revision was made.
+    pub current_origin: String,
+    /// The Capture span the CURRENT revision was interpreted from, if it genuinely was (edits and merges have none).
+    pub current_source: Option<(String, i64, i64)>,
+    /// Where the object originally came from (`object_sources`).
+    pub original_source: Option<(String, i64, i64)>,
+    pub revision_count: i64,
+}
+
+/// One stored relation, as read for enrichment.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RelationRow {
+    pub id: String,
+    pub kind: String,
+    pub source_object_id: String,
+    pub target_object_id: String,
+    pub origin: String,
+    pub created_at: String,
+}
+
+/// One revision with its parents (oldest parent first).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RevisionRow {
+    pub id: String,
+    pub object_id: String,
+    pub kind: String,
+    pub title: String,
+    pub body: String,
+    pub origin: String,
+    pub created_at: String,
+    pub source: Option<(String, i64, i64)>,
+    pub parents: Vec<String>,
+}
+
+/// Safety bound on relations read for one expansion step (a hub cannot flood memory).
+pub const MAX_RELATIONS_PER_READ: usize = 2_000;
+
+fn marks(n: usize) -> String {
+    vec!["?"; n].join(",")
+}
+
+impl CaptureStore {
+    /// Details of these objects (any project), in one statement. Ids that do not exist are absent.
+    pub fn recall_object_details(&self, object_ids: &[String]) -> Result<Vec<ObjectDetail>, StoreError> {
+        if object_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.with_connection(|connection| {
+            let mut statement = connection.prepare(&format!(
+                "SELECT {CURRENT_COLUMNS}, p.name, p.archived_at IS NOT NULL, cr.origin, cr.capture_id, cr.source_start, cr.source_end, \
+                        s.capture_id, s.source_start, s.source_end, (SELECT count(*) FROM thought_revisions x WHERE x.object_id = o.id) \
+                 FROM knowledge_objects o \
+                 JOIN thought_revisions cr ON cr.id = o.current_revision_id \
+                 JOIN projects p ON p.id = o.project_id \
+                 LEFT JOIN object_sources s ON s.object_id = o.id \
+                 WHERE o.id IN ({}) ORDER BY o.seq",
+                marks(object_ids.len())
+            ))?;
+            let rows = statement.query_map(params_from_iter(object_ids.iter()), |row| {
+                let span = |a: usize| -> rusqlite::Result<Option<(String, i64, i64)>> {
+                    let capture: Option<String> = row.get(a)?;
+                    Ok(match capture {
+                        Some(capture) => Some((capture, row.get(a + 1)?, row.get(a + 2)?)),
+                        None => None,
+                    })
+                };
+                Ok(ObjectDetail {
+                    object: current_object_from_row(row, 0)?,
+                    project_name: row.get(8)?,
+                    project_archived: row.get(9)?,
+                    current_origin: row.get(10)?,
+                    current_source: span(11)?,
+                    original_source: span(14)?,
+                    revision_count: row.get(17)?,
+                })
+            })?;
+            Ok(rows.collect::<Result<Vec<_>, _>>()?)
+        })
+    }
+
+    /// Every relation that has one of these objects as an end, from one statement (the by-source and by-target indexes), oldest first.
+    pub fn recall_relations_touching(&self, object_ids: &[String]) -> Result<Vec<RelationRow>, StoreError> {
+        if object_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.with_connection(|connection| {
+            let list = marks(object_ids.len());
+            let mut statement = connection.prepare(&format!(
+                "SELECT r.id, r.kind, r.source_object_id, r.target_object_id, r.origin, r.created_at FROM relations r WHERE r.id IN \
+                 (SELECT id FROM relations WHERE source_object_id IN ({list}) UNION SELECT id FROM relations WHERE target_object_id IN ({list})) \
+                 ORDER BY r.seq ASC LIMIT {MAX_RELATIONS_PER_READ}"
+            ))?;
+            let both: Vec<&String> = object_ids.iter().chain(object_ids.iter()).collect();
+            let rows = statement.query_map(params_from_iter(both), |row| {
+                Ok(RelationRow { id: row.get(0)?, kind: row.get(1)?, source_object_id: row.get(2)?, target_object_id: row.get(3)?, origin: row.get(4)?, created_at: row.get(5)? })
+            })?;
+            Ok(rows.collect::<Result<Vec<_>, _>>()?)
+        })
+    }
+
+    /// Every revision of these objects with its parents, in two statements (revisions, then parent links), oldest first.
+    pub fn recall_revisions_of(&self, object_ids: &[String]) -> Result<Vec<RevisionRow>, StoreError> {
+        if object_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.with_connection(|connection| {
+            let list = marks(object_ids.len());
+            let mut statement = connection.prepare(&format!(
+                "SELECT id, object_id, kind, title, body, origin, created_at, capture_id, source_start, source_end FROM thought_revisions \
+                 WHERE object_id IN ({list}) ORDER BY seq ASC"
+            ))?;
+            let mut revisions: Vec<RevisionRow> = statement
+                .query_map(params_from_iter(object_ids.iter()), |row| {
+                    let capture: Option<String> = row.get(7)?;
+                    Ok(RevisionRow {
+                        id: row.get(0)?,
+                        object_id: row.get(1)?,
+                        kind: row.get(2)?,
+                        title: row.get(3)?,
+                        body: row.get(4)?,
+                        origin: row.get(5)?,
+                        created_at: row.get(6)?,
+                        source: match capture {
+                            Some(capture) => Some((capture, row.get(8)?, row.get(9)?)),
+                            None => None,
+                        },
+                        parents: Vec::new(),
+                    })
+                })?
+                .collect::<Result<Vec<_>, _>>()?;
+            let mut parents = connection.prepare(&format!(
+                "SELECT p.child_revision_id, p.parent_revision_id FROM revision_parents p \
+                 JOIN thought_revisions c ON c.id = p.child_revision_id JOIN thought_revisions q ON q.id = p.parent_revision_id \
+                 WHERE c.object_id IN ({list}) ORDER BY q.seq ASC"
+            ))?;
+            let links = parents.query_map(params_from_iter(object_ids.iter()), |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))?.collect::<Result<Vec<_>, _>>()?;
+            for (child, parent) in links {
+                if let Some(revision) = revisions.iter_mut().find(|r| r.id == child) {
+                    revision.parents.push(parent);
+                }
+            }
+            Ok(revisions)
+        })
+    }
+}
+
 impl CaptureStore {
     /// Times the pieces of the lexical query (tests only): where does the time go, and would a single pass help?
     #[cfg(test)]

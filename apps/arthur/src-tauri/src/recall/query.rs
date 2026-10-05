@@ -22,13 +22,13 @@ const STOPWORDS_BG: &[&str] = &[
     "и", "на", "в", "във", "за", "с", "със", "да", "е", "са", "се", "че", "как", "какво", "какви", "какъв", "каква", "кои", "кой", "коя", "кога", "къде", "защо", "ли", "от", "до", "по", "при", "над", "под", "като", "или", "но", "а", "не", "ще", "съм", "си", "ми", "ти", "му", "ѝ", "го", "ги", "то", "тя", "той", "те", "ние", "вие", "аз", "този", "тази", "това", "тези", "има", "беше", "бях", "били", "моя", "моята", "моето", "моите", "мои",
 ];
 const STOPWORDS_EN: &[&str] = &[
-    "a", "an", "the", "of", "to", "in", "on", "for", "and", "or", "but", "is", "are", "was", "were", "be", "been", "it", "its", "this", "that", "these", "those", "how", "what", "which", "who", "whom", "when", "where", "why", "did", "do", "does", "my", "me", "i", "we", "our", "with", "about", "from", "by", "as", "at", "so", "if", "then", "than", "into", "have", "has", "had", "can", "could", "should", "would", "tell",
+    "a", "an", "the", "of", "to", "in", "on", "for", "and", "or", "but", "is", "are", "was", "were", "be", "been", "it", "its", "this", "that", "these", "those", "how", "what", "which", "who", "whom", "when", "where", "why", "did", "do", "does", "my", "me", "i", "we", "our", "with", "about", "from", "by", "as", "at", "so", "if", "then", "than", "into", "have", "has", "had", "can", "could", "should", "would", "tell", "come", "came",
 ];
 
 /// Prefixes of cue words that carry intent rather than subject matter. They are removed from the content terms (so they do not
 /// dominate ranking) unless that would leave nothing to search for.
 const CUE_PREFIXES: &[&str] = &[
-    "evolv", "histor", "chang", "develop", "depend", "requir", "prerequisit", "contradict", "conflict", "decid", "decision", "rational", "provenance", "origin", "sourc", "task", "todo", "action",
+    "replac", "supersed", "заменя", "замени", "evolv", "histor", "chang", "develop", "depend", "requir", "prerequisit", "contradict", "conflict", "decid", "decision", "rational", "provenance", "origin", "sourc", "task", "todo", "action",
     "еволюц", "промен", "развит", "развив", "истори", "завис", "изиск", "противореч", "конфликт", "реши", "решени", "причин", "откъде", "оригинал", "източник", "задач", "действ",
 ];
 
@@ -114,10 +114,10 @@ fn contains_any(haystack: &str, needles: &[&str]) -> bool {
 fn intent_of(folded: &str) -> IntentWeights {
     let fired = |cues: &[&str]| if contains_any(folded, cues) { 1.0 } else { 0.0 };
     let mut intent = IntentWeights {
-        evolution: fired(&["evolv", "evolution", "change", "changed", "history", "over time", "develop", "earlier", "previously", "еволюц", "промен", "развит", "развив", "истори", "по-рано", "преди", "как се е "]),
+        evolution: fired(&["evolv", "evolution", "change", "changed", "history", "over time", "develop", "earlier", "previously", "replac", "supersed", "instead of", "заменя", "замени", "вместо", "еволюц", "промен", "развит", "развив", "истори", "по-рано", "преди", "как се е "]),
         dependency: fired(&["depend", "require", "need", "prerequisite", "blocked by", "relies on", "builds on", "завис", "изиска", "трябва", "нужд", "блокир", "разчита"]),
         contradiction: fired(&["contradict", "conflict", "disagree", "inconsisten", "incompatible", "противореч", "конфликт", "несъвмест", "не съвпада"]),
-        decision: fired(&["decide", "decision", "chose", "why did", "rationale", "reason for", "реши", "решени", "избр", "причина"]),
+        decision: fired(&["decide", "decision", "chose", "why did", "why do", "why is", "why are", "rationale", "reason for", "реши", "решени", "избр", "причина", "защо"]),
         provenance: fired(&["come from", "came from", "original", "source", "who said", "when did i first", "откъде", "оригинал", "източник", "кога за пръв"]),
         task: fired(&["task", "todo", "to do", "action item", "next step", "задач", "да направя", "следващ", "действ"]),
         factual: fired(&["what is", "what do i know", "what are", "tell me about", "какво е", "какво знам", "разкажи"]),

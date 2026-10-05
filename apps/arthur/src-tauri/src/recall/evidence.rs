@@ -51,6 +51,8 @@ pub struct MatchedHistorical {
     /// Always `historical`.
     pub status: &'static str,
     pub rank: usize,
+    /// Fraction of the query's content terms the OLD revision matched.
+    pub coverage: f64,
     pub title: String,
     pub body: String,
 }
@@ -174,6 +176,7 @@ fn evidence_of(index: usize, seed_count: usize, ranked: Ranked) -> RetrievalEvid
         revision_id: h.revision_id.clone(),
         status: "historical",
         rank: h.rank,
+        coverage: h.coverage,
         title: excerpt(&h.revision_title),
         body: excerpt(&h.revision_body),
     });

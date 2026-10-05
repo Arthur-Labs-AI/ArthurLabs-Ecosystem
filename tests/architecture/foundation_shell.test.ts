@@ -671,27 +671,43 @@ test("projects are a domain boundary the model never decides: distillation and i
   assert.doesNotMatch(graph, /store\.list_knowledge_objects\(\)/, "inference never reads every project's objects");
 });
 
-test("M04B is retrieval only: no Ask Arthur, no synthesis, no graph or lineage in Recall, and no authoritative write", () => {
+test("M04C: Recall reads only through the store, writes only its own projections, and the answer model cannot reach the store or any tool", () => {
+  // The one answer-producing method on ArthurClient is `ask`: no search/query/recall methods, no history or conversation.
   const client = readText(app, "src/client/arthur-client.ts");
-  assert.doesNotMatch(client, /^\s*(ask|recall|query|search)\w*\(/m, "no answer-producing method on ArthurClient yet");
+  assert.equal([...client.matchAll(/^\s*(ask|recall\w*|query\w*|search\w*)\(/gm)].map((m) => m[1]).join(","), "ask");
+  assert.doesNotMatch(client, /conversation|chatSession|askHistory/i);
   const lib = readText(tauriDir, "src/lib.rs");
-  assert.doesNotMatch(lib, /commands::ask|synthes/i);
-  // Recall's native code: no model call, no graph, no lineage, no tool or process execution, no HTTP of its own.
+  assert.match(lib, /commands::recall::ask,/);
+  // Recall's native code: no graph/lineage/distillation services, no tool or process execution, no HTTP of its own, no vendor.
   const recallDir = path.join(tauriDir, "src", "recall");
-  const recall = rustFiles(recallDir).filter((f) => !/(bench|acceptance|service_tests|testing)/.test(f)).map((f) => productionCode(readFileSync(f, "utf8"))).join("\n");
-  assert.doesNotMatch(recall, /providers::chat|complete_json|crate::graph|crate::lineage|crate::distillation|std::process|Command::new|reqwest|\btool\b/i);
+  const recallFiles = rustFiles(recallDir).filter((f) => !/(bench|acceptance|service_tests|ask_tests|testing)/.test(f));
+  const recall = recallFiles.map((f) => productionCode(readFileSync(f, "utf8"))).join("\n");
+  assert.doesNotMatch(recall, /providers::chat|complete_json|crate::graph|crate::lineage|crate::distillation|std::process|Command::new|reqwest|openai/i);
+  // The word "tool" appears only in the synthesis prompt (which tells the model it has none).
+  const withoutPrompt = recallFiles.filter((f) => !/prompt\.rs$/.test(f)).map((f) => productionCode(readFileSync(f, "utf8"))).join("\n");
+  assert.doesNotMatch(withoutPrompt, /\btools?\b/i);
   // Recall reads authoritative tables only through the store module, and writes only its own projections.
-  assert.doesNotMatch(recall, /rusqlite|execute\(|INSERT|UPDATE|DELETE/);
+  assert.doesNotMatch(recall, /rusqlite|execute\(|INSERT|UPDATE |DELETE FROM/);
   const store = productionCode(readText(tauriDir, "src/storage/recall_store.rs"));
   for (const statement of store.match(/(INSERT OR REPLACE INTO|INSERT INTO|UPDATE|DELETE FROM)\s+\w+/g) ?? []) {
     assert.match(statement, /recall_/, `${statement}: Recall writes only its own projections`);
   }
-  // v7 adds retrieval indexes and nothing else: no existing table is altered.
+  // The answer model: a request is exactly system + user + schema (no tools, no callbacks), and the vendor module cannot reach the store.
+  const synthesis = productionCode(readText(tauriDir, "src/recall/synthesis.rs"));
+  assert.match(synthesis, /pub struct SynthesisRequest \{\s*pub system: String,\s*pub user: String,\s*pub schema: Value,\s*\}/);
+  const vendor = productionCode(readText(tauriDir, "src/providers/answer.rs"));
+  assert.doesNotMatch(vendor, /CaptureStore|storage::|rusqlite|crate::graph|crate::lineage/);
+  assert.doesNotMatch(readText(tauriDir, "src/recall/prompt.rs"), /"tools"|"functions"|tool_choice/);
+  // Nothing about a question or answer is persisted: schema stays at v7 and has no history/conversation tables.
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
   const v7 = migrations.slice(migrations.indexOf("pub const SCHEMA_V7"), migrations.indexOf("pub type Step"));
+  assert.doesNotMatch(migrations, /ask_history|conversation|chat_session|recall_history|recall_answers/i);
+  assert.match(migrations, /pub const SCHEMA_VERSION: i64 = 7;/);
+  // v7 adds retrieval indexes and nothing else: no existing table is altered, no project copied into an index, no consent in the database.
   assert.doesNotMatch(v7, /ALTER TABLE|DROP |UPDATE |DELETE FROM/);
   assert.deepEqual([...v7.matchAll(/CREATE (?:VIRTUAL )?TABLE (\w+)/g)].map((m) => m[1]), ["recall_revision_fts", "recall_embeddings", "recall_meta"]);
-  assert.doesNotMatch(v7, /project_id/, "no project is copied into an index: scope is a query-time filter");
-  // The consent never lives in the rebuildable tables.
+  assert.doesNotMatch(v7, /project_id/);
   assert.doesNotMatch(v7, /consent|enabled/i);
+  // The semantic candidate floor stays at the calibrated 0.40.
+  assert.match(readText(tauriDir, "src/recall/service.rs"), /pub const DEFAULT_MIN_COSINE: f32 = 0\.40;/);
 });

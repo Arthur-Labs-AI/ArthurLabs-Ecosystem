@@ -93,6 +93,8 @@ pub struct RecallService {
     settings: Arc<SemanticSettings>,
     indexing: AtomicBool,
     rebuild_attempted: AtomicBool,
+    pub(super) answer_model: Option<Arc<dyn super::synthesis::AnswerModel>>,
+    pub(super) enrichment: super::package::EnrichmentConfig,
     #[cfg(test)]
     pub lexical_enabled: AtomicBool,
     #[cfg(test)]
@@ -117,6 +119,8 @@ impl RecallService {
             settings,
             indexing: AtomicBool::new(false),
             rebuild_attempted: AtomicBool::new(false),
+            answer_model: None,
+            enrichment: super::package::EnrichmentConfig::default(),
             #[cfg(test)]
             lexical_enabled: AtomicBool::new(true),
             #[cfg(test)]

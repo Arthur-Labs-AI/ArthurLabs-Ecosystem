@@ -8,6 +8,9 @@ use std::time::Duration;
 
 use tauri::{AppHandle, Manager, State};
 
+use serde::Deserialize;
+
+use crate::recall::answer::CognitiveAnswer;
 use crate::recall::evidence::{RecallError, RetrievalResult};
 use crate::recall::service::{RecallService, SemanticRecallStatus, INDEX_RUN_LIMIT};
 use crate::storage::capture_store::CaptureStore;
@@ -21,6 +24,32 @@ pub async fn recall_retrieve(app: AppHandle, service: State<'_, RecallService>, 
         kick_indexer(&app);
     }
     Ok(result)
+}
+
+/// Mirrors `CognitiveQuery`. The scope is always explicit: native Recall never substitutes the active project.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CognitiveQueryInput {
+    pub query: String,
+    pub scope: ScopeInput,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ScopeInput {
+    pub project_id: String,
+}
+
+/// Ask Arthur (M04C): query -> grounded result. Retrieval, graph/lineage/provenance enrichment and bounded context construction are
+/// deterministic and happen BEFORE the answer model is called; the model sees only the resulting evidence package, with no tools.
+/// Nothing is persisted: no query, answer or conversation.
+#[tauri::command]
+pub async fn ask(app: AppHandle, service: State<'_, RecallService>, store: State<'_, CaptureStore>, query: CognitiveQueryInput) -> Result<CognitiveAnswer, RecallError> {
+    let answer = service.ask(&store, &query.query, &query.scope.project_id).await?;
+    if answer.diagnostics.retrieval.semantic_coverage.is_some_and(|c| c < 1.0) {
+        kick_indexer(&app);
+    }
+    Ok(answer)
 }
 
 #[tauri::command]

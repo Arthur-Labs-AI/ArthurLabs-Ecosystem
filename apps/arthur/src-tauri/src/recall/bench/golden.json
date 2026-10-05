@@ -319,6 +319,179 @@
    "title": "Buy milk",
    "body": "Milk and bread.",
    "history": []
+  },
+  {
+   "key": "g1",
+   "project": "arthur",
+   "kind": "idea",
+   "title": "Mobile onboarding flow",
+   "body": "The first launch shows only the microphone prompt.",
+   "history": []
+  },
+  {
+   "key": "g2",
+   "project": "arthur",
+   "kind": "decision",
+   "title": "Request permission at first use",
+   "body": "Ask Android for access when the user first taps capture.",
+   "history": []
+  },
+  {
+   "key": "g3",
+   "project": "arthur",
+   "kind": "note",
+   "title": "Foreground service rules",
+   "body": "Recording needs a foreground service type declared in the manifest.",
+   "history": []
+  },
+  {
+   "key": "c1",
+   "project": "arthur",
+   "kind": "decision",
+   "title": "Sync through a home server",
+   "body": "All sync goes through the home server the user owns.",
+   "history": []
+  },
+  {
+   "key": "c2",
+   "project": "arthur",
+   "kind": "idea",
+   "title": "Phones exchange knowledge directly",
+   "body": "Devices hand knowledge to each other without any middle machine.",
+   "history": []
+  },
+  {
+   "key": "t1",
+   "project": "arthur",
+   "kind": "idea",
+   "title": "Offline conflict resolution",
+   "body": "Decide how edits made offline are merged.",
+   "history": []
+  },
+  {
+   "key": "t2",
+   "project": "arthur",
+   "kind": "task",
+   "title": "Write the merge function",
+   "body": "Implement three-way merge for revisions.",
+   "history": []
+  },
+  {
+   "key": "t3",
+   "project": "arthur",
+   "kind": "task",
+   "title": "Add a banner for help",
+   "body": "Show the user a banner when a merge needs a decision.",
+   "history": []
+  },
+  {
+   "key": "x1",
+   "project": "wear",
+   "kind": "decision",
+   "title": "Pair the band over Bluetooth LE",
+   "body": "The band pairs over Bluetooth Low Energy.",
+   "history": []
+  },
+  {
+   "key": "x2",
+   "project": "old",
+   "kind": "decision",
+   "title": "Pair over the retired protocol",
+   "body": "Use the retired pairing protocol.",
+   "history": []
+  },
+  {
+   "key": "g4",
+   "project": "arthur",
+   "kind": "idea",
+   "title": "Band pairing screen",
+   "body": "A screen that pairs the wearable band.",
+   "history": []
+  },
+  {
+   "key": "e1",
+   "project": "arthur",
+   "kind": "idea",
+   "title": "Voice-only recorder",
+   "body": "The first plan was a voice-only recorder with no screen at all.",
+   "history": [
+    {
+     "op": "edit",
+     "title": "Recorder with a tiny screen",
+     "body": "Add a tiny status screen that shows the recording state."
+    },
+    {
+     "op": "edit",
+     "title": "Capture-first notebook",
+     "body": "Open straight into capture, text or voice, and organise later."
+    }
+   ]
+  },
+  {
+   "key": "e2",
+   "project": "arthur",
+   "kind": "idea",
+   "title": "Single device notes",
+   "body": "Notes live on one phone only.",
+   "history": [
+    {
+     "op": "edit",
+     "title": "Notes with a home server",
+     "body": "Notes sync through a home server the user owns."
+    },
+    {
+     "op": "edit",
+     "title": "Notes on every device",
+     "body": "Every device keeps the notes and they converge on their own."
+    }
+   ]
+  },
+  {
+   "key": "e3",
+   "project": "arthur",
+   "kind": "idea",
+   "title": "Typed relations plan",
+   "body": "Relations are plain links between notes.",
+   "history": [
+    {
+     "op": "edit",
+     "title": "Relations with kinds",
+     "body": "Each relation gets a kind such as depends on or extends."
+    },
+    {
+     "op": "edit",
+     "title": "Relations that explain themselves",
+     "body": "Relations are typed and the app says why two notes are connected."
+    }
+   ]
+  },
+  {
+   "key": "d1",
+   "project": "arthur",
+   "kind": "decision",
+   "title": "Use SQLite for storage",
+   "body": "SQLite is embedded and keeps working offline.",
+   "history": [
+    {
+     "op": "edit",
+     "title": "Use SQLite for storage",
+     "body": "SQLite is embedded and keeps working offline, which matters more than rich queries."
+    }
+   ]
+  },
+  {
+   "key": "d2",
+   "project": "arthur",
+   "kind": "decision",
+   "title": "Keep audio only during retry",
+   "body": "Delete the recording as soon as transcription succeeds.",
+   "history": [
+    {
+     "op": "edit",
+     "title": "Keep audio only during retry",
+     "body": "Delete the recording as soon as transcription succeeds; privacy outweighs convenience."
+    }
+   ]
   }
  ],
  "questions": [
@@ -1364,6 +1537,212 @@
    "expectEmpty": false,
    "obsoleteText": [],
    "class": "injection-content"
+  },
+  {
+   "id": "gdep-1",
+   "lang": "en",
+   "project": "arthur",
+   "query": "what does the mobile onboarding flow depend on",
+   "relevant": [
+    "g1",
+    "g2"
+   ],
+   "forbidden": [],
+   "expectEmpty": false,
+   "obsoleteText": [],
+   "facts": [],
+   "class": "dependency"
+  },
+  {
+   "id": "gdep-2",
+   "lang": "en",
+   "project": "arthur",
+   "query": "what does the mobile onboarding flow ultimately depend on",
+   "relevant": [
+    "g1",
+    "g2",
+    "g3"
+   ],
+   "forbidden": [],
+   "expectEmpty": false,
+   "obsoleteText": [],
+   "facts": [],
+   "class": "dependency"
+  },
+  {
+   "id": "gdep-3",
+   "lang": "en",
+   "project": "arthur",
+   "query": "what does the band pairing screen depend on",
+   "relevant": [
+    "g4",
+    "x1"
+   ],
+   "forbidden": [
+    "x2"
+   ],
+   "expectEmpty": false,
+   "obsoleteText": [],
+   "facts": [],
+   "class": "dependency"
+  },
+  {
+   "id": "gcon-1",
+   "lang": "en",
+   "project": "arthur",
+   "query": "what conflicts with syncing through a home server",
+   "relevant": [
+    "c1",
+    "c2"
+   ],
+   "forbidden": [],
+   "expectEmpty": false,
+   "obsoleteText": [],
+   "facts": [],
+   "class": "contradiction"
+  },
+  {
+   "id": "gcon-2",
+   "lang": "en",
+   "project": "arthur",
+   "query": "which idea contradicts the home server sync decision",
+   "relevant": [
+    "c1",
+    "c2"
+   ],
+   "forbidden": [],
+   "expectEmpty": false,
+   "obsoleteText": [],
+   "facts": [],
+   "class": "contradiction"
+  },
+  {
+   "id": "gtask-1",
+   "lang": "en",
+   "project": "arthur",
+   "query": "what tasks came from the offline conflict resolution idea",
+   "relevant": [
+    "t1",
+    "t2",
+    "t3"
+   ],
+   "forbidden": [],
+   "expectEmpty": false,
+   "obsoleteText": [],
+   "facts": [],
+   "class": "task-from"
+  },
+  {
+   "id": "gtask-2",
+   "lang": "en",
+   "project": "arthur",
+   "query": "which tasks are derived from offline conflict resolution",
+   "relevant": [
+    "t1",
+    "t2",
+    "t3"
+   ],
+   "forbidden": [],
+   "expectEmpty": false,
+   "obsoleteText": [],
+   "facts": [],
+   "class": "task-from"
+  },
+  {
+   "id": "levo-1",
+   "lang": "en",
+   "project": "arthur",
+   "query": "how did the capture-first notebook idea evolve",
+   "relevant": [
+    "e1"
+   ],
+   "forbidden": [],
+   "expectEmpty": false,
+   "obsoleteText": [
+    "voice-only recorder",
+    "tiny status screen"
+   ],
+   "facts": [
+    "voice-only recorder",
+    "tiny status screen",
+    "straight into capture"
+   ],
+   "class": "evolution"
+  },
+  {
+   "id": "levo-2",
+   "lang": "en",
+   "project": "arthur",
+   "query": "how did the notes on every device idea change over time",
+   "relevant": [
+    "e2"
+   ],
+   "forbidden": [],
+   "expectEmpty": false,
+   "obsoleteText": [
+    "one phone only",
+    "Notes sync through a home server"
+   ],
+   "facts": [
+    "one phone only",
+    "Notes sync through a home server",
+    "converge on their own"
+   ],
+   "class": "evolution"
+  },
+  {
+   "id": "levo-3",
+   "lang": "en",
+   "project": "arthur",
+   "query": "how did relations that explain themselves develop",
+   "relevant": [
+    "e3"
+   ],
+   "forbidden": [],
+   "expectEmpty": false,
+   "obsoleteText": [
+    "plain links between notes"
+   ],
+   "facts": [
+    "plain links",
+    "kind such as depends on",
+    "says why"
+   ],
+   "class": "evolution"
+  },
+  {
+   "id": "lwhy-1",
+   "lang": "en",
+   "project": "arthur",
+   "query": "why did I decide to use sqlite for storage",
+   "relevant": [
+    "d1"
+   ],
+   "forbidden": [],
+   "expectEmpty": false,
+   "obsoleteText": [],
+   "facts": [
+    "embedded",
+    "matters more than rich queries"
+   ],
+   "class": "decision-why"
+  },
+  {
+   "id": "lwhy-2",
+   "lang": "en",
+   "project": "arthur",
+   "query": "why did I decide to keep audio only during retry",
+   "relevant": [
+    "d2"
+   ],
+   "forbidden": [],
+   "expectEmpty": false,
+   "obsoleteText": [],
+   "facts": [
+    "transcription succeeds",
+    "privacy outweighs convenience"
+   ],
+   "class": "decision-why"
   }
  ],
  "concepts": [
@@ -1595,5 +1974,47 @@
    "work",
    "work"
   ]
+ ],
+ "relations": [
+  {
+   "kind": "depends_on",
+   "from": "g1",
+   "to": "g2"
+  },
+  {
+   "kind": "depends_on",
+   "from": "g2",
+   "to": "g3"
+  },
+  {
+   "kind": "contradicts",
+   "from": "c1",
+   "to": "c2"
+  },
+  {
+   "kind": "derived_from",
+   "from": "t2",
+   "to": "t1"
+  },
+  {
+   "kind": "derived_from",
+   "from": "t3",
+   "to": "t1"
+  },
+  {
+   "kind": "depends_on",
+   "from": "g4",
+   "to": "x1"
+  },
+  {
+   "kind": "depends_on",
+   "from": "g4",
+   "to": "x2"
+  },
+  {
+   "kind": "related_to",
+   "from": "g1",
+   "to": "g4"
+  }
  ]
 }

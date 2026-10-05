@@ -31,6 +31,7 @@ import {
   archiveProjectOverIpc,
   createProjectOverIpc,
   getActiveProjectOverIpc,
+  askOverIpc,
   getProjectGraphOverIpc,
   getProjectOverIpc,
   listProjectsOverIpc,
@@ -93,5 +94,6 @@ export function createMobileClient(call?: Invoke): ArthurClient {
     getActiveProject: () => getActiveProjectOverIpc(call),
     setActiveProject: (projectId) => setActiveProjectOverIpc(projectId, call),
     getProjectGraph: (projectId) => getProjectGraphOverIpc(projectId, call),
+    ask: (query) => askOverIpc(query, call),
   };
 }

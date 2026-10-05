@@ -14,16 +14,25 @@
 //!
 //! The architecture is in `docs/architecture/cognitive-recall/`.
 
+pub mod answer;
+pub mod context;
 pub mod evidence;
+pub mod graph;
 pub mod lexical;
+pub mod revisions;
+pub mod package;
+pub mod prompt;
 pub mod query;
 pub mod ranking;
 pub mod service;
 pub mod settings;
+pub mod synthesis;
 #[cfg(test)]
 pub mod testing;
 #[cfg(test)]
 mod service_tests;
+#[cfg(test)]
+mod ask_tests;
 #[cfg(test)]
 mod bench;
 #[cfg(test)]

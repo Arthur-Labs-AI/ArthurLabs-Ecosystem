@@ -8,6 +8,7 @@ import {
   MAX_REVISIONS_PER_OBJECT,
   canonicalRelationEnds,
   codePointLength,
+  describeCognitiveQueryProblem,
   describeCreateCaptureInputProblem,
   describeCreateRelationInputProblem,
   describeProjectNameProblem,
@@ -19,6 +20,8 @@ import {
   isSymmetricRelationKind,
   sliceCodePoints,
   type Capture,
+  type CognitiveAnswer,
+  type CognitiveQuery,
   type CognitiveRelation,
   type CognitiveRelationOrigin,
   type CreateCaptureInput,
@@ -41,7 +44,7 @@ import {
   type RuntimeInfo,
   type ThoughtRevision,
 } from "@arthur/contracts";
-import { DistillationError, LineageError, ProjectError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
+import { DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
 
 const DEFAULT_PREVIEW_INFO: RuntimeInfo = { appVersion: "0.0.0-preview", platform: "unknown" };
 
@@ -667,5 +670,34 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
           .map((object) => ({ id: object.id, kind: object.kind, title: object.title, projectId: object.projectId, projectName: findProject(object.projectId).name }));
         return { projectId, objects: own, relations: touching, externalObjects };
       }),
+    // The preview has no native layer, no knowledge index and no answer model, so it can never produce evidence or an answer. It
+    // validates the question and the project exactly like the native layer and says "insufficient evidence" honestly. (It never
+    // returns a made-up answer.)
+    ask: (query: CognitiveQuery): Promise<CognitiveAnswer> => {
+      const problem = describeCognitiveQueryProblem(query);
+      if (problem) return Promise.reject(new RecallError("invalid_query", `That question cannot be asked: ${problem}.`));
+      let project: Project;
+      try {
+        project = toProject(findProject(query.scope.projectId));
+      } catch {
+        return Promise.reject(new RecallError("project_not_found", "That project does not exist."));
+      }
+      return Promise.resolve({
+        query: query.query.trim(),
+        scope: { projectId: project.id, projectName: project.name, archived: project.archivedAt !== null },
+        outcome: "insufficient_evidence",
+        answer: null,
+        evidence: [],
+        diagnostics: {
+          retrieval: { intent: {}, lexical: "skippedNoTerms", semantic: "disabled", semanticReason: null, semanticCoverage: null, embeddingRequests: 0, uploadedTexts: 0, sqlReads: 0 },
+          enrichment: {},
+          context: null,
+          synthesis: { state: "skipped", reason: "noEvidence", model: null, retried: false, requests: 0, strippedRefs: 0, droppedParagraphs: 0, temporalCorrected: 0 },
+          timings: {},
+          counts: {},
+          sqlReads: 0,
+        },
+      });
+    },
   };
 }

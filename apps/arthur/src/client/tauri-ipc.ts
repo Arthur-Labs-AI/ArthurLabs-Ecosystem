@@ -16,11 +16,16 @@ import {
   isProject,
   isProjectErrorPayload,
   isProjectGraph,
+  isCognitiveAnswer,
+  isRecallErrorPayload,
+  describeCognitiveQueryProblem,
   describeProjectNameProblem,
   isRelationErrorPayload,
   isRuntimeInfo,
   isVoiceCaptureErrorPayload,
   type Capture,
+  type CognitiveAnswer,
+  type CognitiveQuery,
   type CognitiveRelation,
   type CreateCaptureInput,
   type CreateRelationInput,
@@ -40,7 +45,7 @@ import {
   type RelationFilter,
   type RuntimeInfo,
 } from "@arthur/contracts";
-import { DistillationError, LineageError, ProjectError, RelationError, VoiceCaptureError } from "./arthur-client";
+import { DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError } from "./arthur-client";
 
 /**
  * The single module allowed to import `@tauri-apps/*`.
@@ -479,5 +484,20 @@ export async function setActiveProjectOverIpc(projectId: string, call: Invoke = 
 export async function getProjectGraphOverIpc(projectId: string, call: Invoke = invoke): Promise<ProjectGraph> {
   const payload = await projectCall("get_project_graph", { projectId: requireId(projectId, "project id") }, call);
   if (!isProjectGraph(payload)) throw new Error("Native layer returned an invalid project graph");
+  return payload;
+}
+
+/** Ask Arthur. The scope is explicit and passed through untouched: this layer never substitutes the active project. */
+export async function askOverIpc(query: CognitiveQuery, call: Invoke = invoke): Promise<CognitiveAnswer> {
+  const problem = describeCognitiveQueryProblem(query);
+  if (problem) throw new RecallError("invalid_query", `That question cannot be asked: ${problem}.`);
+  let payload: unknown;
+  try {
+    payload = await call("ask", { query: { query: query.query, scope: { projectId: query.scope.projectId } } });
+  } catch (failure) {
+    if (isRecallErrorPayload(failure)) throw new RecallError(failure.code, failure.message);
+    throw failure;
+  }
+  if (!isCognitiveAnswer(payload)) throw new Error("Native layer returned an invalid answer");
   return payload;
 }

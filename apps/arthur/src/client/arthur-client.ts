@@ -16,6 +16,9 @@ import type {
   ProjectErrorCode,
   ProjectGraph,
   ProjectScope,
+  RecallErrorCode,
+  CognitiveAnswer,
+  CognitiveQuery,
   RelationErrorCode,
   RelationFilter,
   RevisionChanges,
@@ -89,6 +92,17 @@ export class ProjectError extends Error {
   constructor(code: ProjectErrorCode, message: string) {
     super(message);
     this.name = "ProjectError";
+    this.code = code;
+  }
+}
+
+/** Ask Arthur could not be served at all (a bad question, an unknown project, an unreadable store). `message` is safe to show. */
+export class RecallError extends Error {
+  readonly code: RecallErrorCode;
+
+  constructor(code: RecallErrorCode, message: string) {
+    super(message);
+    this.name = "RecallError";
     this.code = code;
   }
 }
@@ -248,4 +262,21 @@ export interface ArthurClient {
   setActiveProject(projectId: string): Promise<Project>;
   /** One project's graph: its objects, every relation touching them, and the far ends of cross-project relations. */
   getProjectGraph(projectId: string): Promise<ProjectGraph>;
+
+  // --- Cognitive Recall (Ask Arthur) -----------------------------------------------------------------------------------
+  // A focused query -> result. Nothing is kept between questions.
+
+  /**
+   * Answers a question from the user's OWN knowledge, inside the ONE project named by `query.scope.projectId` (it is never
+   * widened and never defaulted: the UI passes its active project). Retrieval, graph, lineage and provenance enrichment happen
+   * natively and deterministically before an answer model writes anything; the model sees only that bounded evidence and has
+   * no tools.
+   *
+   * Degradation RESOLVES with an `outcome`: `insufficient_evidence` (nothing relevant enough; no model call was made),
+   * `retrieval_only` (evidence found, but no grounded answer could be produced), or `answered`. Only a request that cannot be
+   * served at all rejects, with a `RecallError`. Evidence entries carry handles that the answer's paragraphs cite, whether they
+   * are current or historical, the Project they belong to (and `externalProject`), the relation path that admitted them, and
+   * provenance (the exact Capture span, and whether the text was edited since).
+   */
+  ask(query: CognitiveQuery): Promise<CognitiveAnswer>;
 }
