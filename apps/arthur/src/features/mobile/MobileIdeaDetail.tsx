@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { KnowledgeObject } from "@arthur/contracts";
 import { useNavigation } from "../../app/navigation";
 import { Icon, KIND_LABELS, KindGlyph, SOURCE_LABELS, SourceIcon } from "../../components/icons";
@@ -12,8 +12,10 @@ import { useRelationIndex } from "../graph/relation-index";
 import { ORIGIN_LABELS as RELATION_ORIGIN_LABELS, relationVerbFrom } from "../graph/relation-style";
 import { useKnowledge } from "../knowledge/knowledge-context";
 import { useLineageSummaries } from "../lineage/lineage-summaries";
+import { useProjects } from "../projects/projects-context";
 import { ORIGIN_LABELS, captionFor } from "../lineage/revision-captions";
 import { useLineage } from "../lineage/use-lineage";
+import { MoveSheet } from "./MobileProjects";
 import { MobileRevisionForm } from "./MobileRevisionForm";
 import { MobileSheet } from "./MobileSheet";
 import { useMobileNav } from "./mobile-nav";
@@ -22,7 +24,8 @@ import { EdgeSheet } from "./EdgeSheet";
 /** A full-screen page for one idea: its words, then the three facets of it (where from, what it connects to, how it changed). */
 export function MobileIdeaDetail({ objectId }: { objectId: string }) {
   const { objects, refresh } = useKnowledge();
-  const { captures } = useCaptures();
+  const { captureOf, ensure } = useCaptures();
+  const { moveObject, nameOf, projects } = useProjects();
   const { byObject } = useLineageSummaries();
   const index = useRelationIndex();
   const { infer, inferring, notice: graphNotice, error: graphError } = useGraphState();
@@ -33,6 +36,8 @@ export function MobileIdeaDetail({ objectId }: { objectId: string }) {
   const history = lineage.lineage ?? undefined; // the page's own read of this one idea's history
   const [sheet, setSheet] = useState<"revise" | "branch" | null>(null);
   const [edge, setEdge] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
+  useEffect(() => (object ? ensure([object.provenance.captureId]) : undefined), [object, ensure]);
 
   const summary = byObject.get(objectId);
   const byId = useMemo(() => new Map(objects.map((candidate) => [candidate.id, candidate])), [objects]);
@@ -52,7 +57,7 @@ export function MobileIdeaDetail({ objectId }: { objectId: string }) {
     );
   }
 
-  const capture = captures.find((candidate) => candidate.id === object.provenance.captureId);
+  const capture = captureOf(object.provenance.captureId);
   const edges = index.edgesOf(object.id);
   const revisions = history?.revisions ?? [];
   const labels = new Map(revisions.map((revision, i) => [revision.id, `R${i + 1}`]));
@@ -100,6 +105,18 @@ export function MobileIdeaDetail({ objectId }: { objectId: string }) {
           </p>
         )}
 
+        <section className="m-facet" aria-labelledby="m-f-proj">
+          <div className="m-facet-h">
+            <h2 id="m-f-proj">Project</h2>
+            <span className="m-n">{nameOf(object.projectId) ?? "this project"}</span>
+            {projects.some((project) => project.id !== object.projectId) && (
+              <button type="button" className="m-tlink end" aria-label={`Move ${object.title} to another project`} onClick={() => setMoving(true)}>
+                Move… <Icon name="chev" small />
+              </button>
+            )}
+          </div>
+        </section>
+
         <section className="m-facet" aria-labelledby="m-f-source">
           <div className="m-facet-h">
             <h2 id="m-f-source">Source</h2>
@@ -133,14 +150,19 @@ export function MobileIdeaDetail({ objectId }: { objectId: string }) {
           ) : (
             <ul>
               {edges.slice(0, 3).map((relation) => {
-                const other = byId.get(relation.sourceObjectId === object.id ? relation.targetObjectId : relation.sourceObjectId);
+                const otherId = relation.sourceObjectId === object.id ? relation.targetObjectId : relation.sourceObjectId;
+                const far = index.externalOf(otherId);
+                const other = byId.get(otherId) ?? far;
                 if (!other) return null;
                 return (
                   <li key={relation.id}>
                     <button type="button" className="m-rel" aria-label={`${other.title}, ${relationVerbFrom(relation, object.id)}`} onClick={() => setEdge(relation.id)}>
                       <RelationSwatch kind={relation.kind} />
                       <span>
-                        <span className="m-rt">{other.title}</span>
+                        <span className="m-rt">
+                          {other.title}
+                          {far && <span className="m-proj-tag"> {far.projectName} ↗</span>}
+                        </span>
                         <span className="m-rv" title={RELATION_ORIGIN_LABELS[relation.origin]}>
                           <span className={relation.origin === "model" ? "m-origin model" : "m-origin"} aria-hidden="true" />
                           <b>{relationVerbFrom(relation, object.id)}</b>
@@ -242,6 +264,21 @@ export function MobileIdeaDetail({ objectId }: { objectId: string }) {
             const done = sheet === "revise" ? await lineage.edit(changes) : await lineage.branch(current.id, changes);
             if (done) setSheet(null);
             return done;
+          }}
+        />
+      )}
+      {moving && (
+        <MoveSheet
+          subject={object.title}
+          currentProjectId={object.projectId}
+          onClose={() => setMoving(false)}
+          onMove={async (projectId) => {
+            const moved = await moveObject(object.id, projectId);
+            if (moved) {
+              setMoving(false);
+              closePage(); // the idea left this project: the page for it goes with it
+            }
+            return moved;
           }}
         />
       )}

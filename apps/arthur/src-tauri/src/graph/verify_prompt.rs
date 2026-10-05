@@ -93,7 +93,7 @@ mod tests {
     use crate::storage::relation_store::KINDS;
 
     fn object(id: &str, title: &str) -> KnowledgeObject {
-        KnowledgeObject { id: id.into(), kind: "idea".into(), title: title.into(), body: "body".into(), created_at: "2026-10-04T10:00:00Z".into(), provenance: Provenance { capture_id: "secret-capture".into(), source_start: 0, source_end: 1 } }
+        KnowledgeObject { id: id.into(), kind: "idea".into(), title: title.into(), body: "body".into(), created_at: "2026-10-04T10:00:00Z".into(), provenance: Provenance { capture_id: "secret-capture".into(), source_start: 0, source_end: 1 }, project_id: "p".into() }
     }
 
     #[test]
@@ -150,7 +150,7 @@ mod order_tests {
     use crate::storage::knowledge_store::{KnowledgeObject, Provenance};
 
     fn object(id: &str) -> KnowledgeObject {
-        KnowledgeObject { id: id.into(), kind: "idea".into(), title: id.into(), body: "b".into(), created_at: "x".into(), provenance: Provenance { capture_id: "c".into(), source_start: 0, source_end: 1 } }
+        KnowledgeObject { id: id.into(), kind: "idea".into(), title: id.into(), body: "b".into(), created_at: "x".into(), provenance: Provenance { capture_id: "c".into(), source_start: 0, source_end: 1 }, project_id: "p".into() }
     }
 
     #[test]

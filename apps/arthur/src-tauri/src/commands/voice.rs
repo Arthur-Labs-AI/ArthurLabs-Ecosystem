@@ -15,8 +15,9 @@ pub async fn start_voice_capture(voice: State<'_, VoiceCaptureService>) -> Resul
 pub async fn finish_voice_capture(
     voice: State<'_, VoiceCaptureService>,
     store: State<'_, CaptureStore>,
+    project_id: Option<String>,
 ) -> Result<Capture, VoiceError> {
-    voice.stop(&store).await
+    voice.stop_in(&store, project_id.as_deref()).await
 }
 
 #[tauri::command]
@@ -30,8 +31,9 @@ pub async fn cancel_voice_capture(voice: State<'_, VoiceCaptureService>) -> Resu
 pub async fn retry_voice_transcription(
     voice: State<'_, VoiceCaptureService>,
     store: State<'_, CaptureStore>,
+    project_id: Option<String>,
 ) -> Result<Capture, VoiceError> {
-    voice.retry(&store).await
+    voice.retry_in(&store, project_id.as_deref()).await
 }
 
 /// Deletes the kept recording. Always succeeds; there may be nothing to delete.

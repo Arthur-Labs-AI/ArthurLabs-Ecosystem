@@ -145,7 +145,13 @@ impl VoiceCaptureService {
     /// Stops recording, transcribes, and persists the transcript as a voice Capture.
     ///
     /// If the transcription fails in a way that may pass, the recording is kept (see `retry`) and the error says so.
+    #[allow(dead_code)] // the unscoped form; the app itself always names a project
     pub async fn stop(&self, store: &CaptureStore) -> Result<Capture, VoiceError> {
+        self.stop_in(store, None).await
+    }
+
+    /// As `stop`, capturing into `project_id` (the Inbox when `None`).
+    pub async fn stop_in(&self, store: &CaptureStore, project_id: Option<&str>) -> Result<Capture, VoiceError> {
         let path = {
             let mut state = lock(&self.shared);
             match &*state {
@@ -161,13 +167,19 @@ impl VoiceCaptureService {
         let guard = RecordingGuard::new(path.clone(), self.shared.clone());
 
         self.recorder.stop().await?;
-        self.transcribe(guard, store, None).await
+        self.transcribe(guard, store, None, project_id).await
     }
 
     /// Transcribes the SAME kept recording again. A Capture is created only when the transcription succeeds, and the
     /// audio is deleted then. A failure that may pass keeps the recording (until its original deadline); a final one
     /// deletes it.
+    #[allow(dead_code)] // the unscoped form; the app itself always names a project
     pub async fn retry(&self, store: &CaptureStore) -> Result<Capture, VoiceError> {
+        self.retry_in(store, None).await
+    }
+
+    /// As `retry`, capturing into `project_id` (the Inbox when `None`).
+    pub async fn retry_in(&self, store: &CaptureStore, project_id: Option<&str>) -> Result<Capture, VoiceError> {
         let kept = {
             let mut state = lock(&self.shared);
             match &*state {
@@ -186,7 +198,7 @@ impl VoiceCaptureService {
             }
         };
         let guard = RecordingGuard::new(kept.path.clone(), self.shared.clone());
-        self.transcribe(guard, store, Some(kept)).await
+        self.transcribe(guard, store, Some(kept), project_id).await
     }
 
     /// Deletes a kept recording. A no-op when there is none.
@@ -198,7 +210,7 @@ impl VoiceCaptureService {
         }
     }
 
-    async fn transcribe(&self, guard: RecordingGuard, store: &CaptureStore, retry_of: Option<Kept>) -> Result<Capture, VoiceError> {
+    async fn transcribe(&self, guard: RecordingGuard, store: &CaptureStore, retry_of: Option<Kept>, project_id: Option<&str>) -> Result<Capture, VoiceError> {
         let audio = read_audio(&guard.path)?;
         let file_name = guard.path.file_name().and_then(|n| n.to_str()).unwrap_or("recording.m4a").to_string();
 
@@ -213,7 +225,7 @@ impl VoiceCaptureService {
         }
 
         store
-            .create(CreateCaptureInput { source: "voice".into(), content: transcript.to_string() })
+            .create(CreateCaptureInput { source: "voice".into(), content: transcript.to_string(), project_id: project_id.map(str::to_string) })
             .map_err(|error| VoiceError::CaptureFailed(error.to_string()))
     }
 

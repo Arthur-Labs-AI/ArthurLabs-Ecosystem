@@ -11,6 +11,8 @@ import { useCaptures } from "../capture/captures-context";
 import { GraphCanvas } from "../graph/GraphCanvas";
 import { useRelationIndex } from "../graph/relation-index";
 import { useKnowledge } from "../knowledge/knowledge-context";
+import { MoveToProject } from "../projects/MoveToProject";
+import { useProjects } from "../projects/projects-context";
 import { RevisionForm } from "../lineage/RevisionForm";
 import { useLineageSummaries, useObjectLineage } from "../lineage/lineage-summaries";
 import { useLineage } from "../lineage/use-lineage";
@@ -19,12 +21,13 @@ import { ORIGIN_LABELS as RELATION_ORIGIN_LABELS, relationVerbFrom } from "../gr
 import "./ideas.css";
 
 function IdeaInspector({ object }: { object: KnowledgeObject }) {
-  const { captures } = useCaptures();
+  const { captureOf, ensure } = useCaptures();
   const { refresh } = useKnowledge();
   const { byObject } = useLineageSummaries();
   const index = useRelationIndex();
   const { objects } = useKnowledge();
   const { go, focus } = useNavigation();
+  const { moveObject, switchTo } = useProjects();
   const [revising, setRevising] = useState(false);
   const { busy, notice, error, edit } = useLineage(object.id, null, refresh);
 
@@ -33,13 +36,15 @@ function IdeaInspector({ object }: { object: KnowledgeObject }) {
 
   const summary = byObject.get(object.id);
   const lineage = useObjectLineage(object.id);
-  const capture = captures.find((candidate) => candidate.id === object.provenance.captureId);
+  const capture = captureOf(object.provenance.captureId);
+  useEffect(() => ensure([object.provenance.captureId]), [ensure, object.provenance.captureId]);
   const edges = index.edgesOf(object.id);
   const byId = useMemo(() => new Map(objects.map((candidate) => [candidate.id, candidate])), [objects]);
   const neighbourhood = useMemo(() => {
     const ids = new Set([object.id, ...edges.flatMap((relation) => [relation.sourceObjectId, relation.targetObjectId])]);
-    return { objects: objects.filter((candidate) => ids.has(candidate.id)), relations: edges };
-  }, [object.id, edges, objects]);
+    return { objects: [...objects, ...index.external].filter((candidate) => ids.has(candidate.id)), relations: edges };
+  }, [object.id, edges, objects, index.external]);
+  const externals = useMemo(() => new Map(index.external.map((far) => [far.id, far.projectName])), [index.external]);
   const revisions = lineage ? [...lineage.revisions].reverse() : [];
   const labels = new Map((lineage?.revisions ?? []).map((revision, i) => [revision.id, `R${i + 1}`]));
   const revisionById = new Map((lineage?.revisions ?? []).map((revision) => [revision.id, revision]));
@@ -94,6 +99,21 @@ function IdeaInspector({ object }: { object: KnowledgeObject }) {
         </>
       )}
 
+      <section className="sec" aria-labelledby="project-heading">
+        <div className="sec-h">
+          <h3 id="project-heading">Project</h3>
+        </div>
+        <MoveToProject
+          currentProjectId={object.projectId}
+          subject={object.title}
+          onMove={async (projectId) => {
+            const moved = await moveObject(object.id, projectId);
+            if (moved) focus(null);
+            return moved;
+          }}
+        />
+      </section>
+
       <section className="sec" aria-labelledby="source-heading">
         <div className="sec-h">
           <h3 id="source-heading">Source</h3>
@@ -122,17 +142,22 @@ function IdeaInspector({ object }: { object: KnowledgeObject }) {
         ) : (
           <>
             <div className="ego-frame">
-              <GraphCanvas objects={neighbourhood.objects} relations={neighbourhood.relations} scale="mini" label={`Connections around ${object.title}`} />
+              <GraphCanvas objects={neighbourhood.objects} externals={externals} relations={neighbourhood.relations} scale="mini" label={`Connections around ${object.title}`} />
             </div>
             <ul>
               {edges.map((relation) => {
-                const other = byId.get(relation.sourceObjectId === object.id ? relation.targetObjectId : relation.sourceObjectId);
+                const otherId = relation.sourceObjectId === object.id ? relation.targetObjectId : relation.sourceObjectId;
+                const far = index.externalOf(otherId);
+                const other = byId.get(otherId) ?? far;
                 if (!other) return null;
                 return (
                   <li key={relation.id}>
-                    <button type="button" className="rel" onClick={() => focus(other.id)} aria-label={`${other.title}, ${relationVerbFrom(relation, object.id)}`}>
+                    <button type="button" className="rel" onClick={() => (far ? void switchTo(far.projectId) : focus(other.id))} title={far ? `In ${far.projectName}. Opens that project.` : undefined} aria-label={`${other.title}, ${relationVerbFrom(relation, object.id)}`}>
                       <RelationSwatch kind={relation.kind} />
-                      <span className="rt">{other.title}</span>
+                      <span className="rt">
+                        {other.title}
+                        {far && <span className="proj-tag"> · {far.projectName} ↗</span>}
+                      </span>
                       <span className="rv" title={RELATION_ORIGIN_LABELS[relation.origin]}>
                         <span className={relation.origin === "model" ? "origin model" : "origin"} aria-hidden="true" />
                         {relationVerbFrom(relation, object.id)}
@@ -181,9 +206,12 @@ function IdeaInspector({ object }: { object: KnowledgeObject }) {
 
 export function IdeasScreen() {
   const { objects, status, error } = useKnowledge();
+  const { ensure } = useCaptures();
   const { byObject } = useLineageSummaries();
   const index = useRelationIndex();
   const { focusId, focus, openCapture } = useNavigation();
+  // Rows show the source of their capture, which may live in another project than the idea does.
+  useEffect(() => ensure(objects.map((object) => object.provenance.captureId)), [objects, ensure]);
   const [kind, setKind] = useState<KnowledgeObjectKind | "all">("all");
   const [query, setQuery] = useState("");
   const search = useRef<HTMLInputElement>(null);
@@ -319,8 +347,8 @@ export function IdeasScreen() {
 
 /** Looks up the capture's source kind for the margin, without needing the captures list in the row. */
 function SourceMargin({ object, connections, revisions, age }: { object: KnowledgeObject; connections: number; revisions: number | undefined; age: string }) {
-  const { captures } = useCaptures();
-  const source = captures.find((capture) => capture.id === object.provenance.captureId)?.source ?? "text";
+  const { captureOf } = useCaptures();
+  const source = captureOf(object.provenance.captureId)?.source ?? "text";
   return <Margin source={source} connections={connections} revisions={revisions} age={age} />;
 }
 

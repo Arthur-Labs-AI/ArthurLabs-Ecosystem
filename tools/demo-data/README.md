@@ -28,6 +28,11 @@ Cloud credentials are not read from the demo home, so voice transcription and di
 deliberate (no accidental API spend) and also lets you see the retry states.
 
 ## What is in it
+Six projects (schema v6): the system **Inbox** (a never-organized capture and one organized into nothing), **A.R.T.H.U.R**
+(10 captures, 32 ideas: most of them), **Nexus**, **School**, **AutoPulse** (nearly empty: a single idea moved into it) and an
+**archived** project, *Old experiments*. One capture (c02) has ideas in three projects, and several relations cross project
+boundaries. A.R.T.H.U.R is the active project. The ideas below are the same ones as before, only assigned to projects.
+
 16 captures (9 typed, 7 voice; one never organized, one organized into nothing), 49 knowledge objects, 54 relations (all
 7 kinds, all 3 origins), 71 revisions including a 3-lane branch with a 3-parent merge. Includes Bulgarian text, an emoji,
 a 130-character title, and a hub idea with 7 connections.

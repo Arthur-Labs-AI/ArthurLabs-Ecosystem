@@ -163,9 +163,15 @@ impl DistillationService {
     }
 
     /// Every capture's organization state, durable ones from the store plus "running" for what is in flight now.
+    #[allow(dead_code)] // the unscoped form; the app itself always names a project
     pub fn organization_states(&self, store: &CaptureStore) -> Result<Vec<OrganizationState>, StoreError> {
+        self.organization_states_in(store, None)
+    }
+
+    /// As `organization_states`, optionally only the captures of one project.
+    pub fn organization_states_in(&self, store: &CaptureStore, project_id: Option<&str>) -> Result<Vec<OrganizationState>, StoreError> {
         let running = self.running.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone();
-        let mut states = store.list_organization_states()?;
+        let mut states = store.list_organization_states_in(project_id)?;
         for state in states.iter_mut().filter(|state| state.status != "succeeded" && running.contains(&state.capture_id)) {
             state.status = "running";
             state.failure = None;
@@ -217,7 +223,7 @@ mod tests {
 
     fn setup(text: &str, result: Result<Vec<Candidate>, DistillError>) -> (DistillationService, Arc<FakeDistiller>, CaptureStore, Capture) {
         let store = CaptureStore::open_in_memory().unwrap();
-        let capture = store.create(CreateCaptureInput { source: "voice".into(), content: text.into() }).unwrap();
+        let capture = store.create(CreateCaptureInput { source: "voice".into(), content: text.into(), project_id: None }).unwrap();
         let fake = FakeDistiller::returning(result);
         (DistillationService::new(fake.clone()), fake, store, capture)
     }
@@ -244,6 +250,22 @@ mod tests {
         assert_eq!(store.list_knowledge_objects().unwrap(), objects);
         assert_eq!(fake.saw.lock().unwrap().as_slice(), [TEXT], "the model saw exactly the capture text");
         assert_eq!(store.get_capture(&capture.id).unwrap(), Some(capture), "the raw capture is untouched");
+    }
+
+    #[test]
+    fn distilling_a_capture_from_a_project_puts_its_objects_in_that_project_without_the_model_deciding() {
+        let (service, fake, store, capture) = setup(TEXT, Ok(vec![candidate("idea", "Screen", "capture screen")]));
+        let nexus = store.create_project("Nexus").unwrap();
+        let in_nexus = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into(), project_id: Some(nexus.id.clone()) }).unwrap();
+
+        let inbox_objects = run(&service, &store, &capture.id).unwrap();
+        let nexus_objects = run(&service, &store, &in_nexus.id).unwrap();
+
+        assert_eq!(inbox_objects[0].project_id, crate::storage::migrations::INBOX_PROJECT_ID);
+        assert_eq!(nexus_objects[0].project_id, nexus.id, "inherited from the capture, in the same transaction as the run");
+        assert_eq!(fake.saw.lock().unwrap().as_slice(), [TEXT, TEXT], "the model is only ever given the capture text, never a project");
+        // A failed or empty organization leaves project membership out of it entirely.
+        assert_eq!(store.get_capture(&in_nexus.id).unwrap().unwrap().project_id, nexus.id);
     }
 
     #[test]
@@ -310,7 +332,7 @@ mod tests {
         let path = dir.path().join("arthur.db");
         let id = {
             let store = CaptureStore::open(&path).unwrap();
-            let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into() }).unwrap();
+            let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into(), project_id: None }).unwrap();
             let service = DistillationService::new(FakeDistiller::returning(Err(DistillError::Provider(503))));
             run(&service, &store, &capture.id).unwrap_err();
             capture.id
@@ -334,7 +356,7 @@ mod tests {
     #[test]
     fn a_capture_being_organized_right_now_reads_as_running_and_stops_when_the_attempt_ends() {
         let store = CaptureStore::open_in_memory().unwrap();
-        let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into() }).unwrap();
+        let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into(), project_id: None }).unwrap();
         let service = DistillationService::new(FakeDistiller::returning(Err(DistillError::Network)));
         service.running.lock().unwrap().insert(capture.id.clone());
         assert_eq!(service.organization_states(&store).unwrap()[0].status, "running");
@@ -429,7 +451,7 @@ mod tests {
         ];
         for text in cases {
             let store = CaptureStore::open_in_memory().unwrap();
-            let capture = store.create(CreateCaptureInput { source: "text".into(), content: text.into() }).unwrap();
+            let capture = store.create(CreateCaptureInput { source: "text".into(), content: text.into(), project_id: None }).unwrap();
             let result = tauri::async_runtime::block_on(service.distill(&store, &capture.id));
             println!("\nCAPTURE: {text}");
             match result {

@@ -43,7 +43,9 @@ use crate::async_util::BoxFuture;
 use crate::providers::chat::ChatFailure;
 use crate::storage::capture_store::{CaptureStore, StoreError};
 use crate::storage::knowledge_store::KnowledgeObject;
-use crate::storage::relation_store::{NewRelation, Relation};
+use crate::storage::migrations::INBOX_PROJECT_ID;
+use crate::storage::project_store::ProjectError;
+use crate::storage::relation_store::{is_object_id, NewRelation, Relation};
 use verify::{Presentation, RelationVerifier, VerifyCandidate};
 
 /// Mirrors `MAX_RELATION_PROPOSALS` in `packages/contracts/cognitive.ts`.
@@ -213,11 +215,26 @@ impl GraphService {
     /// most recent objects are used. Returns only the relations this run ADDED, so running it again
     /// returns an empty list rather than duplicates. Fewer than two candidates means nothing to
     /// relate: no model is called.
+    #[allow(dead_code)] // the unscoped form: every caller in the app names its project (`infer_in`)
     pub async fn infer(&self, store: &CaptureStore, object_ids: &[String]) -> Result<Vec<Relation>, RelationError> {
         Ok(self.infer_with_report(store, object_ids).await?.relations)
     }
 
+    /// As `infer`, scoped to one project. See `infer_with_report_in`.
+    pub async fn infer_in(&self, store: &CaptureStore, object_ids: &[String], project_id: Option<&str>) -> Result<Vec<Relation>, RelationError> {
+        Ok(self.infer_with_report_in(store, object_ids, project_id).await?.relations)
+    }
+
+    #[allow(dead_code)]
     pub async fn infer_with_report(&self, store: &CaptureStore, object_ids: &[String]) -> Result<Inference, RelationError> {
+        self.infer_with_report_in(store, object_ids, None).await
+    }
+
+    /// PROJECT-LOCAL by default: only objects of one project are ever candidates, so unrelated knowledge domains cannot
+    /// contaminate inference. The project is `project_id` if given; otherwise the one project the requested objects share
+    /// (they must share one); otherwise the Inbox. Existing and manual cross-project relations are untouched. Discovering
+    /// relations ACROSS projects is deliberately not built here (a later, explicit decision).
+    pub async fn infer_with_report_in(&self, store: &CaptureStore, object_ids: &[String], project_id: Option<&str>) -> Result<Inference, RelationError> {
         let mut report = InferenceReport::default();
         let done = |relations: Vec<Relation>, report: InferenceReport| {
             // The structure of the pipeline already guarantees this; the check keeps it true under refactoring.
@@ -225,7 +242,8 @@ impl GraphService {
             Ok(Inference { relations, report })
         };
 
-        let all = store.list_knowledge_objects().map_err(|error| RelationError::Storage(error.to_string()))?;
+        let project_id = resolve_inference_project(store, object_ids, project_id)?;
+        let all = store.list_knowledge_objects_in(Some(&project_id)).map_err(|error| RelationError::Storage(error.to_string()))?;
         let objects = candidates::select_candidates(all, object_ids)?;
         if objects.len() < 2 {
             return done(vec![], report);
@@ -278,6 +296,36 @@ impl GraphService {
     }
 }
 
+/// The one project an inference run is confined to.
+fn resolve_inference_project(store: &CaptureStore, object_ids: &[String], project_id: Option<&str>) -> Result<String, RelationError> {
+    let storage = |error: ProjectError| RelationError::Storage(error.to_string());
+    let mut owners = std::collections::BTreeSet::new();
+    for id in object_ids {
+        if !is_object_id(id) {
+            return Err(RelationError::InvalidRelation("malformed object id".into()));
+        }
+        owners.insert(store.project_of_object(id).map_err(storage)?.ok_or(RelationError::ObjectNotFound)?);
+    }
+    match project_id {
+        Some(project) => {
+            match store.get_project(project) {
+                Ok(_) => {}
+                Err(ProjectError::ProjectNotFound) => return Err(RelationError::InvalidRelation("unknown project".into())),
+                Err(other) => return Err(storage(other)),
+            }
+            if owners.iter().any(|owner| owner != project) {
+                return Err(RelationError::InvalidRelation("the requested objects are not all in that project".into()));
+            }
+            Ok(project.to_string())
+        }
+        None => match owners.len() {
+            0 => Ok(INBOX_PROJECT_ID.to_string()),
+            1 => Ok(owners.into_iter().next().unwrap_or_default()),
+            _ => Err(RelationError::InvalidRelation("the requested objects belong to different projects".into())),
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -327,7 +375,7 @@ mod tests {
             ("The Cognitive Graph should connect related ideas instead of showing flat notes.", "Graph connects ideas"),
             ("Before Graph inference works, Thought Distillation has to create KnowledgeObjects.", "Distillation first"),
         ] {
-            let capture = store.create(CreateCaptureInput { source: "text".into(), content: text.into() }).unwrap();
+            let capture = store.create(CreateCaptureInput { source: "text".into(), content: text.into(), project_id: None }).unwrap();
             let length = text.chars().count() as i64;
             objects.extend(store.record_distillation(&capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: title.into(), body: text.into(), source_start: 0, source_end: length }]).unwrap());
         }
@@ -393,6 +441,75 @@ mod tests {
         store.list_relations().unwrap().len()
     }
 
+    fn run_in(service: &GraphService, store: &CaptureStore, ids: &[String], project: Option<&str>) -> Result<Vec<Relation>, RelationError> {
+        tauri::async_runtime::block_on(service.infer_in(store, ids, project))
+    }
+
+    /// Two projects with two objects each, plus a manual cross-project edge between them.
+    fn two_projects() -> (CaptureStore, String, String, Vec<KnowledgeObject>, Vec<KnowledgeObject>) {
+        let store = CaptureStore::open_in_memory().unwrap();
+        let (a, b) = (store.create_project("Arthur").unwrap().id, store.create_project("School").unwrap().id);
+        let make = |project: &str, texts: [&str; 2]| -> Vec<KnowledgeObject> {
+            texts
+                .iter()
+                .flat_map(|text| {
+                    let capture = store.create(CreateCaptureInput { source: "text".into(), content: (*text).into(), project_id: Some(project.into()) }).unwrap();
+                    let length = text.chars().count() as i64;
+                    store.record_distillation(&capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: (*text).into(), body: (*text).into(), source_start: 0, source_end: length }]).unwrap()
+                })
+                .collect()
+        };
+        let arthur = make(&a, ["Arthur graph one", "Arthur graph two"]);
+        let school = make(&b, ["School essay one", "School essay two"]);
+        (store, a, b, arthur, school)
+    }
+
+    #[test]
+    fn inference_only_ever_shows_the_model_objects_of_one_project() {
+        let (store, a, b, arthur, school) = two_projects();
+        let (service, fake) = service(Ok(vec![]));
+
+        run_in(&service, &store, &[], Some(&a)).unwrap();
+        run_in(&service, &store, &[school[0].id.clone()], None).unwrap();
+        run_in(&service, &store, &[], Some(&b)).unwrap();
+
+        let saw = fake.saw.lock().unwrap();
+        assert_eq!(saw.len(), 3);
+        assert!(saw[0].0.iter().all(|title| title.starts_with("Arthur")) && saw[0].0.len() == 2, "explicit project");
+        assert!(saw[1].0.iter().all(|title| title.starts_with("School")) && saw[1].0.len() == 2, "the project of the requested object");
+        assert!(saw[2].0.iter().all(|title| title.starts_with("School")));
+        drop(saw);
+        // Requested objects must live in the project being inferred; a mixed request is refused, and nothing is called.
+        let calls = fake.calls();
+        assert!(matches!(run_in(&service, &store, &[arthur[0].id.clone(), school[0].id.clone()], None), Err(RelationError::InvalidRelation(_))));
+        assert!(matches!(run_in(&service, &store, &[school[0].id.clone()], Some(&a)), Err(RelationError::InvalidRelation(_))));
+        assert!(matches!(run_in(&service, &store, &[], Some("no-such-project")), Err(RelationError::InvalidRelation(_))));
+        assert_eq!(fake.calls(), calls);
+    }
+
+    #[test]
+    fn a_model_cannot_relate_across_projects_but_existing_and_manual_cross_project_edges_stay_valid() {
+        let (store, a, _b, arthur, school) = two_projects();
+        // Manual cross-project relation: allowed, unchanged semantics.
+        let manual = create_manual_relation(&store, NewRelation { kind: "depends_on".into(), source_object_id: arthur[0].id.clone(), target_object_id: school[0].id.clone() }).unwrap();
+        let (service, _fake) = service(Ok(vec![proposal("extends", &arthur[1].id, &school[1].id)]));
+
+        // The proposal names an object the model was never shown: validation rejects the whole set.
+        assert!(run_in(&service, &store, &[], Some(&a)).is_err());
+
+        assert_eq!(store.list_relations().unwrap(), vec![manual], "the cross-project edge is intact and nothing was added");
+    }
+
+    #[test]
+    fn the_default_inference_project_is_the_inbox() {
+        let (store, _a, _b, _arthur, _school) = two_projects();
+        let capture = store.create(CreateCaptureInput { source: "text".into(), content: "inbox thought".into(), project_id: None }).unwrap();
+        store.record_distillation(&capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: "Inbox idea".into(), body: "b".into(), source_start: 0, source_end: 5 }]).unwrap();
+        let (service, fake) = service(Ok(vec![]));
+        run_in(&service, &store, &[], None).unwrap();
+        assert_eq!(fake.calls(), 0, "a single object in the Inbox is nothing to relate; the other projects were not offered");
+    }
+
     #[test]
     fn a_sensible_proposal_is_validated_persisted_and_marked_as_model_origin() {
         let (store, o) = scenario();
@@ -434,7 +551,7 @@ mod tests {
 
         let (store, _o) = {
             let store = CaptureStore::open_in_memory().unwrap();
-            let capture = store.create(CreateCaptureInput { source: "text".into(), content: "one thought".into() }).unwrap();
+            let capture = store.create(CreateCaptureInput { source: "text".into(), content: "one thought".into(), project_id: None }).unwrap();
             let objects = store.record_distillation(&capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: "t".into(), body: "b".into(), source_start: 0, source_end: 3 }]).unwrap();
             (store, objects)
         };
@@ -580,7 +697,7 @@ mod tests {
         let mut objects = Vec::new();
         for index in 0..count {
             let text = format!("thought number {index}");
-            let capture = store.create(CreateCaptureInput { source: "text".into(), content: text.clone() }).unwrap();
+            let capture = store.create(CreateCaptureInput { source: "text".into(), content: text.clone(), project_id: None }).unwrap();
             let length = text.chars().count() as i64;
             objects.extend(store.record_distillation(&capture.id, vec![NewKnowledgeObject { kind: "note".into(), title: format!("object {index}"), body: text, source_start: 0, source_end: length }]).unwrap());
         }
@@ -1034,7 +1151,7 @@ mod tests {
                 let store = CaptureStore::open_in_memory().unwrap();
                 let mut objects = Vec::new();
                 for (kind, title, text) in &dataset.objects {
-                    let capture = store.create(CreateCaptureInput { source: "text".into(), content: (*text).into() }).unwrap();
+                    let capture = store.create(CreateCaptureInput { source: "text".into(), content: (*text).into(), project_id: None }).unwrap();
                     let length = text.chars().count() as i64;
                     objects.extend(store.record_distillation(&capture.id, vec![NewKnowledgeObject { kind: (*kind).into(), title: (*title).into(), body: (*text).into(), source_start: 0, source_end: length }]).unwrap());
                 }

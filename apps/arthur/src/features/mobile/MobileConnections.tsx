@@ -9,6 +9,7 @@ import { useRelationIndex } from "../graph/relation-index";
 import { RELATION_LABELS, isDirectional, relationVerbFrom } from "../graph/relation-style";
 import { useKnowledge } from "../knowledge/knowledge-context";
 import { useLineageSummaries } from "../lineage/lineage-summaries";
+import { useProjects } from "../projects/projects-context";
 import { EdgeSheet } from "./EdgeSheet";
 import { SettingsButton } from "./MobileApp";
 import { MobileMap, type MapSelection } from "./MobileMap";
@@ -75,6 +76,7 @@ export function MobileConnections() {
   const index = useRelationIndex();
   const { focusId, focus } = useNavigation();
   const { connectionsView: view, setConnectionsView: setView, openIdea } = useMobileNav();
+  const { switchTo } = useProjects();
 
   const [selection, setSelection] = useState<MapSelection>(focusId && view === "map" ? { type: "node", id: focusId } : null);
   const [openHubs, setOpenHubs] = useState<ReadonlySet<string>>(new Set(focusId ? [focusId] : []));
@@ -85,6 +87,9 @@ export function MobileConnections() {
   const [expanded, setExpanded] = useState(false);
 
   const byId = useMemo(() => new Map(objects.map((object) => [object.id, object])), [objects]);
+  // The far ends of cross-project relations are drawn too, marked with their project. Nothing else from other projects is.
+  const nodes = useMemo(() => [...objects, ...index.external], [objects, index.external]);
+  const externals = useMemo(() => new Map(index.external.map((far) => [far.id, far.projectName])), [index.external]);
   const shown = useMemo(() => index.usable.filter((relation) => enabled.has(relation.kind) && matchesOrigin(relation, origin)), [index.usable, enabled, origin]);
   const activeFilters = (enabled.size < RELATION_KINDS.length ? 1 : 0) + (origin !== "all" ? 1 : 0);
 
@@ -109,6 +114,7 @@ export function MobileConnections() {
   };
 
   const node: KnowledgeObject | undefined = selection?.type === "node" ? byId.get(selection.id) : undefined;
+  const farNode = selection?.type === "node" ? index.externalOf(selection.id) : undefined;
   const select = (next: MapSelection) => {
     setSelection(next);
     setExpanded(false);
@@ -116,7 +122,9 @@ export function MobileConnections() {
   };
 
   const relationRow = (relation: CognitiveRelation, viewpointId: string) => {
-    const other = byId.get(relation.sourceObjectId === viewpointId ? relation.targetObjectId : relation.sourceObjectId);
+    const otherId = relation.sourceObjectId === viewpointId ? relation.targetObjectId : relation.sourceObjectId;
+    const far = index.externalOf(otherId);
+    const other = byId.get(otherId) ?? far;
     if (!other) return null;
     const verb = relationVerbFrom(relation, viewpointId);
     const arrow = isDirectional(relation) ? (relation.sourceObjectId === viewpointId ? "→ " : "← ") : "";
@@ -124,7 +132,10 @@ export function MobileConnections() {
       <button key={relation.id} type="button" className="m-rel" aria-label={`${other.title}, ${verb}, ${relation.origin === "user" ? "yours" : "Arthur's"}`} onClick={() => (view === "map" ? select({ type: "edge", id: relation.id }) : setEdgeSheet(relation.id))}>
         <RelationSwatch kind={relation.kind} />
         <span>
-          <span className="m-rt">{other.title}</span>
+          <span className="m-rt">
+            {other.title}
+            {far && <span className="m-proj-tag"> {far.projectName} ↗</span>}
+          </span>
           <span className="m-rv">
             <span className={relation.origin === "model" ? "m-origin model" : "m-origin"} aria-hidden="true" />
             <b>
@@ -187,7 +198,7 @@ export function MobileConnections() {
         </div>
       ) : view === "map" ? (
         <div className="m-mapframe">
-          <MobileMap objects={objects} relations={index.usable} shown={shown} selection={selection} onSelect={select} focusId={focusId} bottomInset={selection ? 150 : 0} />
+          <MobileMap objects={nodes} externals={externals} relations={index.usable} shown={shown} selection={selection} onSelect={select} focusId={focusId} bottomInset={selection ? 150 : 0} />
         </div>
       ) : (
         <div className="m-scroll m-list-scroll" id="m-conn-list">
@@ -260,6 +271,31 @@ export function MobileConnections() {
               </button>
               <button type="button" className="m-pbtn" aria-expanded={expanded} onClick={() => setExpanded((now) => !now)} disabled={index.countOf(node.id) === 0}>
                 {index.countOf(node.id)} {index.countOf(node.id) === 1 ? "connection" : "connections"}
+                <span className={expanded ? "m-chev open" : "m-chev"}>
+                  <Icon name="chev" small />
+                </span>
+              </button>
+            </div>
+          </div>
+        </MobileSheet>
+      )}
+      {view === "map" && farNode && !edgeSheet && !filtering && (
+        <MobileSheet label={farNode.title} onClose={() => select(null)} modal={false} aboveTabs>
+          <div className="m-peek">
+            <div className="m-pm">
+              <KindGlyph kind={farNode.kind} />
+              <span className="m-kindname">{KIND_LABELS[farNode.kind]}</span>
+              <span>· In {farNode.projectName} ↗</span>
+            </div>
+            <p className="m-pt">{farNode.title}</p>
+            <p className="m-pm">This idea belongs to another project. Only the connection reaches across.</p>
+            {expanded && <div className="m-peek-list">{index.edgesOf(farNode.id).map((relation) => relationRow(relation, farNode.id))}</div>}
+            <div className="m-pa">
+              <button type="button" className="m-pbtn primary" onClick={() => void switchTo(farNode.projectId)}>
+                Open {farNode.projectName}
+              </button>
+              <button type="button" className="m-pbtn" aria-expanded={expanded} onClick={() => setExpanded((now) => !now)}>
+                {index.countOf(farNode.id)} {index.countOf(farNode.id) === 1 ? "connection" : "connections"}
                 <span className={expanded ? "m-chev open" : "m-chev"}>
                   <Icon name="chev" small />
                 </span>

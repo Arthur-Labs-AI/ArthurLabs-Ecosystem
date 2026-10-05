@@ -9,6 +9,7 @@ import { useCaptures } from "../capture/captures-context";
 import { GraphCanvas } from "../graph/GraphCanvas";
 import { useRelationIndex } from "../graph/relation-index";
 import { useKnowledge } from "../knowledge/knowledge-context";
+import { useProjects } from "../projects/projects-context";
 import { LineageSketch } from "../lineage/LineageRail";
 import { useLineageSummaries, useObjectLineage } from "../lineage/lineage-summaries";
 import type { OrganizeJob } from "../knowledge/use-knowledge";
@@ -29,7 +30,7 @@ const excerpt = (text: string, max = 140): string => {
 };
 
 /** What happened to one capture: it was organized into ideas, is being organized, failed, or has not been tried. */
-function CaptureOutcome({ capture, objects, job, ready, onRetry }: { capture: Capture; objects: KnowledgeObject[]; job: OrganizeJob | undefined; ready: boolean; onRetry: () => void }) {
+function CaptureOutcome({ capture, objects, job, ready, organizedElsewhere, onRetry }: { capture: Capture; objects: KnowledgeObject[]; job: OrganizeJob | undefined; ready: boolean; organizedElsewhere: boolean; onRetry: () => void }) {
   if (job?.status === "queued" || job?.status === "organizing") {
     return (
       <div className="progress">
@@ -56,6 +57,14 @@ function CaptureOutcome({ capture, objects, job, ready, onRetry }: { capture: Ca
     return (
       <div className="progress">
         <span className="note">Nothing to structure in this capture.</span>
+      </div>
+    );
+  }
+  if (objects.length === 0 && ready && organizedElsewhere) {
+    // Organized, but every idea from it was moved to another project: that is not "not organized".
+    return (
+      <div className="progress">
+        <span className="note">Its ideas are in other projects.</span>
       </div>
     );
   }
@@ -168,7 +177,8 @@ function RecentlyEvolving() {
 
 export function HomeScreen() {
   const { status, captures } = useCaptures();
-  const { objects, jobs, distill, organizationLoaded, status: knowledgeStatus, error: knowledgeError } = useKnowledge();
+  const { objects, jobs, distill, organizationLoaded, organized, status: knowledgeStatus, error: knowledgeError } = useKnowledge();
+  const { active } = useProjects();
   const index = useRelationIndex();
   const { byObject } = useLineageSummaries();
   const { go } = useNavigation();
@@ -211,7 +221,9 @@ export function HomeScreen() {
           {status === "ready" && captures.length === 0 && (
             <div className="state">
               <h3>Nothing captured yet</h3>
-              <p>Say or type a thought above. Arthur turns it into ideas and keeps your original words next to them.</p>
+              <p>
+                Capture your first thought for {active?.isInbox ? "the Inbox" : (active?.name ?? "this project")}. Arthur turns it into ideas and keeps your original words next to them.
+              </p>
             </div>
           )}
 
@@ -244,7 +256,7 @@ export function HomeScreen() {
                         <Margin source={capture.source} showSource={false} connections={index.countOf(object.id)} revisions={byObject.get(object.id)?.revisionCount} />
                       </button>
                     ))}
-                    <CaptureOutcome capture={capture} objects={mine} job={jobs.get(capture.id)} ready={knowledgeStatus === "ready" && organizationLoaded} onRetry={() => void distill(capture.id)} />
+                    <CaptureOutcome capture={capture} objects={mine} job={jobs.get(capture.id)} ready={knowledgeStatus === "ready" && organizationLoaded} organizedElsewhere={organized.has(capture.id)} onRetry={() => void distill(capture.id)} />
                   </article>
                 );
               })}

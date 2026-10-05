@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type KeyboardEvent } from "react";
-import type { CognitiveRelation, KnowledgeObject } from "@arthur/contracts";
+import type { CognitiveRelation } from "@arthur/contracts";
 import { Icon } from "../../components/icons";
 import { RelationMarkers } from "../../components/RelationArt";
 import { NodeShape, wrap } from "../graph/GraphCanvas";
-import { layoutGraph } from "../graph/graph-layout";
+import { layoutGraph, type GraphNode } from "../graph/graph-layout";
 import { RELATION_GEOMETRY, RELATION_LABELS } from "../graph/relation-style";
 
 export type MapSelection = { type: "node"; id: string } | { type: "edge"; id: string } | null;
@@ -39,6 +39,7 @@ function activate(action: () => void) {
  */
 export function MobileMap({
   objects,
+  externals,
   relations,
   shown,
   selection,
@@ -46,7 +47,9 @@ export function MobileMap({
   focusId,
   bottomInset,
 }: {
-  objects: readonly KnowledgeObject[];
+  objects: readonly GraphNode[];
+  /** Nodes that belong to another project, by id, with that project's name. Drawn marked; not ideas of this map. */
+  externals?: ReadonlyMap<string, string>;
   relations: readonly CognitiveRelation[];
   shown: readonly CognitiveRelation[];
   selection: MapSelection;
@@ -315,8 +318,9 @@ export function MobileMap({
             const dim = focus !== null && !focus.nodes.has(object.id);
             const select = () => onSelect({ type: "node", id: object.id });
             const lines = wrap(object.title, 18);
+            const project = externals?.get(object.id);
             return (
-              <g key={object.id} className={`m-node${selected ? " selected" : ""}${dim ? " dim" : ""}`} transform={`translate(${node.x},${node.y})`} data-node={object.id} role="button" tabIndex={0} aria-label={`Node: ${object.title}`} aria-pressed={selected} onKeyDown={activate(select)}>
+              <g key={object.id} className={`m-node${selected ? " selected" : ""}${dim ? " dim" : ""}${project !== undefined ? " external" : ""}`} transform={`translate(${node.x},${node.y})`} data-node={object.id} role="button" tabIndex={0} aria-label={project !== undefined ? `Node: ${object.title}, in ${project}` : `Node: ${object.title}`} aria-pressed={selected} onKeyDown={activate(select)}>
                 {selected && <circle r={node.r + 11} fill="var(--accent)" opacity={0.13} />}
                 <g className="m-shape" data-kind={object.kind}>
                   <NodeShape kind={object.kind} r={node.r} />
@@ -328,6 +332,11 @@ export function MobileMap({
                       {line}
                     </tspan>
                   ))}
+                  {project !== undefined && (
+                    <tspan className="m-node-project" x={0} dy="1.2em">
+                      {project} ↗
+                    </tspan>
+                  )}
                 </text>
               </g>
             );

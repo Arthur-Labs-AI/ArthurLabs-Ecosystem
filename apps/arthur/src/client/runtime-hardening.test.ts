@@ -7,7 +7,7 @@ import type { Invoke } from "./tauri-ipc";
 
 const android = { isTauri: true, tauriPlatform: "android" } as const;
 const linux = { isTauri: true, tauriPlatform: "linux" } as const;
-const voiceCapture = { id: "c1", source: "voice", content: "said it", createdAt: "2026-10-05T10:00:00Z" };
+const voiceCapture = { id: "c1", source: "voice", content: "said it", createdAt: "2026-10-05T10:00:00Z", projectId: "00000000-0000-4000-8000-000000000001" };
 
 describe("temporary-audio retry over IPC", () => {
   it("retries through retry_voice_transcription and returns the persisted voice capture", async () => {

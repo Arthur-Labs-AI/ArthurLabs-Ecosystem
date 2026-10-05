@@ -6,6 +6,7 @@ import { RelationSwatch } from "../../components/RelationArt";
 import { formatMoment } from "../../components/format";
 import { useKnowledge } from "../knowledge/knowledge-context";
 import { useLineageSummaries } from "../lineage/lineage-summaries";
+import { useProjects } from "../projects/projects-context";
 import { GraphCanvas, type Selection } from "./GraphCanvas";
 import { useGraphState } from "./graph-context";
 import { useRelationIndex } from "./relation-index";
@@ -85,6 +86,7 @@ export function ConnectionsScreen() {
   const { byObject } = useLineageSummaries();
   const index = useRelationIndex();
   const { focusId, focus, go } = useNavigation();
+  const { switchTo, active } = useProjects();
 
   const [selection, setSelection] = useState<Selection>(focusId ? { type: "node", id: focusId } : null);
   const [view, setView] = useState<"map" | "list">("map");
@@ -92,7 +94,22 @@ export function ConnectionsScreen() {
   const [origin, setOrigin] = useState<OriginFilter>("all");
 
   const byId = useMemo(() => new Map(objects.map((object) => [object.id, object])), [objects]);
-  const titleOf = (id: string): string => byId.get(id)?.title ?? "(unknown idea)";
+  // The far ends of cross-project relations are drawn too, marked with their project. Nothing else from other projects is.
+  const nodes = useMemo(() => [...objects, ...index.external], [objects, index.external]);
+  const externals = useMemo(() => new Map(index.external.map((far) => [far.id, far.projectName])), [index.external]);
+  const titleOf = (id: string): string => byId.get(id)?.title ?? index.externalOf(id)?.title ?? "(unknown idea)";
+  /** A title, followed by "Nexus ↗" when it belongs to another project. */
+  const named = (id: string) => {
+    const far = index.externalOf(id);
+    return far ? (
+      <>
+        {far.title}
+        <span className="proj-tag"> {far.projectName} ↗</span>
+      </>
+    ) : (
+      titleOf(id)
+    );
+  };
   const shown = useMemo(() => index.usable.filter((relation) => enabled.has(relation.kind) && matchesOrigin(relation, origin)), [index.usable, enabled, origin]);
 
   const select = (next: Selection) => {
@@ -101,6 +118,7 @@ export function ConnectionsScreen() {
   };
 
   const node = selection?.type === "node" ? byId.get(selection.id) : undefined;
+  const farNode = selection?.type === "node" ? index.externalOf(selection.id) : undefined;
   const edge = selection?.type === "edge" ? index.usable.find((relation) => relation.id === selection.id) : undefined;
 
   const toggleKind = (kind: CognitiveRelationKind) =>
@@ -167,7 +185,7 @@ export function ConnectionsScreen() {
               ))}
             </div>
             <div className="graph-frame">
-              <GraphCanvas objects={objects} relations={index.usable} selection={selection} onSelect={select} enabledKinds={enabled} isShown={(relation) => matchesOrigin(relation, origin)} />
+              <GraphCanvas objects={nodes} externals={externals} relations={index.usable} selection={selection} onSelect={select} enabledKinds={enabled} isShown={(relation) => matchesOrigin(relation, origin)} />
             </div>
             <div className="legend" role="group" aria-label="Relation types" onClick={(event) => event.stopPropagation()}>
               {RELATION_KINDS.map((kind) => (
@@ -196,7 +214,7 @@ export function ConnectionsScreen() {
                     <button type="button" className="rel" style={{ gridTemplateColumns: "34px minmax(0, 1fr) auto" }} aria-pressed={selection?.type === "edge" && selection.id === relation.id} onClick={() => select({ type: "edge", id: relation.id })}>
                       <RelationSwatch kind={relation.kind} />
                       <span className="rt">
-                        {titleOf(relation.sourceObjectId)} <em style={{ color: `var(--rel-${relation.kind})` }}>{RELATION_LABELS[relation.kind]}</em> {titleOf(relation.targetObjectId)}
+                        {named(relation.sourceObjectId)} <em style={{ color: `var(--rel-${relation.kind})` }}>{RELATION_LABELS[relation.kind]}</em> {named(relation.targetObjectId)}
                       </span>
                       <span className="rv" title={ORIGIN_LABELS[relation.origin]}>
                         <OriginDot relation={relation} />
@@ -221,13 +239,13 @@ export function ConnectionsScreen() {
                 <span>{isSymmetricRelationKind(edge.kind) ? "No direction" : "Directional"}</span>
               </div>
               <h2 style={{ fontSize: 23 }}>
-                {titleOf(edge.sourceObjectId)} <em style={{ color: `var(--rel-${edge.kind})` }}>{RELATION_LABELS[edge.kind]}</em> {titleOf(edge.targetObjectId)}
+                {named(edge.sourceObjectId)} <em style={{ color: `var(--rel-${edge.kind})` }}>{RELATION_LABELS[edge.kind]}</em> {named(edge.targetObjectId)}
               </h2>
             </div>
             <section className="sec" style={{ marginTop: 22 }} aria-label="Ends">
               <div className="edge-hero">
                 {[edge.sourceObjectId, edge.targetObjectId].map((id, position) => {
-                  const object = byId.get(id);
+                  const object = byId.get(id) ?? index.externalOf(id);
                   return (
                     <div key={id}>
                       {position === 1 && (
@@ -238,7 +256,7 @@ export function ConnectionsScreen() {
                       )}
                       <button type="button" className="edge-end" onClick={() => select({ type: "node", id })}>
                         {object && <KindGlyph kind={object.kind} />}
-                        {titleOf(id)}
+                        {named(id)}
                       </button>
                     </div>
                   );
@@ -309,12 +327,17 @@ export function ConnectionsScreen() {
                       <span>{RELATION_LABELS[kind]}</span>
                     </div>
                     {mine.map((relation) => {
-                      const other = byId.get(relation.sourceObjectId === node.id ? relation.targetObjectId : relation.sourceObjectId);
+                      const otherId = relation.sourceObjectId === node.id ? relation.targetObjectId : relation.sourceObjectId;
+                      const far = index.externalOf(otherId);
+                      const other = byId.get(otherId) ?? far;
                       if (!other) return null;
                       return (
                         <button key={relation.id} type="button" className="rel" style={{ gridTemplateColumns: "22px minmax(0, 1fr) auto" }} onClick={() => select({ type: "edge", id: relation.id })} aria-label={`${other.title}, ${relationVerbFrom(relation, node.id)}`}>
                           <KindGlyph kind={other.kind} />
-                          <span className="rt">{other.title}</span>
+                          <span className="rt">
+                            {other.title}
+                            {far && <span className="proj-tag"> {far.projectName} ↗</span>}
+                          </span>
                           <span className="rv" title={ORIGIN_LABELS[relation.origin]}>
                             <OriginDot relation={relation} />
                             {relationVerbFrom(relation, node.id)}
@@ -334,6 +357,45 @@ export function ConnectionsScreen() {
                 <ConnectForm key={node.id} from={node} others={objects.filter((object) => object.id !== node.id)} creating={creating} onCreate={(kind, targetId) => create({ kind, sourceObjectId: node.id, targetObjectId: targetId })} />
               </section>
             )}
+          </>
+        ) : farNode ? (
+          <>
+            <div className="insp-head">
+              <div className="meta">
+                <KindGlyph kind={farNode.kind} />
+                <span className="kindname">{KIND_LABELS[farNode.kind]}</span>
+                <span aria-hidden="true">·</span>
+                <span>In {farNode.projectName} ↗</span>
+              </div>
+              <h2>{farNode.title}</h2>
+            </div>
+            <p className="note" style={{ padding: "12px 26px 0" }}>
+              This idea belongs to another project{active ? `, not ${active.name}` : ""}. Only the connection reaches across.
+            </p>
+            <div className="insp-actions">
+              <button type="button" className="btn" onClick={() => void switchTo(farNode.projectId)}>
+                Open {farNode.projectName} <Icon name="arrow" small />
+              </button>
+            </div>
+            <section className="sec" style={{ marginTop: 22 }} aria-labelledby="far-connections-heading">
+              <div className="sec-h">
+                <h3 id="far-connections-heading">Connections here</h3>
+                <span className="n">{index.countOf(farNode.id)}</span>
+              </div>
+              {index.edgesOf(farNode.id).map((relation) => {
+                const mineId = relation.sourceObjectId === farNode.id ? relation.targetObjectId : relation.sourceObjectId;
+                return (
+                  <button key={relation.id} type="button" className="rel" style={{ gridTemplateColumns: "22px minmax(0, 1fr) auto" }} onClick={() => select({ type: "edge", id: relation.id })} aria-label={`${titleOf(mineId)}, ${relationVerbFrom(relation, farNode.id)}`}>
+                    <RelationSwatch kind={relation.kind} />
+                    <span className="rt">{titleOf(mineId)}</span>
+                    <span className="rv" title={ORIGIN_LABELS[relation.origin]}>
+                      <OriginDot relation={relation} />
+                      {relationVerbFrom(relation, farNode.id)}
+                    </span>
+                  </button>
+                );
+              })}
+            </section>
           </>
         ) : (
           <div className="state">

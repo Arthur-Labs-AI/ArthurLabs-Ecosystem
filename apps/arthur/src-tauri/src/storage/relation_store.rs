@@ -102,8 +102,8 @@ impl Direction {
     }
 }
 
-const RELATION_COLUMNS: &str = "r.id, r.kind, r.source_object_id, r.target_object_id, r.origin, r.created_at, so.id, tg.id";
-const RELATION_JOINS: &str = "relations r \
+pub(super) const RELATION_COLUMNS: &str = "r.id, r.kind, r.source_object_id, r.target_object_id, r.origin, r.created_at, so.id, tg.id";
+pub(super) const RELATION_JOINS: &str = "relations r \
      LEFT JOIN knowledge_objects so ON so.id = r.source_object_id \
      LEFT JOIN knowledge_objects tg ON tg.id = r.target_object_id";
 
@@ -256,7 +256,7 @@ fn row_tuple(row: &rusqlite::Row<'_>) -> rusqlite::Result<Row> {
     Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?))
 }
 
-fn read_relations<P: rusqlite::Params>(connection: &Connection, sql: &str, params: P) -> Result<Vec<Relation>, StoreError> {
+pub(super) fn read_relations<P: rusqlite::Params>(connection: &Connection, sql: &str, params: P) -> Result<Vec<Relation>, StoreError> {
     let mut statement = connection.prepare(sql)?;
     let rows = statement.query_map(params, |row| row_tuple(row))?;
     rows.map(|row| check_row(row?)).collect()
@@ -298,7 +298,7 @@ mod tests {
     /// A store holding four knowledge objects from one capture. Ids are in creation order.
     fn graph() -> (CaptureStore, Vec<String>) {
         let store = CaptureStore::open_in_memory().unwrap();
-        let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into() }).unwrap();
+        let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into(), project_id: None }).unwrap();
         let spans = [(0, 5), (6, 10), (11, 16), (17, 22)];
         let objects = spans.iter().map(|(start, end)| NewKnowledgeObject { kind: "idea".into(), title: format!("t{start}"), body: "b".into(), source_start: *start, source_end: *end }).collect();
         let ids = store.record_distillation(&capture.id, objects).unwrap().into_iter().map(|object| object.id).collect();
@@ -662,7 +662,7 @@ mod tests {
         let path = dir.path().join("arthur.db");
         let (before, ids) = {
             let store = CaptureStore::open(&path).unwrap();
-            let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into() }).unwrap();
+            let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into(), project_id: None }).unwrap();
             let objects = store
                 .record_distillation(&capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: "a".into(), body: "b".into(), source_start: 0, source_end: 5 }, NewKnowledgeObject { kind: "idea".into(), title: "c".into(), body: "d".into(), source_start: 6, source_end: 10 }])
                 .unwrap();

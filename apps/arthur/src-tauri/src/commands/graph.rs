@@ -54,6 +54,9 @@ pub fn get_object_neighbors(store: State<'_, CaptureStore>, object_id: String, d
 /// Asks the cloud model to propose relations among recent objects; only validated ones are stored.
 /// Returns the relations this run added.
 #[tauri::command]
-pub async fn infer_relations(graph: State<'_, GraphService>, store: State<'_, CaptureStore>, object_ids: Option<Vec<String>>) -> Result<Vec<Relation>, RelationError> {
-    graph.infer(&store, &object_ids.unwrap_or_default()).await
+///
+/// Project-local: candidates are only objects of one project (`project_id`, else the requested objects' shared project,
+/// else the Inbox).
+pub async fn infer_relations(graph: State<'_, GraphService>, store: State<'_, CaptureStore>, object_ids: Option<Vec<String>>, project_id: Option<String>) -> Result<Vec<Relation>, RelationError> {
+    graph.infer_in(&store, &object_ids.unwrap_or_default(), project_id.as_deref()).await
 }

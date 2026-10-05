@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { KNOWLEDGE_OBJECT_KINDS, type KnowledgeObject, type KnowledgeObjectKind } from "@arthur/contracts";
 import { Icon, KIND_PLURALS, KindGlyph } from "../../components/icons";
 import { Margin } from "../../components/Margin";
@@ -12,17 +12,20 @@ import { useMobileNav } from "./mobile-nav";
 
 /** A row's margin needs the source of its capture, looked up here so the row never waits on the whole captures list. */
 function IdeaMargin({ object, age }: { object: KnowledgeObject; age: string }) {
-  const { captures } = useCaptures();
+  const { captureOf } = useCaptures();
   const { byObject } = useLineageSummaries();
   const index = useRelationIndex();
-  const source = captures.find((capture) => capture.id === object.provenance.captureId)?.source ?? "text";
+  const source = captureOf(object.provenance.captureId)?.source ?? "text";
   return <Margin source={source} connections={index.countOf(object.id)} revisions={byObject.get(object.id)?.revisionCount} age={age} />;
 }
 
 export function MobileIdeas() {
   const { objects, status, error } = useKnowledge();
+  const { ensure } = useCaptures();
   const { byObject } = useLineageSummaries();
   const { openIdea, capture } = useMobileNav();
+  // Rows show the source of their capture, which may live in another project than the idea does.
+  useEffect(() => ensure(objects.map((object) => object.provenance.captureId)), [objects, ensure]);
   const [kind, setKind] = useState<KnowledgeObjectKind | "all">("all");
   const [query, setQuery] = useState("");
 

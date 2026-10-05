@@ -12,6 +12,12 @@ import { RELATION_GEOMETRY } from "./relation-style";
 
 export type GraphScale = "full" | "mini";
 
+/**
+ * What the map needs to draw a node. A KnowledgeObject fits, and so does the far end of a cross-project relation, which
+ * is only known by kind and title: nothing here needs an idea's body.
+ */
+export type GraphNode = Pick<KnowledgeObject, "id" | "kind" | "title">;
+
 export interface LaidOutNode {
   id: string;
   x: number;
@@ -66,7 +72,7 @@ export function nodeRadius(degree: number, scale: GraphScale): number {
   return s.base + Math.min(degree, s.maxDegree) * s.perDegree;
 }
 
-export function layoutGraph(objects: readonly KnowledgeObject[], relations: readonly CognitiveRelation[], scale: GraphScale = "full"): GraphLayout {
+export function layoutGraph(objects: readonly GraphNode[], relations: readonly CognitiveRelation[], scale: GraphScale = "full"): GraphLayout {
   const s = SCALES[scale];
   const known = new Set(objects.map((object) => object.id));
   // Never lay out (or draw) an edge whose object is missing, and never twice the same pair of ends for the same kind.

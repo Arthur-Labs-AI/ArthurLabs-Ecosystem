@@ -56,7 +56,7 @@ describe("createArthurClient", () => {
   });
 });
 
-const stored = { id: "0b8f3c1e-0000-4000-8000-000000000001", source: "text", content: "idea", createdAt: "2026-10-04T12:00:00.123456789Z" };
+const stored = { id: "0b8f3c1e-0000-4000-8000-000000000001", source: "text", content: "idea", createdAt: "2026-10-04T12:00:00.123456789Z", projectId: "00000000-0000-4000-8000-000000000001" };
 const androidEnv = { isTauri: true, tauriPlatform: "android" };
 
 describe("mobile client local persistence", () => {
@@ -266,6 +266,7 @@ const knowledgeObject = {
   body: "Improve the Arthur capture screen.",
   createdAt: "2026-10-04T12:00:00.5Z",
   provenance: { captureId: stored.id, sourceStart: 10, sourceEnd: 44 },
+  projectId: "00000000-0000-4000-8000-000000000001",
 };
 
 describe("distillation over IPC (mobile and desktop)", () => {

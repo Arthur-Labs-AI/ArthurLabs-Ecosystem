@@ -1,7 +1,7 @@
 import { useMemo, type KeyboardEvent, type MouseEvent } from "react";
-import type { CognitiveRelation, CognitiveRelationKind, KnowledgeObject, KnowledgeObjectKind } from "@arthur/contracts";
+import type { CognitiveRelation, CognitiveRelationKind, KnowledgeObjectKind } from "@arthur/contracts";
 import { RelationMarkers } from "../../components/RelationArt";
-import { layoutGraph, type GraphScale } from "./graph-layout";
+import { layoutGraph, type GraphNode, type GraphScale } from "./graph-layout";
 import { RELATION_GEOMETRY, RELATION_LABELS } from "./relation-style";
 import "./graph.css";
 
@@ -66,6 +66,7 @@ export function NodeShape({ kind, r }: { kind: KnowledgeObjectKind; r: number })
  */
 export function GraphCanvas({
   objects,
+  externals,
   relations,
   selection = null,
   onSelect,
@@ -74,7 +75,9 @@ export function GraphCanvas({
   scale = "full",
   label = "Knowledge map",
 }: {
-  objects: readonly KnowledgeObject[];
+  objects: readonly GraphNode[];
+  /** Nodes that belong to ANOTHER project, by id, with that project's name. They are drawn as marked, and are not ideas of this map. */
+  externals?: ReadonlyMap<string, string>;
   relations: readonly CognitiveRelation[];
   selection?: Selection;
   /** Omit for a non-interactive preview. */
@@ -168,12 +171,13 @@ export function GraphCanvas({
         const select = () => onSelect?.({ type: "node", id: object.id });
         const interactive = !mini && onSelect;
         const lines = mini ? [object.title.length > 17 ? `${object.title.slice(0, 16)}…` : object.title] : wrap(object.title, 20);
+        const project = externals?.get(object.id);
         return (
           <g
             key={object.id}
-            className={`node${selected ? " selected" : ""}${dim ? " dim" : ""}`}
+            className={`node${selected ? " selected" : ""}${dim ? " dim" : ""}${project !== undefined ? " external" : ""}`}
             transform={`translate(${node.x},${node.y})`}
-            {...(interactive ? { role: "button", tabIndex: 0, "aria-label": `Node: ${object.title}`, "aria-pressed": selected, onClick: (event: MouseEvent) => { event.stopPropagation(); select(); }, onKeyDown: activate(select) } : {})}
+            {...(interactive ? { role: "button", tabIndex: 0, "aria-label": project !== undefined ? `Node: ${object.title}, in ${project}` : `Node: ${object.title}`, "aria-pressed": selected, onClick: (event: MouseEvent) => { event.stopPropagation(); select(); }, onKeyDown: activate(select) } : {})}
           >
             {selected && <circle r={node.r + 11} fill="var(--accent)" opacity={0.13} />}
             <g className="shape" data-kind={object.kind}>
@@ -185,6 +189,11 @@ export function GraphCanvas({
                   {line}
                 </tspan>
               ))}
+              {project !== undefined && !mini && (
+                <tspan className="node-project" x={0} dy={17}>
+                  {project} ↗
+                </tspan>
+              )}
             </text>
           </g>
         );

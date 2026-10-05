@@ -1,5 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
+  MAX_CAPTURE_LOOKUP,
   describeCreateCaptureInputProblem,
   describeCreateRelationInputProblem,
   isLineageErrorPayload,
@@ -12,6 +13,10 @@ import {
   isKnowledgeObject,
   isMicrophonePermissionState,
   isOrganizationStatus,
+  isProject,
+  isProjectErrorPayload,
+  isProjectGraph,
+  describeProjectNameProblem,
   isRelationErrorPayload,
   isRuntimeInfo,
   isVoiceCaptureErrorPayload,
@@ -29,10 +34,13 @@ import {
   type KnowledgeSummary,
   type MicrophonePermissionState,
   type OrganizationState,
+  type Project,
+  type ProjectGraph,
+  type ProjectScope,
   type RelationFilter,
   type RuntimeInfo,
 } from "@arthur/contracts";
-import { DistillationError, LineageError, RelationError, VoiceCaptureError } from "./arthur-client";
+import { DistillationError, LineageError, ProjectError, RelationError, VoiceCaptureError } from "./arthur-client";
 
 /**
  * The single module allowed to import `@tauri-apps/*`.
@@ -57,18 +65,35 @@ export async function createCaptureOverIpc(input: CreateCaptureInput, call: Invo
   const problem = describeCreateCaptureInputProblem(input);
   if (problem) throw new Error(`Invalid capture: ${problem}`);
   // Only the contract fields are sent, so a caller cannot smuggle in an id or timestamp.
-  const payload = await call("create_capture", { input: { source: input.source, content: input.content } });
+  const payload = await call("create_capture", {
+    input: { source: input.source, content: input.content, ...(input.projectId !== undefined ? { projectId: input.projectId } : {}) },
+  });
   if (!isCapture(payload)) {
     throw new Error("Native layer returned an invalid capture");
   }
   return payload;
 }
 
-export async function listCapturesOverIpc(call: Invoke = invoke): Promise<Capture[]> {
-  const payload = await call("list_captures");
+/** `projectId` is sent only when set, so the native default (every project) applies otherwise. */
+const scopeArgs = (scope: ProjectScope | undefined): Record<string, unknown> => (scope?.projectId !== undefined ? { projectId: requireId(scope.projectId, "project id") } : {});
+/** The arguments of a command that takes only the scope: none at all when unscoped, exactly as before projects existed. */
+const scopeOnly = (scope: ProjectScope | undefined): Record<string, unknown> | undefined => (scope?.projectId !== undefined ? scopeArgs(scope) : undefined);
+/** Calls with no second argument at all when there are no arguments, exactly as before projects existed. */
+const invokeWith = (call: Invoke, command: string, args: Record<string, unknown> | undefined): Promise<unknown> => (args === undefined ? call(command) : call(command, args));
+
+export async function listCapturesOverIpc(scope: ProjectScope | undefined, call: Invoke = invoke): Promise<Capture[]> {
+  const payload = await invokeWith(call, "list_captures", scopeOnly(scope));
   if (!Array.isArray(payload) || !payload.every(isCapture)) {
     throw new Error("Native layer returned an invalid capture list");
   }
+  return payload;
+}
+
+export async function getCapturesOverIpc(captureIds: string[], call: Invoke = invoke): Promise<Capture[]> {
+  if (!Array.isArray(captureIds) || captureIds.length > MAX_CAPTURE_LOOKUP || captureIds.some((id) => typeof id !== "string" || id.length === 0)) throw new Error("Invalid capture ids");
+  if (captureIds.length === 0) return [];
+  const payload = await call("get_captures", { captureIds });
+  if (!Array.isArray(payload) || !payload.every(isCapture)) throw new Error("Native layer returned an invalid capture list");
   return payload;
 }
 
@@ -86,10 +111,10 @@ export async function startVoiceCaptureOverIpc(call: Invoke = invoke): Promise<v
   }
 }
 
-export async function finishVoiceCaptureOverIpc(call: Invoke = invoke): Promise<Capture> {
+export async function finishVoiceCaptureOverIpc(projectId: string | undefined, call: Invoke = invoke): Promise<Capture> {
   let payload: unknown;
   try {
-    payload = await call("finish_voice_capture");
+    payload = await invokeWith(call, "finish_voice_capture", scopeOnly({ projectId }));
   } catch (failure) {
     throw toVoiceCaptureError(failure);
   }
@@ -107,10 +132,10 @@ export async function cancelVoiceCaptureOverIpc(call: Invoke = invoke): Promise<
   }
 }
 
-export async function retryVoiceTranscriptionOverIpc(call: Invoke = invoke): Promise<Capture> {
+export async function retryVoiceTranscriptionOverIpc(projectId: string | undefined, call: Invoke = invoke): Promise<Capture> {
   let payload: unknown;
   try {
-    payload = await call("retry_voice_transcription");
+    payload = await invokeWith(call, "retry_voice_transcription", scopeOnly({ projectId }));
   } catch (failure) {
     throw toVoiceCaptureError(failure);
   }
@@ -167,8 +192,8 @@ export async function distillCaptureOverIpc(captureId: string, call: Invoke = in
   return payload;
 }
 
-export async function listKnowledgeObjectsOverIpc(call: Invoke = invoke): Promise<KnowledgeObject[]> {
-  const payload = await call("list_knowledge_objects");
+export async function listKnowledgeObjectsOverIpc(scope: ProjectScope | undefined, call: Invoke = invoke): Promise<KnowledgeObject[]> {
+  const payload = await invokeWith(call, "list_knowledge_objects", scopeOnly(scope));
   if (!Array.isArray(payload) || !payload.every(isKnowledgeObject)) {
     throw new Error("Native layer returned invalid knowledge objects");
   }
@@ -188,8 +213,8 @@ function isOrganizationState(value: unknown): value is OrganizationState {
   return candidate.failure === undefined || candidate.failure === null;
 }
 
-export async function listOrganizationStatesOverIpc(call: Invoke = invoke): Promise<OrganizationState[]> {
-  const payload = await call("list_organization_states");
+export async function listOrganizationStatesOverIpc(scope: ProjectScope | undefined, call: Invoke = invoke): Promise<OrganizationState[]> {
+  const payload = await invokeWith(call, "list_organization_states", scopeOnly(scope));
   if (!Array.isArray(payload) || !payload.every(isOrganizationState)) throw new Error("Native layer returned invalid organization states");
   return payload;
 }
@@ -201,8 +226,8 @@ function isKnowledgeSummary(value: unknown): value is KnowledgeSummary {
   return typeof c.objectId === "string" && c.objectId.length > 0 && count(c.relationCount) && count(c.revisionCount) && typeof c.updatedAt === "string" && c.updatedAt.length > 0 && typeof c.currentRevisionId === "string" && c.currentRevisionId.length > 0;
 }
 
-export async function getKnowledgeSummariesOverIpc(objectIds: string[] | undefined, call: Invoke = invoke): Promise<KnowledgeSummary[]> {
-  const payload = await call("get_knowledge_summaries", objectIds === undefined ? {} : { objectIds });
+export async function getKnowledgeSummariesOverIpc(objectIds: string[] | undefined, scope: ProjectScope | undefined, call: Invoke = invoke): Promise<KnowledgeSummary[]> {
+  const payload = await call("get_knowledge_summaries", { ...(objectIds === undefined ? {} : { objectIds }), ...scopeArgs(scope) });
   if (!Array.isArray(payload) || !payload.every(isKnowledgeSummary)) throw new Error("Native layer returned invalid knowledge summaries");
   return payload;
 }
@@ -265,11 +290,12 @@ export async function getObjectNeighborsOverIpc(objectId: string, filter: Relati
   return payload;
 }
 
-export async function inferRelationsOverIpc(objectIds: string[] | undefined, call: Invoke = invoke): Promise<CognitiveRelation[]> {
+export async function inferRelationsOverIpc(objectIds: string[] | undefined, scope: ProjectScope | undefined, call: Invoke = invoke): Promise<CognitiveRelation[]> {
   if (objectIds !== undefined && (!Array.isArray(objectIds) || objectIds.some((id) => typeof id !== "string" || id.length === 0))) {
     throw new Error("Invalid object ids");
   }
-  return readRelations(await relationCall("infer_relations", objectIds === undefined ? undefined : { objectIds }, call));
+  const args = { ...(objectIds === undefined ? {} : { objectIds }), ...scopeArgs(scope) };
+  return readRelations(await relationCall("infer_relations", Object.keys(args).length === 0 ? undefined : args, call));
 }
 
 // --- Thought Lineage ---------------------------------------------------------------------------------------------
@@ -377,5 +403,81 @@ export async function mergeRevisionsOverIpc(input: MergeRevisionsInput, call: In
 export async function diffRevisionsOverIpc(oldRevisionId: string, newRevisionId: string, call: Invoke = invoke): Promise<RevisionDiff> {
   const payload = await lineageCall("diff_revisions", { oldRevisionId: requireId(oldRevisionId, "revision id"), newRevisionId: requireId(newRevisionId, "revision id") }, call);
   if (!isRevisionDiff(payload)) throw new Error("Native layer returned an invalid diff");
+  return payload;
+}
+
+
+// --- Projects ----------------------------------------------------------------------------------------------------
+
+/** The native layer rejects project failures with `{ code, message }`; anything else is passed through. */
+async function projectCall(command: string, args: Record<string, unknown> | undefined, call: Invoke): Promise<unknown> {
+  try {
+    return await call(command, args);
+  } catch (failure) {
+    if (isProjectErrorPayload(failure)) throw new ProjectError(failure.code, failure.message);
+    throw failure;
+  }
+}
+
+function readProject(payload: unknown): Project {
+  if (!isProject(payload)) throw new Error("Native layer returned an invalid project");
+  return payload;
+}
+
+function validName(name: string): string {
+  const problem = describeProjectNameProblem(name);
+  if (problem) throw new ProjectError("invalid_project", `That project name is not valid: ${problem}.`);
+  return name;
+}
+
+export async function listProjectsOverIpc(options: { includeArchived?: boolean } | undefined, call: Invoke = invoke): Promise<Project[]> {
+  const payload = await projectCall("list_projects", options?.includeArchived === undefined ? undefined : { includeArchived: options.includeArchived === true }, call);
+  if (!Array.isArray(payload) || !payload.every(isProject)) throw new Error("Native layer returned invalid projects");
+  return payload;
+}
+
+export async function getProjectOverIpc(projectId: string, call: Invoke = invoke): Promise<Project> {
+  return readProject(await projectCall("get_project", { projectId: requireId(projectId, "project id") }, call));
+}
+
+export async function createProjectOverIpc(name: string, call: Invoke = invoke): Promise<Project> {
+  return readProject(await projectCall("create_project", { name: validName(name) }, call));
+}
+
+export async function renameProjectOverIpc(projectId: string, name: string, call: Invoke = invoke): Promise<Project> {
+  return readProject(await projectCall("rename_project", { projectId: requireId(projectId, "project id"), name: validName(name) }, call));
+}
+
+export async function archiveProjectOverIpc(projectId: string, call: Invoke = invoke): Promise<Project> {
+  return readProject(await projectCall("archive_project", { projectId: requireId(projectId, "project id") }, call));
+}
+
+export async function restoreProjectOverIpc(projectId: string, call: Invoke = invoke): Promise<Project> {
+  return readProject(await projectCall("restore_project", { projectId: requireId(projectId, "project id") }, call));
+}
+
+export async function moveCaptureOverIpc(captureId: string, projectId: string, call: Invoke = invoke): Promise<Capture> {
+  const payload = await projectCall("move_capture", { captureId: requireId(captureId, "capture id"), projectId: requireId(projectId, "project id") }, call);
+  if (!isCapture(payload)) throw new Error("Native layer returned an invalid capture");
+  return payload;
+}
+
+export async function moveKnowledgeObjectOverIpc(objectId: string, projectId: string, call: Invoke = invoke): Promise<KnowledgeObject> {
+  const payload = await projectCall("move_knowledge_object", { objectId: requireId(objectId, "object id"), projectId: requireId(projectId, "project id") }, call);
+  if (!isKnowledgeObject(payload)) throw new Error("Native layer returned an invalid knowledge object");
+  return payload;
+}
+
+export async function getActiveProjectOverIpc(call: Invoke = invoke): Promise<Project> {
+  return readProject(await projectCall("get_active_project", undefined, call));
+}
+
+export async function setActiveProjectOverIpc(projectId: string, call: Invoke = invoke): Promise<Project> {
+  return readProject(await projectCall("set_active_project", { projectId: requireId(projectId, "project id") }, call));
+}
+
+export async function getProjectGraphOverIpc(projectId: string, call: Invoke = invoke): Promise<ProjectGraph> {
+  const payload = await projectCall("get_project_graph", { projectId: requireId(projectId, "project id") }, call);
+  if (!isProjectGraph(payload)) throw new Error("Native layer returned an invalid project graph");
   return payload;
 }

@@ -1708,6 +1708,13 @@
   stroke: var(--accent);
   stroke-width: 2.2;
 }
+.m-node.external .m-shape * {
+  stroke-dasharray: 3 3;
+}
+.m-node-project {
+  font: 500 calc(11.5px * var(--m-inv, 1)) var(--sans);
+  fill: var(--ink-3);
+}
 .m-node.dim,
 .m-edge.dim {
   opacity: 0.34;
@@ -2072,4 +2079,98 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ---------------------------------------------------------------- projects (M03.2) */
+.m-pchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  max-width: 46%;
+  padding: 0 6px 0 10px;
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  font: 500 14px/1 var(--sans);
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.m-pchip:active {
+  background: var(--selected);
+}
+.m-pchip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.m-pchip-name.inbox {
+  font: italic 450 15px var(--serif);
+}
+.m-pchip-caret {
+  display: inline-flex;
+  color: var(--ink-3);
+  transform: rotate(90deg);
+  flex: none;
+}
+.m-plist {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+.m-prow-wrap {
+  border-bottom: 1px solid var(--line-soft);
+}
+.m-prow-wrap.inbox {
+  border-bottom-color: var(--line);
+}
+.m-prow-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.m-prow {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 2px;
+  color: var(--ink);
+  text-align: left;
+  font: 450 17px/1.2 var(--serif);
+}
+.m-prow[aria-current="true"] {
+  color: var(--accent);
+}
+.m-prow.archived {
+  color: var(--ink-3);
+}
+.m-prow-wrap.inbox .m-prow-name {
+  font-style: italic;
+}
+.m-prow-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.m-prow-count {
+  margin-left: auto;
+  color: var(--ink-3);
+  font: 400 13px var(--sans);
+  white-space: nowrap;
+}
+.m-pmanage {
+  padding: 0 0 12px;
+}
+.m-pnew {
+  margin-top: 16px;
+  width: 100%;
+}
+.m-proj-tag {
+  color: var(--ink-3);
+  font-size: 12.5px;
+  white-space: nowrap;
 }

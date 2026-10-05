@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { KnowledgeObject, ObjectLineage, ThoughtRevision } from "@arthur/contracts";
 import { useArthurClient } from "../../hooks/use-arthur-client";
 import { useKnowledge } from "../knowledge/knowledge-context";
+import { useProjects } from "../projects/projects-context";
 
 /** What a list row needs to know about one object, without opening its history. */
 export interface LineageSummary {
@@ -52,15 +53,16 @@ function initialLineage(object: KnowledgeObject, currentRevisionId: string): Obj
 export function LineageSummariesProvider({ children }: { children: ReactNode }) {
   const client = useArthurClient();
   const { objects, status: knowledgeStatus } = useKnowledge();
+  const { activeProjectId } = useProjects();
   const [summaries, setSummaries] = useState<{ status: "loading" | "ready"; byObject: ReadonlyMap<string, LineageSummary> }>({ status: "loading", byObject: new Map() });
   const [cache, setCache] = useState<ReadonlyMap<string, ObjectLineage>>(new Map());
   const asked = useRef(new Set<string>());
 
   useEffect(() => {
     // Wait for the objects: summaries for a list that has not loaded yet would be a wasted request.
-    if (knowledgeStatus !== "ready") return;
+    if (knowledgeStatus !== "ready" || activeProjectId === null) return;
     let cancelled = false;
-    client.getKnowledgeSummaries().then(
+    client.getKnowledgeSummaries(undefined, { projectId: activeProjectId }).then(
       (loaded) => {
         if (cancelled) return;
         const byObject = new Map(loaded.map((entry): [string, LineageSummary] => [entry.objectId, { revisionCount: entry.revisionCount, updatedAt: entry.updatedAt, relationCount: entry.relationCount, currentRevisionId: entry.currentRevisionId }]));
@@ -85,7 +87,7 @@ export function LineageSummariesProvider({ children }: { children: ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, [client, objects, knowledgeStatus]);
+  }, [client, objects, knowledgeStatus, activeProjectId]);
 
   const request = useCallback(
     (objectIds: readonly string[]) => {

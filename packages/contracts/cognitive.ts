@@ -32,6 +32,11 @@ export interface KnowledgeObject {
   /** ISO-8601 (RFC 3339) timestamp assigned by the store. */
   createdAt: string;
   provenance: KnowledgeProvenance;
+  /**
+   * The project this object belongs to (M03.2). Independent of its Capture's project and movable on its own; moving
+   * never changes content, provenance or lineage.
+   */
+  projectId: string;
 }
 
 /** Mirrored by the native store; keep both in sync. */
@@ -90,7 +95,9 @@ export function isKnowledgeObject(value: unknown): value is KnowledgeObject {
     candidate.body.trim().length > 0 &&
     typeof candidate.createdAt === "string" &&
     candidate.createdAt.length > 0 &&
-    isKnowledgeProvenance(candidate.provenance)
+    isKnowledgeProvenance(candidate.provenance) &&
+    typeof candidate.projectId === "string" &&
+    candidate.projectId.length > 0
   );
 }
 

@@ -199,7 +199,7 @@ describe("Ideas", () => {
     const { client } = await seeded();
     mobile(client, "ideas");
     const list = await screen.findByRole("list", { name: "Ideas" });
-    expect(within(list).getAllByRole("button").length).toBe(2);
+    await waitFor(() => expect(within(list).getAllByRole("button").length).toBe(2)); // the active project is read first
     fireEvent.click(screen.getByRole("button", { name: /^Tasks/ }));
     expect(within(screen.getByRole("list", { name: "Ideas" })).getAllByRole("button").length).toBe(1);
     expect(screen.getByRole("button", { name: /^Tasks/ }).getAttribute("aria-pressed")).toBe("true");
@@ -358,7 +358,7 @@ describe("Connections", () => {
     mobile(client, "connections");
     expect(await screen.findByText(/No connections yet/)).toBeTruthy();
     const find = screen.getByRole("button", { name: "Find connections" }) as HTMLButtonElement;
-    expect(find.disabled).toBe(false);
+    await waitFor(() => expect(find.disabled).toBe(false)); // the active project's ideas load first
     fireEvent.click(find);
     expect(await screen.findByText("No new connections found.")).toBeTruthy();
   });

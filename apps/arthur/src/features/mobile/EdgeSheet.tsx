@@ -17,13 +17,24 @@ export function EdgeSheet({ relationId, modal, onClose, onOpenIdea }: { relation
   const source = byId.get(relation.sourceObjectId);
   const target = byId.get(relation.targetObjectId);
   const symmetric = isSymmetricRelationKind(relation.kind);
-  const title = (id: string): string => byId.get(id)?.title ?? "(unknown idea)";
+  const title = (id: string): string => byId.get(id)?.title ?? index.externalOf(id)?.title ?? "(unknown idea)";
+  /** A title, followed by "Nexus ↗" when it belongs to another project. */
+  const named = (id: string) => {
+    const far = index.externalOf(id);
+    return far ? (
+      <>
+        {far.title} <span className="m-proj-tag">{far.projectName} ↗</span>
+      </>
+    ) : (
+      title(id)
+    );
+  };
 
   return (
     <MobileSheet label="Connection" onClose={onClose} modal={modal} aboveTabs={!modal}>
       <div className="m-sbody">
         <h2 className="m-edge-h">
-          <span>{title(relation.sourceObjectId)}</span> <em style={{ color: `var(--rel-${relation.kind})` }}>{RELATION_LABELS[relation.kind]}</em> <span>{title(relation.targetObjectId)}</span>
+          <span>{named(relation.sourceObjectId)}</span> <em style={{ color: `var(--rel-${relation.kind})` }}>{RELATION_LABELS[relation.kind]}</em> <span>{named(relation.targetObjectId)}</span>
         </h2>
         <div className="m-edge-means">
           <RelationSwatch kind={relation.kind} width={56} />

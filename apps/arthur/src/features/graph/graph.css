@@ -71,3 +71,12 @@
 .graph .edge-label text {
   font: 500 12.5px var(--sans);
 }
+
+/* A node of another project: the same shape, a dashed outline, and a quiet "Project ↗" under the title. */
+.graph .node.external .shape * {
+  stroke-dasharray: 3 3;
+}
+.graph .node-label .node-project {
+  font: 500 12.5px var(--sans);
+  fill: var(--ink-3);
+}

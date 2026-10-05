@@ -209,7 +209,7 @@ mod tests {
     const B: &str = "22222222-2222-4222-8222-222222222222";
 
     fn object(id: &str, title: &str) -> KnowledgeObject {
-        KnowledgeObject { id: id.into(), kind: "idea".into(), title: title.into(), body: "body".into(), created_at: "2026-10-04T10:00:00Z".into(), provenance: Provenance { capture_id: "c".into(), source_start: 0, source_end: 1 } }
+        KnowledgeObject { id: id.into(), kind: "idea".into(), title: title.into(), body: "body".into(), created_at: "2026-10-04T10:00:00Z".into(), provenance: Provenance { capture_id: "c".into(), source_start: 0, source_end: 1 }, project_id: "p".into() }
     }
 
     fn proposer(url: &str, key: Option<&'static str>) -> OpenAiRelationProposer {

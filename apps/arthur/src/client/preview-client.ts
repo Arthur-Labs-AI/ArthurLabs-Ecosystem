@@ -1,4 +1,5 @@
 import {
+  INBOX_PROJECT_ID,
   MAX_INFERENCE_CANDIDATES,
   MAX_KNOWLEDGE_BODY_CHARS,
   MAX_KNOWLEDGE_TITLE_CHARS,
@@ -9,6 +10,7 @@ import {
   codePointLength,
   describeCreateCaptureInputProblem,
   describeCreateRelationInputProblem,
+  describeProjectNameProblem,
   describeRevisionChangesProblem,
   describeSpanProblem,
   diffRevisionContent,
@@ -27,6 +29,9 @@ import {
   type KnowledgeSummary,
   type MicrophonePermissionState,
   type OrganizationState,
+  type Project,
+  type ProjectGraph,
+  type ProjectScope,
   type MergeRevisionsInput,
   type ObjectLineage,
   type RelationErrorCode,
@@ -36,7 +41,7 @@ import {
   type RuntimeInfo,
   type ThoughtRevision,
 } from "@arthur/contracts";
-import { DistillationError, LineageError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
+import { DistillationError, LineageError, ProjectError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
 
 const DEFAULT_PREVIEW_INFO: RuntimeInfo = { appVersion: "0.0.0-preview", platform: "unknown" };
 
@@ -116,6 +121,11 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
   const distillation = { ...options.distillation };
   const inference = { ...options.inference };
   const captures: Capture[] = [];
+  /** Projects in creation order. The Inbox is always first, never archived, never renamed. */
+  const projects: { id: string; name: string; createdAt: string; updatedAt: string; archivedAt: string | null }[] = [
+    { id: INBOX_PROJECT_ID, name: "Inbox", createdAt: "1970-01-01T00:00:00Z", updatedAt: "1970-01-01T00:00:00Z", archivedAt: null },
+  ];
+  let activeProjectId = INBOX_PROJECT_ID;
   /** Newest distillation first, like the native store. Zero-object runs are remembered too. */
   const runs: { captureId: string; objects: KnowledgeObject[] }[] = [];
   /** Oldest first, like the native store. */
@@ -136,12 +146,57 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
   };
 
   const append = (input: CreateCaptureInput): Capture => {
-    const capture: Capture = { id: newId(), source: input.source, content: input.content, createdAt: now().toISOString() };
+    const projectId = input.projectId ?? INBOX_PROJECT_ID;
+    const project = projects.find((candidate) => candidate.id === projectId);
+    if (!project) throw new Error("Invalid capture: project does not exist");
+    if (project.archivedAt !== null) throw new Error("Invalid capture: project is archived");
+    const capture: Capture = { id: newId(), source: input.source, content: input.content, createdAt: now().toISOString(), projectId };
     captures.unshift(capture);
     return capture;
   };
 
   const allObjects = (): KnowledgeObject[] => runs.flatMap((run) => run.objects);
+  const inProject = <T extends { projectId: string }>(items: T[], scope: ProjectScope | undefined): T[] =>
+    scope?.projectId === undefined ? items : items.filter((item) => item.projectId === scope.projectId);
+
+  // --- Projects: the same rules as the native store, in memory ------------------------------------------------
+  const projectProblem = (code: ConstructorParameters<typeof ProjectError>[0], message: string): ProjectError => new ProjectError(code, message);
+  const findProject = (projectId: string) => {
+    const found = projects.find((project) => project.id === projectId);
+    if (!found) throw projectProblem("project_not_found", "That project no longer exists.");
+    return found;
+  };
+  const openProject = (projectId: string) => {
+    const found = findProject(projectId);
+    if (found.archivedAt !== null) throw projectProblem("project_archived", "That project is archived. Restore it first.");
+    return found;
+  };
+  const toProject = (project: (typeof projects)[number]): Project => ({
+    ...project,
+    isInbox: project.id === INBOX_PROJECT_ID,
+    captureCount: captures.filter((capture) => capture.projectId === project.id).length,
+    objectCount: allObjects().filter((object) => object.projectId === project.id).length,
+  });
+  const cleanName = (name: string, exceptId?: string): string => {
+    const problem = describeProjectNameProblem(name);
+    if (problem) throw projectProblem("invalid_project", `That project name is not valid: ${problem}.`);
+    const trimmed = name.trim();
+    if (projects.some((project) => project.id !== exceptId && project.name.toLowerCase() === trimmed.toLowerCase())) {
+      throw projectProblem("project_name_taken", "Another project already has that name.");
+    }
+    return trimmed;
+  };
+  const projectResult = <T,>(work: () => T): Promise<T> => {
+    try {
+      return Promise.resolve(work());
+    } catch (failure) {
+      return Promise.reject(failure);
+    }
+  };
+  const activeProject = () => {
+    const stored = projects.find((project) => project.id === activeProjectId);
+    return stored && stored.archivedAt === null ? stored : findProject(INBOX_PROJECT_ID);
+  };
 
   /**
    * Same rules as the native store: validate everything first, then write everything. Returns
@@ -276,9 +331,10 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
     createCapture: (input) => {
       const problem = describeCreateCaptureInputProblem(input);
       if (problem) return Promise.reject(new Error(`Invalid capture: ${problem}`));
-      return Promise.resolve(append(input));
+      return projectResult(() => append(input));
     },
-    listCaptures: () => Promise.resolve([...captures]),
+    getCaptures: (captureIds) => Promise.resolve(captures.filter((capture) => captureIds.includes(capture.id))),
+    listCaptures: (scope) => Promise.resolve(inProject(captures, scope)),
 
     startVoiceCapture: () => {
       if (recording) return Promise.reject(new VoiceCaptureError("already_recording", "A recording is already in progress."));
@@ -291,7 +347,7 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       recording = true;
       return Promise.resolve();
     },
-    finishVoiceCapture: () => {
+    finishVoiceCapture: (projectId) => {
       if (!recording) return Promise.reject(new VoiceCaptureError("not_recording", "There is no recording in progress."));
       recording = false;
       if (voice.finishError) {
@@ -302,13 +358,13 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       if (transcript.length === 0) {
         return Promise.reject(new VoiceCaptureError("empty_transcript", "No speech was recognised. Nothing was saved."));
       }
-      return Promise.resolve(append({ source: "voice", content: transcript }));
+      return projectResult(() => append({ source: "voice", content: transcript, ...(projectId !== undefined ? { projectId } : {}) }));
     },
     cancelVoiceCapture: () => {
       recording = false;
       return Promise.resolve();
     },
-    retryVoiceTranscription: () => {
+    retryVoiceTranscription: (projectId) => {
       if (!kept) return Promise.reject(new VoiceCaptureError("no_retained_recording", "That recording is no longer kept. Record it again, or type it."));
       const failure = retryErrors.shift();
       if (failure) {
@@ -318,7 +374,7 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       kept = false;
       const transcript = (voice.transcript?.() ?? "Preview voice capture.").trim();
       if (transcript.length === 0) return Promise.reject(new VoiceCaptureError("empty_transcript", "No speech was recognised. Nothing was saved."));
-      return Promise.resolve(append({ source: "voice", content: transcript }));
+      return projectResult(() => append({ source: "voice", content: transcript, ...(projectId !== undefined ? { projectId } : {}) }));
     },
     discardVoiceRecording: () => {
       kept = false;
@@ -371,6 +427,7 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
           body: candidate.body.trim(),
           createdAt: now().toISOString(),
           provenance: { captureId, sourceStart: start, sourceEnd: end },
+          projectId: capture.projectId,
         });
       }
       objects.sort((a, b) => a.provenance.sourceStart - b.provenance.sourceStart);
@@ -392,20 +449,20 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       failures.delete(captureId); // a success supersedes any failure
       return Promise.resolve([...objects]);
     },
-    listKnowledgeObjects: () => Promise.resolve(allObjects()),
-    listOrganizationStates: () =>
+    listKnowledgeObjects: (scope) => Promise.resolve(inProject(allObjects(), scope)),
+    listOrganizationStates: (scope) =>
       Promise.resolve(
-        captures.map((capture): OrganizationState => {
+        inProject(captures, scope).map((capture): OrganizationState => {
           const run = runs.find((candidate) => candidate.captureId === capture.id);
           if (run) return { captureId: capture.id, status: "succeeded", objectCount: run.objects.length };
           const failure = failures.get(capture.id);
           return failure ? { captureId: capture.id, status: "failed", objectCount: 0, failure } : { captureId: capture.id, status: "pending", objectCount: 0 };
         }),
       ),
-    getKnowledgeSummaries: (objectIds) => {
+    getKnowledgeSummaries: (objectIds, scope) => {
       const wanted = objectIds === undefined ? null : new Set(objectIds);
       const summaries: KnowledgeSummary[] = [];
-      for (const object of allObjects()) {
+      for (const object of inProject(allObjects(), scope)) {
         if (wanted && !wanted.has(object.id)) continue;
         const lineage = lineages.get(object.id);
         const current = lineage?.revisions.find((revision) => revision.id === lineage.current);
@@ -440,7 +497,7 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
         return Promise.reject(failure);
       }
     },
-    inferRelations: (objectIds) => {
+    inferRelations: (objectIds, scope) => {
       try {
         if (inference.error) {
           const failure = inference.error;
@@ -448,8 +505,21 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
           throw failure;
         }
         // Candidate set: requested objects first, then the most recent others, up to the hard limit.
-        const everything = allObjects();
+        // Project-local, like the native layer: one project only (given, else the requested objects', else the Inbox).
         const requested = new Set(objectIds ?? []);
+        const owners = new Set<string>();
+        for (const id of requested) {
+          const owner = allObjects().find((object) => object.id === id);
+          if (!owner) throw new RelationError("object_not_found", "One of those knowledge objects no longer exists.");
+          owners.add(owner.projectId);
+        }
+        if (scope?.projectId !== undefined) {
+          if (!projects.some((project) => project.id === scope.projectId)) throw new RelationError("invalid_relation", "That relation is not valid: unknown project.");
+          if ([...owners].some((owner) => owner !== scope.projectId)) throw new RelationError("invalid_relation", "That relation is not valid: the requested objects are not all in that project.");
+        } else if (owners.size > 1) {
+          throw new RelationError("invalid_relation", "That relation is not valid: the requested objects belong to different projects.");
+        }
+        const everything = inProject(allObjects(), { projectId: scope?.projectId ?? [...owners][0] ?? INBOX_PROJECT_ID });
         if (requested.size > MAX_INFERENCE_CANDIDATES) throw new RelationError("invalid_relation", "That relation is not valid: too many objects requested.");
         if ([...requested].some((id) => !everything.some((object) => object.id === id))) {
           throw new RelationError("object_not_found", "One of those knowledge objects no longer exists.");
@@ -518,6 +588,84 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
         if (older.objectId !== newer.objectId) throw lineageProblem("revisions of different objects cannot be compared");
         return diffRevisionContent(older, newer);
       }),
+
+    listProjects: (options) =>
+      projectResult(() => {
+        const open = projects.filter((project) => options?.includeArchived === true || project.archivedAt === null);
+        const rest = open.filter((project) => project.id !== INBOX_PROJECT_ID).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+        return [...open.filter((project) => project.id === INBOX_PROJECT_ID), ...rest].map(toProject);
+      }),
+    getProject: (projectId) => projectResult(() => toProject(findProject(projectId))),
+    createProject: (name) =>
+      projectResult(() => {
+        const trimmed = cleanName(name);
+        const at = now().toISOString();
+        const project = { id: newId(), name: trimmed, createdAt: at, updatedAt: at, archivedAt: null };
+        projects.push(project);
+        return toProject(project);
+      }),
+    renameProject: (projectId, name) =>
+      projectResult(() => {
+        const project = findProject(projectId);
+        if (project.id === INBOX_PROJECT_ID) throw projectProblem("inbox_protected", "The Inbox cannot be renamed or archived.");
+        const trimmed = cleanName(name, projectId);
+        if (project.name !== trimmed) Object.assign(project, { name: trimmed, updatedAt: now().toISOString() });
+        return toProject(project);
+      }),
+    archiveProject: (projectId) =>
+      projectResult(() => {
+        const project = findProject(projectId);
+        if (project.id === INBOX_PROJECT_ID) throw projectProblem("inbox_protected", "The Inbox cannot be renamed or archived.");
+        if (project.archivedAt === null) Object.assign(project, { archivedAt: now().toISOString(), updatedAt: now().toISOString() });
+        if (activeProjectId === projectId) activeProjectId = INBOX_PROJECT_ID;
+        return toProject(project);
+      }),
+    restoreProject: (projectId) =>
+      projectResult(() => {
+        const project = findProject(projectId);
+        if (project.archivedAt !== null) Object.assign(project, { archivedAt: null, updatedAt: now().toISOString() });
+        return toProject(project);
+      }),
+    moveCapture: (captureId, projectId) =>
+      projectResult(() => {
+        openProject(projectId);
+        const at = captures.findIndex((capture) => capture.id === captureId);
+        if (at < 0) throw projectProblem("capture_not_found", "That capture no longer exists.");
+        // Only membership changes; the content, time and the objects distilled from it stay as they are.
+        captures[at] = { ...(captures[at] as Capture), projectId };
+        return captures[at] as Capture;
+      }),
+    moveKnowledgeObject: (objectId, projectId) =>
+      projectResult(() => {
+        openProject(projectId);
+        for (const run of runs) {
+          const at = run.objects.findIndex((object) => object.id === objectId);
+          if (at >= 0) {
+            run.objects[at] = { ...(run.objects[at] as KnowledgeObject), projectId };
+            return run.objects[at] as KnowledgeObject;
+          }
+        }
+        throw projectProblem("object_not_found", "That idea no longer exists.");
+      }),
+    getActiveProject: () => projectResult(() => toProject(activeProject())),
+    setActiveProject: (projectId) =>
+      projectResult(() => {
+        const project = openProject(projectId);
+        activeProjectId = project.id;
+        return toProject(project);
+      }),
+    getProjectGraph: (projectId) =>
+      projectResult((): ProjectGraph => {
+        findProject(projectId);
+        const objects = allObjects();
+        const own = objects.filter((object) => object.projectId === projectId);
+        const ownIds = new Set(own.map((object) => object.id));
+        const touching = relations.filter((relation) => ownIds.has(relation.sourceObjectId) || ownIds.has(relation.targetObjectId));
+        const farIds = new Set(touching.flatMap((relation) => [relation.sourceObjectId, relation.targetObjectId]).filter((id) => !ownIds.has(id)));
+        const externalObjects = objects
+          .filter((object) => farIds.has(object.id))
+          .map((object) => ({ id: object.id, kind: object.kind, title: object.title, projectId: object.projectId, projectName: findProject(object.projectId).name }));
+        return { projectId, objects: own, relations: touching, externalObjects };
+      }),
   };
 }
-

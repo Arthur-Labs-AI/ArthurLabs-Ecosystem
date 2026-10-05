@@ -48,7 +48,13 @@ impl CaptureStore {
     }
 
     /// One entry per capture, newest first, from a single query.
+    #[allow(dead_code)] // the unscoped form; the app itself always names a project
     pub fn list_organization_states(&self) -> Result<Vec<OrganizationState>, StoreError> {
+        self.list_organization_states_in(None)
+    }
+
+    /// As `list_organization_states`, optionally only the captures of one project.
+    pub fn list_organization_states_in(&self, project_id: Option<&str>) -> Result<Vec<OrganizationState>, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let mut statement = connection.prepare(
             "SELECT c.id, \
@@ -58,9 +64,10 @@ impl CaptureStore {
              FROM captures c \
              LEFT JOIN distillation_runs d ON d.capture_id = c.id \
              LEFT JOIN organization_failures f ON f.capture_id = c.id \
+             WHERE (?1 IS NULL OR c.project_id = ?1) \
              ORDER BY c.seq DESC",
         )?;
-        let rows = statement.query_map([], |row| {
+        let rows = statement.query_map([project_id], |row| {
             let status: String = row.get(1)?;
             let failure = match (row.get::<_, Option<String>>(3)?, row.get::<_, Option<String>>(4)?, row.get::<_, Option<String>>(5)?) {
                 (Some(code), Some(message), Some(failed_at)) if status == "failed" => Some(OrganizationFailure { code, message, failed_at }),
@@ -88,7 +95,7 @@ mod tests {
     use crate::storage::knowledge_store::NewKnowledgeObject;
 
     fn capture(store: &CaptureStore, text: &str) -> String {
-        store.create(CreateCaptureInput { source: "text".into(), content: text.into() }).unwrap().id
+        store.create(CreateCaptureInput { source: "text".into(), content: text.into(), project_id: None }).unwrap().id
     }
     fn object(start: i64, end: i64) -> NewKnowledgeObject {
         NewKnowledgeObject { kind: "idea".into(), title: "T".into(), body: "B".into(), source_start: start, source_end: end }

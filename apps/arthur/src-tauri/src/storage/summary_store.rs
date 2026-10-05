@@ -25,7 +25,13 @@ pub struct KnowledgeSummary {
 }
 
 impl CaptureStore {
+    #[allow(dead_code)] // the unscoped form; the app itself always names a project
     pub fn knowledge_summaries(&self, object_ids: Option<&[String]>) -> Result<Vec<KnowledgeSummary>, StoreError> {
+        self.knowledge_summaries_in(object_ids, None)
+    }
+
+    /// As `knowledge_summaries`, optionally only for the objects of one project.
+    pub fn knowledge_summaries_in(&self, object_ids: Option<&[String]>, project_id: Option<&str>) -> Result<Vec<KnowledgeSummary>, StoreError> {
         if let Some(ids) = object_ids {
             if ids.len() > MAX_SUMMARY_IDS {
                 return Err(StoreError::Invalid(format!("more than {MAX_SUMMARY_IDS} ids")));
@@ -35,10 +41,12 @@ impl CaptureStore {
             }
         }
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
-        let filter = match object_ids {
-            Some(ids) => format!("WHERE o.id IN ({})", vec!["?"; ids.len()].join(",")),
-            None => String::new(),
+        let by_ids = match object_ids {
+            Some(ids) => format!("o.id IN ({})", vec!["?"; ids.len()].join(",")),
+            None => "1".to_string(),
         };
+        // The project is the LAST parameter, after the ids.
+        let filter = format!("WHERE {by_ids} AND (? IS NULL OR o.project_id = ?)");
         let sql = format!(
             "SELECT o.id, \
                     (SELECT count(*) FROM relations r WHERE r.source_object_id = o.id OR r.target_object_id = o.id), \
@@ -49,7 +57,7 @@ impl CaptureStore {
              {filter} ORDER BY o.seq"
         );
         let mut statement = connection.prepare(&sql)?;
-        let params = object_ids.unwrap_or(&[]).iter();
+        let params = object_ids.unwrap_or(&[]).iter().map(|id| Some(id.as_str())).chain([project_id, project_id]);
         let rows = statement.query_map(params_from_iter(params), |row| {
             Ok(KnowledgeSummary {
                 object_id: row.get(0)?,
@@ -84,7 +92,7 @@ mod tests {
         let mut ids = Vec::new();
         for batch in (0..objects).collect::<Vec<_>>().chunks(12) {
             let text: String = batch.iter().map(|i| format!("word{i:03} ")).collect();
-            let capture = store.create(CreateCaptureInput { source: "text".into(), content: text }).unwrap();
+            let capture = store.create(CreateCaptureInput { source: "text".into(), content: text, project_id: None }).unwrap();
             let new: Vec<NewKnowledgeObject> = batch
                 .iter()
                 .enumerate()

@@ -6,6 +6,7 @@ const object = (id: string): KnowledgeObject => ({
   id,
   kind: "idea",
   title: id,
+  projectId: "p",
   body: "b",
   createdAt: "2026-10-04T12:00:00Z",
   provenance: { captureId: "c", sourceStart: 0, sourceEnd: 1 },

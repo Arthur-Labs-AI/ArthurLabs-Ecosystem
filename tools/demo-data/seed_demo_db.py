@@ -33,6 +33,7 @@ REAL_DB = Path.home() / ".local/share" / IDENTIFIER / "arthur.db"
 DEFAULT_HOME = Path.home() / ".local/share/arthur-demo"
 NS = uuid.UUID("6f1c0a52-8b0e-4d52-9a57-5a5d1d7e0001")
 SYMMETRIC = {"related_to", "contradicts", "duplicates"}
+INBOX_ID = "00000000-0000-4000-8000-000000000001"  # the system Inbox: created by the schema, same on every database
 
 
 def uid(*parts: str) -> str:
@@ -207,11 +208,42 @@ RELATIONS = [
 ]
 
 
+# ------------------------------------------------------------------------------------------------------ projects (M03.2)
+# Which project each capture lives in. Every capture of the story above is accounted for here, so the existing
+# populated objects are reused as they are: no data is multiplied to make the projects look busy.
+#   Inbox          c10 (organized into nothing), c14 (never organized)                    -> an Inbox with something to triage
+#   A.R.T.H.U.R    10 captures, 32 ideas                                                  -> the project with many ideas
+#   Nexus          c05, c15 (the wristband)                                                -> hardware
+#   School         c06 (the competition demo plan)
+#   AutoPulse      no capture of its own, ONE idea moved into it                           -> a nearly empty project
+#   Old experiments (ARCHIVED) c07 (what happens when two ideas contradict)                -> an archived project that keeps its data
+PROJECTS = [  # (key, name, created (days ago), archived (days ago) or None)
+    ("arthur", "A.R.T.H.U.R", 36, None),
+    ("nexus", "Nexus", 20, None),
+    ("school", "School", 15, None),
+    ("autopulse", "AutoPulse", 12, None),
+    ("old", "Old experiments", 14, 2),
+]
+CAPTURE_PROJECT = {
+    "c01": "arthur", "c02": "arthur", "c03": "arthur", "c04": "arthur", "c07": "old", "c08": "arthur", "c09": "arthur",
+    "c11": "arthur", "c12": "arthur", "c13": "arthur", "c16": "arthur",
+    "c05": "nexus", "c15": "nexus", "c06": "school", "c10": "inbox", "c14": "inbox",
+}
+# Objects moved away from the project of the capture they came from. c02 is ONE capture whose ideas now live in THREE
+# projects (A.R.T.H.U.R keeps two; the task went to Nexus, one idea to AutoPulse). Moving never touches the capture,
+# the provenance or the lineage, and several relations now cross project boundaries (e.g. mobile -> offline).
+OBJECT_PROJECT = {"ask_android": "nexus", "offline": "autopulse"}
+
+
+def project_id(key: str) -> str:
+    return INBOX_ID if key == "inbox" else uid("project", key)
+
+
 # ---------------------------------------------------------------------------------------------------- building
 def schema_steps() -> list[tuple[int, str]]:
     source = MIGRATIONS.read_text(encoding="utf8")
     steps = []
-    for version in (1, 2, 3, 4):
+    for version in (1, 2, 3, 4, 5, 6):
         match = re.search(rf'pub const SCHEMA_V{version}: &str = "(.*?)";\n', source, re.S)
         if not match:
             raise SystemExit(f"cannot find SCHEMA_V{version} in {MIGRATIONS}")
@@ -240,6 +272,9 @@ def build(db: Path, now: datetime) -> None:
         connection.executescript(f"BEGIN;\n{sql}\nPRAGMA user_version = {version};\nCOMMIT;")
 
     ago = lambda d, h, m: now - timedelta(days=d, hours=h, minutes=m)
+    for key, name, created, _archived in PROJECTS:  # archived LAST: a project that is archived accepts no more rows
+        stamp = rfc3339(ago(created, 0, 0))
+        connection.execute("INSERT INTO projects (id, name, created_at, updated_at) VALUES (?,?,?,?)", (project_id(key), name, stamp, stamp))
     content_of = {key: content for key, _, _, content, _ in CAPTURES}
     object_info: dict[str, dict] = {}
     events: list[tuple[datetime, int, callable]] = []  # (time, tie-breaker, action)
@@ -253,7 +288,7 @@ def build(db: Path, now: datetime) -> None:
     for ckey, source, age, content, objects in CAPTURES:
         cid = uid("capture", ckey)
         when = ago(*age)
-        at(when, lambda c=cid, s=source, t=content, w=when: connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES (?,?,?,?)", (c, s, t, rfc3339(w))))
+        at(when, lambda c=cid, s=source, t=content, w=when, p=project_id(CAPTURE_PROJECT[ckey]): connection.execute("INSERT INTO captures (id, source, content, created_at, project_id) VALUES (?,?,?,?,?)", (c, s, t, rfc3339(w), p)))
         if objects is None:
             continue
         run_at = when + timedelta(seconds=4)
@@ -265,9 +300,9 @@ def build(db: Path, now: datetime) -> None:
             created = run_at + timedelta(seconds=1 + len(object_info))
             object_info[okey] = {"id": oid, "r1": rid, "revs": {"r1": rid}, "created": created, "capture": cid, "span": (start, end)}
 
-            def make(oid=oid, rid=rid, kind=kind, title=title, body=body, cid=cid, start=start, end=end, created=created):
+            def make(oid=oid, rid=rid, kind=kind, title=title, body=body, cid=cid, start=start, end=end, created=created, p=project_id(CAPTURE_PROJECT[ckey])):
                 stamp = rfc3339(created)
-                connection.execute("INSERT INTO knowledge_objects (id, kind, title, body, created_at) VALUES (?,?,?,?,?)", (oid, kind, title, body, stamp))
+                connection.execute("INSERT INTO knowledge_objects (id, kind, title, body, created_at, project_id) VALUES (?,?,?,?,?,?)", (oid, kind, title, body, stamp, p))
                 connection.execute("INSERT INTO object_sources (object_id, capture_id, source_start, source_end) VALUES (?,?,?,?)", (oid, cid, start, end))
                 connection.execute("INSERT INTO thought_revisions (id, object_id, kind, title, body, origin, created_at, capture_id, source_start, source_end) VALUES (?,?,?,?,?,'initial',?,?,?,?)", (rid, oid, kind, title, body, stamp, cid, start, end))
                 connection.execute("UPDATE knowledge_objects SET kind=?, title=?, body=?, current_revision_id=? WHERE id=?", (kind, title, body, rid, oid))
@@ -310,6 +345,15 @@ def build(db: Path, now: datetime) -> None:
     # Apply in time order. Object creation (+4 s after its capture) always precedes later edits, relations and runs.
     for _, _, action in sorted(events, key=lambda e: (e[0], e[1])):
         action()
+
+    # Organization AFTER the fact, the way a user does it: move objects, then archive, then pick the active project.
+    for okey, pkey in OBJECT_PROJECT.items():
+        connection.execute("UPDATE knowledge_objects SET project_id=? WHERE id=?", (project_id(pkey), object_info[okey]["id"]))
+    for key, _name, _created, archived in PROJECTS:
+        if archived is not None:
+            stamp = rfc3339(ago(archived, 0, 0))
+            connection.execute("UPDATE projects SET archived_at=?, updated_at=? WHERE id=?", (stamp, stamp, project_id(key)))
+    connection.execute("INSERT INTO active_project (id, project_id) VALUES (1, ?)", (project_id("arthur"),))
     connection.commit()
     connection.close()
 
@@ -358,6 +402,16 @@ def verify(db: Path) -> dict:
     report.setdefault("invariants", {})["provenance spans that do not resolve"] = bad
     if bad:
         problems.append(f"provenance spans: {bad}")
+    # Projects (schema v6).
+    expect_zero("captures or objects without a project", "SELECT (SELECT count(*) FROM captures WHERE project_id IS NULL) + (SELECT count(*) FROM knowledge_objects WHERE project_id IS NULL)")
+    expect_zero("projects other than the Inbox that are not uuids", f"SELECT count(*) FROM projects WHERE id<>'{INBOX_ID}' AND length(id)<>36")
+    expect_zero("the Inbox is missing, renamed or archived", f"SELECT 1-count(*) FROM projects WHERE id='{INBOX_ID}' AND name='Inbox' AND archived_at IS NULL")
+    expect_zero("projects that are not exactly one Inbox plus the seeded ones", f"SELECT abs(count(*) - {len(PROJECTS) + 1}) FROM projects")
+    expect_zero("an archived project that is active", "SELECT count(*) FROM active_project a JOIN projects p ON p.id=a.project_id WHERE p.archived_at IS NOT NULL")
+    report["projects"] = [dict(zip(("name", "archived", "captures", "objects"), row)) for row in c.execute("SELECT p.name, p.archived_at IS NOT NULL, (SELECT count(*) FROM captures c WHERE c.project_id=p.id), (SELECT count(*) FROM knowledge_objects o WHERE o.project_id=p.id) FROM projects p ORDER BY p.seq")]
+    report["objects_living_outside_their_capture_project"] = one("SELECT count(*) FROM knowledge_objects o JOIN object_sources s ON s.object_id=o.id JOIN captures c ON c.id=s.capture_id WHERE o.project_id<>c.project_id")
+    report["captures_whose_objects_span_several_projects"] = one("SELECT count(*) FROM (SELECT s.capture_id FROM object_sources s JOIN knowledge_objects o ON o.id=s.object_id GROUP BY s.capture_id HAVING count(DISTINCT o.project_id)>1)")
+    report["cross_project_relations"] = one("SELECT count(*) FROM relations r JOIN knowledge_objects a ON a.id=r.source_object_id JOIN knowledge_objects b ON b.id=r.target_object_id WHERE a.project_id<>b.project_id")
     report["captures_never_distilled"] = one("SELECT count(*) FROM captures c LEFT JOIN distillation_runs d ON d.capture_id=c.id WHERE d.capture_id IS NULL")
     report["distillation_runs_with_zero_objects"] = one("SELECT count(*) FROM distillation_runs d LEFT JOIN object_sources s ON s.capture_id=d.capture_id WHERE s.capture_id IS NULL")
     report["objects_by_kind"] = dict(c.execute("SELECT kind, count(*) FROM knowledge_objects GROUP BY kind"))

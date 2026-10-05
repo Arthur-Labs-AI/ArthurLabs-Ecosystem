@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Capture, MicrophonePermissionState, VoiceCaptureErrorCode } from "@arthur/contracts";
 import { VoiceCaptureError } from "../../client/arthur-client";
 import { useArthurClient } from "../../hooks/use-arthur-client";
+import { useProjects } from "../projects/projects-context";
 
 export type VoiceState = "idle" | "starting" | "recording" | "transcribing";
 
@@ -39,6 +40,13 @@ export interface CapturesState {
   discardVoice: () => Promise<void>;
   /** Discards an in-progress recording without transcribing it. */
   cancelVoice: () => Promise<void>;
+  /**
+   * A capture by id: from the active project's list, or from the ones fetched by `ensure`. Provenance needs this because
+   * an idea can live in a different project than the Capture it came from.
+   */
+  captureOf: (captureId: string) => Capture | undefined;
+  /** Fetches (in ONE request) the captures among `captureIds` that are not in the active project's list, once each. */
+  ensure: (captureIds: readonly string[]) => void;
   /** Resolves true when the capture was durably saved. */
   save: (content: string) => Promise<boolean>;
   voiceState: VoiceState;
@@ -57,6 +65,13 @@ const failureOf = (error: unknown): VoiceFailure => ({ code: error instanceof Vo
 
 export function useCapturesState(): CapturesState {
   const client = useArthurClient();
+  const { activeProjectId, dataVersion } = useProjects();
+  // The project a capture is made in is the one active when it is made, read at that moment (not at render time).
+  const activeRef = useRef<string | null>(activeProjectId);
+  activeRef.current = activeProjectId;
+  const shownScope = useRef<string | null>(null);
+  /** The active project now. Normally already known; a capture made before the first read finishes asks the store itself. */
+  const currentProjectId = useCallback(async (): Promise<string> => activeRef.current ?? (await client.getActiveProject()).id, [client]);
   const [status, setStatus] = useState<CapturesState["status"]>("loading");
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [saving, setSaving] = useState(false);
@@ -74,9 +89,15 @@ export function useCapturesState(): CapturesState {
   }, []);
 
   useEffect(() => {
+    // Captures are scoped to the active project; wait until it is known.
+    if (activeProjectId === null) return;
     let cancelled = false;
+    if (shownScope.current !== activeProjectId) {
+      shownScope.current = activeProjectId;
+      setCaptures([]); // never show the previous project's captures while this one loads
+    }
     setStatus("loading");
-    client.listCaptures().then(
+    client.listCaptures({ projectId: activeProjectId }).then(
       (loaded) => {
         if (cancelled) return;
         setCaptures(loaded);
@@ -92,7 +113,7 @@ export function useCapturesState(): CapturesState {
     return () => {
       cancelled = true;
     };
-  }, [client]);
+  }, [client, activeProjectId, dataVersion]);
 
   // The permission is only ever READ here: reading must never prompt. It is re-read when the app returns to the
   // foreground, which is how a user who just allowed the microphone in the system settings is noticed.
@@ -122,6 +143,25 @@ export function useCapturesState(): CapturesState {
     if (micPermission === "granted") setVoiceFailure((current) => (current?.code === "microphone_permission_denied" ? null : current));
   }, [micPermission]);
 
+  const [others, setOthers] = useState<ReadonlyMap<string, Capture>>(new Map());
+  const asked = useRef(new Set<string>());
+  const byId = useMemo(() => new Map(captures.map((capture) => [capture.id, capture])), [captures]);
+  const captureOf = useCallback((captureId: string) => byId.get(captureId) ?? others.get(captureId), [byId, others]);
+  const ensure = useCallback(
+    (captureIds: readonly string[]) => {
+      // Until the active project's own list has loaded, "missing" would just mean "not loaded yet".
+      if (status !== "ready") return;
+      const missing = [...new Set(captureIds)].filter((id) => !byId.has(id) && !asked.current.has(id));
+      if (missing.length === 0) return;
+      for (const id of missing) asked.current.add(id);
+      client.getCaptures(missing).then(
+        (found) => setOthers((current) => new Map([...current, ...found.map((capture): [string, Capture] => [capture.id, capture])])),
+        () => missing.forEach((id) => asked.current.delete(id)),
+      );
+    },
+    [client, byId, status],
+  );
+
   const listeners = useRef(new Set<(capture: Capture) => void>());
   const subscribe = useCallback((listener: (capture: Capture) => void) => {
     listeners.current.add(listener);
@@ -131,7 +171,8 @@ export function useCapturesState(): CapturesState {
   }, []);
 
   const addCapture = useCallback((created: Capture) => {
-    setCaptures((current) => [created, ...current]);
+    // A capture finished after the user switched project belongs to the project it was made in: it is not shown in this one.
+    if (created.projectId === activeRef.current) setCaptures((current) => [created, ...current]);
     setError(null);
     setVoiceFailure(null);
     setStatus("ready");
@@ -150,7 +191,7 @@ export function useCapturesState(): CapturesState {
       setSaving(true);
       try {
         const wasKept = keptRef.current;
-        addCapture(await client.createCapture({ source: "text", content }));
+        addCapture(await client.createCapture({ source: "text", content, projectId: await currentProjectId() }));
         if (wasKept) void client.discardVoiceRecording().catch(() => undefined); // typing it instead leaves the retry flow
         return true;
       } catch (failure) {
@@ -160,7 +201,7 @@ export function useCapturesState(): CapturesState {
         setSaving(false);
       }
     },
-    [client, addCapture],
+    [client, addCapture, currentProjectId],
   );
 
   const startVoice = useCallback(async () => {
@@ -185,14 +226,14 @@ export function useCapturesState(): CapturesState {
     if (voiceRef.current !== "recording") return;
     changeVoiceState("transcribing");
     try {
-      addCapture(await client.finishVoiceCapture());
+      addCapture(await client.finishVoiceCapture(await currentProjectId()));
     } catch (failure) {
       setError(messageOf(failure));
       setVoiceFailure(failureOf(failure));
     } finally {
       changeVoiceState("idle");
     }
-  }, [client, addCapture, changeVoiceState]);
+  }, [client, addCapture, changeVoiceState, currentProjectId]);
 
   const retryVoice = useCallback(async () => {
     if (voiceRef.current !== "idle") return;
@@ -200,14 +241,14 @@ export function useCapturesState(): CapturesState {
     setError(null);
     setVoiceFailure(null);
     try {
-      addCapture(await client.retryVoiceTranscription());
+      addCapture(await client.retryVoiceTranscription(await currentProjectId()));
     } catch (failure) {
       setError(messageOf(failure));
       setVoiceFailure(failureOf(failure));
     } finally {
       changeVoiceState("idle");
     }
-  }, [client, addCapture, changeVoiceState]);
+  }, [client, addCapture, changeVoiceState, currentProjectId]);
 
   const discardVoice = useCallback(async () => {
     setVoiceFailure((current) => (current?.code === "stt_retryable" ? null : current));
@@ -254,5 +295,5 @@ export function useCapturesState(): CapturesState {
     };
   }, [client, changeVoiceState]);
 
-  return { status, captures, saving, error, save, voiceState, startVoice, stopVoice, voiceFailure, dismissVoiceFailure, micPermission, micKnownGranted: micPermission === "granted", openAppSettings, retryVoice, discardVoice, cancelVoice, subscribe };
+  return { status, captures, captureOf, ensure, saving, error, save, voiceState, startVoice, stopVoice, voiceFailure, dismissVoiceFailure, micPermission, micKnownGranted: micPermission === "granted", openAppSettings, retryVoice, discardVoice, cancelVoice, subscribe };
 }

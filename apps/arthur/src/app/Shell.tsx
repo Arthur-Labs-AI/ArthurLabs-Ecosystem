@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useCaptures } from "../features/capture/captures-context";
 import { useKnowledge } from "../features/knowledge/knowledge-context";
+import { ProjectSwitcher } from "../features/projects/ProjectSwitcher";
 import { Icon, Mark, type IconName } from "../components/icons";
 import { useNavigation, type Screen } from "./navigation";
 import { isMod, modLabel } from "./shortcuts";
@@ -47,6 +48,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <Mark />
           <b>Arthur</b>
         </div>
+        <ProjectSwitcher />
         <button type="button" className="capture-btn" onClick={openCapture}>
           <Icon name="plus" />
           Capture

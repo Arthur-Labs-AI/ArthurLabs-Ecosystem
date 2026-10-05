@@ -1,11 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
-import type { CognitiveRelation, CreateRelationInput } from "@arthur/contracts";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { CognitiveRelation, CreateRelationInput, ExternalObject } from "@arthur/contracts";
 import { useArthurClient } from "../../hooks/use-arthur-client";
+import { useProjects } from "../projects/projects-context";
 
 export interface GraphState {
   status: "loading" | "ready" | "error";
-  /** Oldest first, as the client returns them. */
+  /**
+   * Oldest first. The ACTIVE project's graph projection: relations between its own ideas, plus those that cross to another
+   * project (whose far end is in `externalObjects`). Nothing else from other projects.
+   */
   relations: CognitiveRelation[];
+  /** The far ends of the cross-project relations, each with the project it belongs to. Never the rest of that project. */
+  externalObjects: ExternalObject[];
   inferring: boolean;
   creating: boolean;
   /** A non-error outcome worth telling the user, e.g. how many relations an inference run added. */
@@ -22,20 +28,30 @@ const messageOf = (error: unknown): string => (error instanceof Error ? error.me
 
 export function useGraph(): GraphState {
   const client = useArthurClient();
+  const { activeProjectId, dataVersion } = useProjects();
   const [status, setStatus] = useState<GraphState["status"]>("loading");
   const [relations, setRelations] = useState<CognitiveRelation[]>([]);
+  const [externalObjects, setExternalObjects] = useState<ExternalObject[]>([]);
+  const shownScope = useRef<string | null>(null);
   const [inferring, setInferring] = useState(false);
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (activeProjectId === null) return;
     let cancelled = false;
+    if (shownScope.current !== activeProjectId) {
+      shownScope.current = activeProjectId;
+      setRelations([]);
+      setExternalObjects([]);
+    }
     setStatus("loading");
-    client.listRelations().then(
+    client.getProjectGraph(activeProjectId).then(
       (loaded) => {
         if (cancelled) return;
-        setRelations(loaded);
+        setRelations(loaded.relations);
+        setExternalObjects(loaded.externalObjects);
         setStatus("ready");
       },
       (failure: unknown) => {
@@ -47,18 +63,21 @@ export function useGraph(): GraphState {
     return () => {
       cancelled = true;
     };
-  }, [client]);
+  }, [client, activeProjectId, dataVersion]);
 
   /** Re-reads from the store, so what is shown is exactly what is persisted. */
   const refresh = useCallback(async () => {
+    if (activeProjectId === null) return;
     try {
-      setRelations(await client.listRelations());
+      const loaded = await client.getProjectGraph(activeProjectId);
+      setRelations(loaded.relations);
+      setExternalObjects(loaded.externalObjects);
       setStatus("ready");
       setError(null);
     } catch (failure) {
       setError(messageOf(failure));
     }
-  }, [client]);
+  }, [client, activeProjectId]);
 
   const infer = useCallback(async (objectIds?: string[]) => {
     if (inferring) return;
@@ -66,7 +85,7 @@ export function useGraph(): GraphState {
     setError(null);
     setNotice(null);
     try {
-      const added = await client.inferRelations(objectIds);
+      const added = await client.inferRelations(objectIds, activeProjectId === null ? undefined : { projectId: activeProjectId });
       setNotice(added.length === 0 ? "No new connections found." : `Added ${added.length} ${added.length === 1 ? "connection" : "connections"}.`);
       await refresh();
     } catch (failure) {
@@ -74,7 +93,7 @@ export function useGraph(): GraphState {
     } finally {
       setInferring(false);
     }
-  }, [client, inferring, refresh]);
+  }, [client, inferring, refresh, activeProjectId]);
 
   const create = useCallback(
     async (input: CreateRelationInput) => {
@@ -97,5 +116,5 @@ export function useGraph(): GraphState {
     [client, creating, refresh],
   );
 
-  return { status, relations, inferring, creating, notice, error, refresh, infer, create };
+  return { status, relations, externalObjects, inferring, creating, notice, error, refresh, infer, create };
 }

@@ -473,7 +473,7 @@ mod tests {
     /// One capture, distilled into one object (and so one initial revision).
     fn setup() -> (CaptureStore, Capture, KnowledgeObject) {
         let store = CaptureStore::open_in_memory().unwrap();
-        let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into() }).unwrap();
+        let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into(), project_id: None }).unwrap();
         let object = store
             .record_distillation(&capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: "Organize ideas".into(), body: TEXT.into(), source_start: 0, source_end: 46 }])
             .unwrap()
@@ -672,7 +672,7 @@ mod tests {
     fn invalid_parents_are_rejected_for_every_operation() {
         let (store, capture, object, r1, r2, _r3) = r1_r2_r3();
         let other = store
-            .record_distillation(&store.create(CreateCaptureInput { source: "text".into(), content: "A second object here".into() }).unwrap().id, vec![NewKnowledgeObject { kind: "note".into(), title: "Other".into(), body: "Other".into(), source_start: 0, source_end: 5 }])
+            .record_distillation(&store.create(CreateCaptureInput { source: "text".into(), content: "A second object here".into(), project_id: None }).unwrap().id, vec![NewKnowledgeObject { kind: "note".into(), title: "Other".into(), body: "Other".into(), source_start: 0, source_end: 5 }])
             .unwrap()
             .remove(0);
         let foreign = store.object_lineage(&other.id).unwrap().revisions.remove(0);
@@ -729,7 +729,7 @@ mod tests {
     #[test]
     fn the_database_itself_refuses_self_duplicate_cyclic_cross_object_and_backwards_parent_edges() {
         let (store, _object, r) = chain();
-        let other_capture = store.create(CreateCaptureInput { source: "text".into(), content: "Something else entirely".into() }).unwrap();
+        let other_capture = store.create(CreateCaptureInput { source: "text".into(), content: "Something else entirely".into(), project_id: None }).unwrap();
         let other = store.record_distillation(&other_capture.id, vec![NewKnowledgeObject { kind: "note".into(), title: "O".into(), body: "O".into(), source_start: 0, source_end: 5 }]).unwrap().remove(0);
         let foreign = store.object_lineage(&other.id).unwrap().revisions.remove(0);
         let connection = store.connection.lock().unwrap();
@@ -781,7 +781,7 @@ mod tests {
     #[test]
     fn a_pointer_to_another_objects_revision_is_refused() {
         let (store, _capture, object) = setup();
-        let other_capture = store.create(CreateCaptureInput { source: "text".into(), content: "Totally different".into() }).unwrap();
+        let other_capture = store.create(CreateCaptureInput { source: "text".into(), content: "Totally different".into(), project_id: None }).unwrap();
         let other = store.record_distillation(&other_capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: "Organize ideas".into(), body: TEXT.into(), source_start: 0, source_end: 5 }]).unwrap().remove(0);
         let foreign = store.object_lineage(&other.id).unwrap().revisions.remove(0);
         // Same text on purpose: only the ownership check can refuse this.
@@ -875,7 +875,7 @@ mod tests {
         let (store, capture, object) = setup();
         let r1 = store.object_lineage(&object.id).unwrap().revisions.remove(0);
         let later = "Update: Arthur must also connect related ideas into a graph.";
-        let new_capture = store.create(CreateCaptureInput { source: "voice".into(), content: later.into() }).unwrap();
+        let new_capture = store.create(CreateCaptureInput { source: "voice".into(), content: later.into(), project_id: None }).unwrap();
 
         let r2 = store
             .revise_from_capture(&object.id, None, SourceSpan { capture_id: new_capture.id.clone(), start: 8, end: 59 }, change(Some("Organize and connect ideas"), Some("Arthur should organize ideas and connect them into a graph."), None), true)
@@ -888,7 +888,7 @@ mod tests {
         assert_eq!(lineage.revisions[0].provenance.as_ref().unwrap().capture_id, capture.id, "the initial revision still points at the first capture");
         assert_eq!(store.get_capture(&new_capture.id).unwrap().unwrap().content, later);
         // A branch from an old revision, from yet another capture, with an explicit parent.
-        let third = store.create(CreateCaptureInput { source: "text".into(), content: "Keep the original notes unchanged".into() }).unwrap();
+        let third = store.create(CreateCaptureInput { source: "text".into(), content: "Keep the original notes unchanged".into(), project_id: None }).unwrap();
         let r3 = store.revise_from_capture(&object.id, Some(&r1.id), SourceSpan { capture_id: third.id.clone(), start: 0, end: 33 }, body("Arthur should leave my notes unchanged."), false).unwrap();
         assert_eq!((r3.parent_revision_ids, current(&store, &object)), (vec![r1.id.clone()], r2.id.clone()));
     }
@@ -915,9 +915,9 @@ mod tests {
     #[test]
     fn spans_count_code_points_so_bulgarian_text_and_emoji_resolve_exactly() {
         let store = CaptureStore::open_in_memory().unwrap();
-        let first = store.create(CreateCaptureInput { source: "text".into(), content: "Идея 😀 за запис".into() }).unwrap();
+        let first = store.create(CreateCaptureInput { source: "text".into(), content: "Идея 😀 за запис".into(), project_id: None }).unwrap();
         let object = store.record_distillation(&first.id, vec![NewKnowledgeObject { kind: "idea".into(), title: "Идея".into(), body: "Идея за запис".into(), source_start: 0, source_end: 4 }]).unwrap().remove(0);
-        let next = store.create(CreateCaptureInput { source: "text".into(), content: "Допълнение 🎉 тук".into() }).unwrap();
+        let next = store.create(CreateCaptureInput { source: "text".into(), content: "Допълнение 🎉 тук".into(), project_id: None }).unwrap();
         let length = next.content.chars().count() as i64;
         assert_eq!(length, 16, "the emoji is ONE code point (two UTF-16 units, four bytes)");
         // "🎉 тук" is code points 11..16.
@@ -932,7 +932,7 @@ mod tests {
     #[test]
     fn graph_relations_survive_edits_branches_and_merges_untouched() {
         let (store, _capture, object, r1, r2, r3) = r1_r2_r3();
-        let other_capture = store.create(CreateCaptureInput { source: "text".into(), content: "A related thought".into() }).unwrap();
+        let other_capture = store.create(CreateCaptureInput { source: "text".into(), content: "A related thought".into(), project_id: None }).unwrap();
         let other = store.record_distillation(&other_capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: "Related".into(), body: "Related".into(), source_start: 0, source_end: 5 }]).unwrap().remove(0);
         let extends = store.create_relation(NewRelation { kind: "extends".into(), source_object_id: other.id.clone(), target_object_id: object.id.clone() }, "user").unwrap();
         let supersedes = store.create_relation(NewRelation { kind: "supersedes".into(), source_object_id: other.id.clone(), target_object_id: object.id.clone() }, "user").unwrap();
@@ -992,7 +992,7 @@ mod tests {
         let inserted: String = diff.body.segments.iter().filter(|s| s.op == crate::lineage::diff::Op::Insert).map(|s| s.text.as_str()).collect();
         assert_eq!(inserted, " and connect related ideas");
         assert!(!store.diff_revisions(&r1.id, &r1.id).unwrap().body.changed);
-        let other_capture = store.create(CreateCaptureInput { source: "text".into(), content: "Another".into() }).unwrap();
+        let other_capture = store.create(CreateCaptureInput { source: "text".into(), content: "Another".into(), project_id: None }).unwrap();
         let other = store.record_distillation(&other_capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: "O".into(), body: "O".into(), source_start: 0, source_end: 3 }]).unwrap().remove(0);
         let foreign = store.object_lineage(&other.id).unwrap().revisions.remove(0);
         assert!(matches!(store.diff_revisions(&r1.id, &foreign.id), Err(StoreError::Invalid(_))));
@@ -1008,7 +1008,7 @@ mod tests {
         let path = dir.path().join("arthur.db");
         let (before, object_id) = {
             let store = CaptureStore::open(&path).unwrap();
-            let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into() }).unwrap();
+            let capture = store.create(CreateCaptureInput { source: "text".into(), content: TEXT.into(), project_id: None }).unwrap();
             let object = store.record_distillation(&capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: "T".into(), body: TEXT.into(), source_start: 0, source_end: 46 }]).unwrap().remove(0);
             let r1 = store.object_lineage(&object.id).unwrap().revisions.remove(0);
             let r2 = store.update_object(&object.id, body("Edited")).unwrap();

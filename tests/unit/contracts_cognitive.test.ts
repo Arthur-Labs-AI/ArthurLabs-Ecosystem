@@ -21,6 +21,7 @@ const valid = {
   body: "Email Ignatov about the competition.",
   createdAt: "2026-10-04T12:00:00Z",
   provenance: { captureId: "c1", sourceStart: 3, sourceEnd: 20 },
+  projectId: "00000000-0000-4000-8000-000000000001",
 };
 
 test("every supported kind is a valid kind and nothing else is", () => {

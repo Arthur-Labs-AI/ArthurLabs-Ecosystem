@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { isMod, modLabel } from "../../app/shortcuts";
 import { useArthurClient } from "../../hooks/use-arthur-client";
 import { Icon } from "../../components/icons";
+import { useProjects } from "../projects/projects-context";
 import { useCaptures } from "./captures-context";
 import type { VoiceState } from "./use-captures";
 import "./capture.css";
@@ -19,6 +20,7 @@ const VOICE_STATUS: Partial<Record<VoiceState, string>> = {
 export function CaptureComposer({ compact = false, autoFocus = false, onSaved }: { compact?: boolean; autoFocus?: boolean; onSaved?: () => void }) {
   const client = useArthurClient();
   const { saving, error, save, voiceState, startVoice, stopVoice } = useCaptures();
+  const { active } = useProjects();
   const [draft, setDraft] = useState("");
   const input = useRef<HTMLTextAreaElement>(null);
 
@@ -81,6 +83,7 @@ export function CaptureComposer({ compact = false, autoFocus = false, onSaved }:
             </button>
           ))}
         <span className="spacer" />
+        {active && !active.isInbox && <span className="hint into">Into {active.name}</span>}
         <span className="hint">Arthur organizes it after you capture</span>
         <button type="submit" className="btn primary" disabled={saving || draft.trim().length === 0}>
           {saving ? "Saving…" : "Capture"} <kbd style={{ borderColor: "currentColor", color: "inherit", opacity: 0.6 }}>{modLabel()}↵</kbd>

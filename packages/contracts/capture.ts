@@ -20,16 +20,22 @@ export interface Capture {
   content: string;
   /** ISO-8601 (RFC 3339) timestamp assigned by the store. */
   createdAt: string;
+  /** The project this capture belongs to (M03.2). Organizational context: moving it never rewrites `content`. */
+  projectId: string;
 }
 
 /** What a caller supplies. Identity and time are assigned by the store, never by the caller. */
 export interface CreateCaptureInput {
   source: CaptureSourceKind;
   content: string;
+  /** The project to capture into. The UI sends the active project; omitted means the Inbox. */
+  projectId?: string;
 }
 
 /** Mirrored by the native store; keep both in sync. */
 export const MAX_CAPTURE_CONTENT_CHARS = 20_000;
+/** Most ids one `getCaptures` request may carry. Mirrored by the native store. */
+export const MAX_CAPTURE_LOOKUP = 1_000;
 
 export function isCaptureSourceKind(value: unknown): value is CaptureSourceKind {
   return typeof value === "string" && (CAPTURE_SOURCE_KINDS as readonly string[]).includes(value);
@@ -38,7 +44,8 @@ export function isCaptureSourceKind(value: unknown): value is CaptureSourceKind 
 /** Returns why `value` is not a valid create request, or `null` when it is valid. */
 export function describeCreateCaptureInputProblem(value: unknown): string | null {
   if (typeof value !== "object" || value === null) return "input must be an object";
-  const { source, content } = value as Record<string, unknown>;
+  const { source, content, projectId } = value as Record<string, unknown>;
+  if (projectId !== undefined && (typeof projectId !== "string" || projectId.length === 0)) return "projectId must be a non-empty string";
   if (!isCaptureSourceKind(source)) return "source is not a known capture source";
   if (typeof content !== "string") return "content must be a string";
   if (content.trim().length === 0) return "content is empty";
@@ -61,7 +68,9 @@ export function isCapture(value: unknown): value is Capture {
     isCaptureSourceKind(candidate.source) &&
     typeof candidate.content === "string" &&
     candidate.content.trim().length > 0 &&
-    isCaptureTimestamp(candidate.createdAt)
+    isCaptureTimestamp(candidate.createdAt) &&
+    typeof candidate.projectId === "string" &&
+    candidate.projectId.length > 0
   );
 }
 

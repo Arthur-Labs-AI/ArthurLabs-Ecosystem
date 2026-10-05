@@ -11,7 +11,7 @@ const px = (block: string, property: string): number => Number(new RegExp(`${pro
 
 describe("mobile.css", () => {
   it("keeps every primary control at or above the 44px floor, and the main buttons at 48px", () => {
-    for (const selector of [".m-iconbtn", ".m-mapctl button", ".m-tog button", ".m-pbtn.sm"]) {
+    for (const selector of [".m-iconbtn", ".m-mapctl button", ".m-tog button", ".m-pbtn.sm", ".m-pchip"]) {
       const block = rule(selector);
       expect(px(block, "height"), selector).toBeGreaterThanOrEqual(44);
     }
@@ -21,6 +21,9 @@ describe("mobile.css", () => {
     expect(px(rule(".m-hseg button"), "min-width")).toBeGreaterThanOrEqual(44);
     expect(px(rule(".m-hseg button"), "min-height")).toBeGreaterThanOrEqual(44);
     expect(px(rule(".m-speak"), "height")).toBeGreaterThanOrEqual(48);
+    // The project chip and the rows of the project sheet are touch targets too.
+    expect(px(rule(".m-pchip"), "min-height")).toBeGreaterThanOrEqual(44);
+    expect(px(rule(".m-prow"), "min-height")).toBeGreaterThanOrEqual(48);
     expect(px(rule(".m-kbbtn"), "height")).toBeGreaterThanOrEqual(48);
     expect(px(rule(".m-rec-stop"), "height")).toBeGreaterThanOrEqual(48);
   });

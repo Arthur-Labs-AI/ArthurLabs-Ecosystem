@@ -5,6 +5,7 @@ import { VoiceCaptureError } from "../../client/arthur-client";
 import { createPreviewClient } from "../../client/preview-client";
 import { ArthurProviders } from "../../app/providers";
 import { NOTHING, deferred, renderApp } from "../../test/render";
+import { INBOX_PROJECT_ID } from "@arthur/contracts";
 import { useCaptures } from "./captures-context";
 
 const quiet = (extra: Parameters<typeof createPreviewClient>[0] = {}) => createPreviewClient({ distillation: NOTHING, ...extra });
@@ -43,7 +44,7 @@ describe("Home composer: text capture", () => {
     capture();
 
     expect(await screen.findByText("benchmark EMG latency")).toBeTruthy();
-    expect(createCapture).toHaveBeenCalledExactlyOnceWith({ source: "text", content: "  benchmark EMG latency  " });
+    expect(createCapture).toHaveBeenCalledExactlyOnceWith({ source: "text", content: "  benchmark EMG latency  ", projectId: INBOX_PROJECT_ID });
     expect(thought().value).toBe("");
   });
 
@@ -189,7 +190,7 @@ describe("Home composer: voice capture", () => {
     await screen.findByText("Preview voice capture.");
 
     expect(start).toHaveBeenCalledExactlyOnceWith();
-    expect(finish).toHaveBeenCalledExactlyOnceWith();
+    expect(finish).toHaveBeenCalledExactlyOnceWith(INBOX_PROJECT_ID); // the capture goes into the active project
   });
 
   it("discards an in-progress recording when the app goes away", async () => {

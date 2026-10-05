@@ -23,6 +23,10 @@ export interface MobileNav {
   setTyping: (open: boolean) => void;
   /** Tell the user how Speak will ask for the microphone. Set only by the Capture tab when it did not start recording. */
   micHint: boolean;
+  /** The project sheet (switch, create, rename, archive) is open. A Back layer of its own, closed by Back before anything else. */
+  projectSheet: boolean;
+  openProjectSheet: () => void;
+  closeProjectSheet: () => void;
   /** The Capture tab. Records straight away only when the microphone is already known to work. */
   capture: () => void;
 }
@@ -37,6 +41,9 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
   const [connectionsView, setConnectionsView] = useState<ConnectionsView>("list");
   const [typing, setTypingState] = useState(false);
   const [micHint, setMicHint] = useState(false);
+  const [projectSheet, setProjectSheet] = useState(false);
+  const openProjectSheet = useCallback(() => setProjectSheet(true), []);
+  const closeProjectSheet = useCallback(() => setProjectSheet(false), []);
 
   const openIdea = useCallback((id: string) => setPages((current) => [...current, { kind: "idea", id }]), []);
   const openSettings = useCallback(() => setPages((current) => (current.at(-1)?.kind === "settings" ? current : [...current, { kind: "settings" }])), []);
@@ -68,8 +75,8 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
   }, [go, client, micKnownGranted, voiceState, startVoice, setTyping]);
 
   const value = useMemo<MobileNav>(
-    () => ({ pages, openIdea, openSettings, closePage, closeAllPages, connectionsView, setConnectionsView, typing, setTyping, micHint, capture }),
-    [pages, openIdea, openSettings, closePage, closeAllPages, connectionsView, typing, setTyping, micHint, capture],
+    () => ({ pages, openIdea, openSettings, closePage, closeAllPages, connectionsView, setConnectionsView, typing, setTyping, micHint, projectSheet, openProjectSheet, closeProjectSheet, capture }),
+    [pages, openIdea, openSettings, closePage, closeAllPages, connectionsView, typing, setTyping, micHint, projectSheet, openProjectSheet, closeProjectSheet, capture],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

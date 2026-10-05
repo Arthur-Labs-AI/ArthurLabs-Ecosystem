@@ -328,7 +328,7 @@ mod tests {
     const D: &str = "44444444-4444-4444-8444-444444444444";
 
     fn object(id: &str, at: &str) -> KnowledgeObject {
-        KnowledgeObject { id: id.into(), kind: "idea".into(), title: id[..2].into(), body: "b".into(), created_at: at.into(), provenance: Provenance { capture_id: "c".into(), source_start: 0, source_end: 1 } }
+        KnowledgeObject { id: id.into(), kind: "idea".into(), title: id[..2].into(), body: "b".into(), created_at: at.into(), provenance: Provenance { capture_id: "c".into(), source_start: 0, source_end: 1 }, project_id: "p".into() }
     }
 
     fn candidate(index: usize, kind: &str, source: &str, target: &str) -> VerifyCandidate {

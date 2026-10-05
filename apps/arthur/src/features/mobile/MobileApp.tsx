@@ -8,6 +8,7 @@ import { MobileEvolution } from "./MobileEvolution";
 import { MobileHome } from "./MobileHome";
 import { MobileIdeaDetail } from "./MobileIdeaDetail";
 import { MobileIdeas } from "./MobileIdeas";
+import { ProjectChip, ProjectSheet } from "./MobileProjects";
 import { MobileSettings } from "./MobileSettings";
 import { MobileNavProvider, useMobileNav } from "./mobile-nav";
 import { useViewport } from "./use-viewport";
@@ -27,9 +28,12 @@ const RIGHT: { screen: Tab; label: string; icon: IconName }[] = [
 export function SettingsButton() {
   const { openSettings } = useMobileNav();
   return (
-    <button type="button" className="m-iconbtn" aria-label="Settings" onClick={openSettings}>
-      <Icon name="settings" />
-    </button>
+    <>
+      <ProjectChip />
+      <button type="button" className="m-iconbtn" aria-label="Settings" onClick={openSettings}>
+        <Icon name="settings" />
+      </button>
+    </>
   );
 }
 
@@ -141,7 +145,7 @@ function TabBar() {
 
 function Frame() {
   const { screen } = useNavigation();
-  const { pages, typing } = useMobileNav();
+  const { pages, typing, projectSheet } = useMobileNav();
   const { voiceState, voiceFailure, discardVoice } = useCaptures();
   const { height, keyboardOpen } = useViewport();
   const top = pages.at(-1);
@@ -174,6 +178,7 @@ function Frame() {
       {top?.kind === "idea" && <MobileIdeaDetail key={`${pages.length}-${top.id}`} objectId={top.id} />}
       {top?.kind === "settings" && <MobileSettings />}
       {!hideBar && <TabBar />}
+      {projectSheet && <ProjectSheet />}
       {recording && <Recording />}
     </div>
   );

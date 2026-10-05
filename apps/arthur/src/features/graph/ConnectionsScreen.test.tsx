@@ -1,3 +1,4 @@
+import { INBOX_PROJECT_ID } from "@arthur/contracts";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { KnowledgeObject } from "@arthur/contracts";
@@ -202,7 +203,7 @@ describe("ConnectionsScreen", () => {
     fireEvent.click(node("Email Ignatov"));
 
     fireEvent.click(within(details()).getByRole("button", { name: "Find for this idea" }));
-    await waitFor(() => expect(infer).toHaveBeenCalledWith([by("Email Ignatov").id]));
+    await waitFor(() => expect(infer).toHaveBeenCalledWith([by("Email Ignatov").id], { projectId: INBOX_PROJECT_ID })); // project-local
   });
 
   it("hiding a relation kind or an origin removes edges but NEVER moves a node", async () => {

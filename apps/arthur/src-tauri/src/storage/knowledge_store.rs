@@ -38,6 +38,8 @@ pub struct KnowledgeObject {
     pub body: String,
     pub created_at: String,
     pub provenance: Provenance,
+    /// The project this object belongs to (schema v6). Movable independently of its capture; moving never changes content.
+    pub project_id: String,
 }
 
 /// A candidate object. Identity and time are assigned by the store, never by the caller.
@@ -50,7 +52,7 @@ pub struct NewKnowledgeObject {
     pub source_end: i64,
 }
 
-const OBJECT_COLUMNS: &str = "o.id, o.kind, o.title, o.body, o.created_at, s.capture_id, s.source_start, s.source_end, length(c.content), cr.kind, cr.title, cr.body";
+const OBJECT_COLUMNS: &str = "o.id, o.kind, o.title, o.body, o.created_at, s.capture_id, s.source_start, s.source_end, length(c.content), cr.kind, cr.title, cr.body, o.project_id";
 const OBJECT_JOINS: &str = "knowledge_objects o \
      LEFT JOIN object_sources s ON s.object_id = o.id \
      LEFT JOIN captures c ON c.id = s.capture_id \
@@ -80,8 +82,9 @@ impl CaptureStore {
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
 
-        let content: String = transaction
-            .query_row("SELECT content FROM captures WHERE id = ?1", [capture_id], |row| row.get(0))
+        // The objects inherit the capture's project as it is NOW, in this same transaction.
+        let (content, project_id): (String, String) = transaction
+            .query_row("SELECT content, project_id FROM captures WHERE id = ?1", [capture_id], |row| Ok((row.get(0)?, row.get(1)?)))
             .optional()?
             .ok_or_else(|| StoreError::Invalid("capture does not exist".into()))?;
 
@@ -107,8 +110,8 @@ impl CaptureStore {
             let id = Uuid::new_v4().to_string();
             let created_at = now_rfc3339()?;
             transaction.execute(
-                "INSERT INTO knowledge_objects (id, kind, title, body, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![id, object.kind, object.title, object.body, created_at],
+                "INSERT INTO knowledge_objects (id, kind, title, body, created_at, project_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![id, object.kind, object.title, object.body, created_at, project_id],
             )?;
             transaction.execute(
                 "INSERT INTO object_sources (object_id, capture_id, source_start, source_end) VALUES (?1, ?2, ?3, ?4)",
@@ -133,6 +136,7 @@ impl CaptureStore {
                     source_start: object.source_start,
                     source_end: object.source_end,
                 },
+                project_id: project_id.clone(),
             });
         }
 
@@ -143,14 +147,25 @@ impl CaptureStore {
     /// Newest distillation first; within a distillation, in the order the text was written.
     /// Fails as a whole if any stored row is malformed or its provenance does not resolve.
     pub fn list_knowledge_objects(&self) -> Result<Vec<KnowledgeObject>, StoreError> {
+        self.list_knowledge_objects_in(None)
+    }
+
+    /// The same order, restricted to one project when `project_id` is given (an indexed lookup).
+    pub fn list_knowledge_objects_in(&self, project_id: Option<&str>) -> Result<Vec<KnowledgeObject>, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let sql = format!(
             "SELECT {OBJECT_COLUMNS} FROM {OBJECT_JOINS} \
              LEFT JOIN distillation_runs r ON r.capture_id = s.capture_id \
+             WHERE (?1 IS NULL OR o.project_id = ?1) \
              ORDER BY r.seq DESC, o.seq ASC"
         );
-        read_objects(&connection, &sql, [])
+        read_objects(&connection, &sql, [project_id])
     }
+}
+
+pub(super) fn get_object_in(connection: &Connection, object_id: &str) -> Result<Option<KnowledgeObject>, StoreError> {
+    let sql = format!("SELECT {OBJECT_COLUMNS} FROM {OBJECT_JOINS} WHERE o.id = ?1");
+    Ok(read_objects(connection, &sql, [object_id])?.pop())
 }
 
 fn distillation_in(connection: &Connection, capture_id: &str) -> Result<Option<Vec<KnowledgeObject>>, StoreError> {
@@ -179,12 +194,13 @@ fn read_objects<P: rusqlite::Params>(connection: &Connection, sql: &str, params:
             row.get::<_, Option<i64>>(7)?,
             row.get::<_, Option<i64>>(8)?,
             (row.get::<_, Option<String>>(9)?, row.get::<_, Option<String>>(10)?, row.get::<_, Option<String>>(11)?),
+            row.get::<_, Option<String>>(12)?,
         ))
     })?;
 
     let mut objects = Vec::new();
     for row in rows {
-        let (id, kind, title, body, created_at, capture_id, start, end, capture_len, current) = row?;
+        let (id, kind, title, body, created_at, capture_id, start, end, capture_len, current, project_id) = row?;
         let corrupt = |reason: &str| StoreError::Corrupt(format!("knowledge object {id:?}: {reason}"));
         let (Some(capture_id), Some(source_start), Some(source_end), Some(capture_len)) = (capture_id, start, end, capture_len) else {
             return Err(corrupt("provenance does not resolve to a capture"));
@@ -207,6 +223,7 @@ fn read_objects<P: rusqlite::Params>(connection: &Connection, sql: &str, params:
             (None, _, _) | (_, None, _) | (_, _, None) => return Err(corrupt("it has no current revision")),
             _ => return Err(corrupt("it differs from its current revision")),
         }
+        let Some(project_id) = project_id else { return Err(corrupt("it belongs to no project")) };
         objects.push(KnowledgeObject {
             id,
             kind,
@@ -214,6 +231,7 @@ fn read_objects<P: rusqlite::Params>(connection: &Connection, sql: &str, params:
             body,
             created_at,
             provenance: Provenance { capture_id, source_start, source_end },
+            project_id,
         });
     }
     Ok(objects)
@@ -265,7 +283,7 @@ mod tests {
 
     fn store_with(content: &str) -> (CaptureStore, Capture) {
         let store = CaptureStore::open_in_memory().unwrap();
-        let capture = store.create(CreateCaptureInput { source: "text".into(), content: content.into() }).unwrap();
+        let capture = store.create(CreateCaptureInput { source: "text".into(), content: content.into(), project_id: None }).unwrap();
         (store, capture)
     }
 
@@ -451,8 +469,8 @@ mod tests {
     #[test]
     fn listing_is_newest_distillation_first_and_source_order_within_one() {
         let store = CaptureStore::open_in_memory().unwrap();
-        let first = store.create(CreateCaptureInput { source: "text".into(), content: "alpha beta".into() }).unwrap();
-        let second = store.create(CreateCaptureInput { source: "voice".into(), content: "gamma delta".into() }).unwrap();
+        let first = store.create(CreateCaptureInput { source: "text".into(), content: "alpha beta".into(), project_id: None }).unwrap();
+        let second = store.create(CreateCaptureInput { source: "voice".into(), content: "gamma delta".into(), project_id: None }).unwrap();
 
         // Candidates are supplied out of order; the store keeps reading order.
         store.record_distillation(&first.id, vec![object("note", "beta", "b", 6, 10), object("note", "alpha", "b", 0, 5)]).unwrap();
@@ -505,7 +523,7 @@ mod tests {
             .connection
             .lock()
             .unwrap()
-            .execute("INSERT INTO knowledge_objects (id, kind, title, body, created_at) VALUES ('x', 'idea', 't', 'b', '2026-01-01T00:00:00Z')", [])
+            .execute("INSERT INTO knowledge_objects (id, kind, title, body, created_at, project_id) VALUES ('x', 'idea', 't', 'b', '2026-01-01T00:00:00Z', '00000000-0000-4000-8000-000000000001')", [])
             .unwrap();
         assert!(matches!(store.list_knowledge_objects(), Err(StoreError::Corrupt(_))));
     }
@@ -517,7 +535,7 @@ mod tests {
         let value = serde_json::to_value(&stored[0]).unwrap();
         let mut keys: Vec<&String> = value.as_object().unwrap().keys().collect();
         keys.sort();
-        assert_eq!(keys, ["body", "createdAt", "id", "kind", "provenance", "title"]);
+        assert_eq!(keys, ["body", "createdAt", "id", "kind", "projectId", "provenance", "title"]);
         let mut provenance: Vec<&String> = value["provenance"].as_object().unwrap().keys().collect();
         provenance.sort();
         assert_eq!(provenance, ["captureId", "sourceEnd", "sourceStart"]);

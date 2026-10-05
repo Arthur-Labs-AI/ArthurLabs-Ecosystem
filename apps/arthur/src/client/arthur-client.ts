@@ -12,6 +12,10 @@ import type {
   MergeRevisionsInput,
   ObjectLineage,
   OrganizationState,
+  Project,
+  ProjectErrorCode,
+  ProjectGraph,
+  ProjectScope,
   RelationErrorCode,
   RelationFilter,
   RevisionChanges,
@@ -78,6 +82,17 @@ export class LineageError extends Error {
   }
 }
 
+/** A project operation failed. `code` says why; `message` is safe to show. */
+export class ProjectError extends Error {
+  readonly code: ProjectErrorCode;
+
+  constructor(code: ProjectErrorCode, message: string) {
+    super(message);
+    this.name = "ProjectError";
+    this.code = code;
+  }
+}
+
 /**
  * The only way the product UI talks to Arthur.
  *
@@ -92,16 +107,21 @@ export interface ArthurClient {
   getRuntimeInfo(): Promise<RuntimeInfo>;
   /** Persists a capture before resolving; the store assigns its id and timestamp. */
   createCapture(input: CreateCaptureInput): Promise<Capture>;
-  /** All persisted captures, newest first. */
-  listCaptures(): Promise<Capture[]>;
+  /**
+   * The captures with these ids, newest first, from ONE request and from any project. Unknown ids are absent. This is how
+   * provenance opens the original Capture even after the idea derived from it moved to another project.
+   */
+  getCaptures(captureIds: string[]): Promise<Capture[]>;
+  /** Persisted captures, newest first. With `scope.projectId`, only that project's; omitted, every project's. */
+  listCaptures(scope?: ProjectScope): Promise<Capture[]>;
 
   /** Starts recording the microphone. Rejects with a `VoiceCaptureError`. */
   startVoiceCapture(): Promise<void>;
   /**
    * Stops recording, transcribes the speech, and resolves with the persisted
-   * `source: "voice"` capture. The audio itself is never kept.
+   * `source: "voice"` capture, in `projectId` (the Inbox when omitted). The audio itself is never kept.
    */
-  finishVoiceCapture(): Promise<Capture>;
+  finishVoiceCapture(projectId?: string): Promise<Capture>;
   /** Discards an in-progress recording without transcribing it. */
   cancelVoiceCapture(): Promise<void>;
   /**
@@ -110,7 +130,7 @@ export interface ArthurClient {
    * Rejects with `stt_retryable` again (the recording is still kept, until its original deadline), with another
    * `VoiceCaptureError` (final: the audio is deleted), or `no_retained_recording` if there is nothing to retry.
    */
-  retryVoiceTranscription(): Promise<Capture>;
+  retryVoiceTranscription(projectId?: string): Promise<Capture>;
   /** Deletes the recording kept for a retry. Never fails; there may be nothing to delete. */
   discardVoiceRecording(): Promise<void>;
   /** The microphone permission, read without asking. Never shows a system dialog. */
@@ -124,18 +144,21 @@ export interface ArthurClient {
    * duplicates them. Rejects with a `DistillationError`.
    */
   distillCapture(captureId: string): Promise<KnowledgeObject[]>;
-  /** Every knowledge object: newest distillation first, in reading order within one. */
-  listKnowledgeObjects(): Promise<KnowledgeObject[]>;
+  /**
+   * Knowledge objects: newest distillation first, in reading order within one. With `scope.projectId`, only that
+   * project's; omitted, every project's.
+   */
+  listKnowledgeObjects(scope?: ProjectScope): Promise<KnowledgeObject[]>;
   /**
    * Whether each capture is pending, running, succeeded (maybe with zero objects) or failed. Durable: a failed
    * attempt is still `failed` after the app restarts, and `distillCapture` is the retry. One read for all captures.
    */
-  listOrganizationStates(): Promise<OrganizationState[]>;
+  listOrganizationStates(scope?: ProjectScope): Promise<OrganizationState[]>;
   /**
    * Connection and revision counts (and last-changed time) for many objects in ONE request. `objectIds` omitted:
    * every object. At most `MAX_SUMMARY_IDS` ids.
    */
-  getKnowledgeSummaries(objectIds?: string[]): Promise<KnowledgeSummary[]>;
+  getKnowledgeSummaries(objectIds?: string[], scope?: ProjectScope): Promise<KnowledgeSummary[]>;
 
   /**
    * Creates a user-authored relation between two existing knowledge objects. Id, timestamp and
@@ -159,8 +182,12 @@ export interface ArthurClient {
    * `objectIds`, if given). Only proposals that pass deterministic validation are stored, all or
    * nothing, with `origin: "model"`. Resolves with the relations this call ADDED: an empty list is a
    * valid result, and calling again never duplicates edges. Rejects with a `RelationError`.
+   *
+   * PROJECT-LOCAL: the candidates are objects of ONE project only (`scope.projectId`, else the project the requested
+   * objects share, else the Inbox). Relations across projects are never proposed by the model; manual and existing
+   * cross-project relations are unaffected.
    */
-  inferRelations(objectIds?: string[]): Promise<CognitiveRelation[]>;
+  inferRelations(objectIds?: string[], scope?: ProjectScope): Promise<CognitiveRelation[]>;
 
   // --- Thought Lineage -------------------------------------------------------------------------------------
   // How ONE knowledge object evolved: a DAG of immutable revisions. Separate from Capture provenance (where the
@@ -192,4 +219,33 @@ export interface ArthurClient {
   mergeRevisions(input: MergeRevisionsInput): Promise<ThoughtRevision>;
   /** A deterministic word-level diff between two revisions of the same object. */
   diffRevisions(oldRevisionId: string, newRevisionId: string): Promise<RevisionDiff>;
+
+  // --- Projects (Knowledge Spaces) --------------------------------------------------------------------------
+  // A project is a domain boundary that owns Captures and KnowledgeObjects. There is always exactly one Inbox, which
+  // cannot be archived or renamed. Projects are archived, never deleted. All rejections are `ProjectError`s.
+
+  /** Open projects, the Inbox first. `includeArchived` adds archived ones. Counts come from one query. */
+  listProjects(options?: { includeArchived?: boolean }): Promise<Project[]>;
+  getProject(projectId: string): Promise<Project>;
+  createProject(name: string): Promise<Project>;
+  renameProject(projectId: string, name: string): Promise<Project>;
+  /** Archives a project (idempotent). Its data stays; it accepts nothing new. If it was active, the Inbox becomes active. */
+  archiveProject(projectId: string): Promise<Project>;
+  restoreProject(projectId: string): Promise<Project>;
+  /**
+   * Moves a Capture. Its content is untouched, and so are the objects already distilled from it: they stay where
+   * they are. Objects distilled later inherit the new project.
+   */
+  moveCapture(captureId: string, projectId: string): Promise<Capture>;
+  /** Moves one KnowledgeObject. Same identity; no revision, provenance or lineage change. */
+  moveKnowledgeObject(objectId: string, projectId: string): Promise<KnowledgeObject>;
+  /**
+   * The active project, the default boundary of Home, Ideas, Connections and (later) recall. Persisted locally between
+   * launches; the Inbox when none is stored or the stored one was archived or removed.
+   */
+  getActiveProject(): Promise<Project>;
+  /** Rejects with `project_not_found` / `project_archived`. Resolves with the new active project. */
+  setActiveProject(projectId: string): Promise<Project>;
+  /** One project's graph: its objects, every relation touching them, and the far ends of cross-project relations. */
+  getProjectGraph(projectId: string): Promise<ProjectGraph>;
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KnowledgeObject } from "@arthur/contracts";
 import { useArthurClient } from "../../hooks/use-arthur-client";
+import { useProjects } from "../projects/projects-context";
 
 /**
  * Where one capture is in being organized into knowledge objects.
@@ -27,6 +28,11 @@ export interface KnowledgeState {
    * not be called "not organized yet": it may have been organized into nothing, or have a failure to show.
    */
   organizationLoaded: boolean;
+  /**
+   * Captures that were organized into at least one idea (in ANY project). A capture can be in this project while its ideas
+   * were moved elsewhere, so "no ideas here" does not mean "not organized".
+   */
+  organized: ReadonlySet<string>;
   /** Failure to LOAD or re-read knowledge. Distillation failures are per capture, in `jobs`. */
   error: string | null;
   /**
@@ -43,11 +49,17 @@ const messageOf = (error: unknown): string => (error instanceof Error ? error.me
 
 export function useKnowledgeState(): KnowledgeState {
   const client = useArthurClient();
+  const { activeProjectId, dataVersion } = useProjects();
+  /** What is shown is always the ACTIVE project's; a re-read after an organize run must use the project active NOW. */
+  const scopeRef = useRef<string | null>(activeProjectId);
+  scopeRef.current = activeProjectId;
+  const shownScope = useRef<string | null>(null);
   const [status, setStatus] = useState<KnowledgeState["status"]>("loading");
   const [objects, setObjects] = useState<KnowledgeObject[]>([]);
   const [distilling, setDistilling] = useState<string | null>(null);
   const [jobs, setJobs] = useState<ReadonlyMap<string, OrganizeJob>>(new Map());
   const [organizationLoaded, setOrganizationLoaded] = useState(false);
+  const [organized, setOrganized] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   // Mirrors for the serial queue, which must see the current values between awaits.
@@ -66,9 +78,14 @@ export function useKnowledgeState(): KnowledgeState {
   }, []);
 
   useEffect(() => {
+    if (activeProjectId === null) return;
     let cancelled = false;
+    if (shownScope.current !== activeProjectId) {
+      shownScope.current = activeProjectId;
+      setObjects([]); // never show the previous project's ideas while this one loads
+    }
     setStatus("loading");
-    client.listKnowledgeObjects().then(
+    client.listKnowledgeObjects({ projectId: activeProjectId }).then(
       (loaded) => {
         if (cancelled) return;
         setObjects(loaded);
@@ -83,17 +100,20 @@ export function useKnowledgeState(): KnowledgeState {
     return () => {
       cancelled = true;
     };
-  }, [client]);
+  }, [client, activeProjectId, dataVersion]);
 
   // What the previous run left behind: failures that must still offer a retry, and captures that were organized into
   // nothing. Both are durable in the native store, so this is read, not remembered. A read that fails changes nothing:
   // the screens then behave exactly as they did before this state existed.
   useEffect(() => {
+    if (activeProjectId === null) return;
     let cancelled = false;
-    client.listOrganizationStates().then(
+    setOrganizationLoaded(false);
+    client.listOrganizationStates({ projectId: activeProjectId }).then(
       (states) => {
         if (cancelled) return;
         const next = new Map(jobsRef.current);
+        setOrganized((current) => new Set([...current, ...states.filter((state) => state.status === "succeeded" && state.objectCount > 0).map((state) => state.captureId)]));
         for (const state of states) {
           if (next.has(state.captureId)) continue; // something is happening to it right now in this session
           if (state.status === "failed" && state.failure) next.set(state.captureId, { status: "failed", message: state.failure.message });
@@ -110,7 +130,7 @@ export function useKnowledgeState(): KnowledgeState {
     return () => {
       cancelled = true;
     };
-  }, [client]);
+  }, [client, activeProjectId, dataVersion]);
 
   const setJob = useCallback((captureId: string, job: OrganizeJob | null) => {
     const next = new Map(jobsRef.current);
@@ -131,12 +151,13 @@ export function useKnowledgeState(): KnowledgeState {
         try {
           const produced = await client.distillCapture(captureId);
           setJob(captureId, produced.length === 0 ? { status: "empty" } : null);
+          if (produced.length > 0 && alive.current) setOrganized((current) => new Set(current).add(captureId));
         } catch (failure) {
           setJob(captureId, { status: "failed", message: messageOf(failure) });
         }
         // Either way, show exactly what is stored. A failed run stores nothing, and the UI never builds objects itself.
         try {
-          const stored = await client.listKnowledgeObjects();
+          const stored = scopeRef.current === null ? [] : await client.listKnowledgeObjects({ projectId: scopeRef.current });
           if (alive.current) {
             setObjects(stored);
             setStatus("ready");
@@ -168,12 +189,13 @@ export function useKnowledgeState(): KnowledgeState {
 
   const refresh = useCallback(async () => {
     try {
-      setObjects(await client.listKnowledgeObjects());
+      if (scopeRef.current === null) return;
+      setObjects(await client.listKnowledgeObjects({ projectId: scopeRef.current }));
       setStatus("ready");
     } catch (failure) {
       setError(messageOf(failure));
     }
   }, [client]);
 
-  return { status, objects, distilling, jobs, organizationLoaded, error, distill, refresh };
+  return { status, objects, distilling, jobs, organizationLoaded, organized, error, distill, refresh };
 }

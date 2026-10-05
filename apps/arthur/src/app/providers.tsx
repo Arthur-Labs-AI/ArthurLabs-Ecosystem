@@ -6,6 +6,8 @@ import { CapturesProvider } from "../features/capture/captures-context";
 import { GraphProvider } from "../features/graph/graph-context";
 import { KnowledgeProvider } from "../features/knowledge/knowledge-context";
 import { LineageSummariesProvider } from "../features/lineage/lineage-summaries";
+import { ProjectsProvider } from "../features/projects/projects-context";
+import { ProjectScopeSync } from "../features/projects/ProjectScopeSync";
 import { ArthurClientContext } from "../hooks/use-arthur-client";
 import { NavigationProvider, type Screen } from "./navigation";
 
@@ -21,18 +23,21 @@ export function ArthurProviders({ client, initialScreen, children }: ArthurProvi
   const resolved = useMemo(() => client ?? createArthurClient(), [client]);
   return (
     <ArthurClientContext.Provider value={resolved}>
-      <CapturesProvider>
-        <KnowledgeProvider>
-          <GraphProvider>
-            <LineageSummariesProvider>
-              <NavigationProvider {...(initialScreen ? { initialScreen } : {})}>
-                <AutoOrganize />
-                {children}
-              </NavigationProvider>
-            </LineageSummariesProvider>
-          </GraphProvider>
-        </KnowledgeProvider>
-      </CapturesProvider>
+      <ProjectsProvider>
+        <CapturesProvider>
+          <KnowledgeProvider>
+            <GraphProvider>
+              <LineageSummariesProvider>
+                <NavigationProvider {...(initialScreen ? { initialScreen } : {})}>
+                  <ProjectScopeSync />
+                  <AutoOrganize />
+                  {children}
+                </NavigationProvider>
+              </LineageSummariesProvider>
+            </GraphProvider>
+          </KnowledgeProvider>
+        </CapturesProvider>
+      </ProjectsProvider>
     </ArthurClientContext.Provider>
   );
 }

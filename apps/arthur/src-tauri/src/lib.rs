@@ -66,6 +66,7 @@ pub fn run() {
             commands::runtime_info::get_runtime_info,
             commands::captures::create_capture,
             commands::captures::list_captures,
+            commands::captures::get_captures,
             commands::voice::start_voice_capture,
             commands::voice::finish_voice_capture,
             commands::voice::cancel_voice_capture,
@@ -91,6 +92,17 @@ pub fn run() {
             commands::lineage::create_revision_from,
             commands::lineage::merge_revisions,
             commands::lineage::diff_revisions,
+            commands::projects::list_projects,
+            commands::projects::get_project,
+            commands::projects::create_project,
+            commands::projects::rename_project,
+            commands::projects::archive_project,
+            commands::projects::restore_project,
+            commands::projects::move_capture,
+            commands::projects::move_knowledge_object,
+            commands::projects::get_active_project,
+            commands::projects::set_active_project,
+            commands::projects::get_project_graph,
         ])
         .build(tauri::generate_context!())
         .expect("error while building the Arthur application")

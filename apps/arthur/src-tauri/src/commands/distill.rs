@@ -17,18 +17,18 @@ pub async fn distill_capture(
 }
 
 #[tauri::command]
-pub fn list_knowledge_objects(store: State<'_, CaptureStore>) -> Result<Vec<KnowledgeObject>, String> {
-    store.list_knowledge_objects().map_err(|error| error.to_string())
+pub fn list_knowledge_objects(store: State<'_, CaptureStore>, project_id: Option<String>) -> Result<Vec<KnowledgeObject>, String> {
+    store.list_knowledge_objects_in(project_id.as_deref()).map_err(|error| error.to_string())
 }
 
 /// Whether each capture is pending, running, succeeded or failed, from one read of durable state plus what is in flight.
 #[tauri::command]
-pub fn list_organization_states(distillation: State<'_, DistillationService>, store: State<'_, CaptureStore>) -> Result<Vec<OrganizationState>, String> {
-    distillation.organization_states(&store).map_err(|error| error.to_string())
+pub fn list_organization_states(distillation: State<'_, DistillationService>, store: State<'_, CaptureStore>, project_id: Option<String>) -> Result<Vec<OrganizationState>, String> {
+    distillation.organization_states_in(&store, project_id.as_deref()).map_err(|error| error.to_string())
 }
 
 /// Connection and revision counts for many objects in one read. `object_ids` omitted: every object.
 #[tauri::command]
-pub fn get_knowledge_summaries(store: State<'_, CaptureStore>, object_ids: Option<Vec<String>>) -> Result<Vec<KnowledgeSummary>, String> {
-    store.knowledge_summaries(object_ids.as_deref()).map_err(|error| error.to_string())
+pub fn get_knowledge_summaries(store: State<'_, CaptureStore>, object_ids: Option<Vec<String>>, project_id: Option<String>) -> Result<Vec<KnowledgeSummary>, String> {
+    store.knowledge_summaries_in(object_ids.as_deref(), project_id.as_deref()).map_err(|error| error.to_string())
 }

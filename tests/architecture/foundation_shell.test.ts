@@ -27,7 +27,11 @@ import {
   MAX_MERGE_PARENTS,
   MAX_OBJECTS_PER_DISTILLATION,
   MAX_RELATIONS_PER_INFERENCE,
+  INBOX_PROJECT_ID,
+  MAX_CAPTURE_LOOKUP,
+  MAX_PROJECT_NAME_CHARS,
   MAX_SUMMARY_IDS,
+  PROJECT_ERROR_CODES,
   MAX_RELATION_PROPOSALS,
   MAX_REVISIONS_PER_OBJECT,
   RELATION_ERROR_CODES,
@@ -172,9 +176,24 @@ test("every IPC command agrees between the TypeScript client and the Rust handle
     create_revision_from: "src/commands/lineage.rs",
     merge_revisions: "src/commands/lineage.rs",
     diff_revisions: "src/commands/lineage.rs",
+    get_captures: "src/commands/captures.rs",
+    list_projects: "src/commands/projects.rs",
+    get_project: "src/commands/projects.rs",
+    create_project: "src/commands/projects.rs",
+    rename_project: "src/commands/projects.rs",
+    archive_project: "src/commands/projects.rs",
+    restore_project: "src/commands/projects.rs",
+    move_capture: "src/commands/projects.rs",
+    move_knowledge_object: "src/commands/projects.rs",
+    get_active_project: "src/commands/projects.rs",
+    set_active_project: "src/commands/projects.rs",
+    get_project_graph: "src/commands/projects.rs",
+    list_organization_states: "src/commands/distill.rs",
+    get_knowledge_summaries: "src/commands/distill.rs",
+    retry_voice_transcription: "src/commands/voice.rs",
   };
   for (const [command, rustFile] of Object.entries(commandSources)) {
-    assert.match(ipc, new RegExp(`(?:call|relationCall|lineageCall)\\(\\s*"${command}"`), `${command} is not called by tauri-ipc.ts`);
+    assert.match(ipc, new RegExp(`(?:call|relationCall|lineageCall|projectCall|invokeWith)\\(\\s*(?:call,\\s*)?"${command}"`), `${command} is not called by tauri-ipc.ts`);
     assert.match(readText(tauriDir, rustFile), new RegExp(`pub (async )?fn ${command}\\(`));
     assert.match(libRs, new RegExp(`commands::\\w+::${command}\\b`), `${command} is not registered in lib.rs`);
   }
@@ -302,7 +321,7 @@ test("knowledge kinds, limits and error codes agree across the contract, Rust, S
 
 test("the schema is changed only through ordered, transactional migration steps", () => {
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  assert.match(migrations, /pub const STEPS: \[Step; 5\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\), \(4, SCHEMA_V4\), \(5, SCHEMA_V5\)\];/);
+  assert.match(migrations, /pub const STEPS: \[Step; 6\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\), \(4, SCHEMA_V4\), \(5, SCHEMA_V5\), \(6, SCHEMA_V6\)\];/);
   assert.match(migrations, /connection\.transaction\(\)/);
   for (const table of ["distillation_runs", "knowledge_objects", "object_sources", "relations", "thought_revisions", "revision_parents"]) assert.match(migrations, new RegExp(`CREATE TABLE ${table}\\b`));
   assert.match(migrations, /REFERENCES captures\(id\)/);
@@ -599,4 +618,59 @@ test("temporary audio is bounded, app-private, never logged and never stored", (
   assert.match(production, /purge_stale_recordings\(&recordings_dir\)/, "stale audio is purged at startup");
   // Backups are off, so the cache directory is not copied anywhere.
   assert.match(readText(androidSrc, "AndroidManifest.xml"), /android:allowBackup="false"/);
+});
+
+test("schema v6: projects own captures and objects, and nothing else carries a project", () => {
+  const migrations = readText(tauriDir, "src/storage/migrations.rs");
+  const v6 = /pub const SCHEMA_V6: &str = "([\s\S]*?)";\n/.exec(migrations)?.[1] ?? "";
+  assert.ok(v6.length > 0, "SCHEMA_V6 exists");
+  assert.match(v6, /CREATE TABLE projects \(/);
+  assert.match(v6, /ALTER TABLE captures ADD COLUMN project_id TEXT REFERENCES projects\(id\)/);
+  assert.match(v6, /ALTER TABLE knowledge_objects ADD COLUMN project_id TEXT REFERENCES projects\(id\)/);
+  // Ownership is on those two tables only: revisions, relations, provenance and organization state derive it.
+  for (const table of ["thought_revisions", "revision_parents", "relations", "object_sources", "distillation_runs", "organization_failures"]) {
+    assert.doesNotMatch(v6, new RegExp(`ALTER TABLE ${table}\\b`), `${table} gets no project column`);
+    assert.doesNotMatch(migrations.slice(0, migrations.indexOf("/// The id of the system Inbox project")), /project_id/, "no earlier schema step knows about projects");
+  }
+  // The Inbox: one fixed id, shared by the contract, the migration and the Rust constant; protected by triggers.
+  assert.ok(v6.includes(INBOX_PROJECT_ID), "the migration creates the Inbox with the contract's id");
+  assert.ok(migrations.includes(`pub const INBOX_PROJECT_ID: &str = "${INBOX_PROJECT_ID}";`));
+  assert.match(v6, /BEFORE DELETE ON projects/);
+  assert.match(v6, /archived_at IS NOT NULL/);
+  assert.match(v6, /CREATE INDEX captures_by_project ON captures\(project_id, seq\)/);
+  assert.match(v6, /CREATE INDEX knowledge_objects_by_project ON knowledge_objects\(project_id, seq\)/);
+  // Only membership may change on a capture; its content stays immutable.
+  assert.match(v6, /BEFORE UPDATE OF id, seq, source, content, created_at ON captures/);
+  // The backfill is deterministic: everything goes to the Inbox, with no model and no randomness.
+  assert.match(v6, /UPDATE captures SET project_id = '00000000-0000-4000-8000-000000000001'/);
+  assert.match(v6, /UPDATE knowledge_objects SET project_id = '00000000-0000-4000-8000-000000000001'/);
+  assert.doesNotMatch(v6, /random|randomblob|uuid/i);
+
+  const projects = readText(tauriDir, "src/storage/project_store.rs");
+  assert.equal(Number(/MAX_PROJECT_NAME_CHARS: usize = (\d+);/.exec(projects)?.[1]), MAX_PROJECT_NAME_CHARS);
+  const codes = projects.slice(projects.indexOf("pub fn code"), projects.indexOf("pub fn message"));
+  assert.deepEqual([...new Set([...codes.matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...PROJECT_ERROR_CODES].sort());
+  assert.equal(Number(/MAX_CAPTURE_LOOKUP: usize = ([\d_]+);/.exec(readText(tauriDir, "src/storage/capture_store.rs"))?.[1]?.replaceAll("_", "")), MAX_CAPTURE_LOOKUP);
+  // There is no hard delete: projects are archived, so rows can never be orphaned by the API.
+  assert.doesNotMatch(productionCode(projects), /DELETE FROM projects|DROP TABLE/);
+});
+
+test("projects are a domain boundary the model never decides: distillation and inference prompts know nothing of them", () => {
+  for (const file of ["src/distillation/prompt.rs", "src/distillation/openai.rs", "src/distillation/resolve.rs", "src/graph/prompt.rs", "src/graph/verify_prompt.rs", "src/graph/openai.rs", "src/graph/validate.rs"]) {
+    assert.doesNotMatch(productionCode(readText(tauriDir, file)), /project_id|projectId|\bProject(Id|Scope)?\b/, `${file} must not mention projects: the model does not choose them`);
+  }
+  // Inheritance happens in the store, in the same transaction as the distillation run.
+  const knowledge = productionCode(readText(tauriDir, "src/storage/knowledge_store.rs"));
+  assert.match(knowledge, /SELECT content, project_id FROM captures WHERE id = \?1/);
+  assert.match(knowledge, /INSERT INTO knowledge_objects \(id, kind, title, body, created_at, project_id\)/);
+  // Inference candidates are project-local by construction.
+  const graph = productionCode(readText(tauriDir, "src/graph/mod.rs"));
+  assert.match(graph, /store\.list_knowledge_objects_in\(Some\(&project_id\)\)/);
+  assert.doesNotMatch(graph, /store\.list_knowledge_objects\(\)/, "inference never reads every project's objects");
+});
+
+test("M03.2 stops before recall: no Ask Arthur or retrieval entry point exists yet", () => {
+  const client = readText(app, "src/client/arthur-client.ts");
+  assert.doesNotMatch(client, /^\s*(ask|recall|query|search)\w*\(/m, "no retrieval method on ArthurClient yet");
+  assert.doesNotMatch(readText(tauriDir, "src/lib.rs"), /commands::(recall|ask)/);
 });

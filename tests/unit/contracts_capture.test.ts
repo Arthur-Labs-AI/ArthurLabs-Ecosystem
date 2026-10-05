@@ -11,7 +11,7 @@ import {
   isVoiceCaptureErrorPayload,
 } from "../../packages/contracts";
 
-const valid = { id: "0b8f3c1e-0000-4000-8000-000000000001", source: "text", content: "idea", createdAt: "2026-10-04T12:00:00.123456789Z" };
+const valid = { id: "0b8f3c1e-0000-4000-8000-000000000001", source: "text", content: "idea", createdAt: "2026-10-04T12:00:00.123456789Z", projectId: "00000000-0000-4000-8000-000000000001" };
 
 test("create input: accepts valid requests, including raw whitespace and the length limit", () => {
   assert.equal(describeCreateCaptureInputProblem({ source: "text", content: "  hello\n" }), null);

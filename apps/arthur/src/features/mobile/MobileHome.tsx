@@ -13,6 +13,7 @@ import { greeting } from "../home/HomeScreen";
 import { useKnowledge } from "../knowledge/knowledge-context";
 import type { OrganizeJob } from "../knowledge/use-knowledge";
 import { useLineageSummaries } from "../lineage/lineage-summaries";
+import { useProjects } from "../projects/projects-context";
 import { MobileBrand, SettingsButton } from "./MobileApp";
 import { useMobileNav } from "./mobile-nav";
 
@@ -250,7 +251,7 @@ function GhostKid({ width }: { width: number }) {
   );
 }
 
-function Outcome({ capture, objects, job, ready, onRetry, organized }: { capture: Capture; objects: KnowledgeObject[]; job: OrganizeJob | undefined; ready: boolean; onRetry: () => void; organized: boolean }) {
+function Outcome({ capture, objects, job, ready, onRetry, organized, organizedElsewhere }: { capture: Capture; objects: KnowledgeObject[]; job: OrganizeJob | undefined; ready: boolean; onRetry: () => void; organized: boolean; organizedElsewhere: boolean }) {
   const short = capture.id.slice(0, 8);
   if (job?.status === "queued" || job?.status === "organizing") {
     return (
@@ -297,6 +298,8 @@ function Outcome({ capture, objects, job, ready, onRetry, organized }: { capture
     );
   }
   if (job?.status === "empty") return <p className="m-empty-kid">Nothing to organize in this one.</p>;
+  // Organized, but every idea from it was moved to another project: that is not "not organized".
+  if (objects.length === 0 && ready && organizedElsewhere) return <p className="m-empty-kid">Its ideas are in other projects.</p>;
   if (objects.length === 0 && ready) {
     return (
       <div className="m-kids pending">
@@ -324,7 +327,8 @@ function Outcome({ capture, objects, job, ready, onRetry, organized }: { capture
 
 function Stream() {
   const { status, captures } = useCaptures();
-  const { objects, jobs, distill, organizationLoaded, status: knowledgeStatus, error: knowledgeError } = useKnowledge();
+  const { objects, jobs, distill, organizationLoaded, organized, status: knowledgeStatus, error: knowledgeError } = useKnowledge();
+  const { active } = useProjects();
   const index = useRelationIndex();
   const { byObject } = useLineageSummaries();
   const { openIdea } = useMobileNav();
@@ -351,7 +355,9 @@ function Stream() {
       {status === "ready" && captures.length === 0 && (
         <div className="m-state">
           <h2>Nothing captured yet</h2>
-          <p>Say or type a thought above. Arthur turns it into ideas and keeps your original words next to them.</p>
+          <p>
+            Capture your first thought for {active?.isInbox ? "the Inbox" : (active?.name ?? "this project")}. Arthur turns it into ideas and keeps your original words next to them.
+          </p>
         </div>
       )}
       {groups.map((group) => (
@@ -391,7 +397,7 @@ function Stream() {
                     ))}
                   </div>
                 )}
-                <Outcome capture={capture} objects={mine} job={job} ready={knowledgeStatus === "ready" && organizationLoaded} onRetry={() => void distill(capture.id)} organized={drawn} />
+                <Outcome capture={capture} objects={mine} job={job} ready={knowledgeStatus === "ready" && organizationLoaded} onRetry={() => void distill(capture.id)} organized={drawn} organizedElsewhere={organized.has(capture.id)} />
               </article>
             );
           })}

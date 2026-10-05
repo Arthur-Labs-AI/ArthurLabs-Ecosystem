@@ -222,14 +222,108 @@ CREATE TABLE organization_failures (
 );
 ";
 
+/// The id of the system Inbox project. Fixed, so every database (fresh or migrated, on any device) agrees on it and
+/// the migration needs no random source.
+pub const INBOX_PROJECT_ID: &str = "00000000-0000-4000-8000-000000000001";
+
+/// v6 (M03.2): Projects / Knowledge Spaces.
+///
+/// A project is a real domain boundary that owns Captures and KnowledgeObjects. Ownership is ONE column on each of those
+/// two tables. Nothing else carries a project: a revision belongs to the project of its object, a relation derives the
+/// projects of its two endpoints, and provenance (`object_sources`) stays independent of membership.
+///
+/// INBOX. Exactly one system project, with a fixed id. It can be neither deleted nor archived nor renamed (triggers),
+/// so a project always exists. Migration is deterministic: every existing capture and object moves to Inbox; no model
+/// guesses anything and no relation, revision, provenance or organization row is touched.
+///
+/// NOT NULL. SQLite refuses `ADD COLUMN ... NOT NULL REFERENCES` without a default, and a non-NULL default is refused for
+/// a foreign key, so the columns are added nullable, backfilled, and then guarded by triggers that refuse a NULL
+/// project or an archived target on insert and on any change of the column. A project that still owns rows cannot be
+/// deleted either (plain foreign key), so rows can never be orphaned.
+///
+/// CAPTURES stay immutable in every column but `project_id`: the v2 trigger fired on ANY update, so it is replaced by
+/// one that fires on the content columns only. Moving a capture is organizational context, not a change of what was said.
+///
+/// ACTIVE PROJECT is one row in `active_project`, validated by the foreign key; reads fall back to Inbox.
+pub const SCHEMA_V6: &str = "
+CREATE TABLE projects (
+    seq         INTEGER PRIMARY KEY AUTOINCREMENT,
+    id          TEXT    NOT NULL UNIQUE CHECK (length(id) > 0),
+    name        TEXT    NOT NULL CHECK (length(trim(name)) > 0 AND length(name) <= 80),
+    created_at  TEXT    NOT NULL CHECK (length(created_at) > 0),
+    updated_at  TEXT    NOT NULL CHECK (length(updated_at) > 0),
+    archived_at TEXT    CHECK (archived_at IS NULL OR length(archived_at) > 0),
+    CHECK (id <> '00000000-0000-4000-8000-000000000001' OR archived_at IS NULL)
+);
+
+INSERT INTO projects (id, name, created_at, updated_at) VALUES ('00000000-0000-4000-8000-000000000001', 'Inbox', '1970-01-01T00:00:00Z', '1970-01-01T00:00:00Z');
+
+CREATE TRIGGER projects_keep_the_inbox_on_delete BEFORE DELETE ON projects
+WHEN OLD.id = '00000000-0000-4000-8000-000000000001'
+BEGIN
+    SELECT RAISE(ABORT, 'the Inbox cannot be deleted');
+END;
+
+CREATE TRIGGER projects_keep_the_inbox_on_update BEFORE UPDATE ON projects
+WHEN OLD.id = '00000000-0000-4000-8000-000000000001' AND (NEW.id <> OLD.id OR NEW.name <> OLD.name OR NEW.archived_at IS NOT NULL)
+BEGIN
+    SELECT RAISE(ABORT, 'the Inbox cannot be renamed or archived');
+END;
+
+ALTER TABLE captures ADD COLUMN project_id TEXT REFERENCES projects(id);
+ALTER TABLE knowledge_objects ADD COLUMN project_id TEXT REFERENCES projects(id);
+
+-- The v2 trigger refused every update. Replace it: only project membership may change.
+DROP TRIGGER captures_are_immutable;
+CREATE TRIGGER captures_are_immutable BEFORE UPDATE OF id, seq, source, content, created_at ON captures
+BEGIN
+    SELECT RAISE(ABORT, 'captures are immutable');
+END;
+
+UPDATE captures SET project_id = '00000000-0000-4000-8000-000000000001';
+UPDATE knowledge_objects SET project_id = '00000000-0000-4000-8000-000000000001';
+
+CREATE INDEX captures_by_project ON captures(project_id, seq);
+CREATE INDEX knowledge_objects_by_project ON knowledge_objects(project_id, seq);
+
+CREATE TRIGGER captures_need_an_open_project_on_insert BEFORE INSERT ON captures
+WHEN NEW.project_id IS NULL OR EXISTS (SELECT 1 FROM projects WHERE id = NEW.project_id AND archived_at IS NOT NULL)
+BEGIN
+    SELECT RAISE(ABORT, 'a capture needs an existing, unarchived project');
+END;
+
+CREATE TRIGGER captures_need_an_open_project_on_move BEFORE UPDATE OF project_id ON captures
+WHEN NEW.project_id IS NULL OR EXISTS (SELECT 1 FROM projects WHERE id = NEW.project_id AND archived_at IS NOT NULL)
+BEGIN
+    SELECT RAISE(ABORT, 'a capture needs an existing, unarchived project');
+END;
+
+CREATE TRIGGER objects_need_an_open_project_on_insert BEFORE INSERT ON knowledge_objects
+WHEN NEW.project_id IS NULL OR EXISTS (SELECT 1 FROM projects WHERE id = NEW.project_id AND archived_at IS NOT NULL)
+BEGIN
+    SELECT RAISE(ABORT, 'an object needs an existing, unarchived project');
+END;
+
+CREATE TRIGGER objects_need_an_open_project_on_move BEFORE UPDATE OF project_id ON knowledge_objects
+WHEN NEW.project_id IS NULL OR EXISTS (SELECT 1 FROM projects WHERE id = NEW.project_id AND archived_at IS NOT NULL)
+BEGIN
+    SELECT RAISE(ABORT, 'an object needs an existing, unarchived project');
+END;
+
+CREATE TABLE active_project (
+    id         INTEGER PRIMARY KEY CHECK (id = 1),
+    project_id TEXT    NOT NULL REFERENCES projects(id)
+);
+";
+
 pub type Step = (i64, &'static str);
 
 /// Ordered migration steps: `(version after the step, SQL)`.
-pub const STEPS: [Step; 5] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4), (5, SCHEMA_V5)];
+pub const STEPS: [Step; 6] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4), (5, SCHEMA_V5), (6, SCHEMA_V6)];
 
 /// The version `STEPS` ends at; asserted against `STEPS` by a test.
 #[cfg(test)]
-pub const SCHEMA_VERSION: i64 = 5;
+pub const SCHEMA_VERSION: i64 = 6;
 
 pub fn migrate(connection: &mut Connection) -> Result<(), StoreError> {
     migrate_with(connection, &STEPS)
@@ -432,6 +526,11 @@ mod tests {
             .unwrap();
     }
 
+    /// `dump` never reads `project_id`, so it already ignores the column v6 added; kept as an explicit marker.
+    fn strip_project(rows: Vec<String>) -> Vec<String> {
+        rows
+    }
+
     fn relations_dump(connection: &Connection) -> Vec<String> {
         let mut statement = connection.prepare("SELECT id || '|' || kind || '|' || source_object_id || '|' || target_object_id || '|' || origin || '|' || created_at FROM relations ORDER BY seq").unwrap();
         statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|r| r.unwrap()).collect()
@@ -452,7 +551,7 @@ mod tests {
 
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION);
-        assert_eq!(dump(&connection), before, "captures, runs, objects and provenance are unchanged");
+        assert_eq!(strip_project(dump(&connection)), before, "captures, runs, objects and provenance are unchanged");
         assert_eq!(relations_dump(&connection), before_relations, "graph relations are unchanged");
         let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
         assert_eq!(integrity, "ok");
@@ -559,12 +658,16 @@ mod tests {
             (dump(&connection), relations_dump(&connection), revisions)
         };
 
+        {
+            let mut connection = Connection::open(&path).unwrap();
+            migrate_with(&mut connection, &STEPS[..5]).unwrap();
+        }
         let store = CaptureStore::open(&path).unwrap();
-
+        // (Opening migrates on to the latest version; this test is about the v5 step, so look at what v5 added.)
         let connection = Connection::open(&path).unwrap();
-        assert_eq!(user_version(&connection), 5);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION);
         assert!(has_object(&connection, "table", "organization_failures"));
-        assert_eq!(dump(&connection), before, "captures, runs, objects and provenance are unchanged");
+        assert_eq!(strip_project(dump(&connection)), before, "captures, runs, objects and provenance are unchanged");
         assert_eq!(relations_dump(&connection), before_relations, "graph relations are unchanged");
         let after: i64 = connection.query_row("SELECT count(*) FROM thought_revisions", [], |r| r.get(0)).unwrap();
         assert_eq!(after, revisions, "lineage is unchanged");
@@ -588,7 +691,9 @@ mod tests {
             (dump(&connection), relations_dump(&connection))
         };
 
-        assert!(CaptureStore::open(&path).is_err());
+        let mut connection = Connection::open(&path).unwrap();
+        assert!(migrate_with(&mut connection, &STEPS[..5]).is_err());
+        drop(connection);
 
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), 4, "still v4");
@@ -599,15 +704,15 @@ mod tests {
     }
 
     #[test]
-    fn a_database_newer_than_v5_is_refused_untouched_by_the_v5_code() {
+    fn a_database_newer_than_the_code_is_refused_untouched_even_when_it_is_only_one_ahead() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
         v4_database(&path);
-        Connection::open(&path).unwrap().pragma_update(None, "user_version", 6).unwrap();
+        Connection::open(&path).unwrap().pragma_update(None, "user_version", SCHEMA_VERSION + 1).unwrap();
         let before = dump(&Connection::open(&path).unwrap());
         assert!(matches!(CaptureStore::open(&path), Err(StoreError::Corrupt(_))));
         let connection = Connection::open(&path).unwrap();
-        assert_eq!(user_version(&connection), 6);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION + 1);
         assert!(!has_object(&connection, "table", "organization_failures"));
         assert_eq!(dump(&connection), before);
     }
@@ -681,10 +786,285 @@ mod tests {
         assert!(!has_object(&connection, "table", "knowledge_objects"));
     }
 
+    // ---- v6: Projects ---------------------------------------------------------------------------------------------
+
+    /// A populated database exactly as M03.1B left it: schema v5, with revisions beyond the initial ones, a relation,
+    /// a zero-object run and a recorded organization failure.
+    fn v5_database(path: &std::path::Path) {
+        v4_database(path);
+        let mut connection = Connection::open(path).unwrap();
+        migrate_with(&mut connection, &STEPS[..5]).unwrap();
+        connection
+            .execute_batch(
+                "INSERT INTO captures (id, source, content, created_at) VALUES ('c3', 'text', 'never organized', '2026-10-04T11:00:00Z');
+                 INSERT INTO captures (id, source, content, created_at) VALUES ('c4', 'text', 'nothing here', '2026-10-04T11:05:00Z');
+                 INSERT INTO distillation_runs (capture_id, created_at) VALUES ('c4', '2026-10-04T11:06:00Z');
+                 INSERT INTO captures (id, source, content, created_at) VALUES ('c5', 'voice', 'failed once', '2026-10-04T11:10:00Z');
+                 INSERT INTO organization_failures (capture_id, code, message, failed_at) VALUES ('c5', 'llm_failed', 'try again', '2026-10-04T11:11:00Z');",
+            )
+            .unwrap();
+    }
+
+    /// Everything v6 must leave alone, as one fingerprint.
+    fn fingerprint(connection: &Connection) -> Vec<String> {
+        let mut rows = dump(connection);
+        rows.extend(relations_dump(connection));
+        for (table, columns, order) in [
+            ("thought_revisions", "id || '|' || object_id || '|' || kind || '|' || title || '|' || body || '|' || origin || '|' || created_at || '|' || ifnull(capture_id, '-') || '|' || ifnull(source_start, '-') || '|' || ifnull(source_end, '-')", "seq"),
+            ("revision_parents", "child_revision_id || '|' || parent_revision_id", "1"),
+            ("organization_failures", "capture_id || '|' || code || '|' || message || '|' || failed_at", "1"),
+        ] {
+            let mut statement = connection.prepare(&format!("SELECT {columns} FROM {table} ORDER BY {order}")).unwrap();
+            rows.extend(statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|row| format!("{table}:{}", row.unwrap())));
+        }
+        let mut statement = connection.prepare("SELECT id || '|' || current_revision_id FROM knowledge_objects ORDER BY seq").unwrap();
+        rows.extend(statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|row| format!("current:{}", row.unwrap())));
+        rows
+    }
+
+    #[test]
+    fn a_populated_v5_database_upgrades_to_v6_with_everything_in_the_inbox_and_nothing_else_changed() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v5_database(&path);
+        let before = {
+            let connection = Connection::open(&path).unwrap();
+            assert_eq!(user_version(&connection), 5);
+            fingerprint(&connection)
+        };
+        assert!(before.len() > 15, "the fixture is populated");
+
+        let store = CaptureStore::open(&path).unwrap();
+
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 6);
+        assert_eq!(fingerprint(&connection), before, "captures, objects, provenance, relations, revisions, runs and failures are unchanged");
+        let (captures, objects, in_inbox): (i64, i64, i64) = connection
+            .query_row(
+                "SELECT (SELECT count(*) FROM captures), (SELECT count(*) FROM knowledge_objects), \
+                        (SELECT count(*) FROM captures WHERE project_id = ?1) + (SELECT count(*) FROM knowledge_objects WHERE project_id = ?1)",
+                [INBOX_PROJECT_ID],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!((captures, objects), (5, 3));
+        assert_eq!(in_inbox, captures + objects, "every capture and object is in the Inbox");
+        let projects: Vec<(String, String)> = connection.prepare("SELECT id, name FROM projects").unwrap().query_map([], |r| Ok((r.get(0)?, r.get(1)?))).unwrap().map(|r| r.unwrap()).collect();
+        assert_eq!(projects, [(INBOX_PROJECT_ID.to_string(), "Inbox".to_string())], "the Inbox is the only project");
+        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(integrity, "ok");
+        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(violations, 0);
+        assert_eq!(store.active_project_id().unwrap(), INBOX_PROJECT_ID);
+        // The upgraded data reads back through the normal paths, now with the project.
+        assert!(store.list().unwrap().iter().all(|c| c.project_id == INBOX_PROJECT_ID));
+        assert!(store.list_knowledge_objects().unwrap().iter().all(|o| o.project_id == INBOX_PROJECT_ID));
+        assert_eq!(store.list_organization_states().unwrap().iter().filter(|s| s.status == "failed").count(), 1);
+    }
+
+    #[test]
+    fn the_v6_migration_is_deterministic_and_repeating_it_changes_nothing() {
+        let rows = |path: &std::path::Path| -> Vec<String> {
+            let connection = Connection::open(path).unwrap();
+            let mut statement = connection.prepare("SELECT id || '|' || name || '|' || created_at || '|' || updated_at || '|' || ifnull(archived_at, '-') FROM projects ORDER BY seq").unwrap();
+            let mut rows: Vec<String> = statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|r| r.unwrap()).collect();
+            rows.extend(fingerprint(&connection));
+            rows
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let (first, second) = (dir.path().join("a.db"), dir.path().join("b.db"));
+        v5_database(&first);
+        v5_database(&second);
+        CaptureStore::open(&first).unwrap();
+        CaptureStore::open(&second).unwrap();
+        assert_eq!(rows(&first), rows(&second), "two independent migrations agree, Inbox included");
+        let once = rows(&first);
+        for _ in 0..3 {
+            CaptureStore::open(&first).unwrap();
+        }
+        assert_eq!(rows(&first), once);
+        // And a database that never had data gets the same Inbox.
+        let fresh = CaptureStore::open_in_memory().unwrap();
+        assert_eq!(fresh.list_projects(true).unwrap().iter().map(|p| (p.id.as_str(), p.name.as_str())).collect::<Vec<_>>(), [(INBOX_PROJECT_ID, "Inbox")]);
+    }
+
+    #[test]
+    fn a_failing_v6_upgrade_rolls_back_completely_and_leaves_v5_usable() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v5_database(&path);
+        let before = {
+            let connection = Connection::open(&path).unwrap();
+            connection.execute_batch("CREATE TABLE active_project (precious TEXT); INSERT INTO active_project VALUES ('keep me');").unwrap();
+            fingerprint(&connection)
+        };
+
+        assert!(CaptureStore::open(&path).is_err(), "the last statement of the step fails");
+
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 5, "still v5");
+        assert_eq!(fingerprint(&connection), before);
+        assert!(!has_object(&connection, "table", "projects"), "the earlier statements were rolled back");
+        for table in ["captures", "knowledge_objects"] {
+            let has_column: i64 = connection.query_row(&format!("SELECT count(*) FROM pragma_table_info('{table}') WHERE name = 'project_id'"), [], |r| r.get(0)).unwrap();
+            assert_eq!(has_column, 0, "{table} has no project column");
+        }
+        // The v2 immutability trigger is back as it was, and v5 still writes.
+        assert!(connection.execute("UPDATE captures SET content = 'x' WHERE id = 'c1'", []).is_err());
+        connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('c9', 'text', 'still works', '2026-10-04T12:00:00Z')", []).unwrap();
+    }
+
+    #[test]
+    fn the_inbox_cannot_be_deleted_archived_or_renamed_and_a_project_that_owns_rows_cannot_be_deleted() {
+        let store = CaptureStore::open_in_memory().unwrap();
+        let connection = store.connection.lock().unwrap();
+        assert!(connection.execute("DELETE FROM projects WHERE id = ?1", [INBOX_PROJECT_ID]).is_err());
+        assert!(connection.execute("UPDATE projects SET archived_at = '2026-10-05T00:00:00Z' WHERE id = ?1", [INBOX_PROJECT_ID]).is_err());
+        assert!(connection.execute("UPDATE projects SET name = 'Elsewhere' WHERE id = ?1", [INBOX_PROJECT_ID]).is_err());
+        assert!(connection.execute("UPDATE projects SET id = 'other' WHERE id = ?1", [INBOX_PROJECT_ID]).is_err());
+        connection.execute("INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'Nexus', '2026-10-05T00:00:00Z', '2026-10-05T00:00:00Z')", []).unwrap();
+        connection.execute("INSERT INTO captures (id, source, content, created_at, project_id) VALUES ('c1', 'text', 'hi', '2026-10-05T00:00:00Z', 'p1')", []).unwrap();
+        assert!(connection.execute("DELETE FROM projects WHERE id = 'p1'", []).is_err(), "deleting would orphan a capture");
+        // A capture or an object must have an existing, unarchived project.
+        assert!(connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('c2', 'text', 'hi', '2026-10-05T00:00:00Z')", []).is_err());
+        assert!(connection.execute("INSERT INTO captures (id, source, content, created_at, project_id) VALUES ('c2', 'text', 'hi', '2026-10-05T00:00:00Z', 'missing')", []).is_err());
+        assert!(connection.execute("UPDATE captures SET project_id = NULL WHERE id = 'c1'", []).is_err());
+        connection.execute("UPDATE projects SET archived_at = '2026-10-05T00:00:00Z' WHERE id = 'p1'", []).unwrap();
+        assert!(connection.execute("INSERT INTO captures (id, source, content, created_at, project_id) VALUES ('c2', 'text', 'hi', '2026-10-05T00:00:00Z', 'p1')", []).is_err());
+        // Content stays immutable; only membership may change.
+        assert!(connection.execute("UPDATE captures SET content = 'changed' WHERE id = 'c1'", []).is_err());
+        connection.execute("UPDATE captures SET project_id = ?1 WHERE id = 'c1'", [INBOX_PROJECT_ID]).unwrap();
+    }
+
+    /// Migration proof on a REAL populated v5 database: `ARTHUR_V5_PROOF_DB=<path> cargo test migration_proof -- --ignored --nocapture`.
+    /// Works on copies; the original is never opened for writing.
+    #[test]
+    #[ignore = "needs a real v5 database: set ARTHUR_V5_PROOF_DB"]
+    fn migration_proof_on_a_real_populated_v5_database() {
+        let source = std::env::var("ARTHUR_V5_PROOF_DB").expect("ARTHUR_V5_PROOF_DB");
+        let dir = tempfile::tempdir().unwrap();
+        let copy = |name: &str| {
+            let path = dir.path().join(name);
+            std::fs::copy(&source, &path).unwrap();
+            path
+        };
+        let tables = ["captures", "knowledge_objects", "object_sources", "relations", "thought_revisions", "revision_parents", "distillation_runs", "organization_failures"];
+        let count = |connection: &Connection, table: &str| -> i64 { connection.query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0)).unwrap() };
+
+        // 1. The upgrade itself.
+        let path = copy("upgraded.db");
+        let (before, counts_before) = {
+            let connection = Connection::open(&path).unwrap();
+            assert_eq!(user_version(&connection), 5, "the proof needs a v5 database");
+            (fingerprint(&connection), tables.map(|t| count(&connection, t)))
+        };
+        let started = std::time::Instant::now();
+        let store = CaptureStore::open(&path).unwrap();
+        let elapsed = started.elapsed();
+        let connection = Connection::open(&path).unwrap();
+        let after = fingerprint(&connection);
+        let counts_after = tables.map(|t| count(&connection, t));
+        assert_eq!(user_version(&connection), 6);
+        assert_eq!(after, before, "captures, objects, provenance, relations, revisions, parents, runs and failures: byte-for-byte identical");
+        assert_eq!(counts_after, counts_before);
+        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        let (captures, objects): (i64, i64) = connection.query_row("SELECT (SELECT count(*) FROM captures WHERE project_id = ?1), (SELECT count(*) FROM knowledge_objects WHERE project_id = ?1)", [INBOX_PROJECT_ID], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
+        assert_eq!((integrity.as_str(), violations), ("ok", 0));
+        assert_eq!((captures, objects), (counts_after[0], counts_after[1]), "every capture and every object is in the Inbox");
+        let projects: Vec<String> = connection.prepare("SELECT id || '|' || name || '|' || created_at || '|' || ifnull(archived_at, '-') FROM projects").unwrap().query_map([], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect();
+        assert_eq!(projects, [format!("{INBOX_PROJECT_ID}|Inbox|1970-01-01T00:00:00Z|-")]);
+        assert_eq!(store.active_project_id().unwrap(), INBOX_PROJECT_ID);
+        assert_eq!(store.list().unwrap().len() as i64, counts_after[0]);
+        assert_eq!(store.list_knowledge_objects().unwrap().len() as i64, counts_after[1]);
+        println!("PROOF upgraded: v5 -> v6 in {elapsed:?}; rows {tables:?} = {counts_after:?}; fingerprint rows {}; integrity {integrity}; fk violations {violations}; inbox {captures} captures + {objects} objects", before.len());
+
+        // 2. The same upgrade done twice is the same Inbox (deterministic) and re-opening changes nothing.
+        let second = copy("second.db");
+        CaptureStore::open(&second).unwrap();
+        let second_projects: Vec<String> = Connection::open(&second).unwrap().prepare("SELECT id || '|' || name || '|' || created_at || '|' || ifnull(archived_at, '-') FROM projects").unwrap().query_map([], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect();
+        assert_eq!(second_projects, projects);
+        drop(store);
+        for _ in 0..3 {
+            CaptureStore::open(&path).unwrap();
+        }
+        assert_eq!(fingerprint(&Connection::open(&path).unwrap()), before);
+
+        // 3. A failing v6 step rolls back completely on this data and leaves v5 usable.
+        let broken = copy("broken.db");
+        {
+            let connection = Connection::open(&broken).unwrap();
+            connection.execute_batch("CREATE TABLE active_project (precious TEXT); INSERT INTO active_project VALUES ('keep me');").unwrap();
+        }
+        assert!(CaptureStore::open(&broken).is_err());
+        let connection = Connection::open(&broken).unwrap();
+        assert_eq!(user_version(&connection), 5);
+        assert_eq!(fingerprint(&connection), before, "nothing of the failed step survived");
+        assert!(!has_object(&connection, "table", "projects"));
+        assert!(connection.execute("UPDATE captures SET content = 'x' WHERE 1", []).is_err(), "the v2 immutability trigger is back");
+        println!("PROOF rollback: failing v6 step left v5 intact (user_version 5, fingerprint identical, no projects table)");
+
+        // 4. A newer schema is refused without a single byte changing.
+        let newer = copy("newer.db");
+        Connection::open(&newer).unwrap().pragma_update(None, "user_version", 7).unwrap();
+        let bytes = std::fs::read(&newer).unwrap();
+        assert!(matches!(CaptureStore::open(&newer), Err(StoreError::Corrupt(_))));
+        assert_eq!(std::fs::read(&newer).unwrap(), bytes, "refused untouched");
+        println!("PROOF newer-schema: v7 database refused, file bytes unchanged");
+    }
+
+    #[test]
+    fn project_ownership_is_never_null_and_a_capture_changes_only_its_project() {
+        let store = CaptureStore::open_in_memory().unwrap();
+        let capture = store.create(CreateCaptureInput { source: "text".into(), content: "hello world".into(), project_id: None }).unwrap();
+        store.record_distillation(&capture.id, vec![crate::storage::knowledge_store::NewKnowledgeObject { kind: "note".into(), title: "t".into(), body: "b".into(), source_start: 0, source_end: 5 }]).unwrap();
+        let connection = store.connection.lock().unwrap();
+        let snapshot = |c: &Connection| -> String { c.query_row("SELECT seq || '|' || id || '|' || source || '|' || content || '|' || created_at FROM captures", [], |r| r.get(0)).unwrap() };
+        let before = snapshot(&connection);
+
+        // NULL project: refused on INSERT and on UPDATE, for both tables.
+        assert!(connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('n', 'text', 'x', '2026-10-05T00:00:00Z')", []).is_err());
+        assert!(connection.execute("INSERT INTO knowledge_objects (id, kind, title, body, created_at) VALUES ('n', 'note', 't', 'b', '2026-10-05T00:00:00Z')", []).is_err());
+        assert!(connection.execute("UPDATE captures SET project_id = NULL", []).is_err());
+        assert!(connection.execute("UPDATE knowledge_objects SET project_id = NULL", []).is_err());
+        assert!(connection.execute("UPDATE captures SET project_id = 'missing'", []).is_err(), "foreign key");
+
+        // Every previously immutable capture column is still immutable, one by one.
+        for assignment in ["id = 'other'", "seq = 99", "source = 'voice'", "content = 'changed'", "created_at = '2030-01-01T00:00:00Z'"] {
+            assert!(connection.execute(&format!("UPDATE captures SET {assignment}"), []).is_err(), "{assignment}");
+        }
+        // A combined update that also touches project membership is refused too.
+        assert!(connection.execute(&format!("UPDATE captures SET project_id = '{INBOX_PROJECT_ID}', content = 'changed'"), []).is_err());
+        assert_eq!(snapshot(&connection), before);
+        drop(connection);
+
+        // A real move changes the project and nothing else of the capture, and nothing of the object but its project.
+        let nexus = store.create_project("Nexus").unwrap();
+        let object_before = store.list_knowledge_objects().unwrap().remove(0);
+        let revisions_before = store.list_revisions(&object_before.id).unwrap();
+        store.move_capture(&capture.id, &nexus.id).unwrap();
+        store.move_knowledge_object(&object_before.id, &nexus.id).unwrap();
+        let connection = store.connection.lock().unwrap();
+        assert_eq!(snapshot(&connection), before);
+        drop(connection);
+        let object_after = store.list_knowledge_objects().unwrap().remove(0);
+        assert_eq!(KnowledgeObjectView::of(&object_after), KnowledgeObjectView::of(&object_before));
+        assert_eq!(object_after.project_id, nexus.id);
+        assert_eq!(store.list_revisions(&object_before.id).unwrap(), revisions_before, "no revision was created");
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct KnowledgeObjectView(String, String, String, String, String, crate::storage::knowledge_store::Provenance);
+    impl KnowledgeObjectView {
+        fn of(o: &crate::storage::knowledge_store::KnowledgeObject) -> Self {
+            Self(o.id.clone(), o.kind.clone(), o.title.clone(), o.body.clone(), o.created_at.clone(), o.provenance.clone())
+        }
+    }
+
     #[test]
     fn migration_steps_are_ordered_and_end_at_the_declared_version() {
         let versions: Vec<i64> = STEPS.iter().map(|(v, _)| *v).collect();
         assert_eq!(versions, (1..=SCHEMA_VERSION).collect::<Vec<_>>());
-        let _ = CreateCaptureInput { source: "text".into(), content: "x".into() };
+        let _ = CreateCaptureInput { source: "text".into(), content: "x".into(), project_id: None };
     }
 }

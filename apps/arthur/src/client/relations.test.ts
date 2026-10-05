@@ -18,6 +18,7 @@ const object = {
   body: "b",
   createdAt: "2026-10-04T12:00:00Z",
   provenance: { captureId: "c1", sourceStart: 0, sourceEnd: 1 },
+  projectId: "00000000-0000-4000-8000-000000000001",
 };
 
 describe("relations over IPC", () => {

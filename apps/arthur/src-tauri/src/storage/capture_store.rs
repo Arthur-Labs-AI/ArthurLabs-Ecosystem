@@ -7,13 +7,13 @@ use std::fmt;
 use std::path::Path;
 use std::sync::Mutex;
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::migrations::migrate;
+use super::migrations::{migrate, INBOX_PROJECT_ID};
 #[cfg(test)]
 use super::migrations::SCHEMA_VERSION;
 
@@ -31,7 +31,12 @@ pub struct Capture {
     pub source: String,
     pub content: String,
     pub created_at: String,
+    /// The project this capture belongs to (schema v6). Organizational context: changing it never rewrites the content.
+    pub project_id: String,
 }
+
+/// Mirrors `MAX_CAPTURE_LOOKUP` in `packages/contracts/capture.ts`.
+pub const MAX_CAPTURE_LOOKUP: usize = 1_000;
 
 /// Mirrors `CreateCaptureInput` in `packages/contracts/capture.ts`.
 #[derive(Debug, Deserialize)]
@@ -39,6 +44,9 @@ pub struct Capture {
 pub struct CreateCaptureInput {
     pub source: String,
     pub content: String,
+    /// The project to capture into. Omitted means the Inbox. The UI always sends the active project.
+    #[serde(default)]
+    pub project_id: Option<String>,
 }
 
 #[derive(Debug)]
@@ -109,17 +117,25 @@ impl CaptureStore {
 
     pub fn create(&self, input: CreateCaptureInput) -> Result<Capture, StoreError> {
         validate_input(&input)?;
+        let project_id = input.project_id.unwrap_or_else(|| INBOX_PROJECT_ID.to_string());
         let capture = Capture {
             id: Uuid::new_v4().to_string(),
             source: input.source,
             content: input.content,
             created_at: now_rfc3339()?,
+            project_id,
         };
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
+        // The project must exist and be open. Checked here for a precise message; the schema repeats it as a trigger.
+        match connection.query_row("SELECT archived_at IS NOT NULL FROM projects WHERE id = ?1", [&capture.project_id], |row| row.get::<_, bool>(0)).optional()? {
+            None => return Err(StoreError::Invalid("project does not exist".into())),
+            Some(true) => return Err(StoreError::Invalid("project is archived".into())),
+            Some(false) => {}
+        }
         // Autocommit: the row is committed (and synced) when this returns.
         connection.execute(
-            "INSERT INTO captures (id, source, content, created_at) VALUES (?1, ?2, ?3, ?4)",
-            params![capture.id, capture.source, capture.content, capture.created_at],
+            "INSERT INTO captures (id, source, content, created_at, project_id) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![capture.id, capture.source, capture.content, capture.created_at, capture.project_id],
         )?;
         Ok(capture)
     }
@@ -127,8 +143,8 @@ impl CaptureStore {
     pub fn get_capture(&self, id: &str) -> Result<Option<Capture>, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let found = connection
-            .query_row("SELECT id, source, content, created_at FROM captures WHERE id = ?1", [id], |row| {
-                Ok(Capture { id: row.get(0)?, source: row.get(1)?, content: row.get(2)?, created_at: row.get(3)? })
+            .query_row("SELECT id, source, content, created_at, project_id FROM captures WHERE id = ?1", [id], |row| {
+                Ok(Capture { id: row.get(0)?, source: row.get(1)?, content: row.get(2)?, created_at: row.get(3)?, project_id: row.get(4)? })
             })
             .map(Some)
             .or_else(|error| match error {
@@ -141,13 +157,47 @@ impl CaptureStore {
         Ok(found)
     }
 
-    /// Newest first. Fails as a whole if any stored row is malformed.
-    pub fn list(&self) -> Result<Vec<Capture>, StoreError> {
+    /// The captures with these ids, in no particular order, from one query. Unknown ids are simply absent. Not scoped by
+    /// project: provenance must open the original Capture wherever the idea derived from it now lives.
+    pub fn get_captures(&self, ids: &[String]) -> Result<Vec<Capture>, StoreError> {
+        if ids.len() > MAX_CAPTURE_LOOKUP {
+            return Err(StoreError::Invalid(format!("more than {MAX_CAPTURE_LOOKUP} ids")));
+        }
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
-        let mut statement =
-            connection.prepare("SELECT id, source, content, created_at FROM captures ORDER BY seq DESC")?;
-        let rows = statement.query_map([], |row| {
-            Ok(Capture { id: row.get(0)?, source: row.get(1)?, content: row.get(2)?, created_at: row.get(3)? })
+        let sql = format!(
+            "SELECT id, source, content, created_at, project_id FROM captures WHERE id IN ({}) ORDER BY seq DESC",
+            vec!["?"; ids.len()].join(",")
+        );
+        let mut statement = connection.prepare(&sql)?;
+        let rows = statement.query_map(rusqlite::params_from_iter(ids.iter()), |row| {
+            Ok(Capture { id: row.get(0)?, source: row.get(1)?, content: row.get(2)?, created_at: row.get(3)?, project_id: row.get(4)? })
+        })?;
+        let mut captures = Vec::new();
+        for row in rows {
+            let capture = row?;
+            validate_stored(&capture)?;
+            captures.push(capture);
+        }
+        Ok(captures)
+    }
+
+    /// Newest first. Fails as a whole if any stored row is malformed.
+    #[allow(dead_code)] // the unscoped form; the app itself always names a project
+    pub fn list(&self) -> Result<Vec<Capture>, StoreError> {
+        self.list_in(None)
+    }
+
+    /// Newest first, optionally only the captures of one project (an indexed lookup).
+    pub fn list_in(&self, project_id: Option<&str>) -> Result<Vec<Capture>, StoreError> {
+        let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
+        let mut statement = connection.prepare(
+            "SELECT id, source, content, created_at, project_id FROM captures WHERE (?1 IS NULL OR project_id = ?1) ORDER BY seq DESC",
+        )?;
+        let rows = statement.query_map([project_id], |row| {
+            Ok(Capture { id: row.get(0)?, source: row.get(1)?, content: row.get(2)?, created_at: row.get(3)?, project_id: row.get(4)? })
         })?;
         let mut captures = Vec::new();
         for row in rows {
@@ -189,6 +239,9 @@ fn validate_stored(capture: &Capture) -> Result<(), StoreError> {
     if capture.content.trim().is_empty() {
         return Err(corrupt("empty content"));
     }
+    if capture.project_id.is_empty() {
+        return Err(corrupt("no project"));
+    }
     if OffsetDateTime::parse(&capture.created_at, &Rfc3339).is_err() {
         return Err(corrupt("created_at is not RFC 3339"));
     }
@@ -201,7 +254,7 @@ mod tests {
     use std::collections::HashSet;
 
     fn text(content: &str) -> CreateCaptureInput {
-        CreateCaptureInput { source: "text".into(), content: content.into() }
+        CreateCaptureInput { source: "text".into(), content: content.into(), project_id: None }
     }
 
     #[test]
@@ -245,7 +298,7 @@ mod tests {
 
         let first = CaptureStore::open(&path).unwrap();
         let a = first.create(text("first thought")).unwrap();
-        let b = first.create(CreateCaptureInput { source: "voice".into(), content: "second".into() }).unwrap();
+        let b = first.create(CreateCaptureInput { source: "voice".into(), content: "second".into(), project_id: None }).unwrap();
         drop(first);
 
         let reopened = CaptureStore::open(&path).unwrap();
@@ -275,7 +328,7 @@ mod tests {
             text(""),
             text("   \n\t"),
             text(&too_long),
-            CreateCaptureInput { source: "telepathy".into(), content: "hi".into() },
+            CreateCaptureInput { source: "telepathy".into(), content: "hi".into(), project_id: None },
         ] {
             assert!(matches!(store.create(bad), Err(StoreError::Invalid(_))));
         }
@@ -319,7 +372,7 @@ mod tests {
         let value = serde_json::to_value(store.create(text("hi")).unwrap()).unwrap();
         let mut keys: Vec<&String> = value.as_object().unwrap().keys().collect();
         keys.sort();
-        assert_eq!(keys, ["content", "createdAt", "id", "source"]);
+        assert_eq!(keys, ["content", "createdAt", "id", "projectId", "source"]);
     }
 
     #[test]
