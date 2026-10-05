@@ -6,3 +6,4 @@ pub mod lineage_store;
 pub mod organization_store;
 pub mod summary_store;
 pub mod project_store;
+pub mod recall_store;

@@ -7,3 +7,4 @@
 pub mod credentials;
 pub mod http;
 pub mod chat;
+pub mod embed;

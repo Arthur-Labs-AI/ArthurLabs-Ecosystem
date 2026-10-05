@@ -21,6 +21,7 @@ Project -> KnowledgeObjects -> Graph -> Lineage -> Provenance -> grounded answer
 | [storage-plan.md](storage-plan.md) | Schema v7, embeddings lifecycle, freshness/invalidation, privacy, rebuild strategy |
 | [benchmark-plan.md](benchmark-plan.md) | Dataset, configurations, metrics, acceptance thresholds, what each benchmark decides |
 | [failure-model.md](failure-model.md) | Layered failure and degradation behaviour |
+| [m04b-implementation-notes.md](m04b-implementation-notes.md) | What M04B built, deviations from this design, measured results |
 
 No Mermaid: the repo uses plain-text diagrams only, so these do too.
 

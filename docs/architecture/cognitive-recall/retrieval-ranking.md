@@ -128,7 +128,7 @@ WHERE o.project_id = ?2
 
   The `revision_id = current_revision_id` condition makes a **stale vector unusable by construction** (it is simply not
   joined), so an edited-since-embedded object is lexical-only until re-embedded and can never be matched on its old meaning.
-* Top 30 by cosine, with `cos >= tau_sem`. **`tau_sem` initial placeholder 0.30** (to be calibrated on the zero-result class;
+* Top 30 by cosine, with `cos >= tau_sem`. **`tau_sem` = 0.40 for `text-embedding-3-small` @ 512 (calibrated live in M04B; the original placeholder was 0.30)** (to be calibrated on the zero-result class;
   `text-embedding-3-small` cosines for unrelated text are typically 0.05-0.25 and for related text 0.35+, but this is not
   guaranteed for Bulgarian; benchmark `S1` sets it per language and records the chosen value in the recall meta table).
 * Partial coverage is normal (some objects not yet embedded). It is **reported** (`coverage = embedded/total in scope`), not hidden.

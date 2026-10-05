@@ -316,14 +316,67 @@ CREATE TABLE active_project (
 );
 ";
 
+
+/// v7 (M04B): Cognitive Recall retrieval indexes. ADDITIVE: no v1-v6 table, trigger or row is touched, and every object created
+/// here is a REBUILDABLE PROJECTION of authoritative data (see docs/architecture/cognitive-recall/storage-plan.md).
+///
+/// * `recall_revision_fts` is a lexical index over `thought_revisions`. Revisions are immutable (their update trigger
+///   aborts), so the index is insert-only. Which revision is "current" is decided at query time by
+///   `knowledge_objects.current_revision_id`, and the project by `knowledge_objects.project_id`; neither is stored here, so
+///   an edit, a branch, a merge, a project move or an archive needs no index maintenance.
+/// * `recall_embeddings` holds at most one vector per (object, model key) for the CURRENT projection of an object. It is valid
+///   only while `revision_id = knowledge_objects.current_revision_id`. It carries no project: moving an object never touches it.
+/// * `recall_meta` holds index facts only. The user's consent to semantic Recall is NOT stored in the database (a rebuildable
+///   projection must not own a privacy choice); it lives in app-private settings.
+pub const SCHEMA_V7: &str = "
+CREATE VIRTUAL TABLE recall_revision_fts USING fts5(
+    title, body,
+    content = 'thought_revisions',
+    content_rowid = 'seq',
+    tokenize = 'unicode61 remove_diacritics 2'
+);
+
+CREATE TRIGGER recall_fts_after_revision_insert AFTER INSERT ON thought_revisions
+BEGIN
+    INSERT INTO recall_revision_fts(rowid, title, body) VALUES (NEW.seq, NEW.title, NEW.body);
+END;
+
+CREATE TRIGGER recall_fts_after_revision_delete AFTER DELETE ON thought_revisions
+BEGIN
+    INSERT INTO recall_revision_fts(recall_revision_fts, rowid, title, body) VALUES ('delete', OLD.seq, OLD.title, OLD.body);
+END;
+
+INSERT INTO recall_revision_fts(recall_revision_fts) VALUES ('rebuild');
+
+CREATE TABLE recall_embeddings (
+    object_id   TEXT    NOT NULL REFERENCES knowledge_objects(id) ON DELETE CASCADE,
+    model_key   TEXT    NOT NULL CHECK (length(model_key) > 0),
+    revision_id TEXT    NOT NULL REFERENCES thought_revisions(id) ON DELETE CASCADE,
+    dims        INTEGER NOT NULL CHECK (dims > 0),
+    vector      BLOB    NOT NULL CHECK (length(vector) = dims * 4),
+    text_hash   TEXT    NOT NULL CHECK (length(text_hash) > 0),
+    created_at  TEXT    NOT NULL CHECK (length(created_at) > 0),
+    PRIMARY KEY (object_id, model_key)
+);
+
+CREATE INDEX recall_embeddings_by_model_revision ON recall_embeddings(model_key, revision_id);
+
+CREATE TABLE recall_meta (
+    key   TEXT PRIMARY KEY CHECK (length(key) > 0),
+    value TEXT NOT NULL
+);
+
+INSERT INTO recall_meta (key, value) VALUES ('fts_tokenizer_version', 'unicode61-remove_diacritics2-v1');
+";
+
 pub type Step = (i64, &'static str);
 
 /// Ordered migration steps: `(version after the step, SQL)`.
-pub const STEPS: [Step; 6] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4), (5, SCHEMA_V5), (6, SCHEMA_V6)];
+pub const STEPS: [Step; 7] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4), (5, SCHEMA_V5), (6, SCHEMA_V6), (7, SCHEMA_V7)];
 
 /// The version `STEPS` ends at; asserted against `STEPS` by a test.
 #[cfg(test)]
-pub const SCHEMA_VERSION: i64 = 6;
+pub const SCHEMA_VERSION: i64 = 7;
 
 pub fn migrate(connection: &mut Connection) -> Result<(), StoreError> {
     migrate_with(connection, &STEPS)
@@ -837,7 +890,7 @@ mod tests {
         let store = CaptureStore::open(&path).unwrap();
 
         let connection = Connection::open(&path).unwrap();
-        assert_eq!(user_version(&connection), 6);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION);
         assert_eq!(fingerprint(&connection), before, "captures, objects, provenance, relations, revisions, runs and failures are unchanged");
         let (captures, objects, in_inbox): (i64, i64, i64) = connection
             .query_row(
@@ -964,7 +1017,7 @@ mod tests {
         let connection = Connection::open(&path).unwrap();
         let after = fingerprint(&connection);
         let counts_after = tables.map(|t| count(&connection, t));
-        assert_eq!(user_version(&connection), 6);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION);
         assert_eq!(after, before, "captures, objects, provenance, relations, revisions, parents, runs and failures: byte-for-byte identical");
         assert_eq!(counts_after, counts_before);
         let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
@@ -1059,6 +1112,221 @@ mod tests {
         fn of(o: &crate::storage::knowledge_store::KnowledgeObject) -> Self {
             Self(o.id.clone(), o.kind.clone(), o.title.clone(), o.body.clone(), o.created_at.clone(), o.provenance.clone())
         }
+    }
+
+    // ---- v7: Cognitive Recall indexes -----------------------------------------------------------------------------------------
+
+    /// A populated database exactly as M03.2 left it: schema v6 with a second and an archived project, a moved object, an active
+    /// project, and everything the v5 fixture carries (revisions beyond the initial ones, a relation, a zero-object run, a failure).
+    fn v6_database(path: &std::path::Path) {
+        v5_database(path);
+        let mut connection = Connection::open(path).unwrap();
+        migrate_with(&mut connection, &STEPS[..6]).unwrap();
+        connection
+            .execute_batch(
+                "INSERT INTO projects (id, name, created_at, updated_at) VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Nexus', '2026-10-04T12:00:00Z', '2026-10-04T12:00:00Z');
+                 INSERT INTO projects (id, name, created_at, updated_at, archived_at) VALUES ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'Old', '2026-10-04T12:01:00Z', '2026-10-04T12:02:00Z', '2026-10-04T12:02:00Z');
+                 UPDATE knowledge_objects SET project_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' WHERE id = '22222222-2222-4222-8222-222222222222';
+                 INSERT INTO active_project (id, project_id) VALUES (1, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');",
+            )
+            .unwrap();
+        assert_eq!(user_version(&connection), 6);
+    }
+
+    /// Everything v7 must leave alone: the v6 fingerprint plus projects, the active project and every row's project.
+    fn v6_fingerprint(connection: &Connection) -> Vec<String> {
+        let mut rows = fingerprint(connection);
+        for (label, sql) in [
+            ("project", "SELECT id || '|' || name || '|' || created_at || '|' || updated_at || '|' || ifnull(archived_at, '-') FROM projects ORDER BY seq"),
+            ("active", "SELECT project_id FROM active_project"),
+            ("capture_project", "SELECT id || '|' || project_id FROM captures ORDER BY seq"),
+            ("object_project", "SELECT id || '|' || project_id FROM knowledge_objects ORDER BY seq"),
+        ] {
+            let mut statement = connection.prepare(sql).unwrap();
+            rows.extend(statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|row| format!("{label}:{}", row.unwrap())));
+        }
+        rows
+    }
+
+    fn count(connection: &Connection, table: &str) -> i64 {
+        connection.query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0)).unwrap()
+    }
+
+    #[test]
+    fn a_populated_v6_database_upgrades_to_v7_with_every_authoritative_row_unchanged_and_a_complete_lexical_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v6_database(&path);
+        let (before, revisions) = {
+            let connection = Connection::open(&path).unwrap();
+            (v6_fingerprint(&connection), count(&connection, "thought_revisions"))
+        };
+        assert!(before.len() > 15 && revisions >= 3, "the fixture is populated ({} rows, {revisions} revisions)", before.len());
+
+        let store = CaptureStore::open(&path).unwrap();
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 7);
+        assert_eq!(v6_fingerprint(&connection), before, "every authoritative row is byte-identical");
+        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        assert_eq!((integrity.as_str(), violations), ("ok", 0));
+        // The v7 objects exist, are populated exactly where they should be, and nothing semantic was invented.
+        for (kind, name) in [("table", "recall_revision_fts"), ("table", "recall_embeddings"), ("table", "recall_meta"), ("trigger", "recall_fts_after_revision_insert"), ("trigger", "recall_fts_after_revision_delete"), ("index", "recall_embeddings_by_model_revision")] {
+            assert!(has_object(&connection, kind, name), "{name}");
+        }
+        assert_eq!(count(&connection, "recall_embeddings"), 0);
+        assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions, "one index row per revision, backfilled by the migration");
+        store.recall_check_lexical_index().unwrap();
+        // The index is usable at once: the Bulgarian object from the fixture is found in its own (Inbox) project.
+        let hits = store.recall_lexical_current("{title body}: (\"нещо\")", INBOX_PROJECT_ID, 10).unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].object.object_id, "33333333-3333-4333-8333-333333333333");
+        // ...and the object that was moved to another project is not found through the Inbox.
+        assert!(store.recall_lexical_current("{title body}: (\"thought\")", INBOX_PROJECT_ID, 10).unwrap().is_empty());
+        assert_eq!(store.recall_lexical_current("{title body}: (\"thought\")", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", 10).unwrap().len(), 1);
+        // Repeating changes nothing.
+        drop(store);
+        for _ in 0..3 {
+            CaptureStore::open(&path).unwrap();
+        }
+        assert_eq!(v6_fingerprint(&Connection::open(&path).unwrap()), before);
+    }
+
+    #[test]
+    fn the_v7_retrieval_tables_are_rebuildable_projections() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v6_database(&path);
+        let before = v6_fingerprint(&Connection::open(&path).unwrap());
+        CaptureStore::open(&path).unwrap();
+
+        // Throw every retrieval object away and step the version back: the next open recreates them from authoritative data alone.
+        {
+            let connection = Connection::open(&path).unwrap();
+            connection
+                .execute_batch(
+                    "DROP TRIGGER recall_fts_after_revision_insert; DROP TRIGGER recall_fts_after_revision_delete;
+                     DROP TABLE recall_revision_fts; DROP TABLE recall_embeddings; DROP TABLE recall_meta;
+                     PRAGMA user_version = 6;",
+                )
+                .unwrap();
+            assert_eq!(v6_fingerprint(&connection), before, "dropping the projections removed no knowledge");
+        }
+        let store = CaptureStore::open(&path).unwrap();
+        assert_eq!(v6_fingerprint(&Connection::open(&path).unwrap()), before);
+        let revisions = count(&Connection::open(&path).unwrap(), "thought_revisions");
+        assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions);
+
+        // And the index alone can be emptied and regenerated in place.
+        store.execute_sql_for_test("INSERT INTO recall_revision_fts(recall_revision_fts) VALUES ('delete-all')");
+        assert_eq!(store.recall_indexed_revision_count().unwrap(), 0);
+        store.recall_rebuild_lexical_index().unwrap();
+        assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions);
+        store.recall_check_lexical_index().unwrap();
+    }
+
+    #[test]
+    fn a_failing_v7_upgrade_rolls_back_completely_and_leaves_v6_usable() {
+        for blocker in [
+            "CREATE TABLE recall_embeddings (precious TEXT); INSERT INTO recall_embeddings VALUES ('keep me');",
+            "CREATE TABLE recall_meta (precious TEXT); INSERT INTO recall_meta VALUES ('keep me');",
+            "CREATE TABLE recall_revision_fts (precious TEXT); INSERT INTO recall_revision_fts VALUES ('keep me');",
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("arthur.db");
+            v6_database(&path);
+            Connection::open(&path).unwrap().execute_batch(blocker).unwrap();
+            let before = v6_fingerprint(&Connection::open(&path).unwrap());
+
+            assert!(CaptureStore::open(&path).is_err(), "{blocker}");
+            let connection = Connection::open(&path).unwrap();
+            assert_eq!(user_version(&connection), 6, "still v6");
+            assert_eq!(v6_fingerprint(&connection), before, "nothing of the failed step survived");
+            assert!(!has_object(&connection, "trigger", "recall_fts_after_revision_insert"), "no half-created trigger");
+            // v6 is still fully usable (the project and immutability triggers survive).
+            assert!(connection.execute("UPDATE thought_revisions SET title = 'x'", []).is_err());
+            let precious: i64 = connection.query_row("SELECT count(*) FROM recall_embeddings", [], |r| r.get(0)).unwrap_or(0) + connection.query_row("SELECT count(*) FROM recall_meta", [], |r| r.get(0)).unwrap_or(0) + connection.query_row("SELECT count(*) FROM recall_revision_fts", [], |r| r.get(0)).unwrap_or(0);
+            assert_eq!(precious, 1, "the blocker's own row is intact");
+        }
+    }
+
+    #[test]
+    fn a_v8_database_is_refused_without_a_single_byte_changing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v6_database(&path);
+        CaptureStore::open(&path).unwrap();
+        Connection::open(&path).unwrap().pragma_update(None, "user_version", 8).unwrap();
+        let bytes_before = std::fs::read(&path).unwrap();
+        assert!(matches!(CaptureStore::open(&path), Err(StoreError::Corrupt(_))));
+        assert_eq!(user_version(&Connection::open(&path).unwrap()), 8);
+        assert_eq!(std::fs::read(&path).unwrap(), bytes_before, "refused untouched");
+    }
+
+    /// Works on copies; the original is never opened for writing.
+    #[test]
+    #[ignore = "needs a real v6 database: set ARTHUR_V6_PROOF_DB"]
+    fn migration_proof_on_a_real_populated_v6_database() {
+        let source = std::env::var("ARTHUR_V6_PROOF_DB").expect("ARTHUR_V6_PROOF_DB");
+        let dir = tempfile::tempdir().unwrap();
+        let copy = |name: &str| {
+            let path = dir.path().join(name);
+            std::fs::copy(&source, &path).unwrap();
+            path
+        };
+        let tables = ["projects", "active_project", "captures", "knowledge_objects", "object_sources", "relations", "thought_revisions", "revision_parents", "distillation_runs", "organization_failures"];
+
+        let path = copy("upgraded.db");
+        let (before, counts_before) = {
+            let connection = Connection::open(&path).unwrap();
+            assert_eq!(user_version(&connection), 6, "the proof needs a v6 database");
+            (v6_fingerprint(&connection), tables.map(|t| count(&connection, t)))
+        };
+        let started = std::time::Instant::now();
+        let store = CaptureStore::open(&path).unwrap();
+        let elapsed = started.elapsed();
+        let connection = Connection::open(&path).unwrap();
+        let counts_after = tables.map(|t| count(&connection, t));
+        assert_eq!(user_version(&connection), 7);
+        assert_eq!(v6_fingerprint(&connection), before, "authoritative data: byte-for-byte identical");
+        assert_eq!(counts_after, counts_before);
+        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        assert_eq!((integrity.as_str(), violations), ("ok", 0));
+        let revisions = count(&connection, "thought_revisions");
+        assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions);
+        store.recall_check_lexical_index().unwrap();
+        assert_eq!(count(&connection, "recall_embeddings"), 0);
+        println!("PROOF upgraded: v6 -> v7 in {elapsed:?}; rows {tables:?} = {counts_after:?}; fingerprint rows {}; integrity {integrity}; fk violations {violations}; fts rows {revisions} = revisions", before.len());
+
+        // Retrieval tables are rebuildable: empty and regenerate, authoritative data identical throughout.
+        store.execute_sql_for_test("INSERT INTO recall_revision_fts(recall_revision_fts) VALUES ('delete-all')");
+        store.recall_rebuild_lexical_index().unwrap();
+        assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions);
+        assert_eq!(v6_fingerprint(&Connection::open(&path).unwrap()), before);
+        drop(store);
+        for _ in 0..3 {
+            CaptureStore::open(&path).unwrap();
+        }
+        assert_eq!(v6_fingerprint(&Connection::open(&path).unwrap()), before);
+
+        // A failing v7 step rolls back completely on this data.
+        let broken = copy("broken.db");
+        Connection::open(&broken).unwrap().execute_batch("CREATE TABLE recall_meta (precious TEXT); INSERT INTO recall_meta VALUES ('keep me');").unwrap();
+        assert!(CaptureStore::open(&broken).is_err());
+        let connection = Connection::open(&broken).unwrap();
+        assert_eq!(user_version(&connection), 6);
+        assert_eq!(v6_fingerprint(&connection), before);
+        assert!(!has_object(&connection, "table", "recall_revision_fts"));
+        println!("PROOF rollback: failing v7 step left v6 intact (user_version 6, fingerprint identical, no FTS table)");
+
+        // A newer schema is refused untouched.
+        let newer = copy("newer.db");
+        Connection::open(&newer).unwrap().pragma_update(None, "user_version", 8).unwrap();
+        let bytes = std::fs::read(&newer).unwrap();
+        assert!(matches!(CaptureStore::open(&newer), Err(StoreError::Corrupt(_))));
+        assert_eq!(std::fs::read(&newer).unwrap(), bytes);
+        println!("PROOF newer: a v8 database was refused without modification");
     }
 
     #[test]

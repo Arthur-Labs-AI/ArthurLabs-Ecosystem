@@ -3,5 +3,6 @@ pub mod distill;
 pub mod graph;
 pub mod lineage;
 pub mod projects;
+pub mod recall;
 pub mod runtime_info;
 pub mod voice;

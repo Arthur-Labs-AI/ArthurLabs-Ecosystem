@@ -7,6 +7,7 @@ mod lifecycle;
 mod lineage;
 mod platform;
 mod providers;
+mod recall;
 mod storage;
 mod stt;
 #[cfg(test)]
@@ -25,6 +26,9 @@ use graph::GraphService;
 use storage::capture_store::CaptureStore;
 use providers::credentials::FileCredentialSource;
 use stt::openai::OpenAiTranscriber;
+use providers::embed::OpenAiEmbedder;
+use recall::settings::SemanticSettings;
+use recall::RecallService;
 
 #[cfg(target_os = "android")]
 fn platform_recorder(app: &AppHandle) -> Arc<dyn Recorder> {
@@ -55,7 +59,22 @@ pub fn run() {
             let credentials = Arc::new(FileCredentialSource::new(credentials_dir.join("openai_api_key")));
             let transcriber = Arc::new(OpenAiTranscriber::new(credentials.clone())?);
             app.manage(DistillationService::new(Arc::new(OpenAiDistiller::new(credentials.clone())?)));
-            app.manage(GraphService::new(Arc::new(OpenAiRelationProposer::new(credentials.clone())?), Arc::new(OpenAiRelationVerifier::new(credentials)?)));
+            app.manage(GraphService::new(Arc::new(OpenAiRelationProposer::new(credentials.clone())?), Arc::new(OpenAiRelationVerifier::new(credentials.clone())?)));
+
+            // Semantic Recall is OPT-IN. The consent lives in app-private settings, outside the database, and a missing or damaged
+            // file means OFF. Having an API key never enables it.
+            let settings = Arc::new(SemanticSettings::new(data_dir.join("recall").join("semantic.json")));
+            app.manage(RecallService::new(Arc::new(OpenAiEmbedder::new(credentials)?), settings));
+            commands::recall::kick_indexer(app.handle());
+            // The indexer finds its own work (new objects, edits, merges that became current) on a slow poll; it is a no-op while
+            // semantic Recall is off. Distillation and Lineage are not touched by Recall.
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    tokio::time::sleep(commands::recall::INDEX_POLL).await;
+                    commands::recall::kick_indexer(&handle);
+                }
+            });
 
             // Recordings are transient, so they go in the cache directory.
             let recordings_dir = app.path().app_cache_dir()?.join("recordings");
@@ -103,6 +122,10 @@ pub fn run() {
             commands::projects::get_active_project,
             commands::projects::set_active_project,
             commands::projects::get_project_graph,
+            commands::recall::recall_retrieve,
+            commands::recall::get_semantic_recall_status,
+            commands::recall::set_semantic_recall_enabled,
+            commands::recall::purge_semantic_index,
         ])
         .build(tauri::generate_context!())
         .expect("error while building the Arthur application")

@@ -321,7 +321,7 @@ test("knowledge kinds, limits and error codes agree across the contract, Rust, S
 
 test("the schema is changed only through ordered, transactional migration steps", () => {
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  assert.match(migrations, /pub const STEPS: \[Step; 6\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\), \(4, SCHEMA_V4\), \(5, SCHEMA_V5\), \(6, SCHEMA_V6\)\];/);
+  assert.match(migrations, /pub const STEPS: \[Step; 7\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\), \(4, SCHEMA_V4\), \(5, SCHEMA_V5\), \(6, SCHEMA_V6\), \(7, SCHEMA_V7\)\];/);
   assert.match(migrations, /connection\.transaction\(\)/);
   for (const table of ["distillation_runs", "knowledge_objects", "object_sources", "relations", "thought_revisions", "revision_parents"]) assert.match(migrations, new RegExp(`CREATE TABLE ${table}\\b`));
   assert.match(migrations, /REFERENCES captures\(id\)/);
@@ -384,8 +384,10 @@ test("graph schema: foreign keys to knowledge objects, canonical identity, index
   assert.match(v3, /CREATE INDEX relations_by_target ON relations\(target_object_id\)/);
   // Graph relations and Capture provenance are separate systems: a relation never points at a capture.
   assert.doesNotMatch(v3, /captures/);
-  // Out of scope so far.
-  assert.doesNotMatch(migrations, /embedding|outbox/i);
+  // Out of scope for v1-v6: embeddings and an outbox. v7 (M04B) adds retrieval indexes ONLY (checked in the v7 test below).
+  const beforeV7 = migrations.slice(0, migrations.indexOf("/// v7 (M04B)"));
+  assert.doesNotMatch(beforeV7, /embedding|outbox/i);
+  assert.doesNotMatch(migrations, /outbox/i);
   // The graph schema does not know about revisions.
   assert.doesNotMatch(v3, /revision/i);
 });
@@ -669,8 +671,27 @@ test("projects are a domain boundary the model never decides: distillation and i
   assert.doesNotMatch(graph, /store\.list_knowledge_objects\(\)/, "inference never reads every project's objects");
 });
 
-test("M03.2 stops before recall: no Ask Arthur or retrieval entry point exists yet", () => {
+test("M04B is retrieval only: no Ask Arthur, no synthesis, no graph or lineage in Recall, and no authoritative write", () => {
   const client = readText(app, "src/client/arthur-client.ts");
-  assert.doesNotMatch(client, /^\s*(ask|recall|query|search)\w*\(/m, "no retrieval method on ArthurClient yet");
-  assert.doesNotMatch(readText(tauriDir, "src/lib.rs"), /commands::(recall|ask)/);
+  assert.doesNotMatch(client, /^\s*(ask|recall|query|search)\w*\(/m, "no answer-producing method on ArthurClient yet");
+  const lib = readText(tauriDir, "src/lib.rs");
+  assert.doesNotMatch(lib, /commands::ask|synthes/i);
+  // Recall's native code: no model call, no graph, no lineage, no tool or process execution, no HTTP of its own.
+  const recallDir = path.join(tauriDir, "src", "recall");
+  const recall = rustFiles(recallDir).filter((f) => !/(bench|acceptance|service_tests|testing)/.test(f)).map((f) => productionCode(readFileSync(f, "utf8"))).join("\n");
+  assert.doesNotMatch(recall, /providers::chat|complete_json|crate::graph|crate::lineage|crate::distillation|std::process|Command::new|reqwest|\btool\b/i);
+  // Recall reads authoritative tables only through the store module, and writes only its own projections.
+  assert.doesNotMatch(recall, /rusqlite|execute\(|INSERT|UPDATE|DELETE/);
+  const store = productionCode(readText(tauriDir, "src/storage/recall_store.rs"));
+  for (const statement of store.match(/(INSERT OR REPLACE INTO|INSERT INTO|UPDATE|DELETE FROM)\s+\w+/g) ?? []) {
+    assert.match(statement, /recall_/, `${statement}: Recall writes only its own projections`);
+  }
+  // v7 adds retrieval indexes and nothing else: no existing table is altered.
+  const migrations = readText(tauriDir, "src/storage/migrations.rs");
+  const v7 = migrations.slice(migrations.indexOf("pub const SCHEMA_V7"), migrations.indexOf("pub type Step"));
+  assert.doesNotMatch(v7, /ALTER TABLE|DROP |UPDATE |DELETE FROM/);
+  assert.deepEqual([...v7.matchAll(/CREATE (?:VIRTUAL )?TABLE (\w+)/g)].map((m) => m[1]), ["recall_revision_fts", "recall_embeddings", "recall_meta"]);
+  assert.doesNotMatch(v7, /project_id/, "no project is copied into an index: scope is a query-time filter");
+  // The consent never lives in the rebuildable tables.
+  assert.doesNotMatch(v7, /consent|enabled/i);
 });
