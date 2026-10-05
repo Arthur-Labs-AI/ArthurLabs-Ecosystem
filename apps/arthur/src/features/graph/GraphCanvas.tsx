@@ -17,7 +17,7 @@ function activate(action: () => void) {
   };
 }
 
-function wrap(title: string, width: number): string[] {
+export function wrap(title: string, width: number): string[] {
   const lines: string[] = [""];
   for (const word of title.split(/\s+/).filter(Boolean)) {
     const last = lines[lines.length - 1] as string;
@@ -30,7 +30,7 @@ function wrap(title: string, width: number): string[] {
 }
 
 /** Shape says what an idea is; colour never does. Radius `r` is the visual size. */
-function NodeShape({ kind, r }: { kind: KnowledgeObjectKind; r: number }) {
+export function NodeShape({ kind, r }: { kind: KnowledgeObjectKind; r: number }) {
   const s = r * 1.02;
   switch (kind) {
     case "task":

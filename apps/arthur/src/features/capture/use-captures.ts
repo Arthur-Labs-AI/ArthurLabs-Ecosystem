@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Capture } from "@arthur/contracts";
+import type { Capture, VoiceCaptureErrorCode } from "@arthur/contracts";
+import { VoiceCaptureError } from "../../client/arthur-client";
 import { useArthurClient } from "../../hooks/use-arthur-client";
 
 export type VoiceState = "idle" | "starting" | "recording" | "transcribing";
+
+/** Why the last voice attempt failed. `message` is safe to show; `code` lets a screen explain what happens next. */
+export interface VoiceFailure {
+  code: VoiceCaptureErrorCode;
+  message: string;
+}
 
 export interface CapturesState {
   status: "loading" | "ready" | "error";
@@ -10,6 +17,16 @@ export interface CapturesState {
   saving: boolean;
   /** Last load, save or voice failure. Cleared by the next successful operation. */
   error: string | null;
+  /** The last voice failure, until the next voice attempt, save or `dismissVoiceFailure`. Mirrors `error` for voice only. */
+  voiceFailure: VoiceFailure | null;
+  dismissVoiceFailure: () => void;
+  /**
+   * True once the microphone was successfully started in THIS app run, and not refused since. It is deliberately not
+   * persisted and not a permission query: ArthurClient cannot ask the system, so this only says "it worked a moment ago".
+   */
+  micKnownGranted: boolean;
+  /** Discards an in-progress recording without transcribing it. */
+  cancelVoice: () => Promise<void>;
   /** Resolves true when the capture was durably saved. */
   save: (content: string) => Promise<boolean>;
   voiceState: VoiceState;
@@ -24,6 +41,7 @@ export interface CapturesState {
 }
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+const failureOf = (error: unknown): VoiceFailure => ({ code: error instanceof VoiceCaptureError ? error.code : "capture_failed", message: messageOf(error) });
 
 export function useCapturesState(): CapturesState {
   const client = useArthurClient();
@@ -32,6 +50,8 @@ export function useCapturesState(): CapturesState {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [voiceFailure, setVoiceFailure] = useState<VoiceFailure | null>(null);
+  const [micKnownGranted, setMicKnownGranted] = useState(false);
   // Mirrors `voiceState` so event handlers and cleanup see the current value.
   const voiceRef = useRef<VoiceState>("idle");
   const changeVoiceState = useCallback((next: VoiceState) => {
@@ -71,6 +91,7 @@ export function useCapturesState(): CapturesState {
   const addCapture = useCallback((created: Capture) => {
     setCaptures((current) => [created, ...current]);
     setError(null);
+    setVoiceFailure(null);
     setStatus("ready");
     // The capture is persisted and visible. Whatever follows (auto-organizing) must never be able to undo or fail it.
     for (const listener of [...listeners.current]) {
@@ -102,11 +123,16 @@ export function useCapturesState(): CapturesState {
     if (voiceRef.current !== "idle") return;
     changeVoiceState("starting");
     setError(null);
+    setVoiceFailure(null);
     try {
       await client.startVoiceCapture();
+      setMicKnownGranted(true);
       changeVoiceState("recording");
     } catch (failure) {
       setError(messageOf(failure));
+      const reason = failureOf(failure);
+      setVoiceFailure(reason);
+      if (reason.code === "microphone_permission_denied") setMicKnownGranted(false);
       changeVoiceState("idle");
     }
   }, [client, changeVoiceState]);
@@ -118,10 +144,19 @@ export function useCapturesState(): CapturesState {
       addCapture(await client.finishVoiceCapture());
     } catch (failure) {
       setError(messageOf(failure));
+      setVoiceFailure(failureOf(failure));
     } finally {
       changeVoiceState("idle");
     }
   }, [client, addCapture, changeVoiceState]);
+
+  const cancelVoice = useCallback(async () => {
+    if (voiceRef.current !== "recording") return;
+    changeVoiceState("idle");
+    await client.cancelVoiceCapture().catch(() => undefined);
+  }, [client, changeVoiceState]);
+
+  const dismissVoiceFailure = useCallback(() => setVoiceFailure(null), []);
 
   // Recording never continues in the background: if the screen is left or hidden, discard it.
   useEffect(() => {
@@ -129,6 +164,7 @@ export function useCapturesState(): CapturesState {
       if (voiceRef.current !== "recording") return;
       changeVoiceState("idle");
       setError("Recording stopped because Arthur left the foreground. Nothing was saved.");
+      setVoiceFailure({ code: "recording_interrupted", message: "Recording stopped because Arthur left the foreground. Nothing was saved." });
       void client.cancelVoiceCapture().catch(() => undefined);
     };
     const onVisibilityChange = () => {
@@ -141,5 +177,5 @@ export function useCapturesState(): CapturesState {
     };
   }, [client, changeVoiceState]);
 
-  return { status, captures, saving, error, save, voiceState, startVoice, stopVoice, subscribe };
+  return { status, captures, saving, error, save, voiceState, startVoice, stopVoice, voiceFailure, dismissVoiceFailure, micKnownGranted, cancelVoice, subscribe };
 }

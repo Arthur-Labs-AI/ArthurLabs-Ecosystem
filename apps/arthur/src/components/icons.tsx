@@ -96,6 +96,15 @@ const PATHS = {
   warn: <path d="M12 4 3 20h18zM12 10v4M12 17h.01" />,
   check: <path d="m5 12 4 4 10-10" />,
   retry: <path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5" />,
+  keyboard: (
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" />
+    </>
+  ),
+  back: <path d="M15 5l-7 7 7 7" />,
+  minus: <path d="M5 12h14" />,
+  filter: <path d="M4 6h16M7 12h10M10 18h4" />,
 } as const;
 
 export type IconName = keyof typeof PATHS;

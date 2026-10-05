@@ -43,3 +43,6 @@ export async function seeded(options: PreviewClientOptions = {}, content = TEXT)
   const objects = await client.distillCapture(capture.id);
   return { client, capture, objects };
 }
+
+/** Renders the app as a phone sees it. The viewport must already be installed (see test/viewport.ts). */
+export const renderMobile = renderApp;

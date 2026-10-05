@@ -15,6 +15,6 @@ Recorded separately from the design decisions (`DECISIONS.md`). None of these is
 - Recording length: `MAX_RECORDING_BYTES` (24MB) fails at *stop*. A duration cap with a warning is needed alongside follow-up 5, or the retry flow can't help a recording that was too long.
 - No recording telemetry (elapsed time, interruption event) in the client; the clock is the UI's own timer.
 - No cancel during transcription.
-- `createRelation` exists but has no UI on desktop or mobile; remove/confirm relation and "make an existing revision current" are not in the client.
+- Desktop has an "Add a connection" form (`createRelation`); mobile v1 has none (not designed). Remove/confirm relation and "make an existing revision current" are not in the client.
 - The demo dataset has no zero-connection objects (minimum 1). Add a few to `tools/demo-data/seed_demo_db.py` if the empty states should be visible against real data.
 - The map layout must cache positions per object id in production so it is the same map after a restart.

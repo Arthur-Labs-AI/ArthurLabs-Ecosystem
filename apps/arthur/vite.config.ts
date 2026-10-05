@@ -34,5 +34,7 @@ export default defineConfig({
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["./src/test/setup.ts"],
+    // Tests that measure the stylesheets (contrast of the tokens, touch sizes) read them with `?raw`; all other CSS stays stubbed.
+    css: { include: [/\.css\?raw$/] },
   },
 });
