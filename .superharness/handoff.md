@@ -1,4 +1,51 @@
-# Handoff — Phase 7 DETERMINISTICALLY CLOSED (2026-09-18)
+# Handoff — Electron ZIP extraction on Node 26 (2026-10-06)
+
+Task status: implemented and locally verified; CachyOS acceptance unverified.
+This handoff accompanies the Electron extraction fix commit on `main`
+(baseline `242b170`). The user authorized commit and push to `origin/main`
+on 2026-10-06. The pre-existing untracked `PROJECT_GUIDE.md` was left untouched.
+
+The locked chain was Electron 36.2.1 → extract-zip 2.0.1 → yauzl 2.10.0.
+Node 26.1 reproduced a CommonJS extraction exiting 0 with neither promise
+handler called. The compressed fixture failed its completion assertion;
+the stored fixture passed. This matches upstream Electron #51619 and
+extract-zip #154, caused by fd-slicer's obsolete stream destruction behavior.
+The fix is a scoped root pnpm override `extract-zip@2.0.1>yauzl: 3.4.0`,
+plus the generated lockfile. Electron remains 36.2.1.
+
+Verification:
+
+- New desktop unit regression: two-entry ZIP with a 256 KiB first entry,
+  stored and deflated variants; checks explicit promise completion and both
+  extracted contents, not just exit status. Node 26.1: RED before override,
+  GREEN after (2/2). Test runs in the existing desktop Vitest suite.
+- Actual unchanged Electron installer in an isolated temporary fixture,
+  Node 26.1 on Windows, targeting linux-x64: checksum-verified ZIP downloaded,
+  path.txt=`electron`, version=`36.2.1`, 74 files / 292,234,813 bytes,
+  binary 196,980,512 bytes, locales and resources present. ZIP SHA256:
+  `6ede19133495925c6fd39dcc161d255372a1cd0d2dc8c131929233584498be35`.
+- Desktop suite: 37 files, 229 passed / 1 existing platform skip.
+- Desktop lint/typecheck passed; launcher decision tests 20/20 passed.
+- `pnpm build`: 20/20 passed (19 cached).
+- Frozen lockfile install, repository hygiene, changed-file formatting,
+  and `git diff --check` passed.
+
+Next: pull the Electron fix from `origin/main` on the CachyOS checkout, run
+`pnpm install --frozen-lockfile` at the root, then
+`pnpm --filter @qa/desktop rebuild electron`. Verify path.txt, dist/version,
+binary executable permission, and `pnpm --filter @qa/desktop exec electron
+--version` returns v36.2.1. The existing cached ZIP can be reused. CachyOS
+launch and GitHub CI were not executed here. WSL was unavailable on this host.
+`shux contract` was attempted before work but the command was unavailable;
+protocol records were updated directly without modifying controller-owned state.
+
+Sources: https://github.com/electron/electron/issues/51619,
+https://github.com/max-mapper/extract-zip/issues/154,
+https://github.com/thejoshwolfe/yauzl/pull/170.
+
+---
+
+# Previous handoff — Phase 7 DETERMINISTICALLY CLOSED (2026-09-18)
 
 Phase 7 — DETERMINISTICALLY CLOSED
 
