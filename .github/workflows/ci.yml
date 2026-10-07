@@ -193,6 +193,7 @@ jobs:
           bash scripts/launcher/tests/test-status-pins.sh
           bash scripts/launcher/tests/test-npm-ignore-scripts.sh
           bash scripts/launcher/tests/test-electron-repair.sh
+          bash scripts/launcher/tests/test-deepseek-wrapper.sh
       - name: Native entrypoint smoke (host-independent + gate proof)
         run: |
           ./sentry help

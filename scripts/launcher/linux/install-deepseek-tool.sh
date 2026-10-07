@@ -9,7 +9,26 @@ set -euo pipefail
 EXPECTED="$1"
 TOOLS="$HOME/.local/share/sentry/tools/deepseek"
 RT=$(readlink -f "$HOME/.local/share/sentry/runtime/current")
-ENTRY=$(find -L "$RT" -path '*@deepseek-ai/dsh/lib/bin.js' -type f -print -quit 2>/dev/null)
+# Fast entry resolution first: a full `find -L` over the deployed tree costs
+# ~20s and blows the runtime's 8s version-probe budget on every wrapper
+# invocation. pnpm's isolated layout keeps the CLI as a sibling of its
+# importer (dsh-sdk-client) in the same store slice; lexical candidates
+# cover hoisted layouts; full find remains the correctness backstop.
+ENTRY=""
+SDK_LINK="$RT/packages/harness-deepseek/node_modules/@deepseek-ai/dsh-sdk-client"
+SDK_REAL="$(readlink -f "$SDK_LINK" 2>/dev/null || true)"
+if [ -n "$SDK_REAL" ] && [ -f "$SDK_REAL/../dsh/lib/bin.js" ]; then
+  ENTRY="$SDK_REAL/../dsh/lib/bin.js"
+fi
+for cand in \
+  "$RT/node_modules/@deepseek-ai/dsh/lib/bin.js" \
+  "$RT/packages/harness-deepseek/node_modules/@deepseek-ai/dsh/lib/bin.js" \
+  "$RT/apps/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js"; do
+  if [ -f "$cand" ]; then ENTRY="$cand"; break; fi
+done
+if [ -z "$ENTRY" ]; then
+  ENTRY=$(find -L "$RT" -path '*@deepseek-ai/dsh/lib/bin.js' -type f -print -quit 2>/dev/null || true)
+fi
 [ -n "$ENTRY" ] || { echo DSH_ENTRY_MISSING; exit 5; }
 PKG=$(dirname "$(dirname "$ENTRY")")/package.json
 VER=$(node -p "require('$PKG').version")
@@ -28,7 +47,23 @@ cat > "$TOOLS/bin/dsh" <<'WRAPPER'
 set -euo pipefail
 RT_LIVE=$(readlink -f "$HOME/.local/share/sentry/runtime/current" 2>/dev/null || true)
 [ -n "$RT_LIVE" ] && [ -d "$RT_LIVE" ] || { echo "Sentry runtime/current missing" >&2; exit 127; }
-ENTRY_LIVE=$(find -L "$RT_LIVE" -path '*@deepseek-ai/dsh/lib/bin.js' -type f -print -quit 2>/dev/null)
+# Fast paths first (same tiers as install-deepseek-tool.sh above): a full
+# `find -L` costs ~20s and blows the runtime's 8s version-probe budget.
+ENTRY_LIVE=""
+SDK_LIVE_LINK="$RT_LIVE/packages/harness-deepseek/node_modules/@deepseek-ai/dsh-sdk-client"
+SDK_LIVE_REAL="$(readlink -f "$SDK_LIVE_LINK" 2>/dev/null || true)"
+if [ -n "$SDK_LIVE_REAL" ] && [ -f "$SDK_LIVE_REAL/../dsh/lib/bin.js" ]; then
+  ENTRY_LIVE="$SDK_LIVE_REAL/../dsh/lib/bin.js"
+fi
+for cand in \
+  "$RT_LIVE/node_modules/@deepseek-ai/dsh/lib/bin.js" \
+  "$RT_LIVE/packages/harness-deepseek/node_modules/@deepseek-ai/dsh/lib/bin.js" \
+  "$RT_LIVE/apps/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js"; do
+  if [ -f "$cand" ]; then ENTRY_LIVE="$cand"; break; fi
+done
+if [ -z "$ENTRY_LIVE" ]; then
+  ENTRY_LIVE=$(find -L "$RT_LIVE" -path '*@deepseek-ai/dsh/lib/bin.js' -type f -print -quit 2>/dev/null || true)
+fi
 [ -n "$ENTRY_LIVE" ] || { echo "Sentry-managed DeepSeek runtime missing" >&2; exit 127; }
 exec node "$ENTRY_LIVE" "$@"
 WRAPPER
