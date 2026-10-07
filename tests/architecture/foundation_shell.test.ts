@@ -277,7 +277,7 @@ test("HTTP, credentials and the microphone are confined to their modules", () =>
   for (const { rel, text } of files) {
     if (/\breqwest\b/.test(text)) assert.match(rel, providerModules, `${rel} must not make HTTP calls`);
     if (/openai_api_key|api_key\(\)/.test(text)) assert.match(rel, /^(providers\/|stt\/|distillation\/|graph\/|lib\.rs$)/, `${rel} must not touch credentials`);
-    if (/run_mobile_plugin/.test(text)) assert.equal(rel, "audio/android.rs", `${rel} must not call the microphone plugin`);
+    if (/run_mobile_plugin/.test(text)) assert.ok(["audio/android.rs", "providers/android_keystore.rs"].includes(rel), `${rel} must not call a mobile plugin`);
   }
 
   // Nothing that handles the API key, the user's speech or their thoughts may log.
@@ -762,4 +762,33 @@ test("M04D: Ask Arthur is a UI over `ask`: one place builds the scope, nothing i
   assert.match(code(path.join(src, "client/index.ts")), /import\.meta\.env\.DEV[^;]*recallDemo/);
   // Schema is still v7 (checked in full by the M04C guard above); and the native Recall floor is untouched.
   assert.match(readText(tauriDir, "src/recall/service.rs"), /pub const DEFAULT_MIN_COSINE: f32 = 0\.40;/);
+});
+
+test("credentials: Android never falls back to a file, and the webview can neither read nor reach the Keystore plugin", () => {
+  const lib = readText(tauriDir, "src/lib.rs");
+  // The platform choice lives in one tested function; lib.rs never builds a file store itself.
+  assert.match(lib, /select_store\(platform, keystore\(app\.handle\(\)\)/);
+  assert.doesNotMatch(lib, /FileSecretStore|FileCredentialSource/);
+  const secrets = readText(tauriDir, "src/providers/secrets.rs");
+  const select = secrets.slice(secrets.indexOf("pub fn select_store"), secrets.indexOf("/// One-time move"));
+  assert.match(select, /StoragePlatform::Android => keystore\.unwrap_or_else\(\|\| std::sync::Arc::new\(UnavailableSecretStore\)\)/);
+  assert.doesNotMatch(select.split("StoragePlatform::Other")[0] ?? "", /FileSecretStore/);
+
+  // No command returns a credential, and no Tauri command is registered for the Keystore plugin.
+  const commands = readText(tauriDir, "src/commands/ai.rs");
+  assert.doesNotMatch(commands, /ApiKey|expose\(|\.get\(|fn get_(raw|api|secret|credential)/);
+  assert.doesNotMatch(lib, /read_secret|readSecret|get_raw/i);
+
+  // The Kotlin plugin never logs, and keeps the key inside the Keystore.
+  const kotlin = readFileSync(path.join(tauriDir, "gen/android/app/src/main/java/dev/kaloyan/arthur/SecretsPlugin.kt"), "utf8");
+  assert.doesNotMatch(kotlin, /\bLog\.|println|Timber|Logger/);
+  assert.match(kotlin, /"AndroidKeyStore"/);
+  assert.doesNotMatch(kotlin, /setUserAuthenticationRequired\(false\)|\.encoded|getEncoded/);
+});
+
+test("the AI contract has no operation or field that can return a credential", () => {
+  const contract = readFileSync(path.join(root, "packages/contracts/ai.ts"), "utf8");
+  assert.doesNotMatch(contract, /\b(secret|apiKey|rawKey|token|password)\b\s*[?:]/i);
+  const client = readFileSync(path.join(root, "apps/arthur/src/client/arthur-client.ts"), "utf8");
+  assert.doesNotMatch(client, /getRaw|getApiKey|getSecret|readCredential/);
 });

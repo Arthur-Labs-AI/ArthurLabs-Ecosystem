@@ -8,9 +8,11 @@
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
-    <!-- Captures and the speech-to-text key stay on this device: no cloud auto-backup. -->
+    <!-- Captures and provider credentials stay on this device: no backup and no device transfer (see the two rules files). -->
     <application
         android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/Theme.arthur"

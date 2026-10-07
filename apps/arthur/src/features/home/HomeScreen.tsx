@@ -4,6 +4,7 @@ import { useNavigation } from "../../app/navigation";
 import { Icon, KindGlyph, SOURCE_LABELS, SourceIcon } from "../../components/icons";
 import { Margin } from "../../components/Margin";
 import { dayLabel, isSameDay, relativeAge } from "../../components/format";
+import { AiOffNotice } from "../setup/AiOffNotice";
 import { CaptureComposer } from "../capture/CaptureComposer";
 import { useCaptures } from "../capture/captures-context";
 import { GraphCanvas } from "../graph/GraphCanvas";
@@ -201,6 +202,7 @@ export function HomeScreen() {
     <div className="home">
       <h1 className="hello">{greeting()}</h1>
       <CaptureComposer />
+      <AiOffNotice variant="desktop" onOpenSettings={() => go("settings")} />
 
       <div className="home-grid">
         <section aria-labelledby="today-heading">

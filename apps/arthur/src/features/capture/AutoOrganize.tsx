@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useKnowledge } from "../knowledge/knowledge-context";
+import { useAiConfig } from "../setup/ai-config-context";
 import { useCaptures } from "./captures-context";
 
 /**
@@ -12,9 +13,13 @@ import { useCaptures } from "./captures-context";
 export function AutoOrganize() {
   const { subscribe } = useCaptures();
   const { distill } = useKnowledge();
+  const ai = useAiConfig();
   const latest = useRef(distill);
   latest.current = distill;
+  // Without a language-model credential there is nothing to organize WITH: the capture simply stays saved and "Not organized yet",
+  // and can be organized later from Home once a key is connected. (While the configuration is unknown, organizing is attempted.)
+  const unavailable = ai.isUnavailable("llm");
 
-  useEffect(() => subscribe((capture) => void latest.current(capture.id)), [subscribe]);
+  useEffect(() => (unavailable ? undefined : subscribe((capture) => void latest.current(capture.id))), [subscribe, unavailable]);
   return null;
 }

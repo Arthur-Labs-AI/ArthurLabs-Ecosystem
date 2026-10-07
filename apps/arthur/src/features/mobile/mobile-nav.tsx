@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { useNavigation } from "../../app/navigation";
 import { useCaptures } from "../capture/captures-context";
-import { useArthurClient } from "../../hooks/use-arthur-client";
+import { useVoiceAvailable } from "../setup/ai-config-context";
 import { useBackLayer } from "./back-stack";
 
 export type Page = { kind: "idea"; id: string } | { kind: "settings" } | { kind: "ask" };
@@ -37,7 +37,7 @@ const Context = createContext<MobileNav | null>(null);
 
 export function MobileNavProvider({ children }: { children: ReactNode }) {
   const { go } = useNavigation();
-  const client = useArthurClient();
+  const voiceAvailable = useVoiceAvailable();
   const { micKnownGranted, voiceState, startVoice } = useCaptures();
   const [pages, setPages] = useState<readonly Page[]>([]);
   const [connectionsView, setConnectionsView] = useState<ConnectionsView>("list");
@@ -63,7 +63,7 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
   const capture = useCallback(() => {
     setPages([]);
     go("home");
-    if (!client.capabilities.voiceCapture) {
+    if (!voiceAvailable) {
       setTyping(true);
       return;
     }
@@ -75,7 +75,7 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
       // The microphone may never have been allowed. Opening the capture surface is safe; only Speak may ask.
       setMicHint(true);
     }
-  }, [go, client, micKnownGranted, voiceState, startVoice, setTyping]);
+  }, [go, voiceAvailable, micKnownGranted, voiceState, startVoice, setTyping]);
 
   const value = useMemo<MobileNav>(
     () => ({ pages, openIdea, openSettings, openAsk, closePage, closeAllPages, connectionsView, setConnectionsView, typing, setTyping, micHint, projectSheet, openProjectSheet, closeProjectSheet, capture }),

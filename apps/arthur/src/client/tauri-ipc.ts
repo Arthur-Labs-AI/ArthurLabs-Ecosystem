@@ -19,6 +19,9 @@ import {
   isCognitiveAnswer,
   isRecallErrorPayload,
   isSemanticRecallStatus,
+  isAiConfig,
+  isAiErrorPayload,
+  isProviderTestResult,
   describeCognitiveQueryProblem,
   describeProjectNameProblem,
   isRelationErrorPayload,
@@ -27,6 +30,10 @@ import {
   type Capture,
   type CognitiveAnswer,
   type SemanticRecallStatus,
+  type AiCapability,
+  type AiConfig,
+  type AiProviderId,
+  type ProviderTestResult,
   type CognitiveQuery,
   type CognitiveRelation,
   type CreateCaptureInput,
@@ -47,7 +54,7 @@ import {
   type RelationFilter,
   type RuntimeInfo,
 } from "@arthur/contracts";
-import { DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError } from "./arthur-client";
+import { AiSetupError, DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError } from "./arthur-client";
 
 /**
  * The single module allowed to import `@tauri-apps/*`.
@@ -519,3 +526,43 @@ async function semanticOverIpc(command: string, args: Record<string, unknown>, c
 export const getSemanticRecallStatusOverIpc = (call: Invoke = invoke) => semanticOverIpc("get_semantic_recall_status", {}, call);
 export const setSemanticRecallEnabledOverIpc = (enabled: boolean, call: Invoke = invoke) => semanticOverIpc("set_semantic_recall_enabled", { enabled }, call);
 export const purgeSemanticIndexOverIpc = (call: Invoke = invoke) => semanticOverIpc("purge_semantic_index", {}, call);
+
+const AI_MESSAGES: Record<string, string> = {
+  invalidCredentialFormat: "That doesn’t look like a valid key. Paste it exactly as the provider gave it.",
+  unknownProvider: "That provider isn’t supported.",
+  unknownCapability: "That capability isn’t supported.",
+  storage: "The key could not be saved securely on this device.",
+};
+
+async function aiCall(command: string, args: Record<string, unknown>, call: Invoke): Promise<unknown> {
+  try {
+    return await call(command, args);
+  } catch (failure) {
+    // The message is chosen here from the code alone, so nothing the native layer or a provider said is ever displayed.
+    if (isAiErrorPayload(failure)) throw new AiSetupError(failure.code, AI_MESSAGES[failure.code] ?? "Provider setup failed.");
+    throw failure;
+  }
+}
+
+async function aiConfigCall(command: string, args: Record<string, unknown>, call: Invoke): Promise<AiConfig> {
+  const payload = await aiCall(command, args, call);
+  if (!isAiConfig(payload)) throw new Error("Native layer returned an invalid AI configuration");
+  return payload;
+}
+
+export const getAiConfigOverIpc = (call: Invoke = invoke) => aiConfigCall("get_ai_config", {}, call);
+export const setCredentialOverIpc = (provider: AiProviderId, secret: string, call: Invoke = invoke) => aiConfigCall("set_provider_credential", { provider, secret }, call);
+export const deleteCredentialOverIpc = (provider: AiProviderId, call: Invoke = invoke) => aiConfigCall("delete_provider_credential", { provider }, call);
+export const completeSetupOverIpc = (call: Invoke = invoke) => aiConfigCall("complete_setup", {}, call);
+
+export async function hasCredentialOverIpc(provider: AiProviderId, call: Invoke = invoke): Promise<boolean> {
+  const payload = await aiCall("has_provider_credential", { provider }, call);
+  if (typeof payload !== "boolean") throw new Error("Native layer returned an invalid credential status");
+  return payload;
+}
+
+export async function testProviderOverIpc(capability: AiCapability, call: Invoke = invoke): Promise<ProviderTestResult> {
+  const payload = await aiCall("test_provider", { capability }, call);
+  if (!isProviderTestResult(payload)) throw new Error("Native layer returned an invalid provider test result");
+  return payload;
+}

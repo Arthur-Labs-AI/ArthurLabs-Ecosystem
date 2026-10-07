@@ -43,9 +43,14 @@ import {
   type RevisionOrigin,
   type RuntimeInfo,
   type SemanticRecallStatus,
+  type AiCapability,
+  type AiConfig,
+  type AiProviderId,
+  type ProviderTestOutcome,
+  AI_CAPABILITIES,
   type ThoughtRevision,
 } from "@arthur/contracts";
-import { DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
+import { AiSetupError, DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
 
 const DEFAULT_PREVIEW_INFO: RuntimeInfo = { appVersion: "0.0.0-preview", platform: "unknown" };
 
@@ -116,9 +121,19 @@ export interface PreviewRecallOptions {
   semantic?: Partial<SemanticRecallStatus>;
 }
 
+/** Scripts provider setup in memory. By default Setup is done and OpenAI is connected, so every other screen behaves as before. */
+export interface PreviewAiOptions {
+  setupCompleted?: boolean;
+  /** Providers that have a stored credential. */
+  credentials?: AiProviderId[];
+  /** What `testProvider` answers per capability. Default `connected`. */
+  testOutcomes?: Partial<Record<AiCapability, ProviderTestOutcome>>;
+}
+
 export interface PreviewClientOptions {
   info?: RuntimeInfo;
   recall?: PreviewRecallOptions;
+  ai?: PreviewAiOptions;
   voice?: PreviewVoiceOptions;
   distillation?: PreviewDistillationOptions;
   inference?: PreviewInferenceOptions;
@@ -144,6 +159,19 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
     pendingObjects: 0,
     ...options.recall?.semantic,
   };
+  let setupCompleted = options.ai?.setupCompleted ?? true;
+  const credentials = new Set<AiProviderId>(options.ai?.credentials ?? ["openai"]);
+  const aiConfig = (): AiConfig => ({
+    setupCompleted,
+    providers: [{ id: "openai", name: "OpenAI", hasCredential: credentials.has("openai") }],
+    capabilities: AI_CAPABILITIES.map((capability) => ({
+      capability,
+      provider: "openai" as const,
+      providerName: "OpenAI",
+      models: capability === "llm" ? ["gpt-4.1-mini", "gpt-5-mini"] : capability === "stt" ? ["gpt-4o-transcribe"] : ["text-embedding-3-small"],
+      status: credentials.has("openai") ? ("ready" as const) : ("needsCredential" as const),
+    })),
+  });
   const distillation = { ...options.distillation };
   const inference = { ...options.inference };
   const captures: Capture[] = [];
@@ -732,6 +760,22 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
     purgeSemanticIndex: () => {
       semantic = { ...semantic, storedVectors: 0, storedVectorsAllKeys: 0, pendingObjects: 0 };
       return Promise.resolve({ ...semantic });
+    },
+    getAiConfig: () => Promise.resolve(aiConfig()),
+    setCredential: (provider, secret) => {
+      if (!/^[\x21-\x7e]+$/.test(secret.trim())) return Promise.reject(new AiSetupError("invalidCredentialFormat", "That doesn’t look like a valid key. Paste it exactly as the provider gave it."));
+      credentials.add(provider);
+      return Promise.resolve(aiConfig());
+    },
+    hasCredential: (provider) => Promise.resolve(credentials.has(provider)),
+    deleteCredential: (provider) => {
+      credentials.delete(provider);
+      return Promise.resolve(aiConfig());
+    },
+    testProvider: (capability) => Promise.resolve({ capability, outcome: credentials.has("openai") ? (options.ai?.testOutcomes?.[capability] ?? "connected") : "notConfigured" }),
+    completeSetup: () => {
+      setupCompleted = true;
+      return Promise.resolve(aiConfig());
     },
   };
 }

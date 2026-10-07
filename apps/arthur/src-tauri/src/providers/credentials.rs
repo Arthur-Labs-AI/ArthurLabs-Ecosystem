@@ -1,4 +1,5 @@
 use std::fmt;
+#[cfg(test)]
 use std::path::PathBuf;
 
 const MAX_KEY_CHARS: usize = 4096;
@@ -33,18 +34,20 @@ pub trait CredentialSource: Send + Sync {
     fn api_key(&self) -> Option<ApiKey>;
 }
 
-/// Reads the key from a file in the app-private data directory.
-/// On Android that directory is only readable by the app itself.
+/// Reads the key from a file. Production no longer uses it (see `secrets.rs`); it remains for tests and the benchmark harness.
+#[cfg(test)]
 pub struct FileCredentialSource {
     path: PathBuf,
 }
 
+#[cfg(test)]
 impl FileCredentialSource {
     pub fn new(path: PathBuf) -> Self {
         Self { path }
     }
 }
 
+#[cfg(test)]
 impl CredentialSource for FileCredentialSource {
     fn api_key(&self) -> Option<ApiKey> {
         std::fs::read_to_string(&self.path).ok().and_then(|raw| ApiKey::parse(&raw))

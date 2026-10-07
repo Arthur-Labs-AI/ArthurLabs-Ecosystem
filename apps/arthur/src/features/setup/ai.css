@@ -1,0 +1,205 @@
+/* AI & Voice settings and first-run Setup. Desktop and Mobile share the markup; Mobile's touch sizes hang off data-variant. */
+.ai {
+  max-width: 62ch;
+}
+.ai p,
+.setup p {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 0 0 10px;
+}
+.ai-lead {
+  margin-bottom: 14px;
+}
+.ai-provider {
+  padding: 12px 0 14px;
+  border-top: 1px solid var(--line-soft);
+}
+.ai-provider-h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+.ai-key-state {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.ai-key-state[data-configured="true"] {
+  color: var(--ink-2);
+}
+.ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.ai-confirm {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--line);
+}
+.ai-key {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0;
+}
+.ai-key label {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.ai-key input {
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  color: var(--ink);
+  font: 14px var(--sans);
+}
+.ai-key input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.ai-fine {
+  font-size: 12.5px !important;
+  color: var(--ink-3) !important;
+}
+.ai-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ai-row {
+  padding: 14px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.ai-row-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ai-row h3 {
+  margin: 0;
+  font: 600 14px var(--sans);
+  color: var(--ink);
+}
+.ai-status {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.ai-status[data-ready="true"] {
+  color: var(--accent);
+}
+.ai-kv {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 4px 12px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.ai-kv dt {
+  color: var(--ink-3);
+}
+.ai-kv dd {
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.ai-result b {
+  color: var(--ink);
+}
+.ai-result[data-good="true"] b {
+  color: var(--accent);
+}
+.ai-result[data-good="false"] b {
+  color: var(--del);
+}
+
+.ai[data-variant="mobile"] .ai-key input,
+.setup-mobile .ai-key input {
+  min-height: 48px;
+  font-size: 16px;
+}
+.ai[data-variant="mobile"] .ai-actions .m-pbtn {
+  flex: 1 1 auto;
+}
+.ai[data-variant="mobile"] p {
+  font-size: 14px;
+}
+
+/* First-run Setup: one calm page, no chrome. */
+.setup {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  background: var(--ground);
+  color: var(--ink);
+}
+.setup-card {
+  width: 100%;
+  max-width: 460px;
+}
+.setup-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font: 500 17px var(--serif);
+}
+.setup-step {
+  font-size: 12px !important;
+  color: var(--ink-3) !important;
+  margin-bottom: 22px !important;
+}
+.setup h1 {
+  margin: 0 0 8px;
+  font: 400 30px/1.15 var(--serif);
+  color: var(--ink);
+}
+.setup-lead {
+  font: italic 400 18px/1.4 var(--serif) !important;
+  color: var(--ink) !important;
+  margin-bottom: 14px !important;
+}
+.setup-ok {
+  color: var(--ink) !important;
+}
+.setup-off {
+  color: var(--ink-2);
+}
+.setup-summary,
+.setup-tests {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.setup-summary li,
+.setup-tests li {
+  padding: 8px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.setup-tests b {
+  color: var(--ink);
+}
+
+.ai-off {
+  max-width: 62ch;
+  margin: 14px 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--line);
+}
+.ai-off p {
+  margin: 0 0 8px;
+}

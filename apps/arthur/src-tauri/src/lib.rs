@@ -24,7 +24,10 @@ use distillation::DistillationService;
 use graph::openai::{OpenAiRelationProposer, OpenAiRelationVerifier};
 use graph::GraphService;
 use storage::capture_store::CaptureStore;
-use providers::credentials::FileCredentialSource;
+use providers::ai::AiService;
+use providers::ai_config::AiConfigStore;
+use providers::registry::Capability;
+use providers::secrets::{select_store, SecretStore, StoragePlatform};
 use stt::openai::OpenAiTranscriber;
 use providers::embed::OpenAiEmbedder;
 use recall::settings::SemanticSettings;
@@ -40,11 +43,22 @@ fn platform_recorder(_app: &AppHandle) -> Arc<dyn Recorder> {
     Arc::new(audio::recorder::UnsupportedRecorder)
 }
 
+/// The Android Keystore bridge, when this build has one and it registered.
+#[cfg(target_os = "android")]
+fn keystore(app: &AppHandle) -> Option<Arc<dyn SecretStore>> {
+    app.try_state::<Arc<providers::android_keystore::AndroidKeystoreStore>>().map(|state| state.inner().clone() as Arc<dyn SecretStore>)
+}
+
+#[cfg(not(target_os = "android"))]
+fn keystore(_app: &AppHandle) -> Option<Arc<dyn SecretStore>> {
+    None
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(target_os = "android")]
-    let builder = builder.plugin(audio::android::init());
+    let builder = builder.plugin(audio::android::init()).plugin(providers::android_keystore::init());
 
     builder
         .setup(|app| {
@@ -53,18 +67,27 @@ pub fn run() {
             std::fs::create_dir_all(&data_dir)?;
             app.manage(CaptureStore::open(&data_dir.join("arthur.db"))?);
 
-            // The speech-to-text key lives in app-private storage, never in the frontend or the repo.
+            // Provider credentials live in secure storage (Android Keystore on Android) and are resolved per capability on every
+            // request; they never reach the frontend, the database or the settings files.
             let credentials_dir = data_dir.join("credentials");
             std::fs::create_dir_all(&credentials_dir)?;
-            let credentials = Arc::new(FileCredentialSource::new(credentials_dir.join("openai_api_key")));
-            let transcriber = Arc::new(OpenAiTranscriber::new(credentials.clone())?);
-            app.manage(DistillationService::new(Arc::new(OpenAiDistiller::new(credentials.clone())?)));
-            app.manage(GraphService::new(Arc::new(OpenAiRelationProposer::new(credentials.clone())?), Arc::new(OpenAiRelationVerifier::new(credentials.clone())?)));
+            let platform = StoragePlatform::current();
+            let secrets = select_store(platform, keystore(app.handle()), credentials_dir.clone());
+            // Only Android has a legacy plaintext file to move into the Keystore; on desktop the store reads that same file.
+            let legacy_file = (platform == StoragePlatform::Android).then(|| credentials_dir.join("openai_api_key"));
+            let ai = Arc::new(AiService::new(AiConfigStore::new(data_dir.join("ai").join("config.json")), secrets, legacy_file.as_deref()));
+            app.manage(ai.clone());
+            let llm = ai.credential_for(Capability::Llm);
+            let stt = ai.credential_for(Capability::Stt);
+            let embeddings = ai.credential_for(Capability::Embeddings);
+            let transcriber = Arc::new(OpenAiTranscriber::new(stt)?);
+            app.manage(DistillationService::new(Arc::new(OpenAiDistiller::new(llm.clone())?)));
+            app.manage(GraphService::new(Arc::new(OpenAiRelationProposer::new(llm.clone())?), Arc::new(OpenAiRelationVerifier::new(llm.clone())?)));
 
             // Semantic Recall is OPT-IN. The consent lives in app-private settings, outside the database, and a missing or damaged
             // file means OFF. Having an API key never enables it.
             let settings = Arc::new(SemanticSettings::new(data_dir.join("recall").join("semantic.json")));
-            app.manage(RecallService::new(Arc::new(OpenAiEmbedder::new(credentials.clone())?), settings).with_answer_model(Arc::new(providers::answer::OpenAiAnswerModel::new(credentials)?)));
+            app.manage(RecallService::new(Arc::new(OpenAiEmbedder::new(embeddings)?), settings).with_answer_model(Arc::new(providers::answer::OpenAiAnswerModel::new(llm)?)));
             commands::recall::kick_indexer(app.handle());
             // The indexer finds its own work (new objects, edits, merges that became current) on a slow poll; it is a no-op while
             // semantic Recall is off. Distillation and Lineage are not touched by Recall.
@@ -83,6 +106,12 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::runtime_info::get_runtime_info,
+            commands::ai::get_ai_config,
+            commands::ai::set_provider_credential,
+            commands::ai::has_provider_credential,
+            commands::ai::delete_provider_credential,
+            commands::ai::test_provider,
+            commands::ai::complete_setup,
             commands::captures::create_capture,
             commands::captures::list_captures,
             commands::captures::get_captures,

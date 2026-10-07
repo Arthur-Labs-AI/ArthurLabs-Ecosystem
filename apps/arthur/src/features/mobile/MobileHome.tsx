@@ -5,7 +5,8 @@ import { isMod } from "../../app/shortcuts";
 import { Icon, KindGlyph, SOURCE_LABELS, SourceIcon } from "../../components/icons";
 import { Margin } from "../../components/Margin";
 import { dayLabel, formatMoment, relativeAge } from "../../components/format";
-import { useArthurClient } from "../../hooks/use-arthur-client";
+import { useVoiceAvailable } from "../setup/ai-config-context";
+import { AiOffNotice } from "../setup/AiOffNotice";
 import { useCaptures } from "../capture/captures-context";
 import type { VoiceFailure } from "../capture/use-captures";
 import { useRelationIndex } from "../graph/relation-index";
@@ -123,12 +124,11 @@ function VoiceFailureCard({
 
 /** Variant C, the Speak page: a notebook page with Speak as the primary action and typing as the quiet alternative. */
 function SpeakPage() {
-  const client = useArthurClient();
   const { saving, save, voiceState, startVoice } = useCaptures();
   const { typing, setTyping } = useMobileNav();
   const [draft, setDraft] = useState("");
   const input = useRef<HTMLTextAreaElement>(null);
-  const voice = client.capabilities.voiceCapture;
+  const voice = useVoiceAvailable();
   const writing = typing || !voice;
 
   useEffect(() => {
@@ -422,11 +422,10 @@ function AllIdeas({ count }: { count: number }) {
 }
 
 export function MobileHome() {
-  const client = useArthurClient();
   const { voiceFailure, dismissVoiceFailure, startVoice, micPermission, retryVoice, discardVoice, openAppSettings } = useCaptures();
-  const { typing, setTyping, micHint } = useMobileNav();
+  const { typing, setTyping, micHint, openSettings } = useMobileNav();
   const [hidRecovery, setHidRecovery] = useState(false);
-  const voice = client.capabilities.voiceCapture;
+  const voice = useVoiceAvailable();
   // Refused for good: the system will not ask again, so say so up front (not only after a failed attempt) and offer the way back.
   const settingsOnly = voice && micPermission === "denied_permanently";
   useEffect(() => {
@@ -447,6 +446,7 @@ export function MobileHome() {
         </>
       )}
       <SpeakPage />
+      {!typing && <AiOffNotice variant="mobile" onOpenSettings={openSettings} />}
       {!typing && <AskEntry />}
       {micHint && !typing && voice && (
         <p className="m-hint" role="status">

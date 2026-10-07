@@ -1,5 +1,6 @@
 import { Icon } from "../../components/icons";
 import { useArthurClient } from "../../hooks/use-arthur-client";
+import { AiVoiceSettings } from "../setup/AiVoiceSettings";
 import { SemanticRecallSettings } from "../recall/SemanticRecallSettings";
 import { useRuntimeInfo } from "../settings/use-runtime-info";
 import { useMobileNav } from "./mobile-nav";
@@ -28,10 +29,9 @@ export function MobileSettings() {
           <h2 id="m-set-knowledge">Your knowledge</h2>
           <p>Knowledge stored locally. Captures and everything Arthur organizes from them live on this device.</p>
         </section>
-        <section className="m-set" aria-labelledby="m-set-cloud">
-          <h2 id="m-set-cloud">Voice and organizing</h2>
-          <p>Speech is transcribed by a cloud speech service. The recording is deleted once it has been transcribed; only the text is kept.</p>
-          <p>Organizing a capture, and finding connections, send the text of your captures and ideas to a cloud model.</p>
+        <section className="m-set" aria-labelledby="m-set-ai">
+          <h2 id="m-set-ai">AI &amp; Voice</h2>
+          <AiVoiceSettings variant="mobile" />
         </section>
         <section className="m-set" aria-labelledby="m-set-recall">
           <h2 id="m-set-recall">Semantic Recall</h2>

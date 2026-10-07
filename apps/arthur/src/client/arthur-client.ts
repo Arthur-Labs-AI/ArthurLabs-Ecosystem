@@ -18,6 +18,11 @@ import type {
   ProjectScope,
   RecallErrorCode,
   SemanticRecallStatus,
+  AiCapability,
+  AiErrorCode,
+  AiConfig,
+  AiProviderId,
+  ProviderTestResult,
   CognitiveAnswer,
   CognitiveQuery,
   RelationErrorCode,
@@ -98,6 +103,16 @@ export class ProjectError extends Error {
 }
 
 /** Ask Arthur could not be served at all (a bad question, an unknown project, an unreadable store). `message` is safe to show. */
+export class AiSetupError extends Error {
+  readonly code: AiErrorCode;
+
+  constructor(code: AiErrorCode, message: string) {
+    super(message);
+    this.name = "AiSetupError";
+    this.code = code;
+  }
+}
+
 export class RecallError extends Error {
   readonly code: RecallErrorCode;
 
@@ -291,4 +306,19 @@ export interface ArthurClient {
   setSemanticRecallEnabled(enabled: boolean): Promise<SemanticRecallStatus>;
   /** Deletes every locally stored vector. Knowledge itself is untouched. */
   purgeSemanticIndex(): Promise<SemanticRecallStatus>;
+
+  /**
+   * Provider setup. A credential belongs to a provider account and capabilities reference it. These are the ONLY credential
+   * operations: there is deliberately no way to read a stored key back, and no payload carries one.
+   */
+  getAiConfig(): Promise<AiConfig>;
+  /** Write-only. The secret is moved into secure storage and never returned; the resolved configuration contains no key. */
+  setCredential(provider: AiProviderId, secret: string): Promise<AiConfig>;
+  hasCredential(provider: AiProviderId): Promise<boolean>;
+  /** Removes the provider's credential. Every capability bound to it becomes unavailable; local knowledge is untouched. */
+  deleteCredential(provider: AiProviderId): Promise<AiConfig>;
+  /** A bounded provider check that spends no tokens or audio. Resolves with an outcome; it never rejects for a bad key. */
+  testProvider(capability: AiCapability): Promise<ProviderTestResult>;
+  /** Records that first-run Setup was finished or skipped. Stores no secret and no consent. */
+  completeSetup(): Promise<AiConfig>;
 }

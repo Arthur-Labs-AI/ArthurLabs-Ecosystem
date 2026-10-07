@@ -9,6 +9,7 @@ import { LineageSummariesProvider } from "../features/lineage/lineage-summaries"
 import { AskProvider } from "../features/recall/ask-context";
 import { ProjectsProvider } from "../features/projects/projects-context";
 import { ProjectScopeSync } from "../features/projects/ProjectScopeSync";
+import { AiConfigProvider } from "../features/setup/ai-config-context";
 import { ArthurClientContext } from "../hooks/use-arthur-client";
 import { NavigationProvider, type Screen } from "./navigation";
 
@@ -24,6 +25,7 @@ export function ArthurProviders({ client, initialScreen, children }: ArthurProvi
   const resolved = useMemo(() => client ?? createArthurClient(), [client]);
   return (
     <ArthurClientContext.Provider value={resolved}>
+      <AiConfigProvider>
       <ProjectsProvider>
         <CapturesProvider>
           <KnowledgeProvider>
@@ -39,6 +41,7 @@ export function ArthurProviders({ client, initialScreen, children }: ArthurProvi
           </KnowledgeProvider>
         </CapturesProvider>
       </ProjectsProvider>
+      </AiConfigProvider>
     </ArthurClientContext.Provider>
   );
 }

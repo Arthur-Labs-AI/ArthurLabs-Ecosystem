@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod captures;
 pub mod distill;
 pub mod graph;

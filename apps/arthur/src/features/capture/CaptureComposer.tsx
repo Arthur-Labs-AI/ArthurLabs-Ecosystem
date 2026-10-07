@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { isMod, modLabel } from "../../app/shortcuts";
-import { useArthurClient } from "../../hooks/use-arthur-client";
+import { useVoiceAvailable } from "../setup/ai-config-context";
 import { Icon } from "../../components/icons";
 import { useProjects } from "../projects/projects-context";
 import { useCaptures } from "./captures-context";
@@ -18,7 +18,7 @@ const VOICE_STATUS: Partial<Record<VoiceState, string>> = {
  * starts afterwards (see AutoOrganize) and can never fail or undo the capture.
  */
 export function CaptureComposer({ compact = false, autoFocus = false, onSaved }: { compact?: boolean; autoFocus?: boolean; onSaved?: () => void }) {
-  const client = useArthurClient();
+  const voiceAvailable = useVoiceAvailable();
   const { saving, error, save, voiceState, startVoice, stopVoice } = useCaptures();
   const { active } = useProjects();
   const [draft, setDraft] = useState("");
@@ -70,7 +70,7 @@ export function CaptureComposer({ compact = false, autoFocus = false, onSaved }:
         </p>
       )}
       <div className="composer-bar">
-        {client.capabilities.voiceCapture &&
+        {voiceAvailable &&
           (voiceState === "recording" ? (
             <button type="button" className="speak recording" onClick={() => void stopVoice()} aria-label="Stop recording">
               <Icon name="stop" />

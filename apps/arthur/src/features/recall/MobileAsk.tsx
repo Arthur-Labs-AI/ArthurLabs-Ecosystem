@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MAX_QUERY_CHARS, type CognitiveAnswer, type CognitiveEvidence } from "@arthur/contracts";
+import { AiOffNotice } from "../setup/AiOffNotice";
 import { useNavigation } from "../../app/navigation";
 import { Icon } from "../../components/icons";
 import { MobileSheet } from "../mobile/MobileSheet";
@@ -135,7 +136,7 @@ export function MobileAsk() {
   }, [state.status]);
   const asked = state.status === "idle" ? null : state.status === "ready" ? state.answer.query : state.query;
   const { go } = useNavigation();
-  const { closePage, closeAllPages, openIdea, setConnectionsView } = useMobileNav();
+  const { closePage, closeAllPages, openIdea, openSettings, setConnectionsView } = useMobileNav();
   // A sheet belongs to the result it was opened from, so a new question closes it: the state is keyed by the answer.
   const [picked, setPicked] = useState<{ answer: CognitiveAnswer | null; handle: string | null; active: string | null }>({ answer: null, handle: null, active: null });
   const nav = useEvidenceNav(
@@ -205,6 +206,7 @@ export function MobileAsk() {
             )}
           </div>
         </header>
+        <AiOffNotice variant="mobile" context="ask" onOpenSettings={openSettings} />
         <div className="m-ask-body">
           {asked && (
             <p className="m-ask-q">

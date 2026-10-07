@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MAX_QUERY_CHARS, type CognitiveAnswer, type CognitiveEvidence } from "@arthur/contracts";
+import { AiOffNotice } from "../setup/AiOffNotice";
 import { useNavigation } from "../../app/navigation";
 import { modLabel } from "../../app/shortcuts";
 import { Icon } from "../../components/icons";
@@ -238,6 +239,7 @@ export function AskScreen() {
       <header className="ask-head">
         <h1 id="ask-title">Ask Arthur</h1>
         {project ? <ProjectLine name={project.name} archived={project.archivedAt !== null} /> : <p className="ask-project">Loading projects…</p>}
+        <AiOffNotice variant="desktop" context="ask" onOpenSettings={() => go("settings")} />
         {readOnly && (
           <p className="ask-note ask-readonly">
             Read-only: you opened this archived project to ask about it. Nothing here can be changed.{" "}

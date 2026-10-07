@@ -165,7 +165,7 @@ export function sourceView(source: EvidenceSource): SourceView {
 export function synthesisReason(answer: CognitiveAnswer): string | null {
   switch (answer.diagnostics.synthesis.state) {
     case "unavailable":
-      return "The answer model isn't available right now.";
+      return answer.diagnostics.synthesis.reason === "llmNotConfigured" ? "Ask Arthur needs an AI connection to write answers. Connect one in Settings → AI & Voice. What it found by your words is below." : "The answer model isn't available right now.";
     case "failed":
       return "The answer model didn't respond.";
     case "invalidOutput":
