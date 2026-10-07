@@ -53,7 +53,7 @@ describe("provider setup over IPC", () => {
 
   it("rejects a malformed native configuration and a malformed test result", async () => {
     await expect(createMobileClient(() => Promise.resolve({ setupCompleted: "yes" })).getAiConfig()).rejects.toThrow("invalid AI configuration");
-    await expect(createMobileClient(() => Promise.resolve({ capability: "tts", outcome: "connected" })).testProvider("llm")).rejects.toThrow("invalid provider test result");
+    await expect(createMobileClient(() => Promise.resolve({ capability: "speech", outcome: "connected" })).testProvider("llm")).rejects.toThrow("invalid provider test result");
   });
 
   it("tests, deletes and completes through their own commands", async () => {
@@ -64,5 +64,48 @@ describe("provider setup over IPC", () => {
     await client.deleteCredential("openai");
     await client.completeSetup();
     expect(calls.map((c) => c.command)).toEqual(["test_provider", "has_provider_credential", "delete_provider_credential", "complete_setup"]);
+  });
+});
+
+describe("voice output over IPC", () => {
+  const STATUS = { state: "idle", sessionId: 3, chunkIndex: 0, chunkCount: 1, truncated: false, outcome: "finished", failure: null, timings: { startupMs: 1, synthesisMs: 800, preparationMs: 30, timeToAudibleMs: 900, cleanupMs: 1 } };
+
+  it("sends English and Bulgarian text exactly as written, and nothing else about the user or the provider", async () => {
+    for (const text of ["Hello, Arthur.", "Здравей, Артър! Как си днес?", "Смесен текст with Latin и кирилица, 3.5 — ok…"]) {
+      const { calls, call } = recorder(() => ({ sessionId: 1, chunkCount: 1, truncated: false }));
+      await createMobileClient(call).speakText({ text });
+      expect(calls).toEqual([{ command: "speak_text", args: { text, voice: null, model: null } }]);
+    }
+  });
+
+  it("refuses empty text locally and maps a refused voice to a fixed message", async () => {
+    const { calls, call } = recorder(() => ({}));
+    await expect(createMobileClient(call).speakText({ text: "  \n" })).rejects.toMatchObject({ name: "SpeechError", code: "emptyText" });
+    expect(calls).toEqual([]);
+    const refused: Invoke = () => Promise.reject({ code: "unsupportedVoiceOrModel", message: "sk-echoed-by-provider" });
+    const error = await createMobileClient(refused).speakText({ text: "Hi", voice: "nope" }).catch((failure: unknown) => failure);
+    expect((error as Error).name).toBe("SpeechError");
+    expect((error as Error).message).not.toContain("sk-");
+  });
+
+  it("reads a strictly validated status and rejects anything malformed", async () => {
+    expect(await createMobileClient(() => Promise.resolve(STATUS)).getSpeechStatus()).toEqual(STATUS);
+    await expect(createMobileClient(() => Promise.resolve({ ...STATUS, failure: "providerSaid: sk-leak" })).getSpeechStatus()).rejects.toThrow("invalid speech status");
+    await expect(createMobileClient(() => Promise.resolve({ sessionId: "1" })).testVoice()).rejects.toThrow("invalid speech session");
+  });
+
+  it("stop and test voice use their own commands, and only the mobile client claims audio output", async () => {
+    const { calls, call } = recorder((command) => (command === "test_voice" ? { sessionId: 2, chunkCount: 1, truncated: false } : null));
+    const client = createMobileClient(call);
+    await client.testVoice();
+    await client.stopSpeech();
+    expect(calls.map((c) => c.command)).toEqual(["test_voice", "stop_speech"]);
+    expect(client.capabilities.speechOutput).toBe(true);
+    expect(createDesktopClient().capabilities.speechOutput).toBe(false);
+  });
+
+  it("exposes no way to get audio or a credential back", () => {
+    const names = Object.keys(createMobileClient()).filter((name) => /speech|speak|testVoice/i.test(name));
+    expect(names.sort()).toEqual(["getSpeechStatus", "speakText", "stopSpeech", "testVoice"]);
   });
 });

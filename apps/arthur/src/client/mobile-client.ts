@@ -33,6 +33,10 @@ import {
   getActiveProjectOverIpc,
   askOverIpc,
   getSemanticRecallStatusOverIpc,
+  speakTextOverIpc,
+  testVoiceOverIpc,
+  stopSpeechOverIpc,
+  getSpeechStatusOverIpc,
   getAiConfigOverIpc,
   setCredentialOverIpc,
   hasCredentialOverIpc,
@@ -62,7 +66,7 @@ import {
 export function createMobileClient(call?: Invoke): ArthurClient {
   return {
     kind: "mobile",
-    capabilities: { voiceCapture: true },
+    capabilities: { voiceCapture: true, speechOutput: true },
     getRuntimeInfo: () => fetchRuntimeInfo(call),
     createCapture: (input) => createCaptureOverIpc(input, call),
     getCaptures: (captureIds) => getCapturesOverIpc(captureIds, call),
@@ -113,5 +117,9 @@ export function createMobileClient(call?: Invoke): ArthurClient {
     deleteCredential: (provider) => deleteCredentialOverIpc(provider, call),
     testProvider: (capability) => testProviderOverIpc(capability, call),
     completeSetup: () => completeSetupOverIpc(call),
+    speakText: (input) => speakTextOverIpc(input, call),
+    testVoice: () => testVoiceOverIpc(call),
+    stopSpeech: () => stopSpeechOverIpc(call),
+    getSpeechStatus: () => getSpeechStatusOverIpc(call),
   };
 }

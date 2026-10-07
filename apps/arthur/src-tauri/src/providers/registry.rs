@@ -4,13 +4,14 @@
 //! provider and uses that provider's credential. Adding DeepSeek for the LLM later means one more `ProviderId` and a different
 //! binding; the credential store, the commands and the UI model do not change.
 //!
-//! Text-to-speech is deliberately absent: the app has no TTS runtime, so there is nothing to configure.
+//! Text-to-speech (`Capability::Tts`) reuses the OpenAI provider credential: a capability is bound to a provider, never to its own key.
 
 use serde::Serialize;
 
 use super::embed::OPENAI_MODEL as OPENAI_EMBEDDING_MODEL;
 use crate::graph::openai::VERIFIER_MODEL;
 use crate::stt::openai::DEFAULT_MODEL as OPENAI_STT_MODEL;
+use crate::tts::openai::{DEFAULT_MODEL as OPENAI_TTS_MODEL, DEFAULT_VOICE as OPENAI_TTS_VOICE, MODELS as OPENAI_TTS_MODELS, VOICES as OPENAI_TTS_VOICES};
 use super::chat::DEFAULT_MODEL as OPENAI_LLM_MODEL;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -48,7 +49,7 @@ impl ProviderId {
 
     pub fn supports(self, capability: Capability) -> bool {
         match self {
-            ProviderId::OpenAi => matches!(capability, Capability::Llm | Capability::Stt | Capability::Embeddings),
+            ProviderId::OpenAi => matches!(capability, Capability::Llm | Capability::Stt | Capability::Embeddings | Capability::Tts),
         }
     }
 }
@@ -63,16 +64,19 @@ pub enum Capability {
     Stt,
     /// Semantic Recall vectors. Having a connection never turns Semantic Recall on.
     Embeddings,
+    /// Reading an Arthur answer aloud. Output only: the selected text is sent to the provider, audio comes back and is never kept.
+    Tts,
 }
 
 impl Capability {
-    pub const ALL: [Capability; 3] = [Capability::Llm, Capability::Stt, Capability::Embeddings];
+    pub const ALL: [Capability; 4] = [Capability::Llm, Capability::Stt, Capability::Embeddings, Capability::Tts];
 
     pub fn as_str(self) -> &'static str {
         match self {
             Capability::Llm => "llm",
             Capability::Stt => "stt",
             Capability::Embeddings => "embeddings",
+            Capability::Tts => "tts",
         }
     }
 
@@ -91,6 +95,21 @@ pub fn models(provider: ProviderId, capability: Capability) -> &'static [&'stati
         (ProviderId::OpenAi, Capability::Llm) => &[OPENAI_LLM_MODEL, VERIFIER_MODEL],
         (ProviderId::OpenAi, Capability::Stt) => &[OPENAI_STT_MODEL],
         (ProviderId::OpenAi, Capability::Embeddings) => &[OPENAI_EMBEDDING_MODEL],
+        (ProviderId::OpenAi, Capability::Tts) => &[OPENAI_TTS_MODEL],
+    }
+}
+
+/// What a provider's text-to-speech accepts. Explicit so a request for an unknown voice or model is refused before any network call.
+pub struct TtsOptions {
+    pub models: &'static [&'static str],
+    pub voices: &'static [&'static str],
+    pub default_model: &'static str,
+    pub default_voice: &'static str,
+}
+
+pub fn tts_options(provider: ProviderId) -> TtsOptions {
+    match provider {
+        ProviderId::OpenAi => TtsOptions { models: OPENAI_TTS_MODELS, voices: OPENAI_TTS_VOICES, default_model: OPENAI_TTS_MODEL, default_voice: OPENAI_TTS_VOICE },
     }
 }
 
@@ -125,7 +144,8 @@ mod tests {
         for capability in Capability::ALL {
             assert_eq!(Capability::parse(capability.as_str()), Some(capability));
         }
-        assert_eq!(ProviderId::parse("tts"), None);
-        assert_eq!(Capability::parse("tts"), None);
+        assert_eq!(ProviderId::parse("tts"), None, "tts is a capability, not a provider");
+        assert_eq!(Capability::parse("speech"), None);
+        assert_eq!(Capability::parse("tts"), Some(Capability::Tts));
     }
 }

@@ -10,6 +10,7 @@ mod providers;
 mod recall;
 mod storage;
 mod stt;
+mod tts;
 #[cfg(test)]
 mod test_support;
 
@@ -29,6 +30,9 @@ use providers::ai_config::AiConfigStore;
 use providers::registry::Capability;
 use providers::secrets::{select_store, SecretStore, StoragePlatform};
 use stt::openai::OpenAiTranscriber;
+use tts::openai::OpenAiSynthesizer;
+use tts::player::AudioPlayer;
+use tts::service::SpeechService;
 use providers::embed::OpenAiEmbedder;
 use recall::settings::SemanticSettings;
 use recall::RecallService;
@@ -54,11 +58,22 @@ fn keystore(_app: &AppHandle) -> Option<Arc<dyn SecretStore>> {
     None
 }
 
+/// The platform's audio output. Desktop development builds have none, so voice output reports itself unavailable there.
+#[cfg(target_os = "android")]
+fn audio_player(app: &AppHandle) -> Arc<dyn AudioPlayer> {
+    app.state::<Arc<tts::android::AndroidPlayer>>().inner().clone()
+}
+
+#[cfg(not(target_os = "android"))]
+fn audio_player(_app: &AppHandle) -> Arc<dyn AudioPlayer> {
+    Arc::new(tts::player::UnavailablePlayer)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(target_os = "android")]
-    let builder = builder.plugin(audio::android::init()).plugin(providers::android_keystore::init());
+    let builder = builder.plugin(audio::android::init()).plugin(providers::android_keystore::init()).plugin(tts::android::init());
 
     builder
         .setup(|app| {
@@ -80,6 +95,7 @@ pub fn run() {
             let llm = ai.credential_for(Capability::Llm);
             let stt = ai.credential_for(Capability::Stt);
             let embeddings = ai.credential_for(Capability::Embeddings);
+            let tts_credential = ai.credential_for(Capability::Tts);
             let transcriber = Arc::new(OpenAiTranscriber::new(stt)?);
             app.manage(DistillationService::new(Arc::new(OpenAiDistiller::new(llm.clone())?)));
             app.manage(GraphService::new(Arc::new(OpenAiRelationProposer::new(llm.clone())?), Arc::new(OpenAiRelationVerifier::new(llm.clone())?)));
@@ -99,6 +115,11 @@ pub fn run() {
                 }
             });
 
+            // Spoken audio is transient too: written to the cache only while it plays and deleted straight after. Whatever a crashed run
+            // left there is removed now. Nothing about what was spoken is stored.
+            let speech_dir = app.path().app_cache_dir()?.join("tts");
+            app.manage(SpeechService::new(Arc::new(OpenAiSynthesizer::new(tts_credential)?), audio_player(app.handle()), speech_dir));
+
             // Recordings are transient, so they go in the cache directory.
             let recordings_dir = app.path().app_cache_dir()?.join("recordings");
             app.manage(VoiceCaptureService::new(platform_recorder(app.handle()), transcriber, recordings_dir)?);
@@ -112,6 +133,10 @@ pub fn run() {
             commands::ai::delete_provider_credential,
             commands::ai::test_provider,
             commands::ai::complete_setup,
+            commands::speech::speak_text,
+            commands::speech::test_voice,
+            commands::speech::stop_speech,
+            commands::speech::get_speech_status,
             commands::captures::create_capture,
             commands::captures::list_captures,
             commands::captures::get_captures,

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AI_CAPABILITIES, type AiCapability, type AiCapabilityStatus, type AiProviderStatus, type ProviderTestResult } from "@arthur/contracts";
 import { useArthurClient } from "../../hooks/use-arthur-client";
 import { useSemanticRecall } from "../recall/use-semantic-recall";
+import { useSpeechSource } from "../speech/speech-context";
 import { useAiConfig } from "./ai-config-context";
 import { CAPABILITY_FALLBACK, CAPABILITY_LABEL, OUTCOME_DETAIL, OUTCOME_LABEL } from "./ai-copy";
 import { KeyForm } from "./KeyForm";
@@ -35,7 +36,7 @@ export function AiVoiceSettings({ variant }: { variant: Variant }) {
 
   const config = ai.config;
   // Voice Capture only exists where the device can record; do not show a row that can never work here.
-  const rows = config.capabilities.filter((row) => row.capability !== "stt" || client.capabilities.voiceCapture);
+  const rows = config.capabilities.filter((row) => (row.capability !== "stt" || client.capabilities.voiceCapture) && (row.capability !== "tts" || client.capabilities.speechOutput));
   const providerOf = (row: AiCapabilityStatus): AiProviderStatus | undefined => config.providers.find((p) => p.id === row.provider);
 
   const runTest = async (capability: AiCapability) => {
@@ -142,7 +143,14 @@ function CapabilityRow({ row, provider, variant, test, onChange, onTest }: { row
         <dd>{row.providerName}</dd>
         <dt>Model</dt>
         <dd>{row.models.join(", ")}</dd>
+        {row.voice && (
+          <>
+            <dt>Voice</dt>
+            <dd>{row.voice}</dd>
+          </>
+        )}
       </dl>
+      {row.capability === "tts" && <p className="ai-fine">Listening sends the text of the answer you choose to {row.providerName} to be spoken. Nothing is sent until you tap Listen or Test voice, and the audio is deleted as it plays.</p>}
       {row.capability === "embeddings" && <ConsentLine ready={ready} providerName={row.providerName} />}
       {!ready && <p className="ai-fallback">{CAPABILITY_FALLBACK[row.capability]}</p>}
       <div className="ai-actions">
@@ -154,7 +162,28 @@ function CapabilityRow({ row, provider, variant, test, onChange, onTest }: { row
         </button>
       </div>
       <TestResult result={test} variant={variant} />
+      {row.capability === "tts" && <TestVoice ready={ready} variant={variant} />}
     </li>
+  );
+}
+
+/** "Test voice": speaks one short fixed Arthur sentence. It is its own source, so it never shows an answer's Listen state. */
+function TestVoice({ ready, variant }: { ready: boolean; variant: Variant }) {
+  const speech = useSpeechSource("settings-test");
+  const btn = variant === "mobile" ? "m-pbtn" : "btn";
+  return (
+    <>
+      <div className="ai-actions">
+        <button type="button" className={btn} disabled={!ready} onClick={() => void (speech.active ? speech.stop() : speech.test())}>
+          {speech.active ? "Stop" : "Test voice"}
+        </button>
+      </div>
+      {speech.error && (
+        <p role="status" className="ai-result" data-good="false">
+          {speech.error}
+        </p>
+      )}
+    </>
   );
 }
 

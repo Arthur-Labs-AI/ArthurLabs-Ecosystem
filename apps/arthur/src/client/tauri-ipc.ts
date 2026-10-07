@@ -21,6 +21,9 @@ import {
   isSemanticRecallStatus,
   isAiConfig,
   isAiErrorPayload,
+  isSpeechErrorPayload,
+  isSpeechStart,
+  isSpeechStatus,
   isProviderTestResult,
   describeCognitiveQueryProblem,
   describeProjectNameProblem,
@@ -33,6 +36,9 @@ import {
   type AiCapability,
   type AiConfig,
   type AiProviderId,
+  type SpeakInput,
+  type SpeechStart,
+  type SpeechStatus,
   type ProviderTestResult,
   type CognitiveQuery,
   type CognitiveRelation,
@@ -54,7 +60,7 @@ import {
   type RelationFilter,
   type RuntimeInfo,
 } from "@arthur/contracts";
-import { AiSetupError, DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError } from "./arthur-client";
+import { AiSetupError, SpeechError, DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError } from "./arthur-client";
 
 /**
  * The single module allowed to import `@tauri-apps/*`.
@@ -531,6 +537,7 @@ const AI_MESSAGES: Record<string, string> = {
   invalidCredentialFormat: "That doesn’t look like a valid key. Paste it exactly as the provider gave it.",
   unknownProvider: "That provider isn’t supported.",
   unknownCapability: "That capability isn’t supported.",
+  unsupportedVoiceOrModel: "That voice or model isn’t available.",
   storage: "The key could not be saved securely on this device.",
 };
 
@@ -564,5 +571,37 @@ export async function hasCredentialOverIpc(provider: AiProviderId, call: Invoke 
 export async function testProviderOverIpc(capability: AiCapability, call: Invoke = invoke): Promise<ProviderTestResult> {
   const payload = await aiCall("test_provider", { capability }, call);
   if (!isProviderTestResult(payload)) throw new Error("Native layer returned an invalid provider test result");
+  return payload;
+}
+
+const SPEECH_MESSAGES = { emptyText: "There is nothing to read aloud.", unsupportedVoiceOrModel: "That voice or model isn’t available." } as const;
+
+async function speechCall(command: string, args: Record<string, unknown>, call: Invoke): Promise<unknown> {
+  try {
+    return await call(command, args);
+  } catch (failure) {
+    // Chosen from the code alone, so nothing a provider or the native layer said is ever displayed.
+    if (isSpeechErrorPayload(failure)) throw new SpeechError(failure.code, SPEECH_MESSAGES[failure.code]);
+    throw failure;
+  }
+}
+
+async function speechStart(command: string, args: Record<string, unknown>, call: Invoke): Promise<SpeechStart> {
+  const payload = await speechCall(command, args, call);
+  if (!isSpeechStart(payload)) throw new Error("Native layer returned an invalid speech session");
+  return payload;
+}
+
+export const speakTextOverIpc = (input: SpeakInput, call: Invoke = invoke) => {
+  if (typeof input.text !== "string" || input.text.trim().length === 0) return Promise.reject(new SpeechError("emptyText", SPEECH_MESSAGES.emptyText));
+  return speechStart("speak_text", { text: input.text, voice: input.voice ?? null, model: input.model ?? null }, call);
+};
+export const testVoiceOverIpc = (call: Invoke = invoke) => speechStart("test_voice", {}, call);
+export async function stopSpeechOverIpc(call: Invoke = invoke): Promise<void> {
+  await speechCall("stop_speech", {}, call);
+}
+export async function getSpeechStatusOverIpc(call: Invoke = invoke): Promise<SpeechStatus> {
+  const payload = await speechCall("get_speech_status", {}, call);
+  if (!isSpeechStatus(payload)) throw new Error("Native layer returned an invalid speech status");
   return payload;
 }

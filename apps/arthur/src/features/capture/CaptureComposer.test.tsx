@@ -232,7 +232,7 @@ describe("Home composer: voice capture", () => {
   });
 
   it("hides the voice controls when the client cannot capture voice, and text capture still works", async () => {
-    const client = { ...quiet(), capabilities: { voiceCapture: false } };
+    const client = { ...quiet(), capabilities: { voiceCapture: false, speechOutput: false } };
     renderApp(client);
     await screen.findByText("Nothing captured yet");
     expect(screen.queryByRole("button", { name: "Start recording" })).toBeNull();

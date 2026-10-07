@@ -46,11 +46,13 @@ import {
   type AiCapability,
   type AiConfig,
   type AiProviderId,
+  type SpeechFailure,
+  type SpeechStatus,
   type ProviderTestOutcome,
   AI_CAPABILITIES,
   type ThoughtRevision,
 } from "@arthur/contracts";
-import { AiSetupError, DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
+import { AiSetupError, SpeechError, DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
 
 const DEFAULT_PREVIEW_INFO: RuntimeInfo = { appVersion: "0.0.0-preview", platform: "unknown" };
 
@@ -130,10 +132,21 @@ export interface PreviewAiOptions {
   testOutcomes?: Partial<Record<AiCapability, ProviderTestOutcome>>;
 }
 
+/** Scripts voice output in memory: what was spoken is recorded, and playback can be held open or made to fail. */
+export interface PreviewSpeechOptions {
+  /** Called with every text the client was asked to speak. */
+  onSpeak?: (text: string) => void;
+  /** Keep the session `playing` until `stopSpeech` is called. Otherwise it finishes straight away. */
+  hold?: boolean;
+  /** Make every session fail with this reason. */
+  failure?: SpeechFailure;
+}
+
 export interface PreviewClientOptions {
   info?: RuntimeInfo;
   recall?: PreviewRecallOptions;
   ai?: PreviewAiOptions;
+  speech?: PreviewSpeechOptions;
   voice?: PreviewVoiceOptions;
   distillation?: PreviewDistillationOptions;
   inference?: PreviewInferenceOptions;
@@ -168,10 +181,22 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       capability,
       provider: "openai" as const,
       providerName: "OpenAI",
-      models: capability === "llm" ? ["gpt-4.1-mini", "gpt-5-mini"] : capability === "stt" ? ["gpt-4o-transcribe"] : ["text-embedding-3-small"],
+      models: capability === "llm" ? ["gpt-4.1-mini", "gpt-5-mini"] : capability === "stt" ? ["gpt-4o-transcribe"] : capability === "tts" ? ["gpt-4o-mini-tts"] : ["text-embedding-3-small"],
+      ...(capability === "tts" ? { voice: "alloy" } : {}),
       status: credentials.has("openai") ? ("ready" as const) : ("needsCredential" as const),
     })),
   });
+  let speechStatus: SpeechStatus = { state: "idle", sessionId: 0, chunkIndex: 0, chunkCount: 0, truncated: false, outcome: null, failure: null, timings: { startupMs: 0, synthesisMs: 0, preparationMs: 0, timeToAudibleMs: 0, cleanupMs: 0 } };
+  const speak = (text: string) => {
+    if (text.trim().length === 0) return Promise.reject(new SpeechError("emptyText", "There is nothing to read aloud."));
+    options.speech?.onSpeak?.(text);
+    const sessionId = speechStatus.sessionId + 1;
+    // Without a credential the real native layer fails the session the same way, before any provider call.
+    const failure = !credentials.has("openai") ? ("notConfigured" as const) : (options.speech?.failure ?? null);
+    const base = { ...speechStatus, sessionId, chunkIndex: 0, chunkCount: 1, truncated: false };
+    speechStatus = failure ? { ...base, state: "idle", outcome: "failed", failure } : options.speech?.hold ? { ...base, state: "playing", outcome: null, failure: null } : { ...base, state: "idle", outcome: "finished", failure: null };
+    return Promise.resolve({ sessionId, chunkCount: 1, truncated: false });
+  };
   const distillation = { ...options.distillation };
   const inference = { ...options.inference };
   const captures: Capture[] = [];
@@ -380,7 +405,7 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
 
   return {
     kind: "preview",
-    capabilities: { voiceCapture: true },
+    capabilities: { voiceCapture: true, speechOutput: true },
     getRuntimeInfo: () => Promise.resolve(info),
     createCapture: (input) => {
       const problem = describeCreateCaptureInputProblem(input);
@@ -777,5 +802,12 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       setupCompleted = true;
       return Promise.resolve(aiConfig());
     },
+    speakText: (input) => speak(input.text),
+    testVoice: () => speak("Hello, I'm Arthur. This is how I sound."),
+    stopSpeech: () => {
+      if (speechStatus.state !== "idle") speechStatus = { ...speechStatus, state: "idle", outcome: "stopped", failure: null };
+      return Promise.resolve();
+    },
+    getSpeechStatus: () => Promise.resolve({ ...speechStatus }),
   };
 }

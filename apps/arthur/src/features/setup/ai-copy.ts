@@ -5,6 +5,7 @@ export const CAPABILITY_LABEL: Record<AiCapability, string> = {
   llm: "Organizing and Ask Arthur",
   stt: "Voice Capture",
   embeddings: "Semantic Recall embeddings",
+  tts: "Text to speech",
 };
 
 /** What stops working without a credential, and what keeps working. */
@@ -12,6 +13,7 @@ export const CAPABILITY_FALLBACK: Record<AiCapability, string> = {
   llm: "Captures are still saved as you wrote them, but Arthur can’t organize them or answer questions.",
   stt: "Typed Capture still works. Voice Capture is unavailable.",
   embeddings: "Recall still finds ideas by the words you used. Semantic Recall is unavailable.",
+  tts: "Text answers work as usual. Listening is unavailable.",
 };
 
 export const OUTCOME_LABEL: Record<ProviderTestOutcome, string> = {

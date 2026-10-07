@@ -5,7 +5,7 @@ import { createPreviewClient } from "./preview-client";
 import { isTauriRuntime, type Invoke } from "./tauri-ipc";
 import { demoAnswer } from "../test/recall-fixtures";
 
-export { AiSetupError, DistillationError, LineageError, ProjectError, RelationError, VoiceCaptureError } from "./arthur-client";
+export { AiSetupError, SpeechError, DistillationError, LineageError, ProjectError, RelationError, VoiceCaptureError } from "./arthur-client";
 export type { ArthurClient, ArthurClientCapabilities, ArthurClientKind } from "./arthur-client";
 
 export interface ClientEnvironment {

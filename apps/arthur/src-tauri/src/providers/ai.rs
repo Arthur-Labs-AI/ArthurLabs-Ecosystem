@@ -11,7 +11,7 @@ use serde::Serialize;
 use super::ai_config::AiConfigStore;
 use super::credentials::{ApiKey, CredentialSource};
 use super::probe::{probe_models, ProbeOutcome};
-use super::registry::{models, Capability, ProviderId};
+use super::registry::{models, tts_options, Capability, ProviderId};
 use super::secrets::{migrate_legacy_file, SecretError, SecretStore};
 
 /// A credential for one capability, resolved at the moment of each request.
@@ -50,8 +50,11 @@ pub struct CapabilityView {
     pub provider: ProviderId,
     pub provider_name: &'static str,
     /// The models in use, the first being the one to show.
-    pub models: Vec<&'static str>,
+    pub models: Vec<String>,
     pub status: CapabilityStatus,
+    /// Only for text-to-speech: the voice in use.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub voice: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -76,6 +79,7 @@ pub enum AiError {
     InvalidCredentialFormat,
     UnknownProvider,
     UnknownCapability,
+    UnsupportedVoiceOrModel,
     Storage { message: String },
 }
 
@@ -103,6 +107,8 @@ impl AiService {
         if existing {
             let _ = config.set_setup_completed(true);
         }
+        // Write every setting out explicitly (older files gain the newer ones). Done after the check above, which depends on the file's absence.
+        let _ = config.refresh();
         Self { config, store, api_base: None }
     }
 
@@ -129,7 +135,8 @@ impl AiService {
                         capability,
                         provider,
                         provider_name: provider.display_name(),
-                        models: models(provider, capability).to_vec(),
+                        models: if capability == Capability::Tts { vec![file.tts_model()] } else { models(provider, capability).iter().map(|m| m.to_string()).collect() },
+                        voice: (capability == Capability::Tts).then(|| file.tts_voice()),
                         status: if self.store.has(provider) { CapabilityStatus::Ready } else { CapabilityStatus::NeedsCredential },
                     }
                 })
@@ -156,6 +163,20 @@ impl AiService {
     pub fn complete_setup(&self) -> Result<AiConfig, AiError> {
         self.config.set_setup_completed(true).map_err(|_| AiError::Storage { message: "the setup state could not be saved".into() })?;
         Ok(self.snapshot())
+    }
+
+    /// The model and voice a speech request will use: the request's own choice, else the configured one. Anything the provider does not
+    /// offer is refused here, before any network call.
+    pub fn tts_choice(&self, voice: Option<&str>, model: Option<&str>) -> Result<(String, String), AiError> {
+        let file = self.config.read();
+        let options = tts_options(file.provider_for(Capability::Tts));
+        let model = model.map(str::to_string).unwrap_or_else(|| file.tts_model());
+        let voice = voice.map(str::to_string).unwrap_or_else(|| file.tts_voice());
+        if options.models.contains(&model.as_str()) && options.voices.contains(&voice.as_str()) {
+            Ok((model, voice))
+        } else {
+            Err(AiError::UnsupportedVoiceOrModel)
+        }
     }
 
     pub async fn test(&self, capability: &str) -> Result<ProviderTestResult, AiError> {
@@ -189,7 +210,9 @@ mod tests {
         assert!(!config.setup_completed);
         assert!(config.providers.iter().all(|provider| !provider.has_credential));
         assert!(config.capabilities.iter().all(|capability| capability.status == CapabilityStatus::NeedsCredential));
-        assert_eq!(config.capabilities.len(), 3, "no TTS capability exists");
+        assert_eq!(config.capabilities.len(), 4);
+        let tts = config.capabilities.iter().find(|c| c.capability == Capability::Tts).unwrap();
+        assert_eq!((tts.provider, tts.models.as_slice(), tts.voice.as_deref()), (ProviderId::OpenAi, &["gpt-4o-mini-tts".to_string()][..], Some("alloy")));
     }
 
     #[test]
@@ -260,12 +283,28 @@ mod tests {
     }
 
     #[test]
+    fn the_tts_capability_shares_the_one_provider_credential_and_checks_voice_and_model_up_front() {
+        let dir = tempfile::tempdir().unwrap();
+        let (service, _) = service(dir.path());
+        let tts = service.credential_for(Capability::Tts);
+        assert!(tts.api_key().is_none());
+        service.set_credential("openai", "sk-shared-tts").unwrap();
+        assert_eq!(tts.api_key().unwrap().expose(), "sk-shared-tts", "no second key field: the same OpenAI credential");
+
+        assert_eq!(service.tts_choice(None, None).unwrap(), ("gpt-4o-mini-tts".to_string(), "alloy".to_string()));
+        assert_eq!(service.tts_choice(Some("coral"), None).unwrap().1, "coral");
+        assert_eq!(service.tts_choice(Some("not-a-voice"), None), Err(AiError::UnsupportedVoiceOrModel));
+        assert_eq!(service.tts_choice(None, Some("not-a-model")), Err(AiError::UnsupportedVoiceOrModel));
+    }
+
+    #[test]
     fn testing_without_a_credential_makes_no_request() {
         let dir = tempfile::tempdir().unwrap();
         let (service, _) = service(dir.path());
         let result = tauri::async_runtime::block_on(service.test("stt")).unwrap();
         assert_eq!(result.outcome, ProbeOutcome::NotConfigured);
-        assert_eq!(tauri::async_runtime::block_on(service.test("tts")), Err(AiError::UnknownCapability));
+        assert_eq!(tauri::async_runtime::block_on(service.test("speech")), Err(AiError::UnknownCapability));
+        assert_eq!(tauri::async_runtime::block_on(service.test("tts")).unwrap().outcome, ProbeOutcome::NotConfigured);
     }
 
     #[test]

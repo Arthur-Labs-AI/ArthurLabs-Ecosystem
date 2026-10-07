@@ -45,7 +45,7 @@ describe("first-run Setup", () => {
   });
 
   it("walks Welcome → Connect AI → Test → Done where there is no microphone, stores the key write-only, and never shows it again", async () => {
-    const client = { ...fresh(), capabilities: { voiceCapture: false } };
+    const client = { ...fresh(), capabilities: { voiceCapture: false, speechOutput: false } };
     const set = vi.spyOn(client, "setCredential");
     renderApp(client);
     fireEvent.click(await screen.findByRole("button", { name: "Connect AI" }));
@@ -122,7 +122,7 @@ describe("Ask Arthur without a language-model connection", () => {
 describe("Settings → AI & Voice", () => {
   it("shows provider, model and status per capability, a masked key indicator, and never the key", async () => {
     // The native Desktop client cannot record, so it has no speech row.
-    const client = { ...createPreviewClient({ distillation: NOTHING }), capabilities: { voiceCapture: false } };
+    const client = { ...createPreviewClient({ distillation: NOTHING }), capabilities: { voiceCapture: false, speechOutput: false } };
     renderApp(client, "settings");
     const section = (await screen.findByRole("heading", { name: "AI & Voice" })).closest("section")!;
     const text = section.textContent ?? "";
@@ -178,7 +178,7 @@ describe("Settings → AI & Voice", () => {
     expect(confirm.textContent).toContain("Your captures and ideas stay exactly as they are");
     expect(await client.hasCredential("openai")).toBe(true);
     fireEvent.click(within(confirm).getByRole("button", { name: "Remove key" }));
-    await waitFor(() => expect(screen.getAllByText("Needs a key").length).toBe(3));
+    await waitFor(() => expect(screen.getAllByText("Needs a key").length).toBe(4));
     expect(screen.getByText("No OpenAI key")).toBeTruthy();
     expect(await client.hasCredential("openai")).toBe(false);
     expect(screen.getByText(/No OpenAI key · Semantic Recall Off/)).toBeTruthy();

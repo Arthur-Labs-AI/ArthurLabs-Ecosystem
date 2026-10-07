@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import type { CognitiveAnswer, CognitiveEvidence } from "@arthur/contracts";
+import { ListenButton } from "../speech/ListenButton";
 import { AnswerParagraphs, Gaps } from "./AnswerView";
 import { indexEvidence, isWeak, orderEvidence, synthesisReason, type EvidenceIndex, type Marker } from "./evidence-model";
 
@@ -24,6 +25,7 @@ export function OutcomeBody({ answer, handlers, evidence }: { answer: CognitiveA
           <h2 id="ans-h">Answer</h2>
           <AnswerParagraphs paragraphs={answer.answer.paragraphs} index={index} activeHandle={handlers.activeHandle} onMark={handlers.onMark} onHover={handlers.onHover} />
           <Gaps answer={answer} />
+          <ListenButton text={answer.answer.paragraphs.map((paragraph) => paragraph.text).join("\n\n")} />
         </section>
         {cited.length > 0 ? evidence(cited, index, "Based on") : <p className="ans-none">Arthur didn’t attach any evidence to this answer, so treat it with caution.</p>}
         {other.length > 0 && evidence(other, index, "Also found", false)}

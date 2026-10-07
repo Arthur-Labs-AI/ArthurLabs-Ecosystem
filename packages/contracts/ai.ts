@@ -13,8 +13,8 @@
 export const AI_PROVIDERS = ["openai"] as const;
 export type AiProviderId = (typeof AI_PROVIDERS)[number];
 
-/** What Arthur needs a cloud provider for. There is no text-to-speech capability: the app has no TTS runtime. */
-export const AI_CAPABILITIES = ["llm", "stt", "embeddings"] as const;
+/** What Arthur needs a cloud provider for. `tts` (voice output) reuses the provider account's credential like the others. */
+export const AI_CAPABILITIES = ["llm", "stt", "embeddings", "tts"] as const;
 export type AiCapability = (typeof AI_CAPABILITIES)[number];
 
 export interface AiProviderStatus {
@@ -30,6 +30,8 @@ export interface AiCapabilityStatus {
   providerName: string;
   /** The models in use. The first one is the one to show. */
   models: string[];
+  /** Text-to-speech only: the voice in use. */
+  voice?: string;
   /** `ready`: the bound provider has a credential. `needsCredential`: it does not, so this capability is unavailable. */
   status: "ready" | "needsCredential";
 }
@@ -54,7 +56,7 @@ export interface ProviderTestResult {
   outcome: ProviderTestOutcome;
 }
 
-export const AI_ERROR_CODES = ["invalidCredentialFormat", "unknownProvider", "unknownCapability", "storage"] as const;
+export const AI_ERROR_CODES = ["invalidCredentialFormat", "unknownProvider", "unknownCapability", "unsupportedVoiceOrModel", "storage"] as const;
 export type AiErrorCode = (typeof AI_ERROR_CODES)[number];
 
 export interface AiErrorPayload {
@@ -75,6 +77,7 @@ export function isAiConfig(value: unknown): value is AiConfig {
         isOneOf(AI_CAPABILITIES, c.capability) &&
         isOneOf(AI_PROVIDERS, c.provider) &&
         typeof c.providerName === "string" &&
+        (c.voice === undefined || typeof c.voice === "string") &&
         Array.isArray(c.models) &&
         c.models.every((m) => typeof m === "string") &&
         (c.status === "ready" || c.status === "needsCredential"),

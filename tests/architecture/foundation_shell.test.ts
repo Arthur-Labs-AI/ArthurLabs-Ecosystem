@@ -272,12 +272,12 @@ test("voice error codes agree across the contract, the Rust service and the Kotl
 test("HTTP, credentials and the microphone are confined to their modules", () => {
   const src = path.join(tauriDir, "src");
   const files = rustFiles(src).map((file) => ({ rel: path.relative(src, file).split(path.sep).join("/"), text: readFileSync(file, "utf8") }));
-  const providerModules = /^(providers|stt|distillation|graph)\//;
+  const providerModules = /^(providers|stt|tts|distillation|graph)\//;
 
   for (const { rel, text } of files) {
     if (/\breqwest\b/.test(text)) assert.match(rel, providerModules, `${rel} must not make HTTP calls`);
-    if (/openai_api_key|api_key\(\)/.test(text)) assert.match(rel, /^(providers\/|stt\/|distillation\/|graph\/|lib\.rs$)/, `${rel} must not touch credentials`);
-    if (/run_mobile_plugin/.test(text)) assert.ok(["audio/android.rs", "providers/android_keystore.rs"].includes(rel), `${rel} must not call a mobile plugin`);
+    if (/openai_api_key|api_key\(\)/.test(text)) assert.match(rel, /^(providers\/|stt\/|tts\/|distillation\/|graph\/|lib\.rs$)/, `${rel} must not touch credentials`);
+    if (/run_mobile_plugin/.test(text)) assert.ok(["audio/android.rs", "providers/android_keystore.rs", "tts/android.rs"].includes(rel), `${rel} must not call a mobile plugin`);
   }
 
   // Nothing that handles the API key, the user's speech or their thoughts may log.
@@ -791,4 +791,34 @@ test("the AI contract has no operation or field that can return a credential", (
   assert.doesNotMatch(contract, /\b(secret|apiKey|rawKey|token|password)\b\s*[?:]/i);
   const client = readFileSync(path.join(root, "apps/arthur/src/client/arthur-client.ts"), "utf8");
   assert.doesNotMatch(client, /getRaw|getApiKey|getSecret|readCredential/);
+});
+
+test("voice output (M04.6): TTS goes through the provider and SecretStore layer, the audio is never persisted, and the schema is untouched", () => {
+  const lib = readText(tauriDir, "src/lib.rs");
+  // The synthesizer gets the capability-bound credential from AiService (which resolves it from the SecretStore); never a key or a file.
+  assert.match(lib, /ai\.credential_for\(Capability::Tts\)/);
+  assert.match(lib, /OpenAiSynthesizer::new\(tts_credential\)/);
+  const tts = ["mod.rs", "chunk.rs", "openai.rs", "player.rs", "service.rs", "android.rs"].map((f) => productionCode(readText(tauriDir, `src/tts/${f}`))).join("\n");
+  assert.doesNotMatch(tts, /FileSecretStore|FileCredentialSource|SecretStore|openai_api_key|rusqlite|CaptureStore|\bConnection\b/, "TTS never builds a store or touches the database");
+  assert.doesNotMatch(tts, /\b(println|eprintln|dbg)!|\btracing::|\blog::/, "TTS never logs");
+
+  // Audio lives only in the app cache, is named by random id, and is removed (on drop, after playback, and at startup).
+  const service = readText(tauriDir, "src/tts/service.rs");
+  assert.match(service, /Uuid::new_v4\(\)/);
+  assert.match(service, /remove_dir_all\(&dir\)/);
+  assert.match(service, /impl Drop for TempAudio/);
+  assert.match(lib, /app_cache_dir\(\)\?\.join\("tts"\)/);
+  assert.doesNotMatch(lib, /data_dir\.join\("tts"\)/, "speech is never written to the persistent data directory");
+
+  // No command returns audio, text or a provider detail.
+  const commands = productionCode(readText(tauriDir, "src/commands/speech.rs"));
+  assert.doesNotMatch(commands, /Vec<u8>|bytes|Speech\b|ApiKey|expose\(|endpoint|Authorization/);
+  const contract = readFileSync(path.join(root, "packages/contracts/speech.ts"), "utf8");
+  const fields = contract.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "").replace(/export interface SpeakInput[\s\S]*?\n}\n/, "");
+  assert.doesNotMatch(fields, /\b(audio|bytes|blob|text|secret|apiKey|endpoint|header)\??\s*:/i, "no status or result field can carry audio, text or a credential");
+
+  // The schema is still v7 and nothing speech-related exists in it.
+  const migrations = readText(tauriDir, "src/storage/migrations.rs");
+  assert.match(migrations, /pub const SCHEMA_VERSION: i64 = 7;/);
+  assert.doesNotMatch(migrations, /\b(tts|speech|spoken|utterance|audio_file)\b/i);
 });

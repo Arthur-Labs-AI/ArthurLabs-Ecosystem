@@ -22,6 +22,10 @@ import type {
   AiErrorCode,
   AiConfig,
   AiProviderId,
+  SpeakInput,
+  SpeechErrorCode,
+  SpeechStart,
+  SpeechStatus,
   ProviderTestResult,
   CognitiveAnswer,
   CognitiveQuery,
@@ -45,6 +49,8 @@ export type ArthurClientKind = "desktop" | "mobile" | "preview";
 /** What this client can do, so the UI can adapt without knowing which platform it is on. */
 export interface ArthurClientCapabilities {
   readonly voiceCapture: boolean;
+  /** Whether this device can speak an answer aloud (needs native audio output). */
+  readonly speechOutput: boolean;
 }
 
 /** A voice capture attempt failed. `code` says why; `message` is safe to show to the user. */
@@ -103,6 +109,17 @@ export class ProjectError extends Error {
 }
 
 /** Ask Arthur could not be served at all (a bad question, an unknown project, an unreadable store). `message` is safe to show. */
+/** Voice output refused a request before any provider call. Playback failures are not thrown: they are read from `getSpeechStatus`. */
+export class SpeechError extends Error {
+  readonly code: SpeechErrorCode;
+
+  constructor(code: SpeechErrorCode, message: string) {
+    super(message);
+    this.name = "SpeechError";
+    this.code = code;
+  }
+}
+
 export class AiSetupError extends Error {
   readonly code: AiErrorCode;
 
@@ -321,4 +338,18 @@ export interface ArthurClient {
   testProvider(capability: AiCapability): Promise<ProviderTestResult>;
   /** Records that first-run Setup was finished or skipped. Stores no secret and no consent. */
   completeSetup(): Promise<AiConfig>;
+
+  /**
+   * Voice output (output only: nothing is spoken unless asked, and there is no voice dialogue). Reads `input.text` aloud with the configured voice through
+   * the provider bound to text-to-speech. The audio never reaches the UI and is deleted as it plays; nothing is kept. Starting a
+   * session stops any session already playing. Resolves as soon as the session is set up: progress and any failure (missing or
+   * invalid credential, provider unreachable, unsupported voice, playback failure) are read from `getSpeechStatus`.
+   * Rejects with `SpeechError` only for a request refused up front (empty text, an unknown voice or model).
+   */
+  speakText(input: SpeakInput): Promise<SpeechStart>;
+  /** "Test voice": speaks one short fixed Arthur sentence. */
+  testVoice(): Promise<SpeechStart>;
+  /** Stops playback and any chunk still being fetched, and deletes the transient audio. Safe when nothing is playing. */
+  stopSpeech(): Promise<void>;
+  getSpeechStatus(): Promise<SpeechStatus>;
 }

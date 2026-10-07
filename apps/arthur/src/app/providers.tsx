@@ -7,6 +7,7 @@ import { GraphProvider } from "../features/graph/graph-context";
 import { KnowledgeProvider } from "../features/knowledge/knowledge-context";
 import { LineageSummariesProvider } from "../features/lineage/lineage-summaries";
 import { AskProvider } from "../features/recall/ask-context";
+import { SpeechProvider } from "../features/speech/speech-context";
 import { ProjectsProvider } from "../features/projects/projects-context";
 import { ProjectScopeSync } from "../features/projects/ProjectScopeSync";
 import { AiConfigProvider } from "../features/setup/ai-config-context";
@@ -26,6 +27,7 @@ export function ArthurProviders({ client, initialScreen, children }: ArthurProvi
   return (
     <ArthurClientContext.Provider value={resolved}>
       <AiConfigProvider>
+      <SpeechProvider>
       <ProjectsProvider>
         <CapturesProvider>
           <KnowledgeProvider>
@@ -41,6 +43,7 @@ export function ArthurProviders({ client, initialScreen, children }: ArthurProvi
           </KnowledgeProvider>
         </CapturesProvider>
       </ProjectsProvider>
+      </SpeechProvider>
       </AiConfigProvider>
     </ArthurClientContext.Provider>
   );

@@ -26,6 +26,10 @@ import {
   getActiveProjectOverIpc,
   askOverIpc,
   getSemanticRecallStatusOverIpc,
+  speakTextOverIpc,
+  testVoiceOverIpc,
+  stopSpeechOverIpc,
+  getSpeechStatusOverIpc,
   getAiConfigOverIpc,
   setCredentialOverIpc,
   hasCredentialOverIpc,
@@ -56,7 +60,7 @@ const voiceUnavailable = () => Promise.reject(new VoiceCaptureError("voice_unava
 export function createDesktopClient(call?: Invoke): ArthurClient {
   return {
     kind: "desktop",
-    capabilities: { voiceCapture: false },
+    capabilities: { voiceCapture: false, speechOutput: false },
     getRuntimeInfo: () => fetchRuntimeInfo(call),
     createCapture: (input) => createCaptureOverIpc(input, call),
     getCaptures: (captureIds) => getCapturesOverIpc(captureIds, call),
@@ -107,5 +111,9 @@ export function createDesktopClient(call?: Invoke): ArthurClient {
     deleteCredential: (provider) => deleteCredentialOverIpc(provider, call),
     testProvider: (capability) => testProviderOverIpc(capability, call),
     completeSetup: () => completeSetupOverIpc(call),
+    speakText: (input) => speakTextOverIpc(input, call),
+    testVoice: () => testVoiceOverIpc(call),
+    stopSpeech: () => stopSpeechOverIpc(call),
+    getSpeechStatus: () => getSpeechStatusOverIpc(call),
   };
 }
