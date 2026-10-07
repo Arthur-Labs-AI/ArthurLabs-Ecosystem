@@ -6,6 +6,7 @@ import { CapturesProvider } from "../features/capture/captures-context";
 import { GraphProvider } from "../features/graph/graph-context";
 import { KnowledgeProvider } from "../features/knowledge/knowledge-context";
 import { LineageSummariesProvider } from "../features/lineage/lineage-summaries";
+import { AskProvider } from "../features/recall/ask-context";
 import { ProjectsProvider } from "../features/projects/projects-context";
 import { ProjectScopeSync } from "../features/projects/ProjectScopeSync";
 import { ArthurClientContext } from "../hooks/use-arthur-client";
@@ -31,7 +32,7 @@ export function ArthurProviders({ client, initialScreen, children }: ArthurProvi
                 <NavigationProvider {...(initialScreen ? { initialScreen } : {})}>
                   <ProjectScopeSync />
                   <AutoOrganize />
-                  {children}
+                  <AskProvider>{children}</AskProvider>
                 </NavigationProvider>
               </LineageSummariesProvider>
             </GraphProvider>

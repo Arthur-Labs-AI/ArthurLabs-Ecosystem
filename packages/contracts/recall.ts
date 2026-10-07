@@ -266,3 +266,37 @@ export function isCognitiveAnswer(value: unknown): value is CognitiveAnswer {
     typeof diagnostics.retrieval === "object"
   );
 }
+
+/**
+ * The user's semantic-Recall setting and what is stored locally for it. Contains no stored text and no key.
+ * Mirrors the native `SemanticRecallStatus`. Semantic Recall is OFF until the user turns it on; it is never inferred from
+ * the presence of an API key.
+ */
+export interface SemanticRecallStatus {
+  /** Effective: opted in FOR THE ACTIVE embedding provider. */
+  enabled: boolean;
+  savedEnabled: boolean;
+  savedModelKey: string | null;
+  settingsCorrupt: boolean;
+  activeModelKey: string;
+  /** Vectors stored for the active provider. They stay on this device and are ignored while the setting is off. */
+  storedVectors: number;
+  /** Vectors stored under any provider: what `Delete semantic index` removes. */
+  storedVectorsAllKeys: number;
+  /** Ideas that do not have a vector yet. */
+  pendingObjects: number;
+}
+
+export function isSemanticRecallStatus(value: unknown): value is SemanticRecallStatus {
+  if (typeof value !== "object" || value === null) return false;
+  const c = value as Record<string, unknown>;
+  return (
+    typeof c.enabled === "boolean" &&
+    typeof c.savedEnabled === "boolean" &&
+    typeof c.settingsCorrupt === "boolean" &&
+    typeof c.activeModelKey === "string" &&
+    typeof c.storedVectors === "number" &&
+    typeof c.storedVectorsAllKeys === "number" &&
+    typeof c.pendingObjects === "number"
+  );
+}

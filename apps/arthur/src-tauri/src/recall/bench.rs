@@ -1232,3 +1232,5 @@ fn recall_live_synthesis() {
     }
     println!("\nLIVE SYNTHESIS: {} questions: answered {answered}, insufficient_evidence {insufficient}, retrieval_only {retrieval_only}; chat requests {calls}; network synthesis ms p50 {:.0} p95 {:.0}", cases.len(), percentile(&synthesis_ms, 0.5), percentile(&synthesis_ms, 0.95));
 }
+
+mod e2e;

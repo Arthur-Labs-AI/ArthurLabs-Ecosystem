@@ -11,19 +11,19 @@ import { BOUND, RESERVED } from "./shortcuts";
 const nav = () => screen.getByRole("navigation", { name: "Primary" });
 
 describe("App shell", () => {
-  it("shows Arthur, the four primary screens and Settings, and starts on Home", async () => {
+  it("shows Arthur, the primary screens (Ask Arthur last) and Settings, and starts on Home", async () => {
     renderApp(createPreviewClient({ distillation: NOTHING }));
 
-    expect(within(nav()).getAllByRole("button").map((b) => b.textContent?.replace(/\d+$/, ""))).toEqual(["Home", "Ideas", "Connections", "Evolution"]);
+    expect(within(nav()).getAllByRole("button").map((b) => b.textContent?.replace(/\d+$/, ""))).toEqual(["Home", "Ideas", "Connections", "Evolution", "Ask ArthurCtrl K"]);
     expect(within(screen.getByRole("navigation", { name: "Secondary" })).getByRole("button", { name: "Settings" })).toBeTruthy();
     expect(within(nav()).getByRole("button", { name: "Home" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByText("Arthur", { selector: "b" })).toBeTruthy();
     expect(await screen.findByLabelText("Thought")).toBeTruthy();
   });
 
-  it("does not show an Ask Arthur item or the long product name in everyday chrome", () => {
+  it("shows Ask Arthur in the rail but not the long product name in everyday chrome", () => {
     renderApp(createPreviewClient());
-    expect(screen.queryByText(/Ask Arthur/)).toBeNull();
+    expect(within(nav()).getByRole("button", { name: /^Ask Arthur/ })).toBeTruthy();
     expect(screen.queryByText(/A\.R\.T\.H\.U\.R\./)).toBeNull();
     expect(screen.queryByText(/Cognitive Runtime/)).toBeNull();
   });
@@ -170,19 +170,17 @@ describe("global Capture", () => {
 });
 
 describe("shortcuts", () => {
-  it("reserves Mod+K for Ask Arthur and binds nothing to it", async () => {
-    expect(RESERVED.askArthur).toBe("Mod+K");
-    expect(Object.values(BOUND)).not.toContain(RESERVED.askArthur);
+  it("binds Mod+K to Ask Arthur only, alongside Mod+N for Capture, with nothing else reserved", async () => {
+    expect(BOUND.askArthur).toBe("Mod+K");
+    expect(Object.values(BOUND).filter((chord) => chord === "Mod+K")).toHaveLength(1);
+    expect(Object.keys(RESERVED)).toEqual([]);
     renderApp(createPreviewClient({ distillation: NOTHING }));
     await screen.findByLabelText("Thought");
 
-    const before = document.body.innerHTML;
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-    fireEvent.keyDown(window, { key: "k", metaKey: true });
+    expect(await screen.findByRole("heading", { name: "Ask Arthur", level: 1 })).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.body.innerHTML).toBe(before);
-  });
-});
+  });});
 
 describe("Settings", () => {
   it("shows runtime information obtained through the ArthurClient, and the full product name", async () => {

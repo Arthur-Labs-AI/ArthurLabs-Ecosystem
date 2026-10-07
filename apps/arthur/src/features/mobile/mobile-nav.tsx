@@ -4,7 +4,7 @@ import { useCaptures } from "../capture/captures-context";
 import { useArthurClient } from "../../hooks/use-arthur-client";
 import { useBackLayer } from "./back-stack";
 
-export type Page = { kind: "idea"; id: string } | { kind: "settings" };
+export type Page = { kind: "idea"; id: string } | { kind: "settings" } | { kind: "ask" };
 export type ConnectionsView = "list" | "map";
 
 export interface MobileNav {
@@ -12,6 +12,8 @@ export interface MobileNav {
   pages: readonly Page[];
   openIdea: (id: string) => void;
   openSettings: () => void;
+  /** Ask Arthur is a pushed page, not a tab: the five tabs stay as they are. */
+  openAsk: () => void;
   /** Closes the top page. */
   closePage: () => void;
   /** Leaves every pushed page (used by tab switches). */
@@ -47,6 +49,7 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
 
   const openIdea = useCallback((id: string) => setPages((current) => [...current, { kind: "idea", id }]), []);
   const openSettings = useCallback(() => setPages((current) => (current.at(-1)?.kind === "settings" ? current : [...current, { kind: "settings" }])), []);
+  const openAsk = useCallback(() => setPages((current) => (current.at(-1)?.kind === "ask" ? current : [...current, { kind: "ask" }])), []);
   const closePage = useCallback(() => setPages((current) => current.slice(0, -1)), []);
   const closeAllPages = useCallback(() => setPages([]), []);
   const setTyping = useCallback((open: boolean) => {
@@ -75,8 +78,8 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
   }, [go, client, micKnownGranted, voiceState, startVoice, setTyping]);
 
   const value = useMemo<MobileNav>(
-    () => ({ pages, openIdea, openSettings, closePage, closeAllPages, connectionsView, setConnectionsView, typing, setTyping, micHint, projectSheet, openProjectSheet, closeProjectSheet, capture }),
-    [pages, openIdea, openSettings, closePage, closeAllPages, connectionsView, typing, setTyping, micHint, projectSheet, openProjectSheet, closeProjectSheet, capture],
+    () => ({ pages, openIdea, openSettings, openAsk, closePage, closeAllPages, connectionsView, setConnectionsView, typing, setTyping, micHint, projectSheet, openProjectSheet, closeProjectSheet, capture }),
+    [pages, openIdea, openSettings, openAsk, closePage, closeAllPages, connectionsView, typing, setTyping, micHint, projectSheet, openProjectSheet, closeProjectSheet, capture],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

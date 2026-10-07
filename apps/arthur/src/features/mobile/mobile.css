@@ -2174,3 +2174,210 @@
   font-size: 12.5px;
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------- Ask Arthur (M04D) */
+.m-askrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% - 2 * var(--m-gut));
+  margin: 12px var(--m-gut) 0;
+  min-height: var(--m-touch);
+  padding: 0 4px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+  text-align: left;
+}
+.m-askrow:active {
+  background: var(--selected);
+}
+.m-askrow .ic {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.m-askrow-text {
+  font: 400 var(--m-t-row) / 1.3 var(--serif);
+  color: var(--ink-3);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.m-ask .m-head h1 {
+  font-size: var(--m-t-page);
+}
+.m-ask .ask-project {
+  margin-top: 4px;
+  font-size: 13px;
+}
+.m-ask-scroll {
+  scroll-padding-bottom: 24px;
+}
+.m-ask-body {
+  padding: 14px var(--m-gut) 24px;
+}
+.m-ask-body .ask-empty {
+  font: 400 var(--m-t-body) / 1.55 var(--serif);
+}
+.m-ask-body .ask-grid {
+  display: block;
+}
+.m-ask-body .ans {
+  max-width: none;
+  padding-left: 14px;
+}
+.m-ask-body .ans-lead {
+  font-size: var(--m-t-body);
+}
+.m-ask-body .ans-para {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 6px;
+}
+.m-ask-body .ans-text {
+  font-size: var(--m-t-body);
+  line-height: 1.6;
+}
+.m-ask-body .ans-margin {
+  padding-top: 0;
+}
+.m-ask-body .ans-refs {
+  gap: 6px;
+}
+.m-ask-body .ans-ref {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.m-ask-body .ans-temporal {
+  font-size: 12.5px;
+}
+.m-ask-body .ask-loading,
+.m-ask-body .ev-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.m-ask-body .ans.notice .btn,
+.m-ask-body .alert .btn {
+  min-height: 44px;
+}
+.m-ask-body .btn {
+  height: auto;
+  min-height: 44px;
+}
+.m-evs {
+  margin-top: 26px;
+}
+.m-evs ol {
+  display: block;
+}
+.m-evrow {
+  display: block;
+  width: calc(100% + 2 * 10px);
+  margin: 0 -10px;
+  padding: 12px 10px;
+  min-height: 56px;
+  border-top: 1px solid var(--line-soft);
+  text-align: left;
+}
+.m-evrow:active,
+.m-evrow[data-active] {
+  background: var(--selected);
+}
+.m-evrow .ev-head {
+  display: flex;
+}
+.m-evrow .ev-title {
+  display: block;
+  margin-top: 6px;
+  font-size: var(--m-t-row);
+}
+.m-ev .ev-handle {
+  margin-right: 8px;
+}
+.m-ev-title {
+  margin: 6px 0 8px;
+}
+.m-ev-chips {
+  margin-bottom: 10px;
+}
+.m-ev .ev-actions {
+  flex-direction: column;
+}
+.m-ev .ev-btn {
+  min-height: 48px;
+  justify-content: flex-start;
+}
+.m-ev .ev-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.m-ev .ev-body {
+  font-size: 16px;
+}
+.m-askbar {
+  flex: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: end;
+  gap: 8px;
+  padding: 8px var(--m-gut) calc(8px + var(--m-safe-b));
+  border-top: 1px solid var(--line);
+  background: var(--sunken);
+}
+.m-askbar textarea {
+  resize: none;
+  min-height: 48px;
+  max-height: 9em;
+  padding: 12px 2px;
+  background: none;
+  border: 0;
+  outline: none;
+  font: 400 17px/1.4 var(--serif);
+  field-sizing: content;
+  color: var(--ink);
+}
+.m-askbar textarea::placeholder {
+  color: var(--ink-3);
+}
+.m-askbar-send {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  background: var(--ink);
+  color: var(--ground);
+}
+.m-askbar-send[disabled] {
+  background: var(--selected);
+  color: var(--ink-3);
+}
+.m-askbar-over {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--del);
+  font-size: 13px;
+}
+.m-set .sr-toggle {
+  min-height: 48px;
+}
+.m-set .sr-actions .m-pbtn {
+  flex: 1 1 auto;
+}
+.m-ask-q {
+  margin: 0 0 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-soft);
+  font: italic 400 var(--m-t-row) / 1.45 var(--serif);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}

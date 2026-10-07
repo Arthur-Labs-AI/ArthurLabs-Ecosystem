@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigation, type Screen } from "../../app/navigation";
 import { Icon, Mark, type IconName } from "../../components/icons";
+import { useAsk } from "../recall/ask-context";
 import { useCaptures } from "../capture/captures-context";
 import { MobileBackLayer } from "./MobileBackLayer";
 import { MobileConnections } from "./MobileConnections";
@@ -9,6 +10,8 @@ import { MobileHome } from "./MobileHome";
 import { MobileIdeaDetail } from "./MobileIdeaDetail";
 import { MobileIdeas } from "./MobileIdeas";
 import { ProjectChip, ProjectSheet } from "./MobileProjects";
+import { MobileAsk } from "../recall/MobileAsk";
+import { isAskShortcut } from "../../app/shortcuts";
 import { MobileSettings } from "./MobileSettings";
 import { MobileNavProvider, useMobileNav } from "./mobile-nav";
 import { useViewport } from "./use-viewport";
@@ -145,7 +148,8 @@ function TabBar() {
 
 function Frame() {
   const { screen } = useNavigation();
-  const { pages, typing, projectSheet } = useMobileNav();
+  const { pages, typing, projectSheet, openAsk } = useMobileNav();
+  const { requestFocus } = useAsk();
   const { voiceState, voiceFailure, discardVoice } = useCaptures();
   const { height, keyboardOpen } = useViewport();
   const top = pages.at(-1);
@@ -157,6 +161,17 @@ function Frame() {
   useEffect(() => {
     if (voiceFailure?.code === "stt_retryable" && !retryOpenHere && voiceState === "idle") void discardVoice();
   }, [voiceFailure, retryOpenHere, voiceState, discardVoice]);
+  // A narrow desktop window gets this shell too, and its keyboard still reaches Ask Arthur.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isAskShortcut(event)) return;
+      event.preventDefault();
+      openAsk();
+      requestFocus();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [openAsk, requestFocus]);
   const hideBar = keyboardOpen || top !== undefined || (typing && tab === "home");
 
   return (
@@ -177,6 +192,7 @@ function Frame() {
       </div>
       {top?.kind === "idea" && <MobileIdeaDetail key={`${pages.length}-${top.id}`} objectId={top.id} />}
       {top?.kind === "settings" && <MobileSettings />}
+      {top?.kind === "ask" && <MobileAsk />}
       {!hideBar && <TabBar />}
       {projectSheet && <ProjectSheet />}
       {recording && <Recording />}

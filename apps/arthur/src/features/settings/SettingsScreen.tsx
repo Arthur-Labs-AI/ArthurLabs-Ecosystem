@@ -1,4 +1,5 @@
 import { useArthurClient } from "../../hooks/use-arthur-client";
+import { SemanticRecallSettings } from "../recall/SemanticRecallSettings";
 import { useRuntimeInfo } from "./use-runtime-info";
 import "./settings.css";
 
@@ -20,6 +21,13 @@ export function SettingsScreen() {
           <h3 id="storage-heading">Your knowledge</h3>
         </div>
         <p className="note">Knowledge stored locally. Captures and everything Arthur organizes from them live on this device.</p>
+      </section>
+
+      <section className="sec" style={{ paddingLeft: 0, paddingRight: 0 }} aria-labelledby="recall-heading">
+        <div className="sec-h">
+          <h3 id="recall-heading">Semantic Recall</h3>
+        </div>
+        <SemanticRecallSettings variant="desktop" />
       </section>
 
       <section className="sec" style={{ paddingLeft: 0, paddingRight: 0 }} aria-labelledby="about-heading">

@@ -16,6 +16,15 @@ export interface ProjectsState {
    * re-reads exactly what is stored instead of patching its own copy.
    */
   dataVersion: number;
+  /**
+   * An ARCHIVED project the user explicitly opened to read and ask about. It is never the active project (that invariant is
+   * unchanged), so nothing can be captured into, created in, edited in or moved into it; it only supplies the scope of Ask Arthur.
+   * Switching, creating, archiving or restoring any project ends it.
+   */
+  readOnlyProject: Project | null;
+  /** Opens an archived project read-only. Resolves false when it is not (or no longer) archived. */
+  openArchived: (projectId: string) => boolean;
+  closeArchived: () => void;
   /** Last failure of a project operation. Safe to show. Cleared by the next successful operation. */
   error: string | null;
   clearError: () => void;
@@ -44,6 +53,7 @@ export function useProjectsState(): ProjectsState {
   const [archived, setArchived] = useState<Project[]>([]);
   const [active, setActive] = useState<Project | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
+  const [readOnlyId, setReadOnlyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const alive = useRef(true);
 
@@ -96,9 +106,16 @@ export function useProjectsState(): ProjectsState {
     [read],
   );
 
-  const switchTo = useCallback((projectId: string) => run(() => client.setActiveProject(projectId)), [client, run]);
+  const switchTo = useCallback(
+    (projectId: string) => {
+      setReadOnlyId(null);
+      return run(() => client.setActiveProject(projectId));
+    },
+    [client, run],
+  );
   const create = useCallback(
     async (name: string, options?: { activate?: boolean }): Promise<Project | null> => {
+      setReadOnlyId(null);
       let created: Project | null = null;
       const ok = await run(async () => {
         created = await client.createProject(name);
@@ -109,8 +126,29 @@ export function useProjectsState(): ProjectsState {
     [client, run],
   );
   const rename = useCallback((projectId: string, name: string) => run(() => client.renameProject(projectId, name)), [client, run]);
-  const archive = useCallback((projectId: string) => run(() => client.archiveProject(projectId)), [client, run]);
-  const restore = useCallback((projectId: string) => run(() => client.restoreProject(projectId)), [client, run]);
+  const archive = useCallback(
+    (projectId: string) => {
+      setReadOnlyId(null);
+      return run(() => client.archiveProject(projectId));
+    },
+    [client, run],
+  );
+  const restore = useCallback(
+    (projectId: string) => {
+      setReadOnlyId(null);
+      return run(() => client.restoreProject(projectId));
+    },
+    [client, run],
+  );
+  const openArchived = useCallback(
+    (projectId: string): boolean => {
+      if (!archived.some((project) => project.id === projectId)) return false;
+      setReadOnlyId(projectId);
+      return true;
+    },
+    [archived],
+  );
+  const closeArchived = useCallback(() => setReadOnlyId(null), []);
   const moveCapture = useCallback((captureId: string, projectId: string) => run(() => client.moveCapture(captureId, projectId), { bump: true }), [client, run]);
   const moveObject = useCallback((objectId: string, projectId: string) => run(() => client.moveKnowledgeObject(objectId, projectId), { bump: true }), [client, run]);
   const refresh = useCallback(async () => {
@@ -125,5 +163,7 @@ export function useProjectsState(): ProjectsState {
   const names = useMemo(() => new Map([...projects, ...archived].map((project) => [project.id, project.name])), [projects, archived]);
   const nameOf = useCallback((projectId: string) => names.get(projectId), [names]);
 
-  return { status, projects, archived, active, activeProjectId: active?.id ?? null, dataVersion, error, clearError, switchTo, create, rename, archive, restore, moveCapture, moveObject, refresh, nameOf };
+  const readOnlyProject = archived.find((project) => project.id === readOnlyId) ?? null;
+
+  return { status, projects, archived, active, activeProjectId: active?.id ?? null, readOnlyProject, openArchived, closeArchived, dataVersion, error, clearError, switchTo, create, rename, archive, restore, moveCapture, moveObject, refresh, nameOf };
 }

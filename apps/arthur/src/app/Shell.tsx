@@ -4,13 +4,15 @@ import { useKnowledge } from "../features/knowledge/knowledge-context";
 import { ProjectSwitcher } from "../features/projects/ProjectSwitcher";
 import { Icon, Mark, type IconName } from "../components/icons";
 import { useNavigation, type Screen } from "./navigation";
-import { isMod, modLabel } from "./shortcuts";
+import { useAsk } from "../features/recall/ask-context";
+import { isAskShortcut, isMod, modLabel } from "./shortcuts";
 
 const ITEMS: { screen: Exclude<Screen, "settings">; label: string; icon: IconName }[] = [
   { screen: "home", label: "Home", icon: "home" },
   { screen: "ideas", label: "Ideas", icon: "ideas" },
   { screen: "connections", label: "Connections", icon: "connections" },
   { screen: "evolution", label: "Evolution", icon: "evolution" },
+  { screen: "ask", label: "Ask Arthur", icon: "ask" },
 ];
 
 /**
@@ -21,6 +23,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { screen, go, openCapture, captureOpen } = useNavigation();
   const { objects, jobs, distilling } = useKnowledge();
   const { voiceState, stopVoice } = useCaptures();
+  const { requestFocus } = useAsk();
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -28,11 +31,16 @@ export function Shell({ children }: { children: ReactNode }) {
         event.preventDefault();
         openCapture();
       }
-      // Mod+K is deliberately NOT bound: it is reserved for Ask Arthur (see shortcuts.ts).
+      // Mod+K opens Ask Arthur and puts the cursor in the question. It never takes over a modal Capture dialog.
+      if (isAskShortcut(event) && !captureOpen) {
+        event.preventDefault();
+        go("ask");
+        requestFocus();
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openCapture]);
+  }, [openCapture, captureOpen, go, requestFocus]);
 
   // Organizing happens in the background, so its outcome must be visible from every screen, not only Home.
   const failed = [...jobs.values()].filter((job) => job.status === "failed").length;
@@ -71,6 +79,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <Icon name={item.icon} />
               {item.label}
               {item.screen === "ideas" && objects.length > 0 && <span className="count">{objects.length}</span>}
+              {item.screen === "ask" && <kbd className="nav-kbd">{modLabel()} K</kbd>}
             </button>
           ))}
         </nav>

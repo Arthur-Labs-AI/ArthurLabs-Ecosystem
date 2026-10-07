@@ -711,3 +711,55 @@ test("M04C: Recall reads only through the store, writes only its own projections
   // The semantic candidate floor stays at the calibrated 0.40.
   assert.match(readText(tauriDir, "src/recall/service.rs"), /pub const DEFAULT_MIN_COSINE: f32 = 0\.40;/);
 });
+
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    return entry.isDirectory() ? sourceFiles(full) : /\.(ts|tsx)$/.test(entry.name) ? [full] : [];
+  });
+}
+
+test("M04D: Ask Arthur is a UI over `ask`: one place builds the scope, nothing is persisted, consent is the user's choice and not an API key", () => {
+  const src = path.join(app, "src");
+  const shipped = sourceFiles(src).filter((f) => !/\.test\.tsx?$/.test(f) && !f.includes(`${path.sep}test${path.sep}`));
+  const code = (file: string): string =>
+    readFileSync(file, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith("//"))
+      .join("\n");
+
+  // Exactly one UI file calls `ask`, and it is the one that always attaches the active project: React cannot omit the scope.
+  const callers = shipped.filter((f) => /\bclient\.ask\(/.test(code(f))).map((f) => path.relative(src, f));
+  assert.deepEqual(callers, [path.join("features", "recall", "ask-context.tsx")]);
+  const context = code(path.join(src, "features/recall/ask-context.tsx"));
+  assert.match(context, /scope:\s*\{\s*projectId:\s*project\.id\s*\}/);
+  assert.doesNotMatch(context, /allProjects|projectId:\s*(null|undefined)|scope:\s*(null|undefined)/);
+
+  // The Recall UI keeps nothing: no browser storage writes, no cookies, no database. (The only storage touch is reading a developer flag.)
+  const recallUi = shipped.filter((f) => f.includes(`${path.sep}features${path.sep}recall${path.sep}`));
+  const recallCode = recallUi.map(code).join("\n");
+  assert.doesNotMatch(recallCode, /setItem|removeItem|sessionStorage|indexedDB|document\.cookie|openDatabase/);
+  assert.ok([...recallCode.matchAll(/localStorage\.(\w+)/g)].every((m) => m[1] === "getItem"), "localStorage is only read, for the developer flag");
+  // React never re-implements Recall: no ranking, similarity, thresholds, vendor or provider names.
+  assert.doesNotMatch(recallCode, /cosine|\brrf\b|DEFAULT_MIN_COSINE|MIN_COSINE|0\.40|embedding-3|openai|fetch\(/i);
+  // Semantic consent reads and writes one setting through the client. It never looks at an API key.
+  const consent = ["features/recall/use-semantic-recall.ts", "features/recall/SemanticRecallSettings.tsx"].map((f) => code(path.join(src, f))).join("\n");
+  assert.doesNotMatch(consent, /api[_-]?key|OPENAI|secret|token/i);
+  assert.match(consent, /setSemanticRecallEnabled/);
+  assert.match(consent, /purgeSemanticIndex/);
+
+  // Mobile keeps its five primary tabs: Ask Arthur is a pushed page reached from Home, never a sixth tab.
+  const mobile = code(path.join(src, "features/mobile/MobileApp.tsx"));
+  assert.equal([...mobile.matchAll(/\{ screen: "\w+", label: "[A-Za-z ]+", icon: "\w+" \}/g)].length, 4, "four tabs plus the central Capture action");
+  assert.match(mobile, /kind === "ask"/);
+  // An archived project opened read-only is never made the active project; it only supplies the scope of Ask.
+  const projectsState = code(path.join(src, "features/projects/use-projects.ts"));
+  const open = projectsState.slice(projectsState.indexOf("const openArchived"), projectsState.indexOf("const closeArchived"));
+  assert.doesNotMatch(open, /setActiveProject|client\./);
+  assert.match(context, /readOnlyProject \?\? liveProject/);
+  // The scripted demo exists only in development builds.
+  assert.match(code(path.join(src, "client/index.ts")), /import\.meta\.env\.DEV[^;]*recallDemo/);
+  // Schema is still v7 (checked in full by the M04C guard above); and the native Recall floor is untouched.
+  assert.match(readText(tauriDir, "src/recall/service.rs"), /pub const DEFAULT_MIN_COSINE: f32 = 0\.40;/);
+});

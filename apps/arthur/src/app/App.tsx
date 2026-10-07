@@ -4,6 +4,7 @@ import { HomeScreen } from "../features/home/HomeScreen";
 import { IdeasScreen } from "../features/ideas/IdeasScreen";
 import { EvolutionScreen } from "../features/lineage/EvolutionScreen";
 import { MobileApp } from "../features/mobile/MobileApp";
+import { AskScreen } from "../features/recall/AskScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { useLayoutMode } from "./layout-mode";
 import { useNavigation } from "./navigation";
@@ -18,6 +19,7 @@ function DesktopApp() {
       {screen === "ideas" && <IdeasScreen />}
       {screen === "connections" && <ConnectionsScreen />}
       {screen === "evolution" && <EvolutionScreen />}
+      {screen === "ask" && <AskScreen />}
       {screen === "settings" && <SettingsScreen />}
       <CaptureDialog />
     </Shell>

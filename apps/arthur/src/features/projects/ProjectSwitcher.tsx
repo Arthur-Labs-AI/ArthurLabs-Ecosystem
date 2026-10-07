@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { INBOX_PROJECT_ID } from "@arthur/contracts";
 import { Icon } from "../../components/icons";
+import { useNavigation } from "../../app/navigation";
 import { useProjects } from "./projects-context";
 import "./projects.css";
 
@@ -12,7 +13,8 @@ type Mode = "list" | "new" | "rename";
  * changes shape. The Inbox is first and set apart by a hairline, not by colour.
  */
 export function ProjectSwitcher() {
-  const { projects, archived, active, error, clearError, switchTo, create, rename, archive, restore, refresh } = useProjects();
+  const { projects, archived, active, error, clearError, switchTo, create, rename, archive, restore, refresh, openArchived } = useProjects();
+  const { go } = useNavigation();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("list");
   const [draft, setDraft] = useState("");
@@ -135,6 +137,19 @@ export function ProjectSwitcher() {
                   {archived.map((project) => (
                     <li key={project.id}>
                       <span className="proj-item-name">{project.name}</span>
+                      <button
+                        type="button"
+                        className="link"
+                        aria-label={`Open ${project.name} read-only`}
+                        onClick={() => {
+                          if (openArchived(project.id)) {
+                            close();
+                            go("ask");
+                          }
+                        }}
+                      >
+                        Open read-only
+                      </button>
                       <button type="button" className="link" aria-label={`Restore ${project.name}`} onClick={() => void restore(project.id)}>
                         Restore
                       </button>

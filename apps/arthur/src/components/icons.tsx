@@ -105,6 +105,7 @@ const PATHS = {
   back: <path d="M15 5l-7 7 7 7" />,
   minus: <path d="M5 12h14" />,
   filter: <path d="M4 6h16M7 12h10M10 18h4" />,
+  ask: <path d="M7 4v16M11 8h9M11 12h9M11 16h5" />,
 } as const;
 
 export type IconName = keyof typeof PATHS;

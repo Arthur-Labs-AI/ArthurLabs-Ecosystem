@@ -32,6 +32,9 @@ import {
   createProjectOverIpc,
   getActiveProjectOverIpc,
   askOverIpc,
+  getSemanticRecallStatusOverIpc,
+  purgeSemanticIndexOverIpc,
+  setSemanticRecallEnabledOverIpc,
   getProjectGraphOverIpc,
   getProjectOverIpc,
   listProjectsOverIpc,
@@ -95,5 +98,8 @@ export function createMobileClient(call?: Invoke): ArthurClient {
     setActiveProject: (projectId) => setActiveProjectOverIpc(projectId, call),
     getProjectGraph: (projectId) => getProjectGraphOverIpc(projectId, call),
     ask: (query) => askOverIpc(query, call),
+    getSemanticRecallStatus: () => getSemanticRecallStatusOverIpc(call),
+    setSemanticRecallEnabled: (enabled) => setSemanticRecallEnabledOverIpc(enabled, call),
+    purgeSemanticIndex: () => purgeSemanticIndexOverIpc(call),
   };
 }

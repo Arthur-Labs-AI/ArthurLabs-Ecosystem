@@ -17,6 +17,7 @@ import type {
   ProjectGraph,
   ProjectScope,
   RecallErrorCode,
+  SemanticRecallStatus,
   CognitiveAnswer,
   CognitiveQuery,
   RelationErrorCode,
@@ -279,4 +280,15 @@ export interface ArthurClient {
    * provenance (the exact Capture span, and whether the text was edited since).
    */
   ask(query: CognitiveQuery): Promise<CognitiveAnswer>;
+
+  /** The semantic-Recall setting (OFF by default) and what is stored locally. Never contains stored text or a key. */
+  getSemanticRecallStatus(): Promise<SemanticRecallStatus>;
+  /**
+   * The user's explicit choice. ON lets Arthur send the text of ideas (and of questions) to the configured embedding provider and
+   * keep the resulting vectors on this device. OFF takes effect for the very next question: no further embedding requests, and the
+   * stored vectors are ignored (not deleted). Lexical Recall works either way.
+   */
+  setSemanticRecallEnabled(enabled: boolean): Promise<SemanticRecallStatus>;
+  /** Deletes every locally stored vector. Knowledge itself is untouched. */
+  purgeSemanticIndex(): Promise<SemanticRecallStatus>;
 }

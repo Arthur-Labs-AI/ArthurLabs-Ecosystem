@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { INBOX_PROJECT_ID, isCognitiveAnswer, type CognitiveAnswer } from "@arthur/contracts";
 import { RecallError } from "./arthur-client";
 import { createPreviewClient } from "./preview-client";
-import { askOverIpc, type Invoke } from "./tauri-ipc";
+import { askOverIpc, getSemanticRecallStatusOverIpc, purgeSemanticIndexOverIpc, setSemanticRecallEnabledOverIpc, type Invoke } from "./tauri-ipc";
 
 function answer(overrides: Partial<CognitiveAnswer> = {}): CognitiveAnswer {
   return {
@@ -108,5 +108,34 @@ describe("ask in the preview client", () => {
     expect([result.outcome, result.answer, result.evidence]).toEqual(["insufficient_evidence", null, []]);
     await expect(client.ask({ query: "x", scope: { projectId: "missing" } })).rejects.toMatchObject({ code: "project_not_found" });
     await expect(client.ask({ query: " ", scope: { projectId: INBOX_PROJECT_ID } })).rejects.toMatchObject({ code: "invalid_query" });
+  });
+});
+
+describe("semantic Recall over IPC", () => {
+  const status = { enabled: true, savedEnabled: true, savedModelKey: "m:1", settingsCorrupt: false, activeModelKey: "m:1", storedVectors: 3, storedVectorsAllKeys: 3, pendingObjects: 1 };
+
+  it("calls the native commands by name with only what each needs", async () => {
+    const call = vi.fn<Invoke>().mockResolvedValue(status);
+    expect(await getSemanticRecallStatusOverIpc(call)).toEqual(status);
+    await setSemanticRecallEnabledOverIpc(true, call);
+    await setSemanticRecallEnabledOverIpc(false, call);
+    await purgeSemanticIndexOverIpc(call);
+    expect(call.mock.calls).toEqual([["get_semantic_recall_status", {}], ["set_semantic_recall_enabled", { enabled: true }], ["set_semantic_recall_enabled", { enabled: false }], ["purge_semantic_index", {}]]);
+  });
+
+  it("rejects a status that is not the contract and maps a native failure to a RecallError", async () => {
+    await expect(getSemanticRecallStatusOverIpc(() => Promise.resolve({ enabled: "yes" }))).rejects.toThrow(/invalid semantic Recall status/);
+    const failure = { code: "storage_failed", message: "the preference could not be saved" };
+    await expect(setSemanticRecallEnabledOverIpc(true, () => Promise.reject(failure))).rejects.toMatchObject({ name: "RecallError", code: "storage_failed" });
+    await expect(purgeSemanticIndexOverIpc(() => Promise.reject(failure))).rejects.toBeInstanceOf(RecallError);
+  });
+
+  it("the preview is OFF by default, remembers the choice, keeps vectors when turned off, and purges only on request", async () => {
+    const client = createPreviewClient({ recall: { semantic: { storedVectors: 5, storedVectorsAllKeys: 5 } } });
+    expect((await client.getSemanticRecallStatus()).enabled).toBe(false);
+    expect((await client.setSemanticRecallEnabled(true)).enabled).toBe(true);
+    const off = await client.setSemanticRecallEnabled(false);
+    expect(off).toMatchObject({ enabled: false, savedEnabled: false, storedVectors: 5 });
+    expect(await client.purgeSemanticIndex()).toMatchObject({ storedVectors: 0, storedVectorsAllKeys: 0 });
   });
 });

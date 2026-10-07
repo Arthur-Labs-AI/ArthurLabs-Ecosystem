@@ -14,6 +14,7 @@ import { useKnowledge } from "../knowledge/knowledge-context";
 import type { OrganizeJob } from "../knowledge/use-knowledge";
 import { useLineageSummaries } from "../lineage/lineage-summaries";
 import { useProjects } from "../projects/projects-context";
+import { AskEntry } from "../recall/MobileAsk";
 import { MobileBrand, SettingsButton } from "./MobileApp";
 import { useMobileNav } from "./mobile-nav";
 
@@ -446,6 +447,7 @@ export function MobileHome() {
         </>
       )}
       <SpeakPage />
+      {!typing && <AskEntry />}
       {micHint && !typing && voice && (
         <p className="m-hint" role="status">
           <Icon name="mic" small />

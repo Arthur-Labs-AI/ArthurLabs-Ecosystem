@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
-export type Screen = "home" | "ideas" | "connections" | "evolution" | "settings";
+export type Screen = "home" | "ideas" | "connections" | "evolution" | "ask" | "settings";
 
 export interface Navigation {
   screen: Screen;

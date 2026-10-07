@@ -27,8 +27,8 @@ type Draft = { kind: "new" } | { kind: "rename"; project: Project } | null;
 
 /** Choose a project, create one, and (secondarily) rename, archive or restore. A sheet, so every target is touch-sized. */
 export function ProjectSheet() {
-  const { projects, archived, active, error, clearError, switchTo, create, rename, archive, restore } = useProjects();
-  const { closeProjectSheet } = useMobileNav();
+  const { projects, archived, active, error, clearError, switchTo, create, rename, archive, restore, openArchived } = useProjects();
+  const { closeProjectSheet, openAsk } = useMobileNav();
   const [managing, setManaging] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(null);
   const [name, setName] = useState("");
@@ -145,6 +145,19 @@ export function ProjectSheet() {
                   <span className="m-prow archived">
                     <span className="m-prow-name">{project.name}</span>
                   </span>
+                  <button
+                    type="button"
+                    className="m-tlink"
+                    aria-label={`Open ${project.name} read-only`}
+                    onClick={() => {
+                      if (openArchived(project.id)) {
+                        closeProjectSheet();
+                        openAsk();
+                      }
+                    }}
+                  >
+                    Open read-only
+                  </button>
                   <button type="button" className="m-tlink" aria-label={`Restore ${project.name}`} onClick={() => void restore(project.id)}>
                     Restore
                   </button>

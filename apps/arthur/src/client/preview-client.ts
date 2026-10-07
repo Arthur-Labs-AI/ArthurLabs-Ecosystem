@@ -42,6 +42,7 @@ import {
   type RevisionChanges,
   type RevisionOrigin,
   type RuntimeInfo,
+  type SemanticRecallStatus,
   type ThoughtRevision,
 } from "@arthur/contracts";
 import { DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
@@ -105,8 +106,19 @@ export interface PreviewInferenceOptions {
   once?: boolean;
 }
 
+export interface PreviewRecallOptions {
+  /**
+   * Supplies the answer to a question. The preview has no knowledge index and no answer model, so by default every question
+   * resolves `insufficient_evidence` honestly. A test (or a clearly labelled demo) can supply a scripted result.
+   */
+  answer?: (query: CognitiveQuery, scope: CognitiveAnswer["scope"]) => CognitiveAnswer | Promise<CognitiveAnswer>;
+  /** The starting semantic-Recall state. Default: OFF with nothing stored. */
+  semantic?: Partial<SemanticRecallStatus>;
+}
+
 export interface PreviewClientOptions {
   info?: RuntimeInfo;
+  recall?: PreviewRecallOptions;
   voice?: PreviewVoiceOptions;
   distillation?: PreviewDistillationOptions;
   inference?: PreviewInferenceOptions;
@@ -121,6 +133,17 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
   const newId = options.newId ?? (() => globalThis.crypto.randomUUID());
   const now = options.now ?? (() => new Date());
   const voice = options.voice ?? {};
+  let semantic: SemanticRecallStatus = {
+    enabled: false,
+    savedEnabled: false,
+    savedModelKey: null,
+    settingsCorrupt: false,
+    activeModelKey: "preview:none",
+    storedVectors: 0,
+    storedVectorsAllKeys: 0,
+    pendingObjects: 0,
+    ...options.recall?.semantic,
+  };
   const distillation = { ...options.distillation };
   const inference = { ...options.inference };
   const captures: Capture[] = [];
@@ -682,9 +705,11 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       } catch {
         return Promise.reject(new RecallError("project_not_found", "That project does not exist."));
       }
+      const scope = { projectId: project.id, projectName: project.name, archived: project.archivedAt !== null };
+      if (options.recall?.answer) return Promise.resolve(options.recall.answer({ query: query.query.trim(), scope: { projectId: query.scope.projectId } }, scope));
       return Promise.resolve({
         query: query.query.trim(),
-        scope: { projectId: project.id, projectName: project.name, archived: project.archivedAt !== null },
+        scope,
         outcome: "insufficient_evidence",
         answer: null,
         evidence: [],
@@ -698,6 +723,15 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
           sqlReads: 0,
         },
       });
+    },
+    getSemanticRecallStatus: () => Promise.resolve({ ...semantic }),
+    setSemanticRecallEnabled: (enabled) => {
+      semantic = { ...semantic, enabled, savedEnabled: enabled, savedModelKey: semantic.activeModelKey };
+      return Promise.resolve({ ...semantic });
+    },
+    purgeSemanticIndex: () => {
+      semantic = { ...semantic, storedVectors: 0, storedVectorsAllKeys: 0, pendingObjects: 0 };
+      return Promise.resolve({ ...semantic });
     },
   };
 }

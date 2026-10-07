@@ -18,6 +18,7 @@ import {
   isProjectGraph,
   isCognitiveAnswer,
   isRecallErrorPayload,
+  isSemanticRecallStatus,
   describeCognitiveQueryProblem,
   describeProjectNameProblem,
   isRelationErrorPayload,
@@ -25,6 +26,7 @@ import {
   isVoiceCaptureErrorPayload,
   type Capture,
   type CognitiveAnswer,
+  type SemanticRecallStatus,
   type CognitiveQuery,
   type CognitiveRelation,
   type CreateCaptureInput,
@@ -501,3 +503,19 @@ export async function askOverIpc(query: CognitiveQuery, call: Invoke = invoke): 
   if (!isCognitiveAnswer(payload)) throw new Error("Native layer returned an invalid answer");
   return payload;
 }
+
+async function semanticOverIpc(command: string, args: Record<string, unknown>, call: Invoke): Promise<SemanticRecallStatus> {
+  let payload: unknown;
+  try {
+    payload = await call(command, args);
+  } catch (failure) {
+    if (isRecallErrorPayload(failure)) throw new RecallError(failure.code, failure.message);
+    throw failure;
+  }
+  if (!isSemanticRecallStatus(payload)) throw new Error("Native layer returned an invalid semantic Recall status");
+  return payload;
+}
+
+export const getSemanticRecallStatusOverIpc = (call: Invoke = invoke) => semanticOverIpc("get_semantic_recall_status", {}, call);
+export const setSemanticRecallEnabledOverIpc = (enabled: boolean, call: Invoke = invoke) => semanticOverIpc("set_semantic_recall_enabled", { enabled }, call);
+export const purgeSemanticIndexOverIpc = (call: Invoke = invoke) => semanticOverIpc("purge_semantic_index", {}, call);

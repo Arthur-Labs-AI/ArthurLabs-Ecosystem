@@ -21,7 +21,8 @@ describe("mobile shell and navigation", () => {
     expect(tab("Home").getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
     expect(screen.queryByRole("complementary", { name: "Sidebar" })).toBeNull();
-    expect(screen.queryByText(/Ask Arthur/)).toBeNull();
+    // Ask Arthur is reached from Home, never from a sixth tab.
+    expect(within(tabs()).queryByRole("button", { name: /Ask/ })).toBeNull();
     expect(await screen.findByRole("button", { name: "Speak" })).toBeTruthy();
   });
 
