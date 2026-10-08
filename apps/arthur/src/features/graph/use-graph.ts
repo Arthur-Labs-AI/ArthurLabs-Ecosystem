@@ -79,6 +79,12 @@ export function useGraph(): GraphState {
     }
   }, [client, activeProjectId]);
 
+  // Background integration may add or remove relations while this screen is open: re-read what is persisted.
+  useEffect(() => {
+    if (!client.onGraphChanged) return;
+    return client.onGraphChanged(() => void refresh());
+  }, [client, refresh]);
+
   const infer = useCallback(async (objectIds?: string[]) => {
     if (inferring) return;
     setInferring(true);

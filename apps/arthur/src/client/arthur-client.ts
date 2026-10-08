@@ -18,6 +18,7 @@ import type {
   ProjectScope,
   RecallErrorCode,
   SemanticRecallStatus,
+  GraphIntegrationStatus,
   AiCapability,
   AiErrorCode,
   AiConfig,
@@ -235,6 +236,12 @@ export interface ArthurClient {
    * cross-project relations are unaffected.
    */
   inferRelations(objectIds?: string[], scope?: ProjectScope): Promise<CognitiveRelation[]>;
+  /**
+   * Automatic Graph Integration (M04.7A) runs in the background after an object is created or its meaning changes. Calls
+   * `listener` each time it ADDED or REMOVED a relation, so an open screen can re-read the graph. Returns the unsubscribe
+   * function. Absent on clients that have no background integration (the preview); callers must tolerate that.
+   */
+  onGraphChanged?(listener: () => void): () => void;
 
   // --- Thought Lineage -------------------------------------------------------------------------------------
   // How ONE knowledge object evolved: a DAG of immutable revisions. Separate from Capture provenance (where the
@@ -312,6 +319,14 @@ export interface ArthurClient {
    * provenance (the exact Capture span, and whether the text was edited since).
    */
   ask(query: CognitiveQuery): Promise<CognitiveAnswer>;
+
+  /** Experimental Automatic Connections: the saved state (OFF by default). The native layer is the only source of truth. */
+  getGraphIntegration(): Promise<GraphIntegrationStatus>;
+  /**
+   * The user's explicit choice. ON lets new ideas and meaningful revisions be connected automatically (nothing existing is backfilled);
+   * OFF stops scheduling and never deletes a relation. Rejects when the preference could not be saved; the saved state is then unchanged.
+   */
+  setGraphIntegrationEnabled(enabled: boolean): Promise<GraphIntegrationStatus>;
 
   /** The semantic-Recall setting (OFF by default) and what is stored locally. Never contains stored text or a key. */
   getSemanticRecallStatus(): Promise<SemanticRecallStatus>;

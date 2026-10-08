@@ -12,8 +12,8 @@ use crate::providers::http;
 use crate::storage::knowledge_store::KnowledgeObject;
 use crate::storage::relation_store::Relation;
 
-use super::prompt::{response_schema, system_prompt, user_message};
-use super::verify::{orient, Confidence, Decision, Presentation, RelationVerifier, Support, Verdict, VerifyCandidate};
+use super::prompt::{focus_system_prompt, focused_user_message, response_schema, system_prompt, user_message};
+use super::verify::{actionable_signal_lacks_evidence, orient, Confidence, Decision, Presentation, RelationVerifier, Support, Verdict, VerifyCandidate};
 use super::verify_prompt;
 use super::{RelationCandidate, RelationError, RelationProposer};
 
@@ -74,11 +74,20 @@ impl OpenAiRelationProposer {
         let content = self.backend.complete(&system_prompt(), &user_message(objects, existing), "relations", response_schema()).await?;
         parse_candidates(&content)
     }
+
+    async fn request_focused(&self, focus_id: &str, objects: &[KnowledgeObject], existing: &[Relation]) -> Result<Vec<RelationCandidate>, RelationError> {
+        let content = self.backend.complete(&focus_system_prompt(), &focused_user_message(objects, existing, focus_id), "relations", response_schema()).await?;
+        parse_candidates(&content)
+    }
 }
 
 impl RelationProposer for OpenAiRelationProposer {
     fn propose<'a>(&'a self, objects: &'a [KnowledgeObject], existing: &'a [Relation]) -> BoxFuture<'a, Result<Vec<RelationCandidate>, RelationError>> {
         Box::pin(self.request(objects, existing))
+    }
+
+    fn propose_for<'a>(&'a self, focus_id: &'a str, objects: &'a [KnowledgeObject], existing: &'a [Relation]) -> BoxFuture<'a, Result<Vec<RelationCandidate>, RelationError>> {
+        Box::pin(self.request_focused(focus_id, objects, existing))
     }
 }
 
@@ -130,7 +139,7 @@ struct RawRelation {
 }
 
 /// Strict: any missing, extra or mistyped field rejects the whole answer.
-fn parse_candidates(content: &str) -> Result<Vec<RelationCandidate>, RelationError> {
+pub(super) fn parse_candidates(content: &str) -> Result<Vec<RelationCandidate>, RelationError> {
     let output: Output = serde_json::from_str(content).map_err(|_| RelationError::InvalidOutput("not the requested structure".into()))?;
     Ok(output
         .relations
@@ -156,12 +165,27 @@ struct RawVerdict {
     first_to_second: Support,
     second_to_first: Support,
     explicit_link: bool,
+    /// One object's later decision makes the OTHER's action unnecessary (a veto on `contradicts` only).
+    cancels_or_obsoletes: bool,
+    /// The object, in the order SENT, whose OWN text cancels its OWN plan; resolved to an id below.
+    cancelled_plan: Plan,
+    /// `depends_on` only: the dependent's requirement itself changed.
+    dependency_no_longer_required: bool,
+    temporal_evidence: String,
+}
+
+#[derive(Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+enum Plan {
+    First,
+    Second,
+    None,
 }
 
 /// Strict, like the proposer: any missing, extra, mistyped or out-of-vocabulary field rejects the whole
 /// answer. The model never copies ids and never picks a direction: the two ratings are turned into a
 /// direction by `verify::orient`, using the same listing order that was sent.
-fn parse_verdicts(content: &str, candidates: &[VerifyCandidate], presentation: Presentation) -> Result<Vec<Verdict>, RelationError> {
+pub(super) fn parse_verdicts(content: &str, candidates: &[VerifyCandidate], presentation: Presentation) -> Result<Vec<Verdict>, RelationError> {
     let output: VerifyOutput = serde_json::from_str(content).map_err(|_| RelationError::InvalidOutput("not the requested structure".into()))?;
     output
         .verdicts
@@ -174,6 +198,14 @@ fn parse_verdicts(content: &str, candidates: &[VerifyCandidate], presentation: P
             let (first, second) = verify_prompt::presented(candidate, presentation);
             let (first_is_source, forward_support, reverse_support) = orient(&raw.kind, raw.first_to_second, raw.second_to_first);
             let (source, target) = if first_is_source { (first, second) } else { (second, first) };
+            let cancelled_plan_object_id = match raw.cancelled_plan {
+                Plan::First => Some(first.id.clone()),
+                Plan::Second => Some(second.id.clone()),
+                Plan::None => None,
+            };
+            if actionable_signal_lacks_evidence(candidate, &raw.kind, source, cancelled_plan_object_id.as_deref(), raw.dependency_no_longer_required, &raw.temporal_evidence) {
+                return Err(RelationError::InvalidOutput("an actionable cancellation or changed-requirement verdict has no temporalEvidence".into()));
+            }
             Ok(Verdict {
                 index: raw.index,
                 decision: raw.decision,
@@ -184,6 +216,10 @@ fn parse_verdicts(content: &str, candidates: &[VerifyCandidate], presentation: P
                 forward_support,
                 reverse_support,
                 explicit_link: raw.explicit_link,
+                cancels_or_obsoletes: raw.cancels_or_obsoletes,
+                temporal_evidence: Some(raw.temporal_evidence.trim().to_string()).filter(|e| !e.is_empty()),
+                cancelled_plan_object_id,
+                dependency_no_longer_required: raw.dependency_no_longer_required,
             })
         })
         .collect()
@@ -334,7 +370,7 @@ mod tests {
     }
 
     fn candidate() -> VerifyCandidate {
-        VerifyCandidate { index: 0, source: object(A, "first"), target: object(B, "second"), kind: "depends_on".into() }
+        VerifyCandidate { index: 0, source: object(A, "first"), target: object(B, "second"), kind: "depends_on".into(), source_written_at: None, target_written_at: None }
     }
 
     fn run_verify(verifier: &OpenAiRelationVerifier) -> Result<Vec<Verdict>, RelationError> {
@@ -343,7 +379,7 @@ mod tests {
 
     fn one_verdict() -> String {
         // Listed lower id first (A, then B). The verifier rates "second depends_on first" strong and the opposite none.
-        r#"{"verdicts":[{"index":0,"decision":"accept","kind":"depends_on","confidence":"high","firstToSecond":"none","secondToFirst":"strong","explicitLink":true}]}"#.to_string()
+        r#"{"verdicts":[{"index":0,"decision":"accept","kind":"depends_on","confidence":"high","firstToSecond":"none","secondToFirst":"strong","explicitLink":true,"cancelsOrObsoletes":false,"cancelledPlan":"none","dependencyNoLongerRequired":false,"temporalEvidence":""}]}"#.to_string()
     }
 
     #[test]
@@ -442,5 +478,50 @@ mod tests {
     fn the_default_verifier_is_a_stronger_model_than_the_proposer() {
         assert_eq!(VERIFIER_MODEL, "gpt-5-mini");
         assert_ne!(VERIFIER_MODEL, DEFAULT_MODEL);
+    }
+
+    // ----- M04.7A.5: the structured signals and their output contract, in the multiclass verdict -----
+
+    const FIRST: &str = "11111111-1111-4111-8111-111111111111";
+    const SECOND: &str = "22222222-2222-4222-8222-222222222222";
+
+    fn depends_on_candidate() -> VerifyCandidate {
+        VerifyCandidate { index: 0, source: object(FIRST, "dependent"), target: object(SECOND, "prerequisite"), kind: "depends_on".into(), source_written_at: None, target_written_at: None }
+    }
+
+    fn verdict_json(kind: &str, plan: &str, gone: bool, evidence: &str, ratings: (&str, &str)) -> String {
+        serde_json::json!({ "verdicts": [{ "index": 0, "decision": "accept", "kind": kind, "confidence": "high", "firstToSecond": ratings.0, "secondToFirst": ratings.1, "explicitLink": true,
+            "cancelsOrObsoletes": false, "cancelledPlan": plan, "dependencyNoLongerRequired": gone, "temporalEvidence": evidence }] }).to_string()
+    }
+
+    #[test]
+    fn only_an_actionable_signal_without_evidence_is_a_contract_failure() {
+        let candidate = vec![depends_on_candidate()];
+        let lower = Presentation::LowerIdFirst; // FIRST is listed first and is the claimed dependent (source)
+        let higher = Presentation::HigherIdFirst; // SECOND is listed first
+        // The DEPENDENT's plan is cancelled: actionable, evidence required.
+        assert!(matches!(parse_verdicts(&verdict_json("depends_on", "first", false, "", ("strong", "none")), &candidate, lower), Err(RelationError::InvalidOutput(_))));
+        assert!(matches!(parse_verdicts(&verdict_json("depends_on", "first", false, "  \n ", ("strong", "none")), &candidate, lower), Err(RelationError::InvalidOutput(_))));
+        // Reversed listing order: now "second" is the dependent (FIRST is listed second).
+        assert!(matches!(parse_verdicts(&verdict_json("depends_on", "second", false, "", ("none", "strong")), &candidate, higher), Err(RelationError::InvalidOutput(_))));
+        // The PREREQUISITE cancelled: valid without evidence, parsed as given.
+        let kept = parse_verdicts(&verdict_json("depends_on", "second", false, "", ("strong", "none")), &candidate, lower).unwrap();
+        assert_eq!(kept[0].cancelled_plan_object_id.as_deref(), Some(SECOND));
+        // No claim: no evidence. A different kind: nothing actionable.
+        assert!(parse_verdicts(&verdict_json("depends_on", "none", false, "", ("strong", "none")), &candidate, lower).is_ok());
+        assert!(parse_verdicts(&verdict_json("extends", "first", false, "", ("strong", "none")), &[VerifyCandidate { kind: "extends".into(), ..depends_on_candidate() }], lower).is_ok());
+        // A changed requirement is actionable and must be explained.
+        assert!(matches!(parse_verdicts(&verdict_json("depends_on", "none", true, "", ("strong", "none")), &candidate, lower), Err(RelationError::InvalidOutput(_))));
+        let ok = parse_verdicts(&verdict_json("depends_on", "first", false, "The dependent is cancelled.", ("strong", "none")), &candidate, lower).unwrap();
+        assert_eq!((ok[0].cancelled_plan_object_id.as_deref(), ok[0].temporal_evidence.as_deref()), (Some(FIRST), Some("The dependent is cancelled.")));
+    }
+
+    #[test]
+    fn the_direction_comes_from_the_ratings_and_the_order_sent_never_from_a_label() {
+        let candidate = vec![depends_on_candidate()];
+        // The same claim, listed either way round, names the same direction when the ratings say so.
+        let a = &parse_verdicts(&verdict_json("depends_on", "none", false, "", ("strong", "none")), &candidate, Presentation::LowerIdFirst).unwrap()[0];
+        let b = &parse_verdicts(&verdict_json("depends_on", "none", false, "", ("none", "strong")), &candidate, Presentation::HigherIdFirst).unwrap()[0];
+        assert_eq!((a.source_object_id.as_str(), b.source_object_id.as_str()), (FIRST, FIRST));
     }
 }

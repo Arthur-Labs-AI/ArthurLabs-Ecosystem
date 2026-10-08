@@ -22,6 +22,9 @@ import {
   MAX_CAPTURE_CONTENT_CHARS,
   MAX_INFERENCE_CANDIDATES,
   MAX_INFERENCE_REQUESTS,
+  MAX_INTEGRATION_CANDIDATES,
+  MAX_INTEGRATION_PROPOSALS,
+  MAX_INTEGRATION_REVALIDATIONS,
   MAX_KNOWLEDGE_BODY_CHARS,
   MAX_KNOWLEDGE_TITLE_CHARS,
   MAX_MERGE_PARENTS,
@@ -281,7 +284,7 @@ test("HTTP, credentials and the microphone are confined to their modules", () =>
   }
 
   // Nothing that handles the API key, the user's speech or their thoughts may log.
-  for (const { rel, text } of files.filter((f) => providerModules.test(f.rel) && !f.rel.endsWith("test_support.rs"))) {
+  for (const { rel, text } of files.filter((f) => providerModules.test(f.rel) && !/(test_support|_tests|_bench)\.rs$/.test(f.rel))) {
     const production = text.slice(0, text.indexOf("#[cfg(test)]") === -1 ? undefined : text.indexOf("#[cfg(test)]"));
     assert.doesNotMatch(production, /\b(println|eprintln|dbg|print|eprint)!|\btracing::|\blog::/, `${rel} must not log`);
   }
@@ -370,6 +373,11 @@ test("relation kinds, symmetry, origins and limits agree across the contract, Ru
   const graph = readText(tauriDir, "src/graph/mod.rs");
   assert.equal(Number(/pub const MAX_RELATION_PROPOSALS: usize = ([\d_]+);/.exec(graph)?.[1]), MAX_RELATION_PROPOSALS);
   assert.equal(Number(/pub const MAX_PROVIDER_REQUESTS_PER_RUN: usize = ([\d_]+);/.exec(graph)?.[1]), MAX_INFERENCE_REQUESTS);
+  const discover = readText(tauriDir, "src/graph/discover.rs");
+  const integrate = readText(tauriDir, "src/graph/integrate.rs");
+  assert.equal(Number(/pub const MAX_RANKED: usize = (\d+);/.exec(discover)?.[1]) + Number(/pub const MAX_NEIGHBOURS: usize = (\d+);/.exec(discover)?.[1]), MAX_INTEGRATION_CANDIDATES);
+  assert.equal(Number(/pub const MAX_INTEGRATION_PROPOSALS: usize = (\d+);/.exec(integrate)?.[1]), MAX_INTEGRATION_PROPOSALS);
+  assert.equal(Number(/pub const MAX_REVALIDATIONS: usize = (\d+);/.exec(integrate)?.[1]), MAX_INTEGRATION_REVALIDATIONS);
   const codes = graph.slice(graph.indexOf("pub fn code"), graph.indexOf("pub fn message"));
   assert.deepEqual([...new Set([...codes.matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...RELATION_ERROR_CODES].sort());
 });

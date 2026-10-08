@@ -1,5 +1,7 @@
-use tauri::State;
+use tauri::{AppHandle, State};
 
+use crate::commands::integration;
+use crate::graph::integration::ChangedKnowledge;
 use crate::distillation::{DistillError, DistillationService};
 use crate::storage::capture_store::CaptureStore;
 use crate::storage::knowledge_store::KnowledgeObject;
@@ -9,11 +11,19 @@ use crate::storage::summary_store::KnowledgeSummary;
 /// Distills one capture into knowledge objects (once; repeating returns the existing set).
 #[tauri::command]
 pub async fn distill_capture(
+    app: AppHandle,
     distillation: State<'_, DistillationService>,
     store: State<'_, CaptureStore>,
     capture_id: String,
 ) -> Result<Vec<KnowledgeObject>, DistillError> {
-    distillation.distill(&store, &capture_id).await
+    let objects = distillation.distill(&store, &capture_id).await?;
+    // The objects are committed. Graph Integration continues in the background and can neither delay nor fail this result.
+    for object in &objects {
+        if let Ok(Some(revision_id)) = store.current_revision_id_of(&object.id) {
+            integration::notify(&app, ChangedKnowledge::created(&object.id, &revision_id));
+        }
+    }
+    Ok(objects)
 }
 
 #[tauri::command]

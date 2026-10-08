@@ -161,6 +161,7 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
   const newId = options.newId ?? (() => globalThis.crypto.randomUUID());
   const now = options.now ?? (() => new Date());
   const voice = options.voice ?? {};
+  let integrationEnabled = false;
   let semantic: SemanticRecallStatus = {
     enabled: false,
     savedEnabled: false,
@@ -776,6 +777,11 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
           sqlReads: 0,
         },
       });
+    },
+    getGraphIntegration: () => Promise.resolve({ enabled: integrationEnabled, pending: 0 }),
+    setGraphIntegrationEnabled: (enabled) => {
+      integrationEnabled = enabled;
+      return Promise.resolve({ enabled, pending: 0 });
     },
     getSemanticRecallStatus: () => Promise.resolve({ ...semantic }),
     setSemanticRecallEnabled: (enabled) => {

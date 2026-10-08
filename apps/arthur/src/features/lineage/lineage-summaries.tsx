@@ -57,6 +57,12 @@ export function LineageSummariesProvider({ children }: { children: ReactNode }) 
   const [summaries, setSummaries] = useState<{ status: "loading" | "ready"; byObject: ReadonlyMap<string, LineageSummary> }>({ status: "loading", byObject: new Map() });
   const [cache, setCache] = useState<ReadonlyMap<string, ObjectLineage>>(new Map());
   const asked = useRef(new Set<string>());
+  // Background graph integration changes connection counts without changing any object: re-read the summaries when it does.
+  const [graphVersion, setGraphVersion] = useState(0);
+  useEffect(() => {
+    if (!client.onGraphChanged) return;
+    return client.onGraphChanged(() => setGraphVersion((version) => version + 1));
+  }, [client]);
 
   useEffect(() => {
     // Wait for the objects: summaries for a list that has not loaded yet would be a wasted request.
@@ -87,7 +93,7 @@ export function LineageSummariesProvider({ children }: { children: ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, [client, objects, knowledgeStatus, activeProjectId]);
+  }, [client, objects, knowledgeStatus, activeProjectId, graphVersion]);
 
   const request = useCallback(
     (objectIds: readonly string[]) => {

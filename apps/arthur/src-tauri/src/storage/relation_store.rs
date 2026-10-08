@@ -163,12 +163,12 @@ impl CaptureStore {
     }
 }
 
-struct Written {
-    relation: Relation,
-    created: bool,
+pub(super) struct Written {
+    pub(super) relation: Relation,
+    pub(super) created: bool,
 }
 
-fn insert_all(connection: &Connection, candidates: Vec<NewRelation>, origin: &str) -> Result<Vec<Written>, StoreError> {
+pub(super) fn insert_all(connection: &Connection, candidates: Vec<NewRelation>, origin: &str) -> Result<Vec<Written>, StoreError> {
     if !ORIGINS.contains(&origin) {
         return Err(StoreError::Invalid(format!("unknown origin \"{origin}\"")));
     }

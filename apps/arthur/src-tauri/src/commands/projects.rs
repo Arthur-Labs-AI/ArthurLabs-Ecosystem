@@ -1,5 +1,7 @@
-use tauri::State;
+use tauri::{AppHandle, State};
 
+use crate::commands::integration;
+use crate::graph::integration::ChangedKnowledge;
 use crate::storage::capture_store::{Capture, CaptureStore};
 use crate::storage::knowledge_store::KnowledgeObject;
 use crate::storage::project_store::{Project, ProjectError, ProjectGraph};
@@ -44,8 +46,13 @@ pub fn move_capture(store: State<'_, CaptureStore>, capture_id: String, project_
 
 /// Moves one object. No revision, provenance or lineage change.
 #[tauri::command]
-pub fn move_knowledge_object(store: State<'_, CaptureStore>, object_id: String, project_id: String) -> Result<KnowledgeObject> {
-    store.move_knowledge_object(&object_id, &project_id)
+pub fn move_knowledge_object(app: AppHandle, store: State<'_, CaptureStore>, object_id: String, project_id: String) -> Result<KnowledgeObject> {
+    let object = store.move_knowledge_object(&object_id, &project_id)?;
+    // The object may now be integrated with its new project. Relations it already has (cross-project ones included) are not touched.
+    if let Ok(Some(revision_id)) = store.current_revision_id_of(&object.id) {
+        integration::notify(&app, ChangedKnowledge::moved(&object.id, &revision_id));
+    }
+    Ok(object)
 }
 
 /// The active project, with the Inbox as the fallback when none is stored or the stored one is archived.

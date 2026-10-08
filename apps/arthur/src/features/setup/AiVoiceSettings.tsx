@@ -1,3 +1,4 @@
+import { AutomaticConnectionsSetting } from "../graph/AutomaticConnectionsSetting";
 import { useState } from "react";
 import { AI_CAPABILITIES, type AiCapability, type AiCapabilityStatus, type AiProviderStatus, type ProviderTestResult } from "@arthur/contracts";
 import { useArthurClient } from "../../hooks/use-arthur-client";
@@ -120,6 +121,8 @@ export function AiVoiceSettings({ variant }: { variant: Variant }) {
           <CapabilityRow key={row.capability} row={row} provider={providerOf(row)} variant={variant} test={tests[row.capability]} onChange={() => setEditing(row.provider)} onTest={() => void runTest(row.capability)} />
         ))}
       </ul>
+
+      <AutomaticConnectionsSetting variant={variant} />
     </div>
   );
 }

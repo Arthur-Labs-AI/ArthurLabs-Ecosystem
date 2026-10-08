@@ -300,3 +300,39 @@ describe("preview client graph", () => {
     expect(await client.inferRelations()).toEqual([]);
   });
 });
+
+describe("graph-changed events", () => {
+  it("subscribes to the native event, forwards it, and unsubscribes (even if it was cancelled before the subscription resolved)", async () => {
+    const { onGraphIntegratedOverIpc, GRAPH_INTEGRATED_EVENT } = await import("./tauri-ipc");
+    let handler: (() => void) | undefined;
+    const stop = vi.fn();
+    const subscribe = vi.fn(async (event: string, h: () => void) => {
+      handler = h;
+      expect(event).toBe(GRAPH_INTEGRATED_EVENT);
+      return stop;
+    });
+    const listener = vi.fn();
+    const unsubscribe = onGraphIntegratedOverIpc(listener, subscribe);
+    await Promise.resolve();
+    handler?.();
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+    expect(stop).toHaveBeenCalledTimes(1);
+
+    const early = onGraphIntegratedOverIpc(listener, subscribe);
+    early();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(stop).toHaveBeenCalledTimes(2);
+  });
+
+  it("never throws where there is no native event bus", () => {
+    const subscribe = () => {
+      throw new Error("no bus");
+    };
+    return import("./tauri-ipc").then(({ onGraphIntegratedOverIpc }) => {
+      const unsubscribe = onGraphIntegratedOverIpc(() => {}, subscribe as never);
+      expect(() => unsubscribe()).not.toThrow();
+    });
+  });
+});

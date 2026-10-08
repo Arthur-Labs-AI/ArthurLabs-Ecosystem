@@ -79,6 +79,10 @@ pub struct VerifyCandidate {
     pub source: KnowledgeObject,
     pub target: KnowledgeObject,
     pub kind: String,
+    /// When each object's CURRENT text was last written (the current revision's `created_at`, NOT the object's creation time). Context for
+    /// the binary verifier only; `None` where the caller has no reliable value. Never used to infer cancellation or replacement.
+    pub source_written_at: Option<String>,
+    pub target_written_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -119,6 +123,19 @@ pub struct Verdict {
     pub forward_support: Support,
     pub reverse_support: Support,
     pub explicit_link: bool,
+    /// M04.7A.3: one object's later decision, cancellation, removal of scope or changed priority makes the OTHER object's action or
+    /// requirement unnecessary, rather than asserting an incompatible current fact. A VETO on `contradicts` only.
+    pub cancels_or_obsoletes: bool,
+    /// Concise evidence for the above, grounded in the two objects' own words.
+    pub temporal_evidence: Option<String>,
+    /// M04.7A.3: the object whose OWN text states that ITS plan or requirement is cancelled, abandoned or permanently removed (not postponed,
+    /// paused, blocked or reprioritised). Resolved by the parser from the verifier's "first"/"second" using the order that was sent. For a
+    /// `depends_on` claim it decides nothing unless it is the dependent (source) object.
+    pub cancelled_plan_object_id: Option<String>,
+    /// M04.7A.3: for a `depends_on` claim, the dependent's OWN current text shows that its requirement itself changed (it no longer needs the
+    /// other object). NOT: the other object is unavailable, blocked, rejected, incomplete or cancelled; NOT: the dependent is postponed,
+    /// paused or reprioritised. Evidence is `temporal_evidence`.
+    pub dependency_no_longer_required: bool,
 }
 
 #[cfg(test)]
@@ -135,8 +152,55 @@ impl Verdict {
             forward_support: Support::Strong,
             reverse_support: Support::None,
             explicit_link: true,
+            cancels_or_obsoletes: false,
+            temporal_evidence: None,
+            cancelled_plan_object_id: None,
+            dependency_no_longer_required: false,
         }
     }
+}
+
+/// The conditional output contract for ACTIONABLE structured signals (M04.7A.3). For a `depends_on` claim two signals can delete an existing
+/// edge: the DEPENDENT's plan is cancelled, or its requirement itself changed. Either must carry evidence; a missing or blank statement makes the
+/// whole response contract-invalid (never a weaker verdict; evidence is never invented from a flag). A cancellation of the prerequisite, or of
+/// anything on a claim that is not `depends_on`, can delete nothing, so it needs no evidence and is parsed as given.
+pub fn actionable_signal_lacks_evidence(candidate: &VerifyCandidate, confirmed_kind: &str, oriented_source: &KnowledgeObject, cancelled_plan_object_id: Option<&str>, requirement_gone: bool, evidence: &str) -> bool {
+    if !evidence.trim().is_empty() || (candidate.kind != "depends_on" && confirmed_kind != "depends_on") {
+        return false;
+    }
+    let dependent_cancelled = cancelled_plan_object_id.is_some_and(|id| id == candidate.source.id || id == oriented_source.id);
+    dependent_cancelled || requirement_gone
+}
+
+/// Evidence counts only if it is a short statement sharing at least one content word (4+ letters) with `object`'s OWN current text.
+pub fn evidence_grounded_in(evidence: &Option<String>, object: &KnowledgeObject) -> bool {
+    let Some(evidence) = evidence.as_deref().map(str::trim).filter(|e| !e.is_empty() && e.chars().count() <= 300) else { return false };
+    let words = |text: &str| -> HashSet<String> { crate::recall::query::tokens(text).into_iter().filter(|t| t.chars().count() >= 4).collect() };
+    let own = words(&format!("{} {}", object.title, object.body));
+    // At least two distinct content words of the object's own text (one, if it has only one): a single shared word proves nothing.
+    words(evidence).iter().filter(|word| own.contains(*word)).count() >= own.len().min(2)
+}
+
+/// THIS vote says the DEPENDENT object has itself cancelled, abandoned or permanently removed its plan, with evidence grounded in the
+/// dependent's own current text. A cancelled prerequisite, a postponed or paused dependent, a lowered priority, or evidence that does not come
+/// from the dependent's text never qualifies. `dependent` is the object that was said to NEED the other one.
+pub fn dependent_plan_cancelled(verdict: &Verdict, dependent: &KnowledgeObject) -> bool {
+    verdict.cancelled_plan_object_id.as_deref() == Some(dependent.id.as_str()) && evidence_grounded_in(&verdict.temporal_evidence, dependent)
+}
+
+/// THIS vote says the dependent's own current text shows its REQUIREMENT changed, so it no longer needs the other object, with grounded
+/// evidence. Unavailability, failure or cancellation of the prerequisite is not a change of requirement.
+pub fn dependency_requirement_gone(verdict: &Verdict, dependent: &KnowledgeObject) -> bool {
+    verdict.dependency_no_longer_required && evidence_grounded_in(&verdict.temporal_evidence, dependent)
+}
+
+/// A moot verdict counts only if its evidence is grounded: a short statement that shares at least one content word (4+ letters) with the two
+/// objects' own text. An empty, oversized or unrelated statement is ignored, so an unsupported temporal claim can never act as proof of anything.
+pub fn moot_is_grounded(evidence: &Option<String>, source: &KnowledgeObject, target: &KnowledgeObject) -> bool {
+    let Some(evidence) = evidence.as_deref().map(str::trim).filter(|e| !e.is_empty() && e.chars().count() <= 300) else { return false };
+    let words = |text: &str| -> HashSet<String> { crate::recall::query::tokens(text).into_iter().filter(|t| t.chars().count() >= 4).collect() };
+    let objects = words(&format!("{} {} {} {}", source.title, source.body, target.title, target.body));
+    words(evidence).iter().any(|word| objects.contains(word))
 }
 
 /// Which way round the two objects of every candidate are listed to the verifier. Neither says anything
@@ -162,6 +226,8 @@ pub enum Rejection {
     DirectionUnsupported,
     DirectionAmbiguous,
     SupersedesNotNewer,
+    /// A grounded `cancelsOrObsoletes` verdict: one object only makes the other unnecessary, which is not a contradiction.
+    Obsoleted,
     /// The two independent verification votes did not reach the same kind and direction.
     VotesDisagree,
     /// The verdict contradicted itself (its decision label did not match the kind it named). Not trusted, not an error.
@@ -188,7 +254,7 @@ fn malformed(reason: String) -> RelationError {
 
 /// What one vote made of one candidate.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Judgement {
+pub enum Judgement {
     Keep(NewRelation),
     Reject(Rejection),
 }
@@ -238,6 +304,8 @@ fn judge_all(candidates: &[VerifyCandidate], verdicts: Vec<Verdict>) -> Result<V
             Some(Rejection::Decided)
         } else if contradicts_itself {
             Some(Rejection::Inconsistent)
+        } else if verdict.kind == "contradicts" && verdict.cancels_or_obsoletes && moot_is_grounded(&verdict.temporal_evidence, &candidate.source, &candidate.target) {
+            Some(Rejection::Obsoleted)
         } else if verdict.confidence != Confidence::High {
             Some(Rejection::NotHighConfidence)
         } else if !verdict.explicit_link {
@@ -268,27 +336,60 @@ pub fn apply_verdicts(candidates: &[VerifyCandidate], verdicts: Vec<Verdict>) ->
     apply_votes(candidates, vec![verdicts])
 }
 
+/// What the independent votes concluded about one candidate.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Outcome {
+    /// Every vote kept it and all named the same edge (canonical ends, same kind and direction).
+    Keep(NewRelation),
+    /// Every vote rejected it, for the same reason.
+    Reject(Rejection),
+    /// The votes did not agree (some kept, some rejected, or they named different edges). Not a verified decision either way.
+    Disagree,
+}
+
+/// Combines independent votes into ONE outcome per candidate, in candidate order. A candidate is `Keep` only if EVERY vote keeps it
+/// and all votes name the same edge. Malformed output is an error; a well-formed "no" never is.
+pub fn judge_votes(candidates: &[VerifyCandidate], votes: Vec<Vec<Verdict>>) -> Result<Vec<Outcome>, RelationError> {
+    let judged = judge_each(candidates, votes)?;
+    Ok((0..candidates.len()).map(|position| combine(&judged.iter().map(|vote| &vote[position]).collect::<Vec<_>>())).collect())
+}
+
+/// Every vote's own judgement of every candidate: `result[vote][candidate]`. Same structural checks and gates as `judge_votes`.
+pub fn judge_each(candidates: &[VerifyCandidate], votes: Vec<Vec<Verdict>>) -> Result<Vec<Vec<Judgement>>, RelationError> {
+    if votes.is_empty() {
+        return Err(malformed("no verification votes".into()));
+    }
+    votes.into_iter().map(|verdicts| judge_all(candidates, verdicts)).collect()
+}
+
+/// The votes about ONE candidate, combined: kept only if every vote kept the same edge.
+pub fn combine(votes: &[&Judgement]) -> Outcome {
+    let first = votes[0];
+    if !votes.iter().all(|vote| *vote == first) {
+        return Outcome::Disagree;
+    }
+    match first {
+        Judgement::Keep(edge) => Outcome::Keep(edge.clone()),
+        Judgement::Reject(reason) => Outcome::Reject(*reason),
+    }
+}
+
 /// Combines independent votes. A candidate is kept only if EVERY vote keeps it and all votes name the same
 /// edge (same kind, same canonical ends, and for a directional kind the same direction). Anything else is a
 /// semantic rejection, never an error.
 pub fn apply_votes(candidates: &[VerifyCandidate], votes: Vec<Vec<Verdict>>) -> Result<Applied, RelationError> {
-    if votes.is_empty() {
-        return Err(malformed("no verification votes".into()));
-    }
-    let judged = votes.into_iter().map(|verdicts| judge_all(candidates, verdicts)).collect::<Result<Vec<_>, _>>()?;
+    let outcomes = judge_votes(candidates, votes)?;
 
     let mut applied = Applied::default();
     let mut seen: HashSet<(String, String, String)> = HashSet::new();
-    for (position, candidate) in candidates.iter().enumerate() {
-        let first = &judged[0][position];
-        let unanimous = judged.iter().all(|vote| &vote[position] == first);
-        let edge = match (first, unanimous) {
-            (Judgement::Keep(edge), true) => edge,
-            (Judgement::Reject(reason), true) => {
-                applied.rejections.push((candidate.index, *reason));
+    for (candidate, outcome) in candidates.iter().zip(outcomes) {
+        let edge = match outcome {
+            Outcome::Keep(edge) => edge,
+            Outcome::Reject(reason) => {
+                applied.rejections.push((candidate.index, reason));
                 continue;
             }
-            _ => {
+            Outcome::Disagree => {
                 applied.rejections.push((candidate.index, Rejection::VotesDisagree));
                 continue;
             }
@@ -303,7 +404,7 @@ pub fn apply_votes(candidates: &[VerifyCandidate], votes: Vec<Vec<Verdict>>) -> 
         } else if !is_symmetric(&edge.kind) && edge.source_object_id != candidate.source.id {
             applied.reversed += 1;
         }
-        applied.accepted.push(edge.clone());
+        applied.accepted.push(edge);
     }
     Ok(applied)
 }
@@ -332,7 +433,7 @@ mod tests {
     }
 
     fn candidate(index: usize, kind: &str, source: &str, target: &str) -> VerifyCandidate {
-        VerifyCandidate { index, source: object(source, "2026-10-04T10:00:00Z"), target: object(target, "2026-10-04T10:00:00Z"), kind: kind.into() }
+        VerifyCandidate { index, source: object(source, "2026-10-04T10:00:00Z"), target: object(target, "2026-10-04T10:00:00Z"), kind: kind.into(), source_written_at: None, target_written_at: None }
     }
 
     /// A confident, well-supported verdict that accepts the candidate as proposed.
@@ -732,5 +833,71 @@ mod tests {
         rejected_because(one(&c, |v| { v.forward_support = forward; v.reverse_support = reverse; }), Rejection::DirectionAmbiguous);
         let (_, forward, reverse) = orient("depends_on", Support::None, Support::None);
         rejected_because(one(&c, |v| { v.forward_support = forward; v.reverse_support = reverse; }), Rejection::DirectionUnsupported);
+    }
+
+    // ----- M04.7A.3: the temporal "moot" veto -----
+
+    fn moot_pair(kind: &str) -> VerifyCandidate {
+        let mut c = candidate(0, kind, A, B);
+        c.source.title = "Discontinue the product line".into();
+        c.source.body = "The product line is cancelled and will not be produced.".into();
+        c.target.title = "Order packaging".into();
+        c.target.body = "Order packaging for the product line.".into();
+        c
+    }
+
+    fn moot(c: &VerifyCandidate, evidence: Option<&str>) -> Verdict {
+        Verdict { cancels_or_obsoletes: true, temporal_evidence: evidence.map(String::from), ..accept(c) }
+    }
+
+    #[test]
+    fn a_grounded_moot_verdict_vetoes_contradicts_in_either_pass() {
+        let c = moot_pair("contradicts");
+        let grounded = Some("The product line is cancelled, so ordering packaging for it is unnecessary.");
+        let plain = vec![accept(&c)];
+        // One pass vetoes, the other accepts: not a survivor either way round.
+        for votes in [vec![vec![moot(&c, grounded)], plain.clone()], vec![plain.clone(), vec![moot(&c, grounded)]]] {
+            let applied = apply_votes(std::slice::from_ref(&c), votes).unwrap();
+            assert!(applied.accepted.is_empty());
+            assert_eq!(applied.rejections.len(), 1);
+        }
+        let single = apply_verdicts(std::slice::from_ref(&c), vec![moot(&c, grounded)]).unwrap();
+        assert_eq!(single.rejections, vec![(0, Rejection::Obsoleted)]);
+    }
+
+    #[test]
+    fn an_ungrounded_or_empty_moot_claim_is_ignored_and_never_acts_as_proof_of_anything() {
+        let c = moot_pair("contradicts");
+        for evidence in [None, Some(""), Some("   "), Some("zzzz qqqq unrelated words entirely"), Some(&"x".repeat(400)[..])] {
+            let applied = apply_verdicts(std::slice::from_ref(&c), vec![moot(&c, evidence)]).unwrap();
+            assert_eq!(applied.accepted.len(), 1, "{evidence:?}: only a grounded statement vetoes");
+        }
+    }
+
+    #[test]
+    fn the_moot_veto_applies_only_to_contradicts_and_never_converts_or_adds_a_relation() {
+        for kind in ["depends_on", "extends", "supersedes", "duplicates", "related_to", "derived_from"] {
+            let c = moot_pair(kind);
+            let applied = apply_verdicts(std::slice::from_ref(&c), vec![moot(&c, Some("The product line is cancelled."))]).unwrap();
+            assert_eq!(applied.accepted.len(), 1, "{kind} is untouched by the veto");
+        }
+        // A vetoed contradiction is a rejection: nothing is accepted in its place, not even a `supersedes`.
+        let c = moot_pair("contradicts");
+        let applied = apply_verdicts(std::slice::from_ref(&c), vec![moot(&c, Some("The product line is cancelled."))]).unwrap();
+        assert!(applied.accepted.is_empty() && applied.reclassified == 0);
+    }
+
+    #[test]
+    fn a_genuine_contradiction_without_a_moot_flag_still_passes_every_gate() {
+        let c = moot_pair("contradicts");
+        assert_eq!(apply_votes(std::slice::from_ref(&c), vec![vec![accept(&c)], vec![accept(&c)]]).unwrap().accepted.len(), 1);
+    }
+
+    #[test]
+    fn grounding_uses_the_two_objects_own_words() {
+        let c = moot_pair("contradicts");
+        assert!(moot_is_grounded(&Some("the product line is cancelled".into()), &c.source, &c.target));
+        assert!(!moot_is_grounded(&Some("because of the weather".into()), &c.source, &c.target));
+        assert!(!moot_is_grounded(&None, &c.source, &c.target));
     }
 }

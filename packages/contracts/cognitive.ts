@@ -237,6 +237,15 @@ export const MAX_RELATIONS_PER_INFERENCE = 30;
  */
 export const MAX_RELATION_PROPOSALS = 20;
 export const MAX_INFERENCE_REQUESTS = 3;
+/**
+ * Bounds of Automatic Graph Integration (M04.7A), mirrored by `graph/discover.rs` and `graph/integrate.rs`. One changed object is
+ * integrated against at most `MAX_INTEGRATION_CANDIDATES` objects of its own project (a relevance-chosen window; the manual run keeps
+ * its recency window of `MAX_INFERENCE_CANDIDATES`), verifies at most `MAX_INTEGRATION_PROPOSALS` Stage A proposals and re-checks at most
+ * `MAX_INTEGRATION_REVALIDATIONS` of its own model relations, all in the same `MAX_INFERENCE_REQUESTS` provider requests.
+ */
+export const MAX_INTEGRATION_CANDIDATES = 12;
+export const MAX_INTEGRATION_PROPOSALS = 8;
+export const MAX_INTEGRATION_REVALIDATIONS = 8;
 
 export interface CognitiveRelation {
   /** Assigned by the store; unique and stable. */
@@ -358,4 +367,19 @@ export function describeCreateRelationInputProblem(input: unknown): string | nul
   }
   if (candidate.sourceObjectId === candidate.targetObjectId) return "an object cannot be related to itself";
   return null;
+}
+
+/**
+ * The experimental Automatic Connections setting. OFF until the user turns it on; the native layer owns and persists the value.
+ * `pending` counts changes still waiting to be connected (always 0 while OFF: nothing is scheduled and nothing is backfilled).
+ */
+export interface GraphIntegrationStatus {
+  enabled: boolean;
+  pending: number;
+}
+
+export function isGraphIntegrationStatus(value: unknown): value is GraphIntegrationStatus {
+  if (typeof value !== "object" || value === null) return false;
+  const c = value as Record<string, unknown>;
+  return typeof c.enabled === "boolean" && typeof c.pending === "number";
 }

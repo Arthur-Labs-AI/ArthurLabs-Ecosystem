@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import {
   MAX_CAPTURE_LOOKUP,
   describeCreateCaptureInputProblem,
@@ -18,6 +19,7 @@ import {
   isProjectGraph,
   isCognitiveAnswer,
   isRecallErrorPayload,
+  isGraphIntegrationStatus,
   isSemanticRecallStatus,
   isAiConfig,
   isAiErrorPayload,
@@ -32,6 +34,7 @@ import {
   isVoiceCaptureErrorPayload,
   type Capture,
   type CognitiveAnswer,
+  type GraphIntegrationStatus,
   type SemanticRecallStatus,
   type AiCapability,
   type AiConfig,
@@ -531,6 +534,20 @@ async function semanticOverIpc(command: string, args: Record<string, unknown>, c
 
 export const getSemanticRecallStatusOverIpc = (call: Invoke = invoke) => semanticOverIpc("get_semantic_recall_status", {}, call);
 export const setSemanticRecallEnabledOverIpc = (enabled: boolean, call: Invoke = invoke) => semanticOverIpc("set_semantic_recall_enabled", { enabled }, call);
+async function integrationOverIpc(command: string, args: Record<string, unknown>, call: Invoke): Promise<GraphIntegrationStatus> {
+  let payload: unknown;
+  try {
+    payload = await call(command, args);
+  } catch (failure) {
+    if (isRecallErrorPayload(failure)) throw new RecallError(failure.code, failure.message);
+    throw failure;
+  }
+  if (!isGraphIntegrationStatus(payload)) throw new Error("Native layer returned an invalid Automatic Connections status");
+  return payload;
+}
+
+export const getGraphIntegrationOverIpc = (call: Invoke = invoke) => integrationOverIpc("get_graph_integration", {}, call);
+export const setGraphIntegrationEnabledOverIpc = (enabled: boolean, call: Invoke = invoke) => integrationOverIpc("set_graph_integration_enabled", { enabled }, call);
 export const purgeSemanticIndexOverIpc = (call: Invoke = invoke) => semanticOverIpc("purge_semantic_index", {}, call);
 
 const AI_MESSAGES: Record<string, string> = {
@@ -604,4 +621,30 @@ export async function getSpeechStatusOverIpc(call: Invoke = invoke): Promise<Spe
   const payload = await speechCall("get_speech_status", {}, call);
   if (!isSpeechStatus(payload)) throw new Error("Native layer returned an invalid speech status");
   return payload;
+}
+
+/** The native event Automatic Graph Integration emits after it changed the graph. Mirrors `GRAPH_CHANGED_EVENT` in `commands/integration.rs`. */
+export const GRAPH_INTEGRATED_EVENT = "graph-integrated";
+
+type Subscribe = (event: string, handler: () => void) => Promise<() => void>;
+
+/** Subscribes to graph changes made by background integration. Never throws: outside the native shell it simply never fires. */
+export function onGraphIntegratedOverIpc(listener: () => void, subscribe: Subscribe = listen): () => void {
+  let stopped = false;
+  let unlisten: (() => void) | undefined;
+  try {
+    subscribe(GRAPH_INTEGRATED_EVENT, listener).then(
+      (stop) => {
+        if (stopped) stop();
+        else unlisten = stop;
+      },
+      () => {},
+    );
+  } catch {
+    // no native event bus (a plain browser): nothing to subscribe to
+  }
+  return () => {
+    stopped = true;
+    unlisten?.();
+  };
 }

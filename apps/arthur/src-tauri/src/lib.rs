@@ -23,6 +23,7 @@ use audio::voice_capture::VoiceCaptureService;
 use distillation::openai::OpenAiDistiller;
 use distillation::DistillationService;
 use graph::openai::{OpenAiRelationProposer, OpenAiRelationVerifier};
+use graph::integration::{IntegrationService, IntegrationSettings, Ledger};
 use graph::GraphService;
 use storage::capture_store::CaptureStore;
 use providers::ai::AiService;
@@ -98,7 +99,25 @@ pub fn run() {
             let tts_credential = ai.credential_for(Capability::Tts);
             let transcriber = Arc::new(OpenAiTranscriber::new(stt)?);
             app.manage(DistillationService::new(Arc::new(OpenAiDistiller::new(llm.clone())?)));
-            app.manage(GraphService::new(Arc::new(OpenAiRelationProposer::new(llm.clone())?), Arc::new(OpenAiRelationVerifier::new(llm.clone())?)));
+            let proposer = Arc::new(OpenAiRelationProposer::new(llm.clone())?);
+            let verifier = Arc::new(OpenAiRelationVerifier::new(llm.clone())?);
+            app.manage(GraphService::new(proposer.clone(), verifier.clone()));
+
+            // Automatic Graph Integration (M04.7A): new and meaningfully changed knowledge is integrated into the graph in the
+            // background. OFF until the user turns it on; the switch and the retry ledger are app-private files, not the database.
+            let graph_dir = data_dir.join("graph");
+            app.manage(IntegrationService::new(
+                GraphService::new(proposer, verifier),
+                IntegrationSettings::new(graph_dir.join("integration-settings.json")),
+                Ledger::new(graph_dir.join("integration-ledger.json")),
+            ));
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    tokio::time::sleep(commands::integration::RETRY_POLL).await;
+                    commands::integration::kick_retries(&handle);
+                }
+            });
 
             // Semantic Recall is OPT-IN. The consent lives in app-private settings, outside the database, and a missing or damaged
             // file means OFF. Having an API key never enables it.
@@ -156,6 +175,8 @@ pub fn run() {
             commands::graph::get_object_relations,
             commands::graph::get_object_neighbors,
             commands::graph::infer_relations,
+            commands::integration::get_graph_integration,
+            commands::integration::set_graph_integration_enabled,
             commands::lineage::get_object_lineage,
             commands::lineage::list_revisions,
             commands::lineage::get_revision,

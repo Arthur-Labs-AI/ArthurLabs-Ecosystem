@@ -303,4 +303,20 @@ describe("ConnectionsScreen", () => {
     expect(await screen.findByRole("heading", { name: "Evolution" })).toBeTruthy();
     expect(await screen.findByRole("heading", { name: "Email Ignatov", level: 2 })).toBeTruthy();
   });
+
+  it("shows a relation added by background integration without the user doing anything", async () => {
+    const { client: base, by } = await graph({ inference: { proposals: (objects) => [{ sourceObjectId: objects[0]!.id, targetObjectId: objects[1]!.id, kind: "related_to" }] } });
+    const listeners = new Set<() => void>();
+    const client: ArthurClient = { ...base, onGraphChanged: (listener) => (listeners.add(listener), () => listeners.delete(listener)) };
+    await open(client);
+    expect(map().querySelectorAll(".edge")).toHaveLength(0);
+    expect(listeners.size).toBeGreaterThan(0); // the map and the idea summaries both listen
+
+    // The native side integrated a new thought: the store now holds a MODEL relation, and tells the screen.
+    await base.inferRelations(undefined, { projectId: INBOX_PROJECT_ID });
+    for (const listener of listeners) listener();
+
+    await waitFor(() => expect(map().querySelectorAll(".edge")).toHaveLength(1));
+    expect(by("Faster capture")).toBeTruthy();
+  });
 });

@@ -25,6 +25,8 @@ import {
   createProjectOverIpc,
   getActiveProjectOverIpc,
   askOverIpc,
+  getGraphIntegrationOverIpc,
+  setGraphIntegrationEnabledOverIpc,
   getSemanticRecallStatusOverIpc,
   speakTextOverIpc,
   testVoiceOverIpc,
@@ -47,6 +49,7 @@ import {
   restoreProjectOverIpc,
   setActiveProjectOverIpc,
   getCapturesOverIpc,
+  onGraphIntegratedOverIpc,
   type Invoke,
 } from "./tauri-ipc";
 
@@ -81,6 +84,7 @@ export function createDesktopClient(call?: Invoke): ArthurClient {
     getObjectRelations: (objectId, filter) => getObjectRelationsOverIpc(objectId, filter, call),
     getObjectNeighbors: (objectId, filter) => getObjectNeighborsOverIpc(objectId, filter, call),
     inferRelations: (objectIds, scope) => inferRelationsOverIpc(objectIds, scope, call),
+    onGraphChanged: (listener) => onGraphIntegratedOverIpc(listener),
     getObjectLineage: (objectId) => getObjectLineageOverIpc(objectId, call),
     listRevisions: (objectId) => listRevisionsOverIpc(objectId, call),
     getRevision: (revisionId) => getRevisionOverIpc(revisionId, call),
@@ -102,6 +106,8 @@ export function createDesktopClient(call?: Invoke): ArthurClient {
     setActiveProject: (projectId) => setActiveProjectOverIpc(projectId, call),
     getProjectGraph: (projectId) => getProjectGraphOverIpc(projectId, call),
     ask: (query) => askOverIpc(query, call),
+    getGraphIntegration: () => getGraphIntegrationOverIpc(call),
+    setGraphIntegrationEnabled: (enabled) => setGraphIntegrationEnabledOverIpc(enabled, call),
     getSemanticRecallStatus: () => getSemanticRecallStatusOverIpc(call),
     setSemanticRecallEnabled: (enabled) => setSemanticRecallEnabledOverIpc(enabled, call),
     purgeSemanticIndex: () => purgeSemanticIndexOverIpc(call),

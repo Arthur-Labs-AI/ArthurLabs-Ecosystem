@@ -25,6 +25,10 @@
 //! retrieval ranking here.
 
 pub mod candidates;
+pub mod discover;
+pub mod integrate;
+pub mod integration;
+pub mod resolve;
 pub mod openai;
 pub mod prompt;
 pub mod semantics;
@@ -160,6 +164,12 @@ fn from_model_proposal(error: StoreError) -> RelationError {
 /// The cloud model boundary: knowledge objects (and the edges they already have) in, untrusted candidates out.
 pub trait RelationProposer: Send + Sync {
     fn propose<'a>(&'a self, objects: &'a [KnowledgeObject], existing: &'a [Relation]) -> BoxFuture<'a, Result<Vec<RelationCandidate>, RelationError>>;
+
+    /// As `propose`, narrowed to one changed object (automatic integration): only relations that have `focus_id` as an end are
+    /// wanted. The default ignores the narrowing; the caller filters anyway, so a proposer that ignores it is still correct.
+    fn propose_for<'a>(&'a self, _focus_id: &'a str, objects: &'a [KnowledgeObject], existing: &'a [Relation]) -> BoxFuture<'a, Result<Vec<RelationCandidate>, RelationError>> {
+        self.propose(objects, existing)
+    }
 }
 
 /// Creates one user-authored relation, atomically. The caller supplies only kind and ends; the id,
@@ -272,7 +282,7 @@ impl GraphService {
         let to_verify = fresh
             .iter()
             .enumerate()
-            .map(|(index, edge)| Ok(VerifyCandidate { index, source: by_id(&edge.source_object_id)?, target: by_id(&edge.target_object_id)?, kind: edge.kind.clone() }))
+            .map(|(index, edge)| Ok(VerifyCandidate { index, source: by_id(&edge.source_object_id)?, target: by_id(&edge.target_object_id)?, kind: edge.kind.clone(), source_written_at: None, target_written_at: None }))
             .collect::<Result<Vec<_>, RelationError>>()?;
         report.verified = to_verify.len();
         report.provider_requests += 1;
@@ -1198,3 +1208,11 @@ mod tests {
         assert!(totals.provider_requests <= 2 * runs * MAX_PROVIDER_REQUESTS_PER_RUN);
     }
 }
+
+// M04.7A test modules. Kept after `mod tests` so the first `#[cfg(test)]` in this file still marks where shipped code ends.
+#[cfg(test)]
+mod integration_tests;
+#[cfg(test)]
+mod integration_bench;
+#[cfg(test)]
+mod deepseek_bench;

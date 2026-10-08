@@ -7,3 +7,4 @@ pub mod organization_store;
 pub mod summary_store;
 pub mod project_store;
 pub mod recall_store;
+pub mod integration_store;
