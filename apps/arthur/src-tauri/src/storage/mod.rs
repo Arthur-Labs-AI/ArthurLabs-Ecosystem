@@ -8,3 +8,5 @@ pub mod summary_store;
 pub mod project_store;
 pub mod recall_store;
 pub mod integration_store;
+#[cfg(test)]
+mod revision_cas_tests;
