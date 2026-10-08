@@ -369,14 +369,280 @@ CREATE TABLE recall_meta (
 INSERT INTO recall_meta (key, value) VALUES ('fts_tokenizer_version', 'unicode61-remove_diacritics2-v1');
 ";
 
+/// v8 (M04.7B Phase 2): durable, auditable storage for Automatic Thought Evolution. ADDITIVE and STORAGE ONLY: three new tables, their
+/// indexes and triggers. No v1-v7 table, trigger or row is touched (`thought_revisions` and `knowledge_objects` are NOT rebuilt), no data
+/// is backfilled, and nothing in the running app writes these tables until a later phase wires the identity pipeline.
+/// Specification and rationale: `docs/architecture/m047b-phase2-schema-v8.md`.
+///
+/// * `identity_decisions`: ONE immutable decision per distilled claim (capture, ordinal). `unchecked` (identity was NOT established) is a
+///   different outcome from `new` (a classifier ran and found no referent): `new` and `revise` require a model id, `unchecked`
+///   requires a reason and can never carry one as proof.
+/// * `revision_evidence`: the verbatim capture spans behind an automatic (`system`) revision, immutable, with a role (`asserts`,
+///   `corrects`, `replaces`) and an optional pointer to the exact earlier evidence it withdraws. A synthesized revision keeps NULL span
+///   columns of its own; which evidence is historical, active or withdrawn is DERIVED (never stored) by `evidence_store`.
+/// * `pending_claims`: an unresolved identity decision, kept until it is resolved by a real authoritative operation. A terminal state can
+///   only be written together with its proof (a committed revision carrying this claim's evidence, or an object created from this
+///   claim's span). Rows are never deleted and a terminal row never changes.
+///
+/// Spans are Unicode code points: SQLite `length()` counts characters, matching `validate_span`.
+pub const SCHEMA_V8: &str = "
+CREATE TABLE identity_decisions (
+    capture_id         TEXT    NOT NULL REFERENCES distillation_runs(capture_id),
+    ordinal            INTEGER NOT NULL CHECK (ordinal >= 0),
+    outcome            TEXT    NOT NULL CHECK (outcome IN ('new', 'revise', 'uncertain', 'unchecked')),
+    unchecked_reason   TEXT    CHECK (unchecked_reason IS NULL OR unchecked_reason IN ('disabled', 'invalid_claim', 'invalid_candidates', 'no_eligible_candidates', 'classifier_failed', 'malformed_signals', 'review_quota')),
+    target_object_id   TEXT    REFERENCES knowledge_objects(id),
+    base_revision_id   TEXT    REFERENCES thought_revisions(id),
+    result_revision_id TEXT    REFERENCES thought_revisions(id),
+    created_object_id  TEXT    REFERENCES knowledge_objects(id),
+    policy_version     TEXT    NOT NULL CHECK (length(policy_version) BETWEEN 1 AND 64),
+    model_id           TEXT    CHECK (model_id IS NULL OR length(model_id) BETWEEN 1 AND 128),
+    decided_by         TEXT    NOT NULL CHECK (decided_by IN ('gate', 'fallback')),
+    vetoes_json        TEXT    NOT NULL CHECK (json_valid(vetoes_json) AND json_type(vetoes_json) = 'array' AND length(vetoes_json) <= 1024),
+    audit_json         TEXT    NOT NULL CHECK (json_valid(audit_json) AND json_type(audit_json) = 'object' AND length(audit_json) <= 4096),
+    decided_at         TEXT    NOT NULL CHECK (length(decided_at) > 0),
+    PRIMARY KEY (capture_id, ordinal),
+    CHECK (
+        (outcome = 'new'       AND model_id IS NOT NULL AND unchecked_reason IS NULL     AND created_object_id IS NOT NULL AND target_object_id IS NULL     AND base_revision_id IS NULL     AND result_revision_id IS NULL     AND decided_by = 'gate')
+     OR (outcome = 'revise'    AND model_id IS NOT NULL AND unchecked_reason IS NULL     AND created_object_id IS NULL     AND target_object_id IS NOT NULL AND base_revision_id IS NOT NULL AND result_revision_id IS NOT NULL AND decided_by = 'gate')
+     OR (outcome = 'uncertain' AND model_id IS NOT NULL AND unchecked_reason IS NULL     AND created_object_id IS NULL     AND target_object_id IS NULL     AND base_revision_id IS NULL     AND result_revision_id IS NULL     AND decided_by = 'gate')
+     OR (outcome = 'unchecked' AND unchecked_reason IS NOT NULL                          AND created_object_id IS NOT NULL AND target_object_id IS NULL     AND base_revision_id IS NULL     AND result_revision_id IS NULL     AND decided_by = 'fallback')
+    )
+);
+
+CREATE INDEX identity_decisions_by_target ON identity_decisions(target_object_id) WHERE target_object_id IS NOT NULL;
+CREATE INDEX identity_decisions_by_created_object ON identity_decisions(created_object_id) WHERE created_object_id IS NOT NULL;
+
+CREATE TRIGGER identity_decisions_are_immutable BEFORE UPDATE ON identity_decisions
+BEGIN
+    SELECT RAISE(ABORT, 'identity decisions are immutable');
+END;
+
+CREATE TRIGGER identity_decisions_are_never_deleted BEFORE DELETE ON identity_decisions
+BEGIN
+    SELECT RAISE(ABORT, 'identity decisions are never deleted');
+END;
+
+-- A REVISE is only recorded for a committed automatic revision: a child of the stated base, on the stated object, that carries evidence
+-- from THIS capture. So a decision can never describe a revision that does not exist or was made for another object.
+CREATE TRIGGER identity_decisions_revise_needs_its_revision BEFORE INSERT ON identity_decisions
+WHEN NEW.outcome = 'revise' AND NOT EXISTS (
+    SELECT 1 FROM thought_revisions r
+    JOIN revision_parents p ON p.child_revision_id = r.id
+    JOIN thought_revisions b ON b.id = p.parent_revision_id
+    WHERE r.id = NEW.result_revision_id AND r.origin = 'system' AND r.object_id = NEW.target_object_id
+      AND b.id = NEW.base_revision_id AND b.object_id = NEW.target_object_id
+      AND EXISTS (SELECT 1 FROM revision_evidence e WHERE e.revision_id = r.id AND e.capture_id = NEW.capture_id)
+)
+BEGIN
+    SELECT RAISE(ABORT, 'a revise decision needs a committed automatic revision with evidence from its capture');
+END;
+
+CREATE TRIGGER identity_decisions_new_needs_its_object BEFORE INSERT ON identity_decisions
+WHEN NEW.outcome IN ('new', 'unchecked') AND NOT EXISTS (SELECT 1 FROM object_sources s WHERE s.object_id = NEW.created_object_id AND s.capture_id = NEW.capture_id)
+BEGIN
+    SELECT RAISE(ABORT, 'the created object must originate from the decision''s capture');
+END;
+
+CREATE TABLE revision_evidence (
+    revision_id          TEXT    NOT NULL REFERENCES thought_revisions(id),
+    ordinal              INTEGER NOT NULL CHECK (ordinal >= 0),
+    object_id            TEXT    NOT NULL REFERENCES knowledge_objects(id),
+    capture_id           TEXT    NOT NULL REFERENCES captures(id),
+    source_start         INTEGER NOT NULL CHECK (source_start >= 0),
+    source_end           INTEGER NOT NULL CHECK (source_end > source_start),
+    role                 TEXT    NOT NULL CHECK (role IN ('asserts', 'corrects', 'replaces')),
+    retracts_revision_id TEXT,
+    retracts_ordinal     INTEGER,
+    interpretation_label TEXT    CHECK (interpretation_label IS NULL OR (length(trim(interpretation_label)) > 0 AND length(interpretation_label) <= 200)),
+    created_at           TEXT    NOT NULL CHECK (length(created_at) > 0),
+    PRIMARY KEY (revision_id, ordinal),
+    UNIQUE (revision_id, capture_id, source_start, source_end),
+    FOREIGN KEY (retracts_revision_id, retracts_ordinal) REFERENCES revision_evidence(revision_id, ordinal),
+    CHECK ((retracts_revision_id IS NULL) = (retracts_ordinal IS NULL)),
+    CHECK (retracts_revision_id IS NULL OR role IN ('corrects', 'replaces')),
+    CHECK (retracts_revision_id IS NULL OR retracts_revision_id <> revision_id)
+);
+
+CREATE INDEX revision_evidence_by_object ON revision_evidence(object_id, revision_id);
+CREATE INDEX revision_evidence_by_capture ON revision_evidence(capture_id);
+
+CREATE TRIGGER revision_evidence_is_immutable BEFORE UPDATE ON revision_evidence
+BEGIN
+    SELECT RAISE(ABORT, 'revision evidence is immutable');
+END;
+
+CREATE TRIGGER revision_evidence_is_never_deleted BEFORE DELETE ON revision_evidence
+BEGIN
+    SELECT RAISE(ABORT, 'revision evidence is never deleted');
+END;
+
+-- Evidence attaches only to an AUTOMATIC revision (origin 'system'); a user edit or merge claims no capture, and an initial revision
+-- keeps its own span in thought_revisions.
+CREATE TRIGGER revision_evidence_needs_an_automatic_revision BEFORE INSERT ON revision_evidence
+WHEN (SELECT origin FROM thought_revisions WHERE id = NEW.revision_id) IS NOT 'system'
+BEGIN
+    SELECT RAISE(ABORT, 'evidence attaches only to an automatic revision');
+END;
+
+CREATE TRIGGER revision_evidence_object_matches_its_revision BEFORE INSERT ON revision_evidence
+WHEN NEW.object_id IS NOT (SELECT object_id FROM thought_revisions WHERE id = NEW.revision_id)
+BEGIN
+    SELECT RAISE(ABORT, 'evidence names a different object than its revision');
+END;
+
+-- The evidence of a revision is fixed while it is still the newest of its line: once anything builds on it, the support story is closed.
+CREATE TRIGGER revision_evidence_only_before_history_moves_on BEFORE INSERT ON revision_evidence
+WHEN EXISTS (SELECT 1 FROM revision_parents WHERE parent_revision_id = NEW.revision_id)
+BEGIN
+    SELECT RAISE(ABORT, 'a revision with descendants cannot gain evidence');
+END;
+
+CREATE TRIGGER revision_evidence_span_is_inside_its_capture BEFORE INSERT ON revision_evidence
+WHEN ifnull((SELECT length(content) FROM captures WHERE id = NEW.capture_id), -1) < NEW.source_end
+BEGIN
+    SELECT RAISE(ABORT, 'the evidence span is outside its capture');
+END;
+
+-- What a correction or replacement withdraws must be PROVABLE: evidence of a strictly earlier revision of the same line.
+CREATE TRIGGER revision_evidence_retracts_only_its_ancestors BEFORE INSERT ON revision_evidence
+WHEN NEW.retracts_revision_id IS NOT NULL AND NOT EXISTS (
+    WITH RECURSIVE ancestors(id) AS (
+        SELECT parent_revision_id FROM revision_parents WHERE child_revision_id = NEW.revision_id
+        UNION
+        SELECT p.parent_revision_id FROM revision_parents p JOIN ancestors a ON p.child_revision_id = a.id
+    )
+    SELECT 1 FROM ancestors WHERE id = NEW.retracts_revision_id
+)
+BEGIN
+    SELECT RAISE(ABORT, 'evidence can only withdraw evidence of an earlier revision of the same object');
+END;
+
+CREATE TABLE pending_claims (
+    seq                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    id                  TEXT    NOT NULL UNIQUE CHECK (length(id) > 0),
+    capture_id          TEXT    NOT NULL,
+    ordinal             INTEGER NOT NULL,
+    kind                TEXT    NOT NULL CHECK (kind IN ('idea', 'task', 'decision', 'question', 'note')),
+    title               TEXT    NOT NULL CHECK (length(trim(title)) > 0 AND length(title) <= 200),
+    body                TEXT    NOT NULL CHECK (length(trim(body)) > 0 AND length(body) <= 2000),
+    source_start        INTEGER NOT NULL CHECK (source_start >= 0),
+    source_end          INTEGER NOT NULL CHECK (source_end > source_start),
+    candidate_ids_json  TEXT    NOT NULL CHECK (json_valid(candidate_ids_json) AND json_type(candidate_ids_json) = 'array' AND json_array_length(candidate_ids_json) BETWEEN 1 AND 4 AND length(candidate_ids_json) <= 400),
+    reasons_json        TEXT    NOT NULL CHECK (json_valid(reasons_json) AND json_type(reasons_json) = 'array' AND length(reasons_json) <= 1024),
+    reframing           INTEGER NOT NULL CHECK (reframing IN (0, 1)),
+    state               TEXT    NOT NULL CHECK (state IN ('open', 'deferred', 'accepted', 'separated')),
+    due_at              TEXT    CHECK (due_at IS NULL OR length(due_at) > 0),
+    created_at          TEXT    NOT NULL CHECK (length(created_at) > 0),
+    updated_at          TEXT    NOT NULL CHECK (length(updated_at) > 0),
+    deferred_at         TEXT,
+    resolved_at         TEXT,
+    resolved_method     TEXT    CHECK (resolved_method IS NULL OR resolved_method IN ('user', 'expiry')),
+    resolved_object_id  TEXT    REFERENCES knowledge_objects(id),
+    resolved_revision_id TEXT   REFERENCES thought_revisions(id),
+    UNIQUE (capture_id, ordinal),
+    FOREIGN KEY (capture_id, ordinal) REFERENCES identity_decisions(capture_id, ordinal),
+    CHECK (state <> 'deferred' OR deferred_at IS NOT NULL),
+    CHECK (
+        (state IN ('open', 'deferred') AND resolved_at IS NULL     AND resolved_method IS NULL     AND resolved_object_id IS NULL     AND resolved_revision_id IS NULL)
+     OR (state = 'accepted'            AND resolved_at IS NOT NULL AND resolved_method = 'user'    AND resolved_object_id IS NOT NULL AND resolved_revision_id IS NOT NULL)
+     OR (state = 'separated'           AND resolved_at IS NOT NULL AND resolved_method IS NOT NULL AND resolved_object_id IS NOT NULL AND resolved_revision_id IS NULL)
+    )
+);
+
+CREATE INDEX pending_claims_by_state ON pending_claims(state, seq);
+
+CREATE TRIGGER pending_claims_are_never_deleted BEFORE DELETE ON pending_claims
+BEGIN
+    SELECT RAISE(ABORT, 'a pending claim is never deleted');
+END;
+
+CREATE TRIGGER pending_claims_need_an_uncertain_decision BEFORE INSERT ON pending_claims
+WHEN NOT EXISTS (SELECT 1 FROM identity_decisions d WHERE d.capture_id = NEW.capture_id AND d.ordinal = NEW.ordinal AND d.outcome = 'uncertain')
+BEGIN
+    SELECT RAISE(ABORT, 'a pending claim needs an uncertain identity decision');
+END;
+
+CREATE TRIGGER pending_claims_start_open BEFORE INSERT ON pending_claims
+WHEN NEW.state <> 'open'
+BEGIN
+    SELECT RAISE(ABORT, 'a pending claim starts open');
+END;
+
+CREATE TRIGGER pending_claims_span_is_inside_its_capture BEFORE INSERT ON pending_claims
+WHEN ifnull((SELECT length(content) FROM captures WHERE id = NEW.capture_id), -1) < NEW.source_end
+BEGIN
+    SELECT RAISE(ABORT, 'the claim span is outside its capture');
+END;
+
+-- Candidates are existing objects of the capture's own project: a claim cannot point at an unrelated or foreign-project object.
+CREATE TRIGGER pending_claims_candidates_are_local_objects BEFORE INSERT ON pending_claims
+WHEN EXISTS (
+    SELECT 1 FROM json_each(NEW.candidate_ids_json) j
+    WHERE NOT EXISTS (
+        SELECT 1 FROM knowledge_objects o JOIN captures c ON c.id = NEW.capture_id
+        WHERE o.id = j.value AND o.project_id = c.project_id
+    )
+)
+BEGIN
+    SELECT RAISE(ABORT, 'a candidate must be an existing object of the capture''s project');
+END;
+
+CREATE TRIGGER pending_claims_content_is_immutable BEFORE UPDATE ON pending_claims
+WHEN NEW.id IS NOT OLD.id OR NEW.seq IS NOT OLD.seq OR NEW.capture_id IS NOT OLD.capture_id OR NEW.ordinal IS NOT OLD.ordinal OR NEW.kind IS NOT OLD.kind
+  OR NEW.title IS NOT OLD.title OR NEW.body IS NOT OLD.body OR NEW.source_start IS NOT OLD.source_start OR NEW.source_end IS NOT OLD.source_end
+  OR NEW.candidate_ids_json IS NOT OLD.candidate_ids_json OR NEW.reasons_json IS NOT OLD.reasons_json OR NEW.reframing IS NOT OLD.reframing
+  OR NEW.created_at IS NOT OLD.created_at
+BEGIN
+    SELECT RAISE(ABORT, 'a pending claim''s content is immutable');
+END;
+
+CREATE TRIGGER pending_claims_terminal_states_are_final BEFORE UPDATE ON pending_claims
+WHEN OLD.state IN ('accepted', 'separated')
+BEGIN
+    SELECT RAISE(ABORT, 'a resolved pending claim cannot change');
+END;
+
+CREATE TRIGGER pending_claims_valid_transitions BEFORE UPDATE ON pending_claims
+WHEN NEW.state <> OLD.state AND NOT (
+       (OLD.state = 'open'     AND NEW.state IN ('deferred', 'accepted', 'separated'))
+    OR (OLD.state = 'deferred' AND NEW.state IN ('open', 'accepted', 'separated'))
+)
+BEGIN
+    SELECT RAISE(ABORT, 'invalid pending claim transition');
+END;
+
+-- No accepted claim without the revision it produced: a committed automatic revision of a candidate, carrying THIS claim's span as evidence.
+CREATE TRIGGER pending_claims_accepted_needs_its_revision BEFORE UPDATE ON pending_claims
+WHEN NEW.state = 'accepted' AND NOT EXISTS (
+    SELECT 1 FROM thought_revisions r JOIN revision_evidence e ON e.revision_id = r.id
+    WHERE r.id = NEW.resolved_revision_id AND r.object_id = NEW.resolved_object_id AND r.origin = 'system'
+      AND e.capture_id = NEW.capture_id AND e.source_start = NEW.source_start AND e.source_end = NEW.source_end
+      AND EXISTS (SELECT 1 FROM json_each(NEW.candidate_ids_json) j WHERE j.value = NEW.resolved_object_id)
+)
+BEGIN
+    SELECT RAISE(ABORT, 'an accepted claim needs the committed revision it produced');
+END;
+
+-- No separated claim without the object created from this claim's span.
+CREATE TRIGGER pending_claims_separated_needs_its_object BEFORE UPDATE ON pending_claims
+WHEN NEW.state = 'separated' AND NOT EXISTS (
+    SELECT 1 FROM object_sources s
+    WHERE s.object_id = NEW.resolved_object_id AND s.capture_id = NEW.capture_id AND s.source_start = NEW.source_start AND s.source_end = NEW.source_end
+)
+BEGIN
+    SELECT RAISE(ABORT, 'a separated claim needs the object created from it');
+END;
+";
+
 pub type Step = (i64, &'static str);
 
 /// Ordered migration steps: `(version after the step, SQL)`.
-pub const STEPS: [Step; 7] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4), (5, SCHEMA_V5), (6, SCHEMA_V6), (7, SCHEMA_V7)];
+pub const STEPS: [Step; 8] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4), (5, SCHEMA_V5), (6, SCHEMA_V6), (7, SCHEMA_V7), (8, SCHEMA_V8)];
 
 /// The version `STEPS` ends at; asserted against `STEPS` by a test.
 #[cfg(test)]
-pub const SCHEMA_VERSION: i64 = 7;
+pub const SCHEMA_VERSION: i64 = 8;
 
 pub fn migrate(connection: &mut Connection) -> Result<(), StoreError> {
     migrate_with(connection, &STEPS)
@@ -1165,7 +1431,7 @@ mod tests {
 
         let store = CaptureStore::open(&path).unwrap();
         let connection = Connection::open(&path).unwrap();
-        assert_eq!(user_version(&connection), 7);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION, "opening migrates on to the latest version (v7 added the retrieval tables, v8 adds more; both leave authoritative rows alone)");
         assert_eq!(v6_fingerprint(&connection), before, "every authoritative row is byte-identical");
         let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
         let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
@@ -1192,6 +1458,9 @@ mod tests {
         assert_eq!(v6_fingerprint(&Connection::open(&path).unwrap()), before);
     }
 
+    /// Removes everything v8 created (empty tables only), so a test can step a file back to v7.
+    pub(crate) const DROP_V8: &str = "DROP TABLE pending_claims; DROP TABLE revision_evidence; DROP TABLE identity_decisions;";
+
     #[test]
     fn the_v7_retrieval_tables_are_rebuildable_projections() {
         let dir = tempfile::tempdir().unwrap();
@@ -1203,6 +1472,7 @@ mod tests {
         // Throw every retrieval object away and step the version back: the next open recreates them from authoritative data alone.
         {
             let connection = Connection::open(&path).unwrap();
+            connection.execute_batch(DROP_V8).unwrap(); // v8 is separate from the retrieval tables; step the file back past both
             connection
                 .execute_batch(
                     "DROP TRIGGER recall_fts_after_revision_insert; DROP TRIGGER recall_fts_after_revision_delete;
@@ -1251,16 +1521,170 @@ mod tests {
     }
 
     #[test]
-    fn a_v8_database_is_refused_without_a_single_byte_changing() {
+    fn a_database_one_version_ahead_is_refused_without_a_single_byte_changing() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
         v6_database(&path);
         CaptureStore::open(&path).unwrap();
-        Connection::open(&path).unwrap().pragma_update(None, "user_version", 8).unwrap();
+        Connection::open(&path).unwrap().pragma_update(None, "user_version", SCHEMA_VERSION + 1).unwrap();
         let bytes_before = std::fs::read(&path).unwrap();
         assert!(matches!(CaptureStore::open(&path), Err(StoreError::Corrupt(_))));
-        assert_eq!(user_version(&Connection::open(&path).unwrap()), 8);
+        assert_eq!(user_version(&Connection::open(&path).unwrap()), SCHEMA_VERSION + 1);
         assert_eq!(std::fs::read(&path).unwrap(), bytes_before, "refused untouched");
+    }
+
+    // ---- v8: identity decisions, revision evidence, pending claims ------------------------------------------------------------
+
+    /// A populated database exactly as M04B left it: the v6 fixture migrated to v7 (so the lexical index is populated).
+    fn v7_database(path: &std::path::Path) {
+        v6_database(path);
+        let mut connection = Connection::open(path).unwrap();
+        migrate_with(&mut connection, &STEPS[..7]).unwrap();
+        assert_eq!(user_version(&connection), 7);
+    }
+
+    /// Everything v8 must leave alone: the v6 fingerprint plus the revision count and the lexical index row count.
+    fn v7_fingerprint(connection: &Connection) -> Vec<String> {
+        let mut rows = v6_fingerprint(connection);
+        rows.push(format!("fts:{}", connection.query_row("SELECT count(*) FROM recall_revision_fts_docsize", [], |r| r.get::<_, i64>(0)).unwrap()));
+        rows.push(format!("meta:{}", connection.query_row("SELECT group_concat(key || '=' || value) FROM recall_meta", [], |r| r.get::<_, String>(0)).unwrap()));
+        rows
+    }
+
+    const V8_OBJECTS: [(&str, &str); 22] = [
+        ("table", "identity_decisions"), ("table", "revision_evidence"), ("table", "pending_claims"),
+        ("index", "identity_decisions_by_target"), ("index", "identity_decisions_by_created_object"), ("index", "revision_evidence_by_object"), ("index", "revision_evidence_by_capture"), ("index", "pending_claims_by_state"),
+        ("trigger", "identity_decisions_are_immutable"), ("trigger", "identity_decisions_are_never_deleted"), ("trigger", "identity_decisions_revise_needs_its_revision"), ("trigger", "identity_decisions_new_needs_its_object"),
+        ("trigger", "revision_evidence_is_immutable"), ("trigger", "revision_evidence_is_never_deleted"), ("trigger", "revision_evidence_needs_an_automatic_revision"), ("trigger", "revision_evidence_retracts_only_its_ancestors"),
+        ("trigger", "pending_claims_are_never_deleted"), ("trigger", "pending_claims_need_an_uncertain_decision"), ("trigger", "pending_claims_valid_transitions"), ("trigger", "pending_claims_terminal_states_are_final"),
+        ("trigger", "pending_claims_accepted_needs_its_revision"), ("trigger", "pending_claims_separated_needs_its_object"),
+    ];
+
+    #[test]
+    fn a_fresh_database_goes_straight_to_v8_with_every_v8_object_and_empty_v8_tables() {
+        let store = CaptureStore::open_in_memory().unwrap();
+        let connection = store.connection.lock().unwrap();
+        assert_eq!(user_version(&connection), 8);
+        for (kind, name) in V8_OBJECTS {
+            assert!(has_object(&connection, kind, name), "{kind} {name}");
+        }
+        for table in ["identity_decisions", "revision_evidence", "pending_claims"] {
+            assert_eq!(count(&connection, table), 0);
+        }
+        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(violations, 0);
+    }
+
+    #[test]
+    fn a_populated_v7_database_upgrades_to_v8_with_every_authoritative_row_and_the_search_index_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v7_database(&path);
+        let (before, revisions, relations) = {
+            let connection = Connection::open(&path).unwrap();
+            (v7_fingerprint(&connection), count(&connection, "thought_revisions"), count(&connection, "relations"))
+        };
+        assert!(before.len() > 15 && revisions >= 3 && relations >= 1, "the fixture is populated ({} rows)", before.len());
+
+        let store = CaptureStore::open(&path).unwrap();
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 8);
+        assert_eq!(v7_fingerprint(&connection), before, "captures, objects, revisions, parents, relations, projects, provenance, projections and the index are byte-identical");
+        for (kind, name) in V8_OBJECTS {
+            assert!(has_object(&connection, kind, name), "{kind} {name}");
+        }
+        for table in ["identity_decisions", "revision_evidence", "pending_claims"] {
+            assert_eq!(count(&connection, table), 0, "nothing was backfilled or invented in {table}");
+        }
+        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        assert_eq!((integrity.as_str(), violations), ("ok", 0));
+        // existing behaviour: revisions still immutable, the projection guard and project triggers still fire, FTS still consistent
+        assert!(connection.execute("UPDATE thought_revisions SET title = 'x'", []).is_err());
+        assert!(connection.execute("UPDATE knowledge_objects SET title = 'x'", []).is_err());
+        assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions);
+        store.recall_check_lexical_index().unwrap();
+        for object in store.list_knowledge_objects().unwrap() {
+            store.object_lineage(&object.id).unwrap();
+        }
+        // the new revision of an old object is searchable and the old behaviour (user edit) still works on the migrated file
+        let object = store.list_knowledge_objects().unwrap().remove(0);
+        store.update_object(&object.id, crate::storage::lineage_store::Changes { body: Some("a brand new body about quokkas".into()), ..Default::default() }).unwrap();
+        store.recall_check_lexical_index().unwrap();
+        // repeating changes nothing
+        drop(store);
+        drop(connection);
+        for _ in 0..3 {
+            CaptureStore::open(&path).unwrap();
+        }
+        assert_eq!(user_version(&Connection::open(&path).unwrap()), 8);
+    }
+
+    #[test]
+    fn a_failing_v8_upgrade_rolls_back_completely_and_leaves_v7_usable() {
+        for blocker in [
+            "CREATE TABLE identity_decisions (precious TEXT); INSERT INTO identity_decisions VALUES ('keep me');",
+            "CREATE TABLE revision_evidence (precious TEXT); INSERT INTO revision_evidence VALUES ('keep me');",
+            "CREATE TABLE pending_claims (precious TEXT); INSERT INTO pending_claims VALUES ('keep me');",
+            // blocks only the LAST statement of the step: everything before it must roll back too
+            "CREATE TRIGGER pending_claims_separated_needs_its_object BEFORE UPDATE ON captures BEGIN SELECT 1; END;",
+            "CREATE INDEX pending_claims_by_state ON captures(id);",
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("arthur.db");
+            v7_database(&path);
+            Connection::open(&path).unwrap().execute_batch(blocker).unwrap();
+            let before = v7_fingerprint(&Connection::open(&path).unwrap());
+
+            assert!(CaptureStore::open(&path).is_err(), "{blocker}");
+            let connection = Connection::open(&path).unwrap();
+            assert_eq!(user_version(&connection), 7, "still v7: {blocker}");
+            assert_eq!(v7_fingerprint(&connection), before, "{blocker}");
+            let leftovers: Vec<&str> = V8_OBJECTS.iter().filter(|(kind, name)| has_object(&connection, kind, name)).map(|(_, name)| *name).collect();
+            let expected: &[&str] = if blocker.contains("TABLE identity_decisions") { &["identity_decisions"] } else if blocker.contains("TABLE revision_evidence") { &["revision_evidence"] } else if blocker.contains("TABLE pending_claims") { &["pending_claims"] } else if blocker.contains("TRIGGER") { &["pending_claims_separated_needs_its_object"] } else { &["pending_claims_by_state"] };
+            assert_eq!(leftovers, expected, "nothing of the failed step survived except the blocker itself: {blocker}");
+            assert!(connection.execute("UPDATE thought_revisions SET title = 'x'", []).is_err(), "v7 triggers still guard the data");
+        }
+    }
+
+    #[test]
+    fn an_interrupted_v8_upgrade_leaves_v7_intact_and_the_next_open_completes_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v7_database(&path);
+        let before = v7_fingerprint(&Connection::open(&path).unwrap());
+        {
+            // A process that dies half way through the step: the transaction is never committed, the connection just goes away.
+            let connection = Connection::open(&path).unwrap();
+            let half = SCHEMA_V8.split("CREATE TABLE pending_claims").next().unwrap();
+            connection.execute_batch(&format!("BEGIN IMMEDIATE; {half}")).unwrap();
+            assert!(has_object(&connection, "table", "revision_evidence"), "visible inside the open transaction");
+        }
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 7);
+        assert!(!has_object(&connection, "table", "identity_decisions") && !has_object(&connection, "table", "revision_evidence"), "the half-built step vanished");
+        assert_eq!(v7_fingerprint(&connection), before);
+        drop(connection);
+        CaptureStore::open(&path).unwrap();
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 8);
+        assert_eq!(v7_fingerprint(&connection), before);
+        assert!(V8_OBJECTS.iter().all(|(kind, name)| has_object(&connection, kind, name)));
+    }
+
+    #[test]
+    fn an_older_binary_refuses_a_v8_database_untouched() {
+        // "An older binary" is modelled by the migrator at its previous latest version (7): it must refuse version 8 and write nothing.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v7_database(&path);
+        CaptureStore::open(&path).unwrap();
+        let bytes_before = std::fs::read(&path).unwrap();
+        let mut connection = Connection::open(&path).unwrap();
+        let outcome = migrate_with(&mut connection, &STEPS[..7]);
+        assert!(matches!(outcome, Err(StoreError::Corrupt(_))), "{outcome:?}");
+        drop(connection);
+        assert_eq!(std::fs::read(&path).unwrap(), bytes_before, "refused without a single byte changing");
     }
 
     /// Works on copies; the original is never opened for writing.
@@ -1287,7 +1711,7 @@ mod tests {
         let elapsed = started.elapsed();
         let connection = Connection::open(&path).unwrap();
         let counts_after = tables.map(|t| count(&connection, t));
-        assert_eq!(user_version(&connection), 7);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION);
         assert_eq!(v6_fingerprint(&connection), before, "authoritative data: byte-for-byte identical");
         assert_eq!(counts_after, counts_before);
         let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
@@ -1322,11 +1746,11 @@ mod tests {
 
         // A newer schema is refused untouched.
         let newer = copy("newer.db");
-        Connection::open(&newer).unwrap().pragma_update(None, "user_version", 8).unwrap();
+        Connection::open(&newer).unwrap().pragma_update(None, "user_version", SCHEMA_VERSION + 1).unwrap();
         let bytes = std::fs::read(&newer).unwrap();
         assert!(matches!(CaptureStore::open(&newer), Err(StoreError::Corrupt(_))));
         assert_eq!(std::fs::read(&newer).unwrap(), bytes);
-        println!("PROOF newer: a v8 database was refused without modification");
+        println!("PROOF newer: a newer database was refused without modification");
     }
 
     #[test]

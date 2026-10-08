@@ -88,7 +88,6 @@ pub struct SourceSpan {
 
 /// What `revise_if_current` is allowed to be applied to: the state a decision was made for.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(not(test), allow(dead_code))] // Phase 1: no caller outside tests yet
 pub struct ExpectedRevision<'a> {
     pub object_id: &'a str,
     pub project_id: &'a str,
@@ -98,7 +97,7 @@ pub struct ExpectedRevision<'a> {
 /// Who a compare-and-set revision is attributed to. Only these two exist: it can never mint an `initial`, `merge` or span-bearing
 /// `distillation` revision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(not(test), allow(dead_code))] // Phase 1: no caller outside tests yet
+#[cfg_attr(not(test), allow(dead_code))] // no production caller yet (Phase 3 wires the pipeline)
 pub enum CasOrigin {
     /// A revision Arthur made on its own (shown as "Created by Arthur").
     System,
@@ -116,7 +115,7 @@ impl CasOrigin {
 
 /// Why a compare-and-set revision was refused. Every variant means nothing was written.
 #[derive(Debug)]
-#[cfg_attr(not(test), allow(dead_code))] // Phase 1: no caller outside tests yet
+#[cfg_attr(not(test), allow(dead_code))] // fields are read by tests and by the Phase 3 pipeline
 pub enum ReviseConflict {
     ObjectNotFound,
     ProjectMismatch { actual: String },
@@ -240,39 +239,12 @@ impl CaptureStore {
     ///
     /// The writer never sets Capture provenance (no span is invented for text it did not quote) and never touches relations, the
     /// graph, or any retrieval index. It is not called by any command or by distillation yet.
-    // Phase 1 capability: exercised by tests; the automatic pipeline that will call it is a later phase.
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[cfg_attr(not(test), allow(dead_code))] // no production caller yet (Phase 3 wires the pipeline)
     pub fn revise_if_current(&self, expected: &ExpectedRevision<'_>, content: RevisionContent, origin: CasOrigin) -> Result<Revision, ReviseConflict> {
         let mut connection = self.connection.lock().map_err(|_| ReviseConflict::Store(StoreError::Poisoned))?;
         // IMMEDIATE takes the write lock before the first read, so the check and the write cannot be separated by another connection.
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(|e| ReviseConflict::Store(e.into()))?;
-        let row: Option<(String, Option<String>)> = transaction
-            .query_row("SELECT project_id, current_revision_id FROM knowledge_objects WHERE id = ?1", [expected.object_id], |row| Ok((row.get(0)?, row.get(1)?)))
-            .optional()
-            .map_err(|e| ReviseConflict::Store(e.into()))?;
-        let (project_id, current) = row.ok_or(ReviseConflict::ObjectNotFound)?;
-        if project_id != expected.project_id {
-            return Err(ReviseConflict::ProjectMismatch { actual: project_id });
-        }
-        let archived: Option<bool> = transaction
-            .query_row("SELECT archived_at IS NOT NULL FROM projects WHERE id = ?1", [&project_id], |row| row.get(0))
-            .optional()
-            .map_err(|e| ReviseConflict::Store(e.into()))?;
-        if archived != Some(false) {
-            return Err(ReviseConflict::ProjectArchived);
-        }
-        let current = current.ok_or_else(|| ReviseConflict::Store(StoreError::Corrupt(format!("knowledge object {:?} has no current revision", expected.object_id))))?;
-        if current != expected.base_revision_id {
-            return Err(ReviseConflict::Stale { expected: expected.base_revision_id.to_string(), actual: current });
-        }
-        let base = own_revision_in(&transaction, expected.object_id, &current)?;
-        if (content.kind.as_str(), content.title.as_str(), content.body.as_str()) == (base.kind.as_str(), base.title.as_str(), base.body.as_str()) {
-            return Err(ReviseConflict::Rejected("nothing changed".into()));
-        }
-        let created = insert_revision(
-            &transaction,
-            NewRevision { object_id: expected.object_id, content, origin: origin.as_str(), provenance: None, parents: vec![base.id], make_current: true, created_at: None },
-        )?;
+        let created = revise_if_current_in(&transaction, expected, content, origin)?;
         transaction.commit().map_err(|e| ReviseConflict::Store(e.into()))?;
         Ok(created)
     }
@@ -291,6 +263,38 @@ impl CaptureStore {
 
 fn content_of(revision: &Revision) -> Content<'_> {
     Content { id: &revision.id, kind: &revision.kind, title: &revision.title, body: &revision.body }
+}
+
+/// The compare-and-set body, for composing into a larger transaction. The CALLER owns the transaction and must have begun it IMMEDIATE;
+/// on any error it must roll back (dropping the transaction does). Writes nothing when it returns an error.
+pub(super) fn revise_if_current_in(connection: &Connection, expected: &ExpectedRevision<'_>, content: RevisionContent, origin: CasOrigin) -> Result<Revision, ReviseConflict> {
+    let row: Option<(String, Option<String>)> = connection
+        .query_row("SELECT project_id, current_revision_id FROM knowledge_objects WHERE id = ?1", [expected.object_id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .optional()
+        .map_err(|e| ReviseConflict::Store(e.into()))?;
+    let (project_id, current) = row.ok_or(ReviseConflict::ObjectNotFound)?;
+    if project_id != expected.project_id {
+        return Err(ReviseConflict::ProjectMismatch { actual: project_id });
+    }
+    let archived: Option<bool> = connection
+        .query_row("SELECT archived_at IS NOT NULL FROM projects WHERE id = ?1", [&project_id], |row| row.get(0))
+        .optional()
+        .map_err(|e| ReviseConflict::Store(e.into()))?;
+    if archived != Some(false) {
+        return Err(ReviseConflict::ProjectArchived);
+    }
+    let current = current.ok_or_else(|| ReviseConflict::Store(StoreError::Corrupt(format!("knowledge object {:?} has no current revision", expected.object_id))))?;
+    if current != expected.base_revision_id {
+        return Err(ReviseConflict::Stale { expected: expected.base_revision_id.to_string(), actual: current });
+    }
+    let base = own_revision_in(connection, expected.object_id, &current)?;
+    if (content.kind.as_str(), content.title.as_str(), content.body.as_str()) == (base.kind.as_str(), base.title.as_str(), base.body.as_str()) {
+        return Err(ReviseConflict::Rejected("nothing changed".into()));
+    }
+    Ok(insert_revision(
+        connection,
+        NewRevision { object_id: expected.object_id, content, origin: origin.as_str(), provenance: None, parents: vec![base.id], make_current: true, created_at: None },
+    )?)
 }
 
 /// Creates an object's initial revision and makes it current. Called inside the transaction that inserts the
@@ -469,6 +473,11 @@ fn current_revision_in(connection: &Connection, object_id: &str) -> Result<Revis
     let current = current.ok_or_else(|| StoreError::NotFound("object does not exist".into()))?;
     let id = current.ok_or_else(|| StoreError::Corrupt(format!("knowledge object {object_id:?} has no current revision")))?;
     revision_in(connection, &id)
+}
+
+/// A revision by id, verified like every read.
+pub(super) fn revision_for(connection: &Connection, revision_id: &str) -> Result<Revision, StoreError> {
+    revision_in(connection, revision_id)
 }
 
 fn revision_in(connection: &Connection, revision_id: &str) -> Result<Revision, StoreError> {
