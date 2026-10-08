@@ -1,8 +1,7 @@
 use tauri::{AppHandle, State};
 
 use crate::commands::integration;
-use crate::graph::integration::ChangedKnowledge;
-use crate::distillation::{DistillError, DistillationService};
+use crate::distillation::{change_events, DistillError, DistillationService};
 use crate::storage::capture_store::CaptureStore;
 use crate::storage::knowledge_store::KnowledgeObject;
 use crate::storage::organization_store::OrganizationState;
@@ -16,14 +15,14 @@ pub async fn distill_capture(
     store: State<'_, CaptureStore>,
     capture_id: String,
 ) -> Result<Vec<KnowledgeObject>, DistillError> {
-    let objects = distillation.distill(&store, &capture_id).await?;
-    // The objects are committed. Graph Integration continues in the background and can neither delay nor fail this result.
-    for object in &objects {
-        if let Ok(Some(revision_id)) = store.current_revision_id_of(&object.id) {
-            integration::notify(&app, ChangedKnowledge::created(&object.id, &revision_id));
-        }
+    let outcome = distillation.distill_detailed(&store, &capture_id).await?;
+    // Everything is committed. Graph Integration continues in the background and can neither delay nor fail this result. The events come
+    // only from a committed outcome (NEW -> created, REVISE -> revised, UNCERTAIN -> none) and are dropped unless Automatic Connections is on.
+    for event in change_events(&store, &outcome) {
+        integration::notify(&app, event);
     }
-    Ok(objects)
+    // Existing contract: the objects the distillation created. Revised objects and pending claims are not folded into this list.
+    Ok(outcome.objects)
 }
 
 #[tauri::command]

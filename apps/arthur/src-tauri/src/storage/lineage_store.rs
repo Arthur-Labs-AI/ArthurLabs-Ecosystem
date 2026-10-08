@@ -267,7 +267,7 @@ fn content_of(revision: &Revision) -> Content<'_> {
 
 /// The compare-and-set body, for composing into a larger transaction. The CALLER owns the transaction and must have begun it IMMEDIATE;
 /// on any error it must roll back (dropping the transaction does). Writes nothing when it returns an error.
-pub(super) fn revise_if_current_in(connection: &Connection, expected: &ExpectedRevision<'_>, content: RevisionContent, origin: CasOrigin) -> Result<Revision, ReviseConflict> {
+pub fn revise_if_current_in(connection: &Connection, expected: &ExpectedRevision<'_>, content: RevisionContent, origin: CasOrigin) -> Result<Revision, ReviseConflict> {
     let row: Option<(String, Option<String>)> = connection
         .query_row("SELECT project_id, current_revision_id FROM knowledge_objects WHERE id = ?1", [expected.object_id], |row| Ok((row.get(0)?, row.get(1)?)))
         .optional()

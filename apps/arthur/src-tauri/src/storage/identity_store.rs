@@ -33,11 +33,11 @@ pub const MAX_PENDING_CANDIDATES: usize = 4;
 const MAX_AUDIT_ENTRIES: usize = 16;
 
 /// Names the audit may record. A mirror of `identity::types::Veto` as snake_case; kept as data so storage imports nothing from it.
-pub const VETO_NAMES: [&str; 25] = [
+pub const VETO_NAMES: [&str; 27] = [
     "project_mismatch", "project_archived", "target_archived", "inconsistent_snapshot", "classifier_failed", "unknown_model", "too_few_runs",
     "unknown_candidate_id", "duplicate_signal", "incomplete_signals", "out_of_range_score", "ambiguous_target", "weak_evidence", "runs_disagree",
     "relation_contradicts_score", "fundamental_reframing", "reframing_signal", "subtask_of_target", "referent_unresolved", "incompatible_kind",
-    "user_owned_revision", "supersession_not_explicit", "not_a_prior_decision", "inbox_requires_confirmation", "conflicting_claims",
+    "user_owned_revision", "supersession_not_explicit", "not_a_prior_decision", "inbox_requires_confirmation", "conflicting_claims", "stale_target", "invalid_draft",
 ];
 const REFRAMING_VETOES: [&str; 2] = ["fundamental_reframing", "reframing_signal"];
 pub const UNCHECKED_REASONS: [&str; 7] = ["disabled", "invalid_claim", "invalid_candidates", "no_eligible_candidates", "classifier_failed", "malformed_signals", "review_quota"];
@@ -630,5 +630,58 @@ impl CaptureStore {
 
     pub fn separate_pending_claim(&self, pending_id: &str, method: &str) -> Res<PendingResolution> {
         self.in_identity_transaction(|tx| separate_pending_claim_in(tx, pending_id, method))
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Reads for the identity-aware distillation path (M04.7B Phase 3). Short, lock-scoped reads taken BEFORE any classifier call, so no
+// SQLite lock is ever held while a provider works.
+
+/// One object of a project as its CURRENT revision stands.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PoolObject {
+    pub object_id: String,
+    pub kind: String,
+    pub title: String,
+    pub body: String,
+    pub revision_id: String,
+    pub revision_origin: String,
+}
+
+/// The capture's CURRENT project and whether it is archived.
+pub fn capture_project_in(connection: &Connection, capture_id: &str) -> Res<Option<(String, bool)>> {
+    Ok(connection
+        .query_row("SELECT c.project_id, p.archived_at IS NOT NULL FROM captures c JOIN projects p ON p.id = c.project_id WHERE c.id = ?1", [capture_id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .optional()?)
+}
+
+/// Every object of a project with its current revision, newest first. Nothing from another project is ever returned.
+pub fn project_pool_in(connection: &Connection, project_id: &str) -> Res<Vec<PoolObject>> {
+    let mut statement = connection.prepare(
+        "SELECT o.id, o.kind, o.title, o.body, r.id, r.origin FROM knowledge_objects o JOIN thought_revisions r ON r.id = o.current_revision_id AND r.object_id = o.id WHERE o.project_id = ?1 ORDER BY o.seq DESC",
+    )?;
+    let rows = statement
+        .query_map([project_id], |row| Ok(PoolObject { object_id: row.get(0)?, kind: row.get(1)?, title: row.get(2)?, body: row.get(3)?, revision_id: row.get(4)?, revision_origin: row.get(5)? }))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// Open or deferred claims whose capture is CURRENTLY in the project.
+pub fn unresolved_pending_count_in(connection: &Connection, project_id: &str) -> Res<usize> {
+    let count: i64 = connection.query_row(
+        "SELECT count(*) FROM pending_claims p JOIN captures c ON c.id = p.capture_id WHERE c.project_id = ?1 AND p.state IN ('open', 'deferred')",
+        [project_id],
+        |row| row.get(0),
+    )?;
+    Ok(count as usize)
+}
+
+impl CaptureStore {
+    /// `(project id, archived, pool)` for a capture, in one short read.
+    pub fn identity_snapshot(&self, capture_id: &str) -> Res<Option<(String, bool, Vec<PoolObject>)>> {
+        let connection = self.connection.lock().map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+        let Some((project_id, archived)) = capture_project_in(&connection, capture_id)? else { return Ok(None) };
+        let pool = project_pool_in(&connection, &project_id)?;
+        Ok(Some((project_id, archived, pool)))
     }
 }

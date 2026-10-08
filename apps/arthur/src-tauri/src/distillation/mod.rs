@@ -6,6 +6,7 @@
 //! in one transaction. Any invalid candidate rejects the whole distillation, so invalid
 //! provenance can never be persisted. The raw capture is never modified.
 
+pub mod evolution;
 pub mod openai;
 pub mod prompt;
 pub mod resolve;
@@ -111,8 +112,53 @@ pub trait Distiller: Send + Sync {
     fn distill<'a>(&'a self, capture: &'a str) -> BoxFuture<'a, Result<Vec<Candidate>, DistillError>>;
 }
 
+/// What one distillation commit did. `objects` are the KnowledgeObjects NEW claims created (what `distill` has always returned);
+/// `revised` are existing objects that received a new current revision; `pending` are claims held for a person's decision.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DistillationOutcome {
+    pub objects: Vec<KnowledgeObject>,
+    pub revised: Vec<RevisedObject>,
+    pub pending: Vec<crate::storage::identity_store::PendingClaim>,
+    /// `false`: the capture had already been distilled and nothing was written by this call.
+    pub fresh: bool,
+}
+
+impl DistillationOutcome {
+    fn plain(objects: Vec<KnowledgeObject>) -> Self {
+        Self { objects, revised: Vec::new(), pending: Vec::new(), fresh: true }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RevisedObject {
+    pub object_id: String,
+    pub previous_revision_id: String,
+    pub revision_id: String,
+}
+
+/// The Graph events a COMMITTED outcome calls for, and nothing else: NEW -> created, REVISE -> revised, UNCERTAIN -> none. Built only
+/// from an outcome, which exists only after the commit succeeded, so a rolled-back attempt can never produce one. Whether they do any
+/// Graph work is Automatic Connections' decision (`commands::integration::notify`).
+pub fn change_events(store: &CaptureStore, outcome: &DistillationOutcome) -> Vec<crate::graph::integration::ChangedKnowledge> {
+    use crate::graph::integration::ChangedKnowledge;
+    let mut events = Vec::new();
+    for object in &outcome.objects {
+        if let Ok(Some(revision_id)) = store.current_revision_id_of(&object.id) {
+            events.push(ChangedKnowledge::created(&object.id, &revision_id));
+        }
+    }
+    if outcome.fresh {
+        for revised in &outcome.revised {
+            events.push(ChangedKnowledge::revised(&revised.object_id, &revised.previous_revision_id, &revised.revision_id));
+        }
+    }
+    events
+}
+
 pub struct DistillationService {
     distiller: Arc<dyn Distiller>,
+    /// The identity-aware commit path. `None` in production: it is injected by tests only (see `evolution`).
+    evolution: Option<evolution::EvolutionPipeline>,
     /// Captures this process is working on right now. Memory only: "running" must never outlive the process.
     running: Mutex<HashSet<String>>,
 }
@@ -131,7 +177,19 @@ impl Drop for RunningGuard<'_> {
 
 impl DistillationService {
     pub fn new(distiller: Arc<dyn Distiller>) -> Self {
-        Self { distiller, running: Mutex::new(HashSet::new()) }
+        Self { distiller, evolution: None, running: Mutex::new(HashSet::new()) }
+    }
+
+    /// Enables the identity-aware path for tests. Deliberately not compiled into the app: nothing in production can activate an
+    /// incomplete pipeline. Phase 4/5 replace this once a real classifier, synthesis, consent and the review UI exist.
+    #[cfg(test)]
+    pub fn with_evolution(mut self, pipeline: evolution::EvolutionPipeline) -> Self {
+        self.evolution = Some(pipeline);
+        self
+    }
+
+    fn active_evolution(&self) -> Option<&evolution::EvolutionPipeline> {
+        self.evolution.as_ref().filter(|pipeline| pipeline.enabled())
     }
 
     /// Distills a capture, once. A capture that already has a distillation (including one that
@@ -139,10 +197,17 @@ impl DistillationService {
     ///
     /// A failed attempt is remembered durably (`organization_failures`), so it survives a restart and can be retried.
     /// Recording it can never fail the call or touch the capture: the original error is what the caller gets.
+    #[cfg_attr(not(test), allow(dead_code))] // production calls `distill_detailed`; this is the long-standing list-only form
     pub async fn distill(&self, store: &CaptureStore, capture_id: &str) -> Result<Vec<KnowledgeObject>, DistillError> {
+        Ok(self.distill_detailed(store, capture_id).await?.objects)
+    }
+
+    /// As `distill`, with everything the commit did. `objects` is exactly what `distill` returns: the objects NEW claims created.
+    /// Revised objects and pending claims are reported separately so the meaning of that list never changes.
+    pub async fn distill_detailed(&self, store: &CaptureStore, capture_id: &str) -> Result<DistillationOutcome, DistillError> {
         let capture = store.get_capture(capture_id)?.ok_or(DistillError::CaptureNotFound)?;
         if let Some(existing) = store.distillation_for(capture_id)? {
-            return Ok(existing);
+            return Ok(DistillationOutcome { objects: existing, revised: Vec::new(), pending: Vec::new(), fresh: false });
         }
 
         self.running.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(capture_id.to_string());
@@ -155,11 +220,14 @@ impl DistillationService {
         result
     }
 
-    async fn attempt(&self, store: &CaptureStore, capture_id: &str, content: &str) -> Result<Vec<KnowledgeObject>, DistillError> {
+    async fn attempt(&self, store: &CaptureStore, capture_id: &str, content: &str) -> Result<DistillationOutcome, DistillError> {
         let candidates = self.distiller.distill(content).await?;
         let objects = resolve::resolve_candidates(content, candidates)?;
+        if let Some(pipeline) = self.active_evolution() {
+            return evolution::commit_with_identity(store, pipeline, capture_id, content, objects);
+        }
         // All-or-nothing. If a concurrent call finished first, this returns its set. A success also clears any failure.
-        Ok(store.record_distillation(capture_id, objects)?)
+        Ok(DistillationOutcome::plain(store.record_distillation(capture_id, objects)?))
     }
 
     /// Every capture's organization state, durable ones from the store plus "running" for what is in flight now.
@@ -179,6 +247,9 @@ impl DistillationService {
         Ok(states)
     }
 }
+
+#[cfg(test)]
+mod evolution_tests;
 
 #[cfg(test)]
 mod tests {

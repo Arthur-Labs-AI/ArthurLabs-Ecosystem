@@ -83,61 +83,20 @@ impl CaptureStore {
         let transaction = connection.transaction()?;
 
         // The objects inherit the capture's project as it is NOW, in this same transaction.
-        let (content, project_id): (String, String) = transaction
-            .query_row("SELECT content, project_id FROM captures WHERE id = ?1", [capture_id], |row| Ok((row.get(0)?, row.get(1)?)))
-            .optional()?
-            .ok_or_else(|| StoreError::Invalid("capture does not exist".into()))?;
-
-        if let Some(existing) = distillation_in(&transaction, capture_id)? {
-            return Ok(existing);
-        }
+        let start = match begin_distillation_in(&transaction, capture_id)? {
+            Begin::Existing(existing) => return Ok(existing),
+            Begin::Fresh(start) => start,
+        };
 
         for (index, object) in objects.iter().enumerate() {
-            validate_new(&content, object).map_err(|reason| StoreError::Invalid(format!("object {index}: {reason}")))?;
+            validate_new(&start.content, object).map_err(|reason| StoreError::Invalid(format!("object {index}: {reason}")))?;
         }
         // Source order, so `seq` order is reading order.
         objects.sort_by_key(|object| (object.source_start, object.source_end));
 
-        transaction.execute(
-            "INSERT INTO distillation_runs (capture_id, created_at) VALUES (?1, ?2)",
-            params![capture_id, now_rfc3339()?],
-        )?;
-        // A success supersedes any recorded failure, in the same transaction, so the two never disagree.
-        transaction.execute("DELETE FROM organization_failures WHERE capture_id = ?1", [capture_id])?;
-
         let mut stored = Vec::with_capacity(objects.len());
         for object in objects {
-            let id = Uuid::new_v4().to_string();
-            let created_at = now_rfc3339()?;
-            transaction.execute(
-                "INSERT INTO knowledge_objects (id, kind, title, body, created_at, project_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                params![id, object.kind, object.title, object.body, created_at, project_id],
-            )?;
-            transaction.execute(
-                "INSERT INTO object_sources (object_id, capture_id, source_start, source_end) VALUES (?1, ?2, ?3, ?4)",
-                params![id, capture_id, object.source_start, object.source_end],
-            )?;
-            // Every object starts its history with one initial revision, which keeps the original source span.
-            super::lineage_store::create_initial_revision(
-                &transaction,
-                &id,
-                (&object.kind, &object.title, &object.body),
-                &created_at,
-                Some((capture_id, object.source_start, object.source_end)),
-            )?;
-            stored.push(KnowledgeObject {
-                id,
-                kind: object.kind,
-                title: object.title,
-                body: object.body,
-                created_at,
-                provenance: Provenance {
-                    capture_id: capture_id.to_string(),
-                    source_start: object.source_start,
-                    source_end: object.source_end,
-                },
-                project_id: project_id.clone(),
-            });
+            stored.push(insert_object_in(&transaction, capture_id, &start.project_id, object)?);
         }
 
         transaction.commit()?;
@@ -161,6 +120,64 @@ impl CaptureStore {
         );
         read_objects(&connection, &sql, [project_id])
     }
+}
+
+/// What a distillation commit starts from: the capture's text and its project as of NOW.
+pub struct DistillationStart {
+    pub content: String,
+    pub project_id: String,
+}
+
+pub enum Begin {
+    /// The capture was already distilled: this is its set, and NOTHING was written.
+    Existing(Vec<KnowledgeObject>),
+    /// The run row is written and any recorded failure cleared; the caller now adds the objects, all in the same transaction.
+    Fresh(DistillationStart),
+}
+
+/// The first step of every distillation commit (identity-aware or not): read the capture, honour an earlier run, record this run, and
+/// clear a recorded failure. Shared so the two commit paths cannot drift apart. The caller owns the transaction.
+pub fn begin_distillation_in(transaction: &Connection, capture_id: &str) -> Result<Begin, StoreError> {
+    let (content, project_id): (String, String) = transaction
+        .query_row("SELECT content, project_id FROM captures WHERE id = ?1", [capture_id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .optional()?
+        .ok_or_else(|| StoreError::Invalid("capture does not exist".into()))?;
+    if let Some(existing) = distillation_in(transaction, capture_id)? {
+        return Ok(Begin::Existing(existing));
+    }
+    transaction.execute("INSERT INTO distillation_runs (capture_id, created_at) VALUES (?1, ?2)", params![capture_id, now_rfc3339()?])?;
+    // A success supersedes any recorded failure, in the same transaction, so the two never disagree.
+    transaction.execute("DELETE FROM organization_failures WHERE capture_id = ?1", [capture_id])?;
+    Ok(Begin::Fresh(DistillationStart { content, project_id }))
+}
+
+/// Creates one object from a validated claim: the object, its source mapping and its initial revision. The caller owns the transaction.
+pub fn insert_object_in(transaction: &Connection, capture_id: &str, project_id: &str, object: NewKnowledgeObject) -> Result<KnowledgeObject, StoreError> {
+    let id = Uuid::new_v4().to_string();
+    let created_at = now_rfc3339()?;
+    transaction.execute(
+        "INSERT INTO knowledge_objects (id, kind, title, body, created_at, project_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![id, object.kind, object.title, object.body, created_at, project_id],
+    )?;
+    transaction.execute(
+        "INSERT INTO object_sources (object_id, capture_id, source_start, source_end) VALUES (?1, ?2, ?3, ?4)",
+        params![id, capture_id, object.source_start, object.source_end],
+    )?;
+    // Every object starts its history with one initial revision, which keeps the original source span.
+    super::lineage_store::create_initial_revision(transaction, &id, (&object.kind, &object.title, &object.body), &created_at, Some((capture_id, object.source_start, object.source_end)))?;
+    Ok(KnowledgeObject {
+        id,
+        kind: object.kind,
+        title: object.title,
+        body: object.body,
+        created_at,
+        provenance: Provenance { capture_id: capture_id.to_string(), source_start: object.source_start, source_end: object.source_end },
+        project_id: project_id.to_string(),
+    })
+}
+
+pub fn validate_claim(content: &str, object: &NewKnowledgeObject) -> Result<(), String> {
+    validate_new(content, object)
 }
 
 pub(super) fn get_object_in(connection: &Connection, object_id: &str) -> Result<Option<KnowledgeObject>, StoreError> {

@@ -106,6 +106,12 @@ impl CaptureStore {
         self.connection.lock().unwrap().execute_batch(sql).unwrap();
     }
 
+    /// Test helper: the single integer a query returns.
+    #[cfg(test)]
+    pub fn query_i64_for_test(&self, sql: &str) -> i64 {
+        self.connection.lock().unwrap().query_row(sql, [], |row| row.get(0)).unwrap()
+    }
+
     fn from_connection(mut connection: Connection) -> Result<Self, StoreError> {
         // A successful insert must be on disk before `create` returns.
         connection.pragma_update(None, "synchronous", "FULL")?;

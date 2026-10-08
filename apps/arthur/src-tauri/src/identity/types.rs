@@ -165,6 +165,11 @@ pub enum Veto {
     NotAPriorDecision,
     InboxRequiresConfirmation,
     ConflictingClaims,
+    // set by the pipeline when the world changed between the decision and the commit
+    /// The target moved on (a newer revision, another project, archived) after the decision was made.
+    StaleTarget,
+    /// The proposed revision text was refused before or at commit.
+    InvalidDraft,
 }
 
 /// WHO the claim is, independent of what may be done about it.
