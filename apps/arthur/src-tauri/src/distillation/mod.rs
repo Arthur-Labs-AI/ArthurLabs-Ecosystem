@@ -224,7 +224,7 @@ impl DistillationService {
         let candidates = self.distiller.distill(content).await?;
         let objects = resolve::resolve_candidates(content, candidates)?;
         if let Some(pipeline) = self.active_evolution() {
-            return evolution::commit_with_identity(store, pipeline, capture_id, content, objects);
+            return evolution::commit_with_identity(store, pipeline, capture_id, content, objects).await;
         }
         // All-or-nothing. If a concurrent call finished first, this returns its set. A success also clears any failure.
         Ok(DistillationOutcome::plain(store.record_distillation(capture_id, objects)?))

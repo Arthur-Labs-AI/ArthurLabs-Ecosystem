@@ -28,6 +28,7 @@
 
 #![allow(dead_code)] // Phase 3: only tests construct the pipeline; Phase 4/5 activate it (see the module docs)
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -37,8 +38,9 @@ use serde::{Deserialize, Serialize};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
+use crate::async_util::BoxFuture;
 use crate::identity::{
-    resolve_capture, Audit, Candidate, Claim, EvidenceSpan, IdentityClassifier, NewReason, ObjectLifecycle, Outcome, ProjectState, Relation, Resolution, ResolverPolicy, RevisionView, TargetSnapshot,
+    eligible_candidates, resolve_capture, ClassifierFailure, ClassifierOutput, ClassifyRequest, Audit, Candidate, Claim, EvidenceSpan, IdentityClassifier, NewReason, ObjectLifecycle, Outcome, ProjectState, Relation, Resolution, ResolverPolicy, RevisionView, TargetSnapshot,
     UncheckedReason, Veto, KINDS, MAX_CANDIDATES,
 };
 use crate::recall::query::{interpret, MAX_QUERY_CHARS};
@@ -145,9 +147,64 @@ impl Default for EvolutionLimits {
     }
 }
 
+/// An identity classifier that needs the network. The adapter fetches EVERY claim's classification first (no database lock held, no
+/// runtime nesting), and the pure, synchronous resolver then reads those finished results through `Prefetched`. It receives only the
+/// already-filtered candidate sets, so nothing outside the capture's project can ever be sent.
+pub trait AsyncIdentityClassifier: Send + Sync {
+    /// One result per item, in order. Must be bounded (requests, time, bytes) and must fail closed.
+    fn classify_capture<'a>(&'a self, items: &'a [(Claim, Vec<IdCandidate>)]) -> BoxFuture<'a, Vec<Result<ClassifierOutput, ClassifierFailure>>>;
+}
+
+use crate::identity::Candidate as IdCandidate;
+
+pub enum ClassifierBackend {
+    /// Answers immediately (the Phase 3 test doubles).
+    Sync(Arc<dyn IdentityClassifier + Send + Sync>),
+    /// Needs the network: prefetched before the pure resolver runs.
+    Async(Arc<dyn AsyncIdentityClassifier>),
+}
+
+/// Finished classifications, replayed to the synchronous resolver by claim ordinal. A request for a different candidate set than the one
+/// that was fetched for is refused (`Unavailable`): a stale or mismatched result is never reused.
+pub struct Prefetched {
+    results: HashMap<usize, (Vec<String>, Result<ClassifierOutput, ClassifierFailure>)>,
+}
+
+impl Prefetched {
+    pub fn new(items: &[(Claim, Vec<IdCandidate>)], results: Vec<Result<ClassifierOutput, ClassifierFailure>>) -> Self {
+        let mut map = HashMap::new();
+        for (index, ((claim, candidates), result)) in items.iter().zip(results).enumerate() {
+            let mut ids: Vec<String> = candidates.iter().map(|c| c.object_id.clone()).collect();
+            ids.sort();
+            map.insert(claim.ordinal, (ids, result));
+            let _ = index;
+        }
+        Self { results: map }
+    }
+
+    pub fn all_failed(items: &[(Claim, Vec<IdCandidate>)], failure: ClassifierFailure) -> Self {
+        Self::new(items, items.iter().map(|_| Err(failure)).collect())
+    }
+}
+
+impl IdentityClassifier for Prefetched {
+    fn classify(&self, request: &ClassifyRequest<'_>) -> Result<ClassifierOutput, ClassifierFailure> {
+        let Some((ids, result)) = self.results.get(&request.claim.ordinal) else { return Err(ClassifierFailure::Unavailable) };
+        let mut asked: Vec<String> = request.candidates.iter().map(|c| c.object_id.clone()).collect();
+        asked.sort();
+        if &asked != ids {
+            return Err(ClassifierFailure::Unavailable);
+        }
+        result.clone()
+    }
+}
+
 pub struct EvolutionPipeline {
     pub settings: Arc<EvolutionSettings>,
-    pub classifier: Arc<dyn IdentityClassifier + Send + Sync>,
+    pub classifier: ClassifierBackend,
+    /// Anything else that must still hold (for example provider consent), read before the request, after it, and again inside the
+    /// commit transaction before any revision is written. `None`: nothing more is required.
+    pub still_allowed: Option<Arc<dyn Fn() -> bool + Send + Sync>>,
     pub drafter: Arc<dyn RevisionDrafter + Send + Sync>,
     pub policy: ResolverPolicy,
     pub limits: EvolutionLimits,
@@ -156,6 +213,11 @@ pub struct EvolutionPipeline {
 impl EvolutionPipeline {
     pub fn enabled(&self) -> bool {
         self.settings.enabled()
+    }
+
+    /// Switched on AND every additional requirement (consent) still holds right now.
+    pub fn allowed(&self) -> bool {
+        self.enabled() && self.still_allowed.as_ref().is_none_or(|check| check())
     }
 }
 
@@ -191,6 +253,7 @@ pub fn veto_name(veto: Veto) -> &'static str {
         Veto::ConflictingClaims => "conflicting_claims",
         Veto::StaleTarget => "stale_target",
         Veto::InvalidDraft => "invalid_draft",
+        Veto::EvolutionWithdrawn => "evolution_withdrawn",
     }
 }
 
@@ -326,7 +389,8 @@ fn draft_problem(base: &PoolObject, draft: &RevisionDraft, support: &EvidenceSup
     }
 }
 
-fn plan_claims(store: &CaptureStore, pipeline: &EvolutionPipeline, capture_id: &str, content: &str, claims: &[NewKnowledgeObject]) -> Result<Vec<Planned>, DistillError> {
+/// Everything the classifier needs, read in one short, lock-scoped snapshot.
+fn prepare(store: &CaptureStore, capture_id: &str, content: &str, claims: &[NewKnowledgeObject]) -> Result<Vec<(Claim, Vec<Candidate>)>, DistillError> {
     let (project_id, archived, pool) = store
         .identity_snapshot(capture_id)
         .map_err(to_distill)?
@@ -334,7 +398,7 @@ fn plan_claims(store: &CaptureStore, pipeline: &EvolutionPipeline, capture_id: &
     let project = ProjectState { id: project_id.clone(), archived, is_inbox: project_id == INBOX_PROJECT_ID };
     let chars: Vec<char> = content.chars().collect();
 
-    let items: Vec<(Claim, Vec<Candidate>)> = claims
+    Ok(claims
         .iter()
         .enumerate()
         .map(|(ordinal, claim)| {
@@ -348,15 +412,19 @@ fn plan_claims(store: &CaptureStore, pipeline: &EvolutionPipeline, capture_id: &
                 evidence_text,
                 project: project.clone(),
             };
-            (model_claim, shortlist(claim, &pool).into_iter().map(|object| candidate_of(object, &project)).collect())
+            let candidates: Vec<Candidate> = shortlist(claim, &pool).into_iter().map(|object| candidate_of(object, &project)).collect();
+            // exactly what the resolver would show a classifier: same project, unarchived, consistent. Only this set is ever sent anywhere.
+            let eligible = eligible_candidates(&model_claim, &candidates);
+            (model_claim, eligible)
         })
-        .collect();
+        .collect())
+}
 
+fn plan_from(store: &CaptureStore, pipeline: &EvolutionPipeline, items: &[(Claim, Vec<Candidate>)], classifier: &dyn IdentityClassifier) -> Vec<Planned> {
     let mut policy = pipeline.policy.clone();
     policy.enabled = true; // the pipeline only runs while its own setting is ON
-    let resolutions = resolve_capture(&items, &policy, pipeline.classifier.as_ref());
-
-    Ok(resolutions.into_iter().zip(items.iter()).map(|(resolution, (claim, candidates))| plan_one(store, pipeline, resolution, claim, candidates)).collect())
+    let resolutions = resolve_capture(items, &policy, classifier);
+    resolutions.into_iter().zip(items.iter()).map(|(resolution, (claim, candidates))| plan_one(store, pipeline, resolution, claim, candidates)).collect()
 }
 
 fn plan_one(store: &CaptureStore, pipeline: &EvolutionPipeline, resolution: Resolution, claim: &Claim, candidates: &[Candidate]) -> Planned {
@@ -511,7 +579,7 @@ fn try_revise(tx: &Connection, ctx: &Ctx<'_>, ordinal: i64, claim: &NewKnowledge
     }
 }
 
-fn apply(tx: &Connection, capture_id: &str, claims: &[NewKnowledgeObject], planned: Vec<Planned>, limits: &EvolutionLimits) -> R<Committed> {
+fn apply(tx: &Connection, capture_id: &str, claims: &[NewKnowledgeObject], planned: Vec<Planned>, limits: &EvolutionLimits, allowed: &dyn Fn() -> bool) -> R<Committed> {
     let start = match begin_distillation_in(tx, capture_id)? {
         Begin::Existing(existing) => return Ok(Committed::Existing(existing)),
         Begin::Fresh(start) => start,
@@ -530,6 +598,8 @@ fn apply(tx: &Connection, capture_id: &str, claims: &[NewKnowledgeObject], plann
         let disposed = match plan {
             Plan::New(unchecked) => Disposed::Object(create_object(tx, &ctx, ordinal, claim, &parts, unchecked)?),
             Plan::Uncertain(candidates) => stage_or_fall_back(tx, &ctx, ordinal, claim, &parts, &candidates, false)?.into(),
+            // the latest enabled/consent state is read again here, under the commit: a withdrawn permission means no revision is written
+            Plan::Revise { target, .. } if !allowed() => stage_or_fall_back(tx, &ctx, ordinal, claim, &parts.clone().with_veto("evolution_withdrawn"), &[target.object_id.clone()], false)?.into(),
             Plan::Revise { target, draft } => match try_revise(tx, &ctx, ordinal, claim, &target, &draft, &parts)? {
                 Ok(done) => Disposed::Revised(done),
                 Err(reason) => stage_or_fall_back(tx, &ctx, ordinal, claim, &parts.clone().with_veto(reason), &[target.object_id.clone()], reason == "stale_target")?.into(),
@@ -560,15 +630,31 @@ impl From<Staged> for Disposed {
 }
 
 /// The identity-aware replacement for `record_distillation`. Called only while the pipeline is enabled.
-pub fn commit_with_identity(store: &CaptureStore, pipeline: &EvolutionPipeline, capture_id: &str, content: &str, mut claims: Vec<NewKnowledgeObject>) -> Result<DistillationOutcome, DistillError> {
+///
+/// Concurrency: the snapshot read, the (possibly networked) classification and the drafts all happen with NO database lock held; the
+/// only lock is the one short IMMEDIATE transaction at the end. A network classifier is awaited here, in the caller's task, and its
+/// finished results are handed to the synchronous resolver, so no runtime is ever nested and nothing blocks while a request is in flight.
+pub async fn commit_with_identity(store: &CaptureStore, pipeline: &EvolutionPipeline, capture_id: &str, content: &str, mut claims: Vec<NewKnowledgeObject>) -> Result<DistillationOutcome, DistillError> {
     if claims.is_empty() {
         // Nothing to decide: the recorded empty run is exactly what the plain path writes.
         return Ok(DistillationOutcome::plain(store.record_distillation(capture_id, claims)?));
     }
     // Source order, so a claim's ordinal is its position in reading order (the same order `record_distillation` stores).
     claims.sort_by_key(|claim| (claim.source_start, claim.source_end));
-    let planned = plan_claims(store, pipeline, capture_id, content, &claims)?;
-    let committed = store.in_identity_transaction(|tx| apply(tx, capture_id, &claims, planned, &pipeline.limits)).map_err(to_distill)?;
+    let items = prepare(store, capture_id, content, &claims)?;
+
+    let planned = match &pipeline.classifier {
+        ClassifierBackend::Sync(classifier) => plan_from(store, pipeline, &items, classifier.as_ref()),
+        ClassifierBackend::Async(classifier) => {
+            // Nothing is sent unless the feature is on and every extra requirement (consent) holds right now.
+            let results = if pipeline.allowed() { classifier.classify_capture(&items).await } else { items.iter().map(|_| Err(ClassifierFailure::Unavailable)).collect() };
+            // ...and again after the wait: a result that arrives after the person switched off or revoked consent is discarded.
+            let prefetched = if pipeline.allowed() { Prefetched::new(&items, results) } else { Prefetched::all_failed(&items, ClassifierFailure::Unavailable) };
+            plan_from(store, pipeline, &items, &prefetched)
+        }
+    };
+    let allowed = || pipeline.allowed();
+    let committed = store.in_identity_transaction(|tx| apply(tx, capture_id, &claims, planned, &pipeline.limits, &allowed)).map_err(to_distill)?;
     Ok(match committed {
         Committed::Existing(objects) => DistillationOutcome { objects, revised: Vec::new(), pending: Vec::new(), fresh: false },
         Committed::Fresh { objects, revised, pending } => DistillationOutcome { objects, revised, pending, fresh: true },

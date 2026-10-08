@@ -148,7 +148,8 @@ fn distiller(table: Vec<(&'static str, Vec<Candidate>)>) -> Arc<ByText> {
 fn pipeline(classifier: Arc<Scripted>, drafter: Arc<Drafter>, enabled: bool) -> EvolutionPipeline {
     EvolutionPipeline {
         settings: Arc::new(EvolutionSettings::in_memory(enabled)),
-        classifier,
+        classifier: ClassifierBackend::Sync(classifier),
+        still_allowed: None,
         drafter,
         policy: ResolverPolicy { accepted_models: vec![MODEL.into()], ..ResolverPolicy::default() },
         limits: EvolutionLimits::default(),

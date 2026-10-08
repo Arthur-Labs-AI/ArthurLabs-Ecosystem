@@ -29,6 +29,6 @@ pub use classifier::{ClassifierFailure, ClassifierOutput, ClassifyRequest, Ident
 #[allow(unused_imports)]
 pub use policy::ResolverPolicy;
 #[allow(unused_imports)]
-pub use resolver::{resolve, resolve_capture};
+pub use resolver::{eligible_candidates, resolve, resolve_capture};
 #[allow(unused_imports)]
 pub use types::*;

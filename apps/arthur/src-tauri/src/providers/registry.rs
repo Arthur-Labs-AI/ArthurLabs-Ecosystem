@@ -19,6 +19,11 @@ use super::chat::DEFAULT_MODEL as OPENAI_LLM_MODEL;
 pub enum ProviderId {
     #[serde(rename = "openai")]
     OpenAi,
+    /// TypeSafe (JEV), the Automatic Thought Evolution identity classifier. A NATIVE-ONLY credential slot: it is deliberately not in
+    /// `ALL`, so it is not listed in AI & Voice, `ProviderId::parse` never yields it, and no UI command can set, read or test it. It
+    /// serves no `Capability` (`supports` is false everywhere) and never borrows another provider's key.
+    #[serde(rename = "typesafe")]
+    TypeSafe,
 }
 
 impl ProviderId {
@@ -27,6 +32,7 @@ impl ProviderId {
     pub fn as_str(self) -> &'static str {
         match self {
             ProviderId::OpenAi => "openai",
+            ProviderId::TypeSafe => "typesafe",
         }
     }
 
@@ -37,6 +43,7 @@ impl ProviderId {
     pub fn display_name(self) -> &'static str {
         match self {
             ProviderId::OpenAi => "OpenAI",
+            ProviderId::TypeSafe => "TypeSafe",
         }
     }
 
@@ -44,12 +51,14 @@ impl ProviderId {
     pub fn api_base(self) -> &'static str {
         match self {
             ProviderId::OpenAi => "https://api.openai.com/v1",
+            ProviderId::TypeSafe => "https://api.typesafe.ai/v1",
         }
     }
 
     pub fn supports(self, capability: Capability) -> bool {
         match self {
             ProviderId::OpenAi => matches!(capability, Capability::Llm | Capability::Stt | Capability::Embeddings | Capability::Tts),
+            ProviderId::TypeSafe => false,
         }
     }
 }
@@ -96,6 +105,7 @@ pub fn models(provider: ProviderId, capability: Capability) -> &'static [&'stati
         (ProviderId::OpenAi, Capability::Stt) => &[OPENAI_STT_MODEL],
         (ProviderId::OpenAi, Capability::Embeddings) => &[OPENAI_EMBEDDING_MODEL],
         (ProviderId::OpenAi, Capability::Tts) => &[OPENAI_TTS_MODEL],
+        (ProviderId::TypeSafe, _) => &[],
     }
 }
 
@@ -110,6 +120,7 @@ pub struct TtsOptions {
 pub fn tts_options(provider: ProviderId) -> TtsOptions {
     match provider {
         ProviderId::OpenAi => TtsOptions { models: OPENAI_TTS_MODELS, voices: OPENAI_TTS_VOICES, default_model: OPENAI_TTS_MODEL, default_voice: OPENAI_TTS_VOICE },
+        ProviderId::TypeSafe => TtsOptions { models: &[], voices: &[], default_model: "", default_voice: "" },
     }
 }
 
@@ -134,6 +145,14 @@ mod tests {
         for capability in Capability::ALL {
             assert_eq!(serde_json::to_value(capability).unwrap(), capability.as_str());
         }
+    }
+
+    #[test]
+    fn the_typesafe_slot_is_native_only_and_serves_no_capability() {
+        assert!(!ProviderId::ALL.contains(&ProviderId::TypeSafe), "not listed in AI & Voice");
+        assert_eq!(ProviderId::parse("typesafe"), None, "no UI command can name it");
+        assert_eq!(ProviderId::TypeSafe.as_str(), "typesafe");
+        assert!(Capability::ALL.into_iter().all(|capability| !ProviderId::TypeSafe.supports(capability) && capability.default_provider() != ProviderId::TypeSafe));
     }
 
     #[test]

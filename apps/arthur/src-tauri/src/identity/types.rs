@@ -170,6 +170,8 @@ pub enum Veto {
     StaleTarget,
     /// The proposed revision text was refused before or at commit.
     InvalidDraft,
+    /// Automatic Thought Evolution was switched off, or the provider consent was revoked, before the result could be used.
+    EvolutionWithdrawn,
 }
 
 /// WHO the claim is, independent of what may be done about it.

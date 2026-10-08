@@ -3,6 +3,8 @@ mod audio;
 mod commands;
 mod distillation;
 mod graph;
+#[allow(dead_code)] // M04.7B Phase 4A: the TypeSafe JEV adapter exists but nothing constructs it yet
+mod jev;
 #[allow(dead_code)] // M04.7B Phase 1: the pure identity core is not wired to anything yet
 mod identity;
 mod lifecycle;

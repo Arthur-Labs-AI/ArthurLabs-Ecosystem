@@ -54,6 +54,12 @@ fn ineligible(claim: &Claim, candidate: &Candidate) -> Option<Veto> {
     None
 }
 
+/// The candidates the resolver would actually show a classifier: same project, unarchived, consistent snapshot. A caller that fetches
+/// classifications before calling `resolve` uses this so exactly the same, already-filtered set is sent (nothing else ever leaves).
+pub fn eligible_candidates(claim: &Claim, candidates: &[Candidate]) -> Vec<Candidate> {
+    candidates.iter().filter(|candidate| ineligible(claim, candidate).is_none()).cloned().collect()
+}
+
 #[derive(Debug, Clone, Copy)]
 struct Aggregate {
     /// Weakest run: unanimity means the target must clear the bar in EVERY run.
