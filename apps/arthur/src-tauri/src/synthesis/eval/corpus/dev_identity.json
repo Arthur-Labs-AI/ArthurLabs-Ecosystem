@@ -1,0 +1,447 @@
+[
+ {
+  "id": "i01",
+  "lang": "en",
+  "claim": "Arthur will also support desktop.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.97,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.97,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.97,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "revise:a",
+  "note": ""
+ },
+ {
+  "id": "i02",
+  "lang": "bg",
+  "claim": "Артър ще поддържа и десктоп.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.96,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.96,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.96,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "revise:a",
+  "note": ""
+ },
+ {
+  "id": "i03",
+  "lang": "en",
+  "claim": "Arthur is now a smart-home hub.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.8,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.8,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.8,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "uncertain",
+  "note": "reframing must not auto-revise"
+ },
+ {
+  "id": "i04",
+  "lang": "en",
+  "claim": "Add a dark theme.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.1,
+     "reframing": 0.0,
+     "relation": "distinct_same_project",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.1,
+     "reframing": 0.0,
+     "relation": "distinct_same_project",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.1,
+     "reframing": 0.0,
+     "relation": "distinct_same_project",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "new",
+  "note": ""
+ },
+ {
+  "id": "i05",
+  "lang": "en",
+  "claim": "It should sync with Outlook.",
+  "candidates": [
+   "a",
+   "b"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.8,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    },
+    {
+     "id": "b",
+     "same": 0.75,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.8,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    },
+    {
+     "id": "b",
+     "same": 0.75,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.8,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    },
+    {
+     "id": "b",
+     "same": 0.75,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "uncertain",
+  "note": "two plausible referents"
+ },
+ {
+  "id": "i06",
+  "lang": "en",
+  "claim": "Use Postgres instead of SQLite.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": true
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": true
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": true
+    }
+   ]
+  ],
+  "expect": "revise:a",
+  "note": ""
+ },
+ {
+  "id": "i07",
+  "lang": "en",
+  "claim": "Use Postgres.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "uncertain",
+  "note": "model claims replacement without wording"
+ },
+ {
+  "id": "i08",
+  "lang": "en",
+  "claim": "Arthur will also support desktop.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.97,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.4,
+     "reframing": 0.0,
+     "relation": "distinct_same_project",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.97,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "uncertain",
+  "note": "runs disagree"
+ },
+ {
+  "id": "i09",
+  "lang": "en",
+  "claim": "It also supports desktop.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": false,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": false,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": false,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "uncertain",
+  "note": "referent not named"
+ },
+ {
+  "id": "i10",
+  "lang": "mixed",
+  "claim": "Също Arthur ще има desktop.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.93,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.93,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.93,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "revise:a",
+  "note": ""
+ }
+]

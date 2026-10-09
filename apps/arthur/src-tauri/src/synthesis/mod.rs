@@ -25,6 +25,7 @@ pub mod prompt;
 pub mod stage;
 pub mod validate;
 pub mod verifier;
+pub mod zai;
 
 #[cfg(test)]
 mod architecture_tests;
@@ -32,6 +33,10 @@ mod architecture_tests;
 pub mod fake;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_4c;
+#[cfg(test)]
+mod eval;
 
 use crate::async_util::BoxFuture;
 
@@ -149,6 +154,7 @@ pub enum VetoReason {
     CertaintyIncreased,
     UnsupportedDateQuantityOrEntity,
     WrongCorrectionBehaviour,
+    AmbiguousReference,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,6 +162,8 @@ pub enum UnavailableReason {
     NotConfigured,
     NotAuthorized,
     Provider,
+    /// The provider answered, but not with a well-formed, self-consistent verdict. Never read as a pass.
+    InvalidResponse,
     Timeout,
     Cancelled,
 }

@@ -27,15 +27,15 @@ use crate::storage::evidence_store::Attribution;
 use crate::storage::knowledge_store::{KnowledgeObject, NewKnowledgeObject};
 use crate::storage::lineage_store::{CasOrigin, Changes, ExpectedRevision, RevisionContent};
 
-const A: &str = "Arthur is a mobile application.";
-const B: &str = "Arthur will also support desktop.";
-const SECRET: &str = "sk-SYNTHESIS-SENTINEL-77aa";
+pub(super) const A: &str = "Arthur is a mobile application.";
+pub(super) const B: &str = "Arthur will also support desktop.";
+pub(super) const SECRET: &str = "sk-SYNTHESIS-SENTINEL-77aa";
 
 // =====================================================================================================================================
 // deterministic validation (unit level)
 // =====================================================================================================================================
 
-fn req(base: &str, claim: &str, change: ChangeClass) -> SynthesisRequest {
+pub(super) fn req(base: &str, claim: &str, change: ChangeClass) -> SynthesisRequest {
     SynthesisRequest {
         kind: "idea".into(),
         title: "Mobile".into(),
@@ -221,7 +221,7 @@ fn authorizations_are_separate_per_purpose_default_off_durable_and_never_migrate
 // the real pipeline
 // =====================================================================================================================================
 
-struct ByText(Box<dyn Fn(&str) -> Vec<DistilledCandidate> + Send + Sync>);
+pub(super) struct ByText(pub(super) Box<dyn Fn(&str) -> Vec<DistilledCandidate> + Send + Sync>);
 
 impl Distiller for ByText {
     fn distill<'a>(&'a self, capture: &'a str) -> BoxFuture<'a, Result<Vec<DistilledCandidate>, DistillError>> {
@@ -233,24 +233,24 @@ fn claim_of(text: &str) -> Vec<DistilledCandidate> {
     vec![DistilledCandidate { kind: "idea".into(), title: "Desktop".into(), body: text.into(), evidence: text.trim_end_matches('.').into(), source_start: None, source_end: None }]
 }
 
-struct Judge {
+pub(super) struct Judge {
     decide: Box<dyn Fn(&Claim, &IdCandidate) -> CandidateSignal + Send + Sync>,
     calls: AtomicUsize,
     hook: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
 }
 
 impl Judge {
-    fn new(decide: impl Fn(&Claim, &IdCandidate) -> CandidateSignal + Send + Sync + 'static) -> Arc<Self> {
+    pub(super) fn new(decide: impl Fn(&Claim, &IdCandidate) -> CandidateSignal + Send + Sync + 'static) -> Arc<Self> {
         Arc::new(Self { decide: Box::new(decide), calls: AtomicUsize::new(0), hook: Mutex::new(None) })
     }
     /// Every shown candidate is the clear target of an additive refinement.
-    fn additive() -> Arc<Self> {
+    pub(super) fn additive() -> Arc<Self> {
         Self::relation(Relation::AdditiveRefinement)
     }
-    fn relation(relation: Relation) -> Arc<Self> {
+    pub(super) fn relation(relation: Relation) -> Arc<Self> {
         Self::new(move |_, c| sig(&c.object_id, 0.97, relation))
     }
-    fn calls(&self) -> usize {
+    pub(super) fn calls(&self) -> usize {
         self.calls.load(Ordering::SeqCst)
     }
 }
@@ -270,17 +270,17 @@ impl IdentityClassifier for Judge {
     }
 }
 
-struct NeverDrafts;
+pub(super) struct NeverDrafts;
 impl RevisionDrafter for NeverDrafts {
     fn draft(&self, _: &DraftRequest<'_>) -> Result<RevisionDraft, DraftFailure> {
         panic!("the hand-written drafter must not be used when a synthesis stage is configured");
     }
 }
 
-struct World {
-    store: Arc<CaptureStore>,
-    project: String,
-    object: KnowledgeObject,
+pub(super) struct World {
+    pub(super) store: Arc<CaptureStore>,
+    pub(super) project: String,
+    pub(super) object: KnowledgeObject,
 }
 
 fn seed(store: &CaptureStore, project: &str, text: &str, title: &str, kind: &str) -> KnowledgeObject {
@@ -288,29 +288,29 @@ fn seed(store: &CaptureStore, project: &str, text: &str, title: &str, kind: &str
     store.record_distillation(&c.id, vec![NewKnowledgeObject { kind: kind.into(), title: title.into(), body: text.into(), source_start: 0, source_end: text.chars().count() as i64 }]).unwrap().remove(0)
 }
 
-fn world_with(text: &str, kind: &str) -> World {
+pub(super) fn world_with(text: &str, kind: &str) -> World {
     let store = CaptureStore::open_in_memory().unwrap();
     let project = store.create_project("Arthur").unwrap().id;
     let object = seed(&store, &project, text, "Mobile", kind);
     World { store: Arc::new(store), project, object }
 }
 
-fn world() -> World {
+pub(super) fn world() -> World {
     world_with(A, "idea")
 }
 
-struct Kit {
-    synth: Arc<ScriptedSynthesizer>,
-    verifier: Arc<ScriptedVerifier>,
-    synthesis_auth: Arc<ProviderAuthorization>,
-    verification_auth: Arc<ProviderAuthorization>,
-    consent: Arc<AtomicBool>,
-    settings: Arc<EvolutionSettings>,
-    judge: Arc<Judge>,
+pub(super) struct Kit {
+    pub(super) synth: Arc<ScriptedSynthesizer>,
+    pub(super) verifier: Arc<ScriptedVerifier>,
+    pub(super) synthesis_auth: Arc<ProviderAuthorization>,
+    pub(super) verification_auth: Arc<ProviderAuthorization>,
+    pub(super) consent: Arc<AtomicBool>,
+    pub(super) settings: Arc<EvolutionSettings>,
+    pub(super) judge: Arc<Judge>,
 }
 
 impl Kit {
-    fn new(synth: Arc<ScriptedSynthesizer>, verifier: Arc<ScriptedVerifier>, judge: Arc<Judge>) -> Self {
+    pub(super) fn new(synth: Arc<ScriptedSynthesizer>, verifier: Arc<ScriptedVerifier>, judge: Arc<Judge>) -> Self {
         Self {
             synth,
             verifier,
@@ -323,11 +323,11 @@ impl Kit {
     }
 
     /// Additive synthesis of the obvious sentence, a passing verifier, an additive judge.
-    fn standard() -> Self {
+    pub(super) fn standard() -> Self {
         Self::new(ScriptedSynthesizer::new(|r| Ok(additive(r, "Arthur is a mobile and desktop application."))), ScriptedVerifier::passing(), Judge::additive())
     }
 
-    fn service(&self, distiller: Arc<ByText>) -> DistillationService {
+    pub(super) fn service(&self, distiller: Arc<ByText>) -> DistillationService {
         let consent = self.consent.clone();
         let stage = SynthesisStage::new(self.synth.clone(), self.verifier.clone(), self.synthesis_auth.clone(), self.verification_auth.clone(), StageLimits::default()).unwrap();
         DistillationService::new(distiller).with_evolution(EvolutionPipeline {
@@ -341,37 +341,37 @@ impl Kit {
         })
     }
 
-    fn text_service(&self) -> DistillationService {
+    pub(super) fn text_service(&self) -> DistillationService {
         self.service(Arc::new(ByText(Box::new(claim_of_any))))
     }
 }
 
-fn claim_of_any(text: &str) -> Vec<DistilledCandidate> {
+pub(super) fn claim_of_any(text: &str) -> Vec<DistilledCandidate> {
     claim_of(text)
 }
 
-fn capture(w: &World, text: &str) -> String {
+pub(super) fn capture(w: &World, text: &str) -> String {
     w.store.create(CreateCaptureInput { source: "voice".into(), content: text.into(), project_id: Some(w.project.clone()) }).unwrap().id
 }
 
-fn run(service: &DistillationService, w: &World, text: &str) -> DistillationOutcome {
+pub(super) fn run(service: &DistillationService, w: &World, text: &str) -> DistillationOutcome {
     let id = capture(w, text);
     tauri::async_runtime::block_on(service.distill_detailed(&w.store, &id)).unwrap()
 }
 
-fn revisions(w: &World) -> usize {
+pub(super) fn revisions(w: &World) -> usize {
     w.store.object_lineage(&w.object.id).unwrap().revisions.len()
 }
 
-fn count(w: &World, table: &str) -> i64 {
+pub(super) fn count(w: &World, table: &str) -> i64 {
     w.store.query_i64_for_test(&format!("SELECT count(*) FROM {table}"))
 }
 
-fn current_body(w: &World) -> String {
+pub(super) fn current_body(w: &World) -> String {
     w.store.get_knowledge_object(&w.object.id).unwrap().unwrap().body
 }
 
-fn assert_kept_for_a_person(out: &DistillationOutcome, veto: &str) {
+pub(super) fn assert_kept_for_a_person(out: &DistillationOutcome, veto: &str) {
     assert_eq!((out.revised.len(), out.pending.len()), (0, 1), "{out:?}");
     assert!(out.pending[0].reasons.contains(&veto.to_string()), "expected {veto} in {:?}", out.pending[0].reasons);
 }
@@ -977,14 +977,14 @@ fn a_target_with_unknown_support_is_revised_with_only_the_claims_own_evidence_an
 // the real OpenAI adapter against a localhost fixture
 // =====================================================================================================================================
 
-struct Key;
+pub(super) struct Key;
 impl CredentialSource for Key {
     fn api_key(&self) -> Option<ApiKey> {
         ApiKey::parse(SECRET)
     }
 }
 
-struct NoKey;
+pub(super) struct NoKey;
 impl CredentialSource for NoKey {
     fn api_key(&self) -> Option<ApiKey> {
         None

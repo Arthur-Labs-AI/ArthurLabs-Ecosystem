@@ -1,6 +1,6 @@
 //! The synthesis boundary stays a boundary: no database access, no Graph or Recall, no commands, and nothing that ships constructs it.
 
-const FILES: [(&str, &str); 9] = [
+const FILES: [(&str, &str); 10] = [
     ("mod.rs", include_str!("mod.rs")),
     ("authorization.rs", include_str!("authorization.rs")),
     ("openai.rs", include_str!("openai.rs")),
@@ -9,13 +9,14 @@ const FILES: [(&str, &str); 9] = [
     ("validate.rs", include_str!("validate.rs")),
     ("verifier.rs", include_str!("verifier.rs")),
     ("fake.rs", include_str!("fake.rs")),
+    ("zai.rs", include_str!("zai.rs")),
     ("tests.rs", include_str!("tests.rs")),
 ];
 
 #[test]
 fn synthesis_imports_no_storage_graph_recall_command_or_ui_code() {
     let banned = [["rus", "qlite"].concat(), ["crate::", "storage"].concat(), ["crate::", "graph"].concat(), ["crate::", "commands"].concat(), ["tau", "ri::"].concat(), ["crate::", "jev"].concat()];
-    for (name, source) in &FILES[..8] {
+    for (name, source) in &FILES[..9] {
         for line in source.lines().filter(|line| !line.trim_start().starts_with("//")) {
             for word in &banned {
                 assert!(!line.contains(word.as_str()), "{name}: `{line}` mentions `{word}`");

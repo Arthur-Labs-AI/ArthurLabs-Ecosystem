@@ -24,6 +24,11 @@ pub enum ProviderId {
     /// serves no `Capability` (`supports` is false everywhere) and never borrows another provider's key.
     #[serde(rename = "typesafe")]
     TypeSafe,
+    /// Z.ai (Zhipu GLM, international service), the independent revision VERIFIER (M04.7B Phase 4C). Native-only like `TypeSafe`: not in
+    /// `ALL`, never parsed from UI input, serves no `Capability`, and never borrows another provider's key.
+    #[serde(rename = "zai")]
+    #[allow(dead_code)] // deliberately not constructed by shipped code until the verifier is activated (Phase 5)
+    Zai,
 }
 
 impl ProviderId {
@@ -33,6 +38,7 @@ impl ProviderId {
         match self {
             ProviderId::OpenAi => "openai",
             ProviderId::TypeSafe => "typesafe",
+            ProviderId::Zai => "zai",
         }
     }
 
@@ -44,6 +50,7 @@ impl ProviderId {
         match self {
             ProviderId::OpenAi => "OpenAI",
             ProviderId::TypeSafe => "TypeSafe",
+            ProviderId::Zai => "Z.ai",
         }
     }
 
@@ -52,13 +59,14 @@ impl ProviderId {
         match self {
             ProviderId::OpenAi => "https://api.openai.com/v1",
             ProviderId::TypeSafe => "https://api.typesafe.ai/v1",
+            ProviderId::Zai => "https://api.z.ai/api/paas/v4",
         }
     }
 
     pub fn supports(self, capability: Capability) -> bool {
         match self {
             ProviderId::OpenAi => matches!(capability, Capability::Llm | Capability::Stt | Capability::Embeddings | Capability::Tts),
-            ProviderId::TypeSafe => false,
+            ProviderId::TypeSafe | ProviderId::Zai => false,
         }
     }
 }
@@ -105,7 +113,7 @@ pub fn models(provider: ProviderId, capability: Capability) -> &'static [&'stati
         (ProviderId::OpenAi, Capability::Stt) => &[OPENAI_STT_MODEL],
         (ProviderId::OpenAi, Capability::Embeddings) => &[OPENAI_EMBEDDING_MODEL],
         (ProviderId::OpenAi, Capability::Tts) => &[OPENAI_TTS_MODEL],
-        (ProviderId::TypeSafe, _) => &[],
+        (ProviderId::TypeSafe | ProviderId::Zai, _) => &[],
     }
 }
 
@@ -120,7 +128,7 @@ pub struct TtsOptions {
 pub fn tts_options(provider: ProviderId) -> TtsOptions {
     match provider {
         ProviderId::OpenAi => TtsOptions { models: OPENAI_TTS_MODELS, voices: OPENAI_TTS_VOICES, default_model: OPENAI_TTS_MODEL, default_voice: OPENAI_TTS_VOICE },
-        ProviderId::TypeSafe => TtsOptions { models: &[], voices: &[], default_model: "", default_voice: "" },
+        ProviderId::TypeSafe | ProviderId::Zai => TtsOptions { models: &[], voices: &[], default_model: "", default_voice: "" },
     }
 }
 
@@ -155,11 +163,14 @@ mod tests {
     }
 
     #[test]
-    fn the_typesafe_slot_is_native_only_and_serves_no_capability() {
-        assert!(!ProviderId::ALL.contains(&ProviderId::TypeSafe), "not listed in AI & Voice");
-        assert_eq!(ProviderId::parse("typesafe"), None, "no UI command can name it");
-        assert_eq!(ProviderId::TypeSafe.as_str(), "typesafe");
-        assert!(Capability::ALL.into_iter().all(|capability| !ProviderId::TypeSafe.supports(capability) && capability.default_provider() != ProviderId::TypeSafe));
+    fn the_native_only_slots_serve_no_capability_and_are_invisible_to_the_ui_commands() {
+        for (slot, name) in [(ProviderId::TypeSafe, "typesafe"), (ProviderId::Zai, "zai")] {
+            assert!(!ProviderId::ALL.contains(&slot), "{name}: not listed in AI & Voice");
+            assert_eq!(ProviderId::parse(name), None, "{name}: no UI command can name it");
+            assert_eq!(slot.as_str(), name);
+            assert!(Capability::ALL.into_iter().all(|capability| !slot.supports(capability) && capability.default_provider() != slot), "{name}");
+        }
+        assert_ne!(ProviderId::Zai.as_str(), ProviderId::OpenAi.as_str(), "its own credential slot");
     }
 
     #[test]
