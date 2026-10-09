@@ -1,6 +1,6 @@
 # M04.7B Phase 5 — Persistent proposals, Marginalia review and review-first activation
 
-Status: implemented and verified; **uncommitted**. Automatic Thought Evolution is now a real, usable feature that is **OFF by default** and **review-first**: Arthur may *suggest* a new version of an idea, the suggestion is stored, and only a person's explicit approval can change the idea. There is no automatic-apply mode anywhere in the product.
+Status: implemented and verified; committed as `7f63c83`. Automatic Thought Evolution is now a real, usable feature that is **OFF by default** and **review-first**: Arthur may *suggest* a new version of an idea, the suggestion is stored, and only a person's explicit approval can change the idea. There is no automatic-apply mode anywhere in the product.
 
 Models (unchanged, no new provider): identity = TypeSafe JEV 1.13; synthesis = GPT-6 Luna; verification = GPT-6 Luna as `SameFamilyReview` (a self-check, never independent); deterministic safety = IdentityResolver + draft validation + compare-and-set; authority = the person.
 
