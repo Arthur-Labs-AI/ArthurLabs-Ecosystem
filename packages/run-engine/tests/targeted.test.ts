@@ -42,13 +42,20 @@ describe('Phase 7 TARGETED QA (§8-§13, §82)', () => {
   it('runs all three agents on the same frozen snapshot with a persisted TargetSpec', async () => {
     const f = await fixture();
     const requests: HarnessRunRequest[] = [];
+    const created: string[] = [];
     const result = await f.runs.run(f.added.project.id, {
       executionKind: 'simulation',
       mode: 'targeted',
       target: { includePaths: ['src/auth'] },
+      onRunCreated: (run) => {
+        expect(f.repository.getRun(run.id)).toEqual(run);
+        expect(f.repository.listAgentRuns(run.id)).toEqual([]);
+        created.push(run.id);
+      },
       onHarnessRequest: (request) => requests.push(request),
     });
     expect(result.run.mode).toBe('targeted');
+    expect(created).toEqual([result.run.id]);
     expect(result.run.status).toBe('completed');
     expect(result.agentRuns).toHaveLength(3);
     // Same snapshot for all selected agents (§82): identical workspace snapshot binding.

@@ -80,6 +80,8 @@ export interface RunOptions {
     readonly targetRevisionId?: ProjectRevisionId;
   };
   readonly onHarnessRequest?: (request: HarnessRunRequest) => void;
+  /** Signals this request's identity immediately after the initial row is saved. */
+  readonly onRunCreated?: (run: QARun) => void;
   readonly onHarnessEventPersisted?: (event: HarnessEvent, agentRun: AgentRun) => void;
   /** Finish-pass §29/§35: fires after revision integrity + snapshot freeze
    *  (lock held), BEFORE target validation + TargetSpec persistence + any
@@ -305,6 +307,7 @@ export class RunCoordinator {
       });
       this.repository.saveRun(run);
       runPersisted = true;
+      options.onRunCreated?.(run);
       // Frozen manifest file set: the immutable source of truth for scope
       // validation (never the mutable working copy).
       const frozenBaseline = await this.snapshots.baselineFileHashes(snapshot.id);
@@ -912,7 +915,7 @@ export class RunCoordinator {
   }): { stop: () => void; wasCancelDelivered: () => boolean; delivery: () => Promise<void> } {
     let delivered = false;
     let delivery: Promise<void> = Promise.resolve();
-    const timer = setInterval(() => {
+    const check = (): void => {
       try {
         const request = this.repository.getRunControlRequest(input.qaRunId);
         if (request === undefined || request.completedAt !== undefined) return;
@@ -935,10 +938,14 @@ export class RunCoordinator {
         // Watcher must never break the worker stream; the owner still
         // reconciles durable state at terminalization.
       }
-    }, CANCELLATION_POLL_INTERVAL_MS);
+    };
+    const timer = setInterval(check, CANCELLATION_POLL_INTERVAL_MS);
     if (typeof (timer as unknown as { unref?: unknown }).unref === 'function') {
       (timer as unknown as { unref: () => void }).unref();
     }
+    // A request may have landed while createAdapter/metadata/workspace awaited.
+    // Observe it before adapter.run can initiate a paid provider turn.
+    check();
     return {
       stop: () => clearInterval(timer),
       wasCancelDelivered: () => delivered,
@@ -990,6 +997,10 @@ export class RunCoordinator {
           cancelDelivered = true;
         },
       });
+      if (watcher.wasCancelDelivered()) {
+        await watcher.delivery();
+        return { cancelled: true };
+      }
       const consume = (async () => {
         for await (const event of adapter.run(request)) {
           if (watcher?.wasCancelDelivered() === true) break;

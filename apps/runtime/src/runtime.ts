@@ -829,7 +829,12 @@ export class SentryRuntimeHost {
     const id = ProjectIdInput.parse(projectId);
     const parsed = StartRunParamsSchema.parse(params ?? {});
     const operationId = 'dop_' + createQARunId().slice(4);
+    let created!: (runId: string) => void;
+    const identity = new Promise<string>((resolve) => {
+      created = resolve;
+    });
     const runPromise = this.coordinator.run(id as never, {
+      onRunCreated: (run) => created(run.id),
       executionKind: 'production',
       mode: parsed.mode,
       ...(parsed.includePaths === undefined
@@ -854,14 +859,12 @@ export class SentryRuntimeHost {
     );
     settled.then(undefined, () => undefined);
     this.pendingRuns.set(operationId, { operationId, promise: settled });
-    const runId = await this.detectCreatedRun(id as never, settled);
-    if (runId !== undefined) {
-      this.notify('run.created', { runId, operationId });
-      return { operationId, runId, status: this.persistedRunStatus(runId) };
-    }
-    const details = await settled.then((value) => value as { run: { id: string } });
-    this.notify('run.created', { runId: details.run.id, operationId });
-    return { operationId, runId: details.run.id, status: this.persistedRunStatus(details.run.id) };
+    // Exact request identity, never inferred from project-wide list changes.
+    // Settlement propagates pre-row errors and remains owned after early return.
+    const runId = await Promise.race([identity, settled.then((details) => details.run.id)]);
+    const status = this.persistedRunStatus(runId);
+    this.notify('run.created', { runId, operationId });
+    return { operationId, runId, status };
   }
 
   /**
@@ -877,40 +880,6 @@ export class SentryRuntimeHost {
       throw rpcError('RUN_NOT_FOUND', 'Run row missing immediately after start: ' + runId);
     }
     return row.status;
-  }
-
-  /**
-   * Row-or-settlement wait: polls until the QARun row appears (normal path,
-   * seconds — even behind a slow snapshot) or the workflow promise settles.
-   * Settlement-error throws the REAL backend error immediately instead of a
-   * client timeout; settlement-success returns the id. There is no arbitrary
-   * deadline here — the client's own timeout bounds the wait, and the desktop
-   * reconciles any timeout against persisted rows before reporting.
-   */
-  private async detectCreatedRun(
-    projectId: never,
-    runPromise: Promise<unknown>,
-  ): Promise<string | undefined> {
-    const before = new Set(this.coordinator.listRuns(projectId).map((r) => r.id));
-    let settled: { done: boolean; value?: unknown; error?: unknown } = { done: false };
-    void runPromise.then(
-      (value) => {
-        settled = { done: true, value };
-      },
-      (error: unknown) => {
-        settled = { done: true, error };
-      },
-    );
-    for (;;) {
-      const current = this.coordinator.listRuns(projectId);
-      const created = current.find((r) => !before.has(r.id));
-      if (created !== undefined) return created.id;
-      if (settled.done) {
-        if (settled.error !== undefined) throw settled.error;
-        return (settled.value as { run?: { id?: string } } | undefined)?.run?.id;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
   }
 
   requestRunCancellation(runId: string): unknown {
@@ -1015,6 +984,10 @@ export class SentryRuntimeHost {
     const id = IssueIdInput.parse(issueId);
     const parsed = StartRetestParamsSchema.parse(params ?? {});
     const operationId = 'dop_' + createRetestRunId().slice(7);
+    let created!: (retestRunId: string) => void;
+    const identity = new Promise<string>((resolve) => {
+      created = resolve;
+    });
     const retestPromise = retestIssue(
       {
         dataRoot: this.dataRoot,
@@ -1024,6 +997,7 @@ export class SentryRuntimeHost {
       },
       id as never,
       {
+        onRetestCreated: (run) => created(run.id),
         ...(parsed.revisionId === undefined
           ? {}
           : { targetRevisionId: parsed.revisionId as never }),
@@ -1045,38 +1019,18 @@ export class SentryRuntimeHost {
     );
     settled.then(undefined, () => undefined);
     this.pendingRetests.set(operationId, { operationId, promise: settled });
-    const retestRunId = await this.detectCreatedRetest(id as never, settled);
+    const retestRunId = await Promise.race([
+      identity,
+      settled.then((result) => result.retestRun.id),
+    ]);
+    if (this.repository.getRetestRun(retestRunId) === undefined) {
+      throw rpcError(
+        'RETEST_NOT_FOUND',
+        'Retest row missing immediately after start: ' + retestRunId,
+      );
+    }
     this.notify('retest.created', { retestRunId, operationId });
     return { operationId, retestRunId };
-  }
-
-  /** Same row-or-settlement contract as runs: no arbitrary deadline. */
-  private async detectCreatedRetest(
-    issueId: never,
-    retestPromise: Promise<unknown>,
-  ): Promise<string> {
-    const before = new Set(this.repository.listRetestRuns(issueId).map((r) => r.id));
-    let settled: { done: boolean; value?: unknown; error?: unknown } = { done: false };
-    void retestPromise.then(
-      (value) => {
-        settled = { done: true, value };
-      },
-      (error: unknown) => {
-        settled = { done: true, error };
-      },
-    );
-    for (;;) {
-      const current = this.repository.listRetestRuns(issueId);
-      const created = current.find((r) => !before.has(r.id));
-      if (created !== undefined) return created.id;
-      if (settled.done) {
-        if (settled.error !== undefined) throw settled.error;
-        const id = (settled.value as { retestRun?: { id?: string } } | undefined)?.retestRun?.id;
-        if (id !== undefined) return id;
-        throw rpcError('RETEST_NOT_CREATED', 'RetestRun was not created');
-      }
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
   }
 
   retestSnapshot(retestRunId: string): unknown {

@@ -342,6 +342,7 @@ describe('Phase 7 retest orchestration (§90)', () => {
     const revisions = f.repository.listRevisions(f.added.project.id);
     expect(revisions).toHaveLength(2);
     // Retest on B with passing behavior.
+    const created: string[] = [];
     const result = await retestIssue(
       {
         dataRoot: f.dataRoot,
@@ -350,10 +351,19 @@ describe('Phase 7 retest orchestration (§90)', () => {
         registry: scriptedRegistry('pass'),
       },
       issueId,
-      { verify: stubVerify('pass') as never, runTimeoutMs: 30_000 },
+      {
+        verify: stubVerify('pass') as never,
+        runTimeoutMs: 30_000,
+        onRetestCreated: (run) => {
+          expect(f.repository.getRetestRun(run.id)).toEqual(run);
+          expect(run.targetQaRunId).toBeUndefined();
+          created.push(run.id);
+        },
+      },
     );
     expect(result.assessment?.result).toBe('fixed');
     expect(result.retestRun.status).toBe('completed');
+    expect(created).toEqual([result.retestRun.id]);
     expect(result.retestRun.sourceSnapshotId).not.toBe(result.retestRun.targetSnapshotId);
     expect(result.targetOccurrence).toBeDefined();
     // History retained and projected: open → fixed.
