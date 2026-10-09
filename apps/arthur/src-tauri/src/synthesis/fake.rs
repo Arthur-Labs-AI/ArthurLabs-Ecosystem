@@ -14,11 +14,16 @@ pub struct ScriptedSynthesizer {
     pub calls: AtomicUsize,
     pub seen: Mutex<Vec<SynthesisRequest>>,
     hook: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
+    family: &'static str,
 }
 
 impl ScriptedSynthesizer {
     pub fn new(answer: impl Fn(&SynthesisRequest) -> Result<SynthesisDraft, SynthesisFailure> + Send + Sync + 'static) -> Arc<Self> {
-        Arc::new(Self { answer: Mutex::new(Box::new(answer)), calls: AtomicUsize::new(0), seen: Mutex::new(vec![]), hook: Mutex::new(None) })
+        Arc::new(Self { answer: Mutex::new(Box::new(answer)), calls: AtomicUsize::new(0), seen: Mutex::new(vec![]), hook: Mutex::new(None), family: "fake-synthesis-family" })
+    }
+    /// A synthesizer that claims a model family, to build same-family pairings.
+    pub fn in_family(family: &'static str, answer: impl Fn(&SynthesisRequest) -> Result<SynthesisDraft, SynthesisFailure> + Send + Sync + 'static) -> Arc<Self> {
+        Arc::new(Self { answer: Mutex::new(Box::new(answer)), calls: AtomicUsize::new(0), seen: Mutex::new(vec![]), hook: Mutex::new(None), family })
     }
     pub fn calls(&self) -> usize {
         self.calls.load(Ordering::SeqCst)
@@ -31,7 +36,7 @@ impl ScriptedSynthesizer {
 
 impl RevisionSynthesizer for ScriptedSynthesizer {
     fn identity(&self) -> ModelIdentity {
-        ModelIdentity { provider: "fake", family: "fake-synthesis-family", model: SYNTH_MODEL.into() }
+        ModelIdentity { provider: "fake", family: self.family, model: SYNTH_MODEL.into() }
     }
 
     fn synthesize<'a>(&'a self, request: &'a SynthesisRequest) -> BoxFuture<'a, Result<SynthesisDraft, SynthesisFailure>> {

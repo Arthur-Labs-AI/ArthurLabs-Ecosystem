@@ -1,11 +1,10 @@
-//! The independent veto-only verifier boundary.
+//! The veto-only verifier boundary and the family-independence rule.
 //!
-//! WHAT IS AVAILABLE: Arthur has exactly two model providers wired for text, OpenAI (everything else) and TypeSafe JEV (identity
-//! classification only, under its own consent). The synthesizer is OpenAI `gpt-6-luna`, so an OpenAI verifier would NOT be
-//! independent (different model names, one family), and silently reusing the synthesizer is refused. A JEV-backed verifier would be a
-//! different family, but it would need new, unbenchmarked questions and its own verification authorization and disclosure, so it is not
-//! invented here. The real adapter is therefore `UnconfiguredVerifier`: always `Unavailable`, so an automatic revision can never pass
-//! through it. `SynthesisStage::new` additionally refuses any verifier whose family equals the synthesizer's.
+//! WHAT IS AVAILABLE: the shipped verifier is `OpenAiRevisionVerifier` (GPT-6 Luna). The synthesizer is also GPT-6 Luna, so that pairing is
+//! `VerificationMode::SameFamilyReview`, NOT independent, and the stage holds even a passing draft for a person's approval. An independent
+//! verifier (another model family) can replace it later without changing the pipeline: `SynthesisStage::new` accepts only a verifier whose
+//! family differs and then runs as `Independent`. The two modes are never mixed up: each constructor refuses the other's pairing.
+//! `UnconfiguredVerifier` is the disabled boundary: always `Unavailable`, sends nothing.
 
 use super::{ModelIdentity, RevisionSynthesizer, RevisionVerifier, UnavailableReason, Verdict, VerifyRequest};
 use crate::async_util::BoxFuture;
@@ -31,6 +30,8 @@ impl RevisionVerifier for UnconfiguredVerifier {
 pub enum StageError {
     /// The verifier belongs to the synthesizer's model family: it is not an independent check.
     NotIndependent,
+    /// A same-family review was requested for a verifier of a different family (the mode would misdescribe the pairing).
+    NotSameFamily,
 }
 
 /// Independence is decided on the model FAMILY, never on the name.
@@ -38,6 +39,15 @@ pub fn ensure_independent(synthesizer: &dyn RevisionSynthesizer, verifier: &dyn 
     let (a, b) = (synthesizer.identity(), verifier.identity());
     if a.family == b.family {
         return Err(StageError::NotIndependent);
+    }
+    Ok(())
+}
+
+/// Same-family review is only constructible when the families really are the same, so it can never be used to label an independent pairing
+/// (or the reverse) wrongly.
+pub fn ensure_same_family(synthesizer: &dyn RevisionSynthesizer, verifier: &dyn RevisionVerifier) -> Result<(), StageError> {
+    if synthesizer.identity().family != verifier.identity().family {
+        return Err(StageError::NotSameFamily);
     }
     Ok(())
 }

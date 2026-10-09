@@ -12,7 +12,8 @@ use crate::identity::{resolve, Candidate, CandidateSignal, Claim, EvidenceSpan, 
 use crate::providers::credentials::{ApiKey, CredentialSource};
 use crate::synthesis::authorization::{ProviderAuthorization, Purpose};
 use crate::synthesis::validate::validate_draft;
-use crate::synthesis::zai::{ZaiRevisionVerifier, CHECKS};
+use crate::synthesis::openai_verifier::OpenAiRevisionVerifier;
+use crate::synthesis::verdict::CHECKS;
 use crate::synthesis::{Assertion, ChangeClass, RevisionVerifier, SynthesisDraft, SynthesisRequest, Verdict, VerifyRequest};
 
 pub const SYNTH_MODEL: &str = "gpt-6-luna";
@@ -108,10 +109,10 @@ fn veto_text(class: &str) -> String {
 }
 
 fn envelope(content: &str) -> String {
-    serde_json::json!({ "model": "glm-5.3", "choices": [{ "finish_reason": "stop", "message": { "content": content } }], "usage": { "prompt_tokens": 1, "completion_tokens": 1 } }).to_string()
+    serde_json::json!({ "model": "gpt-6-luna-20260922", "choices": [{ "finish_reason": "stop", "message": { "content": content } }], "usage": { "prompt_tokens": 1, "completion_tokens": 1 } }).to_string()
 }
 
-/// Runs every draft that gets past the validator through the REAL verifier adapter, against a localhost fixture scripted by `mock`.
+/// Runs every draft that gets past the validator through the REAL (Luna) verifier adapter, against a localhost fixture scripted by `mock`.
 pub fn run_with_mock_verifier(cases: &[RevCase], mock: Mock) -> Vec<Outcome4> {
     let mut outcomes = run_validator(cases);
     let reaching: Vec<usize> = (0..cases.len()).filter(|i| !outcomes[*i].stopped_by_validator).collect();
@@ -125,8 +126,8 @@ pub fn run_with_mock_verifier(cases: &[RevCase], mock: Mock) -> Vec<Outcome4> {
             Mock::Outage => ("503 Service Unavailable", "{}".into()),
         })
         .collect();
-    let (url, _rx) = crate::test_support::serve_sequence("/api/paas/v4/chat/completions", if mock == Mock::Outage { replies.iter().flat_map(|r| [r.clone(), r.clone()]).collect() } else { replies });
-    let verifier = ZaiRevisionVerifier::for_test(Arc::new(Key), Arc::new(ProviderAuthorization::in_memory("zai", Purpose::Verification, true)), url, Duration::from_secs(5));
+    let (url, _rx) = crate::test_support::serve_sequence("/v1/chat/completions", if mock == Mock::Outage { replies.iter().flat_map(|r| [r.clone(), r.clone()]).collect() } else { replies });
+    let verifier = OpenAiRevisionVerifier::for_test(Arc::new(Key), Arc::new(ProviderAuthorization::in_memory("openai", Purpose::Verification, true)), url, Duration::from_secs(5));
     for i in reaching {
         let request = VerifyRequest { request: request_of(&cases[i]), draft: draft_of(&cases[i]) };
         outcomes[i].verdict = Some(tauri::async_runtime::block_on(verifier.verify(&request)));

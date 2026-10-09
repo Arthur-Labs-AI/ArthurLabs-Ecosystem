@@ -25,7 +25,8 @@ pub mod prompt;
 pub mod stage;
 pub mod validate;
 pub mod verifier;
-pub mod zai;
+pub mod openai_verifier;
+pub mod verdict;
 
 #[cfg(test)]
 mod architecture_tests;
@@ -47,6 +48,15 @@ pub struct ModelIdentity {
     pub provider: &'static str,
     pub family: &'static str,
     pub model: String,
+}
+
+/// What kind of check a verifier gives. `Independent`: a different model family from the synthesizer. `SameFamilyReview`: the same family
+/// reviewing its own family's draft (for example GPT-6 Luna checking GPT-6 Luna). A same-family pass is a self-check, not independent
+/// confirmation, and the stage never lets one apply a revision by itself.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VerificationMode {
+    Independent,
+    SameFamilyReview,
 }
 
 /// How the new claim relates to the target, as the resolver authorized it. The draft must classify its own change the same way.

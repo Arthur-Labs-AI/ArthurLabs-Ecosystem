@@ -34,7 +34,7 @@ fn dev_and_holdout_share_no_case_and_cover_every_language_and_class() {
         }
         assert!(set.iter().any(|c| c.label == "safe") && set.iter().any(|c| c.label == "unsafe"));
         assert!(set.iter().all(|c| (c.label == "unsafe") == c.unsafe_class.is_some()));
-        assert!(set.iter().filter_map(|c| c.unsafe_class.as_deref()).all(|k| crate::synthesis::zai::CHECKS.iter().any(|(n, _)| *n == k)));
+        assert!(set.iter().filter_map(|c| c.unsafe_class.as_deref()).all(|k| crate::synthesis::verdict::CHECKS.iter().any(|(n, _)| *n == k)));
     }
 }
 
@@ -50,7 +50,7 @@ fn evaluate(label: &str, revision: &[RevCase], identity: &[IdCase], out: &mut St
         }
         out.push_str(&table(&format!("Layer B — validator + real adapter over mock transport: {name} (plumbing, NOT model quality)"), &revision_rows(&outcomes, true)));
     }
-    out.push_str("#### Layer C — real model (GLM `glm-5.3` via Z.ai)\n\nNOT RUN. No Z.ai credential or provider authorization exists; no paid request was made. No real-model metric is reported.\n\n");
+    out.push_str("#### Layer C — real model (GPT-6 Luna, same-family review, effort none)\n\nNOT RUN. No verification authorization was granted, no OpenAI credential was used and no paid request was made. No real-model metric is reported.\n\n");
 }
 
 #[test]
@@ -83,26 +83,26 @@ fn rates_with_no_denominator_are_not_printed_as_percentages() {
 /// The only test that can spend money. It never runs by default: it needs `--ignored`, an explicit gate and a key in the environment, sends
 /// at most one request per draft that passes the validator (both splits together are bounded below), and prints only counts.
 #[test]
-#[ignore = "paid: sends the corpus to Z.ai; needs ARTHUR_ZAI_EVAL=yes and ARTHUR_ZAI_API_KEY"]
+#[ignore = "paid: sends the corpus to OpenAI; needs ARTHUR_LUNA_VERIFY_EVAL=yes and ARTHUR_OPENAI_API_KEY"]
 fn real_model_verifier_evaluation() {
     use crate::synthesis::authorization::{ProviderAuthorization, Purpose};
-    use crate::synthesis::zai::ZaiRevisionVerifier;
+    use crate::synthesis::openai_verifier::OpenAiRevisionVerifier;
     use crate::synthesis::{RevisionVerifier, Verdict, VerifyRequest};
     use std::sync::Arc;
-    if std::env::var("ARTHUR_ZAI_EVAL").as_deref() != Ok("yes") {
+    if std::env::var("ARTHUR_LUNA_VERIFY_EVAL").as_deref() != Ok("yes") {
         return;
     }
     struct EnvKey;
     impl crate::providers::credentials::CredentialSource for EnvKey {
         fn api_key(&self) -> Option<crate::providers::credentials::ApiKey> {
-            std::env::var("ARTHUR_ZAI_API_KEY").ok().and_then(|k| crate::providers::credentials::ApiKey::parse(&k))
+            std::env::var("ARTHUR_OPENAI_API_KEY").ok().and_then(|k| crate::providers::credentials::ApiKey::parse(&k))
         }
     }
     let mut all: Vec<RevCase> = load(DEV_REVISION);
     all.extend(load::<RevCase>(HOLDOUT_REVISION));
     let reaching: Vec<&RevCase> = all.iter().filter(|c| deterministic(c).is_ok()).collect();
     assert!(reaching.len() <= 60, "bounded: at most 60 paid requests");
-    let verifier = ZaiRevisionVerifier::new(Arc::new(EnvKey), Arc::new(ProviderAuthorization::in_memory("zai", Purpose::Verification, true)), std::time::Duration::from_secs(120)).unwrap();
+    let verifier = OpenAiRevisionVerifier::new(Arc::new(EnvKey), Arc::new(ProviderAuthorization::in_memory("openai", Purpose::Verification, true)), std::time::Duration::from_secs(120)).unwrap();
     let (mut false_pass, mut false_veto, mut unavailable, mut unsafe_n, mut safe_n) = (0, 0, 0, 0, 0);
     for c in reaching {
         let verdict = tauri::async_runtime::block_on(verifier.verify(&VerifyRequest { request: request_of(c), draft: draft_of(c) }));

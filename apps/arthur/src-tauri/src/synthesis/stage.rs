@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use super::authorization::ProviderAuthorization;
 use super::validate::{validate_draft, ValidatedDraft};
-use super::verifier::{ensure_independent, StageError};
-use super::{RevisionSynthesizer, RevisionVerifier, SynthesisRequest, Verdict, VerifyRequest};
+use super::verifier::{ensure_independent, ensure_same_family, StageError};
+use super::{RevisionSynthesizer, RevisionVerifier, SynthesisRequest, VerificationMode, Verdict, VerifyRequest};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StageLimits {
@@ -36,10 +36,11 @@ pub struct SynthesisStage {
     verification_authorization: Arc<ProviderAuthorization>,
     expected_model_prefix: String,
     limits: StageLimits,
+    mode: VerificationMode,
 }
 
 impl SynthesisStage {
-    /// Refuses a verifier of the synthesizer's own model family: an independent check is the whole point.
+    /// Independent mode: refuses a verifier of the synthesizer's own model family, since an independent check is the whole point.
     pub fn new(
         synthesizer: Arc<dyn RevisionSynthesizer>,
         verifier: Arc<dyn RevisionVerifier>,
@@ -48,8 +49,36 @@ impl SynthesisStage {
         limits: StageLimits,
     ) -> Result<Self, StageError> {
         ensure_independent(synthesizer.as_ref(), verifier.as_ref())?;
+        Ok(Self::build(synthesizer, verifier, synthesis_authorization, verification_authorization, limits, VerificationMode::Independent))
+    }
+
+    /// A verifier of the SAME family as the synthesizer (GPT-6 Luna reviewing GPT-6 Luna). This is a self-check, not independent
+    /// verification: a pass never applies a revision by itself, it holds the claim for a person's approval (`review_required`).
+    pub fn new_same_family_review(
+        synthesizer: Arc<dyn RevisionSynthesizer>,
+        verifier: Arc<dyn RevisionVerifier>,
+        synthesis_authorization: Arc<ProviderAuthorization>,
+        verification_authorization: Arc<ProviderAuthorization>,
+        limits: StageLimits,
+    ) -> Result<Self, StageError> {
+        ensure_same_family(synthesizer.as_ref(), verifier.as_ref())?;
+        Ok(Self::build(synthesizer, verifier, synthesis_authorization, verification_authorization, limits, VerificationMode::SameFamilyReview))
+    }
+
+    fn build(
+        synthesizer: Arc<dyn RevisionSynthesizer>,
+        verifier: Arc<dyn RevisionVerifier>,
+        synthesis_authorization: Arc<ProviderAuthorization>,
+        verification_authorization: Arc<ProviderAuthorization>,
+        limits: StageLimits,
+        mode: VerificationMode,
+    ) -> Self {
         let expected_model_prefix = synthesizer.identity().model;
-        Ok(Self { synthesizer, verifier, synthesis_authorization, verification_authorization, expected_model_prefix, limits })
+        Self { synthesizer, verifier, synthesis_authorization, verification_authorization, expected_model_prefix, limits, mode }
+    }
+
+    pub fn mode(&self) -> VerificationMode {
+        self.mode
     }
 
     /// Both provider authorizations hold right now.
@@ -85,6 +114,8 @@ impl SynthesisStage {
             return Err("evolution_withdrawn");
         }
         match verdict {
+            // a same-family pass is a self-check: the draft is worth showing to a person, never worth applying on its own
+            Verdict::Pass if self.mode == VerificationMode::SameFamilyReview => Err("review_required"),
             Verdict::Pass => Ok(validated),
             Verdict::Veto(_) => Err("verifier_veto"),
             Verdict::Unavailable(_) => Err("verifier_unavailable"),

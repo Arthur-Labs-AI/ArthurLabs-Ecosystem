@@ -152,9 +152,9 @@
 | [unicode] unsafe accepted | 0/2 = 0.0% (95% CI 0.0–65.8%) |
 | [unicode] safe rejected | 1/1 = 100.0% (95% CI 20.7–100.0%) |
 
-#### Layer C — real model (GLM `glm-5.3` via Z.ai)
+#### Layer C — real model (GPT-6 Luna, same-family review, effort none)
 
-NOT RUN. No Z.ai credential or provider authorization exists; no paid request was made. No real-model metric is reported.
+NOT RUN. No verification authorization was granted, no OpenAI credential was used and no paid request was made. No real-model metric is reported.
 
 ### Frozen holdout (evaluated once, nothing tuned to it) (25 revision cases: 8 safe / 17 unsafe; 10 identity cases)
 
@@ -308,6 +308,6 @@ NOT RUN. No Z.ai credential or provider authorization exists; no paid request wa
 | [unicode] unsafe accepted | 0/2 = 0.0% (95% CI 0.0–65.8%) |
 | [unicode] safe rejected | 1/1 = 100.0% (95% CI 20.7–100.0%) |
 
-#### Layer C — real model (GLM `glm-5.3` via Z.ai)
+#### Layer C — real model (GPT-6 Luna, same-family review, effort none)
 
-NOT RUN. No Z.ai credential or provider authorization exists; no paid request was made. No real-model metric is reported.
+NOT RUN. No verification authorization was granted, no OpenAI credential was used and no paid request was made. No real-model metric is reported.
