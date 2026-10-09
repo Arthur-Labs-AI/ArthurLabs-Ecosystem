@@ -1,44 +1,48 @@
 # Sentry Beta — Updating
 
-For v0.1 Beta, `sentry update` tracks **`origin/main`** explicitly:
+## Beta channel: explicit tags
 
-```powershell
+Install from announced Git tags. Tag clones use detached HEAD: setup/open work,
+while `sentry update` refuses before Git mutations. This pins your revision.
+GitHub Releases provide notes; there is no automatic Release updater.
+
+For a later announced beta: use a clean checkout, cancel active work and wait,
+then `sentry stop`. Fetch with `git fetch origin tag <announced-tag>`, review
+notes and run `git switch --detach <announced-tag>`. Rerun `.\sentry.ps1 setup`
+on Windows or `./sentry setup` on CachyOS; open and verify Environment/doctor.
+Do not overwrite tags or discard local changes automatically.
+
+For same-revision repair rerun setup. Windows also has `sentry repair`;
+CachyOS uses `sentry setup`.
+
+## Development channel: explicit opt-in
+
+`sentry update` tracks **development origin/main**, potentially outside a tested
+beta. The launcher prints this policy. Switching to main opts in:
+
+```text
+git switch main
 sentry update
 ```
 
-It does NOT update from GitHub Releases yet. This is intentional:
-Releases are milestones with notes; Beta fixes flow through commits.
+Requires a clean clone, branch main and origin/internet access. Sentry never
+resets, stashes or rebases your work.
 
-Beta updates require branch `main`. On any other branch, update refuses
-immediately (zero Git mutations) and tells you to `git switch main`.
+## Development update steps
 
-## What update does
+1. Refuse non-main branches and dirty trees.
+2. Fetch origin/main and compare HEAD.
+3. Leave running Sentry alone if current (Windows `-Repair` can rebuild).
+4. Stop gracefully; failure aborts before merge/build/deploy.
+5. Fast-forward only, run updated launcher, install frozen dependencies,
+   build, deploy versioned runtime, handshake and recheck managed tools.
+6. Restore running/stopped state and preserve settings/data. Runtime handshake
+   failure restores the previous runtime target.
 
-1. Refuses on a non-`main` branch or a dirty tree (commit, stash, or
-   discard first — Sentry never resets, stashes, or rebases for you).
-2. `git fetch --prune origin main` and compares `HEAD` with `origin/main`.
-3. If already up to date, reports so and **leaves a running Sentry alone**
-   (unless `-Repair` forces a rebuild).
-4. If an update is available: gracefully stops Sentry, then
-   `git merge --ff-only origin/main` (a diverged `main` must be resolved
-   manually).
-5. Hands off to the **new** launcher code, then: `pnpm install
---frozen-lockfile`, `pnpm build`, versioned WSL runtime redeploy,
-   distro-preference sync, handshake check, managed-tool revalidation.
-6. Reopens Sentry (or restores its prior stopped state after `-Repair`).
-   Provider settings, projects, and run history are preserved.
+## Recovery
 
-Update prints the transition, e.g. `Updated: e9e0b80 → a1b2c3d`.
-
-## Requirements
-
-- Install from `git clone` (a ZIP download has no remote to pull from).
-- Branch `main` tracking `origin/main`.
-- A clean tree: `git status --porcelain` must be empty.
-- Internet access to fetch `origin`.
-
-## If update fails midway
-
-The failing stage is printed. Your projects, credentials, and the previous
-runtime version are never deleted by an update. Fix the reported stage
-(usually a build error from a new commit) and rerun `sentry update`.
+Stop failure: cancel work, close window, run `sentry stop`, retry. The launcher
+does not kill processes as a maintenance shortcut.
+Build/deploy failure after Git advances: resolve the printed failure and rerun
+setup for that revision. A no-op update does not rebuild advanced source. Retain
+the previous runtime for diagnosis; never delete databases/credentials as a fix.

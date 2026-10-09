@@ -1,12 +1,12 @@
 # Sentry Beta — Getting started
 
-From a fresh Windows machine to your first Full QA run, without knowing
-monorepo internals.
+From Windows 11 + WSL2 or native CachyOS to your first Full QA run.
+Use the release tag once published; the repository currently requires access.
 
 ## 1. Clone and set up
 
 ```powershell
-git clone https://github.com/Mert1026/Sentry.git
+git clone --branch v0.1.0-beta.1 https://github.com/Mert1026/Sentry.git
 cd Sentry
 .\sentry.ps1 setup
 ```
@@ -31,6 +31,11 @@ What setup does (7 phases):
 Setup never asks for API keys. If your terminal does not recognize `sentry`
 after setup, open a new PowerShell window.
 
+On native CachyOS, use the same tagged clone and run `./sentry setup`, then
+`./sentry open` in a graphical session. Setup checks host/packages, Node/pnpm,
+systemd/sandbox, dependencies/build, runtime handshake, agents, and user shim.
+See [CachyOS details](../setup/cachyos-launcher.md).
+
 ## 2. Open Sentry
 
 ```powershell
@@ -40,7 +45,10 @@ sentry open
 ## 3. Configure providers
 
 Open **Settings → Providers** and enter your provider credentials. Secrets
-stay in Electron safeStorage (Windows DPAPI) on this machine.
+use Electron safeStorage (Windows DPAPI or the available Linux backend).
+Assess Linux backend security on the target desktop; unavailable encryption
+has no plaintext persistence fallback. Providers receive prompts/source during
+runs and can charge for API usage.
 
 ## 4. Verify the environment
 
@@ -64,7 +72,8 @@ For a narrower question, use **Targeted QA** with specific paths.
 ## Next steps
 
 - `sentry cli` — drive the same running instance from a terminal or automation ([CLI guide](cli.md)).
-- `sentry update` — pull the latest Beta commits (see updating.md).
+- Follow [updating.md](updating.md) to remain on beta tags; `sentry update`
+  explicitly follows development main.
 - `sentry stop` — gracefully stop Sentry when you are done.
 - [troubleshooting.md](troubleshooting.md) — when something fails, run
   `sentry doctor` first.

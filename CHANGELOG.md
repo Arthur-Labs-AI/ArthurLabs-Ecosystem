@@ -1,30 +1,35 @@
 # Changelog
 
-All notable user-facing changes to Sentry are documented here.
+## [0.1.0-beta.1] - Unreleased
 
-## [0.1.0-beta.1] - 2026-09-26
+First source-based beta candidate. Publication/gate status is recorded in the
+[validation report](docs/releases/v0.1.0-beta.1-validation.md).
 
-The first public user-facing Beta: clone, one setup command, use.
+### Included
 
-### Added
+- Electron/React Desktop, projects, immutable revisions, independent findings,
+  evidence inspection and persistent history.
+- Windows 11 + WSL2 and native CachyOS setup, launchers, diagnostics,
+  versioned Linux runtime deployment and handshake validation.
+- OpenCode 1.18.32, DeepSeek SDK 0.1.5-rc.2 and GLM through Claude Code
+  2.1.270; Full/Targeted QA and cancellation.
+- JSON/log export, Save As, CLI control and Desktop provider settings.
 
-- Sentry Desktop application (Electron + React): dashboard, projects,
-  project work hub, run workspace with resizable panels and tabbed inspector.
-- WSL2 execution runtime with isolated agent workspaces, evidence pipeline,
-  and `runtime.hello` handshake verification.
-- OpenCode agent (tested 1.18.32), DeepSeek agent (SDK 0.1.5-rc.2), GLM agent
-  (adapter-tested Claude Code 2.1.270) running independently per snapshot.
-- Full QA and Targeted QA; independent findings with rich per-agent detail,
-  evidence, and JSON/log export with native Save As.
-- Secure provider settings (Settings → Providers) via Electron safeStorage /
-  Windows DPAPI.
-- `sentry` Windows launcher: `setup`, `open`, `update`, `stop`, `status`,
-  `doctor`, `version`, `help` with user-PATH shim and resumable setup.
-- Beta docs (getting-started, troubleshooting, updating), release notes,
-  bug-report template, and release checklist.
+### Stabilization
 
-### Notes
+- Setup/update blocks failed graceful shutdown on both hosts.
+- Electron quit awaits bootstrap and runtime cleanup.
+- Linux launch detects immediate Electron failure with log guidance.
+- Runtime staging excludes local credentials, databases and logs.
+- Verifier path portability and Claude argv fixture corrections.
+- CLI version alignment, pinned beta installs and explicit development updates.
+- Release/hotfix CI and owner review policy.
 
-- Windows 11 + WSL2 only for this Beta; source-based install.
-- `sentry update` tracks latest `main` commits (not Releases) for now.
-- No signed installer yet.
+### Limitations
+
+- Source installation; no signed installer/tested binary bundle.
+- Provider accounts/credit required; failures can prevent 3/3 completion.
+- Beta tags stay pinned; `sentry update` follows development main.
+- Sandbox proofs require capabilities absent on some runners.
+- Legacy merge/verification ingestion is outside current Desktop RPC.
+- Private repository access required for testers.

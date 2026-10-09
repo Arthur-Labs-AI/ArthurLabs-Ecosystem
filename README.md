@@ -1,139 +1,151 @@
 # Sentry
 
-Sentry is a local-first AI software QA desktop application that runs
-multiple independent AI QA agents against the same immutable project snapshot.
+Sentry is a local-first AI QA desktop application. OpenCode, DeepSeek, and
+GLM through Claude Code independently investigate one immutable project snapshot
+and return findings, evidence, token usage, and observable run history.
 
-Current release: v0.1 Beta
-Platform: Windows 11 + WSL2
+**Beta candidate: `v0.1.0-beta.1`.** Supported hosts: **Windows 11 + WSL2**
+and **native CachyOS**. This is early tester software, not production-ready.
+See [release notes](docs/releases/v0.1.0-beta.1.md) and
+[validation](docs/releases/v0.1.0-beta.1-validation.md).
 
-Three agents run independently against every project snapshot — no agent sees
-another agent's conclusions before reporting its own:
+## Capabilities
 
-- **OpenCode** — broad QA coverage through the OpenCode harness (OpenRouter provider path).
-- **DeepSeek** — independent QA pass through the DeepSeek harness SDK.
-- **GLM** — independent QA pass through the Claude Code adapter (GLM provider).
+- Electron Desktop for projects, revisions, runs, findings, and evidence.
+- Full and Targeted QA with independent reports and cancellation.
+- Isolated Linux workspaces, persistent history and restart recovery.
+- JSON/log export, native Save As, and CLI control of the running Desktop.
+- Provider settings, environment checks, and resumable source-based setup.
 
-Each agent produces its own findings with evidence. Sentry preserves
-agreement AND disagreement: nothing is merged away, every finding keeps its
-source, token usage, and observable run history until you delete it.
+Historical merger/verifier/issue-lineage components remain in the repository.
+Merge/verification ingestion is not exposed by current Desktop runtime RPC;
+it is not a promised beta user flow. Existing issue/retest data and compatibility
+paths remain. Architecture records may describe retired features.
 
-## Quick start
+## Prerequisites
+
+- Git and internet during setup. Install from a clone, not a source ZIP.
+- Node.js >= 22 and pnpm **9.12.3**. Setup resolves pinned tools and guides
+  missing prerequisites; Node 22 is the CI baseline.
+- Provider accounts, API credentials, supported models, and API credit for
+  enabled agents. Runs can incur charges.
+- Windows: Windows 11 and a usable WSL2 distro (Ubuntu preferred). Initial WSL
+  installation can require administrator approval and a reboot.
+- CachyOS: graphical session, `ID=cachyos`, systemd user services, and pacman.
+  Setup checks Git, curl, CA certificates, Node/npm, bubblewrap, socat, and
+  base Linux utilities. It shows required package installation commands.
+
+Other native Linux distributions and macOS are unsupported. Ubuntu in WSL2
+is supported as the Windows runtime; Ubuntu CI is not CachyOS acceptance.
+
+## Install on Windows 11
+
+Once the beta tag is available, in PowerShell:
 
 ```powershell
-git clone https://github.com/Mert1026/Sentry.git
+git clone --branch v0.1.0-beta.1 https://github.com/Mert1026/Sentry.git
 cd Sentry
 .\sentry.ps1 setup
 sentry open
 ```
 
-Then:
+Setup reuses compatible WSL2 distros, ignoring utility distros such as
+`docker-desktop`. If none is usable it guides WSL2/Ubuntu installation.
+After reboot or initial Linux account creation, rerun setup. Open a new
+terminal if `sentry` is not yet on PATH.
 
-1. Open Settings → Providers and configure your provider accounts.
-2. Open Environment and verify readiness.
-3. Add a project.
-4. Start Full or Targeted QA.
+## Install on native CachyOS
 
-Use `git clone`, not a ZIP download: `sentry update` needs a Git checkout.
+Once the beta tag is available, in your graphical session:
 
-## Requirements
+```bash
+git clone --branch v0.1.0-beta.1 https://github.com/Mert1026/Sentry.git
+cd Sentry
+./sentry setup
+./sentry open
+```
 
-- Windows 11 with internet access during setup.
-- WSL2 (see below) — the execution runtime is Linux.
-- Node >= 22 and pnpm 9.12.3 on Windows (setup installs pnpm if missing and
-  guides you if Node needs attention).
-- Provider accounts / API credentials for the agents you want to run.
-- Administrator approval may be needed when WSL itself must be installed;
-  a reboot may be required — setup tells you and resumes afterwards.
+The shim is `~/.local/bin/sentry`. If not on PATH, use `./sentry` from the
+clone. Shell rc files are not edited. See [CachyOS setup](docs/setup/cachyos-launcher.md).
+The repository is private: testers need access to clone/read releases.
+A draft is visible to authorized maintainers. No standalone installer is shipped.
 
-### If WSL2 already exists
+## Configure providers and run QA
 
-If WSL2 already exists, Sentry reuses a compatible distribution and does not
-reinstall WSL. Your default distro, home files, and installed packages are
-left alone; setup only adds the missing Sentry prerequisites (Node >= 22
-visible to direct `wsl.exe` execution, pnpm, systemd user services,
-sandbox utilities, the Sentry runtime, and the tested agent tools).
-Utility distros such as `docker-desktop` are ignored.
+1. Open **Settings → Providers**. Configure OpenCode's provider/model
+   (OpenRouter is the default path), DeepSeek's key/model, and GLM's token,
+   provider base URL and model for Claude Code.
+2. Check selected agents in **Environment**. `sentry doctor` makes no paid
+   requests; credential presence does not prove credit or provider acceptance.
+3. Add a project. Sentry creates a managed copy and immutable revision.
+4. Start Full QA or select paths for Targeted QA. Inspect independent reports
+   and evidence; export JSON/logs if needed.
+5. Cancel active work and wait for it to settle before exit or maintenance.
 
-### If WSL is missing
-
-If WSL is missing, setup can install WSL2 + Ubuntu for you with
-`wsl --install -d Ubuntu`. Windows may require a reboot; rerun
-`sentry setup` afterwards and setup resumes where it left off.
-A brand-new Ubuntu may ask you to create a Linux username/password once.
+Setup pins OpenCode **1.18.32**, DeepSeek SDK **0.1.5-rc.2**, and Claude Code
+**2.1.270**. Keep these until a tested release changes them.
 
 ## Everyday commands
 
-After setup, `sentry` works from any directory:
-
-```powershell
-sentry open      # launch Sentry Desktop
-sentry update    # pull latest commits and update Sentry
-sentry repair    # safely rerun setup and validation end to end (idempotent)
-sentry stop      # gracefully stop Sentry (only Sentry, never other apps)
-sentry status    # fast installation status (add -Json for machine-readable)
-sentry doctor    # detailed diagnostics (no paid API calls, no secrets printed)
-sentry version   # product version + commit
-sentry help      # all commands
+```text
+sentry open       Launch Desktop; reopening focuses its window
+sentry stop       Graceful Sentry shutdown
+sentry status     Installation and liveness status
+sentry doctor     Diagnostics without paid requests
+sentry version    Product version, commit, and branch
+sentry cli ...    Control running Desktop; use --json for automation
+sentry setup      Rerun setup for the checked-out source revision
+sentry help       Platform-specific help
 ```
 
-The classic developer workflow still works and is never required to change:
+Use `sentry status -Json` on Windows or `sentry status --json` on CachyOS.
+Windows also provides `sentry repair` to rerun setup.
 
-```powershell
-pnpm --filter @qa/desktop build
-pnpm --filter @qa/desktop dev:electron
-```
+## Updates
 
-## Updating
+Beta installations stay pinned to version tags in detached HEAD state.
+`sentry update` refuses there; it only tracks **development origin/main**.
+Switching to main explicitly opts into potentially untested changes. There is
+no automatic GitHub Release updater. For a later beta: cancel work, stop,
+fetch the announced tag, check it out, and rerun setup. See [updating](docs/beta/updating.md).
+Setup/update aborts on failed graceful stop; dirty trees are never reset/stashed.
 
-`sentry update` tracks `origin/main` explicitly (branch `main` required) —
-it does NOT update from GitHub Releases yet. This is intentional for v0.1 Beta:
-Releases mark milestones and carry notes, while day-to-day Beta fixes flow
-through commits. Update refuses to run with local changes (commit, stash,
-or discard them first); it never resets or stashes for you.
+## Security and privacy
 
-See [docs/beta/updating.md](docs/beta/updating.md).
+Projects/history are local. Agents send prompts and relevant source/evidence to
+configured providers; review policies before importing confidential code.
+Isolation does not make model output trusted or guarantee detection of every bug.
+Secrets use Electron safeStorage (Windows DPAPI or the available Linux backend).
+Assess backend security on the target desktop; unavailable encryption has no
+plaintext persistence fallback. Credentials reach the runtime as required by
+integrations. Review exports/logs before sharing; never share API keys,
+provider stores, databases, or retained workspaces in bug reports.
 
-## Provider security
+## Troubleshooting
 
-- API keys are entered in the Desktop UI (Settings → Providers).
-- Secrets use Electron safeStorage / Windows DPAPI on this machine.
-- PowerShell setup never asks for, stores, or logs provider credentials.
-- WSL receives credentials only at runtime where the existing execution
-  architecture requires it; setup/doctor output never contains secrets.
+- Run `sentry doctor`; see [troubleshooting](docs/beta/troubleshooting.md).
+- Windows runtime offline: check WSL2, directly executable Linux Node, and
+  systemd user services; resolve the reported failure and rerun setup.
+- CachyOS launch failure: use a graphical session and inspect the printed log.
+  The short startup check proves process survival only; verify Environment
+  and `sentry cli capabilities --json` after launch.
+- GLM unavailable: repair bubblewrap/socat/systemd; keep sandbox controls enabled.
+- Quota/auth failures: check account credit, endpoint, key and model.
+- Stop timeout: cancel work, close the window, run `sentry stop`, then retry.
+  Do not rebuild while Desktop is running.
 
-## What you get
+Report via [GitHub Issues](https://github.com/Mert1026/Sentry/issues) with
+version/commit, host OS, WSL distro if applicable, reproduction, expected/actual
+behavior, and reviewed status/doctor output. Never include keys.
 
-- Desktop QA workspace (projects, run workspace, finding inspection).
-- Full QA and Targeted QA across OpenCode, DeepSeek, and GLM.
-- Independent findings with evidence, JSON/log export, native Save As.
-- WSL2 execution runtime with isolated agent workspaces.
-- Secure provider settings, responsive redesigned UI.
+## Documentation and development
 
-## Documentation
+- [Getting started](docs/beta/getting-started.md)
+- [CLI guide](docs/beta/cli.md)
+- [Changelog](CHANGELOG.md)
+- [Release checklist](docs/releases/RELEASE_CHECKLIST.md)
+- [Branching and review](docs/development/branching.md)
 
-- [docs/beta/getting-started.md](docs/beta/getting-started.md) — from a fresh
-  Windows machine to your first Full QA run.
-- [docs/beta/troubleshooting.md](docs/beta/troubleshooting.md) — common
-  failures; run `sentry doctor` first.
-- [docs/beta/updating.md](docs/beta/updating.md) — Beta update policy.
-- [docs/releases/v0.1.0-beta.1.md](docs/releases/v0.1.0-beta.1.md) — release notes.
-- [CHANGELOG.md](CHANGELOG.md) — user-facing changelog.
-
-Historical architecture records (`docs/architecture`, `docs/adr`) describe
-how Sentry was built, including retired workflows. They are history, not
-current instructions.
-
-## Beta limitations
-
-- Windows + WSL2 only for this Beta.
-- Source-based installation (`git clone` + `sentry setup`); no signed
-  installer yet.
-- Installing WSL may require a Windows reboot.
-- Provider access/keys are required to run agents.
-- Updates track latest `main` commits (see above).
-- Beta software: report bugs with `sentry status` output and the
-  FAIL/WARN lines from `sentry doctor` (never paste API keys).
-
-## License
-
+Development: `pnpm install --frozen-lockfile`, `pnpm build`, then
+`pnpm --filter @qa/desktop dev:electron`. Runtime prerequisites still apply.
 See [LICENSE](LICENSE).
