@@ -41,8 +41,23 @@ pub struct ChatRequest<'a> {
     pub sampling: Sampling,
 }
 
+/// What a completion carried besides its text: the model that actually answered and the token usage, when the provider reports them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Completion {
+    pub text: String,
+    pub model: Option<String>,
+    pub prompt_tokens: Option<u64>,
+    pub completion_tokens: Option<u64>,
+}
+
 /// Sends the request and returns the text of the model's answer.
 pub async fn complete_json(client: &reqwest::Client, credentials: &dyn CredentialSource, request: ChatRequest<'_>) -> Result<String, ChatFailure> {
+    complete_json_detailed(client, credentials, request).await.map(|completion| completion.text)
+}
+
+/// As `complete_json`, also returning the answering model and token usage so a caller can check it got the model it asked for and
+/// account for what it spent.
+pub async fn complete_json_detailed(client: &reqwest::Client, credentials: &dyn CredentialSource, request: ChatRequest<'_>) -> Result<Completion, ChatFailure> {
     let key = credentials.api_key().ok_or(ChatFailure::NotConfigured)?;
 
     let mut body = json!({
@@ -74,7 +89,13 @@ pub async fn complete_json(client: &reqwest::Client, credentials: &dyn Credentia
     let envelope: Value = response.json().await.map_err(|error| {
         if error.is_decode() { ChatFailure::Unreadable("unreadable response".into()) } else { ChatFailure::Network }
     })?;
-    answer_text(&envelope)
+    let text = answer_text(&envelope)?;
+    Ok(Completion {
+        text,
+        model: envelope.get("model").and_then(Value::as_str).map(str::to_string),
+        prompt_tokens: envelope.pointer("/usage/prompt_tokens").and_then(Value::as_u64),
+        completion_tokens: envelope.pointer("/usage/completion_tokens").and_then(Value::as_u64),
+    })
 }
 
 fn unreadable(reason: &str) -> ChatFailure {

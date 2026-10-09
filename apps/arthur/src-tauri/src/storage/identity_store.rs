@@ -33,11 +33,12 @@ pub const MAX_PENDING_CANDIDATES: usize = 4;
 const MAX_AUDIT_ENTRIES: usize = 16;
 
 /// Names the audit may record. A mirror of `identity::types::Veto` as snake_case; kept as data so storage imports nothing from it.
-pub const VETO_NAMES: [&str; 28] = [
+pub const VETO_NAMES: [&str; 35] = [
     "project_mismatch", "project_archived", "target_archived", "inconsistent_snapshot", "classifier_failed", "unknown_model", "too_few_runs",
     "unknown_candidate_id", "duplicate_signal", "incomplete_signals", "out_of_range_score", "ambiguous_target", "weak_evidence", "runs_disagree",
     "relation_contradicts_score", "fundamental_reframing", "reframing_signal", "subtask_of_target", "referent_unresolved", "incompatible_kind",
     "user_owned_revision", "supersession_not_explicit", "not_a_prior_decision", "inbox_requires_confirmation", "conflicting_claims", "stale_target", "invalid_draft", "evolution_withdrawn",
+    "draft_bad_reference", "draft_unsupported_fact", "draft_omits_fact", "draft_scope_change", "verifier_veto", "verifier_unavailable", "synthesis_unavailable",
 ];
 const REFRAMING_VETOES: [&str; 2] = ["fundamental_reframing", "reframing_signal"];
 pub const UNCHECKED_REASONS: [&str; 7] = ["disabled", "invalid_claim", "invalid_candidates", "no_eligible_candidates", "classifier_failed", "malformed_signals", "review_quota"];

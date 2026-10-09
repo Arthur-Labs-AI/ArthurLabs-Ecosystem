@@ -52,6 +52,8 @@ use crate::storage::identity_store::{
 use crate::storage::knowledge_store::{begin_distillation_in, insert_object_in, validate_claim, Begin, KnowledgeObject, NewKnowledgeObject, MAX_BODY_CHARS, MAX_TITLE_CHARS};
 use crate::storage::lineage_store::{revise_if_current_in, CasOrigin, ExpectedRevision, ReviseConflict, RevisionContent};
 use crate::storage::migrations::INBOX_PROJECT_ID;
+use crate::synthesis::stage::{StageBudget, SynthesisStage};
+use crate::synthesis::{ChangeClass, SourceRef, SynthesisRequest};
 
 use super::{DistillError, DistillationOutcome, RevisedObject};
 
@@ -206,6 +208,9 @@ pub struct EvolutionPipeline {
     /// commit transaction before any revision is written. `None`: nothing more is required.
     pub still_allowed: Option<Arc<dyn Fn() -> bool + Send + Sync>>,
     pub drafter: Arc<dyn RevisionDrafter + Send + Sync>,
+    /// Real revision synthesis plus independent verification. When present it REPLACES `drafter`: no revision text comes from anywhere
+    /// else, and without it passing there is no automatic revision.
+    pub synthesis: Option<SynthesisStage>,
     pub policy: ResolverPolicy,
     pub limits: EvolutionLimits,
 }
@@ -215,9 +220,15 @@ impl EvolutionPipeline {
         self.settings.enabled()
     }
 
-    /// Switched on AND every additional requirement (consent) still holds right now.
-    pub fn allowed(&self) -> bool {
+    /// Switched on AND the additional requirement (provider consent) still holds right now.
+    pub fn base_allowed(&self) -> bool {
         self.enabled() && self.still_allowed.as_ref().is_none_or(|check| check())
+    }
+
+    /// `base_allowed` AND, when revision synthesis is configured, both of its provider authorizations. This is what is read inside the
+    /// commit transaction before any revision is written, so a permission withdrawn at ANY point before the write blocks it.
+    pub fn allowed(&self) -> bool {
+        self.base_allowed() && self.synthesis.as_ref().is_none_or(SynthesisStage::authorized)
     }
 }
 
@@ -331,6 +342,8 @@ enum Plan {
     /// `None`: a classifier ran and found no referent (verified NEW). `Some(reason)`: identity was NOT established.
     New(Option<&'static str>),
     Revise { target: TargetSnapshot, draft: RevisionDraft },
+    /// Authorized to revise, text still to be synthesized and verified (only when a `SynthesisStage` is configured).
+    Pending { target: TargetSnapshot, relation: Relation, claim: Claim, candidate: Candidate },
     Uncertain(Vec<String>),
 }
 
@@ -434,6 +447,12 @@ fn plan_one(store: &CaptureStore, pipeline: &EvolutionPipeline, resolution: Reso
         Outcome::New { reason: NewReason::Unchecked(reason) } => Planned { plan: Plan::New(Some(unchecked_name(reason))), parts },
         Outcome::Uncertain { candidates, .. } => Planned { plan: Plan::Uncertain(candidates), parts },
         Outcome::Revise { target, relation } => {
+            if pipeline.synthesis.is_some() {
+                return match candidates.iter().find(|c| c.object_id == target.object_id) {
+                    Some(candidate) => Planned { plan: Plan::Pending { target, relation, claim: claim.clone(), candidate: candidate.clone() }, parts },
+                    None => Planned { plan: Plan::Uncertain(vec![target.object_id.clone()]), parts: parts.with_veto("invalid_draft") },
+                };
+            }
             let downgrade = |parts: Parts| Planned { plan: Plan::Uncertain(vec![target.object_id.clone()]), parts: parts.with_veto("invalid_draft") };
             let Some(candidate) = candidates.iter().find(|c| c.object_id == target.object_id) else { return downgrade(parts) };
             let Ok(support) = store.evidence_support(&candidate.revision.id) else { return downgrade(parts) };
@@ -598,6 +617,8 @@ fn apply(tx: &Connection, capture_id: &str, claims: &[NewKnowledgeObject], plann
         let disposed = match plan {
             Plan::New(unchecked) => Disposed::Object(create_object(tx, &ctx, ordinal, claim, &parts, unchecked)?),
             Plan::Uncertain(candidates) => stage_or_fall_back(tx, &ctx, ordinal, claim, &parts, &candidates, false)?.into(),
+            // `finalize_pending` resolves every Pending before the commit; reaching one here would mean a revision with no text
+            Plan::Pending { .. } => return Err(IdentityStoreError::Invalid("a revision was never given its text".into())),
             // the latest enabled/consent state is read again here, under the commit: a withdrawn permission means no revision is written
             Plan::Revise { target, .. } if !allowed() => stage_or_fall_back(tx, &ctx, ordinal, claim, &parts.clone().with_veto("evolution_withdrawn"), &[target.object_id.clone()], false)?.into(),
             Plan::Revise { target, draft } => match try_revise(tx, &ctx, ordinal, claim, &target, &draft, &parts)? {
@@ -629,6 +650,90 @@ impl From<Staged> for Disposed {
     }
 }
 
+/// Turns every `Plan::Pending` into `Plan::Revise` (text synthesized, validated and independently verified) or `Plan::Uncertain`.
+async fn finalize_pending(store: &CaptureStore, pipeline: &EvolutionPipeline, stage: &SynthesisStage, planned: Vec<Planned>) -> Vec<Planned> {
+    let mut budget = StageBudget::default();
+    let mut out = Vec::with_capacity(planned.len());
+    for Planned { plan, parts } in planned {
+        let Plan::Pending { target, relation, claim, candidate } = plan else {
+            out.push(Planned { plan, parts });
+            continue;
+        };
+        let withhold = |name: &str, parts: Parts| Planned { plan: Plan::Uncertain(vec![target.object_id.clone()]), parts: parts.with_veto(name) };
+        let Some(request) = synthesis_request(store, &claim, &candidate, relation) else {
+            out.push(withhold("synthesis_unavailable", parts));
+            continue;
+        };
+        // the stage checks its own authorizations in the order that names the right veto, so it gets the base check
+        let allowed = || pipeline.base_allowed();
+        match stage.run(&request, &allowed, &mut budget).await {
+            Err(name) => out.push(withhold(name, parts)),
+            Ok(validated) => {
+                let role = match validated.change {
+                    ChangeClass::Additive => EvidenceRole::Asserts,
+                    ChangeClass::Correction => EvidenceRole::Corrects,
+                    ChangeClass::Replacement => EvidenceRole::Replaces,
+                };
+                let draft = RevisionDraft { content: RevisionContent { kind: candidate.revision.kind.clone(), title: candidate.revision.title.clone(), body: validated.body }, role, retracts: validated.retracts, interpretation_label: None };
+                // the same storage-facing check the hand-written drafts get: it changes something, and any withdrawn evidence is ACTIVE
+                let base = PoolObject {
+                    object_id: candidate.object_id.clone(),
+                    kind: candidate.revision.kind.clone(),
+                    title: candidate.revision.title.clone(),
+                    body: candidate.revision.body.clone(),
+                    revision_id: candidate.revision.id.clone(),
+                    revision_origin: candidate.revision.origin.clone(),
+                };
+                let sound = store.evidence_support(&candidate.revision.id).is_ok_and(|support| draft_problem(&base, &draft, &support).is_none());
+                if sound {
+                    out.push(Planned { plan: Plan::Revise { target, draft }, parts });
+                } else {
+                    out.push(withhold("invalid_draft", parts));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The server-owned input of a synthesis: the target's current text, the claim and its exact words, and the quotes of the target's
+/// ACTIVE evidence read from the stored captures (never from a model). `None` when it cannot be built safely (too much evidence, a
+/// quote that does not resolve, an unsupported relation): the claim then stays pending.
+fn synthesis_request(store: &CaptureStore, claim: &Claim, candidate: &Candidate, relation: Relation) -> Option<SynthesisRequest> {
+    use crate::synthesis::validate::MAX_SOURCES;
+    let change = match relation {
+        Relation::AdditiveRefinement => ChangeClass::Additive,
+        Relation::Correction => ChangeClass::Correction,
+        Relation::DecisionReplacement => ChangeClass::Replacement,
+        _ => return None,
+    };
+    let support = store.evidence_support(&candidate.revision.id).ok()?;
+    if support.active.len() > MAX_SOURCES {
+        return None;
+    }
+    let ids: Vec<String> = support.active.iter().map(|item| item.capture_id.clone()).collect();
+    let captures = store.get_captures(&ids).ok()?;
+    let mut sources = Vec::with_capacity(support.active.len());
+    for (index, item) in support.active.iter().enumerate() {
+        let content = &captures.iter().find(|c| c.id == item.capture_id)?.content;
+        let quote: String = content.chars().skip(usize::try_from(item.source_start).ok()?).take(usize::try_from(item.source_end - item.source_start).ok()?).collect();
+        if quote.trim().is_empty() || quote.chars().count() > 600 {
+            return None;
+        }
+        sources.push(SourceRef { id: format!("s{}", index + 1), quote, capture_id: item.capture_id.clone(), start: item.source_start, end: item.source_end, key: item.ordinal.map(|ordinal| (item.revision_id.clone(), ordinal)) });
+    }
+    Some(SynthesisRequest {
+        kind: candidate.revision.kind.clone(),
+        title: candidate.revision.title.clone(),
+        base_body: candidate.revision.body.clone(),
+        change,
+        sources,
+        claim_title: claim.title.clone(),
+        claim_body: claim.body.clone(),
+        claim_quote: claim.evidence_text.clone(),
+    })
+}
+
 /// The identity-aware replacement for `record_distillation`. Called only while the pipeline is enabled.
 ///
 /// Concurrency: the snapshot read, the (possibly networked) classification and the drafts all happen with NO database lock held; the
@@ -652,6 +757,12 @@ pub async fn commit_with_identity(store: &CaptureStore, pipeline: &EvolutionPipe
             let prefetched = if pipeline.allowed() { Prefetched::new(&items, results) } else { Prefetched::all_failed(&items, ClassifierFailure::Unavailable) };
             plan_from(store, pipeline, &items, &prefetched)
         }
+    };
+    // Revision text (synthesis, deterministic checks, independent verification) is produced HERE, between the identity decision and the
+    // commit, with no database lock held. Anything that does not pass leaves the claim pending for a person.
+    let planned = match &pipeline.synthesis {
+        Some(stage) => finalize_pending(store, pipeline, stage, planned).await,
+        None => planned,
     };
     let allowed = || pipeline.allowed();
     let committed = store.in_identity_transaction(|tx| apply(tx, capture_id, &claims, planned, &pipeline.limits, &allowed)).map_err(to_distill)?;

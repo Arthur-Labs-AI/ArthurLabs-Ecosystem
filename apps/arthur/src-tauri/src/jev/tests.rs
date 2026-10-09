@@ -810,6 +810,7 @@ mod pipeline {
             classifier: ClassifierBackend::Async(provider.clone()),
             still_allowed: Some(provider.gate()),
             drafter: Arc::new(Drafts),
+            synthesis: None,
             policy: resolver_policy(),
             limits: EvolutionLimits::default(),
         })

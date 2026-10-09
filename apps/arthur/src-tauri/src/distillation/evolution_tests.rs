@@ -151,6 +151,7 @@ fn pipeline(classifier: Arc<Scripted>, drafter: Arc<Drafter>, enabled: bool) -> 
         classifier: ClassifierBackend::Sync(classifier),
         still_allowed: None,
         drafter,
+        synthesis: None,
         policy: ResolverPolicy { accepted_models: vec![MODEL.into()], ..ResolverPolicy::default() },
         limits: EvolutionLimits::default(),
     }
