@@ -798,6 +798,31 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
     let usage: AgentUsage | undefined;
     for (const raw of result.events ?? []) {
       try {
+        // The pinned SDK resolves on idle even after a failed model request.
+        // A structured terminal failure overrides any partial final text.
+        if (raw.type === 'turn/end') {
+          const reason = eventData(raw)?.reason;
+          if (reason !== null && typeof reason === 'object') {
+            const outcome = reason as { kind?: unknown; error?: unknown };
+            if (outcome.kind === 'error') {
+              const failure =
+                outcome.error !== null && typeof outcome.error === 'object'
+                  ? (outcome.error as { code?: unknown; status?: unknown; message?: unknown })
+                  : undefined;
+              const code = eventText(failure?.code) ?? 'UNKNOWN';
+              const status = eventNumber(failure?.status);
+              const auth =
+                status === 401 ||
+                status === 403 ||
+                ['AUTH', 'MISSING_CREDENTIAL', 'INVALID_CREDENTIAL'].includes(code);
+              const diagnostic = `DeepSeek ${phase} failed: ${code}${status === undefined ? '' : ` (HTTP ${status})`}. ${eventText(failure?.message) ?? 'Provider request failed.'}`;
+              throw new DeepSeekHarnessError(
+                auth ? 'DEEPSEEK_AUTH_FAILED' : 'DEEPSEEK_PROVIDER_FAILED',
+                redactDiagnostic(diagnostic, [...this.secrets, text]),
+              );
+            }
+          }
+        }
         const observed = this.observeSessionEvent(raw, agentRunId, emit, forbidTools);
         collected.push(...observed.events);
         if (observed.usage !== undefined) usage = sumUsage(usage, observed.usage);
