@@ -203,7 +203,14 @@ const APPROVAL_INTENT = /^(yes|yeah|yep|sure|ok|okay|do it|go ahead|approve|conf
 // not be mistaken for an id, or generic intents would be dropped.
 const APPROVAL_WITH_ID = /^(approve|confirm|yes)[\s:]+([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 const BARGE_IN_MIN_PROBABILITY = 0.7;
-const BARGE_IN_MIN_RUN = 3;
+/**
+ * Stronger speech-probability threshold while playback is active (TASK-0007):
+ * speaker echo is loud but a deliberate interruption is louder. Energy-VAD
+ * cannot distinguish echo from user speech (no AEC yet) - this threshold plus
+ * the sustained-frame requirement (settings.bargeInMinSpeechMs) is the
+ * software mitigation; headphones remain the deterministic verification path.
+ */
+const BARGE_IN_MIN_PROBABILITY_PLAYING = 0.8;
 
 export class VoiceTurnController {
   readonly voiceSessionId: string = `voice-${randomUUID()}`;
@@ -236,18 +243,43 @@ export class VoiceTurnController {
   private activeTurnId: string | undefined;
   private activeUtteranceId: string | undefined;
   private utteranceAudioMs = 0;
+  /**
+   * BUG 1 (TASK-0007): while true, the utterance lifecycle is owned by the
+   * PTT button. VAD may detect speech, but temporary silence must never
+   * finalize the utterance - only pttStop() (or the max-utterance safety
+   * timeout) may. Wake-word mode keeps normal VAD end-of-speech.
+   */
+  private pttActive = false;
   private toolHeld = false;
   private speakPending = false;
   private toolBufferedText = "";
+  /**
+   * Classified-final text already streamed to speech this turn (TASK-0024).
+   * The shared loop yields the final round's settled text as a non-provisional
+   * delta AND as turn_completed.display_text; speaking both would voice the
+   * final answer twice. The tool-turn completion compares sanitized forms and
+   * speaks the display text only when it was not already streamed.
+   */
+  private streamedFinalText = "";
   private turnCompletedFlag = false;
   private ttsFailureSpoken = false;
   private currentSynthesisId: string | undefined;
   private utteranceStartTs: number | undefined;
   private speakingTurnId: string | undefined;
   private bargeInRun = 0;
+  /** Sustained frames required before barge-in fires (from bargeInMinSpeechMs). */
+  private readonly bargeInMinFrames: number;
   private noSpeechTimer: ReturnType<typeof setTimeout> | undefined;
   private maxUtteranceTimer: ReturnType<typeof setTimeout> | undefined;
   private closedFlag = false;
+  /**
+   * Whether this controller was ever ACTIVATED (enable() reached a running
+   * microphone). DEV-VOICE-CLI-1: closing a never-activated controller - as
+   * every non-voice CLI command does on exit - must stay quiet instead of
+   * logging an active voice shutdown. Real lifecycle logs for an actually
+   * enabled controller are untouched.
+   */
+  private everEnabled = false;
   private readonly pendingApprovals = new Map<string, { tool_name: string; session_id: string }>();
   private speakPumpPromise: Promise<void> | undefined;
   private speakPumpRunning = false;
@@ -272,10 +304,17 @@ export class VoiceTurnController {
     this.now = deps.now ?? Date.now;
     this.arthurSessionId = deps.arthurSessionId ?? "";
     this.preRoll = new RingBuffer({
-      maxMs: Math.max(400, deps.settings.frameDurationMs * 16),
+      // BUG 2 (TASK-0007): ~700 ms of bounded in-memory pre-roll so the first
+      // syllables survive Windows microphone/VAD start latency. Memory-only;
+      // drained into the utterance STT stream on speech_started.
+      maxMs: Math.max(700, deps.settings.frameDurationMs * 32),
       maxBytes: 128 * 1024,
     });
     this.ttsQueue = new BoundedQueue<SpeakableChunk>(deps.settings.ttsMaxQueueChunks);
+    this.bargeInMinFrames = Math.max(
+      1,
+      Math.ceil(deps.settings.bargeInMinSpeechMs / Math.max(1, deps.settings.frameDurationMs)),
+    );
     this.machine.subscribe((from, to, reason) => {
       this.metrics.counter("voice.state_transition", 1, { from, to, reason });
       this.emit({ type: "voice.state", state: to, reason, session_id: this.voiceSessionId, ts: voiceEventTs(this.now()) });
@@ -358,6 +397,7 @@ export class VoiceTurnController {
       this.ttsQueue.reopen();
       await this.capture.start((frame) => this.onFrame(frame));
       this.machine.transition(VoiceState.IDLE, "enable");
+      this.everEnabled = true;
       if (this.settings.wakeEnabled) {
         if (this.wake.available) {
           await this.wake.start(
@@ -384,6 +424,9 @@ export class VoiceTurnController {
 
   /** Disable from any state: cancels resources and reaches DISABLED. */
   async disable(): Promise<void> {
+    // Only a controller that is currently leaving an active state reports the
+    // disable lifecycle; repeated disables and idle shutdowns stay quiet.
+    const wasActive = this.machine.state !== VoiceState.DISABLED;
     await this.cancelActive("disable");
     await this.wake.stop().catch(() => undefined);
     await this.capture.stop().catch(() => undefined);
@@ -398,7 +441,11 @@ export class VoiceTurnController {
       this.machine.transition(VoiceState.DISABLED, "disable");
     }
     this.emitSession();
-    this.logger.info("voice disabled");
+    // DEV-VOICE-CLI-1: report the disable lifecycle only for a controller
+    // that was actually active; an idle controller exits silently.
+    if (wasActive) {
+      this.logger.info("voice disabled");
+    }
   }
 
   /**
@@ -417,14 +464,25 @@ export class VoiceTurnController {
     if (this.machine.state !== VoiceState.LISTENING) {
       this.machine.transition(VoiceState.LISTENING, "push_to_talk");
     }
+    // PTT boundary (TASK-0007 follow-up): audio captured BEFORE the button
+    // press belongs to no PTT utterance - discard the IDLE pre-roll and any
+    // stale VAD episode so STT only ever sees post-button audio. Wake mode
+    // intentionally keeps its pre-wake pre-roll (onWake does not clear).
+    this.preRoll.clear();
+    this.vad.reset();
+    // BUG 1 (TASK-0007): PTT owns the utterance lifecycle from here until
+    // pttStop. Pauses are allowed; no VAD silence may finalize the utterance.
+    this.pttActive = true;
     this.beginListenTimers("ptt");
   }
 
   /**
-   * Push-to-talk stop: finalize the current utterance (or return to IDLE if
-   * no speech was captured).
+   * Push-to-talk stop: the ONLY user path that finalizes an active PTT
+   * utterance (the max-utterance safety timeout is the other). Finalizes the
+   * current utterance, or returns to IDLE if no speech was captured.
    */
   async pttStop(): Promise<void> {
+    this.pttActive = false;
     if (this.machine.state === VoiceState.CAPTURING) {
       this.finalizeUtterance("ptt_stop");
     } else if (this.machine.state === VoiceState.LISTENING) {
@@ -439,6 +497,10 @@ export class VoiceTurnController {
     await this.cancelActive(reason);
     this.generation += 1;
     this.clearTimers();
+    // A stale open VAD episode must not leak into the next listening window
+    // (same discipline as bargeIn/disable; BUG 4 hardening).
+    this.vad.reset();
+    this.bargeInRun = 0;
     if (this.machine.state !== VoiceState.DISABLED) {
       this.machine.transition(VoiceState.IDLE, reason);
     }
@@ -524,8 +586,18 @@ export class VoiceTurnController {
       const result = this.vad.process(frame);
       if (state === VoiceState.LISTENING) {
         if (result.transition === "speech_started") {
+          // BUG 2 (TASK-0007): transfer pre-roll ownership. Drain returns the
+          // bounded window of frames captured strictly BEFORE this one and
+          // clears the buffer; the current frame is pushed exactly once below
+          // so nothing is duplicated. Memory-only (privacy invariant).
+          const preRoll = this.preRoll.drain();
           this.beginUtterance();
+          for (const buffered of preRoll) {
+            this.frameStream?.push(buffered);
+          }
           this.frameStream?.push(frame);
+        } else {
+          this.preRoll.push(frame);
         }
       } else if (state === VoiceState.CAPTURING) {
         if (this.utteranceStartTs === undefined) this.utteranceStartTs = frame.timestamp_ms;
@@ -534,7 +606,10 @@ export class VoiceTurnController {
           Math.max(0, frame.timestamp_ms - this.utteranceStartTs) + frame.duration_ms,
         );
         this.frameStream?.push(frame);
-        if (result.transition === "speech_ended") {
+        // BUG 1 (TASK-0007): while PTT owns the utterance, temporary VAD
+        // silence must NOT finalize - the button (or the max-utterance safety
+        // timeout) decides. Wake-word mode keeps normal end-of-speech.
+        if (!this.pttActive && result.transition === "speech_ended") {
           this.recordUtteranceMs(result);
           this.finalizeUtterance("vad_end");
         }
@@ -542,14 +617,25 @@ export class VoiceTurnController {
       return;
     }
     if (state === VoiceState.SPEAKING || state === VoiceState.THINKING) {
-      // Barge-in monitoring: user speech during playback/generation.
+      // Barge-in monitoring (BUG 4, TASK-0007): user speech during playback/
+      // generation must be SUSTAINED high-probability speech. A single loud
+      // frame or speaker echo must not cancel the turn. Per-frame counting
+      // (not per-transition) makes the gate work with the real VAD, where
+      // speech_started fires only once per episode, and the reset on
+      // non-speech frames makes short transients expire immediately.
+      // Limitation: energy VAD cannot distinguish speaker echo from user
+      // speech (no AEC); the sustained gate + stronger playback threshold is
+      // the documented software mitigation.
       const result = this.vad.process(frame);
-      if (result.transition === "speech_started") {
-        if (this.bargeInEligible(result)) {
+      const threshold = this.playback.playing
+        ? BARGE_IN_MIN_PROBABILITY_PLAYING
+        : BARGE_IN_MIN_PROBABILITY;
+      if (result.isSpeech && result.speechProbability >= threshold) {
+        this.bargeInRun += 1;
+        if (this.bargeInRun >= this.bargeInMinFrames) {
+          this.bargeInRun = 0;
           void this.bargeIn();
         }
-      } else if (this.playback.playing && result.isSpeech) {
-        this.bargeInRun += 1;
       } else {
         this.bargeInRun = 0;
       }
@@ -559,26 +645,12 @@ export class VoiceTurnController {
   }
 
   /**
-   * Echo/self-trigger protection (spec section 18): during playback, VAD
-   * transitions are only trusted when sustained high-probability speech is
-   * observed (conservative software gating; headphones recommended).
-   */
-  private bargeInEligible(result: VadResult): boolean {
-    if (result.speechProbability < BARGE_IN_MIN_PROBABILITY) return false;
-    if (this.playback.playing) {
-      this.bargeInRun += 1;
-      return this.bargeInRun >= BARGE_IN_MIN_RUN;
-    }
-    this.bargeInRun = 0;
-    return true;
-  }
-
-  /**
    * Barge-in: stop playback/TTS/generation promptly; new speech takes
    * priority (spec section 17 - CRITICAL).
    */
   private async bargeIn(): Promise<void> {
     if (!ACTIVE_VOICE_STATES.includes(this.machine.state)) return;
+    this.bargeInRun = 0;
     const detectedAt = this.now();
     this.machine.transition(VoiceState.INTERRUPTING, "barge_in");
     await this.cancelActive("barge_in");
@@ -649,6 +721,9 @@ export class VoiceTurnController {
   private finalizeUtterance(reason: string): void {
     if (this.machine.state !== VoiceState.CAPTURING) return;
     this.clearTimers();
+    this.pttActive = false;
+    // Privacy invariant: any pre-roll frames not yet drained are dropped.
+    this.preRoll.clear();
     this.machine.transition(VoiceState.TRANSCRIBING_FINAL, reason);
     if (this.frameStream) {
       this.frameStream.end();
@@ -720,6 +795,11 @@ export class VoiceTurnController {
     }
     if (this.machine.state !== VoiceState.TRANSCRIBING_FINAL) return;
     this.machine.transition(VoiceState.THINKING, "final_transcript");
+    // The previous utterance's VAD episode is closed: reset so its residual
+    // "still speaking" state cannot leak into this turn's barge-in monitor
+    // and self-trigger a cancellation (BUG 4).
+    this.vad.reset();
+    this.bargeInRun = 0;
 
     const session = this.store.getSession(this.arthurSessionId);
     if (!session) {
@@ -734,6 +814,7 @@ export class VoiceTurnController {
     this.chunker.reset();
     this.toolHeld = false;
     this.toolBufferedText = "";
+    this.streamedFinalText = "";
     this.turnCompletedFlag = false;
     this.ttsFailureSpoken = false;
     // One speak pump per turn; stale pumps exit on the next generation.
@@ -760,15 +841,26 @@ export class VoiceTurnController {
               text: event.text,
               ts: voiceEventTs(this.now()),
             });
-            if (this.toolHeld) {
+            // TASK-0024 Bug 1 / SC-06 §13: the provisional flag is the SOLE
+            // TTS gate. Provisional text comes from a round that can still
+            // produce tool calls — it is streaming-UI observability only and
+            // must never reach TTS (a later tool_call in the same round
+            // would invalidate it). Only classified-final text streams to
+            // speech. The flag arrives from the shared loop via streamTurn;
+            // arrival order vs tool_call can never unspeak held text because
+            // provisional text is NEVER spoken in the first place.
+            if (event.provisional) {
               this.toolBufferedText += event.text;
             } else {
+              this.streamedFinalText += event.text;
               this.dispatchDeltas(event.text, generation);
             }
             break;
           case "tool_call":
-            // Hold speech: never speak a fragment that could be invalidated
-            // by a pending tool call or approval (spec section 16).
+            // Tool intent is pending: keep buffering provisional text (never
+            // spoken) while the tool round executes (spec section 16). The
+            // flag above already guarantees nothing provisional was spoken;
+            // this marker preserves the pre-existing hold observability.
             this.toolHeld = true;
             break;
           case "approval_required":
@@ -786,6 +878,7 @@ export class VoiceTurnController {
           case "turn_interrupted":
             this.toolHeld = false;
             this.toolBufferedText = "";
+            this.streamedFinalText = "";
             this.chunker.reset();
             this.ttsQueue.clear();
             return;
@@ -824,19 +917,36 @@ export class VoiceTurnController {
     if (event.status === "needs_approval") {
       // Approval-wait: speak the request; NO premature success speech. The
       // exact approval binding is resolved via conversation.approve() only.
+      this.streamedFinalText = "";
       this.dispatchSpeakOnce(event.display_text, generation);
       return;
     }
     if (event.tool_calls.length > 0) {
       // Tool turn: speak only the final (post-tool) text, not fragments
-      // that were held while tool/approval semantics were pending.
+      // that were held while tool/approval semantics were pending. The final
+      // round's settled text was already streamed as a non-provisional delta
+      // (spoken once via the chunker); re-speaking display_text would voice
+      // the same answer twice. Speak it only when it never streamed (bounded
+      // fallback after a provider failure, sanitized comparison).
       this.toolHeld = false;
       this.toolBufferedText = "";
+      const streamed = this.sanitizer.sanitizeText(this.streamedFinalText).trim();
+      this.streamedFinalText = "";
+      if (streamed !== "" && streamed === event.display_text.trim()) {
+        const chunks = this.chunker.flush();
+        for (const chunk of chunks) await this.enqueueSpeech(chunk, generation);
+        if (!this.speakPending) {
+          this.finishSpeech();
+        }
+        return;
+      }
+      this.chunker.reset();
       this.dispatchSpeakOnce(event.display_text, generation);
       return;
     }
     // Pure text turn: streaming already spoke; flush any residue.
     this.toolHeld = false;
+    this.streamedFinalText = "";
     const chunks = this.chunker.flush();
     for (const chunk of chunks) await this.enqueueSpeech(chunk, generation);
     if (!this.speakPending) {
@@ -876,6 +986,9 @@ export class VoiceTurnController {
     if (this.machine.state !== VoiceState.SPEAKING) {
       this.machine.transition(VoiceState.SPEAKING, "first_speakable_chunk");
       this.speakingTurnId = this.activeTurnId;
+      // Fresh barge-in window for the new playback phase (BUG 4): residual
+      // runs from the generation phase must not carry over.
+      this.bargeInRun = 0;
       // Echo protection (spec section 18): the wake word is muted while
       // ARTHUR speaks so its own voice can never re-trigger listening.
       this.wake.setPaused(true);
@@ -999,7 +1112,7 @@ export class VoiceTurnController {
         const approval = pending[0];
         if (approval) {
           try {
-            const outcome = await this.conversation.reject(approval.id);
+            const outcome = await this.conversation.reject(approval.id, 'voice');
             this.emitApprovalOutcome(outcome);
           } catch (err) {
             this.emitError(VoiceErrorCode.VOICE_STATE_INVALID, err instanceof Error ? err.message : "reject failed", "approval");
@@ -1060,7 +1173,7 @@ export class VoiceTurnController {
    */
   private async resolveApproval(approvalId: string): Promise<void> {
     try {
-      const outcome = await this.conversation.approve(approvalId);
+      const outcome = await this.conversation.approve(approvalId, 'voice');
       this.emitApprovalOutcome(outcome);
       if (outcome.status === "approved") {
         const summary = (outcome.result_summary ?? "").slice(0, 300);
@@ -1078,6 +1191,19 @@ export class VoiceTurnController {
     } finally {
       this.pendingApprovals.delete(approvalId);
     }
+  }
+
+  /** Trusted spoken approval prompt from the server-side presenter (SC-02 section 21). */
+  approvalVoicePrompt(approvalId: string): string | undefined {
+    try {
+      const prompt = (this.conversation as unknown as { approvalVoicePrompt?: (id: string) => string }).approvalVoicePrompt;
+      if (typeof prompt === "function") {
+        return (this.conversation as unknown as { approvalVoicePrompt: (id: string) => string }).approvalVoicePrompt(approvalId);
+      }
+    } catch {
+      return undefined;
+    }
+    return undefined;
   }
 
   private emitApprovalRequired(
@@ -1141,14 +1267,22 @@ export class VoiceTurnController {
     this.ttsQueue.clear();
     this.toolHeld = false;
     this.toolBufferedText = "";
+    this.streamedFinalText = "";
     this.turnCompletedFlag = false;
     this.speakPending = false;
     this.activeUtteranceId = undefined;
+    // PTT ownership dies with the turn; no pre-roll may survive it (privacy).
+    this.pttActive = false;
+    this.preRoll.clear();
     this.wake.setPaused(false);
     if (reason !== "disable") {
       this.metrics.counter("voice.cancel_reason", 1, { reason });
     }
-    this.logger.info("voice turn cancelled", { reason });
+    // DEV-VOICE-CLI-1: a never-activated controller has nothing to cancel;
+    // logging an "active shutdown" for it is idle CLI noise.
+    if (this.machine.state !== VoiceState.DISABLED || scope !== undefined) {
+      this.logger.info("voice turn cancelled", { reason });
+    }
   }
 
   private returnToIdle(reason: string): void {
@@ -1213,7 +1347,11 @@ export class VoiceTurnController {
     if (this.closedFlag) return;
     this.closedFlag = true;
     await this.disable();
-    this.logger.info("voice controller closed");
+    // DEV-VOICE-CLI-1: quiet for a never-activated controller; the real
+    // lifecycle log remains for a controller that was actually enabled.
+    if (this.everEnabled) {
+      this.logger.info("voice controller closed");
+    }
   }
 
   // ---- emit helpers ---------------------------------------------------------

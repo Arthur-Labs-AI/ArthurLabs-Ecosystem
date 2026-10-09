@@ -149,6 +149,164 @@ test(
   },
 );
 
+// ---- TASK-0007 follow-up: live streaming contract (voice path) -----------
+
+/**
+ * D: Directly invoke the same generateStream() path the voice runtime uses.
+ *
+ * Voice turns streamed through ConversationService repeatedly failed with
+ * MODEL_UNAVAILABLE on real hardware while every non-streaming live test
+ * passed. This contract test invokes the provider's streaming API directly
+ * with production-shaped configuration (fast reasoning profile, tool
+ * schemas, 60 s timeout, bounded retries) and requires at least one
+ * assistant text event plus final completion.
+ *
+ * Diagnostics are failure-safe: only URL path, HTTP status, durations,
+ * attempt counts and error NAMES/messages are recorded - never the API key,
+ * authorization headers, request payloads, or response bodies.
+ */
+test(
+  "D: live generateStream (voice path) streams assistant text and completes",
+  { skip: apiKey ? false : "DEEPSEEK_API_KEY not set; skipping live contract test" },
+  async () => {
+    let attempts = 0;
+    const attemptLog: Array<Record<string, unknown>> = [];
+    const instrumentedFetch: typeof fetch = async (url, init) => {
+      attempts += 1;
+      const started = Date.now();
+      try {
+        const response = await fetch(url, init);
+        attemptLog.push({
+          attempt: attempts,
+          path: new URL(url instanceof Request ? url.url : String(url)).pathname,
+          status: response.status,
+          ms: Date.now() - started,
+        });
+        return response;
+      } catch (err) {
+        attemptLog.push({
+          attempt: attempts,
+          path: new URL(url instanceof Request ? url.url : String(url)).pathname,
+          error_name: err instanceof Error ? err.name : String(err),
+          error_message: err instanceof Error ? err.message : String(err),
+          aborted: Boolean(init?.signal?.aborted),
+          ms: Date.now() - started,
+        });
+        throw err;
+      }
+    };
+    const provider = new DeepSeekProvider(liveConfig({ retryMaxAttempts: 3 }), {
+      fetchFn: instrumentedFetch,
+    });
+    // Production voice shape: fast reasoning profile, the canonical tool set
+    // exposed by a voice session, 60 s timeout (liveConfig), bounded retries.
+    const events: import("../../src/models/contracts").ModelStreamEvent[] = [];
+    let text = "";
+    let failure: string | undefined;
+    try {
+      for await (const event of provider.generateStream(
+        liveRequest(
+          ["system.echo", "harness.status", "harness.create_job", "memory.remember", "memory.search"],
+          "Reply with exactly one short sentence: streaming works.",
+          { reasoningProfile: "fast" },
+        ),
+      )) {
+        events.push(event);
+        if (event.type === "text_delta") text += event.text;
+      }
+    } catch (err) {
+      failure = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    }
+    const diagnostics = JSON.stringify({ attempts, attemptLog, failure, events: events.length, text_chars: text.length });
+    assert.ok(!failure, `streaming must not fail; diagnostics=${diagnostics}`);
+    assert.ok(
+      events.some((e) => e.type === "text_delta" && e.text !== ""),
+      `at least one assistant text event is required; diagnostics=${diagnostics}`,
+    );
+    assert.ok(
+      events.some((e) => e.type === "done"),
+      `stream must complete with a done event; diagnostics=${diagnostics}`,
+    );
+    assert.ok(text.trim().length > 0, `streamed text must be non-empty; diagnostics=${diagnostics}`);
+  },
+);
+
+/**
+ * E: Full voice-shaped streaming turn through the app.
+ *
+ * The voice controller drives ConversationService.streamTurn (controller.ts
+ * onFrame -> handleFinalTranscript -> streamTurn with a cancellation-scope
+ * signal). That path differs from a raw provider stream: the context builder
+ * assembles the system contract, session history, and the FULL session tool
+ * registry, and the sanitizer wraps the built request. This test exercises
+ * that exact pipeline with the real provider and production settings
+ * (60 s timeout, 3 retries). A turn_failed event is a hard failure.
+ */
+test(
+  "E: live voice-shaped streamTurn through the app streams text and completes",
+  { skip: apiKey ? false : "DEEPSEEK_API_KEY not set; skipping live contract test" },
+  async () => {
+    const app = buildApp({
+      dbPath: ":memory:",
+      modelProvider: "deepseek",
+      modelName: model,
+      deepseekApiKey: apiKey as string,
+      deepseekBaseUrl: baseUrl,
+      memoryPersonalDbPath: ":memory:",
+      memoryBusinessDbPath: ":memory:",
+      embeddingProvider: "fake",
+      logLevel: "error",
+      modelTimeoutSeconds: 60,
+      retryMaxAttempts: 3,
+      retryBaseDelayMs: 250,
+      approvalTtlSeconds: 300,
+    });
+    try {
+      // Voice.enable() binds an existing session created by a first turn.
+      const first = await app.conversation.handleTurn({
+        mode: "personal",
+        message: "setup",
+        client_request_id: `live-e-${Date.now()}-1`,
+      });
+      const events: Array<Record<string, unknown>> = [];
+      let text = "";
+      let failed: string | undefined;
+      for await (const event of app.conversation.streamTurn({
+        mode: "personal",
+        message: "Do not call any tools. Answer with plain text only, exactly one short sentence: voice streaming works.",
+        session_id: first.session_id,
+        client_request_id: `live-e-${Date.now()}-2`,
+      })) {
+        events.push(event as Record<string, unknown>);
+        if ((event as { type?: string }).type === "text_delta") {
+          text += (event as { text: string }).text;
+        }
+        if ((event as { type?: string }).type === "turn_failed") {
+          const f = event as { code?: string; message?: string };
+          failed = `${f.code}: ${f.message}`;
+        }
+      }
+      const kinds = events.map((e) => e.type).join(",");
+      assert.ok(!failed, `voice-shaped streaming must not fail; got ${failed}; events=${kinds}`);
+      assert.ok(kinds.includes("turn_started"), `turn_started expected; events=${kinds}`);
+      // The voice-path contract is that the streaming turn completes without
+      // a model-generation failure. With the full session tool registry the
+      // model may legitimately answer with tool calls instead of text; when
+      // it answers with text, the text must be non-empty.
+      const calledTools = kinds.includes("tool_call");
+      if (!calledTools) {
+        assert.ok(text.trim().length > 0, `assistant text expected; events=${kinds}`);
+      }
+      // ConversationService consumes the provider's raw done event and
+      // emits its own terminal turn_completed (with usage); the raw done
+      // event is asserted at the provider level in test D.
+      assert.ok(kinds.includes("turn_completed"), `turn_completed expected; events=${kinds}`);
+    } finally {
+      app.close();
+    }
+  },
+);
+
 test(
   "C: approval flow binds canonical harness.create_job, never the alias",
   { skip: apiKey ? false : "DEEPSEEK_API_KEY not set; skipping live contract test" },

@@ -5,7 +5,7 @@
  * secret values.
  */
 
-import { resolve } from "node:path";
+import { assertDistinctMemoryDatabases } from "../memory/stores/memory_db_identity";
 
 import { ArthurError } from "../core/errors/errors";
 import { validateVoiceSettings } from "../voice/config";
@@ -22,19 +22,10 @@ function fail(message: string): never {
 }
 
 /**
- * Canonical form used to prove the two memory databases are physically
- * distinct. Mirrors SqliteMemoryStore's ":memory:" special case (each
- * ":memory:" handle is its own private in-memory database), resolves the
- * path to an absolute form so different relative spellings of the same file
- * compare equal, and folds case on Windows where the filesystem is
- * case-insensitive.
+ * SC-01A: physical database identity (realpath + device/inode) replaces the
+ * old lexical comparison. ":memory:" stays a test-only special case. Broken
+ * or ambiguous aliases fail closed here instead of assuming distinct files.
  */
-function canonicalMemoryDbPath(path: string): string {
-  const trimmed = path.trim();
-  if (trimmed === ":memory:") return trimmed;
-  const absolute = resolve(trimmed);
-  return process.platform === "win32" ? absolute.toLowerCase() : absolute;
-}
 
 export function validateSettings(settings: Settings): Settings {
   const problems: string[] = [];
@@ -75,6 +66,27 @@ export function validateSettings(settings: Settings): Settings {
   if (settings.approvalTtlSeconds < 1) {
     problems.push("ARTHUR_APPROVAL_TTL_SECONDS must be >= 1");
   }
+  // SC-06 section 140-141 + 64: loop budgets are trusted config with
+  // conservative Software Core bounds. Invalid values fail startup with
+  // INVALID_CONFIG; the model can never change them (§63).
+  if (!Number.isInteger(settings.loopMaxRounds) || settings.loopMaxRounds < 1 || settings.loopMaxRounds > 10) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_ROUNDS must be an integer between 1 and 10");
+  }
+  if (!Number.isInteger(settings.loopMaxCallsPerRound) || settings.loopMaxCallsPerRound < 1 || settings.loopMaxCallsPerRound > 16) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_CALLS_PER_ROUND must be an integer between 1 and 16");
+  }
+  if (!Number.isInteger(settings.loopMaxCallsTotal) || settings.loopMaxCallsTotal < 1 || settings.loopMaxCallsTotal > 64) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_CALLS_TOTAL must be an integer between 1 and 64");
+  }
+  if (!Number.isInteger(settings.loopMaxResultBytes) || settings.loopMaxResultBytes < 1024) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES must be an integer >= 1024");
+  }
+  if (!Number.isInteger(settings.loopMaxActiveMs) || settings.loopMaxActiveMs < 1000) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS must be an integer >= 1000");
+  }
+  if (!Number.isInteger(settings.loopRepeatLimit) || settings.loopRepeatLimit < 1 || settings.loopRepeatLimit > 3) {
+    problems.push("ARTHUR_TOOL_LOOP_REPEAT_LIMIT must be an integer between 1 and 3");
+  }
   if (settings.maxMessageChars < 1) {
     problems.push("ARTHUR_MAX_MESSAGE_CHARS must be >= 1");
   }
@@ -84,17 +96,15 @@ export function validateSettings(settings: Settings): Settings {
   if (!settings.memoryBusinessDbPath || settings.memoryBusinessDbPath.trim() === "") {
     problems.push("ARTHUR_MEMORY_BUSINESS_DB_PATH must be a non-empty path");
   }
-  // Physical isolation (Phase 2 audit): both stores open their configured
-  // database file directly, and memory_sources / ingestion_requests carry no
-  // domain column. If both paths resolve to the same canonical file, source
-  // metadata and ingestion state silently cross the Personal/Business
-  // boundary - fail startup instead.
+  // Physical isolation (SC-01A, freeze invariant M2): realpath + device/inode
+  // identity replaces the old lexical comparison so symlinks, symlinked
+  // parents, hardlinks, ../ aliases, and case aliases all fail startup.
   if (settings.memoryPersonalDbPath.trim() !== "" && settings.memoryBusinessDbPath.trim() !== "") {
-    const personalDb = canonicalMemoryDbPath(settings.memoryPersonalDbPath);
-    const businessDb = canonicalMemoryDbPath(settings.memoryBusinessDbPath);
-    if (personalDb !== ":memory:" && businessDb !== ":memory:" && personalDb === businessDb) {
+    try {
+      assertDistinctMemoryDatabases(settings.memoryPersonalDbPath, settings.memoryBusinessDbPath);
+    } catch (error) {
       problems.push(
-        `ARTHUR_MEMORY_PERSONAL_DB_PATH and ARTHUR_MEMORY_BUSINESS_DB_PATH resolve to the same file (${personalDb}): Personal and Business memory databases must use different physical files`,
+        `ARTHUR_MEMORY_PERSONAL_DB_PATH and ARTHUR_MEMORY_BUSINESS_DB_PATH: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }

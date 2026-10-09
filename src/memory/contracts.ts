@@ -369,8 +369,14 @@ export interface MemoryStore {
   supersede(oldId: string, replacement: MemoryWrite): Promise<MemoryItem>;
   forget(id: string): Promise<void>;
   putChunks(memoryId: string, chunks: MemoryChunkWrite[]): Promise<void>;
-  /** Atomic document write: source + item + chunks + FTS in one transaction. */
-  writeDocumentAtomic(input: { source: MemorySourceRecord; item: MemoryWrite; chunks: MemoryChunkWrite[] }): Promise<void>;
+  /**
+   * SC-01 atomic document commit: source + item + chunks + FTS rows +
+   * source metadata + ingestion completion in ONE SQLite transaction, so a
+   * crash can never leave (document exists, ingestion = writing) behind.
+   */
+  writeDocumentAtomic(input: { source: MemorySourceRecord; item: MemoryWrite; chunks: MemoryChunkWrite[]; completion?: { requestId: string; resultId: string } }): Promise<void>;
+  /** Find an ACTIVE document memory incarnation by its source id. */
+  findActiveBySourceId(sourceId: string): Promise<MemoryItem | null>;
   getChunks(memoryId: string): Promise<MemoryChunk[]>;
   deleteChunks(memoryId: string): Promise<void>;
   putSource(source: MemorySourceRecord): Promise<void>;

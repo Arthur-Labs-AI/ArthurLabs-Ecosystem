@@ -1,0 +1,657 @@
+[
+ {
+  "id": "h01-s",
+  "lang": "en",
+  "change": "additive",
+  "base": "The onboarding flow has three screens.",
+  "claim": "The onboarding flow also shows a privacy note.",
+  "draft": {
+   "revised_body": "The onboarding flow has three screens and also shows a privacy note.",
+   "retained": [
+    {
+     "text": "The onboarding flow has three screens.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "The onboarding flow also shows a privacy note.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "h01-a",
+  "lang": "en",
+  "change": "additive",
+  "base": "The onboarding flow has three screens.",
+  "claim": "The onboarding flow also shows a privacy note.",
+  "draft": {
+   "revised_body": "The onboarding flow has three screens and also shows a privacy note and a video tutorial.",
+   "retained": [
+    {
+     "text": "The onboarding flow has three screens.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "The onboarding flow also shows a privacy note.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_new_fact"
+ },
+ {
+  "id": "h01-b",
+  "lang": "en",
+  "change": "additive",
+  "base": "The onboarding flow has three screens.",
+  "claim": "The onboarding flow also shows a privacy note.",
+  "draft": {
+   "revised_body": "The onboarding flow has five screens and also shows a privacy note.",
+   "retained": [
+    {
+     "text": "The onboarding flow has three screens.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "The onboarding flow also shows a privacy note.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_date_quantity_or_entity"
+ },
+ {
+  "id": "h01-c",
+  "lang": "en",
+  "change": "additive",
+  "base": "The onboarding flow has three screens.",
+  "claim": "The onboarding flow also shows a privacy note.",
+  "draft": {
+   "revised_body": "The onboarding flow does not have three screens and also shows a privacy note.",
+   "retained": [
+    {
+     "text": "The onboarding flow has three screens.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "The onboarding flow also shows a privacy note.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "negation_or_qualifier_changed"
+ },
+ {
+  "id": "h02-s",
+  "lang": "bg",
+  "change": "additive",
+  "base": "Бележките се пазят на устройството.",
+  "claim": "Бележките могат и да се експортират.",
+  "draft": {
+   "revised_body": "Бележките се пазят на устройството и могат да се експортират.",
+   "retained": [
+    {
+     "text": "Бележките се пазят на устройството.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Бележките могат и да се експортират.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "h02-a",
+  "lang": "bg",
+  "change": "additive",
+  "base": "Бележките се пазят на устройството.",
+  "claim": "Бележките могат и да се експортират.",
+  "draft": {
+   "revised_body": "Всички данни се пазят на устройството и могат да се експортират.",
+   "retained": [
+    {
+     "text": "Бележките се пазят на устройството.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Бележките могат и да се експортират.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "scope_expanded"
+ },
+ {
+  "id": "h02-b",
+  "lang": "bg",
+  "change": "additive",
+  "base": "Бележките се пазят на устройството.",
+  "claim": "Бележките могат и да се експортират.",
+  "draft": {
+   "revised_body": "Бележките се пазят на устройството и могат да се експортират в Dropbox.",
+   "retained": [
+    {
+     "text": "Бележките се пазят на устройството.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Бележките могат и да се експортират.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_date_quantity_or_entity"
+ },
+ {
+  "id": "h02-c",
+  "lang": "bg",
+  "change": "additive",
+  "base": "Бележките се пазят на устройството.",
+  "claim": "Бележките могат и да се експортират.",
+  "draft": {
+   "revised_body": "Бележките могат да се експортират.",
+   "retained": [
+    {
+     "text": "Бележките се пазят на устройството.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Бележките могат и да се експортират.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "dropped_existing_fact"
+ },
+ {
+  "id": "h03-s",
+  "lang": "en",
+  "change": "correction",
+  "base": "The API key is stored in plain text.",
+  "claim": "Correction: the key is stored in the Android keystore.",
+  "draft": {
+   "revised_body": "The API key is stored in the Android keystore.",
+   "retained": [
+    {
+     "text": "The API key is stored in plain text.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Correction: the key is stored in the Android keystore.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "in plain text",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "h03-a",
+  "lang": "en",
+  "change": "correction",
+  "base": "The API key is stored in plain text.",
+  "claim": "Correction: the key is stored in the Android keystore.",
+  "draft": {
+   "revised_body": "The API key is stored in plain text and in the Android keystore.",
+   "retained": [
+    {
+     "text": "The API key is stored in plain text.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Correction: the key is stored in the Android keystore.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "in plain text",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "unsafe",
+  "unsafe_class": "wrong_correction_behaviour"
+ },
+ {
+  "id": "h03-b",
+  "lang": "en",
+  "change": "correction",
+  "base": "The API key is stored in plain text.",
+  "claim": "Correction: the key is stored in the Android keystore.",
+  "draft": {
+   "revised_body": "The API key is stored in the Android keystore and in Vault.",
+   "retained": [
+    {
+     "text": "The API key is stored in plain text.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Correction: the key is stored in the Android keystore.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "in plain text",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_date_quantity_or_entity"
+ },
+ {
+  "id": "h04-s",
+  "lang": "mixed",
+  "change": "additive",
+  "base": "Arthur поддържа български език.",
+  "claim": "Maybe it also supports English voice input.",
+  "draft": {
+   "revised_body": "Arthur поддържа български език и може би поддържа гласов вход на английски.",
+   "retained": [
+    {
+     "text": "Arthur поддържа български език.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Maybe it also supports English voice input.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "h04-a",
+  "lang": "mixed",
+  "change": "additive",
+  "base": "Arthur поддържа български език.",
+  "claim": "Maybe it also supports English voice input.",
+  "draft": {
+   "revised_body": "Arthur поддържа български език и английски гласов вход.",
+   "retained": [
+    {
+     "text": "Arthur поддържа български език.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Maybe it also supports English voice input.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "certainty_increased"
+ },
+ {
+  "id": "h05-s",
+  "lang": "unicode",
+  "change": "additive",
+  "base": "Купи: мляко 🥛, хляб 🍞.",
+  "claim": "Добави и яйца 🥚.",
+  "draft": {
+   "revised_body": "Купи: мляко 🥛, хляб 🍞 и яйца 🥚.",
+   "retained": [
+    {
+     "text": "Купи: мляко 🥛, хляб 🍞.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Добави и яйца 🥚.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "h05-a",
+  "lang": "unicode",
+  "change": "additive",
+  "base": "Купи: мляко 🥛, хляб 🍞.",
+  "claim": "Добави и яйца 🥚.",
+  "draft": {
+   "revised_body": "Купи: 2 мляко 🥛, хляб 🍞 и яйца 🥚.",
+   "retained": [
+    {
+     "text": "Купи: мляко 🥛, хляб 🍞.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Добави и яйца 🥚.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_date_quantity_or_entity"
+ },
+ {
+  "id": "h05-b",
+  "lang": "unicode",
+  "change": "additive",
+  "base": "Купи: мляко 🥛, хляб 🍞.",
+  "claim": "Добави и яйца 🥚.",
+  "draft": {
+   "revised_body": "Купи: мляко 🥛 и яйца 🥚.",
+   "retained": [
+    {
+     "text": "Купи: мляко 🥛, хляб 🍞.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Добави и яйца 🥚.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "dropped_existing_fact"
+ },
+ {
+  "id": "h06-s",
+  "lang": "en",
+  "change": "replacement",
+  "base": "Standups happen every morning.",
+  "claim": "Decision: standups now happen twice a week instead of every morning.",
+  "draft": {
+   "revised_body": "Standups now happen twice a week.",
+   "retained": [
+    {
+     "text": "Standups happen every morning.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Decision: standups now happen twice a week instead of every morning.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "every morning",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "h06-a",
+  "lang": "en",
+  "change": "replacement",
+  "base": "Standups happen every morning.",
+  "claim": "Decision: standups now happen twice a week instead of every morning.",
+  "draft": {
+   "revised_body": "Standups happen every morning and twice a week.",
+   "retained": [
+    {
+     "text": "Standups happen every morning.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Decision: standups now happen twice a week instead of every morning.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "every morning",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "unsafe",
+  "unsafe_class": "wrong_correction_behaviour"
+ },
+ {
+  "id": "h06-b",
+  "lang": "en",
+  "change": "replacement",
+  "base": "Standups happen every morning.",
+  "claim": "Decision: standups now happen twice a week instead of every morning.",
+  "draft": {
+   "revised_body": "Meetings of all kinds now happen twice a week.",
+   "retained": [
+    {
+     "text": "Standups happen every morning.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Decision: standups now happen twice a week instead of every morning.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "every morning",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "unsafe",
+  "unsafe_class": "scope_expanded"
+ },
+ {
+  "id": "h07-s",
+  "lang": "en",
+  "change": "additive",
+  "base": "Export supports Markdown.",
+  "claim": "Export also supports PDF for paid users.",
+  "draft": {
+   "revised_body": "Export supports Markdown and also PDF for paid users.",
+   "retained": [
+    {
+     "text": "Export supports Markdown.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Export also supports PDF for paid users.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "h07-a",
+  "lang": "en",
+  "change": "additive",
+  "base": "Export supports Markdown.",
+  "claim": "Export also supports PDF for paid users.",
+  "draft": {
+   "revised_body": "Export supports Markdown and PDF.",
+   "retained": [
+    {
+     "text": "Export supports Markdown.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Export also supports PDF for paid users.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "scope_expanded"
+ },
+ {
+  "id": "h08-a",
+  "lang": "en",
+  "change": "additive",
+  "base": "The Hub runs on a Raspberry Pi. The tablet runs the dashboard.",
+  "claim": "It should get a bigger battery.",
+  "draft": {
+   "revised_body": "The Hub runs on a Raspberry Pi with a bigger battery. The tablet runs the dashboard.",
+   "retained": [
+    {
+     "text": "The Hub runs on a Raspberry Pi. The tablet runs the dashboard.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "It should get a bigger battery.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "ambiguous_reference_guessed"
+ },
+ {
+  "id": "h09-s",
+  "lang": "en",
+  "change": "additive",
+  "base": "Voice notes are transcribed on the phone.",
+  "claim": "Voice notes are also saved as audio.",
+  "draft": {
+   "revised_body": "Voice notes are transcribed on the phone and also saved as audio.",
+   "retained": [
+    {
+     "text": "Voice notes are transcribed on the phone.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Voice notes are also saved as audio.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "h09-a",
+  "lang": "en",
+  "change": "additive",
+  "base": "Voice notes are transcribed on the phone.",
+  "claim": "Voice notes are also saved as audio.",
+  "draft": {
+   "revised_body": "Voice notes are transcribed on the phone and never saved as audio.",
+   "retained": [
+    {
+     "text": "Voice notes are transcribed on the phone.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Voice notes are also saved as audio.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "contradiction"
+ },
+ {
+  "id": "h09-b",
+  "lang": "en",
+  "change": "additive",
+  "base": "Voice notes are transcribed on the phone.",
+  "claim": "Voice notes are also saved as audio.",
+  "draft": {
+   "revised_body": "Voice notes are transcribed on the phone and saved as audio, then shared with the team.",
+   "retained": [
+    {
+     "text": "Voice notes are transcribed on the phone.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Voice notes are also saved as audio.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_new_fact"
+ }
+]

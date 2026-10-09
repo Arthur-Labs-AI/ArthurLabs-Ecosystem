@@ -8,8 +8,28 @@ import { SttEvent, SttOptions } from "../contracts";
 
 export type { SttEvent, SttOptions } from "../contracts";
 
+/**
+ * STT Quality v2 language profiles (TASK-0008). "en" and "bg" map to
+ * explicit engine language codes; "auto" enables engine-side detection.
+ * Prefer an explicit profile whenever the expected language is known:
+ * auto-detection is unstable for short accented utterances.
+ */
 export const STT_LANGUAGES = ["auto", "bg", "en"] as const;
 export type SttLanguage = (typeof STT_LANGUAGES)[number];
+
+/**
+ * Future primary/fallback language policy (TASK-0008 architecture hook).
+ * A retry policy ABOVE the engine wrapper (controller/gateway layer - never
+ * inside tools/voice/stt_wrapper.cjs) may re-run an utterance with a
+ * fallback profile (e.g. explicit en -> auto) when:
+ *   - the transcript is empty or unusable (isUsableTranscript),
+ *   - the reported final language mismatches the expected profile
+ *     (SttEvent "final" carries language), or
+ *   - a future bounded quality score (TODO: STT-Quality-v3 confidence from
+ *     whisper.cpp --output-json-full probabilities) is below threshold.
+ * The wrapper itself stays single-shot: no hidden retries inside the engine
+ * boundary.
+ */
 
 export function isSttLanguage(value: unknown): value is SttLanguage {
   return typeof value === "string" && (STT_LANGUAGES as readonly string[]).includes(value);

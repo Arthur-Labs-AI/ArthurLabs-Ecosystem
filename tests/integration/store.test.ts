@@ -99,9 +99,18 @@ test("original Phase 1 database upgrades forward with data and restart safety", 
   assert.equal(Number((inspect.prepare("SELECT COUNT(*) AS count FROM idempotency_keys").get() as { count: number }).count), 1);
   assert.deepEqual(
     (inspect.prepare("SELECT version FROM schema_migrations ORDER BY version").all() as Array<{ version: number }>).map((row) => row.version),
-    [1, 2, 3, 4, 5, 6],
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
   );
   assert.equal(inspect.prepare("PRAGMA foreign_key_check").all().length, 0);
+  // SC-06 Increment 2 journal tables/columns exist after the upgrade.
+  assert.ok((inspect.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='conversation_loops'").get() as { name: string } | undefined));
+  assert.ok((inspect.prepare("PRAGMA table_info(tool_calls)").all() as Array<{ name: string }>).some((row) => row.name === "provider_call_id"));
+  // Increment 3.1: exact fingerprint column + anti-nag/cycle columns exist.
+  const toolCols = (inspect.prepare("PRAGMA table_info(tool_calls)").all() as Array<{ name: string }>).map((row) => row.name);
+  assert.ok(toolCols.includes("invocation_fingerprint"));
+  const loopCols = (inspect.prepare("PRAGMA table_info(conversation_loops)").all() as Array<{ name: string }>).map((row) => row.name);
+  assert.ok(loopCols.includes("rejected_fingerprints"));
+  assert.ok(loopCols.includes("consecutive_repeats"));
   inspect.close();
 
   const second = buildTestApp({ dbPath });
@@ -112,7 +121,7 @@ test("original Phase 1 database upgrades forward with data and restart safety", 
   const finalDb = new DatabaseSync(dbPath);
   assert.deepEqual(
     (finalDb.prepare("SELECT version FROM schema_migrations ORDER BY version").all() as Array<{ version: number }>).map((row) => row.version),
-    [1, 2, 3, 4, 5, 6],
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
   );
   finalDb.close();
   rmSync(dir, { recursive: true, force: true });

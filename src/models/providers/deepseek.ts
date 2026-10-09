@@ -50,9 +50,22 @@ export interface DeepSeekProviderConfig {
   reasoningProfile: ReasoningProfile;
 }
 
+/** Minimal structural diagnostics sink (the app Logger satisfies this). */
+export interface ProviderLogSink {
+  info(message: string, fields?: Record<string, unknown>): void;
+  warn(message: string, fields?: Record<string, unknown>): void;
+}
+
 export interface DeepSeekProviderDeps {
   fetchFn?: typeof fetch;
   sleepFn?: (ms: number) => Promise<void>;
+  /**
+   * Optional structured diagnostics sink for the streaming path. Fields
+   * NEVER contain the API key, authorization headers, prompts, or response
+   * bodies - only failure kind, HTTP status, attempt counts, and whether
+   * consumer-visible events had already been emitted.
+   */
+  logger?: ProviderLogSink;
 }
 
 export const DEEPSEEK_DEFAULT_BASE_URL = "https://api.deepseek.com";
@@ -123,7 +136,44 @@ export function reasoningParams(profile: ReasoningProfile): ReasoningParams {
   }
 }
 
+// ---- Request boundary validation (defense-in-depth) ---------------------
+
+/**
+ * Fail LOCALLY (before any network call) when a ModelRequest carries an
+ * assistant history message with neither non-empty content nor tool_calls.
+ * OpenAI-compatible providers reject such messages with HTTP 400 ("Invalid
+ * assistant message: content or tool_calls must be set"), which upstream
+ * surfaced as an opaque provider-unavailable error on voice turns. The
+ * primary fix is history eligibility at the ContextBuilder; this boundary
+ * check converts any future regression into an immediate, local,
+ * MODEL_BAD_RESPONSE-classified failure instead of a vendor 400. It is a
+ * loud failure, not a silent vendor special-case.
+ */
+export function assertAssistantHistorySendable(request: ModelRequest): void {
+  for (const message of request.history) {
+    if (message.role !== "assistant") continue;
+    const hasText = typeof message.content === "string" && message.content.trim() !== "";
+    const hasToolCalls = Array.isArray(message.tool_calls) && message.tool_calls.length > 0;
+    if (!hasText && !hasToolCalls) {
+      throw new ProviderBadResponseError(
+        "assistant history message has neither content nor tool_calls"
+      );
+    }
+  }
+}
+
 // ---- Payload assembly (pure; redaction applied by the caller's logger) ---
+//
+// TASK-0024 Bug 2: the HTTP body MUST be exactly JSON.stringify(providerPayload)
+// with no post-serialization string transforms. Applying secret-redaction regexes
+// to serialized JSON corrupted the wire body: tool/commit/file text containing
+// secret-like keys adjacent to quotes (e.g. password="a\"b") let the redaction
+// match consume the backslash that escapes a string quote, terminating the JSON
+// string early — the provider then rejects the body with
+// "messages[N].?: expected `,` or `}`". Secrets are already handled at the DATA
+// layer (sanitizeStructured on the request, sanitizer on tool payloads/summaries);
+// the transport layer must not re-edit the serialized bytes. Redaction stays for
+// logs and diagnostics only.
 
 function chatMessageToOpenAI(message: ChatMessage, aliasMap: ToolNameAliasMap): Record<string, unknown> {
   const msg: Record<string, unknown> = {
@@ -152,6 +202,56 @@ function chatMessageToOpenAI(message: ChatMessage, aliasMap: ToolNameAliasMap): 
     }));
   }
   return msg;
+}
+
+/**
+ * Serialize a provider payload for HTTP dispatch (TASK-0024 Bug 2 invariant).
+ *
+ * Returns EXACTLY JSON.stringify(payload) — the string that must be sent as the
+ * request body, byte-for-byte. The round-trip parse asserts the body is valid
+ * JSON before dispatch; no caller may apply regex/text transforms to it.
+ */
+export function serializeDispatchBody(payload: Record<string, unknown>): string {
+  const body = JSON.stringify(payload);
+  // Fail closed locally rather than sending a body the provider must reject.
+  JSON.parse(body);
+  return body;
+}
+
+export interface PayloadShapeEntry {
+  index: number;
+  role: unknown;
+  content_chars: number;
+  has_tool_calls: boolean;
+  tool_call_args_chars: number[];
+  has_name: boolean;
+  has_tool_call_id: boolean;
+}
+
+/**
+ * Bounded SANITIZED diagnostic of the outbound message list (TASK-0024 Bug 2).
+ * Carries per-message index/role/sizes only — never prompt, tool, or user
+ * content — so a dispatch failure can name the offending messages[N] without
+ * logging secrets or payloads.
+ */
+export function describePayloadShape(payload: Record<string, unknown>): PayloadShapeEntry[] {
+  const messages = Array.isArray(payload.messages) ? payload.messages : [];
+  return (messages as Array<Record<string, unknown>>).slice(0, 128).map((m, index) => {
+    const toolCalls = Array.isArray(m.tool_calls) ? (m.tool_calls as Array<Record<string, unknown>>) : [];
+    const argsChars = toolCalls.slice(0, 32).map((tc) => {
+      const fn = (tc.function ?? {}) as Record<string, unknown>;
+      return typeof fn.arguments === "string" ? fn.arguments.length : 0;
+    });
+    return {
+      index,
+      role: typeof m.role === "string" ? m.role : "?",
+      content_chars: typeof m.content === "string" ? m.content.length : 0,
+      has_tool_calls: toolCalls.length > 0,
+      tool_call_args_chars: argsChars,
+      has_name: typeof m.name === "string",
+      has_tool_call_id: typeof m.tool_call_id === "string",
+    };
+  });
 }
 
 export function buildDeepSeekPayload(
@@ -409,6 +509,81 @@ function isAbortError(err: unknown): boolean {
   return err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError");
 }
 
+// ---- Streaming failure diagnostics (TASK-0007 hardening) ----------------
+
+/** Structured failure kinds for the streaming path (never secret-bearing). */
+export type StreamFailureKind =
+  | "auth"
+  | "request_rejected"
+  | "provider_bad_response"
+  | "malformed_sse"
+  | "timeout"
+  | "http_status"
+  | "network_fetch_failure"
+  | "unexpected";
+
+/** SSE data line that is not valid JSON (distinct diagnostic kind). */
+export const MALFORMED_SSE_MESSAGE = "SSE line is not valid JSON";
+
+const MAX_DIAGNOSTIC_MESSAGE_CHARS = 200;
+
+/** HTTP status of classified HTTP errors (attached at classify time). */
+const errorHttpStatus = new WeakMap<object, number>();
+
+function truncateDiagnostic(message: string): string {
+  return message.length > MAX_DIAGNOSTIC_MESSAGE_CHARS
+    ? message.slice(0, MAX_DIAGNOSTIC_MESSAGE_CHARS) + " (truncated)"
+    : message;
+}
+
+export interface StreamFailureDiagnosis {
+  kind: StreamFailureKind;
+  http_status?: number;
+  error_name?: string;
+  error_message?: string;
+}
+
+/**
+ * Map a streaming attempt failure to a safe diagnostic shape. Only error
+ * KIND, HTTP status, and our own static/redacted error messages are exposed;
+ * network and unexpected failures report the error NAME only. Never contains
+ * the API key, authorization headers, prompts, or response bodies.
+ */
+export function classifyStreamFailure(err: unknown, timedOut: boolean): StreamFailureDiagnosis {
+  const nameOf = (e: unknown): string | undefined => (e instanceof Error ? e.name : typeof e);
+  if (err instanceof ProviderAuthError) {
+    return { kind: "auth", error_name: err.name, error_message: truncateDiagnostic(err.message) };
+  }
+  if (err instanceof DeepSeekRequestRejectedError) {
+    const status = errorHttpStatus.get(err);
+    return {
+      kind: "request_rejected",
+      http_status: status,
+      error_name: err.name,
+      error_message: truncateDiagnostic(err.message),
+    };
+  }
+  if (err instanceof ProviderBadResponseError) {
+    return {
+      kind: err.message === MALFORMED_SSE_MESSAGE ? "malformed_sse" : "provider_bad_response",
+      error_name: err.name,
+      error_message: truncateDiagnostic(err.message),
+    };
+  }
+  if (timedOut) return { kind: "timeout", error_name: nameOf(err) };
+  if (err instanceof ProviderUnavailableError) {
+    const status = errorHttpStatus.get(err);
+    return status !== undefined
+      ? { kind: "http_status", http_status: status, error_name: err.name, error_message: truncateDiagnostic(err.message) }
+      : { kind: "network_fetch_failure", error_name: nameOf(err) };
+  }
+  // Every parse/normalize path throws ProviderBadResponseError by design
+  // (fail-closed), so a plain non-abort error here escapes from the fetch
+  // or body-read layer: a network-level failure, not a provider response
+  // problem. ("unexpected" stays reserved for future defensive use.)
+  return { kind: "network_fetch_failure", error_name: nameOf(err) };
+}
+
 const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ---- HTTP error classification (non-2xx responses) ----------------------
@@ -470,13 +645,17 @@ async function readHttpErrorDetail(response: Response, secrets: string[]): Promi
 async function classifyHttpError(response: Response, secrets: string[]): Promise<never> {
   const detail = await readHttpErrorDetail(response, secrets);
   const message = `DeepSeek HTTP ${response.status}${detail !== "" ? `: ${detail}` : ""}`;
+  let err: Error;
   if (response.status === 401 || response.status === 403) {
-    throw new ProviderAuthError(message);
+    err = new ProviderAuthError(message);
+  } else if (isTransientHttpStatus(response.status)) {
+    err = new ProviderUnavailableError(message);
+  } else {
+    err = new DeepSeekRequestRejectedError(message);
   }
-  if (isTransientHttpStatus(response.status)) {
-    throw new ProviderUnavailableError(message);
-  }
-  throw new DeepSeekRequestRejectedError(message);
+  // Attach the status for safe structured diagnostics (never the body).
+  errorHttpStatus.set(err, response.status);
+  throw err;
 }
 
 
@@ -636,11 +815,13 @@ export class DeepSeekProvider implements ModelProvider {
   private readonly config: DeepSeekProviderConfig;
   private readonly fetchFn: typeof fetch;
   private readonly sleepFn: (ms: number) => Promise<void>;
+  private readonly logger: ProviderLogSink | undefined;
 
   constructor(config: DeepSeekProviderConfig, deps: DeepSeekProviderDeps = {}) {
     this.config = config;
     this.fetchFn = deps.fetchFn ?? fetch;
     this.sleepFn = deps.sleepFn ?? defaultSleep;
+    this.logger = deps.logger;
   }
 
   id(): string {
@@ -660,6 +841,9 @@ export class DeepSeekProvider implements ModelProvider {
 
   async generate(request: ModelRequest): Promise<ModelResult> {
     const safeRequest = sanitizeStructured(request, [this.config.apiKey]) as ModelRequest;
+    // Defense-in-depth: reject malformed assistant history locally, before
+    // any fetch (both streaming and buffered paths).
+    assertAssistantHistorySendable(safeRequest);
     // One alias map per model request, built from the exact exposed tool set.
     // A collision or unencodable name throws HERE, before any fetch: the
     // request fails closed without ever reaching the provider.
@@ -685,13 +869,15 @@ export class DeepSeekProvider implements ModelProvider {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
       try {
+        // TASK-0024 Bug 2: the exact serialized body is what is sent — no
+        // post-serialization transforms (redaction corrupted quoted payloads).
         const response = await this.fetchFn(url, {
           method: "POST",
           headers: {
             "content-type": "application/json",
             authorization: `Bearer ${this.config.apiKey}`,
           },
-          body: redactText(JSON.stringify(payload), [this.config.apiKey]),
+          body: serializeDispatchBody(payload),
           signal: controller.signal,
         });
 
@@ -743,12 +929,25 @@ export class DeepSeekProvider implements ModelProvider {
    * while tool intent is pending, and complete calls with parsed
    * arguments are emitted at stream end (consumers keep the last event
    * per call id).
+   *
+   * Retries (TASK-0007): transient failures and timeouts BEFORE any
+   * consumer-visible event are retried with a fresh AbortController and a
+   * fresh timeout per attempt; failures after partial data are never retried
+   * (no duplicated stream content); caller abort never retries.
+   *
+   * Diagnostics (safe, structured): every failed attempt, caller abort,
+   * retry exhaustion, and completion are reported through the optional
+   * logger with failure kind / HTTP status / attempt counts / emitted_any -
+   * never the API key, headers, prompts, or response bodies.
    */
   async *generateStream(
     request: ModelRequest,
     signal?: AbortSignal,
   ): AsyncIterable<ModelStreamEvent> {
     const safeRequest = sanitizeStructured(request, [this.config.apiKey]) as ModelRequest;
+    // Defense-in-depth: reject malformed assistant history locally, before
+    // any fetch (both streaming and buffered paths).
+    assertAssistantHistorySendable(safeRequest);
     // Same per-request alias map as generate(): built from the exact exposed
     // tool set and shared by outbound payload assembly and inbound resolution.
     const aliasMap = ToolNameAliasMap.fromToolSchemas(safeRequest.toolSchemas);
@@ -762,151 +961,243 @@ export class DeepSeekProvider implements ModelProvider {
     const base = this.config.baseUrl.replace(/\/+$/, "");
     const url = `${base}/chat/completions`;
 
-    const controller = new AbortController();
-    const onAbort = (): void => {
-      try { controller.abort(signal?.reason); } catch { /* noop */ }
-    };
-    signal?.addEventListener("abort", onAbort, { once: true });
-    const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
+    // Retry discipline (TASK-0007 hardening): every network attempt owns a
+    // FRESH AbortController and a FRESH timeout budget, both cleaned up when
+    // the attempt ends - no controller/timeout is ever shared across retry
+    // attempts. A timeout BEFORE any consumer-visible stream data is a
+    // transient failure and is retried within the bounded attempt budget;
+    // once any event has been yielded, the stream never retries (a fresh
+    // attempt would replay already-delivered text/tool-call content). Caller
+    // cancellation aborts the current attempt and never retries.
+    const attempts = Math.max(0, this.config.retryMaxAttempts) + 1;
+    let attempt = 0;
+    let lastError: unknown;
+    let lastKind: StreamFailureKind | undefined;
+    const streamStartedAt = Date.now();
 
-    const toolAccumulators = new Map<number, ToolCallAccumulator>();
-    let doneYielded = false;
-    const finalizeToolCalls = (): ProposedToolCall[] => {
-      const calls: ProposedToolCall[] = [];
-      for (const acc of toolAccumulators.values()) {
-        let args: Record<string, unknown> = {};
-        if (acc.argumentsJson.trim() !== "") {
-          try {
-            const parsed: unknown = JSON.parse(acc.argumentsJson);
-            if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-              throw new ProviderBadResponseError("tool call arguments are not a JSON object");
-            }
-            args = parsed as Record<string, unknown>;
-          } catch (err) {
-            if (err instanceof ProviderBadResponseError) throw err;
-            throw new ProviderBadResponseError("tool call arguments are not valid JSON");
-          }
-        }
-        if (acc.name.trim() === "") {
-          throw new ProviderBadResponseError("tool call is missing a function name");
-        }
-        calls.push({
-          id: acc.id !== "" ? acc.id : randomUUID(),
-          // Resolution only after the function name is complete (accumulated
-          // across all SSE fragments). Unknown/never-exposed names throw and
-          // fail the stream closed.
-          name: resolveInboundToolName(acc.name, aliasMap),
-          arguments: args,
+    while (attempt < attempts) {
+      if (signal?.aborted) {
+        this.logger?.info("deepseek.stream.caller_aborted", {
+          attempt,
+          max_attempts: attempts,
+          emitted_any: false,
         });
+        return;
       }
-      return calls;
-    };
-
-    try {
-      let attempt = 0;
-      const attempts = Math.max(0, this.config.retryMaxAttempts) + 1;
-      let lastError: unknown;
-      for (;;) {
-        if (attempt > 0) {
-          if (signal?.aborted) return;
-          const delay = backoffDelay(attempt - 1, this.config.retryBaseDelayMs);
-          await this.sleepFn(delay);
-        }
-        if (attempt >= attempts) {
-          throw lastError instanceof Error ? lastError : new ProviderUnavailableError();
-        }
-        attempt += 1;
-        try {
-          const response = await this.fetchFn(url, {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              authorization: `Bearer ${this.config.apiKey}`,
-            },
-            body: redactText(JSON.stringify(payload), [this.config.apiKey]),
-            signal: controller.signal,
+      if (attempt > 0) {
+        const delay = backoffDelay(attempt - 1, this.config.retryBaseDelayMs);
+        await this.sleepFn(delay);
+        if (signal?.aborted) {
+          this.logger?.info("deepseek.stream.caller_aborted", {
+            attempt,
+            max_attempts: attempts,
+            emitted_any: false,
           });
-          // Non-2xx responses are parsed and classified BEFORE any chunk
-          // validation: an HTTP error is never reported as a malformed response.
-          if (!response.ok) {
-            await classifyHttpError(response, [this.config.apiKey]);
+          return;
+        }
+      }
+      attempt += 1;
+
+      const controller = new AbortController();
+      const onAbort = (): void => {
+        try { controller.abort(signal?.reason); } catch { /* noop */ }
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+      const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
+
+      // Fresh per attempt: fragments accumulated by a failed attempt must
+      // never leak into a retry's tool-call state.
+      const toolAccumulators = new Map<number, ToolCallAccumulator>();
+      let doneYielded = false;
+      let emittedAny = false;
+      const finalizeToolCalls = (): ProposedToolCall[] => {
+        const calls: ProposedToolCall[] = [];
+        for (const acc of toolAccumulators.values()) {
+          let args: Record<string, unknown> = {};
+          if (acc.argumentsJson.trim() !== "") {
+            try {
+              const parsed: unknown = JSON.parse(acc.argumentsJson);
+              if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+                throw new ProviderBadResponseError("tool call arguments are not a JSON object");
+              }
+              args = parsed as Record<string, unknown>;
+            } catch (err) {
+              if (err instanceof ProviderBadResponseError) throw err;
+              throw new ProviderBadResponseError("tool call arguments are not valid JSON");
+            }
           }
-          const body = response.body;
-          if (!body) throw new ProviderBadResponseError("streaming response has no body");
-          const reader = body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = "";
-          try {
-            for (;;) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              buffer += decoder.decode(value, { stream: true });
-              let newlineIndex: number;
-              while ((newlineIndex = buffer.indexOf("\n")) >= 0) {
-                const line = buffer.slice(0, newlineIndex).replace(/\r$/, "");
-                buffer = buffer.slice(newlineIndex + 1);
-                if (!line.startsWith("data:")) continue;
-                const data = line.slice(5).trim();
-                if (data === "[DONE]") {
-                  if (!doneYielded) {
-                    doneYielded = true;
-                    for (const call of finalizeToolCalls()) yield { type: "tool_call", call };
-                    yield { type: "done", finish_reason: "stop" };
+          if (acc.name.trim() === "") {
+            throw new ProviderBadResponseError("tool call is missing a function name");
+          }
+          calls.push({
+            id: acc.id !== "" ? acc.id : randomUUID(),
+            // Resolution only after the function name is complete (accumulated
+            // across all SSE fragments). Unknown/never-exposed names throw and
+            // fail the stream closed.
+            name: resolveInboundToolName(acc.name, aliasMap),
+            arguments: args,
+          });
+        }
+        return calls;
+      };
+
+      const attemptStartedAt = Date.now();
+      try {
+        // TASK-0024 Bug 2: the exact serialized body is what is sent — no
+        // post-serialization transforms (redaction corrupted quoted payloads).
+        const response = await this.fetchFn(url, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${this.config.apiKey}`,
+          },
+          body: serializeDispatchBody(payload),
+          signal: controller.signal,
+        });
+        // Non-2xx responses are parsed and classified BEFORE any chunk
+        // validation: an HTTP error is never reported as a malformed response.
+        if (!response.ok) {
+          await classifyHttpError(response, [this.config.apiKey]);
+        }
+        const body = response.body;
+        if (!body) throw new ProviderBadResponseError("streaming response has no body");
+        const reader = body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        try {
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            let newlineIndex: number;
+            while ((newlineIndex = buffer.indexOf("\n")) >= 0) {
+              const line = buffer.slice(0, newlineIndex).replace(/\r$/, "");
+              buffer = buffer.slice(newlineIndex + 1);
+              if (!line.startsWith("data:")) continue;
+              const data = line.slice(5).trim();
+              if (data === "[DONE]") {
+                if (!doneYielded) {
+                  doneYielded = true;
+                  for (const call of finalizeToolCalls()) {
+                    emittedAny = true;
+                    yield { type: "tool_call", call };
                   }
-                  return;
+                  emittedAny = true;
+                  yield { type: "done", finish_reason: "stop" };
                 }
-                if (data === "") continue;
-                let parsed: unknown;
-                try {
-                  parsed = JSON.parse(data);
-                } catch {
-                  throw new ProviderBadResponseError("SSE line is not valid JSON");
-                }
-                const events = parseDeepSeekStreamChunk(parsed, toolAccumulators);
-                if (events) {
-                  for (const event of events) {
-                    if (event.type === "done") {
-                      if (!doneYielded) {
-                        doneYielded = true;
-                        for (const call of finalizeToolCalls()) yield { type: "tool_call", call };
-                        yield event;
+                this.logger?.info("deepseek.stream.completed", {
+                  attempts: attempt,
+                  max_attempts: attempts,
+                  total_ms: Date.now() - streamStartedAt,
+                });
+                return;
+              }
+              if (data === "") continue;
+              let parsed: unknown;
+              try {
+                parsed = JSON.parse(data);
+              } catch {
+                throw new ProviderBadResponseError(MALFORMED_SSE_MESSAGE);
+              }
+              const events = parseDeepSeekStreamChunk(parsed, toolAccumulators);
+              if (events) {
+                for (const event of events) {
+                  if (event.type === "done") {
+                    if (!doneYielded) {
+                      doneYielded = true;
+                      for (const call of finalizeToolCalls()) {
+                        emittedAny = true;
+                        yield { type: "tool_call", call };
                       }
-                    } else {
+                      emittedAny = true;
                       yield event;
                     }
+                  } else {
+                    emittedAny = true;
+                    yield event;
                   }
                 }
               }
-              if (signal?.aborted) return;
             }
-          } finally {
-            reader.releaseLock();
+            if (signal?.aborted) {
+              this.logger?.info("deepseek.stream.caller_aborted", {
+                attempt,
+                max_attempts: attempts,
+                emitted_any: emittedAny,
+              });
+              return;
+            }
           }
-          if (!doneYielded) {
-            if (signal?.aborted) return;
-            throw new ProviderBadResponseError("stream ended without [DONE]");
-          }
-          return;
-        } catch (err) {
-          if (signal?.aborted) return;
-          if (
-            err instanceof ProviderAuthError ||
-            err instanceof ProviderBadResponseError ||
-            err instanceof DeepSeekRequestRejectedError
-          ) {
-            throw err;
-          }
-          if (isAbortError(err)) throw new ProviderTimeoutError();
-          lastError =
-            err instanceof ProviderUnavailableError
-              ? err
-              : new ProviderUnavailableError(err instanceof Error ? err.message : "network failure");
-          // continue to next attempt (transient failure before any data)
+        } finally {
+          reader.releaseLock();
         }
+        if (!doneYielded) {
+          if (signal?.aborted) return;
+          throw new ProviderBadResponseError("stream ended without [DONE]");
+        }
+        return;
+      } catch (err) {
+        const attemptDurationMs = Date.now() - attemptStartedAt;
+        if (signal?.aborted) {
+          // Caller cancellation: never retried, never surfaced as failure.
+          this.logger?.info("deepseek.stream.caller_aborted", {
+            attempt,
+            max_attempts: attempts,
+            emitted_any: emittedAny,
+            duration_ms: attemptDurationMs,
+          });
+          return;
+        }
+        // The attempt-level timeout fired (this attempt's controller, never
+        // the caller's signal - that case returned above).
+        const timedOut = isAbortError(err) || (controller.signal.aborted && !signal?.aborted);
+        const diagnosis = classifyStreamFailure(err, timedOut);
+        this.logger?.warn("deepseek.stream.attempt_failed", {
+          kind: diagnosis.kind,
+          http_status: diagnosis.http_status ?? null,
+          attempt,
+          max_attempts: attempts,
+          emitted_any: emittedAny,
+          duration_ms: attemptDurationMs,
+          error_name: diagnosis.error_name ?? null,
+          error_message: diagnosis.error_message ?? null,
+        });
+        if (
+          err instanceof ProviderAuthError ||
+          err instanceof ProviderBadResponseError ||
+          err instanceof DeepSeekRequestRejectedError
+        ) {
+          throw err;
+        }
+        if (emittedAny) {
+          // Never retry after consumer-visible data: a fresh attempt would
+          // duplicate already-delivered text/tool-call events.
+          if (timedOut) throw new ProviderTimeoutError();
+          throw err instanceof ProviderUnavailableError
+            ? err
+            : new ProviderUnavailableError(err instanceof Error ? err.message : "network failure");
+        }
+        lastError = timedOut
+          ? new ProviderTimeoutError()
+          : err instanceof ProviderUnavailableError
+            ? err
+            : new ProviderUnavailableError(err instanceof Error ? err.message : "network failure");
+        lastKind = diagnosis.kind;
+        // continue to next attempt (transient failure before any data)
+      } finally {
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", onAbort);
       }
-    } finally {
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", onAbort);
     }
+
+    // Bounded retry budget exhausted without any consumer-visible event.
+    this.logger?.warn("deepseek.stream.retries_exhausted", {
+      attempts: attempt,
+      max_attempts: attempts,
+      emitted_any: false,
+      last_kind: lastKind ?? null,
+      total_ms: Date.now() - streamStartedAt,
+    });
+    throw lastError instanceof Error ? lastError : new ProviderUnavailableError();
   }
 }

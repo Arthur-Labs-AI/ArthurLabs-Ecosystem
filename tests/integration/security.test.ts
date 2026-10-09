@@ -58,7 +58,13 @@ test("concurrent approval requests execute the action exactly once", async () =>
       app.conversation.approve(approvalId),
     ]);
     const fulfilled = results.filter((r) => r.status === "fulfilled");
-    assert.equal(fulfilled.length, 1);
+    // SC-03 section 13: one winner approves + dispatches (jobCount=1); the
+    // duplicate converges on the same bound execution as already_resolved.
+    assert.equal(fulfilled.length, 2, "duplicates share the single truth, never throw");
+    const statuses = fulfilled.map((r) => (r.value as { status: string }).status).sort();
+    assert.deepEqual(statuses, ["already_resolved", "approved"]);
+    const ids = new Set(fulfilled.map((r) => (r.value as { execution_id?: string }).execution_id));
+    assert.equal(ids.size, 1, "one bound execution for one approval");
     assert.equal(h.jobCount(), 1);
     assert.equal(app.store.getApproval(approvalId)?.status, "approved");
   } finally {
@@ -78,6 +84,9 @@ test("claimApproval is an atomic compare-and-swap", async () => {
 });
 
 test("an executing approval with unknown crash outcome is never automatically retried", async () => {
+  // SC-03 section 13: legacy pre-consume claim shape (crash-window simulation).
+  // Production approve() now consumes PENDING -> APPROVED + consumed_at +
+  // bound execution; the legacy claim still blocks re-execution identically.
   const h = countingHarness();
   const app = buildTestApp({}, { harness: h.harness, provider: createJobProvider() });
   try {
@@ -103,12 +112,12 @@ test("approval is rejected after the session changes mode", async () => {
   try {
     const { sessionId, approvalId } = await pendingApproval(app);
     await app.conversation.changeMode(sessionId, { mode: "personal" });
-    await assert.rejects(
-      () => app.conversation.approve(approvalId),
-      (err: unknown) => err instanceof ArthurError && err.code === "MODE_VIOLATION",
-    );
+    // SC-02: the mode switch atomically INVALIDATED the old-mode approval;
+    // approving it afterwards resolves as already_resolved and never executes.
+    const outcome = await app.conversation.approve(approvalId);
+    assert.equal(outcome.status, "already_resolved");
     assert.equal(h.jobCount(), 0);
-    assert.equal(app.store.getApproval(approvalId)?.status, "failed");
+    assert.equal(app.store.getApproval(approvalId)?.status, "invalidated");
   } finally {
     app.close();
   }
@@ -169,9 +178,11 @@ test("approval for a no-longer-registered tool is rejected", async () => {
       argumentsHash: argumentsDigest({}),
       expiresAt: new Date(Date.now() + 60000).toISOString(),
     });
+    // SC-02: the legacy v1 row (no v2 binding) fails closed before the registry
+    // is even consulted - still APPROVAL_INVALID/TOOL_NOT_FOUND family, never executes.
     await assert.rejects(
       () => app.conversation.approve("ap1"),
-      (err: unknown) => err instanceof ArthurError && err.code === "TOOL_NOT_FOUND",
+      (err: unknown) => err instanceof ArthurError && (err.code === "TOOL_NOT_FOUND" || err.code === "APPROVAL_INVALID"),
     );
   } finally {
     app.close();

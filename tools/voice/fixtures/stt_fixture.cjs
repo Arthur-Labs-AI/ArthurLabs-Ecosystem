@@ -7,6 +7,11 @@
 const fs = require('node:fs');
 const num = (k, d) => { const v = Number(process.env[k]); return Number.isFinite(v) && v >= 0 ? v : d; };
 if (process.env.FIXTURE_PID_FILE) fs.writeFileSync(process.env.FIXTURE_PID_FILE, String(process.pid));
+if (process.env.FIXTURE_ENV_FILE && process.env.FIXTURE_ENV_KEYS) {
+  const envRecord = {};
+  for (const key of process.env.FIXTURE_ENV_KEYS.split(',')) envRecord[key] = process.env[key];
+  fs.writeFileSync(process.env.FIXTURE_ENV_FILE, JSON.stringify(envRecord));
+}
 if (process.env.FIXTURE_STDERR) process.stderr.write(process.env.FIXTURE_STDERR);
 const chunks = [];
 process.stdin.on('data', (c) => chunks.push(c));

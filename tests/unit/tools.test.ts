@@ -40,16 +40,16 @@ test("registry lookup returns definition and validates args against JSON schema"
 
 test("registry lists tools allowed for a mode", () => {
   const registry = new ToolRegistry();
-  registry.register(def({ name: "both" }), async () => ({ ok: true, summary: "" }));
+  registry.register(def({ name: "both.modes" }), async () => ({ ok: true, summary: "" }));
   registry.register(
     def({ name: "business.only", allowed_modes: [ArthurMode.BUSINESS] }),
     async () => ({ ok: true, summary: "" }),
   );
 
   const personal = registry.listAllowedForMode(ArthurMode.PERSONAL).map((d) => d.name);
-  assert.deepEqual(personal, ["both"]);
+  assert.deepEqual(personal, ["both.modes"]);
   const business = registry.listAllowedForMode(ArthurMode.BUSINESS).map((d) => d.name);
-  assert.deepEqual(business, ["both", "business.only"]);
+  assert.deepEqual(business, ["both.modes", "business.only"]);
 });
 
 test("permission service maps risk to decisions", () => {

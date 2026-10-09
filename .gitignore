@@ -11,3 +11,30 @@ data/
 *.log
 coverage/
 .DS_Store
+ARTHUR Software Core v1/
+# Machine-local trusted capability catalogs (e.g. ARTHUR_GIT_CONFIG,
+# ARTHUR_LOCAL_CONFIG) - physical paths differ per machine and must
+# never be committed.
+.arthur-git.local.json
+*.git-catalog.json
+arthur.git.json
+.git-catalog/
+.arthur-local.json
+*.local-capabilities.json
+arthur.local.json
+.local-capabilities/
+# AI harness runtime/task state is machine-local and controller-owned.
+.ai-harness/
+.venv-parakeet/
+# Whisper/voice model binaries are machine-local downloads (e.g.
+# ggml-large-v3-turbo.bin) - never commit them.
+models/
+.tmp/
+# Python generated files
+__pycache__/
+*.py[cod]
+
+# Tauri/Rust build output and generated capability schemas for the Arthur app.
+# (node_modules/ and dist/ above already cover the app's JS output.)
+apps/arthur/src-tauri/target/
+apps/arthur/src-tauri/gen/schemas/

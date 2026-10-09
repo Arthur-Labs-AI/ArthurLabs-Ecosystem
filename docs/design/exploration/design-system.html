@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arthur — design system playground</title>
+<link rel="stylesheet" href="arthur.css">
+<style>
+  html,body{ height:auto; }
+  .pg{ display:grid; grid-template-columns:292px minmax(0,1fr); min-height:100vh; }
+  .ctl{ position:sticky; top:0; height:100vh; overflow:auto; background:var(--sunken); border-right:1px solid var(--line-soft); padding:20px 18px 24px; display:flex; flex-direction:column; gap:18px; }
+  .ctl h1{ margin:0; font:500 20px/1 var(--serif); display:flex; gap:9px; align-items:center; }
+  .ctl h1 small{ font:400 12px var(--sans); color:var(--ink-3); }
+  .ctl fieldset{ border:0; padding:0; margin:0; display:flex; flex-direction:column; gap:7px; }
+  .ctl legend{ font:500 12px var(--sans); color:var(--ink-3); padding:0; margin-bottom:2px; }
+  .opts{ display:flex; flex-wrap:wrap; gap:5px; }
+  .opts button{ border:1px solid var(--line); border-radius:var(--r-sm); padding:5px 9px; font-size:12.5px; color:var(--ink-2); }
+  .opts button:hover{ border-color:var(--ink-4); }
+  .opts button[aria-pressed="true"]{ border-color:var(--ink); color:var(--ink); background:var(--selected); }
+  .sw{ width:26px; height:26px; border-radius:50% !important; padding:0 !important; border:2px solid var(--ground) !important; box-shadow:0 0 0 1px var(--line); }
+  .sw[aria-pressed="true"]{ box-shadow:0 0 0 2px var(--ink) !important; }
+  .promptbox{ margin-top:auto; border-top:1px solid var(--line-soft); padding-top:14px; }
+  .promptbox p{ margin:0 0 10px; font:400 13px/1.5 var(--serif); color:var(--ink-2); max-height:210px; overflow:auto; }
+  .doc{ padding:44px 56px 120px; max-width:1180px; }
+  .doc h2{ margin:68px 0 4px; font:430 28px/1.1 var(--serif); letter-spacing:-.012em; padding-top:28px; border-top:1px solid var(--line-soft); }
+  .doc h2:first-of-type{ margin-top:36px; border-top:0; padding-top:0; }
+  .doc .lede{ margin:0 0 22px; color:var(--ink-3); max-width:68ch; }
+  .doc h3{ margin:26px 0 8px; font:500 13px var(--sans); color:var(--ink); }
+  .two{ display:grid; grid-template-columns:1fr 1fr; gap:36px; }
+  .three{ display:grid; grid-template-columns:repeat(3,1fr); gap:28px; }
+  .tok{ display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:10px 16px; }
+  .tok div{ display:flex; gap:10px; align-items:center; font-size:12px; color:var(--ink-3); }
+  .tok i{ width:34px; height:34px; border-radius:6px; border:1px solid var(--line); flex:none; }
+  .tok b{ display:block; color:var(--ink); font-weight:500; font-size:12.5px; }
+  .specimen{ border:1px solid var(--line-soft); border-radius:var(--r-md); }
+  .t-row{ display:grid; grid-template-columns:140px 1fr; gap:20px; align-items:baseline; padding:14px 0; border-top:1px solid var(--line-soft); }
+  .t-row:first-child{ border-top:0; }
+  .t-row code{ color:var(--ink-3); font:400 11.5px/1.4 var(--sans); }
+  .box{ background:var(--ground); border:1px solid var(--line-soft); padding:20px; border-radius:var(--r-sm); }
+  .surf{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .surf > div{ padding:16px; border-radius:var(--r-md); font-size:12.5px; color:var(--ink-3); min-height:104px; }
+  .surf b{ display:block; color:var(--ink); font-weight:500; margin-bottom:4px; }
+  .navdemo{ width:216px; background:var(--sunken); border:1px solid var(--line-soft); border-radius:var(--r-sm); padding:12px; }
+  .stack{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .ex{ border:1px solid var(--line-soft); border-radius:var(--r-sm); overflow:hidden; }
+  .kinds{ display:grid; grid-template-columns:repeat(5,1fr); gap:10px; text-align:center; }
+  .kinds svg{ width:100%; height:92px; }
+  .kinds small{ color:var(--ink-3); font-size:12px; }
+  .rels{ display:grid; grid-template-columns:1fr 1fr; gap:6px 28px; }
+  .rels .r{ display:grid; grid-template-columns:54px 100px 1fr; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--line-soft); font-size:12.5px; color:var(--ink-3); }
+  .rels .r b{ color:var(--ink); font-weight:500; } .rels .r .relsw{ width:48px; }
+  .dos{ columns:2; column-gap:36px; } .dos li{ break-inside:avoid; margin-bottom:9px; color:var(--ink-2); }
+  ul.clean{ margin:0; padding-left:18px; } ul.clean li{ margin-bottom:6px; color:var(--ink-2); }
+  .motion-demo{ position:relative; height:120px; }
+  .tn{ font-variant-numeric:tabular-nums; }
+  .states{ display:grid; grid-template-columns:repeat(3,1fr); gap:0; border:1px solid var(--line-soft); border-radius:var(--r-md); }
+  .states > div{ padding:6px 10px 14px; border-left:1px solid var(--line-soft); } .states > div:first-child{ border-left:0; }
+  .states > div > small{ display:block; padding:10px 18px 0; color:var(--ink-3); font-size:12px; }
+  @media (max-width:1100px){ .pg{ grid-template-columns:1fr; } .ctl{ position:static; height:auto; } .two,.three,.surf,.states{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="pg" id="pg">
+  <aside class="ctl" aria-label="Playground controls">
+    <h1><span id="markslot"></span>Arthur <small>design language</small></h1>
+    <fieldset><legend>Presets</legend><div class="opts" id="presets"></div></fieldset>
+    <fieldset><legend>Theme</legend><div class="opts" data-k="theme"><button data-v="dark">Graphite</button><button data-v="light">Daylight</button></div></fieldset>
+    <fieldset><legend>Density</legend><div class="opts" data-k="density"><button data-v="comfortable">Comfortable</button><button data-v="compact">Compact</button></div></fieldset>
+    <fieldset><legend>Accent (current, focus, selection)</legend><div class="opts" id="accents"></div></fieldset>
+    <fieldset><legend>Thought typeface</legend><div class="opts" data-k="type"><button data-v="serif">Newsreader</button><button data-v="sans">Sans only</button></div></fieldset>
+    <fieldset><legend>Corner radius</legend><div class="opts" data-k="radius"><button data-v="tight">Tight</button><button data-v="standard">Standard</button><button data-v="soft">Soft</button></div></fieldset>
+    <fieldset><legend>Kind colour</legend><div class="opts" data-k="tint"><button data-v="off">Shape only</button><button data-v="on">Faint tint</button></div></fieldset>
+    <div class="promptbox"><legend style="font:500 12px var(--sans);color:var(--ink-3);display:block;margin-bottom:6px">Prompt for the implementation phase</legend><p id="prompt"></p><button class="btn" id="copy">Copy prompt</button></div>
+  </aside>
+
+  <main class="doc" id="doc">
+    <h2>Principles</h2>
+    <p class="lede">Arthur is a quiet place to think. The interface is the page, not a frame around the page.</p>
+    <ul class="clean" style="max-width:76ch">
+      <li><b style="color:var(--ink);font-weight:550">Colour means a relation or a state, never a category.</b> Idea kinds are told apart by shape. Accent appears only for “current”, focus and selection.</li>
+      <li><b style="color:var(--ink);font-weight:550">Solid is yours, dashed is Arthur's.</b> Anything the model proposed carries a hollow dashed dot until it is something you wrote or accepted.</li>
+      <li><b style="color:var(--ink);font-weight:550">Every thought has a margin.</b> Source, connections and revisions sit in the same place on every row, inspector and node.</li>
+      <li><b style="color:var(--ink);font-weight:550">Structure is hairlines and whitespace.</b> Only the composer, popovers and the legend are raised. No card inside a card, ever.</li>
+      <li><b style="color:var(--ink);font-weight:550">Two graphs, two grammars.</b> Connections is organic and spatial. Evolution is rectilinear and temporal. They never share node shapes.</li>
+    </ul>
+
+    <h2>Typography</h2>
+    <p class="lede">Newsreader carries anything the user thinks or Arthur distils: titles, bodies, quotes. Hanken Grotesk carries anything the interface says. The split itself is the cue: serif is content, sans is chrome.</p>
+    <div class="specimen" style="padding:6px 26px">
+      <div class="t-row"><code>Display<br>Newsreader 42/1.12<br>−0.02em · 400</code><div class="serif" style="font-size:42px;line-height:1.12;letter-spacing:-.02em;color:var(--ink-3)">What's on your mind?</div></div>
+      <div class="t-row"><code>Page title<br>Newsreader 32/1.05<br>−0.015em · 400</code><div class="serif" style="font-size:32px;line-height:1.05;letter-spacing:-.015em">Connections</div></div>
+      <div class="t-row"><code>Thought title<br>Newsreader 27/1.12<br>−0.012em · 430</code><div class="serif" style="font-size:27px;line-height:1.12;letter-spacing:-.012em;font-weight:430">Arthur mobile app experience</div></div>
+      <div class="t-row"><code>Thought body<br>Newsreader 16/1.62<br>max 62ch</code><div class="serif" style="font-size:16px;line-height:1.62;max-width:62ch">The mobile app should be voice-first and require almost no navigation from the user. Focus on quick capture, clean UI and seamless organization.</div></div>
+      <div class="t-row"><code>Row title<br>Newsreader 16.5/1.25<br>450</code><div class="serif" style="font-size:16.5px;font-weight:450">Use EMG wristband for capture intents</div></div>
+      <div class="t-row"><code>Quote (provenance)<br>Newsreader italic 14.5/1.6</code><div class="quote" style="max-width:62ch">It should feel natural, almost like <mark>quickly capture ideas on my phone, ideally using voice</mark>, and then Arthur helps me organize them later.</div></div>
+      <div class="t-row"><code>UI<br>Hanken Grotesk 13.5/1.45<br>400 · 500 emphasis</code><div>Open in Connections · Branch from R3 · Proposed by Arthur</div></div>
+      <div class="t-row"><code>Meta<br>Hanken Grotesk 12/1.4<br>tabular numerals</code><div class="tn" style="font-size:12px;color:var(--ink-3)">Fri 2 Oct, 14:32 · 18 min ago · +15 −0 words · r5</div></div>
+    </div>
+    <h3>Typographic rules</h3>
+    <ul class="clean"><li>Sentence case everywhere. No all-caps labels, no letter-spaced eyebrows.</li><li>Section titles in the inspector are 13px sans medium, not small caps. The hairline above is the divider.</li><li>Day groups (“Today”, “Yesterday”) are italic serif: they read as notebook headings, not UI chrome.</li><li>Numerals are tabular wherever they align in columns: counts, timestamps, diff stats.</li></ul>
+
+    <h2>Colour</h2>
+    <p class="lede">Graphite ground with a faint green-grey cast. One accent. Seven relation hues that only reinforce a geometry that already carries the meaning.</p>
+    <h3>Ground and ink</h3>
+    <div class="tok" id="tok-ground"></div>
+    <h3>Accent and origin</h3>
+    <div class="tok" id="tok-accent"></div>
+    <h3>Relations (colour is secondary to line geometry)</h3>
+    <div class="tok" id="tok-rel"></div>
+    <h3>Accent behaviour</h3>
+    <ul class="clean"><li><b style="color:var(--ink)">Where it appears:</b> current revision, selected row marker (2px), focus ring, the Speak button, selected-node ring, provenance highlight underline.</li><li><b style="color:var(--ink)">Where it never appears:</b> primary buttons (those are ink-on-ground), headings, icons, links, backgrounds, gradients.</li><li>One accent hue at a time on screen. Only one element per view is filled with it.</li></ul>
+
+    <h2>Surfaces, borders, radii</h2>
+    <p class="lede">Four levels, but only the first is used for content. Everything else is a hairline.</p>
+    <div class="surf">
+      <div style="background:var(--ground);border:1px solid var(--line-soft)"><b>Ground</b>The page. Rows, inspector and graph canvas all sit directly on it.</div>
+      <div style="background:var(--sunken);border:1px solid var(--line-soft)"><b>Sunken</b>The rail and inputs. Recedes rather than rises.</div>
+      <div style="background:var(--raised);border:1px solid var(--line)"><b>Raised</b>The composer only. The one surface that invites you in.</div>
+      <div style="background:var(--overlay);border:1px solid var(--line);box-shadow:0 12px 32px rgba(0,0,0,.35)"><b>Overlay</b>Menus, the legend, tooltips. The only shadows in the product.</div>
+    </div>
+    <h3>Radii: by role, never one value everywhere</h3>
+    <div class="stack" style="gap:28px">
+      <div><div class="box" style="width:90px;height:56px;border-radius:var(--r-xs)"></div><small style="color:var(--ink-3)">xs 3 · chips, kbd, marks</small></div>
+      <div><div class="box" style="width:90px;height:56px;border-radius:var(--r-sm)"></div><small style="color:var(--ink-3)">sm 6 · buttons, inputs, rows</small></div>
+      <div><div class="box" style="width:90px;height:56px;border-radius:var(--r-md)"></div><small style="color:var(--ink-3)">md 11 · composer, popovers</small></div>
+      <div><div class="box" style="width:90px;height:56px;border-radius:28px"></div><small style="color:var(--ink-3)">full · Speak, status dot only</small></div>
+    </div>
+    <h3>Borders</h3>
+    <ul class="clean"><li><code style="color:var(--ink-3)">line-soft</code> between rows and sections. <code style="color:var(--ink-3)">line</code> around raised things and controls. <code style="color:var(--ink-4)">ink-4</code> on hover.</li><li>Selection is a 2px accent bar on the leading edge plus a 8% ink wash. Never an outline box.</li></ul>
+
+    <h2>Spacing and density</h2>
+    <p class="lede">4px base. Comfortable rows are 68px with a snippet; compact rows are 48px and drop the snippet. Density is a user setting, and the same tokens drive it.</p>
+    <div class="ex" id="density-demo"></div>
+    <h3>Scale</h3>
+    <div class="stack tn" style="gap:18px;align-items:flex-end"><div style="font-size:12px;color:var(--ink-3)">4<div style="width:4px;height:4px;background:var(--ink-3)"></div></div><div style="font-size:12px;color:var(--ink-3)">8<div style="width:8px;height:8px;background:var(--ink-3)"></div></div><div style="font-size:12px;color:var(--ink-3)">12<div style="width:12px;height:12px;background:var(--ink-3)"></div></div><div style="font-size:12px;color:var(--ink-3)">16<div style="width:16px;height:16px;background:var(--ink-3)"></div></div><div style="font-size:12px;color:var(--ink-3)">24<div style="width:24px;height:24px;background:var(--ink-3)"></div></div><div style="font-size:12px;color:var(--ink-3)">32<div style="width:32px;height:32px;background:var(--ink-3)"></div></div><div style="font-size:12px;color:var(--ink-3)">48<div style="width:48px;height:48px;background:var(--ink-3)"></div></div><div style="font-size:12px;color:var(--ink-3)">56<div style="width:56px;height:56px;background:var(--ink-3)"></div></div></div>
+
+    <h2>Icons and kind glyphs</h2>
+    <p class="lede">UI icons are 1.5px stroke on a 24 grid (Lucide-compatible, so Lucide can supply the generic ones). The five idea kinds and seven relations are custom: they are Arthur's vocabulary and must not look like a stock icon set.</p>
+    <div class="kinds" id="kinds"></div>
+    <h3>UI icons</h3>
+    <div class="stack" id="icons" style="gap:22px;color:var(--ink-2)"></div>
+    <h3>Mark</h3>
+    <div class="stack" style="gap:30px"><div class="box" style="display:flex;gap:16px;align-items:center" id="mark1"></div><div class="box" style="display:flex;gap:16px;align-items:center;background:var(--accent);color:var(--accent-ink)" id="mark2"></div></div>
+    <p class="note" style="max-width:68ch;margin-top:10px">Two legs meet at a single node. Read one way it is a letter, read another it is a thought that branches. The node is the only accent-coloured part and is the favicon on its own. Wordmark is “Arthur” in Newsreader 500. The expanded “A.R.T.H.U.R.” appears only in About and documentation.</p>
+
+    <h2>Navigation</h2>
+    <p class="lede">A 216px rail. Capture is the one filled control because capture is the one verb you perform from everywhere. Ask Arthur has a reserved slot, disabled until recall exists.</p>
+    <div class="stack" style="gap:36px;align-items:flex-start"><div class="navdemo" id="nav1"></div>
+      <div><h3 style="margin-top:0">States</h3><ul class="clean"><li><b style="color:var(--ink)">Rest</b>: ink-2 on sunken</li><li><b style="color:var(--ink)">Hover</b>: 4.5% ink wash, ink text</li><li><b style="color:var(--ink)">Current</b>: 8% wash, 2px accent bar sitting on the rail's outer edge</li><li><b style="color:var(--ink)">Focus</b>: 2px accent ring, 2px offset</li><li><b style="color:var(--ink)">Unavailable</b>: ink-4 with a “soon” note, not removed</li></ul></div></div>
+
+    <h2>Buttons and inputs</h2>
+    <div class="two"><div>
+      <h3 style="margin-top:0">Buttons</h3>
+      <div class="stack"><button class="btn primary">Capture</button><button class="btn">Revise</button><button class="btn ghost">Branch</button><button class="btn accent" id="b-acc"><span id="b-acc-i"></span>Speak</button><button class="btn icon" aria-label="Close" id="b-x"></button><button class="btn" disabled>Merge…</button></div>
+      <ul class="clean" style="margin-top:12px"><li>One <b style="color:var(--ink)">primary</b> (ink fill) per view. Capture, or the single decisive action.</li><li><b style="color:var(--ink)">Default</b> is outlined, <b style="color:var(--ink)">ghost</b> has no border until hover.</li><li>Labels are verbs that match the result: “Revise” produces a revision.</li></ul></div>
+    <div><h3 style="margin-top:0">Inputs</h3>
+      <div class="stack" style="flex-direction:column;align-items:stretch;gap:10px;max-width:340px">
+        <label class="input" id="in1"></label><label class="input" style="border-color:var(--accent);color:var(--ink)"><span id="in2"></span><input value="distillation"><kbd>/</kbd></label>
+        <label class="input invalid"><input placeholder="Title"><span style="color:var(--rel-contradicts);font-size:12px;white-space:nowrap">Required</span></label></div>
+      <div class="seg" style="margin-top:20px;max-width:380px"><button aria-selected="true">All<i>12</i></button><button aria-selected="false">Ideas<i>5</i></button><button aria-selected="false">Tasks<i>1</i></button><button aria-selected="false" class="zero">Notes<i>0</i></button></div>
+      <p class="note" style="margin-top:8px">Filters are underline tabs, not pills. Empty kinds dim, but stay put so the layout never shifts.</p></div></div>
+
+    <h2>Idea rows</h2>
+    <p class="lede">The most repeated component in Arthur. The margin cluster (source, connections, revisions, age) is a fixed-width column set so scanning is vertical.</p>
+    <div class="ex" id="rows"></div>
+    <h3>Anatomy</h3>
+    <ul class="clean"><li>Kind glyph (shape) · serif title · one-line muted snippet (comfortable only) · margin: <span id="anat-src"></span> source, <span id="anat-link"></span> connection count, <span id="anat-rev"></span> revision number, age.</li><li>Selected = 2px accent bar + wash. Hover = wash only. No border box, no shadow.</li></ul>
+
+    <h2>Inspector</h2>
+    <p class="lede">A page, not a card. 430px on Ideas, 392px on Connections. The same sections in the same order everywhere: content → Source → Connections → Revisions. Each section header links to its dedicated screen.</p>
+    <div class="ex" style="max-width:430px" id="insp"></div>
+
+    <h2>Connections: node and edge language</h2>
+    <p class="lede">Shape says what an idea is. Line geometry says how two ideas relate. Colour is a reinforcement for people who can use it, never the only signal.</p>
+    <h3>Nodes by kind</h3>
+    <div class="specimen" style="padding:10px"><svg id="nodes-demo" viewBox="0 0 700 150" style="width:100%"></svg></div>
+    <h3>Node states</h3>
+    <div class="specimen" style="padding:10px"><svg id="node-states" viewBox="0 0 700 130" style="width:100%"></svg></div>
+    <h3>Edges</h3>
+    <div class="rels" id="rels"></div>
+    <h3>Rules</h3>
+    <ul class="clean"><li>Node size grows with number of connections (12–26px), so hubs read at a glance.</li><li>Edge labels appear only for edges in the current focus. An unselected graph has zero edge text.</li><li>Selecting a node dims everything outside its neighbourhood to 34%. Selecting an edge dims everything but its two ends.</li><li>Region names (“Capture &amp; cognition”) are quiet italic serif, like names on an old map. They are not boxes.</li><li>Origin: dashed hollow dot = proposed by Arthur; solid dot = created by you or the system.</li></ul>
+
+    <h2>Evolution: revision language</h2>
+    <p class="lede">A rail, not a network. Time runs left to right. Revisions are rounded rectangles (never circles) joined by right-angle rails with rounded corners. Two lanes: the line of thought, and branches.</p>
+    <div class="specimen" style="padding:14px 8px 4px"><svg id="lin-demo" style="width:100%"></svg></div>
+    <div class="three" style="margin-top:14px">
+      <div><h3 style="margin-top:0">Origins</h3><ul class="clean"><li><b style="color:var(--ink)">First capture</b>: solid outline</li><li><b style="color:var(--ink)">Your edit</b>: solid outline</li><li><b style="color:var(--ink)">From a new capture</b>: pencil-blue outline (Arthur-derived)</li><li><b style="color:var(--ink)">Merge</b>: underlined box, two rails in</li></ul></div>
+      <div><h3 style="margin-top:0">States</h3><ul class="clean"><li><b style="color:var(--ink)">Current</b>: accent fill. Exactly one.</li><li><b style="color:var(--ink)">Selected</b>: ink outline + faint halo</li><li><b style="color:var(--ink)">Parent of selected</b>: its rail turns accent</li></ul></div>
+      <div><h3 style="margin-top:0">Diff</h3><ul class="clean"><li>Word-level, deterministic, inline.</li><li><ins style="text-decoration:none;color:var(--add);background:color-mix(in srgb,var(--add) 14%,transparent)">Insert</ins> in green wash, <del style="color:var(--del);background:color-mix(in srgb,var(--del) 10%,transparent)">delete</del> struck in coral. Never colour alone: delete is also struck through.</li></ul></div>
+    </div>
+
+    <h2>Empty, loading, error</h2>
+    <p class="lede">Empty states are an instruction. Errors say what happened and what to do, without apologising. Loading preserves layout.</p>
+    <div class="states">
+      <div><small>Empty: Ideas</small><div class="state"><h4>Nothing captured yet</h4><p>Say or type a thought. Arthur turns it into ideas and keeps the original words next to them.</p><button class="btn primary" id="e-btn">Capture a thought</button></div></div>
+      <div><small>Loading: Connections</small><div class="state" style="gap:12px"><div class="skel" style="height:18px;width:60%"></div><div class="skel" style="height:12px;width:92%"></div><div class="skel" style="height:12px;width:80%"></div><p style="margin-top:6px">Finding connections. Checking each proposal twice.</p></div></div>
+      <div><small>Error: Evolution</small><div class="state"><div class="alert"><span id="e-warn"></span><div><b>Couldn't save the merge.</b><br>R2 and R3 are unchanged. Check disk space, then try again.</div></div><button class="btn">Try again</button></div></div>
+    </div>
+
+    <h2>Motion</h2>
+    <p class="lede">Motion answers an action. Nothing animates on its own except one moment: when you capture, a thread draws from the new capture to the ideas distilled from it.</p>
+    <div class="two"><ul class="clean"><li><b style="color:var(--ink)">120ms</b> state change (hover, press). <b style="color:var(--ink)">220ms</b> structural (focus-dim in graph, inspector swap). Curve: <code style="color:var(--ink-3)">cubic-bezier(.2,.7,.2,1)</code>.</li><li><b style="color:var(--ink)">The thread:</b> 600ms line draw from the capture node down to each new idea, staggered 80ms. Plays once.</li><li><b style="color:var(--ink)">Evolution:</b> a new revision's rail draws left to right (240ms) and its box fades in at the end.</li><li><b style="color:var(--ink)">Graph:</b> never auto-settles or floats. Layout is computed once and stable, so the map is the same map tomorrow.</li><li>Reduced motion: every transition and animation becomes instant, the thread appears fully drawn.</li></ul>
+      <div class="box motion-demo" id="mdemo"><svg width="100%" height="120" viewBox="0 0 360 120"><circle cx="30" cy="22" r="9" fill="var(--ground)" stroke="var(--ink-3)"/><path id="thr" d="M30 31V92M30 56H70M30 92H70" stroke="var(--accent)" stroke-width="1.5" fill="none" stroke-dasharray="200" stroke-dashoffset="200"/><circle cx="76" cy="56" r="6" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/><circle cx="76" cy="92" r="6" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/><text x="90" y="60" font-family="var(--serif)" font-size="14" fill="var(--ink)">Use EMG wristband…</text><text x="90" y="96" font-family="var(--serif)" font-size="14" fill="var(--ink)">How to handle conflicts?</text></svg><button class="btn ghost" id="replay" style="position:absolute;right:10px;top:8px">Replay</button></div></div>
+
+    <h2>Don'ts</h2>
+    <ul class="clean dos" style="max-width:90ch"><li>No cards inside cards, no equal-height tile grids.</li><li>No stat tiles: counts live inside the thing they count.</li><li>No gradient, glow, glass or blur. The only shadow is on overlays.</li><li>No sparkle icon as decoration. Arthur's presence is its provenance and proposals, not an emoji.</li><li>No colour per idea kind.</li><li>No edge text in an unselected graph.</li><li>No circles in Evolution, no rectangles for ideas in Connections.</li><li>No metrics we cannot compute from the data model.</li></ul>
+  </main>
+</div>
+
+<script src="arthur-ui.js"></script>
+<script>
+const A = Arthur, ic = A.ic; const $ = (s, r = document) => r.querySelector(s); const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const style = document.createElement("style"); style.textContent = A.graphCss + A.lineageCss; document.head.appendChild(style);
+
+const ACCENTS = { Verdigris: ["#6fbfa6", "#2c8a72"], Lichen: ["#b4c778", "#6a7f27"], Lamp: ["#e2b866", "#9a6f12"], Sky: ["#7fb4de", "#2d6ea3"], Rose: ["#e49aa6", "#b04658"] };
+const DEF = { theme: "dark", density: "comfortable", accent: "Verdigris", type: "serif", radius: "standard", tint: "off" };
+const PRESETS = {
+  "Graphite · recommended": { ...DEF },
+  "Daylight": { ...DEF, theme: "light" },
+  "Compact workbench": { ...DEF, density: "compact", radius: "tight" },
+  "Sans only": { ...DEF, type: "sans", radius: "soft", accent: "Sky", tint: "on" },
+};
+const S = { ...DEF };
+const RADII = { tight: [2, 4, 7], standard: [3, 6, 11], soft: [4, 9, 16] };
+
+function renderStatic() {
+  $("#markslot").innerHTML = A.mark(24);
+  $("#mark1").innerHTML = A.mark(44) + '<b class="serif" style="font:500 30px var(--serif);letter-spacing:-.01em">Arthur</b>'; $("#mark2").innerHTML = A.mark(44).replace("var(--accent)", "var(--accent-ink)") + '<b class="serif" style="font:500 30px var(--serif)">Arthur</b>';
+  const tok = (id, arr) => $(id).innerHTML = arr.map(([n, v, note]) => `<div><i style="background:var(${v})"></i><span><b>${n}</b>${note}</span></div>`).join("");
+  tok("#tok-ground", [["Ground", "--ground", "page"], ["Sunken", "--sunken", "rail, inputs"], ["Raised", "--raised", "composer"], ["Overlay", "--overlay", "popovers"], ["Line", "--line", "controls"], ["Line soft", "--line-soft", "dividers"], ["Ink", "--ink", "thoughts"], ["Ink 2", "--ink-2", "UI text"], ["Ink 3", "--ink-3", "meta"], ["Ink 4", "--ink-4", "disabled"]]);
+  tok("#tok-accent", [["Accent", "--accent", "current, focus"], ["Pencil", "--pencil", "Arthur-proposed"], ["Insert", "--add", "diff +"], ["Delete", "--del", "diff −"]]);
+  tok("#tok-rel", Object.keys(A.REL).map((k) => [A.REL[k].label, `--rel-${k}`, ""]));
+  $("#kinds").innerHTML = ["idea", "task", "decision", "question", "note"].map((k) => `<div>${A.kind(k).replace('class="kind ', 'style="width:46px;height:46px;margin:14px auto 10px" class="kind ')}<small>${k[0].toUpperCase() + k.slice(1)}</small></div>`).join("");
+  $("#icons").innerHTML = ["home", "ideas", "connections", "evolution", "settings", "ask", "mic", "text", "emg", "search", "paperclip", "link", "rev", "branch", "merge", "edit", "filter", "wand", "arrow"].map((n) => `<span title="${n}" style="display:grid;gap:6px;justify-items:center;font-size:11px;color:var(--ink-3)">${ic(n).replace("ic ", "ic ").replace('class="ic ', 'style="width:20px;height:20px" class="ic ')}${n}</span>`).join("");
+  $("#nav1").innerHTML = `<div class="brand" style="padding-bottom:12px">${A.mark()}<b>Arthur</b></div><button class="capture-btn">${ic("plus")}Capture<kbd>⌘N</kbd></button><nav class="nav"><a href="#" onclick="return false">${ic("home")}Home</a><a href="#" aria-current="page" onclick="return false">${ic("ideas")}Ideas<span class="count">12</span></a><a href="#" onclick="return false" style="background:var(--hover);color:var(--ink)">${ic("connections")}Connections<span class="count" style="font-size:11px">hover</span></a><a href="#" onclick="return false">${ic("evolution")}Evolution</a><a href="#" onclick="return false" style="color:var(--ink-4)">${ic("ask")}Ask Arthur<span class="soon">soon</span></a></nav>`;
+  $("#b-acc-i").innerHTML = ic("mic"); $("#b-x").innerHTML = ic("x"); $("#in1").innerHTML = `${ic("search", "sm")}<input placeholder="Search ideas"><kbd>/</kbd>`; $("#in2").innerHTML = ic("search", "sm");
+  $("#e-warn").innerHTML = ic("warn"); $("#anat-src").innerHTML = A.srcIc("voice"); $("#anat-link").innerHTML = ic("link", "sm"); $("#anat-rev").innerHTML = ic("rev", "sm");
+  $$("#anat-src,#anat-link,#anat-rev").forEach((e) => (e.style.cssText = "display:inline-block;vertical-align:-2px;color:var(--ink-3)"));
+  const row = (o, sel) => `<div class="row" aria-selected="${!!sel}">${A.kind(o.kind)}<div style="min-width:0"><div class="t">${o.title}</div><div class="s">${o.body}</div></div><div class="margin"><span class="src">${A.srcIc(o.src)}${A.srcName(o.src)}</span><span>${ic("link")}<span class="num">${A.deg(o.id)}</span></span><span>${ic("rev")}<span class="num">r${o.rev}</span></span><span class="when">${o.ago}</span></div></div>`;
+  $("#density-demo").dataset.density = S.density;
+  $("#rows").innerHTML = `<div class="list">${[["o1", 1], ["o2"], ["o3"], ["o4"]].map(([id, sel]) => row(A.obj(id), sel)).join("")}</div>`;
+  $("#density-demo").innerHTML = `<div class="list">${[["o2"], ["o5"]].map(([id]) => row(A.obj(id))).join("")}</div>`;
+  // inspector sample (short)
+  const o = A.obj("o1");
+  $("#insp").innerHTML = `<div class="inspector" style="border:0"><div class="insp-head"><div class="meta">${A.kind("idea")}<span class="kindname">Idea</span><span>·</span><span>Edited 18 min ago</span></div><h2>${o.title}</h2></div><div class="insp-body">${o.body}</div><div class="sec" style="margin-top:22px"><div class="sec-h"><h3>Source</h3></div><div class="cap-meta">${A.srcIc("voice")}<span>Voice capture · Fri 2 Oct, 14:32</span></div><blockquote class="quote">I want to be able to <mark>quickly capture ideas on my phone, ideally using voice</mark>. It should feel natural…</blockquote></div><div class="sec"><div class="sec-h"><h3>Connections</h3><span class="n">5</span><a class="link" href="#" onclick="return false">Open in Connections ${ic("arrow")}</a></div>${A.edgesOf("o1").slice(0, 3).map((r) => { const out = r.s === "o1"; const t = A.obj(out ? r.t : r.s); return `<div class="rel">${A.relSwatch(r.kind, 30)}<div class="rt">${t.title}</div><div class="rv"><span class="origin ${r.origin === "model" ? "model" : ""}"></span>${A.REL[r.kind].label}</div></div>`; }).join("")}</div></div>`;
+  // nodes
+  const ks = ["idea", "task", "decision", "question", "note"]; const nd = $("#nodes-demo"); nd.innerHTML = "";
+  A.renderGraph(nd, { objects: ks.map((k, i) => ({ id: "k" + i, kind: k, title: k[0].toUpperCase() + k.slice(1), body: "" })), rel: [], pos: Object.fromEntries(ks.map((k, i) => ["k" + i, [70 + i * 140, 60]])), bounds: [700, 150] });
+  nd.querySelectorAll(".g-node").forEach((g) => g.style.pointerEvents = "none");
+  // states
+  const sg = $("#node-states"); const labels = ["Rest", "Hover", "Selected", "Dimmed", "Hub · 5 links"]; sg.innerHTML = "";
+  const ids = ["s0", "s1", "s2", "s3", "o1"];
+  A.renderGraph(sg, { objects: labels.map((l, i) => ({ id: ids[i], kind: "idea", title: l, body: "" })), rel: [], pos: Object.fromEntries(ids.map((id, i) => [id, [80 + i * 140, 52]])), bounds: [700, 130] });
+  const gs = $$(".g-node", sg); gs.forEach((g) => (g.style.pointerEvents = "none"));
+  gs[1].querySelector(".shape circle").style.stroke = "var(--ink)";
+  gs[2].classList.add("sel"); gs[2].insertAdjacentHTML("afterbegin", '<circle r="23" fill="var(--accent)" opacity=".13"/>'); gs[2].querySelector(".g-label").classList.add("sel");
+  gs[3].classList.add("dim");
+  // rels
+  $("#rels").innerHTML = Object.keys(A.REL).map((k) => `<div class="r">${A.relSwatch(k, 48)}<b>${A.REL[k].label}</b><span>${A.REL[k].meaning}</span></div>`).join("");
+  A.renderLineage($("#lin-demo"), { selected: "R3", w: 960, h: 262 }); $("#lin-demo").style.pointerEvents = "none";
+}
+function apply() {
+  const r = document.documentElement; r.dataset.theme = S.theme; r.dataset.density = S.density; r.dataset.kindtint = S.tint;
+  const a = ACCENTS[S.accent][S.theme === "light" ? 1 : 0]; r.style.setProperty("--accent", a); r.style.setProperty("--accent-soft", `color-mix(in srgb, ${a} 15%, transparent)`);
+  r.style.setProperty("--accent-ink", S.theme === "light" ? "#fff" : "#0f1a16");
+  r.style.setProperty("--serif", S.type === "serif" ? '"Newsreader","Iowan Old Style",Georgia,serif' : 'var(--sans)');
+  const [x, s, m] = RADII[S.radius]; r.style.setProperty("--r-xs", x + "px"); r.style.setProperty("--r-sm", s + "px"); r.style.setProperty("--r-md", m + "px");
+  $$(".opts[data-k]").forEach((g) => $$("button", g).forEach((b) => b.setAttribute("aria-pressed", S[g.dataset.k] === b.dataset.v)));
+  $$("#accents button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === S.accent));
+  $$("#presets button").forEach((b) => b.setAttribute("aria-pressed", JSON.stringify(PRESETS[b.dataset.v]) === JSON.stringify(S)));
+  $("#markslot").innerHTML = A.mark(24); $("#mark1").innerHTML = A.mark(44) + '<b style="font:500 30px var(--serif);letter-spacing:-.01em">Arthur</b>'; $("#mark2").innerHTML = A.mark(44).replace("var(--accent)", "var(--accent-ink)") + '<b style="font:500 30px var(--serif)">Arthur</b>';
+  // prompt
+  const parts = []; if (S.theme !== DEF.theme) parts.push("the Daylight (light) theme"); if (S.density !== DEF.density) parts.push("compact density (48px rows, no snippets)"); if (S.accent !== DEF.accent) parts.push(`${S.accent.toLowerCase()} as the single accent`); if (S.type !== DEF.type) parts.push("a sans-only type system (no serif for thought content)"); if (S.radius !== DEF.radius) parts.push(`${S.radius} corner radii`); if (S.tint !== DEF.tint) parts.push("a faint per-kind tint on idea glyphs");
+  $("#prompt").textContent = `Implement the Arthur desktop design language "Marginalia": graphite ground, Newsreader for thought content and Hanken Grotesk for UI, one accent used only for current/focus/selection, kind told by shape not colour, relation kinds told by line geometry, hairlines instead of cards, and a source·connections·revisions margin on every thought.` + (parts.length ? ` Use ${parts.join(", ")}.` : " Use the default tokens from arthur.css.") + ` Keep Connections (organic map, relation-geometry edges, labels only on focus) and Evolution (left-to-right rectilinear rail with two lanes) visually distinct.`;
+}
+$("#copy").onclick = () => { navigator.clipboard && navigator.clipboard.writeText($("#prompt").textContent); $("#copy").textContent = "Copied"; setTimeout(() => ($("#copy").textContent = "Copy prompt"), 1200); };
+$("#presets").innerHTML = Object.keys(PRESETS).map((p) => `<button data-v="${p}">${p}</button>`).join("");
+$("#accents").innerHTML = Object.keys(ACCENTS).map((n) => `<button class="sw" data-v="${n}" title="${n}" style="background:${ACCENTS[n][0]}"></button>`).join("");
+$$("#presets button").forEach((b) => (b.onclick = () => { Object.assign(S, PRESETS[b.dataset.v]); apply(); }));
+$$("#accents button").forEach((b) => (b.onclick = () => { S.accent = b.dataset.v; apply(); }));
+$$(".opts[data-k]").forEach((g) => $$("button", g).forEach((b) => (b.onclick = () => { S[g.dataset.k] = b.dataset.v; apply(); })));
+$("#replay").onclick = () => { const p = $("#thr"); p.style.transition = "none"; p.style.strokeDashoffset = 200; p.getBoundingClientRect(); p.style.transition = "stroke-dashoffset 600ms cubic-bezier(.2,.7,.2,1)"; p.style.strokeDashoffset = 0; };
+renderStatic(); apply();
+const q = new URLSearchParams(location.search); if (q.get("preset") && PRESETS[q.get("preset")]) { Object.assign(S, PRESETS[q.get("preset")]); apply(); }
+setTimeout(() => $("#replay").click(), 300);
+if (q.get("scroll")) setTimeout(() => (document.getElementById(q.get("scroll")) || document.body).scrollIntoView(), 200);
+</script>
+</body>
+</html>

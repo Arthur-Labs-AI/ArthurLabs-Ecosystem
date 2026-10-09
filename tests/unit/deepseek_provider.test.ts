@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { ModelRequest, ModelStreamEvent } from "../../src/models/contracts";
+import { sanitizeStructured } from "../../src/security/sanitize";
 import {
   ProviderAuthError,
   ProviderBadResponseError,
@@ -9,12 +10,17 @@ import {
   ProviderUnavailableError,
 } from "../../src/models/contracts";
 import {
+  classifyStreamFailure,
   DeepSeekProvider,
   DeepSeekProviderConfig,
+  DeepSeekRequestRejectedError,
+  describePayloadShape,
+  MALFORMED_SSE_MESSAGE,
   MAX_ASSISTANT_TEXT_CHARS,
   MAX_RESPONSE_BYTES,
   MAX_TOOL_CALLS,
   normalizeDeepSeekResponse,
+  ProviderLogSink,
   readBodyWithLimit,
 } from "../../src/models/providers/deepseek";
 
@@ -274,6 +280,169 @@ test("streaming: fragmented tool-call name resolves to canonical at completion",
   assert.deepEqual(finalCall.call.arguments, { text: "hi" });
 });
 
+// ---- TASK-0007: streaming retry hardening --------------------------------
+
+test("streaming: transient network failure before stream data is retried", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    if (calls === 1) throw new Error("network down");
+    return sseResponse(
+      JSON.stringify({ choices: [{ index: 0, delta: { content: "ok" } }] }),
+      "[DONE]",
+    );
+  };
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 2 }), {
+    fetchFn,
+    sleepFn: async () => {},
+  });
+  const events: ModelStreamEvent[] = [];
+  for await (const e of provider.generateStream(baseRequest())) events.push(e);
+  assert.equal(calls, 2);
+  assert.ok(events.some((e) => e.type === "text_delta" && e.text === "ok"));
+  assert.ok(events.some((e) => e.type === "done"));
+});
+
+test("streaming: timeout before stream data is retried with a fresh timeout per attempt", async () => {
+  let calls = 0;
+  const observedSignals: AbortSignal[] = [];
+  const fetchFn: typeof fetch = (_url, init) => {
+    calls += 1;
+    const signal = init?.signal;
+    observedSignals.push(signal as AbortSignal);
+    if (calls === 1) {
+      return new Promise<Response>((_resolve, reject) => {
+        signal?.addEventListener(
+          "abort",
+          () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+          { once: true },
+        );
+      });
+    }
+    // A retry attempt must receive a FRESH controller: the shared-controller
+    // bug reuses an already-aborted signal, which fails this attempt instantly.
+    assert.equal(signal?.aborted, false, "retry attempt must receive a fresh, non-aborted controller");
+    return new Promise<Response>((resolve) => {
+      setTimeout(() => {
+        resolve(sseResponse(
+          JSON.stringify({ choices: [{ index: 0, delta: { content: "recovered" } }] }),
+          "[DONE]",
+        ));
+      }, 25);
+    });
+  };
+  const provider = new DeepSeekProvider(
+    config({ timeoutMs: 50, retryMaxAttempts: 2, retryBaseDelayMs: 5 }),
+    { fetchFn, sleepFn: async () => {} },
+  );
+  const events: ModelStreamEvent[] = [];
+  for await (const e of provider.generateStream(baseRequest())) events.push(e);
+  assert.equal(calls, 2, "a pre-data timeout must be retried within the bounded budget");
+  assert.ok(observedSignals[0]?.aborted, "the first attempt's timeout must have fired");
+  assert.ok(events.some((e) => e.type === "text_delta" && e.text === "recovered"));
+});
+
+test("streaming: caller abort does not retry", async () => {
+  let calls = 0;
+  const caller = new AbortController();
+  const fetchFn: typeof fetch = (_url, init) => {
+    calls += 1;
+    const signal = init?.signal;
+    return new Promise<Response>((_resolve, reject) => {
+      signal?.addEventListener(
+        "abort",
+        () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+        { once: true },
+      );
+    });
+  };
+  const provider = new DeepSeekProvider(config({ timeoutMs: 5000, retryMaxAttempts: 3 }), {
+    fetchFn,
+    sleepFn: async () => {},
+  });
+  const consumed = (async () => {
+    for await (const _e of provider.generateStream(baseRequest(), caller.signal)) {
+      void _e;
+    }
+  })();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  caller.abort();
+  await consumed;
+  assert.equal(calls, 1, "caller cancellation must never trigger a retry");
+});
+
+test("streaming: 401 does not retry", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    return jsonResponse(401, { error: { message: "unauthorized" } });
+  };
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 3 }), { fetchFn, sleepFn: async () => {} });
+  await assert.rejects(
+    (async () => {
+      for await (const _e of provider.generateStream(baseRequest())) void _e;
+    })(),
+    ProviderAuthError,
+  );
+  assert.equal(calls, 1);
+});
+
+test("streaming: malformed SSE chunk fails without retry", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    return sseResponse("{not valid json");
+  };
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 3 }), { fetchFn, sleepFn: async () => {} });
+  await assert.rejects(
+    (async () => {
+      for await (const _e of provider.generateStream(baseRequest())) void _e;
+    })(),
+    ProviderBadResponseError,
+  );
+  assert.equal(calls, 1);
+});
+
+test("streaming: failure after partial data is not retried and text is not duplicated", async () => {
+  let calls = 0;
+  const encoder = new TextEncoder();
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        // First read delivers the SSE chunk; the SECOND read rejects, i.e.
+        // the connection dies mid-body after consumer-visible data.
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(
+              "data: " + JSON.stringify({ choices: [{ index: 0, delta: { content: "Hello " } }] }) + "\n\n",
+            ),
+          );
+        },
+        pull(controller) {
+          controller.error(new Error("connection reset mid-stream"));
+        },
+      }),
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    );
+  };
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 3 }), {
+    fetchFn,
+    sleepFn: async () => {},
+  });
+  const deltas: string[] = [];
+  await assert.rejects(
+    (async () => {
+      for await (const e of provider.generateStream(baseRequest())) {
+        if (e.type === "text_delta") deltas.push(e.text);
+      }
+    })(),
+    ProviderUnavailableError,
+  );
+  assert.equal(calls, 1, "a retry after consumer-visible data could duplicate content");
+  assert.equal(deltas.join(""), "Hello ");
+});
+
 test("streaming: unknown provider alias fails the stream closed", async () => {
   const fetchFn: typeof fetch = async () =>
     sseResponse(
@@ -294,5 +463,364 @@ test("streaming: unknown provider alias fails the stream closed", async () => {
     })(),
     ProviderBadResponseError,
   );
+});
+
+// ---- TASK-0007: streaming failure diagnostics (safe, structured) ---------
+
+interface RecordedLogEntry {
+  level: "info" | "warn";
+  message: string;
+  fields?: Record<string, unknown>;
+}
+
+function recordingLogger(): { logger: ProviderLogSink; entries: RecordedLogEntry[] } {
+  const entries: RecordedLogEntry[] = [];
+  return {
+    entries,
+    logger: {
+      info: (message, fields) => entries.push({ level: "info", message, fields }),
+      warn: (message, fields) => entries.push({ level: "warn", message, fields }),
+    },
+  };
+}
+
+test("diagnostics: transient 5xx logged as http_status, then completion", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    return calls === 1
+      ? jsonResponse(503, { error: { message: "temporarily unavailable" } })
+      : sseResponse(
+          JSON.stringify({ choices: [{ index: 0, delta: { content: "ok" } }] }),
+          "[DONE]",
+        );
+  };
+  const { logger, entries } = recordingLogger();
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 2 }), { fetchFn, sleepFn: async () => {}, logger });
+  for await (const e of provider.generateStream(baseRequest())) void e;
+  assert.equal(calls, 2);
+  const failed = entries.find((e) => e.message === "deepseek.stream.attempt_failed");
+  assert.ok(failed, "the failed attempt must be logged");
+  assert.equal(failed.fields?.kind, "http_status");
+  assert.equal(failed.fields?.http_status, 503);
+  assert.equal(failed.fields?.attempt, 1);
+  assert.equal(failed.fields?.max_attempts, 3);
+  assert.equal(failed.fields?.emitted_any, false);
+  const completed = entries.find((e) => e.message === "deepseek.stream.completed");
+  assert.ok(completed, "the successful completion must be logged");
+  assert.equal(completed.fields?.attempts, 2);
+  // Secret-safety: diagnostics never contain the API key.
+  assert.ok(!JSON.stringify(entries).includes("sk-test"), "diagnostics must never contain the API key");
+});
+
+test("diagnostics: pre-data timeout classified as timeout and retried", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = (_url, init) => {
+    calls += 1;
+    const signal = init?.signal;
+    if (calls === 1) {
+      return new Promise<Response>((_resolve, reject) => {
+        signal?.addEventListener(
+          "abort",
+          () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+          { once: true },
+        );
+      });
+    }
+    return Promise.resolve(sseResponse(
+      JSON.stringify({ choices: [{ index: 0, delta: { content: "ok" } }] }),
+      "[DONE]",
+    ));
+  };
+  const { logger, entries } = recordingLogger();
+  const provider = new DeepSeekProvider(
+    config({ timeoutMs: 40, retryMaxAttempts: 1, retryBaseDelayMs: 5 }),
+    { fetchFn, sleepFn: async () => {}, logger },
+  );
+  for await (const e of provider.generateStream(baseRequest())) void e;
+  assert.equal(calls, 2);
+  const failed = entries.find((e) => e.message === "deepseek.stream.attempt_failed");
+  assert.ok(failed);
+  assert.equal(failed.fields?.kind, "timeout", "a per-attempt timeout is distinct from unavailability");
+  assert.equal(failed.fields?.http_status, null);
+  const completed = entries.find((e) => e.message === "deepseek.stream.completed");
+  assert.equal(completed?.fields?.attempts, 2);
+});
+
+
+test("TASK-0024 Bug 2: continuation body after tool rounds is exactly the valid serialized payload", async () => {
+  // Live shape: several tool-result messages, one carrying commit/file text with
+  // secret-like keys adjacent to quotes (password="a\\"b"). Pre-fix, the
+  // redactText-on-serialized-JSON transform consumed the quote-escaping backslash
+  // and the provider rejected the body with "expected ',' or '}'".
+  const hostileCommitText = 'commit abc123 author dev auth note password="a\\"b" token: "abc\\"def\\" end';
+  const commits: Array<Record<string, unknown>> = [];
+  for (let i = 0; i < 40; i += 1) {
+    commits.push({ oid: String(i).padStart(40, "a"), subject: "subject " + i + " " + hostileCommitText, author: "dev" });
+  }
+  const toolContent = JSON.stringify({
+    status: "completed",
+    summary: "git log: 40 commits",
+    data: { commits, files: [{ path: "src/index.ts", body: hostileCommitText }] },
+    source: "tool",
+    trust: "untrusted_data",
+  });
+  const history: ModelRequest["history"] = [
+    { role: "assistant", content: "", tool_calls: [{ id: "call_1", name: "system.echo", arguments: { text: "one" } }] },
+    { role: "tool", content: toolContent, name: "system.echo", tool_call_id: "call_1" },
+    { role: "assistant", content: "", tool_calls: [{ id: "call_2", name: "system.echo", arguments: { text: "two" } }] },
+    { role: "tool", content: toolContent, name: "system.echo", tool_call_id: "call_2" },
+  ];
+  const request: ModelRequest = {
+    ...baseRequest(),
+    history,
+    toolSchemas: [{ name: "system.echo", description: "echo", parameters: { type: "object" } }],
+    userMessage: "",
+  };
+  const bodies: string[] = [];
+  const fetchFn: typeof fetch = async (_url, init) => {
+    bodies.push(String(init?.body ?? ""));
+    return jsonResponse(200, OK_BODY);
+  };
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  await provider.generate(request);
+  assert.equal(bodies.length, 1);
+  const sent = bodies[0] as string;
+  // Invariant: the sent body parses as valid JSON (provider-side parse succeeds)
+  // and is EXACTLY JSON.stringify of the assembled payload — no transport
+  // transform. Secrets are handled at the data layer (sanitizeStructured),
+  // which preserves valid JSON; the transport must not re-edit the bytes.
+  const parsed = JSON.parse(sent) as { messages: Array<{ role: string; content: string | null }> };
+  const expectedContent = String(
+    (sanitizeStructured({ content: toolContent }, ["sk-test"]) as { content: string }).content,
+  );
+  // The data-layer sanitized form round-trips byte-identical through dispatch.
+  JSON.parse(JSON.stringify({ content: expectedContent }));
+  const toolMessages = parsed.messages.filter((m) => m.role === "tool");
+  assert.equal(toolMessages.length, 2);
+  for (const m of toolMessages) assert.equal(m.content, expectedContent);
+  // The hostile quoted shape that broke the old redactText transport survives
+  // structurally: still valid JSON with the tool envelope intact.
+  assert.ok(sent.includes('"role":"tool"'));
+  // Bounded sanitized shape: identifies roles/indexes without any payload values.
+  const shape = describePayloadShape({ messages: parsed.messages });
+  assert.ok(shape.length >= 6, "system + mode + 4 continuation messages, got " + shape.length);
+  const shapeJson = JSON.stringify(shape);
+  assert.equal(shapeJson.includes(hostileCommitText), false, "diagnostics must not carry payload text");
+  assert.ok(shape.filter((s) => s.role === "tool").length === 2);
+});
+
+test("diagnostics: malformed SSE line classified without retry", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    return sseResponse("{not valid json");
+  };
+  const { logger, entries } = recordingLogger();
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 3 }), { fetchFn, sleepFn: async () => {}, logger });
+  await assert.rejects(
+    (async () => {
+      for await (const e of provider.generateStream(baseRequest())) void e;
+    })(),
+    ProviderBadResponseError,
+  );
+  assert.equal(calls, 1);
+  const failed = entries.find((e) => e.message === "deepseek.stream.attempt_failed");
+  assert.ok(failed);
+  assert.equal(failed.fields?.kind, "malformed_sse", "a non-JSON SSE line is distinct from other bad responses");
+  assert.equal(failed.fields?.error_message, MALFORMED_SSE_MESSAGE);
+  assert.ok(!entries.some((e) => e.message === "deepseek.stream.completed"));
+});
+
+test("diagnostics: stream ending without DONE is provider_bad_response with emitted_any", async () => {
+  const fetchFn: typeof fetch = async () =>
+    sseResponse(JSON.stringify({ choices: [{ index: 0, delta: { content: "hi" } }] }));
+  const { logger, entries } = recordingLogger();
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 3 }), { fetchFn, sleepFn: async () => {}, logger });
+  await assert.rejects(
+    (async () => {
+      for await (const e of provider.generateStream(baseRequest())) void e;
+    })(),
+    ProviderBadResponseError,
+  );
+  const failures = entries.filter((e) => e.message === "deepseek.stream.attempt_failed");
+  assert.equal(failures.length, 1, "failure after consumer-visible data must not retry");
+  assert.equal(failures[0]?.fields?.kind, "provider_bad_response");
+  assert.equal(failures[0]?.fields?.emitted_any, true, "the text delta was already consumer-visible");
+});
+
+test("diagnostics: network failure exhausts budget and logs retries_exhausted", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    throw new Error("network down");
+  };
+  const { logger, entries } = recordingLogger();
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 2 }), { fetchFn, sleepFn: async () => {}, logger });
+  await assert.rejects(
+    (async () => {
+      for await (const e of provider.generateStream(baseRequest())) void e;
+    })(),
+    ProviderUnavailableError,
+  );
+  assert.equal(calls, 3);
+  const failures = entries.filter((e) => e.message === "deepseek.stream.attempt_failed");
+  assert.equal(failures.length, 3);
+  for (const f of failures) {
+    assert.equal(f.fields?.kind, "network_fetch_failure");
+    assert.equal(f.fields?.error_message, null, "network diagnostics carry the error name only");
+    assert.equal(f.fields?.emitted_any, false);
+  }
+  const exhausted = entries.find((e) => e.message === "deepseek.stream.retries_exhausted");
+  assert.ok(exhausted, "budget exhaustion must be logged");
+  assert.equal(exhausted.fields?.attempts, 3);
+  assert.equal(exhausted.fields?.max_attempts, 3);
+  assert.equal(exhausted.fields?.last_kind, "network_fetch_failure");
+  assert.ok(!JSON.stringify(entries).includes("sk-test"), "diagnostics must never contain the API key");
+});
+
+test("diagnostics: caller abort mid-stream logged once and never retried", async () => {
+  let calls = 0;
+  const caller = new AbortController();
+  const encoder = new TextEncoder();
+  const fetchFn: typeof fetch = async (_url, init) => {
+    calls += 1;
+    const signal = init?.signal;
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(
+              "data: " + JSON.stringify({ choices: [{ index: 0, delta: { content: "Hello " } }] }) + "\n\n",
+            ),
+          );
+        },
+        pull() {
+          // Stall the next read until the fetch signal (controller) aborts.
+          return new Promise<void>((_resolve, reject) => {
+            signal?.addEventListener(
+              "abort",
+              () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+              { once: true },
+            );
+          });
+        },
+      }),
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    );
+  };
+  const { logger, entries } = recordingLogger();
+  const provider = new DeepSeekProvider(config({ timeoutMs: 5000, retryMaxAttempts: 3 }), {
+    fetchFn,
+    sleepFn: async () => {},
+    logger,
+  });
+  const consumed = (async () => {
+    for await (const e of provider.generateStream(baseRequest(), caller.signal)) void e;
+  })();
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  caller.abort();
+  await consumed;
+  assert.equal(calls, 1, "caller cancellation must never trigger a retry");
+  const aborted = entries.find((e) => e.message === "deepseek.stream.caller_aborted");
+  assert.ok(aborted, "caller abort must be distinguishable from failures");
+  assert.equal(aborted.fields?.emitted_any, true);
+  assert.ok(!entries.some((e) => e.message === "deepseek.stream.attempt_failed"), "caller abort is not a failure");
+});
+
+test("diagnostics: request_rejected (400) classified with http status and no retry", async () => {
+  let calls = 0;
+  const fetchFn: typeof fetch = async () => {
+    calls += 1;
+    return jsonResponse(400, { error: { message: "bad request" } });
+  };
+  const { logger, entries } = recordingLogger();
+  const provider = new DeepSeekProvider(config({ retryMaxAttempts: 3 }), { fetchFn, sleepFn: async () => {}, logger });
+  await assert.rejects(
+    (async () => {
+      for await (const e of provider.generateStream(baseRequest())) void e;
+    })(),
+    DeepSeekRequestRejectedError,
+  );
+  assert.equal(calls, 1);
+  const failed = entries.find((e) => e.message === "deepseek.stream.attempt_failed");
+  assert.ok(failed);
+  assert.equal(failed.fields?.kind, "request_rejected", "an HTTP 400 is distinct from transient unavailability");
+  assert.equal(failed.fields?.http_status, 400);
+  assert.ok(!entries.some((e) => e.message === "deepseek.stream.retries_exhausted"), "non-retryable failures do not exhaust the budget");
+});
+
+test("diagnostics: classifyStreamFailure maps directly and safely", () => {
+  assert.equal(classifyStreamFailure(new Error("boom"), false).kind, "network_fetch_failure");
+  assert.equal(classifyStreamFailure(new Error("boom"), false).error_name, "Error");
+  assert.equal(classifyStreamFailure(new Error("boom"), false).error_message, undefined);
+  assert.equal(classifyStreamFailure(new Error("x"), true).kind, "timeout");
+  assert.equal(classifyStreamFailure(new ProviderBadResponseError("stream ended without [DONE]"), false).kind, "provider_bad_response");
+  assert.equal(classifyStreamFailure(new ProviderBadResponseError(MALFORMED_SSE_MESSAGE), false).kind, "malformed_sse");
+  assert.equal(classifyStreamFailure(new ProviderUnavailableError(), false).kind, "network_fetch_failure");
+  assert.equal(classifyStreamFailure(new ProviderAuthError(), false).kind, "auth");
+});
+
+// ---- provider boundary: malformed assistant history fails locally --------
+
+test("provider boundary: assistant history without content or tool_calls fails locally in generate", async () => {
+  let fetchCalls = 0;
+  const fetchFn: typeof fetch = async () => {
+    fetchCalls += 1;
+    return jsonResponse(200, OK_BODY);
+  };
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  const request = {
+    ...baseRequest(),
+    history: [{ role: "assistant" as const, content: "" }],
+  };
+  await assert.rejects(() => provider.generate(request), ProviderBadResponseError);
+  assert.equal(fetchCalls, 0, "the malformed request must fail before any network call");
+});
+
+test("provider boundary: assistant history without content or tool_calls fails locally in generateStream", async () => {
+  let fetchCalls = 0;
+  const fetchFn: typeof fetch = async () => {
+    fetchCalls += 1;
+    return sseResponse(
+      JSON.stringify({ choices: [{ index: 0, delta: { content: "ok" } }] }),
+      "[DONE]",
+    );
+  };
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  const request = {
+    ...baseRequest(),
+    history: [{ role: "assistant" as const, content: "" }],
+  };
+  await assert.rejects(
+    (async () => {
+      for await (const e of provider.generateStream(request)) void e;
+    })(),
+    ProviderBadResponseError,
+  );
+  assert.equal(fetchCalls, 0, "the malformed request must fail before any network call");
+});
+
+test("provider boundary: assistant message with tool_calls and empty content is sendable", async () => {
+  // The buildFollowup shape: an assistant tool-call proposal followed by a
+  // tool result. This MUST remain valid - only content-less AND call-less
+  // assistant messages are malformed.
+  const fetchFn: typeof fetch = async () =>
+    jsonResponse(200, { ...OK_BODY, choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "done" } }] });
+  const provider = new DeepSeekProvider(config(), { fetchFn, sleepFn: async () => {} });
+  const request = {
+    ...baseRequest(),
+    history: [
+      { role: "user" as const, content: "echo pong" },
+      {
+        role: "assistant" as const,
+        content: "",
+        tool_calls: [{ id: "call_1", name: "system.echo", arguments: { text: "pong" } }],
+      },
+      { role: "tool" as const, content: "pong", tool_call_id: "call_1", name: "system.echo" },
+    ],
+  };
+  const result = await provider.generate(request);
+  assert.equal(result.assistant_text, "done");
 });
 

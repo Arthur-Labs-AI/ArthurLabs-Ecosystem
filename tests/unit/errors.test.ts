@@ -92,3 +92,20 @@ test("approvalInvalid carries approval code", () => {
   assert.equal(err.code, "APPROVAL_INVALID");
   assert.equal(err.httpStatus, 400);
 });
+
+test("TASK-0010 tool taxonomy codes carry stable http statuses", () => {
+  const codes: Array<[string, ArthurError["code"], number]> = [
+    ["TOOL_NOT_FOUND", "TOOL_NOT_FOUND", 400],
+    ["TOOL_ARGUMENT_INVALID", "TOOL_ARGUMENT_INVALID", 400],
+    ["TOOL_PERMISSION_DENIED", "TOOL_PERMISSION_DENIED", 403],
+    ["TOOL_EXECUTION_FAILED", "TOOL_EXECUTION_FAILED", 500],
+    ["TOOL_OUTPUT_INVALID", "TOOL_OUTPUT_INVALID", 500],
+    ["APPROVAL_REQUIRED", "APPROVAL_REQUIRED", 409],
+    ["APPROVAL_INVALID", "APPROVAL_INVALID", 400],
+  ];
+  for (const [name, code, status] of codes) {
+    const err = new ArthurError(code, name);
+    assert.equal(err.code, code);
+    assert.equal(err.httpStatus, status);
+  }
+});

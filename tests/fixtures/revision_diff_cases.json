@@ -1,0 +1,244 @@
+[
+  {
+    "name": "unchanged",
+    "old": "same text",
+    "new": "same text",
+    "expected": {
+      "changed": false,
+      "segments": [
+        {
+          "op": "equal",
+          "text": "same text"
+        }
+      ]
+    }
+  },
+  {
+    "name": "word replaced",
+    "old": "Arthur should organize ideas",
+    "new": "Arthur should connect ideas",
+    "expected": {
+      "changed": true,
+      "segments": [
+        {
+          "op": "equal",
+          "text": "Arthur should "
+        },
+        {
+          "op": "delete",
+          "text": "organize"
+        },
+        {
+          "op": "insert",
+          "text": "connect"
+        },
+        {
+          "op": "equal",
+          "text": " ideas"
+        }
+      ]
+    }
+  },
+  {
+    "name": "insertion at the end",
+    "old": "Arthur should organize my ideas automatically.",
+    "new": "Arthur should organize my ideas automatically and connect related ideas.",
+    "expected": {
+      "changed": true,
+      "segments": [
+        {
+          "op": "equal",
+          "text": "Arthur should organize my ideas automatically"
+        },
+        {
+          "op": "insert",
+          "text": " and connect related ideas"
+        },
+        {
+          "op": "equal",
+          "text": "."
+        }
+      ]
+    }
+  },
+  {
+    "name": "deletion",
+    "old": "one two three four",
+    "new": "one four",
+    "expected": {
+      "changed": true,
+      "segments": [
+        {
+          "op": "equal",
+          "text": "one "
+        },
+        {
+          "op": "delete",
+          "text": "two three "
+        },
+        {
+          "op": "equal",
+          "text": "four"
+        }
+      ]
+    }
+  },
+  {
+    "name": "insertion in the middle",
+    "old": "a c",
+    "new": "a b c",
+    "expected": {
+      "changed": true,
+      "segments": [
+        {
+          "op": "equal",
+          "text": "a "
+        },
+        {
+          "op": "insert",
+          "text": "b "
+        },
+        {
+          "op": "equal",
+          "text": "c"
+        }
+      ]
+    }
+  },
+  {
+    "name": "from empty",
+    "old": "",
+    "new": "hi",
+    "expected": {
+      "changed": true,
+      "segments": [
+        {
+          "op": "insert",
+          "text": "hi"
+        }
+      ]
+    }
+  },
+  {
+    "name": "to empty",
+    "old": "hi",
+    "new": "",
+    "expected": {
+      "changed": true,
+      "segments": [
+        {
+          "op": "delete",
+          "text": "hi"
+        }
+      ]
+    }
+  },
+  {
+    "name": "bulgarian",
+    "old": "Искам да подобря екрана за запис.",
+    "new": "Искам да подобря екрана и записа.",
+    "expected": {
+      "changed": true,
+      "segments": [
+        {
+          "op": "equal",
+          "text": "Искам да подобря екрана "
+        },
+        {
+          "op": "delete",
+          "text": "за"
+        },
+        {
+          "op": "insert",
+          "text": "и"
+        },
+        {
+          "op": "equal",
+          "text": " "
+        },
+        {
+          "op": "delete",
+          "text": "запис"
+        },
+        {
+          "op": "insert",
+          "text": "записа"
+        },
+        {
+          "op": "equal",
+          "text": "."
+        }
+      ]
+    }
+  },
+  {
+    "name": "emoji",
+    "old": "ship it 😀 now",
+    "new": "ship it 🎉 now",
+    "expected": {
+      "changed": true,
+      "segments": [
+        {
+          "op": "equal",
+          "text": "ship it "
+        },
+        {
+          "op": "delete",
+          "text": "😀"
+        },
+        {
+          "op": "insert",
+          "text": "🎉"
+        },
+        {
+          "op": "equal",
+          "text": " now"
+        }
+      ]
+    }
+  },
+  {
+    "name": "whitespace only",
+    "old": "a b",
+    "new": "a  b",
+    "expected": {
+      "changed": true,
+      "segments": [
+        {
+          "op": "equal",
+          "text": "a"
+        },
+        {
+          "op": "delete",
+          "text": " "
+        },
+        {
+          "op": "insert",
+          "text": "  "
+        },
+        {
+          "op": "equal",
+          "text": "b"
+        }
+      ]
+    }
+  },
+  {
+    "name": "repeated words keep a stable choice",
+    "old": "a a a",
+    "new": "a a",
+    "expected": {
+      "changed": true,
+      "segments": [
+        {
+          "op": "equal",
+          "text": "a a"
+        },
+        {
+          "op": "delete",
+          "text": " a"
+        }
+      ]
+    }
+  }
+]

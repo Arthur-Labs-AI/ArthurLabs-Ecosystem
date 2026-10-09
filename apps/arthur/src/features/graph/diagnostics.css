@@ -1,0 +1,50 @@
+.gd {
+  margin: 10px 0;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 8px;
+}
+.gd summary {
+  cursor: pointer;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+.gd-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--pencil);
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+}
+.gd-verdict b {
+  font-family: var(--sans);
+  letter-spacing: 0.02em;
+}
+.gd-counts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.gd-counts dt {
+  color: var(--ink-3);
+}
+.gd-counts dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.gd-runs {
+  margin: 8px 0;
+  padding-left: 18px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+}

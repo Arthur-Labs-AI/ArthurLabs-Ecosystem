@@ -1,0 +1,38 @@
+/* Voice output: one quiet text action under an answer. Marginalia: no new colour, no icon, no motion. */
+.listen {
+  margin: 10px 0 2px;
+}
+.listen-btn {
+  min-height: 32px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font: 500 13px var(--sans);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--line);
+  cursor: pointer;
+}
+.listen-btn:hover,
+.listen-btn[aria-pressed="true"] {
+  color: var(--ink);
+  text-decoration-color: var(--accent);
+}
+.listen-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  .listen-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+.listen-note {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 62ch;
+}
