@@ -1,0 +1,2634 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "e82694b4-584c-5898-b351-708b380885fc")
+	(paper "A4")
+	(title_block
+		(title "USB-C and hardware acquisition interlock")
+		(rev "A-architecture")
+		(company "A.R.T.H.U.R.")
+		(comment 1 "Architecture schematic; unresolved values are explicitly marked TBD")
+		(comment 2 "IC pin mappings verified against manufacturer datasheets listed in SCHEMATIC_ARCHITECTURE.md")
+	)
+	(lib_symbols
+		(symbol "ARTHUR:NMOS_INTERLOCK"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -7.62 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "NMOS_INTERLOCK"
+				(at 0 7.62 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" "N-channel MOSFET forces analog LDO enable low on USB insertion"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "NMOS_INTERLOCK_0_1"
+				(rectangle
+					(start -7.62 -5.08)
+					(end 7.62 5.08)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "NMOS_INTERLOCK_1_1"
+				(pin input line
+					(at -10.16 0 0)
+					(length 2.54)
+					(name "G"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 7.62 270)
+					(length 2.54)
+					(name "S"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin open_collector line
+					(at 10.16 0 180)
+					(length 2.54)
+					(name "D"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "ARTHUR:R_CC"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "R_CC"
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "R_CC_0_1"
+				(rectangle
+					(start -2.54 -2.54)
+					(end 2.54 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "R_CC_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "ARTHUR:R_ENABLE"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "R_ENABLE"
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "R_ENABLE_0_1"
+				(rectangle
+					(start -2.54 -2.54)
+					(end 2.54 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "R_ENABLE_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "ARTHUR:R_GATE"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "R_GATE"
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "R_GATE_0_1"
+				(rectangle
+					(start -2.54 -2.54)
+					(end 2.54 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "R_GATE_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "ARTHUR:TPD4E05U06"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -8.89 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "TPD4E05U06"
+				(at 0 8.89 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tpd4e05u06.pdf"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" "Four-channel USB ESD protection"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "TPD4E05U06_0_1"
+				(rectangle
+					(start -7.62 -6.35)
+					(end 7.62 6.35)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "TPD4E05U06_1_1"
+				(pin passive line
+					(at -10.16 3.81 0)
+					(length 2.54)
+					(name "D1+"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -10.16 1.27 0)
+					(length 2.54)
+					(name "D1-"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -1.27 8.89 270)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -10.16 -1.27 0)
+					(length 2.54)
+					(name "D2+"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -10.16 -3.81 0)
+					(length 2.54)
+					(name "D2-"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 3.81 180)
+					(length 2.54)
+					(name "NC"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 1.27 180)
+					(length 2.54)
+					(name "NC"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "7"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 1.27 8.89 270)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "8"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -1.27 180)
+					(length 2.54)
+					(name "NC"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "9"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -3.81 180)
+					(length 2.54)
+					(name "NC"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "10"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "ARTHUR:USB_C"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -19.05 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "USB_C"
+				(at 0 19.05 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" "https://www.usb.org/document-library/usb-type-cr-cable-and-connector-specification-release-25"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" "USB Type-C USB2 receptacle; footprint and shell pins TBD"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "USB_C_0_1"
+				(rectangle
+					(start -7.62 -16.51)
+					(end 7.62 16.51)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "USB_C_1_1"
+				(pin passive line
+					(at -5.08 19.05 270)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "A1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin power_out line
+					(at 10.16 13.97 180)
+					(length 2.54)
+					(name "VBUS"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "A4"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 11.43 180)
+					(length 2.54)
+					(name "CC1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "A5"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 8.89 180)
+					(length 2.54)
+					(name "D+"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "A6"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 6.35 180)
+					(length 2.54)
+					(name "D-"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "A7"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 3.81 180)
+					(length 2.54)
+					(name "SBU1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "A8"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 1.27 180)
+					(length 2.54)
+					(name "VBUS"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "A9"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -2.54 19.05 270)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "A12"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 19.05 270)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "B1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -1.27 180)
+					(length 2.54)
+					(name "VBUS"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "B4"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -3.81 180)
+					(length 2.54)
+					(name "CC2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "B5"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 -6.35 180)
+					(length 2.54)
+					(name "D+"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "B6"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 -8.89 180)
+					(length 2.54)
+					(name "D-"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "B7"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -11.43 180)
+					(length 2.54)
+					(name "SBU2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "B8"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -13.97 180)
+					(length 2.54)
+					(name "VBUS"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "B9"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 2.54 19.05 270)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "B12"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 19.05 270)
+					(length 2.54)
+					(name "SHIELD"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "S"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+	)
+	(text "USB-C sink, USB 2.0 only. Hardware interlock pulls AFE_ENABLE low whenever VBUS is present."
+		(exclude_from_sim no)
+		(at 100 15 0)
+		(effects
+			(font
+				(size 1.1 1.1)
+			)
+		)
+		(uuid "402e857e-15b0-589f-9a92-fc2086f0f81d")
+	)
+	(text "USB_SHIELD coupling to circuit/chassis ground is intentionally unresolved pending enclosure and EMC design."
+		(exclude_from_sim no)
+		(at 100 145 0)
+		(effects
+			(font
+				(size 1.1 1.1)
+			)
+		)
+		(uuid "bedba7e9-8cea-5c31-83a1-597a75b270e5")
+	)
+	(no_connect
+		(at 105.41 63.5)
+		(uuid "16698140-fa17-5980-a5e3-9a3bb4cd8b2c")
+	)
+	(no_connect
+		(at 45.72 60.96)
+		(uuid "35ecf016-1cf6-5852-92bf-d9add25c9b8b")
+	)
+	(no_connect
+		(at 105.41 68.58)
+		(uuid "559712ee-9c3c-539c-9692-b0a6764f61e3")
+	)
+	(no_connect
+		(at 45.72 76.2)
+		(uuid "5e203880-ef7d-5097-bc63-13a2d93ca599")
+	)
+	(no_connect
+		(at 105.41 60.96)
+		(uuid "86aebb88-a55f-5a0d-a976-8688b6c0220f")
+	)
+	(no_connect
+		(at 105.41 66.04)
+		(uuid "e0833fca-bd3b-526b-bc0f-e887c653d19c")
+	)
+	(global_label "USB_VBUS"
+		(shape bidirectional)
+		(at 170.18 100.33 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "0559a77c-88ff-5b72-93f6-f888314110a5")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 170.18 100.33 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 96.52 55.88 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "0bf9cee1-b681-5736-b1bd-c96c1712d9e8")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 96.52 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_VBUS"
+		(shape bidirectional)
+		(at 45.72 78.74 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "10caeb10-b199-554d-9e3f-4c16d9336bf1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 78.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_VBUS"
+		(shape bidirectional)
+		(at 45.72 50.8 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "120adff5-b805-5a31-8f49-045b0af5bcc3")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 50.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 170.18 80.01 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "1d62c68c-fb93-56b2-b87c-27b9eb0dad6c")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 170.18 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D+"
+		(shape bidirectional)
+		(at 85.09 60.96 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "1fa7c76e-c117-5586-bc75-32a8da14db34")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 85.09 60.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D-"
+		(shape bidirectional)
+		(at 45.72 58.42 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "233cdf3b-b0ad-59e7-b55d-c6e468b7553f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 58.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "AFE_ENABLE"
+		(shape bidirectional)
+		(at 149.86 85.09 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "32c4d0ae-458f-56d2-b351-d6828008676c")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 149.86 85.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 30.48 45.72 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "33d63f28-af7e-5307-b50c-2b1bc59c1d2f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 30.48 45.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 150 130 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "352e6d04-0caf-57ce-a564-8360b51ec867")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 150 130 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D-"
+		(shape bidirectional)
+		(at 80 130 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "3925b9e7-c4a6-5b65-8342-c53c1f624bb7")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80 130 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "CC1"
+		(shape bidirectional)
+		(at 134.62 39.37 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "3a59d3c0-aba2-5939-9111-17501053935b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 134.62 39.37 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "AFE_ENABLE"
+		(shape bidirectional)
+		(at 115 130 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "3b1ea5ff-a175-54b9-a484-9b905164bb39")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 115 130 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "CC2"
+		(shape bidirectional)
+		(at 134.62 54.61 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "3ea2713b-fac4-5c0e-9a9a-d3817318009b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 134.62 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 180.34 100.33 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "4124f5b3-b7c3-5152-9d2d-2bee2f3d92b2")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 180.34 100.33 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D+"
+		(shape bidirectional)
+		(at 45.72 71.12 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "427e0341-dde3-5524-90d9-c701a8584e68")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 71.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 144.78 39.37 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "43b7076f-883f-5498-a5d7-e17ff722dcdc")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 144.78 39.37 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_VBUS"
+		(shape bidirectional)
+		(at 20 130 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "4a74ac9a-17a0-5ad3-a75f-b26e80d61997")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 20 130 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "CC2"
+		(shape bidirectional)
+		(at 85.09 68.58 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "58f2e8b9-ba09-5c48-8fef-2e4fd2f2a028")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 85.09 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 38.1 45.72 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "5c0449ab-685b-527f-a9fe-e9d145dd7595")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 38.1 45.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "CC1"
+		(shape bidirectional)
+		(at 85.09 66.04 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "6550f423-1be0-51bd-80f2-d0ea4fb8d716")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 85.09 66.04 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D+"
+		(shape bidirectional)
+		(at 50 130 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "6b76d909-518c-549d-93bd-ef9acf70f247")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 50 130 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_SHIELD"
+		(shape bidirectional)
+		(at 40.64 45.72 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "8aa994c0-7dd5-5272-8607-0a3cc47c28e5")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 40.64 45.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "CC2"
+		(shape bidirectional)
+		(at 45.72 68.58 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "8e7d12e9-da93-575d-bd27-eb4909a44a5b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_VBUS"
+		(shape bidirectional)
+		(at 129.54 85.09 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "9e42021b-2cf8-5c43-b3b2-99a9b1e36d81")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 129.54 85.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D-"
+		(shape bidirectional)
+		(at 85.09 63.5 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "a576f712-5f33-5121-b51d-3db3561f81ad")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 85.09 63.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 144.78 54.61 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "a9b86f93-1830-5a65-8df5-b850c9296ef1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 144.78 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "CC1"
+		(shape bidirectional)
+		(at 45.72 53.34 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "abd882f0-1ab6-58f7-ad56-cb35a3ac52b4")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 53.34 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 139.7 77.47 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "ae7a7964-cd04-509f-9101-cc4facfa13d5")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 139.7 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_VBUS"
+		(shape bidirectional)
+		(at 45.72 66.04 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "b0a596da-4f1b-5509-b12f-70a5cd9598cf")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 66.04 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D+"
+		(shape bidirectional)
+		(at 45.72 55.88 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "b488d544-575b-5071-9064-1b4d81016223")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 35.56 45.72 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "db6e21da-26c9-5658-b99c-560c71e57626")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 35.56 45.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 33.02 45.72 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "df92b8de-c5c6-59e4-9e77-45c2e65098dd")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 33.02 45.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_VBUS"
+		(shape bidirectional)
+		(at 45.72 63.5 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "e2be3f36-ad78-5247-af4a-006aa9d90e08")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 63.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "AFE_ENABLE"
+		(shape bidirectional)
+		(at 180.34 80.01 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "e6a6fbc2-d88f-510d-aa92-0cde51be119b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 180.34 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 93.98 55.88 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "e7d9fda7-580e-5e57-9dac-c7355298fb82")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 93.98 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D-"
+		(shape bidirectional)
+		(at 45.72 73.66 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "e8d047f3-6370-57e0-9d69-b15ee90efe79")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(hierarchical_label "AFE_ENABLE"
+		(shape output)
+		(at 115 130 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "32ef1fb4-910e-5696-9056-7161c917200f")
+	)
+	(hierarchical_label "GND"
+		(shape bidirectional)
+		(at 150 130 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "3df4dab0-f216-5c76-bf32-7457489baef8")
+	)
+	(hierarchical_label "USB_D-"
+		(shape bidirectional)
+		(at 80 130 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "64486b49-05ed-58ac-ab8b-5435af689310")
+	)
+	(hierarchical_label "USB_D+"
+		(shape bidirectional)
+		(at 50 130 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "9303553a-b6a6-529d-9bc2-bd161f81151b")
+	)
+	(hierarchical_label "USB_VBUS"
+		(shape output)
+		(at 20 130 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "99d065bd-c7c6-5a38-8c6a-f4c55f1534a2")
+	)
+	(symbol
+		(lib_id "ARTHUR:R_CC")
+		(at 139.7 39.37 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "51c05bfe-8ea0-5497-98ae-174d5ae82b84")
+		(property "Reference" "R3001"
+			(at 139.7 26.67 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "5.1 kΩ (USB Type-C Rd)"
+			(at 139.7 52.07 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 139.7 39.37 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 139.7 39.37 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 139.7 39.37 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "746b8250-809f-5e7b-ab39-434500a1fd8a")
+		)
+		(pin "2"
+			(uuid "639a608b-e186-5f42-a665-bf5f8cfd3c63")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/d9a09c5f-c619-5095-b7b4-47fffb5bbbee"
+					(reference "R3001")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TPD4E05U06")
+		(at 95.25 64.77 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "6bfafeba-3d3f-56b1-9649-ba090c2bac98")
+		(property "Reference" "U3001"
+			(at 95.25 52.07 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "TPD4E05U06DQAR"
+			(at 95.25 77.47 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "ARTHUR:TPD4E05U06_DQA_2x2mm_P0.5mm"
+			(at 95.25 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tpd4e05u06.pdf"
+			(at 95.25 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" "Four-channel USB ESD protection"
+			(at 95.25 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "36ceb480-aeb0-53b8-894c-59a0a165cf1d")
+		)
+		(pin "2"
+			(uuid "65df6d5e-1bd6-52f2-a371-430afbf74497")
+		)
+		(pin "4"
+			(uuid "6e372a2a-5034-580d-abe1-45b76581aeab")
+		)
+		(pin "5"
+			(uuid "015c92fe-406f-59e8-9d32-385cbce05a5b")
+		)
+		(pin "6"
+			(uuid "2f10f930-f0d3-5931-8f58-60f2dcaa51e0")
+		)
+		(pin "7"
+			(uuid "729cd88a-8789-5dc8-afe9-5eac5a2fc0a7")
+		)
+		(pin "9"
+			(uuid "988b513c-a97e-5846-a1d9-32eb097be69a")
+		)
+		(pin "10"
+			(uuid "3014dbac-1d8b-5043-ac70-460cfd678bf1")
+		)
+		(pin "3"
+			(uuid "455343e6-8ec7-5628-93ca-4c91f45c8460")
+		)
+		(pin "8"
+			(uuid "71af3220-74e6-55aa-9672-e7de6e70567e")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/d9a09c5f-c619-5095-b7b4-47fffb5bbbee"
+					(reference "U3001")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:R_ENABLE")
+		(at 175.26 80.01 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "83660dba-9945-5723-851f-291fdcf4437e")
+		(property "Reference" "R3003"
+			(at 175.26 67.31 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "100k 1%"
+			(at 175.26 92.71 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 175.26 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 175.26 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 175.26 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "2caac329-e2ee-5300-8915-9321270822f6")
+		)
+		(pin "2"
+			(uuid "7bfc4e76-bf0c-5057-a7b1-b5a4a96d49d4")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/d9a09c5f-c619-5095-b7b4-47fffb5bbbee"
+					(reference "R3003")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:R_GATE")
+		(at 175.26 100.33 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "8a138f0e-c838-56e6-86ec-c339a5ec5c8f")
+		(property "Reference" "R3004"
+			(at 175.26 87.63 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "100k 1%"
+			(at 175.26 113.03 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 175.26 100.33 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 175.26 100.33 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 175.26 100.33 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "ab533a6e-072d-5a03-a5a1-83bffbaa1e11")
+		)
+		(pin "2"
+			(uuid "9177b257-0d8e-571e-997b-40ba69f82240")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/d9a09c5f-c619-5095-b7b4-47fffb5bbbee"
+					(reference "R3004")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:R_CC")
+		(at 139.7 54.61 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "ae184a90-0fc4-5670-932f-a98d3e427684")
+		(property "Reference" "R3002"
+			(at 139.7 41.91 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "5.1 kΩ (USB Type-C Rd)"
+			(at 139.7 67.31 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 139.7 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 139.7 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 139.7 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "f62b24e1-2b6f-579d-8a36-7a0ffcb69646")
+		)
+		(pin "2"
+			(uuid "33bed88d-78d5-543f-ab93-f0b46424d6c1")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/d9a09c5f-c619-5095-b7b4-47fffb5bbbee"
+					(reference "R3002")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:USB_C")
+		(at 35.56 64.77 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "c2a80724-face-5425-a1b9-856009243bb3")
+		(property "Reference" "J3001"
+			(at 35.56 52.07 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "USB_C_Receptacle_USB2.0_16P"
+			(at 35.56 77.47 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Connector_USB:USB_C_Receptacle_GCT_USB4105-xx-A_16P_TopMnt_Horizontal"
+			(at 35.56 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.usb.org/document-library/usb-type-cr-cable-and-connector-specification-release-25"
+			(at 35.56 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" "USB Type-C USB2 receptacle; footprint and shell pins TBD"
+			(at 35.56 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "A4"
+			(uuid "a98aaf3c-975f-562c-a07d-a9a369fcef13")
+		)
+		(pin "A5"
+			(uuid "86c0c336-3515-53c7-900c-c910a911564a")
+		)
+		(pin "A6"
+			(uuid "5ec1961a-52fb-59a7-a42f-a9b6abcf4939")
+		)
+		(pin "A7"
+			(uuid "e6beecd8-9f8e-500c-b393-19de4a5a3dea")
+		)
+		(pin "A8"
+			(uuid "98989d85-5f61-5444-aac0-38731f3e0ae4")
+		)
+		(pin "A9"
+			(uuid "1ee44a46-a5b8-5759-bdd1-458c0e8f008f")
+		)
+		(pin "B4"
+			(uuid "9832138a-38b5-58d2-a297-ff5a20a0441e")
+		)
+		(pin "B5"
+			(uuid "2d22bc2d-d7ba-5d95-907d-959d05217b89")
+		)
+		(pin "B6"
+			(uuid "2b3a4434-628b-5a7d-884e-233ba9d75463")
+		)
+		(pin "B7"
+			(uuid "eceb72b4-d8c5-5461-ac1d-109746fb865a")
+		)
+		(pin "B8"
+			(uuid "8ae5c77e-30d9-5caa-a41d-c775eb8bccb4")
+		)
+		(pin "B9"
+			(uuid "365869eb-0c36-5914-9762-8bc5abe6608c")
+		)
+		(pin "A1"
+			(uuid "96a6f61d-2ed1-581a-b4a0-3735800b0343")
+		)
+		(pin "A12"
+			(uuid "a8ccd824-f5e3-573c-8199-2ae86b586af2")
+		)
+		(pin "B1"
+			(uuid "9db90855-e582-5e33-8651-228a9eff7d42")
+		)
+		(pin "B12"
+			(uuid "5c11f285-d4f5-5d14-bbcf-04cf18e34457")
+		)
+		(pin "S"
+			(uuid "cfe3b0a8-17c0-56f4-80cd-c5458b640262")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/d9a09c5f-c619-5095-b7b4-47fffb5bbbee"
+					(reference "J3001")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:NMOS_INTERLOCK")
+		(at 139.7 85.09 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "c81aed2a-b83b-5306-b7b7-4f0ab69162af")
+		(property "Reference" "Q3001"
+			(at 139.7 72.39 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "2N7002"
+			(at 139.7 97.79 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+			(at 139.7 85.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 139.7 85.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" "N-channel MOSFET forces analog LDO enable low on USB insertion"
+			(at 139.7 85.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "db4e00db-bdad-559d-a261-443f4f94e1d9")
+		)
+		(pin "3"
+			(uuid "4f858fd8-286b-5840-bc3f-728151f45589")
+		)
+		(pin "2"
+			(uuid "3739f87c-5854-5c70-881a-9eaa470f07f4")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/d9a09c5f-c619-5095-b7b4-47fffb5bbbee"
+					(reference "Q3001")
+					(unit 1)
+				)
+			)
+		)
+	)
+)

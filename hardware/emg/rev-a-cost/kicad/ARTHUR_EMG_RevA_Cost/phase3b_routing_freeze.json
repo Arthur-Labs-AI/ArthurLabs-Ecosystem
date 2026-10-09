@@ -1,0 +1,402 @@
+{
+  "phase": "3B-F",
+  "status": "VERIFIED_IMMUTABLE_CHECKPOINT_PREPARED",
+  "prepared_at_utc": "2026-09-27T10:07:53.514507+00:00",
+  "authoritative_checkpoint": "ARTHUR_EMG_RevA_Cost_Phase3B_FinalClean.kicad_pcb",
+  "sha256": {
+    "ARTHUR_EMG_RevA_Cost_Phase3B_FinalClean.kicad_pcb": "d7a585e8ae46299215d26c0aa58ea0ca5829d46ce72a45d279290263e94a0005",
+    "ARTHUR_EMG_RevA_Cost_Phase3B_FinalClean.kicad_pro": "8f25c8c0a50a25d26b736bb075f7155918cb5e04fc62650406048cdd9e55dbc4",
+    "ARTHUR_EMG_RevA_Cost_Phase3B_FinalClean.kicad_dru": "aac090c4112db562262a69efe9d702f483a0c7f12dc07f88d2b53fa6ced41469",
+    "phase3b_final_drc.json": "b489ac6b8b707a32ccfb47d951a1b71c48dd0df1d87d7ea49793b4061e0a5d78",
+    "phase3b_final_verification.json": "631cfd2aaeb948649b7d125b91903aaec7eb84496e61a7f44221834d03047355",
+    "PHASE3B_ROUTING_FREEZE.md": "59e5a4217b1ffc9284206e3cb6f0d6b53ccb870fd357bdc0d9ff64086f41c947"
+  },
+  "authoritative_input": "ARTHUR_EMG_RevA_Cost_Phase3B6_LocalGNDClean.kicad_pcb",
+  "authoritative_input_sha256": "d7a585e8ae46299215d26c0aa58ea0ca5829d46ce72a45d279290263e94a0005",
+  "phase3a_baseline": "ARTHUR_EMG_RevA_Cost_Phase3A_ThreeNetClean.kicad_pcb",
+  "phase3a_baseline_sha256": "7a7a70d78e1e191e13251e24b882b7eeb3df1153912a4168850515c8ac8201f9",
+  "frozen_nets": [
+    "AFE_3V0",
+    "GND",
+    "Net-(U503A-+)",
+    "Net-(U503B--)",
+    "Net-(U503C--)",
+    "Net-(U503D--)",
+    "RLD_SAFE",
+    "VCM"
+  ],
+  "gnd_freeze_scope": "Only original GND geometry plus the seven accepted Phase 3B local returns; other GND access remains deferred",
+  "quiet_core_only": true,
+  "deferred_pads": {
+    "R3005.2": "Phase 3D discharge/interlock",
+    "TP601.1": "Later testpoint phase"
+  },
+  "authorized_vcm_exception": {
+    "removed_uuid": "30a501c9-ab5c-4380-ba9f-44465f57214b",
+    "removed_segment_present": false,
+    "replacement_path": [
+      [
+        46.75,
+        19.2
+      ],
+      [
+        47.5,
+        19.2
+      ],
+      [
+        47.5,
+        21.15
+      ],
+      [
+        46.75,
+        21.15
+      ]
+    ],
+    "replacement_uuids": [
+      "b2fb25dd-b395-46a2-93a5-d3e56a5848e0",
+      "6df9855c-9fa1-4c3b-b5ba-5076b7319c35",
+      "572ec718-5bf6-45ca-a21c-8fa18bfc4514"
+    ],
+    "present_exactly": true,
+    "no_other_accepted_vcm_edits": true
+  },
+  "via_in_pad_gate_scope": "Phase 3B additions only, explicitly confirmed by user; unchanged baseline overlaps documented separately",
+  "ready_to_freeze": true,
+  "ready_for_production_promotion": true,
+  "production_promotion_performed": false,
+  "production_sha256_unchanged": "7a7a70d78e1e191e13251e24b882b7eeb3df1153912a4168850515c8ac8201f9",
+  "user_acceptance": "PENDING",
+  "global_drc_clean": false,
+  "pairs_eliminated": 34,
+  "final_unconnected_pairs": 92,
+  "remaining_ordinary_violations": 548,
+  "known_serialization_text_warnings": 23,
+  "statistics": {
+    "segment_count": 104,
+    "via_count": 20,
+    "track_length_mm": 233.9442683583868,
+    "width_counts_mm": {
+      "0.4": 74,
+      "0.3": 1,
+      "0.15": 29
+    },
+    "layers": [
+      "B.Cu",
+      "F.Cu"
+    ],
+    "via_dimensions_mm": [
+      [
+        0.55,
+        0.3
+      ]
+    ],
+    "vias_by_net": {
+      "AFE_3V0": 10,
+      "GND": 7,
+      "VCM": 3
+    },
+    "by_net": {
+      "AFE_3V0": {
+        "segment_count": 65,
+        "via_count": 10,
+        "track_length_mm": 176.01831692941096,
+        "width_counts_mm": {
+          "0.4": 64,
+          "0.3": 1
+        },
+        "layers": [
+          "B.Cu",
+          "F.Cu"
+        ],
+        "via_dimensions_mm": [
+          [
+            0.55,
+            0.3
+          ]
+        ],
+        "vias_by_net": {
+          "AFE_3V0": 10
+        }
+      },
+      "GND": {
+        "segment_count": 10,
+        "via_count": 7,
+        "track_length_mm": 7.059925915680935,
+        "width_counts_mm": {
+          "0.4": 10
+        },
+        "layers": [
+          "F.Cu"
+        ],
+        "via_dimensions_mm": [
+          [
+            0.55,
+            0.3
+          ]
+        ],
+        "vias_by_net": {
+          "GND": 7
+        }
+      },
+      "Net-(U503A-+)": {
+        "segment_count": 12,
+        "via_count": 0,
+        "track_length_mm": 20.41269119345812,
+        "width_counts_mm": {
+          "0.15": 12
+        },
+        "layers": [
+          "F.Cu"
+        ],
+        "via_dimensions_mm": [],
+        "vias_by_net": {}
+      },
+      "Net-(U503B--)": {
+        "segment_count": 1,
+        "via_count": 0,
+        "track_length_mm": 0.65,
+        "width_counts_mm": {
+          "0.15": 1
+        },
+        "layers": [
+          "F.Cu"
+        ],
+        "via_dimensions_mm": [],
+        "vias_by_net": {}
+      },
+      "Net-(U503C--)": {
+        "segment_count": 1,
+        "via_count": 0,
+        "track_length_mm": 0.65,
+        "width_counts_mm": {
+          "0.15": 1
+        },
+        "layers": [
+          "F.Cu"
+        ],
+        "via_dimensions_mm": [],
+        "vias_by_net": {}
+      },
+      "Net-(U503D--)": {
+        "segment_count": 1,
+        "via_count": 0,
+        "track_length_mm": 0.65,
+        "width_counts_mm": {
+          "0.15": 1
+        },
+        "layers": [
+          "F.Cu"
+        ],
+        "via_dimensions_mm": [],
+        "vias_by_net": {}
+      },
+      "RLD_SAFE": {
+        "segment_count": 1,
+        "via_count": 0,
+        "track_length_mm": 6.600579993455121,
+        "width_counts_mm": {
+          "0.15": 1
+        },
+        "layers": [
+          "F.Cu"
+        ],
+        "via_dimensions_mm": [],
+        "vias_by_net": {}
+      },
+      "VCM": {
+        "segment_count": 13,
+        "via_count": 3,
+        "track_length_mm": 21.90275432638166,
+        "width_counts_mm": {
+          "0.15": 13
+        },
+        "layers": [
+          "B.Cu",
+          "F.Cu"
+        ],
+        "via_dimensions_mm": [
+          [
+            0.55,
+            0.3
+          ]
+        ],
+        "vias_by_net": {
+          "VCM": 3
+        }
+      }
+    },
+    "minimum_foreign_net_clearance_mm": 0.201789,
+    "longest_single_segment": {
+      "uuid": "fd989b82-424c-4c95-993d-79f6639379b0",
+      "net": "AFE_3V0",
+      "start": [
+        32.4,
+        25.5
+      ],
+      "end": [
+        19.2,
+        25.5
+      ],
+      "length_mm": 13.2
+    },
+    "neck_down_regions": [
+      {
+        "uuid": "04df8c01-53ed-4e82-ae6c-c7713590d582",
+        "net": "AFE_3V0",
+        "width_mm": 0.3,
+        "length_mm": 1.4,
+        "start": [
+          49.3,
+          20.5
+        ],
+        "end": [
+          50.7,
+          20.5
+        ]
+      }
+    ],
+    "longest_increment_added_feed": {
+      "evidence_file": "phase3b5a_u503_supply_added.json",
+      "role": "authority attachment",
+      "uuids": [
+        "2e01d9ae-3724-491c-a1f6-1b61458360d9",
+        "68fa316a-d3b8-4ca7-90f3-b7ad8407773f",
+        "583b6596-e775-4193-99c5-33af5e81831f",
+        "9163e554-0824-452d-9264-adcf1e278c1e",
+        "8bfa2f2c-c97a-4826-b134-ae4d539760da",
+        "0fa1061c-e7f6-4c27-b467-8069a86f44af",
+        "96963cb9-0a0c-4205-86c0-7249dae7010d",
+        "21f1ece1-17e9-476d-bcf4-931192262b0f",
+        "57755415-0215-4854-8135-be7748fffea7",
+        "6f3559ad-8b0c-4e84-95d5-d2e8fe8b820d",
+        "1463d158-2e06-4bcb-b79c-9c868652c3c9",
+        "54e5262c-7f2e-47e5-9f05-f6b128bfd075",
+        "724ee3b4-b5c8-433a-84fb-32ccc1898802",
+        "4b3f2d7e-5481-4093-89a3-d252360081a4"
+      ],
+      "measured_total_length_mm": 41.59726399021873
+    },
+    "route_length_definition": "Longest separately introduced feed/branch measured from actual saved copper UUIDs; shared copper counted once. This is distinct from longest single segment and aggregate whole-net copper length.",
+    "neck_down_region_count": 1,
+    "minimum_neck_down_width_mm": 0.3,
+    "minimum_neck_down_length_mm": 1.4,
+    "standard_through_via_count": 20,
+    "longest_new_source_to_required_endpoint_route": {
+      "source": "U4002.5",
+      "endpoint": "D102.2",
+      "projected_centerline_length_mm": 58.53774043795982,
+      "phase3b_added_portion_length_mm": 57.675240437959815,
+      "pieces": [
+        {
+          "uuid": "5e8a4b4c-6c08-4503-a0b3-a5eab99894a6",
+          "portion_length_mm": 0.8625000000000007,
+          "phase3b_added_portion_length_mm": 0
+        },
+        {
+          "uuid": "eabc7edf-260e-41f5-9c80-b421ef6dbadf",
+          "portion_length_mm": 0.8,
+          "phase3b_added_portion_length_mm": 0.8
+        },
+        {
+          "uuid": "9afd69ba-33fc-4237-b3d1-e2f317c513e7",
+          "portion_length_mm": 3.132091952673165,
+          "phase3b_added_portion_length_mm": 3.132091952673165
+        },
+        {
+          "uuid": "3a5e760f-6635-4cbe-a4d3-236304c4d710",
+          "portion_length_mm": 4.899999999999999,
+          "phase3b_added_portion_length_mm": 4.899999999999999
+        },
+        {
+          "uuid": "46540e18-0c89-4718-a415-d31710fe8e16",
+          "portion_length_mm": 0.8,
+          "phase3b_added_portion_length_mm": 0.8
+        },
+        {
+          "uuid": "a9925e4c-ffc9-4a7f-a634-525409c08d3d",
+          "portion_length_mm": 3.1000000000000014,
+          "phase3b_added_portion_length_mm": 3.1000000000000014
+        },
+        {
+          "uuid": "79eec2fa-4e9d-4ba3-af22-804ed4ef30d6",
+          "portion_length_mm": 0.5220153254455275,
+          "phase3b_added_portion_length_mm": 0.5220153254455275
+        },
+        {
+          "uuid": "4b0553b9-0082-4a3e-8645-e9102bba769d",
+          "portion_length_mm": 4.5,
+          "phase3b_added_portion_length_mm": 4.5
+        },
+        {
+          "uuid": "dfbe6816-d1b5-4e92-9145-815340924649",
+          "portion_length_mm": 2.1500000000000004,
+          "phase3b_added_portion_length_mm": 2.1500000000000004
+        },
+        {
+          "uuid": "c53bd9c5-dafb-4f2e-baaa-d8775fbfb3dc",
+          "portion_length_mm": 1.8788294228055937,
+          "phase3b_added_portion_length_mm": 1.8788294228055937
+        },
+        {
+          "uuid": "078d5307-1fd7-4bbe-86b3-736b0bf5796b",
+          "portion_length_mm": 0.44721359549995676,
+          "phase3b_added_portion_length_mm": 0.44721359549995676
+        },
+        {
+          "uuid": "64e425de-61ec-4a2a-a62d-5f42fadb8ab1",
+          "portion_length_mm": 3.4000000000000004,
+          "phase3b_added_portion_length_mm": 3.4000000000000004
+        },
+        {
+          "uuid": "a521c0a7-bc78-4ebf-b1c8-8df614a0382f",
+          "portion_length_mm": 5.200961449578338,
+          "phase3b_added_portion_length_mm": 5.200961449578338
+        },
+        {
+          "uuid": "107e7cef-c7f6-445f-9347-bb8d2d2bc6ec",
+          "portion_length_mm": 0.8062257748298552,
+          "phase3b_added_portion_length_mm": 0.8062257748298552
+        },
+        {
+          "uuid": "4bf22c48-480f-4275-94cf-3d8bcaf97121",
+          "portion_length_mm": 8.868483523128406,
+          "phase3b_added_portion_length_mm": 8.868483523128406
+        },
+        {
+          "uuid": "5b906097-cb3d-4a1a-aece-36ddc8e883bb",
+          "portion_length_mm": 6.506919393998976,
+          "phase3b_added_portion_length_mm": 6.506919393998976
+        },
+        {
+          "uuid": "e29f786a-0fca-46d4-b5be-157b2ce66b28",
+          "portion_length_mm": 3.0,
+          "phase3b_added_portion_length_mm": 3.0
+        },
+        {
+          "uuid": "85781044-51fb-44a6-ad73-29d95e8e1916",
+          "portion_length_mm": 2.2,
+          "phase3b_added_portion_length_mm": 2.2
+        },
+        {
+          "uuid": "013f9666-8350-47b6-8e49-f19be5dfd7b0",
+          "portion_length_mm": 1.5,
+          "phase3b_added_portion_length_mm": 1.5
+        },
+        {
+          "uuid": "e67859d7-014f-4d79-9f96-fc1e8b157bcc",
+          "portion_length_mm": 3.2124999999999995,
+          "phase3b_added_portion_length_mm": 3.2124999999999995
+        },
+        {
+          "uuid": "7988858b-7df7-4c63-b0df-e090dddef0f2",
+          "portion_length_mm": 0.75,
+          "phase3b_added_portion_length_mm": 0.75
+        }
+      ]
+    },
+    "historical_added_segments_including_superseded_vcm_segment": 105,
+    "historical_added_track_length_including_superseded_vcm_segment_mm": 235.8942683583868,
+    "superseded_vcm_segment_length_mm": 1.95
+  },
+  "limitations": "Ready to promote the routing checkpoint after user acceptance; not a fully routed board, full-board DRC clearance or final manufacturing release."
+}

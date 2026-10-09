@@ -1,0 +1,1973 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "c094660d-36c9-5140-936d-2c2c415bcc20")
+	(paper "A4")
+	(title_block
+		(title "ADS131M04 four-channel simultaneous delta-sigma ADC")
+		(rev "B-cost-first")
+		(company "A.R.T.H.U.R.")
+		(comment 1 "Architecture redesign: ADS131M04 with integrated PGA and internal reference")
+		(comment 2 "Direct SPI/control to nRF52840 MCU, eliminating discrete buffers")
+	)
+	(lib_symbols
+(symbol "ARTHUR:C_ADC"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "C_ADC"
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "C_ADC_0_1"
+				(rectangle
+					(start -2.54 -2.54)
+					(end 2.54 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "C_ADC_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+(symbol "ARTHUR:TP_TEST"
+		(pin_names
+			(offset 1)
+		)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "TP"
+			(at 0 -2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "TP_SMD"
+			(at 0 2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 0 0 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" "ARTHUR SMD test point 1x1mm, placement rev A"
+			(at 0 0 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(symbol "TP_TEST_0_1"
+			(circle
+				(center 0 0)
+				(radius 1.27)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+		)
+		(symbol "TP_TEST_1_1"
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 2.54)
+				(name "1"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+(symbol "ARTHUR:ADS131M04"
+		(pin_names
+			(offset 1)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "U"
+			(at 0 16.51 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "ADS131M04"
+			(at 0 -15.24 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "ARTHUR:TSSOP-20_4.4x6.5mm_P0.65mm"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/ads131m04.pdf"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" "Four-channel simultaneous 24-bit delta-sigma ADC with PGA"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(symbol "ADS131M04_0_1"
+			(rectangle
+				(start -7.62 -12.7)
+				(end 7.62 15.24)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+		)
+		(symbol "ADS131M04_1_1"
+			(pin power_in line
+				(at -10.16 12.7 0)
+				(length 2.54)
+				(name "AVDD"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at -10.16 10.16 0)
+				(length 2.54)
+				(name "AGND"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -10.16 7.62 0)
+				(length 2.54)
+				(name "AIN0P"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -10.16 5.08 0)
+				(length 2.54)
+				(name "AIN0N"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "4"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -10.16 2.54 0)
+				(length 2.54)
+				(name "AIN1N"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "5"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -10.16 0.0 0)
+				(length 2.54)
+				(name "AIN1P"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "6"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -10.16 -2.54 0)
+				(length 2.54)
+				(name "AIN2P"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "7"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -10.16 -5.08 0)
+				(length 2.54)
+				(name "AIN2N"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "8"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -10.16 -7.62 0)
+				(length 2.54)
+				(name "AIN3N"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "9"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -10.16 -10.16 0)
+				(length 2.54)
+				(name "AIN3P"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "10"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at 10.16 -10.16 180)
+				(length 2.54)
+				(name "~{SYNC}/~{RESET}"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "11"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at 10.16 -7.62 180)
+				(length 2.54)
+				(name "~{CS}"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "12"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin output line
+				(at 10.16 -5.08 180)
+				(length 2.54)
+				(name "~{DRDY}"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "13"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at 10.16 -2.54 180)
+				(length 2.54)
+				(name "SCLK"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "14"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin output line
+				(at 10.16 0.0 180)
+				(length 2.54)
+				(name "DOUT"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "15"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at 10.16 2.54 180)
+				(length 2.54)
+				(name "DIN"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "16"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at 10.16 5.08 180)
+				(length 2.54)
+				(name "CLKIN"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "17"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin power_out line
+				(at 10.16 7.62 180)
+				(length 2.54)
+				(name "CAP"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "18"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 10.16 10.16 180)
+				(length 2.54)
+				(name "DGND"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "19"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 10.16 12.7 180)
+				(length 2.54)
+				(name "DVDD"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "20"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+		)
+	)
+	)
+	(symbol
+		(lib_id "ARTHUR:ADS131M04")
+		(at 100.33 80.01 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "3f781ca7-3ffc-51be-a44e-6a07dfa5d5e0")
+		(property "Reference" "U6001"
+			(at 100.33 60.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "ADS131M04IPWR"
+			(at 100.33 97.79 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "ARTHUR:TSSOP-20_4.4x6.5mm_P0.65mm"
+			(at 100.33 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/ads131m04.pdf"
+			(at 100.33 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" "Four-channel simultaneous 24-bit delta-sigma ADC with PGA"
+			(at 100.33 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1" (uuid "549f5fb9-abc9-47a8-a64b-19fa71424f17"))
+		(pin "2" (uuid "ceb954fb-46b5-4233-86c4-e06ad20f3dff"))
+		(pin "3" (uuid "6851ee3f-01da-454c-ab30-d0341dc3a150"))
+		(pin "4" (uuid "42e0d45c-5775-43a1-8d21-33e381d95b8a"))
+		(pin "5" (uuid "3d738533-3327-4881-b256-c73305f87954"))
+		(pin "6" (uuid "5b327153-7640-4709-b483-3265cac08cff"))
+		(pin "7" (uuid "c64bde97-0055-4e99-a35b-fdb7c42c0986"))
+		(pin "8" (uuid "42925c99-e1f7-4efb-a6a9-037c8de3c494"))
+		(pin "9" (uuid "f6d2bdcb-d93d-4892-8d5f-5bb2d4de61b8"))
+		(pin "10" (uuid "67b238fb-c752-4b71-ad78-2263df411d9c"))
+		(pin "11" (uuid "118aa573-3d14-4e90-9130-21fd9e11b73e"))
+		(pin "12" (uuid "9e40b5a9-684f-4bc1-a003-48e50fd920da"))
+		(pin "13" (uuid "b379668b-3303-4f51-9da4-1b22e288d769"))
+		(pin "14" (uuid "41b47d7d-7014-4737-a76f-c502a4d21822"))
+		(pin "15" (uuid "de168fe0-893c-4fab-95e5-f6e694558d7c"))
+		(pin "16" (uuid "27623f0f-f50e-4f79-a432-7f341cc34f05"))
+		(pin "17" (uuid "95920a05-33b8-4734-815a-080662280a92"))
+		(pin "18" (uuid "27d1839c-d9ce-4f73-ab5f-c2261456950e"))
+		(pin "19" (uuid "d107f2a9-2e6b-4540-ba1e-fd1bd0bfcaa0"))
+		(pin "20" (uuid "4fe198f1-efe8-47ba-bfac-8e6c46848f0c"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "U6001")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "AFE_3V0"
+		(shape bidirectional)
+		(at 90.17 67.31 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "6525ed71-9a3d-4c98-85e6-bb5b9072a507")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 90.17 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 90.17 69.85 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "6b552cfc-e9af-4994-88d8-547b45478ff8")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 90.17 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(hierarchical_label "CH1_P"
+		(shape input)
+		(at 90.17 72.39 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "ba38e7b8-011b-438a-8401-3161a2dfdd78")
+	)
+	(hierarchical_label "CH1_N"
+		(shape input)
+		(at 90.17 74.93 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "a4fe99ee-59d6-46a0-8559-eab9d35c8ffd")
+	)
+	(hierarchical_label "CH2_N"
+		(shape input)
+		(at 90.17 77.47 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "9d3ff946-d903-408c-b9ef-3beb5583ab8a")
+	)
+	(hierarchical_label "CH2_P"
+		(shape input)
+		(at 90.17 80.01 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "5a948e75-152e-48ac-b2dd-f84369b4e9a8")
+	)
+	(hierarchical_label "CH3_P"
+		(shape input)
+		(at 90.17 82.55 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "f9668ccd-8304-4012-8e65-9fa6a27c8fdc")
+	)
+	(hierarchical_label "CH3_N"
+		(shape input)
+		(at 90.17 85.09 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "dcbc0717-24a8-4583-a8fd-cc460b66dbe7")
+	)
+	(hierarchical_label "CH4_N"
+		(shape input)
+		(at 90.17 87.63 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "b08b415f-6f2e-4883-8049-9d1777e5468f")
+	)
+	(hierarchical_label "CH4_P"
+		(shape input)
+		(at 90.17 90.17 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "71996f3b-66e0-46b3-8894-04136d3421c4")
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 110.49 67.31 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "d85f2f06-d699-4b43-9def-69bad9bf3bd2")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 110.49 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 110.49 69.85 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "a768506f-57b5-420e-8315-3e58bfd9ac67")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 110.49 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "AFE_CAP"
+		(shape bidirectional)
+		(at 110.49 72.39 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "ea5670f0-230a-493a-83d5-19f32d5768e0")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 110.49 72.39 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "AFE_CLKIN"
+		(shape bidirectional)
+		(at 110.49 74.93 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "911c893d-6860-48a2-b20e-cdff23d80b0f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 110.49 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_MOSI"
+		(shape bidirectional)
+		(at 110.49 77.47 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "8fbc768f-ba7a-4beb-9a5b-e50a81e12d7e")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 110.49 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(hierarchical_label "AFE_MISO"
+		(shape output)
+		(at 110.49 80.01 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "fb232d77-0f04-4122-a737-dd7568d1511b")
+	)
+	(global_label "MCU_SCLK"
+		(shape bidirectional)
+		(at 110.49 82.55 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "fea617c9-79c6-40a5-ab78-84d83dfc2019")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 110.49 82.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(hierarchical_label "AFE_DRDY_N"
+		(shape output)
+		(at 110.49 85.09 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "987dc950-348a-495c-a875-b16121bf18ea")
+	)
+	(global_label "MCU_CS_N"
+		(shape bidirectional)
+		(at 110.49 87.63 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "bc0f0f95-a881-45fe-b687-b59fbc36efe3")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 110.49 87.63 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_RESET_N_AFE"
+		(shape bidirectional)
+		(at 110.49 90.17 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "98bd1f5e-a28e-476f-af43-f007820fcfc1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 110.49 90.17 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(hierarchical_label "AFE_3V0"
+		(shape input)
+		(at 65 229 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "8ff63b99-14e8-4f07-a59b-75ba5490dca7")
+	)
+	(global_label "AFE_3V0"
+		(shape bidirectional)
+		(at 65 229 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "25eceb5f-3d14-43e0-8a28-b6665c597b36")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 65 229 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(hierarchical_label "3V3"
+		(shape input)
+		(at 90 229 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "40a01921-a196-44cb-a2c4-038bce379e25")
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 90 229 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "e0d182d9-8eb8-4bcf-a506-5f5ad159f43b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 90 229 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(hierarchical_label "GND"
+		(shape bidirectional)
+		(at 115 229 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "26491bc6-a385-4c4f-b163-faacf06ccbbc")
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 115 229 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "d9c792d9-cb99-4d0e-a5fc-8afef56daf99")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 115 229 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:C_ADC")
+		(at 105.41 170.18 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "d1e0b475-2e83-40ba-aaa3-f5c997465191")
+		(property "Reference" "C6007"
+			(at 105.41 165.10 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "1 µF"
+			(at 105.41 175.26 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:C_0402_1005Metric"
+			(at 105.41 170.18 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 105.41 170.18 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "1 µF AVDD decoupling capacitor" (at 105.41 170.18 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "5806a0fb-5dab-46e7-906a-c9c204843cb8"))
+		(pin "2" (uuid "a176db4a-bdc2-40d2-802c-a04394801799"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "C6007")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "AFE_3V0"
+		(shape bidirectional)
+		(at 100.33 170.18 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "1c9944bd-e8cc-441e-bc03-7f42744626f9")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 170.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 110.49 170.18 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "fcd10d7f-d76e-467a-9d5d-402e3ee4f038")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 110.49 170.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:C_ADC")
+		(at 144.78 170.18 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "8fe16f43-074a-41bf-8876-d40a946e6caa")
+		(property "Reference" "C6008"
+			(at 144.78 165.10 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "1 µF"
+			(at 144.78 175.26 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:C_0402_1005Metric"
+			(at 144.78 170.18 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 144.78 170.18 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "1 µF DVDD decoupling capacitor" (at 144.78 170.18 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "60c436b7-7abe-4924-825a-fc9589cfdcfd"))
+		(pin "2" (uuid "92d692b6-88f1-4cc9-8521-889548694483"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "C6008")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 139.7 170.18 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "512a4591-5bcd-410d-8cd8-05ae1c355050")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 139.7 170.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 149.86 170.18 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "12d069f0-020b-4954-8960-fd6ca86754b1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 149.86 170.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:C_ADC")
+		(at 144.78 149.86 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "e7359295-ff42-4cf5-9e9a-dc357f37eacd")
+		(property "Reference" "C6009"
+			(at 144.78 144.78 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "220 nF"
+			(at 144.78 154.94 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:C_0402_1005Metric"
+			(at 144.78 149.86 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 144.78 149.86 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "Internal digital LDO CAP bypass" (at 144.78 149.86 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "f728bc65-f638-49cd-a812-6aa1545a4a44"))
+		(pin "2" (uuid "ab08e26c-818d-4cbe-a1a5-c4723d11c413"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "C6009")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "AFE_CAP"
+		(shape bidirectional)
+		(at 139.7 149.86 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "83cc520d-ef30-4553-931d-9d6be82c5e1b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 139.7 149.86 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 149.86 149.86 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "093d90c4-be67-4b0b-9732-b54e8db04dd2")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 149.86 149.86 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 38.1 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "d1e92f4a-8b75-4d78-8745-33135c12350c")
+		(property "Reference" "TP601"
+			(at 205.74 25.40 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 50.80 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 38.1 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 205.74 38.1 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "ARTHUR SMD test point 1x1mm" (at 205.74 38.1 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "bf7d5389-71ac-46f5-a1aa-c0fc1e5d6e06"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "TP601")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "AFE_3V0"
+		(shape bidirectional)
+		(at 205.74 41.910000000000004 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "57386e99-3f75-4132-bcb1-43b97fc09983")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 41.910000000000004 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 50.8 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "399bc3fa-cd9f-41c5-855b-f09fc51576a9")
+		(property "Reference" "TP602"
+			(at 205.74 38.10 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 63.50 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 50.8 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 205.74 50.8 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "ARTHUR SMD test point 1x1mm" (at 205.74 50.8 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "eea39095-c6d4-417c-a485-635b505b2eed"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "TP602")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 205.74 54.61 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "9fd419d6-d9fd-41ac-8952-ad470f9c193e")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 63.5 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "d6057095-34d2-43a9-90f8-f7c830fdf981")
+		(property "Reference" "TP603"
+			(at 205.74 50.80 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 76.20 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 63.5 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 205.74 63.5 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "ARTHUR SMD test point 1x1mm" (at 205.74 63.5 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "41431aa4-656f-49f6-9fd4-27dd93dbb8e8"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "TP603")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 205.74 67.31 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "80acf84d-8c51-4c11-9296-0f8bfd3855f5")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 76.2 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "790e437a-3ba2-4df3-839b-630a59fd4102")
+		(property "Reference" "TP604"
+			(at 205.74 63.50 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 88.90 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 76.2 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 205.74 76.2 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "ARTHUR SMD test point 1x1mm" (at 205.74 76.2 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "29da21d3-2ed8-4dec-ba73-70a3a9c11554"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "TP604")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "MCU_SCLK"
+		(shape bidirectional)
+		(at 205.74 80.01 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "1ec1bc6f-b97b-464a-8832-c0eedfcff99f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 88.9 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "0f05df88-8506-4fd6-8cea-1c897fe6b583")
+		(property "Reference" "TP605"
+			(at 205.74 76.20 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 101.60 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 88.9 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 205.74 88.9 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "ARTHUR SMD test point 1x1mm" (at 205.74 88.9 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "d9c093b3-6c6e-4573-b6a8-a59a7205e4be"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "TP605")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "MCU_MOSI"
+		(shape bidirectional)
+		(at 205.74 92.71000000000001 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "9b6feb63-1f83-4747-8432-5246d825c299")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 92.71000000000001 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 101.6 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "bc6818ea-684d-4ed7-b07e-2566604e4f91")
+		(property "Reference" "TP606"
+			(at 205.74 88.90 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 114.30 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 101.6 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 205.74 101.6 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "ARTHUR SMD test point 1x1mm" (at 205.74 101.6 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "3a23ee7c-f29c-4842-b9bc-3b637a7c5cce"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "TP606")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "AFE_MISO"
+		(shape bidirectional)
+		(at 205.74 105.41 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "6335eacf-fd4a-4063-80b2-d39fb82f551f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 105.41 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 114.3 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "0712169f-6d82-429d-88ee-3483123d89fe")
+		(property "Reference" "TP607"
+			(at 205.74 101.60 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 127.00 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 114.3 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 205.74 114.3 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "ARTHUR SMD test point 1x1mm" (at 205.74 114.3 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "b96ed984-cae2-4e59-b6fe-66e8eb7271e1"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "TP607")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "MCU_CS_N"
+		(shape bidirectional)
+		(at 205.74 118.11 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "d698311c-73b9-47a9-9115-22d7b04239e7")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 118.11 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 127.0 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "985dcd60-a171-4514-acee-6ba1101958aa")
+		(property "Reference" "TP608"
+			(at 205.74 114.30 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 139.70 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 127.0 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 205.74 127.0 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "ARTHUR SMD test point 1x1mm" (at 205.74 127.0 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "8447eb8b-d104-4332-9896-54e83fd9ec30"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "TP608")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "AFE_DRDY_N"
+		(shape bidirectional)
+		(at 205.74 130.81 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "5e140b0e-8f66-450d-939a-e3be0284234a")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 130.81 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 139.7 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "f9504e2f-1fbc-4e19-aa47-7ad324e11e48")
+		(property "Reference" "TP609"
+			(at 205.74 127.00 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 152.40 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 139.7 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 205.74 139.7 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "ARTHUR SMD test point 1x1mm" (at 205.74 139.7 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "dd1ab555-d3ea-491e-85a0-ddfadcdd567e"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "TP609")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "AFE_CLKIN"
+		(shape bidirectional)
+		(at 205.74 143.51 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "bb8a0d60-9aa2-439a-b0f0-82b640a0cabe")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 143.51 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 152.4 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "aedd4d55-2c59-443e-b9e0-0ecdfd5e9ddf")
+		(property "Reference" "TP610"
+			(at 205.74 139.70 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 165.10 0) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 152.4 0) (hide yes) (show_name no) (do_not_autoplace no)
+			(effects (font (size 1 1)))
+		)
+		(property "Datasheet" "" (at 205.74 152.4 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(property "Description" "ARTHUR SMD test point 1x1mm" (at 205.74 152.4 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1 1))))
+		(pin "1" (uuid "958c3ab0-bd7e-4676-8bb8-dcca20e6fa46"))
+		(instances
+			(project "ARTHUR_EMG_RevA_Cost"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+					(reference "TP610")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "MCU_RESET_N_AFE"
+		(shape bidirectional)
+		(at 205.74 156.21 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "5f2816d3-e2d1-48e3-8d0d-d9f3a2bf7c45")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 156.21 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c"
+			(page "6")
+		)
+	)
+)

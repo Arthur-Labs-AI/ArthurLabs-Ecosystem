@@ -1,0 +1,20 @@
+# ARTHUR EMG Rev A — routing-rules freeze (Audit 13)
+# Deterministic custom-rule SOURCE (human/GUI-importable).
+# Machine-enforced channel in this flow is netclass + pro board rules
+# (verified: kicad-cli DRC flags violations from pcb net_class data).
+# Import this file via Board Setup -> Custom Rules at routing time for
+# interactive routing intent (L1-only analog/USB, SCLK/switch separation).
+# No DRC exclusions in this file. Placement-neutral (sidecar only).
+(version 1)
+(rule "analog_L1_only"
+  (constraint track (layer outer))
+  (condition "A.NetClass == 'ANALOG_REF' || A.NetClass == 'ANALOG_VCM_RLD' || A.NetClass == 'EMG_INPUT' || A.NetClass == 'EMG_FRONT'"))
+(rule "usb_L1_only"
+  (constraint track (layer outer))
+  (condition "A.NetClass == 'USB'"))
+(rule "sclk_separation"
+  (constraint clearance (min 1.0mm))
+  (condition "A.NetClass == 'ADC_DIGITAL' && B.NetClass == 'EMG_INPUT'"))
+(rule "switch_separation"
+  (constraint clearance (min 2.0mm))
+  (condition "A.NetClass == 'POWER_SWITCHING' && B.NetClass == 'EMG_INPUT'"))

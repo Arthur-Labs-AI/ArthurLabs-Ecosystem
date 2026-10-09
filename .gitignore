@@ -38,3 +38,12 @@ __pycache__/
 # (node_modules/ and dist/ above already cover the app's JS output.)
 apps/arthur/src-tauri/target/
 apps/arthur/src-tauri/gen/schemas/
+
+# EMG/KiCad machine-local and recovery artifacts (curated integration)
+**/*.kicad_prl
+**/~*.lck
+**/*-drc.rpt
+**/*-erc.rpt
+**/*.kicad_pcb.bak
+/hardware/emg/var/
+/hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3c0_staging/
