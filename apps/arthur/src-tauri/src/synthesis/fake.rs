@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use super::*;
 
-pub const SYNTH_MODEL: &str = "gpt-4.1-mini";
+pub const SYNTH_MODEL: &str = "gpt-6-luna";
 
 type SynthFn = dyn Fn(&SynthesisRequest) -> Result<SynthesisDraft, SynthesisFailure> + Send + Sync;
 
@@ -105,6 +105,6 @@ pub fn additive(request: &SynthesisRequest, body: &str) -> SynthesisDraft {
         retained: vec![assertion(&request.base_body, BASE_SOURCE)],
         added: vec![assertion(&request.claim_body, NEW_SOURCE)],
         withdrawn: vec![],
-        model: format!("{SYNTH_MODEL}-2025-04-14"),
+        model: format!("{SYNTH_MODEL}-20260922"),
     }
 }

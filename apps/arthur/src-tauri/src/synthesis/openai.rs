@@ -1,8 +1,9 @@
 //! The real synthesis adapter: OpenAI chat completions with strict JSON-schema output, through Arthur's shared `providers::chat`.
 //!
-//! MODEL: `gpt-4.1-mini` (`chat::DEFAULT_MODEL`), the model Arthur already uses for distillation and relation proposals; non-reasoning,
-//! so `temperature: 0` makes it deterministic. The answering model reported by the provider must start with the requested name; a
-//! different model is `ModelMismatch` and is not retried. Its family is `gpt`: it is NOT an independent verifier of itself.
+//! MODEL: GPT-6 Luna (`gpt-6-luna`) with reasoning effort `low`. A reasoning request carries NO sampling parameter (no `temperature`, no
+//! `top_p`); the strict JSON schema, the deterministic validation and the verifier are what bound the output. The answering model reported
+//! by the provider must be the requested id (or that id with a date snapshot); anything else is `ModelMismatch`, is not retried, and
+//! there is no fallback to another model. Its family is `gpt`: it is NOT an independent verifier of itself.
 //!
 //! SAFETY: it needs the shared OpenAI LLM credential AND its own `Purpose::Synthesis` authorization (not implied by the key, by AI &
 //! Voice setup, or by TypeSafe consent). Nothing is sent otherwise. Input and output are bounded, requests are retried a bounded
@@ -21,25 +22,29 @@ use super::authorization::ProviderAuthorization;
 use super::prompt::{response_schema, user_message, SYSTEM_PROMPT};
 use super::{Assertion, ChangeClass, ModelIdentity, RevisionSynthesizer, SynthesisDraft, SynthesisFailure, SynthesisRequest};
 use crate::async_util::BoxFuture;
-use crate::providers::chat::{complete_json_detailed, ChatFailure, ChatRequest, Sampling, DEFAULT_ENDPOINT, DEFAULT_MODEL};
+use crate::providers::chat::{complete_json_detailed, model_matches, ChatFailure, ChatRequest, Sampling, DEFAULT_ENDPOINT, LUNA_MODEL, LUNA_PRICE_IN, LUNA_PRICE_OUT};
 use crate::providers::credentials::CredentialSource;
 
-pub const MODEL: &str = DEFAULT_MODEL;
+pub const MODEL: &str = LUNA_MODEL;
+/// Reasoning effort `low`: synthesis weighs several sources, so it gets a little reasoning (and therefore no sampling parameters).
+const REASONING_EFFORT: &str = "low";
+/// Reasoning tokens count toward this, so it covers a short revision plus its reasoning; exhausting it is a typed failure, not a retry.
+const MAX_OUTPUT_TOKENS: u32 = 8_192;
 pub const FAMILY: &str = "gpt";
 /// Characters of user message one request may carry.
 pub const MAX_INPUT_CHARS: usize = 14_000;
 const MAX_OUTPUT_CHARS: usize = 16_000;
 const MAX_ATTEMPTS: u32 = 2;
-/// Published list price used only for the cost estimate (developers.openai.com, gpt-4.1-mini): dollars per token.
-const PRICE_IN: f64 = 0.4 / 1e6;
-const PRICE_OUT: f64 = 1.6 / 1e6;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct SynthesisUsage {
     pub requests: u64,
     pub retries: u64,
     pub prompt_tokens: u64,
+    /// Output tokens billed, reasoning included.
     pub completion_tokens: u64,
+    /// The part of `completion_tokens` spent reasoning.
+    pub reasoning_tokens: u64,
     pub estimated_cost_usd: f64,
     pub failures: BTreeMap<&'static str, u64>,
 }
@@ -169,7 +174,7 @@ impl RevisionSynthesizer for OpenAiRevisionSynthesizer {
                     complete_json_detailed(
                         &self.client,
                         self.credential.as_ref(),
-                        ChatRequest { endpoint: &self.endpoint, model: MODEL, system: SYSTEM_PROMPT, user: &user, schema_name: "revision_draft", schema: response_schema(), sampling: Sampling::Deterministic },
+                        ChatRequest { endpoint: &self.endpoint, model: MODEL, system: SYSTEM_PROMPT, user: &user, schema_name: "revision_draft", schema: response_schema(), sampling: Sampling::Reasoning(REASONING_EFFORT), max_output_tokens: Some(MAX_OUTPUT_TOKENS) },
                     )
                     .await
                 };
@@ -179,9 +184,11 @@ impl RevisionSynthesizer for OpenAiRevisionSynthesizer {
                             let mut usage = self.usage.lock().unwrap_or_else(|p| p.into_inner());
                             usage.prompt_tokens += completion.prompt_tokens.unwrap_or(0);
                             usage.completion_tokens += completion.completion_tokens.unwrap_or(0);
-                            usage.estimated_cost_usd = usage.prompt_tokens as f64 * PRICE_IN + usage.completion_tokens as f64 * PRICE_OUT;
+                            usage.reasoning_tokens += completion.reasoning_tokens.unwrap_or(0);
+                            // reasoning tokens are inside completion_tokens and billed as output
+                            usage.estimated_cost_usd = usage.prompt_tokens as f64 * LUNA_PRICE_IN + usage.completion_tokens as f64 * LUNA_PRICE_OUT;
                         }
-                        let Some(model) = completion.model.filter(|m| m.starts_with(MODEL)) else {
+                        let Some(model) = completion.model.filter(|m| model_matches(m, MODEL)) else {
                             self.fail("model_mismatch");
                             return Err(SynthesisFailure::ModelMismatch);
                         };

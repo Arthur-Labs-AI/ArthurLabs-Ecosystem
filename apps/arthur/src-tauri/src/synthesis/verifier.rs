@@ -1,7 +1,7 @@
 //! The independent veto-only verifier boundary.
 //!
 //! WHAT IS AVAILABLE: Arthur has exactly two model providers wired for text, OpenAI (everything else) and TypeSafe JEV (identity
-//! classification only, under its own consent). The synthesizer is OpenAI `gpt-4.1-mini`, so an OpenAI verifier would NOT be
+//! classification only, under its own consent). The synthesizer is OpenAI `gpt-6-luna`, so an OpenAI verifier would NOT be
 //! independent (different model names, one family), and silently reusing the synthesizer is refused. A JEV-backed verifier would be a
 //! different family, but it would need new, unbenchmarked questions and its own verification authorization and disclosure, so it is not
 //! invented here. The real adapter is therefore `UnconfiguredVerifier`: always `Unavailable`, so an automatic revision can never pass

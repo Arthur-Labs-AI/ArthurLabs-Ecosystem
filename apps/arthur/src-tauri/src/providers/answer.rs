@@ -29,7 +29,8 @@ impl fmt::Debug for OpenAiAnswerModel {
 }
 
 impl OpenAiAnswerModel {
-    /// `gpt-4.1-mini`: the non-reasoning model Arthur already uses for distillation and relation proposals (deterministic at temperature 0).
+    /// `gpt-4.1-mini`: the non-reasoning model Arthur still uses for Ask Arthur answers and Automatic Connections Stage A (deterministic at
+    /// temperature 0). Not part of the GPT-6 Luna migration (distillation, revision synthesis and Stage B).
     pub fn new(credentials: Arc<dyn CredentialSource>) -> Result<Self, reqwest::Error> {
         Self::with_endpoint(credentials, DEFAULT_ENDPOINT, DEFAULT_MODEL)
     }
@@ -42,7 +43,7 @@ impl OpenAiAnswerModel {
         chat::complete_json(
             &self.client,
             self.credentials.as_ref(),
-            ChatRequest { endpoint: &self.endpoint, model: &self.model, system: &request.system, user: &request.user, schema_name: "recall_answer", schema: request.schema.clone(), sampling: Sampling::Deterministic },
+            ChatRequest { endpoint: &self.endpoint, model: &self.model, system: &request.system, user: &request.user, schema_name: "recall_answer", schema: request.schema.clone(), sampling: Sampling::Deterministic, max_output_tokens: None },
         )
         .await
         .map_err(|failure| match failure {

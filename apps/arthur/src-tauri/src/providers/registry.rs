@@ -9,7 +9,7 @@
 use serde::Serialize;
 
 use super::embed::OPENAI_MODEL as OPENAI_EMBEDDING_MODEL;
-use crate::graph::openai::VERIFIER_MODEL;
+use super::chat::LUNA_MODEL;
 use crate::stt::openai::DEFAULT_MODEL as OPENAI_STT_MODEL;
 use crate::tts::openai::{DEFAULT_MODEL as OPENAI_TTS_MODEL, DEFAULT_VOICE as OPENAI_TTS_VOICE, MODELS as OPENAI_TTS_MODELS, VOICES as OPENAI_TTS_VOICES};
 use super::chat::DEFAULT_MODEL as OPENAI_LLM_MODEL;
@@ -101,7 +101,7 @@ impl Capability {
 /// The models a capability uses on a provider. The first is the one shown; every one is checked by the provider test.
 pub fn models(provider: ProviderId, capability: Capability) -> &'static [&'static str] {
     match (provider, capability) {
-        (ProviderId::OpenAi, Capability::Llm) => &[OPENAI_LLM_MODEL, VERIFIER_MODEL],
+        (ProviderId::OpenAi, Capability::Llm) => &[OPENAI_LLM_MODEL, LUNA_MODEL],
         (ProviderId::OpenAi, Capability::Stt) => &[OPENAI_STT_MODEL],
         (ProviderId::OpenAi, Capability::Embeddings) => &[OPENAI_EMBEDDING_MODEL],
         (ProviderId::OpenAi, Capability::Tts) => &[OPENAI_TTS_MODEL],
@@ -145,6 +145,13 @@ mod tests {
         for capability in Capability::ALL {
             assert_eq!(serde_json::to_value(capability).unwrap(), capability.as_str());
         }
+    }
+
+    #[test]
+    fn the_llm_models_are_the_ones_arthur_still_uses_and_gpt_5_mini_is_gone() {
+        let llm = models(ProviderId::OpenAi, Capability::Llm);
+        assert_eq!(llm, ["gpt-4.1-mini", "gpt-6-luna"], "Stage A and Ask Arthur stay on gpt-4.1-mini; distillation, synthesis and Stage B are gpt-6-luna");
+        assert!(!llm.contains(&"gpt-5-mini"));
     }
 
     #[test]

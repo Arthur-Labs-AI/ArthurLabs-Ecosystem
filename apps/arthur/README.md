@@ -197,8 +197,8 @@ rejects the **whole** distillation: nothing is stored and the user can try again
 re-validates kind, title/body, and span bounds, and writes the run and all objects in a single
 transaction, so a partial set can never exist.
 
-**Provider.** OpenAI `gpt-4.1-mini` through chat completions with strict JSON-schema output and
-`temperature: 0`. The prompt (`distillation/prompt.rs`) says: use only the capture, never invent,
+**Provider.** OpenAI `gpt-6-luna` (reasoning effort `none`, no sampling parameter; an approved migration from `gpt-4.1-mini`, see
+`docs/architecture/gpt6-luna-migration.md`) through chat completions with strict JSON-schema output. The prompt (`distillation/prompt.rs`) says: use only the capture, never invent,
 preserve uncertainty, prefer few strong objects, return nothing if too vague, quote evidence
 verbatim, and treat the capture as data rather than instructions. The model gets no tools. The
 credential is the same app-private file as speech-to-text (`providers/credentials.rs`); production
@@ -344,7 +344,8 @@ the verifier is not called (1 request). Fixed prompt text is ~1.3k tokens per re
 candidate; a run took about 10 s end to end.
 
 **Models** (`providers/chat.rs`, `graph/openai.rs`). Stage A: `gpt-4.1-mini`, strict JSON schema, `temperature: 0`.
-Stage B: `gpt-5-mini` with `reasoning_effort: low` (a reasoning model takes an effort instead of a temperature). No tools,
+Stage B: `gpt-6-luna` with `reasoning_effort: none` (an approved migration from `gpt-5-mini` at effort `low`; Luna on Stage B has NOT been
+re-measured, and the table below is the historical record of the earlier models). No tools,
 the same app-private credential. Measured on the same two controlled datasets (A: the M02 acceptance objects plus weak
 same-project pairs; B: relations stated explicitly in the objects' text; "wanted" = a correct edge persisted):
 
@@ -359,7 +360,7 @@ Every configuration was safe; they differ in how many correct edges survive the 
 designs, before the ratings/neutral-order redesign above, did persist a reversed dependency (1 in 10 runs).
 Occasionally Stage A copies an id wrongly, which rejects that run as malformed (about 1 in 20 Stage A calls).
 
-The shipped configuration (`gpt-4.1-mini` proposer, `gpt-5-mini` verifier) over 20 further runs (10 per dataset): 0 forbidden
+HISTORICAL: the configuration shipped when this was measured (`gpt-4.1-mini` proposer, `gpt-5-mini` verifier) over 20 further runs (10 per dataset): 0 forbidden
 edges, 0 technical failures, exactly 3 requests per run, 16 / 40 wanted edges.
 
 **UI.** Plain SVG, deterministic circular layout (no graph library, no physics). Each kind has its own colour and

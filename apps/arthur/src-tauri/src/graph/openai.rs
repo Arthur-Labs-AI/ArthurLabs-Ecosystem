@@ -17,12 +17,14 @@ use super::verify::{actionable_signal_lacks_evidence, orient, Confidence, Decisi
 use super::verify_prompt;
 use super::{RelationCandidate, RelationError, RelationProposer};
 
-/// Reasoning models think before answering, so allow for it.
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
-/// Stage B is the safety-critical judgement and is one small batched request, so it uses a stronger model than
-/// Stage A. Chosen by measurement (see apps/arthur/README.md), not by assumption.
-pub const VERIFIER_MODEL: &str = "gpt-5-mini";
-const VERIFIER_REASONING_EFFORT: &str = "low";
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+/// Stage B is the safety-critical judgement and is one small batched request. It now runs on GPT-6 Luna with reasoning effort `none`
+/// (an approved model migration; the earlier `gpt-5-mini` at effort `low` was chosen by the measurements in apps/arthur/README.md, which
+/// remain the record of THOSE runs). Stage A is unchanged. The admission policy, the three-stage design and every limit are unchanged.
+pub const VERIFIER_MODEL: &str = crate::providers::chat::LUNA_MODEL;
+const VERIFIER_REASONING_EFFORT: &str = "none";
+/// A batch of verdicts is small; this bounds cost and latency.
+const VERIFIER_MAX_OUTPUT_TOKENS: u32 = 4_096;
 
 /// One strict-JSON chat completion. Shared by the proposer and the verifier, which differ only in
 /// what they ask and how they read the answer.
@@ -31,21 +33,27 @@ struct Backend {
     endpoint: String,
     model: String,
     sampling: Sampling,
+    max_output_tokens: Option<u32>,
     credentials: Arc<dyn CredentialSource>,
 }
 
 impl Backend {
     fn new(credentials: Arc<dyn CredentialSource>, endpoint: &str, model: &str, sampling: Sampling) -> Result<Self, reqwest::Error> {
-        Ok(Self { client: http::client(REQUEST_TIMEOUT)?, endpoint: endpoint.to_string(), model: model.to_string(), sampling, credentials })
+        Ok(Self { client: http::client(REQUEST_TIMEOUT)?, endpoint: endpoint.to_string(), model: model.to_string(), sampling, max_output_tokens: matches!(sampling, Sampling::Reasoning(_)).then_some(VERIFIER_MAX_OUTPUT_TOKENS), credentials })
     }
 
     async fn complete(&self, system: &str, user: &str, schema_name: &str, schema: Value) -> Result<String, RelationError> {
-        Ok(chat::complete_json(
+        let completion = chat::complete_json_detailed(
             &self.client,
             self.credentials.as_ref(),
-            ChatRequest { endpoint: &self.endpoint, model: &self.model, system, user, schema_name, schema, sampling: self.sampling },
+            ChatRequest { endpoint: &self.endpoint, model: &self.model, system, user, schema_name, schema, sampling: self.sampling, max_output_tokens: self.max_output_tokens },
         )
-        .await?)
+        .await?;
+        // The reasoning-model path (Stage B) trusts an answer only from the model it asked for; there is no fallback to another one.
+        if matches!(self.sampling, Sampling::Reasoning(_)) && !completion.model.as_deref().is_some_and(|answered| chat::model_matches(answered, &self.model)) {
+            return Err(RelationError::InvalidOutput("the answer did not come from the requested model".into()));
+        }
+        Ok(completion.text)
     }
 }
 
@@ -102,10 +110,10 @@ impl OpenAiRelationVerifier {
         Self::with_endpoint(credentials, DEFAULT_ENDPOINT, VERIFIER_MODEL)
     }
 
-    /// The sampling mode follows the model family: a reasoning model (gpt-5*, o*) takes a reasoning effort
+    /// The sampling mode follows the model family: a reasoning model (gpt-5*, gpt-6*, o*) takes a reasoning effort
     /// instead of `temperature: 0`.
     pub fn with_endpoint(credentials: Arc<dyn CredentialSource>, endpoint: &str, model: &str) -> Result<Self, reqwest::Error> {
-        let reasoning = model.starts_with("gpt-5") || model.starts_with('o');
+        let reasoning = model.starts_with("gpt-5") || model.starts_with("gpt-6") || model.starts_with('o');
         let sampling = if reasoning { Sampling::Reasoning(VERIFIER_REASONING_EFFORT) } else { Sampling::Deterministic };
         Ok(Self { backend: Backend::new(credentials, endpoint, model, sampling)? })
     }
@@ -377,6 +385,10 @@ mod tests {
         tauri::async_runtime::block_on(verifier.verify(&[candidate()], Presentation::LowerIdFirst))
     }
 
+    fn completion_from(model: &str, content: &str) -> String {
+        json!({ "model": model, "choices": [{ "finish_reason": "stop", "message": { "role": "assistant", "content": content, "refusal": null } }] }).to_string()
+    }
+
     fn one_verdict() -> String {
         // Listed lower id first (A, then B). The verifier rates "second depends_on first" strong and the opposite none.
         r#"{"verdicts":[{"index":0,"decision":"accept","kind":"depends_on","confidence":"high","firstToSecond":"none","secondToFirst":"strong","explicitLink":true,"cancelsOrObsoletes":false,"cancelledPlan":"none","dependencyNoLongerRequired":false,"temporalEvidence":""}]}"#.to_string()
@@ -457,27 +469,52 @@ mod tests {
 
     #[test]
     fn a_reasoning_verifier_is_steered_by_effort_and_a_standard_one_by_temperature() {
-        for (model, reasoning) in [("gpt-5-mini", true), ("gpt-5", true), ("o4-mini", true), ("gpt-4.1", false), ("gpt-4.1-mini", false)] {
-            let (url, request) = serve_once(PATH, "200 OK", completion(&one_verdict()));
+        for (model, reasoning) in [("gpt-6-luna", true), ("gpt-5-mini", true), ("gpt-5", true), ("o4-mini", true), ("gpt-4.1", false), ("gpt-4.1-mini", false)] {
+            let (url, request) = serve_once(PATH, "200 OK", completion_from(model, &one_verdict()));
             let verifier = OpenAiRelationVerifier::with_endpoint(Arc::new(FixedKey(Some("sk-k"))), &url, model).unwrap();
             run_verify(&verifier).unwrap();
             let raw = request.recv().unwrap();
             let body: Value = serde_json::from_str(&String::from_utf8_lossy(&raw)[find(&raw, b"\r\n\r\n").unwrap() + 4..]).unwrap();
             assert_eq!(body["model"], model);
             if reasoning {
-                assert_eq!(body["reasoning_effort"], "low", "{model}");
-                assert!(body.get("temperature").is_none(), "{model}: reasoning models reject temperature");
+                assert_eq!(body["reasoning_effort"], "none", "{model}");
+                assert!(body.get("temperature").is_none() && body.get("top_p").is_none(), "{model}: a reasoning request carries no sampling parameter");
+                assert_eq!(body["max_completion_tokens"], 4096, "{model}");
             } else {
                 assert_eq!(body["temperature"], 0, "{model}");
-                assert!(body.get("reasoning_effort").is_none(), "{model}");
+                assert!(body.get("reasoning_effort").is_none() && body.get("max_completion_tokens").is_none(), "{model}");
             }
         }
     }
 
     #[test]
-    fn the_default_verifier_is_a_stronger_model_than_the_proposer() {
-        assert_eq!(VERIFIER_MODEL, "gpt-5-mini");
-        assert_ne!(VERIFIER_MODEL, DEFAULT_MODEL);
+    fn the_shipped_stage_b_verifier_is_gpt_6_luna_with_no_reasoning_and_stage_a_is_unchanged() {
+        assert_eq!(VERIFIER_MODEL, "gpt-6-luna");
+        assert_eq!(VERIFIER_REASONING_EFFORT, "none");
+        assert_eq!(DEFAULT_MODEL, "gpt-4.1-mini", "Stage A is not part of this migration");
+        let (url, request) = serve_once(PATH, "200 OK", completion_from("gpt-6-luna-20260922", &one_verdict()));
+        let production = OpenAiRelationVerifier::with_endpoint(Arc::new(FixedKey(Some("sk-k"))), &url, VERIFIER_MODEL).unwrap();
+        assert_eq!(run_verify(&production).unwrap().len(), 1, "a dated snapshot of the requested id is accepted");
+        let raw = request.recv().unwrap();
+        let body: Value = serde_json::from_str(&String::from_utf8_lossy(&raw)[find(&raw, b"\r\n\r\n").unwrap() + 4..]).unwrap();
+        assert_eq!((body["model"].as_str(), body["reasoning_effort"].as_str(), body["response_format"]["json_schema"]["strict"].as_bool()), (Some("gpt-6-luna"), Some("none"), Some(true)));
+    }
+
+    #[test]
+    fn stage_b_trusts_only_the_requested_model_and_never_falls_back() {
+        for answered in ["gpt-5-mini", "gpt-4.1-mini", "gpt-6-luna-pro", ""] {
+            let (url, _r) = serve_once(PATH, "200 OK", completion_from(answered, &one_verdict()));
+            let production = OpenAiRelationVerifier::with_endpoint(Arc::new(FixedKey(Some("sk-k"))), &url, VERIFIER_MODEL).unwrap();
+            assert!(matches!(run_verify(&production), Err(RelationError::InvalidOutput(_))), "{answered:?}");
+        }
+        let (url, _r) = serve_once(PATH, "200 OK", completion(&one_verdict()));
+        let production = OpenAiRelationVerifier::with_endpoint(Arc::new(FixedKey(Some("sk-k"))), &url, VERIFIER_MODEL).unwrap();
+        assert!(matches!(run_verify(&production), Err(RelationError::InvalidOutput(_))), "an answer that names no model is not trusted");
+        // and a budget cut-off is a typed failure
+        let cut = json!({ "model": "gpt-6-luna", "choices": [{ "finish_reason": "length", "message": { "content": "{\"verdicts\":[" } }] }).to_string();
+        let (url, _r) = serve_once(PATH, "200 OK", cut);
+        let production = OpenAiRelationVerifier::with_endpoint(Arc::new(FixedKey(Some("sk-k"))), &url, VERIFIER_MODEL).unwrap();
+        assert!(matches!(run_verify(&production), Err(RelationError::InvalidOutput(_))));
     }
 
     // ----- M04.7A.5: the structured signals and their output contract, in the multiclass verdict -----

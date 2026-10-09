@@ -9,7 +9,7 @@ const CONFIG = {
   setupCompleted: false,
   providers: [{ id: "openai", name: "OpenAI", hasCredential: true }],
   capabilities: [
-    { capability: "llm", provider: "openai", providerName: "OpenAI", models: ["gpt-4.1-mini", "gpt-5-mini"], status: "ready" },
+    { capability: "llm", provider: "openai", providerName: "OpenAI", models: ["gpt-4.1-mini", "gpt-6-luna"], status: "ready" },
     { capability: "stt", provider: "openai", providerName: "OpenAI", models: ["gpt-4o-transcribe"], status: "ready" },
     { capability: "embeddings", provider: "openai", providerName: "OpenAI", models: ["text-embedding-3-small"], status: "ready" },
   ],

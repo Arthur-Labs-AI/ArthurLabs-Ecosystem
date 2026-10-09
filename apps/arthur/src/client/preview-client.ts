@@ -182,7 +182,7 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       capability,
       provider: "openai" as const,
       providerName: "OpenAI",
-      models: capability === "llm" ? ["gpt-4.1-mini", "gpt-5-mini"] : capability === "stt" ? ["gpt-4o-transcribe"] : capability === "tts" ? ["gpt-4o-mini-tts"] : ["text-embedding-3-small"],
+      models: capability === "llm" ? ["gpt-4.1-mini", "gpt-6-luna"] : capability === "stt" ? ["gpt-4o-transcribe"] : capability === "tts" ? ["gpt-4o-mini-tts"] : ["text-embedding-3-small"],
       ...(capability === "tts" ? { voice: "alloy" } : {}),
       status: credentials.has("openai") ? ("ready" as const) : ("needsCredential" as const),
     })),

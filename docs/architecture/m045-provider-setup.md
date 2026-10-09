@@ -25,7 +25,7 @@ panel and no "Test voice" action**; no fake TTS UI was exposed. `Capability` is 
 
 ```
 Provider credential (one per provider ACCOUNT)      Capability (what Arthur needs)         Binding
-  openai ──────────────────────────────────────────  llm        gpt-4.1-mini, gpt-5-mini    llm        → openai
+  openai ──────────────────────────────────────────  llm        gpt-4.1-mini, gpt-6-luna    llm        → openai
                                                       stt        gpt-4o-transcribe           stt        → openai
                                                       embeddings text-embedding-3-small      embeddings → openai
 ```

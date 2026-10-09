@@ -148,7 +148,7 @@ fn brings_something_in(claim: &str, base: &str, revised: &str) -> bool {
 }
 
 pub fn validate_draft(request: &SynthesisRequest, draft: &SynthesisDraft, expected_model_prefix: &str) -> Result<ValidatedDraft, DraftVeto> {
-    if !draft.model.starts_with(expected_model_prefix) {
+    if !crate::providers::chat::model_matches(&draft.model, expected_model_prefix) {
         return Err(DraftVeto::ModelMismatch);
     }
     let body = draft.revised_body.trim();

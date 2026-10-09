@@ -136,7 +136,7 @@ fn a_correction_and_a_replacement_must_say_what_they_withdraw_and_only_a_provabl
         retained: vec![assertion("Arthur uses SQLite", BASE_SOURCE)],
         added: vec![assertion("SQLite is only used for local storage", NEW_SOURCE)],
         withdrawn: vec![],
-        model: "gpt-4.1-mini-x".into(),
+        model: "gpt-6-luna-20260922".into(),
     };
     assert_eq!(verdict_of(&r, &d).unwrap_err(), DraftVeto::ContradictoryMetadata, "a correction that withdraws nothing contradicts itself");
     d.withdrawn = vec![assertion("for cloud storage", BASE_SOURCE)];
@@ -160,7 +160,7 @@ fn bulgarian_and_mixed_text_validate_with_stemming() {
 #[test]
 fn a_model_cannot_supply_spans_or_ids_the_schema_and_parser_have_no_place_for_them() {
     let good = r#"{"kind":"idea","revised_body":"x y","change":"additive","retained":[],"added":[{"text":"t","source":"new"}],"withdrawn":[]}"#;
-    assert!(parse_draft(good, "gpt-4.1-mini".into()).is_ok());
+    assert!(parse_draft(good, "gpt-6-luna".into()).is_ok());
     for bad in [
         r#"{"kind":"idea","revised_body":"x","change":"additive","retained":[],"added":[],"withdrawn":[],"object_id":"abc"}"#,
         r#"{"kind":"idea","revised_body":"x","change":"additive","retained":[],"added":[{"text":"t","source":"new","start":3,"end":9}],"withdrawn":[]}"#,
@@ -992,7 +992,7 @@ impl CredentialSource for NoKey {
 }
 
 fn envelope(model: &str, content: &str) -> String {
-    json!({ "model": model, "choices": [{ "finish_reason": "stop", "message": { "content": content, "refusal": null } }], "usage": { "prompt_tokens": 500, "completion_tokens": 60 } }).to_string()
+    json!({ "model": model, "choices": [{ "finish_reason": "stop", "message": { "content": content, "refusal": null } }], "usage": { "prompt_tokens": 500, "completion_tokens": 260, "completion_tokens_details": { "reasoning_tokens": 200 } } }).to_string()
 }
 
 fn good_content() -> String {
@@ -1019,21 +1019,25 @@ fn call(adapter: &OpenAiRevisionSynthesizer) -> Result<SynthesisDraft, Synthesis
 
 #[test]
 fn the_openai_adapter_sends_a_strict_deterministic_request_and_parses_the_structured_answer() {
-    let (url, rx) = crate::test_support::serve_once("/v1/chat/completions", "200 OK", envelope("gpt-4.1-mini-2025-04-14", &good_content()));
+    let (url, rx) = crate::test_support::serve_once("/v1/chat/completions", "200 OK", envelope("gpt-6-luna-20260922", &good_content()));
     let adapter = adapter(url, true);
     let draft = call(&adapter).unwrap();
-    assert_eq!((draft.revised_body.as_str(), draft.change, draft.model.as_str()), ("Arthur is a mobile and desktop application.", ChangeClass::Additive, "gpt-4.1-mini-2025-04-14"));
+    assert_eq!((draft.revised_body.as_str(), draft.change, draft.model.as_str()), ("Arthur is a mobile and desktop application.", ChangeClass::Additive, "gpt-6-luna-20260922"));
     let raw = String::from_utf8_lossy(&rx.recv().unwrap()).to_string();
     let lower = raw.to_lowercase();
     assert!(lower.starts_with("post /v1/chat/completions") && lower.contains(&format!("authorization: bearer {}", SECRET.to_lowercase())));
     let body: serde_json::Value = serde_json::from_str(&raw[raw.find("\r\n\r\n").unwrap() + 4..]).unwrap();
-    assert_eq!((body["model"].as_str(), body["temperature"].as_i64(), body["response_format"]["type"].as_str(), body["response_format"]["json_schema"]["strict"].as_bool()), (Some("gpt-4.1-mini"), Some(0), Some("json_schema"), Some(true)));
+    assert_eq!((body["model"].as_str(), body["reasoning_effort"].as_str(), body["response_format"]["type"].as_str(), body["response_format"]["json_schema"]["strict"].as_bool()), (Some("gpt-6-luna"), Some("low"), Some("json_schema"), Some(true)));
+    for unsupported in ["temperature", "top_p", "logprobs", "presence_penalty", "frequency_penalty", "max_tokens"] {
+        assert!(body.get(unsupported).is_none(), "a reasoning request must not carry {unsupported}");
+    }
+    assert_eq!(body["max_completion_tokens"], 8192);
     assert_eq!(body["messages"][0]["content"], SYSTEM_PROMPT, "the instructions are fixed text");
     let user = body["messages"][1]["content"].as_str().unwrap();
     assert!(user.contains(B.trim_end_matches('.')) && !user.contains(SECRET));
     let usage = adapter.usage();
-    assert_eq!((usage.requests, usage.prompt_tokens, usage.completion_tokens), (1, 500, 60));
-    assert!((usage.estimated_cost_usd - (500.0 * 0.4e-6 + 60.0 * 1.6e-6)).abs() < 1e-12);
+    assert_eq!((usage.requests, usage.prompt_tokens, usage.completion_tokens, usage.reasoning_tokens), (1, 500, 260, 200));
+    assert!((usage.estimated_cost_usd - (500.0 * 0.10e-6 + 260.0 * 0.50e-6)).abs() < 1e-12, "reasoning tokens are part of the billed output");
     assert!(!format!("{adapter:?}{usage:?}").contains(SECRET));
 }
 
@@ -1041,11 +1045,14 @@ fn the_openai_adapter_sends_a_strict_deterministic_request_and_parses_the_struct
 fn the_openai_adapter_fails_closed_on_every_bad_answer_without_retrying_the_answer() {
     let cases: Vec<(&str, String, SynthesisFailure)> = vec![
         ("a different model", envelope("gpt-4o-2024", &good_content()), SynthesisFailure::ModelMismatch),
+        ("the previous model", envelope("gpt-4.1-mini-2025-04-14", &good_content()), SynthesisFailure::ModelMismatch),
+        ("a longer id of the same family", envelope("gpt-6-luna-pro", &good_content()), SynthesisFailure::ModelMismatch),
+        ("a token-budget cut-off", json!({ "model": "gpt-6-luna", "choices": [{ "finish_reason": "length", "message": { "content": "{\"kind\":" } }] }).to_string(), SynthesisFailure::Unreadable("provider")),
         ("no model reported", json!({ "choices": [{ "finish_reason": "stop", "message": { "content": good_content() } }] }).to_string(), SynthesisFailure::ModelMismatch),
-        ("malformed JSON content", envelope("gpt-4.1-mini-x", "{ not json"), SynthesisFailure::Unreadable("not json")),
-        ("extra fields", envelope("gpt-4.1-mini-x", &json!({ "kind": "idea", "revised_body": "x", "change": "additive", "retained": [], "added": [], "withdrawn": [], "object_id": "1" }).to_string()), SynthesisFailure::Unreadable("keys")),
-        ("an oversized answer", envelope("gpt-4.1-mini-x", &json!({ "kind": "idea", "revised_body": "x".repeat(20_000), "change": "additive", "retained": [], "added": [], "withdrawn": [] }).to_string()), SynthesisFailure::Unreadable("too long")),
-        ("a refusal", json!({ "model": "gpt-4.1-mini-x", "choices": [{ "message": { "content": null, "refusal": "no" } }] }).to_string(), SynthesisFailure::Refused),
+        ("malformed JSON content", envelope("gpt-6-luna-20260922", "{ not json"), SynthesisFailure::Unreadable("not json")),
+        ("extra fields", envelope("gpt-6-luna-20260922", &json!({ "kind": "idea", "revised_body": "x", "change": "additive", "retained": [], "added": [], "withdrawn": [], "object_id": "1" }).to_string()), SynthesisFailure::Unreadable("keys")),
+        ("an oversized answer", envelope("gpt-6-luna-20260922", &json!({ "kind": "idea", "revised_body": "x".repeat(20_000), "change": "additive", "retained": [], "added": [], "withdrawn": [] }).to_string()), SynthesisFailure::Unreadable("too long")),
+        ("a refusal", json!({ "model": "gpt-6-luna-20260922", "choices": [{ "message": { "content": null, "refusal": "no" } }] }).to_string(), SynthesisFailure::Refused),
     ];
     for (name, body, expected) in cases {
         let (url, rx) = crate::test_support::serve_sequence("/v1/chat/completions", vec![("200 OK", body), ("200 OK", good_content())]);
@@ -1057,7 +1064,7 @@ fn the_openai_adapter_fails_closed_on_every_bad_answer_without_retrying_the_answ
 
 #[test]
 fn the_openai_adapter_retries_only_transport_failures_a_bounded_number_of_times() {
-    let (url, rx) = crate::test_support::serve_sequence("/v1/chat/completions", vec![("503 Service Unavailable", "{}".into()), ("200 OK", envelope("gpt-4.1-mini-x", &good_content()))]);
+    let (url, rx) = crate::test_support::serve_sequence("/v1/chat/completions", vec![("503 Service Unavailable", "{}".into()), ("200 OK", envelope("gpt-6-luna-20260922", &good_content()))]);
     let adapter = adapter(url, true);
     assert!(call(&adapter).is_ok());
     assert_eq!((rx.try_iter().count(), adapter.usage().retries), (2, 1));
@@ -1077,7 +1084,7 @@ fn the_openai_adapter_retries_only_transport_failures_a_bounded_number_of_times(
 
 #[test]
 fn the_openai_adapter_sends_nothing_without_authorization_a_key_or_with_oversized_input_and_honours_cancel() {
-    let (url, rx) = crate::test_support::serve_once("/v1/chat/completions", "200 OK", envelope("gpt-4.1-mini-x", &good_content()));
+    let (url, rx) = crate::test_support::serve_once("/v1/chat/completions", "200 OK", envelope("gpt-6-luna-20260922", &good_content()));
     assert_eq!(call(&adapter(url.clone(), false)).unwrap_err(), SynthesisFailure::Unavailable, "no authorization");
     let nokey = OpenAiRevisionSynthesizer::for_test(Arc::new(NoKey), Arc::new(ProviderAuthorization::in_memory("openai", Purpose::Synthesis, true)), url.clone(), Duration::from_millis(500));
     assert_eq!(call(&nokey).unwrap_err(), SynthesisFailure::Unavailable, "no key");
@@ -1101,7 +1108,7 @@ fn a_synthesis_that_never_answers_times_out() {
 fn the_real_adapter_works_end_to_end_in_the_pipeline_with_a_fixture_and_fails_closed_on_garbage() {
     // good answer -> revision
     let w = world();
-    let (url, _rx) = crate::test_support::serve_once("/v1/chat/completions", "200 OK", envelope("gpt-4.1-mini-2025-04-14", &good_content()));
+    let (url, _rx) = crate::test_support::serve_once("/v1/chat/completions", "200 OK", envelope("gpt-6-luna-20260922", &good_content()));
     let synthesizer = Arc::new(adapter(url, true));
     let verifier = ScriptedVerifier::passing();
     let judge = Judge::additive();
@@ -1121,7 +1128,7 @@ fn the_real_adapter_works_end_to_end_in_the_pipeline_with_a_fixture_and_fails_cl
     assert_eq!(current_body(&w), "Arthur is a mobile and desktop application.");
     // garbage answer -> held for a person
     let w2 = world();
-    let (url, _rx) = crate::test_support::serve_once("/v1/chat/completions", "200 OK", envelope("gpt-4.1-mini-2025-04-14", "I cannot do that"));
+    let (url, _rx) = crate::test_support::serve_once("/v1/chat/completions", "200 OK", envelope("gpt-6-luna-20260922", "I cannot do that"));
     let out = run(&build(Arc::new(adapter(url, true))), &w2, B);
     assert_kept_for_a_person(&out, "synthesis_unavailable");
     assert_eq!(current_body(&w2), A);
