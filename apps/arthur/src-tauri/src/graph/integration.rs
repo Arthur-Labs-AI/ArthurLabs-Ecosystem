@@ -59,6 +59,7 @@ use crate::storage::knowledge_store::KnowledgeObject;
 use crate::storage::project_store::ProjectError;
 use crate::storage::relation_store::Relation;
 
+use super::diagnostics::{IntegrationDiagnostics, Outcome};
 use super::discover::{discover, DiscoveryReport};
 use super::integrate::{DecisionReport, IntegrationInput, Revalidation, MAX_REVALIDATIONS};
 use super::{GraphService, RelationError};
@@ -287,6 +288,8 @@ pub struct IntegrationService {
     graph: GraphService,
     pub settings: Arc<IntegrationSettings>,
     pub ledger: Ledger,
+    /// Counts, stage names and error codes only (see `graph::diagnostics`). Never text.
+    pub diagnostics: IntegrationDiagnostics,
     /// One integration at a time: candidate snapshots never interleave with another integration's write.
     gate: tauri::async_runtime::Mutex<()>,
 }
@@ -299,9 +302,21 @@ fn storage(error: StoreError) -> RelationError {
     RelationError::Storage(error.to_string())
 }
 
+/// What a completed run ended as, from its own report.
+fn classify(report: &IntegrationReport) -> (Outcome, Option<String>) {
+    match &report.status {
+        Status::Skipped(skip) => (Outcome::Skipped, Some(format!("{skip:?}").to_lowercase())),
+        Status::Deferred(code) | Status::Failed(code) => (Outcome::ProviderFailed, Some((*code).to_string())),
+        Status::Integrated if report.added > 0 || report.removed > 0 => (Outcome::Success, None),
+        Status::Integrated if report.candidates == 0 && report.decision.proposed == 0 => (Outcome::NoCandidates, None),
+        Status::Integrated if report.decision.verified > 0 && report.decision.survived == 0 => (Outcome::AllRejected, None),
+        Status::Integrated => (Outcome::SuccessNoNewEdges, None),
+    }
+}
+
 impl IntegrationService {
     pub fn new(graph: GraphService, settings: IntegrationSettings, ledger: Ledger) -> Self {
-        Self { graph, settings: Arc::new(settings), ledger, gate: tauri::async_runtime::Mutex::new(()) }
+        Self { graph, settings: Arc::new(settings), ledger, diagnostics: IntegrationDiagnostics::default(), gate: tauri::async_runtime::Mutex::new(()) }
     }
 
     /// The user's explicit choice. Persisted first: if the preference cannot be saved nothing changes and the error is returned.
@@ -324,20 +339,40 @@ impl IntegrationService {
 
     /// Integrates one change. Never returns an error and never touches the object: whatever happens is in the report and the ledger.
     pub async fn integrate(&self, store: &CaptureStore, recall: &RecallService, change: ChangedKnowledge) -> IntegrationReport {
+        self.diagnostics.event_received();
+        let reason = match change.reason {
+            ChangeReason::Created => "created",
+            ChangeReason::Revised => "revised",
+            ChangeReason::Moved => "moved",
+        };
         if !self.enabled() {
+            self.diagnostics.skipped_at_the_door(&change.object_id, reason, "disabled");
             return IntegrationReport::new(&change.object_id, Status::Skipped(Skip::Disabled));
         }
         let _one_at_a_time = self.gate.lock().await;
         // The switch may have been turned off while this waited its turn.
         if !self.enabled() {
+            self.diagnostics.skipped_at_the_door(&change.object_id, reason, "disabled");
             return IntegrationReport::new(&change.object_id, Status::Skipped(Skip::Disabled));
         }
         let started = Instant::now();
+        self.diagnostics.begin_run(&change.object_id, reason);
         let mut report = match self.run(store, recall, &change).await {
-            Ok(report) => report,
+            Ok(report) => {
+                let (outcome, detail) = classify(&report);
+                self.diagnostics.finish_run(outcome, detail);
+                report
+            }
             // Switched off while the provider was working: a failure is not worth remembering, and nothing may be scheduled.
-            Err(_) if !self.enabled() => IntegrationReport::new(&change.object_id, Status::Skipped(Skip::Disabled)),
-            Err(error) => self.record_failure(&change, &error),
+            Err(_) if !self.enabled() => {
+                self.diagnostics.finish_run(Outcome::Skipped, Some("disabled".into()));
+                IntegrationReport::new(&change.object_id, Status::Skipped(Skip::Disabled))
+            }
+            Err(error) => {
+                let outcome = if matches!(error, RelationError::Storage(_)) { Outcome::PersistenceFailed } else { Outcome::ProviderFailed };
+                self.diagnostics.finish_run(outcome, Some(error.code().to_string()));
+                self.record_failure(&change, &error)
+            }
         };
         report.elapsed_ms = started.elapsed().as_millis();
         report
@@ -432,6 +467,7 @@ impl IntegrationService {
         let snapshot = |object: &KnowledgeObject| revisions.get(&object.id).map(|revision_id| ObjectSnapshot { object_id: object.id.clone(), revision_id: revision_id.clone(), project_id: object.project_id.clone() });
 
         let discovery = discover(store, recall, &focus, &project_id).await?;
+        self.diagnostics.discovered(discovery.report.project_objects, discovery.candidates.len());
 
         // Model relations to re-check: only same-project, bounded, newest first. Cross-project ones are never revalidated here.
         let mut revalidate: Vec<Revalidation> = Vec::new();
@@ -461,8 +497,9 @@ impl IntegrationService {
         report.discovery = discovery.report.clone();
 
         let written_at = store.project_current_revision_times(&project_id).map_err(storage)?;
-        let decision = self.graph.decide_integration(IntegrationInput { focus: &focus, candidates: &discovery.candidates, revalidate: &revalidate, existing: &existing, written_at: &written_at }).await?;
+        let decision = self.graph.decide_integration(IntegrationInput { focus: &focus, candidates: &discovery.candidates, revalidate: &revalidate, existing: &existing, written_at: &written_at, diagnostics: Some(&self.diagnostics) }).await?;
         report.decision = decision.report.clone();
+        self.diagnostics.decided(&decision.report, decision.add.len());
 
         // The switch is read again immediately before anything is persisted: an answer that arrives after the person turned Automatic
         // Connections off changes nothing and does not complete the event.
@@ -474,7 +511,11 @@ impl IntegrationService {
             let context: Vec<ObjectSnapshot> = discovery.candidates.iter().chain(revalidate.iter().map(|item| &item.other)).filter_map(|object| snapshot(object)).collect();
             let written = store
                 .apply_integration(IntegrationWrite { focus: ObjectSnapshot { object_id: focus.id.clone(), revision_id: current_revision.clone(), project_id: project_id.clone() }, context, remove: decision.remove, add: decision.add })
-                .map_err(storage)?;
+                .map_err(|error| {
+                    self.diagnostics.persist_failed();
+                    storage(error)
+                })?;
+            self.diagnostics.persisted(written.added.len(), written.removed, written.stale);
             if written.stale {
                 // The object moved on while the provider worked; its own (newer) event carries the work.
                 return Ok(IntegrationReport { status: Status::Skipped(Skip::Stale), ..report });

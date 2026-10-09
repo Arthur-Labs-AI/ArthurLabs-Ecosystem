@@ -1,5 +1,6 @@
 use tauri::State;
 
+use crate::graph::integration::IntegrationService;
 use crate::graph::{create_manual_relation, GraphService, RelationError};
 use crate::storage::capture_store::CaptureStore;
 use crate::storage::knowledge_store::KnowledgeObject;
@@ -57,6 +58,23 @@ pub fn get_object_neighbors(store: State<'_, CaptureStore>, object_id: String, d
 ///
 /// Project-local: candidates are only objects of one project (`project_id`, else the requested objects' shared project,
 /// else the Inbox).
-pub async fn infer_relations(graph: State<'_, GraphService>, store: State<'_, CaptureStore>, object_ids: Option<Vec<String>>, project_id: Option<String>) -> Result<Vec<Relation>, RelationError> {
-    graph.infer_in(&store, &object_ids.unwrap_or_default(), project_id.as_deref()).await
+pub async fn infer_relations(
+    graph: State<'_, GraphService>,
+    integration: State<'_, IntegrationService>,
+    store: State<'_, CaptureStore>,
+    object_ids: Option<Vec<String>>,
+    project_id: Option<String>,
+) -> Result<Vec<Relation>, RelationError> {
+    // This is real inference (Stage A proposes, Stage B verifies twice, the policy admits). What it did is remembered as counts so the
+    // screen can say WHY nothing was added instead of one generic sentence.
+    match graph.infer_with_report_in(&store, &object_ids.unwrap_or_default(), project_id.as_deref()).await {
+        Ok(inference) => {
+            integration.diagnostics.record_manual(inference.considered, &inference.report);
+            Ok(inference.relations)
+        }
+        Err(error) => {
+            integration.diagnostics.manual_failed(matches!(error, RelationError::InvalidOutput(_)), matches!(error, RelationError::Storage(_)));
+            Err(error)
+        }
+    }
 }

@@ -1157,6 +1157,16 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       });
     },
     getGraphIntegration: () => Promise.resolve({ enabled: integrationEnabled, pending: 0 }),
+    // The preview has no background worker and no model: it reports exactly that, with no runs.
+    getGraphIntegrationDiagnostics: () =>
+      Promise.resolve({
+        workerActive: true,
+        enabled: integrationEnabled,
+        diagnosis: integrationEnabled ? { code: "NO_EVENTS_YET" as const, explanation: "No new or changed idea has been announced since Arthur started." } : { code: "DISABLED" as const, explanation: "Automatic Connections is off, so new ideas are not sent for connecting." },
+        totals: { eventsEmitted: 0, eventsReceived: 0 },
+        recentRuns: [],
+        lastManual: null,
+      }),
     setGraphIntegrationEnabled: (enabled) => {
       integrationEnabled = enabled;
       return Promise.resolve({ enabled, pending: 0 });

@@ -20,6 +20,7 @@ import {
   isCognitiveAnswer,
   isRecallErrorPayload,
   isGraphIntegrationStatus,
+  isGraphDiagnostics,
   isSemanticRecallStatus,
   isAiConfig,
   isAiErrorPayload,
@@ -53,6 +54,7 @@ import {
   type Capture,
   type CognitiveAnswer,
   type GraphIntegrationStatus,
+  type GraphDiagnostics,
   type SemanticRecallStatus,
   type AiCapability,
   type AiConfig,
@@ -566,6 +568,11 @@ async function integrationOverIpc(command: string, args: Record<string, unknown>
 
 export const getGraphIntegrationOverIpc = (call: Invoke = invoke) => integrationOverIpc("get_graph_integration", {}, call);
 export const setGraphIntegrationEnabledOverIpc = (enabled: boolean, call: Invoke = invoke) => integrationOverIpc("set_graph_integration_enabled", { enabled }, call);
+export async function getGraphIntegrationDiagnosticsOverIpc(call: Invoke = invoke): Promise<GraphDiagnostics> {
+  const payload = await call("get_graph_integration_diagnostics");
+  if (!isGraphDiagnostics(payload)) throw new Error("Native layer returned invalid Automatic Connections diagnostics");
+  return payload;
+}
 export const purgeSemanticIndexOverIpc = (call: Invoke = invoke) => semanticOverIpc("purge_semantic_index", {}, call);
 
 const AI_MESSAGES: Record<string, string> = {

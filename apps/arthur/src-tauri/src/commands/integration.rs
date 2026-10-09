@@ -28,9 +28,22 @@ struct GraphChanged {
     removed: usize,
 }
 
+/// The door of integration, free of any window handle so it can be tested: counts the announcement and says whether the event may enter.
+/// While Automatic Connections is off nothing enters and nothing is scheduled.
+pub fn admit(service: &IntegrationService) -> bool {
+    let enabled = service.enabled();
+    service.diagnostics.event_emitted(enabled);
+    enabled
+}
+
+/// The work an admitted event does: exactly what the background task runs, without the window notification.
+pub async fn process(service: &IntegrationService, store: &CaptureStore, recall: &RecallService, change: ChangedKnowledge) -> crate::graph::integration::IntegrationReport {
+    service.integrate(store, recall, change).await
+}
+
 /// Hands one change to Graph Integration in the background. Does nothing at all while integration is off.
 pub fn notify(app: &AppHandle, change: ChangedKnowledge) {
-    if !app.state::<IntegrationService>().enabled() {
+    if !admit(&app.state::<IntegrationService>()) {
         return;
     }
     let app = app.clone();
@@ -50,9 +63,10 @@ async fn run(app: &AppHandle, change: ChangedKnowledge) {
     let service = app.state::<IntegrationService>();
     let store = app.state::<CaptureStore>();
     let recall = app.state::<RecallService>();
-    let report = service.integrate(&store, &recall, change).await;
+    let report = process(&service, &store, &recall, change).await;
     if report.added > 0 || report.removed > 0 {
-        let _ = app.emit(GRAPH_CHANGED_EVENT, GraphChanged { object_id: report.object_id, added: report.added, removed: report.removed });
+        let delivered = app.emit(GRAPH_CHANGED_EVENT, GraphChanged { object_id: report.object_id, added: report.added, removed: report.removed }).is_ok();
+        service.diagnostics.ui_update(delivered);
     }
 }
 
@@ -87,4 +101,10 @@ pub fn get_graph_integration(service: State<'_, IntegrationService>) -> GraphInt
 pub fn set_graph_integration_enabled(service: State<'_, IntegrationService>, enabled: bool) -> Result<GraphIntegrationStatus, RecallError> {
     service.set_enabled(enabled).map_err(|error| RecallError::Storage(format!("the preference could not be saved: {error}")))?;
     Ok(status(&service))
+}
+
+/// What Automatic Connections has done since Arthur started, as counts, stage names and error codes. Never any text, key or answer.
+#[tauri::command]
+pub fn get_graph_integration_diagnostics(service: State<'_, IntegrationService>) -> crate::graph::diagnostics::Snapshot {
+    service.diagnostics.snapshot(service.enabled())
 }

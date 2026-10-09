@@ -132,6 +132,8 @@ pub fn run() {
                     commands::integration::kick_retries(&handle);
                 }
             });
+            // Diagnostics only: the retry poll is the one long-lived task of Graph Integration (each event spawns its own short task).
+            app.state::<IntegrationService>().diagnostics.mark_worker_started();
 
             // Semantic Recall is OPT-IN. The consent lives in app-private settings, outside the database, and a missing or damaged
             // file means OFF. Having an API key never enables it.
@@ -203,6 +205,7 @@ pub fn run() {
             commands::graph::infer_relations,
             commands::integration::get_graph_integration,
             commands::integration::set_graph_integration_enabled,
+            commands::integration::get_graph_integration_diagnostics,
             commands::lineage::get_object_lineage,
             commands::lineage::list_revisions,
             commands::lineage::get_revision,

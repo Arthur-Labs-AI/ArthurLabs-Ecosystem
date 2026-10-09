@@ -1,3 +1,4 @@
+import { GraphDiagnosticsPanel } from "./GraphDiagnosticsPanel";
 import { useAutomaticConnections } from "./use-automatic-connections";
 
 export const AUTOMATIC_CONNECTIONS_DESCRIPTION = "Automatically discover and connect related ideas in your Projects.";
@@ -30,6 +31,7 @@ export function AutomaticConnectionsSetting({ variant }: { variant: "desktop" | 
             <b className="sr-onoff">{value.enabled ? "On" : "Off"}</b>
           </label>
           {value.enabled && <p role="note">{AUTOMATIC_CONNECTIONS_WARNING}</p>}
+          <GraphDiagnosticsPanel variant={variant} refreshKey={value.enabled} />
           <p className="ai-fine">
             {value.enabled
               ? "New ideas and meaningful changes are connected in the background using your AI provider. Ideas you already have are not scanned. Turning this off keeps every connection."

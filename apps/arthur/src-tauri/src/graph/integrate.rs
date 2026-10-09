@@ -62,6 +62,8 @@ pub struct IntegrationInput<'a> {
     pub existing: &'a [Relation],
     /// `object id -> when its CURRENT text was last written` (the current revision's `created_at`). Context for the verifier only.
     pub written_at: &'a HashMap<String, String>,
+    /// Counts of what the stages did (never text). `None` for callers that do not keep diagnostics.
+    pub diagnostics: Option<&'a super::diagnostics::IntegrationDiagnostics>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -132,16 +134,36 @@ fn identity_of(edge: &NewRelation) -> Identity {
 impl GraphService {
     /// One Stage B pass. A response that breaks the output contract is re-requested, a bounded number of times; anything else (a provider
     /// failure, or a well-formed verdict of any kind) is returned as it is.
-    async fn verify_pass(&self, candidates: &[VerifyCandidate], presentation: Presentation, report: &mut DecisionReport) -> Result<Vec<super::verify::Verdict>, RelationError> {
+    async fn verify_pass(
+        &self,
+        candidates: &[VerifyCandidate],
+        presentation: Presentation,
+        report: &mut DecisionReport,
+        diagnostics: Option<&super::diagnostics::IntegrationDiagnostics>,
+    ) -> Result<Vec<super::verify::Verdict>, RelationError> {
         let mut retries = 0;
         loop {
+            if let Some(d) = diagnostics {
+                d.stage_b_attempted();
+            }
             match self.verifier.verify(candidates, presentation).await {
                 Err(RelationError::InvalidOutput(_)) if retries < MAX_CONTRACT_RETRIES => {
                     retries += 1;
                     report.contract_invalid += 1;
                     report.retry_requests += 1;
+                    if let Some(d) = diagnostics {
+                        d.stage_b_failed(true);
+                    }
                 }
-                other => return other,
+                other => {
+                    if let Some(d) = diagnostics {
+                        match &other {
+                            Ok(_) => d.stage_b_succeeded(),
+                            Err(error) => d.stage_b_failed(matches!(error, RelationError::InvalidOutput(_))),
+                        }
+                    }
+                    return other;
+                }
             }
         }
     }
@@ -168,9 +190,31 @@ impl GraphService {
         let typed_existing: HashSet<String> = input.existing.iter().filter(|r| r.kind != "related_to" && (r.source_object_id == focus_id || r.target_object_id == focus_id)).map(|r| relation_other_end(r, focus_id)).collect();
         if objects.len() >= 2 {
             report.provider_requests += 1;
-            let claims = self.proposer.propose_for(focus_id, &objects, input.existing).await?;
+            if let Some(d) = input.diagnostics {
+                d.stage_a_attempted();
+            }
+            let claims = match self.proposer.propose_for(focus_id, &objects, input.existing).await {
+                Ok(claims) => claims,
+                Err(error) => {
+                    if let Some(d) = input.diagnostics {
+                        d.stage_a_failed(matches!(error, RelationError::InvalidOutput(_)));
+                    }
+                    return Err(error);
+                }
+            };
             let edges = claims.into_iter().map(|p| NewRelation { kind: p.kind, source_object_id: p.source_object_id, target_object_id: p.target_object_id }).collect();
-            let claims = validate_edges(&objects, edges)?;
+            let claims = match validate_edges(&objects, edges) {
+                Ok(claims) => claims,
+                Err(error) => {
+                    if let Some(d) = input.diagnostics {
+                        d.stage_a_failed(true);
+                    }
+                    return Err(error);
+                }
+            };
+            if let Some(d) = input.diagnostics {
+                d.stage_a_succeeded();
+            }
             let (on_focus, off_focus): (Vec<NewRelation>, Vec<NewRelation>) = claims.into_iter().partition(|edge| edge.source_object_id == focus_id || edge.target_object_id == focus_id);
             report.off_focus = off_focus.len();
             report.proposed = on_focus.len();
@@ -197,9 +241,9 @@ impl GraphService {
             return Ok(Decision { add: vec![], remove: vec![], report });
         }
         report.provider_requests += 1;
-        let first = self.verify_pass(&to_verify, Presentation::LowerIdFirst, &mut report).await?;
+        let first = self.verify_pass(&to_verify, Presentation::LowerIdFirst, &mut report, input.diagnostics).await?;
         report.provider_requests += 1;
-        let second = self.verify_pass(&to_verify, Presentation::HigherIdFirst, &mut report).await?;
+        let second = self.verify_pass(&to_verify, Presentation::HigherIdFirst, &mut report, input.diagnostics).await?;
         debug_assert!(report.provider_requests <= MAX_PROVIDER_REQUESTS_PER_RUN);
         // Direction-aware structured signals for `depends_on`, read from the RAW verdicts before they are reduced to judgements. The dependent is
         // the object that was said to NEED the other: for an existing relation that is its source, for a new claim the source of the edge the
@@ -226,7 +270,15 @@ impl GraphService {
                 signals[vote][verdict.index] = Signal { plan_cancelled: dependent_plan_cancelled(verdict, dependent), requirement_gone: dependency_requirement_gone(verdict, dependent) };
             }
         }
-        let votes = judge_each(&to_verify, vec![first, second])?;
+        let votes = match judge_each(&to_verify, vec![first, second]) {
+            Ok(votes) => votes,
+            Err(error) => {
+                if let Some(d) = input.diagnostics {
+                    d.stage_b_failed(true);
+                }
+                return Err(error);
+            }
+        };
 
         // Which claims survived both passes, grouped by the pair they are about (the OTHER object; the focus is always one end).
         let mut survivors: BTreeMap<String, Vec<NewRelation>> = BTreeMap::new();

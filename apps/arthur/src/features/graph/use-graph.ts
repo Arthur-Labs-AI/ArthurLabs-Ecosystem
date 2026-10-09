@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CognitiveRelation, CreateRelationInput, ExternalObject } from "@arthur/contracts";
+import { describeEmptyInference } from "./inference-message";
 import { useArthurClient } from "../../hooks/use-arthur-client";
 import { useProjects } from "../projects/projects-context";
 
@@ -92,7 +93,13 @@ export function useGraph(): GraphState {
     setNotice(null);
     try {
       const added = await client.inferRelations(objectIds, activeProjectId === null ? undefined : { projectId: activeProjectId });
-      setNotice(added.length === 0 ? "No new connections found." : `Added ${added.length} ${added.length === 1 ? "connection" : "connections"}.`);
+      if (added.length === 0) {
+        // Say WHY nothing was added: too few ideas, nothing proposed, everything rejected, or already connected.
+        const manual = await client.getGraphIntegrationDiagnostics().then((d) => d.lastManual, () => null);
+        setNotice(describeEmptyInference(manual));
+      } else {
+        setNotice(`Added ${added.length} ${added.length === 1 ? "connection" : "connections"}.`);
+      }
       await refresh();
     } catch (failure) {
       setError(messageOf(failure));

@@ -19,6 +19,7 @@ import type {
   RecallErrorCode,
   SemanticRecallStatus,
   GraphIntegrationStatus,
+  GraphDiagnostics,
   AiCapability,
   AiErrorCode,
   AiConfig,
@@ -388,6 +389,12 @@ export interface ArthurClient {
 
   /** Experimental Automatic Connections: the saved state (OFF by default). The native layer is the only source of truth. */
   getGraphIntegration(): Promise<GraphIntegrationStatus>;
+  /**
+   * What Automatic Connections (and the last "Find connections" run) actually did since Arthur started, as counts, stage names and error
+   * codes: events announced and received, ideas and pairs considered, Stage A and Stage B calls and failures, claims proposed, rejected and
+   * saved, and the first point where the path stopped producing connections (`diagnosis.code`). Never any text, answer or key.
+   */
+  getGraphIntegrationDiagnostics(): Promise<GraphDiagnostics>;
   /**
    * The user's explicit choice. ON lets new ideas and meaningful revisions be connected automatically (nothing existing is backfilled);
    * OFF stops scheduling and never deletes a relation. Rejects when the preference could not be saved; the saved state is then unchanged.

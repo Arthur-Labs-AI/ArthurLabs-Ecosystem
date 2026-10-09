@@ -383,3 +383,87 @@ export function isGraphIntegrationStatus(value: unknown): value is GraphIntegrat
   const c = value as Record<string, unknown>;
   return typeof c.enabled === "boolean" && typeof c.pending === "number";
 }
+
+/*
+ * Automatic Connections diagnostics (M04.7A, privacy-safe). Counts, stage names and error codes only: never an idea's words, a prompt, a
+ * model answer or a key. The first point where the path stopped producing connections is `diagnosis.code`.
+ */
+export const GRAPH_DIAGNOSIS_CODES = [
+  "WORKER_NOT_STARTED",
+  "DISABLED",
+  "EVENT_NOT_DELIVERED",
+  "NO_EVENTS_YET",
+  "NO_CANDIDATES",
+  "ALL_REJECTED",
+  "PROVIDER_FAILED",
+  "PERSISTENCE_FAILED",
+  "SUCCESS_NO_NEW_EDGES",
+  "SUCCESS",
+  "SKIPPED",
+] as const;
+export type GraphDiagnosisCode = (typeof GRAPH_DIAGNOSIS_CODES)[number];
+
+export type GraphRunOutcome = Exclude<GraphDiagnosisCode, "WORKER_NOT_STARTED" | "DISABLED" | "EVENT_NOT_DELIVERED" | "NO_EVENTS_YET">;
+
+export interface GraphDiagnosticsRun {
+  /** First eight characters of the idea's id. */
+  object: string;
+  reason: "created" | "revised" | "moved";
+  outcome: GraphRunOutcome;
+  /** The skip reason or the error code. */
+  detail: string | null;
+  projectObjects: number;
+  candidates: number;
+  stageA: "ok" | "failed" | "not_run";
+  stageB: "ok" | "failed" | "not_run";
+  proposed: number;
+  verified: number;
+  survived: number;
+  rejected: number;
+  added: number;
+  removed: number;
+  at: number;
+}
+
+export interface GraphDiagnosticsManualRun {
+  outcome: GraphRunOutcome;
+  considered: number;
+  proposed: number;
+  alreadyConnected: number;
+  verified: number;
+  rejected: number;
+  added: number;
+  providerRequests: number;
+  at: number;
+}
+
+export interface GraphDiagnostics {
+  workerActive: boolean;
+  enabled: boolean;
+  diagnosis: { code: GraphDiagnosisCode; explanation: string };
+  totals: Record<string, number>;
+  /** Newest first. */
+  recentRuns: GraphDiagnosticsRun[];
+  lastManual: GraphDiagnosticsManualRun | null;
+}
+
+export function isGraphDiagnostics(value: unknown): value is GraphDiagnostics {
+  if (typeof value !== "object" || value === null) return false;
+  const c = value as Record<string, unknown>;
+  const diagnosis = c.diagnosis as Record<string, unknown> | undefined;
+  const totals = c.totals as Record<string, unknown> | undefined;
+  return (
+    typeof c.workerActive === "boolean" &&
+    typeof c.enabled === "boolean" &&
+    typeof diagnosis === "object" &&
+    diagnosis !== null &&
+    (GRAPH_DIAGNOSIS_CODES as readonly unknown[]).includes(diagnosis.code) &&
+    typeof diagnosis.explanation === "string" &&
+    typeof totals === "object" &&
+    totals !== null &&
+    Object.values(totals).every((n) => typeof n === "number") &&
+    Array.isArray(c.recentRuns) &&
+    c.recentRuns.every((r) => typeof r === "object" && r !== null && typeof (r as Record<string, unknown>).object === "string" && (GRAPH_DIAGNOSIS_CODES as readonly unknown[]).includes((r as Record<string, unknown>).outcome)) &&
+    (c.lastManual === null || (typeof c.lastManual === "object" && (GRAPH_DIAGNOSIS_CODES as readonly unknown[]).includes((c.lastManual as Record<string, unknown>).outcome)))
+  );
+}

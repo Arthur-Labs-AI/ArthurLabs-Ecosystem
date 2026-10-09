@@ -25,6 +25,7 @@
 //! retrieval ranking here.
 
 pub mod candidates;
+pub mod diagnostics;
 pub mod discover;
 pub mod integrate;
 pub mod integration;
@@ -202,6 +203,8 @@ pub struct InferenceReport {
 }
 
 pub struct Inference {
+    /// How many objects the run looked at (0 when it stopped before reading any).
+    pub considered: usize,
     pub relations: Vec<Relation>,
     /// Read by tests and the live harness; not surfaced to the UI in M02.1.
     #[cfg_attr(not(test), allow(dead_code))]
@@ -231,6 +234,7 @@ impl GraphService {
     }
 
     /// As `infer`, scoped to one project. See `infer_with_report_in`.
+    #[allow(dead_code)] // the app calls `infer_with_report_in`; tests and the bench use this
     pub async fn infer_in(&self, store: &CaptureStore, object_ids: &[String], project_id: Option<&str>) -> Result<Vec<Relation>, RelationError> {
         Ok(self.infer_with_report_in(store, object_ids, project_id).await?.relations)
     }
@@ -246,15 +250,17 @@ impl GraphService {
     /// relations ACROSS projects is deliberately not built here (a later, explicit decision).
     pub async fn infer_with_report_in(&self, store: &CaptureStore, object_ids: &[String], project_id: Option<&str>) -> Result<Inference, RelationError> {
         let mut report = InferenceReport::default();
+        let considered = std::sync::atomic::AtomicUsize::new(0);
         let done = |relations: Vec<Relation>, report: InferenceReport| {
             // The structure of the pipeline already guarantees this; the check keeps it true under refactoring.
             debug_assert!(report.provider_requests <= MAX_PROVIDER_REQUESTS_PER_RUN);
-            Ok(Inference { relations, report })
+            Ok(Inference { considered: considered.load(std::sync::atomic::Ordering::SeqCst), relations, report })
         };
 
         let project_id = resolve_inference_project(store, object_ids, project_id)?;
         let all = store.list_knowledge_objects_in(Some(&project_id)).map_err(|error| RelationError::Storage(error.to_string()))?;
         let objects = candidates::select_candidates(all, object_ids)?;
+        considered.store(objects.len(), std::sync::atomic::Ordering::SeqCst);
         if objects.len() < 2 {
             return done(vec![], report);
         }
@@ -1212,6 +1218,8 @@ mod tests {
 // M04.7A test modules. Kept after `mod tests` so the first `#[cfg(test)]` in this file still marks where shipped code ends.
 #[cfg(test)]
 mod integration_tests;
+#[cfg(test)]
+mod event_path_tests;
 #[cfg(test)]
 mod integration_bench;
 #[cfg(test)]
