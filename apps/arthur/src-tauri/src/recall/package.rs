@@ -575,7 +575,7 @@ pub fn build_package(store: &CaptureStore, retrieval: &RetrievalResult, config: 
         };
         let excerpt_ok = !external_project;
         let origin = draft.detail.original_source.as_ref().and_then(|s| source_ref(s, excerpt_ok, &mut excerpts_left));
-        let edited = matches!(draft.detail.current_origin.as_str(), "user_edit" | "merge" | "system");
+        let edited = matches!(draft.detail.current_origin.as_str(), "user_edit" | "merge" | "system" | "approved_suggestion" | "approved_edited");
         let current_revision_source = if edited { None } else { draft.detail.current_source.as_ref().filter(|s| Some(*s) != draft.detail.original_source.as_ref()).and_then(|s| source_ref(s, excerpt_ok, &mut excerpts_left)) };
         if origin.as_ref().is_some_and(|o| o.excerpt.is_some()) {
             stats.excerpts += 1;

@@ -15,6 +15,11 @@ export interface LineageState {
   /** Creates a (non-current) branch from `parentRevisionId`. */
   branch: (parentRevisionId: string, changes: RevisionChanges) => Promise<boolean>;
   merge: (parentRevisionIds: string[], result: { kind: KnowledgeObjectKind; title: string; body: string }, makeCurrent: boolean) => Promise<boolean>;
+  /**
+   * Undo: brings an earlier revision's text back as a NEW revision pointing at both it and the text it replaces. History is never
+   * rewritten. Refused (and shown) if the idea changed since it was opened.
+   */
+  restore: (targetRevisionId: string) => Promise<boolean>;
   reload: () => Promise<void>;
 }
 
@@ -121,5 +126,14 @@ export function useLineage(objectId: string | null, selectedRevisionId: string |
     [client, objectId, run],
   );
 
-  return { status, lineage, diffs, busy, notice, error, edit, branch, merge, reload };
+  const restore = useCallback(
+    (targetRevisionId: string) => {
+      const currentId = lineage?.currentRevisionId;
+      if (objectId === null || currentId === undefined) return Promise.resolve(false);
+      return run(() => client.restoreRevision(objectId, targetRevisionId, currentId), "Brought the earlier version back as a new revision. Nothing was deleted.");
+    },
+    [client, objectId, lineage, run],
+  );
+
+  return { status, lineage, diffs, busy, notice, error, edit, branch, merge, restore, reload };
 }

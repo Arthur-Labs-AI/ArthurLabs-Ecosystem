@@ -7,7 +7,8 @@ import { formatMoment, relativeAge } from "../../components/format";
 import { useCaptures } from "../capture/captures-context";
 import { useKnowledge } from "../knowledge/knowledge-context";
 import { useLineageSummaries } from "../lineage/lineage-summaries";
-import { ORIGIN_LABELS, captionFor, statsFromDiff } from "../lineage/revision-captions";
+import { captionFor, statsFromDiff } from "../lineage/revision-captions";
+import { originLabel, provenanceNote, useApprovals } from "../review/use-approvals";
 import { useLineage } from "../lineage/use-lineage";
 import { layoutVerticalLineage, type VerticalEdge } from "../lineage/vertical-layout";
 import { SettingsButton } from "./MobileApp";
@@ -42,7 +43,8 @@ function History({ objectId }: { objectId: string }) {
   const { refresh } = useKnowledge();
   const { captures } = useCaptures();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { status, lineage, diffs, busy, notice, error, edit, branch, merge } = useLineage(objectId, selectedId, refresh);
+  const { status, lineage, diffs, busy, notice, error, edit, branch, merge, restore } = useLineage(objectId, selectedId, refresh);
+  const approvals = useApprovals(objectId, lineage?.currentRevisionId);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [picked, setPicked] = useState<readonly string[]>([]);
   const [makeMergeCurrent, setMakeMergeCurrent] = useState(true);
@@ -168,9 +170,9 @@ function History({ objectId }: { objectId: string }) {
                 </span>
               </div>
               <div className="m-vtxt">
-                <button type="button" className="m-vhit" aria-expanded={isSelected} aria-label={`Revision ${entry.label}, ${ORIGIN_LABELS[revision.origin]}${isCurrent ? ", current" : ""}`} onClick={() => setSelectedId(isSelected ? null : revision.id)}>
+                <button type="button" className="m-vhit" aria-expanded={isSelected} aria-label={`Revision ${entry.label}, ${originLabel(revision, approvals.get(revision.id))}${isCurrent ? ", current" : ""}`} onClick={() => setSelectedId(isSelected ? null : revision.id)}>
                   <span className="m-l1">
-                    {ORIGIN_LABELS[revision.origin]}
+                    {originLabel(revision, approvals.get(revision.id))}
                     {isCurrent && <span className="m-tag cur">Current</span>}
                   </span>
                   <span className="m-l2">
@@ -189,6 +191,9 @@ function History({ objectId }: { objectId: string }) {
                     setTab={setTab}
                     capture={sel.provenance ? captures.find((candidate) => candidate.id === sel.provenance?.captureId) : undefined}
                     onBranch={() => setSheet("branch")}
+                    label={originLabel(sel, approvals.get(sel.id))}
+                    note={provenanceNote(sel, approvals.get(sel.id))}
+                    {...(sel.id !== current?.id ? { onUndo: () => void restore(sel.id), busy } : {})}
                   />
                 )}
               </div>
@@ -318,6 +323,10 @@ function Expanded({
   setTab,
   capture,
   onBranch,
+  label,
+  note,
+  onUndo,
+  busy,
 }: {
   revision: ThoughtRevision;
   labelOf: (id: string) => string;
@@ -329,6 +338,12 @@ function Expanded({
   setTab: (tab: "changes" | "full") => void;
   capture: import("@arthur/contracts").Capture | undefined;
   onBranch: () => void;
+  label: string;
+  /** Who wrote the words, for a revision with no capture span of its own. */
+  note: string | null;
+  /** Undo to this revision: only offered for a revision that is not already current. */
+  onUndo?: () => void;
+  busy?: boolean;
 }) {
   const parents = revision.parentRevisionIds.map((id) => byId.get(id)).filter((candidate): candidate is ThoughtRevision => candidate !== undefined);
   const compare = parents.find((parent) => parent.id === compareId) ?? parents[0];
@@ -339,7 +354,7 @@ function Expanded({
   return (
     <div className="m-vexp" aria-label={`Revision ${labelOf(revision.id)}`}>
       <p className="m-vmeta">
-        {ORIGIN_LABELS[revision.origin]} · <time dateTime={revision.createdAt}>{formatMoment(revision.createdAt)}</time>
+        {label} · <time dateTime={revision.createdAt}>{formatMoment(revision.createdAt)}</time>
         {revision.kind && <span> · {KIND_LABELS[revision.kind]}</span>}
       </p>
       {parents.length > 1 && (
@@ -411,12 +426,18 @@ function Expanded({
           </div>
         </div>
       ) : (
-        <p className="m-vnote">{revision.origin === "merge" ? "Merged text is written by you. Arthur never says it came from a capture." : revision.origin === "initial" ? "" : "This text is your edit, so it has no capture source."}</p>
+        <p className="m-vnote">{note ?? (revision.origin === "merge" ? "Merged text is written by you. Arthur never says it came from a capture." : revision.origin === "initial" ? "" : "This text is your edit, so it has no capture source.")}</p>
       )}
       <button type="button" className="m-pbtn sm" onClick={onBranch}>
         <Icon name="branch" small />
         Branch from {labelOf(revision.id)}
       </button>
+      {onUndo && (
+        <button type="button" className="m-pbtn sm" onClick={onUndo} disabled={busy}>
+          <Icon name="retry" small />
+          Undo to {labelOf(revision.id)}
+        </button>
+      )}
     </div>
   );
 }

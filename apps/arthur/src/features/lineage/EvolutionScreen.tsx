@@ -9,7 +9,8 @@ import { useKnowledge } from "../knowledge/knowledge-context";
 import { LineageRail, LineageSketch } from "./LineageRail";
 import { RevisionForm } from "./RevisionForm";
 import { useLineageSummaries, useObjectLineage } from "./lineage-summaries";
-import { ORIGIN_LABELS, captionFor, statsFromDiff } from "./revision-captions";
+import { captionFor, statsFromDiff } from "./revision-captions";
+import { originLabel, originTag, provenanceNote, useApprovals } from "../review/use-approvals";
 import { useLineage } from "./use-lineage";
 import "./lineage.css";
 import "./evolution.css";
@@ -42,7 +43,8 @@ function History({ objectId, title }: { objectId: string; title: string }) {
   const { refresh } = useKnowledge();
   const { captures } = useCaptures();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { status, lineage, diffs, busy, notice, error, edit, branch, merge } = useLineage(objectId, selectedId, refresh);
+  const { status, lineage, diffs, busy, notice, error, edit, branch, merge, restore } = useLineage(objectId, selectedId, refresh);
+  const approvals = useApprovals(objectId, lineage?.currentRevisionId);
   const [mode, setMode] = useState<Mode>(null);
   const [picked, setPicked] = useState<readonly string[]>([]);
   const [makeMergeCurrent, setMakeMergeCurrent] = useState(true);
@@ -116,6 +118,12 @@ function History({ objectId, title }: { objectId: string; title: string }) {
           <Icon name="branch" small />
           Branch from {labelOf(selected.id)}
         </button>
+        {selected.id !== current.id && (
+          <button type="button" className="btn ghost" disabled={busy} onClick={() => void restore(selected.id)} title="Adds a new revision with this text. Nothing is deleted.">
+            <Icon name="retry" small />
+            Undo to {labelOf(selected.id)}
+          </button>
+        )}
         <button type="button" className="btn ghost" aria-pressed={mode === "merge"} onClick={() => chooseMode("merge")} disabled={revisions.length < 2}>
           <Icon name="merge" small />
           Merge…
@@ -139,6 +147,7 @@ function History({ objectId, title }: { objectId: string; title: string }) {
           currentRevisionId={lineage.currentRevisionId}
           selectedRevisionId={selected.id}
           picked={mode === "merge" ? picked : []}
+          tags={new Map([...approvals].map(([id, approval]) => [id, originTag({ origin: "system" }, approval)]))}
           onSelect={(id) => (mode === "merge" ? toggle(id) : setSelectedId(id))}
         />
       </div>
@@ -226,7 +235,7 @@ function History({ objectId, title }: { objectId: string; title: string }) {
           <div className="dh">
             <h3>Revision {labelOf(selected.id)}</h3>
             <small>
-              {ORIGIN_LABELS[selected.origin]} · <time dateTime={selected.createdAt}>{formatMoment(selected.createdAt)}</time>
+              {originLabel(selected, approvals.get(selected.id))} · <time dateTime={selected.createdAt}>{formatMoment(selected.createdAt)}</time>
             </small>
             {isCurrent && <small style={{ color: "var(--accent)" }}>Current</small>}
             <span className="spacer" />
@@ -300,7 +309,7 @@ function History({ objectId, title }: { objectId: string; title: string }) {
                 <SourceQuote capture={capture} provenance={selected.provenance} />
               </>
             ) : (
-              <p className="note">{selected.origin === "merge" ? "Merged text is written by you. Arthur never says it came from a capture." : "This text is your edit, so it has no capture source."}</p>
+              <p className="note">{provenanceNote(selected, approvals.get(selected.id)) ?? (selected.origin === "merge" ? "Merged text is written by you. Arthur never says it came from a capture." : "This text is your edit, so it has no capture source.")}</p>
             )}
           </section>
           <section className="sec" aria-labelledby="parents-heading">

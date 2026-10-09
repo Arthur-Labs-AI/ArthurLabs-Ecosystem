@@ -16,7 +16,8 @@ import { useProjects } from "../projects/projects-context";
 import { RevisionForm } from "../lineage/RevisionForm";
 import { useLineageSummaries, useObjectLineage } from "../lineage/lineage-summaries";
 import { useLineage } from "../lineage/use-lineage";
-import { ORIGIN_LABELS, captionFor } from "../lineage/revision-captions";
+import { captionFor } from "../lineage/revision-captions";
+import { originLabel, useApprovals } from "../review/use-approvals";
 import { ORIGIN_LABELS as RELATION_ORIGIN_LABELS, relationVerbFrom } from "../graph/relation-style";
 import "./ideas.css";
 
@@ -29,7 +30,8 @@ function IdeaInspector({ object }: { object: KnowledgeObject }) {
   const { go, focus } = useNavigation();
   const { moveObject, switchTo } = useProjects();
   const [revising, setRevising] = useState(false);
-  const { busy, notice, error, edit } = useLineage(object.id, null, refresh);
+  const { busy, notice, error, edit, lineage: ownLineage } = useLineage(object.id, null, refresh);
+  const approvals = useApprovals(object.id, ownLineage?.currentRevisionId);
 
   // Leaving one idea for another closes the form: a half-written revision belongs to the idea it was started on.
   useEffect(() => setRevising(false), [object.id]);
@@ -192,7 +194,7 @@ function IdeaInspector({ object }: { object: KnowledgeObject }) {
                       {current ? "Current · " : ""}
                       {captionFor(revision, revisionById, (id) => labels.get(id) ?? "R?")}
                     </span>
-                    <em title={ORIGIN_LABELS[revision.origin]}>{relativeAge(revision.createdAt)}</em>
+                    <em title={originLabel(revision, approvals.get(revision.id))}>{relativeAge(revision.createdAt)}</em>
                   </div>
                 </li>
               );

@@ -820,17 +820,27 @@ fn with_automatic_connections_off_a_revision_event_does_no_graph_work() {
 // --- architecture ------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn nothing_that_ships_can_construct_or_enable_the_pipeline() {
-    // The injector is test-only, and neither the app setup nor any command mentions the pipeline or its setting.
-    for (name, source) in [("lib.rs", include_str!("../lib.rs")), ("commands/distill.rs", include_str!("../commands/distill.rs")), ("commands/integration.rs", include_str!("../commands/integration.rs"))] {
-        for word in ["with_evolution", "EvolutionPipeline", "EvolutionSettings"] {
+fn nothing_that_ships_can_construct_the_pipeline_except_the_review_first_composition() {
+    // Only `evolution_runtime` builds the pipeline, and it builds it review-first; neither the app setup nor any command names it.
+    for (name, source) in [
+        ("lib.rs", include_str!("../lib.rs")),
+        ("commands/distill.rs", include_str!("../commands/distill.rs")),
+        ("commands/integration.rs", include_str!("../commands/integration.rs")),
+        ("commands/evolution.rs", include_str!("../commands/evolution.rs")),
+    ] {
+        for word in ["EvolutionPipeline", "EvolutionSettings"] {
             assert!(!source.contains(word), "{name} mentions {word}");
         }
     }
-    let service = include_str!("mod.rs");
-    let injector = service.find("pub fn with_evolution").expect("the injector exists");
-    assert!(service[..injector].trim_end().ends_with("#[cfg(test)]"), "the injector is compiled for tests only");
-    // and the setting never shares storage with Automatic Connections
+    // the only production caller of the injector is the lib.rs setup, fed by the review-first builder
+    let lib = include_str!("../lib.rs");
+    assert_eq!(lib.matches("with_evolution(").count(), 1);
+    assert!(lib.contains("evolution_runtime::build("));
+    let runtime = include_str!("../evolution_runtime.rs");
+    assert!(runtime.contains("debug_assert!(pipeline.review_first())") && runtime.contains("NoHandwrittenDrafts"));
+    // the pipeline itself refuses to write a revision when it is review-first
     let evolution = include_str!("evolution.rs");
+    assert!(evolution.contains("Plan::Revise { target, .. } if review_first"));
+    // and the setting never shares storage with Automatic Connections
     assert!(!evolution.contains("IntegrationSettings") && !evolution.contains("graph/settings"));
 }

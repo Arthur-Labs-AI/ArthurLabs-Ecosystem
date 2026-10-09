@@ -12,7 +12,10 @@ pub mod integration_store;
 mod revision_cas_tests;
 pub mod identity_store;
 pub mod evidence_store;
+pub mod proposal_store;
 #[cfg(test)]
 mod identity_store_tests;
+#[cfg(test)]
+mod proposal_store_tests;
 #[cfg(test)]
 mod evidence_store_tests;

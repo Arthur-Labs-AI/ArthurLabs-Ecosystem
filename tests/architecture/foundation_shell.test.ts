@@ -213,7 +213,14 @@ test("SQLite is confined to the native storage module", () => {
     .filter((file) => /\brusqlite\b/.test(readFileSync(file, "utf8")))
     .map((file) => path.relative(path.join(tauriDir, "src"), file).split(path.sep).join("/"));
   assert.ok(users.length > 0, "expected the storage module to use rusqlite");
-  for (const file of users) assert.match(file, /^storage\//, `${file} must not touch SQLite directly`);
+  // `distillation/evolution.rs` (M04.7B Phase 3) is the one named exception: it composes storage functions inside the ONE transaction handle
+  // the store lends it (`in_identity_transaction`), and never opens, prepares or configures a database. Anything else stays in storage.
+  const COMPOSES_STORAGE_TRANSACTION = ["distillation/evolution.rs"];
+  for (const file of users) if (!COMPOSES_STORAGE_TRANSACTION.includes(file)) assert.match(file, /^storage\//, `${file} must not touch SQLite directly`);
+  for (const file of COMPOSES_STORAGE_TRANSACTION) {
+    const text = readFileSync(path.join(tauriDir, "src", file), "utf8");
+    assert.doesNotMatch(text, /Connection::open|\.prepare\(|execute_batch\(\"(?!SAVEPOINT|ROLLBACK TO|RELEASE)|PRAGMA/, `${file} must only use the transaction it was lent`);
+  }
 });
 
 test("the native capture store enforces the same limits and sources as the contract", () => {
@@ -275,16 +282,17 @@ test("voice error codes agree across the contract, the Rust service and the Kotl
 test("HTTP, credentials and the microphone are confined to their modules", () => {
   const src = path.join(tauriDir, "src");
   const files = rustFiles(src).map((file) => ({ rel: path.relative(src, file).split(path.sep).join("/"), text: readFileSync(file, "utf8") }));
-  const providerModules = /^(providers|stt|tts|distillation|graph)\//;
+  const providerModules = /^(providers|stt|tts|distillation|graph|synthesis|jev)\//;
 
   for (const { rel, text } of files) {
     if (/\breqwest\b/.test(text)) assert.match(rel, providerModules, `${rel} must not make HTTP calls`);
-    if (/openai_api_key|api_key\(\)/.test(text)) assert.match(rel, /^(providers\/|stt\/|tts\/|distillation\/|graph\/|lib\.rs$)/, `${rel} must not touch credentials`);
+    // `evolution_runtime.rs` is the review-first composition root: it hands the credential SOURCES to the adapters and asks only whether one exists.
+    if (/openai_api_key|api_key\(\)/.test(text)) assert.match(rel, /^(providers\/|stt\/|tts\/|distillation\/|graph\/|synthesis\/|jev\/|lib\.rs$|evolution_runtime\.rs$|live_luna_smoke\.rs$)/, `${rel} must not touch credentials`);
     if (/run_mobile_plugin/.test(text)) assert.ok(["audio/android.rs", "providers/android_keystore.rs", "tts/android.rs"].includes(rel), `${rel} must not call a mobile plugin`);
   }
 
   // Nothing that handles the API key, the user's speech or their thoughts may log.
-  for (const { rel, text } of files.filter((f) => providerModules.test(f.rel) && !/(test_support|_tests|_bench)\.rs$/.test(f.rel))) {
+  for (const { rel, text } of files.filter((f) => providerModules.test(f.rel) && !/(test_support|_tests|_bench|\/live|\/tests)\.rs$/.test(f.rel))) {
     const production = text.slice(0, text.indexOf("#[cfg(test)]") === -1 ? undefined : text.indexOf("#[cfg(test)]"));
     assert.doesNotMatch(production, /\b(println|eprintln|dbg|print|eprint)!|\btracing::|\blog::/, `${rel} must not log`);
   }
@@ -324,7 +332,7 @@ test("knowledge kinds, limits and error codes agree across the contract, Rust, S
 
 test("the schema is changed only through ordered, transactional migration steps", () => {
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  assert.match(migrations, /pub const STEPS: \[Step; 7\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\), \(4, SCHEMA_V4\), \(5, SCHEMA_V5\), \(6, SCHEMA_V6\), \(7, SCHEMA_V7\)\];/);
+  assert.match(migrations, /pub const STEPS: \[Step; 9\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\), \(4, SCHEMA_V4\), \(5, SCHEMA_V5\), \(6, SCHEMA_V6\), \(7, SCHEMA_V7\), \(8, SCHEMA_V8\), \(9, SCHEMA_V9\)\];/);
   assert.match(migrations, /connection\.transaction\(\)/);
   for (const table of ["distillation_runs", "knowledge_objects", "object_sources", "relations", "thought_revisions", "revision_parents"]) assert.match(migrations, new RegExp(`CREATE TABLE ${table}\\b`));
   assert.match(migrations, /REFERENCES captures\(id\)/);
@@ -708,9 +716,9 @@ test("M04C: Recall reads only through the store, writes only its own projections
   assert.doesNotMatch(readText(tauriDir, "src/recall/prompt.rs"), /"tools"|"functions"|tool_choice/);
   // Nothing about a question or answer is persisted: schema stays at v7 and has no history/conversation tables.
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  const v7 = migrations.slice(migrations.indexOf("pub const SCHEMA_V7"), migrations.indexOf("pub type Step"));
+  const v7 = migrations.slice(migrations.indexOf("pub const SCHEMA_V7"), migrations.indexOf("pub const SCHEMA_V8"));
   assert.doesNotMatch(migrations, /ask_history|conversation|chat_session|recall_history|recall_answers/i);
-  assert.match(migrations, /pub const SCHEMA_VERSION: i64 = 7;/);
+  assert.match(migrations, /pub const SCHEMA_VERSION: i64 = 9;/); // this milestone added no schema of its own; v8 (identity) and v9 (review proposals) came later
   // v7 adds retrieval indexes and nothing else: no existing table is altered, no project copied into an index, no consent in the database.
   assert.doesNotMatch(v7, /ALTER TABLE|DROP |UPDATE |DELETE FROM/);
   assert.deepEqual([...v7.matchAll(/CREATE (?:VIRTUAL )?TABLE (\w+)/g)].map((m) => m[1]), ["recall_revision_fts", "recall_embeddings", "recall_meta"]);
@@ -827,6 +835,6 @@ test("voice output (M04.6): TTS goes through the provider and SecretStore layer,
 
   // The schema is still v7 and nothing speech-related exists in it.
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  assert.match(migrations, /pub const SCHEMA_VERSION: i64 = 7;/);
+  assert.match(migrations, /pub const SCHEMA_VERSION: i64 = 9;/); // this milestone added no schema of its own; v8 (identity) and v9 (review proposals) came later
   assert.doesNotMatch(migrations, /\b(tts|speech|spoken|utterance|audio_file)\b/i);
 });

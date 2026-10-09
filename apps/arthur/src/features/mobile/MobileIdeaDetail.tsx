@@ -13,7 +13,8 @@ import { ORIGIN_LABELS as RELATION_ORIGIN_LABELS, relationVerbFrom } from "../gr
 import { useKnowledge } from "../knowledge/knowledge-context";
 import { useLineageSummaries } from "../lineage/lineage-summaries";
 import { useProjects } from "../projects/projects-context";
-import { ORIGIN_LABELS, captionFor } from "../lineage/revision-captions";
+import { captionFor } from "../lineage/revision-captions";
+import { originLabel, useApprovals } from "../review/use-approvals";
 import { useLineage } from "../lineage/use-lineage";
 import { MoveSheet } from "./MobileProjects";
 import { MobileRevisionForm } from "./MobileRevisionForm";
@@ -33,6 +34,7 @@ export function MobileIdeaDetail({ objectId }: { objectId: string }) {
   const { closePage, closeAllPages, setConnectionsView, openIdea } = useMobileNav();
   const object = objects.find((candidate) => candidate.id === objectId);
   const lineage = useLineage(objectId, null, refresh);
+  const approvals = useApprovals(objectId, lineage.lineage?.currentRevisionId);
   const history = lineage.lineage ?? undefined; // the page's own read of this one idea's history
   const [sheet, setSheet] = useState<"revise" | "branch" | null>(null);
   const [edge, setEdge] = useState<string | null>(null);
@@ -224,7 +226,7 @@ export function MobileIdeaDetail({ objectId }: { objectId: string }) {
                   <li key={revision.id} className={isCurrent ? "m-mr cur" : "m-mr"}>
                     <span className="m-b">{labels.get(revision.id)}</span>
                     <span className="m-x">
-                      {ORIGIN_LABELS[revision.origin]}
+                      {originLabel(revision, approvals.get(revision.id))}
                       <small>
                         {captionFor(revision, revisionById, (id) => labels.get(id) ?? "R?")} · {relativeAge(revision.createdAt)}
                         {isCurrent ? " · current" : ""}

@@ -5,6 +5,7 @@ import { ProjectSwitcher } from "../features/projects/ProjectSwitcher";
 import { Icon, Mark, type IconName } from "../components/icons";
 import { useNavigation, type Screen } from "./navigation";
 import { useAsk } from "../features/recall/ask-context";
+import { useReview } from "../features/review/review-context";
 import { isAskShortcut, isMod, modLabel } from "./shortcuts";
 
 const ITEMS: { screen: Exclude<Screen, "settings">; label: string; icon: IconName }[] = [
@@ -12,6 +13,7 @@ const ITEMS: { screen: Exclude<Screen, "settings">; label: string; icon: IconNam
   { screen: "ideas", label: "Ideas", icon: "ideas" },
   { screen: "connections", label: "Connections", icon: "connections" },
   { screen: "evolution", label: "Evolution", icon: "evolution" },
+  { screen: "review", label: "Review", icon: "check" },
   { screen: "ask", label: "Ask Arthur", icon: "ask" },
 ];
 
@@ -24,6 +26,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { objects, jobs, distilling } = useKnowledge();
   const { voiceState, stopVoice } = useCaptures();
   const { requestFocus } = useAsk();
+  const review = useReview();
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -79,6 +82,11 @@ export function Shell({ children }: { children: ReactNode }) {
               <Icon name={item.icon} />
               {item.label}
               {item.screen === "ideas" && objects.length > 0 && <span className="count">{objects.length}</span>}
+              {item.screen === "review" && review.count > 0 && (
+                <span className="count" aria-label={`${review.count} waiting`}>
+                  {review.count}
+                </span>
+              )}
               {item.screen === "ask" && <kbd className="nav-kbd">{modLabel()} K</kbd>}
             </button>
           ))}

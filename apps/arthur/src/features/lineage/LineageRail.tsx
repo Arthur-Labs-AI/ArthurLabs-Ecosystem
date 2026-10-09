@@ -25,12 +25,15 @@ export function LineageRail({
   currentRevisionId,
   selectedRevisionId,
   picked = [],
+  tags,
   onSelect,
 }: {
   revisions: readonly ThoughtRevision[];
   currentRevisionId: string;
   selectedRevisionId: string;
   picked?: readonly string[];
+  /** Short tags that replace the origin tag of particular revisions (an approved suggestion is not just "system"). */
+  tags?: ReadonlyMap<string, string>;
   onSelect: (revisionId: string) => void;
 }) {
   const layout = useMemo(() => layoutLineage(revisions), [revisions]);
@@ -78,7 +81,7 @@ export function LineageRail({
                 {node.label}
               </text>
               <text className="l-tag" y={-REVISION_HEIGHT / 2 - 9} textAnchor="middle">
-                {current ? "current" : ORIGIN_TAGS[revision.origin]}
+                {current ? "current" : (tags?.get(revision.id) ?? ORIGIN_TAGS[revision.origin])}
               </text>
               <text className="l-cap" y={REVISION_HEIGHT / 2 + 19} textAnchor="middle">
                 {captionFor(revision, byId, labelOf)}

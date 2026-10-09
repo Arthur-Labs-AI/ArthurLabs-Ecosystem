@@ -20,6 +20,7 @@
 //! configurable second model family for this purpose yet. Specification: `docs/architecture/m047b-phase4b-grounded-revision-synthesis.md`.
 
 pub mod authorization;
+pub mod disclosure;
 pub mod openai;
 pub mod prompt;
 pub mod stage;
@@ -36,6 +37,8 @@ pub mod fake;
 mod tests;
 #[cfg(test)]
 mod tests_4c;
+#[cfg(test)]
+mod tests_p5;
 #[cfg(test)]
 mod eval;
 

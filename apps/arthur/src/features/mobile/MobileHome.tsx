@@ -7,6 +7,8 @@ import { Margin } from "../../components/Margin";
 import { dayLabel, formatMoment, relativeAge } from "../../components/format";
 import { useVoiceAvailable } from "../setup/ai-config-context";
 import { AiOffNotice } from "../setup/AiOffNotice";
+import { ReviewNotice, heldMessage } from "../review/ReviewNotice";
+import { useReview } from "../review/review-context";
 import { useCaptures } from "../capture/captures-context";
 import type { VoiceFailure } from "../capture/use-captures";
 import { useRelationIndex } from "../graph/relation-index";
@@ -252,7 +254,7 @@ function GhostKid({ width }: { width: number }) {
   );
 }
 
-function Outcome({ capture, objects, job, ready, onRetry, organized, organizedElsewhere }: { capture: Capture; objects: KnowledgeObject[]; job: OrganizeJob | undefined; ready: boolean; onRetry: () => void; organized: boolean; organizedElsewhere: boolean }) {
+function Outcome({ capture, objects, job, ready, onRetry, organized, organizedElsewhere, held, onReview }: { capture: Capture; objects: KnowledgeObject[]; job: OrganizeJob | undefined; ready: boolean; onRetry: () => void; organized: boolean; organizedElsewhere: boolean; held: number; onReview: () => void }) {
   const short = capture.id.slice(0, 8);
   if (job?.status === "queued" || job?.status === "organizing") {
     return (
@@ -298,6 +300,17 @@ function Outcome({ capture, objects, job, ready, onRetry, organized, organizedEl
       </div>
     );
   }
+  if (held > 0 && objects.length === 0) {
+    // Automatic Thought Evolution kept the note for the person instead of making an idea: it is saved, and it is waiting.
+    return (
+      <p className="m-empty-kid" role="status">
+        {heldMessage(held)}{" "}
+        <button type="button" className="m-tlink" onClick={onReview}>
+          Review
+        </button>
+      </p>
+    );
+  }
   if (job?.status === "empty") return <p className="m-empty-kid">Nothing to organize in this one.</p>;
   // Organized, but every idea from it was moved to another project: that is not "not organized".
   if (objects.length === 0 && ready && organizedElsewhere) return <p className="m-empty-kid">Its ideas are in other projects.</p>;
@@ -332,7 +345,8 @@ function Stream() {
   const { active } = useProjects();
   const index = useRelationIndex();
   const { byObject } = useLineageSummaries();
-  const { openIdea } = useMobileNav();
+  const { openIdea, openReview } = useMobileNav();
+  const review = useReview();
 
   const shown = captures.slice(0, RECENT);
   const objectsOf = (captureId: string) => objects.filter((object) => object.provenance.captureId === captureId);
@@ -398,7 +412,7 @@ function Stream() {
                     ))}
                   </div>
                 )}
-                <Outcome capture={capture} objects={mine} job={job} ready={knowledgeStatus === "ready" && organizationLoaded} onRetry={() => void distill(capture.id)} organized={drawn} organizedElsewhere={organized.has(capture.id)} />
+                <Outcome capture={capture} objects={mine} job={job} ready={knowledgeStatus === "ready" && organizationLoaded} onRetry={() => void distill(capture.id)} organized={drawn} organizedElsewhere={organized.has(capture.id)} held={review.heldFor(capture.id)} onReview={openReview} />
               </article>
             );
           })}
@@ -423,7 +437,7 @@ function AllIdeas({ count }: { count: number }) {
 
 export function MobileHome() {
   const { voiceFailure, dismissVoiceFailure, startVoice, micPermission, retryVoice, discardVoice, openAppSettings } = useCaptures();
-  const { typing, setTyping, micHint, openSettings } = useMobileNav();
+  const { typing, setTyping, micHint, openSettings, openReview } = useMobileNav();
   const [hidRecovery, setHidRecovery] = useState(false);
   const voice = useVoiceAvailable();
   // Refused for good: the system will not ask again, so say so up front (not only after a failed attempt) and offer the way back.
@@ -447,6 +461,7 @@ export function MobileHome() {
       )}
       <SpeakPage />
       {!typing && <AiOffNotice variant="mobile" onOpenSettings={openSettings} />}
+      {!typing && <ReviewNotice variant="mobile" onOpen={openReview} />}
       {!typing && <AskEntry />}
       {micHint && !typing && voice && (
         <p className="m-hint" role="status">

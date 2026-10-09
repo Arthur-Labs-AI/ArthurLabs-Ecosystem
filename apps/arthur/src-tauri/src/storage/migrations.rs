@@ -635,14 +635,148 @@ BEGIN
 END;
 ";
 
+/// Schema v9 (M04.7B Phase 5): durable REVISION PROPOSALS, the one thing v8 could not keep. When a draft revision has been synthesized
+/// and checked but may not be applied without a person (every same-family review), v8 could only keep the claim as a pending claim and
+/// the draft was lost. A proposal is the draft itself plus how it was produced and checked, linked 1:1 to its pending claim.
+///
+/// Additive only: one table, its indexes and triggers; no existing table is rebuilt or altered, nothing is backfilled.
+///
+/// * A proposal is created `open`, only for an `open` pending claim, naming one of that claim's candidates and a base revision that is
+///   STILL that object's current revision at creation. Its content (draft text, evidence references, models, mode) is immutable.
+/// * `approved` is written only together with the committed automatic revision it produced (carrying the claim's span as evidence and
+///   having exactly the approved text). `final_body` is what the person approved; `user_edited` says it differs from the draft.
+/// * `rejected` dismisses the DRAFT only: the pending claim stays open, so the captured knowledge is never lost.
+/// * `superseded` is written by a trigger when the claim is resolved some other way. Terminal states are final; rows are never deleted.
+/// * Whether an open proposal is stale (its base revision is no longer current) is derived on read, never stored.
+pub const SCHEMA_V9: &str = "
+CREATE TABLE revision_proposals (
+    seq                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    id                   TEXT    NOT NULL UNIQUE CHECK (length(id) > 0),
+    pending_claim_id     TEXT    NOT NULL UNIQUE REFERENCES pending_claims(id),
+    object_id            TEXT    NOT NULL REFERENCES knowledge_objects(id),
+    base_revision_id     TEXT    NOT NULL REFERENCES thought_revisions(id),
+    change               TEXT    NOT NULL CHECK (change IN ('additive', 'correction', 'replacement')),
+    kind                 TEXT    NOT NULL CHECK (kind IN ('idea', 'task', 'decision', 'question', 'note')),
+    title                TEXT    NOT NULL CHECK (length(trim(title)) > 0 AND length(title) <= 200),
+    proposed_body        TEXT    NOT NULL CHECK (length(trim(proposed_body)) > 0 AND length(proposed_body) <= 2000),
+    retracts_revision_id TEXT,
+    retracts_ordinal     INTEGER,
+    evidence_json        TEXT    NOT NULL CHECK (json_valid(evidence_json) AND json_type(evidence_json) = 'array' AND json_array_length(evidence_json) BETWEEN 1 AND 13 AND length(evidence_json) <= 4096),
+    synthesis_model      TEXT    NOT NULL CHECK (length(synthesis_model) BETWEEN 1 AND 128),
+    verifier_model       TEXT    NOT NULL CHECK (length(verifier_model) BETWEEN 1 AND 128),
+    verification_mode    TEXT    NOT NULL CHECK (verification_mode IN ('independent', 'same_family_review')),
+    verification_status  TEXT    NOT NULL CHECK (verification_status IN ('passed')),
+    policy_version       TEXT    NOT NULL CHECK (length(policy_version) BETWEEN 1 AND 64),
+    state                TEXT    NOT NULL CHECK (state IN ('open', 'deferred', 'approved', 'rejected', 'separated', 'superseded')),
+    user_edited          INTEGER NOT NULL DEFAULT 0 CHECK (user_edited IN (0, 1)),
+    final_body           TEXT    CHECK (final_body IS NULL OR (length(trim(final_body)) > 0 AND length(final_body) <= 2000)),
+    result_revision_id   TEXT    REFERENCES thought_revisions(id),
+    created_at           TEXT    NOT NULL CHECK (length(created_at) > 0),
+    updated_at           TEXT    NOT NULL CHECK (length(updated_at) > 0),
+    reviewed_at          TEXT,
+    CHECK ((retracts_revision_id IS NULL) = (retracts_ordinal IS NULL)),
+    CHECK (
+        (state = 'approved' AND final_body IS NOT NULL AND result_revision_id IS NOT NULL AND reviewed_at IS NOT NULL)
+     OR (state <> 'approved' AND final_body IS NULL AND result_revision_id IS NULL AND user_edited = 0)
+    ),
+    CHECK (state IN ('open', 'deferred') OR reviewed_at IS NOT NULL)
+);
+
+CREATE INDEX revision_proposals_by_state ON revision_proposals(state, seq);
+CREATE INDEX revision_proposals_by_object ON revision_proposals(object_id);
+
+CREATE TRIGGER revision_proposals_are_never_deleted BEFORE DELETE ON revision_proposals
+BEGIN
+    SELECT RAISE(ABORT, 'a revision proposal is never deleted');
+END;
+
+CREATE TRIGGER revision_proposals_start_open BEFORE INSERT ON revision_proposals
+WHEN NEW.state <> 'open'
+BEGIN
+    SELECT RAISE(ABORT, 'a revision proposal starts open');
+END;
+
+-- A proposal belongs to an OPEN pending claim, targets one of that claim's candidates, and is based on that object's current revision.
+CREATE TRIGGER revision_proposals_need_an_open_claim_and_a_current_base BEFORE INSERT ON revision_proposals
+WHEN NOT EXISTS (
+    SELECT 1 FROM pending_claims p
+    JOIN knowledge_objects o ON o.id = NEW.object_id
+    WHERE p.id = NEW.pending_claim_id AND p.state = 'open'
+      AND EXISTS (SELECT 1 FROM json_each(p.candidate_ids_json) j WHERE j.value = NEW.object_id)
+      AND o.current_revision_id = NEW.base_revision_id
+      AND EXISTS (SELECT 1 FROM thought_revisions r WHERE r.id = NEW.base_revision_id AND r.object_id = NEW.object_id)
+)
+BEGIN
+    SELECT RAISE(ABORT, 'a proposal needs an open claim, one of its candidates and that object''s current revision');
+END;
+
+CREATE TRIGGER revision_proposals_content_is_immutable BEFORE UPDATE ON revision_proposals
+WHEN NEW.seq IS NOT OLD.seq OR NEW.id IS NOT OLD.id OR NEW.pending_claim_id IS NOT OLD.pending_claim_id OR NEW.object_id IS NOT OLD.object_id
+  OR NEW.base_revision_id IS NOT OLD.base_revision_id OR NEW.change IS NOT OLD.change OR NEW.kind IS NOT OLD.kind OR NEW.title IS NOT OLD.title
+  OR NEW.proposed_body IS NOT OLD.proposed_body OR NEW.retracts_revision_id IS NOT OLD.retracts_revision_id OR NEW.retracts_ordinal IS NOT OLD.retracts_ordinal
+  OR NEW.evidence_json IS NOT OLD.evidence_json OR NEW.synthesis_model IS NOT OLD.synthesis_model OR NEW.verifier_model IS NOT OLD.verifier_model
+  OR NEW.verification_mode IS NOT OLD.verification_mode OR NEW.verification_status IS NOT OLD.verification_status OR NEW.policy_version IS NOT OLD.policy_version
+  OR NEW.created_at IS NOT OLD.created_at
+BEGIN
+    SELECT RAISE(ABORT, 'a revision proposal''s content is immutable');
+END;
+
+CREATE TRIGGER revision_proposals_terminal_states_are_final BEFORE UPDATE ON revision_proposals
+WHEN OLD.state IN ('approved', 'rejected', 'separated', 'superseded')
+BEGIN
+    SELECT RAISE(ABORT, 'a reviewed revision proposal cannot change');
+END;
+
+CREATE TRIGGER revision_proposals_valid_transitions BEFORE UPDATE ON revision_proposals
+WHEN NEW.state <> OLD.state AND NOT (
+       (OLD.state = 'open'     AND NEW.state IN ('deferred', 'approved', 'rejected', 'separated', 'superseded'))
+    OR (OLD.state = 'deferred' AND NEW.state IN ('open', 'approved', 'rejected', 'separated', 'superseded'))
+)
+BEGIN
+    SELECT RAISE(ABORT, 'invalid revision proposal transition');
+END;
+
+-- No approved proposal without the committed automatic revision it produced: on the proposal's object, carrying THIS claim's span as
+-- evidence, and with exactly the text that was approved.
+CREATE TRIGGER revision_proposals_approved_needs_its_revision BEFORE UPDATE ON revision_proposals
+WHEN NEW.state = 'approved' AND NOT EXISTS (
+    SELECT 1 FROM thought_revisions r
+    JOIN revision_evidence e ON e.revision_id = r.id
+    JOIN pending_claims p ON p.id = NEW.pending_claim_id
+    WHERE r.id = NEW.result_revision_id AND r.object_id = NEW.object_id AND r.origin = 'system' AND r.body = NEW.final_body
+      AND e.capture_id = p.capture_id AND e.source_start = p.source_start AND e.source_end = p.source_end
+)
+BEGIN
+    SELECT RAISE(ABORT, 'an approved proposal needs the committed revision it produced');
+END;
+
+-- No separated proposal without the object created from its claim.
+CREATE TRIGGER revision_proposals_separated_needs_its_object BEFORE UPDATE ON revision_proposals
+WHEN NEW.state = 'separated' AND NOT EXISTS (
+    SELECT 1 FROM pending_claims p JOIN object_sources s ON s.capture_id = p.capture_id AND s.source_start = p.source_start AND s.source_end = p.source_end
+    WHERE p.id = NEW.pending_claim_id
+)
+BEGIN
+    SELECT RAISE(ABORT, 'a separated proposal needs the object created from its claim');
+END;
+
+-- A claim resolved by any other route closes its still-reviewable proposal, so a proposal can never outlive its claim as reviewable.
+CREATE TRIGGER pending_claims_resolution_supersedes_open_proposals AFTER UPDATE OF state ON pending_claims
+WHEN NEW.state IN ('accepted', 'separated') AND OLD.state IN ('open', 'deferred')
+BEGIN
+    UPDATE revision_proposals SET state = 'superseded', reviewed_at = NEW.updated_at, updated_at = NEW.updated_at
+    WHERE pending_claim_id = NEW.id AND state IN ('open', 'deferred');
+END;
+";
+
 pub type Step = (i64, &'static str);
 
 /// Ordered migration steps: `(version after the step, SQL)`.
-pub const STEPS: [Step; 8] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4), (5, SCHEMA_V5), (6, SCHEMA_V6), (7, SCHEMA_V7), (8, SCHEMA_V8)];
+pub const STEPS: [Step; 9] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4), (5, SCHEMA_V5), (6, SCHEMA_V6), (7, SCHEMA_V7), (8, SCHEMA_V8), (9, SCHEMA_V9)];
 
 /// The version `STEPS` ends at; asserted against `STEPS` by a test.
 #[cfg(test)]
-pub const SCHEMA_VERSION: i64 = 8;
+pub const SCHEMA_VERSION: i64 = 9;
 
 pub fn migrate(connection: &mut Connection) -> Result<(), StoreError> {
     migrate_with(connection, &STEPS)
@@ -1458,8 +1592,8 @@ mod tests {
         assert_eq!(v6_fingerprint(&Connection::open(&path).unwrap()), before);
     }
 
-    /// Removes everything v8 created (empty tables only), so a test can step a file back to v7.
-    pub(crate) const DROP_V8: &str = "DROP TABLE pending_claims; DROP TABLE revision_evidence; DROP TABLE identity_decisions;";
+    /// Removes everything v8 and v9 created (empty tables only), so a test can step a file back to v7.
+    pub(crate) const DROP_V8: &str = "DROP TABLE revision_proposals; DROP TABLE pending_claims; DROP TABLE revision_evidence; DROP TABLE identity_decisions;";
 
     #[test]
     fn the_v7_retrieval_tables_are_rebuildable_projections() {
@@ -1564,7 +1698,7 @@ mod tests {
     fn a_fresh_database_goes_straight_to_v8_with_every_v8_object_and_empty_v8_tables() {
         let store = CaptureStore::open_in_memory().unwrap();
         let connection = store.connection.lock().unwrap();
-        assert_eq!(user_version(&connection), 8);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION);
         for (kind, name) in V8_OBJECTS {
             assert!(has_object(&connection, kind, name), "{kind} {name}");
         }
@@ -1588,7 +1722,7 @@ mod tests {
 
         let store = CaptureStore::open(&path).unwrap();
         let connection = Connection::open(&path).unwrap();
-        assert_eq!(user_version(&connection), 8);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION);
         assert_eq!(v7_fingerprint(&connection), before, "captures, objects, revisions, parents, relations, projects, provenance, projections and the index are byte-identical");
         for (kind, name) in V8_OBJECTS {
             assert!(has_object(&connection, kind, name), "{kind} {name}");
@@ -1617,7 +1751,7 @@ mod tests {
         for _ in 0..3 {
             CaptureStore::open(&path).unwrap();
         }
-        assert_eq!(user_version(&Connection::open(&path).unwrap()), 8);
+        assert_eq!(user_version(&Connection::open(&path).unwrap()), SCHEMA_VERSION);
     }
 
     #[test]
@@ -1667,7 +1801,7 @@ mod tests {
         drop(connection);
         CaptureStore::open(&path).unwrap();
         let connection = Connection::open(&path).unwrap();
-        assert_eq!(user_version(&connection), 8);
+        assert_eq!(user_version(&connection), SCHEMA_VERSION);
         assert_eq!(v7_fingerprint(&connection), before);
         assert!(V8_OBJECTS.iter().all(|(kind, name)| has_object(&connection, kind, name)));
     }
@@ -1682,6 +1816,156 @@ mod tests {
         let bytes_before = std::fs::read(&path).unwrap();
         let mut connection = Connection::open(&path).unwrap();
         let outcome = migrate_with(&mut connection, &STEPS[..7]);
+        assert!(matches!(outcome, Err(StoreError::Corrupt(_))), "{outcome:?}");
+        drop(connection);
+        assert_eq!(std::fs::read(&path).unwrap(), bytes_before, "refused without a single byte changing");
+    }
+
+    // ---- v9: revision proposals -----------------------------------------------------------------------------------------------
+
+    /// A populated database exactly as Phase 4 left it: v8, with a real decision and an open pending claim in it.
+    fn v8_database(path: &std::path::Path) {
+        v7_database(path);
+        let mut connection = Connection::open(path).unwrap();
+        migrate_with(&mut connection, &STEPS[..8]).unwrap();
+        connection
+            .execute_batch(
+                "INSERT INTO identity_decisions (capture_id, ordinal, outcome, model_id, policy_version, decided_by, vetoes_json, audit_json, decided_at)
+                    SELECT capture_id, 99, 'uncertain', 'm-1', 'p-1', 'gate', '[]', '{}', '2026-10-05T00:00:00Z' FROM distillation_runs LIMIT 1;
+                 INSERT INTO pending_claims (id, capture_id, ordinal, kind, title, body, source_start, source_end, candidate_ids_json, reasons_json, reframing, state, created_at, updated_at)
+                    SELECT 'pc-1', r.capture_id, 99, 'idea', 'T', 'B', 0, 3,
+                           json_array((SELECT o.id FROM knowledge_objects o JOIN captures c ON c.id = r.capture_id WHERE o.project_id = c.project_id LIMIT 1)),
+                           '[]', 0, 'open', '2026-10-05T00:00:00Z', '2026-10-05T00:00:00Z' FROM distillation_runs r LIMIT 1;",
+            )
+            .unwrap();
+        assert_eq!(user_version(&connection), 8);
+        assert_eq!(count(&connection, "pending_claims"), 1);
+    }
+
+    fn v8_fingerprint(connection: &Connection) -> Vec<String> {
+        let mut rows = v7_fingerprint(connection);
+        for table in ["identity_decisions", "revision_evidence", "pending_claims"] {
+            rows.push(format!("{table}:{}", count(connection, table)));
+        }
+        rows.push(format!("pending:{}", connection.query_row("SELECT group_concat(id || '|' || state || '|' || candidate_ids_json) FROM pending_claims", [], |r| r.get::<_, String>(0)).unwrap()));
+        rows
+    }
+
+    const V9_OBJECTS: [(&str, &str); 14] = [
+        ("table", "revision_proposals"), ("index", "revision_proposals_by_state"), ("index", "revision_proposals_by_object"),
+        ("trigger", "revision_proposals_are_never_deleted"), ("trigger", "revision_proposals_start_open"), ("trigger", "revision_proposals_need_an_open_claim_and_a_current_base"),
+        ("trigger", "revision_proposals_content_is_immutable"), ("trigger", "revision_proposals_terminal_states_are_final"), ("trigger", "revision_proposals_valid_transitions"),
+        ("trigger", "revision_proposals_approved_needs_its_revision"), ("trigger", "revision_proposals_separated_needs_its_object"), ("trigger", "pending_claims_resolution_supersedes_open_proposals"),
+        ("trigger", "pending_claims_are_never_deleted"), ("trigger", "pending_claims_accepted_needs_its_revision"),
+    ];
+
+    #[test]
+    fn a_fresh_database_goes_straight_to_v9_with_every_v9_object_and_an_empty_proposals_table() {
+        let store = CaptureStore::open_in_memory().unwrap();
+        let connection = store.connection.lock().unwrap();
+        assert_eq!(user_version(&connection), 9);
+        for (kind, name) in V9_OBJECTS {
+            assert!(has_object(&connection, kind, name), "{kind} {name}");
+        }
+        assert_eq!(count(&connection, "revision_proposals"), 0);
+        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(violations, 0);
+    }
+
+    #[test]
+    fn a_populated_v8_database_upgrades_to_v9_with_every_existing_row_unchanged_and_no_proposal_invented() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v8_database(&path);
+        let before = v8_fingerprint(&Connection::open(&path).unwrap());
+        assert!(before.len() > 18, "the fixture is populated ({} rows)", before.len());
+
+        let store = CaptureStore::open(&path).unwrap();
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 9);
+        assert_eq!(v8_fingerprint(&connection), before, "captures, objects, revisions, relations, projects, identity decisions, pending claims and the search index are byte-identical");
+        for (kind, name) in V9_OBJECTS {
+            assert!(has_object(&connection, kind, name), "{kind} {name}");
+        }
+        assert_eq!(count(&connection, "revision_proposals"), 0, "nothing was backfilled: a v8 pending claim has no draft to recover");
+        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        assert_eq!((integrity.as_str(), violations), ("ok", 0));
+        // v8 behaviour is intact on the migrated file: the pending claim still resolves, history is still immutable
+        assert!(connection.execute("UPDATE thought_revisions SET title = 'x'", []).is_err());
+        assert!(connection.execute("DELETE FROM pending_claims", []).is_err());
+        let claim = store.get_pending_claim("pc-1").unwrap().unwrap();
+        assert_eq!(claim.state, "open");
+        store.defer_pending_claim("pc-1", None).unwrap();
+        store.reopen_pending_claim("pc-1").unwrap();
+        drop(store);
+        drop(connection);
+        for _ in 0..3 {
+            CaptureStore::open(&path).unwrap();
+        }
+        assert_eq!(user_version(&Connection::open(&path).unwrap()), 9);
+    }
+
+    #[test]
+    fn a_failing_v9_upgrade_rolls_back_completely_and_leaves_v8_usable() {
+        for blocker in [
+            "CREATE TABLE revision_proposals (precious TEXT); INSERT INTO revision_proposals VALUES ('keep me');",
+            // blocks only the LAST statement of the step: everything before it must roll back too
+            "CREATE TRIGGER pending_claims_resolution_supersedes_open_proposals BEFORE UPDATE ON captures BEGIN SELECT 1; END;",
+            "CREATE INDEX revision_proposals_by_object ON captures(id);",
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("arthur.db");
+            v8_database(&path);
+            Connection::open(&path).unwrap().execute_batch(blocker).unwrap();
+            let before = v8_fingerprint(&Connection::open(&path).unwrap());
+
+            assert!(CaptureStore::open(&path).is_err(), "{blocker}");
+            let connection = Connection::open(&path).unwrap();
+            assert_eq!(user_version(&connection), 8, "still v8: {blocker}");
+            assert_eq!(v8_fingerprint(&connection), before, "{blocker}");
+            let leftovers: Vec<&str> = V9_OBJECTS[..12].iter().filter(|(kind, name)| has_object(&connection, kind, name)).map(|(_, name)| *name).collect();
+            let expected: &[&str] = if blocker.contains("TABLE") { &["revision_proposals"] } else if blocker.contains("TRIGGER") { &["pending_claims_resolution_supersedes_open_proposals"] } else { &["revision_proposals_by_object"] };
+            assert_eq!(leftovers, expected, "nothing of the failed step survived except the blocker itself: {blocker}");
+            assert_eq!(connection.query_row("SELECT state FROM pending_claims WHERE id = 'pc-1'", [], |r| r.get::<_, String>(0)).unwrap(), "open", "v8 data is usable");
+            assert!(connection.execute("UPDATE thought_revisions SET title = 'x'", []).is_err(), "v8 triggers still guard the data");
+        }
+    }
+
+    #[test]
+    fn an_interrupted_v9_upgrade_leaves_v8_intact_and_the_next_open_completes_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v8_database(&path);
+        let before = v8_fingerprint(&Connection::open(&path).unwrap());
+        {
+            let connection = Connection::open(&path).unwrap();
+            let half = SCHEMA_V9.split("CREATE TRIGGER revision_proposals_content_is_immutable").next().unwrap();
+            connection.execute_batch(&format!("BEGIN IMMEDIATE; {half}")).unwrap();
+            assert!(has_object(&connection, "table", "revision_proposals"), "visible inside the open transaction");
+        }
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 8);
+        assert!(!has_object(&connection, "table", "revision_proposals"), "the half-built step vanished");
+        assert_eq!(v8_fingerprint(&connection), before);
+        drop(connection);
+        CaptureStore::open(&path).unwrap();
+        let connection = Connection::open(&path).unwrap();
+        assert_eq!(user_version(&connection), 9);
+        assert_eq!(v8_fingerprint(&connection), before);
+        assert!(V9_OBJECTS.iter().all(|(kind, name)| has_object(&connection, kind, name)));
+    }
+
+    #[test]
+    fn an_older_binary_refuses_a_v9_database_untouched() {
+        // "An older binary" is the migrator at its previous latest version (8): it must refuse version 9 and write nothing.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("arthur.db");
+        v8_database(&path);
+        CaptureStore::open(&path).unwrap();
+        let bytes_before = std::fs::read(&path).unwrap();
+        let mut connection = Connection::open(&path).unwrap();
+        let outcome = migrate_with(&mut connection, &STEPS[..8]);
         assert!(matches!(outcome, Err(StoreError::Corrupt(_))), "{outcome:?}");
         drop(connection);
         assert_eq!(std::fs::read(&path).unwrap(), bytes_before, "refused without a single byte changing");

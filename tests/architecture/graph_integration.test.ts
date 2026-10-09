@@ -74,10 +74,14 @@ test("the graph layer has no Tauri dependency; only commands/integration.rs spaw
 });
 
 test("Capture and Distillation know nothing about integration; the command notifies only AFTER the objects are committed", () => {
-  for (const file of rustFiles(path.join(src, "distillation"))) assert.doesNotMatch(readFileSync(file, "utf8"), /integration|IntegrationService/i, `${file} must not know about graph integration`);
+  // Distillation may NAME the event vocabulary (`ChangedKnowledge`, built only from a committed outcome) but never the service, its settings or its ledger.
+  for (const file of rustFiles(path.join(src, "distillation")).filter((candidate) => !candidate.endsWith("_tests.rs"))) {
+    const text = readFileSync(file, "utf8").split("\n").filter((line) => !line.trimStart().startsWith("//")).join("\n").replace(/crate::graph::integration::(ChangedKnowledge|ChangeReason)/g, "").replace(/graph::integration::(ChangedKnowledge|ChangeReason)/g, "");
+    assert.doesNotMatch(text, /IntegrationService|IntegrationSettings|Ledger|commands::integration|integration::notify/, `${file} must not know about graph integration`);
+  }
   const command = shipped("commands/distill.rs");
-  assert.ok(command.indexOf("distillation.distill(") < command.indexOf("integration::notify("), "notify comes after distill");
-  assert.match(command, /distillation\.distill\(&store, &capture_id\)\.await\?;/, "a distillation failure returns before any notification");
+  assert.ok(command.indexOf("distillation.distill_detailed(") < command.indexOf("integration::notify("), "notify comes after distill");
+  assert.match(command, /distillation\.distill_detailed\(&store, &capture_id\)\.await\?;/, "a distillation failure returns before any notification");
   assert.doesNotMatch(command, /integration[^;]*\.await/, "the command never awaits the integration");
 });
 
@@ -102,8 +106,8 @@ test("the provider budget: one focused proposal and two verification passes; onl
   assert.match(integrate, /Presentation::HigherIdFirst/);
 });
 
-test("integration stays on the existing relation semantics and schema v7, and is off by default", () => {
-  assert.match(read("storage/migrations.rs"), /pub const SCHEMA_VERSION: i64 = 7;/);
+test("integration stays on the existing relation semantics and schema, and is off by default", () => {
+  assert.match(read("storage/migrations.rs"), /pub const SCHEMA_VERSION: i64 = 9;/); // integration itself added none; v8 and v9 belong to Thought Evolution
   assert.match(read("graph/integration.rs"), /pub const DEFAULT_ENABLED: bool = false;/);
   const semantics = read("graph/semantics.rs");
   for (const kind of ["related_to", "extends", "depends_on", "contradicts", "derived_from", "duplicates", "supersedes"]) assert.match(semantics, new RegExp(`kind: "${kind}"`));

@@ -37,6 +37,17 @@ import type {
   RuntimeInfo,
   ThoughtRevision,
   VoiceCaptureErrorCode,
+  ApprovalInfo,
+  ClaimOutcome,
+  EvolutionConsentKind,
+  EvolutionErrorCode,
+  EvolutionStatus,
+  ProposalState,
+  ResolveClaimInput,
+  ReviewOutcome,
+  ReviewProposalInput,
+  RevisionProposal,
+  UnresolvedClaim,
 } from "@arthur/contracts";
 
 /**
@@ -95,6 +106,22 @@ export class LineageError extends Error {
     super(message);
     this.name = "LineageError";
     this.code = code;
+  }
+}
+
+/**
+ * An Automatic Thought Evolution operation failed (settings, consent, review, undo). `code` says why; `message` is safe to show.
+ * `stale` carries the revision that is current now, so the UI can show the newer text and ask the person to review it again.
+ */
+export class EvolutionError extends Error {
+  readonly code: EvolutionErrorCode;
+  readonly currentRevisionId: string | null;
+
+  constructor(code: EvolutionErrorCode, message: string, currentRevisionId: string | null = null) {
+    super(message);
+    this.name = "EvolutionError";
+    this.code = code;
+    this.currentRevisionId = currentRevisionId;
   }
 }
 
@@ -273,6 +300,45 @@ export interface ArthurClient {
   mergeRevisions(input: MergeRevisionsInput): Promise<ThoughtRevision>;
   /** A deterministic word-level diff between two revisions of the same object. */
   diffRevisions(oldRevisionId: string, newRevisionId: string): Promise<RevisionDiff>;
+
+  // --- Automatic Thought Evolution (review-first) -----------------------------------------------------------------------
+  // Arthur may SUGGEST a new version of an idea when a new capture adds to, corrects or replaces it. A suggestion is stored and
+  // changes nothing until the person approves it. Off by default. All rejections are `EvolutionError`s. No operation returns,
+  // accepts back or logs a credential, and nothing here lets the UI write a revision directly.
+
+  /** The saved setting, what is missing before it can run, and the exact explanations behind each permission. Never contains a key. */
+  getEvolutionStatus(): Promise<EvolutionStatus>;
+  /** ON needs every consent and credential (`not_ready` otherwise). OFF always works and stops new provider work at once. */
+  setEvolutionEnabled(enabled: boolean): Promise<EvolutionStatus>;
+  /**
+   * One explicit, revocable permission. Granting must name the `disclosureVersion` the person was shown (`disclosure_outdated`
+   * otherwise). Withdrawing stops future requests; it does not delete anything the provider may already hold.
+   */
+  setEvolutionConsent(kind: EvolutionConsentKind, granted: boolean, disclosureVersion?: string): Promise<EvolutionStatus>;
+  /** Write-only: the TypeSafe key goes into the device's secure storage and is never returned. */
+  setTypesafeCredential(secret: string): Promise<EvolutionStatus>;
+  deleteTypesafeCredential(): Promise<EvolutionStatus>;
+
+  /** Suggestions, oldest first. `states` omitted: every one, history included. Reading them is local and never needs the feature on. */
+  listRevisionProposals(options?: { projectId?: string; states?: ProposalState[] }): Promise<RevisionProposal[]>;
+  getRevisionProposal(proposalId: string): Promise<RevisionProposal>;
+  /**
+   * One decision on a suggestion, atomically: approve (as written), edit and approve (the person's own words), reject (dismisses the
+   * suggestion only; the captured note stays), keep as a separate idea, defer, or reopen. Approving applies only to the exact text
+   * the person read (`reviewedRevisionId`); if the idea changed since, it rejects with `stale` and nothing is written.
+   */
+  reviewRevisionProposal(input: ReviewProposalInput): Promise<ReviewOutcome>;
+  /** Notes that are waiting for a decision, with or without a suggested text. Nothing is hidden by age. */
+  listUnresolvedClaims(scope?: ProjectScope): Promise<UnresolvedClaim[]>;
+  /** Keeps a waiting note as its own idea, defers it, or reopens it. No text is invented. */
+  resolveUnresolvedClaim(input: ResolveClaimInput): Promise<ClaimOutcome>;
+  /** Which revisions of an idea a person approved from a suggestion, and whether they changed the words. */
+  listObjectApprovals(objectId: string): Promise<ApprovalInfo[]>;
+  /**
+   * Undo: adds a NEW revision that brings back an earlier text, pointing at both it and the text it replaces. History is never
+   * rewritten. Rejects with `stale` if the idea changed since `expectedCurrentRevisionId`.
+   */
+  restoreRevision(objectId: string, targetRevisionId: string, expectedCurrentRevisionId: string): Promise<ThoughtRevision>;
 
   // --- Projects (Knowledge Spaces) --------------------------------------------------------------------------
   // A project is a domain boundary that owns Captures and KnowledgeObjects. There is always exactly one Inbox, which

@@ -14,11 +14,12 @@
 //! Nothing is committed in pieces: a failure that is not an expected conflict rolls the WHOLE capture back, and the capture itself is
 //! never touched (it was durable before distillation began), so the existing retry and failure bookkeeping apply unchanged.
 //!
-//! # Activation
+//! # Activation and review-first
 //! The pipeline exists only if a classifier AND a revision drafter were injected, and only runs while its own persisted setting
-//! (`EvolutionSettings`, default OFF, independent of Automatic Connections) is ON. `DistillationService::with_evolution` is compiled
-//! for tests only, and no command exposes the setting, so production keeps the existing path. Phase 4/5 turn it on only when a real
-//! classifier, real revision synthesis, consent and the review UI all exist.
+//! (`EvolutionSettings`, default OFF, independent of Automatic Connections) is ON. Production builds it REVIEW-FIRST
+//! (`EvolutionPipeline::review_first`): a draft that passes synthesis, validation and the same-family check is stored as a durable
+//! PROPOSAL next to its pending claim and is never applied here; the only way it becomes a revision is a person's approval
+//! (`storage::proposal_store`). `apply` refuses a `Plan::Revise` in review-first mode as a second, independent guard.
 //!
 //! # Conflicts at commit
 //! A REVISE is applied with `revise_if_current_in` against the exact revision it was decided on, inside a SAVEPOINT. If the target
@@ -26,7 +27,8 @@
 //! UNCERTAIN pending claim (`stale_target` / `invalid_draft`); the other claims still commit. The stale decision is never re-used and
 //! never converted to a revision.
 
-#![allow(dead_code)] // Phase 3: only tests construct the pipeline; Phase 4/5 activate it (see the module docs)
+
+#![allow(dead_code)] // the hand-written drafter and the in-process classifier backend exist for tests; production uses synthesis and the network classifier
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -47,12 +49,14 @@ use crate::recall::query::{interpret, MAX_QUERY_CHARS};
 use crate::storage::capture_store::{CaptureStore, StoreError};
 use crate::storage::evidence_store::{attach_revision_evidence_in, EvidenceRole, EvidenceSupport, NewEvidence};
 use crate::storage::identity_store::{
-    record_identity_decision_in, stage_uncertain_claim_in, unresolved_pending_count_in, DecisionAudit, DecisionOutcome, IdentityDecisionInput, IdentityStoreError, PendingClaim, PendingClaimInput, PoolObject,
+    current_revision_in_project_in, record_identity_decision_in, stage_uncertain_claim_in, unresolved_pending_count_in, DecisionAudit, DecisionOutcome, IdentityDecisionInput, IdentityStoreError, PendingClaim, PendingClaimInput, PoolObject,
 };
+use crate::storage::proposal_store::{insert_proposal_in, EvidenceRef, NewProposal};
 use crate::storage::knowledge_store::{begin_distillation_in, insert_object_in, validate_claim, Begin, KnowledgeObject, NewKnowledgeObject, MAX_BODY_CHARS, MAX_TITLE_CHARS};
 use crate::storage::lineage_store::{revise_if_current_in, CasOrigin, ExpectedRevision, ReviseConflict, RevisionContent};
 use crate::storage::migrations::INBOX_PROJECT_ID;
 use crate::synthesis::stage::{StageBudget, SynthesisStage};
+use crate::synthesis::VerificationMode;
 use crate::synthesis::{ChangeClass, SourceRef, SynthesisRequest};
 
 use super::{DistillError, DistillationOutcome, RevisedObject};
@@ -225,6 +229,11 @@ impl EvolutionPipeline {
         self.enabled() && self.still_allowed.as_ref().is_none_or(|check| check())
     }
 
+    /// Review-first: revision text comes from a same-family review stage, so NOTHING is ever applied by the pipeline itself.
+    pub fn review_first(&self) -> bool {
+        self.synthesis.as_ref().is_some_and(|stage| stage.mode() == VerificationMode::SameFamilyReview)
+    }
+
     /// `base_allowed` AND, when revision synthesis is configured, both of its provider authorizations. This is what is read inside the
     /// commit transaction before any revision is written, so a permission withdrawn at ANY point before the write blocks it.
     pub fn allowed(&self) -> bool {
@@ -345,6 +354,21 @@ enum Plan {
     /// Authorized to revise, text still to be synthesized and verified (only when a `SynthesisStage` is configured).
     Pending { target: TargetSnapshot, relation: Relation, claim: Claim, candidate: Candidate },
     Uncertain(Vec<String>),
+    /// A checked draft that a person must approve: stored as a proposal beside the pending claim, never applied.
+    Propose { target: TargetSnapshot, draft: ProposalDraft },
+}
+
+/// Everything a proposal stores, decided before the transaction (the claim's id is only known inside it).
+struct ProposalDraft {
+    change: &'static str,
+    kind: String,
+    title: String,
+    body: String,
+    retracts: Option<(String, i64)>,
+    evidence: Vec<EvidenceRef>,
+    synthesis_model: String,
+    verifier_model: String,
+    mode: &'static str,
 }
 
 struct Planned {
@@ -481,7 +505,7 @@ type R<T> = Result<T, IdentityStoreError>;
 enum Committed {
     /// Another attempt finished this capture first; nothing was written.
     Existing(Vec<KnowledgeObject>),
-    Fresh { objects: Vec<KnowledgeObject>, revised: Vec<RevisedObject>, pending: Vec<PendingClaim> },
+    Fresh { objects: Vec<KnowledgeObject>, revised: Vec<RevisedObject>, pending: Vec<PendingClaim>, proposals: Vec<String> },
 }
 
 fn to_distill(error: IdentityStoreError) -> DistillError {
@@ -598,7 +622,7 @@ fn try_revise(tx: &Connection, ctx: &Ctx<'_>, ordinal: i64, claim: &NewKnowledge
     }
 }
 
-fn apply(tx: &Connection, capture_id: &str, claims: &[NewKnowledgeObject], planned: Vec<Planned>, limits: &EvolutionLimits, allowed: &dyn Fn() -> bool) -> R<Committed> {
+fn apply(tx: &Connection, capture_id: &str, claims: &[NewKnowledgeObject], planned: Vec<Planned>, limits: &EvolutionLimits, allowed: &dyn Fn() -> bool, review_first: bool) -> R<Committed> {
     let start = match begin_distillation_in(tx, capture_id)? {
         Begin::Existing(existing) => return Ok(Committed::Existing(existing)),
         Begin::Fresh(start) => start,
@@ -610,7 +634,7 @@ fn apply(tx: &Connection, capture_id: &str, claims: &[NewKnowledgeObject], plann
     let due_at = due.format(&Rfc3339).map_err(|e| IdentityStoreError::Store(StoreError::Corrupt(format!("cannot format a time: {e}"))))?;
     let ctx = Ctx { capture_id, project_id: &start.project_id, limits, due_at };
 
-    let (mut objects, mut revised, mut pending) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut objects, mut revised, mut pending, mut proposals) = (Vec::new(), Vec::new(), Vec::new(), Vec::<String>::new());
     for (index, (claim, planned)) in claims.iter().zip(planned).enumerate() {
         let ordinal = index as i64;
         let Planned { plan, parts } = planned;
@@ -619,6 +643,44 @@ fn apply(tx: &Connection, capture_id: &str, claims: &[NewKnowledgeObject], plann
             Plan::Uncertain(candidates) => stage_or_fall_back(tx, &ctx, ordinal, claim, &parts, &candidates, false)?.into(),
             // `finalize_pending` resolves every Pending before the commit; reaching one here would mean a revision with no text
             Plan::Pending { .. } => return Err(IdentityStoreError::Invalid("a revision was never given its text".into())),
+            // Review-first: whatever produced a revision, this pipeline never writes one. The claim waits for a person.
+            Plan::Revise { target, .. } if review_first => stage_or_fall_back(tx, &ctx, ordinal, claim, &parts.clone().with_veto("review_required"), &[target.object_id.clone()], false)?.into(),
+            // a withdrawn permission, read again under the commit, means no proposal is stored either
+            Plan::Propose { target, .. } if !allowed() => stage_or_fall_back(tx, &ctx, ordinal, claim, &parts.clone().with_veto("evolution_withdrawn"), &[target.object_id.clone()], false)?.into(),
+            Plan::Propose { target, draft } => {
+                // the draft is only worth keeping for the exact revision it was written for
+                let current = current_revision_in_project_in(tx, &target.object_id, ctx.project_id)?;
+                if current.as_deref() != Some(target.base_revision_id.as_str()) {
+                    stage_or_fall_back(tx, &ctx, ordinal, claim, &parts.clone().with_veto("stale_target"), &[target.object_id.clone()], true)?.into()
+                } else {
+                    match stage_or_fall_back(tx, &ctx, ordinal, claim, &parts.clone().with_veto("review_required"), &[target.object_id.clone()], false)? {
+                        Staged::Pending(claim_row) => {
+                            let (proposal, _) = insert_proposal_in(
+                                tx,
+                                &NewProposal {
+                                    pending_claim_id: claim_row.id.clone(),
+                                    object_id: target.object_id.clone(),
+                                    base_revision_id: target.base_revision_id.clone(),
+                                    change: draft.change.to_string(),
+                                    kind: draft.kind,
+                                    title: draft.title,
+                                    proposed_body: draft.body,
+                                    retracts: draft.retracts,
+                                    evidence: draft.evidence,
+                                    synthesis_model: draft.synthesis_model,
+                                    verifier_model: draft.verifier_model,
+                                    verification_mode: draft.mode.to_string(),
+                                    policy_version: parts.policy_version.clone(),
+                                },
+                            )?;
+                            proposals.push(proposal.id);
+                            Disposed::Pending(claim_row)
+                        }
+                        // the review queue is full: the claim is kept as its own idea, never dropped, and there is no proposal
+                        Staged::Object(object) => Disposed::Object(object),
+                    }
+                }
+            }
             // the latest enabled/consent state is read again here, under the commit: a withdrawn permission means no revision is written
             Plan::Revise { target, .. } if !allowed() => stage_or_fall_back(tx, &ctx, ordinal, claim, &parts.clone().with_veto("evolution_withdrawn"), &[target.object_id.clone()], false)?.into(),
             Plan::Revise { target, draft } => match try_revise(tx, &ctx, ordinal, claim, &target, &draft, &parts)? {
@@ -632,7 +694,7 @@ fn apply(tx: &Connection, capture_id: &str, claims: &[NewKnowledgeObject], plann
             Disposed::Pending(claim) => pending.push(claim),
         }
     }
-    Ok(Committed::Fresh { objects, revised, pending })
+    Ok(Committed::Fresh { objects, revised, pending, proposals })
 }
 
 enum Disposed {
@@ -650,7 +712,8 @@ impl From<Staged> for Disposed {
     }
 }
 
-/// Turns every `Plan::Pending` into `Plan::Revise` (text synthesized, validated and independently verified) or `Plan::Uncertain`.
+/// Turns every `Plan::Pending` into `Plan::Propose` (text synthesized, validated and checked by a same-family review: a person must
+/// approve it), `Plan::Revise` (an independent verifier passed it; tests only) or `Plan::Uncertain`.
 async fn finalize_pending(store: &CaptureStore, pipeline: &EvolutionPipeline, stage: &SynthesisStage, planned: Vec<Planned>) -> Vec<Planned> {
     let mut budget = StageBudget::default();
     let mut out = Vec::with_capacity(planned.len());
@@ -666,15 +729,16 @@ async fn finalize_pending(store: &CaptureStore, pipeline: &EvolutionPipeline, st
         };
         // the stage checks its own authorizations in the order that names the right veto, so it gets the base check
         let allowed = || pipeline.base_allowed();
-        match stage.run(&request, &allowed, &mut budget).await {
+        match stage.run_outcome(&request, &allowed, &mut budget).await {
             Err(name) => out.push(withhold(name, parts)),
-            Ok(validated) => {
+            Ok(outcome) => {
+                let validated = &outcome.draft;
                 let role = match validated.change {
                     ChangeClass::Additive => EvidenceRole::Asserts,
                     ChangeClass::Correction => EvidenceRole::Corrects,
                     ChangeClass::Replacement => EvidenceRole::Replaces,
                 };
-                let draft = RevisionDraft { content: RevisionContent { kind: candidate.revision.kind.clone(), title: candidate.revision.title.clone(), body: validated.body }, role, retracts: validated.retracts, interpretation_label: None };
+                let draft = RevisionDraft { content: RevisionContent { kind: candidate.revision.kind.clone(), title: candidate.revision.title.clone(), body: validated.body.clone() }, role, retracts: validated.retracts.clone(), interpretation_label: None };
                 // the same storage-facing check the hand-written drafts get: it changes something, and any withdrawn evidence is ACTIVE
                 let base = PoolObject {
                     object_id: candidate.object_id.clone(),
@@ -685,10 +749,29 @@ async fn finalize_pending(store: &CaptureStore, pipeline: &EvolutionPipeline, st
                     revision_origin: candidate.revision.origin.clone(),
                 };
                 let sound = store.evidence_support(&candidate.revision.id).is_ok_and(|support| draft_problem(&base, &draft, &support).is_none());
-                if sound {
-                    out.push(Planned { plan: Plan::Revise { target, draft }, parts });
-                } else {
+                if !sound {
                     out.push(withhold("invalid_draft", parts));
+                } else if outcome.review_only() {
+                    // validated evidence references, as the SERVER resolved them: the target's stored support and the claim's exact words
+                    let mut evidence: Vec<EvidenceRef> = request.sources.iter().map(|s| EvidenceRef { role: "existing".into(), capture_id: s.capture_id.clone(), start: s.start, end: s.end }).collect();
+                    evidence.push(EvidenceRef { role: "claim".into(), capture_id: claim.evidence.capture_id.clone(), start: claim.evidence.start, end: claim.evidence.end });
+                    let proposal = ProposalDraft {
+                        change: validated.change.as_str(),
+                        kind: draft.content.kind.clone(),
+                        title: draft.content.title.clone(),
+                        body: draft.content.body.clone(),
+                        retracts: draft.retracts.clone(),
+                        evidence,
+                        synthesis_model: outcome.synthesis_model.clone(),
+                        verifier_model: outcome.verifier_model.clone(),
+                        mode: match outcome.mode {
+                            VerificationMode::Independent => "independent",
+                            VerificationMode::SameFamilyReview => "same_family_review",
+                        },
+                    };
+                    out.push(Planned { plan: Plan::Propose { target, draft: proposal }, parts });
+                } else {
+                    out.push(Planned { plan: Plan::Revise { target, draft }, parts });
                 }
             }
         }
@@ -765,9 +848,10 @@ pub async fn commit_with_identity(store: &CaptureStore, pipeline: &EvolutionPipe
         None => planned,
     };
     let allowed = || pipeline.allowed();
-    let committed = store.in_identity_transaction(|tx| apply(tx, capture_id, &claims, planned, &pipeline.limits, &allowed)).map_err(to_distill)?;
+    let review_first = pipeline.review_first();
+    let committed = store.in_identity_transaction(|tx| apply(tx, capture_id, &claims, planned, &pipeline.limits, &allowed, review_first)).map_err(to_distill)?;
     Ok(match committed {
-        Committed::Existing(objects) => DistillationOutcome { objects, revised: Vec::new(), pending: Vec::new(), fresh: false },
-        Committed::Fresh { objects, revised, pending } => DistillationOutcome { objects, revised, pending, fresh: true },
+        Committed::Existing(objects) => DistillationOutcome { objects, revised: Vec::new(), pending: Vec::new(), proposals: Vec::new(), fresh: false },
+        Committed::Fresh { objects, revised, pending, proposals } => DistillationOutcome { objects, revised, pending, proposals, fresh: true },
     })
 }

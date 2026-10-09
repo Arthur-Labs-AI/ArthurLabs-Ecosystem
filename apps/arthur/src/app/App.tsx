@@ -5,6 +5,7 @@ import { IdeasScreen } from "../features/ideas/IdeasScreen";
 import { EvolutionScreen } from "../features/lineage/EvolutionScreen";
 import { MobileApp } from "../features/mobile/MobileApp";
 import { AskScreen } from "../features/recall/AskScreen";
+import { ReviewScreen } from "../features/review/ReviewScreen";
 import { SetupFlow } from "../features/setup/SetupFlow";
 import { useAiConfig } from "../features/setup/ai-config-context";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
@@ -22,6 +23,7 @@ function DesktopApp() {
       {screen === "ideas" && <IdeasScreen />}
       {screen === "connections" && <ConnectionsScreen />}
       {screen === "evolution" && <EvolutionScreen />}
+      {screen === "review" && <ReviewScreen />}
       {screen === "ask" && <AskScreen />}
       {screen === "settings" && <SettingsScreen />}
       <CaptureDialog />

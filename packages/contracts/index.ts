@@ -6,3 +6,4 @@ export * from "./lineage";
 export * from "./projects";
 export * from "./recall";
 export * from "./speech";
+export * from "./evolution";

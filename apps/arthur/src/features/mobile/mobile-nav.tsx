@@ -4,7 +4,7 @@ import { useCaptures } from "../capture/captures-context";
 import { useVoiceAvailable } from "../setup/ai-config-context";
 import { useBackLayer } from "./back-stack";
 
-export type Page = { kind: "idea"; id: string } | { kind: "settings" } | { kind: "ask" };
+export type Page = { kind: "idea"; id: string } | { kind: "settings" } | { kind: "ask" } | { kind: "review" } | { kind: "review-item"; id: string };
 export type ConnectionsView = "list" | "map";
 
 export interface MobileNav {
@@ -14,6 +14,9 @@ export interface MobileNav {
   openSettings: () => void;
   /** Ask Arthur is a pushed page, not a tab: the five tabs stay as they are. */
   openAsk: () => void;
+  /** The review list (suggestions and waiting notes) and one item of it, as pushed pages. */
+  openReview: () => void;
+  openReviewItem: (id: string) => void;
   /** Closes the top page. */
   closePage: () => void;
   /** Leaves every pushed page (used by tab switches). */
@@ -50,6 +53,8 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
   const openIdea = useCallback((id: string) => setPages((current) => [...current, { kind: "idea", id }]), []);
   const openSettings = useCallback(() => setPages((current) => (current.at(-1)?.kind === "settings" ? current : [...current, { kind: "settings" }])), []);
   const openAsk = useCallback(() => setPages((current) => (current.at(-1)?.kind === "ask" ? current : [...current, { kind: "ask" }])), []);
+  const openReview = useCallback(() => setPages((current) => (current.at(-1)?.kind === "review" ? current : [...current, { kind: "review" }])), []);
+  const openReviewItem = useCallback((id: string) => setPages((current) => [...current, { kind: "review-item", id }]), []);
   const closePage = useCallback(() => setPages((current) => current.slice(0, -1)), []);
   const closeAllPages = useCallback(() => setPages([]), []);
   const setTyping = useCallback((open: boolean) => {
@@ -78,8 +83,8 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
   }, [go, voiceAvailable, micKnownGranted, voiceState, startVoice, setTyping]);
 
   const value = useMemo<MobileNav>(
-    () => ({ pages, openIdea, openSettings, openAsk, closePage, closeAllPages, connectionsView, setConnectionsView, typing, setTyping, micHint, projectSheet, openProjectSheet, closeProjectSheet, capture }),
-    [pages, openIdea, openSettings, openAsk, closePage, closeAllPages, connectionsView, typing, setTyping, micHint, projectSheet, openProjectSheet, closeProjectSheet, capture],
+    () => ({ pages, openIdea, openSettings, openAsk, openReview, openReviewItem, closePage, closeAllPages, connectionsView, setConnectionsView, typing, setTyping, micHint, projectSheet, openProjectSheet, closeProjectSheet, capture }),
+    [pages, openIdea, openSettings, openAsk, openReview, openReviewItem, closePage, closeAllPages, connectionsView, typing, setTyping, micHint, projectSheet, openProjectSheet, closeProjectSheet, capture],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

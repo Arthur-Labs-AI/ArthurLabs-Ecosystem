@@ -4,8 +4,9 @@ import { createMobileClient } from "./mobile-client";
 import { createPreviewClient } from "./preview-client";
 import { isTauriRuntime, type Invoke } from "./tauri-ipc";
 import { demoAnswer } from "../test/recall-fixtures";
+import { reviewDemoClient } from "../test/review-fixtures";
 
-export { AiSetupError, SpeechError, DistillationError, LineageError, ProjectError, RelationError, VoiceCaptureError } from "./arthur-client";
+export { AiSetupError, SpeechError, DistillationError, EvolutionError, LineageError, ProjectError, RelationError, VoiceCaptureError } from "./arthur-client";
 export type { ArthurClient, ArthurClientCapabilities, ArthurClientKind } from "./arthur-client";
 
 export interface ClientEnvironment {
@@ -35,6 +36,8 @@ export function createArthurClient(env: ClientEnvironment = readClientEnvironmen
       return createMobileClient(call);
     case "preview":
       // Development only: `?recallDemo` scripts Ask Arthur so its states can be looked at. Dead code in a production bundle.
+      // Development only: `?reviewDemo` holds one suggestion for review so the Review screen can be looked at in a plain browser.
+      if (import.meta.env.DEV && typeof location !== "undefined" && location.search.includes("reviewDemo")) return reviewDemoClient();
       return createPreviewClient({
         ...(import.meta.env.DEV && typeof location !== "undefined" && location.search.includes("recallDemo") ? { recall: { answer: demoAnswer } } : {}),
         // Development only: `?setup` shows first-run Setup in a plain browser.

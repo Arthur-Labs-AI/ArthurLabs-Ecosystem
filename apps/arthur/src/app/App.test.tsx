@@ -14,7 +14,7 @@ describe("App shell", () => {
   it("shows Arthur, the primary screens (Ask Arthur last) and Settings, and starts on Home", async () => {
     renderApp(createPreviewClient({ distillation: NOTHING }));
 
-    expect(within(nav()).getAllByRole("button").map((b) => b.textContent?.replace(/\d+$/, ""))).toEqual(["Home", "Ideas", "Connections", "Evolution", "Ask ArthurCtrl K"]);
+    expect(within(nav()).getAllByRole("button").map((b) => b.textContent?.replace(/\d+$/, ""))).toEqual(["Home", "Ideas", "Connections", "Evolution", "Review", "Ask ArthurCtrl K"]);
     expect(within(screen.getByRole("navigation", { name: "Secondary" })).getByRole("button", { name: "Settings" })).toBeTruthy();
     expect(within(nav()).getByRole("button", { name: "Home" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByText("Arthur", { selector: "b" })).toBeTruthy();

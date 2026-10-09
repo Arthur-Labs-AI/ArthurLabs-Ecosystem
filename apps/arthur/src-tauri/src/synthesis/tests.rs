@@ -255,7 +255,7 @@ impl Judge {
     }
 }
 
-fn sig(id: &str, same: f64, relation: Relation) -> CandidateSignal {
+pub(super) fn sig(id: &str, same: f64, relation: Relation) -> CandidateSignal {
     CandidateSignal { candidate_id: id.into(), same_proposition: same, reframing: 0.0, relation: Some(relation), referent_resolved: Some(true), explicit_supersession: Some(false) }
 }
 
@@ -283,7 +283,7 @@ pub(super) struct World {
     pub(super) object: KnowledgeObject,
 }
 
-fn seed(store: &CaptureStore, project: &str, text: &str, title: &str, kind: &str) -> KnowledgeObject {
+pub(super) fn seed(store: &CaptureStore, project: &str, text: &str, title: &str, kind: &str) -> KnowledgeObject {
     let c = store.create(CreateCaptureInput { source: "text".into(), content: text.into(), project_id: Some(project.into()) }).unwrap();
     store.record_distillation(&c.id, vec![NewKnowledgeObject { kind: kind.into(), title: title.into(), body: text.into(), source_start: 0, source_end: text.chars().count() as i64 }]).unwrap().remove(0)
 }
@@ -749,7 +749,7 @@ fn the_commit_time_permission_check_includes_the_synthesis_authorizations() {
     // and the pipeline's own check (the one read inside the commit transaction) is the conjunction
     let source = include_str!("../distillation/evolution.rs");
     assert!(source.contains("self.base_allowed() && self.synthesis.as_ref().is_none_or(SynthesisStage::authorized)"));
-    assert!(source.contains("let allowed = || pipeline.allowed();\n    let committed"), "the commit reads the full check");
+    assert!(source.contains("let allowed = || pipeline.allowed();\n    let review_first = pipeline.review_first();\n    let committed"), "the commit reads the full check");
 }
 
 #[test]

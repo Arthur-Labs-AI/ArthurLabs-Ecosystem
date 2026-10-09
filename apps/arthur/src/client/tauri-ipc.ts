@@ -32,6 +32,24 @@ import {
   isRelationErrorPayload,
   isRuntimeInfo,
   isVoiceCaptureErrorPayload,
+  describeReviewInputProblem,
+  isApprovalInfo,
+  isClaimOutcome,
+  isEvolutionErrorPayload,
+  isEvolutionStatus,
+  isReviewOutcome,
+  isRevisionProposal,
+  isUnresolvedClaim,
+  type ApprovalInfo,
+  type ClaimOutcome,
+  type EvolutionConsentKind,
+  type EvolutionStatus,
+  type ProposalState,
+  type ResolveClaimInput,
+  type ReviewOutcome,
+  type ReviewProposalInput,
+  type RevisionProposal,
+  type UnresolvedClaim,
   type Capture,
   type CognitiveAnswer,
   type GraphIntegrationStatus,
@@ -63,7 +81,7 @@ import {
   type RelationFilter,
   type RuntimeInfo,
 } from "@arthur/contracts";
-import { AiSetupError, SpeechError, DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError } from "./arthur-client";
+import { AiSetupError, SpeechError, DistillationError, EvolutionError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError } from "./arthur-client";
 
 /**
  * The single module allowed to import `@tauri-apps/*`.
@@ -647,4 +665,103 @@ export function onGraphIntegratedOverIpc(listener: () => void, subscribe: Subscr
     stopped = true;
     unlisten?.();
   };
+}
+
+// --- Automatic Thought Evolution (review-first) --------------------------------------------------------------------
+
+/** The native layer rejects with `{ code, message, currentRevisionId? }`; anything else is passed through. */
+async function evolutionCall(command: string, args: Record<string, unknown> | undefined, call: Invoke): Promise<unknown> {
+  try {
+    return await call(command, args);
+  } catch (failure) {
+    if (isEvolutionErrorPayload(failure)) throw new EvolutionError(failure.code, failure.message, failure.currentRevisionId ?? null);
+    throw failure;
+  }
+}
+
+async function evolutionStatusCall(command: string, args: Record<string, unknown> | undefined, call: Invoke): Promise<EvolutionStatus> {
+  const payload = await evolutionCall(command, args, call);
+  if (!isEvolutionStatus(payload)) throw new Error("Native layer returned an invalid Automatic Thought Evolution status");
+  return payload;
+}
+
+export const getEvolutionStatusOverIpc = (call: Invoke = invoke) => evolutionStatusCall("get_evolution_status", undefined, call);
+export const setEvolutionEnabledOverIpc = (enabled: boolean, call: Invoke = invoke) => evolutionStatusCall("set_evolution_enabled", { enabled: enabled === true }, call);
+
+export function setEvolutionConsentOverIpc(kind: EvolutionConsentKind, granted: boolean, disclosureVersion: string | undefined, call: Invoke = invoke): Promise<EvolutionStatus> {
+  if (!["typesafe", "synthesis", "verification"].includes(kind)) return Promise.reject(new Error("Invalid consent kind"));
+  return evolutionStatusCall("set_evolution_consent", { kind, granted: granted === true, ...(disclosureVersion === undefined ? {} : { disclosureVersion }) }, call);
+}
+
+export function setTypesafeCredentialOverIpc(secret: string, call: Invoke = invoke): Promise<EvolutionStatus> {
+  if (typeof secret !== "string" || secret.trim().length === 0) return Promise.reject(new EvolutionError("invalid_credential", "That does not look like an API key."));
+  // Write-only: the secret goes to the native layer and the answer is a status that contains no key.
+  return evolutionStatusCall("set_typesafe_credential", { secret }, call);
+}
+
+export const deleteTypesafeCredentialOverIpc = (call: Invoke = invoke) => evolutionStatusCall("delete_typesafe_credential", undefined, call);
+
+function readProposal(payload: unknown): RevisionProposal {
+  if (!isRevisionProposal(payload)) throw new Error("Native layer returned an invalid suggestion");
+  return payload;
+}
+
+export async function listRevisionProposalsOverIpc(options: { projectId?: string; states?: ProposalState[] } | undefined, call: Invoke = invoke): Promise<RevisionProposal[]> {
+  const args = { ...(options?.projectId === undefined ? {} : { projectId: options.projectId }), ...(options?.states === undefined ? {} : { states: options.states }) };
+  const payload = await evolutionCall("list_revision_proposals", Object.keys(args).length === 0 ? undefined : args, call);
+  if (!Array.isArray(payload) || !payload.every(isRevisionProposal)) throw new Error("Native layer returned invalid suggestions");
+  return payload;
+}
+
+export async function getRevisionProposalOverIpc(proposalId: string, call: Invoke = invoke): Promise<RevisionProposal> {
+  return readProposal(await evolutionCall("get_revision_proposal", { proposalId: requireId(proposalId, "suggestion id") }, call));
+}
+
+export async function reviewRevisionProposalOverIpc(input: ReviewProposalInput, call: Invoke = invoke): Promise<ReviewOutcome> {
+  const problem = describeReviewInputProblem(input);
+  if (problem) throw new EvolutionError("invalid", problem);
+  // Only the contract fields are sent: no revision id to write, no project, no model text.
+  const payload = await evolutionCall(
+    "review_revision_proposal",
+    {
+      input: {
+        proposalId: input.proposalId,
+        action: input.action,
+        ...(input.editedBody === undefined ? {} : { editedBody: input.editedBody }),
+        ...(input.reviewedRevisionId === undefined ? {} : { reviewedRevisionId: input.reviewedRevisionId }),
+        ...(input.dueAt === undefined ? {} : { dueAt: input.dueAt }),
+      },
+    },
+    call,
+  );
+  if (!isReviewOutcome(payload)) throw new Error("Native layer returned an invalid review result");
+  return payload;
+}
+
+export async function listUnresolvedClaimsOverIpc(scope: ProjectScope | undefined, call: Invoke = invoke): Promise<UnresolvedClaim[]> {
+  const payload = await evolutionCall("list_unresolved_claims", scope?.projectId === undefined ? undefined : { projectId: scope.projectId }, call);
+  if (!Array.isArray(payload) || !payload.every(isUnresolvedClaim)) throw new Error("Native layer returned invalid waiting notes");
+  return payload;
+}
+
+export async function resolveUnresolvedClaimOverIpc(input: ResolveClaimInput, call: Invoke = invoke): Promise<ClaimOutcome> {
+  const payload = await evolutionCall("resolve_unresolved_claim", { input: { pendingId: requireId(input.pendingId, "note id"), action: input.action, ...(input.dueAt === undefined ? {} : { dueAt: input.dueAt }) } }, call);
+  if (!isClaimOutcome(payload)) throw new Error("Native layer returned an invalid result");
+  return payload;
+}
+
+export async function listObjectApprovalsOverIpc(objectId: string, call: Invoke = invoke): Promise<ApprovalInfo[]> {
+  const payload = await evolutionCall("list_object_approvals", { objectId: requireId(objectId, "idea id") }, call);
+  if (!Array.isArray(payload) || !payload.every(isApprovalInfo)) throw new Error("Native layer returned invalid approvals");
+  return payload;
+}
+
+export async function restoreRevisionOverIpc(objectId: string, targetRevisionId: string, expectedCurrentRevisionId: string, call: Invoke = invoke): Promise<ThoughtRevision> {
+  const payload = await evolutionCall(
+    "restore_revision",
+    { objectId: requireId(objectId, "idea id"), targetRevisionId: requireId(targetRevisionId, "revision id"), expectedCurrentRevisionId: requireId(expectedCurrentRevisionId, "revision id") },
+    call,
+  );
+  if (!isThoughtRevision(payload)) throw new Error("Native layer returned an invalid revision");
+  return payload;
 }

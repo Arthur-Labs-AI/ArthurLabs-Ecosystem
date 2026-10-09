@@ -249,6 +249,39 @@ impl CaptureStore {
         Ok(created)
     }
 
+    /// Undo / restore (M04.7B Phase 5): makes an EARLIER revision's text current again by adding a NEW immutable `merge` revision whose
+    /// parents are the revision that is current now and the chosen earlier one, so the history shows both what was undone and what it
+    /// went back to. Nothing is deleted or rewritten. Compare-and-set: `expected_current_revision_id` must STILL be current (otherwise
+    /// `Stale`, and nothing is written), in an unarchived project. Restoring the text that is already current is refused.
+    pub fn restore_revision(&self, object_id: &str, target_revision_id: &str, expected_current_revision_id: &str) -> Result<Revision, ReviseConflict> {
+        let mut connection = self.connection.lock().map_err(|_| ReviseConflict::Store(StoreError::Poisoned))?;
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(|e| ReviseConflict::Store(e.into()))?;
+        let row: Option<(String, Option<String>)> = transaction
+            .query_row("SELECT project_id, current_revision_id FROM knowledge_objects WHERE id = ?1", [object_id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .optional()
+            .map_err(|e| ReviseConflict::Store(e.into()))?;
+        let (project_id, current) = row.ok_or(ReviseConflict::ObjectNotFound)?;
+        let archived: Option<bool> = transaction.query_row("SELECT archived_at IS NOT NULL FROM projects WHERE id = ?1", [&project_id], |row| row.get(0)).optional().map_err(|e| ReviseConflict::Store(e.into()))?;
+        if archived != Some(false) {
+            return Err(ReviseConflict::ProjectArchived);
+        }
+        let current = current.ok_or_else(|| ReviseConflict::Store(StoreError::Corrupt(format!("knowledge object {object_id:?} has no current revision"))))?;
+        if current != expected_current_revision_id {
+            return Err(ReviseConflict::Stale { expected: expected_current_revision_id.to_string(), actual: current });
+        }
+        let now = own_revision_in(&transaction, object_id, &current)?;
+        let target = own_revision_in(&transaction, object_id, target_revision_id)?;
+        if (target.kind.as_str(), target.title.as_str(), target.body.as_str()) == (now.kind.as_str(), now.title.as_str(), now.body.as_str()) {
+            return Err(ReviseConflict::Rejected("that is already the current text".into()));
+        }
+        let created = insert_revision(
+            &transaction,
+            NewRevision { object_id, content: RevisionContent { kind: target.kind.clone(), title: target.title.clone(), body: target.body.clone() }, origin: "merge", provenance: None, parents: vec![now.id.clone(), target.id.clone()], make_current: true, created_at: None },
+        )?;
+        transaction.commit().map_err(|e| ReviseConflict::Store(e.into()))?;
+        Ok(created)
+    }
+
     /// A deterministic diff between two revisions of the same object.
     pub fn diff_revisions(&self, old_revision_id: &str, new_revision_id: &str) -> Result<RevisionDiff, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;

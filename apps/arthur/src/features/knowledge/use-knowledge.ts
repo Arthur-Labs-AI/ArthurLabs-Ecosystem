@@ -43,6 +43,11 @@ export interface KnowledgeState {
   distill: (captureId: string) => Promise<void>;
   /** Re-reads the objects, e.g. after an edit changed their current text. */
   refresh: () => Promise<void>;
+  /**
+   * Counts finished organize runs. Automatic Thought Evolution may hold a note for the person's review instead of creating an idea,
+   * and that is only visible by asking again, so the review queue re-reads whenever this changes.
+   */
+  distilledVersion: number;
 }
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
@@ -61,6 +66,7 @@ export function useKnowledgeState(): KnowledgeState {
   const [organizationLoaded, setOrganizationLoaded] = useState(false);
   const [organized, setOrganized] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [distilledVersion, setDistilledVersion] = useState(0);
 
   // Mirrors for the serial queue, which must see the current values between awaits.
   const jobsRef = useRef<ReadonlyMap<string, OrganizeJob>>(new Map());
@@ -155,6 +161,7 @@ export function useKnowledgeState(): KnowledgeState {
         } catch (failure) {
           setJob(captureId, { status: "failed", message: messageOf(failure) });
         }
+        if (alive.current) setDistilledVersion((version) => version + 1);
         // Either way, show exactly what is stored. A failed run stores nothing, and the UI never builds objects itself.
         try {
           const stored = scopeRef.current === null ? [] : await client.listKnowledgeObjects({ projectId: scopeRef.current });
@@ -197,5 +204,5 @@ export function useKnowledgeState(): KnowledgeState {
     }
   }, [client]);
 
-  return { status, objects, distilling, jobs, organizationLoaded, organized, error, distill, refresh };
+  return { status, objects, distilling, jobs, organizationLoaded, organized, error, distill, refresh, distilledVersion };
 }

@@ -30,7 +30,10 @@ pub(super) struct Fx {
 }
 
 pub(super) fn fx() -> Fx {
-    let store = CaptureStore::open_in_memory().unwrap();
+    fx_in(CaptureStore::open_in_memory().unwrap())
+}
+
+pub(super) fn fx_in(store: CaptureStore) -> Fx {
     let a = store.create(CreateCaptureInput { source: "text".into(), content: A_TEXT.into(), project_id: None }).unwrap();
     let (s1, e1) = span_of(A_TEXT, "Arthur is a mobile application.");
     let (s2, e2) = span_of(A_TEXT, "Arthur needs voice recognition.");
@@ -110,9 +113,9 @@ fn accept_input(pending: &PendingClaim, target: &KnowledgeObject, base: &str) ->
     }
 }
 
-const DESKTOP: &str = "Arthur ще работи и на desktop 😀";
+pub(super) const DESKTOP: &str = "Arthur ще работи и на desktop 😀";
 
-fn staged(fx: &Fx) -> PendingClaim {
+pub(super) fn staged(fx: &Fx) -> PendingClaim {
     fx.store.stage_uncertain_claim(&claim(fx, 0, DESKTOP, &[&fx.mobile])).unwrap().0
 }
 

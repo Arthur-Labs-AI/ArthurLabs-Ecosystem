@@ -51,8 +51,19 @@ import {
   type ProviderTestOutcome,
   AI_CAPABILITIES,
   type ThoughtRevision,
+  type ApprovalInfo,
+  type EvolutionBlocker,
+  type EvolutionConsentKind,
+  type EvolutionProviderStatus,
+  type EvolutionStatus,
+  type ProposalChange,
+  type ProposalEvidence,
+  type ProposalState,
+  type RevisionProposal,
+  type UnresolvedClaim,
+  describeReviewInputProblem,
 } from "@arthur/contracts";
-import { AiSetupError, SpeechError, DistillationError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
+import { AiSetupError, SpeechError, DistillationError, EvolutionError, LineageError, ProjectError, RecallError, RelationError, VoiceCaptureError, type ArthurClient } from "./arthur-client";
 
 const DEFAULT_PREVIEW_INFO: RuntimeInfo = { appVersion: "0.0.0-preview", platform: "unknown" };
 
@@ -142,8 +153,30 @@ export interface PreviewSpeechOptions {
   failure?: SpeechFailure;
 }
 
+/**
+ * Scripts Automatic Thought Evolution in memory. The preview has no models, so by default nothing is ever suggested; a test (or a
+ * clearly labelled demo) creates suggestions and waiting notes through the `controller` it passes in. The review rules (stale text,
+ * one-click approval only on the text that was read, idempotent decisions, history) are the native ones.
+ */
+export interface PreviewEvolutionController {
+  /** Stores a suggestion for an existing idea, as the native pipeline would after a passing check. Returns it. */
+  propose: (input: { objectId: string; body: string; claimTitle?: string; claimBody?: string; captureId?: string; change?: ProposalChange; reasons?: string[] }) => RevisionProposal;
+  /** Stores a note that is waiting for a decision WITHOUT any suggested text. */
+  holdClaim: (input: { captureId: string; candidateObjectIds: string[]; title?: string; body?: string; reasons?: string[]; reframing?: boolean }) => UnresolvedClaim;
+}
+
+export interface PreviewEvolutionOptions {
+  /** Starting state. By default everything is OFF and missing. */
+  enabled?: boolean;
+  consents?: Partial<Record<EvolutionConsentKind, boolean>>;
+  hasTypesafeKey?: boolean;
+  /** Filled in by the client. */
+  controller?: PreviewEvolutionController;
+}
+
 export interface PreviewClientOptions {
   info?: RuntimeInfo;
+  evolution?: PreviewEvolutionOptions;
   recall?: PreviewRecallOptions;
   ai?: PreviewAiOptions;
   speech?: PreviewSpeechOptions;
@@ -401,6 +434,289 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
       return Promise.resolve(work());
     } catch (failure) {
       return Promise.reject(failure);
+    }
+  };
+
+
+  // --- Automatic Thought Evolution (review-first): the same rules as the native store, in memory ------------------
+  const evolutionDisclosure = {
+    typesafe: { version: "typesafe-optin-2026-10-v1", points: ["To decide whether a new capture updates an idea you already have, Arthur sends TypeSafe, a third-party AI provider, the exact words of that note and up to four of your existing ideas from the same project.", "Turning this off stops future requests. It does not delete anything TypeSafe may already hold."] },
+    synthesis: { version: "openai-synthesis-2026-10-v1", points: ["To suggest an updated version of an idea, Arthur sends OpenAI the idea's text, short quotes that support it and your new note.", "What comes back is only a suggestion. Nothing changes until you approve it."] },
+    verification: { version: "openai-verification-samefamily-2026-10-v1", points: ["Before showing you a suggestion, Arthur asks OpenAI to check it.", "The checker is the same model family that wrote the suggestion. It is a self-check, not an independent review. Read every suggestion before you approve it."] },
+  } as const;
+  const evolution = {
+    enabled: options.evolution?.enabled ?? false,
+    consents: { typesafe: false, synthesis: false, verification: false, ...options.evolution?.consents } as Record<EvolutionConsentKind, boolean>,
+    typesafeKey: options.evolution?.hasTypesafeKey ?? false,
+  };
+  const evolutionFail = (code: ConstructorParameters<typeof EvolutionError>[0], message: string, current: string | null = null): never => {
+    throw new EvolutionError(code, message, current);
+  };
+  const providerStatus = (kind: EvolutionConsentKind, hasCredential: boolean): EvolutionProviderStatus => ({
+    provider: kind === "typesafe" ? "TypeSafe" : "OpenAI",
+    consented: evolution.consents[kind],
+    hasCredential,
+    disclosureVersion: evolutionDisclosure[kind].version,
+    disclosure: [...evolutionDisclosure[kind].points],
+  });
+  const evolutionBlockers = (): EvolutionBlocker[] => {
+    const blockers: EvolutionBlocker[] = [];
+    if (!evolution.consents.typesafe) blockers.push("typesafe_consent");
+    if (!evolution.typesafeKey) blockers.push("typesafe_credential");
+    if (!credentials.has("openai")) blockers.push("llm_credential");
+    if (!evolution.consents.synthesis) blockers.push("synthesis_authorization");
+    if (!evolution.consents.verification) blockers.push("verification_authorization");
+    return blockers;
+  };
+  const evolutionStatus = (): EvolutionStatus => {
+    const blockers = evolutionBlockers();
+    return {
+      enabled: evolution.enabled,
+      mode: "review_first",
+      ready: blockers.length === 0,
+      active: evolution.enabled && blockers.length === 0,
+      blockers,
+      typesafe: providerStatus("typesafe", evolution.typesafeKey),
+      synthesis: providerStatus("synthesis", credentials.has("openai")),
+      verification: providerStatus("verification", credentials.has("openai")),
+      sameFamilyVerification: true,
+    };
+  };
+
+  interface HeldClaim {
+    pendingId: string;
+    captureId: string;
+    ordinal: number;
+    title: string;
+    body: string;
+    sourceStart: number;
+    sourceEnd: number;
+    candidates: string[];
+    reasons: string[];
+    reframing: boolean;
+    state: "open" | "deferred" | "accepted" | "separated";
+    createdAt: string;
+  }
+  interface StoredProposal {
+    id: string;
+    pendingId: string;
+    objectId: string;
+    baseRevisionId: string;
+    change: ProposalChange;
+    kind: KnowledgeObjectKind;
+    title: string;
+    body: string;
+    state: ProposalState;
+    userEdited: boolean;
+    finalBody: string | null;
+    resultRevisionId: string | null;
+    createdAt: string;
+    reviewedAt: string | null;
+  }
+  const heldClaims: HeldClaim[] = [];
+  const proposalRecords: StoredProposal[] = [];
+  const approvals: (ApprovalInfo & { objectId: string })[] = [];
+
+  const objectProject = (objectId: string): string => allObjects().find((object) => object.id === objectId)?.projectId ?? INBOX_PROJECT_ID;
+  const claimProject = (claim: HeldClaim): string => captures.find((capture) => capture.id === claim.captureId)?.projectId ?? INBOX_PROJECT_ID;
+  const claimView = (claim: HeldClaim) => ({
+    pendingId: claim.pendingId,
+    captureId: claim.captureId,
+    ordinal: claim.ordinal,
+    kind: "idea" as const,
+    title: claim.title,
+    body: claim.body,
+    sourceStart: claim.sourceStart,
+    sourceEnd: claim.sourceEnd,
+    reasons: [...claim.reasons],
+    state: claim.state,
+  });
+  const proposalView = (record: StoredProposal): RevisionProposal => {
+    const claim = heldClaims.find((candidate) => candidate.pendingId === record.pendingId) as HeldClaim;
+    const lineage = lineages.get(record.objectId);
+    const current = lineage?.revisions.find((revision) => revision.id === lineage.current);
+    const project = projects.find((candidate) => candidate.id === claimProject(claim));
+    const proposed = { kind: record.kind, title: record.title, body: record.body };
+    const blocked = !current ? ("object_missing" as const) : objectProject(record.objectId) !== claimProject(claim) ? ("claim_moved" as const) : project?.archivedAt ? ("project_archived" as const) : null;
+    const evidence: ProposalEvidence[] = [{ role: "claim", captureId: claim.captureId, start: claim.sourceStart, end: claim.sourceEnd }];
+    return {
+      id: record.id,
+      state: record.state,
+      change: record.change,
+      objectId: record.objectId,
+      projectId: claimProject(claim),
+      projectArchived: project?.archivedAt != null,
+      baseRevisionId: record.baseRevisionId,
+      current: current ? { revisionId: current.id, kind: current.kind, title: current.title, body: current.body, origin: current.origin } : null,
+      proposed,
+      diff: current ? diffRevisionContent(current, { id: "proposed", ...proposed }) : null,
+      verification: { mode: "same_family_review", status: "passed", synthesisModel: "gpt-6-luna", verifierModel: "gpt-6-luna" },
+      claim: claimView(claim),
+      evidence,
+      stale: !current || current.id !== record.baseRevisionId,
+      blocked,
+      userEdited: record.userEdited,
+      finalBody: record.finalBody,
+      resultRevisionId: record.resultRevisionId,
+      createdAt: record.createdAt,
+      reviewedAt: record.reviewedAt,
+    };
+  };
+  const unresolvedView = (claim: HeldClaim): UnresolvedClaim => {
+    const proposal = proposalRecords.find((record) => record.pendingId === claim.pendingId);
+    const project = projects.find((candidate) => candidate.id === claimProject(claim));
+    return {
+      claim: claimView(claim),
+      projectId: claimProject(claim),
+      projectArchived: project?.archivedAt != null,
+      dueAt: null,
+      createdAt: claim.createdAt,
+      candidates: claim.candidates.flatMap((objectId) => {
+        const lineage = lineages.get(objectId);
+        const current = lineage?.revisions.find((revision) => revision.id === lineage.current);
+        return current ? [{ objectId, title: current.title, currentRevisionId: current.id }] : [];
+      }),
+      proposalId: proposal?.id ?? null,
+      proposalState: proposal?.state ?? null,
+      reframing: claim.reframing,
+    };
+  };
+  const holdClaimRecord = (input: { captureId: string; candidates: string[]; title: string; body: string; reasons: string[]; reframing: boolean }): HeldClaim => {
+    const capture = captures.find((candidate) => candidate.id === input.captureId);
+    if (!capture) throw new Error("Invalid note: the capture does not exist");
+    const claim: HeldClaim = {
+      pendingId: newId(),
+      captureId: input.captureId,
+      ordinal: heldClaims.filter((candidate) => candidate.captureId === input.captureId).length,
+      title: input.title,
+      body: input.body,
+      sourceStart: 0,
+      sourceEnd: Math.max(1, [...capture.content].length),
+      candidates: input.candidates,
+      reasons: input.reasons,
+      reframing: input.reframing,
+      state: "open",
+      createdAt: now().toISOString(),
+    };
+    heldClaims.push(claim);
+    return claim;
+  };
+  const requireRecord = (id: string): StoredProposal => {
+    const record = proposalRecords.find((candidate) => candidate.id === id);
+    if (!record) return evolutionFail("proposal_not_found", "That suggestion no longer exists.");
+    return record;
+  };
+  const closeRecord = (record: StoredProposal, state: ProposalState, patch: Partial<StoredProposal> = {}): void => {
+    Object.assign(record, { state, reviewedAt: now().toISOString(), ...patch });
+  };
+  /** A new object from a waiting note, like the native `separate`: same project as the capture, its own history. */
+  const separateClaim = (claim: HeldClaim): string => {
+    const capture = captures.find((candidate) => candidate.id === claim.captureId) as Capture;
+    const object: KnowledgeObject = {
+      id: newId(),
+      kind: "idea",
+      title: claim.title,
+      body: claim.body,
+      createdAt: now().toISOString(),
+      provenance: { captureId: claim.captureId, sourceStart: claim.sourceStart, sourceEnd: claim.sourceEnd },
+      projectId: capture.projectId,
+    };
+    const initial: ThoughtRevision = { id: `${object.id}:rev1`, objectId: object.id, kind: object.kind, title: object.title, body: object.body, createdAt: object.createdAt, origin: "initial", provenance: { ...object.provenance }, parentRevisionIds: [] };
+    lineages.set(object.id, { revisions: [initial], current: initial.id });
+    const run = runs.find((candidate) => candidate.captureId === claim.captureId);
+    if (run) run.objects.push(object);
+    else runs.unshift({ captureId: claim.captureId, objects: [object] });
+    claim.state = "separated";
+    return object.id;
+  };
+
+  if (options.evolution?.controller) {
+    options.evolution.controller.propose = (input) => {
+      const lineage = lineageOf(input.objectId);
+      const base = ownRevision(input.objectId, lineage.current);
+      const capture = input.captureId ? captures.find((candidate) => candidate.id === input.captureId) : undefined;
+      const source = capture ?? append({ source: "text", content: input.claimBody ?? input.body, projectId: objectProject(input.objectId) });
+      const claim = holdClaimRecord({ captureId: source.id, candidates: [input.objectId], title: input.claimTitle ?? "New note", body: input.claimBody ?? input.body, reasons: input.reasons ?? ["review_required"], reframing: false });
+      const record: StoredProposal = {
+        id: newId(),
+        pendingId: claim.pendingId,
+        objectId: input.objectId,
+        baseRevisionId: base.id,
+        change: input.change ?? "additive",
+        kind: base.kind,
+        title: base.title,
+        body: input.body,
+        state: "open",
+        userEdited: false,
+        finalBody: null,
+        resultRevisionId: null,
+        createdAt: now().toISOString(),
+        reviewedAt: null,
+      };
+      proposalRecords.push(record);
+      return proposalView(record);
+    };
+    options.evolution.controller.holdClaim = (input) => {
+      const claim = holdClaimRecord({ captureId: input.captureId, candidates: input.candidateObjectIds, title: input.title ?? "New note", body: input.body ?? "A note waiting for your decision.", reasons: input.reasons ?? ["ambiguous_target"], reframing: input.reframing ?? false });
+      return unresolvedView(claim);
+    };
+  }
+
+  const reviewProposal = (input: Parameters<ArthurClient["reviewRevisionProposal"]>[0]) => {
+    const problem = describeReviewInputProblem(input);
+    if (problem) return evolutionFail("invalid", problem);
+    const record = requireRecord(input.proposalId);
+    const claim = heldClaims.find((candidate) => candidate.pendingId === record.pendingId) as HeldClaim;
+    const done = (applied: boolean, extra: { revisionId?: string; createdObjectId?: string } = {}) => ({ proposal: proposalView(record), applied, revisionId: extra.revisionId ?? null, createdObjectId: extra.createdObjectId ?? null });
+    const same = (state: ProposalState) => record.state === state;
+    // repeating a decision that was already made returns it; a different one is refused
+    if (input.action === "approve" && same("approved") && !record.userEdited) return done(false);
+    if (input.action === "edit_approve" && same("approved") && record.finalBody === (input.editedBody ?? "").trim()) return done(false);
+    if (input.action === "reject" && same("rejected")) return done(false);
+    if (input.action === "keep_separate" && same("separated")) return done(false, { createdObjectId: claim.state === "separated" ? (allObjects().find((o) => o.provenance.captureId === claim.captureId && o.title === claim.title)?.id ?? "") : "" });
+    if (["approved", "rejected", "separated", "superseded"].includes(record.state)) return evolutionFail("already_resolved", `This suggestion was already ${record.state}.`);
+
+    switch (input.action) {
+      case "reject":
+        closeRecord(record, "rejected");
+        return done(true);
+      case "defer":
+        claim.state = "deferred";
+        record.state = "deferred";
+        return done(true);
+      case "reopen":
+        claim.state = "open";
+        record.state = "open";
+        return done(true);
+      case "keep_separate": {
+        if (projects.find((candidate) => candidate.id === claimProject(claim))?.archivedAt) return evolutionFail("blocked", "Restore the project to review this suggestion.");
+        const createdObjectId = separateClaim(claim);
+        closeRecord(record, "separated");
+        return done(true, { createdObjectId });
+      }
+      case "approve":
+      case "edit_approve": {
+        const lineage = lineages.get(record.objectId);
+        if (!lineage) return evolutionFail("blocked", "The idea this suggestion was written for no longer exists.");
+        if (projects.find((candidate) => candidate.id === claimProject(claim))?.archivedAt) return evolutionFail("blocked", "Restore the project to review this suggestion.");
+        if (objectProject(record.objectId) !== claimProject(claim)) return evolutionFail("blocked", "The note and the idea are no longer in the same project.");
+        const current = ownRevision(record.objectId, lineage.current);
+        const stale = (): never => evolutionFail("stale", "This idea changed after the suggestion was written. Read the current text and review it again.", current.id);
+        if (input.reviewedRevisionId !== undefined && input.reviewedRevisionId !== current.id) stale();
+        let body = record.body;
+        if (input.action === "approve") {
+          if (current.id !== record.baseRevisionId) stale();
+        } else {
+          body = (input.editedBody ?? "").trim();
+        }
+        if (body === current.body) return evolutionFail("invalid", "That change cannot be applied: the text is the same as the current text.");
+        const revision = addRevision(record.objectId, { kind: current.kind, title: current.title, body }, "system", [current], true);
+        claim.state = "separated" === claim.state ? claim.state : "accepted";
+        const edited = input.action === "edit_approve" && body !== record.body;
+        closeRecord(record, "approved", { userEdited: edited, finalBody: body, resultRevisionId: revision.id });
+        approvals.push({ objectId: record.objectId, revisionId: revision.id, proposalId: record.id, userEdited: edited, approvedAt: record.reviewedAt as string, verificationMode: "same_family_review", synthesisModel: "gpt-6-luna" });
+        return done(true, { revisionId: revision.id });
+      }
     }
   };
 
@@ -667,6 +983,68 @@ export function createPreviewClient(options: PreviewClientOptions = {}): ArthurC
         const newer = findRevision(newRevisionId);
         if (older.objectId !== newer.objectId) throw lineageProblem("revisions of different objects cannot be compared");
         return diffRevisionContent(older, newer);
+      }),
+
+    getEvolutionStatus: () => Promise.resolve(evolutionStatus()),
+    setEvolutionEnabled: (enabled) =>
+      lineageResult(() => {
+        if (enabled && evolutionBlockers().length > 0) evolutionFail("not_ready", `Automatic Thought Evolution needs: ${evolutionBlockers().join(", ")}.`);
+        evolution.enabled = enabled;
+        return evolutionStatus();
+      }),
+    setEvolutionConsent: (kind, granted, disclosureVersion) =>
+      lineageResult(() => {
+        if (granted && disclosureVersion !== evolutionDisclosure[kind].version) evolutionFail("disclosure_outdated", "The explanation you saw has changed. Read it again before agreeing.");
+        evolution.consents[kind] = granted;
+        return evolutionStatus();
+      }),
+    setTypesafeCredential: (secret) =>
+      lineageResult(() => {
+        if (secret.trim().length === 0 || /\s/.test(secret.trim())) evolutionFail("invalid_credential", "That does not look like an API key.");
+        evolution.typesafeKey = true; // write-only: the key itself is not kept anywhere
+        return evolutionStatus();
+      }),
+    deleteTypesafeCredential: () =>
+      lineageResult(() => {
+        evolution.typesafeKey = false;
+        return evolutionStatus();
+      }),
+    listRevisionProposals: (opts) =>
+      Promise.resolve(
+        proposalRecords
+          .map(proposalView)
+          .filter((view) => (opts?.projectId === undefined || view.projectId === opts.projectId) && (opts?.states === undefined || opts.states.length === 0 || opts.states.includes(view.state))),
+      ),
+    getRevisionProposal: (proposalId) => lineageResult(() => proposalView(requireRecord(proposalId))),
+    reviewRevisionProposal: (input) => lineageResult(() => reviewProposal(input)),
+    listUnresolvedClaims: (scope) => Promise.resolve(heldClaims.filter((claim) => claim.state === "open" || claim.state === "deferred").map(unresolvedView).filter((view) => scope?.projectId === undefined || view.projectId === scope.projectId)),
+    resolveUnresolvedClaim: (input) =>
+      lineageResult(() => {
+        const claim = heldClaims.find((candidate) => candidate.pendingId === input.pendingId);
+        if (!claim) return evolutionFail("proposal_not_found", "That note no longer exists.");
+        const proposal = proposalRecords.find((record) => record.pendingId === claim.pendingId);
+        if (claim.state === "separated" && input.action === "keep_separate") return { claimState: claim.state, createdObjectId: null, applied: false };
+        if (claim.state === "accepted" || claim.state === "separated") return evolutionFail("already_resolved", "This note was already resolved.");
+        if (input.action === "defer") claim.state = "deferred";
+        else if (input.action === "reopen") claim.state = "open";
+        else {
+          if (projects.find((candidate) => candidate.id === claimProject(claim))?.archivedAt) return evolutionFail("blocked", "Restore the project to review this suggestion.");
+          const createdObjectId = separateClaim(claim);
+          if (proposal && (proposal.state === "open" || proposal.state === "deferred")) closeRecord(proposal, "superseded");
+          return { claimState: "separated", createdObjectId, applied: true };
+        }
+        if (proposal && (proposal.state === "open" || proposal.state === "deferred")) proposal.state = claim.state === "deferred" ? "deferred" : "open";
+        return { claimState: claim.state, createdObjectId: null, applied: true };
+      }),
+    listObjectApprovals: (objectId) => Promise.resolve(approvals.filter((approval) => approval.objectId === objectId).map(({ objectId: _object, ...info }) => info)),
+    restoreRevision: (objectId, targetRevisionId, expectedCurrentRevisionId) =>
+      lineageResult(() => {
+        const lineage = lineageOf(objectId);
+        if (lineage.current !== expectedCurrentRevisionId) evolutionFail("stale", "This idea changed since you opened its history. Open it again.", lineage.current);
+        const current = ownRevision(objectId, lineage.current);
+        const target = ownRevision(objectId, targetRevisionId);
+        if (target.kind === current.kind && target.title === current.title && target.body === current.body) evolutionFail("invalid", "Nothing to undo: that is already the current text.");
+        return addRevision(objectId, { kind: target.kind, title: target.title, body: target.body }, "merge", [current, target], true);
       }),
 
     listProjects: (options) =>

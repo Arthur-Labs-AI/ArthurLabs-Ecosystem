@@ -86,8 +86,19 @@ impl SynthesisStage {
         self.synthesis_authorization.granted() && self.verification_authorization.granted()
     }
 
-    /// `Err(name)`: do not revise; keep the claim for a person, recording this allow-listed veto name.
+    /// `Err(name)`: do not revise; keep the claim for a person, recording this allow-listed veto name. A same-family pass is
+    /// `Err("review_required")`: this is the form that can never apply anything by itself.
     pub async fn run(&self, request: &SynthesisRequest, allowed: &(dyn Fn() -> bool + Sync), budget: &mut StageBudget) -> Result<ValidatedDraft, &'static str> {
+        let outcome = self.run_outcome(request, allowed, budget).await?;
+        if outcome.review_only() {
+            return Err("review_required");
+        }
+        Ok(outcome.draft)
+    }
+
+    /// The same pipeline, but a passing draft of a same-family review is RETURNED (marked review-only) instead of being turned into a
+    /// refusal, so it can be stored as a proposal for a person to approve. Everything else is identical to `run`.
+    pub async fn run_outcome(&self, request: &SynthesisRequest, allowed: &(dyn Fn() -> bool + Sync), budget: &mut StageBudget) -> Result<StageOutcome, &'static str> {
         if !allowed() {
             return Err("evolution_withdrawn");
         }
@@ -104,6 +115,7 @@ impl SynthesisStage {
         if !allowed() || !self.authorized() {
             return Err("evolution_withdrawn");
         }
+        let synthesis_model = draft.model.clone();
         let validated = validate_draft(request, &draft, &self.expected_model_prefix).map_err(|veto| veto.storage_name())?;
         if !self.verification_authorization.granted() {
             return Err("verifier_unavailable");
@@ -114,11 +126,26 @@ impl SynthesisStage {
             return Err("evolution_withdrawn");
         }
         match verdict {
-            // a same-family pass is a self-check: the draft is worth showing to a person, never worth applying on its own
-            Verdict::Pass if self.mode == VerificationMode::SameFamilyReview => Err("review_required"),
-            Verdict::Pass => Ok(validated),
+            Verdict::Pass => Ok(StageOutcome { draft: validated, mode: self.mode, synthesis_model, verifier_model: self.verifier.identity().model }),
             Verdict::Veto(_) => Err("verifier_veto"),
             Verdict::Unavailable(_) => Err("verifier_unavailable"),
         }
+    }
+}
+
+/// A draft that passed the deterministic checks and the verifier, with how it was verified.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StageOutcome {
+    pub draft: ValidatedDraft,
+    pub mode: VerificationMode,
+    /// The model that wrote the draft, as the provider reported it.
+    pub synthesis_model: String,
+    pub verifier_model: String,
+}
+
+impl StageOutcome {
+    /// A same-family pass is a self-check: the draft is worth showing to a person and never worth applying on its own.
+    pub fn review_only(&self) -> bool {
+        self.mode == VerificationMode::SameFamilyReview
     }
 }

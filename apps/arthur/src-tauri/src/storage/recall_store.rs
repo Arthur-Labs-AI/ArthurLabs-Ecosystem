@@ -95,6 +95,12 @@ pub struct VectorScan {
     pub skipped_malformed: usize,
 }
 
+/// What Recall is told about who made a revision. An approved suggestion is stored as an automatic (`system`) revision because the schema only
+/// lets evidence attach to one, so the approval record decides: `approved_suggestion` (Arthur drafted it, the person approved it as written) or
+/// `approved_edited` (the person approved their own wording). A `system` revision with no approval record is an earlier fully automatic one.
+const EFFECTIVE_CURRENT_ORIGIN: &str = "COALESCE((SELECT CASE WHEN rp.user_edited = 1 THEN 'approved_edited' ELSE 'approved_suggestion' END FROM revision_proposals rp WHERE rp.result_revision_id = cr.id AND rp.state = 'approved'), cr.origin)";
+const EFFECTIVE_ORIGIN: &str = "COALESCE((SELECT CASE WHEN rp.user_edited = 1 THEN 'approved_edited' ELSE 'approved_suggestion' END FROM revision_proposals rp WHERE rp.result_revision_id = thought_revisions.id AND rp.state = 'approved'), origin)";
+
 const CURRENT_COLUMNS: &str = "o.id, o.project_id, o.kind, o.title, o.body, o.current_revision_id, cr.created_at, o.seq";
 
 fn current_object_from_row(row: &rusqlite::Row<'_>, offset: usize) -> rusqlite::Result<CurrentObject> {
@@ -228,7 +234,7 @@ impl CaptureStore {
         }
         self.with_connection(|connection| {
             let mut statement = connection.prepare(&format!(
-                "SELECT {CURRENT_COLUMNS}, p.name, p.archived_at IS NOT NULL, cr.origin, cr.capture_id, cr.source_start, cr.source_end, \
+                "SELECT {CURRENT_COLUMNS}, p.name, p.archived_at IS NOT NULL, {EFFECTIVE_CURRENT_ORIGIN}, cr.capture_id, cr.source_start, cr.source_end, \
                         s.capture_id, s.source_start, s.source_end, (SELECT count(*) FROM thought_revisions x WHERE x.object_id = o.id) \
                  FROM knowledge_objects o \
                  JOIN thought_revisions cr ON cr.id = o.current_revision_id \
@@ -287,7 +293,7 @@ impl CaptureStore {
         self.with_connection(|connection| {
             let list = marks(object_ids.len());
             let mut statement = connection.prepare(&format!(
-                "SELECT id, object_id, kind, title, body, origin, created_at, capture_id, source_start, source_end FROM thought_revisions \
+                "SELECT id, object_id, kind, title, body, {EFFECTIVE_ORIGIN}, created_at, capture_id, source_start, source_end FROM thought_revisions \
                  WHERE object_id IN ({list}) ORDER BY seq ASC"
             ))?;
             let mut revisions: Vec<RevisionRow> = statement

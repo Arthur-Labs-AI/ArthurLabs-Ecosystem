@@ -2,6 +2,7 @@ import { Icon } from "../../components/icons";
 import { useArthurClient } from "../../hooks/use-arthur-client";
 import { AiVoiceSettings } from "../setup/AiVoiceSettings";
 import { SemanticRecallSettings } from "../recall/SemanticRecallSettings";
+import { EvolutionSettings } from "../evolution/EvolutionSettings";
 import { useRuntimeInfo } from "../settings/use-runtime-info";
 import { useMobileNav } from "./mobile-nav";
 
@@ -9,7 +10,7 @@ import { useMobileNav } from "./mobile-nav";
 export function MobileSettings() {
   const client = useArthurClient();
   const state = useRuntimeInfo();
-  const { closePage } = useMobileNav();
+  const { closePage, openReview } = useMobileNav();
 
   return (
     <div className="m-page" role="region" aria-label="Settings">
@@ -36,6 +37,10 @@ export function MobileSettings() {
         <section className="m-set" aria-labelledby="m-set-recall">
           <h2 id="m-set-recall">Semantic Recall</h2>
           <SemanticRecallSettings variant="mobile" />
+        </section>
+        <section className="m-set" aria-labelledby="m-set-evolution">
+          <h2 id="m-set-evolution">Thought Evolution</h2>
+          <EvolutionSettings variant="mobile" onOpenReview={openReview} />
         </section>
         <section className="m-set" aria-labelledby="m-set-about">
           <h2 id="m-set-about">About</h2>

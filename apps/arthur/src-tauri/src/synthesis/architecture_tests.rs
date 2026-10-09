@@ -41,6 +41,7 @@ fn no_shipped_code_constructs_or_enables_synthesis() {
     for (name, source) in [
         ("lib.rs", include_str!("../lib.rs")),
         ("commands/distill.rs", include_str!("../commands/distill.rs")),
+        ("commands/evolution.rs", include_str!("../commands/evolution.rs")),
         ("commands/ai.rs", include_str!("../commands/ai.rs")),
         ("commands/integration.rs", include_str!("../commands/integration.rs")),
         ("distillation/mod.rs", include_str!("../distillation/mod.rs")),
@@ -73,13 +74,18 @@ fn no_glm_or_zai_provider_exists_anywhere_in_shipped_code_or_manifests() {
 #[test]
 fn a_same_family_pass_is_wired_to_hold_for_review_and_the_shipped_verifier_is_not_called_independent() {
     let stage = include_str!("stage.rs");
-    assert!(stage.contains("Verdict::Pass if self.mode == VerificationMode::SameFamilyReview => Err(\"review_required\")"));
+    assert!(stage.contains("if outcome.review_only() {\n            return Err(\"review_required\");"), "`run` refuses to hand a same-family pass back as applicable");
+    assert!(stage.contains("self.mode == VerificationMode::SameFamilyReview"), "a same-family review is review-only");
     let verifier = include_str!("openai_verifier.rs");
     assert!(verifier.contains("NOT AN INDEPENDENT VERIFIER") && verifier.contains("family: FAMILY") && verifier.contains("pub const FAMILY: &str = \"gpt\""));
-    // nothing in the shipped composition root builds a verifier or a stage
-    for (name, source) in [("lib.rs", include_str!("../lib.rs")), ("commands/mod.rs", include_str!("../commands/mod.rs"))] {
+    // only the review-first composition builds a verifier or a stage, and it builds the same-family form only
+    for (name, source) in [("lib.rs", include_str!("../lib.rs")), ("commands/mod.rs", include_str!("../commands/mod.rs")), ("commands/evolution.rs", include_str!("../commands/evolution.rs"))] {
         for needle in [["OpenAiRevision", "Verifier"].concat(), ["Synthesis", "Stage"].concat()] {
             assert!(!source.contains(&needle), "{name} must not construct `{needle}`");
         }
     }
+    let runtime = include_str!("../evolution_runtime.rs");
+    assert!(runtime.contains("SynthesisStage::new_same_family_review("), "production builds the same-family review stage");
+    assert!(!runtime.contains(&["SynthesisStage::", "new("].concat()), "production never builds the independent (auto-applying) form");
+    assert!(runtime.contains("debug_assert!(pipeline.review_first())"));
 }

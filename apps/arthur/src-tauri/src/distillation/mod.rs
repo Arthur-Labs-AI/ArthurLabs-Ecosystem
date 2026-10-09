@@ -119,13 +119,16 @@ pub struct DistillationOutcome {
     pub objects: Vec<KnowledgeObject>,
     pub revised: Vec<RevisedObject>,
     pub pending: Vec<crate::storage::identity_store::PendingClaim>,
+    /// Ids of the revision proposals this commit stored (each belongs to one of `pending`). A proposal is a draft waiting for a person;
+    /// it has changed no object.
+    pub proposals: Vec<String>,
     /// `false`: the capture had already been distilled and nothing was written by this call.
     pub fresh: bool,
 }
 
 impl DistillationOutcome {
     fn plain(objects: Vec<KnowledgeObject>) -> Self {
-        Self { objects, revised: Vec::new(), pending: Vec::new(), fresh: true }
+        Self { objects, revised: Vec::new(), pending: Vec::new(), proposals: Vec::new(), fresh: true }
     }
 }
 
@@ -180,9 +183,8 @@ impl DistillationService {
         Self { distiller, evolution: None, running: Mutex::new(HashSet::new()) }
     }
 
-    /// Enables the identity-aware path for tests. Deliberately not compiled into the app: nothing in production can activate an
-    /// incomplete pipeline. Phase 4/5 replace this once a real classifier, synthesis, consent and the review UI exist.
-    #[cfg(test)]
+    /// Installs the identity-aware path. It still only runs while its own persisted setting is ON, and the production composition
+    /// (`evolution_runtime`) builds it as REVIEW-FIRST: a passing draft is stored as a proposal for a person and never applied.
     pub fn with_evolution(mut self, pipeline: evolution::EvolutionPipeline) -> Self {
         self.evolution = Some(pipeline);
         self
@@ -207,7 +209,7 @@ impl DistillationService {
     pub async fn distill_detailed(&self, store: &CaptureStore, capture_id: &str) -> Result<DistillationOutcome, DistillError> {
         let capture = store.get_capture(capture_id)?.ok_or(DistillError::CaptureNotFound)?;
         if let Some(existing) = store.distillation_for(capture_id)? {
-            return Ok(DistillationOutcome { objects: existing, revised: Vec::new(), pending: Vec::new(), fresh: false });
+            return Ok(DistillationOutcome { objects: existing, revised: Vec::new(), pending: Vec::new(), proposals: Vec::new(), fresh: false });
         }
 
         self.running.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(capture_id.to_string());

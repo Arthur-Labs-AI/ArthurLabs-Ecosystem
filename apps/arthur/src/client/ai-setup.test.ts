@@ -38,7 +38,8 @@ describe("provider setup over IPC", () => {
   it("exposes only semantic credential operations: nothing can read a key back", () => {
     for (const client of [createMobileClient(), createDesktopClient()]) {
       const names = Object.keys(client).filter((name) => /key|secret|credential/i.test(name)).sort();
-      expect(names).toEqual(["deleteCredential", "hasCredential", "setCredential"]);
+      // The TypeSafe key for Thought Evolution is a second write-only slot: set and delete, and nothing that reads it back.
+      expect(names).toEqual(["deleteCredential", "deleteTypesafeCredential", "hasCredential", "setCredential", "setTypesafeCredential"]);
       expect(Object.keys(client).some((name) => /^get.*(Key|Secret|Credential)/.test(name))).toBe(false);
     }
   });

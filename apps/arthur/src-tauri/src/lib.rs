@@ -2,12 +2,13 @@ mod async_util;
 mod audio;
 mod commands;
 mod distillation;
+mod evolution_runtime;
 mod graph;
-#[allow(dead_code)] // M04.7B Phase 4A: the TypeSafe JEV adapter exists but nothing constructs it yet
+#[allow(dead_code)] // M04.7B: only `evolution_runtime` builds the TypeSafe JEV adapter; parts of it are exercised by tests alone
 mod jev;
-#[allow(dead_code)] // M04.7B Phase 4B: synthesis and verification exist but nothing constructs them in production
+#[allow(dead_code)] // M04.7B: only `evolution_runtime` builds synthesis and verification (review-first); parts are exercised by tests alone
 mod synthesis;
-#[allow(dead_code)] // M04.7B Phase 1: the pure identity core is not wired to anything yet
+#[allow(dead_code)] // M04.7B: the pure identity core is used through the evolution pipeline; parts are exercised by tests alone
 mod identity;
 mod lifecycle;
 mod lineage;
@@ -97,6 +98,7 @@ pub fn run() {
             std::fs::create_dir_all(&credentials_dir)?;
             let platform = StoragePlatform::current();
             let secrets = select_store(platform, keystore(app.handle()), credentials_dir.clone());
+            let evolution_secrets = secrets.clone();
             // Only Android has a legacy plaintext file to move into the Keystore; on desktop the store reads that same file.
             let legacy_file = (platform == StoragePlatform::Android).then(|| credentials_dir.join("openai_api_key"));
             let ai = Arc::new(AiService::new(AiConfigStore::new(data_dir.join("ai").join("config.json")), secrets, legacy_file.as_deref()));
@@ -106,7 +108,11 @@ pub fn run() {
             let embeddings = ai.credential_for(Capability::Embeddings);
             let tts_credential = ai.credential_for(Capability::Tts);
             let transcriber = Arc::new(OpenAiTranscriber::new(stt)?);
-            app.manage(DistillationService::new(Arc::new(OpenAiDistiller::new(llm.clone())?)));
+            // Automatic Thought Evolution (M04.7B Phase 5): REVIEW-FIRST. The pipeline is installed but stays OFF until a person turns it on,
+            // and even then it only stores suggestions; applying one takes their explicit approval. With it OFF, distillation is unchanged.
+            let evolution = evolution_runtime::build(&data_dir.join("evolution"), evolution_secrets, llm.clone())?;
+            app.manage(evolution.runtime);
+            app.manage(DistillationService::new(Arc::new(OpenAiDistiller::new(llm.clone())?)).with_evolution(evolution.pipeline));
             let proposer = Arc::new(OpenAiRelationProposer::new(llm.clone())?);
             let verifier = Arc::new(OpenAiRelationVerifier::new(llm.clone())?);
             app.manage(GraphService::new(proposer.clone(), verifier.clone()));
@@ -175,6 +181,18 @@ pub fn run() {
             commands::voice::get_microphone_permission,
             commands::voice::open_app_settings,
             commands::distill::distill_capture,
+            commands::evolution::get_evolution_status,
+            commands::evolution::set_evolution_enabled,
+            commands::evolution::set_evolution_consent,
+            commands::evolution::set_typesafe_credential,
+            commands::evolution::delete_typesafe_credential,
+            commands::evolution::list_revision_proposals,
+            commands::evolution::get_revision_proposal,
+            commands::evolution::list_unresolved_claims,
+            commands::evolution::review_revision_proposal,
+            commands::evolution::resolve_unresolved_claim,
+            commands::evolution::list_object_approvals,
+            commands::evolution::restore_revision,
             commands::distill::list_knowledge_objects,
             commands::distill::list_organization_states,
             commands::distill::get_knowledge_summaries,

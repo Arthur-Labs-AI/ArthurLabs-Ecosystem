@@ -13,11 +13,12 @@ import { ProjectChip, ProjectSheet } from "./MobileProjects";
 import { MobileAsk } from "../recall/MobileAsk";
 import { isAskShortcut } from "../../app/shortcuts";
 import { MobileSettings } from "./MobileSettings";
+import { MobileReview, MobileReviewItem } from "../review/MobileReview";
 import { MobileNavProvider, useMobileNav } from "./mobile-nav";
 import { useViewport } from "./use-viewport";
 import "./mobile.css";
 
-type Tab = Exclude<Screen, "settings">;
+type Tab = Exclude<Screen, "settings" | "review">;
 const LEFT: { screen: Tab; label: string; icon: IconName }[] = [
   { screen: "home", label: "Home", icon: "home" },
   { screen: "ideas", label: "Ideas", icon: "ideas" },
@@ -153,7 +154,7 @@ function Frame() {
   const { voiceState, voiceFailure, discardVoice } = useCaptures();
   const { height, keyboardOpen } = useViewport();
   const top = pages.at(-1);
-  const tab: Tab = screen === "settings" ? "home" : screen;
+  const tab: Tab = screen === "settings" || screen === "review" ? "home" : screen;
   const recording = voiceState === "recording" || voiceState === "starting";
   // The retry card lives on Home. Leaving Home (another tab, a page, Settings) leaves the retry flow, and the
   // recording kept for it is deleted: it is never held for a user who has gone elsewhere.
@@ -193,6 +194,8 @@ function Frame() {
       {top?.kind === "idea" && <MobileIdeaDetail key={`${pages.length}-${top.id}`} objectId={top.id} />}
       {top?.kind === "settings" && <MobileSettings />}
       {top?.kind === "ask" && <MobileAsk />}
+      {top?.kind === "review" && <MobileReview />}
+      {top?.kind === "review-item" && <MobileReviewItem key={`${pages.length}-${top.id}`} id={top.id} />}
       {!hideBar && <TabBar />}
       {projectSheet && <ProjectSheet />}
       {recording && <Recording />}

@@ -459,6 +459,13 @@ fn require_pending(connection: &Connection, id: &str) -> Res<PendingClaim> {
 /// The user accepted "update that idea": a compare-and-set automatic revision of the target, the claim's span attached as evidence, and
 /// the claim marked accepted, all in the caller's transaction (begin it IMMEDIATE). The schema refuses `accepted` without that revision.
 pub fn accept_pending_claim_in(connection: &Connection, input: &AcceptPendingInput) -> Res<PendingResolution> {
+    accept_pending_claim_hooked_in(connection, input, &mut |_| Ok(()))
+}
+
+/// `accept_pending_claim_in` with a step that runs after the revision and its evidence exist and BEFORE the claim is marked accepted, in
+/// the same transaction. Phase 5 uses it to close the claim's revision proposal with the revision that was just written (the claim's own
+/// resolution would otherwise supersede it). The hook does not run when the claim was already accepted (the idempotent return).
+pub fn accept_pending_claim_hooked_in(connection: &Connection, input: &AcceptPendingInput, before_resolved: &mut dyn FnMut(&Revision) -> Res<()>) -> Res<PendingResolution> {
     let claim = require_pending(connection, &input.pending_id)?;
     match claim.state.as_str() {
         "accepted" if claim.resolved_object_id.as_deref() == Some(input.target_object_id.as_str()) => {
@@ -489,6 +496,7 @@ pub fn accept_pending_claim_in(connection: &Connection, input: &AcceptPendingInp
         &revision.id,
         &[NewEvidence { capture_id: claim.capture_id.clone(), source_start: claim.source_start, source_end: claim.source_end, role: input.role, retracts: input.retracts.clone(), interpretation_label: input.interpretation_label.clone() }],
     )?;
+    before_resolved(&revision)?;
     let now = now_rfc3339()?;
     let changed = connection.execute(
         "UPDATE pending_claims SET state = 'accepted', resolved_at = ?2, resolved_method = 'user', resolved_object_id = ?3, resolved_revision_id = ?4, updated_at = ?2 WHERE id = ?1 AND state IN ('open', 'deferred')",
@@ -507,6 +515,12 @@ fn revision_of(connection: &Connection, id: &str) -> Res<Revision> {
 /// "Keep as a separate idea" (or, later, expiry): creates a new KnowledgeObject from the claim, in the capture's CURRENT project, with
 /// the claim's span as its source and an initial revision, and marks the claim separated, in the caller's transaction.
 pub fn separate_pending_claim_in(connection: &Connection, pending_id: &str, method: &str) -> Res<PendingResolution> {
+    separate_pending_claim_hooked_in(connection, pending_id, method, &mut |_| Ok(()))
+}
+
+/// `separate_pending_claim_in` with a step (given the new object's id) that runs after the object exists and BEFORE the claim is marked
+/// separated, in the same transaction. Not run for the idempotent return.
+pub fn separate_pending_claim_hooked_in(connection: &Connection, pending_id: &str, method: &str, before_resolved: &mut dyn FnMut(&str) -> Res<()>) -> Res<PendingResolution> {
     if !matches!(method, "user" | "expiry") {
         return invalid("unknown resolution method");
     }
@@ -530,6 +544,7 @@ pub fn separate_pending_claim_in(connection: &Connection, pending_id: &str, meth
     )?;
     connection.execute("INSERT INTO object_sources (object_id, capture_id, source_start, source_end) VALUES (?1, ?2, ?3, ?4)", params![object_id, claim.capture_id, claim.source_start, claim.source_end])?;
     create_initial_revision(connection, &object_id, (&claim.kind, &claim.title, &claim.body), &now, Some((&claim.capture_id, claim.source_start, claim.source_end)))?;
+    before_resolved(&object_id)?;
     let changed = connection.execute(
         "UPDATE pending_claims SET state = 'separated', resolved_at = ?2, resolved_method = ?3, resolved_object_id = ?4, updated_at = ?2 WHERE id = ?1 AND state IN ('open', 'deferred')",
         params![claim.id, now, method, object_id],
@@ -669,6 +684,11 @@ pub fn project_pool_in(connection: &Connection, project_id: &str) -> Res<Vec<Poo
 }
 
 /// Open or deferred claims whose capture is CURRENTLY in the project.
+/// The object's current revision id, only if the object is in `project_id` (so a moved object reads as "not there").
+pub fn current_revision_in_project_in(connection: &Connection, object_id: &str, project_id: &str) -> Res<Option<String>> {
+    Ok(connection.query_row("SELECT current_revision_id FROM knowledge_objects WHERE id = ?1 AND project_id = ?2", params![object_id, project_id], |row| row.get(0)).optional()?)
+}
+
 pub fn unresolved_pending_count_in(connection: &Connection, project_id: &str) -> Res<usize> {
     let count: i64 = connection.query_row(
         "SELECT count(*) FROM pending_claims p JOIN captures c ON c.id = p.capture_id WHERE c.project_id = ?1 AND p.state IN ('open', 'deferred')",

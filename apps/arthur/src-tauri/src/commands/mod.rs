@@ -1,6 +1,7 @@
 pub mod ai;
 pub mod captures;
 pub mod distill;
+pub mod evolution;
 pub mod graph;
 pub mod integration;
 pub mod lineage;

@@ -1,12 +1,15 @@
 import { useArthurClient } from "../../hooks/use-arthur-client";
 import { AiVoiceSettings } from "../setup/AiVoiceSettings";
 import { SemanticRecallSettings } from "../recall/SemanticRecallSettings";
+import { EvolutionSettings } from "../evolution/EvolutionSettings";
+import { useNavigation } from "../../app/navigation";
 import { useRuntimeInfo } from "./use-runtime-info";
 import "./settings.css";
 
 export function SettingsScreen() {
   const client = useArthurClient();
   const state = useRuntimeInfo();
+  const { go } = useNavigation();
 
   return (
     <div className="settings">
@@ -36,6 +39,13 @@ export function SettingsScreen() {
           <h3 id="recall-heading">Semantic Recall</h3>
         </div>
         <SemanticRecallSettings variant="desktop" />
+      </section>
+
+      <section className="sec" style={{ paddingLeft: 0, paddingRight: 0 }} aria-labelledby="evolution-heading">
+        <div className="sec-h">
+          <h3 id="evolution-heading">Thought Evolution</h3>
+        </div>
+        <EvolutionSettings variant="desktop" onOpenReview={() => go("review")} />
       </section>
 
       <section className="sec" style={{ paddingLeft: 0, paddingRight: 0 }} aria-labelledby="about-heading">

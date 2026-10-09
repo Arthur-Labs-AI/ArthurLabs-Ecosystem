@@ -5,6 +5,8 @@ import { Icon, KindGlyph, SOURCE_LABELS, SourceIcon } from "../../components/ico
 import { Margin } from "../../components/Margin";
 import { dayLabel, isSameDay, relativeAge } from "../../components/format";
 import { AiOffNotice } from "../setup/AiOffNotice";
+import { ReviewNotice, heldMessage } from "../review/ReviewNotice";
+import { useReview } from "../review/review-context";
 import { CaptureComposer } from "../capture/CaptureComposer";
 import { useCaptures } from "../capture/captures-context";
 import { GraphCanvas } from "../graph/GraphCanvas";
@@ -31,7 +33,7 @@ const excerpt = (text: string, max = 140): string => {
 };
 
 /** What happened to one capture: it was organized into ideas, is being organized, failed, or has not been tried. */
-function CaptureOutcome({ capture, objects, job, ready, organizedElsewhere, onRetry }: { capture: Capture; objects: KnowledgeObject[]; job: OrganizeJob | undefined; ready: boolean; organizedElsewhere: boolean; onRetry: () => void }) {
+function CaptureOutcome({ capture, objects, job, ready, organizedElsewhere, held, onRetry, onReview }: { capture: Capture; objects: KnowledgeObject[]; job: OrganizeJob | undefined; ready: boolean; organizedElsewhere: boolean; held: number; onRetry: () => void; onReview: () => void }) {
   if (job?.status === "queued" || job?.status === "organizing") {
     return (
       <div className="progress">
@@ -51,6 +53,17 @@ function CaptureOutcome({ capture, objects, job, ready, organizedElsewhere, onRe
           Try again
         </button>
         {job.message && <span className="why">{job.message}</span>}
+      </div>
+    );
+  }
+  if (held > 0 && objects.length === 0) {
+    // Automatic Thought Evolution kept the note for the person instead of making an idea: it is saved, and it is waiting.
+    return (
+      <div className="progress">
+        <span className="note">{heldMessage(held)}</span>
+        <button type="button" className="btn" onClick={onReview}>
+          Review
+        </button>
       </div>
     );
   }
@@ -183,6 +196,7 @@ export function HomeScreen() {
   const index = useRelationIndex();
   const { byObject } = useLineageSummaries();
   const { go } = useNavigation();
+  const review = useReview();
 
   const shown = captures.slice(0, RECENT_CAPTURES);
   const groups = useMemo(() => {
@@ -203,6 +217,7 @@ export function HomeScreen() {
       <h1 className="hello">{greeting()}</h1>
       <CaptureComposer />
       <AiOffNotice variant="desktop" onOpenSettings={() => go("settings")} />
+      <ReviewNotice variant="desktop" onOpen={() => go("review")} />
 
       <div className="home-grid">
         <section aria-labelledby="today-heading">
@@ -258,7 +273,7 @@ export function HomeScreen() {
                         <Margin source={capture.source} showSource={false} connections={index.countOf(object.id)} revisions={byObject.get(object.id)?.revisionCount} />
                       </button>
                     ))}
-                    <CaptureOutcome capture={capture} objects={mine} job={jobs.get(capture.id)} ready={knowledgeStatus === "ready" && organizationLoaded} organizedElsewhere={organized.has(capture.id)} onRetry={() => void distill(capture.id)} />
+                    <CaptureOutcome capture={capture} objects={mine} job={jobs.get(capture.id)} ready={knowledgeStatus === "ready" && organizationLoaded} organizedElsewhere={organized.has(capture.id)} held={review.heldFor(capture.id)} onRetry={() => void distill(capture.id)} onReview={() => go("review")} />
                   </article>
                 );
               })}
