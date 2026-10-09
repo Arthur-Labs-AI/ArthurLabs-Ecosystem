@@ -34,6 +34,75 @@ const AGENTS = [
 ];
 
 describe('run graph builder', () => {
+  const currentStacks = ['stack_opencode_main', 'stack_deepseek_main', 'stack_glm_main'];
+  const selections = Array.from({ length: 7 }, (_, index) =>
+    currentStacks.filter((_, bit) => ((index + 1) & (1 << bit)) !== 0),
+  );
+
+  for (const mode of ['full', 'targeted']) {
+    it.each(selections.map((selection) => [selection]))(
+      mode + ' renders exactly the selected agents before and after execution: %j',
+      (agentStackIds) => {
+        const selectedRuns = agentStackIds.map((agentStackId, index) => ({
+          id: 'selected-agent-' + index,
+          qaRunId: BASE_RUN.id,
+          agentStackId,
+          status: 'completed',
+        }));
+        for (const agentRuns of [[], selectedRuns]) {
+          const graph = buildRunGraph({
+            run: { ...BASE_RUN, mode, configuration: { agentStackIds } },
+            agentRuns,
+            findings: [],
+            evidence: [],
+            targetSpec: { includePaths: ['src/auth'] },
+          });
+          const nodes = graph.nodes.filter((node) => node.kind === 'agent');
+          expect(nodes.map((node) => node.data['agentStackId'])).toEqual(agentStackIds);
+          expect(nodes.map((node) => node.status)).toEqual(
+            agentStackIds.map(() => (agentRuns.length === 0 ? 'waiting' : 'completed')),
+          );
+          for (const retired of ['merger', 'verifier', 'issues']) {
+            expect(graph.nodes.map((node) => node.kind)).not.toContain(retired);
+          }
+          expect(graph.edges.filter((edge) => edge.target.startsWith('agent-'))).toEqual(
+            nodes.map((node) =>
+              expect.objectContaining({
+                source: mode === 'targeted' ? 'target' : 'snapshot',
+                target: node.id,
+                state: agentRuns.length === 0 ? 'pending' : 'completed',
+              }),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  it('does not invent selected agents when historical configuration and AgentRuns are absent', () => {
+    const { configuration: _configuration, ...run } = BASE_RUN;
+    void _configuration;
+    for (const historicalRun of [run, { ...run, configuration: { agentStackIds: [] } }]) {
+      const graph = buildRunGraph({
+        run: historicalRun,
+        agentRuns: [],
+        findings: [],
+        evidence: [],
+      });
+      expect(graph.nodes.filter((node) => node.kind === 'agent')).toEqual([]);
+    }
+  });
+
+  it('reads historical agent identity from AgentRuns when configuration is absent', () => {
+    const { configuration: _configuration, ...run } = BASE_RUN;
+    void _configuration;
+    const graph = buildRunGraph({ run, agentRuns: AGENTS.slice(0, 1), findings: [], evidence: [] });
+    expect(
+      graph.nodes.filter((node) => node.kind === 'agent').map((node) => node.data['agentStackId']),
+    ).toEqual(['stack_muse_main']);
+    expect(graph.agents[0]?.agentRunId).toBe(AGENTS[0]?.id);
+  });
+
   it('builds the canonical FULL topology deterministically', () => {
     const input = { run: BASE_RUN, agentRuns: AGENTS, findings: [], evidence: [] };
     const first = buildRunGraph(input);
@@ -90,12 +159,18 @@ describe('run graph builder', () => {
         { id: 'f1', agentRunId: AGENTS[0]?.id ?? '', severity: 'critical', title: 't' },
         { id: 'f2', agentRunId: AGENTS[1]?.id ?? '', severity: 'high', title: 't' },
       ],
-      evidence: [],
+      evidence: [
+        { id: 'e1', agentRunId: AGENTS[0]?.id ?? '', type: 'command' },
+        { id: 'e2', agentRunId: AGENTS[1]?.id ?? '', type: 'file' },
+        { id: 'e3', agentRunId: AGENTS[1]?.id ?? '', type: 'test' },
+        { id: 'e-unrelated', agentRunId: 'unrelated-agent', type: 'command' },
+      ],
     });
     const counts = Object.fromEntries(graph.agents.map((a) => [a.agentStackId, a.findingsCount]));
     expect(counts['stack_muse_main']).toBe(1);
     expect(counts['stack_deepseek_main']).toBe(1);
     expect(counts['stack_glm_main']).toBe(0);
+    expect(graph.agents.map((agent) => agent.evidenceCount)).toEqual([1, 2, 0]);
   });
 
   it('renders waiting placeholders before AgentRuns exist', () => {

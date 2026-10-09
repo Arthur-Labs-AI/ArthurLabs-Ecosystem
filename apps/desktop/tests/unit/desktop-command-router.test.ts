@@ -63,6 +63,19 @@ async function harness(gateReady = true) {
   return { service, seen };
 }
 describe('shared desktop command router', () => {
+  it.each(['runs:merge', 'runs:verify', 'issues:ingest'])(
+    'rejects retired %s on both renderer and external CLI paths',
+    async (channel) => {
+      const h = await harness();
+      for (const external of [false, true]) {
+        await expect(
+          dispatchDesktopCommand(h.service, channel, {}, {}, { external }),
+        ).rejects.toMatchObject({ code: 'IPC_UNKNOWN_CHANNEL' });
+      }
+      expect(h.seen).toEqual([]);
+    },
+  );
+
   it('routes renderer and external CLI through the same dispatch with the same result', async () => {
     const a = await harness();
     const b = await harness();

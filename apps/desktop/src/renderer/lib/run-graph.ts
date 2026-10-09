@@ -148,12 +148,6 @@ export function buildRunGraph(
   const agents = buildAgentViews(input, now);
   const nodes: RunGraphNode[] = [];
   const edges: RunGraphEdge[] = [];
-  const runStatus = input.run.status;
-
-  const agentIds =
-    input.run.configuration?.agentStackIds ?? input.agentRuns.map((a) => a.agentStackId);
-  void agentIds;
-
   nodes.push({
     id: 'project',
     kind: 'project',
@@ -213,14 +207,11 @@ export function buildRunGraph(
     fanSource = 'target';
   }
 
-  // Three parallel agent branches, evenly fanned. Missing AgentRuns render
-  // as configured-but-waiting placeholders (§213-§214).
-  const configuredStacks =
-    input.run.configuration?.agentStackIds ?? input.agentRuns.map((a) => a.agentStackId);
+  // Render the recorded selection, with waiting placeholders before AgentRuns
+  // exist. Older runs can fall back to recorded AgentRuns; never invent agents
+  // when neither source establishes which stacks were selected.
   const stacksToRender =
-    configuredStacks.length > 0
-      ? configuredStacks
-      : ['stack_opencode_main', 'stack_deepseek_main', 'stack_glm_main'];
+    input.run.configuration?.agentStackIds ?? input.agentRuns.map((a) => a.agentStackId);
   const agentY = input.run.mode === 'targeted' ? 470 : 360;
   stacksToRender.forEach((stackId, index) => {
     const view = agents.find((a) => a.agentStackId === stackId);
@@ -257,7 +248,6 @@ export function buildRunGraph(
   void input.findingsById;
   void input.issueCount;
   void (input as { ingestRan?: boolean }).ingestRan;
-  void runStatus;
   return { nodes, edges, agents };
 }
 
