@@ -16,7 +16,9 @@ not evidence for this candidate.
 - [x] Actual built Windows Electron → candidate WSL runtime smoke and idle quit.
 - [x] Private staging exclusions and unchanged security assertions checked.
 - [x] Version, source-install instructions, changelog and branching policy aligned.
-- [ ] Mandatory CI on the final PR head — verify Actions receipts.
+- [x] Candidate mandatory CI — all three jobs pass on df6fd49 (PR run 37891284512).
+- [x] Fresh real runtime staging/install/build (18/18), activation and handshake.
+- [ ] Final receipt-only PR head CI — verify PR checks before integration.
 - [ ] Owner review of release PR.
 - [ ] Candidate CachyOS Desktop close/restart and maintenance acceptance.
 - [ ] Candidate active-run cancellation/exit/update acceptance on supported hosts.

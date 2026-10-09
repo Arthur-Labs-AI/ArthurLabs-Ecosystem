@@ -1,8 +1,11 @@
 # Handoff — Sentry beta candidate (2026-10-09)
 
 Candidate: `codex/release-v0.1.0-beta.1`, baseline `9c57e3f`.
-Local implementation/validation complete; distribution BLOCKED pending final
-CI, owner review and target acceptance. Full WSL runtime suite 40/40 tasks
+Implementation/validation complete; distribution BLOCKED pending owner review
+and target acceptance. All three CI jobs PASS on df6fd49: push 37891235154,
+PR 37891284512. Fresh real runtime deployment with 18/18 uncached builds,
+activation, handshake and clean shutdown PASS. Final receipt-only PR checks
+precede merge. Full WSL runtime suite 40/40 tasks
 (1,036 passed/32 opt-in or platform skips), including six real sandbox trust
 cases. Windows Desktop 235 passed/one skip; Windows runtime/CLI and available
 run-engine suites pass. Build/lint/typecheck 60/60, hygiene/format pass. Both
