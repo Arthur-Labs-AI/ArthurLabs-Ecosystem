@@ -1,0 +1,129 @@
+{
+  "frozen_tracks_unchanged": true,
+  "placement_and_pads_unchanged": true,
+  "zones_and_RF_keepout_unchanged": true,
+  "U6001_U7001_connected": {
+    "MCU_RESET_N_AFE": true,
+    "AFE_CLKIN": true,
+    "AFE_DRDY_N": true,
+    "AFE_MISO": true,
+    "MCU_CS_N": true,
+    "MCU_SCLK": true,
+    "MCU_MOSI": true
+  },
+  "metrics": {
+    "MCU_CS_N": {
+      "total_mm": 50.70446788875476,
+      "F.Cu_mm": 5.05,
+      "B.Cu_mm": 45.654467888754766,
+      "vias": 2,
+      "minimum_copper_clearance_mm": 0.2,
+      "minimum_added_routing_clearance_mm": 0.25
+    },
+    "MCU_SCLK": {
+      "total_mm": 54.57119407771256,
+      "F.Cu_mm": 5.930634918610405,
+      "B.Cu_mm": 48.64055915910215,
+      "vias": 2,
+      "minimum_copper_clearance_mm": 0.219,
+      "minimum_added_routing_clearance_mm": 0.25
+    },
+    "MCU_MOSI": {
+      "total_mm": 53.99147365726363,
+      "F.Cu_mm": 5.1230970388562795,
+      "B.Cu_mm": 48.86837661840735,
+      "vias": 2,
+      "minimum_copper_clearance_mm": 0.219,
+      "minimum_added_routing_clearance_mm": 0.2358
+    }
+  },
+  "GND_planes": {
+    "In1.Cu": {
+      "filled_polygons": 1,
+      "isolated_polygons": 0,
+      "area_mm2": 1637.482258786869
+    },
+    "In2.Cu": {
+      "filled_polygons": 1,
+      "isolated_polygons": 0,
+      "area_mm2": 1637.482258786869
+    }
+  },
+  "moved_vias": {
+    "686db222-3bdc-4651-bdb8-027ed03d6cca": {
+      "before": [
+        "PCB_VIA",
+        "MCU_SCLK",
+        [
+          22775000,
+          6100000
+        ],
+        [
+          22775000,
+          6100000
+        ],
+        500000,
+        "F.Cu",
+        300000,
+        0,
+        2
+      ],
+      "after": [
+        "PCB_VIA",
+        "MCU_SCLK",
+        [
+          22850000,
+          8600000
+        ],
+        [
+          22850000,
+          8600000
+        ],
+        500000,
+        "F.Cu",
+        300000,
+        0,
+        2
+      ]
+    },
+    "7ff5ef2a-c781-4639-8cef-7cae42ce5edd": {
+      "before": [
+        "PCB_VIA",
+        "MCU_MOSI",
+        [
+          22775000,
+          6900000
+        ],
+        [
+          22775000,
+          6900000
+        ],
+        500000,
+        "F.Cu",
+        300000,
+        0,
+        2
+      ],
+      "after": [
+        "PCB_VIA",
+        "MCU_MOSI",
+        [
+          20250000,
+          7350000
+        ],
+        [
+          20250000,
+          7350000
+        ],
+        500000,
+        "F.Cu",
+        300000,
+        0,
+        2
+      ]
+    }
+  },
+  "extra_vias": 0,
+  "recovered_sha256": "5d6e6774bdce98a8ae04a4861ed1376df37e176f4c88a87bb856af60160ba046",
+  "clean_sha256": "7a7a70d78e1e191e13251e24b882b7eeb3df1153912a4168850515c8ac8201f9"
+}

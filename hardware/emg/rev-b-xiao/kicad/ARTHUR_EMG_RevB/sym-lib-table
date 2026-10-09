@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "ARTHUR_RevB")(type "KiCad")(uri "${KIPRJMOD}/ARTHUR_RevB.kicad_sym")(options "")(descr "A.R.T.H.U.R EMG Rev B project-local symbols (RB-01); no stock libraries on the authoring host"))
+)
