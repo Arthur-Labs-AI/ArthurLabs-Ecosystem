@@ -1,43 +1,32 @@
-# Release checklist — Sentry v0.1 Beta (`v0.1.0-beta.1`)
+# Release checklist — v0.1.0-beta.1
 
-Check an item only after actually performing it. Evidence first.
-Status as of the launcher-env fix (code validated at da4b440, 2026-09-27; this commit is checklist-docs only).
+2026-10-09 candidate preparation. See [validation](v0.1.0-beta.1-validation.md)
+for commands, failures and platform scope. Historical September checkmarks are
+not evidence for this candidate.
 
-- [x] tree clean (`git status --porcelain` empty) — verified clean
-- [x] latest `main` checked out and pushed — verified at 0499a65 (local main == origin/main, clean tree)
-- [ ] CI green (Linux quality + Windows launcher job) — must be read from GitHub Actions on the final HEAD (see validation notes)
-- [x] `pnpm repository:check` passes
-- [x] `pnpm format:check` passes
-- [x] `pnpm lint` passes (20/20)
-- [x] `pnpm typecheck` passes (37/37)
-- [ ] `pnpm test` passes (quarantined historical names only, still executed) — bare run fails ONLY on pre-existing quarantined merger/verifier names plus Windows-environmental sandbox/EBUSY cases on byte-identical code; required suite otherwise green
-- [x] `pnpm build` passes (20/20)
-- [x] Desktop Electron smoke passes (`smoke`, `smoke:electron` — 0 failures)
-- [x] setup tested with existing WSL (detect + reuse, no reinstall — two full green runs exit 0)
-- [ ] setup tested from a fresh/clean Windows environment where possible — NOT performed (no clean machine available)
-- [x] runtime deploy tested (versioned dir, atomic `current`, handshake — source-clean turbo build 18/18)
-- [x] `sentry open` tested (launches; second `open` focuses — single instance verified)
-- [x] `sentry stop` tested (graceful; marker-specific, never taskkill; idle-stop clean)
-- [x] `sentry update` tested (origin/main merge, dirty-tree refusal, wrong-branch refusal, no-update path, handoff rebuild + redeploy + revalidate; reopen-when-running not live-fired)
-- [x] `sentry doctor` tested (zero paid calls, no secrets — READY with honest CONFIGURATION state; socat/bwrap/init rows green)
-- [x] provider settings persist across update (models.json overrides merged, user models untouched)
-- [ ] OpenCode real run passes — NOT performed (no provider credentials in this session)
-- [ ] DeepSeek real run passes — NOT performed (no provider credentials in this session)
-- [ ] GLM real run passes — NOT performed (no provider credentials in this session)
-- [ ] Full QA 3/3 passes — NOT performed (blocked on credentials, not on code)
-- [x] README describes the Beta accurately (no Private Beta naming — user docs use Beta; ADRs stay historical)
-- [x] release notes (`docs/releases/v0.1.0-beta.1.md`) correct
-- [ ] tag `v0.1.0-beta.1` created on the validated commit — NOT created (needs 3/3 + CI first)
-- [ ] GitHub Pre-release `Sentry v0.1 Beta` created from the notes file — NOT created
+- [x] Isolated release branch from main; owner's dirty checkout preserved.
+- [x] Frozen dependency installation on Windows and native WSL filesystem.
+- [x] Repository hygiene, format, lint, type checks and build.
+- [x] Full Linux runtime suite, including real sandbox trust tests.
+- [x] Windows Desktop, runtime, CLI and available run-engine tests.
+- [x] Windows launcher decision/syntax/smoke/behavior/IO/shutdown fixtures.
+- [x] Linux launcher syntax and all shell fixtures.
+- [x] Failed shutdown blocks setup/update before mutation on both launchers.
+- [x] Runtime refuses active run/retest shutdown; Desktop keeps cancellation usable.
+- [x] Actual built Windows Electron → candidate WSL runtime smoke and idle quit.
+- [x] Private staging exclusions and unchanged security assertions checked.
+- [x] Version, source-install instructions, changelog and branching policy aligned.
+- [x] Candidate mandatory CI — all three jobs pass on df6fd49 (PR run 37891284512).
+- [x] Fresh real runtime staging/install/build (18/18), activation and handshake.
+- [x] Receipt-only PR head CI — b192b03, PR run 37892050450, all three jobs pass.
+- [x] Owner authorized proceeding with release after reporting 3/3 on both hosts (2026-10-09).
+- [ ] Release documentation update and resulting merge CI — verify before tagging.
+- [ ] Further candidate CachyOS close/restart/maintenance checks — not independently verified.
+- [ ] Further active-provider cancellation/exit/update checks — automated refusal tests pass; manual matrix not independently verified.
+- [ ] Annotated immutable beta tag on the approved, validated commit.
+- [ ] GitHub draft pre-release prepared and reviewed; publish only after gates.
 
-## Validation notes (this pass)
-
-- WSL1 conversion, no-WSL elevation/UAC paths, and reboot resume are
-  covered by mocked-boundary behavior tests (31 checks) plus code review —
-  NOT by live WSL1/no-WSL machines, which were unavailable here.
-- `sentry update` with a real newer `origin/main` (fetch → stop → rebuild →
-  reopen while running) was exercised as a no-op merge + full handoff; the
-  reopen-while-running branch is code-reviewed but not live-fired.
-- Windows/Linux CI results must be read from GitHub Actions on this HEAD;
-  the Windows job was repaired (full `pnpm build` first) but its green run
-  is UNVERIFIED until CI executes it.
+Owner confirms Windows/CachyOS 3/3 success and authorizes this release.
+These remain owner-reported, not claimed as rerun by the agent. Fresh Windows/WSL installation, real CachyOS,
+paid-provider runs and signed/binary distribution are unavailable in this check.
+No installers are advertised or attached.

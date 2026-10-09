@@ -2,8 +2,9 @@
 
 `sentry cli` controls the same running Sentry instance as the Electron Desktop.
 It is a frontend only: every command travels a local named pipe to the Desktop
-broker, which dispatches it through the shared command router to the canonical
-WSL runtime (`~/.local/share/sentry`). The CLI never opens the database, never
+broker (named pipe on Windows, Unix socket on CachyOS), which dispatches through
+the shared router to the canonical WSL2 or native CachyOS runtime
+(`~/.local/share/sentry`). The CLI never opens the database, never
 owns leases, never instantiates harnesses, and never carries provider secrets.
 
 ```text

@@ -108,6 +108,62 @@ afterEach(() => {
 });
 
 describe('stdio runtime transport', () => {
+  it('retries transient request-busy refusal before detaching the runtime', async () => {
+    const { client, fake } = await launchStarted();
+    let refusals = 0;
+    fake.onWrite = (line) => {
+      const request = JSON.parse(line) as { id: string };
+      queueMicrotask(() => {
+        if (++refusals <= 2)
+          fake.stdout.emit(
+            'data',
+            Buffer.from(
+              JSON.stringify({
+                type: 'response',
+                id: request.id,
+                ok: false,
+                error: { code: 'RUNTIME_REQUESTS_BUSY', message: 'Wait' },
+              }) + '\n',
+            ),
+          );
+        else fake.emit('exit', 0);
+      });
+    };
+    await client.stop();
+    expect(refusals).toBe(3);
+    expect(fake.killed).toBe(false);
+    expect(client.status.connected).toBe(false);
+  });
+  it('preserves a busy runtime after refused shutdown without killing it', async () => {
+    const { client, fake } = await launchStarted();
+    vi.useFakeTimers();
+    fake.onWrite = (line) => {
+      const request = JSON.parse(line) as { id: string; method: string };
+      queueMicrotask(() =>
+        fake.stdout.emit(
+          'data',
+          Buffer.from(
+            JSON.stringify({
+              type: 'response',
+              id: request.id,
+              ok: false,
+              error: { code: 'RUNTIME_BUSY', message: 'Cancel active work first' },
+            }) + '\n',
+          ),
+        ),
+      );
+    };
+    const stopped = client.stop().then(
+      () => 'stopped',
+      (error: unknown) => error,
+    );
+    await vi.advanceTimersByTimeAsync(STDIO_SHUTDOWN_GRACE_MS + 1);
+    expect(await stopped).toMatchObject({ code: 'RUNTIME_BUSY' });
+    expect(fake.killed).toBe(false);
+    expect(client.status.connected).toBe(true);
+    installResponder(fake);
+    await client.stop();
+  });
   it('fails closed with RUNTIME_OFFLINE before start', async () => {
     const client = new StdioRuntimeClient({
       launch: () => {

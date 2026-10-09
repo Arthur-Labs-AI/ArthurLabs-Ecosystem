@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { access, constants, mkdir } from 'node:fs/promises';
-import { delimiter, dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve, sep } from 'node:path';
 import type { VerificationRecipeStep, VerificationStepOutcome } from '@qa/schemas';
 import { diagnosticFingerprint, hasUnsafeTarget, isReplayableCommand } from './signatures.js';
 import { findTestIdentity, parseTestOutput } from './frameworks.js';
@@ -399,7 +399,7 @@ export async function resolveContainedCwd(
   if (segments.includes('..') || segments.includes('')) return undefined;
   // Inline containment (no persistence dependency): join + boundary.
   const candidate = resolve(ctx.workspaceRoot, cwdRelative);
-  if (candidate !== ctx.workspaceRoot && !candidate.startsWith(ctx.workspaceRoot + '/')) {
+  if (candidate !== ctx.workspaceRoot && !candidate.startsWith(ctx.workspaceRoot + sep)) {
     return undefined;
   }
   try {
@@ -410,7 +410,7 @@ export async function resolveContainedCwd(
       realpath(ctx.workspaceRoot),
       realpath(candidate),
     ]);
-    if (realCandidate !== realRoot && !realCandidate.startsWith(realRoot + '/')) return undefined;
+    if (realCandidate !== realRoot && !realCandidate.startsWith(realRoot + sep)) return undefined;
     return candidate;
   } catch {
     return undefined;

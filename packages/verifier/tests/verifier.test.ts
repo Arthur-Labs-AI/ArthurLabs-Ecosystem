@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { join, resolve } from 'node:path';
 import type { Evidence, Finding } from '@qa/schemas';
 import {
   buildRecipe,
@@ -269,12 +270,14 @@ describe('deterministic verifier', () => {
   });
 
   it('evaluates source integrity against the workspace (§28, §98)', async () => {
+    const workspaceRoot = resolve('verifier-fixture');
+    const sourcePath = join(workspaceRoot, 'src', 'a.ts');
     const ctx = (files: Map<string, string>): StepExecutionContext => ({
-      workspaceRoot: '/ws',
+      workspaceRoot,
       fs: {
         stat: async (path: string) => {
-          if (path === '/ws/src/a.ts') return { isFile: true, isDirectory: false };
-          if (path === '/ws/docs') return { isFile: false, isDirectory: true };
+          if (path === sourcePath) return { isFile: true, isDirectory: false };
+          if (path === join(workspaceRoot, 'docs')) return { isFile: false, isDirectory: true };
           throw new Error('ENOENT');
         },
         readLines: async (path: string) => ({
@@ -304,7 +307,7 @@ describe('deterministic verifier', () => {
       }) as unknown as VerificationRecipeStep;
     const file = await executeSourceIntegrity(
       step({ relativePath: 'src/a.ts', startLine: '1' }),
-      ctx(new Map([['/ws/src/a.ts', 'x']])),
+      ctx(new Map([[sourcePath, 'x']])),
     );
     expect(file.outcome).toBe('matched');
     const missing = await executeSourceIntegrity(
@@ -362,11 +365,13 @@ describe('deterministic verifier', () => {
   });
 
   it('resolves contained working directories without escaping (§39)', async () => {
-    const { mkdtemp, mkdir, rm } = await import('node:fs/promises');
+    const { mkdtemp, mkdir, rm, symlink } = await import('node:fs/promises');
     const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
     const root = await mkdtemp(join(tmpdir(), 'sentry-cwd-'));
     await mkdir(join(root, 'frontend'), { recursive: true });
+    const outside = await mkdtemp(join(tmpdir(), 'sentry-cwd-outside-'));
+    await symlink(outside, join(root, 'escape'), process.platform === 'win32' ? 'junction' : 'dir');
     const { stat } = await import('node:fs/promises');
     const ctx = {
       workspaceRoot: root,
@@ -385,8 +390,10 @@ describe('deterministic verifier', () => {
       expect(await resolveContainedCwd(ctx, '/etc')).toBeUndefined();
       expect(await resolveContainedCwd(ctx, 'frontend/../../etc')).toBeUndefined();
       expect(await resolveContainedCwd(ctx, 'missing')).toBeUndefined();
+      expect(await resolveContainedCwd(ctx, 'escape')).toBeUndefined();
     } finally {
       await rm(root, { recursive: true, force: true });
+      await rm(outside, { recursive: true, force: true });
     }
   });
 

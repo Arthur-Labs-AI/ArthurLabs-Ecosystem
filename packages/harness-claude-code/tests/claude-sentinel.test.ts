@@ -1,4 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { release } from 'node:os';
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, release: vi.fn(actual.release) };
+});
 import {
   buildClaudeArgs,
   buildClaudeChildEnvironment,
@@ -271,7 +276,9 @@ describe('Claude executable runtime identity', () => {
 
   it('accepts a native Linux executable under /mnt outside WSL', async () => {
     // On native Linux /mnt/* is an ordinary location, not a Windows mount:
-    // no WSL markers in env means no rejection for the location alone.
+    // Simulate a native kernel as well as absence of WSL env markers.
+    // Production also detects WSL from the kernel; keep that protection.
+    vi.mocked(release).mockReturnValueOnce('6.12.0-cachyos');
     const { resolveClaudeExecutableIdentity } = await import('../src/index.js');
     const identity = await resolveClaudeExecutableIdentity(
       '/mnt/tools/claude',

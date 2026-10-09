@@ -1,4 +1,38 @@
-# Handoff — Electron ZIP extraction on Node 26 (2026-10-06)
+# Handoff — Sentry beta candidate (2026-10-09)
+
+Candidate: `codex/release-v0.1.0-beta.1`, baseline `9c57e3f`.
+Implementation/validation complete with documented limitations. On 2026-10-09
+the owner confirmed 3/3 on both machines and authorized release preparation.
+Final receipt CI PASS on b192b03: PR 37892050450 and push 37892047339.
+All three CI jobs PASS on df6fd49: push 37891235154,
+PR 37891284512. Fresh real runtime deployment with 18/18 uncached builds,
+activation, handshake and clean shutdown PASS. Final receipt-only PR checks
+precede merge. Full WSL runtime suite 40/40 tasks
+(1,036 passed/32 opt-in or platform skips), including six real sandbox trust
+cases. Windows Desktop 235 passed/one skip; Windows runtime/CLI and available
+run-engine suites pass. Build/lint/typecheck 60/60, hygiene/format pass. Both
+launcher fixture suites pass. Actual isolated Windows Electron/WSL boot, bridge,
+renderer and idle close passed with all leases released and no matching child.
+
+Shutdown now refuses pending QA/retest, retries transient request-busy stop,
+awaits Electron cleanup, and prevents setup/update mutation after failed stop.
+No harness orchestration/prompt/report changes. CI named quarantines repaired
+and removed. Source/tag beta installs, CachyOS docs and branch review policy
+aligned. GitHub protection HTTP 403 on private plan; no server enforcement claim.
+
+Next: merge the owner-authorized release PR after documentation CI passes,
+verify resulting main CI, annotate the immutable tag, and create the preferred
+draft pre-release. GitHub tag/release receipts determine final publication
+status. Additional manual candidate cancellation/maintenance coverage remains
+independently unverified and must remain disclosed in the notes.
+No installer/tested binary bundle exists. Owner's earlier 3/3 success on both
+hosts remains owner-reported. No paid provider acceptance was rerun here.
+
+The original main checkout contains pre-existing DeepSeek/schema/docs changes;
+these were excluded and left untouched. Git identity read and preserved.
+`shux contract` was unavailable; status/ledger/handoff maintained directly.
+
+## Prior handoff — Electron ZIP extraction on Node 26 (2026-10-06)
 
 Task status: implemented and locally verified; CachyOS acceptance unverified.
 This handoff accompanies the Electron extraction fix commit on `main`

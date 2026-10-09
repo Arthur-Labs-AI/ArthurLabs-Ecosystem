@@ -1,9 +1,9 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { tmpdir as systemTmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { HarnessRunRequestSchema, type HarnessEvent } from '@qa/schemas';
 import {
   createAgentRunId,
@@ -39,9 +39,21 @@ function liveStream(session: ClaudeSessionView, text: string): ClaudeTurnStream 
  * nothing is observable until the fixture exits.
  */
 
+// Scripted clients test tool outcomes independently of the host kernel.
+// Explicit mount-isolation override cases below still exercise fail-closed behavior.
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, release: () => '6.12.0-fixture' };
+});
+// Each suite owns its parent: production's sibling ephemeral HOME must
+// never collide with a concurrent fixture from another test file.
+const suiteRoot = mkdtempSync(join(systemTmpdir(), 'sentry-claude-suite-'));
+const tmpdir = () => suiteRoot;
+afterAll(() => rm(suiteRoot, { recursive: true, force: true }));
 const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  hermeticRoot = undefined;
 });
 
 /**

@@ -5,7 +5,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/release-*', 'codex/hotfix-*']
   pull_request:
 
 jobs:
@@ -66,44 +66,20 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
-      # Quarantine (pipeline-level only; no test or product code is weakened):
-      # the following tests fail for documented pre-existing code reasons and
-      # must not block the pipeline, but they MUST still execute so the gap
-      # stays visible in CI logs. Each entry names the exact failing test:
-      #   (merger §61/§67/§13 were quarantined here before; fixed and
-      #     rejoined the required suite — see patterns below.)
-      #   verifier §28/§98 (source integrity) and §39 (contained cwd) —
-      #     pre-existing verifier failures under investigation.
-      #   claude 'name-only secret transport' — assumes /bin/echo exists;
-      #     the hosted runner image lacks it (spawn ENOENT), while sibling
-      #     /bin/true/false probes pass. Environmental, not logic.
-      # The required steps below run the ENTIRE suite minus these names (any
-      # NEW failure still fails the pipeline); the informational step runs
-      # ONLY these names with continue-on-error. When a quarantined test is
-      # fixed in code, remove its § marker from BOTH patterns below so it
-      # rejoins the required suite.
-      # NOTE: exactly one `--` separates turbo flags from vitest
-      # passthrough args. Proven on Linux (pnpm forwards verbatim, turbo
-      # consumes the marker): doubling it forwards a literal `--` into
-      # vitest, which then silently ignores the pattern. Windows pwsh
-      # needs the doubled form instead; this file serves ubuntu runners.
-      - name: Test (required, quarantined names excluded)
+      # Former verifier/Claude fixture quarantines are repaired and mandatory.
+      # Only actual sandbox capability controls the trust-file lane.
+      - name: Test (required, full suite)
         if: steps.sandbox.outputs.available == 'true'
         run: |
-          pnpm exec turbo run test -- --testNamePattern='^(?!.*(§28|§39|name-only secret transport)).*$'
+          pnpm test
       # The real-sandbox fixture requires user-unit mounts. Keep it mandatory
       # wherever the runner can provide them; on restricted hosted runners,
       # run every other package and run-engine test without hiding the gap.
       - name: Test (required, sandbox trust unverified on this runner)
         if: steps.sandbox.outputs.available != 'true'
         run: |
-          pnpm exec turbo run test --filter='!@qa/run-engine' -- --testNamePattern='^(?!.*(§28|§39|name-only secret transport)).*$'
-          pnpm --filter @qa/run-engine exec vitest run --exclude tests/verification-trust.test.ts --testNamePattern='^(?!.*(§28|§39|name-only secret transport)).*$'
-      - name: Test (quarantined pre-existing failures, informational)
-        if: always()
-        continue-on-error: true
-        run: |
-          pnpm exec turbo run test --filter=@qa/merger --filter=@qa/verifier --filter=@qa/harness-claude-code -- --testNamePattern='(§28|§39|name-only secret transport)'
+          pnpm exec turbo run test --filter='!@qa/run-engine'
+          pnpm --filter @qa/run-engine exec vitest run --exclude tests/verification-trust.test.ts
       - run: pnpm build
       - name: Managed DeepSeek current-switch regression (no WSL)
         run: bash scripts/launcher/tests/test-dsh-switch.sh
@@ -149,8 +125,11 @@ jobs:
       - name: Launcher process IO stress test (no WSL)
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher/tests/io-stress.test.ps1
+      - name: Shutdown safety regression (no WSL)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher/tests/shutdown-safety.test.ps1
       - name: Desktop control-parser tests
-        run: pnpm --filter @qa/desktop exec vitest run tests/unit/sentry-control.test.ts
+        run: pnpm --filter @qa/desktop exec vitest run tests/unit/sentry-control.test.ts tests/unit/stdio-runtime-client.test.ts tests/unit/quit-lifecycle.test.ts
       - name: DeepSeek dshBin regression tests (no WSL)
         run: pnpm --filter @qa/harness-deepseek exec vitest run tests/dsh-bin-selection.test.ts tests/dsh-sdk-resolution.test.ts
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 help
@@ -184,6 +163,8 @@ jobs:
           bash scripts/launcher/tests/test-node-resolve.sh
           bash scripts/launcher/tests/test-lifecycle-shim.sh
           bash scripts/launcher/tests/test-update-safety.sh
+          bash scripts/launcher/tests/test-desktop-safety.sh
+          bash scripts/launcher/tests/test-desktop-startup.sh
           bash scripts/launcher/tests/test-package-capabilities.sh
           bash scripts/launcher/tests/test-pnpm-resolve.sh
           bash scripts/launcher/tests/test-deploy-pnpm.sh

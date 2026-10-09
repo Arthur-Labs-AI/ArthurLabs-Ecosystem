@@ -173,7 +173,7 @@ describe('tool-shell network boundary', () => {
     const readable = runThroughWrapper({
       wrapper: fixture.wrapper,
       scopeHome: fixture.scopeHome,
-      script: 'cat "$SENTRY_WORKSPACE/probe.txt"',
+      script: 'cat "' + fixture.workspace + '/probe.txt"',
     });
     expect(readable.status).toBe(0);
     expect(readable.stdout).toContain('workspace-readable');
@@ -181,7 +181,7 @@ describe('tool-shell network boundary', () => {
     const hidden = runThroughWrapper({
       wrapper: fixture.wrapper,
       scopeHome: fixture.scopeHome,
-      script: 'cat "$SENTRY_WORKSPACE/../hidden/secret.txt"',
+      script: 'cat "' + fixture.workspace + '/../hidden/secret.txt"',
     });
     expect(hidden.status).not.toBe(0);
     expect(hidden.stdout).not.toContain('must-stay-hidden');

@@ -14,7 +14,7 @@ From a clone, or from anywhere after setup installs the user shim:
 ./sentry status    # installation status (broker handshake proves liveness)
 ./sentry stop      # graceful shutdown through the running instance (never killall)
 ./sentry doctor    # non-destructive diagnostics, no secrets printed
-./sentry update    # fast-forward origin/main, rebuild, redeploy, revalidate
+./sentry update    # DEVELOPMENT main only; beta tags stay pinned
 ./sentry cli ...   # automation CLI, same contract as Desktop (uses --json)
 ./sentry version   # product version, commit, branch
 ./sentry help
@@ -58,4 +58,6 @@ See the Stage 3 report for the full checklist: clone, `./sentry setup`,
 `sentry doctor`, `sentry open`, `sentry status`, `sentry stop`,
 `sentry update`, `sentry version`, `sentry help`, then runtime hello,
 native host status, project import, CLI broker, and provider readiness.
-CachyOS setup is not production-ready until those steps pass on real hardware.
+The owner reports 3/3 success on CachyOS. Candidate changes still need target
+acceptance; see [beta validation](../releases/v0.1.0-beta.1-validation.md).
+This release is beta software, not a production-readiness claim.
