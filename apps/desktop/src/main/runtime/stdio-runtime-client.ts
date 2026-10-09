@@ -217,34 +217,78 @@ export class StdioRuntimeClient implements RuntimeClient {
     }
   }
 
-  /** Graceful shutdown; falls back to kill after a bounded wait. */
+  /** Refuse busy shutdown; bound cleanup only after acceptance or a broken transport. */
   async stop(): Promise<void> {
     const child = this.child;
+    if (child === undefined) return;
+    const deadline = Date.now() + STDIO_SHUTDOWN_GRACE_MS;
+    let exited = child.exitCode != null || child.signalCode != null;
+    const markExit = (): void => {
+      exited = true;
+    };
+    child.once('exit', markExit);
+    let accepted = false;
+    try {
+      if (this.hello !== undefined) {
+        for (;;) {
+          try {
+            await this.request('runtime.shutdown', {}, Math.max(1, deadline - Date.now()));
+            accepted = true;
+            break;
+          } catch (error) {
+            if (
+              (error as { code?: string }).code !== 'RUNTIME_REQUESTS_BUSY' ||
+              Date.now() >= deadline
+            )
+              throw error;
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+        }
+      }
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code === 'RUNTIME_BUSY' || code === 'RUNTIME_REQUESTS_BUSY') throw error;
+      // A broken transport retains bounded cleanup of this owned child.
+    } finally {
+      child.removeListener('exit', markExit);
+    }
     this.child = undefined;
     this.hello = undefined;
     this.failAllPending(new Error('Runtime stopped'));
-    if (child === undefined) return;
     try {
-      child.stdin?.write(
-        JSON.stringify({
-          type: 'request',
-          id: nextId('rpc'),
-          method: 'runtime.shutdown',
-          params: {},
-        }) + '\n',
-      );
+      if (!accepted && !exited)
+        child.stdin?.write(
+          JSON.stringify({
+            type: 'request',
+            id: nextId('rpc'),
+            method: 'runtime.shutdown',
+            params: {},
+          }) + '\n',
+        );
     } catch {
       // transport already broken
     }
+    if (exited) return;
+    if (Date.now() >= deadline) {
+      try {
+        child.kill();
+      } catch {
+        /* already gone */
+      }
+      return;
+    }
     await new Promise<void>((resolve) => {
-      const timer = setTimeout(() => {
-        try {
-          child.kill();
-        } catch {
-          // already gone
-        }
-        resolve();
-      }, STDIO_SHUTDOWN_GRACE_MS);
+      const timer = setTimeout(
+        () => {
+          try {
+            child.kill();
+          } catch {
+            // already gone
+          }
+          resolve();
+        },
+        Math.max(0, deadline - Date.now()),
+      );
       child.once('exit', () => {
         clearTimeout(timer);
         resolve();

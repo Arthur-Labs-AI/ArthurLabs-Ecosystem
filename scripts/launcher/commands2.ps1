@@ -145,7 +145,7 @@ function Show-SentryDoctorResults {
 function Test-SentryUpdateBranch {
   param([string]$Branch)
   if ($Branch -ceq 'main') { return '' }
-  return ('Sentry Beta updates track origin/main.' + "`n`n" + 'Current branch:' + "`n" + '    ' + $Branch + "`n`n" + 'Switch to main and rerun:' + "`n" + '    git switch main' + "`n" + '    sentry update')
+  return ('Sentry Beta updates track origin/main.' + "`n" + 'Pinned beta installs stay on their release tag. See docs/beta/updating.md.' + "`n" + 'Switching to main explicitly opts into untested development updates.' + "`n`n" + 'Current branch:' + "`n" + '    ' + $Branch + "`n`n" + 'Switch to main and rerun:' + "`n" + '    git switch main' + "`n" + '    sentry update')
 }
 
 function Test-SentryUpdateNeeded {
@@ -157,7 +157,7 @@ function Test-SentryUpdateNeeded {
 function Invoke-SentryUpdate {
   param([string]$RepoRoot, [bool]$Repair = $false)
   Write-Host ''
-  Write-Host 'Sentry update (tracks latest origin/main commits; Releases are milestones only)' -ForegroundColor Cyan
+  Write-Host 'Sentry update (DEVELOPMENT channel: latest origin/main, not validated release tags)' -ForegroundColor Cyan
   try { $branch = ([string](& git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null)).Trim() } catch { $branch = '' }
   $branchRefusal = Test-SentryUpdateBranch -Branch $branch
   if ($branchRefusal) {
@@ -188,7 +188,7 @@ function Invoke-SentryUpdate {
   }
   if ($wasRunning) {
     Write-SentryInfo 'An update is available; stopping Sentry...'
-    Stop-SentryDesktopIfRunning -RepoRoot $RepoRoot
+    if ((Stop-SentryDesktopIfRunning -RepoRoot $RepoRoot) -ne 0) { return 1 }
   }
   Write-SentryInfo 'git merge --ff-only origin/main ...'
   $p = Invoke-SentryNative -FilePath 'git' -Arguments @('-C', $RepoRoot, 'merge', '--ff-only', 'origin/main')

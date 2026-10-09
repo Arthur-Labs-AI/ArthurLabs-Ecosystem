@@ -15,6 +15,9 @@ let bootstrapped: BootstrappedDesktop | undefined;
 let mainWindow: BrowserWindow | undefined;
 let liveUpdates: DesktopLiveUpdates | undefined;
 let cliServer: SentryCliServer | undefined;
+let bootPromise: Promise<void> | undefined;
+let quitting = false;
+let cleanupComplete = false;
 
 function resolveAsset(...segments: string[]): string {
   return join(currentDir, ...segments);
@@ -35,6 +38,12 @@ async function createWindow(): Promise<void> {
       sandbox: true,
       preload: resolveAsset('../preload/preload.js'),
     },
+  });
+  mainWindow.on('close', (event) => {
+    if (!cleanupComplete) {
+      event.preventDefault();
+      app.quit();
+    }
   });
 
   const devUrl = process.env['SENTRY_DESKTOP_URL'];
@@ -216,11 +225,30 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-app.on('before-quit', () => {
-  liveUpdates?.stop();
+app.on('before-quit', (event) => {
+  if (cleanupComplete) return;
+  // Electron does not await async event handlers. Hold the first quit until
+  // bootstrap and runtime shutdown finish; repeated requests share cleanup.
+  event.preventDefault();
+  if (quitting) return;
+  quitting = true;
   void (async () => {
-    await cliServer?.stop();
-    await bootstrapped?.close();
+    try {
+      await bootPromise;
+      // Refusal must leave the window and broker usable for cancellation.
+      await bootstrapped?.close();
+      liveUpdates?.stop();
+      await cliServer?.stop();
+      cleanupComplete = true;
+      app.quit();
+    } catch {
+      quitting = false;
+      console.error('[sentry] Shutdown cleanup failed; cancel active work and retry sentry stop.');
+      dialog.showErrorBox(
+        'Sentry is still running',
+        'Shutdown could not complete. Cancel active QA work, wait for it to finish, then retry sentry stop.',
+      );
+    }
   })();
 });
 
@@ -338,5 +366,5 @@ if (sentryControl.mode === 'stop') {
       mainWindow.focus();
     }
   });
-  void boot();
+  bootPromise = boot();
 }

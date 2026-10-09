@@ -461,6 +461,7 @@ export class SentryRuntimeHost {
   private readonly notify: (event: string, payload?: unknown) => void;
   private configuredModels: { opencode?: string; deepseek?: string; glm?: string } = {};
   private closed = false;
+  private shutdownRequested = false;
 
   constructor(
     dataRootOverride: string | undefined,
@@ -1480,6 +1481,9 @@ export class SentryRuntimeHost {
   }
 
   async dispatch(method: string, params: Record<string, unknown>): Promise<unknown> {
+    if (this.shutdownRequested && method !== 'runtime.shutdown') {
+      throw rpcError('RUNTIME_SHUTTING_DOWN', 'Runtime shutdown is already in progress.');
+    }
     switch (method) {
       case 'runtime.hello':
         return this.hello();
@@ -1488,6 +1492,13 @@ export class SentryRuntimeHost {
       case 'runtime.environment':
         return this.environmentDoctors();
       case 'runtime.shutdown':
+        if (this.pendingRuns.size > 0 || this.pendingRetests.size > 0) {
+          throw rpcError(
+            'RUNTIME_BUSY',
+            'QA work is still active. Cancel it, wait for completion, then retry sentry stop.',
+          );
+        }
+        this.shutdownRequested = true;
         return { shuttingDown: true };
       case 'projects.list':
         return this.listProjects();
@@ -1758,6 +1769,12 @@ export async function serveStdio(options: RuntimeHostOptions = {}): Promise<void
       const { RUNTIME_METHODS } = await import('@qa/runtime-protocol');
       if (!(RUNTIME_METHODS as readonly string[]).includes(message.method)) {
         throw rpcError('UNKNOWN_METHOD', 'Unknown runtime method: ' + message.method.slice(0, 120));
+      }
+      if (message.method === 'runtime.shutdown' && inFlight > 1) {
+        throw rpcError(
+          'RUNTIME_REQUESTS_BUSY',
+          'Runtime requests are still active. Wait and retry sentry stop.',
+        );
       }
       const result = await host.dispatch(message.method, message.params ?? {});
       emit({ type: 'response', id: message.id, ok: true, result: sanitize(result) });

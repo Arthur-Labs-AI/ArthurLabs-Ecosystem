@@ -26,12 +26,19 @@ echo "[sentry-runtime] staging $VERSION ..."
 rm -rf "$DEST.tmp"; mkdir -p "$DEST.tmp"
 cd "$SRC"
 echo '[sentry-runtime] copying root build metadata (files only)...'
-for e in package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc .nvmrc tsconfig.base.json turbo.json eslint.config.js prettier.config.js; do
+for e in package.json pnpm-lock.yaml pnpm-workspace.yaml .nvmrc tsconfig.base.json turbo.json eslint.config.js prettier.config.js; do
   if [ -f "$e" ]; then cp --no-preserve=all "$e" "$DEST.tmp/"; else echo "[sentry-runtime] note: root file missing: $e"; fi
 done
 echo '[sentry-runtime] syncing workspace sources (excluding node_modules/dist/.turbo/coverage)...'
 mkdir -p "$DEST.tmp/apps" "$DEST.tmp/packages"
 EXCLUDES=(--exclude=node_modules --exclude=dist --exclude=.turbo --exclude=coverage '--exclude=*.tsbuildinfo' --exclude=.tsbuildinfo)
+# Deployment copies source from a user checkout: never stage local secrets,
+# provider stores, databases, logs, or private package-manager configuration.
+EXCLUDES+=(--exclude=.git '--exclude=.env*' --exclude=.npmrc --exclude=secrets --exclude=logs
+  --exclude=credentials --exclude=credentials.json --exclude=credentials.enc.json --exclude=models.json
+  '--exclude=*.sqlite*' '--exclude=*.db*' '--exclude=*.log'
+  '--exclude=*.key' '--exclude=*.pem' '--exclude=*.p12'
+  --exclude=.sentry-data --exclude=sentry-data --exclude=.sentry-live --exclude=.qa --exclude=workspaces)
 # GNU tar exits 1 when files change mid-archive (e.g. an IDE/test run touches
 # the tree during staging). That is tolerated here: the clean-tree assertion,
 # frozen install, full Linux build, entry validation, and handshake below

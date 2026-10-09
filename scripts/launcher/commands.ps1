@@ -6,7 +6,7 @@ function Invoke-SentrySetup {
   Write-Host ''
   Write-Host ('Sentry v0.1 Beta Setup (product ' + $version + ')') -ForegroundColor Cyan
   Write-SentryLog ('setup start version=' + $version + ' sha=' + (Get-SentryShortSha -RepoRoot $RepoRoot)) 'setup'
-  Stop-SentryDesktopIfRunning -RepoRoot $RepoRoot
+  if ((Stop-SentryDesktopIfRunning -RepoRoot $RepoRoot) -ne 0) { return 1 }
   $failed = $false
   Write-SentrySection '[1/7] Windows prerequisites'
   if (-not (Test-SentryGit)) { $failed = $true }
@@ -163,9 +163,14 @@ function Invoke-SentryOpenDetached {
 function Stop-SentryDesktopIfRunning {
   param([string]$RepoRoot)
   $running = @(Get-SentryDesktopProcesses)
-  if ($running.Count -eq 0) { return }
+  if ($running.Count -eq 0) { return 0 }
   Write-SentryInfo 'Stopping the running Sentry instance...'
-  [void](Invoke-SentryStop -RepoRoot $RepoRoot)
+  if ((Invoke-SentryStop -RepoRoot $RepoRoot) -ne 0) {
+    Write-SentryFail 'Sentry could not stop safely; setup/update aborted.'
+    Write-SentryInfo 'Cancel active work and close Sentry, then run: sentry stop. Retry setup/update after Sentry exits.'
+    return 1
+  }
+  return 0
 }
 
 function Invoke-SentryStop {

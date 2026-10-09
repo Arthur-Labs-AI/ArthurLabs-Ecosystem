@@ -35,6 +35,14 @@ RECORDER
   chmod +x "$path"
 }
 mk_repo "$T/src"
+# Local credentials/data must never reach the staged runtime source tree.
+mkdir -p "$T/src/apps/demo/secrets" "$T/src/apps/demo/logs"
+for private in .env .env.local credentials.json state.sqlite state.db private.key; do
+  echo PRIVATE_FIXTURE > "$T/src/apps/demo/$private"
+done
+echo PRIVATE_FIXTURE > "$T/src/apps/demo/secrets/token.txt"
+echo PRIVATE_FIXTURE > "$T/src/apps/demo/logs/session.log"
+echo '//registry.example.invalid/:_authToken=PRIVATE_FIXTURE' > "$T/src/.npmrc"
 mkdir -p "$T/recbin" "$T/decbin" "$T/expbin"
 mk_recorder "$T/recbin/pnpm" "$T/rec.log"
 cat > "$T/decbin/pnpm" <<'DECOY'
@@ -54,6 +62,9 @@ PATH="$OLD_PATH"
 grep -q '^install --frozen-lockfile$' "$T/rec.log" || fail "2-arg missed frozen install"
 grep -q '^exec turbo run build' "$T/rec.log" || fail "2-arg missed turbo build"
 [ ! -e "$T/.local/share/sentry/runtime/current" ] || fail "2-arg moved current on failure"
+if grep -R -q PRIVATE_FIXTURE "$T/.local/share/sentry/runtime/vtest-2arg.tmp"; then
+  fail "private local files entered runtime staging"
+fi
 # Explicit 3rd arg wins even with a decoy pnpm earlier on PATH.
 PATH="$T/decbin:$OLD_PATH"
 if bash "$INNER" "$T/src" vtest-3arg "$T/expbin/mypnpm" >/dev/null 2>&1; then fail "3-arg unexpectedly succeeded"; fi

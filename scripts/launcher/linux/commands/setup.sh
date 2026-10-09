@@ -31,7 +31,7 @@ cmd_setup() {
   local sha="$(sentry_short_sha "$repo")"
   echo ""
   echo "Sentry v0.1 Beta Setup (product $version, CachyOS)"
-  sentry_desktop_ensure_stopped "$repo"
+  sentry_desktop_ensure_stopped "$repo" || return 1
 
   sentry_section "[1/12] CachyOS host validation"
   sentry_require_cachyos || return 1
@@ -192,4 +192,3 @@ cmd_setup() {
   echo "    sentry doctor"
   return 2
 }
-

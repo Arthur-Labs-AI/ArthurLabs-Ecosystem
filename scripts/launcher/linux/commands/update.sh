@@ -10,11 +10,13 @@ cmd_update() {
   local repo="$REPO_ROOT"
   sentry_seed_node_env
   echo ""
-  echo "Sentry update (tracks latest origin/main commits)"
+  echo "Sentry update (DEVELOPMENT channel: latest origin/main, not validated release tags)"
   local branch=""
   branch=$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
   if [ "$branch" != "main" ]; then
     sentry_fail "Sentry Beta updates track origin/main."
+    echo "Pinned beta installs stay on their release tag. See docs/beta/updating.md."
+    echo "Switching to main explicitly opts into untested development updates."
     echo ""
     echo "Current branch:"
     echo "    $branch"
@@ -55,7 +57,7 @@ cmd_update() {
   if sentry_desktop_running; then was_running=1; fi
   if [ "$was_running" = "1" ]; then
     echo "  An update is available; stopping Sentry..."
-    sentry_desktop_ensure_stopped "$repo"
+    sentry_desktop_ensure_stopped "$repo" || return 1
   fi
   echo "  git merge --ff-only origin/main ..."
   if ! git -C "$repo" merge --ff-only origin/main; then
@@ -138,4 +140,3 @@ cmd_post_update() {
   echo "Sentry was not running before; leaving it stopped."
   return 0
 }
-

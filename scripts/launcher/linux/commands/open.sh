@@ -32,13 +32,27 @@ cmd_open() {
   local log="$logdir/desktop-$(date +%Y%m%d).log"
   local already=0
   if sentry_desktop_running; then already=1; fi
-  (cd "$repo/apps/desktop" && setsid "$exe" . --sentry-app >>"$log" 2>&1 < /dev/null &)
+  (cd "$repo/apps/desktop" && exec setsid "$exe" . --sentry-app) >>"$log" 2>&1 < /dev/null &
+  local launched_pid=$!
   if [ "$already" = "1" ]; then
     echo "Sentry is already running; focusing the existing window."
   else
-    echo "Launching Sentry..."
+    # Catch early loader/display failures. Surviving this bounded window
+    # proves only process startup; Environment/doctor verify runtime readiness.
+    local probe
+    for probe in {1..10}; do
+      sleep 0.2
+      if ! kill -0 "$launched_pid" 2>/dev/null; then
+        local launch_status=0
+        wait "$launched_pid" || launch_status=$?
+        sentry_fail "Sentry exited during startup (exit $launch_status)."
+        echo "  Log: $log"
+        echo "  Review the log and run: sentry doctor"
+        return 1
+      fi
+    done
+    echo "Sentry Desktop process started; check Environment for runtime readiness."
   fi
   echo "  Log: $log"
   return 0
 }
-

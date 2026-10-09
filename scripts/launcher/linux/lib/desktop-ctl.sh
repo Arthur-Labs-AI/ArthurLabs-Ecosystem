@@ -81,12 +81,17 @@ sentry_desktop_stop_graceful() {
   return 1
 }
 
-# Best-effort stop before setup phases (warns, never fails setup itself).
+# Stop before replacing any source, dependencies, or deployed runtime.
 sentry_desktop_ensure_stopped() {
   local repo="$1"
   if ! sentry_desktop_running; then return 0; fi
   echo "  Stopping the running Sentry instance..."
-  sentry_desktop_stop_graceful "$repo" 45 || true
+  if ! sentry_desktop_stop_graceful "$repo" 45; then
+    echo "  [X] Sentry could not stop safely; setup/update aborted."
+    echo "  Cancel active work and close Sentry, then run: sentry stop"
+    echo "  Retry setup/update only after Sentry has exited. No processes were killed."
+    return 1
+  fi
   return 0
 }
 
@@ -107,4 +112,3 @@ sentry_desktop_persist_binary() {
   echo "  [!] Could not persist $key through Desktop."
   return 1
 }
-
