@@ -1,4 +1,46 @@
-# Handoff — Sentry beta candidate (2026-10-09)
+# Handoff — Sentry v1 Phase 1 (2026-10-09)
+
+Implementation and local validation complete on `codex/v1-phase-1-cleanup`,
+isolated `Sentry-v1` worktree from approved origin/main `0e5c10c` (the released
+`v0.1.0-beta.1` tag target). Original main `9c57e3f` and its uncommitted
+DeepSeek/schema/protocol work plus `PROJECT_GUIDE.md` remain untouched.
+
+Only production changes: recorded-agent graph selection replaces an invented
+three-agent fallback for empty historical inputs; retained inspector text no
+longer offers retired merge/verify commands. Active Full/Targeted topology,
+all harnesses, coordinator, IPC/runtime contracts, persistence and versions
+remain unchanged. Historical services, data, exports and issue/retest lineage
+are preserved; retests still depend on merge/verification internally.
+
+Added graph/evidence/IPC/history regressions, refined branching/PR policy,
+architecture assessment/contract, seven-phase roadmap and validation report:
+`docs/releases/v1-phase-1-validation.md` lists every changed file and gate.
+
+Verification: seven new regressions RED then GREEN; Windows Desktop 260
+passed/1 platform skip, runtime 62 passed/1 platform skip; WSL full suite
+1,067 passed/16 opt-in or platform skips, all 40 tasks successful, including
+75 run-engine cases and 8/8 verification-trust cases with real sandbox replay.
+Frozen installs, hygiene, format, lint, typecheck and build PASS on both hosts.
+Windows launcher syntax/Node20/smoke/behavior/IO/shutdown and Linux CI-equivalent
+shell/Node/entrypoint matrix plus DeepSeek switch/prerequisite scripts PASS.
+Complete diff review found no actionable correctness/data-loss/security issue.
+No credentials, logs, databases, generated assets or unrelated work included.
+
+Candidate GitHub checks are the PR's final receipt, separate from local gates.
+Baseline main CI 37893841778 passed all three jobs but skipped the trust file
+because hosted mounts were unavailable. Native CachyOS, interactive target
+acceptance and paid three-agent QA were not rerun; prior owner 3/3 confirmation
+is historical acceptance, not new evidence. GitHub protection/rulesets HTTP403
+on the private plan; exact procedural owner gate is in branching.md.
+
+Next owner action: review the Phase 1 PR and disclosed manual acceptance; do
+not merge automatically, bump versions, move tags or publish releases. Phase 2
+should address only reproduced reliability defects. The separate uncommitted
+DeepSeek provider-error patch needs independent review. Git identity is read
+and preserved. `shux contract` was attempted but unavailable; task status,
+append-only ledger and this handoff are maintained directly in this worktree.
+
+## Previous handoff — Sentry beta candidate (2026-10-09)
 
 Candidate: `codex/release-v0.1.0-beta.1`, baseline `9c57e3f`.
 Implementation/validation complete with documented limitations. On 2026-10-09

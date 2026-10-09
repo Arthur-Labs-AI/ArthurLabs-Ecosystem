@@ -17,6 +17,7 @@ export function MergerInspector({
   return (
     <div>
       <h3 style={{ marginTop: 0 }}>Merger v{String(mergerVersion ?? 3)}</h3>
+      <p className="muted">Historical merge data retained for issue and retest compatibility.</p>
       <p className="muted">
         Merger Version {String(mergerVersion ?? 3)} · Normalizer Version{' '}
         {String(payload['normalizerVersion'] ?? 1)}
@@ -78,6 +79,9 @@ export function VerifierInspector({
     <div>
       <h3 style={{ marginTop: 0 }}>Verifier v3</h3>
       <p className="muted">
+        Historical verification data retained for issue and retest compatibility.
+      </p>
+      <p className="muted">
         Verifier {String(payload['verifierVersion'] ?? 3)} · Recipe{' '}
         {String(payload['recipeVersion'] ?? 3)} · Signature{' '}
         {String(payload['signatureVersion'] ?? 3)}
@@ -138,9 +142,7 @@ export function VerifierInspector({
           })()}
         </div>
       ))}
-      {attempts.length === 0 ? (
-        <p className="muted">No verification attempts yet. Run Verify after merging.</p>
-      ) : null}
+      {attempts.length === 0 ? <p className="muted">No saved verification attempts.</p> : null}
     </div>
   );
 }
@@ -186,14 +188,11 @@ export function EdgeInspector({
       <p className="mono muted">
         {edge.source} → {edge.target}
       </p>
-      {edge.source.startsWith('agent-') && edge.target === 'merger' ? (
+      {(edge.source === 'snapshot' || edge.source === 'target') &&
+      edge.target.startsWith('agent-') ? (
         <p className="muted">
-          Agent output flows into the current Merger version once the agent is terminal.
-        </p>
-      ) : null}
-      {edge.source === 'merger' && edge.target === 'verifier' ? (
-        <p className="muted">
-          Merge clusters flow into Verifier v3 for attempt-based verification.
+          This agent investigates the immutable snapshot independently and keeps its own findings
+          and evidence.
         </p>
       ) : null}
     </div>
