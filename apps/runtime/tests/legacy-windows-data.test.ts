@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
 import { legacyWindowsCandidates } from '../src/runtime.js';
 
 /** Paths the probe attempted (sees only the fs seam, never real disks). */
@@ -62,23 +63,34 @@ describe('legacy windows data probing', () => {
   });
 
   it('skips the /mnt probe on native Linux', async () => {
-    await withoutWslMarkers(async () => {
-      const { host, dataRoot } = await tempHost();
-      try {
-        const report = (await host.legacyWindowsData()) as {
-          detected: string[];
-          migrated: boolean;
-          note: string;
-        };
-        expect(report).toMatchObject({ detected: [], migrated: false });
-        expect(report.note).toContain('No legacy Windows-runtime data detected.');
-        expect(probed).toEqual([]);
-      } finally {
-        host.close();
-        const { rm } = await import('node:fs/promises');
-        await rm(dataRoot, { recursive: true, force: true });
-      }
-    });
+    const originalRead = fs.readFileSync;
+    const kernel = vi
+      .spyOn(fs, 'readFileSync')
+      .mockImplementation(((...args: Parameters<typeof fs.readFileSync>) =>
+        args[0] === '/proc/version'
+          ? 'Linux version 6.12.0-fixture'
+          : originalRead(...args)) as typeof fs.readFileSync);
+    try {
+      await withoutWslMarkers(async () => {
+        const { host, dataRoot } = await tempHost();
+        try {
+          const report = (await host.legacyWindowsData()) as {
+            detected: string[];
+            migrated: boolean;
+            note: string;
+          };
+          expect(report).toMatchObject({ detected: [], migrated: false });
+          expect(report.note).toContain('No legacy Windows-runtime data detected.');
+          expect(probed).toEqual([]);
+        } finally {
+          host.close();
+          const { rm } = await import('node:fs/promises');
+          await rm(dataRoot, { recursive: true, force: true });
+        }
+      });
+    } finally {
+      kernel.mockRestore();
+    }
   });
 
   // Needs real Linux: the runtime WSL probe reads process.platform and
