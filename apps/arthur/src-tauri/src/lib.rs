@@ -19,6 +19,8 @@ mod stt;
 mod tts;
 #[cfg(test)]
 mod test_support;
+#[cfg(test)]
+mod live_luna_smoke;
 
 use std::sync::Arc;
 

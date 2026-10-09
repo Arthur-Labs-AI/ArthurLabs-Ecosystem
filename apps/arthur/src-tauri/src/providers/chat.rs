@@ -92,6 +92,38 @@ pub struct Completion {
     pub completion_tokens: Option<u64>,
     /// The part of `completion_tokens` spent reasoning, when the provider reports it.
     pub reasoning_tokens: Option<u64>,
+    /// Why generation stopped (`stop`, `length`, ...), when reported.
+    pub finish_reason: Option<String>,
+}
+
+/// Test-only record of the last request's transport facts (never the text), for the live smoke tests.
+#[cfg(test)]
+pub mod last_call {
+    use std::sync::Mutex;
+
+    #[derive(Debug, Clone, Default)]
+    pub struct CallRecord {
+        pub status: Option<u16>,
+        pub model: Option<String>,
+        pub finish_reason: Option<String>,
+        pub prompt_tokens: Option<u64>,
+        pub completion_tokens: Option<u64>,
+        pub reasoning_tokens: Option<u64>,
+        /// The provider's own error `message` (for diagnosing a rejected request), truncated.
+        pub error_message: Option<String>,
+        pub error_param: Option<String>,
+    }
+
+    pub static LAST: Mutex<Option<CallRecord>> = Mutex::new(None);
+
+    pub fn take() -> Option<CallRecord> {
+        LAST.lock().unwrap_or_else(|p| p.into_inner()).take()
+    }
+
+    pub fn update(f: impl FnOnce(&mut CallRecord)) {
+        let mut guard = LAST.lock().unwrap_or_else(|p| p.into_inner());
+        f(guard.get_or_insert_with(CallRecord::default));
+    }
 }
 
 /// Sends the request and returns the text of the model's answer.
@@ -108,18 +140,37 @@ pub async fn complete_json_detailed(client: &reqwest::Client, credentials: &dyn 
     let response = client.post(request.endpoint).bearer_auth(key.expose()).json(&body).send().await.map_err(|_| ChatFailure::Network)?;
 
     let status = response.status().as_u16();
+    #[cfg(test)]
+    last_call::update(|record| *record = last_call::CallRecord { status: Some(status), ..Default::default() });
     if status == 401 || status == 403 {
         return Err(ChatFailure::Auth(status));
     }
     if !(200..300).contains(&status) {
+        #[cfg(test)]
+        {
+            let body: Value = response.json().await.unwrap_or(Value::Null);
+            last_call::update(|record| {
+                record.error_message = body.pointer("/error/message").and_then(Value::as_str).map(|m| m.chars().take(300).collect());
+                record.error_param = body.pointer("/error/param").and_then(Value::as_str).map(str::to_string);
+            });
+        }
         return Err(ChatFailure::Provider(status));
     }
 
     let envelope: Value = response.json().await.map_err(|error| {
         if error.is_decode() { ChatFailure::Unreadable("unreadable response".into()) } else { ChatFailure::Network }
     })?;
+    #[cfg(test)]
+    last_call::update(|record| {
+        record.model = envelope.get("model").and_then(Value::as_str).map(str::to_string);
+        record.finish_reason = envelope.pointer("/choices/0/finish_reason").and_then(Value::as_str).map(str::to_string);
+        record.prompt_tokens = envelope.pointer("/usage/prompt_tokens").and_then(Value::as_u64);
+        record.completion_tokens = envelope.pointer("/usage/completion_tokens").and_then(Value::as_u64);
+        record.reasoning_tokens = envelope.pointer("/usage/completion_tokens_details/reasoning_tokens").and_then(Value::as_u64);
+    });
     let text = answer_text(&envelope)?;
     Ok(Completion {
+        finish_reason: envelope.pointer("/choices/0/finish_reason").and_then(Value::as_str).map(str::to_string),
         text,
         model: envelope.get("model").and_then(Value::as_str).map(str::to_string),
         prompt_tokens: envelope.pointer("/usage/prompt_tokens").and_then(Value::as_u64),

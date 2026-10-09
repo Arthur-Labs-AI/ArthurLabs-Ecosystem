@@ -58,6 +58,7 @@ pub struct OpenAiRevisionSynthesizer {
     cancel: Arc<AtomicBool>,
     usage: Mutex<SynthesisUsage>,
     backoff: Duration,
+    attempts: u32,
 }
 
 impl std::fmt::Debug for OpenAiRevisionSynthesizer {
@@ -77,6 +78,7 @@ impl OpenAiRevisionSynthesizer {
             cancel: Arc::new(AtomicBool::new(false)),
             usage: Mutex::new(SynthesisUsage::default()),
             backoff: Duration::from_millis(500),
+            attempts: MAX_ATTEMPTS,
         })
     }
 
@@ -87,6 +89,13 @@ impl OpenAiRevisionSynthesizer {
         me.endpoint = endpoint;
         me.backoff = Duration::ZERO;
         me
+    }
+
+    /// Tests only: never retry (the live smoke test spends exactly one request).
+    #[cfg(test)]
+    pub fn single_attempt(mut self) -> Self {
+        self.attempts = 1;
+        self
     }
 
     pub fn cancel(&self) {
@@ -158,7 +167,7 @@ impl RevisionSynthesizer for OpenAiRevisionSynthesizer {
                 return Err(SynthesisFailure::InputTooLarge);
             }
             let mut last = SynthesisFailure::Unavailable;
-            for attempt in 1..=MAX_ATTEMPTS {
+            for attempt in 1..=self.attempts {
                 if self.cancel.load(Ordering::SeqCst) {
                     return Err(SynthesisFailure::Cancelled);
                 }
@@ -212,7 +221,7 @@ impl RevisionSynthesizer for OpenAiRevisionSynthesizer {
                 if !retryable {
                     return Err(failure);
                 }
-                if attempt < MAX_ATTEMPTS {
+                if attempt < self.attempts {
                     tokio::time::sleep(self.backoff * 2u32.pow(attempt - 1)).await;
                 }
             }

@@ -18,7 +18,7 @@ Sources: [GPT-6 Luna model page](https://developers.openai.com/api/docs/models/g
 
 **Not stated in the pages that could be read, and handled defensively.** Which sampling parameters are rejected at which effort (a third-party summary says to omit `temperature`, `top_p` and logprob options for any effort other than `none`); the `finish_reason` on budget exhaustion. Hence: a reasoning request carries NO sampling parameter at any effort including `none`, so determinism no longer rests on `temperature: 0` (safety never did: it rests on strict schemas, verbatim-evidence resolution, deterministic validation, the verifier and compare-and-set); the output budget is `max_completion_tokens` and `max_tokens` is never sent to Luna; reasoning tokens are read from `completion_tokens_details.reasoning_tokens` when present and are treated as part of the billed `completion_tokens`; the strict `json_schema` response format and the endpoint are unchanged.
 
-**Behaviour NOT yet tested against the live API (remaining checks, each needs one approved synthetic request).**
+**Behaviour that was NOT tested against the live API before the smoke run in section 6 (now checked there, except item 6):**
 1. `reasoning_effort: "none"` and `"low"` together with the strict `json_schema` `response_format` on Chat Completions are accepted for all three roles.
 2. A request with `max_completion_tokens` and with no `temperature` is accepted, and the budget is respected.
 3. The answering `model` is `gpt-6-luna` or a dated snapshot of it (the strict match would otherwise fail closed on a differently formatted id).
@@ -39,3 +39,27 @@ The historical Stage B measurements in `apps/arthur/README.md` (and the live acc
 
 ## 5. Tests
 Chat request builder (effort and budget present, every sampling parameter absent, non-reasoning models unchanged); `model_matches` strictness; distillation (shipped model, parameters, snapshot accepted, mismatch/missing model/budget cut-off/refusal rejected); Stage B (shipped model and effort, parameters per model family, mismatch and missing model rejected, cut-off rejected, Stage A unchanged); synthesis (request shape, reasoning-token accounting, previous-model and longer-id mismatches, budget cut-off); registry model list; Phase 4B pipeline tests unchanged and passing. Default-OFF behaviour is covered by the existing Automatic Thought Evolution and Automatic Connections tests, which still pass.
+
+## 6. Live API smoke verification (2026-10-09)
+Authorized scope: exactly three real, paid requests (one per migrated role) with SYNTHETIC text only, maximum $0.05. They exercised the real request builders and the real strict parsers: distillation through `OpenAiDistiller`, synthesis through `OpenAiRevisionSynthesizer` (one attempt, no retry), Stage B through `OpenAiRelationVerifier` directly (one request, not the three-request graph pipeline). No database, no Graph, no personal data, no TypeSafe.
+
+| | Distillation | Revision synthesis | Stage B |
+|---|---|---|---|
+| Result | PASS | PASS | PASS |
+| HTTP status | 200 | 200 | 200 |
+| Requested / returned model | `gpt-6-luna` / `gpt-6-luna` | `gpt-6-luna` / `gpt-6-luna` | `gpt-6-luna` / `gpt-6-luna` |
+| Reasoning effort | `none` | `low` | `none` |
+| Finish reason | `stop` | `stop` | `stop` |
+| Tokens input / output / of which reasoning | 446 / 58 / 0 | 580 / 110 / 31 | 2,805 / 80 / 0 |
+| Estimated cost | $0.000074 | $0.000113 | $0.000321 |
+
+Total estimated spend: **$0.000508**. Strict responses parsed by the production parsers; distillation evidence resolved to exact spans; synthesis cited only server-issued source ids and passed the deterministic validation; Stage B returned one valid `depends_on` verdict over the two ids sent.
+
+**API compatibility: CONFIRMED** for all three roles: `reasoning_effort` `none` and `low` with the strict `json_schema` response format on Chat Completions; `max_completion_tokens` with no sampling parameter; the returned model id `gpt-6-luna`; `finish_reason: stop` without truncation; reasoning-token usage under `completion_tokens_details.reasoning_tokens` (31 for the `low` request, 0 for `none`). Not exercised live (covered offline only): budget exhaustion (`finish_reason: length`), refusals, wrong-model answers, error statuses.
+
+**Real-world quality and reliability: NOT ESTABLISHED.** Three single calls on tiny synthetic inputs prove the wire contract, not accuracy or consistency. In particular the synthesis sample produced "Arthur is a mobile application. Arthur will also support desktop." (it kept mobile and added desktop but concatenated instead of merging into one sentence), which the deterministic checks accepted: a reminder that those checks do not judge fluency or meaning. Distillation quality across real captures (Bulgarian and mixed text included), Automatic Connections Stage B recall and false-edge behaviour, and revision faithfulness all REQUIRE the Phase 4C evaluation; nothing here should be read as evidence for them.
+
+**Safeguards of the smoke tests.** They are `#[ignore]` and additionally gated by `ARTHUR_LUNA_LIVE_SMOKE=yes` (exact value, checked before the key is read; tested in the default suite without a network). The credential comes from `ARTHUR_OPENAI_API_KEY` in the environment, is held in memory only, is never printed, and the tests write nothing to disk (asserted by a test). Output is fixed facts: status, models, effort, finish reason, token counts, cost, check flags and, for the synthetic synthesis, the revised sentence. Test-only transport diagnostics (`providers::chat::last_call`, which records the last call's status, model, finish reason, token counts and, on a rejected request, the provider's error message and parameter name; never prompts, answers or keys) exist only under `#[cfg(test)]` and cannot be compiled into the app: a production build (`cargo build`) succeeds without them, and the module has no production caller. The only production-visible additions are the `finish_reason` field of `chat::Completion` (a string the adapters ignore) and, in the test build only, `OpenAiRevisionSynthesizer::single_attempt`.
+
+Command (one paid request each; synthetic only, rotated or app-configured key):
+`ARTHUR_LUNA_LIVE_SMOKE=yes ARTHUR_OPENAI_API_KEY=<key> cargo test --offline --lib live_luna_smoke::<distillation|synthesis|stage_b> -- --ignored --nocapture --test-threads=1`
