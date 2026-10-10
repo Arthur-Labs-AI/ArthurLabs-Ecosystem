@@ -1107,6 +1107,76 @@ describe('DeepSeekHarnessAdapter', () => {
     });
   });
 
+  it.each([
+    ['planning', 1, 'INVALID_CREDENTIAL', 403, 'DEEPSEEK_AUTH_FAILED'],
+    ['planning', 1, 'QUOTA', 402, 'DEEPSEEK_PROVIDER_FAILED'],
+    ['planning', 1, 'RATE_LIMIT', 429, 'DEEPSEEK_PROVIDER_FAILED'],
+    ['investigation', 2, 'UNAVAILABLE', 503, 'DEEPSEEK_PROVIDER_FAILED'],
+    ['investigation', 2, 'TRANSPORT', undefined, 'DEEPSEEK_PROVIDER_FAILED'],
+    ['investigation', 2, 'TIMEOUT', undefined, 'DEEPSEEK_PROVIDER_FAILED'],
+    ['reporting', 3, 'BAD_REQUEST', 400, 'DEEPSEEK_PROVIDER_FAILED'],
+  ] as const)(
+    'honors SDK error outcome in %s: %s/%s',
+    async (phase, failedTurn, code, status, expected) => {
+      const root = await mkdtemp(join(tmpdir(), 'sentry-sdk-outcome-'));
+      roots.push(root);
+      const input = await request(root);
+      const secret = 'sdk-outcome-fixture-key';
+      const close = vi.fn(async () => undefined);
+      const runText = vi.fn(async (prompt: string) => {
+        const turn = runText.mock.calls.length;
+        if (turn < failedTurn) return turn === 1 ? planResult(validPlan()) : investigationResult();
+        return executionResult(failedTurn === 3 ? JSON.stringify(validReportV2()) : '', [
+          {
+            type: 'turn/end',
+            seq: 10,
+            time: 1,
+            data: {
+              reason: {
+                kind: 'error',
+                error: {
+                  code,
+                  status,
+                  message: `Rejected provider request ${secret}; Bearer unseen-key; ${prompt}`,
+                },
+              },
+            },
+          },
+        ]);
+      });
+      const adapter = new DeepSeekHarnessAdapter({
+        executable: 'dsh-fixture',
+        modelId: 'deepseek-v4-flash',
+        environment: { DEEPSEEK_API_KEY: secret },
+        clientFactory: async () => ({
+          start: async () => undefined,
+          startSession: async () => ({ runText }),
+          close,
+        }),
+      });
+      const events = await collect(adapter, input);
+      await adapter.dispose();
+      expect(events.at(-1)).toMatchObject({
+        type: 'run.failed',
+        failure: { code: expected, retryable: false },
+      });
+      const terminal = events.at(-1);
+      if (terminal?.type !== 'run.failed') throw new Error('expected failure');
+      expect(terminal.failure.message).toContain(phase);
+      expect(terminal.failure.message).toContain(code);
+      expect(terminal.failure.message).toContain('Rejected provider request');
+      if (status !== undefined) expect(terminal.failure.message).toContain(String(status));
+      expect(JSON.stringify(events)).not.toContain(secret);
+      expect(JSON.stringify(events)).not.toContain('unseen-key');
+      expect(terminal.failure.message).not.toContain(runText.mock.calls[failedTurn - 1]![0]);
+      expect(runText).toHaveBeenCalledTimes(failedTurn);
+      expect(close).toHaveBeenCalledOnce();
+      expect(
+        events.some((event) => event.type === 'warning' && event.code.endsWith('_RETRY')),
+      ).toBe(false);
+    },
+  );
+
   it('recovers from a prose-first plan via bounded planning correction', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-planning-retry-'));
     roots.push(root);

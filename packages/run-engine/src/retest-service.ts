@@ -67,6 +67,8 @@ import { verifyMerge } from './verification-service.js';
 import { RunEngineError } from './errors.js';
 
 export interface RetestIssueOptions {
+  /** Signals only this request's persisted RetestRun, before child execution. */
+  readonly onRetestCreated?: (run: RetestRun) => void;
   readonly agentStackIds?: readonly AgentStackId[];
   /** Default: current ready ProjectRevision. Frozen into a new snapshot. */
   readonly targetRevisionId?: ProjectRevisionId;
@@ -386,6 +388,7 @@ export async function retestIssue(
   // the SAME RetestRun. Only a hard process crash may leave it
   // nonterminal, and lease-based recovery then interrupts it.
   try {
+    options.onRetestCreated?.(initialRetestRun);
     return await executeRetestLifecycle(deps, {
       issue,
       source,

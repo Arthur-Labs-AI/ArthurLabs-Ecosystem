@@ -1,4 +1,82 @@
-# Handoff — Sentry v1 Phase 1 (2026-10-09)
+# Handoff — Phase 2 final cancellation correction (2026-10-10)
+
+Existing draft PR #3 remains open/unmerged on codex/v1-runtime-reliability.
+Base main, reviewed/fetched head 8ed311b; no contributor advances. Reused clean
+Sentry-v2 worktree; original dirty Sentry checkout preserved.
+
+Confirmed cancelled AgentRun/parent versus failed agent activity: after the
+owned cancel promise settles and stream cleanly closes without terminal,
+validator.finish throws; durable cancelled row wins but catch finalizes failed
+activity. Accepted finding/evidence/provenance case reproduces identically.
+Late completion/cancel race and durable-cancel/genuine-error mismatch also RED.
+Baseline regression file: 4 failed / 4 passed. Fix: owned successful cancellation
+permits close without a harness terminal; finalize existing activity cancelled,
+preserve durable terminal workers, retain genuine errors as failures/diagnostics.
+No validator/projector API or schema change; no synthetic harness events.
+
+Eight new tests GREEN; focused cancellation/parallel/Targeted group 47 PASS.
+Gates prove cancellation waits for owned dispose, workspace removal and unlock,
+and accepted objects/attribution/operation provenance are retained unchanged.
+Uncancelled truncation, real protocol errors and shutdown diagnostics stay visible.
+WSL full pnpm test: 1,093 passed / 16 skips, 40 tasks, real trust 8/8 PASS.
+Windows protocol 25 PASS, runtime 69 PASS / 1 skip, Desktop 260 PASS / 2 skips.
+Frozen install/hygiene/format/lint/typecheck/build PASS on both hosts.
+See docs/releases/v1-phase-2-validation.md, corrective section, and PR #3.
+
+The focused correction updates PR #3. Exact-head quality and both launcher
+results belong to PR #3 and must pass before integration. Owner review/manual
+acceptance remain required.
+Native CachyOS and funded providers remain UNVERIFIED, no paid calls. Prior
+Phase 2 identities/startup cancel/DeepSeek/recovery, independent agents, Full/
+Targeted, snapshots, sandbox and historical issue/retest compatibility intact.
+No main push, history rewrite, merge, tag, version bump, release or Phase 3.
+Git identity preserved; shux contract unavailable, protocol updated directly.
+
+## Previous handoff — Phase 2 initial candidate
+
+Implementation and local validation complete on `codex/v1-runtime-reliability`,
+isolated `Sentry-v2` from approved Phase 1 merge `d29949b981216cdcdd8b6817c4df12893c05f616`.
+Draft PR #3: https://github.com/Mert1026/Sentry/pull/3. Exact-code Actions
+37924202481 on 6187014 PASS, quality and both launcher jobs; hosted trust
+unavailable. Final documentation-head CI is tracked in PR #3.
+
+Code commits: `942892bee1a0ced4f2b6b815fc49a2a4c476c693` (request-specific saved
+identities, cancellation before streaming and regressions) and
+`618701465faec2e4232fd1ca35ee65f9c93d3eb5` (structured DeepSeek provider failure,
+sanitized diagnostics and seven regressions). Real run-lock contention and
+concurrent retests failed before the identity fix. Startup cancel and all seven
+provider cases also failed before fixes. Real child crash/reconnect proves
+recovery of explicitly seeded in-flight states and retained findings/evidence;
+it does not simulate a paid provider process.
+
+Full WSL `pnpm test`: 40/40 tasks, 1,085 passed / 16 skips, including all eight
+real sandbox-trust proofs. Windows runtime 69 passed / 1 platform skip; Desktop
+260 passed / 2 Linux-only skips; focused engine 44 passed; shutdown-safety PASS.
+Frozen install, hygiene, format, lint (20), typecheck (37) and build (20)
+passed on both Windows and WSL; formatting includes the final documentation.
+See `docs/releases/v1-phase-2-validation.md` for exact gates and limitations.
+
+Three independent agents, selected sets, Full/Targeted, immutable snapshots,
+evidence attribution, canonical SQLite, historical issue/retest services,
+public IPC and containment remain intact. Only an additive CLI error code;
+no migration, SDK/version bump, automatic paid rerun or restored merge/verify.
+Complete diff review found no actionable introduced correctness/data-loss/
+security/lifecycle issue. No logs, databases or secrets committed.
+
+Owner action: review PR #3 and required fresh supported-host/funded-provider
+acceptance. Native CachyOS and interactive candidate runs are UNVERIFIED;
+previous owner 3/3 success is historical evidence. Important follow-ups require
+separate reproduction: throwing dispose cleanup, OpenCode/GLM classification,
+and terminal lost-start-response reconciliation. Automatic Desktop reconnect
+and refresh wiring is a separate improvement. No automatic merge/tag/release;
+Phase 3 follows reviewed Phase 2 integration.
+
+Original dirty main `9c57e3f` and all owner files, including the separate
+DeepSeek patch and PROJECT_GUIDE.md, remain untouched. The patch was reviewed
+separately, never copied. Git identity read/preserved. `shux contract` attempted
+but unavailable; task status, append-only ledger and handoff maintained directly.
+
+## Previous handoff — Sentry v1 Phase 1 (2026-10-09)
 
 Implementation and local validation complete on `codex/v1-phase-1-cleanup`,
 isolated `Sentry-v1` worktree from approved origin/main `0e5c10c` (the released

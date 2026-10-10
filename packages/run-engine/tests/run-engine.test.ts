@@ -73,6 +73,39 @@ function coordinator(f: Awaited<ReturnType<typeof fixture>>) {
 }
 
 describe('fake end-to-end run engine', () => {
+  it.each([1, 2])('retains attributed output for %i selected agents', async (count) => {
+    const f = await fixture();
+    try {
+      const selected = createFakeHarnessRegistry('success')
+        .list()
+        .slice(0, count)
+        .map((item) => item.stack.id);
+      const result = await coordinator(f).simulate(f.added.project.id, { agentStackIds: selected });
+      expect(result.run.status).toBe('completed');
+      expect(result.agentRuns).toHaveLength(count);
+      expect(new Set(result.agentRuns.map((agent) => agent.agentStackId))).toEqual(
+        new Set(selected),
+      );
+      expect(result.agentRuns.every((agent) => agent.status === 'completed')).toBe(true);
+      expect(result.findings.length).toBeGreaterThan(0);
+      expect(result.evidence.length).toBeGreaterThan(0);
+      for (const finding of result.findings) {
+        const owner = result.agentRuns.find((agent) => agent.id === finding.agentRunId);
+        expect(owner?.agentStackId).toBe(finding.sourceAgentStackId);
+        expect(
+          finding.evidenceIds.every((id) =>
+            result.evidence.some(
+              (evidence) => evidence.id === id && evidence.agentRunId === owner?.id,
+            ),
+          ),
+        ).toBe(true);
+      }
+    } finally {
+      f.lease.release();
+      f.database.close();
+    }
+  });
+
   it('persists a successful multi-agent run, exports it, cleans workspaces, and updates revisions', async () => {
     const f = await fixture();
     const originalBefore = await scanTree(f.source);
@@ -463,6 +496,73 @@ describe('fake end-to-end run engine', () => {
       true,
     );
     f.database.close();
+  });
+
+  it('never enters a provider stream when cancellation lands during adapter creation', async () => {
+    const f = await fixture();
+    const delegate = new FakeHarnessAdapter({ scenario: 'success' });
+    const stream = vi.spyOn(delegate, 'run');
+    const cancel = vi.spyOn(delegate, 'cancel');
+    let finishCancel!: () => void;
+    const cancelGate = new Promise<void>((resolve) => {
+      finishCancel = resolve;
+    });
+    let cancelling!: () => void;
+    const cancelEntered = new Promise<void>((resolve) => {
+      cancelling = resolve;
+    });
+    cancel.mockImplementation(async () => {
+      cancelling();
+      await cancelGate;
+    });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let entered!: () => void;
+    const creating = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const registration = createFakeHarnessRegistry('success').resolve('stack_deepseek_main')!;
+    const registry = new HarnessAdapterRegistry();
+    registry.register({
+      ...registration,
+      createAdapter: async () => {
+        entered();
+        await gate;
+        return delegate;
+      },
+    });
+    const owner = new RunCoordinator(f.dataRoot, f.repository, f.lease, registry);
+    const running = owner.run(f.added.project.id, { executionKind: 'production' });
+    try {
+      await creating;
+      const row = f.repository.listRuns(f.added.project.id)[0]!;
+      owner.requestRunCancellation(row.id);
+      owner.requestRunCancellation(row.id);
+      expect(f.repository.getRunControlRequest(row.id)?.completedAt).toBeUndefined();
+      release();
+      await cancelEntered;
+      expect(stream).not.toHaveBeenCalled();
+      expect(f.repository.getRunControlRequest(row.id)?.acknowledgedAt).toBeDefined();
+      expect(f.repository.getRunControlRequest(row.id)?.completedAt).toBeUndefined();
+      expect(f.repository.getRun(row.id)?.status).toBe('agents_running');
+      finishCancel();
+      const result = await running;
+      expect(stream).not.toHaveBeenCalled();
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(result.run.status).toBe('cancelled');
+      expect(result.agentRuns.map((agent) => agent.status)).toEqual(['cancelled']);
+      expect(f.repository.getRunControlRequest(row.id)?.completedAt).toBeDefined();
+      expect(f.manager.getManagedCopy(f.added.project.id).state).toBe('ready');
+    } finally {
+      release();
+      finishCancel();
+      await running;
+      f.lease.release();
+      f.database.close();
+      vi.restoreAllMocks();
+    }
   });
 
   it('marks an all-fail run failed when no worker produced usable output', async () => {
