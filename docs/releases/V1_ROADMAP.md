@@ -57,6 +57,15 @@ with owner review and accurate validation under the
 - **Risks:** rendering derived state as authoritative, obscuring partial failure,
   losing attribution or navigation to retained issue/retest records.
 - **Branch:** `codex/v1-desktop-improvements`.
+- **Progress (2026-10-10):** owner-merged Phase 2 baseline `9da3cbe`, merge CI
+  38040773408 PASS. Bounded renderer changes reconcile canonical snapshots after
+  observed reconnect, keep cached reports readable offline, reject stale hint
+  replacement, show all selected agents and clarify observed stages and partial
+  results. Deterministic regressions and Windows Electron fixture screenshots
+  are in [Phase 3 validation](v1-phase-3-validation.md). Draft PR/exact-head CI
+  and owner review precede integration. Direct evidence drill-down, broader
+  history/accessibility work, dead-process automatic reconnect and fresh target
+  acceptance remain; this is not complete Phase 3 closure.
 
 ## Phase 4 — Installation and distribution
 
