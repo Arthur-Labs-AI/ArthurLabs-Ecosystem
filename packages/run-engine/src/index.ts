@@ -641,7 +641,6 @@ export class RunCoordinator {
     let workspace: HarnessWorkspace | undefined;
     let adapter: HarnessAdapter | undefined;
     const validator = new IncrementalHarnessEventValidator(input.run.id, agentRunId);
-    let cancelledByControlRequest = false;
     try {
       adapter = await input.registration.createAdapter({
         qaRunId: input.run.id,
@@ -718,13 +717,15 @@ export class RunCoordinator {
           input.onHarnessEventPersisted?.(event, agentRun);
         },
       );
-      if (consumeOutcome.cancelled) cancelledByControlRequest = true;
       // Race safety (§12): reconcile against durable state before the
       // terminal write — a control request may have terminalized this
       // AgentRun as cancelled while the stream was finishing. A durably
       // cancelled row must never be overwritten with completed.
       agentRun = this.reconcileAgentRunBeforeTerminalWrite(agentRunId, agentRun);
-      if (cancelledByControlRequest && agentRun.status !== 'cancelled') {
+      if (
+        consumeOutcome.cancelled &&
+        !['completed', 'failed', 'cancelled', 'timed_out', 'interrupted'].includes(agentRun.status)
+      ) {
         agentRun = AgentRunSchema.parse({
           ...agentRun,
           status: 'cancelled',
@@ -739,7 +740,18 @@ export class RunCoordinator {
         },
       });
       this.persistAgentRunUnlessCancelled(agentRunId, agentRun);
-      validator.finish();
+      // Only a successfully settled owned cancellation permits a truncated
+      // stream. accept() still validates every consumed event; thrown errors
+      // still reach catch. Never fabricate a harness terminal to close it.
+      if (!consumeOutcome.cancelled) validator.finish();
+      if (agentRun.status === 'cancelled') {
+        this.activities.finalizeAgent(
+          agentRunId,
+          'cancelled',
+          agentRun.completedAt,
+          'Agent cancelled',
+        );
+      }
       const persisted = this.repository.getAgentRun(agentRunId);
       if (
         persisted !== undefined &&
@@ -790,31 +802,34 @@ export class RunCoordinator {
           retryable: typeof typed?.retryable === 'boolean' ? typed.retryable : !protocolViolation,
         },
       });
+      const failureCode = agentRun.failure?.code;
       // Race safety (§12): a durably cancelled row wins over a late local failure.
       agentRun = this.reconcileAgentRunBeforeTerminalWrite(agentRunId, agentRun);
-      if (cancelledByControlRequest && agentRun.status !== 'cancelled') {
-        const reconciled = this.repository.getAgentRun(agentRunId);
-        if (reconciled === undefined || reconciled.status === agentRun.status) {
-          agentRun = AgentRunSchema.parse({
-            ...agentRun,
-            status: 'cancelled',
-            completedAt: agentRun.completedAt ?? nowIsoTimestamp(),
-          });
-        } else {
-          agentRun = reconciled;
-        }
-      }
       this.persistAgentRunUnlessCancelled(agentRunId, agentRun);
       this.activities.finalizeAgent(
         agentRunId,
-        'failed',
+        agentRun.status === 'cancelled' ? 'cancelled' : 'failed',
         agentRun.completedAt,
-        timedOut
-          ? 'Agent timed out'
-          : protocolViolation
-            ? 'Agent failed protocol validation'
-            : 'Agent interrupted by transport loss',
+        agentRun.status === 'cancelled'
+          ? 'Agent cancelled'
+          : timedOut
+            ? 'Agent timed out'
+            : protocolViolation
+              ? 'Agent failed protocol validation'
+              : 'Agent interrupted by transport loss',
       );
+      // Preserve the terminal row/activity without concealing a real error
+      // racing durable cancellation. A bounded code avoids raw diagnostics.
+      if (agentRun.status === 'cancelled') {
+        this.activities.stage({
+          qaRunId: input.run.id,
+          parentActivityId: input.rootActivityId,
+          source: 'sentry',
+          kind: 'runtime',
+          status: 'failed',
+          title: 'Agent error after cancellation: ' + failureCode,
+        });
+      }
     } finally {
       this.activeAdapters.delete(agentRunId);
       await adapter?.dispose();

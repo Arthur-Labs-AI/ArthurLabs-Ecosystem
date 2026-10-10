@@ -1,4 +1,22 @@
-# Task status — Sentry v1 Phase 2
+# Task status — Phase 2 final cancellation correction
+
+2026-10-10: IMPLEMENTED AND LOCALLY VERIFIED; owner review pending on existing
+codex/v1-runtime-reliability / draft PR #3, reviewed baseline 8ed311b.
+Confirmed cancelled AgentRun/parent versus failed activity with clean stream
+close; also confirmed late cancellation overwrote a completed worker.
+Four regressions RED / four guards PASS before fix; all eight GREEN afterward.
+Only production file: run-engine coordinator. Validator/projector contracts,
+Phase 2 identity/startup/DeepSeek/recovery fixes and historical data preserved.
+WSL full suite 1,093 passed / 16 skips, 40 tasks, real trust 8/8 PASS.
+Windows focused engine 47 PASS, protocol 25 PASS, runtime 69 PASS / 1 skip;
+Desktop 260 PASS / 2 skips; formatting PASS. Exact corrected-head CI status
+source of truth is PR #3; successful CI precedes integration.
+Frozen install/hygiene/lint/typecheck/build PASS on Windows and WSL.
+Owner review is required after corrected-head CI; no Phase 3, merge/tag/release
+or paid calls. Original dirty main and Git identity preserved. shux unavailable;
+protocol records maintained directly. Final CI receipt belongs to PR #3.
+
+## Previous task status — Phase 2 initial candidate
 
 2026-10-10: IMPLEMENTED AND LOCALLY VERIFIED; draft PR #3 awaiting final-head
 CI and owner review on `codex/v1-runtime-reliability`, isolated `Sentry-v2`

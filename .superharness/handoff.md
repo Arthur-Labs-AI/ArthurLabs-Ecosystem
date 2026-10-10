@@ -1,4 +1,38 @@
-# Handoff — Sentry v1 Phase 2 (2026-10-10)
+# Handoff — Phase 2 final cancellation correction (2026-10-10)
+
+Existing draft PR #3 remains open/unmerged on codex/v1-runtime-reliability.
+Base main, reviewed/fetched head 8ed311b; no contributor advances. Reused clean
+Sentry-v2 worktree; original dirty Sentry checkout preserved.
+
+Confirmed cancelled AgentRun/parent versus failed agent activity: after the
+owned cancel promise settles and stream cleanly closes without terminal,
+validator.finish throws; durable cancelled row wins but catch finalizes failed
+activity. Accepted finding/evidence/provenance case reproduces identically.
+Late completion/cancel race and durable-cancel/genuine-error mismatch also RED.
+Baseline regression file: 4 failed / 4 passed. Fix: owned successful cancellation
+permits close without a harness terminal; finalize existing activity cancelled,
+preserve durable terminal workers, retain genuine errors as failures/diagnostics.
+No validator/projector API or schema change; no synthetic harness events.
+
+Eight new tests GREEN; focused cancellation/parallel/Targeted group 47 PASS.
+Gates prove cancellation waits for owned dispose, workspace removal and unlock,
+and accepted objects/attribution/operation provenance are retained unchanged.
+Uncancelled truncation, real protocol errors and shutdown diagnostics stay visible.
+WSL full pnpm test: 1,093 passed / 16 skips, 40 tasks, real trust 8/8 PASS.
+Windows protocol 25 PASS, runtime 69 PASS / 1 skip, Desktop 260 PASS / 2 skips.
+Frozen install/hygiene/format/lint/typecheck/build PASS on both hosts.
+See docs/releases/v1-phase-2-validation.md, corrective section, and PR #3.
+
+The focused correction updates PR #3. Exact-head quality and both launcher
+results belong to PR #3 and must pass before integration. Owner review/manual
+acceptance remain required.
+Native CachyOS and funded providers remain UNVERIFIED, no paid calls. Prior
+Phase 2 identities/startup cancel/DeepSeek/recovery, independent agents, Full/
+Targeted, snapshots, sandbox and historical issue/retest compatibility intact.
+No main push, history rewrite, merge, tag, version bump, release or Phase 3.
+Git identity preserved; shux contract unavailable, protocol updated directly.
+
+## Previous handoff — Phase 2 initial candidate
 
 Implementation and local validation complete on `codex/v1-runtime-reliability`,
 isolated `Sentry-v2` from approved Phase 1 merge `d29949b981216cdcdd8b6817c4df12893c05f616`.

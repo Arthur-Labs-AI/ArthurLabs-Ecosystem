@@ -176,13 +176,14 @@ rows and a real runtime lease, accepts cancellation through RPC, crashes that
 subprocess, explicitly ages the lease rather than sleeping, then reconnects
 through real stdio. It does not claim real provider-process crash acceptance.
 
-## Verification receipts
+## Original verification receipts (before final correction)
 
 Implementation commits: `942892bee1a0ced4f2b6b815fc49a2a4c476c693`
 (identity/cancellation/recovery tests), then
 `618701465faec2e4232fd1ca35ee65f9c93d3eb5` (DeepSeek). These are the exact
-production/test bytes validated below. Subsequent commits contain only this
-report, roadmap and protocol records. Draft
+production/test bytes validated in this original receipt. Commit `8ed311b`
+added only this report, roadmap and protocol records. The final correction
+and its separate receipts are recorded below. Draft
 [PR #3](https://github.com/Mert1026/Sentry/pull/3) is the final-head CI receipt
 and owner review surface; no merge is performed by this task.
 
@@ -241,6 +242,100 @@ service; DeepSeek adapter/error union; additive CLI error-code registry.
 Regression files: new runtime `start-identity.test.ts`; existing run-engine
 run/Targeted/retest tests; DeepSeek adapter tests; Desktop native-process test.
 Other changes: this report, `V1_ROADMAP.md`, task status, ledger and handoff.
+
+## Final cancellation review correction (2026-10-10)
+
+Baseline: PR #3 remained OPEN/DRAFT, base `main`, exact reviewed and fetched
+head `8ed311b10a8b5fb3e3d1dbfcee52126a14c014be`. No intervening contributor
+commits. Reused the clean isolated Phase 2 worktree; original dirty checkout
+and release tags remain untouched. Existing Phase 2 changes were reviewed.
+
+**CONFIRMED BUG, important:** intentional owner cancellation could leave the
+AgentRun and parent cancelled but the agent activity failed. Reproduction in
+`packages/run-engine/tests/cancellation-stream.test.ts`:
+
+1. An owned fake adapter yields `run.started`, then blocks on an explicit promise.
+2. After persistence, request cancellation twice through the coordinator's
+   durable request path. The owner watcher acknowledges and calls `cancel()` once.
+3. Resolve the cancellation gate. The stream ends cleanly without a terminal.
+4. Hold `dispose()` open: parent/request remain nonterminal/incomplete, workspace
+   exists and project stays locked. Resolve disposal and await coordinator settlement.
+5. Assert parent, AgentRun and agent activity all cancelled; no protocol-failure
+   diagnostic, synthetic terminal, duplicate worker or second provider stream;
+   control request complete, workspace removed, project ready.
+
+Repeat with an accepted finding and evidence linked to an observed completed
+tool operation. Compare complete persisted objects before and after cancellation,
+including agent/stack attribution, evidence IDs and grounding operation provenance.
+
+RED against `8ed311b`: both primary cases failed because the agent activity was
+`failed` / `Agent failed protocol validation`. The AgentRun itself remained
+cancelled with no failure: the normal path persisted cancellation before calling
+`validator.finish()`, then `finish()` rejected the absent terminal. Catch created
+a failed local worker candidate; reconciliation correctly retained the durable
+cancelled row, but `finalizeAgent()` unconditionally wrote a failed activity.
+Existing cancellation tests covered statuses/locks, not this activity disagreement.
+
+Two related deterministic cases also failed: late cancellation overwrote an
+already persisted completed worker as cancelled; and a real protocol error racing
+a durable cancellation finalized cancelled activity as failed. Overall RED:
+**4 failed / 4 passed**. The passing guards included uncancelled truncation and
+genuine protocol errors during owner cancellation.
+
+Minimal production change: `packages/run-engine/src/index.ts` only. Skip the
+stream-close completeness check only when `consumeWithTimeout()` successfully
+returns its owned cancellation outcome after shutdown delivery. Per-event
+validation, exceptions and uncancelled `finish()` stay strict. Explicitly close
+the existing active agent activity as cancelled through the unchanged projector;
+do not fabricate harness events. Preserve all durable terminal worker statuses
+when reconciling late cancellation. Remove the broad catch cancellation override;
+use the reconciled status for activity finalization. If an actual exception races
+a durably cancelled worker, preserve its terminal row/activity and record a
+separate failed runtime diagnostic with the bounded error code, not raw text.
+
+The validator and activity projector APIs, schema versions, public contracts,
+three-agent/selected-agent execution, Full/Targeted, request-specific identity,
+startup cancellation, DeepSeek structured outcomes, crash recovery and legacy
+issue/retest behavior remain unchanged. No retries, paid calls or new processes.
+Cleanup/disposal ordering is unchanged; explicit gates prove completion waits
+for owned disposal and real workspace cleanup. Adapter shutdown errors remain
+observable. Previously hypothesized throwing-dispose cleanup remains a separate
+unfixed follow-up below.
+
+GREEN: **8/8 new cases**, **47/47** across cancellation-stream, closure,
+run-engine, parallel-execution, Targeted and active-retest-cancel suites on
+Windows Node 24.13.1 / pnpm 9.12.3. Edge coverage includes cancellation before
+`run.started`, duplicate requests, adapter-emitted valid cancellation, late
+normal completion, uncancelled missing terminal, genuine protocol exceptions,
+durable-cancel/error reconciliation and shutdown diagnostics. Existing startup
+cancellation, terminal-request, cross-run rejection and validator guards are
+retained. Full corrective checks are recorded below; the exact corrected-head
+CI receipt belongs to PR #3 before owner review completion.
+
+Corrective validation (same Node/pnpm versions as above):
+
+| Gate                                                | Windows                                                   | Ubuntu WSL                                                                          |
+| --------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `pnpm install --frozen-lockfile`                    | PASS                                                      | PASS                                                                                |
+| `pnpm repository:check`                             | PASS                                                      | PASS                                                                                |
+| `pnpm format:check`                                 | PASS; final documentation formatted and checked           | PASS; final documentation formatted and checked                                     |
+| `pnpm lint`                                         | PASS, 20 tasks                                            | PASS, 20 tasks                                                                      |
+| `pnpm typecheck`                                    | PASS, 37 tasks                                            | PASS, 37 tasks                                                                      |
+| `pnpm build`                                        | PASS, 20 tasks                                            | PASS, 20 tasks                                                                      |
+| `pnpm test`                                         | Focused/platform suites below; full Windows suite not run | PASS, 40 tasks (33 cached); 1,093 passed / 16 opt-in/platform skips                 |
+| Cancellation/parallel/Targeted focused suites       | PASS, 47 tests                                            | Included in 86 passing engine tests                                                 |
+| Harness protocol full suite                         | PASS, 25 tests                                            | PASS, 25 tests                                                                      |
+| Runtime full suite, including seven identity cases  | PASS, 69 passed / 1 platform skip                         | PASS, 70 tests                                                                      |
+| Desktop full suite, including cancellation/shutdown | PASS, 260 passed / 2 Linux-only skips                     | PASS, 261 passed / 1 platform skip; actual process crash/reconnect included         |
+| Real sandbox trust                                  | ENVIRONMENT UNAVAILABLE                                   | PASS, 8/8, uncached affected engine task                                            |
+| Corrected-head Actions                              | Exact corrected-head result recorded in PR #3             | Exact corrected-head result recorded in PR #3; hosted trust is capability-dependent |
+
+Full WSL tests reran affected engine/runtime/Desktop/CLI tasks; unchanged tasks
+used Turbo's normal cache. No trust-test quarantine or assertion relaxation.
+Correction diff self-review found no additional introduced correctness,
+data-loss, security or lifecycle defect. No logs, databases, credentials or
+generated files are included. Final commit/Actions receipt is recorded in PR #3;
+the frozen reviewed baseline and RED/GREEN counts above are explicit.
 
 ## Remaining problems and follow-ups
 
