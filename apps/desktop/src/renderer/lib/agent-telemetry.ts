@@ -29,7 +29,7 @@ const STAGE_LABELS: Record<AgentStageId, string> = {
   preparation: 'Preparation',
   planning: 'Planning',
   investigation: 'Investigation',
-  runtime: 'Runtime Validation',
+  runtime: 'Commands / Tests',
   evidence: 'Evidence',
   reporting: 'Reporting',
   completed: 'Completed',
@@ -286,8 +286,8 @@ export function projectRecentActivity(
 
 /**
  * Deterministic stage projection. Only persisted evidence advances stages:
- * queued/starting with no events → 'working', never a completed future stage.
- * 'completed' requires run.completed (or terminal AgentRun completed).
+ * Missing milestones stay unobserved even when the worker completed.
+ * Durable AgentRun status owns terminal completion, cancellation and failure.
  */
 function deriveStageStates(
   agentRun: AgentRunLike,
@@ -296,62 +296,50 @@ function deriveStageStates(
   evidence: readonly EvidenceLike[],
 ): { states: Map<AgentStageId, StageState>; current: AgentStageId | 'working' } {
   const states = new Map<AgentStageId, StageState>(STAGE_ORDER.map((id) => [id, 'not_started']));
-  const terminal = agentRun.status;
-  const completedTerminal =
-    terminal === 'completed' || events.some((e) => e.type === 'run.completed');
-  if (completedTerminal && terminal !== 'failed' && terminal !== 'timed_out') {
-    for (const stage of STAGE_ORDER) states.set(stage, 'completed');
+  // These are observed milestones, not a required sequential workflow.
+  // Overall completion does not prove testing, planning or evidence capture.
+  const observed = new Set<AgentStageId>();
+  for (const event of events) {
+    if (event.type === 'run.started') observed.add('preparation');
+    if (event.type === 'agent.status') {
+      if (event.status === 'planning') observed.add('planning');
+      if (['investigating', 'running'].includes(event.status ?? '')) observed.add('investigation');
+      if (event.status === 'reporting') observed.add('reporting');
+    }
+    if (
+      [
+        'investigation.plan.created',
+        'investigation.hypothesis.discovered',
+        'file.read',
+        'file.changed',
+      ].includes(event.type)
+    )
+      observed.add('investigation');
+    if (['tool.started', 'tool.completed', 'command.executed', 'test.result'].includes(event.type))
+      observed.add('runtime');
+    if (['finding.submitted', 'evidence.submitted'].includes(event.type)) observed.add('evidence');
+  }
+  if (findings.length > 0 || evidence.length > 0) observed.add('evidence');
+  for (const stage of observed) states.set(stage, 'observed');
+  if (agentRun.status === 'completed') {
+    states.set('completed', 'completed');
     return { states, current: 'completed' };
   }
-  const reached = furthestStage(agentRun, events, findings, evidence);
-  if (reached === 'working') return { states, current: 'working' };
-  if (['failed', 'timed_out'].includes(terminal)) {
-    // Failure: mark the furthest reached stage failed; earlier ones completed.
-    let failed = false;
-    for (const stage of STAGE_ORDER) {
-      if (stage === 'completed') {
-        states.set(stage, 'not_started');
-        continue;
-      }
-      if (stage === reached) {
-        states.set(stage, 'failed');
-        failed = true;
-      } else if (!failed) {
-        states.set(stage, 'completed');
-      }
-    }
-    return { states, current: reached };
+  const current = furthestStage(agentRun, events, findings, evidence);
+  if (current !== 'working') {
+    const status = agentRun.status;
+    states.set(
+      current,
+      ['failed', 'timed_out'].includes(status)
+        ? 'failed'
+        : ['cancelled', 'interrupted'].includes(status)
+          ? 'cancelled'
+          : events.some((event) => event.type === 'warning')
+            ? 'warning'
+            : 'active',
+    );
   }
-  if (terminal === 'cancelled' || terminal === 'interrupted') {
-    let cancelled = false;
-    for (const stage of STAGE_ORDER) {
-      if (stage === 'completed') {
-        states.set(stage, 'not_started');
-        continue;
-      }
-      if (stage === reached) {
-        states.set(stage, 'cancelled');
-        cancelled = true;
-      } else if (!cancelled) {
-        states.set(stage, 'completed');
-      }
-    }
-    return { states, current: reached };
-  }
-  let seen = false;
-  for (const stage of STAGE_ORDER) {
-    if (stage === 'completed') {
-      states.set(stage, 'not_started');
-      continue;
-    }
-    if (stage === reached) {
-      states.set(stage, events.some((e) => e.type === 'warning') ? 'warning' : 'active');
-      seen = true;
-    } else if (!seen) {
-      states.set(stage, 'completed');
-    }
-  }
-  return { states, current: reached };
+  return { states, current };
 }
 
 function furthestStage(
@@ -361,7 +349,6 @@ function furthestStage(
   evidence: readonly EvidenceLike[],
 ): AgentStageId | 'working' {
   const types = new Set(events.map((e) => e.type));
-  if (types.has('run.completed')) return 'completed';
   // Explicit lifecycle truth outranks derived signals: tool/message
   // events describe activity INSIDE the current phase and must never
   // advance it (a planning tool-result message is not Reporting).
@@ -371,15 +358,12 @@ function furthestStage(
     if (['investigating', 'running'].includes(lastStatus.status ?? '')) return 'investigation';
     if (lastStatus.status === 'planning') return 'planning';
   }
-  // Reporting: observable report output after evidence.
+  // Finding/evidence output proves reported data, not a reporting stage.
   const hasEvidence =
     findings.length > 0 ||
     evidence.length > 0 ||
     types.has('finding.submitted') ||
     types.has('evidence.submitted');
-  if (types.has('agent.message') || types.has('usage.updated')) {
-    if (hasEvidence) return 'reporting';
-  }
   if (hasEvidence) return 'evidence';
   if (
     types.has('tool.started') ||
@@ -410,7 +394,7 @@ function furthestStage(
       ['investigating', 'running'].includes(lastStatus.status ?? '')
     )
       return 'investigation';
-    return 'planning';
+    return 'working';
   }
   if (events.length === 0) {
     // No observable events yet: map the persisted AgentRun status honestly.
@@ -421,7 +405,7 @@ function furthestStage(
     return 'working';
   }
   if (types.has('run.started')) return 'preparation';
-  return 'planning';
+  return 'working';
 }
 
 export function projectAgentTelemetry(input: {

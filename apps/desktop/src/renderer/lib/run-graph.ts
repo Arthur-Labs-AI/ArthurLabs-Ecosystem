@@ -221,7 +221,11 @@ export function buildRunGraph(
       id: nodeId,
       kind: 'agent',
       label: view?.displayName ?? AGENT_DISPLAY_NAMES[stackId] ?? stackId,
-      status: view?.status ?? 'waiting',
+      status:
+        view?.status ??
+        (['completed', 'partial', 'failed', 'cancelled'].includes(input.run.status)
+          ? 'not_started'
+          : 'waiting'),
       position: { x, y: agentY },
       data: { agentStackId: stackId, agentRunId: view?.agentRunId, view },
     });

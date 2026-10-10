@@ -96,7 +96,7 @@ export type AgentStageId =
   'preparation' | 'planning' | 'investigation' | 'runtime' | 'evidence' | 'reporting' | 'completed';
 
 export type StageState =
-  'not_started' | 'active' | 'completed' | 'warning' | 'failed' | 'cancelled';
+  'not_started' | 'observed' | 'active' | 'completed' | 'warning' | 'failed' | 'cancelled';
 
 export interface AgentStageView {
   readonly id: AgentStageId;

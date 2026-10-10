@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { sentryApi } from '../lib/sentry-api.js';
+import { useRuntimeStatus } from '../lib/use-runtime-status.js';
 import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
 import { StatusPill } from '../components/ui/StatusPill.js';
 import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
@@ -57,11 +58,7 @@ export function Environment(): React.JSX.Element {
     queryKey: ['environment'],
     queryFn: () => sentryApi().doctors.environment(),
   });
-  const runtime = useQuery({
-    queryKey: ['runtime-status'],
-    queryFn: () => sentryApi().runtime.status(),
-    refetchInterval: 5000,
-  });
+  const runtime = useRuntimeStatus();
   const cli = useQuery({
     queryKey: ['cli-status'],
     queryFn: () => sentryApi().cli.status(),
@@ -87,7 +84,7 @@ export function Environment(): React.JSX.Element {
     | undefined;
   const status = runtime.data as RuntimeStatus | undefined;
   const hello = data?.runtime ?? status?.hello;
-  const connected = status?.connected === true;
+  const connected = !runtime.isError && status?.connected === true;
   if (environment.isLoading) return <div className="skeleton">Loading environment…</div>;
   if (environment.isError || data === undefined)
     return (

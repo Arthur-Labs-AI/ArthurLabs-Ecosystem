@@ -10,6 +10,7 @@ import { StatusPill } from '../components/ui/StatusPill.js';
 import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
 import { ToastStack, type ToastItem } from '../components/ui/Toast.js';
 import { EdgeInspector, NodeStatusHeader } from '../components/PipelineInspectors.js';
+import { AGENT_DISPLAY_NAMES } from '../lib/agent-telemetry.js';
 import { buildRunGraph } from '../lib/run-graph.js';
 import { useRunSnapshot } from '../lib/use-live-run.js';
 import { useDeveloperMode } from '../lib/developer-mode.js';
@@ -276,10 +277,10 @@ export function RunWorkspace(): React.JSX.Element {
   }, []);
 
   if (snapshot.isLoading) return <div className="skeleton">Loading run…</div>;
-  if (snapshot.isError || data === undefined) {
+  if (data === undefined) {
     return (
       <div className="error-box" role="alert">
-        Could not load run {runId}. {(snapshot.error as Error | undefined)?.message ?? ''}
+        Could not load run {runId}. Check runtime connectivity before starting another run.
       </div>
     );
   }
@@ -299,6 +300,13 @@ export function RunWorkspace(): React.JSX.Element {
 
   return (
     <div className="run-page">
+      {snapshot.isError || snapshot.runtimeUnavailable ? (
+        <div className="inline-notice tone-warning" role="status">
+          Run refresh unavailable. Cached results remain available; the last recorded status below
+          may have changed. Check <Link to="/settings/runtime">Runtime settings</Link>. This
+          communication error does not mean the QA run failed.
+        </div>
+      ) : null}
       <nav className="metadata" aria-label="Breadcrumb">
         <Link to="/projects">Projects</Link> /{' '}
         <Link to={'/projects/' + data.run.projectId}>{resolvedProjectName}</Link> / QA Run
@@ -371,7 +379,7 @@ export function RunWorkspace(): React.JSX.Element {
             {formatDuration(data.run.startedAt ?? data.run.createdAt, data.run.completedAt)}
           </span>
           <span>
-            {data.agentRuns.length} agent{data.agentRuns.length === 1 ? '' : 's'}
+            {data.run.configuration?.agentStackIds?.length ?? data.agentRuns.length} selected agents
           </span>
           <span>
             {data.findings.length} finding{data.findings.length === 1 ? '' : 's'} ·{' '}
@@ -412,31 +420,23 @@ export function RunWorkspace(): React.JSX.Element {
           </dl>
         </CollapsibleSection>
       </header>
-      {data.run.status === 'failed' ? (
-        <div className="error-box" role="alert">
-          <strong>Run failed.</strong>{' '}
-          {(
-            data.agentRuns as Array<{
-              status?: string;
-              failure?: { code?: string; message?: string };
-            }>
-          )
-            .filter(
-              (a) =>
-                a.status === 'failed' || a.status === 'timed_out' || a.status === 'interrupted',
-            )
-            .map((a, i) => (
-              <span key={i}>
-                {a.failure?.code ?? 'AGENT_FAILED'}:{' '}
-                {a.failure?.message ?? 'agent did not complete'}.{' '}
-              </span>
+      {['failed', 'partial', 'cancelled'].includes(data.run.status) ? (
+        <div className="inline-notice tone-warning" role="status">
+          <strong>Analysis {data.run.status}.</strong> Reported findings and evidence are retained
+          independently for each agent.
+          {data.agentRuns
+            .filter((agent) => ['failed', 'timed_out', 'interrupted'].includes(agent.status))
+            .map((agent) => (
+              <p key={agent.id}>
+                {AGENT_DISPLAY_NAMES[agent.agentStackId] ?? agent.agentStackId}:{' '}
+                {agent.status.replaceAll('_', ' ')}.
+                {agent.failure !== undefined
+                  ? ' ' + agent.failure.code + ': ' + agent.failure.message
+                  : ' Structured failure details were not recorded.'}
+              </p>
             ))}
-          {data.agentRuns.length === 0 ? (
-            <span>
-              No agents started — the failure happened before execution (e.g. locked project,
-              changed working copy, or invalid target). Check the project state and retry.
-            </span>
-          ) : null}
+          {data.agentRuns.length === 0 ? ' No agent execution was recorded.' : ''} Review agent
+          details and Environment before deliberately starting another run.
         </div>
       ) : null}
       {!terminal ? <div className="inline-notice">Export unlocks at terminal status.</div> : null}
@@ -530,6 +530,7 @@ export function RunWorkspace(): React.JSX.Element {
               <div className="panel-body">
                 {selectedAgent !== undefined ? (
                   <AgentInspector
+                    key={selectedAgent.agentRunId}
                     data={{
                       view: selectedAgent,
                       events: (data.events.filter(

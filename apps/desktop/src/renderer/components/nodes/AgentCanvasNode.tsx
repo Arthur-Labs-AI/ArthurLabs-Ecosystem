@@ -35,7 +35,9 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
       <div className="flow-node" style={{ borderTop: '2px solid ' + accent }}>
         <Handle type="target" position={Position.Top} />
         <div className="node-title">{title}</div>
-        <div className="node-sub">Configured · Waiting</div>
+        <div className="node-sub">
+          Configured · {data['status'] === 'not_started' ? 'Not started' : 'Waiting'}
+        </div>
         <Handle type="source" position={Position.Bottom} />
       </div>
     );

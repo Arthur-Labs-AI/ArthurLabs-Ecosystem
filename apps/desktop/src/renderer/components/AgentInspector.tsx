@@ -145,7 +145,9 @@ export function AgentInspector({
       <Tabs tabs={tabs} active={activeTab} onChange={setTab} label="Agent details" />
       <div style={{ minHeight: 0 }}>
         {activeTab === 'overview' ? <OverviewTab view={view} /> : null}
-        {activeTab === 'findings' ? <FindingsTab findings={findings} evidence={evidence} /> : null}
+        {activeTab === 'findings' ? (
+          <FindingsTab findings={findings} evidence={evidence} status={view.status} />
+        ) : null}
         {activeTab === 'activity' ? (
           <ActivityTab events={data.events ?? []} developerMode={developerMode} />
         ) : null}
@@ -218,11 +220,15 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
       </div>
       <div className="metric-grid">
         <div className="metric-card">
-          <div className="metric-value">{formatCount(view.turns ?? 0)}</div>
+          <div className="metric-value">
+            {view.turns === undefined ? '—' : formatCount(view.turns)}
+          </div>
           <div className="metric-label">Turns</div>
         </div>
         <div className="metric-card">
-          <div className="metric-value">{formatCount(view.totalTokens ?? 0)}</div>
+          <div className="metric-value">
+            {view.totalTokens === undefined ? '—' : formatCount(view.totalTokens)}
+          </div>
           <div className="metric-label">Tokens</div>
         </div>
         <div className="metric-card">
@@ -256,12 +262,15 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
             .join(' · ')}
         </p>
       ) : null}
-      {view.status === 'failed' && view.failure !== undefined && view.failure !== null ? (
+      {view.failure !== undefined && view.failure !== null ? (
         <div className="error-box">
           <strong>
             {view.failure.code}: {truncateMiddle(view.failure.message, 300)}
           </strong>
-          <p className="muted">Retryable: {view.failure.retryable === true ? 'yes' : 'no'}</p>
+          <p className="muted">
+            Reported findings and evidence remain available. Check provider settings and Environment
+            before deliberately starting another run.
+          </p>
         </div>
       ) : view.status === 'failed' ? (
         <div className="error-box">
@@ -270,10 +279,10 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
       ) : null}
       {view.status === 'cancelled' ? (
         <div className="inline-notice">
-          <strong>■ Cancelled by user.</strong>
+          <strong>■ Cancelled.</strong>
           <span className="muted">
             {' '}
-            Completed before cancellation: {formatCount(view.findingsCount)} findings ·{' '}
+            Retained before cancellation: {formatCount(view.findingsCount)} findings ·{' '}
             {formatCount(view.evidenceCount)} evidence.
           </span>
         </div>
@@ -297,9 +306,11 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
 function FindingsTab({
   findings,
   evidence,
+  status,
 }: {
   findings: readonly InspectorFinding[];
   evidence: readonly InspectorEvidence[];
+  status: string;
 }): React.JSX.Element {
   const [severity, setSeverity] = React.useState<string>('All');
   const available = React.useMemo(
@@ -312,10 +323,27 @@ function FindingsTab({
       ? findings
       : findings.filter((f) => f.severity.toLowerCase() === severity.toLowerCase());
   if (findings.length === 0) {
-    return <p className="muted">No findings reported by this agent yet.</p>;
+    return (
+      <p className="muted">
+        {status === 'completed'
+          ? 'Completed with no reported findings.'
+          : ['failed', 'cancelled', 'timed_out', 'interrupted'].includes(status)
+            ? 'No findings were reported before ' +
+              status.replaceAll('_', ' ') +
+              '. Analysis is incomplete.'
+            : 'No findings reported by this agent yet.'}
+        {evidence.length > 0 ? ' Evidence is available in the Evidence tab.' : ''}
+      </p>
+    );
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {['failed', 'cancelled', 'timed_out', 'interrupted'].includes(status) ? (
+        <p className="inline-notice">
+          Partial report — agent {status.replaceAll('_', ' ')}. Reported findings and evidence are
+          retained; analysis is incomplete.
+        </p>
+      ) : null}
       {showFilter ? (
         <div className="filter-row" role="group" aria-label="Filter findings by severity">
           {['All' as const, ...SEVERITIES.filter((s) => available.has(s.toLowerCase()))].map(
