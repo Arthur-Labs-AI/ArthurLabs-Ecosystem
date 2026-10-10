@@ -36,6 +36,13 @@ with owner review and accurate validation under the
   misleading transport errors, provider-version drift. Review the separate
   uncommitted DeepSeek provider-error patch independently before including it.
 - **Branch:** `codex/v1-runtime-reliability`.
+- **Progress (2026-10-09):** reproduced and fixed request identity association
+  under real run/retest concurrency, cancellation during adapter creation, and
+  structured DeepSeek provider failures. Added selected-agent and real subprocess
+  crash/reconnect regressions; WSL full suite passed 1,085 tests with 16 skips,
+  including all eight real sandbox trust cases. See
+  [Phase 2 validation](v1-phase-2-validation.md). Owner review/integration and
+  fresh supported-host/live-provider acceptance remain; this is not phase closure.
 
 ## Phase 3 — Desktop usability
 
