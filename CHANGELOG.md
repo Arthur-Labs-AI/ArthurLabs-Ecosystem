@@ -29,7 +29,7 @@ First source-based beta candidate. Publication/gate status is recorded in the
 
 - Source installation; no signed installer/tested binary bundle.
 - Provider accounts/credit required; failures can prevent 3/3 completion.
-- Beta tags stay pinned; `sentry update` follows development main.
+- Beta tags stay pinned; `sentry update` follows the selected source channel (`dev` tracks `origin/dev`, `main` tracks `origin/main`).
 - Sandbox proofs require capabilities absent on some runners.
 - Legacy merge/verification ingestion is outside current Desktop RPC.
 - Private repository access required for testers.

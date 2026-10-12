@@ -66,12 +66,149 @@ $sel = Select-SentryDistro -Distros $mock -NonInteractive $true
 Assert-Equal 'select-skips-wsl1-docker' $sel 'Debian'
 $onlyWsl1 = @([pscustomobject]@{ Name = 'Ubuntu'; State = 'Stopped'; Version = 1 })
 Assert-Equal 'select-no-wsl2-empty' (Select-SentryDistro -Distros $onlyWsl1 -NonInteractive $true) ''
-# ---- 3. update branch gate ----
+# ---- 3. update channel gate (dev/main allowlist; everything else refuses) ----
+Assert-Equal 'branch-dev-ok' (Test-SentryUpdateBranch -Branch 'dev') ''
 Assert-Equal 'branch-main-ok' (Test-SentryUpdateBranch -Branch 'main') ''
+Assert-Equal 'channel-dev-ref' (Get-SentryUpdateRemoteRef -Branch 'dev') 'origin/dev'
+Assert-Equal 'channel-main-ref' (Get-SentryUpdateRemoteRef -Branch 'main') 'origin/main'
+Assert-Equal 'channel-feature-empty' (Get-SentryUpdateRemoteRef -Branch 'feature/foo') ''
+Assert-Equal 'channel-fix-empty' (Get-SentryUpdateRemoteRef -Branch 'fix/example') ''
+Assert-Equal 'channel-release-empty' (Get-SentryUpdateRemoteRef -Branch 'release/v1.0.0-rc.1') ''
+Assert-Equal 'channel-hotfix-empty' (Get-SentryUpdateRemoteRef -Branch 'hotfix/v1.0.0-x') ''
+Assert-Equal 'channel-detached-empty' (Get-SentryUpdateRemoteRef -Branch 'HEAD') ''
+Assert-Equal 'channel-empty-empty' (Get-SentryUpdateRemoteRef -Branch '') ''
 $refused = Test-SentryUpdateBranch -Branch 'feature/foo'
 Assert-True 'branch-feature-refused' ($refused -ne '')
+Assert-True 'branch-message-names-origin-dev' ($refused.Contains('origin/dev'))
 Assert-True 'branch-message-names-origin-main' ($refused.Contains('origin/main'))
-Assert-True 'branch-message-no-mutation-claim' ($refused.Contains('git switch main'))
+Assert-True 'branch-message-names-switch-dev' ($refused.Contains('git switch dev'))
+Assert-True 'branch-message-names-switch-main' ($refused.Contains('git switch main'))
+Assert-True 'branch-message-no-auto-switch' ($refused.Contains('never switches'))
+Assert-True 'branch-message-no-mutation-claim' ($refused.Contains('Zero Git mutations'))
+$refusedRelease = Test-SentryUpdateBranch -Branch 'release/v1.0.0-rc.1'
+Assert-True 'branch-release-refused' ($refusedRelease -ne '')
+$refusedDetached = Test-SentryUpdateBranch -Branch 'HEAD'
+Assert-True 'branch-detached-refused' ($refusedDetached -ne '')
+Assert-True 'branch-detached-names-tag' ($refusedDetached.Contains('detached HEAD'))
+# ---- 3b. update fetches/merges the actual selected channel ref (disposable git repos) ----
+$script:ChannelGitAvailable = $false
+try { & git --version 2>$null | Out-Null; if ($LASTEXITCODE -eq 0) { $script:ChannelGitAvailable = $true } } catch { }
+if ($script:ChannelGitAvailable) {
+  function Invoke-SentryNative {
+    param($FilePath, $Arguments, $Workdir, $TimeoutSec = 0, $NoRedirect = $false, $NoTruncate = $false)
+    $script:LastNativeFlags = @{ NoRedirect = $NoRedirect; NoTruncate = $NoTruncate }
+    $script:NativeCalls += @(($FilePath + ' ' + (($Arguments | ForEach-Object { [string]$_ }) -join ' ')))
+    $key = $FilePath + ' ' + (($Arguments | ForEach-Object { [string]$_ }) -join ' ')
+    foreach ($pat in $script:NativeStubs.Keys) { if ($key -like $pat) { return $script:NativeStubs[$pat] } }
+    if (($FilePath -eq 'git') -and $script:ChannelPassthrough) {
+      $out = & git @Arguments 2>$null
+      $code = $LASTEXITCODE
+      return @{ ExitCode = $code; Stdout = ((@($out) | ForEach-Object { [string]$_ }) -join [Environment]::NewLine); Stderr = '' }
+    }
+    return @{ ExitCode = 0; Stdout = ''; Stderr = '' }
+  }
+  $script:ChannelPassthrough = $true
+  $script:NativeStubs = @{}
+  $script:NativeCalls = @()
+  $chanBase = Join-Path ([System.IO.Path]::GetTempPath()) ('sentry-chan-' + [System.Guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Path $chanBase | Out-Null
+  $chanSeed = Join-Path $chanBase 'seed'
+  $chanWt = Join-Path $chanBase 'wt'
+  function Invoke-ChanGit { param([string[]]$GArgs) & git @GArgs 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { throw ('git failed: ' + ($GArgs -join ' ')) } }
+  $script:ChanPrevErr = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  Invoke-ChanGit @('init', '--bare', (Join-Path $chanBase 'origin.git'))
+  Invoke-ChanGit @('--git-dir', (Join-Path $chanBase 'origin.git'), 'symbolic-ref', 'HEAD', 'refs/heads/main')
+  Invoke-ChanGit @('init', '-b', 'main', $chanSeed)
+  Invoke-ChanGit @('-C', $chanSeed, 'config', 'user.email', 'test@example.invalid')
+  Invoke-ChanGit @('-C', $chanSeed, 'config', 'user.name', 'sentry-test')
+  Invoke-ChanGit @('-C', $chanSeed, 'remote', 'add', 'origin', (Join-Path $chanBase 'origin.git'))
+  Set-Content -Path (Join-Path $chanSeed 'file.txt') -Value 'base'
+  Invoke-ChanGit @('-C', $chanSeed, 'add', 'file.txt')
+  Invoke-ChanGit @('-C', $chanSeed, 'commit', '-qm', 'base')
+  Set-Content -Path (Join-Path $chanSeed 'sentry.ps1') -Value @('param([Parameter(ValueFromRemainingArguments = $true)]$Rest)', 'exit 0')
+  Invoke-ChanGit @('-C', $chanSeed, 'add', 'sentry.ps1')
+  Invoke-ChanGit @('-C', $chanSeed, 'commit', '-qm', 'stub-sentry-handoff')
+  Invoke-ChanGit @('-C', $chanSeed, 'push', '-q', 'origin', 'main')
+  Invoke-ChanGit @('-C', $chanSeed, 'checkout', '-qb', 'dev')
+  Set-Content -Path (Join-Path $chanSeed 'dev.txt') -Value 'dev1'
+  Invoke-ChanGit @('-C', $chanSeed, 'add', 'dev.txt')
+  Invoke-ChanGit @('-C', $chanSeed, 'commit', '-qm', 'dev1')
+  Invoke-ChanGit @('-C', $chanSeed, 'push', '-q', 'origin', 'dev')
+  Invoke-ChanGit @('clone', '-q', (Join-Path $chanBase 'origin.git'), $chanWt)
+  Invoke-ChanGit @('-C', $chanWt, 'config', 'user.email', 'test@example.invalid')
+  Invoke-ChanGit @('-C', $chanWt, 'config', 'user.name', 'sentry-test')
+  $chanDevTip = ([string](& git -C $chanWt rev-parse origin/dev 2>$null)).Trim()
+  $chanMainTip = ([string](& git -C $chanWt rev-parse origin/main 2>$null)).Trim()
+  Assert-True 'channel-fixture-divergent-tips' ($chanDevTip -cne $chanMainTip)
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-q', 'dev')
+  $script:NativeCalls = @()
+  $rcDevCurrent = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'channel-dev-current-exit' $rcDevCurrent 0
+  Assert-True 'channel-dev-fetches-origin-dev' ((@($script:NativeCalls | Where-Object { $_ -like '*fetch --prune origin dev*' })).Count -gt 0)
+  Assert-Equal 'channel-dev-never-touches-main' ((@($script:NativeCalls | Where-Object { $_ -like '*origin/main*' })).Count) '0'
+  Assert-Equal 'channel-dev-head-stable' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanDevTip
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-q', 'main')
+  $script:NativeCalls = @()
+  $rcMainCurrent = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'channel-main-current-exit' $rcMainCurrent 0
+  Assert-True 'channel-main-fetches-origin-main' ((@($script:NativeCalls | Where-Object { $_ -like '*fetch --prune origin main*' })).Count -gt 0)
+  Assert-Equal 'channel-main-never-touches-dev' ((@($script:NativeCalls | Where-Object { $_ -like '*origin/dev*' })).Count) '0'
+  Assert-Equal 'channel-main-head-stable' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanMainTip
+  Add-Content -Path (Join-Path $chanSeed 'dev.txt') -Value 'dev2'
+  Invoke-ChanGit @('-C', $chanSeed, 'commit', '-qam', 'dev2')
+  Invoke-ChanGit @('-C', $chanSeed, 'push', '-q', 'origin', 'dev')
+  $chanNewDevTip = ([string](& git -C $chanSeed rev-parse HEAD 2>$null)).Trim()
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-q', 'dev')
+  $script:NativeCalls = @()
+  $rcDevAdvance = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'channel-dev-advance-exit' $rcDevAdvance 0
+  Assert-True 'channel-dev-merges-origin-dev' ((@($script:NativeCalls | Where-Object { $_ -like '*merge --ff-only origin/dev*' })).Count -gt 0)
+  Assert-Equal 'channel-dev-advance-head' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanNewDevTip
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-qb', 'feature/example')
+  $script:NativeCalls = @()
+  $rcFeature = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'channel-feature-refuses' $rcFeature 1
+  Assert-Equal 'channel-feature-no-fetch' ((@($script:NativeCalls | Where-Object { $_ -like '*fetch*' })).Count) '0'
+  Assert-Equal 'channel-feature-branch-kept' (([string](& git -C $chanWt rev-parse --abbrev-ref HEAD 2>$null)).Trim()) 'feature/example'
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-q', '--detach', 'HEAD')
+  $script:NativeCalls = @()
+  $rcDetached = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'channel-detached-refuses' $rcDetached 1
+  Assert-Equal 'channel-detached-no-fetch' ((@($script:NativeCalls | Where-Object { $_ -like '*fetch*' })).Count) '0'
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-q', 'dev')
+  Add-Content -Path (Join-Path $chanWt 'file.txt') -Value 'dirty'
+  $script:NativeCalls = @()
+  $rcDirty = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'channel-dirty-refuses' $rcDirty 1
+  Assert-Equal 'channel-dirty-no-fetch' ((@($script:NativeCalls | Where-Object { $_ -like '*fetch*' })).Count) '0'
+  Assert-Equal 'channel-dirty-head-kept' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanNewDevTip
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-q', '--', 'file.txt')
+  Set-Content -Path (Join-Path $chanWt 'local.txt') -Value 'local-only'
+  Invoke-ChanGit @('-C', $chanWt, 'add', 'local.txt')
+  Invoke-ChanGit @('-C', $chanWt, 'commit', '-qm', 'local-only')
+  $chanLocalTip = ([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()
+  Add-Content -Path (Join-Path $chanSeed 'dev.txt') -Value 'dev3'
+  Invoke-ChanGit @('-C', $chanSeed, 'commit', '-qam', 'dev3')
+  Invoke-ChanGit @('-C', $chanSeed, 'push', '-q', 'origin', 'dev')
+  $script:NativeCalls = @()
+  $rcDiverged = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'channel-diverged-refuses' $rcDiverged 1
+  Assert-True 'channel-diverged-fetched-dev' ((@($script:NativeCalls | Where-Object { $_ -like '*fetch --prune origin dev*' })).Count -gt 0)
+  Assert-Equal 'channel-diverged-head-kept' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanLocalTip
+  Invoke-ChanGit @('-C', $chanWt, 'remote', 'set-url', 'origin', (Join-Path $chanBase 'does-not-exist.git'))
+  Invoke-ChanGit @('-C', $chanWt, 'reset', '-q', '--hard', $chanNewDevTip)
+  $script:NativeCalls = @()
+  $rcFetchFail = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'channel-fetch-fail-safe' $rcFetchFail 1
+  Assert-Equal 'channel-fetch-fail-head-kept' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanNewDevTip
+  Remove-Item -Recurse -Force $chanBase -ErrorAction SilentlyContinue
+  $ErrorActionPreference = $script:ChanPrevErr
+  $script:ChannelPassthrough = $false
+  $script:NativeStubs = @{}
+  $script:NativeCalls = @()
+}
+else { Write-Host 'SKIP channel-update-integration (git unavailable)' }
 # ---- 4. no-update decision ----
 Assert-Equal 'update-needed-different' (Test-SentryUpdateNeeded -HeadSha 'aaa' -RemoteSha 'bbb') $true
 Assert-Equal 'update-not-needed-equal' (Test-SentryUpdateNeeded -HeadSha 'aaa' -RemoteSha 'aaa') $false

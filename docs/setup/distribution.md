@@ -131,8 +131,8 @@ them on actual CachyOS. No AppImage/AUR/native package is promised.
 
 ## Explicit release upgrade, repair and source-beta migration
 
-`sentry update` in an archive always refuses. It never follows origin/main or
-downloads another candidate. Source clones retain the development-only updater;
+`sentry update` in an archive always refuses. It never follows origin/dev,
+origin/main, or downloads another candidate. Source clones retain the development-only updater;
 pinned source-beta tags retain their existing refusal. Archive commands do not
 replace the existing global source shim: invoke `./sentry` / `.\sentry.ps1` in the
 chosen archive directory or create your own user-owned shortcut after acceptance.

@@ -19,29 +19,47 @@ Do not overwrite tags or discard local changes automatically.
 For same-revision repair rerun setup. Windows also has `sentry repair`;
 CachyOS uses `sentry setup`.
 
-## Development channel: explicit opt-in
+## Source channels: explicit branch tracking (since the 2026-10-12 branching transition)
 
-`sentry update` tracks **development origin/main**, potentially outside a tested
-beta. The launcher prints this policy. Switching to main opts in:
+Source checkouts update only from the explicitly selected channel:
+
+| Current branch                                           | `sentry update` tracks | Notes                                                                                                                                     |
+| -------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `dev`                                                    | `origin/dev`           | Development stream.                                                                                                                       |
+| `main`                                                   | `origin/main`          | Stable integration/release stream. Existing `main` checkouts stay on `main` until you explicitly switch; nothing redirects them to `dev`. |
+| Detached tag (e.g. `v0.1.0-beta.1`)                      | Refuses                | Pinned installs stay pinned.                                                                                                              |
+| `feature/*`, `fix/*`, `codex/*`, `release/*`, `hotfix/*` | Refuses                | Switch to `dev` or `main` explicitly first.                                                                                               |
+
+`main` is the stable stream, not the experimental stream; `dev` is the
+development stream. Sentry never switches your branch automatically. To change
+channels, choose explicitly:
 
 ```text
-git switch main
+git switch dev     # follow development (tracks origin/dev)
+git switch main    # follow stable (tracks origin/main)
 sentry update
 ```
 
-Requires a clean clone, branch main and origin/internet access. Sentry never
-resets, stashes or rebases your work.
+Requires a clean tree and origin/internet access. Sentry never resets, stashes
+or rebases your work.
 
-## Development update steps
+## Source update steps
 
-1. Refuse non-main branches and dirty trees.
-2. Fetch origin/main and compare HEAD.
-3. Leave running Sentry alone if current (Windows `-Repair` can rebuild).
-4. Stop gracefully; failure aborts before merge/build/deploy.
-5. Fast-forward only, run updated launcher, install frozen dependencies,
-   build, deploy versioned runtime, handshake and recheck managed tools.
-6. Restore running/stopped state and preserve settings/data. Runtime handshake
+1. Identify the current branch and resolve the matching remote ref (`origin/dev`
+   or `origin/main`); refuse any other checkout with zero Git mutations.
+2. Refuse dirty trees (commit, stash, or discard first).
+3. `git fetch --prune origin <dev|main>` for the current channel only, then
+   compare HEAD with the matching remote ref.
+4. Leave running Sentry alone if current (Windows `-Repair` can rebuild).
+5. Stop gracefully; failure aborts before merge/build/deploy.
+6. Fast-forward only (`git merge --ff-only`); a diverged branch must be resolved
+   manually. Run the updated launcher: install frozen dependencies, build,
+   deploy the versioned runtime, handshake, and recheck managed tools.
+7. Restore running/stopped state and preserve settings/data. Runtime handshake
    failure restores the previous runtime target.
+
+Update prints the channel and transition, e.g.
+`source channel: origin/dev` then `Updated: e9e0b80 -> a1b2c3d`.
 
 ## Recovery
 
