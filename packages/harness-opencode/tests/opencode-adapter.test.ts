@@ -580,9 +580,11 @@ describe('OpenCodeHarnessAdapter', () => {
     roots.push(root);
     const first = await request(root);
     const aborted: string[] = [];
+    let promptEntered = false;
     const hangingFactory: OpenCodeClientFactory = async () => ({
       startSession: async () => ({
         runPrompt: async (_prompt, options) => {
+          promptEntered = true;
           await new Promise<void>((resolve) => {
             options.signal?.addEventListener('abort', () => {
               aborted.push('session');
@@ -600,7 +602,15 @@ describe('OpenCodeHarnessAdapter', () => {
       clientFactory: hangingFactory,
     });
     const pending = collect(adapter, first);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Synchronize with turn entry instead of a fixed sleep: under full-suite
+    // load a blind delay can elapse before the adapter reaches runPrompt,
+    // sending cancel down the construction path and flaking the assertion.
+    // A bounded wait that never observes entry fails loudly (real hang).
+    const enteredBefore = Date.now();
+    while (!promptEntered && Date.now() - enteredBefore < 5000) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(promptEntered).toBe(true);
     await adapter.cancel(first.agentRunId);
     const firstEvents = await pending;
     expect(firstEvents.at(-1)?.type).toBe('run.failed');
