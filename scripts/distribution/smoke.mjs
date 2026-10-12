@@ -2,26 +2,37 @@
 // Usage: node smoke.mjs extractedArchiveRoot linuxRuntimeEntry linuxDisposableData
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
 import { once } from 'node:events';
 import { validate } from './contract.mjs';
 
-const [input, entry, data, historyReceipt] = process.argv.slice(2);
+const [input, entry, data, historyReceipt, settingsMode, settingsSession] = process.argv.slice(2);
 if (process.platform !== 'win32' || !input || !entry || !data?.startsWith('/'))
   throw new Error(
     'Windows smoke requires extracted archive, Linux runtime entry and disposable absolute Linux data root',
   );
 const root = resolve(input),
   manifest = await validate(root);
-const temporary = await mkdtemp(join(tmpdir(), 'sentry packaged smoke '));
-await mkdir(join(temporary, 'appdata'));
-await mkdir(join(temporary, 'localappdata'));
-await mkdir(join(temporary, 'temp'));
+const synthetic = process.env['SENTRY_SMOKE_SYNTHETIC'];
+if (settingsMode) {
+  assert.ok(['seed', 'verify'].includes(settingsMode));
+  assert.ok(
+    settingsSession &&
+      resolve(settingsSession).startsWith(join(tmpdir(), 'sentry secure settings ')),
+  );
+  assert.ok(synthetic?.startsWith('synthetic-nonproduction-'));
+}
+const temporary = settingsMode
+  ? resolve(settingsSession)
+  : await mkdtemp(join(tmpdir(), 'sentry packaged smoke '));
+await mkdir(join(temporary, 'appdata'), { recursive: true });
+await mkdir(join(temporary, 'localappdata'), { recursive: true });
+await mkdir(join(temporary, 'temp'), { recursive: true });
 const source = join(temporary, 'synthetic project');
-await mkdir(source);
+await mkdir(source, { recursive: true });
 await writeFile(
   join(source, 'package.json'),
   '{"name":"sentry-packaged-fixture","version":"1.0.0"}\n',
@@ -37,6 +48,7 @@ const env = {
   SENTRY_RUNTIME_ENTRY: entry,
   SENTRY_DESKTOP_URL: 'http://127.0.0.1:1/must-be-ignored',
 };
+delete env['SENTRY_SMOKE_SYNTHETIC'];
 // Keep the smoke independent of the owner's provider settings and legacy env file.
 for (const name of Object.keys(env))
   if (
@@ -137,6 +149,22 @@ try {
   assert.equal(runtime.hello.runtimeVersion, manifest.version);
   assert.equal(runtime.hello.platform, 'linux');
   assert.equal(runtime.hello.isElectron, false);
+  if (settingsMode) {
+    const before = await evaluate('window.sentry.providers.status()');
+    const status = before.find((s) => s.name === 'DEEPSEEK_API_KEY');
+    assert.equal(status.configured, settingsMode === 'verify');
+    if (settingsMode === 'seed') {
+      const saved = await evaluate(
+        `window.sentry.providers.save("DEEPSEEK_API_KEY", ${JSON.stringify(synthetic)})`,
+      );
+      assert.equal(saved.configured, true);
+      assert.equal(saved.persistence, 'secure');
+    } else {
+      // Stored/secure requires a successful real safeStorage decrypt on this new boot.
+      assert.equal(status.persistence, 'secure');
+      assert.equal(status.source, 'stored');
+    }
+  }
   const imported = await evaluate(`window.sentry.projects.add(${JSON.stringify(source)})`);
   assert.ok(imported);
   const projects = await evaluate('window.sentry.projects.list()');
@@ -175,6 +203,27 @@ try {
     }),
   ]);
   assert.equal(code, 0);
+  if (settingsMode) {
+    const store = JSON.parse(
+      await readFile(join(temporary, 'appdata/@qa/desktop/credentials/providers.json'), 'utf8'),
+    );
+    assert.ok(store.secrets.DEEPSEEK_API_KEY);
+    async function noPlaintext(directory) {
+      for (const item of await readdir(directory, { withFileTypes: true })) {
+        const path = join(directory, item.name);
+        if (item.isDirectory()) await noPlaintext(path);
+        else if (item.isFile())
+          assert.equal(
+            (await readFile(path)).includes(Buffer.from(synthetic)),
+            false,
+            'Synthetic plaintext found in ' + path,
+          );
+      }
+    }
+    assert.equal(log.includes(synthetic), false, 'Synthetic plaintext found in application output');
+    await noPlaintext(temporary);
+    await noPlaintext(root);
+  }
   console.log(
     JSON.stringify({
       packagedSmoke: 'PASS',
@@ -188,6 +237,7 @@ try {
       linuxHandshake: true,
       projectImport: true,
       betaHistory: Boolean(historyReceipt),
+      encryptedSettings: settingsMode ?? 'SKIPPED',
       singleInstance: true,
       gracefulStop: true,
       appData: temporary,
@@ -195,7 +245,8 @@ try {
     }),
   );
 } catch (error) {
-  console.error(log);
+  console.error(synthetic ? log.replaceAll(synthetic, '[redacted]') : log);
+  if (synthetic) throw new Error(String(error).replaceAll(synthetic, '[redacted]'));
   throw error;
 } finally {
   socket?.close();

@@ -17,7 +17,15 @@ if [ "$COMMAND" = version ]; then cat "$ROOT/build-identity.json"; exit 0; fi
 sentry_require_cachyos
 [ "$(uname -m)" = x86_64 ] || { echo 'x64 required' >&2; exit 1; }
 release_stop() {
-  "$ROOT/desktop/sentry" --sentry-control=stop
+  command -v timeout >/dev/null || { echo 'GNU timeout (coreutils) required; maintenance refused. Repair prerequisites and retry stop.' >&2; return 1; }
+  local control_status=0
+  # GNU timeout creates a separate process group for this short-lived helper.
+  # Its deadline/signals never target the existing Desktop/runtime or active QA.
+  timeout --kill-after=2s 45s "$ROOT/desktop/sentry" --sentry-control=stop || control_status=$?
+  if [ "$control_status" -ne 0 ]; then
+    echo "Graceful stop control failed or timed out (exit $control_status); maintenance refused. Cancel active QA, close Sentry and retry stop. No running Desktop/runtime was force-stopped." >&2
+    return 1
+  fi
   . "$ROOT/scripts/launcher/linux/lib/desktop-ctl.sh"
   local attempt
   for attempt in {1..45}; do
@@ -34,9 +42,29 @@ case "$COMMAND" in
   setup|repair) release_stop; bash "$ROOT/scripts/distribution/bootstrap-runtime.sh" native ;;
   open)
     [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || { echo 'Use a graphical session' >&2; exit 1; }
+    [ -x "$ROOT/desktop/sentry" ] || { echo 'Packaged Desktop executable unavailable; verify/extract the approved archive again.' >&2; exit 1; }
+    command -v setsid >/dev/null || { echo 'setsid (util-linux) required for detached launch.' >&2; exit 1; }
+    . "$ROOT/scripts/launcher/linux/lib/desktop-ctl.sh"
     mkdir -p "$HOME/.local/share/sentry/logs"
-    setsid "$ROOT/desktop/sentry" --sentry-app >>"$HOME/.local/share/sentry/logs/release-desktop.log" 2>&1 </dev/null &
-    echo 'Desktop launch requested. Check Environment for readiness.' ;;
+    log="$HOME/.local/share/sentry/logs/release-desktop.log"
+    # --wait preserves the exit status even if setsid must fork a new session.
+    setsid --wait "$ROOT/desktop/sentry" --sentry-app >>"$log" 2>&1 </dev/null &
+    launched_pid=$!
+    for probe in {1..10}; do
+      sleep 0.2
+      if ! kill -0 "$launched_pid" 2>/dev/null; then
+        launch_status=0
+        wait "$launched_pid" || launch_status=$?
+        if [ "$launch_status" = 0 ] && sentry_desktop_running; then
+          echo "Desktop launch handed to an existing instance; check Environment for runtime and provider readiness. Log: $log"
+          exit 0
+        fi
+        echo "Sentry exited during startup (exit $launch_status). Log: $log" >&2
+        echo 'Review the startup log and run: ./sentry doctor' >&2
+        exit 1
+      fi
+    done
+    echo "Desktop process survived initial startup; check Environment for runtime and provider readiness. Log: $log" ;;
   stop) release_stop ;;
   doctor|status)
     cat "$ROOT/build-identity.json"
