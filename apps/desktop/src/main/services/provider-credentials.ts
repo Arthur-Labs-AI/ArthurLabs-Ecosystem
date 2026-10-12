@@ -196,30 +196,57 @@ export class ProviderCredentialService {
 
   /**
    * Boot load: decrypt saved secrets → memory + process.env, load model
-   * prefs, then one-time migrate the legacy plaintext file. Never throws.
+   * prefs, then one-time migrate the legacy plaintext file. Normal boot never
+   * throws. Presence diagnostics opt into strict encrypted-store validation;
+   * a skipped/unreadable entry cannot be presented as a confirmed absence.
    */
-  async load(): Promise<void> {
+  async load(options: { readonly strict?: boolean } = {}): Promise<void> {
     this.refreshSecureAvailability();
+    if (options.strict && !this.secureAvailable) throw new Error('Secure storage unavailable');
     if (this.secureAvailable && this.safeStorage !== undefined) {
       try {
         const text = await readFile(this.credentialPath, 'utf8');
         const parsed = JSON.parse(text) as Partial<EncryptedStoreFile>;
+        if (
+          options.strict &&
+          (parsed === null ||
+            parsed.version !== 1 ||
+            typeof parsed.secrets !== 'object' ||
+            parsed.secrets === null ||
+            Array.isArray(parsed.secrets))
+        )
+          throw new Error('Credential store unreadable');
         const secrets = parsed.secrets ?? {};
         for (const name of SECRET_PROVIDER_KEYS) {
           const blob = secrets[name];
+          if (
+            options.strict &&
+            blob !== undefined &&
+            (typeof blob !== 'string' ||
+              blob.length === 0 ||
+              Buffer.from(blob, 'base64').toString('base64') !== blob)
+          ) {
+            throw new Error('Credential entry unreadable');
+          }
           if (typeof blob !== 'string' || blob.length === 0) continue;
           try {
             const value = this.safeStorage.decryptString(Buffer.from(blob, 'base64'));
+            if (options.strict && value.length === 0)
+              throw new Error('Credential entry unreadable');
             if (value.length === 0) continue;
             this.memory.set(name, value);
             this.persistedSecrets.add(name);
             if (process.env[name] === undefined || process.env[name] === '')
               process.env[name] = value;
           } catch {
+            if (options.strict) throw new Error('Credential entry unreadable');
             // Corrupt entry: skip without failing boot; never log the value.
           }
         }
-      } catch {
+      } catch (error) {
+        if (options.strict && (error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw new Error('Credential store unreadable');
+        }
         // Absent store is the normal first-launch state.
       }
     }
@@ -245,7 +272,9 @@ export class ProviderCredentialService {
         if (envValue !== undefined && envValue.length > 0) this.memory.set(name, envValue);
       }
     }
-    await this.migrateLegacyFile();
+    // A presence query only inspects the store. Normal Desktop boot keeps
+    // the existing one-time migration; diagnostics must not rewrite settings.
+    if (!options.strict) await this.migrateLegacyFile();
   }
 
   private async migrateLegacyFile(): Promise<void> {

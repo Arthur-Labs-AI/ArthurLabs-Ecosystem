@@ -1,7 +1,7 @@
 // Real production entrypoint/preload/renderer/IPC against an isolated runtime.
 // Usage: node smoke.mjs extractedArchiveRoot linuxRuntimeEntry linuxDisposableData
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -247,6 +247,19 @@ try {
   const second = spawn(exe, [...baseArgs, '--sentry-app'], { env, stdio: 'ignore' });
   const [secondCode] = await once(second, 'close');
   assert.equal(secondCode, 0);
+  if (settingsMode === 'verify') {
+    const busy = spawnSync(exe, [...baseArgs, '--sentry-credential-status'], {
+      env,
+      encoding: 'utf8',
+      timeout: 30000,
+    });
+    assert.equal(busy.status, 1, 'Diagnostic must refuse a profile owned by running Desktop');
+    assert.equal(busy.stdout.includes('SENTRY_CREDENTIAL_STATUS='), false);
+    assert.equal(/Settings.*Providers/.test(busy.stderr), true);
+    assert.equal((busy.stdout + busy.stderr).includes(synthetic), false);
+    assert.equal(child.exitCode, null);
+    assert.equal((await evaluate('window.sentry.runtime.status()')).connected, true);
+  }
   const control = spawn(exe, [...baseArgs, '--sentry-control=stop'], { env, stdio: 'ignore' });
   await once(control, 'close');
   const [code] = await Promise.race([
@@ -256,6 +269,29 @@ try {
     }),
   ]);
   assert.equal(code, 0);
+  if (settingsMode === 'verify') {
+    // The explicit profile was proved before credential IPC. This new process
+    // must inspect local settings without booting even an unavailable runtime.
+    const diagnostic = spawnSync(exe, [...baseArgs, '--sentry-credential-status'], {
+      env: {
+        ...env,
+        SENTRY_RUNTIME_ENTRY: '/nonexistent/sentry-diagnostic-must-not-start-runtime',
+      },
+      encoding: 'utf8',
+      timeout: 30000,
+    });
+    assert.equal(diagnostic.status, 0, 'Fresh encrypted credential diagnostic must succeed');
+    assert.equal((diagnostic.stdout + diagnostic.stderr).includes(synthetic), false);
+    const lines = diagnostic.stdout
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith('SENTRY_CREDENTIAL_STATUS='));
+    assert.equal(lines.length, 1);
+    assert.deepEqual(JSON.parse(lines[0].slice('SENTRY_CREDENTIAL_STATUS='.length)), {
+      opencode: false,
+      deepseek: true,
+      glm: false,
+    });
+  }
   if (settingsMode) {
     const store = JSON.parse(
       await readFile(join(temporary, 'appdata/@qa/desktop/credentials/providers.json'), 'utf8'),
@@ -293,6 +329,7 @@ try {
       projectImport: true,
       betaHistory: Boolean(historyReceipt),
       encryptedSettings: settingsMode ?? 'SKIPPED',
+      credentialDiagnostic: settingsMode === 'verify' ? 'PASS' : 'SKIPPED',
       singleInstance: true,
       gracefulStop: true,
       appData: temporary,

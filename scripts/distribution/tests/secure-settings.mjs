@@ -31,6 +31,8 @@ const synthetic = 'synthetic-nonproduction-' + randomUUID();
 for (const [archive, runtime, mode] of [
   [previousArchive, previousRuntime, 'seed'],
   [nextArchive, nextRuntime, 'verify'],
+  // Reopen normal Desktop after the standalone diagnostic inspected its store.
+  [nextArchive, nextRuntime, 'verify'],
 ]) {
   execFileSync(
     process.execPath,
@@ -57,6 +59,8 @@ console.log(
     plaintextAbsent: true,
     productionStatus: 'stored/secure',
     sameAccount: true,
+    credentialDiagnostic: 'PASS',
+    reopenAfterDiagnostic: true,
     isolatedAppData: session,
   }),
 );

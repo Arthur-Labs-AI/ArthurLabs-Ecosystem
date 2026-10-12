@@ -117,6 +117,20 @@ with owner review and accurate validation under the
   acceptance are outstanding. Phase 4 remains implemented with outstanding
   supported-host acceptance; Phase 5 has not started.
 
+- **Credential diagnostic correction (2026-10-12):** PR #7 merged at `89365b9`,
+  post-merge CI 38275423611 PASS. `fix/v1-credential-status-diagnostic` supplies
+  Electron safeStorage after readiness, distinguishes unavailable/unreadable
+  storage from missing credentials, preserves the launcher boolean protocol and
+  avoids disturbing an existing Desktop. The reproduced failures are corrected:
+  21 diagnostic cases and 49 focused Desktop cases PASS. Exact `65d2b32` unsigned
+  Windows/Linux artifacts and the detailed gate/host results are recorded in
+  [credential diagnostic validation](v1-phase-4-credential-diagnostic-validation.md)
+  and [draft PR #8](https://github.com/Mert1026/Sentry/pull/8). Local concurrent
+  full-suite failures remain disclosed; the uncached serial WSL full suite passed
+  1,179 tests / 16 skips, including real sandbox trust 8/8. Native CachyOS,
+  clean Windows provisioning and actual active-execution/recovery acceptance
+  remain outstanding. Phase 4 is not closed and Phase 5 has not started.
+
 ## Phase 5 — Security and testing
 
 - **Objective:** substantiate isolation and regression claims on real hosts.

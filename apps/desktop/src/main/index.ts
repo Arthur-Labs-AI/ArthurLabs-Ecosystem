@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, safeStorage } from 'electron';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bootstrapDesktop, type BootstrappedDesktop } from './bootstrap.js';
@@ -349,15 +349,23 @@ if (sentryControl.mode === 'stop') {
   // Presence-only credential diagnostic (`sentry doctor`): prints booleans
   // only — never values, blobs, prefixes, or paths.
   if (!app.requestSingleInstanceLock()) {
-    app.quit();
+    console.error(
+      'Credential status unavailable while Sentry is running. Check Settings -> Providers / Environment in the running application.',
+    );
+    app.exit(1);
   } else {
     void app.whenReady().then(() => {
       import('./services/provider-credentials.js')
         .then(async ({ ProviderCredentialService }) => {
           const credentials = new ProviderCredentialService({
             userDataDir: app.getPath('userData'),
+            safeStorage: {
+              isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(),
+              encryptString: (value: string) => safeStorage.encryptString(value),
+              decryptString: (buffer: Buffer) => safeStorage.decryptString(buffer),
+            },
           });
-          await credentials.load();
+          await credentials.load({ strict: true });
           const isSet = (name: string): boolean => (credentials.getValue(name) ?? '').length > 0;
           const report = {
             opencode: isSet('OPENROUTER_API_KEY') || isSet('OPENCODE_API_KEY'),
@@ -367,8 +375,10 @@ if (sentryControl.mode === 'stop') {
           console.log('SENTRY_CREDENTIAL_STATUS=' + JSON.stringify(report));
           app.quit();
         })
-        .catch((error: unknown) => {
-          console.error('Failed to read credential status: ' + String(error));
+        .catch(() => {
+          console.error(
+            'Credential status unavailable. Check OS secure storage and Settings -> Providers / Environment. Keep the existing credential store; do not delete it to repair diagnostics.',
+          );
           app.exit(1);
         });
     });
@@ -377,10 +387,14 @@ if (sentryControl.mode === 'stop') {
   app.quit();
 } else {
   app.on('second-instance', (_event, argv) => {
-    if (parseSentryControlArgs(argv).mode === 'stop') {
+    const command = parseSentryControlArgs(argv);
+    if (command.mode === 'stop') {
       app.quit();
       return;
     }
+    // The standalone diagnostic reports unavailable while this profile is
+    // owned. Its lock probe must not steal focus from the running Desktop.
+    if (command.credentialStatus) return;
     if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();

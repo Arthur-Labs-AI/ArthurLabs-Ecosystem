@@ -1,3 +1,32 @@
+# Phase 4 credential diagnostic — owner review (2026-10-12)
+
+IMPLEMENTED AND AVAILABLE-HOST VERIFIED; Phase 4 acceptance remains open.
+Branch fix/v1-credential-status-diagnostic from approved main89365b9.
+Baseline CI38275423611 all3 PASS. Draft PR8:
+https://github.com/Mert1026/Sentry/pull/8
+Implementation65d2b32f6253f97b8e67a321db708bbdee86dfda: CI38283276192
+all3 PASS, distribution38283276145 both archives PASS, GitGuardian PASS.
+Final documentation-head checks and handoff receipts on PR8 are authoritative;
+this static receipt never implies success for a later head. Hosted trust UNVERIFIED.
+Missing safeStorage bridge reproduced15 RED2 guards; readonly/focus regressions
+also RED before fix. Final21 diagnostic /49 focused PASS; Windows Desktop343/2skip.
+Full uncached serial WSL40 tasks1,179 PASS16skip incl real trust8/8; default concurrent
+Windows/WSL full suites FAIL unchanged timing-sensitive cases; focused reruns PASS,
+no assertions/deadlines weakened. Both-host static/build/distribution/launchers PASS.
+Fresh clean-SHA Windows/Linux unsigned archives built/extracted/inventory verified.
+Actual Windows DPAPI beta-to-archive status, standalone diagnostic, held-lock safe
+refusal, normal reopen, retained history and exact WSL hello PASS; source Electron
+same disposable profile diagnostic PASS. Explicit profile proved before credential
+IPC. First/repeated disposable WSL setup retains prior runtime and synthetic data.
+No owner credential store used; no plaintext output/fallback, funded calls or new
+storage/provider/runtime/schema/QA implementation. Native CachyOS and clean Windows
+provisioning ENVIRONMENT UNAVAILABLE; active QA/physical recovery OWNER ACCEPTANCE
+REQUIRED. See docs/releases/v1-phase-4-credential-diagnostic-validation.md.
+Owner dirty primary checkout and identity preserved; shux contract unavailable.
+No main push/merge/tag/release/version bump or Phase5. Stop for owner review.
+
+## Previous record
+
 # Phase 4 final hardening — owner review (2026-10-12)
 
 IMPLEMENTED AND AVAILABLE-HOST VERIFIED, Phase 4 not fully accepted.
