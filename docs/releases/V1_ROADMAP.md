@@ -66,6 +66,15 @@ with owner review and accurate validation under the
   and owner review precede integration. Direct evidence drill-down, broader
   history/accessibility work, dead-process automatic reconnect and fresh target
   acceptance remain; this is not complete Phase 3 closure.
+- **Final polish (2026-10-12):** PR #4 integrated at `c07c76d`; main CI
+  38213233386 PASS. New `fix/v1-desktop-status-truth` correction distinguishes
+  initial Checking runtime from confirmed offline, categorizes generic output
+  as Message and labels missing AgentRun milestones Not observed. Waiting/Not
+  started placeholders, explicit completion, canonical reconnect and cached
+  reports are preserved. See [final polish validation](v1-phase-3-final-polish.md)
+  for regression, rendered before/after and exact-commit CI evidence. Native
+  CachyOS/live-provider acceptance, compact accessibility and automatic dead-runtime
+  recovery remain unverified/deferred; this does not close Phase 3.
 
 ## Phase 4 — Installation and distribution
 
