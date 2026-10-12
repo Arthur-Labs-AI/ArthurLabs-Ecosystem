@@ -151,6 +151,12 @@ with owner review and accurate validation under the
 - **Risks:** mock-only security claims, sandbox capability differences, secret
   leakage in artifacts, historical compatibility or upgrade coverage gaps.
 - **Branch:** `codex/v1-security-testing` (based on approved `origin/dev`, PR targets `dev`).
+- **Progress (2026-10-13):** threat model (`docs/security/V1_THREAT_MODEL.md`) and
+  validation report (`docs/releases/v1-phase-5-validation.md`) written; two
+  bounded corrections (strict credential entry precision, event-silence test
+  margins); real systemd-mount trust 8/8 on prepared WSL Ubuntu; packaged
+  launch/rollback, real-profile credentials, and funded QA remain
+  owner-acceptance items. No P0/P1 production defects reproduced.
 
 ## Phase 6 — Release candidate
 
