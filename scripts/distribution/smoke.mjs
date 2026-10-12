@@ -191,7 +191,11 @@ try {
   if (settingsMode) {
     const before = await evaluate('window.sentry.providers.status()');
     const status = before.find((s) => s.name === 'DEEPSEEK_API_KEY');
-    assert.equal(status.configured, settingsMode === 'verify');
+    assert.equal(
+      status.configured,
+      settingsMode === 'verify',
+      'Synthetic credential presence on ' + settingsMode,
+    );
     if (settingsMode === 'seed') {
       const saved = await evaluate(
         `window.sentry.providers.save("DEEPSEEK_API_KEY", ${JSON.stringify(synthetic)})`,

@@ -91,6 +91,8 @@ function registerDialogIpc(): void {
 async function boot(): Promise<void> {
   const dataRoot = process.env['SENTRY_DATA_ROOT'];
   try {
+    // safeStorage cannot decrypt persisted credentials before Electron is ready.
+    await app.whenReady();
     bootstrapped = await bootstrapDesktop(dataRoot);
   } catch (error) {
     const classified = classifyBootFailure(error);
