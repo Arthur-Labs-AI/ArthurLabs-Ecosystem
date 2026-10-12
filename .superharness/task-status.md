@@ -7,7 +7,7 @@ static record does not imply success for a subsequently changed head.
 Approved main76257348a86406c8605f8f49cf17652c1dca75fa; main CI38216565256 SUCCESS
 all three jobs. Isolated codex/v1-release-packaging checkout preserves dirty owner
 primary checkout and Git identity. Actual reviewed Windows ZIP/Linux tar.gz built
-from ed48586b5beaa7f4124fe2889b01d177389bb1ec, extracted/inventory verified.
+from c2a28c99ba163e22ad988fe8a67ddd783f7a79b0, extracted/inventory verified.
 Windows packaged production Electron/secure IPC/single instance/graceful stop and
 real WSL runtime bootstrap/side-by-side upgrade PASS. Published-beta persistence
 seeds disposable history, reopened through packaged production IPC PASS.

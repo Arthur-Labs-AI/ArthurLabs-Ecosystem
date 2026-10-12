@@ -4,7 +4,7 @@ Work is isolated on codex/v1-release-packaging from approved main7625734; owner
 dirty checkout remains untouched. Read docs/releases/v1-phase-4-validation.md,
 packaging assessment and docs/setup/distribution.md for exact evidence, actual
 artifact filenames/SHA256 and per-file compatibility notes. Reviewed local
-artifacts identify ed48586b5beaa7f4124fe2889b01d177389bb1ec; subsequent changes
+artifacts identify c2a28c99ba163e22ad988fe8a67ddd783f7a79b0; subsequent changes
 are acceptance helpers/docs. Draft PR #6 is pushed and attached:
 https://github.com/Mert1026/Sentry/pull/6
 Its exact-head checks/final delivery are authoritative CI receipts. Artifacts

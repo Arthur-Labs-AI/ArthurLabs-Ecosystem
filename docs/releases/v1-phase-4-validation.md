@@ -64,19 +64,19 @@ schema, provider versions, encryption and Electron isolation were not refactored
 ## Actual artifact receipts
 
 Both reviewed artifacts below were built from
-`ed48586b5beaa7f4124fe2889b01d177389bb1ec`. Subsequent acceptance-helper/report
+`c2a28c99ba163e22ad988fe8a67ddd783f7a79b0`. Subsequent report
 changes do not alter their payloads. CI candidates identify their own later head;
 do not substitute CI checksums for these local bytes.
 
 | Actual filename                                       | SHA256                                                             | Build / extraction                                         | Launch / installation                                                                                                                       |
 | ----------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sentry-0.1.0-beta.1-ed48586b5bea-windows-x64.zip`    | `8153b2017acd415aa72a798a6ef0867985115f4cab3afce99f00e50016e89a81` | PASS, Windows native x64; 332 inventoried payload files    | PASS actual Windows production Electron + actual WSL runtime, temporary data; bootstrap upgrade PASS; fresh Windows provisioning UNVERIFIED |
-| `sentry-0.1.0-beta.1-ed48586b5bea-cachyos-x64.tar.gz` | `c362968c69f20daa06c9a9e6f4889b11a680c62800b4d25518f22cfabd288aae` | PASS, Linux x64 under Ubuntu WSL; extracted inventory PASS | Native GUI/install: ENVIRONMENT UNAVAILABLE; portable bootstrap fixtures PASS                                                               |
+| `sentry-0.1.0-beta.1-c2a28c99ba16-windows-x64.zip`    | `96025345f7d998f039a164e26bcedbbb89b419d17b777a7be1b1136737e0dd4a` | PASS, Windows native x64; 332 inventoried payload files    | PASS actual Windows production Electron + actual WSL runtime, temporary data; bootstrap upgrade PASS; fresh Windows provisioning UNVERIFIED |
+| `sentry-0.1.0-beta.1-c2a28c99ba16-cachyos-x64.tar.gz` | `125dd6022859185c55934140452ba94462a0d8605a9644b0d04f2f60be46076c` | PASS, Linux x64 under Ubuntu WSL; extracted inventory PASS | Native GUI/install: ENVIRONMENT UNAVAILABLE; portable bootstrap fixtures PASS                                                               |
 
 Windows outputs are in the isolated checkout's ignored `dist/distributions`;
 Linux outputs in `/var/tmp/sentry-phase4-validation.9OrWhh/dist/distributions`.
 Companion `.sha256` files exist. Archives/binaries are not committed. Earlier
-30f9c81/7a13850 artifacts were built/extracted too; they are superseded candidates.
+30f9c81/7a13850/ed48586 artifacts were built/extracted too; they are superseded candidates.
 No official or public assets were uploaded by these local commands.
 
 Build hosts: Windows 11 Home x64 build 26200, Node 24.13.1/pnpm 9.12.3; Ubuntu
@@ -102,7 +102,7 @@ byte-for-byte reproducibility across hosts/tool versions is not claimed.
 | New `pnpm distribution:test`                 | Windows PASS 7/10 platform skips; WSL PASS 16/1 platform skip (17 total). Real validators/bootstrap orchestration, fixture host/tool/build/RPC boundaries.                                                                                                                                                                                                                                                                                                     |
 | New Windows maintenance / parser             | PASS four maintenance scenarios and all new PowerShell syntax parses                                                                                                                                                                                                                                                                                                                                                                                           |
 | Real sandbox                                 | PASS WSL full suite's eight real `verification-trust` tests, including containment/secret/child-process proofs; systemd user and bubblewrap initialization available. Hosted CI mount limitation remains separate.                                                                                                                                                                                                                                             |
-| Real packaged Windows smoke                  | PASS reviewed ed48586 binary, production file renderer, preload, renderer has no require/process, invalid IPC rejection, exact Linux hello, project import, single instance and graceful control stop                                                                                                                                                                                                                                                          |
+| Real packaged Windows smoke                  | PASS reviewed c2a28c9 binary, production file renderer, preload, renderer has no require/process, invalid IPC rejection, exact Linux hello, project import, single instance and graceful control stop                                                                                                                                                                                                                                                          |
 | Native CachyOS / clean Windows               | ENVIRONMENT UNAVAILABLE / UNVERIFIED respectively; existing configured Windows host is not a fresh machine                                                                                                                                                                                                                                                                                                                                                     |
 | Funded agent integrations                    | UNVERIFIED, not run or authorized by this phase                                                                                                                                                                                                                                                                                                                                                                                                                |
 
@@ -122,6 +122,11 @@ installation and all 18 transitive runtime builds. First 30f9c81 install passed;
 reviewed ed48586 setup from a Windows extraction path containing spaces passed
 candidate and active hello, atomically changed current and retained the previous
 30f9c81 deployment. No owner's runtime/data/settings were used as fixtures.
+After the hosted short-path correction, c2a28c9 was rebuilt on both local hosts,
+extracted and revalidated. Its Windows archive passed version validation and a
+real setup from a path with spaces: candidate/active hello matched c2a28c9 and
+the prior ed48586 deployment was retained. The actual replacement packaged app
+also passed the same production smoke and read the retained beta history.
 
 For history acceptance, cloned immutable `v0.1.0-beta.1` commit
 `0e5c10cfa80f6385ebfc88a7306b38ce8a12ce38` into a separate Linux temp checkout,
@@ -208,3 +213,7 @@ length. A relative-root regression reproduced the same failure locally (RED).
 It now carries relative directory names during traversal (GREEN, Windows 7/10
 platform skips), preserving strict inventory/tamper rejection. Replacement
 artifact receipts and final exact-head CI supersede that failed candidate.
+The three existing checks passed on prior documentation head 0b4e2aa in
+[CI 38230504261](https://github.com/Mert1026/Sentry/actions/runs/38230504261).
+Corrected-code CI and final documentation-head checks are recorded on PR #6;
+neither that prior success nor local artifact receipts substitute for final-head CI.
