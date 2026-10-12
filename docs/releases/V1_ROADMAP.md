@@ -7,7 +7,7 @@ with owner review and accurate validation under the
 [branch policy](../development/branching.md). The
 [architecture contract](../architecture/v1-pipeline.md) applies to every phase.
 
-> Branching transition (2026-10-12, Milestone A — pending owner review):
+> Branching transition (integrated via owner-merged PR #9, 2026-10-12):
 > completed phases merged into `main` under the old trunk policy (their PR
 > records stand as written). New work targets `dev`: Phase 5 will branch from
 > approved `origin/dev` and open its PR to `dev`. See

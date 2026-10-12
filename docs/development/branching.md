@@ -1,16 +1,19 @@
 # Branching and release review
 
-## Policy transition (2026-10-12, Milestone A — pending owner review)
+## Policy transition (2026-10-12: integrated via owner-merged PR #9)
 
 Before this change Sentry used one integration trunk: feature and fix
 branches were based on `origin/main` and merged into `main` (PRs #2–#8 did
 so legitimately under that policy; history is not rewritten).
 
-From the `dev` creation commit forward (`dev` branched from approved
-`origin/main` `4fd2be9fa3b17370841dbb1d2f0422a2150c62d8`, see
-`docs/development/dev-branch-transition.md`), the workflow below applies.
-Until the transition PR is owner-approved and merged, `dev` carries no new
-development commits: `main` and `dev` point at the same baseline.
+`dev` was created from approved `origin/main`
+`4fd2be9fa3b17370841dbb1d2f0422a2150c62d8` (creation record kept in
+`docs/development/dev-branch-transition.md`). PR #9 integrated the
+transition into `dev` (owner-merged 2026-10-12 as `6e5ec22`): `main` remains
+the frozen pre-v1 transition baseline at `4fd2be9` — not an accepted stable
+v1 release — while `dev` carries ongoing development. From the `dev`
+creation commit forward, the workflow below applies: new task branches start
+from approved `origin/dev` and target `dev`.
 
 ## Branch responsibilities
 
