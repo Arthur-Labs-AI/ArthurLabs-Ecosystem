@@ -136,6 +136,8 @@ if ($script:ChannelGitAvailable) {
   Invoke-ChanGit @('-C', $chanSeed, 'commit', '-qm', 'dev1')
   Invoke-ChanGit @('-C', $chanSeed, 'push', '-q', 'origin', 'dev')
   Invoke-ChanGit @('clone', '-q', (Join-Path $chanBase 'origin.git'), $chanWt)
+  Invoke-ChanGit @('-C', $chanWt, 'config', 'user.email', 'test@example.invalid')
+  Invoke-ChanGit @('-C', $chanWt, 'config', 'user.name', 'sentry-test')
   $chanDevTip = ([string](& git -C $chanWt rev-parse origin/dev 2>$null)).Trim()
   $chanMainTip = ([string](& git -C $chanWt rev-parse origin/main 2>$null)).Trim()
   Assert-True 'channel-fixture-divergent-tips' ($chanDevTip -cne $chanMainTip)
