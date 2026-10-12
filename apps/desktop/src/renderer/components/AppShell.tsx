@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { sentryApi } from '../lib/sentry-api.js';
 import { CommandPalette } from './CommandPalette.js';
+import { useRuntimeStatus } from '../lib/use-runtime-status.js';
 
 const NAV: Array<{ to: string; label: string; end?: boolean; icon: React.ReactNode }> = [
   {
@@ -52,15 +53,35 @@ export function AppShell(): React.JSX.Element {
     queryFn: () => sentryApi().system.activeRuns(),
     refetchInterval: 5000,
   });
-  const runtime = useQuery({
-    queryKey: ['runtime-status'],
-    queryFn: () => sentryApi().runtime.status(),
-    refetchInterval: 10000,
-  });
+  const runtime = useRuntimeStatus();
+  const queryClient = useQueryClient();
+  const wasUnavailable = React.useRef(false);
+  React.useEffect(() => {
+    if (runtime.isError || runtime.data?.connected === false) wasUnavailable.current = true;
+    if (!runtime.isError && runtime.data?.connected === true && wasUnavailable.current) {
+      wasUnavailable.current = false;
+      // Read-only caches; snapshot hooks reconcile their own run/retest IDs.
+      const keys = new Set([
+        'projects',
+        'project',
+        'project-name',
+        'project-runs',
+        'project-revisions',
+        'project-issues',
+        'issue-history',
+        'system',
+        'environment',
+        'production-readiness',
+      ]);
+      void queryClient.invalidateQueries({
+        predicate: (query) => keys.has(String(query.queryKey[0])),
+      });
+    }
+  }, [runtime.isError, runtime.data?.connected, queryClient]);
   const runs = Array.isArray(activeRuns.data) ? activeRuns.data : [];
   const count = runs.length;
   const runtimeData = runtime.data as { connected?: boolean } | undefined;
-  const runtimeConnected = runtimeData?.connected === true;
+  const runtimeConnected = !runtime.isError && runtimeData?.connected === true;
   const [paletteOpen, setPaletteOpen] = React.useState(false);
 
   const toggleSidebar = (): void => {
@@ -173,7 +194,9 @@ export function AppShell(): React.JSX.Element {
                 <span className="status-dot status-running pulse" aria-hidden="true" />
                 {collapsed ? null : (
                   <span>
-                    {count} active run{count === 1 ? '' : 's'} · Open
+                    {count}{' '}
+                    {runtimeConnected && !activeRuns.isError ? 'active' : 'last known active'} run
+                    {count === 1 ? '' : 's'} · Open
                   </span>
                 )}
               </Link>
@@ -191,7 +214,11 @@ export function AppShell(): React.JSX.Element {
           ) : (
             <span className="faint">
               <SquareTerminal size={14} aria-hidden="true" />
-              {collapsed ? null : ' No active runs'}
+              {collapsed
+                ? null
+                : runtimeConnected && !activeRuns.isError
+                  ? ' No active runs'
+                  : ' Active runs unavailable'}
             </span>
           )}
         </div>
@@ -224,6 +251,13 @@ export function AppShell(): React.JSX.Element {
         </div>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
         <div className="content">
+          {!runtimeConnected ? (
+            <div className="inline-notice tone-warning" role="status">
+              Runtime communication unavailable. Cached results remain available; execution status
+              may have changed. Check <Link to="/settings/runtime">Runtime settings</Link> before
+              starting another run. No execution is restarted automatically.
+            </div>
+          ) : null}
           <Outlet />
         </div>
       </div>

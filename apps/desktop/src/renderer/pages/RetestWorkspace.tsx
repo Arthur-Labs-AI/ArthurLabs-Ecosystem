@@ -130,7 +130,7 @@ export function RetestWorkspace(): React.JSX.Element {
   }, [data]);
 
   if (snapshot.isLoading) return <div className="skeleton">Loading retest…</div>;
-  if (snapshot.isError || data === undefined) {
+  if (data === undefined) {
     return (
       <div className="error-box" role="alert">
         Could not load retest {retestRunId}.
@@ -170,6 +170,13 @@ export function RetestWorkspace(): React.JSX.Element {
   const targetEvidence = (data.targetRun?.evidence ?? []) as Array<Record<string, unknown>>;
   return (
     <div>
+      {snapshot.isError || snapshot.runtimeUnavailable ? (
+        <div className="inline-notice tone-warning" role="status">
+          Retest refresh unavailable. Cached results remain available; the last recorded status may
+          have changed. Check <Link to="/settings/runtime">Runtime settings</Link> before starting
+          another retest.
+        </div>
+      ) : null}
       <p className="muted" style={{ margin: 0 }}>
         <Link to="/issues">Issues</Link> / Retest <CopyId id={data.retestRun.id} />
       </p>
@@ -243,6 +250,7 @@ export function RetestWorkspace(): React.JSX.Element {
             </button>
             {collapseRight ? null : selectedAgent !== undefined ? (
               <AgentInspector
+                key={selectedAgent.agentRunId}
                 data={{
                   view: selectedAgent,
                   events: targetEvents.filter(

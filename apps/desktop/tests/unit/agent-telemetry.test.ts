@@ -110,7 +110,10 @@ describe('agent telemetry projector', () => {
       ],
       evidence: [{ id: 'e1', agentRunId: agentRun.id, type: 'test' }],
     });
-    expect(view.stages.every((s) => s.state === 'completed')).toBe(true);
+    expect(view.stages.filter((s) => s.state === 'completed').map((s) => s.id)).toEqual([
+      'completed',
+    ]);
+    expect(view.stages.find((s) => s.id === 'runtime')?.state).toBe('not_started');
     expect(view.severityCounts).toEqual({ high: 1, medium: 1 });
     expect(view.totalTokens).toBe(56024);
   });
@@ -226,7 +229,9 @@ describe('agent telemetry projector', () => {
       evidence: [],
     });
     expect(completed.currentStage).toBe('completed');
-    expect(completed.stages.every((s) => s.state === 'completed')).toBe(true);
+    expect(completed.stages.filter((s) => s.state === 'completed').map((s) => s.id)).toEqual([
+      'completed',
+    ]);
   });
 
   it('derives honest telemetry counts and exposes structured failure', () => {

@@ -51,7 +51,12 @@ describe('run graph builder', () => {
         }));
         for (const agentRuns of [[], selectedRuns]) {
           const graph = buildRunGraph({
-            run: { ...BASE_RUN, mode, configuration: { agentStackIds } },
+            run: {
+              ...BASE_RUN,
+              mode,
+              status: agentRuns.length === 0 ? 'agents_running' : 'completed',
+              configuration: { agentStackIds },
+            },
             agentRuns,
             findings: [],
             evidence: [],
@@ -92,6 +97,21 @@ describe('run graph builder', () => {
       expect(graph.nodes.filter((node) => node.kind === 'agent')).toEqual([]);
     }
   });
+
+  it.each(['failed', 'cancelled', 'partial', 'completed'])(
+    'missing workers on terminal %s runs are not still waiting',
+    (status) => {
+      const graph = buildRunGraph({
+        run: { ...BASE_RUN, status },
+        agentRuns: [],
+        findings: [],
+        evidence: [],
+      });
+      expect(
+        graph.nodes.filter((node) => node.kind === 'agent').map((node) => node.status),
+      ).toEqual(BASE_RUN.configuration.agentStackIds.map(() => 'not_started'));
+    },
+  );
 
   it('reads historical agent identity from AgentRuns when configuration is absent', () => {
     const { configuration: _configuration, ...run } = BASE_RUN;

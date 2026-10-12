@@ -33,6 +33,19 @@ export function RunSummaryPanel({
     }
   }
   const completedAgentCount = agentRuns.filter((agent) => agent['status'] === 'completed').length;
+  const configuration = run['configuration'] as { agentStackIds?: string[] } | undefined;
+  const selected = [
+    ...new Set(
+      configuration?.agentStackIds ?? agentRuns.map((agent) => String(agent['agentStackId'])),
+    ),
+  ];
+  const terminal = ['completed', 'partial', 'failed', 'cancelled'].includes(String(run['status']));
+  const runningCount = agentRuns.filter((agent) =>
+    ['starting', 'planning', 'running'].includes(String(agent['status'])),
+  ).length;
+  const failedCount = agentRuns.filter((agent) =>
+    ['failed', 'timed_out', 'interrupted'].includes(String(agent['status'])),
+  ).length;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <section aria-label="Run status">
@@ -49,53 +62,76 @@ export function RunSummaryPanel({
         <div className="section-title" style={{ marginBottom: 8 }}>
           Results
         </div>
-        {agentRuns.length > 0 ? (
+        <p className="metadata">{selected.length} selected</p>
+        <p className="metadata">
+          {runningCount} running · {completedAgentCount} completed · {failedCount} failed / timed
+          out / interrupted
+        </p>
+        {selected.length > 0 ? (
           <div
             className="result-observation"
             role="img"
             aria-label={
-              completedAgentCount + ' of ' + agentRuns.length + ' agent executions completed'
+              completedAgentCount +
+              ' of ' +
+              selected.length +
+              ' selected agent executions completed'
             }
           >
             <div className="result-observation-count">
               <strong>
-                {completedAgentCount} <span>/ {agentRuns.length}</span>
+                {completedAgentCount} <span>/ {selected.length}</span>
               </strong>
               <small>AGENT EXECUTIONS COMPLETE</small>
             </div>
             <div className="result-observation-track" aria-hidden="true">
-              {agentRuns.map((agent) => (
+              {selected.map((stackId) => (
                 <span
-                  key={String(agent['id'])}
-                  className={'result-observation-node ' + String(agent['status'] ?? '')}
-                  title={String(agent['status'] ?? '')}
+                  key={stackId}
+                  className={
+                    'result-observation-node ' +
+                    String(
+                      agentRuns.find((agent) => agent['agentStackId'] === stackId)?.['status'] ??
+                        '',
+                    )
+                  }
                 />
               ))}
             </div>
           </div>
         ) : null}
-        {agentRuns.length === 0 ? (
-          <p className="metadata">No agent runs yet — agents are waiting.</p>
+        {selected.length === 0 ? (
+          <p className="metadata">Agent selection was not recorded for this run.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {agentRuns.map((agent) => {
-              const stackId = String(agent['agentStackId']);
-              const id = String(agent['id']);
+            {selected.map((stackId) => {
+              const agent = agentRuns.find((item) => item['agentStackId'] === stackId);
+              const id = String(agent?.['id'] ?? '');
+              const status = String(agent?.['status'] ?? (terminal ? 'Not started' : 'Waiting'));
               const count = countsByAgent.get(id) ?? 0;
               return (
                 <button
-                  key={id}
+                  key={stackId}
                   className="agent-row"
                   onClick={() => onFocusAgent?.(stackId)}
                   title="Select this agent on the canvas"
                 >
-                  <span
-                    className={dotClassForStatus(String(agent['status'] ?? ''))}
-                    aria-hidden="true"
-                  />
-                  <span className="grow truncate">{AGENT_DISPLAY_NAMES[stackId] ?? stackId}</span>
-                  <span className="metric-chip">
-                    {formatCount(count)} finding{count === 1 ? '' : 's'}
+                  <span className={dotClassForStatus(status)} aria-hidden="true" />
+                  <span className="grow" style={{ minWidth: 0 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span
+                        className="grow truncate"
+                        title={AGENT_DISPLAY_NAMES[stackId] ?? stackId}
+                      >
+                        {AGENT_DISPLAY_NAMES[stackId] ?? stackId}
+                      </span>
+                      <span className="metric-chip">
+                        {formatCount(count)} finding{count === 1 ? '' : 's'}
+                      </span>
+                    </span>
+                    <span className="metadata" style={{ display: 'block' }}>
+                      {status}
+                    </span>
                   </span>
                 </button>
               );
@@ -106,6 +142,12 @@ export function RunSummaryPanel({
           {formatCount(findings.length)} total finding{findings.length === 1 ? '' : 's'} ·{' '}
           {formatCount(evidence.length)} evidence
         </div>
+        {['partial', 'failed', 'cancelled'].includes(String(run['status'])) ? (
+          <p className="metadata">
+            Incomplete analysis. Reported findings and evidence are retained independently for each
+            agent.
+          </p>
+        ) : null}
       </section>
       <section aria-label="Snapshot details">
         <div className="section-title" style={{ marginBottom: 8 }}>

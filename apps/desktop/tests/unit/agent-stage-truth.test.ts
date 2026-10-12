@@ -110,7 +110,7 @@ describe('agent stage truth', () => {
     expect(view.currentStage).toBe('evidence');
   });
 
-  it('agent.message after evidence activates Reporting without leaking content', () => {
+  it('agent.message after evidence retains Evidence without inventing Reporting', () => {
     const agentRun = makeAgentRun({ status: 'running' });
     const view = projectAgentTelemetry({
       agentRun,
@@ -132,11 +132,11 @@ describe('agent stage truth', () => {
       findings: [{ id: 'f1', agentRunId: agentRun.id, severity: 'high', title: 't' }],
       evidence: [],
     });
-    expect(view.currentStage).toBe('reporting');
+    expect(view.currentStage).toBe('evidence');
     expect(view.currentOperation.title).toBe('Agent message');
   });
 
-  it('usage.updated after evidence activates Reporting', () => {
+  it('usage.updated after evidence retains Evidence', () => {
     const agentRun = makeAgentRun({ status: 'running' });
     const view = projectAgentTelemetry({
       agentRun,
@@ -158,10 +158,10 @@ describe('agent stage truth', () => {
       findings: [],
       evidence: [{ id: 'e1', agentRunId: agentRun.id, type: 'test' }],
     });
-    expect(view.currentStage).toBe('reporting');
+    expect(view.currentStage).toBe('evidence');
   });
 
-  it('run.completed completes all stages', () => {
+  it('run.completed proves completion without inventing unobserved stages', () => {
     const agentRun = makeAgentRun({ status: 'completed' });
     const view = projectAgentTelemetry({
       agentRun,
@@ -173,7 +173,9 @@ describe('agent stage truth', () => {
       evidence: [],
     });
     expect(view.currentStage).toBe('completed');
-    expect(view.stages.every((s) => s.state === 'completed')).toBe(true);
+    expect(view.stages.filter((s) => s.state === 'completed').map((s) => s.id)).toEqual([
+      'completed',
+    ]);
   });
 
   it('planning tool failures with messages stay in Planning, never Reporting', () => {
@@ -220,9 +222,11 @@ describe('agent stage truth', () => {
       evidence: [],
     });
     const byId = new Map(view.stages.map((s) => [s.id, s.state]));
-    expect(byId.get('preparation')).toBe('completed');
+    expect(byId.get('preparation')).toBe('observed');
     expect(byId.get('planning')).toBe('failed');
-    for (const id of ['investigation', 'runtime', 'evidence', 'reporting', 'completed']) {
+    // Commands were observed during planning, without proving runtime validation.
+    expect(byId.get('runtime')).toBe('observed');
+    for (const id of ['investigation', 'evidence', 'reporting', 'completed']) {
       expect(byId.get(id)).toBe('not_started');
     }
     expect(view.currentStage).toBe('planning');

@@ -1,3 +1,30 @@
+# Handoff — Phase 3 bounded Desktop usability improvements (2026-10-10)
+
+IMPLEMENTED AND LOCALLY VERIFIED; feature PR/exact-head CI and owner review pending.
+Approved baseline 9da3cbeb0cb3c5b1f95015c59f385e3b3f51c295, owner-merged PR #3;
+merge CI 38040773408 PASS. Isolated codex/v1-desktop-improvements / Sentry-v3.
+Owner dirty main9c57e3f and separate DeepSeek/schema/protocol work preserved.
+Initial Desktop baseline 260 PASS / 2 skips; new regressions 23 RED / 6 guards PASS.
+Renderer-only fixes: canonical rereads for unordered hints and observed reconnect;
+cached run/retest reports retained on refresh errors; truthful selected agents,
+observed stages, unknown usage and terminal partial/empty reports. No auto execution.
+39 added cases; Windows Desktop299 PASS / 2 platform skips, WSL Desktop300 / 1 skip.
+Frozen install, hygiene, format, lint20, typecheck37 and build20 PASS on both hosts.
+Full WSL pnpm test40 tasks, 1,132 PASS / 16 skips; real sandbox trust8/8 PASS.
+First full run had an existing engine test5s timeout; unchanged rerun passed,
+then final renderer snapshot passed again. No assertions/deadlines relaxed.
+Real Windows Electron smoke PASS with WSL handshake; seven rendered fixture images
+cover loading, agents, finding, offline, partial, empty and compact layout. These
+are not funded-provider/native CachyOS acceptance. Launcher Windows fixture checks PASS.
+See docs/releases/v1-phase-3-validation.md and roadmap for scoped review and limits.
+Owner review required after exact-head CI (PR is source of truth for final SHA/jobs).
+Phase 3 is not closed: evidence jumps/provenance UI, broader history/accessibility,
+dead-process reconnect and fresh target/live-provider acceptance remain follow-up.
+No Phase 4, main push/merge, tag, version bump, release or paid calls. Git identity
+preserved. shux contract unavailable; protocol records maintained directly.
+
+## Previous record
+
 # Handoff — Phase 2 final cancellation correction (2026-10-10)
 
 Existing draft PR #3 remains open/unmerged on codex/v1-runtime-reliability.

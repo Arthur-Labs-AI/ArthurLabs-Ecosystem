@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { sentryApi } from '../lib/sentry-api.js';
+import { useRuntimeStatus } from '../lib/use-runtime-status.js';
 import { deriveRuntimeHostView } from '../lib/runtime-host-view.js';
 import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
 import { StatusPill } from '../components/ui/StatusPill.js';
@@ -32,17 +33,13 @@ export function RuntimeSettings(): React.JSX.Element {
     queryKey: ['runtime-distros'],
     queryFn: () => sentryApi().runtime.distros(),
   });
-  const status = useQuery({
-    queryKey: ['runtime-status'],
-    queryFn: () => sentryApi().runtime.status(),
-    refetchInterval: 5000,
-  });
+  const status = useRuntimeStatus();
   const info = distros.data as WslDistros | undefined;
   const statusInfo = status.data as StatusSlice | undefined;
   const view = deriveRuntimeHostView(statusInfo, info);
   const [selected, setSelected] = React.useState<string | undefined>(undefined);
   const effective = selected ?? info?.selected ?? info?.preferred ?? undefined;
-  const connected = statusInfo?.connected === true;
+  const connected = !status.isError && statusInfo?.connected === true;
   const save = async (distro: string): Promise<void> => {
     try {
       setError(undefined);
