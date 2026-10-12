@@ -1,4 +1,5 @@
-// Same Windows account/DPAPI, two real archives, one fresh isolated appData.
+// Same Windows account/DPAPI, published source beta -> real archive, isolated profile.
+// Pass source-beta:<builtBetaCheckout> as previousArchive for the immutable beta.
 // Only synthetic presence is reported; no credentials are read from the owner.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';

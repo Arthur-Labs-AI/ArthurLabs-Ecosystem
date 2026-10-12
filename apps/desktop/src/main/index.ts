@@ -14,7 +14,10 @@ import { mkdirSync } from 'node:fs';
 // Keep source-beta credential/prefs and single-instance scope when the
 // packaged product is named Sentry. Do this before bootstrap/lock acquisition.
 if (app.isPackaged) {
-  const directory = sourceUserDataPath(app.getPath('appData'));
+  const directory = sourceUserDataPath(
+    app.getPath('appData'),
+    app.commandLine.getSwitchValue('user-data-dir'),
+  );
   mkdirSync(directory, { recursive: true });
   app.setPath('userData', directory);
   const identity = readReleaseIdentity(app.getAppPath());
