@@ -20,14 +20,14 @@ function Get-SentryDistribution {
     $expected[$name] = [string]$entry.Value
   }
   $queue = New-Object System.Collections.Queue
-  $queue.Enqueue((Get-Item -LiteralPath $Root))
+  $queue.Enqueue(@{ Directory = (Get-Item -LiteralPath $Root); Prefix = '' })
   $count = 0
   while ($queue.Count -gt 0) {
-    $dir = $queue.Dequeue()
-    foreach ($item in Get-ChildItem -LiteralPath $dir.FullName -Force) {
+    $entry = $queue.Dequeue()
+    foreach ($item in Get-ChildItem -LiteralPath $entry.Directory.FullName -Force) {
       if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Artifact reparse point rejected' }
-      if ($item.PSIsContainer) { $queue.Enqueue($item); continue }
-      $name = $item.FullName.Substring($Root.TrimEnd('\', '/').Length + 1).Replace('\', '/')
+      $name = [string]$entry.Prefix + $item.Name
+      if ($item.PSIsContainer) { $queue.Enqueue(@{ Directory = $item; Prefix = $name + '/' }); continue }
       if ($name -ceq 'distribution.json') { continue }
       if (-not $expected.ContainsKey($name)) { throw ('Unexpected artifact file: ' + $name) }
       $stream = [IO.File]::OpenRead($item.FullName)

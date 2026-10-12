@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
+import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import {
@@ -135,6 +135,12 @@ test(
     await writeFile(
       runner,
       `. ${quote(join(scripts, 'verify.ps1'))}\nGet-SentryDistribution -Root ${quote(root)} | Out-Null\n`,
+    );
+    execFileSync('powershell.exe', ['-NoProfile', '-File', runner]);
+    // Relative and short-name roots need the same inventory as absolute roots.
+    await writeFile(
+      runner,
+      `. ${quote(join(scripts, 'verify.ps1'))}\nGet-SentryDistribution -Root ${quote(relative(process.cwd(), root))} | Out-Null\n`,
     );
     execFileSync('powershell.exe', ['-NoProfile', '-File', runner]);
     await writeFile(join(root, 'desktop/Sentry.exe'), 'tampered');

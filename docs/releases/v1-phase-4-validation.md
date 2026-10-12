@@ -200,3 +200,11 @@ Its [exact-head checks](https://github.com/Mert1026/Sentry/pull/6/checks) and fi
 delivery receipts are the source of truth for current CI, without changing local
 artifact provenance or claiming unavailable target tests passed. Only this branch
 was pushed; no main/tag/release/merge operation occurred.
+
+Hosted Windows packaging initially failed at the PowerShell inventory fixture:
+the runner's `RUNNER~1` short path and resolved child paths have different prefix
+lengths. The validator previously sliced absolute names using the input root's
+length. A relative-root regression reproduced the same failure locally (RED).
+It now carries relative directory names during traversal (GREEN, Windows 7/10
+platform skips), preserving strict inventory/tamper rejection. Replacement
+artifact receipts and final exact-head CI supersede that failed candidate.
