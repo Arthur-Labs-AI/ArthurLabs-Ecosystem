@@ -48,6 +48,46 @@ case "$out" in
   *) fail "branch refusal message: [$out]" ;;
 esac
 [ "$(git -C "$T/wt" rev-parse --abbrev-ref HEAD)" = "feature" ] || fail "branch moved"
+# Diverged channel with Desktop running: refuse BEFORE shutdown (Finding A).
+# The full channel matrix lives in test-update-channels.sh; this asserts the
+# safety ordering (no shutdown, no merge, HEAD intact) in the safety suite.
+git init -q --bare "$T/origin.git"
+git init -q -b main "$T/seed"
+git -C "$T/seed" config user.email test@example.invalid
+git -C "$T/seed" config user.name "sentry-test"
+git -C "$T/seed" remote add origin "$T/origin.git"
+echo base > "$T/seed/file.txt"
+git -C "$T/seed" add file.txt
+git -C "$T/seed" commit -qm base
+git -C "$T/seed" push -q origin main
+git -C "$T/seed" checkout -qb dev
+git -C "$T/seed" push -q origin dev
+git clone -q "$T/origin.git" "$T/wt2"
+git -C "$T/wt2" config user.email test@example.invalid
+git -C "$T/wt2" config user.name "sentry-test"
+git -C "$T/wt2" checkout -q dev
+echo local-only > "$T/wt2/local.txt"
+git -C "$T/wt2" add local.txt
+git -C "$T/wt2" commit -qm local-only
+git -C "$T/seed" checkout -q dev
+echo upstream >> "$T/seed/file.txt"
+git -C "$T/seed" commit -qam upstream
+git -C "$T/seed" push -q origin dev
+sentry_desktop_running() { return 0; }
+sentry_desktop_ensure_stopped() { echo "STOP-ATTEMPTED"; return 0; }
+export REPO_ROOT="$T/wt2"
+local_tip=$(git -C "$T/wt2" rev-parse HEAD)
+out=$(cmd_update 2>&1 || true)
+case "$out" in
+  *"diverged"*) ;;
+  *) fail "diverged-running refusal: [$out]" ;;
+esac
+case "$out" in
+  *"STOP-ATTEMPTED"*) fail "diverged stopped Desktop before refusing" ;;
+esac
+[ "$(git -C "$T/wt2" rev-parse HEAD)" = "$local_tip" ] || fail "diverged-running moved HEAD"
+source "$L/lib/desktop-ctl.sh"  # restore production Desktop probes
+export REPO_ROOT="$T/wt"
 # Rollback restores the previous runtime target after a bad deploy.
 # Needs real symlinks: MSYS git-bash without symlink privilege copies
 # instead, so this section runs only where links work (Linux CI, CachyOS).

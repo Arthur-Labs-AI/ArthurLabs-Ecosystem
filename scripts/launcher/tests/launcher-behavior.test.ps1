@@ -202,6 +202,115 @@ if ($script:ChannelGitAvailable) {
   $rcFetchFail = Invoke-SentryUpdate -RepoRoot $chanWt
   Assert-Equal 'channel-fetch-fail-safe' $rcFetchFail 1
   Assert-Equal 'channel-fetch-fail-head-kept' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanNewDevTip
+  Invoke-ChanGit @('-C', $chanWt, 'remote', 'set-url', 'origin', (Join-Path $chanBase 'origin.git'))
+  $script:OrigProcsFn = ${function:Get-SentryDesktopProcesses}
+  $script:OrigStopFn = ${function:Stop-SentryDesktopIfRunning}
+  $script:StopCalls = 0
+  function Get-SentryDesktopProcesses { return @([pscustomobject]@{ Id = 424242 }) }
+  function Stop-SentryDesktopIfRunning { param($RepoRoot) $script:StopCalls++; return 0 }
+  Assert-Equal 'preflight-helper-eligible' (Test-SentryFastForwardEligible -RepoRoot $chanWt -ChannelRef 'origin/dev') 'Eligible'
+  Set-Content -Path (Join-Path $chanWt 'local-dev.txt') -Value 'local-dev'
+  Invoke-ChanGit @('-C', $chanWt, 'add', 'local-dev.txt')
+  Invoke-ChanGit @('-C', $chanWt, 'commit', '-qm', 'local-dev')
+  $chanLocalDevTip = ([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()
+  Add-Content -Path (Join-Path $chanSeed 'dev.txt') -Value 'dev4'
+  Invoke-ChanGit @('-C', $chanSeed, 'commit', '-qam', 'dev4')
+  Invoke-ChanGit @('-C', $chanSeed, 'push', '-q', 'origin', 'dev')
+  $chanDev4Tip = ([string](& git -C $chanSeed rev-parse dev 2>$null)).Trim()
+  Invoke-ChanGit @('-C', $chanWt, 'fetch', '-q', 'origin', 'dev')
+  Assert-Equal 'preflight-helper-diverged-dev' (Test-SentryFastForwardEligible -RepoRoot $chanWt -ChannelRef 'origin/dev') 'Diverged'
+  $script:NativeCalls = @()
+  $rcDivRun = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'preflight-diverged-dev-refuses' $rcDivRun 1
+  Assert-Equal 'preflight-diverged-dev-no-stop' $script:StopCalls 0
+  Assert-Equal 'preflight-diverged-dev-no-merge' ((@($script:NativeCalls | Where-Object { $_ -like '*merge --ff-only*' })).Count) '0'
+  Assert-Equal 'preflight-diverged-dev-head-kept' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanLocalDevTip
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-q', 'main')
+  Set-Content -Path (Join-Path $chanWt 'local-main.txt') -Value 'local-main'
+  Invoke-ChanGit @('-C', $chanWt, 'add', 'local-main.txt')
+  Invoke-ChanGit @('-C', $chanWt, 'commit', '-qm', 'local-main')
+  $chanLocalMainTip = ([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()
+  Invoke-ChanGit @('-C', $chanSeed, 'checkout', '-q', 'main')
+  Add-Content -Path (Join-Path $chanSeed 'file.txt') -Value 'main2'
+  Invoke-ChanGit @('-C', $chanSeed, 'commit', '-qam', 'main2')
+  Invoke-ChanGit @('-C', $chanSeed, 'push', '-q', 'origin', 'main')
+  $chanMain2Tip = ([string](& git -C $chanSeed rev-parse main 2>$null)).Trim()
+  Invoke-ChanGit @('-C', $chanWt, 'fetch', '-q', 'origin', 'main')
+  Assert-Equal 'preflight-helper-diverged-main' (Test-SentryFastForwardEligible -RepoRoot $chanWt -ChannelRef 'origin/main') 'Diverged'
+  $script:NativeCalls = @()
+  $rcDivMainRun = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'preflight-diverged-main-refuses' $rcDivMainRun 1
+  Assert-Equal 'preflight-diverged-main-no-stop' $script:StopCalls 0
+  Assert-Equal 'preflight-diverged-main-head-kept' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanLocalMainTip
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-q', 'dev')
+  Invoke-ChanGit @('-C', $chanWt, 'reset', '-q', '--hard', $chanNewDevTip)
+  $script:NativeCalls = @()
+  $rcEligRun = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'preflight-eligible-dev-exit' $rcEligRun 0
+  Assert-Equal 'preflight-eligible-dev-stop' $script:StopCalls 1
+  Assert-True 'preflight-eligible-dev-merge' ((@($script:NativeCalls | Where-Object { $_ -like '*merge --ff-only origin/dev*' })).Count -gt 0)
+  Assert-Equal 'preflight-eligible-dev-head' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanDev4Tip
+  Set-Content -Path (Join-Path $chanWt 'ahead.txt') -Value 'ahead-only'
+  Invoke-ChanGit @('-C', $chanWt, 'add', 'ahead.txt')
+  Invoke-ChanGit @('-C', $chanWt, 'commit', '-qm', 'ahead-only')
+  $chanAheadTip = ([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()
+  Assert-Equal 'preflight-helper-ahead' (Test-SentryFastForwardEligible -RepoRoot $chanWt -ChannelRef 'origin/dev') 'Ahead'
+  $script:NativeCalls = @()
+  $rcAhead = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'preflight-ahead-refuses' $rcAhead 1
+  Assert-Equal 'preflight-ahead-no-stop' $script:StopCalls 1
+  Assert-Equal 'preflight-ahead-no-merge' ((@($script:NativeCalls | Where-Object { $_ -like '*merge --ff-only*' })).Count) '0'
+  Assert-Equal 'preflight-ahead-head-kept' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanAheadTip
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-q', 'main')
+  Invoke-ChanGit @('-C', $chanWt, 'reset', '-q', '--hard', $chanMainTip)
+  $script:NativeCalls = @()
+  $rcEligMain = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'preflight-eligible-main-exit' $rcEligMain 0
+  Assert-Equal 'preflight-eligible-main-stop' $script:StopCalls 2
+  Assert-True 'preflight-eligible-main-merge' ((@($script:NativeCalls | Where-Object { $_ -like '*merge --ff-only origin/main*' })).Count -gt 0)
+  Assert-Equal 'preflight-eligible-main-head' (([string](& git -C $chanWt rev-parse HEAD 2>$null)).Trim()) $chanMain2Tip
+  Invoke-ChanGit @('-C', $chanSeed, 'checkout', '-q', 'main')
+  Add-Content -Path (Join-Path $chanSeed 'file.txt') -Value 'main3'
+  Invoke-ChanGit @('-C', $chanSeed, 'commit', '-qam', 'main3')
+  Invoke-ChanGit @('-C', $chanSeed, 'push', '-q', 'origin', 'main')
+  $script:OrigFfFn = ${function:Test-SentryFastForwardEligible}
+  function Test-SentryFastForwardEligible { param($RepoRoot, $ChannelRef) return 'PreflightFailed' }
+  $script:NativeCalls = @()
+  $rcFfFail = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'preflight-failed-refuses' $rcFfFail 1
+  Assert-Equal 'preflight-failed-no-stop' $script:StopCalls 2
+  Assert-Equal 'preflight-failed-no-merge' ((@($script:NativeCalls | Where-Object { $_ -like '*merge --ff-only*' })).Count) '0'
+  ${function:Test-SentryFastForwardEligible} = $script:OrigFfFn
+  Invoke-ChanGit @('-C', $chanWt, 'update-ref', '-d', 'refs/remotes/origin/dev')
+  Assert-Equal 'preflight-helper-badref' (Test-SentryFastForwardEligible -RepoRoot $chanWt -ChannelRef 'origin/dev') 'PreflightFailed'
+  Invoke-ChanGit @('-C', $chanWt, 'fetch', '-q', 'origin', 'dev')
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-q', 'main')
+  Add-Content -Path (Join-Path $chanWt 'file.txt') -Value 'dirty-main'
+  $script:NativeCalls = @()
+  $rcDirtyMain = Invoke-SentryUpdate -RepoRoot $chanWt
+  Assert-Equal 'preflight-dirty-main-refuses' $rcDirtyMain 1
+  Assert-Equal 'preflight-dirty-main-no-fetch' ((@($script:NativeCalls | Where-Object { $_ -like '*fetch*' })).Count) '0'
+  Invoke-ChanGit @('-C', $chanWt, 'checkout', '-q', '--', 'file.txt')
+  $chanOrigin2 = Join-Path $chanBase 'origin2.git'
+  $chanSeed2 = Join-Path $chanBase 'seed2'
+  $chanWt2 = Join-Path $chanBase 'wt2'
+  Invoke-ChanGit @('init', '--bare', $chanOrigin2)
+  Invoke-ChanGit @('init', '-b', 'main', $chanSeed2)
+  Invoke-ChanGit @('-C', $chanSeed2, 'config', 'user.email', 'test@example.invalid')
+  Invoke-ChanGit @('-C', $chanSeed2, 'config', 'user.name', 'sentry-test')
+  Invoke-ChanGit @('-C', $chanSeed2, 'remote', 'add', 'origin', $chanOrigin2)
+  Set-Content -Path (Join-Path $chanSeed2 'f.txt') -Value 'base'
+  Invoke-ChanGit @('-C', $chanSeed2, 'add', 'f.txt')
+  Invoke-ChanGit @('-C', $chanSeed2, 'commit', '-qm', 'base')
+  Invoke-ChanGit @('-C', $chanSeed2, 'push', '-q', 'origin', 'main')
+  Invoke-ChanGit @('clone', '-q', $chanOrigin2, $chanWt2)
+  Invoke-ChanGit @('-C', $chanWt2, 'checkout', '-qb', 'dev', 'origin/main')
+  $script:NativeCalls = @()
+  $rcMissing = Invoke-SentryUpdate -RepoRoot $chanWt2
+  Assert-Equal 'preflight-missing-remote-refuses' $rcMissing 1
+  Assert-Equal 'preflight-missing-remote-no-stop' $script:StopCalls 2
+  ${function:Get-SentryDesktopProcesses} = $script:OrigProcsFn
+  ${function:Stop-SentryDesktopIfRunning} = $script:OrigStopFn
   Remove-Item -Recurse -Force $chanBase -ErrorAction SilentlyContinue
   $ErrorActionPreference = $script:ChanPrevErr
   $script:ChannelPassthrough = $false

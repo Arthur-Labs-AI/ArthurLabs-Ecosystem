@@ -25,6 +25,7 @@ function git {
     '*rev-parse HEAD' { 'old' }
     '*status --porcelain' { }
     '*rev-parse origin/main' { 'new' }
+    '*merge-base --is-ancestor*' { $global:LASTEXITCODE = 0 }
     default { throw 'Unexpected Git call' }
   }
 }

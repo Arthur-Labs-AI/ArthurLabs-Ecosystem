@@ -78,18 +78,28 @@ Date: 2026-10-12.
   coverage is unchanged (PRs into `dev`, into `main`, release/hotfix PRs).
 - Required jobs unchanged: `quality`, `launcher (windows, no WSL)`,
   `launcher (linux, no CachyOS)`.
-- Claim status: PR-into-`dev` CI is verified by the transition PR's own checks
-  once opened. A subsequent owner-approved push/merge into `dev` triggering
-  push CI can only be observed after the owner merges — currently UNVERIFIED
-  by design (no self-merge). No push trigger is claimed verified before its
-  workflow is observed.
+- Observed PR-into-`dev` CI: PR #9's exact-head checks passed (`quality`,
+  `launcher (windows, no WSL)`, `launcher (linux, no CachyOS)`, plus the
+  `distribution` unsigned-candidate jobs and secret scanning).
+- Observed post-merge push CI: the owner merged PR #9 on 2026-10-12
+  (`6e5ec2252ba2881e775c9ee058d6523b7eca2142`); the resulting `dev` push
+  workflow (run 38294840620) completed with all three required jobs green.
+  Both PR and push triggers are therefore verified by observed workflows.
+  No push trigger is claimed verified before its workflow is observed.
 
 ## Release artifact rules
 
 - No workflow publishes releases, creates tags, or force-pushes branch pointers.
-- There is no `distribution.yml` workflow in this tree; review/packaging notes
-  live in `docs/setup/distribution.md`. A green CI/distribution check on a `dev`
-  PR is not an official stable release.
+- `.github/workflows/distribution.yml` ("distribution (unsigned review
+  candidates)") exists: on pull requests and manual dispatch it checks out
+  the exact PR head SHA, runs install/build/`distribution:test`, builds the
+  unsigned Windows/Linux candidates, and uploads them as short-retention
+  private workflow artifacts for review. It never creates a GitHub Release
+  and never publishes stable assets. An earlier revision of this document
+  incorrectly stated the workflow was absent; that statement is corrected
+  here (2026-10-13, Task A) without altering the branch-creation record
+  above. A green CI/distribution check on a `dev` PR is not an official
+  stable release; packaging rules live in `docs/setup/distribution.md`.
 
 ## Default-branch recommendation (separate owner decision)
 

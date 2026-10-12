@@ -18,6 +18,24 @@ sentry_update_remote_ref() {
   esac
 }
 
+# Fast-forward eligibility of HEAD against an allowlisted channel ref.
+# Prints exactly one word and always returns 0 (the word carries the verdict):
+#   eligible         HEAD is a strict ancestor of the ref: fast-forward can proceed.
+#   ahead            the ref is an ancestor of HEAD: nothing to take; refuse, never rewrite.
+#   diverged         neither is an ancestor: fast-forward is impossible; refuse.
+#   preflight-failed the ancestry check itself errored; refuse without conclusions.
+# Callers pass only the resolved channel ref, never user-supplied branch text.
+sentry_ff_eligibility() {
+  local repo="$1" ref="$2" code=0
+  git -C "$repo" merge-base --is-ancestor HEAD "$ref" 2>/dev/null; code=$?
+  if [ "$code" -eq 0 ]; then printf '%s' "eligible"; return 0; fi
+  if [ "$code" -ne 1 ]; then printf '%s' "preflight-failed"; return 0; fi
+  git -C "$repo" merge-base --is-ancestor "$ref" HEAD 2>/dev/null; code=$?
+  if [ "$code" -eq 0 ]; then printf '%s' "ahead"; return 0; fi
+  if [ "$code" -ne 1 ]; then printf '%s' "preflight-failed"; return 0; fi
+  printf '%s' "diverged"; return 0
+}
+
 cmd_update() {
   local repo="$REPO_ROOT"
   sentry_seed_node_env
@@ -76,6 +94,32 @@ cmd_update() {
     echo "Sentry is already up to date (${old_sha:0:9})."
     return 0
   fi
+  # Fast-forward preflight BEFORE any Desktop shutdown: a diverged or ahead
+  # checkout must refuse while Sentry is still running. The merge below stays
+  # as the authoritative final guard; this check only avoids the shutdown.
+  local eligibility=""
+  eligibility=$(sentry_ff_eligibility "$repo" "$channel_ref")
+  case "$eligibility" in
+    eligible) ;;
+    ahead)
+      sentry_fail "Local $branch is ahead of $channel_ref: no update is available from the channel."
+      echo "Push your commits or reconcile manually; Sentry never resets or rebases your branch automatically."
+      echo "No Desktop shutdown was attempted and no merge was performed."
+      return 1
+      ;;
+    diverged)
+      sentry_fail "Local $branch and $channel_ref have diverged: fast-forward is impossible."
+      echo "Reconcile manually (for example: git log --oneline --left-right HEAD...$channel_ref), then rerun: sentry update"
+      echo "Sentry never resets or rebases your branch automatically."
+      echo "No Desktop shutdown was attempted and no merge was performed."
+      return 1
+      ;;
+    *)
+      sentry_fail "Could not verify fast-forward eligibility for $channel_ref."
+      echo "Refusing without changes; no Desktop shutdown was attempted and no merge was performed."
+      return 1
+      ;;
+  esac
   local was_running=0
   if sentry_desktop_running; then was_running=1; fi
   if [ "$was_running" = "1" ]; then
