@@ -1,3 +1,30 @@
+# Phase 4 distribution — review candidate (2026-10-12)
+
+PUSHED FOR OWNER REVIEW in draft PR #6:
+https://github.com/Mert1026/Sentry/pull/6
+Exact-head CI checks and final delivery receipts are authoritative there; this
+static record does not imply success for a subsequently changed head.
+Approved main76257348a86406c8605f8f49cf17652c1dca75fa; main CI38216565256 SUCCESS
+all three jobs. Isolated codex/v1-release-packaging checkout preserves dirty owner
+primary checkout and Git identity. Actual reviewed Windows ZIP/Linux tar.gz built
+from c2a28c99ba163e22ad988fe8a67ddd783f7a79b0, extracted/inventory verified.
+Windows packaged production Electron/secure IPC/single instance/graceful stop and
+real WSL runtime bootstrap/side-by-side upgrade PASS. Published-beta persistence
+seeds disposable history, reopened through packaged production IPC PASS.
+WSL full suite40 tasks, 1,155 PASS/16 skips, real trust8/8 PASS; static gates and
+both launcher matrices PASS. Windows full suite snapshot5s timeout FAIL; unchanged
+focused4/4 PASS, no tests weakened.
+Serialized Windows diagnostic passes snapshot4/4 but fails six Linux trust cases
+without systemd (and cleanup EBUSY); all eight pass on actual WSL. Repeated beta
+history packaged reopen PASS after moving disposable fixture out of WSL /tmp.
+Native CachyOS ENVIRONMENT UNAVAILABLE; clean Windows and real encrypted-settings/
+provider acceptance outstanding. See Phase4
+validation/installation docs. No main push, merge, tags, release/version bump,
+signing, paid calls, QA pipeline changes or Phase5. shux contract unavailable;
+protocol records maintained directly. Stop for owner review after CI receipts.
+
+## Previous record
+
 # Phase 3 final polish — local verification complete (2026-10-12)
 
 IMPLEMENTED AND LOCALLY VERIFIED; draft PR #5 and owner review pending final-head CI.

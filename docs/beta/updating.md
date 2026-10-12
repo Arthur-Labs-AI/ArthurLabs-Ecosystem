@@ -1,5 +1,9 @@
 # Sentry Beta — Updating
 
+For an owner-approved packaged candidate, use the separate
+[distribution upgrade procedure](../setup/distribution.md). Archive `update`
+refuses development tracking; source commands below keep their existing policy.
+
 ## Beta channel: explicit tags
 
 Install from announced Git tags. Tag clones use detached HEAD: setup/open work,

@@ -8,6 +8,21 @@ import { dispatchDesktopCommand } from './desktop-command-router.js';
 import { SentryCliServer } from './cli-server.js';
 import { registerDesktopIpc } from './ipc.js';
 import { DesktopLiveUpdates } from './live-updates.js';
+import { readReleaseIdentity, sourceUserDataPath } from './distribution.js';
+import { mkdirSync } from 'node:fs';
+
+// Keep source-beta credential/prefs and single-instance scope when the
+// packaged product is named Sentry. Do this before bootstrap/lock acquisition.
+if (app.isPackaged) {
+  const directory = sourceUserDataPath(app.getPath('appData'));
+  mkdirSync(directory, { recursive: true });
+  app.setPath('userData', directory);
+  const identity = readReleaseIdentity(app.getAppPath());
+  if (process.argv.includes('--sentry-version')) {
+    console.log(JSON.stringify(identity));
+    app.exit(0);
+  }
+}
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
@@ -47,7 +62,7 @@ async function createWindow(): Promise<void> {
   });
 
   const devUrl = process.env['SENTRY_DESKTOP_URL'];
-  if (devUrl !== undefined && devUrl.length > 0) {
+  if (!app.isPackaged && devUrl !== undefined && devUrl.length > 0) {
     await mainWindow.loadURL(devUrl);
   } else {
     await mainWindow.loadFile(resolveAsset('../renderer/index.html'));

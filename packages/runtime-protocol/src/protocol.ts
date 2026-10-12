@@ -141,6 +141,10 @@ export const RuntimeHelloResultSchema = z
   .object({
     protocolVersion: z.number().int(),
     runtimeVersion: z.string().min(1).max(50),
+    sourceCommit: z
+      .string()
+      .regex(/^[a-f0-9]{40}$/)
+      .optional(),
     platform: z.string().min(1).max(50),
     isWsl: z.boolean(),
     // Additive cross-platform Electron signal (protocol stays v1): new
@@ -154,6 +158,18 @@ export const RuntimeHelloResultSchema = z
   })
   .strict();
 export type RuntimeHelloResult = z.infer<typeof RuntimeHelloResultSchema>;
+
+/** Generated once from the clean build input; never from tester Git state. */
+export const ReleaseIdentitySchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    product: z.literal('Sentry'),
+    version: z.string().regex(/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/),
+    sourceCommit: z.string().regex(/^[a-f0-9]{40}$/),
+    runtimeProtocol: z.literal(RUNTIME_PROTOCOL_VERSION),
+  })
+  .strict();
+export type ReleaseIdentity = z.infer<typeof ReleaseIdentitySchema>;
 
 export const RuntimeConfigureParamsSchema = z
   .object({

@@ -1,3 +1,33 @@
+# Phase 4 distribution — review candidate (2026-10-12)
+
+Work is isolated on codex/v1-release-packaging from approved main7625734; owner
+dirty checkout remains untouched. Read docs/releases/v1-phase-4-validation.md,
+packaging assessment and docs/setup/distribution.md for exact evidence, actual
+artifact filenames/SHA256 and per-file compatibility notes. Reviewed local
+artifacts identify c2a28c99ba163e22ad988fe8a67ddd783f7a79b0; subsequent changes
+are acceptance helpers/docs. Draft PR #6 is pushed and attached:
+https://github.com/Mert1026/Sentry/pull/6
+Its exact-head checks/final delivery are authoritative CI receipts. Artifacts
+remain ignored/private review candidates, never official releases.
+
+Actual Windows packaged Electron + WSL hello/import/security/control and synthetic
+published-beta history reopen PASS. Real Linux bootstrap upgrades atomically and
+retains previous runtime; failure/rollback boundaries pass injected fixtures.
+WSL full1,155 PASS/16 skips, real trust8/8. Native CachyOS unavailable; clean Windows,
+real encrypted prefs and remaining supported-host acceptance outstanding. Windows
+full-suite snapshot timeout is disclosed, focused unchanged4/4 passes.
+Serialized Windows diagnostic passes snapshot but fails six systemd-dependent
+trust cases; real WSL trust8/8 PASS remains the Linux proof. Beta history passed
+two packaged launches; fixture now survives WSL restarts under unique /var/tmp.
+Do not close Phase4 or start Phase5 automatically. Next: owner reviews draft PR and runs
+documented supported-host acceptance before integration/release decisions.
+
+Do not merge/tag/release, alter provider pins or run funded agents. Preserve beta
+version and independent-agent pipeline/historical compatibility. Configured Git
+identity unchanged; shux unavailable, ledger/status/handoff maintained directly.
+
+## Previous record
+
 # Phase 3 final polish — local verification complete (2026-10-12)
 
 IMPLEMENTED AND LOCALLY VERIFIED; draft PR #5 and owner review pending final-head CI.

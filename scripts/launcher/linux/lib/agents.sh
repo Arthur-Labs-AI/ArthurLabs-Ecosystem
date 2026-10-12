@@ -29,7 +29,10 @@ sentry_provision_agents() {
       sentry_warn "OpenCode could not be installed automatically. OpenCode runs stay unavailable until it is installed."
     fi
   fi
-  local expected_ds="$(sed -n "s/.*DEEPSEEK_SDK_VERSION = '\([^']*\)'.*/\1/p" "$repo/packages/harness-deepseek/src/sdk.ts" | head -n 1)"
+  local expected_ds=""
+  if [ -f "$repo/packages/harness-deepseek/src/sdk.ts" ]; then
+    expected_ds="$(sed -n "s/.*DEEPSEEK_SDK_VERSION = '\([^']*\)'.*/\1/p" "$repo/packages/harness-deepseek/src/sdk.ts" | head -n 1)"
+  fi
   if [ -z "$expected_ds" ]; then expected_ds="$(sentry_logic_pin "$repo" PINNED_DEEPSEEK_SDK_VERSION || true)"; fi
   if [ -z "$expected_ds" ]; then sentry_fail "Could not read the pinned DeepSeek version."; return 1; fi
   echo "  Preparing Sentry-managed DeepSeek runtime $expected_ds (from the deployed runtime; no sudo, no network)..."

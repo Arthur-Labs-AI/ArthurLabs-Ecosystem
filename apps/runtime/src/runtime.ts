@@ -79,7 +79,9 @@ import {
   type RpcResponse,
 } from '@qa/runtime-protocol';
 
-export const RUNTIME_VERSION = '0.1.0-beta.1' as const;
+import { runtimeReleaseIdentity } from './distribution.js';
+const releaseIdentity = runtimeReleaseIdentity();
+export const RUNTIME_VERSION = releaseIdentity?.version ?? '0.1.0-beta.1';
 
 const ProjectIdInput = z.string().min(1).max(200);
 const RunIdInput = z.string().regex(/^run_[0-9A-HJKMNP-TV-Z]{26}$/);
@@ -549,6 +551,7 @@ export class SentryRuntimeHost {
     const hello = {
       protocolVersion: RUNTIME_PROTOCOL_VERSION,
       runtimeVersion: RUNTIME_VERSION,
+      ...(releaseIdentity === undefined ? {} : { sourceCommit: releaseIdentity.sourceCommit }),
       platform: process.platform,
       isWsl: isWslEnvironment(),
       isElectron: typeof versions.electron === 'string',

@@ -18,6 +18,7 @@ import {
 import type { RuntimeClient } from './runtime/runtime-client.js';
 import type { HostPlatform } from './platform/host-platform.js';
 import { createHostPlatform } from './platform/create-host-platform.js';
+import { assertRuntimeIdentity, readReleaseIdentity } from './distribution.js';
 
 export interface BootstrappedDesktop {
   readonly service: DesktopApplicationService;
@@ -92,7 +93,13 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
   let hello;
   try {
     hello = await client.start();
+    const electron = require('electron') as typeof import('electron');
+    const identity = electron.app?.isPackaged
+      ? readReleaseIdentity(electron.app.getAppPath())
+      : undefined;
+    assertRuntimeIdentity(identity, hello);
   } catch (error) {
+    await client.stop().catch(() => undefined);
     const diagnostics = client.stderrDiagnostics.join('\n').slice(0, 800);
     const message = error instanceof Error ? error.message : String(error);
     const info = await host.runtimeEnvironmentInfo().catch(() => undefined);
@@ -144,7 +151,17 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
     dataRoot: hello.dataRoot,
     recoveryWarnings,
     async reconnect() {
-      await client.start();
+      try {
+        const hello = await client.start();
+        const electron = require('electron') as typeof import('electron');
+        assertRuntimeIdentity(
+          electron.app?.isPackaged ? readReleaseIdentity(electron.app.getAppPath()) : undefined,
+          hello,
+        );
+      } catch (error) {
+        await client.stop().catch(() => undefined);
+        throw error;
+      }
       await service.pushRuntimeConfiguration();
     },
     async close() {
