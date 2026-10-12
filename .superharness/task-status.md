@@ -1,3 +1,33 @@
+# Phase 4 final hardening — owner review (2026-10-12)
+
+IMPLEMENTED AND AVAILABLE-HOST VERIFIED, Phase 4 not fully accepted.
+Branch fix/v1-phase-4-release-hardening, isolated worktree from main8ff4c51.
+Draft PR #7: https://github.com/Mert1026/Sentry/pull/7
+Exact final-head checks and handoff receipts on the PR are authoritative; a
+static receipt never implies success for a subsequent head. Implementation
+d934e676e2a77c0f96caab053e9b9cff3cefa8f1: CI38255574234 all3 PASS and
+distribution38255574069 both archive jobs PASS; hosted sandbox trust unverified.
+Reproduced startup early-exit and hung stop; 13 lifecycle regressions PASS.
+Demonstrated profile and app-ready credential blockers fixed with RED/GREEN tests.
+Fresh exact-SHA native Windows/Linux archives extracted/manifest/checksum PASS.
+Real prepared Windows/WSL disposable first/repeated setup, production GUI/hello/
+single-instance/stop, immutable beta history and same-account DPAPI reload PASS.
+Linux full40 tasks1,157 PASS16 skips; real unchanged trust8/8 uncached PASS.
+Windows affected Desktop321 PASS2 skips; distribution7 PASS23 Linux-only skips.
+Linux distribution29 PASS1 Windows-only skip; both source launcher matrices PASS.
+Native Windows full concurrent suite FAIL unchanged timing fixtures; focused
+reruns PASS, no deadlines/assertions changed; prior snapshot limitation disclosed.
+Native CachyOS and clean Windows provisioning ENVIRONMENT UNAVAILABLE;
+actual funded-QA maintenance and physical-host rollback OWNER ACCEPTANCE REQUIRED.
+Initial synthetic credential test touched normal profile; only its verified new
+synthetic store removed, no owner credentials printed. Report details the mistake.
+Existing credential-status CLI false-negative deferred; real IPC proof passes.
+Owner dirty primary checkout/Git identity preserved; shux contract unavailable.
+No main push/merge/tag/release/version/provider/bootstrap/runtime/schema/QA changes
+or paid calls. Read docs/releases/v1-phase-4-final-acceptance.md before acceptance.
+
+## Previous record
+
 # Phase 4 distribution — review candidate (2026-10-12)
 
 PUSHED FOR OWNER REVIEW in draft PR #6:

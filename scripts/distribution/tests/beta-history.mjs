@@ -97,6 +97,7 @@ try {
         projectId: project.id,
         revisionId: revision.id,
         runId: run.id,
+        agentRunId: agent.id,
         findingId: finding.id,
         evidenceId: evidence.id,
         issueId,

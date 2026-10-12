@@ -8,13 +8,14 @@ const fixture = vi.hoisted(() => ({
   close: vi.fn<() => Promise<void>>(),
   stopBroker: vi.fn<() => Promise<void>>(),
   boot: vi.fn(),
+  ready: vi.fn<() => Promise<void>>(),
 }));
 vi.mock('electron', () => ({
   app: {
     on: (name: string, handler: (event: { preventDefault(): void }) => void) =>
       fixture.handlers.set(name, handler),
     quit: fixture.quit,
-    whenReady: async () => undefined,
+    whenReady: fixture.ready,
     requestSingleInstanceLock: () => true,
   },
   BrowserWindow: class {
@@ -56,11 +57,27 @@ beforeEach(() => {
   fixture.handlers.clear();
   fixture.windowHandlers.clear();
   fixture.boot.mockResolvedValue(desktop());
+  fixture.ready.mockResolvedValue(undefined);
   fixture.close.mockResolvedValue(undefined);
   fixture.stopBroker.mockResolvedValue(undefined);
 });
 
 describe('Electron quit lifecycle', () => {
+  it('defers credential/runtime bootstrap until Electron encryption is ready', async () => {
+    let ready!: () => void;
+    fixture.ready.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          ready = resolve;
+        }),
+    );
+    await import('../../src/main/index.js');
+    await flush();
+    expect(fixture.boot).not.toHaveBeenCalled();
+    ready();
+    await flush();
+    expect(fixture.boot).toHaveBeenCalledOnce();
+  });
   it('waits for pending runtime cleanup and handles repeated quit', async () => {
     let finish!: () => void;
     fixture.close.mockImplementation(

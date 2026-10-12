@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ReleaseIdentitySchema, type ReleaseIdentity } from '@qa/runtime-protocol';
 
-export function sourceUserDataPath(appData: string): string {
-  return join(appData, '@qa', 'desktop');
+export function sourceUserDataPath(appData: string, explicitProfile = ''): string {
+  return explicitProfile || join(appData, '@qa', 'desktop');
 }
 
 export function readReleaseIdentity(appPath: string): ReleaseIdentity {

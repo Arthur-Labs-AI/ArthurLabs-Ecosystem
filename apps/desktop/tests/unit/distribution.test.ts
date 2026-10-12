@@ -13,6 +13,10 @@ describe('release identity', () => {
   it('preserves the source credential location across product renaming', () => {
     expect(sourceUserDataPath('/appdata')).toBe(join('/appdata', '@qa', 'desktop'));
   });
+  it('honors an explicit Electron profile directory without changing the default', () => {
+    expect(sourceUserDataPath('/appdata', '/disposable/profile')).toBe('/disposable/profile');
+    expect(sourceUserDataPath('/appdata', '')).toBe(join('/appdata', '@qa', 'desktop'));
+  });
   it('accepts only the matching release runtime', () => {
     expect(() =>
       assertRuntimeIdentity(identity, {

@@ -101,6 +101,21 @@ with owner review and accurate validation under the
   outstanding. Windows full-suite snapshot timeout is disclosed separately from
   its unchanged focused pass. Draft PR/exact-head CI and owner review precede
   integration; this is a distribution foundation, not Phase 4 closure.
+- **Final hardening follow-up (2026-10-12):** PR #6 merged at `8ff4c51`, main CI
+  38249464643 PASS. New `fix/v1-phase-4-release-hardening` reproduces and corrects
+  packaged early startup failure and unbounded graceful-control invocation, with
+  13 lifecycle regressions. Demonstrated acceptance blockers also required
+  preserving Electron's explicit profile directory and awaiting Electron readiness
+  before encrypted credential load, while keeping the default beta location.
+  Exact d934e67 Windows/Linux archives and real prepared-Windows/WSL beta history
+  plus DPAPI credential continuity passed. Native Windows concurrent full-suite
+  timing failures remain disclosed, with unchanged focused reruns passing. Fresh exact-implementation archives, available-host acceptance,
+  the initial test-profile mistake/cleanup, encrypted-settings results and
+  remaining gates are recorded in [final acceptance](v1-phase-4-final-acceptance.md)
+  and [draft PR #7](https://github.com/Mert1026/Sentry/pull/7). Native CachyOS,
+  clean Windows provisioning and remaining physical-host maintenance/rollback
+  acceptance are outstanding. Phase 4 remains implemented with outstanding
+  supported-host acceptance; Phase 5 has not started.
 
 ## Phase 5 — Security and testing
 
