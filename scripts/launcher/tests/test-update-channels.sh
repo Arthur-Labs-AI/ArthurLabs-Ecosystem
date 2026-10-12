@@ -93,6 +93,128 @@ git_env -C "$T/wt" checkout -q main
 upd_out=$(cmd_update 2>&1) || fail "main advance update exit: [$upd_out]"
 [ "$(git_env -C "$T/wt" rev-parse HEAD)" = "$NEW_MAIN_TIP" ] || fail "main did not fast-forward to origin/main"
 pass "main fast-forwards to origin/main only"
+# --- Finding A: diverged channel with Desktop running must refuse BEFORE shutdown ---
+sentry_desktop_running() { return 0; }
+sentry_desktop_ensure_stopped() { echo "STOP-ATTEMPTED"; return 0; }
+git_env -C "$T/wt" checkout -q dev
+echo local-dev > "$T/wt/local-dev.txt"
+git_env -C "$T/wt" add local-dev.txt
+git_env -C "$T/wt" commit -qm local-dev
+git_env -C "$T/seed" checkout -q dev
+echo dev4 >> "$T/seed/dev.txt"
+git_env -C "$T/seed" commit -qam dev4
+git_env -C "$T/seed" push -q origin dev
+local_dev_tip=$(git_env -C "$T/wt" rev-parse HEAD)
+out=$(cmd_update 2>&1 || true)
+case "$out" in *"diverged"*) ;; *) fail "diverged-running refusal: [$out]" ;; esac
+case "$out" in *"STOP-ATTEMPTED"*) fail "diverged stopped Desktop before refusing" ;; esac
+case "$out" in *"git merge --ff-only"*) fail "diverged attempted merge" ;; esac
+[ "$(git_env -C "$T/wt" rev-parse HEAD)" = "$local_dev_tip" ] || fail "diverged-running moved HEAD"
+[ -f "$T/wt/local-dev.txt" ] || fail "diverged-running lost local commit"
+pass "diverged dev refuses before shutdown"
+git_env -C "$T/wt" checkout -q main
+echo local-main > "$T/wt/local-main.txt"
+git_env -C "$T/wt" add local-main.txt
+git_env -C "$T/wt" commit -qm local-main
+git_env -C "$T/seed" checkout -q main
+echo main3 >> "$T/seed/file.txt"
+git_env -C "$T/seed" commit -qam main3
+git_env -C "$T/seed" push -q origin main
+local_main_tip=$(git_env -C "$T/wt" rev-parse HEAD)
+out=$(cmd_update 2>&1 || true)
+case "$out" in *"diverged"*) ;; *) fail "diverged-main refusal: [$out]" ;; esac
+case "$out" in *"STOP-ATTEMPTED"*) fail "diverged main stopped Desktop before refusing" ;; esac
+case "$out" in *"git merge --ff-only"*) fail "diverged main attempted merge" ;; esac
+[ "$(git_env -C "$T/wt" rev-parse HEAD)" = "$local_main_tip" ] || fail "diverged-main moved HEAD"
+pass "diverged main refuses before shutdown"
+# --- eligible behind-dev with Desktop running still proceeds (stop, merge, advance) ---
+git_env -C "$T/wt" checkout -q dev
+git_env -C "$T/wt" reset -q --hard "$NEW_DEV_TIP"
+dev4_tip=$(git_env -C "$T/seed" rev-parse dev)
+( cmd_update >"$T/upd-dev.log" 2>&1 ) || fail "eligible-running update exit"
+upd_out=$(cat "$T/upd-dev.log")
+case "$upd_out" in *"STOP-ATTEMPTED"*) ;; *) fail "eligible update skipped shutdown: [$upd_out]" ;; esac
+case "$upd_out" in *"git merge --ff-only origin/dev"*) ;; *) fail "eligible update skipped merge: [$upd_out]" ;; esac
+[ "$(git_env -C "$T/wt" rev-parse HEAD)" = "$dev4_tip" ] || fail "eligible update did not advance"
+pass "behind dev proceeds after eligible preflight"
+# --- locally ahead: refuse with guidance, no shutdown, no rewrite ---
+echo ahead-only > "$T/wt/ahead.txt"
+git_env -C "$T/wt" add ahead.txt
+git_env -C "$T/wt" commit -qm ahead-only
+ahead_tip=$(git_env -C "$T/wt" rev-parse HEAD)
+out=$(cmd_update 2>&1 || true)
+case "$out" in *"ahead"*) ;; *) fail "ahead refusal: [$out]" ;; esac
+case "$out" in *"STOP-ATTEMPTED"*) fail "ahead stopped Desktop" ;; esac
+case "$out" in *"git merge --ff-only"*) fail "ahead attempted merge" ;; esac
+[ "$(git_env -C "$T/wt" rev-parse HEAD)" = "$ahead_tip" ] || fail "ahead moved HEAD"
+pass "ahead dev refuses without rewrite"
+# --- ancestry-check failure wiring refuses safely (forced preflight word) ---
+sentry_ff_eligibility() { printf '%s' "preflight-failed"; }
+out=$(cmd_update 2>&1 || true)
+case "$out" in *"Could not verify"*) ;; *) fail "preflight-failure refusal: [$out]" ;; esac
+case "$out" in *"STOP-ATTEMPTED"*) fail "preflight failure stopped Desktop" ;; esac
+[ "$(git_env -C "$T/wt" rev-parse HEAD)" = "$ahead_tip" ] || fail "preflight failure moved HEAD"
+pass "preflight failure refuses safely"
+source "$L/commands/update.sh"  # restore the production eligibility helper
+# --- eligibility helper mapping on a scratch clone (real git ancestry) ---
+git_env clone -q "$T/origin.git" "$T/probe"
+git_env -C "$T/probe" checkout -q dev
+[ "$(sentry_ff_eligibility "$T/probe" "origin/dev")" = "eligible" ] || fail "helper eligible"
+git_env -C "$T/probe" update-ref -d refs/remotes/origin/dev
+[ "$(sentry_ff_eligibility "$T/probe" "origin/dev")" = "preflight-failed" ] || fail "helper missing ref"
+[ "$(sentry_ff_eligibility "$T/probe" "origin/does-not-exist")" = "preflight-failed" ] || fail "helper bad ref"
+git_env -C "$T/probe" fetch -q origin dev
+git_env -C "$T/probe" checkout -q --detach origin/dev
+git_env -C "$T/probe" commit -q --allow-empty -m side
+side_tip=$(git_env -C "$T/probe" rev-parse HEAD)
+git_env -C "$T/probe" checkout -q dev
+echo probe-local > "$T/probe/probe-local.txt"
+git_env -C "$T/probe" add probe-local.txt
+git_env -C "$T/probe" commit -qm probe-local
+[ "$(sentry_ff_eligibility "$T/probe" "origin/dev")" = "ahead" ] || fail "helper ahead"
+git_env -C "$T/probe" update-ref refs/remotes/origin/dev "$side_tip"
+[ "$(sentry_ff_eligibility "$T/probe" "origin/dev")" = "diverged" ] || fail "helper diverged"
+pass "eligibility helper mapping"
+# --- missing selected remote branch refuses safely ---
+git_env init -q --bare "$T/origin2.git"
+git_env init -q -b main "$T/seed2"
+git_env -C "$T/seed2" remote add origin "$T/origin2.git"
+echo base > "$T/seed2/f.txt"
+git_env -C "$T/seed2" add f.txt
+git_env -C "$T/seed2" commit -qm base
+git_env -C "$T/seed2" push -q origin main
+git_env clone -q "$T/origin2.git" "$T/wt2"
+git_env -C "$T/wt2" checkout -qb dev origin/main
+wt2_head=$(git_env -C "$T/wt2" rev-parse HEAD)
+REPO_ROOT="$T/wt2"
+out=$(cmd_update 2>&1 || true)
+case "$out" in *"git fetch failed"*) ;; *) fail "missing-remote refusal: [$out]" ;; esac
+case "$out" in *"STOP-ATTEMPTED"*) fail "missing remote stopped Desktop" ;; esac
+[ "$(git_env -C "$T/wt2" rev-parse HEAD)" = "$wt2_head" ] || fail "missing remote moved HEAD"
+REPO_ROOT="$T/wt"
+pass "missing selected remote refuses safely"
+# --- dirty main refuses before fetch ---
+git_env -C "$T/wt" checkout -q main
+git_env -C "$T/wt" reset -q --hard origin/main
+echo dirty >> "$T/wt/file.txt"
+out=$(cmd_update 2>&1 || true)
+case "$out" in *"contains local changes"*) ;; *) fail "dirty-main refusal: [$out]" ;; esac
+case "$out" in *"git fetch"*) fail "dirty main fetched before refusing" ;; esac
+git_env -C "$T/wt" checkout -q -- file.txt
+pass "dirty main refuses before fetch"
+# --- behind main with Desktop running proceeds ---
+git_env -C "$T/seed" checkout -q main
+echo main4 >> "$T/seed/file.txt"
+git_env -C "$T/seed" commit -qam main4
+git_env -C "$T/seed" push -q origin main
+main4_tip=$(git_env -C "$T/seed" rev-parse HEAD)
+( cmd_update >"$T/upd-main.log" 2>&1 ) || fail "eligible-main update exit"
+upd_out=$(cat "$T/upd-main.log")
+case "$upd_out" in *"STOP-ATTEMPTED"*) ;; *) fail "eligible main skipped shutdown: [$upd_out]" ;; esac
+case "$upd_out" in *"git merge --ff-only origin/main"*) ;; *) fail "eligible main skipped merge: [$upd_out]" ;; esac
+[ "$(git_env -C "$T/wt" rev-parse HEAD)" = "$main4_tip" ] || fail "eligible main did not advance"
+pass "behind main proceeds after eligible preflight"
+source "$L/lib/desktop-ctl.sh"  # restore production Desktop probes
 # --- feature branch refuses with zero mutations ---
 git_env -C "$T/wt" checkout -qb feature/example
 before=$(git_env -C "$T/wt" rev-parse HEAD)
@@ -121,16 +243,18 @@ pass "detached tag refuses"
 
 # --- dirty dev refuses, HEAD untouched ---
 git_env -C "$T/wt" checkout -q dev
+dirty_dev_before=$(git_env -C "$T/wt" rev-parse HEAD)
 echo dirty >> "$T/wt/file.txt"
 out=$(cmd_update 2>&1 || true)
 case "$out" in *"contains local changes"*) ;; *) fail "dirty refusal: [$out]" ;; esac
 [ -n "$(git_env -C "$T/wt" status --porcelain)" ] || fail "dirty marker vanished"
-[ "$(git_env -C "$T/wt" rev-parse HEAD)" = "$NEW_DEV_TIP" ] || fail "dirty update moved HEAD"
+[ "$(git_env -C "$T/wt" rev-parse HEAD)" = "$dirty_dev_before" ] || fail "dirty update moved HEAD"
 git_env -C "$T/wt" checkout -q -- file.txt
 [ -z "$(git_env -C "$T/wt" status --porcelain)" ] || fail "cleanup left dirt"
 pass "dirty dev refuses"
 
 # --- diverged dev refuses (fast-forward only, no reset) ---
+git_env -C "$T/wt" checkout -q dev
 echo local-only > "$T/wt/local.txt"
 git_env -C "$T/wt" add local.txt
 git_env -C "$T/wt" commit -qm local-only
