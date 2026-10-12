@@ -16,6 +16,14 @@ if (process.arch !== 'x64' || process.platform !== (target === 'windows-x64' ? '
 const git = (...args) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' }).trim();
 if (git('status', '--porcelain', '--untracked-files=all'))
   throw new Error('Artifacts require a clean committed build input');
+const sourceCommit = git('rev-parse', 'HEAD');
+function assertBuildInput() {
+  if (
+    git('rev-parse', 'HEAD') !== sourceCommit ||
+    git('status', '--porcelain', '--untracked-files=all')
+  )
+    throw new Error('Build input changed during packaging; discard this candidate and rebuild');
+}
 if (!process.env['npm_execpath']) throw new Error('Invoke through pnpm distribution:build');
 // Compile the committed input, rather than trusting arbitrary ignored dist files.
 execFileSync(
@@ -29,7 +37,7 @@ const identity = parseIdentity({
   schemaVersion: 1,
   product: 'Sentry',
   version: pkg.version,
-  sourceCommit: git('rev-parse', 'HEAD'),
+  sourceCommit,
   runtimeProtocol: 1,
 });
 if (desktopPkg.version !== pkg.version) throw new Error('Desktop version mismatch');
@@ -176,6 +184,7 @@ await cp(join(repo, 'docs/setup/distribution.md'), join(output, 'INSTALL.md'));
 const { rm } = await import('node:fs/promises');
 await rm(app, { recursive: true });
 await rm(join(output, '.electron-stage'), { recursive: true });
+assertBuildInput();
 const manifest = {
   ...identity,
   buildPlatform: process.platform + '-' + process.arch,
@@ -226,6 +235,7 @@ execFileSync(process.platform === 'win32' ? 'tar.exe' : 'tar', ['-xf', archive, 
   stdio: 'inherit',
 });
 await validate(join(extracted, name));
+assertBuildInput();
 console.log(
   JSON.stringify({
     archive,

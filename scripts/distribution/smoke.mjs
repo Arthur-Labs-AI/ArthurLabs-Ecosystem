@@ -19,6 +19,7 @@ const root = resolve(input),
 const temporary = await mkdtemp(join(tmpdir(), 'sentry packaged smoke '));
 await mkdir(join(temporary, 'appdata'));
 await mkdir(join(temporary, 'localappdata'));
+await mkdir(join(temporary, 'temp'));
 const source = join(temporary, 'synthetic project');
 await mkdir(source);
 await writeFile(
@@ -30,10 +31,20 @@ const env = {
   ...process.env,
   APPDATA: join(temporary, 'appdata'),
   LOCALAPPDATA: join(temporary, 'localappdata'),
+  TEMP: join(temporary, 'temp'),
+  TMP: join(temporary, 'temp'),
   SENTRY_DATA_ROOT: data,
   SENTRY_RUNTIME_ENTRY: entry,
   SENTRY_DESKTOP_URL: 'http://127.0.0.1:1/must-be-ignored',
 };
+// Keep the smoke independent of the owner's provider settings and legacy env file.
+for (const name of Object.keys(env))
+  if (
+    /^(OPENROUTER_API_KEY|OPENCODE_API_KEY|DEEPSEEK_API_KEY|ANTHROPIC_AUTH_TOKEN|ANTHROPIC_BASE_URL|SENTRY_(OPENCODE|DEEPSEEK|GLM)_)/i.test(
+      name,
+    )
+  )
+    delete env[name];
 const exe = join(root, 'desktop/Sentry.exe');
 const identity = JSON.parse(
   execFileSync(exe, ['--sentry-version'], { env, encoding: 'utf8', timeout: 30000 }).trim(),
