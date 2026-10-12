@@ -21,9 +21,9 @@ Date: 2026-10-13. Branch: `fix/v1-update-divergence-preflight` (base: approved `
 - New regression tests were written first against unmodified production code,
   using disposable local Git remotes with Desktop stubbed as running:
   - Linux `test-update-channels.sh`: `UPDATECHANNELS-FAIL: diverged stopped
-    Desktop before refusing`.
+Desktop before refusing`.
   - Linux `test-update-safety.sh`: `UPDATESAFETY-FAIL: diverged stopped Desktop
-    before refusing`.
+before refusing`.
 - Observed pre-fix order: fetch remote, detect HEAD mismatch, gracefully stop
   Sentry, attempt `git merge --ff-only`, discover divergence, refuse — leaving
   Sentry unnecessarily stopped. The merge itself failed safely; only the
@@ -78,7 +78,7 @@ Date: 2026-10-13. Branch: `fix/v1-update-divergence-preflight` (base: approved `
 - Before: diverged + running Desktop -> STOP attempted, merge attempted and
   failed, Desktop left stopped (test failures quoted above).
 - After: diverged + running Desktop -> exit 1, `No Desktop shutdown was
-  attempted and no merge was performed`, HEAD and local commits byte-identical,
+attempted and no merge was performed`, HEAD and local commits byte-identical,
   Desktop left running (asserted via stop-call counters/markers on both
   platforms). Behind + running -> stop, merge, advance (ordering preserved).
 
@@ -153,4 +153,4 @@ Date: 2026-10-13. Branch: `fix/v1-update-divergence-preflight` (base: approved `
 - `fix(launcher): preflight source update ancestry before shutdown` (production).
 - `test(launcher): preserve active Desktop on diverged channel` (regressions).
 - `docs(v1): finalize dev-branch transition record` (this document plus Finding B).
-Exact SHAs are listed in the PR description (this file is committed with them).
+  Exact SHAs are listed in the PR description (this file is committed with them).
