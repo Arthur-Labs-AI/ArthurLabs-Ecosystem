@@ -164,8 +164,11 @@ This is the supported **manual side-by-side beta migration**; there is no automa
 discovery/conversion of arbitrary source installations. The runtime data layout
 and database schema are unchanged in Phase 4; existing project/revision/run/
 findings/evidence/issue/retest records stay canonical. Automated fixtures verify
-that maintenance leaves synthetic existing files byte-identical. They do not
-prove reopening a real beta database in the packaged GUI: that is an owner gate.
+that maintenance leaves synthetic existing files byte-identical. The Phase 4
+packaged Windows smoke also reopens a disposable database seeded by the published
+beta, including completed QA, finding/evidence and historical issue/retest records.
+Real user history and encrypted-settings continuity remain owner acceptance gates;
+see [the validation report](../releases/v1-phase-4-validation.md).
 
 Rollback after a failed pre-activation install uses the previous executable and
 runtime. After launching a newer version, **do not downgrade a migrated DB**:

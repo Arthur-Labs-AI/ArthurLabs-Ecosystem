@@ -2,14 +2,14 @@
 // Usage: node smoke.mjs extractedArchiveRoot linuxRuntimeEntry linuxDisposableData
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
 import { once } from 'node:events';
 import { validate } from './contract.mjs';
 
-const [input, entry, data] = process.argv.slice(2);
+const [input, entry, data, historyReceipt] = process.argv.slice(2);
 if (process.platform !== 'win32' || !input || !entry || !data?.startsWith('/'))
   throw new Error(
     'Windows smoke requires extracted archive, Linux runtime entry and disposable absolute Linux data root',
@@ -141,6 +141,24 @@ try {
   assert.ok(imported);
   const projects = await evaluate('window.sentry.projects.list()');
   assert.ok(projects.length >= 1);
+  if (historyReceipt) {
+    const history = JSON.parse(await readFile(historyReceipt, 'utf8'));
+    assert.equal(history.dataRoot, data);
+    assert.ok(projects.some((p) => p.projectId === history.projectId));
+    const preserved = await evaluate(`window.sentry.runs.get(${JSON.stringify(history.runId)})`);
+    assert.equal(preserved.run.status, 'completed');
+    assert.equal(preserved.revision.id, history.revisionId);
+    assert.ok(preserved.findings.some((f) => f.id === history.findingId));
+    assert.ok(preserved.evidence.some((e) => e.id === history.evidenceId));
+    const issues = await evaluate(
+      `window.sentry.issues.list(${JSON.stringify(history.projectId)})`,
+    );
+    assert.ok(issues.some((i) => i.id === history.issueId));
+    const retests = await evaluate(
+      `window.sentry.retests.list(${JSON.stringify(history.issueId)})`,
+    );
+    assert.ok(retests.some((r) => r.id === history.retestId));
+  }
   await evaluate('location.hash = "#/projects"');
   assert.ok((await evaluate('location.href')).includes('#/projects'));
   // Invalid renderer requests still traverse production validation.
@@ -169,6 +187,7 @@ try {
       ipcValidation: true,
       linuxHandshake: true,
       projectImport: true,
+      betaHistory: Boolean(historyReceipt),
       singleInstance: true,
       gracefulStop: true,
       appData: temporary,

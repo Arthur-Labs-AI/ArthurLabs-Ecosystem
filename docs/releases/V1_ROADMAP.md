@@ -90,6 +90,17 @@ with owner review and accurate validation under the
 - **Risks:** native dependencies, systemd/sandbox prerequisites, platform package
   changes, signing/access constraints, updates during active work or dirty trees.
 - **Branch:** `codex/v1-release-packaging`.
+- **Progress (2026-10-12):** real unsigned Windows ZIP and CachyOS-targeted Linux
+  archive built/extracted with version/full-SHA manifests, self-contained Desktop,
+  online Linux bootstrap and atomic verified runtime activation/rollback. Actual
+  Windows packaged Electron/WSL smoke and synthetic published-beta history reopen
+  passed; full WSL suite 1,155 PASS / 16 skips including real trust 8/8. See
+  [Phase 4 validation](v1-phase-4-validation.md) and [installation guide](../setup/distribution.md).
+  Native CachyOS acceptance is ENVIRONMENT UNAVAILABLE; clean Windows provisioning,
+  real encrypted-settings migration and remaining supported-host acceptance are
+  outstanding. Windows full-suite snapshot timeout is disclosed separately from
+  its unchanged focused pass. Draft PR/exact-head CI and owner review precede
+  integration; this is a distribution foundation, not Phase 4 closure.
 
 ## Phase 5 — Security and testing
 
