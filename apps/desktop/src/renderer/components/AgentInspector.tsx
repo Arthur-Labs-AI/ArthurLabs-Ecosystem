@@ -4,6 +4,7 @@ import {
   formatCount,
   formatElapsed,
   projectTimeline,
+  stageStateLabel,
   truncateMiddle,
 } from '../lib/agent-telemetry.js';
 import { CopyId } from './CopyId.js';
@@ -71,6 +72,7 @@ export interface InspectorEvidence {
 }
 
 const CATEGORY_ICON: Record<string, string> = {
+  Message: '\u25CB',
   Lifecycle: '\u25CF',
   File: '\u2630',
   Command: '\u203A',
@@ -202,18 +204,22 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
         >
           {view.stages.map((stage) => (
             <li key={stage.id} className="metadata">
-              {stage.state === 'completed'
-                ? '\u2713'
-                : stage.state === 'active'
-                  ? '\u25CF'
-                  : stage.state === 'failed'
-                    ? '\u00D7'
-                    : stage.state === 'cancelled'
-                      ? '\u25A0'
-                      : stage.state === 'warning'
-                        ? '!'
-                        : '\u25CB'}{' '}
-              {stage.label} — {stage.state}
+              <span aria-hidden="true">
+                {stage.state === 'completed'
+                  ? '\u2713'
+                  : stage.state === 'observed'
+                    ? '\u25C9'
+                    : stage.state === 'active'
+                      ? '\u25CF'
+                      : stage.state === 'failed'
+                        ? '\u00D7'
+                        : stage.state === 'cancelled'
+                          ? '\u25A0'
+                          : stage.state === 'warning'
+                            ? '!'
+                            : '\u25CB'}
+              </span>{' '}
+              {stage.label} — {stageStateLabel(stage.state)}
             </li>
           ))}
         </ul>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { sentryApi } from '../lib/sentry-api.js';
-import { useRuntimeStatus } from '../lib/use-runtime-status.js';
+import { runtimeConnectionState, useRuntimeStatus } from '../lib/use-runtime-status.js';
 import { deriveRuntimeHostView } from '../lib/runtime-host-view.js';
 import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
 import { StatusPill } from '../components/ui/StatusPill.js';
@@ -39,7 +39,8 @@ export function RuntimeSettings(): React.JSX.Element {
   const view = deriveRuntimeHostView(statusInfo, info);
   const [selected, setSelected] = React.useState<string | undefined>(undefined);
   const effective = selected ?? info?.selected ?? info?.preferred ?? undefined;
-  const connected = !status.isError && statusInfo?.connected === true;
+  const connection = runtimeConnectionState(status);
+  const connected = connection === 'connected';
   const save = async (distro: string): Promise<void> => {
     try {
       setError(undefined);
@@ -103,8 +104,14 @@ export function RuntimeSettings(): React.JSX.Element {
         <div className="card">
           <div style={{ marginBottom: 10 }}>
             <StatusPill
-              status={connected ? 'connected' : 'offline'}
-              label={connected ? 'Connected' : 'Offline'}
+              status={connection === 'checking' ? 'checking' : connected ? 'connected' : 'offline'}
+              label={
+                connection === 'checking'
+                  ? 'Checking runtime…'
+                  : connected
+                    ? 'Connected'
+                    : 'Offline'
+              }
               pulse={connected}
             />
           </div>

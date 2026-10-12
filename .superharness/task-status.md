@@ -1,3 +1,28 @@
+# Phase 3 final polish — local verification complete (2026-10-12)
+
+IMPLEMENTED AND LOCALLY VERIFIED; draft PR #5 and owner review pending final-head CI.
+New fix/v1-desktop-status-truth / isolated Sentry-polish from owner-merged PR #4,
+origin/main c07c76d972ce0f0c3bf353d57a00fad99a026262. Main CI38213233386 PASS all
+three jobs, hosted trust UNVERIFIED. Code commit810264aade25ec9ad6f28b2c5997eec4a0ce6e4a.
+Runtime discovery now Checking / connected / unavailable in shell and detail views;
+generic activity Message; missing recorded-worker milestones Not observed, with
+shared inspector/canvas/accessibility labels. Domain states and missing-worker
+Waiting / Not started preserved. No runtime, provider or persistence changes.
+Seventeen new cases: initial6 RED/9 guards, detail views2 RED/8 guards, then GREEN.
+Windows Desktop316 PASS/2 skips; WSL317 PASS/1 skip. Both-host frozen install,
+hygiene/format/lint20/typecheck37/build20 PASS; full WSL40 tasks, 1,149 PASS/16 skips,
+real trust8/8 uncached PASS. First WSL run OpenCode fixture5s timeout; unchanged
+rerun passed with no deadline/assertion changes. Electron/WSL smoke and six actual
+before/after fixture captures PASS. Complete scoped review no introduced blocker.
+Validation report and roadmap retain native CachyOS/live-provider/compact-accessibility/
+automatic-dead-runtime-recovery limitations. Code CI38215099581 PASS all three jobs and GitGuardian (hosted trust unavailable); final docs-head
+CI tracked in PR #5; exact receipts collected before handoff. PR is source of truth
+for its current head and checks. No main push/merge, tags/version/release or Phase4.
+Owner dirty primary checkout and beta tag preserved; user Git identity unchanged.
+shux contract unavailable; protocol records maintained directly.
+
+## Previous record
+
 # Task status — Phase 3 bounded Desktop usability improvements (2026-10-10)
 
 IMPLEMENTED AND LOCALLY VERIFIED; feature PR/exact-head CI and owner review pending.

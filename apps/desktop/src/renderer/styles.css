@@ -818,6 +818,9 @@ textarea {
 .flow-node .stage-dots i.done {
   background: var(--success);
 }
+.flow-node .stage-dots i.observed {
+  background: var(--text-muted);
+}
 .flow-node .stage-dots i.active {
   background: var(--accent);
 }

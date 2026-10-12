@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { sentryApi } from '../lib/sentry-api.js';
 import { CommandPalette } from './CommandPalette.js';
-import { useRuntimeStatus } from '../lib/use-runtime-status.js';
+import { runtimeConnectionState, useRuntimeStatus } from '../lib/use-runtime-status.js';
 
 const NAV: Array<{ to: string; label: string; end?: boolean; icon: React.ReactNode }> = [
   {
@@ -80,8 +80,14 @@ export function AppShell(): React.JSX.Element {
   }, [runtime.isError, runtime.data?.connected, queryClient]);
   const runs = Array.isArray(activeRuns.data) ? activeRuns.data : [];
   const count = runs.length;
-  const runtimeData = runtime.data as { connected?: boolean } | undefined;
-  const runtimeConnected = !runtime.isError && runtimeData?.connected === true;
+  const connection = runtimeConnectionState(runtime);
+  const runtimeConnected = connection === 'connected';
+  const runtimeLabel =
+    connection === 'checking'
+      ? 'Checking runtime…'
+      : runtimeConnected
+        ? 'Runtime connected'
+        : 'Runtime offline';
   const [paletteOpen, setPaletteOpen] = React.useState(false);
 
   const toggleSidebar = (): void => {
@@ -229,16 +235,28 @@ export function AppShell(): React.JSX.Element {
             {pageCrumb(location.pathname)}
           </nav>
           <span
-            className={'status-pill ' + (runtimeConnected ? 'tone-success' : 'tone-danger')}
-            title={runtimeConnected ? 'Runtime connected' : 'Runtime offline'}
+            className={
+              'status-pill ' +
+              (connection === 'checking'
+                ? 'tone-info'
+                : runtimeConnected
+                  ? 'tone-success'
+                  : 'tone-danger')
+            }
+            title={runtimeLabel}
+            aria-live="polite"
           >
             <span
               className={
-                runtimeConnected ? 'status-dot status-completed' : 'status-dot status-failed'
+                connection === 'checking'
+                  ? 'status-dot'
+                  : runtimeConnected
+                    ? 'status-dot status-completed'
+                    : 'status-dot status-failed'
               }
               aria-hidden="true"
             />
-            {runtimeConnected ? 'Runtime connected' : 'Runtime offline'}
+            {runtimeLabel}
           </span>
           <button
             className="palette-btn"
@@ -251,7 +269,7 @@ export function AppShell(): React.JSX.Element {
         </div>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
         <div className="content">
-          {!runtimeConnected ? (
+          {connection === 'unavailable' ? (
             <div className="inline-notice tone-warning" role="status">
               Runtime communication unavailable. Cached results remain available; execution status
               may have changed. Check <Link to="/settings/runtime">Runtime settings</Link> before

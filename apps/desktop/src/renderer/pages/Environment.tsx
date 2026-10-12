@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { sentryApi } from '../lib/sentry-api.js';
-import { useRuntimeStatus } from '../lib/use-runtime-status.js';
+import { runtimeConnectionState, useRuntimeStatus } from '../lib/use-runtime-status.js';
 import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
 import { StatusPill } from '../components/ui/StatusPill.js';
 import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
@@ -84,24 +84,28 @@ export function Environment(): React.JSX.Element {
     | undefined;
   const status = runtime.data as RuntimeStatus | undefined;
   const hello = data?.runtime ?? status?.hello;
-  const connected = !runtime.isError && status?.connected === true;
+  const connection = runtimeConnectionState(runtime);
+  const connected = connection === 'connected';
   if (environment.isLoading) return <div className="skeleton">Loading environment…</div>;
   if (environment.isError || data === undefined)
     return (
       <div className="page">
         <PageHeader title="Environment" subtitle="Runtime and agent health." />
         <div className="error-box" role="alert">
-          <strong>Sentry Runtime Offline.</strong> Sentry Desktop is running, but the WSL2 execution
-          runtime could not be reached.
-          {status?.lastError !== undefined ? ' ' + status.lastError : ''} QA execution is disabled.{' '}
-          <Link to="/settings">Runtime settings</Link>
+          <strong>
+            {connection === 'unavailable'
+              ? 'Sentry Runtime Offline.'
+              : 'Environment details unavailable.'}
+          </strong>{' '}
+          Could not load environment details. Check runtime connectivity before starting another
+          run. <Link to="/settings">Runtime settings</Link>
         </div>
       </div>
     );
   return (
     <div className="page">
       <PageHeader title="Environment" subtitle="Runtime and agent health." />
-      {!connected ? (
+      {connection === 'unavailable' ? (
         <div className="error-box" style={{ marginBottom: 12 }} role="alert">
           <strong>Sentry Runtime Offline.</strong> QA execution is disabled until the WSL2 runtime
           reconnects. {status?.lastError ?? ''}{' '}
@@ -114,8 +118,14 @@ export function Environment(): React.JSX.Element {
         <div className="card">
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <StatusPill
-              status={connected ? 'connected' : 'offline'}
-              label={connected ? 'Runtime connected' : 'Runtime offline'}
+              status={connection === 'checking' ? 'checking' : connected ? 'connected' : 'offline'}
+              label={
+                connection === 'checking'
+                  ? 'Checking runtime…'
+                  : connected
+                    ? 'Runtime connected'
+                    : 'Runtime offline'
+              }
               pulse={connected}
             />
             <span className="metadata">
@@ -154,7 +164,7 @@ export function Environment(): React.JSX.Element {
               ) : (
                 <>
                   <dt>Status</dt>
-                  <dd className="metadata">Runtime details unavailable while offline.</dd>
+                  <dd className="metadata">Runtime details not recorded.</dd>
                 </>
               )}
             </dl>
