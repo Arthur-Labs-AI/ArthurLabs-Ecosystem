@@ -17,6 +17,8 @@ jobs:
     runs-on: ${{ matrix.host }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: 9.12.3
@@ -44,7 +46,7 @@ jobs:
       # Generic Linux builds do not establish native CachyOS compatibility.
       - uses: actions/upload-artifact@v4
         with:
-          name: unsigned-review-${{ matrix.target }}-${{ github.sha }}
+          name: unsigned-review-${{ matrix.target }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             dist/distributions/*.zip
             dist/distributions/*.tar.gz

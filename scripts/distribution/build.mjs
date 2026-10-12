@@ -152,7 +152,13 @@ for (const path of paths) {
   const dest = join(output, runtimeSource ? 'runtime-source' : '', path);
   if (!(await stat(join(repo, path))).isFile()) throw new Error('Non-file source input');
   await mkdir(dirname(dest), { recursive: true });
-  await cp(join(repo, path), dest);
+  await writeFile(
+    dest,
+    execFileSync('git', ['show', `${identity.sourceCommit}:${path}`], {
+      cwd: repo,
+      maxBuffer: 16 * 1024 * 1024,
+    }),
+  );
 }
 await writeFile(join(output, 'build-identity.json'), JSON.stringify(identity, null, 2) + '\n');
 await writeFile(

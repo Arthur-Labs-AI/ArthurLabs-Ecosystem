@@ -36,6 +36,7 @@ child.stdout.on('data', (chunk) => {
       const response = JSON.parse(line);
       if (response.id === 'release-hello') {
         const value = response.result;
+        const major = Number(/^v(\d+)\./.exec(value?.nodeVersion)?.[1]);
         if (
           !response.ok ||
           value?.protocolVersion !== expected.runtimeProtocol ||
@@ -43,7 +44,8 @@ child.stdout.on('data', (chunk) => {
           value?.sourceCommit !== expected.sourceCommit ||
           value?.platform !== 'linux' ||
           value?.isElectron !== false ||
-          Number(/^v(\d+)\./.exec(value?.nodeVersion)?.[1]) < 22
+          !Number.isInteger(major) ||
+          major < 22
         )
           throw new Error('Runtime release handshake identity mismatch');
         hello = value;
