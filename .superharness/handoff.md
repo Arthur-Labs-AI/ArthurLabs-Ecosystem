@@ -5,19 +5,21 @@ dirty checkout remains untouched. Read docs/releases/v1-phase-4-validation.md,
 packaging assessment and docs/setup/distribution.md for exact evidence, actual
 artifact filenames/SHA256 and per-file compatibility notes. Reviewed local
 artifacts identify ed48586b5beaa7f4124fe2889b01d177389bb1ec; subsequent changes
-are acceptance helpers/docs. Current PR head/CI receipts will be recorded after
-push. Artifacts remain ignored/private review candidates, never official releases.
+are acceptance helpers/docs. Draft PR #6 is pushed and attached:
+https://github.com/Mert1026/Sentry/pull/6
+Its exact-head checks/final delivery are authoritative CI receipts. Artifacts
+remain ignored/private review candidates, never official releases.
 
 Actual Windows packaged Electron + WSL hello/import/security/control and synthetic
 published-beta history reopen PASS. Real Linux bootstrap upgrades atomically and
 retains previous runtime; failure/rollback boundaries pass injected fixtures.
 WSL full1,155 PASS/16 skips, real trust8/8. Native CachyOS unavailable; clean Windows,
 real encrypted prefs and remaining supported-host acceptance outstanding. Windows
-full-suite snapshot timeout is disclosed, focused unchanged4/4 passes. Do not
+full-suite snapshot timeout is disclosed, focused unchanged4/4 passes.
 Serialized Windows diagnostic passes snapshot but fails six systemd-dependent
 trust cases; real WSL trust8/8 PASS remains the Linux proof. Beta history passed
 two packaged launches; fixture now survives WSL restarts under unique /var/tmp.
-close Phase4 or start Phase5 automatically. Next: owner reviews draft PR and runs
+Do not close Phase4 or start Phase5 automatically. Next: owner reviews draft PR and runs
 documented supported-host acceptance before integration/release decisions.
 
 Do not merge/tag/release, alter provider pins or run funded agents. Preserve beta

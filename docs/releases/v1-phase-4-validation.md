@@ -194,6 +194,9 @@ security acceptance, RC/stable release and signing/publication require later app
 
 Implementation commits: `9671d98` assessment, `30f9c81` foundation, `7a13850`
 tracked-input/runtime hardening, `ed48586` build race/smoke isolation. Acceptance
-helper and report commits follow. Draft PR and exact final-head Actions are the
-source of truth for current review receipts; they are recorded after push, without
-changing artifact provenance or claiming unavailable target tests passed.
+helper/report `f2e458c` and repeat-launch fixture correction `303d9c1` follow.
+[Draft PR #6](https://github.com/Mert1026/Sentry/pull/6) is pushed and attached.
+Its [exact-head checks](https://github.com/Mert1026/Sentry/pull/6/checks) and final
+delivery receipts are the source of truth for current CI, without changing local
+artifact provenance or claiming unavailable target tests passed. Only this branch
+was pushed; no main/tag/release/merge operation occurred.
