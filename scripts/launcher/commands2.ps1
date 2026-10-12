@@ -163,6 +163,19 @@ function Test-SentryUpdateNeeded {
   return ($HeadSha -cne $RemoteSha)
 }
 
+function Test-SentryFastForwardEligible {
+  param([string]$RepoRoot, [string]$ChannelRef)
+  try { & git -C $RepoRoot merge-base --is-ancestor HEAD $ChannelRef 2>$null }
+  catch { return 'PreflightFailed' }
+  if ($LASTEXITCODE -eq 0) { return 'Eligible' }
+  if ($LASTEXITCODE -ne 1) { return 'PreflightFailed' }
+  try { & git -C $RepoRoot merge-base --is-ancestor $ChannelRef HEAD 2>$null }
+  catch { return 'PreflightFailed' }
+  if ($LASTEXITCODE -eq 0) { return 'Ahead' }
+  if ($LASTEXITCODE -ne 1) { return 'PreflightFailed' }
+  return 'Diverged'
+}
+
 function Invoke-SentryUpdate {
   param([string]$RepoRoot, [bool]$Repair = $false)
   Write-Host ''
@@ -192,6 +205,25 @@ function Invoke-SentryUpdate {
   if ($f.ExitCode -ne 0) { Write-SentryFail 'git fetch failed (network or remote issue).'; return 1 }
   try { $remoteSha = ([string](& git -C $RepoRoot rev-parse $channelRef 2>$null)).Trim() } catch { $remoteSha = '' }
   if (-not $remoteSha) { Write-SentryFail ($channelRef + ' is unavailable after fetch.'); return 1 }
+  $ffEligible = Test-SentryFastForwardEligible -RepoRoot $RepoRoot -ChannelRef $channelRef
+  if ($ffEligible -ceq 'Ahead') {
+    Write-SentryFail ('Local ' + $channelName + ' is ahead of ' + $channelRef + ': no update is available from the channel.')
+    Write-Host 'Push your commits or reconcile manually; Sentry never resets or rebases your branch automatically.'
+    Write-SentryInfo 'No Desktop shutdown was attempted and no merge was performed.'
+    return 1
+  }
+  if ($ffEligible -ceq 'Diverged') {
+    Write-SentryFail ('Local ' + $channelName + ' and ' + $channelRef + ' have diverged: fast-forward is impossible.')
+    Write-Host 'Reconcile manually, then rerun: sentry update'
+    Write-Host 'Sentry never resets or rebases your branch automatically.'
+    Write-SentryInfo 'No Desktop shutdown was attempted and no merge was performed.'
+    return 1
+  }
+  if ($ffEligible -cne 'Eligible') {
+    Write-SentryFail ('Could not verify fast-forward eligibility for ' + $channelRef + '.')
+    Write-SentryInfo 'Refusing without changes; no Desktop shutdown was attempted and no merge was performed.'
+    return 1
+  }
   $wasRunning = (@(Get-SentryDesktopProcesses).Count -gt 0)
   if ((-not (Test-SentryUpdateNeeded -HeadSha $oldSha -RemoteSha $remoteSha)) -and (-not $Repair)) {
     if ($wasRunning) { Write-Host ('Sentry is already up to date (' + $oldSha.Substring(0, [Math]::Min(9, $oldSha.Length)) + '). Sentry left running.') }
