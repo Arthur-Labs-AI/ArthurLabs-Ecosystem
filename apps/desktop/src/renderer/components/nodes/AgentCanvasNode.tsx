@@ -3,7 +3,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { AgentNodeView } from '../../lib/types.js';
 import { statusGlyph } from '../StatusGlyph.js';
 import { dotClassForStatus } from '../ui/StatusPill.js';
-import { formatCount, formatElapsed } from '../../lib/agent-telemetry.js';
+import { formatCount, formatElapsed, stageStateLabel } from '../../lib/agent-telemetry.js';
 
 const ACCENTS: Record<string, string> = {
   stack_muse_main: 'var(--muse)',
@@ -14,6 +14,8 @@ const ACCENTS: Record<string, string> = {
 
 function stageTone(state: string): string {
   switch (state) {
+    case 'observed':
+      return 'observed';
     case 'completed':
       return 'done';
     case 'active':
@@ -72,14 +74,15 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
         className="stage-dots"
         role="img"
         aria-label={
-          'Stage: ' + view.stages.map((stage) => stage.label + ' ' + stage.state).join(', ')
+          'Stage: ' +
+          view.stages.map((stage) => stage.label + ' ' + stageStateLabel(stage.state)).join(', ')
         }
       >
         {view.stages.map((stage) => (
           <i
             key={stage.id}
             className={stageTone(stage.state)}
-            title={stage.label + ' — ' + stage.state}
+            title={stage.label + ' — ' + stageStateLabel(stage.state)}
           />
         ))}
       </div>

@@ -45,6 +45,20 @@ const STAGE_ORDER: readonly AgentStageId[] = [
   'completed',
 ];
 
+/** AgentRun milestone labels; absent workers use separate Waiting/Not started labels. */
+export function stageStateLabel(state: StageState): string {
+  const labels: Record<StageState, string> = {
+    not_started: 'Not observed',
+    observed: 'Observed',
+    active: 'Active',
+    completed: 'Completed',
+    warning: 'Warning',
+    failed: 'Failed',
+    cancelled: 'Cancelled',
+  };
+  return labels[state];
+}
+
 function elapsedMs(
   startedAt?: string,
   completedAt?: string | null,
@@ -67,7 +81,7 @@ function eventCategory(event: HarnessEventLike): string {
     case 'agent.status':
       return 'Lifecycle';
     case 'agent.message':
-      return 'Reporting';
+      return 'Message';
     case 'usage.updated':
       return 'Usage';
     case 'file.read':

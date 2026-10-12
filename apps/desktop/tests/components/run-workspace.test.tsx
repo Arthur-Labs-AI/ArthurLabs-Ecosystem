@@ -46,7 +46,8 @@ describe('primary navigation', () => {
     expect(html).toContain('Projects');
     expect(html).toContain('Environment');
     expect(html).toContain('Settings');
-    expect(html).toContain('Runtime offline');
+    expect(html).toContain('Checking runtime…');
+    expect(html).not.toContain('Runtime offline');
     expect(html).not.toContain('Issues (Legacy)');
     expect(html).not.toContain('History');
     expect(html).not.toContain('>Runs<');
