@@ -92,6 +92,20 @@ function isModelName(name: string): boolean {
   return MODEL_KEYS.has(name);
 }
 
+function entryUnreadable(): Error {
+  return Object.assign(new Error('Credential entry unreadable'), {
+    code: 'CREDENTIAL_ENTRY_UNREADABLE',
+  });
+}
+
+function isEntryUnreadable(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === 'CREDENTIAL_ENTRY_UNREADABLE'
+  );
+}
+
 function parseLegacyEnvFile(text: string): Map<string, string> {
   const out = new Map<string, string>();
   for (const line of text.split('\n')) {
@@ -226,26 +240,30 @@ export class ProviderCredentialService {
               blob.length === 0 ||
               Buffer.from(blob, 'base64').toString('base64') !== blob)
           ) {
-            throw new Error('Credential entry unreadable');
+            throw entryUnreadable();
           }
           if (typeof blob !== 'string' || blob.length === 0) continue;
           try {
             const value = this.safeStorage.decryptString(Buffer.from(blob, 'base64'));
-            if (options.strict && value.length === 0)
-              throw new Error('Credential entry unreadable');
+            if (options.strict && value.length === 0) throw entryUnreadable();
             if (value.length === 0) continue;
             this.memory.set(name, value);
             this.persistedSecrets.add(name);
             if (process.env[name] === undefined || process.env[name] === '')
               process.env[name] = value;
           } catch {
-            if (options.strict) throw new Error('Credential entry unreadable');
+            if (options.strict) throw entryUnreadable();
             // Corrupt entry: skip without failing boot; never log the value.
           }
         }
       } catch (error) {
-        if (options.strict && (error as NodeJS.ErrnoException).code !== 'ENOENT') {
-          throw new Error('Credential store unreadable');
+        if (options.strict) {
+          // Entry-level verdicts already carry their precision outward;
+          // only unclassified failures become the store-level verdict.
+          if (isEntryUnreadable(error)) throw error;
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+            throw new Error('Credential store unreadable');
+          }
         }
         // Absent store is the normal first-launch state.
       }
