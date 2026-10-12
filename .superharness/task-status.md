@@ -11,6 +11,9 @@ seeds disposable history, reopened through packaged production IPC PASS.
 WSL full suite40 tasks, 1,155 PASS/16 skips, real trust8/8 PASS; static gates and
 both launcher matrices PASS. Windows full suite snapshot5s timeout FAIL; unchanged
 focused4/4 PASS, no tests weakened. Native CachyOS ENVIRONMENT UNAVAILABLE, clean
+Serialized Windows diagnostic passes snapshot4/4 but fails six Linux trust cases
+without systemd (and cleanup EBUSY); all eight pass on actual WSL. Repeated beta
+history packaged reopen PASS after moving disposable fixture out of WSL /tmp.
 Windows and real encrypted-settings/provider acceptance outstanding. See Phase4
 validation/installation docs. No main push, merge, tags, release/version bump,
 signing, paid calls, QA pipeline changes or Phase5. shux contract unavailable;

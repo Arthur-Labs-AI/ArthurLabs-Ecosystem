@@ -14,6 +14,9 @@ retains previous runtime; failure/rollback boundaries pass injected fixtures.
 WSL full1,155 PASS/16 skips, real trust8/8. Native CachyOS unavailable; clean Windows,
 real encrypted prefs and remaining supported-host acceptance outstanding. Windows
 full-suite snapshot timeout is disclosed, focused unchanged4/4 passes. Do not
+Serialized Windows diagnostic passes snapshot but fails six systemd-dependent
+trust cases; real WSL trust8/8 PASS remains the Linux proof. Beta history passed
+two packaged launches; fixture now survives WSL restarts under unique /var/tmp.
 close Phase4 or start Phase5 automatically. Next: owner reviews draft PR and runs
 documented supported-host acceptance before integration/release decisions.
 

@@ -4,7 +4,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -19,7 +18,8 @@ const { SentryDatabase, SentryRepository } = await import(
 );
 const fixture = async (name) =>
   JSON.parse(await readFile(join(beta, 'packages/domain/tests/fixtures', name + '.json'), 'utf8'));
-const dataRoot = await mkdtemp(join(tmpdir(), 'sentry-beta-history-'));
+// WSL may clean /tmp when its VM restarts between separate launch checks.
+const dataRoot = await mkdtemp('/var/tmp/sentry-beta-history-');
 const source = join(dataRoot, 'synthetic-source');
 await mkdir(source);
 await writeFile(join(source, 'index.js'), 'export const fixture = true;\n');
