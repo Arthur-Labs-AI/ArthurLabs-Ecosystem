@@ -112,10 +112,11 @@ Windows also provides `sentry repair` to rerun setup.
 ## Updates
 
 Beta installations stay pinned to version tags in detached HEAD state.
-`sentry update` refuses there; it only tracks **development origin/main**.
-Switching to main explicitly opts into potentially untested changes. There is
-no automatic GitHub Release updater. For a later beta: cancel work, stop,
-fetch the announced tag, check it out, and rerun setup. See [updating](docs/beta/updating.md).
+`sentry update` refuses there. Source checkouts track only their selected
+channel: branch `dev` follows `origin/dev`, branch `main` follows `origin/main`
+— nothing switches channels automatically. There is no automatic GitHub
+Release updater. For a later beta: cancel work, stop, fetch the announced tag,
+check it out, and rerun setup. See [updating](docs/beta/updating.md).
 Setup/update aborts on failed graceful stop; dirty trees are never reset/stashed.
 
 ## Security and privacy

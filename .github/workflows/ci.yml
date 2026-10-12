@@ -5,7 +5,14 @@ name: ci
 
 on:
   push:
-    branches: [main, 'codex/release-*', 'codex/hotfix-*']
+    # dev is the development integration branch (Milestone A transition,
+    # 2026-10-12): pushes to dev and main both run CI. Historical
+    # codex/release-* and codex/hotfix-* push triggers are preserved.
+    # Push CI validates only; it never publishes a release, creates a tag,
+    # or moves a branch pointer.
+    branches: [main, dev, 'codex/release-*', 'codex/hotfix-*']
+  # Broad pull_request coverage: PRs into dev, into main, and release/hotfix
+  # PRs targeting dev all trigger CI.
   pull_request:
 
 jobs:
@@ -163,6 +170,7 @@ jobs:
           bash scripts/launcher/tests/test-node-resolve.sh
           bash scripts/launcher/tests/test-lifecycle-shim.sh
           bash scripts/launcher/tests/test-update-safety.sh
+          bash scripts/launcher/tests/test-update-channels.sh
           bash scripts/launcher/tests/test-desktop-safety.sh
           bash scripts/launcher/tests/test-desktop-startup.sh
           bash scripts/launcher/tests/test-package-capabilities.sh

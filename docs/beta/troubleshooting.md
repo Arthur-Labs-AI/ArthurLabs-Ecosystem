@@ -158,9 +158,10 @@ Provider settings survive `sentry update`.
 
 ## Update refuses (branch / dirty tree)
 
-Beta updates track `origin/main` only: on any other branch, `sentry update`
-refuses and tells you to `git switch main` (it never switches branches for
-you). It also refuses when `git status --porcelain` shows anything —
+Source updates track only the selected channel (`dev` follows `origin/dev`,
+`main` follows `origin/main`): on any other checkout, `sentry update` refuses
+and tells you to `git switch dev` or `git switch main` (it never switches
+branches for you). It also refuses when `git status --porcelain` shows anything —
 commit, stash, or discard first. Sentry never resets, cleans, rebases, or
 stashes automatically, and a refused update leaves a running Sentry alone.
 

@@ -7,6 +7,12 @@ with owner review and accurate validation under the
 [branch policy](../development/branching.md). The
 [architecture contract](../architecture/v1-pipeline.md) applies to every phase.
 
+> Branching transition (2026-10-12, Milestone A — pending owner review):
+> completed phases merged into `main` under the old trunk policy (their PR
+> records stand as written). New work targets `dev`: Phase 5 will branch from
+> approved `origin/dev` and open its PR to `dev`. See
+> [dev-branch-transition](../development/dev-branch-transition.md).
+
 ## Phase 1 — Foundation and architectural cleanup
 
 - **Objective:** align development policy, documentation and presentation with
@@ -144,7 +150,7 @@ with owner review and accurate validation under the
   explicit owner scope for paid-provider and security acceptance runs.
 - **Risks:** mock-only security claims, sandbox capability differences, secret
   leakage in artifacts, historical compatibility or upgrade coverage gaps.
-- **Branch:** `codex/v1-security-testing`.
+- **Branch:** `codex/v1-security-testing` (based on approved `origin/dev`, PR targets `dev`).
 
 ## Phase 6 — Release candidate
 
