@@ -312,6 +312,33 @@ Assert-Equal 'cli-forwards-stdout' ($swOut.ToString()) '{"ok":false}'
 Assert-Equal 'cli-forwards-stderr' ($swErr.ToString()) 'diag'
 Assert-Equal 'cli-quoting-spaces' (Get-SentryQuotedArguments @('a b', 'e')) '"a b" e'
 Assert-Equal 'cli-quoting-passthrough' (Get-SentryQuotedArguments @('project', 'add', 'C:\P\Test App')) 'project add "C:\P\Test App"'
+# Credential diagnostics preserve the boolean protocol and unavailable INFO fallback.
+function Get-SentryElectronExe { param($RepoRoot) return 'fixture-electron' }
+$captureCredentials = { param($Name, $Level, $Detail) $script:CredentialRows += @(@{ Name=$Name; Level=$Level; Detail=$Detail }) }
+foreach ($case in @('present', 'mixed', 'missing', 'unavailable', 'malformed', 'failed-report')) {
+  $script:CredentialRows = @()
+  $report = switch ($case) {
+    'present' { 'SENTRY_CREDENTIAL_STATUS={"opencode":true,"deepseek":true,"glm":true}' }
+    'mixed' { 'SENTRY_CREDENTIAL_STATUS={"opencode":false,"deepseek":true,"glm":false}' }
+    'missing' { 'SENTRY_CREDENTIAL_STATUS={"opencode":false,"deepseek":false,"glm":false}' }
+    'malformed' { 'SENTRY_CREDENTIAL_STATUS={' }
+    'failed-report' { 'SENTRY_CREDENTIAL_STATUS={"opencode":false,"deepseek":false,"glm":false}' }
+    default { '' }
+  }
+  $statusCode = if ($case -in @('unavailable', 'failed-report')) { 1 } else { 0 }
+  $script:NativeStubs = @{ 'fixture-electron *' = @{ ExitCode=$statusCode; Stdout=$report; Stderr='sanitized unavailable guidance' } }
+  Add-SentryCredentialReport -Add $captureCredentials -RepoRoot $repoRoot
+  if ($case -in @('unavailable', 'malformed', 'failed-report')) {
+    Assert-Equal "credentials-$case-row-count" $script:CredentialRows.Count 1
+    Assert-Equal "credentials-$case-info" $script:CredentialRows[0].Level 'INFO'
+    Assert-True "credentials-$case-guidance" ($script:CredentialRows[0].Detail.Contains('Settings -> Providers'))
+  } else {
+    $warns = @($script:CredentialRows | Where-Object { $_.Level -eq 'WARN' }).Count
+    $expectedWarns = if ($case -eq 'present') { 0 } elseif ($case -eq 'mixed') { 2 } else { 3 }
+    Assert-Equal "credentials-$case-presence" $warns $expectedWarns
+    if ($case -eq 'mixed') { Assert-Equal 'credentials-independent-deepseek' (@($script:CredentialRows | Where-Object { $_.Name -eq 'DeepSeek credential' })[0].Level) 'PASS' }
+  }
+}
 if ($script:failures -gt 0) { Write-Host ([string]("BEHAVIOR-FAIL " + $script:failures)); exit 1 }
 Write-Host 'BEHAVIOR-OK'
 exit 0

@@ -9,6 +9,7 @@ const fixture = vi.hoisted(() => ({
   stopBroker: vi.fn<() => Promise<void>>(),
   boot: vi.fn(),
   ready: vi.fn<() => Promise<void>>(),
+  focus: vi.fn(),
 }));
 vi.mock('electron', () => ({
   app: {
@@ -20,6 +21,9 @@ vi.mock('electron', () => ({
   },
   BrowserWindow: class {
     loadFile = async () => undefined;
+    isDestroyed = () => false;
+    isMinimized = () => false;
+    focus = fixture.focus;
     on = (name: string, handler: (event: { preventDefault(): void }) => void) =>
       fixture.windowHandlers.set(name, handler);
   },
@@ -63,6 +67,18 @@ beforeEach(() => {
 });
 
 describe('Electron quit lifecycle', () => {
+  it('does not focus or stop the running Desktop for a credential diagnostic', async () => {
+    await import('../../src/main/index.js');
+    await flush();
+    const secondInstance = fixture.handlers.get('second-instance') as unknown as (
+      event: unknown,
+      argv: string[],
+    ) => void;
+    secondInstance({}, ['electron', '.', '--sentry-credential-status']);
+    expect(fixture.focus).not.toHaveBeenCalled();
+    expect(fixture.quit).not.toHaveBeenCalled();
+    expect(fixture.boot).toHaveBeenCalledOnce();
+  });
   it('defers credential/runtime bootstrap until Electron encryption is ready', async () => {
     let ready!: () => void;
     fixture.ready.mockImplementation(
