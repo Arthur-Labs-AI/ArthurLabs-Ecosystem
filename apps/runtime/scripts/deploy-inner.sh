@@ -9,10 +9,19 @@
 # Activation is atomic: build+validate happen before `current` moves.
 set -euo pipefail
 SRC="$1"; VERSION="$2"
+if [[ ! "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$ ]]; then
+  echo '[sentry-runtime] invalid deployment version' >&2
+  exit 12
+fi
 # Optional explicit pnpm executable (native launcher passes the resolved
 # pinned binary). Defaults to PATH pnpm so the historical 2-arg Windows
 # invocation behaves exactly as before.
 PNPM_BIN="${3:-pnpm}"
+MODE="${4:-activate}"
+if [ "$MODE" != activate ] && [ "$MODE" != stage-only ]; then
+  echo '[sentry-runtime] invalid deployment mode' >&2
+  exit 12
+fi
 # Turbo grandchildren spawn `pnpm` via PATH lookup: when an explicit path
 # was given, its directory leads PATH for this deploy subtree. A bare name
 # needs no export (it already came from PATH).
@@ -21,12 +30,16 @@ case "$PNPM_BIN" in
 esac
 BASE="$HOME/.local/share/sentry/runtime"
 DEST="$BASE/$VERSION"
+if [ "$MODE" = "stage-only" ] && { [ -e "$DEST" ] || [ -e "$DEST.tmp" ]; }; then
+  echo '[sentry-runtime] refusing to overwrite an existing release candidate' >&2
+  exit 11
+fi
 mkdir -p "$BASE"
 echo "[sentry-runtime] staging $VERSION ..."
 rm -rf "$DEST.tmp"; mkdir -p "$DEST.tmp"
 cd "$SRC"
 echo '[sentry-runtime] copying root build metadata (files only)...'
-for e in package.json pnpm-lock.yaml pnpm-workspace.yaml .nvmrc tsconfig.base.json turbo.json eslint.config.js prettier.config.js; do
+for e in package.json pnpm-lock.yaml pnpm-workspace.yaml .nvmrc tsconfig.base.json turbo.json eslint.config.js prettier.config.js build-identity.json; do
   if [ -f "$e" ]; then cp --no-preserve=all "$e" "$DEST.tmp/"; else echo "[sentry-runtime] note: root file missing: $e"; fi
 done
 echo '[sentry-runtime] syncing workspace sources (excluding node_modules/dist/.turbo/coverage)...'
@@ -87,6 +100,10 @@ echo "$VERSION" > "$DEST.tmp/.sentry-runtime-version"
 echo "[sentry-runtime] activating $VERSION ..."
 if [ -e "$DEST" ] && [ ! -L "$DEST" ]; then rm -rf "$DEST"; fi
 rm -rf "$DEST"; mv "$DEST.tmp" "$DEST"
+if [ "$MODE" = "stage-only" ]; then
+  echo "[sentry-runtime] staged (not activated): $DEST"
+  exit 0
+fi
 rm -f "$BASE/current"
 ln -s "$VERSION" "$BASE/current"
 echo "[sentry-runtime] active: $(readlink "$BASE/current")"

@@ -1,0 +1,53 @@
+name: distribution (unsigned review candidates)
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  archive:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host: windows-latest
+            target: windows-x64
+          - host: ubuntu-latest
+            target: cachyos-x64
+    runs-on: ${{ matrix.host }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm distribution:test
+      - name: Windows maintenance and parser fixtures
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          powershell -NoProfile -File scripts/distribution/tests/maintenance.test.ps1
+          $files = Get-ChildItem scripts/distribution/*.ps1
+          foreach ($f in $files) {
+            $tokens = $null; $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$tokens, [ref]$errors)
+            if ($errors.Count) { throw "syntax errors in $f" }
+          }
+      - name: Build and extract unsigned candidate (never publish)
+        run: pnpm distribution:build ${{ matrix.target }}
+      # Private workflow artifacts are review candidates, not GitHub Releases.
+      # Generic Linux builds do not establish native CachyOS compatibility.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-review-${{ matrix.target }}-${{ github.sha }}
+          path: |
+            dist/distributions/*.zip
+            dist/distributions/*.tar.gz
+            dist/distributions/*.sha256
+          if-no-files-found: error
+          retention-days: 7

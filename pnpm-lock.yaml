@@ -35,6 +35,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.2
+      esbuild:
+        specifier: 0.21.5
+        version: 0.21.5
       eslint:
         specifier: 'catalog:'
         version: 9.39.5

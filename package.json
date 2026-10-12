@@ -19,14 +19,17 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "repository:check": "node scripts/check-repository-hygiene.mjs"
+    "repository:check": "node scripts/check-repository-hygiene.mjs",
+    "distribution:build": "node scripts/distribution/build.mjs",
+    "distribution:test": "node --test scripts/distribution/tests/*.test.mjs"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
+    "esbuild": "0.21.5",
     "eslint": "catalog:",
     "prettier": "^3.3.3",
     "turbo": "^2.4.0",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:",
-    "@types/node": "catalog:"
+    "typescript-eslint": "catalog:"
   }
 }

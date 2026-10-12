@@ -22,7 +22,15 @@ Merge/verification ingestion is not exposed by current Desktop runtime RPC;
 it is not a promised beta user flow. Existing issue/retest data and compatibility
 paths remain. Architecture records may describe retired features.
 
-## Prerequisites
+## Distribution candidates
+
+Phase 4 adds unsigned version/SHA archives for owner review, with a packaged
+Desktop and explicit Linux runtime bootstrap. See the
+[distribution guide](docs/setup/distribution.md) for checksums, prerequisites,
+installation, safe maintenance and remaining native acceptance gates. These
+candidates are not a published v1 release. The source-beta path below remains valid.
+
+## Source installation prerequisites
 
 - Git and internet during setup. Install from a clone, not a source ZIP.
 - Node.js >= 22 and pnpm **9.12.3**. Setup resolves pinned tools and guides
