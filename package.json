@@ -21,7 +21,7 @@
     "format:check": "prettier --check .",
     "repository:check": "node scripts/check-repository-hygiene.mjs",
     "distribution:build": "node scripts/distribution/build.mjs",
-    "distribution:test": "node --test scripts/distribution/tests/*.test.mjs"
+    "distribution:test": "node --test --test-concurrency=1 scripts/distribution/tests/*.test.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:",

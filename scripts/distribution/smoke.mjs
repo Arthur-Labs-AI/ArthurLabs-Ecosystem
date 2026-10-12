@@ -65,6 +65,7 @@ const env = {
   SENTRY_DESKTOP_URL: 'http://127.0.0.1:1/must-be-ignored',
 };
 delete env['SENTRY_SMOKE_SYNTHETIC'];
+if (sourceBeta) delete env['SENTRY_DESKTOP_URL'];
 // Keep the smoke independent of the owner's provider settings and legacy env file.
 for (const name of Object.keys(env))
   if (
