@@ -1,3 +1,31 @@
+# Phase5.1 integrated baseline — 2026-10-13
+
+Selected I1 c78faa74717b0f430a859730e98c3c4915e7b03f, tree8bbaab4a5d1f7830dcf4ed7b4c40362c62f8d71d.
+PR17/16 owner merges verified; postmergeCI38411670558 all3 required jobs SUCCESS.
+No new production defect reproduced; no production edits. New bounded branch
+fix/v1-post-merge-acceptance, isolated existing worktree; owner's dirty main preserved.
+Static gates PASS; Windows Desktop400PASS/2skips; WSL uncached1,236PASS/16skips,
+focused65/65, separately executed real systemd trust8/8. Native Windows exact I1
+archive ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e
+passed four-key DPAPI save/full shutdown/two fresh relaunches/model preference;
+D->I1 compatibility retained four-key encrypted store AND preferences byte-for-byte.
+Real packaged write-lock rejection/restart/corrupt-entry/unreadable-store recovery
+and separate empty-profile isolation PASS. Actual unavailable-backend/native/clean
+host gates remain unavailable; owner real-profile observation requires approval.
+I1 distribution38417470244 both SUCCESS; both hosted artifacts locally retained,
+hash/extraction/identity verified separately from physical Windows bytes.
+Phase5.1 receipt, sanitized screenshot and release documents reconciled. G10 P1
+historical-beta FAIL remains; precise versioned recovery-restore proposal needs
+owner policy approval and actual G01-G10 retest, no recovery code authorized.
+Three remote task branches fully reachable from dev, zero unique work; eligible
+for deletion only after explicit owner approval. Main/dev protection API403;
+PR-only exact-source checks and owner-only integration remain procedural.
+Review handoff: focused PR to dev; its final CI/distribution source identities and
+conclusions are recorded in the PR and final report (separate from I1 receipts).
+Owner acceptance/feature freeze and Phase6 NOT AUTHORIZED. No self-merge, tag,
+version/release, main change, paid execution or owner credential access. shux
+contract attempted at start, executable unavailable; protocol updated directly.
+
 # Owner Full three-agent export reviewed — 2026-10-13
 
 Owner confirmed Windows/WSL. run_01M4T9XGTM1S41PS74NA0G767Z is production Full,

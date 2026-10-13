@@ -165,3 +165,32 @@ Production paths identical to D; no frozen source/version/schema/tag changes.
 Next: owner review follow-up PR; supply producing build/archive identity and
 remaining E07 observations, resolve G10 disposition and remaining acceptance.
 shux contract attempted again, unavailable; protocol maintained directly.
+
+# Phase5.1 integrated consolidation — 2026-10-13
+
+Fetched/pruned fresh remote: dev c78faa74717b0f430a859730e98c3c4915e7b03f;
+main4fd2be9 unchanged, PR17 actual202577e and PR16 actualc78faa7 owner-merged.
+PostmergeCI38411670558 completed all3 required jobs SUCCESS. Owner dirty primary
+checkout preserved; reused clean task worktree on fix/v1-post-merge-acceptance.
+Audited complete integrated credential/profile/runtime/UI/migration/concurrency
+flow and regressions: no additional production defect reproduced, no code change.
+Executed static gates; Windows Desktop400/2; WSL1,236/16 with40 uncached tasks;
+focused65/65 and independent real systemd trust8/8. New I1 native Windows archive
+built/extracted/332-file manifest verified. Real DPAPI four-secret save/full-stop/
+two fresh relaunches/preferences PASS; separate D-seeded four-secret/profile
+compatibility retained ciphertext AND prefs bytes twice. Real packaged file-lock
+write failures, rejected-save restart, corrupt entry/other-entry preservation,
+unreadable-store refusal/restoration and empty-profile isolation PASS. No owner
+profile or real keys accessed. Actual backend-unavailable/native/clean-host
+physical gates unavailable; controlled backend/query failures remain distinct.
+I1 unsigned distribution38417470244 both jobs SUCCESS, both downloaded artifacts
+hash/sidecar/extraction verified separately from local physical Windows bytes.
+New exact-source receipt/synthetic screenshot and8 release-policy docs reconciled;
+historical D/W1/C1/520 identities/counts preserved. G10 historical-beta P1 FAIL
+reviewed, precise separately approved I1 recovery-restore disposition proposed;
+no policy/code/beta/tag changes. Three specified remote branches fully merged,
+zero unique work/no open PR or workflow dependency; recommend deletion after
+explicit owner approval only. Protection API main/dev403; procedural gates.
+Task ledger/status/handoff maintained directly because shux contract unavailable.
+Focused evidence PR to dev, final checks recorded in PR/final report; owner review
+and remaining physical/provider acceptance required. Phase6 NOT AUTHORIZED.

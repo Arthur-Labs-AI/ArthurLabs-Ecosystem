@@ -1,5 +1,9 @@
 # Owner Full three-agent run — Windows/WSL, 2026-10-13
 
+PR16 is owner-merged at `c78faa7`. This historical owner execution remains
+unattributed to a source/archive; the [Phase5.1 integrated acceptance](v1-post-merge-acceptance-c78faa7.md)
+does not retroactively assign this run to I1 or close its funded matrix gates.
+
 **Verified from the supplied export: production Full QA completed 3/3.**
 The owner confirmed Windows/WSL and reported that the run worked. This is
 successful execution evidence, with exact candidate/archive attribution still

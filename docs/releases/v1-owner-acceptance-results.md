@@ -6,6 +6,11 @@ PASS results**. Initial environment/owner statuses describe preparation only;
 replace them with actual execution records when their prerequisites exist.
 Record every attempt, retain FAIL receipts, and link retests rather than erasing failures.
 
+This remains an unexecuted reusable template. Actual historical D results are
+in [W1/C1 campaign](v1-owner-acceptance-execution.md); new integrated I1 evidence
+is in [Phase5.1](v1-post-merge-acceptance-c78faa7.md). PR16/17 are merged, while
+remaining owner acceptance and the Phase5.1 evidence PR review remain open.
+
 ## Host and candidate receipt
 
 | Field                                                          | Actual value              |
@@ -131,7 +136,7 @@ fixtures are not host-installation or funded-provider acceptance.
 
 ## Owner decision
 
-Implementation complete: pending correction-PR review. Automated verification:
-consult the exact-SHA preparation receipt, not this unexecuted host template.
+PR17 implementation is owner-merged. Automated verification and bounded Windows
+acceptance: consult the exact-SHA Phase5.1 receipt, not this unexecuted template.
 Real-machine acceptance: **NOT RUN**. Feature freeze / Phase 6 authorization:
 **NOT AUTHORIZED**. Owner signature/date/evidence reviewed: NOT RUN.

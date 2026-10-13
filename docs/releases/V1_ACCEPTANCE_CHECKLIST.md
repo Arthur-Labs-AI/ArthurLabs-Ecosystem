@@ -4,18 +4,19 @@ This checklist supplements the [owner runbook](v1-owner-acceptance.md) and
 [per-host results](v1-owner-acceptance-results.md). The historical beta release
 checklist is not evidence for v1. No box is checked by source implementation alone.
 
-Separate current restart-credential defect: the
-[focused correction receipt](v1-provider-credential-persistence-validation.md)
-records failed-write/load/query regressions and real Windows DPAPI restart
-validation at new source5207288. This requires owner review and explicit candidate
-selection; it does not replace D's binary identity or waive historical beta G10.
+Current integrated baseline: PR17's credential correction and PR16's owner-run
+evidence are owner-merged into dev `c78faa7`. The
+[Phase5.1 receipt](v1-post-merge-acceptance-c78faa7.md) selects new unsigned I1
+artifacts and records newly executed integrated tests and Windows DPAPI checks.
+The [520 correction receipt](v1-provider-credential-persistence-validation.md)
+and historical D/W1/C1 results retain their exact identities. G10 remains FAIL.
 
-- [x] Owner reviews the final correction PR into dev; only the owner merges (PR14 verified human-owner merge).
-- [x] Exact full candidate SHA, tree, version, protocol and both archive SHA256s recorded (integrated D; separate Windows local/CI bytes).
-- [x] Three required CI jobs pass with head/proposed-merge identities distinguished (postmerge38364397137).
-- [x] Both unsigned distribution jobs pass; archives preserved before expiration (38366622239; old PR-head archives also retained).
-- [x] After integration, actual merge tree and post-merge CI verified; selected-SHA archives traced honestly (D tree equals PR14 source tree).
-- [x] Real systemd-mount trust rerun on the candidate; skips/unavailable hosts disclosed (actual integrated WSL8/8; hosted/native limits recorded).
+- [x] Owner reviews correction PRs into dev; only the owner merges (PR14/16/17 actual merges verified; Phase5.1 evidence PR still requires review).
+- [x] Exact full selected SHA, tree, version, protocol and both archive SHA256s recorded (I1; separate local/CI Windows bytes).
+- [x] Three required post-merge CI jobs pass (I1 run38411670558; receipt-PR checks separately reported).
+- [x] Both I1 unsigned distribution jobs pass (38417470244; private artifacts preserved separately from D/520).
+- [x] Actual integrated merge/source tree and post-merge CI verified; selected I1 archives traced honestly.
+- [x] Real systemd-mount trust rerun on I1,8/8; full WSL1,236PASS/16skips; hosted/native limits disclosed.
 - [ ] Windows fresh install, packaged launch, maintenance/recovery and beta upgrade/rollback pass (A/B/F/G).
 - [ ] Native CachyOS packaged install, GUI, sandbox, maintenance/recovery and beta upgrade/rollback pass (A/C/F/G).
 - [ ] Real DPAPI and supported native Linux secure-storage/privacy/continuity pass (D).
@@ -37,7 +38,7 @@ Prepared-host Windows GUI/DPAPI/idle recovery positives do not pass the combined
 Windows gate. **G10 P1 FAIL**: matching stopped beta rollback retains ciphertext
 and history but loses configured credential availability. See the
 [separate bounded correction proposal](v1-beta-rollback-credential-proposal.md).
-No candidate source change or failure waiver. The [owner Windows/WSL Full
+No beta correction or failure waiver. The [owner Windows/WSL Full
 all-three export](v1-owner-run-01M4T9XG-acceptance.md) was received and verified3/3
 with10 findings/38 evidence. Build/archive attribution and remaining E07 observations
 are open; the other13 combinations/modes remain unexecuted. Counts above remain

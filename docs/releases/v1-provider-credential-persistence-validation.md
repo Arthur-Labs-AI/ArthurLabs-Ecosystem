@@ -1,5 +1,11 @@
 # Provider credential persistence correction
 
+Historical correction receipt for implementation5207288. PR17 is now owner-merged
+as `202577e56726f6a8c4cb0b89703a0ee36adf0018`; PR16 subsequently integrated
+owner-run evidence at dev `c78faa7`. The [Phase5.1 receipt](v1-post-merge-acceptance-c78faa7.md)
+records newly executed tests/artifacts/DPAPI acceptance on that integrated SHA.
+The520 results and screenshot below retain their original binary identity.
+
 Baseline: origin/dev `aef67903ac0ef1a42a5bf3ebd2626c4603152688`.
 Branch: `fix/v1-provider-credential-persistence`, isolated task checkout; owner
 primary checkout and acceptance branches preserved. This user report is separate
@@ -123,6 +129,6 @@ passing hosted jobs do not substitute for native keychain or future owner accept
 Affected owner acceptance: D01–D05,D07–D08 (secure save/reload/privacy/unreadable
 status/profile/upgrade), B07/B12 (Providers truth/relaunch), G05 (credential
 continuity); D06 needs an actual unavailable native backend session independently.
-After approval, rerun these against the explicitly selected correction binary;
-old D evidence is not silently transferred. G10 historical beta rollback remains
+The Phase5.1 receipt evaluates these against newly selected integrated I1 bytes;
+neither old D nor520 evidence is silently transferred. G10 historical beta rollback remains
 FAIL; this correction does not modify or backpatch the immutable beta.

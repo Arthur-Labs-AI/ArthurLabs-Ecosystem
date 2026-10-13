@@ -62,6 +62,14 @@ do not rename or delete them for this policy.
 
 ## Unavailable acceptance gates
 
+Phase5.1 rechecked both main/dev protection endpoints on 2026-10-13: HTTP403,
+requiring GitHub Pro or a public repository. No server-enforced protection is
+claimed. PR-only changes, exact-source applicable CI, honest unavailable gates,
+explicit owner approval and owner-only merges remain procedural requirements.
+The [Phase5.1 branch audit](../releases/v1-post-merge-acceptance-c78faa7.md#f-branch-hygiene)
+identifies three fully merged remote task branches eligible for cleanup; remote
+deletion still requires explicit owner approval and a fresh reachability check.
+
 - Ubuntu GitHub Actions or Ubuntu WSL testing does not establish native CachyOS acceptance. A prepared WSL host is not a clean Windows install.
 - When a required host gate cannot run, record `ENVIRONMENT UNAVAILABLE` (native CachyOS, clean Windows VM) or `OWNER ACCEPTANCE REQUIRED` (paid-provider runs) in the PR/validation report instead of implying coverage.
 
