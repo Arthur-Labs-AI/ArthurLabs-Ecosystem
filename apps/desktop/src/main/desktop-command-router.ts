@@ -141,14 +141,20 @@ export function toSafeError(
   error: unknown,
   options: SafeErrorOptions = {},
 ): { code: string; message: string } {
-  if (typeof error === 'object' && error !== null && 'code' in error) {
-    const typed = error as { code?: unknown; message?: unknown };
-    return {
-      code: safeErrorCode(typed.code),
-      message: safeErrorMessage(typed.message, options.redactSecrets),
-    };
+  let code = 'DESKTOP_ERROR';
+  try {
+    // Property reads, `in`, and instanceof can all invoke untrusted getters
+    // or Proxy traps. Guard the whole mapping, retaining a code only after
+    // it has been read and validated successfully.
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+      const typed = error as { code?: unknown; message?: unknown };
+      code = safeErrorCode(typed.code);
+      return { code, message: safeErrorMessage(typed.message, options.redactSecrets) };
+    }
+    return { code, message: safeErrorMessage(error, options.redactSecrets) };
+  } catch {
+    return { code, message: 'Desktop operation failed' };
   }
-  return { code: 'DESKTOP_ERROR', message: safeErrorMessage(error, options.redactSecrets) };
 }
 export function toRouterError(error: unknown): { code: string; message: string } {
   return toSafeError(error);

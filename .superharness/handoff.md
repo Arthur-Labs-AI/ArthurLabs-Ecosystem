@@ -1,3 +1,33 @@
+# Phase 5 finalization — acceptance preparation (2026-10-13)
+
+Implementation93a84c3d27f1079480f8ec90d87ee645e4767611 VERIFIED: WSL full1214/16skip,
+real trust8/8, all24 Linux launcher suites PASS. CI38361256576 all3 PASS;
+distribution38361256555 both PASS. Downloaded CI ZIP4036c333... and TAR e3576b76...
+sidecars/extraction/inventory/version verified (332/333 files); full digests in
+docs/releases/v1-pre-rc-automated-receipt.md. Windows full uncached serial FAIL
+six trust cases plus OpenCode bypass fixture timeout; file rerun FAIL, single
+case PASS1102ms, source unchanged. Obsolete merged remote final-hardening branch
+removed; local checked-out worktree retained. Draft PR14 targets dev; final
+documentation-head checks and artifact identities recorded in PR final receipt.
+Owner physical acceptance and Phase6 authorization remain outstanding.
+
+Task branch fix/v1-pre-rc-acceptance-preparation from approved dev c1d2d58.
+Primary dirty main checkout preserved. shux contract attempted, unavailable.
+Getter/Proxy mapper and faithful Electron event/payload corrections complete;
+related actual fatal-screen synthetic reflection reproduced and scrubbed before cap.
+Focused44 PASS; Desktop serial378 PASS/2skip. Windows default full test FAIL six
+real-mount trust cases; isolated serial same six systemd unavailable (+EBUSY).
+Install/hygiene/lint/typecheck/build/distribution and Windows launcher/maintenance
+fixtures PASS; full uncached Windows serial and exact-commit WSL/CI/artifact
+receipts are reported in the PR final receipt, not inferred here.
+See docs/releases/v1-pre-rc-acceptance-preparation.md and new owner runbook,
+72-row results template and V1_ACCEPTANCE_CHECKLIST.md. Exact committed candidate
+identity, CI and unsigned archive checksums belong to PR receipt/handoff.
+Native CachyOS/clean Windows unavailable; funded calls owner-required (none made).
+Stop at owner review. No self-merge, RC branch, tags, publication or Phase6.
+
+## Prior handoff (preserved)
+
 # Phase 4 credential diagnostic — owner review (2026-10-12)
 
 IMPLEMENTED AND AVAILABLE-HOST VERIFIED; Phase 4 acceptance remains open.

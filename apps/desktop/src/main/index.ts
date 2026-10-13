@@ -5,6 +5,7 @@ import { bootstrapDesktop, type BootstrappedDesktop } from './bootstrap.js';
 import { classifyBootFailure, fatalScreenCopy } from './boot-failure.js';
 import { parseSentryControlArgs } from './sentry-control.js';
 import { dispatchDesktopCommand } from './desktop-command-router.js';
+import { ProviderCredentialService } from './services/provider-credentials.js';
 import { SentryCliServer } from './cli-server.js';
 import { registerDesktopIpc } from './ipc.js';
 import { DesktopLiveUpdates } from './live-updates.js';
@@ -95,7 +96,13 @@ async function boot(): Promise<void> {
     await app.whenReady();
     bootstrapped = await bootstrapDesktop(dataRoot);
   } catch (error) {
-    const classified = classifyBootFailure(error);
+    // Bootstrap hydrates stored credentials into the main-process environment.
+    // Its service may not exist after failure: scrub known environment values
+    // without reading, changing, or migrating any credential store here.
+    const credentials = new ProviderCredentialService({});
+    const classified = classifyBootFailure(error, {
+      redactSecrets: (text) => credentials.redactSecretsFromText(text),
+    });
     const message = classified.message;
     await app.whenReady();
     const copy = fatalScreenCopy(classified.kind);

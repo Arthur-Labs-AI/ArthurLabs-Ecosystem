@@ -7,6 +7,7 @@
  * message matching for legacy unstructured errors — never the reverse.
  */
 import type { ExecutionMode, HostKind } from './runtime/runtime-client.js';
+import { toSafeError, type SafeErrorOptions } from './desktop-command-router.js';
 
 export type FatalScreenKind = 'wsl-runtime-offline' | 'native-runtime-offline' | 'data-store';
 
@@ -16,25 +17,24 @@ export interface BootFailureClassification {
   readonly message: string;
 }
 
-function errorCode(error: unknown): string {
-  if (typeof error === 'object' && error !== null && 'code' in error) {
-    return String((error as { code?: unknown }).code ?? '');
-  }
-  return '';
-}
-
 function errorField(error: unknown, field: 'hostPlatform' | 'executionMode'): string | undefined {
-  if (typeof error === 'object' && error !== null && field in error) {
-    const value = (error as Record<string, unknown>)[field];
-    return typeof value === 'string' ? value : undefined;
+  try {
+    if (typeof error === 'object' && error !== null && field in error) {
+      const value = (error as Record<string, unknown>)[field];
+      return typeof value === 'string' ? value : undefined;
+    }
+  } catch {
+    // Unreadable metadata cannot override the generic failure classification.
   }
   return undefined;
 }
 
 /** Classify a bootstrap failure into the fatal screen it must show. */
-export function classifyBootFailure(error: unknown): BootFailureClassification {
-  const code = errorCode(error);
-  const message = error instanceof Error ? error.message : String(error);
+export function classifyBootFailure(
+  error: unknown,
+  options: SafeErrorOptions = {},
+): BootFailureClassification {
+  const { code, message } = toSafeError(error, options);
   const hostPlatform = errorField(error, 'hostPlatform') as HostKind | undefined;
   const executionMode = errorField(error, 'executionMode') as ExecutionMode | undefined;
   const nativeByStructure = hostPlatform === 'linux' || executionMode === 'native-linux';
@@ -63,9 +63,7 @@ export function classifyBootFailure(error: unknown): BootFailureClassification {
   } else {
     kind = 'data-store';
   }
-  // Fatal-screen text: bounded like every other external error surface.
-  // (Code stays verbatim for classification; renderers never branch on it.)
-  return { kind, code, message: message.slice(0, 1000) };
+  return { kind, code, message };
 }
 
 export interface FatalScreenCopy {

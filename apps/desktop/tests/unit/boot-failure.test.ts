@@ -10,6 +10,20 @@ function offlineError(hostPlatform: string, executionMode: string): Error {
 }
 
 describe('boot failure classification', () => {
+  it('unreadable failure and host metadata cannot break classification', () => {
+    const fail = () => {
+      throw new Error('unreadable');
+    };
+    const failure = new Proxy({}, { has: fail, get: fail });
+    expect(classifyBootFailure(failure)).toEqual({
+      kind: 'data-store',
+      code: 'DESKTOP_ERROR',
+      message: 'Desktop operation failed',
+    });
+    const structured = Object.assign(new Error('runtime failed'), { code: 'RUNTIME_OFFLINE' });
+    Object.defineProperty(structured, 'hostPlatform', { get: fail });
+    expect(classifyBootFailure(structured).kind).toBe('wsl-runtime-offline');
+  });
   it('routes structured native failures to the native copy', () => {
     const classified = classifyBootFailure(offlineError('linux', 'native-linux'));
     expect(classified.kind).toBe('native-runtime-offline');

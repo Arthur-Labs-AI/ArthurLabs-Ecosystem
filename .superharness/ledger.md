@@ -83,3 +83,26 @@ Append-only activity log. Never edit previous entries.
 - 2026-10-12 — Phase4 final hardening, fix/v1-phase-4-release-hardening from verified main8ff4c51/CI38249464643. A/B reproduced7 RED5 guard passes; lifecycle13 GREEN after bounded setsid startup and GNU-timeout control (existing Desktop/runtime never force-signalled). Real encryption acceptance demonstrated explicit-profile and pre-app-ready load blockers: profile1 RED3 guards→4 GREEN, readiness1 RED4 guards→5 GREEN. Final implementationd934e676e2a77c0f96caab053e9b9cff3cefa8f1 built native Windows ZIP SHA2569c4ab207378769a23bd1d3dd352b95980fd752139b199d0bc07ba94bd28c2609 and Linux tar.gz4df58e4621f120258ccd6453ffcef9db7eb9507993bb2896a08d328159c53ac1, extracted/inventory checked. Prepared Windows/WSL disposable first/repeated setup + actual packaged GUI/hello/single-instance/stop + immutable beta history + DPAPI stored/secure reload PASS; no synthetic plaintext in profile/archive/log. Linux40 tasks1,157 PASS16 skips, unchanged real trust8/8 uncached; Windows Desktop321/2 skips; distribution29/1 Linux and7/23 Windows. Static/build and launcher matrices PASS. Windows full concurrent timing tests FAIL unchanged, focused reruns PASS and no tests weakened; prior snapshot flake disclosed. Initial acceptance touched normal profile, only verified test-created synthetic store removed; profile incident and existing CLI credential-status false negative documented. CI38255574234 all3 and distribution38255574069 both PASS at implementationSHA, hosted trust fallback unverified. DraftPR7 pushed/attached; subsequent final documentation-head CI authoritative on PR. Native CachyOS/cleanWindows unavailable, real funded-QA maintenance/physical-host rollback owner acceptance remains. Phase4 not closed, Phase5 not started. Original dirty checkout and identity preserved; shux unavailable, protocol maintained directly. No main push/merge/tag/release/version/provider/runtime/bootstrap/schema/paid changes.
 
 - 2026-10-12 — Final credential diagnostic follow-up from verified main89365b9/CI38275423611, isolated fix/v1-credential-status-diagnostic. Missing secure-storage bridge15 RED2 guard passes; readonly legacy1 RED20 guards and no-focus1 RED5 guards; corrected21 diagnostic and49 focused PASS. Implementation65d2b32f6253f97b8e67a321db708bbdee86dfda preserves prefix/booleans, app-ready secure bridge, strict sanitized unavailable/corrupt/lock refusal, normal boot semantics. Windows Desktop343/2 skips; full uncached serial WSL40 tasks1,179 PASS16 skips with real trust8/8. Default concurrent Windows/WSL full-suite failures disclosed, unchanged focused tests pass, no assertion/deadline weakening. Static/build/distribution and Windows/Linux launcher fixtures PASS. Fresh native archives Windows SHA2561a38d0df60534058f54dd4e4985b603e28c54bc384dc7c97caf7006d9d5c31fa and Linux2669d4027d80d1657694c3dd73684e6d4c8899635e130786413ef3222eb3fa87, inventory/extraction PASS. Real prepared-Windows/WSL first/repeated disposable setup, beta history, same-account DPAPI production status/standalone diagnostic/held-lock refusal/normal reopen PASS; source Electron diagnostic PASS. Fresh explicit profile proved before credential IPC, no owner store or plaintext output. Implementation CI38283276192 all3 and distribution38283276145 both PASS; hosted trust unverified. Draft PR8 created/attached; final documentation-head CI belongs to PR receipts. Native CachyOS/cleanWindows unavailable, active-QA/physical recovery owner acceptance outstanding; Phase4 open. Owner checkout/identity/beta tag preserved; shux unavailable, protocol updated directly. No main push/merge/tag/release/version/paid calls/Phase5.
+
+# 2026-10-13 — Phase 5 finalization and acceptance preparation
+
+Final implementation receipt93a84c3: CI38361256576 all3 PASS, distribution38361256555
+both PASS; exact-source WSL full1214 PASS/16skip, real mounts8/8 PASS, launchers24PASS.
+Both CI archives downloaded/checksummed/extracted/inventory/version verified;
+docs/releases/v1-pre-rc-automated-receipt.md holds exact identities and failures.
+Windows uncached serial38/40 FAIL (six systemd trust and OpenCode timeout);
+OpenCode file solo FAIL, case alone PASS1102ms. No tests weakened. Obsolete merged
+remote final-hardening branch removed; main/dev/beta/owner checkout unchanged.
+PR14 owner review; subsequent docs-head exact checks/artifacts reported in PR receipt.
+
+Task fix/v1-pre-rc-acceptance-preparation based on fetched approved dev c1d2d58;
+PR13 merge CI38358392945 all3 success; remote main4fd2be9 and immutable beta unchanged.
+Owner dirty main checkout preserved in separate worktree. shux unavailable.
+Eight unreadable-error regressions and actual fatal HTML synthetic reflection RED;
+whole-mapper guard, event/payload test fidelity, fatal scrub-before-cap GREEN44.
+Desktop serial378 PASS/2skip; Windows trust6 FAIL independently (systemd unavailable,
+EBUSY cleanup), retained honestly. Static/build/distribution/launcher fixture checks
+PASS; exact-SHA WSL/CI/archives and full serial receipts recorded in final PR receipt.
+Owner runbook/results72/checklist created; physical acceptance remains unexecuted.
+No paid calls, owner credential edits, provider/protocol/schema/distribution changes,
+version/tag/release/self-merge or Phase6 authorization.
