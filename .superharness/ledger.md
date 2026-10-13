@@ -228,3 +228,11 @@ remaining A-F acceptance open. Final-head PR CI/distribution receipts recorded i
 PR body/final report, physical I1 distinct. No self-merge, tag/version/release/main,
 branch deletion, owner credentials/current or Phase6 change. shux unavailable,
 protocol maintained directly; stop for owner review.
+
+PR19 initial head5bd9f2e: CI38447229927 all3 SUCCESS, distribution38447229841
+Linux SUCCESS/Windows FAIL (new backup positive cases hit canonical-path guard).
+Exact logs retained. Trusted-temp-base alias regression reproduced refusal,
+then bounded normalization fixed it while preserving fixture redirect refusal.
+Final backup tests17 Linux PASS,15 Windows PASS/2 symlink skips. Source I1,
+production source/installer and physical recovery evidence unchanged. New final
+head gates must complete; initial failed run remains explicitly retained.

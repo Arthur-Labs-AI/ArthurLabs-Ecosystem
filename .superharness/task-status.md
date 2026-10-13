@@ -14,7 +14,7 @@ Real packaged I1/DPAPI recovery, two full fresh restarts and repeated restore PA
 Actual corrupt/version rejection, real installer controlled postactivation rollback,
 repeat setup, blocked-stage restore, malformed/mixed/incomplete backup refusals,
 unreadable DPAPI entry and real active deterministic QA maintenance refusal PASS.
-New backup tests Windows14PASS/2symlink skips, Linux16/16; real trust8/8.
+New backup tests Windows15PASS/2symlink skips, Linux17/17; real trust8/8.
 Approved-dev baseline static/full WSL1,236PASS/16skips; Desktop400PASS/2skips.
 Final-head checks/CI/distribution identity and conclusions are recorded in PR body
 and final report; selected physical I1 identity remains distinct from PR artifacts.

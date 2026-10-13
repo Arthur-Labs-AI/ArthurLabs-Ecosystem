@@ -51,6 +51,8 @@ mixed generation tokens, symlinks, unsupported schema/version/protocol,
 uncheckpointed WAL, active leases/runs and corrupt SQLite. It never decrypts
 credentials, installs a runtime, restores files or selects arbitrary live data.
 Its explicit marked bundle is private fixture evidence, not an owner backup tool.
+Only the OS-provided temporary base is canonicalized to support trusted Windows
+temp junctions/drive aliases; path redirection inside the fixture stays refused.
 
 ## Restore and activate
 

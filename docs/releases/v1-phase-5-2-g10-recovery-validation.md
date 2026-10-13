@@ -215,8 +215,8 @@ is actually executed. Historical D/W1/C1 rows/counts remain untouched.
 | Approved dev8bbe8ba frozen install, hygiene, format, lint, typecheck, build                 | PASS; phase52-baseline-linux.log                                                                          |
 | Approved dev8bbe8ba uncached serial full WSL                                                | 1,236 PASS/16 skips;40 successful tasks                                                                   |
 | Windows Desktop, fresh isolated TEMP/TMP                                                    | 400 PASS/2 skips; phase52-desktop.log                                                                     |
-| New backup regressions, Windows                                                             | 14 PASS/2 symlink skips; phase52-backup-final-win.log                                                     |
-| New backup regressions, Linux                                                               | 16/16 PASS; phase52-backup-final-linux.log                                                                |
+| New backup regressions, Windows                                                             | 15 PASS/2 symlink skips; phase52-backup-alias-green-win.log                                               |
+| New backup regressions, Linux                                                               | 17/17 PASS; phase52-backup-alias-green-linux.log                                                          |
 | Separate actual systemd trust                                                               | 8/8 PASS; phase52-real-trust.log                                                                          |
 | Existing installation/security/launcher regressions and final-head static/full-suite checks | Exact commands/conclusions in the PR final receipt                                                        |
 | PR CI/distribution                                                                          | Final exact head/proposed-merge identities and completed job conclusions recorded in PR body/final report |
@@ -237,6 +237,16 @@ named **proto** could be omitted by an ordinary object map. Two tests failed
 before correction and pass afterward. Markers/receipts now require regular
 files, and inventory maps preserve special property names. The verifier's
 serialized receipt shape and the sealed physical backup remain compatible.
+
+Initial PR19 head5bd9f2e CI38447229927 passed all3 jobs, but distribution
+38447229841 failed Windows test verification (7 positive-backup cases rejected
+at the canonical-path guard); the Linux archive job passed. A trusted temporary
+base alias reproduced the refusal locally. The guard now canonicalizes the
+trusted temp base before comparing the fixture path; redirects inside fixtures
+remain refused. A new subprocess regression executes a complete backup under
+the alias and independently rejects a fixture redirect. No application/installer
+or physical I1 bytes changed. The corrected final-head check conclusions are
+recorded in the PR, retaining the earlier failure rather than waiving it.
 
 Principal private receipts: phase52-history-final.log, phase52-physical-beta.log,
 phase52-physical-upgrade.log, phase52-physical-restore.log,

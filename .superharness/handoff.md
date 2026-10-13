@@ -9,7 +9,7 @@ data/profile under corrected pair, preserving projects/history/lineage/snapshots
 four actual JSON/log exports, four DPAPI secrets and model prefs through2 fresh
 restarts and repeated restore. Original backup and candidate generations retained.
 New acceptance-only backup checker/seeder/tests are excluded from archive payload.
-Windows14/2, Linux16/16 backup tests; actual trust8/8. Baseline full WSL1,236/16,
+Windows15/2, Linux17/17 backup tests; actual trust8/8. Baseline full WSL1,236/16,
 Desktop400/2; final exact-head CI/distribution receipts live in PR/final report.
 G01-G09 actual/controlled scope and new G10-R Windows PASS; original beta G10
 historical P1 FAIL remains. Recovery policy is proposed, requires separate owner

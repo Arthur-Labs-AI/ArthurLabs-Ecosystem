@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import {
   SentryDatabase,
   SentryRepository,
@@ -146,4 +148,30 @@ test('special object-property filenames are inventoried and tampering is rejecte
   assert.equal(Object.hasOwn(receipt.files.data, '__proto__'), true);
   await writeFile(join(root, 'data/__proto__'), 'changed');
   await assert.rejects(verifyBundle(root, identity));
+});
+test('a trusted temporary-base alias works without allowing fixture redirects', async (t) => {
+  const parent = await mkdtemp(join(tmpdir(), 'sentry-recovery-alias-'));
+  assert.ok(resolve(parent).startsWith(resolve(tmpdir()) + sep + 'sentry-recovery-alias-'));
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  const physical = join(parent, 'physical'),
+    alias = join(parent, 'alias');
+  await mkdir(physical);
+  await symlink(physical, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  const childEnv = { ...process.env, TEMP: alias, TMP: alias, TMPDIR: alias };
+  delete childEnv.NODE_TEST_CONTEXT;
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--test',
+      '--test-name-pattern=sealed stopped backup verifies',
+      fileURLToPath(import.meta.url),
+    ],
+    { env: childEnv, encoding: 'utf8', timeout: 30000 },
+  );
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.ok(result.stdout.includes('sealed stopped backup verifies'));
+  const target = await fixture(t),
+    redirect = join(parent, 'redirect');
+  await symlink(target, redirect, process.platform === 'win32' ? 'junction' : 'dir');
+  await assert.rejects(sealBundle(redirect, identity));
 });

@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { lstat, readFile, readdir, writeFile, mkdtemp, rm, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve, sep } from 'node:path';
+import { join, resolve, sep, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { MIGRATIONS } from '../../../packages/persistence/dist/migrations.js';
 import { parseIdentity } from '../contract.mjs';
@@ -70,16 +70,18 @@ function identityOf(value) {
 }
 export async function inspectBundle(input) {
   const root = resolve(input);
-  const allowedRoots = [resolve(tmpdir()) + sep + 'sentry-recovery-'];
-  if (process.platform === 'linux') allowedRoots.push('/var/tmp/sentry-recovery-');
-  if (!allowedRoots.some((prefix) => root.startsWith(prefix))) fail();
+  const comparison = (value) => (process.platform === 'win32' ? value.toLowerCase() : value);
+  const allowedBases = [resolve(tmpdir())];
+  if (process.platform === 'linux') allowedBases.push('/var/tmp');
+  const base = allowedBases.find((value) =>
+    comparison(root).startsWith(comparison(value + sep + 'sentry-recovery-')),
+  );
+  if (base === undefined) fail();
   const canonicalRoot = await realpath(root);
-  if (
-    process.platform === 'win32'
-      ? canonicalRoot.toLowerCase() !== root.toLowerCase()
-      : canonicalRoot !== root
-  )
-    fail();
+  // Hosted Windows temp bases can be junctions/drive aliases. Normalize only
+  // that trusted base; redirects anywhere inside the fixture still refuse.
+  const expectedRoot = resolve(await realpath(base), relative(base, root));
+  if (comparison(canonicalRoot) !== comparison(expectedRoot)) fail();
   for (const component of ['', 'data', 'profile'])
     if (
       !(await lstat(join(root, component))).isDirectory() ||
