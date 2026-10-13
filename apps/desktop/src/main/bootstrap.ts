@@ -139,9 +139,12 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
     legacyDataRoot: resolveSentryDataRoot(),
   });
   await service.pushRuntimeConfiguration().catch((error: unknown) => {
+    // The push carries secrets by design; a transport failure must not echo
+    // them into the boot log. Scrub with the same boundary redactor.
+    const detail = error instanceof Error ? error.message : String(error);
     recoveryWarnings.push(
       'Runtime configuration push failed: ' +
-        (error instanceof Error ? error.message : String(error)).slice(0, 200),
+        credentials.redactSecretsFromText(detail).slice(0, 200),
     );
   });
   return {

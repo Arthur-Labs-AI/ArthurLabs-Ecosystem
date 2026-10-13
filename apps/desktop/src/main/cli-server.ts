@@ -5,6 +5,7 @@
 // behavior and one backend. Runs are owned by the Linux execution runtime: a dropped
 // client connection never cancels anything.
 import { randomUUID } from 'node:crypto';
+import { toSafeError } from './desktop-command-router.js';
 import { rm } from 'node:fs/promises';
 import { createServer, type Server, type Socket } from 'node:net';
 import {
@@ -41,6 +42,7 @@ export interface CliServerOptions {
   readonly logger?: (message: string) => void;
   readonly onStatusChange?: (status: CliServerStatus) => void;
   readonly limits?: Partial<CliIpcLimits>;
+  readonly redactErrorText?: (text: string) => string;
 }
 
 interface TrackedClient extends CliServerClient {
@@ -60,6 +62,7 @@ export class SentryCliServer {
   private lastError: string | undefined;
   private listening = false;
   private readonly limits: CliIpcLimits;
+  private readonly redactErrorText: ((text: string) => string) | undefined;
 
   constructor(options: CliServerOptions) {
     this.pipePath = options.pipePath ?? cliPipePath();
@@ -68,6 +71,7 @@ export class SentryCliServer {
     this.log = options.logger ?? (() => undefined);
     this.notify = options.onStatusChange;
     this.limits = { ...CLI_IPC_LIMITS, ...options.limits };
+    this.redactErrorText = options.redactErrorText;
   }
 
   get status(): CliServerStatus {
@@ -281,19 +285,15 @@ export class SentryCliServer {
     try {
       result = await this.dispatchFn(message.command, message.payload);
     } catch (error) {
-      const code =
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        typeof (error as { code?: unknown }).code === 'string'
-          ? (error as { code: string }).code
-          : 'DESKTOP_ERROR';
-      const text = error instanceof Error ? error.message : String(error);
+      const mapped = toSafeError(
+        error,
+        this.redactErrorText === undefined ? {} : { redactSecrets: this.redactErrorText },
+      );
       send({
         type: 'response',
         id: message.id,
         ok: false,
-        error: { code, message: text.slice(0, 2000) },
+        error: mapped,
       });
       return;
     }

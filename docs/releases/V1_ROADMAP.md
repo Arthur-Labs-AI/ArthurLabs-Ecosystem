@@ -157,6 +157,10 @@ with owner review and accurate validation under the
   margins); real systemd-mount trust 8/8 on prepared WSL Ubuntu; packaged
   launch/rollback, real-profile credentials, and funded QA remain
   owner-acceptance items. No P0/P1 production defects reproduced.
+- **Follow-up (error redaction):** `fix/v1-error-redaction-hardening` unifies Desktop
+  error mapping (`toSafeError`: validated codes, consistent 1000 cap, exact
+  known-value scrubbing on IPC/CLI/service/boot-warning paths) with a wire-level
+  regression matrix; see `docs/releases/v1-phase-5-error-redaction-correction.md`.
 
 ## Phase 6 — Release candidate
 
