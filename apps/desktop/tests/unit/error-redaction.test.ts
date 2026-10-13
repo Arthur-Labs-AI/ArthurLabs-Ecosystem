@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createConnection, type Socket } from 'node:net';
 import { dispatchDesktopCommand, toRouterError } from '../../src/main/desktop-command-router.js';
 import { ProviderCredentialService } from '../../src/main/services/provider-credentials.js';
@@ -56,6 +56,106 @@ async function safeError(
     options,
   );
 }
+
+vi.mock('electron', () => ({
+  ipcMain: { handle: vi.fn() },
+  shell: { showItemInFolder: vi.fn() },
+}));
+
+type IpcListener = (payload: unknown) => Promise<unknown>;
+
+async function registeredListener(
+  channel: string,
+  service: unknown,
+  hooks: Record<string, unknown> = {},
+): Promise<{ calls: Array<{ channel: string; listener: IpcListener }>; listener: IpcListener }> {
+  const { ipcMain } = (await import('electron')) as unknown as {
+    ipcMain: {
+      handle: {
+        mockImplementation: (fn: (channel: string, listener: never) => void) => void;
+        mockClear: () => void;
+      };
+    };
+  };
+  const { registerDesktopIpc } = await import('../../src/main/ipc.js');
+  ipcMain.handle.mockClear();
+  const calls: Array<{ channel: string; listener: IpcListener }> = [];
+  ipcMain.handle.mockImplementation((channel: string, listener: never) => {
+    calls.push({ channel, listener: listener as unknown as IpcListener });
+  });
+  registerDesktopIpc(service as never, hooks as never);
+  const entry = calls.find((call) => call.channel === channel);
+  if (entry === undefined) throw new Error('handler not registered: ' + channel);
+  return { calls, listener: entry.listener };
+}
+
+describe('registered Electron IPC boundary', () => {
+  it('invokes the registered handler with redaction applied', async () => {
+    const redact = await redactor();
+    const failing = {
+      listProjects: async () => {
+        throw coded('PROVIDER_ERROR', 'upstream 500 with key ' + SECRET);
+      },
+    };
+    const { calls, listener } = await registeredListener('projects:list', failing, {
+      redactErrorText: redact,
+    });
+    expect(calls.length).toBeGreaterThan(0);
+    const response = (await listener({})) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+    expect(response.ok).toBe(false);
+    expect(response.error.code).toBe('PROVIDER_ERROR');
+    expect(JSON.stringify(response)).not.toContain(SECRET);
+  });
+
+  it('a failing redactor still yields a safe IPC response', async () => {
+    const failing = {
+      listProjects: async () => {
+        throw coded('RUN_TIMEOUT', 'stalled with key ' + SECRET);
+      },
+    };
+    const { listener } = await registeredListener('projects:list', failing, {
+      redactErrorText: () => {
+        throw new Error('scrubber down');
+      },
+    });
+    const response = (await listener({})) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+    expect(response.ok).toBe(false);
+    expect(response.error.code).toBe('RUN_TIMEOUT');
+    expect(response.error.message).toBe('Desktop operation failed');
+    expect(JSON.stringify(response)).not.toContain(SECRET);
+  });
+
+  it('successful IPC responses pass through untouched', async () => {
+    const okService = {
+      listProjects: async () => [{ id: 'proj_1', name: 'demo' }],
+    };
+    const { listener } = await registeredListener('projects:list', okService, {});
+    const response = await listener({});
+    expect(response).toEqual({ ok: true, result: [{ id: 'proj_1', name: 'demo' }] });
+  });
+
+  it('unwired handler still bounds and validates codes', async () => {
+    const failing = {
+      listProjects: async () => {
+        throw coded('bad code!!', 'x'.repeat(5000));
+      },
+    };
+    const { listener } = await registeredListener('projects:list', failing, {});
+    const response = (await listener({})) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+    expect(response.ok).toBe(false);
+    expect(response.error.code).toBe('DESKTOP_ERROR');
+    expect(response.error.message.length).toBeLessThanOrEqual(1000);
+  });
+});
 
 function coded(code: unknown, message: unknown) {
   return Object.assign(new Error('carrier'), { code, message } as never) as Error & {
@@ -249,5 +349,85 @@ describe('Desktop error redaction boundary', () => {
     const payload = JSON.stringify(credentials.statuses());
     expect(payload).not.toContain(SECRET);
     delete process.env['DEEPSEEK_API_KEY'];
+  });
+});
+
+describe('Desktop error redaction fail-closed hardening', () => {
+  it('a throwing redactor yields a fixed safe message without the secret', async () => {
+    const throwing = () => {
+      throw new Error('scrubber down');
+    };
+    const mapped = await safeError(coded('RUN_TIMEOUT', 'timed out with key ' + SECRET), {
+      redactSecrets: throwing,
+    });
+    expect(mapped.code).toBe('RUN_TIMEOUT');
+    expect(mapped.message).toBe('Desktop operation failed');
+    expect(JSON.stringify(mapped)).not.toContain(SECRET);
+  });
+
+  it('a redactor returning an invalid value yields a fixed safe message', async () => {
+    for (const bad of [undefined, 42, { redacted: true }]) {
+      const mapped = await safeError(coded('RUN_TIMEOUT', 'timed out with key ' + SECRET), {
+        redactSecrets: (() => bad) as never,
+      });
+      expect(mapped.code).toBe('RUN_TIMEOUT');
+      expect(mapped.message).toBe('Desktop operation failed');
+      expect(JSON.stringify(mapped)).not.toContain(SECRET);
+    }
+  });
+
+  it('service sanitizes async rejections exactly like sync throws', async () => {
+    const { DesktopApplicationService } =
+      await import('../../src/main/services/desktop-service.js');
+    const codedRejection = () => coded('PROVIDER_ERROR', 'upstream 500 with key ' + SECRET);
+    const failingRuntime = {
+      request: async () => {
+        throw codedRejection();
+      },
+    };
+    const throwingRuntime = {
+      request: () => {
+        throw codedRejection();
+      },
+    };
+    const dir = await mkdtemp(join(tmpdir(), 'sentry-redact-'));
+    roots.push(dir);
+    const credentials = new ProviderCredentialService({
+      userDataDir: dir,
+      safeStorage: fakeSafeStorage(),
+    });
+    await credentials.load();
+    await credentials.saveKey('DEEPSEEK_API_KEY', SECRET);
+    const forAsync = new DesktopApplicationService({
+      runtime: failingRuntime,
+      host: {},
+      agentStacks: [],
+      credentials,
+    } as never);
+    await expect(forAsync.listProjects()).rejects.toMatchObject({ code: 'PROVIDER_ERROR' });
+    try {
+      await forAsync.listProjects();
+      expect.unreachable();
+    } catch (error) {
+      // Error objects stringify to '{}': assert on the carried message.
+      expect(error).toMatchObject({ code: 'PROVIDER_ERROR' });
+      const text = error instanceof Error ? error.message : JSON.stringify(error);
+      expect(text).not.toContain(SECRET);
+    }
+    const forSync = new DesktopApplicationService({
+      runtime: throwingRuntime,
+      host: {},
+      agentStacks: [],
+      credentials,
+    } as never);
+    let syncError: unknown;
+    try {
+      await forSync.listProjects();
+      expect.unreachable();
+    } catch (error) {
+      syncError = error;
+    }
+    expect(syncError).toMatchObject({ code: 'PROVIDER_ERROR' });
+    expect(JSON.stringify(syncError)).not.toContain(SECRET);
   });
 });

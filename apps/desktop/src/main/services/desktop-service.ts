@@ -53,11 +53,20 @@ export class DesktopApplicationService {
   constructor(private readonly deps: DesktopServiceDeps) {}
 
   private call(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
+    const redact = (text: string): string => this.redactSecretsFromText(text);
+    const toMappedError = (error: unknown): Error => {
+      const sanitized = sanitizeError(error, redact);
+      return toError(sanitized.code, sanitized.message);
+    };
     try {
-      return this.deps.runtime.request(method, params);
+      const pending = this.deps.runtime.request(method, params);
+      // Async rejections sanitize through the same boundary as sync throws;
+      // success values pass through untouched, failures map identically.
+      return pending.catch((error: unknown) => {
+        throw toMappedError(error);
+      });
     } catch (error) {
-      const sanitized = sanitizeError(error, (text) => this.redactSecretsFromText(text));
-      throw toError(sanitized.code, sanitized.message);
+      throw toMappedError(error);
     }
   }
 
@@ -66,11 +75,10 @@ export class DesktopApplicationService {
    * exact known secret-lane values; see ProviderCredentialService.
    */
   redactSecretsFromText(text: string): string {
-    try {
-      return this.deps.credentials.redactSecretsFromText(text);
-    } catch {
-      return text;
-    }
+    // Intentionally no catch here: a failing scrubber must propagate to
+    // the shared fail-closed mapping (toSafeError), never silently keep
+    // the original text.
+    return this.deps.credentials.redactSecretsFromText(text);
   }
 
   get dataRoot(): string {

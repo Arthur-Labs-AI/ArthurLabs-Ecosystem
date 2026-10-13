@@ -102,16 +102,50 @@ desktop service) run unmodified.
   error-surface group (redaction, IPC contract/dispatch, CLI server/broker,
   boot-failure, desktop service, credential diagnostics, secure credentials,
   secret surface) 82/82.
-- Full `pnpm test` / `build` / `distribution:test`: reported in the delivery
-  message (required CI adjudicates concurrently-loaded flakes per the Phase 5
-  characterization: environmental trust on Windows, rare contention
-  intermittents, all solo-green).
-- Exact-candidate real sandbox (prepared WSL2 Ubuntu, node v22.23.2, systemd
-  user manager running): 8/8 real transient-unit trust tests PASS against
-  WSL clone at `3c31559` (this branch's docs commit; sandbox surface
-  untouched by this task — verifier/desktop-runtime code identical to the
-  audited baseline; later commits docs-only). Clone status clean.
+- Full `pnpm test` (concurrent, Windows, this worktree): green except one
+  rare flake (`opencode-path-sandbox` PATH-probe, real-process spawn under
+  load; untouched code; solo-green pattern) plus the established run-engine
+  set (6 environmental trust failures, no systemd on Windows; solo receipt
+  6 failed / 80 passed with zero non-environmental failures).
+- `pnpm build`: PASS (20/20). `pnpm distribution:test`: PASS (exit 0;
+  7 pass, 23 platform-skipped).
+- Desktop package serialized (single-thread): exit 0.
 - PR-head CI + distribution workflows: reported in the delivery message.
+- Exact-candidate real sandbox (prepared WSL2 Ubuntu, node v22.23.2, systemd
+  user manager running): 8/8 real transient-unit trust tests PASS against a
+  WSL clone at this branch HEAD `7d796ed` (rebuilt there; sandbox surface
+  untouched by this task). Clone status clean.
+- PR-head CI + distribution workflows: reported in the delivery message.
+
+## Follow-up hardening (fail-closed redaction, async sanitization, IPC boundary)
+
+A later review found three residual gaps in the merged correction; all are
+fixed on branch `fix/v1-error-boundary-final-hardening` (this document extended
+rather than rewritten).
+
+1. **Fail-closed redaction.** `safeErrorMessage` kept the original text when
+   the scrubber threw, and crashed (`slice` of `undefined`) when it returned
+   a non-string. Both reproduced with the synthetic secret (secret retained;
+   mapping threw). Now a throwing/misbehaving scrubber yields the fixed
+   message `Desktop operation failed` with the validated code preserved;
+   mapping itself never throws. The same fail-closed shape was applied to
+   the service redactor passthrough (now propagates into the shared core),
+   the index hook (no swallowing catch), and the bootstrap push-warning
+   catch (fixed fallback).
+2. **Async sanitization.** Service `call()` only caught synchronous throws;
+   async RPC rejections bypassed it (reproduced: secret-bearing rejection
+   reached the caller raw). Now both paths map through the identical
+   sanitizer; successes pass through untouched (same promise chain shape,
+   no retries, no lifecycle change).
+3. **Registered IPC boundary.** The matrix tested dispatch-then-map manually;
+   new tests capture the real `ipcMain` handler via `registerDesktopIpc()`
+   with a mocked Electron bridge: failing service + secret, failing
+   redactor, success passthrough, and unwired-handler bounds are all
+   asserted on the actual response objects.
+
+Regression: `error-redaction.test.ts` now 19 tests (4 pre-existing pins + 15
+new/strengthened), all green; full desktop suite 48 files green with no
+modified unrelated assertions.
 
 ## Outstanding host acceptance
 

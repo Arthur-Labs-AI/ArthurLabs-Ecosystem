@@ -168,13 +168,9 @@ async function boot(): Promise<void> {
     liveUpdates?.stop();
   });
   const desktopService = bootstrapped.service;
-  const redactErrorText = (text: string): string => {
-    try {
-      return desktopService.redactSecretsFromText(text);
-    } catch {
-      return text;
-    }
-  };
+  // No catch here by design: a throwing scrubber must propagate into the
+  // shared fail-closed mapping (fixed safe message), never keep raw text.
+  const redactErrorText = (text: string): string => desktopService.redactSecretsFromText(text);
   cliServer = new SentryCliServer({
     redactErrorText,
     dispatch: (command, payload) =>
