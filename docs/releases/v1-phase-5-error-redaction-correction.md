@@ -102,15 +102,19 @@ desktop service) run unmodified.
   error-surface group (redaction, IPC contract/dispatch, CLI server/broker,
   boot-failure, desktop service, credential diagnostics, secure credentials,
   secret surface) 82/82.
-- Full `pnpm test` / `build` / `distribution:test`: reported in the delivery
-  message (required CI adjudicates concurrently-loaded flakes per the Phase 5
-  characterization: environmental trust on Windows, rare contention
-  intermittents, all solo-green).
+- Full `pnpm test` (concurrent, Windows, this worktree): green except one
+  rare flake (`opencode-path-sandbox` PATH-probe, real-process spawn under
+  load; untouched code; solo-green pattern) plus the established run-engine
+  set (6 environmental trust failures, no systemd on Windows; solo receipt
+  6 failed / 80 passed with zero non-environmental failures).
+- `pnpm build`: PASS (20/20). `pnpm distribution:test`: PASS (exit 0;
+  7 pass, 23 platform-skipped).
+- Desktop package serialized (single-thread): exit 0.
+- PR-head CI + distribution workflows: reported in the delivery message.
 - Exact-candidate real sandbox (prepared WSL2 Ubuntu, node v22.23.2, systemd
-  user manager running): 8/8 real transient-unit trust tests PASS against
-  WSL clone at `3c31559` (this branch's docs commit; sandbox surface
-  untouched by this task — verifier/desktop-runtime code identical to the
-  audited baseline; later commits docs-only). Clone status clean.
+  user manager running): 8/8 real transient-unit trust tests PASS against a
+  WSL clone at this branch HEAD `7d796ed` (rebuilt there; sandbox surface
+  untouched by this task). Clone status clean.
 - PR-head CI + distribution workflows: reported in the delivery message.
 
 ## Follow-up hardening (fail-closed redaction, async sanitization, IPC boundary)
