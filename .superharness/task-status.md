@@ -1,3 +1,30 @@
+# Phase5.2 G10-R recovery — 2026-10-13
+
+Verified owner-merged PR18/dev8bbe8bab34d704eb3f021fbb3203d1bd1d983f8d and
+postmergeCI38439418803 all3 required jobs SUCCESS. Isolated new task branch
+fix/v1-g10-recovery-acceptance; owner's dirty primary checkout preserved.
+Selected exact I1 c78faa74717b0f430a859730e98c3c4915e7b03f Windows archive
+ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e reverified;
+new dev executable source and beta/I1 migrations identical. No production edits.
+Acceptance-only seeder/verifier/regressions, recovery contract and native handoff
+implemented. Populated beta fixture2 projects/4 revisions/2 QA/6 agents/6 findings/
+6 evidence/1 issue/1 retest/2 snapshots/4 real JSON+log exports; complete canonical
+fingerprints,22 immutable material files and credential/prefs hashes retained.
+Real packaged I1/DPAPI recovery, two full fresh restarts and repeated restore PASS.
+Actual corrupt/version rejection, real installer controlled postactivation rollback,
+repeat setup, blocked-stage restore, malformed/mixed/incomplete backup refusals,
+unreadable DPAPI entry and real active deterministic QA maintenance refusal PASS.
+New backup tests Windows15PASS/2symlink skips, Linux17/17; real trust8/8.
+Approved-dev baseline static/full WSL1,236PASS/16skips; Desktop400PASS/2skips.
+Final-head checks/CI/distribution identity and conclusions are recorded in PR body
+and final report; selected physical I1 identity remains distinct from PR artifacts.
+Windows G01-G09 pass in reported actual/controlled scope. Original G10 historical
+P1 FAIL remains; G10-R is a validated proposed recovery candidate pending owner
+adoption. Native/clean Windows/actual unavailable-backend and owner paid/profile
+acceptance remain open. No owner keys/current pointer, beta tag/release or main
+changed; no branch deletion, paid calls, self-merge or Phase6 authorization.
+shux contract unavailable; status/ledger/handoff maintained directly. Stop for review.
+
 # Phase5.1 integrated baseline — 2026-10-13
 
 Selected I1 c78faa74717b0f430a859730e98c3c4915e7b03f, tree8bbaab4a5d1f7830dcf4ed7b4c40362c62f8d71d.

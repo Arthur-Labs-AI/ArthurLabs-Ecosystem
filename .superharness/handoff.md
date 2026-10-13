@@ -1,3 +1,24 @@
+# Phase5.2 review handoff — 2026-10-13
+
+See docs/releases/v1-phase-5-2-g10-recovery-validation.md and recovery contract/
+CachyOS executable handoff. Selected physical recovery target remains exact I1
+c78faa7, native Windows archiveec5edec8... verified before new populated campaign.
+PR18 owner-merged8bbe8ba/postmergeCI38439418803 SUCCESS; no executable difference
+from I1 and no new production edits. Recovery restores stopped matching beta
+data/profile under corrected pair, preserving projects/history/lineage/snapshots,
+four actual JSON/log exports, four DPAPI secrets and model prefs through2 fresh
+restarts and repeated restore. Original backup and candidate generations retained.
+New acceptance-only backup checker/seeder/tests are excluded from archive payload.
+Windows15/2, Linux17/17 backup tests; actual trust8/8. Baseline full WSL1,236/16,
+Desktop400/2; final exact-head CI/distribution receipts live in PR/final report.
+G01-G09 actual/controlled scope and new G10-R Windows PASS; original beta G10
+historical P1 FAIL remains. Recovery policy is proposed, requires separate owner
+adoption; native recovery/keychain, clean install, actual unavailable backend,
+funded matrix/active-provider and real-profile acceptance remain unexecuted/open.
+Do not self-merge, adopt policy, operate on owner data/current, delete branches,
+modify beta/version/tag/release or start Phase6. Owner dirty tree/identity preserved.
+shux unavailable; protocol maintained directly. Stop for owner PR review.
+
 # Phase5.1 review handoff — 2026-10-13
 
 Current selected integrated candidate I1 c78faa74717b0f430a859730e98c3c4915e7b03f.

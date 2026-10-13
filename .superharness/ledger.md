@@ -194,3 +194,45 @@ explicit owner approval only. Protection API main/dev403; procedural gates.
 Task ledger/status/handoff maintained directly because shux contract unavailable.
 Focused evidence PR to dev, final checks recorded in PR/final report; owner review
 and remaining physical/provider acceptance required. Phase6 NOT AUTHORIZED.
+
+# Phase5.2 G10-R populated recovery campaign — 2026-10-13
+
+Fresh remote dev8bbe8ba verified PR18 owner merge/postmergeCI38439418803 SUCCESS;
+main/beta unchanged, owner dirty checkout preserved, new isolated fix/v1-g10-recovery-acceptance.
+I1 exact retained archives rehashed/inventory verified; executable dev source and
+beta/I1 migration definitions identical. No application/installer/schema/protocol/
+provider/model edits. New test-only historical seeder, marked stopped-bundle
+verifier and16 regressions; symlink/special-property inventory defects reproduced
+RED then corrected. Read-only WAL inspection uses private scratch to preserve input.
+Populated immutable-beta fixture through real CLI simulation/project/export/issue
+APIs plus valid schema/API legacy retest row:2 projects4 revisions2 runs6 agents,
+6 findings6 evidence1 issue1 retest2 snapshots4 actual JSON/log exports. Real beta
+Desktop saved4 synthetic DPAPI credentials/model preference, fully stopped backup
+sealed with matching profile. Real packaged I1 upgrade/recovery/two fresh restarts/
+repeated restore all pass full canonical/22-file immutable/export/profile equality.
+Existing real bootstrap in disposable HOME, controlled postactivation failure
+restored previous current; repeat setup unique/retained old target; corrupt archive
+and runtimeversion mismatch refused. Missing/incomplete/corrupt/mixed/schema backup,
+failed staging copy/existing-destination and real unreadable-DPAPI-profile paths
+preserve original backup/current. Actual running Desktop/runtime refusals and
+real coordinator active deterministic QA maintenance refusal/cancellation PASS,
+no paid calls. Preliminary cancellation harness mistakes retained, fixed using
+durable request API without lease-release race; no reproduced product defect.
+Backup tests Windows14/2skips Linux16/16; Desktop400/2; baseline static/full WSL
+1,236/16 with40 tasks; separate actual sandbox trust8/8. Native handoff5 Bash
+blocks syntax-checked only, native execution ENVIRONMENT UNAVAILABLE.
+Recovery contract/report/relevant release docs reconciled; historical G10/W1/C1
+untouched. Windows G10-R validated proposed candidate pending owner policy adoption;
+original G10 historical P1 FAIL remains. Native/clean/D06/real profile/funded and
+remaining A-F acceptance open. Final-head PR CI/distribution receipts recorded in
+PR body/final report, physical I1 distinct. No self-merge, tag/version/release/main,
+branch deletion, owner credentials/current or Phase6 change. shux unavailable,
+protocol maintained directly; stop for owner review.
+
+PR19 initial head5bd9f2e: CI38447229927 all3 SUCCESS, distribution38447229841
+Linux SUCCESS/Windows FAIL (new backup positive cases hit canonical-path guard).
+Exact logs retained. Trusted-temp-base alias regression reproduced refusal,
+then bounded normalization fixed it while preserving fixture redirect refusal.
+Final backup tests17 Linux PASS,15 Windows PASS/2 symlink skips. Source I1,
+production source/installer and physical recovery evidence unchanged. New final
+head gates must complete; initial failed run remains explicitly retained.

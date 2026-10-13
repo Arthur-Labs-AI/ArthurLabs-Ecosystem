@@ -1,5 +1,10 @@
 # Phase 5.1 integrated acceptance baseline — 2026-10-13
 
+Historical Phase5.1 receipt. PR18 is owner-merged at `8bbe8ba` with successful
+post-merge CI38439418803. [Phase5.2](v1-phase-5-2-g10-recovery-validation.md)
+adds newly executed populated beta recovery/export evidence against these exact
+I1 binaries; it does not rewrite the earlier scoped D08/G05 observations below.
+
 **Technical baseline verified; release acceptance remains incomplete. Phase 6
 NOT AUTHORIZED.** This receipt selects integrated source I1 for this bounded
 campaign. It neither relabels the historical D/520 binaries nor changes the
