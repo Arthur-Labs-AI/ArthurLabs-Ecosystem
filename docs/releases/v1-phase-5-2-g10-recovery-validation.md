@@ -1,5 +1,11 @@
 # Phase5.2 — G10-R corrected-binary recovery validation
 
+Integration follow-up: PR19 owner-merged at
+`5c68491ccd0f00e34917bb3efdb4926c2fcfd280`; post-mergeCI38451742628 SUCCESS
+in all3 required jobs. [Phase5.3](v1-phase-5-3-final-host-acceptance.md) carries
+the current acceptance lock/matrix and explicit owner policy decision. This
+historical receipt's physical source/bytes/results remain unchanged.
+
 **Windows G10-R PASS: validated proposed recovery candidate pending owner
 adoption. Original-beta G10 remains historical P1 FAIL. Phase6 NOT AUTHORIZED.**
 No production correction was necessary. This bounded task adds acceptance-only

@@ -1,5 +1,9 @@
 # Native CachyOS G10-R operator handoff
 
+For the complete current operator order and partial-results template, start
+with the [Phase5.3 native package](v1-phase-5-3-cachyos-operator.md). These
+five recovery command blocks remain the focused subordinate procedure.
+
 **NOT EXECUTED here — ENVIRONMENT UNAVAILABLE.** Use a real CachyOS x64
 graphical session and unlocked supported OS keychain, same non-root account
 throughout. No Ubuntu/WSL substitution. This is a synthetic disposable campaign;

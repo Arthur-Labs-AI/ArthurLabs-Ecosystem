@@ -1,0 +1,344 @@
+# Phase 5.3 — final host acceptance preparation
+
+**Phase6 is NOT AUTHORIZED and is not yet recommendable.** Agent-controlled
+preparation and available checks are complete; owner review, policy adoption
+and missing physical/funded evidence remain. No production change was needed.
+Original-beta G10 remains historical P1 FAIL; Windows G10-R is a validated
+proposed recovery procedure pending explicit adoption.
+
+## Verified baseline and integration
+
+Fetched origin with prune, inspected status/branches/worktrees/history/tags,
+open PRs, release metadata, CI/jobs and artifact availability. At task baseline:
+
+| Reference                                                                                   | Full identity / actual result                                                                               |
+| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| origin/main                                                                                 | `4fd2be9fa3b17370841dbb1d2f0422a2150c62d8`                                                                  |
+| origin/dev                                                                                  | `5c68491ccd0f00e34917bb3efdb4926c2fcfd280`                                                                  |
+| dev tree                                                                                    | `151e19156b9b69be8cb55c89209cf9717e5c5aac`                                                                  |
+| PR19                                                                                        | Owner-merged2026-10-13T19:03:05Z, actual merge5c68491; head9170f06 reachable from dev                       |
+| Open PRs at baseline                                                                        | None                                                                                                        |
+| [Post-merge38451742628](https://github.com/Mert1026/Sentry/actions/runs/38451742628)        | SUCCESS: quality; launcher(windows,noWSL); launcher(linux,noCachyOS)                                        |
+| [PR19 final CI38449586520](https://github.com/Mert1026/Sentry/actions/runs/38449586520)     | SUCCESS, all3; head9170f06, proposed mergeaf6207e8b17938d74892cd8d378d18d83ca2ca54 (not actual owner merge) |
+| [PR19 distribution38449586425](https://github.com/Mert1026/Sentry/actions/runs/38449586425) | SUCCESS, both archive jobs; head9170f06                                                                     |
+
+Hosted quality used its explicit sandbox-trust-unverified fallback, not a passing
+physical mount test. Post-merge job logs confirm that distinction. The actual
+WSL trust run below passed separately. PR19 final artifacts11840301151 and
+11838954122 are available until2026-10-20; their head9170f06 checksums remain
+in the Phase5.2 final PR receipt. They are not the selected physical I1 bytes.
+
+The [candidate lock](v1-phase-5-3-candidate-lock.md) records full source/tree,
+versions/protocol, both exact retained archive and manifest hashes, build hosts,
+retention and applicable physical evidence. Direct file/tree comparisons confirm
+I1→8bbe8ba→5c68491 changes only documentation/protocol records and excluded
+acceptance utilities. PR19 head and actual merge have equal trees. No executable,
+dependency lock, provider/model, orchestration, migration or protocol change.
+
+Primary owner checkout stayed at its existing dirty local main. No owner changes
+were reset, cleaned, stashed, overwritten or committed. The existing isolated
+task worktree was clean before creating `test/v1-final-host-acceptance` from dev.
+`shux contract` was attempted but unavailable; protocol files updated directly.
+
+## Decisions and independently executable handoffs
+
+- [Recovery decision](v1-recovery-policy-decision.md): recommend A, exact I1
+  corrected-binary restore for tested Windows scope. Selection/approval fields
+  remain OWNER ACCEPTANCE REQUIRED; original executable downgrade unsupported.
+- [Native operator workflow](v1-phase-5-3-cachyos-operator.md) and
+  [partial evidence template](v1-phase-5-3-cachyos-results.md): exact private
+  archive, prerequisites, isolated account/HOME/profile/runtime, actual GUI,
+  sandbox/keychain, zero-cost regressions, upgrade/recovery/export comparison,
+  refusals and sanitized return. Reuses the existing G10-R handoff/contract.
+- [Owner credential observation](v1-phase-5-3-owner-credential-observation.md):
+  explicit approval, confirmed corrected executable/same profile, presence-only
+  statuses/preferences, graceful shutdown and two restarts. Not executed here.
+- [Funded14-case plan and offline audit](v1-phase-5-3-funded-qa.md): each selection
+  in both modes per host, attribution/budget/stop rules, partial evidence,
+  history/exports/usage criteria. No paid calls or automatic retries.
+
+## Newly executed Windows/WSL observations
+
+W4 first reverified exact archive/manifest identity and all332 Windows inventory
+entries. A copied archive with one changed byte failed the trusted checksum;
+extraction was not attempted. In a separate full extraction copy, the real
+Windows archive launcher `version` refused a changed listed file, an unexpected
+file and mismatched root identity, each nonzero. The restored copy and immutable
+original verified again. Receipt: private `phase53-integrity-win.log`.
+
+Actual I1 bootstrap with isolated fixture PATH/HOME refused missing Node and
+pnpm, then each missing systemctl/systemd-run/bwrap/socat with actionable guidance
+and no runtime/current activation. Direct WSL Node22.23.2/pnpm9.12.3 and actual
+systemd/bwrap capabilities were verified after restoring the normal command
+context. Receipts: `phase53-prerequisites.log`,
+`phase53-sandbox-prerequisites.log`. B04/B05 pass this controlled prepared-host
+prerequisite scope; no clean VM, global package change or full Windows setup credit.
+
+W4 used exact I1 Windows archive
+`ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e`,
+an explicitly proved fresh disposable Electron profile and fresh Linux data,
+actual packaged production entry/preload/IPC/renderer and I1 runtime. Inherited
+provider configuration was removed; one synthetic environment-only value was
+injected for the first launch. No Save/Clear/Forget or provider execution occurred.
+
+Actual service status was configured/environment/environment; Providers rendered
+**From environment**, with no Stored securely badge or plaintext status. No
+encrypted credential file was created. A normal stop and fresh launch of the
+same profile without the value yielded missing/Not set and a connected runtime.
+The imported project's managed revision hash stayed stable after source mutation,
+project doctor passed, History rendered and renderer Node access stayed disabled.
+Second launch handed off to the existing instance; normal control shutdown exited0.
+
+With no active work, a bounded process lookup matched exactly the test runtime's
+entry and data-root arguments before SIGTERM. Status and Environment became
+**Runtime offline**. Manual full relaunch recovered the same profile/history and
+matching handshake. This passes F04's observed idle/manual-relaunch scope, not
+active-provider recovery or an automatic reconnect claim. B07/B09/B11/B12 also
+have new prepared-host evidence; full clean-install B gate remains unavailable.
+
+Receipt: private `phase53-physical-presence-disconnect-corrected.log`. Initial
+probe expected the nonexistent word “disconnected”; the product actually displays
+“Runtime offline.” That harness timeout is retained in the original log; the
+corrected assertion passed without product/assertion weakening. No new product
+defect was reproduced. Prior G10-R/DPAPI tests were not repeated merely for counts.
+
+## Executed automated and package checks
+
+The first exact-head WSL run at585db305c252d89591ad992ec67d1270265000ad
+failed one existing multi-agent cancellation test: expected completed, observed
+cancelled. Its setup waited only for the two blocking adapters to start, not for
+the fast agent's durable completion. A promise barrier and a before-cancellation
+state assertion deterministically reproduced the invalid precondition (`running`
+instead of `completed`). The initial barrier-only probe passed because the
+production cancellation poll allowed the released adapter to finish; that probe
+is retained separately and is not called a failing regression.
+
+The minimum correction is confined to `packages/run-engine/tests/closure.test.ts`:
+retain the controlled completion barrier, await the completed persisted AgentRun,
+assert that state before cancellation and preserve every original terminal,
+finding, control-request and managed-copy assertion. No sleeps, weakened
+expectations, runtime/orchestration changes or backup-verifier edits. Controlled
+RED exit1, then the full closure file7/7 PASS; original full-suite failure remains
+in `phase53-final-head-linux.log`, with RED/GREEN receipts
+`phase53-closure-precondition-red.log`/`phase53-closure-green.log`. Final full-suite
+and exact CI/distribution outcomes belong to the correction head's PR receipt.
+
+| Check / exact scope                                                                          | Result / private receipt                                                                                                                         |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Integrated dev5c68491 WSL frozen install, repository hygiene, format, lint, typecheck, build | PASS;20 lint/37 typecheck/20 build tasks; phase53-baseline-linux.log                                                                             |
+| dev5c WSL uncached serial full suite, live flags/keys cleared                                | 1,236 PASS/16 skips,40 successful tasks; Desktop401/1, runtime73/0 included                                                                      |
+| dev5c WSL distribution/backup/launcher-security regressions                                  | 46 PASS/1 Windows-only skip out of47; backup17/17 included                                                                                       |
+| dev5c separate actual systemd/bwrap trust                                                    | 8/8 PASS; not added again to unique full-suite count                                                                                             |
+| Windows frozen install and Desktop, fresh TEMP/TMP, cleared live flags/keys                  | 400 PASS/2 skips,51 files; phase53-install-win.log/phase53-desktop-win.log                                                                       |
+| Windows distribution including recovery verifier                                             | 22 PASS/25 platform skips out of47; phase53-distribution-win.log                                                                                 |
+| Exact-I1 Windows integrity and WSL prerequisite negatives                                    | A01–A06 and B04/B05 controlled scope PASS; receipts above                                                                                        |
+| New native workflow + existing recovery + funded command Bash blocks                         | 14 syntax checks PASS; native execution UNVERIFIED                                                                                               |
+| Pinned Electron backend diagnostic                                                           | Syntax +5 controlled backend/roundtrip cases PASS; actual native crypto UNVERIFIED                                                               |
+| Documented offline export audit                                                              | Supplied owner export609 schema records PASS; wrong mode, wrong selected agents and wrong finding attribution each refuse nonzero;4 checks total |
+| Final documentation format/hygiene, diff and PR exact-head/proposed-merge CI/distribution    | Final commands, full SHAs and actual job conclusions recorded in the PR final receipt                                                            |
+
+Baseline commands: `pnpm install --frozen-lockfile`, `pnpm repository:check`,
+`pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm build`,
+`pnpm exec turbo run test --force --concurrency=1 -- --maxWorkers=1 --minWorkers=1`,
+`pnpm distribution:test`; separate run-engine verification-trust.test.ts serial.
+Native syntax and offline audit are technical package checks, not host/E passes.
+No acceptance-tool/product code was changed; the existing backup verifier remains
+unchanged. The documented audit has positive and three controlled negative checks.
+
+## Security, compatibility and evidence review
+
+Changes are release documentation and one regression-backed test synchronization
+correction, excluded from runtime distribution sources. Commands were reviewed for default
+profile/current access, secrets, destructive/unbounded operations, symlinks,
+schema assumptions and false-pass behavior. Native execution requires a disposable
+OS account and HOME; inherited DBus/keychain retained, provider secrets cleared,
+trusted archive checks before extraction, all mutable roots freshly created.
+Existing verifier guards bound the G10-R fixture; it verifies the full staged
+pair before any move and refuses redirected/mixed/incomplete/unknown schema
+material. No new deletion command, plaintext fallback or production data writer.
+Owner procedure is approval-gated, with identity uncertainty stopping observation.
+No raw credentials/ciphertext/DBs/project source/profiles/private machine logs or
+identifying paths/screenshots were added. Offline audit prints counts/hash only.
+
+Historical schema/migrations, models, all three harnesses, SDK pins and protocol
+remain byte-identical to I1. Existing security/credential/runtime/distribution
+regressions passed. There is no newly reproduced unresolved P0/P1 production
+defect hidden here. Historical beta's P1 G10 is still an explicit failed gate;
+policy adoption and native proof are not replaced by Windows success.
+
+## Branch cleanup recommendation
+
+All five remote tips below are ancestors of dev5c68491 with **zero unique
+commits**. Associated PRs are owner-merged; no active worktree uses any of these
+branch names after creating this task branch. A search of `.github/` and
+`scripts/` found no workflow/script dependency on their names. Commits/PRs remain
+reachable through dev and historical receipts. Eligible for owner-approved
+cleanup after a fresh reachability/worktree check; **nothing deleted**.
+
+| Remote branch                          | Exact tip                                  | Merged PR |
+| -------------------------------------- | ------------------------------------------ | --------- |
+| fix/v1-pre-rc-acceptance-preparation   | `42c484874e74e9544bdd1c035e5bfd02b0e27237` | 14        |
+| fix/v1-provider-credential-persistence | `8ab68f9010e0a6bdc1c78aa0d4699cf96c2dc8ec` | 17        |
+| test/v1-owner-acceptance-evidence      | `de4f40b8e2f1c36d53685a4168694aff210b05f4` | 15/16     |
+| fix/v1-post-merge-acceptance           | `255af881c6f32a87bf0aeca094172dc1a06fe1b6` | 18        |
+| fix/v1-g10-recovery-acceptance         | `9170f06c3f6adf039ac2f677b0be2071960750a6` | 19        |
+
+Existing protection limitation remains procedural: prior main/dev API403 cannot
+be called server enforcement. Owner-only PR integration remains required.
+
+## Remaining gates and Phase6 recommendation
+
+1. Owner reviews this PR; adopts/rejects recovery A with exact target/host scope
+   and acknowledges original G10 disposition. Preparation grants no approval.
+2. Actual native CachyOS A/C/D/F/G, GUI/backend,8 real trust cases, history/export
+   and corrected recovery evidence; no Ubuntu/WSL substitute.
+3. Genuinely clean Windows provisioning B01–B03 and remaining full Windows
+   launcher/setup/repair/channel scenarios. Prepared-host positives are partial.
+4. Actual supported backend-unavailable D06 behavior. Mock refusals do not close it.
+5. Explicitly approved owner-profile credential observation on identified I1.
+6. Owner-funded exact-I1 Full/Targeted14-case matrix per supported host, plus
+   active-provider cancellation/interruption/maintenance/retest evidence; preserve
+   supplied unattributed E07-Full success and establish its missing attribution
+   only if real evidence exists. No speculative source assignment.
+7. Individual remaining A/B/F/G subcases below, accepted defects/evidence and
+   feature freeze, followed by a separate explicit Phase6/RC authorization.
+
+Recommend completing these gates before Phase6. No main, version, beta tag,
+release, remote deletion, self-merge, recovery-policy adoption, real owner-profile
+access or paid call occurred. Stop at the focused PR for owner review.
+
+## Consolidated A–G matrix
+
+This is a **new I1 consolidation**, not a rewrite of W1/C1. W1 remains20PASS/
+16NOT RUN/4ENVIRONMENT UNAVAILABLE/20OWNER ACCEPTANCE REQUIRED/1FAIL; C1 remains
+44ENVIRONMENT UNAVAILABLE/14OWNER ACCEPTANCE REQUIRED. Each E mode has its own
+row. PASS retains the stated synthetic/prepared/controlled scope and references
+the actual receipt; unexecuted adjacent requirements remain open. Source and
+artifact columns identify the selected target, not a claim of execution for
+non-PASS rows. G10-R technical PASS does not approve replacement policy.
+
+<!-- PHASE53-MATRIX -->
+
+| ID           | Host           | Full target source                         | Artifact SHA256                                                    | Status                    | Evidence                                                                                                                         | Remaining action                                                                                       |
+| ------------ | -------------- | ------------------------------------------ | ------------------------------------------------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| A01          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 integrity; W4 receipt above                                                                                                   | —                                                                                                      |
+| A02          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 integrity; W4 receipt above                                                                                                   | —                                                                                                      |
+| A03          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 integrity / Phase5.1 extraction; W4 receipt above                                                                             | —                                                                                                      |
+| A04          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 corrupt archive checksum refusal; W4 receipt above                                                                            | —                                                                                                      |
+| A05          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 three real launcher version refusals; W4 receipt above                                                                        | —                                                                                                      |
+| A06          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 verified allowlisted inventory; automated adversarial coverage separate; W4 receipt above                                     | —                                                                                                      |
+| A07          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | NOT RUN                   | Partial adjacent evidence does not close case                                                                                    | Full Windows archive launcher setup/open without source checkout                                       |
+| A08          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | NOT RUN                   | Partial adjacent evidence does not close case                                                                                    | Actual mismatched Desktop/runtime readiness refusal and repair                                         |
+| B01          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | ENVIRONMENT UNAVAILABLE   | Capability unavailable                                                                                                           | Clean Windows VM without WSL required                                                                  |
+| B02          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | ENVIRONMENT UNAVAILABLE   | Capability unavailable                                                                                                           | Clean no-distro VM required                                                                            |
+| B03          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | ENVIRONMENT UNAVAILABLE   | Capability unavailable                                                                                                           | Disposable reboot/conversion VM required                                                               |
+| B04          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 actual I1 missing Node/pnpm controlled PATH refusals + direct WSL22.23.2/pnpm9.12.3 restored; W4 receipt above                | Prepared-host prerequisite scope; no clean provisioning credit                                         |
+| B05          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 actual I1 four missing sandbox-tool refusals + real prepared systemd/bwrap restored; W4 receipt above                         | Prepared-host prerequisite scope; no clean provisioning credit                                         |
+| B06          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | NOT RUN                   | Partial adjacent evidence does not close case                                                                                    | Full Windows launcher setup path-with-spaces receipt                                                   |
+| B07          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 actual packaged GUI/hello; W4 receipt above                                                                                   | Clean-host B gate remains open                                                                         |
+| B08          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | NOT RUN                   | Partial adjacent evidence does not close case                                                                                    | I1 tools provisioning/pinned binary/readiness complete receipt                                         |
+| B09          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 real import/doctor/stable managed hash; W4 receipt above                                                                      | —                                                                                                      |
+| B10          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | NOT RUN                   | Partial adjacent evidence does not close case                                                                                    | Full Windows repeated launcher setup/settings continuity                                               |
+| B11          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 actual second-instance handoff; W4 receipt above                                                                              | —                                                                                                      |
+| B12          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 full stop/reopen same profile/history; W4 receipt above                                                                       | —                                                                                                      |
+| B13          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | NOT RUN                   | Partial adjacent evidence does not close case                                                                                    | I1 side-by-side source channel/global shim/update-refusal receipt                                      |
+| B14          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | NOT RUN                   | Partial adjacent evidence does not close case                                                                                    | Full Windows failed/interrupted setup and bounded lock recovery                                        |
+| D01          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.1 actual four-key DPAPI save; [Phase5.1](v1-post-merge-acceptance-c78faa7.md)                                             | Owner-profile/native independent                                                                       |
+| D02          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.1 two full DPAPI restarts; [Phase5.1](v1-post-merge-acceptance-c78faa7.md)                                                | Owner-profile observation                                                                              |
+| D03          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.1 private plaintext-byte absence check; [Phase5.1](v1-post-merge-acceptance-c78faa7.md)                                   | Native independent                                                                                     |
+| D04          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.1 presence/diagnostic/log privacy; [Phase5.1](v1-post-merge-acceptance-c78faa7.md)                                        | Native independent                                                                                     |
+| D05          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.1 real unreadable/store/missing failures; [Phase5.1](v1-post-merge-acceptance-c78faa7.md)                                 | Native independent                                                                                     |
+| D06          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | ENVIRONMENT UNAVAILABLE   | Capability unavailable                                                                                                           | Actual supported backend-unavailable session required                                                  |
+| D07          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.1 separate empty profile; [Phase5.1](v1-post-merge-acceptance-c78faa7.md)                                                 | Native independent                                                                                     |
+| D08          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.1 D→I1 and Phase5.2 beta→I1 prefs/keys retained; [Phase5.1](v1-post-merge-acceptance-c78faa7.md)                          | Broader/new-schema/cross-account scope unproved                                                        |
+| E01-Full     | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E01-Targeted | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E02-Full     | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E02-Targeted | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E03-Full     | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E03-Targeted | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E04-Full     | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E04-Targeted | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E05-Full     | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E05-Targeted | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E06-Full     | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E06-Targeted | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E07-Full     | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | Prior owner3/3 success unattributed; [receipt](v1-owner-run-01M4T9XG-acceptance.md)                                              | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| E07-Targeted | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | [Per-mode funded plan](v1-phase-5-3-funded-qa.md)                                                      |
+| F01          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | Authorized live active-QA cancellation (deterministic evidence separate)                               |
+| F02          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | Authorized live child/duplicate-paid-work observation                                                  |
+| F03          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.2 populated deterministic history + four actual exports/reopen; [Phase5.2](v1-phase-5-2-g10-recovery-validation.md)       | Funded attempt history remains E requirement                                                           |
+| F04          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | W4 idle SIGTERM/offline + manual full relaunch; W4 receipt above                                                                 | No automatic/active-provider recovery credit                                                           |
+| F05          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | Authorized live controlled interruption/reopen                                                         |
+| F06          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | Authorized live maintenance refusal; deterministic physical scenario PASS separately                   |
+| F07          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | Historical lineage readable in Phase5.2; authorized active retest/cancel/reopen still required         |
+| G01          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.2 verified stopped matched beta bundle; [Phase5.2](v1-phase-5-2-g10-recovery-validation.md)                               | Owner policy independent                                                                               |
+| G02          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.2 canonical rows/material/exports inventory; [Phase5.2](v1-phase-5-2-g10-recovery-validation.md)                          | Deterministic historical fixture                                                                       |
+| G03          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.2 exact side-by-side I1 validated; [Phase5.2](v1-phase-5-2-g10-recovery-validation.md)                                    | Prepared-host scope                                                                                    |
+| G04          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.2 actual isolated bootstrap/current activation; [Phase5.2](v1-phase-5-2-g10-recovery-validation.md)                       | Full Windows launcher B06 remains open                                                                 |
+| G05          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.2 payload/export/material/DPAPI continuity; [Phase5.2](v1-phase-5-2-g10-recovery-validation.md)                           | Deterministic history, same security context                                                           |
+| G06          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | NOT RUN                   | Partial adjacent evidence does not close case                                                                                    | Complete first-install no-false-current case; prior-runtime corrupt/mismatch refusals PASS in Phase5.2 |
+| G07          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.2 controlled actual postactivation probe failure71/previous restored; [Phase5.2](v1-phase-5-2-g10-recovery-validation.md) | Controlled, not spontaneous host failure                                                               |
+| G08          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.2 actual repeat bootstrap + preserved data; [Phase5.2](v1-phase-5-2-g10-recovery-validation.md)                           | Prepared-host runtime scope                                                                            |
+| G09          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | Phase5.2 real RunCoordinator/FakeHarness active QA maintenance refusal; [Phase5.2](v1-phase-5-2-g10-recovery-validation.md)      | Deterministic PASS; live-provider F06 open                                                             |
+| G10          | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | OWNER ACCEPTANCE REQUIRED | No authorized exact-I1 live execution / decision                                                                                 | Original beta G10 historical P1 FAIL; replacement policy adoption required                             |
+| G10-R        | Windows/WSL    | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e` | PASS                      | [Phase5.2](v1-phase-5-2-g10-recovery-validation.md), repeated synthetic Windows restore/restarts                                 | [Explicit owner adoption](v1-recovery-policy-decision.md), native proof separate                       |
+| A01          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| A02          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| A03          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| A04          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| A05          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| A06          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| A07          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| A08          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| C01          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| C02          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| C03          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| C04          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| C05          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| C06          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| C07          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| C08          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| C09          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| C10          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| C11          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| D01          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| D02          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| D03          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| D04          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| D05          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| D06          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| D07          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| D08          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| E01-Full     | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E01-Targeted | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E02-Full     | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E02-Targeted | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E03-Full     | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E03-Targeted | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E04-Full     | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E04-Targeted | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E05-Full     | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E05-Targeted | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E06-Full     | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E06-Targeted | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E07-Full     | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| E07-Targeted | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | OWNER ACCEPTANCE REQUIRED | No native execution                                                                                                              | Approved native paid execution                                                                         |
+| F01          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| F02          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| F03          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| F04          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| F05          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| F06          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| F07          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| G01          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| G02          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| G03          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| G04          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| G05          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| G06          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| G07          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| G08          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| G09          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| G10          | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |
+| G10-R        | Native CachyOS | `c78faa74717b0f430a859730e98c3c4915e7b03f` | `5bd3642ed392607a010078be35885d1cff45db162a2841ee374be228275e89d8` | ENVIRONMENT UNAVAILABLE   | No native execution                                                                                                              | [Native operator package](v1-phase-5-3-cachyos-operator.md)                                            |

@@ -5,6 +5,11 @@ post-merge CI38439418803. [Phase5.2](v1-phase-5-2-g10-recovery-validation.md)
 adds newly executed populated beta recovery/export evidence against these exact
 I1 binaries; it does not rewrite the earlier scoped D08/G05 observations below.
 
+PR19 is subsequently owner-merged at dev5c68491, post-mergeCI38451742628
+SUCCESS in all3 jobs. [Phase5.3](v1-phase-5-3-final-host-acceptance.md) verifies
+continued executable equivalence and retains these exact physical I1 archives.
+Its owner policy, native host and funded acceptance gates remain open.
+
 **Technical baseline verified; release acceptance remains incomplete. Phase 6
 NOT AUTHORIZED.** This receipt selects integrated source I1 for this bounded
 campaign. It neither relabels the historical D/520 binaries nor changes the

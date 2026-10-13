@@ -1,5 +1,9 @@
 # Native CachyOS operator handoff — candidate D
 
+Historical D handoff retained unchanged below. For the current exact I1
+campaign use the [Phase5.3 native package](v1-phase-5-3-cachyos-operator.md)
+and its partial receipt; do not substitute D bytes or overwrite C1 results.
+
 Status: **ENVIRONMENT UNAVAILABLE to the agent; no native cases executed**.
 Return a completed copy of [C1 receipt](v1-owner-acceptance-c1-d250e4c.md), using
 the existing [runbook](v1-owner-acceptance.md) requirements. No WSL or Ubuntu

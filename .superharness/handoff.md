@@ -1,3 +1,23 @@
+# Phase5.3 review handoff — 2026-10-13
+
+Start with docs/releases/v1-phase-5-3-final-host-acceptance.md, candidate-lock,
+recovery-policy-decision, cachyos-operator/results, funded-qa and owner-credential
+observation. PR19 actual owner merge5c68491 and postmerge38451742628 all3 PASS.
+Exact I1 production source unchanged; selected physical Windows ec5edec8... and
+native-target5bd3642... bytes reverified, not relabelled as later receipt builds.
+New available Windows integrity/prerequisite/source/disconnect/relaunch checks
+PASS; full baseline WSL1,236/16, real trust8/8, Windows Desktop400/2 and
+distribution22/25; native syntax14, controlled backend5/offline audit4 verified.
+121 case rows preserve historical W1/C1/G10 and distinguish narrower passes
+from remaining complete Windows/native/active-provider requirements.
+Final exact task head/proposed merge/CI/distribution outcomes belong to the PR
+final receipt. Owner reviews PR; separately adopts/rejects recovery A and exact
+host scope, executes native/clean-host/D06/real-profile/funded/live recovery
+gates, accepts evidence/feature freeze, then separately authorizes Phase6.
+No real owner profile/credentials/current, beta/main/version/tag/release, remote
+branches or paid calls changed. Do not self-merge or progress Phase6. shux absent;
+task protocol updated directly. Stop for review; working tree committed clean.
+
 # Phase5.2 review handoff — 2026-10-13
 
 See docs/releases/v1-phase-5-2-g10-recovery-validation.md and recovery contract/
@@ -629,3 +649,12 @@ Verification:
 Next: do not start Phase 4 automatically. A live Muse smoke remains available
 only when a user explicitly provides a configured host/model/auth environment
 and opts in with `SENTRY_LIVE_MUSE_TEST=1`.
+
+Late exact-head585db30 verification retained: full WSL failed one existing
+closure cancellation test (first agent cancelled before assumed completion).
+Controlled promise barrier + before-cancel state assertion reproduced RUNNING,
+then durable-completion wait fixed test synchronization; closure7/7 PASS,
+run-engine typecheck/lint PASS. No production code/backup verifier changed;
+all original result assertions preserved. Initial barrier-only probe passed and
+is retained separately. Final correction head full/CI/distribution results are
+recorded in PR20; first-head failure is not erased or silently rerun as green.

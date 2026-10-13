@@ -1,5 +1,12 @@
 # Sentry v1 Threat Model (Phase 5)
 
+Phase5.3 evidence addendum: [final host preparation](../releases/v1-phase-5-3-final-host-acceptance.md)
+confirms production-source equivalence to corrected I1 and new Windows presence
+source/integrity/disconnect checks. Actual Windows DPAPI and proposed G10-R
+evidence is retained separately from native keychain/clean-host/paid/owner-profile
+gaps. No new secret-handling, persistence or runtime code is introduced. Earlier
+candidate-specific boundary statuses below remain historical, not reassigned.
+
 2026-10-13 finalization addendum: [preparation review](../releases/v1-pre-rc-acceptance-preparation.md)
 records getter/Proxy fail-closed mapping, corrected registered Electron payload
 coverage, and a reproduced synthetic fatal-screen secret reflection. Fatal

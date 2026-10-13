@@ -4,8 +4,11 @@ This is a disposable-fixture acceptance procedure pending owner adoption, not
 permission to restore an owner's installation. Original-beta G10 remains FAIL.
 The preferred target is the verified I1 Desktop/runtime pair at
 `c78faa74717b0f430a859730e98c3c4915e7b03f`, version0.1.0-beta.1/protocol1.
-The new dev merge8bbe8ba changes documentation only; executable source and
-the beta/I1 persistence migration definitions were compared directly.
+Dev merges8bbe8ba/5c68491 change documentation and excluded acceptance tests;
+executable source and beta/I1 persistence migrations were compared directly.
+The [Phase5.3 decision record](v1-recovery-policy-decision.md) leaves approval
+OWNER ACCEPTANCE REQUIRED; the [candidate lock](v1-phase-5-3-candidate-lock.md)
+specifies exact retained bytes. Original-beta G10 is not marked PASS.
 
 ## What must remain together
 

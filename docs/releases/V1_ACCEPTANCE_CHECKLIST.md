@@ -4,8 +4,11 @@ This checklist supplements the [owner runbook](v1-owner-acceptance.md) and
 [per-host results](v1-owner-acceptance-results.md). The historical beta release
 checklist is not evidence for v1. No box is checked by source implementation alone.
 
-Current dev is `8bbe8ba`, following owner-merged PR18; post-merge CI38439418803
-SUCCESS. Executable source remains identical to selected I1 `c78faa7`. The
+Current dev is `5c68491`, following owner-merged PR19; post-merge CI38451742628
+SUCCESS in all3 required jobs. [Phase5.3 consolidation](v1-phase-5-3-final-host-acceptance.md)
+records the exact I1 lock, separate A–G matrix, native operator package, owner
+decision/credential procedures and funded execution plan. Executable source
+remains identical to selected I1 `c78faa7`. The
 [Phase5.2 recovery receipt](v1-phase-5-2-g10-recovery-validation.md) records new
 Windows populated-history/export/credential G10-R acceptance. It is a validated
 proposal pending owner adoption; original-beta G10 remains FAIL. The
@@ -14,9 +17,9 @@ artifacts and records newly executed integrated tests and Windows DPAPI checks.
 The [520 correction receipt](v1-provider-credential-persistence-validation.md)
 and historical D/W1/C1 results retain their exact identities. G10 remains FAIL.
 
-- [x] Owner reviews correction PRs into dev; only the owner merges (PR14/16/17/18 actual merges verified; Phase5.2 PR still requires owner review).
+- [x] Owner reviews correction PRs into dev; only the owner merges (PR14/16/17/18/19 actual merges verified; Phase5.3 PR requires owner review).
 - [x] Exact full selected SHA, tree, version, protocol and both archive SHA256s recorded (I1; separate local/CI Windows bytes).
-- [x] Three required post-merge CI jobs pass (I1 run38411670558; receipt-PR checks separately reported).
+- [x] Three required post-merge CI jobs pass (dev5c68491 run38451742628; I1 run38411670558; receipt-PR checks separately reported).
 - [x] Both I1 unsigned distribution jobs pass (38417470244; private artifacts preserved separately from D/520).
 - [x] Actual integrated merge/source tree and post-merge CI verified; selected I1 archives traced honestly.
 - [x] Real systemd-mount trust rerun on I1,8/8; full WSL1,236PASS/16skips; hosted/native limits disclosed.
