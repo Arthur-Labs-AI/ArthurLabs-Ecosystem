@@ -122,15 +122,19 @@ function safeErrorCode(code: unknown): string {
 function safeErrorMessage(value: unknown, redactSecrets?: (text: string) => string): string {
   const raw = value instanceof Error ? value.message : value;
   const nested = raw instanceof Error ? raw.message : raw;
-  let text = typeof nested === 'string' ? nested : 'Desktop operation failed';
-  if (redactSecrets !== undefined) {
-    try {
-      text = redactSecrets(text);
-    } catch {
-      // Scrubber failure must never break mapping; the cap still bounds.
-    }
+  const text = typeof nested === 'string' ? nested : 'Desktop operation failed';
+  if (redactSecrets === undefined) return text.slice(0, SAFE_ERROR_MESSAGE_CAP);
+  // Fail closed: a throwing or misbehaving scrubber must not let the
+  // original (potentially secret-bearing) text reach the response, and
+  // mapping itself must never throw. Fall back to a fixed safe message.
+  let scrubbed: unknown;
+  try {
+    scrubbed = redactSecrets(text);
+  } catch {
+    scrubbed = undefined;
   }
-  return text.slice(0, SAFE_ERROR_MESSAGE_CAP);
+  if (typeof scrubbed !== 'string') return 'Desktop operation failed';
+  return scrubbed.slice(0, SAFE_ERROR_MESSAGE_CAP);
 }
 
 export function toSafeError(
