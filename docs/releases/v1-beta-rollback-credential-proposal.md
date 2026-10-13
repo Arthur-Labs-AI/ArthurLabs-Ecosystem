@@ -1,5 +1,12 @@
 # G10: beta rollback credential availability — correction proposal
 
+Phase5.2 result: [Windows G10-R](v1-phase-5-2-g10-recovery-validation.md) passed
+actual corrected-binary recovery of populated beta history, actual export bytes,
+four DPAPI credentials and preferences, including repeated restart/restore.
+This is a **validated proposed recovery candidate pending owner adoption**.
+Original-beta G10 remains historical P1 FAIL; no policy substitution, beta patch
+or release/tag change is implied. Native recovery remains unexecuted.
+
 Status: **P1 acceptance blocker; G10 FAIL on W1, 2026-10-13**. The affected
 rollback track is stopped. No candidate or beta production code was changed.
 See the [campaign receipt](v1-owner-acceptance-execution.md) and

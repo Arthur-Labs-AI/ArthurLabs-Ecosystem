@@ -139,6 +139,14 @@ with owner review and accurate validation under the
 
 ## Phase 5 — Security and testing
 
+Phase5.2: PR18 is owner-merged at dev `8bbe8ba`, post-merge CI38439418803
+SUCCESS. [Corrected-binary recovery validation](v1-phase-5-2-g10-recovery-validation.md)
+demonstrates Windows G10-R with populated beta history, actual JSON/log exports,
+DPAPI credentials, preferences and repeated restart/restore. Original-beta G10
+remains historical P1 FAIL. This is a validated proposed recovery candidate
+pending owner adoption, not a replacement rollback policy. Native CachyOS and
+remaining release/owner gates stay open; Phase6 NOT AUTHORIZED.
+
 Current consolidation (2026-10-13): owner-merged PR17 credential correction and
 PR16 owner Full3/3 evidence are integrated at `c78faa7`; post-merge CI38411670558
 SUCCESS. [Phase5.1](v1-post-merge-acceptance-c78faa7.md) records fresh integrated

@@ -8,8 +8,10 @@ Record every attempt, retain FAIL receipts, and link retests rather than erasing
 
 This remains an unexecuted reusable template. Actual historical D results are
 in [W1/C1 campaign](v1-owner-acceptance-execution.md); new integrated I1 evidence
-is in [Phase5.1](v1-post-merge-acceptance-c78faa7.md). PR16/17 are merged, while
-remaining owner acceptance and the Phase5.1 evidence PR review remain open.
+is in [Phase5.1](v1-post-merge-acceptance-c78faa7.md). PR16/17/18 are merged.
+[Phase5.2 W3](v1-phase-5-2-g10-recovery-validation.md) supplies actual Windows
+G01–G09/G10-R evidence in its stated scope. Original G10 FAIL, native recovery,
+owner policy adoption and the Phase5.2 PR review remain separate open gates.
 
 ## Host and candidate receipt
 

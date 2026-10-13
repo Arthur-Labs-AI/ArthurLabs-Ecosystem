@@ -187,6 +187,17 @@ stop the affected rollback track pending owner disposition of the
 No replacement rollback policy or real-owner key re-entry is authorized by this
 guide. Full native CachyOS and complete upgrade/export acceptance remain outstanding.
 
+**Phase5.2 recovery proposal:** actual disposable Windows I1 recovery restored a
+verified stopped beta data/profile pair under the corrected Desktop/runtime,
+retaining populated history, actual JSON/log exports, credentials and model
+preferences through repeated restart/restore. See the [validation receipt](../releases/v1-phase-5-2-g10-recovery-validation.md),
+[paired backup/recovery contract](../releases/v1-g10-recovery-contract.md) and
+[unexecuted native handoff](../releases/v1-g10-recovery-cachyos-handoff.md).
+This is a validated proposed recovery candidate pending owner adoption, not an
+approved beta downgrade or automatic owner-data restore. Original G10 FAIL and
+native/owner acceptance gates remain separate. Do not operate on live data or
+replace a supported recovery policy based only on this synthetic result.
+
 ## Failed/interrupted setup and uninstall
 
 Read the printed log and fix the prerequisite/corruption cause, then rerun setup.
