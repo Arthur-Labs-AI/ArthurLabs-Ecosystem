@@ -158,13 +158,15 @@ and restores the retained fixture only after full stop. Final observation found
 no remaining I1 Desktop or task-owned runtime process. No owner's store, runtime
 pointer or historical fixture was used for these mutations.
 
-For W2/I1, D01–D03,D05,D07,D08 pass the exercised Windows synthetic scope. D04 covers
+For W2/I1, D01–D03,D05,D07 pass the exercised Windows synthetic scope. D04 covers
 presence status, standalone diagnostics and application output; paid-run export
 privacy remains part of the unexecuted provider campaign. B07's packaged identity/connected
 runtime/Providers portion and B12's graceful exit/reopen/import portion pass;
 complete B07 readiness and B12 populated-history comparison remain open.
-G05 credential/preferences continuity is bounded evidence, **not a G05 PASS**:
-full beta history/representative lineage/export-byte inventory was not rerun.
+D08's compatible D→I1 credential/preferences portion passed; the beta upgrade
+under the full G procedure remains outstanding, so this is not a complete D08
+PASS. G05 credential/preferences continuity is bounded evidence, **not a G05
+PASS**: full beta history/representative lineage/export-byte inventory was not rerun.
 Historical D W1/C1 counts and G10 FAIL remain unchanged.
 
 ### E4 minimal owner procedure — requires explicit approval before execution
