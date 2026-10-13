@@ -4,6 +4,7 @@ import {
   DesktopChannelSchemas,
   dispatchDesktopCommand,
   toRouterError,
+  toSafeError,
   type CommandRouterHooks,
 } from './desktop-command-router.js';
 
@@ -14,16 +15,27 @@ function ok(result: unknown): { ok: true; result: unknown } {
   return { ok: true, result };
 }
 
-function fail(error: unknown): { ok: false; error: { code: string; message: string } } {
-  return { ok: false, error: toRouterError(error) };
+function fail(
+  error: unknown,
+  redactSecrets?: (text: string) => string,
+): { ok: false; error: { code: string; message: string } } {
+  return {
+    ok: false,
+    error:
+      redactSecrets === undefined ? toRouterError(error) : toSafeError(error, { redactSecrets }),
+  };
 }
 
-function handle(channel: string, listener: (payload: unknown) => Promise<unknown> | unknown): void {
+function handle(
+  channel: string,
+  listener: (payload: unknown) => Promise<unknown> | unknown,
+  redactSecrets?: (text: string) => string,
+): void {
   ipcMain.handle(channel, async (_event, payload: unknown) => {
     try {
       return ok(await listener(payload));
     } catch (error) {
-      return fail(error);
+      return fail(error, redactSecrets);
     }
   });
 }
@@ -36,14 +48,19 @@ export function registerDesktopIpc(
 ): void {
   for (const channel of Object.keys(DesktopChannelSchemas)) {
     if (channel === 'cli:status') continue;
-    handle(channel, (payload: unknown) =>
-      dispatchDesktopCommand(service, channel, payload, {
-        ...hooks,
-        showInFolder: (path) => shell.showItemInFolder(path),
-      }),
+    handle(
+      channel,
+      (payload: unknown) =>
+        dispatchDesktopCommand(service, channel, payload, {
+          ...hooks,
+          showInFolder: (path) => shell.showItemInFolder(path),
+        }),
+      hooks.redactErrorText,
     );
   }
-  handle('cli:status', (payload: unknown) =>
-    dispatchDesktopCommand(service, 'cli:status', payload, hooks),
+  handle(
+    'cli:status',
+    (payload: unknown) => dispatchDesktopCommand(service, 'cli:status', payload, hooks),
+    hooks.redactErrorText,
   );
 }

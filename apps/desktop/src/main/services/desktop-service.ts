@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { RUN_TIMEOUT_MS_MAX, RUN_TIMEOUT_MS_MIN } from '@qa/shared';
 import type { AgentStackDefinition } from '@qa/schemas';
 import type { DesktopOperation, RetestSnapshot, RunSnapshot } from '../../shared/ipc-contract.js';
+import { toSafeError } from '../desktop-command-router.js';
 import type { ProviderCredentialService } from './provider-credentials.js';
 import type { RuntimeClient } from '../runtime/runtime-client.js';
 import type { HostPlatform } from '../platform/host-platform.js';
@@ -37,21 +38,11 @@ const StartRunOptions = z
   })
   .strict();
 
-function sanitizeError(error: unknown): { code: string; message: string } {
-  if (typeof error === 'object' && error !== null && 'code' in error) {
-    const typed = error as { code?: unknown; message?: unknown };
-    return {
-      code: typeof typed.code === 'string' ? typed.code.slice(0, 100) : 'DESKTOP_ERROR',
-      message:
-        typeof typed.message === 'string'
-          ? typed.message.slice(0, 1000)
-          : 'Desktop operation failed',
-    };
-  }
-  return {
-    code: 'DESKTOP_ERROR',
-    message: error instanceof Error ? error.message.slice(0, 1000) : 'Desktop operation failed',
-  };
+function sanitizeError(
+  error: unknown,
+  redactSecrets?: (text: string) => string,
+): { code: string; message: string } {
+  return toSafeError(error, redactSecrets === undefined ? {} : { redactSecrets });
 }
 
 function toError(code: string, message: string): Error {
@@ -65,8 +56,20 @@ export class DesktopApplicationService {
     try {
       return this.deps.runtime.request(method, params);
     } catch (error) {
-      const sanitized = sanitizeError(error);
+      const sanitized = sanitizeError(error, (text) => this.redactSecretsFromText(text));
       throw toError(sanitized.code, sanitized.message);
+    }
+  }
+
+  /**
+   * Boundary scrubber for error surfaces (IPC/CLI/log warnings): removes
+   * exact known secret-lane values; see ProviderCredentialService.
+   */
+  redactSecretsFromText(text: string): string {
+    try {
+      return this.deps.credentials.redactSecretsFromText(text);
+    } catch {
+      return text;
     }
   }
 

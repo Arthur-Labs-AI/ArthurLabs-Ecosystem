@@ -106,23 +106,48 @@ export interface CommandRouterHooks {
   readonly requestSavePath?: (options: SaveDialogOptions) => Promise<string | null>;
   readonly cliStatus?: () => unknown;
   readonly showInFolder?: (path: string) => void;
+  readonly redactErrorText?: (text: string) => string;
 }
 
-export function toRouterError(error: unknown): { code: string; message: string } {
+export interface SafeErrorOptions {
+  readonly redactSecrets?: (text: string) => string;
+}
+
+const SAFE_ERROR_CODE = /^[A-Za-z0-9_]{1,100}$/;
+const SAFE_ERROR_MESSAGE_CAP = 1000;
+
+function safeErrorCode(code: unknown): string {
+  return typeof code === 'string' && SAFE_ERROR_CODE.test(code) ? code : 'DESKTOP_ERROR';
+}
+function safeErrorMessage(value: unknown, redactSecrets?: (text: string) => string): string {
+  const raw = value instanceof Error ? value.message : value;
+  const nested = raw instanceof Error ? raw.message : raw;
+  let text = typeof nested === 'string' ? nested : 'Desktop operation failed';
+  if (redactSecrets !== undefined) {
+    try {
+      text = redactSecrets(text);
+    } catch {
+      // Scrubber failure must never break mapping; the cap still bounds.
+    }
+  }
+  return text.slice(0, SAFE_ERROR_MESSAGE_CAP);
+}
+
+export function toSafeError(
+  error: unknown,
+  options: SafeErrorOptions = {},
+): { code: string; message: string } {
   if (typeof error === 'object' && error !== null && 'code' in error) {
     const typed = error as { code?: unknown; message?: unknown };
     return {
-      code: typeof typed.code === 'string' ? typed.code : 'DESKTOP_ERROR',
-      message:
-        typed.message instanceof Error
-          ? typed.message.message
-          : String(typed.message ?? 'Desktop operation failed').slice(0, 1000),
+      code: safeErrorCode(typed.code),
+      message: safeErrorMessage(typed.message, options.redactSecrets),
     };
   }
-  return {
-    code: 'DESKTOP_ERROR',
-    message: error instanceof Error ? error.message.slice(0, 1000) : 'Desktop operation failed',
-  };
+  return { code: 'DESKTOP_ERROR', message: safeErrorMessage(error, options.redactSecrets) };
+}
+export function toRouterError(error: unknown): { code: string; message: string } {
+  return toSafeError(error);
 }
 // Validate + dispatch one desktop command. Shared by Renderer IPC and the
 // external CLI broker. external:true enforces the CLI allowlist.

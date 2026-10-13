@@ -393,6 +393,25 @@ export class ProviderCredentialService {
   }
 
   /**
+   * Boundary scrubber: removes exact known secret-lane values from
+   * outbound diagnostic text (renderer/CLI/log surfaces). Format-agnostic
+   * (exact values, not prefix patterns); only values long enough to be
+   * distinctive are scrubbed so ordinary words are never mangled. Values
+   * never leave this process through this method — only scrubbed text does.
+   */
+  redactSecretsFromText(text: string): string {
+    let out = text;
+    for (const name of SECRET_PROVIDER_KEYS) {
+      const candidates = [this.memory.get(name), process.env[name]];
+      for (const candidate of candidates) {
+        if (candidate !== undefined && candidate.length >= 8 && out.includes(candidate)) {
+          out = out.split(candidate).join('[REDACTED]');
+        }
+      }
+    }
+    return out;
+  }
+  /**
    * Save (the only mode): encrypt + persist + load into runtime + refresh
    * env. Secrets require secure storage — without it the save is refused
    * instead of silently degrading. Non-secret values persist as prefs.

@@ -168,7 +168,15 @@ async function boot(): Promise<void> {
     liveUpdates?.stop();
   });
   const desktopService = bootstrapped.service;
+  const redactErrorText = (text: string): string => {
+    try {
+      return desktopService.redactSecretsFromText(text);
+    } catch {
+      return text;
+    }
+  };
   cliServer = new SentryCliServer({
+    redactErrorText,
     dispatch: (command, payload) =>
       dispatchDesktopCommand(
         desktopService,
@@ -192,6 +200,7 @@ async function boot(): Promise<void> {
   });
   const broker = cliServer;
   registerDesktopIpc(bootstrapped.service, {
+    redactErrorText,
     onRunCreated: (runId, operationId) => updates.notifyRunCreated(runId, operationId),
     onRetestCreated: (retestRunId, operationId) =>
       updates.notifyRetestCreated(retestRunId, operationId),

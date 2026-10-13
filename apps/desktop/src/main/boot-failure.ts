@@ -63,7 +63,9 @@ export function classifyBootFailure(error: unknown): BootFailureClassification {
   } else {
     kind = 'data-store';
   }
-  return { kind, code, message };
+  // Fatal-screen text: bounded like every other external error surface.
+  // (Code stays verbatim for classification; renderers never branch on it.)
+  return { kind, code, message: message.slice(0, 1000) };
 }
 
 export interface FatalScreenCopy {
