@@ -1,3 +1,42 @@
+# Phase 5 actual owner acceptance — owner review (2026-10-13)
+
+Evidence-only branch test/v1-owner-acceptance-evidence from verified dev
+d250e4cabdae7735af5905146db8d7806fe4427c (treea86a2c8ea160eef13cb2783568594de10955d158).
+PR14 merged by owner; exact postmergeCI38364397137 all3 SUCCESS. Fresh
+distribution38366622239 both SUCCESS, archives/sidecars downloaded and retained;
+old42c PR-head archives separately preserved. Product/protocol/beta unchanged.
+Real Windows11/WSL2 prepared-host archive GUI, DPAPI save/restart/privacy, import/
+doctor/history, integrity negatives, missing Node/pnpm and idle disconnect/manual
+relaunch passed; isolated real Linux first/repeated bootstrap passed. Actual
+integrated-SHA WSL sandbox trust8/8 PASS, hosted trust exclusion disclosed.
+W1 receipt61:20 PASS/16 NOT RUN/4 ENVIRONMENT UNAVAILABLE/20 OWNER ACCEPTANCE
+REQUIRED/1 FAIL. C1 receipt58:44 ENVIRONMENT UNAVAILABLE/14 OWNER ACCEPTANCE
+REQUIRED. Clean Windows full setup/default preferences not executed. Native
+CachyOS inaccessible, exact operator handoff prepared; no native acceptance inferred.
+Owner will execute Full all-three and provide log; no log received, no agent paid
+calls. Remaining provider modes/active-QA cancellation/maintenance not executed.
+
+P1 G10 FAIL: matching stopped source-beta DB/projects/profile and beta pair
+restored; history/ciphertext unchanged but credential configured false. Independent
+beta/candidate/beta observes false/true/false on same encrypted profile. Beta loads
+credentials before Electron readiness; D already fixed. Historical beta rollback
+limitation, no new D regression/P0 demonstrated. Affected track stopped; separate
+bounded owner-disposition proposal, no production patch or silent support waiver.
+See docs/releases/v1-owner-acceptance-execution.md and per-host receipts/proposal.
+Private logs/backups retained, failure attempts preserved. Sanitized screenshot
+reviewed. Branch contains only docs/evidence/protocol updates; final evidence-head
+CI is separate from tested D source and is reported in PR checks.
+
+Next owner actions: review evidence PR and G10 proposal; provide exact-source
+E07-Full log; execute native/clean-provisioning and remaining approved acceptance.
+Phase6 NOT RECOMMENDABLE and NOT AUTHORIZED. No merge, RC branch, direct main/dev
+commit, version/tag/release, owner credential changes or insecure workarounds.
+Owner dirty primary checkout and Git identity preserved. shux contract attempted
+at campaign start but unavailable; status/append-only ledger/handoff maintained
+directly. Stop at owner acceptance gate.
+
+## Previous record
+
 # Phase 4 credential diagnostic — owner review (2026-10-12)
 
 IMPLEMENTED AND AVAILABLE-HOST VERIFIED; Phase 4 acceptance remains open.
