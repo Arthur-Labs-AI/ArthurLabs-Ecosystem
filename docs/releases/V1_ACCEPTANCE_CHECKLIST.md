@@ -37,5 +37,8 @@ Prepared-host Windows GUI/DPAPI/idle recovery positives do not pass the combined
 Windows gate. **G10 P1 FAIL**: matching stopped beta rollback retains ciphertext
 and history but loses configured credential availability. See the
 [separate bounded correction proposal](v1-beta-rollback-credential-proposal.md).
-No candidate source change or failure waiver. Owner Full all-three log is pending;
-the other provider combinations/modes remain unexecuted. Phase6 is not recommendable.
+No candidate source change or failure waiver. The [owner Windows/WSL Full
+all-three export](v1-owner-run-01M4T9XG-acceptance.md) was received and verified3/3
+with10 findings/38 evidence. Build/archive attribution and remaining E07 observations
+are open; the other13 combinations/modes remain unexecuted. Counts above remain
+unchanged. Phase6 is not recommendable.

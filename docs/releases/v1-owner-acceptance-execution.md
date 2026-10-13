@@ -126,10 +126,14 @@ and trust successes do not satisfy any native host row.
 
 ## E. Funded acceptance
 
-No agent-initiated provider execution was authorized or performed. The owner
-said they will run Full all-three and provide the log. E07-Full remains OWNER
-ACCEPTANCE REQUIRED pending host/source/archive identity, run/agent/snapshot IDs,
-states, attribution, history/export consistency and duplicate-execution evidence.
+No agent-initiated provider execution was authorized or performed. The initial
+campaign awaited an owner log. Subsequently the owner supplied a completed
+Windows/WSL Full all-three export:3/3 completed,10 findings,38 evidence;609
+existing-schema record checks and checked ownership/event relationships passed.
+See the separate [owner-run receipt](v1-owner-run-01M4T9XG-acceptance.md). E07-Full
+remains OWNER ACCEPTANCE REQUIRED for the selected candidate: the export omits
+Sentry build/archive identity and does not independently establish snapshot-byte
+immutability, DB/log/reopen equivalence or global duplicate-provider-call absence.
 A successful E07-Full alone cannot pass the other13 cases or active-work failure
 scenarios. No models, account labels, budget or agent spending scope was inferred.
 
@@ -150,7 +154,8 @@ Beta loads credentials before Electron readiness; D already has the correction.
 No new D production regression or P0 was demonstrated. A separate bounded
 proposal is prepared; no frozen source changes, tag changes or workaround
 acceptance were made. Native CachyOS/clean-VM/backend-unavailable tests are
-environment gaps. Provider/active-work tests await owner execution. Private
+environment gaps. Remaining provider/active-work tests await owner execution.
+Private
 observer failures above are test-harness issues, retained separately.
 
 ## H. Gate assessment
@@ -172,7 +177,7 @@ selected D binary identity or imply new host acceptance.
 | Windows acceptance    | BLOCKED                   | Prepared-host positive cases; complete provisioning/recovery gaps and G10 FAIL                         |
 | CachyOS acceptance    | ENVIRONMENT UNAVAILABLE   | No native host; C1 receipt and operator handoff                                                        |
 | Credential continuity | BLOCKED                   | W1 DPAPI upgrade/restart PASS; beta rollback FAIL; native backend unavailable                          |
-| Funded multi-agent QA | OWNER ACCEPTANCE REQUIRED | No calls; owner E07-Full log pending, other cases unexecuted                                           |
+| Funded multi-agent QA | OWNER ACCEPTANCE REQUIRED | Owner Windows3/3 export audited; selected build/remaining E07 evidence and other13 cases open          |
 | Upgrade/rollback      | FAIL                      | W-ROLLBACK independent beta/candidate/beta reproduction; G10 P1                                        |
 | Owner approval        | OWNER ACCEPTANCE REQUIRED | No freeze acceptance or Phase6 authorization                                                           |
 
@@ -183,7 +188,7 @@ selected D binary identity or imply new host acceptance.
 2. Exact artifacts, prepared W1 packaged GUI/IPC/DPAPI/history, integrity negatives,
    missing Node/pnpm, isolated Linux staging, idle recovery and real WSL trust ran.
 3. Clean Windows setup/prerequisite matrix, native CachyOS, secure-backend failure,
-   funded14-mode matrix, active-work recovery and full upgrade/repair/export cases remain.
+   complete funded matrix/E07 attribution, active-work recovery and full upgrade/repair/export cases remain.
 4. No new D regression was reproduced; a historical beta defect newly failed the
    mandatory rollback gate and blocks acceptance.
 5. **No Phase6 recommendation** while that failure and mandatory gaps remain.
