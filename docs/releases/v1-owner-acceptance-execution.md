@@ -10,6 +10,11 @@ separate actual I1 populated-history/export/DPAPI G10-R results. Original G10
 and W1/C1 counts below remain historical; successful G10-R does not approve a
 replacement rollback policy or close remaining supported-host acceptance.
 
+PR19 is now owner-merged at5c68491; post-mergeCI38451742628 SUCCESS/all3.
+[Phase5.3 consolidation](v1-phase-5-3-final-host-acceptance.md) provides the
+current I1 lock, new per-case matrix and native/owner handoffs. Historical
+identities, counts, original G10 failure and owner export attribution below stand.
+
 **Phase 6 is not recommendable or authorized.** Prepared-host Windows execution
 produced real positive evidence, but G10 reproduced a P1 historical-beta rollback
 credential-availability failure. Native CachyOS, clean Windows provisioning,

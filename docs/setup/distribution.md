@@ -6,6 +6,12 @@ session. Ubuntu CI/WSL builds do not establish native CachyOS acceptance.
 There is no automatic update, offline install, signed installer or macOS support.
 Versions remain 0.1.0-beta.1; **the full source SHA distinguishes candidates**.
 
+Current review acceptance uses the [Phase5.3 exact I1 lock](../releases/v1-phase-5-3-candidate-lock.md)
+and [native operator workflow](../releases/v1-phase-5-3-cachyos-operator.md).
+The [recovery decision](../releases/v1-recovery-policy-decision.md) is pending
+owner adoption; original-beta G10 remains historical FAIL. These handoffs do
+not publish or authorize a release.
+
 ## Obtain, verify and extract
 
 Use only an owner-approved private delivery channel. Private GitHub Actions

@@ -10,6 +10,11 @@ activation, repair and rollback commands. Use the [results template](v1-owner-ac
 for evidence and the [v1 checklist](V1_ACCEPTANCE_CHECKLIST.md) for authorization.
 The historical beta checklist is not a v1 acceptance receipt.
 
+Current preparation: [Phase5.3](v1-phase-5-3-final-host-acceptance.md), after
+owner-merged PR19/dev5c68491 and successful post-merge CI. Use its exact I1 lock,
+native operator workflow and separate recovery decision; historical W1/C1 and
+original G10 FAIL remain unchanged. Owner policy adoption is still required.
+
 ## Evidence and candidate selection
 
 Run each applicable row below separately on Windows/WSL and native CachyOS.
@@ -236,8 +241,11 @@ with the operator. Do not force-kill unrelated processes or corrupt a real DB.
 
 Actual integrated-candidate [campaign receipt](v1-owner-acceptance-execution.md)
 records **G10 FAIL on W1**: restored beta history/ciphertext survived, but beta
-could not report the synthetic credential configured. The affected track is
-stopped pending the [separate bounded proposal](v1-beta-rollback-credential-proposal.md).
+could not report the synthetic credential configured. The original-beta track
+remains failed. [Separate I1 G10-R](v1-phase-5-2-g10-recovery-validation.md) passed
+in the synthetic Windows scope; [owner policy adoption](v1-recovery-policy-decision.md)
+is outstanding. The [bounded proposal](v1-beta-rollback-credential-proposal.md)
+retains the historical diagnosis.
 Preserve this failure; do not treat the procedure below as an already accepted
 beta credential recovery path or transfer W1 results to native CachyOS.
 

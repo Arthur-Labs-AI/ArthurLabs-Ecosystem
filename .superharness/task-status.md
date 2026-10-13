@@ -1,3 +1,31 @@
+# Phase5.3 final host acceptance — 2026-10-13
+
+Verified PR19 owner merge5c68491ccd0f00e34917bb3efdb4926c2fcfd280,
+postmergeCI38451742628 all3 SUCCESS; PR19 final CI/distribution SUCCESS.
+Clean isolated branch test/v1-final-host-acceptance from approved dev; primary
+owner dirty main preserved. Exact I1 production/lock/model/protocol/tooling
+source unchanged; retained Windows ec5edec8... and CachyOS5bd3642... archives
+and manifests rehashed/inventories verified. No product code changes.
+New Windows actual From environment→full shutdown/relaunch→missing truthful UI,
+no persisted key; controlled owned idle disconnect→Runtime offline→manual
+relaunch, import/revision/doctor/history, single instance/graceful stop PASS.
+Actual Windows archive corrupt checksum and three version/inventory refusals
+PASS; controlled I1 missing Node/pnpm/four sandbox prerequisites refuse without
+activation, direct WSL pinned tools/systemd/bwrap restored. Harness initial wrong
+offline wording timeout retained, corrected observed wording passed.
+Baseline dev5c WSL full1,236PASS/16skips,40 tasks; distribution46/1 of47,
+separate real trust8/8. Windows Desktop400/2; distribution22/25 of47.
+Native ordered workflow/partial receipt, exact lock, owner recovery decision,
+owner-profile observation, funded14-case plan/offline schema audit and121-row
+A-G matrix prepared. Native Bash syntax14 blocks; backend probe controlled5;
+offline supplied export609 records passes, three controlled mutations refuse.
+Final static/diff/PR CI/distribution receipts carried in focused PR handoff.
+No native/clean Windows/actual unavailable backend/owner-profile/paid execution
+claim. Original G10 historical FAIL; G10-R technical Windows PASS pending owner
+adoption. Five old remote branches zero unique/reachable/no active worktree;
+no deletion. shux unavailable; protocol maintained directly. No main/tag/version/
+release/self-merge/Phase6 action; stop for owner review and actual host evidence.
+
 # Phase5.2 G10-R recovery — 2026-10-13
 
 Verified owner-merged PR18/dev8bbe8bab34d704eb3f021fbb3203d1bd1d983f8d and

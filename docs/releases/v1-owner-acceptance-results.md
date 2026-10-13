@@ -8,10 +8,13 @@ Record every attempt, retain FAIL receipts, and link retests rather than erasing
 
 This remains an unexecuted reusable template. Actual historical D results are
 in [W1/C1 campaign](v1-owner-acceptance-execution.md); new integrated I1 evidence
-is in [Phase5.1](v1-post-merge-acceptance-c78faa7.md). PR16/17/18 are merged.
+is in [Phase5.1](v1-post-merge-acceptance-c78faa7.md). PR16/17/18/19 are merged.
 [Phase5.2 W3](v1-phase-5-2-g10-recovery-validation.md) supplies actual Windows
 G01–G09/G10-R evidence in its stated scope. Original G10 FAIL, native recovery,
-owner policy adoption and the Phase5.2 PR review remain separate open gates.
+owner policy adoption and Phase5.3 PR review remain separate open gates.
+The [Phase5.3 case matrix](v1-phase-5-3-final-host-acceptance.md) and
+[native partial template](v1-phase-5-3-cachyos-results.md) provide current handoffs;
+these reusable rows and historical W1/C1 results are not reassigned or overwritten.
 
 ## Host and candidate receipt
 
