@@ -1,3 +1,24 @@
+# Phase5.1 review handoff — 2026-10-13
+
+Current selected integrated candidate I1 c78faa74717b0f430a859730e98c3c4915e7b03f.
+See docs/releases/v1-post-merge-acceptance-c78faa7.md for exact tree, separate
+Windows local/CI and CachyOS-targeted hashes, tests, real packaged DPAPI lifecycle,
+four-key + model preference D compatibility and physical safe failures. PR16/17
+are owner-merged; static/full WSL/Windows Desktop/real trust and I1 distributions
+PASS with stated skips/host limitations. No new production change justified.
+The receipt-only PR final CI/distribution conclusions live in its body/final report;
+those receipt binaries have a distinct SHA and do not inherit I1 physical results.
+Remaining: owner review PR; approve/run presence-only real-profile procedure;
+native CachyOS, clean Windows, D06 actual backend-unavailable host, populated
+history/export upgrade, funded matrix and active-work recovery acceptance; exact
+attribution of supplied owner3/3 export. G10 historical beta P1 FAIL remains;
+recommend explicitly approved I1 recovery restore and full retest, not immutable
+beta modification or a claim of successful old-binary downgrade. No recovery code
+or policy change authorized. Three merged remote task branches eligible for cleanup
+after explicit approval; main/dev protection403, procedural owner-only gates.
+Owner dirty checkout/private credentials preserved, no paid calls. shux unavailable.
+Stop for owner review; Phase6, RC/version/tag/release/merge remain NOT AUTHORIZED.
+
 # Owner Full three-agent export reviewed — 2026-10-13
 
 Owner confirmed Windows/WSL. run_01M4T9XGTM1S41PS74NA0G767Z is production Full,

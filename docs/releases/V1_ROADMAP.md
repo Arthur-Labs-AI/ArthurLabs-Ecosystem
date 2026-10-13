@@ -139,6 +139,14 @@ with owner review and accurate validation under the
 
 ## Phase 5 — Security and testing
 
+Current consolidation (2026-10-13): owner-merged PR17 credential correction and
+PR16 owner Full3/3 evidence are integrated at `c78faa7`; post-merge CI38411670558
+SUCCESS. [Phase5.1](v1-post-merge-acceptance-c78faa7.md) records fresh integrated
+verification, distinct exact-source unsigned artifacts and disposable Windows
+DPAPI acceptance. Earlier phase progress below is historical. Native/clean-host,
+funded matrix, real-profile and historical beta G10 gates remain open; Phase6
+is NOT AUTHORIZED. No additional production correction was justified.
+
 - **Objective:** substantiate isolation and regression claims on real hosts.
 - **Expected changes:** close demonstrated sandbox/credential isolation gaps,
   extend meaningful regressions and record reproducible real-host acceptance.

@@ -5,6 +5,10 @@ rollback track is stopped. No candidate or beta production code was changed.
 See the [campaign receipt](v1-owner-acceptance-execution.md) and
 [W1 results](v1-owner-acceptance-w1-d250e4c.md).
 
+Phase5.1 reviewed these retained failure/control receipts after owner-merged
+PR17/16. [New I1 credential acceptance](v1-post-merge-acceptance-c78faa7.md)
+does not retest or repair the original beta rollback target. G10 stays FAIL.
+
 ## Reproduction and controls
 
 1. Build the immutable source beta at
@@ -78,3 +82,37 @@ Linux secure storage needs independent native-host evidence. Existing D artifact
 results cannot be transferred to changed binaries. Until the owner resolves the
 procedure and actual retest passes, upgrade/rollback remains FAIL and Phase 6
 cannot be recommended.
+
+## Phase5.1 recommended owner disposition (proposal only)
+
+Prefer an explicitly named **recovery restore**, using the exact I1
+Desktop/runtime pair `c78faa74717b0f430a859730e98c3c4915e7b03f` and its
+[recorded unsigned artifacts](v1-post-merge-acceptance-c78faa7.md#c-exact-unsigned-candidate),
+over building another beta patch. This needs zero new production code. It
+retains the readiness and transactional credential corrections and can restore
+a matching stopped data/projects/profile backup on the same account/keychain.
+It is a proposed change from restoring the old binary to restoring prior data
+under a validated recovery binary, **not a successful downgrade to the beta**.
+No supported recovery designation or rollback policy is adopted by this receipt.
+
+Approval scope should name the exact Windows archive hash, matching runtime,
+compatible backup source/schema, supported host, and recovery procedure. Before
+calling it supported, use a separate disposable populated fixture with projects,
+revisions, runs, findings/evidence, issues/retests and actual export bytes. Stop
+all components; retain both the original stopped backup and candidate data;
+restore the approved matching backup without mixing schema generations; start
+the selected recovery pair; verify all inventory/lineage/export comparisons,
+all credential presence and model preferences, then two full restarts. Repeat
+applicable G01–G10 failure/refusal/activation cases under the approved policy.
+Native CachyOS/keychain evidence remains independent. The Phase5.1 D→I1
+credential/preference test is useful context but does not perform this recovery.
+
+If the owner instead requires returning to beta behavior and code lineage, a
+separately approved beta-derived recovery artifact would minimally delay
+bootstrap/credential loading until app.whenReady, with a regression reproducing
+the pre-ready load and real DPAPI restore/restart tests. Its own full SHA,
+artifact identity, CI, compatibility review and acceptance are mandatory;
+historical beta source/tag/release remain immutable. That route increases
+maintenance and compatibility work, so it is the secondary option. No recovery
+code, release/version change, key export or new target testing is authorized
+by this recommendation. Owner disposition plus actual retest is still required.

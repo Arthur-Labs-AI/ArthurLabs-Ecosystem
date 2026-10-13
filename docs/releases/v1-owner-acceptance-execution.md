@@ -1,5 +1,10 @@
 # Phase 5 actual acceptance campaign — 2026-10-13
 
+Historical D/W1/C1 campaign receipt. Current integrated follow-up is the
+[separate I1 / Phase5.1 receipt](v1-post-merge-acceptance-c78faa7.md), after
+owner-merged PR16/17. This document's source, archives, counts and G10 failure
+remain historical evidence; they are not reassigned to I1.
+
 **Phase 6 is not recommendable or authorized.** Prepared-host Windows execution
 produced real positive evidence, but G10 reproduced a P1 historical-beta rollback
 credential-availability failure. Native CachyOS, clean Windows provisioning,
