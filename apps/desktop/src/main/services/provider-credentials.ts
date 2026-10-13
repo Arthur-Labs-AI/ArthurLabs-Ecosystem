@@ -14,7 +14,7 @@
  * - Non-secret model ids (SENTRY_*_MODEL) → plain JSON preferences file.
  * - One-time migration from the legacy plaintext user-level env file.
  *
- * safeStorage unavailable → session-only storage, NEVER plaintext fallback.
+ * safeStorage unavailable → refuse secret saves, NEVER plaintext fallback.
  */
 import { chmod, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -69,14 +69,16 @@ export interface ProviderCredentialStatus {
   readonly name: string;
   readonly configured: boolean;
   /** 'secure' = encrypted store, 'persisted' = plain prefs file, 'environment' = pre-existing env. */
-  readonly persistence: 'secure' | 'persisted' | 'environment' | 'missing';
-  readonly source: 'stored' | 'persisted' | 'environment' | 'missing';
+  readonly persistence: 'secure' | 'persisted' | 'environment' | 'missing' | 'unavailable';
+  readonly source: 'stored' | 'persisted' | 'environment' | 'missing' | 'unavailable';
+  readonly storageError?:
+    'store-unreadable' | 'entry-unreadable' | 'secure-storage-unavailable' | 'migration-failed';
   readonly hint: string;
 }
 
 interface EncryptedStoreFile {
   readonly version: 1;
-  readonly secrets: Record<string, string>;
+  readonly secrets: Record<string, unknown>;
 }
 
 interface ModelPrefsFile {
@@ -129,13 +131,17 @@ async function atomicWriteJson(filePath: string, payload: unknown): Promise<void
   await mkdir(dirname(filePath), { recursive: true });
   // Unique per call: concurrent same-file writers must never share a tmp path.
   const tmp = filePath + '.tmp-' + String(process.pid) + '-' + String(atomicWriteCounter++);
-  await writeFile(tmp, JSON.stringify(payload, null, 2) + '\n', { mode: 0o600 });
   try {
-    await chmod(tmp, 0o600);
-  } catch {
-    // Windows: chmod is a no-op; ACLs inherit the user profile.
+    await writeFile(tmp, JSON.stringify(payload, null, 2) + '\n', { mode: 0o600 });
+    try {
+      await chmod(tmp, 0o600);
+    } catch {
+      // Windows: chmod is a no-op; ACLs inherit the user profile.
+    }
+    await rename(tmp, filePath);
+  } finally {
+    await unlink(tmp).catch(() => undefined);
   }
-  await rename(tmp, filePath);
 }
 
 export interface ProviderCredentialServiceOptions {
@@ -160,28 +166,75 @@ export class ProviderCredentialService {
   private readonly legacyPath: string | undefined;
   private readonly safeStorage: SafeStorageLike | undefined;
   private secureAvailable: boolean;
+  private mutation: Promise<void> = Promise.resolve();
+  private storeLoadError: ProviderCredentialStatus['storageError'];
+  private readonly entryLoadErrors = new Map<string, ProviderCredentialStatus['storageError']>();
 
   constructor(options: ProviderCredentialServiceOptions = {}) {
-    const dir = options.userDataDir;
+    const dir = options.userDataDir === '' ? undefined : options.userDataDir;
     this.credentialPath =
-      options.filePath ??
-      (dir !== undefined
-        ? join(dir, 'credentials', 'providers.json')
-        : join(tmpdir(), 'sentry-credentials', 'providers.json'));
+      options.filePath ?? (dir !== undefined ? join(dir, 'credentials', 'providers.json') : '');
     // Never a directory named preferences: on case-insensitive filesystems
     // that collides with Chromium's own Preferences file in Electron userData.
     this.modelPrefsPath =
       dir !== undefined
         ? join(dir, 'sentry-prefs', 'models.json')
-        : join(tmpdir(), 'sentry-credentials', 'models.json');
+        : options.filePath !== undefined
+          ? join(dirname(options.filePath), 'models.json')
+          : '';
     this.legacyPath = options.legacyEnvPath ?? defaultLegacyPath();
     // Never collide the new encrypted store with the legacy plaintext path.
     this.safeStorage = options.safeStorage;
-    this.secureAvailable = options.safeStorage?.isEncryptionAvailable() ?? false;
+    this.secureAvailable = false;
+    this.refreshSecureAvailability();
   }
 
   get path(): string {
+    this.assertProfile();
     return this.credentialPath;
+  }
+
+  private assertProfile(): void {
+    if (this.credentialPath.length === 0 || this.modelPrefsPath.length === 0) {
+      throw Object.assign(
+        new Error('Credential profile unavailable. Restart with a valid Electron profile.'),
+        { code: 'CREDENTIAL_PROFILE_UNAVAILABLE' },
+      );
+    }
+  }
+
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const pending = this.mutation.then(operation);
+    this.mutation = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return pending;
+  }
+
+  private async readEncryptedStore(): Promise<EncryptedStoreFile> {
+    try {
+      const parsed = JSON.parse(
+        await readFile(this.credentialPath, 'utf8'),
+      ) as Partial<EncryptedStoreFile>;
+      if (
+        parsed === null ||
+        parsed.version !== 1 ||
+        typeof parsed.secrets !== 'object' ||
+        parsed.secrets === null ||
+        Array.isArray(parsed.secrets)
+      )
+        throw new Error();
+      return parsed as EncryptedStoreFile;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') return { version: 1, secrets: {} };
+      throw Object.assign(
+        new Error(
+          'Credential store unreadable. Keep the existing store and check OS secure storage.',
+        ),
+        { code: 'CREDENTIAL_STORE_UNREADABLE' },
+      );
+    }
   }
 
   /** Live availability, never a cached boot verdict: Electron's crypto
@@ -210,50 +263,45 @@ export class ProviderCredentialService {
 
   /**
    * Boot load: decrypt saved secrets → memory + process.env, load model
-   * prefs, then one-time migrate the legacy plaintext file. Normal boot never
-   * throws. Presence diagnostics opt into strict encrypted-store validation;
+   * prefs, then one-time migrate the legacy plaintext file. Storage failures
+   * remain non-fatal; an unresolved profile is refused before any I/O.
+   * Presence diagnostics opt into strict encrypted-store validation;
    * a skipped/unreadable entry cannot be presented as a confirmed absence.
    */
   async load(options: { readonly strict?: boolean } = {}): Promise<void> {
+    this.assertProfile();
     this.refreshSecureAvailability();
     if (options.strict && !this.secureAvailable) throw new Error('Secure storage unavailable');
-    if (this.secureAvailable && this.safeStorage !== undefined) {
+    this.storeLoadError = undefined;
+    this.entryLoadErrors.clear();
+    for (const name of this.persistedSecrets) this.memory.delete(name);
+    this.persistedSecrets.clear();
+    {
       try {
-        const text = await readFile(this.credentialPath, 'utf8');
-        const parsed = JSON.parse(text) as Partial<EncryptedStoreFile>;
-        if (
-          options.strict &&
-          (parsed === null ||
-            parsed.version !== 1 ||
-            typeof parsed.secrets !== 'object' ||
-            parsed.secrets === null ||
-            Array.isArray(parsed.secrets))
-        )
-          throw new Error('Credential store unreadable');
-        const secrets = parsed.secrets ?? {};
+        const { secrets } = await this.readEncryptedStore();
         for (const name of SECRET_PROVIDER_KEYS) {
           const blob = secrets[name];
-          if (
-            options.strict &&
-            blob !== undefined &&
-            (typeof blob !== 'string' ||
-              blob.length === 0 ||
-              Buffer.from(blob, 'base64').toString('base64') !== blob)
-          ) {
-            throw entryUnreadable();
-          }
-          if (typeof blob !== 'string' || blob.length === 0) continue;
+          if (blob === undefined) continue;
           try {
+            if (
+              typeof blob !== 'string' ||
+              blob.length === 0 ||
+              Buffer.from(blob, 'base64').toString('base64') !== blob
+            )
+              throw entryUnreadable();
+            if (!this.secureAvailable || this.safeStorage === undefined) {
+              this.entryLoadErrors.set(name, 'secure-storage-unavailable');
+              continue;
+            }
             const value = this.safeStorage.decryptString(Buffer.from(blob, 'base64'));
-            if (options.strict && value.length === 0) throw entryUnreadable();
-            if (value.length === 0) continue;
+            if (value.length === 0) throw entryUnreadable();
             this.memory.set(name, value);
             this.persistedSecrets.add(name);
             if (process.env[name] === undefined || process.env[name] === '')
               process.env[name] = value;
           } catch {
             if (options.strict) throw entryUnreadable();
-            // Corrupt entry: skip without failing boot; never log the value.
+            this.entryLoadErrors.set(name, 'entry-unreadable');
           }
         }
       } catch (error) {
@@ -265,7 +313,7 @@ export class ProviderCredentialService {
             throw new Error('Credential store unreadable');
           }
         }
-        // Absent store is the normal first-launch state.
+        this.storeLoadError = 'store-unreadable';
       }
     }
     try {
@@ -292,7 +340,7 @@ export class ProviderCredentialService {
     }
     // A presence query only inspects the store. Normal Desktop boot keeps
     // the existing one-time migration; diagnostics must not rewrite settings.
-    if (!options.strict) await this.migrateLegacyFile();
+    if (!options.strict && this.storeLoadError === undefined) await this.migrateLegacyFile();
   }
 
   private async migrateLegacyFile(): Promise<void> {
@@ -315,60 +363,32 @@ export class ProviderCredentialService {
     }
     if (!this.secureAvailable || this.safeStorage === undefined) return;
     let migratedSecrets = 0;
-    for (const [name, value] of entries) {
-      if (!isSecretName(name) || value.length === 0) continue;
-      if (!this.memory.has(name)) {
-        this.memory.set(name, value);
-        if (process.env[name] === undefined || process.env[name] === '') process.env[name] = value;
-      }
-      this.persistedSecrets.add(name);
-      migratedSecrets += 1;
-    }
-    const models: Record<string, string> = {};
-    for (const [name, value] of entries) {
-      if (isModelName(name) && value.length > 0) {
-        if (!this.memory.has(name)) {
-          this.memory.set(name, value);
-          if (process.env[name] === undefined || process.env[name] === '')
-            process.env[name] = value;
+    try {
+      for (const [name, value] of entries) {
+        if (value.length === 0) continue;
+        if (isSecretName(name)) {
+          // A current stored key wins; never overwrite an unreadable entry
+          // with a stale legacy value during automatic migration.
+          if (this.entryLoadErrors.has(name)) return;
+          if (!this.persistedSecrets.has(name))
+            await this.saveKey(name, this.memory.get(name) ?? value);
+          migratedSecrets += 1;
+        } else if (isModelName(name) && !this.persistedPrefs.has(name)) {
+          await this.saveKey(name, this.memory.get(name) ?? value);
         }
-        models[name] = value;
       }
-    }
-    if (Object.keys(models).length > 0) {
-      try {
-        await this.writeModelPrefs(models);
-      } catch {
-        // Non-fatal; secrets below still persist.
-      }
-    }
-    if (migratedSecrets > 0) {
-      try {
-        await this.writeEncryptedStore();
-        await unlink(this.legacyPath);
-      } catch {
-        // Keep the legacy file if the secure write failed — never delete
-        // credentials we could not re-persist.
-      }
+      if (migratedSecrets > 0) await unlink(this.legacyPath);
+    } catch {
+      // Retain legacy input until every intended encrypted write succeeds.
+      // Successfully committed keys remain durable; rejected keys stay unconfigured.
+      this.storeLoadError = 'migration-failed';
     }
   }
 
-  private async writeEncryptedStore(): Promise<void> {
-    if (this.safeStorage === undefined) throw new Error('Secure storage unavailable');
-    const secrets: Record<string, string> = {};
-    for (const name of this.persistedSecrets) {
-      const value = this.memory.get(name);
-      if (value === undefined || !isSecretName(name)) continue;
-      secrets[name] = this.safeStorage.encryptString(value).toString('base64');
-    }
-    const payload: EncryptedStoreFile = { version: 1, secrets };
-    await atomicWriteJson(this.credentialPath, payload);
-  }
-
-  private async writeModelPrefs(extra?: Record<string, string>): Promise<void> {
-    const models: Record<string, string> = { ...(extra ?? {}) };
+  private async writeModelPrefs(memory: ReadonlyMap<string, string>): Promise<void> {
+    const models: Record<string, string> = {};
     for (const name of MODEL_KEYS) {
-      const value = this.memory.get(name);
+      const value = memory.get(name);
       if (value !== undefined && value.length > 0) models[name] = value;
     }
     const payload: ModelPrefsFile = { version: 1, models };
@@ -417,6 +437,7 @@ export class ProviderCredentialService {
    * instead of silently degrading. Non-secret values persist as prefs.
    */
   async saveKey(name: string, value: string): Promise<ProviderCredentialStatus> {
+    this.assertProfile();
     this.assertManaged(name);
     const trimmed = value.trim();
     if (trimmed.length === 0 || trimmed.length > 5000) {
@@ -424,86 +445,126 @@ export class ProviderCredentialService {
         code: 'PROVIDER_KEY_INVALID',
       });
     }
-    if (
-      isSecretName(name) &&
-      (!this.refreshSecureAvailability() || this.safeStorage === undefined)
-    ) {
-      throw Object.assign(
-        new Error(
-          'Secure persistent storage unavailable' +
-            (this.secureUnavailableReason() === undefined
-              ? '. The credential was not saved.'
-              : ' (' +
-                (this.secureUnavailableReason() as string) +
-                '). The credential was not saved.'),
-        ),
-        { code: 'SECURE_STORAGE_UNAVAILABLE' },
-      );
-    }
-    this.memory.set(name, trimmed);
-    process.env[name] = trimmed;
-    if (isSecretName(name)) {
-      this.persistedSecrets.add(name);
-      await this.writeEncryptedStore();
-    } else if (isModelName(name)) {
-      await this.writeModelPrefs();
-    }
-    return this.statusFor(name);
+    return this.enqueue(async () => {
+      if (
+        isSecretName(name) &&
+        (!this.refreshSecureAvailability() || this.safeStorage === undefined)
+      ) {
+        throw Object.assign(
+          new Error(
+            'Secure persistent storage unavailable' +
+              (this.secureUnavailableReason() === undefined
+                ? '. The credential was not saved.'
+                : ' (' +
+                  (this.secureUnavailableReason() as string) +
+                  '). The credential was not saved.'),
+          ),
+          { code: 'SECURE_STORAGE_UNAVAILABLE' },
+        );
+      }
+      try {
+        if (isSecretName(name)) {
+          const store = await this.readEncryptedStore();
+          const blob = this.safeStorage!.encryptString(trimmed).toString('base64');
+          if (blob.length === 0) throw new Error();
+          // Preserve every untouched ciphertext, including unreadable entries.
+          await atomicWriteJson(this.credentialPath, {
+            ...store,
+            secrets: { ...store.secrets, [name]: blob },
+          });
+        } else {
+          await this.writeModelPrefs(new Map(this.memory).set(name, trimmed));
+        }
+      } catch {
+        // Backend exceptions can include the submitted secret. Never forward them.
+        throw Object.assign(
+          new Error('Credential could not be stored securely. Previous settings were preserved.'),
+          { code: 'CREDENTIAL_WRITE_FAILED' },
+        );
+      }
+      this.memory.set(name, trimmed);
+      process.env[name] = trimmed;
+      if (isSecretName(name)) {
+        this.persistedSecrets.add(name);
+        this.entryLoadErrors.delete(name);
+      }
+      return this.statusFor(name);
+    });
   }
 
   async clearKey(name: string): Promise<ProviderCredentialStatus> {
+    this.assertProfile();
     this.assertManaged(name);
-    this.memory.delete(name);
-    this.persistedSecrets.delete(name);
-    this.persistedPrefs.delete(name);
-    delete process.env[name];
-    if (isSecretName(name) && this.secureAvailable) {
+    return this.enqueue(async () => {
       try {
-        await this.writeEncryptedStore();
+        if (isSecretName(name)) {
+          const store = await this.readEncryptedStore();
+          const secrets = { ...store.secrets };
+          delete secrets[name];
+          await atomicWriteJson(this.credentialPath, { ...store, secrets });
+        } else {
+          const memory = new Map(this.memory);
+          memory.delete(name);
+          await this.writeModelPrefs(memory);
+        }
       } catch {
-        // Memory + env already cleared; store rewrite is best-effort.
+        throw Object.assign(
+          new Error('Credential could not be cleared. Previous settings were preserved.'),
+          { code: 'CREDENTIAL_WRITE_FAILED' },
+        );
       }
-    }
-    if (isModelName(name)) {
-      try {
-        await this.writeModelPrefs();
-      } catch {
-        // Best effort.
-      }
-    }
-    return this.statusFor(name);
+      this.memory.delete(name);
+      this.persistedSecrets.delete(name);
+      this.persistedPrefs.delete(name);
+      delete process.env[name];
+      this.entryLoadErrors.delete(name);
+      return this.statusFor(name);
+    });
   }
 
   /** @deprecated Use saveKey (persist); kept for older IPC call sites. */
   async persist(): Promise<{ path: string; keys: number }> {
-    if (this.refreshSecureAvailability() && this.safeStorage !== undefined) {
-      await this.writeEncryptedStore();
-      await this.writeModelPrefs();
-      return { path: this.credentialPath, keys: this.persistedSecrets.size };
-    }
-    const reason = this.secureUnavailableReason();
-    throw Object.assign(
-      new Error(
-        reason === undefined
-          ? 'Secure persistent storage unavailable.'
-          : 'Secure persistent storage unavailable (' + reason + ').',
-      ),
-      { code: 'SECURE_STORAGE_UNAVAILABLE' },
-    );
+    this.assertProfile();
+    return this.enqueue(async () => {
+      if (this.refreshSecureAvailability() && this.safeStorage !== undefined) {
+        const store = await this.readEncryptedStore();
+        await atomicWriteJson(this.credentialPath, store);
+        await this.writeModelPrefs(this.memory);
+        return { path: this.credentialPath, keys: this.persistedSecrets.size };
+      }
+      const reason = this.secureUnavailableReason();
+      throw Object.assign(
+        new Error(
+          reason === undefined
+            ? 'Secure persistent storage unavailable.'
+            : 'Secure persistent storage unavailable (' + reason + ').',
+        ),
+        { code: 'SECURE_STORAGE_UNAVAILABLE' },
+      );
+    });
   }
 
   async forgetAll(): Promise<{ forgotten: boolean }> {
-    for (const name of SECRET_PROVIDER_KEYS) {
-      this.memory.delete(name);
-      this.persistedSecrets.delete(name);
-      delete process.env[name];
-    }
-    try {
-      await unlink(this.credentialPath);
-    } catch {
-      // Absent file is the desired end state.
-    }
-    return { forgotten: true };
+    this.assertProfile();
+    return this.enqueue(async () => {
+      try {
+        await unlink(this.credentialPath);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+          throw Object.assign(
+            new Error('Credentials could not be forgotten. Previous settings were preserved.'),
+            { code: 'CREDENTIAL_WRITE_FAILED' },
+          );
+      }
+      for (const name of SECRET_PROVIDER_KEYS) {
+        this.memory.delete(name);
+        this.persistedSecrets.delete(name);
+        delete process.env[name];
+      }
+      this.entryLoadErrors.clear();
+      this.storeLoadError = undefined;
+      return { forgotten: true };
+    });
   }
 
   /** @deprecated Use forgetAll; kept for older IPC call sites. */
@@ -531,13 +592,20 @@ export class ProviderCredentialService {
     const envValue = process.env[name];
     const effective = fromMemory ?? envValue;
     const configured = effective !== undefined && effective.length > 0;
+    const storageError = isSecretName(name)
+      ? (this.storeLoadError ?? this.entryLoadErrors.get(name))
+      : undefined;
     if (!configured) {
       return {
         name,
         configured: false,
-        persistence: 'missing',
-        source: 'missing',
-        hint: 'missing',
+        persistence: storageError === undefined ? 'missing' : 'unavailable',
+        source: storageError === undefined ? 'missing' : 'unavailable',
+        hint:
+          storageError === undefined
+            ? 'missing'
+            : 'Stored credential unavailable. Check OS secure storage; keep the existing store.',
+        ...(storageError === undefined ? {} : { storageError }),
       };
     }
     if (isSecretName(name)) {
@@ -557,6 +625,7 @@ export class ProviderCredentialService {
         persistence: 'environment',
         source: 'environment',
         hint: 'Configured · From environment',
+        ...(storageError === undefined ? {} : { storageError }),
       };
     }
     if (this.persistedPrefs.has(name) && fromMemory !== undefined) {
