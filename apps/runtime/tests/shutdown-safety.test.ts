@@ -27,7 +27,7 @@ it('refuses shutdown while a run is pending, including before row creation', asy
     await expect(host.dispatch('runtime.shutdown', {})).rejects.toMatchObject({
       code: 'RUNTIME_BUSY',
     });
-    expect(host.hello()).toMatchObject({ runtimeVersion: '0.1.0-beta.1' });
+    expect(host.hello()).toMatchObject({ runtimeVersion: '1.0.0-rc.1' });
   } finally {
     release(new Error('fixture cancelled before row creation'));
     await pending.catch(() => undefined);

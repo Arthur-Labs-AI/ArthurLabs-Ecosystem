@@ -4,10 +4,16 @@ Phase 4 candidates are unsigned review artifacts, not a v1 release. Supported
 hosts are Windows 11 x64 with WSL2, and native CachyOS x64 with a graphical
 session. Ubuntu CI/WSL builds do not establish native CachyOS acceptance.
 There is no automatic update, offline install, signed installer or macOS support.
-Versions remain 0.1.0-beta.1; **the full source SHA distinguishes candidates**.
+Phase6.0 prepares version1.0.0-rc.1 on an isolated review branch. Historical
+beta/I1 archives remain0.1.0-beta.1. **Version, full source SHA and archive
+checksum distinguish candidates**; RC review bytes are not published or signed.
 
-Current review acceptance uses the [Phase5.3 exact I1 lock](../releases/v1-phase-5-3-candidate-lock.md)
-and [native operator workflow](../releases/v1-phase-5-3-cachyos-operator.md).
+Current preparation uses the [RC checklist](../releases/V1_RC_READINESS_CHECKLIST.md)
+and [version plan](../releases/v1-rc-versioning-plan.md). The owner's normal
+Windows/native CachyOS functionality confirmation is recorded separately from
+exact-build receipts. Historical [I1 lock](../releases/v1-phase-5-3-candidate-lock.md)
+and [native recovery workflow](../releases/v1-phase-5-3-cachyos-operator.md) retain
+their original identities; do not run their fixed-I1 recovery helper with an RC identity.
 The [recovery decision](../releases/v1-recovery-policy-decision.md) is pending
 owner adoption; original-beta G10 remains historical FAIL. These handoffs do
 not publish or authorize a release.

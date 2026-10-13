@@ -1,6 +1,6 @@
 # Owner decision — corrected-binary recovery
 
-**Approval status: OWNER ACCEPTANCE REQUIRED. Selected option: UNDECIDED.**
+**Approval status: PENDING — OWNER ACCEPTANCE REQUIRED. Selected option: UNDECIDED.**
 Recommendation: **Option A for the physically tested Windows scope**. This
 document requests a decision; it does not enact one. Original-beta G10 stays
 historical P1 FAIL. G10-R stays a successful synthetic Windows experiment.
@@ -14,8 +14,10 @@ Option A target: exact I1 Desktop/runtime source
 `c78faa74717b0f430a859730e98c3c4915e7b03f`, with the Windows archive and manifest
 checksums in the [candidate lock](v1-phase-5-3-candidate-lock.md). Supported
 scope **if approved**: Windows11 x64/WSL2, same Windows account/machine/DPAPI
-context used to create the backup. Native CachyOS remains excluded from an
-adopted support claim until its actual GUI/keychain/recovery receipt is accepted.
+context used to create the backup. Native CachyOS normal functionality is now
+[owner-reported accepted](v1-owner-functional-acceptance-2026-10-13.md); full native
+G10-R was not established by that statement. Native G10-R remains outside this
+physically validated recovery support scope, pending separate evidence/decision.
 
 Require a complete matching-generation stopped data/project/profile backup,
 checkpointed database, no active run/retest/lease/GUI/runtime, verified inventory,
@@ -52,4 +54,10 @@ the release recovery disposition unresolved. B requires separate owner scope.
 | Original G10 disposition acknowledged                              | OWNER ACCEPTANCE REQUIRED |
 | Evidence reviewed / anonymous approver / date / decision reference | OWNER ACCEPTANCE REQUIRED |
 
-No decision here authorizes Phase6, an RC, version/tag/publication or a PR merge.
+Phase6.0 requests an explicit choice: **adopt A in the stated Windows/I1 scope**,
+**request separately scoped B**, or **reject both and retain the recovery release
+blocker**. No choice has been supplied; no historical failure is waived.
+
+Phase6.0 preparation/version review was authorized separately. This decision
+record does not authorize an official RC cut, main promotion, tag, publication
+or PR merge. The new RC version is not silently substituted as the recovery target.

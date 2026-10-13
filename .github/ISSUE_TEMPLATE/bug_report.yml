@@ -1,6 +1,6 @@
 name: Bug report
-description: Report a Sentry Beta problem (no secrets, ever).
-title: '[beta]: '
+description: Report a Sentry problem (no secrets, ever).
+title: '[bug]: '
 labels: [bug]
 body:
   - type: markdown
@@ -11,15 +11,15 @@ body:
     attributes:
       label: Sentry version
       description: Output of `sentry version`.
-      placeholder: '0.1.0-beta.1'
+      placeholder: '1.0.0-rc.1'
     validations:
       required: true
   - type: input
     id: commit
     attributes:
       label: Commit
-      description: The commit line from `sentry version`.
-      placeholder: 'e9e0b80'
+      description: Full source SHA from build identity or `sentry version`.
+      placeholder: '40-character source SHA'
     validations:
       required: true
   - type: input

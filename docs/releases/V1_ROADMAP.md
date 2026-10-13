@@ -192,13 +192,17 @@ is NOT AUTHORIZED. No additional production correction was justified.
 
 ## Phase 6 — Release candidate
 
-**Not authorized.** Phase 5 finalization prepares an exact-SHA unsigned owner
-candidate. See [preparation evidence](v1-pre-rc-acceptance-preparation.md),
-[physical-host runbook](v1-owner-acceptance.md), [results template](v1-owner-acceptance-results.md)
-and [v1 checklist](V1_ACCEPTANCE_CHECKLIST.md). Getter/Proxy mapping and Electron
-test-signature corrections, plus reproduced fatal-screen scrubbing correction,
-do not close physical acceptance. Implementation, automated verification,
-supported-host acceptance and owner authorization remain separate gates.
+**Preparation authorized October13,2026; official cut/tag/publication not
+authorized.** PR20 is owner-merged at devc103509 with post-mergeCI38460193028
+SUCCESS/all3. The [owner reports normal functionality](v1-owner-functional-acceptance-2026-10-13.md)
+working on Windows/WSL2 and native CachyOS, including independent agents,
+selection and Full/Targeted QA. Feature development is frozen. The
+[Phase6.0 report](v1-phase-6-0-rc-readiness.md),
+[version plan](v1-rc-versioning-plan.md), [draft notes](v1.0.0-rc.1.md) and
+[simplified RC checklist](V1_RC_READINESS_CHECKLIST.md) define bounded preparation.
+No retrospective recordings or blanket paid replay are required. Historical
+case results/build-attribution limits remain; recovery-policy adoption and
+exact-source owner RC authorization are separate pending decisions.
 
 - **Objective:** freeze features and stabilize an explicit v1.0 candidate.
 - **Expected changes:** owner-approved RC versioning, migration/upgrade tests,
@@ -210,7 +214,7 @@ supported-host acceptance and owner authorization remain separate gates.
 - **Dependencies:** Phases 2–5 acceptance and owner feature-freeze authorization.
 - **Risks:** last-minute scope expansion, version/artifact mismatch, data migration
   loss, environment/provider differences and regression after acceptance.
-- **Branch:** `release/v1.0.0-rc.1`.
+- **Branch:** `release-prep/v1.0.0-rc.1` for this review; a future `release/v1.0.0-rc.1` requires separate owner cut authorization.
 
 ## Phase 7 — Sentry v1.0.0
 

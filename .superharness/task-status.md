@@ -1,3 +1,26 @@
+# Phase6.0 unsigned RC preparation — 2026-10-13
+
+PR20 actual owner mergec103509e8f601ef4c4089f9a030711c67348ca32 verified;
+postmergeCI38460193028 all3 SUCCESS. Isolated release-prep/v1.0.0-rc.1 from
+approved dev; primary dirty main preserved. Owner directly confirms normal
+Windows/WSL2 and native CachyOS functionality, independent agents/selection and
+Full/Targeted QA: OWNER-REPORTED FUNCTIONAL ACCEPTANCE, no exact-build invention
+or blanket A-G PASS conversion, retrospective recording or14-mode paid replay.
+Feature development frozen. Metadata/reporting version patch1.0.0-rc.1 applied
+only in review branch per Phase6 authority; source audit16 files exact literal
+substitution, lock/protocol1/migrations/models/SDKs/security behavior unchanged.
+New consistency tests root-only RED2/3→coherent GREEN3/3; RC manifest fixture
+accepts RC/refuses beta mix. Windows distribution26PASS/25skips of51 and launcher
+smoke PASS. Final exact-head complete gates/unsigned artifact provenance/smoke
+and GO-NOGO belong to preparation PR final receipt; no official cut or tag.
+Owner acceptance record, version plan, draft notes, simplified checklist and
+readiness report prepared. Recovery A recommended for exact I1 tested Windows
+scope; adoption PENDING (A/B/reject). Original G10 FAIL preserved, native G10-R
+not inferred. Six remote historical branches zero unique/reachable/no active
+worktree/workflow-name dependency; none deleted. No owner credentials/current,
+main, beta tag, public assets, paid calls or self-merge. shux unavailable;
+protocol maintained directly. Stop after review PR and pending owner decisions.
+
 # Phase5.3 final host acceptance — 2026-10-13
 
 Verified PR19 owner merge5c68491ccd0f00e34917bb3efdb4926c2fcfd280,

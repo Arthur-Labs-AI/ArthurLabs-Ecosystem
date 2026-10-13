@@ -80,6 +80,13 @@ No branches were deleted; remote cleanup still needs explicit owner approval.
 
 ## No automatic publication
 
+Phase6.0 explicitly authorizes an isolated `release-prep/v1.0.0-rc.1` review
+branch from approved dev and safe version-specific preparation. It is not an
+official `release/*` cut or a new update channel. Current owner functional
+acceptance and pending policy/RC decisions are in the
+[RC checklist](../releases/V1_RC_READINESS_CHECKLIST.md). Six historical merged
+branches were rechecked against devc103509; none were deleted.
+
 - No workflow publishes a release, creates a tag, or force-pushes a branch pointer automatically. Push CI validates only.
 - GitHub's default branch is unchanged by this transition (still `main`). Changing the default branch affects new PRs, new clones, and automation; it is a separate owner decision — see `docs/development/dev-branch-transition.md` for the recommendation.
 

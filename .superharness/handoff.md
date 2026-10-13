@@ -1,3 +1,24 @@
+# Phase6.0 preparation review handoff — 2026-10-13
+
+Start docs/releases/v1-phase-6-0-rc-readiness.md, V1_RC_READINESS_CHECKLIST.md,
+v1-owner-functional-acceptance-2026-10-13.md, v1-rc-versioning-plan.md,
+v1.0.0-rc.1.md and pending recovery-policy-decision. Owner-merged PR20/devc103509
+and postmerge38460193028 all3 PASS verified. Current owner reports both supported
+platforms/independent agents/selection/Full-Targeted normally work. Record that
+overall acceptance honestly; do not replay14 paid modes or demand recordings.
+Review branch release-prep/v1.0.0-rc.1 changes only version/reporting metadata,
+guards and docs; protocol1/deps/pins/migrations/profile/security paths frozen.
+Source audit16 exact literal-change files; root-only RED2→GREEN3 consistency,
+RC/beta tuple refusal, Windows distribution26/25 of51, launcher smoke PASS.
+Final full source/tree, CI/proposed merge, both review archives/retention and
+actual test/smoke conclusions are in preparation PR final verification receipt.
+Owner chooses recovery A exact I1 Windows scope / separately scoped B / reject;
+adoption PENDING. Original beta G10 FAIL, native G10-R unexecuted. Owner reviews
+version/evidence scope and separately authorizes eventual exact RC cut. No
+release/* branch, tag, public publication, main promotion, self-merge, real
+profile access, spending or remote deletion. Six old branches eligible only
+after owner approval. shux absent; task protocol maintained. Stop for review.
+
 # Phase5.3 review handoff — 2026-10-13
 
 Start with docs/releases/v1-phase-5-3-final-host-acceptance.md, candidate-lock,
