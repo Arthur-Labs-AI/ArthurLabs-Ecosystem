@@ -9,6 +9,21 @@ the beta/I1 persistence migration definitions were compared directly.
 
 ## What must remain together
 
+I1 packaged profile selection is explicit `--user-data-dir` first, otherwise
+`app.getPath('appData')/@qa/desktop` (Windows roaming appData; native Linux
+appData/config location). Bootstrap uses that same resolved Electron userData
+for credentials and host preferences. The campaign always selects and proves a
+fresh explicit profile; it never discovers an owner's default profile.
+
+The authoritative runtime data is Linux-owned: absolute SENTRY_DATA_ROOT when
+provided, otherwise `$XDG_DATA_HOME/sentry` or `$HOME/.local/share/sentry`.
+Windows legacy `%LOCALAPPDATA%/Sentry` is not silently mixed with that runtime
+database. Runtime versions/current and `.release-maintenance` live separately
+under Linux `$HOME/.local/share/sentry/runtime`; retain the selected archive,
+version directories and recorded pointer target. This campaign separates its
+explicit data root from that runtime root inside a disposable HOME. The fixture
+verifier is not a whole-default-home backup utility and refuses symlink material.
+
 The Linux runtime owns `sentry.db` under its explicit data root and all
 `projects/` material: working copies, retained revisions, contexts, run snapshots,
 events, artifacts, exports and their SQLite metadata/issue/retest relationships.
