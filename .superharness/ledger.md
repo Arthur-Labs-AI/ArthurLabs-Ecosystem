@@ -86,6 +86,15 @@ Append-only activity log. Never edit previous entries.
 
 # 2026-10-13 — Phase 5 finalization and acceptance preparation
 
+Final implementation receipt93a84c3: CI38361256576 all3 PASS, distribution38361256555
+both PASS; exact-source WSL full1214 PASS/16skip, real mounts8/8 PASS, launchers24PASS.
+Both CI archives downloaded/checksummed/extracted/inventory/version verified;
+docs/releases/v1-pre-rc-automated-receipt.md holds exact identities and failures.
+Windows uncached serial38/40 FAIL (six systemd trust and OpenCode timeout);
+OpenCode file solo FAIL, case alone PASS1102ms. No tests weakened. Obsolete merged
+remote final-hardening branch removed; main/dev/beta/owner checkout unchanged.
+PR14 owner review; subsequent docs-head exact checks/artifacts reported in PR receipt.
+
 Task fix/v1-pre-rc-acceptance-preparation based on fetched approved dev c1d2d58;
 PR13 merge CI38358392945 all3 success; remote main4fd2be9 and immutable beta unchanged.
 Owner dirty main checkout preserved in separate worktree. shux unavailable.

@@ -1,5 +1,16 @@
 # Phase 5 finalization — acceptance preparation (2026-10-13)
 
+Implementation93a84c3d27f1079480f8ec90d87ee645e4767611 VERIFIED: WSL full1214/16skip,
+real trust8/8, all24 Linux launcher suites PASS. CI38361256576 all3 PASS;
+distribution38361256555 both PASS. Downloaded CI ZIP4036c333... and TAR e3576b76...
+sidecars/extraction/inventory/version verified (332/333 files); full digests in
+docs/releases/v1-pre-rc-automated-receipt.md. Windows full uncached serial FAIL
+six trust cases plus OpenCode bypass fixture timeout; file rerun FAIL, single
+case PASS1102ms, source unchanged. Obsolete merged remote final-hardening branch
+removed; local checked-out worktree retained. Draft PR14 targets dev; final
+documentation-head checks and artifact identities recorded in PR final receipt.
+Owner physical acceptance and Phase6 authorization remain outstanding.
+
 Task branch fix/v1-pre-rc-acceptance-preparation from approved dev c1d2d58.
 Primary dirty main checkout preserved. shux contract attempted, unavailable.
 Getter/Proxy mapper and faithful Electron event/payload corrections complete;

@@ -1,5 +1,10 @@
 # Phase 5 final corrections and acceptance preparation
 
+Final executed implementation evidence: [automated receipt](v1-pre-rc-automated-receipt.md)
+records exact SHA/tree, CI, real WSL 8/8 trust, full-suite 1214/16, disclosed
+Windows failures/retests and both downloaded CI archive checksums. Any subsequent
+documentation-head artifacts keep their own source SHA in the PR final receipt.
+
 2026-10-13. Branch `fix/v1-pre-rc-acceptance-preparation`, PR to dev.
 Phase 6 is NOT AUTHORIZED. The PR's final candidate receipt and engineering
 handoff record the exact committed SHA/tree, final workflow conclusions,
