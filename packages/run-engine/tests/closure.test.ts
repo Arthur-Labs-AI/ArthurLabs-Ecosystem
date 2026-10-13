@@ -191,6 +191,12 @@ describe('finish-pass §54: true cross-process cancel, no manual ack', () => {
 describe('finish-pass §24/§56-§58: multi-agent cancel preserves completed', () => {
   it('A completed, B/C blocked; foreign request; owner settles alone', async () => {
     const f = await fixture();
+    let releaseFast: () => void = () => {
+      throw new Error('Completion barrier not initialized');
+    };
+    const fastMayComplete = new Promise<void>((resolve) => {
+      releaseFast = resolve;
+    });
     const fast = new (class implements HarnessAdapter {
       async getMetadata() {
         return {
@@ -214,6 +220,7 @@ describe('finish-pass §24/§56-§58: multi-agent cancel preserves completed', (
           timestamp: t,
           type: 'run.started',
         });
+        await fastMayComplete;
         const operationId = createOperationId();
         const evidenceId = createEvidenceId();
         yield emit({
@@ -309,12 +316,24 @@ describe('finish-pass §24/§56-§58: multi-agent cancel preserves completed', (
     lease2.start();
     const { RunCoordinator: RC2 } = await import('../src/index.js');
     const requester = new RC2(f.dataRoot, repository2, lease2);
+    releaseFast();
+    // Other adapters starting does not prove this agent has completed.
+    // Gate cancellation on the durable state required by this scenario.
+    await waitFor(() =>
+      f.repository
+        .listAgentRuns(runId)
+        .some((agent) => agent.agentStackId === stacks[0]?.id && agent.status === 'completed'),
+    );
+    const fastBeforeCancel = f.repository
+      .listAgentRuns(runId)
+      .find((agent) => agent.agentStackId === stacks[0]?.id)?.status;
     const requested = requester.requestRunCancellation(runId);
     expect(requested.status).toBe('cancellation_requested');
     // Foreign acknowledge is refused outright.
     expect(() => requester.acknowledgeRunCancellation(runId)).toThrowError(/another runtime/);
     // Owner settles alone.
     const details = await runPromise;
+    expect(fastBeforeCancel).toBe('completed');
     const byStatus = new Map(details.agentRuns.map((agent) => [agent.agentStackId, agent.status]));
     expect(byStatus.get((stacks[0] as never).id)).toBe('completed');
     expect(details.agentRuns.filter((agent) => agent.status === 'cancelled')).toHaveLength(2);

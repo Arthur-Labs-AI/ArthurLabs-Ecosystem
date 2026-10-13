@@ -104,6 +104,25 @@ defect was reproduced. Prior G10-R/DPAPI tests were not repeated merely for coun
 
 ## Executed automated and package checks
 
+The first exact-head WSL run at585db305c252d89591ad992ec67d1270265000ad
+failed one existing multi-agent cancellation test: expected completed, observed
+cancelled. Its setup waited only for the two blocking adapters to start, not for
+the fast agent's durable completion. A promise barrier and a before-cancellation
+state assertion deterministically reproduced the invalid precondition (`running`
+instead of `completed`). The initial barrier-only probe passed because the
+production cancellation poll allowed the released adapter to finish; that probe
+is retained separately and is not called a failing regression.
+
+The minimum correction is confined to `packages/run-engine/tests/closure.test.ts`:
+retain the controlled completion barrier, await the completed persisted AgentRun,
+assert that state before cancellation and preserve every original terminal,
+finding, control-request and managed-copy assertion. No sleeps, weakened
+expectations, runtime/orchestration changes or backup-verifier edits. Controlled
+RED exit1, then the full closure file7/7 PASS; original full-suite failure remains
+in `phase53-final-head-linux.log`, with RED/GREEN receipts
+`phase53-closure-precondition-red.log`/`phase53-closure-green.log`. Final full-suite
+and exact CI/distribution outcomes belong to the correction head's PR receipt.
+
 | Check / exact scope                                                                          | Result / private receipt                                                                                                                         |
 | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Integrated dev5c68491 WSL frozen install, repository hygiene, format, lint, typecheck, build | PASS;20 lint/37 typecheck/20 build tasks; phase53-baseline-linux.log                                                                             |
@@ -128,7 +147,8 @@ unchanged. The documented audit has positive and three controlled negative check
 
 ## Security, compatibility and evidence review
 
-New files are release documentation only. Commands were reviewed for default
+Changes are release documentation and one regression-backed test synchronization
+correction, excluded from runtime distribution sources. Commands were reviewed for default
 profile/current access, secrets, destructive/unbounded operations, symlinks,
 schema assumptions and false-pass behavior. Native execution requires a disposable
 OS account and HOME; inherited DBus/keychain retained, provider secrets cleared,

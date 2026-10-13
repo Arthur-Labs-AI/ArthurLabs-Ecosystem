@@ -649,3 +649,12 @@ Verification:
 Next: do not start Phase 4 automatically. A live Muse smoke remains available
 only when a user explicitly provides a configured host/model/auth environment
 and opts in with `SENTRY_LIVE_MUSE_TEST=1`.
+
+Late exact-head585db30 verification retained: full WSL failed one existing
+closure cancellation test (first agent cancelled before assumed completion).
+Controlled promise barrier + before-cancel state assertion reproduced RUNNING,
+then durable-completion wait fixed test synchronization; closure7/7 PASS,
+run-engine typecheck/lint PASS. No production code/backup verifier changed;
+all original result assertions preserved. Initial barrier-only probe passed and
+is retained separately. Final correction head full/CI/distribution results are
+recorded in PR20; first-head failure is not erased or silently rerun as green.

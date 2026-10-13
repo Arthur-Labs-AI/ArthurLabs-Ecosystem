@@ -253,3 +253,12 @@ Final static/diff/exact-head CI/distribution in PR receipt. shux unavailable;
 owner work preserved, no production code/spending/profile/tag/main/RC/self-merge.
 Stop at owner review; native/clean/D06/owner/funded/active-provider/policy/Phase6
 remain individually open in report.
+
+Late exact-head585db30 verification retained: full WSL failed one existing
+closure cancellation test (first agent cancelled before assumed completion).
+Controlled promise barrier + before-cancel state assertion reproduced RUNNING,
+then durable-completion wait fixed test synchronization; closure7/7 PASS,
+run-engine typecheck/lint PASS. No production code/backup verifier changed;
+all original result assertions preserved. Initial barrier-only probe passed and
+is retained separately. Final correction head full/CI/distribution results are
+recorded in PR20; first-head failure is not erased or silently rerun as green.

@@ -57,6 +57,14 @@ executable, changing dependencies/models/protocol or rebuilding different bytes
 requires a new lock and affected host checks. The task PR's CI/distribution
 identities belong in its final receipt and remain separate from this lock.
 
+Phase5.3's final verification additionally exposed a timing assumption in the
+existing cancellation test. Its correction waits for durable agent completion
+before requesting cancellation and retains a controlled promise barrier/state
+assertion. Only `packages/run-engine/tests/closure.test.ts` changes; it is excluded
+by the runtime-source allowlist. The [report](v1-phase-5-3-final-host-acceptance.md)
+retains the first-head failure and deterministic RED/GREEN evidence. Production
+source and selected physical bytes remain unchanged.
+
 Published beta tag object `e92e3be8d2de21ce5c22508c15de3c08f02cb77a` still peels
 to `0e5c10cfa80f6385ebfc88a7306b38ce8a12ce38`; no release assets, tag changes
 or publication. All candidates are unsigned.
