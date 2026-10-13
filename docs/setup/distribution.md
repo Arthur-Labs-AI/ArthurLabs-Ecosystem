@@ -176,6 +176,17 @@ check migration/release policy first. If incompatible, restore the matching stop
 backup and matching old binary/runtime together. Binary rollback does not reverse
 schema changes. Keep old source clones usable and untouched as a recovery option.
 
+**Phase5 acceptance finding (2026-10-13):** a disposable same-account Windows
+rollback to the immutable source beta, with matching stopped data/project/profile
+and beta binary/runtime restored together, retained history/ciphertext but failed
+credential availability. Candidate D could read the same encrypted store; beta
+loaded it before Electron readiness. G10 is FAIL and this beta downgrade is not
+an accepted credential-continuity recovery procedure. Retain private backups and
+stop the affected rollback track pending owner disposition of the
+[bounded correction proposal](../releases/v1-beta-rollback-credential-proposal.md).
+No replacement rollback policy or real-owner key re-entry is authorized by this
+guide. Full native CachyOS and complete upgrade/export acceptance remain outstanding.
+
 ## Failed/interrupted setup and uninstall
 
 Read the printed log and fix the prerequisite/corruption cause, then rerun setup.

@@ -234,6 +234,13 @@ with the operator. Do not force-kill unrelated processes or corrupt a real DB.
 
 ## G — Beta upgrade, repair and rollback (both platforms)
 
+Actual integrated-candidate [campaign receipt](v1-owner-acceptance-execution.md)
+records **G10 FAIL on W1**: restored beta history/ciphertext survived, but beta
+could not report the synthetic credential configured. The affected track is
+stopped pending the [separate bounded proposal](v1-beta-rollback-credential-proposal.md).
+Preserve this failure; do not treat the procedure below as an already accepted
+beta credential recovery path or transfer W1 results to native CachyOS.
+
 Start with a disposable stopped backup derived from the supported
 `v0.1.0-beta.1` source-beta layout at full commit
 `0e5c10cfa80f6385ebfc88a7306b38ce8a12ce38`. Include database/project material
