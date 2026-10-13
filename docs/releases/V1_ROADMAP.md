@@ -161,6 +161,10 @@ with owner review and accurate validation under the
   error mapping (`toSafeError`: validated codes, consistent 1000 cap, exact
   known-value scrubbing on IPC/CLI/service/boot-warning paths) with a wire-level
   regression matrix; see `docs/releases/v1-phase-5-error-redaction-correction.md`.
+- **Follow-up (final hardening):** `fix/v1-error-boundary-final-hardening` makes
+  scrubbing fail closed (fixed fallback, never raw text), sanitizes async RPC
+  rejections identically to sync throws, and covers the registered IPC handler;
+  same correction record extended.
 
 ## Phase 6 — Release candidate
 

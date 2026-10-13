@@ -113,6 +113,36 @@ desktop service) run unmodified.
   audited baseline; later commits docs-only). Clone status clean.
 - PR-head CI + distribution workflows: reported in the delivery message.
 
+## Follow-up hardening (fail-closed redaction, async sanitization, IPC boundary)
+
+A later review found three residual gaps in the merged correction; all are
+fixed on branch `fix/v1-error-boundary-final-hardening` (this document extended
+rather than rewritten).
+
+1. **Fail-closed redaction.** `safeErrorMessage` kept the original text when
+   the scrubber threw, and crashed (`slice` of `undefined`) when it returned
+   a non-string. Both reproduced with the synthetic secret (secret retained;
+   mapping threw). Now a throwing/misbehaving scrubber yields the fixed
+   message `Desktop operation failed` with the validated code preserved;
+   mapping itself never throws. The same fail-closed shape was applied to
+   the service redactor passthrough (now propagates into the shared core),
+   the index hook (no swallowing catch), and the bootstrap push-warning
+   catch (fixed fallback).
+2. **Async sanitization.** Service `call()` only caught synchronous throws;
+   async RPC rejections bypassed it (reproduced: secret-bearing rejection
+   reached the caller raw). Now both paths map through the identical
+   sanitizer; successes pass through untouched (same promise chain shape,
+   no retries, no lifecycle change).
+3. **Registered IPC boundary.** The matrix tested dispatch-then-map manually;
+   new tests capture the real `ipcMain` handler via `registerDesktopIpc()`
+   with a mocked Electron bridge: failing service + secret, failing
+   redactor, success passthrough, and unwired-handler bounds are all
+   asserted on the actual response objects.
+
+Regression: `error-redaction.test.ts` now 19 tests (4 pre-existing pins + 15
+new/strengthened), all green; full desktop suite 48 files green with no
+modified unrelated assertions.
+
 ## Outstanding host acceptance
 
 - Real DPAPI/keyring acceptance for this candidate: OWNER ACCEPTANCE REQUIRED.
