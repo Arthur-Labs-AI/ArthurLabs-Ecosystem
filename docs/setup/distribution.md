@@ -193,6 +193,13 @@ separately choosing data removal. The source shim remains owned by source setup.
 
 ## Owner acceptance procedure (no paid calls by default)
 
+For the v1 acceptance campaign use the comprehensive
+[Windows/WSL and native CachyOS runbook](../releases/v1-owner-acceptance.md),
+[per-host results template](../releases/v1-owner-acceptance-results.md) and
+[v1 checklist](../releases/V1_ACCEPTANCE_CHECKLIST.md). The summary below remains
+a setup reference. Final PR head and later merge SHA are distinct candidates;
+record archive SHA256/full source identity and post-merge CI explicitly.
+
 For **each actual supported host**, use a clean user/machine where possible and
 record OS/build, Node/pnpm, full SHA, archive SHA256 and each result:
 

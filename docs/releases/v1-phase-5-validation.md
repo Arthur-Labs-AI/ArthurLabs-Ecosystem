@@ -1,5 +1,13 @@
 # Phase 5 validation report — Security & Testing
 
+Finalization follow-up (2026-10-13): see [pre-RC preparation](v1-pre-rc-acceptance-preparation.md)
+for remaining error-access/IPC-fidelity corrections, reproduced fatal-screen
+scrubbing correction and new verification receipts. Historical results below
+retain their original source identities; they do not establish acceptance for
+the new candidate. Use the [owner runbook](v1-owner-acceptance.md) and
+[results template](v1-owner-acceptance-results.md) for actual supported hosts.
+Phase 5 acceptance remains open; Phase 6 is not authorized.
+
 Date: 2026-10-13. Branch: `codex/v1-security-testing`.
 Threat model: `docs/security/V1_THREAT_MODEL.md` (read first).
 

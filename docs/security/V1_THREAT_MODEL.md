@@ -1,5 +1,14 @@
 # Sentry v1 Threat Model (Phase 5)
 
+2026-10-13 finalization addendum: [preparation review](../releases/v1-pre-rc-acceptance-preparation.md)
+records getter/Proxy fail-closed mapping, corrected registered Electron payload
+coverage, and a reproduced synthetic fatal-screen secret reflection. Fatal
+render now uses exact known environment-value scrubbing before the common cap;
+unreadable host metadata cannot break classification. Earlier broad fatal-path
+scrubbing claims were inaccurate and are superseded by this regression-backed
+correction. Native OS crypto and packaged-host acceptance remain outstanding;
+the [owner matrix](../releases/v1-owner-acceptance-results.md) contains no invented passes.
+
 Date: 2026-10-13. Candidate audited: `origin/dev` `d628837` (PR #10 merge).
 Method: source inspection of the implementation listed per boundary below,
 plus executed fixture suites and real-host runs recorded in

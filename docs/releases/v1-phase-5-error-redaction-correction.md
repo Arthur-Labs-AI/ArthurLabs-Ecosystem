@@ -1,5 +1,13 @@
 # Phase 5 error-redaction correction (Task A)
 
+Finalization (2026-10-13): [pre-RC preparation](v1-pre-rc-acceptance-preparation.md)
+records guarded getter/Proxy mapping, faithful two-argument Electron handler
+tests, and the related fatal-screen correction. The earlier blanket assertion
+that fatal render already scrubbed known secrets was inaccurate: it capped text
+only. The new actual-index regression reproduced reflection and partial-secret
+retention when truncating first; fatal rendering now scrubs before capping.
+Historical counts/SHAs below describe their original revisions, not this candidate.
+
 Date: 2026-10-13. Branch: `fix/v1-error-redaction-hardening` (base: approved `origin/dev`, PR targets `dev`).
 Threat model: `docs/security/V1_THREAT_MODEL.md` (finding F2, corrected).
 

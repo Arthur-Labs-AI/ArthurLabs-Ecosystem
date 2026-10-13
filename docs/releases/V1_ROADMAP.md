@@ -168,6 +168,14 @@ with owner review and accurate validation under the
 
 ## Phase 6 — Release candidate
 
+**Not authorized.** Phase 5 finalization prepares an exact-SHA unsigned owner
+candidate. See [preparation evidence](v1-pre-rc-acceptance-preparation.md),
+[physical-host runbook](v1-owner-acceptance.md), [results template](v1-owner-acceptance-results.md)
+and [v1 checklist](V1_ACCEPTANCE_CHECKLIST.md). Getter/Proxy mapping and Electron
+test-signature corrections, plus reproduced fatal-screen scrubbing correction,
+do not close physical acceptance. Implementation, automated verification,
+supported-host acceptance and owner authorization remain separate gates.
+
 - **Objective:** freeze features and stabilize an explicit v1.0 candidate.
 - **Expected changes:** owner-approved RC versioning, migration/upgrade tests,
   final bug fixes, release notes and artifact/checksum validation. No unrelated

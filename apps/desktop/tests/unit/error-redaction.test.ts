@@ -62,7 +62,7 @@ vi.mock('electron', () => ({
   shell: { showItemInFolder: vi.fn() },
 }));
 
-type IpcListener = (payload: unknown) => Promise<unknown>;
+type IpcListener = (event: unknown, payload: unknown) => Promise<unknown>;
 
 async function registeredListener(
   channel: string,
@@ -101,7 +101,7 @@ describe('registered Electron IPC boundary', () => {
       redactErrorText: redact,
     });
     expect(calls.length).toBeGreaterThan(0);
-    const response = (await listener({})) as {
+    const response = (await listener({ sender: 'synthetic-event' }, {})) as {
       ok: boolean;
       error: { code: string; message: string };
     };
@@ -121,7 +121,7 @@ describe('registered Electron IPC boundary', () => {
         throw new Error('scrubber down');
       },
     });
-    const response = (await listener({})) as {
+    const response = (await listener({ sender: 'synthetic-event' }, {})) as {
       ok: boolean;
       error: { code: string; message: string };
     };
@@ -136,7 +136,7 @@ describe('registered Electron IPC boundary', () => {
       listProjects: async () => [{ id: 'proj_1', name: 'demo' }],
     };
     const { listener } = await registeredListener('projects:list', okService, {});
-    const response = await listener({});
+    const response = await listener({ sender: 'synthetic-event' }, {});
     expect(response).toEqual({ ok: true, result: [{ id: 'proj_1', name: 'demo' }] });
   });
 
@@ -147,13 +147,35 @@ describe('registered Electron IPC boundary', () => {
       },
     };
     const { listener } = await registeredListener('projects:list', failing, {});
-    const response = (await listener({})) as {
+    const response = (await listener({ sender: 'synthetic-event' }, {})) as {
       ok: boolean;
       error: { code: string; message: string };
     };
     expect(response.ok).toBe(false);
     expect(response.error.code).toBe('DESKTOP_ERROR');
     expect(response.error.message.length).toBeLessThanOrEqual(1000);
+  });
+
+  it('forwards a required payload separately from the Electron event', async () => {
+    const project = { id: 'proj_payload', name: 'payload project' };
+    const getProject = vi.fn().mockResolvedValue(project);
+    const { calls, listener } = await registeredListener('projects:get', { getProject });
+    expect(calls.filter((call) => call.channel === 'projects:get')).toHaveLength(1);
+    const response = await listener(
+      { sender: 'synthetic-event', projectId: 'event-decoy' },
+      { projectId: project.id },
+    );
+    expect(getProject).toHaveBeenCalledOnce();
+    expect(getProject).toHaveBeenCalledWith(project.id);
+    expect(response).toEqual({ ok: true, result: project });
+  });
+
+  it('validates the payload even when the event looks like a valid command', async () => {
+    const getProject = vi.fn();
+    const { listener } = await registeredListener('projects:get', { getProject });
+    const response = await listener({ projectId: 'event-decoy' }, {});
+    expect(getProject).not.toHaveBeenCalled();
+    expect(response).toMatchObject({ ok: false, error: { code: 'DESKTOP_ERROR' } });
   });
 });
 
@@ -163,6 +185,81 @@ function coded(code: unknown, message: unknown) {
     message: unknown;
   };
 }
+
+describe('unreadable Desktop errors', () => {
+  const unreadable = () => {
+    throw new Error('unreadable detail ' + SECRET);
+  };
+  const cases: Array<{ name: string; create: () => unknown; code: string }> = [
+    {
+      name: 'throwing code getter',
+      create: () => ({
+        get code() {
+          return unreadable();
+        },
+        message: SECRET,
+      }),
+      code: 'DESKTOP_ERROR',
+    },
+    {
+      name: 'throwing coded message getter',
+      create: () => ({
+        code: 'RUN_TIMEOUT',
+        get message() {
+          return unreadable();
+        },
+      }),
+      code: 'RUN_TIMEOUT',
+    },
+    {
+      name: 'throwing uncoded Error message getter',
+      create: () => Object.defineProperty(new Error(), 'message', { get: unreadable }),
+      code: 'DESKTOP_ERROR',
+    },
+    {
+      name: 'throwing nested Error message getter',
+      create: () =>
+        coded('RUN_TIMEOUT', Object.defineProperty(new Error(), 'message', { get: unreadable })),
+      code: 'RUN_TIMEOUT',
+    },
+    {
+      name: 'throwing Proxy get trap',
+      create: () => new Proxy({ code: 'RUN_TIMEOUT', message: SECRET }, { get: unreadable }),
+      code: 'DESKTOP_ERROR',
+    },
+    {
+      name: 'throwing Proxy has trap',
+      create: () => new Proxy({}, { has: unreadable }),
+      code: 'DESKTOP_ERROR',
+    },
+    {
+      name: 'throwing Proxy getPrototypeOf trap',
+      create: () => new Proxy({}, { getPrototypeOf: unreadable }),
+      code: 'DESKTOP_ERROR',
+    },
+    {
+      name: 'revoked Proxy',
+      create: () => {
+        const proxy = Proxy.revocable({}, {});
+        proxy.revoke();
+        return proxy.proxy;
+      },
+      code: 'DESKTOP_ERROR',
+    },
+  ];
+  for (const entry of cases) {
+    it(entry.name + ' maps safely with and without a scrubber', async () => {
+      const redact = await redactor();
+      expect(toRouterError(entry.create())).toEqual({
+        code: entry.code,
+        message: 'Desktop operation failed',
+      });
+      const mapped = await safeError(entry.create(), { redactSecrets: redact });
+      expect(mapped).toEqual({ code: entry.code, message: 'Desktop operation failed' });
+      expect(JSON.stringify(mapped)).not.toContain(SECRET);
+    });
+  }
+});
 
 describe('Desktop error redaction boundary', () => {
   it('uncoded secret-bearing exception never reaches the response', async () => {

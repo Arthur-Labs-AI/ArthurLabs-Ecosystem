@@ -10,6 +10,7 @@ const fixture = vi.hoisted(() => ({
   boot: vi.fn(),
   ready: vi.fn<() => Promise<void>>(),
   focus: vi.fn(),
+  fatalUrl: vi.fn(),
 }));
 vi.mock('electron', () => ({
   app: {
@@ -21,6 +22,7 @@ vi.mock('electron', () => ({
   },
   BrowserWindow: class {
     loadFile = async () => undefined;
+    loadURL = fixture.fatalUrl;
     isDestroyed = () => false;
     isMinimized = () => false;
     focus = fixture.focus;
@@ -67,6 +69,41 @@ beforeEach(() => {
 });
 
 describe('Electron quit lifecycle', () => {
+  it.each([false, true])('scrubs the actual fatal screen (failing scrubber: %s)', async (fails) => {
+    const previous = process.env['DEEPSEEK_API_KEY'];
+    const secret = 'synthetic-fatal-screen-secret-only';
+    process.env['DEEPSEEK_API_KEY'] = secret;
+    fixture.boot.mockRejectedValue(
+      Object.assign(new Error('runtime failed: ' + 'x'.repeat(965) + secret), {
+        code: 'RUNTIME_OFFLINE',
+        hostPlatform: 'windows',
+        executionMode: 'wsl2',
+      }),
+    );
+    const { ProviderCredentialService } =
+      await import('../../src/main/services/provider-credentials.js');
+    const scrubber = fails
+      ? vi
+          .spyOn(ProviderCredentialService.prototype, 'redactSecretsFromText')
+          .mockImplementation(() => {
+            throw new Error('scrubber down');
+          })
+      : undefined;
+    try {
+      await import('../../src/main/index.js');
+      await flush();
+      expect(fixture.fatalUrl).toHaveBeenCalledOnce();
+      const html = decodeURIComponent(fixture.fatalUrl.mock.calls[0]?.[0] as string);
+      expect(html).toContain('WSL2');
+      expect(html).not.toContain(secret);
+      expect(html).not.toContain('synthetic-fatal');
+      expect(html).toContain(fails ? 'Desktop operation failed' : '[REDACTED]');
+    } finally {
+      scrubber?.mockRestore();
+      if (previous === undefined) delete process.env['DEEPSEEK_API_KEY'];
+      else process.env['DEEPSEEK_API_KEY'] = previous;
+    }
+  });
   it('does not focus or stop the running Desktop for a credential diagnostic', async () => {
     await import('../../src/main/index.js');
     await flush();
