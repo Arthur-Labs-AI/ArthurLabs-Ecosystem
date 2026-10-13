@@ -96,7 +96,22 @@ desktop service) run unmodified.
 
 ## Validation results
 
-VALIDATION-PLACEHOLDER
+- Standard gates (correction worktree): `pnpm install` PASS;
+  `repository:check` / `format:check` PASS; desktop `tsc` + `eslint` on all
+  touched files PASS; full desktop suite 48 files / 358 passed / 2 skipped;
+  error-surface group (redaction, IPC contract/dispatch, CLI server/broker,
+  boot-failure, desktop service, credential diagnostics, secure credentials,
+  secret surface) 82/82.
+- Full `pnpm test` / `build` / `distribution:test`: reported in the delivery
+  message (required CI adjudicates concurrently-loaded flakes per the Phase 5
+  characterization: environmental trust on Windows, rare contention
+  intermittents, all solo-green).
+- Exact-candidate real sandbox (prepared WSL2 Ubuntu, node v22.23.2, systemd
+  user manager running): 8/8 real transient-unit trust tests PASS against
+  WSL clone at `3c31559` (this branch's docs commit; sandbox surface
+  untouched by this task — verifier/desktop-runtime code identical to the
+  audited baseline; later commits docs-only). Clone status clean.
+- PR-head CI + distribution workflows: reported in the delivery message.
 
 ## Outstanding host acceptance
 
