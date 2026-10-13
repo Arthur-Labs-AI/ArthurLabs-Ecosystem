@@ -143,3 +143,25 @@ commit, version/tag/release, owner credential changes or insecure workarounds.
 Owner dirty primary checkout and Git identity preserved. shux contract attempted
 at campaign start but unavailable; status/append-only ledger/handoff maintained
 directly. Stop at owner acceptance gate.
+
+# Owner Full three-agent export reviewed — 2026-10-13
+
+Owner confirmed Windows/WSL. run_01M4T9XGTM1S41PS74NA0G767Z is production Full,
+completed3/3; OpenCode0/DeepSeek5/GLM5 findings, evidence3/17/18 (10/38 total).
+Exact input SHA256f6bae8c38f20f1dab1fed6570a525e4d38afa49e88cd05cfd94b078dcfefdee8.
+Private audit609 existing-schema records PASS, checked ownership/canonical events/
+terminal and tool lifecycle PASS,53 starts53 completions;20 warning events retained.
+Sentry build/archive identity absent; only owner host confirmed. Separate sanitized
+owner-run receipt added; raw export/private paths not committed. Snapshot hashes
+agree in metadata, actual bytes/DB/log/reopen/global paid-call audit unverified.
+E07-Full success is recorded without attributing it to selected D binaries; W1/C1
+counts unchanged, other13 modes/native/active-work recovery open. G10 P1 FAIL and
+Phase6 NOT AUTHORIZED/NOT RECOMMENDABLE unchanged. No agent-funded provider calls.
+
+PR15 verified human-owner merge into dev aef67903ac0ef1a42a5bf3ebd2626c4603152688;
+postmergeCI38376341094 SUCCESS. Clean existing test/v1-owner-acceptance-evidence
+advanced by fast-forward to that approved dev for this evidence-only follow-up.
+Production paths identical to D; no frozen source/version/schema/tag changes.
+Next: owner review follow-up PR; supply producing build/archive identity and
+remaining E07 observations, resolve G10 disposition and remaining acceptance.
+shux contract attempted again, unavailable; protocol maintained directly.

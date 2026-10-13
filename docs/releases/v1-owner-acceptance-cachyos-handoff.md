@@ -127,9 +127,11 @@ failure and repair the real prerequisite.
 
 ## Provider, recovery and upgrade remainder
 
-All14 E combinations/modes remain OWNER ACCEPTANCE REQUIRED. The owner plans a
-Full all-three run and will supply its log; that does not authorize agent-funded
-calls or the other13 cases. Collect anonymous account/model labels, host/archive
+All14 native E combinations/modes remain OWNER ACCEPTANCE REQUIRED. The owner
+supplied a successful Windows/WSL Full all-three export, reviewed in the separate
+[owner-run receipt](v1-owner-run-01M4T9XG-acceptance.md). It grants no native credit
+or agent-funded calls, and does not execute the other13 cases. Collect anonymous
+account/model labels, host/archive
 identity, run/AgentRun/snapshot IDs, per-agent outcomes/findings/evidence,
 persisted history and matching exports, no duplicate work. Partial failure,
 cancellation and interruption need separate actual evidence; do not infer them
