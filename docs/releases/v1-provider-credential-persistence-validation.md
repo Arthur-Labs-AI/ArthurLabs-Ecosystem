@@ -77,10 +77,48 @@ DesktopApplicationService's awaited save → runtime configuration flow were tra
 and remain unchanged. Runtime configuration only follows a successful durable
 save. No provider orchestration, models, runtime protocol, history or DB changes.
 
-Physical Windows DPAPI and exact correction-source build/CI receipts are pending
-in this implementation commit; follow-up validation must identify its new SHA.
-Native Linux keychain is unavailable here. No physical failure-backend acceptance
-is inferred from controlled-backend tests.
+Implementation source: `5207288292a6b2421495b7cb94881a1bd0f2e61f`.
+Subsequent receipt commits change documentation/evidence/protocol records only;
+their CI/artifact identities are separate from this physically tested archive.
+
+| Exact-source gate                                  | Actual result / evidence                                                                                                                                                                                                                                                                                                                                            |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Native Windows unsigned build                      | PASS:20 uncached build tasks; `sentry-0.1.0-beta.1-5207288292a6-windows-x64.zip`, SHA256 `733b82b18c26d1a852aa6660804a96d3680b97466431324ef82b8cced698dd51`                                                                                                                                                                                                         |
+| Archive/extraction identity                        | PASS: locally built ZIP rehashed against original sidecar, extracted outside checkout into path with spaces; root/Desktop/runtime manifests match full520 source; inventory332/version PASS                                                                                                                                                                         |
+| Versions / protocol                                | Product, Desktop and runtime remain0.1.0-beta.1; protocol1. No published tag or frozen D artifact was changed.                                                                                                                                                                                                                                                      |
+| Windows exact-source Desktop                       | PASS:400 tests / 2 existing platform skips,51 files (`credential-desktop-exact-source.log`)                                                                                                                                                                                                                                                                         |
+| Exact-source WSL frozen/static/build               | PASS: frozen install, hygiene/format, lint20 tasks, typecheck37, build20 (`credential-linux-verify-output-attempt2.log`)                                                                                                                                                                                                                                            |
+| Exact-source WSL full tests                        | PASS: `pnpm exec turbo run test --force --concurrency=1 -- --maxWorkers=1 --minWorkers=1`;40 uncached tasks,1,236 tests PASS / 16 opt-in/platform skips; Desktop401/1 skip; actual systemd sandbox trust8/8 PASS                                                                                                                                                    |
+| Actual packaged Electron/DPAPI                     | PASS: Windows11 Home x64 build26200, Electron36.2.1, WSL2 Ubuntu26.04 / Node22.23.2. Saved four synthetic secret fields, fully stopped Desktop/runtime, relaunched twice with cleared provider env. Every field reports configured:true/persistence:secure/source:stored; actual Providers shows Stored securely. Non-secret model preference persisted separately. |
+| Physical privacy/readiness                         | PASS: explicit disposable profile proved before credential/project IPC; renderer Node disabled, sandbox enabled, full520 runtime handshake, synthetic plaintext absent in profile/archive/output, held-profile diagnostic safely refuses; fresh standalone presence diagnostic and normal reopen PASS                                                               |
+| Prior encrypted-store compatibility                | PASS: actual D archive `d250e4cabdae7735af5905146db8d7806fe4427c` seeded a separate synthetic DPAPI profile; full shutdown →520 load →full shutdown →520 reopen retained stored/secure credential (`credential-dpapi-upgrade-real.log`). This is credential compatibility, not complete historical-data/export upgrade acceptance.                                  |
+| Native CachyOS/keychain / real backend unavailable | ENVIRONMENT UNAVAILABLE; controlled-backend tests are not physical native keychain or actual unavailable-DPAPI proof                                                                                                                                                                                                                                                |
+
+Physical receipts: `credential-dpapi-real.log` has three successful actual
+production-entry processes, with all four secret fields verified after each
+restart and the actual Providers badge observed; `credential-stage-runtime-output.log`
+stages an exact520 runtime with unchanged deploy-inner stage-only in a task-owned
+Linux HOME and verifies hello. No owner's current pointer is activated/changed.
+`credential-dpapi-upgrade-real.log` preserves the independent D→520 case. Both
+profiles/data roots and raw receipts remain private; they contain synthetic data
+only. The test does not treat blank password drafts as missing credentials.
+
+![Actual Providers after full shutdown/relaunch, synthetic isolated profile](evidence/provider-credentials-5207288-restart.png)
+
+Failed attempts retained: first WSL fetch used a Windows worktree .git path Linux
+could not resolve; fetching the same exact commit from its shared main Git
+repository fixed that validation-path issue, without changing owner files or
+source. Initial RED/GREEN test receipts and the scoped-Save-button fixture repair
+remain available privately. No failing assertion or production failure was waived.
+
+Review: no remaining actionable correctness, data-loss/security, concurrency or
+compatibility blocker found in the final diff. React review checked query states,
+draft-only local state, query invalidation, accessible error/retry/source labels,
+and no new dependencies or secret serialization. Successful saves publish only
+after disk commit; failed writes preserve old active/durable state; ciphertext
+read failures do not erase other entries. No credentials or project text appear
+in the committed screenshot/receipt. New correction PR checks remain live receipts;
+passing hosted jobs do not substitute for native keychain or future owner acceptance.
 
 Affected owner acceptance: D01–D05,D07–D08 (secure save/reload/privacy/unreadable
 status/profile/upgrade), B07/B12 (Providers truth/relaunch), G05 (credential

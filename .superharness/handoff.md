@@ -1,3 +1,45 @@
+# Provider restart-credential correction — owner review (2026-10-13)
+
+Branch fix/v1-provider-credential-persistence from approved origin/dev
+aef67903ac0ef1a42a5bf3ebd2626c4603152688. Implementation
+5207288292a6b2421495b7cb94881a1bd0f2e61f. Separate from open evidence PR16 and
+from historical G10 beta rollback. Owner dirty primary checkout/identity preserved.
+shux contract attempted at start but unavailable; protocol maintained directly.
+
+Four paths traced: failed writes published memory/env/stored before encrypted
+commit; startup skipped unreadable/unavailable stores; failed Electron profile
+lookup could select shared temp; Providers mapped query/loading failures to Not
+set and environmental values to Saved securely. Valid-path/healthy restart guards
+pass baseline; exact owner's trigger not inferred from unread real credentials.
+Correction stages/serializes encrypted writes before state publication, preserves
+untouched ciphertext/legacy input, refuses missing profile and unreadable store
+rewrites, exposes presence-only unavailable status, query errors/retry and correct
+source labels. Atomic clear/forget failure handling; existing prefs/history,
+models/orchestration/runtime protocol/schema unchanged. No plaintext fallback.
+
+Exact baseline regressions18 RED4 guard PASS; final22 GREEN. Windows Desktop
+400 PASS2 existing platform skips; WSL401 PASS1 skip. WSL full root40 uncached
+tasks1236 PASS16 opt-in/platform skips incl real systemd trust8/8; frozen/static/
+build PASS (lint20/typecheck37/build20). Windows native archive20 uncached builds,
+SHA256733b82b18c26d1a852aa6660804a96d3680b97466431324ef82b8cced698dd51,
+extraction/version/inventory332 PASS. Product0.1.0-beta.1/protocol1 unchanged.
+Actual packaged Electron36.2.1/Windows11 DPAPI four synthetic keys saved then
+fully shut down and relaunched twice; all stored/secure with Providers badge,
+separate model pref retained, no synthetic plaintext in profile/archive/log.
+Independent D-to520 encrypted-store compatibility with two new-source launches
+PASS. Explicit profile proved before IPC; private Linux runtime staged only,
+owner current unchanged. Screenshot reviewed. Native Linux keychain and actual
+unavailable DPAPI session ENVIRONMENT UNAVAILABLE. No paid QA or owner key reads.
+
+See docs/releases/v1-provider-credential-persistence-validation.md. New physical
+archive source520 is separate from final documentation head/PR checks and from
+frozen D. Affected D01-D05/D07-D08/B07/B12/G05 must be explicitly reconsidered
+after owner-approved candidate selection; no silent evidence transfer. G10 FAIL,
+remaining acceptance and Phase6 NOT AUTHORIZED unchanged. Draft focused PR to dev
+for review only; no self-merge, main/dev direct commit, RC/version/tag/release.
+
+## Previous record
+
 # Phase 5 actual owner acceptance — owner review (2026-10-13)
 
 Evidence-only branch test/v1-owner-acceptance-evidence from verified dev
