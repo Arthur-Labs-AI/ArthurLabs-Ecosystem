@@ -4,6 +4,12 @@ This checklist supplements the [owner runbook](v1-owner-acceptance.md) and
 [per-host results](v1-owner-acceptance-results.md). The historical beta release
 checklist is not evidence for v1. No box is checked by source implementation alone.
 
+Separate current restart-credential defect: the
+[focused correction receipt](v1-provider-credential-persistence-validation.md)
+records failed-write/load/query regressions and real Windows DPAPI restart
+validation at new source5207288. This requires owner review and explicit candidate
+selection; it does not replace D's binary identity or waive historical beta G10.
+
 - [x] Owner reviews the final correction PR into dev; only the owner merges (PR14 verified human-owner merge).
 - [x] Exact full candidate SHA, tree, version, protocol and both archive SHA256s recorded (integrated D; separate Windows local/CI bytes).
 - [x] Three required CI jobs pass with head/proposed-merge identities distinguished (postmerge38364397137).

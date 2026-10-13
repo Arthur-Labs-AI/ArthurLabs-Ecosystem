@@ -31,12 +31,19 @@ export interface BootstrappedDesktop {
   close(): Promise<void>;
 }
 
-function userDataDir(): string | undefined {
+function userDataDir(): string {
   try {
     const electron = require('electron') as typeof import('electron');
-    return electron.app.getPath('userData');
+    const dir = electron.app.getPath('userData');
+    if (typeof dir !== 'string' || dir.length === 0) throw new Error();
+    return dir;
   } catch {
-    return undefined;
+    throw Object.assign(
+      new Error(
+        'Electron credential profile unavailable. Restart with a valid profile; no temporary credential store was used.',
+      ),
+      { code: 'CREDENTIAL_PROFILE_UNAVAILABLE' },
+    );
   }
 }
 
@@ -64,16 +71,14 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
   }
   const dir = userDataDir();
   const credentials = new ProviderCredentialService({
-    ...(dir === undefined ? {} : { userDataDir: dir }),
+    userDataDir: dir,
     ...(safeStorageLike === undefined ? {} : { safeStorage: safeStorageLike }),
   });
   await credentials.load();
   // Provider executables resolve inside the Linux runtime; host binary
   // discovery no longer drives production readiness.
-  // No secure-storage warning here: this runs before app-ready, when
-  // Electron's crypto backend is not up yet, so any verdict would be stale.
-  // Availability is evaluated lazily at save time (see secureStorageAvailable),
-  // and a genuine failure surfaces live in the save error itself.
+  // Normal index boot awaits app-ready. Load failures remain visible in the
+  // presence-only provider statuses instead of becoming missing keys.
   // The runtime owns its Linux data root. A Windows-style path must never be
   // forwarded as --data-root (backslashes mangle through wsl.exe and the Linux
   // runtime cannot own a Windows path). Only absolute Linux paths override.
@@ -86,7 +91,7 @@ export async function bootstrapDesktop(dataRootOverride?: string): Promise<Boots
     );
   }
   const host = await createHostPlatform({
-    ...(dir === undefined ? {} : { userDataDir: dir }),
+    userDataDir: dir,
     ...(linuxOverride === undefined ? {} : { dataRoot: linuxOverride }),
   });
   const client = await host.createRuntimeClient();
