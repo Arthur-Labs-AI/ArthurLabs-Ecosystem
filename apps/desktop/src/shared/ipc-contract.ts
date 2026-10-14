@@ -11,6 +11,7 @@ export const IPC_CHANNELS = [
   'projects:get',
   'projects:revisions',
   'projects:update',
+  'projects:delete',
   'projects:doctor',
   'projects:suggest-targets',
   'runs:list',
@@ -105,6 +106,8 @@ export interface SentryDesktopApi {
     get(projectId: string): Promise<unknown>;
     revisions(projectId: string): Promise<unknown[]>;
     update(projectId: string, sourcePath?: string): Promise<unknown>;
+    /** Permanently remove Sentry's stored materials and history; preserve the original source. */
+    remove(projectId: string): Promise<{ projectId: string; deleted: true }>;
     doctor(projectId: string): Promise<unknown>;
     suggestTargets(projectId: string): Promise<{ projectId: string; paths: string[] }>;
   };

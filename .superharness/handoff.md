@@ -1,3 +1,21 @@
+# Project removal — implemented; packaging verification in progress
+
+Owner confirmed live DeepSeek completed with6findings. New local-only feature on
+codex/project-removal frombe3431f retains previous fixes, no push/PR.
+Projects cards + detail expose confirmed removal of managed materials/history,
+original source preserved, active states disabled/backend lock unchanged.
+Missing-root deletion ENOENT regression RED2 then GREEN; database cascades/journal
+retained. UI RED7 then GREEN7 + preload1; manager17/17 and WindowsDesktop408pass/
+2existing skips; static20uncached tasks PASS. No migrations/protocol/provider changes.
+Architecture10questions docs/architecture/project-removal.md. Private logs
+C:/Users/merte/.codex/artifacts/sentry-project-removal-20261014. Paired local archive,
+WSL broad gates and guarded disposable real packaged GUI removal pending. Never
+use owner projects/profile as deletion fixtures. Primary owner edits untouched.
+shux unavailable; direct task/ledger/handoff. Source-commit receipt will record
+exact tested archive; no paid QA or owner installation performed by agent.
+
+## Previous record
+
 # Windows local candidate — visible launch repaired and verified
 
 Owner installed DeepSeek-fixed source0ac6c1c successfully, but packaged open

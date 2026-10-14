@@ -283,6 +283,107 @@ describe('managed project lifecycle', () => {
     f.database.close();
   });
 
+  it.each(['working-copy', 'project-root', 'projects-directory'])(
+    'removes stored records and remaining materials after manual deletion of %s',
+    async (missing) => {
+      const f = await fixture();
+      try {
+        const original = await scanTree(f.source);
+        const added = await f.manager.addProject(f.source);
+        const paths = projectDataPaths(f.dataRoot, added.project.id);
+        const missingPath =
+          missing === 'working-copy'
+            ? paths.workingCopy
+            : missing === 'project-root'
+              ? paths.root
+              : join(f.dataRoot, 'projects');
+        await rm(missingPath, { recursive: true });
+        await f.manager.deleteProject(added.project.id);
+        expect(f.repository.getProject(added.project.id)).toBeUndefined();
+        expect(f.repository.getManagedCopy(added.project.id)).toBeUndefined();
+        expect(f.repository.listRevisions(added.project.id)).toEqual([]);
+        expect(f.repository.listContexts(added.project.id)).toEqual([]);
+        expect(f.repository.listRuntimeOperations()).toEqual([]);
+        await expect(stat(paths.root)).rejects.toMatchObject({ code: 'ENOENT' });
+        await expect(stat(paths.root + '.deleting')).rejects.toMatchObject({ code: 'ENOENT' });
+        expect((await scanTree(f.source)).contentHash).toBe(original.contentHash);
+      } finally {
+        f.database.close();
+      }
+    },
+  );
+
+  it('refuses removal of an active project even when its files are missing', async () => {
+    const f = await fixture();
+    try {
+      const added = await f.manager.addProject(f.source);
+      f.manager.lockProjectForRun(added.project.id, 'run_01K7777777777777777777C021');
+      await rm(projectDataPaths(f.dataRoot, added.project.id).root, { recursive: true });
+      await expect(f.manager.deleteProject(added.project.id)).rejects.toMatchObject({
+        code: 'PROJECT_LOCKED',
+      });
+      expect(f.repository.getProject(added.project.id)).toBeDefined();
+      expect(f.repository.getManagedCopy(added.project.id)?.state).toBe('locked_for_run');
+    } finally {
+      f.database.close();
+    }
+  });
+
+  it('removes managed material while preserving the source and another project', async () => {
+    const f = await fixture();
+    try {
+      const original = await scanTree(f.source);
+      const added = await f.manager.addProject(f.source);
+      const other = await f.manager.addProject(f.source);
+      const paths = projectDataPaths(f.dataRoot, added.project.id);
+      await mkdir(join(paths.runs, 'fixture-run', 'workspace'), { recursive: true });
+      await writeFile(
+        join(paths.runs, 'fixture-run', 'workspace', 'artifact.txt'),
+        'Stored run data',
+      );
+      await f.manager.deleteProject(added.project.id);
+      expect(f.manager.listProjects().map((record) => record.project.id)).toEqual([
+        other.project.id,
+      ]);
+      expect(f.repository.listRevisions(added.project.id)).toEqual([]);
+      expect(f.repository.listContexts(added.project.id)).toEqual([]);
+      await expect(stat(paths.root)).rejects.toMatchObject({ code: 'ENOENT' });
+      await expect(stat(paths.root + '.deleting')).rejects.toMatchObject({ code: 'ENOENT' });
+      expect((await scanTree(f.source)).contentHash).toBe(original.contentHash);
+      expect(
+        await readFile(
+          join(projectDataPaths(f.dataRoot, other.project.id).workingCopy, 'README.md'),
+          'utf8',
+        ),
+      ).toContain('Factual sample purpose');
+    } finally {
+      f.database.close();
+    }
+  });
+
+  it('retains canonical state and files when deletion fails before tombstoning', async () => {
+    const f = await fixture((stage) => {
+      if (stage === 'after_delete_marked') throw new Error('Injected filesystem failure');
+    });
+    try {
+      const added = await f.manager.addProject(f.source);
+      await expect(f.manager.deleteProject(added.project.id)).rejects.toMatchObject({
+        code: 'PROJECT_DELETE_FAILED',
+      });
+      expect(f.repository.getProject(added.project.id)).toEqual(added.project);
+      expect(f.repository.getManagedCopy(added.project.id)?.state).toBe('ready');
+      expect(f.repository.listRuntimeOperations()).toEqual([]);
+      expect(
+        await readFile(
+          join(projectDataPaths(f.dataRoot, added.project.id).workingCopy, 'README.md'),
+          'utf8',
+        ),
+      ).toContain('Factual sample purpose');
+    } finally {
+      f.database.close();
+    }
+  });
+
   it('finishes a committed project deletion after its owner exits', async () => {
     const f = await fixture((stage) => {
       if (stage === 'after_delete_committed') throw new Error('injected process exit');

@@ -7,6 +7,7 @@ import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
 import { StatusPill, dotClassForStatus } from '../components/ui/StatusPill.js';
 import { SegmentedControl } from '../components/ui/Tabs.js';
 import { sentryApi } from '../lib/sentry-api.js';
+import { RemoveProjectButton } from '../components/RemoveProjectButton.js';
 
 const AGENT_ORDER = ['stack_opencode_main', 'stack_deepseek_main', 'stack_glm_main'];
 
@@ -160,9 +161,19 @@ export function ProjectDetail(): React.JSX.Element {
           </>
         }
         actions={
-          <button onClick={() => update.mutate()} disabled={update.isPending}>
-            {update.isPending ? 'Updating…' : 'Update Project'}
-          </button>
+          <>
+            <button onClick={() => update.mutate()} disabled={update.isPending}>
+              {update.isPending ? 'Updating…' : 'Update Project'}
+            </button>
+            {record && projectId ? (
+              <RemoveProjectButton
+                projectId={projectId}
+                name={record.project.name}
+                state={record.managedCopy.state}
+                onRemoved={() => navigate('/projects')}
+              />
+            ) : null}
+          </>
         }
       />
       {error !== undefined ? (
