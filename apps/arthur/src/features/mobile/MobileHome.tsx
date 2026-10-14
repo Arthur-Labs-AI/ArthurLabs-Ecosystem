@@ -12,7 +12,6 @@ import { useReview } from "../review/review-context";
 import { useCaptures } from "../capture/captures-context";
 import type { VoiceFailure } from "../capture/use-captures";
 import { useRelationIndex } from "../graph/relation-index";
-import { greeting } from "../home/HomeScreen";
 import { useKnowledge } from "../knowledge/knowledge-context";
 import type { OrganizeJob } from "../knowledge/use-knowledge";
 import { useLineageSummaries } from "../lineage/lineage-summaries";
@@ -455,8 +454,9 @@ export function MobileHome() {
       </header>
       {!typing && (
         <>
-          <p className="m-hello">{greeting()}</p>
-          <h1 className="m-hero">What’s on your mind?</h1>
+          <h1 className="m-hero">
+            Your thoughts, <em>expanded.</em>
+          </h1>
         </>
       )}
       <SpeakPage />

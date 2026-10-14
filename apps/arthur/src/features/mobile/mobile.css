@@ -170,8 +170,8 @@
   margin-top: -12px;
   padding-top: 9px;
   gap: 5px;
-  background: var(--ink);
-  color: var(--ground);
+  background: var(--accent);
+  color: var(--accent-ink);
   border-radius: 10px 10px 4px 4px;
   font-weight: 650;
   transition: transform var(--t-fast) var(--ease);
@@ -268,9 +268,9 @@
   background: var(--selected);
 }
 .m-pbtn.primary {
-  background: var(--ink);
-  color: var(--ground);
-  border-color: var(--ink);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
 }
 .m-pbtn.primary:active {
   background: var(--ink-2);
@@ -387,7 +387,7 @@
 .m-day {
   padding: 20px var(--m-gut) 4px;
   color: var(--ink-3);
-  font: italic 400 15px/1 var(--serif);
+  font: 400 15px/1 var(--serif);
 }
 
 /* the margin: shared Margin component, set for a phone */
@@ -528,15 +528,14 @@
 .m-home {
   padding-bottom: 36px;
 }
-.m-hello {
-  margin: 14px var(--m-gut) 0;
+.m-hero em {
+  font-style: normal;
   color: var(--ink-3);
-  font: italic 400 15px/1 var(--serif);
 }
 .m-hero {
-  margin: 8px var(--m-gut) 0;
-  font: 400 var(--m-t-hero) / 1.08 var(--serif);
-  letter-spacing: -0.02em;
+  margin: 18px var(--m-gut) 0;
+  font: 600 var(--m-t-hero) / 1.08 var(--sans);
+  letter-spacing: -0.035em;
   text-wrap: balance;
 }
 /* the Speak page: the one raised surface on Home, with notebook rules instead of a text box */
@@ -553,7 +552,7 @@
   width: 100%;
   text-align: left;
   min-height: 88px;
-  font: italic 400 19px/40px var(--serif);
+  font: 400 19px/40px var(--serif);
   color: var(--ink-3);
   background-image: linear-gradient(to bottom, transparent 43px, var(--line) 43px, var(--line) 44px);
   background-size: 100% 44px;
@@ -577,7 +576,7 @@
 }
 .m-ruled::placeholder {
   color: var(--ink-3);
-  font-style: italic;
+  font-style: normal;
 }
 .m-acts {
   display: flex;
@@ -739,7 +738,7 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font: italic 400 15.5px/1.45 var(--serif);
+  font: 400 15.5px/1.45 var(--serif);
   color: var(--ink-2);
   quotes: "“" "”";
   overflow-wrap: anywhere;
@@ -887,7 +886,7 @@
 .m-empty-kid {
   margin: 4px 0 0 34px;
   color: var(--ink-3);
-  font: italic 400 14.5px/1.4 var(--serif);
+  font: 400 14.5px/1.4 var(--serif);
 }
 .m-badge {
   display: inline-flex;
@@ -1001,7 +1000,7 @@
 }
 .m-rec-label {
   margin: 0;
-  font: italic 400 16px var(--serif);
+  font: 400 16px var(--serif);
   color: var(--ink-2);
 }
 .m-rec-clock {
@@ -1025,7 +1024,7 @@
 .m-rec-stop {
   height: 64px;
   border-radius: 32px;
-  background: var(--ink);
+  background: var(--rec);
   color: var(--ground);
   display: inline-flex;
   align-items: center;
@@ -1054,7 +1053,7 @@
   position: absolute;
   inset: 0;
   z-index: 55;
-  background: rgba(5, 7, 6, 0.55);
+  background: color-mix(in srgb, var(--ground) 62%, transparent);
   animation: m-fade var(--t-med) var(--ease) both;
 }
 @keyframes m-fade {
@@ -1077,7 +1076,7 @@
   background: var(--overlay);
   border-radius: 14px 14px 0 0;
   border-top: 1px solid var(--line);
-  box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -10px 36px color-mix(in srgb, var(--sunken) 60%, transparent);
   padding-bottom: var(--m-safe-b);
   animation: m-up var(--t-med) var(--ease) both;
   outline: 0;
@@ -1485,7 +1484,7 @@
 .m-quiet {
   margin: 4px 0 0;
   color: var(--ink-3);
-  font: italic 400 14.5px/1.45 var(--serif);
+  font: 400 14.5px/1.45 var(--serif);
 }
 .m-cap-meta2 {
   display: flex;
@@ -1497,7 +1496,7 @@
 }
 .m-quote-wrap blockquote.quote {
   margin: 0;
-  font: italic 400 16px/1.6 var(--serif);
+  font: 400 16px/1.6 var(--serif);
   color: var(--ink-2);
   padding-left: 12px;
   border-left: 1px solid var(--line);
@@ -1613,8 +1612,8 @@
   color: var(--ink-2);
 }
 .m-tog button[aria-pressed="true"] {
-  background: var(--ink);
-  color: var(--ground);
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 .m-live {
   flex: none;
@@ -1661,7 +1660,7 @@
   margin: 0;
   padding: 18px var(--m-gut) 8px;
   color: var(--ink-3);
-  font: italic 400 14.5px/1.45 var(--serif);
+  font: 400 14.5px/1.45 var(--serif);
 }
 .m-mapframe {
   flex: 1;
@@ -1827,7 +1826,7 @@
 .m-evo-help {
   margin: 8px var(--m-gut) 0;
   color: var(--ink-3);
-  font: italic 400 14.5px/1.45 var(--serif);
+  font: 400 14.5px/1.45 var(--serif);
   max-width: 40ch;
 }
 .m-evo-acts {
@@ -2105,7 +2104,7 @@
   white-space: nowrap;
 }
 .m-pchip-name.inbox {
-  font: italic 450 15px var(--serif);
+  font: 450 15px var(--serif);
 }
 .m-pchip-caret {
   display: inline-flex;
@@ -2148,7 +2147,7 @@
   color: var(--ink-3);
 }
 .m-prow-wrap.inbox .m-prow-name {
-  font-style: italic;
+  font-style: normal;
 }
 .m-prow-name {
   min-width: 0;
@@ -2354,8 +2353,8 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--r-sm);
-  background: var(--ink);
-  color: var(--ground);
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 .m-askbar-send[disabled] {
   background: var(--selected);
@@ -2377,7 +2376,7 @@
   margin: 0 0 18px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--line-soft);
-  font: italic 400 var(--m-t-row) / 1.45 var(--serif);
+  font: 400 var(--m-t-row) / 1.45 var(--serif);
   color: var(--ink-2);
   overflow-wrap: anywhere;
 }

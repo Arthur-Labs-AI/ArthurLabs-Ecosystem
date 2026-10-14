@@ -23,11 +23,27 @@
 }
 .margin .num {
   color: var(--ink-2);
-  font-weight: 500;
+  font: 500 11.5px var(--mono);
 }
 .margin .when {
   min-width: 58px;
   justify-content: flex-end;
+  font: 400 11.5px var(--mono);
+}
+
+/* ---------- content-type pill: colour reinforces the kind, shape and the word carry it ---------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 19px;
+  padding: 0 7px;
+  margin-bottom: 4px;
+  border-radius: var(--r-xs);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 13%, transparent);
 }
 
 /* ---------- idea rows ---------- */
@@ -65,8 +81,8 @@
   background: var(--accent);
 }
 .row .t {
-  font: 450 16.5px/1.25 var(--serif);
-  letter-spacing: -0.003em;
+  font: 550 15.5px/1.3 var(--sans);
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -84,7 +100,9 @@
 .day {
   padding: 18px var(--pad) 6px calc(var(--pad) + 8px);
   color: var(--ink-3);
-  font: italic 400 14px/1 var(--serif);
+  font: 500 11px/1 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* ---------- inspector: a page, not a card ---------- */
@@ -105,19 +123,24 @@
   font-size: 12px;
 }
 .insp-head .meta .kindname {
-  color: var(--ink-2);
+  color: var(--c, var(--ink-2));
+  background: color-mix(in srgb, var(--c, var(--ink-2)) 13%, transparent);
+  padding: 2px 7px;
+  border-radius: var(--r-xs);
+  font-size: 11px;
   font-weight: 500;
+  letter-spacing: 0.02em;
 }
 .insp-head h2 {
-  margin-top: 10px;
-  font: 430 27px/1.12 var(--serif);
-  letter-spacing: -0.012em;
+  margin-top: 12px;
+  font: 600 25px/1.15 var(--sans);
+  letter-spacing: -0.028em;
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
 .insp-body {
   padding: 14px 26px 0;
-  font: 400 16px/1.62 var(--serif);
+  font: 400 15.5px/1.65 var(--sans);
   color: var(--ink);
   text-wrap: pretty;
   max-width: 62ch;
@@ -144,12 +167,14 @@
   margin-bottom: 10px;
 }
 .sec-h h3 {
-  font: 500 13px/1 var(--sans);
-  color: var(--ink);
+  font: 500 11px/1 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 .sec-h .n {
   color: var(--ink-3);
-  font-size: 12px;
+  font: 400 11.5px var(--mono);
 }
 .sec-h .link {
   margin-left: auto;
@@ -162,7 +187,7 @@
 
 /* ---------- provenance ---------- */
 .quote {
-  font: italic 400 14.5px/1.6 var(--serif);
+  font: 400 14px/1.6 var(--sans);
   color: var(--ink-2);
   padding-left: 12px;
   border-left: 1px solid var(--line);
@@ -202,7 +227,7 @@
   background: var(--hover);
 }
 .rel .rt {
-  font: 450 14.5px/1.3 var(--serif);
+  font: 500 14px/1.3 var(--sans);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -259,9 +284,10 @@
   bottom: 50%;
 }
 .spine .rv-row i {
-  width: 13px;
-  height: 13px;
-  border-radius: 4px;
+  width: 11px;
+  height: 11px;
+  margin-left: 1px;
+  border-radius: 50%;
   border: 1.4px solid var(--ink-3);
   background: var(--ground);
   position: relative;
@@ -272,7 +298,8 @@
   border-color: var(--accent);
 }
 .spine .rv-row b {
-  font-weight: 650;
+  font: 500 12px var(--mono);
+  color: var(--ink);
 }
 .spine .rv-row span {
   color: var(--ink-2);
@@ -283,7 +310,7 @@
 .spine .rv-row em {
   font-style: normal;
   color: var(--ink-3);
-  font-size: 12px;
+  font: 400 11.5px var(--mono);
 }
 
 /* ---------- diff: never colour alone, deletes are struck through ---------- */

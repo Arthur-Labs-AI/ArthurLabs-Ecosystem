@@ -8,7 +8,7 @@ One shared UI for Linux, Windows and (later) Android; macOS and iOS after that.
 ```text
 src/                  React UI (platform-independent)
   app/                providers, navigation, shell (rail + global Capture), App, design tokens (app/styles)
-  assets/fonts/       bundled Newsreader, Hanken Grotesk and their Cyrillic fallbacks (OFL licences alongside)
+  assets/fonts/       bundled Onest and JetBrains Mono, Latin + Cyrillic (OFL licences alongside)
   client/             ArthurClient interface + desktop / mobile / preview implementations
   components/         shared presentational pieces (icons, kind glyphs, margin, source quote, relation art, time wording)
   features/           one folder per product area (capture/, home/, ideas/, knowledge/, graph/, lineage/, settings/)
@@ -29,11 +29,12 @@ src-tauri/            Rust native layer
 Shared data shapes live in [`packages/contracts`](../../packages/contracts) and
 are imported as `@arthur/contracts`.
 
-## Desktop UI ("Marginalia")
+## Desktop UI ("Thoughtspace")
 
-The UI implements the frozen design specification in [`docs/design/exploration`](../../docs/design/exploration)
-(read its README first). Deviations from it, and why, are in
-[`docs/design/implementation-notes.md`](../../docs/design/implementation-notes.md).
+The UI is moving from the earlier "Marginalia" language to **Thoughtspace** (approved prototypes in
+[`docs/design/thoughtspace`](../../docs/design/thoughtspace); status and deviations in its `implementation-notes.md`).
+Tokens live in `src/app/styles/tokens.css`; dark is the default and `data-theme="light"` on `<html>` switches to light.
+The older Marginalia notes remain in [`docs/design/implementation-notes.md`](../../docs/design/implementation-notes.md).
 
 Screens: **Home** (composer, today's captures grouped by capture, a connected-thinking preview, recently evolving),
 **Ideas** (list + inspector), **Connections** (the map), **Evolution** (revision rail), **Settings**. Capture is a global

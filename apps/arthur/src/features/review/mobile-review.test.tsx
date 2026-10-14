@@ -35,7 +35,7 @@ describe("Review on a phone", () => {
     expect(within(page).getByText(/Nothing changes until you approve it/)).toBeTruthy();
     back();
     await waitFor(() => expect(screen.queryByRole("region", { name: "Review" })).toBeNull());
-    expect(screen.getByRole("heading", { name: /What’s on your mind/ })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /Your thoughts, expanded/ })).toBeTruthy();
   });
 
   it("opens one suggestion as its own page with every decision, and Back returns to the list", async () => {

@@ -430,11 +430,11 @@
   line-height: 1.4;
 }
 .ev-past-title {
-  font: italic 450 15px/1.35 var(--serif);
+  font: 450 15px/1.35 var(--serif);
   margin-top: 4px;
 }
 .ev-past-body {
-  font: italic 400 14px/1.55 var(--serif);
+  font: 400 14px/1.55 var(--serif);
   margin-top: 2px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
