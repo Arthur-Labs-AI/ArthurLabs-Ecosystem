@@ -1,3 +1,20 @@
+# Windows host-space investigation — diagnosis verified
+
+Owner reports production3/3 and project removal PASS. Read-only inspection of
+installed64bff9f: zero projects/copies/revisions/runs/agents/artifacts/delete ops;
+projects8KiB, no project/tombstone directories, SQLite quick_check OK. Original
+Nexus source preserved. DB28,295,168bytes with27,729,920reusable free-list bytes.
+Ubuntu WSL2.6.3 non-sparse ext4.vhdx41,687,187,456bytes/38.82GiB; Linuxused36.17GiB.
+Deletion freed internal Linux blocks; dynamic VHD does not automatically shrink
+on C: (Microsoft docs verified). Exact reclaimable host bytes unverified; original
+wording about free disk space was incomplete. Separate offline trim/compaction
+would be required. No owner cleanup/DBvacuum/WSLshutdown/trim/compaction performed.
+Read-only receipts sentry-wsl-space-investigation-20261014; diagnosis
+in docs/releases/windows-wsl-space-investigation.md. No app changes or paidcalls,
+PR/push; primary owner edits preserved. shux unavailable, direct protocol.
+
+## Previous record
+
 # Project removal — local candidate implemented and verified
 
 Owner DeepSeek full run completed6findings; previous fix accepted. Local branch
