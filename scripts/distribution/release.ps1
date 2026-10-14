@@ -44,7 +44,7 @@ switch ($Command) {
     Set-SentryLauncherConfig @{ selectedDistro = $selected }
     Write-Host 'Core installed. Next: .\sentry.ps1 tools, then open. Configure credentials in Settings -> Providers.'
   }
-  'open' { [void](Start-Process -FilePath $exe -ArgumentList @('--sentry-app') -WorkingDirectory (Join-Path $root 'desktop') -WindowStyle Hidden); Write-Host 'Desktop launch requested; check Environment for readiness.' }
+  'open' { [void](Start-Process -FilePath $exe -ArgumentList @('--sentry-app') -WorkingDirectory (Join-Path $root 'desktop') -WindowStyle Normal); Write-Host 'Desktop launch requested; check Environment for readiness.' }
   'stop' { Stop-DistributionDesktop -Executable $exe; Write-Host 'Sentry stopped.' }
   { $_ -in @('doctor', 'status') } {
     $manifest | Select-Object product,version,sourceCommit,targetPlatform | ConvertTo-Json

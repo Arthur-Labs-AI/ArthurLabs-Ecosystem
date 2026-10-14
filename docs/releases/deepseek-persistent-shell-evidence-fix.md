@@ -68,8 +68,9 @@ Version remains `1.0.0-rc.1`; protocol remains 1. Local review candidate only.
 The private `install-local-fix.ps1` script verifies this checksum, extracts to a
 separate directory in LocalAppData, validates the manifest, uses the supported
 graceful stop and Windows setup, checks the activated runtime identity and opens
-the matching Desktop. Syntax and `-VerifyOnly` passed; installation into the
-owner's profile has not run. It preserves existing provider configuration and
+the matching Desktop. Syntax and `-VerifyOnly` passed. The owner subsequently
+installed this exact candidate; the launch correction below records acceptance.
+It preserves existing provider configuration and
 does not provision tools or start QA. After installation, check Environment is
 Connected and start a new DeepSeek QA run. Earlier failed runs remain unchanged.
 
@@ -79,3 +80,30 @@ Primary checkout's preexisting owner edits are preserved. `shux contract` was
 attempted but is unavailable; task status, ledger and handoff are maintained
 directly. A funded live rerun and historical failing-run recovery are unverified;
 the fix applies to new QA runs after installing the matching local build.
+
+## Follow-up: Windows hidden launch corrected
+
+The owner successfully installed source `0ac6c1c` but saw no window. Inspection
+found that exact packaged Desktop running with no visible main window. The
+distribution `open` command used `Start-Process -WindowStyle Hidden`; repeated
+opens only focused the hidden single instance. Earlier packaged smoke launched
+the executable directly and therefore did not test this launcher path.
+
+Changed the source launcher to `WindowStyle Normal`. A new test executes the
+real PowerShell entrypoint with a mocked process boundary and checks arguments,
+working directory and visible launch style. RED: Hidden differs from Normal;
+GREEN: 6/6 launcher tests, full Windows distribution 32 pass/27 platform skips.
+PowerShell syntax checks passed for the launcher and both private user scripts.
+
+The immutable installed archive was preserved. The private installer now starts
+its verified executable normally. `open-local-fix.ps1` validates installed and
+active runtime identities, returns without interruption if already visible,
+otherwise gracefully stops the hidden process and starts the matching Desktop
+normally. Actual owner installation: visible `Sentry` window, PID 14276,
+nonzero main-window handle, matching source `0ac6c1c`; a repeated helper call
+returned already visible with the same PID. No runtime reinstall or QA call.
+
+The global `Sentry` shim still points at `Sentry-latest`, and the owner's former
+working directory is archive `16b47d8`. Use the private `open-local-fix.ps1` for
+this installed candidate. Future archives include the source launcher repair;
+this follow-up did not rebuild or mutate the existing candidate. No PR or push.

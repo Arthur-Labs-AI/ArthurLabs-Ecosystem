@@ -1,3 +1,22 @@
+# Windows local candidate — visible launch repaired and verified
+
+Owner installed DeepSeek-fixed source0ac6c1c successfully, but packaged open
+used WindowStyle Hidden. The exact candidate was running without a visible main
+window. Source release.ps1 now uses Normal; real PowerShell entrypoint regression
+RED Hidden!=Normal then GREEN6/6; distribution32PASS/27platformskips. Syntax PASS.
+Prior smoke launched executable directly and did not cover hidden launcher.
+Installed immutable archive unchanged. Updated external installer uses Normal;
+open-local-fix.ps1 verified matching Desktop/runtime identities, supported graceful
+stop, then actual visible Sentry window PID14276/nonzero handle. Repeated helper
+returns already visible with same PID, preserving ongoing QA. No paidcalls/PR/push.
+Global Sentry shim still points to Sentry-latest; former current directory is old
+16b archive. Use external open-local-fix.ps1 for installed0ac candidate. Future
+archives use repaired source; no repack/reinstall needed for this workaround.
+Owner credentials untouched; funded DeepSeek retry remains UNVERIFIED. Primary
+owner dirty files preserved. shux unavailable; protocol maintained directly.
+
+## Previous record
+
 # DeepSeek shell evidence — implemented and verified locally
 
 Owner request completed as a local review candidate; no push or GitHub PR.
