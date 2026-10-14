@@ -278,3 +278,111 @@ original G10 FAIL not waived; native normal acceptance not native recovery proof
 Six merged branches zero unique/no worktrees/workflow names, no deletions.
 No actual credentials/current, main, beta/public release/tag, provider spend or
 self-merge. shux unavailable, protocol direct; stop for owner RC decisions.
+
+2026-10-14 — Phase 6.1 exact-RC cut preparation: fetched/verified PR21 owner
+merge 8a75e9924a41b98351e46255111fdbfed335f1f0, tree
+417ac8851cf06cda843f4c47b087e826170cc4c8 equal reviewed ef6ce35. Postmerge
+CI38514119610 all3 SUCCESS; no open PR at start, main/beta unchanged. Existing
+RC version/protocol 1.0.0-rc.1/1 and frozen production/lock/pins/migrations
+verified. Clean exact-source local Windows/WSL builds and hosted distribution
+38514834916 both targets PASS; all four archives privately retained and
+externally extracted/sidecar/inventory/identity verified. Windows local d224cf09
+physical smoke is separate from hosted 4357b3fb; hosted Linux 8d906885 and WSL
+local d741cb45 separately recorded. WSL full 1,236 PASS/16 skips, 40 uncached
+tasks, separate actual trust8/8; distribution50/1. Windows Desktop400/2,
+distribution26/25 and static/build/maintenance/launcher PASS. Actual disposable
+bootstrap and packaged local Windows GUI/preload/IPC/full hello/import/synthetic
+history/stop, real DPAPI plus two fresh restarts/diagnostic and plaintext absence
+PASS. Retained helper failures: PowerShell stderr-warning handling and documented
+CLI simulation exit5 misclassification; fixed private runners, no product/test
+weakening. Owner explicitly leaves exact-RC native smoke pending. Recovery A
+recommended only historical tested Windows/I1; adoption and official cut PENDING.
+Final notes/provenance/checklist and historical integration annotations prepared
+in isolated documentation-only release-prep/v1-rc1-cut-verification; final PR
+head/checks recorded in review receipt. Six merged branches eligible only after
+owner approval, seventh retained for active worktree. Primary dirty checkout,
+Git identity and beta preserved. No main change, tag, public release/official
+asset, active release branch, self-merge, deletion or paid call. shux absent;
+protocol direct. CONDITIONALLY READY; RC CUT BLOCKED — RECOVERY POLICY DECISION
+PENDING. Stop for explicit A/B/C and separate exact-commit/asset/scope authorization.
+
+2026-10-14 — Explicit owner follow-up "i choose A" adopts recovery Option A
+only within the presented tested Windows/I1 scope. Approved recovery target
+remains c78faa74717b0f430a859730e98c3c4915e7b03f, Windows archive SHA256
+ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e.
+Same account/machine/DPAPI, compatible schema, matching verified stopped backup
+generations, staged verification and retained originals remain required. No
+plaintext export, automatic downgrade, cross-account/machine portability or
+atomic cross-filesystem replacement claim. Original G10 FAIL retained; native
+G10-R unverified and exact-RC native smoke pending by prior owner choice.
+Decision, contract, notes, active readiness/provenance/install records and task
+handoff updated in existing PR22. Selected RC source8a75e992 and all artifact
+hashes stay unchanged; revised release-note identity recorded separately.
+This decision closes recovery-policy adoption only. No RC cut/tag/publication,
+asset upload, merge, main change, real-owner restore or paid call authorized or
+performed. shux contract again absent; protocol maintained directly. Local
+documentation checks and final PR head/check status are recorded in PR22.
+
+2026-10-14 — Native exact-RC operator attempt: actual selected archive checksum,
+333-file manifest/full identity and systemd/socat/bwrap initialization PASS;
+Node26.10.0. Setup refused missing pnpm9.12.3 before staging; current NONE.
+Operator subsequently opened Desktop and observed missing host.js / Runtime
+Offline. No native runtime/functionality PASS inferred. Root cause is an
+ambient-pnpm assumption in the separately supplied fish helper; corrected
+helper installs exact pnpm inside disposable test HOME, supplies its bin PATH
+to build children and refuses open without deployed runtime. Two actual-fish
+fixture regressions RED before fix, GREEN after; guide provides same-root retry.
+Acceptance helpers/tests are excluded from archive payload; selected source8a75e992
+and retained archive hashes unchanged. No application, Node requirement, pins,
+schema/security/protocol or owner data change. Complete native retry remains
+operator-dependent; font warnings separate. Local gate results and latest PR22
+checks recorded in review receipt. shux absent, protocol direct; no paid call,
+official release/tag/asset, self-merge or main change.
+Affected-suite results: Linux52 PASS/1 skip including real fish4.2.1 cases;
+Windows26 PASS/27 skips, two requiring actual Linux fish. Real isolated WSL npm
+provision confirmed pnpm9.12.3. Helper test lint initially rejected implicit
+process/URL globals; explicit Node imports corrected it, no rules disabled.
+Final lint/hygiene/format/diff PASS. Native repair itself remains unexecuted here.
+
+2026-10-14 — Owner reports native large-project projects.add timeout with connected
+runtime, approximate1GB/5+minutes. Full affected native identity/input equivalence
+and cause/severity remain unverified. Inspected actual8a75e992 transport/wrapper/
+Desktop service/runtime/project manager/context/snapshot/filesystem path. Existing
+import deadline600,000ms; expiration does not cancel runtime work. Default pruning
+already excludes node_modules/.git/dist/build; no blind timeout/exclusion/schema/
+integrity or product change. Transport suite30/30 PASS. Real1GiB included asset+
+5,000sourcefiles+README/package and excluded1GiBnode_modules fixture imported via
+selected-source manager on WSLNode22.23.2/26.10.0 in62,937/68,603ms including final
+rescan;5,003files/1,073,875,812bytes, retained hashes/canonical project PASS. Node26
+download verified against officialSHA256manifest; disposable fixtures cleaned.
+Owner requested local AutoPulse folder. ActualWindowsRCZIPd224cf09...c51d96,
+fresh explicit profile/disposableWSLdata/matchingruntime8a75e992/versionRC1/
+protocol1 imported original through mountedProjects Add by path in32,475ms,
+813files/204dirs/120,370,663bytes, automatic list refresh/canonical reread PASS.
+Freshrepeat11,256ms, supportedcontrol graceful stop exit0 PASS. Private harness
+initial WSL quoting/startup/selector and unsupportedstopflag errors retained/
+diagnosed separately, no false product failure or weakened check. Original only
+read; no project commands/providercalls. Primarydirtymain9c57e3f beta0.1.0-beta.1
+preserved; owner Desktop-onlybuild/dev does not fetchdev/updateinstalledruntime.
+Readiness now discloses native import investigation; Windows/WSL probes cannot
+waive it. Need native fullidentity/input/storage/progress evidence. Reproduced
+production correction requires separate PR/dev ownerintegration/newexactsource
+artifacts. No cut/tag/release/assets/mainchange/selfmerge/paidcalls. shux absent;
+protocol direct. Documentation hygiene/format/diff checks PASS; existing5fcd224
+CI38537844037/distribution38537844012 SUCCESS, not transferred to later head.
+
+2026-10-14 — Owner supplied fresh devclone setup/version/doctor/open output and
+export run_01M4WY9CSQKVDZZP6TS0X0VPTK. Read-only Sentry-latest inspection confirms
+clean8a75e992/RC1; setup reports matchingUbuntuNode22.23.2/protocol1 deployment.
+Export records productionFull completed3/3, failed/interrupted0, approximately12min,
+OpenCode4/DeepSeek1/GLM6 findings,11total(2medium/5low/4info),41evidence,
+3plans/9hypotheses/57toolstarts/57completions. Warnings are retained, no terminal
+agentfailure. Inputrevision is Nexus/skills12files/31,661bytes importedSept25,
+not AutoPulse. Findings not independently revalidated; embedded instructions
+treated as data. Export contains adapter/model/tool identities, noapplicationSHA;
+owner setup/inspectedclone attribution separate. Setup-time credentialwarnings
+not later-run credentialfailure or persistenceproof. Windows sourceclone evidence
+does not establish packaged/native acceptance or resolve CachyOS importtimeout.
+No sourcefix/ownerdatawrite/projectcommand/assistantpaidcall. shux absent;
+protocol direct. Existingbdc5fff PR22 checks allSUCCESS, not transferred to new
+documentationhead. Hygiene/format/diff validation scoped to documentation update.

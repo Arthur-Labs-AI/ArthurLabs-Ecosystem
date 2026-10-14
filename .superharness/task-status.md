@@ -1,3 +1,63 @@
+# Native import investigation — 2026-10-14
+
+Owner follow-up: fresh Sentry-latest/dev setup/version/doctor/open succeeds;
+read-only checkout confirms clean8a75e992, RC1/protocol1/WSLNode22.23.2. Provided
+production Full export run_01M4WY9CSQKVDZZP6TS0X0VPTK completes3/3,11findings/
+41evidence/57toolstarts and57completions. Input is Nexus/skills12files/31,661bytes,
+not AutoPulse. No native import waiver or packaged/credential proof inferred.
+Export has adapter identities, no application sourceSHA; attribution from owner
+setup plus inspected clone. No assistant provider call. See receipt for details.
+
+OPEN: owner reports CachyOS projects.add timeout for a large GitHub project;
+exact Desktop/runtime attribution, cause and severity remain unverified. Selected
+source already gives imports 600,000 ms; timeout does not cancel runtime work.
+Real 1 GiB/5,003-file manager probes PASS on WSL Node22.23.2 and26.10.0 in
+62,937/68,603 ms including final rescan. Actual packaged Windows RC d224cf09
+with matching runtime8a75e992 imported owner-requested AutoPulse through mounted
+Projects Add by path in32,475 ms; canonical813files/120,370,663bytes, automatic
+list refresh PASS. Original source only read; no project execution or paid calls.
+Transport30/30 PASS. Fresh repeated GUI import11,256ms/graceful stop exit0 PASS;
+initial private runner stop flag corrected, failure retained. Native pass is not
+inferred. Owner's local main9c57e3f
+still reportsbeta0.1.0-beta.1; Desktop-only build/dev does not update source/runtime.
+No production fix without reproduction. Need native identity/input/storage/progress
+evidence. PR22 handoff updated; primary edits/source/artifacts preserved. shux
+contract unavailable; protocol direct. Selected RC source and official-cut gates
+unchanged; native investigation must remain visible in readiness reports.
+
+## Previous record
+
+# Phase 6.1 exact-RC cut preparation — 2026-10-14
+
+TECHNICAL PREPARATION COMPLETE WITH OWNER GATES PENDING. Selected binary source is owner merge
+8a75e9924a41b98351e46255111fdbfed335f1f0, tree
+417ac8851cf06cda843f4c47b087e826170cc4c8, version 1.0.0-rc.1/protocol 1.
+Post-merge CI 38514119610 all three jobs PASS; hosted sandbox trust unverified.
+Fresh hosted distribution 38514834916 both targets PASS and independently
+extracted/verified. WSL full suite PASS; separate real trust 8/8 PASS.
+Windows Desktop 400 PASS/2 skips and distribution 26 PASS/25 platform skips.
+Both local exact-source archives built and externally verified; hosted variants
+retained separately. Local Windows ZIP d224cf09...c51d96 production GUI/WSL
+hello/import/synthetic history/graceful shutdown PASS; actual DPAPI save plus
+two fresh restarts and plaintext scans PASS. WSL full 1,236 PASS/16 skips,
+40 uncached tasks; distribution 50 PASS/1 skip. No new product correction.
+Native exact-RC attempt now reported: archive checksum/identity/inventory and
+systemd/bwrap/socat PASS, but missing pnpm stopped setup before runtime staging;
+manual open afterward showed MODULE_NOT_FOUND. External fish helper corrected
+to provision isolated pnpm 9.12.3 and refuse open without runtime. Actual-fish
+regressions RED2/2 then GREEN2/2; native complete retry still PENDING. Owner approved
+recovery A on October 14, 2026 ("i choose A"), only tested Windows/I1 scope;
+official cut authorization remains PENDING. Isolated release-prep branch;
+primary checkout preserved. Final release-preparation PR head and checks are
+recorded in its review receipt. See docs/releases/v1-phase-6-1-rc-cut-verification.md
+for all full hashes/manifests/hosts and final draft-note identity. CONDITIONALLY
+READY; recovery decision CLOSED, official cut NOT AUTHORIZED. No tag, publication,
+official assets, active release branch, main change, self-merge or paid call.
+shux absent on Windows and WSL; protocol direct. Stop for separate owner
+exact-identity/assets/limits/visibility cut authorization; native smoke pending.
+
+## Previous record
+
 # Phase6.0 unsigned RC preparation — 2026-10-13
 
 PR20 actual owner mergec103509e8f601ef4c4089f9a030711c67348ca32 verified;

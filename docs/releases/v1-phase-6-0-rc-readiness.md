@@ -1,5 +1,17 @@
 # Phase6.0 — unsigned RC preparation and readiness
 
+Integration update, October 14, 2026: the owner merged [PR #21](https://github.com/Mert1026/Sentry/pull/21)
+into dev at `8a75e9924a41b98351e46255111fdbfed335f1f0`, tree
+`417ac8851cf06cda843f4c47b087e826170cc4c8`, identical to reviewed head
+`ef6ce35cf0eac9c3bdb0fafc8693f78b125ddfad`. [Post-merge CI](https://github.com/Mert1026/Sentry/actions/runs/38514119610)
+completed successfully in all three required jobs; hosted sandbox isolation was
+unverified. The [Phase 6.1 receipt](v1-phase-6-1-rc-cut-verification.md) now governs
+exact merged-source builds and the owner cut handoff. The remainder of this
+document records Phase 6.0's historical preparation baseline and results.
+The owner subsequently adopted recovery Option A within its tested Windows/I1
+scope on October 14, 2026; see the [decision](v1-recovery-policy-decision.md).
+Official RC cut authorization remains pending.
+
 This task prepares a reviewable **1.0.0-rc.1** version transition and release
 package under the owner's explicit Phase6.0 preparation authority. Feature
 development is frozen. It does not cut/tag/publish an RC, promote main, merge

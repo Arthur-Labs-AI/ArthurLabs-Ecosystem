@@ -1,13 +1,15 @@
-# Proposed G10-R recovery contract
+# G10-R recovery contract — adopted Windows/I1 scope
 
-This is a disposable-fixture acceptance procedure pending owner adoption, not
-permission to restore an owner's installation. Original-beta G10 remains FAIL.
-The preferred target is the verified I1 Desktop/runtime pair at
+The owner adopted Option A on October 14, 2026 by replying "i choose A" in the
+Phase 6.1 decision thread, only within the tested Windows/I1 scope. This contract
+records the validated disposable-fixture procedure; policy adoption does not
+instruct restoration of an owner's installation. Original-beta G10 remains FAIL.
+The approved target is the verified I1 Desktop/runtime pair at
 `c78faa74717b0f430a859730e98c3c4915e7b03f`, version0.1.0-beta.1/protocol1.
 Dev merges8bbe8ba/5c68491 change documentation and excluded acceptance tests;
 executable source and beta/I1 persistence migrations were compared directly.
-The [Phase5.3 decision record](v1-recovery-policy-decision.md) leaves approval
-OWNER ACCEPTANCE REQUIRED; the [candidate lock](v1-phase-5-3-candidate-lock.md)
+The [owner decision record](v1-recovery-policy-decision.md) records approval and
+its limits; the [candidate lock](v1-phase-5-3-candidate-lock.md)
 specifies exact retained bytes. Original-beta G10 is not marked PASS.
 
 ## What must remain together
@@ -113,6 +115,7 @@ lease/history bookkeeping may grow across launches; canonical historical data
 must remain equal. Original backup, preserved candidate data, exports, encrypted
 profile, old runtime and original archive must survive every failed attempt.
 
-An actual Windows pass establishes a validated proposed G10-R candidate only.
-Original G10, native CachyOS, owner policy adoption and Phase6 authorization
-remain separate decisions/gates. No beta tag/release or production schema is changed.
+The actual Windows pass and explicit owner choice establish adopted Option A
+only within that tested Windows/I1 scope. Original G10 remains FAIL, native
+G10-R remains unverified, and official RC cut authorization remains pending.
+No beta tag/release or production schema is changed.

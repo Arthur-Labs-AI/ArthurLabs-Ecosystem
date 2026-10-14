@@ -1,5 +1,15 @@
 # Version transition for unsigned v1.0.0-rc.1 review
 
+Phase 6.1 integration update: the transition below is now owner-merged through
+PR #21 into dev at `8a75e9924a41b98351e46255111fdbfed335f1f0`. Its tree equals
+reviewed head `ef6ce35cf0eac9c3bdb0fafc8693f78b125ddfad`. The
+[exact-source provenance receipt](v1-phase-6-1-rc-cut-verification.md) selects the
+actual merge commit for new builds; no further version change is required.
+Earlier review-head archives retain their original identities and are not
+substituted for these merged-source bytes. This documentation-only handoff does
+not select its own later commit as binary input. A subsequently selected SHA
+requires fresh exact-source builds and verification before any authorized cut.
+
 Approved preparation base: `c103509e8f601ef4c4089f9a030711c67348ca32`, tree
 `be19e0c691b785ed6ad643dcbe4dd2dbb7fd9597`. Base product/Desktop/runtime/CLI
 version0.1.0-beta.1. Intended review version **1.0.0-rc.1**, protocol **1**,

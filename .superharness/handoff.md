@@ -1,3 +1,66 @@
+# Native import investigation handoff — 2026-10-14
+
+Latest owner evidence: clean Sentry-latest/dev8a75e992 and successful RC1 source
+setup/WSLNode22.23.2/protocol1/doctor/open. Export
+run_01M4WY9CSQKVDZZP6TS0X0VPTK is completed productionFull3/3, zero failed/
+interrupted,11reportedfindings/41evidence. It scans Nexus/skills12files/31,661bytes,
+not AutoPulse; native import investigation remains open. Export lacks application
+sourceSHA, so cite owner setup/inspected checkout separately. Missing-key doctor
+warnings preceded run; no credential persistence inference. No assistant paid call,
+project modification or acceptance gate waiver; receipt/protocol updated.
+
+Owner reports native CachyOS large-project projects.add timeout with runtime
+connected. Full native identity, exact input equivalence and root cause remain
+unverified; complete native RC smoke has not passed. Source8a75e992 import timeout
+already600,000ms; expired Desktop wait does not cancel runtime work. No blind
+timeout/exclusion/integrity change. Real1GiB/5,003file manager imports PASS on
+WSL Node22.23.2/26.10.0; requested AutoPulse import through actual Windows RC
+GUI/Add by path/IPC PASS32,475ms, canonical813files/120,370,663bytes and mounted
+list refresh. Exact ZIPd224cf09/matchingruntime8a75e992/protocol1, fresh isolated
+profile/data, original only read, no project commands/provider calls. Private
+autopulse-packaged receipt/probe and large-import logs retained. Transport30/30
+PASS. Fresh repeated GUI import11,256ms and supported-control graceful shutdown
+exit0 PASS. Initial private runner used unsupported stop flag; its failed stop
+check and first successful import are retained separately. Preserve diagnostic data.
+Owner local dev command uses dirty main9c57e3f/beta0.1.0-beta.1, not latestdev/RC;
+Desktop build does not update installed runtime. Primary preserved. Next native
+identity/input/storage/progress evidence; reproduced production fix gets separate
+focused PR againstdev, owner integration and new exact-source artifacts. PR22
+must disclose open investigation; no native PASS, release authorization or paid
+replay inferred. shux unavailable; protocol maintained directly.
+
+## Previous record
+
+# Phase 6.1 preparation handoff — 2026-10-14
+
+CONDITIONALLY READY; recovery A APPROVED, official RC cut NOT AUTHORIZED.
+Selected binary input remains approved dev merge
+8a75e9924a41b98351e46255111fdbfed335f1f0. Documentation-only receipts do not
+change that selection. See docs/releases/v1-phase-6-1-rc-cut-verification.md
+for the completed provenance/GO-NO-GO handoff. Both local and hosted archives
+built/externally verified; selected local Windows d224cf09... and hosted Linux
+8d906885... remain distinct from the documentation PR and other same-source
+builds. Postmerge CI 38514119610 all three jobs PASS; distribution 38514834916
+both PASS. WSL 1,236/16 skips, trust 8/8, distribution 50/1; Windows Desktop
+400/2, distribution 26/25, static/build/maintenance/launcher PASS. Local exact
+Windows GUI/import/synthetic history/hello/stop and DPAPI plus two fresh restarts/
+plaintext absence PASS, prepared host scope. Native exact-RC
+smoke retry pending: actual operator attempt verified archive and host sandbox
+prerequisites but missing pnpm stopped setup before staging. Later manual open
+showed runtime missing. Acceptance-only fish helper now provisions pinned pnpm
+inside the isolated HOME and blocks open without runtime; real-fish tests
+RED2 then GREEN2. Follow docs/releases/v1-cachyos-rc1-smoke-guide.md; no RC
+archive/application bytes changed. Recovery A owner-adopted October 14, 2026
+("i choose A") only for historically tested Windows/I1 scope. Official cut
+authorization remains pending. Preserve original
+G10 FAIL, all prior evidence, primary edits and beta tag. Final documentation
+PR head/checks live in its review receipt; do not self-merge. No official cut,
+main promotion, release branch, official assets, deletion or paid calls. shux
+absent; protocol direct. Stop for separate exact-source/assets/limits/visibility
+cut authorization. No real-owner restore was executed or instructed.
+
+## Previous record
+
 # Phase6.0 preparation review handoff — 2026-10-13
 
 Start docs/releases/v1-phase-6-0-rc-readiness.md, V1_RC_READINESS_CHECKLIST.md,

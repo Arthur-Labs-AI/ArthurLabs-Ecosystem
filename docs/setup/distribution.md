@@ -1,10 +1,12 @@
 # Installing a pinned Sentry distribution candidate
 
-Phase 4 candidates are unsigned review artifacts, not a v1 release. Supported
+Candidates are unsigned review artifacts pending an explicitly authorized RC cut. Supported
 hosts are Windows 11 x64 with WSL2, and native CachyOS x64 with a graphical
 session. Ubuntu CI/WSL builds do not establish native CachyOS acceptance.
 There is no automatic update, offline install, signed installer or macOS support.
-Phase6.0 prepares version1.0.0-rc.1 on an isolated review branch. Historical
+Phase 6.0's version 1.0.0-rc.1 transition was owner-merged in PR #21 on October 14, 2026. Phase 6.1 selects merge source `8a75e9924a41b98351e46255111fdbfed335f1f0`;
+see the [provenance receipt](../releases/v1-phase-6-1-rc-cut-verification.md) for
+the distinct local/hosted archive hashes and actual verification. Historical
 beta/I1 archives remain0.1.0-beta.1. **Version, full source SHA and archive
 checksum distinguish candidates**; RC review bytes are not published or signed.
 
@@ -14,8 +16,9 @@ Windows/native CachyOS functionality confirmation is recorded separately from
 exact-build receipts. Historical [I1 lock](../releases/v1-phase-5-3-candidate-lock.md)
 and [native recovery workflow](../releases/v1-phase-5-3-cachyos-operator.md) retain
 their original identities; do not run their fixed-I1 recovery helper with an RC identity.
-The [recovery decision](../releases/v1-recovery-policy-decision.md) is pending
-owner adoption; original-beta G10 remains historical FAIL. These handoffs do
+The owner adopted [recovery Option A](../releases/v1-recovery-policy-decision.md)
+on October 14, 2026, only in its tested Windows/I1 scope; original-beta G10
+remains historical FAIL. These handoffs do
 not publish or authorize a release.
 
 ## Obtain, verify and extract
@@ -137,9 +140,10 @@ No system package hooks, global npm provider installs or automatic shell-rc edit
 Keep Electron/worker sandboxes enabled. If Chromium cannot create its sandbox,
 repair host user-namespace/prerequisite configuration; never add `--no-sandbox`.
 `tools` uses the existing managed installers and persists paths through packaged
-Desktop. Configure credentials and check Environment. These native steps remain
-**ENVIRONMENT UNAVAILABLE in the Phase 4 agent validation** until the owner runs
-them on actual CachyOS. No AppImage/AUR/native package is promised.
+Desktop. Configure credentials and check Environment. The owner has confirmed
+normal native functionality; exact Phase 6.1 RC archive smoke remains **PENDING**,
+as requested by the owner. Native recovery remains independently unverified.
+No AppImage/AUR/native package is promised.
 
 ## Explicit release upgrade, repair and source-beta migration
 
@@ -194,10 +198,13 @@ and beta binary/runtime restored together, retained history/ciphertext but faile
 credential availability. Candidate D could read the same encrypted store; beta
 loaded it before Electron readiness. G10 is FAIL and this beta downgrade is not
 an accepted credential-continuity recovery procedure. Retain private backups and
-stop the affected rollback track pending owner disposition of the
-[bounded correction proposal](../releases/v1-beta-rollback-credential-proposal.md).
-No replacement rollback policy or real-owner key re-entry is authorized by this
-guide. Full native CachyOS and complete upgrade/export acceptance remain outstanding.
+stop the original-beta executable rollback track. The owner has adopted the
+corrected I1 route below within its tested Windows scope; the historical
+[bounded correction proposal](../releases/v1-beta-rollback-credential-proposal.md)
+is retained as background. This guide does not instruct a real-owner restore or
+key re-entry. Full native recovery and exact-RC native smoke remain outstanding;
+normal native functionality is already owner-reported accepted. Windows I1
+populated history/export/recovery evidence is recorded below, with its own identity.
 
 **Phase5.2 recovery proposal:** actual disposable Windows I1 recovery restored a
 verified stopped beta data/profile pair under the corrected Desktop/runtime,
@@ -205,10 +212,11 @@ retaining populated history, actual JSON/log exports, credentials and model
 preferences through repeated restart/restore. See the [validation receipt](../releases/v1-phase-5-2-g10-recovery-validation.md),
 [paired backup/recovery contract](../releases/v1-g10-recovery-contract.md) and
 [unexecuted native handoff](../releases/v1-g10-recovery-cachyos-handoff.md).
-This is a validated proposed recovery candidate pending owner adoption, not an
-approved beta downgrade or automatic owner-data restore. Original G10 FAIL and
-native/owner acceptance gates remain separate. Do not operate on live data or
-replace a supported recovery policy based only on this synthetic result.
+The owner adopted Option A on October 14, 2026 only for the tested Windows/I1
+scope and stated account/machine/DPAPI, schema and backup boundaries. This is
+not an approved beta executable downgrade or an automatic owner-data restore.
+Original G10 FAIL, unverified native recovery and official cut authorization
+remain separate. The newly versioned RC is not the historical I1 recovery target.
 
 ## Failed/interrupted setup and uninstall
 
@@ -227,7 +235,14 @@ separately choosing data removal. The source shim remains owned by source setup.
 
 ## Owner acceptance procedure (no paid calls by default)
 
-For the v1 acceptance campaign use the comprehensive
+For the bounded Phase 6.1 cut use the
+[exact-source receipt](../releases/v1-phase-6-1-rc-cut-verification.md): checksum,
+version, setup, graphical launch, matching runtime identity, import/history and
+graceful shutdown, with synthetic credentials only. Do not repeat the paid
+provider matrix or require new recordings. The following comprehensive procedure
+is retained as a historical acceptance reference, not a new Phase 6.1 gate.
+
+For the historical v1 acceptance campaign use the comprehensive
 [Windows/WSL and native CachyOS runbook](../releases/v1-owner-acceptance.md),
 [per-host results template](../releases/v1-owner-acceptance-results.md) and
 [v1 checklist](../releases/V1_ACCEPTANCE_CHECKLIST.md). The summary below remains
