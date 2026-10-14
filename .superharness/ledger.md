@@ -386,3 +386,5 @@ does not establish packaged/native acceptance or resolve CachyOS importtimeout.
 No sourcefix/ownerdatawrite/projectcommand/assistantpaidcall. shux absent;
 protocol direct. Existingbdc5fff PR22 checks allSUCCESS, not transferred to new
 documentationhead. Hygiene/format/diff validation scoped to documentation update.
+
+- 2026-10-14 — Owner packaged Windows setup failure reproduced: reserved PowerShell Args loses wsl argument, native CachyOS gate refuses Ubuntu, previous runtime retained and Desktop correctly fails identity. Focused branch from dev62b474e; setup/repair RED2 then GREEN5/5 after ScriptArguments rename; Windows distribution31PASS/27skips after build, static/build cached gates and PS maintenance/syntax PASS. PR23 returned to draft; earlier direct bootstrap did not cover PS bridge. No owner credentials/data changes; exact artifact/real bridge/CI pending; shux absent/direct protocol.

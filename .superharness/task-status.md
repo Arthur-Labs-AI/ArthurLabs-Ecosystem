@@ -1,3 +1,25 @@
+# Windows bootstrap mode correction — review in progress
+
+Owner's packaged setup selects Ubuntu but loses explicit wsl mode because
+Invoke-DistributionLinux uses automatic-variable name Args. Setup refuses native
+Ubuntu and retains prior runtime; new Desktop correctly rejects mismatched identity.
+Root cause reproduced through actual packaged PS entrypoint: setup/repair RED2;
+renaming to ScriptArguments GREEN5/5. Full Windows distribution31PASS/27skips
+following required build. Initial missing-dist test race retained. Frozen install,
+hygiene/format/lint/typecheck/build and PowerShell syntax/maintenance PASS;
+static/build Turbo caches reported. No provider/version/schema/credential change.
+
+Separate fix/v1-windows-bootstrap-mode from approved dev62b474e; targetdev.
+PR23 returned to draft: normal release setup remains blocked until this correction
+is integrated and a fresh exact-source candidate verified. Earlier direct-inner-
+bootstrap GUI acceptance did not cover the PS handoff; history is retained.
+No owner profile/data/credential store accessed. Existing owner fatal Desktop not
+modified/stopped by the agent. Exact fix artifact/real PS->WSL validation/CI pending.
+shux contract unavailable; protocol updated directly. No tag/publication/self-merge.
+See docs/releases/v1-windows-bootstrap-mode-fix.md and fix PR for final evidence.
+
+## Previous record
+
 # Native import investigation — 2026-10-14
 
 Owner follow-up: fresh Sentry-latest/dev setup/version/doctor/open succeeds;
