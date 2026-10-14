@@ -591,3 +591,7 @@ run-engine typecheck/lint PASS. No production code/backup verifier changed;
 all original result assertions preserved. Initial barrier-only probe passed and
 is retained separately. Final correction head full/CI/distribution results are
 recorded in PR20; first-head failure is not erased or silently rerun as green.
+
+Optional housekeeping note: automatic approval review rejected removal of the
+redundant generated64bff9f artifact directory (blocked by policy). It remains;
+no workaround or retry. Tested ZIP, extracted fixture and installer preserved.

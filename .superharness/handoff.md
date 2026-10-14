@@ -898,3 +898,8 @@ run-engine typecheck/lint PASS. No production code/backup verifier changed;
 all original result assertions preserved. Initial barrier-only probe passed and
 is retained separately. Final correction head full/CI/distribution results are
 recorded in PR20; first-head failure is not erased or silently rerun as green.
+
+Optional housekeeping note: duplicate generated64bff9f artifact cleanup was
+rejected by automatic approval review (blocked by policy). No deletion/retry;
+artifact ZIP and installer unaffected. Local candidate remains ready to install,
+owner activation remains unverified until the installer is run.
