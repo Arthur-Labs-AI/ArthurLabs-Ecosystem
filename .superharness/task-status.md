@@ -1,3 +1,20 @@
+# PR25 Windows CI regression — local correction verified
+
+2026-10-15, baseline d58ef40226578ec9a5beb070b0b19efae969b2ab.
+CI38641540439 failed only the registration-path assertion in the Windows Desktop
+suite: raw temporary path spelling was compared to PowerShell's canonical file
+path. Added native/dot-segment fixture variants; dot-segment reproduced the same
+Wrong disk failure before correcting the oracle. Expected path now comes from
+the actual fixture file via Get-Item.FullName; exact comparison and all unknown
+or unsafe distro refusals remain. No production helper or CI gate changed.
+Focused real PowerShell helper16/16 and full Windows Desktop452/3platform or
+prerequisite skips PASS. pnpm build20/20 (19cached), repository hygiene,
+changed-file formatting and diff check PASS. Desktop lint/typecheck PASS; hosted retry receipt follows in the final report. Self-review found no
+correctness/security/concurrency issues in this test-only patch. Original owner
+source edits/main retained. No paid calls or merge. shux unavailable.
+
+## Previous record
+
 # Phase 6.2 — REVIEW PREPARATION COMPLETE; OWNER INTEGRATION PENDING
 
 Owner resumed after PC cleanup on October 14, 2026. Worktree:

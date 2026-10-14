@@ -117,12 +117,19 @@ if ($status -eq 0) { throw 'Nonexistent disk unexpectedly compacted' }
     expect(output).toBe('native-interop-compiled-invalid-path-refused');
   });
 
-  it('resolves exactly the selected WSL2 registration, independent of shell-like text', async () => {
-    expect(
-      await run(
-        fakeRegistration +
-          String.raw`
-if ((Get-SentryDisk 'Ubuntu') -cne $disk) { throw 'Wrong disk' }
+  it.each(['native', 'dot-segment'])(
+    'resolves exactly the selected WSL2 registration, independent of shell-like text (%s path)',
+    async (pathForm) => {
+      expect(
+        await run(
+          (pathForm === 'dot-segment' ? "$fixtureRoot = Join-Path $fixtureRoot '.'\n" : '') +
+            fakeRegistration +
+            String.raw`
+# The temp path may contain a short-name alias or dot segment. Compare the
+# fixture's canonical filesystem path, not Node's unnormalized spelling.
+$expectedDisk = (Get-Item -LiteralPath $disk).FullName
+$actualDisk = Get-SentryDisk 'Ubuntu'
+if ($actualDisk -cne $expectedDisk) { throw "Wrong disk: expected '$expectedDisk', received '$actualDisk'" }
 foreach ($name in @('ubuntu', 'Ubuntu; Remove-Item C:', ("Ubuntu" + [char]10))) {
   $refused = $false
   try { $null = Get-SentryDisk $name } catch { $refused = $true }
@@ -130,9 +137,10 @@ foreach ($name in @('ubuntu', 'Ubuntu; Remove-Item C:', ("Ubuntu" + [char]10))) 
 }
 'registration-validated'
 `,
-      ),
-    ).toBe('registration-validated');
-  });
+        ),
+      ).toBe('registration-validated');
+    },
+  );
 
   it.each([
     '$script:registration.Version = 1',
