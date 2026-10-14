@@ -1,3 +1,29 @@
+# Phase 6.1 exact-RC cut preparation — 2026-10-14
+
+TECHNICAL PREPARATION COMPLETE WITH OWNER GATES PENDING. Selected binary source is owner merge
+8a75e9924a41b98351e46255111fdbfed335f1f0, tree
+417ac8851cf06cda843f4c47b087e826170cc4c8, version 1.0.0-rc.1/protocol 1.
+Post-merge CI 38514119610 all three jobs PASS; hosted sandbox trust unverified.
+Fresh hosted distribution 38514834916 both targets PASS and independently
+extracted/verified. WSL full suite PASS; separate real trust 8/8 PASS.
+Windows Desktop 400 PASS/2 skips and distribution 26 PASS/25 platform skips.
+Both local exact-source archives built and externally verified; hosted variants
+retained separately. Local Windows ZIP d224cf09...c51d96 production GUI/WSL
+hello/import/synthetic history/graceful shutdown PASS; actual DPAPI save plus
+two fresh restarts and plaintext scans PASS. WSL full 1,236 PASS/16 skips,
+40 uncached tasks; distribution 50 PASS/1 skip. No new product correction.
+Owner explicitly leaves exact-RC native CachyOS smoke PENDING. Recovery policy
+and official cut authorization remain PENDING. Isolated release-prep branch;
+primary checkout preserved. Final documentation-only PR head and checks are
+recorded in its review receipt. See docs/releases/v1-phase-6-1-rc-cut-verification.md
+for all full hashes/manifests/hosts and final draft-note identity. CONDITIONALLY
+READY; RC CUT BLOCKED — RECOVERY POLICY DECISION PENDING. No tag, publication,
+official assets, active release branch, main change, self-merge or paid call.
+shux absent on Windows and WSL; protocol direct. Stop for owner A/B/C choice
+and separate exact-identity/visibility cut authorization.
+
+## Previous record
+
 # Phase6.0 unsigned RC preparation — 2026-10-13
 
 PR20 actual owner mergec103509e8f601ef4c4089f9a030711c67348ca32 verified;

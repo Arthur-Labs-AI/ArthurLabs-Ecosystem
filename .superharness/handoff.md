@@ -1,3 +1,26 @@
+# Phase 6.1 preparation handoff — 2026-10-14
+
+CONDITIONALLY READY; RC CUT BLOCKED — RECOVERY POLICY DECISION PENDING.
+Selected binary input remains approved dev merge
+8a75e9924a41b98351e46255111fdbfed335f1f0. Documentation-only receipts do not
+change that selection. See docs/releases/v1-phase-6-1-rc-cut-verification.md
+for the completed provenance/GO-NO-GO handoff. Both local and hosted archives
+built/externally verified; selected local Windows d224cf09... and hosted Linux
+8d906885... remain distinct from the documentation PR and other same-source
+builds. Postmerge CI 38514119610 all three jobs PASS; distribution 38514834916
+both PASS. WSL 1,236/16 skips, trust 8/8, distribution 50/1; Windows Desktop
+400/2, distribution 26/25, static/build/maintenance/launcher PASS. Local exact
+Windows GUI/import/synthetic history/hello/stop and DPAPI plus two fresh restarts/
+plaintext absence PASS, prepared host scope. Native exact-RC
+smoke explicitly pending per owner; recommend recovery A only for historically
+tested Windows/I1 scope, adoption and official cut pending. Preserve original
+G10 FAIL, all prior evidence, primary edits and beta tag. Final documentation
+PR head/checks live in its review receipt; do not self-merge. No official cut,
+main promotion, release branch, official assets, deletion or paid calls. shux
+absent; protocol direct. Stop for owner choices and explicit cut authorization.
+
+## Previous record
+
 # Phase6.0 preparation review handoff — 2026-10-13
 
 Start docs/releases/v1-phase-6-0-rc-readiness.md, V1_RC_READINESS_CHECKLIST.md,

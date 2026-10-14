@@ -278,3 +278,30 @@ original G10 FAIL not waived; native normal acceptance not native recovery proof
 Six merged branches zero unique/no worktrees/workflow names, no deletions.
 No actual credentials/current, main, beta/public release/tag, provider spend or
 self-merge. shux unavailable, protocol direct; stop for owner RC decisions.
+
+2026-10-14 — Phase 6.1 exact-RC cut preparation: fetched/verified PR21 owner
+merge 8a75e9924a41b98351e46255111fdbfed335f1f0, tree
+417ac8851cf06cda843f4c47b087e826170cc4c8 equal reviewed ef6ce35. Postmerge
+CI38514119610 all3 SUCCESS; no open PR at start, main/beta unchanged. Existing
+RC version/protocol 1.0.0-rc.1/1 and frozen production/lock/pins/migrations
+verified. Clean exact-source local Windows/WSL builds and hosted distribution
+38514834916 both targets PASS; all four archives privately retained and
+externally extracted/sidecar/inventory/identity verified. Windows local d224cf09
+physical smoke is separate from hosted 4357b3fb; hosted Linux 8d906885 and WSL
+local d741cb45 separately recorded. WSL full 1,236 PASS/16 skips, 40 uncached
+tasks, separate actual trust8/8; distribution50/1. Windows Desktop400/2,
+distribution26/25 and static/build/maintenance/launcher PASS. Actual disposable
+bootstrap and packaged local Windows GUI/preload/IPC/full hello/import/synthetic
+history/stop, real DPAPI plus two fresh restarts/diagnostic and plaintext absence
+PASS. Retained helper failures: PowerShell stderr-warning handling and documented
+CLI simulation exit5 misclassification; fixed private runners, no product/test
+weakening. Owner explicitly leaves exact-RC native smoke pending. Recovery A
+recommended only historical tested Windows/I1; adoption and official cut PENDING.
+Final notes/provenance/checklist and historical integration annotations prepared
+in isolated documentation-only release-prep/v1-rc1-cut-verification; final PR
+head/checks recorded in review receipt. Six merged branches eligible only after
+owner approval, seventh retained for active worktree. Primary dirty checkout,
+Git identity and beta preserved. No main change, tag, public release/official
+asset, active release branch, self-merge, deletion or paid call. shux absent;
+protocol direct. CONDITIONALLY READY; RC CUT BLOCKED — RECOVERY POLICY DECISION
+PENDING. Stop for explicit A/B/C and separate exact-commit/asset/scope authorization.

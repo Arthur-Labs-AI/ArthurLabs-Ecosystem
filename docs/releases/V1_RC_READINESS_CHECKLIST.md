@@ -1,4 +1,37 @@
-# v1.0.0-rc.1 preparation checklist
+# v1.0.0-rc.1 cut preparation checklist
+
+Active status, October 14, 2026: **CONDITIONALLY READY**. See the
+[Phase 6.1 provenance receipt](v1-phase-6-1-rc-cut-verification.md).
+Binary input is owner merge `8a75e9924a41b98351e46255111fdbfed335f1f0`, tree
+`417ac8851cf06cda843f4c47b087e826170cc4c8`, version `1.0.0-rc.1`, protocol `1`.
+This documentation-only PR does not substitute its own later SHA as binary input.
+
+| Gate                           | Current evidence / disposition                                                                                                                             |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Integration                    | PASS: PR #21 owner-merged; reviewed and merged trees equal                                                                                                 |
+| Selected-source CI             | PASS: [38514119610](https://github.com/Mert1026/Sentry/actions/runs/38514119610), all three required jobs; hosted isolation unverified                     |
+| Frozen identity/implementation | PASS: root/Desktop/runtime/CLI versions agree; locks, pins, migrations, protocol, orchestration and security unchanged                                     |
+| Static/build gates             | PASS: frozen install, hygiene, format, lint, typecheck, build and diff check on Windows/WSL                                                                |
+| Applicable automated suites    | PASS: WSL 1,236/16 skips, 40 uncached tasks; Windows Desktop 400/2 skips                                                                                   |
+| Actual sandbox trust           | PASS: separate WSL systemd trust 8/8, distinct from hosted fallback                                                                                        |
+| Distribution/recovery          | PASS: WSL 50/1 skip; Windows 26/25 platform skips; maintenance/launcher smoke PASS                                                                         |
+| Exact-source archives          | PASS: both local targets and both hosted jobs in [38514834916](https://github.com/Mert1026/Sentry/actions/runs/38514834916); four separate hashes retained |
+| Archive validation             | PASS: sidecars, external extraction, every inventory checksum and full identity; private retention                                                         |
+| Windows exact-RC smoke         | PASS for local ZIP `d224cf09...c51d96`: setup, packaged GUI/IPC/hello/import/history/stop, DPAPI plus two restarts, plaintext absence                      |
+| Native exact-RC smoke          | UNVERIFIED / PENDING, explicitly left pending by owner; earlier normal functionality remains separately accepted                                           |
+| Native G10-R                   | UNVERIFIED; normal native functionality is not recovery proof                                                                                              |
+| Recovery policy                | PENDING: recommend A for exact historical Windows/I1 scope; choose A / separately scoped B / C (reject both and retain blocker)                            |
+| Release notes                  | Final [draft](v1.0.0-rc.1.md) prepared with exact source, installation and limitations                                                                     |
+| Official cut                   | PENDING / NOT AUTHORIZED: owner approves full SHA/version/protocol, exact assets/provenance/limits and intended visibility/publication scope               |
+
+No new current-production P0/P1 regression was established. No broad paid replay,
+new recording or implementation phase is required. Original G10 remains FAIL.
+No recovery adoption, tag, release, official assets, active release branch, main
+promotion, self-merge or branch deletion occurred.
+
+**RC CUT BLOCKED — RECOVERY POLICY DECISION PENDING**
+
+## Historical Phase 6.0 preparation checklist
 
 Current authority: **Phase6.0 preparation and feature freeze authorized** by the
 owner's October13,2026 instruction. **Official RC cut, tag, main promotion and
