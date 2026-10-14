@@ -47,6 +47,15 @@ into `apps/arthur`, and every place the app differs from the prototypes.
 - **Mobile**: every `--serif` heading and row title was moved to the sans scale (600 for titles, 550 for row titles).
   Compositions are unchanged.
 
+### Fourth pass: mobile layout
+- **Capture surface**: the notebook card and ruled lines are gone. One bar ("Capture a thought…") opens typing, Speak
+  and the keyboard button sit beneath it. The permission, retry and failure behaviour from `mobile/DECISIONS.md` is
+  unchanged: Speak is still the only thing that asks for the microphone.
+- **Stream**: each thought carries its kind pill and a mono time; day labels and capture meta follow the desktop scale.
+- **Tab bar**: Capture is a lifted accent tab; the current tab's icon takes the accent.
+- Typing mode now uses a bordered field instead of ruled lines.
+
 ## Not yet ported
-Mobile *layouts* have not been redesigned to match the desktop composition (they keep the Marginalia structure with the
-new look), and Review has only been inspected in its empty state (no proposals in the preview client).
+Review has only been inspected in its empty state (the preview client has no proposals). Mobile Ask, Evolution and
+Connections keep their existing compositions with the new tokens and type; the idea page, stream and capture surface are
+the screens that were recomposed.

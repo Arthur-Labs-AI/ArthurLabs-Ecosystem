@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import type { Capture, KnowledgeObject } from "@arthur/contracts";
 import { useNavigation } from "../../app/navigation";
 import { isMod } from "../../app/shortcuts";
-import { Icon, KindGlyph, SOURCE_LABELS, SourceIcon } from "../../components/icons";
+import { Icon, KIND_LABELS, KindGlyph, SOURCE_LABELS, SourceIcon } from "../../components/icons";
 import { Margin } from "../../components/Margin";
 import { dayLabel, formatMoment, relativeAge } from "../../components/format";
 import { useVoiceAvailable } from "../setup/ai-config-context";
@@ -180,7 +180,7 @@ function SpeakPage() {
         <label htmlFor="m-capture-input" className="visually-hidden">
           Thought
         </label>
-        <textarea ref={input} id="m-capture-input" className="m-ruled" rows={3} placeholder="Write it down…" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={onKeyDown} enterKeyHint="enter" />
+        <textarea ref={input} id="m-capture-input" className="m-ruled" rows={3} placeholder="Capture a thought…" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={onKeyDown} enterKeyHint="enter" />
         {/* data-hold-layout: pressing an action closes the keyboard; the page must not move under the finger (see use-viewport). */}
         <div className="m-acts" data-hold-layout onMouseDown={(event) => event.preventDefault()}>
           {voice && typing && (
@@ -206,7 +206,7 @@ function SpeakPage() {
   return (
     <div className="m-page-card">
       <button type="button" className="m-rules" onClick={() => setTyping(true)}>
-        Write it down, or just say it.
+        Capture a thought…
       </button>
       <div className="m-acts">
         <button type="button" className="m-speak" onClick={() => void startVoice()} disabled={voiceState !== "idle"}>
@@ -404,6 +404,12 @@ function Stream() {
                       <button key={object.id} type="button" className={drawn ? "m-kid draw" : "m-kid"} onClick={() => openIdea(object.id)}>
                         <KindGlyph kind={object.kind} />
                         <span className="m-kid-text">
+                          <span className="m-kid-top">
+                            <span className="pill" style={{ ["--c" as string]: `var(--kind-${object.kind})` }}>
+                              {KIND_LABELS[object.kind]}
+                            </span>
+                            <time dateTime={object.createdAt}>{relativeAge(object.createdAt)}</time>
+                          </span>
                           <span className="m-kt">{object.title}</span>
                           <Margin source={capture.source} showSource={false} connections={index.countOf(object.id)} revisions={byObject.get(object.id)?.revisionCount} />
                         </span>
