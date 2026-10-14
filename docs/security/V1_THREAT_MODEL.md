@@ -1,5 +1,12 @@
 # Sentry v1 Threat Model (Phase 5)
 
+Phase6.0 [review](../releases/v1-phase-6-0-rc-readiness.md) confines implementation
+changes to version/reporting literals and metadata; credential handling, profile
+paths, schema, sandbox, provider pins and protocol are frozen. Owner-reported
+normal native/Windows functionality is recorded separately from exact-build
+security/recovery proof. Existing boundary-specific evidence below is historical;
+no status is promoted by a missing screenshot or a version-only archive build.
+
 Phase5.3 evidence addendum: [final host preparation](../releases/v1-phase-5-3-final-host-acceptance.md)
 confirms production-source equivalence to corrected I1 and new Windows presence
 source/integrity/disconnect checks. Actual Windows DPAPI and proposed G10-R

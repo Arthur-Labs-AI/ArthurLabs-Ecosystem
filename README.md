@@ -4,10 +4,17 @@ Sentry is a local-first AI QA desktop application. OpenCode, DeepSeek, and
 GLM through Claude Code independently investigate one immutable project snapshot
 and return findings, evidence, token usage, and observable run history.
 
-**Beta candidate: `v0.1.0-beta.1`.** Supported hosts: **Windows 11 + WSL2**
-and **native CachyOS**. This is early tester software, not production-ready.
-See [release notes](docs/releases/v0.1.0-beta.1.md) and
+**Review preparation: `1.0.0-rc.1`, unsigned and not published.** Supported hosts:
+**Windows 11 + WSL2** and **native CachyOS**. See the
+[draft RC notes](docs/releases/v1.0.0-rc.1.md) and
+[RC readiness checklist](docs/releases/V1_RC_READINESS_CHECKLIST.md).
+The owner reports normal functionality working on both hosts; exact-build and
+recovery-policy limits are recorded separately. No stable-release claim is made.
+
+The only published release remains historical `v0.1.0-beta.1`:
+[beta notes](docs/releases/v0.1.0-beta.1.md),
 [validation](docs/releases/v0.1.0-beta.1-validation.md).
+Its immutable executable is not an accepted credential-recovery downgrade target.
 
 ## Capabilities
 
@@ -48,7 +55,8 @@ is supported as the Windows runtime; Ubuntu CI is not CachyOS acceptance.
 
 ## Install on Windows 11
 
-Once the beta tag is available, in PowerShell:
+Historical published-beta source reference, in PowerShell (RC review uses the
+separately approved archive/identity in the distribution guide):
 
 ```powershell
 git clone --branch v0.1.0-beta.1 https://github.com/Mert1026/Sentry.git

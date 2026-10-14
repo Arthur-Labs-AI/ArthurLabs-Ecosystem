@@ -66,7 +66,7 @@ export class SentryCliServer {
 
   constructor(options: CliServerOptions) {
     this.pipePath = options.pipePath ?? cliPipePath();
-    this.productVersion = options.productVersion ?? '0.1.0-beta.1';
+    this.productVersion = options.productVersion ?? '1.0.0-rc.1';
     this.dispatchFn = options.dispatch;
     this.log = options.logger ?? (() => undefined);
     this.notify = options.onStatusChange;

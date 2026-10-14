@@ -1,5 +1,13 @@
 # v1 acceptance and authorization checklist
 
+**Historical Phase5 snapshot below.** Phase6.0 preparation and feature freeze
+are now separately authorized. The [simplified RC checklist](V1_RC_READINESS_CHECKLIST.md)
+is the current top-level gate view, incorporating the
+[October13 owner functional confirmation](v1-owner-functional-acceptance-2026-10-13.md).
+Historical case rows/counts and earlier authorization statements below are
+preserved as dated evidence, not current blanket rerun demands. Official RC
+cut/tag/publication and recovery-policy adoption remain pending.
+
 This checklist supplements the [owner runbook](v1-owner-acceptance.md) and
 [per-host results](v1-owner-acceptance-results.md). The historical beta release
 checklist is not evidence for v1. No box is checked by source implementation alone.

@@ -262,3 +262,19 @@ run-engine typecheck/lint PASS. No production code/backup verifier changed;
 all original result assertions preserved. Initial barrier-only probe passed and
 is retained separately. Final correction head full/CI/distribution results are
 recorded in PR20; first-head failure is not erased or silently rerun as green.
+
+Phase6.0 2026-10-13: verified owner merge PR20/devc103509 and postmerge
+38460193028 all3 SUCCESS; clean isolated release-prep/v1.0.0-rc.1. Direct owner
+normal-functional acceptance Windows/WSL2 + native CachyOS recorded without
+invented build/case evidence, recordings or paid matrix replay. Feature freeze
+and review-only RC version patch authorized;16 production files are exact
+version/title substitutions, lock/protocol1/migrations/models/SDKs untouched.
+Root-only version transition RED2/3→coherent GREEN3/3; real manifest RC/beta
+refusal added. Windows distribution26PASS/25skips of51, launcher smoke PASS.
+Acceptance/version plan/draft notes/simplified checklist/readiness report and
+explicit recovery choices prepared. Final full/CI/distribution/physical smoke
+receipts and GO-NOGO in focused preparation PR. A adoption remains PENDING,
+original G10 FAIL not waived; native normal acceptance not native recovery proof.
+Six merged branches zero unique/no worktrees/workflow names, no deletions.
+No actual credentials/current, main, beta/public release/tag, provider spend or
+self-merge. shux unavailable, protocol direct; stop for owner RC decisions.

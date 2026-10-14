@@ -1,5 +1,12 @@
 # Phase 5.3 — final host acceptance preparation
 
+Historical receipt: PR20 is owner-merged at devc103509, post-mergeCI38460193028
+SUCCESS/all3. Phase6.0 preparation is now separately authorized; see the
+[new readiness report](v1-phase-6-0-rc-readiness.md) and
+[owner functional confirmation](v1-owner-functional-acceptance-2026-10-13.md).
+All Phase5.3 sources, archives, matrix rows and earlier authority below remain
+historical. Normal owner acceptance does not fabricate individual case results.
+
 **Phase6 is NOT AUTHORIZED and is not yet recommendable.** Agent-controlled
 preparation and available checks are complete; owner review, policy adoption
 and missing physical/funded evidence remain. No production change was needed.
