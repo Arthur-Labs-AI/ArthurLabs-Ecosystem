@@ -1,3 +1,24 @@
+# Windows space after removal — investigation complete
+
+Owner reports production3/3 + removal PASS. Installed64bff9f readonly DB has zero
+projects/copies/revisions/runs/agents/artifacts/deletion ops, project store8KiB/no
+tombstones; quick_checkOK. OriginalNexus source intentionally retained. Deletion
+is working. Non-sparse Ubuntu ext4.vhdx remains38.82GiB on C:; internal freed blocks
+are reusable in Linux, host-space recovery requires separate offline compaction.
+Original free-disk-space wording was incomplete for Windows/WSL.
+Second finding: accessible /var/tmp approximately22.70–23.73GiB depending on hard
+link accounting, much of it old Sentry validation fixtures. Several observed
+fixtures~~2GiB each; Phase62largeinput~~1.02GiB. Shared links/protected/volatile entries
+mean totals are not a reclaimable-byte guarantee or exhaustive audit. Earlier du
+finished naturally; stop guard made no change. No deletion/vacuum/trim/shutdown/
+compaction performed. Cleanup needs reviewed obsolete-fixture list/evidence retention
+then offline trim/compact, not another owner-project delete. Actual recovered bytes
+unverified. No appcode change/paidQA/PR/push; primary owner changes preserved.
+Diagnosis docs/releases/windows-wsl-space-investigation.md, private read-only
+receipts sentry-wsl-space-investigation-20261014. shux absent/direct protocol.
+
+## Previous record
+
 # Windows host-space investigation — diagnosis verified
 
 Owner reports production3/3 and project removal PASS. Read-only inspection of
