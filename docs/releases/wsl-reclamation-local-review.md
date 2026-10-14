@@ -58,11 +58,34 @@ regression was added; expectations were retained. An initial helper test's
 PowerShell array concatenation precedence was corrected; input refusal semantics
 were retained. Initial pnpm test option syntax was corrected to direct vitest.
 
-## Remaining acceptance
+## Packaged candidate and remaining acceptance
 
-Packaging, matching Linux build and packaged confirmation smoke are pending at
-this source snapshot. Actual Windows UAC consent/cancellation plus trim and
-compaction of the owner's populated Ubuntu disk remain UNVERIFIED. These require
+Application/archive source: `304d9d08898b6dd14ed63c677af3145279fc6c95`.
+Archive: `sentry-1.0.0-rc.1-304d9d08898b-windows-x64.zip`.
+SHA256: `ace840e8886fc5ac770e867f31d9fa53fd92607acb0ecfa3d84555e689ae3113`.
+Receipt-only commits after that source do not change the application candidate.
+
+| Gate                                    | Result     | Evidence                                                                                                                                              |
+| --------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Automated Desktop                       | PASS       | 444 passed/3 prerequisite/platform skips; opt-in real WSL lifecycle separately passed                                                                 |
+| Static checks                           | PASS       | 50 uncached dependency tasks; final Desktop lint, changed-file format/hygiene/diff                                                                    |
+| Windows artifact                        | PASS       | 20 forced builds, manifest/inventory and extraction verified                                                                                          |
+| Windows distribution checks             | PASS       | 32 passed/27 platform skips                                                                                                                           |
+| Exact archive Linux runtime             | PASS       | Supported stage-only deployment,18 uncached builds, paired release handshake; owner current unchanged                                                 |
+| Packaged GUI                            | PASS       | Production entry/preload/IPC, native confirmation, Cancel focus, Escape, runtime remains connected, project import, single instance and graceful stop |
+| Native Windows compaction API           | PASS       | Isolated empty64MiB VHDX compacted/reopened twice,0 reclaimed expected                                                                                |
+| Installer helper                        | PASS       | PowerShell syntax and VerifyOnly checksum; no owner installation executed                                                                             |
+| Owner upgrade and UAC/real disk reclaim | UNVERIFIED | Requires owner installer and explicit maintenance confirmation/Windows approval                                                                       |
+
+Screenshot `wsl-reclamation-confirmation.png` was inspected. Packaged smoke uses
+an explicit disposable profile and Linux data root; it never confirms maintenance
+against the owner's distribution. Private `install-wsl-reclamation.ps1` installs
+the exact paired archive/runtime via supported stop/setup/open. It does not
+compact the disk. `open-wsl-reclamation.ps1` opens that exact installed candidate;
+the older global Sentry shim still points at its separate development build.
+
+Actual Windows UAC consent/cancellation plus trim and compaction of the owner's
+populated Ubuntu disk remain UNVERIFIED. These require
 an explicit user action through the new confirmation and Windows approval; empty
 fixture API success does not establish reclaimed bytes on the owner's disk.
 

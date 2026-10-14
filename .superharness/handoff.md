@@ -1,3 +1,25 @@
+# WSL reclamation button — local candidate verified; owner acceptance pending
+
+Application/archive source304d9d08898b6dd14ed63c677af3145279fc6c95;
+branch codex/wsl-space-reclamation. ZIP SHA256
+ace840e8886fc5ac770e867f31d9fa53fd92607acb0ecfa3d84555e689ae3113.
+Settings Runtime confirms selected Ubuntu restart/admin approval, requires idle
+QA/positive shutdown ack, gates IPC/CLI/quit, trims and compacts registered disk,
+reconnects matching runtime and reports allocated/free volume bytes separately.
+No fixed1GiB reserve/file cleanup/resize/sparse conversion/globalWSLshutdown.
+FullDesktop444pass/3skips; isolated realWSL lifecycle1 PASS separately; native
+empty64MiB VHDX compact/reopen twice PASS (0 recovered expected); realUbuntu
+readonlyprobe PASS. 50uncachedstatic, archive20forcedbuilds/manifest/extraction,
+distribution32pass/27platformskips, exactLinux stage-only18builds/identity PASS.
+Actual packaged native dialog Cancel focus/Escape/runtime stays connected/import/
+singleinstance/gracefulstop PASS; screenshot inspected. Private installer syntax/
+VerifyOnly PASS. Actual owner installation/UAC/populatedUbuntu compaction remain
+UNVERIFIED. Installed64b/currentUbuntu/ownerfiles unchanged. No paidQA/PR/push.
+Receipt docs/releases/wsl-reclamation-local-review.md; architecture10answers.
+Private sentry-wsl-reclamation-20261014; shux unavailable/direct protocol.
+
+## Previous record
+
 # WSL reclamation button — implemented; packaging pending
 
 Local codex/wsl-space-reclamation from10062e6. Settings Runtime parameterless
