@@ -1,6 +1,21 @@
 # Changelog
 
-## [0.1.0-beta.1] - Unreleased
+## [1.0.0-rc.1] - Unreleased Windows Edition
+
+- Initial release target: Windows 11 x64 with WSL2 (Ubuntu preferred).
+- Native Linux Desktop: DEFERRED — FUTURE NATIVE LINUX RELEASE; existing
+  CachyOS implementation, results and unresolved import evidence retained.
+- Windows Electron continues using the Linux execution runtime, systemd user
+  services, bubblewrap, existing protocol and secure DPAPI storage.
+- Windows unsigned ZIP review packaging is independent of native Desktop
+  packaging; shared Linux runtime/security validation remains required.
+- Recovery Option A remains limited to the exact historical corrected I1 pair
+  and tested Windows account/machine/DPAPI context. Original-beta rollback FAIL
+  is retained. No new version bump, official RC publication or updater.
+
+See the [Windows draft notes](docs/releases/v1.0.0-rc.1.md).
+
+## [0.1.0-beta.1] - 2026-10-09 (historical)
 
 First source-based beta candidate. Publication/gate status is recorded in the
 [validation report](docs/releases/v0.1.0-beta.1-validation.md).

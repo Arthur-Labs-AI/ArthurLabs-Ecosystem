@@ -10,6 +10,8 @@ unverified. Do not claim security boundary verification from a fixture alone.
 Record the candidate SHA and CI jobs. Distinguish Windows/WSL, native CachyOS,
 and owner-reported earlier acceptance from results executed for this candidate.
 List required manual acceptance tests, known limitations and risks of merging.
+Windows v1 targets Windows 11 x64/WSL2; native Desktop acceptance is deferred.
+Shared Linux runtime/security checks remain required for Windows.
 
 ## Release impact
 
