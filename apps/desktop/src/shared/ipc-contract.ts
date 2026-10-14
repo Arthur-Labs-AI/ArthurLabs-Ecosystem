@@ -44,10 +44,20 @@ export const IPC_CHANNELS = [
   'runtime:status',
   'runtime:distros',
   'runtime:select-distro',
+  'runtime:reclaim-space',
   'cli:status',
 ] as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[number];
+
+export interface WslSpaceResult {
+  readonly distro: string;
+  readonly diskBytesBefore: number;
+  readonly diskBytesAfter: number;
+  readonly windowsFreeBytesBefore: number;
+  readonly windowsFreeBytesAfter: number;
+  readonly reconnected: boolean;
+}
 
 export interface DesktopOperation {
   readonly operationId: string;
@@ -222,6 +232,7 @@ export interface SentryDesktopApi {
       selected: string | null;
     }>;
     selectDistro(distro: string): Promise<{ saved: string; restartRequired: boolean }>;
+    reclaimSpace(): Promise<WslSpaceResult>;
   };
   readonly system: {
     info(): Promise<{ dataRoot: string; versions: Record<string, string> }>;

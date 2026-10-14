@@ -15,6 +15,14 @@ if (process.platform !== 'win32' || !input || !entry || !data?.startsWith('/'))
   );
 const sourceBeta = input.startsWith('source-beta:');
 const projectRemoval = process.env['SENTRY_SMOKE_PROJECT_REMOVAL'] === '1';
+const wslReclamation = process.env['SENTRY_SMOKE_WSL_RECLAMATION'] === '1';
+if (wslReclamation) {
+  assert.equal(sourceBeta, false);
+  assert.equal(projectRemoval, false);
+  assert.equal(historyReceipt, undefined);
+  assert.equal(settingsMode, undefined);
+  assert.match(data, /^\/var\/tmp\/sentry-wsl-reclamation\.[A-Za-z0-9]+\/smoke-data$/);
+}
 if (projectRemoval) {
   assert.equal(sourceBeta, false);
   assert.equal(historyReceipt, undefined);
@@ -204,6 +212,42 @@ try {
   assert.equal(runtime.hello.runtimeVersion, manifest.version);
   assert.equal(runtime.hello.platform, 'linux');
   assert.equal(runtime.hello.isElectron, false);
+  if (wslReclamation) {
+    assert.equal(await evaluate('typeof window.sentry.runtime.reclaimSpace'), 'function');
+    await evaluate('location.hash = "#/settings/runtime"');
+    const reclaimButton =
+      '[...document.querySelectorAll("button")].find(b => b.textContent.trim() === "Reclaim Windows disk space")';
+    await until(() => evaluate(reclaimButton + '?.disabled === false'));
+    await evaluate(reclaimButton + '.click()');
+    await until(() => evaluate('document.querySelector("dialog")?.open === true'));
+    assert.equal(await evaluate('document.activeElement.textContent.trim()'), 'Cancel');
+    const text = await evaluate('document.querySelector("dialog").innerText');
+    assert.ok(
+      text.includes('Ubuntu') &&
+        text.includes('other applications') &&
+        text.includes('administrator'),
+    );
+    const screenshot = await cdp('Page.captureScreenshot', { format: 'png' });
+    await writeFile(
+      join(temporary, 'wsl-reclamation-confirmation.png'),
+      Buffer.from(screenshot.result.data, 'base64'),
+    );
+    await cdp('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Escape',
+      code: 'Escape',
+      windowsVirtualKeyCode: 27,
+    });
+    await cdp('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Escape',
+      code: 'Escape',
+      windowsVirtualKeyCode: 27,
+    });
+    await until(() => evaluate('document.querySelector("dialog") === null'));
+    assert.equal((await evaluate('window.sentry.runtime.status()')).connected, true);
+    // Never confirm OS maintenance against the owner's distribution in a GUI test.
+  }
   if (settingsMode) {
     const before = await evaluate('window.sentry.providers.status()');
     const status = before.find((s) => s.name === 'DEEPSEEK_API_KEY');
@@ -461,6 +505,9 @@ try {
       projectImport: true,
       projectRemoval: projectRemoval
         ? 'PASS: confirm/cancel, native dialog, stored files, missing-folder detail removal, durable database'
+        : 'SKIPPED',
+      wslReclamation: wslReclamation
+        ? 'PASS: packaged bridge, native confirmation, Cancel focus, Escape, connected runtime; no OS maintenance invoked'
         : 'SKIPPED',
       betaHistory: Boolean(historyReceipt),
       encryptedSettings: settingsMode ?? 'SKIPPED',

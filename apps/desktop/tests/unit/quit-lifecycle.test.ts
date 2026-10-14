@@ -11,6 +11,8 @@ const fixture = vi.hoisted(() => ({
   ready: vi.fn<() => Promise<void>>(),
   focus: vi.fn(),
   fatalUrl: vi.fn(),
+  registerIpc: vi.fn(),
+  reclaim: vi.fn(),
 }));
 vi.mock('electron', () => ({
   app: {
@@ -19,6 +21,7 @@ vi.mock('electron', () => ({
     quit: fixture.quit,
     whenReady: fixture.ready,
     requestSingleInstanceLock: () => true,
+    getPath: () => 'C:/sentry-test-profile',
   },
   BrowserWindow: class {
     loadFile = async () => undefined;
@@ -33,7 +36,13 @@ vi.mock('electron', () => ({
   ipcMain: { handle: vi.fn() },
 }));
 vi.mock('../../src/main/bootstrap.js', () => ({ bootstrapDesktop: fixture.boot }));
-vi.mock('../../src/main/ipc.js', () => ({ registerDesktopIpc: vi.fn() }));
+vi.mock('../../src/main/ipc.js', () => ({ registerDesktopIpc: fixture.registerIpc }));
+vi.mock('../../src/main/platform/windows/wsl-space-reclaimer.js', () => ({
+  WslSpaceReclaimer: class {
+    inspect = async () => undefined;
+    reclaim = fixture.reclaim;
+  },
+}));
 vi.mock('../../src/main/live-updates.js', () => ({
   DesktopLiveUpdates: class {
     start = vi.fn();
@@ -48,10 +57,24 @@ vi.mock('../../src/main/cli-server.js', () => ({
 }));
 
 function desktop() {
+  const status = { connected: true };
   return {
     recoveryWarnings: [],
     service: {},
-    runtime: { onNotification: vi.fn(), onExit: vi.fn() },
+    host: { hostKind: 'windows', runtimeEnvironmentInfo: async () => ({ distro: 'Ubuntu' }) },
+    runtime: {
+      onNotification: vi.fn(),
+      onExit: vi.fn(),
+      status,
+      request: async (method: string) =>
+        method === 'runtime.shutdown' ? { shuttingDown: true } : [],
+      stop: async () => {
+        status.connected = false;
+      },
+    },
+    reconnect: async () => {
+      status.connected = true;
+    },
     close: fixture.close,
   };
 }
@@ -205,6 +228,46 @@ describe('Electron quit lifecycle', () => {
     const event = { preventDefault: vi.fn() };
     fixture.windowHandlers.get('close')?.(event);
     expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(fixture.quit).toHaveBeenCalledOnce();
+  });
+
+  it('blocks application quit until native compaction and reconnect finish', async () => {
+    let finish!: () => void;
+    fixture.reclaim.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = () =>
+            resolve({
+              distro: 'Ubuntu',
+              diskBytesBefore: 100,
+              diskBytesAfter: 40,
+              windowsFreeBytesBefore: 20,
+              windowsFreeBytesAfter: 80,
+            });
+        }),
+    );
+    await import('../../src/main/index.js');
+    await flush();
+    const hooks = fixture.registerIpc.mock.calls[0]?.[1] as {
+      reclaimSpace(): Promise<unknown>;
+      maintenanceActive(): boolean;
+    };
+    const pending = hooks.reclaimSpace();
+    await flush();
+    expect(hooks.maintenanceActive()).toBe(true);
+    fixture.handlers.get('before-quit')?.({ preventDefault: vi.fn() });
+    expect(fixture.close).not.toHaveBeenCalled();
+    expect(fixture.quit).not.toHaveBeenCalled();
+    expect(fixture.showError).toHaveBeenCalledWith(
+      'Disk reclamation is running',
+      expect.stringContaining('Wait'),
+    );
+    finish();
+    await pending;
+    expect(hooks.maintenanceActive()).toBe(false);
+    fixture.handlers.get('before-quit')?.({ preventDefault: vi.fn() });
+    await flush();
+    expect(fixture.close).toHaveBeenCalledOnce();
     expect(fixture.quit).toHaveBeenCalledOnce();
   });
 });

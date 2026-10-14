@@ -73,8 +73,9 @@ export function RemoveProjectButton({
           <h2 id={titleId}>Remove {name}?</h2>
           <p id={descriptionId}>
             This permanently deletes Sentry’s stored copy, revisions, run history, findings and
-            evidence for this project to free disk space. Your original source folder is kept. This
-            cannot be undone.
+            evidence for this project to free storage inside the runtime. On Windows, use Settings →
+            Runtime → Reclaim Windows disk space to return unused WSL storage to the drive. Your
+            original source folder is kept. This cannot be undone.
           </p>
           {removal.error ? (
             <p className="error-box" role="alert">

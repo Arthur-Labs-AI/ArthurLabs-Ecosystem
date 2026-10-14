@@ -1,3 +1,22 @@
+# WSL reclamation button — implemented; packaging pending
+
+Local codex/wsl-space-reclamation from10062e6. Settings Runtime parameterless
+renderer-only action confirms whole selected-distro interruption/admin approval,
+blocks active/offline QA and concurrent IPC/CLI/quit, requires positive shutdown
+ack before trim/targeted termination/native compact, reconnects matching runtime.
+Measures allocated VHDX bytes separately from Windows volume free space. No file
+cleanup/resize/sparse conversion/global WSL shutdown/1GiB fixed reserve.
+Baseline14 PASS; newRED8fail1pass; UI/router9+lifecycle17+preload1+PS8 PASS.
+FullDesktop444pass/3skips; real staged WSL lifecycle1 PASS separately, native
+empty64MiB disposableVHDX compacted twice PASS/reclaimed0, realUbuntu inspect PASS.
+50uncached static tasks, Desktopbuild/lint/format/hygiene PASS. Original runtime/
+ownerfiles untouched; no UAC/trim/compaction of Ubuntu performed; no paidQA/PR/push.
+Architecture10answers and local review in docs. Packaging/matchingruntime/packaged
+native dialog acceptance pending; populatedUbuntu bytes/UAC remain UNVERIFIED.
+shux unavailable/direct protocol; primary owner changes preserved.
+
+## Previous record
+
 # Windows space after removal — investigation complete
 
 Owner reports production3/3 + removal PASS. Installed64bff9f readonly DB has zero

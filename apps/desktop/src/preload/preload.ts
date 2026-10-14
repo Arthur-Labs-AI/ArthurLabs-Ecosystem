@@ -99,6 +99,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     status: () => invoke('runtime:status', {}),
     distros: () => invoke('runtime:distros', {}),
     selectDistro: (distro: string) => invoke('runtime:select-distro', { distro }),
+    reclaimSpace: () => invoke('runtime:reclaim-space', {}),
   },
   subscribe: {
     onRunUpdate: (callback: RunUpdateCallback) => {
