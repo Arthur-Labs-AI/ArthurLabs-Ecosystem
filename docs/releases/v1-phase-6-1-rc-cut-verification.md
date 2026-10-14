@@ -1,10 +1,10 @@
 # Phase 6.1 — exact-source RC cut verification
 
-Snapshot: October 14, 2026, Europe/Sofia. **CONDITIONALLY READY**: recovery-policy
-decision, exact-RC native scope/verification and explicit official cut authorization
+Snapshot: October 14, 2026, Europe/Sofia. **CONDITIONALLY READY**: exact-RC native
+scope/verification and explicit official cut authorization
 remain. No product correction or additional version bump was necessary.
 
-**RC CUT BLOCKED — RECOVERY POLICY DECISION PENDING**
+**RECOVERY OPTION A OWNER-APPROVED — OFFICIAL RC CUT NOT AUTHORIZED.**
 
 ## Baseline and selected binary input
 
@@ -162,7 +162,8 @@ required. Ubuntu/WSL evidence is not native execution or native G10-R.
 
 ## Recovery and official-cut decisions
 
-Recommend **Option A** strictly in the historical physically validated Windows/I1
+Owner adopted **Option A** on October 14, 2026, explicitly replying "i choose A"
+to the Phase 6.1 A/B/C request, strictly in the historical physically validated Windows/I1
 scope of the [decision](v1-recovery-policy-decision.md), [contract](v1-g10-recovery-contract.md)
 and [G10-R receipt](v1-phase-5-2-g10-recovery-validation.md). Recovery target stays
 I1 `c78faa74717b0f430a859730e98c3c4915e7b03f`, Windows archive SHA256
@@ -174,22 +175,20 @@ matching stopped backup generations, verification before replacement and retaine
 original backup. No plaintext credential export, automatic DB downgrade,
 cross-account/machine encrypted-credential portability or cross-filesystem atomic
 replacement is promised. Original-beta G10 stays historical P1 FAIL; native
-G10-R stays unverified. Request **one explicit owner choice**:
+G10-R stays unverified. B and C were not selected. This closes the recovery-policy
+decision gate only within the stated tested scope.
 
-- **A:** Adopt Option A within its stated tested Windows/I1 scope.
-- **B:** Request a separate beta-derived maintenance/recovery implementation.
-- **C:** Reject both and retain the recovery release blocker.
-
-Recovery choice: **PENDING / UNDECIDED**. Official cut: **PENDING / NOT AUTHORIZED**.
+Recovery choice: **A / OWNER APPROVED**. Official cut: **PENDING / NOT AUTHORIZED**.
 Owner must separately approve full release SHA, version/protocol, exact archive/
 provenance set and limitations (including native pending), and intended visibility/
 publication scope. Proposed asset pair is local Windows `d224cf09...` plus hosted
 Linux `8d906885...`; selecting hosted Windows needs its own exact-byte physical
-evidence. Phase preparation is not policy approval or cut authorization.
+evidence. The explicit A choice approves the recovery policy; it does not
+approve the RC source/assets, native-pending disposition or official cut/publication.
 
 Final [release notes](v1.0.0-rc.1.md) SHA256:
-`b0e12fa38af8d4f81606dfb1a1074fc1450ba5d81179da8ba2fbe35a732d42a3`;
-Git blob `9afae68b8bb28f136350669df508d6627353fc8f`. Review PR records its actual
+`3468441bddc426c90b6ebd2a5c519c440ca33c9da738a756c058d1a8c4acc85e`;
+Git blob `2e430233b24440768bc5a5e4d073d85c6adcab50`. Review PR records its actual
 documentation head; that does not replace selected binary input.
 
 Prepared procedure, **not executed**: fetch/prune; resolve owner-approved full

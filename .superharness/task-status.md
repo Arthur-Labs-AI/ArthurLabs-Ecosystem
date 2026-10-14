@@ -12,15 +12,16 @@ retained separately. Local Windows ZIP d224cf09...c51d96 production GUI/WSL
 hello/import/synthetic history/graceful shutdown PASS; actual DPAPI save plus
 two fresh restarts and plaintext scans PASS. WSL full 1,236 PASS/16 skips,
 40 uncached tasks; distribution 50 PASS/1 skip. No new product correction.
-Owner explicitly leaves exact-RC native CachyOS smoke PENDING. Recovery policy
-and official cut authorization remain PENDING. Isolated release-prep branch;
+Owner explicitly leaves exact-RC native CachyOS smoke PENDING. Owner approved
+recovery A on October 14, 2026 ("i choose A"), only tested Windows/I1 scope;
+official cut authorization remains PENDING. Isolated release-prep branch;
 primary checkout preserved. Final documentation-only PR head and checks are
 recorded in its review receipt. See docs/releases/v1-phase-6-1-rc-cut-verification.md
 for all full hashes/manifests/hosts and final draft-note identity. CONDITIONALLY
-READY; RC CUT BLOCKED — RECOVERY POLICY DECISION PENDING. No tag, publication,
+READY; recovery decision CLOSED, official cut NOT AUTHORIZED. No tag, publication,
 official assets, active release branch, main change, self-merge or paid call.
-shux absent on Windows and WSL; protocol direct. Stop for owner A/B/C choice
-and separate exact-identity/visibility cut authorization.
+shux absent on Windows and WSL; protocol direct. Stop for separate owner
+exact-identity/assets/limits/visibility cut authorization; native smoke pending.
 
 ## Previous record
 

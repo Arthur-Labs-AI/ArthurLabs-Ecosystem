@@ -20,16 +20,16 @@ This documentation-only PR does not substitute its own later SHA as binary input
 | Windows exact-RC smoke         | PASS for local ZIP `d224cf09...c51d96`: setup, packaged GUI/IPC/hello/import/history/stop, DPAPI plus two restarts, plaintext absence                      |
 | Native exact-RC smoke          | UNVERIFIED / PENDING, explicitly left pending by owner; earlier normal functionality remains separately accepted                                           |
 | Native G10-R                   | UNVERIFIED; normal native functionality is not recovery proof                                                                                              |
-| Recovery policy                | PENDING: recommend A for exact historical Windows/I1 scope; choose A / separately scoped B / C (reject both and retain blocker)                            |
+| Recovery policy                | OWNER APPROVED: explicit "i choose A", October 14, 2026; only tested historical Windows/I1 scope and stated boundaries                                     |
 | Release notes                  | Final [draft](v1.0.0-rc.1.md) prepared with exact source, installation and limitations                                                                     |
 | Official cut                   | PENDING / NOT AUTHORIZED: owner approves full SHA/version/protocol, exact assets/provenance/limits and intended visibility/publication scope               |
 
 No new current-production P0/P1 regression was established. No broad paid replay,
 new recording or implementation phase is required. Original G10 remains FAIL.
-No recovery adoption, tag, release, official assets, active release branch, main
+Recovery A is adopted within that scope. No tag, release, official assets, active release branch, main
 promotion, self-merge or branch deletion occurred.
 
-**RC CUT BLOCKED — RECOVERY POLICY DECISION PENDING**
+**RECOVERY DECISION CLOSED — OFFICIAL RC CUT AUTHORIZATION PENDING.**
 
 ## Historical Phase 6.0 preparation checklist
 

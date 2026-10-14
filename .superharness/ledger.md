@@ -305,3 +305,20 @@ Git identity and beta preserved. No main change, tag, public release/official
 asset, active release branch, self-merge, deletion or paid call. shux absent;
 protocol direct. CONDITIONALLY READY; RC CUT BLOCKED — RECOVERY POLICY DECISION
 PENDING. Stop for explicit A/B/C and separate exact-commit/asset/scope authorization.
+
+2026-10-14 — Explicit owner follow-up "i choose A" adopts recovery Option A
+only within the presented tested Windows/I1 scope. Approved recovery target
+remains c78faa74717b0f430a859730e98c3c4915e7b03f, Windows archive SHA256
+ec5edec8a6b3f8ef18bafd961e66c59f80669804cc98d30e0cb10ef18c527d1e.
+Same account/machine/DPAPI, compatible schema, matching verified stopped backup
+generations, staged verification and retained originals remain required. No
+plaintext export, automatic downgrade, cross-account/machine portability or
+atomic cross-filesystem replacement claim. Original G10 FAIL retained; native
+G10-R unverified and exact-RC native smoke pending by prior owner choice.
+Decision, contract, notes, active readiness/provenance/install records and task
+handoff updated in existing PR22. Selected RC source8a75e992 and all artifact
+hashes stay unchanged; revised release-note identity recorded separately.
+This decision closes recovery-policy adoption only. No RC cut/tag/publication,
+asset upload, merge, main change, real-owner restore or paid call authorized or
+performed. shux contract again absent; protocol maintained directly. Local
+documentation checks and final PR head/check status are recorded in PR22.

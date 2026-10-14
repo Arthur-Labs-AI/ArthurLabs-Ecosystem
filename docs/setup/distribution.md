@@ -16,8 +16,9 @@ Windows/native CachyOS functionality confirmation is recorded separately from
 exact-build receipts. Historical [I1 lock](../releases/v1-phase-5-3-candidate-lock.md)
 and [native recovery workflow](../releases/v1-phase-5-3-cachyos-operator.md) retain
 their original identities; do not run their fixed-I1 recovery helper with an RC identity.
-The [recovery decision](../releases/v1-recovery-policy-decision.md) is pending
-owner adoption; original-beta G10 remains historical FAIL. These handoffs do
+The owner adopted [recovery Option A](../releases/v1-recovery-policy-decision.md)
+on October 14, 2026, only in its tested Windows/I1 scope; original-beta G10
+remains historical FAIL. These handoffs do
 not publish or authorize a release.
 
 ## Obtain, verify and extract
@@ -197,10 +198,11 @@ and beta binary/runtime restored together, retained history/ciphertext but faile
 credential availability. Candidate D could read the same encrypted store; beta
 loaded it before Electron readiness. G10 is FAIL and this beta downgrade is not
 an accepted credential-continuity recovery procedure. Retain private backups and
-stop the affected rollback track pending owner disposition of the
-[bounded correction proposal](../releases/v1-beta-rollback-credential-proposal.md).
-No replacement rollback policy or real-owner key re-entry is authorized by this
-guide. Full native recovery and exact-RC native smoke remain outstanding;
+stop the original-beta executable rollback track. The owner has adopted the
+corrected I1 route below within its tested Windows scope; the historical
+[bounded correction proposal](../releases/v1-beta-rollback-credential-proposal.md)
+is retained as background. This guide does not instruct a real-owner restore or
+key re-entry. Full native recovery and exact-RC native smoke remain outstanding;
 normal native functionality is already owner-reported accepted. Windows I1
 populated history/export/recovery evidence is recorded below, with its own identity.
 
@@ -210,10 +212,11 @@ retaining populated history, actual JSON/log exports, credentials and model
 preferences through repeated restart/restore. See the [validation receipt](../releases/v1-phase-5-2-g10-recovery-validation.md),
 [paired backup/recovery contract](../releases/v1-g10-recovery-contract.md) and
 [unexecuted native handoff](../releases/v1-g10-recovery-cachyos-handoff.md).
-This is a validated proposed recovery candidate pending owner adoption, not an
-approved beta downgrade or automatic owner-data restore. Original G10 FAIL and
-native/owner acceptance gates remain separate. Do not operate on live data or
-replace a supported recovery policy based only on this synthetic result.
+The owner adopted Option A on October 14, 2026 only for the tested Windows/I1
+scope and stated account/machine/DPAPI, schema and backup boundaries. This is
+not an approved beta executable downgrade or an automatic owner-data restore.
+Original G10 FAIL, unverified native recovery and official cut authorization
+remain separate. The newly versioned RC is not the historical I1 recovery target.
 
 ## Failed/interrupted setup and uninstall
 

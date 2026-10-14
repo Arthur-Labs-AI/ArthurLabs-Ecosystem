@@ -1,6 +1,6 @@
 # Phase 6.1 preparation handoff — 2026-10-14
 
-CONDITIONALLY READY; RC CUT BLOCKED — RECOVERY POLICY DECISION PENDING.
+CONDITIONALLY READY; recovery A APPROVED, official RC cut NOT AUTHORIZED.
 Selected binary input remains approved dev merge
 8a75e9924a41b98351e46255111fdbfed335f1f0. Documentation-only receipts do not
 change that selection. See docs/releases/v1-phase-6-1-rc-cut-verification.md
@@ -12,12 +12,14 @@ both PASS. WSL 1,236/16 skips, trust 8/8, distribution 50/1; Windows Desktop
 400/2, distribution 26/25, static/build/maintenance/launcher PASS. Local exact
 Windows GUI/import/synthetic history/hello/stop and DPAPI plus two fresh restarts/
 plaintext absence PASS, prepared host scope. Native exact-RC
-smoke explicitly pending per owner; recommend recovery A only for historically
-tested Windows/I1 scope, adoption and official cut pending. Preserve original
+smoke explicitly pending per owner; recovery A owner-adopted October 14, 2026
+("i choose A") only for historically tested Windows/I1 scope. Official cut
+authorization remains pending. Preserve original
 G10 FAIL, all prior evidence, primary edits and beta tag. Final documentation
 PR head/checks live in its review receipt; do not self-merge. No official cut,
 main promotion, release branch, official assets, deletion or paid calls. shux
-absent; protocol direct. Stop for owner choices and explicit cut authorization.
+absent; protocol direct. Stop for separate exact-source/assets/limits/visibility
+cut authorization. No real-owner restore was executed or instructed.
 
 ## Previous record
 

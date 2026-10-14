@@ -8,7 +8,9 @@ completed successfully in all three required jobs; hosted sandbox isolation was
 unverified. The [Phase 6.1 receipt](v1-phase-6-1-rc-cut-verification.md) now governs
 exact merged-source builds and the owner cut handoff. The remainder of this
 document records Phase 6.0's historical preparation baseline and results.
-Recovery-policy adoption and an official RC cut remain separately unauthorized.
+The owner subsequently adopted recovery Option A within its tested Windows/I1
+scope on October 14, 2026; see the [decision](v1-recovery-policy-decision.md).
+Official RC cut authorization remains pending.
 
 This task prepares a reviewable **1.0.0-rc.1** version transition and release
 package under the owner's explicit Phase6.0 preparation authority. Feature
