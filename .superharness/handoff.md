@@ -1,5 +1,14 @@
 # Native import investigation handoff — 2026-10-14
 
+Latest owner evidence: clean Sentry-latest/dev8a75e992 and successful RC1 source
+setup/WSLNode22.23.2/protocol1/doctor/open. Export
+run_01M4WY9CSQKVDZZP6TS0X0VPTK is completed productionFull3/3, zero failed/
+interrupted,11reportedfindings/41evidence. It scans Nexus/skills12files/31,661bytes,
+not AutoPulse; native import investigation remains open. Export lacks application
+sourceSHA, so cite owner setup/inspected checkout separately. Missing-key doctor
+warnings preceded run; no credential persistence inference. No assistant paid call,
+project modification or acceptance gate waiver; receipt/protocol updated.
+
 Owner reports native CachyOS large-project projects.add timeout with runtime
 connected. Full native identity, exact input equivalence and root cause remain
 unverified; complete native RC smoke has not passed. Source8a75e992 import timeout

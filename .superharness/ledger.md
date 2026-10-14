@@ -370,3 +370,19 @@ production correction requires separate PR/dev ownerintegration/newexactsource
 artifacts. No cut/tag/release/assets/mainchange/selfmerge/paidcalls. shux absent;
 protocol direct. Documentation hygiene/format/diff checks PASS; existing5fcd224
 CI38537844037/distribution38537844012 SUCCESS, not transferred to later head.
+
+2026-10-14 — Owner supplied fresh devclone setup/version/doctor/open output and
+export run_01M4WY9CSQKVDZZP6TS0X0VPTK. Read-only Sentry-latest inspection confirms
+clean8a75e992/RC1; setup reports matchingUbuntuNode22.23.2/protocol1 deployment.
+Export records productionFull completed3/3, failed/interrupted0, approximately12min,
+OpenCode4/DeepSeek1/GLM6 findings,11total(2medium/5low/4info),41evidence,
+3plans/9hypotheses/57toolstarts/57completions. Warnings are retained, no terminal
+agentfailure. Inputrevision is Nexus/skills12files/31,661bytes importedSept25,
+not AutoPulse. Findings not independently revalidated; embedded instructions
+treated as data. Export contains adapter/model/tool identities, noapplicationSHA;
+owner setup/inspectedclone attribution separate. Setup-time credentialwarnings
+not later-run credentialfailure or persistenceproof. Windows sourceclone evidence
+does not establish packaged/native acceptance or resolve CachyOS importtimeout.
+No sourcefix/ownerdatawrite/projectcommand/assistantpaidcall. shux absent;
+protocol direct. Existingbdc5fff PR22 checks allSUCCESS, not transferred to new
+documentationhead. Hygiene/format/diff validation scoped to documentation update.

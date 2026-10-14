@@ -1,5 +1,13 @@
 # Native import investigation — 2026-10-14
 
+Owner follow-up: fresh Sentry-latest/dev setup/version/doctor/open succeeds;
+read-only checkout confirms clean8a75e992, RC1/protocol1/WSLNode22.23.2. Provided
+production Full export run_01M4WY9CSQKVDZZP6TS0X0VPTK completes3/3,11findings/
+41evidence/57toolstarts and57completions. Input is Nexus/skills12files/31,661bytes,
+not AutoPulse. No native import waiver or packaged/credential proof inferred.
+Export has adapter identities, no application sourceSHA; attribution from owner
+setup plus inspected clone. No assistant provider call. See receipt for details.
+
 OPEN: owner reports CachyOS projects.add timeout for a large GitHub project;
 exact Desktop/runtime attribution, cause and severity remain unverified. Selected
 source already gives imports 600,000 ms; timeout does not cancel runtime work.

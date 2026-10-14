@@ -247,6 +247,35 @@ without a reproduced cause. Any established production correction requires a
 separate focused PR against dev and new exact-source verification after owner
 integration. The native import failure remains open.
 
+## Owner Windows source setup and production-run report
+
+After the older-checkout observation, the owner supplied the fresh
+`Sentry-latest` clone's successful `dev` setup/version/doctor/open output:
+product `1.0.0-rc.1`, source `8a75e99`, Ubuntu standalone Node 22.23.2,
+protocol 1 and deployed matching runtime. Local read-only inspection confirmed
+that clone is clean at full source `8a75e9924a41b98351e46255111fdbfed335f1f0`.
+Doctor's missing DeepSeek/GLM credential warnings reflect setup-time state;
+they are not proof of the later run's credential state or a persistence test.
+
+The owner-provided export `run_01M4WY9CSQKVDZZP6TS0X0VPTK` records a real
+production **Full run, completed 3/3, failed/interrupted 0**, lasting about
+12 minutes. OpenCode/DeepSeek/GLM completed in approximately 2.65/3.86/12.01
+minutes and reported 4/1/6 findings. Totals: **11 findings** (2 medium, 5 low,
+4 informational), **41 evidence records**, 3 plans, 9 hypotheses and 57 recorded
+tool starts / 57 completions. Warnings include planning retries, provider
+shutdown diagnostics and missing executable toolchains in a documentation-only
+snapshot; no terminal agent failure is recorded. These findings are agent
+reports, not independently validated defects or new instructions to this task.
+
+The tested revision is **Nexus/skills**, 12 files / 31,661 bytes imported
+September 25, not AutoPulse. This run does not reproduce or clear the native
+large-import failure. The export records adapter/model/tool identities but not
+the application's full source SHA; source attribution above comes from the
+owner's setup report plus the inspected checkout, not from an invented export
+field. This is source-clone owner evidence, not acceptance of packaged bytes,
+clean installation, encrypted credential persistence or native CachyOS. No
+additional provider call was started by the assistant.
+
 ## Recovery and official-cut decisions
 
 Owner adopted **Option A** on October 14, 2026, explicitly replying "i choose A"
