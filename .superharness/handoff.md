@@ -1,3 +1,29 @@
+# Project removal — local candidate implemented and verified
+
+Owner DeepSeek full run completed6findings; previous fix accepted. Local branch
+codex/project-removal; application/archive source64bff9fdcb5aed2335c4cf1efbe0815a2edcde48.
+Projects cards/detail Remove project confirms permanent stored-copy/history removal,
+keeps original sources, blocks active states, tolerates manually missing roots and
+refreshes mounted canonical Projects/Dashboard views. Existing journal/cascades used.
+No migration/provider/protocol changes. RED2 missing-root and7missing-UI cases;
+GREEN manager17/17, newUI/preload8/8; WindowsDesktop408pass/2skips, static20uncached PASS.
+WSL full1260pass/16existing skips across40uncached tasks incl realtrust8/8/runtime73.
+Archive20forcedbuilds/332inventory/extraction PASS; distribution32pass/27skips.
+ZIP3be517c2862e610a7e341737b059fa35aee0350e0f02f59a262dae66a12f96a9.
+Actual packaged GUI PASS Add by path/native Cancel focus/Escape/permanent deletion/
+physical storage removal/missing-root detail cleanup/original preservation/fresh DB
+reopen/singleinstance/graceful stop. Screenshot reviewed. Harness cache/quoting errors
+retained and corrected; no product change after packaging. Bootstrap preflight
+correctly refused active owner runtime; supported isolated stage-only18builds + paired
+identity passed. Owner runtime/profile/projects untouched; no paidcalls/push/PR.
+Private install-project-removal.ps1 syntax/VerifyOnly PASS; owner installation and
+activation/credential upgrade remain UNVERIFIED. Open helper provided for new build.
+Receipt docs/releases/project-removal-local-review.md; architecture10questions
+in docs/architecture/project-removal.md. Private evidence sentry-project-removal-20261014.
+Primary dirty owner files preserved; shux absent, task/ledger/handoff direct.
+
+## Previous record
+
 # Project removal — implemented; packaging verification in progress
 
 Owner confirmed live DeepSeek completed with6findings. New local-only feature on

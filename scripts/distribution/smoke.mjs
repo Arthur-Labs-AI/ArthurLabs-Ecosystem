@@ -224,7 +224,31 @@ try {
       assert.equal(status.source, 'stored');
     }
   }
-  const imported = await evaluate(`window.sentry.projects.add(${JSON.stringify(source)})`);
+  let imported;
+  if (projectRemoval) {
+    // Use the real UI mutation so its canonical query invalidation executes.
+    // A direct bridge write can leave the initial Dashboard list fresh/cached.
+    await evaluate('location.hash = "#/projects"');
+    await until(() => evaluate('document.querySelector(".collapsible-head") !== null'));
+    await evaluate('document.querySelector(".collapsible-head").click()');
+    const pathInput =
+      'document.querySelector(' + JSON.stringify('input[aria-label="Project folder path"]') + ')';
+    await until(() => evaluate(pathInput + ' !== null'));
+    await evaluate(pathInput + '.focus()');
+    await cdp('Input.insertText', { text: source });
+    const addButton =
+      '[...document.querySelectorAll("button")].find(b => b.textContent.trim() === "Add by path")';
+    await until(() => evaluate(addButton + '?.disabled === false'));
+    await evaluate(addButton + '.click()');
+    await until(() => evaluate('document.querySelector("article.card button.danger") !== null'));
+    const listed = await evaluate('window.sentry.projects.list()');
+    assert.equal(listed.length, 1);
+    imported = await evaluate(
+      'window.sentry.projects.get(' + JSON.stringify(listed[0].projectId) + ')',
+    );
+  } else {
+    imported = await evaluate(`window.sentry.projects.add(${JSON.stringify(source)})`);
+  }
   assert.ok(imported);
   const projects = await evaluate('window.sentry.projects.list()');
   assert.ok(projects.length >= 1);

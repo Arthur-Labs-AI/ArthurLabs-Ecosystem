@@ -40,11 +40,46 @@ failures and active locks remain failures. Crash-recovery behavior is retained.
 - Desktop/ProjectManager lint/typecheck and dependencies: 20 uncached tasks pass.
 - React review: reusable local confirmation state, canonical React Query reads,
   native dialog semantics, labelled controls, no arbitrary filesystem bridge.
-- Frozen local packaging, isolated WSL suites/bootstrap and real packaged UI
-  removal are pending in this source-commit record. The smoke extension checks
-  native confirmation/cancel, real files, removal after manual folder deletion,
-  original preservation and a fresh SQLite connection after shutdown. Only
-  guarded disposable `/var/tmp/sentry-project-removal.*` data may be deleted.
+- Full WSL suite: 1,260 passed, 16 existing skips, 40 uncached tasks; includes
+  real sandbox trust 8/8, runtime 73/73 and ProjectManager 17/17.
+- Windows archive: 20 forced builds pass, 332-file inventory and full extraction
+  verified. Windows distribution checks: 32 pass, 27 platform skips.
+- The bootstrap's global maintenance preflight correctly refused activation
+  while the owner's existing runtime remained open. No guard was bypassed and
+  no owner process was stopped. The supported `stage-only` deployment compiled
+  the exact verified archive's runtime source under disposable HOME (18 uncached
+  build tasks); its release identity handshake passed. Owner installation and
+  activation of this new candidate remain unverified until the installer runs.
+- Real packaged UI PASS: Add by path, native confirmation with Cancel focused,
+  Escape cancellation retaining the project, permanent removal from Projects,
+  stored tree/tombstone absence, detail removal after manual managed-root deletion,
+  original source preservation and fresh Linux/SQLite reopen with no projects or
+  pending deletion operations. Single instance and graceful shutdown also pass.
+- Screenshot `project-removal-confirmation.png` inspected in private evidence.
+  First smoke attempts exposed harness mistakes: direct bridge import left the
+  UI's one-second cached list fresh; nested selector quoting prevented the UI
+  path input step. The corrected harness uses actual Add by path, native CDP
+  input and JSON-quoted selectors in a fresh store. Earlier logs are retained;
+  application/runtime source did not change after candidate packaging.
+
+## Exact local candidate and use
+
+Tested application source: `64bff9fdcb5aed2335c4cf1efbe0815a2edcde48`.
+Subsequent QA/receipt commits retain the same application/runtime content.
+Archive: `sentry-1.0.0-rc.1-64bff9fdcb5a-windows-x64.zip`.
+SHA256: `3be517c2862e610a7e341737b059fa35aee0350e0f02f59a262dae66a12f96a9`.
+Version and runtime protocol remain rc.1 / 1. Local candidate; no publication.
+
+Private `install-project-removal.ps1` verifies the ZIP checksum, extracts a new
+LocalAppData directory, validates its manifest, uses supported graceful stop and
+setup, checks the activated matching runtime identity, then opens Desktop normally.
+Syntax and `-VerifyOnly` passed. It does not delete any existing project or start
+QA. `open-project-removal.ps1` starts this exact installed candidate in future;
+the owner's global development shim and older archive launchers remain separate.
+
+The full paid DeepSeek run supplied by the owner verifies the preceding evidence
+fix. No additional paid calls were made for this feature. Populated owner-profile
+upgrades and credential persistence were not retested against this candidate.
 
 Architecture decisions: `docs/architecture/project-removal.md`.
 Private evidence: `C:/Users/merte/.codex/artifacts/sentry-project-removal-20261014`.
