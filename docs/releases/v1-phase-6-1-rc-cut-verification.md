@@ -37,7 +37,7 @@ CLI and runtime production differences are the documented version defaults.
 No provider/model/SDK, security, schema, protocol or independent-agent behavior
 change was introduced. Version consistency and mixed RC/beta rejection pass.
 
-Selected binary input remains **8a75e992**, distinct from this documentation-only
+Selected binary input remains **8a75e992**, distinct from this release-preparation
 PR head or any eventual documentation merge. Selecting a different full release
 SHA requires fresh exact-source builds/verification; equal trees do not make
 differently identified archives interchangeable.
@@ -111,7 +111,7 @@ reviewed documentation updates do not silently change retained archive bytes.
 | Hosted real isolation                            | UNVERIFIED | Fallback is not an isolation pass; actual WSL proof remains separate                                                                                        |
 | Both archive targets                             | PASS       | Both local and hosted native-platform builds, independent external verification above                                                                       |
 | Windows exact-RC smoke                           | PASS       | Local ZIP only, production GUI/IPC/WSL, synthetic history, DPAPI and two fresh restarts                                                                     |
-| Native exact-RC smoke                            | UNVERIFIED | Owner explicitly chose pending during this task                                                                                                             |
+| Native exact-RC smoke                            | UNVERIFIED | Actual setup blocked by missing pnpm; corrected operator helper, complete native retry pending                                                              |
 | Full native G10-R                                | UNVERIFIED | Historical limitation retained                                                                                                                              |
 
 Full-suite coverage includes independent agents/Full/Targeted selection, protocol,
@@ -153,11 +153,35 @@ Plaintext was absent from profile/archive/application logs and disposable Linux
 data. Private `windows-exact-smoke.log` records the final aggregate PASS and exact
 archive hash. This does not replace or extend historical I1 recovery evidence.
 
-Native CachyOS exact archive: **PENDING by explicit owner choice**. Hosted hash
-`8d906885...2e75a8` was supplied for possible short checksum/graphical launch/
-matching runtime/function/shutdown observations; no operator result was supplied.
+Native CachyOS exact archive: **RETRY PENDING — first setup blocked by missing
+pnpm prerequisite**. The operator subsequently supplied actual CachyOS output
+for hosted archive `8d906885...2e75a8`: checksum OK, all 333 files verified,
+matching full identity, Node 26.10.0, systemd/socat/bubblewrap initialization OK.
+Setup printed `Install Linux pnpm 9.12.3` and exited before runtime staging;
+`Runtime current: NONE` was observed. The operator then manually invoked `open`;
+Desktop displayed Runtime Offline / missing runtime entry. This is not a native
+handshake, import/history or completed smoke PASS. Fontconfig warnings were
+separate from the setup prerequisite failure.
+
+The original standalone fish helper assumed ambient pnpm, unlike the installed
+source launcher which resolves its managed pin. The corrected acceptance helper
+provisions exact pnpm 9.12.3 inside its disposable test HOME and passes the bin
+directory to child builds; it also refuses `open` without a deployed runtime
+entry. Two actual-fish fixture regressions failed before correction and passed
+afterward. This fixes the external operator workflow, not the RC archive or
+application; selected source and all archive bytes/hashes remain unchanged.
+See the [maintained fish guide](v1-cachyos-rc1-smoke-guide.md) for a same-directory
+retry. New GitHub review checks are recorded against their own head in PR #22.
+Local affected-suite verification: Linux distribution plus actual-fish regressions
+**52 PASS / 1 platform skip**; Windows **26 PASS / 27 skips** (25 existing platform
+skips plus 2 actual-Linux-fish cases). Separate real isolated npm installation
+resolved pnpm **9.12.3** on Ubuntu WSL. Test-file lint, repository hygiene, formatting
+and diff checks PASS; the initial test lint attempt required explicit Node
+`process`/`URL` imports, corrected without disabling rules. This is local helper
+verification, not execution of the pending native repair.
 Earlier [owner-reported normal functionality](v1-owner-functional-acceptance-2026-10-13.md)
-remains valid with its original attribution. No video or paid matrix replay is
+remains valid with its original attribution. The complete native retry remains
+operator-dependent and unverified. No video or paid matrix replay is
 required. Ubuntu/WSL evidence is not native execution or native G10-R.
 
 ## Recovery and official-cut decisions

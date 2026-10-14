@@ -12,7 +12,12 @@ both PASS. WSL 1,236/16 skips, trust 8/8, distribution 50/1; Windows Desktop
 400/2, distribution 26/25, static/build/maintenance/launcher PASS. Local exact
 Windows GUI/import/synthetic history/hello/stop and DPAPI plus two fresh restarts/
 plaintext absence PASS, prepared host scope. Native exact-RC
-smoke explicitly pending per owner; recovery A owner-adopted October 14, 2026
+smoke retry pending: actual operator attempt verified archive and host sandbox
+prerequisites but missing pnpm stopped setup before staging. Later manual open
+showed runtime missing. Acceptance-only fish helper now provisions pinned pnpm
+inside the isolated HOME and blocks open without runtime; real-fish tests
+RED2 then GREEN2. Follow docs/releases/v1-cachyos-rc1-smoke-guide.md; no RC
+archive/application bytes changed. Recovery A owner-adopted October 14, 2026
 ("i choose A") only for historically tested Windows/I1 scope. Official cut
 authorization remains pending. Preserve original
 G10 FAIL, all prior evidence, primary edits and beta tag. Final documentation

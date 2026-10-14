@@ -12,10 +12,14 @@ retained separately. Local Windows ZIP d224cf09...c51d96 production GUI/WSL
 hello/import/synthetic history/graceful shutdown PASS; actual DPAPI save plus
 two fresh restarts and plaintext scans PASS. WSL full 1,236 PASS/16 skips,
 40 uncached tasks; distribution 50 PASS/1 skip. No new product correction.
-Owner explicitly leaves exact-RC native CachyOS smoke PENDING. Owner approved
+Native exact-RC attempt now reported: archive checksum/identity/inventory and
+systemd/bwrap/socat PASS, but missing pnpm stopped setup before runtime staging;
+manual open afterward showed MODULE_NOT_FOUND. External fish helper corrected
+to provision isolated pnpm 9.12.3 and refuse open without runtime. Actual-fish
+regressions RED2/2 then GREEN2/2; native complete retry still PENDING. Owner approved
 recovery A on October 14, 2026 ("i choose A"), only tested Windows/I1 scope;
 official cut authorization remains PENDING. Isolated release-prep branch;
-primary checkout preserved. Final documentation-only PR head and checks are
+primary checkout preserved. Final release-preparation PR head and checks are
 recorded in its review receipt. See docs/releases/v1-phase-6-1-rc-cut-verification.md
 for all full hashes/manifests/hosts and final draft-note identity. CONDITIONALLY
 READY; recovery decision CLOSED, official cut NOT AUTHORIZED. No tag, publication,

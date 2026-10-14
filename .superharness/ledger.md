@@ -322,3 +322,24 @@ This decision closes recovery-policy adoption only. No RC cut/tag/publication,
 asset upload, merge, main change, real-owner restore or paid call authorized or
 performed. shux contract again absent; protocol maintained directly. Local
 documentation checks and final PR head/check status are recorded in PR22.
+
+2026-10-14 — Native exact-RC operator attempt: actual selected archive checksum,
+333-file manifest/full identity and systemd/socat/bwrap initialization PASS;
+Node26.10.0. Setup refused missing pnpm9.12.3 before staging; current NONE.
+Operator subsequently opened Desktop and observed missing host.js / Runtime
+Offline. No native runtime/functionality PASS inferred. Root cause is an
+ambient-pnpm assumption in the separately supplied fish helper; corrected
+helper installs exact pnpm inside disposable test HOME, supplies its bin PATH
+to build children and refuses open without deployed runtime. Two actual-fish
+fixture regressions RED before fix, GREEN after; guide provides same-root retry.
+Acceptance helpers/tests are excluded from archive payload; selected source8a75e992
+and retained archive hashes unchanged. No application, Node requirement, pins,
+schema/security/protocol or owner data change. Complete native retry remains
+operator-dependent; font warnings separate. Local gate results and latest PR22
+checks recorded in review receipt. shux absent, protocol direct; no paid call,
+official release/tag/asset, self-merge or main change.
+Affected-suite results: Linux52 PASS/1 skip including real fish4.2.1 cases;
+Windows26 PASS/27 skips, two requiring actual Linux fish. Real isolated WSL npm
+provision confirmed pnpm9.12.3. Helper test lint initially rejected implicit
+process/URL globals; explicit Node imports corrected it, no rules disabled.
+Final lint/hygiene/format/diff PASS. Native repair itself remains unexecuted here.
