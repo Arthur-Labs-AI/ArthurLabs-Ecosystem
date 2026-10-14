@@ -108,9 +108,10 @@
 }
 .rv-head h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1.25;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: -0.025em;
 }
 .rv-sub {
   margin: 4px 0 0;
@@ -247,7 +248,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   padding: 10px 12px;
-  font: 17px/1.5 var(--serif);
+  font: 400 15.5px/1.55 var(--sans);
   resize: vertical;
 }
 .rv-actions {

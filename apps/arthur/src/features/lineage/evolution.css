@@ -10,8 +10,8 @@
 }
 .evolution .picker h1 {
   padding: 26px 22px 4px 26px;
-  font: 400 28px/1 var(--serif);
-  letter-spacing: -0.015em;
+  font: 600 26px/1.1 var(--sans);
+  letter-spacing: -0.03em;
 }
 .evolution .picker > p {
   margin: 4px 22px 14px 26px;
@@ -44,12 +44,13 @@
   background: var(--accent);
 }
 .pick .t {
-  font: 450 15.5px/1.25 var(--serif);
+  font: 550 14.5px/1.3 var(--sans);
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 .pick .m {
   color: var(--ink-3);
-  font-size: 12px;
+  font: 400 11.5px var(--mono);
   grid-column: 1;
 }
 .pick svg {
@@ -71,8 +72,8 @@
   flex-wrap: wrap;
 }
 .work .head h2 {
-  font: 430 30px/1.1 var(--serif);
-  letter-spacing: -0.015em;
+  font: 600 28px/1.12 var(--sans);
+  letter-spacing: -0.03em;
   overflow-wrap: anywhere;
 }
 .work .head p {
@@ -98,7 +99,8 @@
   max-width: 64ch;
 }
 .mode-panel h3 {
-  font: 430 19px/1.2 var(--serif);
+  font: 600 17px/1.2 var(--sans);
+  letter-spacing: -0.015em;
   margin-bottom: 10px;
 }
 .detail {
@@ -117,7 +119,8 @@
   flex-wrap: wrap;
 }
 .detail .dh h3 {
-  font: 430 21px/1 var(--serif);
+  font: 600 18px/1.1 var(--sans);
+  letter-spacing: -0.02em;
 }
 .detail .dh small {
   color: var(--ink-3);

@@ -68,7 +68,7 @@ describe("mobile.css (Ask Arthur)", () => {
   });
 
   it("types the question at 16px or more, so the keyboard never zooms the page", () => {
-    expect(px(rule(mobile, ".m-askbar textarea").replace(/font:\s*400\s*(\d+)px/, "font-size: $1px"), "font-size")).toBeGreaterThanOrEqual(16);
+    expect(px(rule(mobile, ".m-askbar textarea").replace(/font:\s*\d+\s*(\d+)px/, "font-size: $1px"), "font-size")).toBeGreaterThanOrEqual(16);
   });
 
   it("clears the bottom safe area, so the question bar sits above the keyboard and the gesture bar", () => {

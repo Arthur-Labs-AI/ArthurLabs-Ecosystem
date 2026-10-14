@@ -39,6 +39,14 @@ into `apps/arthur`, and every place the app differs from the prototypes.
 | Left filter panel on Connections (relations, show, made by) | the existing legend (relation toggles) and origin tabs | They already filter by relation and origin; kind/entity filters have nothing to filter yet. |
 | Waveform while recording | REC dot + timer | No audio-level signal exists (see above). |
 
+### Third pass: Evolution, Review, Ask, mobile type
+- **Evolution**: sans headings, mono revision tags, times and counts; the revision graph keeps its structure and
+  accent-on-current.
+- **Review**, **Ask**: headings, question input, answer text and evidence in the Thoughtspace type scale. `--serif` is
+  still used as the role name for answer text (it resolves to the sans), which `recall-css.test.ts` asserts.
+- **Mobile**: every `--serif` heading and row title was moved to the sans scale (600 for titles, 550 for row titles).
+  Compositions are unchanged.
+
 ## Not yet ported
-A dedicated mobile layout pass (mobile screens keep their Marginalia composition with the new look), the Evolution
-screen redesign, and a Review/Ask pass. These pick up tokens and fonts but have not been reviewed visually one by one.
+Mobile *layouts* have not been redesigned to match the desktop composition (they keep the Marginalia structure with the
+new look), and Review has only been inspected in its empty state (no proposals in the preview client).
