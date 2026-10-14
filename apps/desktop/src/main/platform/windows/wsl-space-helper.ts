@@ -101,10 +101,33 @@ public static class SentryVirtualDisk {
 '@
 }
 
-function Invoke-SentryNativeCompact([string]$Disk) {
-  # Refuse mounted/in-use disks. Never detach a disk behind another application.
-  $exclusive = [IO.File]::Open($Disk, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-  $exclusive.Dispose()
+function Test-SentryDiskAvailable([string]$Disk) {
+  try {
+    $exclusive = [IO.File]::Open($Disk, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    $exclusive.Dispose()
+    return $true
+  } catch {
+    $cause = $_.Exception.GetBaseException()
+    if ($cause -is [IO.IOException] -and (($cause.HResult -band 0xffff) -in @(32, 33))) { return $false }
+    throw
+  }
+}
+
+function Get-SentryTime { return [DateTime]::UtcNow }
+
+function Wait-SentryDiskAvailable([string]$Disk, [int]$TimeoutMilliseconds = 30000) {
+  $deadline = (Get-SentryTime).AddMilliseconds($TimeoutMilliseconds)
+  while (-not (Test-SentryDiskAvailable $Disk)) {
+    if ((Get-SentryTime) -ge $deadline) {
+      throw 'WSL disk is still in use after shutdown. Close Docker, WSL terminals, and applications that automatically restart WSL, then retry. No disk compaction was performed.'
+    }
+    Start-Sleep -Milliseconds 200
+  }
+}
+
+function Invoke-SentryNativeCompact([string]$Disk, [int]$WaitTimeoutMilliseconds = 30000) {
+  # A stopped distro does not prove the VM released its VHD. Never force-detach it.
+  Wait-SentryDiskAvailable -Disk $Disk -TimeoutMilliseconds $WaitTimeoutMilliseconds
   Initialize-SentryVirtualDiskApi
   $status = [SentryVirtualDisk]::Compact($Disk)
   if ($status -ne 0) {
@@ -112,19 +135,27 @@ function Invoke-SentryNativeCompact([string]$Disk) {
   }
 }
 
+function Assert-SentryOtherDistrosStopped([string]$Distro) {
+  $running = @((Invoke-SentryWsl -Arguments @('--list', '--running', '--quiet')) -split '\r?\n' |
+    ForEach-Object { $_.Trim() } | Where-Object { $_.Length -gt 0 })
+  $others = @($running | Where-Object { $_ -cne $Distro })
+  if ($others.Count -gt 0) {
+    throw ('Another WSL distribution is running: ' + ($others -join ', ') + '. Stop it and close Docker or other WSL applications before reclaiming disk space.')
+  }
+}
+
+function Stop-SentryWslForCompaction([string]$Distro) {
+  # Recheck after UAC: another distribution may have started while awaiting consent.
+  Assert-SentryOtherDistrosStopped $Distro
+  $null = Invoke-SentryWsl -Arguments @('--shutdown')
+  # Do not invoke WSL again before compaction. Only native file availability is polled.
+}
+
 function Invoke-SentryReclaim([string]$Distro, [string]$Disk) {
+  Assert-SentryOtherDistrosStopped $Distro
   $before = Get-SentryDiskStats $Disk
   $null = Invoke-SentryWsl -Arguments @('-d', $Distro, '-u', 'root', '--', 'sync')
   $null = Invoke-SentryWsl -Arguments @('-d', $Distro, '-u', 'root', '--', 'fstrim', '-v', '/')
-  $null = Invoke-SentryWsl -Arguments @('--terminate', $Distro)
-  $deadline = [DateTime]::UtcNow.AddSeconds(30)
-  do {
-    $running = (Invoke-SentryWsl -Arguments @('--list', '--running', '--quiet')) -split '\r?\n' |
-      ForEach-Object { $_.Trim() }
-    if ($running -cnotcontains $Distro) { break }
-    if ([DateTime]::UtcNow -ge $deadline) { throw 'The distribution did not stop. Compaction was not attempted.' }
-    Start-Sleep -Milliseconds 200
-  } while ($true)
 
   $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
   $receipt = Join-Path (Split-Path -Parent $PSCommandPath) ('result-' + [Guid]::NewGuid().ToString('N') + '.json')
@@ -157,6 +188,7 @@ try {
   $distro = Decode-SentryValue $DistroBase64
   $disk = Get-SentryDisk $distro
   if ($Action -eq 'Inspect') {
+    Assert-SentryOtherDistrosStopped $distro
     $stats = Get-SentryDiskStats $disk
     @{ distro = $distro; diskBytes = $stats.bytes; windowsFreeBytes = $stats.free } | ConvertTo-Json -Compress
   } elseif ($Action -eq 'Reclaim') {
@@ -170,6 +202,7 @@ try {
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
       throw 'Windows administrator approval is required.'
     }
+    Stop-SentryWslForCompaction $distro
     Invoke-SentryNativeCompact $disk
     [IO.File]::WriteAllText($ResultFile, '{"ok":true}', [Text.UTF8Encoding]::new($false))
   }

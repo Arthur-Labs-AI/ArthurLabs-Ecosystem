@@ -1,3 +1,20 @@
+# WSL compaction lock-release fix — verified in source; packaging pending
+
+Owner installed304d9d0, three elevated File.Open sharing violations confirm that
+Stopped distro did not prove detachedVHD. Corrected helper/confirmation requires
+VM shutdown after UAC, refuses other running distros at inspect/reclaim/postUAC,
+waits bounded30s for sharing/lock errors32/33 only, no WSL re-poll after shutdown.
+No force-detach/unmount. Existing QA/ack/IPC/CLI/quit/identity guards unchanged.
+RED2 reproduce unsafeother-distro trim and real transientFile.Openfailure;
+GREEN helper15/UI7, fullDesktop451pass/3existing skips, lint/typecheck/mainbuild,
+native empty64MiB VHDX compact/reopen twice PASS/0reclaimedexpected. Actual owner
+VM shutdown/populatedUbuntu compaction remains UNVERIFIED and is not automated.
+Matching archive/runtime/packaged dialog pending. No ownercleanup/paidQA/PR/push.
+Docs/releases/wsl-compaction-lock-fix.md; private sentry-wsl-lock-fix-20261014.
+shux unavailable/direct protocol; primary owner changes preserved.
+
+## Previous record
+
 # WSL reclamation button — local candidate verified; owner acceptance pending
 
 Application/archive source304d9d08898b6dd14ed63c677af3145279fc6c95;

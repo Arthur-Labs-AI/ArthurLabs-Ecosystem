@@ -12,7 +12,8 @@ Scope is a local Windows Desktop change; no GitHub PR or paid QA.
    Linux's virtual free capacity is not host free space.
 2. **Ownership:** Electron main owns maintenance and runtime lifecycle. A
    bundled, fixed PowerShell helper resolves the registered disk, trims Linux
-   free blocks, terminates only that distro, and requests UAC for compaction.
+   free blocks and requests UAC for compaction. After approval it refuses any
+   other running distro, shuts down the WSL VM, and waits for the disk to unlock.
    Renderer supplies confirmation only, never disk paths or command text.
 3. **Direction:** renderer -> typed IPC -> host maintenance controller -> OS
    helper. Runtime/domain/storage packages do not depend on Windows maintenance.
@@ -36,7 +37,8 @@ Scope is a local Windows Desktop change; no GitHub PR or paid QA.
    approval; never use the owner's Ubuntu disk as an automated test fixture.
 8. **Compatibility:** no database migration, credentials move or protocol
    change. Existing archive/runtime identities remain paired. No experimental
-   sparse mode, filesystem resize, zero-fill, unregister or global WSL shutdown.
+   sparse mode, filesystem resize, zero-fill or unregister. VM shutdown is now
+   explicit in the confirmation and is refused when another distro is running.
 9. **Observability:** UI explains whole-distro interruption, shows pending state,
    exact measured reclaimed disk bytes and volume free space, and distinguishes
    successful compaction from reconnect failure. Helper receipts remain in the
@@ -62,3 +64,17 @@ Microsoft contracts:
 - https://learn.microsoft.com/en-us/windows/win32/api/virtdisk/nf-virtdisk-compactvirtualdisk
 - https://learn.microsoft.com/en-us/windows/win32/api/virtdisk/nf-virtdisk-openvirtualdisk
 - https://learn.microsoft.com/en-us/windows/wsl/basic-commands
+
+## October 14 lock-release correction
+
+Owner installed304d9d0 and attempted maintenance three times. Same-SID elevated
+receipts report sharing violations at File.Open, before native compaction.
+Terminating a distro and observing Stopped did not prove its VHD was detached.
+The earlier empty detached VHD fixture did not exercise this live-WSL boundary.
+Require confirmed whole-VM shutdown after approval, refuse other running distros
+before trim and again immediately before shutdown, and wait up to30seconds for
+exclusive file availability. Retry only sharing/lock violations; permission and
+other I/O errors remain immediate failures. Never forcibly detach/unmount disks.
+Application reconnect and identity checks remain unchanged. Native file-lock
+regressions and OS-boundary tests must verify the new ordering and refusal.
+No owner VM shutdown or compaction is performed automatically while fixing code.

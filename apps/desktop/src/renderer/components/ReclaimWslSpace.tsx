@@ -102,8 +102,9 @@ export function ReclaimWslSpace({
           >
             <h2 id={titleId}>Reclaim Windows disk space?</h2>
             <p id={descriptionId}>
-              Sentry will stop its runtime and restart {distro}. Save work and close other
-              applications using this distribution first. Windows will request administrator
+              Sentry will stop its runtime and shut down WSL to compact the {distro} disk. Save work
+              and close other applications using WSL, including Docker and terminals. If another
+              distribution is running, Sentry will refuse. Windows will request administrator
               approval. Keep Sentry open until compaction finishes. Your files are kept, and the
               disk can grow again as needed. The amount reclaimed may be zero.
             </p>
@@ -129,7 +130,7 @@ export function ReclaimWslSpace({
                 disabled={blocked || operation.isPending}
                 onClick={() => operation.mutate()}
               >
-                {operation.isPending ? 'Reclaiming…' : 'Restart ' + distro + ' and reclaim'}
+                {operation.isPending ? 'Reclaiming…' : 'Shut down WSL and reclaim'}
               </button>
             </div>
           </dialog>

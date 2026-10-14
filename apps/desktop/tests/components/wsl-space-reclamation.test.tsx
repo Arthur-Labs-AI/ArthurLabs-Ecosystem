@@ -69,6 +69,9 @@ describe('WSL space reclamation', () => {
     const dialog = screen.getByRole('dialog', { name: 'Reclaim Windows disk space?' });
     expect(dialog.textContent).toContain('Ubuntu');
     expect(dialog.textContent).toContain('other applications');
+    expect(dialog.textContent).toContain('shut down WSL');
+    expect(dialog.textContent).toContain('Docker');
+    expect(dialog.textContent).toContain('Sentry will refuse');
     expect(dialog.textContent).toContain('administrator');
     expect(dialog.textContent).toContain('grow');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -87,7 +90,7 @@ describe('WSL space reclamation', () => {
       return f.result;
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Reclaim Windows disk space' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Restart Ubuntu and reclaim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Shut down WSL and reclaim' }));
     await waitFor(() => expect(f.reclaimSpace).toHaveBeenCalledTimes(1));
     expect(
       (screen.getByRole('button', { name: 'Reclaiming…' }) as HTMLButtonElement).disabled,
@@ -107,11 +110,11 @@ describe('WSL space reclamation', () => {
     const f = fixture();
     f.reclaimSpace.mockRejectedValueOnce(new Error('Administrator approval was cancelled.'));
     fireEvent.click(await screen.findByRole('button', { name: 'Reclaim Windows disk space' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Restart Ubuntu and reclaim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Shut down WSL and reclaim' }));
     await screen.findByRole('alert');
     expect(screen.getByRole('alert').textContent).toContain('cancelled');
     expect(
-      (screen.getByRole('button', { name: 'Restart Ubuntu and reclaim' }) as HTMLButtonElement)
+      (screen.getByRole('button', { name: 'Shut down WSL and reclaim' }) as HTMLButtonElement)
         .disabled,
     ).toBe(false);
   });
@@ -139,7 +142,7 @@ describe('WSL space reclamation', () => {
       reconnected: false,
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Reclaim Windows disk space' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Restart Ubuntu and reclaim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Shut down WSL and reclaim' }));
     await screen.findByText(/Reclaimed 0.00 GiB/);
     expect(screen.getByRole('alert').textContent).toContain('Reconnect');
   });
