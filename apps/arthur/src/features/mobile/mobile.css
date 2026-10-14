@@ -1164,7 +1164,8 @@
 .m-n {
   color: var(--ink-3);
   font-weight: 400;
-  font-size: 12.5px;
+  font-family: var(--mono);
+  font-size: 11.5px;
   margin-left: 6px;
 }
 .m-form {
@@ -1909,13 +1910,13 @@
   width: 38px;
   height: 26px;
   margin-left: -19px;
-  border-radius: 7px;
+  border-radius: var(--r-sm);
   background: var(--ground);
   border: 1.4px solid var(--ink-3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font: 650 13.5px var(--sans);
+  font: 500 12.5px var(--mono);
   z-index: 2;
 }
 .m-vnode.o-distillation {
@@ -1981,6 +1982,12 @@
   margin-top: 3px;
   color: var(--ink-3);
   font-size: 12.5px;
+}
+.m-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .m-vexp {
   padding: 0 0 18px;
@@ -2353,14 +2360,18 @@
   resize: none;
   min-height: 48px;
   max-height: 9em;
-  padding: 12px 2px;
-  background: none;
-  border: 0;
+  padding: 12px 14px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   outline: none;
-  font: 550 17px/1.4 var(--sans);
-  letter-spacing: -0.015em;
+  font: 450 16px/1.4 var(--sans);
+  letter-spacing: -0.01em;
   field-sizing: content;
   color: var(--ink);
+}
+.m-askbar textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
 }
 .m-askbar textarea::placeholder {
   color: var(--ink-3);
@@ -2371,7 +2382,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--accent);
   color: var(--accent-ink);
 }
@@ -2398,4 +2409,15 @@
   font: 400 var(--m-t-row) / 1.45 var(--sans);
   color: var(--ink-2);
   overflow-wrap: anywhere;
+}
+
+/* the Ask intro is guidance, not a headline */
+.m-ask-body .ask-empty {
+  margin: 4px 0 0;
+  color: var(--ink-3);
+  font: 400 14.5px/1.55 var(--sans);
+}
+.m-ask-body .ask-empty b {
+  color: var(--ink-2);
+  font-weight: 500;
 }
