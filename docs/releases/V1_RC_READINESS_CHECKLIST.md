@@ -6,7 +6,10 @@ FAIL/UNVERIFIED results below are preserved and do not automatically block the
 Windows release. Shared Linux runtime/security failures still block Windows.
 
 The [Phase 6.2 receipt](v1-phase-6-2-windows-transition.md) is the active evidence
-record. The former selected source and checksum below are historical only; a new
+record. Review source aced9cc passed the Windows/shared suites, real trust 8/8,
+new review archive verification and the 63.6-second packaged 1 GiB GUI import.
+Owner integration and a fresh approved post-merge RC remain pending.
+The former selected source and checksum below are historical only; a new
 exact-source archive is required after owner merge of the scope transition.
 
 | Gate                       | Required disposition before Windows RC authorization                                                                                                               |

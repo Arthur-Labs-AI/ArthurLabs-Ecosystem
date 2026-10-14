@@ -26,6 +26,17 @@ the result of the affected native workload or the full large Windows GUI path.
 The [Phase 6.2 receipt](v1-phase-6-2-windows-transition.md) records the bounded
 comparable Windows packaged-GUI evaluation separately.
 
+## Comparable Windows evaluation (October 14, 2026)
+
+Phase 6.2 evaluated the complete packaged Windows GUI/IPC/WSL path using a dense
+1 GiB binary plus 5,000 nested source modules: 5,003 included files and
+1,073,875,836 bytes. The single import passed in 63.6 seconds with responsive UI,
+automatic list refresh, matching source/managed/immutable hashes, persisted
+revision, fresh-process reopen and graceful shutdown. See the exact archive and
+[bounded receipt](v1-phase-6-2-windows-transition.md#bounded-packaged-windows-large-import-receipt).
+The source was on the WSL Linux filesystem. This does not diagnose the native
+report or establish a CachyOS PASS; unknown native source/input differences remain.
+
 ## Safe investigation
 
 1. Record exact archive SHA256, full Desktop/runtime SHA/version/protocol, host,

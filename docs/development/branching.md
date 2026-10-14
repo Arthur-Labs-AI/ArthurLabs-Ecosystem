@@ -126,7 +126,7 @@ dev5c68491: zero unique commits, no active worktree or workflow-name dependency.
 No branches were deleted; remote cleanup still needs explicit owner approval.
 
 - Ubuntu GitHub Actions or Ubuntu WSL testing does not establish native CachyOS acceptance. A prepared WSL host is not a clean Windows install.
-- Native physical acceptance and G10-R are deferred for Windows v1, not PASS. When a required Windows/shared gate cannot run, record `ENVIRONMENT UNAVAILABLE` (native CachyOS, clean Windows VM) or `OWNER ACCEPTANCE REQUIRED` (paid-provider runs) in the PR/validation report instead of implying coverage.
+- Native physical acceptance and G10-R are deferred for Windows v1, not PASS. When a required Windows/shared gate cannot run, record `ENVIRONMENT UNAVAILABLE` (for example, a clean Windows VM) or `OWNER ACCEPTANCE REQUIRED` (paid-provider runs) in the PR/validation report instead of implying coverage.
 
 ## No automatic publication
 
