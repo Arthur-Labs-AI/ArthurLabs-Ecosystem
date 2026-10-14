@@ -1,3 +1,18 @@
+# Local fixes publication — 2026-10-15
+
+Owner authorized committing and pushing the recent changes to GitHub, with no PR.
+Branch codex/sentry-local-fixes contains the existing DeepSeek evidence, visible
+launch, project removal, WSL reclaim and disk-release lock fixes. The source
+verification receipts remain historical; no production code changed in this
+publication commit. New documentation records owner acceptance, storage cleanup,
+permanent app relocation, and the current absence of all 16 duplicate folders.
+Documentation formatting, repository hygiene and diff checks are the applicable
+publication checks. Original dirty main checkout and owner identity preserved.
+No merge, tag, release, paid calls or pull request. shux contract unavailable.
+See docs/releases/local-fixes-and-storage-cleanup.md.
+
+## Previous record
+
 # WSL lock-release correction — candidate verified; owner retry pending
 
 Source/archivef9c2a4796f3519d5e6105970a94902fe4dca5a3a;
