@@ -44,9 +44,39 @@ tool pins, and refusal to activate preferences after translation/bootstrap failu
   syntax and maintenance fixtures passed. Turbo reported cached static/build
   tasks; real packaging recompiles committed input independently.
 
-Exact fix-head CI, review artifact and real PowerShell-to-WSL bootstrap results
-are recorded in the fix PR and private verification receipt. Do not infer a
-successful owner installation or official RC acceptance from fixture results.
+## Real bridge and exact-source artifact
+
+Implementation source `963fb574dd77f7f0143f2660bfa20ade7c6e3759`, complete tree
+`b45e9c0305887be335bb260dd992b3244d01cb60`, version `1.0.0-rc.1`, protocol 1.
+The local Windows ZIP is `sentry-1.0.0-rc.1-963fb574dd77-windows-x64.zip`:
+
+- Archive SHA256: `2d122868eb608a1c25954eaa3372ac9c21ef9a477e09b56df1cbef34057c49c2`.
+- Manifest SHA256: `34045ff7cd317d23eb950aa6cfc9193e6d64a5e091a28e3fc25839117c6b9ee6`.
+- PASS: clean committed packaging, forced rebuild, complete extraction and all
+  332 inventory files/component identities. Node24.13.1/pnpm9.12.3, Electron36.2.1,
+  electron-builder26.0.12, esbuild0.21.5; Windows11 x64 build26200.
+- PASS: the unchanged production PowerShell helper loaded from this validated
+  archive invokes the original WSL process helper. Only HOME/store environment
+  is isolated; the captured final argv is bash, actual archive bootstrap path,
+  wsl. Real frozen runtime build/activation and both full-SHA/protocol handshake
+  checks pass. This exercises the bridge, not just direct inner-bootstrap execution.
+- PASS: actual packaged Desktop with an explicit disposable profile and data
+  root passes preload/renderer/IPC validation, matching Linux handshake, small
+  disposable project import, single instance and graceful shutdown. No owner
+  profile/credential/data writes, no paid calls. Populated beta-history migration
+  and DPAPI credential continuity were not re-executed or inferred.
+- PASS: implementation-head [CI38583607413](https://github.com/Mert1026/Sentry/actions/runs/38583607413)
+  and [both-target distribution38583607783](https://github.com/Mert1026/Sentry/actions/runs/38583607783).
+  Hosted sandbox capability limits remain distinct from earlier actual WSL trust.
+
+The whole setup/repair entrypoint is covered by fixtures to avoid writing the
+owner's preferences; the real bootstrap bridge and packaged smoke use disposable
+state. A private integration harness first attempted to resolve the WSL helper
+from the wrong module; it was corrected to load the existing wsl-setup.ps1. That
+retained preparation failure occurred before bootstrap. No assertions or guards
+were weakened. Later receipt-only commits/hosted archives are separate identities.
+Final review-head checks are recorded in [PR #24](https://github.com/Mert1026/Sentry/pull/24);
+no successful owner installation or official RC acceptance is inferred.
 
 ## Existing archive test workaround
 

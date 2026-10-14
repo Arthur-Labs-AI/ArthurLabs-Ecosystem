@@ -1,3 +1,34 @@
+# Windows bootstrap correction — owner review pending
+
+PR24 fixes a reproduced Windows release blocker independently of scope PR23.
+Implementation source963fb574dd77f7f0143f2660bfa20ade7c6e3759 from approveddev62b474e.
+PowerShell Args automatic variable discarded wsl; rename ScriptArguments fixes
+actual packaged setup/repair. Regression RED2/3pass then GREEN5/5; full Windows
+distribution31PASS/27skips after required build. Frozen install/static/build and
+PS syntax/maintenance PASS; cached static/build disclosed, packagingforced20builds.
+Exact localZIP2d122868eb608a1c25954eaa3372ac9c21ef9a477e09b56df1cbef34057c49c2,
+manifest34045ff7cd317d23eb950aa6cfc9193e6d64a5e091a28e3fc25839117c6b9ee6,332files
+and full extraction PASS. Real packaged PShelper->originalWSLprocesshelper->
+isolated frozen bootstrap/activation/paired handshake PASS; actual packaged
+Desktop/preload/renderer/IPC/small import/singleinstance/graceful shutdown PASS.
+Implementation CI38583607413 and both-target distribution38583607783 SUCCESS.
+No version/protocol/schema/provider/sandbox/identity/credential changes. Owner
+profile/data/credentials untouched; existing fatal Desktop was not stopped by
+the agent. Paid calls0; populated-history/DPAPI revalidation not inferred.
+
+PR23 remains draft/blocked pending reviewed fix integration and fresh selected
+Windows RC. Existing immutable16b47d8 archive can be tested by user stopping
+Desktop, invoking its verified bootstrap with explicitwsl, checking runtimefullSHA
+and reopening that same Desktop. Do not edit manifest/identity or delete data.
+Owner installation remains unverified until reported. No self-merge/tag/release.
+Full receipt docs/releases/v1-windows-bootstrap-mode-fix.md; exact finalheadchecks
+are in PR24 metadata. Private logs/harnesses under worktree dist/bootstrap-fix
+and C:/Users/merte/.codex/artifacts/sentry-windows-bootstrap-fix-20261014.
+Original missing-dist build race/private harness-loading attempts retained.
+shux unavailable; task status/ledger/handoff maintained directly.
+
+## Previous record
+
 # Windows bootstrap mode correction — review in progress
 
 Owner's packaged setup selects Ubuntu but loses explicit wsl mode because
