@@ -1,3 +1,26 @@
+# WSL lock-release correction — candidate verified; owner retry pending
+
+Source/archivef9c2a4796f3519d5e6105970a94902fe4dca5a3a;
+ZIP SHA256 f1d3cdf392b32a339b8135374ed84ad18037f849b55341d92bdf6ffe3817a5c3.
+FixedStopped=>detached assumption: explicit WSLVM shutdown after UAC, no other
+runningdistro allowed (preflight/reclaim/postUAC), native-only bounded30s disklock
+wait32/33, no forceddetach/unmount or WSL repoll. Userfiles retained/idleQA guards.
+RED2; helper15/UI7, Desktop451pass/3existing skips, lint/typecheck/mainbuild,
+20forcedarchivebuilds/332inventory/extraction, distribution32/27platformskips,
+exactLinuxstage-only18builds/identity, packaged native dialogCancel/Escape/updated
+shutdownDockertext/import/singleinstance/gracefulstop/screenshot PASS. Nativeempty
+64MiB compact/reopen2 PASS0reclaimexpected; realsharingclassification PASS.
+C:verylow; privateinstaller reuses verifiedDesktop/nativebuild, exactsource+owner+
+sameFSrename, existingglobalmaintenance/prerequisite/identity/lock/currentrollback
+flow. PS/Bashsyntax/VerifyOnly/nativeRelocation/isolatedactivation/repeat PASS.
+Globalguard firstrefused owner's openSentry; ownerclosed it, testthenpassed;
+no bypass/kills. Ownercurrent304d9d0 unchanged. Actualowner installation/WSLVM
+shutdown/populateddiskreclaim UNVERIFIED; userruns installerthenbutton/UAC.
+No paidQA/PR/push/ownercleanup. docs/releases/wsl-compaction-lock-fix.md;
+private sentry-wsl-lock-fix-20261014. shux absent/directprotocol; primaryeditskept.
+
+## Previous record
+
 # WSL compaction lock-release fix — verified in source; packaging pending
 
 Owner installed304d9d0, three elevated File.Open sharing violations confirm that
