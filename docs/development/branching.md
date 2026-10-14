@@ -15,16 +15,66 @@ v1 release — while `dev` carries ongoing development. From the `dev`
 creation commit forward, the workflow below applies: new task branches start
 from approved `origin/dev` and target `dev`.
 
+## Windows v1 and native development branch creation
+
+The owner selected Windows 11 x64/WSL2 first on October 14, 2026. Native Linux
+Desktop is DEFERRED — FUTURE NATIVE LINUX RELEASE; Windows retains the shared
+Linux execution runtime. The scope PR is `release-prep/v1-windows-only-scope`
+from approved dev, targeting `dev`. Agents must not self-merge it.
+
+| Branch                         | Responsibility                                    |
+| ------------------------------ | ------------------------------------------------- |
+| `main`                         | Stable, approved releases; no direct task changes |
+| `dev`                          | Shared reviewed integration                       |
+| `release/v1.0.0-windows`       | Frozen Windows v1 stabilization                   |
+| `feature/native-linux-support` | Deferred native Desktop development               |
+
+**Do not create either long-lived branch until the scope PR is owner-merged.**
+Fetch its actual merge (not an old review head), verify post-merge CI and
+Windows/shared release gates, record the full SHA/tree, and obtain the approved
+source selection. Then use the commands below with that actual full SHA. They
+are prepared, not executed by this scope PR:
+
+```powershell
+git fetch origin --prune
+$approved = '<actual-owner-approved-post-merge-full-SHA>'
+git show --no-patch --format=fuller $approved
+git rev-parse ($approved + '^{tree}')
+git merge-base --is-ancestor $approved origin/dev
+if ($LASTEXITCODE -ne 0) { throw 'Approved source is not integrated in dev' }
+foreach ($name in @('release/v1.0.0-windows', 'feature/native-linux-support')) {
+  git show-ref --verify --quiet ('refs/heads/' + $name)
+  if ($LASTEXITCODE -eq 0) { throw ('Local branch exists: ' + $name) }
+  $remote = git ls-remote --heads origin ('refs/heads/' + $name)
+  if ($LASTEXITCODE -ne 0 -or $remote) { throw ('Remote check failed or branch exists: ' + $name) }
+}
+git branch release/v1.0.0-windows $approved
+if ($LASTEXITCODE -ne 0) { throw 'Release branch creation failed' }
+git branch feature/native-linux-support $approved
+if ($LASTEXITCODE -ne 0) { throw 'Native branch creation failed; inspect existing refs' }
+git push --atomic origin release/v1.0.0-windows feature/native-linux-support
+if ($LASTEXITCODE -ne 0) { throw 'Push failed; inspect remote refs before retry' }
+```
+
+Never rewrite or duplicate existing refs; inspect and preserve any existing work
+instead. The release branch receives only reviewed Windows blockers, security
+corrections, exact-release packaging fixes, release documentation and regression
+coverage. It never automatically follows dev or native changes. Propagate Windows
+fixes to dev by reviewed integration; refresh native work from the latest
+appropriate approved shared baseline before substantial development. Do not
+merge unverified native changes into the Windows release branch. No new native
+functionality is implemented in this phase.
+
 ## Branch responsibilities
 
-| Ref                                      | Purpose                                       | Rule                                                                                                                                                                                                                                                                                                      |
-| ---------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `main`                                   | Stable release integration                    | Owner-approved release-ready changes only. Normal feature, corrective, and experimental security work never targets `main`. Stable builds originate from an explicitly approved `main` commit identified by an immutable annotated version tag. A push to `main` never automatically publishes a release. |
-| `dev`                                    | Development integration                       | Integration branch for ongoing work. Feature/fix branches merge here after review, applicable CI, regression testing, honest unavailable-gate documentation, and owner approval. Phase 5 targets `dev`.                                                                                                   |
-| `feature/*`, `codex/*`, `fix/*`          | Short-lived task branches                     | Base on the latest approved `origin/dev`. PRs target `dev`. No direct commits to `dev` except its initial creation.                                                                                                                                                                                       |
-| `release/*` (e.g. `release/v1.0.0-rc.1`) | Release stabilization                         | Created from an approved `dev` commit. After feature freeze: release blockers, testing corrections, and documentation only. The RC undergoes exact-SHA CI and supported-host acceptance; the owner explicitly approves promotion to `main`.                                                               |
-| `hotfix/*`                               | Critical repair of a published stable release | Start from the affected immutable release tag or approved stable baseline. The owner reviews and promotes the hotfix to `main`, creating a new version/tag when authorized.                                                                                                                               |
-| `v<version>`                             | Annotated immutable release                   | Approved validated commit only; never move or overwrite an existing tag.                                                                                                                                                                                                                                  |
+| Ref                                        | Purpose                                       | Rule                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------ | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `main`                                     | Stable release integration                    | Owner-approved release-ready changes only. Normal feature, corrective, and experimental security work never targets `main`. Stable builds originate from an explicitly approved `main` commit identified by an immutable annotated version tag. A push to `main` never automatically publishes a release. |
+| `dev`                                      | Development integration                       | Integration branch for ongoing work. Feature/fix branches merge here after review, applicable CI, regression testing, honest unavailable-gate documentation, and owner approval. Phase 5 targets `dev`.                                                                                                   |
+| `feature/*`, `codex/*`, `fix/*`            | Short-lived task branches                     | Base on the latest approved `origin/dev`. PRs target `dev`. No direct commits to `dev` except its initial creation.                                                                                                                                                                                       |
+| `release/*` (v1: `release/v1.0.0-windows`) | Release stabilization                         | Created from an approved `dev` commit. After feature freeze: release blockers, testing corrections, and documentation only. The RC undergoes exact-SHA CI and supported-host acceptance; the owner explicitly approves promotion to `main`.                                                               |
+| `hotfix/*`                                 | Critical repair of a published stable release | Start from the affected immutable release tag or approved stable baseline. The owner reviews and promotes the hotfix to `main`, creating a new version/tag when authorized.                                                                                                                               |
+| `v<version>`                               | Annotated immutable release                   | Approved validated commit only; never move or overwrite an existing tag.                                                                                                                                                                                                                                  |
 
 Historical `codex/release-*` and `codex/hotfix-*` refs remain valid history;
 do not rename or delete them for this policy.
@@ -49,7 +99,7 @@ do not rename or delete them for this policy.
 
 - Every change to `dev` and `main` arrives via a pull request from a task branch. No direct pushes.
 - PRs require: code review, passing applicable CI on the exact candidate commit, regression testing, honest documentation of unavailable acceptance gates (e.g. native CachyOS, clean Windows VM, paid-provider runs), and owner approval.
-- Required CI jobs: `quality`, `launcher (windows, no WSL)`, `launcher (linux, no CachyOS)`. Push CI runs on `main` and `dev`; PR CI runs on PRs into `dev`, into `main`, and on release/hotfix PRs.
+- Windows release gates: `quality`, `launcher (windows, no WSL)` and `Windows release archive`. Ubuntu quality, shared runtime/security tests and real sandbox verification on capable hosts remain required. Native launcher validation remains on shared integration PRs; it is skipped for the frozen Windows branch and PRs involving that branch. Native archive validation is in `native-distribution.yml` for PRs targeting dev and manual development runs; it is not a Windows release gate. Push CI also covers `release/v1.0.0-windows` and `feature/native-linux-support`. Do not treat a native-only packaging/acceptance failure as a shared-runtime failure.
 - Only the owner merges (owner-only merges). Agents prepare PRs and stop; agents must not merge, enable auto-merge, or tag.
 - CI alone does not enforce manual owner approval: while server-side branch protection is unavailable (see below), PR-only integration and owner review are procedural requirements, not server-enforced controls.
 
@@ -76,7 +126,7 @@ dev5c68491: zero unique commits, no active worktree or workflow-name dependency.
 No branches were deleted; remote cleanup still needs explicit owner approval.
 
 - Ubuntu GitHub Actions or Ubuntu WSL testing does not establish native CachyOS acceptance. A prepared WSL host is not a clean Windows install.
-- When a required host gate cannot run, record `ENVIRONMENT UNAVAILABLE` (native CachyOS, clean Windows VM) or `OWNER ACCEPTANCE REQUIRED` (paid-provider runs) in the PR/validation report instead of implying coverage.
+- Native physical acceptance and G10-R are deferred for Windows v1, not PASS. When a required Windows/shared gate cannot run, record `ENVIRONMENT UNAVAILABLE` (native CachyOS, clean Windows VM) or `OWNER ACCEPTANCE REQUIRED` (paid-provider runs) in the PR/validation report instead of implying coverage.
 
 ## No automatic publication
 

@@ -1,4 +1,34 @@
-# v1.0.0-rc.1 cut preparation checklist
+# Windows v1.0.0-rc.1 readiness checklist
+
+Current scope, October 14, 2026: **Windows 11 x64 with WSL2** (Ubuntu preferred).
+Native Linux Desktop: **DEFERRED — FUTURE NATIVE LINUX RELEASE**. Its historical
+FAIL/UNVERIFIED results below are preserved and do not automatically block the
+Windows release. Shared Linux runtime/security failures still block Windows.
+
+The [Phase 6.2 receipt](v1-phase-6-2-windows-transition.md) is the active evidence
+record. The former selected source and checksum below are historical only; a new
+exact-source archive is required after owner merge of the scope transition.
+
+| Gate                       | Required disposition before Windows RC authorization                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Scope integration          | Owner-reviewed scope PR to dev, then actual post-merge CI; no self-merge                                                                                           |
+| Windows/shared CI          | quality, Windows launcher/Desktop and Windows release archive pass                                                                                                 |
+| Real runtime security      | WSL systemd/bubblewrap trust on a capable host; hosted fallback is not PASS                                                                                        |
+| Static/build/full suites   | Actual commands, counts, skips and failures in Phase 6.2 receipt                                                                                                   |
+| Windows exact archive      | Full source/tree/version/protocol/lock, archive and manifest SHA256, inventory and extraction                                                                      |
+| Windows large GUI import   | Approximately 1 GiB included data, nested source files/exclusions, responsive UI, automatic list refresh, persisted material, reopen/history and graceful shutdown |
+| Recovery                   | Option A already adopted October 14 for historical corrected Windows/I1; original-beta G10 remains FAIL                                                            |
+| Native Desktop smoke/G10-R | DEFERRED; retained implementation and native import tracker, no native PASS inferred                                                                               |
+| Branch separation          | After owner merge only: release/v1.0.0-windows and feature/native-linux-support from approved shared source                                                        |
+| Official cut               | Separate explicit owner authorization of exact source/assets/limits and publication; no RC published                                                               |
+
+The [native import tracker](native-linux-large-import.md) remains OPEN. A shared
+failure reproduced on Windows requires a separate focused correction PR before
+release. No blanket funded-provider replay or owner credential access is needed.
+
+## Historical Phase 6.1 checklist (superseded scope)
+
+### Former v1.0.0-rc.1 cut preparation checklist
 
 Active status, October 14, 2026: **NATIVE IMPORT INVESTIGATION OPEN**. See the
 [Phase 6.1 provenance receipt](v1-phase-6-1-rc-cut-verification.md).

@@ -386,3 +386,5 @@ does not establish packaged/native acceptance or resolve CachyOS importtimeout.
 No sourcefix/ownerdatawrite/projectcommand/assistantpaidcall. shux absent;
 protocol direct. Existingbdc5fff PR22 checks allSUCCESS, not transferred to new
 documentationhead. Hygiene/format/diff validation scoped to documentation update.
+
+- 2026-10-14 — Phase6.2 Windows-first scope preparation from approved dev62b474e, isolated task worktree. Support docs/draft, Windows/native archive separation and post-owner-merge branch commands prepared; shared Linux security/runtime gates retained. Owner declined GitHub Issues; dedicated native import tracker prepared. Windows frozen install/static/build PASS with cached Turbo results; initial Windows test/PowerShell attempts hit host memory exhaustion and are retained. Validation/artifact/large GUI import in progress. Recovery A/I1 and original beta FAIL preserved; no release/tag/main/paid/owner credential changes. shux unavailable; protocol maintained directly.

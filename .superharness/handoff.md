@@ -1,3 +1,19 @@
+# Phase 6.2 Windows-first release handoff — IN PROGRESS
+
+Isolated release-prep/v1-windows-only-scope from approved dev62b474e. Initial
+Windows11 x64/WSL2 scope and independent Windows/native packaging prepared.
+Shared Ubuntu runtime/security gates retained. Native import tracker is in
+docs/releases/native-linux-large-import.md; owner declined GitHub Issues.
+Recovery Option A remains historical corrected I1; no native PASS inferred.
+Windows static/build gates pass (Turbo cache reported). Initial local tests
+hit host memory exhaustion; failed attempts retained. Reruns, WSL full/trust,
+exact review ZIP and 1GiB packaged-GUI import pending. Owner merge required
+before long-lived release/native branches; commands prepared, refs not created.
+No tag/publication/main promotion/paid calls/real credential access. shux absent;
+protocol updated directly. See docs/releases/v1-phase-6-2-windows-transition.md.
+
+## Previous record
+
 # Native import investigation handoff — 2026-10-14
 
 Latest owner evidence: clean Sentry-latest/dev8a75e992 and successful RC1 source

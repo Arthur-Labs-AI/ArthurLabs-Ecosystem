@@ -6,7 +6,9 @@ is the current top-level gate view, incorporating the
 [October13 owner functional confirmation](v1-owner-functional-acceptance-2026-10-13.md).
 Historical case rows/counts and earlier authorization statements below are
 preserved as dated evidence, not current blanket rerun demands. Official RC
-cut/tag/publication and recovery-policy adoption remain pending.
+cut/tag/publication remain pending. Recovery Option A was adopted October 14,
+2026 in the tested Windows/I1 scope. Native Linux acceptance is now DEFERRED —
+FUTURE NATIVE LINUX RELEASE; historical unchecked/failed rows below are retained.
 
 This checklist supplements the [owner runbook](v1-owner-acceptance.md) and
 [per-host results](v1-owner-acceptance-results.md). The historical beta release

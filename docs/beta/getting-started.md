@@ -1,5 +1,8 @@
 # Sentry Beta — Getting started
 
+> Historical beta documentation. Current Windows v1 review installation and
+> support scope are in the [distribution guide](../setup/distribution.md). Native Linux Desktop is deferred to a future release.
+
 From Windows 11 + WSL2 or native CachyOS to your first Full QA run.
 Use the release tag once published; the repository currently requires access.
 
