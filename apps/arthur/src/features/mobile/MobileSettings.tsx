@@ -1,3 +1,4 @@
+import { AppearanceSettings } from "../settings/AppearanceSettings";
 import { Icon } from "../../components/icons";
 import { useArthurClient } from "../../hooks/use-arthur-client";
 import { AiVoiceSettings } from "../setup/AiVoiceSettings";
@@ -29,6 +30,10 @@ export function MobileSettings() {
         <section className="m-set" aria-labelledby="m-set-knowledge">
           <h2 id="m-set-knowledge">Your knowledge</h2>
           <p>Knowledge stored locally. Captures and everything Arthur organizes from them live on this device.</p>
+        </section>
+        <section className="m-set" aria-labelledby="m-set-appearance">
+          <h2 id="m-set-appearance">Appearance</h2>
+          <AppearanceSettings />
         </section>
         <section className="m-set" aria-labelledby="m-set-ai">
           <h2 id="m-set-ai">AI &amp; Voice</h2>

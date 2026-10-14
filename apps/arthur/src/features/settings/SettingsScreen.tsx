@@ -1,4 +1,5 @@
 import { useArthurClient } from "../../hooks/use-arthur-client";
+import { AppearanceSettings } from "./AppearanceSettings";
 import { AiVoiceSettings } from "../setup/AiVoiceSettings";
 import { SemanticRecallSettings } from "../recall/SemanticRecallSettings";
 import { EvolutionSettings } from "../evolution/EvolutionSettings";
@@ -25,6 +26,13 @@ export function SettingsScreen() {
           <h3 id="storage-heading">Your knowledge</h3>
         </div>
         <p className="note">Knowledge stored locally. Captures and everything Arthur organizes from them live on this device.</p>
+      </section>
+
+      <section className="sec" style={{ paddingLeft: 0, paddingRight: 0 }} aria-labelledby="appearance-heading">
+        <div className="sec-h">
+          <h3 id="appearance-heading">Appearance</h3>
+        </div>
+        <AppearanceSettings />
       </section>
 
       <section className="sec" style={{ paddingLeft: 0, paddingRight: 0 }} aria-labelledby="ai-heading">
