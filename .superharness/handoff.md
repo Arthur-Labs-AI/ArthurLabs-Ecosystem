@@ -1,3 +1,26 @@
+# DeepSeek shell evidence — implemented and verified locally
+
+Owner request completed as a local review candidate; no push or GitHub PR.
+Branch codex/deepseek-shell-evidence, tested source0ac6c1c62ccc2660ce1f92bed078cfdad7f4a80a.
+Pinned persistent Bash completion marker mismatch caused unknown outcomes and
+strong command-evidence rejection. Minimal adapter parser repair preserves trust.
+Regression RED3 exact error, GREEN10; adapter39/39 and DeepSeek56/56 PASS.
+WSL affected suites391/391 and20uncached tasks PASS, including real sandbox8/8.
+Windows relevant five suites305/305 PASS; Windows run-engine80pass/6Linux-sandbox
+failures and cleanup locks retained, resolved on WSL86/86. Static15uncached tasks,
+forced archive20builds, distribution31pass/27platformskips, format/diff/hygiene PASS.
+ExactZIP63c9b166ba1f5fb7d9fc487f61833422a613023ce789c57b3a33427a63216308;
+332inventory/extraction, isolated frozen WSL bootstrap+paired handshakes and
+actual packaged Desktop/preload/renderer/IPC/import/singleinstance/stop PASS.
+Owner current16b installation unchanged; no paidQA or credential-store access.
+Private install-local-fix.ps1 syntax/checksum VerifyOnly PASS; owner setup and
+funded live retry remain UNVERIFIED. Start a new run after matching installation.
+Full receipt docs/releases/deepseek-persistent-shell-evidence-fix.md; private
+logs C:/Users/merte/.codex/artifacts/sentry-deepseek-evidence-fix-20261014.
+Primary owner dirty files preserved. shux unavailable; protocol maintained here.
+
+## Previous record
+
 # DeepSeek persistent-shell evidence — local verification in progress
 
 Owner requested investigation/fix with no GitHub PR. Isolated local branch

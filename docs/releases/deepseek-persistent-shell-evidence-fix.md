@@ -44,10 +44,34 @@ changes, provider upgrades or retries beyond the existing limit were introduced.
 - The broader Windows run-engine check had 80 passes and six Linux sandbox
   failures because systemd user tools are unavailable on Windows, with secondary
   SQLite cleanup locks. These failures are retained, not hidden or weakened;
-  Linux/WSL execution is pending in the source-commit record.
-- Local packaging, matching Linux bootstrap/handshake and packaged Desktop
-  smoke are pending in this source-commit record. Their receipts will identify
-  the exact tested source and artifact outside the archive.
+  Linux/WSL execution subsequently passed all 391 affected tests, including
+  run-engine 86/86 and its eight real sandbox trust tests (20 uncached tasks).
+- Local Windows packaging passed all 20 forced builds, 332-file inventory and
+  ZIP extraction verification. Windows distribution tests: 31 pass, 27
+  platform skips. Format, diff and repository hygiene checks passed.
+- Exact archive bootstrap under isolated WSL HOME passed frozen installation,
+  candidate and active runtime handshakes. Packaged Desktop smoke passed with
+  an explicit isolated profile: production entrypoint, preload, renderer, IPC,
+  matching Linux handshake, import, single instance and graceful stop.
+  Populated historical upgrades, encrypted credentials and live paid QA were
+  not retested; the owner's installation was not replaced by the agent.
+
+## Exact local candidate
+
+Tested source: `0ac6c1c62ccc2660ce1f92bed078cfdad7f4a80a`. Later receipt-only
+documentation commits do not change the archive's source identity.
+
+Archive: `dist/distributions/sentry-1.0.0-rc.1-0ac6c1c62ccc-windows-x64.zip`.
+SHA256: `63c9b166ba1f5fb7d9fc487f61833422a613023ce789c57b3a33427a63216308`.
+Version remains `1.0.0-rc.1`; protocol remains 1. Local review candidate only.
+
+The private `install-local-fix.ps1` script verifies this checksum, extracts to a
+separate directory in LocalAppData, validates the manifest, uses the supported
+graceful stop and Windows setup, checks the activated runtime identity and opens
+the matching Desktop. Syntax and `-VerifyOnly` passed; installation into the
+owner's profile has not run. It preserves existing provider configuration and
+does not provision tools or start QA. After installation, check Environment is
+Connected and start a new DeepSeek QA run. Earlier failed runs remain unchanged.
 
 Private logs: `C:/Users/merte/.codex/artifacts/sentry-deepseek-evidence-fix-20261014`.
 The complete export and project content are not copied into the repository.
