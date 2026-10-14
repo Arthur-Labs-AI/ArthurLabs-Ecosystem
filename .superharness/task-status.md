@@ -1,3 +1,24 @@
+# Native import investigation — 2026-10-14
+
+OPEN: owner reports CachyOS projects.add timeout for a large GitHub project;
+exact Desktop/runtime attribution, cause and severity remain unverified. Selected
+source already gives imports 600,000 ms; timeout does not cancel runtime work.
+Real 1 GiB/5,003-file manager probes PASS on WSL Node22.23.2 and26.10.0 in
+62,937/68,603 ms including final rescan. Actual packaged Windows RC d224cf09
+with matching runtime8a75e992 imported owner-requested AutoPulse through mounted
+Projects Add by path in32,475 ms; canonical813files/120,370,663bytes, automatic
+list refresh PASS. Original source only read; no project execution or paid calls.
+Transport30/30 PASS. Fresh repeated GUI import11,256ms/graceful stop exit0 PASS;
+initial private runner stop flag corrected, failure retained. Native pass is not
+inferred. Owner's local main9c57e3f
+still reportsbeta0.1.0-beta.1; Desktop-only build/dev does not update source/runtime.
+No production fix without reproduction. Need native identity/input/storage/progress
+evidence. PR22 handoff updated; primary edits/source/artifacts preserved. shux
+contract unavailable; protocol direct. Selected RC source and official-cut gates
+unchanged; native investigation must remain visible in readiness reports.
+
+## Previous record
+
 # Phase 6.1 exact-RC cut preparation — 2026-10-14
 
 TECHNICAL PREPARATION COMPLETE WITH OWNER GATES PENDING. Selected binary source is owner merge

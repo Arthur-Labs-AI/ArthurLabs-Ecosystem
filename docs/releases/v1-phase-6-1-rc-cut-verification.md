@@ -1,8 +1,10 @@
 # Phase 6.1 — exact-source RC cut verification
 
-Snapshot: October 14, 2026, Europe/Sofia. **CONDITIONALLY READY**: exact-RC native
-scope/verification and explicit official cut authorization
-remain. No product correction or additional version bump was necessary.
+Snapshot: October 14, 2026, Europe/Sofia. **NATIVE IMPORT INVESTIGATION OPEN**:
+the owner reports a large-project `projects.add` timeout on CachyOS. Exact-build
+attribution and root cause remain unverified; native smoke has not passed.
+Official cut authorization remains pending. No product correction or additional
+version bump has been made.
 
 **RECOVERY OPTION A OWNER-APPROVED — OFFICIAL RC CUT NOT AUTHORIZED.**
 
@@ -111,7 +113,7 @@ reviewed documentation updates do not silently change retained archive bytes.
 | Hosted real isolation                            | UNVERIFIED | Fallback is not an isolation pass; actual WSL proof remains separate                                                                                        |
 | Both archive targets                             | PASS       | Both local and hosted native-platform builds, independent external verification above                                                                       |
 | Windows exact-RC smoke                           | PASS       | Local ZIP only, production GUI/IPC/WSL, synthetic history, DPAPI and two fresh restarts                                                                     |
-| Native exact-RC smoke                            | UNVERIFIED | Actual setup blocked by missing pnpm; corrected operator helper, complete native retry pending                                                              |
+| Native exact-RC smoke                            | UNVERIFIED | Setup helper corrected; follow-up owner screenshot shows connected runtime and large-project import timeout; exact-build attribution/root cause pending     |
 | Full native G10-R                                | UNVERIFIED | Historical limitation retained                                                                                                                              |
 
 Full-suite coverage includes independent agents/Full/Targeted selection, protocol,
@@ -183,6 +185,67 @@ Earlier [owner-reported normal functionality](v1-owner-functional-acceptance-202
 remains valid with its original attribution. The complete native retry remains
 operator-dependent and unverified. No video or paid matrix replay is
 required. Ubuntu/WSL evidence is not native execution or native G10-R.
+
+### Follow-up: large-project import timeout
+
+The owner supplied a screenshot with `RUNTIME CONNECTED`, an empty project list
+and `Runtime request timed out: projects.add`, reporting approximately 1 GB and
+an estimated "5+ minutes" importing a friend's GitHub project. The screenshot
+does not establish the runtime full SHA or distinguish slow work, a stall or
+completion after timeout. This failure is under investigation; no native import
+PASS or waiver is inferred.
+
+Inspected the selected-source stdio transport, native wrapper, Desktop service,
+runtime dispatch, project manager, context builder, snapshot engine and filesystem
+copy/walk/hash code. `projects.add` already has a **600,000 ms** Desktop request
+deadline. Expiry removes the waiter but does not cancel runtime work. There is
+no 1 GB import cap. Default exclusions prune `node_modules`, `.git`, `dist`,
+`build` and the other configured names unless `SENTRY_IMPORT_INCLUDE_ALL=1`.
+The transport suite passed **30/30** with
+`pnpm --filter @qa/desktop exec vitest run tests/unit/stdio-runtime-client.test.ts --maxWorkers=1 --no-file-parallelism`.
+
+Real selected-source `ProjectManager.addProject` probes on Ubuntu WSL imported
+one included 1 GiB asset, 5,000 small source files, README and package metadata,
+with another excluded 1 GiB under `node_modules`. Node **22.23.2** passed in
+**62,937 ms** and Node **26.10.0** in **68,603 ms**, including a post-import
+working-copy rescan. Both imported 5,003 files / 1,073,875,812 bytes, retained and
+hash-validated the revision and persisted one project. Content hash matched:
+`937554ac2b4e27e5b6e063176c77e419f31a0fbf4365b4236d283d02d1a8b879`.
+The Node 26 download was checksum-verified against its official manifest;
+disposable fixtures were cleaned. These are manager probes, not packaged native
+GUI acceptance or a reproduction of the friend's failure.
+
+The owner then requested testing `C:\Users\merte\Documents\GitHub\AutoPulse`.
+The actual Windows RC ZIP `d224cf09...c51d96`, an isolated fresh Desktop profile
+and disposable WSL data root imported that original folder through the mounted
+Projects screen's **Add by path** control. Matching Desktop/runtime source
+`8a75e992`, version `1.0.0-rc.1`, protocol 1 and standalone WSL Node 22.23.2 were
+confirmed. Import and automatic mounted-list refresh **PASS in 32,475 ms**;
+canonical reread showed 813 files / 204 directories / 120,370,663 bytes after
+exclusions. Revision content hash:
+`386c02e87bb252921d1890abee458456d5dcc9f505f4a28382d0d023fa3e73bd`.
+The original was only read; no project commands, provider calls or QA were run.
+Private receipts retain the profile/data paths and exact artifact identity.
+Initial private harness failures involved WSL argument quoting and renderer
+startup/selector readiness; they were corrected before the actual import and
+are not product failure reproductions. The first import passed but the private
+runner then used an unsupported stop flag; its shutdown check failed. Correcting
+the runner to the supported `--sentry-control=stop` and repeating with another
+fresh profile/data root imported the same 813 files in **11,256 ms** and exited
+gracefully with code **0**. Both import results are retained; the faster repeated
+run is not a cold-cache performance promise. No shutdown production change was
+needed.
+
+The owner's separate development launch reports `0.1.0-beta.1`, local main
+`9c57e3f` with existing edits. Desktop-only build/dev commands do not fetch dev or
+update the installed runtime, so this checkout is not selected-RC evidence.
+Next: obtain the affected native runtime/Desktop identities and compare actual
+file count, free space, excluded content and managed-copy progress. Avoid
+starting duplicate imports while a timed-out operation may still be active.
+No production timeout, exclusions, integrity checks, schema or code were changed
+without a reproduced cause. Any established production correction requires a
+separate focused PR against dev and new exact-source verification after owner
+integration. The native import failure remains open.
 
 ## Recovery and official-cut decisions
 

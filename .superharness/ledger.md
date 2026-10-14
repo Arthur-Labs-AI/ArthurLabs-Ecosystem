@@ -343,3 +343,30 @@ Windows26 PASS/27 skips, two requiring actual Linux fish. Real isolated WSL npm
 provision confirmed pnpm9.12.3. Helper test lint initially rejected implicit
 process/URL globals; explicit Node imports corrected it, no rules disabled.
 Final lint/hygiene/format/diff PASS. Native repair itself remains unexecuted here.
+
+2026-10-14 — Owner reports native large-project projects.add timeout with connected
+runtime, approximate1GB/5+minutes. Full affected native identity/input equivalence
+and cause/severity remain unverified. Inspected actual8a75e992 transport/wrapper/
+Desktop service/runtime/project manager/context/snapshot/filesystem path. Existing
+import deadline600,000ms; expiration does not cancel runtime work. Default pruning
+already excludes node_modules/.git/dist/build; no blind timeout/exclusion/schema/
+integrity or product change. Transport suite30/30 PASS. Real1GiB included asset+
+5,000sourcefiles+README/package and excluded1GiBnode_modules fixture imported via
+selected-source manager on WSLNode22.23.2/26.10.0 in62,937/68,603ms including final
+rescan;5,003files/1,073,875,812bytes, retained hashes/canonical project PASS. Node26
+download verified against officialSHA256manifest; disposable fixtures cleaned.
+Owner requested local AutoPulse folder. ActualWindowsRCZIPd224cf09...c51d96,
+fresh explicit profile/disposableWSLdata/matchingruntime8a75e992/versionRC1/
+protocol1 imported original through mountedProjects Add by path in32,475ms,
+813files/204dirs/120,370,663bytes, automatic list refresh/canonical reread PASS.
+Freshrepeat11,256ms, supportedcontrol graceful stop exit0 PASS. Private harness
+initial WSL quoting/startup/selector and unsupportedstopflag errors retained/
+diagnosed separately, no false product failure or weakened check. Original only
+read; no project commands/providercalls. Primarydirtymain9c57e3f beta0.1.0-beta.1
+preserved; owner Desktop-onlybuild/dev does not fetchdev/updateinstalledruntime.
+Readiness now discloses native import investigation; Windows/WSL probes cannot
+waive it. Need native fullidentity/input/storage/progress evidence. Reproduced
+production correction requires separate PR/dev ownerintegration/newexactsource
+artifacts. No cut/tag/release/assets/mainchange/selfmerge/paidcalls. shux absent;
+protocol direct. Documentation hygiene/format/diff checks PASS; existing5fcd224
+CI38537844037/distribution38537844012 SUCCESS, not transferred to later head.

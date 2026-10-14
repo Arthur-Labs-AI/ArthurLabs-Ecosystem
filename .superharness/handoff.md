@@ -1,3 +1,27 @@
+# Native import investigation handoff — 2026-10-14
+
+Owner reports native CachyOS large-project projects.add timeout with runtime
+connected. Full native identity, exact input equivalence and root cause remain
+unverified; complete native RC smoke has not passed. Source8a75e992 import timeout
+already600,000ms; expired Desktop wait does not cancel runtime work. No blind
+timeout/exclusion/integrity change. Real1GiB/5,003file manager imports PASS on
+WSL Node22.23.2/26.10.0; requested AutoPulse import through actual Windows RC
+GUI/Add by path/IPC PASS32,475ms, canonical813files/120,370,663bytes and mounted
+list refresh. Exact ZIPd224cf09/matchingruntime8a75e992/protocol1, fresh isolated
+profile/data, original only read, no project commands/provider calls. Private
+autopulse-packaged receipt/probe and large-import logs retained. Transport30/30
+PASS. Fresh repeated GUI import11,256ms and supported-control graceful shutdown
+exit0 PASS. Initial private runner used unsupported stop flag; its failed stop
+check and first successful import are retained separately. Preserve diagnostic data.
+Owner local dev command uses dirty main9c57e3f/beta0.1.0-beta.1, not latestdev/RC;
+Desktop build does not update installed runtime. Primary preserved. Next native
+identity/input/storage/progress evidence; reproduced production fix gets separate
+focused PR againstdev, owner integration and new exact-source artifacts. PR22
+must disclose open investigation; no native PASS, release authorization or paid
+replay inferred. shux unavailable; protocol maintained directly.
+
+## Previous record
+
 # Phase 6.1 preparation handoff — 2026-10-14
 
 CONDITIONALLY READY; recovery A APPROVED, official RC cut NOT AUTHORIZED.
