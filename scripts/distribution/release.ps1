@@ -27,10 +27,10 @@ function Get-DistributionDistro {
   return [string]$result.Distro
 }
 function Invoke-DistributionLinux {
-  param([string]$Selected, [string]$Script, [string[]]$Args = @())
+  param([string]$Selected, [string]$Script, [string[]]$ScriptArguments = @())
   $converted = Invoke-SentryWsl -Distro $Selected -LinuxArgs @('wslpath', '-u', ((Join-Path $root $Script).Replace('\', '/'))) -TimeoutSec 30
   if ($converted.ExitCode -ne 0 -or -not ([string]$converted.Stdout).Trim()) { throw 'WSL path translation failed' }
-  $r = Invoke-SentryWsl -Distro $Selected -LinuxArgs (@('bash', ([string]$converted.Stdout).Trim()) + $Args) -TimeoutSec 5400
+  $r = Invoke-SentryWsl -Distro $Selected -LinuxArgs (@('bash', ([string]$converted.Stdout).Trim()) + $ScriptArguments) -TimeoutSec 5400
   Write-Host $r.Stdout
   if ($r.ExitCode -ne 0) { Write-Host $r.Stderr; throw 'Linux bootstrap failed. Previous state retained; see diagnostics and INSTALL.md.' }
 }
@@ -38,7 +38,7 @@ switch ($Command) {
   { $_ -in @('setup', 'repair') } {
     Stop-DistributionDesktop -Executable $exe
     $selected = Get-DistributionDistro
-    Invoke-DistributionLinux -Selected $selected -Script 'scripts/distribution/bootstrap-runtime.sh' -Args @('wsl')
+    Invoke-DistributionLinux -Selected $selected -Script 'scripts/distribution/bootstrap-runtime.sh' -ScriptArguments @('wsl')
     $sync = Invoke-SentryNative -FilePath $exe -Arguments @('--sentry-setup-distro', $selected) -TimeoutSec 120
     if ($sync.ExitCode -ne 0) { throw 'Runtime installed, but Desktop distro preference could not be saved. Stop Desktop and rerun setup.' }
     Set-SentryLauncherConfig @{ selectedDistro = $selected }
