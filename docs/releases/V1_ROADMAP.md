@@ -13,6 +13,25 @@ with owner review and accurate validation under the
 > approved `origin/dev` and open its PR to `dev`. See
 > [dev-branch-transition](../development/dev-branch-transition.md).
 
+## Phase 6.2 — Windows-first release scope (current owner decision)
+
+Initial v1 target: **Windows 11 x64 with WSL2**, Ubuntu preferred. The existing
+Linux execution runtime, systemd/bubblewrap security and shared tests remain
+required. Native Linux Desktop is **DEFERRED — FUTURE NATIVE LINUX RELEASE**.
+Historical both-host acceptance requirements below describe earlier phases;
+they do not make native acceptance a Windows v1 publication gate. Failures remain
+failures, including the [native import investigation](native-linux-large-import.md).
+
+Prepare scope PR `release-prep/v1-windows-only-scope` against `dev`. After owner
+merge and passing post-merge Windows/shared gates, create
+`release/v1.0.0-windows` for frozen stabilization and
+`feature/native-linux-support` from that approved shared baseline. See the
+[branch commands](../development/branching.md#windows-v1-and-native-development-branch-creation)
+and [current receipt](v1-phase-6-2-windows-transition.md). New exact-source Windows
+bytes require their own provenance and bounded packaged-GUI import result.
+Recovery Option A is already adopted for historical Windows/I1; native G10-R is
+deferred. Official tagging/publication and main promotion need separate approval.
+
 ## Phase 1 — Foundation and architectural cleanup
 
 - **Objective:** align development policy, documentation and presentation with
@@ -201,8 +220,8 @@ selection and Full/Targeted QA. Feature development is frozen. The
 [version plan](v1-rc-versioning-plan.md), [draft notes](v1.0.0-rc.1.md) and
 [simplified RC checklist](V1_RC_READINESS_CHECKLIST.md) define bounded preparation.
 No retrospective recordings or blanket paid replay are required. Historical
-case results/build-attribution limits remain; recovery-policy adoption and
-exact-source owner RC authorization are separate pending decisions.
+case results/build-attribution limits remain; recovery-policy adoption was completed October 14 for Windows/I1; exact-source
+owner RC authorization remains pending.
 
 - **Objective:** freeze features and stabilize an explicit v1.0 candidate.
 - **Expected changes:** owner-approved RC versioning, migration/upgrade tests,
@@ -214,7 +233,7 @@ exact-source owner RC authorization are separate pending decisions.
 - **Dependencies:** Phases 2–5 acceptance and owner feature-freeze authorization.
 - **Risks:** last-minute scope expansion, version/artifact mismatch, data migration
   loss, environment/provider differences and regression after acceptance.
-- **Branch:** `release-prep/v1.0.0-rc.1` for this review; a future `release/v1.0.0-rc.1` requires separate owner cut authorization.
+- **Branch:** `release-prep/v1.0.0-rc.1` for this review; the Phase 6.2 `release/v1.0.0-windows` branch follows owner merge of the scope PR.
 
 ## Phase 7 — Sentry v1.0.0
 

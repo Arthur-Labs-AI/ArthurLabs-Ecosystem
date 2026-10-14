@@ -1,5 +1,8 @@
 # Sentry Beta — Updating
 
+> Historical beta documentation. Current Windows v1 review installation and
+> support scope are in the [distribution guide](../setup/distribution.md). Native Linux Desktop is deferred to a future release.
+
 For an owner-approved packaged candidate, use the separate
 [distribution upgrade procedure](../setup/distribution.md). Archive `update`
 refuses development tracking; source commands below keep their existing policy.
