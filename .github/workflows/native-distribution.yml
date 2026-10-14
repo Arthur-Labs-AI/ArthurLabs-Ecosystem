@@ -1,0 +1,39 @@
+name: native Linux development archive (deferred release)
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [feature/native-linux-support]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  archive:
+    name: Native development archive
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm distribution:test
+      - name: Build and extract native development archive (never publish)
+        run: pnpm distribution:build cachyos-x64
+      # Generic Ubuntu packaging is not physical CachyOS acceptance. This lane
+      # is development evidence, not a required Windows v1 release check.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-development-cachyos-x64-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            dist/distributions/*.tar.gz
+            dist/distributions/*.sha256
+          if-no-files-found: error
+          retention-days: 7

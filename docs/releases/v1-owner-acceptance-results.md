@@ -1,5 +1,10 @@
 # v1 owner acceptance results template
 
+> Historical both-host acceptance campaign. Windows 11 x64/WSL2 is the initial
+> v1 release target; native Linux Desktop acceptance is DEFERRED — FUTURE NATIVE
+> LINUX RELEASE. Preserve all historical failures and unchecked rows below.
+> Use the [current Windows receipt](v1-phase-6-2-windows-transition.md) for release gates.
+
 Copy this template per actual host/candidate. See the [runbook](v1-owner-acceptance.md)
 for procedures and verdict definitions. These rows contain **no hypothetical
 PASS results**. Initial environment/owner statuses describe preparation only;

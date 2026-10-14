@@ -5,7 +5,7 @@ labels: [bug]
 body:
   - type: markdown
     attributes:
-      value: '## ⚠️ Do not paste API keys, provider tokens, or secrets. `sentry doctor` never prints them — keep it that way here too.'
+      value: 'Windows v1 targets Windows 11 x64 with WSL2 (Ubuntu preferred). Native Linux Desktop is DEFERRED — FUTURE NATIVE LINUX RELEASE; native reports remain welcome for development. Do not paste API keys, private project content, personal paths, or raw provider responses.'
   - type: input
     id: version
     attributes:
@@ -26,7 +26,7 @@ body:
     id: windows
     attributes:
       label: Host operating system and version
-      placeholder: 'Windows 11 or native CachyOS (include version/kernel)'
+      placeholder: 'Windows 11 x64 (build); deferred native development: CachyOS (version/kernel)'
     validations:
       required: true
   - type: input

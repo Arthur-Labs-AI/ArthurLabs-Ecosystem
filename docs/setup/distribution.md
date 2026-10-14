@@ -1,10 +1,13 @@
 # Installing a pinned Sentry distribution candidate
 
-Candidates are unsigned review artifacts pending an explicitly authorized RC cut. Supported
-hosts are Windows 11 x64 with WSL2, and native CachyOS x64 with a graphical
-session. Ubuntu CI/WSL builds do not establish native CachyOS acceptance.
+Candidates are unsigned review artifacts pending an explicitly authorized RC cut.
+The initial v1 release target is **Windows 11 x64 with WSL2** (Ubuntu preferred).
+Windows still uses the Linux execution runtime, systemd and sandbox isolation.
+Native Linux Desktop is **DEFERRED — FUTURE NATIVE LINUX RELEASE**; CachyOS
+instructions below describe the retained experimental development target.
+Ubuntu CI/WSL builds do not establish native CachyOS acceptance.
 There is no automatic update, offline install, signed installer or macOS support.
-Phase 6.0's version 1.0.0-rc.1 transition was owner-merged in PR #21 on October 14, 2026. Phase 6.1 selects merge source `8a75e9924a41b98351e46255111fdbfed335f1f0`;
+Phase 6.0's version 1.0.0-rc.1 transition was owner-merged in PR #21 on October 14, 2026. Historical Phase 6.1 selected merge source `8a75e9924a41b98351e46255111fdbfed335f1f0`;
 see the [provenance receipt](../releases/v1-phase-6-1-rc-cut-verification.md) for
 the distinct local/hosted archive hashes and actual verification. Historical
 beta/I1 archives remain0.1.0-beta.1. **Version, full source SHA and archive
@@ -20,6 +23,10 @@ The owner adopted [recovery Option A](../releases/v1-recovery-policy-decision.md
 on October 14, 2026, only in its tested Windows/I1 scope; original-beta G10
 remains historical FAIL. These handoffs do
 not publish or authorize a release.
+
+The [Phase 6.2 Windows receipt](../releases/v1-phase-6-2-windows-transition.md)
+supersedes that historical source selection. After owner integration, build from
+the actual approved merge SHA; never reuse an earlier archive/checksum as the new RC.
 
 ## Obtain, verify and extract
 
@@ -44,7 +51,7 @@ cd "$env:LOCALAPPDATA\Sentry\distributions\<sha12>\sentry-<version>-<sha12>-wind
 .\sentry.ps1 version
 ```
 
-CachyOS:
+Deferred native development archive (not an official Windows v1 asset):
 
 ```bash
 sha256sum -c sentry-<version>-<sha12>-cachyos-x64.tar.gz.sha256
@@ -116,7 +123,7 @@ Configure credentials only in **Settings → Providers**. Verify Environment's
 connected Linux runtime and readiness for your selected agents before QA.
 Process launch or credential presence does not prove provider credit/readiness.
 
-## CachyOS installation
+## Deferred CachyOS development installation
 
 Use your normal graphical session, never root. Setup rejects other native Linux
 distributions and missing graphics. System prerequisites (explicit manual action):
@@ -202,7 +209,7 @@ stop the original-beta executable rollback track. The owner has adopted the
 corrected I1 route below within its tested Windows scope; the historical
 [bounded correction proposal](../releases/v1-beta-rollback-credential-proposal.md)
 is retained as background. This guide does not instruct a real-owner restore or
-key re-entry. Full native recovery and exact-RC native smoke remain outstanding;
+key re-entry. Full native recovery and exact-RC native smoke are deferred with native release acceptance;
 normal native functionality is already owner-reported accepted. Windows I1
 populated history/export/recovery evidence is recorded below, with its own identity.
 
@@ -249,7 +256,7 @@ For the historical v1 acceptance campaign use the comprehensive
 a setup reference. Final PR head and later merge SHA are distinct candidates;
 record archive SHA256/full source identity and post-merge CI explicitly.
 
-For **each actual supported host**, use a clean user/machine where possible and
+For **each host in that historical campaign**, use a clean user/machine where possible and
 record OS/build, Node/pnpm, full SHA, archive SHA256 and each result:
 
 1. Validate checksum and `version`; try a tampered copy and an extraction path with spaces.

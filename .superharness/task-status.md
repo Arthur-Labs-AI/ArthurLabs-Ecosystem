@@ -1,297 +1,121 @@
-# Local fixes publication — 2026-10-15
+# Phase 6.2 — REVIEW PREPARATION COMPLETE; OWNER INTEGRATION PENDING
 
-Owner authorized committing and pushing the recent changes to GitHub, with no PR.
-Branch codex/sentry-local-fixes contains the existing DeepSeek evidence, visible
-launch, project removal, WSL reclaim and disk-release lock fixes. The source
-verification receipts remain historical; no production code changed in this
-publication commit. New documentation records owner acceptance, storage cleanup,
-permanent app relocation, and the current absence of all 16 duplicate folders.
-Documentation formatting, repository hygiene and diff checks are the applicable
-publication checks. Original dirty main checkout and owner identity preserved.
-No merge, tag, release, paid calls or pull request. shux contract unavailable.
-See docs/releases/local-fixes-and-storage-cleanup.md.
+Owner resumed after PC cleanup on October 14, 2026. Worktree:
+C:/Users/merte/Documents/GitHub/Sentry-work-windows-scope, branch
+release-prep/v1-windows-only-scope, PR #23 targets dev. Implementation source
+aced9ccb57b664f5ee38280e8dfc72a8635d58d5, tree73bb89f777ad4373e7087cdd00de03fc2facf845.
+Later receipt-only head is recorded in PR metadata; the tested archive retains
+aced9cc identity. All original owner changes in primary checkout preserved.
 
-## Previous record
+Implemented: Windows11 x64/WSL2-only v1 support claims, retained deferred native
+implementation/evidence, independent Windows/native archive workflows, prepared
+post-owner-merge branch commands and native import tracker. Owner declined GitHub
+Issues. No version/protocol/lock/provider/schema/application changes. Recovery A
+remains exact historical corrected I1; original-beta G10 FAIL retained.
 
-# WSL lock-release correction — candidate verified; owner retry pending
+Verified on aced9cc: Windows Desktop400PASS/2skips, distribution26PASS/27skips;
+launcher20/20 and PowerShell smoke/behavior/IO/shutdown/maintenance PASS.
+WSL full suite1236PASS/16skips across40uncachedtasks; real trust8/8;
+distribution50PASS/3skips; all23 native/shared shell fixture scripts PASS.
+Windows/WSL frozen install/static/build/diff PASS; archive forced20uncachedbuilds.
+CI38566292232, Windows archive38566292342, native archive38566292740 SUCCESS.
+Initial memory, interrupted bootstrap and private harness mistakes retained;
+unchanged product gates passed after cleanup/harness correction.
 
-Source/archivef9c2a4796f3519d5e6105970a94902fe4dca5a3a;
-ZIP SHA256 f1d3cdf392b32a339b8135374ed84ad18037f849b55341d92bdf6ffe3817a5c3.
-FixedStopped=>detached assumption: explicit WSLVM shutdown after UAC, no other
-runningdistro allowed (preflight/reclaim/postUAC), native-only bounded30s disklock
-wait32/33, no forceddetach/unmount or WSL repoll. Userfiles retained/idleQA guards.
-RED2; helper15/UI7, Desktop451pass/3existing skips, lint/typecheck/mainbuild,
-20forcedarchivebuilds/332inventory/extraction, distribution32/27platformskips,
-exactLinuxstage-only18builds/identity, packaged native dialogCancel/Escape/updated
-shutdownDockertext/import/singleinstance/gracefulstop/screenshot PASS. Nativeempty
-64MiB compact/reopen2 PASS0reclaimexpected; realsharingclassification PASS.
-C:verylow; privateinstaller reuses verifiedDesktop/nativebuild, exactsource+owner+
-sameFSrename, existingglobalmaintenance/prerequisite/identity/lock/currentrollback
-flow. PS/Bashsyntax/VerifyOnly/nativeRelocation/isolatedactivation/repeat PASS.
-Globalguard firstrefused owner's openSentry; ownerclosed it, testthenpassed;
-no bypass/kills. Ownercurrent304d9d0 unchanged. Actualowner installation/WSLVM
-shutdown/populateddiskreclaim UNVERIFIED; userruns installerthenbutton/UAC.
-No paidQA/PR/push/ownercleanup. docs/releases/wsl-compaction-lock-fix.md;
-private sentry-wsl-lock-fix-20261014. shux absent/directprotocol; primaryeditskept.
+Review ZIP sentry-1.0.0-rc.1-aced9ccb57b6-windows-x64.zip:
+SHA256510ce4c9ca477cc3c5ffe6e5ea20c69cb126d46350cd769c1452d71d7874871d;
+manifestd6746440cc37aed7812645704fd27de106b65636e90c22cbec8a8372a8ed03ca;
+332inventoryfiles/extraction/sidecar/full identities verified. Archive bootstrap
+in fresh isolatedHOME passed preactivation/active checks; matching Desktop/runtime
+rc.1/protocol1/fullSHA confirmed. No owner stores accessed.
 
-## Previous record
+Single actual packaged GUI import PASS63,601ms:5003files/102directories/
+1,073,875,836bytes, fully written deterministic1GiBbinary plus5000nestedmodules.
+Five exclusion sentinels absent. Source/managed/immutable scans all match
+ee0d072d46d99e4b1f540190db067e8096502caca38aef6dfa163611cbc61a3b.
+Immutable asset distinctinode; UI timer/sidebar responsive; autoREADYcard.
+Fresh-process project/revision/hash/empty run history retained; supported graceful
+stop twice exit0; no task-owned Desktop/runtime remaining. No paid calls.
+Source input was WSL Linux filesystem through Windows GUI, not a1GiBNTFS test.
+No comparable shared Windows defect reproduced; native tracker remainsOPEN.
 
-# WSL compaction lock-release fix — verified in source; packaging pending
-
-Owner installed304d9d0, three elevated File.Open sharing violations confirm that
-Stopped distro did not prove detachedVHD. Corrected helper/confirmation requires
-VM shutdown after UAC, refuses other running distros at inspect/reclaim/postUAC,
-waits bounded30s for sharing/lock errors32/33 only, no WSL re-poll after shutdown.
-No force-detach/unmount. Existing QA/ack/IPC/CLI/quit/identity guards unchanged.
-RED2 reproduce unsafeother-distro trim and real transientFile.Openfailure;
-GREEN helper15/UI7, fullDesktop451pass/3existing skips, lint/typecheck/mainbuild,
-native empty64MiB VHDX compact/reopen twice PASS/0reclaimedexpected. Actual owner
-VM shutdown/populatedUbuntu compaction remains UNVERIFIED and is not automated.
-Matching archive/runtime/packaged dialog pending. No ownercleanup/paidQA/PR/push.
-Docs/releases/wsl-compaction-lock-fix.md; private sentry-wsl-lock-fix-20261014.
-shux unavailable/direct protocol; primary owner changes preserved.
+Full receipt docs/releases/v1-phase-6-2-windows-transition.md. Private evidence:
+C:/Users/merte/.codex/artifacts/sentry-phase62-20261014; worktree dist/phase62;
+WSL /var/tmp/sentry-phase62-evidence. CONDITIONALLY READY: owner merge of PR23,
+post-merge CI/approved exact source, long-lived branch creation and fresh final
+Windows RC build remain. Do not branch from unapproved PRhead or self-merge.
+No official tag/release/assets/main promotion authorized. shux absent; protocol
+maintained directly. Final review-head checks are reported in PR metadata.
 
 ## Previous record
 
-# WSL reclamation button — local candidate verified; owner acceptance pending
+# Phase 6.2 — PAUSED AT OWNER REQUEST
 
-Application/archive source304d9d08898b6dd14ed63c677af3145279fc6c95;
-branch codex/wsl-space-reclamation. ZIP SHA256
-ace840e8886fc5ac770e867f31d9fa53fd92607acb0ecfa3d84555e689ae3113.
-Settings Runtime confirms selected Ubuntu restart/admin approval, requires idle
-QA/positive shutdown ack, gates IPC/CLI/quit, trims and compacts registered disk,
-reconnects matching runtime and reports allocated/free volume bytes separately.
-No fixed1GiB reserve/file cleanup/resize/sparse conversion/globalWSLshutdown.
-FullDesktop444pass/3skips; isolated realWSL lifecycle1 PASS separately; native
-empty64MiB VHDX compact/reopen twice PASS (0 recovered expected); realUbuntu
-readonlyprobe PASS. 50uncachedstatic, archive20forcedbuilds/manifest/extraction,
-distribution32pass/27platformskips, exactLinux stage-only18builds/identity PASS.
-Actual packaged native dialog Cancel focus/Escape/runtime stays connected/import/
-singleinstance/gracefulstop PASS; screenshot inspected. Private installer syntax/
-VerifyOnly PASS. Actual owner installation/UAC/populatedUbuntu compaction remain
-UNVERIFIED. Installed64b/currentUbuntu/ownerfiles unchanged. No paidQA/PR/push.
-Receipt docs/releases/wsl-reclamation-local-review.md; architecture10answers.
-Private sentry-wsl-reclamation-20261014; shux unavailable/direct protocol.
+Owner said stop until PC cleanup on October 14, 2026. Do not resume without
+owner instruction. PR #23 remains draft against dev; no self-merge/publication.
+Task worktree: C:/Users/merte/Documents/GitHub/Sentry-work-windows-scope.
+Implementation commit aced9ccb57b664f5ee38280e8dfc72a8635d58d5; source tree
+73bb89f777ad4373e7087cdd00de03fc2facf845. Primary owner checkout untouched.
 
-## Previous record
+Completed: Windows-only support docs, retained native history/implementation,
+independent Windows/native packaging workflows, post-owner-merge branch commands
+and dedicated native import tracker. Owner declined GitHub Issues. No long-lived
+branches created before owner merge. Version rc.1/protocol1/lock/pins unchanged.
+Recovery A remains exact historical I1; original-beta G10 FAIL retained.
 
-# WSL reclamation button — implemented; packaging pending
+Executed: frozen install; repository/format/lint/typecheck/build/diff gates PASS
+on Windows/WSL (Windows Turbo static/build initially cached; archive forced all
+20 builds uncached). Windows Desktop400PASS/2skips; distribution26PASS/27skips;
+launcher20/20 and PowerShell smoke/behavior/IO/shutdown/maintenance PASS.
+WSL full suite1236PASS/16skips,40uncachedtasks; real systemd trust8/8 PASS;
+distribution50PASS/3skips (Windows validator and2 unavailable-fish cases).
+All executed native shell fixture scripts PASS. Initial Windows memory-exhaustion attempts
+and private-harness startup/line-ending mistakes retained separately.
 
-Local codex/wsl-space-reclamation from10062e6. Settings Runtime parameterless
-renderer-only action confirms whole selected-distro interruption/admin approval,
-blocks active/offline QA and concurrent IPC/CLI/quit, requires positive shutdown
-ack before trim/targeted termination/native compact, reconnects matching runtime.
-Measures allocated VHDX bytes separately from Windows volume free space. No file
-cleanup/resize/sparse conversion/global WSL shutdown/1GiB fixed reserve.
-Baseline14 PASS; newRED8fail1pass; UI/router9+lifecycle17+preload1+PS8 PASS.
-FullDesktop444pass/3skips; real staged WSL lifecycle1 PASS separately, native
-empty64MiB disposableVHDX compacted twice PASS/reclaimed0, realUbuntu inspect PASS.
-50uncached static tasks, Desktopbuild/lint/format/hygiene PASS. Original runtime/
-ownerfiles untouched; no UAC/trim/compaction of Ubuntu performed; no paidQA/PR/push.
-Architecture10answers and local review in docs. Packaging/matchingruntime/packaged
-native dialog acceptance pending; populatedUbuntu bytes/UAC remain UNVERIFIED.
-shux unavailable/direct protocol; primary owner changes preserved.
+New review ZIP built/extracted/validated: sentry-1.0.0-rc.1-aced9ccb57b6-windows-x64.zip,
+SHA256510ce4c9ca477cc3c5ffe6e5ea20c69cb126d46350cd769c1452d71d7874871d.
+Manifest SHA256d6746440cc37aed7812645704fd27de106b65636e90c22cbec8a8372a8ed03ca;
+332files; locka36aebfc003cd12076ed63613c05b07e6fa416d3c3f52a54d4f86ac3f3e4683a.
+HostWindows11 build26200/Node24.13.1/pnpm9.12.3/Electron36.2.1/builder26.0.12.
+Private evidence C:/Users/merte/.codex/artifacts/sentry-phase62-20261014;
+additional logs/harnesses under worktree dist/phase62 and WSL
+/var/tmp/sentry-phase62-evidence. Hosted implementation-head Windows archive,
+Windows launcher/Desktop and native archive passed; final quality conclusion
+not fetched before pause. No local/hosted hash equivalence assumed.
 
-## Previous record
+BLOCKED VERIFICATION: packaged large GUI import NOT STARTED. Disk fell to~280MB
+free; owner will clean PC. Need >=4GB headroom before resume. Fixture prepared at
+/var/tmp/sentry-phase62-large-project:5003includedfiles/1073875836bytes,5000nested
+sourcefiles, sparse all-zero1GiBasset,5exclusion sentinels. Disclose synthetic
+sparse workload; no native PASS inferred. Private large-gui-observer.mjs prepared
+but NOT executed. Isolated runtime bootstrap was interrupted at the owner pause; no product failure
+is inferred from that interruption.
+its log and staging retained. Inspect bootstrap/data/maintenance state before
+retry. No GUI/app/import process launched, no paid calls/owner credential access.
 
-# Windows space after removal — investigation complete
-
-Owner reports production3/3 + removal PASS. Installed64bff9f readonly DB has zero
-projects/copies/revisions/runs/agents/artifacts/deletion ops, project store8KiB/no
-tombstones; quick_checkOK. OriginalNexus source intentionally retained. Deletion
-is working. Non-sparse Ubuntu ext4.vhdx remains38.82GiB on C:; internal freed blocks
-are reusable in Linux, host-space recovery requires separate offline compaction.
-Original free-disk-space wording was incomplete for Windows/WSL.
-Second finding: accessible /var/tmp approximately22.70–23.73GiB depending on hard
-link accounting, much of it old Sentry validation fixtures. Several observed
-fixtures~~2GiB each; Phase62largeinput~~1.02GiB. Shared links/protected/volatile entries
-mean totals are not a reclaimable-byte guarantee or exhaustive audit. Earlier du
-finished naturally; stop guard made no change. No deletion/vacuum/trim/shutdown/
-compaction performed. Cleanup needs reviewed obsolete-fixture list/evidence retention
-then offline trim/compact, not another owner-project delete. Actual recovered bytes
-unverified. No appcode change/paidQA/PR/push; primary owner changes preserved.
-Diagnosis docs/releases/windows-wsl-space-investigation.md, private read-only
-receipts sentry-wsl-space-investigation-20261014. shux absent/direct protocol.
+Resume: inspect free disk and retained task-owned bootstrap; finish isolated
+exact-archive runtime bootstrap, actual GUI import/persistence/material/reopen/
+shutdown verification, scoped review and final readiness receipt. Update draft
+PR/CI evidence and mark reviewable only when complete. Owner merge still required
+for final release/native branches and fresh post-merge exact-source RC artifact.
+No tag/main promotion/assets publication authorized. shux unavailable; direct
+protocol updates. This pause is not phase completion or release readiness.
 
 ## Previous record
 
-# Windows host-space investigation — diagnosis verified
+# Phase 6.2 Windows-only release transition — IN PROGRESS
 
-Owner reports production3/3 and project removal PASS. Read-only inspection of
-installed64bff9f: zero projects/copies/revisions/runs/agents/artifacts/delete ops;
-projects8KiB, no project/tombstone directories, SQLite quick_check OK. Original
-Nexus source preserved. DB28,295,168bytes with27,729,920reusable free-list bytes.
-Ubuntu WSL2.6.3 non-sparse ext4.vhdx41,687,187,456bytes/38.82GiB; Linuxused36.17GiB.
-Deletion freed internal Linux blocks; dynamic VHD does not automatically shrink
-on C: (Microsoft docs verified). Exact reclaimable host bytes unverified; original
-wording about free disk space was incomplete. Separate offline trim/compaction
-would be required. No owner cleanup/DBvacuum/WSLshutdown/trim/compaction performed.
-Read-only receipts sentry-wsl-space-investigation-20261014; diagnosis
-in docs/releases/windows-wsl-space-investigation.md. No app changes or paidcalls,
-PR/push; primary owner edits preserved. shux unavailable, direct protocol.
-
-## Previous record
-
-# Project removal — local candidate implemented and verified
-
-Owner DeepSeek full run completed6findings; previous fix accepted. Local branch
-codex/project-removal; application/archive source64bff9fdcb5aed2335c4cf1efbe0815a2edcde48.
-Projects cards/detail Remove project confirms permanent stored-copy/history removal,
-keeps original sources, blocks active states, tolerates manually missing roots and
-refreshes mounted canonical Projects/Dashboard views. Existing journal/cascades used.
-No migration/provider/protocol changes. RED2 missing-root and7missing-UI cases;
-GREEN manager17/17, newUI/preload8/8; WindowsDesktop408pass/2skips, static20uncached PASS.
-WSL full1260pass/16existing skips across40uncached tasks incl realtrust8/8/runtime73.
-Archive20forcedbuilds/332inventory/extraction PASS; distribution32pass/27skips.
-ZIP3be517c2862e610a7e341737b059fa35aee0350e0f02f59a262dae66a12f96a9.
-Actual packaged GUI PASS Add by path/native Cancel focus/Escape/permanent deletion/
-physical storage removal/missing-root detail cleanup/original preservation/fresh DB
-reopen/singleinstance/graceful stop. Screenshot reviewed. Harness cache/quoting errors
-retained and corrected; no product change after packaging. Bootstrap preflight
-correctly refused active owner runtime; supported isolated stage-only18builds + paired
-identity passed. Owner runtime/profile/projects untouched; no paidcalls/push/PR.
-Private install-project-removal.ps1 syntax/VerifyOnly PASS; owner installation and
-activation/credential upgrade remain UNVERIFIED. Open helper provided for new build.
-Receipt docs/releases/project-removal-local-review.md; architecture10questions
-in docs/architecture/project-removal.md. Private evidence sentry-project-removal-20261014.
-Primary dirty owner files preserved; shux absent, task/ledger/handoff direct.
-
-## Previous record
-
-# Project removal — implemented; packaging verification in progress
-
-Owner confirmed live DeepSeek completed with6findings. New local-only feature on
-codex/project-removal frombe3431f retains previous fixes, no push/PR.
-Projects cards + detail expose confirmed removal of managed materials/history,
-original source preserved, active states disabled/backend lock unchanged.
-Missing-root deletion ENOENT regression RED2 then GREEN; database cascades/journal
-retained. UI RED7 then GREEN7 + preload1; manager17/17 and WindowsDesktop408pass/
-2existing skips; static20uncached tasks PASS. No migrations/protocol/provider changes.
-Architecture10questions docs/architecture/project-removal.md. Private logs
-C:/Users/merte/.codex/artifacts/sentry-project-removal-20261014. Paired local archive,
-WSL broad gates and guarded disposable real packaged GUI removal pending. Never
-use owner projects/profile as deletion fixtures. Primary owner edits untouched.
-shux unavailable; direct task/ledger/handoff. Source-commit receipt will record
-exact tested archive; no paid QA or owner installation performed by agent.
-
-## Previous record
-
-# Windows local candidate — visible launch repaired and verified
-
-Owner installed DeepSeek-fixed source0ac6c1c successfully, but packaged open
-used WindowStyle Hidden. The exact candidate was running without a visible main
-window. Source release.ps1 now uses Normal; real PowerShell entrypoint regression
-RED Hidden!=Normal then GREEN6/6; distribution32PASS/27platformskips. Syntax PASS.
-Prior smoke launched executable directly and did not cover hidden launcher.
-Installed immutable archive unchanged. Updated external installer uses Normal;
-open-local-fix.ps1 verified matching Desktop/runtime identities, supported graceful
-stop, then actual visible Sentry window PID14276/nonzero handle. Repeated helper
-returns already visible with same PID, preserving ongoing QA. No paidcalls/PR/push.
-Global Sentry shim still points to Sentry-latest; former current directory is old
-16b archive. Use external open-local-fix.ps1 for installed0ac candidate. Future
-archives use repaired source; no repack/reinstall needed for this workaround.
-Owner credentials untouched; funded DeepSeek retry remains UNVERIFIED. Primary
-owner dirty files preserved. shux unavailable; protocol maintained directly.
-
-## Previous record
-
-# DeepSeek shell evidence — implemented and verified locally
-
-Owner request completed as a local review candidate; no push or GitHub PR.
-Branch codex/deepseek-shell-evidence, tested source0ac6c1c62ccc2660ce1f92bed078cfdad7f4a80a.
-Pinned persistent Bash completion marker mismatch caused unknown outcomes and
-strong command-evidence rejection. Minimal adapter parser repair preserves trust.
-Regression RED3 exact error, GREEN10; adapter39/39 and DeepSeek56/56 PASS.
-WSL affected suites391/391 and20uncached tasks PASS, including real sandbox8/8.
-Windows relevant five suites305/305 PASS; Windows run-engine80pass/6Linux-sandbox
-failures and cleanup locks retained, resolved on WSL86/86. Static15uncached tasks,
-forced archive20builds, distribution31pass/27platformskips, format/diff/hygiene PASS.
-ExactZIP63c9b166ba1f5fb7d9fc487f61833422a613023ce789c57b3a33427a63216308;
-332inventory/extraction, isolated frozen WSL bootstrap+paired handshakes and
-actual packaged Desktop/preload/renderer/IPC/import/singleinstance/stop PASS.
-Owner current16b installation unchanged; no paidQA or credential-store access.
-Private install-local-fix.ps1 syntax/checksum VerifyOnly PASS; owner setup and
-funded live retry remain UNVERIFIED. Start a new run after matching installation.
-Full receipt docs/releases/deepseek-persistent-shell-evidence-fix.md; private
-logs C:/Users/merte/.codex/artifacts/sentry-deepseek-evidence-fix-20261014.
-Primary owner dirty files preserved. shux unavailable; protocol maintained here.
-
-## Previous record
-
-# DeepSeek shell evidence — investigation and local fix in progress
-
-Owner request: fix run_01M4XH2DHRPX0QD51AB3FTP0W5 report failures locally;
-do not create a GitHub PR. No push, release publication or paid QA calls.
-Worktree: C:/Users/merte/Documents/GitHub/Sentry-work-deepseek-evidence.
-Branch codex/deepseek-shell-evidence; baseline 90677b5 includes the Windows
-bootstrap repair and the same application code as installed source 16b47d8.
-Primary owner checkout and its existing DeepSeek edits remain untouched.
-
-Inspected: supplied export, installed build identity, adapter observation and
-report conversion, canonical finding trust, correction prompts and pinned SDK
-shell renderers. Export has 46 tool completions and zero command.executed events;
-persistent Bash emits [Command finished with exit code N], which Sentry misses.
-This makes command evidence manual and rejects strong findings. Original report
-JSON is not in the export; its precise evidence keys are unavailable.
-
-Plan: deterministic adapter regression for actual persistent-shell markers,
-minimal terminal-marker parser repair, negative tests preserving unknown outcomes,
-affected package/static checks, local paired Windows/runtime archive for testing.
-No validator weakening, provider version or schema changes. shux contract was
-attempted but the command is unavailable; protocol records maintained directly.
-
-## Previous record
-
-# Windows bootstrap correction — owner review pending
-
-PR24 fixes a reproduced Windows release blocker independently of scope PR23.
-Implementation source963fb574dd77f7f0143f2660bfa20ade7c6e3759 from approveddev62b474e.
-PowerShell Args automatic variable discarded wsl; rename ScriptArguments fixes
-actual packaged setup/repair. Regression RED2/3pass then GREEN5/5; full Windows
-distribution31PASS/27skips after required build. Frozen install/static/build and
-PS syntax/maintenance PASS; cached static/build disclosed, packagingforced20builds.
-Exact localZIP2d122868eb608a1c25954eaa3372ac9c21ef9a477e09b56df1cbef34057c49c2,
-manifest34045ff7cd317d23eb950aa6cfc9193e6d64a5e091a28e3fc25839117c6b9ee6,332files
-and full extraction PASS. Real packaged PShelper->originalWSLprocesshelper->
-isolated frozen bootstrap/activation/paired handshake PASS; actual packaged
-Desktop/preload/renderer/IPC/small import/singleinstance/graceful shutdown PASS.
-Implementation CI38583607413 and both-target distribution38583607783 SUCCESS.
-No version/protocol/schema/provider/sandbox/identity/credential changes. Owner
-profile/data/credentials untouched; existing fatal Desktop was not stopped by
-the agent. Paid calls0; populated-history/DPAPI revalidation not inferred.
-
-PR23 remains draft/blocked pending reviewed fix integration and fresh selected
-Windows RC. Existing immutable16b47d8 archive can be tested by user stopping
-Desktop, invoking its verified bootstrap with explicitwsl, checking runtimefullSHA
-and reopening that same Desktop. Do not edit manifest/identity or delete data.
-Owner installation remains unverified until reported. No self-merge/tag/release.
-Full receipt docs/releases/v1-windows-bootstrap-mode-fix.md; exact finalheadchecks
-are in PR24 metadata. Private logs/harnesses under worktree dist/bootstrap-fix
-and C:/Users/merte/.codex/artifacts/sentry-windows-bootstrap-fix-20261014.
-Original missing-dist build race/private harness-loading attempts retained.
-shux unavailable; task status/ledger/handoff maintained directly.
-
-## Previous record
-
-# Windows bootstrap mode correction — review in progress
-
-Owner's packaged setup selects Ubuntu but loses explicit wsl mode because
-Invoke-DistributionLinux uses automatic-variable name Args. Setup refuses native
-Ubuntu and retains prior runtime; new Desktop correctly rejects mismatched identity.
-Root cause reproduced through actual packaged PS entrypoint: setup/repair RED2;
-renaming to ScriptArguments GREEN5/5. Full Windows distribution31PASS/27skips
-following required build. Initial missing-dist test race retained. Frozen install,
-hygiene/format/lint/typecheck/build and PowerShell syntax/maintenance PASS;
-static/build Turbo caches reported. No provider/version/schema/credential change.
-
-Separate fix/v1-windows-bootstrap-mode from approved dev62b474e; targetdev.
-PR23 returned to draft: normal release setup remains blocked until this correction
-is integrated and a fresh exact-source candidate verified. Earlier direct-inner-
-bootstrap GUI acceptance did not cover the PS handoff; history is retained.
-No owner profile/data/credential store accessed. Existing owner fatal Desktop not
-modified/stopped by the agent. Exact fix artifact/real PS->WSL validation/CI pending.
-shux contract unavailable; protocol updated directly. No tag/publication/self-merge.
-See docs/releases/v1-windows-bootstrap-mode-fix.md and fix PR for final evidence.
+Isolated release-prep/v1-windows-only-scope from approved dev62b474e. Initial
+Windows11 x64/WSL2 scope and independent Windows/native packaging prepared.
+Shared Ubuntu runtime/security gates retained. Native import tracker is in
+docs/releases/native-linux-large-import.md; owner declined GitHub Issues.
+Recovery Option A remains historical corrected I1; no native PASS inferred.
+Windows static/build gates pass (Turbo cache reported). Initial local tests
+hit host memory exhaustion; failed attempts retained. Reruns, WSL full/trust,
+exact review ZIP and 1GiB packaged-GUI import pending. Owner merge required
+before long-lived release/native branches; commands prepared, refs not created.
+No tag/publication/main promotion/paid calls/real credential access. shux absent;
+protocol updated directly. See docs/releases/v1-phase-6-2-windows-transition.md.
 
 ## Previous record
 

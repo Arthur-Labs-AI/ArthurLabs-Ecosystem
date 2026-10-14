@@ -1,5 +1,11 @@
 # Phase 6.1 — exact-source RC cut verification
 
+> Historical Phase 6.1 evidence. Phase 6.2 changes the initial release target to
+> Windows 11 x64/WSL2. Native Linux Desktop is DEFERRED — FUTURE NATIVE LINUX
+> RELEASE; the failures and unverified cases below retain their original status.
+> This receipt does not select the final Windows-only source or authorize a cut.
+> See the [current Windows transition receipt](v1-phase-6-2-windows-transition.md).
+
 Snapshot: October 14, 2026, Europe/Sofia. **NATIVE IMPORT INVESTIGATION OPEN**:
 the owner reports a large-project `projects.add` timeout on CachyOS. Exact-build
 attribution and root cause remain unverified; native smoke has not passed.

@@ -1,5 +1,13 @@
 # Version transition for unsigned v1.0.0-rc.1 review
 
+> Historical version-transition plan; version rc.1 and protocol 1 remain current.
+> Phase 6.2 selects Windows 11 x64/WSL2 as the initial release target. Native
+> Desktop is DEFERRED — FUTURE NATIVE LINUX RELEASE, and its packaging lane is
+> separate from the required Windows archive job. Recovery Option A was adopted
+> October 14 for historical Windows/I1. The source selection and combined-workflow
+> wording below describe Phase 6.1, not the final Windows-only artifact. See the
+> [current receipt](v1-phase-6-2-windows-transition.md) and post-merge procedure.
+
 Phase 6.1 integration update: the transition below is now owner-merged through
 PR #21 into dev at `8a75e9924a41b98351e46255111fdbfed335f1f0`. Its tree equals
 reviewed head `ef6ce35cf0eac9c3bdb0fafc8693f78b125ddfad`. The

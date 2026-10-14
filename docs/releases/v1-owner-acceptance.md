@@ -1,5 +1,10 @@
 # Sentry v1 owner acceptance procedure
 
+> Historical both-host acceptance campaign. Windows 11 x64/WSL2 is the initial
+> v1 release target; native Linux Desktop acceptance is DEFERRED — FUTURE NATIVE
+> LINUX RELEASE. Preserve all historical failures and unchecked rows below.
+> Use the [current Windows receipt](v1-phase-6-2-windows-transition.md) for release gates.
+
 This procedure finishes the evidence gates for Phases 4 and 5. It does not
 authorize Phase 6, provider spending, a version bump, tags, or publication.
 The candidate version remains **0.1.0-beta.1**; its full source SHA identifies
