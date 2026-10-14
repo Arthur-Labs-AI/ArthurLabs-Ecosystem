@@ -375,14 +375,19 @@ function lastPendingCall(
 }
 
 /**
- * Parse the dsh-shell exit-status marker contract (`\n[exit code: N]` /
- * `\n[killed by signal: X]`, anchored to end of string). Mirrors
- * parseExitStatus in @deepseek-ai/dsh-shell: the marker is the runtime's
- * structured signal, and absent markers mean clean exit 0.
+ * Parse explicit terminal status markers from the pinned shell renderers.
+ * dsh-shell uses [exit code: N] / [killed by signal: X]; persistent Bash
+ * uses [Command finished with exit code N], including 0 and empty output.
+ * Absent or invalid markers leave the outcome unknown, never implicit 0.
  */
 function parseShellExitMarker(text: string): { exitCode: number } | { signal: string } | undefined {
   const signal = /\n\[killed by signal: ([^\]\n]+)\]$/.exec(text);
   if (signal?.[1] !== undefined) return { signal: signal[1] };
+  const persistent = /(?:^|\n)\[Command finished with exit code (\d+)\]$/.exec(text);
+  if (persistent?.[1] !== undefined) {
+    const exitCode = Number(persistent[1]);
+    return Number.isSafeInteger(exitCode) ? { exitCode } : undefined;
+  }
   const exit = /\n\[exit code: (\d+)\]$/.exec(text);
   if (exit?.[1] !== undefined) return { exitCode: Number(exit[1]) };
   return undefined;
@@ -696,8 +701,9 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
     this.completedTools.add(itemId);
     if (resultCallId !== undefined) this.pendingToolCalls.delete(resultCallId);
     // Shell exit-status markers (dsh-shell render contract): the runtime
-    // appends `\n[exit code: N]` / `\n[killed by signal: X]` to
-    // model-facing shell results. Reading the marker is observation of the
+    // appends [exit code: N] / [killed by signal: X], and persistent Bash
+    // appends [Command finished with exit code N] to model-facing shell
+    // results. Reading the marker is observation of the
     // runtime's own structured signal — the same contract its terminal
     // presentation parses — never inference from prose. Scoped to
     // shell-family tools; other tools' text is never code-mined.

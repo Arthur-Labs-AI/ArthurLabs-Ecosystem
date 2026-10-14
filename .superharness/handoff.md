@@ -1,3 +1,20 @@
+# DeepSeek persistent-shell evidence — local verification in progress
+
+Owner requested investigation/fix with no GitHub PR. Isolated local branch
+codex/deepseek-shell-evidence from90677b5; primary dirty owner files untouched.
+Pinned persistent Bash marker mismatch reproduced exact exported failure.
+Minimal parser repair recognizes explicit terminal completion code, including0
+and empty output; unknown outcomes remain unknown and trust validation unchanged.
+Regression RED3/GREEN10; adapter39/39 and DeepSeek56/56; pipeline18/domain88/
+schemas118/protocol25 PASS. DeepSeek lint/typecheck + dependencies15uncached PASS.
+Windows run-engine80pass/6fail: Linux systemd sandbox unavailable, plus cleanup
+locks. Run under WSL before claiming trust acceptance. Packaging and isolated
+paired-runtime/Desktop smoke pending. No paidQA, push or PR; shux unavailable.
+Full diagnosis docs/releases/deepseek-persistent-shell-evidence-fix.md. Private
+logs C:/Users/merte/.codex/artifacts/sentry-deepseek-evidence-fix-20261014.
+
+## Previous record
+
 # Windows bootstrap correction — owner review pending
 
 PR24 fixes a reproduced Windows release blocker independently of scope PR23.

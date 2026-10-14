@@ -1,3 +1,27 @@
+# DeepSeek shell evidence — investigation and local fix in progress
+
+Owner request: fix run_01M4XH2DHRPX0QD51AB3FTP0W5 report failures locally;
+do not create a GitHub PR. No push, release publication or paid QA calls.
+Worktree: C:/Users/merte/Documents/GitHub/Sentry-work-deepseek-evidence.
+Branch codex/deepseek-shell-evidence; baseline 90677b5 includes the Windows
+bootstrap repair and the same application code as installed source 16b47d8.
+Primary owner checkout and its existing DeepSeek edits remain untouched.
+
+Inspected: supplied export, installed build identity, adapter observation and
+report conversion, canonical finding trust, correction prompts and pinned SDK
+shell renderers. Export has 46 tool completions and zero command.executed events;
+persistent Bash emits [Command finished with exit code N], which Sentry misses.
+This makes command evidence manual and rejects strong findings. Original report
+JSON is not in the export; its precise evidence keys are unavailable.
+
+Plan: deterministic adapter regression for actual persistent-shell markers,
+minimal terminal-marker parser repair, negative tests preserving unknown outcomes,
+affected package/static checks, local paired Windows/runtime archive for testing.
+No validator weakening, provider version or schema changes. shux contract was
+attempted but the command is unavailable; protocol records maintained directly.
+
+## Previous record
+
 # Windows bootstrap correction — owner review pending
 
 PR24 fixes a reproduced Windows release blocker independently of scope PR23.
