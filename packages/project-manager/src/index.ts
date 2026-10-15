@@ -33,7 +33,8 @@ import {
 } from '@qa/persistence';
 import { SnapshotEngine } from '@qa/snapshot-engine';
 import { ProjectContextBuilder, type PreparedProjectContext } from '@qa/context-builder';
-import { ProjectManagerError } from './errors.js';
+import { ProjectManagerError, projectCopyFailure } from './errors.js';
+import { excludeGeneratedSource } from './source-selection.js';
 
 export interface ProjectRecord {
   readonly project: Project;
@@ -117,6 +118,12 @@ function exclusionPredicate(includeAll?: boolean): ((relativePath: string) => bo
   return (relativePath: string) => matchImportExclusion(relativePath, set);
 }
 
+function sourceExclusionPredicate(
+  includeAll?: boolean,
+): ((relativePath: string) => boolean) | undefined {
+  return includeAll === true ? undefined : excludeGeneratedSource;
+}
+
 export class ProjectManager {
   private readonly snapshots: SnapshotEngine;
   private readonly contexts: ProjectContextBuilder;
@@ -170,14 +177,14 @@ export class ProjectManager {
         source,
         dirname(this.dataRoot),
         options.signal,
-        exclusionPredicate(options.includeAll),
+        sourceExclusionPredicate(options.includeAll),
       );
       await mkdir(paths.root, { recursive: true });
       const exclude = exclusionPredicate(options.includeAll);
       const stats = await copyTree(source, staging, {
         ...(options.signal === undefined ? {} : { signal: options.signal }),
         ...(options.onProgress === undefined ? {} : { onProgress: options.onProgress }),
-        ...(exclude === undefined ? {} : { exclude }),
+        ...(options.includeAll === true ? {} : { exclude: excludeGeneratedSource }),
       });
       const scan = await this.snapshots.scanRevision(staging, options.signal, {
         ...(exclude === undefined ? {} : { exclude }),
@@ -236,10 +243,10 @@ export class ProjectManager {
       }
       await rm(paths.root, { recursive: true, force: true }).catch(() => undefined);
       if (cause instanceof ProjectManagerError) throw cause;
-      throw new ProjectManagerError(
+      throw projectCopyFailure(
         'PROJECT_COPY_FAILED',
         'Failed to create the managed project copy',
-        { cause },
+        cause,
       );
     }
   }
@@ -404,14 +411,14 @@ export class ProjectManager {
         source,
         paths.root,
         options.signal,
-        exclusionPredicate(options.includeAll),
+        sourceExclusionPredicate(options.includeAll),
       );
       await rm(staging, { recursive: true, force: true });
       const exclude = exclusionPredicate(options.includeAll);
       const stats = await copyTree(source, staging, {
         ...(options.signal === undefined ? {} : { signal: options.signal }),
         ...(options.onProgress === undefined ? {} : { onProgress: options.onProgress }),
-        ...(exclude === undefined ? {} : { exclude }),
+        ...(options.includeAll === true ? {} : { exclude: excludeGeneratedSource }),
       });
       const scan = await this.snapshots.scanRevision(staging, options.signal, {
         ...(exclude === undefined ? {} : { exclude }),
@@ -537,10 +544,10 @@ export class ProjectManager {
         );
       }
       if (cause instanceof ProjectManagerError) throw cause;
-      throw new ProjectManagerError(
+      throw projectCopyFailure(
         'PROJECT_UPDATE_FAILED',
         'Project update failed; previous working copy was preserved',
-        { cause },
+        cause,
       );
     }
   }

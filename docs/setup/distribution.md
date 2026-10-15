@@ -1,11 +1,11 @@
 # Installing a pinned Sentry Windows distribution
 
-The active candidate version is **1.0.0**, runtime protocol **1**. The owner
-selected direct stable publication for **Windows 11 x64 + WSL2** (Ubuntu preferred),
-with no public RC/prerelease. This candidate remains unsigned and unpublished
-pending owner review and later promotion/publication authorization. See the
-[stable release notes](../releases/v1.0.0.md) and
-[Phase 6.6 source, validation and artifact handoff](../releases/v1-phase-6-6-stable-readiness.md).
+The Windows patch release version is **1.0.1**, runtime protocol **1**, for
+**Windows 11 x64 + WSL2** (Ubuntu preferred). Packages remain unsigned ZIPs.
+See the [patch release notes](../releases/v1.0.1.md); the public Release page records
+availability, exact source identity and download checksums. Historical
+[v1.0.0 preparation evidence](../releases/v1-phase-6-6-stable-readiness.md) retains
+its original source and scope.
 
 Windows Desktop uses the Linux execution runtime, systemd and bubblewrap isolation.
 Native Linux Desktop is deferred; CachyOS instructions below retain the experimental
@@ -35,10 +35,13 @@ for the original security fixtures; the stable handoff records integration check
 
 ## Obtain, verify and extract
 
-Use only an owner-approved private delivery channel. Private GitHub Actions
-artifacts expire after seven days and are unsigned review candidates. Access
-requires authorization; no GitHub token is embedded or needed during installation.
-Obtain the matching `.sha256` through the owner's trusted channel. A checksum
+The published Windows Stable archive is available on the
+[official Release page](https://github.com/Mert1026/Sentry/releases/tag/v1.0.1),
+including PowerShell commands that download both assets automatically.
+GitHub Actions artifacts are unsigned review candidates and expire after seven
+days; use those only when approved for testing. No GitHub token is embedded or
+needed for public Stable downloads. Obtain the matching `.sha256` through the
+trusted release/delivery channel. A checksum
 detects corruption, not publisher identity if both files are substituted.
 
 Archive names include version, 12-digit source SHA and target platform. Each
@@ -49,8 +52,11 @@ Windows PowerShell (replace placeholders with the actual approved filename):
 
 ```powershell
 $archive = 'sentry-<version>-<sha12>-windows-x64.zip'
-$expected = ((Get-Content -LiteralPath ($archive + '.sha256')) -split '\s+')[0]
-if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Checksum mismatch' }
+$ErrorActionPreference = 'Stop'
+$archive = (Resolve-Path -LiteralPath $archive -ErrorAction Stop).Path
+$expected = ((Get-Content -LiteralPath ($archive + '.sha256') -Raw -ErrorAction Stop).Trim() -split '\s+')[0]
+if ($expected -notmatch '^[a-fA-F0-9]{64}$') { throw 'Invalid checksum sidecar' }
+if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256 -ErrorAction Stop).Hash -ine $expected) { throw 'Checksum mismatch' }
 Expand-Archive -LiteralPath $archive -DestinationPath "$env:LOCALAPPDATA\Sentry\distributions\<sha12>"
 cd "$env:LOCALAPPDATA\Sentry\distributions\<sha12>\sentry-<version>-<sha12>-windows-x64"
 .\sentry.ps1 version
@@ -82,6 +88,28 @@ reboot/Ubuntu account creation. It does not start a paid agent.
 ```powershell
 .\sentry.ps1 setup -Distro Ubuntu
 ```
+
+Windows v1.0.1 archives register a per-user `sentry` command after
+successful setup. Open a new terminal to pick up the user PATH. In an already-open
+PowerShell window, refresh just the command location:
+
+```powershell
+$env:Path += ";$env:LOCALAPPDATA\Sentry\bin"
+sentry version
+sentry open
+```
+
+PowerShell and Command Prompt then resolve `sentry` from any directory. The command
+points to this extracted archive; keep the directory in place. Re-register a moved
+archive without installing the runtime or stopping Desktop:
+
+```powershell
+.\sentry.ps1 register-command
+```
+
+The original published v1.0.0 archive lacks built-in registration. Follow its
+Release page rather than running a command it does not implement. No published
+archive bytes are changed by this source fix.
 
 Bootstrap requires **standalone Linux Node >=22** and **Linux pnpm 9.12.3**,
 systemd user services, bubblewrap and socat. If absent it fails with guidance.
@@ -127,6 +155,28 @@ Claude Code 2.1.270, and persists non-secret binary paths through Desktop.
 Configure credentials only in **Settings → Providers**. Verify Environment's
 connected Linux runtime and readiness for your selected agents before QA.
 Process launch or credential presence does not prove provider credit/readiness.
+
+## Project imports
+
+New imports and updates skip the existing Node/Git/build exclusions plus known
+Python caches (`.pytest_cache`, `.pytest-tmp`, `.pytest-tmp-*`, `.mypy_cache`,
+`.ruff_cache`, `__pycache__`), environments (`.venv`, `venv`), `.cache`, `.tmp`,
+and Next/Nuxt output (`.next`, `.nuxt`) at any depth. They are pruned before directory
+traversal, so an inaccessible generated cache does not prevent source import.
+Original source files and permissions are never changed. The runtime's explicit
+`SENTRY_IMPORT_INCLUDE_ALL=1` opt-out retains full-tree import behavior.
+
+The source `.gitignore` is not evaluated. Local data such as `.data` remains
+eligible and can be large. An unreadable non-excluded path fails with a path-specific
+permission message; it is never silently omitted. Disk exhaustion identifies the
+storage problem and the need for Windows backing-drive space under WSL. Import
+retains a managed copy and immutable revision, with copy fallback when reflinks are
+unavailable. Linux's virtual free-space figure alone does not establish Windows
+drive headroom.
+
+Source filtering is separate from the frozen revision hash rules. Existing v2
+revisions which retained caches remain hashable and detect changes to those bytes.
+Updating creates a new filtered revision; it does not rewrite historical material.
 
 ## Deferred CachyOS development installation
 

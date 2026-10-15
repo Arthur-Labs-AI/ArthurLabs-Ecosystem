@@ -14,7 +14,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 Import-Module (Join-Path $repoRoot 'scripts/launcher/SentryLauncher.psm1') -Force -DisableNameChecking
 . (Join-Path $repoRoot 'scripts/launcher/wsl-setup.ps1')
 if (-not $Version) {
-  $product = '1.0.0'
+  $product = '1.0.1'
   try { $pkg = Get-Content (Join-Path $repoRoot 'package.json') -Raw | ConvertFrom-Json; if ($pkg.version) { $product = [string]$pkg.version } } catch { }
   $sha = 'unknown'
   try { $s = & git -C $repoRoot rev-parse --short HEAD 2>$null; if ($LASTEXITCODE -eq 0 -and $s) { $sha = ([string]$s).Trim() } } catch { }
