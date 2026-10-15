@@ -9,6 +9,15 @@
   services, bubblewrap, existing protocol and secure DPAPI storage.
 - Windows unsigned ZIP review packaging is independent of native Desktop
   packaging; shared Linux runtime/security validation remains required.
+- Correct packaged PowerShell WSL-mode forwarding and visible Desktop launch.
+- Ground DeepSeek persistent Bash outcomes in explicit tool completion evidence;
+  retain strong-finding evidence validation and fail closed on unknown outcomes.
+- Confirmed project removal with managed-data/history cleanup, active-operation
+  refusal, missing-folder handling and preservation of original source folders.
+- Explicit Windows WSL disk reclamation, administrator consent, other-distro
+  refusal, bounded disk-lock release waiting and Desktop reconnection.
+- Freeze verification and exact-source private Windows archive provenance in the
+  [Phase 6.3 handoff](docs/releases/v1-phase-6-3-windows-rc-freeze.md).
 - Recovery Option A remains limited to the exact historical corrected I1 pair
   and tested Windows account/machine/DPAPI context. Original-beta rollback FAIL
   is retained. No new version bump, official RC publication or updater.

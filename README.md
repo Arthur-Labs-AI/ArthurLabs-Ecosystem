@@ -4,7 +4,7 @@ Sentry is a local-first AI QA desktop application. OpenCode, DeepSeek, and
 GLM through Claude Code independently investigate one immutable project snapshot
 and return findings, evidence, token usage, and observable run history.
 
-**Windows-first review preparation: `1.0.0-rc.1`, unsigned and not published.**
+**Windows release freeze: `1.0.0-rc.1`, unsigned and not published.**
 The only initial release target is **Windows 11 x64 with WSL2** (Ubuntu preferred).
 Windows Desktop continues to use the Linux execution runtime through WSL2,
 including systemd user services and sandbox isolation. Native Linux Desktop,
@@ -12,6 +12,8 @@ initially CachyOS x64, is **DEFERRED — FUTURE NATIVE LINUX RELEASE**.
 Its experimental implementation and historical evidence remain available. See the
 [draft RC notes](docs/releases/v1.0.0-rc.1.md) and
 [RC readiness checklist](docs/releases/V1_RC_READINESS_CHECKLIST.md).
+The [Phase 6.3 freeze handoff](docs/releases/v1-phase-6-3-windows-rc-freeze.md)
+records the selected merged source, exact archive and remaining authorization gates.
 The owner previously reported normal functionality on both hosts; exact-build and
 recovery-policy limits are recorded separately. No stable-release claim is made.
 
@@ -27,6 +29,8 @@ Its immutable executable is not an accepted credential-recovery downgrade target
 - Isolated Linux workspaces, persistent history and restart recovery.
 - JSON/log export, native Save As, and CLI control of the running Desktop.
 - Provider settings, environment checks, and resumable source-based setup.
+- Confirmed project removal of managed data and history, preserving original sources.
+- Explicit Windows disk reclamation with active-operation refusal and reconnection.
 
 Historical merger/verifier/issue-lineage components remain in the repository.
 Merge/verification ingestion is not exposed by current Desktop runtime RPC;

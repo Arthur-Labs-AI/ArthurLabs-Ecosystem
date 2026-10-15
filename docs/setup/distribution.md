@@ -24,9 +24,28 @@ on October 14, 2026, only in its tested Windows/I1 scope; original-beta G10
 remains historical FAIL. These handoffs do
 not publish or authorize a release.
 
-The [Phase 6.2 Windows receipt](../releases/v1-phase-6-2-windows-transition.md)
-supersedes that historical source selection. After owner integration, build from
-the actual approved merge SHA; never reuse an earlier archive/checksum as the new RC.
+The [Phase 6.3 freeze handoff](../releases/v1-phase-6-3-windows-rc-freeze.md)
+is the current source/archive/gate record. Its selected merged-dev source is
+`c6d4769bf3179d49bb3718074d6c083f52332626`; the privately retained Windows ZIP
+was freshly built from that commit. The
+[Phase 6.2 receipt](../releases/v1-phase-6-2-windows-transition.md) remains
+historical import evidence. A later merged release-documentation/correction SHA
+requires its own fresh build, checksums and bounded acceptance before publication;
+never rename earlier bytes or attribute their checksum to a later merge.
+
+The [Phase 6.4 activation handoff](../releases/v1-phase-6-4-release-activation.md)
+records the owner's upload-only branch-creation exception. The release branch
+exists; hosted delivery and official publication remain separate decisions.
+The local physically tested c6d4769 ZIP and the runner-generated c6d4769 ZIP have
+different checksums and must not be interchanged or renamed as later sources.
+
+Optional elevated WSL disk reclamation assumes a private trusted profile. Do not
+place that profile in a directory writable by other accounts. The current helper
+does not independently establish custom-profile ACL safety or hostile same-user
+replacement resistance. The [targeted review](../releases/v1-phase-6-4-release-activation.md#privileged-helper-review)
+recommends narrow hardening before broad publication; no administrator disk
+operation was run during that review. Ordinary setup/open does not require
+invoking disk reclamation.
 
 ## Obtain, verify and extract
 
