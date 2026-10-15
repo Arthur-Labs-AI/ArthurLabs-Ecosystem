@@ -5,8 +5,8 @@
 // implements the decisions so they can be unit-tested without WSL.
 // Run: node --test scripts/launcher/tests/
 
-export const SENTRY_PRODUCT_VERSION = '1.0.0';
-export const SENTRY_RELEASE_TITLE = 'Sentry v1.0.0';
+export const SENTRY_PRODUCT_VERSION = '1.0.1';
+export const SENTRY_RELEASE_TITLE = 'Sentry v1.0.1';
 export const REQUIRED_NODE_MAJOR = 22;
 export const PINNED_OPENCODE_VERSION = '1.18.32';
 export const PINNED_DEEPSEEK_SDK_VERSION = '0.1.5-rc.2';

@@ -1,11 +1,11 @@
 # Installing a pinned Sentry Windows distribution
 
-The active candidate version is **1.0.0**, runtime protocol **1**. The owner
-selected direct stable publication for **Windows 11 x64 + WSL2** (Ubuntu preferred),
-with no public RC/prerelease. This candidate remains unsigned and unpublished
-pending owner review and later promotion/publication authorization. See the
-[stable release notes](../releases/v1.0.0.md) and
-[Phase 6.6 source, validation and artifact handoff](../releases/v1-phase-6-6-stable-readiness.md).
+The Windows patch release version is **1.0.1**, runtime protocol **1**, for
+**Windows 11 x64 + WSL2** (Ubuntu preferred). Packages remain unsigned ZIPs.
+See the [patch release notes](../releases/v1.0.1.md); the public Release page records
+availability, exact source identity and download checksums. Historical
+[v1.0.0 preparation evidence](../releases/v1-phase-6-6-stable-readiness.md) retains
+its original source and scope.
 
 Windows Desktop uses the Linux execution runtime, systemd and bubblewrap isolation.
 Native Linux Desktop is deferred; CachyOS instructions below retain the experimental
@@ -36,7 +36,7 @@ for the original security fixtures; the stable handoff records integration check
 ## Obtain, verify and extract
 
 The published Windows Stable archive is available on the
-[official Release page](https://github.com/Mert1026/Sentry/releases/tag/v1.0.0),
+[official Release page](https://github.com/Mert1026/Sentry/releases/tag/v1.0.1),
 including PowerShell commands that download both assets automatically.
 GitHub Actions artifacts are unsigned review candidates and expire after seven
 days; use those only when approved for testing. No GitHub token is embedded or
@@ -89,7 +89,7 @@ reboot/Ubuntu account creation. It does not start a paid agent.
 .\sentry.ps1 setup -Distro Ubuntu
 ```
 
-Archives built from this revision register a per-user `sentry` command after
+Windows v1.0.1 archives register a per-user `sentry` command after
 successful setup. Open a new terminal to pick up the user PATH. In an already-open
 PowerShell window, refresh just the command location:
 

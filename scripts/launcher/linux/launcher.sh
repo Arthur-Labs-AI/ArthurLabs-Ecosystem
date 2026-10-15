@@ -31,7 +31,7 @@ export SENTRY_REPO_ROOT="$REPO_ROOT"
 
 cmd_help() {
   echo ""
-  echo "Sentry v1.0.0 (native Linux)"
+  echo "Sentry v1.0.1 (native Linux)"
   echo ""
   echo "Usage:"
   echo "  sentry <command>"

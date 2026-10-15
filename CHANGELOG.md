@@ -1,6 +1,19 @@
 # Changelog
 
-## [1.0.0] - Unreleased stable Windows candidate
+## [1.0.1] - 2026-10-15
+
+- Fix imports and updates of Python/Next/Nuxt working directories containing
+  unreadable generated caches. Preserve existing revision hash compatibility.
+- Report permission failures with their path and provide actionable disk-space
+  diagnostics instead of a generic managed-copy error.
+- Register the packaged Windows `sentry` command during successful setup, with
+  explicit `register-command` repair, safe path/argument handling and exit codes.
+- Align product, Desktop, runtime, CLI and launcher identity to `1.0.1`; retain
+  protocol `1`, schemas, migrations, provider pins and credential contracts.
+- Keep the original v1.0.0 tag and downloads unchanged. See
+  [patch notes](docs/releases/v1.0.1.md) and the official Release page for assets.
+
+## [1.0.0] - 2026-10-15
 
 - Reconcile root, Desktop, runtime, CLI and source launchers to stable `1.0.0`.
 - Preserve runtime protocol `1`, schemas/migrations, provider/model/tool pins and
@@ -11,7 +24,7 @@
   Linux Desktop deferred. No public RC, automatic updater or signed installer.
 - See [stable notes](docs/releases/v1.0.0.md) and the
   [verification handoff](docs/releases/v1-phase-6-6-stable-readiness.md).
-  Owner merge, final-source rebuild, main promotion and publication remain later gates.
+  Published Windows Stable; original preparation receipts keep their historical scope.
 
 ## [1.0.0-rc.1] - Historical internal Windows preparation (never published)
 
