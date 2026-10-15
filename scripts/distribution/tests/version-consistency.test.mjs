@@ -9,8 +9,8 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const text = (path) => readFile(join(root, path), 'utf8');
 const product = JSON.parse(await text('package.json')).version;
 
-test('stable preparation reports 1.0.0 without a prerelease suffix', () => {
-  assert.equal(product, '1.0.0');
+test('Windows patch release reports 1.0.1 without a prerelease suffix', () => {
+  assert.equal(product, '1.0.1');
 });
 
 test('product packages and source reporting fallbacks agree on release version', async () => {

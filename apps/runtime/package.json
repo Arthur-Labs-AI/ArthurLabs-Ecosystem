@@ -1,6 +1,6 @@
 {
   "name": "@qa/runtime",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "description": "Sentry WSL/Linux execution runtime host (stdio RPC server).",

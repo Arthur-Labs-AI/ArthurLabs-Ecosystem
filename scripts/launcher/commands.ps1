@@ -4,7 +4,7 @@ function Invoke-SentrySetup {
   param([string]$RepoRoot, [string]$DistroFlag = '', [bool]$NonInteractive = $false)
   $version = Get-SentryProductVersion -RepoRoot $RepoRoot
   Write-Host ''
-  Write-Host ('Sentry v1.0.0 Setup (product ' + $version + ')') -ForegroundColor Cyan
+  Write-Host ('Sentry v1.0.1 Setup (product ' + $version + ')') -ForegroundColor Cyan
   Write-SentryLog ('setup start version=' + $version + ' sha=' + (Get-SentryShortSha -RepoRoot $RepoRoot)) 'setup'
   if ((Stop-SentryDesktopIfRunning -RepoRoot $RepoRoot) -ne 0) { return 1 }
   $failed = $false
@@ -81,7 +81,7 @@ function Show-SentrySetupSummary {
   $wpnpm = Get-SentryWindowsPnpmVersion
   $lver = Get-SentryLinuxNodeVersion -Distro $Distro
   Write-Host ''
-  Write-Host 'Sentry v1.0.0 Setup' -ForegroundColor Cyan
+  Write-Host 'Sentry v1.0.1 Setup' -ForegroundColor Cyan
   Write-Host '========================================'
   Write-Host 'Windows'
   Write-SentryOk 'Git'
@@ -258,7 +258,7 @@ function Invoke-SentryStatus {
     return 0
   }
   Write-Host ''
-  Write-Host 'Sentry v1.0.0' -ForegroundColor Cyan
+  Write-Host 'Sentry v1.0.1' -ForegroundColor Cyan
   Write-Host 'Repository'
   Write-Host ('  Path        ' + $RepoRoot)
   Write-Host ('  Branch      ' + $branch)

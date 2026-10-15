@@ -9,7 +9,7 @@ Import-Module (Join-Path $launcherDir 'SentryLauncher.psm1') -Force -DisableName
 $failures = 0
 function Assert-Equal { param($Name, $Actual, $Expected) if ([string]$Actual -ne [string]$Expected) { Write-Host ([string]("FAIL " + $Name + " expected=[" + $Expected + "] actual=[" + $Actual + "]")); $script:failures++ } else { Write-Host ([string]("PASS " + $Name)) } }
 $repoRoot = (Resolve-Path (Join-Path $launcherDir '..\..')).Path
-Assert-Equal 'product-version' (Get-SentryProductVersion -RepoRoot $repoRoot) '1.0.0'
+Assert-Equal 'product-version' (Get-SentryProductVersion -RepoRoot $repoRoot) '1.0.1'
 Assert-Equal 'pinned-pnpm' (Get-SentryPinnedPnpmVersion -RepoRoot $repoRoot) '9.12.3'
 $redacted = Redact-SentrySecrets 'key OPENROUTER_API_KEY=sk-secret-123 and token: abc'
 if ($redacted.Contains('sk-secret-123') -or $redacted.Contains('abc')) { Write-Host 'FAIL redact-secrets'; $failures++ } else { Write-Host 'PASS redact-secrets' }

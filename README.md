@@ -4,16 +4,16 @@ Sentry is a local-first AI QA desktop application. OpenCode, DeepSeek, and
 GLM through Claude Code independently investigate one immutable project snapshot
 and return findings, evidence, token usage, and observable run history.
 
-**Windows v1.0.0 Stable is published as an unsigned ZIP.**
+**Sentry v1.0.1 — Windows Stable patch release (unsigned ZIP).**
 The initial release target is **Windows 11 x64 with WSL2** (Ubuntu preferred).
 Windows Desktop continues using the Linux execution runtime, systemd user services
 and bubblewrap isolation. Native Linux Desktop, including CachyOS, is deferred.
-See the [stable release notes](docs/releases/v1.0.0.md),
+See the [patch release notes](docs/releases/v1.0.1.md),
 [installation guide](docs/setup/distribution.md) and
 [Phase 6.6 readiness handoff](docs/releases/v1-phase-6-6-stable-readiness.md).
-Use the [official Windows release](https://github.com/Mert1026/Sentry/releases/tag/v1.0.0)
+Use the [official Windows release](https://github.com/Mert1026/Sentry/releases/tag/v1.0.1)
 for PowerShell download and installation commands. Development fixes do not replace
-its immutable archive or tag. Historical RC receipts retain their identities.
+published archives or tags. Historical RC receipts retain their identities.
 
 The historical `v0.1.0-beta.1` remains available:
 [beta notes](docs/releases/v0.1.0-beta.1.md),
@@ -48,7 +48,7 @@ approval; there is no automatic updater.
 Windows Node/pnpm/Git are not required for the packaged Desktop. Linux Node >=22,
 pnpm 9.12.3, systemd user services, bubblewrap and socat remain required in WSL2.
 
-Windows archives built from this revision register `sentry` during successful
+Windows v1.0.1 archives register `sentry` during successful
 setup. Open a new PowerShell or Command Prompt window and use `sentry open`,
 `sentry stop`, `sentry status`, `sentry doctor` or `sentry version` from any folder.
 If that archive moves, run `.\sentry.ps1 register-command` from its new directory.
