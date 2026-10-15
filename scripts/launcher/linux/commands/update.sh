@@ -1,28 +1,69 @@
 #!/usr/bin/env bash
-# commands/update.sh — safe native update (tracks origin/main).
+# commands/update.sh — safe native update (tracks the selected source channel:
+# origin/dev on branch dev, origin/main on branch main).
 # Safety order: refuse dirty/diverged trees with zero mutations, fetch,
 # fast-forward only, then re-exec the UPDATED launcher for install/build/
 # deploy. runtime/current never moves until the new deploy validates, the
 # previous runtime is retained, and user data/credentials are untouched.
 set -u
 
+# Fixed allowlist of supported source channels. Prints the matching remote
+# ref (origin/dev, origin/main) or nothing for unsupported checkouts
+# (feature/fix/release branches, detached tags). Never accepts arbitrary refs.
+sentry_update_remote_ref() {
+  case "${1:-}" in
+    dev) printf '%s' "origin/dev" ;;
+    main) printf '%s' "origin/main" ;;
+    *) printf '%s' "" ;;
+  esac
+}
+
+# Fast-forward eligibility of HEAD against an allowlisted channel ref.
+# Prints exactly one word and always returns 0 (the word carries the verdict):
+#   eligible         HEAD is a strict ancestor of the ref: fast-forward can proceed.
+#   ahead            the ref is an ancestor of HEAD: nothing to take; refuse, never rewrite.
+#   diverged         neither is an ancestor: fast-forward is impossible; refuse.
+#   preflight-failed the ancestry check itself errored; refuse without conclusions.
+# Callers pass only the resolved channel ref, never user-supplied branch text.
+sentry_ff_eligibility() {
+  local repo="$1" ref="$2" code=0
+  git -C "$repo" merge-base --is-ancestor HEAD "$ref" 2>/dev/null; code=$?
+  if [ "$code" -eq 0 ]; then printf '%s' "eligible"; return 0; fi
+  if [ "$code" -ne 1 ]; then printf '%s' "preflight-failed"; return 0; fi
+  git -C "$repo" merge-base --is-ancestor "$ref" HEAD 2>/dev/null; code=$?
+  if [ "$code" -eq 0 ]; then printf '%s' "ahead"; return 0; fi
+  if [ "$code" -ne 1 ]; then printf '%s' "preflight-failed"; return 0; fi
+  printf '%s' "diverged"; return 0
+}
+
 cmd_update() {
   local repo="$REPO_ROOT"
   sentry_seed_node_env
   echo ""
-  echo "Sentry update (DEVELOPMENT channel: latest origin/main, not validated release tags)"
   local branch=""
   branch=$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
-  if [ "$branch" != "main" ]; then
-    sentry_fail "Sentry Beta updates track origin/main."
-    echo "Pinned beta installs stay on their release tag. See docs/beta/updating.md."
-    echo "Switching to main explicitly opts into untested development updates."
+  local channel_ref=""
+  channel_ref=$(sentry_update_remote_ref "$branch")
+  if [ -n "$channel_ref" ]; then
+    echo "Sentry update (source channel: $channel_ref)"
+  else
+    echo "Sentry update (source channel: unsupported checkout)"
+  fi
+  if [ -z "$channel_ref" ]; then
+    local display="$branch"
+    if [ -z "$display" ] || [ "$display" = "HEAD" ]; then
+      display="(detached HEAD: pinned tag or release candidate)"
+    fi
+    sentry_fail "Sentry source updates track only the explicitly selected channel: origin/dev on branch dev, origin/main on branch main."
+    echo "Pinned beta installs stay on their release tag. Packaged archives never follow a Git branch. See docs/beta/updating.md."
+    echo "Sentry never switches branches automatically: choose a channel explicitly with git switch."
     echo ""
-    echo "Current branch:"
-    echo "    $branch"
+    echo "Current checkout:"
+    echo "    $display"
     echo ""
-    echo "Switch to main and rerun:"
-    echo "    git switch main"
+    echo "Select a supported channel and rerun:"
+    echo "    git switch dev    # development stream (tracks origin/dev)"
+    echo "    git switch main   # stable stream (tracks origin/main)"
     echo "    sentry update"
     echo "Zero Git mutations were made."
     return 1
@@ -38,30 +79,56 @@ cmd_update() {
     echo "Sentry never resets or stashes your changes automatically."
     return 1
   fi
-  echo "  git fetch --prune origin main ..."
-  if ! git -C "$repo" fetch --prune origin main; then
+  echo "  git fetch --prune origin $branch ..."
+  if ! git -C "$repo" fetch --prune origin "$branch"; then
     sentry_fail "git fetch failed (network or remote issue)."
     return 1
   fi
   local remote_sha=""
-  remote_sha=$(git -C "$repo" rev-parse origin/main 2>/dev/null || true)
+  remote_sha=$(git -C "$repo" rev-parse "$channel_ref" 2>/dev/null || true)
   if [ -z "$remote_sha" ]; then
-    sentry_fail "origin/main is unavailable after fetch."
+    sentry_fail "$channel_ref is unavailable after fetch."
     return 1
   fi
   if [ -n "$old_sha" ] && [ "$old_sha" = "$remote_sha" ]; then
     echo "Sentry is already up to date (${old_sha:0:9})."
     return 0
   fi
+  # Fast-forward preflight BEFORE any Desktop shutdown: a diverged or ahead
+  # checkout must refuse while Sentry is still running. The merge below stays
+  # as the authoritative final guard; this check only avoids the shutdown.
+  local eligibility=""
+  eligibility=$(sentry_ff_eligibility "$repo" "$channel_ref")
+  case "$eligibility" in
+    eligible) ;;
+    ahead)
+      sentry_fail "Local $branch is ahead of $channel_ref: no update is available from the channel."
+      echo "Push your commits or reconcile manually; Sentry never resets or rebases your branch automatically."
+      echo "No Desktop shutdown was attempted and no merge was performed."
+      return 1
+      ;;
+    diverged)
+      sentry_fail "Local $branch and $channel_ref have diverged: fast-forward is impossible."
+      echo "Reconcile manually (for example: git log --oneline --left-right HEAD...$channel_ref), then rerun: sentry update"
+      echo "Sentry never resets or rebases your branch automatically."
+      echo "No Desktop shutdown was attempted and no merge was performed."
+      return 1
+      ;;
+    *)
+      sentry_fail "Could not verify fast-forward eligibility for $channel_ref."
+      echo "Refusing without changes; no Desktop shutdown was attempted and no merge was performed."
+      return 1
+      ;;
+  esac
   local was_running=0
   if sentry_desktop_running; then was_running=1; fi
   if [ "$was_running" = "1" ]; then
     echo "  An update is available; stopping Sentry..."
     sentry_desktop_ensure_stopped "$repo" || return 1
   fi
-  echo "  git merge --ff-only origin/main ..."
-  if ! git -C "$repo" merge --ff-only origin/main; then
-    sentry_fail "Fast-forward to origin/main failed (local main diverged). Resolve manually, then rerun."
+  echo "  git merge --ff-only $channel_ref ..."
+  if ! git -C "$repo" merge --ff-only "$channel_ref"; then
+    sentry_fail "Fast-forward to $channel_ref failed (local $branch diverged). Resolve manually, then rerun."
     echo "Sentry was stopped; reopen it with: sentry open"
     return 1
   fi

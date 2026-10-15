@@ -4,10 +4,21 @@ Sentry is a local-first AI QA desktop application. OpenCode, DeepSeek, and
 GLM through Claude Code independently investigate one immutable project snapshot
 and return findings, evidence, token usage, and observable run history.
 
-**Beta candidate: `v0.1.0-beta.1`.** Supported hosts: **Windows 11 + WSL2**
-and **native CachyOS**. This is early tester software, not production-ready.
-See [release notes](docs/releases/v0.1.0-beta.1.md) and
+**Windows v1.0.0 stable candidate: unsigned and not yet published.**
+The initial release target is **Windows 11 x64 with WSL2** (Ubuntu preferred).
+Windows Desktop continues using the Linux execution runtime, systemd user services
+and bubblewrap isolation. Native Linux Desktop, including CachyOS, is deferred.
+See the [stable release notes](docs/releases/v1.0.0.md),
+[installation guide](docs/setup/distribution.md) and
+[Phase 6.6 readiness handoff](docs/releases/v1-phase-6-6-stable-readiness.md).
+The owner selected direct stable publication; no public RC/prerelease is planned.
+Owner review, final-source verification, main promotion and explicit publication
+authorization remain separate gates. Historical RC receipts retain their identities.
+
+The only published release remains historical `v0.1.0-beta.1`:
+[beta notes](docs/releases/v0.1.0-beta.1.md),
 [validation](docs/releases/v0.1.0-beta.1-validation.md).
+Its immutable executable is not an accepted credential-recovery downgrade target.
 
 ## Capabilities
 
@@ -16,21 +27,27 @@ See [release notes](docs/releases/v0.1.0-beta.1.md) and
 - Isolated Linux workspaces, persistent history and restart recovery.
 - JSON/log export, native Save As, and CLI control of the running Desktop.
 - Provider settings, environment checks, and resumable source-based setup.
+- Confirmed project removal of managed data and history, preserving original sources.
+- Explicit Windows disk reclamation with active-operation refusal and reconnection.
 
 Historical merger/verifier/issue-lineage components remain in the repository.
 Merge/verification ingestion is not exposed by current Desktop runtime RPC;
 it is not a promised beta user flow. Existing issue/retest data and compatibility
 paths remain. Architecture records may describe retired features.
 
-## Distribution candidates
+## Install the Windows review candidate
 
-Phase 4 adds unsigned version/SHA archives for owner review, with a packaged
-Desktop and explicit Linux runtime bootstrap. See the
+Use the owner-approved Windows ZIP and its trusted SHA256 sidecar. Verify the
+checksum, extract into a new version/source directory, and run that archive's
+`.\sentry.ps1 version`, `.\sentry.ps1 setup -Distro Ubuntu`, then `.\sentry.ps1 open`.
+Setup builds the Linux runtime through WSL2 using frozen dependencies. See the
 [distribution guide](docs/setup/distribution.md) for checksums, prerequisites,
-installation, safe maintenance and remaining native acceptance gates. These
-candidates are not a published v1 release. The source-beta path below remains valid.
+installation and safe maintenance procedure. The current stable ZIP is a review candidate until owner approval and publication;
+there is no automatic updater.
+Windows Node/pnpm/Git are not required for the packaged Desktop. Linux Node >=22,
+pnpm 9.12.3, systemd user services, bubblewrap and socat remain required in WSL2.
 
-## Source installation prerequisites
+## Historical source-beta installation prerequisites
 
 - Git and internet during setup. Install from a clone, not a source ZIP.
 - Node.js >= 22 and pnpm **9.12.3**. Setup resolves pinned tools and guides
@@ -46,9 +63,10 @@ candidates are not a published v1 release. The source-beta path below remains va
 Other native Linux distributions and macOS are unsupported. Ubuntu in WSL2
 is supported as the Windows runtime; Ubuntu CI is not CachyOS acceptance.
 
-## Install on Windows 11
+## Historical Windows source-beta installation
 
-Once the beta tag is available, in PowerShell:
+Historical published-beta source reference, in PowerShell (the current Windows candidate uses the
+separately approved archive/identity in the distribution guide):
 
 ```powershell
 git clone --branch v0.1.0-beta.1 https://github.com/Mert1026/Sentry.git
@@ -62,9 +80,11 @@ Setup reuses compatible WSL2 distros, ignoring utility distros such as
 After reboot or initial Linux account creation, rerun setup. Open a new
 terminal if `sentry` is not yet on PATH.
 
-## Install on native CachyOS
+## Deferred native CachyOS development / historical beta
 
-Once the beta tag is available, in your graphical session:
+Native Desktop is deferred for v1. These historical source-beta instructions
+remain for development reference; they are not the Windows stable installation path.
+In your graphical session:
 
 ```bash
 git clone --branch v0.1.0-beta.1 https://github.com/Mert1026/Sentry.git
@@ -112,10 +132,11 @@ Windows also provides `sentry repair` to rerun setup.
 ## Updates
 
 Beta installations stay pinned to version tags in detached HEAD state.
-`sentry update` refuses there; it only tracks **development origin/main**.
-Switching to main explicitly opts into potentially untested changes. There is
-no automatic GitHub Release updater. For a later beta: cancel work, stop,
-fetch the announced tag, check it out, and rerun setup. See [updating](docs/beta/updating.md).
+`sentry update` refuses there. Source checkouts track only their selected
+channel: branch `dev` follows `origin/dev`, branch `main` follows `origin/main`
+— nothing switches channels automatically. There is no automatic GitHub
+Release updater. For a later beta: cancel work, stop, fetch the announced tag,
+check it out, and rerun setup. See [updating](docs/beta/updating.md).
 Setup/update aborts on failed graceful stop; dirty trees are never reset/stashed.
 
 ## Security and privacy

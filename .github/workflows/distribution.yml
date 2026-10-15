@@ -1,20 +1,15 @@
-name: distribution (unsigned review candidates)
+name: distribution (Windows unsigned review candidate)
 on:
   pull_request:
+  push:
+    branches: [dev, release/v1.0.0-windows]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   archive:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - host: windows-latest
-            target: windows-x64
-          - host: ubuntu-latest
-            target: cachyos-x64
-    runs-on: ${{ matrix.host }}
+    name: Windows release archive
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,7 +25,6 @@ jobs:
       - run: pnpm build
       - run: pnpm distribution:test
       - name: Windows maintenance and parser fixtures
-        if: runner.os == 'Windows'
         shell: powershell
         run: |
           powershell -NoProfile -File scripts/distribution/tests/maintenance.test.ps1
@@ -41,15 +35,13 @@ jobs:
             if ($errors.Count) { throw "syntax errors in $f" }
           }
       - name: Build and extract unsigned candidate (never publish)
-        run: pnpm distribution:build ${{ matrix.target }}
+        run: pnpm distribution:build windows-x64
       # Private workflow artifacts are review candidates, not GitHub Releases.
-      # Generic Linux builds do not establish native CachyOS compatibility.
       - uses: actions/upload-artifact@v4
         with:
-          name: unsigned-review-${{ matrix.target }}-${{ github.event.pull_request.head.sha || github.sha }}
+          name: unsigned-review-windows-x64-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             dist/distributions/*.zip
-            dist/distributions/*.tar.gz
             dist/distributions/*.sha256
           if-no-files-found: error
           retention-days: 7

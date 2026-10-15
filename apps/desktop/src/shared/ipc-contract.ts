@@ -11,6 +11,7 @@ export const IPC_CHANNELS = [
   'projects:get',
   'projects:revisions',
   'projects:update',
+  'projects:delete',
   'projects:doctor',
   'projects:suggest-targets',
   'runs:list',
@@ -43,10 +44,20 @@ export const IPC_CHANNELS = [
   'runtime:status',
   'runtime:distros',
   'runtime:select-distro',
+  'runtime:reclaim-space',
   'cli:status',
 ] as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[number];
+
+export interface WslSpaceResult {
+  readonly distro: string;
+  readonly diskBytesBefore: number;
+  readonly diskBytesAfter: number;
+  readonly windowsFreeBytesBefore: number;
+  readonly windowsFreeBytesAfter: number;
+  readonly reconnected: boolean;
+}
 
 export interface DesktopOperation {
   readonly operationId: string;
@@ -105,6 +116,8 @@ export interface SentryDesktopApi {
     get(projectId: string): Promise<unknown>;
     revisions(projectId: string): Promise<unknown[]>;
     update(projectId: string, sourcePath?: string): Promise<unknown>;
+    /** Permanently remove Sentry's stored materials and history; preserve the original source. */
+    remove(projectId: string): Promise<{ projectId: string; deleted: true }>;
     doctor(projectId: string): Promise<unknown>;
     suggestTargets(projectId: string): Promise<{ projectId: string; paths: string[] }>;
   };
@@ -219,6 +232,7 @@ export interface SentryDesktopApi {
       selected: string | null;
     }>;
     selectDistro(distro: string): Promise<{ saved: string; restartRequired: boolean }>;
+    reclaimSpace(): Promise<WslSpaceResult>;
   };
   readonly system: {
     info(): Promise<{ dataRoot: string; versions: Record<string, string> }>;

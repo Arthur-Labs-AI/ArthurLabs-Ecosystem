@@ -28,6 +28,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     add: (sourcePath: string) => invoke('projects:add', { sourcePath }),
     get: (projectId: string) => invoke('projects:get', { projectId }),
     revisions: (projectId: string) => invoke('projects:revisions', { projectId }),
+    remove: (projectId: string) => invoke('projects:delete', { projectId }),
     update: (projectId: string, sourcePath?: string) =>
       invoke(
         'projects:update',
@@ -98,6 +99,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     status: () => invoke('runtime:status', {}),
     distros: () => invoke('runtime:distros', {}),
     selectDistro: (distro: string) => invoke('runtime:select-distro', { distro }),
+    reclaimSpace: () => invoke('runtime:reclaim-space', {}),
   },
   subscribe: {
     onRunUpdate: (callback: RunUpdateCallback) => {

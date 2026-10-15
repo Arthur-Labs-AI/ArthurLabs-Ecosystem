@@ -131,8 +131,9 @@ prove containment. Report unavailable security/provider/platform gates explicitl
 
 No new privilege boundary, secret transport, persistence writer, service,
 database, broker or framework is introduced. Keep current credential isolation,
-path validation, sandbox controls and security tests intact. Required native
-Windows/WSL and CachyOS acceptance remains separate from generic Linux CI.
+path validation, sandbox controls and security tests intact. Windows/WSL release acceptance remains separate from generic Linux CI. Native
+Linux Desktop (CachyOS) acceptance is deferred to a future native release; shared
+Linux runtime and sandbox tests remain required for Windows through WSL2.
 
 ## Retired product flows
 

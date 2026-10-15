@@ -6,6 +6,7 @@ import { runtimeConnectionState, useRuntimeStatus } from '../lib/use-runtime-sta
 import { deriveRuntimeHostView } from '../lib/runtime-host-view.js';
 import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
 import { StatusPill } from '../components/ui/StatusPill.js';
+import { ReclaimWslSpace } from '../components/ReclaimWslSpace.js';
 
 interface WslDistros {
   distros: Array<{ name: string; state: string; version: number }>;
@@ -171,6 +172,9 @@ export function RuntimeSettings(): React.JSX.Element {
           )}
         </div>
       </PageSection>
+      {view.kind === 'windows' ? (
+        <ReclaimWslSpace distro={statusInfo?.distro} connected={connected} />
+      ) : null}
     </div>
   );
 }

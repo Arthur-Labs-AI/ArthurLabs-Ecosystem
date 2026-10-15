@@ -1,6 +1,8 @@
 # CachyOS native launcher
 
-Native Linux support: **CachyOS only** (`ID=cachyos` in `/etc/os-release`).
+**DEFERRED — FUTURE NATIVE LINUX RELEASE.** Windows 11 x64/WSL2 is the only
+initial v1 release target. This retained experimental native implementation
+targets **CachyOS only** (`ID=cachyos` in `/etc/os-release`).
 Ubuntu, Arch, Fedora, and Debian are rejected with `LINUX_DISTRO_UNSUPPORTED`;
 CI on `ubuntu-latest` proves generic-Linux code paths, never Ubuntu support.
 

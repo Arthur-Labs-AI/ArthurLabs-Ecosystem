@@ -85,6 +85,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
   'runtime:status': z.object({}).strict(),
   'runtime:distros': z.object({}).strict(),
   'runtime:select-distro': z.object({ distro: z.string().min(1).max(200) }).strict(),
+  'runtime:reclaim-space': z.object({}).strict(),
   'cli:status': z.object({}).strict(),
 };
 export type DesktopChannel = keyof typeof DesktopChannelSchemas;
@@ -101,28 +102,65 @@ export function isCliAllowed(channel: string): boolean {
 }
 
 export interface CommandRouterHooks {
+  readonly maintenanceActive?: () => boolean;
+  readonly reclaimSpace?: () => Promise<unknown>;
   readonly onRunCreated?: (runId: string, operationId?: string) => void;
   readonly onRetestCreated?: (retestRunId: string, operationId?: string) => void;
   readonly requestSavePath?: (options: SaveDialogOptions) => Promise<string | null>;
   readonly cliStatus?: () => unknown;
   readonly showInFolder?: (path: string) => void;
+  readonly redactErrorText?: (text: string) => string;
 }
 
-export function toRouterError(error: unknown): { code: string; message: string } {
-  if (typeof error === 'object' && error !== null && 'code' in error) {
-    const typed = error as { code?: unknown; message?: unknown };
-    return {
-      code: typeof typed.code === 'string' ? typed.code : 'DESKTOP_ERROR',
-      message:
-        typed.message instanceof Error
-          ? typed.message.message
-          : String(typed.message ?? 'Desktop operation failed').slice(0, 1000),
-    };
+export interface SafeErrorOptions {
+  readonly redactSecrets?: (text: string) => string;
+}
+
+const SAFE_ERROR_CODE = /^[A-Za-z0-9_]{1,100}$/;
+const SAFE_ERROR_MESSAGE_CAP = 1000;
+
+function safeErrorCode(code: unknown): string {
+  return typeof code === 'string' && SAFE_ERROR_CODE.test(code) ? code : 'DESKTOP_ERROR';
+}
+function safeErrorMessage(value: unknown, redactSecrets?: (text: string) => string): string {
+  const raw = value instanceof Error ? value.message : value;
+  const nested = raw instanceof Error ? raw.message : raw;
+  const text = typeof nested === 'string' ? nested : 'Desktop operation failed';
+  if (redactSecrets === undefined) return text.slice(0, SAFE_ERROR_MESSAGE_CAP);
+  // Fail closed: a throwing or misbehaving scrubber must not let the
+  // original (potentially secret-bearing) text reach the response, and
+  // mapping itself must never throw. Fall back to a fixed safe message.
+  let scrubbed: unknown;
+  try {
+    scrubbed = redactSecrets(text);
+  } catch {
+    scrubbed = undefined;
   }
-  return {
-    code: 'DESKTOP_ERROR',
-    message: error instanceof Error ? error.message.slice(0, 1000) : 'Desktop operation failed',
-  };
+  if (typeof scrubbed !== 'string') return 'Desktop operation failed';
+  return scrubbed.slice(0, SAFE_ERROR_MESSAGE_CAP);
+}
+
+export function toSafeError(
+  error: unknown,
+  options: SafeErrorOptions = {},
+): { code: string; message: string } {
+  let code = 'DESKTOP_ERROR';
+  try {
+    // Property reads, `in`, and instanceof can all invoke untrusted getters
+    // or Proxy traps. Guard the whole mapping, retaining a code only after
+    // it has been read and validated successfully.
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+      const typed = error as { code?: unknown; message?: unknown };
+      code = safeErrorCode(typed.code);
+      return { code, message: safeErrorMessage(typed.message, options.redactSecrets) };
+    }
+    return { code, message: safeErrorMessage(error, options.redactSecrets) };
+  } catch {
+    return { code, message: 'Desktop operation failed' };
+  }
+}
+export function toRouterError(error: unknown): { code: string; message: string } {
+  return toSafeError(error);
 }
 // Validate + dispatch one desktop command. Shared by Renderer IPC and the
 // external CLI broker. external:true enforces the CLI allowlist.
@@ -145,7 +183,19 @@ export async function dispatchDesktopCommand(
     });
   }
   const parsed = schema.parse(payload ?? {}) as Record<string, unknown>;
+  if (hooks.maintenanceActive?.() && channel !== 'runtime:status' && channel !== 'cli:status') {
+    throw Object.assign(new Error('Windows disk reclamation is running. Wait for it to finish.'), {
+      code: 'RUNTIME_MAINTENANCE',
+    });
+  }
   switch (channel) {
+    case 'runtime:reclaim-space':
+      if (hooks.reclaimSpace === undefined) {
+        throw Object.assign(new Error('Windows disk reclamation is unavailable.'), {
+          code: 'HOST_UNSUPPORTED',
+        });
+      }
+      return hooks.reclaimSpace();
     case 'projects:list':
       return service.listProjects();
     case 'projects:add':

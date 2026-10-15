@@ -1,5 +1,8 @@
 # Release checklist — v0.1.0-beta.1
 
+> Historical beta documentation. Current Windows v1 review installation and
+> support scope are in the [distribution guide](../setup/distribution.md). Native Linux Desktop is deferred to a future release.
+
 2026-10-09 candidate preparation. See [validation](v0.1.0-beta.1-validation.md)
 for commands, failures and platform scope. Historical September checkmarks are
 not evidence for this candidate.

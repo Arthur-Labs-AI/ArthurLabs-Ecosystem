@@ -14,6 +14,21 @@ if (process.platform !== 'win32' || !input || !entry || !data?.startsWith('/'))
     'Windows smoke requires extracted archive, Linux runtime entry and disposable absolute Linux data root',
   );
 const sourceBeta = input.startsWith('source-beta:');
+const projectRemoval = process.env['SENTRY_SMOKE_PROJECT_REMOVAL'] === '1';
+const wslReclamation = process.env['SENTRY_SMOKE_WSL_RECLAMATION'] === '1';
+if (wslReclamation) {
+  assert.equal(sourceBeta, false);
+  assert.equal(projectRemoval, false);
+  assert.equal(historyReceipt, undefined);
+  assert.equal(settingsMode, undefined);
+  assert.match(data, /^\/var\/tmp\/sentry-wsl-reclamation\.[A-Za-z0-9]+\/smoke-data$/);
+}
+if (projectRemoval) {
+  assert.equal(sourceBeta, false);
+  assert.equal(historyReceipt, undefined);
+  assert.equal(settingsMode, undefined);
+  assert.match(data, /^\/var\/tmp\/sentry-project-removal\.[A-Za-z0-9]+\/smoke-data$/);
+}
 const root = resolve(sourceBeta ? input.slice('source-beta:'.length) : input);
 const manifest = sourceBeta
   ? {
@@ -153,14 +168,14 @@ try {
       pending.delete(response.id);
     }
   });
-  async function evaluate(expression) {
+  async function cdp(method, params) {
     const current = ++id;
     const response = new Promise((r) => pending.set(current, r));
     socket.send(
       JSON.stringify({
         id: current,
-        method: 'Runtime.evaluate',
-        params: { expression, awaitPromise: true, returnByValue: true },
+        method,
+        params,
       }),
     );
     const value = await Promise.race([
@@ -169,6 +184,15 @@ try {
         throw new Error('CDP evaluation timeout');
       }),
     ]);
+    if (value.error) throw new Error(JSON.stringify(value.error));
+    return value;
+  }
+  async function evaluate(expression) {
+    const value = await cdp('Runtime.evaluate', {
+      expression,
+      awaitPromise: true,
+      returnByValue: true,
+    });
     if (value.result?.exceptionDetails)
       throw new Error(JSON.stringify(value.result.exceptionDetails));
     return value.result?.result?.value;
@@ -188,6 +212,42 @@ try {
   assert.equal(runtime.hello.runtimeVersion, manifest.version);
   assert.equal(runtime.hello.platform, 'linux');
   assert.equal(runtime.hello.isElectron, false);
+  if (wslReclamation) {
+    assert.equal(await evaluate('typeof window.sentry.runtime.reclaimSpace'), 'function');
+    await evaluate('location.hash = "#/settings/runtime"');
+    const reclaimButton =
+      '[...document.querySelectorAll("button")].find(b => b.textContent.trim() === "Reclaim Windows disk space")';
+    await until(() => evaluate(reclaimButton + '?.disabled === false'));
+    await evaluate(reclaimButton + '.click()');
+    await until(() => evaluate('document.querySelector("dialog")?.open === true'));
+    assert.equal(await evaluate('document.activeElement.textContent.trim()'), 'Cancel');
+    const text = await evaluate('document.querySelector("dialog").innerText');
+    assert.ok(
+      text.includes('Ubuntu') &&
+        text.includes('other applications') &&
+        text.includes('administrator'),
+    );
+    const screenshot = await cdp('Page.captureScreenshot', { format: 'png' });
+    await writeFile(
+      join(temporary, 'wsl-reclamation-confirmation.png'),
+      Buffer.from(screenshot.result.data, 'base64'),
+    );
+    await cdp('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Escape',
+      code: 'Escape',
+      windowsVirtualKeyCode: 27,
+    });
+    await cdp('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Escape',
+      code: 'Escape',
+      windowsVirtualKeyCode: 27,
+    });
+    await until(() => evaluate('document.querySelector("dialog") === null'));
+    assert.equal((await evaluate('window.sentry.runtime.status()')).connected, true);
+    // Never confirm OS maintenance against the owner's distribution in a GUI test.
+  }
   if (settingsMode) {
     const before = await evaluate('window.sentry.providers.status()');
     const status = before.find((s) => s.name === 'DEEPSEEK_API_KEY');
@@ -208,7 +268,31 @@ try {
       assert.equal(status.source, 'stored');
     }
   }
-  const imported = await evaluate(`window.sentry.projects.add(${JSON.stringify(source)})`);
+  let imported;
+  if (projectRemoval) {
+    // Use the real UI mutation so its canonical query invalidation executes.
+    // A direct bridge write can leave the initial Dashboard list fresh/cached.
+    await evaluate('location.hash = "#/projects"');
+    await until(() => evaluate('document.querySelector(".collapsible-head") !== null'));
+    await evaluate('document.querySelector(".collapsible-head").click()');
+    const pathInput =
+      'document.querySelector(' + JSON.stringify('input[aria-label="Project folder path"]') + ')';
+    await until(() => evaluate(pathInput + ' !== null'));
+    await evaluate(pathInput + '.focus()');
+    await cdp('Input.insertText', { text: source });
+    const addButton =
+      '[...document.querySelectorAll("button")].find(b => b.textContent.trim() === "Add by path")';
+    await until(() => evaluate(addButton + '?.disabled === false'));
+    await evaluate(addButton + '.click()');
+    await until(() => evaluate('document.querySelector("article.card button.danger") !== null'));
+    const listed = await evaluate('window.sentry.projects.list()');
+    assert.equal(listed.length, 1);
+    imported = await evaluate(
+      'window.sentry.projects.get(' + JSON.stringify(listed[0].projectId) + ')',
+    );
+  } else {
+    imported = await evaluate(`window.sentry.projects.add(${JSON.stringify(source)})`);
+  }
   assert.ok(imported);
   const projects = await evaluate('window.sentry.projects.list()');
   assert.ok(projects.length >= 1);
@@ -242,6 +326,77 @@ try {
   }
   await evaluate('location.hash = "#/projects"');
   assert.ok((await evaluate('location.href')).includes('#/projects'));
+  if (projectRemoval) {
+    const projectId = imported.project.id;
+    assert.match(projectId, /^proj_[A-Za-z0-9]+$/);
+    const button =
+      'document.querySelector(' +
+      JSON.stringify('button[aria-label="Remove project ' + imported.project.name + '"]') +
+      ')';
+    await until(() => evaluate(button + ' !== null'));
+    await evaluate(button + '.click()');
+    await until(() => evaluate('document.querySelector("dialog")?.open === true'));
+    assert.equal(await evaluate('document.activeElement.textContent.trim()'), 'Cancel');
+    const screenshot = await cdp('Page.captureScreenshot', { format: 'png' });
+    await writeFile(
+      join(temporary, 'project-removal-confirmation.png'),
+      Buffer.from(screenshot.result.data, 'base64'),
+    );
+    await cdp('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Escape',
+      code: 'Escape',
+      windowsVirtualKeyCode: 27,
+    });
+    await cdp('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Escape',
+      code: 'Escape',
+      windowsVirtualKeyCode: 27,
+    });
+    await until(() => evaluate('document.querySelector("dialog") === null'));
+    assert.ok(
+      (await evaluate('window.sentry.projects.list()')).some((p) => p.projectId === projectId),
+    );
+    await evaluate(button + '.click()');
+    await until(() => evaluate('document.querySelector("dialog")?.open === true'));
+    await evaluate('document.querySelector("dialog button.danger").click()');
+    await until(() => evaluate('document.body.innerText.includes("No projects yet")'));
+    assert.equal(
+      (await evaluate('window.sentry.projects.list()')).some((p) => p.projectId === projectId),
+      false,
+    );
+    // These paths are constructed only from the guarded disposable data root
+    // and the validated Sentry-generated project ID; never an owner folder.
+    const managed = data + '/projects/' + projectId;
+    execFileSync('wsl.exe', ['-d', 'Ubuntu', '--', 'test', '!', '-e', managed]);
+    execFileSync('wsl.exe', ['-d', 'Ubuntu', '--', 'test', '!', '-e', managed + '.deleting']);
+    assert.equal(
+      await readFile(join(source, 'index.js'), 'utf8'),
+      'export const fixture = true;\n',
+    );
+    // Repeat from detail after manually removing the entire managed folder.
+    const stale = await evaluate(`window.sentry.projects.add(${JSON.stringify(source)})`);
+    assert.match(stale.project.id, /^proj_[A-Za-z0-9]+$/);
+    const staleManaged = data + '/projects/' + stale.project.id;
+    assert.ok(staleManaged.startsWith(data + '/projects/'));
+    execFileSync('wsl.exe', ['-d', 'Ubuntu', '--', 'rm', '-r', '--', staleManaged]);
+    await evaluate('location.hash = ' + JSON.stringify('#/projects/' + stale.project.id));
+    await until(() => evaluate(button + ' !== null'));
+    await evaluate(button + '.click()');
+    await until(() => evaluate('document.querySelector("dialog")?.open === true'));
+    await evaluate('document.querySelector("dialog button.danger").click()');
+    await until(() =>
+      evaluate(
+        'location.hash === "#/projects" && document.body.innerText.includes("No projects yet")',
+      ),
+    );
+    assert.deepEqual(await evaluate('window.sentry.projects.list()'), []);
+    assert.equal(
+      await readFile(join(source, 'index.js'), 'utf8'),
+      'export const fixture = true;\n',
+    );
+  }
   // Invalid renderer requests still traverse production validation.
   assert.equal(await evaluate('window.sentry.projects.get("").then(()=>false,()=>true)'), true);
   const second = spawn(exe, [...baseArgs, '--sentry-app'], { env, stdio: 'ignore' });
@@ -269,6 +424,27 @@ try {
     }),
   ]);
   assert.equal(code, 0);
+  if (projectRemoval) {
+    // Fresh Linux process/SQLite connection proves removal is durable after
+    // the real Desktop/runtime have shut down; no renderer cache participates.
+    const persistence =
+      entry.slice(0, entry.indexOf('/apps/runtime/dist/host.js')) +
+      '/packages/persistence/dist/index.js';
+    const check = join(temporary, 'verify-project-removal.mjs');
+    await writeFile(
+      check,
+      `import assert from 'node:assert/strict';\n` +
+        `import { SentryDatabase, SentryRepository } from ${JSON.stringify(persistence)};\n` +
+        `const db = new SentryDatabase({ dataRoot: ${JSON.stringify(data)} });\n` +
+        `try { const repository = new SentryRepository(db); assert.deepEqual(repository.listProjects(), []); assert.deepEqual(repository.listRuntimeOperations(), []); } finally { db.close(); }\n`,
+    );
+    const linuxCheck = execFileSync(
+      'wsl.exe',
+      ['-d', 'Ubuntu', '--', 'wslpath', '-u', check.replaceAll('\\', '/')],
+      { encoding: 'utf8' },
+    ).trim();
+    execFileSync('wsl.exe', ['-d', 'Ubuntu', '--', 'node', linuxCheck]);
+  }
   if (settingsMode === 'verify') {
     // The explicit profile was proved before credential IPC. This new process
     // must inspect local settings without booting even an unavailable runtime.
@@ -327,6 +503,12 @@ try {
       ipcValidation: true,
       linuxHandshake: true,
       projectImport: true,
+      projectRemoval: projectRemoval
+        ? 'PASS: confirm/cancel, native dialog, stored files, missing-folder detail removal, durable database'
+        : 'SKIPPED',
+      wslReclamation: wslReclamation
+        ? 'PASS: packaged bridge, native confirmation, Cancel focus, Escape, connected runtime; no OS maintenance invoked'
+        : 'SKIPPED',
       betaHistory: Boolean(historyReceipt),
       encryptedSettings: settingsMode ?? 'SKIPPED',
       credentialDiagnostic: settingsMode === 'verify' ? 'PASS' : 'SKIPPED',

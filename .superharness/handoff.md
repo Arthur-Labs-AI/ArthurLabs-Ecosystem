@@ -1,3 +1,536 @@
+# Phase 6.6 — stable review candidate and acceptance
+
+2026-10-15. PR28 release-prep/v1.0.0-stable → release/v1.0.0-windows; owner merge only.
+Baseline2fa19152/tree7245d164; stable1.0.0/protocol1, lock/pins/schemas/security code unchanged.
+New Windows478/3skips, distribution34/27, launchers/static PASS. FreshWSL1298/49skips,
+40uncached tasks, separate realtrust8/8, distribution52/9 and lifecycle1/1PASS.
+Clean initial artifact source40ae67c6581acdfcc16583e7c9fe7b0f46b0cc1e, ZIPshabd6be725124f1341926c87dc5222e040ea2d77195b9627344df6f8d5b9a91912,
+manifestsha97cf5c2871444a455809ddca8469a313e9557840ed74181c2a7750b7843c5b90,332inventory/external extractionPASS.
+Real packaged setup/visible open/stop/reopen, matchedidentity, UIimport/removal/cancel,
+freshhistory, syntheticDPAPI restart/no-plaintext and maintenanceCancel/inspect/refusalPASS.
+Initial hostedCI38732769947SUCCESS; distribution38732769921FAILonly uploadquota.
+Private isolation failure/maintenance-lock refusal retained; priorruntime/current restored
+exactly, corrected harness proves privatehomebind before setup. No ownerproject/credentialsused.
+Documentation receipt commit requires fresh finalhead archive/acceptance and exactCI;
+postcommit companion inPR/privateaudit avoids selfhash loop. CONDITIONALLYREADY,
+trustedpublicdelivery and cleanmachine/realUAC remainunverified. Ownerreviewrequired.
+No main/dev/tag/Release/publicasset/selfmerge/automerge/delete/paidcall/realcompaction.
+shux unavailable; records updated directly. Historical records follow unchanged.
+
+## Previous record (preserved)
+
+# Phase 6.6 — stable transition verification in progress
+
+2026-10-15. Owner-merged release baseline2fa19152a63f0886d14f2f2e81db9598ec878f86,
+tree7245d16460de8842a21afc6a92bf94d567d0fe60. Postmerge CI38729929416PASS;
+distribution38729929436FAIL only upload quota after verified packaging/extraction.
+Isolated release-prep/v1.0.0-stable; owner primary/unrelated worktrees preserved.
+132 RC references classified;21active identity/current expectation files transition
+to1.0.0. Root/Desktop/runtime/CLI agree, internal0.1.0 library versions retained.
+Pinned pnpm9.12.3 lock-only reconciliation produced no lock/dependency changes.
+Stable-version regression RED then GREEN; stale-RC resealed inventory rejects.
+Windows full478PASS/3skip, distribution34PASS/27skip, launchers/deepseek/static gatesPASS.
+Fresh WSL full1298PASS/49skip,40uncached tasks; separate realtrust8/8PASS,
+distribution52PASS/9skip, static/build/frozen checksPASS. WSL install ignore-scripts;
+this is shared-runtime validation, not native Electron/Desktop provisioning.
+Original beta/RC hashes and historical doc suffix bytes preserved. Phase6.5
+maintenance/security production code, schemas, protocol1, provider/model/tool pins,
+credential/history/recovery contracts unchanged. Stable notes/current docs updated.
+Clean exact-commit ZIP build, packaged acceptance, focused release-target PR and
+new exact-head hosted conclusions pending; no publication readiness claim yet.
+No selfmerge/auto-merge/main/dev/tag/publicassets/delete/realUAC/paidcalls.
+shux unavailable; task status/ledger/handoff maintained directly.
+
+## Previous record (preserved)
+
+# Phase 6.5 — correction PR27; OS fixture budget aligned
+
+2026-10-15. PR27 targets release/v1.0.0-windows; owner merge only. Initial
+CI38720648589 quality PASS, Windows477PASS/3skip/1fixture timeout at5707ms versus
+5000ms default; archive38720648376 failed only upload quota after packaging.
+PowerShell fixture metadata now allows35000ms, matching its existing30000ms child
+deadline plus setup/cleanup; no production deadline/assertion/selection/retry change.
+Two-worker local full suite PASS478/3skips after correction; initial CI failure
+retained. Final corrected head/check conclusions in private receipt/owner report.
+Stable version transition/publication remain separate; no self-merge/auto-merge.
+
+## Previous record (preserved)
+
+# Phase 6.5 — narrow Windows helper correction; owner review pending
+
+2026-10-15. Base owner-merged PR26 release4e75534b87021c796b5935c817bf56eeba8d4d87,
+treee60c42a4bef4c59c93f5fffea623f84572d0216c. Fix branch
+fix/v1-wsl-reclaim-elevation-integrity targets release/v1.0.0-windows only.
+Post-merge CI38708938698 PASS; distribution38708938551 failed only upload quota.
+Original security regressions RED7/7: actual mutable-file/result/receipt assertions.
+Implemented fixed inline code across UAC; private Windows-home operation ACLs,
+trusted ancestry/reparse/owner checks; derived fixed receipt paths, CreateNew/flush/
+atomic no-replace rename; strict HMAC/correlation validation in PowerShell and Node.
+No confirmed default-profile exploit claimed. Existing lifecycle/confirmation/
+SID/disk/other-distro/lock/error/reconnect controls retained; no feature disabled.
+Windows full478passed/3skipped; helper/command42included. Windows distribution32/27,
+launcher fixtures PASS; separate real Windows-to-WSL lifecycle1/1PASS. WSL full
+1298passed/49skipped,40uncached tasks; separate physical sandbox trust8/8PASS,
+distribution50/9. Static/frozen install/types/lint/build/format/hygiene/diff PASS.
+Final exact-head PR/check conclusions in owner report/private receipt; no manual
+duplicate distribution retry. Handoff docs/releases/v1-phase-6-5-wsl-helper-hardening.md;
+boundary docs/security/wsl-maintenance.md. First Temp-ancestry/ACL-fixture/lint
+failures retained and characterized; no assertions weakened or failures hidden.
+Owner selected direct stable1.0.0 publication, no public RC/prerelease. Version
+remains1.0.0-rc.1, runtime protocol1, schema/providers/lock/pins unchanged. GO for
+owner review; actual merge/CI precedes controlled stable version transition.
+No self-merge, auto-merge, main/dev/tag/release/public-asset changes, real elevation/
+compaction, owner credentials, paid QA or extra branch/artifact deletion.
+shux unavailable; records maintained directly. Primary dirty files/worktrees retained.
+
+## Previous record (preserved)
+
+# Phase 6.4 — Windows release branch activated; owner PR review pending
+
+2026-10-15. Owner exception permits branch creation/review despite upload-only
+quota failure; official publication remains unauthorized. Release branch
+release/v1.0.0-windows created at exact c6d4769bf3179d49bb3718074d6c083f52332626,
+tree45e1d84e0eb447f4b93d1193a4421c6aeba1c40b. Main/dev/default/tags unchanged.
+Existing preparation branch retains fca2d0b and036059a; additive docs correction
+targets only that release branch. No self-merge/auto-merge/publication.
+Handoff: docs/releases/v1-phase-6-4-release-activation.md. New local frozen install,
+hygiene/format/lint/types/build/diff checks PASS; build/lint20cached, types37cached.
+Helper/lifecycle/UI43tests PASS; five safe security fixtures observed the expected
+SID/disk refusal and disclosed script/result/ACL trust assumptions. Classification:
+narrow hardening recommended before broad publication; no supported-profile
+privilege-boundary exploit reproduced. No elevated operation/realVHDX/credentials.
+Historical1288/33WSL,452/3Windows,8/8physical trust remain prior evidence, not reruns.
+Automatic release CI38702386286 PASS; archive38702386301 FAIL only upload quota
+after verified build/extraction. Final PR/check conclusions in owner report/private receipt;
+no duplicate workflow retry or extra artifact/branch/directory deletion.
+Owner review/merge precedes fresh exact-merge ZIP, bounded acceptance, trusted
+delivery/helper disposition and separate official RC authorization.
+shux contract unavailable; task records maintained directly; primary owner state retained.
+
+## Previous record (preserved)
+
+# Branch maintenance — COMPLETE
+
+2026-10-15. Owner-authorized remote cleanup completed. Active preparation renamed
+from `codex/v1-phase-6-3-windows-freeze` to
+`release-prep/v1-phase-6-3-windows-freeze` at exact commit
+`fca2d0b04120d9fd6195ba42f342a8685ca02386`; commit and tree identity verified before
+deleting the old remote name. Local checkout/upstream migrated safely.
+All 11 obsolete candidates had zero commits ahead of dev, reachable merged PRs,
+no active worktree or exact workflow dependency and no branch protection flag.
+Remote inventory is main, dev and the renamed preparation branch. Naming policy
+and complete receipt: docs/development/branch-cleanup-2026-10-15.md.
+The additive documentation commit preserves the original preparation commit.
+Main/dev/tags, the owner's dirty checkout and all worktree registrations remain
+intact. No product edit, release publication, directory/artifact deletion or
+distribution retry. Documentation formatting and repository hygiene are the
+applicable checks; no new product/host acceptance is claimed.
+`shux contract` was attempted but unavailable; records maintained directly.
+Phase 6.3 release work remains separately pending: hosted upload quota, release
+branch creation, PR into that branch and explicit official RC authorization.
+
+## Previous record (preserved)
+
+# Phase 6.3 — CONDITIONALLY READY; HOSTED UPLOAD GATE BLOCKED
+
+2026-10-15. Selected binary source c6d4769bf3179d49bb3718074d6c083f52332626,
+tree 45e1d84e0eb447f4b93d1193a4421c6aeba1c40b, rc.1/protocol 1.
+Authoritative handoff: docs/releases/v1-phase-6-3-windows-rc-freeze.md.
+Local Windows/physical WSL gates and fresh private exact-source archive passed;
+WSL full suite 1288/33 skips, physical trust8/8, hosted Windows Desktop 452/3 skips.
+Actual packaged setup/open/stop/relaunch, removal/reopen, synthetic DPAPI and
+maintenance Cancel passed. Source-paired real disk inspection was read-only.
+All88approved review artifacts privately backed up, SHA256-verified/reverified
+and removed remotely:91→3; protected candidates/I1/published assets retained.
+Merged-dev CI38685627100 SUCCESS. Windows distribution38685627221 attempts1/2/3
+failed only upload quota; attempt 3 followed cleanup. GitHub reports6–12 hour
+accounting refresh. No release branch/PR while that prerequisite fails.
+Documentation review branch codex/v1-phase-6-3-windows-freeze preserves the documentation;
+PR awaits the release target. After hosted success: create release at c6, PR to release, owner merge,
+then fresh actual-merge build/acceptance before separate official authorization.
+No paid calls, real compaction, tags, release/public assets, main/default changes
+or primary source edits. Initial profile-isolation harness mistake disclosed.
+shux contract unavailable; task status, ledger and handoff maintained directly.
+
+## Previous record
+
+# PR25 Windows CI regression — local correction verified
+
+2026-10-15, baseline d58ef40226578ec9a5beb070b0b19efae969b2ab.
+CI38641540439 failed only the registration-path assertion in the Windows Desktop
+suite: raw temporary path spelling was compared to PowerShell's canonical file
+path. Added native/dot-segment fixture variants; dot-segment reproduced the same
+Wrong disk failure before correcting the oracle. Expected path now comes from
+the actual fixture file via Get-Item.FullName; exact comparison and all unknown
+or unsafe distro refusals remain. No production helper or CI gate changed.
+Focused real PowerShell helper16/16 and full Windows Desktop452/3platform or
+prerequisite skips PASS. pnpm build20/20 (19cached), repository hygiene,
+changed-file formatting and diff check PASS. Desktop lint/typecheck PASS; hosted retry receipt follows in the final report. Self-review found no
+correctness/security/concurrency issues in this test-only patch. Original owner
+source edits/main retained. No paid calls or merge. shux unavailable.
+
+## Previous record
+
+# Phase 6.2 — REVIEW PREPARATION COMPLETE; OWNER INTEGRATION PENDING
+
+Owner resumed after PC cleanup on October 14, 2026. Worktree:
+C:/Users/merte/Documents/GitHub/Sentry-work-windows-scope, branch
+release-prep/v1-windows-only-scope, PR #23 targets dev. Implementation source
+aced9ccb57b664f5ee38280e8dfc72a8635d58d5, tree73bb89f777ad4373e7087cdd00de03fc2facf845.
+Later receipt-only head is recorded in PR metadata; the tested archive retains
+aced9cc identity. All original owner changes in primary checkout preserved.
+
+Implemented: Windows11 x64/WSL2-only v1 support claims, retained deferred native
+implementation/evidence, independent Windows/native archive workflows, prepared
+post-owner-merge branch commands and native import tracker. Owner declined GitHub
+Issues. No version/protocol/lock/provider/schema/application changes. Recovery A
+remains exact historical corrected I1; original-beta G10 FAIL retained.
+
+Verified on aced9cc: Windows Desktop400PASS/2skips, distribution26PASS/27skips;
+launcher20/20 and PowerShell smoke/behavior/IO/shutdown/maintenance PASS.
+WSL full suite1236PASS/16skips across40uncachedtasks; real trust8/8;
+distribution50PASS/3skips; all23 native/shared shell fixture scripts PASS.
+Windows/WSL frozen install/static/build/diff PASS; archive forced20uncachedbuilds.
+CI38566292232, Windows archive38566292342, native archive38566292740 SUCCESS.
+Initial memory, interrupted bootstrap and private harness mistakes retained;
+unchanged product gates passed after cleanup/harness correction.
+
+Review ZIP sentry-1.0.0-rc.1-aced9ccb57b6-windows-x64.zip:
+SHA256510ce4c9ca477cc3c5ffe6e5ea20c69cb126d46350cd769c1452d71d7874871d;
+manifestd6746440cc37aed7812645704fd27de106b65636e90c22cbec8a8372a8ed03ca;
+332inventoryfiles/extraction/sidecar/full identities verified. Archive bootstrap
+in fresh isolatedHOME passed preactivation/active checks; matching Desktop/runtime
+rc.1/protocol1/fullSHA confirmed. No owner stores accessed.
+
+Single actual packaged GUI import PASS63,601ms:5003files/102directories/
+1,073,875,836bytes, fully written deterministic1GiBbinary plus5000nestedmodules.
+Five exclusion sentinels absent. Source/managed/immutable scans all match
+ee0d072d46d99e4b1f540190db067e8096502caca38aef6dfa163611cbc61a3b.
+Immutable asset distinctinode; UI timer/sidebar responsive; autoREADYcard.
+Fresh-process project/revision/hash/empty run history retained; supported graceful
+stop twice exit0; no task-owned Desktop/runtime remaining. No paid calls.
+Source input was WSL Linux filesystem through Windows GUI, not a1GiBNTFS test.
+No comparable shared Windows defect reproduced; native tracker remainsOPEN.
+
+Full receipt docs/releases/v1-phase-6-2-windows-transition.md. Private evidence:
+C:/Users/merte/.codex/artifacts/sentry-phase62-20261014; worktree dist/phase62;
+WSL /var/tmp/sentry-phase62-evidence. CONDITIONALLY READY: owner merge of PR23,
+post-merge CI/approved exact source, long-lived branch creation and fresh final
+Windows RC build remain. Do not branch from unapproved PRhead or self-merge.
+No official tag/release/assets/main promotion authorized. shux absent; protocol
+maintained directly. Final review-head checks are reported in PR metadata.
+
+## Previous record
+
+# Phase 6.2 — PAUSED AT OWNER REQUEST
+
+Owner said stop until PC cleanup on October 14, 2026. Do not resume without
+owner instruction. PR #23 remains draft against dev; no self-merge/publication.
+Task worktree: C:/Users/merte/Documents/GitHub/Sentry-work-windows-scope.
+Implementation commit aced9ccb57b664f5ee38280e8dfc72a8635d58d5; source tree
+73bb89f777ad4373e7087cdd00de03fc2facf845. Primary owner checkout untouched.
+
+Completed: Windows-only support docs, retained native history/implementation,
+independent Windows/native packaging workflows, post-owner-merge branch commands
+and dedicated native import tracker. Owner declined GitHub Issues. No long-lived
+branches created before owner merge. Version rc.1/protocol1/lock/pins unchanged.
+Recovery A remains exact historical I1; original-beta G10 FAIL retained.
+
+Executed: frozen install; repository/format/lint/typecheck/build/diff gates PASS
+on Windows/WSL (Windows Turbo static/build initially cached; archive forced all
+20 builds uncached). Windows Desktop400PASS/2skips; distribution26PASS/27skips;
+launcher20/20 and PowerShell smoke/behavior/IO/shutdown/maintenance PASS.
+WSL full suite1236PASS/16skips,40uncachedtasks; real systemd trust8/8 PASS;
+distribution50PASS/3skips (Windows validator and2 unavailable-fish cases).
+All executed native shell fixture scripts PASS. Initial Windows memory-exhaustion attempts
+and private-harness startup/line-ending mistakes retained separately.
+
+New review ZIP built/extracted/validated: sentry-1.0.0-rc.1-aced9ccb57b6-windows-x64.zip,
+SHA256510ce4c9ca477cc3c5ffe6e5ea20c69cb126d46350cd769c1452d71d7874871d.
+Manifest SHA256d6746440cc37aed7812645704fd27de106b65636e90c22cbec8a8372a8ed03ca;
+332files; locka36aebfc003cd12076ed63613c05b07e6fa416d3c3f52a54d4f86ac3f3e4683a.
+HostWindows11 build26200/Node24.13.1/pnpm9.12.3/Electron36.2.1/builder26.0.12.
+Private evidence C:/Users/merte/.codex/artifacts/sentry-phase62-20261014;
+additional logs/harnesses under worktree dist/phase62 and WSL
+/var/tmp/sentry-phase62-evidence. Hosted implementation-head Windows archive,
+Windows launcher/Desktop and native archive passed; final quality conclusion
+not fetched before pause. No local/hosted hash equivalence assumed.
+
+BLOCKED VERIFICATION: packaged large GUI import NOT STARTED. Disk fell to~280MB
+free; owner will clean PC. Need >=4GB headroom before resume. Fixture prepared at
+/var/tmp/sentry-phase62-large-project:5003includedfiles/1073875836bytes,5000nested
+sourcefiles, sparse all-zero1GiBasset,5exclusion sentinels. Disclose synthetic
+sparse workload; no native PASS inferred. Private large-gui-observer.mjs prepared
+but NOT executed. Isolated runtime bootstrap was interrupted at the owner pause; no product failure
+is inferred from that interruption.
+its log and staging retained. Inspect bootstrap/data/maintenance state before
+retry. No GUI/app/import process launched, no paid calls/owner credential access.
+
+Resume: inspect free disk and retained task-owned bootstrap; finish isolated
+exact-archive runtime bootstrap, actual GUI import/persistence/material/reopen/
+shutdown verification, scoped review and final readiness receipt. Update draft
+PR/CI evidence and mark reviewable only when complete. Owner merge still required
+for final release/native branches and fresh post-merge exact-source RC artifact.
+No tag/main promotion/assets publication authorized. shux unavailable; direct
+protocol updates. This pause is not phase completion or release readiness.
+
+## Previous record
+
+# Phase 6.2 Windows-first release handoff — IN PROGRESS
+
+Isolated release-prep/v1-windows-only-scope from approved dev62b474e. Initial
+Windows11 x64/WSL2 scope and independent Windows/native packaging prepared.
+Shared Ubuntu runtime/security gates retained. Native import tracker is in
+docs/releases/native-linux-large-import.md; owner declined GitHub Issues.
+Recovery Option A remains historical corrected I1; no native PASS inferred.
+Windows static/build gates pass (Turbo cache reported). Initial local tests
+hit host memory exhaustion; failed attempts retained. Reruns, WSL full/trust,
+exact review ZIP and 1GiB packaged-GUI import pending. Owner merge required
+before long-lived release/native branches; commands prepared, refs not created.
+No tag/publication/main promotion/paid calls/real credential access. shux absent;
+protocol updated directly. See docs/releases/v1-phase-6-2-windows-transition.md.
+
+## Previous record
+
+# Native import investigation handoff — 2026-10-14
+
+Latest owner evidence: clean Sentry-latest/dev8a75e992 and successful RC1 source
+setup/WSLNode22.23.2/protocol1/doctor/open. Export
+run_01M4WY9CSQKVDZZP6TS0X0VPTK is completed productionFull3/3, zero failed/
+interrupted,11reportedfindings/41evidence. It scans Nexus/skills12files/31,661bytes,
+not AutoPulse; native import investigation remains open. Export lacks application
+sourceSHA, so cite owner setup/inspected checkout separately. Missing-key doctor
+warnings preceded run; no credential persistence inference. No assistant paid call,
+project modification or acceptance gate waiver; receipt/protocol updated.
+
+Owner reports native CachyOS large-project projects.add timeout with runtime
+connected. Full native identity, exact input equivalence and root cause remain
+unverified; complete native RC smoke has not passed. Source8a75e992 import timeout
+already600,000ms; expired Desktop wait does not cancel runtime work. No blind
+timeout/exclusion/integrity change. Real1GiB/5,003file manager imports PASS on
+WSL Node22.23.2/26.10.0; requested AutoPulse import through actual Windows RC
+GUI/Add by path/IPC PASS32,475ms, canonical813files/120,370,663bytes and mounted
+list refresh. Exact ZIPd224cf09/matchingruntime8a75e992/protocol1, fresh isolated
+profile/data, original only read, no project commands/provider calls. Private
+autopulse-packaged receipt/probe and large-import logs retained. Transport30/30
+PASS. Fresh repeated GUI import11,256ms and supported-control graceful shutdown
+exit0 PASS. Initial private runner used unsupported stop flag; its failed stop
+check and first successful import are retained separately. Preserve diagnostic data.
+Owner local dev command uses dirty main9c57e3f/beta0.1.0-beta.1, not latestdev/RC;
+Desktop build does not update installed runtime. Primary preserved. Next native
+identity/input/storage/progress evidence; reproduced production fix gets separate
+focused PR againstdev, owner integration and new exact-source artifacts. PR22
+must disclose open investigation; no native PASS, release authorization or paid
+replay inferred. shux unavailable; protocol maintained directly.
+
+## Previous record
+
+# Phase 6.1 preparation handoff — 2026-10-14
+
+CONDITIONALLY READY; recovery A APPROVED, official RC cut NOT AUTHORIZED.
+Selected binary input remains approved dev merge
+8a75e9924a41b98351e46255111fdbfed335f1f0. Documentation-only receipts do not
+change that selection. See docs/releases/v1-phase-6-1-rc-cut-verification.md
+for the completed provenance/GO-NO-GO handoff. Both local and hosted archives
+built/externally verified; selected local Windows d224cf09... and hosted Linux
+8d906885... remain distinct from the documentation PR and other same-source
+builds. Postmerge CI 38514119610 all three jobs PASS; distribution 38514834916
+both PASS. WSL 1,236/16 skips, trust 8/8, distribution 50/1; Windows Desktop
+400/2, distribution 26/25, static/build/maintenance/launcher PASS. Local exact
+Windows GUI/import/synthetic history/hello/stop and DPAPI plus two fresh restarts/
+plaintext absence PASS, prepared host scope. Native exact-RC
+smoke retry pending: actual operator attempt verified archive and host sandbox
+prerequisites but missing pnpm stopped setup before staging. Later manual open
+showed runtime missing. Acceptance-only fish helper now provisions pinned pnpm
+inside the isolated HOME and blocks open without runtime; real-fish tests
+RED2 then GREEN2. Follow docs/releases/v1-cachyos-rc1-smoke-guide.md; no RC
+archive/application bytes changed. Recovery A owner-adopted October 14, 2026
+("i choose A") only for historically tested Windows/I1 scope. Official cut
+authorization remains pending. Preserve original
+G10 FAIL, all prior evidence, primary edits and beta tag. Final documentation
+PR head/checks live in its review receipt; do not self-merge. No official cut,
+main promotion, release branch, official assets, deletion or paid calls. shux
+absent; protocol direct. Stop for separate exact-source/assets/limits/visibility
+cut authorization. No real-owner restore was executed or instructed.
+
+## Previous record
+
+# Phase6.0 preparation review handoff — 2026-10-13
+
+Start docs/releases/v1-phase-6-0-rc-readiness.md, V1_RC_READINESS_CHECKLIST.md,
+v1-owner-functional-acceptance-2026-10-13.md, v1-rc-versioning-plan.md,
+v1.0.0-rc.1.md and pending recovery-policy-decision. Owner-merged PR20/devc103509
+and postmerge38460193028 all3 PASS verified. Current owner reports both supported
+platforms/independent agents/selection/Full-Targeted normally work. Record that
+overall acceptance honestly; do not replay14 paid modes or demand recordings.
+Review branch release-prep/v1.0.0-rc.1 changes only version/reporting metadata,
+guards and docs; protocol1/deps/pins/migrations/profile/security paths frozen.
+Source audit16 exact literal-change files; root-only RED2→GREEN3 consistency,
+RC/beta tuple refusal, Windows distribution26/25 of51, launcher smoke PASS.
+Final full source/tree, CI/proposed merge, both review archives/retention and
+actual test/smoke conclusions are in preparation PR final verification receipt.
+Owner chooses recovery A exact I1 Windows scope / separately scoped B / reject;
+adoption PENDING. Original beta G10 FAIL, native G10-R unexecuted. Owner reviews
+version/evidence scope and separately authorizes eventual exact RC cut. No
+release/* branch, tag, public publication, main promotion, self-merge, real
+profile access, spending or remote deletion. Six old branches eligible only
+after owner approval. shux absent; task protocol maintained. Stop for review.
+
+# Phase5.3 review handoff — 2026-10-13
+
+Start with docs/releases/v1-phase-5-3-final-host-acceptance.md, candidate-lock,
+recovery-policy-decision, cachyos-operator/results, funded-qa and owner-credential
+observation. PR19 actual owner merge5c68491 and postmerge38451742628 all3 PASS.
+Exact I1 production source unchanged; selected physical Windows ec5edec8... and
+native-target5bd3642... bytes reverified, not relabelled as later receipt builds.
+New available Windows integrity/prerequisite/source/disconnect/relaunch checks
+PASS; full baseline WSL1,236/16, real trust8/8, Windows Desktop400/2 and
+distribution22/25; native syntax14, controlled backend5/offline audit4 verified.
+121 case rows preserve historical W1/C1/G10 and distinguish narrower passes
+from remaining complete Windows/native/active-provider requirements.
+Final exact task head/proposed merge/CI/distribution outcomes belong to the PR
+final receipt. Owner reviews PR; separately adopts/rejects recovery A and exact
+host scope, executes native/clean-host/D06/real-profile/funded/live recovery
+gates, accepts evidence/feature freeze, then separately authorizes Phase6.
+No real owner profile/credentials/current, beta/main/version/tag/release, remote
+branches or paid calls changed. Do not self-merge or progress Phase6. shux absent;
+task protocol updated directly. Stop for review; working tree committed clean.
+
+# Phase5.2 review handoff — 2026-10-13
+
+See docs/releases/v1-phase-5-2-g10-recovery-validation.md and recovery contract/
+CachyOS executable handoff. Selected physical recovery target remains exact I1
+c78faa7, native Windows archiveec5edec8... verified before new populated campaign.
+PR18 owner-merged8bbe8ba/postmergeCI38439418803 SUCCESS; no executable difference
+from I1 and no new production edits. Recovery restores stopped matching beta
+data/profile under corrected pair, preserving projects/history/lineage/snapshots,
+four actual JSON/log exports, four DPAPI secrets and model prefs through2 fresh
+restarts and repeated restore. Original backup and candidate generations retained.
+New acceptance-only backup checker/seeder/tests are excluded from archive payload.
+Windows15/2, Linux17/17 backup tests; actual trust8/8. Baseline full WSL1,236/16,
+Desktop400/2; final exact-head CI/distribution receipts live in PR/final report.
+G01-G09 actual/controlled scope and new G10-R Windows PASS; original beta G10
+historical P1 FAIL remains. Recovery policy is proposed, requires separate owner
+adoption; native recovery/keychain, clean install, actual unavailable backend,
+funded matrix/active-provider and real-profile acceptance remain unexecuted/open.
+Do not self-merge, adopt policy, operate on owner data/current, delete branches,
+modify beta/version/tag/release or start Phase6. Owner dirty tree/identity preserved.
+shux unavailable; protocol maintained directly. Stop for owner PR review.
+
+# Phase5.1 review handoff — 2026-10-13
+
+Current selected integrated candidate I1 c78faa74717b0f430a859730e98c3c4915e7b03f.
+See docs/releases/v1-post-merge-acceptance-c78faa7.md for exact tree, separate
+Windows local/CI and CachyOS-targeted hashes, tests, real packaged DPAPI lifecycle,
+four-key + model preference D compatibility and physical safe failures. PR16/17
+are owner-merged; static/full WSL/Windows Desktop/real trust and I1 distributions
+PASS with stated skips/host limitations. No new production change justified.
+The receipt-only PR final CI/distribution conclusions live in its body/final report;
+those receipt binaries have a distinct SHA and do not inherit I1 physical results.
+Remaining: owner review PR; approve/run presence-only real-profile procedure;
+native CachyOS, clean Windows, D06 actual backend-unavailable host, populated
+history/export upgrade, funded matrix and active-work recovery acceptance; exact
+attribution of supplied owner3/3 export. G10 historical beta P1 FAIL remains;
+recommend explicitly approved I1 recovery restore and full retest, not immutable
+beta modification or a claim of successful old-binary downgrade. No recovery code
+or policy change authorized. Three merged remote task branches eligible for cleanup
+after explicit approval; main/dev protection403, procedural owner-only gates.
+Owner dirty checkout/private credentials preserved, no paid calls. shux unavailable.
+Stop for owner review; Phase6, RC/version/tag/release/merge remain NOT AUTHORIZED.
+
+# Owner Full three-agent export reviewed — 2026-10-13
+
+Owner confirmed Windows/WSL. run_01M4T9XGTM1S41PS74NA0G767Z is production Full,
+completed3/3; OpenCode0/DeepSeek5/GLM5 findings, evidence3/17/18 (10/38 total).
+Exact input SHA256f6bae8c38f20f1dab1fed6570a525e4d38afa49e88cd05cfd94b078dcfefdee8.
+Private audit609 existing-schema records PASS, checked ownership/canonical events/
+terminal and tool lifecycle PASS,53 starts53 completions;20 warning events retained.
+Sentry build/archive identity absent; only owner host confirmed. Separate sanitized
+owner-run receipt added; raw export/private paths not committed. Snapshot hashes
+agree in metadata, actual bytes/DB/log/reopen/global paid-call audit unverified.
+E07-Full success is recorded without attributing it to selected D binaries; W1/C1
+counts unchanged, other13 modes/native/active-work recovery open. G10 P1 FAIL and
+Phase6 NOT AUTHORIZED/NOT RECOMMENDABLE unchanged. No agent-funded provider calls.
+
+PR15 verified human-owner merge into dev aef67903ac0ef1a42a5bf3ebd2626c4603152688;
+postmergeCI38376341094 SUCCESS. Clean existing test/v1-owner-acceptance-evidence
+advanced by fast-forward to that approved dev for this evidence-only follow-up.
+Production paths identical to D; no frozen source/version/schema/tag changes.
+Next: owner review follow-up PR; supply producing build/archive identity and
+remaining E07 observations, resolve G10 disposition and remaining acceptance.
+shux contract attempted again, unavailable; protocol maintained directly.
+
+## Previous record
+
+# Phase 5 actual owner acceptance — owner review (2026-10-13)
+
+Evidence-only branch test/v1-owner-acceptance-evidence from verified dev
+d250e4cabdae7735af5905146db8d7806fe4427c (treea86a2c8ea160eef13cb2783568594de10955d158).
+PR14 merged by owner; exact postmergeCI38364397137 all3 SUCCESS. Fresh
+distribution38366622239 both SUCCESS, archives/sidecars downloaded and retained;
+old42c PR-head archives separately preserved. Product/protocol/beta unchanged.
+Real Windows11/WSL2 prepared-host archive GUI, DPAPI save/restart/privacy, import/
+doctor/history, integrity negatives, missing Node/pnpm and idle disconnect/manual
+relaunch passed; isolated real Linux first/repeated bootstrap passed. Actual
+integrated-SHA WSL sandbox trust8/8 PASS, hosted trust exclusion disclosed.
+W1 receipt61:20 PASS/16 NOT RUN/4 ENVIRONMENT UNAVAILABLE/20 OWNER ACCEPTANCE
+REQUIRED/1 FAIL. C1 receipt58:44 ENVIRONMENT UNAVAILABLE/14 OWNER ACCEPTANCE
+REQUIRED. Clean Windows full setup/default preferences not executed. Native
+CachyOS inaccessible, exact operator handoff prepared; no native acceptance inferred.
+Owner will execute Full all-three and provide log; no log received, no agent paid
+calls. Remaining provider modes/active-QA cancellation/maintenance not executed.
+
+P1 G10 FAIL: matching stopped source-beta DB/projects/profile and beta pair
+restored; history/ciphertext unchanged but credential configured false. Independent
+beta/candidate/beta observes false/true/false on same encrypted profile. Beta loads
+credentials before Electron readiness; D already fixed. Historical beta rollback
+limitation, no new D regression/P0 demonstrated. Affected track stopped; separate
+bounded owner-disposition proposal, no production patch or silent support waiver.
+See docs/releases/v1-owner-acceptance-execution.md and per-host receipts/proposal.
+Private logs/backups retained, failure attempts preserved. Sanitized screenshot
+reviewed. Branch contains only docs/evidence/protocol updates; final evidence-head
+CI is separate from tested D source and is reported in PR checks.
+
+Next owner actions: review evidence PR and G10 proposal; provide exact-source
+E07-Full log; execute native/clean-provisioning and remaining approved acceptance.
+Phase6 NOT RECOMMENDABLE and NOT AUTHORIZED. No merge, RC branch, direct main/dev
+commit, version/tag/release, owner credential changes or insecure workarounds.
+Owner dirty primary checkout and Git identity preserved. shux contract attempted
+at campaign start but unavailable; status/append-only ledger/handoff maintained
+directly. Stop at owner acceptance gate.
+
+## Previous record
+
+# Phase 5 finalization — acceptance preparation (2026-10-13)
+
+Implementation93a84c3d27f1079480f8ec90d87ee645e4767611 VERIFIED: WSL full1214/16skip,
+real trust8/8, all24 Linux launcher suites PASS. CI38361256576 all3 PASS;
+distribution38361256555 both PASS. Downloaded CI ZIP4036c333... and TAR e3576b76...
+sidecars/extraction/inventory/version verified (332/333 files); full digests in
+docs/releases/v1-pre-rc-automated-receipt.md. Windows full uncached serial FAIL
+six trust cases plus OpenCode bypass fixture timeout; file rerun FAIL, single
+case PASS1102ms, source unchanged. Obsolete merged remote final-hardening branch
+removed; local checked-out worktree retained. Draft PR14 targets dev; final
+documentation-head checks and artifact identities recorded in PR final receipt.
+Owner physical acceptance and Phase6 authorization remain outstanding.
+
+Task branch fix/v1-pre-rc-acceptance-preparation from approved dev c1d2d58.
+Primary dirty main checkout preserved. shux contract attempted, unavailable.
+Getter/Proxy mapper and faithful Electron event/payload corrections complete;
+related actual fatal-screen synthetic reflection reproduced and scrubbed before cap.
+Focused44 PASS; Desktop serial378 PASS/2skip. Windows default full test FAIL six
+real-mount trust cases; isolated serial same six systemd unavailable (+EBUSY).
+Install/hygiene/lint/typecheck/build/distribution and Windows launcher/maintenance
+fixtures PASS; full uncached Windows serial and exact-commit WSL/CI/artifact
+receipts are reported in the PR final receipt, not inferred here.
+See docs/releases/v1-pre-rc-acceptance-preparation.md and new owner runbook,
+72-row results template and V1_ACCEPTANCE_CHECKLIST.md. Exact committed candidate
+identity, CI and unsigned archive checksums belong to PR receipt/handoff.
+Native CachyOS/clean Windows unavailable; funded calls owner-required (none made).
+Stop at owner review. No self-merge, RC branch, tags, publication or Phase6.
+
+## Prior handoff (preserved)
+
 # Phase 4 credential diagnostic — owner review (2026-10-12)
 
 IMPLEMENTED AND AVAILABLE-HOST VERIFIED; Phase 4 acceptance remains open.
@@ -494,3 +1027,17 @@ Verification:
 Next: do not start Phase 4 automatically. A live Muse smoke remains available
 only when a user explicitly provides a configured host/model/auth environment
 and opts in with `SENTRY_LIVE_MUSE_TEST=1`.
+
+Late exact-head585db30 verification retained: full WSL failed one existing
+closure cancellation test (first agent cancelled before assumed completion).
+Controlled promise barrier + before-cancel state assertion reproduced RUNNING,
+then durable-completion wait fixed test synchronization; closure7/7 PASS,
+run-engine typecheck/lint PASS. No production code/backup verifier changed;
+all original result assertions preserved. Initial barrier-only probe passed and
+is retained separately. Final correction head full/CI/distribution results are
+recorded in PR20; first-head failure is not erased or silently rerun as green.
+
+Optional housekeeping note: duplicate generated64bff9f artifact cleanup was
+rejected by automatic approval review (blocked by policy). No deletion/retry;
+artifact ZIP and installer unaffected. Local candidate remains ready to install,
+owner activation remains unverified until the installer is run.

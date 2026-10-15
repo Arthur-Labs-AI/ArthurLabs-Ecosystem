@@ -5,11 +5,14 @@ import { bootstrapDesktop, type BootstrappedDesktop } from './bootstrap.js';
 import { classifyBootFailure, fatalScreenCopy } from './boot-failure.js';
 import { parseSentryControlArgs } from './sentry-control.js';
 import { dispatchDesktopCommand } from './desktop-command-router.js';
+import { ProviderCredentialService } from './services/provider-credentials.js';
 import { SentryCliServer } from './cli-server.js';
 import { registerDesktopIpc } from './ipc.js';
 import { DesktopLiveUpdates } from './live-updates.js';
 import { readReleaseIdentity, sourceUserDataPath } from './distribution.js';
 import { mkdirSync } from 'node:fs';
+import { WslMaintenance } from './wsl-maintenance.js';
+import { WslSpaceReclaimer } from './platform/windows/wsl-space-reclaimer.js';
 
 // Keep source-beta credential/prefs and single-instance scope when the
 // packaged product is named Sentry. Do this before bootstrap/lock acquisition.
@@ -36,6 +39,7 @@ let cliServer: SentryCliServer | undefined;
 let bootPromise: Promise<void> | undefined;
 let quitting = false;
 let cleanupComplete = false;
+let maintenance: WslMaintenance | undefined;
 
 function resolveAsset(...segments: string[]): string {
   return join(currentDir, ...segments);
@@ -95,7 +99,13 @@ async function boot(): Promise<void> {
     await app.whenReady();
     bootstrapped = await bootstrapDesktop(dataRoot);
   } catch (error) {
-    const classified = classifyBootFailure(error);
+    // Bootstrap hydrates stored credentials into the main-process environment.
+    // Its service may not exist after failure: scrub known environment values
+    // without reading, changing, or migrating any credential store here.
+    const credentials = new ProviderCredentialService({});
+    const classified = classifyBootFailure(error, {
+      redactSecrets: (text) => credentials.redactSecretsFromText(text),
+    });
     const message = classified.message;
     await app.whenReady();
     const copy = fatalScreenCopy(classified.kind);
@@ -168,13 +178,34 @@ async function boot(): Promise<void> {
     liveUpdates?.stop();
   });
   const desktopService = bootstrapped.service;
+  const desktop = bootstrapped;
+  const reclaimer = new WslSpaceReclaimer(join(app.getPath('home'), '.sentry-wsl-maintenance'));
+  maintenance = new WslMaintenance({
+    runtime: desktop.runtime,
+    hostKind: desktop.host.hostKind,
+    async distro() {
+      const info = await desktop.host.runtimeEnvironmentInfo();
+      if (info.distro === undefined) throw new Error('No WSL distribution is connected.');
+      return info.distro;
+    },
+    inspect: (distro) => reclaimer.inspect(distro),
+    reclaim: (distro) => reclaimer.reclaim(distro),
+    reconnect: () => desktop.reconnect(),
+    pause: () => updates.stop(),
+    resume: () => updates.start(),
+  });
+  // No catch here by design: a throwing scrubber must propagate into the
+  // shared fail-closed mapping (fixed safe message), never keep raw text.
+  const redactErrorText = (text: string): string => desktopService.redactSecretsFromText(text);
   cliServer = new SentryCliServer({
+    redactErrorText,
     dispatch: (command, payload) =>
       dispatchDesktopCommand(
         desktopService,
         command,
         payload,
         {
+          maintenanceActive: () => maintenance?.active ?? false,
           onRunCreated: (runId, operationId) => updates.notifyRunCreated(runId, operationId),
           onRetestCreated: (retestRunId, operationId) =>
             updates.notifyRetestCreated(retestRunId, operationId),
@@ -192,6 +223,12 @@ async function boot(): Promise<void> {
   });
   const broker = cliServer;
   registerDesktopIpc(bootstrapped.service, {
+    maintenanceActive: () => maintenance?.active ?? false,
+    reclaimSpace: () => {
+      if (quitting || maintenance === undefined) throw new Error('Sentry is shutting down.');
+      return maintenance.reclaimSpace();
+    },
+    redactErrorText,
     onRunCreated: (runId, operationId) => updates.notifyRunCreated(runId, operationId),
     onRetestCreated: (retestRunId, operationId) =>
       updates.notifyRetestCreated(retestRunId, operationId),
@@ -250,6 +287,13 @@ app.on('before-quit', (event) => {
   // Electron does not await async event handlers. Hold the first quit until
   // bootstrap and runtime shutdown finish; repeated requests share cleanup.
   event.preventDefault();
+  if (maintenance?.active) {
+    dialog.showErrorBox(
+      'Disk reclamation is running',
+      'Wait for Windows disk reclamation and runtime reconnection to finish before closing Sentry.',
+    );
+    return;
+  }
   if (quitting) return;
   quitting = true;
   void (async () => {

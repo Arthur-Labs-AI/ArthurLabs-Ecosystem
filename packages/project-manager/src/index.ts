@@ -650,7 +650,14 @@ export class ProjectManager {
       await this.fault('after_delete_marked');
       lease.assertHealthy();
       await rm(tombstone, { recursive: true, force: true });
-      await rename(paths.root, tombstone);
+      try {
+        await rename(paths.root, tombstone);
+      } catch (cause) {
+        // Manual deletion can remove the whole managed tree before its
+        // database record. Still remove that record/history through the
+        // normal transaction; permission and other I/O errors remain fatal.
+        if ((cause as NodeJS.ErrnoException).code !== 'ENOENT') throw cause;
+      }
       operation = RuntimeOperationSchema.parse({
         ...operation,
         stage: 'tombstoned',

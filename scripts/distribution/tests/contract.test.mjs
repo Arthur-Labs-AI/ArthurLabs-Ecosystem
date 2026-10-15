@@ -70,6 +70,45 @@ test('tampered component fails checksum validation', async (t) => {
   await writeFile(join(root, 'desktop/Sentry.exe'), 'changed');
   await assert.rejects(validate(root), /Checksum mismatch/);
 });
+
+test('RC archive identity validates and refuses a historical-beta component pair', async (t) => {
+  const root = await fixture(t);
+  const rc = { ...identity, version: '1.0.0-rc.1' };
+  for (const path of [
+    'build-identity.json',
+    'runtime-source/build-identity.json',
+    'desktop/resources/app/build-identity.json',
+  ])
+    await writeFile(join(root, path), JSON.stringify(rc));
+  for (const path of ['runtime-source/package.json', 'desktop/resources/app/package.json'])
+    await writeFile(join(root, path), JSON.stringify({ version: rc.version }));
+  await seal(root, { version: rc.version });
+  assert.equal((await validate(root)).version, rc.version);
+  await writeFile(join(root, 'runtime-source/build-identity.json'), JSON.stringify(identity));
+  await seal(root, { version: rc.version });
+  await assert.rejects(validate(root), /Component identity mismatch/);
+});
+
+test('stable archive validates and refuses a stale RC runtime even with a resealed inventory', async (t) => {
+  const root = await fixture(t);
+  const stable = { ...identity, version: '1.0.0' };
+  for (const path of [
+    'build-identity.json',
+    'runtime-source/build-identity.json',
+    'desktop/resources/app/build-identity.json',
+  ])
+    await writeFile(join(root, path), JSON.stringify(stable));
+  for (const path of ['runtime-source/package.json', 'desktop/resources/app/package.json'])
+    await writeFile(join(root, path), JSON.stringify({ version: stable.version }));
+  await seal(root, { version: stable.version });
+  assert.equal((await validate(root)).version, '1.0.0');
+  await writeFile(
+    join(root, 'runtime-source/build-identity.json'),
+    JSON.stringify({ ...stable, version: '1.0.0-rc.1' }),
+  );
+  await seal(root, { version: stable.version });
+  await assert.rejects(validate(root), /Component identity mismatch/);
+});
 test('missing required preload fails even with regenerated inventory', async (t) => {
   const root = await fixture(t);
   await rm(join(root, 'desktop/resources/app/dist/preload/preload.js'));

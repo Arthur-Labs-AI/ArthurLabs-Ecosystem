@@ -12,6 +12,7 @@ interface ProviderStatus {
   persistence: string;
   source: string;
   hint: string;
+  storageError?: string;
 }
 
 const DESCRIPTIONS: Record<string, string> = {
@@ -87,26 +88,64 @@ export function Providers(): React.JSX.Element {
   const [confirmForget, setConfirmForget] = React.useState(false);
   const statuses = useQuery({
     queryKey: ['providers'],
-    queryFn: () => sentryApi().providers.status(),
+    queryFn: async () => {
+      const result = await sentryApi().providers.status();
+      if (
+        !Array.isArray(result) ||
+        result.some(
+          (item) =>
+            item === null ||
+            typeof item !== 'object' ||
+            typeof item.name !== 'string' ||
+            typeof item.configured !== 'boolean' ||
+            typeof item.source !== 'string' ||
+            typeof item.persistence !== 'string' ||
+            typeof item.hint !== 'string',
+        )
+      )
+        throw new Error('Provider status unavailable');
+      return result as ProviderStatus[];
+    },
   });
   const refresh = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['providers'] });
     void queryClient.invalidateQueries({ queryKey: ['environment'] });
     void queryClient.invalidateQueries({ queryKey: ['production-readiness'] });
   };
-  const fail = (e: unknown): void => setError(e instanceof Error ? e.message : String(e));
+  const fail = (e: unknown): void => {
+    setNote(undefined);
+    setError(e instanceof Error ? e.message : String(e));
+  };
   const save = useMutation({
     mutationFn: ({ name, value }: { name: string; value: string }) =>
       sentryApi().providers.save(name, value),
-    onSuccess: () => {
+    onMutate: () => {
+      setNote(undefined);
+      setError(undefined);
+    },
+    onSuccess: (result) => {
       setValues({});
       setError(undefined);
-      setNote('Saved. Encrypted, persisted, and loaded into the desktop host process.');
+      const status = result as ProviderStatus;
+      setNote(
+        status?.configured && status.persistence === 'secure' && status.source === 'stored'
+          ? 'Saved. Stored securely and loaded into the desktop host process.'
+          : status?.persistence === 'persisted'
+            ? 'Saved preference and loaded into the desktop host process.'
+            : 'Save completed. Refreshing provider status.',
+      );
       refresh();
     },
-    onError: fail,
+    onError: (e) => {
+      fail(e);
+      refresh();
+    },
   });
   const clear = useMutation({
+    onMutate: () => {
+      setNote(undefined);
+      setError(undefined);
+    },
     mutationFn: (name: string) => sentryApi().providers.clearKey(name),
     onSuccess: () => {
       setError(undefined);
@@ -115,6 +154,10 @@ export function Providers(): React.JSX.Element {
     onError: fail,
   });
   const forgetAll = useMutation({
+    onMutate: () => {
+      setNote(undefined);
+      setError(undefined);
+    },
     mutationFn: () => sentryApi().providers.forgetAll(),
     onSuccess: () => {
       setConfirmForget(false);
@@ -124,7 +167,7 @@ export function Providers(): React.JSX.Element {
     onError: fail,
   });
   const byName = new Map(
-    ((statuses.data as ProviderStatus[] | undefined) ?? []).map((item) => [item.name, item]),
+    (statuses.isError ? [] : (statuses.data ?? [])).map((item) => [item.name, item]),
   );
   const fieldProps = {
     values,
@@ -134,6 +177,7 @@ export function Providers(): React.JSX.Element {
     savePending: save.isPending,
     clearPending: clear.isPending,
     byName,
+    statusPending: statuses.isLoading,
   };
   return (
     <div className="page">
@@ -168,6 +212,20 @@ export function Providers(): React.JSX.Element {
         </div>
       ) : null}
       {statuses.isLoading ? <div className="skeleton">Loading provider status…</div> : null}
+      {statuses.isError ? (
+        <div className="error-box" role="alert">
+          Provider status unavailable. Credential presence could not be checked.{' '}
+          <button
+            className="compact ghost"
+            onClick={() => {
+              void statuses.refetch();
+            }}
+            disabled={statuses.isFetching}
+          >
+            Retry provider status
+          </button>
+        </div>
+      ) : null}
       <div className="cards">
         {AGENT_CARDS.map((card) => (
           <section className="card" key={card.title} aria-label={card.title + ' provider settings'}>
@@ -188,7 +246,8 @@ export function Providers(): React.JSX.Element {
       </div>
       <CollapsibleSection title="Advanced runtime binaries">
         <HarnessBinaryCard
-          statuses={(statuses.data as ProviderStatus[] | undefined) ?? []}
+          statuses={statuses.isError ? [] : (statuses.data ?? [])}
+          statusPending={statuses.isLoading}
           values={values}
           setValues={setValues}
           onSave={(name, value) => save.mutate({ name, value })}
@@ -238,6 +297,7 @@ function CredentialField(props: {
   readonly savePending: boolean;
   readonly clearPending: boolean;
   readonly byName: Map<string, ProviderStatus>;
+  readonly statusPending: boolean;
 }): React.JSX.Element {
   const item = props.byName.get(props.name);
   const secret = SECRET_NAMES.has(props.name);
@@ -248,13 +308,26 @@ function CredentialField(props: {
         <label htmlFor={'provider-' + props.name} className="card-title">
           {props.label}
         </label>
-        {item?.configured === true ? (
-          <span className="metadata" title="Saved securely in OS keychain storage">
-            <Check size={12} aria-hidden="true" /> Saved securely
-          </span>
-        ) : (
-          <span className="metadata faint">Not set</span>
-        )}
+        <span className={item?.configured ? 'metadata' : 'metadata faint'}>
+          {item?.configured && item.source !== 'unavailable' ? (
+            <Check size={12} aria-hidden="true" />
+          ) : null}
+          {item === undefined
+            ? props.statusPending
+              ? 'Checking…'
+              : 'Status unavailable'
+            : item.source === 'unavailable'
+              ? 'Stored credential unavailable'
+              : item.source === 'environment'
+                ? 'From environment'
+                : item.configured && item.source === 'stored' && item.persistence === 'secure'
+                  ? 'Stored securely'
+                  : item.configured && item.source === 'persisted'
+                    ? 'Saved preference'
+                    : item.source === 'missing' && !item.configured
+                      ? 'Not set'
+                      : 'Status unavailable'}
+        </span>
       </div>
       <div
         style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}
@@ -286,12 +359,19 @@ function CredentialField(props: {
         </button>
         <button
           className="compact ghost"
-          disabled={item?.configured !== true || props.clearPending}
+          disabled={
+            (item?.configured !== true && item?.source !== 'unavailable') || props.clearPending
+          }
           onClick={() => props.onClear(props.name)}
         >
           Clear
         </button>
       </div>
+      {item?.storageError !== undefined ? (
+        <p className="metadata">
+          Stored credential unavailable. Check OS secure storage; keep the existing store.
+        </p>
+      ) : null}
       <details style={{ marginTop: 4 }}>
         <summary className="metadata">Advanced</summary>
         <p className="metadata mono" style={{ margin: '4px 0' }}>
@@ -321,6 +401,7 @@ export function HarnessBinaryCard(props: {
   readonly savePending: boolean;
   readonly clearPending: boolean;
   readonly onError: (e: unknown) => void;
+  readonly statusPending?: boolean;
 }): React.JSX.Element {
   const looksWindowsPath = (value: string): boolean => /^[A-Za-z]:[\\/]/.test(value.trim());
   return (
@@ -340,7 +421,18 @@ export function HarnessBinaryCard(props: {
           <div key={field.name} style={{ marginBottom: 12 }}>
             <strong>{field.label}</strong>{' '}
             <span className="muted">
-              ({status?.configured === true ? 'Configured' : 'Not set'}
+              (
+              {status === undefined
+                ? props.statusPending
+                  ? 'Checking…'
+                  : 'Status unavailable'
+                : status.configured
+                  ? status.source === 'environment'
+                    ? 'From environment'
+                    : 'Saved preference'
+                  : status.source === 'missing'
+                    ? 'Not set'
+                    : 'Status unavailable'}
               {status?.hint !== undefined && status.hint.length > 0 ? '; ' + status.hint : ''})
             </span>
             <p className="muted" style={{ margin: '4px 0' }}>

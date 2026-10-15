@@ -5,7 +5,22 @@ name: ci
 
 on:
   push:
-    branches: [main, 'codex/release-*', 'codex/hotfix-*']
+    # dev is the development integration branch (Milestone A transition,
+    # 2026-10-12): pushes to dev and main both run CI. Historical
+    # codex/release-* and codex/hotfix-* push triggers are preserved.
+    # Push CI validates only; it never publishes a release, creates a tag,
+    # or moves a branch pointer.
+    branches:
+      [
+        main,
+        dev,
+        release/v1.0.0-windows,
+        feature/native-linux-support,
+        'codex/release-*',
+        'codex/hotfix-*',
+      ]
+  # Broad pull_request coverage: PRs into dev, into main, and release/hotfix
+  # PRs targeting dev all trigger CI.
   pull_request:
 
 jobs:
@@ -130,6 +145,8 @@ jobs:
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher/tests/shutdown-safety.test.ps1
       - name: Desktop control-parser tests
         run: pnpm --filter @qa/desktop exec vitest run tests/unit/sentry-control.test.ts tests/unit/stdio-runtime-client.test.ts tests/unit/quit-lifecycle.test.ts
+      - name: Complete Windows Desktop regressions
+        run: pnpm --filter @qa/desktop test
       - name: DeepSeek dshBin regression tests (no WSL)
         run: pnpm --filter @qa/harness-deepseek exec vitest run tests/dsh-bin-selection.test.ts tests/dsh-sdk-resolution.test.ts
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 help
@@ -137,6 +154,9 @@ jobs:
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 status
 
   launcher-linux:
+    # Native Desktop validation remains on shared integration. Windows release
+    # stabilization still requires the Ubuntu quality/runtime/security job above.
+    if: github.ref != 'refs/heads/release/v1.0.0-windows' && github.base_ref != 'release/v1.0.0-windows' && github.head_ref != 'release/v1.0.0-windows'
     # Native launcher on generic Linux (no CachyOS): proves the framework,
     # decision logic, fixture tests, and the CachyOS-only gate. Ubuntu must
     # fail closed here — this job never implies Ubuntu product support.
@@ -163,6 +183,7 @@ jobs:
           bash scripts/launcher/tests/test-node-resolve.sh
           bash scripts/launcher/tests/test-lifecycle-shim.sh
           bash scripts/launcher/tests/test-update-safety.sh
+          bash scripts/launcher/tests/test-update-channels.sh
           bash scripts/launcher/tests/test-desktop-safety.sh
           bash scripts/launcher/tests/test-desktop-startup.sh
           bash scripts/launcher/tests/test-package-capabilities.sh

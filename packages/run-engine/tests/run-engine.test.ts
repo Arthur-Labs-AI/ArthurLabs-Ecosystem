@@ -443,10 +443,14 @@ describe('fake end-to-end run engine', () => {
     const silentAgent = silentResult.agentRuns[0];
     expect(silentAgent?.status).toBe('timed_out');
     expect(silentAgent?.failure?.message).toContain('no events');
-    // Steady worker: 6 events 40ms apart (240ms span) with a 100ms silence
-    // window — a flat clock would kill it at 100ms; sliding survives.
+    // Steady worker: 9 events 40ms apart (360ms span) with a 300ms silence
+    // window — a flat clock would kill it at 300ms; sliding survives.
+    // Narrower windows flaked under Windows load (100ms failed repeatedly;
+    // 200ms failed once under full-package concurrency). The property is
+    // unchanged — only scheduling headroom grows. Production timeouts are
+    // untouched.
     const dripRegistry = new HarnessAdapterRegistry();
-    dripRegistry.register(drip(6, 40) as never);
+    dripRegistry.register(drip(9, 40) as never);
     const dripResult = await new RunCoordinator(
       f.dataRoot,
       f.repository,
@@ -455,9 +459,9 @@ describe('fake end-to-end run engine', () => {
     ).run(f.added.project.id, {
       executionKind: 'simulation',
       agentStackIds: ['stack_deepseek_main'],
-      runTimeoutMs: 100,
+      runTimeoutMs: 300,
     });
-    // The drip stream spans 240ms against a 100ms silence window: sliding
+    // The drip stream spans 360ms against a 300ms silence window: sliding
     // lets it finish the stream (no RUN_TIMEOUT); the minimal fake lacks
     // plan/evidence for coordinator completion, which is out of scope here.
     expect(dripResult.agentRuns[0]?.status).toBe('completed');
@@ -466,7 +470,7 @@ describe('fake end-to-end run engine', () => {
       dripResult.events.filter(
         (e) => e.event.type === 'agent.message' && String(e.event.message ?? '').startsWith('drip'),
       ),
-    ).toHaveLength(6);
+    ).toHaveLength(9);
     f.database.close();
   });
 

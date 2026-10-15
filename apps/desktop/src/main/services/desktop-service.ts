@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { RUN_TIMEOUT_MS_MAX, RUN_TIMEOUT_MS_MIN } from '@qa/shared';
 import type { AgentStackDefinition } from '@qa/schemas';
 import type { DesktopOperation, RetestSnapshot, RunSnapshot } from '../../shared/ipc-contract.js';
+import { toSafeError } from '../desktop-command-router.js';
 import type { ProviderCredentialService } from './provider-credentials.js';
 import type { RuntimeClient } from '../runtime/runtime-client.js';
 import type { HostPlatform } from '../platform/host-platform.js';
@@ -37,21 +38,11 @@ const StartRunOptions = z
   })
   .strict();
 
-function sanitizeError(error: unknown): { code: string; message: string } {
-  if (typeof error === 'object' && error !== null && 'code' in error) {
-    const typed = error as { code?: unknown; message?: unknown };
-    return {
-      code: typeof typed.code === 'string' ? typed.code.slice(0, 100) : 'DESKTOP_ERROR',
-      message:
-        typeof typed.message === 'string'
-          ? typed.message.slice(0, 1000)
-          : 'Desktop operation failed',
-    };
-  }
-  return {
-    code: 'DESKTOP_ERROR',
-    message: error instanceof Error ? error.message.slice(0, 1000) : 'Desktop operation failed',
-  };
+function sanitizeError(
+  error: unknown,
+  redactSecrets?: (text: string) => string,
+): { code: string; message: string } {
+  return toSafeError(error, redactSecrets === undefined ? {} : { redactSecrets });
 }
 
 function toError(code: string, message: string): Error {
@@ -62,12 +53,32 @@ export class DesktopApplicationService {
   constructor(private readonly deps: DesktopServiceDeps) {}
 
   private call(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
+    const redact = (text: string): string => this.redactSecretsFromText(text);
+    const toMappedError = (error: unknown): Error => {
+      const sanitized = sanitizeError(error, redact);
+      return toError(sanitized.code, sanitized.message);
+    };
     try {
-      return this.deps.runtime.request(method, params);
+      const pending = this.deps.runtime.request(method, params);
+      // Async rejections sanitize through the same boundary as sync throws;
+      // success values pass through untouched, failures map identically.
+      return pending.catch((error: unknown) => {
+        throw toMappedError(error);
+      });
     } catch (error) {
-      const sanitized = sanitizeError(error);
-      throw toError(sanitized.code, sanitized.message);
+      throw toMappedError(error);
     }
+  }
+
+  /**
+   * Boundary scrubber for error surfaces (IPC/CLI/log warnings): removes
+   * exact known secret-lane values; see ProviderCredentialService.
+   */
+  redactSecretsFromText(text: string): string {
+    // Intentionally no catch here: a failing scrubber must propagate to
+    // the shared fail-closed mapping (toSafeError), never silently keep
+    // the original text.
+    return this.deps.credentials.redactSecretsFromText(text);
   }
 
   get dataRoot(): string {

@@ -26,6 +26,7 @@ git() {
     *'status --porcelain') : ;;
     *'fetch --prune origin main') : ;;
     *'rev-parse origin/main') echo new ;;
+    *'merge-base --is-ancestor'*) : ;;
     *) echo MUTATION >> "$T/mutations"; return 1 ;;
   esac
 }

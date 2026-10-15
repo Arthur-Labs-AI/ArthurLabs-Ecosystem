@@ -142,10 +142,19 @@ function Show-SentryDoctorResults {
   }
 }
 
+function Get-SentryUpdateRemoteRef {
+  param([string]$Branch)
+  if ($Branch -ceq 'dev') { return 'origin/dev' }
+  if ($Branch -ceq 'main') { return 'origin/main' }
+  return ''
+}
+
 function Test-SentryUpdateBranch {
   param([string]$Branch)
-  if ($Branch -ceq 'main') { return '' }
-  return ('Sentry Beta updates track origin/main.' + "`n" + 'Pinned beta installs stay on their release tag. See docs/beta/updating.md.' + "`n" + 'Switching to main explicitly opts into untested development updates.' + "`n`n" + 'Current branch:' + "`n" + '    ' + $Branch + "`n`n" + 'Switch to main and rerun:' + "`n" + '    git switch main' + "`n" + '    sentry update')
+  if (($Branch -ceq 'dev') -or ($Branch -ceq 'main')) { return '' }
+  $display = $Branch
+  if ((-not $display) -or ($display -ceq 'HEAD')) { $display = '(detached HEAD: pinned tag or release candidate)' }
+  return ('Sentry source updates track only the explicitly selected channel: origin/dev on branch dev, origin/main on branch main.' + "`n" + 'Pinned beta installs stay on their release tag. Packaged archives never follow a Git branch. See docs/beta/updating.md.' + "`n" + 'Sentry never switches branches automatically: choose a channel explicitly with git switch.' + "`n" + 'Zero Git mutations were made.' + "`n`n" + 'Current checkout:' + "`n" + '    ' + $display + "`n`n" + 'Select a supported channel and rerun:' + "`n" + '    git switch dev    # development stream (tracks origin/dev)' + "`n" + '    git switch main   # stable stream (tracks origin/main)' + "`n" + '    sentry update')
 }
 
 function Test-SentryUpdateNeeded {
@@ -154,11 +163,26 @@ function Test-SentryUpdateNeeded {
   return ($HeadSha -cne $RemoteSha)
 }
 
+function Test-SentryFastForwardEligible {
+  param([string]$RepoRoot, [string]$ChannelRef)
+  try { & git -C $RepoRoot merge-base --is-ancestor HEAD $ChannelRef 2>$null }
+  catch { return 'PreflightFailed' }
+  if ($LASTEXITCODE -eq 0) { return 'Eligible' }
+  if ($LASTEXITCODE -ne 1) { return 'PreflightFailed' }
+  try { & git -C $RepoRoot merge-base --is-ancestor $ChannelRef HEAD 2>$null }
+  catch { return 'PreflightFailed' }
+  if ($LASTEXITCODE -eq 0) { return 'Ahead' }
+  if ($LASTEXITCODE -ne 1) { return 'PreflightFailed' }
+  return 'Diverged'
+}
+
 function Invoke-SentryUpdate {
   param([string]$RepoRoot, [bool]$Repair = $false)
   Write-Host ''
-  Write-Host 'Sentry update (DEVELOPMENT channel: latest origin/main, not validated release tags)' -ForegroundColor Cyan
   try { $branch = ([string](& git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null)).Trim() } catch { $branch = '' }
+  $channelRef = Get-SentryUpdateRemoteRef -Branch $branch
+  if ($channelRef) { Write-Host ('Sentry update (source channel: ' + $channelRef + ')') -ForegroundColor Cyan }
+  else { Write-Host 'Sentry update (source channel: unsupported checkout)' -ForegroundColor Cyan }
   $branchRefusal = Test-SentryUpdateBranch -Branch $branch
   if ($branchRefusal) {
     Write-SentryFail $branchRefusal
@@ -175,11 +199,31 @@ function Invoke-SentryUpdate {
     Write-Host 'Sentry never resets or stashes your changes automatically.'
     return 1
   }
-  Write-SentryInfo 'git fetch --prune origin main ...'
-  $f = Invoke-SentryNative -FilePath 'git' -Arguments @('-C', $RepoRoot, 'fetch', '--prune', 'origin', 'main')
+  $channelName = $branch
+  Write-SentryInfo ('git fetch --prune origin ' + $channelName + ' ...')
+  $f = Invoke-SentryNative -FilePath 'git' -Arguments @('-C', $RepoRoot, 'fetch', '--prune', 'origin', $channelName)
   if ($f.ExitCode -ne 0) { Write-SentryFail 'git fetch failed (network or remote issue).'; return 1 }
-  try { $remoteSha = ([string](& git -C $RepoRoot rev-parse origin/main 2>$null)).Trim() } catch { $remoteSha = '' }
-  if (-not $remoteSha) { Write-SentryFail 'origin/main is unavailable after fetch.'; return 1 }
+  try { $remoteSha = ([string](& git -C $RepoRoot rev-parse $channelRef 2>$null)).Trim() } catch { $remoteSha = '' }
+  if (-not $remoteSha) { Write-SentryFail ($channelRef + ' is unavailable after fetch.'); return 1 }
+  $ffEligible = Test-SentryFastForwardEligible -RepoRoot $RepoRoot -ChannelRef $channelRef
+  if ($ffEligible -ceq 'Ahead') {
+    Write-SentryFail ('Local ' + $channelName + ' is ahead of ' + $channelRef + ': no update is available from the channel.')
+    Write-Host 'Push your commits or reconcile manually; Sentry never resets or rebases your branch automatically.'
+    Write-SentryInfo 'No Desktop shutdown was attempted and no merge was performed.'
+    return 1
+  }
+  if ($ffEligible -ceq 'Diverged') {
+    Write-SentryFail ('Local ' + $channelName + ' and ' + $channelRef + ' have diverged: fast-forward is impossible.')
+    Write-Host 'Reconcile manually, then rerun: sentry update'
+    Write-Host 'Sentry never resets or rebases your branch automatically.'
+    Write-SentryInfo 'No Desktop shutdown was attempted and no merge was performed.'
+    return 1
+  }
+  if ($ffEligible -cne 'Eligible') {
+    Write-SentryFail ('Could not verify fast-forward eligibility for ' + $channelRef + '.')
+    Write-SentryInfo 'Refusing without changes; no Desktop shutdown was attempted and no merge was performed.'
+    return 1
+  }
   $wasRunning = (@(Get-SentryDesktopProcesses).Count -gt 0)
   if ((-not (Test-SentryUpdateNeeded -HeadSha $oldSha -RemoteSha $remoteSha)) -and (-not $Repair)) {
     if ($wasRunning) { Write-Host ('Sentry is already up to date (' + $oldSha.Substring(0, [Math]::Min(9, $oldSha.Length)) + '). Sentry left running.') }
@@ -190,10 +234,10 @@ function Invoke-SentryUpdate {
     Write-SentryInfo 'An update is available; stopping Sentry...'
     if ((Stop-SentryDesktopIfRunning -RepoRoot $RepoRoot) -ne 0) { return 1 }
   }
-  Write-SentryInfo 'git merge --ff-only origin/main ...'
-  $p = Invoke-SentryNative -FilePath 'git' -Arguments @('-C', $RepoRoot, 'merge', '--ff-only', 'origin/main')
+  Write-SentryInfo ('git merge --ff-only ' + $channelRef + ' ...')
+  $p = Invoke-SentryNative -FilePath 'git' -Arguments @('-C', $RepoRoot, 'merge', '--ff-only', $channelRef)
   if ($p.ExitCode -ne 0) {
-    Write-SentryFail 'Fast-forward to origin/main failed (local main diverged). Resolve manually, then rerun.'
+    Write-SentryFail ('Fast-forward to ' + $channelRef + ' failed (local ' + $channelName + ' diverged). Resolve manually, then rerun.')
     Write-SentryInfo 'Sentry was stopped; reopen it with: sentry open'
     return 1
   }
@@ -345,7 +389,7 @@ function Invoke-SentryVersion {
 
 function Show-SentryHelp {
   Write-Host ''
-  Write-Host 'Sentry v0.1 Beta' -ForegroundColor Cyan
+  Write-Host 'Sentry v1.0.0' -ForegroundColor Cyan
   Write-Host ''
   Write-Host 'Usage:'
   Write-Host '  sentry <command>'
