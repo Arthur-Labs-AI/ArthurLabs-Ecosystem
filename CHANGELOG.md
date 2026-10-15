@@ -1,6 +1,19 @@
 # Changelog
 
-## [1.0.0-rc.1] - Unreleased Windows Edition
+## [1.0.0] - Unreleased stable Windows candidate
+
+- Reconcile root, Desktop, runtime, CLI and source launchers to stable `1.0.0`.
+- Preserve runtime protocol `1`, schemas/migrations, provider/model/tool pins and
+  existing project/history/credential contracts.
+- Integrate owner-merged Phase 6.5 WSL maintenance hardening: fixed inline UAC
+  execution, private ACL/path checks and authenticated atomic operation receipts.
+- Windows 11 x64 + WSL2 only; unsigned ZIP with online runtime bootstrap. Native
+  Linux Desktop deferred. No public RC, automatic updater or signed installer.
+- See [stable notes](docs/releases/v1.0.0.md) and the
+  [verification handoff](docs/releases/v1-phase-6-6-stable-readiness.md).
+  Owner merge, final-source rebuild, main promotion and publication remain later gates.
+
+## [1.0.0-rc.1] - Historical internal Windows preparation (never published)
 
 - Initial release target: Windows 11 x64 with WSL2 (Ubuntu preferred).
 - Native Linux Desktop: DEFERRED — FUTURE NATIVE LINUX RELEASE; existing

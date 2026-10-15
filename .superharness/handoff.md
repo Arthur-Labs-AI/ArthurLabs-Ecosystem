@@ -1,3 +1,48 @@
+# Phase 6.6 — stable review candidate and acceptance
+
+2026-10-15. PR28 release-prep/v1.0.0-stable → release/v1.0.0-windows; owner merge only.
+Baseline2fa19152/tree7245d164; stable1.0.0/protocol1, lock/pins/schemas/security code unchanged.
+New Windows478/3skips, distribution34/27, launchers/static PASS. FreshWSL1298/49skips,
+40uncached tasks, separate realtrust8/8, distribution52/9 and lifecycle1/1PASS.
+Clean initial artifact source40ae67c6581acdfcc16583e7c9fe7b0f46b0cc1e, ZIPshabd6be725124f1341926c87dc5222e040ea2d77195b9627344df6f8d5b9a91912,
+manifestsha97cf5c2871444a455809ddca8469a313e9557840ed74181c2a7750b7843c5b90,332inventory/external extractionPASS.
+Real packaged setup/visible open/stop/reopen, matchedidentity, UIimport/removal/cancel,
+freshhistory, syntheticDPAPI restart/no-plaintext and maintenanceCancel/inspect/refusalPASS.
+Initial hostedCI38732769947SUCCESS; distribution38732769921FAILonly uploadquota.
+Private isolation failure/maintenance-lock refusal retained; priorruntime/current restored
+exactly, corrected harness proves privatehomebind before setup. No ownerproject/credentialsused.
+Documentation receipt commit requires fresh finalhead archive/acceptance and exactCI;
+postcommit companion inPR/privateaudit avoids selfhash loop. CONDITIONALLYREADY,
+trustedpublicdelivery and cleanmachine/realUAC remainunverified. Ownerreviewrequired.
+No main/dev/tag/Release/publicasset/selfmerge/automerge/delete/paidcall/realcompaction.
+shux unavailable; records updated directly. Historical records follow unchanged.
+
+## Previous record (preserved)
+
+# Phase 6.6 — stable transition verification in progress
+
+2026-10-15. Owner-merged release baseline2fa19152a63f0886d14f2f2e81db9598ec878f86,
+tree7245d16460de8842a21afc6a92bf94d567d0fe60. Postmerge CI38729929416PASS;
+distribution38729929436FAIL only upload quota after verified packaging/extraction.
+Isolated release-prep/v1.0.0-stable; owner primary/unrelated worktrees preserved.
+132 RC references classified;21active identity/current expectation files transition
+to1.0.0. Root/Desktop/runtime/CLI agree, internal0.1.0 library versions retained.
+Pinned pnpm9.12.3 lock-only reconciliation produced no lock/dependency changes.
+Stable-version regression RED then GREEN; stale-RC resealed inventory rejects.
+Windows full478PASS/3skip, distribution34PASS/27skip, launchers/deepseek/static gatesPASS.
+Fresh WSL full1298PASS/49skip,40uncached tasks; separate realtrust8/8PASS,
+distribution52PASS/9skip, static/build/frozen checksPASS. WSL install ignore-scripts;
+this is shared-runtime validation, not native Electron/Desktop provisioning.
+Original beta/RC hashes and historical doc suffix bytes preserved. Phase6.5
+maintenance/security production code, schemas, protocol1, provider/model/tool pins,
+credential/history/recovery contracts unchanged. Stable notes/current docs updated.
+Clean exact-commit ZIP build, packaged acceptance, focused release-target PR and
+new exact-head hosted conclusions pending; no publication readiness claim yet.
+No selfmerge/auto-merge/main/dev/tag/publicassets/delete/realUAC/paidcalls.
+shux unavailable; task status/ledger/handoff maintained directly.
+
+## Previous record (preserved)
+
 # Phase 6.5 — correction PR27; OS fixture budget aligned
 
 2026-10-15. PR27 targets release/v1.0.0-windows; owner merge only. Initial

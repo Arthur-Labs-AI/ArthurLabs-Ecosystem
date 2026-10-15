@@ -17,7 +17,7 @@ sentry_product_version() {
   if [ -f "$root/package.json" ]; then
     ver=$(sed -n 's/^  "version": "\([^"]*\)".*/\1/p' "$root/package.json" 2>/dev/null | head -n 1)
   fi
-  if [ -z "$ver" ]; then ver="1.0.0-rc.1"; fi
+  if [ -z "$ver" ]; then ver="1.0.0"; fi
   printf '%s\n' "$ver"
 }
 

@@ -4,18 +4,16 @@ Sentry is a local-first AI QA desktop application. OpenCode, DeepSeek, and
 GLM through Claude Code independently investigate one immutable project snapshot
 and return findings, evidence, token usage, and observable run history.
 
-**Windows release freeze: `1.0.0-rc.1`, unsigned and not published.**
-The only initial release target is **Windows 11 x64 with WSL2** (Ubuntu preferred).
-Windows Desktop continues to use the Linux execution runtime through WSL2,
-including systemd user services and sandbox isolation. Native Linux Desktop,
-initially CachyOS x64, is **DEFERRED — FUTURE NATIVE LINUX RELEASE**.
-Its experimental implementation and historical evidence remain available. See the
-[draft RC notes](docs/releases/v1.0.0-rc.1.md) and
-[RC readiness checklist](docs/releases/V1_RC_READINESS_CHECKLIST.md).
-The [Phase 6.3 freeze handoff](docs/releases/v1-phase-6-3-windows-rc-freeze.md)
-records the selected merged source, exact archive and remaining authorization gates.
-The owner previously reported normal functionality on both hosts; exact-build and
-recovery-policy limits are recorded separately. No stable-release claim is made.
+**Windows v1.0.0 stable candidate: unsigned and not yet published.**
+The initial release target is **Windows 11 x64 with WSL2** (Ubuntu preferred).
+Windows Desktop continues using the Linux execution runtime, systemd user services
+and bubblewrap isolation. Native Linux Desktop, including CachyOS, is deferred.
+See the [stable release notes](docs/releases/v1.0.0.md),
+[installation guide](docs/setup/distribution.md) and
+[Phase 6.6 readiness handoff](docs/releases/v1-phase-6-6-stable-readiness.md).
+The owner selected direct stable publication; no public RC/prerelease is planned.
+Owner review, final-source verification, main promotion and explicit publication
+authorization remain separate gates. Historical RC receipts retain their identities.
 
 The only published release remains historical `v0.1.0-beta.1`:
 [beta notes](docs/releases/v0.1.0-beta.1.md),
@@ -44,8 +42,8 @@ checksum, extract into a new version/source directory, and run that archive's
 `.\sentry.ps1 version`, `.\sentry.ps1 setup -Distro Ubuntu`, then `.\sentry.ps1 open`.
 Setup builds the Linux runtime through WSL2 using frozen dependencies. See the
 [distribution guide](docs/setup/distribution.md) for checksums, prerequisites,
-installation and safe maintenance procedure. These unsigned online-bootstrap ZIPs
-are review candidates; no RC is published, and there is no automatic updater.
+installation and safe maintenance procedure. The current stable ZIP is a review candidate until owner approval and publication;
+there is no automatic updater.
 Windows Node/pnpm/Git are not required for the packaged Desktop. Linux Node >=22,
 pnpm 9.12.3, systemd user services, bubblewrap and socat remain required in WSL2.
 
@@ -67,7 +65,7 @@ is supported as the Windows runtime; Ubuntu CI is not CachyOS acceptance.
 
 ## Historical Windows source-beta installation
 
-Historical published-beta source reference, in PowerShell (RC review uses the
+Historical published-beta source reference, in PowerShell (the current Windows candidate uses the
 separately approved archive/identity in the distribution guide):
 
 ```powershell
@@ -85,7 +83,7 @@ terminal if `sentry` is not yet on PATH.
 ## Deferred native CachyOS development / historical beta
 
 Native Desktop is deferred for v1. These historical source-beta instructions
-remain for development reference; they are not the Windows RC installation path.
+remain for development reference; they are not the Windows stable installation path.
 In your graphical session:
 
 ```bash

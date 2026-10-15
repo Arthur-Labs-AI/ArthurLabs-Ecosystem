@@ -122,7 +122,7 @@ do not rename or delete them for this policy.
 
 ## Tags and artifact provenance
 
-- Stable release builds originate from an explicitly approved `main` commit identified by an immutable annotated version tag (e.g. `v0.1.0-beta.1`, `v1.0.0-rc.1`, `v1.0.0`).
+- Stable release builds originate from an explicitly approved `main` commit identified by an immutable annotated version tag (e.g. `v0.1.0-beta.1`, `v1.0.0`).
 - Never create or move a tag without explicit owner authorization and candidate validation.
 - A PR into `dev` passing CI (including any distribution-build step) does not produce an official stable release. Only explicitly approved release-candidate and stable-promotion procedures yield official release artifacts.
 - Private artifact access controls are preserved; unsigned review artifacts from exact candidate SHAs are for review only (see `docs/setup/distribution.md` for packaged-archive rules).
