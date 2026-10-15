@@ -159,7 +159,7 @@ describe('qa cli', () => {
   });
 
   it('--version prints qa version', () => {
-    expect(versionLine()).toBe('qa 1.0.0-rc.1');
+    expect(versionLine()).toBe('qa 1.0.0');
   });
 
   it('doctor reports runtime foundation OK and points to agent diagnostics', () => {

@@ -1,3 +1,8 @@
+> Historical preparation record, superseded for current release decisions by
+> [Phase 6.6 stable readiness](v1-phase-6-6-stable-readiness.md) and
+> [v1.0.0 stable notes](v1.0.0.md). Original source/version/hash and test receipts
+> below retain their historical scope. No public RC was published.
+
 # Phase 6.4 — Windows release branch activation and RC review
 
 October 15, 2026. **CONDITIONALLY READY**: the frozen Windows release branch is

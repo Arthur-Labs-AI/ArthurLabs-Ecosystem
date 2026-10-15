@@ -81,7 +81,7 @@ import {
 
 import { runtimeReleaseIdentity } from './distribution.js';
 const releaseIdentity = runtimeReleaseIdentity();
-export const RUNTIME_VERSION = releaseIdentity?.version ?? '1.0.0-rc.1';
+export const RUNTIME_VERSION = releaseIdentity?.version ?? '1.0.0';
 
 const ProjectIdInput = z.string().min(1).max(200);
 const RunIdInput = z.string().regex(/^run_[0-9A-HJKMNP-TV-Z]{26}$/);

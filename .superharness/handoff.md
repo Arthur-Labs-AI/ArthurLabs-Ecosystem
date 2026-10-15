@@ -1,3 +1,27 @@
+# Phase 6.6 — stable transition verification in progress
+
+2026-10-15. Owner-merged release baseline2fa19152a63f0886d14f2f2e81db9598ec878f86,
+tree7245d16460de8842a21afc6a92bf94d567d0fe60. Postmerge CI38729929416PASS;
+distribution38729929436FAIL only upload quota after verified packaging/extraction.
+Isolated release-prep/v1.0.0-stable; owner primary/unrelated worktrees preserved.
+132 RC references classified;21active identity/current expectation files transition
+to1.0.0. Root/Desktop/runtime/CLI agree, internal0.1.0 library versions retained.
+Pinned pnpm9.12.3 lock-only reconciliation produced no lock/dependency changes.
+Stable-version regression RED then GREEN; stale-RC resealed inventory rejects.
+Windows full478PASS/3skip, distribution34PASS/27skip, launchers/deepseek/static gatesPASS.
+Fresh WSL full1298PASS/49skip,40uncached tasks; separate realtrust8/8PASS,
+distribution52PASS/9skip, static/build/frozen checksPASS. WSL install ignore-scripts;
+this is shared-runtime validation, not native Electron/Desktop provisioning.
+Original beta/RC hashes and historical doc suffix bytes preserved. Phase6.5
+maintenance/security production code, schemas, protocol1, provider/model/tool pins,
+credential/history/recovery contracts unchanged. Stable notes/current docs updated.
+Clean exact-commit ZIP build, packaged acceptance, focused release-target PR and
+new exact-head hosted conclusions pending; no publication readiness claim yet.
+No selfmerge/auto-merge/main/dev/tag/publicassets/delete/realUAC/paidcalls.
+shux unavailable; task status/ledger/handoff maintained directly.
+
+## Previous record (preserved)
+
 # Phase 6.5 — correction PR27; OS fixture budget aligned
 
 2026-10-15. PR27 targets release/v1.0.0-windows; owner merge only. Initial

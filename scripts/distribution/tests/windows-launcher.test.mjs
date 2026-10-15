@@ -21,7 +21,7 @@ async function invoke(t, command, failure = '') {
   await cp(join(scripts, 'release.ps1'), join(root, 'sentry.ps1'));
   await writeFile(
     join(root, 'scripts/distribution/verify.ps1'),
-    "function Get-SentryDistribution { param($Root) return @{ version = '1.0.0-rc.1' } }\n",
+    "function Get-SentryDistribution { param($Root) return @{ version = '1.0.0' } }\n",
   );
   await writeFile(
     join(root, 'scripts/distribution/maintenance.ps1'),
