@@ -17,53 +17,56 @@ from approved `origin/dev` and target `dev`.
 
 ## Windows v1 and native development branch creation
 
-The owner selected Windows 11 x64/WSL2 first on October 14, 2026. Native Linux
-Desktop is DEFERRED — FUTURE NATIVE LINUX RELEASE; Windows retains the shared
-Linux execution runtime. The scope PR is `release-prep/v1-windows-only-scope`
-from approved dev, targeting `dev`. Agents must not self-merge it.
+The owner selected Windows 11 x64/WSL2 first. PRs #23, #24 and #25 are owner-merged
+into dev `c6d4769bf3179d49bb3718074d6c083f52332626`, tree
+`45e1d84e0eb447f4b93d1193a4421c6aeba1c40b`. See the authoritative
+[Phase 6.3 freeze handoff](../releases/v1-phase-6-3-windows-rc-freeze.md)
+for actual CI, archive and branch-creation status. A passing PR head does not
+substitute for a successful merged-dev Windows distribution workflow.
 
-| Branch                         | Responsibility                                    |
-| ------------------------------ | ------------------------------------------------- |
-| `main`                         | Stable, approved releases; no direct task changes |
-| `dev`                          | Shared reviewed integration                       |
-| `release/v1.0.0-windows`       | Frozen Windows v1 stabilization                   |
-| `feature/native-linux-support` | Deferred native Desktop development               |
+| Branch                         | Responsibility                                                |
+| ------------------------------ | ------------------------------------------------------------- |
+| `main`                         | Stable owner-approved releases; unchanged default branch      |
+| `dev`                          | Shared reviewed development integration                       |
+| `release/v1.0.0-windows`       | Frozen Windows stabilization after merged-source gates pass   |
+| `feature/native-linux-support` | Future native Desktop work, created after Windows publication |
 
-**Do not create either long-lived branch until the scope PR is owner-merged.**
-Fetch its actual merge (not an old review head), verify post-merge CI and
-Windows/shared release gates, record the full SHA/tree, and obtain the approved
-source selection. Then use the commands below with that actual full SHA. They
-are prepared, not executed by this scope PR:
+Create only the Windows release branch during Phase 6.3, after successful actual
+merged-dev CI and Windows distribution verification. If either gate is failed or
+unverified, stop branch creation and record the blocker. Never overwrite an
+existing ref. In a task-owned checkout, inspect status/branch/HEAD first, then:
 
 ```powershell
-git fetch origin --prune
-$approved = '<actual-owner-approved-post-merge-full-SHA>'
+git fetch origin
+$approved = 'c6d4769bf3179d49bb3718074d6c083f52332626'
 git show --no-patch --format=fuller $approved
 git rev-parse ($approved + '^{tree}')
 git merge-base --is-ancestor $approved origin/dev
-if ($LASTEXITCODE -ne 0) { throw 'Approved source is not integrated in dev' }
-foreach ($name in @('release/v1.0.0-windows', 'feature/native-linux-support')) {
-  git show-ref --verify --quiet ('refs/heads/' + $name)
-  if ($LASTEXITCODE -eq 0) { throw ('Local branch exists: ' + $name) }
-  $remote = git ls-remote --heads origin ('refs/heads/' + $name)
-  if ($LASTEXITCODE -ne 0 -or $remote) { throw ('Remote check failed or branch exists: ' + $name) }
-}
+if ($LASTEXITCODE) { throw 'Approved source is not integrated in dev' }
+git show-ref --verify --quiet refs/heads/release/v1.0.0-windows
+if ($LASTEXITCODE -eq 0) { throw 'Local release branch already exists' }
+$existing = git ls-remote --heads origin refs/heads/release/v1.0.0-windows
+if ($LASTEXITCODE -or $existing) { throw 'Remote check failed or release branch exists' }
+# Execute only after the handoff records the required merged-source gates PASS.
 git branch release/v1.0.0-windows $approved
-if ($LASTEXITCODE -ne 0) { throw 'Release branch creation failed' }
-git branch feature/native-linux-support $approved
-if ($LASTEXITCODE -ne 0) { throw 'Native branch creation failed; inspect existing refs' }
-git push --atomic origin release/v1.0.0-windows feature/native-linux-support
-if ($LASTEXITCODE -ne 0) { throw 'Push failed; inspect remote refs before retry' }
+if ($LASTEXITCODE) { throw 'Release branch creation failed' }
+git push origin release/v1.0.0-windows
+if ($LASTEXITCODE) { throw 'Inspect remote state before retrying' }
 ```
 
-Never rewrite or duplicate existing refs; inspect and preserve any existing work
-instead. The release branch receives only reviewed Windows blockers, security
-corrections, exact-release packaging fixes, release documentation and regression
-coverage. It never automatically follows dev or native changes. Propagate Windows
-fixes to dev by reviewed integration; refresh native work from the latest
-appropriate approved shared baseline before substantial development. Do not
-merge unverified native changes into the Windows release branch. No new native
-functionality is implemented in this phase.
+Release corrections use focused task branches based on the approved release
+source and PRs targeting `release/v1.0.0-windows`; only the owner merges. No direct
+commits to the shared release branch. Feature freeze permits reproduced Windows
+blockers, security/data-loss corrections, packaging fixes, regressions and release
+documentation. Ordinary dev/native changes do not automatically enter this branch.
+Propagate accepted Windows corrections back to dev through reviewed integration.
+
+Do not create `feature/native-linux-support` in this phase. After Windows
+publication and explicit owner authorization, fetch and select the then-approved
+shared dev source, record its full commit/tree, check that both local and remote
+native refs are absent, and create/push the branch from that source. Do not use an
+unreviewed native worktree or blindly reuse an obsolete Windows branch point.
+Native implementation and historical acceptance/import evidence remain intact.
 
 ## Branch responsibilities
 
@@ -71,7 +74,7 @@ functionality is implemented in this phase.
 | ------------------------------------------ | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `main`                                     | Stable release integration                    | Owner-approved release-ready changes only. Normal feature, corrective, and experimental security work never targets `main`. Stable builds originate from an explicitly approved `main` commit identified by an immutable annotated version tag. A push to `main` never automatically publishes a release. |
 | `dev`                                      | Development integration                       | Integration branch for ongoing work. Feature/fix branches merge here after review, applicable CI, regression testing, honest unavailable-gate documentation, and owner approval. Phase 5 targets `dev`.                                                                                                   |
-| `feature/*`, `codex/*`, `fix/*`            | Short-lived task branches                     | Base on the latest approved `origin/dev`. PRs target `dev`. No direct commits to `dev` except its initial creation.                                                                                                                                                                                       |
+| `feature/*`, `codex/*`, `fix/*`            | Short-lived task branches                     | Ordinary work starts from approved `origin/dev` and targets `dev`; release corrections start from the approved release source and target its release branch. No direct task commits to shared branches.                                                                                                   |
 | `release/*` (v1: `release/v1.0.0-windows`) | Release stabilization                         | Created from an approved `dev` commit. After feature freeze: release blockers, testing corrections, and documentation only. The RC undergoes exact-SHA CI and supported-host acceptance; the owner explicitly approves promotion to `main`.                                                               |
 | `hotfix/*`                                 | Critical repair of a published stable release | Start from the affected immutable release tag or approved stable baseline. The owner reviews and promotes the hotfix to `main`, creating a new version/tag when authorized.                                                                                                                               |
 | `v<version>`                               | Annotated immutable release                   | Approved validated commit only; never move or overwrite an existing tag.                                                                                                                                                                                                                                  |
@@ -89,7 +92,7 @@ do not rename or delete them for this policy.
 
 ## Release-fix flow (normative)
 
-1. Fix in the release branch (`release/*` or `hotfix/*`).
+1. Prepare the correction on a focused task branch from the approved release/hotfix source; open a PR to that branch. Only the owner merges.
 2. Validate the exact candidate (CI on the exact SHA plus applicable acceptance).
 3. Owner-approved promotion to `main` (merge of the validated candidate; new tag when authorized).
 4. Propagate the approved fix back into `dev` (merge or cherry-pick, reviewed).
@@ -97,7 +100,7 @@ do not rename or delete them for this policy.
 
 ## Review, CI, and merge requirements
 
-- Every change to `dev` and `main` arrives via a pull request from a task branch. No direct pushes.
+- Every change to `dev`, `main` and an established `release/*` branch arrives via a pull request from a task branch. No direct task commits to shared branches; initial branch creation follows the approved gate procedure above.
 - PRs require: code review, passing applicable CI on the exact candidate commit, regression testing, honest documentation of unavailable acceptance gates (e.g. native CachyOS, clean Windows VM, paid-provider runs), and owner approval.
 - Windows release gates: `quality`, `launcher (windows, no WSL)` and `Windows release archive`. Ubuntu quality, shared runtime/security tests and real sandbox verification on capable hosts remain required. Native launcher validation remains on shared integration PRs; it is skipped for the frozen Windows branch and PRs involving that branch. Native archive validation is in `native-distribution.yml` for PRs targeting dev and manual development runs; it is not a Windows release gate. Push CI also covers `release/v1.0.0-windows` and `feature/native-linux-support`. Do not treat a native-only packaging/acceptance failure as a shared-runtime failure.
 - Only the owner merges (owner-only merges). Agents prepare PRs and stop; agents must not merge, enable auto-merge, or tag.
@@ -142,4 +145,4 @@ branches were rechecked against devc103509; none were deleted.
 
 ## Starting checklist (every task branch)
 
-Before starting: fetch origin, inspect `git status`, `git branch --show-current`, `HEAD`, existing PRs, and tags. Base the branch on the latest approved `origin/dev` (or the release tag for hotfixes). Use an isolated worktree when the owner's checkout is dirty. Never reset, overwrite, or automatically stash owner changes. Push only the task branch, open a PR to `dev` (or to `main` for owner-approved promotions), and stop for owner review.
+Before starting: fetch origin, inspect `git status`, `git branch --show-current`, `HEAD`, existing PRs, and tags. Base ordinary work on approved `origin/dev`, release corrections on the approved release branch, and hotfixes on their approved release baseline. Use an isolated worktree when the owner's checkout is dirty. Never reset, overwrite, or automatically stash owner changes. Push only the task branch, open a PR to its approved dev/release target (or main for an explicitly approved promotion), and stop for owner review.

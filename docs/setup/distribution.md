@@ -24,9 +24,14 @@ on October 14, 2026, only in its tested Windows/I1 scope; original-beta G10
 remains historical FAIL. These handoffs do
 not publish or authorize a release.
 
-The [Phase 6.2 Windows receipt](../releases/v1-phase-6-2-windows-transition.md)
-supersedes that historical source selection. After owner integration, build from
-the actual approved merge SHA; never reuse an earlier archive/checksum as the new RC.
+The [Phase 6.3 freeze handoff](../releases/v1-phase-6-3-windows-rc-freeze.md)
+is the current source/archive/gate record. Its selected merged-dev source is
+`c6d4769bf3179d49bb3718074d6c083f52332626`; the privately retained Windows ZIP
+was freshly built from that commit. The
+[Phase 6.2 receipt](../releases/v1-phase-6-2-windows-transition.md) remains
+historical import evidence. A later merged release-documentation/correction SHA
+requires its own fresh build, checksums and bounded acceptance before publication;
+never rename earlier bytes or attribute their checksum to a later merge.
 
 ## Obtain, verify and extract
 

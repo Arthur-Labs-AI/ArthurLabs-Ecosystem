@@ -1,3 +1,5 @@
+- 2026-10-15 — Phase6.3 verification/preparation conditionally ready at merged-dev c6d4769/tree 45e1d84. Local exact-source Windows ZIP and bounded prepared-host acceptance PASS; WSL full suite1288/33skips, real trust8/8, Windows hosted Desktop452/3skips. Approved88artifact retirement completed after private backup and SHA256 revalidation;91→3remote, protected candidates/I1/published assets retained. Merged-dev CI38685627100 SUCCESS; distribution38685627221 attempts1/2/3 failed only upload quota, including post-cleanup retry. Release branch and PR withheld per required gate; focused documentation branch preserved; PR awaits the required gate. No paid calls/real compaction/publication/main changes or owner source edits. Initial profile-isolation error disclosed; shux unavailable. See Phase6.3 handoff for exact identities, receipts, limits and remaining actions.
+
 # Ledger — qa-platform
 
 Append-only activity log. Never edit previous entries.

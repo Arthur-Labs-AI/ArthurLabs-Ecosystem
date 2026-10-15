@@ -13,24 +13,25 @@ with owner review and accurate validation under the
 > approved `origin/dev` and open its PR to `dev`. See
 > [dev-branch-transition](../development/dev-branch-transition.md).
 
-## Phase 6.2 — Windows-first release scope (current owner decision)
+## Phase 6.3 — Windows release freeze and final integration verification
 
-Initial v1 target: **Windows 11 x64 with WSL2**, Ubuntu preferred. The existing
-Linux execution runtime, systemd/bubblewrap security and shared tests remain
-required. Native Linux Desktop is **DEFERRED — FUTURE NATIVE LINUX RELEASE**.
-Historical both-host acceptance requirements below describe earlier phases;
-they do not make native acceptance a Windows v1 publication gate. Failures remain
-failures, including the [native import investigation](native-linux-large-import.md).
+Initial v1 target: **Windows 11 x64 with WSL2**, Ubuntu preferred. Linux runtime,
+systemd/bubblewrap isolation and shared security tests remain required. Native
+Desktop is **DEFERRED — FUTURE NATIVE LINUX RELEASE**; its implementation and
+[unresolved import evidence](native-linux-large-import.md) remain intact.
 
-Prepare scope PR `release-prep/v1-windows-only-scope` against `dev`. After owner
-merge and passing post-merge Windows/shared gates, create
-`release/v1.0.0-windows` for frozen stabilization and
-`feature/native-linux-support` from that approved shared baseline. See the
-[branch commands](../development/branching.md#windows-v1-and-native-development-branch-creation)
-and [current receipt](v1-phase-6-2-windows-transition.md). New exact-source Windows
-bytes require their own provenance and bounded packaged-GUI import result.
-Recovery Option A is already adopted for historical Windows/I1; native G10-R is
-deferred. Official tagging/publication and main promotion need separate approval.
+PRs #23/#24/#25 are owner-merged into dev c6d4769. Current exact-source identity,
+local/hosted gate results, private archive and remaining work are in the
+[Phase 6.3 freeze handoff](v1-phase-6-3-windows-rc-freeze.md). Create the Windows
+release branch only after actual merged-dev CI and Windows distribution success.
+Focused release correction/documentation PRs target that branch; only the owner
+merges. Do not start the native feature branch until after Windows publication
+and a fresh approved shared-source selection.
+
+The [Phase 6.2 receipt](v1-phase-6-2-windows-transition.md) remains attributed
+historical large-import evidence. Recovery A remains adopted for corrected
+historical Windows/I1 source c78faa7; original-beta G10 stays FAIL. Official cut,
+tag, release, public assets and main promotion require separate authorization.
 
 ## Phase 1 — Foundation and architectural cleanup
 

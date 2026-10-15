@@ -1,3 +1,26 @@
+# Phase 6.3 — CONDITIONALLY READY; HOSTED UPLOAD GATE BLOCKED
+
+2026-10-15. Selected binary source c6d4769bf3179d49bb3718074d6c083f52332626,
+tree 45e1d84e0eb447f4b93d1193a4421c6aeba1c40b, rc.1/protocol 1.
+Authoritative handoff: docs/releases/v1-phase-6-3-windows-rc-freeze.md.
+Local Windows/physical WSL gates and fresh private exact-source archive passed;
+WSL full suite 1288/33 skips, physical trust8/8, hosted Windows Desktop 452/3 skips.
+Actual packaged setup/open/stop/relaunch, removal/reopen, synthetic DPAPI and
+maintenance Cancel passed. Source-paired real disk inspection was read-only.
+All88approved review artifacts privately backed up, SHA256-verified/reverified
+and removed remotely:91→3; protected candidates/I1/published assets retained.
+Merged-dev CI38685627100 SUCCESS. Windows distribution38685627221 attempts1/2/3
+failed only upload quota; attempt 3 followed cleanup. GitHub reports6–12 hour
+accounting refresh. No release branch/PR while that prerequisite fails.
+Documentation review branch codex/v1-phase-6-3-windows-freeze preserves the documentation;
+PR awaits the release target. After hosted success: create release at c6, PR to release, owner merge,
+then fresh actual-merge build/acceptance before separate official authorization.
+No paid calls, real compaction, tags, release/public assets, main/default changes
+or primary source edits. Initial profile-isolation harness mistake disclosed.
+shux contract unavailable; task status, ledger and handoff maintained directly.
+
+## Previous record
+
 # PR25 Windows CI regression — local correction verified
 
 2026-10-15, baseline d58ef40226578ec9a5beb070b0b19efae969b2ab.
