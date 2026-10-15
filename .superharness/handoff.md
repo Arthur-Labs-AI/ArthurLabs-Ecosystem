@@ -1,3 +1,25 @@
+# Branch maintenance — COMPLETE
+
+2026-10-15. Owner-authorized remote cleanup completed. Active preparation renamed
+from `codex/v1-phase-6-3-windows-freeze` to
+`release-prep/v1-phase-6-3-windows-freeze` at exact commit
+`fca2d0b04120d9fd6195ba42f342a8685ca02386`; commit and tree identity verified before
+deleting the old remote name. Local checkout/upstream migrated safely.
+All 11 obsolete candidates had zero commits ahead of dev, reachable merged PRs,
+no active worktree or exact workflow dependency and no branch protection flag.
+Remote inventory is main, dev and the renamed preparation branch. Naming policy
+and complete receipt: docs/development/branch-cleanup-2026-10-15.md.
+The additive documentation commit preserves the original preparation commit.
+Main/dev/tags, the owner's dirty checkout and all worktree registrations remain
+intact. No product edit, release publication, directory/artifact deletion or
+distribution retry. Documentation formatting and repository hygiene are the
+applicable checks; no new product/host acceptance is claimed.
+`shux contract` was attempted but unavailable; records maintained directly.
+Phase 6.3 release work remains separately pending: hosted upload quota, release
+branch creation, PR into that branch and explicit official RC authorization.
+
+## Previous record (preserved)
+
 # Phase 6.3 — CONDITIONALLY READY; HOSTED UPLOAD GATE BLOCKED
 
 2026-10-15. Selected binary source c6d4769bf3179d49bb3718074d6c083f52332626,

@@ -10,19 +10,27 @@ This is preparation for an unsigned Windows review candidate. No official RC tag
 GitHub Release, public release asset, main promotion or default-branch change is
 authorized or performed. Only the owner merges review PRs.
 
+Branch maintenance on October 15 renamed the preparation branch to
+`release-prep/v1-phase-6-3-windows-freeze` at the unchanged commit
+`fca2d0b04120d9fd6195ba42f342a8685ca02386` and tree
+`30674e2f5a50ad4b4c19614f92ddfaea58608321`. The subsequent additive naming-policy
+and cleanup-receipt commit changes documentation only; selected binary source,
+archive checksums, gate results and intended release PR target remain as recorded.
+See the [branch cleanup receipt](../development/branch-cleanup-2026-10-15.md).
+
 ## Selected integration and scope
 
-| Reference                                 | Verified identity                                                                        |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Remote main / default                     | `4fd2be9fa3b17370841dbb1d2f0422a2150c62d8`; default remains main                         |
-| Owner-merged dev / selected binary source | `c6d4769bf3179d49bb3718074d6c083f52332626`                                               |
-| Selected Git tree                         | `45e1d84e0eb447f4b93d1193a4421c6aeba1c40b`                                               |
-| Planned release branch / initial SHA      | `release/v1.0.0-windows` / selected c6d4769; NOT CREATED while hosted gate fails         |
-| Documentation review branch               | `codex/v1-phase-6-3-windows-freeze`, based on selected c6d4769; PR awaits release target |
-| PR23 merge / reviewed head                | `59ba800fc25ee61f1aff93a4401e0f70e3125270` / `16b47d83da58fc8091df94131be64891a0b467a0`  |
-| PR24 merge / reviewed head                | `5aedbc24e7a0dddcd0a155abc243a6e3c0e273d5` / `be7708e131ee28309c11e2ac3bf24a16609f436d`  |
-| PR25 merge / reviewed head                | selected c6d4769 / `982048d29977842c83e5d1acd84da7c9f28b93d1`                            |
-| Published release                         | Immutable historical `v0.1.0-beta.1`; no official RC published                           |
+| Reference                                 | Verified identity                                                                               |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Remote main / default                     | `4fd2be9fa3b17370841dbb1d2f0422a2150c62d8`; default remains main                                |
+| Owner-merged dev / selected binary source | `c6d4769bf3179d49bb3718074d6c083f52332626`                                                      |
+| Selected Git tree                         | `45e1d84e0eb447f4b93d1193a4421c6aeba1c40b`                                                      |
+| Planned release branch / initial SHA      | `release/v1.0.0-windows` / selected c6d4769; NOT CREATED while hosted gate fails                |
+| Documentation review branch               | `release-prep/v1-phase-6-3-windows-freeze`, based on selected c6d4769; PR awaits release target |
+| PR23 merge / reviewed head                | `59ba800fc25ee61f1aff93a4401e0f70e3125270` / `16b47d83da58fc8091df94131be64891a0b467a0`         |
+| PR24 merge / reviewed head                | `5aedbc24e7a0dddcd0a155abc243a6e3c0e273d5` / `be7708e131ee28309c11e2ac3bf24a16609f436d`         |
+| PR25 merge / reviewed head                | selected c6d4769 / `982048d29977842c83e5d1acd84da7c9f28b93d1`                                   |
+| Published release                         | Immutable historical `v0.1.0-beta.1`; no official RC published                                  |
 
 Initial v1 supports **Windows 11 x64 with WSL 2**, Ubuntu preferred. Windows
 Electron retains the Linux execution runtime, systemd user services, bubblewrap,
