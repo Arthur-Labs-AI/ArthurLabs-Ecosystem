@@ -872,7 +872,7 @@ export class SentryRuntimeHost {
 
   /**
    * Persisted initial status for an async start response. Callers (notably
-   * the CLI Nexus flow) must return the created runId without a follow-up
+   * the CLI automation flow) must return the created runId without a follow-up
    * request, so the status travels with the start response. A missing row
    * means the start did not actually persist: report failure, never a
    * runId without truth behind it.
