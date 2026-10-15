@@ -35,3 +35,14 @@ immutable sources and assets. See [history](../history.md) for original gate res
 Stop on unexpected identity, security, packaging or delivery failures. Do not
 silently replace published bytes or move a tag. No test procedure itself authorizes
 paid QA, real owner-data restoration or elevated compaction.
+
+## Required CLI and upgrade documentation for the next release
+
+Follow the [next Windows release requirements](../development/next-windows-release.md).
+Do not advertise CLI availability until the exact extracted archive supports the
+[documented command examples](../beta/cli.md#command-examples) through its installed
+command. Public notes, help and examples must use generic automation terminology.
+Every future Release page must contain separate PowerShell sections for fresh
+installation and updating an existing installation, with exact asset/checksum
+identity, retained user data and post-update verification. Validate the upgrade
+from the preceding stable version before claiming it works.

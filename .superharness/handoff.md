@@ -13,6 +13,12 @@ owner dirty primary checkout are preserved. Separate cleanup PR targets main;
 owner review/merge only. Verification results are recorded in the PR and private
 audit; shux is unavailable, so protocol files are maintained directly.
 
+Owner follow-up: next release must ship and verify the packaged CLI, document
+project/run/result/export examples with generic automation wording, and include
+PowerShell instructions for upgrading an existing installation. Requirements
+are in docs/development/next-windows-release.md; implementation/publication remains
+future work. Documentation-only follow-up does not fix the current archive.
+
 ## Previous record (preserved)
 
 # Phase 6.6 — stable review candidate and acceptance

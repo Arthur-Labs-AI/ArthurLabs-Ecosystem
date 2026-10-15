@@ -13,7 +13,7 @@
 
 - [Contributing](../CONTRIBUTING.md) and [testing](development/testing.md)
 - [Architecture](architecture/README.md) and [branching](development/branching.md)
-- [Release checklist](releases/RELEASE_CHECKLIST.md)
+- [Release checklist](releases/RELEASE_CHECKLIST.md) and [next Windows release requirements](development/next-windows-release.md)
 - [CLI broker contract](beta/cli.md) and [source update policy](beta/updating.md)
 - [Windows runtime details](setup/wsl-runtime.md), [OpenCode setup](setup/opencode.md)
   and [native Linux workstream](development/native-linux.md) and [experimental CachyOS setup](setup/cachyos-launcher.md)
