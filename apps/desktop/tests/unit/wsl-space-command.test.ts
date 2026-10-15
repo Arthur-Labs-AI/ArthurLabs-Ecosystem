@@ -34,6 +34,7 @@ function receipt() {
 describe('fixed maintenance command and authenticated receipt', () => {
   it.skipIf(process.platform !== 'win32')(
     'loads the production encoded bootstrap in Windows PowerShell without file execution',
+    { timeout: 35000 },
     () => {
       const command = wslSpaceCommand('Inspect', 'Ubuntu', 'C:\\fixture', id, key);
       const library =

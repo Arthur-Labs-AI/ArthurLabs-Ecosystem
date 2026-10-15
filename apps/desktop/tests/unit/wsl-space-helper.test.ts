@@ -55,7 +55,8 @@ function Get-ChildItem { param([string]$LiteralPath) return [pscustomobject]@{ P
 function Get-ItemProperty { param([string]$LiteralPath) return $script:registration }
 `;
 
-windows('WSL PowerShell helper', () => {
+// Each real PowerShell child already has a 30s deadline; allow setup/cleanup too.
+windows('WSL PowerShell helper', { timeout: 35000 }, () => {
   it('refuses another running distro before any trim or shutdown', async () => {
     expect(
       await run(

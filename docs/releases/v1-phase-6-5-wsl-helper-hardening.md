@@ -77,6 +77,14 @@ fixture changes only the access DACL through the raw ACL API. An initial lint
 failure for an unused destructured receipt was corrected by explicitly returning
 the unchanged measurement fields. All failure logs remain retained.
 
+The first correction PR CI passed quality but reported one Windows fixture
+timeout: its first real PowerShell case completed in5,707ms against Vitest's
+5,000ms default;477other tests passed. The PowerShell subprocess already had a
+30-second deadline. OS-fixture test budgets now allow35seconds for that existing
+deadline plus setup/cleanup, scoped only to those suites/case. No safety assertion,
+production deadline, test selection or retry policy changes. The initial CI
+failure remains preserved; corrected exact-head conclusions are in the PR report.
+
 ## Executed verification
 
 | Gate                                         | Actual result                                                                                                                                           |

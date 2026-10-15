@@ -1,3 +1,16 @@
+# Phase 6.5 — correction PR27; OS fixture budget aligned
+
+2026-10-15. PR27 targets release/v1.0.0-windows; owner merge only. Initial
+CI38720648589 quality PASS, Windows477PASS/3skip/1fixture timeout at5707ms versus
+5000ms default; archive38720648376 failed only upload quota after packaging.
+PowerShell fixture metadata now allows35000ms, matching its existing30000ms child
+deadline plus setup/cleanup; no production deadline/assertion/selection/retry change.
+Two-worker local full suite PASS478/3skips after correction; initial CI failure
+retained. Final corrected head/check conclusions in private receipt/owner report.
+Stable version transition/publication remain separate; no self-merge/auto-merge.
+
+## Previous record (preserved)
+
 # Phase 6.5 — narrow Windows helper correction; owner review pending
 
 2026-10-15. Base owner-merged PR26 release4e75534b87021c796b5935c817bf56eeba8d4d87,

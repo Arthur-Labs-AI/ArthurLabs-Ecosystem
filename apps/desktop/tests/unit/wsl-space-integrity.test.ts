@@ -58,6 +58,8 @@ function Start-Process {
 `;
 describe.skipIf(process.platform !== 'win32')(
   'WSL elevation integrity (disposable, never elevated)',
+  // Match the existing child-process deadline plus disposable filesystem setup.
+  { timeout: 35000 },
   () => {
     it('confines native interop compiler temporary files to the private operation', async () => {
       expect(
