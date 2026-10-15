@@ -67,6 +67,8 @@ export function requiredFiles(target) {
     'desktop/resources/app/dist/preload/preload.js',
     'desktop/resources/app/dist/renderer/index.html',
     'desktop/resources/app/assets/sentry-icon.png',
+    'cli/sentry-cli.cjs',
+    'CLI.md',
     ...(target === 'windows-x64'
       ? ['desktop/Sentry.exe', 'sentry.ps1']
       : ['desktop/sentry', 'sentry']),

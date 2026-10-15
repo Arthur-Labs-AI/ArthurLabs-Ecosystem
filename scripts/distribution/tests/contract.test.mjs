@@ -71,6 +71,26 @@ test('tampered component fails checksum validation', async (t) => {
   await assert.rejects(validate(root), /Checksum mismatch/);
 });
 
+test('resealing cannot hide a missing packaged CLI from either archive validator', async (t) => {
+  const root = await fixture(t);
+  await rm(join(root, 'cli/sentry-cli.cjs'));
+  await seal(root);
+  await assert.rejects(validate(root), /Required artifact component missing: cli\/sentry-cli.cjs/);
+  if (process.platform === 'win32') {
+    const runner = join(root, '..', 'missing-cli-' + process.pid + '.ps1');
+    t.after(() => rm(runner, { force: true }));
+    const quote = (p) => "'" + p.replaceAll("'", "''") + "'";
+    await writeFile(
+      runner,
+      `. ${quote(join(scripts, 'verify.ps1'))}\nGet-SentryDistribution -Root ${quote(root)} | Out-Null`,
+    );
+    assert.throws(
+      () => execFileSync('powershell.exe', ['-NoProfile', '-File', runner], { stdio: 'pipe' }),
+      /Required component missing: cli\/sentry-cli.cjs/,
+    );
+  }
+});
+
 test('RC archive identity validates and refuses a historical-beta component pair', async (t) => {
   const root = await fixture(t);
   const rc = { ...identity, version: '1.0.0-rc.1' };

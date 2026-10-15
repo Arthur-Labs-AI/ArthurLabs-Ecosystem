@@ -156,6 +156,29 @@ Configure credentials only in **Settings → Providers**. Verify Environment's
 connected Linux runtime and readiness for your selected agents before QA.
 Process launch or credential presence does not prove provider credit/readiness.
 
+## CLI in newly built archives
+
+Archives built with the packaged CLI change include `CLI.md` and a production
+frontend. Windows uses the included Electron runtime, so Windows Node, pnpm and
+Git are not required. The immutable published v1.0.0 and v1.0.1 ZIPs predate this
+change and their launchers do not implement `sentry cli`; upgrading requires a
+new verified archive, not editing those installations in place.
+
+After setup, open a new terminal and start Desktop before CLI operations:
+
+```powershell
+sentry open
+sentry cli capabilities --json
+sentry cli agent list --json
+sentry cli project list --json
+```
+
+See the [CLI command examples](../beta/cli.md#command-examples) for project import,
+updates, Full/Targeted QA, status, cancellation, results and JSON/log exports.
+The archive's `CLI.md` contains the same examples. These commands use the same
+projects and runs as Desktop. Provider configuration stays in Desktop Settings.
+Run-start commands execute real agents and may incur provider charges.
+
 ## Project imports
 
 New imports and updates skip the existing Node/Git/build exclusions plus known
@@ -208,6 +231,17 @@ as requested by the owner. Native recovery remains independently unverified.
 No AppImage/AUR/native package is promised.
 
 ## Explicit release upgrade, repair and source-beta migration
+
+For a published upgrade, use that new Release page's **Update an existing
+installation** PowerShell section. It must provide the real version, exact ZIP,
+source SHA and SHA256, automatic download/verification and a separate extraction
+directory; commands must work from any working directory. Stop the current
+installation and back up its actual data/profile first as described below.
+Run the new archive's setup/tools, open a new terminal, then verify `sentry version`,
+Environment's matching runtime, existing projects/history/provider settings and
+`sentry cli capabilities --json`. Retain the prior matched archive/runtime and
+stopped backup until acceptance. A new archive does not require deleting WSL or
+removing user data. Failed setup must preserve the prior active runtime.
 
 `sentry update` in an archive always refuses. It never follows origin/dev,
 origin/main, or downloads another candidate. Source clones retain the development-only updater;

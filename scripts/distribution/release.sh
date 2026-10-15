@@ -5,7 +5,7 @@ COMMAND="${1:-help}"
 if [ $# -gt 0 ]; then shift; fi
 case "$COMMAND" in
   help|--help|-h)
-    echo 'Sentry pinned distribution: setup | tools | open | stop | status | doctor | version | help'
+    echo 'Sentry pinned distribution: setup | tools | open | stop | status | doctor | version | cli | help'
     echo 'Extract each approved archive into a separate version/SHA directory. update is disabled; see INSTALL.md.'
     exit 0 ;;
   update) echo 'Pinned release: obtain and verify an approved archive, stop Sentry, then run its setup. No development update.' >&2; exit 1 ;;
@@ -39,6 +39,7 @@ release_stop() {
   return 1
 }
 case "$COMMAND" in
+  cli) exec node "$ROOT/cli/sentry-cli.cjs" "$@" ;;
   setup|repair) release_stop; bash "$ROOT/scripts/distribution/bootstrap-runtime.sh" native ;;
   open)
     [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || { echo 'Use a graphical session' >&2; exit 1; }

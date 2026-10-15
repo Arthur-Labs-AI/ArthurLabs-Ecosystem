@@ -2,10 +2,11 @@
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { cp, mkdir, readFile, writeFile, chmod, stat } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { inventory, parseIdentity, sha256, validate } from './contract.mjs';
+import { bundleCli } from './bundle-cli.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const target = process.argv[2];
@@ -127,6 +128,7 @@ const unpacked = join(
   target === 'windows-x64' ? 'win-unpacked' : 'linux-unpacked',
 );
 await cp(unpacked, join(output, 'desktop'), { recursive: true });
+await bundleCli(repo, output, pkg.version);
 // Payload is selected from tracked build input, never by recursive checkout copy.
 const paths = git('ls-files', '-z').split('\0').filter(Boolean);
 const roots = new Set([
@@ -149,6 +151,7 @@ for (const path of paths) {
   const distribution =
     /^scripts\/distribution\/[^/]+\.(mjs|sh|ps1)$/.test(path) &&
     !path.endsWith('build.mjs') &&
+    !path.endsWith('bundle-cli.mjs') &&
     !path.endsWith('smoke.mjs');
   if (
     !runtimeSource &&
@@ -179,7 +182,23 @@ await cp(
 );
 if (target !== 'windows-x64') await chmod(join(output, 'sentry'), 0o755);
 await cp(join(repo, 'LICENSE'), join(output, 'LICENSE'));
-await cp(join(repo, 'docs/setup/distribution.md'), join(output, 'INSTALL.md'));
+for (const [source, destination] of [
+  ['docs/setup/distribution.md', 'INSTALL.md'],
+  ['docs/beta/cli.md', 'CLI.md'],
+]) {
+  const guide = (await readFile(join(repo, source), 'utf8')).replace(
+    /\]\((?!https?:|#)([^)]+)\)/g,
+    (_, target) => {
+      const [path, fragment] = target.split('#');
+      const resolved = posix.normalize(posix.join(posix.dirname(source), path));
+      const suffix = fragment ? '#' + fragment : '';
+      if (resolved === 'docs/beta/cli.md') return `](CLI.md${suffix})`;
+      if (resolved === 'docs/setup/distribution.md') return `](INSTALL.md${suffix})`;
+      return `](https://github.com/Mert1026/Sentry/blob/${sourceCommit}/${resolved}${suffix})`;
+    },
+  );
+  await writeFile(join(output, destination), guide);
+}
 // Generated staging is outside the artifact root before inventory/extraction.
 const { rm } = await import('node:fs/promises');
 await rm(app, { recursive: true });
@@ -199,6 +218,7 @@ const manifest = {
   },
   components: [
     'Electron Desktop',
+    'production CLI frontend (included runtime)',
     'Linux runtime source bootstrap',
     'platform launcher',
     'application assets',

@@ -1,3 +1,22 @@
+# Packaged CLI implementation
+
+2026-10-16. Owner requires actual packaged CLI, generic public wording, command
+examples and existing-install upgrade instructions. Isolated fix/windows-packaged-cli
+from dev20ffb618; owner dirty primary and separate cleanup PR34 preserved.
+Distribution now bundles a production-only frontend running with included Electron,
+forwards opaque CLI argv/UTF-8 stdout/stderr/exit status, and requires the frontend
+in the sealed inventory. No Windows Node/pnpm/Git requirement or direct DB fallback.
+Pure exit-code/run-summary extraction retains source CLI compatibility. Existing
+v1.0.0/v1.0.1 tags/assets unchanged; no new official version/publication authorized.
+Regression RED recorded for missing CLI payload and positional binding. Focused
+CLI45 tests, Windows distribution43/27skips and registered packaged process matrix
+PASS. Full broader gates, exact committed archive and live broker validation are
+recorded in private audit/PR after execution. Source/runtime schemas, protocol and
+provider pins unchanged. Documentation examples and safe upgrade policy included.
+shux unavailable; status/ledger/handoff maintained directly. Owner merges only.
+
+## Previous record (preserved)
+
 # Phase 6.6 — stable review candidate and acceptance
 
 2026-10-15. PR28 release-prep/v1.0.0-stable → release/v1.0.0-windows; owner merge only.
