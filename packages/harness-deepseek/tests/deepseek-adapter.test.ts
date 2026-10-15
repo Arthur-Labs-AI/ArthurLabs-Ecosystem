@@ -465,6 +465,184 @@ describe('DeepSeekHarnessAdapter', () => {
     expect(executed[0]).toMatchObject({ command: 'pnpm test', exitCode: 1 });
   });
 
+  it.each([
+    { output: 'Observed failure\n[Command finished with exit code 1]', code: 1 },
+    { output: 'Observed behavior\n[Command finished with exit code 0]', code: 0 },
+    { output: '[Command finished with exit code 0]', code: 0 },
+  ])('grounds persistent Bash command evidence from $output', async ({ output, code }) => {
+    // Live regression: run_01M4XH2DHRPX0QD51AB3FTP0W5. The pinned
+    // dsh-tool-bash-persistent renderer uses this marker, not [exit code: N].
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-persistent-marker-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const report = {
+      ...validReportV2(),
+      evidence: [
+        {
+          key: 'cmd',
+          type: 'command',
+          strength: 'tool_diagnostic',
+          description: 'Observed command outcome.',
+          operationKey: 'op_1',
+        },
+      ],
+      findings: [{ ...validReportV2().findings[0], evidenceKeys: ['cmd'] }],
+    };
+    const runText = threeStage(
+      planResult(validPlan()),
+      investigationResult([
+        {
+          type: 'tool/call',
+          data: {
+            callId: 'persistent-1',
+            name: 'bash',
+            arguments: JSON.stringify({ command: 'python3 reproduce.py' }),
+          },
+        },
+        {
+          type: 'tool/result',
+          data: {
+            message: {
+              content: [
+                {
+                  type: 'tool-result',
+                  toolCallId: 'persistent-1',
+                  content: [{ type: 'text', text: output }],
+                },
+              ],
+            },
+          },
+        },
+      ]),
+      reportResult(report),
+    );
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        start: async () => undefined,
+        startSession: async () => ({
+          runText: async (text: string) => {
+            prompts.push(text);
+            return runText();
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1), JSON.stringify(events.at(-1))).toMatchObject({ type: 'run.completed' });
+    expect(prompts).toHaveLength(3);
+    expect(prompts[2]).toContain('exitCode: ' + code);
+    const started = events.find((event) => event.type === 'tool.started');
+    if (started?.type !== 'tool.started') throw new Error('expected observed operation');
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'command.executed',
+        operationId: started.operationId,
+        command: 'python3 reproduce.py',
+        exitCode: code,
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'evidence.submitted',
+        evidence: expect.objectContaining({
+          type: 'command',
+          groundingOperationIds: [started.operationId],
+          command: expect.objectContaining({ exitCode: code }),
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    { name: 'bash', output: 'some output' },
+    { name: 'bash', output: '[Command finished with exit code 0]\nmore output' },
+    { name: 'bash', output: 'quoted [Command finished with exit code 0]' },
+    { name: 'bash', output: '[Command finished with exit code -1]' },
+    { name: 'bash', output: '[Command finished with exit code 0.5]' },
+    { name: 'bash', output: '[Command finished with exit code 9007199254740992]' },
+    { name: 'read_file', output: 'file contents\n[Command finished with exit code 0]' },
+  ])(
+    'rejects strong evidence without a valid shell outcome: $name / $output',
+    async ({ name, output }) => {
+      const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-unknown-marker-'));
+      roots.push(root);
+      const input = await request(root);
+      const runText = vi.fn(
+        threeStage(
+          planResult(validPlan()),
+          investigationResult([
+            {
+              type: 'tool/call',
+              data: {
+                callId: 'unknown-1',
+                name,
+                arguments: JSON.stringify({ command: 'python3 reproduce.py' }),
+              },
+            },
+            {
+              type: 'tool/result',
+              data: {
+                message: {
+                  content: [
+                    {
+                      type: 'tool-result',
+                      toolCallId: 'unknown-1',
+                      content: [{ type: 'text', text: output }],
+                    },
+                  ],
+                },
+              },
+            },
+          ]),
+          reportResult({
+            ...validReportV2(),
+            evidence: [
+              {
+                key: 'cmd',
+                type: 'command',
+                strength: 'tool_diagnostic',
+                description: 'Unobserved outcome.',
+                operationKey: 'op_1',
+              },
+            ],
+            findings: [{ ...validReportV2().findings[0], evidenceKeys: ['cmd'] }],
+          }),
+        ),
+      );
+      const adapter = new DeepSeekHarnessAdapter({
+        executable: 'dsh-test',
+        modelId: 'deepseek-v4-flash',
+        environment: {},
+        clientFactory: async () => ({
+          start: async () => undefined,
+          startSession: async () => ({ runText }),
+          close: async () => undefined,
+        }),
+      });
+      const events = await collect(adapter, input);
+      await adapter.dispose();
+      expect(events.at(-1)).toMatchObject({
+        type: 'run.failed',
+        failure: {
+          code: 'DEEPSEEK_INVALID_RESULT',
+          message: expect.stringContaining('Strong findings require grounded source/tool evidence'),
+        },
+      });
+      expect(runText).toHaveBeenCalledTimes(4);
+      expect(
+        events.some((event) =>
+          ['command.executed', 'evidence.submitted', 'finding.submitted'].includes(event.type),
+        ),
+      ).toBe(false);
+    },
+  );
+
   it('records no code without marker, meta, or error (unknown stays unknown)', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-nocode-'));
     roots.push(root);

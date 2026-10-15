@@ -8,6 +8,7 @@ import { StatusPill } from '../components/ui/StatusPill.js';
 import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
 import { CopyId } from '../components/CopyId.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
+import { RemoveProjectButton } from '../components/RemoveProjectButton.js';
 
 export function Projects(): React.JSX.Element {
   const queryClient = useQueryClient();
@@ -125,12 +126,17 @@ export function Projects(): React.JSX.Element {
                   {project.runCount} run{project.runCount === 1 ? '' : 's'}
                 </dd>
               </dl>
-              <div style={{ marginTop: 10 }}>
+              <div className="actions" style={{ marginTop: 10, flexWrap: 'wrap' }}>
                 <Link to={'/projects/' + project.projectId}>
                   <button className="compact primary">
                     Open <ArrowRight size={13} />
                   </button>
                 </Link>
+                <RemoveProjectButton
+                  projectId={project.projectId}
+                  name={project.name}
+                  state={project.state}
+                />
               </div>
             </article>
           ))}

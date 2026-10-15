@@ -85,6 +85,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
   'runtime:status': z.object({}).strict(),
   'runtime:distros': z.object({}).strict(),
   'runtime:select-distro': z.object({ distro: z.string().min(1).max(200) }).strict(),
+  'runtime:reclaim-space': z.object({}).strict(),
   'cli:status': z.object({}).strict(),
 };
 export type DesktopChannel = keyof typeof DesktopChannelSchemas;
@@ -101,6 +102,8 @@ export function isCliAllowed(channel: string): boolean {
 }
 
 export interface CommandRouterHooks {
+  readonly maintenanceActive?: () => boolean;
+  readonly reclaimSpace?: () => Promise<unknown>;
   readonly onRunCreated?: (runId: string, operationId?: string) => void;
   readonly onRetestCreated?: (retestRunId: string, operationId?: string) => void;
   readonly requestSavePath?: (options: SaveDialogOptions) => Promise<string | null>;
@@ -180,7 +183,19 @@ export async function dispatchDesktopCommand(
     });
   }
   const parsed = schema.parse(payload ?? {}) as Record<string, unknown>;
+  if (hooks.maintenanceActive?.() && channel !== 'runtime:status' && channel !== 'cli:status') {
+    throw Object.assign(new Error('Windows disk reclamation is running. Wait for it to finish.'), {
+      code: 'RUNTIME_MAINTENANCE',
+    });
+  }
   switch (channel) {
+    case 'runtime:reclaim-space':
+      if (hooks.reclaimSpace === undefined) {
+        throw Object.assign(new Error('Windows disk reclamation is unavailable.'), {
+          code: 'HOST_UNSUPPORTED',
+        });
+      }
+      return hooks.reclaimSpace();
     case 'projects:list':
       return service.listProjects();
     case 'projects:add':

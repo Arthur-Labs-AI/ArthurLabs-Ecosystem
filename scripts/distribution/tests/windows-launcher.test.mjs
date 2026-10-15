@@ -68,6 +68,10 @@ function Invoke-SentryWslFile {
   Write-FixtureCall 'tool' (@($ScriptName) + $ScriptArgs)
   return @{ ExitCode = 0; Stdout = ''; Stderr = '' }
 }
+function Start-Process {
+  param($FilePath, $ArgumentList, $WorkingDirectory, $WindowStyle)
+  Write-FixtureCall 'launch' @($FilePath, $ArgumentList, $WorkingDirectory, [string]$WindowStyle)
+}
 Export-ModuleMember -Function *
 `,
   );
@@ -116,6 +120,16 @@ for (const command of ['setup', 'repair']) {
     },
   );
 }
+
+test('Windows archive open requests a visible interactive Desktop', windows, async (t) => {
+  const result = await invoke(t, 'open');
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const launch = result.records.find((record) => record.kind === 'launch');
+  assert.ok(launch);
+  assert.deepEqual(launch.values[1], ['--sentry-app']);
+  assert.equal(launch.values[3], 'Normal');
+  assert.equal(launch.values[0], join(launch.values[2], 'Sentry.exe'));
+});
 
 test(
   'Windows archive tools preserves zero-argument maintenance and existing tool pins',
