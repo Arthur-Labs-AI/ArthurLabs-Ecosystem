@@ -4,18 +4,18 @@ Sentry is a local-first AI QA desktop application. OpenCode, DeepSeek, and
 GLM through Claude Code independently investigate one immutable project snapshot
 and return findings, evidence, token usage, and observable run history.
 
-**Windows v1.0.0 stable candidate: unsigned and not yet published.**
+**Windows v1.0.0 Stable is published as an unsigned ZIP.**
 The initial release target is **Windows 11 x64 with WSL2** (Ubuntu preferred).
 Windows Desktop continues using the Linux execution runtime, systemd user services
 and bubblewrap isolation. Native Linux Desktop, including CachyOS, is deferred.
 See the [stable release notes](docs/releases/v1.0.0.md),
 [installation guide](docs/setup/distribution.md) and
 [Phase 6.6 readiness handoff](docs/releases/v1-phase-6-6-stable-readiness.md).
-The owner selected direct stable publication; no public RC/prerelease is planned.
-Owner review, final-source verification, main promotion and explicit publication
-authorization remain separate gates. Historical RC receipts retain their identities.
+Use the [official Windows release](https://github.com/Mert1026/Sentry/releases/tag/v1.0.0)
+for PowerShell download and installation commands. Development fixes do not replace
+its immutable archive or tag. Historical RC receipts retain their identities.
 
-The only published release remains historical `v0.1.0-beta.1`:
+The historical `v0.1.0-beta.1` remains available:
 [beta notes](docs/releases/v0.1.0-beta.1.md),
 [validation](docs/releases/v0.1.0-beta.1-validation.md).
 Its immutable executable is not an accepted credential-recovery downgrade target.
@@ -35,17 +35,31 @@ Merge/verification ingestion is not exposed by current Desktop runtime RPC;
 it is not a promised beta user flow. Existing issue/retest data and compatibility
 paths remain. Architecture records may describe retired features.
 
-## Install the Windows review candidate
+## Install Windows
 
 Use the owner-approved Windows ZIP and its trusted SHA256 sidecar. Verify the
 checksum, extract into a new version/source directory, and run that archive's
-`.\sentry.ps1 version`, `.\sentry.ps1 setup -Distro Ubuntu`, then `.\sentry.ps1 open`.
+`.\sentry.ps1 version`, `.\sentry.ps1 setup -Distro Ubuntu`,
+`.\sentry.ps1 tools -Distro Ubuntu`, then `.\sentry.ps1 open`.
 Setup builds the Linux runtime through WSL2 using frozen dependencies. See the
 [distribution guide](docs/setup/distribution.md) for checksums, prerequisites,
-installation and safe maintenance procedure. The current stable ZIP is a review candidate until owner approval and publication;
-there is no automatic updater.
+installation and safe maintenance procedure. Review candidates require owner
+approval; there is no automatic updater.
 Windows Node/pnpm/Git are not required for the packaged Desktop. Linux Node >=22,
 pnpm 9.12.3, systemd user services, bubblewrap and socat remain required in WSL2.
+
+Windows archives built from this revision register `sentry` during successful
+setup. Open a new PowerShell or Command Prompt window and use `sentry open`,
+`sentry stop`, `sentry status`, `sentry doctor` or `sentry version` from any folder.
+If that archive moves, run `.\sentry.ps1 register-command` from its new directory.
+The original published v1.0.0 archive predates built-in registration; its Release
+page provides the matching installation instructions.
+
+New imports omit common Python caches/environments and Next/Nuxt build output.
+Source selection does not evaluate `.gitignore`; project data directories remain
+eligible. Existing imported revision hashes remain compatible. Unreadable required
+paths produce a permission error identifying the path. See the
+[distribution guide](docs/setup/distribution.md#project-imports) for details.
 
 ## Historical source-beta installation prerequisites
 
