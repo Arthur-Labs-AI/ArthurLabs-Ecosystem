@@ -20,6 +20,10 @@ async function invoke(t, command, failure = '') {
   await mkdir(join(root, 'scripts/launcher'), { recursive: true });
   await cp(join(scripts, 'release.ps1'), join(root, 'sentry.ps1'));
   await writeFile(
+    join(root, 'scripts/distribution/register-command.ps1'),
+    "function Register-SentryDistributionCommand { param($Root) Write-FixtureCall 'shim' @($Root) }\n",
+  );
+  await writeFile(
     join(root, 'scripts/distribution/verify.ps1'),
     "function Get-SentryDistribution { param($Root) return @{ version = '1.0.0' } }\n",
   );
@@ -90,12 +94,42 @@ Export-ModuleMember -Function *
     windowsHide: true,
   });
   assert.ifError(result.error);
-  const records = (await readFile(calls, 'utf8'))
+  const records = (
+    await readFile(calls, 'utf8').catch((error) => {
+      if (error.code === 'ENOENT') return '';
+      throw error;
+    })
+  )
     .trim()
     .split(/\r?\n/)
+    .filter(Boolean)
     .map((line) => JSON.parse(line));
   return { ...result, records };
 }
+
+test(
+  'Windows archive setup registers the command only after successful preference activation',
+  windows,
+  async (t) => {
+    const result = await invoke(t, 'setup');
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(result.records.at(-1)?.kind, 'shim');
+    assert.equal(result.records.at(-2)?.kind, 'config');
+  },
+);
+
+test(
+  'Windows archive can register the command without reinstalling or stopping Desktop',
+  windows,
+  async (t) => {
+    const result = await invoke(t, 'register-command');
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.deepEqual(
+      result.records.map((r) => r.kind),
+      ['shim'],
+    );
+  },
+);
 
 for (const command of ['setup', 'repair']) {
   test(
@@ -115,7 +149,8 @@ for (const command of ['setup', 'repair']) {
         result.records.filter((r) => r.kind === 'native').map((r) => r.values),
         [['--sentry-setup-distro', 'Ubuntu']],
       );
-      assert.deepEqual(result.records.at(-1), { kind: 'config', values: ['Ubuntu'] });
+      assert.deepEqual(result.records.at(-2), { kind: 'config', values: ['Ubuntu'] });
+      assert.equal(result.records.at(-1).kind, 'shim');
       assert.equal(result.records[0].kind, 'stop');
     },
   );
@@ -160,7 +195,7 @@ for (const failure of ['translation', 'bootstrap']) {
       const result = await invoke(t, 'setup', failure);
       assert.notEqual(result.status, 0);
       assert.equal(
-        result.records.some((r) => r.kind === 'native' || r.kind === 'config'),
+        result.records.some((r) => r.kind === 'native' || r.kind === 'config' || r.kind === 'shim'),
         false,
       );
       assert.match(

@@ -2,7 +2,7 @@ param([Parameter(Position = 0)][string]$Command = 'help', [string]$Distro = '', 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 if ($Command -in @('help', '--help', '-h')) {
-  Write-Host 'Sentry pinned distribution: setup | tools | open | stop | status | doctor | version | help'
+  Write-Host 'Sentry pinned distribution: setup | tools | open | stop | status | doctor | version | register-command | help'
   Write-Host 'Extract every approved archive into a separate version/SHA directory. See INSTALL.md. No automatic updates.'
   exit 0
 }
@@ -18,6 +18,7 @@ Import-Module (Join-Path $root 'scripts/launcher/SentryLauncher.psm1') -Force -D
 . (Join-Path $root 'scripts/launcher/wsl-setup.ps1')
 $exe = Join-Path $root 'desktop/Sentry.exe'
 . (Join-Path $root 'scripts/distribution/maintenance.ps1')
+. (Join-Path $root 'scripts/distribution/register-command.ps1')
 function Get-DistributionDistro {
   $cfg = Get-SentryLauncherConfig
   $previous = [string]$cfg['selectedDistro']
@@ -42,8 +43,10 @@ switch ($Command) {
     $sync = Invoke-SentryNative -FilePath $exe -Arguments @('--sentry-setup-distro', $selected) -TimeoutSec 120
     if ($sync.ExitCode -ne 0) { throw 'Runtime installed, but Desktop distro preference could not be saved. Stop Desktop and rerun setup.' }
     Set-SentryLauncherConfig @{ selectedDistro = $selected }
-    Write-Host 'Core installed. Next: .\sentry.ps1 tools, then open. Configure credentials in Settings -> Providers.'
+    Register-SentryDistributionCommand -Root $root
+    Write-Host 'Core installed. Next: sentry tools, then sentry open (new terminal). Configure credentials in Settings -> Providers.'
   }
+  'register-command' { Register-SentryDistributionCommand -Root $root }
   'open' { [void](Start-Process -FilePath $exe -ArgumentList @('--sentry-app') -WorkingDirectory (Join-Path $root 'desktop') -WindowStyle Normal); Write-Host 'Desktop launch requested; check Environment for readiness.' }
   'stop' { Stop-DistributionDesktop -Executable $exe; Write-Host 'Sentry stopped.' }
   { $_ -in @('doctor', 'status') } {
