@@ -1,6 +1,9 @@
 # Installing a pinned Sentry distribution candidate
 
-Candidates are unsigned review artifacts pending an explicitly authorized RC cut.
+Candidates are unsigned review artifacts. The owner selected direct **v1.0.0
+Stable** publication after security hardening and a separate controlled version
+transition; no public RC/prerelease will be published. Internal candidate version
+`1.0.0-rc.1` remains unchanged during Phase 6.5. This guide authorizes no publication.
 The initial v1 release target is **Windows 11 x64 with WSL2** (Ubuntu preferred).
 Windows still uses the Linux execution runtime, systemd and sandbox isolation.
 Native Linux Desktop is **DEFERRED — FUTURE NATIVE LINUX RELEASE**; CachyOS
@@ -39,13 +42,16 @@ exists; hosted delivery and official publication remain separate decisions.
 The local physically tested c6d4769 ZIP and the runner-generated c6d4769 ZIP have
 different checksums and must not be interchanged or renamed as later sources.
 
-Optional elevated WSL disk reclamation assumes a private trusted profile. Do not
-place that profile in a directory writable by other accounts. The current helper
-does not independently establish custom-profile ACL safety or hostile same-user
-replacement resistance. The [targeted review](../releases/v1-phase-6-4-release-activation.md#privileged-helper-review)
-recommends narrow hardening before broad publication; no administrator disk
-operation was run during that review. Ordinary setup/open does not require
-invoking disk reclamation.
+Optional elevated WSL disk reclamation uses fixed inline executable code and
+private operation state under the Windows home directory at
+`.sentry-wsl-maintenance`, independent of custom profiles and general Temp/AppData.
+Restrictive ACL/ownership/reparse checks and authenticated, contained, exclusive
+receipts are documented in the [maintenance boundary](../security/wsl-maintenance.md).
+Unsafe home ancestry fails closed without changing owner permissions. This does
+not claim resistance to complete owner-account/application compromise. Ordinary
+setup/open does not require invoking disk reclamation. See the
+[Phase 6.5 correction handoff](../releases/v1-phase-6-5-wsl-helper-hardening.md)
+for executed fixtures and the separate stable-release plan.
 
 ## Obtain, verify and extract
 

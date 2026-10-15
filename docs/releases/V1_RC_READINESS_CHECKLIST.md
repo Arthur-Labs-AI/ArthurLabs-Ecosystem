@@ -1,5 +1,24 @@
 # Windows v1.0.0-rc.1 readiness checklist
 
+## Phase 6.5 — current security correction and stable decision
+
+The owner chose **v1.0.0 Stable directly for Windows 11 x64/WSL2**, with no public
+RC or prerelease tag. Internal version remains `1.0.0-rc.1` during this narrow
+hardening phase. Stable version reconciliation, exact-source packaging, owner
+main promotion and publication authorization are separate subsequent steps.
+
+PR #26 is owner-merged into release
+`4e75534b87021c796b5935c817bf56eeba8d4d87`, tree
+`e60c42a4bef4c59c93f5fffea623f84572d0216c`. Its post-merge CI passed; distribution
+failed only at upload quota. The focused helper correction targets that frozen
+release branch. Current diagnosis, red/green evidence, Windows/shared tests,
+remaining limits and owner-review disposition are in the
+[Phase 6.5 handoff](v1-phase-6-5-wsl-helper-hardening.md). No self-merge or
+publication is authorized. Earlier archive checksums remain attached to their
+original sources and are not reused for the correction or future stable source.
+
+## Retained Phase 6.3/6.4 evidence
+
 Current scope, October 15, 2026: **Windows 11 x64 with WSL 2**, Ubuntu preferred.
 Native Desktop is **DEFERRED — FUTURE NATIVE LINUX RELEASE**. Shared runtime and
 security failures remain Windows blockers. Historical FAIL/UNVERIFIED results
