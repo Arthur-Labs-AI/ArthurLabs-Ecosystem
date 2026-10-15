@@ -1,10 +1,12 @@
 # Phase 6.3 — Windows RC freeze and authorization handoff
 
-October 15, 2026. **CONDITIONALLY READY**: local artifact and prepared-host
-acceptance passed, but the required merged-dev Windows distribution workflow
-still fails at artifact upload for storage quota after verified retirement.
-Local results do not waive the hosted gate. The release branch and its review PR
-remain pending that prerequisite; official cut authorization is premature.
+October 15, 2026. **CONDITIONALLY READY**. Phase 6.4 owner authorization permits
+release-branch creation and review preparation despite the upload-only quota
+failure. `release/v1.0.0-windows` was created at the exact verified c6d4769 source.
+Application verification, archive generation and hosted delivery remain separate:
+the merged-dev distribution conclusion is still FAIL, with packaging verified.
+Official publication is not authorized. Current transition, security review and
+new checks are in the [Phase 6.4 handoff](v1-phase-6-4-release-activation.md).
 
 This is preparation for an unsigned Windows review candidate. No official RC tag,
 GitHub Release, public release asset, main promotion or default-branch change is
@@ -20,17 +22,17 @@ See the [branch cleanup receipt](../development/branch-cleanup-2026-10-15.md).
 
 ## Selected integration and scope
 
-| Reference                                 | Verified identity                                                                               |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Remote main / default                     | `4fd2be9fa3b17370841dbb1d2f0422a2150c62d8`; default remains main                                |
-| Owner-merged dev / selected binary source | `c6d4769bf3179d49bb3718074d6c083f52332626`                                                      |
-| Selected Git tree                         | `45e1d84e0eb447f4b93d1193a4421c6aeba1c40b`                                                      |
-| Planned release branch / initial SHA      | `release/v1.0.0-windows` / selected c6d4769; NOT CREATED while hosted gate fails                |
-| Documentation review branch               | `release-prep/v1-phase-6-3-windows-freeze`, based on selected c6d4769; PR awaits release target |
-| PR23 merge / reviewed head                | `59ba800fc25ee61f1aff93a4401e0f70e3125270` / `16b47d83da58fc8091df94131be64891a0b467a0`         |
-| PR24 merge / reviewed head                | `5aedbc24e7a0dddcd0a155abc243a6e3c0e273d5` / `be7708e131ee28309c11e2ac3bf24a16609f436d`         |
-| PR25 merge / reviewed head                | selected c6d4769 / `982048d29977842c83e5d1acd84da7c9f28b93d1`                                   |
-| Published release                         | Immutable historical `v0.1.0-beta.1`; no official RC published                                  |
+| Reference                                 | Verified identity                                                                                              |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Remote main / default                     | `4fd2be9fa3b17370841dbb1d2f0422a2150c62d8`; default remains main                                               |
+| Owner-merged dev / selected binary source | `c6d4769bf3179d49bb3718074d6c083f52332626`                                                                     |
+| Selected Git tree                         | `45e1d84e0eb447f4b93d1193a4421c6aeba1c40b`                                                                     |
+| Activated release branch / initial SHA    | `release/v1.0.0-windows` / selected c6d4769; Phase 6.4 owner exception                                         |
+| Documentation review branch               | `release-prep/v1-phase-6-3-windows-freeze`, based on selected c6d4769; PR targets the activated release branch |
+| PR23 merge / reviewed head                | `59ba800fc25ee61f1aff93a4401e0f70e3125270` / `16b47d83da58fc8091df94131be64891a0b467a0`                        |
+| PR24 merge / reviewed head                | `5aedbc24e7a0dddcd0a155abc243a6e3c0e273d5` / `be7708e131ee28309c11e2ac3bf24a16609f436d`                        |
+| PR25 merge / reviewed head                | selected c6d4769 / `982048d29977842c83e5d1acd84da7c9f28b93d1`                                                  |
+| Published release                         | Immutable historical `v0.1.0-beta.1`; no official RC published                                                 |
 
 Initial v1 supports **Windows 11 x64 with WSL 2**, Ubuntu preferred. Windows
 Electron retains the Linux execution runtime, systemd user services, bubblewrap,
@@ -72,8 +74,8 @@ DeepSeek's client and subprocess packages are both pinned to `0.1.5-rc.2`.
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Actual merged-dev CI                    | **PASS**: [38685627100](https://github.com/Mert1026/Sentry/actions/runs/38685627100), quality and Windows/Linux launcher jobs                                                                                             |
 | Actual merged-dev Windows distribution  | **FAIL**: [38685627221](https://github.com/Mert1026/Sentry/actions/runs/38685627221), attempts 1/2/3 fail at upload-artifact storage quota; attempt 3 followed verified retirement; build/tests/archive generation passed |
-| Release-branch CI / archive             | **UNVERIFIED**: release branch creation is gated on merged-dev distribution success                                                                                                                                       |
-| Focused review PR / checks              | **UNVERIFIED**: PR target does not yet exist; no substitute PR to dev/main                                                                                                                                                |
+| Release-branch CI / archive             | Phase 6.4 follow-up: branch created under explicit exception; new CI/archive runs tracked in the activation handoff                                                                                                       |
+| Focused review PR / checks              | Phase 6.4 follow-up: intended target exists; preparation PR targets release/v1.0.0-windows, owner merge only                                                                                                              |
 | Windows static/build                    | **PASS**: frozen install, repository:check, format:check, lint, typecheck, build;20 build tasks,19cached                                                                                                                  |
 | Windows Desktop                         | **PASS**: local suite exit0; exact merged-dev hosted Windows job independently records452 passed/3 skipped                                                                                                                |
 | Windows distribution tests              | **PASS**:32 passed/27 platform skips,59 total                                                                                                                                                                             |
@@ -245,14 +247,18 @@ success or retirement approval does not establish hosted success.
 
 ## Branches and owner review
 
-The focused documentation branch preserves this reviewable preparation;
-no PR is opened against an incorrect base.
-`release/v1.0.0-windows` is not created while merged-dev distribution is failed.
-After that exact-source run succeeds, recheck dev/main/source/tree and absent local
-and remote release refs, create/push the release branch at c6d4769, and inspect its
-required checks. Corrections/documentation use a focused task branch and a PR
-targeting that release branch. Only the owner merges; do not directly commit to
-the shared branch. Propagate accepted corrections back to dev through review.
+On October 15, 2026, the owner explicitly superseded only the branch-creation
+prerequisite: the verified upload-only quota failure need not block creation and
+review preparation. The initial remote release ref was verified at
+`c6d4769bf3179d49bb3718074d6c083f52332626`, tree
+`45e1d84e0eb447f4b93d1193a4421c6aeba1c40b`. Main/dev remain unchanged.
+This exception does not waive source/security checks, mark upload successful or
+authorize delivery/publication. The original failed workflow remains evidence.
+
+The existing `release-prep/v1-phase-6-3-windows-freeze` branch retains both original
+preparation and cleanup commits and carries the focused review PR into
+`release/v1.0.0-windows`. Only the owner merges. Do not directly commit to the
+shared release branch; propagate accepted corrections back to dev through review.
 
 Do not create `feature/native-linux-support` now. After Windows publication and
 owner authorization, select the then-approved shared dev source, record full
@@ -262,8 +268,10 @@ discard the retained native implementation or historical evidence.
 ## Remaining authorization steps
 
 1. Artifact retirement is complete; retain all verified private copies and receipts.
-2. Obtain actual merged-source Windows distribution SUCCESS; then create the
-   release branch and open the focused documentation/review PR into it.
+2. Release branch creation is complete under the Phase 6.4 owner exception.
+   Open/review the existing preparation PR into it; resolve hosted delivery or an
+   explicitly approved alternative before publication. Do not retry quota-only
+   failures repeatedly.
 3. Owner reviews and merges that PR; agents do not self-merge or enable auto-merge.
 4. Rebuild/verify/retest the actual merged release SHA and record new hashes.
 5. Owner separately authorizes the exact source/assets, support scope, bounded

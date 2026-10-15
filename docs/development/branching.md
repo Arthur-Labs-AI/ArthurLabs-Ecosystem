@@ -21,20 +21,25 @@ The owner selected Windows 11 x64/WSL2 first. PRs #23, #24 and #25 are owner-mer
 into dev `c6d4769bf3179d49bb3718074d6c083f52332626`, tree
 `45e1d84e0eb447f4b93d1193a4421c6aeba1c40b`. See the authoritative
 [Phase 6.3 freeze handoff](../releases/v1-phase-6-3-windows-rc-freeze.md)
-for actual CI, archive and branch-creation status. A passing PR head does not
-substitute for a successful merged-dev Windows distribution workflow.
+for actual CI and archive evidence. The [Phase 6.4 activation](../releases/v1-phase-6-4-release-activation.md)
+records the owner's October 15 exception: upload-only quota failure does not block
+creation/review preparation of the frozen Windows branch. It does not waive
+source/security verification, trusted artifact delivery or publication approval.
 
-| Branch                         | Responsibility                                                |
-| ------------------------------ | ------------------------------------------------------------- |
-| `main`                         | Stable owner-approved releases; unchanged default branch      |
-| `dev`                          | Shared reviewed development integration                       |
-| `release/v1.0.0-windows`       | Frozen Windows stabilization after merged-source gates pass   |
-| `feature/native-linux-support` | Future native Desktop work, created after Windows publication |
+| Branch                         | Responsibility                                                           |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| `main`                         | Stable owner-approved releases; unchanged default branch                 |
+| `dev`                          | Shared reviewed development integration                                  |
+| `release/v1.0.0-windows`       | Frozen Windows stabilization; activated at c6d4769 under owner exception |
+| `feature/native-linux-support` | Future native Desktop work, created after Windows publication            |
 
-Create only the Windows release branch during Phase 6.3, after successful actual
-merged-dev CI and Windows distribution verification. If either gate is failed or
-unverified, stop branch creation and record the blocker. Never overwrite an
-existing ref. In a task-owned checkout, inspect status/branch/HEAD first, then:
+`release/v1.0.0-windows` was created on October 15 at exact approved c6d4769/tree
+45e1d84 under the Phase 6.4 owner exception, after verifying source CI and hosted
+packaging success. Hosted artifact delivery was still blocked by upload quota.
+This one-time exception is not a standing waiver for application/security or
+future release gates. The creation procedure below is retained for provenance;
+do not rerun it against the existing ref. Never overwrite an existing ref.
+In a task-owned checkout, inspect status/branch/HEAD first:
 
 ```powershell
 git fetch origin
@@ -47,7 +52,7 @@ git show-ref --verify --quiet refs/heads/release/v1.0.0-windows
 if ($LASTEXITCODE -eq 0) { throw 'Local release branch already exists' }
 $existing = git ls-remote --heads origin refs/heads/release/v1.0.0-windows
 if ($LASTEXITCODE -or $existing) { throw 'Remote check failed or release branch exists' }
-# Execute only after the handoff records the required merged-source gates PASS.
+# Historical creation: required source/build checks passed; Phase 6.4 owner exception covered upload quota only.
 git branch release/v1.0.0-windows $approved
 if ($LASTEXITCODE) { throw 'Release branch creation failed' }
 git push origin release/v1.0.0-windows

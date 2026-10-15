@@ -33,6 +33,20 @@ historical import evidence. A later merged release-documentation/correction SHA
 requires its own fresh build, checksums and bounded acceptance before publication;
 never rename earlier bytes or attribute their checksum to a later merge.
 
+The [Phase 6.4 activation handoff](../releases/v1-phase-6-4-release-activation.md)
+records the owner's upload-only branch-creation exception. The release branch
+exists; hosted delivery and official publication remain separate decisions.
+The local physically tested c6d4769 ZIP and the runner-generated c6d4769 ZIP have
+different checksums and must not be interchanged or renamed as later sources.
+
+Optional elevated WSL disk reclamation assumes a private trusted profile. Do not
+place that profile in a directory writable by other accounts. The current helper
+does not independently establish custom-profile ACL safety or hostile same-user
+replacement resistance. The [targeted review](../releases/v1-phase-6-4-release-activation.md#privileged-helper-review)
+recommends narrow hardening before broad publication; no administrator disk
+operation was run during that review. Ordinary setup/open does not require
+invoking disk reclamation.
+
 ## Obtain, verify and extract
 
 Use only an owner-approved private delivery channel. Private GitHub Actions

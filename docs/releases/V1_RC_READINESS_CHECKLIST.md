@@ -5,7 +5,11 @@ Native Desktop is **DEFERRED — FUTURE NATIVE LINUX RELEASE**. Shared runtime a
 security failures remain Windows blockers. Historical FAIL/UNVERIFIED results
 below retain their original meaning and source attribution.
 
-The [Phase 6.3 freeze handoff](v1-phase-6-3-windows-rc-freeze.md) is authoritative.
+The [Phase 6.3 freeze handoff](v1-phase-6-3-windows-rc-freeze.md) records the
+established application/physical evidence. The [Phase 6.4 activation handoff](v1-phase-6-4-release-activation.md)
+records the October 15 owner exception, activated branch, targeted helper review
+and new automation. Only release-branch creation/review preparation is exempted
+from the prior hosted-upload prerequisite; official publication is not authorized.
 Selected merged source: `c6d4769bf3179d49bb3718074d6c083f52332626`. The privately
 retained ZIP was freshly built from that commit; any later owner merge requires
 a new exact-merge build and acceptance before publication.
@@ -28,15 +32,19 @@ a new exact-merge build and acceptance before publication.
 | Funded agents                   | PRIOR OWNER REPORT: DeepSeek and full 3/3 success; no paid replay authorized                                               |
 | Recovery                        | Option A approved for exact historical corrected I1 c78faa7; original-beta G10 remains FAIL                                |
 | Native smoke/G10-R              | DEFERRED, not PASS                                                                                                         |
-| Release branch / focused PR     | PENDING: successful merged-dev Windows distribution is a prerequisite                                                      |
+| Release branch / focused PR     | ACTIVATED at exact c6d4769 under Phase 6.4 owner exception; focused PR targets release/v1.0.0-windows; owner merge only    |
 | Official cut                    | NOT AUTHORIZED: no tag, release, public assets or main promotion                                                           |
 
 Artifact retirement **PASS**: all 88approved obsolete review archives/sidecars
 were privately retained, SHA256-verified and reverified, then removed remotely.
 Remote inventory91→3; protected Windows/native/I1 candidates and every published
 release asset remain intact. The hosted upload still reports quota exhaustion
-after retirement; actual workflow success is required before release-branch/PR
-creation. A local focused documentation branch preserves this preparation.
+after retirement. The October 15 Phase 6.4 owner exception permits branch/PR
+preparation despite that infrastructure failure. Application verification and
+archive generation passed; trusted hosted delivery remains a separate gate.
+The existing preparation history is retained. The helper review recommends narrow
+hardening before broad publication; no supported-profile privilege-boundary
+exploit was reproduced. See the activation handoff for fixtures and limits.
 The [native import tracker](native-linux-large-import.md) remains OPEN. A shared
 defect reproduced through Windows requires a focused correction before release.
 

@@ -1,3 +1,27 @@
+# Phase 6.4 — Windows release branch activated; owner PR review pending
+
+2026-10-15. Owner exception permits branch creation/review despite upload-only
+quota failure; official publication remains unauthorized. Release branch
+release/v1.0.0-windows created at exact c6d4769bf3179d49bb3718074d6c083f52332626,
+tree45e1d84e0eb447f4b93d1193a4421c6aeba1c40b. Main/dev/default/tags unchanged.
+Existing preparation branch retains fca2d0b and036059a; additive docs correction
+targets only that release branch. No self-merge/auto-merge/publication.
+Handoff: docs/releases/v1-phase-6-4-release-activation.md. New local frozen install,
+hygiene/format/lint/types/build/diff checks PASS; build/lint20cached, types37cached.
+Helper/lifecycle/UI43tests PASS; five safe security fixtures observed the expected
+SID/disk refusal and disclosed script/result/ACL trust assumptions. Classification:
+narrow hardening recommended before broad publication; no supported-profile
+privilege-boundary exploit reproduced. No elevated operation/realVHDX/credentials.
+Historical1288/33WSL,452/3Windows,8/8physical trust remain prior evidence, not reruns.
+Automatic release CI38702386286 PASS; archive38702386301 FAIL only upload quota
+after verified build/extraction. Final PR/check conclusions in owner report/private receipt;
+no duplicate workflow retry or extra artifact/branch/directory deletion.
+Owner review/merge precedes fresh exact-merge ZIP, bounded acceptance, trusted
+delivery/helper disposition and separate official RC authorization.
+shux contract unavailable; task records maintained directly; primary owner state retained.
+
+## Previous record (preserved)
+
 # Branch maintenance — COMPLETE
 
 2026-10-15. Owner-authorized remote cleanup completed. Active preparation renamed

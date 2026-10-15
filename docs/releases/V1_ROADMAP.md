@@ -22,10 +22,12 @@ Desktop is **DEFERRED — FUTURE NATIVE LINUX RELEASE**; its implementation and
 
 PRs #23/#24/#25 are owner-merged into dev c6d4769. Current exact-source identity,
 local/hosted gate results, private archive and remaining work are in the
-[Phase 6.3 freeze handoff](v1-phase-6-3-windows-rc-freeze.md). Create the Windows
-release branch only after actual merged-dev CI and Windows distribution success.
-Focused release correction/documentation PRs target that branch; only the owner
-merges. Do not start the native feature branch until after Windows publication
+[Phase 6.3 freeze handoff](v1-phase-6-3-windows-rc-freeze.md). The
+[Phase 6.4 owner exception](v1-phase-6-4-release-activation.md) authorized creation
+of `release/v1.0.0-windows` at exact c6d4769 despite upload-only quota failure.
+That branch is now active. Source/security verification, trusted delivery and
+official publication authorization remain separate gates. Focused release
+correction/documentation PRs target that branch; only the owner merges. Do not start the native feature branch until after Windows publication
 and a fresh approved shared-source selection.
 
 The [Phase 6.2 receipt](v1-phase-6-2-windows-transition.md) remains attributed
