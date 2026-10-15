@@ -9,7 +9,7 @@ The approved target is the verified I1 Desktop/runtime pair at
 Dev merges8bbe8ba/5c68491 change documentation and excluded acceptance tests;
 executable source and beta/I1 persistence migrations were compared directly.
 The [owner decision record](v1-recovery-policy-decision.md) records approval and
-its limits; the [candidate lock](v1-phase-5-3-candidate-lock.md)
+its limits; the [candidate lock](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-5-3-candidate-lock.md)
 specifies exact retained bytes. Original-beta G10 is not marked PASS.
 
 ## What must remain together

@@ -4,7 +4,7 @@ The Windows patch release version is **1.0.1**, runtime protocol **1**, for
 **Windows 11 x64 + WSL2** (Ubuntu preferred). Packages remain unsigned ZIPs.
 See the [patch release notes](../releases/v1.0.1.md); the public Release page records
 availability, exact source identity and download checksums. Historical
-[v1.0.0 preparation evidence](../releases/v1-phase-6-6-stable-readiness.md) retains
+[v1.0.0 preparation evidence](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-6-6-stable-readiness.md) retains
 its original source and scope.
 
 Windows Desktop uses the Linux execution runtime, systemd and bubblewrap isolation.
@@ -30,7 +30,7 @@ receipts are documented in the [maintenance boundary](../security/wsl-maintenanc
 Unsafe home ancestry fails closed without changing owner permissions. This does
 not claim resistance to complete owner-account/application compromise. Ordinary
 setup/open does not require invoking disk reclamation. See the
-[Phase 6.5 correction handoff](../releases/v1-phase-6-5-wsl-helper-hardening.md)
+[Phase 6.5 correction handoff](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-6-5-wsl-helper-hardening.md)
 for the original security fixtures; the stable handoff records integration checks.
 
 ## Obtain, verify and extract
@@ -211,10 +211,10 @@ No AppImage/AUR/native package is promised.
 
 `sentry update` in an archive always refuses. It never follows origin/dev,
 origin/main, or downloads another candidate. Source clones retain the development-only updater;
-pinned source-beta tags retain their existing refusal. Archive commands do not
-replace the existing global source shim: invoke `./sentry` / `.\sentry.ps1` in the
-chosen archive directory or create your own user-owned shortcut after acceptance.
-This avoids silently changing the owner's source channel.
+pinned source-beta tags retain their existing refusal. Successful Windows v1.0.1
+setup registers the per-user command for the chosen archive. Keep that directory
+in place and open a new terminal after setup; use `register-command` after moving
+it. Source checkouts retain their separate development channel.
 
 1. Cancel QA and retests, wait for terminal outcomes, stop the owning Desktop.
    Setup requests graceful Windows shutdown and refuses if processes remain;
@@ -246,7 +246,7 @@ that maintenance leaves synthetic existing files byte-identical. The Phase 4
 packaged Windows smoke also reopens a disposable database seeded by the published
 beta, including completed QA, finding/evidence and historical issue/retest records.
 Real user history and encrypted-settings continuity remain owner acceptance gates;
-see [the validation report](../releases/v1-phase-4-validation.md).
+see [the validation report](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-4-validation.md).
 
 Rollback after a failed pre-activation install uses the previous executable and
 runtime. After launching a newer version, **do not downgrade a migrated DB**:
@@ -262,7 +262,7 @@ loaded it before Electron readiness. G10 is FAIL and this beta downgrade is not
 an accepted credential-continuity recovery procedure. Retain private backups and
 stop the original-beta executable rollback track. The owner has adopted the
 corrected I1 route below within its tested Windows scope; the historical
-[bounded correction proposal](../releases/v1-beta-rollback-credential-proposal.md)
+[bounded correction proposal](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-beta-rollback-credential-proposal.md)
 is retained as background. This guide does not instruct a real-owner restore or
 key re-entry. Full native recovery and exact-RC native smoke are deferred with native release acceptance;
 normal native functionality is already owner-reported accepted. Windows I1
@@ -271,9 +271,9 @@ populated history/export/recovery evidence is recorded below, with its own ident
 **Phase5.2 recovery proposal:** actual disposable Windows I1 recovery restored a
 verified stopped beta data/profile pair under the corrected Desktop/runtime,
 retaining populated history, actual JSON/log exports, credentials and model
-preferences through repeated restart/restore. See the [validation receipt](../releases/v1-phase-5-2-g10-recovery-validation.md),
+preferences through repeated restart/restore. See the [validation receipt](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-5-2-g10-recovery-validation.md),
 [paired backup/recovery contract](../releases/v1-g10-recovery-contract.md) and
-[unexecuted native handoff](../releases/v1-g10-recovery-cachyos-handoff.md).
+[unexecuted native handoff](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-g10-recovery-cachyos-handoff.md).
 The owner adopted Option A on October 14, 2026 only for the tested Windows/I1
 scope and stated account/machine/DPAPI, schema and backup boundaries. This is
 not an approved beta executable downgrade or an automatic owner-data restore.
@@ -297,8 +297,8 @@ separately choosing data removal. The source shim remains owned by source setup.
 
 ## Owner acceptance procedure (no paid calls by default)
 
-For the current stable candidate follow the
-[Phase 6.6 handoff](../releases/v1-phase-6-6-stable-readiness.md): verify the exact
+For the historical v1.0.0 candidate verification procedure see the
+[Phase 6.6 handoff](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-6-6-stable-readiness.md): verify the exact
 archive checksum, stable version, setup, visible launch, matched runtime identity,
 disposable import/removal/history, synthetic secure settings and graceful shutdown.
 Maintenance UI acceptance cancels before disk mutation. Do not repeat funded
@@ -306,9 +306,9 @@ provider campaigns or compact the owner's disk automatically. A prepared-host te
 does not establish clean Windows provisioning.
 
 For the historical v1 acceptance campaign use the comprehensive
-[Windows/WSL and native CachyOS runbook](../releases/v1-owner-acceptance.md),
-[per-host results template](../releases/v1-owner-acceptance-results.md) and
-[v1 checklist](../releases/V1_ACCEPTANCE_CHECKLIST.md). The summary below remains
+[Windows/WSL and native CachyOS runbook](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-owner-acceptance.md),
+[per-host results template](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-owner-acceptance-results.md) and
+[v1 checklist](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/V1_ACCEPTANCE_CHECKLIST.md). The summary below remains
 a setup reference. Final PR head and later merge SHA are distinct candidates;
 record archive SHA256/full source identity and post-merge CI explicitly.
 

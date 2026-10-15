@@ -1,3 +1,20 @@
+# Repository cleanup after v1.0.1
+
+2026-10-15. Owner authorized repository cleanup and a native Linux branch from main.
+Base main6793a9c53a336d577ac4397735d0396f558b60f0; dev synchronization PR33 is merged.
+Six obsolete remote release/fix branch tips were verified ancestors of main and
+backed up in a verified private Git bundle before removal. Reserved branch
+feature/native-linux-support points to the exact base main commit; no Linux feature
+changes. Cleanup archives 96 historical reports/screenshots through immutable
+v1.0.0 links and removes three redundant private-beta redirects. Current v1.0.1
+installation/import/command documentation is retained. Production source, tests,
+workflows, schemas, pins and lockfile remain unchanged. Published tags/assets and
+owner dirty primary checkout are preserved. Separate cleanup PR targets main;
+owner review/merge only. Verification results are recorded in the PR and private
+audit; shux is unavailable, so protocol files are maintained directly.
+
+## Previous record (preserved)
+
 # Phase 6.6 — stable review candidate and acceptance
 
 2026-10-15. PR28 release-prep/v1.0.0-stable → release/v1.0.0-windows; owner merge only.

@@ -1,5 +1,9 @@
 # Sentry CLI (`sentry cli`)
 
+This frontend guide describes source-checkout CLI automation. The Windows stable
+archive exposes the Desktop broker but does not bundle a standalone CLI binary.
+Native Desktop remains deferred. This file path is retained for compatibility.
+
 `sentry cli` controls the same running Sentry instance as the Electron Desktop.
 It is a frontend only: every command travels a local named pipe to the Desktop
 broker (named pipe on Windows, Unix socket on CachyOS), which dispatches through

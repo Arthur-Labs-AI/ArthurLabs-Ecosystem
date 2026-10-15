@@ -6,28 +6,28 @@ execution, private operation ACLs and authenticated exclusive receipts supersede
 the earlier optional-helper trust assumptions. Historical phase scopes/results
 below retain their attribution; the stable version transition is a separate phase.
 
-Phase6.0 [review](../releases/v1-phase-6-0-rc-readiness.md) confines implementation
+Phase6.0 [review](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-6-0-rc-readiness.md) confines implementation
 changes to version/reporting literals and metadata; credential handling, profile
 paths, schema, sandbox, provider pins and protocol are frozen. Owner-reported
 normal native/Windows functionality is recorded separately from exact-build
 security/recovery proof. Existing boundary-specific evidence below is historical;
 no status is promoted by a missing screenshot or a version-only archive build.
 
-Phase5.3 evidence addendum: [final host preparation](../releases/v1-phase-5-3-final-host-acceptance.md)
+Phase5.3 evidence addendum: [final host preparation](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-5-3-final-host-acceptance.md)
 confirms production-source equivalence to corrected I1 and new Windows presence
 source/integrity/disconnect checks. Actual Windows DPAPI and proposed G10-R
 evidence is retained separately from native keychain/clean-host/paid/owner-profile
 gaps. No new secret-handling, persistence or runtime code is introduced. Earlier
 candidate-specific boundary statuses below remain historical, not reassigned.
 
-2026-10-13 finalization addendum: [preparation review](../releases/v1-pre-rc-acceptance-preparation.md)
+2026-10-13 finalization addendum: [preparation review](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-pre-rc-acceptance-preparation.md)
 records getter/Proxy fail-closed mapping, corrected registered Electron payload
 coverage, and a reproduced synthetic fatal-screen secret reflection. Fatal
 render now uses exact known environment-value scrubbing before the common cap;
 unreadable host metadata cannot break classification. Earlier broad fatal-path
 scrubbing claims were inaccurate and are superseded by this regression-backed
 correction. Native OS crypto and packaged-host acceptance remain outstanding;
-the [owner matrix](../releases/v1-owner-acceptance-results.md) contains no invented passes.
+the [owner matrix](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-owner-acceptance-results.md) contains no invented passes.
 
 Date: 2026-10-13. Candidate audited: `origin/dev` `d628837` (PR #10 merge).
 Method: source inspection of the implementation listed per boundary below,

@@ -1,9 +1,9 @@
 # Sentry v1 architecture contract
 
-This contract describes the supported direction from `v0.1.0-beta.1`; Phase 1
-does not change the released version or implement a new orchestration system.
-See the [source assessment](v1-phase-1-assessment.md) and
-[release roadmap](../releases/V1_ROADMAP.md).
+This contract describes the current independent-agent v1 pipeline. Historical
+Phase1 scope statements below record the original design baseline.
+See the [source assessment](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/architecture/v1-phase-1-assessment.md) and
+[release roadmap](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/V1_ROADMAP.md).
 
 ```text
 Desktop / supported CLI broker

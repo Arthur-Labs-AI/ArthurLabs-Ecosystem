@@ -96,4 +96,4 @@ deletion remains deferred.
 Phase 2.1 makes lock acquisition a `BEGIN IMMEDIATE` compare-and-set and records
 the owning RuntimeInstance. Update and delete journals make rename/tombstone crash
 boundaries recoverable, while read-only processes never invoke recovery. See
-[Phase 2.1](./phase-2-1.md) for the precise lease and symlink policies.
+[Phase 2.1](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/architecture/phase-2-1.md) for the precise lease and symlink policies.
