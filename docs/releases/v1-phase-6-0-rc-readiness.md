@@ -1,3 +1,8 @@
+> Historical preparation record, superseded for current release decisions by
+> [Phase 6.6 stable readiness](v1-phase-6-6-stable-readiness.md) and
+> [v1.0.0 stable notes](v1.0.0.md). Original source/version/hash and test receipts
+> below retain their historical scope. No public RC was published.
+
 # Phase6.0 — unsigned RC preparation and readiness
 
 Integration update, October 14, 2026: the owner merged [PR #21](https://github.com/Mert1026/Sentry/pull/21)

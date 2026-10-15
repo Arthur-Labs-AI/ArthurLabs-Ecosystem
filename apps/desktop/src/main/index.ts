@@ -179,7 +179,7 @@ async function boot(): Promise<void> {
   });
   const desktopService = bootstrapped.service;
   const desktop = bootstrapped;
-  const reclaimer = new WslSpaceReclaimer(join(app.getPath('userData'), 'maintenance'));
+  const reclaimer = new WslSpaceReclaimer(join(app.getPath('home'), '.sentry-wsl-maintenance'));
   maintenance = new WslMaintenance({
     runtime: desktop.runtime,
     hostKind: desktop.host.hostKind,

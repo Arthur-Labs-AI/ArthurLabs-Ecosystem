@@ -1,5 +1,11 @@
 # Sentry v1 Threat Model (Phase 5)
 
+Phase 6.5 adds the owner-authorized narrow Windows
+[maintenance privilege-boundary correction](wsl-maintenance.md). Its fixed inline
+execution, private operation ACLs and authenticated exclusive receipts supersede
+the earlier optional-helper trust assumptions. Historical phase scopes/results
+below retain their attribution; the stable version transition is a separate phase.
+
 Phase6.0 [review](../releases/v1-phase-6-0-rc-readiness.md) confines implementation
 changes to version/reporting literals and metadata; credential handling, profile
 paths, schema, sandbox, provider pins and protocol are frozen. Owner-reported

@@ -1,33 +1,76 @@
+> Historical preparation record, superseded for current release decisions by
+> [Phase 6.6 stable readiness](v1-phase-6-6-stable-readiness.md) and
+> [v1.0.0 stable notes](v1.0.0.md). Original source/version/hash and test receipts
+> below retain their historical scope. No public RC was published.
+
 # Windows v1.0.0-rc.1 readiness checklist
 
-Current scope, October 14, 2026: **Windows 11 x64 with WSL2** (Ubuntu preferred).
-Native Linux Desktop: **DEFERRED — FUTURE NATIVE LINUX RELEASE**. Its historical
-FAIL/UNVERIFIED results below are preserved and do not automatically block the
-Windows release. Shared Linux runtime/security failures still block Windows.
+## Phase 6.5 — current security correction and stable decision
 
-The [Phase 6.2 receipt](v1-phase-6-2-windows-transition.md) is the active evidence
-record. Review source aced9cc passed the Windows/shared suites, real trust 8/8,
-new review archive verification and the 63.6-second packaged 1 GiB GUI import.
-Owner integration and a fresh approved post-merge RC remain pending.
-The former selected source and checksum below are historical only; a new
-exact-source archive is required after owner merge of the scope transition.
+The owner chose **v1.0.0 Stable directly for Windows 11 x64/WSL2**, with no public
+RC or prerelease tag. Internal version remains `1.0.0-rc.1` during this narrow
+hardening phase. Stable version reconciliation, exact-source packaging, owner
+main promotion and publication authorization are separate subsequent steps.
 
-| Gate                       | Required disposition before Windows RC authorization                                                                                                               |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Scope integration          | Owner-reviewed scope PR to dev, then actual post-merge CI; no self-merge                                                                                           |
-| Windows/shared CI          | quality, Windows launcher/Desktop and Windows release archive pass                                                                                                 |
-| Real runtime security      | WSL systemd/bubblewrap trust on a capable host; hosted fallback is not PASS                                                                                        |
-| Static/build/full suites   | Actual commands, counts, skips and failures in Phase 6.2 receipt                                                                                                   |
-| Windows exact archive      | Full source/tree/version/protocol/lock, archive and manifest SHA256, inventory and extraction                                                                      |
-| Windows large GUI import   | Approximately 1 GiB included data, nested source files/exclusions, responsive UI, automatic list refresh, persisted material, reopen/history and graceful shutdown |
-| Recovery                   | Option A already adopted October 14 for historical corrected Windows/I1; original-beta G10 remains FAIL                                                            |
-| Native Desktop smoke/G10-R | DEFERRED; retained implementation and native import tracker, no native PASS inferred                                                                               |
-| Branch separation          | After owner merge only: release/v1.0.0-windows and feature/native-linux-support from approved shared source                                                        |
-| Official cut               | Separate explicit owner authorization of exact source/assets/limits and publication; no RC published                                                               |
+PR #26 is owner-merged into release
+`4e75534b87021c796b5935c817bf56eeba8d4d87`, tree
+`e60c42a4bef4c59c93f5fffea623f84572d0216c`. Its post-merge CI passed; distribution
+failed only at upload quota. The focused helper correction targets that frozen
+release branch. Current diagnosis, red/green evidence, Windows/shared tests,
+remaining limits and owner-review disposition are in the
+[Phase 6.5 handoff](v1-phase-6-5-wsl-helper-hardening.md). No self-merge or
+publication is authorized. Earlier archive checksums remain attached to their
+original sources and are not reused for the correction or future stable source.
 
+## Retained Phase 6.3/6.4 evidence
+
+Current scope, October 15, 2026: **Windows 11 x64 with WSL 2**, Ubuntu preferred.
+Native Desktop is **DEFERRED — FUTURE NATIVE LINUX RELEASE**. Shared runtime and
+security failures remain Windows blockers. Historical FAIL/UNVERIFIED results
+below retain their original meaning and source attribution.
+
+The [Phase 6.3 freeze handoff](v1-phase-6-3-windows-rc-freeze.md) records the
+established application/physical evidence. The [Phase 6.4 activation handoff](v1-phase-6-4-release-activation.md)
+records the October 15 owner exception, activated branch, targeted helper review
+and new automation. Only release-branch creation/review preparation is exempted
+from the prior hosted-upload prerequisite; official publication is not authorized.
+Selected merged source: `c6d4769bf3179d49bb3718074d6c083f52332626`. The privately
+retained ZIP was freshly built from that commit; any later owner merge requires
+a new exact-merge build and acceptance before publication.
+
+| Gate                            | Current disposition                                                                                                        |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Owner integration               | PASS: PRs #23/#24/#25 merged into dev c6d4769                                                                              |
+| Merged-dev CI                   | PASS: run 38685627100, quality and both launcher jobs                                                                      |
+| Merged-dev Windows distribution | FAIL: run 38685627221 upload storage quota in attempts 1/2/3; last retry followed verified retirement; build checks passed |
+| Local static/build              | PASS: Windows and physical WSL frozen install, hygiene, format, lint, types and build                                      |
+| Complete applicable suites      | PASS: bounded WSL full suite 1,288/33 skips, Windows CI Desktop 452/3 skips; initial unbounded WSL timeout retained        |
+| Real sandbox trust              | PASS: separate physical WSL systemd/bubblewrap 8 /8                                                                        |
+| Distribution tests              | PASS: Windows 32/27 skips; WSL 50/9 skips                                                                                  |
+| Private exact-source ZIP        | PASS: archive/manifest/lock hashes,332 inventory files, full external extraction                                           |
+| Packaged setup/open/relaunch    | PASS: actual archive commands and runtime; explicit synthetic profile injection disclosed in handoff                       |
+| Project import/removal          | PASS: targeted GUI import, Cancel/confirm/source preservation, durable database and fresh renderer reopen                  |
+| Secure settings                 | PASS: synthetic DPAPI seed/fresh restart, offline diagnostic, no plaintext fallback                                        |
+| WSL maintenance                 | PASS: packaged confirmation/Cancel/Escape; current native helper regressions; no real disk repetition                      |
+| Large import                    | PRIOR EVIDENCE: Phase 6.2 packaged1 GiB import; affected import path unchanged                                             |
+| Funded agents                   | PRIOR OWNER REPORT: DeepSeek and full 3/3 success; no paid replay authorized                                               |
+| Recovery                        | Option A approved for exact historical corrected I1 c78faa7; original-beta G10 remains FAIL                                |
+| Native smoke/G10-R              | DEFERRED, not PASS                                                                                                         |
+| Release branch / focused PR     | ACTIVATED at exact c6d4769 under Phase 6.4 owner exception; focused PR targets release/v1.0.0-windows; owner merge only    |
+| Official cut                    | NOT AUTHORIZED: no tag, release, public assets or main promotion                                                           |
+
+Artifact retirement **PASS**: all 88approved obsolete review archives/sidecars
+were privately retained, SHA256-verified and reverified, then removed remotely.
+Remote inventory91→3; protected Windows/native/I1 candidates and every published
+release asset remain intact. The hosted upload still reports quota exhaustion
+after retirement. The October 15 Phase 6.4 owner exception permits branch/PR
+preparation despite that infrastructure failure. Application verification and
+archive generation passed; trusted hosted delivery remains a separate gate.
+The existing preparation history is retained. The helper review recommends narrow
+hardening before broad publication; no supported-profile privilege-boundary
+exploit was reproduced. See the activation handoff for fixtures and limits.
 The [native import tracker](native-linux-large-import.md) remains OPEN. A shared
-failure reproduced on Windows requires a separate focused correction PR before
-release. No blanket funded-provider replay or owner credential access is needed.
+defect reproduced through Windows requires a focused correction before release.
 
 ## Historical Phase 6.1 checklist (superseded scope)
 

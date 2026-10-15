@@ -1,32 +1,37 @@
-# Installing a pinned Sentry distribution candidate
+# Installing a pinned Sentry Windows distribution
 
-Candidates are unsigned review artifacts pending an explicitly authorized RC cut.
-The initial v1 release target is **Windows 11 x64 with WSL2** (Ubuntu preferred).
-Windows still uses the Linux execution runtime, systemd and sandbox isolation.
-Native Linux Desktop is **DEFERRED — FUTURE NATIVE LINUX RELEASE**; CachyOS
-instructions below describe the retained experimental development target.
-Ubuntu CI/WSL builds do not establish native CachyOS acceptance.
-There is no automatic update, offline install, signed installer or macOS support.
-Phase 6.0's version 1.0.0-rc.1 transition was owner-merged in PR #21 on October 14, 2026. Historical Phase 6.1 selected merge source `8a75e9924a41b98351e46255111fdbfed335f1f0`;
-see the [provenance receipt](../releases/v1-phase-6-1-rc-cut-verification.md) for
-the distinct local/hosted archive hashes and actual verification. Historical
-beta/I1 archives remain0.1.0-beta.1. **Version, full source SHA and archive
-checksum distinguish candidates**; RC review bytes are not published or signed.
+The active candidate version is **1.0.0**, runtime protocol **1**. The owner
+selected direct stable publication for **Windows 11 x64 + WSL2** (Ubuntu preferred),
+with no public RC/prerelease. This candidate remains unsigned and unpublished
+pending owner review and later promotion/publication authorization. See the
+[stable release notes](../releases/v1.0.0.md) and
+[Phase 6.6 source, validation and artifact handoff](../releases/v1-phase-6-6-stable-readiness.md).
 
-Current preparation uses the [RC checklist](../releases/V1_RC_READINESS_CHECKLIST.md)
-and [version plan](../releases/v1-rc-versioning-plan.md). The owner's normal
-Windows/native CachyOS functionality confirmation is recorded separately from
-exact-build receipts. Historical [I1 lock](../releases/v1-phase-5-3-candidate-lock.md)
-and [native recovery workflow](../releases/v1-phase-5-3-cachyos-operator.md) retain
-their original identities; do not run their fixed-I1 recovery helper with an RC identity.
-The owner adopted [recovery Option A](../releases/v1-recovery-policy-decision.md)
-on October 14, 2026, only in its tested Windows/I1 scope; original-beta G10
-remains historical FAIL. These handoffs do
-not publish or authorize a release.
+Windows Desktop uses the Linux execution runtime, systemd and bubblewrap isolation.
+Native Linux Desktop is deferred; CachyOS instructions below retain the experimental
+development target. Ubuntu CI/WSL is not native CachyOS acceptance. There is no
+automatic updater, offline install, signed MSI/MSIX/EXE installer or macOS support.
+Historical beta and internal RC preparation receipts retain their original
+versions, sources and hashes; none establishes a public RC release.
 
-The [Phase 6.2 Windows receipt](../releases/v1-phase-6-2-windows-transition.md)
-supersedes that historical source selection. After owner integration, build from
-the actual approved merge SHA; never reuse an earlier archive/checksum as the new RC.
+The adopted [Recovery Option A](../releases/v1-recovery-policy-decision.md) remains
+limited to historical corrected Windows/I1 source
+`c78faa74717b0f430a859730e98c3c4915e7b03f` and its tested same-account/machine/DPAPI,
+schema and stopped-backup scope. Original-beta credential rollback remains FAIL.
+Do not use the fixed-I1 helper with a stable or RC identity, or substitute an
+earlier ZIP for a later source commit. Each owner merge requires a fresh matching
+archive and checksum. No recovery or publication operation is authorized here.
+
+Optional elevated WSL disk reclamation uses fixed inline executable code and
+private operation state under the Windows home directory at
+`.sentry-wsl-maintenance`, independent of custom profiles and general Temp/AppData.
+Restrictive ACL/ownership/reparse checks and authenticated, contained, exclusive
+receipts are documented in the [maintenance boundary](../security/wsl-maintenance.md).
+Unsafe home ancestry fails closed without changing owner permissions. This does
+not claim resistance to complete owner-account/application compromise. Ordinary
+setup/open does not require invoking disk reclamation. See the
+[Phase 6.5 correction handoff](../releases/v1-phase-6-5-wsl-helper-hardening.md)
+for the original security fixtures; the stable handoff records integration checks.
 
 ## Obtain, verify and extract
 
@@ -223,7 +228,7 @@ The owner adopted Option A on October 14, 2026 only for the tested Windows/I1
 scope and stated account/machine/DPAPI, schema and backup boundaries. This is
 not an approved beta executable downgrade or an automatic owner-data restore.
 Original G10 FAIL, unverified native recovery and official cut authorization
-remain separate. The newly versioned RC is not the historical I1 recovery target.
+remain separate. The stable candidate is not the historical I1 recovery target.
 
 ## Failed/interrupted setup and uninstall
 
@@ -242,12 +247,13 @@ separately choosing data removal. The source shim remains owned by source setup.
 
 ## Owner acceptance procedure (no paid calls by default)
 
-For the bounded Phase 6.1 cut use the
-[exact-source receipt](../releases/v1-phase-6-1-rc-cut-verification.md): checksum,
-version, setup, graphical launch, matching runtime identity, import/history and
-graceful shutdown, with synthetic credentials only. Do not repeat the paid
-provider matrix or require new recordings. The following comprehensive procedure
-is retained as a historical acceptance reference, not a new Phase 6.1 gate.
+For the current stable candidate follow the
+[Phase 6.6 handoff](../releases/v1-phase-6-6-stable-readiness.md): verify the exact
+archive checksum, stable version, setup, visible launch, matched runtime identity,
+disposable import/removal/history, synthetic secure settings and graceful shutdown.
+Maintenance UI acceptance cancels before disk mutation. Do not repeat funded
+provider campaigns or compact the owner's disk automatically. A prepared-host test
+does not establish clean Windows provisioning.
 
 For the historical v1 acceptance campaign use the comprehensive
 [Windows/WSL and native CachyOS runbook](../releases/v1-owner-acceptance.md),

@@ -1,3 +1,159 @@
+# Phase 6.6 — stable review candidate and acceptance
+
+2026-10-15. PR28 release-prep/v1.0.0-stable → release/v1.0.0-windows; owner merge only.
+Baseline2fa19152/tree7245d164; stable1.0.0/protocol1, lock/pins/schemas/security code unchanged.
+New Windows478/3skips, distribution34/27, launchers/static PASS. FreshWSL1298/49skips,
+40uncached tasks, separate realtrust8/8, distribution52/9 and lifecycle1/1PASS.
+Clean initial artifact source40ae67c6581acdfcc16583e7c9fe7b0f46b0cc1e, ZIPshabd6be725124f1341926c87dc5222e040ea2d77195b9627344df6f8d5b9a91912,
+manifestsha97cf5c2871444a455809ddca8469a313e9557840ed74181c2a7750b7843c5b90,332inventory/external extractionPASS.
+Real packaged setup/visible open/stop/reopen, matchedidentity, UIimport/removal/cancel,
+freshhistory, syntheticDPAPI restart/no-plaintext and maintenanceCancel/inspect/refusalPASS.
+Initial hostedCI38732769947SUCCESS; distribution38732769921FAILonly uploadquota.
+Private isolation failure/maintenance-lock refusal retained; priorruntime/current restored
+exactly, corrected harness proves privatehomebind before setup. No ownerproject/credentialsused.
+Documentation receipt commit requires fresh finalhead archive/acceptance and exactCI;
+postcommit companion inPR/privateaudit avoids selfhash loop. CONDITIONALLYREADY,
+trustedpublicdelivery and cleanmachine/realUAC remainunverified. Ownerreviewrequired.
+No main/dev/tag/Release/publicasset/selfmerge/automerge/delete/paidcall/realcompaction.
+shux unavailable; records updated directly. Historical records follow unchanged.
+
+## Previous record (preserved)
+
+# Phase 6.6 — stable transition verification in progress
+
+2026-10-15. Owner-merged release baseline2fa19152a63f0886d14f2f2e81db9598ec878f86,
+tree7245d16460de8842a21afc6a92bf94d567d0fe60. Postmerge CI38729929416PASS;
+distribution38729929436FAIL only upload quota after verified packaging/extraction.
+Isolated release-prep/v1.0.0-stable; owner primary/unrelated worktrees preserved.
+132 RC references classified;21active identity/current expectation files transition
+to1.0.0. Root/Desktop/runtime/CLI agree, internal0.1.0 library versions retained.
+Pinned pnpm9.12.3 lock-only reconciliation produced no lock/dependency changes.
+Stable-version regression RED then GREEN; stale-RC resealed inventory rejects.
+Windows full478PASS/3skip, distribution34PASS/27skip, launchers/deepseek/static gatesPASS.
+Fresh WSL full1298PASS/49skip,40uncached tasks; separate realtrust8/8PASS,
+distribution52PASS/9skip, static/build/frozen checksPASS. WSL install ignore-scripts;
+this is shared-runtime validation, not native Electron/Desktop provisioning.
+Original beta/RC hashes and historical doc suffix bytes preserved. Phase6.5
+maintenance/security production code, schemas, protocol1, provider/model/tool pins,
+credential/history/recovery contracts unchanged. Stable notes/current docs updated.
+Clean exact-commit ZIP build, packaged acceptance, focused release-target PR and
+new exact-head hosted conclusions pending; no publication readiness claim yet.
+No selfmerge/auto-merge/main/dev/tag/publicassets/delete/realUAC/paidcalls.
+shux unavailable; task status/ledger/handoff maintained directly.
+
+## Previous record (preserved)
+
+# Phase 6.5 — correction PR27; OS fixture budget aligned
+
+2026-10-15. PR27 targets release/v1.0.0-windows; owner merge only. Initial
+CI38720648589 quality PASS, Windows477PASS/3skip/1fixture timeout at5707ms versus
+5000ms default; archive38720648376 failed only upload quota after packaging.
+PowerShell fixture metadata now allows35000ms, matching its existing30000ms child
+deadline plus setup/cleanup; no production deadline/assertion/selection/retry change.
+Two-worker local full suite PASS478/3skips after correction; initial CI failure
+retained. Final corrected head/check conclusions in private receipt/owner report.
+Stable version transition/publication remain separate; no self-merge/auto-merge.
+
+## Previous record (preserved)
+
+# Phase 6.5 — narrow Windows helper correction; owner review pending
+
+2026-10-15. Base owner-merged PR26 release4e75534b87021c796b5935c817bf56eeba8d4d87,
+treee60c42a4bef4c59c93f5fffea623f84572d0216c. Fix branch
+fix/v1-wsl-reclaim-elevation-integrity targets release/v1.0.0-windows only.
+Post-merge CI38708938698 PASS; distribution38708938551 failed only upload quota.
+Original security regressions RED7/7: actual mutable-file/result/receipt assertions.
+Implemented fixed inline code across UAC; private Windows-home operation ACLs,
+trusted ancestry/reparse/owner checks; derived fixed receipt paths, CreateNew/flush/
+atomic no-replace rename; strict HMAC/correlation validation in PowerShell and Node.
+No confirmed default-profile exploit claimed. Existing lifecycle/confirmation/
+SID/disk/other-distro/lock/error/reconnect controls retained; no feature disabled.
+Windows full478passed/3skipped; helper/command42included. Windows distribution32/27,
+launcher fixtures PASS; separate real Windows-to-WSL lifecycle1/1PASS. WSL full
+1298passed/49skipped,40uncached tasks; separate physical sandbox trust8/8PASS,
+distribution50/9. Static/frozen install/types/lint/build/format/hygiene/diff PASS.
+Final exact-head PR/check conclusions in owner report/private receipt; no manual
+duplicate distribution retry. Handoff docs/releases/v1-phase-6-5-wsl-helper-hardening.md;
+boundary docs/security/wsl-maintenance.md. First Temp-ancestry/ACL-fixture/lint
+failures retained and characterized; no assertions weakened or failures hidden.
+Owner selected direct stable1.0.0 publication, no public RC/prerelease. Version
+remains1.0.0-rc.1, runtime protocol1, schema/providers/lock/pins unchanged. GO for
+owner review; actual merge/CI precedes controlled stable version transition.
+No self-merge, auto-merge, main/dev/tag/release/public-asset changes, real elevation/
+compaction, owner credentials, paid QA or extra branch/artifact deletion.
+shux unavailable; records maintained directly. Primary dirty files/worktrees retained.
+
+## Previous record (preserved)
+
+# Phase 6.4 — Windows release branch activated; owner PR review pending
+
+2026-10-15. Owner exception permits branch creation/review despite upload-only
+quota failure; official publication remains unauthorized. Release branch
+release/v1.0.0-windows created at exact c6d4769bf3179d49bb3718074d6c083f52332626,
+tree45e1d84e0eb447f4b93d1193a4421c6aeba1c40b. Main/dev/default/tags unchanged.
+Existing preparation branch retains fca2d0b and036059a; additive docs correction
+targets only that release branch. No self-merge/auto-merge/publication.
+Handoff: docs/releases/v1-phase-6-4-release-activation.md. New local frozen install,
+hygiene/format/lint/types/build/diff checks PASS; build/lint20cached, types37cached.
+Helper/lifecycle/UI43tests PASS; five safe security fixtures observed the expected
+SID/disk refusal and disclosed script/result/ACL trust assumptions. Classification:
+narrow hardening recommended before broad publication; no supported-profile
+privilege-boundary exploit reproduced. No elevated operation/realVHDX/credentials.
+Historical1288/33WSL,452/3Windows,8/8physical trust remain prior evidence, not reruns.
+Automatic release CI38702386286 PASS; archive38702386301 FAIL only upload quota
+after verified build/extraction. Final PR/check conclusions in owner report/private receipt;
+no duplicate workflow retry or extra artifact/branch/directory deletion.
+Owner review/merge precedes fresh exact-merge ZIP, bounded acceptance, trusted
+delivery/helper disposition and separate official RC authorization.
+shux contract unavailable; task records maintained directly; primary owner state retained.
+
+## Previous record (preserved)
+
+# Branch maintenance — COMPLETE
+
+2026-10-15. Owner-authorized remote cleanup completed. Active preparation renamed
+from `codex/v1-phase-6-3-windows-freeze` to
+`release-prep/v1-phase-6-3-windows-freeze` at exact commit
+`fca2d0b04120d9fd6195ba42f342a8685ca02386`; commit and tree identity verified before
+deleting the old remote name. Local checkout/upstream migrated safely.
+All 11 obsolete candidates had zero commits ahead of dev, reachable merged PRs,
+no active worktree or exact workflow dependency and no branch protection flag.
+Remote inventory is main, dev and the renamed preparation branch. Naming policy
+and complete receipt: docs/development/branch-cleanup-2026-10-15.md.
+The additive documentation commit preserves the original preparation commit.
+Main/dev/tags, the owner's dirty checkout and all worktree registrations remain
+intact. No product edit, release publication, directory/artifact deletion or
+distribution retry. Documentation formatting and repository hygiene are the
+applicable checks; no new product/host acceptance is claimed.
+`shux contract` was attempted but unavailable; records maintained directly.
+Phase 6.3 release work remains separately pending: hosted upload quota, release
+branch creation, PR into that branch and explicit official RC authorization.
+
+## Previous record (preserved)
+
+# Phase 6.3 — CONDITIONALLY READY; HOSTED UPLOAD GATE BLOCKED
+
+2026-10-15. Selected binary source c6d4769bf3179d49bb3718074d6c083f52332626,
+tree 45e1d84e0eb447f4b93d1193a4421c6aeba1c40b, rc.1/protocol 1.
+Authoritative handoff: docs/releases/v1-phase-6-3-windows-rc-freeze.md.
+Local Windows/physical WSL gates and fresh private exact-source archive passed;
+WSL full suite 1288/33 skips, physical trust8/8, hosted Windows Desktop 452/3 skips.
+Actual packaged setup/open/stop/relaunch, removal/reopen, synthetic DPAPI and
+maintenance Cancel passed. Source-paired real disk inspection was read-only.
+All88approved review artifacts privately backed up, SHA256-verified/reverified
+and removed remotely:91→3; protected candidates/I1/published assets retained.
+Merged-dev CI38685627100 SUCCESS. Windows distribution38685627221 attempts1/2/3
+failed only upload quota; attempt 3 followed cleanup. GitHub reports6–12 hour
+accounting refresh. No release branch/PR while that prerequisite fails.
+Documentation review branch codex/v1-phase-6-3-windows-freeze preserves the documentation;
+PR awaits the release target. After hosted success: create release at c6, PR to release, owner merge,
+then fresh actual-merge build/acceptance before separate official authorization.
+No paid calls, real compaction, tags, release/public assets, main/default changes
+or primary source edits. Initial profile-isolation harness mistake disclosed.
+shux contract unavailable; task status, ledger and handoff maintained directly.
+
+## Previous record
+
 # PR25 Windows CI regression — local correction verified
 
 2026-10-15, baseline d58ef40226578ec9a5beb070b0b19efae969b2ab.

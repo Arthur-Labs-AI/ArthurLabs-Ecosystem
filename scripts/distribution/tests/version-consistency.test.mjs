@@ -9,6 +9,10 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const text = (path) => readFile(join(root, path), 'utf8');
 const product = JSON.parse(await text('package.json')).version;
 
+test('stable preparation reports 1.0.0 without a prerelease suffix', () => {
+  assert.equal(product, '1.0.0');
+});
+
 test('product packages and source reporting fallbacks agree on release version', async () => {
   for (const path of [
     'apps/desktop/package.json',
@@ -48,7 +52,7 @@ test('source launcher titles do not identify the review candidate as the old bet
   }
 });
 
-test('RC identity preserves protocol 1 and historical beta identity remains parseable', async () => {
+test('stable identity preserves protocol 1 and historical identities remain parseable', async () => {
   const identity = {
     schemaVersion: 1,
     product: 'Sentry',
@@ -58,6 +62,7 @@ test('RC identity preserves protocol 1 and historical beta identity remains pars
   };
   assert.equal(parseIdentity(identity).version, product);
   assert.equal(parseIdentity({ ...identity, version: '0.1.0-beta.1' }).version, '0.1.0-beta.1');
+  assert.equal(parseIdentity({ ...identity, version: '1.0.0-rc.1' }).version, '1.0.0-rc.1');
   assert.throws(() => parseIdentity({ ...identity, runtimeProtocol: 2 }));
   assert.match(
     await text('packages/runtime-protocol/src/protocol.ts'),

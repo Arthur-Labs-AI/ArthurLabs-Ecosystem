@@ -1,6 +1,19 @@
 # Changelog
 
-## [1.0.0-rc.1] - Unreleased Windows Edition
+## [1.0.0] - Unreleased stable Windows candidate
+
+- Reconcile root, Desktop, runtime, CLI and source launchers to stable `1.0.0`.
+- Preserve runtime protocol `1`, schemas/migrations, provider/model/tool pins and
+  existing project/history/credential contracts.
+- Integrate owner-merged Phase 6.5 WSL maintenance hardening: fixed inline UAC
+  execution, private ACL/path checks and authenticated atomic operation receipts.
+- Windows 11 x64 + WSL2 only; unsigned ZIP with online runtime bootstrap. Native
+  Linux Desktop deferred. No public RC, automatic updater or signed installer.
+- See [stable notes](docs/releases/v1.0.0.md) and the
+  [verification handoff](docs/releases/v1-phase-6-6-stable-readiness.md).
+  Owner merge, final-source rebuild, main promotion and publication remain later gates.
+
+## [1.0.0-rc.1] - Historical internal Windows preparation (never published)
 
 - Initial release target: Windows 11 x64 with WSL2 (Ubuntu preferred).
 - Native Linux Desktop: DEFERRED — FUTURE NATIVE LINUX RELEASE; existing
@@ -9,6 +22,15 @@
   services, bubblewrap, existing protocol and secure DPAPI storage.
 - Windows unsigned ZIP review packaging is independent of native Desktop
   packaging; shared Linux runtime/security validation remains required.
+- Correct packaged PowerShell WSL-mode forwarding and visible Desktop launch.
+- Ground DeepSeek persistent Bash outcomes in explicit tool completion evidence;
+  retain strong-finding evidence validation and fail closed on unknown outcomes.
+- Confirmed project removal with managed-data/history cleanup, active-operation
+  refusal, missing-folder handling and preservation of original source folders.
+- Explicit Windows WSL disk reclamation, administrator consent, other-distro
+  refusal, bounded disk-lock release waiting and Desktop reconnection.
+- Freeze verification and exact-source private Windows archive provenance in the
+  [Phase 6.3 handoff](docs/releases/v1-phase-6-3-windows-rc-freeze.md).
 - Recovery Option A remains limited to the exact historical corrected I1 pair
   and tested Windows account/machine/DPAPI context. Original-beta rollback FAIL
   is retained. No new version bump, official RC publication or updater.
