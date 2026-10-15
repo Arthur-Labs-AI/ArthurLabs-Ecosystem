@@ -1,3 +1,32 @@
+# Phase 6.5 — narrow Windows helper correction; owner review pending
+
+2026-10-15. Base owner-merged PR26 release4e75534b87021c796b5935c817bf56eeba8d4d87,
+treee60c42a4bef4c59c93f5fffea623f84572d0216c. Fix branch
+fix/v1-wsl-reclaim-elevation-integrity targets release/v1.0.0-windows only.
+Post-merge CI38708938698 PASS; distribution38708938551 failed only upload quota.
+Original security regressions RED7/7: actual mutable-file/result/receipt assertions.
+Implemented fixed inline code across UAC; private Windows-home operation ACLs,
+trusted ancestry/reparse/owner checks; derived fixed receipt paths, CreateNew/flush/
+atomic no-replace rename; strict HMAC/correlation validation in PowerShell and Node.
+No confirmed default-profile exploit claimed. Existing lifecycle/confirmation/
+SID/disk/other-distro/lock/error/reconnect controls retained; no feature disabled.
+Windows full478passed/3skipped; helper/command42included. Windows distribution32/27,
+launcher fixtures PASS; separate real Windows-to-WSL lifecycle1/1PASS. WSL full
+1298passed/49skipped,40uncached tasks; separate physical sandbox trust8/8PASS,
+distribution50/9. Static/frozen install/types/lint/build/format/hygiene/diff PASS.
+Final exact-head PR/check conclusions in owner report/private receipt; no manual
+duplicate distribution retry. Handoff docs/releases/v1-phase-6-5-wsl-helper-hardening.md;
+boundary docs/security/wsl-maintenance.md. First Temp-ancestry/ACL-fixture/lint
+failures retained and characterized; no assertions weakened or failures hidden.
+Owner selected direct stable1.0.0 publication, no public RC/prerelease. Version
+remains1.0.0-rc.1, runtime protocol1, schema/providers/lock/pins unchanged. GO for
+owner review; actual merge/CI precedes controlled stable version transition.
+No self-merge, auto-merge, main/dev/tag/release/public-asset changes, real elevation/
+compaction, owner credentials, paid QA or extra branch/artifact deletion.
+shux unavailable; records maintained directly. Primary dirty files/worktrees retained.
+
+## Previous record (preserved)
+
 # Phase 6.4 — Windows release branch activated; owner PR review pending
 
 2026-10-15. Owner exception permits branch creation/review despite upload-only

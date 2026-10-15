@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { WSL_SPACE_HELPER } from '../../src/main/platform/windows/wsl-space-helper.js';
 
@@ -10,14 +10,29 @@ const psQuote = (value: string): string => "'" + value.replaceAll("'", "''") + "
 
 /** Real Windows PowerShell; only OS mutations are substituted, not parsing or control flow. */
 async function run(body: string) {
-  const dir = await mkdtemp(join(tmpdir(), 'sentry-wsl-helper-test-'));
+  const dir = await mkdtemp(join(homedir(), '.sentry-wsl-helper-test-'));
   try {
     const helper = join(dir, 'helper.ps1');
     const runner = join(dir, 'test.ps1');
     await writeFile(helper, WSL_SPACE_HELPER);
     await writeFile(
       runner,
-      '. ' + psQuote(helper) + ' -LibraryOnly\n$fixtureRoot = ' + psQuote(dir) + '\n' + body,
+      '. ' +
+        psQuote(helper) +
+        ' -LibraryOnly\n$fixtureRoot = ' +
+        psQuote(dir) +
+        '\n' +
+        String.raw`
+$OperationId = '1234567890abcdef1234567890abcdef'
+$ReceiptKeyBase64 = [Convert]::ToBase64String([byte[]](1..32))
+$MaintenanceRootBase64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((Join-Path $fixtureRoot 'maintenance')))
+$memory = [IO.MemoryStream]::new()
+$gzip = [IO.Compression.GZipStream]::new($memory, [IO.Compression.CompressionMode]::Compress, $true)
+$bytes = [Text.Encoding]::UTF8.GetBytes((Get-Content -LiteralPath (Join-Path $fixtureRoot 'helper.ps1') -Raw))
+$gzip.Write($bytes, 0, $bytes.Length); $gzip.Dispose()
+$TrustedPayload = [Convert]::ToBase64String($memory.ToArray()); $memory.Dispose()
+` +
+        body,
     );
     const result = spawnSync(
       'powershell.exe',
@@ -108,6 +123,8 @@ try {
   it('parses in Windows PowerShell 5.1 and compiles the real native interop', async () => {
     const output = await run(String.raw`
 Initialize-SentryVirtualDiskApi
+$search = @([SentryVirtualDisk].Assembly.GetCustomAttributes([Runtime.InteropServices.DefaultDllImportSearchPathsAttribute], $false))
+if ($search.Count -ne 1 -or $search[0].Paths -ne [Runtime.InteropServices.DllImportSearchPath]::System32) { throw 'Unsafe native DLL search policy' }
 if ([Runtime.InteropServices.Marshal]::SizeOf([type][SentryVirtualDisk+StorageType]) -ne 20) { throw 'Invalid storage type layout' }
 if ([Runtime.InteropServices.Marshal]::SizeOf([type][SentryVirtualDisk+OpenParameters]) -ne 8) { throw 'Invalid version 1 layout' }
 $status = [SentryVirtualDisk]::Compact((Join-Path $fixtureRoot 'does-not-exist.vhdx'))
@@ -195,9 +212,8 @@ function Invoke-SentryWsl { param([string[]]$Arguments)
 }
 function Start-Process { param($FilePath, $Verb, $WindowStyle, [switch]$PassThru, [switch]$Wait, $ArgumentList)
   if ($Verb -ne 'RunAs' -or $WindowStyle -ne 'Hidden' -or -not $Wait) { throw 'Unsafe elevation launch' }
-  $index = [Array]::IndexOf($ArgumentList, '-ResultFile')
-  $receipt = $ArgumentList[$index + 1].Trim('"')
-  [IO.File]::WriteAllText($receipt, '{"ok":true}')
+  if ($ArgumentList -contains '-File' -or $ArgumentList -notcontains '-EncodedCommand') { throw 'Untrusted elevation command' }
+  Write-SentryReceipt -Directory (Join-Path (Join-Path $fixtureRoot 'maintenance') ('reclaim-' + $OperationId)) -Distro 'Ubuntu' -Disk $disk -Outcome 'completed' -Message ''
   $script:calls.Add('uac')
   return [pscustomobject]@{ ExitCode = 0 }
 }
