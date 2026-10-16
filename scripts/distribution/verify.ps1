@@ -42,7 +42,7 @@ function Get-SentryDistribution {
   $required = @('build-identity.json', 'runtime-source/build-identity.json', 'runtime-source/apps/runtime/src/host.ts', 'runtime-source/pnpm-lock.yaml',
     'scripts/distribution/bootstrap-runtime.sh', 'scripts/distribution/verify.mjs', 'desktop/resources/app/build-identity.json', 'desktop/resources/app/package.json',
     'desktop/resources/app/dist/main/index.js', 'desktop/resources/app/dist/preload/preload.js', 'desktop/resources/app/dist/renderer/index.html',
-    'desktop/resources/app/assets/sentry-icon.png', 'desktop/Sentry.exe', 'sentry.ps1')
+    'desktop/resources/app/assets/sentry-icon.png', 'desktop/Sentry.exe', 'sentry.ps1', 'cli/sentry-cli.cjs', 'CLI.md')
   foreach ($path in $required) { if (-not $expected.ContainsKey($path)) { throw ('Required component missing: ' + $path) } }
   foreach ($path in @('build-identity.json', 'runtime-source/build-identity.json', 'desktop/resources/app/build-identity.json')) {
     $identity = Get-Content -LiteralPath (Join-Path $Root $path) -Raw | ConvertFrom-Json

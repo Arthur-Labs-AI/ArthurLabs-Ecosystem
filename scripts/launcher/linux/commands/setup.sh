@@ -30,7 +30,7 @@ cmd_setup() {
   local version="$(sentry_product_version "$repo")"
   local sha="$(sentry_short_sha "$repo")"
   echo ""
-  echo "Sentry v1.0.1 Setup (product $version, CachyOS)"
+  echo "Sentry v1.0.2 Setup (product $version, CachyOS)"
   sentry_desktop_ensure_stopped "$repo" || return 1
 
   sentry_section "[1/12] CachyOS host validation"
@@ -168,7 +168,7 @@ cmd_setup() {
   local glm_ready=0
   if [ "$cc_ready" = "1" ] && [ "$sandbox_ready" = "1" ]; then glm_ready=1; fi
   echo ""
-  echo "Sentry v1.0.1 Setup (CachyOS)"
+  echo "Sentry v1.0.2 Setup (CachyOS)"
   echo "========================================"
   echo "Host"
   sentry_ok "CachyOS ($(sentry_os_pretty))"

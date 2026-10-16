@@ -19,7 +19,7 @@ import {
   type CliIo,
 } from './output.js';
 
-export const QA_VERSION = '1.0.1';
+export const QA_VERSION = '1.0.2';
 
 export function versionLine(): string {
   return 'qa ' + QA_VERSION;
@@ -127,7 +127,7 @@ function helpText(): string {
     '--timeout-ms (1000-43200000) overrides the engine run timeout; omitted keeps the 30-minute default.',
     'Identify automation with SENTRY_CLI_CLIENT_NAME / SENTRY_CLI_CLIENT_VERSION (shown in Desktop, never a secret).',
     'SENTRY_CLI_TRANSPORT=direct is development-only: it does not represent Desktop state, may use',
-    'Windows-local data, is not supported for Nexus, and must not be used as production automation.',
+    'Windows-local data, is not supported for automation client, and must not be used as production automation.',
   ].join('\n');
 }
 

@@ -1,11 +1,10 @@
 # Sentry CLI (`sentry cli`)
 
-This frontend guide describes source-checkout CLI automation. Published Windows
-v1.0.0 and v1.0.1 archives expose the Desktop broker, but omit the CLI frontend
-and their launchers do not implement `sentry cli`. The examples below require a
-built source checkout until a future release passes the packaged CLI gates in the
-[next Windows release requirements](../development/next-windows-release.md).
-Native Desktop remains deferred. This file path is retained for compatibility.
+Windows v1.0.2 includes the production CLI frontend and its execution runtime.
+Desktop must be open first. No separate Windows Node/pnpm/Git installation or
+source checkout is required. Published v1.0.0/v1.0.1 ZIPs lack this frontend;
+upgrade using the [installation guide](../setup/distribution.md). Native Desktop
+remains deferred. This documentation path is retained for compatibility.
 
 `sentry cli` controls the same running Sentry instance as the Electron Desktop.
 It is a frontend only: every command travels a local named pipe to the Desktop
@@ -204,7 +203,7 @@ Nothing silently falls back to the old Windows database.
 
 ## Protocol (for integrators)
 
-Windows Beta uses the named pipe `\\.\pipe\sentry-cli-v1-<scope>`, where
+Windows uses the named pipe `\\.\pipe\sentry-cli-v1-<scope>`, where
 `<scope>` is a stable hash of the local launcher home (no usernames, no
 network listeners). Framed NDJSON, protocol version 1, bounded messages.
 
@@ -273,10 +272,10 @@ nameless handshakes are rejected. Never put secrets in client metadata.
 
 Sentry itself creates no TCP listener. The CLI broker uses a Windows
 named pipe. Windows may provide remote named-pipe semantics depending
-on system services and ACL configuration; this Beta does not install a
+on system services and ACL configuration; this implementation does not install a
 custom DACL that explicitly denies remote identities.
 
-The current Beta trust boundary assumes the client and Sentry run under the
+The current trust boundary assumes the client and Sentry run under the
 same Windows user. Security additionally relies on the explicit command
 allowlist, strict payload validation, absence of credential-management
 commands from the external surface, and the fact that provider secrets

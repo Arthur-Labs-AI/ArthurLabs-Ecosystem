@@ -1,3 +1,21 @@
+# v1.0.2 Windows release integration
+
+2026-10-16. Owner requests repository review and v1.0.2 publication if checks pass,
+with detailed ordinary/CLI examples and existing-install PowerShell update guidance.
+Isolated release/v1.0.2-windows combines owner-merged main595821a cleanup PR34 and
+dev9f56c96 packaged CLI PR35, preserving both histories and dirty owner primary.
+Versions align to1.0.2, protocol1, pins/lock/schema definitions unchanged. Historical
+reports remain available through immutable tags; published assets remain unchanged.
+CLI docs now describe the actual packaged frontend, generic automation access and
+complete operational examples. Existing-install update/backup/recovery requirements
+are explicit. Version regression RED at1.0.1 then GREEN after intended transition.
+Full/static/package/upgrade/exact-source/draft/public verification results will be
+recorded in release PR/private receipts as executed. Stop on unexpected mismatch;
+no checks bypassed, no paid QA/real compaction/owner-profile restore. shux absent;
+status/ledger/handoff maintained directly. Owner authorized this controlled release.
+
+## Previous integration records (preserved)
+
 # Repository cleanup after v1.0.1
 
 2026-10-15. Owner authorized repository cleanup and a native Linux branch from main.
@@ -18,6 +36,23 @@ project/run/result/export examples with generic automation wording, and include
 PowerShell instructions for upgrading an existing installation. Requirements
 are in docs/development/next-windows-release.md; implementation/publication remains
 future work. Documentation-only follow-up does not fix the current archive.
+
+# Packaged CLI implementation
+
+2026-10-16. Owner requires actual packaged CLI, generic public wording, command
+examples and existing-install upgrade instructions. Isolated fix/windows-packaged-cli
+from dev20ffb618; owner dirty primary and separate cleanup PR34 preserved.
+Distribution now bundles a production-only frontend running with included Electron,
+forwards opaque CLI argv/UTF-8 stdout/stderr/exit status, and requires the frontend
+in the sealed inventory. No Windows Node/pnpm/Git requirement or direct DB fallback.
+Pure exit-code/run-summary extraction retains source CLI compatibility. Existing
+v1.0.0/v1.0.1 tags/assets unchanged; no new official version/publication authorized.
+Regression RED recorded for missing CLI payload and positional binding. Focused
+CLI45 tests, Windows distribution43/27skips and registered packaged process matrix
+PASS. Full broader gates, exact committed archive and live broker validation are
+recorded in private audit/PR after execution. Source/runtime schemas, protocol and
+provider pins unchanged. Documentation examples and safe upgrade policy included.
+shux unavailable; status/ledger/handoff maintained directly. Owner merges only.
 
 ## Previous record (preserved)
 

@@ -4,7 +4,7 @@ Sentry is a local-first AI QA desktop application. OpenCode, DeepSeek, and GLM
 through Claude Code independently investigate one immutable project snapshot
 and return findings, evidence, token usage, and persistent run history.
 
-**[Sentry v1.0.1 — Windows Stable](https://github.com/Mert1026/Sentry/releases/tag/v1.0.1)**
+**[Sentry v1.0.2 — Windows Stable](https://github.com/Mert1026/Sentry/releases/tag/v1.0.2)**
 supports **Windows 11 x64 with WSL2**, with Ubuntu preferred. The unsigned ZIP uses
 an online Linux runtime bootstrap. Native Linux Desktop is deferred.
 
@@ -28,7 +28,7 @@ Prerequisites can require manual administrator actions and a reboot. There is no
 automatic updater or signed installer. See [getting started](docs/getting-started.md)
 and the [installation and maintenance guide](docs/setup/distribution.md).
 
-Successful v1.0.1 setup registers the per-user command. Open a new PowerShell or
+Successful setup registers the per-user command. Open a new PowerShell or
 Command Prompt window and use `sentry open`, `sentry stop`, `sentry status`,
 `sentry doctor` or `sentry version` from any folder. Keep the extracted archive
 in place; after moving it, run `.\sentry.ps1 register-command` there.
@@ -36,6 +36,23 @@ in place; after moving it, run `.\sentry.ps1 register-command` there.
 New imports skip common generated caches and environments. Source selection does
 not evaluate `.gitignore`; data directories remain eligible. Existing revision
 hashes stay compatible. See [project imports](docs/setup/distribution.md#project-imports).
+
+## CLI automation
+
+Keep Desktop open. The packaged CLI uses the same projects, runs and results,
+with no extra Windows Node installation. Always use `--json` for automation:
+
+```powershell
+sentry cli capabilities --json
+sentry cli project list --json
+sentry cli run status run_ID --json
+sentry cli run result run_ID --json
+```
+
+Replace `run_ID` with an actual run ID. See the [complete CLI examples](docs/beta/cli.md#command-examples)
+for imports, Full/Targeted QA, cancellation and JSON/log exports. Earlier published
+v1.0.0/v1.0.1 archives lack the CLI frontend; use the
+[update instructions](docs/setup/distribution.md#explicit-release-upgrade-repair-and-source-beta-migration).
 
 ## Run QA
 
@@ -69,10 +86,10 @@ The original beta executable is not an approved credential downgrade target.
 
 - [Documentation index](docs/README.md)
 - [Troubleshooting](docs/beta/troubleshooting.md)
-- [Source CLI and broker automation](docs/beta/cli.md)
+- [CLI command examples and automation](docs/beta/cli.md)
 - [Contributing and development](CONTRIBUTING.md)
 - [Architecture](docs/architecture/README.md) and [decision records](docs/adr/0001-monorepo.md)
-- [Stable notes](docs/releases/v1.0.1.md) and [changelog](CHANGELOG.md)
+- [Stable notes](docs/releases/v1.0.2.md) and [changelog](CHANGELOG.md)
 - [Testing](docs/development/testing.md), [release procedure](docs/releases/RELEASE_CHECKLIST.md)
   and [branching policy](docs/development/branching.md)
 - [Historical reports and failed-test evidence](docs/history.md)

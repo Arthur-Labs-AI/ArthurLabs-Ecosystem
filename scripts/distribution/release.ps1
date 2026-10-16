@@ -1,8 +1,33 @@
-param([Parameter(Position = 0)][string]$Command = 'help', [string]$Distro = '', [switch]$NonInteractive)
+# Parse launcher options only outside CLI mode: CLI flags/values are opaque and
+# must reach its parser unchanged, including values resembling launcher options.
+$CommandArguments = @($args)
+$Command = 'help'
+$Distro = ''
+$NonInteractive = $false
+if ($CommandArguments.Count -gt 0) {
+  if ($CommandArguments[0] -eq '-Command') {
+    if ($CommandArguments.Count -lt 2) { throw '-Command requires a value' }
+    $CommandArguments = @($CommandArguments | Select-Object -Skip 1)
+  }
+  $Command = [string]$CommandArguments[0]
+  $CommandArguments = @($CommandArguments | Select-Object -Skip 1)
+}
+if ($Command -ne 'cli') {
+  for ($index = 0; $index -lt $CommandArguments.Count; $index++) {
+    switch ([string]$CommandArguments[$index]) {
+      '-Distro' {
+        if ($index + 1 -ge $CommandArguments.Count) { throw '-Distro requires a value' }
+        $index++; $Distro = [string]$CommandArguments[$index]
+      }
+      '-NonInteractive' { $NonInteractive = $true }
+      default { throw ('Unknown launcher argument: ' + $CommandArguments[$index]) }
+    }
+  }
+}
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 if ($Command -in @('help', '--help', '-h')) {
-  Write-Host 'Sentry pinned distribution: setup | tools | open | stop | status | doctor | version | register-command | help'
+  Write-Host 'Sentry pinned distribution: setup | tools | open | stop | status | doctor | version | cli | register-command | help'
   Write-Host 'Extract every approved archive into a separate version/SHA directory. See INSTALL.md. No automatic updates.'
   exit 0
 }
@@ -10,6 +35,10 @@ if ($Command -eq 'update') { Write-Error 'Pinned release: verify an approved arc
 . (Join-Path $root 'scripts/distribution/verify.ps1')
 $manifest = Get-SentryDistribution -Root $root
 if ($Command -eq 'version') { $manifest | Select-Object product,version,sourceCommit,targetPlatform | ConvertTo-Json; exit 0 }
+if ($Command -eq 'cli') {
+  . (Join-Path $root 'scripts/distribution/cli.ps1')
+  exit (Invoke-DistributionCli -Root $root -CliArguments $CommandArguments)
+}
 if (-not [Environment]::Is64BitOperatingSystem -or $env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw 'Sentry requires Windows x64' }
 $os = Get-CimInstance Win32_OperatingSystem
 if ([int]$os.BuildNumber -lt 22000 -or $os.ProductType -ne 1) { throw 'Sentry supports Windows 11 only' }

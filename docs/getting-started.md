@@ -1,6 +1,6 @@
 # Getting started with Windows Stable
 
-1. Run the PowerShell download/install commands on the [v1.0.1 Release](https://github.com/Mert1026/Sentry/releases/tag/v1.0.1). They use absolute paths and verify the downloaded ZIP against its SHA256 sidecar.
+1. Run the PowerShell download/install commands on the [v1.0.2 Release](https://github.com/Mert1026/Sentry/releases/tag/v1.0.2). They use absolute paths and verify the downloaded ZIP against its SHA256 sidecar.
 2. Follow the [installation guide](setup/distribution.md): verify the checksum,
    extract into a new version/source directory, install WSL prerequisites, and run
    setup/tools/open from that directory. Windows11 x64 + WSL2 is required; Ubuntu
@@ -22,4 +22,4 @@ place; run `.\sentry.ps1 register-command` there after moving it. Use stop/open 
 graceful restart. Updates require another verified archive in a separate directory;
 there is no automatic updater. See [troubleshooting](beta/troubleshooting.md),
 [recovery boundaries](releases/v1-recovery-policy-decision.md), and the
-[source CLI contract](beta/cli.md) for integrators using a source checkout.
+[packaged CLI examples](beta/cli.md#command-examples) for external automation.

@@ -1,8 +1,8 @@
 # Installing a pinned Sentry Windows distribution
 
-The Windows patch release version is **1.0.1**, runtime protocol **1**, for
+The Windows patch release version is **1.0.2**, runtime protocol **1**, for
 **Windows 11 x64 + WSL2** (Ubuntu preferred). Packages remain unsigned ZIPs.
-See the [patch release notes](../releases/v1.0.1.md); the public Release page records
+See the [patch release notes](../releases/v1.0.2.md); the public Release page records
 availability, exact source identity and download checksums. Historical
 [v1.0.0 preparation evidence](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-6-6-stable-readiness.md) retains
 its original source and scope.
@@ -36,7 +36,7 @@ for the original security fixtures; the stable handoff records integration check
 ## Obtain, verify and extract
 
 The published Windows Stable archive is available on the
-[official Release page](https://github.com/Mert1026/Sentry/releases/tag/v1.0.1),
+[official Release page](https://github.com/Mert1026/Sentry/releases/tag/v1.0.2),
 including PowerShell commands that download both assets automatically.
 GitHub Actions artifacts are unsigned review candidates and expire after seven
 days; use those only when approved for testing. No GitHub token is embedded or
@@ -89,7 +89,7 @@ reboot/Ubuntu account creation. It does not start a paid agent.
 .\sentry.ps1 setup -Distro Ubuntu
 ```
 
-Windows v1.0.1 archives register a per-user `sentry` command after
+Windows v1.0.1 and later archives register a per-user `sentry` command after
 successful setup. Open a new terminal to pick up the user PATH. In an already-open
 PowerShell window, refresh just the command location:
 
@@ -156,6 +156,29 @@ Configure credentials only in **Settings → Providers**. Verify Environment's
 connected Linux runtime and readiness for your selected agents before QA.
 Process launch or credential presence does not prove provider credit/readiness.
 
+## Packaged CLI
+
+Windows v1.0.2 archives include `CLI.md` and a production
+frontend. Windows uses the included Electron runtime, so Windows Node, pnpm and
+Git are not required. The immutable published v1.0.0 and v1.0.1 ZIPs predate this
+change and their launchers do not implement `sentry cli`; upgrading requires a
+new verified archive, not editing those installations in place.
+
+After setup, open a new terminal and start Desktop before CLI operations:
+
+```powershell
+sentry open
+sentry cli capabilities --json
+sentry cli agent list --json
+sentry cli project list --json
+```
+
+See the [CLI command examples](../beta/cli.md#command-examples) for project import,
+updates, Full/Targeted QA, status, cancellation, results and JSON/log exports.
+The archive's `CLI.md` contains the same examples. These commands use the same
+projects and runs as Desktop. Provider configuration stays in Desktop Settings.
+Run-start commands execute real agents and may incur provider charges.
+
 ## Project imports
 
 New imports and updates skip the existing Node/Git/build exclusions plus known
@@ -209,9 +232,20 @@ No AppImage/AUR/native package is promised.
 
 ## Explicit release upgrade, repair and source-beta migration
 
+For a published upgrade, use that new Release page's **Update an existing
+installation** PowerShell section. It must provide the real version, exact ZIP,
+source SHA and SHA256, automatic download/verification and a separate extraction
+directory; commands must work from any working directory. Stop the current
+installation and back up its actual data/profile first as described below.
+Run the new archive's setup/tools, open a new terminal, then verify `sentry version`,
+Environment's matching runtime, existing projects/history/provider settings and
+`sentry cli capabilities --json`. Retain the prior matched archive/runtime and
+stopped backup until acceptance. A new archive does not require deleting WSL or
+removing user data. Failed setup must preserve the prior active runtime.
+
 `sentry update` in an archive always refuses. It never follows origin/dev,
 origin/main, or downloads another candidate. Source clones retain the development-only updater;
-pinned source-beta tags retain their existing refusal. Successful Windows v1.0.1
+pinned source-beta tags retain their existing refusal. Successful Windows v1.0.1 and later
 setup registers the per-user command for the chosen archive. Keep that directory
 in place and open a new terminal after setup; use `register-command` after moving
 it. Source checkouts retain their separate development channel.

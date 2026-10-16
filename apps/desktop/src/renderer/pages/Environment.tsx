@@ -194,8 +194,8 @@ export function Environment(): React.JSX.Element {
             </p>
           ) : (
             <p className="metadata" style={{ marginBottom: 0 }}>
-              External automation (for example Nexus) can drive this same Sentry instance with
-              `sentry cli ...` while the Desktop stays open.
+              External automation can drive this same Sentry instance with `sentry cli ...` while
+              the Desktop stays open.
             </p>
           )}
         </div>

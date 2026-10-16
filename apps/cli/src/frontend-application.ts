@@ -16,7 +16,7 @@ import {
 import { CLI_IPC_PROTOCOL_VERSION } from '@qa/shared';
 import type { ParsedCliCommand } from './arguments.js';
 import { CliUsageError } from './arguments.js';
-import { summarizeRunStartAgents } from './application.js';
+import { summarizeRunStartAgents } from './run-summary.js';
 import {
   DesktopNotRunningError,
   DesktopProtocolError,
@@ -467,7 +467,7 @@ export async function executeFrontendCommand(
         );
       }
       if (input.wait !== true) {
-        // Nexus safety: the paid run may already be executing. Return the
+        // automation client safety: the paid run may already be executing. Return the
         // created runId immediately with the persisted initial status from
         // the start response. No follow-up request is allowed to turn this
         // success into a failure (pipe cut, restart, timeout would otherwise
