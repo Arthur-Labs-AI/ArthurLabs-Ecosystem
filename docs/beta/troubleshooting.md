@@ -1,6 +1,11 @@
-# Sentry Beta — Troubleshooting
+# Troubleshooting
 
-Run `sentry doctor` first. It performs zero paid requests and never prints
+For the packaged release, run `.\sentry.ps1 doctor` from its extracted directory;
+use `.\sentry.ps1 setup -Distro Ubuntu` / `tools -Distro Ubuntu` to repair installation.
+The detailed source-launcher sections below can install prerequisites; packaged
+bootstrap requires the manual prerequisites in the [distribution guide](../setup/distribution.md).
+
+For a source installation, run `sentry doctor` first. It performs zero paid requests and never prints
 secrets — only presence information.
 
 ```powershell

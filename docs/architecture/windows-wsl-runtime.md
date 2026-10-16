@@ -1,5 +1,9 @@
 # Windows ↔ WSL2 Sentry Runtime
 
+The [current v1 pipeline](v1-pipeline.md) defines active Desktop behavior.
+Merger/verifier/issue/retest components mentioned below remain historical or
+internal capabilities; their existence does not advertise active Desktop flows.
+
 > Starting with the final Phase 8 Desktop architecture, Sentry exposes no simulation execution mode. Desktop QA execution always uses the configured production OpenCode, DeepSeek and GLM AgentStacks. Automated tests may use mocks/test doubles internally, but those are not persisted or exposed as a product execution mode.
 
 ## Why WSL exists

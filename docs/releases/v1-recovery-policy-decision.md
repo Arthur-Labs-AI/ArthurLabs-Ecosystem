@@ -14,10 +14,10 @@ not authorize an actual owner-data restore or an official RC cut.
 
 Option A target: exact I1 Desktop/runtime source
 `c78faa74717b0f430a859730e98c3c4915e7b03f`, with the Windows archive and manifest
-checksums in the [candidate lock](v1-phase-5-3-candidate-lock.md). Supported
+checksums in the [candidate lock](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-5-3-candidate-lock.md). Supported
 scope **as approved**: Windows11 x64/WSL2, same Windows account/machine/DPAPI
 context used to create the backup. Native CachyOS normal functionality is now
-[owner-reported accepted](v1-owner-functional-acceptance-2026-10-13.md); full native
+[owner-reported accepted](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-owner-functional-acceptance-2026-10-13.md); full native
 G10-R was not established by that statement. Native G10-R remains outside this
 physically validated recovery support scope, pending separate evidence/decision.
 
@@ -37,7 +37,7 @@ accounts or keychains. Unreadable/unavailable storage remains a visible failure.
 Cross-filesystem data/profile replacement is not atomic; interrupted moves
 require stopped inspection and selection of a complete preserved pair.
 
-Required evidence: [Windows G10-R receipt](v1-phase-5-2-g10-recovery-validation.md)
+Required evidence: [Windows G10-R receipt](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-5-2-g10-recovery-validation.md)
 and repeated full process restarts/restore; actual supported-host evidence for
 each additional host, backup and staged verification, unchanged historical
 payloads/exports and presence-only stored/secure statuses. Operator package

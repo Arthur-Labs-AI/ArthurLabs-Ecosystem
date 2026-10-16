@@ -61,5 +61,6 @@ See the Stage 3 report for the full checklist: clone, `./sentry setup`,
 `sentry update`, `sentry version`, `sentry help`, then runtime hello,
 native host status, project import, CLI broker, and provider readiness.
 The owner reports 3/3 success on CachyOS. Candidate changes still need target
-acceptance; see [beta validation](../releases/v0.1.0-beta.1-validation.md).
-This release is beta software, not a production-readiness claim.
+acceptance; see [beta validation](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v0.1.0-beta.1-validation.md).
+These native development instructions are not an official Windows Stable asset
+or a claim of native production readiness.

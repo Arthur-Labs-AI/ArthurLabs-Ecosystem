@@ -1,34 +1,33 @@
-# Sentry Desktop (Phase 8)
+# Sentry Desktop
 
-Local desktop QA workspace built on the frozen Stable Core.
+Electron main owns secure provider settings, runtime connection, native dialogs
+and typed command routing. The renderer has no Node/SQLite access and consumes
+validated preload IPC. The Linux runtime owns the canonical database, project
+lifecycle, execution lease, independent agents and persistent results. See the
+[current architecture](../../docs/architecture/README.md).
 
-- Electron main owns Sentry (DB, repository, lease, ProjectManager, RunCoordinator).
-- Renderer is presentation only: no Node access, no direct SQLite.
-- Typed IPC via preload window.sentry (validated with Zod in main).
-- Live updates poll persisted truth (500 ms active / 5 s idle); renderer polling is a fallback.
-- Production only: every new FULL, TARGETED, and RETEST run uses the configured OpenCode, DeepSeek, and GLM AgentStacks and consumes provider budget. No simulation mode exists.
-- Provider credentials persist securely: Electron safeStorage-encrypted store under userData (no plaintext, no DB, no localStorage); secrets never return to the renderer. Without OS encryption, session-only with an explicit warning.
-- Retest start is async: the desktop returns the RetestRun id immediately and the workspace goes live; assessment uses the frozen backend `result` field.
-- Agent stage projection is evidence-driven with a Reporting stage (agent.message / usage.updated); pipeline nodes (Merger / Verifier / Issues) reflect actual artifact existence.
-- Issue state is projected in main via frozen projectIssueState; the renderer never derives it.
-
-## Test coverage
-
-- Unit, component (jsdom), service integration (node), and smoke suites all run via `pnpm --filter @qa/desktop test` (vitest includes `src/**` + `tests/**`).
-- True Electron smoke (`tests/electron`, Playwright) launches main → preload → renderer and asserts title, Dashboard, bridge presence, no Node integration, and navigation.
+Full and Targeted QA use configured production agents and can incur provider
+charges. There is no product simulation mode. Credentials persist through
+OS-backed encryption with no plaintext fallback; secrets are not returned to the
+renderer. Historical phase-specific merger/verifier/retest descriptions are in
+the [immutable archive](../../docs/history.md), not supported current UI promises.
 
 ## Develop
 
-Run the renderer dev server, then Electron against it:
+Install frozen dependencies and build from the repository root. Start the renderer:
 
-    pnpm --filter @qa/desktop dev
-    SENTRY_DESKTOP_URL=http://127.0.0.1:5174 pnpm --filter @qa/desktop dev:electron
+```text
+pnpm --filter @qa/desktop dev
+```
 
-## Gates
+Then launch Electron in another terminal, with the renderer URL explicitly set:
 
-    pnpm --filter @qa/desktop typecheck
-    pnpm --filter @qa/desktop lint
-    pnpm --filter @qa/desktop test
-    pnpm --filter @qa/desktop build
+```powershell
+$env:SENTRY_DESKTOP_URL = 'http://127.0.0.1:5174'
+pnpm --filter @qa/desktop dev:electron
+```
 
-Packaging and distribution are explicitly Phase 9 (development-grade only).
+Use a disposable profile/runtime for tests. Unit/component/service/smoke coverage
+runs with pnpm --filter @qa/desktop test; Electron tests require a graphical host.
+Run [shared/static/package gates](../../docs/development/testing.md) and follow
+the [Windows installation guide](../../docs/setup/distribution.md) for distribution.

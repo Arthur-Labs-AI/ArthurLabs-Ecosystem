@@ -1,3 +1,26 @@
+# Repository cleanup after v1.0.1
+
+2026-10-15. Owner authorized repository cleanup and a native Linux branch from main.
+Base main6793a9c53a336d577ac4397735d0396f558b60f0; dev synchronization PR33 is merged.
+Six obsolete remote release/fix branch tips were verified ancestors of main and
+backed up in a verified private Git bundle before removal. Reserved branch
+feature/native-linux-support points to the exact base main commit; no Linux feature
+changes. Cleanup archives 96 historical reports/screenshots through immutable
+v1.0.0 links and removes three redundant private-beta redirects. Current v1.0.1
+installation/import/command documentation is retained. Production source, tests,
+workflows, schemas, pins and lockfile remain unchanged. Published tags/assets and
+owner dirty primary checkout are preserved. Separate cleanup PR targets main;
+owner review/merge only. Verification results are recorded in the PR and private
+audit; shux is unavailable, so protocol files are maintained directly.
+
+Owner follow-up: next release must ship and verify the packaged CLI, document
+project/run/result/export examples with generic automation wording, and include
+PowerShell instructions for upgrading an existing installation. Requirements
+are in docs/development/next-windows-release.md; implementation/publication remains
+future work. Documentation-only follow-up does not fix the current archive.
+
+## Previous record (preserved)
+
 # Phase 6.6 — stable review candidate and acceptance
 
 2026-10-15. PR28 release-prep/v1.0.0-stable → release/v1.0.0-windows; owner merge only.
@@ -710,7 +733,7 @@ Prepare the annotated beta tag and draft pre-release after merge CI passes.
 Manual candidate cancellation/maintenance scenarios remain independently
 unverified and are disclosed in the release notes. GitHub tag/release receipts
 are the source of truth for publication status; no installer is produced.
-See [validation](../docs/releases/v0.1.0-beta.1-validation.md).
+See [validation](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v0.1.0-beta.1-validation.md).
 Original dirty main checkout and user-owned Git identity are preserved. `shux contract` unavailable;
 protocol records maintained directly in this isolated worktree.
 
