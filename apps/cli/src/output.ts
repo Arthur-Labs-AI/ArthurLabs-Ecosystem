@@ -4,7 +4,7 @@ import type {
   ProjectListResult,
   RunListResult,
 } from '@qa/schemas';
-import { CLI_EXIT } from './errors.js';
+import { CLI_EXIT } from './exit-codes.js';
 
 export interface CliIo {
   readonly stdout: (message: string) => void;
