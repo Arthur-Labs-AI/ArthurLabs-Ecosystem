@@ -2,8 +2,8 @@
 
 ## Vendor-neutral adapter boundary
 
-QA Core speaks only the `HarnessAdapter` contract. Future Muse, DeepSeek, and
-Claude/GLM workers normalize their native behavior behind that seam; the generic
+QA Core speaks only the `HarnessAdapter` contract. OpenCode, DeepSeek, and
+GLM through Claude Code normalize their native behavior behind that seam; the generic
 domain, schemas, and protocol import no vendor SDK and contain no model branching.
 
 ```ts

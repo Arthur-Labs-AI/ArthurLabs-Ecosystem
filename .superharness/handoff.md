@@ -1,3 +1,42 @@
+# v1.0.2 Windows release integration
+
+2026-10-16. Owner requests repository review and v1.0.2 publication if checks pass,
+with detailed ordinary/CLI examples and existing-install PowerShell update guidance.
+Isolated release/v1.0.2-windows combines owner-merged main595821a cleanup PR34 and
+dev9f56c96 packaged CLI PR35, preserving both histories and dirty owner primary.
+Versions align to1.0.2, protocol1, pins/lock/schema definitions unchanged. Historical
+reports remain available through immutable tags; published assets remain unchanged.
+CLI docs now describe the actual packaged frontend, generic automation access and
+complete operational examples. Existing-install update/backup/recovery requirements
+are explicit. Version regression RED at1.0.1 then GREEN after intended transition.
+Full/static/package/upgrade/exact-source/draft/public verification results will be
+recorded in release PR/private receipts as executed. Stop on unexpected mismatch;
+no checks bypassed, no paid QA/real compaction/owner-profile restore. shux absent;
+status/ledger/handoff maintained directly. Owner authorized this controlled release.
+
+## Previous integration records (preserved)
+
+# Repository cleanup after v1.0.1
+
+2026-10-15. Owner authorized repository cleanup and a native Linux branch from main.
+Base main6793a9c53a336d577ac4397735d0396f558b60f0; dev synchronization PR33 is merged.
+Six obsolete remote release/fix branch tips were verified ancestors of main and
+backed up in a verified private Git bundle before removal. Reserved branch
+feature/native-linux-support points to the exact base main commit; no Linux feature
+changes. Cleanup archives 96 historical reports/screenshots through immutable
+v1.0.0 links and removes three redundant private-beta redirects. Current v1.0.1
+installation/import/command documentation is retained. Production source, tests,
+workflows, schemas, pins and lockfile remain unchanged. Published tags/assets and
+owner dirty primary checkout are preserved. Separate cleanup PR targets main;
+owner review/merge only. Verification results are recorded in the PR and private
+audit; shux is unavailable, so protocol files are maintained directly.
+
+Owner follow-up: next release must ship and verify the packaged CLI, document
+project/run/result/export examples with generic automation wording, and include
+PowerShell instructions for upgrading an existing installation. Requirements
+are in docs/development/next-windows-release.md; implementation/publication remains
+future work. Documentation-only follow-up does not fix the current archive.
+
 # Packaged CLI implementation
 
 2026-10-16. Owner requires actual packaged CLI, generic public wording, command

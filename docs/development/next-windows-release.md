@@ -1,9 +1,8 @@
-# Next Windows release requirements
+# Windows CLI and upgrade release acceptance
 
-These are owner requirements for the next release, not claims that its features
-are already shipped. Published Windows v1.0.0 and v1.0.1 omit the CLI frontend and
+These are the owner-required CLI and upgrade gates for v1.0.2 and later releases. Published Windows v1.0.0 and v1.0.1 omit the CLI frontend and
 do not implement `sentry cli` in their archive launchers. The Desktop broker and
-source CLI remain implemented. This branch implements the bundled frontend and
+source CLI remain implemented. The v1.0.2 source implements the bundled frontend and
 launcher forwarding for newly built archives. Release integration, exact-source
 verification and publication still follow the normal owner-reviewed procedure.
 
@@ -76,7 +75,7 @@ The documented procedure must:
    Explain failure handling and schema compatibility; binary rollback alone does
    not authorize restoring an older database or downgrading a migrated one.
 
-Validate the update from the preceding stable release, currently v1.0.1, using
+Validate the update from the preceding stable release, v1.0.1 for the v1.0.2 transition, using
 disposable populated data/profile and secure-settings fixtures. Report automated,
 prepared-host and clean-machine evidence separately. A fresh install test does
 not establish upgrade continuity. Follow the maintained

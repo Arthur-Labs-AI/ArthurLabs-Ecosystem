@@ -99,4 +99,4 @@ is neither guaranteed nor inferred from a receipt alone.
 | Security scope       | Closes mutable-file and result-destination boundary; does not claim protection against complete trusted-principal compromise   |
 
 Executed regression evidence and remaining release steps are recorded in the
-[Phase 6.5 handoff](../releases/v1-phase-6-5-wsl-helper-hardening.md).
+[Phase 6.5 handoff](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-6-5-wsl-helper-hardening.md).
