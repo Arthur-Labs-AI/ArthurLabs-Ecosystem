@@ -346,7 +346,7 @@ function Show-SentryCliHelp {
   Write-Host '  retest show <retest-run-id> [--json]'
   Write-Host '  retest cancel <retest-run-id> [--json]'
   Write-Host ''
-  Write-Host 'Automation (Nexus): always pass --json and parse stdout with JSON.parse.'
+  Write-Host 'Automation: always pass --json and parse stdout with JSON.parse.'
   Write-Host 'Start async, poll status, then fetch the result:'
   Write-Host '  sentry cli run start <project> --mode full --json'
   Write-Host '  sentry cli run status <run-id> --json'
@@ -364,9 +364,9 @@ function Invoke-SentryCli {
     Write-Host 'Sentry CLI is not built. Run: sentry setup' -ForegroundColor Red
     return 1
   }
-  # Capture-and-forward (never inherit): under programmatic capture (Nexus
+  # Capture-and-forward (never inherit): under programmatic capture (automation clients
   # process execution, CI, this harness) an inheriting grandchild's stdout can
-  # be lost entirely, and Nexus must always receive exactly one JSON document
+  # be lost entirely, and automation clients must always receive exactly one JSON document
   # on stdout for --json. NoTruncate keeps large canonical results intact.
   $nodeArgs = @($entry) + $CliArgs
   $r = Invoke-SentryNative -FilePath 'node' -Arguments $nodeArgs -NoTruncate $true
@@ -389,7 +389,7 @@ function Invoke-SentryVersion {
 
 function Show-SentryHelp {
   Write-Host ''
-  Write-Host 'Sentry v1.0.1' -ForegroundColor Cyan
+  Write-Host 'Sentry v1.0.2' -ForegroundColor Cyan
   Write-Host ''
   Write-Host 'Usage:'
   Write-Host '  sentry <command>'

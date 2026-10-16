@@ -319,7 +319,7 @@ export const RunStartResultSchema = z
     runId: QARunIdSchema,
     projectId: ProjectIdSchema,
     status: z.enum(QARUN_STATUSES),
-    // Async Nexus flow: runId + operationId return as soon as the row
+    // Async automation flow: runId + operationId return as soon as the row
     // exists while the WSL runtime owns the run. The per-agent breakdown
     // and findings arrive after terminal status (or via --wait).
     operationId: z.string().min(1).max(200).optional(),
@@ -741,7 +741,7 @@ export const CapabilitiesResultSchema = z
           .strict(),
       )
       .optional(),
-    // Nexus probes these before issuing commands. Optional so older
+    // Automation clients probe these before issuing commands. Optional so older
     // machine consumers keep parsing.
     runResultExport: z.literal(true).optional(),
     runCancellation: z.literal(true).optional(),
@@ -750,7 +750,7 @@ export const CapabilitiesResultSchema = z
     productVersion: z.string().min(1).max(100).optional(),
     // Production truth: which commands the Desktop broker actually serves.
     // `features.fakeRunSimulation` stays true for contract history (it
-    // describes the direct/development transport); Nexus must consult
+    // describes the direct/development transport); clients must consult
     // productionCommands to decide what production `sentry cli` supports.
     productionCommands: z
       .object({

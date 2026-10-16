@@ -39,7 +39,7 @@ sentry_cli_help() {
   echo "  retest show <retest-run-id> [--json]"
   echo "  retest cancel <retest-run-id> [--json]"
   echo ""
-  echo "Automation (Nexus): always pass --json and parse stdout with JSON.parse."
+  echo "Automation: always pass --json and parse stdout with JSON.parse."
   return 0
 }
 

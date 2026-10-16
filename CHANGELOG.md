@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.2] - 2026-10-16
+
+- Ship the production CLI frontend and command forwarding in Windows archives,
+  using the included Electron runtime without Windows Node/pnpm/Git.
+- Preserve opaque arguments, UTF-8 machine output, stderr and exit codes; use the
+  existing Desktop broker and canonical runtime with no development DB fallback.
+- Require the CLI payload in archive inventory validation; include CLI.md with
+  complete project, QA, status/cancellation, result and JSON/log export examples.
+- Consolidate active documentation, retain historical evidence at immutable tags,
+  and add explicit existing-install upgrade guidance and generic automation wording.
+- Align product/Desktop/runtime/CLI/launcher identity to1.0.2; protocol1, schemas,
+  migrations, provider pins, secure settings and history formats are unchanged.
+- Earlier published ZIPs and tags remain immutable. See [release notes](docs/releases/v1.0.2.md).
+
 ## [1.0.1] - 2026-10-15
 
 - Fix imports and updates of Python/Next/Nuxt working directories containing

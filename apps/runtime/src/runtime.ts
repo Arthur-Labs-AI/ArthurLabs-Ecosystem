@@ -81,7 +81,7 @@ import {
 
 import { runtimeReleaseIdentity } from './distribution.js';
 const releaseIdentity = runtimeReleaseIdentity();
-export const RUNTIME_VERSION = releaseIdentity?.version ?? '1.0.1';
+export const RUNTIME_VERSION = releaseIdentity?.version ?? '1.0.2';
 
 const ProjectIdInput = z.string().min(1).max(200);
 const RunIdInput = z.string().regex(/^run_[0-9A-HJKMNP-TV-Z]{26}$/);
@@ -872,7 +872,7 @@ export class SentryRuntimeHost {
 
   /**
    * Persisted initial status for an async start response. Callers (notably
-   * the CLI Nexus flow) must return the created runId without a follow-up
+   * the CLI automation flow) must return the created runId without a follow-up
    * request, so the status travels with the start response. A missing row
    * means the start did not actually persist: report failure, never a
    * runId without truth behind it.
