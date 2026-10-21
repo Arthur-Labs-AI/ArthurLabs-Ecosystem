@@ -8,8 +8,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use super::codec::{
     decode_core_strict, encode_canonical, facet_state_hash, hash_hex, journal_event_hash,
     validate_decimal, validate_key, Dependency, EntityKind, EventRef, ExpectedFacet, FacetUpdate,
-    FieldValue, JournalEvent, ObservedCreate, Operation, RecordCreate, ReviewAction, ReviewMethod,
-    ReviewProof, RowImage, MAX_CANONICAL_BYTES, OPERATION_VERSION, PROVENANCE_LOCAL_COMMITTED,
+    FieldValue, JournalEvent, ObservedCreate, Operation, RecordCreate, RelationRemove,
+    ReviewAction, ReviewMethod, ReviewProof, RowImage, MAX_CANONICAL_BYTES, OPERATION_VERSION,
+    PROVENANCE_LOCAL_COMMITTED,
 };
 use super::reducer::{
     assemble_event, dependencies_for, reduce_effects, Baselines, FacetId, FacetPrior, FacetPriors,
@@ -833,6 +834,8 @@ fn model_edge_removal_keeps_observed_create() {
     let mut baselines: Baselines = BTreeSet::new();
     baselines.insert((EntityKind::KnowledgeObjects, vec![a.clone()]));
     baselines.insert((EntityKind::KnowledgeObjects, vec![b.clone()]));
+    // The removed edge models pre-journal history: explicit legacy baseline.
+    baselines.insert((EntityKind::Relations, vec![edge.clone()]));
     let ops = reduce_effects(
         &effects,
         &resolver,
@@ -852,7 +855,11 @@ fn model_edge_removal_keeps_observed_create() {
                 saw_remove = true;
                 assert_eq!(r.key, vec![edge.clone()]);
                 assert_eq!(r.before, before);
-                assert!(matches!(r.observed_create, ObservedCreate::LegacyHash(_)));
+                let expected = hash_hex(
+                    &facet_state_hash(EntityKind::Relations, "record", &[edge.clone()], &before)
+                        .unwrap(),
+                );
+                assert_eq!(r.observed_create, ObservedCreate::LegacyHash(expected));
             }
             Operation::RecordCreate(c) => {
                 saw_create = true;
@@ -2372,5 +2379,296 @@ fn facet_independent_refs_round_trip() {
         back.expected["lifecycle"].before_hash,
         update.expected["lifecycle"].before_hash
     );
+    assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
+}
+
+// ---------------------------------------------------------------------------
+// FIX-03 test-first: relation.remove must keep actual creation provenance
+// ---------------------------------------------------------------------------
+
+fn creation_ref() -> EventRef {
+    EventRef {
+        origin_id: ORIGIN.to_string(),
+        incarnation: INCARNATION.to_string(),
+        seq: "3".to_string(),
+        event_id: "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa".to_string(),
+        hash: ["ef"; 32].concat(),
+    }
+}
+
+// Test A: a modern MODEL deletion keeps its journal creation ref.
+#[test]
+fn relation_modern_deletion_keeps_creation_ref() {
+    let a = uid(90);
+    let b = uid(91);
+    let edge = uid(92);
+    let before = relation_img(&edge, "related_to", &a, &b, "model");
+    let effects = vec![effect(
+        EntityKind::Relations,
+        vec![edge.clone()],
+        Some(before.clone()),
+        None,
+    )];
+    let resolver = MapResolver::new();
+    let mut known: KnownRefs = BTreeMap::new();
+    known.insert((EntityKind::Relations, vec![edge.clone()]), creation_ref());
+    let mut baselines: Baselines = BTreeSet::new();
+    baselines.insert((EntityKind::KnowledgeObjects, vec![a.clone()]));
+    baselines.insert((EntityKind::KnowledgeObjects, vec![b.clone()]));
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &baselines,
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let Operation::RelationRemove(remove) = &ops[0] else {
+        panic!("expected remove")
+    };
+    assert_eq!(remove.key, vec![edge.clone()]);
+    assert_eq!(remove.before, before);
+    assert_eq!(
+        remove.observed_create,
+        ObservedCreate::Event(creation_ref())
+    );
+}
+
+// Test B: a true legacy deletion keeps the domain-separated image hash.
+#[test]
+fn relation_legacy_deletion_keeps_image_hash() {
+    let a = uid(93);
+    let b = uid(94);
+    let edge = uid(95);
+    let before = relation_img(&edge, "related_to", &a, &b, "model");
+    let effects = vec![effect(
+        EntityKind::Relations,
+        vec![edge.clone()],
+        Some(before.clone()),
+        None,
+    )];
+    let resolver = MapResolver::new();
+    let mut baselines: Baselines = BTreeSet::new();
+    baselines.insert((EntityKind::KnowledgeObjects, vec![a.clone()]));
+    baselines.insert((EntityKind::KnowledgeObjects, vec![b.clone()]));
+    baselines.insert((EntityKind::Relations, vec![edge.clone()]));
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &baselines,
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let Operation::RelationRemove(remove) = &ops[0] else {
+        panic!("expected remove")
+    };
+    let expected = hash_hex(
+        &facet_state_hash(EntityKind::Relations, "record", &[edge.clone()], &before).unwrap(),
+    );
+    assert_eq!(remove.observed_create, ObservedCreate::LegacyHash(expected));
+}
+
+// Test C: missing provenance fails closed, never a silent legacy grant.
+#[test]
+fn relation_missing_provenance_fails() {
+    let a = uid(96);
+    let b = uid(97);
+    let edge = uid(98);
+    let before = relation_img(&edge, "related_to", &a, &b, "model");
+    let effects = vec![effect(
+        EntityKind::Relations,
+        vec![edge.clone()],
+        Some(before),
+        None,
+    )];
+    let resolver = MapResolver::new();
+    let mut baselines: Baselines = BTreeSet::new();
+    baselines.insert((EntityKind::KnowledgeObjects, vec![a.clone()]));
+    baselines.insert((EntityKind::KnowledgeObjects, vec![b.clone()]));
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &baselines,
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+    .expect_err("missing provenance must fail");
+    assert_eq!(
+        err,
+        ReducerError::MissingCreationProvenance {
+            entity: "relations"
+        }
+    );
+}
+
+// Test D: contradictory known+baseline provenance fails closed.
+#[test]
+fn relation_contradictory_provenance_fails() {
+    let a = uid(99);
+    let b = uid(100);
+    let edge = uid(101);
+    let before = relation_img(&edge, "related_to", &a, &b, "model");
+    let effects = vec![effect(
+        EntityKind::Relations,
+        vec![edge.clone()],
+        Some(before),
+        None,
+    )];
+    let resolver = MapResolver::new();
+    let mut known: KnownRefs = BTreeMap::new();
+    known.insert((EntityKind::Relations, vec![edge.clone()]), creation_ref());
+    let mut baselines: Baselines = BTreeSet::new();
+    baselines.insert((EntityKind::KnowledgeObjects, vec![a.clone()]));
+    baselines.insert((EntityKind::KnowledgeObjects, vec![b.clone()]));
+    baselines.insert((EntityKind::Relations, vec![edge.clone()]));
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &baselines,
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+    .expect_err("contradictory provenance must fail");
+    assert_eq!(
+        err,
+        ReducerError::ContradictoryProvenance {
+            entity: "relations"
+        }
+    );
+}
+
+// Test E: replacement keeps the old creation ref and the new identity.
+#[test]
+fn relation_replacement_keeps_both_provenances() {
+    let a = uid(102);
+    let b = uid(103);
+    let old = uid(104);
+    let fresh = uid(105);
+    let before = relation_img(&old, "related_to", &a, &b, "model");
+    let created = relation_img(&fresh, "related_to", &a, &b, "model");
+    let effects = vec![
+        effect(
+            EntityKind::Relations,
+            vec![old.clone()],
+            Some(before.clone()),
+            None,
+        ),
+        effect(
+            EntityKind::Relations,
+            vec![fresh.clone()],
+            None,
+            Some(created.clone()),
+        ),
+    ];
+    let resolver = resolver_with(vec![(
+        EntityKind::Relations,
+        vec![fresh.clone()],
+        created.clone(),
+    )]);
+    let mut known: KnownRefs = BTreeMap::new();
+    known.insert((EntityKind::Relations, vec![old.clone()]), creation_ref());
+    let mut baselines: Baselines = BTreeSet::new();
+    baselines.insert((EntityKind::KnowledgeObjects, vec![a.clone()]));
+    baselines.insert((EntityKind::KnowledgeObjects, vec![b.clone()]));
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &baselines,
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 2);
+    let mut saw_remove = false;
+    let mut saw_create = false;
+    for op in &ops {
+        match op {
+            Operation::RelationRemove(r) => {
+                saw_remove = true;
+                assert_eq!(r.key, vec![old.clone()]);
+                assert_eq!(r.before, before);
+                assert_eq!(r.observed_create, ObservedCreate::Event(creation_ref()));
+            }
+            Operation::RecordCreate(c) => {
+                saw_create = true;
+                assert_eq!(c.key, vec![fresh.clone()]);
+                assert_eq!(c.after, created);
+            }
+            _ => panic!("unexpected op"),
+        }
+    }
+    assert!(saw_remove && saw_create);
+}
+
+// Test F: user/system edges still fail through the MODEL-only policy.
+#[test]
+fn relation_user_edge_still_refused() {
+    let a = uid(106);
+    let b = uid(107);
+    let edge = uid(108);
+    let before = relation_img(&edge, "related_to", &a, &b, "user");
+    let effects = vec![effect(
+        EntityKind::Relations,
+        vec![edge.clone()],
+        Some(before),
+        None,
+    )];
+    let resolver = MapResolver::new();
+    let mut baselines: Baselines = BTreeSet::new();
+    baselines.insert((EntityKind::KnowledgeObjects, vec![a.clone()]));
+    baselines.insert((EntityKind::KnowledgeObjects, vec![b.clone()]));
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &baselines,
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+    .expect_err("user edge must fail");
+    assert_eq!(err, ReducerError::NonModelEdgeDeletion);
+}
+
+// Test G: modern and legacy removals survive strict round-trips.
+#[test]
+fn relation_removal_round_trips() {
+    let a = uid(109);
+    let b = uid(110);
+    let edge = uid(111);
+    let before = relation_img(&edge, "related_to", &a, &b, "model");
+    assert_eq!(
+        before.get("created_at"),
+        Some(&FieldValue::Text(TS0.to_string()))
+    );
+    let modern = Operation::RelationRemove(RelationRemove {
+        key: vec![edge.clone()],
+        before: before.clone(),
+        observed_create: ObservedCreate::Event(creation_ref()),
+    });
+    let event = sample_event(vec![modern], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
+    let legacy_hash = hash_hex(
+        &facet_state_hash(EntityKind::Relations, "record", &[edge.clone()], &before).unwrap(),
+    );
+    let legacy = Operation::RelationRemove(RelationRemove {
+        key: vec![edge.clone()],
+        before: before.clone(),
+        observed_create: ObservedCreate::LegacyHash(legacy_hash),
+    });
+    let event = sample_event(vec![legacy], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
     assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
 }

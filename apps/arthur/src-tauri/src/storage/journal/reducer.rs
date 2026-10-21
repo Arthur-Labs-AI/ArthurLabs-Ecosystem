@@ -51,6 +51,12 @@ pub enum ReducerError {
         entity: &'static str,
         facet: &'static str,
     },
+    MissingCreationProvenance {
+        entity: &'static str,
+    },
+    ContradictoryProvenance {
+        entity: &'static str,
+    },
     MissingReviewProof {
         entity: &'static str,
     },
@@ -88,6 +94,14 @@ impl fmt::Display for ReducerError {
             Self::MissingFacetPrior { entity, facet } => write!(
                 f,
                 "missing causal prior for {entity}.{facet}: supply an explicit facet state"
+            ),
+            Self::MissingCreationProvenance { entity } => write!(
+                f,
+                "missing creation provenance for {entity}: neither a journal event nor a legacy baseline"
+            ),
+            Self::ContradictoryProvenance { entity } => write!(
+                f,
+                "contradictory creation provenance for {entity}: known journal event and legacy baseline"
             ),
             Self::MissingReviewProof { entity } => {
                 write!(f, "state transition of {entity} needs review proof")
@@ -156,6 +170,11 @@ impl FinalStateResolver for MapResolver {
 /// Last known creation/reference event per logical record. This answers the
 /// record-existence question (same-event, known or explicit baseline) used by
 /// dependency closure. It is NOT the causal writer of a mutable facet.
+///
+/// For immutable catalog records the stored reference identifies the
+/// creation event: relations, revisions, evidence and decisions never change,
+/// so no "latest update" exists. Relation removal consumes this entry as
+/// the observed-create provenance; facet priors are never consulted for it.
 pub type KnownRefs = BTreeMap<(EntityKind, Vec<String>), EventRef>;
 /// Explicitly acknowledged legacy-baseline records (null event refs).
 pub type Baselines = BTreeSet<(EntityKind, Vec<String>)>;
@@ -367,7 +386,7 @@ pub fn reduce_effects(
                         group.entity.as_str()
                     )));
                 }
-                operations.push(reduce_delete(group)?);
+                operations.push(reduce_delete(group, known, baselines)?);
             }
             (Some(before), Some(_), Some(final_image)) => {
                 if group.effects.len() == 1 && Some(&before) == group.effects[0].after.as_ref() {
@@ -558,7 +577,11 @@ fn reduce_create(group: &KeyGroup<'_>, final_image: &RowImage) -> Result<Operati
     }))
 }
 
-fn reduce_delete(group: &KeyGroup<'_>) -> Result<Operation, ReducerError> {
+fn reduce_delete(
+    group: &KeyGroup<'_>,
+    known: &KnownRefs,
+    baselines: &Baselines,
+) -> Result<Operation, ReducerError> {
     if group.entity != EntityKind::Relations {
         return Err(ReducerError::UnsupportedDeletion {
             entity: group.entity.as_str(),
@@ -575,17 +598,35 @@ fn reduce_delete(group: &KeyGroup<'_>) -> Result<Operation, ReducerError> {
     });
     if origin != Some("model") {
         // Observed-remove covers MODEL edges only; user/system deletions
-        // must never be tombstoned by model results.
+        // must never be tombstoned by model results. This policy check stays
+        // before provenance resolution so new provenance logic can never
+        // bypass it.
         return Err(ReducerError::NonModelEdgeDeletion);
     }
-    let observed_create = match before.get("id") {
-        Some(FieldValue::Text(_)) => {
+    if !matches!(before.get("id"), Some(FieldValue::Text(_))) {
+        return Err(ReducerError::UnsupportedDeletion {
+            entity: "relations",
+        });
+    }
+    // Record-level provenance (FIX-02 separation): a known journal creation
+    // event wins only when no legacy baseline claims the same record; both
+    // or neither is a typed failure, never a silent legacy grant and never
+    // a manufactured reference.
+    let id = (group.entity, group.key.clone());
+    let observed_create = match (known.get(&id), baselines.contains(&id)) {
+        (Some(creation), false) => ObservedCreate::Event(creation.clone()),
+        (None, true) => {
             let digest = facet_state_hash(EntityKind::Relations, "record", &group.key, &before)?;
             ObservedCreate::LegacyHash(hash_hex(&digest))
         }
-        _ => {
-            return Err(ReducerError::UnsupportedDeletion {
-                entity: "relations",
+        (None, false) => {
+            return Err(ReducerError::MissingCreationProvenance {
+                entity: group.entity.as_str(),
+            });
+        }
+        (Some(_), true) => {
+            return Err(ReducerError::ContradictoryProvenance {
+                entity: group.entity.as_str(),
             });
         }
     };
