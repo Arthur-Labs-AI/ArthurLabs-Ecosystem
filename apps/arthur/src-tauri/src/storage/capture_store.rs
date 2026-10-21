@@ -4,6 +4,7 @@
 //! Cognitive Store; syncing captures to a Home Node is a later milestone.
 
 use std::fmt;
+#[cfg(test)]
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -14,6 +15,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::migrations::{migrate, INBOX_PROJECT_ID};
+use super::ownership::DataRootOwnership;
 #[cfg(test)]
 use super::migrations::SCHEMA_VERSION;
 
@@ -86,18 +88,27 @@ impl From<rusqlite::Error> for StoreError {
 
 pub struct CaptureStore {
     pub(super) connection: Mutex<Connection>,
+    // Fields drop in declaration order: close the connection before releasing its root lock.
+    _ownership: Option<DataRootOwnership>,
 }
 
 impl CaptureStore {
-    /// Opens (creating if needed) the database at `path` and brings its schema
-    /// up to date. Safe to call on every launch.
+    /// Production disk access consumes the non-cloneable root ownership capability.
+    /// The runtime factory is the sole caller; workers acquire that runtime, never a second store.
+    pub(crate) fn open_owned(ownership: DataRootOwnership) -> Result<Self, StoreError> {
+        let connection = Connection::open(ownership.data_root().join("arthur.db"))?;
+        Self::from_connection(connection, Some(ownership))
+    }
+
+    /// Test-only raw opener, including deliberate multi-connection CAS/fault-injection fixtures.
+    #[cfg(test)]
     pub fn open(path: &Path) -> Result<Self, StoreError> {
-        Self::from_connection(Connection::open(path)?)
+        Self::from_connection(Connection::open(path)?, None)
     }
 
     #[cfg(test)]
     pub fn open_in_memory() -> Result<Self, StoreError> {
-        Self::from_connection(Connection::open_in_memory()?)
+        Self::from_connection(Connection::open_in_memory()?, None)
     }
 
     /// Lets other modules' tests inject faults (triggers, corruption) without owning the connection.
@@ -112,13 +123,17 @@ impl CaptureStore {
         self.connection.lock().unwrap().query_row(sql, [], |row| row.get(0)).unwrap()
     }
 
-    fn from_connection(mut connection: Connection) -> Result<Self, StoreError> {
+    fn from_connection(connection: Connection, ownership: Option<DataRootOwnership>) -> Result<Self, StoreError> {
+        // Construct the owner BEFORE any fallible setup, so failures also close SQLite before
+        // releasing the OS lock. The same field drop order applies to a successfully opened store.
+        let mut store = Self { connection: Mutex::new(connection), _ownership: ownership };
+        let connection = store.connection.get_mut().map_err(|_| StoreError::Poisoned)?;
         // A successful insert must be on disk before `create` returns.
         connection.pragma_update(None, "synchronous", "FULL")?;
         // SQLite ignores foreign keys unless asked, per connection.
         connection.pragma_update(None, "foreign_keys", "ON")?;
-        migrate(&mut connection)?;
-        Ok(Self { connection: Mutex::new(connection) })
+        migrate(connection)?;
+        Ok(store)
     }
 
     pub fn create(&self, input: CreateCaptureInput) -> Result<Capture, StoreError> {

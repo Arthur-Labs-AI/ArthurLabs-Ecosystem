@@ -10,7 +10,7 @@ use tauri::{AppHandle, State};
 use crate::commands::integration;
 use crate::evolution_runtime::{ConsentKind, EvolutionRuntime, EvolutionStatus, RuntimeError};
 use crate::graph::integration::ChangedKnowledge;
-use crate::storage::capture_store::CaptureStore;
+use crate::runtime::RuntimeHandle;
 use crate::storage::lineage_store::{ReviseConflict, Revision};
 use crate::storage::proposal_store::{ApprovalInfo, ClaimAction, ProposalView, ReviewAction, ReviewError, ReviewRequest, UnresolvedClaimView};
 
@@ -81,20 +81,20 @@ type Reviewed<T> = Result<T, ReviewFailure>;
 
 /// Proposals, oldest first. `states` omitted: all of them (history included).
 #[tauri::command]
-pub fn list_revision_proposals(store: State<'_, CaptureStore>, project_id: Option<String>, states: Option<Vec<String>>) -> Reviewed<Vec<ProposalView>> {
+pub fn list_revision_proposals(store: State<'_, RuntimeHandle>, project_id: Option<String>, states: Option<Vec<String>>) -> Reviewed<Vec<ProposalView>> {
     let states = states.unwrap_or_default();
     let refs: Vec<&str> = states.iter().map(String::as_str).collect();
     Ok(store.list_revision_proposals(project_id.as_deref(), &refs)?)
 }
 
 #[tauri::command]
-pub fn get_revision_proposal(store: State<'_, CaptureStore>, proposal_id: String) -> Reviewed<ProposalView> {
+pub fn get_revision_proposal(store: State<'_, RuntimeHandle>, proposal_id: String) -> Reviewed<ProposalView> {
     store.get_revision_proposal(&proposal_id)?.ok_or(ReviewFailure(ReviewError::NotFound))
 }
 
 /// Claims waiting for a decision, with or without a suggested text. Nothing is hidden by age or quota.
 #[tauri::command]
-pub fn list_unresolved_claims(store: State<'_, CaptureStore>, project_id: Option<String>) -> Reviewed<Vec<UnresolvedClaimView>> {
+pub fn list_unresolved_claims(store: State<'_, RuntimeHandle>, project_id: Option<String>) -> Reviewed<Vec<UnresolvedClaimView>> {
     Ok(store.list_unresolved_claims(project_id.as_deref())?)
 }
 
@@ -136,7 +136,7 @@ fn action_of(input: &ReviewInput) -> Result<ReviewAction, ReviewError> {
 
 /// One decision, atomically. Graph Integration hears about a change only AFTER the transaction committed.
 #[tauri::command]
-pub fn review_revision_proposal(app: AppHandle, store: State<'_, CaptureStore>, input: ReviewInput) -> Reviewed<ReviewOutcome> {
+pub fn review_revision_proposal(app: AppHandle, store: State<'_, RuntimeHandle>, input: ReviewInput) -> Reviewed<ReviewOutcome> {
     let request = ReviewRequest { proposal_id: input.proposal_id.clone(), action: action_of(&input)?, reviewed_revision_id: input.reviewed_revision_id.clone() };
     let result = store.review_revision_proposal(&request)?;
     if result.applied {
@@ -172,7 +172,7 @@ pub struct ClaimOutcome {
 /// Resolves a claim explicitly. No text is invented and nothing is merged: the person keeps the claim as its own idea, defers it, or
 /// reopens it.
 #[tauri::command]
-pub fn resolve_unresolved_claim(app: AppHandle, store: State<'_, CaptureStore>, input: ResolveClaimInput) -> Reviewed<ClaimOutcome> {
+pub fn resolve_unresolved_claim(app: AppHandle, store: State<'_, RuntimeHandle>, input: ResolveClaimInput) -> Reviewed<ClaimOutcome> {
     let action = match input.action.as_str() {
         "keep_separate" => ClaimAction::KeepSeparate,
         "defer" => ClaimAction::Defer { due_at: input.due_at.clone() },
@@ -194,7 +194,7 @@ pub fn resolve_unresolved_claim(app: AppHandle, store: State<'_, CaptureStore>, 
 
 /// Which revisions of an object a person approved from a suggestion, and whether they changed the words.
 #[tauri::command]
-pub fn list_object_approvals(store: State<'_, CaptureStore>, object_id: String) -> Reviewed<Vec<ApprovalInfo>> {
+pub fn list_object_approvals(store: State<'_, RuntimeHandle>, object_id: String) -> Reviewed<Vec<ApprovalInfo>> {
     Ok(store.approvals_for_object(&object_id)?)
 }
 
@@ -207,7 +207,7 @@ pub struct RestoreFailure {
 /// Undo: a NEW revision that goes back to an earlier text. History is never rewritten; a revision that moved on since the person looked
 /// is refused (`stale`).
 #[tauri::command]
-pub fn restore_revision(app: AppHandle, store: State<'_, CaptureStore>, object_id: String, target_revision_id: String, expected_current_revision_id: String) -> Result<Revision, RestoreFailure> {
+pub fn restore_revision(app: AppHandle, store: State<'_, RuntimeHandle>, object_id: String, target_revision_id: String, expected_current_revision_id: String) -> Result<Revision, RestoreFailure> {
     let revision = store.restore_revision(&object_id, &target_revision_id, &expected_current_revision_id).map_err(|error| match error {
         ReviseConflict::Stale { .. } => RestoreFailure { code: "stale", message: "This idea changed since you opened its history. Open it again.".into() },
         ReviseConflict::ProjectArchived => RestoreFailure { code: "project_archived", message: "Restore the project to change this idea.".into() },

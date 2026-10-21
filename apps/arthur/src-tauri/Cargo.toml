@@ -3,6 +3,7 @@ name = "arthur"
 version = "0.1.0"
 description = "A.R.T.H.U.R. product application (Tauri v2 shell)"
 edition = "2021"
+rust-version = "1.89"
 
 [lib]
 # `_lib` suffix avoids a name clash between the lib and bin targets on Windows.

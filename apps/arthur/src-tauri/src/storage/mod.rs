@@ -1,4 +1,5 @@
 pub mod capture_store;
+pub(crate) mod ownership;
 pub mod knowledge_store;
 pub mod migrations;
 pub mod relation_store;

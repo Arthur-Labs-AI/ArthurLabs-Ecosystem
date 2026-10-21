@@ -2,7 +2,7 @@ use tauri::State;
 
 use crate::graph::integration::IntegrationService;
 use crate::graph::{create_manual_relation, GraphService, RelationError};
-use crate::storage::capture_store::CaptureStore;
+use crate::runtime::RuntimeHandle;
 use crate::storage::knowledge_store::KnowledgeObject;
 use crate::storage::relation_store::{Direction, NewRelation, Relation};
 
@@ -17,12 +17,12 @@ pub struct CreateRelationInput {
 
 /// A user-authored relation (origin `user`). Creating an edge that already exists returns it unchanged.
 #[tauri::command]
-pub fn create_relation(store: State<'_, CaptureStore>, input: CreateRelationInput) -> Result<Relation, RelationError> {
+pub fn create_relation(store: State<'_, RuntimeHandle>, input: CreateRelationInput) -> Result<Relation, RelationError> {
     create_manual_relation(&store, NewRelation { kind: input.kind, source_object_id: input.source_object_id, target_object_id: input.target_object_id })
 }
 
 #[tauri::command]
-pub fn list_relations(store: State<'_, CaptureStore>) -> Result<Vec<Relation>, RelationError> {
+pub fn list_relations(store: State<'_, RuntimeHandle>) -> Result<Vec<Relation>, RelationError> {
     store.list_relations().map_err(|error| RelationError::Storage(error.to_string()))
 }
 
@@ -43,12 +43,12 @@ fn from_query(error: crate::storage::capture_store::StoreError) -> RelationError
 }
 
 #[tauri::command]
-pub fn get_object_relations(store: State<'_, CaptureStore>, object_id: String, direction: Option<String>, kind: Option<String>) -> Result<Vec<Relation>, RelationError> {
+pub fn get_object_relations(store: State<'_, RuntimeHandle>, object_id: String, direction: Option<String>, kind: Option<String>) -> Result<Vec<Relation>, RelationError> {
     store.object_relations(&object_id, parse_filter(direction)?, kind.as_deref()).map_err(from_query)
 }
 
 #[tauri::command]
-pub fn get_object_neighbors(store: State<'_, CaptureStore>, object_id: String, direction: Option<String>, kind: Option<String>) -> Result<Vec<KnowledgeObject>, RelationError> {
+pub fn get_object_neighbors(store: State<'_, RuntimeHandle>, object_id: String, direction: Option<String>, kind: Option<String>) -> Result<Vec<KnowledgeObject>, RelationError> {
     store.object_neighbors(&object_id, parse_filter(direction)?, kind.as_deref()).map_err(from_query)
 }
 
@@ -61,7 +61,7 @@ pub fn get_object_neighbors(store: State<'_, CaptureStore>, object_id: String, d
 pub async fn infer_relations(
     graph: State<'_, GraphService>,
     integration: State<'_, IntegrationService>,
-    store: State<'_, CaptureStore>,
+    store: State<'_, RuntimeHandle>,
     object_ids: Option<Vec<String>>,
     project_id: Option<String>,
 ) -> Result<Vec<Relation>, RelationError> {

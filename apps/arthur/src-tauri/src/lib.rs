@@ -15,6 +15,7 @@ mod lineage;
 mod platform;
 mod providers;
 mod recall;
+mod runtime;
 mod storage;
 mod stt;
 mod tts;
@@ -34,7 +35,7 @@ use distillation::DistillationService;
 use graph::openai::{OpenAiRelationProposer, OpenAiRelationVerifier};
 use graph::integration::{IntegrationService, IntegrationSettings, Ledger};
 use graph::GraphService;
-use storage::capture_store::CaptureStore;
+use runtime::NativeRuntime;
 use providers::ai::AiService;
 use providers::ai_config::AiConfigStore;
 use providers::registry::Capability;
@@ -89,8 +90,9 @@ pub fn run() {
         .setup(|app| {
             // App-private data directory: on Android this is the app's internal storage.
             let data_dir = app.path().app_data_dir()?;
-            std::fs::create_dir_all(&data_dir)?;
-            app.manage(CaptureStore::open(&data_dir.join("arthur.db"))?);
+            let runtime = NativeRuntime::acquire(&data_dir)?;
+            let data_dir = runtime.data_root().to_path_buf();
+            app.manage(runtime);
 
             // Provider credentials live in secure storage (Android Keystore on Android) and are resolved per capability on every
             // request; they never reach the frontend, the database or the settings files.

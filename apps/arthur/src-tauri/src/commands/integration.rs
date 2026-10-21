@@ -11,6 +11,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use crate::graph::integration::{ChangedKnowledge, IntegrationService};
 use crate::recall::evidence::RecallError;
 use crate::recall::RecallService;
+use crate::runtime::RuntimeHandle;
 use crate::storage::capture_store::CaptureStore;
 
 /// Sent to the UI after an integration changed the graph, so an open Connections screen can re-read it.
@@ -61,7 +62,7 @@ pub fn notify_revised(app: &AppHandle, store: &CaptureStore, object_id: &str, pr
 
 async fn run(app: &AppHandle, change: ChangedKnowledge) {
     let service = app.state::<IntegrationService>();
-    let store = app.state::<CaptureStore>();
+    let store = app.state::<RuntimeHandle>();
     let recall = app.state::<RecallService>();
     let report = process(&service, &store, &recall, change).await;
     if report.added > 0 || report.removed > 0 {
