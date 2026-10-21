@@ -2691,6 +2691,20 @@ fn defer_proof(proposal: &str, claim: &str) -> ReviewProof {
     }
 }
 
+fn supersede_proof(proposal: &str, claim: &str) -> ReviewProof {
+    ReviewProof {
+        action: ReviewAction::Supersede,
+        proposal_id: Some(proposal.to_string()),
+        claim_id: Some(claim.to_string()),
+        object_id: None,
+        reviewed_revision_id: None,
+        final_body: None,
+        user_edited: None,
+        result_revision_id: None,
+        method: Some(ReviewMethod::DerivedClaimResolution),
+    }
+}
+
 fn approve_proof(proposal: &str, claim: &str, object: &str) -> ReviewProof {
     ReviewProof {
         action: ReviewAction::Approve,
@@ -2781,7 +2795,7 @@ fn strict_decode_rejects_canonical_null_proof() {
             EntityKind::RevisionProposals,
             proposal_img("p2", "cl2", "o2", "base2", "open"),
             proposal_img("p2", "cl2", "o2", "base2", "superseded"),
-            approve_proof("p2", "cl2", "o2"),
+            supersede_proof("p2", "cl2"),
         ),
     ] {
         let key = match entity {
