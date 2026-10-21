@@ -3189,7 +3189,9 @@ fn claim_with_real_proposal_keeps_both_proofs() {
     let mut claim_after = claim_img("c9", "cap", 0, "deferred", false);
     claim_after.insert("updated_at".to_string(), txt(TS1));
     let prop_before = proposal_img("p9", "c9", "o9", "b9", "open");
-    let prop_after = proposal_img("p9", "c9", "o9", "b9", "deferred");
+    // Real set_proposal_open_or_deferred() writes state AND updated_at.
+    let mut prop_after = proposal_img("p9", "c9", "o9", "b9", "deferred");
+    prop_after.insert("updated_at".to_string(), txt(TS1));
     let effects = vec![
         effect(
             EntityKind::PendingClaims,
@@ -3291,6 +3293,11 @@ fn claim_with_real_proposal_keeps_both_proofs() {
         let proof = update.review_proof.as_ref().expect("proof required");
         assert_eq!(proof.claim_id, Some("c9".to_string()));
         assert_eq!(proof.proposal_id, Some("p9".to_string()));
+        // The actual persisted final timestamp survives on both rows.
+        assert_eq!(
+            update.after.get("updated_at"),
+            Some(&FieldValue::Text(TS1.to_string()))
+        );
     }
 }
 
@@ -3599,4 +3606,69 @@ fn codec_still_rejects_proofless_state_change() {
     let event = sample_event(vec![op], vec![]);
     let bytes = encode_canonical(&event).unwrap();
     assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+}
+
+// FIX-05A test-first: a proposal proof must name the row's actual claim.
+#[test]
+fn proposal_proof_bound_to_actual_claim() {
+    let before = proposal_img("p6", "c6", "o6", "b6", "open");
+    let after = proposal_img("p6", "c6", "o6", "b6", "superseded");
+    let effects = vec![effect(
+        EntityKind::RevisionProposals,
+        vec!["p6".to_string()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::RevisionProposals,
+        vec!["p6".to_string()],
+        after,
+    )]);
+    let mut known: KnownRefs = BTreeMap::new();
+    known.insert(
+        (EntityKind::PendingClaims, vec!["c6".to_string()]),
+        known_ref(),
+    );
+    known.insert(
+        (EntityKind::KnowledgeObjects, vec!["o6".to_string()]),
+        known_ref(),
+    );
+    known.insert(
+        (EntityKind::ThoughtRevisions, vec!["b6".to_string()]),
+        known_ref(),
+    );
+    let priors: FacetPriors = BTreeMap::from([(
+        (
+            EntityKind::RevisionProposals,
+            vec!["p6".to_string()],
+            FacetId::ProposalLifecycle,
+        ),
+        FacetPrior::LegacyBaseline,
+    )]);
+    // Both IDs are valid, but the claim is not the row's actual claim.
+    let mut reviews: ReviewMap = BTreeMap::new();
+    reviews.insert(
+        (EntityKind::RevisionProposals, vec!["p6".to_string()]),
+        ReviewContext {
+            action: ReviewAction::Supersede,
+            proposal_id: Some("p6".to_string()),
+            claim_id: Some("other".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::DerivedClaimResolution),
+        },
+    );
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &claim_baselines("cap"),
+        &reviews,
+        &priors,
+    )
+    .expect_err("mismatched claim must fail");
+    assert!(matches!(err, ReducerError::InvalidReviewContext(_)));
 }

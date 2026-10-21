@@ -276,13 +276,15 @@ impl ReviewContext {
     ///   a proposal took part (`resolve_unresolved_claim` updates it only if
     ///   one exists) and is null for standalone defer/reopen.
     /// - A state-changing `revision_proposals` row needs its real proposal ID
-    ///   (equal to the transitioned key) and the associated claim ID.
+    ///   (equal to the transitioned key) and the associated claim ID, which
+    ///   must equal the row's actual `pending_claim_id`.
     ///
     /// Anything else is a typed failure. No ID is ever invented here.
     fn into_proof_for(
         self,
         entity: EntityKind,
         key: &[String],
+        before: &RowImage,
     ) -> Result<ReviewProof, ReducerError> {
         for id in [
             self.proposal_id.as_ref(),
@@ -329,6 +331,17 @@ impl ReviewContext {
                     return Err(ReducerError::InvalidReviewContext(
                         "proposal transitions require the associated claim id".to_string(),
                     ));
+                }
+                let actual = before.get("pending_claim_id");
+                let matches_row = match (&self.claim_id, actual) {
+                    (Some(claim), Some(FieldValue::Text(row))) => claim == row,
+                    _ => false,
+                };
+                if !matches_row {
+                    return Err(ReducerError::InvalidReviewContext(format!(
+                        "proposal proof claim {:?} does not match row {:?}",
+                        self.claim_id, actual
+                    )));
                 }
             }
             _ => {
@@ -763,7 +776,8 @@ fn reduce_update(
                 entity: group.entity.as_str(),
             })?;
         validate_terminal_closure(group.entity, first_before, final_image, &context)?;
-        probe.review_proof = Some(context.into_proof_for(group.entity, &group.key)?);
+        probe.review_proof =
+            Some(context.into_proof_for(group.entity, &group.key, first_before)?);
     }
     // Codec-level enforcement: unknown facets, immutable drift, missing
     // expected entries all fail here.
