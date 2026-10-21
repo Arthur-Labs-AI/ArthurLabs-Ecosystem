@@ -31,13 +31,29 @@ pub enum ReducerError {
     TooManyEffects(usize),
     TooManyDependencies(usize),
     Codec(super::codec::CodecError),
-    InconsistentEffectChain { entity: &'static str },
-    MissingFinalProjection { entity: &'static str },
-    UnsupportedDeletion { entity: &'static str },
+    InconsistentEffectChain {
+        entity: &'static str,
+    },
+    MissingFinalProjection {
+        entity: &'static str,
+    },
+    UnsupportedDeletion {
+        entity: &'static str,
+    },
     NonModelEdgeDeletion,
-    NetZeroWithIntermediateMutations { entity: &'static str },
-    IncompleteDependencyClosure { entity: &'static str },
-    MissingReviewProof { entity: &'static str },
+    NetZeroWithIntermediateMutations {
+        entity: &'static str,
+    },
+    IncompleteDependencyClosure {
+        entity: &'static str,
+    },
+    MissingFacetPrior {
+        entity: &'static str,
+        facet: &'static str,
+    },
+    MissingReviewProof {
+        entity: &'static str,
+    },
     InvalidReviewContext(String),
     TerminalClosureViolation(String),
     JournalUnsupportedEffectSet(String),
@@ -69,6 +85,10 @@ impl fmt::Display for ReducerError {
             Self::IncompleteDependencyClosure { entity } => {
                 write!(f, "incomplete dependency closure for {entity}")
             }
+            Self::MissingFacetPrior { entity, facet } => write!(
+                f,
+                "missing causal prior for {entity}.{facet}: supply an explicit facet state"
+            ),
             Self::MissingReviewProof { entity } => {
                 write!(f, "state transition of {entity} needs review proof")
             }
@@ -133,10 +153,84 @@ impl FinalStateResolver for MapResolver {
     }
 }
 
-/// Last known causal event per logical key (local journal cursor state).
+/// Last known creation/reference event per logical record. This answers the
+/// record-existence question (same-event, known or explicit baseline) used by
+/// dependency closure. It is NOT the causal writer of a mutable facet.
 pub type KnownRefs = BTreeMap<(EntityKind, Vec<String>), EventRef>;
 /// Explicitly acknowledged legacy-baseline records (null event refs).
 pub type Baselines = BTreeSet<(EntityKind, Vec<String>)>;
+
+/// Closed per-facet identity. Maps onto the `facet` column of the dormant
+/// `sync_entity_heads` table (`record | membership | head | lifecycle`),
+/// qualified by entity so the same SQL facet name on different entities
+/// stays a distinct causal version. Prefer this over raw facet strings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum FacetId {
+    ProjectRecord,
+    ProjectLifecycle,
+    CaptureMembership,
+    ObjectMembership,
+    ObjectHead,
+    ClaimLifecycle,
+    ProposalLifecycle,
+}
+
+impl FacetId {
+    /// Closed mapping from a catalog facet name to its identity.
+    /// Unknown (entity, facet) pairs are rejected: facets are never invented.
+    pub fn of(entity: EntityKind, facet: &str) -> Option<Self> {
+        match (entity, facet) {
+            (EntityKind::Projects, "record") => Some(Self::ProjectRecord),
+            (EntityKind::Projects, "lifecycle") => Some(Self::ProjectLifecycle),
+            (EntityKind::Captures, "membership") => Some(Self::CaptureMembership),
+            (EntityKind::KnowledgeObjects, "membership") => Some(Self::ObjectMembership),
+            (EntityKind::KnowledgeObjects, "head") => Some(Self::ObjectHead),
+            (EntityKind::PendingClaims, "lifecycle") => Some(Self::ClaimLifecycle),
+            (EntityKind::RevisionProposals, "lifecycle") => Some(Self::ProposalLifecycle),
+            _ => None,
+        }
+    }
+
+    /// Owning entity of this facet.
+    pub fn entity(self) -> EntityKind {
+        match self {
+            Self::ProjectRecord | Self::ProjectLifecycle => EntityKind::Projects,
+            Self::CaptureMembership => EntityKind::Captures,
+            Self::ObjectMembership | Self::ObjectHead => EntityKind::KnowledgeObjects,
+            Self::ClaimLifecycle => EntityKind::PendingClaims,
+            Self::ProposalLifecycle => EntityKind::RevisionProposals,
+        }
+    }
+
+    /// SQL `sync_entity_heads.facet` spelling for the future JournalTx
+    /// finalizer, which maintains one head row per (entity, key, facet).
+    pub fn sql_facet(self) -> &'static str {
+        match self {
+            Self::ProjectRecord => "record",
+            Self::ProjectLifecycle => "lifecycle",
+            Self::CaptureMembership => "membership",
+            Self::ObjectMembership => "membership",
+            Self::ObjectHead => "head",
+            Self::ClaimLifecycle => "lifecycle",
+            Self::ProposalLifecycle => "lifecycle",
+        }
+    }
+}
+
+/// Prior causal state of one mutable facet. A committed journal event, or an
+/// explicitly established legacy baseline. There is no implicit third case:
+/// a missing entry is a typed failure, never a silent baseline grant.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FacetPrior {
+    Event(EventRef),
+    LegacyBaseline,
+}
+
+/// Independent prior states keyed by (entity, logical key, facet). The future
+/// JournalTx finalizer derives these from `sync_entity_heads`: one row per
+/// facet, advanced only when that facet is written. A rename must never
+/// advance the lifecycle head, and a project move must never advance head.
+pub type FacetPriors = BTreeMap<(EntityKind, Vec<String>, FacetId), FacetPrior>;
 
 /// Review context for one claim/proposal state transition. The future
 /// `JournalTx` derives this from the owning review call; tests supply it
@@ -205,12 +299,17 @@ struct KeyGroup<'a> {
 /// Ordering of the returned operations is stable: record creates first (in
 /// catalog order), then facet updates, then relation removals; ties break by
 /// entity and logical key. Creation closures validate as a group afterwards.
+///
+/// `priors` carries one independent prior per changed mutable facet. Only
+/// changed facets are looked up; record-level `known`/`baselines` keep
+/// answering the separate existence question for dependency closure.
 pub fn reduce_effects(
     effects: &[ObservedEffect],
     resolver: &dyn FinalStateResolver,
     known: &KnownRefs,
     baselines: &Baselines,
     reviews: &ReviewMap,
+    priors: &FacetPriors,
 ) -> Result<Vec<Operation>, ReducerError> {
     if effects.len() > MAX_EFFECTS {
         return Err(ReducerError::TooManyEffects(effects.len()));
@@ -287,7 +386,13 @@ pub fn reduce_effects(
                         group.entity.as_str()
                     )));
                 }
-                operations.push(reduce_update(group, &before, &final_image, known, reviews)?);
+                operations.push(reduce_update(
+                    group,
+                    &before,
+                    &final_image,
+                    reviews,
+                    priors,
+                )?);
             }
             (None, Some(_), Some(final_image)) => {
                 if saw_delete_boundary {
@@ -495,8 +600,8 @@ fn reduce_update(
     group: &KeyGroup<'_>,
     first_before: &RowImage,
     final_image: &RowImage,
-    known: &KnownRefs,
     reviews: &ReviewMap,
+    priors: &FacetPriors,
 ) -> Result<Operation, ReducerError> {
     if !group.entity.is_facet_mutable() {
         // Immutable catalog rows never update: any observed change is an
@@ -516,11 +621,34 @@ fn reduce_update(
     };
     // Reuse codec transition validation for unknown/immutable drift.
     let mut probe = update;
-    // Build expected states per changed facet first.
+    // Build one expected entry per changed facet from its OWN prior. An
+    // unrelated facet writer is never borrowed: each facet version advances
+    // only when that facet is written. A missing prior is a typed failure,
+    // never a silent legacy grant.
     let changed = changed_facets(group.entity, first_before, final_image);
+    if changed.is_empty() {
+        // No meaningful facet changed (e.g. an isolated accompanying-metadata
+        // bump): leave expected empty and let codec validation report the
+        // immutable drift with its existing typed error.
+    }
     for facet in &changed {
+        let id = FacetId::of(group.entity, facet).ok_or_else(|| {
+            ReducerError::JournalUnsupportedEffectSet(format!(
+                "unknown facet {facet} on {}",
+                group.entity.as_str()
+            ))
+        })?;
+        let prior = priors.get(&(group.entity, group.key.clone(), id)).ok_or(
+            ReducerError::MissingFacetPrior {
+                entity: group.entity.as_str(),
+                facet,
+            },
+        )?;
         let state = ExpectedFacet {
-            event_ref: known.get(&(group.entity, group.key.clone())).cloned(),
+            event_ref: match prior {
+                FacetPrior::Event(event_ref) => Some(event_ref.clone()),
+                FacetPrior::LegacyBaseline => None,
+            },
             before_hash: hash_hex(&facet_state_hash(
                 group.entity,
                 facet,

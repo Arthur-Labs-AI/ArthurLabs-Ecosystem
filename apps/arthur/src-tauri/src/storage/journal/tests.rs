@@ -12,8 +12,8 @@ use super::codec::{
     ReviewProof, RowImage, MAX_CANONICAL_BYTES, OPERATION_VERSION, PROVENANCE_LOCAL_COMMITTED,
 };
 use super::reducer::{
-    assemble_event, dependencies_for, reduce_effects, Baselines, KnownRefs, MapResolver,
-    ObservedEffect, ReducerError, ReviewContext, ReviewMap,
+    assemble_event, dependencies_for, reduce_effects, Baselines, FacetId, FacetPrior, FacetPriors,
+    KnownRefs, MapResolver, ObservedEffect, ReducerError, ReviewContext, ReviewMap,
 };
 
 // ---------------------------------------------------------------------------
@@ -537,12 +537,26 @@ fn ordering_is_stable() {
             capture_img(&cap, INBOX, "x"),
         ),
     ]);
-    let forward =
-        reduce_effects(&effects, &resolver, &known, &baselines, &BTreeMap::new()).unwrap();
+    let forward = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &baselines,
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+    .unwrap();
     let mut backward = effects;
     backward.reverse();
-    let reversed_ops =
-        reduce_effects(&backward, &resolver, &known, &baselines, &BTreeMap::new()).unwrap();
+    let reversed_ops = reduce_effects(
+        &backward,
+        &resolver,
+        &known,
+        &baselines,
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+    .unwrap();
     assert_eq!(forward, reversed_ops);
     assert!(
         matches!(forward[0], Operation::RecordCreate(ref c) if c.entity == EntityKind::Captures)
@@ -617,6 +631,7 @@ fn capture_insert_reduces_to_one_create() {
         &resolver,
         &BTreeMap::new(),
         &baselines,
+        &BTreeMap::new(),
         &BTreeMap::new(),
     )
     .unwrap();
@@ -705,6 +720,7 @@ fn object_closure_reduces_without_transient_null() {
         &BTreeMap::new(),
         &baselines,
         &BTreeMap::new(),
+        &BTreeMap::new(),
     )
     .unwrap();
     assert_eq!(ops.len(), 3);
@@ -774,6 +790,7 @@ fn branch_revision_without_head_is_still_an_event() {
         &known,
         &BTreeSet::new(),
         &BTreeMap::new(),
+        &BTreeMap::new(),
     )
     .unwrap();
     assert_eq!(ops.len(), 2);
@@ -822,6 +839,7 @@ fn model_edge_removal_keeps_observed_create() {
         &BTreeMap::new(),
         &baselines,
         &BTreeMap::new(),
+        &BTreeMap::new(),
     )
     .unwrap();
     assert_eq!(ops.len(), 2);
@@ -858,6 +876,7 @@ fn model_edge_removal_keeps_observed_create() {
         &resolver,
         &BTreeMap::new(),
         &baselines,
+        &BTreeMap::new(),
         &BTreeMap::new(),
     )
     .expect_err("user edge deletion must fail");
@@ -901,7 +920,24 @@ fn proposal_supersession_uses_final_state() {
         (EntityKind::RevisionProposals, vec!["p".to_string()]),
         review_ctx(ReviewAction::Supersede, "p", "cl"),
     );
-    let ops = reduce_effects(&effects, &resolver, &known, &BTreeSet::new(), &reviews).unwrap();
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::RevisionProposals,
+            vec!["p".to_string()],
+            FacetId::ProposalLifecycle,
+        ),
+        FacetPrior::Event(known_ref()),
+    );
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &BTreeSet::new(),
+        &reviews,
+        &priors,
+    )
+    .unwrap();
     assert_eq!(ops.len(), 1);
     let Operation::FacetUpdate(update) = &ops[0] else {
         panic!("expected update")
@@ -912,13 +948,17 @@ fn proposal_supersession_uses_final_state() {
     );
     let proof = update.review_proof.as_ref().expect("review proof required");
     assert_eq!(proof.action, ReviewAction::Supersede);
+    assert!(update.expected.contains_key("lifecycle"));
+    assert_eq!(update.expected["lifecycle"].event_ref, Some(known_ref()));
     // Missing review context fails instead of emitting an unattested event.
+    // Priors are present here so the failure is genuinely about review proof.
     let err = reduce_effects(
         &effects,
         &resolver,
         &known,
         &BTreeSet::new(),
         &BTreeMap::new(),
+        &priors,
     )
     .expect_err("review proof is required");
     assert_eq!(
@@ -968,13 +1008,32 @@ fn timestamp_only_claim_update_is_kept() {
             method: Some(ReviewMethod::User),
         },
     );
+    // The pre-journal claim contributes an explicit legacy baseline facet.
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::PendingClaims,
+            vec!["cl".to_string()],
+            FacetId::ClaimLifecycle,
+        ),
+        FacetPrior::LegacyBaseline,
+    );
     // Effects carry no applied flag at all: actual row difference decides.
-    let ops = reduce_effects(&effects, &resolver, &BTreeMap::new(), &baselines, &reviews).unwrap();
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &baselines,
+        &reviews,
+        &priors,
+    )
+    .unwrap();
     assert_eq!(ops.len(), 1);
     let Operation::FacetUpdate(update) = &ops[0] else {
         panic!("expected update")
     };
     assert!(update.expected.contains_key("lifecycle"));
+    assert_eq!(update.expected["lifecycle"].event_ref, None);
 }
 
 // ---------------------------------------------------------------------------
@@ -996,6 +1055,7 @@ fn genuine_noop_produces_no_operations() {
         &resolver,
         &BTreeMap::new(),
         &BTreeSet::new(),
+        &BTreeMap::new(),
         &BTreeMap::new(),
     )
     .unwrap();
@@ -1027,6 +1087,7 @@ fn unsupported_effect_sets_fail() {
         &BTreeMap::new(),
         &BTreeSet::new(),
         &BTreeMap::new(),
+        &BTreeMap::new(),
     )
     .expect_err("capture deletion must fail");
     assert_eq!(
@@ -1054,6 +1115,7 @@ fn unsupported_effect_sets_fail() {
         &resolver,
         &BTreeMap::new(),
         &BTreeSet::new(),
+        &BTreeMap::new(),
         &BTreeMap::new(),
     )
     .expect_err("net-zero insert+delete must fail");
@@ -1083,6 +1145,7 @@ fn missing_projections_and_closures_fail() {
         &BTreeMap::new(),
         &BTreeSet::new(),
         &BTreeMap::new(),
+        &BTreeMap::new(),
     )
     .expect_err("missing projection must fail");
     assert_eq!(
@@ -1111,6 +1174,7 @@ fn missing_projections_and_closures_fail() {
         &resolver,
         &known,
         &BTreeSet::new(),
+        &BTreeMap::new(),
         &BTreeMap::new(),
     )
     .expect_err("open closure must fail");
@@ -1303,6 +1367,7 @@ fn large_domain_fixture_regresses_cleanly() {
         &BTreeMap::new(),
         &baselines,
         &BTreeMap::new(),
+        &BTreeMap::new(),
     )
     .unwrap();
     // 1 capture + 1 run + 12 x (object, revision, source, decision).
@@ -1413,6 +1478,15 @@ fn project_rename_keeps_accompanying_timestamp() {
     let id = uid(50);
     let before = project_row(&id, "Work", TS0, TS0, None);
     let after = project_row(&id, "Todo", TS0, TS1, None);
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectRecord,
+        ),
+        FacetPrior::Event(known_ref()),
+    );
     let effects = vec![effect(
         EntityKind::Projects,
         vec![id.clone()],
@@ -1430,6 +1504,7 @@ fn project_rename_keeps_accompanying_timestamp() {
         &BTreeMap::new(),
         &BTreeSet::new(),
         &BTreeMap::new(),
+        &priors,
     )
     .unwrap();
     assert_eq!(ops.len(), 1);
@@ -1438,6 +1513,7 @@ fn project_rename_keeps_accompanying_timestamp() {
     };
     assert!(update.expected.contains_key("record"));
     assert!(!update.expected.contains_key("lifecycle"));
+    assert_eq!(update.expected["record"].event_ref, Some(known_ref()));
     assert_eq!(
         update.after.get("updated_at"),
         Some(&FieldValue::Text(TS1.to_string()))
@@ -1454,6 +1530,15 @@ fn project_archive_keeps_accompanying_timestamp() {
     let id = uid(51);
     let before = project_row(&id, "Work", TS0, TS0, None);
     let after = project_row(&id, "Work", TS0, TS1, Some(TS1));
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectLifecycle,
+        ),
+        FacetPrior::Event(known_ref_b()),
+    );
     let effects = vec![effect(
         EntityKind::Projects,
         vec![id.clone()],
@@ -1471,6 +1556,7 @@ fn project_archive_keeps_accompanying_timestamp() {
         &BTreeMap::new(),
         &BTreeSet::new(),
         &BTreeMap::new(),
+        &priors,
     )
     .unwrap();
     assert_eq!(ops.len(), 1);
@@ -1479,6 +1565,7 @@ fn project_archive_keeps_accompanying_timestamp() {
     };
     assert!(update.expected.contains_key("lifecycle"));
     assert!(!update.expected.contains_key("record"));
+    assert_eq!(update.expected["lifecycle"].event_ref, Some(known_ref_b()));
     assert_eq!(
         update.after.get("archived_at"),
         Some(&FieldValue::Text(TS1.to_string()))
@@ -1495,6 +1582,15 @@ fn project_restore_needs_no_clock_ordering() {
     let id = uid(52);
     let before = project_row(&id, "Work", TS0, TS1, Some(TS1));
     let after = project_row(&id, "Work", TS0, TS_EARLIER, None);
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectLifecycle,
+        ),
+        FacetPrior::Event(known_ref_b()),
+    );
     let effects = vec![effect(
         EntityKind::Projects,
         vec![id.clone()],
@@ -1512,6 +1608,7 @@ fn project_restore_needs_no_clock_ordering() {
         &BTreeMap::new(),
         &BTreeSet::new(),
         &BTreeMap::new(),
+        &priors,
     )
     .unwrap();
     assert_eq!(ops.len(), 1);
@@ -1520,6 +1617,7 @@ fn project_restore_needs_no_clock_ordering() {
     };
     assert!(update.expected.contains_key("lifecycle"));
     assert!(!update.expected.contains_key("record"));
+    assert_eq!(update.expected["lifecycle"].event_ref, Some(known_ref_b()));
     assert_eq!(update.after.get("archived_at"), Some(&FieldValue::Null));
 }
 
@@ -1545,12 +1643,30 @@ fn project_combined_transition_keeps_final_state() {
         ),
     ];
     let resolver = resolver_with(vec![(EntityKind::Projects, vec![id.clone()], last.clone())]);
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectRecord,
+        ),
+        FacetPrior::Event(known_ref()),
+    );
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectLifecycle,
+        ),
+        FacetPrior::Event(known_ref_b()),
+    );
     let ops = reduce_effects(
         &effects,
         &resolver,
         &BTreeMap::new(),
         &BTreeSet::new(),
         &BTreeMap::new(),
+        &priors,
     )
     .unwrap();
     assert_eq!(ops.len(), 1);
@@ -1559,6 +1675,13 @@ fn project_combined_transition_keeps_final_state() {
     };
     assert!(update.expected.contains_key("record"));
     assert!(update.expected.contains_key("lifecycle"));
+    assert_eq!(
+        update.expected.len(),
+        2,
+        "updated_at creates no third facet"
+    );
+    assert_eq!(update.expected["record"].event_ref, Some(known_ref()));
+    assert_eq!(update.expected["lifecycle"].event_ref, Some(known_ref_b()));
     assert_eq!(
         update.after.get("name"),
         Some(&FieldValue::Text("Todo".to_string()))
@@ -1594,6 +1717,7 @@ fn project_immutable_fields_still_fail() {
         &BTreeMap::new(),
         &BTreeSet::new(),
         &BTreeMap::new(),
+        &BTreeMap::new(),
     )
     .expect_err("created_at must fail");
     assert!(matches!(
@@ -1620,6 +1744,7 @@ fn project_timestamp_only_update_is_rejected() {
         &resolver,
         &BTreeMap::new(),
         &BTreeSet::new(),
+        &BTreeMap::new(),
         &BTreeMap::new(),
     )
     .expect_err("timestamp-only must fail");
@@ -1685,12 +1810,23 @@ fn real_project_store_rename_reduces() {
         vec![created.id.clone()],
         after,
     )]);
+    // The store row predates the journal: explicit legacy baseline facet.
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![created.id.clone()],
+            FacetId::ProjectRecord,
+        ),
+        FacetPrior::LegacyBaseline,
+    );
     let ops = reduce_effects(
         &effects,
         &resolver,
         &BTreeMap::new(),
         &BTreeSet::new(),
         &BTreeMap::new(),
+        &priors,
     )
     .unwrap();
     assert_eq!(ops.len(), 1);
@@ -1698,4 +1834,498 @@ fn real_project_store_rename_reduces() {
         panic!("expected update")
     };
     assert!(update.expected.contains_key("record"));
+}
+
+// ---------------------------------------------------------------------------
+// FIX-02 test-first: entity-level refs cannot express per-facet writers
+// ---------------------------------------------------------------------------
+
+fn prev_b_hash() -> String {
+    ["cd"; 32].concat()
+}
+
+fn known_ref_b() -> EventRef {
+    EventRef {
+        origin_id: ORIGIN.to_string(),
+        incarnation: INCARNATION.to_string(),
+        seq: "9".to_string(),
+        event_id: "99999999-9999-4999-8999-999999999999".to_string(),
+        hash: prev_b_hash(),
+    }
+}
+
+// Test A: a rename must reference the record writer, not the lifecycle one.
+#[test]
+fn facet_project_record_uses_record_writer() {
+    let id = uid(70);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Todo", TS0, TS1, None);
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(EntityKind::Projects, vec![id.clone()], after)]);
+    let known: KnownRefs = BTreeMap::new();
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectRecord,
+        ),
+        FacetPrior::Event(known_ref()),
+    );
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectLifecycle,
+        ),
+        FacetPrior::Event(known_ref_b()),
+    );
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+        &priors,
+    )
+    .unwrap();
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert_eq!(update.expected["record"].event_ref, Some(known_ref()));
+    assert!(!update.expected.contains_key("lifecycle"));
+}
+
+// Test B: an archive after a rename must keep the lifecycle writer.
+#[test]
+fn facet_project_archive_keeps_lifecycle_writer() {
+    let id = uid(71);
+    let before = project_row(&id, "Todo", TS0, TS1, None);
+    let after = project_row(&id, "Todo", TS0, TS2, Some(TS2));
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(EntityKind::Projects, vec![id.clone()], after)]);
+    let known: KnownRefs = BTreeMap::new();
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectRecord,
+        ),
+        FacetPrior::Event(known_ref()),
+    );
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectLifecycle,
+        ),
+        FacetPrior::Event(known_ref_b()),
+    );
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+        &priors,
+    )
+    .unwrap();
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert_eq!(update.expected["lifecycle"].event_ref, Some(known_ref_b()));
+    assert!(!update.expected.contains_key("record"));
+}
+
+// Test C: a combined transition needs two independent expected entries.
+#[test]
+fn facet_project_combined_uses_both_writers() {
+    let id = uid(72);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Todo", TS0, TS1, Some(TS1));
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(EntityKind::Projects, vec![id.clone()], after)]);
+    let known: KnownRefs = BTreeMap::new();
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectRecord,
+        ),
+        FacetPrior::Event(known_ref()),
+    );
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectLifecycle,
+        ),
+        FacetPrior::Event(known_ref_b()),
+    );
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+        &priors,
+    )
+    .unwrap();
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert_eq!(update.expected["record"].event_ref, Some(known_ref()));
+    assert_eq!(update.expected["lifecycle"].event_ref, Some(known_ref_b()));
+    assert_eq!(update.expected.len(), 2);
+}
+
+// Test D1: moving an object references the membership writer only.
+#[test]
+fn facet_object_membership_uses_membership_writer() {
+    let obj = uid(73);
+    let rev = uid(74);
+    let dest = uid(75);
+    let before = object_img(&obj, INBOX, Some(&rev));
+    let mut after = before.clone();
+    after.insert("project_id".to_string(), txt(&dest));
+    let effects = vec![effect(
+        EntityKind::KnowledgeObjects,
+        vec![obj.clone()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::KnowledgeObjects,
+        vec![obj.clone()],
+        after,
+    )]);
+    let mut known: KnownRefs = BTreeMap::new();
+    known.insert(
+        (EntityKind::ThoughtRevisions, vec![rev.clone()]),
+        known_ref(),
+    );
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::KnowledgeObjects,
+            vec![obj.clone()],
+            FacetId::ObjectMembership,
+        ),
+        FacetPrior::Event(known_ref_b()),
+    );
+    priors.insert(
+        (
+            EntityKind::KnowledgeObjects,
+            vec![obj.clone()],
+            FacetId::ObjectHead,
+        ),
+        FacetPrior::Event(known_ref()),
+    );
+    let mut baselines: Baselines = BTreeSet::new();
+    baselines.insert((EntityKind::Projects, vec![INBOX.to_string()]));
+    baselines.insert((EntityKind::Projects, vec![dest.clone()]));
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &baselines,
+        &BTreeMap::new(),
+        &priors,
+    )
+    .unwrap();
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert!(update.expected.contains_key("membership"));
+    assert!(!update.expected.contains_key("head"));
+    assert_eq!(update.expected["membership"].event_ref, Some(known_ref_b()));
+}
+
+// Test D2: advancing the head references the head writer only.
+#[test]
+fn facet_object_head_uses_head_writer() {
+    let obj = uid(76);
+    let rev1 = uid(77);
+    let rev2 = uid(78);
+    let mut before = object_img(&obj, INBOX, Some(&rev1));
+    before.insert("title".to_string(), txt("old"));
+    let mut after = object_img(&obj, INBOX, Some(&rev2));
+    after.insert("title".to_string(), txt("new"));
+    let effects = vec![effect(
+        EntityKind::KnowledgeObjects,
+        vec![obj.clone()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::KnowledgeObjects,
+        vec![obj.clone()],
+        after,
+    )]);
+    let mut known: KnownRefs = BTreeMap::new();
+    known.insert(
+        (EntityKind::ThoughtRevisions, vec![rev2.clone()]),
+        known_ref(),
+    );
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::KnowledgeObjects,
+            vec![obj.clone()],
+            FacetId::ObjectMembership,
+        ),
+        FacetPrior::Event(known_ref_b()),
+    );
+    priors.insert(
+        (
+            EntityKind::KnowledgeObjects,
+            vec![obj.clone()],
+            FacetId::ObjectHead,
+        ),
+        FacetPrior::Event(known_ref()),
+    );
+    let mut baselines: Baselines = BTreeSet::new();
+    baselines.insert((EntityKind::Projects, vec![INBOX.to_string()]));
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &baselines,
+        &BTreeMap::new(),
+        &priors,
+    )
+    .unwrap();
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert!(update.expected.contains_key("head"));
+    assert!(!update.expected.contains_key("membership"));
+    assert_eq!(update.expected["head"].event_ref, Some(known_ref()));
+}
+
+// Test E: an explicit legacy facet encodes a null ref with the right hash.
+#[test]
+fn facet_explicit_legacy_baseline_encodes() {
+    let id = uid(79);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Todo", TS0, TS1, None);
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        Some(before.clone()),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::Projects,
+        vec![id.clone()],
+        after.clone(),
+    )]);
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectRecord,
+        ),
+        FacetPrior::LegacyBaseline,
+    );
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+        &priors,
+    )
+    .unwrap();
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert_eq!(update.expected["record"].event_ref, None);
+    assert_eq!(update.expected["record"].before_hash.len(), 64);
+    let event = sample_event(ops, vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+}
+
+// Test F: an unknown prior facet must fail, never silently baseline.
+#[test]
+fn facet_missing_prior_fails() {
+    let id = uid(80);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Todo", TS0, TS1, None);
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(EntityKind::Projects, vec![id.clone()], after)]);
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+    .expect_err("unknown prior must fail");
+    assert_eq!(
+        err,
+        ReducerError::MissingFacetPrior {
+            entity: "projects",
+            facet: "record"
+        }
+    );
+}
+
+// Test G: a journal-created record has no automatic legacy history.
+#[test]
+fn facet_new_record_has_no_automatic_baseline() {
+    let id = uid(81);
+    let image = project_row(&id, "Work", TS0, TS0, None);
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        None,
+        Some(image.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::Projects,
+        vec![id.clone()],
+        image.clone(),
+    )]);
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let renamed = project_row(&id, "Todo", TS0, TS1, None);
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        Some(image),
+        Some(renamed.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::Projects,
+        vec![id.clone()],
+        renamed.clone(),
+    )]);
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+    .expect_err("uninitialized facet must fail");
+    assert_eq!(
+        err,
+        ReducerError::MissingFacetPrior {
+            entity: "projects",
+            facet: "record"
+        }
+    );
+    // The JournalTx initialization policy: every applicable mutable facet
+    // of a new record starts at the creation event. Afterwards the rename
+    // resolves its record writer without touching lifecycle.
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectRecord,
+        ),
+        FacetPrior::Event(known_ref()),
+    );
+    priors.insert(
+        (
+            EntityKind::Projects,
+            vec![id.clone()],
+            FacetId::ProjectLifecycle,
+        ),
+        FacetPrior::Event(known_ref()),
+    );
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+        &priors,
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert_eq!(update.expected["record"].event_ref, Some(known_ref()));
+    assert!(!update.expected.contains_key("lifecycle"));
+}
+
+// Test H: independent expected refs survive a strict round-trip.
+#[test]
+fn facet_independent_refs_round_trip() {
+    let id = uid(82);
+    let v0 = project_row(&id, "Work", TS0, TS0, None);
+    let v1 = project_row(&id, "Todo", TS0, TS1, None);
+    let v2 = project_row(&id, "Todo", TS0, TS2, Some(TS2));
+    let rename = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Projects,
+        key: vec![id.clone()],
+        before: v0.clone(),
+        after: v1.clone(),
+        expected: BTreeMap::from([(
+            "record".to_string(),
+            expected_for(EntityKind::Projects, "record", &[id.clone()], &v0),
+        )]),
+        review_proof: None,
+    });
+    let mut archive_expected = BTreeMap::new();
+    archive_expected.insert(
+        "lifecycle".to_string(),
+        ExpectedFacet {
+            event_ref: Some(known_ref_b()),
+            before_hash: hash_hex(
+                &facet_state_hash(EntityKind::Projects, "lifecycle", &[id.clone()], &v1).unwrap(),
+            ),
+        },
+    );
+    let archive = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Projects,
+        key: vec![id.clone()],
+        before: v1,
+        after: v2,
+        expected: archive_expected,
+        review_proof: None,
+    });
+    let event = sample_event(vec![rename, archive], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
 }
