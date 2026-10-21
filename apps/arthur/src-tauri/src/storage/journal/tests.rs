@@ -7,10 +7,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::codec::{
     decode_core_strict, encode_canonical, facet_state_hash, hash_hex, journal_event_hash,
-    validate_decimal, validate_key, Dependency, EntityKind, EventRef, ExpectedFacet, FacetUpdate,
-    FieldValue, JournalEvent, ObservedCreate, Operation, RecordCreate, RelationRemove,
-    ReviewAction, ReviewMethod, ReviewProof, RowImage, MAX_CANONICAL_BYTES, OPERATION_VERSION,
-    PROVENANCE_LOCAL_COMMITTED,
+    validate_decimal, validate_event, validate_facet_update_shape, validate_key, Dependency,
+    EntityKind, EventRef, ExpectedFacet, FacetUpdate, FieldValue, JournalEvent, ObservedCreate,
+    Operation, RecordCreate, RelationRemove, ReviewAction, ReviewMethod, ReviewProof, RowImage,
+    MAX_CANONICAL_BYTES, OPERATION_VERSION, PROVENANCE_LOCAL_COMMITTED,
 };
 use super::reducer::{
     assemble_event, dependencies_for, reduce_effects, Baselines, FacetId, FacetPrior, FacetPriors,
@@ -2671,4 +2671,309 @@ fn relation_removal_round_trips() {
     let decoded = decode_core_strict(&bytes).unwrap();
     assert_eq!(decoded, event);
     assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
+}
+
+// ---------------------------------------------------------------------------
+// FIX-04 test-first: state transitions require operation-local reviewProof
+// ---------------------------------------------------------------------------
+
+fn defer_proof(proposal: &str, claim: &str) -> ReviewProof {
+    ReviewProof {
+        action: ReviewAction::Defer,
+        proposal_id: Some(proposal.to_string()),
+        claim_id: Some(claim.to_string()),
+        object_id: None,
+        reviewed_revision_id: None,
+        final_body: None,
+        user_edited: None,
+        result_revision_id: None,
+        method: Some(ReviewMethod::User),
+    }
+}
+
+fn approve_proof(proposal: &str, claim: &str, object: &str) -> ReviewProof {
+    ReviewProof {
+        action: ReviewAction::Approve,
+        proposal_id: Some(proposal.to_string()),
+        claim_id: Some(claim.to_string()),
+        object_id: Some(object.to_string()),
+        reviewed_revision_id: Some("r2".to_string()),
+        final_body: Some("final".to_string()),
+        user_edited: Some(false),
+        result_revision_id: Some("rr".to_string()),
+        method: Some(ReviewMethod::User),
+    }
+}
+
+// Test A: a claim state change without proof is rejected.
+#[test]
+fn claim_transition_without_proof_fails() {
+    let before = claim_img("cl", "cap", 0, "open", false);
+    let after = claim_img("cl", "cap", 0, "deferred", false);
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["cl".to_string()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["cl".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: None,
+    });
+    let event = sample_event(vec![op], vec![]);
+    let err = encode_canonical(&event).expect_err("claim state change needs review proof");
+    assert_eq!(
+        err,
+        super::codec::CodecError::MissingReviewProof {
+            entity: "pending_claims"
+        }
+    );
+}
+
+// Test B: a proposal state change without proof is rejected.
+#[test]
+fn proposal_transition_without_proof_fails() {
+    let before = proposal_img("p", "cl", "o", "base", "open");
+    let after = proposal_img("p", "cl", "o", "base", "superseded");
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::RevisionProposals,
+        key: vec!["p".to_string()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::RevisionProposals,
+                "lifecycle",
+                &["p".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: None,
+    });
+    let event = sample_event(vec![op], vec![]);
+    let err = encode_canonical(&event).expect_err("proposal state change needs review proof");
+    assert_eq!(
+        err,
+        super::codec::CodecError::MissingReviewProof {
+            entity: "revision_proposals"
+        }
+    );
+}
+
+// Test C: strict decoding rejects a canonical event with a null proof.
+#[test]
+fn strict_decode_rejects_canonical_null_proof() {
+    for (entity, before, after, proof) in [
+        (
+            EntityKind::PendingClaims,
+            claim_img("c1", "cap", 0, "open", false),
+            claim_img("c1", "cap", 0, "deferred", false),
+            defer_proof("p1", "c1"),
+        ),
+        (
+            EntityKind::RevisionProposals,
+            proposal_img("p2", "cl2", "o2", "base2", "open"),
+            proposal_img("p2", "cl2", "o2", "base2", "superseded"),
+            approve_proof("p2", "cl2", "o2"),
+        ),
+    ] {
+        let key = match entity {
+            EntityKind::PendingClaims => vec!["c1".to_string()],
+            _ => vec!["p2".to_string()],
+        };
+        let op = Operation::FacetUpdate(FacetUpdate {
+            entity,
+            key: key.clone(),
+            before: before.clone(),
+            after: after.clone(),
+            expected: BTreeMap::from([(
+                "lifecycle".to_string(),
+                expected_for(entity, "lifecycle", &key, &before),
+            )]),
+            review_proof: Some(proof),
+        });
+        let event = sample_event(vec![op], vec![]);
+        let bytes = encode_canonical(&event).unwrap();
+        // Surgical tamper: null only the proof, then re-canonicalize in-test
+        // so the input stays syntactically valid and canonical.
+        let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        value["operations"][0]["reviewProof"] = serde_json::Value::Null;
+        let tampered = serde_jcs::to_vec(&value).unwrap();
+        let err = decode_core_strict(&tampered).expect_err("null proof must fail");
+        let want = match entity {
+            EntityKind::PendingClaims => "pending_claims",
+            _ => "revision_proposals",
+        };
+        assert_eq!(
+            err,
+            super::codec::CodecError::MissingReviewProof { entity: want }
+        );
+        // The attested original still round-trips.
+        assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+    }
+}
+
+// Test D: correctly attested transitions keep working end to end.
+#[test]
+fn valid_review_proofs_round_trip() {
+    let claim_before = claim_img("c1", "cap", 0, "open", false);
+    let claim_after = claim_img("c1", "cap", 0, "deferred", false);
+    let claim_op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["c1".to_string()],
+        before: claim_before.clone(),
+        after: claim_after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["c1".to_string()],
+                &claim_before,
+            ),
+        )]),
+        review_proof: Some(defer_proof("p1", "c1")),
+    });
+    let prop_before = proposal_img("p2", "cl2", "o2", "base2", "open");
+    let prop_after = proposal_img("p2", "cl2", "o2", "base2", "approved");
+    let prop_op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::RevisionProposals,
+        key: vec!["p2".to_string()],
+        before: prop_before.clone(),
+        after: prop_after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::RevisionProposals,
+                "lifecycle",
+                &["p2".to_string()],
+                &prop_before,
+            ),
+        )]),
+        review_proof: Some(approve_proof("p2", "cl2", "o2")),
+    });
+    let event = sample_event(vec![claim_op, prop_op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
+}
+
+// Test E: metadata-only lifecycle updates need no fictitious approval.
+#[test]
+fn metadata_only_lifecycle_update_needs_no_proof() {
+    let before = claim_img("c1", "cap", 0, "open", false);
+    let mut after = before.clone();
+    after.insert("updated_at".to_string(), txt(TS1));
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["c1".to_string()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["c1".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: None,
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    assert_eq!(decoded.operations.len(), 1);
+}
+
+// Test F: proof on a non-transition is rejected, not silently kept.
+#[test]
+fn misplaced_review_proof_fails() {
+    // Proof on a project update: wrong entity entirely.
+    let before = project_row(&uid(120), "Work", TS0, TS0, None);
+    let after = project_row(&uid(120), "Todo", TS0, TS1, None);
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Projects,
+        key: vec![uid(120)],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "record".to_string(),
+            expected_for(EntityKind::Projects, "record", &[uid(120)], &before),
+        )]),
+        review_proof: Some(defer_proof("p", "cl")),
+    });
+    encode_canonical(&sample_event(vec![op], vec![])).expect_err("project proof must fail");
+    // Proof on a claim update whose state did not change.
+    let before = claim_img("c2", "cap", 0, "open", false);
+    let mut after = before.clone();
+    after.insert("updated_at".to_string(), txt(TS1));
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["c2".to_string()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["c2".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: Some(defer_proof("p", "c2")),
+    });
+    let err = encode_canonical(&sample_event(vec![op], vec![]))
+        .expect_err("non-transition proof must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("reviewProof".to_string())
+    );
+}
+
+// Test G: shape and event validators share one mandatory-proof rule.
+#[test]
+fn mandatory_proof_validators_agree() {
+    let before = claim_img("c3", "cap", 0, "open", false);
+    let after = claim_img("c3", "cap", 0, "deferred", false);
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["c3".to_string()],
+        before,
+        after,
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["c3".to_string()],
+                &claim_img("c3", "cap", 0, "open", false),
+            ),
+        )]),
+        review_proof: None,
+    });
+    let Operation::FacetUpdate(update) = &op else {
+        panic!("expected update")
+    };
+    let shape_err =
+        validate_facet_update_shape(update).expect_err("shape must reject missing proof");
+    let event_err = validate_event(&sample_event(vec![op], vec![]))
+        .expect_err("event must reject missing proof");
+    assert_eq!(
+        shape_err,
+        super::codec::CodecError::MissingReviewProof {
+            entity: "pending_claims"
+        }
+    );
+    assert_eq!(shape_err, event_err);
 }

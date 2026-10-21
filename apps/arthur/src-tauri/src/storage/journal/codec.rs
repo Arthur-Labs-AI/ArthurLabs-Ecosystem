@@ -80,6 +80,7 @@ pub enum CodecError {
     TooManyDependencies(usize),
     OversizeBundle { bytes: usize, limit: usize },
     ImmutableFieldChanged { field: &'static str },
+    MissingReviewProof { entity: &'static str },
     Serialization(String),
 }
 
@@ -121,6 +122,10 @@ impl fmt::Display for CodecError {
             Self::ImmutableFieldChanged { field } => {
                 write!(f, "immutable field changed in facet update: {field}")
             }
+            Self::MissingReviewProof { entity } => write!(
+                f,
+                "claim/proposal state transition of {entity} needs operation-local review proof"
+            ),
             Self::Serialization(_) => write!(f, "canonical serialization failed"),
         }
     }
@@ -1262,9 +1267,6 @@ fn validate_operation(op: &Operation) -> Result<(), CodecError> {
                 }
                 validate_hash_hex(&state.before_hash)?;
             }
-            if let Some(proof) = &u.review_proof {
-                validate_review_proof(proof, u.entity)?;
-            }
         }
         Operation::RelationRemove(r) => {
             validate_key(EntityKind::Relations, &r.key)?;
@@ -1373,6 +1375,28 @@ fn validate_facet_transition(update: &FacetUpdate) -> Result<(), CodecError> {
             return Err(CodecError::MissingField("expected facet state"));
         }
     }
+    // Mandatory operation-local review provenance (shared by encode, strict
+    // decode and shape validation: one rule, no per-entry-point divergence).
+    // A claim/proposal STATE transition must carry its proof; a metadata-only
+    // update needs none and must not invent one; proof anywhere else is
+    // misplaced. Never fabricate an action, actor or identity here.
+    let is_review_entity = matches!(
+        update.entity,
+        EntityKind::PendingClaims | EntityKind::RevisionProposals
+    );
+    let state_changed = update.before.get("state") != update.after.get("state");
+    match (&update.review_proof, is_review_entity && state_changed) {
+        (None, true) => {
+            return Err(CodecError::MissingReviewProof {
+                entity: update.entity.as_str(),
+            });
+        }
+        (Some(_), false) => {
+            return Err(CodecError::UnexpectedField("reviewProof".to_string()));
+        }
+        (Some(proof), true) => validate_review_proof(proof, update.entity)?,
+        (None, false) => {}
+    }
     Ok(())
 }
 
@@ -1409,9 +1433,6 @@ pub fn validate_facet_update_shape(update: &FacetUpdate) -> Result<(), CodecErro
             r.validate()?;
         }
         validate_hash_hex(&state.before_hash)?;
-    }
-    if let Some(proof) = &update.review_proof {
-        validate_review_proof(proof, update.entity)?;
     }
     Ok(())
 }
