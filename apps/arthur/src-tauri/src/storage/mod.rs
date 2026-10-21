@@ -20,3 +20,5 @@ mod identity_store_tests;
 mod proposal_store_tests;
 #[cfg(test)]
 mod evidence_store_tests;
+#[cfg(test)]
+mod m05_v10_tests;
