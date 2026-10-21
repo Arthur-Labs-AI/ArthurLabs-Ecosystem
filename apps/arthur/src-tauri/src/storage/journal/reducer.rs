@@ -268,7 +268,22 @@ pub struct ReviewContext {
 }
 
 impl ReviewContext {
-    fn into_proof(self) -> Result<ReviewProof, ReducerError> {
+    /// Build the operation-local proof for the transitioned record. Identity
+    /// requirements are entity-aware, matching the real domain writers:
+    ///
+    /// - A state-changing `pending_claims` row needs its real claim ID, which
+    ///   must equal the transitioned key. The proposal ID stays explicit when
+    ///   a proposal took part (`resolve_unresolved_claim` updates it only if
+    ///   one exists) and is null for standalone defer/reopen.
+    /// - A state-changing `revision_proposals` row needs its real proposal ID
+    ///   (equal to the transitioned key) and the associated claim ID.
+    ///
+    /// Anything else is a typed failure. No ID is ever invented here.
+    fn into_proof_for(
+        self,
+        entity: EntityKind,
+        key: &[String],
+    ) -> Result<ReviewProof, ReducerError> {
         for id in [
             self.proposal_id.as_ref(),
             self.claim_id.as_ref(),
@@ -281,10 +296,46 @@ impl ReviewContext {
         {
             validate_id_field(id).map_err(ReducerError::Codec)?;
         }
-        if self.proposal_id.is_none() || self.claim_id.is_none() {
-            return Err(ReducerError::InvalidReviewContext(
-                "proposal and claim ids are required".to_string(),
-            ));
+        let row_id = key.first().cloned().unwrap_or_default();
+        match entity {
+            EntityKind::PendingClaims => match &self.claim_id {
+                None => {
+                    return Err(ReducerError::InvalidReviewContext(
+                        "claim transitions require the real claim id".to_string(),
+                    ));
+                }
+                Some(claim) if claim != &row_id => {
+                    return Err(ReducerError::InvalidReviewContext(format!(
+                        "claim id {claim} does not identify the transitioned row {row_id}"
+                    )));
+                }
+                _ => {}
+            },
+            EntityKind::RevisionProposals => {
+                match &self.proposal_id {
+                    None => {
+                        return Err(ReducerError::InvalidReviewContext(
+                            "proposal transitions require the real proposal id".to_string(),
+                        ));
+                    }
+                    Some(proposal) if proposal != &row_id => {
+                        return Err(ReducerError::InvalidReviewContext(format!(
+                            "proposal id {proposal} does not identify the transitioned row {row_id}"
+                        )));
+                    }
+                    _ => {}
+                }
+                if self.claim_id.is_none() {
+                    return Err(ReducerError::InvalidReviewContext(
+                        "proposal transitions require the associated claim id".to_string(),
+                    ));
+                }
+            }
+            _ => {
+                return Err(ReducerError::InvalidReviewContext(
+                    "review context applies only to claim/proposal transitions".to_string(),
+                ));
+            }
         }
         Ok(ReviewProof {
             action: self.action,
@@ -712,7 +763,7 @@ fn reduce_update(
                 entity: group.entity.as_str(),
             })?;
         validate_terminal_closure(group.entity, first_before, final_image, &context)?;
-        probe.review_proof = Some(context.into_proof()?);
+        probe.review_proof = Some(context.into_proof_for(group.entity, &group.key)?);
     }
     // Codec-level enforcement: unknown facets, immutable drift, missing
     // expected entries all fail here.

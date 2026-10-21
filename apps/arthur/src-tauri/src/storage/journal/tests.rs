@@ -1000,12 +1000,13 @@ fn timestamp_only_claim_update_is_kept() {
     )]);
     let mut baselines: Baselines = BTreeSet::new();
     baselines.insert((EntityKind::Captures, vec!["cap".to_string()]));
+    // Standalone defer: no proposal exists, so none is invented.
     let mut reviews: ReviewMap = BTreeMap::new();
     reviews.insert(
         (EntityKind::PendingClaims, vec!["cl".to_string()]),
         ReviewContext {
             action: ReviewAction::Defer,
-            proposal_id: Some("p".to_string()),
+            proposal_id: None,
             claim_id: Some("cl".to_string()),
             object_id: None,
             reviewed_revision_id: None,
@@ -2990,4 +2991,612 @@ fn mandatory_proof_validators_agree() {
         }
     );
     assert_eq!(shape_err, event_err);
+}
+
+// ---------------------------------------------------------------------------
+// FIX-05 test-first: standalone claim defer/reopen without fabricated IDs
+// ---------------------------------------------------------------------------
+
+fn standalone_defer_ctx(claim: &str) -> ReviewContext {
+    ReviewContext {
+        action: ReviewAction::Defer,
+        proposal_id: None,
+        claim_id: Some(claim.to_string()),
+        object_id: None,
+        reviewed_revision_id: None,
+        final_body: None,
+        user_edited: None,
+        result_revision_id: None,
+        method: Some(ReviewMethod::User),
+    }
+}
+
+fn standalone_reopen_ctx(claim: &str) -> ReviewContext {
+    ReviewContext {
+        action: ReviewAction::Reopen,
+        proposal_id: None,
+        claim_id: Some(claim.to_string()),
+        object_id: None,
+        reviewed_revision_id: None,
+        final_body: None,
+        user_edited: None,
+        result_revision_id: None,
+        method: Some(ReviewMethod::User),
+    }
+}
+
+fn claim_priors(claim: &str, prior: FacetPrior) -> FacetPriors {
+    BTreeMap::from([(
+        (
+            EntityKind::PendingClaims,
+            vec![claim.to_string()],
+            FacetId::ClaimLifecycle,
+        ),
+        prior,
+    )])
+}
+
+fn claim_baselines(capture: &str) -> Baselines {
+    BTreeSet::from([(EntityKind::Captures, vec![capture.to_string()])])
+}
+
+// Test A: standalone defer without a proposal reduces with a null proposalId.
+#[test]
+fn standalone_claim_defer_needs_no_proposal() {
+    let before = claim_img("c1", "cap", 0, "open", false);
+    let mut after = claim_img("c1", "cap", 0, "deferred", false);
+    after.insert("updated_at".to_string(), txt(TS1));
+    let effects = vec![effect(
+        EntityKind::PendingClaims,
+        vec!["c1".to_string()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::PendingClaims,
+        vec!["c1".to_string()],
+        after.clone(),
+    )]);
+    let mut reviews: ReviewMap = BTreeMap::new();
+    reviews.insert(
+        (EntityKind::PendingClaims, vec!["c1".to_string()]),
+        standalone_defer_ctx("c1"),
+    );
+    let priors = claim_priors("c1", FacetPrior::LegacyBaseline);
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &claim_baselines("cap"),
+        &reviews,
+        &priors,
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    let proof = update.review_proof.as_ref().expect("proof required");
+    assert_eq!(proof.action, ReviewAction::Defer);
+    assert_eq!(proof.proposal_id, None);
+    assert_eq!(proof.claim_id, Some("c1".to_string()));
+    assert_eq!(proof.method, Some(ReviewMethod::User));
+}
+
+// Test B: standalone reopen without a proposal keeps real v9 columns.
+#[test]
+fn standalone_claim_reopen_needs_no_proposal() {
+    let mut before = claim_img("c2", "cap", 0, "deferred", false);
+    before.insert("updated_at".to_string(), txt(TS1));
+    // Real reopen preserves deferred_at and due_at; only state moves.
+    let mut after = claim_img("c2", "cap", 0, "open", false);
+    after.insert("deferred_at".to_string(), txt(TS1));
+    after.insert("updated_at".to_string(), txt(TS2));
+    let effects = vec![effect(
+        EntityKind::PendingClaims,
+        vec!["c2".to_string()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::PendingClaims,
+        vec!["c2".to_string()],
+        after.clone(),
+    )]);
+    let mut reviews: ReviewMap = BTreeMap::new();
+    reviews.insert(
+        (EntityKind::PendingClaims, vec!["c2".to_string()]),
+        standalone_reopen_ctx("c2"),
+    );
+    let priors = claim_priors("c2", FacetPrior::LegacyBaseline);
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &claim_baselines("cap"),
+        &reviews,
+        &priors,
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    let proof = update.review_proof.as_ref().expect("proof required");
+    assert_eq!(proof.action, ReviewAction::Reopen);
+    assert_eq!(proof.proposal_id, None);
+    assert_eq!(proof.claim_id, Some("c2".to_string()));
+    assert_eq!(
+        update.after.get("deferred_at"),
+        Some(&FieldValue::Text(TS1.to_string()))
+    );
+}
+
+// Test C: standalone defer/reopen round-trip with null proposalId.
+#[test]
+fn standalone_claim_proof_round_trips() {
+    for (id, state, ctx) in [
+        ("c3", "deferred", standalone_defer_ctx("c3")),
+        ("c4", "open", standalone_reopen_ctx("c4")),
+    ] {
+        let (before, after) = if state == "deferred" {
+            let mut after = claim_img("c3", "cap", 0, "deferred", false);
+            after.insert("updated_at".to_string(), txt(TS1));
+            (claim_img("c3", "cap", 0, "open", false), after)
+        } else {
+            let mut before = claim_img("c4", "cap", 0, "deferred", false);
+            before.insert("updated_at".to_string(), txt(TS1));
+            let mut after = claim_img("c4", "cap", 0, "open", false);
+            after.insert("deferred_at".to_string(), txt(TS1));
+            after.insert("updated_at".to_string(), txt(TS2));
+            (before, after)
+        };
+        let effects = vec![effect(
+            EntityKind::PendingClaims,
+            vec![id.to_string()],
+            Some(before),
+            Some(after.clone()),
+        )];
+        let resolver = resolver_with(vec![(
+            EntityKind::PendingClaims,
+            vec![id.to_string()],
+            after.clone(),
+        )]);
+        let mut reviews: ReviewMap = BTreeMap::new();
+        reviews.insert((EntityKind::PendingClaims, vec![id.to_string()]), ctx);
+        let priors = claim_priors(id, FacetPrior::LegacyBaseline);
+        let ops = reduce_effects(
+            &effects,
+            &resolver,
+            &BTreeMap::new(),
+            &claim_baselines("cap"),
+            &reviews,
+            &priors,
+        )
+        .unwrap();
+        let event = sample_event(ops, vec![]);
+        let bytes = encode_canonical(&event).unwrap();
+        let decoded = decode_core_strict(&bytes).unwrap();
+        assert_eq!(decoded, event);
+        assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
+    }
+}
+
+// Test D: a claim with a real proposal keeps both operation-local proofs.
+#[test]
+fn claim_with_real_proposal_keeps_both_proofs() {
+    let claim_before = claim_img("c9", "cap", 0, "open", false);
+    let mut claim_after = claim_img("c9", "cap", 0, "deferred", false);
+    claim_after.insert("updated_at".to_string(), txt(TS1));
+    let prop_before = proposal_img("p9", "c9", "o9", "b9", "open");
+    let prop_after = proposal_img("p9", "c9", "o9", "b9", "deferred");
+    let effects = vec![
+        effect(
+            EntityKind::PendingClaims,
+            vec!["c9".to_string()],
+            Some(claim_before),
+            Some(claim_after.clone()),
+        ),
+        effect(
+            EntityKind::RevisionProposals,
+            vec!["p9".to_string()],
+            Some(prop_before),
+            Some(prop_after.clone()),
+        ),
+    ];
+    let resolver = resolver_with(vec![
+        (
+            EntityKind::PendingClaims,
+            vec!["c9".to_string()],
+            claim_after.clone(),
+        ),
+        (
+            EntityKind::RevisionProposals,
+            vec!["p9".to_string()],
+            prop_after.clone(),
+        ),
+    ]);
+    let mut known: KnownRefs = BTreeMap::new();
+    known.insert(
+        (EntityKind::KnowledgeObjects, vec!["o9".to_string()]),
+        known_ref(),
+    );
+    known.insert(
+        (EntityKind::ThoughtRevisions, vec!["b9".to_string()]),
+        known_ref(),
+    );
+    let mut reviews: ReviewMap = BTreeMap::new();
+    reviews.insert(
+        (EntityKind::PendingClaims, vec!["c9".to_string()]),
+        ReviewContext {
+            action: ReviewAction::Defer,
+            proposal_id: Some("p9".to_string()),
+            claim_id: Some("c9".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::User),
+        },
+    );
+    reviews.insert(
+        (EntityKind::RevisionProposals, vec!["p9".to_string()]),
+        ReviewContext {
+            action: ReviewAction::Defer,
+            proposal_id: Some("p9".to_string()),
+            claim_id: Some("c9".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::User),
+        },
+    );
+    let mut priors: FacetPriors = BTreeMap::new();
+    priors.insert(
+        (
+            EntityKind::PendingClaims,
+            vec!["c9".to_string()],
+            FacetId::ClaimLifecycle,
+        ),
+        FacetPrior::LegacyBaseline,
+    );
+    priors.insert(
+        (
+            EntityKind::RevisionProposals,
+            vec!["p9".to_string()],
+            FacetId::ProposalLifecycle,
+        ),
+        FacetPrior::LegacyBaseline,
+    );
+    // Both rows predate the journal; the proposal also references its claim.
+    let mut row_baselines = claim_baselines("cap");
+    row_baselines.insert((EntityKind::PendingClaims, vec!["c9".to_string()]));
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &row_baselines,
+        &reviews,
+        &priors,
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 2);
+    for op in &ops {
+        let Operation::FacetUpdate(update) = op else {
+            panic!("expected update")
+        };
+        let proof = update.review_proof.as_ref().expect("proof required");
+        assert_eq!(proof.claim_id, Some("c9".to_string()));
+        assert_eq!(proof.proposal_id, Some("p9".to_string()));
+    }
+}
+
+// Test E: missing or mismatched claim identity fails with a typed error.
+#[test]
+fn claim_transition_without_identity_fails() {
+    let before = claim_img("c5", "cap", 0, "open", false);
+    let mut after = claim_img("c5", "cap", 0, "deferred", false);
+    after.insert("updated_at".to_string(), txt(TS1));
+    let effects = vec![effect(
+        EntityKind::PendingClaims,
+        vec!["c5".to_string()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::PendingClaims,
+        vec!["c5".to_string()],
+        after,
+    )]);
+    let priors = claim_priors("c5", FacetPrior::LegacyBaseline);
+    // No claim id at all.
+    let mut reviews: ReviewMap = BTreeMap::new();
+    reviews.insert(
+        (EntityKind::PendingClaims, vec!["c5".to_string()]),
+        ReviewContext {
+            action: ReviewAction::Defer,
+            proposal_id: None,
+            claim_id: None,
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::User),
+        },
+    );
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &claim_baselines("cap"),
+        &reviews,
+        &priors,
+    )
+    .expect_err("missing claim id must fail");
+    assert!(matches!(err, ReducerError::InvalidReviewContext(_)));
+    // A claim id that contradicts the transitioned row.
+    let mut reviews: ReviewMap = BTreeMap::new();
+    reviews.insert(
+        (EntityKind::PendingClaims, vec!["c5".to_string()]),
+        ReviewContext {
+            action: ReviewAction::Defer,
+            proposal_id: None,
+            claim_id: Some("other".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::User),
+        },
+    );
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &claim_baselines("cap"),
+        &reviews,
+        &priors,
+    )
+    .expect_err("contradictory claim id must fail");
+    assert!(matches!(err, ReducerError::InvalidReviewContext(_)));
+}
+
+// Test F: proposal identity stays mandatory and exact.
+#[test]
+fn proposal_transition_identity_stays_mandatory() {
+    let before = proposal_img("p6", "c6", "o6", "b6", "open");
+    let after = proposal_img("p6", "c6", "o6", "b6", "superseded");
+    let effects = vec![effect(
+        EntityKind::RevisionProposals,
+        vec!["p6".to_string()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::RevisionProposals,
+        vec!["p6".to_string()],
+        after,
+    )]);
+    let mut known: KnownRefs = BTreeMap::new();
+    known.insert(
+        (EntityKind::PendingClaims, vec!["c6".to_string()]),
+        known_ref(),
+    );
+    known.insert(
+        (EntityKind::KnowledgeObjects, vec!["o6".to_string()]),
+        known_ref(),
+    );
+    known.insert(
+        (EntityKind::ThoughtRevisions, vec!["b6".to_string()]),
+        known_ref(),
+    );
+    let priors: FacetPriors = BTreeMap::from([(
+        (
+            EntityKind::RevisionProposals,
+            vec!["p6".to_string()],
+            FacetId::ProposalLifecycle,
+        ),
+        FacetPrior::LegacyBaseline,
+    )]);
+    // Missing proposal id.
+    let mut reviews: ReviewMap = BTreeMap::new();
+    reviews.insert(
+        (EntityKind::RevisionProposals, vec!["p6".to_string()]),
+        ReviewContext {
+            action: ReviewAction::Supersede,
+            proposal_id: None,
+            claim_id: Some("c6".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::DerivedClaimResolution),
+        },
+    );
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &claim_baselines("cap"),
+        &reviews,
+        &priors,
+    )
+    .expect_err("missing proposal id must fail");
+    assert!(matches!(err, ReducerError::InvalidReviewContext(_)));
+    // An unrelated proposal id is not silently adopted.
+    let mut reviews: ReviewMap = BTreeMap::new();
+    reviews.insert(
+        (EntityKind::RevisionProposals, vec!["p6".to_string()]),
+        ReviewContext {
+            action: ReviewAction::Supersede,
+            proposal_id: Some("unrelated".to_string()),
+            claim_id: Some("c6".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::DerivedClaimResolution),
+        },
+    );
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &known,
+        &claim_baselines("cap"),
+        &reviews,
+        &priors,
+    )
+    .expect_err("unrelated proposal id must fail");
+    assert!(matches!(err, ReducerError::InvalidReviewContext(_)));
+}
+
+// Test G: metadata-only defer/reopen stays proof-free and observable.
+#[test]
+fn metadata_only_claim_update_stays_proof_free() {
+    // Repeated defer: state stays deferred, updated_at and due_at move.
+    let mut before = claim_img("c7", "cap", 0, "deferred", false);
+    before.insert("updated_at".to_string(), txt(TS1));
+    let mut after = before.clone();
+    after.insert("updated_at".to_string(), txt(TS2));
+    after.insert("due_at".to_string(), txt("2026-10-22T00:00:00Z"));
+    let effects = vec![effect(
+        EntityKind::PendingClaims,
+        vec!["c7".to_string()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::PendingClaims,
+        vec!["c7".to_string()],
+        after,
+    )]);
+    let priors = claim_priors("c7", FacetPrior::LegacyBaseline);
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &claim_baselines("cap"),
+        &BTreeMap::new(),
+        &priors,
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert!(update.review_proof.is_none());
+    assert_eq!(
+        update.after.get("updated_at"),
+        Some(&FieldValue::Text(TS2.to_string()))
+    );
+    assert_eq!(
+        update.after.get("due_at"),
+        Some(&FieldValue::Text("2026-10-22T00:00:00Z".to_string()))
+    );
+    // Repeated reopen: state stays open, updated_at moves.
+    let mut before = claim_img("c8", "cap", 0, "open", false);
+    before.insert("updated_at".to_string(), txt(TS1));
+    let mut after = before.clone();
+    after.insert("updated_at".to_string(), txt(TS2));
+    let effects = vec![effect(
+        EntityKind::PendingClaims,
+        vec!["c8".to_string()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::PendingClaims,
+        vec!["c8".to_string()],
+        after,
+    )]);
+    let priors = claim_priors("c8", FacetPrior::LegacyBaseline);
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &claim_baselines("cap"),
+        &BTreeMap::new(),
+        &priors,
+    )
+    .unwrap();
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert!(update.review_proof.is_none());
+    assert_eq!(
+        update.after.get("updated_at"),
+        Some(&FieldValue::Text(TS2.to_string()))
+    );
+}
+
+// Test H: the shared codec still rejects proof-less state transitions.
+#[test]
+fn codec_still_rejects_proofless_state_change() {
+    let before = claim_img("c9", "cap", 0, "open", false);
+    let mut after = claim_img("c9", "cap", 0, "deferred", false);
+    after.insert("updated_at".to_string(), txt(TS1));
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["c9".to_string()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["c9".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: None,
+    });
+    let err = validate_facet_update_shape(match &op {
+        Operation::FacetUpdate(u) => u,
+        _ => unreachable!(),
+    })
+    .expect_err("shape must reject");
+    assert_eq!(
+        err,
+        super::codec::CodecError::MissingReviewProof {
+            entity: "pending_claims"
+        }
+    );
+    // A legitimate standalone proof passes the same shared validator.
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["c9".to_string()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["c9".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: Some(ReviewProof {
+            action: ReviewAction::Defer,
+            proposal_id: None,
+            claim_id: Some("c9".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::User),
+        }),
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
 }
