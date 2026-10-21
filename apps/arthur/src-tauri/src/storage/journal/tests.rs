@@ -3978,6 +3978,111 @@ fn object_facets_exact_and_independent() {
         err,
         super::codec::CodecError::UnexpectedField("expected.head".to_string())
     );
+    // A. Head-only update with exactly expected.head.
+    let obj2 = uid(150);
+    let rev_a = uid(151);
+    let rev_b = uid(152);
+    let before = object_img(&obj2, INBOX, Some(&rev_a));
+    let mut headed = before.clone();
+    headed.insert("current_revision_id".to_string(), txt(&rev_b));
+    headed.insert("title".to_string(), txt("new"));
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::KnowledgeObjects,
+        key: vec![obj2.clone()],
+        before: before.clone(),
+        after: headed.clone(),
+        expected: BTreeMap::from([(
+            "head".to_string(),
+            expected_for(
+                EntityKind::KnowledgeObjects,
+                "head",
+                &[obj2.clone()],
+                &before,
+            ),
+        )]),
+        review_proof: None,
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+    // B. The unchanged membership facet must not ride along.
+    let mut extra = BTreeMap::new();
+    extra.insert(
+        "head".to_string(),
+        expected_for(
+            EntityKind::KnowledgeObjects,
+            "head",
+            &[obj2.clone()],
+            &before,
+        ),
+    );
+    extra.insert(
+        "membership".to_string(),
+        ExpectedFacet {
+            event_ref: None,
+            before_hash: prev_b_hash(),
+        },
+    );
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::KnowledgeObjects,
+        key: vec![obj2.clone()],
+        before,
+        after: headed,
+        expected: extra,
+        review_proof: None,
+    });
+    let err = encode_canonical(&sample_event(vec![op], vec![]))
+        .expect_err("unchanged membership must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("expected.membership".to_string())
+    );
+    // C. Combined move plus head change carries both independent refs.
+    let obj3 = uid(153);
+    let rev_c = uid(154);
+    let rev_d = uid(155);
+    let dest = uid(156);
+    let before = object_img(&obj3, INBOX, Some(&rev_c));
+    let mut after = before.clone();
+    after.insert("project_id".to_string(), txt(&dest));
+    after.insert("current_revision_id".to_string(), txt(&rev_d));
+    after.insert("title".to_string(), txt("new"));
+    let mut both = BTreeMap::new();
+    let mut membership = expected_for(
+        EntityKind::KnowledgeObjects,
+        "membership",
+        &[obj3.clone()],
+        &before,
+    );
+    membership.event_ref = Some(known_ref());
+    let mut head = expected_for(
+        EntityKind::KnowledgeObjects,
+        "head",
+        &[obj3.clone()],
+        &before,
+    );
+    head.event_ref = Some(known_ref_b());
+    both.insert("membership".to_string(), membership);
+    both.insert("head".to_string(), head);
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::KnowledgeObjects,
+        key: vec![obj3.clone()],
+        before,
+        after: after.clone(),
+        expected: both,
+        review_proof: None,
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    let Operation::FacetUpdate(back) = &decoded.operations[0] else {
+        panic!("expected update")
+    };
+    assert_eq!(back.expected.len(), 2);
+    assert_eq!(back.expected["membership"].event_ref, Some(known_ref()));
+    assert_eq!(back.expected["head"].event_ref, Some(known_ref_b()));
+    assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
 }
 
 // Test I: a Capture move requires exactly the membership facet.
@@ -4038,6 +4143,21 @@ fn capture_move_requires_exact_membership() {
     );
 }
 
+// A truthful standalone claim proof: no proposal exists, none is invented.
+fn standalone_claim_proof(claim: &str) -> ReviewProof {
+    ReviewProof {
+        action: ReviewAction::Defer,
+        proposal_id: None,
+        claim_id: Some(claim.to_string()),
+        object_id: None,
+        reviewed_revision_id: None,
+        final_body: None,
+        user_edited: None,
+        result_revision_id: None,
+        method: Some(ReviewMethod::User),
+    }
+}
+
 // Test J: claim/proposal lifecycle stays exact with and without proof.
 #[test]
 fn claim_proposal_lifecycle_exactness() {
@@ -4058,7 +4178,7 @@ fn claim_proposal_lifecycle_exactness() {
                 &before,
             ),
         )]),
-        review_proof: Some(defer_proof("pj", "cj")),
+        review_proof: Some(standalone_claim_proof("cj")),
     });
     let event = sample_event(vec![op], vec![]);
     let bytes = encode_canonical(&event).unwrap();
@@ -4086,7 +4206,7 @@ fn claim_proposal_lifecycle_exactness() {
         before,
         after,
         expected: extra,
-        review_proof: Some(defer_proof("pj", "cj")),
+        review_proof: Some(standalone_claim_proof("cj")),
     });
     let err =
         encode_canonical(&sample_event(vec![op], vec![])).expect_err("extra claim facet must fail");
@@ -4116,6 +4236,67 @@ fn claim_proposal_lifecycle_exactness() {
     let event = sample_event(vec![op], vec![]);
     let bytes = encode_canonical(&event).unwrap();
     assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+    // A real proposal transition: open -> superseded with its own proof.
+    let prop_before = proposal_img("pk", "ck2", "ok", "bk", "open");
+    let prop_after = proposal_img("pk", "ck2", "ok", "bk", "superseded");
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::RevisionProposals,
+        key: vec!["pk".to_string()],
+        before: prop_before.clone(),
+        after: prop_after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::RevisionProposals,
+                "lifecycle",
+                &["pk".to_string()],
+                &prop_before,
+            ),
+        )]),
+        review_proof: Some(supersede_proof("pk", "ck2")),
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    let Operation::FacetUpdate(back) = &decoded.operations[0] else {
+        panic!("expected update")
+    };
+    assert_eq!(back.expected.len(), 1);
+    assert!(back.expected.contains_key("lifecycle"));
+    assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
+    // The same transition with a structurally valid extra facet is rejected.
+    let mut extra = BTreeMap::new();
+    extra.insert(
+        "lifecycle".to_string(),
+        expected_for(
+            EntityKind::RevisionProposals,
+            "lifecycle",
+            &["pk".to_string()],
+            &prop_before,
+        ),
+    );
+    extra.insert(
+        "record".to_string(),
+        ExpectedFacet {
+            event_ref: None,
+            before_hash: prev_b_hash(),
+        },
+    );
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::RevisionProposals,
+        key: vec!["pk".to_string()],
+        before: prop_before,
+        after: prop_after,
+        expected: extra,
+        review_proof: Some(supersede_proof("pk", "ck2")),
+    });
+    let err = encode_canonical(&sample_event(vec![op], vec![]))
+        .expect_err("extra proposal facet must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("expected.record".to_string())
+    );
 }
 
 // Test K: canonical tampering with expected keys is rejected by name.
