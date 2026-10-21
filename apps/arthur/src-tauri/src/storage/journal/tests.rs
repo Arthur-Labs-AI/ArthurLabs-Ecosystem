@@ -2292,40 +2292,85 @@ fn facet_new_record_has_no_automatic_baseline() {
 fn facet_independent_refs_round_trip() {
     let id = uid(82);
     let v0 = project_row(&id, "Work", TS0, TS0, None);
-    let v1 = project_row(&id, "Todo", TS0, TS1, None);
     let v2 = project_row(&id, "Todo", TS0, TS2, Some(TS2));
-    let rename = Operation::FacetUpdate(FacetUpdate {
+    // ONE reduced transaction: rename (record) plus archive (lifecycle)
+    // together, with the accompanying updated_at preserved in the images.
+    // The reducer merges same-key effects; two same-key facet updates must
+    // never simulate one transaction.
+    let mut record_expected = expected_for(EntityKind::Projects, "record", &[id.clone()], &v0);
+    record_expected.event_ref = Some(known_ref());
+    let mut lifecycle_expected =
+        expected_for(EntityKind::Projects, "lifecycle", &[id.clone()], &v0);
+    lifecycle_expected.event_ref = Some(known_ref_b());
+    let op = Operation::FacetUpdate(FacetUpdate {
         entity: EntityKind::Projects,
         key: vec![id.clone()],
         before: v0.clone(),
-        after: v1.clone(),
-        expected: BTreeMap::from([(
-            "record".to_string(),
-            expected_for(EntityKind::Projects, "record", &[id.clone()], &v0),
-        )]),
+        after: v2.clone(),
+        expected: BTreeMap::from([
+            ("record".to_string(), record_expected),
+            ("lifecycle".to_string(), lifecycle_expected),
+        ]),
         review_proof: None,
     });
-    let mut archive_expected = BTreeMap::new();
-    archive_expected.insert(
-        "lifecycle".to_string(),
-        ExpectedFacet {
-            event_ref: Some(known_ref_b()),
-            before_hash: hash_hex(
-                &facet_state_hash(EntityKind::Projects, "lifecycle", &[id.clone()], &v1).unwrap(),
-            ),
-        },
-    );
-    let archive = Operation::FacetUpdate(FacetUpdate {
-        entity: EntityKind::Projects,
-        key: vec![id.clone()],
-        before: v1,
-        after: v2,
-        expected: archive_expected,
-        review_proof: None,
-    });
-    let event = sample_event(vec![rename, archive], vec![]);
+    let event = sample_event(vec![op], vec![]);
     let bytes = encode_canonical(&event).unwrap();
+    // BEFORE decoding: two distinct writers and facet-only before-hashes.
+    let Operation::FacetUpdate(update) = &event.operations[0] else {
+        panic!("expected update")
+    };
+    assert_eq!(update.expected["record"].event_ref, Some(known_ref()));
+    assert_eq!(update.expected["lifecycle"].event_ref, Some(known_ref_b()));
+    assert_ne!(
+        update.expected["record"].event_ref,
+        update.expected["lifecycle"].event_ref
+    );
+    let record_state = RowImage::from([("name".to_string(), FieldValue::Text("Work".to_string()))]);
+    let lifecycle_state = RowImage::from([("archived_at".to_string(), FieldValue::Null)]);
+    assert_eq!(
+        update.expected["record"].before_hash,
+        hash_hex(
+            &facet_state_hash(EntityKind::Projects, "record", &[id.clone()], &record_state)
+                .unwrap()
+        )
+    );
+    assert_eq!(
+        update.expected["lifecycle"].before_hash,
+        hash_hex(
+            &facet_state_hash(
+                EntityKind::Projects,
+                "lifecycle",
+                &[id.clone()],
+                &lifecycle_state
+            )
+            .unwrap()
+        )
+    );
+    // The old regression hashed the whole row for lifecycle: that digest
+    // must NOT match the facet-only hash asserted above.
+    assert_ne!(
+        update.expected["lifecycle"].before_hash,
+        hash_hex(&facet_state_hash(EntityKind::Projects, "lifecycle", &[id.clone()], &v0).unwrap())
+    );
+    assert_eq!(
+        update.after.get("updated_at"),
+        Some(&FieldValue::Text(TS2.to_string()))
+    );
     let decoded = decode_core_strict(&bytes).unwrap();
     assert_eq!(decoded, event);
+    // AFTER strict decoding: the same distinct refs and exact hashes.
+    let Operation::FacetUpdate(back) = &decoded.operations[0] else {
+        panic!("expected update")
+    };
+    assert_eq!(back.expected["record"].event_ref, Some(known_ref()));
+    assert_eq!(back.expected["lifecycle"].event_ref, Some(known_ref_b()));
+    assert_eq!(
+        back.expected["record"].before_hash,
+        update.expected["record"].before_hash
+    );
+    assert_eq!(
+        back.expected["lifecycle"].before_hash,
+        update.expected["lifecycle"].before_hash
+    );
     assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
 }
