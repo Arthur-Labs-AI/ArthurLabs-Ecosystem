@@ -3672,3 +3672,565 @@ fn proposal_proof_bound_to_actual_claim() {
     .expect_err("mismatched claim must fail");
     assert!(matches!(err, ReducerError::InvalidReviewContext(_)));
 }
+
+// ---------------------------------------------------------------------------
+// FIX-06 test-first: expected keys must equal exactly the changed facets
+// ---------------------------------------------------------------------------
+
+fn rename_op(id: &str, expected: BTreeMap<String, ExpectedFacet>) -> Operation {
+    let before = project_row(id, "Work", TS0, TS0, None);
+    let after = project_row(id, "Todo", TS0, TS1, None);
+    Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Projects,
+        key: vec![id.to_string()],
+        before,
+        after,
+        expected,
+        review_proof: None,
+    })
+}
+
+// Test A: an unchanged but valid facet must not ride along.
+#[test]
+fn rename_with_extra_lifecycle_expected_fails() {
+    let id = uid(130);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let mut expected = BTreeMap::new();
+    expected.insert(
+        "record".to_string(),
+        expected_for(EntityKind::Projects, "record", &[id.clone()], &before),
+    );
+    expected.insert(
+        "lifecycle".to_string(),
+        expected_for(EntityKind::Projects, "lifecycle", &[id.clone()], &before),
+    );
+    let err = encode_canonical(&sample_event(vec![rename_op(&id, expected)], vec![]))
+        .expect_err("extra lifecycle must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("expected.lifecycle".to_string())
+    );
+}
+
+// Test B: the mirror image for an archive carrying an unchanged record.
+#[test]
+fn archive_with_extra_record_expected_fails() {
+    let id = uid(131);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Work", TS0, TS1, Some(TS1));
+    let mut expected = BTreeMap::new();
+    expected.insert(
+        "lifecycle".to_string(),
+        expected_for(EntityKind::Projects, "lifecycle", &[id.clone()], &before),
+    );
+    expected.insert(
+        "record".to_string(),
+        expected_for(EntityKind::Projects, "record", &[id.clone()], &before),
+    );
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Projects,
+        key: vec![id.clone()],
+        before,
+        after,
+        expected,
+        review_proof: None,
+    });
+    let err =
+        encode_canonical(&sample_event(vec![op], vec![])).expect_err("extra record must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("expected.record".to_string())
+    );
+}
+
+// Test C: a missing required changed facet keeps its typed failure.
+#[test]
+fn combined_transition_missing_facet_still_fails() {
+    let id = uid(132);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Todo", TS0, TS1, Some(TS1));
+    let mut expected = BTreeMap::new();
+    expected.insert(
+        "record".to_string(),
+        expected_for(EntityKind::Projects, "record", &[id.clone()], &before),
+    );
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Projects,
+        key: vec![id.clone()],
+        before,
+        after,
+        expected,
+        review_proof: None,
+    });
+    let err =
+        encode_canonical(&sample_event(vec![op], vec![])).expect_err("missing facet must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::MissingField("expected facet state")
+    );
+}
+
+// Test D: an exact combined transition stays valid with distinct refs.
+#[test]
+fn combined_transition_exact_expected_round_trips() {
+    let id = uid(133);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Todo", TS0, TS2, Some(TS2));
+    let mut expected = BTreeMap::new();
+    let mut record = expected_for(EntityKind::Projects, "record", &[id.clone()], &before);
+    record.event_ref = Some(known_ref());
+    let mut lifecycle = expected_for(EntityKind::Projects, "lifecycle", &[id.clone()], &before);
+    lifecycle.event_ref = Some(known_ref_b());
+    expected.insert("record".to_string(), record);
+    expected.insert("lifecycle".to_string(), lifecycle);
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Projects,
+        key: vec![id.clone()],
+        before,
+        after: after.clone(),
+        expected,
+        review_proof: None,
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    let Operation::FacetUpdate(back) = &decoded.operations[0] else {
+        panic!("expected update")
+    };
+    assert_eq!(back.expected.len(), 2);
+    assert_eq!(back.expected["record"].event_ref, Some(known_ref()));
+    assert_eq!(back.expected["lifecycle"].event_ref, Some(known_ref_b()));
+    assert_eq!(
+        back.after.get("updated_at"),
+        Some(&FieldValue::Text(TS2.to_string()))
+    );
+    assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
+}
+
+// Test E: an unknown ASCII facet name is rejected by name, not by hash.
+#[test]
+fn unknown_ascii_facet_name_fails() {
+    let id = uid(134);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let mut expected = BTreeMap::new();
+    expected.insert(
+        "record".to_string(),
+        expected_for(EntityKind::Projects, "record", &[id.clone()], &before),
+    );
+    expected.insert(
+        "custom".to_string(),
+        ExpectedFacet {
+            event_ref: Some(known_ref()),
+            before_hash: prev_b_hash(),
+        },
+    );
+    let err = encode_canonical(&sample_event(vec![rename_op(&id, expected)], vec![]))
+        .expect_err("unknown facet must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("expected.custom".to_string())
+    );
+}
+
+// Test F: non-ASCII facet names are outside the closed vocabulary.
+#[test]
+fn unicode_facet_names_fail() {
+    for name in ["ключ", "😀"] {
+        let id = uid(135);
+        let before = project_row(&id, "Work", TS0, TS0, None);
+        let mut expected = BTreeMap::new();
+        expected.insert(
+            "record".to_string(),
+            expected_for(EntityKind::Projects, "record", &[id.clone()], &before),
+        );
+        expected.insert(
+            name.to_string(),
+            ExpectedFacet {
+                event_ref: None,
+                before_hash: prev_b_hash(),
+            },
+        );
+        let err = encode_canonical(&sample_event(vec![rename_op(&id, expected)], vec![]))
+            .expect_err("unicode facet must fail");
+        assert_eq!(
+            err,
+            super::codec::CodecError::UnexpectedField(format!("expected.{name}"))
+        );
+    }
+}
+
+// Test G: a facet name from another entity is rejected.
+#[test]
+fn foreign_entity_facet_name_fails() {
+    let id = uid(136);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let mut expected = BTreeMap::new();
+    expected.insert(
+        "record".to_string(),
+        expected_for(EntityKind::Projects, "record", &[id.clone()], &before),
+    );
+    expected.insert(
+        "membership".to_string(),
+        ExpectedFacet {
+            event_ref: None,
+            before_hash: prev_b_hash(),
+        },
+    );
+    let err = encode_canonical(&sample_event(vec![rename_op(&id, expected)], vec![]))
+        .expect_err("foreign facet must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("expected.membership".to_string())
+    );
+    let before = capture_img("cc", INBOX, "x");
+    let mut after = before.clone();
+    after.insert("project_id".to_string(), txt(&uid(137)));
+    let mut expected = BTreeMap::new();
+    expected.insert(
+        "membership".to_string(),
+        expected_for(
+            EntityKind::Captures,
+            "membership",
+            &["cc".to_string()],
+            &before,
+        ),
+    );
+    expected.insert(
+        "head".to_string(),
+        ExpectedFacet {
+            event_ref: None,
+            before_hash: prev_b_hash(),
+        },
+    );
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Captures,
+        key: vec!["cc".to_string()],
+        before,
+        after,
+        expected,
+        review_proof: None,
+    });
+    let err =
+        encode_canonical(&sample_event(vec![op], vec![])).expect_err("foreign head must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("expected.head".to_string())
+    );
+}
+
+// Test H: KnowledgeObject facets stay independent and exact.
+#[test]
+fn object_facets_exact_and_independent() {
+    let obj = uid(138);
+    let rev = uid(139);
+    let dest = uid(140);
+    let before = object_img(&obj, INBOX, Some(&rev));
+    let mut moved = before.clone();
+    moved.insert("project_id".to_string(), txt(&dest));
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::KnowledgeObjects,
+        key: vec![obj.clone()],
+        before: before.clone(),
+        after: moved.clone(),
+        expected: BTreeMap::from([(
+            "membership".to_string(),
+            expected_for(
+                EntityKind::KnowledgeObjects,
+                "membership",
+                &[obj.clone()],
+                &before,
+            ),
+        )]),
+        review_proof: None,
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+    let mut extra = BTreeMap::new();
+    extra.insert(
+        "membership".to_string(),
+        expected_for(
+            EntityKind::KnowledgeObjects,
+            "membership",
+            &[obj.clone()],
+            &before,
+        ),
+    );
+    extra.insert(
+        "head".to_string(),
+        ExpectedFacet {
+            event_ref: None,
+            before_hash: prev_b_hash(),
+        },
+    );
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::KnowledgeObjects,
+        key: vec![obj.clone()],
+        before,
+        after: moved,
+        expected: extra,
+        review_proof: None,
+    });
+    let err =
+        encode_canonical(&sample_event(vec![op], vec![])).expect_err("unchanged head must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("expected.head".to_string())
+    );
+}
+
+// Test I: a Capture move requires exactly the membership facet.
+#[test]
+fn capture_move_requires_exact_membership() {
+    let before = capture_img("cc", INBOX, "x");
+    let mut after = before.clone();
+    after.insert("project_id".to_string(), txt(&uid(141)));
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Captures,
+        key: vec!["cc".to_string()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "membership".to_string(),
+            expected_for(
+                EntityKind::Captures,
+                "membership",
+                &["cc".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: None,
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+    let mut extra = BTreeMap::new();
+    extra.insert(
+        "membership".to_string(),
+        expected_for(
+            EntityKind::Captures,
+            "membership",
+            &["cc".to_string()],
+            &before,
+        ),
+    );
+    extra.insert(
+        "record".to_string(),
+        ExpectedFacet {
+            event_ref: None,
+            before_hash: prev_b_hash(),
+        },
+    );
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Captures,
+        key: vec!["cc".to_string()],
+        before,
+        after,
+        expected: extra,
+        review_proof: None,
+    });
+    let err =
+        encode_canonical(&sample_event(vec![op], vec![])).expect_err("extra record must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("expected.record".to_string())
+    );
+}
+
+// Test J: claim/proposal lifecycle stays exact with and without proof.
+#[test]
+fn claim_proposal_lifecycle_exactness() {
+    let before = claim_img("cj", "cap", 0, "open", false);
+    let mut after = claim_img("cj", "cap", 0, "deferred", false);
+    after.insert("updated_at".to_string(), txt(TS1));
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["cj".to_string()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["cj".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: Some(defer_proof("pj", "cj")),
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+    let mut extra = BTreeMap::new();
+    extra.insert(
+        "lifecycle".to_string(),
+        expected_for(
+            EntityKind::PendingClaims,
+            "lifecycle",
+            &["cj".to_string()],
+            &before,
+        ),
+    );
+    extra.insert(
+        "record".to_string(),
+        ExpectedFacet {
+            event_ref: None,
+            before_hash: prev_b_hash(),
+        },
+    );
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["cj".to_string()],
+        before,
+        after,
+        expected: extra,
+        review_proof: Some(defer_proof("pj", "cj")),
+    });
+    let err =
+        encode_canonical(&sample_event(vec![op], vec![])).expect_err("extra claim facet must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("expected.record".to_string())
+    );
+    let before = claim_img("ck", "cap", 0, "open", false);
+    let mut after = before.clone();
+    after.insert("updated_at".to_string(), txt(TS1));
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["ck".to_string()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["ck".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: None,
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+}
+
+// Test K: canonical tampering with expected keys is rejected by name.
+#[test]
+fn canonical_tampered_expected_keys_fail() {
+    let id = uid(142);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Todo", TS0, TS1, None);
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Projects,
+        key: vec![id.clone()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "record".to_string(),
+            expected_for(EntityKind::Projects, "record", &[id.clone()], &before),
+        )]),
+        review_proof: None,
+    });
+    let bytes = encode_canonical(&sample_event(vec![op], vec![])).unwrap();
+    for extra in ["lifecycle", "custom"] {
+        let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        value["operations"][0]["expected"][extra] =
+            serde_json::json!({"eventRef": null, "beforeHash": prev_b_hash()});
+        let tampered = serde_jcs::to_vec(&value).unwrap();
+        let err = decode_core_strict(&tampered).expect_err("tampered expected must fail");
+        assert_eq!(
+            err,
+            super::codec::CodecError::UnexpectedField(format!("expected.{extra}"))
+        );
+    }
+}
+
+// Test L: shape, event, encode and decode agree on exact-set rejection.
+#[test]
+fn expected_exactness_parity_across_validators() {
+    let id = uid(143);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Todo", TS0, TS1, None);
+    let mut expected = BTreeMap::new();
+    expected.insert(
+        "record".to_string(),
+        expected_for(EntityKind::Projects, "record", &[id.clone()], &before),
+    );
+    expected.insert(
+        "lifecycle".to_string(),
+        expected_for(EntityKind::Projects, "lifecycle", &[id.clone()], &before),
+    );
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Projects,
+        key: vec![id.clone()],
+        before,
+        after,
+        expected,
+        review_proof: None,
+    });
+    let want = super::codec::CodecError::UnexpectedField("expected.lifecycle".to_string());
+    let Operation::FacetUpdate(update) = &op else {
+        panic!("expected update")
+    };
+    assert_eq!(
+        validate_facet_update_shape(update).expect_err("shape must reject"),
+        want
+    );
+    assert_eq!(
+        validate_event(&sample_event(vec![op.clone()], vec![])).expect_err("event must reject"),
+        want
+    );
+    assert_eq!(
+        encode_canonical(&sample_event(vec![op], vec![])).expect_err("encode must reject"),
+        want
+    );
+    let bytes = encode_canonical(&sample_event(
+        vec![rename_op(
+            &id,
+            BTreeMap::from([(
+                "record".to_string(),
+                expected_for(
+                    EntityKind::Projects,
+                    "record",
+                    &[id.clone()],
+                    &project_row(&id, "Work", TS0, TS0, None),
+                ),
+            )]),
+        )],
+        vec![],
+    ))
+    .unwrap();
+    let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    value["operations"][0]["expected"]["lifecycle"] =
+        serde_json::json!({"eventRef": null, "beforeHash": prev_b_hash()});
+    let tampered = serde_jcs::to_vec(&value).unwrap();
+    assert_eq!(decode_core_strict(&tampered).unwrap_err(), want);
+}
+
+// Test M: no changed facet means no expected entry at all.
+#[test]
+fn unchanged_facets_reject_any_expected() {
+    let id = uid(144);
+    let image = project_row(&id, "Work", TS0, TS0, None);
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Projects,
+        key: vec![id.clone()],
+        before: image.clone(),
+        after: image.clone(),
+        expected: BTreeMap::from([(
+            "record".to_string(),
+            expected_for(EntityKind::Projects, "record", &[id.clone()], &image),
+        )]),
+        review_proof: None,
+    });
+    let err =
+        encode_canonical(&sample_event(vec![op], vec![])).expect_err("stale expected must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::UnexpectedField("expected.record".to_string())
+    );
+}

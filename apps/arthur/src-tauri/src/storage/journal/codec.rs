@@ -1375,6 +1375,18 @@ fn validate_facet_transition(update: &FacetUpdate) -> Result<(), CodecError> {
             return Err(CodecError::MissingField("expected facet state"));
         }
     }
+    // Exact closed vocabulary: every expected key must name a meaningful
+    // facet that actually changed in this operation. Unknown names, names
+    // from another entity's catalog and valid-but-unchanged facets are all
+    // rejected deterministically in map order. The closed ASCII catalog in
+    // `facets_of()` is the only source of truth; no second list exists.
+    for supplied in update.expected.keys() {
+        let catalogued = facets.iter().any(|f| f.name == supplied.as_str());
+        let changed_now = changed.iter().any(|f| f.name == supplied.as_str());
+        if !catalogued || !changed_now {
+            return Err(CodecError::UnexpectedField(format!("expected.{supplied}")));
+        }
+    }
     // Mandatory operation-local review provenance (shared by encode, strict
     // decode and shape validation: one rule, no per-entry-point divergence).
     // A claim/proposal STATE transition must carry its proof; a metadata-only
