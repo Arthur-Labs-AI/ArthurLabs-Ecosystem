@@ -1340,3 +1340,362 @@ fn large_domain_fixture_regresses_cleanly() {
     let again = encode_canonical(&round_trip).unwrap();
     assert_eq!(bytes, again);
 }
+
+// ---------------------------------------------------------------------------
+// FIX-01: project updated_at is accompanying metadata, not a causal facet
+// ---------------------------------------------------------------------------
+
+const TS2: &str = "2026-10-21T00:00:02Z";
+const TS_EARLIER: &str = "2026-10-20T00:00:00Z";
+
+fn project_row(
+    id: &str,
+    name: &str,
+    created: &str,
+    updated: &str,
+    archived: Option<&str>,
+) -> RowImage {
+    img(vec![
+        ("id", txt(id)),
+        ("name", txt(name)),
+        ("created_at", txt(created)),
+        ("updated_at", txt(updated)),
+        ("archived_at", archived.map(txt).unwrap_or_else(null)),
+    ])
+}
+
+fn expected_for(
+    entity: EntityKind,
+    facet: &str,
+    key: &[String],
+    before: &RowImage,
+) -> ExpectedFacet {
+    let def = super::codec::facets_of(entity)
+        .iter()
+        .find(|f| f.name == facet)
+        .expect("facet");
+    let mut state = RowImage::new();
+    for field in def.fields {
+        state.insert(
+            field.to_string(),
+            before.get(*field).expect("field").clone(),
+        );
+    }
+    ExpectedFacet {
+        event_ref: None,
+        before_hash: hash_hex(&facet_state_hash(entity, facet, key, &state).unwrap()),
+    }
+}
+
+fn project_update_event(
+    before: &RowImage,
+    after: &RowImage,
+    key: Vec<String>,
+    facet: &str,
+) -> JournalEvent {
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::Projects,
+        key: key.clone(),
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            facet.to_string(),
+            expected_for(EntityKind::Projects, facet, &key, before),
+        )]),
+        review_proof: None,
+    });
+    sample_event(vec![op], vec![])
+}
+
+// Test A: rename changes record facet and carries the real timestamp.
+#[test]
+fn project_rename_keeps_accompanying_timestamp() {
+    let id = uid(50);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Todo", TS0, TS1, None);
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        Some(before.clone()),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::Projects,
+        vec![id.clone()],
+        after.clone(),
+    )]);
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert!(update.expected.contains_key("record"));
+    assert!(!update.expected.contains_key("lifecycle"));
+    assert_eq!(
+        update.after.get("updated_at"),
+        Some(&FieldValue::Text(TS1.to_string()))
+    );
+    let event = sample_event(ops, vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+}
+
+// Test B: archive changes lifecycle facet and carries the real timestamp.
+#[test]
+fn project_archive_keeps_accompanying_timestamp() {
+    let id = uid(51);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Work", TS0, TS1, Some(TS1));
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        Some(before.clone()),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::Projects,
+        vec![id.clone()],
+        after.clone(),
+    )]);
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert!(update.expected.contains_key("lifecycle"));
+    assert!(!update.expected.contains_key("record"));
+    assert_eq!(
+        update.after.get("archived_at"),
+        Some(&FieldValue::Text(TS1.to_string()))
+    );
+    assert_eq!(
+        update.after.get("updated_at"),
+        Some(&FieldValue::Text(TS1.to_string()))
+    );
+}
+
+// Test C: restore works with no wall-clock ordering assumptions.
+#[test]
+fn project_restore_needs_no_clock_ordering() {
+    let id = uid(52);
+    let before = project_row(&id, "Work", TS0, TS1, Some(TS1));
+    let after = project_row(&id, "Work", TS0, TS_EARLIER, None);
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        Some(before.clone()),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::Projects,
+        vec![id.clone()],
+        after.clone(),
+    )]);
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert!(update.expected.contains_key("lifecycle"));
+    assert!(!update.expected.contains_key("record"));
+    assert_eq!(update.after.get("archived_at"), Some(&FieldValue::Null));
+}
+
+// Test D: rename plus archive in one transaction keeps the final state.
+#[test]
+fn project_combined_transition_keeps_final_state() {
+    let id = uid(53);
+    let first = project_row(&id, "Work", TS0, TS0, None);
+    let middle = project_row(&id, "Todo", TS0, TS1, None);
+    let last = project_row(&id, "Todo", TS0, TS2, Some(TS2));
+    let effects = vec![
+        effect(
+            EntityKind::Projects,
+            vec![id.clone()],
+            Some(first),
+            Some(middle.clone()),
+        ),
+        effect(
+            EntityKind::Projects,
+            vec![id.clone()],
+            Some(middle),
+            Some(last.clone()),
+        ),
+    ];
+    let resolver = resolver_with(vec![(EntityKind::Projects, vec![id.clone()], last.clone())]);
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert!(update.expected.contains_key("record"));
+    assert!(update.expected.contains_key("lifecycle"));
+    assert_eq!(
+        update.after.get("name"),
+        Some(&FieldValue::Text("Todo".to_string()))
+    );
+    assert_eq!(
+        update.after.get("archived_at"),
+        Some(&FieldValue::Text(TS2.to_string()))
+    );
+    assert_eq!(
+        update.after.get("updated_at"),
+        Some(&FieldValue::Text(TS2.to_string()))
+    );
+}
+
+// Test E: genuinely immutable project fields still fail.
+#[test]
+fn project_immutable_fields_still_fail() {
+    let id = uid(54);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Work", TS0, TS1, None);
+    let mut tampered = after.clone();
+    tampered.insert("created_at".to_string(), txt("2020-01-01T00:00:00Z"));
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        Some(before),
+        Some(tampered.clone()),
+    )];
+    let resolver = resolver_with(vec![(EntityKind::Projects, vec![id.clone()], tampered)]);
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+    )
+    .expect_err("created_at must fail");
+    assert!(matches!(
+        err,
+        ReducerError::Codec(super::codec::CodecError::ImmutableFieldChanged { .. })
+    ));
+}
+
+// Test F: an isolated timestamp bump is not a standalone causal update.
+#[test]
+fn project_timestamp_only_update_is_rejected() {
+    let id = uid(55);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let after = project_row(&id, "Work", TS0, TS1, None);
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![id.clone()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(EntityKind::Projects, vec![id.clone()], after)]);
+    let err = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+    )
+    .expect_err("timestamp-only must fail");
+    assert!(matches!(
+        err,
+        ReducerError::Codec(super::codec::CodecError::ImmutableFieldChanged { .. })
+    ));
+}
+
+// Test G: direct codec validation accepts rename and archive updates.
+#[test]
+fn project_codec_accepts_valid_facet_updates() {
+    let id = uid(56);
+    let before = project_row(&id, "Work", TS0, TS0, None);
+    let renamed = project_row(&id, "Todo", TS0, TS1, None);
+    let event = project_update_event(&before, &renamed, vec![id.clone()], "record");
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    let archived = project_row(&id, "Todo", TS0, TS2, Some(TS2));
+    let event = project_update_event(&renamed, &archived, vec![id.clone()], "lifecycle");
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+}
+
+// Test H: images built from the real v9 project store reduce correctly.
+#[test]
+fn real_project_store_rename_reduces() {
+    use super::super::capture_store::CaptureStore;
+    let store = CaptureStore::open_in_memory().expect("memory store");
+    let created = store.create_project("Work").expect("create");
+    let renamed = store.rename_project(&created.id, "Todo").expect("rename");
+    let before = project_row(
+        &created.id,
+        &created.name,
+        &created.created_at,
+        &created.updated_at,
+        created.archived_at.as_deref(),
+    );
+    let after = project_row(
+        &renamed.id,
+        &renamed.name,
+        &renamed.created_at,
+        &renamed.updated_at,
+        renamed.archived_at.as_deref(),
+    );
+    assert_eq!(
+        before.get("name"),
+        Some(&FieldValue::Text("Work".to_string()))
+    );
+    assert_eq!(
+        after.get("name"),
+        Some(&FieldValue::Text("Todo".to_string()))
+    );
+    let effects = vec![effect(
+        EntityKind::Projects,
+        vec![created.id.clone()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::Projects,
+        vec![created.id.clone()],
+        after,
+    )]);
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &BTreeSet::new(),
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert_eq!(ops.len(), 1);
+    let Operation::FacetUpdate(update) = &ops[0] else {
+        panic!("expected update")
+    };
+    assert!(update.expected.contains_key("record"));
+}

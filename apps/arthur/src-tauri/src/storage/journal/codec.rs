@@ -1323,6 +1323,12 @@ fn validate_key_matches_image(
 
 /// Facet transition rules: changed facets must be known, immutable fields
 /// must stay byte-equal, and every changed facet needs an expected entry.
+///
+/// Project metadata exception: `project_store.rs` persists `updated_at`
+/// together with every rename/archive/restore, so a project facet update may
+/// carry the accompanying timestamp. `updated_at` is never a standalone
+/// causal facet: an isolated timestamp bump without a meaningful project
+/// facet change is rejected below.
 fn validate_facet_transition(update: &FacetUpdate) -> Result<(), CodecError> {
     let facets = facets_of(update.entity);
     let mut changed: Vec<&FacetDef> = Vec::new();
@@ -1338,14 +1344,29 @@ fn validate_facet_transition(update: &FacetUpdate) -> Result<(), CodecError> {
             changed.push(facet);
         }
     }
+    // Project metadata exception: updated_at accompanies a meaningful
+    // project facet transition (rename/archive/restore write both columns).
+    let accompanies_project_change = update.entity == EntityKind::Projects
+        && !changed.is_empty()
+        && update.before.get("updated_at") != update.after.get("updated_at");
     // Immutable fields: every catalog field outside all facets must be equal.
     for field in update.entity.all_fields() {
         let in_facet = facets.iter().any(|f| f.fields.contains(field));
-        if !in_facet && update.before.get(*field) != update.after.get(*field) {
+        let is_accompanied = accompanies_project_change && *field == "updated_at";
+        if !in_facet && !is_accompanied && update.before.get(*field) != update.after.get(*field) {
             return Err(CodecError::ImmutableFieldChanged {
                 field: field_to_static(field),
             });
         }
+    }
+    if update.entity == EntityKind::Projects
+        && changed.is_empty()
+        && update.before.get("updated_at") != update.after.get("updated_at")
+    {
+        // An isolated timestamp bump is not an independent causal update.
+        return Err(CodecError::ImmutableFieldChanged {
+            field: "updated_at",
+        });
     }
     for facet in &changed {
         if !update.expected.contains_key(facet.name) {
