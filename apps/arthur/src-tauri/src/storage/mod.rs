@@ -14,6 +14,9 @@ mod revision_cas_tests;
 pub mod identity_store;
 pub mod evidence_store;
 pub mod proposal_store;
+/// M05-P1b-B dormant journal codec and reducer. Compiled into production
+/// builds but invoked by no production write path; schema stays v9.
+pub mod journal;
 #[cfg(test)]
 mod identity_store_tests;
 #[cfg(test)]
