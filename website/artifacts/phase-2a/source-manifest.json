@@ -1,0 +1,19 @@
+{
+  "src/app/suite/page.tsx": "4f7c03cb4ac0af7ee0f98ead814f4b40907aa96ff5e97430f823c6ebf848652f",
+  "tests/landing.spec.ts": "0299805b0d31bc41783512d2850b44127032cfa5ca25cba873b9e584c15cc0dc",
+  "tests/suite.spec.ts": "bf7af3e98691ef1b2faa6238a62af32c16bfd75ffcc88f3cc6801d530c23bd91",
+  "tests/capture-suite.mjs": "acacfe01ce8a2d204f158ffcbc8e924ac014eca5f7657c75fb7866d9746a0cee",
+  "src/components/suite/story.ts": "57c2d056fa0badc2dc0099a8fbe89f052ed334db87827ce38c966c97e56c0892",
+  "src/components/suite/ProductMark.tsx": "a7f1951fc8c31621c686b98b574291b4398e52020a69c7098517fed76ac44dfd",
+  "src/components/suite/DocumentCard.tsx": "f9b3dbd43d4fde787da700664ab6d6ac092a1c638de245e8945391af495af819",
+  "src/components/suite/SuiteHero.tsx": "cc36def1e1c0ecd4fe45019904b0dc595f61aee6bd51b62520b80f7f21f7bd82",
+  "src/components/suite/StoryControls.tsx": "5b5169851c709cb0a44da0b5f2ed6dba071ba44248868686eee1059d5e5d3a66",
+  "src/components/suite/SuiteWalkthrough.tsx": "82ccc51b68766cd0c7483a2b6cf466fa45e51b76cbb1f5a4c4021409c3ad6f1c",
+  "src/components/suite/ArchitectureDiagram.tsx": "29b1e9b8462e648be404fbcb59c80041f67d99a885186673783a63b8933d939d",
+  "src/components/suite/IndependentProducts.tsx": "398059cf48a02bbd5d8a5621bacbfd3c36d7e94a88721306f9fcd833c16917fa",
+  "src/components/suite/SuiteHardware.tsx": "aedbf8855cba3e55c0c72d45c7803ccd4d1368b1a7c40c3184fda8f1660c9885",
+  "src/components/suite/SuiteAvailability.tsx": "ca2a1cf5febbce14199b1c9c9fbadafaece0c8fac8130f57fa3cde6c97854452",
+  "src/components/suite/suite.module.css": "c8f91a2e8880677bedd606d77efa1b6a095ad559d2df50a0883eed8c1522f2a3",
+  "docs/phase-2a.md": "c51120fb46c1b62ca77b3f884e9ef98d8a2b5cfa140f2569214cc95450382055",
+  "docs/phase-2a-plan.md": "552254145d8a427c5f902b3f8b3f089fdb0f72288ee7db4f8a587db1967c52dd"
+}

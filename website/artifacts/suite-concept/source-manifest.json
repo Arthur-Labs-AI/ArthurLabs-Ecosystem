@@ -1,0 +1,9 @@
+{
+  "src/components/suite-concept/story.ts": "ee86dff04cfefaadae3995148f976b644b8bef3a0d906e88b750b0ebded3c5a8",
+  "src/components/suite-concept/createFilm.ts": "761030cb93a0bee3abb27dd6bfaa294d44caef83035e8d706d914bf4859b32bb",
+  "src/components/suite-concept/ConceptFilm.tsx": "26f83c068ac855c14ded62f27f69394670087c3bb215c26bf63b03e4cc97a2b4",
+  "src/components/suite-concept/concept.module.css": "480f1b9021d3a4acc8186a4377edca222095f32a93ccf0f601ad3ef869c9eae0",
+  "src/app/suite/concept/page.tsx": "b8e5d3756621fff0c0c3312d3f497aed1b7517939d20c2d6801371c709ad3807",
+  "tests/concept.spec.ts": "de8c3f907e16c1777ec74424a5186d1651973e1d409d42af5e6e4b577ca4d806",
+  "tests/capture-concept.mjs": "e170c5fe999dc45ccee627034e040582eab7c3c4d19db1cc71ea7cb478040d80"
+}

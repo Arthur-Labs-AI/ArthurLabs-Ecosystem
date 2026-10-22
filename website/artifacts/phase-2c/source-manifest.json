@@ -1,0 +1,15 @@
+{
+  "src/components/suite-launch/releases.ts": "b9669771bfb501a5618f68d66f7ffde2d47427511d8c68e9cfe84986ee246cbb",
+  "src/components/suite-launch/Downloads.tsx": "1c4decba5052d7c16c87800e4e2e3ea1090d68737b138efbd6c5cd3fd1423cb9",
+  "src/components/suite-launch/SuiteLaunch.tsx": "688baedf1efb848c253e5d14cc68eb6535afecd07397d9ba6bce76a6f55487ae",
+  "src/components/suite-launch/workflow.ts": "2cdd82ac9e72decd4e53d4f2edc2742ab1f59e83052eb77d1d82b3626685ab81",
+  "src/components/suite-launch/createWorkflow.ts": "75edc757ab9cd45686f93a7ae57a663f501981c57309ffbee5ed3b64afb441c8",
+  "src/components/suite-launch/LivingWorkflow.tsx": "b610e220e3376152e1b06116bac1c0bf08489e763f82f2196e68a0bf92cf489b",
+  "src/components/suite-launch/launch.module.css": "813e4adc6c16f69d7d47939ddb069eb46f8dbb3736482abdecfd4458b6739b1e",
+  "src/components/suite-launch/InterfaceImage.tsx": "b50f852537512ee825c4724c76f56a91006c1419854619b283c3b4b85c6d63d5",
+  "src/app/suite/page.tsx": "6cdc5bffd94cf74c430391831c4923da93eb65d7ab5e3887e0510aea7ff839d4",
+  "tests/suite.spec.ts": "94fbf768ae2728317b82dccef046d3be9d25f5bb2a51b39d35ebe2a3b369d8e6",
+  "tests/suite-motion.spec.ts": "312ab1f3cc99394aa50d876e4bfc3e9ec486cc1763b3e8c3ec84f2a7ee04bcc8",
+  "tests/landing.spec.ts": "cc96fd639d119102def6d3f79f4c3386331de8bcfed60598ed4f18d7fd122320",
+  "tests/concept.spec.ts": "9adcc0d08edd9da8624138f819fb5c5e7cfc6606e70cb833ffd567832c0f82c3"
+}

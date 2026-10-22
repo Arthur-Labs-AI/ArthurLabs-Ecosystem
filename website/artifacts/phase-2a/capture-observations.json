@@ -1,0 +1,1170 @@
+[
+  {
+    "width": 390,
+    "name": "capture",
+    "progress": 0.12,
+    "chapter": "0",
+    "frame": "0",
+    "workspace": "studio",
+    "overflow": 0,
+    "controls": {
+      "x": 15.59375,
+      "y": 150.0625,
+      "width": 289.8125,
+      "height": 38,
+      "bottom": 188.0625,
+      "right": 305.40625
+    },
+    "document": {
+      "x": 179.40625,
+      "y": 532.515625,
+      "width": 180,
+      "height": 184.609375,
+      "bottom": 717.125,
+      "right": 359.40625
+    },
+    "panels": [
+      1,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 390,
+    "name": "handoff-studio-nexus",
+    "progress": 0.24,
+    "chapter": "0",
+    "frame": "0",
+    "workspace": "studio",
+    "overflow": 0,
+    "controls": {
+      "x": 15.59375,
+      "y": 150.0625,
+      "width": 289.8125,
+      "height": 38,
+      "bottom": 188.0625,
+      "right": 305.40625
+    },
+    "document": {
+      "x": 135.34646606445312,
+      "y": 500.9381408691406,
+      "width": 190.05978393554688,
+      "height": 194.59445190429688,
+      "bottom": 695.5325927734375,
+      "right": 325.40625
+    },
+    "panels": [
+      0.2571,
+      0.2531,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 390,
+    "name": "orchestrate",
+    "progress": 0.34,
+    "chapter": "1",
+    "frame": "1",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 15.59375,
+      "y": 150.0625,
+      "width": 289.8125,
+      "height": 38,
+      "bottom": 188.0625,
+      "right": 305.40625
+    },
+    "document": {
+      "x": 179.40625,
+      "y": 532.515625,
+      "width": 180,
+      "height": 184.609375,
+      "bottom": 717.125,
+      "right": 359.40625
+    },
+    "panels": [
+      0,
+      1,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 390,
+    "name": "handoff-nexus-sentry",
+    "progress": 0.46,
+    "chapter": "1",
+    "frame": "1",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 15.59375,
+      "y": 150.0625,
+      "width": 289.8125,
+      "height": 38,
+      "bottom": 188.0625,
+      "right": 305.40625
+    },
+    "document": {
+      "x": 145.65672302246094,
+      "y": 508.3061218261719,
+      "width": 187.7007293701172,
+      "height": 192.25381469726562,
+      "bottom": 700.5599365234375,
+      "right": 333.3574523925781
+    },
+    "panels": [
+      0,
+      0.7527,
+      0.0087,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 390,
+    "name": "verify",
+    "progress": 0.58,
+    "chapter": "2",
+    "frame": "2",
+    "workspace": "sentry",
+    "overflow": 0,
+    "controls": {
+      "x": 15.59375,
+      "y": 150.0625,
+      "width": 289.8125,
+      "height": 38,
+      "bottom": 188.0625,
+      "right": 305.40625
+    },
+    "document": {
+      "x": 179.40625,
+      "y": 522.375,
+      "width": 180,
+      "height": 194.75,
+      "bottom": 717.125,
+      "right": 359.40625
+    },
+    "panels": [
+      0,
+      0,
+      1,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 390,
+    "name": "handoff-sentry-nexus",
+    "progress": 0.7,
+    "chapter": "2",
+    "frame": "2",
+    "workspace": "sentry",
+    "overflow": 0,
+    "controls": {
+      "x": 15.59375,
+      "y": 150.0625,
+      "width": 289.8125,
+      "height": 38,
+      "bottom": 188.0625,
+      "right": 305.40625
+    },
+    "document": {
+      "x": 145.5017547607422,
+      "y": 498.0962829589844,
+      "width": 187.95619201660156,
+      "height": 202.52761840820312,
+      "bottom": 700.6239013671875,
+      "right": 333.45794677734375
+    },
+    "panels": [
+      0,
+      0,
+      0.7547,
+      0.0083,
+      0
+    ]
+  },
+  {
+    "width": 390,
+    "name": "consolidate",
+    "progress": 0.77,
+    "chapter": "3",
+    "frame": "3",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 15.59375,
+      "y": 150.0625,
+      "width": 289.8125,
+      "height": 38,
+      "bottom": 188.0625,
+      "right": 305.40625
+    },
+    "document": {
+      "x": 179.22828674316406,
+      "y": 532.386474609375,
+      "width": 180.04344177246094,
+      "height": 184.65264892578125,
+      "bottom": 717.0391235351562,
+      "right": 359.271728515625
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      1,
+      0
+    ]
+  },
+  {
+    "width": 390,
+    "name": "handoff-nexus-studio",
+    "progress": 0.84,
+    "chapter": "3",
+    "frame": "3",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 15.59375,
+      "y": 150.0625,
+      "width": 289.8125,
+      "height": 38,
+      "bottom": 188.0625,
+      "right": 305.40625
+    },
+    "document": {
+      "x": 145.7628936767578,
+      "y": 508.3792724609375,
+      "width": 187.68385314941406,
+      "height": 192.23736572265625,
+      "bottom": 700.6166381835938,
+      "right": 333.4467468261719
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      0.7545,
+      0.0084
+    ]
+  },
+  {
+    "width": 390,
+    "name": "return",
+    "progress": 0.93,
+    "chapter": "3",
+    "frame": "4",
+    "workspace": "studio",
+    "overflow": 0,
+    "controls": {
+      "x": 15.59375,
+      "y": 150.0625,
+      "width": 289.8125,
+      "height": 38,
+      "bottom": 188.0625,
+      "right": 305.40625
+    },
+    "document": {
+      "x": 179.40625,
+      "y": 522.375,
+      "width": 180,
+      "height": 194.75,
+      "bottom": 717.125,
+      "right": 359.40625
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      0,
+      1
+    ]
+  },
+  {
+    "width": 390,
+    "errors": []
+  },
+  {
+    "width": 768,
+    "name": "capture",
+    "progress": 0.12,
+    "chapter": "0",
+    "frame": "0",
+    "workspace": "studio",
+    "overflow": 0,
+    "controls": {
+      "x": 38.390625,
+      "y": 208.65625,
+      "width": 372.8125,
+      "height": 40,
+      "bottom": 248.65625,
+      "right": 411.203125
+    },
+    "document": {
+      "x": 456.046875,
+      "y": 572.78125,
+      "width": 245,
+      "height": 233.640625,
+      "bottom": 806.421875,
+      "right": 701.046875
+    },
+    "panels": [
+      1,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 768,
+    "name": "handoff-studio-nexus",
+    "progress": 0.24,
+    "chapter": "0",
+    "frame": "0",
+    "workspace": "studio",
+    "overflow": 0,
+    "controls": {
+      "x": 38.390625,
+      "y": 208.65625,
+      "width": 372.8125,
+      "height": 40,
+      "bottom": 248.65625,
+      "right": 411.203125
+    },
+    "document": {
+      "x": 325.75421142578125,
+      "y": 462.385009765625,
+      "width": 285.5853271484375,
+      "height": 274.43310546875,
+      "bottom": 736.818115234375,
+      "right": 611.3395385742188
+    },
+    "panels": [
+      0.258,
+      0.2522,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 768,
+    "name": "orchestrate",
+    "progress": 0.34,
+    "chapter": "1",
+    "frame": "1",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 38.390625,
+      "y": 208.65625,
+      "width": 372.8125,
+      "height": 40,
+      "bottom": 248.65625,
+      "right": 411.203125
+    },
+    "document": {
+      "x": 456.046875,
+      "y": 572.78125,
+      "width": 245,
+      "height": 233.640625,
+      "bottom": 806.421875,
+      "right": 701.046875
+    },
+    "panels": [
+      0,
+      1,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 768,
+    "name": "handoff-nexus-sentry",
+    "progress": 0.46,
+    "chapter": "1",
+    "frame": "1",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 38.390625,
+      "y": 208.65625,
+      "width": 372.8125,
+      "height": 40,
+      "bottom": 248.65625,
+      "right": 411.203125
+    },
+    "document": {
+      "x": 355.5067443847656,
+      "y": 487.611572265625,
+      "width": 276.2504577636719,
+      "height": 265.02838134765625,
+      "bottom": 752.6399536132812,
+      "right": 631.7572021484375
+    },
+    "panels": [
+      0,
+      0.7489,
+      0.0094,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 768,
+    "name": "verify",
+    "progress": 0.58,
+    "chapter": "2",
+    "frame": "2",
+    "workspace": "sentry",
+    "overflow": 0,
+    "controls": {
+      "x": 38.390625,
+      "y": 208.65625,
+      "width": 372.8125,
+      "height": 40,
+      "bottom": 248.65625,
+      "right": 411.203125
+    },
+    "document": {
+      "x": 456.046875,
+      "y": 572.78125,
+      "width": 245,
+      "height": 233.640625,
+      "bottom": 806.421875,
+      "right": 701.046875
+    },
+    "panels": [
+      0,
+      0,
+      1,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 768,
+    "name": "handoff-sentry-nexus",
+    "progress": 0.7,
+    "chapter": "2",
+    "frame": "2",
+    "workspace": "sentry",
+    "overflow": 0,
+    "controls": {
+      "x": 38.390625,
+      "y": 208.65625,
+      "width": 372.8125,
+      "height": 40,
+      "bottom": 248.65625,
+      "right": 411.203125
+    },
+    "document": {
+      "x": 355.33197021484375,
+      "y": 487.4635009765625,
+      "width": 276.30340576171875,
+      "height": 265.08172607421875,
+      "bottom": 752.5452270507812,
+      "right": 631.6353759765625
+    },
+    "panels": [
+      0,
+      0,
+      0.748,
+      0.0096,
+      0
+    ]
+  },
+  {
+    "width": 768,
+    "name": "consolidate",
+    "progress": 0.77,
+    "chapter": "3",
+    "frame": "3",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 38.390625,
+      "y": 208.65625,
+      "width": 372.8125,
+      "height": 40,
+      "bottom": 248.65625,
+      "right": 411.203125
+    },
+    "document": {
+      "x": 455.5852355957031,
+      "y": 572.3902587890625,
+      "width": 245.14566040039062,
+      "height": 233.786376953125,
+      "bottom": 806.1766357421875,
+      "right": 700.7308959960938
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      1,
+      0
+    ]
+  },
+  {
+    "width": 768,
+    "name": "handoff-nexus-studio",
+    "progress": 0.84,
+    "chapter": "3",
+    "frame": "3",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 38.390625,
+      "y": 208.65625,
+      "width": 372.8125,
+      "height": 40,
+      "bottom": 248.65625,
+      "right": 411.203125
+    },
+    "document": {
+      "x": 355.60125732421875,
+      "y": 487.6923522949219,
+      "width": 276.2108154296875,
+      "height": 264.9890441894531,
+      "bottom": 752.681396484375,
+      "right": 631.8120727539062
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      0.7493,
+      0.0093
+    ]
+  },
+  {
+    "width": 768,
+    "name": "return",
+    "progress": 0.93,
+    "chapter": "3",
+    "frame": "4",
+    "workspace": "studio",
+    "overflow": 0,
+    "controls": {
+      "x": 38.390625,
+      "y": 208.65625,
+      "width": 372.8125,
+      "height": 40,
+      "bottom": 248.65625,
+      "right": 411.203125
+    },
+    "document": {
+      "x": 456.046875,
+      "y": 572.78125,
+      "width": 245,
+      "height": 233.640625,
+      "bottom": 806.421875,
+      "right": 701.046875
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      0,
+      1
+    ]
+  },
+  {
+    "width": 768,
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "name": "capture",
+    "progress": 0.12,
+    "chapter": "0",
+    "frame": "0",
+    "workspace": "studio",
+    "overflow": 0,
+    "controls": {
+      "x": 72,
+      "y": 169,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 209,
+      "right": 468.8125
+    },
+    "document": {
+      "x": 707.53125,
+      "y": 558.53125,
+      "width": 290,
+      "height": 260.96875,
+      "bottom": 819.5,
+      "right": 997.53125
+    },
+    "panels": [
+      1,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 1440,
+    "name": "handoff-studio-nexus",
+    "progress": 0.24,
+    "chapter": "1",
+    "frame": "1",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 72,
+      "y": 169,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 209,
+      "right": 468.8125
+    },
+    "document": {
+      "x": 574.244873046875,
+      "y": 444.98016357421875,
+      "width": 336.57275390625,
+      "height": 308.0709228515625,
+      "bottom": 753.0510864257812,
+      "right": 910.817626953125
+    },
+    "panels": [
+      0.2551,
+      0.2551,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 1440,
+    "name": "orchestrate",
+    "progress": 0.34,
+    "chapter": "1",
+    "frame": "1",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 72,
+      "y": 169,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 209,
+      "right": 468.8125
+    },
+    "document": {
+      "x": 707.53125,
+      "y": 558.53125,
+      "width": 290,
+      "height": 260.96875,
+      "bottom": 819.5,
+      "right": 997.53125
+    },
+    "panels": [
+      0,
+      1,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 1440,
+    "name": "handoff-nexus-sentry",
+    "progress": 0.46,
+    "chapter": "1",
+    "frame": "1",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 72,
+      "y": 169,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 209,
+      "right": 468.8125
+    },
+    "document": {
+      "x": 604.6673583984375,
+      "y": 470.9327392578125,
+      "width": 325.878173828125,
+      "height": 297.197998046875,
+      "bottom": 768.1307373046875,
+      "right": 930.5455322265625
+    },
+    "panels": [
+      0,
+      0.7488,
+      0.0094,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 1440,
+    "name": "verify",
+    "progress": 0.58,
+    "chapter": "2",
+    "frame": "2",
+    "workspace": "sentry",
+    "overflow": 0,
+    "controls": {
+      "x": 72,
+      "y": 154.65625,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 194.65625,
+      "right": 468.8125
+    },
+    "document": {
+      "x": 707.53125,
+      "y": 572.875,
+      "width": 290,
+      "height": 260.96875,
+      "bottom": 833.84375,
+      "right": 997.53125
+    },
+    "panels": [
+      0,
+      0,
+      1,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 1440,
+    "name": "handoff-sentry-nexus",
+    "progress": 0.7,
+    "chapter": "2",
+    "frame": "2",
+    "workspace": "sentry",
+    "overflow": 0,
+    "controls": {
+      "x": 72,
+      "y": 154.65625,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 194.65625,
+      "right": 468.8125
+    },
+    "document": {
+      "x": 604.6673583984375,
+      "y": 485.2764892578125,
+      "width": 325.878173828125,
+      "height": 297.197998046875,
+      "bottom": 782.4744873046875,
+      "right": 930.5455322265625
+    },
+    "panels": [
+      0,
+      0,
+      0.7488,
+      0.0094,
+      0
+    ]
+  },
+  {
+    "width": 1440,
+    "name": "consolidate",
+    "progress": 0.77,
+    "chapter": "3",
+    "frame": "3",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 72,
+      "y": 169,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 209,
+      "right": 468.8125
+    },
+    "document": {
+      "x": 707.0320434570312,
+      "y": 558.106689453125,
+      "width": 290.172607421875,
+      "height": 261.1422119140625,
+      "bottom": 819.2489013671875,
+      "right": 997.2046508789062
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      1,
+      0
+    ]
+  },
+  {
+    "width": 1440,
+    "name": "handoff-nexus-studio",
+    "progress": 0.84,
+    "chapter": "3",
+    "frame": "3",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 72,
+      "y": 169,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 209,
+      "right": 468.8125
+    },
+    "document": {
+      "x": 605.4475708007812,
+      "y": 471.59832763671875,
+      "width": 325.5953369140625,
+      "height": 296.9119873046875,
+      "bottom": 768.5103149414062,
+      "right": 931.0429077148438
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      0.7527,
+      0.0087
+    ]
+  },
+  {
+    "width": 1440,
+    "name": "return",
+    "progress": 0.93,
+    "chapter": "3",
+    "frame": "4",
+    "workspace": "studio",
+    "overflow": 0,
+    "controls": {
+      "x": 72,
+      "y": 169,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 209,
+      "right": 468.8125
+    },
+    "document": {
+      "x": 707.53125,
+      "y": 558.53125,
+      "width": 290,
+      "height": 260.96875,
+      "bottom": 819.5,
+      "right": 997.53125
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      0,
+      1
+    ]
+  },
+  {
+    "width": 1440,
+    "errors": []
+  },
+  {
+    "width": 1920,
+    "name": "capture",
+    "progress": 0.12,
+    "chapter": "0",
+    "frame": "0",
+    "workspace": "studio",
+    "overflow": 0,
+    "controls": {
+      "x": 220,
+      "y": 191.796875,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 231.796875,
+      "right": 616.8125
+    },
+    "document": {
+      "x": 979.5625,
+      "y": 609.359375,
+      "width": 290,
+      "height": 260.96875,
+      "bottom": 870.328125,
+      "right": 1269.5625
+    },
+    "panels": [
+      1,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 1920,
+    "name": "handoff-studio-nexus",
+    "progress": 0.24,
+    "chapter": "1",
+    "frame": "1",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 220,
+      "y": 191.796875,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 231.796875,
+      "right": 616.8125
+    },
+    "document": {
+      "x": 846.276123046875,
+      "y": 495.80828857421875,
+      "width": 336.57275390625,
+      "height": 308.0709228515625,
+      "bottom": 803.8792114257812,
+      "right": 1182.848876953125
+    },
+    "panels": [
+      0.2545,
+      0.2557,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 1920,
+    "name": "orchestrate",
+    "progress": 0.34,
+    "chapter": "1",
+    "frame": "1",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 220,
+      "y": 191.796875,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 231.796875,
+      "right": 616.8125
+    },
+    "document": {
+      "x": 979.5625,
+      "y": 609.359375,
+      "width": 290,
+      "height": 260.96875,
+      "bottom": 870.328125,
+      "right": 1269.5625
+    },
+    "panels": [
+      0,
+      1,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 1920,
+    "name": "handoff-nexus-sentry",
+    "progress": 0.46,
+    "chapter": "1",
+    "frame": "1",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 220,
+      "y": 191.796875,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 231.796875,
+      "right": 616.8125
+    },
+    "document": {
+      "x": 876.1882934570312,
+      "y": 521.3257446289062,
+      "width": 326.05596923828125,
+      "height": 297.37860107421875,
+      "bottom": 818.704345703125,
+      "right": 1202.2442626953125
+    },
+    "panels": [
+      0,
+      0.7462,
+      0.0099,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 1920,
+    "name": "verify",
+    "progress": 0.58,
+    "chapter": "2",
+    "frame": "2",
+    "workspace": "sentry",
+    "overflow": 0,
+    "controls": {
+      "x": 220,
+      "y": 170.609375,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 210.609375,
+      "right": 616.8125
+    },
+    "document": {
+      "x": 979.5625,
+      "y": 630.546875,
+      "width": 290,
+      "height": 260.96875,
+      "bottom": 891.515625,
+      "right": 1269.5625
+    },
+    "panels": [
+      0,
+      0,
+      1,
+      0,
+      0
+    ]
+  },
+  {
+    "width": 1920,
+    "name": "handoff-sentry-nexus",
+    "progress": 0.7,
+    "chapter": "2",
+    "frame": "2",
+    "workspace": "sentry",
+    "overflow": 0,
+    "controls": {
+      "x": 220,
+      "y": 170.609375,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 210.609375,
+      "right": 616.8125
+    },
+    "document": {
+      "x": 876.7918090820312,
+      "y": 543.0281982421875,
+      "width": 325.83319091796875,
+      "height": 297.15386962890625,
+      "bottom": 840.1820678710938,
+      "right": 1202.625
+    },
+    "panels": [
+      0,
+      0,
+      0.7492,
+      0.0094,
+      0
+    ]
+  },
+  {
+    "width": 1920,
+    "name": "consolidate",
+    "progress": 0.77,
+    "chapter": "3",
+    "frame": "3",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 220,
+      "y": 191.796875,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 231.796875,
+      "right": 616.8125
+    },
+    "document": {
+      "x": 979.1004028320312,
+      "y": 608.96630859375,
+      "width": 290.16534423828125,
+      "height": 261.1341552734375,
+      "bottom": 870.1004638671875,
+      "right": 1269.2657470703125
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      1,
+      0
+    ]
+  },
+  {
+    "width": 1920,
+    "name": "handoff-nexus-studio",
+    "progress": 0.84,
+    "chapter": "3",
+    "frame": "3",
+    "workspace": "nexus",
+    "overflow": 0,
+    "controls": {
+      "x": 220,
+      "y": 191.796875,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 231.796875,
+      "right": 616.8125
+    },
+    "document": {
+      "x": 876.9628295898438,
+      "y": 521.9865112304688,
+      "width": 325.77398681640625,
+      "height": 297.09368896484375,
+      "bottom": 819.0802001953125,
+      "right": 1202.73681640625
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      0.7501,
+      0.0092
+    ]
+  },
+  {
+    "width": 1920,
+    "name": "return",
+    "progress": 0.93,
+    "chapter": "3",
+    "frame": "4",
+    "workspace": "studio",
+    "overflow": 0,
+    "controls": {
+      "x": 220,
+      "y": 191.796875,
+      "width": 396.8125,
+      "height": 40,
+      "bottom": 231.796875,
+      "right": 616.8125
+    },
+    "document": {
+      "x": 979.5625,
+      "y": 609.359375,
+      "width": 290,
+      "height": 260.96875,
+      "bottom": 870.328125,
+      "right": 1269.5625
+    },
+    "panels": [
+      0,
+      0,
+      0,
+      0,
+      1
+    ]
+  },
+  {
+    "width": 1920,
+    "errors": []
+  }
+]

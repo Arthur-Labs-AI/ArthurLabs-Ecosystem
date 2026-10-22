@@ -1,0 +1,30 @@
+[
+  {
+    "width": 390,
+    "maxNodeGeometryDifferenceFromApprovedMotion": 0.0,
+    "maxReverseNodeDelta": 0.0,
+    "overflow": [],
+    "errors": []
+  },
+  {
+    "width": 768,
+    "maxNodeGeometryDifferenceFromApprovedMotion": 0.0,
+    "maxReverseNodeDelta": 0.0,
+    "overflow": [],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "maxNodeGeometryDifferenceFromApprovedMotion": 0.0,
+    "maxReverseNodeDelta": 0.0,
+    "overflow": [],
+    "errors": []
+  },
+  {
+    "width": 1920,
+    "maxNodeGeometryDifferenceFromApprovedMotion": 0.0,
+    "maxReverseNodeDelta": 0.0,
+    "overflow": [],
+    "errors": []
+  }
+]

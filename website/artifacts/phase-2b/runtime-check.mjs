@@ -1,0 +1,5 @@
+import{chromium}from'@playwright/test';import{writeFileSync}from'node:fs';
+const browser=await chromium.launch();const result=[];
+for(const[width,height]of[[390,667],[768,1024],[1440,700],[1920,1080]]){
+const page=await browser.newPage({viewport:{width,height},reducedMotion:'no-preference'});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});await page.goto('http://localhost:3000/suite');await page.locator('[data-ready=true]').waitFor();await page.getByRole('button',{name:'Return chapter',exact:true}).click();await page.getByRole('button',{name:'Show Nexus consolidation'}).click();result.push({width,height,errors,state:await page.locator('#follow-the-idea').evaluate(e=>({static:e.dataset.static,timeline:e.dataset.timelineProgress,scroll:e.dataset.scrollProgress,frame:e.dataset.frame}))});await page.close();}
+writeFileSync('artifacts/phase-2b/runtime-check.json',JSON.stringify(result,null,2));console.log(result);await browser.close();

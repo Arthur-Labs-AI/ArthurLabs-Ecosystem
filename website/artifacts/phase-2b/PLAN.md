@@ -1,0 +1,13 @@
+# Phase 2B plan and diagnosis
+
+Read both approved briefs, complete Suite components/styles/story data, Phase 2A report/captures and browser tests. No AGENTS.md found in workspace ancestry. Scope remains Suite-only; no app repositories, shared components, global CSS, dependencies or Git operations.
+
+Confirmed before modification via Chromium: normal motion at 1440×700 and 390×667 sets `data-static=true`, no timeline and document computed transform `none` at all measured positions. Source cause is the `max-height:739px` matchMedia branch plus matching CSS removing sticky progression. At 1440×1000 and 390×844 computed transforms DO change at handoffs, without runtime errors. Therefore no general GSAP import/hydration/container failure was found. Hero and supporting sections have no animation code. Existing tests explicitly require the short-screen static behavior and do not measure document displacement. This is an environment assumption plus incomplete motion scope, not proof that GSAP is universally broken.
+
+1. Add failing normal-motion short-viewport regression and visual transform/displacement checks. Initial 1440×700 test failed at static-mode assertion as expected; evidence in diagnosis-before.json and before-* captures.
+2. Replace only height fallback with compact responsive layout. Retain explicit pause and reduced motion. Update the old short-screen expectation because its behavior is explicitly superseded by the recovery brief.
+3. Extract a deterministic normalized story timeline into Suite-only helper; persistent document has meaningful lift/foreground/dock paths, deeper application recede/entry, separate focus and destination treatment. Keep chapter model/scroll authority, reverse, cleanup and pause restoration.
+4. Add Suite-only animation wrapper for staggered hero entrance, architecture line/flow draw, product entry, hardware parallax and availability entrance. Respect reduced motion through GSAP matchMedia; no global selector or dependency change.
+5. Scene-specific context from typed story frames; authentic assets unchanged. Mobile focused narrative rather than pretending tiny capture is a usable dashboard.
+6. Production build, typecheck, existing + new tests; measured runtime transforms/timeline/scroll geometry, forward/reverse samples, all five states and dense handoff frames at 390/768/1440/1920; video if Playwright encoding available; entry/exit checks and Landing hash/capture regression.
+7. Compare captured renders with Phase 2A and report actual limits, no performance claim without frame pacing measurement. Stop for approval, no product-page work or commit/push.

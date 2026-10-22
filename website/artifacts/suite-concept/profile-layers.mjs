@@ -1,0 +1,7 @@
+import{chromium}from'@playwright/test';import{writeFileSync}from'node:fs';
+const browser=await chromium.launch();const records=[];
+for(const variant of ['current','without-image-effects','static','current-repeat']){
+ const page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'no-preference'});await page.goto('http://localhost:3000/suite/concept');await page.locator('[data-ready=true]').waitFor();await page.locator('img').evaluateAll(ims=>Promise.all(ims.map(i=>i.decode())));
+ if(variant==='without-image-effects')await page.addStyleTag({content:'[data-studio-crop],[data-nexus-crop]{mask-image:none!important}[data-studio-crop] img,[data-nexus-crop] img{filter:none!important;opacity:.62}'});
+ records.push(await page.evaluate(async variant=>{const e=document.querySelector('[data-concept-film]'),travel=e.clientHeight-innerHeight;let last;const deltas=[];await new Promise(done=>{let count=0;function frame(time){if(last)deltas.push(time-last);last=time;scrollTo({top:variant==='static'?travel*.12:travel*(count/120),behavior:'instant'});if(count++<120)requestAnimationFrame(frame);else done()}requestAnimationFrame(frame)});const s=[...deltas].sort((a,b)=>a-b);return{variant,median:s[Math.floor(s.length*.5)],p95:s[Math.floor(s.length*.95)],max:Math.max(...deltas),over50:deltas.filter(v=>v>50).length,samples:s.length}},variant));await page.close();}
+writeFileSync('artifacts/suite-concept/layer-profile.json',JSON.stringify(records,null,2));console.log(records);await browser.close();

@@ -1,0 +1,34 @@
+[
+  {
+    "variant": "current",
+    "median": 50,
+    "p95": 83.40000000000009,
+    "max": 300,
+    "over50": 28,
+    "samples": 120
+  },
+  {
+    "variant": "without-image-effects",
+    "median": 33.299999999999955,
+    "p95": 50.100000000000364,
+    "max": 116.59999999999991,
+    "over50": 9,
+    "samples": 120
+  },
+  {
+    "variant": "static",
+    "median": 16.699999999999818,
+    "p95": 16.799999999999727,
+    "max": 33.30000000000007,
+    "over50": 0,
+    "samples": 120
+  },
+  {
+    "variant": "current-repeat",
+    "median": 16.799999999999955,
+    "p95": 50,
+    "max": 150,
+    "over50": 2,
+    "samples": 120
+  }
+]

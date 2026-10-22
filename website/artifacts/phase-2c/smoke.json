@@ -1,0 +1,66 @@
+{
+  "errors": [],
+  "links": [
+    {
+      "href": "#main",
+      "status": 200,
+      "targetCount": 1
+    },
+    {
+      "href": "/",
+      "status": 200
+    },
+    {
+      "href": "/suite",
+      "status": 200
+    },
+    {
+      "href": "/#products",
+      "status": 200
+    },
+    {
+      "href": "/hardware",
+      "status": 200
+    },
+    {
+      "href": "/#philosophy",
+      "status": 200
+    },
+    {
+      "href": "/#footer",
+      "status": 200
+    },
+    {
+      "href": "/studio",
+      "status": 200
+    },
+    {
+      "href": "/nexus",
+      "status": 200
+    },
+    {
+      "href": "/sentry",
+      "status": 200
+    },
+    {
+      "href": "#downloads",
+      "status": 200,
+      "targetCount": 1
+    },
+    {
+      "href": "#living-workflow",
+      "status": 200,
+      "targetCount": 1
+    },
+    {
+      "href": "#workflow-film",
+      "status": 200,
+      "targetCount": 1
+    },
+    {
+      "href": "#workflow-story",
+      "status": 200,
+      "targetCount": 1
+    }
+  ]
+}

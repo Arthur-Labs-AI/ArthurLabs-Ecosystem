@@ -1,0 +1,46 @@
+[
+  {
+    "width": 390,
+    "reversePositionMaxDelta": 0.0,
+    "storageNodeDisplacement": 207.444809934782,
+    "cameraChanges": true,
+    "pathChanges": true,
+    "overflow": [],
+    "errors": [
+      []
+    ]
+  },
+  {
+    "width": 768,
+    "reversePositionMaxDelta": 0.0,
+    "storageNodeDisplacement": 269.45860219433314,
+    "cameraChanges": true,
+    "pathChanges": true,
+    "overflow": [],
+    "errors": [
+      []
+    ]
+  },
+  {
+    "width": 1440,
+    "reversePositionMaxDelta": 0.0,
+    "storageNodeDisplacement": 504.07262194931917,
+    "cameraChanges": true,
+    "pathChanges": true,
+    "overflow": [],
+    "errors": [
+      []
+    ]
+  },
+  {
+    "width": 1920,
+    "reversePositionMaxDelta": 0.0,
+    "storageNodeDisplacement": 671.9868442218636,
+    "cameraChanges": true,
+    "pathChanges": true,
+    "overflow": [],
+    "errors": [
+      []
+    ]
+  }
+]
