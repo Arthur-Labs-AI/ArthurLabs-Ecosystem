@@ -81,6 +81,7 @@ pub enum CodecError {
     OversizeBundle { bytes: usize, limit: usize },
     ImmutableFieldChanged { field: &'static str },
     MissingReviewProof { entity: &'static str },
+    NonModelRelationRemoval,
     Serialization(String),
 }
 
@@ -126,6 +127,9 @@ impl fmt::Display for CodecError {
                 f,
                 "claim/proposal state transition of {entity} needs operation-local review proof"
             ),
+            Self::NonModelRelationRemoval => {
+                write!(f, "relation removal covers original MODEL relations only")
+            }
             Self::Serialization(_) => write!(f, "canonical serialization failed"),
         }
     }
@@ -1272,6 +1276,14 @@ fn validate_operation(op: &Operation) -> Result<(), CodecError> {
             validate_key(EntityKind::Relations, &r.key)?;
             validate_row_image(EntityKind::Relations, &r.before)?;
             validate_key_matches_image(EntityKind::Relations, &r.key, &r.before)?;
+            // Observed-remove tombstones cover original MODEL edges only.
+            // Row validation above already enforces the closed origin
+            // vocabulary; this rule restricts the operation, never the
+            // stored domain rows (user/system creations stay valid).
+            if !matches!(r.before.get("origin"), Some(FieldValue::Text(origin)) if origin == "model")
+            {
+                return Err(CodecError::NonModelRelationRemoval);
+            }
             match &r.observed_create {
                 ObservedCreate::Event(e) => e.validate()?,
                 ObservedCreate::LegacyHash(h) => validate_hash_hex(h)?,

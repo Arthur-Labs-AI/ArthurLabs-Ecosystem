@@ -4415,3 +4415,205 @@ fn unchanged_facets_reject_any_expected() {
         super::codec::CodecError::UnexpectedField("expected.record".to_string())
     );
 }
+
+// ---------------------------------------------------------------------------
+// FIX-07 test-first: relation.remove is MODEL-only in the codec itself
+// ---------------------------------------------------------------------------
+
+fn remove_op(edge: &str, before: RowImage, observed: ObservedCreate) -> Operation {
+    Operation::RelationRemove(RelationRemove {
+        key: vec![edge.to_string()],
+        before,
+        observed_create: observed,
+    })
+}
+
+// Test A: direct USER removal is rejected even with a valid EventRef.
+#[test]
+fn direct_user_removal_fails() {
+    let before = relation_img(&uid(150), "related_to", &uid(151), &uid(152), "user");
+    let op = remove_op(&uid(150), before, ObservedCreate::Event(creation_ref()));
+    let event = sample_event(vec![op], vec![]);
+    let want = super::codec::CodecError::NonModelRelationRemoval;
+    assert_eq!(
+        validate_event(&event).expect_err("user removal must fail"),
+        want
+    );
+    assert_eq!(
+        encode_canonical(&event).expect_err("user removal must fail"),
+        want
+    );
+}
+
+// Test B: direct SYSTEM removal is rejected even with a valid legacy hash.
+#[test]
+fn direct_system_removal_fails() {
+    let edge = uid(153);
+    let before = relation_img(&edge, "related_to", &uid(154), &uid(155), "system");
+    let legacy = hash_hex(
+        &facet_state_hash(EntityKind::Relations, "record", &[edge.clone()], &before).unwrap(),
+    );
+    let op = remove_op(&edge, before, ObservedCreate::LegacyHash(legacy));
+    let event = sample_event(vec![op], vec![]);
+    let want = super::codec::CodecError::NonModelRelationRemoval;
+    assert_eq!(
+        validate_event(&event).expect_err("system removal must fail"),
+        want
+    );
+    assert_eq!(
+        encode_canonical(&event).expect_err("system removal must fail"),
+        want
+    );
+}
+
+// Test C: a valid modern MODEL removal round-trips untouched.
+#[test]
+fn modern_model_removal_round_trips() {
+    let edge = uid(156);
+    let before = relation_img(&edge, "related_to", &uid(157), &uid(158), "model");
+    let op = remove_op(&edge, before.clone(), ObservedCreate::Event(creation_ref()));
+    let event = sample_event(vec![op], vec![]);
+    validate_event(&event).unwrap();
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    let Operation::RelationRemove(back) = &decoded.operations[0] else {
+        panic!("expected remove")
+    };
+    assert_eq!(back.observed_create, ObservedCreate::Event(creation_ref()));
+    assert_eq!(back.before, before);
+    assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
+}
+
+// Test D: a valid legacy MODEL removal round-trips untouched.
+#[test]
+fn legacy_model_removal_round_trips() {
+    let edge = uid(159);
+    let before = relation_img(&edge, "related_to", &uid(160), &uid(161), "model");
+    let legacy = hash_hex(
+        &facet_state_hash(EntityKind::Relations, "record", &[edge.clone()], &before).unwrap(),
+    );
+    let op = remove_op(
+        &edge,
+        before.clone(),
+        ObservedCreate::LegacyHash(legacy.clone()),
+    );
+    let event = sample_event(vec![op], vec![]);
+    validate_event(&event).unwrap();
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    let Operation::RelationRemove(back) = &decoded.operations[0] else {
+        panic!("expected remove")
+    };
+    assert_eq!(back.observed_create, ObservedCreate::LegacyHash(legacy));
+    assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
+}
+
+// Test E: strict decoding rejects a canonical USER removal by policy.
+#[test]
+fn strict_decode_rejects_canonical_user_removal() {
+    let edge = uid(162);
+    let before = relation_img(&edge, "related_to", &uid(163), &uid(164), "model");
+    let legacy = hash_hex(
+        &facet_state_hash(EntityKind::Relations, "record", &[edge.clone()], &before).unwrap(),
+    );
+    let op = remove_op(&edge, before, ObservedCreate::LegacyHash(legacy));
+    let bytes = encode_canonical(&sample_event(vec![op], vec![])).unwrap();
+    let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    value["operations"][0]["before"]["origin"] = serde_json::Value::String("user".to_string());
+    let user_before = relation_img(&edge, "related_to", &uid(163), &uid(164), "user");
+    let user_hash = hash_hex(
+        &facet_state_hash(
+            EntityKind::Relations,
+            "record",
+            &[edge.clone()],
+            &user_before,
+        )
+        .unwrap(),
+    );
+    value["operations"][0]["observedCreate"]["legacyHash"] = serde_json::Value::String(user_hash);
+    let recanonical = serde_jcs::to_vec(&value).unwrap();
+    let err = decode_core_strict(&recanonical).expect_err("tampered user removal must fail");
+    assert_eq!(err, super::codec::CodecError::NonModelRelationRemoval);
+}
+
+// Test F: strict decoding rejects a canonical SYSTEM removal by policy.
+#[test]
+fn strict_decode_rejects_canonical_system_removal() {
+    let edge = uid(165);
+    let before = relation_img(&edge, "related_to", &uid(166), &uid(167), "model");
+    let op = remove_op(&edge, before, ObservedCreate::Event(creation_ref()));
+    let bytes = encode_canonical(&sample_event(vec![op], vec![])).unwrap();
+    let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    value["operations"][0]["before"]["origin"] = serde_json::Value::String("system".to_string());
+    let recanonical = serde_jcs::to_vec(&value).unwrap();
+    let err = decode_core_strict(&recanonical).expect_err("tampered system removal must fail");
+    assert_eq!(err, super::codec::CodecError::NonModelRelationRemoval);
+}
+
+// Test G: an unknown origin stays a row-shape error, not a policy pass.
+#[test]
+fn unknown_origin_stays_row_error() {
+    let edge = uid(168);
+    let mut before = relation_img(&edge, "related_to", &uid(169), &uid(170), "model");
+    before.insert("origin".to_string(), txt("external"));
+    let op = remove_op(&edge, before, ObservedCreate::LegacyHash(prev_b_hash()));
+    let err =
+        validate_event(&sample_event(vec![op], vec![])).expect_err("unknown origin must fail");
+    assert!(matches!(
+        err,
+        super::codec::CodecError::InvalidEnumValue {
+            field: "origin",
+            ..
+        }
+    ));
+}
+
+// Test H: USER and SYSTEM creations remain valid record.create operations.
+#[test]
+fn user_system_creations_stay_valid() {
+    for origin in ["user", "system"] {
+        let edge = uid(171);
+        let image = relation_img(&edge, "related_to", &uid(172), &uid(173), origin);
+        let op = Operation::RecordCreate(RecordCreate {
+            entity: EntityKind::Relations,
+            key: vec![edge],
+            after: image.clone(),
+        });
+        let event = sample_event(vec![op], vec![]);
+        validate_event(&event).unwrap();
+        let bytes = encode_canonical(&event).unwrap();
+        let decoded = decode_core_strict(&bytes).unwrap();
+        assert_eq!(decoded, event);
+    }
+}
+
+// Test I: the reducer still refuses USER/SYSTEM deletion itself.
+#[test]
+fn reducer_still_refuses_non_model_deletion() {
+    for origin in ["user", "system"] {
+        let edge = uid(174);
+        let before = relation_img(&edge, "related_to", &uid(175), &uid(176), origin);
+        let effects = vec![effect(
+            EntityKind::Relations,
+            vec![edge],
+            Some(before),
+            None,
+        )];
+        let resolver = MapResolver::new();
+        let mut baselines: Baselines = BTreeSet::new();
+        baselines.insert((EntityKind::KnowledgeObjects, vec![uid(175)]));
+        baselines.insert((EntityKind::KnowledgeObjects, vec![uid(176)]));
+        let err = reduce_effects(
+            &effects,
+            &resolver,
+            &BTreeMap::new(),
+            &baselines,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+        )
+        .expect_err("non-model must fail");
+        assert_eq!(err, ReducerError::NonModelEdgeDeletion);
+    }
+}
