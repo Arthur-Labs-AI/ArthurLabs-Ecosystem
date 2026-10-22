@@ -4617,3 +4617,199 @@ fn reducer_still_refuses_non_model_deletion() {
         assert_eq!(err, ReducerError::NonModelEdgeDeletion);
     }
 }
+
+// ---------------------------------------------------------------------------
+// FIX-08 test-first: raw count range and early decode size admission
+// ---------------------------------------------------------------------------
+
+fn count_event(count: &str) -> JournalEvent {
+    let mut event = sample_event(vec![capture_create_op("cnt", "x")], vec![]);
+    event.raw_effect_count = count.to_string();
+    event
+}
+
+// Test A: raw_effect_count "0" is below the SQL range.
+#[test]
+fn raw_count_zero_is_rejected() {
+    let event = count_event("0");
+    let want = super::codec::CodecError::InvalidDecimal("0".to_string());
+    assert_eq!(
+        validate_event(&event).expect_err("zero count must fail"),
+        want
+    );
+    assert_eq!(
+        encode_canonical(&event).expect_err("zero count must fail"),
+        want
+    );
+}
+
+// Test B: the lowest valid boundary round-trips.
+#[test]
+fn raw_count_one_is_accepted() {
+    let event = count_event("1");
+    validate_event(&event).unwrap();
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+}
+
+// Test C: the highest valid boundary with a single reduced operation.
+// Multiple raw SQL effects may reduce to fewer logical operations, so the
+// count is intentionally NOT equal to operations.len() here.
+#[test]
+fn raw_count_max_is_accepted() {
+    let event = count_event("4096");
+    validate_event(&event).unwrap();
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+}
+
+// Test D: the first invalid upper boundary fails.
+#[test]
+fn raw_count_above_max_is_rejected() {
+    let event = count_event("4097");
+    let want = super::codec::CodecError::InvalidDecimal("4097".to_string());
+    assert_eq!(
+        validate_event(&event).expect_err("over-max count must fail"),
+        want
+    );
+    assert_eq!(
+        encode_canonical(&event).expect_err("over-max count must fail"),
+        want
+    );
+}
+
+// Test E: large canonical decimals outside the field range fail.
+#[test]
+fn raw_count_large_decimals_are_rejected() {
+    for count in ["9223372036854775807", "18446744073709551615"] {
+        let event = count_event(count);
+        let want = super::codec::CodecError::InvalidDecimal(count.to_string());
+        assert_eq!(
+            validate_event(&event).expect_err("large count must fail"),
+            want
+        );
+        assert_eq!(
+            encode_canonical(&event).expect_err("large count must fail"),
+            want
+        );
+    }
+}
+
+// Test F: overflow and malformed decimals fail without panic or wrapping.
+#[test]
+fn raw_count_malformed_decimals_are_rejected() {
+    for count in ["18446744073709551616", "-1", "+1", "01", "1.0", ""] {
+        let event = count_event(count);
+        validate_event(&event).expect_err("malformed count must fail");
+        encode_canonical(&event).expect_err("malformed count must fail");
+    }
+}
+
+// Test G: canonical count tampering is rejected by range, not by shape.
+#[test]
+fn strict_decode_rejects_tampered_count() {
+    for count in ["0", "4097"] {
+        let bytes = encode_canonical(&count_event("1")).unwrap();
+        let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        value["rawEffectCount"] = serde_json::Value::String(count.to_string());
+        let tampered = serde_jcs::to_vec(&value).unwrap();
+        let err = decode_core_strict(&tampered).expect_err("tampered count must fail");
+        assert_eq!(
+            err,
+            super::codec::CodecError::InvalidDecimal(count.to_string())
+        );
+    }
+}
+
+// Test H: the raw count is not the reduced operation count.
+#[test]
+fn raw_count_is_not_operation_count() {
+    let event = count_event("2");
+    validate_event(&event).unwrap();
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    assert_eq!(decoded.raw_effect_count, "2".to_string());
+    assert_eq!(decoded.operations.len(), 1);
+}
+
+// Test I: oversized malformed input fails before scanning or parsing.
+#[test]
+fn oversized_malformed_input_fails_first() {
+    let input = vec![0xFFu8; MAX_CANONICAL_BYTES + 1];
+    let err = decode_core_strict(&input).expect_err("oversized input must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::OversizeBundle {
+            bytes: MAX_CANONICAL_BYTES + 1,
+            limit: MAX_CANONICAL_BYTES
+        }
+    );
+}
+
+// Test J: oversized but syntactically valid JSON fails with the size error.
+#[test]
+fn oversized_valid_json_fails_first() {
+    let value = serde_json::json!({"pad": "x".repeat(MAX_CANONICAL_BYTES + 1)});
+    let input = serde_jcs::to_vec(&value).unwrap();
+    assert!(input.len() > MAX_CANONICAL_BYTES);
+    let err = decode_core_strict(&input).expect_err("oversized JSON must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::OversizeBundle {
+            bytes: input.len(),
+            limit: MAX_CANONICAL_BYTES
+        }
+    );
+}
+
+// Test K: the inclusive upper boundary admits exact-limit canonical events.
+#[test]
+fn exact_size_boundary_decodes() {
+    let one = sample_event(vec![capture_create_op("kz", "x")], vec![]);
+    let overhead = encode_canonical(&one).unwrap().len() - 1;
+    let content = "x".repeat(MAX_CANONICAL_BYTES - overhead);
+    let event = sample_event(vec![capture_create_op("kz", &content)], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(bytes.len(), MAX_CANONICAL_BYTES);
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+    let mut over = bytes;
+    over.push(b' ');
+    let err = decode_core_strict(&over).expect_err("one byte over must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::OversizeBundle {
+            bytes: MAX_CANONICAL_BYTES + 1,
+            limit: MAX_CANONICAL_BYTES
+        }
+    );
+}
+
+// Test L: size takes precedence over every parser error.
+#[test]
+fn size_error_precedes_parser_errors() {
+    let input = vec![b'{'; MAX_CANONICAL_BYTES + 1];
+    let err = decode_core_strict(&input).expect_err("deep oversized input must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::OversizeBundle {
+            bytes: MAX_CANONICAL_BYTES + 1,
+            limit: MAX_CANONICAL_BYTES
+        }
+    );
+    let small = b"{\"a\":1,\"a\":2}";
+    let err = decode_core_strict(small).expect_err("small duplicate must fail");
+    assert_eq!(err, super::codec::CodecError::DuplicateKey("a".to_string()));
+}
+
+// Test M: ordinary events keep byte-identical round-trips.
+#[test]
+fn ordinary_events_round_trip_identically() {
+    let event = count_event("7");
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+    assert_eq!(
+        encode_canonical(&decode_core_strict(&bytes).unwrap()).unwrap(),
+        bytes
+    );
+}

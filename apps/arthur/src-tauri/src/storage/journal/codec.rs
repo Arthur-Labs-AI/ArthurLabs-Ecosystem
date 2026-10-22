@@ -1236,6 +1236,15 @@ pub fn validate_event(event: &JournalEvent) -> Result<(), CodecError> {
         });
     }
     validate_decimal(&event.raw_effect_count)?;
+    // SQL parity (sync_bundles.raw_effect_count BETWEEN 1 AND 4096): the
+    // count of observed effects, not the number of reduced operations.
+    let raw_count: u64 = event
+        .raw_effect_count
+        .parse()
+        .map_err(|_| CodecError::InvalidDecimal(event.raw_effect_count.clone()))?;
+    if raw_count < 1 || raw_count > MAX_EFFECTS as u64 {
+        return Err(CodecError::InvalidDecimal(event.raw_effect_count.clone()));
+    }
     for dep in &event.dependencies {
         validate_key(dep.entity, &dep.key)?;
         if let Some(r) = &dep.event_ref {
@@ -1571,6 +1580,14 @@ pub fn facet_state_hash(
 /// over-deep nesting, unknown fields, unsupported versions and any
 /// non-canonical rendering (re-encode must reproduce the input bytes).
 pub fn decode_core_strict(bytes: &[u8]) -> Result<JournalEvent, CodecError> {
+    // Admission before scanning, parsing or materializing: oversized input
+    // fails here with the actual received length, never a parser error.
+    if bytes.len() > MAX_CANONICAL_BYTES {
+        return Err(CodecError::OversizeBundle {
+            bytes: bytes.len(),
+            limit: MAX_CANONICAL_BYTES,
+        });
+    }
     scan_json_object_keys(bytes)?;
     let value: Value =
         serde_json::from_slice(bytes).map_err(|e| CodecError::MalformedJson(e.to_string()))?;
