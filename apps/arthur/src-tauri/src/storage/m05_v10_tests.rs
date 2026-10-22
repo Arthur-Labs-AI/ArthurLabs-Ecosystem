@@ -388,7 +388,7 @@ fn assert_exact_candidate_catalog(c: &Connection) {
     assert_eq!(catalog(), expected);
 }
 
-fn populated(c: &Connection) {
+pub(super) fn populated(c: &Connection) {
     // Real v9 invariants: immutable provenance, system evidence BEFORE descendant,
     // stale open proposal and a rejected terminal proposal, then archived project.
     c.execute_batch(&format!(r#"
@@ -1204,7 +1204,7 @@ fn snapshot_rows_and_all_transition_guards_preserve_materialized_image() {
     healthy(&c);
 }
 
-fn projection_fixture(candidate: &'static str) -> (Connection, Connection) {
+pub(super) fn projection_fixture(candidate: &'static str) -> (Connection, Connection) {
     let real = v9();
     let mut c = Connection::open_in_memory().unwrap();
     c.pragma_update(None, "foreign_keys", "ON").unwrap();

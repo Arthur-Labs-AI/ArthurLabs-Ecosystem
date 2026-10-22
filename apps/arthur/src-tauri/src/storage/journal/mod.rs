@@ -2,8 +2,8 @@
 //!
 //! Transport-independent, event-level journal support. This module compiles
 //! into normal production builds but is NOT invoked by any existing
-//! production write path: schema stays v9, no `JournalTx` exists yet, and
-//! no Tauri command creates a journal context. Activation belongs to a later
+//! production write path: schema stays v9 and the private transaction kernel
+//! is dormant. No Tauri command creates a journal context. Activation belongs to a later
 //! task that integrates every authoritative writer.
 //!
 //! Layout:
@@ -18,6 +18,13 @@
 
 pub mod codec;
 pub mod reducer;
+
+mod sql_effects;
+mod storage;
+mod stream;
+
+#[cfg(test)]
+mod storage_tests;
 
 #[cfg(test)]
 mod tests;
