@@ -1,0 +1,20 @@
+{
+  "modified": [
+    "src/components/nexus-concept/Hero.tsx",
+    "src/components/nexus-concept/features/Nova.tsx",
+    "src/components/nexus-concept/features/Compaction.tsx",
+    "src/components/nexus-concept/features/Registry.tsx",
+    "tests/landing.spec.ts",
+    "tests/nexus-concept.spec.ts"
+  ],
+  "created": [
+    "src/components/nexus-product/ProductNav.tsx",
+    "src/components/nexus-product/ReadingGuide.tsx",
+    "src/components/nexus-product/ProductSections.tsx",
+    "src/components/nexus-product/product.module.css",
+    "src/app/nexus/page.tsx",
+    "public/images/nexus-code-evidence.webp",
+    "public/images/nexus-native-workspace.webp",
+    "tests/nexus-product.spec.ts"
+  ]
+}

@@ -1,0 +1,378 @@
+[
+  {
+    "width": 1440,
+    "height": 1000,
+    "errors": [],
+    "boxes": {
+      "inside-engine": {
+        "left": 0,
+        "top": 1353,
+        "width": 1440,
+        "height": 944
+      },
+      "native-core": {
+        "left": 0,
+        "top": 2296,
+        "width": 1440,
+        "height": 1363
+      },
+      "nexus-nova": {
+        "left": 0,
+        "top": 3658,
+        "width": 1440,
+        "height": 1563
+      },
+      "context-compaction": {
+        "left": 0,
+        "top": 5221,
+        "width": 1440,
+        "height": 2392
+      },
+      "model-registry": {
+        "left": 0,
+        "top": 7612,
+        "width": 1440,
+        "height": 2115
+      }
+    }
+  },
+  {
+    "width": 1920,
+    "height": 1080,
+    "errors": [],
+    "boxes": {
+      "inside-engine": {
+        "left": 0,
+        "top": 1395,
+        "width": 1920,
+        "height": 956
+      },
+      "native-core": {
+        "left": 0,
+        "top": 2350,
+        "width": 1920,
+        "height": 1490
+      },
+      "nexus-nova": {
+        "left": 0,
+        "top": 3840,
+        "width": 1920,
+        "height": 1670
+      },
+      "context-compaction": {
+        "left": 0,
+        "top": 5510,
+        "width": 1920,
+        "height": 2363
+      },
+      "model-registry": {
+        "left": 0,
+        "top": 7872,
+        "width": 1920,
+        "height": 2122
+      }
+    }
+  },
+  {
+    "width": 768,
+    "height": 1024,
+    "errors": [],
+    "boxes": {
+      "inside-engine": {
+        "left": 0,
+        "top": 1139,
+        "width": 768,
+        "height": 933
+      },
+      "native-core": {
+        "left": 0,
+        "top": 2071,
+        "width": 768,
+        "height": 1952
+      },
+      "nexus-nova": {
+        "left": 0,
+        "top": 4022,
+        "width": 768,
+        "height": 1938
+      },
+      "context-compaction": {
+        "left": 0,
+        "top": 5960,
+        "width": 768,
+        "height": 2788
+      },
+      "model-registry": {
+        "left": 0,
+        "top": 8747,
+        "width": 768,
+        "height": 2523
+      }
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "boxes": {
+      "inside-engine": {
+        "left": 0,
+        "top": 986,
+        "width": 390,
+        "height": 1116
+      },
+      "native-core": {
+        "left": 0,
+        "top": 2101,
+        "width": 390,
+        "height": 2189
+      },
+      "nexus-nova": {
+        "left": 0,
+        "top": 4289,
+        "width": 390,
+        "height": 2078
+      },
+      "context-compaction": {
+        "left": 0,
+        "top": 6367,
+        "width": 390,
+        "height": 4147
+      },
+      "model-registry": {
+        "left": 0,
+        "top": 10513,
+        "width": 390,
+        "height": 3325
+      }
+    }
+  },
+  {
+    "recording": 1440,
+    "marks": [
+      {
+        "label": "Hero",
+        "seconds": 0.001
+      },
+      {
+        "label": "Native architecture",
+        "seconds": 0.902
+      },
+      {
+        "label": "Native component 2",
+        "seconds": 1.935
+      },
+      {
+        "label": "Native component 3",
+        "seconds": 2.945
+      },
+      {
+        "label": "Native component 5",
+        "seconds": 3.929
+      },
+      {
+        "label": "Native component 7",
+        "seconds": 4.911
+      },
+      {
+        "label": "Nova manual steps",
+        "seconds": 5.867
+      },
+      {
+        "label": "Nova step 1",
+        "seconds": 6.806
+      },
+      {
+        "label": "Nova step 2",
+        "seconds": 7.773
+      },
+      {
+        "label": "Nova step 3",
+        "seconds": 8.775
+      },
+      {
+        "label": "Nova step 4",
+        "seconds": 9.743
+      },
+      {
+        "label": "Nova step 5",
+        "seconds": 10.724
+      },
+      {
+        "label": "Nova step 6",
+        "seconds": 11.708
+      },
+      {
+        "label": "Nova step 7",
+        "seconds": 12.691
+      },
+      {
+        "label": "Nova step 8",
+        "seconds": 13.674
+      },
+      {
+        "label": "Nova step 9",
+        "seconds": 14.641
+      },
+      {
+        "label": "CCv2 before",
+        "seconds": 15.589
+      },
+      {
+        "label": "CCv2 structured context",
+        "seconds": 19.366
+      },
+      {
+        "label": "Reduced history remains explainable",
+        "seconds": 20.317
+      },
+      {
+        "label": "Open boundary example",
+        "seconds": 21.325
+      },
+      {
+        "label": "Registry entry explorer",
+        "seconds": 22.267
+      },
+      {
+        "label": "Sample A",
+        "seconds": 23.241
+      },
+      {
+        "label": "Sample C",
+        "seconds": 24.224
+      },
+      {
+        "label": "Registry usage 1",
+        "seconds": 25.239
+      },
+      {
+        "label": "Registry usage 2",
+        "seconds": 26.223
+      },
+      {
+        "label": "Registry usage 3",
+        "seconds": 27.206
+      }
+    ],
+    "transitionFrames": 57,
+    "transitionMedian": 16.700000000000728,
+    "transitionP95": 33.29999999999927,
+    "transitionMax": 33.400000000001455,
+    "idleMedian": 16.69999999999709
+  },
+  {
+    "recording": 390,
+    "marks": [
+      {
+        "label": "Hero",
+        "seconds": 0
+      },
+      {
+        "label": "Native architecture",
+        "seconds": 0.901
+      },
+      {
+        "label": "Native component 2",
+        "seconds": 1.944
+      },
+      {
+        "label": "Native component 3",
+        "seconds": 2.934
+      },
+      {
+        "label": "Native component 5",
+        "seconds": 3.916
+      },
+      {
+        "label": "Native component 7",
+        "seconds": 4.899
+      },
+      {
+        "label": "Nova manual steps",
+        "seconds": 5.841
+      },
+      {
+        "label": "Nova step 1",
+        "seconds": 6.776
+      },
+      {
+        "label": "Nova step 2",
+        "seconds": 7.744
+      },
+      {
+        "label": "Nova step 3",
+        "seconds": 8.71
+      },
+      {
+        "label": "Nova step 4",
+        "seconds": 9.696
+      },
+      {
+        "label": "Nova step 5",
+        "seconds": 10.663
+      },
+      {
+        "label": "Nova step 6",
+        "seconds": 11.628
+      },
+      {
+        "label": "Nova step 7",
+        "seconds": 12.615
+      },
+      {
+        "label": "Nova step 8",
+        "seconds": 13.595
+      },
+      {
+        "label": "Nova step 9",
+        "seconds": 14.579
+      },
+      {
+        "label": "CCv2 before",
+        "seconds": 15.524
+      },
+      {
+        "label": "CCv2 structured context",
+        "seconds": 19.286
+      },
+      {
+        "label": "Reduced history remains explainable",
+        "seconds": 20.24
+      },
+      {
+        "label": "Open boundary example",
+        "seconds": 21.228
+      },
+      {
+        "label": "Registry entry explorer",
+        "seconds": 22.176
+      },
+      {
+        "label": "Sample A",
+        "seconds": 23.144
+      },
+      {
+        "label": "Sample C",
+        "seconds": 24.128
+      },
+      {
+        "label": "Registry usage 1",
+        "seconds": 25.127
+      },
+      {
+        "label": "Registry usage 2",
+        "seconds": 26.11
+      },
+      {
+        "label": "Registry usage 3",
+        "seconds": 27.076
+      }
+    ],
+    "transitionFrames": 58,
+    "transitionMedian": 16.69999999999709,
+    "transitionP95": 16.799999999999272,
+    "transitionMax": 33.400000000001455,
+    "idleMedian": 16.700000000000728
+  }
+]

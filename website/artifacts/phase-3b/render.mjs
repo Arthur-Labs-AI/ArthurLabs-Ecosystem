@@ -1,0 +1,8 @@
+import {chromium} from 'playwright';
+import fs from 'node:fs/promises';
+const browser=await chromium.launch(),results=[];
+for(const [width,height] of [[1440,1000],[1920,1080],[768,1024],[390,844]]){
+ const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1});const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://localhost:3002/nexus');await page.evaluate(()=>document.fonts.ready);for(const image of await page.locator('img').all())await image.scrollIntoViewIfNeeded();await page.waitForTimeout(500);await page.evaluate(()=>scrollTo(0,0));await page.screenshot({timeout:120000,path:`artifacts/phase-3b/nexus-${width}-full.png`,fullPage:true,timeout:120000});await page.screenshot({timeout:120000,path:`artifacts/phase-3b/nexus-${width}-hero.png`});
+ for(const id of ['native-core','nexus-nova','context-compaction','model-registry','engineering-mode','nexus-interfaces','sentry-integration','nexus-downloads','nexus-resources']){await page.locator('#'+id).evaluate(e=>scrollTo({top:e.getBoundingClientRect().top+scrollY-160,behavior:'instant'}));await page.waitForTimeout(100);await page.screenshot({timeout:120000,path:`artifacts/phase-3b/nexus-${width}-${id}.png`});}
+ results.push({width,errors,overflow:await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),images:await page.locator('img').evaluateAll(images=>images.map(i=>({src:i.getAttribute('src'),loaded:i.complete&&i.naturalWidth>0,displayWidth:i.width,naturalWidth:i.naturalWidth}))) });await page.close();}
+await fs.writeFile('artifacts/phase-3b/render-evidence.json',JSON.stringify(results,null,2));await browser.close();

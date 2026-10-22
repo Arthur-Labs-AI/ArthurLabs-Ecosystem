@@ -1,0 +1,21 @@
+{
+  "protectedBaselineFiles": 59,
+  "changedExistingFiles": [
+    "src/app/nexus/concept/page.tsx"
+  ],
+  "allowedChange": "src/app/nexus/concept/page.tsx",
+  "preservationPassed": true,
+  "checkedAt": "2026-10-21T06:30:47.579Z",
+  "checkedSource": {
+    "src/components/nexus-concept/features/Compaction.tsx": "4ec0d9446cc0bc89160eed45b5a900ff4893bb6a9e97229b100327e87732e9eb",
+    "src/components/nexus-concept/features/NativeCore.tsx": "0782c0bf41e262b3d12fade9181d20afb76ec8cac3498a6438eb4e2c75c0db57",
+    "src/components/nexus-concept/features/Nova.tsx": "f8e8608eb13b4d2e8a8110ba223b1a3061c818df5596c27826e7cda5cdb2d82a",
+    "src/components/nexus-concept/features/Overview.tsx": "9bad60b4f6e0798113f5b92a4848c073eb3b5639da7400fe268108eb857e237e",
+    "src/components/nexus-concept/features/Registry.tsx": "b4d08eaecf209410ecb1af33554d60faaf3258650d3620cc508430ad4b64dbfe",
+    "src/components/nexus-concept/features/Shared.tsx": "53ec69192e11f952b5b439159881742b70438a77a35b69f13e5780a5ed8c0bac",
+    "src/components/nexus-concept/features/data.ts": "7ffaad9a4eb170cfb711de667abf198762df9a19043819ff9190b139667e2a31",
+    "src/components/nexus-concept/features/features.module.css": "c7af8aafe43eb8326d7a80ab0740fbf41bcab079879cb0121078c5a6b1d248b0",
+    "src/app/nexus/concept/page.tsx": "45278b00efdda8ac2b7ded4f96cd4697ccca146bee9728f2e8e758df6542b614",
+    "tests/nexus-concept.spec.ts": "e4e983bfa98ef0457dcfc8597adbd793920443e56ba88977d4b60dd8a3a24af5"
+  }
+}

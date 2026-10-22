@@ -1,0 +1,46 @@
+[
+  {
+    "path": "/home/kaloyan/Projects/Nexus/README.md",
+    "sha256": "bf89078e1e0ab089b360fdca60c70dd961878385f2f3c0391a6df1ce77c375c1"
+  },
+  {
+    "path": "/home/kaloyan/Projects/Nexus/docs/architecture/engineering-mode.md",
+    "sha256": "22aa14d77d9ad8ec68d60a6db430fd850dff0bf0f1695d76701a00110367484d"
+  },
+  {
+    "path": "/home/kaloyan/Projects/Nexus/docs/architecture/engineering-profiles.md",
+    "sha256": "76c034d43685537f6830dfe5eab540f8130ee6bee5945c484a4308f4210fa97a"
+  },
+  {
+    "path": "/home/kaloyan/Projects/Nexus/config/registry/modes/engineering-v1.json",
+    "sha256": "b5c7d06d16d146e624588e64ede3980d1a42ddc757f074f06417d2568c7cd378"
+  },
+  {
+    "path": "/home/kaloyan/Projects/Nexus/config/registry/modes/engineering-v2.json",
+    "sha256": "e4603c8e03a92176a49cb19ab604d7cca27cb30e880bb78269e15745a5df8f4c"
+  },
+  {
+    "path": "/home/kaloyan/Projects/Nexus/config/registry/modes/engineering-v3.json",
+    "sha256": "fe16b65ddfaef760b801f95f40ca6e4f1737d9fd1957ffcff9b6292060927878"
+  },
+  {
+    "path": "/home/kaloyan/Projects/Nexus/apps/nexus-desktop/src/features/sentry/SentryPage.tsx",
+    "sha256": "717e683db0edfc3706166c63a105e87f4c88c30952eb939c716ae4ffedbb2a76"
+  },
+  {
+    "path": "/home/kaloyan/Projects/Nexus/apps/nexus-desktop/README.md",
+    "sha256": "15ea4edc53a9b440fef53c568f6b63db62fa5af54a9b7494e689f8d83357ba24"
+  },
+  {
+    "path": "/home/kaloyan/Projects/Nexus/native/nexus-cli/src/main.rs",
+    "sha256": "91f3cd5298b706e4681bb898ade5dff1b0a810df43a9ba9be03fc94ce93acb24"
+  },
+  {
+    "path": "/home/kaloyan/Projects/Nexus/native/docs/a614-screenshots/w-done.png",
+    "sha256": "f1a65783bde4a098c4e1854e52411bc7f2c410389da88d7564032a04585fc19a"
+  },
+  {
+    "path": "/home/kaloyan/Projects/Nexus/apps/nexus-desktop/docs/screenshot-workspace.png",
+    "sha256": "0bd8341977ef9e2ebf0797847ebc2a14edc9be30ba336e894d3b3bf9de683dba"
+  }
+]

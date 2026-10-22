@@ -1,0 +1,17 @@
+# Regression investigation
+
+The first production run and pre-fix logs are retained rather than presented as final passes.
+
+- `context-regression-before.log`: new geometry test fails against the initial production build because early CCv2 stages changed identity markers but not card geometry. The updated scene now progressively brings records into the working timeline before grouping them; the test expectation remains unchanged.
+- `full-tests-before-fixes.log`: initialization could accept a play action before the passive effect created its GSAP timeline. It could leave a mobile example stuck at playing/zero, or start movement while reduced-motion preference was still an initial render snapshot. The controller now initializes in a layout effect, disables transport/seek controls until ready, and checks the current browser preference again at play time. This fixes the lifecycle rather than inserting a test delay.
+- The keyboard download anchor could finish with its title behind sticky navigation. Both Hero/local links now use the same navigation component: preserve modified-click behavior, update the fragment, focus the destination with preventScroll, then scroll once with a header inset and reduced-motion-aware behavior. The keyboard focus and visible-heading tests retain their assertions.
+- New control status text originally duplicated existing live-region/status selectors. The transport now leaves textual state available without adding a second automatic announcement alongside the existing per-feature inspectors. Existing Nexus tests remain unchanged.
+- A malformed numeric attribute selector in the new test was quoted correctly. This was test syntax, not a product failure. Assertions were not weakened.
+- An unchanged Landing reduced-motion test also failed during an earlier broad run. Landing source remains protected and unchanged; its result is reported from the final run rather than silently attributing it to these concept changes.
+- Development-only HMR origin failures were excluded from production conclusions; no shared Next configuration was changed to bypass the development check.
+
+Motion tests use actual elapsed playback, intermediate SVG/DOM states, pause snapshots, replay and manual stages. The 90-second per-test command allowance accounts for the observed shared-host load and additional existing responsive button-bound checks; it is not an animation duration or an assertion relaxation. No test is skipped.
+
+Final actual-video review also found normalized Native SVG dash drawing interacting with non-scaling strokes under the nonuniform viewBox transform. The flow now uses viewBox-scaled stroke width with normalized dash drawing, and sits beneath the node cards so labels remain unobstructed. The dashed record/evidence treatment remains intentional. Numeric geometry tests alone would not have caught this paint-level issue; actual rendered frames prompted the correction.
+
+A final semantic pass aligned Nova's SVG accessible name with the actual active storyboard step (the visual node index and storyboard-step index are different). The refusal/identity test also checks that Sentry handoff has the expected accessible description. CC phase headings announce their current transformation stage. The Native paint correction is checked in real rendered frames rather than locking an unapproved pixel baseline; the existing motion/geometry tests alone are insufficient for that paint-level defect.

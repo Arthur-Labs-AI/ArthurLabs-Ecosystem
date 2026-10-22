@@ -1,0 +1,12 @@
+{
+  "src/components/nexus-concept/content.ts": "a1d6126f3aa9eb3cbdf803d76fe940286f879a34a95926cc09c110d5328d2c54",
+  "src/components/nexus-concept/RegistryExplorer.tsx": "9a88450fa92a6ce8977b97ffe92d413fa2084bfd2c4792ec84d52a23ea834419",
+  "src/components/nexus-concept/ContextComparison.tsx": "2440a9bdd5176fd02cbb7b080aeb9e7dcf21bb6bf5d4d0dd4473268c6d282498",
+  "src/components/nexus-concept/Hero.tsx": "2a1299721b0306b857ffa47a2dae793dec71e4f284db6e314d4f323efa6522aa",
+  "src/components/nexus-concept/createEngine.ts": "60d7633763c7624cbca4d0183e43a967aa1afeb8b90e5c63e681fbe6ff874617",
+  "src/components/nexus-concept/Engine.tsx": "efb7dcc1e3d200a8e927db11c2ed872ba58dea5fa8be64ea1cacbc1482f31dff",
+  "src/components/nexus-concept/Reference.tsx": "4d7bc06a9979271ca48a6079302eb231e5dce2016f5faaa5fb06203f339da78d",
+  "src/components/nexus-concept/engine.module.css": "18871e5bccc9c096d98cc862e0f615792af28f6d1e9fb1992c301456aaa80edf",
+  "src/app/nexus/concept/page.tsx": "b70d05202fe4b5b887da5ca6975f7aea4ba7879efa1ed74d8ded23b1ac8c8165",
+  "tests/nexus-concept.spec.ts": "8b7be582add38634f9c2a007baf1ce89d08f82eecb3f8911f9165894c4ea7536"
+}

@@ -1,0 +1,57 @@
+{
+  "errors": [],
+  "links": [
+    {
+      "href": "#main",
+      "status": 200,
+      "targets": 1
+    },
+    {
+      "href": "/",
+      "status": 200
+    },
+    {
+      "href": "/suite",
+      "status": 200
+    },
+    {
+      "href": "/#products",
+      "status": 200
+    },
+    {
+      "href": "/hardware",
+      "status": 200
+    },
+    {
+      "href": "/#philosophy",
+      "status": 200
+    },
+    {
+      "href": "/#footer",
+      "status": 200
+    },
+    {
+      "href": "/studio",
+      "status": 200
+    },
+    {
+      "href": "/nexus",
+      "status": 200
+    },
+    {
+      "href": "/sentry",
+      "status": 200
+    },
+    {
+      "href": "#inside-engine",
+      "status": 200,
+      "targets": 1
+    },
+    {
+      "href": "#engine-reference",
+      "status": 200,
+      "targets": 1
+    }
+  ],
+  "noJavaScriptChapters": 4
+}

@@ -1,0 +1,6 @@
+const fs=require('fs'),crypto=require('crypto');
+const before=require('./before.json'),hash=f=>crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
+const allowed=['src/app/nexus/concept/page.tsx','src/components/nexus-concept/Hero.tsx',...['NativeCore.tsx','Nova.tsx','Compaction.tsx','Registry.tsx','data.ts','features.module.css'].map(f=>'src/components/nexus-concept/features/'+f)];
+const changed=Object.keys(before).filter(f=>!fs.existsSync(f)||hash(f)!==before[f]);const unexpected=changed.filter(f=>!allowed.includes(f));
+const sources={};for(const dir of['src/components/nexus-concept','src/components/nexus-download']){function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const f=d+'/'+e.name;if(e.isDirectory())walk(f);else sources[f]=hash(f);}}walk(dir);}sources['src/app/nexus/concept/page.tsx']=hash('src/app/nexus/concept/page.tsx');sources['tests/nexus-motion.spec.ts']=hash('tests/nexus-motion.spec.ts');
+const result={checkedAt:new Date().toISOString(),baselineFiles:Object.keys(before).length,changed,unexpected,preservationPassed:unexpected.length===0,sources};fs.writeFileSync('artifacts/phase-3a2/preservation.json',JSON.stringify(result,null,2));console.log(JSON.stringify({baselineFiles:result.baselineFiles,changed,unexpected,passed:result.preservationPassed},null,2));if(unexpected.length)process.exitCode=1;

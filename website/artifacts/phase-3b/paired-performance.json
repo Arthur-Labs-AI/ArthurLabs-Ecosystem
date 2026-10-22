@@ -1,0 +1,38 @@
+[
+  {
+    "route": "/nexus/concept",
+    "name": "native",
+    "pacing": {
+      "frames": 238,
+      "median": 16.699999999999818,
+      "p95": 16.799999999999727
+    }
+  },
+  {
+    "route": "/nexus/concept",
+    "name": "context",
+    "pacing": {
+      "frames": 170,
+      "median": 16.700000000000728,
+      "p95": 33.399999999999636
+    }
+  },
+  {
+    "route": "/nexus",
+    "name": "native",
+    "pacing": {
+      "frames": 237,
+      "median": 16.699999999999818,
+      "p95": 16.800000000000182
+    }
+  },
+  {
+    "route": "/nexus",
+    "name": "context",
+    "pacing": {
+      "frames": 141,
+      "median": 33.29999999999927,
+      "p95": 33.400000000001455
+    }
+  }
+]

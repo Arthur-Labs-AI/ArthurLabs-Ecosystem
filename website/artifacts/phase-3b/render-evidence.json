@@ -1,0 +1,126 @@
+[
+  {
+    "width": 1440,
+    "errors": [],
+    "overflow": false,
+    "images": [
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 1265,
+        "naturalWidth": 1152
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus-code-evidence.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 1178,
+        "naturalWidth": 1090
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus-native-workspace.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 738,
+        "naturalWidth": 792
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fsentry.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 1178,
+        "naturalWidth": 1152
+      }
+    ]
+  },
+  {
+    "width": 1920,
+    "errors": [],
+    "overflow": false,
+    "images": [
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 1278,
+        "naturalWidth": 1536
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus-code-evidence.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 1178,
+        "naturalWidth": 1453
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus-native-workspace.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 940,
+        "naturalWidth": 1056
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fsentry.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 1178,
+        "naturalWidth": 1533
+      }
+    ]
+  },
+  {
+    "width": 768,
+    "errors": [],
+    "overflow": false,
+    "images": [
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 674,
+        "naturalWidth": 675
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus-code-evidence.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 674,
+        "naturalWidth": 691
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus-native-workspace.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 674,
+        "naturalWidth": 691
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fsentry.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 674,
+        "naturalWidth": 691
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "errors": [],
+    "overflow": false,
+    "images": [
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 341,
+        "naturalWidth": 343
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus-code-evidence.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 341,
+        "naturalWidth": 351
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fnexus-native-workspace.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 341,
+        "naturalWidth": 350
+      },
+      {
+        "src": "/_next/image?url=%2Fimages%2Fsentry.webp&w=3840&q=90",
+        "loaded": true,
+        "displayWidth": 341,
+        "naturalWidth": 351
+      }
+    ]
+  }
+]

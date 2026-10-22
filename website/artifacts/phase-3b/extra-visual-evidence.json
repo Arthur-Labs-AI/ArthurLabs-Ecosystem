@@ -1,0 +1,221 @@
+[
+  {
+    "width": 320,
+    "errors": [],
+    "overflow": false,
+    "navigation": [
+      {
+        "text": "NEXUS / THE ENGINE",
+        "left": 19.1875,
+        "right": 60.140625,
+        "visible": true
+      },
+      {
+        "text": "On this page −",
+        "left": 72.140625,
+        "right": 171.671875,
+        "visible": true
+      },
+      {
+        "text": "Download Nexus ↓",
+        "left": 183.671875,
+        "right": 300.8125,
+        "visible": true
+      },
+      {
+        "text": "01Native Core↗",
+        "left": 32.1875,
+        "right": 157.5,
+        "visible": true
+      },
+      {
+        "text": "02Nova↗",
+        "left": 162.5,
+        "right": 287.8125,
+        "visible": true
+      },
+      {
+        "text": "03CCv2↗",
+        "left": 32.1875,
+        "right": 157.5,
+        "visible": true
+      },
+      {
+        "text": "04Registry↗",
+        "left": 162.5,
+        "right": 287.8125,
+        "visible": true
+      },
+      {
+        "text": "05Engineering↗",
+        "left": 32.1875,
+        "right": 157.5,
+        "visible": true
+      },
+      {
+        "text": "06CLI + Desktop↗",
+        "left": 162.5,
+        "right": 287.8125,
+        "visible": true
+      },
+      {
+        "text": "07Sentry↗",
+        "left": 32.1875,
+        "right": 157.5,
+        "visible": true
+      },
+      {
+        "text": "08Resources↗",
+        "left": 162.5,
+        "right": 287.8125,
+        "visible": true
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "errors": [],
+    "overflow": false,
+    "navigation": [
+      {
+        "text": "NEXUS / THE ENGINE",
+        "left": 23.390625,
+        "right": 64.34375,
+        "visible": true
+      },
+      {
+        "text": "On this page −",
+        "left": 121.09375,
+        "right": 237.46875,
+        "visible": true
+      },
+      {
+        "text": "Download Nexus ↓",
+        "left": 249.46875,
+        "right": 366.609375,
+        "visible": true
+      },
+      {
+        "text": "01Native Core↗",
+        "left": 36.390625,
+        "right": 192.5,
+        "visible": true
+      },
+      {
+        "text": "02Nova↗",
+        "left": 197.5,
+        "right": 353.609375,
+        "visible": true
+      },
+      {
+        "text": "03CCv2↗",
+        "left": 36.390625,
+        "right": 192.5,
+        "visible": true
+      },
+      {
+        "text": "04Registry↗",
+        "left": 197.5,
+        "right": 353.609375,
+        "visible": true
+      },
+      {
+        "text": "05Engineering↗",
+        "left": 36.390625,
+        "right": 192.5,
+        "visible": true
+      },
+      {
+        "text": "06CLI + Desktop↗",
+        "left": 197.5,
+        "right": 353.609375,
+        "visible": true
+      },
+      {
+        "text": "07Sentry↗",
+        "left": 36.390625,
+        "right": 192.5,
+        "visible": true
+      },
+      {
+        "text": "08Resources↗",
+        "left": 197.5,
+        "right": 353.609375,
+        "visible": true
+      }
+    ]
+  },
+  {
+    "width": 1440,
+    "errors": [],
+    "overflow": false,
+    "navigation": [
+      {
+        "text": "NEXUS / THE ENGINE",
+        "left": 86.390625,
+        "right": 214.125,
+        "visible": true
+      },
+      {
+        "text": "On this page −",
+        "left": 1039.875,
+        "right": 1176.25,
+        "visible": true
+      },
+      {
+        "text": "Download Nexus ↓",
+        "left": 1202.25,
+        "right": 1353.609375,
+        "visible": true
+      },
+      {
+        "text": "01Native Core↗",
+        "left": 107.390625,
+        "right": 407.6875,
+        "visible": true
+      },
+      {
+        "text": "02Nova↗",
+        "left": 415.6875,
+        "right": 716,
+        "visible": true
+      },
+      {
+        "text": "03CCv2↗",
+        "left": 724,
+        "right": 1024.296875,
+        "visible": true
+      },
+      {
+        "text": "04Registry↗",
+        "left": 1032.296875,
+        "right": 1332.609375,
+        "visible": true
+      },
+      {
+        "text": "05Engineering↗",
+        "left": 107.390625,
+        "right": 407.6875,
+        "visible": true
+      },
+      {
+        "text": "06CLI + Desktop↗",
+        "left": 415.6875,
+        "right": 716,
+        "visible": true
+      },
+      {
+        "text": "07Sentry↗",
+        "left": 724,
+        "right": 1024.296875,
+        "visible": true
+      },
+      {
+        "text": "08Resources↗",
+        "left": 1032.296875,
+        "right": 1332.609375,
+        "visible": true
+      }
+    ]
+  }
+]
