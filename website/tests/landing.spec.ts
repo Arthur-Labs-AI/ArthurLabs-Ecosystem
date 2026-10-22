@@ -48,7 +48,7 @@ for (const width of [320, 390, 768, 1440, 2560]) {
       await page.getByLabel('Open navigation').click();
       await page.locator('.mobile-menu').getByRole('link', { name: 'Sentry', exact: true }).click();
       await expect(page).toHaveURL(/\/sentry$/);
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sentry');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Generation isn’tverification.');
     }
   });
 }
@@ -67,7 +67,7 @@ test('reduced motion keeps an accessible selectable hero without a scroll trap',
 });
 
 test('route foundations and unknown route', async ({ page }) => {
-  for (const [path, heading] of [['/suite', 'Three applications.One greater possibility.'], ['/studio', 'Arthur Studio'], ['/nexus', 'One task.The right intelligence.'], ['/sentry', 'Sentry'], ['/hardware', 'Beyond the screen.']]) {
+  for (const [path, heading] of [['/suite', 'Three applications.One greater possibility.'], ['/studio', 'Arthur Studio'], ['/nexus', 'One task.The right intelligence.'], ['/sentry', 'Generation isn’tverification.'], ['/hardware', 'Beyond the screen.']]) {
     const response = await page.goto(path);
     expect(response!.status()).toBe(200);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(heading);

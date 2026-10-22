@@ -1,0 +1,4 @@
+{
+  "result": "PASS",
+  "message": "All non-material CSS declarations, border widths/styles, layout, typography, motion and interaction styles are identical. New absolute pointer-inert :after layer is decorative only."
+}

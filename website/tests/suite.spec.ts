@@ -8,8 +8,8 @@ test('release evidence gates distribution and never invents artifacts',()=>{
 });
 test('honest availability, independent applications, real local navigation',async({page})=>{
  await page.goto('/suite');await expect(page.getByRole('heading',{level:1})).toContainText('Three applications.');
- await expect(page.locator('a[download]')).toHaveCount(0);await expect(page.getByText('Download unavailable',{exact:false})).toHaveCount(4);
- await expect(page.locator('select')).toHaveCount(0);
+ await expect(page.locator('a[download]')).toHaveCount(1);await expect(page.getByText('Download unavailable',{exact:false})).toHaveCount(3);
+ await expect(page.locator('#downloads select')).toHaveCount(2);await expect(page.locator('#downloads')).toContainText('Windows 11 + WSL2');
  for(const [id,name] of [['studio','Arthur Studio'],['nexus','Nexus'],['sentry','Sentry']])await expect(page.getByRole('link',{name:`Explore ${name}`,exact:false})).toHaveAttribute('href',`/${id}`);
  await page.getByRole('link',{name:'Explore download options'}).click();await expect(page).toHaveURL(/#downloads$/);
  await expect.poll(()=>page.locator('#downloads-title').evaluate(e=>e.getBoundingClientRect().top)).toBeGreaterThan(74);

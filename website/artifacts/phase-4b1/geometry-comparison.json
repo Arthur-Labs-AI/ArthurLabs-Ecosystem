@@ -1,0 +1,162 @@
+[
+  {
+    "route": "/",
+    "width": 390,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/suite",
+    "width": 390,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/nexus",
+    "width": 390,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/sentry",
+    "width": 390,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/studio",
+    "width": 390,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/",
+    "width": 768,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/suite",
+    "width": 768,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/nexus",
+    "width": 768,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/sentry",
+    "width": 768,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/studio",
+    "width": 768,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/",
+    "width": 1440,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/suite",
+    "width": 1440,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/nexus",
+    "width": 1440,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/sentry",
+    "width": 1440,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/studio",
+    "width": 1440,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/",
+    "width": 1920,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/suite",
+    "width": 1920,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/nexus",
+    "width": 1920,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/sentry",
+    "width": 1920,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  },
+  {
+    "route": "/studio",
+    "width": 1920,
+    "closed": "exact match",
+    "open": "exact match",
+    "scroll": 0,
+    "overflow": false
+  }
+]

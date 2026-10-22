@@ -18,22 +18,23 @@ Open http://localhost:3000.
 ```sh
 npm run build
 npm run typecheck
-npm run start
-# In another terminal, against the production server:
+# Current Cloudflare Pages configuration exports to out/.
+python3 artifacts/phase-4b/serve-export.py
+# In another terminal, against that local production export:
 npx playwright install chromium
-npm run test:e2e
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:3004 npm run test:e2e
 ```
 
 Routes: `/`, `/suite`, `/studio`, `/nexus`, `/sentry`, `/hardware`, plus `/suite/concept`, `/nexus/concept` and `/sentry/concept`.
 
-Landing, Full Suite and Nexus have implemented product experiences. Studio, the official Sentry route and Hardware remain foundations. The separate Sentry concept contains the Verification Chamber for visual review. Suite and Nexus downloads remain unavailable without verified metadata; the isolated Sentry concept includes a verified Windows release with its requirements and checksum evidence.
+Landing, Full Suite, Nexus and Sentry have implemented product experiences. Studio and Hardware remain foundations. Concept routes are preserved as references. The shared catalog contains the revalidated individual Sentry Windows 11 x64 + WSL2 archive, exposed by Sentry and the Suite release ledger. Unified Suite, Nexus and Studio downloads remain unavailable without verified metadata. Phase 4B awaits final visual review.
 
 ## Structure
 
 - `src/app`: routes, metadata, global design styles.
 - `src/components`: navbar, hero, windows, workflow, suite, showcases, hardware, philosophy, footer.
 - `src/lib/products.ts`: shared product content and screenshot metadata.
-- `public/images`: three authentic screenshots extracted from the approved prototype and encoded as WebP (131,440 bytes combined, about 76% smaller than decoded original images). Next Image supplies responsive q90 variants and lazy-loads lower showcases. The DPR 2 quality comparison and measured payload tradeoff are recorded under `artifacts/phase-1.1/`.
+- `public/images`: three authentic screenshots extracted from the approved prototype and encoded as WebP (131,440 bytes combined, about 76% smaller than decoded original images). The current Cloudflare static export serves the original WebP assets through unoptimized Next Image; lower showcases are lazy-loaded. The DPR 2 quality comparison and measured payload tradeoff are recorded under `artifacts/phase-1.1/`.
 - `references/arthurlabs-landing-prototype.html`: unchanged approved source, preserved from the supplied Downloads attachment because the website directory was initially empty.
 - `tests/landing.spec.ts` and `tests/polish.spec.ts`: production browser and interaction regression checks.
 - `artifacts`: versioned review reports, metadata and reproduction scripts. Generated screenshots, recordings and logs stay local and are ignored; report links to that media require the local evidence directory.
@@ -49,6 +50,6 @@ Reduced motion removes sticky scroll progression and animated transforms, while 
 
 ## Review evidence and limitations
 
-Milestone reports live in `artifacts/`; the latest Sentry report is `artifacts/sentry-phase-4a/REPORT.md`. The last recorded full browser battery passed 87 tests. Reports distinguish verified functionality from conceptual or planned runtime behavior.
+Milestone reports live in `artifacts/`; the current integration report is `artifacts/phase-4b/REPORT.md`; the original Sentry concept audit remains in `artifacts/sentry-phase-4a/`. Executed verification is scoped and recorded in each report. Reports distinguish verified functionality from conceptual or planned runtime behavior.
 
 Sentry animation frame pacing remains an open performance limitation under the measured shared-host load. Chromium automation does not establish Safari, Firefox, physical-device or screen-reader approval. Concept routes remain separate from official-page visual approval.

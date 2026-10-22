@@ -1284,3 +1284,11 @@
     font-size: 20px;
   }
 }
+
+/* Reviewed individual-artifact details follow the existing release ledger typography. */
+.releaseDetails { margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.8; }
+.releaseDetails summary { min-height: 44px; padding: 10px 0; cursor: pointer; color: #d6dfd7; }
+.releaseDetails ul { list-style: disc; padding-left: 17px; margin: 10px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.85; }
+.releaseDetails li { margin-bottom: 12px; }
+.releaseDetails p { font-size: 11px; line-height: 1.8; margin-block: 10px; }
+.releaseDetails a { display: inline-flex; align-items: center; min-height: 44px; font-size: 12px; padding-block: 8px; }

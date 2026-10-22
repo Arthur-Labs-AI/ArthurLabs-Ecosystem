@@ -16,3 +16,6 @@ artifacts/**/*
 !artifacts/**/*.cjs
 !artifacts/**/*.py
 !artifacts/**/*.txt
+
+# Cloudflare Pages static build output
+out/

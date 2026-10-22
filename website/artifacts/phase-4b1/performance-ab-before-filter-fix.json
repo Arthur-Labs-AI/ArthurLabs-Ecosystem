@@ -1,0 +1,130 @@
+[
+  {
+    "phase": "ab",
+    "material": "after",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 0,
+    "frames": 146,
+    "median": 16.699999999999818,
+    "p95": 33.29999999999973,
+    "max": 100,
+    "metrics": {
+      "LayoutDuration": 0.010207999999999998,
+      "RecalcStyleDuration": 0.057980000000000004,
+      "ScriptDuration": 0.184136
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "before",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 1,
+    "frames": 127,
+    "median": 33.29999999999927,
+    "p95": 49.900000000000546,
+    "max": 100,
+    "metrics": {
+      "LayoutDuration": 0.009099,
+      "RecalcStyleDuration": 0.05116600000000002,
+      "ScriptDuration": 0.14555899999999994
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "after",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 2,
+    "frames": 142,
+    "median": 16.69999999999891,
+    "p95": 33.399999999999636,
+    "max": 100,
+    "metrics": {
+      "LayoutDuration": 0.009575999999999998,
+      "RecalcStyleDuration": 0.054951,
+      "ScriptDuration": 0.14953300000000003
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "before",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 3,
+    "frames": 123,
+    "median": 33.29999999999927,
+    "p95": 50,
+    "max": 99.89999999999964,
+    "metrics": {
+      "LayoutDuration": 0.008996000000000004,
+      "RecalcStyleDuration": 0.052317,
+      "ScriptDuration": 0.12675800000000004
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "after",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 0,
+    "frames": 120,
+    "median": 16.699999999999818,
+    "p95": 50,
+    "max": 216.80000000000018,
+    "metrics": {
+      "LayoutDuration": 0.643642,
+      "RecalcStyleDuration": 0.161264,
+      "ScriptDuration": 0.059228
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "before",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 1,
+    "frames": 98,
+    "median": 16.800000000000182,
+    "p95": 33.400000000000546,
+    "max": 33.400000000000546,
+    "metrics": {
+      "LayoutDuration": 0.31353399999999987,
+      "RecalcStyleDuration": 0.10623300000000002,
+      "ScriptDuration": 0.04175799999999999
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "after",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 2,
+    "frames": 125,
+    "median": 16.699999999999818,
+    "p95": 16.800000000000182,
+    "max": 33.399999999999636,
+    "metrics": {
+      "LayoutDuration": 0.336438,
+      "RecalcStyleDuration": 0.10950100000000001,
+      "ScriptDuration": 0.04386999999999999
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "before",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 3,
+    "frames": 95,
+    "median": 16.700000000000728,
+    "p95": 33.400000000001455,
+    "max": 50.100000000000364,
+    "metrics": {
+      "LayoutDuration": 0.2793349999999999,
+      "RecalcStyleDuration": 0.09017999999999998,
+      "ScriptDuration": 0.03778899999999996
+    }
+  }
+]

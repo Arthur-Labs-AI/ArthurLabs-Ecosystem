@@ -1,4 +1,5 @@
 'use client';
+import type {ReactNode} from 'react';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {gsap} from 'gsap';
 import {ScrollTrigger} from 'gsap/ScrollTrigger';
@@ -9,7 +10,7 @@ import {Explanation} from './Explanation';
 import {RunReport} from './RunReport';
 import {ScopeComparison} from './ScopeComparison';
 import styles from './chamber.module.css';
-export function ChamberExperience(){
+export function ChamberExperience({beforeScope,scopeNumber}:{beforeScope?:ReactNode;scopeNumber?:string}){
  const root=useRef<HTMLElement>(null),control=useRef<ReturnType<typeof createChamber>|null>(null),manual=useRef<ReturnType<typeof createRenderer>|null>(null),progress=useRef(0),currentStage=useRef(-1);
  const [selected,setSelected]=useState<HarnessId[]>(['opencode','deepseek','glm']),[scope,setScope]=useState<Scope>('full'),[focus,setFocus]=useState<HarnessId>('opencode'),[stage,setStage]=useState(0),[reduced,setReduced]=useState(false),[ready,setReady]=useState(false);
  const config=useRef<FilmConfig>({selected,scope,focus});
@@ -31,6 +32,7 @@ export function ChamberExperience(){
  <div className={styles.filmBody}><div className={styles.visualStage}><div className={styles.stageGrid} aria-hidden="true"/><PipelineScene/><RunReport selected={selected} focus={focus} onFocus={setFocus} scope={scope}/><span className={styles.stageNote}>FROZEN REVISION → INDEPENDENT AGENTRUNS → PERSISTED HISTORY</span></div><Explanation stage={stage}/></div>
  <div className={styles.filmBottom}><div className={styles.chapters} role="group" aria-label="Verification chapters">{stages.map((s,i)=><button disabled={!ready} key={s.short} onClick={()=>seek(i)} aria-current={stage===i?'step':undefined}><span>{String(i+1).padStart(2,'0')}</span><small>{s.short}</small></button>)}</div><label className={styles.mobileChapter}>Chapter<select disabled={!ready} aria-label="Verification chapter" value={stage} onChange={e=>seek(Number(e.target.value))}>{stages.map((s,i)=><option value={i} key={s.short}>{i+1} / {s.short}</option>)}</select></label><button disabled={!ready} className={styles.replay} onClick={()=>seek(0)}>Replay ↺</button></div><div className={styles.filmProgress} aria-hidden="true"/></div></section>
  <section id="sentry-story" className={styles.story} aria-label="The complete verification process"><span className={styles.eyebrow}>READ THE ARCHITECTURE / EQUIVALENT STAGE EXPLANATIONS</span><div>{stages.map((s,i)=><details key={s.short} open={reduced}><summary><span>0{i+1}</span>{s.title}</summary><p>{s.what}</p><dl><div><dt>Input</dt><dd>{s.input}</dd></div><div><dt>Operation</dt><dd>{s.operation}</dd></div><div><dt>Output</dt><dd>{s.output}</dd></div></dl><p>{s.detail}</p></details>)}</div></section>
- <ScopeComparison scope={scope} onScope={setScope} selected={selected}/>
+ {beforeScope}
+ <ScopeComparison number={scopeNumber} scope={scope} onScope={setScope} selected={selected}/>
  </>;
 }

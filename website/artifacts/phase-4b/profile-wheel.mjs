@@ -1,0 +1,11 @@
+import{chromium}from'playwright';import fs from'node:fs/promises';
+const browser=await chromium.launch(),results=[];
+for(const[width,height]of[[1440,1000],[390,844]])for(const route of ['/sentry/concept','/sentry']){
+ const page=await browser.newPage({viewport:{width,height}});await page.goto('http://localhost:3004'+route);await page.locator('[data-sentry-film][data-ready=true]').waitFor();const cdp=await page.context().newCDPSession(page);await cdp.send('Performance.enable');
+ for(const mode of ['normal','glass-disabled']){
+ const geometry=await page.locator('[data-sentry-film]').evaluate((e,mode)=>{document.querySelector('body > header').style.backdropFilter=mode==='glass-disabled'?'none':'';const h=parseFloat(getComputedStyle(e).getPropertyValue('--nav'))||74,start=e.getBoundingClientRect().top+scrollY-h,travel=e.clientHeight-innerHeight+h;scrollTo({top:start+travel*.2,behavior:'instant'});return{start,travel};},mode);await page.waitForTimeout(400);
+ await page.evaluate(()=>{window.__rafTimes=[];window.__rafActive=true;let last;function frame(t){if(last!==undefined)window.__rafTimes.push(t-last);last=t;if(window.__rafActive)requestAnimationFrame(frame);}requestAnimationFrame(frame);});const before=await cdp.send('Performance.getMetrics');
+ for(let i=0;i<40;i++){await page.mouse.wheel(0,geometry.travel*.6/40);await page.waitForTimeout(50);}
+ const after=await cdp.send('Performance.getMetrics'),data=await page.evaluate(()=>{window.__rafActive=false;return{times:window.__rafTimes,progress:document.querySelector('[data-sentry-film]').dataset.progress};});data.times.sort((a,b)=>a-b);const metrics={};for(const n of ['LayoutDuration','RecalcStyleDuration','LayoutCount','RecalcStyleCount','ScriptDuration'])metrics[n]=after.metrics.find(m=>m.name===n).value-before.metrics.find(m=>m.name===n).value;results.push({width,route,mode,method:'native wheel events, read-only RAF sampler',frames:data.times.length,median:data.times[Math.floor(data.times.length*.5)],p95:data.times[Math.floor(data.times.length*.95)],max:data.times.at(-1),endProgress:data.progress,metrics});console.log(results.at(-1));await fs.writeFile('artifacts/phase-4b/native-wheel-performance.json',JSON.stringify(results,null,2));
+ }await page.close();
+}await browser.close();

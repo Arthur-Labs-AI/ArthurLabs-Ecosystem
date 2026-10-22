@@ -1,0 +1,14 @@
+import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
+const dir='artifacts/phase-4b';
+const api='https://api.github.com/repos/Mert1026/Sentry/releases/tags/v1.0.2';
+const response=await fetch(api,{headers:{Accept:'application/vnd.github+json','User-Agent':'ArthurLabs-website-release-audit'}});if(!response.ok)throw Error(`GitHub ${response.status}`);
+const release=await response.json();await fs.writeFile(`${dir}/published-release.json`,JSON.stringify(release,null,2));
+if(release.draft||release.prerelease||release.tag_name!=='v1.0.2')throw Error('Release no longer eligible');
+const asset=release.assets.find(a=>a.name==='sentry-1.0.2-2640efcd7874-windows-x64.zip');if(!asset||asset.state!=='uploaded')throw Error('Artifact unavailable');
+const sidecar=release.assets.find(a=>a.name===asset.name+'.sha256');if(!sidecar)throw Error('Missing checksum');
+const checksumResponse=await fetch(sidecar.browser_download_url);if(!checksumResponse.ok)throw Error('Checksum unavailable');const checksum=await checksumResponse.text();
+const archive=await fetch(asset.browser_download_url);if(!archive.ok||!archive.body)throw Error('Archive unavailable');const hash=crypto.createHash('sha256');let bytes=0;for await(const chunk of archive.body){hash.update(chunk);bytes+=chunk.length;}const digest=hash.digest('hex');
+if(digest!=='5265713af248297c543bf0d41093258bd0e7d8c177e0b1c544e733750347286f'||!checksum.includes(digest)||asset.digest!==`sha256:${digest}`||bytes!==asset.size)throw Error('Integrity mismatch');
+const sourceResponse=await fetch('https://api.github.com/repos/Mert1026/Sentry/commits/v1.0.2',{headers:{'User-Agent':'ArthurLabs-website-release-audit'}});if(!sourceResponse.ok)throw Error('Source not verified');const source=await sourceResponse.json();if(source.sha!=='2640efcd78744cb02c517a405e648722e662bd60')throw Error('Source changed');
+const receipt={checkedAt:new Date().toISOString(),release:release.html_url,publishedAt:release.published_at,draft:release.draft,prerelease:release.prerelease,url:asset.browser_download_url,sha256:digest,bytes,source:source.sha,sidecar:sidecar.browser_download_url,checksum};await fs.writeFile(`${dir}/release-revalidation.json`,JSON.stringify(receipt,null,2));console.log(receipt);

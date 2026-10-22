@@ -1,4 +1,6 @@
 import{test,expect}from '@playwright/test';
+import nextConfig from '../next.config';
+import {products} from '../src/lib/products';
 for(const[width,height]of[[390,667],[390,844],[768,1024],[1440,900],[1920,1080]]){
  test(`full workflow motion, bounds and reverse at ${width}x${height}`,async({page})=>{
  await page.setViewportSize({width,height});await page.goto('/suite');const film=page.locator('[data-workflow-film]');await expect(film).toHaveAttribute('data-ready','true');
@@ -15,7 +17,14 @@ for(const[width,height]of[[390,667],[390,844],[768,1024],[1440,900],[1920,1080]]
 test('hero retains authentic ratios at DPR2',async({browser})=>{
  const ctx=await browser.newContext({viewport:{width:1440,height:1000},deviceScaleFactor:2});const page=await ctx.newPage();await page.goto('/suite');
  const images=page.locator('figure button img');await expect(images).toHaveCount(3);
- for(const img of await images.all()){await expect.poll(()=>img.evaluate((e:HTMLImageElement)=>e.complete&&e.naturalWidth>0)).toBe(true);const s=await img.evaluate((e:HTMLImageElement)=>({ratio:e.clientWidth/e.clientHeight,native:Number(e.getAttribute('width'))/Number(e.getAttribute('height')),url:e.currentSrc}));expect(s.ratio).toBeCloseTo(s.native,2);expect(s.url).toContain('q=90');}
+ for(const [i,img] of (await images.all()).entries()){
+  await expect.poll(()=>img.evaluate((e:HTMLImageElement)=>e.complete&&e.naturalWidth>0)).toBe(true);
+  const s=await img.evaluate((e:HTMLImageElement)=>({ratio:e.clientWidth/e.clientHeight,native:Number(e.getAttribute('width'))/Number(e.getAttribute('height')),url:e.currentSrc,width:e.naturalWidth,height:e.naturalHeight,displayWidth:e.clientWidth}));
+  expect(s.ratio).toBeCloseTo(s.native,2);const source=new URL(s.url),product=products[i];
+  if(nextConfig.images?.unoptimized){
+   expect(source.pathname).toBe(`/images/${product.id}.webp`);expect(s.width).toBe(product.width);expect(s.height).toBe(product.height);expect(s.displayWidth).toBeLessThanOrEqual(s.width);
+  }else{expect(source.searchParams.get('url')).toBe(`/images/${product.id}.webp`);expect(source.searchParams.get('q')).toBe('90');}
+ }
  await ctx.close();
 });
 

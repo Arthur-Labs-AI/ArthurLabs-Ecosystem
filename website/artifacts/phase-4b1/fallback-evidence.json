@@ -1,0 +1,90 @@
+[
+  {
+    "width": 390,
+    "background": "dark",
+    "fallback": false,
+    "filter": "none",
+    "materialFilter": "blur(12px)",
+    "base": "rgba(11, 16, 24, 0.875)",
+    "panelFilter": "blur(12px)",
+    "panelBase": "rgba(16, 21, 29, 0.97)",
+    "reflection": "132 147 163"
+  },
+  {
+    "width": 390,
+    "background": "dark",
+    "fallback": true,
+    "filter": "none",
+    "materialFilter": "none",
+    "base": "rgba(11, 16, 24, 0.96)",
+    "panelFilter": "none",
+    "panelBase": "rgba(16, 21, 29, 0.97)",
+    "reflection": "132 147 163"
+  },
+  {
+    "width": 390,
+    "background": "bright",
+    "fallback": false,
+    "filter": "none",
+    "materialFilter": "blur(12px)",
+    "base": "rgba(11, 16, 24, 0.875)",
+    "panelFilter": "blur(12px)",
+    "panelBase": "rgba(16, 21, 29, 0.97)",
+    "reflection": "132 147 163"
+  },
+  {
+    "width": 390,
+    "background": "bright",
+    "fallback": true,
+    "filter": "none",
+    "materialFilter": "none",
+    "base": "rgba(11, 16, 24, 0.96)",
+    "panelFilter": "none",
+    "panelBase": "rgba(16, 21, 29, 0.97)",
+    "reflection": "132 147 163"
+  },
+  {
+    "width": 1440,
+    "background": "dark",
+    "fallback": false,
+    "filter": "none",
+    "materialFilter": "blur(12px)",
+    "base": "rgba(11, 16, 24, 0.875)",
+    "panelFilter": "blur(12px)",
+    "panelBase": "rgba(16, 21, 29, 0.97)",
+    "reflection": "132 147 163"
+  },
+  {
+    "width": 1440,
+    "background": "dark",
+    "fallback": true,
+    "filter": "none",
+    "materialFilter": "none",
+    "base": "rgba(11, 16, 24, 0.96)",
+    "panelFilter": "none",
+    "panelBase": "rgba(16, 21, 29, 0.97)",
+    "reflection": "132 147 163"
+  },
+  {
+    "width": 1440,
+    "background": "bright",
+    "fallback": false,
+    "filter": "none",
+    "materialFilter": "blur(12px)",
+    "base": "rgba(11, 16, 24, 0.875)",
+    "panelFilter": "blur(12px)",
+    "panelBase": "rgba(16, 21, 29, 0.97)",
+    "reflection": "132 147 163"
+  },
+  {
+    "width": 1440,
+    "background": "bright",
+    "fallback": true,
+    "filter": "none",
+    "materialFilter": "none",
+    "base": "rgba(11, 16, 24, 0.96)",
+    "panelFilter": "none",
+    "panelBase": "rgba(16, 21, 29, 0.97)",
+    "reflection": "132 147 163"
+  }
+]

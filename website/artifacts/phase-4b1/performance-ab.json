@@ -1,0 +1,130 @@
+[
+  {
+    "phase": "ab",
+    "material": "after",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 0,
+    "frames": 143,
+    "median": 16.700000000000045,
+    "p95": 33.40000000000009,
+    "max": 100,
+    "metrics": {
+      "LayoutDuration": 0.00894,
+      "RecalcStyleDuration": 0.050414,
+      "ScriptDuration": 0.18468800000000002
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "before",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 1,
+    "frames": 141,
+    "median": 16.699999999999818,
+    "p95": 33.399999999999636,
+    "max": 83.29999999999927,
+    "metrics": {
+      "LayoutDuration": 0.010686999999999999,
+      "RecalcStyleDuration": 0.05672899999999999,
+      "ScriptDuration": 0.16189699999999996
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "after",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 2,
+    "frames": 141,
+    "median": 16.700000000000728,
+    "p95": 33.400000000001455,
+    "max": 99.89999999999964,
+    "metrics": {
+      "LayoutDuration": 0.009318000000000003,
+      "RecalcStyleDuration": 0.05338100000000001,
+      "ScriptDuration": 0.159644
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "before",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 3,
+    "frames": 140,
+    "median": 16.69999999999891,
+    "p95": 33.399999999999636,
+    "max": 83.39999999999964,
+    "metrics": {
+      "LayoutDuration": 0.011233,
+      "RecalcStyleDuration": 0.059496999999999994,
+      "ScriptDuration": 0.1499299999999999
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "after",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 0,
+    "frames": 104,
+    "median": 16.699999999999818,
+    "p95": 50,
+    "max": 66.70000000000005,
+    "metrics": {
+      "LayoutDuration": 0.4882909999999999,
+      "RecalcStyleDuration": 0.13876,
+      "ScriptDuration": 0.054583999999999994
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "before",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 1,
+    "frames": 122,
+    "median": 16.699999999999818,
+    "p95": 33.29999999999927,
+    "max": 33.399999999999636,
+    "metrics": {
+      "LayoutDuration": 0.3038829999999999,
+      "RecalcStyleDuration": 0.10284900000000002,
+      "ScriptDuration": 0.03925000000000001
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "after",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 2,
+    "frames": 97,
+    "median": 16.700000000000728,
+    "p95": 50,
+    "max": 283.3000000000002,
+    "metrics": {
+      "LayoutDuration": 0.39437999999999995,
+      "RecalcStyleDuration": 0.150223,
+      "ScriptDuration": 0.04367499999999999
+    }
+  },
+  {
+    "phase": "ab",
+    "material": "before",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 3,
+    "frames": 123,
+    "median": 16.69999999999891,
+    "p95": 33.399999999999636,
+    "max": 133.39999999999964,
+    "metrics": {
+      "LayoutDuration": 0.3350280000000001,
+      "RecalcStyleDuration": 0.17072099999999996,
+      "ScriptDuration": 0.07619199999999998
+    }
+  }
+]

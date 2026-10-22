@@ -1,0 +1,27 @@
+{
+  "FunctionCall": {
+    "count": 388,
+    "totalMs": 2927.9420000000027,
+    "maxMs": 121.989
+  },
+  "PrePaint": {
+    "count": 108,
+    "totalMs": 205.91400000000004,
+    "maxMs": 11.86
+  },
+  "UpdateLayoutTree": {
+    "count": 56,
+    "totalMs": 691.7389999999999,
+    "maxMs": 43.664
+  },
+  "Layout": {
+    "count": 56,
+    "totalMs": 1952.574,
+    "maxMs": 90.139
+  },
+  "Paint": {
+    "count": 105,
+    "totalMs": 239.11900000000003,
+    "maxMs": 9.636
+  }
+}

@@ -1,0 +1,194 @@
+[
+  {
+    "phase": "layer-probe",
+    "material": "root22",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 0,
+    "frames": 127,
+    "median": 33.29999999999973,
+    "p95": 50.09999999999991,
+    "max": 183.29999999999927,
+    "metrics": {
+      "LayoutDuration": 0.010702,
+      "RecalcStyleDuration": 0.052156,
+      "ScriptDuration": 0.198486
+    }
+  },
+  {
+    "phase": "layer-probe",
+    "material": "pseudo22",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 1,
+    "frames": 122,
+    "median": 33.29999999999927,
+    "p95": 50.100000000000364,
+    "max": 100,
+    "metrics": {
+      "LayoutDuration": 0.010261,
+      "RecalcStyleDuration": 0.05320499999999999,
+      "ScriptDuration": 0.16831000000000002
+    }
+  },
+  {
+    "phase": "layer-probe",
+    "material": "pseudo12",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 2,
+    "frames": 136,
+    "median": 16.700000000000728,
+    "p95": 50,
+    "max": 83.30000000000109,
+    "metrics": {
+      "LayoutDuration": 0.010442999999999997,
+      "RecalcStyleDuration": 0.061748,
+      "ScriptDuration": 0.170875
+    }
+  },
+  {
+    "phase": "layer-probe",
+    "material": "pseudo8",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 3,
+    "frames": 126,
+    "median": 33.20000000000073,
+    "p95": 50,
+    "max": 100.10000000000218,
+    "metrics": {
+      "LayoutDuration": 0.010354999999999996,
+      "RecalcStyleDuration": 0.05703799999999998,
+      "ScriptDuration": 0.149219
+    }
+  },
+  {
+    "phase": "layer-probe",
+    "material": "root0",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 4,
+    "frames": 144,
+    "median": 16.700000000000728,
+    "p95": 33.400000000001455,
+    "max": 100,
+    "metrics": {
+      "LayoutDuration": 0.012500999999999991,
+      "RecalcStyleDuration": 0.065355,
+      "ScriptDuration": 0.173929
+    }
+  },
+  {
+    "phase": "layer-probe",
+    "material": "pseudo12",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 5,
+    "frames": 132,
+    "median": 16.700000000000728,
+    "p95": 50,
+    "max": 116.70000000000073,
+    "metrics": {
+      "LayoutDuration": 0.010302999999999993,
+      "RecalcStyleDuration": 0.05780099999999999,
+      "ScriptDuration": 0.14468400000000003
+    }
+  },
+  {
+    "phase": "layer-probe",
+    "material": "root22",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 0,
+    "frames": 97,
+    "median": 16.700000000000273,
+    "p95": 50,
+    "max": 50.100000000000136,
+    "metrics": {
+      "LayoutDuration": 0.429662,
+      "RecalcStyleDuration": 0.126997,
+      "ScriptDuration": 0.05702599999999999
+    }
+  },
+  {
+    "phase": "layer-probe",
+    "material": "pseudo22",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 1,
+    "frames": 102,
+    "median": 16.699999999999818,
+    "p95": 33.399999999999636,
+    "max": 50,
+    "metrics": {
+      "LayoutDuration": 0.296244,
+      "RecalcStyleDuration": 0.09914899999999999,
+      "ScriptDuration": 0.041366000000000014
+    }
+  },
+  {
+    "phase": "layer-probe",
+    "material": "pseudo12",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 2,
+    "frames": 120,
+    "median": 16.699999999999818,
+    "p95": 33.400000000000546,
+    "max": 50.100000000000364,
+    "metrics": {
+      "LayoutDuration": 0.32051699999999994,
+      "RecalcStyleDuration": 0.107796,
+      "ScriptDuration": 0.039941000000000004
+    }
+  },
+  {
+    "phase": "layer-probe",
+    "material": "pseudo8",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 3,
+    "frames": 91,
+    "median": 33.20000000000073,
+    "p95": 50,
+    "max": 66.69999999999891,
+    "metrics": {
+      "LayoutDuration": 0.33430099999999996,
+      "RecalcStyleDuration": 0.100549,
+      "ScriptDuration": 0.042024000000000006
+    }
+  },
+  {
+    "phase": "layer-probe",
+    "material": "root0",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 4,
+    "frames": 119,
+    "median": 16.700000000000728,
+    "p95": 33.30000000000109,
+    "max": 50,
+    "metrics": {
+      "LayoutDuration": 0.40027199999999996,
+      "RecalcStyleDuration": 0.13343299999999997,
+      "ScriptDuration": 0.046983
+    }
+  },
+  {
+    "phase": "layer-probe",
+    "material": "pseudo12",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 5,
+    "frames": 88,
+    "median": 33.20000000000073,
+    "p95": 50,
+    "max": 50,
+    "metrics": {
+      "LayoutDuration": 0.34214600000000006,
+      "RecalcStyleDuration": 0.12243300000000001,
+      "ScriptDuration": 0.039509000000000016
+    }
+  }
+]

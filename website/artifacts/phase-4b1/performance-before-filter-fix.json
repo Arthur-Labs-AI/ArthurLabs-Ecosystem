@@ -1,0 +1,122 @@
+[
+  {
+    "phase": "after",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 0,
+    "frames": 138,
+    "median": 16.699999999999818,
+    "p95": 49.899999999999636,
+    "max": 133.30000000000018,
+    "metrics": {
+      "LayoutDuration": 0.010868,
+      "RecalcStyleDuration": 0.067938,
+      "ScriptDuration": 0.23429299999999997
+    }
+  },
+  {
+    "phase": "after",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 1,
+    "frames": 138,
+    "median": 16.699999999999818,
+    "p95": 33.400000000001455,
+    "max": 133.30000000000018,
+    "metrics": {
+      "LayoutDuration": 0.011474999999999999,
+      "RecalcStyleDuration": 0.06294499999999999,
+      "ScriptDuration": 0.215619
+    }
+  },
+  {
+    "phase": "after",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 0,
+    "frames": 110,
+    "median": 16.699999999999818,
+    "p95": 49.90000000000009,
+    "max": 50,
+    "metrics": {
+      "LayoutDuration": 0.234201,
+      "RecalcStyleDuration": 0.158335,
+      "ScriptDuration": 0.05602299999999999
+    }
+  },
+  {
+    "phase": "after",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 1,
+    "frames": 104,
+    "median": 16.699999999999818,
+    "p95": 50,
+    "max": 66.69999999999982,
+    "metrics": {
+      "LayoutDuration": 0.179191,
+      "RecalcStyleDuration": 0.137254,
+      "ScriptDuration": 0.05839699999999998
+    }
+  },
+  {
+    "phase": "after",
+    "width": 390,
+    "route": "/nexus",
+    "repetition": 0,
+    "frames": 180,
+    "median": 16.699999999999818,
+    "p95": 16.799999999999955,
+    "max": 50,
+    "metrics": {
+      "LayoutDuration": 0.011898,
+      "RecalcStyleDuration": 0.068675,
+      "ScriptDuration": 0.20705400000000002
+    }
+  },
+  {
+    "phase": "after",
+    "width": 390,
+    "route": "/nexus",
+    "repetition": 1,
+    "frames": 179,
+    "median": 16.699999999999818,
+    "p95": 16.700000000000728,
+    "max": 50,
+    "metrics": {
+      "LayoutDuration": 0.012917000000000001,
+      "RecalcStyleDuration": 0.070344,
+      "ScriptDuration": 0.18332200000000004
+    }
+  },
+  {
+    "phase": "after",
+    "width": 390,
+    "route": "/sentry",
+    "repetition": 0,
+    "frames": 135,
+    "median": 16.699999999999818,
+    "p95": 33.200000000000045,
+    "max": 33.39999999999998,
+    "metrics": {
+      "LayoutDuration": 0.155073,
+      "RecalcStyleDuration": 0.15401099999999998,
+      "ScriptDuration": 0.06034600000000001
+    }
+  },
+  {
+    "phase": "after",
+    "width": 390,
+    "route": "/sentry",
+    "repetition": 1,
+    "frames": 143,
+    "median": 16.699999999999818,
+    "p95": 16.700000000000728,
+    "max": 16.800000000000182,
+    "metrics": {
+      "LayoutDuration": 0.056311,
+      "RecalcStyleDuration": 0.11039399999999999,
+      "ScriptDuration": 0.047341999999999995
+    }
+  }
+]

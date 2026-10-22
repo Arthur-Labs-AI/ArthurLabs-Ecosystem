@@ -1,0 +1,194 @@
+[
+  {
+    "phase": "radius-probe",
+    "material": "blur-22",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 0,
+    "frames": 116,
+    "median": 33.399999999999636,
+    "p95": 50.09999999999991,
+    "max": 100,
+    "metrics": {
+      "LayoutDuration": 0.010104,
+      "RecalcStyleDuration": 0.05143600000000001,
+      "ScriptDuration": 0.17579399999999998
+    }
+  },
+  {
+    "phase": "radius-probe",
+    "material": "blur-12",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 1,
+    "frames": 119,
+    "median": 33.29999999999927,
+    "p95": 66.69999999999891,
+    "max": 316.6999999999998,
+    "metrics": {
+      "LayoutDuration": 0.009755,
+      "RecalcStyleDuration": 0.050899,
+      "ScriptDuration": 0.16540200000000005
+    }
+  },
+  {
+    "phase": "radius-probe",
+    "material": "blur-8",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 2,
+    "frames": 133,
+    "median": 16.700000000000728,
+    "p95": 50,
+    "max": 83.29999999999927,
+    "metrics": {
+      "LayoutDuration": 0.010061999999999998,
+      "RecalcStyleDuration": 0.05630100000000002,
+      "ScriptDuration": 0.16090799999999994
+    }
+  },
+  {
+    "phase": "radius-probe",
+    "material": "blur-12",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 3,
+    "frames": 120,
+    "median": 33.29999999999927,
+    "p95": 50,
+    "max": 100,
+    "metrics": {
+      "LayoutDuration": 0.009776,
+      "RecalcStyleDuration": 0.05296400000000001,
+      "ScriptDuration": 0.14364500000000002
+    }
+  },
+  {
+    "phase": "radius-probe",
+    "material": "blur-8",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 4,
+    "frames": 128,
+    "median": 33.29999999999927,
+    "p95": 50,
+    "max": 83.19999999999709,
+    "metrics": {
+      "LayoutDuration": 0.010718999999999992,
+      "RecalcStyleDuration": 0.056288000000000005,
+      "ScriptDuration": 0.13869700000000007
+    }
+  },
+  {
+    "phase": "radius-probe",
+    "material": "blur-22",
+    "width": 1440,
+    "route": "/nexus",
+    "repetition": 5,
+    "frames": 115,
+    "median": 33.29999999999927,
+    "p95": 50,
+    "max": 100,
+    "metrics": {
+      "LayoutDuration": 0.009491,
+      "RecalcStyleDuration": 0.04955999999999999,
+      "ScriptDuration": 0.12311899999999998
+    }
+  },
+  {
+    "phase": "radius-probe",
+    "material": "blur-22",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 0,
+    "frames": 92,
+    "median": 16.700000000000273,
+    "p95": 50,
+    "max": 100,
+    "metrics": {
+      "LayoutDuration": 0.42573,
+      "RecalcStyleDuration": 0.130534,
+      "ScriptDuration": 0.05538400000000002
+    }
+  },
+  {
+    "phase": "radius-probe",
+    "material": "blur-12",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 1,
+    "frames": 94,
+    "median": 16.700000000000728,
+    "p95": 50,
+    "max": 50,
+    "metrics": {
+      "LayoutDuration": 0.35854600000000003,
+      "RecalcStyleDuration": 0.11686999999999997,
+      "ScriptDuration": 0.04711700000000002
+    }
+  },
+  {
+    "phase": "radius-probe",
+    "material": "blur-8",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 2,
+    "frames": 87,
+    "median": 33.29999999999927,
+    "p95": 50,
+    "max": 50.100000000000364,
+    "metrics": {
+      "LayoutDuration": 0.3842850000000001,
+      "RecalcStyleDuration": 0.13610500000000003,
+      "ScriptDuration": 0.04283600000000004
+    }
+  },
+  {
+    "phase": "radius-probe",
+    "material": "blur-12",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 3,
+    "frames": 85,
+    "median": 33.29999999999927,
+    "p95": 50,
+    "max": 66.60000000000036,
+    "metrics": {
+      "LayoutDuration": 0.4358040000000001,
+      "RecalcStyleDuration": 0.14177800000000007,
+      "ScriptDuration": 0.04724400000000001
+    }
+  },
+  {
+    "phase": "radius-probe",
+    "material": "blur-8",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 4,
+    "frames": 94,
+    "median": 33.20000000000073,
+    "p95": 50,
+    "max": 83.30000000000109,
+    "metrics": {
+      "LayoutDuration": 0.46808700000000014,
+      "RecalcStyleDuration": 0.13877399999999995,
+      "ScriptDuration": 0.04946499999999998
+    }
+  },
+  {
+    "phase": "radius-probe",
+    "material": "blur-22",
+    "width": 1440,
+    "route": "/sentry",
+    "repetition": 5,
+    "frames": 84,
+    "median": 33.30000000000109,
+    "p95": 50.099999999998545,
+    "max": 216.70000000000073,
+    "metrics": {
+      "LayoutDuration": 0.3986049999999999,
+      "RecalcStyleDuration": 0.14041199999999998,
+      "ScriptDuration": 0.04602600000000001
+    }
+  }
+]

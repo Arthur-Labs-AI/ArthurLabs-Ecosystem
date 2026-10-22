@@ -1,0 +1,715 @@
+{
+  "runtimeModified": [
+    "src/components/Navbar.module.css"
+  ],
+  "verificationArtifacts": [
+    {
+      "path": "artifacts/phase-4b1/EVIDENCE-INDEX.md",
+      "bytes": 2232
+    },
+    {
+      "path": "artifacts/phase-4b1/GALLERY.md",
+      "bytes": 5410
+    },
+    {
+      "path": "artifacts/phase-4b1/PLAN.md",
+      "bytes": 1662
+    },
+    {
+      "path": "artifacts/phase-4b1/REGRESSION-NOTES.md",
+      "bytes": 1898
+    },
+    {
+      "path": "artifacts/phase-4b1/REPORT.md",
+      "bytes": 8933
+    },
+    {
+      "path": "artifacts/phase-4b1/VISUAL-REVIEW.md",
+      "bytes": 1789
+    },
+    {
+      "path": "artifacts/phase-4b1/browser-before-filter-fix.log",
+      "bytes": 11110
+    },
+    {
+      "path": "artifacts/phase-4b1/browser-tests.log",
+      "bytes": 13096
+    },
+    {
+      "path": "artifacts/phase-4b1/build.log",
+      "bytes": 997
+    },
+    {
+      "path": "artifacts/phase-4b1/capture-after.log",
+      "bytes": 0
+    },
+    {
+      "path": "artifacts/phase-4b1/capture-before.log",
+      "bytes": 0
+    },
+    {
+      "path": "artifacts/phase-4b1/capture.mjs",
+      "bytes": 2149
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-landing-1440-closed.png",
+      "bytes": 425886
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-landing-1440-open.png",
+      "bytes": 504117
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-landing-1920-closed.png",
+      "bytes": 533736
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-landing-1920-open.png",
+      "bytes": 641530
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-landing-390-closed.png",
+      "bytes": 166601
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-landing-390-open.png",
+      "bytes": 252620
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-landing-768-closed.png",
+      "bytes": 247570
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-landing-768-open.png",
+      "bytes": 408533
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-nexus-1440-closed.png",
+      "bytes": 396062
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-nexus-1440-open.png",
+      "bytes": 498849
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-nexus-1920-closed.png",
+      "bytes": 445209
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-nexus-1920-open.png",
+      "bytes": 584299
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-nexus-390-closed.png",
+      "bytes": 148677
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-nexus-390-open.png",
+      "bytes": 252629
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-nexus-768-closed.png",
+      "bytes": 228826
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-nexus-768-open.png",
+      "bytes": 401480
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-sentry-1440-closed.png",
+      "bytes": 392381
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-sentry-1440-open.png",
+      "bytes": 494093
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-sentry-1920-closed.png",
+      "bytes": 456001
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-sentry-1920-open.png",
+      "bytes": 600214
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-sentry-390-closed.png",
+      "bytes": 148702
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-sentry-390-open.png",
+      "bytes": 243750
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-sentry-768-closed.png",
+      "bytes": 227362
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-sentry-768-open.png",
+      "bytes": 400310
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-studio-1440-closed.png",
+      "bytes": 386151
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-studio-1440-open.png",
+      "bytes": 478357
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-studio-1920-closed.png",
+      "bytes": 443676
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-studio-1920-open.png",
+      "bytes": 573272
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-studio-390-closed.png",
+      "bytes": 154583
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-studio-390-open.png",
+      "bytes": 242773
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-studio-768-closed.png",
+      "bytes": 228650
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-studio-768-open.png",
+      "bytes": 388771
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-suite-1440-closed.png",
+      "bytes": 407319
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-suite-1440-open.png",
+      "bytes": 502279
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-suite-1920-closed.png",
+      "bytes": 478180
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-suite-1920-open.png",
+      "bytes": 602164
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-suite-390-closed.png",
+      "bytes": 159043
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-suite-390-open.png",
+      "bytes": 244814
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-suite-768-closed.png",
+      "bytes": 231512
+    },
+    {
+      "path": "artifacts/phase-4b1/compare-suite-768-open.png",
+      "bytes": 396708
+    },
+    {
+      "path": "artifacts/phase-4b1/compare.log",
+      "bytes": 0
+    },
+    {
+      "path": "artifacts/phase-4b1/compare.mjs",
+      "bytes": 1484
+    },
+    {
+      "path": "artifacts/phase-4b1/fallback-evidence.json",
+      "bytes": 2206
+    },
+    {
+      "path": "artifacts/phase-4b1/fallback.log",
+      "bytes": 0
+    },
+    {
+      "path": "artifacts/phase-4b1/fallback.mjs",
+      "bytes": 2156
+    },
+    {
+      "path": "artifacts/phase-4b1/geometry-after.json",
+      "bytes": 253651
+    },
+    {
+      "path": "artifacts/phase-4b1/geometry-before.json",
+      "bytes": 252923
+    },
+    {
+      "path": "artifacts/phase-4b1/geometry-check.log",
+      "bytes": 70
+    },
+    {
+      "path": "artifacts/phase-4b1/geometry-check.mjs",
+      "bytes": 1342
+    },
+    {
+      "path": "artifacts/phase-4b1/geometry-comparison.json",
+      "bytes": 2900
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-1440-closed-after.png",
+      "bytes": 884198
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-1440-closed-before.png",
+      "bytes": 884401
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-1440-open-after.png",
+      "bytes": 869827
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-1440-open-before.png",
+      "bytes": 829755
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-1920-closed-after.png",
+      "bytes": 1173585
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-1920-closed-before.png",
+      "bytes": 1172085
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-1920-open-after.png",
+      "bytes": 1176615
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-1920-open-before.png",
+      "bytes": 1133441
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-390-closed-after.png",
+      "bytes": 302944
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-390-closed-before.png",
+      "bytes": 305686
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-390-open-after.png",
+      "bytes": 259607
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-390-open-before.png",
+      "bytes": 227575
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-768-closed-after.png",
+      "bytes": 608072
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-768-closed-before.png",
+      "bytes": 606949
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-768-open-after.png",
+      "bytes": 600076
+    },
+    {
+      "path": "artifacts/phase-4b1/landing-768-open-before.png",
+      "bytes": 554932
+    },
+    {
+      "path": "artifacts/phase-4b1/layer-probe.log",
+      "bytes": 3803
+    },
+    {
+      "path": "artifacts/phase-4b1/layer-probe.mjs",
+      "bytes": 3132
+    },
+    {
+      "path": "artifacts/phase-4b1/material-1440-bright-blur.png",
+      "bytes": 154564
+    },
+    {
+      "path": "artifacts/phase-4b1/material-1440-bright-fallback.png",
+      "bytes": 171908
+    },
+    {
+      "path": "artifacts/phase-4b1/material-1440-dark-blur.png",
+      "bytes": 857633
+    },
+    {
+      "path": "artifacts/phase-4b1/material-1440-dark-fallback.png",
+      "bytes": 876562
+    },
+    {
+      "path": "artifacts/phase-4b1/material-390-bright-blur.png",
+      "bytes": 118615
+    },
+    {
+      "path": "artifacts/phase-4b1/material-390-bright-fallback.png",
+      "bytes": 123348
+    },
+    {
+      "path": "artifacts/phase-4b1/material-390-dark-blur.png",
+      "bytes": 261959
+    },
+    {
+      "path": "artifacts/phase-4b1/material-390-dark-fallback.png",
+      "bytes": 278293
+    },
+    {
+      "path": "artifacts/phase-4b1/navbar-before.css",
+      "bytes": 5586
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-1440-closed-after.png",
+      "bytes": 738602
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-1440-closed-before.png",
+      "bytes": 737568
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-1440-open-after.png",
+      "bytes": 767685
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-1440-open-before.png",
+      "bytes": 714276
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-1920-closed-after.png",
+      "bytes": 868585
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-1920-closed-before.png",
+      "bytes": 866679
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-1920-open-after.png",
+      "bytes": 929723
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-1920-open-before.png",
+      "bytes": 874095
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-390-closed-after.png",
+      "bytes": 284998
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-390-closed-before.png",
+      "bytes": 287147
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-390-open-after.png",
+      "bytes": 256019
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-390-open-before.png",
+      "bytes": 216395
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-768-closed-after.png",
+      "bytes": 534228
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-768-closed-before.png",
+      "bytes": 533015
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-768-open-after.png",
+      "bytes": 547786
+    },
+    {
+      "path": "artifacts/phase-4b1/nexus-768-open-before.png",
+      "bytes": 493714
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-ab-before-filter-fix.json",
+      "bytes": 2985
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-ab.json",
+      "bytes": 3029
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-ab.log",
+      "bytes": 2555
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-ab.mjs",
+      "bytes": 2986
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-after.json",
+      "bytes": 2791
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-after.log",
+      "bytes": 2349
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-before-filter-fix.json",
+      "bytes": 2774
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-before.json",
+      "bytes": 2776
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-before.log",
+      "bytes": 2334
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-layer-probe.json",
+      "bytes": 4513
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-radius-probe.json",
+      "bytes": 4545
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-root22-ab.json",
+      "bytes": 3038
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-root22-ab.log",
+      "bytes": 2564
+    },
+    {
+      "path": "artifacts/phase-4b1/performance-single-filter-probe.json",
+      "bytes": 3072
+    },
+    {
+      "path": "artifacts/phase-4b1/performance.mjs",
+      "bytes": 2266
+    },
+    {
+      "path": "artifacts/phase-4b1/radius-probe.log",
+      "bytes": 3835
+    },
+    {
+      "path": "artifacts/phase-4b1/radius-probe.mjs",
+      "bytes": 2855
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-1440-closed-after.png",
+      "bytes": 811330
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-1440-closed-before.png",
+      "bytes": 810530
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-1440-open-after.png",
+      "bytes": 837201
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-1440-open-before.png",
+      "bytes": 787027
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-1920-closed-after.png",
+      "bytes": 1020300
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-1920-closed-before.png",
+      "bytes": 1018989
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-1920-open-after.png",
+      "bytes": 1077306
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-1920-open-before.png",
+      "bytes": 1023732
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-390-closed-after.png",
+      "bytes": 291975
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-390-closed-before.png",
+      "bytes": 294541
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-390-open-after.png",
+      "bytes": 260814
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-390-open-before.png",
+      "bytes": 223649
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-768-closed-after.png",
+      "bytes": 572621
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-768-closed-before.png",
+      "bytes": 571480
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-768-open-after.png",
+      "bytes": 587204
+    },
+    {
+      "path": "artifacts/phase-4b1/sentry-768-open-before.png",
+      "bytes": 533145
+    },
+    {
+      "path": "artifacts/phase-4b1/single-filter-probe.log",
+      "bytes": 2598
+    },
+    {
+      "path": "artifacts/phase-4b1/single-filter-probe.mjs",
+      "bytes": 3105
+    },
+    {
+      "path": "artifacts/phase-4b1/source-preservation.json",
+      "bytes": 121
+    },
+    {
+      "path": "artifacts/phase-4b1/sources-before.json",
+      "bytes": 14029
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-1440-closed-after.png",
+      "bytes": 751939
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-1440-closed-before.png",
+      "bytes": 752652
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-1440-open-after.png",
+      "bytes": 778394
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-1440-open-before.png",
+      "bytes": 727465
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-1920-closed-after.png",
+      "bytes": 904560
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-1920-closed-before.png",
+      "bytes": 904079
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-1920-open-after.png",
+      "bytes": 958429
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-1920-open-before.png",
+      "bytes": 906219
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-390-closed-after.png",
+      "bytes": 287707
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-390-closed-before.png",
+      "bytes": 290652
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-390-open-after.png",
+      "bytes": 253320
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-390-open-before.png",
+      "bytes": 214933
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-768-closed-after.png",
+      "bytes": 557679
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-768-closed-before.png",
+      "bytes": 556435
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-768-open-after.png",
+      "bytes": 570196
+    },
+    {
+      "path": "artifacts/phase-4b1/studio-768-open-before.png",
+      "bytes": 516176
+    },
+    {
+      "path": "artifacts/phase-4b1/style-contract.json",
+      "bytes": 220
+    },
+    {
+      "path": "artifacts/phase-4b1/style-contract.mjs",
+      "bytes": 1501
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-1440-closed-after.png",
+      "bytes": 835855
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-1440-closed-before.png",
+      "bytes": 834754
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-1440-open-after.png",
+      "bytes": 857580
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-1440-open-before.png",
+      "bytes": 808162
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-1920-closed-after.png",
+      "bytes": 1025862
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-1920-closed-before.png",
+      "bytes": 1024270
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-1920-open-after.png",
+      "bytes": 1077765
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-1920-open-before.png",
+      "bytes": 1025635
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-390-closed-after.png",
+      "bytes": 298736
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-390-closed-before.png",
+      "bytes": 300020
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-390-open-after.png",
+      "bytes": 261959
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-390-open-before.png",
+      "bytes": 224916
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-768-closed-after.png",
+      "bytes": 574917
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-768-closed-before.png",
+      "bytes": 573728
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-768-open-after.png",
+      "bytes": 582612
+    },
+    {
+      "path": "artifacts/phase-4b1/suite-768-open-before.png",
+      "bytes": 532213
+    },
+    {
+      "path": "artifacts/phase-4b1/typecheck.log",
+      "bytes": 78
+    }
+  ]
+}

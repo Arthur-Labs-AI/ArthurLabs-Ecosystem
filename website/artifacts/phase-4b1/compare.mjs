@@ -1,0 +1,7 @@
+import{chromium}from'playwright';import fs from'node:fs/promises';
+const dir='artifacts/phase-4b1',browser=await chromium.launch();
+for(const width of[390,768,1440,1920])for(const name of['landing','suite','nexus','sentry','studio'])for(const state of['closed','open']){
+ const [before,after]=await Promise.all(['before','after'].map(phase=>fs.readFile(`${dir}/${name}-${width}-${state}-${phase}.png`)));
+ const height=state==='open'?Math.min(width<900?540:460,width===768?1024:1000):Math.min(width<900?350:420,width===768?1024:1000);
+ const p=await browser.newPage({viewport:{width:width*2,height:height+36},deviceScaleFactor:1});await p.setContent(`<style>*{box-sizing:border-box}body{margin:0;background:#0a0c10;color:#bfc8d5;font:11px system-ui;display:grid;grid-template-columns:1fr 1fr}figure{margin:0;overflow:hidden;height:${height+36}px}figcaption{height:36px;display:flex;align-items:center;padding:0 16px;letter-spacing:.08em}img{width:${width}px;height:auto;display:block}</style><figure><figcaption>BEFORE / ${name.toUpperCase()} / ${width}px</figcaption><img src="data:image/png;base64,${before.toString('base64')}"></figure><figure><figcaption>AFTER / SAME VIEWPORT & SCROLL</figcaption><img src="data:image/png;base64,${after.toString('base64')}"></figure>`);await p.locator('img').evaluateAll(async imgs=>{await Promise.all(imgs.map(i=>i.decode()));});await p.screenshot({path:`${dir}/compare-${name}-${width}-${state}.png`});await p.close();
+}await browser.close();

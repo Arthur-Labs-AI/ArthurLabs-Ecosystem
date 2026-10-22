@@ -1,0 +1,9 @@
+# Verification notes
+
+- Baseline is the pending Phase 4B working tree; all its source/public/tests/config changes remain untouched except the requested material CSS.
+- Captures freeze screenshot entrance animation identically before/after. Source page animations are not modified. A first capture attempt waited on unrelated page animations; capture now only awaits the header and uses Playwright's static screenshot animation option.
+- Native closed-details descendants can report cached, nonpainted animated rectangles. Closed geometry comparison therefore includes actual header controls bounded by the surface; open comparison includes the full dropdown. Exact values are compared without tolerances. All non-material declarations are independently compared through a PostCSS AST contract.
+- Production CSS inspection found prefixed-last backdrop declarations had been emitted as prefixed-only. Current Chromium ignores that emitted prefix. The source now follows vendor-first/standard-last ordering; computed material filters are explicitly verified. This is a material compatibility fix in Navbar.module.css, not a navigation change.
+- Initial source-injected A/B material diagnostics did not reproduce that minifier behavior. Those pre-fix samples are archived separately and are not used to claim final production performance. Corrected A/B forces the actual baseline's disabled filter on the baseline arm.
+- Enabling a real 22px blur with saturation produced a repeatable headless slowdown. Radius and material-layer probes were performed; the final candidate reduces to a single 12px blur on the existing decorative pseudo-layer. No approved page/film animation was altered to compensate.
+- The browser run before the filter compatibility fix was interrupted for the necessary material change; its partial log remains `browser-before-filter-fix.log`. Final gates are recorded separately.

@@ -1,0 +1,154 @@
+[
+  {
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "states": [
+      {
+        "name": "snapshot",
+        "progress": "0.12995",
+        "camera": "translate(180 185) scale(1) translate(-180 -419.99989132714376)"
+      },
+      {
+        "name": "half-split",
+        "progress": "0.24492",
+        "camera": "translate(180 185) scale(0.78913299456) translate(-180 -721.2385792)"
+      },
+      {
+        "name": "three-harnesses",
+        "progress": "0.32995",
+        "camera": "translate(180 185) scale(0.7577301070790037) translate(-180 -857.7301070790037)"
+      },
+      {
+        "name": "investigation",
+        "progress": "0.52000",
+        "camera": "translate(180 185) scale(1.03375) translate(-180 -1100)"
+      },
+      {
+        "name": "convergence",
+        "progress": "0.80995",
+        "camera": "translate(180 185) scale(0.8016734869266939) translate(-180 -1764.8508094563265)"
+      },
+      {
+        "name": "results",
+        "progress": "0.94000",
+        "camera": "translate(180 185) scale(1) translate(-180 -2030)"
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "height": 1024,
+    "errors": [],
+    "states": [
+      {
+        "name": "snapshot",
+        "progress": "0.13001",
+        "camera": "translate(180 185) scale(0.9999999992733707) translate(-180 -420.00000103804194)"
+      },
+      {
+        "name": "half-split",
+        "progress": "0.24502",
+        "camera": "translate(180 185) scale(0.7889231370991963) translate(-180 -721.5383755725768)"
+      },
+      {
+        "name": "three-harnesses",
+        "progress": "0.33004",
+        "camera": "translate(180 185) scale(0.7579457163423778) translate(-180 -857.9457163423779)"
+      },
+      {
+        "name": "investigation",
+        "progress": "0.52002",
+        "camera": "translate(180 185) scale(1.0337578731620714) translate(-180 -1100)"
+      },
+      {
+        "name": "convergence",
+        "progress": "0.81002",
+        "camera": "translate(180 185) scale(0.8016501541642913) translate(-180 -1764.9226025714113)"
+      },
+      {
+        "name": "results",
+        "progress": "0.94002",
+        "camera": "translate(180 185) scale(1) translate(-180 -2030.0000104137732)"
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "height": 1000,
+    "errors": [],
+    "states": [
+      {
+        "name": "snapshot",
+        "progress": "0.12994",
+        "camera": "translate(500 380) scale(1.0800000383313975) translate(-500 -439.99985306297674)"
+      },
+      {
+        "name": "half-split",
+        "progress": "0.24499",
+        "camera": "translate(500 380) scale(0.8840603050901806) translate(-500 -681.1565475813161)"
+      },
+      {
+        "name": "three-harnesses",
+        "progress": "0.32996",
+        "camera": "translate(500 380) scale(0.8402272885626656) translate(-500 -805.8485207420421)"
+      },
+      {
+        "name": "investigation",
+        "progress": "0.51995",
+        "camera": "translate(500 380) scale(1.501284761360079) translate(-339.7712624469603 -1091.56690854984)"
+      },
+      {
+        "name": "convergence",
+        "progress": "0.81001",
+        "camera": "translate(500 380) scale(0.8607635486940521) translate(-500 -1625.291449720012)"
+      },
+      {
+        "name": "results",
+        "progress": "0.93995",
+        "camera": "translate(500 380) scale(0.9499999453414024) translate(-500 -1989.99978136561)"
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "width": 1920,
+    "height": 1080,
+    "errors": [],
+    "states": [
+      {
+        "name": "snapshot",
+        "progress": "0.13003",
+        "camera": "translate(500 380) scale(1.079999980326651) translate(-500 -440.0000242133529)"
+      },
+      {
+        "name": "half-split",
+        "progress": "0.24500",
+        "camera": "translate(500 380) scale(0.8840422285261076) translate(-500 -681.1787956601752)"
+      },
+      {
+        "name": "three-harnesses",
+        "progress": "0.33003",
+        "camera": "translate(500 380) scale(0.840310843403548) translate(-500 -806.037911714709)"
+      },
+      {
+        "name": "investigation",
+        "progress": "0.52002",
+        "camera": "translate(500 380) scale(1.5016687912332474) translate(-339.6554439137826 -1091.5608128375675)"
+      },
+      {
+        "name": "convergence",
+        "progress": "0.81001",
+        "camera": "translate(500 380) scale(0.8607631010060703) translate(-500 -1625.294210462566)"
+      },
+      {
+        "name": "results",
+        "progress": "0.93995",
+        "camera": "translate(500 380) scale(0.9499999453414024) translate(-500 -1989.99978136561)"
+      }
+    ],
+    "overflow": false
+  }
+]

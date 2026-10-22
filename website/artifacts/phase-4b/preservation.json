@@ -1,0 +1,52 @@
+[
+  {
+    "path": "src/app/page.tsx",
+    "unchanged": true,
+    "sha256": "7aa224e0f7a946416f603ca6ec968c935aa911b3f8f42832eee1919883fdb961"
+  },
+  {
+    "path": "src/app/globals.css",
+    "unchanged": true,
+    "sha256": "3f4b24331409d1f1f79113e00b5078c232ead98e3416b1b0ee7b0b856d243710"
+  },
+  {
+    "path": "src/components/InteractiveHero.tsx",
+    "unchanged": true,
+    "sha256": "f1a981e5b329775d80e0c17c22f8259ca33c5161b7107058437342bdca42d0c3"
+  },
+  {
+    "path": "src/components/WorkflowAnimation.tsx",
+    "unchanged": true,
+    "sha256": "711cefa45c366d2fc702455f150d3c4b743ba8189d29d582aa92d368c7fef7cd"
+  },
+  {
+    "path": "src/app/nexus/page.tsx",
+    "unchanged": true,
+    "sha256": "663fe94107082e04683270b90b8d09206d44c7c0e285c6ad8415b5b29680b55f"
+  },
+  {
+    "path": "src/components/sentry-concept/createChamber.ts",
+    "unchanged": true,
+    "sha256": "77cbceaef4e6380767500b55acc41e11ec1a75b84c6e66406c111fd75aada9d7"
+  },
+  {
+    "path": "src/components/sentry-concept/geometry.ts",
+    "unchanged": true,
+    "sha256": "1809c5c71f9479b7f6f46a09ec82f8837d2e0db20d24c39009c4c5edba18f1b7"
+  },
+  {
+    "path": "src/components/sentry-concept/PipelineScene.tsx",
+    "unchanged": true,
+    "sha256": "45d41ae42dd675f2fc83f93b0a05ec765535ced3ab286281384e8d43aefec299"
+  },
+  {
+    "path": "src/components/sentry-concept/chamber.module.css",
+    "unchanged": true,
+    "sha256": "78680ceb1309ed7d82899cb22a5b6b189e16477f3408d5125f7095c75dbd3c49"
+  },
+  {
+    "path": "src/components/suite-launch/createWorkflow.ts",
+    "unchanged": true,
+    "sha256": "75edc757ab9cd45686f93a7ae57a663f501981c57309ffbee5ed3b64afb441c8"
+  }
+]

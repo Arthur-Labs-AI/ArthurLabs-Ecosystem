@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-10-22T10:13:56.792Z",
+  "release": "https://github.com/Mert1026/Sentry/releases/tag/v1.0.2",
+  "publishedAt": "2026-10-16T05:38:27Z",
+  "draft": false,
+  "prerelease": false,
+  "url": "https://github.com/Mert1026/Sentry/releases/download/v1.0.2/sentry-1.0.2-2640efcd7874-windows-x64.zip",
+  "sha256": "5265713af248297c543bf0d41093258bd0e7d8c177e0b1c544e733750347286f",
+  "bytes": 122864963,
+  "source": "2640efcd78744cb02c517a405e648722e662bd60",
+  "sidecar": "https://github.com/Mert1026/Sentry/releases/download/v1.0.2/sentry-1.0.2-2640efcd7874-windows-x64.zip.sha256",
+  "checksum": "5265713af248297c543bf0d41093258bd0e7d8c177e0b1c544e733750347286f  sentry-1.0.2-2640efcd7874-windows-x64.zip\n"
+}
