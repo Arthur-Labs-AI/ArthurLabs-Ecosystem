@@ -1,0 +1,1846 @@
+[
+  {
+    "width": 390,
+    "scene": 1,
+    "desc": {
+      "x": 19.5,
+      "y": 628.609375,
+      "right": 370.5,
+      "bottom": 740.796875,
+      "width": 351,
+      "height": 112.1875
+    },
+    "buttons": [
+      {
+        "x": 176.75,
+        "y": 731.1875,
+        "right": 208.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 216.75,
+        "y": 731.1875,
+        "right": 248.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 256.75,
+        "y": 731.1875,
+        "right": 288.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 296.75,
+        "y": 731.1875,
+        "right": 328.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 336.75,
+        "y": 731.1875,
+        "right": 368.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      }
+    ],
+    "occluded": [
+      {
+        "x": 192.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 232.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 272.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 312.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 352.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": -6.977606773376465,
+        "y": 495.9826965332031,
+        "right": 326.67595767974854,
+        "bottom": 689.950927734375,
+        "width": 333.653564453125,
+        "height": 193.96823120117188
+      },
+      {
+        "className": "window nexus",
+        "x": 147.3486328125,
+        "y": 510.3006591796875,
+        "right": 383.5576171875,
+        "bottom": 652.9780883789062,
+        "width": 236.208984375,
+        "height": 142.67742919921875
+      },
+      {
+        "className": "window sentry",
+        "x": 267.680419921875,
+        "y": 536.9141845703125,
+        "right": 462.08831787109375,
+        "bottom": 660.647705078125,
+        "width": 194.40789794921875,
+        "height": 123.7335205078125
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=640&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=640&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=640&q=75"
+    ]
+  },
+  {
+    "width": 390,
+    "scene": 2,
+    "desc": {
+      "x": 19.5,
+      "y": 628.609375,
+      "right": 370.5,
+      "bottom": 740.796875,
+      "width": 351,
+      "height": 112.1875
+    },
+    "buttons": [
+      {
+        "x": 176.75,
+        "y": 731.1875,
+        "right": 208.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 216.75,
+        "y": 731.1875,
+        "right": 248.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 256.75,
+        "y": 731.1875,
+        "right": 288.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 296.75,
+        "y": 731.1875,
+        "right": 328.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 336.75,
+        "y": 731.1875,
+        "right": 368.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      }
+    ],
+    "occluded": [
+      {
+        "x": 192.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 232.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 272.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 312.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 352.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": -82.71263122558594,
+        "y": 541.8458251953125,
+        "right": 117.88670349121094,
+        "bottom": 667.3872680664062,
+        "width": 200.59933471679688,
+        "height": 125.54144287109375
+      },
+      {
+        "className": "window nexus",
+        "x": 26.564071655273438,
+        "y": 471.37420654296875,
+        "right": 359.5609588623047,
+        "bottom": 664.9695434570312,
+        "width": 332.99688720703125,
+        "height": 193.5953369140625
+      },
+      {
+        "className": "window sentry",
+        "x": 279.6418762207031,
+        "y": 541.8458251953125,
+        "right": 480.2412414550781,
+        "bottom": 667.3872680664062,
+        "width": 200.599365234375,
+        "height": 125.54144287109375
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=640&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=640&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=640&q=75"
+    ]
+  },
+  {
+    "width": 390,
+    "scene": 3,
+    "desc": {
+      "x": 19.5,
+      "y": 628.609375,
+      "right": 370.5,
+      "bottom": 740.796875,
+      "width": 351,
+      "height": 112.1875
+    },
+    "buttons": [
+      {
+        "x": 176.75,
+        "y": 731.1875,
+        "right": 208.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 216.75,
+        "y": 731.1875,
+        "right": 248.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 256.75,
+        "y": 731.1875,
+        "right": 288.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 296.75,
+        "y": 731.1875,
+        "right": 328.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 336.75,
+        "y": 731.1875,
+        "right": 368.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      }
+    ],
+    "occluded": [
+      {
+        "x": 192.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 232.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 272.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 312.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 352.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": -82.12644958496094,
+        "y": 542.7498168945312,
+        "right": 112.28144836425781,
+        "bottom": 666.4833374023438,
+        "width": 194.40789794921875,
+        "height": 123.7335205078125
+      },
+      {
+        "className": "window nexus",
+        "x": -6.119488716125488,
+        "y": 510.3006591796875,
+        "right": 230.0894956588745,
+        "bottom": 652.9780883789062,
+        "width": 236.208984375,
+        "height": 142.67742919921875
+      },
+      {
+        "className": "window sentry",
+        "x": 63.324031829833984,
+        "y": 495.9826965332031,
+        "right": 396.977596282959,
+        "bottom": 689.950927734375,
+        "width": 333.653564453125,
+        "height": 193.96823120117188
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=640&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=640&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=640&q=75"
+    ]
+  },
+  {
+    "width": 390,
+    "scene": 4,
+    "desc": {
+      "x": 19.5,
+      "y": 628.609375,
+      "right": 370.5,
+      "bottom": 740.796875,
+      "width": 351,
+      "height": 112.1875
+    },
+    "buttons": [
+      {
+        "x": 176.75,
+        "y": 731.1875,
+        "right": 208.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 216.75,
+        "y": 731.1875,
+        "right": 248.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 256.75,
+        "y": 731.1875,
+        "right": 288.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 296.75,
+        "y": 731.1875,
+        "right": 328.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      },
+      {
+        "x": 336.75,
+        "y": 731.1875,
+        "right": 368.75,
+        "bottom": 767.1875,
+        "width": 32,
+        "height": 36
+      }
+    ],
+    "occluded": [
+      {
+        "x": 192.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 232.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 272.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 312.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 352.75,
+        "y": 733.1875,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": -70.93022918701172,
+        "y": 517.13134765625,
+        "right": 171.35208892822266,
+        "bottom": 668.75927734375,
+        "width": 242.28231811523438,
+        "height": 151.6279296875
+      },
+      {
+        "className": "window nexus",
+        "x": 41.04219055175781,
+        "y": 479.7914123535156,
+        "right": 345.08277893066406,
+        "bottom": 656.5523681640625,
+        "width": 304.04058837890625,
+        "height": 176.76095581054688
+      },
+      {
+        "className": "window sentry",
+        "x": 218.6479034423828,
+        "y": 517.13134765625,
+        "right": 460.93023681640625,
+        "bottom": 668.75927734375,
+        "width": 242.28233337402344,
+        "height": 151.6279296875
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=640&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=640&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=640&q=75"
+    ]
+  },
+  {
+    "width": 390,
+    "mobileMenuAfterAnchor": ""
+  },
+  {
+    "width": 768,
+    "scene": 1,
+    "desc": {
+      "x": 446.6796875,
+      "y": 702.953125,
+      "right": 726.6796875,
+      "bottom": 849.515625,
+      "width": 280,
+      "height": 146.5625
+    },
+    "buttons": [
+      {
+        "x": 522.4453125,
+        "y": 860.3125,
+        "right": 557.3671875,
+        "bottom": 892.3125,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 565.3671875,
+        "y": 860.3125,
+        "right": 598.7890625,
+        "bottom": 892.3125,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 606.7890625,
+        "y": 860.3125,
+        "right": 642.4453125,
+        "bottom": 892.3125,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 650.4453125,
+        "y": 860.3125,
+        "right": 686.1796875,
+        "bottom": 892.3125,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 694.1796875,
+        "y": 860.3125,
+        "right": 726.6796875,
+        "bottom": 892.3125,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 539.90625,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 582.078125,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 624.6171875,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 668.3125,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 710.4296875,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 128.18310546875,
+        "y": 562.3612670898438,
+        "right": 491.279296875,
+        "bottom": 773.460693359375,
+        "width": 363.09619140625,
+        "height": 211.09942626953125
+      },
+      {
+        "className": "window nexus",
+        "x": 331.1584167480469,
+        "y": 554.1172485351562,
+        "right": 613.7244262695312,
+        "bottom": 724.7902221679688,
+        "width": 282.5660095214844,
+        "height": 170.6729736328125
+      },
+      {
+        "className": "window sentry",
+        "x": 504.0428771972656,
+        "y": 601.3524169921875,
+        "right": 737.7664794921875,
+        "bottom": 750.1175537109375,
+        "width": 233.72360229492188,
+        "height": 148.76513671875
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  },
+  {
+    "width": 768,
+    "scene": 2,
+    "desc": {
+      "x": 446.6796875,
+      "y": 722.140625,
+      "right": 726.6796875,
+      "bottom": 849.515625,
+      "width": 280,
+      "height": 127.375
+    },
+    "buttons": [
+      {
+        "x": 522.4453125,
+        "y": 860.3125,
+        "right": 557.3671875,
+        "bottom": 892.3125,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 565.3671875,
+        "y": 860.3125,
+        "right": 598.7890625,
+        "bottom": 892.3125,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 606.7890625,
+        "y": 860.3125,
+        "right": 642.4453125,
+        "bottom": 892.3125,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 650.4453125,
+        "y": 860.3125,
+        "right": 686.1796875,
+        "bottom": 892.3125,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 694.1796875,
+        "y": 860.3125,
+        "right": 726.6796875,
+        "bottom": 892.3125,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 539.90625,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 582.078125,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 624.6171875,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 668.3125,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 710.4296875,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 17.460716247558594,
+        "y": 607.28173828125,
+        "right": 258.6277084350586,
+        "bottom": 758.2207641601562,
+        "width": 241.1669921875,
+        "height": 150.93902587890625
+      },
+      {
+        "className": "window nexus",
+        "x": 173.86595153808594,
+        "y": 497.1418762207031,
+        "right": 597.9930267333984,
+        "bottom": 743.7091674804688,
+        "width": 424.1270751953125,
+        "height": 246.56729125976562
+      },
+      {
+        "className": "window sentry",
+        "x": 518.42333984375,
+        "y": 607.28173828125,
+        "right": 759.5903930664062,
+        "bottom": 758.2207641601562,
+        "width": 241.16705322265625,
+        "height": 150.93902587890625
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  },
+  {
+    "width": 768,
+    "scene": 3,
+    "desc": {
+      "x": 446.6796875,
+      "y": 722.140625,
+      "right": 726.6796875,
+      "bottom": 849.515625,
+      "width": 280,
+      "height": 127.375
+    },
+    "buttons": [
+      {
+        "x": 522.4453125,
+        "y": 860.3125,
+        "right": 557.3671875,
+        "bottom": 892.3125,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 565.3671875,
+        "y": 860.3125,
+        "right": 598.7890625,
+        "bottom": 892.3125,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 606.7890625,
+        "y": 860.3125,
+        "right": 642.4453125,
+        "bottom": 892.3125,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 650.4453125,
+        "y": 860.3125,
+        "right": 686.1796875,
+        "bottom": 892.3125,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 694.1796875,
+        "y": 860.3125,
+        "right": 726.6796875,
+        "bottom": 892.3125,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 539.90625,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 582.078125,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 624.6171875,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 668.3125,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 710.4296875,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 18.16538429260254,
+        "y": 608.3687133789062,
+        "right": 251.8889865875244,
+        "bottom": 757.1337890625,
+        "width": 233.72360229492188,
+        "height": 148.76507568359375
+      },
+      {
+        "className": "window nexus",
+        "x": 147.57138061523438,
+        "y": 554.1172485351562,
+        "right": 430.13739013671875,
+        "bottom": 724.7902221679688,
+        "width": 282.5660095214844,
+        "height": 170.6729736328125
+      },
+      {
+        "className": "window sentry",
+        "x": 300.4009094238281,
+        "y": 561.4434814453125,
+        "right": 666.6544189453125,
+        "bottom": 774.3784790039062,
+        "width": 366.2535095214844,
+        "height": 212.93499755859375
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  },
+  {
+    "width": 768,
+    "scene": 4,
+    "desc": {
+      "x": 446.6796875,
+      "y": 722.140625,
+      "right": 726.6796875,
+      "bottom": 849.515625,
+      "width": 280,
+      "height": 127.375
+    },
+    "buttons": [
+      {
+        "x": 522.4453125,
+        "y": 860.3125,
+        "right": 557.3671875,
+        "bottom": 892.3125,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 565.3671875,
+        "y": 860.3125,
+        "right": 598.7890625,
+        "bottom": 892.3125,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 606.7890625,
+        "y": 860.3125,
+        "right": 642.4453125,
+        "bottom": 892.3125,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 650.4453125,
+        "y": 860.3125,
+        "right": 686.1796875,
+        "bottom": 892.3125,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 694.1796875,
+        "y": 860.3125,
+        "right": 726.6796875,
+        "bottom": 892.3125,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 539.90625,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 582.078125,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 624.6171875,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 668.3125,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 710.4296875,
+        "y": 862.3125,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 27.348543167114258,
+        "y": 580.3912963867188,
+        "right": 324.63342475891113,
+        "bottom": 758.5128784179688,
+        "width": 297.2848815917969,
+        "height": 178.12158203125
+      },
+      {
+        "className": "window nexus",
+        "x": 223.0401611328125,
+        "y": 528.697509765625,
+        "right": 548.6473388671875,
+        "bottom": 717.989990234375,
+        "width": 325.607177734375,
+        "height": 189.29248046875
+      },
+      {
+        "className": "window sentry",
+        "x": 443.3665771484375,
+        "y": 580.3912963867188,
+        "right": 740.6514282226562,
+        "bottom": 758.5128784179688,
+        "width": 297.28485107421875,
+        "height": 178.12158203125
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  },
+  {
+    "width": 1440,
+    "scene": 1,
+    "desc": {
+      "x": 1006.40625,
+      "y": 745.03125,
+      "right": 1336.40625,
+      "bottom": 872.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "buttons": [
+      {
+        "x": 1132.171875,
+        "y": 892.09375,
+        "right": 1167.09375,
+        "bottom": 924.09375,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 1175.09375,
+        "y": 892.09375,
+        "right": 1208.515625,
+        "bottom": 924.09375,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 1216.515625,
+        "y": 892.09375,
+        "right": 1252.171875,
+        "bottom": 924.09375,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 1260.171875,
+        "y": 892.09375,
+        "right": 1295.90625,
+        "bottom": 924.09375,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 1303.90625,
+        "y": 892.09375,
+        "right": 1336.40625,
+        "bottom": 924.09375,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 1149.6328125,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1191.8046875,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1234.34375,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1278.0390625,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1320.15625,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 259.853759765625,
+        "y": 517.4268188476562,
+        "right": 912.9718627929688,
+        "bottom": 897.146240234375,
+        "width": 653.1181030273438,
+        "height": 379.71942138671875
+      },
+      {
+        "className": "window nexus",
+        "x": 624.9745483398438,
+        "y": 534.188720703125,
+        "right": 1133.259765625,
+        "bottom": 841.208740234375,
+        "width": 508.28521728515625,
+        "height": 307.02001953125
+      },
+      {
+        "className": "window sentry",
+        "x": 935.9232177734375,
+        "y": 584.6752319335938,
+        "right": 1356.3330078125,
+        "bottom": 852.2691040039062,
+        "width": 420.4097900390625,
+        "height": 267.5938720703125
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  },
+  {
+    "width": 1440,
+    "scene": 2,
+    "desc": {
+      "x": 1006.40625,
+      "y": 745.03125,
+      "right": 1336.40625,
+      "bottom": 872.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "buttons": [
+      {
+        "x": 1132.171875,
+        "y": 892.09375,
+        "right": 1167.09375,
+        "bottom": 924.09375,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 1175.09375,
+        "y": 892.09375,
+        "right": 1208.515625,
+        "bottom": 924.09375,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 1216.515625,
+        "y": 892.09375,
+        "right": 1252.171875,
+        "bottom": 924.09375,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 1260.171875,
+        "y": 892.09375,
+        "right": 1295.90625,
+        "bottom": 924.09375,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 1303.90625,
+        "y": 892.09375,
+        "right": 1336.40625,
+        "bottom": 924.09375,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 1149.6328125,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1191.8046875,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1234.34375,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1278.0390625,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1320.15625,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 60.69195556640625,
+        "y": 595.3406372070312,
+        "right": 494.49053955078125,
+        "bottom": 866.844970703125,
+        "width": 433.798583984375,
+        "height": 271.50433349609375
+      },
+      {
+        "className": "window nexus",
+        "x": 342.0354919433594,
+        "y": 436.18865966796875,
+        "right": 1104.9629821777344,
+        "bottom": 879.7342529296875,
+        "width": 762.927490234375,
+        "height": 443.54559326171875
+      },
+      {
+        "className": "window sentry",
+        "x": 961.7901000976562,
+        "y": 595.3406372070312,
+        "right": 1395.588623046875,
+        "bottom": 866.844970703125,
+        "width": 433.79852294921875,
+        "height": 271.50433349609375
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  },
+  {
+    "width": 1440,
+    "scene": 3,
+    "desc": {
+      "x": 1006.40625,
+      "y": 745.03125,
+      "right": 1336.40625,
+      "bottom": 872.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "buttons": [
+      {
+        "x": 1132.171875,
+        "y": 892.09375,
+        "right": 1167.09375,
+        "bottom": 924.09375,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 1175.09375,
+        "y": 892.09375,
+        "right": 1208.515625,
+        "bottom": 924.09375,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 1216.515625,
+        "y": 892.09375,
+        "right": 1252.171875,
+        "bottom": 924.09375,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 1260.171875,
+        "y": 892.09375,
+        "right": 1295.90625,
+        "bottom": 924.09375,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 1303.90625,
+        "y": 892.09375,
+        "right": 1336.40625,
+        "bottom": 924.09375,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 1149.6328125,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1191.8046875,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1234.34375,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1278.0390625,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1320.15625,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 61.959442138671875,
+        "y": 597.2958984375,
+        "right": 482.3692932128906,
+        "bottom": 864.8897705078125,
+        "width": 420.40985107421875,
+        "height": 267.5938720703125
+      },
+      {
+        "className": "window nexus",
+        "x": 294.7348937988281,
+        "y": 534.188720703125,
+        "right": 803.0201416015625,
+        "bottom": 841.208740234375,
+        "width": 508.2852478027344,
+        "height": 307.02001953125
+      },
+      {
+        "className": "window sentry",
+        "x": 569.622802734375,
+        "y": 515.77587890625,
+        "right": 1228.420166015625,
+        "bottom": 898.797119140625,
+        "width": 658.79736328125,
+        "height": 383.021240234375
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  },
+  {
+    "width": 1440,
+    "scene": 4,
+    "desc": {
+      "x": 1006.40625,
+      "y": 745.03125,
+      "right": 1336.40625,
+      "bottom": 872.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "buttons": [
+      {
+        "x": 1132.171875,
+        "y": 892.09375,
+        "right": 1167.09375,
+        "bottom": 924.09375,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 1175.09375,
+        "y": 892.09375,
+        "right": 1208.515625,
+        "bottom": 924.09375,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 1216.515625,
+        "y": 892.09375,
+        "right": 1252.171875,
+        "bottom": 924.09375,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 1260.171875,
+        "y": 892.09375,
+        "right": 1295.90625,
+        "bottom": 924.09375,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 1303.90625,
+        "y": 892.09375,
+        "right": 1336.40625,
+        "bottom": 924.09375,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 1149.6328125,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1191.8046875,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1234.34375,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1278.0390625,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1320.15625,
+        "y": 894.09375,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 74.01302337646484,
+        "y": 547.3026123046875,
+        "right": 613.9220809936523,
+        "bottom": 869.1734619140625,
+        "width": 539.9090576171875,
+        "height": 321.870849609375
+      },
+      {
+        "className": "window nexus",
+        "x": 430.47210693359375,
+        "y": 488.4669189453125,
+        "right": 1016.1705322265625,
+        "bottom": 828.97802734375,
+        "width": 585.6984252929688,
+        "height": 340.5111083984375
+      },
+      {
+        "className": "window sentry",
+        "x": 826.0303344726562,
+        "y": 547.292724609375,
+        "right": 1365.9686279296875,
+        "bottom": 869.177734375,
+        "width": 539.9382934570312,
+        "height": 321.885009765625
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  },
+  {
+    "width": 1920,
+    "scene": 1,
+    "desc": {
+      "x": 1246.40625,
+      "y": 817.03125,
+      "right": 1576.40625,
+      "bottom": 944.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "buttons": [
+      {
+        "x": 1372.171875,
+        "y": 968.21875,
+        "right": 1407.09375,
+        "bottom": 1000.21875,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 1415.09375,
+        "y": 968.21875,
+        "right": 1448.515625,
+        "bottom": 1000.21875,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 1456.515625,
+        "y": 968.21875,
+        "right": 1492.171875,
+        "bottom": 1000.21875,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 1500.171875,
+        "y": 968.21875,
+        "right": 1535.90625,
+        "bottom": 1000.21875,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 1543.90625,
+        "y": 968.21875,
+        "right": 1576.40625,
+        "bottom": 1000.21875,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 1389.6328125,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1431.8046875,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1474.34375,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1518.0390625,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1560.15625,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 499.791748046875,
+        "y": 563.0072021484375,
+        "right": 1152.87939453125,
+        "bottom": 942.7171020507812,
+        "width": 653.087646484375,
+        "height": 379.70989990234375
+      },
+      {
+        "className": "window nexus",
+        "x": 864.9057006835938,
+        "y": 574.5748291015625,
+        "right": 1373.2342529296875,
+        "bottom": 881.6175537109375,
+        "width": 508.32855224609375,
+        "height": 307.042724609375
+      },
+      {
+        "className": "window sentry",
+        "x": 1175.8818359375,
+        "y": 630.7064208984375,
+        "right": 1596.336669921875,
+        "bottom": 898.3248291015625,
+        "width": 420.454833984375,
+        "height": 267.618408203125
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  },
+  {
+    "width": 1920,
+    "scene": 2,
+    "desc": {
+      "x": 1246.40625,
+      "y": 817.03125,
+      "right": 1576.40625,
+      "bottom": 944.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "buttons": [
+      {
+        "x": 1372.171875,
+        "y": 968.21875,
+        "right": 1407.09375,
+        "bottom": 1000.21875,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 1415.09375,
+        "y": 968.21875,
+        "right": 1448.515625,
+        "bottom": 1000.21875,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 1456.515625,
+        "y": 968.21875,
+        "right": 1492.171875,
+        "bottom": 1000.21875,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 1500.171875,
+        "y": 968.21875,
+        "right": 1535.90625,
+        "bottom": 1000.21875,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 1543.90625,
+        "y": 968.21875,
+        "right": 1576.40625,
+        "bottom": 1000.21875,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 1389.6328125,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1431.8046875,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1474.34375,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1518.0390625,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1560.15625,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 301.1954650878906,
+        "y": 641.1647338867188,
+        "right": 735.5858154296875,
+        "bottom": 912.9889526367188,
+        "width": 434.3903503417969,
+        "height": 271.82421875
+      },
+      {
+        "className": "window nexus",
+        "x": 582.8303833007812,
+        "y": 476.1283874511719,
+        "right": 1345.05029296875,
+        "bottom": 919.310302734375,
+        "width": 762.2199096679688,
+        "height": 443.1819152832031
+      },
+      {
+        "className": "window sentry",
+        "x": 1201.7197265625,
+        "y": 641.3582153320312,
+        "right": 1635.482666015625,
+        "bottom": 912.852783203125,
+        "width": 433.762939453125,
+        "height": 271.49456787109375
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  },
+  {
+    "width": 1920,
+    "scene": 3,
+    "desc": {
+      "x": 1246.40625,
+      "y": 817.03125,
+      "right": 1576.40625,
+      "bottom": 944.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "buttons": [
+      {
+        "x": 1372.171875,
+        "y": 968.21875,
+        "right": 1407.09375,
+        "bottom": 1000.21875,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 1415.09375,
+        "y": 968.21875,
+        "right": 1448.515625,
+        "bottom": 1000.21875,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 1456.515625,
+        "y": 968.21875,
+        "right": 1492.171875,
+        "bottom": 1000.21875,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 1500.171875,
+        "y": 968.21875,
+        "right": 1535.90625,
+        "bottom": 1000.21875,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 1543.90625,
+        "y": 968.21875,
+        "right": 1576.40625,
+        "bottom": 1000.21875,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 1389.6328125,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1431.8046875,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1474.34375,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1518.0390625,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1560.15625,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 301.9530944824219,
+        "y": 643.3329467773438,
+        "right": 722.4261474609375,
+        "bottom": 910.9464111328125,
+        "width": 420.4730529785156,
+        "height": 267.61346435546875
+      },
+      {
+        "className": "window nexus",
+        "x": 534.9339599609375,
+        "y": 574.1370849609375,
+        "right": 1044.3739013671875,
+        "bottom": 881.8018798828125,
+        "width": 509.43994140625,
+        "height": 307.664794921875
+      },
+      {
+        "className": "window sentry",
+        "x": 811.5084838867188,
+        "y": 561.7026977539062,
+        "right": 1469.2572021484375,
+        "bottom": 944.2556762695312,
+        "width": 657.7487182617188,
+        "height": 382.552978515625
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  },
+  {
+    "width": 1920,
+    "scene": 4,
+    "desc": {
+      "x": 1246.40625,
+      "y": 817.03125,
+      "right": 1576.40625,
+      "bottom": 944.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "buttons": [
+      {
+        "x": 1372.171875,
+        "y": 968.21875,
+        "right": 1407.09375,
+        "bottom": 1000.21875,
+        "width": 34.921875,
+        "height": 32
+      },
+      {
+        "x": 1415.09375,
+        "y": 968.21875,
+        "right": 1448.515625,
+        "bottom": 1000.21875,
+        "width": 33.421875,
+        "height": 32
+      },
+      {
+        "x": 1456.515625,
+        "y": 968.21875,
+        "right": 1492.171875,
+        "bottom": 1000.21875,
+        "width": 35.65625,
+        "height": 32
+      },
+      {
+        "x": 1500.171875,
+        "y": 968.21875,
+        "right": 1535.90625,
+        "bottom": 1000.21875,
+        "width": 35.734375,
+        "height": 32
+      },
+      {
+        "x": 1543.90625,
+        "y": 968.21875,
+        "right": 1576.40625,
+        "bottom": 1000.21875,
+        "width": 32.5,
+        "height": 32
+      }
+    ],
+    "occluded": [
+      {
+        "x": 1389.6328125,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1431.8046875,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1474.34375,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1518.0390625,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      },
+      {
+        "x": 1560.15625,
+        "y": 970.21875,
+        "topElement": "scene-btn"
+      }
+    ],
+    "windows": [
+      {
+        "className": "window arthur",
+        "x": 314.0148010253906,
+        "y": 593.4918212890625,
+        "right": 853.9382629394531,
+        "bottom": 915.06787109375,
+        "width": 539.9234619140625,
+        "height": 321.5760498046875
+      },
+      {
+        "className": "window nexus",
+        "x": 670.4896850585938,
+        "y": 528.8674926757812,
+        "right": 1256.19775390625,
+        "bottom": 869.3825073242188,
+        "width": 585.7080688476562,
+        "height": 340.5150146484375
+      },
+      {
+        "className": "window sentry",
+        "x": 1066.061767578125,
+        "y": 593.4918212890625,
+        "right": 1605.9852294921875,
+        "bottom": 915.06787109375,
+        "width": 539.9234619140625,
+        "height": 321.5760498046875
+      }
+    ],
+    "imageSources": [
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75",
+      "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+    ]
+  }
+]

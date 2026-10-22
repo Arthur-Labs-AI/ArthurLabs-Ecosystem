@@ -1,0 +1,607 @@
+[
+  {
+    "width": 1440,
+    "scene": 1,
+    "scrollY": 480,
+    "actualScene": "1",
+    "caption": {
+      "x": 1006.40625,
+      "y": 745.03125,
+      "right": 1336.40625,
+      "bottom": 872.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "controls": {
+      "x": 103.59375,
+      "y": 892.09375,
+      "right": 1336.40625,
+      "bottom": 924.09375,
+      "width": 1232.8125,
+      "height": 32
+    },
+    "selected": {
+      "x": 259.853759765625,
+      "y": 517.4268188476562,
+      "right": 912.9718627929688,
+      "bottom": 897.146240234375,
+      "width": 653.1181030273438,
+      "height": 379.71942138671875
+    },
+    "overflow": 0
+  },
+  {
+    "width": 1440,
+    "scene": 2,
+    "scrollY": 1080,
+    "actualScene": "2",
+    "caption": {
+      "x": 1006.40625,
+      "y": 745.03125,
+      "right": 1336.40625,
+      "bottom": 872.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "controls": {
+      "x": 103.59375,
+      "y": 892.09375,
+      "right": 1336.40625,
+      "bottom": 924.09375,
+      "width": 1232.8125,
+      "height": 32
+    },
+    "selected": {
+      "x": 342.0354919433594,
+      "y": 436.18865966796875,
+      "right": 1104.9629821777344,
+      "bottom": 879.7342529296875,
+      "width": 762.927490234375,
+      "height": 443.54559326171875
+    },
+    "overflow": 0
+  },
+  {
+    "width": 1440,
+    "scene": 3,
+    "scrollY": 1608,
+    "actualScene": "3",
+    "caption": {
+      "x": 1006.40625,
+      "y": 745.03125,
+      "right": 1336.40625,
+      "bottom": 872.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "controls": {
+      "x": 103.59375,
+      "y": 892.09375,
+      "right": 1336.40625,
+      "bottom": 924.09375,
+      "width": 1232.8125,
+      "height": 32
+    },
+    "selected": {
+      "x": 569.622802734375,
+      "y": 515.77587890625,
+      "right": 1228.420166015625,
+      "bottom": 898.797119140625,
+      "width": 658.79736328125,
+      "height": 383.021240234375
+    },
+    "overflow": 0
+  },
+  {
+    "width": 1440,
+    "scene": 4,
+    "scrollY": 2160,
+    "actualScene": "4",
+    "caption": {
+      "x": 1006.40625,
+      "y": 745.03125,
+      "right": 1336.40625,
+      "bottom": 872.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "controls": {
+      "x": 103.59375,
+      "y": 892.09375,
+      "right": 1336.40625,
+      "bottom": 924.09375,
+      "width": 1232.8125,
+      "height": 32
+    },
+    "selected": null,
+    "overflow": 0
+  },
+  {
+    "width": 1440,
+    "errors": []
+  },
+  {
+    "width": 1920,
+    "scene": 1,
+    "scrollY": 518,
+    "actualScene": "1",
+    "caption": {
+      "x": 1246.40625,
+      "y": 817.03125,
+      "right": 1576.40625,
+      "bottom": 944.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "controls": {
+      "x": 343.59375,
+      "y": 968.21875,
+      "right": 1576.40625,
+      "bottom": 1000.21875,
+      "width": 1232.8125,
+      "height": 32
+    },
+    "selected": {
+      "x": 499.853759765625,
+      "y": 563.0013427734375,
+      "right": 1152.971923828125,
+      "bottom": 942.720703125,
+      "width": 653.1181640625,
+      "height": 379.7193603515625
+    },
+    "overflow": 0
+  },
+  {
+    "width": 1920,
+    "scene": 2,
+    "scrollY": 1166,
+    "actualScene": "2",
+    "caption": {
+      "x": 1246.40625,
+      "y": 817.03125,
+      "right": 1576.40625,
+      "bottom": 944.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "controls": {
+      "x": 343.59375,
+      "y": 968.21875,
+      "right": 1576.40625,
+      "bottom": 1000.21875,
+      "width": 1232.8125,
+      "height": 32
+    },
+    "selected": {
+      "x": 582.0355224609375,
+      "y": 475.86016845703125,
+      "right": 1344.9630126953125,
+      "bottom": 919.40576171875,
+      "width": 762.927490234375,
+      "height": 443.54559326171875
+    },
+    "overflow": 0
+  },
+  {
+    "width": 1920,
+    "scene": 3,
+    "scrollY": 1737,
+    "actualScene": "3",
+    "caption": {
+      "x": 1246.40625,
+      "y": 817.03125,
+      "right": 1576.40625,
+      "bottom": 944.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "controls": {
+      "x": 343.59375,
+      "y": 968.21875,
+      "right": 1576.40625,
+      "bottom": 1000.21875,
+      "width": 1232.8125,
+      "height": 32
+    },
+    "selected": {
+      "x": 809.622802734375,
+      "y": 561.350341796875,
+      "right": 1468.420166015625,
+      "bottom": 944.3716430664062,
+      "width": 658.79736328125,
+      "height": 383.02130126953125
+    },
+    "overflow": 0
+  },
+  {
+    "width": 1920,
+    "scene": 4,
+    "scrollY": 2333,
+    "actualScene": "4",
+    "caption": {
+      "x": 1246.40625,
+      "y": 817.03125,
+      "right": 1576.40625,
+      "bottom": 944.40625,
+      "width": 330,
+      "height": 127.375
+    },
+    "controls": {
+      "x": 343.59375,
+      "y": 968.21875,
+      "right": 1576.40625,
+      "bottom": 1000.21875,
+      "width": 1232.8125,
+      "height": 32
+    },
+    "selected": null,
+    "overflow": 0
+  },
+  {
+    "width": 1920,
+    "errors": []
+  },
+  {
+    "width": 768,
+    "scene": 1,
+    "scrollY": 410,
+    "actualScene": "1",
+    "caption": {
+      "x": 446.6796875,
+      "y": 702.953125,
+      "right": 726.6796875,
+      "bottom": 849.515625,
+      "width": 280,
+      "height": 146.5625
+    },
+    "controls": {
+      "x": 41.3203125,
+      "y": 860.3125,
+      "right": 726.6796875,
+      "bottom": 892.3125,
+      "width": 685.359375,
+      "height": 32
+    },
+    "selected": {
+      "x": 128.18310546875,
+      "y": 562.3612670898438,
+      "right": 491.279296875,
+      "bottom": 773.460693359375,
+      "width": 363.09619140625,
+      "height": 211.09942626953125
+    },
+    "overflow": 0
+  },
+  {
+    "width": 768,
+    "scene": 2,
+    "scrollY": 922,
+    "actualScene": "2",
+    "caption": {
+      "x": 446.6796875,
+      "y": 722.140625,
+      "right": 726.6796875,
+      "bottom": 849.515625,
+      "width": 280,
+      "height": 127.375
+    },
+    "controls": {
+      "x": 41.3203125,
+      "y": 860.3125,
+      "right": 726.6796875,
+      "bottom": 892.3125,
+      "width": 685.359375,
+      "height": 32
+    },
+    "selected": {
+      "x": 173.86595153808594,
+      "y": 497.1418762207031,
+      "right": 597.9930267333984,
+      "bottom": 743.7091674804688,
+      "width": 424.1270751953125,
+      "height": 246.56729125976562
+    },
+    "overflow": 0
+  },
+  {
+    "width": 768,
+    "scene": 3,
+    "scrollY": 1372,
+    "actualScene": "3",
+    "caption": {
+      "x": 446.6796875,
+      "y": 722.140625,
+      "right": 726.6796875,
+      "bottom": 849.515625,
+      "width": 280,
+      "height": 127.375
+    },
+    "controls": {
+      "x": 41.3203125,
+      "y": 860.3125,
+      "right": 726.6796875,
+      "bottom": 892.3125,
+      "width": 685.359375,
+      "height": 32
+    },
+    "selected": {
+      "x": 300.4009094238281,
+      "y": 561.4434814453125,
+      "right": 666.6544189453125,
+      "bottom": 774.3784790039062,
+      "width": 366.2535095214844,
+      "height": 212.93499755859375
+    },
+    "overflow": 0
+  },
+  {
+    "width": 768,
+    "scene": 4,
+    "scrollY": 1843,
+    "actualScene": "4",
+    "caption": {
+      "x": 446.6796875,
+      "y": 722.140625,
+      "right": 726.6796875,
+      "bottom": 849.515625,
+      "width": 280,
+      "height": 127.375
+    },
+    "controls": {
+      "x": 41.3203125,
+      "y": 860.3125,
+      "right": 726.6796875,
+      "bottom": 892.3125,
+      "width": 685.359375,
+      "height": 32
+    },
+    "selected": null,
+    "overflow": 0
+  },
+  {
+    "width": 768,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "scene": 1,
+    "scrollY": 287,
+    "actualScene": "1",
+    "caption": {
+      "x": 21.25,
+      "y": 656,
+      "right": 368.75,
+      "bottom": 768.1875,
+      "width": 347.5,
+      "height": 112.1875
+    },
+    "controls": {
+      "x": 21.25,
+      "y": 782.1875,
+      "right": 368.75,
+      "bottom": 818.1875,
+      "width": 347.5,
+      "height": 36
+    },
+    "selected": {
+      "x": 28.984375,
+      "y": 404,
+      "right": 361.015625,
+      "bottom": 597.03125,
+      "width": 332.03125,
+      "height": 193.03125
+    },
+    "overflow": 0
+  },
+  {
+    "width": 390,
+    "scene": 2,
+    "scrollY": 646,
+    "actualScene": "2",
+    "caption": {
+      "x": 21.25,
+      "y": 656,
+      "right": 368.75,
+      "bottom": 768.1875,
+      "width": 347.5,
+      "height": 112.1875
+    },
+    "controls": {
+      "x": 21.25,
+      "y": 782.1875,
+      "right": 368.75,
+      "bottom": 818.1875,
+      "width": 347.5,
+      "height": 36
+    },
+    "selected": {
+      "x": 28.984375,
+      "y": 404,
+      "right": 361.015625,
+      "bottom": 597.03125,
+      "width": 332.03125,
+      "height": 193.03125
+    },
+    "overflow": 0
+  },
+  {
+    "width": 390,
+    "scene": 3,
+    "scrollY": 961,
+    "actualScene": "3",
+    "caption": {
+      "x": 21.25,
+      "y": 656,
+      "right": 368.75,
+      "bottom": 768.1875,
+      "width": 347.5,
+      "height": 112.1875
+    },
+    "controls": {
+      "x": 21.25,
+      "y": 782.1875,
+      "right": 368.75,
+      "bottom": 818.1875,
+      "width": 347.5,
+      "height": 36
+    },
+    "selected": {
+      "x": 28.984375,
+      "y": 404,
+      "right": 361.015625,
+      "bottom": 597.03125,
+      "width": 332.03125,
+      "height": 193.03125
+    },
+    "overflow": 0
+  },
+  {
+    "width": 390,
+    "scene": 4,
+    "scrollY": 1292,
+    "actualScene": "4",
+    "caption": {
+      "x": 21.25,
+      "y": 656,
+      "right": 368.75,
+      "bottom": 768.1875,
+      "width": 347.5,
+      "height": 112.1875
+    },
+    "controls": {
+      "x": 21.25,
+      "y": 782.1875,
+      "right": 368.75,
+      "bottom": 818.1875,
+      "width": 347.5,
+      "height": 36
+    },
+    "selected": null,
+    "overflow": 0
+  },
+  {
+    "width": 390,
+    "errors": []
+  },
+  {
+    "width": 600,
+    "scene": 1,
+    "scrollY": 287,
+    "actualScene": "1",
+    "caption": {
+      "x": 32.6875,
+      "y": 656,
+      "right": 567.3125,
+      "bottom": 756.1875,
+      "width": 534.625,
+      "height": 100.1875
+    },
+    "controls": {
+      "x": 32.6875,
+      "y": 770.1875,
+      "right": 567.3125,
+      "bottom": 806.1875,
+      "width": 534.625,
+      "height": 36
+    },
+    "selected": {
+      "x": 100,
+      "y": 404,
+      "right": 500,
+      "bottom": 636.546875,
+      "width": 400,
+      "height": 232.546875
+    },
+    "overflow": 0
+  },
+  {
+    "width": 600,
+    "scene": 2,
+    "scrollY": 646,
+    "actualScene": "2",
+    "caption": {
+      "x": 32.6875,
+      "y": 656,
+      "right": 567.3125,
+      "bottom": 756.1875,
+      "width": 534.625,
+      "height": 100.1875
+    },
+    "controls": {
+      "x": 32.6875,
+      "y": 770.1875,
+      "right": 567.3125,
+      "bottom": 806.1875,
+      "width": 534.625,
+      "height": 36
+    },
+    "selected": {
+      "x": 100,
+      "y": 404,
+      "right": 500,
+      "bottom": 636.546875,
+      "width": 400,
+      "height": 232.546875
+    },
+    "overflow": 0
+  },
+  {
+    "width": 600,
+    "scene": 3,
+    "scrollY": 961,
+    "actualScene": "3",
+    "caption": {
+      "x": 32.6875,
+      "y": 656,
+      "right": 567.3125,
+      "bottom": 756.1875,
+      "width": 534.625,
+      "height": 100.1875
+    },
+    "controls": {
+      "x": 32.6875,
+      "y": 770.1875,
+      "right": 567.3125,
+      "bottom": 806.1875,
+      "width": 534.625,
+      "height": 36
+    },
+    "selected": {
+      "x": 100,
+      "y": 404,
+      "right": 500,
+      "bottom": 636.546875,
+      "width": 400,
+      "height": 232.546875
+    },
+    "overflow": 0
+  },
+  {
+    "width": 600,
+    "scene": 4,
+    "scrollY": 1292,
+    "actualScene": "4",
+    "caption": {
+      "x": 32.6875,
+      "y": 656,
+      "right": 567.3125,
+      "bottom": 756.1875,
+      "width": 534.625,
+      "height": 100.1875
+    },
+    "controls": {
+      "x": 32.6875,
+      "y": 770.1875,
+      "right": 567.3125,
+      "bottom": 806.1875,
+      "width": 534.625,
+      "height": 36
+    },
+    "selected": null,
+    "overflow": 0
+  },
+  {
+    "width": 600,
+    "errors": []
+  }
+]

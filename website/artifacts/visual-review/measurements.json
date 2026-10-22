@@ -1,0 +1,1562 @@
+[
+  {
+    "width": 1440,
+    "height": 1000,
+    "kind": "reference",
+    "metrics": {
+      "overflow": 0,
+      "documentHeight": 8517,
+      "boxes": {
+        ".hero-copy": {
+          "x": 205,
+          "y": 130,
+          "width": 1030,
+          "height": 277.875
+        },
+        "h1": {
+          "x": 330.796875,
+          "y": 160,
+          "width": 778.390625,
+          "height": 99.09375
+        },
+        ".hero-deck": {
+          "x": 465.125,
+          "y": 283.09375,
+          "width": 509.75,
+          "height": 52.78125
+        },
+        ".ctas": {
+          "x": 554.890625,
+          "y": 364.875,
+          "width": 330.203125,
+          "height": 43
+        },
+        ".visual-stage": {
+          "x": 50,
+          "y": 440,
+          "width": 1340,
+          "height": 470
+        },
+        ".stage-bottom": {
+          "x": 103.59375,
+          "y": 892.09375,
+          "width": 1232.8125,
+          "height": 32
+        },
+        ".scene-description": {
+          "x": 1006.40625,
+          "y": 760.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "#suite": {
+          "x": 0,
+          "y": 3400,
+          "width": 1440,
+          "height": 977.78125
+        },
+        "#studio": {
+          "x": 0,
+          "y": 4377.78125,
+          "width": 1440,
+          "height": 780.515625
+        },
+        "#nexus": {
+          "x": 0,
+          "y": 5158.296875,
+          "width": 1440,
+          "height": 688.9375
+        },
+        "#sentry": {
+          "x": 0,
+          "y": 5847.234375,
+          "width": 1440,
+          "height": 688.9375
+        },
+        "#hardware": {
+          "x": 0,
+          "y": 6536.171875,
+          "width": 1440,
+          "height": 766.4375
+        },
+        "#philosophy": {
+          "x": 0,
+          "y": 7302.609375,
+          "width": 1440,
+          "height": 721.78125
+        },
+        "footer": {
+          "x": 0,
+          "y": 8024.390625,
+          "width": 1440,
+          "height": 492.96875
+        }
+      },
+      "font": "590 102.24px / 96.1056px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "images": [
+        {
+          "natural": 1616,
+          "rendered": 541,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABlAAAAPmCAYAAACb39IbAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1920,
+          "rendered": 621,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AAAAOQCAYAAADYO2xOAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1917,
+          "rendered": 541,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB30AAAQaCAYAAABHBWJXAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1616,
+          "rendered": 626,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABlAAAAPmCAYAAACb39IbAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1920,
+          "rendered": 626,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AAAAOQCAYAAADYO2xOAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1917,
+          "rendered": 626,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB30AAAQaCAYAAABHBWJXAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene": "1",
+        "description": {
+          "x": 1006.40625,
+          "y": 745.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 103.59375,
+          "y": 892.09375,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "2",
+        "description": {
+          "x": 1006.40625,
+          "y": 745.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 103.59375,
+          "y": 892.09375,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "3",
+        "description": {
+          "x": 1006.40625,
+          "y": 745.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 103.59375,
+          "y": 892.09375,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "4",
+        "description": {
+          "x": 1006.40625,
+          "y": 745.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 103.59375,
+          "y": 892.09375,
+          "width": 1232.8125,
+          "height": 32
+        }
+      }
+    ],
+    "clicked": {
+      "scrollY": 1008,
+      "scene": "2"
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "height": 1000,
+    "kind": "implementation",
+    "metrics": {
+      "overflow": 0,
+      "documentHeight": 8523,
+      "boxes": {
+        ".hero-copy": {
+          "x": 205,
+          "y": 130,
+          "width": 1030,
+          "height": 277.875
+        },
+        "h1": {
+          "x": 330.796875,
+          "y": 160,
+          "width": 778.390625,
+          "height": 99.09375
+        },
+        ".hero-deck": {
+          "x": 465.125,
+          "y": 283.09375,
+          "width": 509.75,
+          "height": 52.78125
+        },
+        ".ctas": {
+          "x": 550.953125,
+          "y": 364.875,
+          "width": 338.078125,
+          "height": 43
+        },
+        ".visual-stage": {
+          "x": 50,
+          "y": 440,
+          "width": 1340,
+          "height": 470
+        },
+        ".stage-bottom": {
+          "x": 103.59375,
+          "y": 892.09375,
+          "width": 1232.8125,
+          "height": 32
+        },
+        ".scene-description": {
+          "x": 1006.40625,
+          "y": 760.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "#suite": {
+          "x": 0,
+          "y": 3400,
+          "width": 1440,
+          "height": 977.78125
+        },
+        "#studio": {
+          "x": 0,
+          "y": 4377.78125,
+          "width": 1440,
+          "height": 780.515625
+        },
+        "#nexus": {
+          "x": 0,
+          "y": 5158.296875,
+          "width": 1440,
+          "height": 688.9375
+        },
+        "#sentry": {
+          "x": 0,
+          "y": 5847.234375,
+          "width": 1440,
+          "height": 688.9375
+        },
+        "#hardware": {
+          "x": 0,
+          "y": 6536.171875,
+          "width": 1440,
+          "height": 766.4375
+        },
+        "#philosophy": {
+          "x": 0,
+          "y": 7302.609375,
+          "width": 1440,
+          "height": 721.78125
+        },
+        "footer": {
+          "x": 0,
+          "y": 8024.390625,
+          "width": 1440,
+          "height": 498.96875
+        }
+      },
+      "font": "590 102.24px / 96.1056px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "images": [
+        {
+          "natural": 700,
+          "rendered": 541,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75"
+        },
+        {
+          "natural": 700,
+          "rendered": 621,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75"
+        },
+        {
+          "natural": 700,
+          "rendered": 541,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+        },
+        {
+          "natural": 720,
+          "rendered": 626,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75"
+        },
+        {
+          "natural": 720,
+          "rendered": 626,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75"
+        },
+        {
+          "natural": 720,
+          "rendered": 626,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene": "1",
+        "description": {
+          "x": 1006.40625,
+          "y": 745.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 103.59375,
+          "y": 892.09375,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "2",
+        "description": {
+          "x": 1006.40625,
+          "y": 745.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 103.59375,
+          "y": 892.09375,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "3",
+        "description": {
+          "x": 1006.40625,
+          "y": 745.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 103.59375,
+          "y": 892.09375,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "4",
+        "description": {
+          "x": 1006.40625,
+          "y": 745.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 103.59375,
+          "y": 892.09375,
+          "width": 1232.8125,
+          "height": 32
+        }
+      }
+    ],
+    "clicked": {
+      "scrollY": 0,
+      "scene": "2"
+    },
+    "errors": []
+  },
+  {
+    "width": 1920,
+    "height": 1080,
+    "kind": "reference",
+    "metrics": {
+      "overflow": 0,
+      "documentHeight": 9092,
+      "boxes": {
+        ".hero-copy": {
+          "x": 445,
+          "y": 140,
+          "width": 1030,
+          "height": 291.5625
+        },
+        "h1": {
+          "x": 515.359375,
+          "y": 170,
+          "width": 889.265625,
+          "height": 112.78125
+        },
+        ".hero-deck": {
+          "x": 705.125,
+          "y": 306.78125,
+          "width": 509.75,
+          "height": 52.78125
+        },
+        ".ctas": {
+          "x": 794.890625,
+          "y": 388.5625,
+          "width": 330.203125,
+          "height": 43
+        },
+        ".visual-stage": {
+          "x": 290,
+          "y": 477.40625,
+          "width": 1340,
+          "height": 507.59375
+        },
+        ".stage-bottom": {
+          "x": 343.59375,
+          "y": 968.21875,
+          "width": 1232.8125,
+          "height": 32
+        },
+        ".scene-description": {
+          "x": 1246.40625,
+          "y": 832.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "#suite": {
+          "x": 0,
+          "y": 3672,
+          "width": 1920,
+          "height": 1012.53125
+        },
+        "#studio": {
+          "x": 0,
+          "y": 4684.53125,
+          "width": 1920,
+          "height": 814.078125
+        },
+        "#nexus": {
+          "x": 0,
+          "y": 5498.609375,
+          "width": 1920,
+          "height": 715.71875
+        },
+        "#sentry": {
+          "x": 0,
+          "y": 6214.328125,
+          "width": 1920,
+          "height": 814.078125
+        },
+        "#hardware": {
+          "x": 0,
+          "y": 7028.40625,
+          "width": 1920,
+          "height": 814.78125
+        },
+        "#philosophy": {
+          "x": 0,
+          "y": 7843.1875,
+          "width": 1920,
+          "height": 755.53125
+        },
+        "footer": {
+          "x": 0,
+          "y": 8598.71875,
+          "width": 1920,
+          "height": 492.96875
+        }
+      },
+      "font": "590 116.8px / 109.792px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "images": [
+        {
+          "natural": 1616,
+          "rendered": 541,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABlAAAAPmCAYAAACb39IbAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1920,
+          "rendered": 621,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AAAAOQCAYAAADYO2xOAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1917,
+          "rendered": 541,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB30AAAQaCAYAAABHBWJXAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1616,
+          "rendered": 608,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABlAAAAPmCAYAAACb39IbAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1920,
+          "rendered": 608,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AAAAOQCAYAAADYO2xOAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1917,
+          "rendered": 608,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB30AAAQaCAYAAABHBWJXAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene": "1",
+        "description": {
+          "x": 1246.40625,
+          "y": 817.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 343.59375,
+          "y": 968.21875,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "2",
+        "description": {
+          "x": 1246.40625,
+          "y": 817.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 343.59375,
+          "y": 968.21875,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "3",
+        "description": {
+          "x": 1246.40625,
+          "y": 817.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 343.59375,
+          "y": 968.21875,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "4",
+        "description": {
+          "x": 1246.40625,
+          "y": 817.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 343.59375,
+          "y": 968.21875,
+          "width": 1232.8125,
+          "height": 32
+        }
+      }
+    ],
+    "clicked": {
+      "scrollY": 1089,
+      "scene": "2"
+    },
+    "errors": []
+  },
+  {
+    "width": 1920,
+    "height": 1080,
+    "kind": "implementation",
+    "metrics": {
+      "overflow": 0,
+      "documentHeight": 9098,
+      "boxes": {
+        ".hero-copy": {
+          "x": 445,
+          "y": 140,
+          "width": 1030,
+          "height": 291.5625
+        },
+        "h1": {
+          "x": 515.359375,
+          "y": 170,
+          "width": 889.265625,
+          "height": 112.78125
+        },
+        ".hero-deck": {
+          "x": 705.125,
+          "y": 306.78125,
+          "width": 509.75,
+          "height": 52.78125
+        },
+        ".ctas": {
+          "x": 790.953125,
+          "y": 388.5625,
+          "width": 338.078125,
+          "height": 43
+        },
+        ".visual-stage": {
+          "x": 290,
+          "y": 477.40625,
+          "width": 1340,
+          "height": 507.59375
+        },
+        ".stage-bottom": {
+          "x": 343.59375,
+          "y": 968.21875,
+          "width": 1232.8125,
+          "height": 32
+        },
+        ".scene-description": {
+          "x": 1246.40625,
+          "y": 832.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "#suite": {
+          "x": 0,
+          "y": 3672,
+          "width": 1920,
+          "height": 1012.53125
+        },
+        "#studio": {
+          "x": 0,
+          "y": 4684.53125,
+          "width": 1920,
+          "height": 814.078125
+        },
+        "#nexus": {
+          "x": 0,
+          "y": 5498.609375,
+          "width": 1920,
+          "height": 715.71875
+        },
+        "#sentry": {
+          "x": 0,
+          "y": 6214.328125,
+          "width": 1920,
+          "height": 814.078125
+        },
+        "#hardware": {
+          "x": 0,
+          "y": 7028.40625,
+          "width": 1920,
+          "height": 814.78125
+        },
+        "#philosophy": {
+          "x": 0,
+          "y": 7843.1875,
+          "width": 1920,
+          "height": 755.53125
+        },
+        "footer": {
+          "x": 0,
+          "y": 8598.71875,
+          "width": 1920,
+          "height": 498.96875
+        }
+      },
+      "font": "590 116.8px / 109.792px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "images": [
+        {
+          "natural": 699,
+          "rendered": 541,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=1080&q=75"
+        },
+        {
+          "natural": 699,
+          "rendered": 621,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=1080&q=75"
+        },
+        {
+          "natural": 699,
+          "rendered": 541,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=1080&q=75"
+        },
+        {
+          "natural": 960,
+          "rendered": 608,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=1080&q=75"
+        },
+        {
+          "natural": 960,
+          "rendered": 608,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=1080&q=75"
+        },
+        {
+          "natural": 960,
+          "rendered": 608,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=1080&q=75"
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene": "1",
+        "description": {
+          "x": 1246.40625,
+          "y": 817.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 343.59375,
+          "y": 968.21875,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "2",
+        "description": {
+          "x": 1246.40625,
+          "y": 817.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 343.59375,
+          "y": 968.21875,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "3",
+        "description": {
+          "x": 1246.40625,
+          "y": 817.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 343.59375,
+          "y": 968.21875,
+          "width": 1232.8125,
+          "height": 32
+        }
+      },
+      {
+        "scene": "4",
+        "description": {
+          "x": 1246.40625,
+          "y": 817.03125,
+          "width": 330,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 343.59375,
+          "y": 968.21875,
+          "width": 1232.8125,
+          "height": 32
+        }
+      }
+    ],
+    "clicked": {
+      "scrollY": 0,
+      "scene": "2"
+    },
+    "errors": []
+  },
+  {
+    "width": 768,
+    "height": 1024,
+    "kind": "reference",
+    "metrics": {
+      "overflow": 0,
+      "documentHeight": 7041,
+      "boxes": {
+        ".hero-copy": {
+          "x": 23.046875,
+          "y": 133.109375,
+          "width": 721.90625,
+          "height": 228.625
+        },
+        "h1": {
+          "x": 150.109375,
+          "y": 163.109375,
+          "width": 467.78125,
+          "height": 59.75
+        },
+        ".hero-deck": {
+          "x": 176.90625,
+          "y": 246.859375,
+          "width": 414.171875,
+          "height": 42.875
+        },
+        ".ctas": {
+          "x": 218.890625,
+          "y": 318.734375,
+          "width": 330.203125,
+          "height": 43
+        },
+        ".visual-stage": {
+          "x": 11.5234375,
+          "y": 491.53125,
+          "width": 744.953125,
+          "height": 389.109375
+        },
+        ".stage-bottom": {
+          "x": 41.3203125,
+          "y": 860.3125,
+          "width": 685.359375,
+          "height": 32
+        },
+        ".scene-description": {
+          "x": 446.6796875,
+          "y": 737.140625,
+          "width": 280,
+          "height": 127.375
+        },
+        "#suite": {
+          "x": 0,
+          "y": 3072,
+          "width": 768,
+          "height": 717.59375
+        },
+        "#studio": {
+          "x": 0,
+          "y": 3789.59375,
+          "width": 768,
+          "height": 574.1875
+        },
+        "#nexus": {
+          "x": 0,
+          "y": 4363.78125,
+          "width": 768,
+          "height": 540
+        },
+        "#sentry": {
+          "x": 0,
+          "y": 4903.78125,
+          "width": 768,
+          "height": 574.1875
+        },
+        "#hardware": {
+          "x": 0,
+          "y": 5477.96875,
+          "width": 768,
+          "height": 680
+        },
+        "#philosophy": {
+          "x": 0,
+          "y": 6157.96875,
+          "width": 768,
+          "height": 437.15625
+        },
+        "footer": {
+          "x": 0,
+          "y": 6595.125,
+          "width": 768,
+          "height": 445.8125
+        }
+      },
+      "font": "590 61.44px / 57.7536px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "images": [
+        {
+          "natural": 1616,
+          "rendered": 300,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABlAAAAPmCAYAAACb39IbAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1920,
+          "rendered": 344,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AAAAOQCAYAAADYO2xOAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1917,
+          "rendered": 300,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB30AAAQaCAYAAABHBWJXAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1616,
+          "rendered": 350,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABlAAAAPmCAYAAACb39IbAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1920,
+          "rendered": 350,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AAAAOQCAYAAADYO2xOAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1917,
+          "rendered": 350,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB30AAAQaCAYAAABHBWJXAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene": "1",
+        "description": {
+          "x": 446.6796875,
+          "y": 702.953125,
+          "width": 280,
+          "height": 146.5625
+        },
+        "buttons": {
+          "x": 41.3203125,
+          "y": 860.3125,
+          "width": 685.359375,
+          "height": 32
+        }
+      },
+      {
+        "scene": "2",
+        "description": {
+          "x": 446.6796875,
+          "y": 722.140625,
+          "width": 280,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 41.3203125,
+          "y": 860.3125,
+          "width": 685.359375,
+          "height": 32
+        }
+      },
+      {
+        "scene": "3",
+        "description": {
+          "x": 446.6796875,
+          "y": 722.140625,
+          "width": 280,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 41.3203125,
+          "y": 860.3125,
+          "width": 685.359375,
+          "height": 32
+        }
+      },
+      {
+        "scene": "4",
+        "description": {
+          "x": 446.6796875,
+          "y": 722.140625,
+          "width": 280,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 41.3203125,
+          "y": 860.3125,
+          "width": 685.359375,
+          "height": 32
+        }
+      }
+    ],
+    "clicked": {
+      "scrollY": 860,
+      "scene": "2"
+    },
+    "errors": []
+  },
+  {
+    "width": 768,
+    "height": 1024,
+    "kind": "implementation",
+    "metrics": {
+      "overflow": 0,
+      "documentHeight": 7032,
+      "boxes": {
+        ".hero-copy": {
+          "x": 23.046875,
+          "y": 133.109375,
+          "width": 721.90625,
+          "height": 228.625
+        },
+        "h1": {
+          "x": 150.109375,
+          "y": 163.109375,
+          "width": 467.78125,
+          "height": 59.75
+        },
+        ".hero-deck": {
+          "x": 176.90625,
+          "y": 246.859375,
+          "width": 414.171875,
+          "height": 42.875
+        },
+        ".ctas": {
+          "x": 214.953125,
+          "y": 318.734375,
+          "width": 338.078125,
+          "height": 43
+        },
+        ".visual-stage": {
+          "x": 11.5234375,
+          "y": 491.53125,
+          "width": 744.953125,
+          "height": 389.109375
+        },
+        ".stage-bottom": {
+          "x": 41.3203125,
+          "y": 860.3125,
+          "width": 685.359375,
+          "height": 32
+        },
+        ".scene-description": {
+          "x": 446.6796875,
+          "y": 737.140625,
+          "width": 280,
+          "height": 127.375
+        },
+        "#suite": {
+          "x": 0,
+          "y": 3072,
+          "width": 768,
+          "height": 717.59375
+        },
+        "#studio": {
+          "x": 0,
+          "y": 3789.59375,
+          "width": 768,
+          "height": 574.1875
+        },
+        "#nexus": {
+          "x": 0,
+          "y": 4363.78125,
+          "width": 768,
+          "height": 540
+        },
+        "#sentry": {
+          "x": 0,
+          "y": 4903.78125,
+          "width": 768,
+          "height": 574.1875
+        },
+        "#hardware": {
+          "x": 0,
+          "y": 5477.96875,
+          "width": 768,
+          "height": 680
+        },
+        "#philosophy": {
+          "x": 0,
+          "y": 6157.96875,
+          "width": 768,
+          "height": 437.15625
+        },
+        "footer": {
+          "x": 0,
+          "y": 6595.125,
+          "width": 768,
+          "height": 436.8125
+        }
+      },
+      "font": "590 61.44px / 57.7536px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "images": [
+        {
+          "natural": 700,
+          "rendered": 300,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75"
+        },
+        {
+          "natural": 700,
+          "rendered": 344,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75"
+        },
+        {
+          "natural": 700,
+          "rendered": 300,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+        },
+        {
+          "natural": 384,
+          "rendered": 350,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=750&q=75"
+        },
+        {
+          "natural": 384,
+          "rendered": 350,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=750&q=75"
+        },
+        {
+          "natural": 384,
+          "rendered": 350,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=750&q=75"
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene": "1",
+        "description": {
+          "x": 446.6796875,
+          "y": 702.953125,
+          "width": 280,
+          "height": 146.5625
+        },
+        "buttons": {
+          "x": 41.3203125,
+          "y": 860.3125,
+          "width": 685.359375,
+          "height": 32
+        }
+      },
+      {
+        "scene": "2",
+        "description": {
+          "x": 446.6796875,
+          "y": 722.140625,
+          "width": 280,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 41.3203125,
+          "y": 860.3125,
+          "width": 685.359375,
+          "height": 32
+        }
+      },
+      {
+        "scene": "3",
+        "description": {
+          "x": 446.6796875,
+          "y": 722.140625,
+          "width": 280,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 41.3203125,
+          "y": 860.3125,
+          "width": 685.359375,
+          "height": 32
+        }
+      },
+      {
+        "scene": "4",
+        "description": {
+          "x": 446.6796875,
+          "y": 722.140625,
+          "width": 280,
+          "height": 127.375
+        },
+        "buttons": {
+          "x": 41.3203125,
+          "y": 860.3125,
+          "width": 685.359375,
+          "height": 32
+        }
+      }
+    ],
+    "clicked": {
+      "scrollY": 0,
+      "scene": "2"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "kind": "reference",
+    "metrics": {
+      "overflow": 0,
+      "documentHeight": 7529,
+      "boxes": {
+        ".hero-copy": {
+          "x": 13.65625,
+          "y": 100,
+          "width": 362.6875,
+          "height": 270.015625
+        },
+        "h1": {
+          "x": 13.65625,
+          "y": 127,
+          "width": 362.6875,
+          "height": 101.625
+        },
+        ".hero-deck": {
+          "x": 13.65625,
+          "y": 246.625,
+          "width": 362.6875,
+          "height": 59.390625
+        },
+        ".ctas": {
+          "x": 29.890625,
+          "y": 327.015625,
+          "width": 330.203125,
+          "height": 43
+        },
+        ".visual-stage": {
+          "x": 1.953125,
+          "y": 472,
+          "width": 386.09375,
+          "height": 240
+        },
+        ".stage-bottom": {
+          "x": 17.390625,
+          "y": 743.1875,
+          "width": 355.21875,
+          "height": 24
+        },
+        ".scene-description": {
+          "x": 19.5,
+          "y": 643.609375,
+          "width": 351,
+          "height": 112.1875
+        },
+        "#suite": {
+          "x": 0,
+          "y": 2278.796875,
+          "width": 390,
+          "height": 1188.5
+        },
+        "#studio": {
+          "x": 0,
+          "y": 3467.296875,
+          "width": 390,
+          "height": 704.6875
+        },
+        "#nexus": {
+          "x": 0,
+          "y": 4171.984375,
+          "width": 390,
+          "height": 656.046875
+        },
+        "#sentry": {
+          "x": 0,
+          "y": 4828.03125,
+          "width": 390,
+          "height": 680.859375
+        },
+        "#hardware": {
+          "x": 0,
+          "y": 5508.890625,
+          "width": 390,
+          "height": 807.15625
+        },
+        "#philosophy": {
+          "x": 0,
+          "y": 6316.046875,
+          "width": 390,
+          "height": 530.453125
+        },
+        "footer": {
+          "x": 0,
+          "y": 6846.5,
+          "width": 390,
+          "height": 682.0625
+        }
+      },
+      "font": "590 53px / 49.82px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "images": [
+        {
+          "natural": 1616,
+          "rendered": 249,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABlAAAAPmCAYAAACb39IbAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1920,
+          "rendered": 288,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AAAAOQCAYAAADYO2xOAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1917,
+          "rendered": 249,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB30AAAQaCAYAAABHBWJXAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1616,
+          "rendered": 341,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABlAAAAPmCAYAAACb39IbAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1920,
+          "rendered": 341,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AAAAOQCAYAAADYO2xOAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        },
+        {
+          "natural": 1917,
+          "rendered": 341,
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB30AAAQaCAYAAABHBWJXAAABH2lDQ1BzUkdCAAAYlZWPsUrDUBiFv2u0Sq0oKOLgEKSTKIIuHWsduohiVGjqlKRNHWwNScQnkI6ig5Mg6uAb6OIgPoFQcBAFn8GKi5YrNxWSRcGz/B+HA+c/IF4BevNQb4"
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene": "1",
+        "description": {
+          "x": 19.5,
+          "y": 628.609375,
+          "width": 351,
+          "height": 112.1875
+        },
+        "buttons": {
+          "x": 17.390625,
+          "y": 743.1875,
+          "width": 355.21875,
+          "height": 24
+        }
+      },
+      {
+        "scene": "2",
+        "description": {
+          "x": 19.5,
+          "y": 628.609375,
+          "width": 351,
+          "height": 112.1875
+        },
+        "buttons": {
+          "x": 17.390625,
+          "y": 743.1875,
+          "width": 355.21875,
+          "height": 24
+        }
+      },
+      {
+        "scene": "3",
+        "description": {
+          "x": 19.5,
+          "y": 628.609375,
+          "width": 351,
+          "height": 112.1875
+        },
+        "buttons": {
+          "x": 17.390625,
+          "y": 743.1875,
+          "width": 355.21875,
+          "height": 24
+        }
+      },
+      {
+        "scene": "4",
+        "description": {
+          "x": 19.5,
+          "y": 628.609375,
+          "width": 351,
+          "height": 112.1875
+        },
+        "buttons": {
+          "x": 17.390625,
+          "y": 743.1875,
+          "width": 355.21875,
+          "height": 24
+        }
+      }
+    ],
+    "clicked": {
+      "scrollY": 603,
+      "scene": "2"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "kind": "implementation",
+    "metrics": {
+      "overflow": 0,
+      "documentHeight": 7521,
+      "boxes": {
+        ".hero-copy": {
+          "x": 13.65625,
+          "y": 100,
+          "width": 362.6875,
+          "height": 270.015625
+        },
+        "h1": {
+          "x": 13.65625,
+          "y": 127,
+          "width": 362.6875,
+          "height": 101.625
+        },
+        ".hero-deck": {
+          "x": 13.65625,
+          "y": 246.625,
+          "width": 362.6875,
+          "height": 59.390625
+        },
+        ".ctas": {
+          "x": 25.953125,
+          "y": 327.015625,
+          "width": 338.078125,
+          "height": 43
+        },
+        ".visual-stage": {
+          "x": 1.953125,
+          "y": 472,
+          "width": 386.09375,
+          "height": 240
+        },
+        ".stage-bottom": {
+          "x": 21.25,
+          "y": 731.1875,
+          "width": 347.5,
+          "height": 36
+        },
+        ".scene-description": {
+          "x": 19.5,
+          "y": 643.609375,
+          "width": 351,
+          "height": 112.1875
+        },
+        "#suite": {
+          "x": 0,
+          "y": 2278.796875,
+          "width": 390,
+          "height": 1188.5
+        },
+        "#studio": {
+          "x": 0,
+          "y": 3467.296875,
+          "width": 390,
+          "height": 704.5625
+        },
+        "#nexus": {
+          "x": 0,
+          "y": 4171.859375,
+          "width": 390,
+          "height": 656.046875
+        },
+        "#sentry": {
+          "x": 0,
+          "y": 4827.90625,
+          "width": 390,
+          "height": 681.09375
+        },
+        "#hardware": {
+          "x": 0,
+          "y": 5509,
+          "width": 390,
+          "height": 807.15625
+        },
+        "#philosophy": {
+          "x": 0,
+          "y": 6316.15625,
+          "width": 390,
+          "height": 530.453125
+        },
+        "footer": {
+          "x": 0,
+          "y": 6846.609375,
+          "width": 390,
+          "height": 674.0625
+        }
+      },
+      "font": "590 53px / 49.82px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "images": [
+        {
+          "natural": 331,
+          "rendered": 249,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=640&q=75"
+        },
+        {
+          "natural": 331,
+          "rendered": 288,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=640&q=75"
+        },
+        {
+          "natural": 331,
+          "rendered": 249,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=640&q=75"
+        },
+        {
+          "natural": 343,
+          "rendered": 341,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fstudio.webp&w=640&q=75"
+        },
+        {
+          "natural": 343,
+          "rendered": 341,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fnexus.webp&w=640&q=75"
+        },
+        {
+          "natural": 343,
+          "rendered": 341,
+          "src": "http://localhost:3000/_next/image?url=%2Fimages%2Fsentry.webp&w=640&q=75"
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene": "1",
+        "description": {
+          "x": 19.5,
+          "y": 628.609375,
+          "width": 351,
+          "height": 112.1875
+        },
+        "buttons": {
+          "x": 21.25,
+          "y": 731.1875,
+          "width": 347.5,
+          "height": 36
+        }
+      },
+      {
+        "scene": "2",
+        "description": {
+          "x": 19.5,
+          "y": 628.609375,
+          "width": 351,
+          "height": 112.1875
+        },
+        "buttons": {
+          "x": 21.25,
+          "y": 731.1875,
+          "width": 347.5,
+          "height": 36
+        }
+      },
+      {
+        "scene": "3",
+        "description": {
+          "x": 19.5,
+          "y": 628.609375,
+          "width": 351,
+          "height": 112.1875
+        },
+        "buttons": {
+          "x": 21.25,
+          "y": 731.1875,
+          "width": 347.5,
+          "height": 36
+        }
+      },
+      {
+        "scene": "4",
+        "description": {
+          "x": 19.5,
+          "y": 628.609375,
+          "width": 351,
+          "height": 112.1875
+        },
+        "buttons": {
+          "x": 21.25,
+          "y": 731.1875,
+          "width": 347.5,
+          "height": 36
+        }
+      }
+    ],
+    "clicked": {
+      "scrollY": 0,
+      "scene": "2"
+    },
+    "errors": []
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "quality": 75,
+    "bytes": 19876,
+    "status": 200,
+    "type": "image/webp",
+    "PSNR_against_reference_dB": 41.996
+  },
+  {
+    "quality": 90,
+    "bytes": 27940,
+    "status": 200,
+    "type": "image/webp",
+    "PSNR_against_reference_dB": 43.523
+  }
+]
