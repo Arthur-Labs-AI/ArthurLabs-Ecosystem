@@ -49,12 +49,76 @@
 //! do not establish aggregate quotas; any quota error must roll back the save.
 
 use super::capture_store::{CaptureStore, CreateCaptureInput};
+use super::journal::codec::EntityKind;
 use super::migrations::{self, INBOX_PROJECT_ID};
 use rusqlite::{params, types::Value, Connection, Error, ErrorCode};
 use serde_json::{json, Value as Json};
+use sha2::{Digest, Sha256};
+use std::collections::BTreeSet;
 
 const CANDIDATE: &str = include_str!("m05_v10.sql");
 const NOW: &str = "2026-10-21T00:00:00Z";
+
+const ENTITIES: [EntityKind; 12] = [
+    EntityKind::Projects,
+    EntityKind::Captures,
+    EntityKind::DistillationRuns,
+    EntityKind::KnowledgeObjects,
+    EntityKind::ObjectSources,
+    EntityKind::ThoughtRevisions,
+    EntityKind::RevisionParents,
+    EntityKind::Relations,
+    EntityKind::IdentityDecisions,
+    EntityKind::RevisionEvidence,
+    EntityKind::PendingClaims,
+    EntityKind::RevisionProposals,
+];
+
+// Independently extracted with `git show d7729aa8d7ef2f3924423234f038fe3fb112c735:.../migrations.rs`.
+// A standalone rustc program materialized those nine Rust literals as bytes;
+// Node crypto hashed the resulting files. Expected values never use current SQL.
+const LEGACY_SHA256: [&str; 9] = [
+    "82d4b6446fa98a5c6238a22d2da7066d2395a50b08f0238df5c3f975014b692d",
+    "322f019e9e2574b8d09600103ea40fe6d6baed79b9b82c0df12ba79769e04e10",
+    "dd564e90b3bfda40f726264c2b9241c70f9ab51d45d9a1fb2d3e672f107c8aa0",
+    "e1520b053b7247bb918a547116f27a40e8ffda3d5336cdb5f6fa12d1b3ad26af",
+    "0498f62d4cd58ce7f8a4c71b25eed87756f6781c03802b07d51da962df86fc97",
+    "92bf0724e9886b9357844efb14ed1891741277af5750a54c59ec65f5b8f7091b",
+    "2821b44269653fbe7bc4afa2d519454e47b07b4b7ce8eeb35adeb2073b7d3c2b",
+    "afd1b293a3097fe5de09e20d5ca477cf5c5b846269690e11922e602809be0514",
+    "bed6ec7af5168c01f7af4fa06735dcf7c5f255a2d1ead4c0a1f44afed7ba2da5",
+];
+
+fn digest(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+#[test]
+fn all_nine_legacy_migration_bytes_match_the_approved_starting_commit() {
+    let sql = [
+        migrations::SCHEMA_V1,
+        migrations::SCHEMA_V2,
+        migrations::SCHEMA_V3,
+        migrations::SCHEMA_V4,
+        migrations::SCHEMA_V5,
+        migrations::SCHEMA_V6,
+        migrations::SCHEMA_V7,
+        migrations::SCHEMA_V8,
+        migrations::SCHEMA_V9,
+    ];
+    for (index, (sql, expected)) in sql.iter().zip(LEGACY_SHA256).enumerate() {
+        assert_eq!(
+            digest(sql.as_bytes()),
+            expected,
+            "historical v{} bytes",
+            index + 1
+        );
+        // Sensitivity control: even one appended whitespace byte must be caught.
+        let mut changed = sql.as_bytes().to_vec();
+        changed.push(b' ');
+        assert_ne!(digest(&changed), expected, "v{} byte mutation", index + 1);
+    }
+}
 
 fn id(n: u32) -> String {
     format!("{n:08x}-0000-4000-8000-000000000000")
@@ -196,7 +260,16 @@ fn catalog() -> Vec<(&'static str, Vec<&'static str>, Vec<&'static str>)> {
 fn fingerprint(c: &Connection) -> Vec<(String, Vec<Vec<Value>>)> {
     catalog()
         .iter()
-        .map(|(table, keys, cols)| {
+        .map(|(table, keys, _)| {
+            // Preserve every stored domain column, including device-local seq.
+            // Catalog projection equality is checked independently below.
+            let cols: Vec<String> = c
+                .prepare(&format!("PRAGMA table_info({table})"))
+                .unwrap()
+                .query_map([], |r| r.get(1))
+                .unwrap()
+                .collect::<rusqlite::Result<_>>()
+                .unwrap();
             let mut s = c
                 .prepare(&format!(
                     "SELECT {} FROM {table} ORDER BY {}",
@@ -227,6 +300,94 @@ fn schema(c: &Connection) -> Vec<(String, String, Option<String>)> {
         .unwrap()
 }
 
+fn counts(c: &Connection) -> Vec<i64> {
+    ENTITIES
+        .iter()
+        .map(|e| scalar(c, &format!("SELECT count(*) FROM {}", e.as_str())))
+        .collect()
+}
+
+fn names(c: &Connection, kind: &str, pattern: &str) -> BTreeSet<String> {
+    c.prepare("SELECT name FROM sqlite_schema WHERE type=?1 AND name GLOB ?2")
+        .unwrap()
+        .query_map(params![kind, pattern], |r| r.get(0))
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap()
+}
+
+fn assert_exact_candidate_catalog(c: &Connection) {
+    let set = |items: &[&str]| items.iter().map(|s| s.to_string()).collect::<BTreeSet<_>>();
+    assert_eq!(
+        names(c, "table", "sync_*"),
+        set(&[
+            "sync_origins",
+            "sync_local",
+            "sync_bundles",
+            "sync_write_context",
+            "sync_commit_fences",
+            "sync_effects",
+            "sync_entity_heads",
+            "sync_snapshots",
+            "sync_snapshot_rows",
+        ])
+    );
+    assert_eq!(
+        names(c, "index", "sync_*"),
+        set(&[
+            "sync_one_active_origin",
+            "sync_effects_by_event",
+            "sync_heads_by_event",
+        ])
+    );
+    let expected_observers: BTreeSet<String> = ENTITIES
+        .iter()
+        .flat_map(|entity| {
+            ["insert", "update", "delete"]
+                .map(|op| format!("sync_observe_{}_{op}", entity.as_str()))
+        })
+        .collect();
+    assert_eq!(names(c, "trigger", "sync_observe_*"), expected_observers);
+    let guards = set(&[
+        "sync_context_identity_fixed",
+        "sync_fences_no_update",
+        "sync_fences_no_delete",
+        "sync_bundles_no_update",
+        "sync_bundles_no_delete",
+        "sync_bundle_admission",
+        "sync_origin_cursor_guard",
+        "sync_bundle_moves_tip",
+        "sync_origin_identity_fixed",
+        "sync_origin_seal_final",
+        "sync_origins_no_delete",
+        "sync_snapshot_rows_no_update",
+        "sync_snapshot_rows_insert_pending",
+        "sync_snapshot_rows_delete_aborted",
+        "sync_snapshots_no_delete",
+        "sync_snapshot_transition",
+    ]);
+    let actual = names(c, "trigger", "sync_*");
+    assert_eq!(
+        actual
+            .difference(&expected_observers)
+            .cloned()
+            .collect::<BTreeSet<_>>(),
+        guards
+    );
+    // Compare against the frozen independent typed catalog, not SQL comments alone.
+    let expected: Vec<_> = ENTITIES
+        .iter()
+        .map(|entity| {
+            (
+                entity.as_str(),
+                entity.key_fields().to_vec(),
+                entity.all_fields().to_vec(),
+            )
+        })
+        .collect();
+    assert_eq!(catalog(), expected);
+}
+
 fn populated(c: &Connection) {
     // Real v9 invariants: immutable provenance, system evidence BEFORE descendant,
     // stale open proposal and a rejected terminal proposal, then archived project.
@@ -249,14 +410,50 @@ fn populated(c: &Connection) {
         UPDATE knowledge_objects SET body='System body',current_revision_id='{sys}' WHERE id='{obj}';
     "#, p=id(10),cap=id(11),cap2=id(12),obj=id(13),root=id(14),sys=id(15))).unwrap();
     for ordinal in 0..2 {
+        use super::proposal_store::{insert_proposal_in, EvidenceRef, NewProposal};
+        let proposal = NewProposal {
+            pending_claim_id: id(20 + ordinal),
+            object_id: id(13),
+            base_revision_id: id(15),
+            change: "additive".into(),
+            kind: "idea".into(),
+            title: "Proposal".into(),
+            proposed_body: "Draft".into(),
+            retracts: None,
+            evidence: vec![
+                EvidenceRef {
+                    role: "existing".into(),
+                    capture_id: id(11),
+                    start: 0,
+                    end: 4,
+                },
+                EvidenceRef {
+                    role: "claim".into(),
+                    capture_id: id(12),
+                    start: 0,
+                    end: 4,
+                },
+            ],
+            synthesis_model: "synthetic-synthesis".into(),
+            verifier_model: "synthetic-verifier".into(),
+            verification_mode: "same_family_review".into(),
+            policy_version: "test".into(),
+        };
+        let evidence = serde_json::to_string(&proposal.evidence).unwrap();
         c.execute_batch(&format!(r#"
             INSERT INTO identity_decisions(capture_id,ordinal,outcome,policy_version,model_id,decided_by,vetoes_json,audit_json,decided_at)
-              VALUES('{cap}',{ordinal},'uncertain','test','fake','gate','[]','{{}}','{NOW}');
+              VALUES('{cap}',{ordinal},'uncertain','test','fake','gate','[]','{{"candidatesSent":["{obj}"],"excluded":[],"scores":[],"runs":1}}','{NOW}');
             INSERT INTO pending_claims(id,capture_id,ordinal,kind,title,body,source_start,source_end,candidate_ids_json,reasons_json,reframing,state,created_at,updated_at)
               VALUES('{claim}','{cap}',{ordinal},'idea','Pending','Draft',0,4,'["{obj}"]','[]',0,'open','{NOW}','{NOW}');
             INSERT INTO revision_proposals(id,pending_claim_id,object_id,base_revision_id,change,kind,title,proposed_body,evidence_json,synthesis_model,verifier_model,verification_mode,verification_status,policy_version,state,created_at,updated_at)
-              VALUES('{proposal}','{claim}','{obj}','{sys}','additive','idea','Proposal','Draft','[{{}}]','fake','fake','same_family_review','passed','test','open','{NOW}','{NOW}');
+              VALUES('{proposal}','{claim}','{obj}','{sys}','additive','idea','Proposal','Draft','{evidence}','synthetic-synthesis','synthetic-verifier','same_family_review','passed','test','open','{NOW}','{NOW}');
         "#,cap=id(12),claim=id(20+ordinal),proposal=id(30+ordinal),obj=id(13),sys=id(15))).unwrap();
+        // This native helper validates metadata before its idempotent lookup.
+        // SQL above retains deterministic historical identities/timestamps.
+        let (stored, created) = insert_proposal_in(c, &proposal).unwrap();
+        assert!(!created);
+        assert_eq!(stored.id, id(30 + ordinal));
+        assert_eq!(stored.evidence, proposal.evidence);
     }
     c.execute_batch(&format!(r#"
         UPDATE revision_proposals SET state='rejected',reviewed_at='{NOW}',updated_at='{NOW}' WHERE id='{rejected}';
@@ -264,8 +461,33 @@ fn populated(c: &Connection) {
           VALUES('{child}','{obj}','idea','Title','User body','user_edit','{NOW}');
         INSERT INTO revision_parents VALUES('{child}','{sys}');
         UPDATE knowledge_objects SET body='User body',current_revision_id='{child}' WHERE id='{obj}';
+        INSERT INTO thought_revisions(id,object_id,kind,title,body,origin,created_at)
+          VALUES('{branch}','{obj}','idea','Branch','Independent branch','user_edit','{NOW}');
+        INSERT INTO revision_parents VALUES('{branch}','{root}');
+        INSERT INTO thought_revisions(id,object_id,kind,title,body,origin,created_at)
+          VALUES('{merge}','{obj}','idea','Merged','Merged body','merge','{NOW}');
+        INSERT INTO revision_parents VALUES('{merge}','{child}'),('{merge}','{branch}');
+        INSERT INTO thought_revisions(id,object_id,kind,title,body,origin,created_at)
+          VALUES('{correction}','{obj}','idea','Corrected','Correction body','system','{NOW}');
+        INSERT INTO revision_parents VALUES('{correction}','{merge}');
+        INSERT INTO revision_evidence(revision_id,ordinal,object_id,capture_id,source_start,source_end,role,retracts_revision_id,retracts_ordinal,interpretation_label,created_at)
+          VALUES('{correction}',0,'{obj}','{cap}',5,9,'corrects','{sys}',0,'Идея 🦀 é','{NOW}');
+        INSERT INTO thought_revisions(id,object_id,kind,title,body,origin,created_at)
+          VALUES('{descendant}','{obj}','idea','Final','Final descendant','user_edit','{NOW}');
+        INSERT INTO revision_parents VALUES('{descendant}','{correction}');
+        UPDATE knowledge_objects SET title='Final',body='Final descendant',current_revision_id='{descendant}' WHERE id='{obj}';
+        INSERT INTO knowledge_objects(id,kind,title,body,created_at,project_id)
+          VALUES('{other}','idea','Other','🦀 é','{NOW}','{p}');
+        INSERT INTO object_sources VALUES('{other}','{cap}',5,9);
+        INSERT INTO thought_revisions(id,object_id,kind,title,body,origin,created_at,capture_id,source_start,source_end)
+          VALUES('{other_root}','{other}','idea','Other','🦀 é','initial','{NOW}','{cap}',5,9);
+        UPDATE knowledge_objects SET current_revision_id='{other_root}' WHERE id='{other}';
+        INSERT INTO relations(id,kind,source_object_id,target_object_id,origin,created_at)
+          VALUES('{relation}','related_to','{obj}','{other}','model','{NOW}');
         UPDATE projects SET archived_at='{NOW}',updated_at='{NOW}' WHERE id='{p}';
-    "#,rejected=id(31),child=id(16),obj=id(13),sys=id(15),p=id(10))).unwrap();
+    "#,rejected=id(31),child=id(16),obj=id(13),sys=id(15),p=id(10),root=id(14),
+        branch=id(17),merge=id(18),correction=id(40),descendant=id(41),cap=id(11),
+        other=id(50),other_root=id(51),relation=id(52))).unwrap();
     healthy(c);
 }
 
@@ -279,6 +501,9 @@ fn production_v9_is_dormant_and_ordinary_native_saves_still_work() {
     assert!(migrations::STEPS
         .iter()
         .all(|(_, sql)| !sql.contains("sync_observe_")));
+    assert!(migrations::STEPS
+        .iter()
+        .all(|(_, sql)| *sql != CANDIDATE && !sql.contains("CREATE TABLE sync_")));
     let store = CaptureStore::open_in_memory().unwrap();
     let saved = store
         .create(CreateCaptureInput {
@@ -307,6 +532,7 @@ fn fresh_native_candidate_has_exact_closed_catalog_and_bundled_sqlite_features()
         "0.40.2"
     );
     assert_eq!(scalar(&c, "PRAGMA user_version"), 10);
+    assert_exact_candidate_catalog(&c);
     assert_eq!(
         scalar(
             &c,
@@ -377,12 +603,54 @@ fn populated_upgrade_preserves_every_domain_value_and_historical_trigger() {
     populated(&c);
     let before = fingerprint(&c);
     let old_schema = schema(&c);
+    let row_counts = counts(&c);
+    assert_eq!(row_counts, vec![2, 2, 2, 2, 2, 8, 7, 1, 2, 2, 2, 2]);
+    assert_eq!(
+        c.query_row("SELECT content FROM captures WHERE id=?1", [id(11)], |r| {
+            r.get::<_, String>(0)
+        })
+        .unwrap(),
+        "Идея 🦀 e\u{301}"
+    );
+    assert_eq!(c.query_row("SELECT substr(c.content,e.source_start+1,e.source_end-e.source_start) FROM revision_evidence e JOIN captures c ON c.id=e.capture_id WHERE e.revision_id=?1", [id(40)], |r| r.get::<_, String>(0)).unwrap(), "🦀 e\u{301}");
+    assert_eq!(scalar(&c, "SELECT count(*) FROM revision_parents p JOIN thought_revisions r ON r.id=p.child_revision_id WHERE r.origin='merge'"), 2);
+    assert_eq!(scalar(&c, "SELECT count(*) FROM revision_proposals p JOIN knowledge_objects o ON o.id=p.object_id WHERE p.state='open' AND p.base_revision_id<>o.current_revision_id"), 1);
+    assert_eq!(scalar(&c, "SELECT count(*) FROM revision_proposals WHERE state='rejected' AND reviewed_at IS NOT NULL"), 1);
+    assert_eq!(
+        scalar(
+            &c,
+            "SELECT count(*) FROM revision_evidence WHERE retracts_revision_id IS NOT NULL"
+        ),
+        1
+    );
+    assert_eq!(
+        scalar(
+            &c,
+            "SELECT count(*) FROM projects WHERE archived_at IS NOT NULL"
+        ),
+        1
+    );
+    assert_eq!(
+        scalar(
+            &c,
+            &format!("SELECT count(*) FROM projects WHERE id='{INBOX_PROJECT_ID}'")
+        ),
+        1
+    );
     install(&mut c);
     assert_eq!(before, fingerprint(&c));
+    assert_eq!(counts(&c), row_counts);
     let after = schema(&c);
     assert!(old_schema.iter().all(|row| after.contains(row)));
+    for table in names(&c, "table", "sync_*") {
+        assert_eq!(
+            scalar(&c, &format!("SELECT count(*) FROM {table}")),
+            0,
+            "DDL fabricated {table} history"
+        );
+    }
     c.execute_batch(
-        "INSERT INTO recall_revision_fts(recall_revision_fts) VALUES('integrity-check')",
+        "INSERT INTO recall_revision_fts(recall_revision_fts,rank) VALUES('integrity-check',1)",
     )
     .unwrap();
     healthy(&c);
@@ -433,6 +701,57 @@ fn candidate_ddl_and_version_bump_are_one_transaction_and_forward_only() {
 }
 
 #[test]
+fn actual_migrator_fault_boundaries_roll_back_all_ddl_and_retry_cleanly() {
+    use migrations::MigrationFaultPoint::{AfterDdl, AfterVersionBump};
+    // An in-memory suffix injects a late statement failure without editing or
+    // maintaining a second copy of the authoritative candidate. Step's static
+    // lifetime requires this one test-owned allocation to live until process exit.
+    let late_ddl: &'static str =
+        Box::leak(format!("{CANDIDATE}\nSELECT task09_late_ddl_fault();").into_boxed_str());
+    for (fault, message) in [
+        (None, "no such function: task09_late_ddl_fault"),
+        (
+            Some(AfterDdl),
+            "injected AfterDdl: user_version=9, candidate_tables=9",
+        ),
+        (
+            Some(AfterVersionBump),
+            "injected AfterVersionBump: user_version=10, candidate_tables=9",
+        ),
+    ] {
+        let mut c = v9();
+        populated(&c);
+        let before = fingerprint(&c);
+        let old_schema = schema(&c);
+        let error = if let Some(point) = fault {
+            migrations::migrate_with_fault_for_test(&mut c, &candidate_steps(), 10, point)
+        } else {
+            let mut steps = migrations::STEPS.to_vec();
+            steps.push((10, late_ddl));
+            migrations::migrate_with(&mut c, &steps)
+        }
+        .unwrap_err();
+        assert!(error.to_string().contains(message), "{fault:?}: {error}");
+        assert!(c.is_autocommit(), "failed migrator left a transaction open");
+        assert_eq!(scalar(&c, "PRAGMA user_version"), 9);
+        assert_eq!(schema(&c), old_schema);
+        assert_eq!(fingerprint(&c), before);
+        assert!(names(&c, "table", "sync_*").is_empty());
+        healthy(&c);
+        // Also proves that the scoped fault cannot leak into the next attempt.
+        install(&mut c);
+        assert_eq!(scalar(&c, "PRAGMA user_version"), 10);
+        assert_exact_candidate_catalog(&c);
+        assert_eq!(fingerprint(&c), before);
+        let installed = schema(&c);
+        install(&mut c);
+        assert_eq!(schema(&c), installed);
+        assert_eq!(fingerprint(&c), before);
+        healthy(&c);
+    }
+}
+
+#[test]
 fn late_name_collision_rolls_back_all_earlier_candidate_objects_and_preserves_v9() {
     let mut c = v9();
     populated(&c);
@@ -449,6 +768,23 @@ fn late_name_collision_rolls_back_all_earlier_candidate_objects_and_preserves_v9
             .unwrap(),
         "keep me"
     );
+    assert!(c.is_autocommit());
+    healthy(&c);
+    // Preserve the unexpected original object while removing only its name collision.
+    c.execute_batch("ALTER TABLE sync_snapshot_rows RENAME TO task09_preserved_collision")
+        .unwrap();
+    install(&mut c);
+    assert_eq!(fingerprint(&c), data);
+    assert_eq!(
+        c.query_row("SELECT precious FROM task09_preserved_collision", [], |r| r
+            .get::<_, String>(0))
+            .unwrap(),
+        "keep me"
+    );
+    assert_exact_candidate_catalog(&c);
+    let complete = schema(&c);
+    install(&mut c);
+    assert_eq!(schema(&c), complete);
     healthy(&c);
 }
 
@@ -868,8 +1204,7 @@ fn snapshot_rows_and_all_transition_guards_preserve_materialized_image() {
     healthy(&c);
 }
 
-#[test]
-fn all_36_observer_bodies_capture_exact_images_keys_nulls_and_noops_natively() {
+fn projection_fixture(candidate: &'static str) -> (Connection, Connection) {
     let real = v9();
     let mut c = Connection::open_in_memory().unwrap();
     c.pragma_update(None, "foreign_keys", "ON").unwrap();
@@ -877,7 +1212,7 @@ fn all_36_observer_bodies_capture_exact_images_keys_nulls_and_noops_natively() {
     // forbids UPDATE/DELETE. Exercise those defensive observer bodies on isolated
     // typed projection tables, without dropping/disabling ANY historical trigger
     // in the real-v9 fixtures. This is structural coverage, not an import bypass.
-    for (table, _, cols) in catalog() {
+    for (table, keys, cols) in catalog() {
         let info: Vec<(String, String)> = real
             .prepare(&format!("PRAGMA table_info({table})"))
             .unwrap()
@@ -887,14 +1222,84 @@ fn all_36_observer_bodies_capture_exact_images_keys_nulls_and_noops_natively() {
             .unwrap();
         let defs: Vec<_> = cols
             .iter()
-            .map(|col| format!("{col} {}", info.iter().find(|r| r.0 == *col).unwrap().1))
+            .map(|col| {
+                format!(
+                    "{col} {}{}",
+                    info.iter().find(|r| r.0 == *col).unwrap().1,
+                    if keys.contains(col) { " NOT NULL" } else { "" }
+                )
+            })
             .collect();
         c.execute_batch(&format!("CREATE TABLE {table}({}) STRICT", defs.join(",")))
             .unwrap();
     }
     // Use same file/transaction/version seam, not a reconstructed observer copy.
-    migrations::migrate_with(&mut c, &[(10, CANDIDATE)]).unwrap();
+    migrations::migrate_with(&mut c, &[(10, candidate)]).unwrap();
     initialize(&c);
+    (real, c)
+}
+
+fn assert_accounting(c: &Connection, effects: i64) {
+    assert_eq!(
+        scalar(c, "SELECT effect_count FROM sync_write_context"),
+        effects
+    );
+    assert_eq!(scalar(c, "SELECT count(*) FROM sync_effects"), effects);
+    assert_eq!(scalar(c, "SELECT staged_bytes FROM sync_write_context"), scalar(c,
+        "SELECT coalesce(sum(coalesce(length(CAST(before_json AS BLOB)),0)+coalesce(length(CAST(after_json AS BLOB)),0)),0) FROM sync_effects"));
+    assert_eq!(
+        scalar(c, "SELECT count(*) FROM sync_commit_fences"),
+        i64::from(effects > 0)
+    );
+    assert_eq!(scalar(c, "SELECT count(*) FROM sync_effects WHERE event_id=(SELECT event_id FROM sync_write_context)"), effects);
+    assert_eq!(scalar(c, "SELECT count(*) FROM sync_commit_fences WHERE event_id=(SELECT event_id FROM sync_write_context)"), i64::from(effects > 0));
+}
+
+fn observe_update(
+    c: &Connection,
+    table: &str,
+    field: &str,
+    keys: &[&str],
+    before: &serde_json::Map<String, Json>,
+    value: Value,
+) -> serde_json::Map<String, Json> {
+    let offset = scalar(c, "SELECT effect_count FROM sync_write_context");
+    let mut after = before.clone();
+    after.insert(
+        field.to_string(),
+        match &value {
+            Value::Null => Json::Null,
+            Value::Integer(n) => json!(n),
+            Value::Text(s) => json!(s),
+            other => panic!("unsupported projection fixture value {other:?}"),
+        },
+    );
+    c.execute(&format!("UPDATE {table} SET {field}=?1"), [value])
+        .unwrap();
+    assert_eq!(
+        scalar(c, "SELECT effect_count FROM sync_write_context"),
+        offset + 1,
+        "{table}.{field}: observed update count"
+    );
+    assert_effect(
+        c,
+        table,
+        offset,
+        Some(Json::Object(before.clone())),
+        Some(Json::Object(after.clone())),
+        keys,
+    );
+    assert_accounting(c, offset + 1);
+    after
+}
+
+#[test]
+fn all_36_observer_bodies_capture_exact_images_keys_nulls_and_noops_natively() {
+    exercise_observer_bodies(CANDIDATE);
+}
+
+fn exercise_observer_bodies(candidate: &'static str) {
+    let (real, c) = projection_fixture(candidate);
     for (index, (table, keys, cols)) in catalog().into_iter().enumerate() {
         begin(&c, 500 + index as u32);
         let info: Vec<(String, String)> = real
@@ -936,6 +1341,40 @@ fn all_36_observer_bodies_capture_exact_images_keys_nulls_and_noops_natively() {
             Some(Json::Object(expected.clone())),
             &keys,
         );
+        assert_accounting(&c, 1);
+        let assignments = cols
+            .iter()
+            .map(|col| format!("{col}={col}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let bytes_before = scalar(&c, "SELECT staged_bytes FROM sync_write_context");
+        c.execute_batch(&format!("UPDATE {table} SET {assignments}"))
+            .unwrap();
+        assert_accounting(&c, 1);
+        assert_eq!(
+            scalar(&c, "SELECT staged_bytes FROM sync_write_context"),
+            bytes_before
+        );
+        // Each field starts from the same INSERT image. A savepoint rolls back
+        // the mutation and observer counters/fence/spool together, not triggers.
+        for col in &cols {
+            c.execute_batch("SAVEPOINT field_probe").unwrap();
+            let value = if info.iter().find(|r| r.0 == *col).unwrap().1 == "INTEGER" {
+                Value::Integer(9_007_199_254_740_993)
+            } else {
+                Value::Text(format!("{col}: changed 🦀 e\u{301}\u{1}"))
+            };
+            let changed = observe_update(&c, table, col, &keys, &expected, value.clone());
+            // Logical keys are explicitly NOT NULL in the projection fixture.
+            // Every other isolated column permits both NULL transition directions.
+            if !keys.contains(col) {
+                let nulled = observe_update(&c, table, col, &keys, &changed, Value::Null);
+                observe_update(&c, table, col, &keys, &nulled, value);
+            }
+            c.execute_batch("ROLLBACK TO field_probe; RELEASE field_probe")
+                .unwrap();
+            assert_accounting(&c, 1);
+        }
         c.execute_batch(&format!("UPDATE {table} SET {}={}", cols[0], cols[0]))
             .unwrap();
         assert_eq!(scalar(&c, "SELECT effect_count FROM sync_write_context"), 1);
@@ -964,6 +1403,17 @@ fn all_36_observer_bodies_capture_exact_images_keys_nulls_and_noops_natively() {
         c.execute_batch("ROLLBACK").unwrap();
     }
     healthy(&c);
+}
+
+#[test]
+#[should_panic(expected = "projects.updated_at: observed update count")]
+fn per_field_probe_detects_a_missing_update_predicate_term() {
+    // Mutation control exists only in this isolated in-memory schema. The
+    // authoritative file and real domain triggers are never edited or disabled.
+    let term = " AND OLD.updated_at IS NEW.updated_at";
+    assert_eq!(CANDIDATE.matches(term).count(), 3);
+    let mutant: &'static str = Box::leak(CANDIDATE.replacen(term, "", 1).into_boxed_str());
+    exercise_observer_bodies(mutant);
 }
 
 fn assert_effect(
@@ -1034,16 +1484,42 @@ fn synthetic_disk_upgrade_reopens_and_v9_binary_refuses_without_touching_bytes()
     let mut c = store.connection.into_inner().unwrap();
     populated(&c);
     let before = fingerprint(&c);
+    let historical_schema = schema(&c);
+    let row_counts = counts(&c);
     install(&mut c);
+    let installed_schema = schema(&c);
     drop(c);
-    let bytes = std::fs::read(&path).unwrap();
-    assert!(CaptureStore::open(&path).is_err()); // unchanged production v9 refuses.
-    assert_eq!(std::fs::read(&path).unwrap(), bytes);
     let mut reopened = Connection::open(&path).unwrap();
     reopened.pragma_update(None, "foreign_keys", "ON").unwrap();
     install(&mut reopened);
+    install(&mut reopened);
+    assert_eq!(schema(&reopened), installed_schema);
+    assert!(historical_schema
+        .iter()
+        .all(|row| installed_schema.contains(row)));
     assert_eq!(fingerprint(&reopened), before);
+    assert_eq!(counts(&reopened), row_counts);
+    assert_eq!(scalar(&reopened, "PRAGMA user_version"), 10);
+    assert_exact_candidate_catalog(&reopened);
     healthy(&reopened);
+    drop(reopened);
+    // Quiescent file bytes, not a power-loss or packaged-historical-binary proof.
+    let bytes = std::fs::read(&path).unwrap();
+    let error = match CaptureStore::open(&path) {
+        Err(error) => error,
+        Ok(_) => panic!("production v9 accepted a future schema"),
+    };
+    assert!(
+        matches!(error, super::capture_store::StoreError::Corrupt(ref message)
+        if message == "schema version 10 is newer than the supported version 9")
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    let refused = Connection::open(&path).unwrap();
+    refused.pragma_update(None, "foreign_keys", "ON").unwrap();
+    assert_eq!(schema(&refused), installed_schema);
+    assert_eq!(fingerprint(&refused), before);
+    assert_eq!(scalar(&refused, "PRAGMA user_version"), 10);
+    healthy(&refused);
 }
 
 #[test]

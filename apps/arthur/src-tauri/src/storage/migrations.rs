@@ -793,10 +793,68 @@ pub fn migrate_with(connection: &mut Connection, steps: &[Step]) -> Result<(), S
     for (version, sql) in steps.iter().filter(|(version, _)| *version > current) {
         let transaction = connection.transaction()?;
         transaction.execute_batch(sql)?;
+        #[cfg(test)]
+        migration_fault_for_test(&transaction, *version, MigrationFaultPoint::AfterDdl)?;
         transaction.pragma_update(None, "user_version", version)?;
+        #[cfg(test)]
+        migration_fault_for_test(&transaction, *version, MigrationFaultPoint::AfterVersionBump)?;
         transaction.commit()?;
     }
     Ok(())
+}
+
+// Thread-local and scoped: faults cannot affect another test or survive a panic.
+// These probes execute inside the real migrator's transaction; no second loop.
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum MigrationFaultPoint {
+    AfterDdl,
+    AfterVersionBump,
+}
+
+#[cfg(test)]
+thread_local! {
+    static MIGRATION_FAULT: std::cell::Cell<Option<(i64, MigrationFaultPoint)>> = const {
+        std::cell::Cell::new(None)
+    };
+}
+
+#[cfg(test)]
+fn migration_fault_for_test(
+    transaction: &Connection,
+    version: i64,
+    point: MigrationFaultPoint,
+) -> Result<(), StoreError> {
+    if MIGRATION_FAULT.get() == Some((version, point)) {
+        let observed_version: i64 =
+            transaction.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+        let tables: i64 = transaction.query_row(
+            "SELECT count(*) FROM sqlite_schema WHERE type='table' AND name GLOB 'sync_*'",
+            [],
+            |r| r.get(0),
+        )?;
+        return Err(StoreError::Corrupt(format!(
+            "injected {point:?}: user_version={observed_version}, candidate_tables={tables}"
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+pub(super) fn migrate_with_fault_for_test(
+    connection: &mut Connection,
+    steps: &[Step],
+    version: i64,
+    point: MigrationFaultPoint,
+) -> Result<(), StoreError> {
+    struct RestoreFault(Option<(i64, MigrationFaultPoint)>);
+    impl Drop for RestoreFault {
+        fn drop(&mut self) {
+            MIGRATION_FAULT.set(self.0);
+        }
+    }
+    let _restore = RestoreFault(MIGRATION_FAULT.replace(Some((version, point))));
+    migrate_with(connection, steps)
 }
 
 #[cfg(test)]
