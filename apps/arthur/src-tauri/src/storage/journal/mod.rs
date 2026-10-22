@@ -19,10 +19,14 @@
 pub mod codec;
 pub mod reducer;
 
+mod snapshot;
 mod sql_effects;
 mod storage;
 mod stream;
 mod writers;
+
+#[cfg(test)]
+mod snapshot_tests;
 
 #[cfg(test)]
 mod writer_tests;

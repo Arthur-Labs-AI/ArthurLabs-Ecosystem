@@ -643,7 +643,7 @@ fn k11_same_owner_threads_commit_consecutive_sequences_and_failure_consumes_none
 }
 
 #[test]
-fn k12_review_unsupported_deletions_and_relation_provenance_fail_closed() {
+fn k12_review_proved_transitions_commit_while_deletions_fail_closed() {
     let s = historical();
     let k = JournalKernel::activate(&s).unwrap();
     let before = state(&s);
@@ -663,18 +663,26 @@ fn k12_review_unsupported_deletions_and_relation_provenance_fail_closed() {
         }),
         Err(E::ReviewContext)
     );
-    assert_eq!(
-        k.run(|t| {
+    k.run(|t| {
             t.register_review(
                 K::PendingClaims,
                 vec![fixture_id(20)],
                 review(fixture_id(20)),
             )?;
             change(t)
-        }),
-        Err(E::UnsupportedReview)
-    );
-    assert_eq!(state(&s), before);
+        })
+        .unwrap();
+    let core = cores(&s).pop().expect("proved defer emits one bundle");
+    assert_eq!(core.operations.len(), 1);
+    let Operation::FacetUpdate(update) = &core.operations[0] else {
+        panic!("expected update");
+    };
+    assert_eq!(update.entity, K::PendingClaims);
+    assert_eq!(update.key, vec![fixture_id(20)]);
+    let proof = update.review_proof.as_ref().expect("defer carries proof");
+    assert_eq!(proof.action, codec::ReviewAction::Defer);
+    assert_eq!(proof.claim_id, Some(fixture_id(20)));
+    let before = state(&s);
     let deletion = upgraded();
     let dk = JournalKernel::activate(&deletion).unwrap();
     dk.run(|t| insert(t, 120)).unwrap();
@@ -962,16 +970,22 @@ fn k12_proposal_context_identity_is_bound_to_surviving_row() {
         Err(E::ReviewContext)
     );
     assert_eq!(state(&s), before);
-    assert_eq!(
-        k.run(|t| {
-            t.sql().execute(
-                "UPDATE revision_proposals SET updated_at='2026-10-23T00:00:00Z' WHERE id=?1",
-                [fixture_id(30)],
-            )?;
-            Ok(())
-        }),
-        Err(E::IncompleteClosure)
-    );
+    k.run(|t| {
+        t.sql().execute(
+            "UPDATE revision_proposals SET updated_at='2026-10-23T00:00:00Z' WHERE id=?1",
+            [fixture_id(30)],
+        )?;
+        Ok(())
+    })
+    .unwrap();
+    let core = cores(&s).pop().expect("metadata update emits one bundle");
+    assert_eq!(core.operations.len(), 1);
+    let Operation::FacetUpdate(update) = &core.operations[0] else {
+        panic!("expected update");
+    };
+    assert_eq!(update.entity, K::RevisionProposals);
+    let before = state(&s);
+    assert!(update.review_proof.is_none());
     assert_eq!(k.run(|t| {
         t.sql().execute("INSERT INTO thought_revisions(id,object_id,kind,title,body,origin,created_at) VALUES(?1,?2,'idea','Automatic','Body','system',?3)",params![id(44000),fixture_id(13),NOW])?;
         t.sql().execute("INSERT INTO revision_parents(child_revision_id,parent_revision_id) VALUES(?1,?2)",params![id(44000),fixture_id(41)])?;
@@ -1149,12 +1163,13 @@ fn k09_counter_drift_invalid_images_missing_projection_and_sql_read_failure_roll
 }
 
 #[test]
-fn k12_unimplemented_identity_closure_and_incomplete_object_closure_fail_closed() {
+fn k12_identity_creates_commit_while_orphan_objects_fail_closed() {
     let s = upgraded();
     let k = JournalKernel::activate(&s).unwrap();
+    k.run(|t|{insert(t,910)?;t.sql().execute("INSERT INTO distillation_runs(capture_id,created_at) VALUES(?1,?2)",params![id(910),NOW])?;t.sql().execute("INSERT INTO identity_decisions(capture_id,ordinal,outcome,policy_version,model_id,decided_by,vetoes_json,audit_json,decided_at) VALUES(?1,0,'uncertain','test','fake','gate','[]','{}',?2)",params![id(910),NOW])?;Ok(())}).unwrap();
+    let core = cores(&s).pop().expect("decision bundle commits");
     let before = state(&s);
-    assert_eq!(k.run(|t|{insert(t,910)?;t.sql().execute("INSERT INTO distillation_runs(capture_id,created_at) VALUES(?1,?2)",params![id(910),NOW])?;t.sql().execute("INSERT INTO identity_decisions(capture_id,ordinal,outcome,policy_version,model_id,decided_by,vetoes_json,audit_json,decided_at) VALUES(?1,0,'uncertain','test','fake','gate','[]','{}',?2)",params![id(910),NOW])?;Ok(())}),Err(E::IncompleteClosure));
-    assert_eq!(state(&s), before);
+    assert_eq!(core.operations.len(), 3);
     assert_eq!(k.run(|t|{t.sql().execute("INSERT INTO knowledge_objects(id,kind,title,body,created_at,project_id) VALUES(?1,'idea','Title','Body',?2,?3)",params![id(911),NOW,migrations::INBOX_PROJECT_ID])?;Ok(())}),Err(E::IncompleteClosure));
     assert_eq!(state(&s), before);
     clean(&s);

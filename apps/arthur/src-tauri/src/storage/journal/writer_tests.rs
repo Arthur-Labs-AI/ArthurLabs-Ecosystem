@@ -18,7 +18,7 @@ use crate::storage::{
     project_store::ProjectError,
     relation_store::NewRelation,
 };
-use rusqlite::types::Value;
+use rusqlite::{params, types::Value};
 use std::collections::BTreeMap;
 
 const TEXT: &str = "Идея 🦀 e\u{301} Alpha Beta Gamma";
@@ -1103,7 +1103,7 @@ fn w13_production_v9_still_operates_without_any_journal_initialization() {
 }
 
 #[test]
-fn w14_automatic_revision_evidence_identity_and_review_effects_remain_rejected() {
+fn w14_identity_evidence_and_claim_effects_commit_while_unguarded_paths_fail_closed() {
     use crate::storage::{
         evidence_store::{attach_revision_evidence_in, EvidenceRole, NewEvidence},
         identity_store::{
@@ -1140,26 +1140,25 @@ fn w14_automatic_revision_evidence_identity_and_review_effects_remain_rejected()
         Err(E::Journal(J::IncompleteClosure))
     ));
     assert_eq!(snapshot(&s), before);
-    assert_eq!(
-        k.run(|tx| {
-            attach_revision_evidence_in(
-                tx.sql(),
-                &automatic.id,
-                &[NewEvidence {
-                    capture_id: cap.id.clone(),
-                    source_start: 0,
-                    source_end: 4,
-                    role: EvidenceRole::Asserts,
-                    retracts: None,
-                    interpretation_label: None,
-                }],
-            )
-            .expect("valid system-only native evidence fixture");
-            Ok(())
-        }),
-        Err(J::IncompleteClosure)
-    );
-    assert_eq!(snapshot(&s), before);
+    k.run(|tx| {
+        attach_revision_evidence_in(
+            tx.sql(),
+            &automatic.id,
+            &[NewEvidence {
+                capture_id: cap.id.clone(),
+                source_start: 0,
+                source_end: 4,
+                role: EvidenceRole::Asserts,
+                retracts: None,
+                interpretation_label: None,
+            }],
+        )
+        .expect("valid system-only native evidence fixture");
+        Ok(())
+    })
+    .unwrap();
+    let core = audit(&s).pop().expect("evidence bundle commits");
+    assert_eq!(core.operations.len(), 1);
     let decision = IdentityDecisionInput {
         capture_id: cap.id.clone(),
         ordinal: 0,
@@ -1188,18 +1187,17 @@ fn w14_automatic_revision_evidence_identity_and_review_effects_remain_rejected()
         candidate_ids: vec![id.clone()],
         due_at: None,
     };
-    assert_eq!(
-        k.run(|tx| {
-            assert!(
-                identity_store::stage_uncertain_claim_in(tx.sql(), &pending)
-                    .expect("valid paired native decision/claim")
-                    .1
-            );
-            Ok(())
-        }),
-        Err(J::IncompleteClosure)
-    );
-    assert_eq!(snapshot(&s), before);
+    k.run(|tx| {
+        assert!(
+            identity_store::stage_uncertain_claim_in(tx.sql(), &pending)
+                .expect("valid paired native decision/claim")
+                .1
+        );
+        Ok(())
+    })
+    .unwrap();
+    let core = audit(&s).pop().expect("decision and claim bundle commits");
+    assert_eq!(core.operations.len(), 2);
     let review_store = CaptureStore::open_in_memory().unwrap();
     crate::storage::m05_v10_tests::populated(&review_store.connection.lock().unwrap());
     upgrade(&review_store);
@@ -1481,6 +1479,67 @@ fn parity_scenario(s: &CaptureStore, k: Option<&JournalKernel<'_>>) -> Vec<Strin
         .collect()
 }
 
+fn decision_for(capture_id: &str, ordinal: i64, candidates: Vec<String>) -> crate::storage::identity_store::IdentityDecisionInput {
+    use crate::storage::identity_store::{DecisionAudit, DecisionOutcome, IdentityDecisionInput};
+    IdentityDecisionInput {
+        capture_id: capture_id.into(),
+        ordinal,
+        outcome: DecisionOutcome::Uncertain,
+        unchecked_reason: None,
+        target_object_id: None,
+        base_revision_id: None,
+        result_revision_id: None,
+        created_object_id: None,
+        policy_version: "test".into(),
+        model_id: Some("synthetic".into()),
+        vetoes: vec![],
+        audit: DecisionAudit { candidates_sent: candidates, runs: 1, ..DecisionAudit::default() },
+    }
+}
+fn pending_for(decision: crate::storage::identity_store::IdentityDecisionInput, candidates: Vec<String>) -> crate::storage::identity_store::PendingClaimInput {
+    use crate::storage::identity_store::PendingClaimInput;
+    PendingClaimInput {
+        decision,
+        kind: "idea".into(),
+        title: "Pending".into(),
+        body: "Body".into(),
+        source_start: 0,
+        source_end: 4,
+        candidate_ids: candidates,
+        due_at: None,
+    }
+}
+#[test]
+fn w15_identity_decision_and_claim_adapters_commit_with_idempotence() {
+    use crate::storage::identity_store::DecisionOutcome;
+    let (s, cap, o) = graph(2);
+    let k = JournalKernel::activate(&s).unwrap();
+    let prop = commit(&s, &k, |w| {
+        w.stage_uncertain_claim(pending_for(decision_for(&cap.id, 0, vec![o[0].id.clone()]), vec![o[0].id.clone()]))
+    });
+    assert!(prop.1);
+    let core = audit(&s).pop().expect("decision and claim bundle commits");
+    assert_eq!(core.operations.len(), 2);
+    let n = count(&s, "sync_bundles");
+    let repeat = commit(&s, &k, |w| {
+        w.stage_uncertain_claim(pending_for(decision_for(&cap.id, 0, vec![o[0].id.clone()]), vec![o[0].id.clone()]))
+    });
+    assert!(!repeat.1);
+    assert_eq!(count(&s, "sync_bundles"), n);
+    let mut solo = decision_for(&cap.id, 1, vec![o[0].id.clone()]);
+    solo.outcome = DecisionOutcome::New;
+    solo.created_object_id = Some(o[0].id.clone());
+    solo.audit = Default::default();
+    let (stored, created) = commit(&s, &k, |w| w.record_identity_decision(solo.clone()));
+    assert!(created);
+    assert_eq!(stored.input.ordinal, 1);
+    let before = snapshot(&s);
+    assert!(matches!(
+        k.write(|w| w.stage_uncertain_claim(pending_for(decision_for(&cap.id, 0, vec![o[1].id.clone()]), vec![o[1].id.clone()]))),
+        Err(E::Identity(_))
+    ));
+    assert_eq!(snapshot(&s), before);
+}
 #[test]
 fn w01_public_v9_and_dormant_v10_share_domain_rows_results_errors_and_side_effects() {
     let v9 = CaptureStore::open_in_memory().unwrap();
@@ -1499,4 +1558,394 @@ fn w01_public_v9_and_dormant_v10_share_domain_rows_results_errors_and_side_effec
         count(&v10, "organization_failures")
     );
     audit(&v10);
+}
+
+fn proposal_for(claim_id: &str, object_id: &str, base: &str, body: &str, capture_id: &str) -> crate::storage::proposal_store::NewProposal {
+    use crate::storage::proposal_store::{EvidenceRef, NewProposal};
+    NewProposal {
+        pending_claim_id: claim_id.into(),
+        object_id: object_id.into(),
+        base_revision_id: base.into(),
+        change: "additive".into(),
+        kind: "idea".into(),
+        title: "Draft".into(),
+        proposed_body: body.into(),
+        evidence: vec![EvidenceRef { role: "claim".into(), capture_id: capture_id.into(), start: 0, end: 4 }],
+        retracts: None,
+        synthesis_model: "synthetic".into(),
+        verifier_model: "synthetic".into(),
+        verification_mode: "independent".into(),
+        policy_version: "test".into(),
+    }
+}
+fn staged_claim(s: &CaptureStore, k: &JournalKernel<'_>, cap_id: &str, object_id: &str) -> crate::storage::identity_store::PendingClaim {
+    staged_claim_ordinal(s, k, cap_id, object_id, 0)
+}
+fn staged_claim_ordinal(s: &CaptureStore, k: &JournalKernel<'_>, cap_id: &str, object_id: &str, ordinal: i64) -> crate::storage::identity_store::PendingClaim {
+    commit(s, k, |w| {
+        Ok(w.stage_uncertain_claim(pending_for(decision_for(cap_id, ordinal, vec![object_id.into()]), vec![object_id.into()]))?.0)
+    })
+}
+#[test]
+fn w16_proposal_creation_is_idempotent_and_rejects_stale_base() {
+    let (s, cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
+    let base = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    commit(&s, &k, |w| w.update_object(&o[0].id, change("Moved")));
+    let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    assert_ne!(head, base);
+    assert!(matches!(
+        k.write(|w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &base, "Stale draft", &cap.id))),
+        Err(E::Identity(_)) | Err(E::Journal(_))
+    ));
+    let first = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &head, "Draft body", &cap.id)));
+    assert!(first.1);
+    let n = count(&s, "sync_bundles");
+    let repeat = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &head, "Draft body", &cap.id)));
+    assert!(!repeat.1);
+    assert_eq!(count(&s, "sync_bundles"), n);
+    assert_eq!(repeat.0.id, first.0.id);
+}
+
+#[test]
+fn w17_review_approve_closes_full_revision_and_evidence_closure() {
+    use crate::storage::proposal_store::{ReviewAction, ReviewRequest};
+    let (s, cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
+    let base = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let proposal = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &base, "Approved text", &cap.id))).0;
+    let out = commit(&s, &k, |w| {
+        w.review_proposal(ReviewRequest { proposal_id: proposal.id.clone(), action: ReviewAction::Approve, reviewed_revision_id: Some(base.clone()) })
+    });
+    assert!(out.applied);
+    assert_eq!(out.proposal.state, "approved");
+    let core = audit(&s).pop().expect("approval bundle commits");
+    let mut kinds: Vec<(codec::EntityKind, &str)> = core.operations.iter().map(|op| match op {
+        Operation::RecordCreate(r) => (r.entity, "create"),
+        Operation::FacetUpdate(u) => (u.entity, if u.review_proof.is_some() { "proved" } else { "bare" }),
+        Operation::RelationRemove(_) => (K::Relations, "remove"),
+    }).collect();
+    assert!(kinds.iter().any(|(e, k)| *e == K::RevisionProposals && *k == "proved"));
+    let fresh = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    assert_ne!(fresh, base);
+}
+
+
+#[test]
+fn w19_claim_accept_separate_expiry_and_terminal_idempotence() {
+    use crate::storage::identity_store::AcceptPendingInput;
+    use crate::storage::lineage_store::RevisionContent;
+    use crate::storage::evidence_store::EvidenceRole;
+    use crate::storage::lineage_store::ExpectedRevision;
+    let (s, cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
+    let base = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let out = commit(&s, &k, |w| {
+        w.accept_pending_claim(AcceptPendingInput {
+            pending_id: claim.id.clone(),
+            target_object_id: o[0].id.clone(),
+            expected_base_revision_id: base.clone(),
+            content: RevisionContent { kind: "idea".into(), title: "Accepted".into(), body: "Accepted body".into() },
+            role: EvidenceRole::Asserts,
+            retracts: None,
+            interpretation_label: None,
+        })
+    });
+    assert!(out.applied);
+    assert_eq!(out.claim.state, "accepted");
+    let core = audit(&s).pop().expect("accept bundle commits");
+    assert!(core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::ThoughtRevisions)));
+    assert!(core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::RevisionEvidence)));
+    let n = count(&s, "sync_bundles");
+    let current = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let repeat = commit(&s, &k, |w| {
+        w.accept_pending_claim(AcceptPendingInput {
+            pending_id: claim.id.clone(),
+            target_object_id: o[0].id.clone(),
+            expected_base_revision_id: current.clone(),
+            content: RevisionContent { kind: "idea".into(), title: "Accepted".into(), body: "Accepted body".into() },
+            role: EvidenceRole::Asserts,
+            retracts: None,
+            interpretation_label: None,
+        })
+    });
+    let claim2 = staged_claim_ordinal(&s, &k, &cap.id, &o[0].id, 1);
+    let sep = commit(&s, &k, |w| w.separate_pending_claim(&claim2.id, "expiry"));
+    assert!(sep.applied);
+    assert_eq!(sep.claim.state, "separated");
+    let core = audit(&s).pop().expect("separate bundle commits");
+    let proof = core.operations.iter().find_map(|op| match op { Operation::FacetUpdate(u) if u.entity == K::PendingClaims => u.review_proof.clone(), _ => None }).expect("separate proof");
+}
+
+#[test]
+fn w20_trigger_supersession_captured_with_derived_proof() {
+    use crate::storage::evidence_store::EvidenceRole;
+    use crate::storage::identity_store::AcceptPendingInput;
+    use crate::storage::lineage_store::RevisionContent;
+    let (s, cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
+    let base = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let proposal = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &base, "Draft text", &cap.id))).0;
+    let out = commit(&s, &k, |w| {
+        w.accept_pending_claim(AcceptPendingInput {
+            pending_id: claim.id.clone(),
+            target_object_id: o[0].id.clone(),
+            expected_base_revision_id: base.clone(),
+            content: RevisionContent { kind: "idea".into(), title: "Accepted".into(), body: "Accepted body".into() },
+            role: EvidenceRole::Asserts,
+            retracts: None,
+            interpretation_label: None,
+        })
+    });
+    assert!(out.applied);
+    let core = audit(&s).pop().expect("accept with trigger bundle commits");
+    let superseded: Vec<_> = core.operations.iter().filter_map(|op| match op {
+        Operation::FacetUpdate(u) if u.entity == K::RevisionProposals => Some(u),
+        _ => None,
+    }).collect();
+    assert_eq!(superseded.len(), 1);
+    let proof = superseded[0].review_proof.as_ref().expect("supersede carries derived proof");
+    assert_eq!(proof.action, codec::ReviewAction::Supersede);
+    assert_eq!(proof.proposal_id, Some(proposal.id.clone()));
+    assert_eq!(proof.claim_id, Some(claim.id.clone()));
+    assert_eq!(proof.method, Some(codec::ReviewMethod::DerivedClaimResolution));
+    let fresh = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+}
+
+#[test]
+fn w21_review_action_must_match_the_observed_transition() {
+    let (s, cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
+    let before = snapshot(&s);
+    assert_eq!(
+        k.run(|t| {
+            t.sql().execute("UPDATE pending_claims SET state='deferred',deferred_at=?1,updated_at=?1 WHERE id=?2", params!["2026-10-22T00:00:00Z", claim.id])?;
+            t.register_review(
+                K::PendingClaims,
+                vec![claim.id.clone()],
+                super::reducer::ReviewContext {
+                    action: codec::ReviewAction::Approve,
+                    proposal_id: None,
+                    claim_id: Some(claim.id.clone()),
+                    object_id: None,
+                    reviewed_revision_id: None,
+                    final_body: None,
+                    user_edited: None,
+                    result_revision_id: None,
+                    method: Some(codec::ReviewMethod::User),
+                },
+            )?;
+            Ok(())
+        }),
+        Err(J::ReviewContext)
+    );
+    assert_eq!(snapshot(&s), before);
+}
+
+#[test]
+fn w22_automatic_revision_requires_same_event_evidence() {
+    let (s, cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let root = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let before = snapshot(&s);
+    assert_eq!(
+        k.run(|tx| {
+            tx.sql().execute("INSERT INTO thought_revisions(id,object_id,kind,title,body,origin,created_at) VALUES(?1,?2,'idea','No evidence','Body','system',?3)", params!["00012cc8-1234-4abc-8def-000000012cc8", o[0].id, "2026-10-22T00:00:00Z"])?;
+            tx.sql().execute("INSERT INTO revision_parents(child_revision_id,parent_revision_id) VALUES(?1,?2)", params!["00012cc8-1234-4abc-8def-000000012cc8", root.clone()])?;
+            Ok(())
+        }),
+        Err(J::IncompleteClosure)
+    );
+    assert_eq!(snapshot(&s), before);
+}
+
+#[test]
+fn w23_repeated_metadata_writes_emit_proof_free_bundles() {
+    let (s, cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
+    let deferred = commit(&s, &k, |w| w.defer_claim(&claim.id, None));
+    assert_eq!(deferred.state, "deferred");
+    let n = count(&s, "sync_bundles");
+    let again = commit(&s, &k, |w| w.defer_claim(&claim.id, None));
+    assert_eq!(count(&s, "sync_bundles"), n + 1);
+    let core = audit(&s).pop().expect("repeat defer bundle commits");
+    assert_eq!(core.operations.len(), 1);
+    let Operation::FacetUpdate(update) = &core.operations[0] else { panic!("expected update"); };
+    assert_eq!(update.entity, K::PendingClaims);
+    assert!(update.review_proof.is_none());
+}
+
+fn evolution_parts(policy: &str, candidates: Vec<String>) -> crate::distillation::evolution::Parts {
+    use crate::storage::identity_store::DecisionAudit;
+    crate::distillation::evolution::Parts::synthetic(
+        policy.into(),
+        Some("synthetic".into()),
+        vec![],
+        DecisionAudit { candidates_sent: candidates, runs: 1, ..DecisionAudit::default() },
+    )
+}
+#[test]
+fn w24_identity_aware_evolution_commits_multi_claim_bundle() {
+    use crate::distillation::evolution::{Committed, Plan, Planned};
+    use crate::identity::TargetSnapshot;
+    use crate::storage::evidence_store::EvidenceRole;
+    use crate::storage::knowledge_store::NewKnowledgeObject;
+    use crate::storage::lineage_store::RevisionContent;
+    let (s, _cap, o) = graph(2);
+    let k = JournalKernel::activate(&s).unwrap();
+    let cap = commit(&s, &k, |w| w.create_capture(input(None)));
+    let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let claims = vec![
+        NewKnowledgeObject { kind: "idea".into(), title: "Fresh Angle".into(), body: "Fresh body text".into(), source_start: 0, source_end: 4 },
+        NewKnowledgeObject { kind: "idea".into(), title: "Refined".into(), body: "Refined body text".into(), source_start: 0, source_end: 4 },
+        NewKnowledgeObject { kind: "idea".into(), title: "Maybe".into(), body: "Maybe body text".into(), source_start: 0, source_end: 4 },
+    ];
+    let planned = vec![
+        Planned { plan: Plan::New(None), parts: evolution_parts("test", vec![]) },
+        Planned {
+            plan: Plan::Revise {
+                target: TargetSnapshot { object_id: o[0].id.clone(), project_id: o[0].project_id.clone(), base_revision_id: head.clone() },
+                draft: crate::distillation::evolution::RevisionDraft {
+                    content: RevisionContent { kind: "idea".into(), title: o[0].title.clone(), body: "Revised body text".into() },
+                    role: EvidenceRole::Asserts,
+                    retracts: None,
+                    interpretation_label: None,
+                },
+            },
+            parts: evolution_parts("test", vec![o[0].id.clone()]),
+        },
+        Planned { plan: Plan::Uncertain(vec![o[1].id.clone()]), parts: evolution_parts("test", vec![o[1].id.clone()]) },
+    ];
+    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, false));
+    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    assert_eq!(objects.len(), 1);
+    assert_eq!(revised.len(), 1);
+    assert_eq!(pending.len(), 1);
+    assert!(proposals.is_empty());
+    let core = audit(&s).pop().expect("evolution bundle commits");
+    let kinds: Vec<(codec::EntityKind, &str)> = core.operations.iter().map(|op| match op {
+        Operation::RecordCreate(r) => (r.entity, "create"),
+        Operation::FacetUpdate(u) => (u.entity, if u.review_proof.is_some() { "proved" } else { "bare" }),
+        Operation::RelationRemove(_) => (K::Relations, "remove"),
+    }).collect();
+    assert!(kinds.iter().any(|(e, k)| *e == K::KnowledgeObjects && *k == "create"));
+    assert!(kinds.iter().any(|(e, k)| *e == K::ThoughtRevisions && *k == "create"));
+    assert!(kinds.iter().any(|(e, k)| *e == K::RevisionEvidence && *k == "create"));
+    assert!(kinds.iter().any(|(e, k)| *e == K::IdentityDecisions && *k == "create"));
+    assert!(kinds.iter().any(|(e, k)| *e == K::PendingClaims && *k == "create"));
+}
+#[test]
+fn w18_review_reject_defer_reopen_and_keep_separate_paths() {
+    use crate::storage::proposal_store::{ClaimAction, ClaimResolution, ReviewAction, ReviewRequest};
+    let (s, cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
+    let base = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let proposal = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &base, "Draft text", &cap.id))).0;
+    let rejected = commit(&s, &k, |w| {
+        w.review_proposal(ReviewRequest { proposal_id: proposal.id.clone(), action: ReviewAction::Reject, reviewed_revision_id: None })
+    });
+    assert!(rejected.applied);
+    assert_eq!(rejected.proposal.state, "rejected");
+    let core = audit(&s).pop().expect("reject bundle commits");
+    assert_eq!(core.operations.len(), 1);
+    let deferred: ClaimResolution = commit(&s, &k, |w| w.resolve_claim(&claim.id, ClaimAction::Defer { due_at: None }));
+    assert!(deferred.applied);
+    assert_eq!(deferred.claim_state, "deferred");
+    let reopened: ClaimResolution = commit(&s, &k, |w| w.resolve_claim(&claim.id, ClaimAction::Reopen));
+    assert!(reopened.applied);
+    assert_eq!(reopened.claim_state, "open");
+    let separated: ClaimResolution = commit(&s, &k, |w| w.resolve_claim(&claim.id, ClaimAction::KeepSeparate));
+    assert!(separated.applied);
+    assert_eq!(separated.claim_state, "separated");
+    assert!(separated.created_object_id.is_some());
+}
+
+#[test]
+fn w25_stale_evolution_target_falls_back_inside_savepoint() {
+    use crate::distillation::evolution::{Committed, Plan, Planned};
+    use crate::identity::TargetSnapshot;
+    use crate::storage::evidence_store::EvidenceRole;
+    use crate::storage::knowledge_store::NewKnowledgeObject;
+    use crate::storage::lineage_store::RevisionContent;
+    let (s, _cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let cap = commit(&s, &k, |w| w.create_capture(input(None)));
+    let stale_base = "00000000-0000-4000-8000-000000000000".to_string();
+    let claims = vec![
+        NewKnowledgeObject { kind: "idea".into(), title: "Stale".into(), body: "Stale body".into(), source_start: 0, source_end: 4 },
+    ];
+    let planned = vec![Planned {
+        plan: Plan::Revise {
+            target: TargetSnapshot { object_id: o[0].id.clone(), project_id: o[0].project_id.clone(), base_revision_id: stale_base },
+            draft: crate::distillation::evolution::RevisionDraft {
+                content: RevisionContent { kind: "idea".into(), title: o[0].title.clone(), body: "Stale attempt body".into() },
+                role: EvidenceRole::Asserts,
+                retracts: None,
+                interpretation_label: None,
+            },
+        },
+        parts: evolution_parts("test", vec![o[0].id.clone()]),
+    }];
+    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, false));
+    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    assert!(objects.is_empty());
+    assert!(revised.is_empty());
+    assert_eq!(pending.len(), 1);
+    assert!(proposals.is_empty());
+    let core = audit(&s).pop().expect("fallback bundle commits");
+    assert!(core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::PendingClaims)));
+    assert!(!core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::ThoughtRevisions && sql::text(&r.after, "origin").unwrap() == "system")));
+    assert!(core.operations.iter().all(|op| !matches!(op, Operation::FacetUpdate(u) if u.review_proof.is_some())));
+}
+
+#[test]
+fn w26_journal_failure_after_complete_review_sql_rolls_back() {
+    use crate::storage::proposal_store::{ReviewAction, ReviewRequest};
+    let (s, cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
+    let base = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let proposal = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &base, "Draft text", &cap.id))).0;
+    let before = snapshot(&s);
+    assert!(matches!(
+        k.write_fault(Fault::At(Stage::Commit), |w| {
+            w.review_proposal(ReviewRequest { proposal_id: proposal.id.clone(), action: ReviewAction::Approve, reviewed_revision_id: Some(base.clone()) })
+        }),
+        Err(E::Journal(J::Injected))
+    ));
+    assert_eq!(snapshot(&s), before);
+}
+
+#[test]
+fn w27_multi_entity_transaction_finalizes_exactly_one_bundle() {
+    let (s, cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let n = count(&s, "sync_bundles");
+    let out = commit(&s, &k, |w| {
+        let project = w.create_project("Joint space")?;
+        let capture = w.create_capture(CreateCaptureInput { source: "text".into(), content: "Joint capture".into(), project_id: Some(project.id.clone()) })?;
+        let objects = w.record_distillation(&capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: "Joint".into(), body: "Joint body".into(), source_start: 0, source_end: 4 }])?;
+        let edge = w.create_relation(NewRelation { kind: "depends_on".into(), source_object_id: o[0].id.clone(), target_object_id: objects[0].id.clone() }, "model")?;
+        Ok((project, capture, objects, edge))
+    });
+    assert_eq!(count(&s, "sync_bundles"), n + 1);
+    let core = audit(&s).pop().expect("joint bundle commits");
+    let mut entities: Vec<codec::EntityKind> = core.operations.iter().map(|op| match op {
+        Operation::RecordCreate(r) => r.entity,
+        Operation::FacetUpdate(u) => u.entity,
+        Operation::RelationRemove(_) => K::Relations,
+    }).collect();
+    entities.sort();
+    entities.dedup();
+    for expected in [K::Projects, K::Captures, K::DistillationRuns, K::KnowledgeObjects, K::Relations] {
+        assert!(entities.contains(&expected), "joint bundle covers {expected:?}");
+    }
+    assert!(out.1.id != cap.id);
 }

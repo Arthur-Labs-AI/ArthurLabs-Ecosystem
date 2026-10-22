@@ -834,13 +834,41 @@ fn is_null(image: &RowImage, field: &str) -> bool {
 /// transition without its required domain rows fails closure validation.
 fn validate_terminal_closure(
     entity: EntityKind,
-    _before: &RowImage,
+    before: &RowImage,
     after: &RowImage,
     context: &ReviewContext,
 ) -> Result<(), ReducerError> {
     let state = text_of(after, "state").ok_or_else(|| {
         ReducerError::TerminalClosureViolation("terminal transition without state".to_string())
     })?;
+    // O6: the review action must agree with the observed before/after
+    // transition. Metadata-only updates carry no review and never reach
+    // this check through reduce_update (no state change, no context).
+    let from = text_of(before, "state").ok_or_else(|| {
+        ReducerError::TerminalClosureViolation("transition without before state".to_string())
+    })?;
+    if from != state {
+        let agrees = matches!(
+            (entity, from, state, context.action),
+            (EntityKind::PendingClaims, "open", "deferred", ReviewAction::Defer)
+                | (EntityKind::PendingClaims, "deferred", "open", ReviewAction::Reopen)
+                | (EntityKind::PendingClaims, _, "accepted", ReviewAction::Approve)
+                | (EntityKind::PendingClaims, _, "accepted", ReviewAction::EditAndApprove)
+                | (EntityKind::PendingClaims, _, "separated", ReviewAction::KeepSeparate)
+                | (EntityKind::RevisionProposals, _, "approved", ReviewAction::Approve)
+                | (EntityKind::RevisionProposals, _, "approved", ReviewAction::EditAndApprove)
+                | (EntityKind::RevisionProposals, _, "rejected", ReviewAction::Reject)
+                | (EntityKind::RevisionProposals, _, "separated", ReviewAction::KeepSeparate)
+                | (EntityKind::RevisionProposals, _, "superseded", ReviewAction::Supersede)
+                | (EntityKind::RevisionProposals, "open", "deferred", ReviewAction::Defer)
+                | (EntityKind::RevisionProposals, "deferred", "open", ReviewAction::Reopen)
+        );
+        if !agrees {
+            return Err(ReducerError::InvalidReviewContext(
+                "review action disagrees with observed transition".to_string(),
+            ));
+        }
+    }
     match entity {
         EntityKind::PendingClaims => match state {
             "open" | "deferred" => {
@@ -863,13 +891,6 @@ fn validate_terminal_closure(
                 {
                     return Err(ReducerError::TerminalClosureViolation(
                         "accepted claim needs user resolution rows".to_string(),
-                    ));
-                }
-                if context.action != ReviewAction::Approve
-                    && context.action != ReviewAction::EditAndApprove
-                {
-                    return Err(ReducerError::InvalidReviewContext(
-                        "accepted claim needs approve action".to_string(),
                     ));
                 }
                 Ok(())

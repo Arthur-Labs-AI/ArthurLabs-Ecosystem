@@ -365,6 +365,9 @@ impl JournalTx<'_> {
     pub fn sql(&self) -> &Connection {
         self.connection
     }
+    pub(super) fn has_registered(&self, entity: EntityKind, key: Vec<String>) -> bool {
+        self.reviews.contains_key(&(entity, key))
+    }
     pub(super) fn register_review(
         &mut self,
         entity: EntityKind,
@@ -593,13 +596,6 @@ fn finalize(
     let resolver = sql::final_map(c, &effects)?;
     let mut last = BTreeMap::new();
     for e in &effects {
-        if e.before.is_none()
-            && (e.entity == EntityKind::RevisionEvidence
-                || (e.entity == EntityKind::ThoughtRevisions
-                    && e.after.as_ref().map(|r| sql::text(r, "origin")) == Some(Ok("system"))))
-        {
-            return Err(JournalError::IncompleteClosure);
-        }
         last.insert((e.entity, e.key.clone()), &e.after);
     }
     for ((entity, key), after) in last {
@@ -607,52 +603,14 @@ fn finalize(
             return Err(JournalError::MissingFinalProjection);
         }
     }
-    for e in &effects {
-        if matches!(
-            e.entity,
-            EntityKind::IdentityDecisions
-                | EntityKind::PendingClaims
-                | EntityKind::RevisionProposals
-        ) && e.before.is_none()
-        {
-            return Err(JournalError::IncompleteClosure);
-        }
-        if let (Some(before), Some(after)) = (&e.before, &e.after) {
-            if matches!(
-                e.entity,
-                EntityKind::PendingClaims | EntityKind::RevisionProposals
-            ) && before.get("state") != after.get("state")
-            {
-                let context = reviews
-                    .get(&(e.entity, e.key.clone()))
-                    .ok_or(JournalError::ReviewContext)?;
-                if context.claim_id.as_deref()
-                    != Some(if e.entity == EntityKind::PendingClaims {
-                        &e.key[0]
-                    } else {
-                        sql::text(before, "pending_claim_id")?
-                    })
-                    || (e.entity == EntityKind::RevisionProposals
-                        && context.proposal_id.as_deref() != Some(&e.key[0]))
-                {
-                    return Err(JournalError::ReviewContext);
-                }
-                return Err(JournalError::UnsupportedReview);
-            }
-        }
-    }
-    if !reviews.is_empty() {
-        return Err(JournalError::ReviewContext);
-    }
-    if effects
-        .iter()
-        .any(|e| e.entity == EntityKind::RevisionProposals)
-    {
-        return Err(JournalError::IncompleteClosure);
-    }
     hooks.at(Stage::Priors)?;
     let priors = stream.priors(c, &effects)?;
     let baselines = stream.baselines();
+    // Identity, claim, proposal and evidence creates, state transitions and
+    // registered reviews now flow into the reducer: closure is enforced by
+    // validate_closure/extra_closure, proofs by the shared codec rule, and
+    // terminal/action agreement by validate_terminal_closure. Unconsumed
+    // review registrations are rejected after reduction below.
     let operations = reducer::reduce_effects(
         &effects,
         &resolver,
@@ -664,6 +622,15 @@ fn finalize(
     .map_err(reducer_error)?;
     if operations.is_empty() {
         return Err(JournalError::UnsupportedEffects);
+    }
+    for id in reviews.keys() {
+        let consumed = operations.iter().any(|op| {
+            matches!(op, Operation::FacetUpdate(u) if u.review_proof.is_some())
+                && (op.entity(), op.key().to_vec()) == (id.0, id.1.clone())
+        });
+        if !consumed {
+            return Err(JournalError::ReviewContext);
+        }
     }
     let creations: BTreeSet<Key> = operations
         .iter()
@@ -809,6 +776,16 @@ fn extra_closure(
         }
         Ok(())
     };
+    let mut evidenced: BTreeSet<String> = BTreeSet::new();
+    for op in ops {
+        if let Operation::RecordCreate(c) = op {
+            if c.entity == EntityKind::RevisionEvidence {
+                if let Some(FieldValue::Text(revision)) = c.after.get("revision_id") {
+                    evidenced.insert(revision.clone());
+                }
+            }
+        }
+    }
     for op in ops {
         let row = match op {
             Operation::RecordCreate(r) => &r.after,
@@ -846,6 +823,9 @@ fn extra_closure(
                     _ => n == 1,
                 };
                 if !valid {
+                    return Err(JournalError::IncompleteClosure);
+                }
+                if sql::text(row, "origin")? == "system" && !evidenced.contains(sql::text(row, "id")?) {
                     return Err(JournalError::IncompleteClosure);
                 }
             }

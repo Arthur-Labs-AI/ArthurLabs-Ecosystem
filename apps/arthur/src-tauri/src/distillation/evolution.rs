@@ -290,7 +290,7 @@ fn unchecked_name(reason: UncheckedReason) -> &'static str {
 
 /// What every decision of one claim records, taken from the resolver's audit (ids, scores, versions; never text).
 #[derive(Clone)]
-struct Parts {
+pub(crate) struct Parts {
     policy_version: String,
     model_id: Option<String>,
     vetoes: Vec<String>,
@@ -298,6 +298,9 @@ struct Parts {
 }
 
 impl Parts {
+    pub(crate) fn synthetic(policy_version: String, model_id: Option<String>, vetoes: Vec<String>, audit: DecisionAudit) -> Self {
+        Self { policy_version, model_id, vetoes, audit }
+    }
     fn from(audit: &Audit) -> Self {
         let mut vetoes: Vec<String> = Vec::new();
         for veto in &audit.vetoes {
@@ -347,7 +350,7 @@ impl Parts {
 // ---------------------------------------------------------------------------------------------------------------------------------
 // Planning (no lock held).
 
-enum Plan {
+pub(crate) enum Plan {
     /// `None`: a classifier ran and found no referent (verified NEW). `Some(reason)`: identity was NOT established.
     New(Option<&'static str>),
     Revise { target: TargetSnapshot, draft: RevisionDraft },
@@ -359,21 +362,21 @@ enum Plan {
 }
 
 /// Everything a proposal stores, decided before the transaction (the claim's id is only known inside it).
-struct ProposalDraft {
-    change: &'static str,
-    kind: String,
-    title: String,
-    body: String,
-    retracts: Option<(String, i64)>,
-    evidence: Vec<EvidenceRef>,
-    synthesis_model: String,
-    verifier_model: String,
-    mode: &'static str,
+pub(crate) struct ProposalDraft {
+    pub(crate) change: &'static str,
+    pub(crate) kind: String,
+    pub(crate) title: String,
+    pub(crate) body: String,
+    pub(crate) retracts: Option<(String, i64)>,
+    pub(crate) evidence: Vec<EvidenceRef>,
+    pub(crate) synthesis_model: String,
+    pub(crate) verifier_model: String,
+    pub(crate) mode: &'static str,
 }
 
-struct Planned {
-    plan: Plan,
-    parts: Parts,
+pub(crate) struct Planned {
+    pub(crate) plan: Plan,
+    pub(crate) parts: Parts,
 }
 
 /// The pool objects that share the most words with the claim, at most `MAX_CANDIDATES`. Nothing outside the pool (one project) exists
@@ -502,7 +505,7 @@ fn plan_one(store: &CaptureStore, pipeline: &EvolutionPipeline, resolution: Reso
 
 type R<T> = Result<T, IdentityStoreError>;
 
-enum Committed {
+pub(crate) enum Committed {
     /// Another attempt finished this capture first; nothing was written.
     Existing(Vec<KnowledgeObject>),
     Fresh { objects: Vec<KnowledgeObject>, revised: Vec<RevisedObject>, pending: Vec<PendingClaim>, proposals: Vec<String> },
@@ -622,7 +625,7 @@ fn try_revise(tx: &Connection, ctx: &Ctx<'_>, ordinal: i64, claim: &NewKnowledge
     }
 }
 
-fn apply(tx: &Connection, capture_id: &str, claims: &[NewKnowledgeObject], planned: Vec<Planned>, limits: &EvolutionLimits, allowed: &dyn Fn() -> bool, review_first: bool) -> R<Committed> {
+pub(crate) fn apply(tx: &Connection, capture_id: &str, claims: &[NewKnowledgeObject], planned: Vec<Planned>, limits: &EvolutionLimits, allowed: &dyn Fn() -> bool, review_first: bool) -> R<Committed> {
     let start = match begin_distillation_in(tx, capture_id)? {
         Begin::Existing(existing) => return Ok(Committed::Existing(existing)),
         Begin::Fresh(start) => start,
