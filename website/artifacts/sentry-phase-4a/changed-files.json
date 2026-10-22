@@ -1,0 +1,22 @@
+{
+  "modified": [],
+  "created": [
+    "src/components/sentry-concept/data.ts",
+    "src/components/sentry-concept/geometry.ts",
+    "src/components/sentry-concept/PipelineScene.tsx",
+    "src/components/sentry-concept/createChamber.ts",
+    "src/components/sentry-concept/RunReport.tsx",
+    "src/components/sentry-concept/Explanation.tsx",
+    "src/components/sentry-concept/ChamberExperience.tsx",
+    "src/components/sentry-concept/Hero.tsx",
+    "src/components/sentry-concept/ScopeComparison.tsx",
+    "src/components/sentry-concept/SupportingSections.tsx",
+    "src/components/sentry-concept/releases.ts",
+    "src/components/sentry-concept/Downloads.tsx",
+    "src/components/sentry-concept/chamber.module.css",
+    "src/app/sentry/concept/page.tsx",
+    "public/images/sentry-finding.webp",
+    "public/images/sentry-mark.webp",
+    "tests/sentry-concept.spec.ts"
+  ]
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "name": "idle-in-film",
+    "frames": 165,
+    "median": 16.699999999999818,
+    "p95": 50
+  },
+  {
+    "name": "film-scroll",
+    "frames": 22,
+    "median": 150,
+    "p95": 283.3000000000011
+  },
+  {
+    "name": "diagnostic-only-svg-hidden-scroll",
+    "frames": 25,
+    "median": 116.69999999999891,
+    "p95": 416.60000000000036
+  },
+  {
+    "name": "diagnostic-only-transform-layer-hint",
+    "frames": 21,
+    "median": 166.60000000000218,
+    "p95": 383.3999999999978
+  },
+  {
+    "name": "baseline-repeat",
+    "frames": 27,
+    "median": 116.69999999999709,
+    "p95": 233.29999999999927
+  },
+  {
+    "name": "layer-hint-repeat",
+    "frames": 22,
+    "median": 166.60000000000218,
+    "p95": 283.5
+  }
+]

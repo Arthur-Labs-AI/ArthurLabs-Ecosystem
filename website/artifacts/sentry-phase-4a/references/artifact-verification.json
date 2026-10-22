@@ -1,0 +1,18 @@
+[
+  {
+    "name": "sentry-1.0.2-2640efcd7874-windows-x64.zip",
+    "url": "https://github.com/Mert1026/Sentry/releases/download/v1.0.2/sentry-1.0.2-2640efcd7874-windows-x64.zip",
+    "bytes": 122864963,
+    "sha256": "5265713af248297c543bf0d41093258bd0e7d8c177e0b1c544e733750347286f",
+    "publishedDigest": "sha256:5265713af248297c543bf0d41093258bd0e7d8c177e0b1c544e733750347286f",
+    "sidecarText": null
+  },
+  {
+    "name": "sentry-1.0.2-2640efcd7874-windows-x64.zip.sha256",
+    "url": "https://github.com/Mert1026/Sentry/releases/download/v1.0.2/sentry-1.0.2-2640efcd7874-windows-x64.zip.sha256",
+    "bytes": 108,
+    "sha256": "7f177f9dd1bc39267ab2118921ff19a8348870adee3f9d0f015548f70afd3d35",
+    "publishedDigest": "sha256:7f177f9dd1bc39267ab2118921ff19a8348870adee3f9d0f015548f70afd3d35",
+    "sidecarText": "5265713af248297c543bf0d41093258bd0e7d8c177e0b1c544e733750347286f  sentry-1.0.2-2640efcd7874-windows-x64.zip\n"
+  }
+]

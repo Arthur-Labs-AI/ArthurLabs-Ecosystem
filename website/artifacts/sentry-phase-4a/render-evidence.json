@@ -1,0 +1,1462 @@
+[
+  {
+    "width": 1440,
+    "name": "opening",
+    "geometry": {
+      "p": "0.01499",
+      "split": "0.00000",
+      "camera": "translate(500 380) scale(1.13779100082924) translate(-500 -218.46783015457999)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(500 762)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 762)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(500 762)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1440,
+    "name": "snapshot",
+    "geometry": {
+      "p": "0.12994",
+      "split": "0.00000",
+      "camera": "translate(500 380) scale(1.0800000383313975) translate(-500 -439.99985306297674)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(500 762)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 762)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(500 762)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1440,
+    "name": "half-split",
+    "geometry": {
+      "p": "0.24499",
+      "split": "0.49987",
+      "camera": "translate(500 380) scale(0.8840603050901806) translate(-500 -681.1565475813161)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 691.3353750001464,340.04159999958335 701.4837500001627,340.04159999958335 802.9675000003255",
+          "draw": "0.500129999998698"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 691.3353750001464,500 701.4837500001627,500 802.9675000003255",
+          "draw": "0.5671946157381134"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 691.3353750001464,659.9584000004166 701.4837500001627,659.9584000004166 802.9675000003255",
+          "draw": "0.6378188793052499"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(340.04159999958335 886.9675000003255)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 886.9675000003255)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(659.9584000004166 886.9675000003255)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1440,
+    "name": "split",
+    "geometry": {
+      "p": "0.32996",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(0.8402272885626656) translate(-500 -805.8485207420421)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 747.6727847709427,180 764.0808719677141,180 928.1617439354281",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 747.6727847709427,500 764.0808719677141,500 928.1617439354281",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 747.6727847709427,820 764.0808719677141,820 928.1617439354281",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1017.8458879519039)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 1017.8458879519039)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(820 1017.8458879519039)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1440,
+    "name": "investigations",
+    "geometry": {
+      "p": "0.55003",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(1.5999998808775284) translate(-310.00003328422 -1090.000029780618)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 750.75,180 767.5,180 935",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 750.75,500 767.5,500 935",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 750.75,820 767.5,820 935",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1265)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 1265)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(820 1265)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1440,
+    "name": "partial",
+    "geometry": {
+      "p": "0.66994",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(0.9200004441284504) translate(-499.99987590528593 -1259.9998889678875)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 865.8664157868374,180 895.4071286520415,180 1190.814257304083",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 865.8664157868374,500 895.4071286520415,500 1190.814257304083",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 865.8664157868374,820 895.4071286520415,820 1190.814257304083",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1298.7867887005393)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 1298.7867887005393)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(820 1298.7867887005393)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1440,
+    "name": "convergence-midpoint",
+    "geometry": {
+      "p": "0.79998",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(0.8629208270065116) translate(-500 -1611.9882334598447)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 870,500 900,500 1200",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 870,820 900,820 1200",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(223.38223589710952 1581.2880965587897)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(499.99999999999994 1546.4624781853145)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(796.0528335318904 1511.3990093808088)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1440,
+    "name": "report",
+    "geometry": {
+      "p": "0.93995",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(0.9499999453414024) translate(-500 -1989.99978136561)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 870,500 900,500 1200",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 870,820 900,820 1200",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(280 1930)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 1930)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(720 1930)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1440,
+    "name": "recorded",
+    "geometry": {
+      "p": "1.00000",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(1) translate(-500 -2020)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 870,500 900,500 1200",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 870,820 900,820 1200",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(280 1930)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 1930)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(720 1930)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1440,
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "width": 1920,
+    "name": "opening",
+    "geometry": {
+      "p": "0.01497",
+      "split": "0.00000",
+      "camera": "translate(500 380) scale(1.1377969292508274) translate(-500 -218.4451045384949)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(500 762)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 762)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(500 762)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1920,
+    "name": "snapshot",
+    "geometry": {
+      "p": "0.13003",
+      "split": "0.00000",
+      "camera": "translate(500 380) scale(1.079999980326651) translate(-500 -440.0000242133529)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 635.1,500 639,500 678",
+          "draw": "1"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(500 762)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 762)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(500 762)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1920,
+    "name": "half-split",
+    "geometry": {
+      "p": "0.24500",
+      "split": "0.49996",
+      "camera": "translate(500 380) scale(0.8840422285261076) translate(-500 -681.1787956601752)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 691.3455000000042,340.0127999999879 701.4950000000047,340.0127999999879 802.9900000000094",
+          "draw": "0.5000399999999623"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 691.3455000000042,500 701.4950000000047,500 802.9900000000094",
+          "draw": "0.5671022626186798"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 691.3455000000042,659.9872000000121 701.4950000000047,659.9872000000121 802.9900000000094",
+          "draw": "0.6377257808862509"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(340.0127999999879 886.9900000000094)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 886.9900000000094)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(659.9872000000121 886.9900000000094)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1920,
+    "name": "split",
+    "geometry": {
+      "p": "0.33003",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(0.840310843403548) translate(-500 -806.037911714709)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 747.6737497519839,180 764.0819441688709,180 928.1638883377419",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 747.6737497519839,500 764.0819441688709,500 928.1638883377419",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 747.6737497519839,820 764.0819441688709,820 928.1638883377419",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1017.9233927783849)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 1017.9233927783849)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(820 1017.9233927783849)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1920,
+    "name": "investigations",
+    "geometry": {
+      "p": "0.54995",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(1.5999997342851953) translate(-310.00008013621095 -1090.0000042176953)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 750.75,180 767.5,180 935",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 750.75,500 767.5,500 935",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 750.75,820 767.5,820 935",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1265)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 1265)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(820 1265)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1920,
+    "name": "partial",
+    "geometry": {
+      "p": "0.66997",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(0.9200001032595089) translate(-499.99997114807843 -1259.9999741851227)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 865.8892687911,180 895.432520879,180 1190.865041758",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 865.8892687911,500 895.432520879,500 1190.865041758",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 865.8892687911,820 895.432520879,820 1190.865041758",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1298.7934960812452)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 1298.7934960812452)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(820 1298.7934960812452)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1920,
+    "name": "convergence-midpoint",
+    "geometry": {
+      "p": "0.80000",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(0.8629155555555555) translate(-500 -1612.0207407407408)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 870,500 900,500 1200",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 870,820 900,820 1200",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(223.40710022014963 1581.3708076923374)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500.00000000000006 1546.5453533776613)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(796.0323374800487 1511.4827401926407)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1920,
+    "name": "report",
+    "geometry": {
+      "p": "0.93995",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(0.9499999453414024) translate(-500 -1989.99978136561)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 870,500 900,500 1200",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 870,820 900,820 1200",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(280 1930)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 1930)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(720 1930)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1920,
+    "name": "recorded",
+    "geometry": {
+      "p": "1.00000",
+      "split": "1.00000",
+      "camera": "translate(500 380) scale(1) translate(-500 -2020)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M500 600 C500 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M500 600 C500 870,500 900,500 1200",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M500 600 C500 870,820 900,820 1200",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(280 1930)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(500 1930)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(720 1930)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 1920,
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "name": "opening",
+    "geometry": {
+      "p": "0.01499",
+      "split": "0.00000",
+      "camera": "translate(180 185) scale(1) translate(-180 -217.73644117801126)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 597.3,180 597,180 594",
+          "draw": "1"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 597.3,180 597,180 594",
+          "draw": "1"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 597.3,180 597,180 594",
+          "draw": "1"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 706)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 706)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 706)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 768,
+    "name": "snapshot",
+    "geometry": {
+      "p": "0.13001",
+      "split": "0.00000",
+      "camera": "translate(180 185) scale(0.9999999992733707) translate(-180 -420.00000103804194)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 597.3,180 597,180 594",
+          "draw": "1"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 597.3,180 597,180 594",
+          "draw": "1"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 597.3,180 597,180 594",
+          "draw": "1"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 706)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 706)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 706)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 768,
+    "name": "half-split",
+    "geometry": {
+      "p": "0.24493",
+      "split": "0.49929",
+      "camera": "translate(180 185) scale(0.7891135151365702) translate(-180 -721.2664069477568)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 616.3978425081127,125.0780999766695 618.2198250090141,125.0780999766695 636.4396500180281",
+          "draw": "0.5007099997879045"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 646.7297100209975,180 651.9219000233305,180 703.843800046661",
+          "draw": "0.5677897303489863"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 677.0615775338822,234.9219000233305 685.6239750376469,234.9219000233305 771.2479500752938",
+          "draw": "0.6384187361830094"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(125.0780999766695 748.4396500180281)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 815.843800046661)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(234.9219000233305 883.2479500752938)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 768,
+    "name": "split",
+    "geometry": {
+      "p": "0.32995",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(0.7577415637401601) translate(-180 -857.74156374016)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 638.2082224561206,72.53823324803174 642.4535805068006,72.53823324803174 684.9071610136012",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 701.190713972003,180 712.4341266355589,180 824.8682532711177",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 764.1732054878855,287.46176675196824 782.4146727643172,287.46176675196824 964.8293455286343",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(72.53823324803174 801.9374778142459)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 941.8985700717624)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(287.46176675196824 1081.859662329279)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 768,
+    "name": "investigations",
+    "geometry": {
+      "p": "0.55001",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(1.0399999981438428) translate(-180 -1100.000004556022)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 750.75,180 767.5,180 935",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 908.25,180 942.5,180 1285",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 1065.75,180 1117.5,180 1635",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1265)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 1615)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 1965)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 768,
+    "name": "partial",
+    "geometry": {
+      "p": "0.66996",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(0.930000038514142) translate(-180 -1369.9999054652878)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 865.8782435116532,180 895.4202705685035,180 1190.840541137007",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 923.4556170675769,180 959.3951300750854,180 1318.7902601501708",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 981.0329906235006,180 1023.3699895816673,180 1446.7399791633345",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1298.7902601501708)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 1426.7399791633345)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 1554.6896981764983)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 768,
+    "name": "convergence-midpoint",
+    "geometry": {
+      "p": "0.79997",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(0.8063380837159563) translate(-180 -1750.4982039509039)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 924,180 960,180 1320",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 978,180 1020,180 1440",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(147.59479175304884 1581.218445746636)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180.00000000000003 1645.2733142023228)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(215.49965498319338 1715.1007550465251)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 768,
+    "name": "report",
+    "geometry": {
+      "p": "0.93994",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(0.9999998346828812) translate(-180 -2029.9997850877457)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 924,180 960,180 1320",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 978,180 1020,180 1440",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1930)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 1996)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 2062)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 768,
+    "name": "recorded",
+    "geometry": {
+      "p": "1.00000",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(1) translate(-180 -2050)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 924,180 960,180 1320",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 978,180 1020,180 1440",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1930)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 1996)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 2062)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 768,
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "name": "opening",
+    "geometry": {
+      "p": "0.01497",
+      "split": "0.00000",
+      "camera": "translate(180 185) scale(1) translate(-180 -217.715685678319)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 597.3,180 597,180 594",
+          "draw": "1"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 597.3,180 597,180 594",
+          "draw": "1"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 597.3,180 597,180 594",
+          "draw": "1"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 706)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 706)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 706)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "name": "snapshot",
+    "geometry": {
+      "p": "0.12995",
+      "split": "0.00000",
+      "camera": "translate(180 185) scale(1) translate(-180 -419.99989132714376)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 597.3,180 597,180 594",
+          "draw": "1"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 597.3,180 597,180 594",
+          "draw": "1"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 597.3,180 597,180 594",
+          "draw": "1"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 706)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 706)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 706)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "name": "half-split",
+    "geometry": {
+      "p": "0.24503",
+      "split": "0.50027",
+      "camera": "translate(180 185) scale(0.7889015132816247) translate(-180 -721.569266740536)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 616.4353274995539,124.97030000128305 618.2614749995043,124.97030000128305 636.5229499990086",
+          "draw": "0.499730000011664"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 646.8267299988453,180 652.029699998717,180 704.059399997434",
+          "draw": "0.5667841415747645"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 677.2181324981367,235.02969999871695 685.7979249979296,235.02969999871695 771.5958499958592",
+          "draw": "0.6374050733153668"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(124.97030000128305 748.5229499990086)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 816.059399997434)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(235.02969999871695 883.5958499958592)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "name": "split",
+    "geometry": {
+      "p": "0.32995",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(0.7577301070790037) translate(-180 -857.7301070790037)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 638.205637720088,72.5357651841119 642.4507085778756,72.5357651841119 684.9014171557512",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 701.1859584615682,180 712.4288427350759,180 824.8576854701518",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 764.1662792030486,287.4642348158881 782.4069768922761,287.4642348158881 964.8139537845523",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(72.5357651841119 801.9268427024458)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 941.8831110168463)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(287.4642348158881 1081.8393793312468)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "name": "investigations",
+    "geometry": {
+      "p": "0.54995",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(1.0399999765985593) translate(-180 -1100)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 750.75,180 767.5,180 935",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 908.25,180 942.5,180 1285",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 1065.75,180 1117.5,180 1635",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1265)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 1615)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 1965)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "name": "partial",
+    "geometry": {
+      "p": "0.66995",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(0.9300000643539624) translate(-180 -1369.999842040274)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 865.8687825667005,180 895.409758407445,180 1190.81951681489",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 923.4543675088096,180 959.3937416764551,180 1318.7874833529102",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 981.0399524509186,180 1023.377724945465,180 1446.75544989093",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1298.78748335291)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 1426.75544989093)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 1554.72341642895)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "name": "convergence-midpoint",
+    "geometry": {
+      "p": "0.80000",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(0.806317037037037) translate(-180 -1750.5629629629632)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 924,180 960,180 1320",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 978,180 1020,180 1440",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(147.6095572004178 1581.3708076923374)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180.00000000000003 1645.412894516719)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(215.5017898909819 1715.2285561596168)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "name": "report",
+    "geometry": {
+      "p": "0.94000",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(1) translate(-180 -2030)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 924,180 960,180 1320",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 978,180 1020,180 1440",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1930)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 1996)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 2062)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "name": "recorded",
+    "geometry": {
+      "p": "1.00000",
+      "split": "1.00000",
+      "camera": "translate(180 185) scale(1) translate(-180 -2050)",
+      "branches": [
+        {
+          "id": "opencode",
+          "d": "M180 600 C50 870,180 900,180 1200",
+          "draw": "0"
+        },
+        {
+          "id": "deepseek",
+          "d": "M180 600 C180 924,180 960,180 1320",
+          "draw": "0"
+        },
+        {
+          "id": "glm",
+          "d": "M180 600 C310 978,180 1020,180 1440",
+          "draw": "0"
+        }
+      ],
+      "packets": [
+        {
+          "origin": "opencode",
+          "transform": "translate(180 1930)"
+        },
+        {
+          "origin": "deepseek",
+          "transform": "translate(180 1996)"
+        },
+        {
+          "origin": "glm",
+          "transform": "translate(180 2062)"
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "errors": [],
+    "overflow": false
+  }
+]

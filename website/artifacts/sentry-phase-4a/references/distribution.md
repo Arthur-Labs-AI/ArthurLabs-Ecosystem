@@ -1,0 +1,374 @@
+# Installing a pinned Sentry Windows distribution
+
+The Windows patch release version is **1.0.2**, runtime protocol **1**, for
+**Windows 11 x64 + WSL2** (Ubuntu preferred). Packages remain unsigned ZIPs.
+See the [patch release notes](../releases/v1.0.2.md); the public Release page records
+availability, exact source identity and download checksums. Historical
+[v1.0.0 preparation evidence](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-6-6-stable-readiness.md) retains
+its original source and scope.
+
+Windows Desktop uses the Linux execution runtime, systemd and bubblewrap isolation.
+Native Linux Desktop is deferred; CachyOS instructions below retain the experimental
+development target. Ubuntu CI/WSL is not native CachyOS acceptance. There is no
+automatic updater, offline install, signed MSI/MSIX/EXE installer or macOS support.
+Historical beta and internal RC preparation receipts retain their original
+versions, sources and hashes; none establishes a public RC release.
+
+The adopted [Recovery Option A](../releases/v1-recovery-policy-decision.md) remains
+limited to historical corrected Windows/I1 source
+`c78faa74717b0f430a859730e98c3c4915e7b03f` and its tested same-account/machine/DPAPI,
+schema and stopped-backup scope. Original-beta credential rollback remains FAIL.
+Do not use the fixed-I1 helper with a stable or RC identity, or substitute an
+earlier ZIP for a later source commit. Each owner merge requires a fresh matching
+archive and checksum. No recovery or publication operation is authorized here.
+
+Optional elevated WSL disk reclamation uses fixed inline executable code and
+private operation state under the Windows home directory at
+`.sentry-wsl-maintenance`, independent of custom profiles and general Temp/AppData.
+Restrictive ACL/ownership/reparse checks and authenticated, contained, exclusive
+receipts are documented in the [maintenance boundary](../security/wsl-maintenance.md).
+Unsafe home ancestry fails closed without changing owner permissions. This does
+not claim resistance to complete owner-account/application compromise. Ordinary
+setup/open does not require invoking disk reclamation. See the
+[Phase 6.5 correction handoff](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-6-5-wsl-helper-hardening.md)
+for the original security fixtures; the stable handoff records integration checks.
+
+## Obtain, verify and extract
+
+The published Windows Stable archive is available on the
+[official Release page](https://github.com/Mert1026/Sentry/releases/tag/v1.0.2),
+including PowerShell commands that download both assets automatically.
+GitHub Actions artifacts are unsigned review candidates and expire after seven
+days; use those only when approved for testing. No GitHub token is embedded or
+needed for public Stable downloads. Obtain the matching `.sha256` through the
+trusted release/delivery channel. A checksum
+detects corruption, not publisher identity if both files are substituted.
+
+Archive names include version, 12-digit source SHA and target platform. Each
+contains a versioned top-level directory. Never extract over an existing install.
+Keep the previous verified archive/directory until the new candidate is accepted.
+
+Windows PowerShell (replace placeholders with the actual approved filename):
+
+```powershell
+$archive = 'sentry-<version>-<sha12>-windows-x64.zip'
+$ErrorActionPreference = 'Stop'
+$archive = (Resolve-Path -LiteralPath $archive -ErrorAction Stop).Path
+$expected = ((Get-Content -LiteralPath ($archive + '.sha256') -Raw -ErrorAction Stop).Trim() -split '\s+')[0]
+if ($expected -notmatch '^[a-fA-F0-9]{64}$') { throw 'Invalid checksum sidecar' }
+if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256 -ErrorAction Stop).Hash -ine $expected) { throw 'Checksum mismatch' }
+Expand-Archive -LiteralPath $archive -DestinationPath "$env:LOCALAPPDATA\Sentry\distributions\<sha12>"
+cd "$env:LOCALAPPDATA\Sentry\distributions\<sha12>\sentry-<version>-<sha12>-windows-x64"
+.\sentry.ps1 version
+```
+
+Deferred native development archive (not an official Windows v1 asset):
+
+```bash
+sha256sum -c sentry-<version>-<sha12>-cachyos-x64.tar.gz.sha256
+mkdir -p "$HOME/.local/share/sentry/distributions/<sha12>"
+tar -xzf sentry-<version>-<sha12>-cachyos-x64.tar.gz -C "$HOME/.local/share/sentry/distributions/<sha12>"
+cd "$HOME/.local/share/sentry/distributions/<sha12>/sentry-<version>-<sha12>-cachyos-x64"
+./sentry version
+```
+
+Keep this directory immutable. `version` checks the entire per-file inventory,
+Desktop/runtime identities, and required resources without consulting Git.
+Reject unexpected files, mismatched SHA/version, unsupported architecture and
+missing components. Do not edit the manifest to repair an invalid archive.
+
+## Windows 11 and WSL2 installation
+
+Desktop bundles Electron and its reachable production dependency graph. Windows
+Node, pnpm and Git are not required to launch/install Desktop. PowerShell and WSL
+are host dependencies. Setup reuses the existing distro-selection/conversion/
+reboot guidance, ignores utility distros, and can pause with exit 75. Rerun after
+reboot/Ubuntu account creation. It does not start a paid agent.
+
+```powershell
+.\sentry.ps1 setup -Distro Ubuntu
+```
+
+Windows v1.0.1 and later archives register a per-user `sentry` command after
+successful setup. Open a new terminal to pick up the user PATH. In an already-open
+PowerShell window, refresh just the command location:
+
+```powershell
+$env:Path += ";$env:LOCALAPPDATA\Sentry\bin"
+sentry version
+sentry open
+```
+
+PowerShell and Command Prompt then resolve `sentry` from any directory. The command
+points to this extracted archive; keep the directory in place. Re-register a moved
+archive without installing the runtime or stopping Desktop:
+
+```powershell
+.\sentry.ps1 register-command
+```
+
+The original published v1.0.0 archive lacks built-in registration. Follow its
+Release page rather than running a command it does not implement. No published
+archive bytes are changed by this source fix.
+
+Bootstrap requires **standalone Linux Node >=22** and **Linux pnpm 9.12.3**,
+systemd user services, bubblewrap and socat. If absent it fails with guidance.
+Install prerequisites inside Ubuntu/WSL (not in Windows):
+
+```bash
+node --version                         # >=22; must also resolve via direct wsl.exe execution
+npm install --prefix "$HOME/.local/share/sentry/pnpm" pnpm@9.12.3
+export PATH="$HOME/.local/share/sentry/pnpm/node_modules/.bin:$PATH"
+sudo apt update
+sudo apt install -y bubblewrap socat systemd
+systemctl --user show-environment
+```
+
+For missing Node follow [the WSL setup guide](wsl-runtime.md); install Linux Node
+22+ so `wsl -d Ubuntu -- node --version` succeeds. For pinned pnpm, add a
+user-owned symlink from its executable to `~/.local/bin/pnpm` and make that
+directory visible to direct WSL execution, or install the pin through the
+host's existing supported package manager. A login-shell-only PATH is insufficient.
+Enable `systemd=true` under `[boot]` in `/etc/wsl.conf`, preserving/backing up
+existing settings; terminate only the selected idle distro and restart it.
+If required, `sudo loginctl enable-linger "$USER"`. These privileged commands
+are **manual, explicit actions**. Bootstrap does not run hidden sudo.
+
+After prerequisites, repeat setup from the archive. It copies only the allowlisted
+runtime source into a Linux-owned unique version directory, installs the frozen
+dependency graph and builds it there. Logs are under Linux
+`~/.local/share/sentry/logs/release-*.log`. Internet is required for npm/pnpm
+dependencies and provider tooling, and potentially OS packages. No manual monorepo
+build is required. Runtime validation and shutdown use disposable data, not your DB.
+
+```powershell
+.\sentry.ps1 tools -Distro Ubuntu       # pinned tool provisioning; no provider requests
+.\sentry.ps1 open
+.\sentry.ps1 status
+.\sentry.ps1 doctor
+.\sentry.ps1 stop
+```
+
+The selected WSL distro is saved through Desktop's existing preference mechanism.
+`tools` installs tested OpenCode 1.18.32, DeepSeek SDK wrapper 0.1.5-rc.2 and
+Claude Code 2.1.270, and persists non-secret binary paths through Desktop.
+Configure credentials only in **Settings → Providers**. Verify Environment's
+connected Linux runtime and readiness for your selected agents before QA.
+Process launch or credential presence does not prove provider credit/readiness.
+
+## Packaged CLI
+
+Windows v1.0.2 archives include `CLI.md` and a production
+frontend. Windows uses the included Electron runtime, so Windows Node, pnpm and
+Git are not required. The immutable published v1.0.0 and v1.0.1 ZIPs predate this
+change and their launchers do not implement `sentry cli`; upgrading requires a
+new verified archive, not editing those installations in place.
+
+After setup, open a new terminal and start Desktop before CLI operations:
+
+```powershell
+sentry open
+sentry cli capabilities --json
+sentry cli agent list --json
+sentry cli project list --json
+```
+
+See the [CLI command examples](../beta/cli.md#command-examples) for project import,
+updates, Full/Targeted QA, status, cancellation, results and JSON/log exports.
+The archive's `CLI.md` contains the same examples. These commands use the same
+projects and runs as Desktop. Provider configuration stays in Desktop Settings.
+Run-start commands execute real agents and may incur provider charges.
+
+## Project imports
+
+New imports and updates skip the existing Node/Git/build exclusions plus known
+Python caches (`.pytest_cache`, `.pytest-tmp`, `.pytest-tmp-*`, `.mypy_cache`,
+`.ruff_cache`, `__pycache__`), environments (`.venv`, `venv`), `.cache`, `.tmp`,
+and Next/Nuxt output (`.next`, `.nuxt`) at any depth. They are pruned before directory
+traversal, so an inaccessible generated cache does not prevent source import.
+Original source files and permissions are never changed. The runtime's explicit
+`SENTRY_IMPORT_INCLUDE_ALL=1` opt-out retains full-tree import behavior.
+
+The source `.gitignore` is not evaluated. Local data such as `.data` remains
+eligible and can be large. An unreadable non-excluded path fails with a path-specific
+permission message; it is never silently omitted. Disk exhaustion identifies the
+storage problem and the need for Windows backing-drive space under WSL. Import
+retains a managed copy and immutable revision, with copy fallback when reflinks are
+unavailable. Linux's virtual free-space figure alone does not establish Windows
+drive headroom.
+
+Source filtering is separate from the frozen revision hash rules. Existing v2
+revisions which retained caches remain hashable and detect changes to those bytes.
+Updating creates a new filtered revision; it does not rewrite historical material.
+
+## Deferred CachyOS development installation
+
+Use your normal graphical session, never root. Setup rejects other native Linux
+distributions and missing graphics. System prerequisites (explicit manual action):
+
+```bash
+sudo pacman -S --needed nodejs npm systemd bubblewrap socat curl ca-certificates
+node --version                          # >=22
+systemctl --user show-environment
+bwrap --dev-bind / / --proc /proc /usr/bin/true
+npm install --prefix "$HOME/.local/share/sentry/pnpm" pnpm@9.12.3
+export PATH="$HOME/.local/share/sentry/pnpm/node_modules/.bin:$PATH"
+./sentry setup
+./sentry tools
+./sentry open
+./sentry status
+./sentry doctor
+./sentry stop
+```
+
+No system package hooks, global npm provider installs or automatic shell-rc edits.
+Keep Electron/worker sandboxes enabled. If Chromium cannot create its sandbox,
+repair host user-namespace/prerequisite configuration; never add `--no-sandbox`.
+`tools` uses the existing managed installers and persists paths through packaged
+Desktop. Configure credentials and check Environment. The owner has confirmed
+normal native functionality; exact Phase 6.1 RC archive smoke remains **PENDING**,
+as requested by the owner. Native recovery remains independently unverified.
+No AppImage/AUR/native package is promised.
+
+## Explicit release upgrade, repair and source-beta migration
+
+For a published upgrade, use that new Release page's **Update an existing
+installation** PowerShell section. It must provide the real version, exact ZIP,
+source SHA and SHA256, automatic download/verification and a separate extraction
+directory; commands must work from any working directory. Stop the current
+installation and back up its actual data/profile first as described below.
+Run the new archive's setup/tools, open a new terminal, then verify `sentry version`,
+Environment's matching runtime, existing projects/history/provider settings and
+`sentry cli capabilities --json`. Retain the prior matched archive/runtime and
+stopped backup until acceptance. A new archive does not require deleting WSL or
+removing user data. Failed setup must preserve the prior active runtime.
+
+`sentry update` in an archive always refuses. It never follows origin/dev,
+origin/main, or downloads another candidate. Source clones retain the development-only updater;
+pinned source-beta tags retain their existing refusal. Successful Windows v1.0.1 and later
+setup registers the per-user command for the chosen archive. Keep that directory
+in place and open a new terminal after setup; use `register-command` after moving
+it. Source checkouts retain their separate development channel.
+
+1. Cancel QA and retests, wait for terminal outcomes, stop the owning Desktop.
+   Setup requests graceful Windows shutdown and refuses if processes remain;
+   Linux bootstrap conservatively refuses any running Sentry runtime. No process
+   is killed as a maintenance shortcut. Also close source Desktop instances that
+   are offline before maintenance. Do not run source setup and release setup together.
+2. With all Sentry components stopped, back up the **actual** Linux data root
+   shown by Environment (default `~/.local/share/sentry`; honor any prior
+   `SENTRY_DATA_ROOT` / XDG override), plus Desktop's
+   `%APPDATA%\@qa\desktop` or Linux appData `@qa/desktop` directory. Keep the
+   backup private. It contains databases/projects and encrypted provider stores.
+   Do not copy/decrypt credentials to another OS/user/keychain.
+3. Extract and verify the newly approved archive in a separate version/SHA
+   directory. Run its setup/tools; open it and confirm Environment, import a
+   disposable project, and reopen history/results. Runtime and Desktop must match
+   full SHA/version; a mismatch refuses boot instead of reporting health.
+4. Setup validates the candidate before atomically moving `runtime/current`, then
+   verifies that target again. Failure restores the previous symlink or removes
+   current on first-install failure. Unique directories preserve same-version
+   rollback candidates. User data and encrypted settings are never deleted.
+5. Repair is the same archive's `setup` (`repair` is an alias). It stages another
+   unique runtime; it never overwrites the currently active directory.
+
+This is the supported **manual side-by-side beta migration**; there is no automatic
+discovery/conversion of arbitrary source installations. The runtime data layout
+and database schema are unchanged in Phase 4; existing project/revision/run/
+findings/evidence/issue/retest records stay canonical. Automated fixtures verify
+that maintenance leaves synthetic existing files byte-identical. The Phase 4
+packaged Windows smoke also reopens a disposable database seeded by the published
+beta, including completed QA, finding/evidence and historical issue/retest records.
+Real user history and encrypted-settings continuity remain owner acceptance gates;
+see [the validation report](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-4-validation.md).
+
+Rollback after a failed pre-activation install uses the previous executable and
+runtime. After launching a newer version, **do not downgrade a migrated DB**:
+check migration/release policy first. If incompatible, restore the matching stopped
+backup and matching old binary/runtime together. Binary rollback does not reverse
+schema changes. Keep old source clones usable and untouched as a recovery option.
+
+**Phase5 acceptance finding (2026-10-13):** a disposable same-account Windows
+rollback to the immutable source beta, with matching stopped data/project/profile
+and beta binary/runtime restored together, retained history/ciphertext but failed
+credential availability. Candidate D could read the same encrypted store; beta
+loaded it before Electron readiness. G10 is FAIL and this beta downgrade is not
+an accepted credential-continuity recovery procedure. Retain private backups and
+stop the original-beta executable rollback track. The owner has adopted the
+corrected I1 route below within its tested Windows scope; the historical
+[bounded correction proposal](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-beta-rollback-credential-proposal.md)
+is retained as background. This guide does not instruct a real-owner restore or
+key re-entry. Full native recovery and exact-RC native smoke are deferred with native release acceptance;
+normal native functionality is already owner-reported accepted. Windows I1
+populated history/export/recovery evidence is recorded below, with its own identity.
+
+**Phase5.2 recovery proposal:** actual disposable Windows I1 recovery restored a
+verified stopped beta data/profile pair under the corrected Desktop/runtime,
+retaining populated history, actual JSON/log exports, credentials and model
+preferences through repeated restart/restore. See the [validation receipt](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-5-2-g10-recovery-validation.md),
+[paired backup/recovery contract](../releases/v1-g10-recovery-contract.md) and
+[unexecuted native handoff](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-g10-recovery-cachyos-handoff.md).
+The owner adopted Option A on October 14, 2026 only for the tested Windows/I1
+scope and stated account/machine/DPAPI, schema and backup boundaries. This is
+not an approved beta executable downgrade or an automatic owner-data restore.
+Original G10 FAIL, unverified native recovery and official cut authorization
+remain separate. The stable candidate is not the historical I1 recovery target.
+
+## Failed/interrupted setup and uninstall
+
+Read the printed log and fix the prerequisite/corruption cause, then rerun setup.
+Unverified staging directories are never considered active. A crash can leave
+`runtime/.release-maintenance`; first confirm every Desktop/runtime and installer
+is stopped, inspect its contents and current target, then remove **only that lock**
+and retry. Do not erase the runtime root, credentials or databases to repair setup.
+Retain failed candidate/logs for reviewed diagnostics, never publish them blindly.
+
+To uninstall application components: stop Sentry, remove only the chosen archive
+directory/shortcut. Runtime directories are separate; remove only identified
+inactive deployments after checking current and retaining needed rollback versions.
+Do not delete `~/.local/share/sentry`, Desktop appData or provider stores unless
+separately choosing data removal. The source shim remains owned by source setup.
+
+## Owner acceptance procedure (no paid calls by default)
+
+For the historical v1.0.0 candidate verification procedure see the
+[Phase 6.6 handoff](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-phase-6-6-stable-readiness.md): verify the exact
+archive checksum, stable version, setup, visible launch, matched runtime identity,
+disposable import/removal/history, synthetic secure settings and graceful shutdown.
+Maintenance UI acceptance cancels before disk mutation. Do not repeat funded
+provider campaigns or compact the owner's disk automatically. A prepared-host test
+does not establish clean Windows provisioning.
+
+For the historical v1 acceptance campaign use the comprehensive
+[Windows/WSL and native CachyOS runbook](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-owner-acceptance.md),
+[per-host results template](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/v1-owner-acceptance-results.md) and
+[v1 checklist](https://github.com/Mert1026/Sentry/blob/v1.0.0/docs/releases/V1_ACCEPTANCE_CHECKLIST.md). The summary below remains
+a setup reference. Final PR head and later merge SHA are distinct candidates;
+record archive SHA256/full source identity and post-merge CI explicitly.
+
+For **each host in that historical campaign**, use a clean user/machine where possible and
+record OS/build, Node/pnpm, full SHA, archive SHA256 and each result:
+
+1. Validate checksum and `version`; try a tampered copy and an extraction path with spaces.
+2. Exercise absent WSL/distro/reboot on Windows, or missing system packages on
+   CachyOS. Verify guidance and absence of hidden elevation. Repair prerequisites.
+3. Run setup, repeat setup; record distinct runtime directories and matching hello.
+4. Run tools/open; verify Environment/secure preload and project import. Reopen
+   history from a stopped beta backup. Confirm provider settings persist.
+5. Open a second time and confirm a single instance; stop gracefully, then reopen.
+6. With explicitly authorized provider execution only, run selected agents and
+   attempt maintenance while QA is active; expect refusal and retained results.
+   Cancel/wait, then retry. No funded calls are authorized by this procedure alone.
+7. Install another approved SHA side by side; verify history/data/settings, then
+   deliberately use a corrupted archive and confirm no replacement. Exercise
+   candidate/active handshake failure only in disposable fixtures/installation.
+8. Record repair, failed first-install recovery and upgrade rollback. Confirm
+   runtime/current restoration and no database downgrade. Report manual outcomes
+   separately from generic CI and mocked fixtures.
+
+Maintainer build: clean committed native x64 checkout, `pnpm install --frozen-lockfile`,
+`pnpm build`, `pnpm distribution:test`, then `pnpm distribution:build windows-x64`
+on Windows or `pnpm distribution:build cachyos-x64` on Linux. Output is under
+ignored `dist/distributions`; binaries are never committed or automatically published.
+Same-SHA output directories are not overwritten; preserve receipts and use a new
+clean validation checkout for a repeat build.

@@ -1,0 +1,38 @@
+[
+  {
+    "path": "packages/run-engine/src/index.ts",
+    "localSHA256": "ac5ba4fcf85c5734b9a808f5a47f476ccfab5620dfeb2ce851d1c980d5948396",
+    "publishedSHA256": "ac5ba4fcf85c5734b9a808f5a47f476ccfab5620dfeb2ce851d1c980d5948396",
+    "same": true
+  },
+  {
+    "path": "packages/snapshot-engine/src/index.ts",
+    "localSHA256": "73402b49b2d26c5df3671d03c40d791aefdb6bf428bf38c0f64cfe0904994f7f",
+    "publishedSHA256": "73402b49b2d26c5df3671d03c40d791aefdb6bf428bf38c0f64cfe0904994f7f",
+    "same": true
+  },
+  {
+    "path": "packages/workspace-factory/src/index.ts",
+    "localSHA256": "ef71c1f91205d5da8068773b487ba05cd6a079ab2d3778d28d314faba3f35525",
+    "publishedSHA256": "ef71c1f91205d5da8068773b487ba05cd6a079ab2d3778d28d314faba3f35525",
+    "same": true
+  },
+  {
+    "path": "packages/domain/src/usage.ts",
+    "localSHA256": "6fc28b8e0fb49e0fa065b9969ae204895db9900515ee89ee2e758d87a600ea84",
+    "publishedSHA256": "6fc28b8e0fb49e0fa065b9969ae204895db9900515ee89ee2e758d87a600ea84",
+    "same": true
+  },
+  {
+    "path": "packages/schemas/src/finding.schema.ts",
+    "localSHA256": "f9fe95a1fc756a1e890bd7fe4f25abdf6a575ad6de66a4268aa9c2248c2177bc",
+    "publishedSHA256": "f9fe95a1fc756a1e890bd7fe4f25abdf6a575ad6de66a4268aa9c2248c2177bc",
+    "same": true
+  },
+  {
+    "path": "packages/run-engine/src/exporters.ts",
+    "localSHA256": "ddc90ad651ac74b735eda36cd16648952d7eec274cc3c6345d3d9c4a5f7e3a70",
+    "publishedSHA256": "ddc90ad651ac74b735eda36cd16648952d7eec274cc3c6345d3d9c4a5f7e3a70",
+    "same": true
+  }
+]
