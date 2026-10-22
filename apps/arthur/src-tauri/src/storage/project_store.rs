@@ -223,91 +223,53 @@ impl CaptureStore {
         let name = clean_name(name)?;
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        ensure_name_free(&transaction, &name, None)?;
-        let id = uuid::Uuid::new_v4().to_string();
-        let now = now_rfc3339()?;
-        transaction.execute("INSERT INTO projects (id, name, created_at, updated_at) VALUES (?1, ?2, ?3, ?3)", params![id, name, now])?;
-        let project = project_in(&transaction, &id)?;
+        let result = create_project_in(&transaction, &name)?;
         transaction.commit()?;
-        Ok(project)
+        Ok(result)
     }
 
     pub fn rename_project(&self, id: &str, name: &str) -> Res<Project> {
         let name = clean_name(name)?;
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        let current = project_in(&transaction, id)?;
-        if current.is_inbox {
-            return Err(ProjectError::InboxProtected);
-        }
-        ensure_name_free(&transaction, &name, Some(id))?;
-        if current.name != name {
-            transaction.execute("UPDATE projects SET name = ?2, updated_at = ?3 WHERE id = ?1", params![id, name, now_rfc3339()?])?;
-        }
-        let project = project_in(&transaction, id)?;
+        let result = rename_project_in(&transaction, id, &name)?;
         transaction.commit()?;
-        Ok(project)
+        Ok(result)
     }
 
     /// Archives a project. Idempotent. If it was the active project the active project becomes the Inbox.
     pub fn archive_project(&self, id: &str) -> Res<Project> {
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        let current = project_in(&transaction, id)?;
-        if current.is_inbox {
-            return Err(ProjectError::InboxProtected);
-        }
-        if current.archived_at.is_none() {
-            let now = now_rfc3339()?;
-            transaction.execute("UPDATE projects SET archived_at = ?2, updated_at = ?2 WHERE id = ?1", params![id, now])?;
-        }
-        transaction.execute("DELETE FROM active_project WHERE project_id = ?1", [id])?;
-        let project = project_in(&transaction, id)?;
+        let result = archive_project_in(&transaction, id)?;
         transaction.commit()?;
-        Ok(project)
+        Ok(result)
     }
 
     pub fn restore_project(&self, id: &str) -> Res<Project> {
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        let current = project_in(&transaction, id)?;
-        if current.archived_at.is_some() {
-            transaction.execute("UPDATE projects SET archived_at = NULL, updated_at = ?2 WHERE id = ?1", params![id, now_rfc3339()?])?;
-        }
-        let project = project_in(&transaction, id)?;
+        let result = restore_project_in(&transaction, id)?;
         transaction.commit()?;
-        Ok(project)
+        Ok(result)
     }
 
     /// Moves a capture. Its content, source and time are untouched, and so are the objects already distilled from it.
     pub fn move_capture(&self, capture_id: &str, project_id: &str) -> Res<Capture> {
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        open_project_in(&transaction, project_id)?;
-        let moved = transaction.execute("UPDATE captures SET project_id = ?2 WHERE id = ?1", params![capture_id, project_id])?;
-        if moved == 0 {
-            return Err(ProjectError::CaptureNotFound);
-        }
-        let capture = transaction
-            .query_row("SELECT id, source, content, created_at, project_id FROM captures WHERE id = ?1", [capture_id], |row| {
-                Ok(Capture { id: row.get(0)?, source: row.get(1)?, content: row.get(2)?, created_at: row.get(3)?, project_id: row.get(4)? })
-            })?;
+        let result = move_capture_in(&transaction, capture_id, project_id)?;
         transaction.commit()?;
-        Ok(capture)
+        Ok(result)
     }
 
     /// Moves a knowledge object. One column changes: no revision, no provenance rewrite, no copy, same id.
     pub fn move_knowledge_object(&self, object_id: &str, project_id: &str) -> Res<KnowledgeObject> {
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        open_project_in(&transaction, project_id)?;
-        let moved = transaction.execute("UPDATE knowledge_objects SET project_id = ?2 WHERE id = ?1", params![object_id, project_id])?;
-        if moved == 0 {
-            return Err(ProjectError::ObjectNotFound);
-        }
-        let object = get_object_in(&transaction, object_id)?.ok_or(ProjectError::ObjectNotFound)?;
+        let result = move_knowledge_object_in(&transaction, object_id, project_id)?;
         transaction.commit()?;
-        Ok(object)
+        Ok(result)
     }
 
     /// The project of an object, or `None` when the object does not exist.
@@ -333,13 +295,9 @@ impl CaptureStore {
     pub fn set_active_project(&self, project_id: &str) -> Res<String> {
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        open_project_in(&transaction, project_id)?;
-        transaction.execute(
-            "INSERT INTO active_project (id, project_id) VALUES (1, ?1) ON CONFLICT(id) DO UPDATE SET project_id = excluded.project_id",
-            [project_id],
-        )?;
+        let result = set_active_project_in(&transaction, project_id)?;
         transaction.commit()?;
-        Ok(project_id.to_string())
+        Ok(result)
     }
 
     /// The graph projection of one project: its objects, every relation touching them, and the far ends of the
@@ -382,6 +340,127 @@ impl CaptureStore {
             .collect::<std::result::Result<Vec<_>, _>>()?;
         Ok(ProjectGraph { project_id: project_id.to_string(), objects, relations, external_objects })
     }
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn create_project_in(connection: &Connection, name: &str) -> Res<Project> {
+    let name = clean_name(name)?;
+    ensure_name_free(connection, &name, None)?;
+    let id = uuid::Uuid::new_v4().to_string();
+    let now = now_rfc3339()?;
+    connection.execute(
+        "INSERT INTO projects (id, name, created_at, updated_at) VALUES (?1, ?2, ?3, ?3)",
+        params![id, name, now],
+    )?;
+    let project = project_in(connection, &id)?;
+    Ok(project)
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn rename_project_in(connection: &Connection, id: &str, name: &str) -> Res<Project> {
+    let name = clean_name(name)?;
+    let current = project_in(connection, id)?;
+    if current.is_inbox {
+        return Err(ProjectError::InboxProtected);
+    }
+    ensure_name_free(connection, &name, Some(id))?;
+    if current.name != name {
+        connection.execute(
+            "UPDATE projects SET name = ?2, updated_at = ?3 WHERE id = ?1",
+            params![id, name, now_rfc3339()?],
+        )?;
+    }
+    let project = project_in(connection, id)?;
+    Ok(project)
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn archive_project_in(connection: &Connection, id: &str) -> Res<Project> {
+    let current = project_in(connection, id)?;
+    if current.is_inbox {
+        return Err(ProjectError::InboxProtected);
+    }
+    if current.archived_at.is_none() {
+        let now = now_rfc3339()?;
+        connection.execute(
+            "UPDATE projects SET archived_at = ?2, updated_at = ?2 WHERE id = ?1",
+            params![id, now],
+        )?;
+    }
+    connection.execute("DELETE FROM active_project WHERE project_id = ?1", [id])?;
+    let project = project_in(connection, id)?;
+    Ok(project)
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn restore_project_in(connection: &Connection, id: &str) -> Res<Project> {
+    let current = project_in(connection, id)?;
+    if current.archived_at.is_some() {
+        connection.execute(
+            "UPDATE projects SET archived_at = NULL, updated_at = ?2 WHERE id = ?1",
+            params![id, now_rfc3339()?],
+        )?;
+    }
+    let project = project_in(connection, id)?;
+    Ok(project)
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn move_capture_in(
+    connection: &Connection,
+    capture_id: &str,
+    project_id: &str,
+) -> Res<Capture> {
+    open_project_in(connection, project_id)?;
+    let moved = connection.execute(
+        "UPDATE captures SET project_id = ?2 WHERE id = ?1",
+        params![capture_id, project_id],
+    )?;
+    if moved == 0 {
+        return Err(ProjectError::CaptureNotFound);
+    }
+    let capture = connection.query_row(
+        "SELECT id, source, content, created_at, project_id FROM captures WHERE id = ?1",
+        [capture_id],
+        |row| {
+            Ok(Capture {
+                id: row.get(0)?,
+                source: row.get(1)?,
+                content: row.get(2)?,
+                created_at: row.get(3)?,
+                project_id: row.get(4)?,
+            })
+        },
+    )?;
+    Ok(capture)
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn move_knowledge_object_in(
+    connection: &Connection,
+    object_id: &str,
+    project_id: &str,
+) -> Res<KnowledgeObject> {
+    open_project_in(connection, project_id)?;
+    let moved = connection.execute(
+        "UPDATE knowledge_objects SET project_id = ?2 WHERE id = ?1",
+        params![object_id, project_id],
+    )?;
+    if moved == 0 {
+        return Err(ProjectError::ObjectNotFound);
+    }
+    let object = get_object_in(connection, object_id)?.ok_or(ProjectError::ObjectNotFound)?;
+    Ok(object)
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn set_active_project_in(connection: &Connection, project_id: &str) -> Res<String> {
+    open_project_in(connection, project_id)?;
+    connection.execute(
+        "INSERT INTO active_project (id, project_id) VALUES (1, ?1) ON CONFLICT(id) DO UPDATE SET project_id = excluded.project_id",
+        [project_id],
+    )?;
+    Ok(project_id.to_string())
 }
 
 #[cfg(test)]

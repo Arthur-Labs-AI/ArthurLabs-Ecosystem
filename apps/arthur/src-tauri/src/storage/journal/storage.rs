@@ -347,6 +347,20 @@ impl<'a> JournalKernel<'a> {
 }
 
 impl JournalTx<'_> {
+    /// Journal-internal scoped seam for typed native writer adapters. No SQL
+    /// handle escapes this module boundary; an ignored writer error poisons the
+    /// capability so partial domain work cannot accidentally be committed.
+    pub(super) fn with_domain<T, E>(
+        &mut self,
+        work: impl FnOnce(&Connection) -> std::result::Result<T, E>,
+    ) -> std::result::Result<T, E> {
+        let result = work(self.connection);
+        if result.is_err() {
+            self.fatal = true;
+        }
+        result
+    }
+
     #[cfg(test)]
     pub fn sql(&self) -> &Connection {
         self.connection

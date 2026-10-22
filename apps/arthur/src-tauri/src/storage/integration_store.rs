@@ -110,76 +110,118 @@ impl CaptureStore {
 
     /// Applies one integration decision atomically. See the module documentation for the invariants.
     pub fn apply_integration(&self, write: IntegrationWrite) -> Result<IntegrationWritten, StoreError> {
-        let focus = write.focus.object_id.as_str();
-        for edge in &write.add {
-            if !KINDS.contains(&edge.kind.as_str()) {
-                return Err(StoreError::Invalid(format!("unknown relation kind \"{}\"", edge.kind)));
-            }
-            if edge.source_object_id != focus && edge.target_object_id != focus {
-                return Err(StoreError::Invalid("an integration may only add relations that touch the changed object".into()));
-            }
-        }
-
+        validate_integration(&write)?;
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-
-        let state = |object_id: &str| -> Result<Option<(String, String)>, StoreError> {
-            Ok(transaction
-                .query_row("SELECT current_revision_id, project_id FROM knowledge_objects WHERE id = ?1", [object_id], |row| Ok((row.get::<_, Option<String>>(0)?, row.get::<_, String>(1)?)))
-                .optional()?
-                .and_then(|(revision, project)| revision.map(|revision| (revision, project))))
-        };
-        let unchanged = |snapshot: &ObjectSnapshot| -> Result<bool, StoreError> { Ok(state(&snapshot.object_id)?.is_some_and(|(revision, project)| revision == snapshot.revision_id && project == snapshot.project_id)) };
-
-        let mut written = IntegrationWritten::default();
-        if !unchanged(&write.focus)? {
-            written.stale = true;
-            return Ok(written);
+        let written = apply_integration_in(&transaction, write)?;
+        // A stale focus retains the original read-only rollback path.
+        if !written.stale {
+            transaction.commit()?;
         }
-        let mut still_valid: HashMap<&str, bool> = HashMap::new();
-        for snapshot in &write.context {
-            still_valid.insert(snapshot.object_id.as_str(), unchanged(snapshot)?);
-        }
-        // An object the decision never looked at cannot be a valid other end.
-        let other_ok = |object_id: &str| object_id == focus || still_valid.get(object_id).copied().unwrap_or(false);
-
-        for relation_id in &write.remove {
-            let row: Option<(String, String, String)> = transaction
-                .query_row("SELECT source_object_id, target_object_id, origin FROM relations WHERE id = ?1", [relation_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
-                .optional()?;
-            let Some((source, target, origin)) = row else { continue };
-            if origin != "model" || (source != focus && target != focus) {
-                // Not ours to remove: a user/system relation, or one that does not touch the focus.
-                continue;
-            }
-            let other = if source == focus { &target } else { &source };
-            if !other_ok(other) {
-                written.skipped_stale += 1;
-                continue;
-            }
-            written.removed += transaction.execute("DELETE FROM relations WHERE id = ?1 AND origin = 'model' AND (source_object_id = ?2 OR target_object_id = ?2)", params![relation_id, focus])?;
-        }
-
-        let mut edges = Vec::new();
-        for edge in write.add {
-            let (source, target) = canonical_ends(&edge.kind, &edge.source_object_id, &edge.target_object_id);
-            let other = if source == focus { &target } else { &source };
-            if !other_ok(other) {
-                written.skipped_stale += 1;
-                continue;
-            }
-            edges.push(edge);
-        }
-        for item in insert_all(&transaction, edges, "model")? {
-            if item.created {
-                written.added.push(item.relation);
-            } else {
-                written.already_present += 1;
-            }
-        }
-        transaction.commit()?;
         Ok(written)
     }
+}
+
+fn validate_integration(write: &IntegrationWrite) -> Result<(), StoreError> {
+    let focus = write.focus.object_id.as_str();
+    for edge in &write.add {
+        if !KINDS.contains(&edge.kind.as_str()) {
+            return Err(StoreError::Invalid(format!(
+                "unknown relation kind \"{}\"",
+                edge.kind
+            )));
+        }
+        if edge.source_object_id != focus && edge.target_object_id != focus {
+            return Err(StoreError::Invalid(
+                "an integration may only add relations that touch the changed object".into(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Shared graph replacement body. No provider work or transaction ownership.
+pub(super) fn apply_integration_in(
+    transaction: &rusqlite::Connection,
+    write: IntegrationWrite,
+) -> Result<IntegrationWritten, StoreError> {
+    validate_integration(&write)?;
+    let focus = write.focus.object_id.as_str();
+
+    let state = |object_id: &str| -> Result<Option<(String, String)>, StoreError> {
+        Ok(transaction
+            .query_row(
+                "SELECT current_revision_id, project_id FROM knowledge_objects WHERE id = ?1",
+                [object_id],
+                |row| Ok((row.get::<_, Option<String>>(0)?, row.get::<_, String>(1)?)),
+            )
+            .optional()?
+            .and_then(|(revision, project)| revision.map(|revision| (revision, project))))
+    };
+    let unchanged = |snapshot: &ObjectSnapshot| -> Result<bool, StoreError> {
+        Ok(
+            state(&snapshot.object_id)?.is_some_and(|(revision, project)| {
+                revision == snapshot.revision_id && project == snapshot.project_id
+            }),
+        )
+    };
+
+    let mut written = IntegrationWritten::default();
+    if !unchanged(&write.focus)? {
+        written.stale = true;
+        return Ok(written);
+    }
+    let mut still_valid: HashMap<&str, bool> = HashMap::new();
+    for snapshot in &write.context {
+        still_valid.insert(snapshot.object_id.as_str(), unchanged(snapshot)?);
+    }
+    // An object the decision never looked at cannot be a valid other end.
+    let other_ok = |object_id: &str| {
+        object_id == focus || still_valid.get(object_id).copied().unwrap_or(false)
+    };
+
+    for relation_id in &write.remove {
+        let row: Option<(String, String, String)> = transaction
+            .query_row(
+                "SELECT source_object_id, target_object_id, origin FROM relations WHERE id = ?1",
+                [relation_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .optional()?;
+        let Some((source, target, origin)) = row else {
+            continue;
+        };
+        if origin != "model" || (source != focus && target != focus) {
+            // Not ours to remove: a user/system relation, or one that does not touch the focus.
+            continue;
+        }
+        let other = if source == focus { &target } else { &source };
+        if !other_ok(other) {
+            written.skipped_stale += 1;
+            continue;
+        }
+        written.removed += transaction.execute("DELETE FROM relations WHERE id = ?1 AND origin = 'model' AND (source_object_id = ?2 OR target_object_id = ?2)", params![relation_id, focus])?;
+    }
+
+    let mut edges = Vec::new();
+    for edge in write.add {
+        let (source, target) =
+            canonical_ends(&edge.kind, &edge.source_object_id, &edge.target_object_id);
+        let other = if source == focus { &target } else { &source };
+        if !other_ok(other) {
+            written.skipped_stale += 1;
+            continue;
+        }
+        edges.push(edge);
+    }
+    for item in insert_all(&transaction, edges, "model")? {
+        if item.created {
+            written.added.push(item.relation);
+        } else {
+            written.already_present += 1;
+        }
+    }
+    Ok(written)
 }
 
 #[cfg(test)]

@@ -22,6 +22,10 @@ pub mod reducer;
 mod sql_effects;
 mod storage;
 mod stream;
+mod writers;
+
+#[cfg(test)]
+mod writer_tests;
 
 #[cfg(test)]
 mod storage_tests;

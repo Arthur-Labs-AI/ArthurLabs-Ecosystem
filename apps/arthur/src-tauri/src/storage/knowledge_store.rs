@@ -73,33 +73,17 @@ impl CaptureStore {
     pub fn record_distillation(
         &self,
         capture_id: &str,
-        mut objects: Vec<NewKnowledgeObject>,
+        objects: Vec<NewKnowledgeObject>,
     ) -> Result<Vec<KnowledgeObject>, StoreError> {
-        if objects.len() > MAX_OBJECTS_PER_DISTILLATION {
-            return Err(StoreError::Invalid(format!("more than {MAX_OBJECTS_PER_DISTILLATION} objects")));
-        }
+        validate_objects_count(&objects)?;
 
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-
-        // The objects inherit the capture's project as it is NOW, in this same transaction.
-        let start = match begin_distillation_in(&transaction, capture_id)? {
-            Begin::Existing(existing) => return Ok(existing),
-            Begin::Fresh(start) => start,
-        };
-
-        for (index, object) in objects.iter().enumerate() {
-            validate_new(&start.content, object).map_err(|reason| StoreError::Invalid(format!("object {index}: {reason}")))?;
+        let (stored, fresh) = record_distillation_in(&transaction, capture_id, objects)?;
+        // Existing retains the original read-only rollback path.
+        if fresh {
+            transaction.commit()?;
         }
-        // Source order, so `seq` order is reading order.
-        objects.sort_by_key(|object| (object.source_start, object.source_end));
-
-        let mut stored = Vec::with_capacity(objects.len());
-        for object in objects {
-            stored.push(insert_object_in(&transaction, capture_id, &start.project_id, object)?);
-        }
-
-        transaction.commit()?;
         Ok(stored)
     }
 
@@ -120,6 +104,49 @@ impl CaptureStore {
         );
         read_objects(&connection, &sql, [project_id])
     }
+}
+
+fn validate_objects_count(objects: &[NewKnowledgeObject]) -> Result<(), StoreError> {
+    if objects.len() > MAX_OBJECTS_PER_DISTILLATION {
+        return Err(StoreError::Invalid(format!(
+            "more than {MAX_OBJECTS_PER_DISTILLATION} objects"
+        )));
+    }
+    Ok(())
+}
+
+/// Returns rows plus whether a fresh run was inserted. The caller owns rollback.
+pub(super) fn record_distillation_in(
+    connection: &Connection,
+    capture_id: &str,
+    mut objects: Vec<NewKnowledgeObject>,
+) -> Result<(Vec<KnowledgeObject>, bool), StoreError> {
+    validate_objects_count(&objects)?;
+
+    // The objects inherit the capture's project as it is NOW, in this same transaction.
+    let start = match begin_distillation_in(connection, capture_id)? {
+        Begin::Existing(existing) => return Ok((existing, false)),
+        Begin::Fresh(start) => start,
+    };
+
+    for (index, object) in objects.iter().enumerate() {
+        validate_new(&start.content, object)
+            .map_err(|reason| StoreError::Invalid(format!("object {index}: {reason}")))?;
+    }
+    // Source order, so `seq` order is reading order.
+    objects.sort_by_key(|object| (object.source_start, object.source_end));
+
+    let mut stored = Vec::with_capacity(objects.len());
+    for object in objects {
+        stored.push(insert_object_in(
+            connection,
+            capture_id,
+            &start.project_id,
+            object,
+        )?);
+    }
+
+    Ok((stored, true))
 }
 
 /// What a distillation commit starts from: the capture's text and its project as of NOW.

@@ -181,33 +181,51 @@ impl CaptureStore {
     pub fn update_object(&self, object_id: &str, changes: Changes) -> Result<Revision, StoreError> {
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        let current = current_revision_in(&transaction, object_id)?;
-        let content = apply_changes(&current, &changes)?;
-        let created = insert_revision(&transaction, NewRevision { object_id, content, origin: "user_edit", provenance: None, parents: vec![current.id], make_current: true, created_at: None })?;
+        let created = update_object_in(&transaction, object_id, changes)?;
         transaction.commit()?;
         Ok(created)
     }
 
     /// A revision continuing from ANY revision of the object, including an old one (a branch). It does not become
     /// current unless `make_current` is set, so a branch never silently replaces the object's state.
-    pub fn create_revision_from(&self, object_id: &str, parent_revision_id: &str, changes: Changes, make_current: bool) -> Result<Revision, StoreError> {
+    pub fn create_revision_from(
+        &self,
+        object_id: &str,
+        parent_revision_id: &str,
+        changes: Changes,
+        make_current: bool,
+    ) -> Result<Revision, StoreError> {
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        ensure_object(&transaction, object_id)?;
-        let parent = own_revision_in(&transaction, object_id, parent_revision_id)?;
-        let content = apply_changes(&parent, &changes)?;
-        let created = insert_revision(&transaction, NewRevision { object_id, content, origin: "user_edit", provenance: None, parents: vec![parent.id], make_current, created_at: None })?;
+        let created = create_revision_from_in(
+            &transaction,
+            object_id,
+            parent_revision_id,
+            changes,
+            make_current,
+        )?;
         transaction.commit()?;
         Ok(created)
     }
 
     /// Merges two or more revisions of one object into a NEW revision with all of them as parents. The caller supplies
     /// the merged content; nothing is merged automatically.
-    pub fn merge_revisions(&self, object_id: &str, parent_revision_ids: &[String], result: RevisionContent, make_current: bool) -> Result<Revision, StoreError> {
+    pub fn merge_revisions(
+        &self,
+        object_id: &str,
+        parent_revision_ids: &[String],
+        result: RevisionContent,
+        make_current: bool,
+    ) -> Result<Revision, StoreError> {
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        ensure_object(&transaction, object_id)?;
-        let created = insert_revision(&transaction, NewRevision { object_id, content: result, origin: "merge", provenance: None, parents: parent_revision_ids.to_vec(), make_current, created_at: None })?;
+        let created = merge_revisions_in(
+            &transaction,
+            object_id,
+            parent_revision_ids,
+            result,
+            make_current,
+        )?;
         transaction.commit()?;
         Ok(created)
     }
@@ -218,16 +236,24 @@ impl CaptureStore {
     // A domain capability (the storage invariant is the point of M03); no UI or command yet, and no automatic matching
     // of captures to objects. Exercised by the tests below.
     #[cfg_attr(not(test), allow(dead_code))]
-    pub fn revise_from_capture(&self, object_id: &str, parent_revision_id: Option<&str>, span: SourceSpan, changes: Changes, make_current: bool) -> Result<Revision, StoreError> {
+    pub fn revise_from_capture(
+        &self,
+        object_id: &str,
+        parent_revision_id: Option<&str>,
+        span: SourceSpan,
+        changes: Changes,
+        make_current: bool,
+    ) -> Result<Revision, StoreError> {
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        ensure_object(&transaction, object_id)?;
-        let parent = match parent_revision_id {
-            Some(id) => own_revision_in(&transaction, object_id, id)?,
-            None => current_revision_in(&transaction, object_id)?,
-        };
-        let content = apply_changes(&parent, &changes)?;
-        let created = insert_revision(&transaction, NewRevision { object_id, content, origin: "distillation", provenance: Some(span), parents: vec![parent.id], make_current, created_at: None })?;
+        let created = revise_from_capture_in(
+            &transaction,
+            object_id,
+            parent_revision_id,
+            span,
+            changes,
+            make_current,
+        )?;
         transaction.commit()?;
         Ok(created)
     }
@@ -253,32 +279,28 @@ impl CaptureStore {
     /// parents are the revision that is current now and the chosen earlier one, so the history shows both what was undone and what it
     /// went back to. Nothing is deleted or rewritten. Compare-and-set: `expected_current_revision_id` must STILL be current (otherwise
     /// `Stale`, and nothing is written), in an unarchived project. Restoring the text that is already current is refused.
-    pub fn restore_revision(&self, object_id: &str, target_revision_id: &str, expected_current_revision_id: &str) -> Result<Revision, ReviseConflict> {
-        let mut connection = self.connection.lock().map_err(|_| ReviseConflict::Store(StoreError::Poisoned))?;
-        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(|e| ReviseConflict::Store(e.into()))?;
-        let row: Option<(String, Option<String>)> = transaction
-            .query_row("SELECT project_id, current_revision_id FROM knowledge_objects WHERE id = ?1", [object_id], |row| Ok((row.get(0)?, row.get(1)?)))
-            .optional()
+    pub fn restore_revision(
+        &self,
+        object_id: &str,
+        target_revision_id: &str,
+        expected_current_revision_id: &str,
+    ) -> Result<Revision, ReviseConflict> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| ReviseConflict::Store(StoreError::Poisoned))?;
+        let transaction = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|e| ReviseConflict::Store(e.into()))?;
-        let (project_id, current) = row.ok_or(ReviseConflict::ObjectNotFound)?;
-        let archived: Option<bool> = transaction.query_row("SELECT archived_at IS NOT NULL FROM projects WHERE id = ?1", [&project_id], |row| row.get(0)).optional().map_err(|e| ReviseConflict::Store(e.into()))?;
-        if archived != Some(false) {
-            return Err(ReviseConflict::ProjectArchived);
-        }
-        let current = current.ok_or_else(|| ReviseConflict::Store(StoreError::Corrupt(format!("knowledge object {object_id:?} has no current revision"))))?;
-        if current != expected_current_revision_id {
-            return Err(ReviseConflict::Stale { expected: expected_current_revision_id.to_string(), actual: current });
-        }
-        let now = own_revision_in(&transaction, object_id, &current)?;
-        let target = own_revision_in(&transaction, object_id, target_revision_id)?;
-        if (target.kind.as_str(), target.title.as_str(), target.body.as_str()) == (now.kind.as_str(), now.title.as_str(), now.body.as_str()) {
-            return Err(ReviseConflict::Rejected("that is already the current text".into()));
-        }
-        let created = insert_revision(
+        let created = restore_revision_in(
             &transaction,
-            NewRevision { object_id, content: RevisionContent { kind: target.kind.clone(), title: target.title.clone(), body: target.body.clone() }, origin: "merge", provenance: None, parents: vec![now.id.clone(), target.id.clone()], make_current: true, created_at: None },
+            object_id,
+            target_revision_id,
+            expected_current_revision_id,
         )?;
-        transaction.commit().map_err(|e| ReviseConflict::Store(e.into()))?;
+        transaction
+            .commit()
+            .map_err(|e| ReviseConflict::Store(e.into()))?;
         Ok(created)
     }
 
@@ -292,6 +314,178 @@ impl CaptureStore {
         }
         Ok(diff_revisions(&content_of(&old), &content_of(&new)))
     }
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn update_object_in(
+    connection: &Connection,
+    object_id: &str,
+    changes: Changes,
+) -> Result<Revision, StoreError> {
+    let current = current_revision_in(connection, object_id)?;
+    let content = apply_changes(&current, &changes)?;
+    let created = insert_revision(
+        connection,
+        NewRevision {
+            object_id,
+            content,
+            origin: "user_edit",
+            provenance: None,
+            parents: vec![current.id],
+            make_current: true,
+            created_at: None,
+        },
+    )?;
+    Ok(created)
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn create_revision_from_in(
+    connection: &Connection,
+    object_id: &str,
+    parent_revision_id: &str,
+    changes: Changes,
+    make_current: bool,
+) -> Result<Revision, StoreError> {
+    ensure_object(connection, object_id)?;
+    let parent = own_revision_in(connection, object_id, parent_revision_id)?;
+    let content = apply_changes(&parent, &changes)?;
+    let created = insert_revision(
+        connection,
+        NewRevision {
+            object_id,
+            content,
+            origin: "user_edit",
+            provenance: None,
+            parents: vec![parent.id],
+            make_current,
+            created_at: None,
+        },
+    )?;
+    Ok(created)
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn merge_revisions_in(
+    connection: &Connection,
+    object_id: &str,
+    parent_revision_ids: &[String],
+    result: RevisionContent,
+    make_current: bool,
+) -> Result<Revision, StoreError> {
+    ensure_object(connection, object_id)?;
+    let created = insert_revision(
+        connection,
+        NewRevision {
+            object_id,
+            content: result,
+            origin: "merge",
+            provenance: None,
+            parents: parent_revision_ids.to_vec(),
+            make_current,
+            created_at: None,
+        },
+    )?;
+    Ok(created)
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn revise_from_capture_in(
+    connection: &Connection,
+    object_id: &str,
+    parent_revision_id: Option<&str>,
+    span: SourceSpan,
+    changes: Changes,
+    make_current: bool,
+) -> Result<Revision, StoreError> {
+    ensure_object(connection, object_id)?;
+    let parent = match parent_revision_id {
+        Some(id) => own_revision_in(connection, object_id, id)?,
+        None => current_revision_in(connection, object_id)?,
+    };
+    let content = apply_changes(&parent, &changes)?;
+    let created = insert_revision(
+        connection,
+        NewRevision {
+            object_id,
+            content,
+            origin: "distillation",
+            provenance: Some(span),
+            parents: vec![parent.id],
+            make_current,
+            created_at: None,
+        },
+    )?;
+    Ok(created)
+}
+
+/// Shared domain body; the caller owns transaction and commit.
+pub(super) fn restore_revision_in(
+    connection: &Connection,
+    object_id: &str,
+    target_revision_id: &str,
+    expected_current_revision_id: &str,
+) -> Result<Revision, ReviseConflict> {
+    let row: Option<(String, Option<String>)> = connection
+        .query_row(
+            "SELECT project_id, current_revision_id FROM knowledge_objects WHERE id = ?1",
+            [object_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(|e| ReviseConflict::Store(e.into()))?;
+    let (project_id, current) = row.ok_or(ReviseConflict::ObjectNotFound)?;
+    let archived: Option<bool> = connection
+        .query_row(
+            "SELECT archived_at IS NOT NULL FROM projects WHERE id = ?1",
+            [&project_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| ReviseConflict::Store(e.into()))?;
+    if archived != Some(false) {
+        return Err(ReviseConflict::ProjectArchived);
+    }
+    let current = current.ok_or_else(|| {
+        ReviseConflict::Store(StoreError::Corrupt(format!(
+            "knowledge object {object_id:?} has no current revision"
+        )))
+    })?;
+    if current != expected_current_revision_id {
+        return Err(ReviseConflict::Stale {
+            expected: expected_current_revision_id.to_string(),
+            actual: current,
+        });
+    }
+    let now = own_revision_in(connection, object_id, &current)?;
+    let target = own_revision_in(connection, object_id, target_revision_id)?;
+    if (
+        target.kind.as_str(),
+        target.title.as_str(),
+        target.body.as_str(),
+    ) == (now.kind.as_str(), now.title.as_str(), now.body.as_str())
+    {
+        return Err(ReviseConflict::Rejected(
+            "that is already the current text".into(),
+        ));
+    }
+    let created = insert_revision(
+        connection,
+        NewRevision {
+            object_id,
+            content: RevisionContent {
+                kind: target.kind.clone(),
+                title: target.title.clone(),
+                body: target.body.clone(),
+            },
+            origin: "merge",
+            provenance: None,
+            parents: vec![now.id.clone(), target.id.clone()],
+            make_current: true,
+            created_at: None,
+        },
+    )?;
+    Ok(created)
 }
 
 fn content_of(revision: &Revision) -> Content<'_> {

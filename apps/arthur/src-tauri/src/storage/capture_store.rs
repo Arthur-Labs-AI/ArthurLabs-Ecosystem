@@ -137,28 +137,9 @@ impl CaptureStore {
     }
 
     pub fn create(&self, input: CreateCaptureInput) -> Result<Capture, StoreError> {
-        validate_input(&input)?;
-        let project_id = input.project_id.unwrap_or_else(|| INBOX_PROJECT_ID.to_string());
-        let capture = Capture {
-            id: Uuid::new_v4().to_string(),
-            source: input.source,
-            content: input.content,
-            created_at: now_rfc3339()?,
-            project_id,
-        };
+        let capture = prepare_capture(input)?;
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
-        // The project must exist and be open. Checked here for a precise message; the schema repeats it as a trigger.
-        match connection.query_row("SELECT archived_at IS NOT NULL FROM projects WHERE id = ?1", [&capture.project_id], |row| row.get::<_, bool>(0)).optional()? {
-            None => return Err(StoreError::Invalid("project does not exist".into())),
-            Some(true) => return Err(StoreError::Invalid("project is archived".into())),
-            Some(false) => {}
-        }
-        // Autocommit: the row is committed (and synced) when this returns.
-        connection.execute(
-            "INSERT INTO captures (id, source, content, created_at, project_id) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![capture.id, capture.source, capture.content, capture.created_at, capture.project_id],
-        )?;
-        Ok(capture)
+        insert_capture_in(&connection, capture)
     }
 
     pub fn get_capture(&self, id: &str) -> Result<Option<Capture>, StoreError> {
@@ -228,6 +209,47 @@ impl CaptureStore {
         }
         Ok(captures)
     }
+}
+
+/// Shared preparation preserves the v9 validation/identity/time order before its mutex.
+pub(super) fn prepare_capture(input: CreateCaptureInput) -> Result<Capture, StoreError> {
+    validate_input(&input)?;
+    let project_id = input
+        .project_id
+        .unwrap_or_else(|| INBOX_PROJECT_ID.to_string());
+    let capture = Capture {
+        id: Uuid::new_v4().to_string(),
+        source: input.source,
+        content: input.content,
+        created_at: now_rfc3339()?,
+        project_id,
+    };
+    Ok(capture)
+}
+
+/// The caller owns commit; the public v9 path retains its original autocommit INSERT.
+pub(super) fn insert_capture_in(
+    connection: &Connection,
+    capture: Capture,
+) -> Result<Capture, StoreError> {
+    // The project must exist and be open. Checked here for a precise message; the schema repeats it as a trigger.
+    match connection
+        .query_row(
+            "SELECT archived_at IS NOT NULL FROM projects WHERE id = ?1",
+            [&capture.project_id],
+            |row| row.get::<_, bool>(0),
+        )
+        .optional()?
+    {
+        None => return Err(StoreError::Invalid("project does not exist".into())),
+        Some(true) => return Err(StoreError::Invalid("project is archived".into())),
+        Some(false) => {}
+    }
+    connection.execute(
+        "INSERT INTO captures (id, source, content, created_at, project_id) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![capture.id, capture.source, capture.content, capture.created_at, capture.project_id],
+    )?;
+    Ok(capture)
 }
 
 pub(super) fn now_rfc3339() -> Result<String, StoreError> {

@@ -117,9 +117,9 @@ impl CaptureStore {
     pub fn create_relation(&self, relation: NewRelation, origin: &str) -> Result<Relation, StoreError> {
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        let mut written = insert_all(&transaction, vec![relation], origin)?;
+        let result = create_relation_in(&transaction, relation, origin)?;
         transaction.commit()?;
-        Ok(written.remove(0).relation)
+        Ok(result)
     }
 
     /// Records a whole set of relations, all-or-nothing, and returns only the NEW ones.
@@ -127,15 +127,17 @@ impl CaptureStore {
     /// Every candidate is validated first (kind, well-formed ids, no self edge, existing objects,
     /// no duplicate inside the set); any failure writes nothing. A candidate identical to an edge
     /// that already exists is not an error: it is skipped, which makes repeating a run harmless.
-    pub fn record_relations(&self, relations: Vec<NewRelation>, origin: &str) -> Result<Vec<Relation>, StoreError> {
-        if relations.len() > MAX_RELATIONS_PER_BATCH {
-            return Err(StoreError::Invalid(format!("more than {MAX_RELATIONS_PER_BATCH} relations")));
-        }
+    pub fn record_relations(
+        &self,
+        relations: Vec<NewRelation>,
+        origin: &str,
+    ) -> Result<Vec<Relation>, StoreError> {
+        validate_relations_count(&relations)?;
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-        let written = insert_all(&transaction, relations, origin)?;
+        let result = record_relations_in(&transaction, relations, origin)?;
         transaction.commit()?;
-        Ok(written.into_iter().filter(|item| item.created).map(|item| item.relation).collect())
+        Ok(result)
     }
 
     /// Every relation, oldest first. Fails as a whole if any stored row is malformed or dangling,
@@ -161,6 +163,40 @@ impl CaptureStore {
             .collect();
         Ok(self.list_knowledge_objects()?.into_iter().filter(|object| neighbor_ids.contains(&object.id.as_str())).collect())
     }
+}
+
+fn validate_relations_count(relations: &[NewRelation]) -> Result<(), StoreError> {
+    if relations.len() > MAX_RELATIONS_PER_BATCH {
+        return Err(StoreError::Invalid(format!(
+            "more than {MAX_RELATIONS_PER_BATCH} relations"
+        )));
+    }
+    Ok(())
+}
+
+/// Shared result selection and validation; the caller owns commit.
+pub(super) fn create_relation_in(
+    connection: &Connection,
+    relation: NewRelation,
+    origin: &str,
+) -> Result<Relation, StoreError> {
+    let mut written = insert_all(connection, vec![relation], origin)?;
+    Ok(written.remove(0).relation)
+}
+
+/// Shared result selection and validation; the caller owns commit.
+pub(super) fn record_relations_in(
+    connection: &Connection,
+    relations: Vec<NewRelation>,
+    origin: &str,
+) -> Result<Vec<Relation>, StoreError> {
+    validate_relations_count(&relations)?;
+    let written = insert_all(connection, relations, origin)?;
+    Ok(written
+        .into_iter()
+        .filter(|item| item.created)
+        .map(|item| item.relation)
+        .collect())
 }
 
 pub(super) struct Written {
