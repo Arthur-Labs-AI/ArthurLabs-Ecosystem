@@ -4813,3 +4813,489 @@ fn ordinary_events_round_trip_identically() {
         bytes
     );
 }
+
+// ---------------------------------------------------------------------------
+// O-3 test-first: direct codec binds proof identities to the transitioned row
+// ---------------------------------------------------------------------------
+
+fn claim_update_fixture(
+    id: &str,
+    before_state: &str,
+    after_state: &str,
+    proof: Option<ReviewProof>,
+) -> Operation {
+    let before = claim_img(id, "cap", 0, before_state, false);
+    let mut after = claim_img(id, "cap", 0, after_state, false);
+    after.insert("updated_at".to_string(), txt(TS1));
+    Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec![id.to_string()],
+        before: before.clone(),
+        after,
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &[id.to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: proof,
+    })
+}
+
+fn proposal_update_fixture(
+    id: &str,
+    claim: &str,
+    before_state: &str,
+    after_state: &str,
+    proof: Option<ReviewProof>,
+) -> Operation {
+    let before = proposal_img(id, claim, "o9", "b9", before_state);
+    let after = proposal_img(id, claim, "o9", "b9", after_state);
+    Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::RevisionProposals,
+        key: vec![id.to_string()],
+        before: before.clone(),
+        after,
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::RevisionProposals,
+                "lifecycle",
+                &[id.to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: proof,
+    })
+}
+
+// Test A: a claim proof without claimId is rejected.
+#[test]
+fn claim_proof_missing_claim_id_fails() {
+    let op = claim_update_fixture(
+        "c1",
+        "open",
+        "deferred",
+        Some(ReviewProof {
+            action: ReviewAction::Defer,
+            proposal_id: None,
+            claim_id: None,
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::User),
+        }),
+    );
+    let err =
+        encode_canonical(&sample_event(vec![op], vec![])).expect_err("missing claim id must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::InvalidReviewProofIdentity { field: "claimId" }
+    );
+}
+
+// Test B: a claim proof with a mismatched claimId is rejected.
+#[test]
+fn claim_proof_mismatched_claim_id_fails() {
+    let op = claim_update_fixture(
+        "c1",
+        "open",
+        "deferred",
+        Some(ReviewProof {
+            action: ReviewAction::Defer,
+            proposal_id: None,
+            claim_id: Some("other".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::User),
+        }),
+    );
+    let err = encode_canonical(&sample_event(vec![op], vec![]))
+        .expect_err("mismatched claim id must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::InvalidReviewProofIdentity { field: "claimId" }
+    );
+}
+
+// Test C: a valid standalone claim proof round-trips.
+#[test]
+fn standalone_claim_identity_round_trips() {
+    let op = claim_update_fixture("c1", "open", "deferred", Some(standalone_claim_proof("c1")));
+    let event = sample_event(vec![op], vec![]);
+    validate_event(&event).unwrap();
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
+}
+
+// Test D: a valid standalone reopen round-trips with real v9 columns.
+#[test]
+fn standalone_reopen_identity_round_trips() {
+    let mut before = claim_img("c2", "cap", 0, "deferred", false);
+    before.insert("updated_at".to_string(), txt(TS1));
+    let mut after = claim_img("c2", "cap", 0, "open", false);
+    after.insert("deferred_at".to_string(), txt(TS1));
+    after.insert("updated_at".to_string(), txt(TS2));
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["c2".to_string()],
+        before: before.clone(),
+        after,
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["c2".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: Some(ReviewProof {
+            action: ReviewAction::Reopen,
+            proposal_id: None,
+            claim_id: Some("c2".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::User),
+        }),
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+}
+
+// Test E: a proposal proof without proposalId is rejected.
+#[test]
+fn proposal_proof_missing_proposal_id_fails() {
+    let op = proposal_update_fixture(
+        "p1",
+        "c1",
+        "open",
+        "superseded",
+        Some(ReviewProof {
+            action: ReviewAction::Supersede,
+            proposal_id: None,
+            claim_id: Some("c1".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::DerivedClaimResolution),
+        }),
+    );
+    let err = encode_canonical(&sample_event(vec![op], vec![]))
+        .expect_err("missing proposal id must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::InvalidReviewProofIdentity {
+            field: "proposalId"
+        }
+    );
+}
+
+// Test F: a proposal proof with the wrong proposalId is rejected.
+#[test]
+fn proposal_proof_mismatched_proposal_id_fails() {
+    let op = proposal_update_fixture(
+        "p1",
+        "c1",
+        "open",
+        "superseded",
+        Some(ReviewProof {
+            action: ReviewAction::Supersede,
+            proposal_id: Some("other".to_string()),
+            claim_id: Some("c1".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::DerivedClaimResolution),
+        }),
+    );
+    let err = encode_canonical(&sample_event(vec![op], vec![]))
+        .expect_err("mismatched proposal id must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::InvalidReviewProofIdentity {
+            field: "proposalId"
+        }
+    );
+}
+
+// Test G: a proposal proof without claimId is rejected.
+#[test]
+fn proposal_proof_missing_claim_id_fails() {
+    let op = proposal_update_fixture(
+        "p1",
+        "c1",
+        "open",
+        "superseded",
+        Some(ReviewProof {
+            action: ReviewAction::Supersede,
+            proposal_id: Some("p1".to_string()),
+            claim_id: None,
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::DerivedClaimResolution),
+        }),
+    );
+    let err = encode_canonical(&sample_event(vec![op], vec![]))
+        .expect_err("missing associated claim id must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::InvalidReviewProofIdentity { field: "claimId" }
+    );
+}
+
+// Test H: a proposal proof bound to another claim is rejected.
+#[test]
+fn proposal_proof_mismatched_claim_id_fails() {
+    let op = proposal_update_fixture(
+        "p1",
+        "c1",
+        "open",
+        "superseded",
+        Some(ReviewProof {
+            action: ReviewAction::Supersede,
+            proposal_id: Some("p1".to_string()),
+            claim_id: Some("other".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::DerivedClaimResolution),
+        }),
+    );
+    let err = encode_canonical(&sample_event(vec![op], vec![]))
+        .expect_err("mismatched associated claim must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::InvalidReviewProofIdentity { field: "claimId" }
+    );
+}
+
+// Test I: a valid proposal proof round-trips with exact identities.
+#[test]
+fn valid_proposal_proof_round_trips() {
+    let op = proposal_update_fixture(
+        "p1",
+        "c1",
+        "open",
+        "superseded",
+        Some(supersede_proof("p1", "c1")),
+    );
+    let event = sample_event(vec![op], vec![]);
+    validate_event(&event).unwrap();
+    let bytes = encode_canonical(&event).unwrap();
+    let decoded = decode_core_strict(&bytes).unwrap();
+    assert_eq!(decoded, event);
+    let Operation::FacetUpdate(back) = &decoded.operations[0] else {
+        panic!("expected update")
+    };
+    let proof = back.review_proof.as_ref().expect("proof required");
+    assert_eq!(proof.proposal_id, Some("p1".to_string()));
+    assert_eq!(proof.claim_id, Some("c1".to_string()));
+    assert_eq!(encode_canonical(&decoded).unwrap(), bytes);
+}
+
+// Test J: strict decoding rejects tampered proof identities by name.
+#[test]
+fn strict_decode_rejects_tampered_proof_identity() {
+    let op = claim_update_fixture("c1", "open", "deferred", Some(standalone_claim_proof("c1")));
+    let bytes = encode_canonical(&sample_event(vec![op], vec![])).unwrap();
+    let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    value["operations"][0]["reviewProof"]["claimId"] =
+        serde_json::Value::String("other".to_string());
+    let tampered = serde_jcs::to_vec(&value).unwrap();
+    let err = decode_core_strict(&tampered).expect_err("tampered claim id must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::InvalidReviewProofIdentity { field: "claimId" }
+    );
+    let op = proposal_update_fixture(
+        "p1",
+        "c1",
+        "open",
+        "superseded",
+        Some(supersede_proof("p1", "c1")),
+    );
+    let bytes = encode_canonical(&sample_event(vec![op], vec![])).unwrap();
+    let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    value["operations"][0]["reviewProof"]["proposalId"] =
+        serde_json::Value::String("other".to_string());
+    let tampered = serde_jcs::to_vec(&value).unwrap();
+    let err = decode_core_strict(&tampered).expect_err("tampered proposal id must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::InvalidReviewProofIdentity {
+            field: "proposalId"
+        }
+    );
+    let bytes = encode_canonical(&sample_event(
+        vec![proposal_update_fixture(
+            "p1",
+            "c1",
+            "open",
+            "superseded",
+            Some(supersede_proof("p1", "c1")),
+        )],
+        vec![],
+    ))
+    .unwrap();
+    let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    value["operations"][0]["reviewProof"]["claimId"] =
+        serde_json::Value::String("other".to_string());
+    let tampered = serde_jcs::to_vec(&value).unwrap();
+    let err = decode_core_strict(&tampered).expect_err("tampered associated claim must fail");
+    assert_eq!(
+        err,
+        super::codec::CodecError::InvalidReviewProofIdentity { field: "claimId" }
+    );
+}
+
+// Test K: shape, event and encode validators agree on identity.
+#[test]
+fn proof_identity_validators_agree() {
+    let op = claim_update_fixture(
+        "c1",
+        "open",
+        "deferred",
+        Some(ReviewProof {
+            action: ReviewAction::Defer,
+            proposal_id: None,
+            claim_id: Some("other".to_string()),
+            object_id: None,
+            reviewed_revision_id: None,
+            final_body: None,
+            user_edited: None,
+            result_revision_id: None,
+            method: Some(ReviewMethod::User),
+        }),
+    );
+    let want = super::codec::CodecError::InvalidReviewProofIdentity { field: "claimId" };
+    let Operation::FacetUpdate(update) = &op else {
+        panic!("expected update")
+    };
+    assert_eq!(
+        validate_facet_update_shape(update).expect_err("shape must fail"),
+        want
+    );
+    assert_eq!(
+        validate_event(&sample_event(vec![op.clone()], vec![])).expect_err("event must fail"),
+        want
+    );
+    assert_eq!(
+        encode_canonical(&sample_event(vec![op], vec![])).expect_err("encode must fail"),
+        want
+    );
+}
+
+// Test L: reducer outputs still pass the strengthened codec.
+#[test]
+fn reducer_outputs_pass_identity_codec() {
+    let before = claim_img("c3", "cap", 0, "open", false);
+    let mut after = claim_img("c3", "cap", 0, "deferred", false);
+    after.insert("updated_at".to_string(), txt(TS1));
+    let effects = vec![effect(
+        EntityKind::PendingClaims,
+        vec!["c3".to_string()],
+        Some(before),
+        Some(after.clone()),
+    )];
+    let resolver = resolver_with(vec![(
+        EntityKind::PendingClaims,
+        vec!["c3".to_string()],
+        after,
+    )]);
+    let mut reviews: ReviewMap = BTreeMap::new();
+    reviews.insert(
+        (EntityKind::PendingClaims, vec!["c3".to_string()]),
+        standalone_defer_ctx("c3"),
+    );
+    let priors = claim_priors("c3", FacetPrior::LegacyBaseline);
+    let ops = reduce_effects(
+        &effects,
+        &resolver,
+        &BTreeMap::new(),
+        &claim_baselines("cap"),
+        &reviews,
+        &priors,
+    )
+    .unwrap();
+    let event = sample_event(ops, vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+}
+
+// Test M: metadata-only updates still need no proof.
+#[test]
+fn metadata_only_update_still_proof_free() {
+    let before = claim_img("c4", "cap", 0, "open", false);
+    let mut after = before.clone();
+    after.insert("updated_at".to_string(), txt(TS1));
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["c4".to_string()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["c4".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: None,
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+}
+
+// Test N: an optional claim proposalId is not a same-event requirement.
+#[test]
+fn claim_with_optional_proposal_id_stays_valid() {
+    let before = claim_img("c5", "cap", 0, "open", false);
+    let mut after = claim_img("c5", "cap", 0, "deferred", false);
+    after.insert("updated_at".to_string(), txt(TS1));
+    let op = Operation::FacetUpdate(FacetUpdate {
+        entity: EntityKind::PendingClaims,
+        key: vec!["c5".to_string()],
+        before: before.clone(),
+        after: after.clone(),
+        expected: BTreeMap::from([(
+            "lifecycle".to_string(),
+            expected_for(
+                EntityKind::PendingClaims,
+                "lifecycle",
+                &["c5".to_string()],
+                &before,
+            ),
+        )]),
+        review_proof: Some(defer_proof("p5", "c5")),
+    });
+    let event = sample_event(vec![op], vec![]);
+    let bytes = encode_canonical(&event).unwrap();
+    assert_eq!(decode_core_strict(&bytes).unwrap(), event);
+}

@@ -81,6 +81,7 @@ pub enum CodecError {
     OversizeBundle { bytes: usize, limit: usize },
     ImmutableFieldChanged { field: &'static str },
     MissingReviewProof { entity: &'static str },
+    InvalidReviewProofIdentity { field: &'static str },
     NonModelRelationRemoval,
     Serialization(String),
 }
@@ -126,6 +127,10 @@ impl fmt::Display for CodecError {
             Self::MissingReviewProof { entity } => write!(
                 f,
                 "claim/proposal state transition of {entity} needs operation-local review proof"
+            ),
+            Self::InvalidReviewProofIdentity { field } => write!(
+                f,
+                "review proof {field} does not identify the transitioned row"
             ),
             Self::NonModelRelationRemoval => {
                 write!(f, "relation removal covers original MODEL relations only")
@@ -1427,15 +1432,20 @@ fn validate_facet_transition(update: &FacetUpdate) -> Result<(), CodecError> {
         (Some(_), false) => {
             return Err(CodecError::UnexpectedField("reviewProof".to_string()));
         }
-        (Some(proof), true) => validate_review_proof(proof, update.entity)?,
+        (Some(proof), true) => validate_review_proof(proof, update)?,
         (None, false) => {}
     }
     Ok(())
 }
 
-fn validate_review_proof(proof: &ReviewProof, entity: EntityKind) -> Result<(), CodecError> {
+/// Operation-aware review-proof validation: syntax plus identity binding
+/// against the actual transitioned row. Only identities verifiable from the
+/// operation itself (entity, key, before-image) are enforced here; broader
+/// cross-row association belongs to store/closure validation, never to
+/// silent fabrication. Nothing is ever invented or rewritten.
+fn validate_review_proof(proof: &ReviewProof, update: &FacetUpdate) -> Result<(), CodecError> {
     if !matches!(
-        entity,
+        update.entity,
         EntityKind::PendingClaims | EntityKind::RevisionProposals
     ) {
         return Err(CodecError::UnexpectedField("reviewProof".to_string()));
@@ -1451,6 +1461,36 @@ fn validate_review_proof(proof: &ReviewProof, entity: EntityKind) -> Result<(), 
     .flatten()
     {
         validate_id_field(id)?;
+    }
+    let row_id = update.key.first().cloned().unwrap_or_default();
+    match update.entity {
+        EntityKind::PendingClaims => match &proof.claim_id {
+            Some(claim) if claim == &row_id => {}
+            _ => {
+                return Err(CodecError::InvalidReviewProofIdentity { field: "claimId" });
+            }
+        },
+        EntityKind::RevisionProposals => {
+            match &proof.proposal_id {
+                Some(proposal) if proposal == &row_id => {}
+                _ => {
+                    return Err(CodecError::InvalidReviewProofIdentity {
+                        field: "proposalId",
+                    });
+                }
+            }
+            let actual = update.before.get("pending_claim_id");
+            let matches_row = match (&proof.claim_id, actual) {
+                (Some(claim), Some(FieldValue::Text(row))) => claim == row,
+                _ => false,
+            };
+            if !matches_row {
+                return Err(CodecError::InvalidReviewProofIdentity { field: "claimId" });
+            }
+        }
+        _ => {
+            return Err(CodecError::UnexpectedField("reviewProof".to_string()));
+        }
     }
     Ok(())
 }
