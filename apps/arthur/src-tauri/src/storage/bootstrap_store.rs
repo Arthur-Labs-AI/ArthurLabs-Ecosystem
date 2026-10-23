@@ -48,6 +48,49 @@ fn bounds(c: &Connection) -> Result<()> {
     }
     Ok(())
 }
+#[derive(Clone, Copy)]
+pub(crate) enum Maintenance {
+    Interrupt,
+    Expire,
+    Resume,
+    Retire,
+}
+/// Native maintenance records recovery state only. G7 has not authorized any
+/// retirement proof; sender receipts and elapsed time cannot reclaim evidence.
+pub(crate) fn maintain(
+    store: &CandidateSyncStore<'_>,
+    s: &VerifiedSession,
+    o: &SnapshotOffer,
+    action: Maintenance,
+    clock: &dyn SyncClock,
+    x: &Cancellation,
+) -> Result<()> {
+    store.write(s, clock, x, |c| {
+        if !super::journal::g3::d4_installed(c)? {
+            return Err(Error::ActivationPending);
+        }
+        let direction: String = c
+            .query_row(
+                "SELECT direction FROM bootstrap_units WHERE id=?1",
+                [o.id.to_string()],
+                |r| r.get(0),
+            )
+            .map_err(sql)?;
+        unit(c, s, o, &direction)?;
+        let state = match action {
+            Maintenance::Interrupt => "interrupted",
+            Maintenance::Expire => "expired",
+            Maintenance::Resume => "receiving",
+            Maintenance::Retire => return Err(Error::ActivationPending),
+        };
+        c.execute(
+            "UPDATE bootstrap_lifecycle SET state=?2 WHERE id=?1",
+            params![o.id.to_string(), state],
+        )
+        .map_err(sql)?;
+        Ok(())
+    })
+}
 fn save_unit(
     c: &Connection,
     s: &VerifiedSession,
@@ -88,6 +131,7 @@ fn row(r: &SnapshotRow) -> Result<(EntityKind, RowImage)> {
         out.insert((*f).into(), field);
     }
     codec::validate_row_image(e, &out).map_err(|_| Error::Integrity)?;
+    super::journal::g3::disclosure_row(e, &out)?;
     for (f, key) in e.key_fields().iter().zip(&r.key) {
         if !matches!(out.get(*f),Some(FieldValue::Text(s)|FieldValue::Decimal(s)) if s==key) {
             return Err(Error::Integrity);
@@ -201,6 +245,15 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
     if !installed(c)? {
         return Err(Error::ActivationPending);
     }
+    // This profile promises a complete image, not a redacted projection. Even
+    // sequence-zero origins disclose private identity/incarnation metadata.
+    let mut origins = c
+        .prepare("SELECT origin_id FROM sync_origins UNION SELECT origin FROM import_events")
+        .map_err(sql)?;
+    let mut origins = origins.query([]).map_err(sql)?;
+    while let Some(r) = origins.next().map_err(sql)? {
+        permit(s, &r.get::<_, String>(0).map_err(sql)?)?;
+    }
     let prior: Option<(Vec<u8>, i64, i64, Vec<u8>)> = c
         .query_row(
             "SELECT hash,bytes,chunks,manifest FROM bootstrap_units WHERE id=?1",
@@ -217,6 +270,8 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
             chunks: usize::try_from(chunks).map_err(|_| Error::Storage)?,
         };
         unit(c, s, &offer, "out")?;
+        let image = decode(&payload)?;
+        authorize_image(s, &image)?;
         c.execute(
             "UPDATE bootstrap_units SET session=?2 WHERE id=?1",
             params![id.to_string(), s.binding().session.to_string()],
@@ -238,7 +293,12 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
     }
     let start = Instant::now();
     let mut image = SnapshotImage {
-        profile: BOOTSTRAP_PROFILE.into(),
+        profile: if super::journal::g3::d4_installed(c)? {
+            BOOTSTRAP_D4_PROFILE
+        } else {
+            BOOTSTRAP_PROFILE
+        }
+        .into(),
         version: 1,
         id: id.to_string(),
         network: s.binding().network.to_string(),
@@ -277,18 +337,37 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
     image.high_water = graph(&events)?.1;
     let mut creations = BTreeSet::new();
     for event in &events {
-        for op in &ValidatedEvent::parse(event.clone())?.core().operations {
+        let validated = ValidatedEvent::parse(event.clone())?;
+        if image.profile == BOOTSTRAP_D4_PROFILE
+            && validated
+                .core()
+                .operations
+                .iter()
+                .any(|op| matches!(op,Operation::FacetUpdate(u) if u.review_proof.is_some()))
+        {
+            image.origin_metadata.push(serde_json::json!({"kind":"review_attestation","event":event.identity.event.to_string(),"provenance":"legacy_attested"}));
+        }
+        for op in &validated.core().operations {
             if let Operation::RecordCreate(r) = op {
                 creations.insert((r.entity, r.key.clone()));
             }
         }
     }
     for (entity, key, record) in import_view::catalog(c, BOOTSTRAP_ROWS)? {
+        super::journal::g3::disclosure_row(entity, &record)?;
         let provenance = if creations.contains(&(entity, key.clone())) {
             "m05"
         } else {
             "legacy_attested"
         };
+        if image.profile == BOOTSTRAP_D4_PROFILE {
+            for f in codec::facets_of(entity) {
+                let (hash, event) = import_view::facet(c, entity, &key, f.name, &record)?;
+                if let Some(event) = event {
+                    image.origin_metadata.push(serde_json::json!({"kind":"facet","entity":entity.as_str(),"key":key,"facet":f.name,"event":event,"hash":hash}));
+                }
+            }
+        }
         image.rows.push(SnapshotRow {
             entity: entity.as_str().into(),
             provenance: provenance.into(),
@@ -311,6 +390,15 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
             "opened": r.get::<_,String>(5).map_err(sql)?,
             "sealed": r.get::<_,Option<String>>(6).map_err(sql)?
         }));
+    }
+    if image.profile == BOOTSTRAP_D4_PROFILE {
+        let mut q = c
+            .prepare("SELECT event FROM import_d4_commits ORDER BY event LIMIT 65")
+            .map_err(sql)?;
+        let mut rs = q.query([]).map_err(sql)?;
+        while let Some(r) = rs.next().map_err(sql)? {
+            image.origin_metadata.push(serde_json::json!({"kind":"d4_materialization","event":r.get::<_,String>(0).map_err(sql)?,"version":"1"}));
+        }
     }
     let mut q = c
         .prepare("SELECT event,version FROM import_g3_commits ORDER BY event LIMIT 65")
@@ -358,6 +446,7 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
     }
     image.row_count = image.rows.len();
     image.core_count = image.cores.len();
+    authorize_image(s, &image)?;
     metadata(&image, &events)?;
     for alternative in &image.conflicts {
         if alternative.get("kind").and_then(|v| v.as_str()) == Some("collision") {
@@ -403,6 +492,9 @@ pub(super) fn stage_offer(
             .map_err(sql)?;
         if exists {
             unit(c, s, o, "in")?;
+            if super::journal::g3::d4_installed(c)? {
+                c.execute("UPDATE bootstrap_lifecycle SET state='receiving' WHERE id=?1 AND state IN('interrupted','expired')",[o.id.to_string()]).map_err(sql)?;
+            }
             Ok(())
         } else {
             save_unit(c, s, o, "in", None)
@@ -451,6 +543,90 @@ pub(super) fn stage_chunk(
         }
         bounds(c)
     })
+}
+fn permit(s: &VerifiedSession, origin: &str) -> Result<()> {
+    let origin = Uuid::parse_str(origin).map_err(|_| Error::Integrity)?;
+    if !s.permits(origin) {
+        return Err(Error::Trust);
+    }
+    Ok(())
+}
+/// Scope follows original provenance, never the forwarding transport peer.
+/// Apply to new exports, cached exports and received manifests alike.
+fn authorize_image(s: &VerifiedSession, image: &SnapshotImage) -> Result<()> {
+    for h in &image.high_water {
+        permit(s, &h.origin)?;
+    }
+    let mut local_attestation = false;
+    for m in &image.origin_metadata {
+        if m.get("kind").and_then(|v| v.as_str()) == Some("local_origin") {
+            permit(s, m["origin"].as_str().ok_or(Error::Integrity)?)?;
+            local_attestation = true;
+        }
+    }
+    for r in &image.rows {
+        let (entity, record) = row(r)?;
+        // The single constant migration row contains no user metadata. Every
+        // private legacy row needs an explicitly permitted local attestor;
+        // an empty origin catalog cannot confer blanket disclosure authority.
+        let public_inbox = entity == EntityKind::Projects
+            && r.key == [super::migrations::INBOX_PROJECT_ID.to_string()]
+            && record
+                == RowImage::from([
+                    (
+                        "id".into(),
+                        FieldValue::Text(super::migrations::INBOX_PROJECT_ID.into()),
+                    ),
+                    ("name".into(), FieldValue::Text("Inbox".into())),
+                    (
+                        "created_at".into(),
+                        FieldValue::Text("1970-01-01T00:00:00Z".into()),
+                    ),
+                    (
+                        "updated_at".into(),
+                        FieldValue::Text("1970-01-01T00:00:00Z".into()),
+                    ),
+                    ("archived_at".into(), FieldValue::Null),
+                ]);
+        if r.provenance == "legacy_attested" && !local_attestation && !public_inbox {
+            return Err(Error::Trust);
+        }
+    }
+    for core in &image.cores {
+        let v = ValidatedEvent::parse(envelope(unhex(&core.bytes)?)?)?;
+        super::journal::g3::disclosure_event(&v)?;
+        permit(s, &v.core().origin_id)?;
+        for d in &v.core().dependencies {
+            if let Some(r) = &d.event_ref {
+                permit(s, &r.origin_id)?;
+            }
+        }
+        for op in &v.core().operations {
+            match op {
+                Operation::FacetUpdate(u) => {
+                    for p in u.expected.values() {
+                        if let Some(r) = &p.event_ref {
+                            permit(s, &r.origin_id)?;
+                        }
+                    }
+                }
+                Operation::RelationRemove(r) => {
+                    if let codec::ObservedCreate::Event(r) = &r.observed_create {
+                        permit(s, &r.origin_id)?;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    for m in &image.conflicts {
+        if m.get("kind").and_then(|v| v.as_str()) == Some("collision") {
+            let e = envelope(unhex(m["bytes"].as_str().ok_or(Error::Integrity)?)?)?;
+            super::journal::g3::disclosure_event(&ValidatedEvent::parse(e.clone())?)?;
+            permit(s, &e.identity.origin.to_string())?;
+        }
+    }
+    Ok(())
 }
 fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
     let start = Instant::now();
@@ -505,7 +681,10 @@ fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
                 local.insert((origin.to_owned(), inc.to_owned()));
                 format!("origin:{origin}:{inc}")
             }
-            "materialization" => {
+            "materialization" | "d4_materialization" => {
+                if kind == "d4_materialization" && image.profile != BOOTSTRAP_D4_PROFILE {
+                    return Err(Error::Integrity);
+                }
                 if fields.len() != 3 || text("version")? != "1" {
                     return Err(Error::Integrity);
                 }
@@ -518,7 +697,98 @@ fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
                     return Err(Error::Integrity);
                 }
                 proofs.insert(id.to_owned());
-                format!("proof:{id}")
+                format!("{kind}:{id}")
+            }
+            "facet" => {
+                if image.profile != BOOTSTRAP_D4_PROFILE || fields.len() != 6 {
+                    return Err(Error::Integrity);
+                }
+                let entity = EntityKind::from_str(text("entity")?).map_err(|_| Error::Integrity)?;
+                let key: Vec<String> =
+                    serde_json::from_value(m["key"].clone()).map_err(|_| Error::Integrity)?;
+                let facet = text("facet")?;
+                let def = codec::facets_of(entity)
+                    .iter()
+                    .find(|f| f.name == facet)
+                    .ok_or(Error::Integrity)?;
+                let v = validated
+                    .iter()
+                    .find(|v| {
+                        v.envelope().identity.event.to_string() == text("event").unwrap_or("")
+                    })
+                    .ok_or(Error::Integrity)?;
+                let after = v
+                    .core()
+                    .operations
+                    .iter()
+                    .find_map(|o| match o {
+                        Operation::RecordCreate(r) if r.entity == entity && r.key == key => {
+                            Some(&r.after)
+                        }
+                        Operation::FacetUpdate(u)
+                            if u.entity == entity
+                                && u.key == key
+                                && u.expected.contains_key(facet) =>
+                        {
+                            Some(&u.after)
+                        }
+                        _ => None,
+                    })
+                    .ok_or(Error::Integrity)?;
+                let state = def
+                    .fields
+                    .iter()
+                    .map(|f| {
+                        after
+                            .get(*f)
+                            .cloned()
+                            .map(|v| ((*f).to_string(), v))
+                            .ok_or(Error::Integrity)
+                    })
+                    .collect::<Result<RowImage>>()?;
+                if codec::hash_hex(
+                    &codec::facet_state_hash(entity, facet, &key, &state)
+                        .map_err(|_| Error::Integrity)?,
+                ) != text("hash")?
+                {
+                    return Err(Error::Integrity);
+                }
+                let current = image
+                    .rows
+                    .iter()
+                    .find(|r| r.entity == entity.as_str() && r.key == key)
+                    .ok_or(Error::Integrity)?;
+                let (_, record) = row(current)?;
+                if def.fields.iter().any(|f| record.get(*f) != after.get(*f)) {
+                    return Err(Error::Integrity);
+                }
+                format!(
+                    "facet:{}:{}:{facet}",
+                    entity.as_str(),
+                    serde_json::to_string(&key).map_err(|_| Error::Integrity)?
+                )
+            }
+            "review_attestation" => {
+                if image.profile != BOOTSTRAP_D4_PROFILE
+                    || fields.len() != 3
+                    || text("provenance")? != "legacy_attested"
+                {
+                    return Err(Error::Integrity);
+                }
+                let id = text("event")?;
+                let v = validated
+                    .iter()
+                    .find(|v| v.envelope().identity.event.to_string() == id)
+                    .ok_or(Error::Integrity)?;
+                if !v
+                    .core()
+                    .operations
+                    .iter()
+                    .any(|op| matches!(op,Operation::FacetUpdate(u) if u.review_proof.is_some()))
+                {
+                    return Err(Error::Integrity);
+                }
+                format!("review_attestation:{id}")
             }
             "creation" => {
                 if fields.len() != 5 {
@@ -565,6 +835,32 @@ fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
             && !proofs.contains(&e.identity.event.to_string())
         {
             return Err(Error::Integrity);
+        }
+    }
+    if image.profile == BOOTSTRAP_D4_PROFILE {
+        for v in &validated {
+            if v.core()
+                .operations
+                .iter()
+                .any(|op| matches!(op,Operation::FacetUpdate(u) if u.review_proof.is_some()))
+                && !seen.contains(&format!(
+                    "review_attestation:{}",
+                    v.envelope().identity.event
+                ))
+            {
+                return Err(Error::Integrity);
+            }
+        }
+        for r in &image.rows {
+            if r.provenance == "m05" {
+                let (entity, _) = row(r)?;
+                for f in codec::facets_of(entity) {
+                    let key = serde_json::to_string(&r.key).map_err(|_| Error::Integrity)?;
+                    if !seen.contains(&format!("facet:{}:{key}:{}", entity.as_str(), f.name)) {
+                        return Err(Error::Integrity);
+                    }
+                }
+            }
         }
     }
     for m in &image.conflicts {
@@ -650,6 +946,7 @@ fn verify(
     if image.id != o.id.to_string() || image.network != s.binding().network.to_string() {
         return Err(Error::Trust);
     }
+    authorize_image(s, &image)?;
     let mut events = Vec::new();
     for core in &image.cores {
         Outcome::parse(&core.outcome)?;
@@ -709,6 +1006,9 @@ pub(super) fn publish(
             });
         }
         let mut outcome = Outcome::CleanlyApplied;
+        if image.profile == BOOTSTRAP_D4_PROFILE && !super::journal::g3::d4_installed(c)? {
+            outcome = Outcome::UnsupportedImportPolicy;
+        }
         if !image.conflicts.is_empty() || image.cores.iter().any(|c| c.outcome == "conflict") {
             outcome = Outcome::ConflictRetained
         } else if image

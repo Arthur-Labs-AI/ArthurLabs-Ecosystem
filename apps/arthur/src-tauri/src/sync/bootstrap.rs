@@ -1,10 +1,11 @@
 //! Separate versioned bootstrap candidate. Journal cores and accepted snapshot
-//! v2 bytes are untouched. All envelopes bind a partial immutable-history profile.
+//! v2 bytes are untouched. Envelopes bind explicit partial-history profiles.
 use super::*;
 use crate::storage::journal::codec;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 pub(crate) const BOOTSTRAP_PROFILE: &str = "m05-bootstrap-immutable-v1";
+pub(crate) const BOOTSTRAP_D4_PROFILE: &str = "m05-bootstrap-history-d4-v1";
 pub(crate) const BOOTSTRAP_BYTES: usize = 4 * 1024 * 1024;
 pub(crate) const BOOTSTRAP_EVENTS: usize = 64;
 pub(crate) const BOOTSTRAP_ROWS: usize = 2048;
@@ -174,11 +175,16 @@ pub(crate) fn decode(bytes: &[u8]) -> Result<SnapshotImage> {
     if image.row_count != image.rows.len()
         || image.core_count != image.cores.len()
         || image.version != 1
-        || image.profile != BOOTSTRAP_PROFILE
+        || ![BOOTSTRAP_PROFILE, BOOTSTRAP_D4_PROFILE].contains(&image.profile.as_str())
         || image.cores.len() > BOOTSTRAP_EVENTS
         || image.rows.len() > BOOTSTRAP_ROWS
         || image.high_water.len() > BOOTSTRAP_EVENTS
-        || image.origin_metadata.len() > BOOTSTRAP_ROWS + BOOTSTRAP_EVENTS * 2
+        || image.origin_metadata.len()
+            > if image.profile == BOOTSTRAP_D4_PROFILE {
+                BOOTSTRAP_ROWS * 4 + BOOTSTRAP_EVENTS * 3
+            } else {
+                BOOTSTRAP_ROWS + BOOTSTRAP_EVENTS * 2
+            }
         || image.conflicts.len() > 64
         || canonical(&image)? != bytes
     {

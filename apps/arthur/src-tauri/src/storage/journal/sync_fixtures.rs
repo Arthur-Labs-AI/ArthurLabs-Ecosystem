@@ -295,6 +295,21 @@ pub(crate) fn install_history(s: &CaptureStore) {
     super::g3::install_history(s).unwrap();
     crate::storage::bootstrap_store::install(s).unwrap();
 }
+pub(crate) fn install_d4(s:&CaptureStore) { super::g3::install_d4(s).unwrap(); }
+pub(crate) fn assert_same_row(a:&CaptureStore,b:&CaptureStore,e:super::codec::EntityKind,key:&[String]) {
+    let source=a.connection.lock().unwrap(); let target=b.connection.lock().unwrap();
+    assert_eq!(super::sql_effects::reread(&source,e,key).unwrap(),super::sql_effects::reread(&target,e,key).unwrap());
+}
+pub(crate) fn last_original(s:&CaptureStore)->crate::sync::Envelope {
+    let c=s.connection.lock().unwrap();
+    let bytes=c.query_row("SELECT canonical_bytes FROM sync_bundles ORDER BY rowid DESC LIMIT 1",[],|r|r.get::<_,Vec<u8>>(0)).unwrap();
+    crate::sync::bootstrap::envelope(bytes).unwrap()
+}
+pub(crate) fn held_project_kernel_continues(s:&CaptureStore,id:&str,import:impl FnOnce()) {
+    let k=JournalKernel::activate(s).unwrap();
+    import();
+    k.write(|w|w.rename_project(id,"Local after foreign transition")).unwrap();
+}
 pub(crate) fn history(s: &CaptureStore) -> (String, String, String) {
     use crate::storage::{knowledge_store::NewKnowledgeObject, lineage_store::Changes};
     let k = JournalKernel::activate(s).unwrap();
@@ -379,6 +394,9 @@ pub(crate) fn held_object_kernel_continues(s: &CaptureStore, object: &str, impor
     .unwrap();
 }
 pub(crate) fn relation(s: &CaptureStore, source: &str, target: &str) -> String {
+    relation_owned(s, source, target, "user")
+}
+pub(crate) fn relation_owned(s: &CaptureStore, source: &str, target: &str, origin: &str) -> String {
     let k = JournalKernel::activate(s).unwrap();
     k.write(|w| {
         w.create_relation(
@@ -387,11 +405,51 @@ pub(crate) fn relation(s: &CaptureStore, source: &str, target: &str) -> String {
                 source_object_id: source.into(),
                 target_object_id: target.into(),
             },
-            "user",
+            origin,
         )
     })
     .unwrap()
     .id
+}
+pub(crate) fn remove_model(s:&CaptureStore,id:&str) {
+    use crate::storage::integration_store::{ObjectSnapshot,IntegrationWrite};
+    let edge=s.list_relations().unwrap().into_iter().find(|r|r.id==id).unwrap();
+    let snapshot=|id:&str|{
+        let object=s.get_knowledge_object(id).unwrap().unwrap();
+        ObjectSnapshot{object_id:id.into(),revision_id:s.current_revision_id_of(id).unwrap().unwrap(),project_id:object.project_id}
+    };
+    let write=IntegrationWrite{focus:snapshot(&edge.source_object_id),context:vec![snapshot(&edge.target_object_id)],remove:vec![id.into()],add:vec![]};
+    assert_eq!(JournalKernel::activate(s).unwrap().write(|w|w.apply_integration(write)).unwrap().removed,1);
+}
+pub(crate) fn rename_id(s:&CaptureStore,id:&str,name:&str) {
+    JournalKernel::activate(s).unwrap().write(|w|w.rename_project(id,name)).unwrap();
+}
+pub(crate) fn project_only(s:&CaptureStore,name:&str)->String {
+    JournalKernel::activate(s).unwrap().write(|w|w.create_project(name)).unwrap().id
+}
+pub(crate) fn archive_id(s:&CaptureStore,id:&str,restore:bool) {
+    JournalKernel::activate(s).unwrap().write(|w|if restore {w.restore_project(id)} else {w.archive_project(id)}).unwrap();
+}
+pub(crate) fn move_capture_id(s:&CaptureStore,id:&str,project:&str) {
+    JournalKernel::activate(s).unwrap().write(|w|w.move_capture(id,project)).unwrap();
+}
+pub(crate) fn edit_id(s:&CaptureStore,id:&str,title:&str) {
+    JournalKernel::activate(s).unwrap().write(|w|w.update_object(id,super::writer_tests::change(title))).unwrap();
+}
+pub(crate) fn open_proposal(s:&CaptureStore)->(String,String,String,String) {
+    open_proposal_with_evidence(s,None)
+}
+pub(crate) fn open_proposal_with_evidence(s:&CaptureStore,existing:Option<(i64,i64)>)->(String,String,String,String) {
+    use super::writer_tests::{candidate,decision_for,pending_for,proposal_for};
+    let k=JournalKernel::activate(s).unwrap();
+    let cap=k.write(|w|w.create_capture(CreateCaptureInput{source:"text".into(),content:"Alpha Beta Gamma".into(),project_id:None})).unwrap();
+    let object=k.write(|w|w.record_distillation(&cap.id,vec![candidate("Target",0,4)])).unwrap().remove(0);
+    let base=s.current_revision_id_of(&object.id).unwrap().unwrap();
+    let claim=k.write(|w|w.stage_uncertain_claim(pending_for(decision_for(&cap.id,0,vec![object.id.clone()]),vec![object.id.clone()]))).unwrap().0;
+    let mut input=proposal_for(&claim.id,&object.id,&base,"Original draft",&cap.id);
+    if let Some((start,end))=existing {input.evidence.push(crate::storage::proposal_store::EvidenceRef{role:"existing".into(),capture_id:cap.id.clone(),start,end});}
+    let proposal=k.write(|w|w.insert_proposal(input)).unwrap().0;
+    (object.id,base,claim.id,proposal.id)
 }
 
 // Actual SQLite authorization failure while restoring the frozen revision

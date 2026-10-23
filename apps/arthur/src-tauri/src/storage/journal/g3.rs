@@ -1,4 +1,4 @@
-//! Dormant G3 policy: bounded immutable history reconstruction.
+//! Dormant G3 policy: bounded original-history reconstruction.
 //! Canonical cores remain in import_events. The commit proof is authoritative;
 //! foreign heads are derived, never inserted into the local-origin journal.
 use super::{
@@ -7,6 +7,8 @@ use super::{
 };
 use crate::sync::{Error, Result, ValidatedEvent};
 use rusqlite::{ffi, params, Connection, OptionalExtension};
+#[path = "g3_d4.rs"]
+mod d4;
 use std::{
     ffi::c_void,
     sync::{
@@ -59,13 +61,17 @@ fn image(row: &codec::RowImage) -> Result<serde_json::Value> {
             .collect::<Result<serde_json::Map<String, serde_json::Value>>>()?,
     ))
 }
-fn supported(v: &ValidatedEvent, history: bool) -> Result<bool> {
+fn supported(v: &ValidatedEvent, history: bool, d4: bool) -> Result<bool> {
     if v.core().operations.len() > 64 {
         return Ok(false);
     }
     for op in &v.core().operations {
         let Operation::RecordCreate(row) = op else {
-            return Ok(false);
+            if d4 {
+                continue;
+            } else {
+                return Ok(false);
+            }
         };
         match row.entity {
             EntityKind::Projects => {
@@ -104,19 +110,50 @@ fn supported(v: &ValidatedEvent, history: bool) -> Result<bool> {
             | EntityKind::RevisionParents
             | EntityKind::RevisionEvidence
                 if history => {}
+            EntityKind::Relations
+            | EntityKind::IdentityDecisions
+            | EntityKind::PendingClaims
+            | EntityKind::RevisionProposals
+                if d4 => {}
             _ => return Ok(false),
         }
     }
     Ok(true)
 }
+pub(in crate::storage) fn d4_installed(c: &Connection) -> Result<bool> {
+    c.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name='import_d4_policy' AND type='table')",
+        [],
+        |r| r.get(0),
+    )
+    .map_err(|_| Error::Storage)
+}
+pub(in crate::storage) fn disclosure_row(entity: EntityKind, row: &codec::RowImage) -> Result<()> {
+    if entity == EntityKind::IdentityDecisions {
+        d4::validate_audit(row)?;
+    }
+    Ok(())
+}
+pub(in crate::storage) fn disclosure_event(v: &ValidatedEvent) -> Result<()> {
+    for op in &v.core().operations {
+        let row = match op {
+            Operation::RecordCreate(r) => &r.after,
+            Operation::FacetUpdate(u) => &u.after,
+            Operation::RelationRemove(r) => &r.before,
+        };
+        disclosure_row(op.entity(), row)?;
+    }
+    Ok(())
+}
 // SQLite owns this allocation from create_function_v2 until replacement/removal.
-// It contains only the exact validated row currently being inserted. No SQL,
+// It contains only the exact validated row currently being mutated. No SQL,
 // network, callbacks into providers, or peer-supplied identifiers execute here.
 struct Grant {
     active: Arc<AtomicBool>,
     entity: String,
     row: serde_json::Value,
     before: Option<serde_json::Value>,
+    deleting: bool,
 }
 unsafe extern "C" fn destroy(p: *mut c_void) {
     drop(Box::from_raw(p.cast::<Grant>()));
@@ -146,12 +183,17 @@ unsafe extern "C" fn permits(
             .ok()
         };
         let g = &*ffi::sqlite3_user_data(ctx).cast::<Grant>();
-        g.active.load(Ordering::SeqCst)
+        let allowed = ffi::sqlite3_get_autocommit(ffi::sqlite3_context_db_handle(ctx)) == 0
+            && g.active.load(Ordering::SeqCst)
             && read(0) == Some(g.entity.as_str())
-            && read(1)
-                .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
-                .as_ref()
-                == Some(&g.row)
+            && (if g.deleting {
+                ffi::sqlite3_value_type(args[1]) == ffi::SQLITE_NULL
+            } else {
+                read(1)
+                    .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+                    .as_ref()
+                    == Some(&g.row)
+            })
             && match &g.before {
                 Some(b) => {
                     read(2)
@@ -160,7 +202,8 @@ unsafe extern "C" fn permits(
                         == Some(b)
                 }
                 None => ffi::sqlite3_value_type(args[2]) == ffi::SQLITE_NULL,
-            }
+            };
+        allowed && g.active.swap(false, Ordering::SeqCst)
     })
     .unwrap_or(false);
     ffi::sqlite3_result_int(ctx, i32::from(answer));
@@ -210,10 +253,14 @@ impl Drop for ScopedGrant<'_> {
 pub(in crate::storage) fn history_installed(c: &Connection) -> Result<bool> {
     c.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name='import_history_policy' AND type='table')",[],|r|r.get(0)).map_err(|_|Error::Storage)
 }
-fn observer(entity: EntityKind, update: bool) -> Result<String> {
+fn observer(entity: EntityKind, verb: &str) -> Result<String> {
     // Names come exclusively from the closed native catalog, never raw input.
-    let verb = if update { "update" } else { "insert" };
-    let action = if update { "UPDATE" } else { "INSERT" };
+    let action = match verb {
+        "update" => "UPDATE",
+        "insert" => "INSERT",
+        "delete" => "DELETE",
+        _ => return Err(Error::Storage),
+    };
     let marker = format!(
         "CREATE TRIGGER sync_observe_{}_{verb} AFTER {action} ON {}",
         entity.as_str(),
@@ -231,6 +278,24 @@ fn sql_value(v: &FieldValue) -> Result<rusqlite::types::Value> {
             rusqlite::types::Value::Integer(s.parse().map_err(|_| Error::Integrity)?)
         }
     })
+}
+pub(in crate::storage) fn observers_restored(c: &Connection) -> Result<()> {
+    for e in sql_effects::ENTITIES {
+        for verb in ["insert", "update", "delete"] {
+            let name = format!("sync_observe_{}_{verb}", e.as_str());
+            let actual: String = c
+                .query_row(
+                    "SELECT sql FROM sqlite_master WHERE type='trigger' AND name=?1",
+                    [name],
+                    |r| r.get(0),
+                )
+                .map_err(|_| Error::Storage)?;
+            if actual.trim_end_matches(';') != observer(e, verb)?.trim_end_matches(';') {
+                return Err(Error::Storage);
+            }
+        }
+    }
+    Ok(())
 }
 fn insert_row(c: &Connection, e: EntityKind, row: &codec::RowImage) -> Result<usize> {
     let fields = e.all_fields();
@@ -250,14 +315,91 @@ fn insert_row(c: &Connection, e: EntityKind, row: &codec::RowImage) -> Result<us
     c.execute(&sql, rusqlite::params_from_iter(values))
         .map_err(|_| Error::Storage)
 }
+fn mutate_row(
+    c: &Connection,
+    e: EntityKind,
+    row: &codec::RowImage,
+    before: &codec::RowImage,
+    deleting: bool,
+) -> Result<usize> {
+    let changed = e
+        .all_fields()
+        .iter()
+        .filter(|f| row.get(**f) != before.get(**f))
+        .copied()
+        .collect::<Vec<_>>();
+    let mut values = Vec::new();
+    if !deleting {
+        for f in &changed {
+            values.push(sql_value(row.get(*f).ok_or(Error::Integrity)?)?);
+        }
+    }
+    let offset = values.len();
+    for f in e.all_fields() {
+        values.push(sql_value(before.get(*f).ok_or(Error::Integrity)?)?);
+    }
+    let predicate = e
+        .all_fields()
+        .iter()
+        .enumerate()
+        .map(|(i, f)| format!("{f} IS ?{}", offset + i + 1))
+        .collect::<Vec<_>>()
+        .join(" AND ");
+    let sql = if deleting {
+        format!("DELETE FROM {} WHERE {predicate}", e.as_str())
+    } else {
+        if changed.is_empty() {
+            return Err(Error::Integrity);
+        }
+        let assignments = changed
+            .iter()
+            .enumerate()
+            .map(|(i, f)| format!("{f}=?{}", i + 1))
+            .collect::<Vec<_>>()
+            .join(",");
+        format!("UPDATE {} SET {assignments} WHERE {predicate}", e.as_str())
+    };
+    c.execute(&sql, rusqlite::params_from_iter(values))
+        .map_err(|_| Error::Storage)
+}
 fn scoped_row(
     c: &Connection,
     e: EntityKind,
     row: &codec::RowImage,
     before: Option<&codec::RowImage>,
 ) -> Result<()> {
+    scoped_effect(c, e, row, before, false)
+}
+fn scoped_effect(
+    c: &Connection,
+    e: EntityKind,
+    row: &codec::RowImage,
+    before: Option<&codec::RowImage>,
+    deleting: bool,
+) -> Result<()> {
+    if c.is_autocommit() {
+        return Err(Error::Storage);
+    }
     let update = before.is_some();
-    let original = observer(e, update)?;
+    let verb = if deleting {
+        "delete"
+    } else if update {
+        "update"
+    } else {
+        "insert"
+    };
+    let original = observer(e, verb)?;
+    let name = format!("sync_observe_{}_{verb}", e.as_str());
+    let installed: String = c
+        .query_row(
+            "SELECT sql FROM sqlite_master WHERE name=?1 AND type='trigger'",
+            [&name],
+            |r| r.get(0),
+        )
+        .map_err(|_| Error::Storage)?;
+    if installed.trim_end_matches(';') != original.trim_end_matches(';') {
+        return Err(Error::Storage);
+    }
     let json = |prefix: &str| {
         format!(
             "json_object({})",
@@ -269,13 +411,9 @@ fn scoped_row(
         )
     };
     let prior = if update { json("OLD") } else { "NULL".into() };
-    let predicate = format!(
-        "arthur_g3_row('{}',{},{} )=0",
-        e.as_str(),
-        json("NEW"),
-        prior
-    );
-    let guarded = if update {
+    let after = if deleting { "NULL".into() } else { json("NEW") };
+    let predicate = format!("arthur_g3_row('{}',{},{} )=0", e.as_str(), after, prior);
+    let guarded = if update && !deleting {
         original.replacen("\nWHEN ", &format!("\nWHEN ({predicate}) AND "), 1)
     } else {
         original.replacen("\nBEGIN", &format!("\nWHEN {predicate}\nBEGIN"), 1)
@@ -288,24 +426,19 @@ fn scoped_row(
             entity: e.as_str().into(),
             row: image(row)?,
             before: before.map(image).transpose()?,
+            deleting,
         }),
     )?;
     let scoped = ScopedGrant {
         connection: c,
         active,
     };
-    let drop_sql = format!(
-        "DROP TRIGGER sync_observe_{}_{};",
-        e.as_str(),
-        if update { "update" } else { "insert" }
-    );
+    let drop_sql = format!("DROP TRIGGER sync_observe_{}_{};", e.as_str(), verb);
     c.execute_batch(&drop_sql)
         .and_then(|_| c.execute_batch(&guarded))
         .map_err(|_| Error::Storage)?;
-    let result = if update {
-        // The only admitted update is the validated same-event initial-object
-        // assembly NULL -> original root. Ordinary current-head changes remain blocked.
-        c.execute("UPDATE knowledge_objects SET current_revision_id=?1 WHERE id=?2 AND current_revision_id IS NULL",params![text(row,"current_revision_id")?,text(row,"id")?]).map_err(|_|Error::Storage)
+    let result = if update || deleting {
+        mutate_row(c, e, row, before.ok_or(Error::Integrity)?, deleting)
     } else {
         insert_row(c, e, row)
     };
@@ -313,13 +446,24 @@ fn scoped_row(
         .and_then(|_| c.execute_batch(&original))
         .map_err(|_| Error::Storage)?;
     scoped.revoke()?;
+    let restored: String = c
+        .query_row(
+            "SELECT sql FROM sqlite_master WHERE name=?1 AND type='trigger'",
+            [&name],
+            |r| r.get(0),
+        )
+        .map_err(|_| Error::Storage)?;
+    if restored.trim_end_matches(';') != original.trim_end_matches(';') {
+        return Err(Error::Storage);
+    }
     if result? != 1 {
         return Err(Error::Integrity);
     }
     Ok(())
 }
 pub(in crate::storage) fn materialize(c: &Connection, v: &ValidatedEvent) -> Result<bool> {
-    if !installed(c)? || !supported(v, history_installed(c)?)? {
+    let d4 = d4_installed(c)?;
+    if !installed(c)? || !supported(v, history_installed(c)?, d4)? || (d4 && !d4::admitted(c, v)?) {
         return Ok(false);
     }
     if c.is_autocommit() {
@@ -329,11 +473,11 @@ pub(in crate::storage) fn materialize(c: &Connection, v: &ValidatedEvent) -> Res
         .core()
         .operations
         .iter()
-        .map(|o| match o {
-            Operation::RecordCreate(r) => Ok(r),
-            _ => Err(Error::Integrity),
+        .filter_map(|o| match o {
+            Operation::RecordCreate(r) => Some(r),
+            _ => None,
         })
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<Vec<_>>();
     for row in &rows {
         if sql_effects::reread(c, row.entity, &row.key)
             .map_err(|_| Error::Storage)?
@@ -536,6 +680,19 @@ pub(in crate::storage) fn materialize(c: &Connection, v: &ValidatedEvent) -> Res
         prior.insert("current_revision_id".into(), FieldValue::Null);
         scoped_row(c, row.entity, &row.after, Some(&prior))?;
     }
+    for e in [
+        EntityKind::Relations,
+        EntityKind::IdentityDecisions,
+        EntityKind::PendingClaims,
+        EntityKind::RevisionProposals,
+    ] {
+        for row in rows.iter().filter(|r| r.entity == e) {
+            scoped_row(c, e, &row.after, None)?;
+        }
+    }
+    if d4 {
+        d4::apply_transitions(c, v)?;
+    }
     for row in rows {
         if sql_effects::reread(c, row.entity, &row.key)
             .map_err(|_| Error::Storage)?
@@ -552,7 +709,7 @@ pub(in crate::storage) fn materialize(c: &Connection, v: &ValidatedEvent) -> Res
         .filter(|o| o.entity() == EntityKind::KnowledgeObjects)
     {
         c.execute(
-            "INSERT INTO import_recall_suppression(object_id) VALUES(?1)",
+            "INSERT OR IGNORE INTO import_recall_suppression(object_id) VALUES(?1)",
             [&row.key()[0]],
         )
         .map_err(|_| Error::Storage)?;
@@ -570,10 +727,19 @@ pub(in crate::storage) fn materialize(c: &Connection, v: &ValidatedEvent) -> Res
         event_id: id.event.to_string(),
         hash: codec::hash_hex(&id.hash),
     };
+    if d4 {
+        c.execute(
+            "INSERT INTO import_d4_commits VALUES(?1)",
+            [id.event.to_string()],
+        )
+        .map_err(|_| Error::Storage)?;
+    }
     for ((e, k, f), head) in
         stream::updates(&v.core().operations, &reference).map_err(|_| Error::Storage)?
     {
-        let query = if matches!(e, EntityKind::Projects | EntityKind::Captures) {
+        let query = if d4 {
+            "INSERT INTO import_d4_heads(entity,key_json,facet,event,hash) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(entity,key_json,facet) DO UPDATE SET event=excluded.event,hash=excluded.hash"
+        } else if matches!(e, EntityKind::Projects | EntityKind::Captures) {
             "INSERT INTO import_g3_heads(entity,key_json,facet,event,hash) VALUES(?1,?2,?3,?4,?5)"
         } else {
             "INSERT INTO import_history_heads(entity,key_json,facet,event,hash) VALUES(?1,?2,?3,?4,?5)"
@@ -634,7 +800,9 @@ pub(super) fn head(
     if !installed(c).map_err(|_| super::storage::JournalError::Sql)? {
         return Ok(None);
     }
-    let query = if history_installed(c).map_err(|_| super::storage::JournalError::Sql)? {
+    let query = if d4_installed(c).map_err(|_| super::storage::JournalError::Sql)? {
+        "SELECT event,hash FROM import_d4_heads WHERE entity=?1 AND key_json=?2 AND facet=?3"
+    } else if history_installed(c).map_err(|_| super::storage::JournalError::Sql)? {
         "SELECT event,hash FROM import_g3_heads WHERE entity=?1 AND key_json=?2 AND facet=?3 UNION ALL SELECT event,hash FROM import_history_heads WHERE entity=?1 AND key_json=?2 AND facet=?3"
     } else {
         "SELECT event,hash FROM import_g3_heads WHERE entity=?1 AND key_json=?2 AND facet=?3"
@@ -667,6 +835,15 @@ pub(crate) fn install_history(store: &super::super::capture_store::CaptureStore)
     let mut c = store.connection.lock().map_err(|_| Error::Storage)?;
     let tx = c.transaction().map_err(|_| Error::Storage)?;
     tx.execute_batch(include_str!("../import_history.sql"))
+        .map_err(|_| Error::Storage)?;
+    tx.commit().map_err(|_| Error::Storage)
+}
+
+#[cfg(test)]
+pub(crate) fn install_d4(store: &super::super::capture_store::CaptureStore) -> Result<()> {
+    let mut c = store.connection.lock().map_err(|_| Error::Storage)?;
+    let tx = c.transaction().map_err(|_| Error::Storage)?;
+    tx.execute_batch(include_str!("../import_d4.sql"))
         .map_err(|_| Error::Storage)?;
     tx.commit().map_err(|_| Error::Storage)
 }

@@ -53,7 +53,9 @@ impl<'a> CandidateSyncStore<'a> {
         let c = self.store.connection.lock().map_err(|_| Error::Storage)?;
         import_view::ready(&c)?;
         authorize(&c, s, clock, x)?;
-        work(&c)
+        let result = work(&c)?;
+        authorize(&c, s, clock, x)?;
+        Ok(result)
     }
     pub(super) fn write<T>(
         &self,
@@ -74,6 +76,7 @@ impl<'a> CandidateSyncStore<'a> {
             .and_then(|_| work(&tx))
             .and_then(|v| {
                 quota(&tx)?;
+                if g3::installed(&tx)? { g3::observers_restored(&tx)?; }
                 authorize(&tx, s, clock, x)?;
                 Ok(v)
             });
@@ -161,6 +164,11 @@ pub(super) fn quota(c: &Connection) -> Result<()> {
     if super::bootstrap_store::installed(c)? {
         let extra:i64=c.query_row("SELECT coalesce((SELECT sum(coalesce(length(manifest),0)+512) FROM bootstrap_units),0)+coalesce((SELECT sum(length(bytes)+128) FROM bootstrap_chunks),0)",[],|r|r.get(0)).map_err(sql)?;
         bytes = bytes.checked_add(extra).ok_or(Error::StorageLimited)?;
+    }
+    if g3::d4_installed(c)? {
+        let (heads,extra):(i64,i64)=c.query_row("SELECT count(*),coalesce(sum(length(entity)+length(CAST(key_json AS BLOB))+length(facet)+length(event)+length(hash)+32),0)+(SELECT count(*)*64 FROM import_d4_commits)+(SELECT count(*)*128 FROM bootstrap_lifecycle) FROM import_d4_heads",[],|r|Ok((r.get(0)?,r.get(1)?))).map_err(sql)?;
+        if heads>65536 {return Err(Error::StorageLimited);}
+        bytes=bytes.checked_add(extra).ok_or(Error::StorageLimited)?;
     }
     let creates: i64 = c
         .query_row("SELECT count(*) FROM import_creates", [], |r| r.get(0))
@@ -261,7 +269,7 @@ pub(super) fn load(c: &Connection, event: Uuid) -> Result<Option<Envelope>> {
         })
         .transpose()
 }
-fn reference(c: &Connection, r: &EventRef) -> Result<Option<codec::JournalEvent>> {
+pub(super) fn reference(c: &Connection, r: &EventRef) -> Result<Option<codec::JournalEvent>> {
     let id = Uuid::parse_str(&r.event_id).map_err(|_| Error::Integrity)?;
     let held: Option<(String, i64)> = c
         .query_row(
@@ -287,6 +295,22 @@ fn reference(c: &Connection, r: &EventRef) -> Result<Option<codec::JournalEvent>
         return Err(Error::Integrity);
     }
     Ok(Some(ValidatedEvent::parse(e)?.core().clone()))
+}
+fn authorize_event_scope(s:&VerifiedSession,e:&ValidatedEvent)->Result<()> {
+    let check=|origin:&str|->Result<()> {
+        if !s.permits(Uuid::parse_str(origin).map_err(|_|Error::Integrity)?) {return Err(Error::Trust);}
+        Ok(())
+    };
+    check(&e.core().origin_id)?;
+    for d in &e.core().dependencies {if let Some(r)=&d.event_ref {check(&r.origin_id)?;}}
+    for op in &e.core().operations {
+        match op {
+            Operation::FacetUpdate(u)=>for p in u.expected.values() {if let Some(r)=&p.event_ref {check(&r.origin_id)?;}},
+            Operation::RelationRemove(r)=>if let codec::ObservedCreate::Event(r)=&r.observed_create {check(&r.origin_id)?;},
+            _=>{}
+        }
+    }
+    Ok(())
 }
 fn pending(c: &Connection, event: Uuid, reason: &str) -> Result<()> {
     c.execute(
@@ -408,6 +432,15 @@ fn classify(c: &Connection, v: &ValidatedEvent) -> Result<(Outcome, bool)> {
         let mut related = serde_json::Value::Null;
         match op {
             Operation::RecordCreate(row) => {
+                if g3::d4_installed(c)? && row.entity == EntityKind::Relations {
+                    conflict |= core.operations.iter().any(|op|matches!(op,Operation::RecordCreate(other) if other.entity==EntityKind::Relations&&other.key!=row.key&&["kind","source_object_id","target_object_id"].iter().all(|f|other.after.get(*f)==row.after.get(*f))));
+                    let value = |k: &str| match row.after.get(k) { Some(FieldValue::Text(s)) => Ok(s.as_str()), _=>Err(Error::Integrity) };
+                    let existing:Option<String>=c.query_row("SELECT id FROM relations WHERE kind=?1 AND source_object_id=?2 AND target_object_id=?3 AND id<>?4",params![value("kind")?,value("source_object_id")?,value("target_object_id")?,row.key[0]],|r|r.get(0)).optional().map_err(sql)?;
+                    if let Some(id)=existing {
+                        conflict=true;
+                        related=image_value(import_view::row(c,EntityKind::Relations,&[id])?);
+                    }
+                }
                 if let Some(actual) = &actual {
                     let mutable = codec::facets_of(row.entity)
                         .iter()
@@ -472,6 +505,27 @@ fn classify(c: &Connection, v: &ValidatedEvent) -> Result<(Outcome, bool)> {
             }
             Operation::FacetUpdate(update) => {
                 if let Some(actual) = &actual {
+                    if g3::d4_installed(c)? {
+                        conflict |= actual != &update.before;
+                        if update.entity==EntityKind::Projects {
+                            if let Some(FieldValue::Text(name))=update.after.get("name") {
+                                let duplicate:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM projects WHERE lower(name)=lower(?1) AND id<>?2)",params![name,update.key[0]],|r|r.get(0)).map_err(sql)?;
+                                conflict |= duplicate;
+                            }
+                        }
+                        if matches!(update.entity,EntityKind::Captures|EntityKind::KnowledgeObjects) {
+                            if let Some(FieldValue::Text(project))=update.after.get("project_id") {
+                                let archived:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM projects WHERE id=?1 AND archived_at IS NOT NULL)",[project],|r|r.get(0)).map_err(sql)?;
+                                if archived {conflict=true;related=image_value(import_view::row(c,EntityKind::Projects,&[project.clone()])?);}
+                            }
+                        }
+                        if update.entity==EntityKind::Projects && update.after.get("archived_at")!=Some(&FieldValue::Null) && update.before.get("archived_at")==Some(&FieldValue::Null) {
+                            // The codec has no archive child-set commitment. A
+                            // concurrent Capture must remain a visible conflict.
+                            let children:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM captures WHERE project_id=?1 UNION ALL SELECT 1 FROM knowledge_objects WHERE project_id=?1)",[&update.key[0]],|r|r.get(0)).map_err(sql)?;
+                            conflict |= children;
+                        }
+                    }
                     for (facet, expected) in &update.expected {
                         let (hash, head) =
                             import_view::facet(c, op.entity(), op.key(), facet, actual)?;
@@ -600,6 +654,7 @@ pub(super) fn refresh(
             }
             continue;
         }
+        authorize_event_scope(s,&v)?;
         let (outcome, chain) = match classify(c, &v) {
             Ok(result) => result,
             Err(Error::Integrity) => (Outcome::RejectedIntegrity, false),
@@ -738,9 +793,23 @@ impl SyncStore for CandidateSyncStore<'_> {
         if known.iter().any(|id|!s.permits(id.origin)){return Err(Error::Trust)}
         let mut q=c.prepare("SELECT origin,incarnation,stored,integrated,applied FROM import_progress WHERE peer=?1 ORDER BY origin,incarnation LIMIT 257").map_err(sql)?;
         let progress=q.query_map([s.binding().peer.to_string()],|r|Ok(Progress{origin:Uuid::parse_str(&r.get::<_,String>(0)?).map_err(|_|rusqlite::Error::InvalidQuery)?,incarnation:Uuid::parse_str(&r.get::<_,String>(1)?).map_err(|_|rusqlite::Error::InvalidQuery)?,stored:r.get(2)?,integrated:r.get(3)?,applied:r.get(4)?})).map_err(sql)?.collect::<rusqlite::Result<Vec<_>>>().map_err(sql)?;
-        if progress.len()>MAX_EVENTS{return Err(Error::Limit)}let mut needs_attention:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM import_events WHERE outcome<>'applied' UNION ALL SELECT 1 FROM import_sent WHERE outcome NOT IN('offered','applied') UNION ALL SELECT 1 FROM import_collisions)",[],|r|r.get(0)).map_err(sql)?;let mut problem:Option<String>=c.query_row("SELECT outcome FROM (SELECT outcome FROM import_events UNION ALL SELECT outcome FROM import_sent WHERE outcome<>'offered' UNION ALL SELECT 'rejected' FROM import_collisions) ORDER BY CASE outcome WHEN 'rejected' THEN 0 WHEN 'conflict' THEN 1 WHEN 'deferred' THEN 2 WHEN 'unsupported' THEN 3 ELSE 4 END LIMIT 1",[],|r|r.get(0)).optional().map_err(sql)?;
+        if progress.len()>MAX_EVENTS{return Err(Error::Limit)}
+        if progress.iter().any(|p| !s.permits(p.origin)) { return Err(Error::Trust); }
+        // A later inventory page must not leak through an earlier status/count.
+        let mut scopes=c.prepare("SELECT origin_id FROM sync_bundles UNION SELECT origin FROM import_events UNION SELECT origin FROM import_sent").map_err(sql)?;
+        let mut scopes=scopes.query([]).map_err(sql)?;
+        while let Some(r)=scopes.next().map_err(sql)? {
+            if !s.permits(Uuid::parse_str(&r.get::<_,String>(0).map_err(sql)?).map_err(|_|Error::Storage)?) {return Err(Error::Trust);}
+        }
+        let mut alternatives=c.prepare("SELECT bytes FROM import_collisions LIMIT 17").map_err(sql)?;
+        let mut alternatives=alternatives.query([]).map_err(sql)?;
+        while let Some(r)=alternatives.next().map_err(sql)? {
+            let v=ValidatedEvent::parse(crate::sync::bootstrap::envelope(r.get(0).map_err(sql)?)?)?;
+            authorize_event_scope(s,&v)?;
+        }
+        let mut needs_attention:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM import_events WHERE outcome<>'applied' UNION ALL SELECT 1 FROM import_sent WHERE outcome NOT IN('offered','applied') UNION ALL SELECT 1 FROM import_collisions)",[],|r|r.get(0)).map_err(sql)?;let mut problem:Option<String>=c.query_row("SELECT outcome FROM (SELECT outcome FROM import_events UNION ALL SELECT outcome FROM import_sent WHERE outcome<>'offered' UNION ALL SELECT 'rejected' FROM import_collisions) ORDER BY CASE outcome WHEN 'rejected' THEN 0 WHEN 'conflict' THEN 1 WHEN 'deferred' THEN 2 WHEN 'unsupported' THEN 3 ELSE 4 END LIMIT 1",[],|r|r.get(0)).optional().map_err(sql)?;
         if super::bootstrap_store::installed(c)?{
-            let blocked:Option<String>=c.query_row("SELECT outcome FROM bootstrap_units WHERE outcome NOT IN('staged','applied') ORDER BY CASE outcome WHEN 'rejected' THEN 0 WHEN 'conflict' THEN 1 WHEN 'deferred' THEN 2 ELSE 3 END LIMIT 1",[],|r|r.get(0)).optional().map_err(sql)?;
+            let blocked:Option<String>=c.query_row("SELECT outcome FROM bootstrap_units WHERE peer=?1 AND network=?2 AND epoch=?3 AND outcome NOT IN('staged','applied') ORDER BY CASE outcome WHEN 'rejected' THEN 0 WHEN 'conflict' THEN 1 WHEN 'deferred' THEN 2 ELSE 3 END LIMIT 1",params![s.binding().peer.to_string(),s.binding().network.to_string(),s.binding().epoch],|r|r.get(0)).optional().map_err(sql)?;
             if blocked.is_some(){needs_attention=true;if problem.as_deref().is_none_or(|p|p=="applied"){problem=blocked;}}
         }
         let status=problem.as_deref().map(Outcome::parse).transpose()?.map(SyncStatus::from).unwrap_or(SyncStatus::Syncing);
@@ -775,6 +844,9 @@ impl SyncStore for CandidateSyncStore<'_> {
             if &e.identity != id {
                 return Err(Error::Integrity);
             }
+            let validated=ValidatedEvent::parse(e.clone())?;
+            authorize_event_scope(s,&validated)?;
+            g3::disclosure_event(&validated)?;
             Ok(e)
         })
     }
@@ -924,6 +996,7 @@ pub(super) fn retain_in(
     if !s.permits(id.origin) {
         return Err(Error::Trust);
     }
+    authorize_event_scope(s,e)?;
     if let Some(prior) = load(c, id.event)? {
         if prior.identity != *id || prior.bytes != envelope.bytes {
             collision(c, s, envelope, "identity")?;

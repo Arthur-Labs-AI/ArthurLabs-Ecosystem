@@ -1,5 +1,7 @@
 use super::*;
 use crate::sync::bootstrap::*;
+#[path = "sync_d4_tests.rs"]
+mod d4;
 fn bare(id: Uuid, other: Uuid) -> Peer {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().canonicalize().unwrap();

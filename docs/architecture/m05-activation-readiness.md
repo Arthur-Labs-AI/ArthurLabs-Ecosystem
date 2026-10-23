@@ -259,3 +259,39 @@ Full native: 1,241 PASS / the exact five D2 baseline FAIL / 22 ignored;
 architecture: 86 PASS / the same two baseline FAIL. Cargo all-targets check,
 typecheck and frontend (561 tests plus build) PASS. TTS is unchanged and passes.
 Android/Linux targets, real filesystem exhaustion and power-loss remain unverified.
+
+## 13. MEGA D4 guarded history and disclosure (2026-10-23)
+
+**PARTIAL / DORMANT:** test-installed `import_d4.sql` extends creation support to
+relations, identity decisions, initial pending claims and open proposals. Original
+IDs, immutable audit/draft fields, dependencies and creation proofs survive disk
+reopen. Semantic duplicate relation UUIDs retain their original cores as explicit
+conflicts; exact observed model removals cannot remove a user edge or later add.
+Import-owned Project rename/empty archive/restore, Capture/Object membership and
+selected-head chains require exact before-images, predecessor hashes and heads.
+Local selections, archive children and divergent operations retain alternatives.
+
+Bootstrap now checks empty/populated local origins, foreign originals, referenced
+origins, cached manifests and private legacy attestations against explicit scope.
+Unattributed private legacy rows cannot leave an empty scope. Typed audit parsing
+blocks raw provider payload forwarding. The separate
+`m05-bootstrap-history-d4-v1` profile binds mutable facet provenance and D4 proofs;
+unsigned historical reviews remain `legacy_attested` and unsupported. Publication
+logically merges independent databases and rolls back domain, ledger and progress
+together. The 4 MiB/64-core/4-unit bounds remain; lifecycle states retain all
+recovery/conflict evidence, and native retirement returns activation-pending.
+
+G5 review transitions, stale proposal bases, G6 aliases, G7 reclamation and full
+populated-v9 convergence remain unsupported. No `knowledge-v1-full` claim is made.
+Production STEPS 1–9, schema v9, accepted v10 SQL, codec/reducer, snapshot v2 and
+public writer routing are unchanged. ClosedTrust and G4 UnverifiedBounds remain
+closed; Android/device and physical-filesystem certification remain unverified.
+
+Windows verification on the final code: D4 **32 PASS**, Sync **85 PASS**, Journal
+**263 PASS**, dormant v10 **24 PASS**; full native **1,273 PASS / 5 historical FAIL /
+22 ignored**. The five failure identities exactly match the previously recorded
+JEV transport, two synthesis architecture, frozen corpus and synthesis permission
+cases in [the G4 verification record](m05-g4-quota-reserve-decision.md); the TTS
+audio-focus test passes. Cargo locked/offline all-targets check and typecheck PASS;
+architecture **86 PASS / the same 2 historical FAIL**; frontend **561 PASS + build**.
+`git diff --check` passes. No production activation, push or PR is performed.
