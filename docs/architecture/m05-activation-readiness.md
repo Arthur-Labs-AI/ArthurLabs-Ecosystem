@@ -295,3 +295,26 @@ cases in [the G4 verification record](m05-g4-quota-reserve-decision.md); the TTS
 audio-focus test passes. Cargo locked/offline all-targets check and typecheck PASS;
 architecture **86 PASS / the same 2 historical FAIL**; frontend **561 PASS + build**.
 `git diff --check` passes. No production activation, push or PR is performed.
+
+## 14. MEGA C physical admission candidate (2026-10-23)
+
+**PARTIAL / DORMANT:** a dedicated non-default, test-only owned VFS now observes
+main/DELETE-journal I/O and refuses unaccountable temp/subjournal/WAL opens. Its
+outer admission token enforces separate requested-extent limits through real
+COMMIT, with deterministic I/O faults, snapshot retries and process-termination
+recovery. Windows NTFS capacity/allocation and root-identity checks were executed;
+samples do not certify filesystem allocation peaks. See the compact
+[MEGA C evidence and gate record](m05-g4-quota-reserve-decision.md#mega-c--scoped-physical-io-and-recovery-evidence-2026-10-23).
+Release remains `UnverifiedBounds`; G4-01–G4-09/Profile A are not approved.
+Android/Linux/device, actual filesystem-full and hardware power-loss acceptance
+remain NOT TESTED. Production schema9/STEPS1–9, accepted v10 SQL, snapshot v2,
+codec/reducer, D4 policies, public writer routing and Sync ingress stay frozen.
+
+Windows gates: G4 **24 PASS** (one private subprocess entry run by its parent),
+Journal **287 PASS**, dormant v10 **24 PASS**, Sync **86 PASS** (85 original + one
+G4 name match), D4 **32 PASS**. Cargo all-targets/typecheck/frontend **561 + build
+PASS**; architecture **86 PASS / same 2 FAIL**. Two full-native runs each produced
+**1,296 PASS / 6 FAIL / 23 ignored**: the five D4 baseline failures plus the TTS
+audio-focus cleanup case; exact isolated TTS **1 PASS**. This additional full-suite
+failure remains unresolved; TTS source/assertions are unchanged. No release PASS
+or universal physical-bound certification is claimed.

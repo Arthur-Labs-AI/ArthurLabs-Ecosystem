@@ -686,6 +686,11 @@ fn complete<T>(
         }
         hooks.at(Stage::Commit)?;
         commit(tx)?;
+        // Even an I/O error swallowed by SQLite's optional cleanup must not
+        // become an acknowledged save under an instrumented contract.
+        if budget.is_some_and(|b| b.check_io().is_err()) {
+            return Err(JournalError::CommitUncertain(None));
+        }
         #[cfg(test)]
         if hooks.fault == Some(Fault::AfterCommitUnknown) {
             return Err(JournalError::CommitUncertain(None));

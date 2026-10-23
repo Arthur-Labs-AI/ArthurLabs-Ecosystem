@@ -90,6 +90,8 @@ pub struct CaptureStore {
     pub(super) connection: Mutex<Connection>,
     // Fields drop in declaration order: close the connection before releasing its root lock.
     _ownership: Option<DataRootOwnership>,
+    #[cfg(test)]
+    _io_vfs: Option<std::sync::Arc<super::journal::owned_vfs::OwnedVfs>>,
 }
 
 impl CaptureStore {
@@ -103,6 +105,32 @@ impl CaptureStore {
     pub(crate) fn open_owned(ownership: DataRootOwnership) -> Result<Self, StoreError> {
         let connection = Connection::open(ownership.data_root().join("arthur.db"))?;
         Self::from_connection(connection, Some(ownership))
+    }
+    #[cfg(test)]
+    pub(super) fn open_observed(
+        ownership: DataRootOwnership,
+        vfs: std::sync::Arc<super::journal::owned_vfs::OwnedVfs>,
+        reopen: bool,
+    ) -> Result<Self, StoreError> {
+        let c = Connection::open_with_flags_and_vfs(
+            ownership.data_root().join("arthur.db"),
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE | rusqlite::OpenFlags::SQLITE_OPEN_CREATE,
+            vfs.name(),
+        )?;
+        let mut store = Self {
+            connection: Mutex::new(c), _ownership: Some(ownership), _io_vfs: Some(vfs),
+        };
+        let c = store.connection.get_mut().map_err(|_| StoreError::Poisoned)?;
+        c.pragma_update(None, "foreign_keys", true)?;
+        c.pragma_update(None, "synchronous", "FULL")?;
+        if reopen {
+            if c.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))? != 10 {
+                return Err(StoreError::Invalid("expected synthetic v10".into()));
+            }
+        } else {
+            migrate(c)?;
+        }
+        Ok(store)
     }
 
     /// Test-only raw opener, including deliberate multi-connection CAS/fault-injection fixtures.
@@ -124,7 +152,7 @@ impl CaptureStore {
         if version != 10 { return Err(StoreError::Invalid("expected synthetic v10".into())); }
         connection.pragma_update(None, "synchronous", "FULL")?;
         connection.pragma_update(None, "foreign_keys", "ON")?;
-        Ok(Self { connection: Mutex::new(connection), _ownership: Some(ownership) })
+        Ok(Self { connection: Mutex::new(connection), _ownership: Some(ownership), _io_vfs:None })
     }
 
     /// Lets other modules' tests inject faults (triggers, corruption) without owning the connection.
@@ -142,7 +170,7 @@ impl CaptureStore {
     fn from_connection(connection: Connection, ownership: Option<DataRootOwnership>) -> Result<Self, StoreError> {
         // Construct the owner BEFORE any fallible setup, so failures also close SQLite before
         // releasing the OS lock. The same field drop order applies to a successfully opened store.
-        let mut store = Self { connection: Mutex::new(connection), _ownership: ownership };
+        let mut store = Self { connection: Mutex::new(connection), _ownership: ownership, #[cfg(test)] _io_vfs:None };
         let connection = store.connection.get_mut().map_err(|_| StoreError::Poisoned)?;
         // A successful insert must be on disk before `create` returns.
         connection.pragma_update(None, "synchronous", "FULL")?;

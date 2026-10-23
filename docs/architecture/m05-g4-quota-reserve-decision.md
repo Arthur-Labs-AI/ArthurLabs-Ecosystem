@@ -685,3 +685,76 @@ can opt into synthetic envelopes. A reviewed VFS/growth contract is the precise
 remaining implementation prerequisite. G4-01–G4-09/Profile A approval, platform
 acceptance and coordinated production activation remain open. Earlier ledgers
 and measurements above are unchanged.
+
+## MEGA C — scoped physical I/O and recovery evidence (2026-10-23)
+
+**PARTIAL / DORMANT:** `journal::owned_vfs` is test-only, registered under a
+unique explicit name with `makeDflt=0`. It owns only one disposable `arthur.db`
+and its DELETE journal. Native open/write/truncate/sync/close/delete boundaries
+carry bounded numeric records (open-instance identity, requested end, return code,
+session and supplementary filesystem allocation). Native SQLite allocation/free
+and connection-before-registration teardown are preserved, including panic.
+Anonymous temp, named scratch, subjournal and WAL opens are refused before native
+open; actual SQLite temp spill is tested. These classes have **no admitted growth
+contract**. Snapshot capture/pack use the observed main/journal files.
+SQLite heap caches and in-memory statement journals do not traverse this VFS;
+these records do not certify their memory demand.
+
+**ENFORCED IN SYNTHETIC TESTS:** one outer admission token spans nested writers,
+finalization and actual COMMIT. Separate rounded main/journal requested-extent
+ceilings reject growth before native write/truncate; unsupported allocation
+hints, mmap and atomic-write shortcuts are disabled. The main pager ceiling is
+supplementary. This is **not a filesystem allocation guarantee**: allocation
+samples are not peaks, filesystem metadata/preallocation and hostile path races
+are not certified, and the proposed journal formula is not a SQLite theorem.
+No production constructor can waive `UnverifiedBounds`.
+
+**ACTUAL WINDOWS / NTFS:** native caller-available capacity, allocation-unit,
+volume and DB identity APIs run against disposable roots. Read-only DB and
+root-identity replacement tests refuse revalidation and preserve original history.
+The provider now rejects reparse roots/files, unsupported Windows filesystems and
+read-only volumes. Existing simulated identity/unit/capacity-loss cases remain
+separate from these native checks. Android/Linux SDK/device/filesystem durability:
+**NOT TESTED**; no cross-platform PASS is inferred.
+
+**FAULT EVIDENCE:** exact injected SQLite FULL and IOERR_WRITE/FSYNC/CLOSE/DELETE,
+kernel stages and uncertain-COMMIT/rollback poisoning use the owning kernel.
+Negative cases compare persistent domain/core/head state after reopen. Fresh and
+populated-v9 rehearsals retain legacy identities/values, gate activation, rotate
+incarnations, and refuse v9 downgrade without file-byte changes. A parent-owned
+child-process harness terminates at flushed barriers before COMMIT (actual main
+spill plus journal sync) and after COMMIT; recovered whole-state fingerprints and
+committed event/hash identities are checked. **PROCESS TERMINATION: EXECUTED**;
+**ACTUAL OS FILESYSTEM FULL / HARDWARE POWER LOSS: NOT TESTED**. No disk filling,
+network, signer, AI/provider, scheduler, production data or automatic history/ready
+snapshot deletion is involved. G4-01–G4-09 and Profile A remain **NOT APPROVED**.
+
+Executed on Windows using `cargo --locked --offline --manifest-path
+apps/arthur/src-tauri/Cargo.toml` (flags after `check`/`test`), serial library tests:
+
+| Gate | Actual result |
+|---|---|
+| `check --all-targets` | PASS, existing warnings |
+| `test --lib storage::journal::physical_tests` | 24 PASS / 1 private subprocess entry ignored by the top-level harness |
+| `test --lib storage::journal` | 287 PASS / same 1 entry ignored |
+| `test --lib storage::m05_v10_tests` | 24 PASS |
+| `test --lib sync` | 86 PASS: original 85 plus the new G4 test with `sync` in its name |
+| `test --lib` (two complete runs) | 1,296 PASS / 6 FAIL / 23 ignored in each; NOT the five-failure D4 reference |
+| `npm run typecheck` | PASS |
+| `npm run test:architecture` | 86 PASS / exact same 2 historical FAIL named above |
+| `npm run arthur:check` | 561 PASS / 42 files, frontend production build PASS |
+
+The new filter selected 25 real test entries; its parent test explicitly executes
+the private child entry at both crash barriers. All 32 D4 cases pass across Journal
+and Sync. The first full-native run had 1,296 PASS / the five historical FAIL plus
+`tts::service::tests::the_system_taking_audio_focus_ends_the_session_as_stopped_not_failed`
+/ 23 ignored. Its cleanup assertion saw 1 file versus 0; the exact isolated serial
+TTS test passed (1 PASS). This repeats the intermittent case already documented
+in Task14C above; no TTS source/test was changed and no M05 causation is established.
+The second complete serial run reproduced the identical six failure identities.
+The other five exactly match the supplied D4 baseline list above; TTS remains an
+additional unresolved full-suite failure, not a historical-baseline PASS. No new
+Journal failure remains after teaching the expiry callsite guard to require the
+new suite's `#[cfg(test)]` registration. `git diff --check` passes. Self-review found
+no remaining correctness/data-loss/security/lifecycle blocker in this dormant
+change; independent VFS/platform review and every release gate remain required.

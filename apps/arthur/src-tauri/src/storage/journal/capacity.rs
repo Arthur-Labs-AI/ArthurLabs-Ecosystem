@@ -8,6 +8,7 @@ use std::path::PathBuf;
 pub(super) struct OwnedLocation {
     root: PathBuf,
     database: PathBuf,
+    root_identity: Option<u128>,
 }
 impl OwnedLocation {
     pub fn database(&self) -> &std::path::Path {
@@ -30,7 +31,12 @@ impl OwnedLocation {
         if std::fs::canonicalize(actual).map_err(|_| E::SpaceUnknown)? != database {
             return Err(E::VolumeMismatch);
         }
-        let location = Self { root, database };
+        let root_identity = platform::identity(&root, true)?;
+        let location = Self {
+            root,
+            database,
+            root_identity,
+        };
         location.validate()?;
         Ok(location)
     }
@@ -42,6 +48,20 @@ impl OwnedLocation {
             return Err(E::SpaceUnknown);
         }
         let m = std::fs::symlink_metadata(&self.database).map_err(|_| E::SpaceUnknown)?;
+        if m.permissions().readonly() {
+            return Err(E::SpaceUnknown);
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::MetadataExt;
+            let root = std::fs::symlink_metadata(&self.root).map_err(|_| E::SpaceUnknown)?;
+            if (m.file_attributes() | root.file_attributes()) & 0x400 != 0 {
+                return Err(E::VolumeMismatch);
+            }
+        }
+        if platform::identity(&self.root, true)? != self.root_identity {
+            return Err(E::VolumeMismatch);
+        }
         if !m.file_type().is_file()
             || self.database.canonicalize().map_err(|_| E::SpaceUnknown)? != self.database
         {
@@ -118,6 +138,16 @@ mod platform {
             info: *mut c_void,
             size: u32,
         ) -> i32;
+        fn GetVolumeInformationW(
+            root: *const u16,
+            name: *mut u16,
+            name_len: u32,
+            serial: *mut u32,
+            max_component: *mut u32,
+            flags: *mut u32,
+            filesystem: *mut u16,
+            filesystem_len: u32,
+        ) -> i32;
     }
     #[repr(C)]
     struct StandardInfo {
@@ -126,6 +156,27 @@ mod platform {
         links: u32,
         delete_pending: u8,
         directory: u8,
+    }
+    pub fn identity(path: &std::path::Path, directory: bool) -> Result<Option<u128>, E> {
+        use std::os::windows::fs::OpenOptionsExt;
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(0x00200000 | if directory { 0x02000000 } else { 0 })
+            .open(path)
+            .map_err(|_| E::SpaceUnknown)?;
+        let mut info = std::mem::MaybeUninit::<FileInfo>::uninit();
+        if unsafe { GetFileInformationByHandle(file.as_raw_handle(), info.as_mut_ptr()) } == 0 {
+            return Err(E::SpaceUnknown);
+        }
+        let info = unsafe { info.assume_init() };
+        if info.attributes & 0x400 != 0 {
+            return Err(E::VolumeMismatch);
+        }
+        Ok(Some(
+            ((info.serial as u128) << 64)
+                | ((info.index_high as u128) << 32)
+                | info.index_low as u128,
+        ))
     }
     pub fn allocated(path: &std::path::Path) -> Result<u64, E> {
         let file = std::fs::File::open(path).map_err(|_| E::SpaceUnknown)?;
@@ -175,6 +226,32 @@ mod platform {
     }
     pub fn query(location: &OwnedLocation) -> Result<Capacity, E> {
         let (mount, id) = volume(&location.database)?;
+        let mut filesystem = [0u16; 32];
+        let mut flags = 0;
+        if unsafe {
+            GetVolumeInformationW(
+                mount.as_ptr(),
+                std::ptr::null_mut(),
+                0,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                &mut flags,
+                filesystem.as_mut_ptr(),
+                32,
+            )
+        } == 0
+        {
+            return Err(E::SpaceUnknown);
+        }
+        let end = filesystem
+            .iter()
+            .position(|n| *n == 0)
+            .ok_or(E::SpaceUnknown)?;
+        if String::from_utf16(&filesystem[..end]).map_err(|_| E::SpaceUnknown)? != "NTFS"
+            || flags & 0x80000 != 0
+        {
+            return Err(E::SpaceUnknown);
+        }
         if volume(&location.root)?.1 != id {
             return Err(E::VolumeMismatch);
         }
@@ -226,6 +303,10 @@ mod platform {
 mod platform {
     use super::*;
     use std::os::{fd::AsRawFd, unix::fs::MetadataExt};
+    pub fn identity(path: &std::path::Path, _: bool) -> Result<Option<u128>, E> {
+        let m = std::fs::symlink_metadata(path).map_err(|_| E::SpaceUnknown)?;
+        Ok(Some(((m.dev() as u128) << 64) | m.ino() as u128))
+    }
     pub fn allocated(path: &std::path::Path) -> Result<u64, E> {
         std::fs::metadata(path)
             .map_err(|_| E::SpaceUnknown)?
@@ -274,6 +355,9 @@ mod platform {
 #[cfg(not(any(windows, target_os = "android")))]
 mod platform {
     use super::*;
+    pub fn identity(_: &std::path::Path, _: bool) -> Result<Option<u128>, E> {
+        Ok(None)
+    }
     pub fn allocated(_: &std::path::Path) -> Result<u64, E> {
         Err(E::SpaceUnknown)
     }

@@ -77,6 +77,16 @@ impl PhysicalAdmission {
             &self.location.database().with_file_name("arthur.db-journal"),
             true,
         )?;
+        #[cfg(test)]
+        let io = if self.policy.require_vfs {
+            Some(super::owned_vfs::IoBudget::begin(
+                c,
+                demand,
+                cap.allocation_unit,
+            )?)
+        } else {
+            None
+        };
         let budget = Budget {
             admission: self,
             claim,
@@ -85,6 +95,8 @@ impl PhysicalAdmission {
             file_start,
             journal_start,
             old_max,
+            #[cfg(test)]
+            io,
         };
         // Last mutating action during preparation. Read back SQLite's actual
         // accepted limit; never assume a PRAGMA was applied. Retain the cap
@@ -112,9 +124,19 @@ pub(super) struct Budget<'a> {
     file_start: u64,
     journal_start: u64,
     old_max: u64,
+    #[cfg(test)]
+    io: Option<super::owned_vfs::IoBudget>,
 }
 impl Budget<'_> {
+    pub fn check_io(&self) -> Result<(), E> {
+        #[cfg(test)]
+        if let Some(io) = &self.io {
+            io.check()?;
+        }
+        Ok(())
+    }
     pub fn check(&mut self, c: &Connection) -> Result<(), E> {
+        self.check_io()?;
         let mode: String = c
             .query_row("PRAGMA journal_mode", [], |r| r.get(0))
             .map_err(|_| E::SpaceUnknown)?;

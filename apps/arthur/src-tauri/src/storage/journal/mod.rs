@@ -38,6 +38,10 @@ mod admission_tests;
 
 #[cfg(test)]
 mod fault_io;
+#[cfg(test)]
+pub(in crate::storage) mod owned_vfs;
+#[cfg(test)]
+mod physical_tests;
 
 #[cfg(test)]
 mod expiry_tests;

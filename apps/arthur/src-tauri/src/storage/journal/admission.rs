@@ -93,6 +93,10 @@ pub(super) struct PhysicalAdmissionPolicy {
     // Candidate envelopes are NOT verified bounds for arbitrary VFS/temp I/O.
     // Only synthetic integration tests may waive this prerequisite.
     synthetic_bounds: bool,
+    #[cfg(test)]
+    pub(super) require_vfs: bool,
+    #[cfg(test)]
+    pub(super) journal_ceiling: Option<u64>,
 }
 impl PhysicalAdmissionPolicy {
     pub fn profile_a_candidate() -> Self {
@@ -103,6 +107,10 @@ impl PhysicalAdmissionPolicy {
             snapshot_main: 128 * MIB,
             snapshot_scratch: 64 * MIB,
             synthetic_bounds: false,
+            #[cfg(test)]
+            require_vfs: false,
+            #[cfg(test)]
+            journal_ceiling: None,
         }
     }
     #[cfg(test)]
@@ -110,6 +118,13 @@ impl PhysicalAdmissionPolicy {
         Self {
             synthetic_bounds: true,
             ..Self::profile_a_candidate()
+        }
+    }
+    #[cfg(test)]
+    pub fn instrumented_profile_a() -> Self {
+        Self {
+            require_vfs: true,
+            ..Self::synthetic_profile_a()
         }
     }
     pub fn require_bound_evidence(self) -> Result<(), AdmissionError> {
@@ -144,6 +159,8 @@ impl PhysicalAdmissionPolicy {
             .checked_mul(2)
             .and_then(|n| n.checked_add(MIB))
             .ok_or(AdmissionError::Overflow)?;
+        #[cfg(test)]
+        let journal = self.journal_ceiling.map_or(journal, |cap| journal.min(cap));
         Ok(StorageDemand {
             main: Some(main),
             journal: Some(journal),
