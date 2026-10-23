@@ -1772,7 +1772,7 @@ fn w23_repeated_metadata_writes_emit_proof_free_bundles() {
     let deferred = commit(&s, &k, |w| w.defer_claim(&claim.id, None));
     assert_eq!(deferred.state, "deferred");
     let n = count(&s, "sync_bundles");
-    let again = commit(&s, &k, |w| w.defer_claim(&claim.id, None));
+    let again = commit(&s, &k, |w| w.defer_claim(&claim.id, Some("2030-01-01T00:00:00Z")));
     assert_eq!(count(&s, "sync_bundles"), n + 1);
     let core = audit(&s).pop().expect("repeat defer bundle commits");
     assert_eq!(core.operations.len(), 1);
@@ -1822,7 +1822,10 @@ fn w24_identity_aware_evolution_commits_multi_claim_bundle() {
         },
         Planned { plan: Plan::Uncertain(vec![o[1].id.clone()]), parts: evolution_parts("test", vec![o[1].id.clone()]) },
     ];
-    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, false));
+    let out = commit(&s, &k, |w| {
+        let granted = || true;
+        w.evolve_capture(&cap.id, claims, planned, &crate::distillation::evolution::EvolutionLimits::default(), &granted, false)
+    });
     let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
     assert_eq!(objects.len(), 1);
     assert_eq!(revised.len(), 1);
@@ -1893,7 +1896,8 @@ fn w25_stale_evolution_target_falls_back_inside_savepoint() {
         },
         parts: evolution_parts("test", vec![o[0].id.clone()]),
     }];
-    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, false));
+    let granted = || true; // tests simulate granted permission for the fallback-path fixture
+    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, &crate::distillation::evolution::EvolutionLimits::default(), &granted, false));
     let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
     assert!(objects.is_empty());
     assert!(revised.is_empty());
@@ -1948,4 +1952,156 @@ fn w27_multi_entity_transaction_finalizes_exactly_one_bundle() {
         assert!(entities.contains(&expected), "joint bundle covers {expected:?}");
     }
     assert!(out.1.id != cap.id);
+}
+
+#[test]
+fn w28_withdrawn_revise_permission_falls_back_without_revision() {
+    use crate::distillation::evolution::{Committed, EvolutionLimits, Plan, Planned};
+    use crate::identity::TargetSnapshot;
+    use crate::storage::knowledge_store::NewKnowledgeObject;
+    use crate::storage::lineage_store::RevisionContent;
+    use std::cell::Cell;
+    let (s, _cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let cap = commit(&s, &k, |w| w.create_capture(input(None)));
+    let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let permitted = Cell::new(true);
+    let claims = vec![NewKnowledgeObject { kind: "idea".into(), title: "Revise".into(), body: "Revise body".into(), source_start: 0, source_end: 4 }];
+    let planned = vec![Planned {
+        plan: Plan::Revise {
+            target: TargetSnapshot { object_id: o[0].id.clone(), project_id: o[0].project_id.clone(), base_revision_id: head.clone() },
+            draft: crate::distillation::evolution::RevisionDraft {
+                content: RevisionContent { kind: "idea".into(), title: o[0].title.clone(), body: "Permitted-then-revoked body".into() },
+                role: crate::storage::evidence_store::EvidenceRole::Asserts,
+                retracts: None,
+                interpretation_label: None,
+            },
+        },
+        parts: evolution_parts("test", vec![o[0].id.clone()]),
+    }];
+    permitted.set(false);
+    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, &EvolutionLimits::default(), &|| permitted.get(), false));
+    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    assert!(objects.is_empty());
+    assert!(revised.is_empty(), "revoked permission must not revise");
+    assert_eq!(pending.len(), 1);
+    assert!(proposals.is_empty());
+    assert_eq!(s.current_revision_id_of(&o[0].id).unwrap().unwrap(), head);
+    let core = audit(&s).pop().expect("fallback bundle commits");
+    assert!(!core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::ThoughtRevisions)));
+    assert!(!core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::RevisionEvidence)));
+    assert!(core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::PendingClaims)));
+    assert!(core.operations.iter().all(|op| !matches!(op, Operation::FacetUpdate(u) if u.review_proof.is_some())));
+}
+
+#[test]
+fn w29_withdrawn_propose_permission_stores_no_proposal() {
+    use crate::distillation::evolution::{Committed, EvolutionLimits, Plan, Planned, ProposalDraft};
+    use crate::identity::TargetSnapshot;
+    use crate::storage::evidence_store::EvidenceRole;
+    use crate::storage::knowledge_store::NewKnowledgeObject;
+    use crate::storage::lineage_store::RevisionContent;
+    use crate::storage::proposal_store::EvidenceRef;
+    use std::cell::Cell;
+    let (s, _cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let cap = commit(&s, &k, |w| w.create_capture(input(None)));
+    let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let permitted = Cell::new(true);
+    let claims = vec![NewKnowledgeObject { kind: "idea".into(), title: "Propose".into(), body: "Propose body".into(), source_start: 0, source_end: 4 }];
+    let planned = vec![Planned {
+        plan: Plan::Propose {
+            target: TargetSnapshot { object_id: o[0].id.clone(), project_id: o[0].project_id.clone(), base_revision_id: head },
+            draft: ProposalDraft {
+                change: "additive",
+                kind: "idea".into(),
+                title: "Draft".into(),
+                body: "Proposed text".into(),
+                retracts: None,
+                evidence: vec![EvidenceRef { role: "claim".into(), capture_id: cap.id.clone(), start: 0, end: 4 }],
+                synthesis_model: "synthetic".into(),
+                verifier_model: "synthetic".into(),
+                mode: "same_family_review",
+            },
+        },
+        parts: evolution_parts("test", vec![o[0].id.clone()]),
+    }];
+    permitted.set(false);
+    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, &EvolutionLimits::default(), &|| permitted.get(), false));
+    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    assert!(objects.is_empty());
+    assert!(revised.is_empty());
+    assert_eq!(pending.len(), 1);
+    assert!(proposals.is_empty(), "withdrawn permission must not store a proposal");
+    let core = audit(&s).pop().expect("fallback bundle commits");
+    assert!(!core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::RevisionProposals)));
+    assert!(core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::PendingClaims)));
+}
+
+#[test]
+fn w30_granted_permission_admits_planned_automatic_revision() {
+    use crate::distillation::evolution::{Committed, EvolutionLimits, Plan, Planned};
+    use crate::identity::TargetSnapshot;
+    use crate::storage::knowledge_store::NewKnowledgeObject;
+    use crate::storage::lineage_store::RevisionContent;
+    use std::cell::Cell;
+    let (s, _cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let cap = commit(&s, &k, |w| w.create_capture(input(None)));
+    let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let permitted = Cell::new(true);
+    let claims = vec![NewKnowledgeObject { kind: "idea".into(), title: "Revise".into(), body: "Revise body".into(), source_start: 0, source_end: 4 }];
+    let planned = vec![Planned {
+        plan: Plan::Revise {
+            target: TargetSnapshot { object_id: o[0].id.clone(), project_id: o[0].project_id.clone(), base_revision_id: head.clone() },
+            draft: crate::distillation::evolution::RevisionDraft {
+                content: RevisionContent { kind: "idea".into(), title: o[0].title.clone(), body: "Granted revision body".into() },
+                role: crate::storage::evidence_store::EvidenceRole::Asserts,
+                retracts: None,
+                interpretation_label: None,
+            },
+        },
+        parts: evolution_parts("test", vec![o[0].id.clone()]),
+    }];
+    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, &EvolutionLimits::default(), &|| permitted.get(), false));
+    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    assert!(objects.is_empty());
+    assert_eq!(revised.len(), 1);
+    assert!(pending.is_empty());
+    assert!(proposals.is_empty());
+    assert_ne!(s.current_revision_id_of(&o[0].id).unwrap().unwrap(), head);
+}
+
+#[test]
+fn w31_non_default_limits_shape_evolution_outcomes() {
+    use crate::distillation::evolution::{Committed, EvolutionLimits, Plan, Planned};
+    use crate::identity::TargetSnapshot;
+    use crate::storage::evidence_store::EvidenceRole;
+    use crate::storage::knowledge_store::NewKnowledgeObject;
+    use crate::storage::lineage_store::RevisionContent;
+    let (s, _cap, o) = graph(1);
+    let k = JournalKernel::activate(&s).unwrap();
+    let cap = commit(&s, &k, |w| w.create_capture(input(None)));
+    let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
+    let claims = || vec![NewKnowledgeObject { kind: "idea".into(), title: "Maybe".into(), body: "Maybe body".into(), source_start: 0, source_end: 4 }];
+    let uncertain = |candidates: Vec<String>| Planned { plan: Plan::Uncertain(candidates.clone()), parts: evolution_parts("test", candidates) };
+    let strict = EvolutionLimits { max_unresolved_pending: 0, ..EvolutionLimits::default() };
+    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims(), vec![uncertain(vec![o[0].id.clone()])], &strict, &|| true, false));
+    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    assert_eq!(objects.len(), 1);
+    assert!(revised.is_empty());
+    assert!(pending.is_empty());
+    assert!(proposals.is_empty());
+    let decision: (String, Option<String>) = s.connection.lock().unwrap().query_row("SELECT outcome,unchecked_reason FROM identity_decisions WHERE capture_id=?1 AND ordinal=0", [&cap.id], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
+    assert_eq!(decision, ("unchecked".to_string(), Some("review_quota".to_string())));
+    let cap2 = commit(&s, &k, |w| w.create_capture(input(None)));
+    let relaxed = EvolutionLimits { pending_due_days: 1, ..EvolutionLimits::default() };
+    let out = commit(&s, &k, |w| w.evolve_capture(&cap2.id, claims(), vec![uncertain(vec![o[0].id.clone()])], &relaxed, &|| true, false));
+    let Committed::Fresh { pending, .. } = out else { panic!("expected fresh"); };
+    assert_eq!(pending.len(), 1);
+    let due: String = s.connection.lock().unwrap().query_row("SELECT due_at FROM pending_claims WHERE id=?1", [&pending[0].id], |r| r.get(0)).unwrap();
+    let now_secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
+    let due_secs = time::OffsetDateTime::parse(&due, &time::format_description::well_known::Rfc3339).unwrap().unix_timestamp();
+    let day = 24 * 3600;
+    assert!((due_secs - now_secs - day).abs() < 3600, "due date honors the supplied 1-day policy");
 }

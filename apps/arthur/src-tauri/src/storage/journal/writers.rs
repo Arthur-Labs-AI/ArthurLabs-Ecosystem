@@ -1,10 +1,10 @@
 //! Dormant typed adapters over the same native domain implementations as v9.
 //! No adapter locks a store, begins a transaction, finalizes, or publishes success.
 //! A failed step remains fatal even when a composition closure catches its error.
-use super::storage::{self, JournalError, JournalKernel, JournalTx};
 use super::codec::{EntityKind, ReviewAction as JournalAction, ReviewMethod};
 use super::reducer::ReviewContext;
 use super::snapshot::{self, SnapshotPolicy};
+use super::storage::{self, JournalError, JournalKernel, JournalTx};
 use crate::distillation::evolution;
 use crate::storage::capture_store::{self, Capture, CreateCaptureInput, StoreError};
 use crate::storage::evidence_store as evidence;
@@ -526,19 +526,11 @@ impl Writers<'_, '_> {
         capture_id: &str,
         claims: Vec<knowledge::NewKnowledgeObject>,
         planned: Vec<evolution::Planned>,
+        limits: &evolution::EvolutionLimits,
+        allowed: &dyn Fn() -> bool,
         review_first: bool,
     ) -> Result<evolution::Committed> {
-        self.step(|c| {
-            evolution::apply(
-                c,
-                capture_id,
-                &claims,
-                planned,
-                &evolution::EvolutionLimits::default(),
-                &|| true,
-                review_first,
-            )
-        })
+        self.step(|c| evolution::apply(c, capture_id, &claims, planned, limits, allowed, review_first))
     }
     pub(super) fn snapshot_allocate(&mut self, snapshot_id: &str, now: &str) -> Result<()> {
         self.step(|c| snapshot::allocate(c, snapshot_id, now))

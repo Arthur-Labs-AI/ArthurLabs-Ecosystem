@@ -4,6 +4,7 @@ use super::storage::{JournalError as J, JournalKernel};
 use super::writers::WriterError as E;
 use crate::storage::{capture_store::CaptureStore, migrations};
 use rusqlite::{params, Connection};
+use std::collections::BTreeMap;
 
 fn upgraded() -> CaptureStore {
     let store = CaptureStore::open_in_memory().unwrap();
@@ -15,6 +16,13 @@ fn upgraded() -> CaptureStore {
 
 fn lock_id() -> String {
     "aaaaaaaa-1111-4111-8111-111111111111".into()
+}
+
+fn bundle_key(event: &str, index: Option<usize>) -> String {
+    match index {
+        Some(i) => serde_json::to_string(&vec![event.to_string(), i.to_string()]).unwrap(),
+        None => serde_json::to_string(&vec![event.to_string()]).unwrap(),
+    }
 }
 
 fn query_count(s: &CaptureStore, sql: &str) -> i64 {
@@ -582,4 +590,209 @@ fn s09_production_schema_stays_v9_and_rejects_snapshot_work() {
         direct,
         Err(super::snapshot::SnapshotError::WrongSchema)
     ));
+}
+
+fn staged_fixture(s: &CaptureStore, k: &JournalKernel<'_>) -> (String, Vec<super::snapshot::Staged>) {
+    populate(s, k);
+    let id = lock_id();
+    k.write(|w| w.snapshot_allocate(&id, "2026-10-22T00:00:00Z")).unwrap();
+    k.write(|w| w.snapshot_capture(&id, "2026-10-22T00:00:01Z")).unwrap();
+    let rows = {
+        let c = s.connection.lock().unwrap();
+        super::snapshot::read_staged_rows(&c, &id).unwrap()
+    };
+    assert!(!rows.is_empty());
+    (id, rows)
+}
+
+fn envelope_of(rows: &[super::snapshot::Staged]) -> Vec<[u8; 32]> {
+    super::snapshot::verify_rows(rows).unwrap().into_iter().map(|r| r.envelope).collect()
+}
+
+#[test]
+fn s10_changed_entity_kind_invalidates_envelope_and_manifest() {
+    let s = upgraded();
+    let k = JournalKernel::activate(&s).unwrap();
+    let (_id, rows) = staged_fixture(&s, &k);
+    let good = envelope_of(&rows);
+    let mut tampered = rows.clone();
+    let target = tampered.iter().position(|r| r.entity_kind == "projects").expect("projects row");
+    tampered[target].entity_kind = "captures".into();
+    let tampered_verified = super::snapshot::verify_rows(&tampered).unwrap();
+    let bad: Vec<[u8; 32]> = tampered_verified.into_iter().map(|r| r.envelope).collect();
+    assert_ne!(good, bad, "envelope must bind entity type");
+    let mut swapped = rows.clone();
+    let other = swapped.iter().position(|r| r.entity_kind == "@bundle" && r.entity_key == "[\"00000000-0000-4000-8000-000000000001\"]").unwrap_or_else(|| swapped.iter().position(|r| r.entity_kind == "@origin").expect("origin row"));
+    swapped.swap(0, other);
+    assert!(super::snapshot::verify_rows(&swapped).is_err(), "reordered ordinals must fail");
+}
+
+#[test]
+fn s11_changed_logical_key_invalidates_envelope() {
+    let s = upgraded();
+    let k = JournalKernel::activate(&s).unwrap();
+    let (_id, rows) = staged_fixture(&s, &k);
+    let good = envelope_of(&rows);
+    let mut tampered = rows.clone();
+    let target = tampered.iter().position(|r| r.entity_kind == "projects").expect("projects row");
+    let key: Vec<String> = serde_json::from_str(&tampered[target].entity_key).unwrap();
+    assert_eq!(key.len(), 1);
+    tampered[target].entity_key = serde_json::to_string(&vec!["ffffffff-ffff-4fff-8fff-ffffffffffff".to_string()]).unwrap();
+    let bad: Vec<[u8; 32]> = super::snapshot::verify_rows(&tampered).unwrap().into_iter().map(|r| r.envelope).collect();
+    assert_ne!(good, bad, "envelope must bind logical key");
+    tampered[target].entity_key = "not-json".into();
+    assert!(super::snapshot::verify_rows(&tampered).is_err(), "malformed key must fail");
+}
+
+#[test]
+fn s12_reordered_rows_fail_ordinal_binding() {
+    let s = upgraded();
+    let k = JournalKernel::activate(&s).unwrap();
+    let (_id, rows) = staged_fixture(&s, &k);
+    assert!(rows.len() > 2);
+    let mut swapped = rows.clone();
+    swapped.swap(0, 1);
+    assert!(super::snapshot::verify_rows(&swapped).is_err(), "swapped ordinals must fail");
+    let mut renumbered = rows.clone();
+    let first = renumbered[0].clone();
+    renumbered[0] = renumbered[1].clone();
+    renumbered[1] = first;
+    renumbered[0].ordinal = 0;
+    renumbered[1].ordinal = 1;
+    assert!(super::snapshot::verify_rows(&renumbered).is_ok(), "renumbered fixture stays internally consistent");
+    let good = envelope_of(&rows);
+    let moved: Vec<[u8; 32]> = super::snapshot::verify_rows(&renumbered).unwrap().into_iter().map(|r| r.envelope).collect();
+    assert_ne!(good, moved, "relocated rows change envelope order");
+}
+
+fn bundle_event_id(s: &CaptureStore) -> String {
+    s.connection.lock().unwrap().query_row("SELECT event_id FROM sync_bundles ORDER BY rowid LIMIT 1", [], |r| r.get(0)).unwrap()
+}
+
+fn verified_fixture(s: &CaptureStore, k: &JournalKernel<'_>) -> (String, Vec<super::snapshot::VerifiedRow>) {
+    populate(s, k);
+    let id = lock_id();
+    k.write(|w| w.snapshot_allocate(&id, "2026-10-22T00:00:00Z")).unwrap();
+    k.write(|w| w.snapshot_capture(&id, "2026-10-22T00:00:01Z")).unwrap();
+    let rows = {
+        let c = s.connection.lock().unwrap();
+        let staged = super::snapshot::read_staged_rows(&c, &id).unwrap();
+        super::snapshot::verify_rows(&staged).unwrap()
+    };
+    (id, rows)
+}
+
+#[test]
+fn s13_missing_fragment_is_rejected_despite_valid_hex() {
+    let s = upgraded();
+    let k = JournalKernel::activate(&s).unwrap();
+    let (id, rows) = verified_fixture(&s, &k);
+    let event: String = bundle_event_id(&s);
+    let full_len = rows.len();
+    let frag0 = serde_json::to_string(&vec![event.clone(), "0".to_string()]).unwrap();
+    let reduced: Vec<super::snapshot::VerifiedRow> = rows.into_iter().filter(|r| !(r.entity_kind == "@bundle" && r.entity_key == frag0)).collect();
+    assert_eq!(reduced.len() + 1, full_len);
+    assert!(super::snapshot::reconstruct_bundle(&reduced, &event).is_err(), "missing fragment must fail");
+    let _ = id;
+}
+
+#[test]
+fn s14_duplicate_or_reordered_fragments_are_rejected() {
+    use sha2::Digest;
+    let s = upgraded();
+    let k = JournalKernel::activate(&s).unwrap();
+    let (_id, rows) = verified_fixture(&s, &k);
+    let event: String = bundle_event_id(&s);
+    let mut duplicated = rows.clone();
+    let first_fragment = rows.iter().find(|r| r.entity_kind == "@bundle" && r.entity_key == bundle_key(&event, Some(0))).expect("fragment 0").clone();
+    duplicated.push(first_fragment);
+    assert!(super::snapshot::reconstruct_bundle(&duplicated, &event).is_err(), "duplicated fragment must fail");
+    let header_row = rows.iter().find(|r| r.entity_kind == "@bundle" && r.entity_key == format!("[\"{}\"]", event)).expect("bundle header").clone();
+    let frag_row = rows.iter().find(|r| r.entity_kind == "@bundle" && r.entity_key == bundle_key(&event, Some(0))).expect("fragment row");
+    let header_fields: BTreeMap<String, serde_json::Value> = serde_json::from_slice(&header_row.row_bytes).unwrap();
+    let fields: BTreeMap<String, serde_json::Value> = serde_json::from_slice(&frag_row.row_bytes).unwrap();
+    let hex = fields.get("fragmentHex").and_then(|v| v.as_str()).unwrap().to_owned();
+    assert!(!hex.is_empty());
+    let (left, right) = hex.split_at(hex.len() / 2 - (hex.len() / 2 % 2));
+    let mut make_fragment = |index: usize, part: &str| -> super::snapshot::Staged {
+        let mut entry = BTreeMap::new();
+        entry.insert("fragmentIndex".to_string(), serde_json::Value::from(index as i64));
+        entry.insert("fragmentCount".to_string(), serde_json::Value::from(2i64));
+        entry.insert("fragmentHex".to_string(), serde_json::Value::String(part.to_string()));
+        entry.insert("wholeHash".to_string(), header_fields.get("wholeHash").cloned().unwrap());
+        let row_bytes = serde_jcs::to_vec(&entry).unwrap();
+        let row_hash = sha2::Sha256::digest(&row_bytes);
+        let mut row_hash_fixed = [0u8; 32];
+        row_hash_fixed.copy_from_slice(&row_hash);
+        let key = serde_json::to_string(&vec![event.clone(), index.to_string()]).unwrap();
+        super::snapshot::Staged { ordinal: 0, entity_kind: "@bundle".into(), entity_key: key, row_bytes, row_hash: row_hash_fixed }
+    };
+    let f0 = make_fragment(0, left);
+    let f1 = make_fragment(1, right);
+    let mut split_header_fields: BTreeMap<String, serde_json::Value> = serde_json::from_slice(&header_row.row_bytes).unwrap();
+    split_header_fields.insert("fragmentCount".to_string(), serde_json::Value::from(2i64));
+    let header_bytes = serde_jcs::to_vec(&split_header_fields).unwrap();
+    let header_hash = sha2::Sha256::digest(&header_bytes);
+    let mut header_hash_fixed = [0u8; 32];
+    header_hash_fixed.copy_from_slice(&header_hash);
+    let header_key = serde_json::to_string(&vec![event.clone()]).unwrap();
+    let header_staged = super::snapshot::Staged { ordinal: 0, entity_kind: "@bundle".into(), entity_key: header_key, row_bytes: header_bytes, row_hash: header_hash_fixed };
+    let mut split_rows = vec![header_staged, f0, f1];
+    for (i, row) in split_rows.iter_mut().enumerate() { row.ordinal = i as i64; }
+    let split_verified = super::snapshot::verify_rows(&split_rows).expect("split fixture verifies");
+    assert!(super::snapshot::reconstruct_bundle(&split_verified, &event).is_ok(), "honest split must reassemble");
+    let mut swapped = split_verified.clone();
+    let tmp = swapped[1].row_bytes.clone();
+    swapped[1].row_bytes = swapped[2].row_bytes.clone();
+    swapped[2].row_bytes = tmp;
+    assert!(super::snapshot::reconstruct_bundle(&swapped, &event).is_err(), "swapped fragment bytes must fail");
+}
+
+#[test]
+fn s15_altered_fragment_content_fails_whole_core_verification() {
+    use sha2::Digest;
+    let s = upgraded();
+    let k = JournalKernel::activate(&s).unwrap();
+    let (_id, rows) = verified_fixture(&s, &k);
+    let event: String = bundle_event_id(&s);
+    let mut tampered: Vec<super::snapshot::Staged> = rows.iter().map(|r| super::snapshot::Staged { ordinal: r.ordinal, entity_kind: r.entity_kind.clone(), entity_key: r.entity_key.clone(), row_bytes: r.row_bytes.clone(), row_hash: {
+        let mut h = sha2::Sha256::new();
+        h.update(&r.row_bytes);
+        let mut out = [0u8; 32];
+        out.copy_from_slice(&h.finalize());
+        out
+    } }).collect();
+    let target = tampered.iter().position(|r| r.entity_kind == "@bundle" && r.entity_key == bundle_key(&event, Some(0))).expect("fragment 0");
+    let mut fields: BTreeMap<String, serde_json::Value> = serde_json::from_slice(&tampered[target].row_bytes).unwrap();
+    let hex = fields["fragmentHex"].as_str().unwrap().to_owned();
+    assert!(!hex.is_empty());
+    let mut altered = hex.into_bytes();
+    altered[0] = if altered[0] == b'0' { b'1' } else { b'0' };
+    fields.insert("fragmentHex".into(), serde_json::Value::String(String::from_utf8(altered).unwrap()));
+    tampered[target].row_bytes = serde_jcs::to_vec(&fields).unwrap();
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(&tampered[target].row_bytes);
+    tampered[target].row_hash.copy_from_slice(&hasher.finalize());
+    let reverified = super::snapshot::verify_rows(&tampered).expect("tampered row stays internally consistent");
+    assert!(super::snapshot::reconstruct_bundle(&reverified, &event).is_err(), "altered fragment must fail whole-core check");
+}
+
+#[test]
+fn s16_snapshot_manifest_is_deterministic_across_later_writes() {
+    let s = upgraded();
+    let k = JournalKernel::activate(&s).unwrap();
+    populate(&s, &k);
+    let id = lock_id();
+    k.write(|w| w.snapshot_allocate(&id, "2026-10-22T00:00:00Z")).unwrap();
+    k.write(|w| w.snapshot_capture(&id, "2026-10-22T00:00:01Z")).unwrap();
+    k.write(|w| w.snapshot_pack(&id)).unwrap();
+    k.write(|w| w.snapshot_verify(&id)).unwrap();
+    let manifest_before: Vec<u8> = s.connection.lock().unwrap().query_row("SELECT manifest_bytes FROM sync_snapshots WHERE snapshot_id=?1", [&id], |r| r.get(0)).unwrap();
+    let boundary_before: Vec<u8> = s.connection.lock().unwrap().query_row("SELECT boundary_bytes FROM sync_snapshots WHERE snapshot_id=?1", [&id], |r| r.get(0)).unwrap();
+    k.write(|w| w.create_capture(crate::storage::capture_store::CreateCaptureInput { source: "text".into(), content: "Later".into(), project_id: None })).unwrap();
+    k.write(|w| w.snapshot_verify(&id)).unwrap();
+    let manifest_after: Vec<u8> = s.connection.lock().unwrap().query_row("SELECT manifest_bytes FROM sync_snapshots WHERE snapshot_id=?1", [&id], |r| r.get(0)).unwrap();
+    let boundary_after: Vec<u8> = s.connection.lock().unwrap().query_row("SELECT boundary_bytes FROM sync_snapshots WHERE snapshot_id=?1", [&id], |r| r.get(0)).unwrap();
+    assert_eq!(manifest_before, manifest_after);
+    assert_eq!(boundary_before, boundary_after);
 }
