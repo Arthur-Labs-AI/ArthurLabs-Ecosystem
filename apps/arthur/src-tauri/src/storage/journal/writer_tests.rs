@@ -29,7 +29,7 @@ fn input(project: Option<&str>) -> CreateCaptureInput {
         project_id: project.map(Into::into),
     }
 }
-fn candidate(title: &str, start: i64, end: i64) -> NewKnowledgeObject {
+pub(super) fn candidate(title: &str, start: i64, end: i64) -> NewKnowledgeObject {
     NewKnowledgeObject {
         kind: "idea".into(),
         title: title.into(),
@@ -38,20 +38,20 @@ fn candidate(title: &str, start: i64, end: i64) -> NewKnowledgeObject {
         source_end: end,
     }
 }
-fn change(title: &str) -> Changes {
+pub(super) fn change(title: &str) -> Changes {
     Changes {
         title: Some(title.into()),
         ..Changes::default()
     }
 }
-fn content(title: &str) -> RevisionContent {
+pub(super) fn content(title: &str) -> RevisionContent {
     RevisionContent {
         kind: "idea".into(),
         title: title.into(),
         body: format!("Body {title}"),
     }
 }
-fn edge(kind: &str, a: &str, b: &str) -> NewRelation {
+pub(super) fn edge(kind: &str, a: &str, b: &str) -> NewRelation {
     NewRelation {
         kind: kind.into(),
         source_object_id: a.into(),
@@ -137,7 +137,7 @@ fn head(s: &CaptureStore, entity: K, id: &str, facet: &str) -> Option<(String, V
     )
     .unwrap()
 }
-fn snap(s: &CaptureStore, id: &str) -> ObjectSnapshot {
+pub(super) fn snap(s: &CaptureStore, id: &str) -> ObjectSnapshot {
     ObjectSnapshot {
         object_id: id.into(),
         revision_id: s.current_revision_id_of(id).unwrap().unwrap(),
@@ -147,7 +147,7 @@ fn snap(s: &CaptureStore, id: &str) -> ObjectSnapshot {
 
 /// Audit every retained core, then compare the latest encoded image/head of
 /// each key to actual SQL. Earlier immutable bytes are never rebuilt from today.
-fn audit(s: &CaptureStore) -> Vec<JournalEvent> {
+pub(super) fn audit(s: &CaptureStore) -> Vec<JournalEvent> {
     let c = s.connection.lock().unwrap();
     let mut q=c.prepare("SELECT canonical_bytes,canonical_hash,previous_hash,event_id,bundle_id,origin_id,incarnation,origin_seq,raw_effect_count,committed_at FROM sync_bundles ORDER BY rowid").unwrap();
     let mut rows = q.query([]).unwrap();
@@ -1479,7 +1479,7 @@ fn parity_scenario(s: &CaptureStore, k: Option<&JournalKernel<'_>>) -> Vec<Strin
         .collect()
 }
 
-fn decision_for(capture_id: &str, ordinal: i64, candidates: Vec<String>) -> crate::storage::identity_store::IdentityDecisionInput {
+pub(super) fn decision_for(capture_id: &str, ordinal: i64, candidates: Vec<String>) -> crate::storage::identity_store::IdentityDecisionInput {
     use crate::storage::identity_store::{DecisionAudit, DecisionOutcome, IdentityDecisionInput};
     IdentityDecisionInput {
         capture_id: capture_id.into(),
@@ -1496,7 +1496,7 @@ fn decision_for(capture_id: &str, ordinal: i64, candidates: Vec<String>) -> crat
         audit: DecisionAudit { candidates_sent: candidates, runs: 1, ..DecisionAudit::default() },
     }
 }
-fn pending_for(decision: crate::storage::identity_store::IdentityDecisionInput, candidates: Vec<String>) -> crate::storage::identity_store::PendingClaimInput {
+pub(super) fn pending_for(decision: crate::storage::identity_store::IdentityDecisionInput, candidates: Vec<String>) -> crate::storage::identity_store::PendingClaimInput {
     use crate::storage::identity_store::PendingClaimInput;
     PendingClaimInput {
         decision,
@@ -1560,7 +1560,7 @@ fn w01_public_v9_and_dormant_v10_share_domain_rows_results_errors_and_side_effec
     audit(&v10);
 }
 
-fn proposal_for(claim_id: &str, object_id: &str, base: &str, body: &str, capture_id: &str) -> crate::storage::proposal_store::NewProposal {
+pub(super) fn proposal_for(claim_id: &str, object_id: &str, base: &str, body: &str, capture_id: &str) -> crate::storage::proposal_store::NewProposal {
     use crate::storage::proposal_store::{EvidenceRef, NewProposal};
     NewProposal {
         pending_claim_id: claim_id.into(),
@@ -1781,7 +1781,7 @@ fn w23_repeated_metadata_writes_emit_proof_free_bundles() {
     assert!(update.review_proof.is_none());
 }
 
-fn evolution_parts(policy: &str, candidates: Vec<String>) -> crate::distillation::evolution::Parts {
+pub(super) fn evolution_parts(policy: &str, candidates: Vec<String>) -> crate::distillation::evolution::Parts {
     use crate::storage::identity_store::DecisionAudit;
     crate::distillation::evolution::Parts::synthetic(
         policy.into(),

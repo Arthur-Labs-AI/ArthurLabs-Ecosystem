@@ -24,6 +24,7 @@ Status: DORMANT NATIVE ADAPTERS IMPLEMENTED (MA-01/MA-02 and Task 14A). Producti
 | Aggregate G4 quota/reserve policy | OWNER APPROVAL REQUIRED / NOT ACTIVATED | [Task 14B decision package](m05-g4-quota-reserve-decision.md): source audit, synthetic measurements and individual G4-01–G4-09 proposals. `Limits.reserve` is logical metadata accounting, not filesystem capacity admission; physical enforcement and platform durability remain open. |
 | G4-F01 maintenance logical-quota bypass | FIXED AND TESTED (DORMANT) | Task 14C: no-effects finalization calls the existing `quota()` before COMMIT. Q01–Q10 and F01–F10 exercise real kernel/snapshot paths on synthetic v10; see the dated decision-package addendum. |
 | MEGA B physical admission infrastructure | DORMANT CANDIDATE / VERIFIED GROWTH BOUNDS BLOCKED | Separate checked calculator, scoped claims, owned-volume providers and kernel/snapshot integration. Profile A runs in synthetic tests only; non-test admission rejects `UnverifiedBounds`. Windows API smoke executed; Android/Linux device evidence absent. |
+| MEGA B2 writer admission and recovery | PARTIAL / DORMANT | Exact top-level adapter plans; one budget for internal review/expiry/evolution composition; pager ceiling held through COMMIT and restored afterwards. Test-only per-main-file VFS FULL/IOERR callbacks and actual COMMIT BUSY, exact disk-state/reopen and event-identity reconciliation. Release VFS growth gate unchanged. |
 | Platform crash/background gates | PLATFORM EVIDENCE REQUIRED | Synthetic fault injection only (Fault::At/Rollback/Exhausted/DeferredCommit); no OS kill evidence claimed |
 
 ## 2. Proposed coordinated activation patch (NOT APPLIED)
@@ -130,3 +131,29 @@ device-tested; Linux provider explicitly fails closed pending target/dependency
 support. Real filesystem FULL/IOERR and device durability remain unexecuted.
 Production remains v9; startup/public writer routing, expiry scheduler and v10
 activation are unchanged. Profile A remains an owner-approval candidate.
+
+## 9. MEGA B2 closure candidate (2026-10-23)
+
+All private authoritative adapter families now declare exact operations; a
+mismatched, repeated, unknown or unregistered top-level operation fails closed.
+Nested domain helpers share the named operation's candidate envelope and the
+single owner/finalizer. This does not establish a universal growth bound.
+The real pager ceiling stays installed through COMMIT, is read back, and is
+restored after COMMIT/rollback. Tests cover freelist reuse, repeated claims,
+SQLITE_PAGER_FULL, SQLITE_TRIGGER_ABORT, REAL_COMMIT_FAILURE (BUSY), and
+SQLITE_VFS_FULL / SQLITE_VFS_IOERR (one-shot main xWrite/xSync test shim).
+Uncertain COMMIT reports the event UUID; read-only reconciliation validates
+retained history/heads before looking up that identity. Not recorded is not
+permission to blindly retry. No successful-save acknowledgement precedes COMMIT.
+
+**PARTIAL:** DELETE journal, subjournal/temp and allocation growth still require
+a reviewed, enforced per-file VFS contract; non-test admission continues to
+reject `UnverifiedBounds` for every operation/platform. Pager bounds and the
+[SQLite temporary-file model](https://sqlite.org/tempfiles.html) do not prove
+those bounds. The test shim uses documented [file-control pointers](https://sqlite.org/c3ref/c_fcntl_begin_atomic_write.html)
+and restores native methods before recovery; it does not simulate OS exhaustion
+or certify device durability. REAL_FILESYSTEM_FULL and process/power-loss tests
+remain NOT TESTED. Windows native identity/missing/replaced-path tests execute;
+Android Rust target and NDK are unavailable here (the SDK is installed), so
+Android and Linux targets remain NOT TESTED (Linux provider fails closed).
+Profile A remains **CANDIDATE — OWNER APPROVAL PENDING**; production remains v9.

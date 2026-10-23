@@ -602,7 +602,13 @@ fn b14_logical_acknowledgement_loss_after_real_commit_requires_reconciliation() 
     let result = k.write_admitted_fault(O::Capture, Fault::AfterCommitUnknown, |w| {
         w.create_capture(input("Committed but caller received no success"))
     });
-    assert!(matches!(result, Err(W::Journal(J::CommitUncertain(None)))));
+    let event_id = match result {
+        Err(W::Journal(J::MutationUncertain {
+            event_id,
+            sqlite: None,
+        })) => event_id,
+        other => panic!("expected uncertain event identity, got {other:?}"),
+    };
     assert!(matches!(
         k.write_admitted(O::Capture, |w| w
             .create_capture(input("Must reconcile first"))),
@@ -618,6 +624,16 @@ fn b14_logical_acknowledgement_loss_after_real_commit_requires_reconciliation() 
     // Reopening establishes actual committed identity/history. Do not blindly
     // retry the old request; a future public layer must reconcile that identity.
     assert_eq!(cores(&s), actual);
+    let reconciled = JournalKernel::reconcile_event(&s, event_id, Limits::candidate().metadata)
+        .unwrap()
+        .unwrap();
+    assert_eq!(reconciled.event_id, actual[1].event_id);
+    assert_eq!(reconciled.seq, "2");
+    assert!(
+        JournalKernel::reconcile_event(&s, uuid::Uuid::new_v4(), Limits::candidate().metadata)
+            .unwrap()
+            .is_none()
+    );
     let k = activate(&s, &f, P::synthetic_profile_a());
     seed(&k);
     assert_eq!(cores(&s).len(), 3);
@@ -731,6 +747,515 @@ fn b17_snapshot_growth_budget_pager_full_preserves_pending_on_disk() {
         StorageFailure::StorageFull
     );
     assert_eq!(state(&s), before);
+    drop(k);
+    reopen(&dir, s, &before);
+}
+
+#[test]
+fn b2_main_limit_remains_installed_at_real_commit_and_is_restored_afterwards() {
+    let (_dir, s) = fixture();
+    let f = Fake::new();
+    let mut p = P::synthetic_profile_a();
+    p.normal_main = 1024 * 1024;
+    let k = activate(&s, &f, p);
+    let old = s.query_i64_for_test("PRAGMA max_page_count");
+    let pages = s.query_i64_for_test("PRAGMA page_count");
+    let size = s.query_i64_for_test("PRAGMA page_size");
+    let expected = (pages + (p.normal_main as i64 / size)).min(old);
+    assert!(expected < old);
+    k.write_admitted_fault(O::Capture, Fault::CommitLimit(expected), |w| {
+        w.create_capture(input("Commit retains the pager growth ceiling"))
+    })
+    .unwrap();
+    assert_eq!(s.query_i64_for_test("PRAGMA max_page_count"), old);
+    clean(&s);
+}
+
+// MEGA B2: every candidate below still uses test-only synthetic VFS bounds.
+// The real domain SQL, finalizer, pager and disk reopen are not simulated.
+use super::writer_tests::{
+    audit, candidate, change, content, decision_for, edge, evolution_parts, pending_for,
+    proposal_for, snap,
+};
+fn admitted<T>(
+    s: &CaptureStore,
+    k: &JournalKernel<'_>,
+    op: O,
+    work: impl FnOnce(&mut super::writers::Writers<'_, '_>) -> super::writers::Result<T>,
+) -> T {
+    let before = cores(s).len();
+    let (value, effects) = k
+        .write_admitted(op, |w| {
+            let value = work(w)?;
+            Ok((value, w.observed_effect_count()))
+        })
+        .unwrap_or_else(|e| panic!("operation {op:?}: {e:?}"));
+    assert_eq!(audit(s).len(), before + usize::from(effects > 0));
+    clean(s);
+    value
+}
+#[test]
+fn b2_projects_distillation_revisions_relations_and_membership_use_exact_plans() {
+    use crate::storage::integration_store::IntegrationWrite;
+    use crate::storage::lineage_store::{CasOrigin, ExpectedRevision, SourceSpan};
+    let (dir, s) = fixture();
+    let f = Fake::new();
+    let k = activate(&s, &f, P::synthetic_profile_a());
+    let p = admitted(&s, &k, O::CreateProject, |w| w.create_project("B2"));
+    admitted(&s, &k, O::RenameProject, |w| {
+        w.rename_project(&p.id, "B2 renamed")
+    });
+    admitted(&s, &k, O::SetActiveProject, |w| w.set_active_project(&p.id));
+    admitted(&s, &k, O::ArchiveProject, |w| w.archive_project(&p.id));
+    admitted(&s, &k, O::RestoreProject, |w| w.restore_project(&p.id));
+    let cap = admitted(&s, &k, O::Capture, |w| {
+        w.create_capture(input("Alpha Beta Gamma"))
+    });
+    let objects = admitted(&s, &k, O::RecordDistillation, |w| {
+        w.record_distillation(&cap.id, vec![candidate("A", 0, 4), candidate("B", 5, 9)])
+    });
+    let id = &objects[0].id;
+    let root = s.current_revision_id_of(id).unwrap().unwrap();
+    let edit = admitted(&s, &k, O::UpdateObject, |w| {
+        w.update_object(id, change("Edit"))
+    });
+    let branch = admitted(&s, &k, O::CreateRevisionFrom, |w| {
+        w.create_revision_from(id, &root, change("Branch"), false)
+    });
+    let merged = admitted(&s, &k, O::MergeRevisions, |w| {
+        w.merge_revisions(id, &[edit.id, branch.id], content("Merged"), true)
+    });
+    let restored = admitted(&s, &k, O::RestoreRevision, |w| {
+        w.restore_revision(id, &root, &merged.id)
+    });
+    admitted(&s, &k, O::ReviseIfCurrent, |w| {
+        w.revise_if_current(
+            &ExpectedRevision {
+                object_id: id,
+                project_id: &objects[0].project_id,
+                base_revision_id: &restored.id,
+            },
+            content("CAS"),
+            CasOrigin::UserEdit,
+        )
+    });
+    admitted(&s, &k, O::ReviseFromCapture, |w| {
+        w.revise_from_capture(
+            id,
+            None,
+            SourceSpan {
+                capture_id: cap.id.clone(),
+                start: 5,
+                end: 9,
+            },
+            change("From source"),
+            true,
+        )
+    });
+    let rel = admitted(&s, &k, O::CreateRelation, |w| {
+        w.create_relation(edge("extends", id, &objects[1].id), "model")
+    });
+    admitted(&s, &k, O::RecordRelations, |w| {
+        w.record_relations(vec![edge("depends_on", id, &objects[1].id)], "model")
+    });
+    let integration = IntegrationWrite {
+        focus: snap(&s, id),
+        context: vec![snap(&s, &objects[1].id)],
+        remove: vec![rel.id],
+        add: vec![edge("related_to", id, &objects[1].id)],
+    };
+    admitted(&s, &k, O::ApplyIntegration, |w| {
+        w.apply_integration(integration)
+    });
+    admitted(&s, &k, O::MoveCapture, |w| w.move_capture(&cap.id, &p.id));
+    admitted(&s, &k, O::MoveKnowledgeObject, |w| {
+        w.move_knowledge_object(id, &p.id)
+    });
+    let before = state(&s);
+    drop(k);
+    reopen(&dir, s, &before);
+}
+#[test]
+fn b2_identity_proposals_nested_resolution_expiry_and_evidence_are_single_events() {
+    use crate::storage::{
+        evidence_store::{EvidenceRole, NewEvidence},
+        identity_store::{AcceptPendingInput, DecisionOutcome},
+        proposal_store::{ClaimAction, ReviewAction, ReviewRequest},
+    };
+    let (dir, s) = fixture();
+    let f = Fake::new();
+    let k = activate(&s, &f, P::synthetic_profile_a());
+    let cap = admitted(&s, &k, O::Capture, |w| {
+        w.create_capture(input("Alpha Beta Gamma"))
+    });
+    let o = admitted(&s, &k, O::RecordDistillation, |w| {
+        w.record_distillation(&cap.id, vec![candidate("Target", 0, 4)])
+    });
+    let id = &o[0].id;
+    let base = s.current_revision_id_of(id).unwrap().unwrap();
+    let mut decision = decision_for(&cap.id, 10, vec![]);
+    decision.outcome = DecisionOutcome::New;
+    decision.created_object_id = Some(id.clone());
+    decision.audit = Default::default();
+    admitted(&s, &k, O::RecordIdentityDecision, |w| {
+        w.record_identity_decision(decision)
+    });
+    let stage = |n| {
+        admitted(&s, &k, O::StageUncertainClaim, |w| {
+            w.stage_uncertain_claim(pending_for(
+                decision_for(&cap.id, n, vec![id.clone()]),
+                vec![id.clone()],
+            ))
+        })
+        .0
+    };
+    let claim = stage(0);
+    admitted(&s, &k, O::DeferClaim, |w| w.defer_claim(&claim.id, None));
+    admitted(&s, &k, O::ReopenClaim, |w| w.reopen_claim(&claim.id));
+    let proposal = admitted(&s, &k, O::InsertProposal, |w| {
+        w.insert_proposal(proposal_for(&claim.id, id, &base, "Proposed body", &cap.id))
+    })
+    .0;
+    admitted(&s, &k, O::ResolveClaim, |w| {
+        w.resolve_claim(&claim.id, ClaimAction::Defer { due_at: None })
+    });
+    admitted(&s, &k, O::ResolveClaim, |w| {
+        w.resolve_claim(&claim.id, ClaimAction::Reopen)
+    });
+    admitted(&s, &k, O::ReviewProposal, |w| {
+        w.review_proposal(ReviewRequest {
+            proposal_id: proposal.id,
+            action: ReviewAction::Approve,
+            reviewed_revision_id: Some(base.clone()),
+        })
+    });
+    let automatic = s.current_revision_id_of(id).unwrap().unwrap();
+    admitted(&s, &k, O::AttachRevisionEvidence, |w| {
+        w.attach_revision_evidence(
+            &automatic,
+            vec![NewEvidence {
+                capture_id: cap.id.clone(),
+                source_start: 5,
+                source_end: 9,
+                role: EvidenceRole::Asserts,
+                retracts: None,
+                interpretation_label: None,
+            }],
+        )
+    });
+    let separate = stage(1);
+    admitted(&s, &k, O::SeparatePendingClaim, |w| {
+        w.separate_pending_claim(&separate.id, "user")
+    });
+    let accept = stage(2);
+    admitted(&s, &k, O::AcceptPendingClaim, |w| {
+        w.accept_pending_claim(AcceptPendingInput {
+            pending_id: accept.id,
+            target_object_id: id.clone(),
+            expected_base_revision_id: automatic.clone(),
+            content: content("Accepted"),
+            role: EvidenceRole::Asserts,
+            retracts: None,
+            interpretation_label: None,
+        })
+    });
+    let due = stage(3);
+    admitted(&s, &k, O::DeferClaim, |w| {
+        w.defer_claim(&due.id, Some("2026-10-22T00:00:00Z"))
+    });
+    let count = admitted(&s, &k, O::ExecuteDueExpiry, |w| {
+        w.execute_due_expiry(super::expiry::DormantExpiryRequest::candidate(NOW, 32).unwrap())
+    });
+    assert!(!count.is_empty());
+    let before = state(&s);
+    drop(k);
+    reopen(&dir, s, &before);
+}
+#[test]
+fn b2_evolution_has_one_explicit_budget_for_its_shared_domain_composition() {
+    use crate::distillation::evolution::{Committed, EvolutionLimits, Plan, Planned};
+    let (dir, s) = fixture();
+    let f = Fake::new();
+    let k = activate(&s, &f, P::synthetic_profile_a());
+    let cap = admitted(&s, &k, O::Capture, |w| {
+        w.create_capture(input("Alpha Beta Gamma"))
+    });
+    let out = admitted(&s, &k, O::EvolveCapture, |w| {
+        w.evolve_capture(
+            &cap.id,
+            vec![candidate("Fresh", 0, 4)],
+            vec![Planned {
+                plan: Plan::New(None),
+                parts: evolution_parts("test", vec![]),
+            }],
+            &EvolutionLimits::default(),
+            &|| true,
+            false,
+        )
+    });
+    assert!(matches!(out, Committed::Fresh { .. }));
+    let before = state(&s);
+    // A caller cannot relabel another top-level writer, even within one family.
+    rejection(
+        k.write_admitted(O::CreateProject, |w| {
+            let _ = w.rename_project("missing", "Wrong");
+            Ok(())
+        }),
+        A::UnknownDemand,
+    );
+    rejection(
+        k.write_admitted(O::EvolveCapture, |w| w.create_capture(input("Wrong"))),
+        A::UnknownDemand,
+    );
+    rejection(
+        k.write_admitted(O::CreateProject, |w| {
+            w.create_project("First")?;
+            let _ = w.create_project("Second");
+            Ok(())
+        }),
+        A::UnknownDemand,
+    );
+    assert_eq!(state(&s), before);
+    drop(k);
+    reopen(&dir, s, &before);
+}
+#[test]
+fn b2_real_commit_busy_rolls_back_full_state_releases_claim_and_can_retry() {
+    let (dir, s) = fixture();
+    let f = Fake::new();
+    let p = P::synthetic_profile_a();
+    let claims = ClaimPool::new(p.recovery);
+    let k = JournalKernel::activate_with_admission(
+        &s,
+        Limits::candidate(),
+        p,
+        Arc::new(f.clone()),
+        claims.clone(),
+    )
+    .unwrap();
+    seed(&k);
+    s.execute_sql_for_test("PRAGMA busy_timeout=0; PRAGMA cache_spill=OFF");
+    let old = s.query_i64_for_test("PRAGMA max_page_count");
+    let before = state(&s);
+    let reader = rusqlite::Connection::open(dir.path().join("arthur.db")).unwrap();
+    reader
+        .execute_batch("BEGIN; SELECT * FROM captures")
+        .unwrap();
+    // REAL_COMMIT_FAILURE: native DELETE VFS cannot upgrade to EXCLUSIVE
+    // while the actual second connection holds SHARED. Not IOERR or FULL.
+    let result = k.write_admitted(O::Capture, |w| w.create_capture(input("Blocked COMMIT")));
+    assert!(matches!(
+        result,
+        Err(W::Journal(J::CommitFailure(super::storage::SqliteCode {
+            primary: 5,
+            ..
+        })))
+    ));
+    reader.execute_batch("ROLLBACK").unwrap();
+    drop(reader);
+    assert_eq!(s.query_i64_for_test("PRAGMA max_page_count"), old);
+    assert_eq!(state(&s), before);
+    // An exact capacity boundary proves the prior transaction released claims.
+    let image = s.query_i64_for_test("PRAGMA page_count") as u64
+        * s.query_i64_for_test("PRAGMA page_size") as u64;
+    let required = p
+        .evaluate(
+            &cap(u64::MAX / 4),
+            "synthetic-volume",
+            p.demand(O::Capture, image, "delete").unwrap(),
+            0,
+        )
+        .unwrap()
+        .required;
+    f.free(required);
+    seed(&k);
+    assert_eq!(cores(&s).last().unwrap().origin_seq, "2");
+    let after = state(&s);
+    drop(k);
+    reopen(&dir, s, &after);
+}
+
+#[test]
+fn b2_vfs_full_and_ioerr_at_actual_commit_poison_and_reconcile_after_reopen() {
+    use super::fault_io::{Fault as IoFault, FileFault};
+    for fault in [IoFault::WriteFull, IoFault::SyncIo] {
+        let (dir, s) = fixture();
+        let f = Fake::new();
+        let k = activate(&s, &f, P::synthetic_profile_a());
+        seed(&k);
+        s.execute_sql_for_test("PRAGMA cache_spill=OFF");
+        let before = state(&s);
+        let old = s.query_i64_for_test("PRAGMA max_page_count");
+        // One guard, one live store/connection, no replacement or VFS changes;
+        // dropped explicitly before the kernel and store can be closed.
+        let shim = unsafe { FileFault::install(&s, fault) };
+        let result = k.write_admitted(O::Capture, |w| {
+            w.create_capture(input("VFS fault at actual main write or sync"))
+        });
+        assert_eq!(shim.hits(), 1, "must exercise actual VFS callback");
+        drop(shim);
+        let (event_id, code) = match result {
+            Err(W::Journal(J::MutationUncertain {
+                event_id,
+                sqlite: Some(code),
+            })) => (event_id, code),
+            other => panic!("expected actual COMMIT failure, got {other:?}"),
+        };
+        match fault {
+            IoFault::WriteFull => assert_eq!(
+                (code.primary, code.extended),
+                (13, rusqlite::ffi::SQLITE_FULL)
+            ),
+            IoFault::SyncIo => assert_eq!(
+                (code.primary, code.extended),
+                (10, rusqlite::ffi::SQLITE_IOERR_FSYNC)
+            ),
+        }
+        assert_eq!(s.query_i64_for_test("PRAGMA max_page_count"), old);
+        assert!(matches!(
+            k.write_admitted(O::Capture, |w| w.create_capture(input("No blind retry"))),
+            Err(W::Journal(J::Unavailable))
+        ));
+        assert_eq!(state(&s), before);
+        drop(k);
+        let s = reopen(&dir, s, &before);
+        assert!(
+            JournalKernel::reconcile_event(&s, event_id, Limits::candidate().metadata)
+                .unwrap()
+                .is_none()
+        );
+        let k = activate(&s, &f, P::synthetic_profile_a());
+        seed(&k);
+        audit(&s);
+    }
+}
+
+#[test]
+fn b2_empty_or_raw_capability_cannot_claim_a_typed_adapter_budget() {
+    let (_dir, s) = fixture();
+    let f = Fake::new();
+    let k = activate(&s, &f, P::synthetic_profile_a());
+    let before = state(&s);
+    assert!(matches!(
+        k.run_for(O::Capture, |_| Ok(())),
+        Err(J::Admission(A::UnknownDemand))
+    ));
+    assert!(matches!(
+        k.run_for(O::Capture, |tx| {
+            tx.sql()
+                .execute_batch("CREATE TABLE b2_unregistered(id INTEGER)")?;
+            Ok(())
+        }),
+        Err(J::Admission(A::UnknownDemand))
+    ));
+    assert_eq!(state(&s), before);
+}
+#[cfg(windows)]
+#[test]
+fn b2_windows_capacity_missing_replaced_database_has_no_identity_fallback() {
+    let (dir, s) = fixture();
+    let location = OwnedLocation::bind(&s, &s.connection.lock().unwrap()).unwrap();
+    let initial = NativeCapacity.query(&location).unwrap();
+    drop(s);
+    // All paths are literal children of this disposable synthetic fixture.
+    let database = dir.path().join("arthur.db");
+    let saved = dir.path().join("saved.db");
+    std::fs::rename(&database, &saved).unwrap();
+    assert_eq!(NativeCapacity.query(&location), Err(A::SpaceUnknown));
+    std::fs::copy(&saved, &database).unwrap();
+    let replaced = NativeCapacity.query(&location).unwrap();
+    assert_eq!(initial.volume, replaced.volume);
+    assert_ne!(initial.file_identity, replaced.file_identity);
+    assert_eq!(initial.allocation_unit, replaced.allocation_unit);
+}
+#[test]
+fn b2_pager_contract_reuses_free_pages_and_repeatedly_restores_commit_and_full() {
+    use super::admission_session::PhysicalAdmission;
+    let (dir, s) = fixture();
+    let f = Fake::new();
+    let mut p = P::synthetic_profile_a();
+    p.normal_main = 4096;
+    // Isolated real-pager contract fixture, not an authoritative domain writer.
+    s.execute_sql_for_test("CREATE TABLE b2_pages(id INTEGER PRIMARY KEY,data BLOB); WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<100) INSERT INTO b2_pages SELECT x,zeroblob(4096) FROM n; DELETE FROM b2_pages");
+    let before = state(&s);
+    {
+        let mut c = s.connection.lock().unwrap();
+        let physical =
+            PhysicalAdmission::bind(&s, &c, p, Arc::new(f), ClaimPool::new(p.recovery)).unwrap();
+        let old: i64 = c
+            .query_row("PRAGMA max_page_count", [], |r| r.get(0))
+            .unwrap();
+        let pages: i64 = c.query_row("PRAGMA page_count", [], |r| r.get(0)).unwrap();
+        for _ in 0..3 {
+            let tx = c.transaction().unwrap();
+            let mut budget = physical.prepare(&tx, O::Capture).unwrap();
+            tx.execute("INSERT INTO b2_pages VALUES(1,zeroblob(65536))", [])
+                .unwrap();
+            assert_eq!(
+                tx.query_row("PRAGMA page_count", [], |r| r.get::<_, i64>(0))
+                    .unwrap(),
+                pages
+            );
+            budget.check(&tx).unwrap();
+            tx.execute_batch("COMMIT").unwrap();
+            budget.restore(&tx).unwrap();
+            drop(tx);
+            c.execute("DELETE FROM b2_pages", []).unwrap();
+            assert_eq!(
+                c.query_row("PRAGMA max_page_count", [], |r| r.get::<_, i64>(0))
+                    .unwrap(),
+                old
+            );
+        }
+        let tx = c.transaction().unwrap();
+        let budget = physical.prepare(&tx, O::Capture).unwrap();
+        let error = tx
+            .execute("INSERT INTO b2_pages VALUES(1,zeroblob(2097152))", [])
+            .unwrap_err();
+        assert!(
+            matches!(error,rusqlite::Error::SqliteFailure(code,_) if code.extended_code==rusqlite::ffi::SQLITE_FULL)
+        );
+        if !tx.is_autocommit() {
+            tx.execute_batch("ROLLBACK").unwrap();
+        }
+        budget.restore(&tx).unwrap();
+        assert_eq!(
+            tx.query_row("PRAGMA max_page_count", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            old
+        );
+    }
+    assert_eq!(state(&s), before);
+    reopen(&dir, s, &before);
+}
+
+#[test]
+fn b2_distillation_pager_full_keeps_domain_core_and_codes_atomic_on_disk() {
+    let (dir, s) = fixture();
+    let f = Fake::new();
+    let mut p = P::synthetic_profile_a();
+    p.normal_main = 4096;
+    let k = activate(&s, &f, p);
+    let capture = k
+        .write_admitted(O::Capture, |w| w.create_capture(input("Alpha Beta Gamma")))
+        .unwrap();
+    let before = state(&s);
+    let old = s.query_i64_for_test("PRAGMA max_page_count");
+    let objects = (0..12)
+        .map(|i| {
+            let mut row = candidate(&format!("Object {i}"), 0, 4);
+            row.body = "B".repeat(2000);
+            row
+        })
+        .collect();
+    let error = k
+        .write_admitted(O::RecordDistillation, |w| {
+            w.record_distillation(&capture.id, objects)
+        })
+        .unwrap_err();
+    assert_eq!(error.classification(), StorageFailure::StorageFull);
+    assert_eq!(state(&s), before);
+    assert_eq!(s.query_i64_for_test("PRAGMA max_page_count"), old);
     drop(k);
     reopen(&dir, s, &before);
 }

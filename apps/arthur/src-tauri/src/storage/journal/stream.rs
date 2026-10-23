@@ -263,6 +263,20 @@ fn recover_history(c: &Connection, budget: u64) -> Result<History> {
     Ok(result)
 }
 
+/// Read-only identity reconciliation using the same retained-history validation
+/// as activation. No new origin, event, or sequence is allocated here.
+pub(super) fn reconcile_event(
+    c: &Connection,
+    event_id: Uuid,
+    budget: u64,
+) -> Result<Option<EventRef>> {
+    recover_history(c, budget)?;
+    c.query_row("SELECT origin_id,incarnation,origin_seq,event_id,canonical_hash FROM sync_bundles WHERE event_id=?1", [event_id.to_string()], |r| {
+        let hash: Vec<u8> = r.get(4)?;
+        Ok(EventRef { origin_id: r.get(0)?, incarnation: r.get(1)?, seq: r.get::<_, i64>(2)?.to_string(), event_id: r.get(3)?, hash: codec::hash_hex(&hash.try_into().map_err(|_| rusqlite::Error::InvalidQuery)?) })
+    }).optional().map_err(|e| e.into())
+}
+
 fn check_cache_bound(history: &History, legacy_bytes: u64, budget: u64) -> Result<()> {
     // Explicit conservative memory admission: 1 KiB bookkeeping per record/head
     // plus variable UTF-8 keys. Kept separate from persisted quota accounting.

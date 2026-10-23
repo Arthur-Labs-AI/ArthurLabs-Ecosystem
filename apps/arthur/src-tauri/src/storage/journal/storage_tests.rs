@@ -578,7 +578,7 @@ fn k10_failed_deferred_commit_without_bundle_is_explicitly_rolled_back() {
     let before = state(&s);
     assert_eq!(
         k.run_fault(Fault::DeferredCommit, |t| insert(t, 10)),
-        Err(E::Commit)
+        Err(E::CommitFailure(super::storage::SqliteCode { primary: 19, extended: rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY }))
     );
     assert_eq!(state(&s), before);
     clean(&s);

@@ -33,6 +33,9 @@ mod capacity;
 mod admission_tests;
 
 #[cfg(test)]
+mod fault_io;
+
+#[cfg(test)]
 mod expiry_tests;
 
 #[cfg(test)]

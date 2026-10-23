@@ -77,11 +77,7 @@ impl PhysicalAdmission {
             &self.location.database().with_file_name("arthur.db-journal"),
             true,
         )?;
-        // Last mutating action during preparation. Always restored by the
-        // caller before COMMIT or after rollback; no post-COMMIT fallible work.
-        c.pragma_update(None, "max_page_count", max)
-            .map_err(|_| E::SpaceUnknown)?;
-        Ok(Budget {
+        let budget = Budget {
             admission: self,
             claim,
             demand,
@@ -89,7 +85,17 @@ impl PhysicalAdmission {
             file_start,
             journal_start,
             old_max,
-        })
+        };
+        // Last mutating action during preparation. Read back SQLite's actual
+        // accepted limit; never assume a PRAGMA was applied. Retain the cap
+        // through COMMIT, and restore even on an ambiguous preparation error.
+        if c.pragma_update(None, "max_page_count", max).is_err()
+            || number(c, "PRAGMA max_page_count") != Ok(max as u64)
+        {
+            budget.restore(c)?;
+            return Err(E::SpaceUnknown);
+        }
+        Ok(budget)
     }
 }
 fn number(c: &Connection, sql: &str) -> Result<u64, E> {
@@ -163,6 +169,10 @@ impl Budget<'_> {
             "max_page_count",
             i64::try_from(self.old_max).map_err(|_| E::RecoveryRequired)?,
         )
-        .map_err(|_| E::RecoveryRequired)
+        .map_err(|_| E::RecoveryRequired)?;
+        if number(c, "PRAGMA max_page_count").map_err(|_| E::RecoveryRequired)? != self.old_max {
+            return Err(E::RecoveryRequired);
+        }
+        Ok(())
     }
 }
