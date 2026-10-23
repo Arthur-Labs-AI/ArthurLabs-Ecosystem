@@ -429,6 +429,23 @@ impl Writers<'_, '_> {
         self.track_superseded(&out.claim.id, before_proposal, ReviewMethod::DerivedClaimResolution)?;
         Ok(out)
     }
+    /// Dormant explicit execution candidate; not called by a runtime or timer.
+    pub(super) fn execute_due_expiry(
+        &mut self,
+        request: super::expiry::DormantExpiryRequest,
+    ) -> Result<Vec<identity::PendingResolution>> {
+        let claims = self.step(|c| super::expiry::select(c, &request))?;
+        let mut resolved = Vec::new();
+        for claim in claims {
+            if self
+                .step(|c| super::expiry::recheck(c, &request, &claim.id))?
+                .is_some()
+            {
+                resolved.push(self.separate_pending_claim(&claim.id, "expiry")?);
+            }
+        }
+        Ok(resolved)
+    }
     pub(super) fn separate_pending_claim(&mut self, id: &str, method: &str) -> Result<identity::PendingResolution> {
         let review_method = method_of(method)?;
         let before_proposal = self.step(|c| proposals::proposal_for_claim_in(c, id))?.map(|p| (p.id, p.state));

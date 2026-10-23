@@ -580,6 +580,66 @@ pub fn reopen_pending_claim_in(connection: &Connection, id: &str) -> Res<Pending
     set_open_or_deferred(connection, id, "open", None)
 }
 
+/// Reporting preserves v9's tolerant handling of malformed persisted due dates.
+/// Execution fails closed; neither mode itself grants execution authority.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum DueSelection {
+    Reporting,
+    Execution,
+}
+
+fn claim_is_due(claim: &PendingClaim, now: OffsetDateTime, mode: DueSelection) -> Res<bool> {
+    if !matches!(claim.state.as_str(), "open" | "deferred") || claim.project_archived {
+        return Ok(false);
+    }
+    match claim.due_at.as_deref().map(parse_time).transpose() {
+        Ok(due) => Ok(due.is_some_and(|due| due <= now)),
+        Err(_) if mode == DueSelection::Reporting => Ok(false),
+        Err(error) => Err(error),
+    }
+}
+
+/// Borrow the caller's connection; selection never writes or owns a transaction.
+/// `seq` is the unique insertion order used by the original reporting query.
+/// Stream rows instead of materializing the entire queue before applying limit.
+pub(super) fn due_pending_claims_in(
+    connection: &Connection,
+    now: &str,
+    limit: usize,
+    mode: DueSelection,
+) -> Res<Vec<PendingClaim>> {
+    let now = parse_time(now)?;
+    let mut selected = Vec::new();
+    if limit == 0 {
+        return Ok(selected);
+    }
+    let mut statement = connection.prepare(&format!("{PENDING_SELECT} ORDER BY p.seq"))?;
+    let mut rows = statement.query([])?;
+    while let Some(row) = rows.next()? {
+        let claim = pending_from_row(row)?;
+        if claim_is_due(&claim, now, mode)? {
+            selected.push(claim);
+            if selected.len() == limit {
+                break;
+            }
+        }
+    }
+    Ok(selected)
+}
+
+/// Re-read eligibility from the owning transaction, never from preview IDs.
+pub(super) fn due_pending_claim_in(
+    connection: &Connection,
+    id: &str,
+    now: &str,
+) -> Res<Option<PendingClaim>> {
+    let now = parse_time(now)?;
+    match pending_in(connection, id)? {
+        Some(claim) if claim_is_due(&claim, now, DueSelection::Execution)? => Ok(Some(claim)),
+        _ => Ok(None),
+    }
+}
+
 impl CaptureStore {
     /// Runs `work` in ONE write transaction (IMMEDIATE) and commits only if it returns `Ok`; any error rolls everything back. This is the
     /// composition point for the future pipeline: distillation run + decisions + revisions + evidence + pending state in one commit.
@@ -624,13 +684,8 @@ impl CaptureStore {
     /// Open or deferred claims whose `due_at` has passed `now`, in an OPEN project, oldest first. This only REPORTS: it resolves and
     /// hides nothing. A claim in an archived project is not returned (it cannot be resolved) but stays listed by `list_pending_claims`.
     pub fn due_pending_claims(&self, now: &str, limit: usize) -> Res<Vec<PendingClaim>> {
-        let now = parse_time(now)?;
-        let all = self.list_pending_claims(None, &["open", "deferred"])?;
-        Ok(all
-            .into_iter()
-            .filter(|claim| !claim.project_archived && claim.due_at.as_deref().and_then(|due| OffsetDateTime::parse(due, &Rfc3339).ok()).is_some_and(|due| due <= now))
-            .take(limit)
-            .collect())
+        let connection = self.connection.lock().map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+        due_pending_claims_in(&connection, now, limit, DueSelection::Reporting)
     }
 
     pub fn defer_pending_claim(&self, id: &str, due_at: Option<&str>) -> Res<PendingClaim> {

@@ -1,13 +1,17 @@
 # M05 Production Activation Readiness
 
-Status: NATIVE IMPLEMENTATION COMPLETE (MA-01/MA-02 corrected). Activation NOT performed. Production remains schema v9.
+Status: DORMANT NATIVE ADAPTERS IMPLEMENTED (MA-01/MA-02 and Task 14A). Production automatic-expiry policy remains OWNER APPROVAL PENDING; scheduler wiring NOT IMPLEMENTED. Activation NOT performed. Production remains schema v9.
 
 ## 1. Readiness checklist
 
 | Requirement | Status | Evidence |
 |---|---|---|
 | Every authoritative write entrypoint accounted for | COMPLETE | `m05-authoritative-writers.md` matrix; 12/12 entity kinds journaled |
-| No uninstrumented writer reachable under future v10 | COMPLETE (private adapters) / PUBLIC V9 UNCHANGED | Private `Writers` adapters cover every authoritative writer for the future coordinated activation; existing public v9 methods still follow v10-dormant v9 behavior and do NOT call JournalKernel yet. No public JournalTx is published. Raw SQL entry is `#[cfg(test)]` only. |
+| No uninstrumented writer reachable under future v10 | COMPLETE (private adapters) / PUBLIC V9 UNCHANGED | Private `Writers` adapters include the explicit dormant `execute_due_expiry` candidate; production expiry scheduling still requires a separate owner decision; existing public v9 methods still follow v10-dormant v9 behavior and do NOT call JournalKernel yet. No public JournalTx is published. Raw SQL entry is `#[cfg(test)]` only. |
+| Dormant due/expiry selection and writer | IMPLEMENTED AND TESTED (synthetic v10) | `due_pending_claims_in`, `due_pending_claim_in`, `Writers::execute_due_expiry`; expiry_tests::x01-x18, one owning transaction and rollback proofs |
+| Actual production automatic-expiry policy | OWNER APPROVAL PENDING | `due_at` remains reporting-only; a past date is not permission to resolve a claim |
+| Production scheduler wiring | NOT IMPLEMENTED | No runtime/startup/timer invokes `DormantExpiryRequest` or `execute_due_expiry` (x18) |
+| Production v10 activation | NOT PERFORMED | `SCHEMA_VERSION=9`, STEPS 1-9; x17 |
 | Exactly one runtime/storage owner | COMPLETE | `CaptureStore.connection` mutex; kernel borrows, never opens a second connection |
 | JournalKernel activates before any v10 owner publication | PENDING OWNER APPROVAL | Activation call site is a future coordination task (see plan below) |
 | Every new owner receives a fresh incarnation | COMPLETE | `stream::initialize` seals prior + mints UUID on every activation; s08 proves rotation |
@@ -38,7 +42,7 @@ Order of operations:
 - Production signing, pairing, authenticated replication.
 - Snapshot transmission (local preparation only in this package).
 - Platform-specific crash durability beyond synthetic fault injection.
-- Proposal expiry scheduler adapter (BLOCKED item in the writer matrix).
+- Live automatic-expiry policy and scheduler wiring: dormant executor tested, owner approval pending; no timer or runtime invocation.
 - G4 physical-disk quota approval.
 
 ## 4. Post-implementation corrections (MA-01 / MA-02)
@@ -50,8 +54,34 @@ Order of operations:
 ## 5. Standing boundaries (unchanged)
 
 - Existing public v9 methods follow v9 behavior; only the private adapters are journal-aware.
-- Proposal-expiry scheduler: still BLOCKED, still requires a scheduler-owned adapter reusing review proofs.
+- Dormant expiry execution adapter: IMPLEMENTED AND TESTED under synthetic v10; production automatic-expiry policy remains OWNER APPROVAL PENDING and production scheduler wiring is NOT IMPLEMENTED.
 - G4 physical-disk quota/reserve: still requires owner approval.
 - Platform crash/background gates: still require platform evidence beyond synthetic fault injection.
 - Snapshot retention/retirement policy: initial single-snapshot admission only; no retirement redesign in this package.
 - Security/importer/transport/UI/release: separate workstreams, not started.
+
+## 6. Task 14A execution evidence and remaining decisions
+
+The explicit private `DormantExpiryRequest` is an execution candidate, not a
+production permission. `Writers::execute_due_expiry` selects and revalidates due
+claims inside its owning `JournalKernel::write()` transaction. It reuses the
+existing expiry-aware resolver and real v9 proposal-supersession trigger;
+claim proofs use Expiry, proposal proofs use DerivedClaimResolution. No draft
+is approved, rejected or deleted by expiry. The engineering batch ceiling of
+32 is not the final production scheduling policy. A successful batch creates
+one canonical event; empty/repeated passes create none. Any domain or finalizer
+failure rolls back all selected changes and consumes no committed sequence.
+
+X01-X18 exercise public query parity, parsed offset/equality boundaries, current
+project membership, stale previews, legitimate terminal drafts, malformed
+persisted metadata, deterministic limits, exact stored core/dependencies/facet
+heads, and rollback at six journal stages. Synthetic fault injection proves
+transaction atomicity only; platform process-death/power-loss durability is
+still unverified. The production source scan confirms no runtime scheduler
+callsite; it is not a substitute for future coordinated activation review.
+
+Remaining owner/platform gates are unchanged: actual automatic-expiry policy
+and scheduler wiring; G4 physical-disk quota/reserve approval; platform
+crash/durability proof; snapshot retention/retirement policy; coordinated
+activation approval; future importer/security/LAN/UI work. Production v10
+activation has NOT been performed. No readiness claim here closes these gates.

@@ -19,11 +19,15 @@
 pub mod codec;
 pub mod reducer;
 
+mod expiry;
 mod snapshot;
 mod sql_effects;
 mod storage;
 mod stream;
 mod writers;
+
+#[cfg(test)]
+mod expiry_tests;
 
 #[cfg(test)]
 mod snapshot_tests;
