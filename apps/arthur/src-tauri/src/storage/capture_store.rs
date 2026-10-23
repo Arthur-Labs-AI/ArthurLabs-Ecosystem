@@ -93,6 +93,11 @@ pub struct CaptureStore {
 }
 
 impl CaptureStore {
+    /// Native storage policy may only query the root held by this owner.
+    pub(super) fn owned_data_root(&self) -> Option<&std::path::Path> {
+        self._ownership.as_ref().map(DataRootOwnership::data_root)
+    }
+
     /// Production disk access consumes the non-cloneable root ownership capability.
     /// The runtime factory is the sole caller; workers acquire that runtime, never a second store.
     pub(crate) fn open_owned(ownership: DataRootOwnership) -> Result<Self, StoreError> {
@@ -109,6 +114,17 @@ impl CaptureStore {
     #[cfg(test)]
     pub fn open_in_memory() -> Result<Self, StoreError> {
         Self::from_connection(Connection::open_in_memory()?, None)
+    }
+
+    /// Synthetic-v10 recovery only. Never called by production's v9 opener.
+    #[cfg(test)]
+    pub(super) fn reopen_candidate_owned_for_test(ownership: DataRootOwnership) -> Result<Self, StoreError> {
+        let connection = Connection::open(ownership.data_root().join("arthur.db"))?;
+        let version: i64 = connection.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+        if version != 10 { return Err(StoreError::Invalid("expected synthetic v10".into())); }
+        connection.pragma_update(None, "synchronous", "FULL")?;
+        connection.pragma_update(None, "foreign_keys", "ON")?;
+        Ok(Self { connection: Mutex::new(connection), _ownership: Some(ownership) })
     }
 
     /// Lets other modules' tests inject faults (triggers, corruption) without owning the connection.

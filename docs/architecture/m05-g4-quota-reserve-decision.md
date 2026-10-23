@@ -668,3 +668,20 @@ expiry policy/scheduler, coordinated activation, importer/security/LAN/UI remain
 open. No stage/commit/push/PR operation is part of Task14C. The historical Task14B
 measurement artifact is unchanged; new tests are permanent repository fixtures
 and do not depend on that external harness.
+
+## MEGA B brief implementation finding — 2026-10-23
+
+**SOURCE-CONFIRMED:** Dormant physical admission now has a separate checked
+calculator, capacity-provider seam, scoped claims and kernel/snapshot boundaries.
+The owned-volume Windows provider was smoke-tested; Android libc provider source
+is isolated and unverified on target; unsupported Linux queries fail closed.
+**MEASURED:** Synthetic integrated tests exercise candidate Profile A, main-page
+ceilings, capacity loss before/after SQL/finalization, pager FULL, trigger abort,
+reopen and logical post-COMMIT acknowledgement loss; these are not VFS IOERR or
+real-volume-full evidence. **NOT MEASURED / PLATFORM EVIDENCE MISSING:** a page
+ceiling and allocation observations cannot certify all journal/temp I/O bounds.
+Consequently non-test admission returns `UnverifiedBounds`; only `#[cfg(test)]`
+can opt into synthetic envelopes. A reviewed VFS/growth contract is the precise
+remaining implementation prerequisite. G4-01–G4-09/Profile A approval, platform
+acceptance and coordinated production activation remain open. Earlier ledgers
+and measurements above are unchanged.

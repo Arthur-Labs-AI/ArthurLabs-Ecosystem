@@ -23,6 +23,7 @@ Status: DORMANT NATIVE ADAPTERS IMPLEMENTED (MA-01/MA-02 and Task 14A). Producti
 | No signer/pairing/network needed for local saves | COMPLETE | journal/storage/snapshot import only `std`, `serde_*`, `rusqlite`, `uuid`, `time` |
 | Aggregate G4 quota/reserve policy | OWNER APPROVAL REQUIRED / NOT ACTIVATED | [Task 14B decision package](m05-g4-quota-reserve-decision.md): source audit, synthetic measurements and individual G4-01–G4-09 proposals. `Limits.reserve` is logical metadata accounting, not filesystem capacity admission; physical enforcement and platform durability remain open. |
 | G4-F01 maintenance logical-quota bypass | FIXED AND TESTED (DORMANT) | Task 14C: no-effects finalization calls the existing `quota()` before COMMIT. Q01–Q10 and F01–F10 exercise real kernel/snapshot paths on synthetic v10; see the dated decision-package addendum. |
+| MEGA B physical admission infrastructure | DORMANT CANDIDATE / VERIFIED GROWTH BOUNDS BLOCKED | Separate checked calculator, scoped claims, owned-volume providers and kernel/snapshot integration. Profile A runs in synthetic tests only; non-test admission rejects `UnverifiedBounds`. Windows API smoke executed; Android/Linux device evidence absent. |
 | Platform crash/background gates | PLATFORM EVIDENCE REQUIRED | Synthetic fault injection only (Fault::At/Rollback/Exhausted/DeferredCommit); no OS kill evidence claimed |
 
 ## 2. Proposed coordinated activation patch (NOT APPLIED)
@@ -109,3 +110,23 @@ Production v10 activation: NOT PERFORMED.** Profile A, G4-01–G4-09,
 Windows/Android/Linux durability acceptance, snapshot retention/retirement,
 live expiry policy/scheduler, coordinated activation and future
 importer/security/LAN/UI remain independent open gates.
+
+## 8. MEGA B candidate infrastructure (2026-10-23)
+
+Separate physical policy/demand/capacity types now cover activation, one typed
+Capture or snapshot step, finalization and pre-COMMIT checks. Unknown/composed
+domain demand and unsupported SQLite modes fail closed. Synthetic Profile A
+tests enforce a temporary main-page growth ceiling and inspect journal growth;
+logical quotas remain independent. Scoped outstanding claims exclude observed
+allocated growth. Numeric FULL/IOERR classification and an explicitly logical
+post-COMMIT acknowledgement-loss test preserve recovery-required behavior.
+
+This milestone is **PARTIAL**: candidate DELETE/scratch envelopes are not verified
+VFS bounds. The non-test constructor rejects `UnverifiedBounds`; no approval or
+production bypass is provided. Completing that boundary needs an independently
+reviewed per-connection VFS/growth contract. Windows capacity smoke passes;
+Android provider source uses existing libc but has not been target-compiled or
+device-tested; Linux provider explicitly fails closed pending target/dependency
+support. Real filesystem FULL/IOERR and device durability remain unexecuted.
+Production remains v9; startup/public writer routing, expiry scheduler and v10
+activation are unchanged. Profile A remains an owner-approval candidate.

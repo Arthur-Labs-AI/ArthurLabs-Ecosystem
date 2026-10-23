@@ -25,6 +25,12 @@ mod sql_effects;
 mod storage;
 mod stream;
 mod writers;
+mod admission;
+mod admission_session;
+mod capacity;
+
+#[cfg(test)]
+mod admission_tests;
 
 #[cfg(test)]
 mod expiry_tests;

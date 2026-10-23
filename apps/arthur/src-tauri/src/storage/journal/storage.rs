@@ -13,6 +13,10 @@ use super::reducer::FinalStateResolver;
 use super::reducer::{self, ReviewContext, ReviewMap};
 use super::sql_effects::{self as sql, Key};
 use super::stream::{self, Head, HeadKey, Stream};
+use super::admission::{AdmissionError, ClaimPool, Operation as StorageOperation, PhysicalAdmissionPolicy};
+use super::admission_session::PhysicalAdmission;
+use super::capacity::CapacityProvider;
+use std::sync::Arc;
 use crate::storage::capture_store::{now_rfc3339, CaptureStore};
 use rusqlite::{params, Connection, DropBehavior, Transaction, TransactionBehavior};
 use std::collections::{BTreeMap, BTreeSet};
@@ -23,6 +27,11 @@ pub(super) type Result<T> = std::result::Result<T, JournalError>;
 // No wrapped codec/SQL strings: those may disclose private row values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum JournalError {
+    Admission(AdmissionError),
+    StorageFull(SqliteCode),
+    StorageIo(SqliteCode),
+    CommitUncertain(Option<SqliteCode>),
+    RecoveryRequired,
     WrongSchema,
     Unavailable,
     CorruptCapability,
@@ -53,6 +62,39 @@ pub(super) enum JournalError {
     #[cfg(test)]
     Injected,
 }
+/// Numeric diagnostics only; SQL messages and row values never cross this boundary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct SqliteCode { pub primary: i32, pub extended: i32 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum StorageFailure {
+    LogicalPayloadFull, LogicalMetadataFull, OperationTooLarge, SpaceUnknown,
+    SpaceLow, StorageFull, StorageIo, CommitUncertain, RecoveryRequired, Other,
+}
+impl JournalError {
+    pub(super) fn classification(self) -> StorageFailure {
+        use StorageFailure as F;
+        match self {
+            Self::PayloadQuota => F::LogicalPayloadFull,
+            Self::MetadataQuota => F::LogicalMetadataFull,
+            Self::BundleTooLarge | Self::EffectLimit | Self::SpoolLimit => F::OperationTooLarge,
+            Self::Admission(AdmissionError::SpaceLow) => F::SpaceLow,
+            Self::Admission(AdmissionError::RecoveryRequired) => F::RecoveryRequired,
+            Self::Admission(AdmissionError::GrowthExceeded) => F::OperationTooLarge,
+            Self::Admission(_) | Self::PolicyPending => F::SpaceUnknown,
+            Self::StorageFull(_) => F::StorageFull, Self::StorageIo(_) => F::StorageIo,
+            Self::CommitUncertain(_) => F::CommitUncertain,
+            Self::RecoveryRequired | Self::Rollback | Self::Unavailable => F::RecoveryRequired,
+            _ => F::Other,
+        }
+    }
+}
+fn sqlite_error(error: rusqlite::Error, fallback: JournalError) -> JournalError {
+    if let rusqlite::Error::SqliteFailure(code, _) = error {
+        let numeric = SqliteCode { primary: code.extended_code & 255, extended: code.extended_code };
+        return match numeric.primary { 13 => JournalError::StorageFull(numeric), 10 => JournalError::StorageIo(numeric), _ => fallback };
+    }
+    fallback
+}
 impl std::fmt::Display for JournalError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "journal {self:?}")
@@ -73,7 +115,7 @@ impl From<rusqlite::Error> for JournalError {
             {
                 Self::SpoolLimit
             }
-            _ => Self::Sql,
+            other => sqlite_error(other, Self::Sql),
         }
     }
 }
@@ -130,6 +172,8 @@ pub(super) enum Fault {
     DeferredCommit,
     Rollback,
     Exhausted,
+    // Logical loss of acknowledgement AFTER the test's real COMMIT succeeds.
+    AfterCommitUnknown,
 }
 #[derive(Default)]
 struct Hooks {
@@ -153,6 +197,7 @@ pub(super) struct JournalKernel<'a> {
     store: &'a CaptureStore,
     state: Mutex<State>,
     limits: Limits,
+    physical: Option<PhysicalAdmission>,
 }
 pub(super) struct JournalTx<'a> {
     connection: &'a Connection,
@@ -160,6 +205,8 @@ pub(super) struct JournalTx<'a> {
     context_bytes: usize,
     depth: usize,
     fatal: bool,
+    physical_operation: Option<StorageOperation>,
+    operation_used: bool,
 }
 struct Pending {
     core: JournalEvent,
@@ -173,10 +220,21 @@ impl<'a> JournalKernel<'a> {
     pub(super) fn activate(store: &'a CaptureStore) -> Result<Self> {
         Self::activate_with_policy(store, Limits::candidate())
     }
+    #[cfg(test)]
     pub(super) fn activate_with_policy(store: &'a CaptureStore, limits: Limits) -> Result<Self> {
-        Self::activate_inner(store, limits, Hooks::default())
+        Self::activate_inner(store, limits, Hooks::default(), None)
     }
-    fn activate_inner(store: &'a CaptureStore, limits: Limits, hooks: Hooks) -> Result<Self> {
+    /// Explicit dormant constructor, never selected by production startup.
+    pub(super) fn activate_with_admission(store: &'a CaptureStore, limits: Limits,
+        policy: PhysicalAdmissionPolicy, provider: Arc<dyn CapacityProvider>, claims: Arc<ClaimPool>) -> Result<Self> {
+        limits.validate()?;
+        let physical = {
+            let c = store.connection.lock().map_err(|_| JournalError::Unavailable)?;
+            PhysicalAdmission::bind(store, &c, policy, provider, claims).map_err(JournalError::Admission)?
+        };
+        Self::activate_inner(store, limits, Hooks::default(), Some(physical))
+    }
+    fn activate_inner(store: &'a CaptureStore, limits: Limits, hooks: Hooks, physical: Option<PhysicalAdmission>) -> Result<Self> {
         limits.validate()?;
         let mut c = store
             .connection
@@ -185,18 +243,29 @@ impl<'a> JournalKernel<'a> {
         stream::policy(&c)?;
         quota(&c, limits, 0)?;
         let mut tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let mut budget = match physical.as_ref().map(|p| p.prepare(&tx, StorageOperation::Activation)).transpose() {
+            Ok(budget) => budget,
+            Err(e) => { rollback(&mut tx, &hooks)?; return Err(JournalError::Admission(e)); }
+        };
         let result = (|| {
             let now = now_rfc3339().map_err(|_| JournalError::Unavailable)?;
             let stream = stream::initialize(&tx, &now, limits.metadata)?;
             quota(&tx, limits, 0)?;
             hooks.at(Stage::Init)?;
+            if let Some(budget) = &mut budget { budget.check(&tx).map_err(JournalError::Admission)?; }
             Ok(stream)
         })();
+        if budget.as_ref().is_some_and(|b| b.restore(&tx).is_err()) {
+            let _ = rollback(&mut tx, &hooks);
+            let _ = tx.pragma_update(None, "query_only", true);
+            return Err(JournalError::RecoveryRequired);
+        }
         let stream = match result {
             Ok(s) => match commit(&mut tx) {
                 Ok(()) => s,
                 Err(e) => {
                     rollback(&mut tx, &hooks)?;
+                    if matches!(e, JournalError::CommitUncertain(_)) { let _ = tx.pragma_update(None, "query_only", true); }
                     return Err(e);
                 }
             },
@@ -205,6 +274,7 @@ impl<'a> JournalKernel<'a> {
                 return Err(e);
             }
         };
+        drop(budget);
         Ok(Self {
             store,
             state: Mutex::new(State {
@@ -212,15 +282,24 @@ impl<'a> JournalKernel<'a> {
                 usable: true,
             }),
             limits,
+            physical,
         })
     }
     pub(super) fn run<T>(&self, work: impl FnOnce(&mut JournalTx<'_>) -> Result<T>) -> Result<T> {
-        self.run_inner(work, Hooks::default())
+        self.run_inner(work, Hooks::default(), StorageOperation::Unknown)
+    }
+    pub(super) fn run_for<T>(&self, operation: StorageOperation, work: impl FnOnce(&mut JournalTx<'_>) -> Result<T>) -> Result<T> {
+        self.run_inner(work, Hooks::default(), operation)
+    }
+    #[cfg(test)]
+    pub(super) fn run_for_fault<T>(&self, operation: StorageOperation, fault: Fault, work: impl FnOnce(&mut JournalTx<'_>) -> Result<T>) -> Result<T> {
+        self.run_inner(work, Hooks { fault: Some(fault) }, operation)
     }
     fn run_inner<T>(
         &self,
         work: impl FnOnce(&mut JournalTx<'_>) -> Result<T>,
         hooks: Hooks,
+        operation: StorageOperation,
     ) -> Result<T> {
         // Fixed lock order; the original CaptureStore remains the sole owner.
         let mut state = self.state.lock().map_err(|_| JournalError::Unavailable)?;
@@ -234,7 +313,12 @@ impl<'a> JournalKernel<'a> {
             .map_err(|_| JournalError::Unavailable)?;
         stream::policy(&c)?;
         state.stream.check(&c)?;
+        if self.physical.is_some() && operation == StorageOperation::Capture { quota(&c, self.limits, 0)?; }
         let mut tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let mut budget = match self.physical.as_ref().map(|p| p.prepare(&tx, operation)).transpose() {
+            Ok(budget) => budget,
+            Err(e) => { if rollback(&mut tx, &hooks).is_err() { state.usable = false; return Err(JournalError::Rollback); } return Err(JournalError::Admission(e)); }
+        };
         let result = (|| {
             state.stream.check(&tx)?;
             hooks.at(Stage::Context)?;
@@ -250,11 +334,14 @@ impl<'a> JournalKernel<'a> {
                 context_bytes: 0,
                 depth: 0,
                 fatal: false,
+                physical_operation: self.physical.as_ref().map(|_| operation),
+                operation_used: false,
             };
             let value = work(&mut capability)?;
             if capability.fatal {
                 return Err(JournalError::UnsupportedEffects);
             }
+            if let Some(budget) = &mut budget { budget.check(&tx).map_err(JournalError::Admission)?; }
             hooks.at(Stage::Domain)?;
             #[cfg(test)]
             if hooks.fault == Some(Fault::DeferredCommit) {
@@ -270,8 +357,15 @@ impl<'a> JournalKernel<'a> {
                 &capability.reviews,
                 &hooks,
             )?;
+            if let Some(budget) = &mut budget { budget.check(&tx).map_err(JournalError::Admission)?; }
             Ok((value, pending))
         })();
+        if budget.as_ref().is_some_and(|b| b.restore(&tx).is_err()) {
+            let _ = rollback(&mut tx, &hooks);
+            let _ = tx.pragma_update(None, "query_only", true);
+            state.usable = false;
+            return Err(JournalError::RecoveryRequired);
+        }
         let (value, pending) = match result {
             Ok(v) => v,
             Err(e) => {
@@ -282,10 +376,19 @@ impl<'a> JournalKernel<'a> {
                 return Err(e);
             }
         };
-        if let Err(e) = hooks.at(Stage::Commit).and_then(|_| commit(&mut tx)) {
+        let committed = hooks.at(Stage::Commit).and_then(|_| commit(&mut tx));
+        #[cfg(test)]
+        let committed = if hooks.fault == Some(Fault::AfterCommitUnknown) && committed.is_ok() {
+            Err(JournalError::CommitUncertain(None))
+        } else { committed };
+        if let Err(e) = committed {
             if rollback(&mut tx, &hooks).is_err() {
                 state.usable = false;
                 return Err(JournalError::Rollback);
+            }
+            if matches!(e, JournalError::CommitUncertain(_)) {
+                state.usable = false;
+                let _ = tx.pragma_update(None, "query_only", true);
             }
             return Err(e);
         }
@@ -319,7 +422,7 @@ impl<'a> JournalKernel<'a> {
         fault: Fault,
         work: impl FnOnce(&mut JournalTx<'_>) -> Result<T>,
     ) -> Result<T> {
-        self.run_inner(work, Hooks { fault: Some(fault) })
+        self.run_inner(work, Hooks { fault: Some(fault) }, StorageOperation::Unknown)
     }
     #[cfg(test)]
     pub fn init_fault(store: &'a CaptureStore) -> Result<Self> {
@@ -329,6 +432,7 @@ impl<'a> JournalKernel<'a> {
             Hooks {
                 fault: Some(Fault::At(Stage::Init)),
             },
+            None,
         )
     }
     #[cfg(test)]
@@ -347,6 +451,24 @@ impl<'a> JournalKernel<'a> {
 }
 
 impl JournalTx<'_> {
+    pub(super) fn admit_operation(&mut self, operation: StorageOperation) -> Result<()> {
+        if let Some(expected) = self.physical_operation {
+            if expected != operation || operation == StorageOperation::Unknown || self.operation_used {
+                self.fatal = true;
+                return Err(JournalError::Admission(AdmissionError::UnknownDemand));
+            }
+            self.operation_used = true;
+        }
+        Ok(())
+    }
+    pub(super) fn sqlite_failure(&self) -> Option<JournalError> {
+        // The connection remains owned/locked for this call. Read numeric code
+        // immediately at the adapter error boundary, before rollback resets it.
+        let extended = unsafe { rusqlite::ffi::sqlite3_extended_errcode(self.connection.handle()) };
+        let code = SqliteCode { primary: extended & 255, extended };
+        match code.primary { 13 => Some(JournalError::StorageFull(code)), 10 => Some(JournalError::StorageIo(code)), _ => None }
+    }
+
     /// Journal-internal scoped seam for typed native writer adapters. No SQL
     /// handle escapes this module boundary; an ignored writer error poisons the
     /// capability so partial domain work cannot accidentally be committed.
@@ -458,7 +580,9 @@ impl JournalTx<'_> {
 
 fn commit(tx: &mut Transaction<'_>) -> Result<()> {
     tx.execute_batch("COMMIT")
-        .map_err(|_| JournalError::Commit)?;
+        .map_err(|e| match sqlite_error(e, JournalError::Commit) {
+            JournalError::StorageFull(code) | JournalError::StorageIo(code) => JournalError::CommitUncertain(Some(code)), other => other,
+        })?;
     if !tx.is_autocommit() {
         return Err(JournalError::Commit);
     }
@@ -496,7 +620,7 @@ fn quota(c: &Connection, limits: Limits, additional: u64) -> Result<()> {
             [],
             |r| r.get(0),
         )
-        .map_err(|_| JournalError::PayloadQuota)?;
+        .map_err(|e| sqlite_error(e, JournalError::PayloadQuota))?;
     if payload < 0
         || (payload as u64)
             .checked_add(additional)
@@ -536,7 +660,7 @@ fn quota(c: &Connection, limits: Limits, additional: u64) -> Result<()> {
                 [],
                 |r| r.get(0),
             )
-            .map_err(|_| JournalError::MetadataQuota)?;
+            .map_err(|e| sqlite_error(e, JournalError::MetadataQuota))?;
         metadata = metadata
             .checked_add(u64::try_from(n).map_err(|_| JournalError::MetadataQuota)?)
             .ok_or(JournalError::MetadataQuota)?;
@@ -594,7 +718,7 @@ fn finalize(
             return Err(JournalError::ReviewContext);
         }
         c.execute("DELETE FROM sync_write_context WHERE event_id=?1", [event])
-            .map_err(|_| JournalError::Cleanup)?;
+            .map_err(|e| sqlite_error(e, JournalError::Cleanup))?;
         stream::empty(c)?;
         // Snapshot/maintenance work can grow persisted metadata without domain
         // effects. Admit its final state inside this same transaction too.
@@ -716,7 +840,7 @@ fn finalize(
     if hooks.fault == Some(Fault::Rollback) {
         return Err(JournalError::Injected);
     }
-    c.execute("INSERT INTO sync_bundles(event_id,bundle_id,origin_id,incarnation,origin_seq,payload_schema,raw_effect_count,canonical_bytes,canonical_hash,previous_hash,committed_at) VALUES(?1,?2,?3,?4,?5,1,?6,?7,?8,?9,?10)",params![event,bundle,stream.origin,stream.incarnation,seq,effects.len() as i64,bytes,hash.as_slice(),stream.hash.as_slice(),core.committed_at]).map_err(|_|JournalError::BundleInsert)?;
+    c.execute("INSERT INTO sync_bundles(event_id,bundle_id,origin_id,incarnation,origin_seq,payload_schema,raw_effect_count,canonical_bytes,canonical_hash,previous_hash,committed_at) VALUES(?1,?2,?3,?4,?5,1,?6,?7,?8,?9,?10)",params![event,bundle,stream.origin,stream.incarnation,seq,effects.len() as i64,bytes,hash.as_slice(),stream.hash.as_slice(),core.committed_at]).map_err(|e| sqlite_error(e, JournalError::BundleInsert))?;
     let tip: (i64, Vec<u8>) = c.query_row(
         "SELECT last_seq,last_hash FROM sync_origins WHERE origin_id=?1 AND incarnation=?2",
         params![stream.origin, stream.incarnation],
@@ -727,7 +851,7 @@ fn finalize(
     }
     hooks.at(Stage::Heads)?;
     for (key, head) in &heads {
-        c.execute("INSERT INTO sync_entity_heads(entity_kind,entity_key,facet,event_id,state_hash) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(entity_kind,entity_key,facet) DO UPDATE SET event_id=excluded.event_id,state_hash=excluded.state_hash",params![key.0.as_str(),sql::key_json(&key.1)?,key.2,event,head.hash.as_slice()]).map_err(|_|JournalError::HeadUpdate)?;
+        c.execute("INSERT INTO sync_entity_heads(entity_kind,entity_key,facet,event_id,state_hash) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(entity_kind,entity_key,facet) DO UPDATE SET event_id=excluded.event_id,state_hash=excluded.state_hash",params![key.0.as_str(),sql::key_json(&key.1)?,key.2,event,head.hash.as_slice()]).map_err(|e| sqlite_error(e, JournalError::HeadUpdate))?;
         if stream::stored_head(c, key)? != Some((event.into(), head.hash.to_vec())) {
             return Err(JournalError::HeadUpdate);
         }
@@ -735,9 +859,9 @@ fn finalize(
     quota(c, limits, 0)?;
     hooks.at(Stage::Cleanup)?;
     c.execute("DELETE FROM sync_effects WHERE event_id=?1", [event])
-        .map_err(|_| JournalError::Cleanup)?;
+        .map_err(|e| sqlite_error(e, JournalError::Cleanup))?;
     c.execute("DELETE FROM sync_write_context WHERE event_id=?1", [event])
-        .map_err(|_| JournalError::Cleanup)?;
+        .map_err(|e| sqlite_error(e, JournalError::Cleanup))?;
     stream::empty(c)?;
     Ok(Some(Pending {
         core,

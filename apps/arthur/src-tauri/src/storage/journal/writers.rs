@@ -17,6 +17,7 @@ use crate::storage::{
     project_store as projects, relation_store as relations,
 };
 use std::sync::Arc;
+use super::admission::Operation as StorageOperation;
 
 fn method_of(name: &str) -> Result<ReviewMethod> {
     match name {
@@ -49,6 +50,21 @@ pub(super) enum WriterError {
     Review(Arc<crate::storage::proposal_store::ReviewError>),
     Snapshot(snapshot::SnapshotError),
     Journal(JournalError),
+}
+impl WriterError {
+    pub(super) fn classification(&self) -> storage::StorageFailure {
+        use storage::StorageFailure as F;
+        match self {
+            Self::Journal(e) => e.classification(),
+            Self::Store(e) => match e.as_ref() {
+                StoreError::Database(rusqlite::Error::SqliteFailure(code, _)) => match code.extended_code & 255 {
+                    13 => F::StorageFull, 10 => F::StorageIo, _ => F::Other,
+                },
+                _ => F::Other,
+            },
+            _ => F::Other,
+        }
+    }
 }
 impl From<StoreError> for WriterError {
     fn from(e: StoreError) -> Self {
@@ -144,6 +160,19 @@ pub(super) struct Writers<'a, 'tx> {
     failure: Option<WriterError>,
 }
 impl JournalKernel<'_> {
+    pub(super) fn write_admitted<T>(&self, operation: StorageOperation,
+        work: impl FnOnce(&mut Writers<'_, '_>) -> Result<T>) -> Result<T> {
+        let mut failure = None;
+        let result = self.run_for(operation, |tx| execute(tx, work, &mut failure));
+        finish(result, failure)
+    }
+    #[cfg(test)]
+    pub(super) fn write_admitted_fault<T>(&self, operation: StorageOperation, fault: super::storage::Fault,
+        work: impl FnOnce(&mut Writers<'_, '_>) -> Result<T>) -> Result<T> {
+        let mut failure = None;
+        let result = self.run_for_fault(operation, fault, |tx| execute(tx, work, &mut failure));
+        finish(result, failure)
+    }
     pub(super) fn write<T>(
         &self,
         work: impl FnOnce(&mut Writers<'_, '_>) -> Result<T>,
@@ -201,20 +230,28 @@ impl Writers<'_, '_> {
         &mut self,
         work: impl FnOnce(&rusqlite::Connection) -> std::result::Result<T, E>,
     ) -> Result<T> {
-        if let Some(e) = &self.failure {
-            return Err(e.clone());
+        self.step_for(StorageOperation::Unknown, work)
+    }
+    fn step_for<T, E: Into<WriterError>>(&mut self, operation: StorageOperation,
+        work: impl FnOnce(&rusqlite::Connection) -> std::result::Result<T, E>) -> Result<T> {
+        if let Some(e) = &self.failure { return Err(e.clone()); }
+        if let Err(e) = self.tx.admit_operation(operation) {
+            let error = WriterError::Journal(e); self.failure = Some(error.clone()); return Err(error);
         }
         match self.tx.with_domain(work) {
             Ok(value) => Ok(value),
             Err(e) => {
-                let e = e.into();
+                let mut e = e.into();
+                if matches!(e, WriterError::Snapshot(snapshot::SnapshotError::Sql)) {
+                    if let Some(numeric) = self.tx.sqlite_failure() { e = WriterError::Journal(numeric); }
+                }
                 self.failure = Some(e.clone());
                 Err(e)
             }
         }
     }
     pub(super) fn create_capture(&mut self, input: CreateCaptureInput) -> Result<Capture> {
-        self.step(|c| capture_store::insert_capture_in(c, capture_store::prepare_capture(input)?))
+        self.step_for(StorageOperation::Capture, |c| capture_store::insert_capture_in(c, capture_store::prepare_capture(input)?))
     }
     pub(super) fn create_project(&mut self, name: &str) -> Result<projects::Project> {
         self.step(|c| projects::create_project_in(c, name))
@@ -550,23 +587,23 @@ impl Writers<'_, '_> {
         self.step(|c| evolution::apply(c, capture_id, &claims, planned, limits, allowed, review_first))
     }
     pub(super) fn snapshot_allocate(&mut self, snapshot_id: &str, now: &str) -> Result<()> {
-        self.step(|c| snapshot::allocate(c, snapshot_id, now))
+        self.step_for(StorageOperation::SnapshotAllocate, |c| snapshot::allocate(c, snapshot_id, now))
     }
     #[cfg(test)]
     pub(super) fn snapshot_capture_with(&mut self, snapshot_id: &str, now: &str, policy: snapshot::SnapshotPolicy) -> Result<snapshot::SnapshotSummary> {
-        self.step(|c| snapshot::capture(c, snapshot_id, policy, now))
+        self.step_for(StorageOperation::SnapshotCapture, |c| snapshot::capture(c, snapshot_id, policy, now))
     }
     pub(super) fn snapshot_capture(&mut self, snapshot_id: &str, now: &str) -> Result<snapshot::SnapshotSummary> {
-        self.step(|c| snapshot::capture(c, snapshot_id, SnapshotPolicy::candidate(), now))
+        self.step_for(StorageOperation::SnapshotCapture, |c| snapshot::capture(c, snapshot_id, SnapshotPolicy::candidate(), now))
     }
     pub(super) fn snapshot_pack(&mut self, snapshot_id: &str) -> Result<()> {
-        self.step(|c| snapshot::pack(c, snapshot_id))
+        self.step_for(StorageOperation::SnapshotPack, |c| snapshot::pack(c, snapshot_id))
     }
     pub(super) fn snapshot_abort(&mut self, snapshot_id: &str) -> Result<()> {
-        self.step(|c| snapshot::abort(c, snapshot_id))
+        self.step_for(StorageOperation::SnapshotAbort, |c| snapshot::abort(c, snapshot_id))
     }
     pub(super) fn snapshot_verify(&mut self, snapshot_id: &str) -> Result<()> {
-        self.step(|c| snapshot::verify_manifest(c, snapshot_id))
+        self.step_for(StorageOperation::SnapshotVerify, |c| snapshot::verify_manifest(c, snapshot_id))
     }
     pub(super) fn apply_integration(
         &mut self,
