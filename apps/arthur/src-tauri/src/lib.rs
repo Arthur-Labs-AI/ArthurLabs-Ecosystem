@@ -17,6 +17,8 @@ mod providers;
 mod recall;
 mod runtime;
 mod storage;
+#[allow(dead_code)] // M05 dormant sync candidate; no production composition/ingress.
+mod sync;
 mod stt;
 mod tts;
 #[cfg(test)]

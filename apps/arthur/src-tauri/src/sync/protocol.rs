@@ -1,0 +1,158 @@
+use crate::storage::journal::codec;
+use std::sync::atomic::{AtomicBool, Ordering};
+use uuid::Uuid;
+
+pub(crate) const MAX_EVENTS: usize = 256;
+pub(crate) const CHUNK: usize = 256 * 1024;
+pub(crate) const MAX_FRAME: usize = 1024 * 1024;
+pub(crate) const MAX_BATCH: usize = 2;
+pub(crate) const FEATURES: u32 = 7; // candidate ledger, chunking, conflict receipts
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Error {
+    Trust,
+    Integrity,
+    Protocol,
+    Limit,
+    Cancelled,
+    Storage,
+    ActivationPending,
+    Disconnected,
+}
+pub(crate) type Result<T> = std::result::Result<T, Error>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Outcome {
+    CleanlyApplied,
+    ConflictRetained,
+    DeferredDependency,
+    UnsupportedImportPolicy,
+    RejectedIntegrity,
+}
+impl Outcome {
+    pub fn code(self) -> &'static str {
+        match self {
+            Self::CleanlyApplied => "applied",
+            Self::ConflictRetained => "conflict",
+            Self::DeferredDependency => "deferred",
+            Self::UnsupportedImportPolicy => "unsupported",
+            Self::RejectedIntegrity => "rejected",
+        }
+    }
+    pub fn parse(s: &str) -> Result<Self> {
+        match s {
+            "applied" => Ok(Self::CleanlyApplied),
+            "conflict" => Ok(Self::ConflictRetained),
+            "deferred" => Ok(Self::DeferredDependency),
+            "unsupported" => Ok(Self::UnsupportedImportPolicy),
+            "rejected" => Ok(Self::RejectedIntegrity),
+            _ => Err(Error::Storage),
+        }
+    }
+    pub fn is_ack(self) -> bool {
+        matches!(self, Self::CleanlyApplied | Self::ConflictRetained)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct Identity {
+    pub event: Uuid,
+    pub bundle: Uuid,
+    pub origin: Uuid,
+    pub incarnation: Uuid,
+    pub seq: i64,
+    pub hash: [u8; 32],
+}
+// Core bytes deliberately have no Debug implementation.
+#[derive(Clone)]
+pub(crate) struct Envelope {
+    pub identity: Identity,
+    pub bytes: Vec<u8>,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Progress {
+    pub origin: Uuid,
+    pub incarnation: Uuid,
+    pub stored: i64,
+    pub integrated: i64,
+    pub applied: i64,
+}
+#[derive(Clone)]
+pub(crate) struct Summary {
+    pub known: Vec<Identity>,
+    pub progress: Vec<Progress>,
+    pub needs_attention: bool,
+}
+#[derive(Clone)]
+pub(crate) struct Chunk {
+    pub identity: Identity,
+    pub index: usize,
+    pub count: usize,
+    pub total: usize,
+    pub digest: [u8; 32],
+    pub bytes: Vec<u8>,
+}
+#[derive(Clone)]
+pub(crate) struct Receipt {
+    pub identity: Identity,
+    pub outcome: Outcome,
+}
+#[derive(Clone)]
+pub(crate) enum Payload {
+    Hello {
+        version: u32,
+        required: u32,
+        supported: u32,
+        profile: String,
+    },
+    Summary(Summary),
+    Chunk(Chunk),
+    Receipt(Receipt),
+    Request(Vec<Uuid>),
+}
+#[derive(Clone)]
+pub(crate) struct Message {
+    pub network: Uuid,
+    pub session: Uuid,
+    pub from: Uuid,
+    pub to: Uuid,
+    pub payload: Payload,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PeerHello {
+    pub network: Uuid,
+    pub session: Uuid,
+    pub local: Uuid,
+    pub peer: Uuid,
+    pub epoch: i64,
+}
+pub(crate) trait AuthenticatedTransport {
+    fn hello(&self) -> PeerHello;
+    fn send(&mut self, message: Message) -> Result<()>;
+    fn receive(&mut self) -> Result<Option<Message>>;
+}
+pub(crate) trait SyncClock {
+    fn now(&self) -> u64;
+}
+#[derive(Default)]
+pub(crate) struct Cancellation(AtomicBool);
+impl Cancellation {
+    pub fn cancel(&self) {
+        self.0.store(true, Ordering::SeqCst)
+    }
+    pub fn cancelled(&self) -> bool {
+        self.0.load(Ordering::SeqCst)
+    }
+}
+pub(crate) fn chunk_event(e: &Envelope) -> Vec<Chunk> {
+    let count = e.bytes.len().div_ceil(CHUNK);
+    e.bytes
+        .chunks(CHUNK)
+        .enumerate()
+        .map(|(index, bytes)| Chunk {
+            identity: e.identity.clone(),
+            index,
+            count,
+            total: e.bytes.len(),
+            digest: codec::journal_event_hash(bytes),
+            bytes: bytes.to_vec(),
+        })
+        .collect()
+}

@@ -28,6 +28,9 @@ mod writers;
 mod admission;
 mod admission_session;
 mod capacity;
+pub(super) mod import_view;
+#[cfg(test)]
+pub(crate) mod sync_fixtures;
 
 #[cfg(test)]
 mod admission_tests;

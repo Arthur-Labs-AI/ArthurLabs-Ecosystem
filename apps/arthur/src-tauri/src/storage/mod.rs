@@ -17,6 +17,7 @@ pub mod proposal_store;
 /// M05-P1b-B dormant journal codec and reducer. Compiled into production
 /// builds but invoked by no production write path; schema stays v9.
 pub mod journal;
+pub(crate) mod sync_store;
 #[cfg(test)]
 mod identity_store_tests;
 #[cfg(test)]

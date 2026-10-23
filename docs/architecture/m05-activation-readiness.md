@@ -25,6 +25,7 @@ Status: DORMANT NATIVE ADAPTERS IMPLEMENTED (MA-01/MA-02 and Task 14A). Producti
 | G4-F01 maintenance logical-quota bypass | FIXED AND TESTED (DORMANT) | Task 14C: no-effects finalization calls the existing `quota()` before COMMIT. Q01–Q10 and F01–F10 exercise real kernel/snapshot paths on synthetic v10; see the dated decision-package addendum. |
 | MEGA B physical admission infrastructure | DORMANT CANDIDATE / VERIFIED GROWTH BOUNDS BLOCKED | Separate checked calculator, scoped claims, owned-volume providers and kernel/snapshot integration. Profile A runs in synthetic tests only; non-test admission rejects `UnverifiedBounds`. Windows API smoke executed; Android/Linux device evidence absent. |
 | MEGA B2 writer admission and recovery | PARTIAL / DORMANT | Exact top-level adapter plans; one budget for internal review/expiry/evolution composition; pager ceiling held through COMMIT and restored afterwards. Test-only per-main-file VFS FULL/IOERR callbacks and actual COMMIT BUSY, exact disk-state/reopen and event-identity reconciliation. Release VFS growth gate unchanged. |
+| MEGA D native Sync Core | PARTIAL / DORMANT LEDGER CANDIDATE | Native engine, strict canonical/causal validation, owner-borrowed incoming ledger, distinct stored/integrated/applied cursors, retained conflicts, bounded FakeTransport and disk-reopen tests. Foreign domain projection remains blocked by the frozen local observer/fence contract; release trust/admission constructors fail closed. |
 | Platform crash/background gates | PLATFORM EVIDENCE REQUIRED | Synthetic fault injection only (Fault::At/Rollback/Exhausted/DeferredCommit); no OS kill evidence claimed |
 
 ## 2. Proposed coordinated activation patch (NOT APPLIED)
@@ -157,3 +158,26 @@ remain NOT TESTED. Windows native identity/missing/replaced-path tests execute;
 Android Rust target and NDK are unavailable here (the SDK is installed), so
 Android and Linux targets remain NOT TESTED (Linux provider fails closed).
 Profile A remains **CANDIDATE — OWNER APPROVAL PENDING**; production remains v9.
+
+## 10. MEGA D native Sync Core candidate (2026-10-23)
+
+The native `sync/` engine uses typed transport/store/verifier/clock boundaries.
+Two independent owned SQLite fixtures exchange exact original journal bytes,
+including a >1 MiB event in 256 KiB chunks; incomplete chunks never publish.
+A separate test-installed `import_candidate.sql` extension retains originals,
+creation claims, pending dependencies, conflict alternatives, collisions and
+per-peer progress. Candidate limits: 256 events, 64 MiB logical evidence,
+16 collisions, bounded metadata and two assemblies of at most 4 MiB each.
+Lost ACK/reconnect, revocation, forged ACK, rollback/COMMIT failure and reopen
+are tested. Conflict-retained ACKs are negotiated separately; staged or
+unsupported receipts never advance applied cursors. A native local-core echo
+can confirm its already committed identity without creating a foreign bundle.
+
+**PARTIAL:** frozen observers require a local bundle/fence for every domain
+write. No foreign domain materialization or receiver snapshot bootstrap is
+implemented; clean historical reconstruction needs the reviewed G3 forward
+migration. Snapshot v2 source verification/tamper checks are reused unchanged.
+`knowledge-v1-full` is not advertised. Release trust verification and store
+construction reject; no signer, pairing, LAN, UI or scheduler is wired.
+G4 `UnverifiedBounds` remains active. Production schema/registration stays v9;
+the separate synthetic extension does not approve a production schema version.
