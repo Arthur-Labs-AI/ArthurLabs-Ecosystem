@@ -46,6 +46,7 @@ export const IPC_CHANNELS = [
   'runtime:select-distro',
   'runtime:reclaim-space',
   'cli:status',
+  'cli:set-enabled',
 ] as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[number];
@@ -240,6 +241,12 @@ export interface SentryDesktopApi {
   };
   readonly cli: {
     status(): Promise<{
+      started: boolean;
+      pipePath: string;
+      error?: string;
+      connectedClients: Array<{ id: string; name: string; version?: string; connectedAt: string }>;
+    }>;
+    setEnabled?(enabled: boolean): Promise<{
       started: boolean;
       pipePath: string;
       error?: string;

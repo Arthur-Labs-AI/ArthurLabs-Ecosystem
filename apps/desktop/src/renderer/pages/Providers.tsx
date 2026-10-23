@@ -17,9 +17,9 @@ interface ProviderStatus {
 
 const DESCRIPTIONS: Record<string, string> = {
   OPENROUTER_API_KEY:
-    'OpenRouter provider key (secret). Used by the OpenCode harness host process inside the WSL runtime. Never shown, never leaves the desktop host process except over the encrypted runtime channel.',
+    'OpenRouter pay-as-you-go provider key (secret, from openrouter.ai). Used by the OpenCode harness only when Provider is openrouter (or left unset). Never shown, never leaves the desktop host process except over the encrypted runtime channel.',
   SENTRY_OPENCODE_MODEL:
-    'OpenCode model id (non-secret). An exact OpenRouter model id, e.g. anthropic/claude-opus-4-6. The harness is OpenCode, the provider is OpenRouter, the model is your selection.',
+    'OpenCode model id (non-secret) for the selected provider — e.g. kimi-k3 or gemini-4-argon-contributor (opencode-go), gpt-5.5 (opencode), or anthropic/claude-opus-4-6 (openrouter). Prefixing with opencode-go/, opencode/, or openrouter/ also selects that provider when Provider is unset.',
   DEEPSEEK_API_KEY: 'DeepSeek provider key (secret). Used by the DeepSeek harness host process.',
   ANTHROPIC_AUTH_TOKEN:
     'GLM/Claude-Code provider token (secret). Used by the Claude parent process.',
@@ -32,9 +32,9 @@ const DESCRIPTIONS: Record<string, string> = {
   SENTRY_GLM_BINARY: 'GLM harness executable override (non-secret).',
   SENTRY_OPENCODE_BINARY: 'OpenCode harness executable override (non-secret).',
   OPENCODE_API_KEY:
-    'OpenCode Zen provider key (secret). Used when the OpenCode provider is opencode.',
+    'OpenCode Console provider key (secret, from opencode.ai/console). Used for both OpenCode Go monthly subscriptions (Provider: opencode-go) and OpenCode Zen pay-as-you-go credits (Provider: opencode).',
   SENTRY_OPENCODE_PROVIDER:
-    'OpenCode upstream provider (non-secret): openrouter, opencode (Zen), or opencode-go (Go subscription gateway).',
+    'OpenCode upstream provider (non-secret): opencode-go (OpenCode Go monthly subscription gateway), opencode (OpenCode Zen pay-as-you-go Console gateway), or openrouter (OpenRouter pay-as-you-go gateway; default when unset).',
 };
 
 const SECRET_NAMES: ReadonlySet<string> = new Set([
@@ -44,28 +44,58 @@ const SECRET_NAMES: ReadonlySet<string> = new Set([
   'ANTHROPIC_AUTH_TOKEN',
 ]);
 
+interface AgentFieldSpec {
+  readonly name: string;
+  readonly label: string;
+  readonly placeholder?: string;
+  readonly detailsLabel?: string | null;
+}
+
 interface AgentCardSpec {
   readonly title: string;
   readonly subtitle: string;
-  readonly fields: ReadonlyArray<{ name: string; label: string }>;
+  readonly fields: ReadonlyArray<AgentFieldSpec>;
 }
 
 const AGENT_CARDS: readonly AgentCardSpec[] = [
   {
     title: 'OpenCode',
-    subtitle: 'Primary coding agent · OpenRouter or Zen transport',
+    subtitle:
+      'Primary coding agent · OpenCode Go (subscription), OpenCode Zen (pay-as-you-go), or OpenRouter',
     fields: [
-      { name: 'SENTRY_OPENCODE_PROVIDER', label: 'Provider' },
-      { name: 'SENTRY_OPENCODE_MODEL', label: 'Model' },
-      { name: 'OPENROUTER_API_KEY', label: 'API key' },
-      { name: 'OPENCODE_API_KEY', label: 'Zen API key' },
+      {
+        name: 'SENTRY_OPENCODE_PROVIDER',
+        label: 'Provider',
+        placeholder: 'opencode-go, opencode, or openrouter',
+        detailsLabel: null,
+      },
+      {
+        name: 'SENTRY_OPENCODE_MODEL',
+        label: 'Model',
+        placeholder: 'e.g. kimi-k3, gpt-5.5, or anthropic/claude-sonnet-4',
+        detailsLabel: null,
+      },
+      {
+        name: 'OPENCODE_API_KEY',
+        label: 'OpenCode API key (Zen & Go)',
+        detailsLabel: 'Explanation',
+      },
+      {
+        name: 'OPENROUTER_API_KEY',
+        label: 'OpenRouter API key (Pay-as-you-go)',
+        detailsLabel: 'Explanation',
+      },
     ],
   },
   {
     title: 'DeepSeek',
     subtitle: 'Second reviewer · DeepSeek API',
     fields: [
-      { name: 'SENTRY_DEEPSEEK_MODEL', label: 'Model' },
+      {
+        name: 'SENTRY_DEEPSEEK_MODEL',
+        label: 'Model',
+        placeholder: 'e.g. deepseek-v4-flash',
+      },
       { name: 'DEEPSEEK_API_KEY', label: 'API key' },
     ],
   },
@@ -73,8 +103,16 @@ const AGENT_CARDS: readonly AgentCardSpec[] = [
     title: 'GLM',
     subtitle: 'Third reviewer · Claude Code harness on Z.AI endpoint',
     fields: [
-      { name: 'SENTRY_GLM_MODEL', label: 'Model' },
-      { name: 'ANTHROPIC_BASE_URL', label: 'Endpoint' },
+      {
+        name: 'SENTRY_GLM_MODEL',
+        label: 'Model',
+        placeholder: 'e.g. glm-5.3-flash',
+      },
+      {
+        name: 'ANTHROPIC_BASE_URL',
+        label: 'Endpoint',
+        placeholder: 'https://api.z.ai/api/anthropic',
+      },
       { name: 'ANTHROPIC_AUTH_TOKEN', label: 'Token' },
     ],
   },
@@ -233,11 +271,14 @@ export function Providers(): React.JSX.Element {
             <p className="metadata" style={{ margin: '4px 0 12px' }}>
               {card.subtitle}
             </p>
+            {card.title === 'OpenCode' ? <OpenCodeProviderGuidance byName={byName} /> : null}
             {card.fields.map((field) => (
               <CredentialField
                 key={field.name}
                 label={field.label}
                 name={field.name}
+                placeholder={field.placeholder}
+                detailsLabel={field.detailsLabel}
                 {...fieldProps}
               />
             ))}
@@ -287,9 +328,77 @@ export function Providers(): React.JSX.Element {
   );
 }
 
+function inferOpenCodeProvider(
+  providerStatus: ProviderStatus | undefined,
+  modelStatus: ProviderStatus | undefined,
+): { readonly provider: string; readonly explicit: boolean } {
+  const explicitProvider =
+    providerStatus?.configured === true ? providerStatus.hint.trim().toLowerCase() : '';
+  if (explicitProvider.length > 0) {
+    return { provider: explicitProvider, explicit: true };
+  }
+  const configuredModel = modelStatus?.configured === true ? modelStatus.hint.trim() : '';
+  const head = configuredModel.includes('/')
+    ? (configuredModel.split('/')[0] ?? '').toLowerCase()
+    : '';
+  if (head === 'opencode-go' || head === 'opencode' || head === 'openrouter') {
+    return { provider: head, explicit: true };
+  }
+  return { provider: 'openrouter', explicit: false };
+}
+
+function OpenCodeProviderGuidance(props: {
+  readonly byName: Map<string, ProviderStatus>;
+}): React.JSX.Element | null {
+  const providerStatus = props.byName.get('SENTRY_OPENCODE_PROVIDER');
+  const modelStatus = props.byName.get('SENTRY_OPENCODE_MODEL');
+  const openCodeKey = props.byName.get('OPENCODE_API_KEY');
+  const openRouterKey = props.byName.get('OPENROUTER_API_KEY');
+  if (
+    providerStatus === undefined &&
+    modelStatus === undefined &&
+    openCodeKey === undefined &&
+    openRouterKey === undefined
+  ) {
+    return null;
+  }
+  const { provider, explicit } = inferOpenCodeProvider(providerStatus, modelStatus);
+  const hasOpenCodeKey = openCodeKey?.configured === true;
+  const hasOpenRouterKey = openRouterKey?.configured === true;
+
+  if (!explicit && hasOpenCodeKey && !hasOpenRouterKey) {
+    return (
+      <div className="inline-notice" style={{ marginBottom: 12 }}>
+        <strong>Provider selection needed:</strong> You saved an{' '}
+        <strong>OpenCode API key (Zen &amp; Go)</strong>, while <strong>Provider</strong> is unset
+        (defaults to <code>openrouter</code>). Save <code>opencode-go</code> (for an OpenCode Go
+        subscription) or <code>opencode</code> (for OpenCode Zen pay-as-you-go) in{' '}
+        <strong>Provider</strong> so Sentry uses your OpenCode key.
+      </div>
+    );
+  }
+  if (
+    (provider === 'opencode-go' || provider === 'opencode') &&
+    !hasOpenCodeKey &&
+    hasOpenRouterKey
+  ) {
+    return (
+      <div className="inline-notice" style={{ marginBottom: 12 }}>
+        <strong>Key field mismatch:</strong> <strong>Provider</strong> is set to{' '}
+        <code>{provider}</code>, which uses the <strong>OpenCode API key (Zen &amp; Go)</strong>{' '}
+        field. The <strong>OpenRouter API key (Pay-as-you-go)</strong> field is only used when{' '}
+        <strong>Provider</strong> is <code>openrouter</code>.
+      </div>
+    );
+  }
+  return null;
+}
+
 function CredentialField(props: {
   readonly label: string;
   readonly name: string;
+  readonly placeholder?: string | undefined;
+  readonly detailsLabel?: string | null | undefined;
   readonly values: Record<string, string>;
   readonly setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   readonly onSave: (name: string, value: string) => void;
@@ -302,9 +411,12 @@ function CredentialField(props: {
   const item = props.byName.get(props.name);
   const secret = SECRET_NAMES.has(props.name);
   const current = props.values[props.name] ?? '';
+  const activeHint =
+    !secret && item?.configured === true && item.hint !== '' ? item.hint : undefined;
+  const disclosureLabel = props.detailsLabel === undefined ? 'Advanced' : props.detailsLabel;
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <label htmlFor={'provider-' + props.name} className="card-title">
           {props.label}
         </label>
@@ -327,6 +439,7 @@ function CredentialField(props: {
                     : item.source === 'missing' && !item.configured
                       ? 'Not set'
                       : 'Status unavailable'}
+          {activeHint !== undefined ? ' · ' + activeHint : ''}
         </span>
       </div>
       <div
@@ -337,13 +450,7 @@ function CredentialField(props: {
           type={secret ? 'password' : 'text'}
           value={current}
           onChange={(e) => props.setValues((prev) => ({ ...prev, [props.name]: e.target.value }))}
-          placeholder={
-            secret
-              ? '••••••••••'
-              : item?.hint !== undefined && item.hint !== ''
-                ? item.hint
-                : 'Enter value'
-          }
+          placeholder={secret ? '••••••••••' : (activeHint ?? props.placeholder ?? 'Enter value')}
           aria-label={'Value for ' + props.name}
           autoComplete="off"
           spellCheck={false}
@@ -372,16 +479,18 @@ function CredentialField(props: {
           Stored credential unavailable. Check OS secure storage; keep the existing store.
         </p>
       ) : null}
-      <details style={{ marginTop: 4 }}>
-        <summary className="metadata">Advanced</summary>
-        <p className="metadata mono" style={{ margin: '4px 0' }}>
-          {props.name}
-          {item !== undefined ? ' · ' + item.persistence + ' · ' + item.source : ''}
-        </p>
-        <p className="metadata" style={{ margin: 0 }}>
-          {DESCRIPTIONS[props.name] ?? ''}
-        </p>
-      </details>
+      {disclosureLabel !== null ? (
+        <details style={{ marginTop: 4 }}>
+          <summary className="metadata">{disclosureLabel}</summary>
+          <p className="metadata mono" style={{ margin: '4px 0' }}>
+            {props.name}
+            {item !== undefined ? ' · ' + item.persistence + ' · ' + item.source : ''}
+          </p>
+          <p className="metadata" style={{ margin: 0 }}>
+            {DESCRIPTIONS[props.name] ?? ''}
+          </p>
+        </details>
+      ) : null}
     </div>
   );
 }

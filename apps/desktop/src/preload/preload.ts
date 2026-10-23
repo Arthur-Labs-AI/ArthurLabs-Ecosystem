@@ -94,6 +94,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
   },
   cli: {
     status: () => invoke('cli:status', {}),
+    setEnabled: (enabled: boolean) => invoke('cli:set-enabled', { enabled }),
   },
   runtime: {
     status: () => invoke('runtime:status', {}),

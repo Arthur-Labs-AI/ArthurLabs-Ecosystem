@@ -365,7 +365,7 @@ export class DesktopApplicationService {
     if (opencodeBinary !== undefined) binaries['opencode'] = opencodeBinary;
     if (deepseekBinary !== undefined) binaries['deepseek'] = deepseekBinary;
     if (glmBinary !== undefined) binaries['glm'] = glmBinary;
-    const openCodeProvider = get('SENTRY_OPENCODE_PROVIDER');
+    const openCodeProvider = get('SENTRY_OPENCODE_PROVIDER')?.trim().toLowerCase();
     const provider =
       openCodeProvider === 'openrouter' ||
       openCodeProvider === 'opencode' ||

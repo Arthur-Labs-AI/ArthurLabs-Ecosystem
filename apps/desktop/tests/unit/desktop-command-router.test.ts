@@ -154,6 +154,7 @@ describe('shared desktop command router', () => {
       'runtime:select-distro',
       'runs:export-save',
       'runs:export-reveal',
+      'cli:set-enabled',
     ]) {
       expect(isCliAllowed(channel)).toBe(false);
       await expect(

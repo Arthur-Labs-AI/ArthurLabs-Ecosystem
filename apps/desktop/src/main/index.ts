@@ -233,6 +233,11 @@ async function boot(): Promise<void> {
     onRetestCreated: (retestRunId, operationId) =>
       updates.notifyRetestCreated(retestRunId, operationId),
     cliStatus: () => broker.status,
+    cliSetEnabled: async (enabled: boolean) => {
+      if (enabled) return broker.start();
+      await broker.stop();
+      return broker.status;
+    },
     requestSavePath: async ({ suggestedFilename, filters }) => {
       const win = mainWindow;
       if (win === undefined) return null;

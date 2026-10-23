@@ -1145,6 +1145,8 @@ export class SentryRuntimeHost {
         | {
             executable?: string;
             executableSource?: string;
+            modelId?: string;
+            provider?: string;
             checks?: Array<{ name: string; status: string; message?: string }>;
           }
         | undefined;
@@ -1157,6 +1159,10 @@ export class SentryRuntimeHost {
         s.id === 'stack_opencode_main'
           ? {
               ...stackStatus(s.id, opencode as never),
+              ...(opencodeDoctor?.modelId === undefined ? {} : { modelId: opencodeDoctor.modelId }),
+              ...(opencodeDoctor?.provider === undefined
+                ? {}
+                : { provider: opencodeDoctor.provider }),
               executionPath: opencodeDoctor?.executable ?? managedOpenCodeExecutable(this.dataRoot),
               ...(opencodeDoctor?.executableSource === undefined
                 ? {}
@@ -1337,7 +1343,10 @@ export class SentryRuntimeHost {
     // Sandbox/isolation probes run per requested provider that needs them —
     // never defaulted to true for unprobed providers.
     if (wants('stack_opencode_main')) {
-      const provider = normalizeOpenCodeProvider(env['SENTRY_OPENCODE_PROVIDER']);
+      const provider = normalizeOpenCodeProvider(
+        env['SENTRY_OPENCODE_PROVIDER'],
+        env['SENTRY_OPENCODE_MODEL'],
+      );
       // Shared resolution+probe: the exact executable production execution
       // would launch, probed with the spawn-based helper (PATH-aware — the
       // same effective runtime environment production uses).

@@ -1,3 +1,27 @@
+# OpenCode provider & Application settings polish — local handoff
+
+2026-10-23. Branched `chore/app-cleanup-and-polish` from `main` (`2cd64d4`).
+Settings / Providers (`apps/desktop/src/renderer/pages/Providers.tsx`) now
+clearly distinguishes `OpenCode API key (Zen & Go)` (`OPENCODE_API_KEY`, used
+for both `opencode-go` monthly subscriptions and `opencode` Zen pay-as-you-go
+Console credits) from `OpenRouter API key (Pay-as-you-go)`
+(`OPENROUTER_API_KEY`, used only when `Provider` is `openrouter` or unset),
+removes details under `Model` and `Provider`, and places the two API key
+explanations inside collapsible `<details>` disclosures labeled `Explanation`.
+Sidebar logo container border/box and `OBSERVATION SYSTEM` subtitle removed
+(`AppShell.tsx`, `styles.css`, `sentry-theme.css`). Clicking `Application` in
+`Settings.tsx` now navigates to `/settings/application`
+(`ApplicationSettings.tsx`) and provides theme modes (`Forest Dark`,
+`Midnight Slate`, `Daylight Light`), English/Bulgarian UI localization backed
+by `locales/en.json` and `locales/bg.json` (English default; agent messages
+untouched), a live Local CLI Broker on/off toggle (`cli:set-enabled`), a
+Workspace Motion & Animations toggle, a Confirm Before Paid QA Runs toggle, and
+an expanded `Developer mode` guide. Verified `@qa/harness-opencode`,
+`@qa/runtime`, `@qa/desktop`, `typecheck`, `lint`, and `build`. No PR opened as
+requested. `shux contract` unavailable; records maintained directly.
+
+## Previous record (preserved)
+
 # Original green palette restored — local handoff
 
 2026-10-23. Owner requested colors only after approving the new UI. Restored

@@ -1,3 +1,35 @@
+# OpenCode provider & Application settings polish — implemented and verified
+
+2026-10-23. Created `chore/app-cleanup-and-polish` from `main` (`2cd64d4`).
+Clarified the OpenCode card in Settings / Providers (`Providers.tsx`):
+distinguished `OpenCode API key (Zen & Go)` (`OPENCODE_API_KEY`, used by both
+`opencode-go` monthly subscriptions and `opencode` Zen pay-as-you-go Console
+credits) from `OpenRouter API key (Pay-as-you-go)` (`OPENROUTER_API_KEY`, used
+only when `Provider` is `openrouter` or unset). Removed details under `Model`
+and `Provider` in the OpenCode box and placed the explanations for the two
+OpenCode API key fields inside `<details>` dropdown disclosures labeled
+`Explanation` (matching the `Advanced` disclosures in the other boxes). Removed
+the sidebar logo container border/background (`styles.css`, `sentry-theme.css`)
+and removed the `OBSERVATION SYSTEM` label (`AppShell.tsx`). Made the
+`Application` card in `Settings.tsx` a clickable link to `/settings/application`
+(`ApplicationSettings.tsx`, `App.tsx`) and added full Application preferences
+(`app-preferences.ts`, `i18n.ts`, `locales/en.json`, `locales/bg.json`):
+theme modes (`Forest Dark`, `Midnight Slate`, `Daylight Light`), English &
+Bulgarian UI localization (English default; agent messages untouched), live
+Local CLI Broker toggle (`cli:set-enabled` IPC channel), Workspace Motion &
+Animations toggle, Paid QA Run Confirmation Guard toggle, and expanded
+`Developer mode` documentation. Updated `normalizeOpenCodeProvider` /
+`buildOpenCodeModelId` and runtime readiness/doctor paths so provider-prefixed
+models (`opencode-go/...`, `opencode/...`, `openrouter/...`) also infer the
+provider when `SENTRY_OPENCODE_PROVIDER` is unset, normalized provider case in
+`desktop-service.ts`, and surfaced effective OpenCode model/provider in
+`environmentDoctors()`. Updated `docs/setup/opencode.md`. Verified:
+`@qa/harness-opencode` 116 PASS/8 skip, `@qa/runtime` 72 PASS/1 skip,
+`@qa/desktop` focused & component/router suites PASS, workspace `typecheck` and
+`lint` PASS. `shux contract` unavailable; records maintained directly.
+
+## Previous record (preserved)
+
 # Original green palette restored — implemented and verified
 
 2026-10-23. Owner approved the new UI and requested the former green colors.

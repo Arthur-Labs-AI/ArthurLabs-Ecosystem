@@ -56,10 +56,15 @@ describe('Providers harness binary section', () => {
     expect(html).toContain('OpenCode');
     expect(html).toContain('DeepSeek');
     expect(html).toContain('GLM');
+    expect(html).toContain('OpenCode API key (Zen &amp; Go)');
+    expect(html).toContain('OpenRouter API key (Pay-as-you-go)');
+    expect(html).toContain('<summary class="metadata">Explanation</summary>');
     expect(html).toContain('API key');
     expect(html).toContain('Model');
     expect(html).toContain('Advanced runtime binaries');
+    expect(html).not.toContain('placeholder="missing"');
     // Credential fields keep accessible labels so every value stays saveable.
+    expect(html).toContain('Value for OPENCODE_API_KEY');
     expect(html).toContain('Value for OPENROUTER_API_KEY');
     expect(html).toContain('Value for DEEPSEEK_API_KEY');
     expect(html).toContain('Value for ANTHROPIC_AUTH_TOKEN');

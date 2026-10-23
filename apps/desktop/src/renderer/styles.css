@@ -355,8 +355,9 @@ textarea:focus {
 .sidebar .brand-mark {
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-md);
-  background: var(--accent-dim);
+  border-radius: 0;
+  background: transparent;
+  border: none;
   color: #fff;
   display: inline-flex;
   align-items: center;

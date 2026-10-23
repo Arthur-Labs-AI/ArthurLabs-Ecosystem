@@ -8,6 +8,7 @@ import { StatusPill, dotClassForStatus } from '../components/ui/StatusPill.js';
 import { SegmentedControl } from '../components/ui/Tabs.js';
 import { sentryApi } from '../lib/sentry-api.js';
 import { RemoveProjectButton } from '../components/RemoveProjectButton.js';
+import { isConfirmPaidRunsEnabled } from '../lib/app-preferences.js';
 
 const AGENT_ORDER = ['stack_opencode_main', 'stack_deepseek_main', 'stack_glm_main'];
 
@@ -336,7 +337,14 @@ export function ProjectDetail(): React.JSX.Element {
           <div style={{ marginTop: 12 }}>
             <button
               className="primary"
-              onClick={() => setConfirmStart(mode)}
+              onClick={() => {
+                if (!isConfirmPaidRunsEnabled()) {
+                  if (mode === 'full') startFull.mutate();
+                  else startTargeted.mutate();
+                  return;
+                }
+                setConfirmStart(mode);
+              }}
               disabled={startPending || effectiveStacks.length === 0 || gate?.ready !== true}
             >
               <FlaskConical size={15} /> {mode === 'full' ? 'Start Full QA' : 'Start Targeted QA'}

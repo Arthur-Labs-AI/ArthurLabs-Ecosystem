@@ -61,19 +61,13 @@ a:hover {
   color: var(--text-primary);
 }
 .sidebar .brand-mark {
-  width: 38px;
-  height: 38px;
-  background: radial-gradient(
-    circle at 32% 28%,
-    rgba(78, 125, 72, 0.24),
-    rgba(18, 26, 17, 0.9) 70%
-  );
-  border: 1px solid rgba(78, 125, 72, 0.35);
-  border-radius: 10px;
-  padding: 4px;
-  box-shadow:
-    0 0 18px rgba(78, 125, 72, 0.22),
-    inset 0 0 12px rgba(78, 125, 72, 0.12);
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
 }
 .sidebar .brand-mark img {
   width: 100%;
@@ -963,4 +957,63 @@ kbd {
     gap: 5px;
     left: 8px;
   }
+}
+
+/* ---------- Theme Modes & Reduced Motion Preferences ---------- */
+:root[data-theme='midnight'] {
+  --surface-0: #070a0d;
+  --surface-1: #0c1016;
+  --surface-2: #121821;
+  --surface-3: #18202c;
+  --glass-bg: rgba(18, 24, 33, 0.72);
+  --glass-bg-strong: rgba(18, 24, 33, 0.92);
+  --border-subtle: rgba(145, 175, 200, 0.1);
+  --border-default: rgba(145, 175, 200, 0.18);
+  --border-strong: rgba(145, 175, 200, 0.32);
+  --text-primary: #f2f6fa;
+  --text-secondary: #a6b4c2;
+  --text-tertiary: #6e7d8c;
+  --canvas-grid: #1b2430;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --surface-0: #f3f5f1;
+  --surface-1: #e9ede6;
+  --surface-2: #ffffff;
+  --surface-3: #dfe5db;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-bg-strong: rgba(255, 255, 255, 0.96);
+  --border-subtle: rgba(45, 65, 45, 0.1);
+  --border-default: rgba(45, 65, 45, 0.18);
+  --border-strong: rgba(45, 65, 45, 0.3);
+  --text-primary: #161d16;
+  --text-secondary: #485447;
+  --text-tertiary: #6d796c;
+  --accent: #3d6838;
+  --accent-dim: #4e7d48;
+  --accent-soft: rgba(61, 104, 56, 0.12);
+  --canvas-grid: #d4dcd0;
+}
+:root[data-theme='light'] body {
+  background: var(--surface-0);
+}
+:root[data-theme='light'] .page-title {
+  background: none;
+  -webkit-text-fill-color: var(--text-primary);
+  color: var(--text-primary);
+}
+:root[data-theme='light'] .sidebar {
+  background: var(--surface-1);
+}
+:root[data-theme='light'] .topbar {
+  background: rgba(233, 237, 230, 0.9);
+}
+
+:root[data-reduced-motion='true'] *,
+:root[data-reduced-motion='true'] *::before,
+:root[data-reduced-motion='true'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
 }
