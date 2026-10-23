@@ -796,3 +796,350 @@ fn s16_snapshot_manifest_is_deterministic_across_later_writes() {
     assert_eq!(manifest_before, manifest_after);
     assert_eq!(boundary_before, boundary_after);
 }
+
+
+// Rehash edits before verify_rows so reconstruction, rather than stale content
+// hashes, must detect contradictory metadata.
+fn edit_metadata(row: &mut snapshot::Staged, field: &str, value: serde_json::Value) {
+    use sha2::Digest;
+    let mut fields: BTreeMap<String, serde_json::Value> =
+        serde_json::from_slice(&row.row_bytes).unwrap();
+    fields.insert(field.into(), value);
+    row.row_bytes = serde_jcs::to_vec(&fields).unwrap();
+    row.row_hash = sha2::Sha256::digest(&row.row_bytes).into();
+}
+
+fn metadata_rejection(field: &str, value: serde_json::Value, fragment: bool) {
+    let s = upgraded();
+    let k = JournalKernel::activate(&s).unwrap();
+    let (_, mut rows) = staged_fixture(&s, &k);
+    let event = bundle_event_id(&s);
+    let key = bundle_key(&event, fragment.then_some(0));
+    let row = rows
+        .iter_mut()
+        .find(|r| r.entity_kind == "@bundle" && r.entity_key == key)
+        .unwrap();
+    edit_metadata(row, field, value);
+    let verified = snapshot::verify_rows(&rows).unwrap();
+    assert_eq!(
+        snapshot::reconstruct_bundle(&verified, &event),
+        Err(snapshot::SnapshotError::Corrupt)
+    );
+}
+
+#[test]
+fn f01_header_bundle_id_mismatch() {
+    metadata_rejection(
+        "bundleId",
+        serde_json::json!("ffffffff-ffff-4fff-8fff-ffffffffffff"),
+        false,
+    );
+}
+
+#[test]
+fn f02_header_committed_at_mismatch() {
+    metadata_rejection(
+        "committedAt",
+        serde_json::json!("2026-10-23T00:00:00Z"),
+        false,
+    );
+}
+
+#[test]
+fn f03_fragment_internal_index_mismatch() {
+    metadata_rejection("fragmentIndex", serde_json::json!(1), true);
+}
+
+#[test]
+fn f04_fragment_internal_count_mismatch() {
+    metadata_rejection("fragmentCount", serde_json::json!(2), true);
+}
+
+#[test]
+fn f05_fragment_whole_hash_mismatch() {
+    metadata_rejection("wholeHash", serde_json::json!("0".repeat(64)), true);
+}
+
+#[test]
+fn f06_incorrect_numeric_and_missing_metadata() {
+    for (field, value, fragment) in [
+        ("fragmentIndex", serde_json::json!(-1), true),
+        ("fragmentIndex", serde_json::json!("0"), true),
+        ("fragmentCount", serde_json::json!("1"), true),
+        ("fragmentCount", serde_json::json!(u64::MAX), false),
+        ("fragmentCount", serde_json::json!(u64::MAX), true),
+        ("fragmentIndex", serde_json::json!(u64::MAX), true),
+        ("fragmentCount", serde_json::json!(-1), false),
+        ("fragmentCount", serde_json::json!(true), false),
+        ("wholeHash", serde_json::json!("xyz"), false),
+        ("wholeHash", serde_json::json!("a".repeat(63)), true),
+    ] {
+        let s = upgraded();
+        let k = JournalKernel::activate(&s).unwrap();
+        let (_, mut rows) = staged_fixture(&s, &k);
+        let event = bundle_event_id(&s);
+        let key = bundle_key(&event, fragment.then_some(0));
+        let row = rows
+            .iter_mut()
+            .find(|r| r.entity_kind == "@bundle" && r.entity_key == key)
+            .unwrap();
+        edit_metadata(row, field, value);
+        let verified = snapshot::verify_rows(&rows).unwrap();
+        assert!(
+            snapshot::reconstruct_bundle(&verified, &event).is_err(),
+            "{field}"
+        );
+    }
+    let s = upgraded();
+    let k = JournalKernel::activate(&s).unwrap();
+    let (_, rows) = staged_fixture(&s, &k);
+    let event = bundle_event_id(&s);
+    // Keep a floating JSON token on the wire: JCS would normalize 0.0/1.0
+    // into integers and would therefore erase the malformed test input.
+    for (field, value) in [("fragmentIndex", 0.0), ("fragmentCount", 1.0)] {
+        use sha2::Digest;
+        let mut altered = rows.clone();
+        let row = altered
+            .iter_mut()
+            .find(|r| r.entity_key == bundle_key(&event, Some(0)))
+            .unwrap();
+        let mut fields: BTreeMap<String, serde_json::Value> =
+            serde_json::from_slice(&row.row_bytes).unwrap();
+        fields.insert(field.into(), serde_json::json!(value));
+        row.row_bytes = serde_json::to_vec(&fields).unwrap();
+        row.row_hash = sha2::Sha256::digest(&row.row_bytes).into();
+        assert_eq!(
+            snapshot::reconstruct_bundle(&snapshot::verify_rows(&altered).unwrap(), &event),
+            Err(snapshot::SnapshotError::Corrupt)
+        );
+    }
+    for index in ["-1", "00", "+0", "18446744073709551616"] {
+        let mut altered = snapshot::verify_rows(&rows).unwrap();
+        let row = altered
+            .iter_mut()
+            .find(|r| r.entity_key == bundle_key(&event, Some(0)))
+            .unwrap();
+        row.entity_key = serde_json::to_string(&vec![event.clone(), index.into()]).unwrap();
+        assert!(
+            snapshot::reconstruct_bundle(&altered, &event).is_err(),
+            "{index}"
+        );
+    }
+    for fragment in [false, true] {
+        let key = bundle_key(&event, fragment.then_some(0));
+        let fields = if fragment {
+            vec!["fragmentIndex", "fragmentCount", "wholeHash", "fragmentHex"]
+        } else {
+            vec![
+                "bundleId",
+                "committedAt",
+                "originId",
+                "originIncarnation",
+                "originSeq",
+                "previousHash",
+                "rawEffectCount",
+                "wholeHash",
+                "fragmentCount",
+            ]
+        };
+        for field in fields {
+            let mut altered = rows.clone();
+            let row = altered
+                .iter_mut()
+                .find(|r| r.entity_key == key && r.entity_kind == "@bundle")
+                .unwrap();
+            let mut metadata: BTreeMap<String, serde_json::Value> =
+                serde_json::from_slice(&row.row_bytes).unwrap();
+            metadata.remove(field);
+            use sha2::Digest;
+            row.row_bytes = serde_jcs::to_vec(&metadata).unwrap();
+            row.row_hash = sha2::Sha256::digest(&row.row_bytes).into();
+            let verified = snapshot::verify_rows(&altered).unwrap();
+            assert!(
+                snapshot::reconstruct_bundle(&verified, &event).is_err(),
+                "missing {field}"
+            );
+        }
+    }
+}
+
+fn original_manifest_fixture() -> (String, snapshot::LoadedSnapshot, Vec<u8>, Vec<u8>) {
+    let s = upgraded();
+    let k = JournalKernel::activate(&s).unwrap();
+    let (id, _) = staged_fixture(&s, &k);
+    k.write(|w| w.snapshot_pack(&id)).unwrap();
+    k.write(|w| w.snapshot_verify(&id)).unwrap();
+    let c = s.connection.lock().unwrap();
+    let loaded = snapshot::load_staged(&c, &id).unwrap();
+    let (bytes, hash): (Vec<u8>, Vec<u8>) = c
+        .query_row(
+            "SELECT manifest_bytes,manifest_hash FROM sync_snapshots WHERE snapshot_id=?1",
+            [&id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    snapshot::verify_loaded_manifest(&id, &loaded, &bytes, &hash).unwrap();
+    (id, loaded, bytes, hash)
+}
+
+#[test]
+fn f07_original_manifest_rejects_changed_entity_kind() {
+    let (id, mut loaded, bytes, hash) = original_manifest_fixture();
+    let row = loaded
+        .rows
+        .iter_mut()
+        .find(|r| r.entity_kind == "projects")
+        .unwrap();
+    row.entity_kind = "captures".into();
+    snapshot::verify_rows(&loaded.rows).unwrap();
+    assert_eq!(
+        snapshot::verify_loaded_manifest(&id, &loaded, &bytes, &hash),
+        Err(snapshot::SnapshotError::Corrupt)
+    );
+}
+
+#[test]
+fn f08_original_manifest_rejects_changed_entity_key() {
+    let (id, mut loaded, bytes, hash) = original_manifest_fixture();
+    let row = loaded
+        .rows
+        .iter_mut()
+        .find(|r| r.entity_kind == "projects")
+        .unwrap();
+    row.entity_key = serde_json::to_string(&vec!["ffffffff-ffff-4fff-8fff-ffffffffffff"]).unwrap();
+    snapshot::verify_rows(&loaded.rows).unwrap();
+    assert_eq!(
+        snapshot::verify_loaded_manifest(&id, &loaded, &bytes, &hash),
+        Err(snapshot::SnapshotError::Corrupt)
+    );
+}
+
+#[test]
+fn f09_original_manifest_rejects_swapped_and_renumbered_rows() {
+    let (id, mut loaded, bytes, hash) = original_manifest_fixture();
+    loaded.rows.swap(0, 1);
+    assert_eq!(
+        snapshot::verify_loaded_manifest(&id, &loaded, &bytes, &hash),
+        Err(snapshot::SnapshotError::Corrupt)
+    );
+    loaded.rows[0].ordinal = 0;
+    loaded.rows[1].ordinal = 1;
+    snapshot::verify_rows(&loaded.rows).unwrap();
+    assert_eq!(
+        snapshot::verify_loaded_manifest(&id, &loaded, &bytes, &hash),
+        Err(snapshot::SnapshotError::Corrupt)
+    );
+}
+
+#[test]
+fn f10_valid_multi_fragment_reconstructs_exact_original() {
+    use sha2::Digest;
+    let s = upgraded();
+    let k = JournalKernel::activate(&s).unwrap();
+    let (_, rows) = staged_fixture(&s, &k);
+    let event = bundle_event_id(&s);
+    let original: Vec<u8> = s
+        .connection
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT canonical_bytes FROM sync_bundles WHERE event_id=?1",
+            [&event],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let mut header = rows
+        .iter()
+        .find(|r| r.entity_kind == "@bundle" && r.entity_key == bundle_key(&event, None))
+        .unwrap()
+        .clone();
+    edit_metadata(&mut header, "fragmentCount", serde_json::json!(2));
+    header.ordinal = 0;
+    let mut split = vec![header];
+    let hex = |part: &[u8]| part.iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let midpoint = original.len() / 2;
+    for (index, part) in [&original[..midpoint], &original[midpoint..]]
+        .iter()
+        .enumerate()
+    {
+        let fields = serde_json::json!({
+            "fragmentIndex": index, "fragmentCount": 2,
+            "fragmentHex": hex(part),
+            "wholeHash": codec::hash_hex(&codec::journal_event_hash(&original)),
+        });
+        let row_bytes = serde_jcs::to_vec(&fields).unwrap();
+        split.push(snapshot::Staged {
+            ordinal: i64::try_from(index + 1).unwrap(),
+            entity_kind: "@bundle".into(),
+            entity_key: bundle_key(&event, Some(index)),
+            row_hash: sha2::Sha256::digest(&row_bytes).into(),
+            row_bytes,
+        });
+    }
+    let verified = snapshot::verify_rows(&split).unwrap();
+    let expected = (original.len(), codec::journal_event_hash(&original));
+    assert_eq!(
+        snapshot::reconstruct_bundle(&verified, &event).unwrap(),
+        expected
+    );
+    let mut reversed = verified.clone();
+    reversed.swap(1, 2);
+    assert_eq!(
+        snapshot::reconstruct_bundle(&reversed, &event).unwrap(),
+        expected
+    );
+    // Extra, duplicate and foreign-parent fragments must not fill a gap.
+    let mut extra = split.clone();
+    let mut third = split[2].clone();
+    third.entity_key = bundle_key(&event, Some(2));
+    third.ordinal = 3;
+    edit_metadata(&mut third, "fragmentIndex", serde_json::json!(2));
+    extra.push(third);
+    assert!(snapshot::reconstruct_bundle(&snapshot::verify_rows(&extra).unwrap(), &event).is_err());
+    let mut foreign = split.clone();
+    foreign[2].entity_key = bundle_key("ffffffff-ffff-4fff-8fff-ffffffffffff", Some(1));
+    assert!(
+        snapshot::reconstruct_bundle(&snapshot::verify_rows(&foreign).unwrap(), &event).is_err()
+    );
+    let mut duplicate = verified.clone();
+    duplicate.push(verified[1].clone());
+    assert!(snapshot::reconstruct_bundle(&duplicate, &event).is_err());
+    for value in [
+        serde_json::json!("g0"),
+        serde_json::json!("0"),
+        serde_json::Value::Null,
+    ] {
+        let mut invalid = split.clone();
+        edit_metadata(&mut invalid[1], "fragmentHex", value);
+        assert_eq!(
+            snapshot::reconstruct_bundle(&snapshot::verify_rows(&invalid).unwrap(), &event),
+            Err(snapshot::SnapshotError::Corrupt)
+        );
+    }
+}
+
+#[test]
+fn f11_existing_snapshot_v2_and_original_manifest_integrity() {
+    let (id, loaded, bytes, hash) = original_manifest_fixture();
+    let manifest: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(manifest["snapshotVersion"], 2);
+    snapshot::verify_loaded_manifest(&id, &loaded, &bytes, &hash).unwrap();
+    let mut wrong_hash = hash.clone();
+    wrong_hash[0] ^= 1;
+    assert_eq!(
+        snapshot::verify_loaded_manifest(&id, &loaded, &bytes, &wrong_hash),
+        Err(snapshot::SnapshotError::Corrupt)
+    );
+    let mut wrong_bytes = bytes.clone();
+    wrong_bytes[0] ^= 1;
+    assert_eq!(
+        snapshot::verify_loaded_manifest(&id, &loaded, &wrong_bytes, &hash),
+        Err(snapshot::SnapshotError::Corrupt)
+    );
+    let mut wrong_content_hash = loaded.clone();
+    wrong_content_hash.rows[0].row_hash[0] ^= 1;
+    assert_eq!(
+        snapshot::verify_loaded_manifest(&id, &wrong_content_hash, &bytes, &hash),
+        Err(snapshot::SnapshotError::Corrupt)
+    );
+}

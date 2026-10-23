@@ -311,9 +311,19 @@ fn check_key(entity_kind: &str, entity_key: &str) -> Result<Vec<String>> {
 /// from zero, canonical keys with exact arity, no duplicate identities.
 /// Returns verified rows carrying their envelope hashes, in order.
 pub(super) fn verify_rows(rows: &[Staged]) -> Result<Vec<VerifiedRow>> {
+    if rows.len() > MAX_SNAPSHOT_RECORDS {
+        return Err(SnapshotError::Limit);
+    }
+    let mut total = 0u64;
     let mut seen = std::collections::BTreeSet::new();
     let mut out = Vec::with_capacity(rows.len());
     for (index, row) in rows.iter().enumerate() {
+        total = total
+            .checked_add(u64::try_from(row.row_bytes.len()).map_err(|_| SnapshotError::Limit)?)
+            .ok_or(SnapshotError::Limit)?;
+        if row.row_bytes.len() > MAX_ROW_BYTES || total > MAX_SNAPSHOT_BYTES {
+            return Err(SnapshotError::Limit);
+        }
         if row.ordinal != index as i64 {
             return Err(SnapshotError::Corrupt);
         }
@@ -329,11 +339,17 @@ pub(super) fn verify_rows(rows: &[Staged]) -> Result<Vec<VerifiedRow>> {
             entity_kind: row.entity_kind.clone(),
             entity_key: row.entity_key.clone(),
             row_bytes: row.row_bytes.clone(),
-            envelope: envelope_hash(row.ordinal, &row.entity_kind, &row.entity_key, &row.row_hash),
+            envelope: envelope_hash(
+                row.ordinal,
+                &row.entity_kind,
+                &row.entity_key,
+                &row.row_hash,
+            ),
         });
     }
     Ok(out)
 }
+
 fn projection_rows(
     c: &Connection,
     entity: EntityKind,
@@ -708,11 +724,12 @@ fn chunk_staged(rows: &[VerifiedRow]) -> Vec<Chunk> {
     chunks
 }
 
-struct LoadedSnapshot {
+#[derive(Clone)]
+pub(super) struct LoadedSnapshot {
     boundary_bytes: Vec<u8>,
     row_count: i64,
     total_bytes: i64,
-    rows: Vec<VerifiedRow>,
+    pub rows: Vec<Staged>,
 }
 
 pub(super) fn read_staged_rows(c: &Connection, snapshot_id: &str) -> Result<Vec<Staged>> {
@@ -735,7 +752,7 @@ pub(super) fn read_staged_rows(c: &Connection, snapshot_id: &str) -> Result<Vec<
     Ok(staged)
 }
 
-fn load_staged(c: &Connection, snapshot_id: &str) -> Result<LoadedSnapshot> {
+pub(super) fn load_staged(c: &Connection, snapshot_id: &str) -> Result<LoadedSnapshot> {
     let (boundary_bytes, row_count, total_bytes): (Vec<u8>, i64, i64) = c
         .query_row(
             "SELECT boundary_bytes,row_count,total_bytes FROM sync_snapshots WHERE snapshot_id=?1",
@@ -744,29 +761,29 @@ fn load_staged(c: &Connection, snapshot_id: &str) -> Result<LoadedSnapshot> {
         )
         .map_err(|_| SnapshotError::Sql)?;
     let staged = read_staged_rows(c, snapshot_id)?;
-    let rows = verify_rows(&staged)?;
     Ok(LoadedSnapshot {
         boundary_bytes,
         row_count,
         total_bytes,
-        rows,
+        rows: staged,
     })
 }
 
 fn build_manifest(snapshot_id: &str, loaded: &LoadedSnapshot) -> Result<(Vec<u8>, [u8; 32])> {
-    if loaded.rows.len() as i64 != loaded.row_count {
+    let rows = verify_rows(&loaded.rows)?;
+    if rows.len() as i64 != loaded.row_count {
         return Err(SnapshotError::Incomplete);
     }
-    let total: u64 = loaded.rows.iter().map(|r| r.row_bytes.len() as u64).sum();
+    let total: u64 = rows.iter().map(|r| r.row_bytes.len() as u64).sum();
     if total as i64 != loaded.total_bytes {
         return Err(SnapshotError::Incomplete);
     }
     let mut rows_concat = Vec::new();
-    for row in &loaded.rows {
+    for row in &rows {
         rows_concat.extend_from_slice(&row.envelope);
     }
     let rows_hash = sha256(&rows_concat);
-    let chunks = chunk_staged(&loaded.rows);
+    let chunks = chunk_staged(&rows);
     let mut chunk_values = Vec::new();
     for chunk in &chunks {
         let mut entry: BTreeMap<String, serde_json::Value> = BTreeMap::new();
@@ -785,7 +802,7 @@ fn build_manifest(snapshot_id: &str, loaded: &LoadedSnapshot) -> Result<(Vec<u8>
     }
     let mut covers = Vec::new();
     let mut seen_bundles = std::collections::BTreeSet::new();
-    for row in &loaded.rows {
+    for row in &rows {
         if row.entity_kind != "@bundle" {
             continue;
         }
@@ -797,7 +814,7 @@ fn build_manifest(snapshot_id: &str, loaded: &LoadedSnapshot) -> Result<(Vec<u8>
         if !seen_bundles.insert(key[0].clone()) {
             return Err(SnapshotError::Corrupt);
         }
-        let (bytes, whole) = reconstruct_bundle(&loaded.rows, &key[0])?;
+        let (bytes, whole) = reconstruct_bundle(&rows, &key[0])?;
         let header: BTreeMap<String, serde_json::Value> =
             serde_json::from_slice(&row.row_bytes).map_err(|_| SnapshotError::Corrupt)?;
         let mut entry: BTreeMap<String, serde_json::Value> = BTreeMap::new();
@@ -900,16 +917,29 @@ pub(super) fn verify_manifest(c: &Connection, snapshot_id: &str) -> Result<()> {
         (Some(b), Some(h)) => (b, h),
         _ => return Err(SnapshotError::State),
     };
-    if manifest_hash.len() != 32 || sha256(&manifest_bytes).to_vec() != manifest_hash {
+    let loaded = load_staged(c, snapshot_id)?;
+    verify_loaded_manifest(snapshot_id, &loaded, &manifest_bytes, &manifest_hash)
+}
+
+/// Pure production verifier, also usable with in-memory corrupted staged rows.
+/// Always compare against the original stored manifest, never a new commitment
+/// manufactured from the supplied rows.
+pub(super) fn verify_loaded_manifest(
+    snapshot_id: &str,
+    loaded: &LoadedSnapshot,
+    manifest_bytes: &[u8],
+    manifest_hash: &[u8],
+) -> Result<()> {
+    if manifest_hash.len() != 32 || sha256(manifest_bytes).as_slice() != manifest_hash {
         return Err(SnapshotError::Corrupt);
     }
-    let loaded = load_staged(c, snapshot_id)?;
-    let (rebuilt, rebuilt_hash) = build_manifest(snapshot_id, &loaded)?;
-    if rebuilt != manifest_bytes || rebuilt_hash.to_vec() != manifest_hash {
+    let (rebuilt, rebuilt_hash) = build_manifest(snapshot_id, loaded)?;
+    if rebuilt != manifest_bytes || rebuilt_hash.as_slice() != manifest_hash {
         return Err(SnapshotError::Corrupt);
     }
     Ok(())
 }
+
 fn hex_decode_strict(hex: &str) -> Result<Vec<u8>> {
     if hex.len() % 2 != 0 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
         return Err(SnapshotError::Corrupt);
@@ -931,14 +961,21 @@ fn hex_decode_strict(hex: &str) -> Result<Vec<u8>> {
 /// commitment. Rejects missing/duplicate/reordered fragments, lax hex,
 /// length mismatch, hash mismatch and header/core identity disagreement.
 /// Returns the verified original byte length and whole-core hash.
-pub(super) fn reconstruct_bundle(rows: &[VerifiedRow], event_id: &str) -> Result<(usize, [u8; 32])> {
+pub(super) fn reconstruct_bundle(
+    rows: &[VerifiedRow],
+    event_id: &str,
+) -> Result<(usize, [u8; 32])> {
+    if rows.len() > MAX_SNAPSHOT_RECORDS {
+        return Err(SnapshotError::Limit);
+    }
     let mut header_row: Option<&VerifiedRow> = None;
     let mut fragments: Vec<(usize, &[u8])> = Vec::new();
     for row in rows {
         if row.entity_kind != "@bundle" {
             continue;
         }
-        let key: Vec<String> = serde_json::from_slice(row.entity_key.as_bytes()).map_err(|_| SnapshotError::Corrupt)?;
+        let key: Vec<String> = serde_json::from_slice(row.entity_key.as_bytes())
+            .map_err(|_| SnapshotError::Corrupt)?;
         if key.first().map(String::as_str) != Some(event_id) {
             continue;
         }
@@ -949,22 +986,47 @@ pub(super) fn reconstruct_bundle(rows: &[VerifiedRow], event_id: &str) -> Result
             header_row = Some(row);
         } else if key.len() == 2 {
             let index: usize = key[1].parse().map_err(|_| SnapshotError::Corrupt)?;
+            if key[1] != index.to_string() {
+                return Err(SnapshotError::Corrupt);
+            }
+            if fragments.len() >= MAX_SNAPSHOT_RECORDS {
+                return Err(SnapshotError::Limit);
+            }
             fragments.push((index, &row.row_bytes));
         } else {
             return Err(SnapshotError::Corrupt);
         }
     }
     let header_row = header_row.ok_or(SnapshotError::Incomplete)?;
-    let header: BTreeMap<String, serde_json::Value> = serde_json::from_slice(&header_row.row_bytes).map_err(|_| SnapshotError::Corrupt)?;
-    let get_str = |name: &str| header.get(name).and_then(|v| v.as_str()).ok_or(SnapshotError::Corrupt);
+    if header_row.row_bytes.len() > MAX_ROW_BYTES {
+        return Err(SnapshotError::Limit);
+    }
+    let header: BTreeMap<String, serde_json::Value> =
+        serde_json::from_slice(&header_row.row_bytes).map_err(|_| SnapshotError::Corrupt)?;
+    let get_str = |name: &str| {
+        header
+            .get(name)
+            .and_then(|v| v.as_str())
+            .ok_or(SnapshotError::Corrupt)
+    };
     let whole_hex = get_str("wholeHash")?;
+    codec::validate_hash_hex(whole_hex).map_err(|_| SnapshotError::Corrupt)?;
     let whole_bytes = hex_decode_strict(whole_hex)?;
     if whole_bytes.len() != 32 {
         return Err(SnapshotError::Corrupt);
     }
     let mut whole = [0u8; 32];
     whole.copy_from_slice(&whole_bytes);
-    let expected_fragments: usize = header.get("fragmentCount").and_then(|v| v.as_u64()).ok_or(SnapshotError::Corrupt)? as usize;
+    let expected_fragments = usize::try_from(
+        header
+            .get("fragmentCount")
+            .and_then(|v| v.as_u64())
+            .ok_or(SnapshotError::Corrupt)?,
+    )
+    .map_err(|_| SnapshotError::Limit)?;
+    if expected_fragments > MAX_SNAPSHOT_RECORDS {
+        return Err(SnapshotError::Limit);
+    }
     if fragments.len() != expected_fragments || expected_fragments == 0 {
         return Err(SnapshotError::Incomplete);
     }
@@ -976,13 +1038,39 @@ pub(super) fn reconstruct_bundle(rows: &[VerifiedRow], event_id: &str) -> Result
         }
     }
     let mut reassembled = Vec::new();
-    for (_, bytes) in &fragments {
-        let fields: BTreeMap<String, serde_json::Value> = serde_json::from_slice(bytes).map_err(|_| SnapshotError::Corrupt)?;
-        let hex = fields.get("fragmentHex").and_then(|v| v.as_str()).ok_or(SnapshotError::Corrupt)?;
-        let raw = hex_decode_strict(hex)?;
-        if reassembled.len().checked_add(raw.len()).filter(|n| *n as u64 <= MAX_SNAPSHOT_BYTES).is_none() {
+    for (index, bytes) in &fragments {
+        if bytes.len() > MAX_ROW_BYTES {
             return Err(SnapshotError::Limit);
         }
+        let fields: BTreeMap<String, serde_json::Value> =
+            serde_json::from_slice(bytes).map_err(|_| SnapshotError::Corrupt)?;
+        let get_number = |name: &str| -> Result<usize> {
+            let number = fields
+                .get(name)
+                .and_then(|v| v.as_u64())
+                .ok_or(SnapshotError::Corrupt)?;
+            usize::try_from(number).map_err(|_| SnapshotError::Limit)
+        };
+        if get_number("fragmentIndex")? != *index
+            || get_number("fragmentCount")? != expected_fragments
+            || fields.get("wholeHash").and_then(|v| v.as_str()) != Some(whole_hex)
+        {
+            return Err(SnapshotError::Corrupt);
+        }
+        let hex = fields
+            .get("fragmentHex")
+            .and_then(|v| v.as_str())
+            .ok_or(SnapshotError::Corrupt)?;
+        // Bound the allocation before decoding. The accepted codec has a
+        // tighter whole-core bound than the complete snapshot image.
+        let length = reassembled
+            .len()
+            .checked_add(hex.len() / 2)
+            .ok_or(SnapshotError::Limit)?;
+        if length > codec::MAX_CANONICAL_BYTES {
+            return Err(SnapshotError::Limit);
+        }
+        let raw = hex_decode_strict(hex)?;
         reassembled.extend_from_slice(&raw);
     }
     if codec::journal_event_hash(&reassembled) != whole {
@@ -990,11 +1078,23 @@ pub(super) fn reconstruct_bundle(rows: &[VerifiedRow], event_id: &str) -> Result
     }
     let core = codec::decode_core_strict(&reassembled).map_err(|_| SnapshotError::Corrupt)?;
     if core.event_id != event_id
+        || core.bundle_id != get_str("bundleId")?
+        || core.committed_at != get_str("committedAt")?
         || core.origin_id != get_str("originId")?
         || core.origin_incarnation != get_str("originIncarnation")?
-        || core.origin_seq != header.get("originSeq").and_then(|v| v.as_i64()).ok_or(SnapshotError::Corrupt)?.to_string()
+        || core.origin_seq
+            != header
+                .get("originSeq")
+                .and_then(|v| v.as_i64())
+                .ok_or(SnapshotError::Corrupt)?
+                .to_string()
         || core.previous_event_hash != get_str("previousHash")?
-        || core.raw_effect_count != header.get("rawEffectCount").and_then(|v| v.as_i64()).ok_or(SnapshotError::Corrupt)?.to_string()
+        || core.raw_effect_count
+            != header
+                .get("rawEffectCount")
+                .and_then(|v| v.as_i64())
+                .ok_or(SnapshotError::Corrupt)?
+                .to_string()
     {
         return Err(SnapshotError::Corrupt);
     }
