@@ -4,6 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { CopyId } from '../components/CopyId.js';
 import { StatusLabel } from '../components/StatusGlyph.js';
 import { sentryApi } from '../lib/sentry-api.js';
+import { ArrowRight } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader.js';
+import { EmptyState } from '../components/ui/EmptyState.js';
 
 export function Runs(): React.JSX.Element {
   const [projectId, setProjectId] = React.useState('');
@@ -38,9 +41,12 @@ export function Runs(): React.JSX.Element {
     return true;
   });
   return (
-    <div>
-      <h1 style={{ marginTop: 0 }}>Runs</h1>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+    <div className="page">
+      <PageHeader
+        title="Runs"
+        subtitle="Execution history, agent outcomes, and captured evidence."
+      />
+      <div className="filter-toolbar">
         <label>
           Project{' '}
           <select value={effectiveProject} onChange={(e) => setProjectId(e.target.value)}>
@@ -72,9 +78,10 @@ export function Runs(): React.JSX.Element {
         </label>
       </div>
       {runList.length === 0 ? (
-        <div className="empty" style={{ marginTop: 12 }}>
-          No QA runs yet.
-        </div>
+        <EmptyState
+          title="No QA runs yet."
+          body="Run a scan from a project, or adjust your filters to explore previous runs."
+        />
       ) : (
         <div className="cards" style={{ marginTop: 12 }}>
           {runList.map((run) => (
@@ -88,7 +95,9 @@ export function Runs(): React.JSX.Element {
               </p>
               <p className="mono muted">{run.createdAt}</p>
               <p>
-                <Link to={'/runs/' + run.id}>Open workspace →</Link>
+                <Link className="inline-action" to={'/runs/' + run.id}>
+                  Open workspace <ArrowRight size={14} aria-hidden="true" />
+                </Link>
               </p>
               <CopyId id={run.id} />
             </div>

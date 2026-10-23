@@ -2,6 +2,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { sentryApi } from '../lib/sentry-api.js';
+import { PageHeader } from '../components/ui/PageHeader.js';
+import { EmptyState } from '../components/ui/EmptyState.js';
+import { StatusPill } from '../components/ui/StatusPill.js';
 
 const STATE_FILTERS = [
   { value: '', label: 'All states' },
@@ -46,9 +49,12 @@ export function Issues(): React.JSX.Element {
     return true;
   });
   return (
-    <div>
-      <h1 style={{ marginTop: 0 }}>Issues</h1>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+    <div className="page">
+      <PageHeader
+        title="Issues"
+        subtitle="Track findings and follow their verified resolution history."
+      />
+      <div className="filter-toolbar">
         <select
           value={effectiveProject}
           onChange={(e) => setProjectId(e.target.value)}
@@ -91,30 +97,42 @@ export function Issues(): React.JSX.Element {
         />
       </div>
       {list.length === 0 ? (
-        <div className="empty" style={{ marginTop: 12 }}>
-          No issues have been ingested.
-        </div>
+        <EmptyState
+          title="No issues have been ingested."
+          body="Issues matching your project and filters will appear here."
+        />
       ) : (
-        <table className="table" style={{ marginTop: 12 }}>
-          <thead>
-            <tr>
-              <th>Severity</th>
-              <th>Title</th>
-              <th>State</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((issue) => (
-              <tr key={issue.id}>
-                <td>{issue.severity}</td>
-                <td>
-                  <Link to={'/issues/' + issue.id}>{issue.title}</Link>
-                </td>
-                <td>{issue.currentState ?? issue.state ?? issue.status ?? '—'}</td>
+        <div className="table-wrap">
+          <table className="table" style={{ marginTop: 12 }}>
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Title</th>
+                <th>State</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {list.map((issue) => (
+                <tr key={issue.id}>
+                  <td>
+                    <span className={'severity-badge severity-' + issue.severity}>
+                      {issue.severity}
+                    </span>
+                  </td>
+                  <td>
+                    <Link to={'/issues/' + issue.id}>{issue.title}</Link>
+                  </td>
+                  <td>
+                    <StatusPill
+                      status={issue.currentState ?? issue.state ?? issue.status ?? 'unknown'}
+                      label={issue.currentState ?? issue.state ?? issue.status ?? '—'}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

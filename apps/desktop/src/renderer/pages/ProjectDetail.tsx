@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Check, FlaskConical } from 'lucide-react';
+import { ArrowRight, Check, FlaskConical, X } from 'lucide-react';
 import { CopyId } from '../components/CopyId.js';
 import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
 import { StatusPill, dotClassForStatus } from '../components/ui/StatusPill.js';
@@ -510,7 +510,7 @@ function TargetPathInput({
                 {chip}
               </span>
               <button onClick={() => removeChip(chip)} aria-label={'Remove ' + chip}>
-                ×
+                <X size={12} aria-hidden="true" />
               </button>
             </span>
           ))}

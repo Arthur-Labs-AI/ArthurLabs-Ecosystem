@@ -1,7 +1,7 @@
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { AgentNodeView } from '../../lib/types.js';
-import { statusGlyph } from '../StatusGlyph.js';
+import { StatusIcon, nodeStateClass } from '../StatusGlyph.js';
 import { dotClassForStatus } from '../ui/StatusPill.js';
 import { formatCount, formatElapsed, stageStateLabel } from '../../lib/agent-telemetry.js';
 
@@ -32,13 +32,20 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
   const view = payload?.view;
   const accent = ACCENTS[payload?.agentStackId ?? ''] ?? 'var(--accent)';
   const title = (data['label'] as string) ?? 'Agent';
+  const rawStatus = (data['status'] as string) ?? 'waiting';
   if (view === undefined) {
     return (
-      <div className="flow-node" style={{ borderTop: '2px solid ' + accent }}>
+      <div
+        className={'flow-node agent-node state-idle'}
+        style={{ borderTop: '2px solid ' + accent }}
+      >
         <Handle type="target" position={Position.Top} />
-        <div className="node-title">{title}</div>
+        <div className="node-title">
+          <StatusIcon status={rawStatus} size={14} />
+          {title}
+        </div>
         <div className="node-sub">
-          Configured · {data['status'] === 'not_started' ? 'Not started' : 'Waiting'}
+          Configured · {rawStatus === 'not_started' ? 'Not started' : 'Waiting'}
         </div>
         <Handle type="source" position={Position.Bottom} />
       </div>
@@ -52,7 +59,11 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
       : undefined;
   return (
     <div
-      className={'flow-node' + ((data['selected'] as boolean) ? ' selected' : '')}
+      className={
+        'flow-node agent-node ' +
+        nodeStateClass(view.status) +
+        ((data['selected'] as boolean) ? ' selected' : '')
+      }
       style={{ borderTop: '2px solid ' + accent }}
       aria-label={view.displayName + ' ' + view.status}
     >
@@ -61,7 +72,7 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
         <span className={dotClassForStatus(view.status)} aria-hidden="true" />
         {view.displayName}
         <span className="faint" aria-hidden="true" style={{ marginLeft: 'auto' }}>
-          {statusGlyph(view.status)}
+          <StatusIcon status={view.status} size={14} />
         </span>
       </div>
       <div className="node-model" title={view.model}>
@@ -87,7 +98,7 @@ export function AgentCanvasNode({ data }: NodeProps): React.JSX.Element {
         ))}
       </div>
       {activeLine !== undefined ? (
-        <div className="node-sub truncate" title={activeLine} style={{ marginTop: 6 }}>
+        <div className="node-sub live-line truncate" title={activeLine} style={{ marginTop: 6 }}>
           {activeLine}
         </div>
       ) : null}

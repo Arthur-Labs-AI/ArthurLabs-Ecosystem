@@ -1,4 +1,17 @@
 import React from 'react';
+import {
+  Activity,
+  AlertTriangle,
+  Brain,
+  Bug,
+  Cpu,
+  Eye,
+  FileText,
+  Fingerprint,
+  FlaskConical,
+  MessageSquare,
+  Terminal,
+} from 'lucide-react';
 import type { AgentNodeView, TimelineItem } from '../lib/types.js';
 import {
   formatCount,
@@ -8,6 +21,7 @@ import {
   truncateMiddle,
 } from '../lib/agent-telemetry.js';
 import { CopyId } from './CopyId.js';
+import { StatusIcon } from './StatusGlyph.js';
 import { StatusPill } from './ui/StatusPill.js';
 import { Tabs } from './ui/Tabs.js';
 import { useDeveloperMode } from '../lib/developer-mode.js';
@@ -71,18 +85,23 @@ export interface InspectorEvidence {
   readonly strength?: string;
 }
 
-const CATEGORY_ICON: Record<string, string> = {
-  Message: '\u25CB',
-  Lifecycle: '\u25CF',
-  File: '\u2630',
-  Command: '\u203A',
-  Test: '\u2713',
-  Planning: '\u25CB',
-  Finding: '!',
-  Evidence: '\u25A0',
-  Warning: '!',
-  Runtime: '\u25CC',
+const CATEGORY_ICON: Record<string, React.ComponentType<{ size?: number | string }>> = {
+  Message: MessageSquare,
+  Lifecycle: Activity,
+  File: FileText,
+  Command: Terminal,
+  Test: FlaskConical,
+  Planning: Brain,
+  Finding: Bug,
+  Evidence: Fingerprint,
+  Warning: AlertTriangle,
+  Runtime: Cpu,
 };
+
+function categoryIcon(category: string): React.JSX.Element {
+  const Icon = CATEGORY_ICON[category] ?? Activity;
+  return <Icon size={13} />;
+}
 
 const ACTIVITY_FILTERS = ['All', 'Files', 'Commands', 'Tests', 'Findings', 'Warnings'] as const;
 
@@ -204,20 +223,12 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
         >
           {view.stages.map((stage) => (
             <li key={stage.id} className="metadata">
-              <span aria-hidden="true">
-                {stage.state === 'completed'
-                  ? '\u2713'
-                  : stage.state === 'observed'
-                    ? '\u25C9'
-                    : stage.state === 'active'
-                      ? '\u25CF'
-                      : stage.state === 'failed'
-                        ? '\u00D7'
-                        : stage.state === 'cancelled'
-                          ? '\u25A0'
-                          : stage.state === 'warning'
-                            ? '!'
-                            : '\u25CB'}
+              <span className="stage-icon" aria-hidden="true">
+                {stage.state === 'observed' ? (
+                  <Eye size={12} />
+                ) : (
+                  <StatusIcon status={stage.state} size={12} />
+                )}
               </span>{' '}
               {stage.label} — {stageStateLabel(stage.state)}
             </li>
@@ -285,7 +296,9 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
       ) : null}
       {view.status === 'cancelled' ? (
         <div className="inline-notice">
-          <strong>■ Cancelled.</strong>
+          <strong>
+            <StatusIcon status="cancelled" size={13} /> Cancelled.
+          </strong>
           <span className="muted">
             {' '}
             Retained before cancellation: {formatCount(view.findingsCount)} findings ·{' '}
@@ -435,7 +448,7 @@ function ActivityTab({
               aria-expanded={selectedEvent === index}
               title={item.title}
             >
-              {CATEGORY_ICON[item.category] ?? '\u25CF'}
+              {categoryIcon(item.category)}
             </button>
             <button
               className="ghost event-row"

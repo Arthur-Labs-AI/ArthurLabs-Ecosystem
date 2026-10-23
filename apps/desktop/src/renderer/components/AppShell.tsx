@@ -13,6 +13,7 @@ import {
 import { sentryApi } from '../lib/sentry-api.js';
 import { CommandPalette } from './CommandPalette.js';
 import { runtimeConnectionState, useRuntimeStatus } from '../lib/use-runtime-status.js';
+import { StatusIcon } from './StatusGlyph.js';
 
 const NAV: Array<{ to: string; label: string; end?: boolean; icon: React.ReactNode }> = [
   {
@@ -35,6 +36,10 @@ function pageCrumb(pathname: string): React.ReactNode {
   if (pathname === '/settings') return 'System / Settings';
   if (pathname.startsWith('/settings/')) return 'System / Settings';
   if (pathname.startsWith('/runs/')) return 'Project / QA Run';
+  if (pathname === '/runs') return 'Workspace / Runs';
+  if (pathname.startsWith('/issues')) return 'Workspace / Issues';
+  if (pathname.startsWith('/retests/')) return 'Project / Retest';
+  if (pathname === '/history') return 'Workspace / History';
   return 'Overview / Dashboard';
 }
 
@@ -142,6 +147,7 @@ export function AppShell(): React.JSX.Element {
           <NavLink
             key="/"
             to="/"
+            aria-label="Dashboard"
             end
             title={collapsed ? 'Dashboard' : undefined}
             className={({ isActive }) => (isActive ? 'active' : '')}
@@ -153,6 +159,7 @@ export function AppShell(): React.JSX.Element {
           <NavLink
             key="/projects"
             to="/projects"
+            aria-label="Projects"
             title={collapsed ? 'Projects' : undefined}
             className={({ isActive }) => (isActive ? 'active' : '')}
           >
@@ -165,6 +172,7 @@ export function AppShell(): React.JSX.Element {
               <NavLink
                 key={item.to}
                 to={item.to}
+                aria-label={item.label}
                 end
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) => (isActive ? 'active' : '')}
@@ -176,6 +184,7 @@ export function AppShell(): React.JSX.Element {
               <NavLink
                 key={item.to}
                 to={item.to}
+                aria-label={item.label}
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) => (isActive ? 'active' : '')}
               >
@@ -196,7 +205,11 @@ export function AppShell(): React.JSX.Element {
         <div className="active-strip" aria-live="polite">
           {count > 0 ? (
             recentRunId !== undefined ? (
-              <Link to={'/runs/' + recentRunId} title="Open most recent active run">
+              <Link
+                to={'/runs/' + recentRunId}
+                title="Open most recent active run"
+                aria-label={'Open most recent active run. ' + count + ' active runs'}
+              >
                 <span className="status-dot status-running pulse" aria-hidden="true" />
                 {collapsed ? null : (
                   <span>
@@ -246,15 +259,10 @@ export function AppShell(): React.JSX.Element {
             title={runtimeLabel}
             aria-live="polite"
           >
-            <span
-              className={
-                connection === 'checking'
-                  ? 'status-dot'
-                  : runtimeConnected
-                    ? 'status-dot status-completed'
-                    : 'status-dot status-failed'
+            <StatusIcon
+              status={
+                connection === 'checking' ? 'probing' : runtimeConnected ? 'connected' : 'failed'
               }
-              aria-hidden="true"
             />
             {runtimeLabel}
           </span>

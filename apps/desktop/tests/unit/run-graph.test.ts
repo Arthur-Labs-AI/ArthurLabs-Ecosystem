@@ -245,6 +245,23 @@ describe('run graph builder', () => {
     expect(graph.nodes).toHaveLength(6);
   });
 
+  it.each(['full', 'targeted'])('places the %s retest assessment below every agent', (mode) => {
+    const graph = buildRetestGraph({
+      run: { ...BASE_RUN, mode },
+      agentRuns: AGENTS,
+      findings: [],
+      evidence: [],
+      sourceRevisionId: 'revision-a',
+      targetRevisionId: 'revision-b',
+      assessment: undefined,
+    });
+    const assessment = graph.nodes.find((node) => node.kind === 'retest-assessment');
+    const agentBottom = Math.max(
+      ...graph.nodes.filter((node) => node.kind === 'agent').map((node) => node.position.y),
+    );
+    expect((assessment?.position.y ?? 0) - agentBottom).toBeGreaterThanOrEqual(220);
+  });
+
   it('renders retest cancelled/failed runs with preserved lineage (§171)', () => {
     for (const status of ['cancelled', 'failed']) {
       const graph = buildRetestGraph({

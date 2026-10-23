@@ -418,3 +418,20 @@ documentationhead. Hygiene/format/diff validation scoped to documentation update
 - 2026-10-16 — Implemented actual packaged CLI on fix/windows-packaged-cli: production frontend bundled with included runtime, argv/UTF-8/exit forwarding, sealed payload requirements and parser/process regressions. CLI45 and Windows distribution43/27skips PASS; broader/static/archive/live receipts pending execution. Generic public help, complete examples and update-preservation requirements included. No paid run/publication/owner primary mutation; shux unavailable.
 
 - 2026-10-16 — Owner-authorized v1.0.2 review/publication. Integrated merged cleanup and packaged CLI histories, reconciled versions and current CLI/update docs, retained immutable old evidence/assets and primary owner work. Version RED→GREEN; broader release checks/provenance/upgrade/public delivery receipts follow in private audit. shux unavailable.
+
+## 2026-10-23 — Update guidance (complete)
+
+Owner asked how to uninstall or update Sentry. Checked local installation/source-update docs and the public latest Release, which resolves to v1.0.2. Guidance: preserve WSL and user data; finish active QA, use the Release stopped-backup block, then its verified side-by-side install block and verify version/Environment/history/settings. Packaged sentry update refuses; source main/dev updater is separate. No installation, deletion, application-data or product-code changes performed. shux contract was attempted but shux is unavailable; protocol recorded directly. No execution verification of an upgrade was requested or performed.
+
+- 2026-10-23 — Continued owner unfinished command center UI on main2640efc. Shared renderer styling/status/palette/disclosures completed; graph transform and lost-dimensions NaN drag defects fixed, saved positions/viewport isolated by run, reduced motion and Retest/compact layout corrected. Status11 and Retest2 RED then GREEN; Desktop496 PASS/3 existing skips; browser13 routes, workspace lint20/types37/build20 and hygiene PASS. Changed-file format PASS; full format retains untouched historical session-progress.md differences. Screenshots and gates in docs/development/ui-command-center.md. Source remains uncommitted; backend/contracts/schema/dependencies/versions and owner data preserved, no provider calls or release. Packaged native acceptance UNVERIFIED. shux unavailable; protocol maintained directly.
+
+## 2026-10-23 — Launch updated UI from PowerShell
+
+Checked desktop package scripts and main/index.ts loadURL/loadFile selection.
+Owner given source-checkout pnpm build followed by desktop dev:electron, with
+SENTRY_DESKTOP_URL and ELECTRON_RUN_AS_NODE removed from that shell. Close an
+existing Sentry instance first because of single-instance behavior. Instructions
+only; no app launch, installation, profile change or provider execution performed.
+shux contract attempted again, unavailable; protocol maintained directly.
+
+- 2026-10-23 — Owner approved new UI and requested original green palette. Restored forest-green/olive surfaces, warm text and yellow activity through shared CSS and theme-driven graph colors. Layout/animations/functionality/backend preserved. Build20 PASS/19 cached, desktop lint/renderer types PASS, focused16 and browser13 routes PASS; green screenshots reviewed. Source rebuilt/uncommitted; no provider or owner-data changes. Full Desktop496/3 remains prior evidence. shux unavailable; records maintained directly.

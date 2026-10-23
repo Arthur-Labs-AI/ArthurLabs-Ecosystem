@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { RunCanvas } from '../components/RunCanvas.js';
@@ -14,6 +15,7 @@ import { buildRetestGraph } from '../lib/run-graph.js';
 import { useRetestSnapshot } from '../lib/use-live-run.js';
 import { sentryApi } from '../lib/sentry-api.js';
 import { CopyId } from '../components/CopyId.js';
+import { PageHeader } from '../components/ui/PageHeader.js';
 import { StatusLabel } from '../components/StatusGlyph.js';
 
 function cancellationNote(cancelled: boolean): string {
@@ -169,7 +171,7 @@ export function RetestWorkspace(): React.JSX.Element {
   const targetFindings = (data.targetRun?.findings ?? []) as Array<Record<string, unknown>>;
   const targetEvidence = (data.targetRun?.evidence ?? []) as Array<Record<string, unknown>>;
   return (
-    <div>
+    <div className="page retest-page">
       {snapshot.isError || snapshot.runtimeUnavailable ? (
         <div className="inline-notice tone-warning" role="status">
           Retest refresh unavailable. Cached results remain available; the last recorded status may
@@ -177,12 +179,15 @@ export function RetestWorkspace(): React.JSX.Element {
           another retest.
         </div>
       ) : null}
-      <p className="muted" style={{ margin: 0 }}>
-        <Link to="/issues">Issues</Link> / Retest <CopyId id={data.retestRun.id} />
-      </p>
-      <h1 style={{ margin: '4px 0' }}>
-        Retest <StatusLabel status={data.retestRun.status} />
-      </h1>
+      <PageHeader
+        title="Retest"
+        crumbs={
+          <>
+            <Link to="/issues">Issues</Link> / Retest <CopyId id={data.retestRun.id} />
+          </>
+        }
+        actions={<StatusLabel status={data.retestRun.status} />}
+      />
       <p className="mono muted">
         REVISION A <CopyId id={data.retestRun.sourceProjectRevisionId} /> → REVISION B{' '}
         <CopyId id={data.retestRun.targetProjectRevisionId} />
@@ -233,7 +238,10 @@ export function RetestWorkspace(): React.JSX.Element {
           Target run has not materialized yet — the source revision and spec are preserved above.
         </div>
       ) : (
-        <div className="workspace" style={{ height: 'calc(100vh - 340px)', minHeight: 420 }}>
+        <div
+          className="workspace retest-workspace"
+          style={{ height: 'calc(100vh - 340px)', minHeight: 420 }}
+        >
           <div style={{ flex: 1, minWidth: 0, height: '100%' }}>
             <RunCanvas
               runId={'retest-' + String(data.retestRun.id ?? retestRunId ?? 'unknown')}
@@ -244,37 +252,50 @@ export function RetestWorkspace(): React.JSX.Element {
               onSelectEdge={setSelectedId}
             />
           </div>
-          <div className="panel">
-            <button onClick={() => setCollapseRight((v) => !v)} aria-label="Toggle inspector">
-              {collapseRight ? '<<' : '>>'}
-            </button>
-            {collapseRight ? null : selectedAgent !== undefined ? (
-              <AgentInspector
-                key={selectedAgent.agentRunId}
-                data={{
-                  view: selectedAgent,
-                  events: targetEvents.filter(
-                    (e) => (e['agentRunId'] as string) === selectedAgent.agentRunId,
-                  ) as never,
-                  findings: targetFindings.filter(
-                    (f) => (f['agentRunId'] as string) === selectedAgent.agentRunId,
-                  ) as never,
-                  evidence: targetEvidence.filter(
-                    (e) => (e['agentRunId'] as string) === selectedAgent.agentRunId,
-                  ) as never,
-                }}
-              />
-            ) : selectedNode !== undefined ? (
-              <RetestNodeInspector
-                nodeId={selectedNode.id}
-                label={selectedNode.label}
-                status={selectedNode.status}
-                payload={selectedNode.data}
-              />
-            ) : selectedEdge !== undefined ? (
-              <EdgeInspector edge={selectedEdge} />
-            ) : (
-              <p className="muted">Select an agent or assessment node.</p>
+          <div className="ws-panel" style={{ width: collapseRight ? 44 : 360 }}>
+            <div className="panel-head">
+              {collapseRight ? null : <span style={{ flex: 1 }}>Details</span>}
+              <button
+                className="icon-btn ghost"
+                onClick={() => setCollapseRight((v) => !v)}
+                aria-label="Toggle inspector"
+                aria-expanded={!collapseRight}
+                title={collapseRight ? 'Expand inspector' : 'Collapse inspector'}
+              >
+                {collapseRight ? <ChevronsLeft size={14} /> : <ChevronsRight size={14} />}
+              </button>
+            </div>
+            {collapseRight ? null : (
+              <div className="panel-body">
+                {selectedAgent !== undefined ? (
+                  <AgentInspector
+                    key={selectedAgent.agentRunId}
+                    data={{
+                      view: selectedAgent,
+                      events: targetEvents.filter(
+                        (e) => (e['agentRunId'] as string) === selectedAgent.agentRunId,
+                      ) as never,
+                      findings: targetFindings.filter(
+                        (f) => (f['agentRunId'] as string) === selectedAgent.agentRunId,
+                      ) as never,
+                      evidence: targetEvidence.filter(
+                        (e) => (e['agentRunId'] as string) === selectedAgent.agentRunId,
+                      ) as never,
+                    }}
+                  />
+                ) : selectedNode !== undefined ? (
+                  <RetestNodeInspector
+                    nodeId={selectedNode.id}
+                    label={selectedNode.label}
+                    status={selectedNode.status}
+                    payload={selectedNode.data}
+                  />
+                ) : selectedEdge !== undefined ? (
+                  <EdgeInspector edge={selectedEdge} />
+                ) : (
+                  <p className="muted">Select an agent or assessment node.</p>
+                )}
+              </div>
             )}
           </div>
         </div>

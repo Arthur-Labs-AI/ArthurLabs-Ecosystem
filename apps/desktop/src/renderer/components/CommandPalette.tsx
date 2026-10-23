@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { buildPaletteEntries, filterPaletteEntries } from '../lib/palette.js';
 import { sentryApi } from '../lib/sentry-api.js';
+import { ArrowUpRight, Command, Search } from 'lucide-react';
 
 export function CommandPalette({
   open,
@@ -26,10 +27,16 @@ export function CommandPalette({
 
   React.useEffect(() => {
     if (open) {
+      const previous = document.activeElement as HTMLElement | null;
       setQuery('');
       setSelected(0);
-      setTimeout(() => inputRef.current?.focus(), 0);
+      const timer = window.setTimeout(() => inputRef.current?.focus(), 0);
+      return () => {
+        window.clearTimeout(timer);
+        previous?.focus();
+      };
     }
+    return undefined;
   }, [open]);
 
   const go = React.useCallback(
@@ -58,54 +65,50 @@ export function CommandPalette({
       role="dialog"
       aria-modal="true"
       aria-label="Command palette"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.5)',
-        zIndex: 50,
-        display: 'flex',
-        justifyContent: 'center',
-        paddingTop: 80,
+      className="palette-backdrop"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation();
+          onClose();
+        }
+        if (event.key === 'Tab') {
+          event.preventDefault();
+          inputRef.current?.focus();
+        }
       }}
       onClick={onClose}
     >
-      <div
-        className="card"
-        style={{ width: 520, maxHeight: 420, overflow: 'auto', height: 'fit-content' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') onClose();
-            else if (e.key === 'ArrowDown') {
-              e.preventDefault();
-              setSelected((s) => Math.min(s + 1, Math.max(visible.length - 1, 0)));
-            } else if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              setSelected((s) => Math.max(s - 1, 0));
-            } else if (e.key === 'Enter' && visible[selected] !== undefined) {
-              visible[selected]?.run();
+      <div className="command-palette" onClick={(e) => e.stopPropagation()}>
+        <div className="palette-search">
+          <Search size={19} aria-hidden="true" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSelected((s) => Math.min(s + 1, Math.max(visible.length - 1, 0)));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelected((s) => Math.max(s - 1, 0));
+              } else if (e.key === 'Enter' && visible[selected] !== undefined) {
+                visible[selected]?.run();
+              }
+            }}
+            placeholder="Type a command or project name…"
+            aria-label="Command palette input"
+            aria-activedescendant={
+              visible[selected] !== undefined ? 'palette-' + selected : undefined
             }
-          }}
-          placeholder="Type a command or project name…"
-          aria-label="Command palette input"
-          aria-activedescendant={
-            visible[selected] !== undefined ? 'palette-' + selected : undefined
-          }
-          aria-expanded="true"
-          aria-controls="palette-list"
-          role="combobox"
-          style={{ width: '100%' }}
-        />
-        <ul
-          ref={listRef}
-          id="palette-list"
-          role="listbox"
-          style={{ listStyle: 'none', padding: 0 }}
-        >
+            aria-expanded="true"
+            aria-controls="palette-list"
+            role="combobox"
+            style={{ width: '100%' }}
+          />
+          <kbd>esc</kbd>
+        </div>
+        <ul ref={listRef} id="palette-list" role="listbox" className="palette-results">
           {visible.map((entry, index) => (
             <li
               key={entry.label}
@@ -117,20 +120,29 @@ export function CommandPalette({
                 onClick={entry.run}
                 onMouseEnter={() => setSelected(index)}
                 data-selected={index === selected}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  borderColor: index === selected ? 'var(--accent)' : undefined,
-                  background: index === selected ? 'var(--bg-panel)' : undefined,
-                }}
+                tabIndex={-1}
               >
-                {entry.label}{' '}
-                {entry.hint !== undefined ? <span className="mono faint">{entry.hint}</span> : null}
+                <Command size={15} aria-hidden="true" />
+                <span className="grow">
+                  {entry.label}{' '}
+                  {entry.hint !== undefined ? (
+                    <span className="mono faint">{entry.hint}</span>
+                  ) : null}
+                </span>
+                <ArrowUpRight size={14} aria-hidden="true" />
               </button>
             </li>
           ))}
           {visible.length === 0 ? <li className="muted">No matching commands.</li> : null}
         </ul>
+        <div className="palette-footer">
+          <span>
+            <kbd>↑</kbd> <kbd>↓</kbd> to navigate
+          </span>
+          <span>
+            <kbd>enter</kbd> to open
+          </span>
+        </div>
       </div>
     </div>
   );

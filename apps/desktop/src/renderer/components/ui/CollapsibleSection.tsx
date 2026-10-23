@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronRight } from 'lucide-react';
 
 export function CollapsibleSection({
   title,
@@ -13,7 +14,7 @@ export function CollapsibleSection({
   return (
     <div>
       <button className="collapsible-head" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <span aria-hidden="true">{open ? '\u25BE' : '\u25B8'}</span> {title}
+        <ChevronRight className="disclosure-icon" size={14} aria-hidden="true" /> {title}
       </button>
       {open ? <div>{children}</div> : null}
     </div>

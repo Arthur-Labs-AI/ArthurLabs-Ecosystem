@@ -289,7 +289,8 @@ export function buildRetestGraph(
     kind: 'retest-assessment',
     label: 'Retest Assessment',
     status: assessmentResult ?? input.run.status,
-    position: { x: 340, y: base.nodes[base.nodes.length - 1]?.position.y ?? 900 },
+    // Assessment is a separate row after the agent fan-out, including targeted runs.
+    position: { x: 340, y: Math.max(0, ...base.nodes.map((node) => node.position.y)) + 240 },
     data: { result: assessmentResult, outcome: assessmentResult },
   };
   return {
