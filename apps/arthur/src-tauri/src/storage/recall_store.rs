@@ -545,12 +545,13 @@ impl CaptureStore {
     /// Objects (any project) whose current revision has no vector for `model_key`, oldest first. The work set of the lazy indexer.
     pub fn recall_pending_embeddings(&self, model_key: &str, limit: usize) -> Result<Vec<PendingEmbedding>, StoreError> {
         self.with_connection(|connection| {
-            let mut statement = connection.prepare(
+            let filter=import_embedding_filter(connection)?;
+            let mut statement = connection.prepare(&format!(
                 "SELECT o.id, o.current_revision_id, o.kind, o.title, o.body FROM knowledge_objects o \
                  LEFT JOIN recall_embeddings e ON e.object_id = o.id AND e.model_key = ?1 \
-                 WHERE e.object_id IS NULL OR e.revision_id <> o.current_revision_id \
+                 WHERE (e.object_id IS NULL OR e.revision_id <> o.current_revision_id) {filter} \
                  ORDER BY o.seq ASC LIMIT ?2",
-            )?;
+            ))?;
             let rows = statement.query_map(params![model_key, limit as i64], |row| {
                 Ok(PendingEmbedding { object_id: row.get(0)?, revision_id: row.get(1)?, kind: row.get(2)?, title: row.get(3)?, body: row.get(4)? })
             })?;
@@ -561,9 +562,10 @@ impl CaptureStore {
     /// How many objects still lack a valid vector for `model_key`.
     pub fn recall_pending_count(&self, model_key: &str) -> Result<i64, StoreError> {
         self.with_connection(|connection| {
+            let filter=import_embedding_filter(connection)?;
             Ok(connection.query_row(
-                "SELECT count(*) FROM knowledge_objects o LEFT JOIN recall_embeddings e ON e.object_id = o.id AND e.model_key = ?1 \
-                 WHERE e.object_id IS NULL OR e.revision_id <> o.current_revision_id",
+                &format!("SELECT count(*) FROM knowledge_objects o LEFT JOIN recall_embeddings e ON e.object_id = o.id AND e.model_key = ?1 \
+                 WHERE (e.object_id IS NULL OR e.revision_id <> o.current_revision_id) {filter}"),
                 [model_key],
                 |row| row.get(0),
             )?)
@@ -667,4 +669,11 @@ impl CaptureStore {
     pub fn recall_indexed_revision_count(&self) -> Result<i64, StoreError> {
         self.with_connection(|connection| Ok(connection.query_row("SELECT count(*) FROM recall_revision_fts_docsize", [], |row| row.get(0))?))
     }
+}
+
+// Imported objects are never eligible for paid background embedding. This
+// local suppression is installed only with the dormant history candidate.
+fn import_embedding_filter(connection:&rusqlite::Connection)->Result<&'static str,StoreError>{
+    let installed:bool=connection.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='import_recall_suppression')",[],|r|r.get(0))?;
+    Ok(if installed{"AND NOT EXISTS(SELECT 1 FROM import_recall_suppression s WHERE s.object_id=o.id)"}else{""})
 }

@@ -62,7 +62,7 @@ Order of operations:
 - G4 physical-disk quota/reserve: still requires owner approval.
 - Platform crash/background gates: still require platform evidence beyond synthetic fault injection.
 - Snapshot retention/retirement policy: initial single-snapshot admission only; no retirement redesign in this package.
-- Production security/transport/UI/release remain gated; dormant import candidates are scoped in sections 10–11.
+- Production security/transport/UI/release remain gated; dormant import candidates are scoped in sections 10–12.
 
 ## 6. Task 14A execution evidence and remaining decisions
 
@@ -213,3 +213,49 @@ Production ingress/signing/pairing and G4 `UnverifiedBounds` remain closed;
 physical allocation/durability certification and coordinated activation remain
 open. Frozen v10 artifact, codec/reducer, snapshot v2 and production v9 routing
 are unchanged. No LAN, UI, scheduler or production schema version is enabled.
+
+## 12. MEGA D3 immutable history and receiver bootstrap candidate (2026-10-23)
+
+**PARTIAL:** the separate test-installed `import_history.sql` adds clean
+RecordCreate-only reconstruction for distillation runs, initial objects and
+source references, unselected revisions, parents and evidence, alongside
+Project/Capture. Initial object/root cycles assemble atomically; revisions use
+deterministic topological order. Original cores, immutable guards, code-point
+spans, exact-row grants and frozen observers remain authoritative. The only
+scoped UPDATE assembles the same-event initial object pointer from NULL to its
+original root. A long-lived kernel can reference that foreign history in a
+subsequent local object edit and validate it again after disk reopen.
+
+The separate `m05-bootstrap-immutable-v1` profile binds the complete bounded
+catalog, exact local AND foreign originals, creation/materialization evidence,
+conflict alternatives, row/core counts and high-water hashes. Whole-manifest
+hashes bind fixed chunk positions; each staged chunk is also hashed. Accepted
+snapshot v2 is unchanged. The receiver retains independent knowledge, resumes
+only the exact root and publishes a complete supported unit in one owner
+transaction. Legacy-attested rows must already match; they cannot mint M05
+creation authority. A conflicted/unsupported source publishes no partial
+snapshot projection. Ordinary paginated journal exchange supplies the tail.
+
+Candidate bounds: 4 MiB per manifest, 64 cores, 2,048 domain rows, 16 chunks,
+4 retained incoming/outgoing units and 8 MiB staged/cached payload, also charged
+to the existing 64 MiB logical quota. Capture/metadata/publication work has
+bounded checks and five-second phase budgets; no physical G4 claim is made.
+Tests exercise real publication rollback, deferred-FK COMMIT failure, observer
+restoration denial, new-entity trigger fanout, lost/stale ACK, exact resume,
+revocation during disclosure and an enabled Recall embedding spy (zero calls).
+Imported objects stay excluded from background paid embedding, including
+later local edits, pending a reviewed G7 opt-in/retirement policy.
+
+Mutable facets, selected-head/lifecycle transitions, stale proposals and
+historical review reconstruction remain blocked; relations, identity_decisions,
+pending_claims and revision_proposals are not materialized. Concurrent terminal
+reviews/heads retain alternatives; unresolved G5/G6 decisions are not inferred.
+Production ClosedTrust/store construction, G3 approval, G4 UnverifiedBounds,
+G7 retention, signing, OS keys, pairing and authenticated transport remain open.
+No full-profile claim, LAN, UI, scheduler or production activation is enabled.
+
+Windows verification: D3 17, Sync 56, Journal 260 and dormant v10 24 PASS.
+Full native: 1,241 PASS / the exact five D2 baseline FAIL / 22 ignored;
+architecture: 86 PASS / the same two baseline FAIL. Cargo all-targets check,
+typecheck and frontend (561 tests plus build) PASS. TTS is unchanged and passes.
+Android/Linux targets, real filesystem exhaustion and power-loss remain unverified.

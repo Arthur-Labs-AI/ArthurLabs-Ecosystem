@@ -8,6 +8,7 @@
 //! Outcomes expose needs-attention without logging rows, cores or SQL messages.
 //! Release trust/admission constructors fail closed pending signer, G3/G4 review.
 mod engine;
+pub(crate) mod bootstrap;
 #[cfg(test)]
 mod fake;
 mod protocol;

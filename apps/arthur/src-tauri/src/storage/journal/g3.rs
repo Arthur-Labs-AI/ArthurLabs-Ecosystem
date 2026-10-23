@@ -1,4 +1,4 @@
-//! Dormant G3 policy: create-only Project/Capture reconstruction.
+//! Dormant G3 policy: bounded immutable history reconstruction.
 //! Canonical cores remain in import_events. The commit proof is authoritative;
 //! foreign heads are derived, never inserted into the local-origin journal.
 use super::{
@@ -41,10 +41,25 @@ fn text<'a>(r: &'a codec::RowImage, k: &str) -> Result<&'a str> {
         _ => Err(Error::Integrity),
     }
 }
-fn image(row: &codec::RowImage) -> serde_json::Value {
-    serde_json::Value::Object(row.iter().map(|(k, v)| (k.clone(), v.to_json())).collect())
+fn image(row: &codec::RowImage) -> Result<serde_json::Value> {
+    // Observer JSON uses SQLite integers; wire decimals remain strings in cores.
+    Ok(serde_json::Value::Object(
+        row.iter()
+            .map(|(k, v)| {
+                Ok((
+                    k.clone(),
+                    match v {
+                        FieldValue::Decimal(s) => serde_json::Value::Number(
+                            s.parse::<i64>().map_err(|_| Error::Integrity)?.into(),
+                        ),
+                        _ => v.to_json(),
+                    },
+                ))
+            })
+            .collect::<Result<serde_json::Map<String, serde_json::Value>>>()?,
+    ))
 }
-fn supported(v: &ValidatedEvent) -> Result<bool> {
+fn supported(v: &ValidatedEvent, history: bool) -> Result<bool> {
     if v.core().operations.len() > 64 {
         return Ok(false);
     }
@@ -73,6 +88,22 @@ fn supported(v: &ValidatedEvent) -> Result<bool> {
                     return Err(Error::Integrity);
                 }
             }
+            EntityKind::KnowledgeObjects | EntityKind::ThoughtRevisions if history => {
+                let title = text(&row.after, "title")?;
+                let body = text(&row.after, "body")?;
+                if title.trim().is_empty()
+                    || title.chars().count() > super::super::knowledge_store::MAX_TITLE_CHARS
+                    || body.trim().is_empty()
+                    || body.chars().count() > super::super::knowledge_store::MAX_BODY_CHARS
+                {
+                    return Err(Error::Integrity);
+                }
+            }
+            EntityKind::DistillationRuns
+            | EntityKind::ObjectSources
+            | EntityKind::RevisionParents
+            | EntityKind::RevisionEvidence
+                if history => {}
             _ => return Ok(false),
         }
     }
@@ -85,6 +116,7 @@ struct Grant {
     active: Arc<AtomicBool>,
     entity: String,
     row: serde_json::Value,
+    before: Option<serde_json::Value>,
 }
 unsafe extern "C" fn destroy(p: *mut c_void) {
     drop(Box::from_raw(p.cast::<Grant>()));
@@ -95,10 +127,10 @@ unsafe extern "C" fn permits(
     args: *mut *mut ffi::sqlite3_value,
 ) {
     let answer = std::panic::catch_unwind(|| {
-        if n != 2 {
+        if n != 3 {
             return false;
         }
-        let args = std::slice::from_raw_parts(args, 2);
+        let args = std::slice::from_raw_parts(args, 3);
         let read = |i: usize| -> Option<&str> {
             if ffi::sqlite3_value_type(args[i]) != ffi::SQLITE_TEXT {
                 return None;
@@ -120,6 +152,15 @@ unsafe extern "C" fn permits(
                 .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
                 .as_ref()
                 == Some(&g.row)
+            && match &g.before {
+                Some(b) => {
+                    read(2)
+                        .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+                        .as_ref()
+                        == Some(b)
+                }
+                None => ffi::sqlite3_value_type(args[2]) == ffi::SQLITE_NULL,
+            }
     })
     .unwrap_or(false);
     ffi::sqlite3_result_int(ctx, i32::from(answer));
@@ -134,7 +175,7 @@ fn register(c: &Connection, grant: Option<Grant>) -> Result<()> {
         ffi::sqlite3_create_function_v2(
             c.handle(),
             c"arthur_g3_row".as_ptr(),
-            2,
+            3,
             ffi::SQLITE_UTF8,
             p,
             if p.is_null() { None } else { Some(permits) },
@@ -166,105 +207,355 @@ impl Drop for ScopedGrant<'_> {
         let _ = self.revoke();
     }
 }
-fn observer(entity: EntityKind) -> Result<String> {
-    // Trusted frozen artifact; never compose a SQL name from incoming text.
-    let marker = match entity {
-        EntityKind::Projects => {
-            "CREATE TRIGGER sync_observe_projects_insert AFTER INSERT ON projects"
-        }
-        EntityKind::Captures => {
-            "CREATE TRIGGER sync_observe_captures_insert AFTER INSERT ON captures"
-        }
-        _ => return Err(Error::Integrity),
-    };
+pub(in crate::storage) fn history_installed(c: &Connection) -> Result<bool> {
+    c.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name='import_history_policy' AND type='table')",[],|r|r.get(0)).map_err(|_|Error::Storage)
+}
+fn observer(entity: EntityKind, update: bool) -> Result<String> {
+    // Names come exclusively from the closed native catalog, never raw input.
+    let verb = if update { "update" } else { "insert" };
+    let action = if update { "UPDATE" } else { "INSERT" };
+    let marker = format!(
+        "CREATE TRIGGER sync_observe_{}_{verb} AFTER {action} ON {}",
+        entity.as_str(),
+        entity.as_str()
+    );
     let source = include_str!("../m05_v10.sql");
-    let tail = &source[source.find(marker).ok_or(Error::Storage)?..];
+    let tail = &source[source.find(&marker).ok_or(Error::Storage)?..];
     Ok(tail[..tail.find("\nEND;").ok_or(Error::Storage)? + 5].into())
 }
+fn sql_value(v: &FieldValue) -> Result<rusqlite::types::Value> {
+    Ok(match v {
+        FieldValue::Null => rusqlite::types::Value::Null,
+        FieldValue::Text(s) => rusqlite::types::Value::Text(s.clone()),
+        FieldValue::Decimal(s) => {
+            rusqlite::types::Value::Integer(s.parse().map_err(|_| Error::Integrity)?)
+        }
+    })
+}
+fn insert_row(c: &Connection, e: EntityKind, row: &codec::RowImage) -> Result<usize> {
+    let fields = e.all_fields();
+    let sql = format!(
+        "INSERT INTO {}({}) VALUES({})",
+        e.as_str(),
+        fields.join(","),
+        (1..=fields.len())
+            .map(|i| format!("?{i}"))
+            .collect::<Vec<_>>()
+            .join(",")
+    );
+    let values = fields
+        .iter()
+        .map(|f| sql_value(row.get(*f).ok_or(Error::Integrity)?))
+        .collect::<Result<Vec<_>>>()?;
+    c.execute(&sql, rusqlite::params_from_iter(values))
+        .map_err(|_| Error::Storage)
+}
+fn scoped_row(
+    c: &Connection,
+    e: EntityKind,
+    row: &codec::RowImage,
+    before: Option<&codec::RowImage>,
+) -> Result<()> {
+    let update = before.is_some();
+    let original = observer(e, update)?;
+    let json = |prefix: &str| {
+        format!(
+            "json_object({})",
+            e.all_fields()
+                .iter()
+                .map(|f| format!("'{f}',{prefix}.{f}"))
+                .collect::<Vec<_>>()
+                .join(",")
+        )
+    };
+    let prior = if update { json("OLD") } else { "NULL".into() };
+    let predicate = format!(
+        "arthur_g3_row('{}',{},{} )=0",
+        e.as_str(),
+        json("NEW"),
+        prior
+    );
+    let guarded = if update {
+        original.replacen("\nWHEN ", &format!("\nWHEN ({predicate}) AND "), 1)
+    } else {
+        original.replacen("\nBEGIN", &format!("\nWHEN {predicate}\nBEGIN"), 1)
+    };
+    let active = Arc::new(AtomicBool::new(true));
+    register(
+        c,
+        Some(Grant {
+            active: active.clone(),
+            entity: e.as_str().into(),
+            row: image(row)?,
+            before: before.map(image).transpose()?,
+        }),
+    )?;
+    let scoped = ScopedGrant {
+        connection: c,
+        active,
+    };
+    let drop_sql = format!(
+        "DROP TRIGGER sync_observe_{}_{};",
+        e.as_str(),
+        if update { "update" } else { "insert" }
+    );
+    c.execute_batch(&drop_sql)
+        .and_then(|_| c.execute_batch(&guarded))
+        .map_err(|_| Error::Storage)?;
+    let result = if update {
+        // The only admitted update is the validated same-event initial-object
+        // assembly NULL -> original root. Ordinary current-head changes remain blocked.
+        c.execute("UPDATE knowledge_objects SET current_revision_id=?1 WHERE id=?2 AND current_revision_id IS NULL",params![text(row,"current_revision_id")?,text(row,"id")?]).map_err(|_|Error::Storage)
+    } else {
+        insert_row(c, e, row)
+    };
+    c.execute_batch(&drop_sql)
+        .and_then(|_| c.execute_batch(&original))
+        .map_err(|_| Error::Storage)?;
+    scoped.revoke()?;
+    if result? != 1 {
+        return Err(Error::Integrity);
+    }
+    Ok(())
+}
 pub(in crate::storage) fn materialize(c: &Connection, v: &ValidatedEvent) -> Result<bool> {
-    if !installed(c)? || !supported(v)? {
+    if !installed(c)? || !supported(v, history_installed(c)?)? {
         return Ok(false);
     }
     if c.is_autocommit() {
         return Err(Error::Storage);
     }
-    // All operations and dependencies have been checked before the first INSERT.
-    // Existing row identity is never adopted as proof of successful import.
-    for op in &v.core().operations {
-        if sql_effects::reread(c, op.entity(), op.key())
+    let rows = v
+        .core()
+        .operations
+        .iter()
+        .map(|o| match o {
+            Operation::RecordCreate(r) => Ok(r),
+            _ => Err(Error::Integrity),
+        })
+        .collect::<Result<Vec<_>>>()?;
+    for row in &rows {
+        if sql_effects::reread(c, row.entity, &row.key)
             .map_err(|_| Error::Storage)?
             .is_some()
         {
             return Ok(false);
         }
     }
-    for entity in [EntityKind::Projects, EntityKind::Captures] {
-        for op in &v.core().operations {
-            let Operation::RecordCreate(row) = op else {
-                return Err(Error::Integrity);
-            };
-            if row.entity != entity {
-                continue;
-            }
-            let original = observer(entity)?;
-            let fields = entity.all_fields();
-            let json = format!(
-                "json_object({})",
-                fields
-                    .iter()
-                    .map(|f| format!("'{f}',NEW.{f}"))
-                    .collect::<Vec<_>>()
-                    .join(",")
-            );
-            let guarded = original.replacen(
-                "\nBEGIN",
-                &format!(
-                    "\nWHEN arthur_g3_row('{}',{json})=0\nBEGIN",
-                    entity.as_str()
-                ),
-                1,
-            );
-            let active = Arc::new(AtomicBool::new(true));
-            register(
-                c,
-                Some(Grant {
-                    active: active.clone(),
-                    entity: entity.as_str().into(),
-                    row: image(&row.after),
-                }),
-            )?;
-            let scoped = ScopedGrant {
-                connection: c,
-                active,
-            };
-            let drop_sql = match entity {
-                EntityKind::Projects => "DROP TRIGGER sync_observe_projects_insert;",
-                _ => "DROP TRIGGER sync_observe_captures_insert;",
-            };
-            // Scoped observer replacement, never global trigger disabling. Its
-            // ordinary-local body is copied byte-for-byte from frozen v10.
-            c.execute_batch(drop_sql)
-                .and_then(|_| c.execute_batch(&guarded))
-                .map_err(|_| Error::Storage)?;
-            let result=match entity{
-                EntityKind::Projects=>c.execute("INSERT INTO projects(id,name,created_at,updated_at,archived_at) VALUES(?1,?2,?3,?4,NULL)",params![text(&row.after,"id")?,text(&row.after,"name")?,text(&row.after,"created_at")?,text(&row.after,"updated_at")?]),
-                _=>c.execute("INSERT INTO captures(id,source,content,created_at,project_id) VALUES(?1,?2,?3,?4,?5)",params![text(&row.after,"id")?,text(&row.after,"source")?,text(&row.after,"content")?,text(&row.after,"created_at")?,text(&row.after,"project_id")?])
-            };
-            // Restore BEFORE any other native operation/COMMIT. Failure rolls
-            // back transactional DDL and domain rows together in owning write().
-            c.execute_batch(drop_sql)
-                .and_then(|_| c.execute_batch(&original))
-                .map_err(|_| Error::Storage)?;
-            scoped.revoke()?;
-            result.map_err(|_| Error::Storage)?;
-            if sql_effects::reread(c, entity, &row.key)
-                .map_err(|_| Error::Storage)?
-                .as_ref()
-                != Some(&row.after)
-            {
-                return Err(Error::Integrity);
-            }
+    if rows
+        .iter()
+        .filter(|r| r.entity == EntityKind::KnowledgeObjects)
+        .count()
+        > super::super::knowledge_store::MAX_OBJECTS_PER_DISTILLATION
+    {
+        return Err(Error::Integrity);
+    }
+    for r in rows
+        .iter()
+        .filter(|r| r.entity == EntityKind::RevisionParents)
+    {
+        if !rows
+            .iter()
+            .any(|rev| rev.entity == EntityKind::ThoughtRevisions && rev.key[0] == r.key[0])
+        {
+            return Ok(false);
         }
+    }
+    for r in rows
+        .iter()
+        .filter(|r| r.entity == EntityKind::ObjectSources)
+    {
+        if !rows
+            .iter()
+            .any(|object| object.entity == EntityKind::KnowledgeObjects && object.key == r.key)
+        {
+            return Ok(false);
+        }
+    }
+    for rev in rows
+        .iter()
+        .filter(|r| r.entity == EntityKind::ThoughtRevisions)
+    {
+        let parents = rows
+            .iter()
+            .filter(|r| r.entity == EntityKind::RevisionParents && r.key[0] == rev.key[0])
+            .count();
+        let origin = text(&rev.after, "origin")?;
+        if (origin == "initial" && parents != 0)
+            || (origin == "merge"
+                && !(2..=super::super::lineage_store::MAX_MERGE_PARENTS).contains(&parents))
+            || (!["initial", "merge"].contains(&origin) && parents != 1)
+        {
+            return Err(Error::Integrity);
+        }
+        if origin == "initial"
+            && !rows.iter().any(|r| {
+                r.entity == EntityKind::KnowledgeObjects
+                    && r.after.get("current_revision_id") == rev.after.get("id")
+            })
+        {
+            return Ok(false);
+        }
+        if origin == "system" && rev.after.get("capture_id") != Some(&FieldValue::Null) {
+            return Err(Error::Integrity);
+        }
+        if origin == "system"
+            && !rows
+                .iter()
+                .any(|r| r.entity == EntityKind::RevisionEvidence && r.key[0] == rev.key[0])
+        {
+            return Ok(false);
+        }
+        let object = text(&rev.after, "object_id")?;
+        let stored: i64 = c
+            .query_row(
+                "SELECT count(*) FROM thought_revisions WHERE object_id=?1",
+                [object],
+                |r| r.get(0),
+            )
+            .map_err(|_| Error::Storage)?;
+        let incoming = rows
+            .iter()
+            .filter(|r| {
+                r.entity == EntityKind::ThoughtRevisions
+                    && r.after.get("object_id") == rev.after.get("object_id")
+            })
+            .count();
+        if stored as usize + incoming > super::super::lineage_store::MAX_REVISIONS_PER_OBJECT {
+            return Err(Error::Integrity);
+        }
+    }
+    // Validate the complete initial-object cycle before any mutation.
+    for row in rows
+        .iter()
+        .filter(|r| r.entity == EntityKind::KnowledgeObjects)
+    {
+        let root = text(&row.after, "current_revision_id")?;
+        let Some(revision) = rows
+            .iter()
+            .find(|r| r.entity == EntityKind::ThoughtRevisions && r.key == [root.to_owned()])
+        else {
+            return Ok(false);
+        };
+        let Some(source) = rows
+            .iter()
+            .find(|r| r.entity == EntityKind::ObjectSources && r.key == row.key)
+        else {
+            return Ok(false);
+        };
+        if text(&revision.after, "origin")? != "initial"
+            || text(&revision.after, "object_id")? != row.key[0]
+            || ["kind", "title", "body", "created_at"]
+                .iter()
+                .any(|k| row.after.get(*k) != revision.after.get(*k))
+            || ["capture_id", "source_start", "source_end"]
+                .iter()
+                .any(|k| source.after.get(*k) != revision.after.get(*k))
+        {
+            return Err(Error::Integrity);
+        }
+    }
+    // Explicit revision DAG, deterministic UUID tie-break; no wall-clock order.
+    let mut remaining = rows
+        .iter()
+        .filter(|r| r.entity == EntityKind::ThoughtRevisions)
+        .copied()
+        .collect::<Vec<_>>();
+    remaining.sort_by(|a, b| a.key.cmp(&b.key));
+    let mut revisions = Vec::new();
+    while !remaining.is_empty() {
+        let ready = remaining.iter().position(|r| {
+            !rows.iter().any(|p| {
+                p.entity == EntityKind::RevisionParents
+                    && p.key[0] == r.key[0]
+                    && remaining.iter().any(|other| other.key[0] == p.key[1])
+            })
+        });
+        let Some(i) = ready else {
+            return Err(Error::Integrity);
+        };
+        revisions.push(remaining.remove(i));
+    }
+    for row in rows
+        .iter()
+        .filter(|r| r.entity == EntityKind::RevisionEvidence)
+    {
+        let descendant: bool = c
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM revision_parents WHERE parent_revision_id=?1)",
+                [&row.key[0]],
+                |r| r.get(0),
+            )
+            .map_err(|_| Error::Storage)?;
+        if descendant {
+            return Ok(false);
+        }
+    }
+    for e in [
+        EntityKind::Projects,
+        EntityKind::Captures,
+        EntityKind::DistillationRuns,
+        EntityKind::KnowledgeObjects,
+        EntityKind::ObjectSources,
+    ] {
+        for row in rows.iter().filter(|r| r.entity == e) {
+            let mut image = row.after.clone();
+            if e == EntityKind::KnowledgeObjects {
+                image.insert("current_revision_id".into(), FieldValue::Null);
+            }
+            scoped_row(c, e, &image, None)?;
+        }
+    }
+    // Evidence for existing parents is fixed before any new descendants.
+    for row in rows.iter().filter(|r| {
+        r.entity == EntityKind::RevisionEvidence
+            && !revisions.iter().any(|rev| rev.key[0] == r.key[0])
+    }) {
+        scoped_row(c, row.entity, &row.after, None)?;
+    }
+    for rev in revisions {
+        scoped_row(c, rev.entity, &rev.after, None)?;
+        for row in rows
+            .iter()
+            .filter(|r| r.entity == EntityKind::RevisionParents && r.key[0] == rev.key[0])
+        {
+            scoped_row(c, row.entity, &row.after, None)?;
+        }
+        for row in rows
+            .iter()
+            .filter(|r| r.entity == EntityKind::RevisionEvidence && r.key[0] == rev.key[0])
+        {
+            scoped_row(c, row.entity, &row.after, None)?;
+        }
+    }
+    for row in rows
+        .iter()
+        .filter(|r| r.entity == EntityKind::KnowledgeObjects)
+    {
+        let mut prior = row.after.clone();
+        prior.insert("current_revision_id".into(), FieldValue::Null);
+        scoped_row(c, row.entity, &row.after, Some(&prior))?;
+    }
+    for row in rows {
+        if sql_effects::reread(c, row.entity, &row.key)
+            .map_err(|_| Error::Storage)?
+            .as_ref()
+            != Some(&row.after)
+        {
+            return Err(Error::Integrity);
+        }
+    }
+    for row in v
+        .core()
+        .operations
+        .iter()
+        .filter(|o| o.entity() == EntityKind::KnowledgeObjects)
+    {
+        c.execute(
+            "INSERT INTO import_recall_suppression(object_id) VALUES(?1)",
+            [&row.key()[0]],
+        )
+        .map_err(|_| Error::Storage)?;
     }
     let id = &v.envelope().identity;
     c.execute(
@@ -282,8 +573,13 @@ pub(in crate::storage) fn materialize(c: &Connection, v: &ValidatedEvent) -> Res
     for ((e, k, f), head) in
         stream::updates(&v.core().operations, &reference).map_err(|_| Error::Storage)?
     {
+        let query = if matches!(e, EntityKind::Projects | EntityKind::Captures) {
+            "INSERT INTO import_g3_heads(entity,key_json,facet,event,hash) VALUES(?1,?2,?3,?4,?5)"
+        } else {
+            "INSERT INTO import_history_heads(entity,key_json,facet,event,hash) VALUES(?1,?2,?3,?4,?5)"
+        };
         c.execute(
-            "INSERT INTO import_g3_heads(entity,key_json,facet,event,hash) VALUES(?1,?2,?3,?4,?5)",
+            query,
             params![
                 e.as_str(),
                 serde_json::to_string(&k).map_err(|_| Error::Integrity)?,
@@ -338,8 +634,13 @@ pub(super) fn head(
     if !installed(c).map_err(|_| super::storage::JournalError::Sql)? {
         return Ok(None);
     }
+    let query = if history_installed(c).map_err(|_| super::storage::JournalError::Sql)? {
+        "SELECT event,hash FROM import_g3_heads WHERE entity=?1 AND key_json=?2 AND facet=?3 UNION ALL SELECT event,hash FROM import_history_heads WHERE entity=?1 AND key_json=?2 AND facet=?3"
+    } else {
+        "SELECT event,hash FROM import_g3_heads WHERE entity=?1 AND key_json=?2 AND facet=?3"
+    };
     c.query_row(
-        "SELECT event,hash FROM import_g3_heads WHERE entity=?1 AND key_json=?2 AND facet=?3",
+        query,
         params![
             key.0.as_str(),
             serde_json::to_string(&key.1).map_err(|_| super::storage::JournalError::Sql)?,
@@ -357,6 +658,15 @@ pub(crate) fn install(store: &super::super::capture_store::CaptureStore) -> Resu
         .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
         .map_err(|_| Error::Storage)?;
     tx.execute_batch(include_str!("../import_g3.sql"))
+        .map_err(|_| Error::Storage)?;
+    tx.commit().map_err(|_| Error::Storage)
+}
+
+#[cfg(test)]
+pub(crate) fn install_history(store: &super::super::capture_store::CaptureStore) -> Result<()> {
+    let mut c = store.connection.lock().map_err(|_| Error::Storage)?;
+    let tx = c.transaction().map_err(|_| Error::Storage)?;
+    tx.execute_batch(include_str!("../import_history.sql"))
         .map_err(|_| Error::Storage)?;
     tx.commit().map_err(|_| Error::Storage)
 }

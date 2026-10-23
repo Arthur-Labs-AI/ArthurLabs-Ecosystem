@@ -10,7 +10,7 @@ pub(crate) const CHUNK: usize = 256 * 1024;
 pub(crate) const MAX_FRAME: usize = 1024 * 1024;
 pub(crate) const MAX_BATCH: usize = 2;
 pub(crate) const MAX_ASSEMBLIES: usize = 2;
-pub(crate) const FEATURES: u32 = 15; // ledger, chunking, conflict receipts, paginated inventory
+pub(crate) const FEATURES: u32 = 31; // ledger, chunking, conflict receipts, paginated inventory, bootstrap v1
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Error {
     Trust,
@@ -22,6 +22,7 @@ pub(crate) enum Error {
     ActivationPending,
     Disconnected,
     StorageLimited,
+    SnapshotTooLarge,
 }
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -133,6 +134,10 @@ pub(crate) enum Payload {
     },
     Summary(Summary),
     Page(PageKey),
+    SnapshotOffer(super::bootstrap::SnapshotOffer),
+    SnapshotChunk(super::bootstrap::SnapshotChunk),
+    SnapshotPublish(super::bootstrap::SnapshotOffer),
+    SnapshotReceipt(super::bootstrap::SnapshotReceipt),
     Chunk(Chunk),
     Receipt(Receipt),
     Request(Vec<Uuid>),

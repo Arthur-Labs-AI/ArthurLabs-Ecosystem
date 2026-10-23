@@ -18,6 +18,7 @@ pub mod proposal_store;
 /// builds but invoked by no production write path; schema stays v9.
 pub mod journal;
 pub(crate) mod sync_store;
+pub(crate) mod bootstrap_store;
 #[cfg(test)]
 mod identity_store_tests;
 #[cfg(test)]

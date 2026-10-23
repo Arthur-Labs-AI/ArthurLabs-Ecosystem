@@ -1,4 +1,5 @@
 use super::{
+    bootstrap::*,
     protocol::*,
     trust::{TrustVerifier, VerifiedSession},
     validation::ValidatedEvent,
@@ -8,6 +9,41 @@ use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
 pub(crate) trait SyncStore {
+    fn snapshot_capture(
+        &self,
+        s: &VerifiedSession,
+        id: Uuid,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<SnapshotExport>;
+    fn snapshot_offer(
+        &self,
+        s: &VerifiedSession,
+        o: &SnapshotOffer,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<()>;
+    fn snapshot_chunk(
+        &self,
+        s: &VerifiedSession,
+        ch: &SnapshotChunk,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<()>;
+    fn snapshot_publish(
+        &self,
+        s: &VerifiedSession,
+        o: &SnapshotOffer,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<SnapshotReceipt>;
+    fn snapshot_receipt(
+        &self,
+        s: &VerifiedSession,
+        r: &SnapshotReceipt,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<()>;
     fn authorize(&self, s: &VerifiedSession, c: &dyn SyncClock, x: &Cancellation) -> Result<()>;
     fn summary(&self, s: &VerifiedSession, c: &dyn SyncClock, x: &Cancellation) -> Result<Summary>;
     fn page(
@@ -86,6 +122,7 @@ pub(crate) struct SyncEngine<'a, S: SyncStore, T: AuthenticatedTransport, C: Syn
     pub needs_attention: bool,
     pub status: SyncStatus,
     blocked: Option<Error>,
+    bootstrap: Option<Uuid>,
 }
 impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S, T, C> {
     pub fn start(
@@ -113,6 +150,7 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             needs_attention: summary.needs_attention,
             status: summary.status,
             blocked: None,
+            bootstrap: None,
         };
         engine.send(Payload::Hello {
             version: 1,
@@ -121,6 +159,43 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             profile: "m05-ledger-candidate".into(),
         })?;
         Ok(engine)
+    }
+    /// Cache a consistent source boundary now; disclose only after negotiation.
+    pub fn bootstrap(&mut self, id: Uuid) -> Result<()> {
+        if self.bootstrap.is_some() {
+            return Err(Error::Limit);
+        }
+        if let Err(e) = self
+            .store
+            .snapshot_capture(&self.session, id, self.clock, self.cancel)
+        {
+            if matches!(
+                e,
+                Error::SnapshotTooLarge | Error::StorageLimited | Error::Storage
+            ) {
+                self.status = SyncStatus::StorageLimited;
+                self.needs_attention = true;
+            }
+            return Err(e);
+        }
+        self.bootstrap = Some(id);
+        if self.negotiated {
+            self.send_bootstrap()?;
+        }
+        Ok(())
+    }
+    fn send_bootstrap(&mut self) -> Result<()> {
+        let Some(id) = self.bootstrap.take() else {
+            return Ok(());
+        };
+        let snapshot = self
+            .store
+            .snapshot_capture(&self.session, id, self.clock, self.cancel)?;
+        self.send(Payload::SnapshotOffer(snapshot.offer.clone()))?;
+        for chunk in snapshot.chunks() {
+            self.send(Payload::SnapshotChunk(chunk))?;
+        }
+        self.send(Payload::SnapshotPublish(snapshot.offer))
     }
     fn send(&mut self, payload: Payload) -> Result<()> {
         self.session.check(self.clock, self.cancel)?;
@@ -201,7 +276,9 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
                 Error::Integrity | Error::Protocol | Error::Limit => {
                     self.status = SyncStatus::RejectedIntegrity
                 }
-                Error::StorageLimited | Error::Storage => self.status = SyncStatus::StorageLimited,
+                Error::SnapshotTooLarge | Error::StorageLimited | Error::Storage => {
+                    self.status = SyncStatus::StorageLimited
+                }
                 _ => return result,
             }
             self.needs_attention = true;
@@ -242,6 +319,7 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
                 return Err(Error::Protocol);
             }
             self.negotiated = true;
+            self.send_bootstrap()?;
             self.retry()?;
             self.advertise()?;
             return Ok(true);
@@ -250,6 +328,38 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             return Err(Error::Protocol);
         }
         match message.payload {
+            Payload::SnapshotOffer(o) => {
+                self.store
+                    .snapshot_offer(&self.session, &o, self.clock, self.cancel)?;
+                self.status = SyncStatus::Syncing;
+            }
+            Payload::SnapshotChunk(ch) => {
+                self.store
+                    .snapshot_chunk(&self.session, &ch, self.clock, self.cancel)?;
+                self.status = SyncStatus::Syncing;
+            }
+            Payload::SnapshotPublish(o) => {
+                let receipt =
+                    self.store
+                        .snapshot_publish(&self.session, &o, self.clock, self.cancel)?;
+                self.status = receipt.outcome.into();
+                self.needs_attention = self
+                    .store
+                    .summary(&self.session, self.clock, self.cancel)?
+                    .needs_attention
+                    || receipt.outcome != Outcome::CleanlyApplied;
+                self.send(Payload::SnapshotReceipt(receipt))?;
+            }
+            Payload::SnapshotReceipt(r) => {
+                self.store
+                    .snapshot_receipt(&self.session, &r, self.clock, self.cancel)?;
+                self.status = r.outcome.into();
+                self.needs_attention = self
+                    .store
+                    .summary(&self.session, self.clock, self.cancel)?
+                    .needs_attention
+                    || r.outcome != Outcome::CleanlyApplied;
+            }
             Payload::Page(after) => {
                 if self.advertised_next != Some(after) {
                     return Err(Error::Protocol);

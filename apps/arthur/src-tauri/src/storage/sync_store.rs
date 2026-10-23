@@ -40,7 +40,7 @@ impl<'a> CandidateSyncStore<'a> {
             Ok(count)
         })
     }
-    fn read<T>(
+    pub(super) fn read<T>(
         &self,
         s: &VerifiedSession,
         clock: &dyn SyncClock,
@@ -55,7 +55,7 @@ impl<'a> CandidateSyncStore<'a> {
         authorize(&c, s, clock, x)?;
         work(&c)
     }
-    fn write<T>(
+    pub(super) fn write<T>(
         &self,
         s: &VerifiedSession,
         clock: &dyn SyncClock,
@@ -100,7 +100,7 @@ impl<'a> CandidateSyncStore<'a> {
 fn sql(_: rusqlite::Error) -> Error {
     Error::Storage
 }
-fn authorize(
+pub(super) fn authorize(
     c: &Connection,
     s: &VerifiedSession,
     clock: &dyn SyncClock,
@@ -125,7 +125,7 @@ fn authorize(
     }
     Ok(())
 }
-fn quota(c: &Connection) -> Result<()> {
+pub(super) fn quota(c: &Connection) -> Result<()> {
     // Logical candidate quotas only. No physical admission bypass is available
     // in release builds: production() cannot construct this adapter.
     let events: i64 = c
@@ -146,6 +146,20 @@ fn quota(c: &Connection) -> Result<()> {
         if heads > 65536 {
             return Err(Error::StorageLimited);
         }
+        bytes = bytes.checked_add(extra).ok_or(Error::StorageLimited)?;
+    }
+    if g3::history_installed(c)? {
+        let (heads,extra):(i64,i64)=c.query_row("SELECT count(*),coalesce(sum(length(entity)+length(CAST(key_json AS BLOB))+length(facet)+length(event)+length(hash)+16),0)+(SELECT count(*)*64 FROM import_recall_suppression) FROM import_history_heads",[],|r|Ok((r.get(0)?,r.get(1)?))).map_err(sql)?;
+        let base: i64 = c
+            .query_row("SELECT count(*) FROM import_g3_heads", [], |r| r.get(0))
+            .map_err(sql)?;
+        if heads + base > 65536 {
+            return Err(Error::StorageLimited);
+        }
+        bytes = bytes.checked_add(extra).ok_or(Error::StorageLimited)?;
+    }
+    if super::bootstrap_store::installed(c)? {
+        let extra:i64=c.query_row("SELECT coalesce((SELECT sum(coalesce(length(manifest),0)+512) FROM bootstrap_units),0)+coalesce((SELECT sum(length(bytes)+128) FROM bootstrap_chunks),0)",[],|r|r.get(0)).map_err(sql)?;
         bytes = bytes.checked_add(extra).ok_or(Error::StorageLimited)?;
     }
     let creates: i64 = c
@@ -190,7 +204,7 @@ fn idrow(r: &rusqlite::Row<'_>) -> rusqlite::Result<Identity> {
         hash: hash.try_into().map_err(|_| rusqlite::Error::InvalidQuery)?,
     })
 }
-fn inventory_page(
+pub(super) fn inventory_page(
     c: &Connection,
     after: Option<PageKey>,
 ) -> Result<(Vec<Identity>, Option<PageKey>)> {
@@ -227,7 +241,7 @@ fn inventory(c: &Connection) -> Result<Vec<Identity>> {
     }
     Ok(all)
 }
-fn load(c: &Connection, event: Uuid) -> Result<Option<Envelope>> {
+pub(super) fn load(c: &Connection, event: Uuid) -> Result<Option<Envelope>> {
     let result:Option<(Vec<u8>,Vec<u8>)>=c.query_row("SELECT canonical_bytes,canonical_hash FROM sync_bundles WHERE event_id=?1 UNION ALL SELECT bytes,hash FROM import_events WHERE event=?1",[event.to_string()],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(sql)?;
     result
         .map(|(bytes, hash)| {
@@ -318,7 +332,16 @@ fn validate_spans(c: &Connection, v: &ValidatedEvent) -> Result<()> {
             if let Some(FieldValue::Text(body)) = body {
                 let start = start.parse::<usize>().map_err(|_| Error::Integrity)?;
                 let end = end.parse::<usize>().map_err(|_| Error::Integrity)?;
-                if start >= end || end > body.chars().count() {
+                if start >= end
+                    || end > body.chars().count()
+                    || body
+                        .chars()
+                        .skip(start)
+                        .take(end - start)
+                        .collect::<String>()
+                        .trim()
+                        .is_empty()
+                {
                     return Err(Error::Integrity);
                 }
             }
@@ -527,7 +550,7 @@ fn classify(c: &Connection, v: &ValidatedEvent) -> Result<(Outcome, bool)> {
     }
     Ok((Outcome::UnsupportedImportPolicy, true))
 }
-fn refresh(
+pub(super) fn refresh(
     c: &Connection,
     s: &VerifiedSession,
     clock: &dyn SyncClock,
@@ -598,7 +621,7 @@ fn refresh(
     }
     Ok(processed)
 }
-fn cursors(c: &Connection) -> Result<()> {
+pub(super) fn cursors(c: &Connection) -> Result<()> {
     let groups = {
         let mut q=c.prepare("SELECT DISTINCT r.peer,e.origin,e.incarnation FROM import_receipts r JOIN import_events e ON e.event=r.event").map_err(sql)?;
         let rows = q
@@ -646,6 +669,51 @@ fn cursors(c: &Connection) -> Result<()> {
     Ok(())
 }
 impl SyncStore for CandidateSyncStore<'_> {
+    fn snapshot_capture(
+        &self,
+        s: &VerifiedSession,
+        id: Uuid,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<crate::sync::bootstrap::SnapshotExport> {
+        super::bootstrap_store::capture(self, s, id, c, x)
+    }
+    fn snapshot_offer(
+        &self,
+        s: &VerifiedSession,
+        o: &crate::sync::bootstrap::SnapshotOffer,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<()> {
+        super::bootstrap_store::stage_offer(self, s, o, c, x)
+    }
+    fn snapshot_chunk(
+        &self,
+        s: &VerifiedSession,
+        ch: &crate::sync::bootstrap::SnapshotChunk,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<()> {
+        super::bootstrap_store::stage_chunk(self, s, ch, c, x)
+    }
+    fn snapshot_publish(
+        &self,
+        s: &VerifiedSession,
+        o: &crate::sync::bootstrap::SnapshotOffer,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<crate::sync::bootstrap::SnapshotReceipt> {
+        super::bootstrap_store::publish(self, s, o, c, x)
+    }
+    fn snapshot_receipt(
+        &self,
+        s: &VerifiedSession,
+        r: &crate::sync::bootstrap::SnapshotReceipt,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<()> {
+        super::bootstrap_store::receipt(self, s, r, c, x)
+    }
     fn authorize(&self, s: &VerifiedSession, c: &dyn SyncClock, x: &Cancellation) -> Result<()> {
         self.read(s, c, x, |_| Ok(()))
     }
@@ -670,7 +738,11 @@ impl SyncStore for CandidateSyncStore<'_> {
         if known.iter().any(|id|!s.permits(id.origin)){return Err(Error::Trust)}
         let mut q=c.prepare("SELECT origin,incarnation,stored,integrated,applied FROM import_progress WHERE peer=?1 ORDER BY origin,incarnation LIMIT 257").map_err(sql)?;
         let progress=q.query_map([s.binding().peer.to_string()],|r|Ok(Progress{origin:Uuid::parse_str(&r.get::<_,String>(0)?).map_err(|_|rusqlite::Error::InvalidQuery)?,incarnation:Uuid::parse_str(&r.get::<_,String>(1)?).map_err(|_|rusqlite::Error::InvalidQuery)?,stored:r.get(2)?,integrated:r.get(3)?,applied:r.get(4)?})).map_err(sql)?.collect::<rusqlite::Result<Vec<_>>>().map_err(sql)?;
-        if progress.len()>MAX_EVENTS{return Err(Error::Limit)}let needs_attention:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM import_events WHERE outcome<>'applied' UNION ALL SELECT 1 FROM import_sent WHERE outcome NOT IN('offered','applied') UNION ALL SELECT 1 FROM import_collisions)",[],|r|r.get(0)).map_err(sql)?;let problem:Option<String>=c.query_row("SELECT outcome FROM (SELECT outcome FROM import_events UNION ALL SELECT outcome FROM import_sent WHERE outcome<>'offered' UNION ALL SELECT 'rejected' FROM import_collisions) ORDER BY CASE outcome WHEN 'rejected' THEN 0 WHEN 'conflict' THEN 1 WHEN 'deferred' THEN 2 WHEN 'unsupported' THEN 3 ELSE 4 END LIMIT 1",[],|r|r.get(0)).optional().map_err(sql)?;
+        if progress.len()>MAX_EVENTS{return Err(Error::Limit)}let mut needs_attention:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM import_events WHERE outcome<>'applied' UNION ALL SELECT 1 FROM import_sent WHERE outcome NOT IN('offered','applied') UNION ALL SELECT 1 FROM import_collisions)",[],|r|r.get(0)).map_err(sql)?;let mut problem:Option<String>=c.query_row("SELECT outcome FROM (SELECT outcome FROM import_events UNION ALL SELECT outcome FROM import_sent WHERE outcome<>'offered' UNION ALL SELECT 'rejected' FROM import_collisions) ORDER BY CASE outcome WHEN 'rejected' THEN 0 WHEN 'conflict' THEN 1 WHEN 'deferred' THEN 2 WHEN 'unsupported' THEN 3 ELSE 4 END LIMIT 1",[],|r|r.get(0)).optional().map_err(sql)?;
+        if super::bootstrap_store::installed(c)?{
+            let blocked:Option<String>=c.query_row("SELECT outcome FROM bootstrap_units WHERE outcome NOT IN('staged','applied') ORDER BY CASE outcome WHEN 'rejected' THEN 0 WHEN 'conflict' THEN 1 WHEN 'deferred' THEN 2 ELSE 3 END LIMIT 1",[],|r|r.get(0)).optional().map_err(sql)?;
+            if blocked.is_some(){needs_attention=true;if problem.as_deref().is_none_or(|p|p=="applied"){problem=blocked;}}
+        }
         let status=problem.as_deref().map(Outcome::parse).transpose()?.map(SyncStatus::from).unwrap_or(SyncStatus::Syncing);
         Ok(Summary{known,next,progress,needs_attention,status})
     })
@@ -713,25 +785,9 @@ impl SyncStore for CandidateSyncStore<'_> {
         clock: &dyn SyncClock,
         x: &Cancellation,
     ) -> Result<Receipt> {
-        self.write(s,clock,x,|c|{
-        let envelope=e.envelope();let id=&envelope.identity;if !s.permits(id.origin){return Err(Error::Trust)}
-        if let Some(prior)=load(c,id.event)? {
-            if prior.identity!=*id||prior.bytes!=envelope.bytes {collision(c,s,envelope,"identity")?;return Ok(Receipt{identity:id.clone(),outcome:Outcome::RejectedIntegrity})}
-            let outcome:Option<String>=c.query_row("SELECT outcome FROM import_events WHERE event=?1",[id.event.to_string()],|r|r.get(0)).optional().map_err(sql)?;
-            if outcome.is_none(){return Ok(Receipt{identity:id.clone(),outcome:Outcome::CleanlyApplied})}
-        }else{
-            let fork:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM sync_bundles WHERE origin_id=?1 AND incarnation=?2 AND origin_seq=?3 UNION ALL SELECT 1 FROM import_events WHERE origin=?1 AND incarnation=?2 AND seq=?3)",params![id.origin.to_string(),id.incarnation.to_string(),id.seq],|r|r.get(0)).map_err(sql)?;
-            let bundle:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM sync_bundles WHERE bundle_id=?1 UNION ALL SELECT 1 FROM import_events WHERE bundle=?1)",[id.bundle.to_string()],|r|r.get(0)).map_err(sql)?;
-            if fork||bundle {collision(c,s,envelope,if fork{"stream"}else{"bundle"})?;return Ok(Receipt{identity:id.clone(),outcome:Outcome::RejectedIntegrity})}
-            c.execute("INSERT INTO import_events(event,bundle,origin,incarnation,seq,hash,bytes,outcome,chain_ok,peer) VALUES(?1,?2,?3,?4,?5,?6,?7,'deferred',0,?8)",params![id.event.to_string(),id.bundle.to_string(),id.origin.to_string(),id.incarnation.to_string(),id.seq,id.hash.as_slice(),envelope.bytes,s.binding().peer.to_string()]).map_err(sql)?;
-        }
-        c.execute("INSERT OR IGNORE INTO import_receipts(peer,event) VALUES(?1,?2)",params![s.binding().peer.to_string(),id.event.to_string()]).map_err(sql)?;
-        c.execute("INSERT OR IGNORE INTO import_event_epochs(event,epoch) VALUES(?1,?2)",params![id.event.to_string(),s.binding().epoch]).map_err(sql)?;
-        quota(c)?;refresh(c,s,clock,x)?;cursors(c)?;
-        let outcome:String=c.query_row("SELECT outcome FROM import_events WHERE event=?1",[id.event.to_string()],|r|r.get(0)).map_err(sql)?;
-        Ok(Receipt{identity:id.clone(),outcome:Outcome::parse(&outcome)?})
-    })
+        self.write(s, clock, x, |c| retain_in(c, s, &e, clock, x))
     }
+
     fn offered(
         &self,
         s: &VerifiedSession,
@@ -854,4 +910,76 @@ pub(crate) fn grant_test_origins(
     for origin in origins {
         c.execute("INSERT OR IGNORE INTO import_origin_permissions(peer,origin,epoch,enabled) VALUES(?1,?2,1,1)",params![peer.to_string(),origin.to_string()]).unwrap();
     }
+}
+
+pub(super) fn retain_in(
+    c: &Connection,
+    s: &VerifiedSession,
+    e: &ValidatedEvent,
+    clock: &dyn SyncClock,
+    x: &Cancellation,
+) -> Result<Receipt> {
+    let envelope = e.envelope();
+    let id = &envelope.identity;
+    if !s.permits(id.origin) {
+        return Err(Error::Trust);
+    }
+    if let Some(prior) = load(c, id.event)? {
+        if prior.identity != *id || prior.bytes != envelope.bytes {
+            collision(c, s, envelope, "identity")?;
+            return Ok(Receipt {
+                identity: id.clone(),
+                outcome: Outcome::RejectedIntegrity,
+            });
+        }
+        let outcome: Option<String> = c
+            .query_row(
+                "SELECT outcome FROM import_events WHERE event=?1",
+                [id.event.to_string()],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(sql)?;
+        if outcome.is_none() {
+            return Ok(Receipt {
+                identity: id.clone(),
+                outcome: Outcome::CleanlyApplied,
+            });
+        }
+    } else {
+        let fork:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM sync_bundles WHERE origin_id=?1 AND incarnation=?2 AND origin_seq=?3 UNION ALL SELECT 1 FROM import_events WHERE origin=?1 AND incarnation=?2 AND seq=?3)",params![id.origin.to_string(),id.incarnation.to_string(),id.seq],|r|r.get(0)).map_err(sql)?;
+        let bundle:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM sync_bundles WHERE bundle_id=?1 UNION ALL SELECT 1 FROM import_events WHERE bundle=?1)",[id.bundle.to_string()],|r|r.get(0)).map_err(sql)?;
+        if fork || bundle {
+            collision(c, s, envelope, if fork { "stream" } else { "bundle" })?;
+            return Ok(Receipt {
+                identity: id.clone(),
+                outcome: Outcome::RejectedIntegrity,
+            });
+        }
+        c.execute("INSERT INTO import_events(event,bundle,origin,incarnation,seq,hash,bytes,outcome,chain_ok,peer) VALUES(?1,?2,?3,?4,?5,?6,?7,'deferred',0,?8)",params![id.event.to_string(),id.bundle.to_string(),id.origin.to_string(),id.incarnation.to_string(),id.seq,id.hash.as_slice(),envelope.bytes,s.binding().peer.to_string()]).map_err(sql)?;
+    }
+    c.execute(
+        "INSERT OR IGNORE INTO import_receipts(peer,event) VALUES(?1,?2)",
+        params![s.binding().peer.to_string(), id.event.to_string()],
+    )
+    .map_err(sql)?;
+    c.execute(
+        "INSERT OR IGNORE INTO import_event_epochs(event,epoch) VALUES(?1,?2)",
+        params![id.event.to_string(), s.binding().epoch],
+    )
+    .map_err(sql)?;
+    quota(c)?;
+    refresh(c, s, clock, x)?;
+    cursors(c)?;
+    let outcome: String = c
+        .query_row(
+            "SELECT outcome FROM import_events WHERE event=?1",
+            [id.event.to_string()],
+            |r| r.get(0),
+        )
+        .map_err(sql)?;
+    Ok(Receipt {
+        identity: id.clone(),
+        outcome: Outcome::parse(&outcome)?,
+    })
 }

@@ -256,7 +256,7 @@ pub(crate) fn capture_in(s: &CaptureStore, project: &str, body: &str) {
 }
 pub(crate) fn assert_insert_observers_frozen(s: &CaptureStore) {
     let c = s.connection.lock().unwrap();
-    for table in ["projects", "captures"] {
+    for table in super::sql_effects::ENTITIES.iter().map(|e| e.as_str()) {
         let name = format!("sync_observe_{table}_insert");
         let sql: String = c
             .query_row(
@@ -283,6 +283,169 @@ pub(crate) fn held_kernel_continues(s: &CaptureStore, project: &str, import: imp
 pub(crate) fn domain_state(s: &CaptureStore) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
     state(s)
         .into_iter()
-        .filter(|(name, _)| !name.starts_with("import_") && !name.starts_with("sync_"))
+        .filter(|(name, _)| {
+            !name.starts_with("import_")
+                && !name.starts_with("sync_")
+                && !name.starts_with("bootstrap_")
+        })
         .collect()
+}
+
+pub(crate) fn install_history(s: &CaptureStore) {
+    super::g3::install_history(s).unwrap();
+    crate::storage::bootstrap_store::install(s).unwrap();
+}
+pub(crate) fn history(s: &CaptureStore) -> (String, String, String) {
+    use crate::storage::{knowledge_store::NewKnowledgeObject, lineage_store::Changes};
+    let k = JournalKernel::activate(s).unwrap();
+    let c = k
+        .write(|w| {
+            w.create_capture(CreateCaptureInput {
+                source: "text".into(),
+                content: "Alpha Бета 😀 original".into(),
+                project_id: None,
+            })
+        })
+        .unwrap();
+    let object = k
+        .write(|w| {
+            w.record_distillation(
+                &c.id,
+                vec![NewKnowledgeObject {
+                    kind: "idea".into(),
+                    title: "Original object".into(),
+                    body: "Original body".into(),
+                    source_start: 0,
+                    source_end: 5,
+                }],
+            )
+        })
+        .unwrap()
+        .remove(0);
+    let root = s.current_revision_id_of(&object.id).unwrap().unwrap();
+    k.write(|w| {
+        w.create_revision_from(
+            &object.id,
+            &root,
+            Changes {
+                kind: None,
+                title: None,
+                body: Some("Unselected immutable branch".into()),
+            },
+            false,
+        )
+    })
+    .unwrap();
+    let empty = k
+        .write(|w| {
+            w.create_capture(CreateCaptureInput {
+                source: "text".into(),
+                content: "Empty completion".into(),
+                project_id: None,
+            })
+        })
+        .unwrap();
+    k.write(|w| w.record_distillation(&empty.id, vec![]))
+        .unwrap();
+    (c.id, object.id, root)
+}
+// An unselected automatic branch generated inside the actual local journal
+// kernel. v9 guards, observers and native closure validation all execute.
+pub(crate) fn evidenced_branch(
+    s: &CaptureStore,
+    capture: &str,
+    object: &str,
+    parent: &str,
+) -> String {
+    let id = uuid::Uuid::new_v4().to_string();
+    let k = JournalKernel::activate(s).unwrap();
+    k.run(|tx|{
+        tx.sql().execute("INSERT INTO thought_revisions(id,object_id,kind,title,body,origin,created_at,capture_id,source_start,source_end) VALUES(?1,?2,'idea','Evidence branch','Automatic unselected history','system','2026-10-23T00:00:00Z',NULL,NULL,NULL)",rusqlite::params![id,object])?;
+        tx.sql().execute("INSERT INTO revision_parents VALUES(?1,?2)",rusqlite::params![id,parent])?;
+        tx.sql().execute("INSERT INTO revision_evidence(revision_id,ordinal,object_id,capture_id,source_start,source_end,role,created_at) VALUES(?1,0,?2,?3,0,5,'asserts','2026-10-23T00:00:00Z')",rusqlite::params![id,object,capture])?;Ok(())
+    }).unwrap();
+    id
+}
+
+pub(crate) fn held_object_kernel_continues(s: &CaptureStore, object: &str, import: impl FnOnce()) {
+    let k = JournalKernel::activate(s).unwrap();
+    import();
+    k.write(|w| {
+        w.update_object(
+            object,
+            super::writer_tests::change("Local edit after foreign bootstrap"),
+        )
+    })
+    .unwrap();
+}
+pub(crate) fn relation(s: &CaptureStore, source: &str, target: &str) -> String {
+    let k = JournalKernel::activate(s).unwrap();
+    k.write(|w| {
+        w.create_relation(
+            crate::storage::relation_store::NewRelation {
+                kind: "extends".into(),
+                source_object_id: source.into(),
+                target_object_id: target.into(),
+            },
+            "user",
+        )
+    })
+    .unwrap()
+    .id
+}
+
+// Actual SQLite authorization failure while restoring the frozen revision
+// observer. The callback is test-only and removed even if the test unwinds.
+pub(crate) fn deny_revision_observer_restore(s: &CaptureStore, work: impl FnOnce()) -> usize {
+    use rusqlite::ffi;
+    use std::{
+        cell::Cell,
+        ffi::{c_char, c_int, c_void, CStr},
+    };
+    unsafe extern "C" fn deny(
+        p: *mut c_void,
+        action: c_int,
+        name: *const c_char,
+        _: *const c_char,
+        _: *const c_char,
+        _: *const c_char,
+    ) -> c_int {
+        if action == ffi::SQLITE_CREATE_TRIGGER
+            && !name.is_null()
+            && CStr::from_ptr(name).to_bytes() == b"sync_observe_thought_revisions_insert"
+        {
+            let n = &*p.cast::<Cell<usize>>();
+            n.set(n.get() + 1);
+            if n.get() == 2 {
+                return ffi::SQLITE_DENY;
+            }
+        }
+        ffi::SQLITE_OK
+    }
+    let count = Box::new(Cell::new(0usize));
+    {
+        let c = s.connection.lock().unwrap();
+        assert_eq!(
+            unsafe {
+                ffi::sqlite3_set_authorizer(
+                    c.handle(),
+                    Some(deny),
+                    (&*count as *const Cell<usize>).cast_mut().cast(),
+                )
+            },
+            ffi::SQLITE_OK
+        );
+    }
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work));
+    {
+        let c = s.connection.lock().unwrap();
+        assert_eq!(
+            unsafe { ffi::sqlite3_set_authorizer(c.handle(), None, std::ptr::null_mut()) },
+            ffi::SQLITE_OK
+        );
+    }
+    if let Err(p) = result {
+        std::panic::resume_unwind(p)
+    }
+    count.get()
 }

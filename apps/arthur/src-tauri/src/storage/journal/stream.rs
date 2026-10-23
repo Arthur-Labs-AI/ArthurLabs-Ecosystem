@@ -241,7 +241,7 @@ fn recover_history(c: &Connection, budget: u64) -> Result<History> {
         return Err(E::CorruptCapability);
     }
     let foreign=super::g3::installed(c).map_err(|_|E::Sql)?;
-    let query=if foreign {"SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads UNION ALL SELECT entity,key_json,facet,event,hash FROM import_g3_heads g WHERE NOT EXISTS(SELECT 1 FROM sync_entity_heads h WHERE h.entity_kind=g.entity AND h.entity_key=g.key_json AND h.facet=g.facet)"}else{"SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads"};
+    let query=if super::g3::history_installed(c).map_err(|_|E::Sql)? {"SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads UNION ALL SELECT entity,key_json,facet,event,hash FROM (SELECT * FROM import_g3_heads UNION ALL SELECT * FROM import_history_heads) g WHERE NOT EXISTS(SELECT 1 FROM sync_entity_heads h WHERE h.entity_kind=g.entity AND h.entity_key=g.key_json AND h.facet=g.facet)"}else if foreign {"SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads UNION ALL SELECT entity,key_json,facet,event,hash FROM import_g3_heads g WHERE NOT EXISTS(SELECT 1 FROM sync_entity_heads h WHERE h.entity_kind=g.entity AND h.entity_key=g.key_json AND h.facet=g.facet)"}else{"SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads"};
     let mut heads = c
         .prepare(query)
         .map_err(|_| E::Sql)?;

@@ -40,6 +40,10 @@ impl AuthenticatedTransport for FakeTransport {
     }
     fn send(&mut self, message: Message) -> Result<()> {
         match &message.payload {
+            Payload::SnapshotOffer(o) | Payload::SnapshotPublish(o) if o.validate().is_err() => {
+                return Err(Error::SnapshotTooLarge)
+            }
+            Payload::SnapshotChunk(ch) if ch.bytes.len() > CHUNK => return Err(Error::Limit),
             Payload::Hello { profile, .. } if profile.len() > 64 => return Err(Error::Limit),
             Payload::Summary(s)
                 if s.known.len() > SUMMARY_PAGE || s.progress.len() > MAX_EVENTS =>
@@ -53,7 +57,11 @@ impl AuthenticatedTransport for FakeTransport {
         if !link.online {
             return Err(Error::Disconnected);
         }
-        if matches!(message.payload, Payload::Receipt(_)) && link.lose_receipt > 0 {
+        if matches!(
+            message.payload,
+            Payload::Receipt(_) | Payload::SnapshotReceipt(_)
+        ) && link.lose_receipt > 0
+        {
             link.lose_receipt -= 1;
             return Ok(());
         }

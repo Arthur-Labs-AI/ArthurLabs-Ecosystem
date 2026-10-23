@@ -1915,3 +1915,6 @@ fn g3_10_forward_d1_upgrade_never_invents_historical_authorization() {
     drop(adapter);
     b.reopen();
 }
+
+#[path="sync_d3_tests.rs"]
+mod d3;
