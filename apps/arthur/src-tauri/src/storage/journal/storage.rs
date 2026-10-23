@@ -483,6 +483,12 @@ fn rollback(tx: &mut Transaction<'_>, _hooks: &Hooks) -> Result<()> {
     Ok(())
 }
 
+// Read-only test oracle: exercise the production counter, never a second calculator.
+#[cfg(test)]
+pub(super) fn check_quota_for_test(c: &Connection, limits: Limits) -> Result<()> {
+    quota(c, limits, 0)
+}
+
 fn quota(c: &Connection, limits: Limits, additional: u64) -> Result<()> {
     let payload: i64 = c
         .query_row(
@@ -590,6 +596,9 @@ fn finalize(
         c.execute("DELETE FROM sync_write_context WHERE event_id=?1", [event])
             .map_err(|_| JournalError::Cleanup)?;
         stream::empty(c)?;
+        // Snapshot/maintenance work can grow persisted metadata without domain
+        // effects. Admit its final state inside this same transaction too.
+        quota(c, limits, 0)?;
         return Ok(None);
     }
     hooks.at(Stage::FinalRead)?;

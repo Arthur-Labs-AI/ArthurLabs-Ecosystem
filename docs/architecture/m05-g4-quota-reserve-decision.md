@@ -462,3 +462,209 @@ All items are **NOT MEASURED / PLATFORM EVIDENCE MISSING** acceptance gates, not
 ## Appendix C. Adapter-core attribution
 
 **MEASURED:** Core lengths/raw effects are from actual persisted M07 bundles; `m07-adapter-ledger.json` enumerates all76 records. Read-only SQLite extraction records lengths and counts, not a re-encoded approximation. Claims:2,720–2,726bytes,2 raw effects/2 operations/3dependencies. Proposals:2,381–2,386bytes,1effect/1operation/3dependencies. Approval:9,329bytes/6effects/6operations/7dependencies. Rejection:3,915/1/1/3. User-separate:7,621/6/5/6. Expiry32:194,312/191/159/67. These are one fixture's observed values, not operation maxima. Typed adapter spool bytes remain NOT MEASURED. M04 repeated operation duration82.062–125.709ms and core329,913–329,917bytes; fixed fixture text sizes, UUID/timestamp length variation.
+
+## Task 14C addendum — 2026-10-23: maintenance quota closure
+
+**SOURCE-CONFIRMED:** This addendum describes the Task14C working diff against
+`1c591b5c9831e650ea4e26d41d78d7890c2ecb8b`, branch
+`feature/nodes-integration`, initially clean. All preceding Task14B observations,
+M01–M12 numbers and proposals remain historical records as originally measured.
+The new Q/F results below are separate evidence. They do not retroactively turn
+Task14B's missing tests into executed tests.
+
+### Correction and transaction ownership
+
+**SOURCE-CONFIRMED:** G4-F01 is **FIXED AND TESTED (DORMANT)**. Previously,
+`finalize()` cleaned the context and returned `Ok(None)` for zero domain
+effects, skipping the two quota calls on the effect-bearing path. Snapshot
+allocation/capture/packing can change counted metadata on this no-effects path.
+The correction preserves cleanup and `stream::empty()`, then adds:
+
+```rust
+quota(c, limits, 0)?;
+return Ok(None);
+```
+
+**SOURCE-CONFIRMED:** This executes inside the existing owning SQLite transaction
+before `run_inner()` can invoke COMMIT or return success. Failure uses the existing
+rollback path and `WriterError::Journal(JournalError::MetadataQuota)` mapping.
+There is no new connection, nested transaction, post-COMMIT validation, event or
+sequence for maintenance. The effect-bearing branch and `quota()` calculator
+are unchanged. No snapshot format/hash, SQL/migration, cap, physical reserve,
+mode transition, public API, scheduler or TTS source was changed.
+
+### Harness and exact-state assertions
+
+**SOURCE-CONFIRMED:** `storage_fault_tests.rs` is registered with `#[cfg(test)]`.
+It uses the actual `activate_with_policy`, `Writers` snapshot/domain adapters,
+existing `Fault` checkpoints, and connection-local TEMP triggers. No codec,
+reducer, stream allocator, packer or finalizer is reimplemented. Four existing
+test helpers (`upgrade`, `cores`, `clean`, `state`) are shared with sibling tests.
+A read-only `#[cfg(test)] check_quota_for_test` wrapper delegates directly to
+`quota(c, limits, 0)`. The fixture's binary search asks this actual production
+function for its metadata threshold; it does not duplicate column accounting.
+No new failure hook, global mutable state or timing sleep was needed.
+
+**MEASURED:** Each fixture opens a fresh disk file in its own `tempfile::TempDir`,
+applies production steps1–9 plus the synthetic candidate10 locally, then uses
+the actual private kernel. `state()` compares typed values of every column of
+every main-schema table in deterministic order, including all domain rows,
+`sqlite_sequence`, snapshot envelopes/bytes/manifest, observer context/effects,
+fences, bundles and canonical hashes, heads and full origin/local rows.
+`clean()` checks autocommit, zero transient rows, `integrity_check=ok` and an empty
+`foreign_key_check`. Applicable failures repeat the complete comparison after
+closing the owner and safely reopening the synthetic-v10 file. Recovery never
+claims that the production v9 opener accepts v10. Existing `cores()` additionally
+strict-decodes, re-encodes and checks stored core/hash/predecessor consistency.
+
+### Q01–Q10 — new logical-quota results
+
+**MEASURED:** Before the correction, Q01/Q02/Q03/Q04/Q08/Q09 failed because
+maintenance incorrectly succeeded; Q05/Q06/Q07/Q10 controls passed (4PASS/6FAIL,
+exit101). After the correction all10 passed. No expectation was weakened.
+
+**SOURCE-CONFIRMED:** In the table, `C64` is metadata cap65,536 bytes with the
+existing logical reserve `65,536 - U_before_activation - H`. `H256` or `H1024`
+means256 or1,024 bytes of pre-activation persisted metadata headroom. Activation
+itself consumes part of it. This reserve is counter accounting only, never
+physical reservation. `D` means the unmodified test candidate: payload256MiB,
+metadata64MiB, reserveSome(0). Other limits remain candidate values. Initial
+counts/UUID timestamps can vary slightly; the retained `--nocapture` log prints
+the actual reserve and measured usage. Q07/Q10 threshold checks use the actual
+quota oracle, not a bypass of finalization.
+
+All test names have prefix `storage::journal::storage_fault_tests::`.
+
+| ID / exact test suffix | Initial budget | Operation and observed result | Persistent / journal result | Result |
+|---|---|---|---|---|
+| `q01_no_effects_finalizer_metadata_admission` | C64/H256 | Real retained sealed-origin INSERT succeeds inside transaction with0 effects; finalizer returns MetadataQuota | Exact pre-state after rollback/reopen; no bundle/tip change | PASS |
+| `q02_snapshot_allocate_metadata_quota` | C64/H256 | Typed allocate returns Journal(MetadataQuota) | No pending row, bundle or consumed sequence; exact reopen equality | PASS |
+| `q03_snapshot_capture_metadata_quota_preserves_pending` | Prepare under D, then admitted C64/H256 activation | Valid bounded capture reaches general metadata refusal, not Snapshot Limit | Pending preserved; no staged/manifest/domain/core changes; reopen equal | PASS |
+| `q04_snapshot_pack_metadata_quota_and_admitted_retry` | Materialize under D, then C64/H256 | Pack returns MetadataQuota; reopen and separately admitted D policy retries pack/verify successfully | Failed pack preserves materialized rows and no ready publication; retry emits no extra bundle | PASS |
+| `q05_healthy_snapshot_v2_lifecycle` | D | allocate/capture/pack/verify succeeds; manifest snapshotVersion=2 | Original journal exact; ready image reopens and verifies | PASS |
+| `q06_empty_and_read_only_noop_preserve_exact_state` | C64/H256 | Empty closure and SELECT succeed | Exact state unchanged, no core/effect/tip movement; clean reopen | PASS |
+| `q07_domain_finalizer_parity_and_exact_quota_boundary` | D; oracle at exact persisted U | Capture creates one core/one operation/seq1; exact U passes, U+reserve1 fails MetadataQuota | Strict existing core/hash validation; subsequent no-op has exact state equality | PASS |
+| `q08_caught_maintenance_errors_cannot_publish_partial_work` | C64/H256, then D | Composition returns Ok despite catching adapter result; outer finalizer still returns MetadataQuota. Separately swallowed second-allocate Exists remains fatal | Both failures roll back the full transaction, no partial pending row; reopen equality | PASS |
+| `q09_abort_cleanup_ready_boundary_and_already_over_cap` | D; over-cap cases C64/H256 and C64/H1024 | Pending/materialized abort works; ready abort returns Snapshot State. Already-over-cap abort fails MetadataQuota if final usage is still over, succeeds when final usage fits | Only aborted staged rows removed; ready image unchanged; no fabricated core; exact failure/reopen comparisons | PASS |
+| `q10_retained_seven_table_accounting_and_separate_row_bytes` | Seed D; actual activation with metadata65,536/reserve0 | All seven counted families populated, including sealed origin, manifest and heads; snapshot pack/verify/no-op succeeds while S and payload each exceed65,536 bytes | Separate row/core budgets preserved; exact metadata threshold and retained payload rejection use original quota function; no-op state equal | PASS |
+
+**SOURCE-CONFIRMED:** Quota rejection occurs after the composition callback
+returns; a callback cannot catch a finalizer result that has not happened yet.
+Q08 demonstrates this boundary as well as existing sticky adapter errors. Q09's
+already-over-cap setup deliberately materializes a SQL-valid synthetic image
+using the original snapshot function in a fixture-only transaction outside
+kernel admission. This is solely construction of the bad starting state, not
+an application/recovery API. The attempted recovery uses the real typed adapter
+and final quota. Reducing usage is not a privileged exception: final usage must
+fit. Changing that rule requires a separate owner decision.
+
+### F01–F10 — controlled-failure results and provenance
+
+All rows are **MEASURED**; all suffixes have the same test prefix above. Every
+listed failure uses the shared full-state/clean-close/reopen checks. Trigger
+errors are mapped by existing fixed enums; no unobserved raw SQLite code is
+claimed for those mappings.
+
+| ID / exact test suffix | Mechanism / provenance | Observed error | Rollback and reopen / retry | Result |
+|---|---|---|---|---|
+| `f01_sqlite_pager_full_code13_domain_rollback_and_reopen` | max_page_count=current113 pages; real typed20,000-char Capture; SQLITE_PAGER_FULL | Actual primary DiskFull13, extended13 from retained Store(Database) | Prior domain/core/head/tip state; autocommit; cap restored; clean exact reopen | PASS |
+| `f02_logical_injection_after_real_domain_sql_before_publication` | Fault::At(Domain), after actual SQL and observed effect; LOGICAL_INJECTION | Journal(Injected) | Full rollback/reopen; no published mutation | PASS |
+| `f03_sqlite_trigger_abort_during_actual_bundle_insert` | TEMP BEFORE INSERT trigger with RAISE(ABORT); SQLITE_TRIGGER_ABORT | Journal(BundleInsert) | Domain/effects/fences/bundles/heads/tip exact; trigger removed; clean reopen | PASS |
+| `f04_logical_injection_pre_commit_stage_and_disk_reopen` | Fault::At(Commit), after finalizer but BEFORE SQLite COMMIT; LOGICAL_INJECTION | Journal(Injected) | Appended uncommitted state fully rolled back; disk reopen exact | PASS |
+| `f05_sqlite_trigger_abort_during_snapshot_capture` | TEMP trigger fails ordinal1 only after ordinal0 exists; SQLITE_TRIGGER_ABORT | Snapshot(Sql) | Pending survives; no partial staged row; reopen exact; later capture/pack/verify succeeds | PASS |
+| `f06_sqlite_trigger_abort_at_snapshot_ready_publication` | TEMP trigger rejects ready UPDATE only when a nonempty generated manifest exists; SQLITE_TRIGGER_ABORT | Snapshot(Sql) | Original materialized bytes intact, no manifest committed; reopen exact; retry packs/verifies and reopens | PASS |
+| `f07_logical_injection_rollback_failure_poisons_owner` | Existing Fault::Rollback synthetic unconfirmed-result seam; LOGICAL_INJECTION | Journal(Rollback), then Journal(Unavailable) | query_only1; next write refused; disk reopen exact/query_only0; new admitted owner can write | PASS |
+| `f08_logical_injection_reopen_preserves_ready_snapshot_and_history` | Pre-COMMIT failure of verification transaction with ready history; LOGICAL_INJECTION | Journal(Injected) | Exact ready/history reopen; new owner verifies same staged manifest | PASS |
+| `f09_logical_injection_selected_quota_reuses_q03_reopen_proof` | Deliberately constrained logical policy; LOGICAL_INJECTION of quota budget | Journal(MetadataQuota) | Reuses Q03 directly; pending/no-partial-state proof and disk reopen | PASS |
+| `f10_sqlite_trigger_abort_removed_then_retry_keeps_hash_chain` | Bundle trigger removed after confirmed rollback; SQLITE_TRIGGER_ABORT | Journal(BundleInsert), then successful retry | Same live incarnation seq2 follows immutable seq1 with exact predecessor hash; exact disk reopen | PASS |
+
+**SOURCE-CONFIRMED:** F07's existing seam performs a SQL rollback and then
+injects an unconfirmed rollback result; it proves owner poisoning, not a physical
+rollback failure. F04/F08 are pre-COMMIT stage injections, not SQLite disk-level
+COMMIT failures. F09 reuses Q03 rather than duplicating domain/snapshot logic.
+F10 retries only after confirmed rollback; it makes no claim about blind retry
+following an uncertain COMMIT.
+
+**NOT MEASURED / PLATFORM EVIDENCE MISSING:** REAL_FILESYSTEM_FULL and
+SQLITE_IOERR_INJECTION were NOT EXECUTED. Pager FULL is not an exhausted volume;
+trigger ABORT is not FULL; logical injection is not a device fault. Genuine FULL
+or IOERR during append/COMMIT/capture/pack requires an independently reviewed
+connection-local fault VFS or disposable capped-volume harness with precise I/O
+barriers and recovery checks. No such VFS/dependency/OS-volume tooling was added.
+No process-kill, power-cut or Android/Linux durability acceptance is claimed.
+
+### Reproduction, verification and unchanged policy gates
+
+**SOURCE-CONFIRMED:** Commands run from repository root, against actual source.
+For each Cargo command below use `--locked --offline --manifest-path
+apps/arthur/src-tauri/Cargo.toml`. Every test command uses `--lib`; serial suffix
+is `-- --test-threads=1`. Add `--nocapture` after that suffix for fixture budget
+and pager-code output. Logs are retained at `%TEMP%/task14c-*.log`.
+
+**MEASURED:** Fresh Task14C gate results on this Windows host (exit codes refer
+to the actual check/test command, not its log-printing shell):
+
+| Invocation after the Cargo flags above | Exit | Result |
+|---|---:|---|
+| `check --all-targets` | 0 | PASS; existing warnings retained |
+| `test --lib storage::journal -- --test-threads=1` | 0 | 233PASS: previous213 + new20 |
+| `test --lib storage::m05_v10_tests -- --test-threads=1` | 0 | 24PASS |
+| `test --lib storage::journal::snapshot_tests -- --test-threads=1` | 0 | 28PASS |
+| `test --lib storage::journal::storage_fault_tests -- --test-threads=1 --nocapture` | 0 | 20PASS; includes exact pager13 and actual quota budgets |
+| `test --lib -- --test-threads=1` | 101 | 1,157PASS /6FAIL /22ignored |
+| Exact isolated TTS test, before implementation | 0 | 1PASS /0FAIL |
+| Exact isolated TTS test, after implementation | 0 | 1PASS /0FAIL |
+| `npm run typecheck` | 0 | PASS |
+| `npm run test:architecture` | 1 | 86PASS /2 historical FAIL |
+| `npm run arthur:check` | 0 | 561 tests /42files PASS + production frontend build PASS |
+
+**MEASURED:** Separate focused `--lib` filters all selected tests and exited0:
+`storage::journal::storage_tests::k09_` (2), `k10_` (1), `k14_` (4);
+`storage::journal::snapshot_tests::s04_`, `s05_`, `s06_`, `s08_` (1each);
+`storage::journal::expiry_tests` (18). Each abbreviated filter retains the
+preceding full module prefix. No zero-selected invocation is counted as evidence.
+
+**MEASURED:** Full-native failures, compared by exact identity, retain the same
+five supplied historical cases:
+
+1. `jev::tests::the_real_transport_posts_json_with_a_bearer_header_and_never_leaks_the_key_in_errors`
+2. `synthesis::architecture_tests::a_same_family_pass_is_wired_to_hold_for_review_and_the_shipped_verifier_is_not_called_independent`
+3. `synthesis::architecture_tests::the_real_synthesis_endpoint_is_only_reachable_through_the_production_constructor`
+4. `synthesis::eval::tests::the_corpus_is_frozen`
+5. `synthesis::tests::the_commit_time_permission_check_includes_the_synthesis_authorizations`
+
+**MEASURED:** The distinct additional full-suite failure remains
+`tts::service::tests::the_system_taking_audio_focus_ends_the_session_as_stopped_not_failed`:
+audio-file cleanup assertion sees1 rather than0. The exact command
+`cargo test --locked --offline --manifest-path apps/arthur/src-tauri/Cargo.toml
+--lib tts::service::tests::the_system_taking_audio_focus_ends_the_session_as_stopped_not_failed
+-- --exact --test-threads=1` passed both on the initial HEAD and after this diff.
+Thus Task14B's isolated failure did not reproduce in these two isolated runs,
+but the full-suite failure did reproduce. This is an open TTS regression
+investigation; neither resolution nor a cause attributable to M05 is established.
+No TTS file, assertion, fixture or timing constant was edited.
+
+**MEASURED:** Architecture failure identities remain separately:
+`schema v6: projects own captures and objects, and nothing else carries a project`;
+`voice output (M04.6): TTS goes through the provider and SecretStore layer, the audio is never persisted, and the schema is untouched`.
+Overall regression gates are not all green. The scoped dormant storage fix is
+verified; this is not release/platform acceptance.
+
+**SOURCE-CONFIRMED:** Final self-audit: the sole production-behavior change is
+`quota(c, limits, 0)?` on no-effects finalization. All other Rust changes are
+test-only registration, shared fixture visibility and the read-only quota oracle.
+Typed exact-state comparisons cover rollback and recovery; snapshot v2/hash
+verification uses original code. No new SQL owner, nested production transaction,
+COMMIT behavior change, physical-space API, growth budget or reserve policy exists.
+Production remains schema9/STEPS1–9 with no JournalKernel activation or expiry
+scheduler. Source review of the effect-bearing path found no change; correctness,
+data-loss/security and ownership self-review found no additional actionable
+finding in this diff. Independent review is still required.
+
+**CANDIDATE — OWNER APPROVAL REQUIRED:** G4-01–G4-09 and Profile A remain proposed,
+not approved. Physical-space provider/admission, real filesystem FULL/IOERR,
+Windows/Android/Linux durability acceptance, snapshot retention/retirement, live
+expiry policy/scheduler, coordinated activation, importer/security/LAN/UI remain
+open. No stage/commit/push/PR operation is part of Task14C. The historical Task14B
+measurement artifact is unchanged; new tests are permanent repository fixtures
+and do not depend on that external harness.

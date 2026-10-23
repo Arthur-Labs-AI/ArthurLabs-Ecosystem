@@ -11,7 +11,7 @@ const NOW: &str = "2026-10-22T00:00:00Z";
 fn id(n: u32) -> String {
     format!("{n:08x}-1234-4abc-8def-{n:012x}")
 }
-fn upgrade(store: &CaptureStore) {
+pub(super) fn upgrade(store: &CaptureStore) {
     let mut c = store.connection.lock().unwrap();
     let mut steps = migrations::STEPS.to_vec();
     steps.push((10, include_str!("../m05_v10.sql")));
@@ -48,7 +48,7 @@ fn insert_text(tx: &JournalTx<'_>, n: u32, text: &str) -> Result<(), E> {
     )?;
     Ok(())
 }
-fn cores(store: &CaptureStore) -> Vec<codec::JournalEvent> {
+pub(super) fn cores(store: &CaptureStore) -> Vec<codec::JournalEvent> {
     let c = store.connection.lock().unwrap();
     let mut q = c
         .prepare(
@@ -76,7 +76,7 @@ fn cores(store: &CaptureStore) -> Vec<codec::JournalEvent> {
     })
     .collect()
 }
-fn clean(store: &CaptureStore) {
+pub(super) fn clean(store: &CaptureStore) {
     let c = store.connection.lock().unwrap();
     assert!(c.is_autocommit());
     for t in ["sync_effects", "sync_write_context"] {
@@ -98,7 +98,7 @@ fn clean(store: &CaptureStore) {
         .exists([])
         .unwrap());
 }
-fn state(store: &CaptureStore) -> Vec<(String, Vec<Vec<Value>>)> {
+pub(super) fn state(store: &CaptureStore) -> Vec<(String, Vec<Vec<Value>>)> {
     let c = store.connection.lock().unwrap();
     let names = c
         .prepare("SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name")

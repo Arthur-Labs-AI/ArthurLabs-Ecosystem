@@ -39,4 +39,7 @@ mod writer_tests;
 mod storage_tests;
 
 #[cfg(test)]
+mod storage_fault_tests;
+
+#[cfg(test)]
 mod tests;

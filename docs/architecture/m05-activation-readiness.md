@@ -22,6 +22,7 @@ Status: DORMANT NATIVE ADAPTERS IMPLEMENTED (MA-01/MA-02 and Task 14A). Producti
 | Transient rows cleaned after successful tx | COMPLETE | `stream::empty` + context/effects cleanup asserted in every `cores` audit |
 | No signer/pairing/network needed for local saves | COMPLETE | journal/storage/snapshot import only `std`, `serde_*`, `rusqlite`, `uuid`, `time` |
 | Aggregate G4 quota/reserve policy | OWNER APPROVAL REQUIRED / NOT ACTIVATED | [Task 14B decision package](m05-g4-quota-reserve-decision.md): source audit, synthetic measurements and individual G4-01–G4-09 proposals. `Limits.reserve` is logical metadata accounting, not filesystem capacity admission; physical enforcement and platform durability remain open. |
+| G4-F01 maintenance logical-quota bypass | FIXED AND TESTED (DORMANT) | Task 14C: no-effects finalization calls the existing `quota()` before COMMIT. Q01–Q10 and F01–F10 exercise real kernel/snapshot paths on synthetic v10; see the dated decision-package addendum. |
 | Platform crash/background gates | PLATFORM EVIDENCE REQUIRED | Synthetic fault injection only (Fault::At/Rollback/Exhausted/DeferredCommit); no OS kill evidence claimed |
 
 ## 2. Proposed coordinated activation patch (NOT APPLIED)
@@ -85,3 +86,26 @@ and scheduler wiring; G4 physical-disk quota/reserve approval; platform
 crash/durability proof; snapshot retention/retirement policy; coordinated
 activation approval; future importer/security/LAN/UI work. Production v10
 activation has NOT been performed. No readiness claim here closes these gates.
+
+## 7. Task 14C scope and evidence boundary (2026-10-23)
+
+G4-F01 maintenance logical-quota bypass: **FIXED AND TESTED (DORMANT)**.
+The no-effects branch preserves context cleanup and `stream::empty()`, then
+checks the same persisted logical quota before returning to the owning COMMIT.
+Effect-bearing finalization, quota arithmetic, snapshot v2, SQL guards and
+candidate limits are unchanged. Snapshot-only work emits no domain event.
+
+The new test-only storage-fault suite uses actual adapters, full typed SQL-row
+comparisons, integrity/FK checks and close/reopen of disposable synthetic v10
+files. Pager `max_page_count` produces observed SQLITE_FULL code13; TEMP trigger
+aborts and pre-COMMIT/rollback-result injections are separately classified.
+These are controlled failures, not physical filesystem durability acceptance.
+Already-over-cap maintenance is admitted only if its final state satisfies
+the existing quota; a reduction still above the cap rolls back without a bypass.
+
+**G4 PHYSICAL POLICY: OWNER APPROVAL PENDING. Physical free-space admission:
+NOT IMPLEMENTED. Real filesystem-full and VFS IOERR tests: NOT EXECUTED.
+Production v10 activation: NOT PERFORMED.** Profile A, G4-01–G4-09,
+Windows/Android/Linux durability acceptance, snapshot retention/retirement,
+live expiry policy/scheduler, coordinated activation and future
+importer/security/LAN/UI remain independent open gates.
