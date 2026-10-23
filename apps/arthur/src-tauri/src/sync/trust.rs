@@ -11,6 +11,9 @@ impl VerifiedSession {
     pub fn binding(&self) -> &PeerHello {
         &self.hello
     }
+    pub fn origins(&self) -> impl Iterator<Item = Uuid> + '_ {
+        self.origins.iter().copied()
+    }
     pub fn permits(&self, origin: Uuid) -> bool {
         self.origins.contains(&origin)
     }

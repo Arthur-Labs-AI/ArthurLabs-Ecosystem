@@ -157,12 +157,14 @@ impl History {
 }
 
 pub(super) fn stored_head(c: &Connection, key: &HeadKey) -> Result<Option<(String, Vec<u8>)>> {
-    c.query_row("SELECT event_id,state_hash FROM sync_entity_heads WHERE entity_kind=?1 AND entity_key=?2 AND facet=?3",
-        params![key.0.as_str(),sql::key_json(&key.1)?,key.2],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(|_|E::Sql)
+    let local=c.query_row("SELECT event_id,state_hash FROM sync_entity_heads WHERE entity_kind=?1 AND entity_key=?2 AND facet=?3",
+        params![key.0.as_str(),sql::key_json(&key.1)?,key.2],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(|_|E::Sql)?;
+    if local.is_some(){Ok(local)}else{super::g3::head(c,key)}
 }
 
 fn recover_history(c: &Connection, budget: u64) -> Result<History> {
-    let mut result = History::default();
+    let mut result = super::g3::replay(c)?;
+    check_cache_bound(&result,0,budget)?;
     let mut tips: BTreeMap<(String, String), (i64, [u8; 32])> = BTreeMap::new();
     let mut q=c.prepare("SELECT event_id,bundle_id,origin_id,incarnation,origin_seq,canonical_bytes,canonical_hash,previous_hash,raw_effect_count,committed_at FROM sync_bundles ORDER BY rowid").map_err(|_|E::Sql)?;
     let mut rows = q.query([]).map_err(|_| E::Sql)?;
@@ -238,8 +240,10 @@ fn recover_history(c: &Connection, budget: u64) -> Result<History> {
     if !tips.is_empty() {
         return Err(E::CorruptCapability);
     }
+    let foreign=super::g3::installed(c).map_err(|_|E::Sql)?;
+    let query=if foreign {"SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads UNION ALL SELECT entity,key_json,facet,event,hash FROM import_g3_heads g WHERE NOT EXISTS(SELECT 1 FROM sync_entity_heads h WHERE h.entity_kind=g.entity AND h.entity_key=g.key_json AND h.facet=g.facet)"}else{"SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads"};
     let mut heads = c
-        .prepare("SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads")
+        .prepare(query)
         .map_err(|_| E::Sql)?;
     let mut rows = heads.query([]).map_err(|_| E::Sql)?;
     let mut count = 0;
@@ -419,6 +423,23 @@ pub(super) fn initialize(c: &Connection, now: &str, budget: u64) -> Result<Strea
 }
 
 impl Stream {
+    /// Import commits may arrive while this local kernel remains alive. Only
+    /// new foreign creations are merged; existing local facet selections win.
+    /// Rebuild from retained originals under the same owner lock, without
+    /// rotating the local origin/incarnation or manufacturing a local event.
+    pub fn refresh_imports(&mut self,c:&Connection,budget:u64)->Result<()> {
+        let foreign=super::g3::replay(c)?;
+        for (key,reference) in foreign.records {
+            if let Some(prior)=self.history.records.get(&key){
+                if prior!=&reference{return Err(E::CorruptCapability)}
+            }else{
+                if self.history.removed.contains(&key)||self.legacy.contains_key(&key){return Err(E::CorruptCapability)}
+                self.history.records.insert(key,reference);
+            }
+        }
+        for (key,head) in foreign.heads {self.history.heads.entry(key).or_insert(head);}
+        check_cache_bound(&self.history,0,budget)
+    }
     pub fn admit_cache(
         &self,
         ops: &[Operation],

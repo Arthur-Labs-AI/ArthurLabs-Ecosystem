@@ -60,6 +60,7 @@ impl Peer {
         }
     }
     fn trust(&self, session: Uuid, origins: &BTreeSet<Uuid>) -> TestTrust {
+        crate::storage::sync_store::grant_test_origins(&self.store, self.other, origins);
         TestTrust {
             hello: self.hello(session),
             expires: 100,
@@ -449,9 +450,9 @@ fn d11_native_dependencies_have_no_ui_network_or_provider_execution() {
             "import may not execute {forbidden}"
         );
     }
-    assert!(
-        include_str!("../sync/trust.rs").contains("#[cfg(test)]\nimpl TrustVerifier for TestTrust")
-    );
+    assert!(include_str!("../sync/trust.rs")
+        .replace("\r\n", "\n")
+        .contains("#[cfg(test)]\nimpl TrustVerifier for TestTrust"));
 }
 #[test]
 fn d12_late_ledger_failure_and_expired_commit_roll_back_all_receipts_and_cursors() {
@@ -579,6 +580,7 @@ fn d13_large_real_journal_event_is_atomic_and_all_chunk_faults_are_nonpublicatio
         let db = CandidateSyncStore::synthetic(&b.store);
         let clock = Clock::default();
         let cancel = Cancellation::default();
+        b.trust(SESSION, &ids); // Provision durable test permissions before the mutation oracle.
         let before = f::state(&b.store);
         let (mut engine, mut ta) = negotiate_receiver(&db, &a, &b, &clock, &cancel, &ids);
         let mut chunks = chunk_event(&e);
@@ -786,7 +788,7 @@ fn d17_synthetic_extension_limits_immutable_evidence_and_never_registers_product
             &Clock::default(),
             &Cancellation::default()
         ),
-        Err(Error::Limit)
+        Err(Error::StorageLimited)
     ));
     assert_eq!(f::state(&b.store), before);
     drop(db);
@@ -1134,6 +1136,8 @@ fn d23_revocation_between_large_event_chunks_stops_further_disclosure() {
     let mut eb = SyncEngine::start(&db, tb, &b.trust(SESSION, &ids), &clock, &cancel).unwrap();
     ea.tick().unwrap();
     eb.tick().unwrap();
+    ea.tick().unwrap(); // remote summary
+    eb.tick().unwrap(); // request advertised source
     assert_eq!(ea.tick(), Err(Error::Trust));
     assert_eq!(
         link.borrow().queues[1]
@@ -1176,4 +1180,738 @@ fn d24_collision_against_a_local_core_keeps_needs_attention_after_restart() {
             .unwrap()
             .needs_attention
     );
+}
+
+#[test]
+fn g3_15_clean_echo_does_not_create_attention() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::captures(&a.store, &["clean"]);
+    let event = test_events(&a.store).remove(0);
+    let allowed = origins(&a, &b);
+    let clock = Clock::default();
+    let cancel = Cancellation::default();
+    let store = CandidateSyncStore::synthetic(&a.store);
+    let (ta, mut tb, _) = FakeTransport::pair(a.hello(SESSION), b.hello(SESSION));
+    let mut engine =
+        SyncEngine::start(&store, ta, &a.trust(SESSION, &allowed), &clock, &cancel).unwrap();
+    let message = |payload| Message {
+        network: NETWORK,
+        session: SESSION,
+        from: B,
+        to: A,
+        payload,
+    };
+    tb.send(message(Payload::Hello {
+        version: 1,
+        required: FEATURES,
+        supported: FEATURES,
+        profile: "m05-ledger-candidate".into(),
+    }))
+    .unwrap();
+    engine.tick().unwrap();
+    for c in chunk_event(&event) {
+        tb.send(message(Payload::Chunk(c))).unwrap();
+        engine.tick().unwrap();
+    }
+    assert!(
+        !engine.needs_attention,
+        "a confirmed already-applied event is clean"
+    );
+}
+#[test]
+fn g3_11_large_local_inventory_remains_available() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    let texts = vec!["page"; 257];
+    f::captures(&a.store, &texts);
+    let allowed = origins(&a, &b);
+    let store = CandidateSyncStore::synthetic(&a.store);
+    assert!(store
+        .summary(
+            &context(&a, &allowed),
+            &Clock::default(),
+            &Cancellation::default()
+        )
+        .is_ok());
+}
+
+#[test]
+fn g3_01_02_03_04_07_16_real_domain_union_original_provenance_and_local_continuation() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::install_g3(&a.store);
+    f::install_g3(&b.store);
+    let (pa, ca) = f::project_and_capture(&a.store, "Project A", "А́ 😀\u{200d}🚀\n原文\tß");
+    let (pb, cb) = f::project_and_capture(&b.store, "Project B", "B original");
+    let original_a = test_events(&a.store);
+    let original_b = test_events(&b.store);
+    let allowed = origins(&a, &b);
+    let clock = Clock::default();
+    let cancel = Cancellation::default();
+    {
+        let sa = CandidateSyncStore::synthetic(&a.store);
+        let sb = CandidateSyncStore::synthetic(&b.store);
+        let (ta, tb, link) = FakeTransport::pair(a.hello(SESSION), b.hello(SESSION));
+        link.borrow_mut().lose_receipt = 1;
+        let mut ea =
+            SyncEngine::start(&sa, ta, &a.trust(SESSION, &allowed), &clock, &cancel).unwrap();
+        let mut eb =
+            SyncEngine::start(&sb, tb, &b.trust(SESSION, &allowed), &clock, &cancel).unwrap();
+        pump(&mut ea, &mut eb);
+        assert!(!ea.needs_attention && !eb.needs_attention);
+        for (s, ctx) in [(&sa, context(&a, &allowed)), (&sb, context(&b, &allowed))] {
+            assert!(!s.summary(&ctx, &clock, &cancel).unwrap().needs_attention);
+        }
+    }
+    let a = a.reopen();
+    let b = b.reopen();
+    for p in [&a, &b] {
+        assert_eq!(p.count("captures"), 2);
+        assert_eq!(p.count("sync_bundles"), 2);
+        assert_eq!(p.count("import_g3_commits"), 2);
+        assert_eq!(
+            p.store
+                .query_i64_for_test("SELECT max(applied) FROM import_progress"),
+            2
+        );
+        assert_eq!(
+            p.store.get_capture(&ca).unwrap(),
+            a.store.get_capture(&ca).unwrap()
+        );
+        assert_eq!(
+            p.store.get_capture(&cb).unwrap(),
+            b.store.get_capture(&cb).unwrap()
+        );
+        for e in original_a.iter().chain(&original_b) {
+            let held = test_events(&p.store)
+                .into_iter()
+                .find(|r| r.identity == e.identity)
+                .unwrap();
+            assert_eq!(held.bytes, e.bytes);
+        }
+    }
+    // Local dependencies now cite the FOREIGN creation, never legacy or echo.
+    f::capture_in(&b.store, &pa, "local after foreign project");
+    f::capture_in(&a.store, &pb, "local after foreign project");
+    let after = test_events(&b.store);
+    let last = after
+        .iter()
+        .find(|e| {
+            e.identity.origin == original_b[0].identity.origin
+                && e.identity.incarnation != original_b[0].identity.incarnation
+        })
+        .unwrap();
+    let core = ValidatedEvent::parse(last.clone()).unwrap();
+    assert!(core.core().dependencies.iter().any(|d| d
+        .event_ref
+        .as_ref()
+        .is_some_and(|r| r.event_id == original_a[0].identity.event.to_string())));
+    a.reopen();
+    b.reopen();
+}
+#[test]
+fn g3_05_10_reprocess_is_atomic_resumable_and_epoch_bound() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::captures(&a.store, &["retained before policy"]);
+    let event = test_events(&a.store).remove(0);
+    let allowed = origins(&a, &b);
+    let s = context(&b, &allowed);
+    assert_eq!(
+        receive(&CandidateSyncStore::synthetic(&b.store), &s, &event).outcome,
+        Outcome::UnsupportedImportPolicy
+    );
+    let b = b.reopen();
+    f::install_g3(&b.store);
+    assert!(crate::storage::sync_store::test_refuses(
+        &b.store,
+        "UPDATE import_events SET outcome='applied'"
+    ));
+
+    b.store.execute_sql_for_test("CREATE TEMP TRIGGER g3_fault BEFORE UPDATE OF outcome ON import_events WHEN NEW.outcome='applied' BEGIN SELECT RAISE(ABORT,'late fault');END;");
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    let before = f::state(&b.store);
+    assert!(matches!(
+        adapter.reprocess(&s, &Clock::default(), &Cancellation::default()),
+        Err(Error::Storage)
+    ));
+    assert_eq!(before, f::state(&b.store));
+    assert_eq!(b.count("captures"), 0);
+    b.store.execute_sql_for_test("DROP TRIGGER g3_fault;");
+    drop(adapter);
+    let b = b.reopen();
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    b.store
+        .execute_sql_for_test("UPDATE import_members SET enabled=0;");
+    assert_eq!(
+        adapter.reprocess(&s, &Clock::default(), &Cancellation::default()),
+        Err(Error::Trust)
+    );
+    assert_eq!(b.count("captures"), 0);
+    b.store
+        .execute_sql_for_test("UPDATE import_members SET enabled=1;");
+    assert_eq!(
+        adapter
+            .reprocess(&s, &Clock::default(), &Cancellation::default())
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        adapter
+            .reprocess(&s, &Clock::default(), &Cancellation::default())
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        receive(&adapter, &s, &event).outcome,
+        Outcome::CleanlyApplied
+    );
+    assert_eq!(b.count("captures"), 1);
+    assert_eq!(b.count("sync_bundles"), 0);
+    drop(adapter);
+    b.reopen();
+}
+#[test]
+fn g3_06_17_guards_dependency_order_and_no_import_privilege_in_local_sql() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::install_g3(&b.store);
+    let (project, _) = f::project_and_capture(&a.store, "Causal project", "child");
+    let events = test_events(&a.store);
+    let allowed = origins(&a, &b);
+    let s = context(&b, &allowed);
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    assert_eq!(
+        receive(&adapter, &s, &events[1]).outcome,
+        Outcome::DeferredDependency
+    );
+    assert_eq!(b.count("captures"), 0);
+    assert!(f::guard_refuses_capture(&b.store, &events[1]));
+    assert_eq!(
+        receive(&adapter, &s, &events[0]).outcome,
+        Outcome::CleanlyApplied
+    );
+    for _ in 0..3 {
+        adapter
+            .reprocess(&s, &Clock::default(), &Cancellation::default())
+            .unwrap();
+    }
+    assert_eq!(b.count("captures"), 1);
+    // The committed observer SQL is EXACTLY the frozen source after exceptions.
+    f::assert_insert_observers_frozen(&b.store);
+    assert!(crate::storage::sync_store::test_refuses(&b.store,"INSERT INTO captures(id,source,content,created_at,project_id) VALUES('forged','text','x','now','00000000-0000-4000-8000-000000000001')"));
+    assert!(crate::storage::sync_store::test_refuses(
+        &b.store,
+        "SELECT arthur_g3_row('captures','{}')"
+    ));
+    drop(adapter);
+    f::capture_in(&b.store, &project, "ordinary local");
+    b.reopen();
+}
+#[test]
+fn g3_07_long_lived_local_kernel_observes_committed_foreign_dependencies() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::install_g3(&b.store);
+    let (project, _) = f::project_and_capture(&a.store, "Live owner project", "source");
+    let events = test_events(&a.store);
+    let s = context(&b, &origins(&a, &b));
+    f::held_kernel_continues(&b.store, &project, || {
+        let adapter = CandidateSyncStore::synthetic(&b.store);
+        assert_eq!(
+            receive(&adapter, &s, &events[0]).outcome,
+            Outcome::CleanlyApplied
+        );
+    });
+    b.reopen();
+}
+#[test]
+fn g3_11_paginated_257_source_disconnect_resume_and_exact_storage_pause() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::install_g3(&b.store);
+    f::captures(&a.store, &vec!["bounded source"; 257]);
+    let allowed = origins(&a, &b);
+    let clock = Clock::default();
+    let cancel = Cancellation::default();
+    for session in [SESSION, Uuid::from_u128(700)] {
+        let sa = CandidateSyncStore::synthetic(&a.store);
+        let sb = CandidateSyncStore::synthetic(&b.store);
+        let (ta, tb, link) = FakeTransport::pair(a.hello(session), b.hello(session));
+        let mut ea =
+            SyncEngine::start(&sa, ta, &a.trust(session, &allowed), &clock, &cancel).unwrap();
+        let mut eb =
+            SyncEngine::start(&sb, tb, &b.trust(session, &allowed), &clock, &cancel).unwrap();
+        let mut paused = false;
+        for _ in 0..2048 {
+            ea.tick().unwrap();
+            match eb.tick() {
+                Ok(_) => {}
+                Err(Error::StorageLimited) => {
+                    paused = true;
+                    assert_eq!(eb.status, SyncStatus::StorageLimited);
+                    assert!(eb.needs_attention);
+                    assert_eq!(eb.tick(), Err(Error::StorageLimited));
+                    break;
+                }
+                Err(e) => panic!("unexpected {e:?}"),
+            }
+            if session == SESSION && b.count("captures") >= 70 {
+                link.borrow_mut().online = false;
+                assert_eq!(ea.tick(), Err(Error::Disconnected));
+                break;
+            }
+        }
+        if session != SESSION {
+            assert!(paused);
+        }
+    }
+    assert_eq!(b.count("import_events"), 256);
+    assert_eq!(b.count("captures"), 256);
+    assert_eq!(b.count("import_g3_commits"), 256);
+    assert_eq!(
+        b.store
+            .query_i64_for_test("SELECT max(applied) FROM import_progress"),
+        256
+    );
+    assert_eq!(
+        a.store.query_i64_for_test(
+            "SELECT count(*) FROM import_sent WHERE seq=257 AND outcome='offered'"
+        ),
+        1
+    );
+    assert_eq!(
+        a.store
+            .query_i64_for_test("SELECT coalesce(max(applied),0) FROM import_delivery"),
+        256
+    );
+    b.reopen();
+    a.reopen();
+}
+#[test]
+fn g3_12_durable_origin_revocation_blocks_existing_session_before_mutation() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::install_g3(&b.store);
+    f::captures(&a.store, &["origin revoked"]);
+    let event = test_events(&a.store).remove(0);
+    let s = context(&b, &origins(&a, &b));
+    b.store
+        .execute_sql_for_test("UPDATE import_origin_permissions SET enabled=0;");
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    assert!(matches!(
+        adapter.retain(
+            &s,
+            ValidatedEvent::parse(event).unwrap(),
+            &Clock::default(),
+            &Cancellation::default()
+        ),
+        Err(Error::Trust)
+    ));
+    assert_eq!(b.count("captures"), 0);
+    assert_eq!(b.count("import_events"), 0);
+}
+#[test]
+fn g3_14_recall_polling_after_import_never_embeds_captures_or_calls_models() {
+    use crate::recall::{
+        settings::SemanticSettings,
+        testing::{run, ConceptEmbedder},
+        RecallService,
+    };
+    use std::sync::Arc;
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::install_g3(&b.store);
+    f::captures(&a.store, &["no automatic work"]);
+    let embedder = Arc::new(ConceptEmbedder::plain(64));
+    let settings = Arc::new(SemanticSettings::new(b.dir.path().join("semantic.json")));
+    let service = RecallService::new(embedder.clone(), settings);
+    service.settings().set(service.model_key(), true).unwrap();
+    let s = context(&b, &origins(&a, &b));
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    receive(&adapter, &s, &test_events(&a.store)[0]);
+    let report = run(service.index_pending(&b.store, 16)).unwrap();
+    assert_eq!(report.embedded, 0);
+    assert_eq!(embedder.request_count(), 0);
+    assert_eq!(b.count("distillation_runs"), 0);
+    assert_eq!(b.count("knowledge_objects"), 0);
+    assert_eq!(b.count("revision_proposals"), 0);
+    // Native importer has no route to command/subscription/provider execution.
+    let source = include_str!("journal/g3.rs");
+    for forbidden in [
+        "crate::providers",
+        "crate::commands",
+        "crate::jev",
+        "crate::distillation",
+        "crate::evolution",
+        "crate::graph",
+        "tauri::",
+        "std::process",
+        "std::fs",
+    ] {
+        assert!(!source.contains(forbidden));
+    }
+}
+#[test]
+fn g3_05_commit_failure_rolls_back_real_domain_and_poisons_without_applied_ack() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::install_g3(&b.store);
+    f::captures(&a.store, &["commit must fail"]);
+    let s = context(&b, &origins(&a, &b));
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    b.store.execute_sql_for_test("CREATE TABLE g3_deferred(peer TEXT REFERENCES import_members(peer) DEFERRABLE INITIALLY DEFERRED);CREATE TEMP TRIGGER g3_commit AFTER INSERT ON import_progress BEGIN INSERT INTO g3_deferred VALUES('absent');END;");
+    let before = f::state(&b.store);
+    assert!(matches!(
+        adapter.retain(
+            &s,
+            ValidatedEvent::parse(test_events(&a.store).remove(0)).unwrap(),
+            &Clock::default(),
+            &Cancellation::default()
+        ),
+        Err(Error::Storage)
+    ));
+    assert_eq!(f::state(&b.store), before);
+    assert_eq!(b.count("captures"), 0);
+    assert_eq!(b.count("import_g3_commits"), 0);
+    assert_eq!(
+        adapter.reprocess(&s, &Clock::default(), &Cancellation::default()),
+        Err(Error::Storage)
+    );
+    drop(adapter);
+    b.reopen();
+}
+#[test]
+fn g3_17_exact_native_row_capability_cannot_authorize_trigger_fanout() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::install_g3(&b.store);
+    f::captures(&a.store, &["authorized row"]);
+    let s = context(&b, &origins(&a, &b));
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    b.store.execute_sql_for_test("CREATE TEMP TRIGGER g3_fanout AFTER INSERT ON captures BEGIN INSERT INTO captures(id,source,content,created_at,project_id) VALUES('bbbbbbbb-1111-4111-8111-111111111111','text','forged fanout','2026-10-23T00:00:00Z','00000000-0000-4000-8000-000000000001');END;");
+    assert!(matches!(
+        adapter.retain(
+            &s,
+            ValidatedEvent::parse(test_events(&a.store).remove(0)).unwrap(),
+            &Clock::default(),
+            &Cancellation::default()
+        ),
+        Err(Error::Storage)
+    ));
+    assert_eq!(b.count("captures"), 0);
+    assert_eq!(b.count("import_events"), 0);
+    f::assert_insert_observers_frozen(&b.store);
+    b.store.execute_sql_for_test("DROP TRIGGER g3_fanout");
+    assert_eq!(
+        receive(&adapter, &s, &test_events(&a.store)[0]).outcome,
+        Outcome::CleanlyApplied
+    );
+    f::assert_insert_observers_frozen(&b.store);
+}
+#[test]
+fn g3_08_09_18_complex_historical_heads_reviews_and_archived_children_remain_blocked() {
+    let a = Peer::graph(A, B);
+    let b = Peer::graph(B, A);
+    f::install_g3(&b.store);
+    f::review_shared(&a.store, true);
+    f::review_shared(&b.store, false);
+    let s = context(&b, &origins(&a, &b));
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    let before = f::domain_state(&b.store);
+    assert_eq!(
+        receive(&adapter, &s, &test_events(&a.store)[0]).outcome,
+        Outcome::ConflictRetained
+    );
+    assert_eq!(f::domain_state(&b.store), before);
+    assert_eq!(b.count("import_g3_commits"), 0);
+    drop(adapter);
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::install_g3(&b.store);
+    f::project_capture(&a.store);
+    f::archive(&b.store);
+    let s = context(&b, &origins(&a, &b));
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    assert_eq!(
+        receive(&adapter, &s, &test_events(&a.store)[0]).outcome,
+        Outcome::ConflictRetained
+    );
+    assert_eq!(b.count("captures"), 0);
+    assert!(matches!(
+        CandidateSyncStore::production(&b.store),
+        Err(Error::ActivationPending)
+    ));
+    assert!(matches!(
+        ClosedTrust.verify(&b.hello(SESSION)),
+        Err(Error::Trust)
+    ));
+}
+#[test]
+fn g3_10_reprocess_batches_resume_from_disk_without_outcome_only_upgrade() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::captures(&a.store, &vec!["later policy"; 33]);
+    let events = test_events(&a.store);
+    let s = context(&b, &origins(&a, &b));
+    {
+        let adapter = CandidateSyncStore::synthetic(&b.store);
+        for e in &events {
+            assert_eq!(
+                receive(&adapter, &s, e).outcome,
+                Outcome::UnsupportedImportPolicy
+            );
+        }
+    }
+    f::install_g3(&b.store);
+    {
+        let adapter = CandidateSyncStore::synthetic(&b.store);
+        assert_eq!(
+            adapter
+                .reprocess(&s, &Clock::default(), &Cancellation::default())
+                .unwrap(),
+            REPROCESS_BATCH
+        );
+    }
+    assert_eq!(b.count("captures"), 16);
+    assert_eq!(b.count("import_g3_commits"), 16);
+    let b = b.reopen();
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    assert_eq!(
+        adapter
+            .reprocess(&s, &Clock::default(), &Cancellation::default())
+            .unwrap(),
+        16
+    );
+    assert_eq!(
+        adapter
+            .reprocess(&s, &Clock::default(), &Cancellation::default())
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        adapter
+            .reprocess(&s, &Clock::default(), &Cancellation::default())
+            .unwrap(),
+        0
+    );
+    assert_eq!(b.count("captures"), 33);
+    assert_eq!(b.count("import_g3_commits"), 33);
+    assert_eq!(b.count("sync_bundles"), 0);
+    assert!(
+        !adapter
+            .summary(&s, &Clock::default(), &Cancellation::default())
+            .unwrap()
+            .needs_attention
+    );
+    drop(adapter);
+    b.reopen();
+}
+#[test]
+fn g3_05_12_lease_expiry_immediately_before_commit_rolls_back_materialization() {
+    struct Expire(Cell<usize>);
+    impl SyncClock for Expire {
+        fn now(&self) -> u64 {
+            let n = self.0.get();
+            self.0.set(n + 1);
+            if n < 2 {
+                0
+            } else {
+                100
+            }
+        }
+    }
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::captures(&a.store, &["expiry before commit"]);
+    let event = test_events(&a.store).remove(0);
+    let s = context(&b, &origins(&a, &b));
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    receive(&adapter, &s, &event);
+    f::install_g3(&b.store);
+    let before = f::state(&b.store);
+    let clock = Expire(Cell::new(0));
+    assert_eq!(
+        adapter.reprocess(&s, &clock, &Cancellation::default()),
+        Err(Error::Trust)
+    );
+    assert_eq!(clock.0.get(), 3);
+    assert_eq!(before, f::state(&b.store));
+    assert_eq!(b.count("captures"), 0);
+    assert_eq!(b.count("import_g3_commits"), 0);
+    f::assert_insert_observers_frozen(&b.store);
+}
+#[test]
+fn g3_13_original_unicode_span_outside_capture_is_terminally_rejected() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::install_g3(&b.store);
+    f::review_history(&a.store);
+    let events = test_events(&a.store);
+    let s = context(&b, &origins(&a, &b));
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    assert_eq!(
+        receive(&adapter, &s, &events[0]).outcome,
+        Outcome::CleanlyApplied
+    );
+    let mut core = ValidatedEvent::parse(events[1].clone())
+        .unwrap()
+        .core()
+        .clone();
+    let mut changed = false;
+    for op in &mut core.operations {
+        if let codec::Operation::RecordCreate(row) = op {
+            if row.after.contains_key("source_end") {
+                row.after.insert(
+                    "source_end".into(),
+                    codec::FieldValue::Decimal("999999".into()),
+                );
+                changed = true;
+            }
+        }
+    }
+    assert!(changed);
+    let bad = from_core(core);
+    assert_eq!(
+        receive(&adapter, &s, &bad).outcome,
+        Outcome::RejectedIntegrity
+    );
+    assert_eq!(
+        adapter
+            .reprocess(&s, &Clock::default(), &Cancellation::default())
+            .unwrap(),
+        0
+    );
+    assert_eq!(b.count("captures"), 1);
+    assert_eq!(b.count("knowledge_objects"), 0);
+    assert_eq!(b.count("import_g3_commits"), 1);
+    b.reopen();
+}
+#[test]
+fn g3_10_reconnect_refreshes_sender_receipts_after_receiver_policy_upgrade() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::captures(&a.store, &vec!["old unsupported receipt"; 5]);
+    run_pair(&a, &b, SESSION);
+    f::install_g3(&b.store);
+    let allowed = origins(&a, &b);
+    let context_b = context(&b, &allowed);
+    {
+        let adapter = CandidateSyncStore::synthetic(&b.store);
+        assert_eq!(
+            adapter
+                .reprocess(&context_b, &Clock::default(), &Cancellation::default())
+                .unwrap(),
+            5
+        );
+    }
+    let a = a.reopen();
+    let b = b.reopen();
+    let sa = CandidateSyncStore::synthetic(&a.store);
+    let sb = CandidateSyncStore::synthetic(&b.store);
+    let clock = Clock::default();
+    let cancel = Cancellation::default();
+    let session = Uuid::from_u128(4040);
+    let (ta, tb, _) = FakeTransport::pair(a.hello(session), b.hello(session));
+    let mut ea = SyncEngine::start(&sa, ta, &a.trust(session, &allowed), &clock, &cancel).unwrap();
+    let mut eb = SyncEngine::start(&sb, tb, &b.trust(session, &allowed), &clock, &cancel).unwrap();
+    pump(&mut ea, &mut eb);
+    assert_eq!(
+        a.store
+            .query_i64_for_test("SELECT count(*) FROM import_sent WHERE outcome='applied'"),
+        5
+    );
+    assert_eq!(
+        a.store
+            .query_i64_for_test("SELECT max(applied) FROM import_delivery"),
+        5
+    );
+    assert!(!ea.needs_attention && !eb.needs_attention);
+    assert_eq!(b.count("captures"), 5);
+    assert_eq!(b.count("sync_bundles"), 0);
+}
+#[test]
+fn g3_05_large_chunked_multirow_import_rolls_back_as_one_domain_transaction() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::install_g3(&b.store);
+    f::large(&a.store);
+    let event = test_events(&a.store).remove(0);
+    assert!(event.bytes.len() > MAX_FRAME);
+    let allowed = origins(&a, &b);
+    let s = context(&b, &allowed);
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    b.store.execute_sql_for_test("CREATE TEMP TRIGGER g3_second BEFORE INSERT ON captures WHEN (SELECT count(*) FROM captures)>=1 BEGIN SELECT RAISE(ABORT,'second row failure');END;");
+    assert!(matches!(
+        adapter.retain(
+            &s,
+            ValidatedEvent::parse(event.clone()).unwrap(),
+            &Clock::default(),
+            &Cancellation::default()
+        ),
+        Err(Error::Storage)
+    ));
+    assert_eq!(b.count("captures"), 0);
+    assert_eq!(b.count("import_events"), 0);
+    assert_eq!(b.count("import_g3_commits"), 0);
+    f::assert_insert_observers_frozen(&b.store);
+    b.store.execute_sql_for_test("DROP TRIGGER g3_second;");
+    drop(adapter);
+    let sa = CandidateSyncStore::synthetic(&a.store);
+    let sb = CandidateSyncStore::synthetic(&b.store);
+    let clock = Clock::default();
+    let cancel = Cancellation::default();
+    let (ta, tb, _) = FakeTransport::pair(a.hello(SESSION), b.hello(SESSION));
+    let mut ea = SyncEngine::start(&sa, ta, &a.trust(SESSION, &allowed), &clock, &cancel).unwrap();
+    let mut eb = SyncEngine::start(&sb, tb, &b.trust(SESSION, &allowed), &clock, &cancel).unwrap();
+    pump(&mut ea, &mut eb);
+    assert_eq!(b.count("captures"), 60);
+    assert_eq!(b.count("import_events"), 1);
+    assert_eq!(b.count("import_g3_commits"), 1);
+    assert_eq!(b.count("sync_bundles"), 0);
+    assert!(!ea.needs_attention && !eb.needs_attention);
+    assert_eq!(test_events(&b.store)[0].bytes, event.bytes);
+    drop(ea);
+    drop(eb);
+    drop(sa);
+    drop(sb);
+    b.reopen();
+}
+#[test]
+fn g3_10_forward_d1_upgrade_never_invents_historical_authorization() {
+    let a = Peer::new(A, B);
+    let b = Peer::new(B, A);
+    f::captures(&a.store, &["old D1 retained original"]);
+    let allowed = origins(&a, &b);
+    let event = test_events(&a.store).remove(0);
+    let s = context(&b, &allowed);
+    assert_eq!(
+        receive(&CandidateSyncStore::synthetic(&b.store), &s, &event).outcome,
+        Outcome::UnsupportedImportPolicy
+    );
+    // Restore exactly the old D1 schema surface: the D2 epoch/grant tables did
+    // not exist. Domain data is untouched; the actual old unsupported core stays.
+    b.store.execute_sql_for_test("DROP TRIGGER import_event_epoch_fixed;DROP TRIGGER import_event_epoch_retained;DROP TABLE import_event_epochs;DROP TABLE import_origin_permissions;");
+    f::install_g3(&b.store);
+    let s = context(&b, &allowed);
+    let adapter = CandidateSyncStore::synthetic(&b.store);
+    assert_eq!(
+        adapter
+            .reprocess(&s, &Clock::default(), &Cancellation::default())
+            .unwrap(),
+        0
+    );
+    assert_eq!(b.count("import_event_epochs"), 0);
+    assert_eq!(b.count("captures"), 0);
+    assert_eq!(
+        receive(&adapter, &s, &event).outcome,
+        Outcome::CleanlyApplied
+    );
+    assert_eq!(b.count("import_event_epochs"), 1);
+    assert_eq!(b.count("captures"), 1);
+    assert_eq!(b.count("sync_bundles"), 0);
+    assert_eq!(test_events(&b.store)[0].bytes, event.bytes);
+    drop(adapter);
+    b.reopen();
 }

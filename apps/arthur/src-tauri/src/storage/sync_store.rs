@@ -1,10 +1,10 @@
-//! Candidate import ledger: no domain SQL writes, no observer/guard exceptions.
-//! Release construction is blocked by G3/G4 and identity activation decisions.
+//! Candidate import ledger and narrow native G3 materialization dispatcher.
+//! Release construction remains blocked by G4 and identity activation decisions.
 use super::{
     capture_store::CaptureStore,
     journal::{
         codec::{self, EntityKind, EventRef, FieldValue, Operation},
-        import_view,
+        g3, import_view,
     },
 };
 use crate::sync::*;
@@ -26,6 +26,19 @@ impl<'a> CandidateSyncStore<'a> {
             store,
             usable: AtomicBool::new(true),
         }
+    }
+    /// Bounded resumable policy work, on the same owner/transaction as receive.
+    pub fn reprocess(
+        &self,
+        s: &VerifiedSession,
+        clock: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<usize> {
+        self.write(s, clock, x, |c| {
+            let count = refresh(c, s, clock, x)?;
+            cursors(c)?;
+            Ok(count)
+        })
     }
     fn read<T>(
         &self,
@@ -96,6 +109,17 @@ fn authorize(
     s.check(clock, x)?;
     let b = s.binding();
     let valid:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM import_candidate i JOIN import_members m ON m.peer=?1 WHERE i.singleton=1 AND i.revision=1 AND i.local_id=?2 AND i.network=?3 AND m.enabled=1 AND m.epoch=?4)",params![b.peer.to_string(),b.local.to_string(),b.network.to_string(),b.epoch],|r|r.get(0)).map_err(sql)?;
+    let mut origins = 0;
+    for origin in s.origins() {
+        origins += 1;
+        if origins > MAX_EVENTS {
+            return Err(Error::Trust);
+        }
+        let allowed:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM import_origin_permissions WHERE peer=?1 AND origin=?2 AND epoch=?3 AND enabled=1)",params![b.peer.to_string(),origin.to_string(),b.epoch],|r|r.get(0)).map_err(sql)?;
+        if !allowed {
+            return Err(Error::Trust);
+        }
+    }
     if !valid {
         return Err(Error::Trust);
     }
@@ -114,19 +138,28 @@ fn quota(c: &Connection) -> Result<()> {
         .query_row("SELECT count(*) FROM import_members", [], |r| r.get(0))
         .map_err(sql)?;
     if events > MAX_EVENTS as i64 || collisions > 16 || members > 8 {
-        return Err(Error::Limit);
+        return Err(Error::StorageLimited);
     }
-    let bytes:i64=c.query_row("SELECT coalesce((SELECT sum(length(bytes)) FROM import_events),0)+coalesce((SELECT sum(length(bytes)) FROM import_collisions),0)+coalesce((SELECT sum(length(local_row)+length(local_heads)+length(CAST(key_json AS BLOB))) FROM import_conflicts),0)+coalesce((SELECT sum(length(CAST(dependency AS BLOB))) FROM import_pending),0)+coalesce((SELECT sum(length(CAST(key_json AS BLOB))+length(entity)+68) FROM import_creates),0)",[],|r|r.get(0)).map_err(sql)?;
+    let mut bytes:i64=c.query_row("SELECT coalesce((SELECT sum(length(bytes)) FROM import_events),0)+coalesce((SELECT sum(length(bytes)) FROM import_collisions),0)+coalesce((SELECT sum(length(local_row)+length(local_heads)+length(CAST(key_json AS BLOB))) FROM import_conflicts),0)+coalesce((SELECT sum(length(CAST(dependency AS BLOB))) FROM import_pending),0)+coalesce((SELECT sum(length(CAST(key_json AS BLOB))+length(entity)+68) FROM import_creates),0)",[],|r|r.get(0)).map_err(sql)?;
+    if g3::installed(c)? {
+        let (heads,extra):(i64,i64)=c.query_row("SELECT count(*),coalesce(sum(length(CAST(entity AS BLOB))+length(CAST(key_json AS BLOB))+length(facet)+length(event)+length(hash)+16),0) FROM import_g3_heads",[],|r|Ok((r.get(0)?,r.get(1)?))).map_err(sql)?;
+        if heads > 65536 {
+            return Err(Error::StorageLimited);
+        }
+        bytes = bytes.checked_add(extra).ok_or(Error::StorageLimited)?;
+    }
     let creates: i64 = c
         .query_row("SELECT count(*) FROM import_creates", [], |r| r.get(0))
         .map_err(sql)?;
     if creates > 65536 {
-        return Err(Error::Limit);
+        return Err(Error::StorageLimited);
     }
     if bytes > 64 * 1024 * 1024 {
-        return Err(Error::Limit);
+        return Err(Error::StorageLimited);
     }
     for table in [
+        "import_origin_permissions",
+        "import_event_epochs",
         "import_sent",
         "import_progress",
         "import_delivery",
@@ -138,7 +171,7 @@ fn quota(c: &Connection) -> Result<()> {
             .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
             .map_err(sql)?;
         if count > 2048 {
-            return Err(Error::Limit);
+            return Err(Error::StorageLimited);
         }
     }
     Ok(())
@@ -157,17 +190,42 @@ fn idrow(r: &rusqlite::Row<'_>) -> rusqlite::Result<Identity> {
         hash: hash.try_into().map_err(|_| rusqlite::Error::InvalidQuery)?,
     })
 }
-fn inventory(c: &Connection) -> Result<Vec<Identity>> {
-    let mut q=c.prepare("SELECT event_id,bundle_id,origin_id,incarnation,origin_seq,canonical_hash FROM sync_bundles UNION ALL SELECT event,bundle,origin,incarnation,seq,hash FROM import_events WHERE outcome<>'rejected' ORDER BY 3,4,5 LIMIT 257").map_err(sql)?;
-    let rows = q
-        .query_map([], idrow)
+fn inventory_page(
+    c: &Connection,
+    after: Option<PageKey>,
+) -> Result<(Vec<Identity>, Option<PageKey>)> {
+    let (origin, inc, seq) = after
+        .map(|(o, i, s)| (o.to_string(), i.to_string(), s))
+        .unwrap_or_default();
+    let mut q=c.prepare("SELECT * FROM (SELECT event_id,bundle_id,origin_id,incarnation,origin_seq,canonical_hash FROM sync_bundles UNION ALL SELECT event,bundle,origin,incarnation,seq,hash FROM import_events WHERE outcome<>'rejected') WHERE (origin_id,incarnation,origin_seq)>(?1,?2,?3) ORDER BY 3,4,5 LIMIT 65").map_err(sql)?;
+    let mut rows = q
+        .query_map(params![origin, inc, seq], idrow)
         .map_err(sql)?
         .collect::<rusqlite::Result<Vec<_>>>()
         .map_err(sql)?;
-    if rows.len() > MAX_EVENTS {
-        return Err(Error::Limit);
+    let more = rows.len() > SUMMARY_PAGE;
+    rows.truncate(SUMMARY_PAGE);
+    let next = if more {
+        rows.last().map(|r| (r.origin, r.incarnation, r.seq))
+    } else {
+        None
+    };
+    Ok((rows, next))
+}
+#[cfg(test)]
+fn inventory(c: &Connection) -> Result<Vec<Identity>> {
+    // Test-only whole-fixture helper; production discovery always uses pages.
+    let mut all = Vec::new();
+    let mut after = None;
+    loop {
+        let (rows, next) = inventory_page(c, after)?;
+        all.extend(rows);
+        if next.is_none() {
+            break;
+        }
+        after = next;
     }
-    Ok(rows)
+    Ok(all)
 }
 fn load(c: &Connection, event: Uuid) -> Result<Option<Envelope>> {
     let result:Option<(Vec<u8>,Vec<u8>)>=c.query_row("SELECT canonical_bytes,canonical_hash FROM sync_bundles WHERE event_id=?1 UNION ALL SELECT bytes,hash FROM import_events WHERE event=?1",[event.to_string()],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(sql)?;
@@ -228,7 +286,48 @@ fn image_value(row: Option<codec::RowImage>) -> serde_json::Value {
     row.map(|r| serde_json::Value::Object(r.into_iter().map(|(k, v)| (k, v.to_json())).collect()))
         .unwrap_or(serde_json::Value::Null)
 }
+fn validate_spans(c: &Connection, v: &ValidatedEvent) -> Result<()> {
+    for op in &v.core().operations {
+        let row = match op {
+            Operation::RecordCreate(r) => &r.after,
+            Operation::FacetUpdate(u) => &u.after,
+            Operation::RelationRemove(r) => &r.before,
+        };
+        if let (
+            Some(FieldValue::Text(capture)),
+            Some(FieldValue::Decimal(start)),
+            Some(FieldValue::Decimal(end)),
+        ) = (
+            row.get("capture_id"),
+            row.get("source_start"),
+            row.get("source_end"),
+        ) {
+            let body = v.core().operations.iter().find_map(|op| match op {
+                Operation::RecordCreate(r)
+                    if r.entity == EntityKind::Captures && r.key == [capture.clone()] =>
+                {
+                    r.after.get("content").cloned()
+                }
+                _ => None,
+            });
+            let body = match body {
+                Some(b) => Some(b),
+                None => import_view::row(c, EntityKind::Captures, &[capture.clone()])?
+                    .and_then(|r| r.get("content").cloned()),
+            };
+            if let Some(FieldValue::Text(body)) = body {
+                let start = start.parse::<usize>().map_err(|_| Error::Integrity)?;
+                let end = end.parse::<usize>().map_err(|_| Error::Integrity)?;
+                if start >= end || end > body.chars().count() {
+                    return Err(Error::Integrity);
+                }
+            }
+        }
+    }
+    Ok(())
+}
 fn classify(c: &Connection, v: &ValidatedEvent) -> Result<(Outcome, bool)> {
+    validate_spans(c, v)?;
     let e = v.envelope();
     let core = v.core();
     let id = e.identity.event;
@@ -423,50 +522,81 @@ fn classify(c: &Connection, v: &ValidatedEvent) -> Result<(Outcome, bool)> {
         }
         return Ok((Outcome::ConflictRetained, true));
     }
-    // Frozen observers would demand a freshly originated local bundle. No SQL
-    // materialization is attempted and no applied ACK can escape this branch.
+    if g3::materialize(c, v)? {
+        return Ok((Outcome::CleanlyApplied, true));
+    }
     Ok((Outcome::UnsupportedImportPolicy, true))
 }
-fn refresh(c: &Connection) -> Result<()> {
-    for _ in 0..MAX_EVENTS {
-        let events = {
-            let mut q=c.prepare("SELECT event FROM import_events WHERE outcome='deferred' ORDER BY origin,incarnation,seq").map_err(sql)?;
-            let r = q
-                .query_map([], |r| r.get::<_, String>(0))
-                .map_err(sql)?
-                .collect::<rusqlite::Result<Vec<_>>>()
-                .map_err(sql)?;
-            r
-        };
-        let mut changed = false;
-        for event in events {
-            let id = Uuid::parse_str(&event).map_err(|_| Error::Storage)?;
-            let e = load(c, id)?.ok_or(Error::Storage)?;
-            let validated = ValidatedEvent::parse(e)?;
-            let (outcome, chain) = match classify(c, &validated) {
-                Ok(result) => result,
-                Err(Error::Integrity) => (Outcome::RejectedIntegrity, false),
-                Err(e) => return Err(e),
-            };
-            let old: (String, i64) = c
-                .query_row(
-                    "SELECT outcome,chain_ok FROM import_events WHERE event=?1",
-                    [&event],
-                    |r| Ok((r.get(0)?, r.get(1)?)),
+fn refresh(
+    c: &Connection,
+    s: &VerifiedSession,
+    clock: &dyn SyncClock,
+    x: &Cancellation,
+) -> Result<usize> {
+    let g3 = g3::installed(c)?;
+    let cursor: i64 = if g3 {
+        c.query_row("SELECT cursor FROM import_g3_policy", [], |r| r.get(0))
+            .map_err(sql)?
+    } else {
+        0
+    };
+    let select = |after: i64| -> Result<Vec<(i64, String)>> {
+        let mut q=c.prepare("SELECT e.rowid,e.event FROM import_events e JOIN import_event_epochs a ON a.event=e.event WHERE e.peer=?1 AND a.epoch=?2 AND e.rowid>?3 AND (e.outcome='deferred' OR (?4 AND e.outcome='unsupported')) ORDER BY CASE WHEN ?4 THEN e.rowid ELSE 0 END,e.origin,e.incarnation,e.seq LIMIT ?5").map_err(sql)?;
+        let rows = q
+            .query_map(
+                params![
+                    s.binding().peer.to_string(),
+                    s.binding().epoch,
+                    after,
+                    g3,
+                    REPROCESS_BATCH as i64
+                ],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .map_err(sql)?
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(sql)?;
+        Ok(rows)
+    };
+    let mut events = select(cursor)?;
+    if events.is_empty() && cursor > 0 {
+        events = select(0)?
+    }
+    let mut processed = 0;
+    for (rowid, event) in events {
+        authorize(c, s, clock, x)?;
+        let id = Uuid::parse_str(&event).map_err(|_| Error::Storage)?;
+        let v = ValidatedEvent::parse(load(c, id)?.ok_or(Error::Storage)?)?;
+        if !s.permits(v.envelope().identity.origin) {
+            if g3 {
+                c.execute(
+                    "UPDATE import_g3_policy SET cursor=?1 WHERE singleton=1",
+                    [rowid],
                 )
                 .map_err(sql)?;
-            changed |= old != (outcome.code().into(), i64::from(chain));
+            }
+            continue;
+        }
+        let (outcome, chain) = match classify(c, &v) {
+            Ok(result) => result,
+            Err(Error::Integrity) => (Outcome::RejectedIntegrity, false),
+            Err(e) => return Err(e),
+        };
+        c.execute(
+            "UPDATE import_events SET outcome=?2,chain_ok=?3 WHERE event=?1",
+            params![event, outcome.code(), chain],
+        )
+        .map_err(sql)?;
+        if g3 {
             c.execute(
-                "UPDATE import_events SET outcome=?2,chain_ok=?3 WHERE event=?1",
-                params![event, outcome.code(), chain],
+                "UPDATE import_g3_policy SET cursor=?1 WHERE singleton=1",
+                [rowid],
             )
             .map_err(sql)?;
         }
-        if !changed {
-            break;
-        }
+        processed += 1;
     }
-    Ok(())
+    Ok(processed)
 }
 fn cursors(c: &Connection) -> Result<()> {
     let groups = {
@@ -525,12 +655,38 @@ impl SyncStore for CandidateSyncStore<'_> {
         clock: &dyn SyncClock,
         x: &Cancellation,
     ) -> Result<Summary> {
+        self.page(s, None, clock, x)
+    }
+    fn page(
+        &self,
+        s: &VerifiedSession,
+        after: Option<PageKey>,
+        clock: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<Summary> {
         self.read(s,clock,x,|c|{
-        let known=inventory(c)?.into_iter().filter(|id|s.permits(id.origin)).collect();
+        let (known,next)=inventory_page(c,after)?;
+        // Fail closed before disclosing any identity/cursor from a disallowed stream.
+        if known.iter().any(|id|!s.permits(id.origin)){return Err(Error::Trust)}
         let mut q=c.prepare("SELECT origin,incarnation,stored,integrated,applied FROM import_progress WHERE peer=?1 ORDER BY origin,incarnation LIMIT 257").map_err(sql)?;
         let progress=q.query_map([s.binding().peer.to_string()],|r|Ok(Progress{origin:Uuid::parse_str(&r.get::<_,String>(0)?).map_err(|_|rusqlite::Error::InvalidQuery)?,incarnation:Uuid::parse_str(&r.get::<_,String>(1)?).map_err(|_|rusqlite::Error::InvalidQuery)?,stored:r.get(2)?,integrated:r.get(3)?,applied:r.get(4)?})).map_err(sql)?.collect::<rusqlite::Result<Vec<_>>>().map_err(sql)?;
-        if progress.len()>MAX_EVENTS{return Err(Error::Limit)}let needs_attention:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM import_events WHERE outcome<>'applied' UNION ALL SELECT 1 FROM import_sent WHERE outcome NOT IN('offered','applied') UNION ALL SELECT 1 FROM import_collisions)",[],|r|r.get(0)).map_err(sql)?;Ok(Summary{known,progress,needs_attention})
+        if progress.len()>MAX_EVENTS{return Err(Error::Limit)}let needs_attention:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM import_events WHERE outcome<>'applied' UNION ALL SELECT 1 FROM import_sent WHERE outcome NOT IN('offered','applied') UNION ALL SELECT 1 FROM import_collisions)",[],|r|r.get(0)).map_err(sql)?;let problem:Option<String>=c.query_row("SELECT outcome FROM (SELECT outcome FROM import_events UNION ALL SELECT outcome FROM import_sent WHERE outcome<>'offered' UNION ALL SELECT 'rejected' FROM import_collisions) ORDER BY CASE outcome WHEN 'rejected' THEN 0 WHEN 'conflict' THEN 1 WHEN 'deferred' THEN 2 WHEN 'unsupported' THEN 3 ELSE 4 END LIMIT 1",[],|r|r.get(0)).optional().map_err(sql)?;
+        let status=problem.as_deref().map(Outcome::parse).transpose()?.map(SyncStatus::from).unwrap_or(SyncStatus::Syncing);
+        Ok(Summary{known,next,progress,needs_attention,status})
     })
+    }
+    fn lookup(
+        &self,
+        s: &VerifiedSession,
+        id: Uuid,
+        clock: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<Option<Identity>> {
+        self.read(s, clock, x, |c| {
+            Ok(load(c, id)?
+                .filter(|e| s.permits(e.identity.origin))
+                .map(|e| e.identity))
+        })
     }
     fn export(
         &self,
@@ -570,7 +726,8 @@ impl SyncStore for CandidateSyncStore<'_> {
             c.execute("INSERT INTO import_events(event,bundle,origin,incarnation,seq,hash,bytes,outcome,chain_ok,peer) VALUES(?1,?2,?3,?4,?5,?6,?7,'deferred',0,?8)",params![id.event.to_string(),id.bundle.to_string(),id.origin.to_string(),id.incarnation.to_string(),id.seq,id.hash.as_slice(),envelope.bytes,s.binding().peer.to_string()]).map_err(sql)?;
         }
         c.execute("INSERT OR IGNORE INTO import_receipts(peer,event) VALUES(?1,?2)",params![s.binding().peer.to_string(),id.event.to_string()]).map_err(sql)?;
-        refresh(c)?;cursors(c)?;
+        c.execute("INSERT OR IGNORE INTO import_event_epochs(event,epoch) VALUES(?1,?2)",params![id.event.to_string(),s.binding().epoch]).map_err(sql)?;
+        quota(c)?;refresh(c,s,clock,x)?;cursors(c)?;
         let outcome:String=c.query_row("SELECT outcome FROM import_events WHERE event=?1",[id.event.to_string()],|r|r.get(0)).map_err(sql)?;
         Ok(Receipt{identity:id.clone(),outcome:Outcome::parse(&outcome)?})
     })
@@ -584,7 +741,7 @@ impl SyncStore for CandidateSyncStore<'_> {
     ) -> Result<()> {
         self.write(s,clock,x,|c|{
         if !s.permits(id.origin)||load(c,id.event)?.as_ref().map(|e|&e.identity)!=Some(id){return Err(Error::Integrity)}
-        c.execute("INSERT INTO import_sent(peer,event,session,hash,origin,incarnation,seq,outcome) VALUES(?1,?2,?3,?4,?5,?6,?7,'offered') ON CONFLICT(peer,event) DO UPDATE SET session=excluded.session,outcome='offered'",params![s.binding().peer.to_string(),id.event.to_string(),s.binding().session.to_string(),id.hash.as_slice(),id.origin.to_string(),id.incarnation.to_string(),id.seq]).map_err(sql)?;Ok(())
+        c.execute("INSERT INTO import_sent(peer,event,session,hash,origin,incarnation,seq,outcome) VALUES(?1,?2,?3,?4,?5,?6,?7,'offered') ON CONFLICT(peer,event) DO UPDATE SET session=excluded.session,outcome=CASE WHEN import_sent.outcome IN('applied','conflict') THEN import_sent.outcome ELSE 'offered' END",params![s.binding().peer.to_string(),id.event.to_string(),s.binding().session.to_string(),id.hash.as_slice(),id.origin.to_string(),id.incarnation.to_string(),id.seq]).map_err(sql)?;Ok(())
     })
     }
     fn receipt(
@@ -615,8 +772,8 @@ impl SyncStore for CandidateSyncStore<'_> {
         x: &Cancellation,
     ) -> Result<Vec<Uuid>> {
         self.read(s,clock,x,|c|{
-        let mut q=c.prepare("SELECT event FROM import_sent WHERE peer=?1 AND outcome='offered' ORDER BY origin,incarnation,seq LIMIT 257").map_err(sql)?;
-        let rows=q.query_map([s.binding().peer.to_string()],|r|r.get::<_,String>(0)).map_err(sql)?.collect::<rusqlite::Result<Vec<_>>>().map_err(sql)?;
+        let mut q=c.prepare("SELECT event FROM import_sent WHERE peer=?1 AND (outcome='offered' OR (outcome IN('unsupported','deferred') AND session<>?2)) ORDER BY origin,incarnation,seq LIMIT 4").map_err(sql)?;
+        let rows=q.query_map(params![s.binding().peer.to_string(),s.binding().session.to_string()],|r|r.get::<_,String>(0)).map_err(sql)?.collect::<rusqlite::Result<Vec<_>>>().map_err(sql)?;
         if rows.len()>MAX_EVENTS{return Err(Error::Limit)}rows.into_iter().map(|e|Uuid::parse_str(&e).map_err(|_|Error::Storage)).collect()
     })
     }
@@ -685,4 +842,16 @@ pub(crate) fn test_refuses(store: &CaptureStore, statement: &str) -> bool {
         .unwrap()
         .execute_batch(statement)
         .is_err()
+}
+
+#[cfg(test)]
+pub(crate) fn grant_test_origins(
+    store: &CaptureStore,
+    peer: Uuid,
+    origins: &std::collections::BTreeSet<Uuid>,
+) {
+    let c = store.connection.lock().unwrap();
+    for origin in origins {
+        c.execute("INSERT OR IGNORE INTO import_origin_permissions(peer,origin,epoch,enabled) VALUES(?1,?2,1,1)",params![peer.to_string(),origin.to_string()]).unwrap();
+    }
 }

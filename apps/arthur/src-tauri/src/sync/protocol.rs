@@ -2,11 +2,15 @@ use crate::storage::journal::codec;
 use std::sync::atomic::{AtomicBool, Ordering};
 use uuid::Uuid;
 
-pub(crate) const MAX_EVENTS: usize = 256;
+pub(crate) const MAX_EVENTS: usize = 256; // receiver retained-event budget
+pub(crate) const SUMMARY_PAGE: usize = 64;
+pub(crate) const REPROCESS_BATCH: usize = 16;
+pub(crate) type PageKey = (Uuid, Uuid, i64);
 pub(crate) const CHUNK: usize = 256 * 1024;
 pub(crate) const MAX_FRAME: usize = 1024 * 1024;
 pub(crate) const MAX_BATCH: usize = 2;
-pub(crate) const FEATURES: u32 = 7; // candidate ledger, chunking, conflict receipts
+pub(crate) const MAX_ASSEMBLIES: usize = 2;
+pub(crate) const FEATURES: u32 = 15; // ledger, chunking, conflict receipts, paginated inventory
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Error {
     Trust,
@@ -17,6 +21,7 @@ pub(crate) enum Error {
     Storage,
     ActivationPending,
     Disconnected,
+    StorageLimited,
 }
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,6 +56,28 @@ impl Outcome {
         matches!(self, Self::CleanlyApplied | Self::ConflictRetained)
     }
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SyncStatus {
+    Syncing,
+    CleanlyApplied,
+    ConflictRetained,
+    DeferredDependency,
+    UnsupportedImportPolicy,
+    StorageLimited,
+    RejectedIntegrity,
+    RejectedTrust,
+}
+impl From<Outcome> for SyncStatus {
+    fn from(o: Outcome) -> Self {
+        match o {
+            Outcome::CleanlyApplied => Self::CleanlyApplied,
+            Outcome::ConflictRetained => Self::ConflictRetained,
+            Outcome::DeferredDependency => Self::DeferredDependency,
+            Outcome::UnsupportedImportPolicy => Self::UnsupportedImportPolicy,
+            Outcome::RejectedIntegrity => Self::RejectedIntegrity,
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct Identity {
     pub event: Uuid,
@@ -77,8 +104,10 @@ pub(crate) struct Progress {
 #[derive(Clone)]
 pub(crate) struct Summary {
     pub known: Vec<Identity>,
+    pub next: Option<PageKey>,
     pub progress: Vec<Progress>,
     pub needs_attention: bool,
+    pub status: SyncStatus,
 }
 #[derive(Clone)]
 pub(crate) struct Chunk {
@@ -103,6 +132,7 @@ pub(crate) enum Payload {
         profile: String,
     },
     Summary(Summary),
+    Page(PageKey),
     Chunk(Chunk),
     Receipt(Receipt),
     Request(Vec<Uuid>),

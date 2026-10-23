@@ -41,7 +41,9 @@ impl AuthenticatedTransport for FakeTransport {
     fn send(&mut self, message: Message) -> Result<()> {
         match &message.payload {
             Payload::Hello { profile, .. } if profile.len() > 64 => return Err(Error::Limit),
-            Payload::Summary(s) if s.known.len() > MAX_EVENTS || s.progress.len() > MAX_EVENTS => {
+            Payload::Summary(s)
+                if s.known.len() > SUMMARY_PAGE || s.progress.len() > MAX_EVENTS =>
+            {
                 return Err(Error::Limit)
             }
             Payload::Request(ids) if ids.len() > 32 => return Err(Error::Limit),

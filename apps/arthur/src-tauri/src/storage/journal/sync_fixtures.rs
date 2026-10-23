@@ -225,3 +225,64 @@ pub(crate) fn review_shared(s: &CaptureStore, approve: bool) {
     })
     .unwrap();
 }
+// D2 fixtures always create originals through native authoritative adapters.
+pub(crate) fn install_g3(s: &CaptureStore) {
+    super::g3::install(s).unwrap()
+}
+pub(crate) fn project_and_capture(s: &CaptureStore, name: &str, body: &str) -> (String, String) {
+    let k = JournalKernel::activate(s).unwrap();
+    let p = k.write(|w| w.create_project(name)).unwrap();
+    let capture = k
+        .write(|w| {
+            w.create_capture(CreateCaptureInput {
+                source: "text".into(),
+                content: body.into(),
+                project_id: Some(p.id.clone()),
+            })
+        })
+        .unwrap();
+    (p.id, capture.id)
+}
+pub(crate) fn capture_in(s: &CaptureStore, project: &str, body: &str) {
+    let k = JournalKernel::activate(s).unwrap();
+    k.write(|w| {
+        w.create_capture(CreateCaptureInput {
+            source: "text".into(),
+            content: body.into(),
+            project_id: Some(project.into()),
+        })
+    })
+    .unwrap();
+}
+pub(crate) fn assert_insert_observers_frozen(s: &CaptureStore) {
+    let c = s.connection.lock().unwrap();
+    for table in ["projects", "captures"] {
+        let name = format!("sync_observe_{table}_insert");
+        let sql: String = c
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE name=?1",
+                [&name],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(include_str!("../m05_v10.sql").contains(&sql));
+    }
+}
+pub(crate) fn held_kernel_continues(s: &CaptureStore, project: &str, import: impl FnOnce()) {
+    let k = JournalKernel::activate(s).unwrap();
+    import();
+    k.write(|w| {
+        w.create_capture(CreateCaptureInput {
+            source: "text".into(),
+            content: "held local kernel".into(),
+            project_id: Some(project.into()),
+        })
+    })
+    .unwrap();
+}
+pub(crate) fn domain_state(s: &CaptureStore) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
+    state(s)
+        .into_iter()
+        .filter(|(name, _)| !name.starts_with("import_") && !name.starts_with("sync_"))
+        .collect()
+}

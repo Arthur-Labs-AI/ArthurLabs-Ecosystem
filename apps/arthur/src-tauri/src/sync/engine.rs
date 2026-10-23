@@ -10,6 +10,20 @@ use uuid::Uuid;
 pub(crate) trait SyncStore {
     fn authorize(&self, s: &VerifiedSession, c: &dyn SyncClock, x: &Cancellation) -> Result<()>;
     fn summary(&self, s: &VerifiedSession, c: &dyn SyncClock, x: &Cancellation) -> Result<Summary>;
+    fn page(
+        &self,
+        s: &VerifiedSession,
+        after: Option<PageKey>,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<Summary>;
+    fn lookup(
+        &self,
+        s: &VerifiedSession,
+        id: Uuid,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<Option<Identity>>;
     fn export(
         &self,
         s: &VerifiedSession,
@@ -65,8 +79,13 @@ pub(crate) struct SyncEngine<'a, S: SyncStore, T: AuthenticatedTransport, C: Syn
     cancel: &'a Cancellation,
     session: VerifiedSession,
     negotiated: bool,
+    advertised_after: Option<PageKey>,
+    advertised_next: Option<PageKey>,
     assemblies: BTreeMap<Uuid, Assembly>,
+    in_flight: BTreeSet<Uuid>,
     pub needs_attention: bool,
+    pub status: SyncStatus,
+    blocked: Option<Error>,
 }
 impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S, T, C> {
     pub fn start(
@@ -79,7 +98,7 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
         let session = trust.verify(&transport.hello())?;
         session.check(clock, cancel)?;
         // Authorize against durable membership/admission before any disclosure.
-        let status = store.summary(&session, clock, cancel)?.needs_attention;
+        let summary = store.summary(&session, clock, cancel)?;
         let mut engine = Self {
             store,
             transport,
@@ -87,8 +106,13 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             cancel,
             session,
             negotiated: false,
+            advertised_after: None,
+            advertised_next: None,
             assemblies: BTreeMap::new(),
-            needs_attention: status,
+            in_flight: BTreeSet::new(),
+            needs_attention: summary.needs_attention,
+            status: summary.status,
+            blocked: None,
         };
         engine.send(Payload::Hello {
             version: 1,
@@ -111,12 +135,51 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             payload,
         })
     }
+    fn advertise(&mut self) -> Result<()> {
+        let summary = self.store.page(
+            &self.session,
+            self.advertised_after,
+            self.clock,
+            self.cancel,
+        )?;
+        self.advertised_next = summary.next;
+        self.needs_attention = summary.needs_attention;
+        self.status = summary.status;
+        self.send(Payload::Summary(summary))
+    }
+    fn retry(&mut self) -> Result<()> {
+        let pending = self
+            .store
+            .outstanding(&self.session, self.clock, self.cancel)?;
+        for id in pending {
+            if self.in_flight.len() >= MAX_BATCH {
+                break;
+            }
+            if self.in_flight.contains(&id) {
+                continue;
+            }
+            if let Some(identity) = self
+                .store
+                .lookup(&self.session, id, self.clock, self.cancel)?
+            {
+                self.offer(&identity)?;
+            }
+        }
+        Ok(())
+    }
     fn offer(&mut self, id: &Identity) -> Result<()> {
+        if self.in_flight.contains(&id.event) {
+            return Ok(());
+        }
+        if self.in_flight.len() >= MAX_BATCH {
+            return Err(Error::Limit);
+        }
         let e = self
             .store
             .export(&self.session, id, self.clock, self.cancel)?;
         self.store
             .offered(&self.session, id, self.clock, self.cancel)?;
+        self.in_flight.insert(id.event);
         for chunk in chunk_event(&e) {
             self.send(Payload::Chunk(chunk))?;
         }
@@ -124,6 +187,30 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
     }
     /// One bounded network message, with no network callback inside a SQL tx.
     pub fn tick(&mut self) -> Result<bool> {
+        if self.cancel.cancelled() {
+            self.assemblies.clear();
+            return Err(Error::Cancelled);
+        }
+        if let Some(e) = self.blocked {
+            return Err(e);
+        }
+        let result = self.tick_message();
+        if let Err(e) = result {
+            match e {
+                Error::Trust => self.status = SyncStatus::RejectedTrust,
+                Error::Integrity | Error::Protocol | Error::Limit => {
+                    self.status = SyncStatus::RejectedIntegrity
+                }
+                Error::StorageLimited | Error::Storage => self.status = SyncStatus::StorageLimited,
+                _ => return result,
+            }
+            self.needs_attention = true;
+            self.blocked = Some(e);
+            self.assemblies.clear();
+        }
+        result
+    }
+    fn tick_message(&mut self) -> Result<bool> {
         if let Err(e) = self.session.check(self.clock, self.cancel) {
             self.assemblies.clear();
             return Err(e);
@@ -155,55 +242,66 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
                 return Err(Error::Protocol);
             }
             self.negotiated = true;
-            let summary = self.store.summary(&self.session, self.clock, self.cancel)?;
-            self.send(Payload::Summary(summary))?;
+            self.retry()?;
+            self.advertise()?;
             return Ok(true);
         }
         if !self.negotiated {
             return Err(Error::Protocol);
         }
         match message.payload {
+            Payload::Page(after) => {
+                if self.advertised_next != Some(after) {
+                    return Err(Error::Protocol);
+                }
+                self.advertised_after = Some(after);
+                self.advertise()?;
+            }
             Payload::Summary(remote) => {
-                if remote.known.len() > MAX_EVENTS || remote.progress.len() > MAX_EVENTS {
+                if remote.known.len() > SUMMARY_PAGE || remote.progress.len() > MAX_EVENTS {
                     return Err(Error::Limit);
                 }
                 let mut seen = BTreeSet::new();
+                let mut previous = None;
                 for id in &remote.known {
-                    if id.seq <= 0 || !seen.insert(id.event) {
+                    let key = (id.origin, id.incarnation, id.seq);
+                    if id.seq <= 0 || !seen.insert(id.event) || previous.is_some_and(|p| p >= key) {
                         return Err(Error::Integrity);
                     }
+                    previous = Some(key);
                 }
-                let local = self.store.summary(&self.session, self.clock, self.cancel)?;
-                self.needs_attention |= local.needs_attention || remote.needs_attention;
                 if remote
-                    .progress
-                    .iter()
-                    .any(|p| p.applied < 0 || p.integrated < p.applied || p.stored < p.integrated)
+                    .next
+                    .is_some_and(|n| n.2 <= 0 || previous.is_some_and(|p| p != n))
+                    || remote.progress.iter().any(|p| {
+                        p.applied < 0 || p.integrated < p.applied || p.stored < p.integrated
+                    })
                 {
                     return Err(Error::Integrity);
                 }
-                let outstanding = self
+                self.needs_attention = self
                     .store
-                    .outstanding(&self.session, self.clock, self.cancel)?;
-                let mut selected = Vec::new();
-                for id in &local.known {
-                    if remote.known.iter().any(|r| r.event == id.event && r != id) {
-                        return Err(Error::Integrity);
-                    }
-                    if !remote.known.contains(id) || outstanding.contains(&id.event) {
-                        selected.push(id.clone())
+                    .summary(&self.session, self.clock, self.cancel)?
+                    .needs_attention;
+                let mut request = Vec::new();
+                for id in &remote.known {
+                    match self
+                        .store
+                        .lookup(&self.session, id.event, self.clock, self.cancel)?
+                    {
+                        Some(local) if local != *id => return Err(Error::Integrity),
+                        None if request.len() < MAX_BATCH => request.push(id.event),
+                        _ => {}
                     }
                 }
-                for id in selected.into_iter().take(MAX_BATCH) {
-                    self.offer(&id)?;
-                }
-                let missing = self.store.missing(&self.session, self.clock, self.cancel)?;
-                if !missing.is_empty() {
-                    self.send(Payload::Request(missing))?;
+                if !request.is_empty() {
+                    self.send(Payload::Request(request))?;
+                } else if let Some(next) = remote.next {
+                    self.send(Payload::Page(next))?;
                 }
             }
             Payload::Chunk(chunk) => {
-                self.needs_attention = true;
+                self.status = SyncStatus::Syncing;
                 let id = chunk.identity.event;
                 let result = self.chunk(chunk);
                 let completed = match result {
@@ -221,27 +319,41 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
                     let receipt =
                         self.store
                             .retain(&self.session, validated, self.clock, self.cancel)?;
-                    self.needs_attention |= receipt.outcome != Outcome::CleanlyApplied;
+                    self.needs_attention = self
+                        .store
+                        .summary(&self.session, self.clock, self.cancel)?
+                        .needs_attention;
+                    self.status = receipt.outcome.into();
                     self.send(Payload::Receipt(receipt))?;
-                    let summary = self.store.summary(&self.session, self.clock, self.cancel)?;
-                    self.send(Payload::Summary(summary))?;
                 }
             }
             Payload::Receipt(r) => {
+                self.status = r.outcome.into();
                 self.store
                     .receipt(&self.session, &r, self.clock, self.cancel)?;
-                self.needs_attention |= r.outcome != Outcome::CleanlyApplied;
+                self.in_flight.remove(&r.identity.event);
+                self.retry()?;
+                self.needs_attention = self
+                    .store
+                    .summary(&self.session, self.clock, self.cancel)?
+                    .needs_attention;
             }
             Payload::Request(ids) => {
-                if ids.len() > 32 {
+                if ids.len() > MAX_BATCH {
                     return Err(Error::Limit);
                 }
-                let local = self.store.summary(&self.session, self.clock, self.cancel)?;
                 for id in ids.into_iter().take(MAX_BATCH) {
-                    if let Some(e) = local.known.iter().find(|e| e.event == id) {
-                        self.offer(e)?;
+                    if self.in_flight.len() >= MAX_BATCH {
+                        break;
+                    }
+                    if let Some(e) =
+                        self.store
+                            .lookup(&self.session, id, self.clock, self.cancel)?
+                    {
+                        self.offer(&e)?;
                     }
                 }
+                self.advertise()?;
             }
             Payload::Hello { .. } => return Err(Error::Protocol),
         }
@@ -263,7 +375,8 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             return Err(Error::Integrity);
         }
         if c.index == 0 {
-            if self.assemblies.contains_key(&c.identity.event) || self.assemblies.len() >= MAX_BATCH
+            if self.assemblies.contains_key(&c.identity.event)
+                || self.assemblies.len() >= MAX_ASSEMBLIES
             {
                 return Err(Error::Limit);
             }

@@ -29,3 +29,10 @@ CREATE TABLE import_receipts(peer TEXT NOT NULL REFERENCES import_members(peer),
 CREATE TABLE import_creates(entity TEXT NOT NULL,key_json TEXT NOT NULL CHECK(json_valid(key_json)),event TEXT NOT NULL REFERENCES import_events(event),row_hash BLOB NOT NULL CHECK(length(row_hash)=32),PRIMARY KEY(entity,key_json)) STRICT;
 CREATE TRIGGER import_create_fixed BEFORE UPDATE ON import_creates BEGIN SELECT RAISE(ABORT,'original creation claim immutable'); END;
 CREATE TRIGGER import_create_retained BEFORE DELETE ON import_creates BEGIN SELECT RAISE(ABORT,'original creation claim retained'); END;
+
+-- Admission epoch is immutable provenance for later policy reprocessing.
+CREATE TABLE import_event_epochs(event TEXT PRIMARY KEY REFERENCES import_events(event),epoch INTEGER NOT NULL CHECK(epoch>0)) STRICT;
+CREATE TRIGGER import_event_epoch_fixed BEFORE UPDATE ON import_event_epochs BEGIN SELECT RAISE(ABORT,'immutable received epoch'); END;
+CREATE TRIGGER import_event_epoch_retained BEFORE DELETE ON import_event_epochs BEGIN SELECT RAISE(ABORT,'received epoch retained'); END;
+
+CREATE TABLE import_origin_permissions(peer TEXT NOT NULL REFERENCES import_members(peer),origin TEXT NOT NULL CHECK(length(origin)=36),epoch INTEGER NOT NULL CHECK(epoch>0),enabled INTEGER NOT NULL CHECK(enabled IN(0,1)),PRIMARY KEY(peer,origin)) STRICT;

@@ -29,6 +29,7 @@ mod admission;
 mod admission_session;
 mod capacity;
 pub(super) mod import_view;
+pub(super) mod g3;
 #[cfg(test)]
 pub(crate) mod sync_fixtures;
 

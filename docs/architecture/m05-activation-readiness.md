@@ -25,7 +25,7 @@ Status: DORMANT NATIVE ADAPTERS IMPLEMENTED (MA-01/MA-02 and Task 14A). Producti
 | G4-F01 maintenance logical-quota bypass | FIXED AND TESTED (DORMANT) | Task 14C: no-effects finalization calls the existing `quota()` before COMMIT. Q01–Q10 and F01–F10 exercise real kernel/snapshot paths on synthetic v10; see the dated decision-package addendum. |
 | MEGA B physical admission infrastructure | DORMANT CANDIDATE / VERIFIED GROWTH BOUNDS BLOCKED | Separate checked calculator, scoped claims, owned-volume providers and kernel/snapshot integration. Profile A runs in synthetic tests only; non-test admission rejects `UnverifiedBounds`. Windows API smoke executed; Android/Linux device evidence absent. |
 | MEGA B2 writer admission and recovery | PARTIAL / DORMANT | Exact top-level adapter plans; one budget for internal review/expiry/evolution composition; pager ceiling held through COMMIT and restored afterwards. Test-only per-main-file VFS FULL/IOERR callbacks and actual COMMIT BUSY, exact disk-state/reopen and event-identity reconciliation. Release VFS growth gate unchanged. |
-| MEGA D native Sync Core | PARTIAL / DORMANT LEDGER CANDIDATE | Native engine, strict canonical/causal validation, owner-borrowed incoming ledger, distinct stored/integrated/applied cursors, retained conflicts, bounded FakeTransport and disk-reopen tests. Foreign domain projection remains blocked by the frozen local observer/fence contract; release trust/admission constructors fail closed. |
+| MEGA D/D2 native Sync Core | PARTIAL / DORMANT G3 CREATE-ONLY CANDIDATE | Native engine and owner-borrowed ledger; original Project/Capture materialization, bounded pagination/reprocessing, distinct stored/integrated/applied cursors and retained conflicts. Complex historical reconstruction remains unsupported/conflicted; release trust/admission constructors fail closed. See section 11. |
 | Platform crash/background gates | PLATFORM EVIDENCE REQUIRED | Synthetic fault injection only (Fault::At/Rollback/Exhausted/DeferredCommit); no OS kill evidence claimed |
 
 ## 2. Proposed coordinated activation patch (NOT APPLIED)
@@ -42,7 +42,7 @@ Order of operations:
 ## 3. Explicitly out of scope for activation
 
 - Security / enrollment workstream (separate package).
-- LAN transport and incoming sync importer (separate packages).
+- Production LAN/trust and complete historical import profile (separate packages).
 - Production signing, pairing, authenticated replication.
 - Snapshot transmission (local preparation only in this package).
 - Platform-specific crash durability beyond synthetic fault injection.
@@ -62,7 +62,7 @@ Order of operations:
 - G4 physical-disk quota/reserve: still requires owner approval.
 - Platform crash/background gates: still require platform evidence beyond synthetic fault injection.
 - Snapshot retention/retirement policy: initial single-snapshot admission only; no retirement redesign in this package.
-- Security/importer/transport/UI/release: separate workstreams, not started.
+- Production security/transport/UI/release remain gated; dormant import candidates are scoped in sections 10–11.
 
 ## 6. Task 14A execution evidence and remaining decisions
 
@@ -181,3 +181,35 @@ migration. Snapshot v2 source verification/tamper checks are reused unchanged.
 construction reject; no signer, pairing, LAN, UI or scheduler is wired.
 G4 `UnverifiedBounds` remains active. Production schema/registration stays v9;
 the separate synthetic extension does not approve a production schema version.
+
+## 11. MEGA D2 G3 create-only candidate (2026-10-23)
+
+Foreign Project/Capture creations now materialize original IDs, Unicode,
+timestamps and membership in the owning import transaction, together with
+original cores, commit proofs, heads and contiguous applied progress.
+The separate test-installed `import_g3.sql` policy admits at most 64 creations
+per event. Its native exact-row capability exists only under the owner lock
+and IMMEDIATE transaction: scoped INSERT observers retain their frozen local
+bodies and are restored before COMMIT; v9 guards and other observers stay active.
+Foreign creation references participate in local journal replay and refresh of
+an already-active kernel; no local-origin echo or provider command is emitted.
+Recall polling with an enabled deterministic embedding spy makes zero calls.
+
+Reprocessing revalidates at most 16 originals per transaction with a durable
+cursor and original membership epoch. Revocation/origin permission and lease
+are checked under the same lock and before COMMIT. Summary pages hold 64
+identities, transfer batches 2 events and reassembly 2 events; reconnect restarts
+bounded discovery. The receiver still retains at most 256 events/64 MiB logical
+evidence (including G3 heads); event 257 pauses with `StorageLimited`, no ACK.
+Attention/status derive from committed outcomes instead of chunk arrival.
+Old D1 cores without an admission epoch remain retained until a fresh
+authenticated receipt reauthorizes the exact original; no epoch is backfilled.
+
+**PARTIAL:** only clean create-only Project/Capture bundles are supported.
+Historical archived children, complex object/revision/evidence/proposal/review
+reconstruction and mutable transitions remain unsupported/conflicted; no
+`knowledge-v1-full`, receiver snapshot bootstrap or automatic resolution.
+Production ingress/signing/pairing and G4 `UnverifiedBounds` remain closed;
+physical allocation/durability certification and coordinated activation remain
+open. Frozen v10 artifact, codec/reducer, snapshot v2 and production v9 routing
+are unchanged. No LAN, UI, scheduler or production schema version is enabled.

@@ -399,6 +399,7 @@ impl<'a> JournalKernel<'a> {
         let mutation_id = Uuid::new_v4();
         let result = (|| {
             state.stream.check(&tx)?;
+            state.stream.refresh_imports(&tx, self.limits.metadata)?;
             hooks.at(Stage::Context)?;
             let event = mutation_id.to_string();
             let bundle = Uuid::new_v4().to_string();
