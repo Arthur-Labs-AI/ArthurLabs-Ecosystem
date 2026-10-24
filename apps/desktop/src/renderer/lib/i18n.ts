@@ -245,6 +245,62 @@ function translateCore(trimmed: string): string {
     return `${critical} критични · ${high} високи · ${medium} средни · ${low} ниски · ${info} информационни`;
   }
 
+  const paletteEntryMatch = /^(Open Project|Start Full QA|Start Targeted QA) — (.+)$/.exec(trimmed);
+  if (paletteEntryMatch !== null) {
+    const action =
+      paletteEntryMatch[1] === 'Open Project'
+        ? 'Отвори проект'
+        : paletteEntryMatch[1] === 'Start Full QA'
+          ? 'Стартирай ПЪЛЕН QA'
+          : 'Стартирай ЦЕЛЕВИ QA';
+    return `${action} — ${paletteEntryMatch[2]}`;
+  }
+
+  const ioCountersMatch = /^Input ([^·]+) · Output ([^·]+) · Cached ([^·]+)$/.exec(trimmed);
+  if (ioCountersMatch !== null) {
+    return `Вход ${(ioCountersMatch[1] ?? '').trim()} · Изход ${(ioCountersMatch[2] ?? '').trim()} · Кеширани ${(ioCountersMatch[3] ?? '').trim()}`;
+  }
+
+  const severityCountMatch = /^(critical|high|medium|low|info): (\d+)$/.exec(trimmed);
+  if (severityCountMatch !== null) {
+    const forms: Record<string, [string, string]> = {
+      critical: ['критична', 'критични'],
+      high: ['висока', 'високи'],
+      medium: ['средна', 'средни'],
+      low: ['ниска', 'ниски'],
+      info: ['информационна', 'информационни'],
+    };
+    const sevKey = severityCountMatch[1] ?? '';
+const sevCount = severityCountMatch[2] ?? '';
+const [singular, plural] = forms[sevKey] ?? [sevKey, sevKey];
+    return `${sevCount === '1' ? singular : plural}: ${sevCount}`;
+  }
+
+  const beforeStatusMatch =
+    /^No findings were reported before (timed out|failed|cancelled|interrupted)\. Analysis is incomplete\.$/.exec(
+      trimmed,
+    );
+  if (beforeStatusMatch !== null) {
+    const beforeKey = beforeStatusMatch[1] ?? '';
+const st = STATUS_BG[beforeKey] ?? beforeKey;
+    return `Не са докладвани констатации преди ${st}. Анализът е непълен.`;
+  }
+
+  const partialReportMatch =
+    /^Partial report — agent (timed out|failed|cancelled|interrupted)\. Reported findings and evidence are retained; analysis is incomplete\.$/.exec(
+      trimmed,
+    );
+  if (partialReportMatch !== null) {
+    const partialKey = partialReportMatch[1] ?? '';
+const st = STATUS_BG[partialKey] ?? partialKey;
+    return `Частичен доклад — агент ${st}. Докладваните констатации и доказателства се запазват; анализът е непълен.`;
+  }
+
+  const rawEventsMatch = /^Raw events \((\d+)\)$/.exec(trimmed);
+  if (rawEventsMatch !== null) {
+    return `Сурови събития (${rawEventsMatch[1]})`;
+  }
+
   const agentActivityMatch =
     /^([^\s]+?)\s+(running|planning|completed|failed|timed\s+out|interrupted|investigating|reporting|starting|probing)$/.exec(
       trimmed,

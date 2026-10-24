@@ -1,3 +1,5 @@
+import { translateText } from './i18n.js';
+
 export interface PaletteEntry {
   readonly label: string;
   readonly hint?: string;
@@ -33,8 +35,11 @@ export function buildPaletteEntries(
 export function filterPaletteEntries(
   entries: readonly PaletteEntry[],
   query: string,
+  language: 'en' | 'bg' = 'en',
 ): PaletteEntry[] {
   const q = query.trim().toLowerCase();
   if (q === '') return [...entries];
-  return entries.filter((e) => (e.label + ' ' + (e.hint ?? '')).toLowerCase().includes(q));
+  return entries.filter((e) =>
+    (e.label + ' ' + (e.hint ?? '') + ' ' + translateText(e.label, language)).toLowerCase().includes(q),
+  );
 }

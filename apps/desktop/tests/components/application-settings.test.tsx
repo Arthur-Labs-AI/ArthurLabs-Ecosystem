@@ -115,6 +115,40 @@ describe('Application settings & localization', () => {
     expect(translateText('OpenCode running', 'bg')).toBe('OpenCode изпълнява се');
     expect(translateText('GLM completed', 'bg')).toBe('GLM завършено');
     expect(translateText('Project completed', 'bg')).toBe('Проектът е завършен');
+    expect(translateText('Preparation', 'bg')).toBe('Подготовка');
+    expect(translateText('Commands / Tests', 'bg')).toBe('Команди / Тестове');
+    expect(translateText('Observed', 'bg')).toBe('Наблюдавано');
+    expect(translateText('Not observed', 'bg')).toBe('Не е наблюдавано');
+    expect(translateText('Active', 'bg')).toBe('Активно');
+    expect(translateText('Open Project — AutoPulse', 'bg')).toBe('Отвори проект — AutoPulse');
+    expect(translateText('Start Targeted QA — AutoPulse', 'bg')).toBe('Стартирай ЦЕЛЕВИ QA — AutoPulse');
+    expect(translateText('Input 12 · Output 34 · Cached 0', 'bg')).toBe('Вход 12 · Изход 34 · Кеширани 0');
+    expect(translateText('No findings were reported before failed. Analysis is incomplete.', 'bg')).toBe(
+      'Не са докладвани констатации преди неуспешно. Анализът е непълен.',
+    );
+    expect(translateText('Cancelled.', 'bg')).toBe('Прекъснато.');
+    expect(translateText('Open', 'bg')).toBe('Отворено');
+    expect(translateText('Raw events (5)', 'bg')).toBe('Сурови събития (5)');
+    expect(translateText('critical: 1', 'bg')).toBe('критична: 1');
+    expect(translateText('critical: 2', 'bg')).toBe('критични: 2');
+    expect(translateText('Open Project — AutoPulse', 'bg')).toBe('Отвори проект — AutoPulse');
+    expect(translateText('Start Full QA — AutoPulse', 'bg')).toBe('Стартирай ПЪЛЕН QA — AutoPulse');
+    expect(translateText('Input 1,234 · Output 567 · Cached 89', 'bg')).toBe(
+      'Вход 1,234 · Изход 567 · Кеширани 89',
+    );
+    expect(translateText('No findings were reported before timed out. Analysis is incomplete.', 'bg')).toBe(
+      'Не са докладвани констатации преди изтекло време. Анализът е непълен.',
+    );
+    expect(
+      translateText(
+        'Partial report — agent failed. Reported findings and evidence are retained; analysis is incomplete.',
+        'bg',
+      ),
+    ).toBe(
+      'Частичен доклад — агент неуспешно. Докладваните констатации и доказателства се запазват; анализът е непълен.',
+    );
+    expect(translateText('OpenCode running', 'bg')).toBe('OpenCode изпълнява се');
+    expect(translateText('Raw events (5)', 'bg')).toBe('Сурови събития (5)');
     expect(
       translateText(
         'Incomplete analysis. Reported findings and evidence are retained independently for each agent.',

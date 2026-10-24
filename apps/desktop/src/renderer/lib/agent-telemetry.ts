@@ -45,6 +45,11 @@ const STAGE_ORDER: readonly AgentStageId[] = [
   'completed',
 ];
 
+/** Human label for a stage id; falls back to the raw id for forward compatibility. */
+export function stageLabel(stage: AgentStageId | string): string {
+  return (STAGE_LABELS as Record<string, string>)[stage] ?? stage;
+}
+
 /** AgentRun milestone labels; absent workers use separate Waiting/Not started labels. */
 export function stageStateLabel(state: StageState): string {
   const labels: Record<StageState, string> = {
