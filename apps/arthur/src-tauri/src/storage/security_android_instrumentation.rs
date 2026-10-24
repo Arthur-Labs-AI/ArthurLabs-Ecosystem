@@ -459,6 +459,12 @@ fn scenario(case: jint) -> Result<()> {
         27 => super::security_tls_tests::reverse_tls_roles(),
         28 => super::security_pake_tests::reservation_substitution(),
         29 => super::security_pake_tests::dormant_transport_no_effects(),
+        30 => super::security_pake_tests::stale_ticket_preserves_code(),
+        31 => super::security_pake_tests::n7b_dormant_owner_no_effects(),
+        32 => {
+            let result = crate::sync::security::route_observer::acquire("192.168.1.3:7431".parse().map_err(|_|E::Invalid)?);
+            require(matches!(result,Err(crate::sync::security::route_observer::Unavailable::MissingPermission)))
+        },
         _ => Err(E::Invalid),
     }
 }

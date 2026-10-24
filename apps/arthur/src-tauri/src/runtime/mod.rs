@@ -14,6 +14,10 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 
+pub(crate) mod lan_candidate;
+// Unforgeable outside this owner module; construction starts no tasks.
+pub(crate) struct TransportOwner(());
+
 use crate::storage::capture_store::{CaptureStore, StoreError};
 use crate::storage::ownership::{DataRootOwnership, OwnershipError};
 
@@ -23,6 +27,7 @@ pub(crate) type RuntimeHandle = Arc<NativeRuntime>;
 pub(crate) struct NativeRuntime {
     data_root: PathBuf,
     store: CaptureStore,
+    transport: lan_candidate::Coordinator,
 }
 
 #[derive(Debug)]
@@ -120,6 +125,7 @@ impl NativeRuntime {
         let runtime = Arc::new(Self {
             data_root: root.clone(),
             store,
+            transport: lan_candidate::Coordinator::new(&TransportOwner(())),
         });
         {
             let mut registry = owners()
@@ -129,6 +135,10 @@ impl NativeRuntime {
             reservation.published = true;
         }
         Ok(runtime)
+    }
+
+    pub(crate) fn transport_candidate(&self) -> &lan_candidate::Coordinator {
+        &self.transport
     }
 
     pub(crate) fn data_root(&self) -> &Path {
@@ -169,3 +179,9 @@ impl Drop for Reservation {
 
 #[cfg(test)]
 mod tests;
+
+impl Drop for NativeRuntime {
+    fn drop(&mut self) {
+        let _ = self.transport.shutdown();
+    }
+}

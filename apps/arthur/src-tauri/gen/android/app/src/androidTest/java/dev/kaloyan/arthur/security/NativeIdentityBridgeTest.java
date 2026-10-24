@@ -40,6 +40,15 @@ public final class NativeIdentityBridgeTest {
     @Test public void e3a2_reverse_tls_roles() { assertTrue(runScenario(27)); }
     @Test public void e3a3_old_confirmation_new_reservation_rejected() { assertTrue(runScenario(28)); }
     @Test public void n7a_fake_routes_bounded_io_and_no_store_effects() { assertTrue(runScenario(29)); }
+    @Test public void n7b_stale_ticket_new_reservation_remains_usable() { assertTrue(runScenario(30)); }
+    @Test public void n7b_fake_generations_single_owner_and_no_store_effects() { assertTrue(runScenario(31)); }
+    @Test public void n7b_actual_os_missing_network_state_permission_through_jni() {
+        android.content.Context app = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().getTargetContext();
+        assertEquals(android.content.pm.PackageManager.PERMISSION_DENIED,
+            app.checkSelfPermission(android.Manifest.permission.ACCESS_NETWORK_STATE));
+        assertEquals("{\"status\":\"missing_permission\"}",NativeIdentityBridge.observeRoute(app,new byte[]{(byte)192,(byte)168,1,3},0));
+        assertTrue(runScenario(32));
+    }
     @Test public void eb19_no_java_to_native_signing_entrypoint() {
         int nativeMethods=0;
         for(java.lang.reflect.Method method: NativeIdentityBridge.class.getDeclaredMethods()) {

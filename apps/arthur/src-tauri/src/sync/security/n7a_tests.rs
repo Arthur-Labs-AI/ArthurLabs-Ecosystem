@@ -14,9 +14,11 @@ fn observation(endpoint: &str) -> Observation {
         generation: 1,
         captured: 10,
         interface: 3,
+        network: 1,
         medium: Medium::Wifi,
         link: Link::Up,
         local: "192.168.1.2".parse().unwrap(),
+        source_selected: true,
         local_prefix: 24,
         route_interface: 3,
         destination: "192.168.1.0".parse().unwrap(),
@@ -131,7 +133,6 @@ fn n7a_route_selection_changes_and_platform_gate() {
     assert!(Candidate::evaluate(&hint, &fresh, 11).is_ok());
     fresh.platform = Platform::AndroidPickerEndpointObserved(fresh.endpoint);
     assert!(Candidate::evaluate(&hint, &fresh, 11).is_ok());
-    assert!(windows_observation().is_err() && android_observation().is_err());
     // A public address must fail even when the fake direct route is on-link.
     for (endpoint, local, destination, prefix) in [
         ("8.8.8.3:7431", "8.8.8.2", "8.8.8.0", 24),
@@ -188,16 +189,29 @@ impl Wake for Count {
 #[derive(Default)]
 struct Clock {
     now: AtomicU64,
-    wake: Mutex<Option<Waker>>,
+    wake: Arc<Mutex<Option<Waker>>>,
 }
 impl Timer for Clock {
-    fn poll_until(&self, cx: &mut Context<'_>, deadline: u64) -> Poll<u64> {
-        if self.now.load(Ordering::SeqCst) >= deadline {
+    fn poll_until(
+        &self,
+        cx: &mut Context<'_>,
+        deadline: u64,
+    ) -> (Poll<u64>, Box<dyn TimerRegistration>) {
+        let poll = if self.now.load(Ordering::SeqCst) >= deadline {
             Poll::Ready(self.now.load(Ordering::SeqCst))
         } else {
             *self.wake.lock().unwrap() = Some(cx.waker().clone());
             Poll::Pending
-        }
+        };
+        (poll, Box::new(Registration(self.wake.clone())))
+    }
+}
+struct Registration(Arc<Mutex<Option<Waker>>>);
+impl TimerRegistration for Registration {}
+impl Drop for Registration {
+    fn drop(&mut self) {
+        let retired = self.0.lock().unwrap().take();
+        drop(retired);
     }
 }
 impl Clock {
@@ -257,6 +271,7 @@ impl EncryptedIo for Io {
         Poll::Ready(Ok(n))
     }
     fn abort(&mut self) {
+        self.wake.take();
         self.aborts.fetch_add(1, Ordering::SeqCst);
     }
 }
@@ -554,6 +569,44 @@ pub(crate) fn run() -> super::Result<()> {
         n7a_concurrent_limits_retry_and_shutdown();
         n7a_handshake_deadline_and_total_session();
         n7a_drop_releases_cancel_waker_registration();
+        n7b_timer_registration_released_on_drop_failure_and_finish();
     })
     .map_err(|_| E::State)
+}
+
+#[cfg_attr(test, test)]
+fn n7b_timer_registration_released_on_drop_failure_and_finish() {
+    for mode in 0..4 {
+        let pool = Arc::new(Pool::default());
+        let e = expected();
+        let p = pool.admit(e, 10).unwrap();
+        let timer = Clock::default();
+        let task = Arc::new(Count::default());
+        let weak = Arc::downgrade(&task);
+        let w = Waker::from(task);
+        let mut cx = Context::from_waker(&w);
+        let mut io = Io::new(vec![]);
+        io.pending = true;
+        let mut h = Handshake::new(io, p);
+        h.poll_budget(&mut cx, 10, &timer).unwrap();
+        match mode {
+            0 => drop(h),
+            1 => {
+                assert!(h.poll_budget(&mut cx, 20, &timer).is_err());
+            }
+            2 => {
+                let s = h.finish(10).unwrap();
+                assert!(timer.wake.lock().unwrap().is_none());
+                drop(s);
+            }
+            _ => {
+                let mut s = h.finish(10).unwrap();
+                assert!(s.receive(&mut cx, 10, &timer).is_pending());
+                drop(s);
+            }
+        }
+        drop(w);
+        assert!(timer.wake.lock().unwrap().is_none());
+        assert!(weak.upgrade().is_none(), "timer retained a completed task");
+    }
 }

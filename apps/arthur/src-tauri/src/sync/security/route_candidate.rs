@@ -112,6 +112,7 @@ pub(crate) enum NextHop {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Platform {
     WindowsPrivateProfileObserved,
+    WindowsOtherProfileObserved(i32),
     AndroidBroadPermissionObserved,
     AndroidPickerEndpointObserved(SocketAddr),
     PermissionDenied,
@@ -123,9 +124,11 @@ pub(crate) struct Observation {
     pub generation: u64,
     pub captured: u64,
     pub interface: u32,
+    pub network: u64, // OS LUID / Android Network handle, never peer identity
     pub medium: Medium,
     pub link: Link,
     pub local: IpAddr,
+    pub source_selected: bool, // OS selection, not merely a LinkProperties address
     pub local_prefix: u8,
     pub route_interface: u32,
     pub destination: IpAddr,
@@ -163,9 +166,13 @@ impl Candidate {
             Address::Dns(..) => return Err(E::N7PolicyPending),
         };
         validate_endpoint(endpoint)?;
+        if !observed.source_selected {
+            return Err(E::N7PolicyPending);
+        }
         if now < observed.captured
             || now - observed.captured > 3
             || observed.generation == 0
+            || observed.network == 0
             || observed.interface == 0
             || observed.route_interface != observed.interface
             || observed.link != Link::Up
@@ -238,11 +245,4 @@ impl Candidate {
     pub fn activate(&self) -> Result<()> {
         Err(E::N7PolicyPending)
     }
-}
-// No live OS observations/permission authority are implemented by this phase.
-pub(crate) fn windows_observation() -> Result<Observation> {
-    Err(E::N7PolicyPending)
-}
-pub(crate) fn android_observation() -> Result<Observation> {
-    Err(E::N7PolicyPending)
 }

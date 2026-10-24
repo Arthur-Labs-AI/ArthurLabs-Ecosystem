@@ -1264,3 +1264,180 @@ byte/deadline bounds, ARM64, physical-device and successful release packaging.
 Fake observations, API36/JCA execution and negative release rejection do not
 establish those properties. N1/N7 approval remains pending independently of all
 passing foundation tests; production entrypoints remain CLOSED.
+
+## 22. MEGA N7B — native observations and dormant owner coordination
+
+**PARTIAL — implementation/evidence do not approve N7 or N1.** Accepted N7A
+baseline is `f34a1811530514078d58db66342a1d5b8882e8b6`, on existing
+`feature/nodes-integration`. The [N7B contract](m05-n7b-native-observation.md)
+contains the pre-implementation ten architecture answers, exact OS APIs,
+ownership/order/cleanup rules, platform differences and remaining decisions.
+It supersedes section21's missing native observation/coordinator implementation
+statements; section21's results remain a historical N7A snapshot.
+
+### Implemented scope and security findings
+
+- Read-only Windows GetBestRoute2/GetAdaptersAddresses/GetIfEntry2 adapter, selected
+  source/interface/LUID/prefix/route/next-hop/up metadata, conservative physical
+  medium mapping and exact adapter-GUID NLM network-category lookup. Bounded
+  buffers/iterations and repeated route/interface/profile reads refuse ambiguity
+  and changes. No interface/profile is accepted merely from RFC1918/IfType.
+- Read-only Android Application-context ConnectivityManager/NetworkCapabilities/
+  LinkProperties adapter through existing JNI attach/local-frame/exception rules.
+  Reports permission/no-network/stale/incomplete categories and selected Network
+  handle where available. The shipped manifest lacks ACCESS_NETWORK_STATE; no
+  permission/SDK change or prompt is introduced. Local LinkProperties addresses
+  explicitly lack OS-selected-source evidence, keeping eligibility pending.
+  API37 broad permission and NSD picker grants remain separate; no picker exists.
+- Exactly one passive coordinator/pool per NativeRuntime, reused on Arc
+  reacquisition. No production Default pool constructor. Private owner-bound
+  consumed tickets and Selection identity, checked monotonic generations,
+  invalidation before every acquisition, stale/foreign completion refusal and
+  admission revalidation. No automatic worker, callbacks, resolver or socket.
+- Caller Interrupt is the same cancellation handle owned by the permit.
+  Invalidation/shutdown flags active work before executor callbacks; shutdown,
+  poisoned shutdown, generation overflow, coordinator/runtime Drop and races
+  cannot reopen admission. Existing 2/1/4-per30s/expected-peer limits and bounded
+  frames/deadlines remain candidate policy, without cancellation refunds.
+- **Important lifecycle defect, reproduced RED then GREEN:** N7A stale-ticket
+  rejection erased the in-memory Challenge while a newer reservation remained
+  reserved. Cleanup now preserves a still-issued/reserved current-boot same
+  challenge if no exact-ticket row was cancelled. Terminal/successful cleanup
+  erases it; unrelated reservations and charged counters are untouched. A new
+  actual debug TLS/OPAQUE proof can finish against the newer ticket. Original
+  old-proof/new-ticket rejection remains enforced; restart cancels pending
+  qualification state without refund or grant.
+- **Important lifecycle gaps hardened:** Timer registrations are now owned RAII
+  objects and are removed on transition, completion, failure and Drop. Replacing
+  an Interrupt waker drops the old executor object outside its mutex; a reentrant
+  destructor test checks this. Fake I/O abort also removes its wake. Native
+  encrypted I/O/timer adapters remain absent, so no kernel cancellation claim.
+
+### Actual OS evidence versus simulation
+
+Actual Windows acquisition is a separate IP Helper/NLM test. Actual Android
+permission evidence is a separate Java plus Rust/JNI instrumentation case;
+synthetic route/generation/I/O tests are labelled fake. Neither proves LAN
+reachability, mixed-platform transport, continuous OS event handling or API37
+permission enforcement.
+
+Android environment: task-owned read-only `Medium_Phone_API_36.1`, Android16 /
+**API36 /x86_64**, fingerprint
+`google/sdk_gphone64_x86_64/emu64xa:16/BE4B.251210.005/14574095:user/release-keys`.
+Build remains SDK37, NDK29.0.14206865, JBR21.0.9, dedicated identitytest package.
+Exact final gate results are recorded below after execution.
+
+### Remaining N7 blockers
+
+Native route/profile/permission change subscriptions are not installed. Explicit
+refresh invalidates before the next snapshot; <=3s freshness and repeated reads
+are not continuous monitoring or proof against unobserved OS ABA changes.
+Actual DHCP/roaming/disconnect/reconnect/VPN/multi-homed callbacks, real scoped
+IPv6 selection, API37 permission denial/revocation, NSD grants, socket binding,
+physical LAN/mixed-device sessions and prompt kernel read/write/timer cancellation
+remain UNVERIFIED. Android active-network/link/source facts are blocked by missing
+permission and lack of selected-socket-source proof. Windows classification and
+NLM profile never imply an open firewall port or authorization. OS/COM snapshot
+calls are synchronous; their in-flight cancellation is not implemented.
+
+Owner/security review still must approve interface/profile/port/firewall policy,
+Android permission/NSD UX and background behavior, IPv4 link-local/public-onlink
+IPv6 and /31-/32 handling, measured TLS memory/handshake byte limits, timers,
+retry fairness/backoff and actual event-bound nonblocking adapters.
+
+**Preserved:** production schema9, dormant M05, ClosedTrust, PAKE/TLS/LAN CLOSED,
+no production VerifiedSession/live enrollment/listener/dialer/frontend signing or
+network API, one existing SQLite owner, G4 UnverifiedBounds, frozen journal/codec/
+reducer/snapshot2/D4. OPAQUE is not replaced by SPAKE2. N1/N2/N3/N7 and G4-G7
+remain unapproved; **N1 is still blocked and E3B has not started**. Local gates do
+not establish hosted CI, ARM64, physical-device or successful release packaging.
+
+### Final Windows/local verification
+
+All Cargo commands use `--locked --offline --manifest-path
+apps/arthur/src-tauri/Cargo.toml`; native tests use `--lib -- --test-threads=1`.
+The first full run was 1378/5/25 (493.52s, emulator/compilation resource overlap).
+After final source/profile/lifecycle changes the full suite was repeated on the
+final implementation: **1378 PASS /same5 FAIL /25 ignored, 274.35s**.
+
+| Executed gate | N7B result |
+| --- | --- |
+| Stale-ticket/new-reservation regression | RED on N7A (1 failed); GREEN after exact-ticket memory/durable cleanup correction, Windows and Android evidence below |
+| Final `cargo check --all-targets` with locked dependencies | PASS |
+| Final `cargo test --lib n7 -- --test-threads=1 --nocapture` | **21 PASS**, including actual Windows IP Helper/NLM test; synthetic tests are separate names/modules |
+| Final full `cargo test --lib` | FAIL: **1378 PASS /same5 historical FAIL /25 ignored**, accepted baseline1368/5/25; ten new passing tests |
+| Security / Sync-name / Journal / dormant-v10 groups in full run | **60/146/287/24 PASS**, 1/1/1/0 ignored; overlapping groups, not additional executions |
+| E2 / TLS / E3A2 / E3A3 groups in full run | **22/8/11/1 PASS**; E2/TLS each have one ignored actual-device-fixture test, separately executed below |
+| `qualification/verify-isolation.ps1` | PASS, four actual resolved graphs: default Windows/Android exclude opaque-ke/argon2/crypto-bigint; Windows dev and Android feature positive controls include them |
+| `npm run typecheck` | PASS |
+| `npm run test:architecture` | FAIL: **86 PASS /same2 historical FAIL**, schema-v6 project ownership and M04.6 voice-output DTO source assertions |
+| Frozen-source diff against N7A | PASS: manifest, production migrations, journal and Sync codec/protocol unchanged |
+
+The five full-native failures are the same JEV Timeout-versus-Network assertion,
+two synthesis architecture assertions, frozen synthesis corpus hash and synthesis
+commit-time authorization source assertion listed in section21. No assertion or
+fixture was weakened to suppress them. Cargo.lock adds only direct references to
+already-resolved windows0.62.2/windows-sys0.61.2; no package version/crypto change.
+
+The final actual Windows test acquired OS source/index/LUID/subnet metadata,
+**Wi-Fi /Up /Public category0 /local prefix24 /selected default route prefix0 /
+gateway next hop**. This observation is ineligible for direct-LAN classification;
+no successful Candidate or reachable peer/port is claimed. Address values and
+network names are deliberately not logged. NLM profile observation is distinct
+from an inferred physical-medium classification and firewall reachability.
+
+| Additional frontend gate | N7B result |
+| --- | --- |
+| First `npm run arthur:check` | FAIL: 560 PASS /1 failure in unchanged EvolutionScreen deterministic-diff test (`Body changes` absent at assertion); build did not execute after that failure |
+| Focused unchanged `EvolutionScreen.test.tsx` rerun | **14 PASS**, no source/expectation edits |
+| Full `npm run arthur:check` rerun | **561 PASS /42 files**, app typecheck and Vite production build PASS; existing >500KiB chunk warning |
+
+The initial frontend refusal is retained as transient test evidence, not removed
+from this report. No frontend source was changed; the standalone and complete
+reruns passed. It is not included among the five historical native/two architecture
+failures, nor claimed to be a newly fixed UI defect.
+
+### Executed Android, interoperability and negative release gates
+
+| Executed gate | N7B result |
+| --- | --- |
+| `gen/android/verify-identity.ps1 -Serial emulator-5554` | PASS: actual feature-enabled Rust/Java/Kotlin/dedicated debug APK and instrumentation; **39 tests /0 failures /0 errors /0 skips**, fresh XML timestamp2026-10-24T18:40:46Z; both separate process-restart invocations `OK (1 test)` |
+| Actual N7B Android OS/JNI case32 | PASS: target Application's OS permission check returns PERMISSION_DENIED; Java and Rust/JNI return MissingPermission. This verifies the refusal boundary, **not successful ConnectivityManager route acquisition** |
+| Android cases29/31 | PASS: fake routes/I/O/timers/generations/concurrent admission and disposable real-owner SQLite no-effect/schema9 checks; not actual OS route transitions |
+| Android case30 plus preserved case28 | PASS: actual Keystore/TLS/OPAQUE debug qualification proves newer-ticket code remains usable, old-confirmation substitution stays rejected, counters/startup recovery remain correct |
+| Explicit public E2/TLS fixture instrumentation repeat | **2 PASS**, fresh public-only fixtures from the dedicated test package |
+| Windows `cargo test --lib actual_android -- --ignored --test-threads=1` with fresh fixture environment variables | **2 PASS**: actual Android application/TLS signatures verified on Windows; not a LAN session |
+| JBR `javac --release 8` and `IdentityFormatHostTest` | **91 host-only JCA checks PASS**, CNG/JCA/fresh Android public fixtures; existing source/target8 warnings |
+| Dedicated test APK force-stop /`am start -W` | PASS: Status ok /LaunchState COLD; production app not overwritten |
+| Actual `tauri android build --target x86_64 --apk --ci --features android-identity-tests --config src-tauri/gen/android/identity-tests.tauri.json` | Expected rejection PASS: CLI exit1/Cargo101, both explicit `android-identity-tests is forbidden in release builds` and `PAKE qualification is forbidden outside debug instrumentation` observed |
+
+The forbidden release configuration also reports the same eight secondary
+missing debug-only slot-method errors seen in N7A/E3A3 (ten errors including the
+two guards). This is not a successful release packaging claim or an environmental
+failure substituted for those guards. The task-owned read-only emulator was
+stopped after the dedicated APK/public-fixture checks; no physical device ran.
+
+| Final default/isolation gate | N7B result |
+| --- | --- |
+| `tauri android build --debug --target x86_64 --apk --ci` without test feature/config | PASS: actual default native/Gradle/debug APK build |
+| NDK `llvm-nm --dynamic --defined-only` on final default `libarthur_lib.so` | PASS: exactly one `Java_dev_kaloyan_arthur_security_*` export, bootstrap `NativeIdentityBridge_install`; no BridgeTest/RestartTest JNI exports |
+| Generated default Gradle file /AndroidManifest diff against HEAD | PASS: unchanged after supported default build restored the temporary dedicated-test suffix |
+| Final four dependency graph controls | PASS, repeated after default build |
+| Scoped Rust `rustfmt --check` /`git diff --check` | PASS; no global formatting claim for unrelated historical files |
+| `adb devices` after task cleanup | No running task emulator remains |
+
+Raw local evidence is retained under `%TEMP%/arthur-n7b-*.log` (red, final-focused,
+final-native, locked-check, architecture, frontend/frontend-rerun, android,
+interop, negative-release and default-android); graph controls are under
+`%TEMP%/arthur-n7b-final-isolation`. Public-only fixture exports and host classes
+are temporary, not repository artifacts. No keys, databases, APKs or raw logs
+are committed. These are local results, **not hosted CI**.
+
+**Delivery status: MEGA N7B PARTIAL.** Read-only observations, runtime ownership,
+explicit generation invalidation and debug qualification cleanup are implemented
+and locally verified within the stated limits. Live native change subscriptions,
+Android positive route/source acquisition, actual sockets/timers/abort, API37,
+ARM64/physical devices and successful release packaging remain UNVERIFIED or
+blocked. The five native/two architecture historical failures and the initial
+transient frontend failure are explicitly retained above. N1 remains blocked,
+N7PolicyPending remains enforced and E3B has not started.

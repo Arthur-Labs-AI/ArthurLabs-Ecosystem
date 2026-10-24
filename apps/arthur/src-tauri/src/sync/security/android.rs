@@ -92,6 +92,43 @@ impl Bridge {
         }
         jni(env.convert_byte_array(array))
     }
+    pub(crate) fn observe_route(
+        &self,
+        endpoint: std::net::SocketAddr,
+    ) -> super::route_observer::ReadResult {
+        use super::route_observer::Unavailable as U;
+        let json = self
+            .call(|env, class| {
+                let (bytes, scope) = match endpoint {
+                    std::net::SocketAddr::V4(v) => (v.ip().octets().to_vec(), 0),
+                    std::net::SocketAddr::V6(v) => (v.ip().octets().to_vec(), v.scope_id()),
+                };
+                let bytes = env.byte_array_from_slice(&bytes)?;
+                let value = env
+                    .call_static_method(
+                        class,
+                        "observeRoute",
+                        "(Landroid/content/Context;[BI)Ljava/lang/String;",
+                        &[
+                            JValue::Object(self.application.as_obj()),
+                            JValue::Object(bytes.as_ref()),
+                            JValue::Int(scope as i32),
+                        ],
+                    )?
+                    .l()?;
+                if value.is_null() {
+                    return Err(E::PlatformUnverified);
+                }
+                let string = jni::objects::JString::from(value);
+                let value: String = env.get_string(&string)?.into();
+                if value.len() > 8192 {
+                    return Err(E::Limit);
+                }
+                Ok(value)
+            })
+            .map_err(|_| U::Unsupported)?;
+        super::route_observer::parse_android(&json, endpoint)
+    }
     fn key(&self, slot: Uuid, create: bool) -> Result<Vec<u8>> {
         valid_slot(slot)?;
         self.call(|env, class| {

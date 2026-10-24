@@ -10,6 +10,9 @@ public final class NativeIdentityBridge {
     static boolean initialize(Application app) { return install(app); }
     private static native boolean install(Application app);
 
+    public static String observeRoute(Context app, byte[] numeric, int scope) {
+        return RouteObservation.read(app, numeric, scope);
+    }
     public static byte[] create(Context app, String slot) throws GeneralSecurityException {
         return DeviceSigningIdentity.createIdentity(app, slot).publicIdentity();
     }

@@ -467,3 +467,25 @@ fn graceful_child_shutdown_releases_ownership() {
     let recovered = NativeRuntime::acquire(dir.path()).unwrap();
     assert!(recovered.list().unwrap().is_empty());
 }
+
+#[test]
+fn n7b_runtime_reacquisition_shares_coordinator_and_drop_cancels() {
+    let dir = tempfile::tempdir().unwrap();
+    let first = NativeRuntime::acquire(dir.path()).unwrap();
+    let second = NativeRuntime::acquire(dir.path()).unwrap();
+    assert!(std::ptr::eq(
+        first.transport_candidate(),
+        second.transport_candidate()
+    ));
+    first.transport_candidate().shutdown().unwrap();
+    let h = crate::sync::security::route_candidate::Hint::parse(
+        "192.168.1.3:7431",
+        crate::sync::security::route_candidate::Origin::Manual,
+    )
+    .unwrap();
+    assert!(second.transport_candidate().begin(h.clone()).is_err());
+    drop(first);
+    drop(second);
+    let replacement = NativeRuntime::acquire(dir.path()).unwrap();
+    assert!(replacement.transport_candidate().begin(h).is_ok());
+}

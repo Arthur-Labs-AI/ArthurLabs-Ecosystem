@@ -29,11 +29,14 @@ impl Interrupt {
         }
     }
     fn register(&self, cx: &Context<'_>) -> Result<()> {
+        let next = cx.waker().clone();
         let mut wake = self.wake.lock().map_err(|_| E::State)?;
         if self.flag.cancelled() {
             return Err(E::Cancelled);
         }
-        *wake = Some(cx.waker().clone());
+        let old = wake.replace(next);
+        drop(wake);
+        drop(old); // executor teardown may reenter
         Ok(())
     }
 }
@@ -45,7 +48,7 @@ struct State {
     last: u64,
     admissions: VecDeque<u64>,
 }
-#[derive(Default)]
+#[cfg_attr(any(test, feature = "android-identity-tests"), derive(Default))]
 pub(crate) struct Pool(Mutex<State>);
 pub(crate) struct Permit {
     pool: Arc<Pool>,
@@ -55,12 +58,40 @@ pub(crate) struct Permit {
     started: u64,
 }
 impl Pool {
+    pub(crate) fn new(_: &crate::runtime::TransportOwner) -> Self {
+        Self(Mutex::new(State::default()))
+    }
+    pub(crate) fn invalidate(&self) -> Result<Vec<Arc<Interrupt>>> {
+        let s = self.0.lock().map_err(|_| E::State)?;
+        let stops: Vec<_> = s.active.iter().filter_map(|x| x.3.upgrade()).collect();
+        for stop in &stops {
+            stop.flag.cancel();
+        }
+        Ok(stops)
+    }
+    pub(crate) fn admit_cancellable(
+        self: &Arc<Self>,
+        expected: Expected,
+        now: u64,
+        cancel: &Arc<Interrupt>,
+    ) -> Result<Permit> {
+        self.admit_with_stop(expected, now, cancel.clone())
+    }
+    #[cfg(any(test, feature = "android-identity-tests"))]
     pub fn admit(self: &Arc<Self>, expected: Expected, now: u64) -> Result<Permit> {
+        self.admit_with_stop(expected, now, Arc::new(Interrupt::default()))
+    }
+    fn admit_with_stop(
+        self: &Arc<Self>,
+        expected: Expected,
+        now: u64,
+        stop: Arc<Interrupt>,
+    ) -> Result<Permit> {
         if expected.network.is_nil() || expected.peer.is_nil() || now.checked_add(60).is_none() {
             return Err(E::Invalid);
         }
         let mut s = self.0.lock().map_err(|_| E::State)?;
-        if s.closed {
+        if s.closed || stop.flag.cancelled() {
             return Err(E::Cancelled);
         }
         if now < s.last {
@@ -78,7 +109,6 @@ impl Pool {
         }
         s.next = s.next.checked_add(1).ok_or(E::Limit)?;
         let id = s.next;
-        let stop = Arc::new(Interrupt::default());
         s.admissions.push_back(now);
         s.active.push((id, expected, false, Arc::downgrade(&stop)));
         Ok(Permit {
@@ -90,18 +120,26 @@ impl Pool {
         })
     }
     pub fn shutdown(&self) -> Result<()> {
-        let stops = {
-            let mut s = self.0.lock().map_err(|_| E::State)?;
+        let (stops, poisoned) = {
+            let (mut s, poisoned) = match self.0.lock() {
+                Ok(s) => (s, false),
+                Err(e) => (e.into_inner(), true),
+            };
             s.closed = true;
-            s.active
-                .iter()
-                .filter_map(|x| x.3.upgrade())
-                .collect::<Vec<_>>()
+            let stops: Vec<_> = s.active.iter().filter_map(|x| x.3.upgrade()).collect();
+            for stop in &stops {
+                stop.flag.cancel();
+            }
+            (stops, poisoned)
         };
         for stop in stops {
             stop.cancel();
         }
-        Ok(())
+        if poisoned {
+            Err(E::State)
+        } else {
+            Ok(())
+        }
     }
 }
 impl Permit {
@@ -157,14 +195,23 @@ pub(crate) trait EncryptedIo {
 /// Timer must register a wake at deadline. Fake timer tests explicitly fire it;
 /// a future native executor adapter must supply actual monotonic wakeups.
 pub(crate) trait Timer {
-    fn poll_until(&self, cx: &mut Context<'_>, deadline: u64) -> Poll<u64>;
+    fn poll_until(
+        &self,
+        cx: &mut Context<'_>,
+        deadline: u64,
+    ) -> (Poll<u64>, Box<dyn TimerRegistration>);
 }
+/// Dropping a registration MUST unregister its wake without calling it under
+/// an executor lock. Each stream owns at most one registration, removed on
+/// completion, failure, transition and Drop. No native timer implementation yet.
+pub(crate) trait TimerRegistration {}
 /// Budget/lifecycle model only: finish is NOT TLS authentication. No TLS
 /// constructor consumes this type and no production transport accepts Framed.
 pub(crate) struct Handshake<I: EncryptedIo> {
     io: Option<I>,
     permit: Option<Permit>,
     last: u64,
+    timer: Option<Box<dyn TimerRegistration>>,
 }
 impl<I: EncryptedIo> Handshake<I> {
     pub fn new(io: I, permit: Permit) -> Self {
@@ -173,6 +220,7 @@ impl<I: EncryptedIo> Handshake<I> {
             io: Some(io),
             permit: Some(permit),
             last,
+            timer: None,
         }
     }
     pub fn poll_budget(
@@ -189,12 +237,23 @@ impl<I: EncryptedIo> Handshake<I> {
             }
             self.last = now;
             let deadline = p.started + 10;
-            if now >= deadline || matches!(timer.poll_until(cx, deadline), Poll::Ready(_)) {
+            self.timer.take();
+            if now >= deadline {
                 return Err(E::Expired);
+            }
+            let (poll, registration) = timer.poll_until(cx, deadline);
+            self.timer = Some(registration);
+            if let Poll::Ready(tick) = poll {
+                return Err(if tick >= deadline {
+                    E::Expired
+                } else {
+                    E::State
+                });
             }
             Ok(())
         })();
         if result.is_err() {
+            self.timer.take();
             if let Some(mut io) = self.io.take() {
                 io.abort();
             }
@@ -203,6 +262,7 @@ impl<I: EncryptedIo> Handshake<I> {
         result
     }
     pub fn finish(mut self, now: u64) -> Result<Framed<I>> {
+        self.timer.take();
         if now < self.last {
             return Err(E::State);
         }
@@ -237,6 +297,7 @@ pub(crate) struct Framed<I: EncryptedIo> {
     offset: usize,
     payload: Option<Vec<u8>>,
     output: Option<Vec<u8>>,
+    timer: Option<Box<dyn TimerRegistration>>,
 }
 impl<I: EncryptedIo> Framed<I> {
     pub fn new(mut io: I, permit: Permit, expected: Expected, now: u64) -> Result<Self> {
@@ -246,7 +307,11 @@ impl<I: EncryptedIo> Framed<I> {
             return Err(E::Trust);
         }
         let session = match permit.pool.0.lock() {
-            Ok(s) => s.active.iter().any(|x| x.0 == permit.id && x.2),
+            Ok(s) => {
+                !s.closed
+                    && !permit.stop.flag.cancelled()
+                    && s.active.iter().any(|x| x.0 == permit.id && x.2)
+            }
             Err(_) => {
                 io.abort();
                 return Err(E::State);
@@ -268,10 +333,12 @@ impl<I: EncryptedIo> Framed<I> {
             offset: 0,
             payload: None,
             output: None,
+            timer: None,
         })
     }
     fn fail<T>(&mut self, e: E) -> Poll<Result<T>> {
         self.io.abort();
+        self.timer.take();
         self.permit.take();
         self.payload = None;
         self.output = None;
@@ -288,7 +355,10 @@ impl<I: EncryptedIo> Framed<I> {
         if now >= deadline {
             return Err(E::Expired);
         }
-        if let Poll::Ready(tick) = timer.poll_until(cx, deadline) {
+        self.timer.take();
+        let (poll, registration) = timer.poll_until(cx, deadline);
+        self.timer = Some(registration);
+        if let Poll::Ready(tick) = poll {
             if tick >= deadline {
                 return Err(E::Expired);
             }
@@ -348,6 +418,7 @@ impl<I: EncryptedIo> Framed<I> {
                     let body = self.payload.take().unwrap();
                     self.offset = 0;
                     self.idle = now.saturating_add(15);
+                    self.timer.take();
                     return Poll::Ready(Ok(body));
                 }
                 cx.waker().wake_by_ref();
@@ -406,6 +477,7 @@ impl<I: EncryptedIo> Framed<I> {
                     self.output = None;
                     self.offset = 0;
                     self.idle = now.saturating_add(15);
+                    self.timer.take();
                     Poll::Ready(Ok(()))
                 } else {
                     cx.waker().wake_by_ref();
@@ -418,5 +490,48 @@ impl<I: EncryptedIo> Framed<I> {
 impl<I: EncryptedIo> Drop for Framed<I> {
     fn drop(&mut self) {
         self.io.abort();
+    }
+}
+
+#[cfg(test)]
+mod n7b_lifecycle_tests {
+    use super::*;
+    use std::{
+        sync::atomic::{AtomicBool, Ordering},
+        task::Wake,
+    };
+    struct Reentrant {
+        stop: Weak<Interrupt>,
+        released: Arc<AtomicBool>,
+    }
+    impl Wake for Reentrant {
+        fn wake(self: Arc<Self>) {}
+    }
+    impl Drop for Reentrant {
+        fn drop(&mut self) {
+            if let Some(stop) = self.stop.upgrade() {
+                self.released
+                    .store(stop.wake.try_lock().is_ok(), Ordering::SeqCst);
+            }
+        }
+    }
+    struct Idle;
+    impl Wake for Idle {
+        fn wake(self: Arc<Self>) {}
+    }
+    #[test]
+    fn n7b_replaced_waker_destructor_runs_outside_lock() {
+        let stop = Arc::new(Interrupt::default());
+        let released = Arc::new(AtomicBool::new(false));
+        let w = Waker::from(Arc::new(Reentrant {
+            stop: Arc::downgrade(&stop),
+            released: released.clone(),
+        }));
+        stop.register(&Context::from_waker(&w)).unwrap();
+        drop(w);
+        let next = Waker::from(Arc::new(Idle));
+        stop.register(&Context::from_waker(&next)).unwrap();
+        assert!(released.load(Ordering::SeqCst));
+        stop.cancel();
     }
 }

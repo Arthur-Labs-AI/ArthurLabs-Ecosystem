@@ -457,3 +457,73 @@ fn e3a2_expiry_native_key_loss_and_substitution() {
 fn e3a2_actual_pake_context_roles_and_untrusted_initial_keys() {
     assert!(actual_context_and_initial_pin_substitution().is_ok());
 }
+
+#[cfg(windows)]
+#[test]
+fn n7b_stale_ticket_preserves_new_reservation_code() {
+    assert!(stale_ticket_preserves_code().is_ok());
+}
+pub(crate) fn stale_ticket_preserves_code() -> Result<()> {
+    let a = Fixture::new()?;
+    let b = Fixture::new()?;
+    let owner = a.owner();
+    let registry = NetworkRegistry::candidate(owner.store())?;
+    let admin = OwnedDeviceIdentity::reopen(owner.store())?;
+    let root = registry.create_network(&admin)?;
+    let boot = registry.startup()?;
+    let mut ch = registry.issue_fixture(boot, 10)?;
+    let first = registry.reserve(&mut ch, 11)?;
+    let stale_pending = qualified(&a, &b, &ch, &first, root.network, false)?;
+    registry.failed(&first)?;
+    let second = registry.reserve(&mut ch, 12)?;
+    require(
+        registry
+            .record_qualification(&mut ch, first, stale_pending, 13)
+            .is_err(),
+    )?;
+    require(ch.code.is_some())?;
+    require(
+        count(
+            &owner,
+            "SELECT count(*) FROM e_enrollments WHERE state='reserved'",
+        )? == 1,
+    )?;
+    let fresh = qualified(&a, &b, &ch, &second, root.network, false)?;
+    registry.record_qualification(&mut ch, second, fresh, 14)?;
+    require(ch.code.is_none())?;
+    require(count(&owner, "SELECT attempts FROM e_abuse")? == 2)?;
+    require(
+        count(
+            &owner,
+            "SELECT count(*) FROM e_enrollments WHERE state='approval'",
+        )? == 1,
+    )?;
+    registry.startup()?;
+    require(
+        count(
+            &owner,
+            "SELECT count(*) FROM e_enrollments WHERE state IN ('reserved','approval')",
+        )? == 0,
+    )?;
+    require(count(&owner, "SELECT attempts FROM e_abuse")? == 2)
+}
+
+pub(crate) fn n7b_dormant_owner_no_effects() -> Result<()> {
+    let fixture = Fixture::new()?;
+    let owner = fixture.owner();
+    let same = crate::runtime::NativeRuntime::acquire(owner.data_root()).map_err(|_| E::Storage)?;
+    require(std::sync::Arc::ptr_eq(&owner, &same))?;
+    require(std::ptr::eq(
+        owner.transport_candidate(),
+        same.transport_candidate(),
+    ))?;
+    let before = count(&owner, "SELECT total_changes()")?;
+    crate::runtime::lan_candidate::qualify()?;
+    require(count(&owner, "SELECT total_changes()")? == before)?;
+    require(count(&owner, "PRAGMA user_version")? == 9)
+}
+#[cfg(windows)]
+#[test]
+fn n7b_single_owner_no_store_effects() {
+    assert!(n7b_dormant_owner_no_effects().is_ok());
+}

@@ -332,14 +332,26 @@ impl<'a> NetworkRegistry<'a> {
                 Err(E::Expired)
             }
         })();
-        ch.erase();
-        if result.is_err() {
-            // Only the submitted still-reserved ticket is terminal. A stale
-            // ticket must never cancel another reservation or refund counters.
-            self.write(|c| {
-                c.execute("UPDATE e_enrollments SET state='cancelled',ticket=NULL WHERE id=?1 AND boot=?2 AND ticket=?3 AND state='reserved'", params![ticket.enrollment.to_string(),ticket.boot.to_string(),ticket.nonce.to_string()]).map_err(sql)?;
-                Ok(())
-            })?;
+        if result.is_ok() {
+            ch.erase();
+        } else if ticket.enrollment == ch.id && ticket.boot == ch.boot {
+            // Memory erasure and durable cancellation belong to the SAME exact
+            // reservation. A stale ticket must not strand its newer successor.
+            let cleanup = self.write(|c| {
+                let changed = c.execute("UPDATE e_enrollments SET state='cancelled',ticket=NULL WHERE id=?1 AND boot=?2 AND ticket=?3 AND state='reserved'", params![ticket.enrollment.to_string(),ticket.boot.to_string(),ticket.nonce.to_string()]).map_err(sql)?;
+                // Preserve only a still-usable challenge (including its newer
+                // reservation). Startup/expiry/terminal rows erase stale memory.
+                let reusable: bool = c.query_row("SELECT EXISTS(SELECT 1 FROM e_enrollments WHERE id=?1 AND boot=?2 AND started=?3 AND boot=(SELECT boot FROM e_abuse WHERE singleton=1) AND state IN('issued','reserved'))", params![ch.id.to_string(),ch.boot.to_string(),i64::try_from(ch.started).map_err(|_|E::Invalid)?], |r|r.get(0)).map_err(sql)?;
+                Ok(changed == 1 || !reusable)
+            });
+            match cleanup {
+                Ok(true) => ch.erase(),
+                Ok(false) => (),
+                Err(e) => {
+                    ch.erase();
+                    return Err(e);
+                } // fail closed; startup recovery
+            }
         }
         result
     }
