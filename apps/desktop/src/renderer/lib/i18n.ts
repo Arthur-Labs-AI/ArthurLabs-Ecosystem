@@ -64,6 +64,33 @@ function translateExecutionRuntimeLine(trimmed: string): string | undefined {
     .replace(/\(source:\s*explicit\)/i, '(източник: изрично зададен)');
 }
 
+const STAGE_LABEL_BG: Record<string, string> = {
+  Preparation: 'Подготовка',
+  Planning: 'Планиране',
+  Investigation: 'Проучване',
+  'Commands / Tests': 'Команди / Тестове',
+  Evidence: 'Доказателства',
+  Reporting: 'Докладване',
+  Completed: 'Завършено',
+};
+const STAGE_STATE_BG: Record<string, string> = {
+  observed: 'наблюдавано',
+  warning: 'предупреждение',
+  active: 'активно',
+  'not observed': 'не е наблюдавано',
+  completed: 'завършено',
+  failed: 'неуспешно',
+  'timed out': 'изтекло време',
+  interrupted: 'прекъснато',
+  cancelled: 'прекъснато',
+};
+function translateStagePair(label: string, state: string): string | undefined {
+  const bgLabel = STAGE_LABEL_BG[label];
+  if (bgLabel === undefined) return undefined;
+  const bgState = STAGE_STATE_BG[state.toLowerCase()];
+  if (bgState === undefined) return undefined;
+  return bgLabel + ' ' + bgState;
+}
 function translateCore(trimmed: string): string {
   if (trimmed.length === 0) return trimmed;
   const exact = BG_MAP[trimmed];
@@ -271,8 +298,8 @@ function translateCore(trimmed: string): string {
       info: ['информационна', 'информационни'],
     };
     const sevKey = severityCountMatch[1] ?? '';
-const sevCount = severityCountMatch[2] ?? '';
-const [singular, plural] = forms[sevKey] ?? [sevKey, sevKey];
+    const sevCount = severityCountMatch[2] ?? '';
+    const [singular, plural] = forms[sevKey] ?? [sevKey, sevKey];
     return `${sevCount === '1' ? singular : plural}: ${sevCount}`;
   }
 
@@ -282,7 +309,7 @@ const [singular, plural] = forms[sevKey] ?? [sevKey, sevKey];
     );
   if (beforeStatusMatch !== null) {
     const beforeKey = beforeStatusMatch[1] ?? '';
-const st = STATUS_BG[beforeKey] ?? beforeKey;
+    const st = STATUS_BG[beforeKey] ?? beforeKey;
     return `Не са докладвани констатации преди ${st}. Анализът е непълен.`;
   }
 
@@ -292,7 +319,7 @@ const st = STATUS_BG[beforeKey] ?? beforeKey;
     );
   if (partialReportMatch !== null) {
     const partialKey = partialReportMatch[1] ?? '';
-const st = STATUS_BG[partialKey] ?? partialKey;
+    const st = STATUS_BG[partialKey] ?? partialKey;
     return `Частичен доклад — агент ${st}. Докладваните констатации и доказателства се запазват; анализът е непълен.`;
   }
 
@@ -301,6 +328,29 @@ const st = STATUS_BG[partialKey] ?? partialKey;
     return `Сурови събития (${rawEventsMatch[1]})`;
   }
 
+  const stagePairMatch =
+    /^(Preparation|Planning|Investigation|Commands \/ Tests|Evidence|Reporting|Completed)\s+(.+)$/.exec(
+      trimmed,
+    );
+  if (stagePairMatch !== null) {
+    const translatedStage = translateStagePair(stagePairMatch[1] ?? '', stagePairMatch[2] ?? '');
+    if (translatedStage !== undefined) return translatedStage;
+  }
+  const stageListPrefix = 'Stage: ';
+  if (trimmed.startsWith(stageListPrefix)) {
+    const stageItems = trimmed.slice(stageListPrefix.length).split(', ');
+    const translatedItems = stageItems.map((item) => translateText(item, 'bg'));
+    if (translatedItems.some((t, i) => t !== stageItems[i]))
+      return 'Етап: ' + translatedItems.join(', ');
+  }
+  const dashIndex = trimmed.indexOf(' — ');
+  if (dashIndex > 0) {
+    const leftSource = trimmed.slice(0, dashIndex);
+    const rightSource = trimmed.slice(dashIndex + 3);
+    const leftText = translateText(leftSource, 'bg');
+    const rightText = translateText(rightSource, 'bg');
+    if (leftText !== leftSource || rightText !== rightSource) return leftText + ' — ' + rightText;
+  }
   const agentActivityMatch =
     /^([^\s]+?)\s+(running|planning|completed|failed|timed\s+out|interrupted|investigating|reporting|starting|probing)$/.exec(
       trimmed,

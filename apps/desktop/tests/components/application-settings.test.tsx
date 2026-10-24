@@ -158,6 +158,13 @@ describe('Application settings & localization', () => {
       'Непълен анализ. Докладваните констатации и доказателства се запазват независимо за всеки агент.',
     );
     expect(translateText('Analysis cancelled.', 'bg')).toBe('Анализът е прекъснат.');
+    expect(translateText('Preparation Observed', 'bg')).toBe('Подготовка наблюдавано');
+    expect(translateText('Commands / Tests Warning', 'bg')).toBe('Команди / Тестове предупреждение');
+    expect(translateText('Stage: Preparation Observed, Planning Warning', 'bg')).toBe(
+      'Етап: Подготовка наблюдавано, Планиране предупреждение',
+    );
+    expect(translateText('Preparation — Observed', 'bg')).toBe('Подготовка — Наблюдавано');
+    expect(translateText('OpenCode — main agent', 'bg')).toBe('OpenCode — main agent');
     expect(
       translateText(
         'Review agent details and Environment before deliberately starting another run.',
