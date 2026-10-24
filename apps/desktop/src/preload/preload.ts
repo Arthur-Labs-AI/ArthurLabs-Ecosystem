@@ -97,6 +97,9 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     status: () => invoke('cli:status', {}),
     setEnabled: (enabled: boolean) => invoke('cli:set-enabled', { enabled }),
   },
+  app: {
+    setLanguage: (language: 'en' | 'bg') => invoke('app:set-language', { language }),
+  },
   runtime: {
     status: () => invoke('runtime:status', {}),
     distros: () => invoke('runtime:distros', {}),

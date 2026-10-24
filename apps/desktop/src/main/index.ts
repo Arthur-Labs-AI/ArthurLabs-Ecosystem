@@ -3,6 +3,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bootstrapDesktop, type BootstrappedDesktop } from './bootstrap.js';
 import { classifyBootFailure, fatalScreenCopy } from './boot-failure.js';
+import { readAppLanguage, translateMainCopy, writeAppLanguage } from './app-locale.js';
 import { parseSentryControlArgs } from './sentry-control.js';
 import { dispatchDesktopCommand } from './desktop-command-router.js';
 import { ProviderCredentialService } from './services/provider-credentials.js';
@@ -108,7 +109,7 @@ async function boot(): Promise<void> {
     });
     const message = classified.message;
     await app.whenReady();
-    const copy = fatalScreenCopy(classified.kind);
+    const copy = fatalScreenCopy(classified.kind, readAppLanguage(app.getPath('userData')));
     const nativeHostFailure = classified.kind === 'native-runtime-offline';
     const runtimeOffline = classified.kind !== 'data-store';
     const fatal = new BrowserWindow({
@@ -223,6 +224,9 @@ async function boot(): Promise<void> {
   });
   const broker = cliServer;
   registerDesktopIpc(bootstrapped.service, {
+    persistAppLanguage: (language) => {
+      writeAppLanguage(app.getPath('userData'), language);
+    },
     maintenanceActive: () => maintenance?.active ?? false,
     reclaimSpace: () => {
       if (quitting || maintenance === undefined) throw new Error('Sentry is shutting down.');
@@ -293,9 +297,13 @@ app.on('before-quit', (event) => {
   // bootstrap and runtime shutdown finish; repeated requests share cleanup.
   event.preventDefault();
   if (maintenance?.active) {
+    const language = readAppLanguage(app.getPath('userData'));
     dialog.showErrorBox(
-      'Disk reclamation is running',
-      'Wait for Windows disk reclamation and runtime reconnection to finish before closing Sentry.',
+      translateMainCopy('Disk reclamation is running', language),
+      translateMainCopy(
+        'Wait for Windows disk reclamation and runtime reconnection to finish before closing Sentry.',
+        language,
+      ),
     );
     return;
   }
@@ -314,9 +322,13 @@ app.on('before-quit', (event) => {
     } catch {
       quitting = false;
       console.error('[sentry] Shutdown cleanup failed; cancel active work and retry sentry stop.');
+      const language = readAppLanguage(app.getPath('userData'));
       dialog.showErrorBox(
-        'Sentry is still running',
-        'Shutdown could not complete. Cancel active QA work, wait for it to finish, then retry sentry stop.',
+        translateMainCopy('Sentry is still running', language),
+        translateMainCopy(
+          'Shutdown could not complete. Cancel active QA work, wait for it to finish, then retry sentry stop.',
+          language,
+        ),
       );
     }
   })();

@@ -10,6 +10,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
   'projects:list': z.object({}).strict(),
   'projects:add': z.object({ sourcePath: z.string().min(1).max(2000) }).strict(),
   'projects:cancel-add': z.object({}).strict(),
+  'app:set-language': z.object({ language: z.enum(['en', 'bg']) }).strict(),
   'projects:get': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:revisions': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:delete': z.object({ projectId: z.string().min(1).max(200) }).strict(),
@@ -113,6 +114,8 @@ export interface CommandRouterHooks {
   readonly cliSetEnabled?: (enabled: boolean) => Promise<unknown>;
   readonly showInFolder?: (path: string) => void;
   readonly redactErrorText?: (text: string) => string;
+  /** Persist the renderer-selected interface language for main-process UI. Best-effort. */
+  readonly persistAppLanguage?: (language: 'en' | 'bg') => void;
 }
 
 export interface SafeErrorOptions {
@@ -186,7 +189,12 @@ export async function dispatchDesktopCommand(
     });
   }
   const parsed = schema.parse(payload ?? {}) as Record<string, unknown>;
-  if (hooks.maintenanceActive?.() && channel !== 'runtime:status' && channel !== 'cli:status') {
+  if (
+    hooks.maintenanceActive?.() &&
+    channel !== 'runtime:status' &&
+    channel !== 'cli:status' &&
+    channel !== 'app:set-language'
+  ) {
     throw Object.assign(new Error('Windows disk reclamation is running. Wait for it to finish.'), {
       code: 'RUNTIME_MAINTENANCE',
     });
@@ -333,6 +341,16 @@ export async function dispatchDesktopCommand(
       if (hooks.cliStatus === undefined)
         throw Object.assign(new Error('CLI broker unavailable'), { code: 'CLI_UNAVAILABLE' });
       return hooks.cliStatus();
+    }
+    case 'app:set-language': {
+      // Renderer owns the selection; main only mirrors it for native UI.
+      // Persistence is best-effort and never fails the call.
+      try {
+        hooks.persistAppLanguage?.(parsed['language'] as 'en' | 'bg');
+      } catch {
+        /* selection already applied in the renderer */
+      }
+      return { saved: true, language: parsed['language'] };
     }
     case 'cli:set-enabled': {
       if (hooks.cliSetEnabled === undefined)

@@ -8,6 +8,7 @@
  */
 import type { ExecutionMode, HostKind } from './runtime/runtime-client.js';
 import { toSafeError, type SafeErrorOptions } from './desktop-command-router.js';
+import { translateMainCopy, type AppLanguage } from './app-locale.js';
 
 export type FatalScreenKind = 'wsl-runtime-offline' | 'native-runtime-offline' | 'data-store';
 
@@ -73,28 +74,33 @@ export interface FatalScreenCopy {
   readonly help: string;
 }
 
-/** Fatal screen copy per kind. The native path never mentions WSL/Ubuntu. */
-export function fatalScreenCopy(kind: FatalScreenKind): FatalScreenCopy {
+/**
+ * Fatal screen copy per kind. The native path never mentions WSL/Ubuntu.
+ * Pass the stored interface language so the static frame translates; the
+ * technical detail line always stays in its original language.
+ */
+export function fatalScreenCopy(kind: FatalScreenKind, language: AppLanguage = 'en'): FatalScreenCopy {
+  const t = (source: string): string => translateMainCopy(source, language);
   if (kind === 'native-runtime-offline') {
     return {
-      title: 'Sentry — runtime offline',
-      heading: 'Sentry Runtime Offline',
-      intro: 'Sentry Desktop is running, but the native Linux execution runtime could not start.',
-      help: 'QA execution is disabled. Native Linux support currently targets CachyOS only.',
+      title: t('Sentry — runtime offline'),
+      heading: t('Sentry Runtime Offline'),
+      intro: t('Sentry Desktop is running, but the native Linux execution runtime could not start.'),
+      help: t('QA execution is disabled. Native Linux support currently targets CachyOS only.'),
     };
   }
   if (kind === 'wsl-runtime-offline') {
     return {
-      title: 'Sentry — runtime offline',
-      heading: 'Sentry Runtime Offline',
-      intro: 'Sentry Desktop is running, but the WSL2 execution runtime could not start.',
-      help: 'QA execution is disabled. See docs/setup/wsl-runtime.md for setup instructions.',
+      title: t('Sentry — runtime offline'),
+      heading: t('Sentry Runtime Offline'),
+      intro: t('Sentry Desktop is running, but the WSL2 execution runtime could not start.'),
+      help: t('QA execution is disabled. See docs/setup/wsl-runtime.md for setup instructions.'),
     };
   }
   return {
-    title: 'Sentry — data store unavailable',
-    heading: 'Sentry could not open its data store.',
+    title: t('Sentry — data store unavailable'),
+    heading: t('Sentry could not open its data store.'),
     intro: '',
-    help: 'Fix the data root (SENTRY_DATA_ROOT) and retry.',
+    help: t('Fix the data root (SENTRY_DATA_ROOT) and retry.'),
   };
 }

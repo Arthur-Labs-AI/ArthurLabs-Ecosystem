@@ -163,6 +163,44 @@ describe('shared desktop command router', () => {
     }
   });
 
+  it('persists the renderer-selected language without touching the runtime', async () => {
+    const h = await harness(true);
+    const persisted: string[] = [];
+    const result = await dispatchDesktopCommand(
+      h.service,
+      'app:set-language',
+      { language: 'bg' },
+      { persistAppLanguage: (language) => persisted.push(language) },
+    );
+    expect(result).toEqual({ saved: true, language: 'bg' });
+    expect(persisted).toEqual(['bg']);
+    expect(h.seen).toHaveLength(0);
+  });
+
+  it('rejects invalid languages and keeps them out of the external allowlist', async () => {
+    const h = await harness(true);
+    await expect(
+      dispatchDesktopCommand(h.service, 'app:set-language', { language: 'fr' }, {}),
+    ).rejects.toThrow();
+    expect(isCliAllowed('app:set-language')).toBe(false);
+    await expect(
+      dispatchDesktopCommand(h.service, 'app:set-language', { language: 'bg' }, {}, { external: true }),
+    ).rejects.toMatchObject({ code: 'CLI_COMMAND_FORBIDDEN' });
+  });
+
+  it('lets the language persist during runtime maintenance', async () => {
+    const h = await harness(true);
+    const persisted: string[] = [];
+    const result = await dispatchDesktopCommand(
+      h.service,
+      'app:set-language',
+      { language: 'en' },
+      { maintenanceActive: () => true, persistAppLanguage: (language) => persisted.push(language) },
+    );
+    expect(result).toEqual({ saved: true, language: 'en' });
+    expect(persisted).toEqual(['en']);
+  });
+
   it('keeps renderer-only commands working on the internal path', async () => {
     const h = await harness(true);
     const statuses = await dispatchDesktopCommand(h.service, 'providers:status', {}, {});

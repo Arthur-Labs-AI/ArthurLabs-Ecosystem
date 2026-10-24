@@ -66,6 +66,19 @@ describe('boot failure classification', () => {
     expect(classifyBootFailure(failure).kind).toBe('wsl-runtime-offline');
   });
 
+  it('translates the fatal screen frame while keeping the technical detail untouched', () => {
+    const native = fatalScreenCopy('native-runtime-offline', 'bg');
+    expect(native.title).not.toContain('runtime offline');
+    expect(native.intro).toContain('native Linux');
+    expect(native.help).toContain('CachyOS');
+    const wsl = fatalScreenCopy('wsl-runtime-offline', 'bg');
+    expect(wsl.intro).toContain('WSL2');
+    expect(wsl.help).toContain('wsl-runtime.md');
+    const store = fatalScreenCopy('data-store', 'bg');
+    expect(store.help).toContain('SENTRY_DATA_ROOT');
+    expect(fatalScreenCopy('wsl-runtime-offline').help).toContain('setup instructions');
+  });
+
   it('routes unknown failures to the data-store copy', () => {
     const classified = classifyBootFailure(new Error('disk is full'));
     expect(classified.kind).toBe('data-store');
