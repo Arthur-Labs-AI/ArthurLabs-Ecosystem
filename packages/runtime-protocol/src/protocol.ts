@@ -100,6 +100,7 @@ export const RUNTIME_METHODS = [
   'runtime.shutdown',
   'projects.list',
   'projects.add',
+  'projects.cancelAdd',
   'projects.get',
   'projects.revisions',
   'projects.update',

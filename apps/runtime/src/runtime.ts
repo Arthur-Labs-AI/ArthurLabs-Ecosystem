@@ -460,6 +460,7 @@ export class SentryRuntimeHost {
   private readonly coordinator: RunCoordinator;
   private readonly pendingRuns = new Map<string, PendingRun>();
   private readonly pendingRetests = new Map<string, PendingRun>();
+  private readonly activeImports = new Set<AbortController>();
   private readonly notify: (event: string, payload?: unknown) => void;
   private configuredModels: { opencode?: string; deepseek?: string; glm?: string } = {};
   private closed = false;
@@ -538,6 +539,7 @@ export class SentryRuntimeHost {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.cancelAddProject();
     this.lease.release();
     this.database.close();
   }
@@ -644,9 +646,29 @@ export class SentryRuntimeHost {
     const input = z.string().min(1).max(2000).parse(sourcePath);
     const translated = translateWindowsPath(input);
     await assertReadableDir(translated);
-    return this.projects.addProject(translated, {
-      ...(this.importIncludeAll() ? { includeAll: true as const } : {}),
-    });
+    const controller = new AbortController();
+    this.activeImports.add(controller);
+    try {
+      return await this.projects.addProject(translated, {
+        signal: controller.signal,
+        ...(this.importIncludeAll() ? { includeAll: true as const } : {}),
+      });
+    } finally {
+      this.activeImports.delete(controller);
+    }
+  }
+
+  cancelAddProject(): { cancelled: boolean; count: number } {
+    const count = this.activeImports.size;
+    for (const controller of this.activeImports) {
+      try {
+        controller.abort(new Error('Project import cancelled by user'));
+      } catch {
+        /* ignore */
+      }
+    }
+    this.activeImports.clear();
+    return { cancelled: count > 0, count };
   }
 
   getProject(projectId: string): unknown {
@@ -1464,12 +1486,15 @@ export class SentryRuntimeHost {
             'QA work is still active. Cancel it, wait for completion, then retry sentry stop.',
           );
         }
+        this.cancelAddProject();
         this.shutdownRequested = true;
         return { shuttingDown: true };
       case 'projects.list':
         return this.listProjects();
       case 'projects.add':
         return this.addProject(requireString(params, 'sourcePath'));
+      case 'projects.cancelAdd':
+        return this.cancelAddProject();
       case 'projects.get':
         return this.getProject(requireString(params, 'projectId'));
       case 'projects.revisions':

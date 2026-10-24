@@ -8,6 +8,7 @@
 export const IPC_CHANNELS = [
   'projects:list',
   'projects:add',
+  'projects:cancel-add',
   'projects:get',
   'projects:revisions',
   'projects:update',
@@ -114,6 +115,7 @@ export interface SentryDesktopApi {
   readonly projects: {
     list(): Promise<unknown[]>;
     add(sourcePath: string): Promise<unknown>;
+    cancelAdd?(): Promise<{ cancelled: boolean; count?: number }>;
     get(projectId: string): Promise<unknown>;
     revisions(projectId: string): Promise<unknown[]>;
     update(projectId: string, sourcePath?: string): Promise<unknown>;

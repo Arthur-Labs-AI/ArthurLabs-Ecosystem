@@ -9,6 +9,7 @@ import { revealSavedExport, saveExportRun } from './services/export-save.js';
 export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
   'projects:list': z.object({}).strict(),
   'projects:add': z.object({ sourcePath: z.string().min(1).max(2000) }).strict(),
+  'projects:cancel-add': z.object({}).strict(),
   'projects:get': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:revisions': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:delete': z.object({ projectId: z.string().min(1).max(200) }).strict(),
@@ -202,6 +203,8 @@ export async function dispatchDesktopCommand(
       return service.listProjects();
     case 'projects:add':
       return service.addProject(parsed['sourcePath'] as string);
+    case 'projects:cancel-add':
+      return service.cancelAddProject();
     case 'projects:get':
       return service.getProject(parsed['projectId'] as string);
     case 'projects:revisions':

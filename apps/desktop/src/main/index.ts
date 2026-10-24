@@ -304,6 +304,7 @@ app.on('before-quit', (event) => {
   void (async () => {
     try {
       await bootPromise;
+      await bootstrapped?.service.cancelAddProject().catch(() => undefined);
       // Refusal must leave the window and broker usable for cancellation.
       await bootstrapped?.close();
       liveUpdates?.stop();

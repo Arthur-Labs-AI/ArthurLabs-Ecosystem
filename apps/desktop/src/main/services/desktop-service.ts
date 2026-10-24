@@ -108,6 +108,10 @@ export class DesktopApplicationService {
     return this.call('projects.add', { sourcePath: translated });
   }
 
+  cancelAddProject(): Promise<unknown> {
+    return this.call('projects.cancelAdd', {});
+  }
+
   getProject(projectId: string): Promise<unknown> {
     const id = ProjectIdInput.parse(projectId);
     return this.call('projects.get', { projectId: id });
