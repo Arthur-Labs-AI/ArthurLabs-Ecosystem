@@ -88,6 +88,11 @@ public final class IdentityFormatHostTest {
         rejects(()->IdentityFormat.publicIdentity(key("secp384r1").getPublic()));
         KeyPair key=key("secp256r1");
         byte[] publicKey=IdentityFormat.publicIdentity(key.getPublic());
+        IdentityFormat.validatePublic(publicKey);
+        check(true);
+        rejects(()->IdentityFormat.validatePublic(new byte[65]));
+        byte[] offCurve=new byte[65]; offCurve[0]=4;
+        rejects(()->IdentityFormat.validatePublic(offCurve));
         byte[] message="Public synthetic message".getBytes(StandardCharsets.US_ASCII);
         Signature signer=Signature.getInstance("SHA256withECDSA");
         signer.initSign(key.getPrivate());

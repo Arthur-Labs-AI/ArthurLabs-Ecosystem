@@ -116,6 +116,18 @@ public final class IdentityFormat {
         if (!Arrays.equals(sec1, publicIdentity(key))) throw invalid();
         return key;
     }
+    public static void validatePublic(byte[] sec1) throws GeneralSecurityException {
+        // Ask the platform to validate the point through ECDH, including providers
+        // that defer on-curve checks until an operation. No custom EC arithmetic.
+        PublicKey peer = publicKey(sec1);
+        java.security.KeyPairGenerator generator = java.security.KeyPairGenerator.getInstance("EC");
+        generator.initialize(new ECGenParameterSpec("secp256r1"));
+        javax.crypto.KeyAgreement agreement = javax.crypto.KeyAgreement.getInstance("ECDH");
+        agreement.init(generator.generateKeyPair().getPrivate());
+        agreement.doPhase(peer, true);
+        byte[] transientSecret = agreement.generateSecret();
+        Arrays.fill(transientSecret, (byte) 0);
+    }
     public static boolean verify(byte[] sec1, Domain domain, byte[] message, byte[] p1363) {
         try {
             Signature verifier = Signature.getInstance("SHA256withECDSA");

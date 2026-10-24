@@ -11,6 +11,8 @@
 //! 10. Security: pinned admin, shared durable attempt reservation, exact-key approval.
 pub(crate) mod enrollment;
 pub(crate) mod identity;
+#[cfg(target_os = "android")]
+pub(crate) mod android;
 pub(crate) mod signed;
 #[cfg(test)]
 mod tests;

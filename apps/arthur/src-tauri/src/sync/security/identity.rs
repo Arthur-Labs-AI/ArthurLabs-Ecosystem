@@ -79,7 +79,11 @@ pub(crate) fn verify_identity(p: &PublicIdentity) -> Result<()> {
     {
         super::windows::validate(p)
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "android")]
+    {
+        super::android::bridge()?.validate(p.sec1())
+    }
+    #[cfg(not(any(windows, target_os = "android")))]
     {
         Err(E::PlatformUnverified)
     }
@@ -93,14 +97,18 @@ pub(crate) fn verify(p: &PublicIdentity, d: Domain, bytes: &[u8], signature: &[u
     {
         super::windows::verify(p, &digest(d, bytes)?, signature)
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "android")]
+    {
+        super::android::bridge()?.verify(p.sec1(), d, bytes, signature)
+    }
+    #[cfg(not(any(windows, target_os = "android")))]
     {
         let _ = (d, bytes);
         Err(E::PlatformUnverified)
     }
 }
-// E2 has an independent Application-context Java component, but no verified
-// owner-coordinated native bridge. Android Rust signing remains unavailable.
+// Unsupported platforms refuse. Android additionally refuses until Application
+// bootstrap has installed the JNI bridge; no implicit identity creation occurs.
 // Provider-secret AES wrapping is deliberately not reused as device identity.
 pub(crate) struct UnavailableIdentity;
 impl DeviceIdentityStore for UnavailableIdentity {

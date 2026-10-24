@@ -13,8 +13,7 @@ import java.util.Arrays;
 import java.util.UUID;
 
 /** Independent AndroidKeyStore component; no Activity, WebView, Tauri commands or SQLite.
- * Native Rust bridge is UNAVAILABLE until target validation and owner coordination exist.
- * Future owner MUST commit its creating slot before create, publish the returned public
+ * Native owner MUST commit its creating slot before create, publish the returned public
  * key atomically, and commit invalidated BEFORE delete. This component cannot authorize Sync.
  */
 public final class DeviceSigningIdentity {
@@ -68,6 +67,25 @@ public final class DeviceSigningIdentity {
         DeviceSigningIdentity identity = new DeviceSigningIdentity(alias(app, slot), durablePublicKey);
         identity.publicIdentity();
         return identity;
+    }
+    public static byte[] readIdentity(Context app, String slot) throws GeneralSecurityException {
+        String name = alias(app, slot);
+        synchronized (KEY_OPERATIONS) {
+            try {
+                KeyStore store = store();
+                if (!store.containsAlias(name) || store.getCertificate(name) == null) throw unavailable();
+                byte[] key = IdentityFormat.publicIdentity(store.getCertificate(name).getPublicKey());
+                new DeviceSigningIdentity(name, key).privateKey(store);
+                return key;
+            } catch (GeneralSecurityException | RuntimeException exception) { throw unavailable(); }
+        }
+    }
+    public static void deleteIdentity(Context app, String slot) throws GeneralSecurityException {
+        String name = alias(app, slot);
+        synchronized (KEY_OPERATIONS) {
+            try { store().deleteEntry(name); }
+            catch (GeneralSecurityException | RuntimeException exception) { throw unavailable(); }
+        }
     }
     private PrivateKey privateKey(KeyStore store) throws GeneralSecurityException {
         try {

@@ -47,6 +47,16 @@ public final class DeviceSigningIdentityTest {
         for(int i=0;i<result.length;i++) result[i]=(byte)Integer.parseInt(text.substring(i*2,i*2+2),16);
         return result;
     }
+    @Test public void e2_07_android_der_and_point_rejections() throws Exception {
+        for(String malformed:new String[]{"", "3006020100020101", "3006020180020101",
+                "300702020001020101", "300602010102010100", "308106020101020101"}) {
+            try { IdentityFormat.derToP1363(hex(malformed)); fail("identity_rejection_missing"); }
+            catch(GeneralSecurityException expected) { assertEquals("identity_invalid",expected.getMessage()); }
+        }
+        byte[] point=new byte[65]; point[0]=4;
+        try { IdentityFormat.validatePublic(point); fail("identity_rejection_missing"); }
+        catch(GeneralSecurityException expected) { /* Platform refuses off-curve point. */ }
+    }
     @Test public void e2_04_05_windows_cng_public_fixture_verifies_on_android() throws Exception {
         Properties fixture=new Properties();
         try(java.io.InputStream input=InstrumentationRegistry.getInstrumentation().getContext().getAssets().open("identity-cng-public.properties")) { fixture.load(input); }

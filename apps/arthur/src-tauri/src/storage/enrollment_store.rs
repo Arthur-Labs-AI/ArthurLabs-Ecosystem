@@ -9,7 +9,7 @@ fn sql(_: rusqlite::Error) -> E {
     E::Storage
 }
 fn local_admin(c: &Connection, root: &Root) -> Result<()> {
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "android"))]
     {
         let (_, key) = super::device_identity_store::bound_key(c, root.admin.peer_id())?;
         if key != root.admin {
@@ -17,7 +17,7 @@ fn local_admin(c: &Connection, root: &Root) -> Result<()> {
         }
         Ok(())
     }
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "android")))]
     {
         let _ = (c, root);
         Err(E::PlatformUnverified)
@@ -545,7 +545,7 @@ pub(crate) fn authorize_binding(c: &Connection, b: &MembershipBinding, now: u64)
     {
         return Err(E::Trust);
     }
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "android"))]
     {
         let (_, local) = super::device_identity_store::bound_key(c, b.local)?;
         if local != registry.local_key
@@ -559,7 +559,7 @@ pub(crate) fn authorize_binding(c: &Connection, b: &MembershipBinding, now: u64)
             return Err(E::Trust);
         }
     }
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "android")))]
     return Err(E::PlatformUnverified);
     Ok(())
 }

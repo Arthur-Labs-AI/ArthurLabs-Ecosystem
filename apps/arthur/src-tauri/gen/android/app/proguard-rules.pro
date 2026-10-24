@@ -19,3 +19,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Native identity uses exact JNI class/method descriptors, independently of WebView.
+-keep class dev.kaloyan.arthur.security.NativeIdentityBridge { *; }
+-keep class dev.kaloyan.arthur.security.SigningApplication { *; }

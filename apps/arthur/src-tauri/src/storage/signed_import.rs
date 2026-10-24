@@ -81,14 +81,14 @@ fn seal_bytes(
     )))
 }
 fn local_sign(c: &Connection, local: Uuid, bytes: &[u8]) -> Result<Vec<u8>> {
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "android"))]
     {
         let (key, public) = trust(super::device_identity_store::bound_key(c, local))?;
         let signature = trust(key.sign_domain_separated(Domain::OriginalEvent, bytes))?;
         trust(verify(&public, Domain::OriginalEvent, bytes, &signature))?;
         Ok(signature)
     }
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "android")))]
     {
         let _ = (c, local, bytes);
         Err(Error::Trust)
@@ -122,12 +122,12 @@ fn prefix(
         return Err(Error::Integrity);
     }
     let bytes = seal_bytes(network, origin, incarnation, author, seq, &hash)?;
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "android"))]
     {
         let (_, public) = trust(super::device_identity_store::bound_key(c, local))?;
         trust(verify(&public, Domain::OriginalEvent, &bytes, &signature))?;
     }
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "android")))]
     {
         let _ = (local, bytes, signature);
         return Err(Error::Trust);

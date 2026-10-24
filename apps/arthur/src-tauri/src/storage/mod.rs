@@ -24,6 +24,11 @@ mod registry_verification;
 pub(crate) mod signed_import;
 #[cfg(windows)]
 pub(crate) mod device_identity_store;
+#[cfg(target_os = "android")]
+#[path = "android_device_identity_store.rs"]
+pub(crate) mod device_identity_store;
+#[cfg(all(target_os = "android", feature = "android-identity-tests"))]
+mod security_android_instrumentation;
 #[cfg(test)]
 mod identity_store_tests;
 #[cfg(test)]

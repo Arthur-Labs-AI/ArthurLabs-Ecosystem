@@ -458,3 +458,46 @@ TTS audio-focus passes; prior intermittence is not declared fixed. Typecheck
 **PASS**; architecture **FAIL: 86 PASS / same 2 baseline FAIL**; frontend
 **PASS: 561 tests / 42 files + build**; `git diff --check` **PASS**. The failed and
 unverified gates are not waived by this safe dormant PARTIAL commit.
+
+## 17. MEGA E2B Android native identity (2026-10-24)
+
+**PARTIAL / DORMANT.** Application bootstrap installs a process-scoped JavaVM and
+global Application/class references; Rust workers attach with per-call guards and
+local frames. JNI exceptions are cleared into categorical refusals. Signing uses
+no Activity, WebView, plugin command or cached Java key object. The Android owner
+adapter enforces the existing creating/active/invalidated SQL anchor and serializes
+signing with durable invalidation. CNG and provider-secret behavior are unchanged.
+JNI lifetime/class-loader handling follows the [Android JNI guidance](https://developer.android.com/ndk/guides/jni-tips).
+
+Tauri CLI 2.12.1 `android init --ci --skip-targets-install`, then `android build
+--debug --target x86_64 --apk --ci` regenerate the ignored Gradle integration through
+the supported Cargo build script. JBR 21.0.9, NDK 29.0.14206865 and SDK 37 build the
+real Rust/Java/Kotlin APK. `gen/android/verify-identity.ps1 -Serial <test-serial>`
+adds the explicit debug-only harness and Tauri's supported `debugApplicationIdSuffix`
+overlay. It checks APK package IDs before installation, reuses the just-built native
+library for Gradle instrumentation, then installs dedicated test APKs for restart
+checks. The harness refuses the normal app ID and is forbidden in release builds.
+Generated paths, APKs, databases and local device signing fixtures are not committed.
+
+**REAL ANDROID EMULATOR:** read-only Medium_Phone_API_36.1, API 36 / Android 16 /
+x86_64: **18 instrumentation PASS + 2 separate process-restart PASS**. Tests cover
+native worker signing, exact anchors, key loss/substitution, private export refusal,
+creation/invalidation recovery markers after disk reopen, concurrent invalidation,
+JNI exception recovery, malformed input, closed bridge references and registry
+revocation. CNG signatures verify through the actual Android implementation; a
+public-only AndroidKeyStore fixture verifies with Windows CNG (**1 explicit PASS**).
+Host-only JCA regression is **67 PASS**. Physical devices, ARM64, release packaging
+and hardware-backed key isolation are **UNVERIFIED**, not implied by emulator results.
+The dedicated test APK also cold-starts MainActivity successfully; the final default
+native library exports bootstrap and excludes the instrumentation entrypoints.
+
+Windows: Cargo `check --locked --offline --all-targets` and typecheck **PASS**;
+E2 **22 PASS / 1 ignored**, security **42 PASS / 1 ignored**, Sync **128 PASS /
+1 ignored**, Journal **287 PASS / 1 ignored**, dormant v10 **24 PASS**. Full native
+**FAIL: 1339 PASS / same 5 historical FAIL / 24 ignored**; architecture **FAIL:
+86 PASS / same 2 historical FAIL**. Frontend **561 PASS / 42 files + build** on full
+rerun; an initial concurrent run failed the existing retry-card `role=alert` check,
+without frontend edits or a claim that intermittence is fixed. TTS audio-focus passes.
+N1/N2/N3/N7 and G4–G7 remain unapproved. Schema v9, migrations, codec/reducer,
+snapshot v2, D4, public routing and `_exit` are frozen; ClosedTrust, PAKE, mutual TLS,
+production ingress, LAN listener and dialer remain CLOSED.
