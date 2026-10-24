@@ -699,3 +699,235 @@ production PAKE/TLS/LAN, enrollment and knowledge ingress remain CLOSED.
 N2/N3/N7 and G4–G7 are independent unapproved gates. Physical Android, ARM64,
 release packaging, hardware isolation, production certificate policy and the
 composed PAKE protocol are UNVERIFIED. Do not proceed automatically to E3B.
+
+## 19. MEGA E3A2 PAKE qualification and enrollment hardening (2026-10-24)
+
+**PARTIAL / N1_AUDIT_PENDING. Recommendation: DO NOT APPROVE N1.** Accepted
+baseline is `bb57a98820f5e2e021b01016f8969b8c634c4299`, same feature branch.
+This phase executes a real PAKE qualification harness; it does not approve or
+activate PAKE. The historical E3A results above remain historical, not evidence
+of an E3A2 gate that did not run.
+
+### Candidate qualification and current advisory evidence
+
+| Exact candidate | Qualification decision / compatibility / maintenance |
+| --- | --- |
+| `opaque-ke =4.0.1`, crate and stable tag `75fe4cdddb7946440054da0c8e7cdd73828af3f9` | Actual Rust public API executed. MIT OR Apache-2.0, MSRV 1.85. Stable RFC9807 release; 4.1.0-pre.2 exists but is not substituted. Changelog documents protocol/API/dependency changes since the audited drafts. Best audit lineage of these three, but conditional suitability and an unresolved affected dependency prevent N1 approval. |
+| Balanced RustCrypto `spake2 0.4.0` | Symmetric shared-code model fits naturally without a verifier registration phase. MIT OR Apache-2.0, MSRV 1.60; curve25519-dalek 4, hkdf 0.12, rand_core 0.6, sha2 0.10. Upstream explicitly has no independent audit; RFC9382 transcript issue #186 remains open. 0.5.0-pre.0 is a different, unqualified revision. No Arthur Windows/Android build or official-vector execution for this candidate. |
+| `spake2plus 0.1.0` | MIT, MSRV 1.85; newly published 2026-10-04, no independent audit. p256 0.14, hkdf/hmac 0.13, sha2 0.11, subtle 2.6.1, zeroize 1.9. Upstream reports RFC9383 P256/SHA256 and SHA512 vectors; not executed here. Requires a confidential verifier-registration model; its optional prover-first confirmation exposes offline guessing and is excluded. No Arthur platform qualification claim. |
+
+Primary evidence: [OPAQUE 4.0.1 manifest](https://github.com/facebook/opaque-ke/blob/v4.0.1/Cargo.toml),
+[changelog](https://github.com/facebook/opaque-ke/blob/v4.0.1/CHANGELOG.md),
+[public API / registration and KSF guidance](https://docs.rs/opaque-ke/4.0.1/opaque_ke/),
+[OPAQUE published advisory page](https://github.com/facebook/opaque-ke/security/advisories),
+[RustCrypto warning](https://github.com/RustCrypto/PAKEs/blob/master/spake2/README.md),
+[open RFC9382 issue](https://github.com/RustCrypto/PAKEs/issues/186),
+[SPAKE2+ security documentation](https://docs.rs/spake2plus/0.1.0/spake2plus/).
+Direct OSV queries for these three exact package versions returned empty advisory
+records on 2026-10-24. That is not a claim about their dependency chains or an audit.
+
+The [NCC report](https://www.nccgroup.com/media/0uspzge5/_ncc_group_whatsappllc_opaque_report_2021-12-10_v13.pdf)
+reviewed v0.5.0 (`ba8e940e08a630c0d075e730623ebf0b30d4b9e2`) and primarily
+retested v1.2.0 (`6538ee30e118cfc99c1f5bff6d2c151e2eaffd2d`), draft03.
+Its fixed findings and exact patches are recorded in section 18. This evidence
+does not establish review of 4.0.1, RFC9807, the locked dependency graph or Arthur.
+
+`qualification/verify-dependencies.ps1` executes locked offline Cargo metadata,
+then queries OSV using PUBLIC package names/versions. Its committed packages and
+advisories JSON record the **69-package all-target/build transitive closure of
+OPAQUE and Argon2**, not the whole application's security status. A current
+finding remains: [RUSTSEC-2026-0387](https://github.com/rustsec/advisory-db/blob/main/crates/crypto-bigint/RUSTSEC-2026-0387.md),
+`opaque-ke 4.0.1 -> elliptic-curve 0.13.8 -> crypto-bigint 0.5.5` (also through
+voprf 0.5.0). The advisory identifies timing variability, fixed in >=0.7.6.
+The current dependency requirement cannot accept that incompatible version.
+No patch/fork/custom arithmetic or advisory waiver is introduced. Reachability
+and exploitability through this selected ristretto255 suite are **not established**;
+the unresolved graph finding still blocks qualification. This is additional
+evidence, not a claim that Arthur's Ristretto execution was exploited.
+
+The initial snapshot also found rand 0.8.5 affected by
+[RUSTSEC-2026-0097](https://rustsec.org/advisories/RUSTSEC-2026-0097.html).
+It is pinned to patched **0.8.6**; exercises use OsRng, never a custom ThreadRng
+logger. The new harness uses `opaque-ke =4.0.1` with only `ristretto255,argon2`,
+`rand =0.8.6`, `argon2 =0.5.3` with zeroize, existing sha2 0.10.9 and zeroize 1.9.
+Cargo.lock fixes all checksums and transitive versions (including
+curve25519-dalek 4.1.3, voprf 0.5.0 with its upstream-required `danger` feature,
+hkdf/hmac 0.12, elliptic-curve 0.13.8). The crate's .cargo_vcs_info matches the
+stable tag; archive checksum is
+`ded22991b43cd15561b62b2e1cf9ace1344a8534eebec96202d5c96a77a6616a`.
+These are dev dependencies on Windows and optional Android dependencies enabled
+only by `android-identity-tests`. Default Windows AND Android normal/build Cargo
+trees contain no opaque-ke, Argon2 or crypto-bigint qualification dependency.
+
+Rustls is narrowly updated **0.23.45 -> 0.23.46** for
+[RUSTSEC-2026-0346](https://rustsec.org/advisories/RUSTSEC-2026-0346.html) and
+[RUSTSEC-2026-0349](https://rustsec.org/advisories/RUSTSEC-2026-0349.html).
+E3A had no custom session-value logging and disabled resumption, limiting those
+particular lab paths; the fixed library is used nevertheless. Ring stays 0.17.14.
+No other existing dependency versions are opportunistically upgraded.
+
+### Executed PAKE protocol and secret-handling scope
+
+`pake_qualification.rs` uses the ACTUAL opaque-ke library. It registers locally
+at the code issuer, retains one ephemeral ServerSetup/password file in memory,
+then runs fresh client/server logins. It serializes/deserializes the public
+credential messages and requires valid server confirmation before KE3, followed
+by valid client confirmation at the server. Only both completions with matching
+session keys produce the private-field `ConfirmedExchange` lab type. No code PSK,
+code-derived custom MAC, custom group arithmetic or replacement PAKE is added.
+
+Official [RFC9807 Appendix C](https://www.rfc-editor.org/rfc/rfc9807.html#appendix-C)
+vectors **C.1.1, C.1.2 and C.2.1** are normalized from the exact upstream source
+and retain provenance/hash/license in `qualification/NOTICE.md`. The two real
+vectors check registration request/response/upload, KE1/KE2/KE3, export key and
+both session keys; the fake-user vector checks KE2. Their Identity KSF is the
+published vector configuration, not the enrollment configuration. Public release
+API scalar sampling consumes 64 bytes, whereas upstream cfg(test) injects the
+published 32-byte scalar: the fixture zero-extends the canonical scalar, without
+changing any expected vector value. Initial vector failures identified this
+fixture adaptation and were fixed without changing upstream cryptography.
+No P256/curve25519/SIGMA-I PAKE-vector compatibility is claimed.
+
+The distinct six-digit exercises use upstream **Argon2id v19, m=19456 KiB, t=2,
+p=1**. The upstream OPAQUE KSF supplies a fixed 16-byte zero salt after the
+per-record OPRF; this is not a new Arthur password-storage format. Codes have
+about 20 bits of entropy. OPAQUE does not make server-setup/password-file theft
+immune to offline enumeration, and Argon2 does not prove a 120-second attacker
+budget. A balanced PAKE would be simpler when both devices already hold the code.
+OPAQUE is only a conditional fit if this local confidential transient registration
+and its role mapping receive independent review; no untrusted remote registration
+or persistent enrollment-password database is introduced.
+
+Codes remain Zeroizing/borrowed; upstream key/state/record types have drop erasure;
+output session keys and unused registration export keys are explicitly cleared.
+No wrapper has Debug/Serialize for secrets. Argon2's zeroize feature does not
+establish complete clearing of all internally allocated working memory or compiler
+copies; privileged memory/swap/crash exposure remains a limitation and N1 review
+item. Only public official vector seeds/keys are committed. No actual permanent
+OS private key is exported. PAKE ephemerals are Rust memory state, distinct from
+the CNG/Keystore device signing key.
+The standalone wrong-code/confirmation exercise uses fixed PUBLIC test IDs/code.
+The owner/composition scenarios use generated challenge codes, actual native
+device keys and real TLS exporters. Their application nonces and monotonic clock
+ticks are deterministic fixtures; no live clock producer or nonce policy is approved.
+
+### Revised roles, initial peer pins and durable composition
+
+The E3A reverse-role regression first FAILED, showing the implicit issuer/server
+assumption; it passes after the fix. Context now separately records admin public
+key/fingerprint, sponsor, code issuer, joiner, TLS server endpoint and both PAKE
+endpoints. The supported qualification profile is explicitly **admin-only sponsor
+and code issuer**, with OPAQUE client=joiner/server=sponsor; TLS server may be
+either device. Admin-only is a constraint, not an assertion that those roles are
+universally identical. Non-admin sponsor or delegated issuer returns
+**N2PolicyPending**. TCP dial/listen direction confers no authority.
+
+The binding includes exact enrollment/network UUIDs, admin/key fingerprints and
+full device public keys, protocol suite, both nonces, role mapping and actual
+TLS exporter. OPAQUE authenticates its context; the approval digest additionally
+binds the public KE1/KE2/KE3 transcript. Changing channel, network, role, issuer,
+candidate or nonce cannot reuse an old confirmation. The context digest is public
+metadata binding, not a new PAKE key schedule. Existing E3A synthetic confirmation
+tests remain explicitly synthetic and cannot create the actual qualification type.
+
+Initial enrollment has **observed**, untrusted SPKIs, not previously authenticated
+peer pins. The cfg-gated TLS lab reports ObservedKeyPossessionOnly and verifies
+possession of that exact observed key. No trust-all verifier, remembered trusted
+pin, membership or private Sync access results. Actual OPAQUE tests reject
+confirmation across different TLS exporters and substituted key/role contexts.
+Production bootstrap key acquisition, certificate/RPK policy, confirmation UI
+and both endpoints' retry behavior remain unimplemented N1/N3/N7 decisions.
+A live mixed-platform bootstrap session has not been run.
+
+The debug/test `record_qualification` adapter consumes actual lab evidence and
+uses the ORIGINAL CaptureStore mutex, e_enrollments/e_abuse/e2 clock and native
+admin anchor. It stores only the exact candidate and public approval digest.
+No new schema, connection, owner, migration or code/verifier/session-key row is
+added. Reservation precedes expensive PAKE work; cryptography runs outside the
+SQL lock. Proof recording rechecks boot, ticket, key/root and the original
+120-second deadline in one transaction. Each reservation consumes budget before
+PAKE; wrong-code tests use the original failed-attempt transition without refund.
+Five wrong attempts remain locked across startup.
+
+Successful PAKE only reaches pending approval. The lab grant entrypoint still
+returns N1AuditPending. Tests invoke the existing separate local approval command
+with exact candidate/hash/admin key. A fault after membership application but
+before consumed-record commit rolls back registry, grant and membership together.
+Restart after KE1 cancels the reservation and preserves abuse counters; transient
+PAKE state is never resumed. No additional approval window is silently added.
+Concurrent attempts, replayed tickets, consumed challenges, expiry at proof AND
+approval, and missing/substituted signing keys before proof AND approval are
+covered. Denial of pairing by exhausting five attempts is an accepted availability
+cost, not a reason to reset the counter.
+
+### E3A2 verification snapshot
+
+All Windows Cargo commands use `--locked --offline --manifest-path
+apps/arthur/src-tauri/Cargo.toml`; tests use `-- --test-threads=1`. The Windows
+full run, typecheck, architecture and frontend gates ran sequentially, followed
+by Android, fixture interoperability and the default Android build.
+
+| Gate / command | E3A2 executed result |
+| --- | --- |
+| Pre-change E3A baseline: `cargo test --lib storage::security_tls_tests` | 6 PASS / 1 ignored |
+| New focused suite: `cargo test --lib e3a2` | 11 PASS; includes the 3 official RFC vectors |
+| `cargo check --all-targets` | PASS |
+| `cargo test --lib` | FAIL: **1356 PASS / same 5 historical FAIL / 25 ignored** |
+| Security / Sync / Journal / dormant-v10 name groups from that full run | **46/132/287/24 PASS**, 1/1/1/0 ignored; overlapping groups, not additional executions |
+| E2B/E3A regressions within full native | Original E2 22 PASS / 1 ignored; TLS module 8 PASS / 1 ignored (6 E3A plus 2 E3A2); all identity/closure assertions pass |
+| `npm run typecheck` | PASS |
+| `npm run test:architecture` | FAIL: **86 PASS / same 2 historical FAIL** |
+| `npm run arthur:check` | PASS first run: **561 tests / 42 files + typecheck/production frontend build** |
+| `gen/android/verify-identity.ps1 -Serial emulator-5554` | PASS: actual Rust/Java/Kotlin/debug APK, **34 instrumentation + 2 separate process-restart invocations** |
+| Android official vectors | C.1.1/C.1.2/C.2.1 PASS through actual Rust library; counted within one of the 34 instrumentation cases |
+| Fresh device public fixtures | `am instrument` explicitly runs the E2 and TLS fixture methods: **2 PASS** repeat executions; public-only output extracted with dedicated-package run-as |
+| `cargo test --lib actual_android -- --ignored --test-threads=1` | **2 PASS**: actual Keystore application signatures verified by Windows CNG; actual Keystore CertificateVerify verified by ring on Windows |
+| JBR `javac --release 8` / `IdentityFormatHostTest` with CNG, host-JCA and fresh Android public fixtures | **91 checks PASS**, host-only JCA evidence |
+| Dedicated test APK `adb shell am start -W` | PASS: Status ok, COLD MainActivity start |
+| Default `npm run tauri -- android build --debug --target x86_64 --apk --ci`, no harness feature | PASS, one APK; generated test application suffix removed |
+| NDK `llvm-nm --dynamic --defined-only` on default native .so | PASS: bootstrap install exported, no BridgeTest/RestartTest JNI entrypoints |
+| Default Cargo normal/build graphs on Windows and Android | PASS: no opaque-ke / Argon2 / crypto-bigint qualification dependencies |
+| `qualification/verify-dependencies.ps1` | Executed OSV snapshot: 69 packages / **1 unresolved dependency advisory**, not an approval PASS |
+| Scoped new-source rustfmt checks and `git diff --check` | PASS |
+
+Android scope is the task-owned read-only Medium_Phone_API_36.1 emulator,
+**API 36 / Android 16 / x86_64**, SDK 37, NDK 29.0.14206865, JBR 21.0.9,
+Tauri CLI 2.12.1. Instrumentation XML has 34 tests, zero failures/errors/skips.
+The test package is `dev.kaloyan.arthur.identitytest`; only its checked APKs are
+installed. All accepted E2B/E3A instrumentation cases rerun, plus nine E3A2 cases.
+Restart phase one persists a reserved ticket and starts actual OPAQUE KE1; after
+force-stop, phase two reopens the SAME native key, signs TLS, cancels the pending
+enrollment and verifies the attempt counter remains one with no grant. The
+emulator was stopped after final verification. This is not device certification.
+
+The five native failure identities exactly match section 18 (JEV transport error
+classification and the four synthesis assertions). The architecture failures
+remain schema-v6 project ownership and M04.6 voice-output DTO source checks.
+**No new test regression observed.** The expected red reverse-role regression
+and the initial RFC fixture entropy mismatches were corrected; neither expected
+vector values nor historical failure expectations were weakened. The dependency
+advisory is a newly documented SECURITY QUALIFICATION BLOCKER, independently of
+the test counts. Self-review found no new correctness/data-loss/concurrency
+defect in the dormant scope; it is not an independent cryptographic audit.
+
+Reproduce Android using the same process-local SDK/NDK/JBR environment and
+verification script as sections 17–18. Then explicitly select
+`TlsIdentityTest#prepare_android_public_tls_fixture` and
+`DeviceSigningIdentityTest#e2_06_prepare_public_only_device_fixture_for_windows`;
+require `OK (2 tests)`. Extract `no_backup/e3a-android-tls-public.properties` and
+`no_backup/e2-android-public.properties` from ONLY the dedicated package, set
+ARTHUR_E3_ANDROID_TLS_FIXTURE / ARTHUR_E2_ANDROID_PUBLIC_FIXTURE respectively,
+and run the explicitly ignored Windows filter above. Rebuild the default APK
+and inspect its symbols/dependency graph after the harness. Generated device
+fixtures, APKs, databases and logs remain untracked. Committed qualification
+JSON/NOTICE/license contain only public upstream vectors and package/advisory data.
+
+Approval blockers remain independent: N1 needs an exact independently reviewed
+implementation/dependency configuration and composed-protocol review; N2 must
+decide sponsorship/delegation; N3 must approve reverse enrollment, retry/startup
+and user confirmation flows; N7 must approve production peer/certificate/session
+policy. G4–G7 remain unapproved. **No N1 self-approval or E3B continuation.**
+Production schema v9, dormant M05, ClosedTrust, live PAKE/mutual TLS/LAN CLOSED,
+G4 UnverifiedBounds, frozen journal/codec/reducer/snapshot v2/D4 and public routing
+are preserved. ARM64, physical Android, release packaging, hardware certification
+and live mixed-platform sessions are **NOT TESTED** unless explicitly recorded.

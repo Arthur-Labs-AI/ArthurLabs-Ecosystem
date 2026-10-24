@@ -448,6 +448,15 @@ fn scenario(case: jint) -> Result<()> {
         16 => super::security_tls_tests::lifecycle(),
         17 => super::security_tls_tests::mutual_tls(),
         18 => super::security_tls_tests::composition_checks(),
+        19 => crate::sync::security::pake_qualification::official_vectors(),
+        20 => crate::sync::security::pake_qualification::negative_cases(),
+        21 => super::security_pake_tests::attempts_and_wrong_code(),
+        22 => super::security_pake_tests::concurrent_reservations_and_restart(),
+        23 => super::security_pake_tests::approval_exact_key_consumed_and_atomic(),
+        24 => super::security_pake_tests::expiry_and_native_key_loss(),
+        25 => super::security_pake_tests::actual_context_and_initial_pin_substitution(),
+        26 => super::security_tls_tests::tls_hash_inputs(),
+        27 => super::security_tls_tests::reverse_tls_roles(),
         _ => Err(E::Invalid),
     }
 }
@@ -496,7 +505,26 @@ fn restart(phase: jint) -> Result<()> {
         let public = identity.public_identity()?;
         let signature = identity.sign_domain_separated(Domain::Registry, b"synthetic restart")?;
         verify(&public, Domain::Registry, b"synthetic restart", &signature)?;
-        restart_tls(owner.clone(), public)
+        restart_tls(owner.clone(), public.clone())?;
+        owner
+            .store()
+            .connection
+            .lock()
+            .map_err(|_| E::Storage)?
+            .execute_batch(include_str!("enrollment_e2.sql"))
+            .map_err(|_| E::Storage)?;
+        let registry = super::enrollment_store::NetworkRegistry::candidate(owner.store())?;
+        registry.create_network(&identity)?;
+        let boot = registry.startup()?;
+        let mut challenge = registry.issue_fixture(boot, 10)?;
+        let _ticket = registry.reserve(&mut challenge, 11)?;
+        let code = challenge.code.as_ref().ok_or(E::State)?.inspect();
+        let _transient = crate::sync::security::pake_qualification::TransientVerifier::new(
+            code,
+            *challenge.id.as_bytes(),
+            public.device_id(),
+        )?;
+        crate::sync::security::pake_qualification::abandon_after_ke1(code)
     } else if phase == 2 {
         let outcome = (|| {
             let owner = NativeRuntime::acquire(&root).map_err(|_| E::Storage)?;
@@ -507,6 +535,21 @@ fn restart(phase: jint) -> Result<()> {
                 identity.sign_domain_separated(Domain::Registry, b"synthetic restart")?;
             verify(&public, Domain::Registry, b"synthetic restart", &signature)?;
             restart_tls(owner.clone(), public)?;
+            let registry = super::enrollment_store::NetworkRegistry::candidate(owner.store())?;
+            let scalar = |query: &str| -> Result<i64> {
+                owner
+                    .store()
+                    .connection
+                    .lock()
+                    .map_err(|_| E::Storage)?
+                    .query_row(query, [], |r| r.get(0))
+                    .map_err(|_| E::Storage)
+            };
+            require(scalar("SELECT count(*) FROM e_enrollments WHERE state='reserved'")? == 1)?;
+            registry.startup()?;
+            require(scalar("SELECT count(*) FROM e_enrollments WHERE state='cancelled'")? == 1)?;
+            require(scalar("SELECT attempts FROM e_abuse")? == 1)?;
+            require(scalar("SELECT count(*) FROM e_members")? == 1)?;
             identity.invalidate_identity()?;
             require(cleanup.0.public_identity().is_err())
         })();

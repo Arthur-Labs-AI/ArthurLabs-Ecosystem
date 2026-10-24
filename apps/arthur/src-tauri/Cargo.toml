@@ -25,7 +25,7 @@ serde_jcs = "=0.1.0"
 sha2 = "=0.10.9"
 getrandom = "=0.3.4"
 zeroize = "=1.9.0"
-rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std"] }
 ring = "=0.17.14"
 tokio = { version = "1", features = ["time", "sync"] }
 reqwest = { version = "0.12", default-features = false, features = ["multipart", "json", "rustls-tls-webpki-roots"] }
@@ -34,10 +34,17 @@ unicode-normalization = "0.1"
 [target.'cfg(target_os = "android")'.dependencies]
 libc = "0.2"
 jni = "=0.21.1"
+# Qualification only; optional dependency is absent from default Android builds.
+opaque-ke = { version = "=4.0.1", default-features = false, features = ["ristretto255", "argon2"], optional = true }
+rand = { version = "=0.8.6", optional = true }
+argon2 = { version = "=0.5.3", features = ["zeroize"], optional = true }
 
 [features]
 # Explicit debug instrumentation harness; rejected in release builds.
-android-identity-tests = []
+android-identity-tests = ["dep:opaque-ke", "dep:rand", "dep:argon2"]
 
 [dev-dependencies]
 tempfile = "3.27.0"
+opaque-ke = { version = "=4.0.1", default-features = false, features = ["ristretto255", "argon2"] }
+rand = "=0.8.6"
+argon2 = { version = "=0.5.3", features = ["zeroize"] }

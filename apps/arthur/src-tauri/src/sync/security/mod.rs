@@ -23,6 +23,8 @@ pub(crate) mod transport;
 pub(crate) mod tls;
 pub(crate) mod composition;
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+pub(crate) mod pake_qualification;
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod tls_lab;
 #[cfg(windows)]
 pub(crate) mod windows;
@@ -30,6 +32,7 @@ pub(crate) mod windows;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum SecurityError {
     N1AuditPending,
+    N2PolicyPending,
     N7PolicyPending,
     PlatformUnverified,
     MissingKey,

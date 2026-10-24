@@ -29,6 +29,15 @@ public final class NativeIdentityBridgeTest {
     @Test public void e3a_tls_durable_lifecycle() { assertTrue(runScenario(16)); }
     @Test public void e3a_mutual_tls13_and_closed_production() { assertTrue(runScenario(17)); }
     @Test public void e3a_tls_composition_binding() { assertTrue(runScenario(18)); }
+    @Test public void e3a2_official_rfc9807_vectors() { assertTrue(runScenario(19)); }
+    @Test public void e3a2_actual_opaque_argon2_negatives() { assertTrue(runScenario(20)); }
+    @Test public void e3a2_five_wrong_codes_durable() { assertTrue(runScenario(21)); }
+    @Test public void e3a2_concurrent_reservation_and_restart() { assertTrue(runScenario(22)); }
+    @Test public void e3a2_exact_approval_and_atomic_grant() { assertTrue(runScenario(23)); }
+    @Test public void e3a2_expiry_and_native_key_loss() { assertTrue(runScenario(24)); }
+    @Test public void e3a2_roles_context_and_initial_peer_keys() { assertTrue(runScenario(25)); }
+    @Test public void e3a2_tls_transcript_hash_sizes() { assertTrue(runScenario(26)); }
+    @Test public void e3a2_reverse_tls_roles() { assertTrue(runScenario(27)); }
     @Test public void eb19_no_java_to_native_signing_entrypoint() {
         int nativeMethods=0;
         for(java.lang.reflect.Method method: NativeIdentityBridge.class.getDeclaredMethods()) {

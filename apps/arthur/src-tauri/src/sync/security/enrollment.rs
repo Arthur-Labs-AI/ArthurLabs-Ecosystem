@@ -170,7 +170,7 @@ impl SecretCode {
         }
         Err(E::KeyUnavailable)
     }
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os="android",feature="android-identity-tests")))]
     pub fn inspect(&self) -> &[u8; 6] {
         &self.0
     }

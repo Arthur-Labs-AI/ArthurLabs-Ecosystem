@@ -196,7 +196,7 @@ impl<'a> NetworkRegistry<'a> {
         let boot = Uuid::new_v4();
         self.write(|c|{c.execute("UPDATE e_enrollments SET state='cancelled',ticket=NULL WHERE state IN('issued','reserved','approval')",[]).map_err(sql)?;c.execute("INSERT INTO e_abuse VALUES(1,?1,0,0) ON CONFLICT(singleton) DO UPDATE SET boot=excluded.boot",[boot.to_string()]).map_err(sql)?;Ok(boot)})
     }
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os="android",feature="android-identity-tests")))]
     pub fn issue_fixture(&self, boot: Uuid, now: u64) -> Result<Challenge> {
         let code = SecretCode::generate()?;
         let id = Uuid::new_v4();
@@ -289,6 +289,37 @@ impl<'a> NetworkRegistry<'a> {
             let changed=c.execute("UPDATE e_enrollments SET state='approval',candidate=?4,transcript=?5,ticket=NULL WHERE id=?1 AND boot=?2 AND ticket=?3 AND state='reserved' AND boot=(SELECT boot FROM e_abuse WHERE singleton=1) AND started=?6",params![ch.id.to_string(),ch.boot.to_string(),ticket.nonce.to_string(),transcript.joiner.sec1(),hash.as_slice(),i64::try_from(ch.started).map_err(|_|E::Invalid)?]).map_err(sql)?;
             if changed!=1 { return Err(E::State); }
             Ok(true)
+        })?;
+        ch.erase();
+        if fresh {
+            Ok(hash)
+        } else {
+            Err(E::Expired)
+        }
+    }
+    // Test/debug qualification seam ONLY. It consumes actual opaque-ke evidence,
+    // uses the SAME reservation/approval ledger and never creates a live producer.
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub fn record_qualification(
+        &self,
+        ch: &mut Challenge,
+        ticket: Attempt,
+        pending: crate::sync::security::composition::lab::QualifiedPending,
+        now: u64,
+    ) -> Result<[u8; 32]> {
+        let (context, hash) = pending.into_lab_parts();
+        if context.enrollment != ch.id || ticket.enrollment != ch.id || ticket.boot != ch.boot {
+            return Err(E::Trust);
+        }
+        let fresh=self.write(|c| {
+            let root=verified_root(c)?;
+            local_admin(c,&root)?;
+            if context.network!=root.network || context.admin_key!=root.admin {return Err(E::Trust);}
+            let started:i64=c.query_row("SELECT started FROM e_enrollments WHERE id=?1 AND boot=?2 AND ticket=?3 AND state='reserved' AND boot=(SELECT boot FROM e_abuse WHERE singleton=1)",params![ch.id.to_string(),ch.boot.to_string(),ticket.nonce.to_string()],|r|r.get(0)).map_err(|_|E::State)?;
+            if started as u64 != ch.started {return Err(E::State);}
+            if !observe(c,ch.id,now)? {return Ok(false);}
+            let n=c.execute("UPDATE e_enrollments SET state='approval',candidate=?2,transcript=?3,ticket=NULL WHERE id=?1 AND state='reserved' AND ticket=?4",params![ch.id.to_string(),context.joiner.sec1(),hash.as_slice(),ticket.nonce.to_string()]).map_err(sql)?;
+            if n!=1{return Err(E::State);} Ok(true)
         })?;
         ch.erase();
         if fresh {

@@ -70,7 +70,7 @@ impl Fixture {
     fn invalidate(&self) -> Result<()> {
         OwnedDeviceIdentity::reopen(self.owner.as_ref().unwrap().store())?.invalidate_identity()
     }
-    fn delete_os(&self) -> Result<()> {
+    pub(crate) fn delete_os(&self) -> Result<()> {
         #[cfg(windows)]
         {
             crate::sync::security::windows::WindowsIdentity::slot(self.slot).invalidate_identity()
@@ -102,16 +102,21 @@ fn signature(f: &Fixture, role: CertificateRole) -> Result<Vec<u8>> {
         .sign(&preimage(role))
         .map_err(|_| E::Signature)
 }
-fn context(a: &Fixture, b: &Fixture) -> Context {
+pub(crate) fn context(a: &Fixture, b: &Fixture) -> Context {
     Context {
         enrollment: Uuid::new_v4(),
         network: Uuid::new_v4(),
         admin: a.public.device_id(),
+        admin_key: a.public.clone(),
+        sponsor: a.public.clone(),
         issuer: a.public.clone(),
         joiner: b.public.clone(),
         issuer_nonce: [1; 32],
         joiner_nonce: [2; 32],
         suite: composition::SUITE.into(),
+        tls_server: composition::Endpoint::Sponsor,
+        pake_server: composition::Endpoint::Sponsor,
+        pake_client: composition::Endpoint::Joiner,
     }
 }
 pub(crate) fn native_signatures() -> Result<()> {
@@ -168,6 +173,38 @@ pub(crate) fn scheme_input() -> Result<()> {
     small[63] = 1;
     require(tls::p1363_to_der(&small)? == vec![0x30, 6, 2, 1, 1, 2, 1, 1])?;
     Ok(())
+}
+
+pub(crate) fn tls_hash_inputs() -> Result<()> {
+    let f = Fixture::new()?;
+    for role in [CertificateRole::Server, CertificateRole::Client] {
+        let signer = f
+            .key(role)?
+            .choose_scheme(&[SignatureScheme::ECDSA_NISTP256_SHA256])
+            .ok_or(E::Signature)?;
+        for size in [31, 32, 33, 47, 48, 49] {
+            let mut message = preimage(role);
+            message.truncate(98);
+            message.resize(98 + size, 0x5a);
+            let signature = signer.sign(&message);
+            if size == 32 || size == 48 {
+                tls::verify(
+                    &f.public,
+                    role,
+                    &message,
+                    &signature.map_err(|_| E::Signature)?,
+                )?;
+            } else {
+                require(signature.is_err())?;
+            }
+        }
+    }
+    Ok(())
+}
+#[cfg(windows)]
+#[test]
+fn e3a2_tls_sha256_sha384_transcript_inputs() {
+    assert!(tls_hash_inputs().is_ok());
 }
 pub(crate) fn lifecycle() -> Result<()> {
     for mode in 0..4 {
@@ -382,6 +419,30 @@ fn e3a_04_real_mutual_tls13_memory_handshake_and_closed_production() {
 #[test]
 fn e3a_05_composition_replay_downgrade_uks_and_channel_binding() {
     assert!(composition_checks().is_ok());
+}
+
+pub(crate) fn reverse_tls_roles() -> Result<()> {
+    use composition::lab::{Attempt, SyntheticPakeConfirmation};
+    let sponsor = Fixture::new()?;
+    let joiner = Fixture::new()?;
+    let channel = tls_lab::pair(
+        joiner.key(CertificateRole::Server)?,
+        sponsor.key(CertificateRole::Client)?,
+    )?;
+    let mut expected = context(&sponsor, &joiner);
+    expected.tls_server = composition::Endpoint::Joiner;
+    let digest = expected.digest(channel.exporter())?;
+    Attempt::new(expected.clone()).finish(
+        &expected,
+        &channel,
+        &SyntheticPakeConfirmation::fixture(digest, digest),
+    )?;
+    Ok(())
+}
+#[cfg(windows)]
+#[test]
+fn e3a2_reverse_tls_roles_do_not_change_enrollment_authority() {
+    assert!(reverse_tls_roles().is_ok());
 }
 
 #[cfg(windows)]

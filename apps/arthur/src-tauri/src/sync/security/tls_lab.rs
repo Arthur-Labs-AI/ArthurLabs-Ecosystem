@@ -133,7 +133,15 @@ pub(crate) struct LabChannel {
     client: PublicIdentity,
     exporter: [u8; 32],
 }
+pub(crate) enum LabAssurance {
+    ObservedKeyPossessionOnly,
+}
 impl LabChannel {
+    // Initial enrollment has no remembered trusted peer pin. Even a correct
+    // CertificateVerify against the observed key provides no membership.
+    pub fn assurance(&self) -> LabAssurance {
+        LabAssurance::ObservedKeyPossessionOnly
+    }
     pub fn server(&self) -> &PublicIdentity {
         &self.server
     }
