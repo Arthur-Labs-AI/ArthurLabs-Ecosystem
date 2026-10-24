@@ -370,12 +370,46 @@ pub(crate) fn reservation_substitution() -> Result<()> {
     let mut ch = registry.issue_fixture(boot, 10)?;
     let first = registry.reserve(&mut ch, 11)?;
     let pending = qualified(&a, &b, &ch, &first, root.network, false)?;
+    let stale = Attempt {
+        enrollment: first.enrollment,
+        nonce: first.nonce,
+        boot: first.boot,
+    };
+    let stale_pending = qualified(&a, &b, &ch, &first, root.network, false)?;
     registry.failed(&first)?;
     let second = registry.reserve(&mut ch, 12)?;
+    require(
+        registry
+            .record_qualification(&mut ch, stale, stale_pending, 13)
+            .is_err(),
+    )?;
+    require(
+        count(
+            &owner,
+            "SELECT count(*) FROM e_enrollments WHERE state='reserved'",
+        ) == Ok(1),
+    )?;
     require(matches!(
         registry.record_qualification(&mut ch, second, pending, 13),
         Err(E::Trust)
     ))?;
+    require(count(&owner, "SELECT attempts FROM e_abuse") == Ok(2))?;
+    // Rejection is terminal for the submitted reservation, never a budget refund.
+    require(ch.code.is_none())?;
+    require(
+        count(
+            &owner,
+            "SELECT count(*) FROM e_enrollments WHERE state='reserved'",
+        ) == Ok(0),
+    )?;
+    require(
+        count(
+            &owner,
+            "SELECT count(*) FROM e_enrollments WHERE state='cancelled' AND ticket IS NULL",
+        ) == Ok(1),
+    )?;
+    let restarted = registry.startup()?;
+    registry.issue_fixture(restarted, 14)?;
     require(count(&owner, "SELECT attempts FROM e_abuse") == Ok(2))?;
     require(
         count(
@@ -389,6 +423,19 @@ pub(crate) fn reservation_substitution() -> Result<()> {
 #[test]
 fn e3a2_durable_five_wrong_codes() {
     assert!(attempts_and_wrong_code().is_ok());
+}
+pub(crate) fn dormant_transport_no_effects() -> Result<()> {
+    let fixture = Fixture::new()?;
+    let owner = fixture.owner();
+    let before = count(&owner, "SELECT total_changes()")?;
+    crate::sync::security::n7a_tests::run()?;
+    require(count(&owner, "SELECT total_changes()")? == before)?;
+    require(count(&owner, "PRAGMA user_version")? == 9)
+}
+#[cfg(windows)]
+#[test]
+fn n7a_rejected_transport_has_no_store_effects() {
+    assert!(dormant_transport_no_effects().is_ok());
 }
 #[cfg(windows)]
 #[test]

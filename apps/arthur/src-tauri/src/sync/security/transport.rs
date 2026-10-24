@@ -1,10 +1,11 @@
 //! No socket is opened until reviewed TLS/external signing and route policy exist.
 //! The bounded record parser is a future TLS-stream seam, NOT plaintext Sync.
 use super::{Result, SecurityError as E};
+#[cfg(test)]
 use crate::sync::Cancellation;
+#[cfg(test)]
 use std::{
     io::Read,
-    net::SocketAddr,
     sync::{Arc, Mutex},
 };
 pub(crate) const MAX_RECORD: usize = 64 * 1024;
@@ -20,19 +21,15 @@ impl ClosedLan {
     }
 }
 fn validate_hint(hint: &str) -> Result<()> {
-    if hint.len() > 128 {
-        return Err(E::Limit);
-    }
-    let a: SocketAddr = hint.parse().map_err(|_| E::Invalid)?;
-    if a.ip().is_unspecified() || a.port() == 0 {
-        return Err(E::Invalid);
-    }
+    super::route_candidate::Hint::parse(hint, super::route_candidate::Origin::Manual)?;
     Ok(())
 }
 // RFC1918 is not route/interface proof. N7 has no caller-supplied approval bool.
 pub(crate) fn selected_route() -> Result<()> {
     Err(E::N7PolicyPending)
 }
+// Legacy finite cursor fixture only. Never adapt a blocking socket with this API.
+#[cfg(test)]
 pub(crate) fn read_record(reader: &mut impl Read, cancel: &Cancellation) -> Result<Vec<u8>> {
     if cancel.cancelled() {
         return Err(E::Cancelled);
@@ -57,16 +54,20 @@ pub(crate) fn read_record(reader: &mut impl Read, cancel: &Cancellation) -> Resu
     Ok(bytes)
 }
 #[derive(Clone, Copy)]
+#[cfg(test)]
 pub(crate) enum LeaseKind {
     Handshake,
     Session,
 }
 #[derive(Default)]
+#[cfg(test)]
 pub(crate) struct ResourcePool(Mutex<[usize; 2]>);
+#[cfg(test)]
 pub(crate) struct Lease {
     pool: Arc<ResourcePool>,
     slot: usize,
 }
+#[cfg(test)]
 impl ResourcePool {
     pub fn acquire(self: &Arc<Self>, kind: LeaseKind, cancel: &Cancellation) -> Result<Lease> {
         if cancel.cancelled() {
@@ -88,6 +89,7 @@ impl ResourcePool {
         })
     }
 }
+#[cfg(test)]
 impl Drop for Lease {
     fn drop(&mut self) {
         if let Ok(mut counts) = self.pool.0.lock() {

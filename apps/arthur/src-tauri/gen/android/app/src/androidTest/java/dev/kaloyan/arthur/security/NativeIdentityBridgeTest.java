@@ -39,6 +39,7 @@ public final class NativeIdentityBridgeTest {
     @Test public void e3a2_tls_transcript_hash_sizes() { assertTrue(runScenario(26)); }
     @Test public void e3a2_reverse_tls_roles() { assertTrue(runScenario(27)); }
     @Test public void e3a3_old_confirmation_new_reservation_rejected() { assertTrue(runScenario(28)); }
+    @Test public void n7a_fake_routes_bounded_io_and_no_store_effects() { assertTrue(runScenario(29)); }
     @Test public void eb19_no_java_to_native_signing_entrypoint() {
         int nativeMethods=0;
         for(java.lang.reflect.Method method: NativeIdentityBridge.class.getDeclaredMethods()) {

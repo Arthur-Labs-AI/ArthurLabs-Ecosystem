@@ -1092,3 +1092,175 @@ Changed files (all native paths below are relative to `apps/arthur/src-tauri`):
 - `src/sync/security/qualification/e3a3-advisories.json`: current unresolved OSV snapshot.
 - `docs/architecture/m05-n1-external-review.md` (repository root): standalone external packet.
 - `docs/architecture/m05-activation-readiness.md` (repository root): this qualification/evidence snapshot.
+
+## 21. MEGA N7A dormant LAN route policy and bounded transport (2026-10-24)
+
+**PARTIAL. N7PolicyPending and N1_AUDIT_PENDING remain.** Baseline
+`dea10e2624271036d76a9e8308d94d7786195a23`, feature/nodes-integration.
+The [N7A foundation contracts](m05-n7a-foundation.md) record the pre-implementation
+architecture answers, exact candidate behavior, limitations and owner decisions.
+No socket, resolver, native route/permission acquisition, firewall modification,
+new permission, target-SDK reduction or frontend networking/signing API is added.
+
+### Implementation and changed contracts
+
+- `sync/security/route_candidate.rs`: bounded manual/discovery Hint parsing,
+  numeric/DNS distinction, typed interface/route/permission observations, fresh
+  generation/path selection, pre-/post-connect revalidation and permanently
+  closed candidate activation. Windows/Android live observation stubs both
+  return N7PolicyPending.
+- `sync/security/transport_candidate.rs`: bounded admission/permits, rolling
+  retry history, wakeable cancellation, handshake lifecycle guard and incremental
+  nonblocking framed I/O with deadlines/drop cleanup. Expected network/peer
+  metadata is explicitly NOT authentication. No AuthenticatedTransport or
+  VerifiedSession implementation is added.
+- `sync/security/transport.rs`: ClosedLan uses bounded Hint validation and still
+  refuses dial/listen; selected_route() still always refuses N7. Legacy blocking
+  read_exact parser and original simple ResourcePool/Lease are now cfg(test)
+  finite regression fixtures, excluded from ordinary/Android feature runtime.
+- `sync/security/n7a_tests.rs` and module registration: deterministic route,
+  partial-I/O, waker/timer/concurrency and closed-boundary tests; shared Android
+  scenario29 runs these with a real disposable owner and verifies no SQL changes.
+- `storage/enrollment_store.rs` and `security_pake_tests.rs`: actual qualification
+  rejection erases code and cancels only the exact submitted reserved ticket;
+  stale ticket cannot cancel the newer reservation. Counters never decrease.
+  Existing Android case28 runs the strengthened lifecycle regression.
+- `storage/security_android_instrumentation.rs` and Android
+  `NativeIdentityBridgeTest.java`: scenario29 test entry only; no main Java/JNI
+  signing/permission surface added.
+- This readiness section and `m05-n7a-foundation.md`: review/evidence packet.
+
+Manual input rejects URL/scheme/userinfo/path/query/fragment injection, whitespace,
+malformed/numeric-ambiguous IPs, unsupported zones, invalid/noncanonical ports,
+wildcards, loopback, multicast/broadcast and IPv4-mapped IPv6. ASCII length <=128;
+DNS is only an untrusted parsed hint and always pending evaluation policy, never
+resolved or passed to a socket. No address can grant membership, disable native
+TLS verification, enumerate a registry or authorize ingress.
+
+Candidate policy accepts for classification only explicit fresh direct Wi-Fi/
+Ethernet routes with matching selected/actual interface, source subnet, family,
+destination prefix and exact endpoint. IPv4 private address alone is insufficient;
+gateway/default/public/VPN/cellular/unknown paths refuse. IPv6 ULA and scoped
+link-local are classified, with nonzero numeric scope equal to selected interface.
+IPv4 subnet endpoints and /31-/32, public on-link IPv6, IPv4 link-local and DNS
+remain refused/pending owner policy. Revalidation rejects generation/interface/
+route/endpoint/permission changes and mismatching connected local/remote addresses.
+Fake observations are not evidence about physical route selection or OS authority.
+
+### Resource safety and review findings
+
+| Candidate budget / contract | Rationale and limits of evidence |
+| --- | --- |
+| 2 concurrent handshakes / 1 established session, one active expected network+peer | Bound pre-crypto admission and prevent same-key reconnect concurrency; proposed values only, not approved N7 or a change to Sync negotiation |
+| Four admissions in rolling 30s per pool | Bounded four-timestamp history, no untrusted-peer map/queue; cancellation/drop does not refund, changing keys cannot bypass that pool's throttle. Future runtime coordinator must own ONE shared pool; no live pool is installed and no multiple-pool process-wide bound is claimed. Restart resets this availability throttle, not the durable enrollment ledger |
+| 64KiB record plus 8-byte header; one frame in flight | Header checked before allocation, no oversized body read; no partial message delivery. Send temporary input plus output can peak at about 128KiB logical bytes, not a physical allocator/TLS memory certification |
+| Handshake10s / idle15s / total60s from admission | Monotonic timer wake contract; only COMPLETE frames refresh idle, total never extends; partial slow-drip bytes, backwards time and timeout fail closed |
+| Nonblocking read/write + readiness wake + synchronous abort | One operation/poll with bounded buffers; cancellation and timer wake pending work, failure/drop abort I/O and release admission. No claim that the old blocking read_exact could interrupt kernel I/O |
+| Shutdown | Permanently close this pool, wake all active handles, refuse new admission; next awakened poll/drop aborts resources |
+
+Underlying TLS/OS/Argon2 allocations, actual handshake-byte accounting, OS readiness
+and timer registrations remain future adapter responsibilities. The lifecycle
+guard is NOT a TLS handshake implementation. Returned payload retention belongs
+to the future consumer; no global application-memory bound is claimed. A live
+adapter requires measured limits, coalesced timer registrations/cleanup and
+actual socket shutdown/cancellation tests; no such adapter is installed.
+
+Two reproducible findings were corrected without weakening expectations:
+
+1. **Important: qualification rejection retained reserved state/code.** The
+   strengthened E3A3 regression failed before the owner fix and passed afterward.
+   It verifies exact-ticket terminal cleanup, stale-ticket isolation, no grant,
+   no budget refund and persistent count2 after restart/new issuance. SQLite
+   cleanup failure returns Storage, never false cleanup success; memory code is
+   already erased, durable recovery uses existing cancel/startup when storage
+   works. No protocol/cryptographic change or new SQL owner/schema.
+2. **Important: dropped stream retained task waker through an external cancellation
+   handle.** New weak-reference regression failed before Permit Drop cleared its
+   registration, then passed. Drop marks it cancelled and retires the waker
+   outside both mutexes to avoid executor teardown reentry while locked.
+
+Review of the final candidate found no additional correctness/data-loss issue
+within these pure contracts. This is internal engineering review, not independent
+security approval. Actual native route/TLS/I/O integrations are not covered by
+fake tests and remain BLOCKED.
+
+### Platform readiness and explicit N7 decisions
+
+Windows IP Helper/interface classification, selected-route/socket binding and
+private-profile executable-scoped firewall/listening-port policy are abstractions
+only. Android remains future dialer, Desktop listener. Native NSD/manual fallback
+is specified but unimplemented; discovery addresses are expiring untrusted hints,
+never identities. Android target SDK37 permission/picker requirements were checked
+against [official guidance](https://developer.android.com/privacy-and-security/local-network-permission)
+and [NsdManager](https://developer.android.com/reference/android/net/nsd/NsdManager).
+Denial/revocation must invalidate the route and cancel work; no automatic fallback
+to public/VPN/cellular routing, permission requests or firewall changes occur.
+API36 emulator execution cannot certify API37 permission enforcement.
+
+Owner/security must decide allowed interfaces/ports/profiles, IPv4 link-local and
+public on-link IPv6/subnet/scope behavior, DNS resolution/rebinding and native
+NSD/picker/manual policy, permission UX and lifecycle, approved concurrency/frame/
+handshake-memory/time/retry limits, timer/socket abort integration and actual
+multi-homed/roaming/firewall evidence. N7 is NOT self-approved.
+
+Production remains **schema9, dormant M05, ClosedTrust, PAKE/TLS/LAN CLOSED**,
+without live enrollment, public listener/dialer, production VerifiedSession,
+second SQLite owner or frontend network/signing interfaces. G4 UnverifiedBounds
+and frozen journal/reducer/codec/snapshot2/D4/public writer routing are unchanged.
+N1/N2/N3/N7 and G4–G7 remain unapproved. **E3B has NOT started.**
+
+### N7A executed verification
+
+Commands use locked offline Cargo manifest `apps/arthur/src-tauri/Cargo.toml`
+and sequential native execution `-- --test-threads=1`. Baseline focused legacy
+resource test passed before edits. The first full run after initial implementation
+was 1367 PASS / same5 FAIL /25 ignored; the waker regression was then added red,
+fixed and the full run repeated for the final resource implementation.
+
+| Gate / executed command | N7A result |
+| --- | --- |
+| Pre-change `cargo test --lib e18_metadata` | PASS |
+| Qualification terminal-cleanup regression | FAIL before correction; PASS after; included in full E3A3 regression and Android case28 |
+| Waker-retention regression | FAIL before correction; PASS after; weak reference proves dropped task registration is released even while cancellation handle survives |
+| `cargo test --lib n7a` | **11 PASS**, deterministic routes/I/O/concurrency plus real disposable owner no-side-effect check |
+| Final `cargo check --all-targets` | PASS |
+| Final `cargo test --lib` | FAIL: **1368 PASS / same 5 historical FAIL /25 ignored**, 246.03s; accepted baseline 1357/5/25 |
+| Security / Sync / Journal / dormant-v10 name groups from full run | **56/142/287/24 PASS**, 1/1/1/0 ignored; overlapping groups, not extra executions |
+| E2 / TLS / E3A2 / E3A3 groups from full run | **22/8/11/1 PASS**; E2/TLS each have 1 ignored device-fixture interoperability test |
+| `qualification/verify-isolation.ps1` | PASS: default Windows/Android normal/build graphs exclude PAKE qualification packages; Windows dev / Android feature graphs include them as positive controls |
+| `npm run typecheck` | PASS |
+| `npm run test:architecture` | FAIL: **86 PASS / same 2 historical FAIL**, schema-v6 project ownership and M04.6 voice-output DTO source assertions |
+| `npm run arthur:check` | PASS: **561 tests /42 files**, frontend typecheck/Vite production build; existing chunk-size warning |
+| Actual Android release build with android-identity-tests | PASS expected rejection: Rust exit101 / CLI exit1; both explicit instrumentation/PAKE compile_error guards observed. Same eight secondary missing debug-only slot methods in forbidden configuration as E3A3; no successful release packaging claim |
+
+The five failure identities match accepted E3A3: JEV real transport error
+classification, two synthesis architecture assertions, frozen synthesis corpus
+and synthesis commit-time authorization source check. **No new native regression.**
+Official RFC vectors, Cargo manifest/lock, migration9, Android permissions,
+frozen Sync protocol/codec and journal source are unchanged.
+
+Android used the task-owned read-only Medium_Phone_API_36.1 emulator,
+**API36 / Android16 / x86_64**, SDK37/NDK29.0.14206865/JBR21.0.9.
+
+| Additional executed gate | N7A result |
+| --- | --- |
+| `gen/android/verify-identity.ps1 -Serial emulator-5554` | PASS: actual Rust/Java/Kotlin/debug APK; **36 instrumentation**, fresh XML **0 failures /0 errors /0 skips**, and **2 separate process-restart invocations PASS** |
+| N7A Android scenario29 | PASS, all ten pure route/resource scenarios plus real disposable-owner SQL-change/schema9 check; fake routes/I/O, not physical LAN |
+| Strengthened Android E3A3 case28 | PASS: stale ticket isolation, terminal rejection cleanup and charged budget retained across startup |
+| Explicit public E2/TLS fixture methods via `am instrument` | **2 PASS** repeat executions, fresh public-only output from dedicated package |
+| `cargo test --lib actual_android -- --ignored --test-threads=1` | **2 PASS** using those fresh fixtures: application signatures CNG verification / TLS signatures ring verification on Windows |
+| Host JBR `javac --release 8` / `IdentityFormatHostTest` | **91 checks PASS**, CNG/JCA/fresh Android public fixtures; host-only, existing source/target8 warnings |
+| Dedicated test APK cold start after force-stop | PASS: Status ok, LaunchState COLD |
+| Default `npm run tauri -- android build --debug --target x86_64 --apk --ci` | PASS: actual default Rust/Gradle/debug APK, test application suffix removed |
+| NDK `llvm-nm --dynamic --defined-only` on default native library | PASS: security bootstrap install exported; no BridgeTest/RestartTest JNI entrypoints |
+| Final dependency isolation / formatter / diff checks | PASS: four graph controls after default build; scoped candidate/owner/test Rust formatter and git diff checks; no emulator remains |
+
+**UNVERIFIED / live implementation BLOCKED:** actual Windows/Android route
+acquisition and socket binding, real IPv4/IPv6 LAN or mixed-device sessions,
+VPN/cellular/multi-homed/roaming route changes during connect, AP isolation and
+firewall behavior, API37 permission denial/revocation and NSD picker/manual
+integration, prompt kernel read/write cancellation, real TLS handshake-memory/
+byte/deadline bounds, ARM64, physical-device and successful release packaging.
+Fake observations, API36/JCA execution and negative release rejection do not
+establish those properties. N1/N7 approval remains pending independently of all
+passing foundation tests; production entrypoints remain CLOSED.

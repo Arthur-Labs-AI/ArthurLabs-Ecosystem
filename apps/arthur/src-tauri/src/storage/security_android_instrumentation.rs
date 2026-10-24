@@ -458,6 +458,7 @@ fn scenario(case: jint) -> Result<()> {
         26 => super::security_tls_tests::tls_hash_inputs(),
         27 => super::security_tls_tests::reverse_tls_roles(),
         28 => super::security_pake_tests::reservation_substitution(),
+        29 => super::security_pake_tests::dormant_transport_no_effects(),
         _ => Err(E::Invalid),
     }
 }

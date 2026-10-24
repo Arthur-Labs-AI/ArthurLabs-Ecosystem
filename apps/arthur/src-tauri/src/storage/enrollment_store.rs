@@ -196,7 +196,7 @@ impl<'a> NetworkRegistry<'a> {
         let boot = Uuid::new_v4();
         self.write(|c|{c.execute("UPDATE e_enrollments SET state='cancelled',ticket=NULL WHERE state IN('issued','reserved','approval')",[]).map_err(sql)?;c.execute("INSERT INTO e_abuse VALUES(1,?1,0,0) ON CONFLICT(singleton) DO UPDATE SET boot=excluded.boot",[boot.to_string()]).map_err(sql)?;Ok(boot)})
     }
-    #[cfg(any(test, all(target_os="android",feature="android-identity-tests")))]
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub fn issue_fixture(&self, boot: Uuid, now: u64) -> Result<Challenge> {
         let code = SecretCode::generate()?;
         let id = Uuid::new_v4();
@@ -307,15 +307,16 @@ impl<'a> NetworkRegistry<'a> {
         pending: crate::sync::security::composition::lab::QualifiedPending,
         now: u64,
     ) -> Result<[u8; 32]> {
-        let (context, hash) = pending.into_lab_parts();
-        if context.enrollment != ch.id
-            || context.reservation != ticket.nonce
-            || ticket.enrollment != ch.id
-            || ticket.boot != ch.boot
-        {
-            return Err(E::Trust);
-        }
-        let fresh=self.write(|c| {
+        let result = (|| {
+            let (context, hash) = pending.into_lab_parts();
+            if context.enrollment != ch.id
+                || context.reservation != ticket.nonce
+                || ticket.enrollment != ch.id
+                || ticket.boot != ch.boot
+            {
+                return Err(E::Trust);
+            }
+            let fresh=self.write(|c| {
             let root=verified_root(c)?;
             local_admin(c,&root)?;
             if context.network!=root.network || context.admin_key!=root.admin {return Err(E::Trust);}
@@ -325,12 +326,22 @@ impl<'a> NetworkRegistry<'a> {
             let n=c.execute("UPDATE e_enrollments SET state='approval',candidate=?2,transcript=?3,ticket=NULL WHERE id=?1 AND state='reserved' AND ticket=?4",params![ch.id.to_string(),context.joiner.sec1(),hash.as_slice(),ticket.nonce.to_string()]).map_err(sql)?;
             if n!=1{return Err(E::State);} Ok(true)
         })?;
+            if fresh {
+                Ok(hash)
+            } else {
+                Err(E::Expired)
+            }
+        })();
         ch.erase();
-        if fresh {
-            Ok(hash)
-        } else {
-            Err(E::Expired)
+        if result.is_err() {
+            // Only the submitted still-reserved ticket is terminal. A stale
+            // ticket must never cancel another reservation or refund counters.
+            self.write(|c| {
+                c.execute("UPDATE e_enrollments SET state='cancelled',ticket=NULL WHERE id=?1 AND boot=?2 AND ticket=?3 AND state='reserved'", params![ticket.enrollment.to_string(),ticket.boot.to_string(),ticket.nonce.to_string()]).map_err(sql)?;
+                Ok(())
+            })?;
         }
+        result
     }
     // Local approval command, not a peer message. Exact key + transcript + epoch
     // are rechecked after the admin signing operation and inside the transaction.
