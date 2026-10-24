@@ -1,3 +1,20 @@
+# Project import modal, cancellation, and smooth loader polish — implemented and verified
+
+2026-10-24. On `chore/app-cleanup-and-polish`: replaced the inline project
+import text/timer in `Projects.tsx` with a non-dismissible modal window that
+opens only after the project folder is selected, starts the elapsed timer at
+folder selection, displays `smooth_loader_flat_logo.gif` (`apps/desktop/public`),
+provides a `Cancel import` button (`projects:cancel-add` / `projects.cancelAdd`
+aborting `ProjectManager.addProject` via `AbortController`), and automatically
+cancels any in-flight upload on `beforeunload` / Electron `before-quit` /
+runtime shutdown. Also applied `smooth_loader_flat_logo.gif` to `.skeleton`
+loading states and the initial startup loader in `apps/desktop/index.html`.
+Verified: `@qa/runtime-protocol` 18 PASS, `@qa/desktop` focused suites 30 PASS,
+workspace `typecheck` 37/37 PASS, `lint` 20/20 PASS, `build` 20/20 PASS.
+`shux contract` unavailable; records maintained directly.
+
+## Previous record (preserved)
+
 # OpenCode provider & Application settings polish — implemented and verified
 
 2026-10-23. Created `chore/app-cleanup-and-polish` from `main` (`2cd64d4`).
