@@ -931,3 +931,164 @@ Production schema v9, dormant M05, ClosedTrust, live PAKE/mutual TLS/LAN CLOSED,
 G4 UnverifiedBounds, frozen journal/codec/reducer/snapshot v2/D4 and public routing
 are preserved. ARM64, physical Android, release packaging, hardware certification
 and live mixed-platform sessions are **NOT TESTED** unless explicitly recorded.
+
+## 20. MEGA E3A3 N1 qualification closure packet (2026-10-24)
+
+**PARTIAL; N1_AUDIT_PENDING. Recommendation: DO NOT APPROVE N1.** Accepted
+baseline `1414dd4ccaf2aa4f8d4762045aa3c80ba531816c`, same feature branch.
+The standalone [external review packet](m05-n1-external-review.md) contains the
+exact implementation/revisions, dependency graph, comparison/decision, audit
+scope, complete roles/messages, threat/compromise model, lifecycle limitations,
+advisory analysis and explicit approval/rejection questions. It is an internal
+engineering package for an independent reviewer, not an independent audit.
+
+### Findings, correction and disposition
+
+| Classification | Evidence and disposition |
+| --- | --- |
+| Important, fixed in dormant qualification | `record_qualification` previously accepted a successful PAKE context from a failed reservation under a fresh ticket for the same enrollment. New `e3a3_old_confirmation_cannot_use_a_new_reservation` failed before correction (0/1), passed afterward (1/1). Context now includes a v4 reservation UUID, authenticated by OPAQUE; owner compares it to active ticket.nonce. Suite metadata advances to pending-v2. No DDL/protocol primitive is changed. Both charged attempts remain and no approval/member is created by replay. Same regression is in Android case28. |
+| N1 blocker, unresolved | Locked crypto-bigint 0.5.5 remains flagged by RUSTSEC-2026-0387. No compatible upstream fix or supported feature removal exists. No override, fork, custom arithmetic or waiver. New OSV snapshot `qualification/e3a3-advisories.json` retains the finding. |
+| N1 blocker, unresolved | Exact implementation and composed enrollment have no applicable independent audit. NCC's older draft03 v0.5.0 / v1.2.0 review is not an audit of opaque-ke4.0.1/RFC9807 or Arthur. |
+| Important qualification limitation, documented | Both endpoints and session keys are in one process. Client finish does not prove server received KE3. Initial observed keys, expected admin/network/nonces, transient verifier teardown and distributed final acknowledgment need a live design and independent review. No production behavior is added to imitate the lab oracle. |
+
+Review covered actual PAKE wrapper/composition, owner proof/approval writes and
+deadline transactions, native TLS callbacks, CNG/Keystore/JNI lifetime and
+cfg boundaries. No additional data-loss/concurrency defect was identified in
+these dormant paths; secret persistence review found only public metadata and
+signed bytes in the write paths, no secret logging/serialization. This does not
+prove complete heap/swap/crash erasure or certify compiler/platform timing.
+Upstream KSF/Argon2 buffers and cancellation of a raw lab verifier remain explicit
+limitations; no live caller or retry policy is manufactured here.
+
+Architecture impact of the correction: (1) CaptureStore remains ticket truth;
+(2) its existing owner alone writes; (3) test adapter -> composition -> library;
+(4) only public reservation UUID crosses the existing metadata boundary;
+(5) mismatch refuses before SQL mutation; (6) original reservation lifecycle and
+terminal teardown stay in place; (7) deterministic ledger clock plus real CNG/
+Keystore/TLS/OPAQUE exercise the seam; (8) no migration, old pending suite is
+explicitly rejected; (9) categorical errors only; (10) PAKE success grants no
+production privilege. No second source of truth, owner or activation is added.
+
+### Dependency reachability and candidate decision
+
+Selected-path source tracing: opaque-ke's Ristretto 3DH implementation uses
+dalek; OPRF delegates to voprf's Ristretto implementation, whose elliptic-curve
+use is ExpandMsgXmd/Expander. Those inspected functions use SHA/bytes/public
+lengths, with no bigint calls. Secret-dependent scalar/point operations execute
+in dalek; TLS P256 executes in ring/CNG/JCA. **No selected registration/login
+secret path to the advisory's bigint operations was identified.** This is a
+bounded static analysis, not binary/target CT proof or an advisory dismissal.
+Generic Weierstrass implementations are present but not selected. Changing the
+suite/features/dependencies requires a new analysis.
+
+[RustSec](https://github.com/rustsec/advisory-db/blob/main/crates/crypto-bigint/RUSTSEC-2026-0387.md)
+identifies fixes starting at 0.7.6; [upstream release/fix links](https://github.com/RustCrypto/crypto-bigint/pull/1365)
+cover arithmetic/equality/inversion timing. Registry checks on this date found
+crypto-bigint0.7.7 and elliptic-curve0.14.2, but latest compatible 0.5.5/0.13.8
+remain unpatched. OPAQUE4.1.0-pre.2 still requires elliptic-curve0.13/voprf0.5.
+Both parents require elliptic-curve unconditionally, which requires bigint0.5;
+supported curve/default feature selection cannot remove it. The current
+69-package OSV result is one unresolved advisory, not an audit PASS.
+
+**Preferred candidate for subsequent independent qualification: balanced
+RustCrypto spake2=0.4.0 / Ed25519Group. No candidate currently meets N1.** Both
+devices already hold the short-lived code; removing verifier registration fits
+that model better. This decision is based on protocol needs, not test counts.
+Exact source `3e126d74b692a20d88f6ec62c770ac0c93ab002c`, crate hash and direct
+requirements are in the packet. It has no independent audit and open RFC9382
+encoding issue #186; mutual confirmation/context profile, locked closure,
+vectors and Windows/Android integration must be qualified. No replacement is
+installed. OPAQUE4.0.1 remains a lab comparison only; SPAKE2+0.1.0 adds a verifier
+without a product need and lacks audit/platform evidence. Its prover-first
+confirmation is excluded. N1 remains closed regardless of test success.
+
+`qualification/verify-isolation.ps1` now checks four locked target graphs with
+positive controls: default Windows/Android normal+build exclude opaque-ke,
+Argon2 and crypto-bigint; Windows dev and Android feature graphs contain them.
+This avoids confusing test-only exposure with the shipped dependency graph.
+
+### Verification and remaining gates
+
+Windows commands use `--locked --offline --manifest-path
+apps/arthur/src-tauri/Cargo.toml`; native tests use `-- --test-threads=1`.
+Resource-intensive gates are sequential. Baseline focused E3A2 ran before edits:
+11 PASS. Official vector files/expected values, manifest and lock are unchanged.
+
+| Gate / executed command | E3A3 result |
+| --- | --- |
+| `cargo check --all-targets` | PASS |
+| `cargo test --lib` | FAIL: **1357 PASS / same 5 historical FAIL / 25 ignored**, 348.72s; baseline 1356/5/25 |
+| Security / Sync / Journal / dormant-v10 groups from full run | **46/132/287/24 PASS**, 1/1/1/0 ignored; overlapping name groups, not extra executions |
+| E2 / TLS / E3A2 / E3A3 groups from full run | **22/8/11/1 PASS**; E2 and TLS each have 1 ignored real-Android fixture test, handled separately below |
+| Official RFC9807 vectors | C.1.1/C.1.2/C.2.1 PASS, unchanged expected data/fixture files; within E3A2 count |
+| `npm run typecheck` | PASS |
+| `npm run test:architecture` | FAIL: **86 PASS / same 2 historical FAIL** |
+| `npm run arthur:check` | PASS: **561 tests / 42 files**, typecheck and Vite production build; existing chunk-size warning |
+| `qualification/verify-dependencies.ps1 -OutputDirectory $env:TEMP/arthur-e3a3-dependencies` | Completed locked metadata + OSV: **69 packages / 1 unresolved advisory**; package closure matches committed packages.json exactly; security qualification remains FAIL |
+| `qualification/verify-isolation.ps1` | PASS: four target graphs, both negative default graphs and positive test/debug controls |
+| Actual Tauri Android release build with instrumentation feature | PASS expected rejection: Rust compile exit101 / CLI exit1, both explicit compile_error guards observed; no successful release artifact |
+| Scoped changed Rust files `rustfmt --check --edition 2021` and `git diff --check` | PASS |
+
+The five native failure identities exactly match accepted E3A2: JEV real
+transport error classification plus the two synthesis architecture assertions,
+frozen synthesis corpus and synthesis commit-time authorization source check.
+Architecture retains schema-v6 project ownership and M04.6 voice-output DTO
+checks. **No new test failure.** The deliberate red reservation regression is
+fixed; historical expectations and official vector values were not weakened.
+
+Negative release reproduction (working directory `apps/arthur`, process-local
+SDK/NDK/JBR environment as section19): `npm run tauri -- android build --target
+x86_64 --apk --ci --features android-identity-tests --config
+src-tauri/gen/android/identity-tests.tauri.json`. This actually invokes Cargo
+`build --target x86_64-linux-android --lib --release`, not check/source inspection.
+Output contains both `android-identity-tests is forbidden in release builds`
+and `PAKE qualification is forbidden outside debug instrumentation`. The
+unsupported configuration additionally reports eight missing debug-only
+slot_for_instrumentation methods. These secondary diagnostics are disclosed;
+the explicit guards, not a linker/environment failure, establish rejection.
+This negative result does not establish successful release packaging.
+
+Android execution uses the task-owned read-only **API36 / Android16 / x86_64**
+Medium_Phone_API_36.1 emulator, SDK37, NDK29.0.14206865 and JBR21.0.9. Commands
+and the dedicated `dev.kaloyan.arthur.identitytest` package are the same as
+section19. The emulator was stopped after instrumentation/interoperability/smoke.
+
+| Additional executed gate | E3A3 result |
+| --- | --- |
+| `gen/android/verify-identity.ps1 -Serial emulator-5554` | PASS: actual Rust/Java/Kotlin/debug APK and **35 instrumentation tests**, XML **0 failures / 0 errors / 0 skips**, plus **2 separate process-restart invocations PASS** |
+| E3A3 Android regression | `e3a3_old_confirmation_new_reservation_rejected` present and PASS in fresh XML; original E2B/E3A/E3A2 including official vectors rerun |
+| Explicit fresh E2/TLS public fixture `am instrument` methods | **2 PASS** repeat executions; only public output extracted by dedicated-package run-as |
+| `cargo test --lib actual_android -- --ignored --test-threads=1` with fresh fixture environment paths | **2 PASS**: Keystore application signature -> Windows CNG, Keystore TLS CertificateVerify -> ring on Windows |
+| JBR `javac --release 8` / `IdentityFormatHostTest` with CNG/JCA/fresh Android public fixtures | **91 checks PASS**, host-only JCA; source/target8 deprecation warnings |
+| Dedicated test APK `adb shell am start -W` after force-stop | PASS: Status ok, LaunchState COLD |
+| Default `npm run tauri -- android build --debug --target x86_64 --apk --ci` | PASS: actual default Rust/Gradle/debug APK, no qualification feature; generated test application suffix removed |
+| NDK `llvm-nm --dynamic --defined-only` on default x86_64 native library | PASS: security bootstrap install exported; no NativeIdentityBridgeTest/NativeIdentityRestartTest entrypoints |
+| Final `verify-isolation.ps1` after default build | PASS: same four graph controls; emulator inventory empty after task-owned shutdown |
+
+Source review and executed tests leave **N1 blocked**. External review must decide
+the exact maintained implementation, current audit/dependency scope, six-digit
+model, registration/cleanup, two-process final confirmation, initial key/channel
+binding and durable human intent. The packet's accept/reject criteria do not
+waive the advisory. **No independent audit or N1 approval occurred.** N2/N3/N7
+and G4–G7 remain unapproved, and E3B does not start.
+
+Production remains **schema9, dormant M05, ClosedTrust, PAKE/TLS/LAN CLOSED**,
+without a production VerifiedSession constructor, live enrollment or second
+SQLite owner. G4 UnverifiedBounds and frozen journal/reducer/codec/snapshot2/D4/
+public routing remain unchanged. **UNVERIFIED:** ARM64, physical Android,
+successful release packaging, hardware certification and live mixed-platform
+enrollment. Emulator/JCA/negative release results do not stand in for these.
+
+Changed files (all native paths below are relative to `apps/arthur/src-tauri`):
+
+- `src/sync/security/composition.rs`: reservation binding and pending-v2 metadata.
+- `src/sync/security/pake_qualification.rs`: explicit same-process oracle warning.
+- `src/storage/enrollment_store.rs`: exact reservation check at lab handoff.
+- `src/storage/security_pake_tests.rs`: red/green replay regression, reservation substitution and existing helpers updated.
+- `src/storage/security_tls_tests.rs`: public reservation fixture metadata.
+- `src/storage/security_android_instrumentation.rs`: native scenario28.
+- `gen/android/app/src/androidTest/java/dev/kaloyan/arthur/security/NativeIdentityBridgeTest.java`: scenario28 JUnit entry.
+- `src/sync/security/qualification/verify-isolation.ps1`: four locked graphs with positive controls.
+- `src/sync/security/qualification/e3a3-advisories.json`: current unresolved OSV snapshot.
+- `docs/architecture/m05-n1-external-review.md` (repository root): standalone external packet.
+- `docs/architecture/m05-activation-readiness.md` (repository root): this qualification/evidence snapshot.

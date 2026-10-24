@@ -1,4 +1,7 @@
 //! E3A2 qualification ONLY, never an approved PAKE adapter.
+//! Both endpoints run here: comparing session keys is a test oracle, not a
+//! message or evidence available to either remote endpoint. Client completion
+//! alone cannot establish delivery/acceptance of KE3. There is no live adapter.
 //! Architecture review before implementation:
 //! 1. Truth: opaque-ke owns PAKE state; CaptureStore owns all attempt/approval rows.
 //! 2. Owner: no SQL/network in this harness; one existing owner reserves before work.

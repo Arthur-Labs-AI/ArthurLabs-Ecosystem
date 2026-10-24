@@ -308,7 +308,11 @@ impl<'a> NetworkRegistry<'a> {
         now: u64,
     ) -> Result<[u8; 32]> {
         let (context, hash) = pending.into_lab_parts();
-        if context.enrollment != ch.id || ticket.enrollment != ch.id || ticket.boot != ch.boot {
+        if context.enrollment != ch.id
+            || context.reservation != ticket.nonce
+            || ticket.enrollment != ch.id
+            || ticket.boot != ch.boot
+        {
             return Err(E::Trust);
         }
         let fresh=self.write(|c| {

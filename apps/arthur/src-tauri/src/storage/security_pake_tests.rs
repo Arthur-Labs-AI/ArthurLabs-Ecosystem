@@ -39,12 +39,14 @@ fn qualified(
     a: &Fixture,
     b: &Fixture,
     ch: &Challenge,
+    ticket: &Attempt,
     network: Uuid,
     reverse: bool,
 ) -> Result<lab::QualifiedPending> {
     let channel = pair(a, b, reverse)?;
     let mut ctx = context(a, b);
     ctx.enrollment = ch.id;
+    ctx.reservation = ticket.nonce;
     ctx.network = network;
     if reverse {
         ctx.tls_server = Endpoint::Joiner;
@@ -163,7 +165,7 @@ pub(crate) fn approval_exact_key_consumed_and_atomic() -> Result<()> {
         let boot = registry.startup()?;
         let mut ch = registry.issue_fixture(boot, 10)?;
         let ticket = registry.reserve(&mut ch, 11)?;
-        let pending = qualified(&a, &b, &ch, root.network, reverse)?;
+        let pending = qualified(&a, &b, &ch, &ticket, root.network, reverse)?;
         let hash = registry.record_qualification(&mut ch, ticket, pending, 12)?;
         require(ch.code.is_none())?;
         require(count(&owner, "SELECT count(*) FROM e_members") == Ok(1))?;
@@ -216,7 +218,7 @@ pub(crate) fn expiry_and_native_key_loss() -> Result<()> {
         let boot = registry.startup()?;
         let mut ch = registry.issue_fixture(boot, 10)?;
         let ticket = registry.reserve(&mut ch, 11)?;
-        let pending = qualified(&a, &b, &ch, root.network, false)?;
+        let pending = qualified(&a, &b, &ch, &ticket, root.network, false)?;
         if mode == 0 {
             require(matches!(
                 registry.record_qualification(&mut ch, ticket, pending, 130),
@@ -299,7 +301,7 @@ pub(crate) fn actual_context_and_initial_pin_substitution() -> Result<()> {
             .finish_qualified(&expected, &second, &proof)
             .is_err(),
     )?;
-    for mode in 0..7 {
+    for mode in 0..8 {
         let mut changed = expected.clone();
         match mode {
             0 => changed.network = Uuid::new_v4(),
@@ -308,6 +310,7 @@ pub(crate) fn actual_context_and_initial_pin_substitution() -> Result<()> {
             3 => changed.pake_server = Endpoint::Joiner,
             4 => changed.sponsor = c.public.clone(),
             6 => changed.pake_client = Endpoint::Sponsor,
+            7 => changed.reservation = Uuid::new_v4(),
             _ => {
                 changed.admin = c.public.device_id();
                 changed.admin_key = c.public.clone();
@@ -350,6 +353,37 @@ pub(crate) fn actual_context_and_initial_pin_substitution() -> Result<()> {
         .err()
         .ok_or(E::State)?;
     Ok(())
+}
+#[cfg(windows)]
+#[test]
+fn e3a3_old_confirmation_cannot_use_a_new_reservation() {
+    assert!(reservation_substitution().is_ok());
+}
+pub(crate) fn reservation_substitution() -> Result<()> {
+    let a = Fixture::new()?;
+    let b = Fixture::new()?;
+    let owner = a.owner();
+    let registry = NetworkRegistry::candidate(owner.store())?;
+    let admin = OwnedDeviceIdentity::reopen(owner.store())?;
+    let root = registry.create_network(&admin)?;
+    let boot = registry.startup()?;
+    let mut ch = registry.issue_fixture(boot, 10)?;
+    let first = registry.reserve(&mut ch, 11)?;
+    let pending = qualified(&a, &b, &ch, &first, root.network, false)?;
+    registry.failed(&first)?;
+    let second = registry.reserve(&mut ch, 12)?;
+    require(matches!(
+        registry.record_qualification(&mut ch, second, pending, 13),
+        Err(E::Trust)
+    ))?;
+    require(count(&owner, "SELECT attempts FROM e_abuse") == Ok(2))?;
+    require(
+        count(
+            &owner,
+            "SELECT count(*) FROM e_enrollments WHERE state='approval'",
+        ) == Ok(0),
+    )?;
+    require(count(&owner, "SELECT count(*) FROM e_members") == Ok(1))
 }
 #[cfg(windows)]
 #[test]

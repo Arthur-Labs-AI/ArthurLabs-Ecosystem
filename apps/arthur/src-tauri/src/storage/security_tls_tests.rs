@@ -105,6 +105,7 @@ fn signature(f: &Fixture, role: CertificateRole) -> Result<Vec<u8>> {
 pub(crate) fn context(a: &Fixture, b: &Fixture) -> Context {
     Context {
         enrollment: Uuid::new_v4(),
+        reservation: Uuid::new_v4(),
         network: Uuid::new_v4(),
         admin: a.public.device_id(),
         admin_key: a.public.clone(),

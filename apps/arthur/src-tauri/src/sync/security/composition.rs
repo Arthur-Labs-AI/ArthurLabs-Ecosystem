@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 pub(crate) const SUITE: &str =
-    "arthur-e3a2-opaque401-ristretto255-3dh-sha512-argon2id-tls13-p256-pending-v1";
+    "arthur-e3a3-opaque401-ristretto255-3dh-sha512-argon2id-tls13-p256-pending-v2";
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum Endpoint {
     Sponsor,
@@ -19,6 +19,8 @@ pub(crate) enum Endpoint {
 #[serde(deny_unknown_fields)]
 pub(crate) struct Context {
     pub enrollment: Uuid,
+    // Public one-use reservation from the existing owner; authenticated by PAKE.
+    pub reservation: Uuid,
     pub network: Uuid,
     pub admin: [u8; 32],
     pub admin_key: PublicIdentity,
@@ -35,7 +37,7 @@ pub(crate) struct Context {
 }
 impl Context {
     pub fn digest(&self, exporter: &[u8; 32]) -> Result<[u8; 32]> {
-        for id in [self.enrollment, self.network] {
+        for id in [self.enrollment, self.reservation, self.network] {
             if id.get_version_num() != 4 || id.get_variant() != uuid::Variant::RFC4122 {
                 return Err(E::Invalid);
             }
