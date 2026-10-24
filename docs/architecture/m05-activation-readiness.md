@@ -318,3 +318,69 @@ PASS**; architecture **86 PASS / same 2 FAIL**. Two full-native runs each produc
 audio-focus cleanup case; exact isolated TTS **1 PASS**. This additional full-suite
 failure remains unresolved; TTS source/assertions are unchanged. No release PASS
 or universal physical-bound certification is claimed.
+
+## 15. MEGA E secure identity candidate (2026-10-24)
+
+**PARTIAL / DORMANT.** Windows CNG creates persisted current-user P-256 keys in
+the Microsoft Software Key Storage Provider with export policy zero and signing
+usage only. A nonsecret slot/public-key anchor uses the existing CaptureStore;
+creating/invalidated states and missing keys never regenerate enrolled identity.
+Canonical public keys are SEC1 uncompressed points; signatures are P1363 over
+domain-separated SHA-256. Native tests cover signing, wrong domains/keys, private
+export refusal, RFC 6979 A.2.5 public verification and disk reopen/key loss.
+Executed DLLs: ncrypt 10.0.26100.8875, bcryptprimitives 10.0.26100.9711. This is
+software KSP evidence, not TPM, FIPS certification or an independent wrapper audit.
+See Microsoft's [key creation](https://learn.microsoft.com/en-us/windows/win32/api/ncrypt/nf-ncrypt-ncryptcreatepersistedkey)
+and [signing contract](https://learn.microsoft.com/en-us/windows/win32/api/ncrypt/nf-ncrypt-ncryptsignhash).
+
+Direct pins RustRandom getrandom 0.3.4 and RustCrypto zeroize 1.9.0 already existed in Cargo.lock;
+no package versions/checksums were added or changed. Both are MIT OR Apache-2.0;
+upstream MSRVs 1.63/1.85 fit Rust 1.89. OS RNG rejection sampling preserves six
+digits; Zeroizing erases code buffers on drop, without a privileged crash/swap
+secrecy guarantee. No audited PAKE/composition was established: RustCrypto
+[SPAKE2 explicitly lacks an independent audit](https://github.com/RustCrypto/PAKEs/blob/master/spake2/README.md).
+Existing rustls 0.23.45/ring 0.17.14 were evaluated, not newly integrated; rustls
+[external signing API](https://docs.rs/rustls/0.23.45/rustls/sign/trait.SigningKey.html)
+alone proves neither CNG/Android interoperability nor an audited N1 composition.
+Live pairing/listen/dial return `N1_AUDIT_PENDING`; route selection returns
+`N7_POLICY_PENDING`. No socket, TLS adapter, discovery or production session
+constructor is enabled. Android has no implemented Activity-independent identity
+bridge; the existing provider-secret wrapping is not signing evidence.
+
+Test-installed forward-only metadata implements signed single-admin registry
+epochs, hash-linked immutable updates, revocation tombstones, exact-key/transcript
+approval, channel-bound same-key grant resume/receipt and atomic consumption.
+Attempts reserve durably before proof work; restart cancels unresolved challenges
+without resetting device-wide counters. The conservative lab limits are five
+lifetime reservations/eight issuances, not an approved N3 cooldown policy.
+The real import transaction rechecks registry epoch/membership under the same
+owner lock before publication/COMMIT; both concurrent revoke/import orders run.
+Separate v1 original-event/receipt signatures preserve journal core bytes and
+original authorship, but are not wired into release ingress or the Sync wire.
+
+E01–E09/E11–E12/E15–E17/E19/E22 have scoped provider/metadata/parser/storage tests;
+E11–E12 use explicitly test-only PAKE proof fixtures. E14 demonstrates closed
+entry points only; E18 covers memory leases/cancellation, not socket cleanup.
+E21 retains the existing D3/D4 inbound-provider spies in the Sync gate.
+E10/E13/E20 remain **BLOCKED**, not fixture-certified. Android target/device,
+authenticated loopback/cross-process LAN, native socket timeouts/discovery,
+locked OS key behavior and packaged release smoke tests are **UNVERIFIED**.
+N1/N2/N3/N7 and G4/G5/G6/G7 remain open; full-filesystem rollback resistance,
+admin recovery and restored-origin/incarnation recovery are not certified.
+Production schema9/STEPS1–9, accepted v10 SQL, snapshot v2, codec/reducer, D4,
+G4 UnverifiedBounds, ClosedTrust and public writer routing remain unchanged.
+
+Windows gates (Cargo used `--locked --offline --manifest-path
+apps/arthur/src-tauri/Cargo.toml`; tests used `-- --test-threads=1`):
+`check --all-targets` **PASS**; `test --lib sync::security::tests` **20 PASS**;
+`test --lib sync` **106 PASS**; `test --lib storage::journal` **287 PASS / 1 ignored**;
+`test --lib storage::m05_v10_tests` **24 PASS**; full `test --lib` **FAIL: 1,317 PASS /
+5 FAIL / 23 ignored**. The five identities exactly match the historical JEV
+transport (Timeout versus Network), two synthesis source-contract checks, frozen
+corpus hash and synthesis permission-check cases recorded in the
+[G4 gate record](m05-g4-quota-reserve-decision.md). TTS audio-focus passes in this
+run; its prior full-suite instability is not declared fixed. `npm run typecheck`
+**PASS**; `npm run test:architecture` **FAIL: 86 PASS / same 2 baseline FAIL**
+(schema-v6 source check and voice-output DTO check); `npm run arthur:check`
+**PASS: 561 tests / 42 files + build**; `git diff --check` **PASS**. No release
+readiness claim or waiver of these failing/unverified gates is made.

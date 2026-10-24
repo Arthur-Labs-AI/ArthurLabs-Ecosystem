@@ -17,6 +17,7 @@ mod protocol;
 mod tests;
 mod trust;
 mod validation;
+pub(crate) mod security;
 
 pub(crate) use engine::{SyncEngine, SyncStore};
 pub(crate) use protocol::*;

@@ -19,6 +19,9 @@ pub mod proposal_store;
 pub mod journal;
 pub(crate) mod sync_store;
 pub(crate) mod bootstrap_store;
+pub(crate) mod enrollment_store;
+#[cfg(windows)]
+pub(crate) mod device_identity_store;
 #[cfg(test)]
 mod identity_store_tests;
 #[cfg(test)]

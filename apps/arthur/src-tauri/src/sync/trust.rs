@@ -6,6 +6,7 @@ pub(crate) struct VerifiedSession {
     hello: PeerHello,
     expires: u64,
     origins: BTreeSet<Uuid>,
+    registry: Option<super::security::enrollment::MembershipBinding>,
 }
 impl VerifiedSession {
     pub fn binding(&self) -> &PeerHello {
@@ -25,6 +26,19 @@ impl VerifiedSession {
             return Err(Error::Trust);
         }
         Ok(())
+    }
+    pub(crate) fn registry_binding(
+        &self,
+    ) -> Option<&super::security::enrollment::MembershipBinding> {
+        self.registry.as_ref()
+    }
+    #[cfg(test)]
+    pub(crate) fn with_registry(
+        mut self,
+        b: super::security::enrollment::MembershipBinding,
+    ) -> Self {
+        self.registry = Some(b);
+        self
     }
 }
 pub(crate) trait TrustVerifier {
@@ -52,6 +66,7 @@ impl TrustVerifier for TestTrust {
             hello: hello.clone(),
             expires: self.expires,
             origins: self.origins.clone(),
+            registry: None,
         })
     }
 }

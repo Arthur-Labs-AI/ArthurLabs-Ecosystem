@@ -110,6 +110,13 @@ pub(super) fn authorize(
     x: &Cancellation,
 ) -> Result<()> {
     s.check(clock, x)?;
+    if let Some(binding) = s.registry_binding() {
+        if !binding.matches(s.binding()) {
+            return Err(Error::Trust);
+        }
+        super::enrollment_store::authorize_binding(c, binding, clock.now())
+            .map_err(|_| Error::Trust)?;
+    }
     let b = s.binding();
     let valid:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM import_candidate i JOIN import_members m ON m.peer=?1 WHERE i.singleton=1 AND i.revision=1 AND i.local_id=?2 AND i.network=?3 AND m.enabled=1 AND m.epoch=?4)",params![b.peer.to_string(),b.local.to_string(),b.network.to_string(),b.epoch],|r|r.get(0)).map_err(sql)?;
     let mut origins = 0;
