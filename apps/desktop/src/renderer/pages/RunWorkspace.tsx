@@ -302,19 +302,17 @@ export function RunWorkspace(): React.JSX.Element {
     <div className="run-page">
       {snapshot.isError || snapshot.runtimeUnavailable ? (
         <div className="inline-notice tone-warning" role="status">
-          Run refresh unavailable. Cached results remain available; the last recorded status below
-          may have changed. Check <Link to="/settings/runtime">Runtime settings</Link>. This
-          communication error does not mean the QA run failed.
+          {'Run refresh unavailable. Cached results remain available; the last recorded status below may have changed. Check'}{' '}<Link to="/settings/runtime">Runtime settings</Link>{'.'}{'This communication error does not mean the QA run failed.'}
         </div>
       ) : null}
       <nav className="metadata" aria-label="Breadcrumb">
         <Link to="/projects">Projects</Link> /{' '}
-        <Link to={'/projects/' + data.run.projectId}>{resolvedProjectName}</Link> / QA Run
+        <Link to={'/projects/' + data.run.projectId}>{resolvedProjectName}</Link> /{'QA Run'}
       </nav>
       <header className="card run-header" aria-label="Run header">
         <div className="run-header-row">
           <div className="title-block">
-            <h1 className="page-title">{data.run.mode.toUpperCase()} QA</h1>
+            <h1 className="page-title">{data.run.mode.toUpperCase() + ' QA'}</h1>
             <StatusPill status={data.run.status} pulse={isActive} />
             {data.run.executionKind === 'production' ? null : (
               <span

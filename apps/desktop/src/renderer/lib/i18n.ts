@@ -140,8 +140,9 @@ function translateCore(trimmed: string): string {
     const isTotal = Boolean(findingsEvidenceMatch[2]);
     const eCount = findingsEvidenceMatch[3];
     const fLabel = fCount === '1' ? 'констатация' : 'констатации';
+    const eLabel = eCount === '1' ? 'доказателство' : 'доказателства';
     const totalWord = isTotal ? 'общо ' : '';
-    return `${fCount} ${totalWord}${fLabel} · ${eCount} доказателства`;
+    return `${fCount} ${totalWord}${fLabel} · ${eCount} ${eLabel}`;
   }
 
   const agentSummaryMatch =
@@ -161,7 +162,7 @@ function translateCore(trimmed: string): string {
   const evidenceCountMatch = /^([\d,]+)\s+evidence$/.exec(trimmed);
   if (evidenceCountMatch !== null) {
     const count = evidenceCountMatch[1];
-    return `${count} доказателства`;
+    return count === '1' ? '1 доказателство' : `${count} доказателства`;
   }
 
   const tabCountMatch = /^(Findings|Evidence)\s*\((\d+)\)$/.exec(trimmed);
@@ -192,6 +193,69 @@ function translateCore(trimmed: string): string {
     /^([?\d]+)\/([?\d]+)\s+agents\s*·\s*(\d+)\s+findings\s*·\s*(\d+)\s+issues$/.exec(trimmed);
   if (runSummaryMatch !== null) {
     return `${runSummaryMatch[1]}/${runSummaryMatch[2]} агента · ${runSummaryMatch[3]} констатации · ${runSummaryMatch[4]} проблема`;
+  }
+
+  const bareModeMatch = /^(FULL|TARGETED)\s+QA$/.exec(trimmed);
+  if (bareModeMatch !== null) {
+    return bareModeMatch[1] === 'FULL' ? 'ПЪЛЕН QA' : 'ЦЕЛЕВИ QA';
+  }
+
+  const runsRevMatch = /^(\d+)\s+runs?\s*·\s*rev\s+(.+)$/.exec(trimmed);
+  if (runsRevMatch !== null) {
+    const count = runsRevMatch[1];
+    const rev = runsRevMatch[2];
+    return count === '1' ? `1 изпълнение · rev ${rev}` : `${count} изпълнения · rev ${rev}`;
+  }
+
+  const openRecentMatch = /^Open most recent active run\. (\d+) active runs?$/.exec(trimmed);
+  if (openRecentMatch !== null) {
+    const count = openRecentMatch[1];
+    return count === '1'
+      ? 'Отвори последното активно изпълнение. 1 активно изпълнение'
+      : `Отвори последното активно изпълнение. ${count} активни изпълнения`;
+  }
+
+  const removeProjectMatch = /^Remove project (.+)$/.exec(trimmed);
+  if (removeProjectMatch !== null) {
+    return `Премахни проект ${removeProjectMatch[1]}`;
+  }
+
+  const removeHeadingMatch = /^Remove (.+)\?$/.exec(trimmed);
+  if (removeHeadingMatch !== null) {
+    return `Премахни ${removeHeadingMatch[1]}?`;
+  }
+
+  const createdMatch = /^(\d+)\s+created$/.exec(trimmed);
+  if (createdMatch !== null) {
+    return `${createdMatch[1]} създадени`;
+  }
+
+  const targetedPathsMatch = /^TARGETED\s*·\s*(\d+)\s+paths?$/.exec(trimmed);
+  if (targetedPathsMatch !== null) {
+    const count = targetedPathsMatch[1];
+    return count === '1' ? 'ЦЕЛЕВИ · 1 път' : `ЦЕЛЕВИ · ${count} пътя`;
+  }
+
+  const severityBreakdownMatch =
+    /^(\d+)\s+Critical\s*·\s*(\d+)\s+High\s*·\s*(\d+)\s+Medium\s*·\s*(\d+)\s+Low\s*·\s*(\d+)\s+Info$/.exec(
+      trimmed,
+    );
+  if (severityBreakdownMatch !== null) {
+    const [, critical, high, medium, low, info] = severityBreakdownMatch;
+    return `${critical} критични · ${high} високи · ${medium} средни · ${low} ниски · ${info} информационни`;
+  }
+
+  const agentActivityMatch =
+    /^([^\s]+?)\s+(running|planning|completed|failed|timed\s+out|interrupted|investigating|reporting|starting|probing)$/.exec(
+      trimmed,
+    );
+  if (agentActivityMatch !== null) {
+    const name = agentActivityMatch[1];
+    const statusKey = agentActivityMatch[2]?.toLowerCase().replace(/\s+/, ' ') ?? '';
+    const statusBg = STATUS_BG[statusKey];
+    if (statusBg !== undefined) {
+      return `${name} ${statusBg}`;
+    }
   }
 
   return trimmed;
@@ -268,6 +332,44 @@ function translateSubtree(root: HTMLElement, language: AppLanguage): void {
     if (currentAttr !== target) {
       el.setAttribute('placeholder', target);
     }
+  }
+  // Tooltips and accessible names follow the interface language too.
+  const labelled = root.querySelectorAll('[title], [aria-label]');
+  for (const el of labelled) {
+    if (shouldSkipElement(el)) continue;
+    translateElementAttribute(el, 'title', language);
+    translateElementAttribute(el, 'aria-label', language);
+  }
+}
+
+const originalAttributes = new WeakMap<Element, Map<string, string>>();
+const lastWrittenAttributes = new WeakMap<Element, Map<string, string>>();
+
+function translateElementAttribute(el: Element, attr: string, language: AppLanguage): void {
+  const current = el.getAttribute(attr);
+  if (current === null || current.trim().length === 0) return;
+  let sources = originalAttributes.get(el);
+  if (sources === undefined) {
+    sources = new Map<string, string>();
+    originalAttributes.set(el, sources);
+  }
+  let written = lastWrittenAttributes.get(el);
+  if (written === undefined) {
+    written = new Map<string, string>();
+    lastWrittenAttributes.set(el, written);
+  }
+  const last = written.get(attr);
+  // If React updated the attribute underneath us, refresh the stored English source.
+  if (!sources.has(attr) || (last !== undefined && current !== last)) {
+    sources.set(attr, current);
+  }
+  const source = sources.get(attr) ?? current;
+  const target = language === 'en' ? source : translateText(source, 'bg');
+  if (current !== target) {
+    written.set(attr, target);
+    el.setAttribute(attr, target);
+  } else {
+    written.set(attr, current);
   }
 }
 

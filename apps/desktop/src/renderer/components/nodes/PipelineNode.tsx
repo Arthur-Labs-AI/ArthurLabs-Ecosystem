@@ -94,10 +94,9 @@ function IssuesSummary({ payload }: { payload: Record<string, unknown> }): React
   const breakdown = severityBreakdown(findings);
   return (
     <div className="node-sub" style={{ marginTop: 4 }}>
-      {count} created
+      {count + ' created'}
       <div>
-        {breakdown.critical} Critical · {breakdown.high} High · {breakdown.medium} Medium ·{' '}
-        {breakdown.low} Low · {breakdown.info} Info
+        {breakdown.critical + ' Critical · ' + breakdown.high + ' High · ' + breakdown.medium + ' Medium · ' + breakdown.low + ' Low · ' + breakdown.info + ' Info'}
       </div>
     </div>
   );
@@ -107,7 +106,7 @@ function TargetSummary({ payload }: { payload: Record<string, unknown> }): React
   const paths = (payload['includePaths'] as string[] | undefined) ?? [];
   return (
     <div className="node-sub" style={{ marginTop: 4 }}>
-      TARGETED · {paths.length} path{paths.length === 1 ? '' : 's'}
+      {'TARGETED · ' + paths.length + ' path' + (paths.length === 1 ? '' : 's')}
       {paths.slice(0, 2).map((p) => (
         <div key={p} className="mono truncate" title={p}>
           {p}

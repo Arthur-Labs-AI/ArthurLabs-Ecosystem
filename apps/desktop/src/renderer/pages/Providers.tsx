@@ -224,7 +224,7 @@ export function Providers(): React.JSX.Element {
         subtitle="API keys, models, and harness transports for the three QA agents."
         crumbs={
           <>
-            <Link to="/settings">Settings</Link> / Providers
+            <Link to="/settings">Settings</Link> /{'Providers'}
           </>
         }
       />

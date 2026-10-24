@@ -36,7 +36,7 @@ describe('canvas node components', () => {
     expect(html).toContain('Muse');
     expect(html).toContain('muse-spark-1.3-contributor');
     expect(html).toContain('Read src/auth/session.ts');
-    expect(html).toContain('1 findings');
+    expect(html).toContain('1 finding');
     expect(html).toContain('4 evidence');
     expect(html).not.toContain('Thinking');
     expect(html).not.toContain('%');

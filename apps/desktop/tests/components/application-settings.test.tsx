@@ -65,6 +65,9 @@ describe('Application settings & localization', () => {
     expect(translateText('19 findings · 41 evidence', 'bg')).toBe(
       '19 констатации · 41 доказателства',
     );
+    expect(translateText('1 total finding · 1 evidence', 'bg')).toBe(
+      '1 общо констатация · 1 доказателство',
+    );
     expect(translateText('19 total findings · 41 evidence', 'bg')).toBe(
       '19 общо констатации · 41 доказателства',
     );
@@ -80,6 +83,38 @@ describe('Application settings & localization', () => {
     ).toBe('0 активни · 2 завършени · 0 неуспешни / изтекли / прекъснати');
     expect(translateText('AGENT EXECUTIONS COMPLETE', 'bg')).toBe('ЗАВЪРШЕНИ ИЗПЪЛНЕНИЯ НА АГЕНТИ');
     expect(translateText('10 findings', 'bg')).toBe('10 констатации');
+    expect(translateText('1 active run · Open', 'bg')).toBe('1 активно изпълнение · Отвори');
+    expect(translateText('3 active runs · Open', 'bg')).toBe('3 активни изпълнения · Отвори');
+    expect(translateText('12 runs · rev ui-revision', 'bg')).toBe('12 изпълнения · rev ui-revision');
+    expect(translateText('1 run · rev abc123', 'bg')).toBe('1 изпълнение · rev abc123');
+    expect(translateText('FULL QA', 'bg')).toBe('ПЪЛЕН QA');
+    expect(translateText('TARGETED QA', 'bg')).toBe('ЦЕЛЕВИ QA');
+    expect(translateText('1 evidence', 'bg')).toBe('1 доказателство');
+    expect(translateText('0 evidence', 'bg')).toBe('0 доказателства');
+    expect(translateText('open', 'bg')).toBe('отворено');
+    expect(translateText('high', 'bg')).toBe('висока');
+    expect(translateText('critical', 'bg')).toBe('критична');
+    expect(translateText('Open most recent active run. 1 active runs', 'bg')).toBe(
+      'Отвори последното активно изпълнение. 1 активно изпълнение',
+    );
+    expect(translateText('Remove project Sentry workspace', 'bg')).toBe(
+      'Премахни проект Sentry workspace',
+    );
+    expect(translateText('Remove Sentry workspace?', 'bg')).toBe('Премахни Sentry workspace?');
+    expect(translateText('Drag to arrange · Scroll to zoom · F to fit', 'bg')).toBe(
+      'Влачи за подреждане · Превърти за мащаб · F за побиране',
+    );
+    expect(translateText('Desktop operation failed', 'bg')).toBe(
+      'Операцията на десктопа е неуспешна',
+    );
+    expect(translateText('1 created', 'bg')).toBe('1 създадени');
+    expect(translateText('TARGETED · 2 paths', 'bg')).toBe('ЦЕЛЕВИ · 2 пътя');
+    expect(translateText('2 Critical · 1 High · 0 Medium · 3 Low · 0 Info', 'bg')).toBe(
+      '2 критични · 1 високи · 0 средни · 3 ниски · 0 информационни',
+    );
+    expect(translateText('OpenCode running', 'bg')).toBe('OpenCode изпълнява се');
+    expect(translateText('GLM completed', 'bg')).toBe('GLM завършено');
+    expect(translateText('Project completed', 'bg')).toBe('Проектът е завършен');
     expect(
       translateText(
         'Incomplete analysis. Reported findings and evidence are retained independently for each agent.',
