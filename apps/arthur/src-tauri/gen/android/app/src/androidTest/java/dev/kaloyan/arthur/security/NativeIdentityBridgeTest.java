@@ -24,6 +24,11 @@ public final class NativeIdentityBridgeTest {
     @Test public void eb08_15_malformed_sql_anchor_refuses() { assertTrue(runScenario(11)); }
     @Test public void eb20_android_registry_binding_and_revocation() { assertTrue(runScenario(12)); }
     @Test public void eb11_12_marker_survives_actual_owner_disk_reopen() { assertTrue(runScenario(13)); }
+    @Test public void e3a_native_tls_signatures() { assertTrue(runScenario(14)); }
+    @Test public void e3a_tls_scheme_and_input_rejection() { assertTrue(runScenario(15)); }
+    @Test public void e3a_tls_durable_lifecycle() { assertTrue(runScenario(16)); }
+    @Test public void e3a_mutual_tls13_and_closed_production() { assertTrue(runScenario(17)); }
+    @Test public void e3a_tls_composition_binding() { assertTrue(runScenario(18)); }
     @Test public void eb19_no_java_to_native_signing_entrypoint() {
         int nativeMethods=0;
         for(java.lang.reflect.Method method: NativeIdentityBridge.class.getDeclaredMethods()) {

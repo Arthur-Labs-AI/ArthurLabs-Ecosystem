@@ -30,6 +30,11 @@ public final class NativeIdentityBridge {
     public static void delete(Context app, String slot) throws GeneralSecurityException {
         DeviceSigningIdentity.deleteIdentity(app, slot);
     }
+    public static byte[] signTls13(Context app, String slot, byte[] expected, int role, byte[] preimage)
+            throws GeneralSecurityException {
+        TlsSignatureFormat.validate(role,preimage);
+        return DeviceSigningIdentity.reopen(app,slot,expected).signTls13(role,preimage);
+    }
     public static boolean validate(byte[] key) {
         try { IdentityFormat.validatePublic(key); return true; }
         catch (GeneralSecurityException | RuntimeException invalid) { return false; }

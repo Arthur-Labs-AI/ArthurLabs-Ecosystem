@@ -152,6 +152,43 @@ impl Bridge {
             Ok(())
         })
     }
+    fn sign_tls(
+        &self,
+        slot: Uuid,
+        expected: &PublicIdentity,
+        role: super::tls::CertificateRole,
+        message: &[u8],
+    ) -> Result<Vec<u8>> {
+        valid_slot(slot)?;
+        super::tls::validate_message(role, message)?;
+        self.call(|env, class| {
+            let slot = jni(env.new_string(slot.to_string()))?;
+            let key = jni(env.byte_array_from_slice(expected.sec1()))?;
+            let bytes = jni(env.byte_array_from_slice(message))?;
+            let value = jni(env.call_static_method(
+                class,
+                "signTls13",
+                "(Landroid/content/Context;Ljava/lang/String;[BI[B)[B",
+                &[
+                    JValue::Object(self.application.as_obj()),
+                    JValue::Object(slot.as_ref()),
+                    JValue::Object(key.as_ref()),
+                    JValue::Int(role.id()),
+                    JValue::Object(bytes.as_ref()),
+                ],
+            ))?;
+            let value = jni(value.l())?;
+            if value.is_null() {
+                return Err(E::Signature);
+            }
+            let array = JByteArray::from(value);
+            let size = jni(env.get_array_length(&array))?;
+            if !(8..=72).contains(&size) {
+                return Err(E::Signature);
+            }
+            jni(env.convert_byte_array(array))
+        })
+    }
     pub(crate) fn validate(&self, bytes: &[u8]) -> Result<()> {
         if bytes.len() != 65 || bytes[0] != 4 {
             return Err(E::Invalid);
@@ -338,5 +375,14 @@ impl DeviceIdentityStore for AndroidIdentity {
     }
     fn invalidate_identity(&self) -> Result<()> {
         self.bridge.delete(self.slot)
+    }
+}
+impl super::tls::NativeTls13 for AndroidIdentity {
+    fn sign_tls13(&self, role: super::tls::CertificateRole, message: &[u8]) -> Result<Vec<u8>> {
+        super::tls::validate_message(role, message)?;
+        let expected = self.public_identity()?;
+        let signature = self.bridge.sign_tls(self.slot, &expected, role, message)?;
+        super::tls::verify(&expected, role, message, &signature)?;
+        Ok(signature)
     }
 }

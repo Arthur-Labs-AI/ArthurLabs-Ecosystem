@@ -126,6 +126,19 @@ public final class DeviceSigningIdentity {
             } catch (GeneralSecurityException | RuntimeException exception) { return Availability.UNAVAILABLE; }
         }
     }
+    public byte[] signTls13(int role, byte[] preimage) throws GeneralSecurityException {
+        TlsSignatureFormat.validate(role,preimage);
+        synchronized(KEY_OPERATIONS) {
+            try {
+                Signature signer=Signature.getInstance("SHA256withECDSA");
+                signer.initSign(privateKey(store()));
+                signer.update(preimage); // TLS CertificateVerify bytes, no application prefix/digest
+                byte[] der=IdentityFormat.p1363ToDer(IdentityFormat.derToP1363(signer.sign()));
+                if(!TlsSignatureFormat.verify(expected,role,preimage,der)) throw unavailable();
+                return der;
+            } catch(GeneralSecurityException | RuntimeException exception) { throw unavailable(); }
+        }
+    }
     public void invalidateIdentity() throws GeneralSecurityException {
         synchronized (KEY_OPERATIONS) {
             try { store().deleteEntry(alias); }

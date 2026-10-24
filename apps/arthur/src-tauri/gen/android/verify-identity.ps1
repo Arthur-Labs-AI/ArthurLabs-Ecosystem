@@ -52,7 +52,7 @@ try {
         # Reuse the feature-enabled .so just built successfully by Tauri above.
         # Its generated Android Studio callback requires the now-finished CLI server.
         & ./gradlew.bat connectedX86_64DebugAndroidTest -x rustBuildX86_64Debug `
-            '-Pandroid.testInstrumentationRunnerArguments.class=dev.kaloyan.arthur.security.NativeIdentityBridgeTest,dev.kaloyan.arthur.security.DeviceSigningIdentityTest'
+            '-Pandroid.testInstrumentationRunnerArguments.class=dev.kaloyan.arthur.security.NativeIdentityBridgeTest,dev.kaloyan.arthur.security.DeviceSigningIdentityTest,dev.kaloyan.arthur.security.TlsIdentityTest'
         if ($LASTEXITCODE -ne 0) { throw 'Native identity instrumentation failed' }
         # Connected-test cleanup removes these APKs. Install only the checked,
         # dedicated packages for two separate process-restart invocations.

@@ -443,6 +443,11 @@ fn scenario(case: jint) -> Result<()> {
             }
             Ok(())
         }
+        14 => super::security_tls_tests::native_signatures(),
+        15 => super::security_tls_tests::scheme_input(),
+        16 => super::security_tls_tests::lifecycle(),
+        17 => super::security_tls_tests::mutual_tls(),
+        18 => super::security_tls_tests::composition_checks(),
         _ => Err(E::Invalid),
     }
 }
@@ -458,6 +463,15 @@ pub extern "system" fn Java_dev_kaloyan_arthur_security_NativeIdentityBridgeTest
         return 0;
     }
     u8::from(matches!(result, Ok(Ok(()))))
+}
+
+fn restart_tls(owner: Arc<NativeRuntime>, public: PublicIdentity) -> Result<()> {
+    use crate::sync::security::tls::{self, CertificateRole};
+    let key =
+        super::tls_identity::OwnedTlsKey::lab(owner, public.clone(), CertificateRole::Server)?;
+    let message = super::security_tls_tests::preimage(CertificateRole::Server);
+    let signature = rustls::sign::Signer::sign(key.as_ref(), &message).map_err(|_| E::Signature)?;
+    tls::verify(&public, CertificateRole::Server, &message, &signature)
 }
 
 // Two explicitly selected instrumentation invocations, separated by force-stop.
@@ -481,7 +495,8 @@ fn restart(phase: jint) -> Result<()> {
         let identity = OwnedDeviceIdentity::initialize(owner.store())?;
         let public = identity.public_identity()?;
         let signature = identity.sign_domain_separated(Domain::Registry, b"synthetic restart")?;
-        verify(&public, Domain::Registry, b"synthetic restart", &signature)
+        verify(&public, Domain::Registry, b"synthetic restart", &signature)?;
+        restart_tls(owner.clone(), public)
     } else if phase == 2 {
         let outcome = (|| {
             let owner = NativeRuntime::acquire(&root).map_err(|_| E::Storage)?;
@@ -491,6 +506,7 @@ fn restart(phase: jint) -> Result<()> {
             let signature =
                 identity.sign_domain_separated(Domain::Registry, b"synthetic restart")?;
             verify(&public, Domain::Registry, b"synthetic restart", &signature)?;
+            restart_tls(owner.clone(), public)?;
             identity.invalidate_identity()?;
             require(cleanup.0.public_identity().is_err())
         })();

@@ -20,6 +20,10 @@ mod tests;
 #[path = "../../storage/security_e2_tests.rs"]
 mod e2_tests;
 pub(crate) mod transport;
+pub(crate) mod tls;
+pub(crate) mod composition;
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+pub(crate) mod tls_lab;
 #[cfg(windows)]
 pub(crate) mod windows;
 

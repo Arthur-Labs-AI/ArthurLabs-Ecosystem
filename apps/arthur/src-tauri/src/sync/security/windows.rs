@@ -342,6 +342,33 @@ fn import(p: &PublicIdentity) -> Result<(Algorithm, PublicKey)> {
     })?;
     Ok((a, PublicKey(key)))
 }
+impl super::tls::NativeTls13 for WindowsIdentity {
+    fn sign_tls13(&self, role: super::tls::CertificateRole, message: &[u8]) -> Result<Vec<u8>> {
+        use sha2::{Digest, Sha256};
+        super::tls::validate_message(role, message)?;
+        let key = self.open()?;
+        // TLS callback supplies the CertificateVerify PREIMAGE. Hash exactly once.
+        let hash: [u8; 32] = Sha256::digest(message).into();
+        let mut signature = [0u8; 64];
+        let mut written = 0;
+        ok(unsafe {
+            NCryptSignHash(
+                key.0,
+                ptr::null(),
+                hash.as_ptr(),
+                32,
+                signature.as_mut_ptr(),
+                64,
+                &mut written,
+                0x40,
+            )
+        })?;
+        if written != 64 {
+            return Err(E::Signature);
+        }
+        super::tls::p1363_to_der(&signature)
+    }
+}
 pub(super) fn validate(p: &PublicIdentity) -> Result<()> {
     let (_algorithm, _key) = import(p)?;
     Ok(())

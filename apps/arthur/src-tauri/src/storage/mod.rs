@@ -22,6 +22,9 @@ pub(crate) mod bootstrap_store;
 pub(crate) mod enrollment_store;
 mod registry_verification;
 pub(crate) mod signed_import;
+pub(crate) mod tls_identity;
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+pub(crate) mod security_tls_tests;
 #[cfg(windows)]
 pub(crate) mod device_identity_store;
 #[cfg(target_os = "android")]

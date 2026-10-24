@@ -501,3 +501,201 @@ without frontend edits or a claim that intermittence is fixed. TTS audio-focus p
 N1/N2/N3/N7 and G4–G7 remain unapproved. Schema v9, migrations, codec/reducer,
 snapshot v2, D4, public routing and `_exit` are frozen; ClosedTrust, PAKE, mutual TLS,
 production ingress, LAN listener and dialer remain CLOSED.
+
+## 18. MEGA E3A cryptographic foundation (2026-10-24)
+
+**PARTIAL / DORMANT. N1_AUDIT_PENDING; recommendation: DO NOT APPROVE N1.**
+Scope starts at accepted E2B `17af0790756dd613c7e94fa1793709067a71330f` on
+`feature/nodes-integration`. This section is an approval decision package, not
+cryptographic approval or a release claim. No PAKE dependency is adopted.
+
+### N1 evidence and decision
+
+| Candidate examined | Version / provenance | Audit and suitability decision |
+| --- | --- | --- |
+| RustCrypto `spake2` | Stable 0.4.0; 0.5.0-pre.0; MIT OR Apache-2.0. Repository path activity observed at `a35ee6d5f833a3b38e81cf15c0542fb33c456668` (2026-07-16). | Maintainers explicitly report no independent audit. RFC9382 transcript compatibility is questioned in open issue #186. A symmetric PAKE is a natural fit when both devices hold the temporary code, but this implementation does not meet N1. |
+| `spake2plus` | 0.1.0, published 2026-10-04; MIT; MSRV 1.85.0. | Explicitly unaudited. Authors report both-role RFC9383 P256/SHA256 and SHA512 vectors. Its optional prover-first confirmation permits offline guessing; that mode is unacceptable here. An augmented verifier-record registration design would need review. |
+| `opaque-ke` | Stable 4.0.1, tag commit `75fe4cdddb7946440054da0c8e7cdd73828af3f9`; 4.1.0-pre.2 at `bc588b149eccec77914e38dd29a6a17b47018bfa`; MIT OR Apache-2.0; stable MSRV 1.85. | Strongest independent-audit lineage among these candidates, recommended only for further evaluation. Current RFC9807 implementation is outside the old audit scope; six-digit transient registration and Arthur composition are unapproved. Do not substitute an obsolete audited version. |
+
+Primary sources: [RustCrypto security warning](https://github.com/RustCrypto/PAKEs/blob/master/spake2/README.md),
+[RFC transcript issue](https://github.com/RustCrypto/PAKEs/issues/186),
+[SPAKE2 stable metadata](https://crates.io/api/v1/crates/spake2/0.4.0),
+[SPAKE2+ documentation](https://docs.rs/spake2plus/0.1.0/spake2plus/),
+[SPAKE2+ version manifest](https://crates.io/api/v1/crates/spake2plus/0.1.0),
+[OPAQUE stable README](https://github.com/facebook/opaque-ke/blob/v4.0.1/README.md),
+[stable manifest](https://github.com/facebook/opaque-ke/blob/v4.0.1/Cargo.toml).
+Version metadata and tags were checked on 2026-10-24. This is a comparison of
+these implementations, not proof that no suitable implementation exists anywhere.
+
+The [NCC report, 2021-12-10 v1.3](https://www.nccgroup.com/media/0uspzge5/_ncc_group_whatsappllc_opaque_report_2021-12-10_v13.pdf)
+covers draft03/v0.5.0 (`ba8e940e08a630c0d075e730623ebf0b30d4b9e2`), with primary
+retest at v1.2.0 (`6538ee30e118cfc99c1f5bff6d2c151e2eaffd2d`). All eight findings
+are marked fixed. Two high findings concern identity-element validation (004)
+and reflected OPRF values (010); low findings include MAC timing (006) and
+serialization lengths (008). Relevant fix commits are respectively
+`a69ad9473aa046c03854ce23534dbfaac24ea2c1`,
+`9c28c8597a6ab33d167f3711dab1a297b1be7d6d`,
+`3c4b7ce4825031736a04542103ac490d34f9dae2`, and
+`f15b37fda4a61ef97025e91f2fcff25ec4d23362`.
+The report excludes an in-depth review of v0.6.0/newer protocol revisions.
+It cannot establish audit coverage of v4.0.1 or Arthur's composition.
+
+Dependency / secret handling evaluation is source-level, not an executed PAKE
+qualification. RustCrypto 0.4.0 (MSRV 1.60) uses curve25519-dalek 4, hkdf 0.12,
+rand_core 0.6 and sha2 0.10; full secret erasure
+and current RFC vectors are unestablished here. SPAKE2+ uses p256 0.14, sha2 0.11,
+hkdf/hmac 0.13, subtle 2.6.1 and zeroize 1.9; its documentation describes drop
+zeroization with compiler/caller-copy limitations. OPAQUE 4.0.1 uses voprf 0.5
+(`danger` feature), curve25519-dalek 4, elliptic-curve 0.13, rand 0.8,
+hkdf/hmac 0.12, subtle 2.6 and zeroize 1.8; optional Argon2 0.5. Default features
+are ristretto255/serde; states use zeroize-on-drop. Their pure-Rust/no_std designs
+make Windows/Android evaluation plausible, but **no candidate was built or its
+RFC vectors executed on either platform in E3A**. Library documentation is not
+Arthur portability, constant-time or memory-erasure certification.
+OPAQUE's stable source includes [RFC9807 Appendix C vectors](https://github.com/facebook/opaque-ke/blob/v4.0.1/src/tests/rfc9807_vectors.rs);
+their presence is source evidence only, not an executed compatibility result.
+
+N1 approval requires an independently reviewed exact maintained revision and
+dependency configuration, verified RFC vectors on both targets, and review of
+temporary-code generation, transient verifier registration, confirmation order,
+online guessing limits, deadline/restart policy and channel binding. Existing
+durable enrollment attempt limits must remain authoritative. Never log/store the
+six-digit code as a credential or replace PAKE with a code-derived custom MAC.
+OPAQUE's historic audit is useful evidence, not permission to activate it.
+
+### Implemented native TLS seam
+
+Direct dependencies are exactly `rustls =0.23.45` (default features disabled,
+`ring,std`) and `ring =0.17.14`; both were already locked transitively. Cargo.lock
+only adds root dependency edges. Rustls is Apache-2.0 OR ISC OR MIT, MSRV 1.71;
+ring retains upstream ISC, Apache-2.0 and MIT license notices and MSRV 1.66.
+The selected rustls version meets the fixed range of
+[RUSTSEC-2026-0285](https://rustsec.org/advisories/RUSTSEC-2026-0285.html);
+this check is not a complete dependency audit. Other dependencies may enable
+rustls TLS1.2 features through Cargo unification; the lab configuration itself
+explicitly allows **only TLS1.3**.
+
+`OwnedTlsKey` implements rustls `SigningKey`/`Signer`, offering only
+`ECDSA_NISTP256_SHA256` (0x0403). Its production constructor always refuses with
+ActivationPending. Test constructors are cfg-gated. Every signature rechecks
+the existing durable exact-key anchor and OS public key under the original
+CaptureStore connection mutex, held through signing and verification. Cached
+callbacks cannot outlive invalidation semantics; no second SQLite owner exists.
+
+The callback accepts the full [RFC8446 CertificateVerify preimage](https://www.rfc-editor.org/rfc/rfc8446.html#section-4.4.3):
+64 spaces, the exact server/client context, NUL and a 32/48-byte transcript hash.
+It rejects other lengths, roles and contexts before OS calls. CNG hashes this
+preimage once with SHA256 and calls NCryptSignHash; Android SHA256withECDSA
+hashes the supplied preimage once inside JCA. P1363-to-DER conversion validates
+P256 scalar bounds and minimal positive INTEGER encoding. Existing application
+domain-separated signatures are unchanged and cannot substitute for TLS signing.
+Private keys remain non-exportable in CNG/Keystore. Public-only interoperability
+fixtures contain no private key, enrollment code or user knowledge.
+
+The cfg-gated memory lab performs real mutual TLS1.3 with RFC7250 raw public keys,
+exact SPKI pins and real CertificateVerify verification through rustls/ring.
+No accept-all signature verifier is used. No sockets/listener/dialer exist in
+the lab. It requires client authentication and the lab ALPN, disables resumption,
+tickets and early data, and bounds pumping to 32 rounds / 256 KiB. Its
+[RFC9266 tls-exporter](https://www.rfc-editor.org/rfc/rfc9266.html) uses label
+`EXPORTER-Channel-Binding`, empty context and 32 bytes, checked equal at both ends.
+RPK pins prove fixture key possession, not network membership or approved PKI.
+Production certificate/RPK provisioning and trust policy remain N1/N7 work.
+
+### Proposed composition and tested limits
+
+The proposed order is provisional TLS key possession, then an approved PAKE
+exchange inside that protected channel, then explicit human approval. Before
+approval, no knowledge transfer or membership grant is permitted. The canonical
+context includes enrollment UUID, network UUID, admin fingerprint, ordered
+issuer/joiner exact public identities, both nonces, fixed versioned suite and
+the channel exporter. Roles cannot be swapped. An audited PAKE adapter must
+bind this context and require both protocol confirmations with the library's
+prescribed ordering. The context hash is metadata binding, not a new PAKE/KDF/MAC.
+Any future approval must refer to this exact enrollment and key/role binding;
+fresh nonces require OS CSPRNG generation. Neither policy is activated by E3A's
+fixed synthetic test nonces or by a generic approval boolean.
+
+E3A tests use **SyntheticPakeConfirmation**, explicitly cfg-gated fixture digests,
+with a real TLS exporter. They exercise enrollment/network/admin/key/role/nonce/
+suite mutations, cross-channel confirmation reuse, partial confirmation and
+consumed-attempt replay. This is not proof of PAKE authentication. Attempt
+consumption is memory-local; global replay, filesystem rollback and crash policy
+still require approved integration with the existing durable enrollment state.
+`audited_pake_adapter()` and even the lab pending-human object's `grant()` always
+return N1AuditPending. There is no production VerifiedSession, CandidateProof,
+membership or signed-import factory produced by successful TLS or fixture PAKE.
+
+### Executed verification and remaining gates
+
+Results are scoped to E3A on Windows and the dedicated debug Android test
+application. Commands use the Tauri manifest and Windows `--locked --offline`.
+
+| Gate | Executed evidence | Result |
+| --- | --- | --- |
+| Native compile | `cargo check --all-targets` | PASS, including final rerun after formatting |
+| E3A CNG / TLS | `cargo test --lib storage::security_tls_tests -- --test-threads=1` | 6 PASS / 1 explicitly ignored device-fixture test |
+| Android signature on Windows | `cargo test --lib e3a_07_actual_android_tls_signature_verifies_on_windows -- --ignored --test-threads=1`, with actual public-only device fixture | 1 PASS |
+| Full native | `cargo test --lib -- --test-threads=1` | FAIL: 1345 PASS / same 5 historical FAIL / 25 ignored |
+| Security / Sync / Journal / dormant v10 | Results selected from that full native run by the respective `sync::security`, `sync`, `storage::journal`, `storage::m05_v10_tests` name filters | 42/128/287/24 PASS; 1/1/1/0 ignored; overlapping groups, not extra executions |
+| Root typecheck | `npm run typecheck` | PASS |
+| Architecture | `npm run test:architecture` | FAIL: 86 PASS / same 2 historical FAIL |
+| Frontend | Full `npm run arthur:check` rerun | PASS: 561 tests / 42 files + typecheck/build |
+| Android actual Rust/Java/Kotlin/debug APK | `gen/android/verify-identity.ps1 -Serial emulator-5554` | PASS, 25 instrumentation + 2 process-restart invocations |
+| Default Android debug APK | `npm run tauri -- android build --debug --target x86_64 --apk --ci` without harness feature | PASS; generated test app suffix removed |
+| Harness exclusion / smoke | NDK `llvm-nm --dynamic --defined-only` on default .so; `adb shell am start -W` on dedicated test APK | PASS: bootstrap exported, no test JNI entrypoints; cold start Status ok |
+| Host JCA | JBR `javac --release 8` for IdentityFormat, TlsSignatureFormat and IdentityFormatHostTest, then runner with both existing CNG/JCA public fixtures | 67 checks PASS, host-only |
+| Whitespace | `git diff --check` | PASS |
+
+Android environment: read-only Medium_Phone_API_36.1, Android 16 / API 36 /
+x86_64, JBR 21.0.9, NDK 29.0.14206865, SDK 37, Tauri CLI 2.12.1. Test APK IDs
+are `dev.kaloyan.arthur.identitytest` and `.identitytest.test`. The emulator was
+stopped after verification. Instrumentation XML records 25 tests, zero failures,
+errors or skips. The two extra invocations verify application AND TLS signing
+before/after force-stop with the durable key. Five new Rust/JNI scenarios cover
+TLS signatures, schemes/input bounds, lifecycle, mutual TLS and composition;
+two new Java cases verify CNG signatures and emit a public-only Keystore fixture.
+
+The five native failure identities are unchanged from accepted E2B:
+
+```text
+jev::tests::the_real_transport_posts_json_with_a_bearer_header_and_never_leaks_the_key_in_errors
+synthesis::architecture_tests::a_same_family_pass_is_wired_to_hold_for_review_and_the_shipped_verifier_is_not_called_independent
+synthesis::architecture_tests::the_real_synthesis_endpoint_is_only_reachable_through_the_production_constructor
+synthesis::eval::tests::the_corpus_is_frozen
+synthesis::tests::the_commit_time_permission_check_includes_the_synthesis_authorizations
+```
+
+The architecture failures remain the schema-v6 project ownership and M04.6
+voice-output DTO source assertions. No new native or architecture failure was
+observed. Initial concurrent frontend run: 560 PASS / 1 IdeasScreen missing-alert
+timeout; full rerun passes without frontend edits or an intermittence-fix claim.
+Two initial compile borrow errors in new tests were fixed. An interop compile
+collided with the running Windows test executable (LNK1104); its sequential final
+rerun passes. These initial failures are not omitted or counted as final PASSes.
+
+Reproduction: set process-local ANDROID_HOME, NDK_HOME and JAVA_HOME, start a
+disposable supported emulator, run the verification script. The committed
+`androidTest/assets/tls-cng-public.properties` is generated by actual CNG test
+`e3a_06_public_cng_tls_fixture_for_android` with `ARTHUR_E3_CNG_TLS_FIXTURE` set.
+After connected-test APK cleanup, the script reinstalls checked dedicated APKs.
+Run `TlsIdentityTest#prepare_android_public_tls_fixture` with `am instrument -w`;
+require `OK (1 test)`, then use `adb exec-out run-as dev.kaloyan.arthur.identitytest
+cat no_backup/e3a-android-tls-public.properties` into a local temporary file. Set
+`ARTHUR_E3_ANDROID_TLS_FIXTURE` to it for the explicitly ignored Windows test.
+Only the public CNG fixture is committed; generated device output and all test
+databases/APKs/logs stay outside tracked sources. Rebuild the default APK and
+check its dynamic symbols after the harness run.
+
+Interoperability scope is CNG CertificateVerify signatures checked on Android,
+and Keystore CertificateVerify signatures checked by ring on Windows. Each OS
+also runs its own two-key mutual TLS memory handshake. A mixed-OS live TLS
+connection was not run; no production network connection is implied.
+
+Production remains schema v9 / STEPS1–9; dormant v10, journal/codec/reducer,
+snapshot v2, D4/G4 and public routing are frozen. E2B JNI bootstrap, existing
+application domains and provider credentials are preserved. ClosedTrust,
+production PAKE/TLS/LAN, enrollment and knowledge ingress remain CLOSED.
+N2/N3/N7 and G4–G7 are independent unapproved gates. Physical Android, ARM64,
+release packaging, hardware isolation, production certificate policy and the
+composed PAKE protocol are UNVERIFIED. Do not proceed automatically to E3B.

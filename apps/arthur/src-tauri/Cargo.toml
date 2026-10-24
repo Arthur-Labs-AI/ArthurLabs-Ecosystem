@@ -25,6 +25,8 @@ serde_jcs = "=0.1.0"
 sha2 = "=0.10.9"
 getrandom = "=0.3.4"
 zeroize = "=1.9.0"
+rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std"] }
+ring = "=0.17.14"
 tokio = { version = "1", features = ["time", "sync"] }
 reqwest = { version = "0.12", default-features = false, features = ["multipart", "json", "rustls-tls-webpki-roots"] }
 unicode-normalization = "0.1"

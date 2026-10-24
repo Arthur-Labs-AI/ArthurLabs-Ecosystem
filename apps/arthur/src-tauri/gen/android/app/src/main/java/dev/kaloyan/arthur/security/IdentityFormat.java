@@ -108,7 +108,7 @@ public final class IdentityFormat {
         if (bytes.length - skip > 32) throw invalid();
         System.arraycopy(bytes, skip, output, offset + 32 - (bytes.length - skip), bytes.length - skip);
     }
-    private static PublicKey publicKey(byte[] sec1) throws GeneralSecurityException {
+    static PublicKey publicKey(byte[] sec1) throws GeneralSecurityException {
         if (sec1 == null || sec1.length != 65 || sec1[0] != 4) throw invalid();
         ECPoint point = new ECPoint(new BigInteger(1, Arrays.copyOfRange(sec1, 1, 33)),
             new BigInteger(1, Arrays.copyOfRange(sec1, 33, 65)));
