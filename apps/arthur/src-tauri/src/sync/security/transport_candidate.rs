@@ -21,6 +21,9 @@ pub(crate) struct Interrupt {
     wake: Mutex<Option<Waker>>,
 }
 impl Interrupt {
+    pub(crate) fn cancelled(&self) -> bool {
+        self.flag.cancelled()
+    }
     pub fn cancel(&self) {
         self.flag.cancel();
         let wake = self.wake.lock().ok().and_then(|mut w| w.take());
@@ -56,6 +59,7 @@ pub(crate) struct Permit {
     expected: Expected,
     stop: Arc<Interrupt>,
     started: u64,
+    fence: Option<super::network_watch::Fence>,
 }
 impl Pool {
     pub(crate) fn new(_: &crate::runtime::TransportOwner) -> Self {
@@ -68,6 +72,22 @@ impl Pool {
             stop.flag.cancel();
         }
         Ok(stops)
+    }
+    pub(crate) fn admit_observed(
+        self: &Arc<Self>,
+        expected: Expected,
+        now: u64,
+        cancel: &Arc<Interrupt>,
+        fence: Option<super::network_watch::Fence>,
+    ) -> Result<Permit> {
+        if fence.as_ref().is_some_and(|f| !f.valid()) {
+            return Err(E::Cancelled);
+        }
+        let mut p = self.admit_with_stop(expected, now, cancel.clone())?;
+        p.fence = fence;
+        // Caller rechecks after releasing the coordinator lock. Dropping here
+        // could run a caller-owned waker destructor under that lock.
+        Ok(p)
     }
     pub(crate) fn admit_cancellable(
         self: &Arc<Self>,
@@ -117,6 +137,7 @@ impl Pool {
             expected,
             stop,
             started: now,
+            fence: None,
         })
     }
     pub fn shutdown(&self) -> Result<()> {
@@ -143,10 +164,21 @@ impl Pool {
     }
 }
 impl Permit {
+    fn cancelled(&self) -> bool {
+        self.stop.cancelled() || self.fence.as_ref().is_some_and(|f| !f.valid())
+    }
+    fn register(&self, cx: &Context<'_>) -> Result<()> {
+        self.stop.register(cx)?;
+        if self.cancelled() {
+            Err(E::Cancelled)
+        } else {
+            Ok(())
+        }
+    }
     pub fn establish(self, now: u64) -> Result<Self> {
         {
             let mut s = self.pool.0.lock().map_err(|_| E::State)?;
-            if s.closed || self.stop.flag.cancelled() {
+            if s.closed || self.cancelled() {
                 return Err(E::Cancelled);
             }
             if now < s.last {
@@ -165,6 +197,9 @@ impl Permit {
                 .find(|x| x.0 == self.id)
                 .ok_or(E::State)?;
             slot.2 = true;
+        }
+        if self.cancelled() {
+            return Err(E::Cancelled);
         }
         Ok(self)
     }
@@ -231,7 +266,7 @@ impl<I: EncryptedIo> Handshake<I> {
     ) -> Result<()> {
         let result = (|| {
             let p = self.permit.as_ref().ok_or(E::State)?;
-            p.stop.register(cx)?;
+            p.register(cx)?;
             if now < self.last {
                 return Err(E::State);
             }
@@ -308,9 +343,7 @@ impl<I: EncryptedIo> Framed<I> {
         }
         let session = match permit.pool.0.lock() {
             Ok(s) => {
-                !s.closed
-                    && !permit.stop.flag.cancelled()
-                    && s.active.iter().any(|x| x.0 == permit.id && x.2)
+                !s.closed && !permit.cancelled() && s.active.iter().any(|x| x.0 == permit.id && x.2)
             }
             Err(_) => {
                 io.abort();
@@ -346,7 +379,7 @@ impl<I: EncryptedIo> Framed<I> {
     }
     fn guard(&mut self, cx: &mut Context<'_>, now: u64, timer: &impl Timer) -> Result<()> {
         let p = self.permit.as_ref().ok_or(E::State)?;
-        p.stop.register(cx)?;
+        p.register(cx)?;
         if now < self.last {
             return Err(E::State);
         }
@@ -386,11 +419,7 @@ impl<I: EncryptedIo> Framed<I> {
         };
         let capacity = dst.len();
         let result = self.io.read(cx, dst);
-        if self
-            .permit
-            .as_ref()
-            .is_some_and(|p| p.stop.flag.cancelled())
-        {
+        if self.permit.as_ref().is_some_and(|p| p.cancelled()) {
             return self.fail(E::Cancelled);
         }
         match result {
@@ -434,11 +463,7 @@ impl<I: EncryptedIo> Framed<I> {
         {
             return Err(E::State);
         }
-        if self
-            .permit
-            .as_ref()
-            .is_some_and(|p| p.stop.flag.cancelled())
-        {
+        if self.permit.as_ref().is_some_and(|p| p.cancelled()) {
             return Err(E::Cancelled);
         }
         if bytes.is_empty() || bytes.len() > MAX_RECORD || bytes.capacity() > MAX_RECORD {
@@ -460,11 +485,7 @@ impl<I: EncryptedIo> Framed<I> {
         };
         let capacity = out.len() - self.offset;
         let result = self.io.write(cx, &out[self.offset..]);
-        if self
-            .permit
-            .as_ref()
-            .is_some_and(|p| p.stop.flag.cancelled())
-        {
+        if self.permit.as_ref().is_some_and(|p| p.cancelled()) {
             return self.fail(E::Cancelled);
         }
         match result {

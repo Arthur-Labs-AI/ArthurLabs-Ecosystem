@@ -9,6 +9,7 @@ pub(crate) enum Unavailable {
     Changed,
     Incomplete,
     Unsupported,
+    Unavailable,
     Os(u32),
 }
 pub(crate) type ReadResult = std::result::Result<Observation, Unavailable>;
@@ -123,4 +124,17 @@ mod tests {
         assert!(!o.source_selected);
         assert!(Candidate::evaluate(&h, &o, 0).is_err());
     }
+}
+
+// Sealed provenance: only this module can construct native acquisition evidence.
+pub(crate) struct NativeObservation(Observation);
+impl NativeObservation {
+    pub(crate) fn into_facts(self) -> Observation {
+        self.0
+    }
+}
+pub(crate) fn acquire_native(
+    endpoint: SocketAddr,
+) -> std::result::Result<NativeObservation, Unavailable> {
+    acquire(endpoint).map(NativeObservation)
 }

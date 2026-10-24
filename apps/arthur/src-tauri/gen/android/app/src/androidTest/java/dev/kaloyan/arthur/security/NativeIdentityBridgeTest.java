@@ -49,16 +49,17 @@ public final class NativeIdentityBridgeTest {
         assertEquals("{\"status\":\"missing_permission\"}",NativeIdentityBridge.observeRoute(app,new byte[]{(byte)192,(byte)168,1,3},0));
         assertTrue(runScenario(32));
     }
+    @Test public void n7c_actual_callback_missing_permission_through_jni() { assertTrue(runScenario(33)); }
     @Test public void eb19_no_java_to_native_signing_entrypoint() {
         int nativeMethods=0;
         for(java.lang.reflect.Method method: NativeIdentityBridge.class.getDeclaredMethods()) {
             if(java.lang.reflect.Modifier.isNative(method.getModifiers())) {
                 nativeMethods++;
-                assertEquals("install",method.getName());
+                assertTrue(method.getName().equals("install") || method.getName().equals("networkChanged"));
                 assertTrue(java.lang.reflect.Modifier.isPrivate(method.getModifiers()));
             }
         }
-        assertEquals(1,nativeMethods);
+        assertEquals(2,nativeMethods);
         assertEquals(0,NativeIdentityBridge.class.getDeclaredAnnotations().length);
     }
 }

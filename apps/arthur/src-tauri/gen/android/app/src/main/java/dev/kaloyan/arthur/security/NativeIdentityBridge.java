@@ -4,11 +4,14 @@ import android.app.Application;
 import android.content.Context;
 import java.security.GeneralSecurityException;
 
-/** Native-only synchronous boundary. No plugin, callback, Activity or retained key object. */
+/** Native-only boundary. No plugin, Activity or retained key object. */
 public final class NativeIdentityBridge {
     private NativeIdentityBridge() {}
     static boolean initialize(Application app) { return install(app); }
     private static native boolean install(Application app);
+    private static native void networkChanged(long token, int kind);
+    static void invalidateNetwork(long token, int kind) { networkChanged(token, kind); }
+    private static RouteMonitor beginNetworkWatch(Context app, long token) { return new RouteMonitor(app, token); }
 
     public static String observeRoute(Context app, byte[] numeric, int scope) {
         return RouteObservation.read(app, numeric, scope);

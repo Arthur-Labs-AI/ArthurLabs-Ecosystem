@@ -477,6 +477,12 @@ fn n7b_runtime_reacquisition_shares_coordinator_and_drop_cancels() {
         first.transport_candidate(),
         second.transport_candidate()
     ));
+    #[cfg(windows)]
+    {
+        first.transport_candidate().start_monitor().unwrap();
+        second.transport_candidate().start_monitor().unwrap();
+        second.transport_candidate().stop_monitor().unwrap();
+    }
     first.transport_candidate().shutdown().unwrap();
     let h = crate::sync::security::route_candidate::Hint::parse(
         "192.168.1.3:7431",

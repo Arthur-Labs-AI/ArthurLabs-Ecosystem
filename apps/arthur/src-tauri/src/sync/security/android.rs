@@ -35,6 +35,58 @@ impl From<jni::errors::Error> for E {
     }
 }
 impl Bridge {
+    pub(super) fn start_network_watch(
+        &self,
+        token: u64,
+    ) -> std::result::Result<GlobalRef, super::route_observer::Unavailable> {
+        use super::route_observer::Unavailable as U;
+        let (object, status) = self
+            .call(|env, class| {
+                let object = env
+                    .call_static_method(
+                        class,
+                        "beginNetworkWatch",
+                        "(Landroid/content/Context;J)Ldev/kaloyan/arthur/security/RouteMonitor;",
+                        &[
+                            JValue::Object(self.application.as_obj()),
+                            JValue::Long(token as i64),
+                        ],
+                    )?
+                    .l()?;
+                let opened = (|| {
+                    let status = env.get_field(&object, "status", "I")?.i()?;
+                    Ok((env.new_global_ref(&object)?, status))
+                })();
+                if opened.is_err() {
+                    // Registration may have succeeded before JNI allocation failed.
+                    // Clear the pending JNI exception before best-effort cleanup.
+                    let _ = env.exception_clear();
+                    let _ = env.call_method(&object, "close", "()I", &[]);
+                }
+                opened
+            })
+            .map_err(|_| U::Unavailable)?;
+        match status {
+            0 => Ok(object),
+            1 => Err(U::MissingPermission),
+            2 => Err(U::DeniedOrRevoked),
+            _ => Err(U::Unavailable),
+        }
+    }
+    pub(super) fn stop_network_watch(
+        &self,
+        object: &GlobalRef,
+    ) -> std::result::Result<(), super::route_observer::Unavailable> {
+        use super::route_observer::Unavailable as U;
+        let status = self
+            .call(|env, _| Ok(env.call_method(object.as_obj(), "close", "()I", &[])?.i()?))
+            .map_err(|_| U::Unavailable)?;
+        match status {
+            0 => Ok(()),
+            2 => Err(U::DeniedOrRevoked),
+            _ => Err(U::Unavailable),
+        }
+    }
     fn from_java(env: &mut JNIEnv<'_>, class: &JClass<'_>, app: &JObject<'_>) -> Result<Arc<Self>> {
         let application = jni(env.call_method(
             app,

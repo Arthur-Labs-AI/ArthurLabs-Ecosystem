@@ -462,9 +462,16 @@ fn scenario(case: jint) -> Result<()> {
         30 => super::security_pake_tests::stale_ticket_preserves_code(),
         31 => super::security_pake_tests::n7b_dormant_owner_no_effects(),
         32 => {
-            let result = crate::sync::security::route_observer::acquire("192.168.1.3:7431".parse().map_err(|_|E::Invalid)?);
-            require(matches!(result,Err(crate::sync::security::route_observer::Unavailable::MissingPermission)))
-        },
+            let result = crate::sync::security::route_observer::acquire(
+                "192.168.1.3:7431".parse().map_err(|_| E::Invalid)?,
+            );
+            require(matches!(
+                result,
+                Err(crate::sync::security::route_observer::Unavailable::MissingPermission)
+            ))
+        }
+        33 => crate::sync::security::network_watch::qualify_android(false),
+        34 => crate::sync::security::network_watch::qualify_android(true),
         _ => Err(E::Invalid),
     }
 }
