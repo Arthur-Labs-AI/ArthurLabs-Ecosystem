@@ -22,6 +22,8 @@ android {
         applicationId = "dev.kaloyan.arthur"
         minSdk = 24
         targetSdk = 37
+        // Existing Espresso dependency supplies androidx.test:runner 1.5.0.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }

@@ -303,7 +303,7 @@ pub(super) fn reference(c: &Connection, r: &EventRef) -> Result<Option<codec::Jo
     }
     Ok(Some(ValidatedEvent::parse(e)?.core().clone()))
 }
-fn authorize_event_scope(s:&VerifiedSession,e:&ValidatedEvent)->Result<()> {
+pub(super) fn authorize_event_scope(s:&VerifiedSession,e:&ValidatedEvent)->Result<()> {
     let check=|origin:&str|->Result<()> {
         if !s.permits(Uuid::parse_str(origin).map_err(|_|Error::Integrity)?) {return Err(Error::Trust);}
         Ok(())

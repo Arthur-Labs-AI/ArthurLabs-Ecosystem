@@ -20,6 +20,8 @@ pub mod journal;
 pub(crate) mod sync_store;
 pub(crate) mod bootstrap_store;
 pub(crate) mod enrollment_store;
+mod registry_verification;
+pub(crate) mod signed_import;
 #[cfg(windows)]
 pub(crate) mod device_identity_store;
 #[cfg(test)]

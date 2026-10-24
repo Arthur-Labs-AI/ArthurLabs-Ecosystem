@@ -4,6 +4,31 @@ use super::capture_store::CaptureStore;
 use crate::sync::security::{identity::*, windows::WindowsIdentity, Result, SecurityError as E};
 use rusqlite::{params, TransactionBehavior};
 use uuid::Uuid;
+// Concrete OS operation under the owner's transaction; no callback or second lock.
+pub(super) fn bound_key(
+    c: &rusqlite::Connection,
+    local: Uuid,
+) -> Result<(WindowsIdentity, PublicIdentity)> {
+    let (slot, key, state): (String, Option<Vec<u8>>, String) = c
+        .query_row(
+            "SELECT slot,key,state FROM e_identity WHERE singleton=1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .map_err(|_| E::Trust)?;
+    if state != "active" {
+        return Err(E::Trust);
+    }
+    let expected = PublicIdentity::from_sec1(key.ok_or(E::Trust)?)?;
+    if expected.peer_id() != local {
+        return Err(E::Trust);
+    }
+    let native = WindowsIdentity::slot(Uuid::parse_str(&slot).map_err(|_| E::Trust)?);
+    if native.public_identity()? != expected {
+        return Err(E::Trust);
+    }
+    Ok((native, expected))
+}
 pub(crate) struct OwnedDeviceIdentity<'a> {
     owner: &'a CaptureStore,
     key: WindowsIdentity,

@@ -40,6 +40,19 @@ pub(crate) struct SignedOriginal {
     signature: Vec<u8>,
 }
 impl SignedOriginal {
+    pub fn bytes(&self) -> Result<Vec<u8>> {
+        canonical(self)
+    }
+    pub fn decode(bytes: &[u8]) -> Result<Self> {
+        if bytes.len() > 16384 {
+            return Err(E::Limit);
+        }
+        let value: Self = serde_json::from_slice(bytes).map_err(|_| E::Invalid)?;
+        if value.bytes()? != bytes {
+            return Err(E::Invalid);
+        }
+        Ok(value)
+    }
     pub fn sign(network: Uuid, event: &Envelope, key: &dyn DeviceIdentityStore) -> Result<Self> {
         ValidatedEvent::parse(event.clone()).map_err(|_| E::Invalid)?;
         let body = OriginalBinding::new(network, key.public_identity()?, event);

@@ -384,3 +384,77 @@ run; its prior full-suite instability is not declared fixed. `npm run typecheck`
 (schema-v6 source check and voice-output DTO check); `npm run arthur:check`
 **PASS: 561 tests / 42 files + build**; `git diff --check` **PASS**. No release
 readiness claim or waiver of these failing/unverified gates is made.
+
+## 16. MEGA E2 signed trust hardening (2026-10-24)
+
+**PARTIAL / DORMANT.** `DeviceSigningIdentity` is an independent Java AndroidKeyStore
+P-256 component using Application context, no Activity/WebView/plugin commands,
+and a package/UUID alias supplied by the future native owner's creating record.
+It never exports private bytes or regenerates on public/sign/reopen failure.
+The owner-coordinated Rust Android bridge remains **UNAVAILABLE**: Java component
+source alone is not proof of durable native alias binding or worker integration.
+Provider-secret AES wrapping and the Android `_exit` workaround are unchanged.
+Keystore usage follows the platform [P-256 signing contract](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec).
+
+Shared preimage is `domain ASCII || NUL || u64-BE(message length) || message`.
+All four E domain identifiers, SEC1-65 public points and P1363-64 signatures remain
+unchanged. CNG signs SHA256(preimage); Android `SHA256withECDSA` receives preimage,
+not its digest. Bounded DER conversion rejects negative/zero/out-of-range scalars,
+redundant padding, long/invalid lengths and trailing data; EC operations stay in
+platform providers. Public-only CNG and **HOST_JCA_SunEC** fixtures verify both
+directions on Windows/JVM, including all domains and the published public vector.
+This is **HOST-ONLY INTEROPERABILITY FIXTURE**, not Android interoperability.
+`javac --release 8` and the explicit `IdentityFormatHostTest` runner: **64 checks PASS**.
+
+Every registry authorization now reconstructs the complete signed chain from a
+separate immutable, locally OS-signed genesis pin (4096 updates / 8 members /
+448 origins maximum), verifies root continuity and compares every materialized
+member/origin row exactly. Missing/invalid local anchor or mismatched/missing
+OS-held key refuses binding and grant delivery. The pin signer must match the
+OS-held local anchor; even a complete self-signed SQL registry replacement fails.
+Additive `enrollment_e2.sql` is
+test-installed only; no accepted E SQL/history or production migration is rewritten.
+Reproduced regressions covered chain/projection/pin tampering, absent identity,
+observed clock rollback and grant delivery; stored grant bytes must match
+the signed update log. Monotone observations expire on regression, while a future
+live producer still requires a monotonic boot clock. N3 lab limits remain 5/8.
+
+The separate signed-import candidate validates original origin/key/incarnation,
+then runs the existing importer in the same owner transaction. Its locally CNG
+signed accepted-prefix seal is checked against original signatures, hash continuity
+and real committed import ledger outcomes (bounded to the existing 256-event budget).
+An ACK for an already-local canonical core cannot mint foreign original provenance;
+the new seam requires an exact chain-verified main-ledger entry before sealing.
+Known historical provenance survives revocation; new/ambiguous material is retained
+as unsupported in a separate bounded quarantine (32 entries / 4 MiB), without a
+domain apply or ACK. Forwarder substitution, incarnation reuse, prefix tampering,
+reopen and both concurrent revoke/import commit orders are exercised. This is a
+conservative test candidate, not approval of N2's final revoked-origin policy.
+
+**Android evidence: NOT TESTED.** Gradle 9.6.1 / Java 25.0.2 actually ran
+`gradlew.bat tasks --all --offline`; configuration **FAILS** because generated
+`tauri.settings.gradle` is missing. No build task could be discovered/executed.
+Only the Windows Rust target is installed; no configured SDK/adb/device was found.
+Android component/instrumentation compilation, process-restart, lock behavior and
+E2-01–E2-06 device interoperability remain **UNVERIFIED**. Instrumented test sources
+include public-only API/ABI fixture export; Windows E2-06 is explicitly ignored
+until an actual device fixture is supplied. JVM compilation is not an Android build.
+minSdk 24 / target 37 remain; the test runner uses existing Espresso's runner 1.5.0.
+
+ClosedTrust, production ingress, pairing/listener/dialer and G4 UnverifiedBounds
+remain closed. N1/N2/N3/N7 and G4–G7 are unapproved. Full-filesystem rollback,
+admin recovery, Android native bridge and packaged release smoke are unverified.
+Schema9/STEPS1–9, accepted v10, codec/reducer, snapshot v2, D4 policy and public
+writer routing remain frozen. No private keys, enrollment codes or actual user
+knowledge are included in the public fixtures or diagnostics.
+
+Final Windows gates used the Arthur Tauri manifest, `--locked --offline` and
+`-- --test-threads=1`: Cargo `check --all-targets` **PASS**; explicit E2 filter
+**22 PASS / 1 ignored** (actual Android fixture); `--lib sync::security` **42 PASS /
+1 ignored**; Sync **128 PASS / 1 ignored**; Journal **287 PASS / 1 ignored**;
+dormant v10 **24 PASS**. Full native is **FAIL: 1,339 PASS / 5 historical FAIL /
+24 ignored**; all five failure identities match section 15's JEV/synthesis cases.
+TTS audio-focus passes; prior intermittence is not declared fixed. Typecheck
+**PASS**; architecture **FAIL: 86 PASS / same 2 baseline FAIL**; frontend
+**PASS: 561 tests / 42 files + build**; `git diff --check` **PASS**. The failed and
+unverified gates are not waived by this safe dormant PARTIAL commit.

@@ -14,6 +14,9 @@ pub(crate) mod identity;
 pub(crate) mod signed;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+#[path = "../../storage/security_e2_tests.rs"]
+mod e2_tests;
 pub(crate) mod transport;
 #[cfg(windows)]
 pub(crate) mod windows;

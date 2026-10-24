@@ -99,7 +99,8 @@ pub(crate) fn verify(p: &PublicIdentity, d: Domain, bytes: &[u8], signature: &[u
         Err(E::PlatformUnverified)
     }
 }
-// Android has no Activity-independent signing bridge verified on target yet.
+// E2 has an independent Application-context Java component, but no verified
+// owner-coordinated native bridge. Android Rust signing remains unavailable.
 // Provider-secret AES wrapping is deliberately not reused as device identity.
 pub(crate) struct UnavailableIdentity;
 impl DeviceIdentityStore for UnavailableIdentity {

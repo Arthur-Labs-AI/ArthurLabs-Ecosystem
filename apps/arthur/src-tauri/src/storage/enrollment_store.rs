@@ -3,10 +3,77 @@
 use super::capture_store::CaptureStore;
 pub(crate) use crate::sync::security::enrollment::{MembershipBinding, Root};
 use crate::sync::security::{canonical, enrollment::*, identity::*, Result, SecurityError as E};
-use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
+use rusqlite::{params, Connection, TransactionBehavior};
 use uuid::Uuid;
 fn sql(_: rusqlite::Error) -> E {
     E::Storage
+}
+fn local_admin(c: &Connection, root: &Root) -> Result<()> {
+    #[cfg(windows)]
+    {
+        let (_, key) = super::device_identity_store::bound_key(c, root.admin.peer_id())?;
+        if key != root.admin {
+            return Err(E::Trust);
+        }
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (c, root);
+        Err(E::PlatformUnverified)
+    }
+}
+fn verify_grant(
+    c: &Connection,
+    root: &Root,
+    id: Uuid,
+    key: &PublicIdentity,
+    bytes: &[u8],
+) -> Result<()> {
+    let grant = SignedUpdate::decode(bytes)?;
+    grant.verify(&root.admin)?;
+    if grant.body.network != root.network {
+        return Err(E::Trust);
+    }
+    match &grant.body.action {
+        Action::Grant {
+            device,
+            enrollment,
+            role: Role::Member,
+            ..
+        } if device == key && *enrollment == id => (),
+        _ => return Err(E::Trust),
+    }
+    let original: Vec<u8> = c
+        .query_row(
+            "SELECT bytes FROM e_updates WHERE epoch=?1",
+            [grant.body.epoch],
+            |r| r.get(0),
+        )
+        .map_err(|_| E::Trust)?;
+    if original != bytes {
+        return Err(E::Trust);
+    }
+    Ok(())
+}
+// Same-boot monotone observation, in the reservation/proof/approval transaction.
+// Live issuance has no release producer; a future producer must use a monotonic
+// boot clock, never SystemTime. Any observed regression durably expires the code.
+fn observe(c: &Connection, id: Uuid, now: u64) -> Result<bool> {
+    let (started, seen): (i64, i64) = c.query_row(
+        "SELECT e.started,t.seen FROM e_enrollments e JOIN e2_enrollment_clock t ON t.enrollment=e.id WHERE e.id=?1",
+        [id.to_string()], |r| Ok((r.get(0)?,r.get(1)?)),
+    ).map_err(|_| E::State)?;
+    if now < started as u64 || now < seen as u64 || now - started as u64 >= 120 {
+        c.execute("UPDATE e_enrollments SET state='expired',ticket=NULL WHERE id=?1 AND state IN('issued','reserved','approval')",[id.to_string()]).map_err(sql)?;
+        return Ok(false);
+    }
+    c.execute(
+        "UPDATE e2_enrollment_clock SET seen=?2 WHERE enrollment=?1",
+        params![id.to_string(), i64::try_from(now).map_err(|_| E::Invalid)?],
+    )
+    .map_err(sql)?;
+    Ok(true)
 }
 pub(crate) struct NetworkRegistry<'a> {
     owner: &'a CaptureStore,
@@ -59,11 +126,23 @@ impl<'a> NetworkRegistry<'a> {
                 network: Uuid::new_v4(),
                 epoch: 1,
                 previous: [0; 32],
-                action: Action::Genesis { admin: p },
+                action: Action::Genesis { admin: p.clone() },
             },
             admin,
         )?;
-        self.write(|c| apply(c, &update))?;
+        let genesis = update.bytes()?;
+        let pin_signature = admin.sign_domain_separated(
+            Domain::Registry,
+            &super::registry_verification::pin_bytes(&genesis)?,
+        )?;
+        self.write(|c| {
+            c.execute(
+                "INSERT INTO e2_network_pin VALUES(1,?1,?2,?3)",
+                params![genesis, p.sec1(), pin_signature],
+            )
+            .map_err(sql)?;
+            apply(c, &update)
+        })?;
         self.root()
     }
     pub fn apply(&self, update: &SignedUpdate) -> Result<()> {
@@ -104,10 +183,12 @@ impl<'a> NetworkRegistry<'a> {
         Ok(binding)
     }
     pub fn original_author(&self, origin: Uuid) -> Result<PublicIdentity> {
-        let _root = self.root()?;
         let c = self.owner.connection.lock().map_err(|_| E::Storage)?;
-        let bytes:Vec<u8>=c.query_row("SELECT m.key FROM e_origins o JOIN e_members m ON m.device=o.device WHERE o.origin=?1 AND m.enabled=1",[origin.to_string()],|r|r.get(0)).map_err(|_|E::Trust)?;
-        PublicIdentity::from_sec1(bytes)
+        let registry = super::registry_verification::verified(&c)?;
+        let author = registry.origins.get(&origin.to_string()).ok_or(E::Trust)?;
+        // Historical provenance survives revocation. This lookup grants no new
+        // event authority; the signed-import seam separately checks that policy.
+        Ok(registry.members.get(author).ok_or(E::Trust)?.key.clone())
     }
     // Startup is explicit and must precede any candidate traffic. Unresolved codes
     // cannot resume after restart; device-wide limits are deliberately NOT reset.
@@ -120,7 +201,15 @@ impl<'a> NetworkRegistry<'a> {
         let code = SecretCode::generate()?;
         let id = Uuid::new_v4();
         let n = i64::try_from(now).map_err(|_| E::Invalid)?;
-        self.write(|c|{let (b,attempts,issued):(String,i64,i64)=c.query_row("SELECT boot,attempts,issued FROM e_abuse WHERE singleton=1",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).map_err(sql)?;if b!=boot.to_string(){return Err(E::State);}if attempts>=5||issued>=8{return Err(E::Locked);}c.execute("INSERT INTO e_enrollments(id,boot,started,state,attempts) VALUES(?1,?2,?3,'issued',0)",params![id.to_string(),b,n]).map_err(|_|E::State)?;c.execute("UPDATE e_abuse SET issued=issued+1 WHERE singleton=1",[]).map_err(sql)?;Ok(())})?;
+        self.write(|c| {
+            let (b,attempts,issued):(String,i64,i64)=c.query_row("SELECT boot,attempts,issued FROM e_abuse WHERE singleton=1",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).map_err(sql)?;
+            if b!=boot.to_string() {return Err(E::State);}
+            if attempts>=5||issued>=8 {return Err(E::Locked);}
+            c.execute("INSERT INTO e_enrollments(id,boot,started,state,attempts) VALUES(?1,?2,?3,'issued',0)",params![id.to_string(),b,n]).map_err(|_|E::State)?;
+            c.execute("INSERT INTO e2_enrollment_clock VALUES(?1,?2)",params![id.to_string(),n]).map_err(sql)?;
+            c.execute("UPDATE e_abuse SET issued=issued+1 WHERE singleton=1",[]).map_err(sql)?;
+            Ok(())
+        })?;
         Ok(Challenge {
             id,
             started: now,
@@ -135,9 +224,7 @@ impl<'a> NetworkRegistry<'a> {
         if boot!=ch.boot.to_string(){return Err(E::State);}
         let started:i64=c.query_row("SELECT started FROM e_enrollments WHERE id=?1 AND boot=?2",params![ch.id.to_string(),boot],|r|r.get(0)).map_err(|_|E::State)?;
         if started as u64!=ch.started{return Err(E::State);}
-        if now<started as u64||now-started as u64>=120{
-            c.execute("UPDATE e_enrollments SET state='expired' WHERE id=?1 AND state IN('issued','reserved','approval')",[ch.id.to_string()]).map_err(sql)?;return Ok(false);
-        }
+        if !observe(c,ch.id,now)? { return Ok(false); }
         if attempts>=5{return Err(E::Locked);}
         let changed=c.execute("UPDATE e_enrollments SET state='reserved',attempts=attempts+1,ticket=?2 WHERE id=?1 AND boot=?3 AND state='issued' AND attempts<5",params![ch.id.to_string(),ticket.to_string(),boot]).map_err(sql)?;
         if changed!=1{return Err(E::State);}
@@ -195,8 +282,7 @@ impl<'a> NetworkRegistry<'a> {
             if started as u64 != ch.started {
                 return Err(E::State);
             }
-            if now < started as u64 || now - started as u64 >= 120 {
-                c.execute("UPDATE e_enrollments SET state='expired',ticket=NULL WHERE id=?1", [ch.id.to_string()]).map_err(sql)?;
+            if !observe(c,ch.id,now)? {
                 // Commit expiry rather than rolling it back as an error.
                 return Ok(false);
             }
@@ -233,17 +319,17 @@ impl<'a> NetworkRegistry<'a> {
             admin,
         )?;
         self.write(|c| {
-            let (key, hash, start, state): (Vec<u8>, Vec<u8>, i64, String) = c.query_row(
-                "SELECT candidate,transcript,started,state FROM e_enrollments WHERE id=?1 AND boot=(SELECT boot FROM e_abuse WHERE singleton=1)",
-                [id.to_string()], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            let (key, hash, state): (Vec<u8>, Vec<u8>, String) = c.query_row(
+                "SELECT candidate,transcript,state FROM e_enrollments WHERE id=?1 AND boot=(SELECT boot FROM e_abuse WHERE singleton=1)",
+                [id.to_string()], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
             ).map_err(|_| E::State)?;
             if state != "approval" || key != expected.sec1() || hash != transcript {
                 return Err(E::Trust);
             }
-            if now < start as u64 || now - start as u64 >= 120 {
-                c.execute("UPDATE e_enrollments SET state='expired',ticket=NULL WHERE id=?1", [id.to_string()]).map_err(sql)?;
+            if !observe(c,id,now)? {
                 return Ok(None);
             }
+            local_admin(c,&verified_root(c)?)?;
             apply(c, &update)?;
             let bytes = update.bytes()?;
             c.execute("UPDATE e_enrollments SET state='consumed',grant_bytes=?2 WHERE id=?1", params![id.to_string(), bytes]).map_err(sql)?;
@@ -265,6 +351,8 @@ impl<'a> NetworkRegistry<'a> {
         let request = canonical(&(root.network, id, key, channel))?;
         verify(key, Domain::EnrollmentReceipt, &request, signature)?;
         self.write(|c| {
+            let root = verified_root(c)?;
+            local_admin(c,&root)?;
             let (stored, grant, state): (Vec<u8>, Vec<u8>, String) = c
                 .query_row(
                     "SELECT candidate,grant_bytes,state FROM e_enrollments WHERE id=?1",
@@ -275,6 +363,7 @@ impl<'a> NetworkRegistry<'a> {
             if stored != key.sec1() || !matches!(state.as_str(), "consumed" | "received") {
                 return Err(E::Trust);
             }
+            verify_grant(c,&root,id,key,&grant)?;
             let enabled: bool = c
                 .query_row(
                     "SELECT EXISTS(SELECT 1 FROM e_members WHERE device=?1 AND enabled=1 AND expires>?2)",
@@ -310,6 +399,9 @@ impl<'a> NetworkRegistry<'a> {
         ))?;
         verify(key, Domain::EnrollmentReceipt, &payload, signature)?;
         self.write(|c| {
+            let root = verified_root(c)?;
+            local_admin(c,&root)?;
+            verify_grant(c,&root,id,key,grant)?;
             let n=c.execute("UPDATE e_enrollments SET state='received' WHERE id=?1 AND candidate=?2 AND grant_bytes=?3 AND state IN('consumed','received') AND EXISTS(SELECT 1 FROM e_members WHERE device=?4 AND enabled=1 AND expires>?5)",params![id.to_string(),key.sec1(),grant,key.peer_id().to_string(),i64::try_from(now).map_err(|_|E::Expired)?]).map_err(sql)?;
             if n!=1 { return Err(E::Trust); }
             Ok(())
@@ -317,7 +409,7 @@ impl<'a> NetworkRegistry<'a> {
     }
 }
 use sha2::Digest;
-fn root(c: &Connection) -> Result<Root> {
+pub(super) fn unverified_root(c: &Connection) -> Result<Root> {
     let (network, admin, epoch, digest): (String, Vec<u8>, i64, Vec<u8>) = c
         .query_row(
             "SELECT network,admin,epoch,digest FROM e_registry WHERE singleton=1",
@@ -333,43 +425,7 @@ fn root(c: &Connection) -> Result<Root> {
     })
 }
 fn verified_root(c: &Connection) -> Result<Root> {
-    let r = root(c)?;
-    let mut previous = [0; 32];
-    let mut count = 0;
-    let mut q = c
-        .prepare("SELECT epoch,bytes FROM e_updates ORDER BY epoch")
-        .map_err(sql)?;
-    let rows = q
-        .query_map([], |row| {
-            Ok((row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?))
-        })
-        .map_err(sql)?;
-    for row in rows {
-        let (epoch, bytes) = row.map_err(sql)?;
-        count += 1;
-        if count > 4096 {
-            return Err(E::Limit);
-        }
-        let update = SignedUpdate::decode(&bytes)?;
-        if epoch != count
-            || update.body.epoch != epoch
-            || update.body.previous != previous
-            || update.body.network != r.network
-        {
-            return Err(E::Fork);
-        }
-        if epoch == 1 {
-            if !matches!(&update.body.action,Action::Genesis{admin}if admin==&r.admin) {
-                return Err(E::Trust);
-            }
-        }
-        update.verify(&r.admin)?;
-        previous = update.body.hash()?;
-    }
-    if count != r.epoch || previous != r.digest {
-        return Err(E::Fork);
-    }
-    Ok(r)
+    Ok(super::registry_verification::verified(c)?.root)
 }
 fn apply(c: &Connection, u: &SignedUpdate) -> Result<()> {
     u.body.validate()?;
@@ -460,10 +516,12 @@ fn apply(c: &Connection, u: &SignedUpdate) -> Result<()> {
     )
     .map_err(sql)?;
     c.execute("INSERT INTO e_registry VALUES(1,?1,?2,?3,?4) ON CONFLICT(singleton) DO UPDATE SET epoch=excluded.epoch,digest=excluded.digest",params![u.body.network.to_string(),admin.sec1(),u.body.epoch,u.body.hash()?.as_slice()]).map_err(sql)?;
+    super::registry_verification::verified(c)?;
     Ok(())
 }
 pub(crate) fn authorize_binding(c: &Connection, b: &MembershipBinding, now: u64) -> Result<()> {
-    let r = root(c)?;
+    let registry = super::registry_verification::verified(c)?;
+    let r = &registry.root;
     if r.network != b.root.network
         || r.epoch != b.root.epoch
         || r.digest != b.root.digest
@@ -471,42 +529,46 @@ pub(crate) fn authorize_binding(c: &Connection, b: &MembershipBinding, now: u64)
     {
         return Err(E::Trust);
     }
-    let valid:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM e_members WHERE device=?1 AND key=?2 AND enabled=1 AND expires>?3 AND capabilities=3) AND EXISTS(SELECT 1 FROM e_members WHERE device=?4 AND enabled=1 AND expires>?3)",params![b.peer.peer_id().to_string(),b.peer.sec1(),i64::try_from(now).map_err(|_|E::Expired)?,b.local.to_string()],|r|r.get(0)).map_err(sql)?;
-    if !valid {
+    let now = i64::try_from(now).map_err(|_| E::Expired)?;
+    for id in [b.local, b.peer.peer_id()] {
+        let member = registry.members.get(&id.to_string()).ok_or(E::Trust)?;
+        if !member.enabled || member.expires <= now || member.capabilities != 3 {
+            return Err(E::Trust);
+        }
+    }
+    if registry
+        .members
+        .get(&b.peer.peer_id().to_string())
+        .ok_or(E::Trust)?
+        .key
+        != b.peer
+    {
         return Err(E::Trust);
     }
-    let local: Option<(String, Option<Vec<u8>>, String)> = c
-        .query_row(
-            "SELECT slot,key,state FROM e_identity WHERE singleton=1",
-            [],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-        )
-        .optional()
-        .map_err(sql)?;
-    if let Some((slot, key, state)) = local {
-        if state != "active" {
-            return Err(E::Trust);
-        }
-        let expected = PublicIdentity::from_sec1(key.ok_or(E::Trust)?)?;
-        if expected.peer_id() != b.local {
-            return Err(E::Trust);
-        }
-        #[cfg(windows)]
+    #[cfg(windows)]
+    {
+        let (_, local) = super::device_identity_store::bound_key(c, b.local)?;
+        if local != registry.local_key
+            || registry
+                .members
+                .get(&b.local.to_string())
+                .ok_or(E::Trust)?
+                .key
+                != local
         {
-            let native = crate::sync::security::windows::WindowsIdentity::slot(
-                Uuid::parse_str(&slot).map_err(|_| E::Trust)?,
-            );
-            if native.public_identity()? != expected {
-                return Err(E::Trust);
-            }
-        }
-        #[cfg(not(windows))]
-        {
-            let _ = slot;
-            return Err(E::PlatformUnverified);
+            return Err(E::Trust);
         }
     }
+    #[cfg(not(windows))]
+    return Err(E::PlatformUnverified);
     Ok(())
+}
+#[cfg(test)]
+pub(crate) fn with_test_connection<T>(
+    owner: &CaptureStore,
+    work: impl FnOnce(&Connection) -> T,
+) -> T {
+    work(&owner.connection.lock().unwrap())
 }
 #[cfg(test)]
 pub(crate) fn schema_version(owner: &CaptureStore) -> i64 {
@@ -519,6 +581,12 @@ pub(crate) fn install(owner: &CaptureStore) {
         .lock()
         .unwrap()
         .execute_batch(include_str!("enrollment_candidate.sql"))
+        .unwrap();
+    owner
+        .connection
+        .lock()
+        .unwrap()
+        .execute_batch(include_str!("enrollment_e2.sql"))
         .unwrap();
 }
 #[cfg(test)]

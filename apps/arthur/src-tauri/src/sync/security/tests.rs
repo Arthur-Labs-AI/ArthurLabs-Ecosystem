@@ -17,6 +17,11 @@ use uuid::Uuid;
 struct Key(windows::WindowsIdentity);
 #[cfg(windows)]
 impl Key {
+    fn owned(owner: &crate::storage::capture_store::CaptureStore) -> Self {
+        let identity =
+            crate::storage::device_identity_store::OwnedDeviceIdentity::initialize(owner).unwrap();
+        Self(windows::WindowsIdentity::slot(identity.slot_for_test()))
+    }
     fn new() -> Self {
         let k = Self(windows::WindowsIdentity::slot(Uuid::new_v4()));
         k.0.create_identity().unwrap();
@@ -295,7 +300,7 @@ fn e09_expiry_backward_clock_and_cancel_erase_code_without_clearing_abuse() {
 #[test]
 fn e11_e12_metadata_approval_exact_key_transcript_and_same_key_receipt_resume() {
     let (_dir, o) = owner();
-    let a = Key::new();
+    let a = Key::owned(o.store());
     let b = Key::new();
     let wrong = Key::new();
     let r = NetworkRegistry::candidate(o.store()).unwrap();
@@ -496,7 +501,7 @@ fn e01_e03_owned_identity_anchor_reopens_and_never_replaces_a_lost_key() {
 #[test]
 fn e05_revocation_tombstone_blocks_old_key_and_expired_membership() {
     let (_dir, o) = owner();
-    let a = Key::new();
+    let a = Key::owned(o.store());
     let b = Key::new();
     let r = NetworkRegistry::candidate(o.store()).unwrap();
     r.create_network(&a.0).unwrap();
@@ -514,6 +519,12 @@ fn e05_revocation_tombstone_blocks_old_key_and_expired_membership() {
         )
         .unwrap();
     r.apply(&grant).unwrap();
+    r.binding(
+        a.public_identity().unwrap().peer_id(),
+        &b.public_identity().unwrap(),
+        19,
+    )
+    .unwrap();
     assert!(r
         .binding(
             a.public_identity().unwrap().peer_id(),
@@ -651,7 +662,7 @@ fn e06_durable_revocation_and_real_import_share_one_owner_commit_order() {
         let (_source_dir, source) = owner();
         f::upgrade(source.store());
         f::captures(source.store(), &["Synthetic authorized original"]);
-        let admin = Key::new();
+        let admin = Key::owned(target.store());
         let remote = Key::new();
         let r = NetworkRegistry::candidate(target.store()).unwrap();
         let network = r.create_network(&admin.0).unwrap().network;
