@@ -9,6 +9,7 @@ import { revealSavedExport, saveExportRun } from './services/export-save.js';
 export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
   'projects:list': z.object({}).strict(),
   'projects:add': z.object({ sourcePath: z.string().min(1).max(2000) }).strict(),
+  'projects:cancel-add': z.object({}).strict(),
   'projects:get': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:revisions': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:delete': z.object({ projectId: z.string().min(1).max(200) }).strict(),
@@ -87,6 +88,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
   'runtime:select-distro': z.object({ distro: z.string().min(1).max(200) }).strict(),
   'runtime:reclaim-space': z.object({}).strict(),
   'cli:status': z.object({}).strict(),
+  'cli:set-enabled': z.object({ enabled: z.boolean() }).strict(),
 };
 export type DesktopChannel = keyof typeof DesktopChannelSchemas;
 
@@ -108,6 +110,7 @@ export interface CommandRouterHooks {
   readonly onRetestCreated?: (retestRunId: string, operationId?: string) => void;
   readonly requestSavePath?: (options: SaveDialogOptions) => Promise<string | null>;
   readonly cliStatus?: () => unknown;
+  readonly cliSetEnabled?: (enabled: boolean) => Promise<unknown>;
   readonly showInFolder?: (path: string) => void;
   readonly redactErrorText?: (text: string) => string;
 }
@@ -200,6 +203,8 @@ export async function dispatchDesktopCommand(
       return service.listProjects();
     case 'projects:add':
       return service.addProject(parsed['sourcePath'] as string);
+    case 'projects:cancel-add':
+      return service.cancelAddProject();
     case 'projects:get':
       return service.getProject(parsed['projectId'] as string);
     case 'projects:revisions':
@@ -328,6 +333,13 @@ export async function dispatchDesktopCommand(
       if (hooks.cliStatus === undefined)
         throw Object.assign(new Error('CLI broker unavailable'), { code: 'CLI_UNAVAILABLE' });
       return hooks.cliStatus();
+    }
+    case 'cli:set-enabled': {
+      if (hooks.cliSetEnabled === undefined)
+        throw Object.assign(new Error('CLI broker toggle unavailable'), {
+          code: 'CLI_UNAVAILABLE',
+        });
+      return hooks.cliSetEnabled(parsed['enabled'] as boolean);
     }
     default:
       throw Object.assign(new Error('Unknown command: ' + channel), {

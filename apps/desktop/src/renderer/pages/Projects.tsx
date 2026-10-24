@@ -10,39 +10,98 @@ import { CopyId } from '../components/CopyId.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
 import { RemoveProjectButton } from '../components/RemoveProjectButton.js';
 
+function folderLeafName(path: string): string {
+  const normalized = path.replace(/[\\/]+$/, '');
+  const parts = normalized.split(/[\\/]/);
+  return parts[parts.length - 1] || path;
+}
+
 export function Projects(): React.JSX.Element {
   const queryClient = useQueryClient();
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => sentryApi().projects.list() });
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [manualPath, setManualPath] = React.useState('');
+  const [activeFolder, setActiveFolder] = React.useState<string | undefined>(undefined);
   const [addStartedAt, setAddStartedAt] = React.useState<number | undefined>(undefined);
   const [addElapsed, setAddElapsed] = React.useState(0);
+  const [cancelling, setCancelling] = React.useState(false);
+  const cancelledByUserRef = React.useRef(false);
+
   const add = useMutation({
-    mutationFn: async (sourcePath?: string) => {
-      const picked = sourcePath ?? (await pickDirectory());
-      if (picked === null || picked.trim().length === 0) throw new Error('No directory selected');
-      return sentryApi().projects.add(picked.trim());
+    mutationFn: async (selectedPath: string) => {
+      return sentryApi().projects.add(selectedPath.trim());
     },
-    onMutate: () => {
+    onMutate: (selectedPath: string) => {
+      cancelledByUserRef.current = false;
+      setCancelling(false);
+      setError(undefined);
+      setActiveFolder(selectedPath.trim());
       setAddStartedAt(Date.now());
       setAddElapsed(0);
     },
     onSuccess: () => {
       setError(undefined);
       setManualPath('');
+      setActiveFolder(undefined);
       setAddStartedAt(undefined);
+      setCancelling(false);
       void queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
     onError: (e) => {
-      setError(e instanceof Error ? e.message : String(e));
+      setActiveFolder(undefined);
       setAddStartedAt(undefined);
+      setCancelling(false);
+      if (cancelledByUserRef.current) {
+        cancelledByUserRef.current = false;
+        return;
+      }
+      const message = e instanceof Error ? e.message : String(e);
+      if (/cancelled|aborted/i.test(message)) return;
+      setError(message);
     },
   });
+
+  const chooseFolderAndStart = async (): Promise<void> => {
+    if (add.isPending) return;
+    try {
+      const picked = await pickDirectory();
+      if (picked === null || picked.trim().length === 0) return;
+      add.mutate(picked.trim());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const cancelImport = async (): Promise<void> => {
+    cancelledByUserRef.current = true;
+    setCancelling(true);
+    try {
+      await sentryApi().projects.cancelAdd?.();
+    } catch {
+      /* best-effort */
+    } finally {
+      setActiveFolder(undefined);
+      setAddStartedAt(undefined);
+      setCancelling(false);
+    }
+  };
+
   React.useEffect(() => {
     if (addStartedAt === undefined) return;
-    const timer = setInterval(() => setAddElapsed(Date.now() - addStartedAt), 500);
+    const timer = setInterval(() => setAddElapsed(Date.now() - addStartedAt), 250);
     return () => clearInterval(timer);
   }, [addStartedAt]);
+
+  React.useEffect(() => {
+    if (!add.isPending || activeFolder === undefined) return;
+    const onBeforeUnload = (): void => {
+      cancelledByUserRef.current = true;
+      void sentryApi().projects.cancelAdd?.();
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [add.isPending, activeFolder]);
+
   const list =
     (projects.data as
       | Array<{
@@ -54,6 +113,9 @@ export function Projects(): React.JSX.Element {
         }>
       | undefined) ?? [];
   const listError = projects.error as unknown;
+  const modalOpen = add.isPending && activeFolder !== undefined;
+  const elapsedSeconds = Math.max(0, Math.floor(addElapsed / 1000));
+
   return (
     <div className="page">
       <PageHeader
@@ -62,30 +124,19 @@ export function Projects(): React.JSX.Element {
         actions={
           <button
             className="primary"
-            onClick={() => add.mutate(undefined)}
+            onClick={() => void chooseFolderAndStart()}
             disabled={add.isPending}
           >
             <Plus size={15} /> {add.isPending ? 'Adding…' : 'Add Project'}
           </button>
         }
       />
-      {add.isPending ? (
-        <p className="muted" aria-live="polite">
-          Copying project into the Sentry store… {Math.round(addElapsed / 1000)}s elapsed. Large
-          folders (especially ones containing node_modules) can take a while.
-        </p>
-      ) : null}
       {error !== undefined ? (
         <div className="error-box" role="alert">
           {error}{' '}
           <button className="compact ghost" onClick={() => setError(undefined)}>
             Dismiss
           </button>
-        </div>
-      ) : null}
-      {add.error !== undefined && add.error !== null && error === undefined ? (
-        <div className="error-box" role="alert">
-          {String((add.error as { message?: unknown }).message ?? add.error)}
         </div>
       ) : null}
       {projects.isLoading ? (
@@ -100,7 +151,11 @@ export function Projects(): React.JSX.Element {
           title="No projects yet"
           body="Add a local repository and run your first independent AI QA scan."
           action={
-            <button className="primary" onClick={() => add.mutate(undefined)}>
+            <button
+              className="primary"
+              onClick={() => void chooseFolderAndStart()}
+              disabled={add.isPending}
+            >
               <Plus size={15} /> Add Project
             </button>
           }
@@ -122,9 +177,7 @@ export function Projects(): React.JSX.Element {
                   <CopyId id={project.currentRevisionId} />
                 </dd>
                 <dt>Runs</dt>
-                <dd>
-                  {project.runCount} run{project.runCount === 1 ? '' : 's'}
-                </dd>
+                <dd>{String(project.runCount) + (project.runCount === 1 ? ' run' : ' runs')}</dd>
               </dl>
               <div className="actions" style={{ marginTop: 10, flexWrap: 'wrap' }}>
                 <Link to={'/projects/' + project.projectId}>
@@ -151,7 +204,7 @@ export function Projects(): React.JSX.Element {
             onChange={(e) => setManualPath(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && manualPath.trim().length > 0 && !add.isPending) {
-                add.mutate(manualPath);
+                add.mutate(manualPath.trim());
               }
             }}
             placeholder="Paste a folder path, then Enter"
@@ -160,12 +213,64 @@ export function Projects(): React.JSX.Element {
           />
           <button
             disabled={manualPath.trim().length === 0 || add.isPending}
-            onClick={() => add.mutate(manualPath)}
+            onClick={() => add.mutate(manualPath.trim())}
           >
             Add by path
           </button>
         </div>
       </CollapsibleSection>
+      {modalOpen ? (
+        <div
+          className="project-import-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Adding project to Sentry"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
+        >
+          <div className="project-import-modal">
+            <img
+              src="./smooth_loader_flat_logo.gif"
+              alt=""
+              className="project-import-loader"
+              aria-hidden="true"
+            />
+            <h2 className="section-title" style={{ fontSize: 16 }}>
+              Adding project to Sentry
+            </h2>
+            <div
+              className="mono metadata truncate"
+              style={{ maxWidth: '100%' }}
+              title={activeFolder}
+              data-no-translate="true"
+            >
+              {folderLeafName(activeFolder)}
+            </div>
+            <div className="project-import-timer" aria-live="polite">
+              <span>Elapsed:</span>
+              <span data-no-translate="true">{elapsedSeconds}s</span>
+            </div>
+            <p className="body-secondary" style={{ margin: 0 }}>
+              Copying and indexing project files into the isolated Sentry runtime store. This window
+              will close automatically when the import completes.
+            </p>
+            <div style={{ marginTop: 6 }}>
+              <button
+                type="button"
+                className="danger compact"
+                disabled={cancelling}
+                onClick={() => void cancelImport()}
+              >
+                {cancelling ? 'Cancelling…' : 'Cancel import'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -2,36 +2,29 @@ import React from 'react';
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   applyNodeChanges,
   type Node,
   type Edge,
   type NodeChange,
+  type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Maximize, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import type { RunGraphEdge, RunGraphNode } from '../lib/run-graph.js';
 import { AgentCanvasNode } from './nodes/AgentCanvasNode.js';
 import { PipelineNode } from './nodes/PipelineNode.js';
+import { NeonEdge } from './edges/NeonEdge.js';
+import { useReducedMotion } from '../lib/use-reduced-motion.js';
 
 const nodeTypes = {
   agentNode: AgentCanvasNode,
   pipelineNode: PipelineNode,
 };
 
-function edgeStyle(state: RunGraphEdge['state']): { stroke: string; animated: boolean } {
-  switch (state) {
-    case 'completed':
-      return { stroke: '#6d9b66', animated: false };
-    case 'active':
-      return { stroke: '#d4c00b', animated: true };
-    case 'failed':
-      return { stroke: '#b96462', animated: false };
-    case 'blocked':
-      return { stroke: '#737d71', animated: false };
-    default:
-      return { stroke: '#3c4c3a', animated: false };
-  }
-}
+const edgeTypes = {
+  neon: NeonEdge,
+};
 
 function layoutKeyFor(runId: string): string {
   return 'sentry:run-layout:canvas:' + runId;
@@ -64,23 +57,43 @@ function loadPositions(runId: string): Record<string, { x: number; y: number }> 
   try {
     const raw = window.localStorage.getItem(layoutKeyFor(runId));
     if (raw === null) return {};
-    const parsed = JSON.parse(raw) as Record<string, { x: number; y: number }>;
-    if (typeof parsed !== 'object' || parsed === null) return {};
-    return parsed;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        ([, position]) =>
+          typeof position === 'object' &&
+          position !== null &&
+          Number.isFinite(position.x) &&
+          Number.isFinite(position.y),
+      ),
+    );
   } catch {
     return {};
   }
 }
 
-export function RunCanvas({
-  runId,
-  nodes,
-  edges,
-  selectedId,
-  centerRequest,
-  onSelect,
-  onSelectEdge,
-}: {
+function loadViewport(runId: string): Viewport | undefined {
+  try {
+    const raw = window.localStorage.getItem(layoutKeyFor(runId) + ':viewport');
+    if (raw === null) return undefined;
+    const viewport = JSON.parse(raw) as Viewport | null;
+    if (
+      viewport === null ||
+      !Number.isFinite(viewport.x) ||
+      !Number.isFinite(viewport.y) ||
+      !Number.isFinite(viewport.zoom) ||
+      viewport.zoom < 0.2 ||
+      viewport.zoom > 2.25
+    )
+      return undefined;
+    return viewport;
+  } catch {
+    return undefined;
+  }
+}
+
+interface RunCanvasProps {
   runId: string;
   nodes: readonly RunGraphNode[];
   edges: readonly RunGraphEdge[];
@@ -88,13 +101,54 @@ export function RunCanvas({
   centerRequest?: { id: string; key: number } | undefined;
   onSelect: (id: string | undefined) => void;
   onSelectEdge?: (id: string | undefined) => void;
-}): React.JSX.Element {
+}
+
+function toFlowNode(
+  node: RunGraphNode,
+  selectedId: string | undefined,
+  override?: { x: number; y: number },
+): Node {
+  return {
+    id: node.id,
+    type: node.kind === 'agent' ? 'agentNode' : 'pipelineNode',
+    position: override ?? node.position,
+    selected: node.id === selectedId,
+    data: {
+      label: node.label,
+      status: node.status,
+      kind: node.kind,
+      payload: node.data,
+      selected: node.id === selectedId,
+    },
+  };
+}
+
+export function RunCanvas(props: RunCanvasProps): React.JSX.Element {
+  return <RunCanvasScene key={props.runId} {...props} />;
+}
+
+function RunCanvasScene({
+  runId,
+  nodes,
+  edges,
+  selectedId,
+  centerRequest,
+  onSelect,
+  onSelectEdge,
+}: RunCanvasProps): React.JSX.Element {
+  const reducedMotion = useReducedMotion();
+  const duration = (ms: number): number => (reducedMotion ? 0 : ms);
+  const [savedViewport] = React.useState(() => loadViewport(runId));
   const flowRef = React.useRef<
     | {
-        fitView: () => void;
-        zoomIn: () => void;
-        zoomOut: () => void;
-        setCenter: (x: number, y: number, options?: { zoom?: number }) => void;
+        fitView: (options?: {
+          padding?: number;
+          duration?: number;
+          maxZoom?: number;
+          nodes?: { id: string }[];
+        }) => void;
+        zoomIn: (options?: { duration?: number }) => void;
+        zoomOut: (options?: { duration?: number }) => void;
       }
     | undefined
   >(undefined);
@@ -104,12 +158,8 @@ export function RunCanvas({
   const [overrides, setOverrides] = React.useState<Record<string, { x: number; y: number }>>(() =>
     loadPositions(runId),
   );
-  const [resetKey, setResetKey] = React.useState(0);
-
-  // Switching runs loads that run's saved layout.
-  React.useEffect(() => {
-    setOverrides(loadPositions(runId));
-  }, [runId]);
+  const overridesRef = React.useRef(overrides);
+  overridesRef.current = overrides;
 
   const persist = React.useCallback(
     (next: Record<string, { x: number; y: number }>) => {
@@ -122,103 +172,90 @@ export function RunCanvas({
     [runId],
   );
 
-  const flowNodes: Node[] = React.useMemo(
-    () =>
-      nodes.map((node) => {
-        const override = overrides[node.id];
-        return {
-          id: node.id,
-          type: node.kind === 'agent' ? 'agentNode' : 'pipelineNode',
-          position: override ?? node.position,
-          selected: node.id === selectedId,
-          data: {
-            label: node.label,
-            status: node.status,
-            kind: node.kind,
-            payload: node.data,
-            selected: node.id === selectedId,
-          },
-        };
-      }),
-    // resetKey restores canonical positions after a reset.
-    [nodes, selectedId, overrides, resetKey],
-  );
-  const flowEdges: Edge[] = React.useMemo(
-    () =>
-      edges.map((edge) => {
-        const style = edgeStyle(edge.state);
-        return {
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          animated: style.animated,
-          style: { stroke: style.stroke },
-        };
-      }),
-    [edges],
-  );
+  // Avoid synchronous storage writes on every pointer movement.
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => persist(overrides), 180);
+    return () => window.clearTimeout(timer);
+  }, [overrides, persist]);
 
-  const onNodesChange = React.useCallback(
-    (changes: NodeChange[]) => {
-      setOverrides((prev) => {
-        const base: Node[] = nodes.map((node) => ({
-          id: node.id,
-          position: prev[node.id] ?? node.position,
-          data: {},
-        }));
-        const next = applyNodeChanges(changes, base);
-        const merged: Record<string, { x: number; y: number }> = { ...prev };
-        let changed = false;
-        for (const node of next) {
-          const prior = prev[node.id] ?? nodes.find((n) => n.id === node.id)?.position;
-          if (prior === undefined || node.position.x !== prior.x || node.position.y !== prior.y) {
-            merged[node.id] = { ...node.position };
-            changed = true;
-          }
-        }
-        if (changed) persist(merged);
-        return changed ? merged : prev;
-      });
-    },
-    [nodes, persist],
+  const [flowNodes, setFlowNodes] = React.useState<Node[]>(() =>
+    nodes.map((node) => toFlowNode(node, selectedId, overrides[node.id])),
   );
 
   React.useEffect(() => {
-    const onKey = (event: KeyboardEvent): void => {
-      const target = event.target as HTMLElement | null;
-      if (target !== null && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
-      if (event.key.toLowerCase() === 'f') flowRef.current?.fitView();
-      if (event.key === '+') flowRef.current?.zoomIn();
-      if (event.key === '-') flowRef.current?.zoomOut();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    setFlowNodes((previous) => {
+      const byId = new Map(previous.map((node) => [node.id, node]));
+      return nodes.map((node) => ({
+        // Preserve React Flow measurements and drag state across telemetry.
+        // Dropping measured dimensions makes subsequent drag coordinates NaN.
+        ...byId.get(node.id),
+        ...toFlowNode(node, selectedId, overridesRef.current[node.id]),
+      }));
+    });
+  }, [nodes, selectedId]);
+  const flowEdges: Edge[] = React.useMemo(
+    () =>
+      edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: 'neon',
+        selected: edge.id === selectedId,
+        data: { state: edge.state },
+      })),
+    [edges, selectedId],
+  );
+
+  const onNodesChange = React.useCallback((changes: NodeChange[]) => {
+    setFlowNodes((previous) => applyNodeChanges(changes, previous));
+    setOverrides((prev) => {
+      const merged: Record<string, { x: number; y: number }> = { ...prev };
+      let changed = false;
+      for (const change of changes) {
+        if (change.type !== 'position' || change.position === undefined) continue;
+        const prior = prev[change.id];
+        if (prior === undefined || change.position.x !== prior.x || change.position.y !== prior.y) {
+          merged[change.id] = { ...change.position };
+          changed = true;
+        }
+      }
+      return changed ? merged : prev;
+    });
   }, []);
 
   const nodesRef = React.useRef(nodes);
   nodesRef.current = nodes;
-  const overridesRef = React.useRef(overrides);
-  overridesRef.current = overrides;
 
   // Centering never moves nodes: it only pans the viewport to the node.
   React.useEffect(() => {
     if (centerRequest === undefined) return;
     const node = nodesRef.current.find((n) => n.id === centerRequest.id);
     if (node === undefined) return;
-    const position = overridesRef.current[centerRequest.id] ?? node.position;
-    flowRef.current?.setCenter(position.x + 110, position.y + 60, { zoom: 1 });
-  }, [centerRequest]);
+    flowRef.current?.fitView({
+      nodes: [{ id: node.id }],
+      maxZoom: 1,
+      padding: 0.4,
+      duration: reducedMotion ? 0 : 450,
+    });
+  }, [centerRequest, reducedMotion]);
 
   const resetLayout = (): void => {
     try {
       window.localStorage.removeItem(layoutKeyFor(runId));
+      window.localStorage.removeItem(layoutKeyFor(runId) + ':viewport');
     } catch {
       /* ignore */
     }
     setOverrides({});
-    setResetKey((k) => k + 1);
-    window.setTimeout(() => flowRef.current?.fitView(), 0);
+    setFlowNodes((previous) =>
+      previous.map((node) => ({
+        ...node,
+        position: nodes.find((canonical) => canonical.id === node.id)?.position ?? node.position,
+      })),
+    );
+    window.requestAnimationFrame(() =>
+      flowRef.current?.fitView({ duration: duration(400), padding: 0.18, maxZoom: 1.15 }),
+    );
   };
 
   return (
@@ -226,13 +263,25 @@ export function RunCanvas({
       className="canvas-host"
       style={{ height: '100%' }}
       role="application"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        const target = event.target as HTMLElement;
+        if (target.closest('input, textarea, select, [contenteditable="true"]') !== null) return;
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        if (event.key.toLowerCase() === 'f') {
+          event.preventDefault();
+          flowRef.current?.fitView({ duration: duration(400), padding: 0.18 });
+        }
+        if (event.key === '+' || event.key === '=')
+          flowRef.current?.zoomIn({ duration: duration(200) });
+        if (event.key === '-') flowRef.current?.zoomOut({ duration: duration(200) });
+      }}
       aria-label="Run execution canvas. Drag nodes to rearrange; layout is saved for this run."
     >
-      <div className="grid-bg" />
       <div className="canvas-toolbar" role="toolbar" aria-label="Canvas controls">
         <button
           className="icon-btn ghost"
-          onClick={() => flowRef.current?.zoomOut()}
+          onClick={() => flowRef.current?.zoomOut({ duration: duration(200) })}
           aria-label="Zoom out (-)"
           title="Zoom out (-)"
         >
@@ -240,7 +289,7 @@ export function RunCanvas({
         </button>
         <button
           className="icon-btn ghost"
-          onClick={() => flowRef.current?.zoomIn()}
+          onClick={() => flowRef.current?.zoomIn({ duration: duration(200) })}
           aria-label="Zoom in (+)"
           title="Zoom in (+)"
         >
@@ -248,7 +297,7 @@ export function RunCanvas({
         </button>
         <button
           className="icon-btn ghost"
-          onClick={() => flowRef.current?.fitView()}
+          onClick={() => flowRef.current?.fitView({ duration: duration(400), padding: 0.18 })}
           aria-label="Fit view (F). Keeps your node layout."
           title="Fit view (F). Keeps your node layout."
         >
@@ -267,7 +316,21 @@ export function RunCanvas({
         nodes={flowNodes}
         edges={flowEdges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
+        onNodeDragStop={(_event, node) =>
+          persist({ ...overridesRef.current, [node.id]: node.position })
+        }
+        onMoveEnd={(_event, viewport) => {
+          try {
+            window.localStorage.setItem(
+              layoutKeyFor(runId) + ':viewport',
+              JSON.stringify(viewport),
+            );
+          } catch {
+            /* presentation-only storage */
+          }
+        }}
         onInit={(instance) => {
           flowRef.current = instance;
         }}
@@ -277,14 +340,35 @@ export function RunCanvas({
           onSelect(undefined);
           onSelectEdge?.(undefined);
         }}
-        fitView
-        minZoom={0.3}
-        maxZoom={1.75}
+        fitView={savedViewport === undefined}
+        {...(savedViewport === undefined ? {} : { defaultViewport: savedViewport })}
+        fitViewOptions={{ padding: 0.18, duration: duration(450), maxZoom: 1.15 }}
+        minZoom={0.2}
+        maxZoom={2.25}
+        zoomOnScroll
+        zoomOnPinch
+        zoomOnDoubleClick={false}
+        panOnDrag
+        panOnScroll={false}
+        nodesDraggable
+        nodesConnectable={false}
+        elementsSelectable
+        selectNodesOnDrag={false}
+        elevateNodesOnSelect
+        deleteKeyCode={null}
         attributionPosition="bottom-right"
         onlyRenderVisibleElements={false}
       >
-        <Background gap={24} color="#243124" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={26}
+          size={1.4}
+          color="var(--canvas-grid)"
+        />
       </ReactFlow>
+      <div className="canvas-hint" aria-hidden="true">
+        Drag to arrange <span>·</span> Scroll to zoom <span>·</span> F to fit
+      </div>
     </div>
   );
 }

@@ -2,6 +2,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { sentryApi } from '../lib/sentry-api.js';
+import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
+import { EmptyState } from '../components/ui/EmptyState.js';
+import { History as HistoryIcon } from 'lucide-react';
 
 export function History(): React.JSX.Element {
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => sentryApi().projects.list() });
@@ -49,35 +52,46 @@ export function History(): React.JSX.Element {
     }),
   ].sort((a, b) => (a.at < b.at ? 1 : -1));
   return (
-    <div>
-      <h1 style={{ marginTop: 0 }}>History</h1>
-      <select value={effective} onChange={(e) => setProjectId(e.target.value)} aria-label="Project">
-        {projectList.map((project) => (
-          <option key={project.projectId} value={project.projectId}>
-            {project.name}
-          </option>
-        ))}
-      </select>
-      <h2>Runs, retests & issues</h2>
-      {timeline.length === 0 && issueList.length === 0 ? (
-        <div className="empty">No history yet.</div>
-      ) : (
-        <div className="timeline">
-          {timeline.map((item) => (
-            <div key={item.to} className="item">
-              {item.at !== '' ? <span className="time">{item.at}</span> : null}
-              <Link to={item.to}>{item.label}</Link>
-            </div>
+    <div className="page">
+      <PageHeader
+        title="History"
+        subtitle="Trace runs, retests, and issue activity across your workspace."
+      />
+      <div className="filter-toolbar">
+        <select
+          value={effective}
+          onChange={(e) => setProjectId(e.target.value)}
+          aria-label="Project"
+        >
+          {projectList.map((project) => (
+            <option key={project.projectId} value={project.projectId}>
+              {project.name}
+            </option>
           ))}
-          {issueList.map((issue) => (
-            <div key={issue.id} className="item">
-              <span>Issue</span>
-              <Link to={'/issues/' + issue.id}>{issue.title}</Link>
-              <span className="muted">{issue.severity}</span>
-            </div>
-          ))}
-        </div>
-      )}
+        </select>
+      </div>
+      <PageSection title="Runs, retests & issues">
+        {timeline.length === 0 && issueList.length === 0 ? (
+          <EmptyState title="No history yet." body="Recorded project activity will appear here." />
+        ) : (
+          <div className="timeline">
+            {timeline.map((item) => (
+              <div key={item.to} className="item">
+                <HistoryIcon size={14} className="faint" aria-hidden="true" />
+                {item.at !== '' ? <span className="time">{item.at}</span> : null}
+                <Link to={item.to}>{item.label}</Link>
+              </div>
+            ))}
+            {issueList.map((issue) => (
+              <div key={issue.id} className="item">
+                <span>Issue</span>
+                <Link to={'/issues/' + issue.id}>{issue.title}</Link>
+                <span className="muted">{issue.severity}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </PageSection>
     </div>
   );
 }

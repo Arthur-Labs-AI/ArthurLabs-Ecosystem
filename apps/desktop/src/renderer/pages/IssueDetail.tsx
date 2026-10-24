@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CopyId } from '../components/CopyId.js';
 import { sentryApi } from '../lib/sentry-api.js';
+import { PageHeader } from '../components/ui/PageHeader.js';
+import { StatusPill } from '../components/ui/StatusPill.js';
 
 // Issue state comes from the backend projector (projectIssueState in main).
 // The renderer never derives state from events on its own.
@@ -73,14 +75,19 @@ export function IssueDetail(): React.JSX.Element {
     (issue.data as { currentState?: string } | undefined)?.currentState ??
     'open';
   return (
-    <div>
-      <p className="muted" style={{ margin: 0 }}>
-        <Link to="/issues">Issues</Link> / <CopyId id={issueId ?? ''} />
-      </p>
-      <h1 style={{ marginTop: 4 }}>{data?.title ?? 'Issue'}</h1>
+    <div className="page detail-page">
+      <PageHeader
+        title={data?.title ?? 'Issue'}
+        crumbs={
+          <>
+            <Link to="/issues">Issues</Link> / <CopyId id={issueId ?? ''} />
+          </>
+        }
+      />
       {data !== undefined ? (
         <p className="muted">
-          {data.severity} · {data.category ?? ''} · State: {state}
+          <span className={'severity-badge severity-' + data.severity}>{data.severity}</span> ·{' '}
+          {data.category ?? ''} · State: <StatusPill status={state} />
         </p>
       ) : null}
       {error !== undefined ? (

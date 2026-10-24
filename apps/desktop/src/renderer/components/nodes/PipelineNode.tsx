@@ -1,7 +1,7 @@
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { summarizeVerificationAttempts, severityBreakdown } from '../../lib/verify-summary.js';
-import { statusGlyph } from '../StatusGlyph.js';
+import { StatusIcon, nodeStateClass } from '../StatusGlyph.js';
 import { dotClassForStatus } from '../ui/StatusPill.js';
 import { truncateMiddle } from '../../lib/agent-telemetry.js';
 
@@ -12,7 +12,11 @@ export function PipelineNode({ data }: NodeProps): React.JSX.Element {
   const payload = (data['payload'] as Record<string, unknown>) ?? {};
   return (
     <div
-      className={'flow-node sys-node' + ((data['selected'] as boolean) ? ' selected' : '')}
+      className={
+        'flow-node sys-node ' +
+        nodeStateClass(status) +
+        ((data['selected'] as boolean) ? ' selected' : '')
+      }
       aria-label={label + ' ' + status}
     >
       <Handle type="target" position={Position.Top} />
@@ -23,7 +27,7 @@ export function PipelineNode({ data }: NodeProps): React.JSX.Element {
           {label}
         </span>
         <span className="faint" aria-hidden="true">
-          {statusGlyph(status)}
+          <StatusIcon status={status} size={12} />
         </span>
       </div>
       {kind === 'merger' ? <MergerSummary payload={payload} /> : null}

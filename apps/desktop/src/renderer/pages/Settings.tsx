@@ -5,19 +5,10 @@ import { ArrowRight, KeyRound, ServerCog, SlidersHorizontal } from 'lucide-react
 import { sentryApi } from '../lib/sentry-api.js';
 import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
 import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
-import { DEVELOPER_MODE_KEY, isDeveloperModeEnabled } from '../lib/developer-mode.js';
 
 export function Settings(): React.JSX.Element {
   const info = useQuery({ queryKey: ['system-info'], queryFn: () => sentryApi().system.info() });
   const data = info.data as { dataRoot?: string; versions?: Record<string, string> } | undefined;
-  const [developerMode, setDeveloperMode] = React.useState(isDeveloperModeEnabled);
-  React.useEffect(() => {
-    try {
-      localStorage.setItem(DEVELOPER_MODE_KEY, developerMode ? '1' : '0');
-    } catch {
-      /* non-persistent */
-    }
-  }, [developerMode]);
   return (
     <div className="page">
       <PageHeader title="Settings" subtitle="Providers, runtime, and application preferences." />
@@ -47,61 +38,20 @@ export function Settings(): React.JSX.Element {
               <ArrowRight size={15} aria-hidden="true" className="faint" />
             </div>
           </Link>
-          <div className="card agent-row">
-            <SlidersHorizontal size={18} aria-hidden="true" className="faint" />
-            <span className="grow">
-              <span className="card-title" style={{ display: 'block' }}>
-                Application
+          <Link to="/settings/application" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <div className="card agent-row">
+              <SlidersHorizontal size={18} aria-hidden="true" className="faint" />
+              <span className="grow">
+                <span className="card-title" style={{ display: 'block' }}>
+                  Application
+                </span>
+                <span className="body-secondary">
+                  Theme, language, local CLI, and developer diagnostics
+                </span>
               </span>
-              <span className="body-secondary">Developer diagnostics and appearance</span>
-            </span>
-          </div>
-        </div>
-      </PageSection>
-      <PageSection title="Application">
-        <div className="card">
-          <div className="agent-row">
-            <span className="grow">
-              <span className="card-title" style={{ display: 'block' }}>
-                Developer mode
-              </span>
-              <span className="body-secondary">
-                Exposes raw events, payloads, and diagnostics in the run inspector.
-              </span>
-            </span>
-            <button
-              role="switch"
-              aria-checked={developerMode}
-              aria-label="Developer mode"
-              onClick={() => setDeveloperMode((v) => !v)}
-              style={{
-                width: 44,
-                height: 24,
-                borderRadius: 999,
-                padding: 2,
-                justifyContent: developerMode ? 'flex-end' : 'flex-start',
-                background: developerMode ? 'var(--accent-dim)' : 'var(--bg-panel)',
-                borderColor: developerMode ? 'var(--accent)' : 'var(--border)',
-              }}
-            >
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  background: 'var(--text-primary)',
-                  display: 'block',
-                }}
-              />
-            </button>
-          </div>
-          {developerMode ? (
-            <p className="mono metadata">Raw event viewer lives in the run inspector.</p>
-          ) : null}
-          <p className="body-secondary">
-            Dark-first theme is mandatory; light theme is optional and deferred.
-          </p>
+              <ArrowRight size={15} aria-hidden="true" className="faint" />
+            </div>
+          </Link>
         </div>
       </PageSection>
       <CollapsibleSection title="Advanced / About">

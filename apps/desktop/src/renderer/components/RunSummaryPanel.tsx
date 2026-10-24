@@ -54,18 +54,23 @@ export function RunSummaryPanel({
         </div>
         <StatusPill status={String(run['status'] ?? 'unknown')} />
         <div className="metadata" style={{ marginTop: 6 }}>
-          {String(run['mode'] ?? '').toUpperCase()} QA ·{' '}
-          {run['executionKind'] === 'production' ? 'Production' : 'Legacy simulation'}
+          {String(run['mode'] ?? '').toUpperCase() +
+            ' QA · ' +
+            (run['executionKind'] === 'production' ? 'Production' : 'Legacy simulation')}
         </div>
       </section>
       <section aria-label="Results by agent">
         <div className="section-title" style={{ marginBottom: 8 }}>
           Results
         </div>
-        <p className="metadata">{selected.length} selected</p>
+        <p className="metadata">{String(selected.length) + ' selected'}</p>
         <p className="metadata">
-          {runningCount} running · {completedAgentCount} completed · {failedCount} failed / timed
-          out / interrupted
+          {String(runningCount) +
+            ' running · ' +
+            String(completedAgentCount) +
+            ' completed · ' +
+            String(failedCount) +
+            ' failed / timed out / interrupted'}
         </p>
         {selected.length > 0 ? (
           <div
@@ -126,7 +131,7 @@ export function RunSummaryPanel({
                         {AGENT_DISPLAY_NAMES[stackId] ?? stackId}
                       </span>
                       <span className="metric-chip">
-                        {formatCount(count)} finding{count === 1 ? '' : 's'}
+                        {formatCount(count) + (count === 1 ? ' finding' : ' findings')}
                       </span>
                     </span>
                     <span className="metadata" style={{ display: 'block' }}>
@@ -139,8 +144,12 @@ export function RunSummaryPanel({
           </div>
         )}
         <div className="metadata" style={{ marginTop: 8 }}>
-          {formatCount(findings.length)} total finding{findings.length === 1 ? '' : 's'} ·{' '}
-          {formatCount(evidence.length)} evidence
+          {formatCount(findings.length) +
+            ' total ' +
+            (findings.length === 1 ? 'finding' : 'findings') +
+            ' · ' +
+            formatCount(evidence.length) +
+            ' evidence'}
         </div>
         {['partial', 'failed', 'cancelled'].includes(String(run['status'])) ? (
           <p className="metadata">

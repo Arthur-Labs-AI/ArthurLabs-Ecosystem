@@ -26,6 +26,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
   projects: {
     list: () => invoke('projects:list', {}),
     add: (sourcePath: string) => invoke('projects:add', { sourcePath }),
+    cancelAdd: () => invoke('projects:cancel-add', {}),
     get: (projectId: string) => invoke('projects:get', { projectId }),
     revisions: (projectId: string) => invoke('projects:revisions', { projectId }),
     remove: (projectId: string) => invoke('projects:delete', { projectId }),
@@ -94,6 +95,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
   },
   cli: {
     status: () => invoke('cli:status', {}),
+    setEnabled: (enabled: boolean) => invoke('cli:set-enabled', { enabled }),
   },
   runtime: {
     status: () => invoke('runtime:status', {}),

@@ -1,3 +1,80 @@
+# Project import modal, cancellation, and smooth loader polish — implemented and verified
+
+2026-10-24. On `chore/app-cleanup-and-polish`: replaced the inline project
+import text/timer in `Projects.tsx` with a non-dismissible modal window that
+opens only after the project folder is selected, starts the elapsed timer at
+folder selection, displays `smooth_loader_flat_logo.gif` (`apps/desktop/public`),
+provides a `Cancel import` button (`projects:cancel-add` / `projects.cancelAdd`
+aborting `ProjectManager.addProject` via `AbortController`), and automatically
+cancels any in-flight upload on `beforeunload` / Electron `before-quit` /
+runtime shutdown. Also applied `smooth_loader_flat_logo.gif` to `.skeleton`
+loading states and the initial startup loader in `apps/desktop/index.html`.
+Verified: `@qa/runtime-protocol` 18 PASS, `@qa/desktop` focused suites 30 PASS,
+workspace `typecheck` 37/37 PASS, `lint` 20/20 PASS, `build` 20/20 PASS.
+`shux contract` unavailable; records maintained directly.
+
+## Previous record (preserved)
+
+# OpenCode provider & Application settings polish — implemented and verified
+
+2026-10-23. Created `chore/app-cleanup-and-polish` from `main` (`2cd64d4`).
+Clarified the OpenCode card in Settings / Providers (`Providers.tsx`):
+distinguished `OpenCode API key (Zen & Go)` (`OPENCODE_API_KEY`, used by both
+`opencode-go` monthly subscriptions and `opencode` Zen pay-as-you-go Console
+credits) from `OpenRouter API key (Pay-as-you-go)` (`OPENROUTER_API_KEY`, used
+only when `Provider` is `openrouter` or unset). Removed details under `Model`
+and `Provider` in the OpenCode box and placed the explanations for the two
+OpenCode API key fields inside `<details>` dropdown disclosures labeled
+`Explanation` (matching the `Advanced` disclosures in the other boxes). Removed
+the sidebar logo container border/background (`styles.css`, `sentry-theme.css`)
+and removed the `OBSERVATION SYSTEM` label (`AppShell.tsx`). Made the
+`Application` card in `Settings.tsx` a clickable link to `/settings/application`
+(`ApplicationSettings.tsx`, `App.tsx`) and added full Application preferences
+(`app-preferences.ts`, `i18n.ts`, `locales/en.json`, `locales/bg.json`):
+theme modes (`Forest Dark`, `Midnight Slate`, `Daylight Light`), English &
+Bulgarian UI localization (English default; agent messages untouched), live
+Local CLI Broker toggle (`cli:set-enabled` IPC channel), Workspace Motion &
+Animations toggle, Paid QA Run Confirmation Guard toggle, and expanded
+`Developer mode` documentation. Updated `normalizeOpenCodeProvider` /
+`buildOpenCodeModelId` and runtime readiness/doctor paths so provider-prefixed
+models (`opencode-go/...`, `opencode/...`, `openrouter/...`) also infer the
+provider when `SENTRY_OPENCODE_PROVIDER` is unset, normalized provider case in
+`desktop-service.ts`, and surfaced effective OpenCode model/provider in
+`environmentDoctors()`. Updated `docs/setup/opencode.md`. Verified:
+`@qa/harness-opencode` 116 PASS/8 skip, `@qa/runtime` 72 PASS/1 skip,
+`@qa/desktop` focused & component/router suites PASS, workspace `typecheck` and
+`lint` PASS. `shux contract` unavailable; records maintained directly.
+
+## Previous record (preserved)
+
+# Original green palette restored — implemented and verified
+
+2026-10-23. Owner approved the new UI and requested the former green colors.
+Restored original forest-green/olive tokens and warm text, replacing blue/cyan
+and purple tints throughout the shared stylesheets and graph. Approved layout,
+animations and behavior retained. Workspace build20 PASS (19 cached), desktop
+lint/renderer types PASS, focused16 tests and browser13 routes PASS. Green
+screenshots reviewed; source rebuilt, uncommitted. No backend/data/version changes.
+shux contract unavailable; records maintained directly. Details and prior full
+suite evidence: docs/development/ui-command-center.md.
+
+## Previous record (preserved)
+
+# Command center UI continuation — implemented and locally verified
+
+2026-10-23. Continued the owner's unfinished cyan/violet renderer pass in place
+on main2640efc. Shared presentation completed across all routes; controlled graph
+measurements, node transforms, finite saved positions, per-run viewport, reduced
+motion, edge selection, compact shell and Retest layout corrected. Desktop496
+PASS/3 existing skips, browser13 routes PASS, workspace lint/types/build PASS.
+Changed-file format and hygiene PASS; full format has a pre-existing difference
+in untouched session-progress.md. Packaged native/provider acceptance UNVERIFIED.
+No backend/contracts/schema/dependency/version change, commit, push or release.
+Original unfinished work retained. See docs/development/ui-command-center.md.
+shux contract unavailable; records maintained directly.
+
+## Previous record (preserved)
+
 # v1.0.2 Windows release integration
 
 2026-10-16. Owner requests repository review and v1.0.2 publication if checks pass,
@@ -784,3 +861,16 @@ recorded in PR20; first-head failure is not erased or silently rerun as green.
 Optional housekeeping note: automatic approval review rejected removal of the
 redundant generated64bff9f artifact directory (blocked by policy). It remains;
 no workaround or retry. Tested ZIP, extracted fixture and installer preserved.
+
+## 2026-10-23 — Update guidance (complete)
+
+Owner asked how to uninstall or update Sentry. Checked local installation/source-update docs and the public latest Release, which resolves to v1.0.2. Guidance: preserve WSL and user data; finish active QA, use the Release stopped-backup block, then its verified side-by-side install block and verify version/Environment/history/settings. Packaged sentry update refuses; source main/dev updater is separate. No installation, deletion, application-data or product-code changes performed. shux contract was attempted but shux is unavailable; protocol recorded directly. No execution verification of an upgrade was requested or performed.
+
+## 2026-10-23 — Launch updated UI from PowerShell
+
+Checked desktop package scripts and main/index.ts loadURL/loadFile selection.
+Owner given source-checkout pnpm build followed by desktop dev:electron, with
+SENTRY_DESKTOP_URL and ELECTRON_RUN_AS_NODE removed from that shell. Close an
+existing Sentry instance first because of single-instance behavior. Instructions
+only; no app launch, installation, profile change or provider execution performed.
+shux contract attempted again, unavailable; protocol maintained directly.

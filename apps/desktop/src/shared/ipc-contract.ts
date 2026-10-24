@@ -8,6 +8,7 @@
 export const IPC_CHANNELS = [
   'projects:list',
   'projects:add',
+  'projects:cancel-add',
   'projects:get',
   'projects:revisions',
   'projects:update',
@@ -46,6 +47,7 @@ export const IPC_CHANNELS = [
   'runtime:select-distro',
   'runtime:reclaim-space',
   'cli:status',
+  'cli:set-enabled',
 ] as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[number];
@@ -113,6 +115,7 @@ export interface SentryDesktopApi {
   readonly projects: {
     list(): Promise<unknown[]>;
     add(sourcePath: string): Promise<unknown>;
+    cancelAdd?(): Promise<{ cancelled: boolean; count?: number }>;
     get(projectId: string): Promise<unknown>;
     revisions(projectId: string): Promise<unknown[]>;
     update(projectId: string, sourcePath?: string): Promise<unknown>;
@@ -240,6 +243,12 @@ export interface SentryDesktopApi {
   };
   readonly cli: {
     status(): Promise<{
+      started: boolean;
+      pipePath: string;
+      error?: string;
+      connectedClients: Array<{ id: string; name: string; version?: string; connectedAt: string }>;
+    }>;
+    setEnabled?(enabled: boolean): Promise<{
       started: boolean;
       pipePath: string;
       error?: string;

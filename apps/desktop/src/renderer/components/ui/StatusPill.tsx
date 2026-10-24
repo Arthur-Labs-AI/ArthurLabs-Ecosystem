@@ -1,26 +1,20 @@
 import React from 'react';
+import { StatusIcon, statusVisual } from '../StatusGlyph.js';
 
-export type StatusTone = 'success' | 'info' | 'warning' | 'danger' | 'muted';
+export type StatusTone = 'success' | 'info' | 'thinking' | 'warning' | 'danger' | 'muted';
 
 export function toneForStatus(status: string): StatusTone {
-  const key = status.toLowerCase();
-  if (key.includes('complet') || key === 'ready' || key === 'connected' || key === 'passed')
-    return 'success';
-  if (key.includes('fail') || key.includes('error')) return 'danger';
-  if (key.includes('cancel') || key.includes('interrupt')) return 'muted';
-  if (key.includes('partial') || key.includes('warn') || key === 'degraded') return 'warning';
-  if (key.includes('inconclusive')) return 'warning';
-  return 'info';
+  return statusVisual(status).tone;
 }
 
 export function dotClassForStatus(status: string): string {
-  const key = status.toLowerCase();
-  if (key.includes('complet')) return 'status-dot status-completed';
-  if (key.includes('fail') || key.includes('error')) return 'status-dot status-failed';
-  if (key.includes('cancel') || key.includes('interrupt')) return 'status-dot status-cancelled';
-  if (key.includes('partial') || key.includes('warn') || key.includes('inconclusive'))
-    return 'status-dot status-partial';
-  return 'status-dot status-running';
+  const visual = statusVisual(status);
+  if (visual.tone === 'success') return 'status-dot status-completed';
+  if (visual.tone === 'danger') return 'status-dot status-failed';
+  if (visual.tone === 'warning') return 'status-dot status-partial';
+  if (visual.tone === 'thinking') return 'status-dot status-thinking';
+  if (visual.spin === true) return 'status-dot status-running';
+  return 'status-dot status-cancelled';
 }
 
 export function StatusPill({
@@ -35,10 +29,7 @@ export function StatusPill({
   const tone = toneForStatus(status);
   return (
     <span className={'status-pill tone-' + tone} title={status}>
-      <span
-        className={dotClassForStatus(status) + (pulse === true ? ' pulse' : '')}
-        aria-hidden="true"
-      />
+      <StatusIcon status={status} className={pulse === true && tone === 'info' ? 'breathe' : ''} />
       {label ?? status}
     </span>
   );

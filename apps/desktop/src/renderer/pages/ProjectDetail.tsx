@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Check, FlaskConical } from 'lucide-react';
+import { ArrowRight, Check, FlaskConical, X } from 'lucide-react';
 import { CopyId } from '../components/CopyId.js';
 import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
 import { StatusPill, dotClassForStatus } from '../components/ui/StatusPill.js';
 import { SegmentedControl } from '../components/ui/Tabs.js';
 import { sentryApi } from '../lib/sentry-api.js';
 import { RemoveProjectButton } from '../components/RemoveProjectButton.js';
+import { isConfirmPaidRunsEnabled } from '../lib/app-preferences.js';
 
 const AGENT_ORDER = ['stack_opencode_main', 'stack_deepseek_main', 'stack_glm_main'];
 
@@ -336,7 +337,14 @@ export function ProjectDetail(): React.JSX.Element {
           <div style={{ marginTop: 12 }}>
             <button
               className="primary"
-              onClick={() => setConfirmStart(mode)}
+              onClick={() => {
+                if (!isConfirmPaidRunsEnabled()) {
+                  if (mode === 'full') startFull.mutate();
+                  else startTargeted.mutate();
+                  return;
+                }
+                setConfirmStart(mode);
+              }}
               disabled={startPending || effectiveStacks.length === 0 || gate?.ready !== true}
             >
               <FlaskConical size={15} /> {mode === 'full' ? 'Start Full QA' : 'Start Targeted QA'}
@@ -510,7 +518,7 @@ function TargetPathInput({
                 {chip}
               </span>
               <button onClick={() => removeChip(chip)} aria-label={'Remove ' + chip}>
-                ×
+                <X size={12} aria-hidden="true" />
               </button>
             </span>
           ))}

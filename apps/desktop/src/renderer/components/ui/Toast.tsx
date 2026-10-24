@@ -1,4 +1,5 @@
 import React from 'react';
+import { CheckCircle2, Info, X, XCircle } from 'lucide-react';
 
 export interface ToastItem {
   readonly id: number;
@@ -6,6 +7,26 @@ export interface ToastItem {
   readonly title: string;
   readonly body?: string;
   readonly action?: React.ReactNode;
+}
+
+function ToneIcon({ tone }: { tone: ToastItem['tone'] }): React.JSX.Element {
+  if (tone === 'success')
+    return (
+      <span className="status-icon tone-success" aria-hidden="true">
+        <CheckCircle2 size={16} aria-hidden />
+      </span>
+    );
+  if (tone === 'danger')
+    return (
+      <span className="status-icon tone-danger" aria-hidden="true">
+        <XCircle size={16} aria-hidden />
+      </span>
+    );
+  return (
+    <span className="status-icon tone-info" aria-hidden="true">
+      <Info size={16} aria-hidden />
+    </span>
+  );
 }
 
 export function ToastStack({
@@ -20,9 +41,7 @@ export function ToastStack({
     <div className="toast-stack" aria-live="polite">
       {toasts.map((toast) => (
         <div key={toast.id} className={'toast tone-' + toast.tone} role="status">
-          <span aria-hidden="true">
-            {toast.tone === 'success' ? '\u2713' : toast.tone === 'danger' ? '\u00D7' : '\u2139'}
-          </span>
+          <ToneIcon tone={toast.tone} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <strong>{toast.title}</strong>
             {toast.body !== undefined ? (
@@ -35,7 +54,7 @@ export function ToastStack({
             onClick={() => onDismiss(toast.id)}
             aria-label="Dismiss notification"
           >
-            \u00D7
+            <X size={14} />
           </button>
         </div>
       ))}

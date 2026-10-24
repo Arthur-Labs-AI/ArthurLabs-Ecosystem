@@ -233,6 +233,11 @@ async function boot(): Promise<void> {
     onRetestCreated: (retestRunId, operationId) =>
       updates.notifyRetestCreated(retestRunId, operationId),
     cliStatus: () => broker.status,
+    cliSetEnabled: async (enabled: boolean) => {
+      if (enabled) return broker.start();
+      await broker.stop();
+      return broker.status;
+    },
     requestSavePath: async ({ suggestedFilename, filters }) => {
       const win = mainWindow;
       if (win === undefined) return null;
@@ -299,6 +304,7 @@ app.on('before-quit', (event) => {
   void (async () => {
     try {
       await bootPromise;
+      await bootstrapped?.service.cancelAddProject?.().catch(() => undefined);
       // Refusal must leave the window and broker usable for cancellation.
       await bootstrapped?.close();
       liveUpdates?.stop();
