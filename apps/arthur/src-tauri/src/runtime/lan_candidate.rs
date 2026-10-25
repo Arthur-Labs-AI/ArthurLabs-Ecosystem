@@ -299,6 +299,58 @@ impl Coordinator {
                 .map_err(|_| E::N7PolicyPending)
         })
     }
+    /// Reacquire native route facts after connect; endpoint addresses alone
+    /// never authorize a route. No permit is created or budget refunded here.
+    pub(crate) fn verify_connected(
+        &self,
+        selection: &Selection,
+        endpoints: &crate::sync::security::connected_endpoint::ConnectedEndpoints,
+        cancel: &Arc<Interrupt>,
+    ) -> Result<()> {
+        let check = || -> Result<()> {
+            let s = self.state.lock().map_err(|_| E::State)?;
+            if s.closed || cancel.cancelled() || selection.fence.as_ref().is_none_or(|f| !f.valid())
+            {
+                return Err(E::Cancelled);
+            }
+            if !Arc::ptr_eq(&selection.owner, &self.owner)
+                || s.revision != selection.revision
+                || s.current.is_none()
+            {
+                return Err(E::Trust);
+            }
+            if !selection.native
+                || !selection
+                    .fence
+                    .as_ref()
+                    .is_some_and(|f| s.signal.as_ref().is_some_and(|x| f.same_registration(x)))
+            {
+                return Err(E::PlatformUnverified);
+            }
+            Ok(())
+        };
+        check()?;
+        let endpoint = match selection.hint.address {
+            Address::Numeric(a) => a,
+            _ => return Err(E::N7PolicyPending),
+        };
+        let started = Instant::now();
+        let captured = self.clock.elapsed().as_secs();
+        let mut current = route_observer::acquire_native(endpoint)
+            .map_err(|_| E::N7PolicyPending)?
+            .into_facts();
+        if started.elapsed() > std::time::Duration::from_secs(3) {
+            return Err(E::Expired);
+        }
+        current.generation = selection.revision;
+        current.captured = captured;
+        let result =
+            selection
+                .candidate
+                .connected(&current, endpoints, self.clock.elapsed().as_secs());
+        check()?;
+        result // Present evidence has no native interface binding: remains Pending.
+    }
     fn admit_fresh(
         &self,
         selection: &Selection,
@@ -698,8 +750,64 @@ mod qualification {
             n7c_fresh_exact_read_failure_and_fact_changes_clear_old_selection();
             n7c_refresh_races_cancellation_replacement_shutdown_and_event();
             n7c_events_cancel_permits_before_dispatch_and_stale_registration_cannot_restore();
+            n7d_actual_pending_socket_observes_owner_generation_event_and_shutdown();
         })
         .map_err(|_| E::State)
+    }
+    #[cfg_attr(test, test)]
+    fn n7d_actual_pending_socket_observes_owner_generation_event_and_shutdown() {
+        use crate::sync::security::native_io_lab::{self as lab, Fault, NativeTimer};
+        use tokio::io::AsyncReadExt;
+        lab::execute(async {
+            for mode in 0..3 {
+                let c = coordinator();
+                let (signal, _) = Signal::channel();
+                c.state.lock().unwrap().signal = Some(signal.clone());
+                let selection = select(&c);
+                let permit = c
+                    .admit_fixture(&selection, expected(), &Arc::default())
+                    .unwrap();
+                let (mut raw, mut peer, _) = lab::pair(permit, NativeTimer::from_origin(c.clock))
+                    .await
+                    .unwrap();
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                let mut tx = Some(tx);
+                let mut byte = [0];
+                let read = std::future::poll_fn(|cx| {
+                    let result = raw.poll_read(cx, &mut byte);
+                    if result.is_pending() {
+                        if let Some(tx) = tx.take() {
+                            let _ = tx.send(());
+                        }
+                    }
+                    result
+                });
+                let (result, ()) = lab::both(read, async {
+                    rx.await.unwrap();
+                    match mode {
+                        0 => {
+                            let _ = c.begin(hint()).unwrap();
+                        }
+                        1 => {
+                            signal.notify(crate::sync::security::network_watch::PROFILE);
+                            c.core.invalidate(None, Some(&signal)).unwrap();
+                        }
+                        _ => {
+                            signal.notify(crate::sync::security::network_watch::ROUTE);
+                            c.shutdown().unwrap();
+                            c.core.invalidate(None, Some(&signal)).unwrap();
+                        }
+                    }
+                })
+                .await;
+                assert_eq!(result, Err(Fault::Cancelled));
+                assert_eq!(peer.read(&mut [0; 1]).await.unwrap(), 0);
+                assert!(c
+                    .admit_fixture(&selection, expected(), &Arc::default())
+                    .is_err());
+                c.shutdown().unwrap();
+            }
+        });
     }
     #[cfg(windows)]
     #[test]

@@ -110,10 +110,10 @@ fn n7a_route_selection_changes_and_platform_gate() {
     let mut changed = original.clone();
     changed.generation = 2;
     assert!(candidate
-        .connected(&changed, changed.local, changed.endpoint, 10)
+        .connected_fixture(&changed, changed.local, changed.endpoint, 10)
         .is_err());
     assert!(candidate
-        .connected(
+        .connected_fixture(
             &original,
             "192.168.1.9".parse().unwrap(),
             original.endpoint,

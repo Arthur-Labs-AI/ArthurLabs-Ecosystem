@@ -232,6 +232,17 @@ impl Candidate {
     pub fn connected(
         &self,
         current: &Observation,
+        endpoints: &super::connected_endpoint::ConnectedEndpoints,
+        now: u64,
+    ) -> Result<()> {
+        self.revalidate(current, now)?;
+        endpoints.matches(current.endpoint, current.local)?;
+        endpoints.require_native_lan()
+    }
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub fn connected_fixture(
+        &self,
+        current: &Observation,
         local: IpAddr,
         remote: SocketAddr,
         now: u64,

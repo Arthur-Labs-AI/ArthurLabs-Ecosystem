@@ -23,6 +23,9 @@ pub(crate) mod transport;
 pub(crate) mod route_candidate;
 pub(crate) mod route_observer;
 pub(crate) mod network_watch;
+pub(crate) mod connected_endpoint;
+#[cfg(any(test, all(target_os="android", feature="android-identity-tests")))]
+pub(crate) mod native_io_lab;
 pub(crate) mod transport_candidate;
 #[cfg(any(test, all(target_os="android",feature="android-identity-tests")))]
 pub(crate) mod n7a_tests;

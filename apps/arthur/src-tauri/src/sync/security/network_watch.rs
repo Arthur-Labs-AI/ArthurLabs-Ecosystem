@@ -21,6 +21,16 @@ pub(crate) struct Signal {
     kinds: AtomicU32,
     failure: AtomicU32,
     wake: SyncSender<()>,
+    #[cfg(test)]
+    dropped: std::sync::Mutex<Option<SyncSender<()>>>,
+}
+#[cfg(test)]
+impl Drop for Signal {
+    fn drop(&mut self) {
+        if let Some(tx) = self.dropped.get_mut().unwrap().take() {
+            let _ = tx.send(());
+        }
+    }
 }
 #[derive(Clone)]
 pub(crate) struct Fence {
@@ -44,6 +54,8 @@ impl Signal {
                 kinds: AtomicU32::new(0),
                 failure: AtomicU32::new(0),
                 wake: tx,
+                #[cfg(test)]
+                dropped: std::sync::Mutex::new(None),
             }),
             rx,
         )
@@ -237,6 +249,45 @@ impl Unsupported {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn n7d_actual_monitor_overflow_and_reentrant_shutdown_release_context() {
+        use std::sync::Mutex;
+        use std::time::Duration;
+        for overflow in [false, true] {
+            let (s, rx) = Signal::channel();
+            let (done, completed) = sync_channel(1);
+            *s.dropped.lock().unwrap() = Some(done);
+            let slot = Arc::new(Mutex::new(None::<Monitor>));
+            let weak = Arc::downgrade(&slot);
+            let (stopped, stop_event) = sync_channel(1);
+            let m = Monitor::start(s.clone(), rx, move |signal| {
+                if signal.snapshot().is_none() || signal.kinds() & PROFILE != 0 {
+                    if let Some(slot) = weak.upgrade() {
+                        let monitor = slot.lock().unwrap().take();
+                        if let Some(mut monitor) = monitor {
+                            monitor.stop().unwrap(); // dispatch worker must not self-join
+                            drop(monitor);
+                            let _ = stopped.send(());
+                        }
+                    }
+                }
+            })
+            .unwrap();
+            *slot.lock().unwrap() = Some(m);
+            if overflow {
+                s.stamp.store(u64::MAX, Ordering::Release);
+            }
+            s.notify(PROFILE); // controlled signal, never mutates host network
+            stop_event.recv_timeout(Duration::from_secs(10)).unwrap();
+            assert!(s.snapshot().is_none());
+            assert!(!s.notify(ROUTE));
+            drop(s);
+            // Signal can drop only after the worker and all native callback
+            // contexts/COM sink release it. No timing sleep or weak polling.
+            completed.recv_timeout(Duration::from_secs(10)).unwrap();
+        }
+    }
     #[test]
     fn n7c_bounded_duplicate_reordered_epochs_and_terminal_overflow() {
         let (s, rx) = Signal::channel();

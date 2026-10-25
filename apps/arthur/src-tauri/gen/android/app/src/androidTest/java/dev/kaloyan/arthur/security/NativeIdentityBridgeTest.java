@@ -50,6 +50,8 @@ public final class NativeIdentityBridgeTest {
         assertTrue(runScenario(32));
     }
     @Test public void n7c_actual_callback_missing_permission_through_jni() { assertTrue(runScenario(33)); }
+    @Test public void n7d_actual_loopback_io_endpoints_and_cleanup() { assertTrue(runScenario(35)); }
+    @Test public void n7d_actual_monotonic_deadlines() { assertTrue(runScenario(36)); }
     @Test public void eb19_no_java_to_native_signing_entrypoint() {
         int nativeMethods=0;
         for(java.lang.reflect.Method method: NativeIdentityBridge.class.getDeclaredMethods()) {

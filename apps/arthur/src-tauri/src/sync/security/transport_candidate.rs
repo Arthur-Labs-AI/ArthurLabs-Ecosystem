@@ -31,7 +31,7 @@ impl Interrupt {
             w.wake();
         }
     }
-    fn register(&self, cx: &Context<'_>) -> Result<()> {
+    pub(super) fn register(&self, cx: &Context<'_>) -> Result<()> {
         let next = cx.waker().clone();
         let mut wake = self.wake.lock().map_err(|_| E::State)?;
         if self.flag.cancelled() {
@@ -164,10 +164,18 @@ impl Pool {
     }
 }
 impl Permit {
-    fn cancelled(&self) -> bool {
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(super) fn clear_registration(&self) {
+        let retired = self.stop.wake.lock().ok().and_then(|mut w| w.take());
+        drop(retired);
+    }
+    pub(super) fn started(&self) -> u64 {
+        self.started
+    }
+    pub(super) fn cancelled(&self) -> bool {
         self.stop.cancelled() || self.fence.as_ref().is_some_and(|f| !f.valid())
     }
-    fn register(&self, cx: &Context<'_>) -> Result<()> {
+    pub(super) fn register(&self, cx: &Context<'_>) -> Result<()> {
         self.stop.register(cx)?;
         if self.cancelled() {
             Err(E::Cancelled)
@@ -228,7 +236,7 @@ pub(crate) trait EncryptedIo {
     fn abort(&mut self);
 }
 /// Timer must register a wake at deadline. Fake timer tests explicitly fire it;
-/// a future native executor adapter must supply actual monotonic wakeups.
+/// the isolated native lab supplies real monotonic wakeups.
 pub(crate) trait Timer {
     fn poll_until(
         &self,
@@ -238,7 +246,7 @@ pub(crate) trait Timer {
 }
 /// Dropping a registration MUST unregister its wake without calling it under
 /// an executor lock. Each stream owns at most one registration, removed on
-/// completion, failure, transition and Drop. No native timer implementation yet.
+/// completion, failure, transition and Drop. The native lab owns reactor Sleep.
 pub(crate) trait TimerRegistration {}
 /// Budget/lifecycle model only: finish is NOT TLS authentication. No TLS
 /// constructor consumes this type and no production transport accepts Framed.

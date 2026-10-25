@@ -472,6 +472,8 @@ fn scenario(case: jint) -> Result<()> {
         }
         33 => crate::sync::security::network_watch::qualify_android(false),
         34 => crate::sync::security::network_watch::qualify_android(true),
+        35 => crate::sync::security::native_io_lab::qualify_fast(),
+        36 => crate::sync::security::native_io_lab::qualify_deadlines(),
         _ => Err(E::Invalid),
     }
 }

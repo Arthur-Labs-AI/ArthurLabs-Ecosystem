@@ -117,6 +117,8 @@ struct Shared {
     player: Arc<dyn AudioPlayer>,
     dir: PathBuf,
     state: Mutex<State>,
+    #[cfg(test)]
+    finish_probe: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
 
 #[derive(Clone)]
@@ -177,7 +179,7 @@ impl SpeechService {
     /// Removes any audio a previous run left behind (a crash mid-playback), then starts empty.
     pub fn new(synth: Arc<dyn Synthesizer>, player: Arc<dyn AudioPlayer>, dir: PathBuf) -> Self {
         let _ = fs::remove_dir_all(&dir);
-        Self(Arc::new(Shared { synth, player, dir, state: Mutex::new(State { generation: 0, player_held: false, status: SpeechStatus::idle() }) }))
+        Self(Arc::new(Shared { synth, player, dir, state: Mutex::new(State { generation: 0, player_held: false, status: SpeechStatus::idle() }), #[cfg(test)] finish_probe: Mutex::new(None) }))
     }
 
     pub fn status(&self) -> SpeechStatus {
@@ -202,6 +204,11 @@ impl SpeechService {
             status.outcome = Some(outcome);
             status.failure = failure;
         });
+        #[cfg(test)]
+        {
+            let probe = self.0.finish_probe.lock().unwrap().take();
+            if let Some(probe) = probe { probe(); }
+        }
     }
 
     /// Starts speaking `text`. Returns as soon as the session is set up; progress and failures are read from `status`.
@@ -317,18 +324,20 @@ impl SpeechService {
                     });
                 }
                 Err(PlaybackError::Cancelled) => return abort(pending),
-                Err(PlaybackError::Unavailable) => return self.abandon(generation, pending, SpeechFailure::Unavailable),
-                Err(PlaybackError::Failed) => return self.abandon(generation, pending, SpeechFailure::PlaybackFailed),
+                Err(PlaybackError::Unavailable) => { drop(file); drop(_hold); return self.abandon(generation, pending, SpeechFailure::Unavailable); }
+                Err(PlaybackError::Failed) => { drop(file); drop(_hold); return self.abandon(generation, pending, SpeechFailure::PlaybackFailed); }
             }
 
             match self.0.player.wait().await {
                 Ok(()) => {}
                 Err(PlaybackError::Cancelled) => {
                     abort(pending);
+                    drop(file);
+                    drop(_hold);
                     // A stop from the user already recorded itself; the system taking audio focus did not.
                     return self.finish(generation, SpeechOutcome::Stopped, None);
                 }
-                Err(_) => return self.abandon(generation, pending, SpeechFailure::PlaybackFailed),
+                Err(_) => { drop(file); drop(_hold); return self.abandon(generation, pending, SpeechFailure::PlaybackFailed); }
             }
             let removing = Instant::now();
             file.remove();
@@ -665,6 +674,24 @@ mod tests {
         let status = until_idle(&service);
         assert_eq!((status.outcome, status.failure), (Some(SpeechOutcome::Stopped), None));
         assert_eq!(files(&dir.path().join("tts")), 0);
+    }
+
+    #[test]
+    fn n7d_terminal_status_is_published_after_audio_cleanup() {
+        for failure in [None, Some(PlaybackError::Unavailable), Some(PlaybackError::Failed)] {
+            let player = FakePlayer::new(true, failure);
+            let (service, dir) = fixture(FakeSynth::new(vec![]), player.clone());
+            let path = dir.path().join("tts");
+            let (tx, rx) = std::sync::mpsc::sync_channel(1);
+            *service.0.finish_probe.lock().unwrap() = Some(Box::new(move || { let _ = tx.send(files(&path)); }));
+            speak(&service, "Synthetic ordering regression.");
+            if failure.is_none() {
+                until_playing(&service);
+                player.stopped.store(true, Ordering::SeqCst);
+            }
+            assert_eq!(rx.recv_timeout(Duration::from_secs(5)).unwrap(), 0,
+                "terminal status was visible before the current audio file was removed");
+        }
     }
 
     #[test]

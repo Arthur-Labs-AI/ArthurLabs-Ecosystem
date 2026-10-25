@@ -1630,3 +1630,216 @@ permission revocation and Activity-destruction-during-callback scenarios remain
 NOT TESTED. Physical devices, ARM64, API37 permission behavior, live LAN sessions,
 real encrypted I/O/timer adapters, successful release packaging and hosted CI
 remain UNVERIFIED. No activation gate is self-approved.
+
+## 24. MEGA N7D — Native I/O and Connected-Endpoint Qualification
+
+Scope: accepted N7C `d8ecd0f3cbe820b5e022c4d973eeb49775628a68`, existing
+`feature/nodes-integration`, local Windows verification on 2026-10-25.
+Contract, architecture answers, failure semantics and lifecycle review:
+[m05-n7d-native-io.md](m05-n7d-native-io.md).
+
+Implemented: explicit compile-time-isolated IPv4 loopback socket laboratory,
+real Tauri/Tokio reactor I/O and monotonic Sleep-backed Timer/TimerRegistration,
+4096-byte poll bounds, 64 KiB synthetic NLAB frames, actual endpoint inspection,
+revocable socket-owner evidence and a fail-closed connected-route coordinator
+check. No raw socket implements EncryptedIo. No production constructor can
+create ConnectedEndpoints. Loopback/interface-unverified evidence never passes
+native LAN attestation. No positive connected LAN result is claimed.
+
+TTS RED→GREEN: `n7d_terminal_status_is_published_after_audio_cleanup` reproduced
+one remaining file at exact terminal publication (0 PASS/1 FAIL, 0.04s).
+The fix releases the current TempAudio and PlayerHold before natural terminal
+publication for focus loss and playback failure. The unchanged assertion passes
+for focus loss and both playback-start errors. The initial N7D package passed
+7/7 including actual 10/15/60-second deadlines; the expanded focused package
+passed 40/40. The full-suite evidence below is authoritative for final source.
+N7B's earlier EvolutionScreen observation and N7C's transient TTS observation
+remain in their original sections; the new deterministic TTS reproduction is
+not discarded as a flake.
+
+The new Windows monitor cases use actual OS registrations plus controlled epoch
+overflow/reentrant shutdown. They wait for destruction of the last Signal
+reference after all worker/native callback/COM sink ownership is released.
+The owner-generation/profile-event/shutdown socket cases use actual loopback
+I/O with synthetic route facts/events: they are not real host route transitions.
+The new socket limits tests share one existing Pool and verify two handshakes,
+one session and no refund after failure/abort. Waker replacement reenters
+cancellation; actual Windows SOCKET validity and Android fd validity are checked
+immediately after Drop, in addition to peer EOF and zero owned registrations.
+
+Final executed gate results and retained limitations follow.
+
+| Native gate (Windows x86_64) | N7C accepted | N7D executed result |
+| --- | --- | --- |
+| Full `cargo test --locked --offline --lib -- --test-threads=1` | 1386 PASS /5 FAIL /25 ignored | **1397 PASS /same 5 FAIL /25 ignored**, 708.88s |
+| Focused `--lib n7 -- --test-threads=1` | 29 PASS | **40 PASS**; final full-suite n7 subset also **40 PASS** |
+| `sync::security::` subset | 63 PASS /1 ignored | **72 PASS /1 ignored** |
+| Name-matched `sync` subset | 149 PASS /1 ignored | **158 PASS /1 ignored** |
+| `storage::journal::` subset | 287 PASS /1 ignored | **287 PASS /1 ignored** |
+| `storage::m05_v10_tests::` subset | 24 PASS | **24 PASS** |
+| TTS service file | Prior transient focus-loss failure | **15 PASS**, including the deterministic new regression |
+
+These are overlapping subsets extracted from the completed full run, not extra
+independent executions. Focused run log: `%TEMP%/arthur-n7d-final-focused.log`
+(90.46s); full run: `%TEMP%/arthur-n7d-native.log`. This initial full run preceded the later Android lab stack fix; it included epoch-relative deadline assertions, explicit loopback client binding and WriteZero closure. No new test-development/implementation failures
+occurred in these completed native runs apart from the intentional TTS RED.
+
+The same five historical failures remain:
+
+- `jev::tests::the_real_transport_posts_json_with_a_bearer_header_and_never_leaks_the_key_in_errors`: Timeout versus expected Network.
+- `synthesis::architecture_tests::a_same_family_pass_is_wired_to_hold_for_review_and_the_shipped_verifier_is_not_called_independent`.
+- `synthesis::architecture_tests::the_real_synthesis_endpoint_is_only_reachable_through_the_production_constructor`.
+- `synthesis::eval::tests::the_corpus_is_frozen`: unchanged historical frozen-corpus hash mismatch.
+- `synthesis::tests::the_commit_time_permission_check_includes_the_synthesis_authorizations`.
+
+These failures are retained from the user-accepted N7C baseline, not fixed or
+self-approved as release readiness. Self-review found no additional blocker in
+the changed authorization/data-loss boundaries. The **important** TTS ordering
+defect is reproduced and fixed; this is same-agent review, not an independent
+N1 audit. No raw socket, frame or endpoint evidence grants trust.
+
+| Host build / frontend gate | N7D result |
+| --- | --- |
+| `cargo check --locked --offline --all-targets` | **PASS**, final 19.20s; `arthur-n7d-final-check.log` |
+| `cargo build --locked --offline --bin arthur` | **PASS**, actual default Windows x86_64 binary, 1m34s; `arthur-n7d-windows-build.log` |
+| Root `npm run typecheck` | **PASS**; `arthur-n7d-typecheck.log` |
+| `npm run test:architecture` | **86 PASS /same2 historical FAIL**; `arthur-n7d-architecture.log` |
+| `npm run arthur:check` | **561 PASS /42 files**, frontend typecheck and Vite build PASS; `arthur-n7d-frontend.log` |
+
+The architecture failures remain schema-v6 project ownership and M04.6 voice
+output DTO source assertions. No frontend test failed in this run; the earlier
+N7B EvolutionScreen transient is retained as historical evidence, not silently
+removed. Existing Vite chunk-size warnings remain warnings. Default Windows
+binary compilation is not release installer/signing/packaging evidence.
+
+N7D Android development failure: the first feature APK built, but the first
+instrumentation run recorded **35 PASS /1 crashed case /6 not completed**
+(XML 36 cases, failures 1, skipped 0; requested 42). The failing new aggregate case
+was `n7d_actual_loopback_io_endpoints_and_cleanup`. debuggerd reports a stack
+overflow, with the top native frame in Tokio block_on of the backpressure
+future. Its inline 64 KiB array was copied through debug runtime wrappers on the
+JNI thread. This is a new lab defect, not a historical baseline failure.
+The bounded buffer is now a 64 KiB heap Vec; the future is heap-pinned before
+runtime wrappers, and a permanent 32 KiB future-size guard prevents regression.
+Host post-fix focused verification: **40 PASS**, 92.76s,
+`arthur-n7d-stack-focused.log`. The complete Android rerun is reported below.
+The failed `arthur-n7d-android.log`, `arthur-n7d-android-red.xml` and
+`arthur-n7d-android-crash-logcat.log` remain retained. No skip, timeout increase,
+thread-stack change, expectation relaxation or production gate change hides it.
+
+| Android executed gate | Result after stack fix |
+| --- | --- |
+| Dedicated feature Rust/Java/Kotlin/Gradle/debug APK | **PASS**; `verify-identity.ps1 -Serial emulator-5554` |
+| Fresh instrumentation XML,2026-10-25 06:21:06 UTC | **42 PASS /0 FAIL /0 errors /0 skipped** (36 Bridge, 4 DeviceSigning, 2 TLS cases), versus N7C40 |
+| `n7d_actual_loopback_io_endpoints_and_cleanup` | **PASS**,0.137s; actual raw I/O, endpoints, handles, shared limits, wakers and timers |
+| `n7d_actual_monotonic_deadlines` | **PASS**,85.063s; actual 10/15/60-second monotonic expiration |
+| Actual process force-stop/reopen | **2 PASS**, two separate `OK (1 test)` results |
+| Dedicated APK cold launch | **PASS**, `Status: ok`, `LaunchState: COLD` |
+| Fresh public-only TLS/device fixtures | **2 PASS**, explicitly repeated before export |
+| Feature native-library symbol control | **PASS**: native_io_lab symbols exist in the actual feature-built library |
+
+Environment: task-owned read-only/no-window emulator, Android 16/API 36/x86_64,
+`google/sdk_gphone64_x86_64/emu64xa:16/BE4B.251210.005/14574095:user/release-keys`.
+The normal dedicated package has no ACCESS_NETWORK_STATE permission; raw
+loopback I/O requires no new permission. Existing native signing/TLS/PAKE cases
+also reran in the 42-case package. The owner socket/fence cases additionally run
+through the existing scenario 31 qualification. No physical-device, ARM64,
+API37-runtime or cross-device LAN result is inferred.
+Logs/XML: `%TEMP%/arthur-n7d-android-green.log`, `arthur-n7d-android-green.xml`,
+`arthur-n7d-apk-smoke.log`, `arthur-n7d-public-fixtures.log`,
+`arthur-n7d-feature-symbols.log`. The earlier crash remains a failed development
+run; the fresh complete rerun is the GREEN evidence for its narrow fix.
+
+Standalone Android network qualification: **2 PASS** after recovery from a full
+host disk. The first streamed install was rejected with a v2 content-digest
+error; local apksigner verification passed. A subsequent adb push lost its
+connection. Inspection found **0 free bytes on host C:**; the emulator later
+lost normal ADB authorization. These are retained setup/transport failures,
+not accepted runtime PASS and not suppressed signature verification.
+
+After the user freed space, only the task-owned read-only emulator was
+restarted. Both dedicated standalone APKs were verified by apksigner, copied
+to disposable /data/local/tmp paths, compared by host/device SHA-256, and
+installed through standard PackageManager. Both installs succeeded and the
+actual two-case native acquisition/callback package returned `OK (2 tests)`.
+The temporary APK copies were removed by exact path. No signature check,
+permission boundary, host network adapter or firewall setting was disabled.
+The standalone debug project remained outside default Tauri settings and its
+release variant remained disabled. Its ACCESS_NETWORK_STATE permission is
+isolated from the production manifest. The task emulator was then stopped.
+Evidence: `arthur-n7d-android-network.log` (initial install refusal),
+`arthur-n7d-network-apksigner-red.log` (host verifier PASS),
+`arthur-n7d-android-network-checked.log` (failed push), and
+`arthur-n7d-android-network-green.log` (matching hashes, normal installs,2 PASS).
+The disk exhaustion/ADB interruption and Android stack overflow are distinct
+failures with distinct recovery/fix evidence.
+
+| Final isolation / interoperability gate | Result |
+| --- | --- |
+| Forbidden Android test-feature release compilation | **Expected refusal**, CLI 1/Cargo 101; **3 explicit guards + 8 existing secondary errors = 11**, not successful release packaging |
+| Supported default `tauri android build --debug --target x86_64 --apk --ci` | **PASS**, actual final-source default Rust/Java/Kotlin/Gradle/debug APK |
+| APK application id /permissions | **PASS**, dev.kaloyan.arthur; only INTERNET, RECORD_AUDIO and app-scoped DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION; no ACCESS_NETWORK_STATE |
+| `processX86_64ReleaseMainManifest` excluding Rust build | **PASS manifest-only**, production package, no ACCESS_NETWORK_STATE; not release packaging |
+| NDK nm on default target library **and actual APK-extracted library** | **PASS**, exactly NativeIdentityBridge_install and NativeIdentityBridge_networkChanged; no signing/test JNI exports and no native_io_lab symbols |
+| PAKE dependency graph controls | **4 PASS**: default Windows/Android exclude opaque-ke/argon2/crypto-bigint; Windows dev and Android qualification positive controls include them |
+| Fresh Android-public-fixture Windows native tests (`actual_android --ignored`) | **2 PASS**,0.03s; actual CNG verifies Keystore device/TLS signatures |
+| Fresh host JCA (`javac --release 8` plus three public fixtures) | **91 PASS**, host-only evidence |
+
+Default Gradle configuration is restored through the supported default Tauri
+build. No permission file was edited. Evidence: `%TEMP%/arthur-n7d-forbidden-release.log`,
+`arthur-n7d-default-android.log`, `arthur-n7d-release-manifest.log`,
+`arthur-n7d-default-permissions.log`, `arthur-n7d-default-jni.log`,
+`arthur-n7d-isolation.log`, `arthur-n7d-final-isolation/`,
+`arthur-n7d-interop.log`, `arthur-n7d-javac.log`, `arthur-n7d-jca.log`.
+Cargo.lock has no change and no dependency version upgrade is part of N7D.
+
+### Final delivery verification after the Android stack fix
+
+The authoritative final full native rerun is
+`%TEMP%/arthur-n7d-final-native.log`: **1397 PASS /the same 5 historical FAIL
+/25 ignored**, 809.87 s, Cargo101. Its failure-name set was compared directly
+with the accepted N7C delivery log and matches exactly. Final overlapping
+subsets are **N7 40 PASS; Security 72 PASS/1 ignored; Sync 158 PASS/1 ignored;
+Journal 287 PASS/1 ignored; dormant v10 24 PASS; TTS service 15 PASS**.
+Both completed full runs are retained; the earlier 708.88 s run preceded the
+Android stack correction and is not substituted for this final-source rerun.
+
+Final `cargo check --locked --offline --all-targets` **PASS**, 19.85 s, and
+`cargo build --locked --offline --bin arthur` **PASS**, 2.65 s; evidence:
+`arthur-n7d-delivery-check.log` and `arthur-n7d-delivery-windows-build.log`.
+Scoped rustfmt with skip_children=true **PASS** on seven changed Rust
+implementation/harness files; `arthur-n7d-format.log`. Historically compact
+module/fixture/TTS files are not claimed globally formatted. Diff whitespace
+check **PASS**. Default generated Gradle, shipped manifest and Cargo.lock
+have no diff. The 14-file change inventory is in the N7D contract;
+no migration, journal, codec, reducer, snapshot-v2 or D4 source change is part
+of this delivery. No raw logs, binaries, public-fixture exports or private keys
+are committed. No task-owned emulator remains.
+
+**Delivery status: MEGA N7D — PARTIAL.** The executed Windows/Android
+nonblocking raw-I/O, timer, endpoint-address, cancellation, resource and
+owner-invalidation foundation is qualified within loopback/test scope.
+Two concrete defects have RED→GREEN evidence: TTS terminal cleanup ordering
+and the Android lab's inline-future stack overflow. No newly failing native,
+architecture or frontend test is left beyond the accepted historical five
+native/two architecture failures. The disk-full install/ADB failures remain
+recorded separately from the code defects and successful recovery.
+
+Remaining **UNVERIFIED /unapproved**: connected socket interface/network
+attestation; actual host profile/route/VPN changes; native unregister/JNI
+partial-allocation failure injection and quarantine failure paths; Android
+permission revocation/Activity-destruction races; physical devices, ARM64 and
+API37 runtime; real TLS-over-socket and authenticated encrypted Sync; successful
+release packaging/signing; hosted CI. Runtime-owner shutdown during actual
+pending I/O was tested; destruction of the global Tokio executor during live
+I/O was not injected. Interoperability uses public fixtures, not a physical
+Windows-to-Android LAN session.
+
+M05 remains dormant; schema v9, ClosedTrust, ClosedLan, PAKE/TLS/LAN CLOSED,
+no live enrollment/production VerifiedSession/Sync ingress/listener/dialer,
+no automatic network startup/frontend network or signing API/second SQLite
+owner, and G4 UnverifiedBounds remain unchanged. N1_AUDIT_PENDING and
+N7PolicyPending remain unresolved; N1/N2/N3/N7 and G4–G7 remain unapproved.
+No E3B work, production v10 activation, main merge or activation approval is
+included. The results are local evidence, not a release-readiness declaration
+or an independent N1 security audit.

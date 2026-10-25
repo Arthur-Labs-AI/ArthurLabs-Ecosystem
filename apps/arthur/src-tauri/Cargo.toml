@@ -46,9 +46,10 @@ argon2 = { version = "=0.5.3", features = ["zeroize"], optional = true }
 
 [features]
 # Explicit debug instrumentation harness; rejected in release builds.
-android-identity-tests = ["dep:opaque-ke", "dep:rand", "dep:argon2"]
+android-identity-tests = ["dep:opaque-ke", "dep:rand", "dep:argon2", "tokio/net", "tokio/io-util", "tokio/rt"]
 
 [dev-dependencies]
+tokio = { version = "1", features = ["net", "io-util", "rt"] }
 tempfile = "3.27.0"
 opaque-ke = { version = "=4.0.1", default-features = false, features = ["ristretto255", "argon2"] }
 rand = "=0.8.6"
