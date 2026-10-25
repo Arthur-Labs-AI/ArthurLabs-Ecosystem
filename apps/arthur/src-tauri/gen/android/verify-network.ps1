@@ -36,5 +36,5 @@ $reply = @(& $adb -s $Serial shell am instrument -w -e class dev.kaloyan.arthur.
     dev.kaloyan.arthur.identitytest.test/androidx.test.runner.AndroidJUnitRunner 2>&1)
 $result = $LASTEXITCODE
 $reply | Write-Output
-if ($result -ne 0 -or -not ($reply -match '^OK \(2 tests\)')) { throw 'Actual Android network qualification failed' }
-'PASS standalone debug-only acquisition/callback qualification; release variant absent'
+if ($result -ne 0 -or -not ($reply -match '^OK \(7 tests\)')) { throw 'Actual Android network qualification failed' }
+'PASS standalone debug-only: 3 native probes; 4 LAN runner methods assumption-skipped without explicit opt-in; release variant absent'

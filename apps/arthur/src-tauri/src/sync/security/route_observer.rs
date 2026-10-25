@@ -92,6 +92,9 @@ pub(crate) fn parse_android(json: &str, endpoint: SocketAddr) -> ReadResult {
         endpoint,
         platform: match v["broad"].as_bool() {
             Some(true) => Platform::AndroidBroadPermissionObserved,
+            Some(false) if v["legacy_internet"].as_bool() == Some(true) => {
+                Platform::AndroidLegacyInternetObserved
+            }
             Some(false) => Platform::Unknown,
             _ => return Err(U::Incomplete),
         },

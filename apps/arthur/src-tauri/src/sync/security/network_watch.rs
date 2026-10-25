@@ -38,6 +38,11 @@ pub(crate) struct Fence {
     stamp: u64,
 }
 impl Fence {
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(crate) fn generation(&self) -> u64 {
+        self.stamp
+    }
+
     pub(crate) fn valid(&self) -> bool {
         self.signal.snapshot() == Some(self.stamp)
     }

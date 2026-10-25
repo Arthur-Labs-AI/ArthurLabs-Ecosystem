@@ -309,3 +309,95 @@ which RustSec lists as fixed; no protocol or cryptographic-suite change.
 affects 1.54.0, not this version. This is a targeted advisory check, not a clean
 all-dependency security audit. Production gates remain closed pending independent
 N1/N2/N3/N7 and G3–G7 decisions.
+
+
+## R4 plan — native socket evidence and revocation outcome
+
+1. Truth: OS Network/IP Helper/NLM and actual owned socket endpoints; signed
+   SQLite registry remains authoritative for membership.
+2. Ownership: existing NativeRuntime/store/Coordinator/Pool, with one owned
+   TcpSocket → TcpStream. No Java socket owner or second SQLite connection.
+3. Direction: debug native I/O consumes existing platform observations/fences;
+   durable registry reports commit outcome separately from transport notification.
+4. Contracts: a small typed ApplyOutcome, existing Observation/ConnectedEndpoints,
+   owned OS socket handles and public numeric endpoint configuration only.
+5. Failure: bind/connect/freshness/profile contradictions refuse, native callbacks
+   invalidate the same permits; committed revocation cannot become a transaction
+   failure because notification failed. Poisoned transport shuts down.
+6. Lifecycle: explicitly start existing monitor, create/bind/connect bounded
+   socket, revalidate before TLS authorization, abort/drop all handles on failure.
+7. Tests: real poisoned Pool for post-COMMIT RED regression; existing route/event
+   fixtures, real OS interface binding probes and R3 external-process regression.
+8. Compatibility: preserve v9/default closed factories, frozen SQL/wire/codec;
+   native-LAN factories remain test/explicit debug-only, production permissions stay.
+9. Evidence: distinguish binding mechanism, eligible connected route, TLS/import,
+   actual physical LAN and approvals. Do not promote emulator/probe evidence.
+10. Security: specific interface/address only, no wildcard or new service. Current
+    host WiFi is Public; existing Tailscale is private but not an eligible physical
+    interface. No profile/firewall/adapter changes or private-network approval.
+
+Extend the existing native_io_lab and sealed connected_endpoint instead of adding
+another network module. Android uses the NDK android_setsocknetwork equivalent
+of Network.bindSocket on the original unconnected native FD (API23+); CM snapshots
+still come from the existing JNI bridge. Before/after binding facts and actual
+endpoints must agree with a live native fence. API37 permission and physical
+acceptance remain unverified when the environment cannot execute them.
+
+### R4 implemented qualification contract
+
+The existing RawIo now has an explicit native qualification factory; existing
+loopback factories retain their original checks. NativeRuntime's Coordinator
+must already own a live native monitor with processed callback generation.
+Admission uses its existing shared Pool/deadlines. The native socket is bound
+before connect, then actual endpoints, fresh native observations and the same
+fence are checked after connect and immediately before membership authorization
+and session establishment. Network invalidation still cancels existing permits;
+there is no additional coordinator, socket owner, timer task or protocol.
+
+Android calls [android_setsocknetwork](https://developer.android.com/ndk/reference/group/networking)
+on the original unconnected TcpSocket FD, then binds the actual selected local
+address. Android documents this API23+ function as the native equivalent of
+Network.bindSocket. No FD transfer to Java, process-wide network binding or new
+JNI export. Source-selected evidence is attached only after these OS operations
+succeed, and stays private to the owned socket. Android exposes no public NDK
+socket-network readback here: successful binding, descriptor custody, fresh CM
+Network/interface/source/route facts, actual endpoints and callback fence are
+the evidence; they do not prove physical packet traversal by a self-interface
+probe. Pre-37 INTERNET evidence is a distinct debug-only policy fact, never a
+fabricated API37 broad grant. Default policy still refuses that legacy fact.
+
+Windows sets [IP_UNICAST_IF](https://learn.microsoft.com/en-us/windows/win32/winsock/ipproto-ip-socket-options)
+(network-order input, host-order readback), binds the selected IP, and rechecks
+the option on the actual connected socket together with IP Helper LUID/interface,
+NLM category, operational state, source, route and live generation. Listener
+preflight refuses Public/unknown/VPN/virtual/contradictory evidence before bind;
+accepted sockets are rechecked before entering the same RawIo/TLS path.
+IP_UNICAST_IF constrains outgoing traffic; it is not packet-level proof of the
+inbound arrival interface. Physical path qualification remains required.
+
+Optional explicit runner: verify-cross-device.ps1 -Serial SERIAL
+-LanAddress WINDOWS_IPV4 -AndroidAddress ANDROID_IPV4. These parameters authorize
+only the disposable, pinned synthetic fixture on those specific addresses.
+Android uses source port37432 by default; Windows listens on an OS-assigned port,
+backlog1. LAN mode requires the standalone qualification-network debug package;
+its current verified ABI is x86_64. A physical ARM64 build/installation remains
+unverified. First build the feature via verify-identity.ps1, install/verify the
+standalone package via verify-network.ps1, then explicitly invoke LAN mode.
+ADB carries public pins/config/results/control only in LAN mode, never the TCP
+data path. Without these flags the existing ADB-reverse R3 regression is retained.
+No wildcard listener, host profile/firewall/route change, default permission,
+production activation or full-knowledge contract change is introduced.
+
+NetworkRegistry.apply now returns ApplyOutcome::Committed or
+CommittedTransportUnavailable after successful SQLite COMMIT. Transaction errors
+remain Err. Notification failure shuts down the poisoned existing Pool and never
+changes durable success into a failed revocation. Neither committed outcome
+instructs the caller to retry the signed update. The new regression first failed
+on R3's Err(State), then passed with typed committed outcome, revoked binding,
+closed Pool, durable reopen and unchanged epoch/update count on duplicate retry.
+
+R4 also checks each endpoint's import_g3_commits keys/hashes and stored/integrated/
+applied cursors against actual imported sequences; runner compares these across
+that endpoint's process restart, separately from exact cross-device canonical
+bytes/rows. Local original events and remote import proofs are not conflated.
+See the R4 readiness snapshot for executed results and remaining physical gates.

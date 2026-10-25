@@ -2421,3 +2421,189 @@ finally. Final disposition: PARTIAL. Independent cross-platform transfer and
 automatic committed revocation are now executed evidence; production approvals,
 selected-network qualification, complete authenticated full-scope integration and
 certified physical bounds/release artifacts remain required.
+
+
+## 29. R4 — native binding and durable revocation outcome (PARTIAL)
+
+Scope: feature/nodes-integration, accepted R3 afb7da7d69360b056e9309016ba02733b6e935d8.
+This section describes the R4 delivery commit containing it. Production remains
+v9/dormant/ClosedTrust/ClosedLan; no default listener/dialer, live enrollment,
+VerifiedSession, signing/network frontend API, autostart, permission or firewall
+change. No protocol, reducer, codec, snapshot or production migration changed.
+
+Implemented: a narrow native qualification factory in the existing RawIo and
+single-endpoint TLS path, shared Coordinator/Pool/NativeTimer; original loopback
+checks retained. Original Android unconnected FD is bound using API23+
+android_setsocknetwork (the NDK Network.bindSocket equivalent), then selected
+source address. Windows sets/reads the real socket's interface option and uses
+fresh IP Helper/NLM facts. Actual endpoints, network/interface/source/profile,
+route eligibility and callback fence must agree after connect and before TLS
+membership/session publication. A debug inspector cannot approve production N7:
+ConnectedEndpoints.require_native_lan still refuses.
+
+Pre-37 INTERNET is recorded separately from API37 broad permission and is accepted
+only by the isolated debug candidate policy after OS/source binding. No broad
+permission is requested or invented. Android has no public socket-Network getter
+in the used NDK API; evidence is successful bind on the original owned FD,
+descriptor custody, fresh CM facts/endpoints and live native fence. A self-interface
+probe cannot establish physical WiFi packet traversal or eligible peer-LAN Sync.
+API37 permission behavior and ARM64 remain unverified. The standalone CM snapshot
+recorded Network432902426637 (final fresh boot; first boot437197393933), interface16, WiFi10.0.2.16/24, default gateway
+10.0.2.2, broad=false/legacy_internet=true. The probe asserts descriptor identity
+across connect, actual local/remote endpoints, invalid-FD refusal and monitor-stop
+fence invalidation; self-interface remains explicitly refused as peer-LAN policy.
+
+Environment: Windows10.0.26200; actual WiFi interface6 is Public; existing
+Tailscale32 is Private but ineligible. Actual IP Helper/NLM probe returned
+WindowsOtherProfileObserved(0), Wifi/Up, local prefix24, gateway/default route.
+Nothing was reconfigured. No physical Android was attached; only task-owned
+emulator-5582, API36/x86_64, was started for qualification. Direct physical
+Windows↔Android LAN and an acceptable actual Private connected session are
+NOT TESTED. No LAN listener was exposed on the current host's Public network.
+
+Revocation: apply returns Committed or CommittedTransportUnavailable only after
+successful SQLite COMMIT; transaction failures remain Err. Injected actual Pool
+mutex poisoning reproduced R3's erroneous Err(State) after COMMIT (RED). The
+regression then passed (GREEN): revoked registry binding/epoch, cancelled and
+closed Pool, typed committed outcome, durable reopen, duplicate signed retry
+refusal and exactly3 updates/epoch3. Existing rollback/selective/real TLS
+revocation regressions remain required in the full run. No retry framework or
+additional notification owner was introduced.
+
+Explicit runner: gen/android/verify-cross-device.ps1 -Serial SERIAL retains the
+R3 ADB-reverse data path. Adding -LanAddress WINDOWS_IPV4 -AndroidAddress
+ANDROID_IPV4 opts into the narrow native path, exact source addresses, Android
+source port37432 and a Windows OS-assigned port/backlog1. LAN mode requires the
+standalone qualification-network debug package (verified ABI x86_64); a physical
+ARM64 build remains unverified. ADB then carries public pins/config/results and
+control only. Same CNG/Keystore identities, TLS13 pins/exporter/PeerHello,
+synthetic trust + authoritative candidate checks, SyncEngine/G3, disposable roots
+and restart/retry apply. It is still not production enrollment/trust. No private
+key enters the controller. Every failure drops the same owned sockets/permits;
+existing monitor invalidation and deadlines stop stale operations.
+
+R4 runner evidence checks exactly3 canonical original events, UUIDs/timestamps/
+relationships/rows, maximum valid Unicode Capture, each endpoint's actual G3
+proof keys/hashes/version and stored/integrated/applied cursor equal to imported
+maximum sequence. Proofs/cursors are compared across that endpoint's restart;
+local-original and remote-import proofs are not falsely equated across devices.
+Executed ADB topology: Windows PID34164→13340, Android8201→8247. Windows
+loopback listener ports64933→64949 were mapped to guest127.0.0.1:37431.
+The maximum Windows Capture was20000🚀/80000 UTF8 bytes. Windows import proofs1
+and cursor(1,1,1), Android proofs2 and cursor(2,2,2) persisted identically after
+restart; Windows pending lost receipts2→0, Android0→0. Independent result files
+are under %TEMP%/arthur-r3-d623b3dc-9c7f-4a63-8605-e6070867e9b1.
+This is actual encrypted cross-process Sync, explicitly ADB-reverse rather than
+physical LAN. LAN mode is implemented/compiled but NOT EXECUTED here.
+
+### Executed gates versus R3
+
+Full Windows command: cargo test --locked --offline --manifest-path
+apps/arthur/src-tauri/Cargo.toml --lib -- --test-threads=1. Final result1434/0/26,
+517.58s. Subsets below are parsed from that complete log with the same literal
+filters as R3 (including should-panic tests), not separately added executions.
+
+| Gate / filter | R3 | R4 |
+| --- | --- | --- |
+| Full native | 1428 PASS / 0 FAIL / 26 ignored | PASS:1434 / 0 / 26 ignored |
+| r1_tls / r2_ / r3_ | 10 / 6 / 6 | PASS:10 / 6 / 6; r3_ ordinary external entry still1 ignored |
+| r4_ | — | PASS:6 new regressions; no ignored |
+| n7 (literal filter) | 40 | PASS:42; policy approval unchanged |
+| sync::security:: | 75 / 1 ignored | PASS:80 / 1 ignored |
+| sync (literal filter) | 177 / 1 ignored | PASS:182 / 1 ignored |
+| storage::journal:: | 293 / 2 ignored | PASS:293 / 2 ignored |
+| m05_v10_tests | 24 | PASS:24 |
+| Architecture | 88 | PASS:88, npm run test:architecture |
+| Frontend | 561 + build | PASS:561/42 files + TS/Vite, npm run arthur:check |
+| Root TypeScript | PASS | PASS:npm run typecheck |
+| Android instrumentation | 48 + 2 identity restart | PASS:48 + 2 separate-process identity restart; fresh XML48/0/0/0,201.25s |
+| Standalone Android native network | 2 probes | PASS:3 probes including actual NDK FD bind/connect;4 explicit LAN runner methods assumption-skipped (OK7 total is NOT7 passes) |
+| Independent Windows↔Android encrypted Sync/restart/retry | PASS via ADB reverse | PASS:2 actual phases, exact3 events/rows plus durable proofs/cursors; ADB reverse only |
+| Native LAN runner positive transfer | Not available | UNVERIFIED/NOT EXECUTED:compiled opt-in path; no physical device/eligible Private LAN |
+| Actual Windows selected-interface mechanism | OS observation only | PASS:real loopback setsockopt/getsockopt/endpoints and contradictory option refusal; actual Private LAN connected session UNVERIFIED |
+| Cargo all-target check | PASS | PASS:cargo check --locked --offline --all-targets, same manifest |
+| Default Windows binary | PASS | PASS:cargo build --locked --offline --bin arthur, same manifest |
+| Default Android debug APK | PASS | PASS:supported npm run tauri -- android build --debug --target x86_64 --apk --ci |
+| Permissions/JNI/default isolation | PASS | PASS:default appid dev.kaloyan.arthur, no ACCESS_NETWORK_STATE/ACCESS_LOCAL_NETWORK; feature4/default2 security JNI exports; default has0 android_setsocknetwork imports |
+| Dependency graphs | 4 PASS | PASS:4 existing verify-isolation.ps1 controls |
+| Forbidden Android release feature | Refused6 explicit+8 secondary errors | PASS isolation:exit101, same6 guards+8 missing-debug-slot errors (14 compiler errors); not release packaging |
+| Format / whitespace / runner syntax | Targeted PASS | PASS:rustfmt --check7 touched lab files, inserted snippets formatted, git diff --check and both PS parsers; whole-tree lint/format UNVERIFIED |
+| OSV PAKE dependency closure | 69 packages / 1 advisory | Snapshot executed:69 / same1 unresolved finding; NOT a clean security audit |
+| Hosted CI, signed release packaging and packaged clean smoke | UNVERIFIED | UNVERIFIED; local debug builds do not substitute |
+| Physical Android/WiFi, ARM64, API37, actual Private-profile native Sync | UNVERIFIED | UNVERIFIED/NOT TESTED |
+| Independent N1/N2/N3/N7 and G3–G7 approvals | Unapproved | Still unapproved |
+
+Evidence logs: %TEMP%/arthur-r4-native-final.log (full run),
+arthur-r4-revocation-{red,green}.log (reproduction/fix),
+arthur-r4-connect-cancel.log (focused admission/cancellation),
+arthur-r4-android-identity.log, arthur-r4-cross.log,
+arthur-r4-network-guard-final.log, arthur-r4-binding-facts-final.log,
+arthur-r4-{feature-jni-final,default-appid,default-permissions,default-jni,
+default-ndk-import}.log, arthur-r4-default-android-final.log,
+arthur-r4-{cargo-check-final,windows-default-final,release-guard-final,
+architecture,frontend,typecheck,dependencies,isolation}.log. Dependency graph
+snapshots are in %TEMP%/arthur-r4-isolation. Production APK retains only existing
+INTERNET/RECORD_AUDIO/dynamic-receiver permissions. The task-owned emulator was
+stopped and supported default build restored after instrumentation.
+
+Review found and resolved IPv4 option readback byte order, cancellation status
+preservation during a native refresh, unnecessary Windows listener reuse, and
+private-IPv4 preflight for the self-interface probe. The final probe re-executed
+the tightened guard and same-FD assertion. New deterministic admission cases
+cover invalidation before work, pending work teardown and a real connected
+socket completing after invalidation; that completion is discarded and peer
+observes EOF, with no retained permit/timer. Self-review found no additional
+correctness/data-loss defect in the changed write path or lifecycle. Positive
+eligible native-LAN integration remains an explicit verification gap, not a PASS.
+
+
+Cancellation coverage combines new real socket-endpoint lifetime/fence tests,
+new single-endpoint TLS stale completion before publication (LOST/INTERFACE/
+ROUTE), existing bounded pending-connect/event, handshake/post-TLS, Sync/import,
+peer-disconnect and owner-shutdown regressions. Deterministic native-event seams
+are identified as synthetic; physical WiFi disconnect/change remains NOT TESTED.
+The loopback binding mechanism probe is not Private-profile approval. Default
+production capability factories remain closed even when a debug probe passes.
+
+N1: refreshed OSV closure still69 packages/one crypto-bigint0.5.5 finding,
+RUSTSEC-2026-0387. RustSec's supported fixed version is >=0.7.6; inspected current
+opaque-ke upstream still selects elliptic-curve0.13/voprf0.5. No compatible
+remediation was established; no forced override, PAKE replacement or new security
+claim. The existing reviewer package is the integration/readiness docs and exact
+source/test changes; independent composition review is still mandatory.
+G3/G4 physical bounds and release storage acceptance remain unapproved,
+UnverifiedBounds retained. Project/Capture creation is the tested vertical slice;
+knowledge-v1-full remains the intended product scope and still needs the complete
+authenticated full-scope contract/integration and relevant lifecycle/conflict/
+knowledge/revision acceptance. No unrelated D3/D4 implementation was added.
+N1/N2/N3/N7 and G3–G7 remain unapproved; no E3B or main merge.
+
+Next smallest step: explicitly authorized physical Windows↔Android qualification
+on a suitable Private physical LAN, build/verify the dedicated ARM64 debug package
+for that device, then run the same native mode without reverse, including both
+restarts/retry, actual interface evidence and WiFi/network-change cancellation.
+API37 permission qualification and independent N7/security approval remain
+separate required evidence; debug success cannot approve them.
+
+### R4 changed-file manifest
+
+- `apps/arthur/src-tauri/gen/android/app/src/main/java/dev/kaloyan/arthur/security/RouteObservation.java`
+- `apps/arthur/src-tauri/gen/android/qualification-network/src/androidTest/java/dev/kaloyan/arthur/security/NativeIdentityBridgeTest.java`
+- `apps/arthur/src-tauri/gen/android/verify-cross-device.ps1`
+- `apps/arthur/src-tauri/gen/android/verify-network.ps1`
+- `apps/arthur/src-tauri/src/runtime/lan_candidate.rs`
+- `apps/arthur/src-tauri/src/storage/enrollment_store.rs`
+- `apps/arthur/src-tauri/src/storage/journal/cross_device_qualification.rs`
+- `apps/arthur/src-tauri/src/storage/security_android_instrumentation.rs`
+- `apps/arthur/src-tauri/src/storage/security_tls_tests.rs`
+- `apps/arthur/src-tauri/src/sync/security/connected_endpoint.rs`
+- `apps/arthur/src-tauri/src/sync/security/n7a_tests.rs`
+- `apps/arthur/src-tauri/src/sync/security/native_io_lab.rs`
+- `apps/arthur/src-tauri/src/sync/security/network_watch.rs`
+- `apps/arthur/src-tauri/src/sync/security/qualification/advisories.json`
+- `apps/arthur/src-tauri/src/sync/security/route_candidate.rs`
+- `apps/arthur/src-tauri/src/sync/security/route_observer.rs`
+- `apps/arthur/src-tauri/src/sync/security/tls_socket_lab.rs`
+- `apps/arthur/src-tauri/src/sync/security/transport_candidate.rs`
+- `docs/architecture/m05-activation-readiness.md`
+- `docs/architecture/m05-project-capture-mvp.md`

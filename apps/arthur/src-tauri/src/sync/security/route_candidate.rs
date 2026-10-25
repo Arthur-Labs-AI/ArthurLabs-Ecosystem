@@ -114,6 +114,7 @@ pub(crate) enum Platform {
     WindowsPrivateProfileObserved,
     WindowsOtherProfileObserved(i32),
     AndroidBroadPermissionObserved,
+    AndroidLegacyInternetObserved,
     AndroidPickerEndpointObserved(SocketAddr),
     PermissionDenied,
     PermissionRevoked,
@@ -161,6 +162,22 @@ pub(crate) struct Candidate {
 }
 impl Candidate {
     pub fn evaluate(hint: &Hint, observed: &Observation, now: u64) -> Result<Self> {
+        Self::evaluate_policy(hint, observed, now, false)
+    }
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(crate) fn evaluate_qualification(
+        hint: &Hint,
+        observed: &Observation,
+        now: u64,
+    ) -> Result<Self> {
+        Self::evaluate_policy(hint, observed, now, true)
+    }
+    fn evaluate_policy(
+        hint: &Hint,
+        observed: &Observation,
+        now: u64,
+        legacy_debug: bool,
+    ) -> Result<Self> {
         let endpoint = match hint.address {
             Address::Numeric(a) => a,
             Address::Dns(..) => return Err(E::N7PolicyPending),
@@ -213,6 +230,7 @@ impl Candidate {
                 ()
             }
             Platform::AndroidPickerEndpointObserved(a) if *a == endpoint => (),
+            Platform::AndroidLegacyInternetObserved if legacy_debug => (),
             _ => return Err(E::N7PolicyPending),
         }
         Ok(Self {

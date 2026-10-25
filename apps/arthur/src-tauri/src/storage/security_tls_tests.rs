@@ -734,3 +734,90 @@ pub(crate) fn revocation_tls() -> Result<()> {
 fn r3_signed_revocation_before_after_tls_during_io_and_owner_restart() {
     revocation_tls().unwrap();
 }
+
+#[cfg(windows)]
+#[test]
+fn r4_committed_revocation_notification_failure_is_not_a_failed_commit() {
+    use crate::sync::security::{
+        enrollment::{Action, Role},
+        transport_candidate::{Expected, Interrupt},
+    };
+    let mut a = Fixture::new().unwrap();
+    let b = Fixture::new().unwrap();
+    {
+        let o = a.owner();
+        let identity = OwnedDeviceIdentity::reopen(o.store()).unwrap();
+        let r = crate::storage::enrollment_store::NetworkRegistry::candidate(o.store()).unwrap();
+        let root = r.create_network(&identity).unwrap();
+        let grant = r
+            .next(
+                Action::Grant {
+                    device: b.public.clone(),
+                    role: Role::Member,
+                    capabilities: 3,
+                    enrollment: Uuid::new_v4(),
+                    expires: 1000,
+                    origins: vec![Uuid::new_v4()],
+                },
+                &identity,
+            )
+            .unwrap();
+        r.apply(&grant).unwrap();
+        let revoke = r
+            .next(
+                Action::Revoke {
+                    device: b.public.clone(),
+                },
+                &identity,
+            )
+            .unwrap();
+        let stop = Arc::new(Interrupt::default());
+        let (_, p, _) = o
+            .transport_candidate()
+            .admit_loopback_lab(
+                Expected {
+                    network: root.network,
+                    peer: b.public.peer_id(),
+                },
+                &stop,
+            )
+            .unwrap();
+        o.transport_candidate().poison_notification_fixture();
+        let committed = r.apply(&revoke);
+        assert!(r.binding(a.public.peer_id(), &b.public, 10).is_err());
+        assert_eq!(r.root().unwrap().epoch, revoke.body.epoch);
+        assert!(stop.cancelled());
+        assert!(o
+            .transport_candidate()
+            .admit_loopback_lab(
+                Expected {
+                    network: root.network,
+                    peer: Uuid::new_v4()
+                },
+                &Arc::default()
+            )
+            .is_err());
+        drop(p);
+        assert_eq!(
+            committed,
+            Ok(crate::storage::enrollment_store::ApplyOutcome::CommittedTransportUnavailable)
+        );
+        assert!(r.apply(&revoke).is_err());
+        assert_eq!(r.root().unwrap().epoch, revoke.body.epoch);
+        assert_eq!(
+            o.store()
+                .connection
+                .lock()
+                .unwrap()
+                .query_row("SELECT count(*) FROM e_updates", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            3
+        );
+    }
+    drop(a.owner.take());
+    a.owner = Some(NativeRuntime::acquire(&a.root).unwrap());
+    let o = a.owner();
+    let r = crate::storage::enrollment_store::NetworkRegistry::candidate(o.store()).unwrap();
+    assert!(r.binding(a.public.peer_id(), &b.public, 10).is_err());
+    assert_eq!(r.root().unwrap().epoch, 3);
+}

@@ -68,6 +68,10 @@ final class RouteObservation {
             out.put("gateway",route.hasGateway() ? route.getGateway().getHostAddress().split("%",2)[0] : "");
             // No NSD picker is implemented. Broad permission never implies a picker grant.
             out.put("broad",broad);
+            // Actual pre-37 INTERNET model, separate from a broad API37 grant.
+            // Only the isolated native qualification policy consumes this fact.
+            out.put("legacy_internet",Build.VERSION.SDK_INT < 37
+                && app.checkSelfPermission(Manifest.permission.INTERNET) == PackageManager.PERMISSION_GRANTED);
             if (!network.equals(cm.getActiveNetwork()) || !caps.equals(cm.getNetworkCapabilities(network))
                     || !lp.equals(cm.getLinkProperties(network))) return status("changed");
             if (app.checkSelfPermission(Manifest.permission.ACCESS_NETWORK_STATE) != PackageManager.PERMISSION_GRANTED

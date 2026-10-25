@@ -44,6 +44,15 @@ struct Public {
     origin: Uuid,
     pid: u32,
 }
+// Explicit controller input inside the disposable fixture only; IPv4 LAN mode.
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Lan {
+    windows: std::net::Ipv4Addr,
+    android: std::net::Ipv4Addr,
+    source_port: u16,
+    server_port: u16,
+}
 struct Clock;
 impl SyncClock for Clock {
     fn now(&self) -> u64 {
@@ -105,6 +114,7 @@ fn prepare() {
     // Android's dedicated cache location is reused across explicit runs. Never
     // accept an earlier run's result or completion barrier as current evidence.
     for name in [
+        "lan.json",
         "public.json",
         "peer.json",
         "listen.json",
@@ -222,7 +232,20 @@ fn evidence(f: &Fixture) -> serde_json::Value {
         .unwrap(),
         0
     );
-    serde_json::json!({"pid":std::process::id(),"key":f.public.sec1(),"events":values})
+
+    // Inspect each endpoint's own import proofs/cursors. Local originals and
+    // remote imports differ, so these are not falsely compared across devices.
+    let proofs=c.prepare("SELECT e.event,hex(e.hash),e.origin,e.incarnation,e.seq,g.version FROM import_events e JOIN import_g3_commits g ON g.event=e.event ORDER BY e.event").unwrap()
+        .query_map([],|r|Ok(serde_json::json!({"event":r.get::<_,String>(0)?,"hash":r.get::<_,String>(1)?,"origin":r.get::<_,String>(2)?,"incarnation":r.get::<_,String>(3)?,"seq":r.get::<_,i64>(4)?,"version":r.get::<_,i64>(5)?}))).unwrap().collect::<rusqlite::Result<Vec<_>>>().unwrap();
+    let cursors=c.prepare("SELECT origin,incarnation,stored,integrated,applied,(SELECT max(seq) FROM import_events e WHERE e.origin=p.origin AND e.incarnation=p.incarnation) FROM import_progress p ORDER BY origin,incarnation").unwrap()
+        .query_map([],|r|{
+            let stored:i64=r.get(2)?;let integrated:i64=r.get(3)?;let applied:i64=r.get(4)?;let maximum:i64=r.get(5)?;
+            assert_eq!((stored,integrated,applied),(maximum,maximum,maximum));
+            Ok(serde_json::json!({"origin":r.get::<_,String>(0)?,"incarnation":r.get::<_,String>(1)?,"stored":stored,"integrated":integrated,"applied":applied}))
+        }).unwrap().collect::<rusqlite::Result<Vec<_>>>().unwrap();
+    assert_eq!(proofs.len(), if cfg!(windows) { 1 } else { 2 });
+    assert_eq!(cursors.len(), 1);
+    serde_json::json!({"pid":std::process::id(),"key":f.public.sec1(),"events":values,"proofs":proofs,"cursors":cursors})
 }
 async fn exchange(phase: u32) {
     let base = root();
@@ -259,36 +282,98 @@ async fn exchange(phase: u32) {
     let store = CandidateSyncStore::synthetic(owner.store());
     let cancel = Cancellation::default();
     let stop = Arc::new(Interrupt::default());
-    let (pool, permit, timer) = owner
-        .transport_candidate()
-        .admit_loopback_lab(
-            Expected {
-                network: NETWORK,
-                peer: pin.peer_id(),
-            },
-            &stop,
-        )
-        .unwrap();
+    let lan: Option<Lan> = base
+        .join("lan.json")
+        .exists()
+        .then(|| read(base.join("lan.json")));
+    if let Some(lan) = &lan {
+        assert!(
+            lan.windows.is_private()
+                && lan.android.is_private()
+                && lan.windows != lan.android
+                && lan.source_port != 0
+        );
+        owner.transport_candidate().start_monitor().unwrap();
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(15);
+        while owner
+            .transport_candidate()
+            .native_qualification_fence()
+            .is_err()
+        {
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "native callbacks unavailable"
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+        }
+    }
+    let expected = Expected {
+        network: NETWORK,
+        peer: pin.peer_id(),
+    };
+    let (pool, permit, timer) = if lan.is_some() {
+        owner
+            .transport_candidate()
+            .admit_native_qualification(expected, &stop)
+    } else {
+        owner
+            .transport_candidate()
+            .admit_loopback_lab(expected, &stop)
+    }
+    .unwrap();
     #[cfg(windows)]
     let (raw, key, role) = {
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let listener = if let Some(lan) = &lan {
+            native_io_lab::listen_native_qualification(
+                (lan.android, lan.source_port).into(),
+                lan.windows.into(),
+                &permit,
+                &timer,
+            )
+            .unwrap()
+        } else {
+            tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap()
+        };
         write(
             base.join("listen.json"),
             &serde_json::json!({"port":listener.local_addr().unwrap().port(),"phase":phase,"pid":std::process::id()}),
         );
         (
-            native_io_lab::accept_loopback(listener, permit, timer)
+            if let Some(lan) = &lan {
+                native_io_lab::accept_native_qualification(
+                    listener,
+                    (lan.android, lan.source_port).into(),
+                    permit,
+                    timer,
+                )
                 .await
-                .unwrap(),
+                .unwrap()
+            } else {
+                native_io_lab::accept_loopback(listener, permit, timer)
+                    .await
+                    .unwrap()
+            },
             f.key(CertificateRole::Server).unwrap(),
             CertificateRole::Server,
         )
     };
     #[cfg(target_os = "android")]
     let (raw, key, role) = (
-        native_io_lab::connect_loopback("127.0.0.1:37431".parse().unwrap(), permit, timer)
+        if let Some(lan) = &lan {
+            native_io_lab::connect_native_qualification(
+                (lan.windows, lan.server_port).into(),
+                lan.android.into(),
+                lan.source_port,
+                permit,
+                timer,
+            )
             .await
-            .unwrap(),
+            .unwrap()
+        } else {
+            native_io_lab::connect_loopback("127.0.0.1:37431".parse().unwrap(), permit, timer)
+                .await
+                .unwrap()
+        },
         f.key(CertificateRole::Client).unwrap(),
         CertificateRole::Client,
     );

@@ -80,6 +80,66 @@ impl Core {
     }
 }
 impl Coordinator {
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(crate) fn native_qualification_fence(&self) -> Result<Fence> {
+        let monitor = self.monitor.lock().map_err(|_| E::State)?;
+        if monitor.is_none() {
+            return Err(E::PlatformUnverified);
+        }
+        let s = self.state.lock().map_err(|_| E::State)?;
+        if s.closed {
+            return Err(E::Cancelled);
+        }
+        let signal = s.signal.as_ref().ok_or(E::PlatformUnverified)?;
+        if s.event_stamp != signal.snapshot() {
+            return Err(E::PlatformUnverified);
+        }
+        #[cfg(target_os = "android")]
+        if signal.kinds()
+            & (crate::sync::security::network_watch::AVAILABLE
+                | crate::sync::security::network_watch::CAPABILITIES
+                | crate::sync::security::network_watch::LINK_PROPERTIES)
+            != (crate::sync::security::network_watch::AVAILABLE
+                | crate::sync::security::network_watch::CAPABILITIES
+                | crate::sync::security::network_watch::LINK_PROPERTIES)
+        {
+            return Err(E::PlatformUnverified);
+        }
+        signal.fence().ok_or(E::Cancelled)
+    }
+    // Resource accounting only; native_io_lab enforces OS binding/route policy.
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(crate) fn admit_native_qualification(
+        &self,
+        expected: Expected,
+        stop: &Arc<Interrupt>,
+    ) -> Result<(
+        Arc<Pool>,
+        Permit,
+        crate::sync::security::native_io_lab::NativeTimer,
+    )> {
+        let fence = self.native_qualification_fence()?;
+        let permit = self.pool.admit_observed(
+            expected,
+            self.clock.elapsed().as_secs(),
+            stop,
+            Some(fence),
+        )?;
+        if permit.cancellation().cancelled() {
+            return Err(E::Cancelled);
+        }
+        Ok((
+            self.pool.clone(),
+            permit,
+            crate::sync::security::native_io_lab::NativeTimer::from_origin(self.clock),
+        ))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn poison_notification_fixture(&self) {
+        self.pool.poison_notification_fixture();
+    }
+
     pub(super) fn bind_store(&self, store: &crate::storage::capture_store::CaptureStore) -> std::result::Result<(), crate::storage::capture_store::StoreError> {
         store.bind_transport(&self.pool)
     }

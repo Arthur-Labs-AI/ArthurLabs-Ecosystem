@@ -695,6 +695,12 @@ impl Endpoint {
         {
             return Err(Error::Trust);
         }
+        driver
+            .socket
+            .borrow_mut()
+            .raw
+            .tls_revalidate()
+            .map_err(fault)?;
         authorize()?;
         {
             let mut s = driver.socket.borrow_mut();
@@ -836,6 +842,87 @@ fn r3_single_endpoint_driver_refuses_wrong_key_pin_context_and_membership() {
                 assert!(sb.is_err());
                 assert_eq!(authorized.get(), 0);
             }
+            drop(sa);
+            drop(sb);
+            assert_eq!(ap.active_for_test(), 0);
+            assert_eq!(bp.active_for_test(), 0);
+        }
+    });
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn r4_single_endpoint_stale_completion_after_tls_before_publication() {
+    use super::tls::CertificateRole;
+    use crate::storage::security_tls_tests::Fixture;
+    native_io_lab::execute(async {
+        for kind in [
+            super::network_watch::LOST,
+            super::network_watch::INTERFACE,
+            super::network_watch::ROUTE,
+        ] {
+            let a = Fixture::new().unwrap();
+            let b = Fixture::new().unwrap();
+            let oa = a.owner();
+            let ob = b.owner();
+            let signal = oa.transport_candidate().loopback_event_fixture().unwrap();
+            let ah = PeerHello {
+                network: uuid::Uuid::new_v4(),
+                session: uuid::Uuid::new_v4(),
+                local: a.public.peer_id(),
+                peer: b.public.peer_id(),
+                epoch: 1,
+            };
+            let bh = PeerHello {
+                local: ah.peer,
+                peer: ah.local,
+                ..ah.clone()
+            };
+            let (ap, permit, timer) = oa
+                .transport_candidate()
+                .admit_loopback_lab(
+                    Expected {
+                        network: ah.network,
+                        peer: ah.peer,
+                    },
+                    &Arc::default(),
+                )
+                .unwrap();
+            let (bp, bpermit, btimer) = ob
+                .transport_candidate()
+                .admit_loopback_lab(
+                    Expected {
+                        network: bh.network,
+                        peer: bh.peer,
+                    },
+                    &Arc::default(),
+                )
+                .unwrap();
+            let (raw_b, socket, _) = native_io_lab::pair(bpermit, btimer).await.unwrap();
+            let raw_a = RawIo::tls_socket(socket, permit, timer).unwrap();
+            let (sa, sb) = native_io_lab::both(
+                Endpoint::authenticate(
+                    raw_a,
+                    a.key(CertificateRole::Server).unwrap(),
+                    &b.public,
+                    CertificateRole::Server,
+                    ah,
+                    || {
+                        assert!(signal.notify(kind));
+                        Ok(())
+                    },
+                ),
+                Endpoint::authenticate(
+                    raw_b,
+                    b.key(CertificateRole::Client).unwrap(),
+                    &a.public,
+                    CertificateRole::Client,
+                    bh,
+                    || Ok(()),
+                ),
+            )
+            .await;
+            assert!(matches!(sa, Err(Error::Cancelled)));
             drop(sa);
             drop(sb);
             assert_eq!(ap.active_for_test(), 0);

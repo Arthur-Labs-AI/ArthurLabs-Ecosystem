@@ -610,3 +610,30 @@ fn n7b_timer_registration_released_on_drop_failure_and_finish() {
         assert!(weak.upgrade().is_none(), "timer retained a completed task");
     }
 }
+
+#[test]
+fn r4_n7_debug_legacy_policy_keeps_production_and_bad_routes_closed() {
+    let h = Hint::parse("192.168.1.3:7431", Origin::Manual).unwrap();
+    let mut o = observation("192.168.1.3:7431");
+    o.platform = Platform::AndroidLegacyInternetObserved;
+    assert!(Candidate::evaluate(&h, &o, 10).is_err());
+    assert!(Candidate::evaluate_qualification(&h, &o, 10).is_ok());
+    for case in 0..9 {
+        let mut changed = o.clone();
+        match case {
+            0 => changed.source_selected = false,
+            1 => changed.platform = Platform::WindowsOtherProfileObserved(0),
+            2 => changed.medium = Medium::Vpn,
+            3 => changed.medium = Medium::Unknown,
+            4 => changed.route_interface += 1,
+            5 => changed.link = Link::Down,
+            6 => changed.network = 0,
+            7 => changed.next_hop = NextHop::Gateway("192.168.1.1".parse().unwrap()),
+            _ => changed.platform = Platform::PermissionRevoked,
+        }
+        assert!(
+            Candidate::evaluate_qualification(&h, &changed, 10).is_err(),
+            "case {case}"
+        );
+    }
+}

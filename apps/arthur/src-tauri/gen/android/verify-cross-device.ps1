@@ -1,4 +1,16 @@
-param([Parameter(Mandatory=$true)][string]$Serial)
+param([Parameter(Mandatory=$true)][string]$Serial,
+    [string]$LanAddress,[string]$AndroidAddress,[ValidateRange(1024,65535)][int]$AndroidSourcePort=37432)
+# Supplying both addresses explicitly authorizes the narrow disposable LAN test.
+# ADB is control/public-results only in this mode: no reverse data connection.
+$lanMode= -not [string]::IsNullOrEmpty($LanAddress)
+if ($lanMode -ne (-not [string]::IsNullOrEmpty($AndroidAddress))) {throw 'Both LAN addresses are required'}
+if ($lanMode) {
+    foreach ($address in @($LanAddress,$AndroidAddress)) {
+        $ip=[Net.IPAddress]::Parse($address)
+        if ($ip.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork -or $ip.ToString() -ne $address) {throw 'Explicit numeric IPv4 addresses required'}
+    }
+    if ($LanAddress -eq $AndroidAddress) {throw 'Two distinct interfaces/devices required'}
+}
 $ErrorActionPreference='Stop'
 $repo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../../../..'))
 $adb=Join-Path $env:ANDROID_HOME 'platform-tools/adb.exe'
@@ -10,8 +22,10 @@ $testName='storage::journal::cross_device_qualification::r3_windows_external_end
 $runner='dev.kaloyan.arthur.identitytest.test/androidx.test.runner.AndroidJUnitRunner'
 $app='dev.kaloyan.arthur.identitytest'
 $deviceRoot='cache/r3-cross-device'
+$endpointClass=if($lanMode){'dev.kaloyan.arthur.security.NativeIdentityBridgeTest'}else{'dev.kaloyan.arthur.security.CrossDeviceSyncTest'}
+$runnerFlag=if($lanMode){'arthurR4Lan'}else{'arthurR3'}
 function Android([string]$Method) {
-    $reply=@(& $adb -s $Serial shell am instrument -w -e arthurR3 true -e class "dev.kaloyan.arthur.security.CrossDeviceSyncTest#$Method" $runner 2>&1)
+    $reply=@(& $adb -s $Serial shell am instrument -w -e $runnerFlag true -e class "$endpointClass#$Method" $runner 2>&1)
     $reply | Write-Output
     if ($LASTEXITCODE -ne 0 -or -not ($reply -match '^OK \(1 test\)')) { throw "Android $Method failed" }
 }
@@ -49,6 +63,10 @@ try {
     Android prepare
     $androidPublic=Join-Path $base 'android-public.json'
     if (-not (Pull 'public.json' $androidPublic)) { throw 'Missing Android public fixture' }
+    if ($lanMode) {
+        $lan=@{windows=$LanAddress;android=$AndroidAddress;source_port=$AndroidSourcePort;server_port=0}
+        [IO.File]::WriteAllText((Join-Path $base 'lan.json'),($lan | ConvertTo-Json -Compress),[Text.UTF8Encoding]::new($false))
+    }
     Copy-Item -LiteralPath $androidPublic -Destination (Join-Path $base 'peer.json')
     & $adb -s $Serial push (Join-Path $base 'public.json') '/data/local/tmp/arthur-r3-public.json' | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Public manifest push failed' }
@@ -67,12 +85,22 @@ try {
             if ($process.HasExited) { throw 'Windows endpoint exited before listening' }
             Start-Sleep -Milliseconds 50
         }
-        if (-not $listen) { throw 'Missing bounded loopback listener' }
-        & $adb -s $Serial reverse tcp:37431 "tcp:$($listen.port)"
-        if ($LASTEXITCODE -ne 0) { throw 'ADB reverse failed' };$bridge=$true
+        if (-not $listen) { throw 'Missing bounded qualification listener' }
+        if ($lanMode) {
+            $lan.server_port=[int]$listen.port
+            $config=Join-Path $base 'android-lan.json'
+            [IO.File]::WriteAllText($config,($lan | ConvertTo-Json -Compress),[Text.UTF8Encoding]::new($false))
+            & $adb -s $Serial push $config '/data/local/tmp/arthur-r4-lan.json' | Out-Null
+            if ($LASTEXITCODE -ne 0) {throw 'Public LAN config push failed'}
+            & $adb -s $Serial shell run-as $app cp '/data/local/tmp/arthur-r4-lan.json' "$deviceRoot/lan.json"
+            if ($LASTEXITCODE -ne 0) {throw 'Public LAN config install failed'}
+        } else {
+            & $adb -s $Serial reverse tcp:37431 "tcp:$($listen.port)"
+            if ($LASTEXITCODE -ne 0) { throw 'ADB reverse failed' };$bridge=$true
+        }
         $method=if ($phase -eq 1) {'exchange'}else{'resume'}
         $androidLog=Join-Path $base "android-$phase.log"; $androidError=Join-Path $base "android-$phase.err.log"
-        $androidProcess=Start-Process -FilePath $adb -ArgumentList @('-s',$Serial,'shell','am','instrument','-w','-e','arthurR3','true','-e','class',"dev.kaloyan.arthur.security.CrossDeviceSyncTest#$method",$runner) `
+        $androidProcess=Start-Process -FilePath $adb -ArgumentList @('-s',$Serial,'shell','am','instrument','-w','-e',$runnerFlag,'true','-e','class',"$endpointClass#$method",$runner) `
             -WindowStyle Hidden -PassThru -RedirectStandardOutput $androidLog -RedirectStandardError $androidError
         $windowsResult=Join-Path $base "result-$phase.json"; $androidResult=Join-Path $base "android-result-$phase.json"
         $deadline=[DateTime]::UtcNow.AddSeconds(65);$pulled=$false
@@ -101,7 +129,15 @@ try {
     $before=Get-Content (Join-Path $base 'result-1.json') -Raw | ConvertFrom-Json
     $after=Get-Content (Join-Path $base 'result-2.json') -Raw | ConvertFrom-Json
     if (($before.events | ConvertTo-Json -Depth 100 -Compress) -cne ($after.events | ConvertTo-Json -Depth 100 -Compress)) {throw 'Restart altered original evidence'}
-    'PASS both process restarts, exact persisted OS public keys, no duplicate application; ADB-mediated loopback only'
+    foreach ($endpoint in @('result','android-result')) {
+        $first=Get-Content (Join-Path $base "$endpoint-1.json") -Raw | ConvertFrom-Json
+        $second=Get-Content (Join-Path $base "$endpoint-2.json") -Raw | ConvertFrom-Json
+        foreach ($field in @('proofs','cursors')) {
+            if (($first.$field | ConvertTo-Json -Depth 100 -Compress) -cne ($second.$field | ConvertTo-Json -Depth 100 -Compress)) {throw "Restart altered $endpoint $field"}
+        }
+    }
+    if ($lanMode) {'PASS direct native TCP, both process restarts, exact persisted OS public keys, no duplicate application; no ADB reverse data path'}
+    else {'PASS both process restarts, exact persisted OS public keys, no duplicate application; ADB-mediated loopback only'}
     "Evidence: $base"
 } finally {
     if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id }

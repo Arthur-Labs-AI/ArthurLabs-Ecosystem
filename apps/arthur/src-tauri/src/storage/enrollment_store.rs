@@ -75,6 +75,12 @@ fn observe(c: &Connection, id: Uuid, now: u64) -> Result<bool> {
     .map_err(sql)?;
     Ok(true)
 }
+/// Both outcomes confirm SQLite COMMIT. Never blindly retry the signed update.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ApplyOutcome {
+    Committed,
+    CommittedTransportUnavailable,
+}
 pub(crate) struct NetworkRegistry<'a> {
     owner: &'a CaptureStore,
 }
@@ -145,17 +151,26 @@ impl<'a> NetworkRegistry<'a> {
         })?;
         self.root()
     }
-    pub fn apply(&self, update: &SignedUpdate) -> Result<()> {
+    pub fn apply(&self, update: &SignedUpdate) -> Result<ApplyOutcome> {
         if matches!(update.body.action, Action::Genesis { .. }) {
             return Err(E::Trust);
         }
         self.write(|c| apply(c, update))?;
         if let Action::Revoke { device } = &update.body.action {
-            self.owner.revoked(crate::sync::security::transport_candidate::Expected {
-                network: update.body.network, peer: device.peer_id(),
-            })?;
+            if self
+                .owner
+                .revoked(crate::sync::security::transport_candidate::Expected {
+                    network: update.body.network,
+                    peer: device.peer_id(),
+                })
+                .is_err()
+            {
+                // Pool revocation failure already shuts down the poisoned Pool.
+                // Durable success is distinct from degraded runtime notification.
+                return Ok(ApplyOutcome::CommittedTransportUnavailable);
+            }
         }
-        Ok(())
+        Ok(ApplyOutcome::Committed)
     }
     pub fn next(&self, action: Action, admin: &dyn DeviceIdentityStore) -> Result<SignedUpdate> {
         let root = self.root()?;

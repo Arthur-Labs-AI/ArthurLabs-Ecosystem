@@ -62,6 +62,14 @@ pub(crate) struct Permit {
     fence: Option<super::network_watch::Fence>,
 }
 impl Pool {
+    #[cfg(test)]
+    pub(crate) fn poison_notification_fixture(&self) {
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = self.0.lock().unwrap();
+            panic!("notification fixture");
+        }));
+    }
+
     /// Commit notification only; caller must release its SQLite transaction lock.
     pub(crate) fn revoke(&self, expected: Expected) -> Result<()> {
         let stops = match self.0.lock() {
@@ -193,6 +201,15 @@ impl Pool {
     }
 }
 impl Permit {
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(super) fn native_fence(&self) -> Result<super::network_watch::Fence> {
+        let fence = self.fence.clone().ok_or(E::PlatformUnverified)?;
+        if !fence.valid() {
+            return Err(E::Cancelled);
+        }
+        Ok(fence)
+    }
+
     #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn clear_registration(&self) {
         let retired = self.stop.wake.lock().ok().and_then(|mut w| w.take());

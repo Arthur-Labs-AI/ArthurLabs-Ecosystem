@@ -124,6 +124,7 @@ pub(crate) struct RawIo {
     timer: NativeTimer,
     registration: Option<Box<dyn TimerRegistration>>,
     identity: Option<Arc<()>>,
+    native: Option<super::route_candidate::Observation>,
     session: bool,
     idle: u64,
 }
@@ -141,6 +142,7 @@ impl RawIo {
     }
     #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn tls_established(&mut self) -> R<()> {
+        self.tls_revalidate()?;
         self.begin_lab_session()
     }
     #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
@@ -184,11 +186,42 @@ impl RawIo {
             timer,
             registration: None,
             identity: Some(Arc::new(())),
+            native: None,
             session: false,
             idle,
         })
     }
+    pub(super) fn tls_revalidate(&mut self) -> R<()> {
+        let result = if self.native.is_some() {
+            self.evidence().map(|_| ()).map_err(security)
+        } else {
+            Ok(())
+        };
+        if result.is_err() {
+            self.abort();
+        }
+        result
+    }
     fn evidence(&self) -> super::Result<ConnectedEndpoints> {
+        if let Some(original) = &self.native {
+            let socket = self.socket.as_ref().ok_or(E::Cancelled)?;
+            let fence = self.permit.as_ref().ok_or(E::Cancelled)?.native_fence()?;
+            let current = fresh_bound(socket, original, &fence, &self.timer).map_err(|e| {
+                if e == Fault::Cancelled {
+                    E::Cancelled
+                } else {
+                    E::Trust
+                }
+            })?;
+            let evidence = ConnectedEndpoints::inspect_bound(
+                socket,
+                self.identity.as_ref().ok_or(E::Cancelled)?,
+                &current,
+                fence,
+            )?;
+            evidence.require_qualified_binding()?;
+            return Ok(evidence);
+        }
         ConnectedEndpoints::inspect_loopback(
             self.socket.as_ref().ok_or(E::Cancelled)?,
             self.identity.as_ref().ok_or(E::Cancelled)?,
@@ -196,6 +229,7 @@ impl RawIo {
     }
     pub(crate) fn abort(&mut self) {
         self.registration.take();
+        self.native.take();
         self.identity.take();
         self.socket.take();
         self.permit.take();
@@ -460,6 +494,297 @@ pub(crate) async fn accept_loopback(
     .await?;
     drop(listener);
     RawIo::new(socket, permit, timer)
+}
+
+// Explicit debug qualification only. Normal loopback factories above remain strict.
+// The private native facts are attached only after the OS bound this owned socket.
+fn native_snapshot(
+    endpoint: SocketAddr,
+    fence: &super::network_watch::Fence,
+    timer: &NativeTimer,
+) -> R<super::route_candidate::Observation> {
+    use super::route_candidate::{Link, Medium, Platform};
+    if !fence.valid() {
+        return Err(Fault::Cancelled);
+    }
+    let mut o = super::route_observer::acquire_native(endpoint)
+        .map_err(|_| Fault::State)?
+        .into_facts();
+    if o.link != Link::Up
+        || !matches!(o.medium, Medium::Wifi | Medium::Ethernet)
+        || !matches!(
+            o.platform,
+            Platform::WindowsPrivateProfileObserved
+                | Platform::AndroidBroadPermissionObserved
+                | Platform::AndroidLegacyInternetObserved
+        )
+        || o.interface == 0
+        || o.network == 0
+        || o.route_interface != o.interface
+    {
+        return Err(Fault::State);
+    }
+    o.generation = fence.generation();
+    o.captured = timer.now();
+    if !fence.valid() {
+        return Err(Fault::Cancelled);
+    }
+    Ok(o)
+}
+#[cfg(windows)]
+fn windows_interface(
+    raw: std::os::windows::io::RawSocket,
+    ipv4: bool,
+    interface: u32,
+    set: bool,
+) -> R<()> {
+    use windows_sys::Win32::Networking::WinSock::*;
+    // IPv4 sets in network order; gets returns HOST order (Microsoft IP_UNICAST_IF).
+    let (level, option, value) = if ipv4 {
+        (IPPROTO_IP, IP_UNICAST_IF, interface.to_be())
+    } else {
+        (IPPROTO_IPV6, IPV6_UNICAST_IF, interface)
+    };
+    if interface == 0 {
+        return Err(Fault::State);
+    }
+    // Winsock borrows the original owned socket; no duplicated descriptor escapes.
+    unsafe {
+        if set
+            && setsockopt(
+                raw as SOCKET,
+                level,
+                option,
+                (&value as *const u32).cast(),
+                4,
+            ) != 0
+        {
+            return Err(io_error(io::Error::last_os_error()));
+        }
+        let mut actual = 0u32;
+        let mut size = 4;
+        if getsockopt(
+            raw as SOCKET,
+            level,
+            option,
+            (&mut actual as *mut u32).cast(),
+            &mut size,
+        ) != 0
+            || size != 4
+            || actual != interface
+        {
+            return Err(Fault::State);
+        }
+    }
+    Ok(())
+}
+#[cfg(target_os = "android")]
+fn android_bind(network: u64, fd: std::os::fd::RawFd) -> R<()> {
+    #[link(name = "android")]
+    unsafe extern "C" {
+        fn android_setsocknetwork(network: u64, fd: std::ffi::c_int) -> std::ffi::c_int;
+    }
+    // NDK API23+, equivalent to Network.bindSocket(FileDescriptor). The FD is
+    // still unconnected, borrowed from TcpSocket, and never transferred to Java.
+    if network == 0 || unsafe { android_setsocknetwork(network, fd) } != 0 {
+        return Err(io_error(io::Error::last_os_error()));
+    }
+    Ok(())
+}
+fn bind_selected(socket: &TcpSocket, o: &super::route_candidate::Observation, port: u16) -> R<()> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::io::AsRawSocket;
+        windows_interface(
+            socket.as_raw_socket(),
+            o.endpoint.is_ipv4(),
+            o.interface,
+            true,
+        )?;
+    }
+    #[cfg(target_os = "android")]
+    {
+        use std::os::fd::AsRawFd;
+        android_bind(o.network, socket.as_raw_fd())?;
+    }
+    #[cfg(not(any(windows, target_os = "android")))]
+    {
+        return Err(Fault::State);
+    }
+    // Only Android's explicit fixed client source port needs restart reuse.
+    // The Windows listener uses a fresh OS-assigned port without reuse enabled.
+    #[cfg(target_os = "android")]
+    if port != 0 {
+        socket.set_reuseaddr(true).map_err(io_error)?;
+    }
+    socket
+        .bind(SocketAddr::new(o.local, port))
+        .map_err(io_error)?;
+    if socket.local_addr().map_err(io_error)?.ip() != o.local {
+        return Err(Fault::State);
+    }
+    Ok(())
+}
+fn fresh_bound(
+    socket: &TcpStream,
+    original: &super::route_candidate::Observation,
+    fence: &super::network_watch::Fence,
+    timer: &NativeTimer,
+) -> R<super::route_candidate::Observation> {
+    use super::route_candidate::{Candidate, Hint, Origin};
+    if !fence.valid() {
+        return Err(Fault::Cancelled);
+    }
+    let local = socket.local_addr().map_err(io_error)?;
+    let peer = socket.peer_addr().map_err(io_error)?;
+    if peer != original.endpoint || local.ip() != original.local || local.port() == 0 {
+        return Err(Fault::State);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::io::AsRawSocket;
+        windows_interface(
+            socket.as_raw_socket(),
+            peer.is_ipv4(),
+            original.interface,
+            false,
+        )?;
+    }
+    let mut current = native_snapshot(peer, fence, timer)?;
+    // This is socket-specific evidence: OS binding succeeded on the same owned
+    // socket before connect, actual endpoints match, fresh OS facts agree, and
+    // the callback fence has not changed. LinkProperties by itself never sets it.
+    current.source_selected = true;
+    let mut expected = original.clone();
+    expected.captured = current.captured;
+    if expected != current {
+        return Err(Fault::State);
+    }
+    Candidate::evaluate_qualification(
+        &Hint::parse(&peer.to_string(), Origin::Manual).map_err(security)?,
+        &current,
+        timer.now(),
+    )
+    .map_err(security)?;
+    if !fence.valid() {
+        return Err(Fault::Cancelled);
+    }
+    Ok(current)
+}
+fn native_raw(
+    socket: TcpStream,
+    permit: Permit,
+    timer: NativeTimer,
+    original: super::route_candidate::Observation,
+) -> R<RawIo> {
+    let fence = permit.native_fence().map_err(security)?;
+    fresh_bound(&socket, &original, &fence, &timer)?;
+    let idle = timer.now();
+    Ok(RawIo {
+        socket: Some(socket),
+        permit: Some(permit),
+        timer,
+        registration: None,
+        identity: Some(Arc::new(())),
+        native: Some(original),
+        session: false,
+        idle,
+    })
+}
+pub(crate) async fn connect_native_qualification(
+    endpoint: SocketAddr,
+    source: std::net::IpAddr,
+    source_port: u16,
+    permit: Permit,
+    timer: NativeTimer,
+) -> R<RawIo> {
+    use super::route_candidate::{Candidate, Hint, Origin};
+    let fence = permit.native_fence().map_err(security)?;
+    let mut o = native_snapshot(endpoint, &fence, &timer)?;
+    if o.local != source || source.is_unspecified() {
+        return Err(Fault::State);
+    }
+    let socket = if endpoint.is_ipv4() {
+        TcpSocket::new_v4()
+    } else {
+        TcpSocket::new_v6()
+    }
+    .map_err(io_error)?;
+    bind_selected(&socket, &o, source_port)?;
+    o.source_selected = true; // Only after OS binding AND explicit source binding succeeded.
+    Candidate::evaluate_qualification(
+        &Hint::parse(&endpoint.to_string(), Origin::Manual).map_err(security)?,
+        &o,
+        timer.now(),
+    )
+    .map_err(security)?;
+    if !fence.valid() {
+        return Err(Fault::Cancelled);
+    }
+    let socket = admitted(
+        async { socket.connect(endpoint).await.map_err(io_error) },
+        &permit,
+        &timer,
+    )
+    .await?;
+    native_raw(socket, permit, timer, o)
+}
+#[cfg(windows)]
+pub(crate) fn listen_native_qualification(
+    peer: SocketAddr,
+    source: std::net::IpAddr,
+    permit: &Permit,
+    timer: &NativeTimer,
+) -> R<tokio::net::TcpListener> {
+    use super::route_candidate::{Candidate, Hint, Origin};
+    let fence = permit.native_fence().map_err(security)?;
+    let o = native_snapshot(peer, &fence, timer)?;
+    if source != o.local || source.is_unspecified() {
+        return Err(Fault::State);
+    }
+    // IP Helper selects the source on Windows. Private NLM category and route
+    // eligibility are checked BEFORE creating any listening socket.
+    Candidate::evaluate_qualification(
+        &Hint::parse(&peer.to_string(), Origin::Manual).map_err(security)?,
+        &o,
+        timer.now(),
+    )
+    .map_err(security)?;
+    let socket = if peer.is_ipv4() {
+        TcpSocket::new_v4()
+    } else {
+        TcpSocket::new_v6()
+    }
+    .map_err(io_error)?;
+    bind_selected(&socket, &o, 0)?;
+    if !fence.valid() {
+        return Err(Fault::Cancelled);
+    }
+    socket.listen(1).map_err(io_error)
+}
+#[cfg(windows)]
+pub(crate) async fn accept_native_qualification(
+    listener: tokio::net::TcpListener,
+    peer: SocketAddr,
+    permit: Permit,
+    timer: NativeTimer,
+) -> R<RawIo> {
+    use std::os::windows::io::AsRawSocket;
+    let fence = permit.native_fence().map_err(security)?;
+    let o = native_snapshot(peer, &fence, &timer)?;
+    if listener.local_addr().map_err(io_error)?.ip() != o.local {
+        return Err(Fault::State);
+    }
+    windows_interface(listener.as_raw_socket(), peer.is_ipv4(), o.interface, false)?;
+    let socket = admitted(
+        async { listener.accept().await.map(|s| s.0).map_err(io_error) },
+        &permit,
+        &timer,
+    )
+    .await?;
+    drop(listener);
+    windows_interface(socket.as_raw_socket(), peer.is_ipv4(), o.interface, true)?;
+    native_raw(socket, permit, timer, o)
 }
 
 fn expected() -> Expected {
@@ -871,5 +1196,218 @@ fn r2_cancelled_connect_cannot_return_socket_or_retain_permit() {
         stop.cancel();
         assert!(matches!(pair(permit, timer).await, Err(Fault::Cancelled)));
         assert_eq!(pool.active_for_test(), 0);
+    });
+}
+
+#[cfg(all(target_os = "android", feature = "android-identity-tests"))]
+pub(crate) fn qualify_selected_network(owner: &crate::runtime::NativeRuntime) -> super::Result<()> {
+    use super::route_candidate::*;
+    use std::os::fd::AsRawFd;
+    let c = owner.transport_candidate();
+    c.start_monitor().map_err(|_| E::PlatformUnverified)?;
+    execute(async {
+        let until = Instant::now() + Duration::from_secs(15);
+        while c.native_qualification_fence().is_err() {
+            assert!(Instant::now() < until, "initial native callbacks missing");
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+        let stop = Arc::new(super::transport_candidate::Interrupt::default());
+        let (pool, permit, timer) = c.admit_native_qualification(expected(), &stop).unwrap();
+        let fence = permit.native_fence().unwrap();
+        let o = native_snapshot("192.168.1.3:7431".parse().unwrap(), &fence, &timer).unwrap();
+        assert!(
+            !o.source_selected,
+            "CM address alone is not socket selection"
+        );
+        assert!(
+            matches!(o.local,std::net::IpAddr::V4(ip) if ip.is_private()),
+            "self-interface probe requires a private IPv4 source before listen"
+        );
+        let listener = tokio::net::TcpListener::bind(SocketAddr::new(o.local, 0))
+            .await
+            .unwrap();
+        let target = listener.local_addr().unwrap();
+        let socket = TcpSocket::new_v4().unwrap();
+        assert!(android_bind(o.network, -1).is_err(), "invalid FD must fail");
+        bind_selected(&socket, &o, 0).unwrap();
+        let fd = socket.as_raw_fd();
+        assert!(fd >= 0);
+        let (client, peer) = admitted(
+            async {
+                let (client, peer) = both(socket.connect(target), listener.accept()).await;
+                Ok((client.map_err(io_error)?, peer.map_err(io_error)?.0))
+            },
+            &permit,
+            &timer,
+        )
+        .await
+        .unwrap();
+        drop(listener);
+        assert_eq!(
+            client.as_raw_fd(),
+            fd,
+            "connect must retain the OS-bound descriptor"
+        );
+        assert_eq!(client.local_addr().unwrap().ip(), o.local);
+        assert_eq!(client.peer_addr().unwrap(), target);
+        assert_eq!(peer.peer_addr().unwrap(), client.local_addr().unwrap());
+        let fresh = native_snapshot(o.endpoint, &fence, &timer).unwrap();
+        assert_eq!(fresh.network, o.network);
+        assert_eq!(fresh.interface, o.interface);
+        assert_eq!(fresh.local, o.local);
+        let mut self_facts = fresh.clone();
+        self_facts.endpoint = target;
+        self_facts.source_selected = true;
+        assert!(
+            Candidate::evaluate_qualification(
+                &Hint::parse(&target.to_string(), Origin::Manual).unwrap(),
+                &self_facts,
+                timer.now()
+            )
+            .is_err(),
+            "self-interface probe is NOT peer LAN eligibility"
+        );
+        println!("R4 NDK actual FD {fd}, Network {}, interface {}, {:?}, local {}, remote {}; self-interface only, no TLS/Sync claim",o.network,o.interface,o.platform,client.local_addr().unwrap(),target);
+        c.stop_monitor().unwrap();
+        assert!(!fence.valid());
+        assert!(permit.native_fence().is_err());
+        assert_eq!(timer.registrations(), 0);
+        drop(client);
+        drop(peer);
+        drop(permit);
+        assert_eq!(pool.active_for_test(), 0);
+    });
+    c.stop_monitor()?;
+    Ok(())
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn r4_native_windows_interface_option_roundtrip_and_endpoints() {
+    execute(async {
+        use std::os::windows::io::AsRawSocket;
+        use windows_sys::Win32::{
+            NetworkManagement::IpHelper::GetBestInterfaceEx, Networking::WinSock::*,
+        };
+        let mut addr = SOCKADDR_IN::default();
+        addr.sin_family = AF_INET;
+        addr.sin_addr.S_un.S_addr = u32::from_ne_bytes([127, 0, 0, 1]);
+        let mut index = 0;
+        assert_eq!(
+            unsafe { GetBestInterfaceEx((&addr as *const SOCKADDR_IN).cast(), &mut index) },
+            0
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let socket = TcpSocket::new_v4().unwrap();
+        windows_interface(socket.as_raw_socket(), true, index, true).unwrap();
+        socket.bind("127.0.0.1:0".parse().unwrap()).unwrap();
+        let (client, peer) = both(
+            socket.connect(listener.local_addr().unwrap()),
+            listener.accept(),
+        )
+        .await;
+        let client = client.unwrap();
+        let peer = peer.unwrap().0;
+        windows_interface(client.as_raw_socket(), true, index, false).unwrap();
+        assert!(windows_interface(client.as_raw_socket(), true, index + 1, false).is_err());
+        assert_eq!(client.local_addr().unwrap(), peer.peer_addr().unwrap());
+        assert_eq!(client.peer_addr().unwrap(), peer.local_addr().unwrap());
+        // Mechanism-only loopback evidence cannot open the native LAN path.
+        assert!(native_snapshot(
+            client.peer_addr().unwrap(),
+            &super::network_watch::Signal::channel().0.fence().unwrap(),
+            &NativeTimer::new()
+        )
+        .is_err());
+    });
+}
+
+#[test]
+fn r4_n7_before_pending_connect_and_stale_socket_completion_cancel() {
+    use super::network_watch::{Signal, INTERFACE, LOST, ROUTE};
+    use super::transport_candidate::Interrupt;
+    execute(async {
+        for kind in [LOST, INTERFACE, ROUTE] {
+            for stage in 0..3 {
+                let pool = Arc::new(Pool::default());
+                let timer = NativeTimer::new();
+                let (signal, _events) = Signal::channel();
+                let stop = Arc::new(Interrupt::default());
+                let permit = pool
+                    .admit_observed(expected(), 0, &stop, Some(signal.fence().unwrap()))
+                    .unwrap();
+                let polled = std::cell::Cell::new(false);
+                if stage == 0 {
+                    signal.notify(kind);
+                    let result = admitted(
+                        async {
+                            polled.set(true);
+                            Ok(())
+                        },
+                        &permit,
+                        &timer,
+                    )
+                    .await;
+                    assert_eq!(result, Err(Fault::Cancelled));
+                    assert!(!polled.get());
+                } else if stage == 1 {
+                    let (tx, rx) = tokio::sync::oneshot::channel();
+                    let mut tx = Some(tx);
+                    let held = Arc::new(());
+                    let weak = Arc::downgrade(&held);
+                    let pending = async move {
+                        let _held = held;
+                        poll_fn(|_| {
+                            if let Some(tx) = tx.take() {
+                                let _ = tx.send(());
+                            }
+                            Poll::<R<()>>::Pending
+                        })
+                        .await
+                    };
+                    let (result, ()) = both(admitted(pending, &permit, &timer), async {
+                        rx.await.unwrap();
+                        signal.notify(kind);
+                        stop.cancel();
+                    })
+                    .await;
+                    assert_eq!(result, Err(Fault::Cancelled));
+                    assert!(weak.upgrade().is_none());
+                } else {
+                    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+                    let peer = std::cell::RefCell::new(None);
+                    let result = admitted(
+                        async {
+                            let (client, accepted) = both(
+                                TcpStream::connect(listener.local_addr().unwrap()),
+                                listener.accept(),
+                            )
+                            .await;
+                            peer.replace(Some(accepted.unwrap().0));
+                            signal.notify(kind);
+                            stop.cancel();
+                            Ok(client.unwrap()) // Actual connected socket completes after invalidation.
+                        },
+                        &permit,
+                        &timer,
+                    )
+                    .await;
+                    assert!(matches!(result, Err(Fault::Cancelled)));
+                    assert_eq!(
+                        peer.borrow_mut()
+                            .as_mut()
+                            .unwrap()
+                            .read(&mut [0; 1])
+                            .await
+                            .unwrap(),
+                        0
+                    );
+                }
+                assert_eq!(timer.registrations(), 0);
+                assert!(permit.native_fence().is_err());
+                drop(permit);
+                assert_eq!(pool.active_for_test(), 0);
+            }
+        }
     });
 }
