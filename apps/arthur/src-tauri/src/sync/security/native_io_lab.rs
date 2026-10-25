@@ -128,6 +128,42 @@ pub(crate) struct RawIo {
     idle: u64,
 }
 impl RawIo {
+    #[cfg(test)]
+    pub(super) fn tls_socket(socket: TcpStream, permit: Permit, timer: NativeTimer) -> R<Self> {
+        Self::new(socket, permit, timer)
+    }
+    #[cfg(test)]
+    pub(super) fn tls_established(&mut self) -> R<()> {
+        self.begin_lab_session()
+    }
+    #[cfg(test)]
+    pub(super) fn tls_record_complete(&mut self) {
+        self.idle = self.timer.now();
+    }
+    #[cfg(test)]
+    pub(super) fn tls_deadline_fixture(&mut self, total: bool) {
+        self.timer = NativeTimer::from_origin(
+            std::time::Instant::now() - Duration::from_secs(if total { 59 } else { 14 }),
+        );
+        if total {
+            self.idle = self.timer.now();
+        }
+    }
+    #[cfg(test)]
+    pub(super) fn tls_closed(&self) -> bool {
+        self.socket.is_none() && self.permit.is_none() && self.timer.registrations() == 0
+    }
+    #[cfg(test)]
+    pub(super) fn tls_endpoints(&self) -> super::Result<ConnectedEndpoints> {
+        self.evidence()
+    }
+    #[cfg(test)]
+    pub(super) fn tls_reset_fixture(&mut self) {
+        if let Some(s) = &self.socket {
+            s.set_linger(Some(Duration::ZERO)).unwrap();
+        }
+        self.abort();
+    }
     fn new(socket: TcpStream, permit: Permit, timer: NativeTimer) -> R<Self> {
         if !socket.local_addr().map_err(io_error)?.ip().is_loopback()
             || !socket.peer_addr().map_err(io_error)?.ip().is_loopback()

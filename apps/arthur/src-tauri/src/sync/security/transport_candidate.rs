@@ -62,6 +62,10 @@ pub(crate) struct Permit {
     fence: Option<super::network_watch::Fence>,
 }
 impl Pool {
+    #[cfg(test)]
+    pub(super) fn active_for_test(&self) -> usize {
+        self.0.lock().unwrap().active.len()
+    }
     pub(crate) fn new(_: &crate::runtime::TransportOwner) -> Self {
         Self(Mutex::new(State::default()))
     }

@@ -3,7 +3,7 @@ use super::*;
 
 const CAPABILITY: &str = "m05-project-capture-mvp";
 
-fn device(id: Uuid, other: Uuid) -> Peer {
+pub(super) fn device(id: Uuid, other: Uuid) -> Peer {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().canonicalize().unwrap();
     let store = CaptureStore::open_owned(DataRootOwnership::try_acquire(&root).unwrap()).unwrap();
@@ -20,7 +20,7 @@ fn device(id: Uuid, other: Uuid) -> Peer {
 
 // Refuse the entire attempt, never omit unsupported links from an origin chain.
 // This is deliberately only test orchestration, not production negotiation.
-fn scope(peer: &Peer) -> std::result::Result<(), Outcome> {
+pub(super) fn scope(peer: &Peer) -> std::result::Result<(), Outcome> {
     for envelope in test_events(&peer.store) {
         let event = ValidatedEvent::parse(envelope).map_err(|_| Outcome::RejectedIntegrity)?;
         if event.core().operations.iter().any(|op| {
@@ -69,7 +69,7 @@ fn exchange(a: &Peer, b: &Peer, session: u128) -> std::result::Result<(), Outcom
     Ok(())
 }
 
-fn same_supported(a: &Peer, b: &Peer) {
+pub(super) fn same_supported(a: &Peer, b: &Peer) {
     let ae = test_events(&a.store);
     let be = test_events(&b.store);
     assert_eq!(ae.len(), be.len());
@@ -92,7 +92,7 @@ fn same_supported(a: &Peer, b: &Peer) {
     }
 }
 
-fn no_provider_work(peer: &Peer) {
+pub(super) fn no_provider_work(peer: &Peer) {
     use crate::recall::{
         settings::SemanticSettings,
         testing::{run, ConceptEmbedder},

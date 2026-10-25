@@ -35,6 +35,8 @@ pub(crate) mod composition;
 pub(crate) mod pake_qualification;
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod tls_lab;
+#[cfg(test)]
+pub(crate) mod tls_socket_lab;
 #[cfg(windows)]
 pub(crate) mod windows;
 

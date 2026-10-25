@@ -54,7 +54,7 @@ fn no_shipped_code_constructs_or_enables_synthesis() {
 
 #[test]
 fn the_real_synthesis_endpoint_is_only_reachable_through_the_production_constructor() {
-    let source = include_str!("openai.rs");
+    let source = include_str!("openai.rs").replace("\r\n", "\n");
     assert_eq!(source.matches("DEFAULT_ENDPOINT.to_string()").count(), 1, "one place chooses the endpoint");
     assert!(source.contains("#[cfg(test)]\n    pub fn for_test"), "the test constructor is test-only");
 }
@@ -73,7 +73,7 @@ fn no_glm_or_zai_provider_exists_anywhere_in_shipped_code_or_manifests() {
 
 #[test]
 fn a_same_family_pass_is_wired_to_hold_for_review_and_the_shipped_verifier_is_not_called_independent() {
-    let stage = include_str!("stage.rs");
+    let stage = include_str!("stage.rs").replace("\r\n", "\n");
     assert!(stage.contains("if outcome.review_only() {\n            return Err(\"review_required\");"), "`run` refuses to hand a same-family pass back as applicable");
     assert!(stage.contains("self.mode == VerificationMode::SameFamilyReview"), "a same-family review is review-only");
     let verifier = include_str!("openai_verifier.rs");

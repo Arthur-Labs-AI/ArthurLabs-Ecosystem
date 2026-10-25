@@ -748,7 +748,9 @@ fn the_real_transport_posts_json_with_a_bearer_header_and_never_leaks_the_key_in
     assert!(raw.contains(&format!("authorization: bearer {}", SECRET.to_lowercase())) && raw.contains("content-type: application/json") && raw.ends_with("{\"state\":1}"));
 
     let dead = ReqwestTransport::with_endpoint(crate::test_support::dead_endpoint("/v1/systemone"));
-    let error = tauri::async_runtime::block_on(dead.post(&key, "{}", Duration::from_secs(2))).unwrap_err();
+    // Windows may retry a refused loopback SYN beyond two seconds. Allow the
+    // native refusal to arrive; timeout behavior has its own stalled-peer tests.
+    let error = tauri::async_runtime::block_on(dead.post(&key, "{}", Duration::from_secs(5))).unwrap_err();
     assert!(!format!("{error:?}").contains(SECRET));
     assert_eq!(error, TransportError::Network);
 

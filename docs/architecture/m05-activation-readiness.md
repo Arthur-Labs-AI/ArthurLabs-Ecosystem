@@ -1938,3 +1938,136 @@ Windows/Android apps cannot yet do manual Sync: encrypted Sync transport,
 reviewed enrollment/membership, N1/G3/G4/N7 approvals and native/UI commands are
 missing or unapproved. Next implement only the test-only encrypted adapter
 described in the scope document, then rerun this same workflow through it.
+
+## 26. MEGA M05 R1 — real encrypted development integration (2026-10-25)
+
+Baseline `fd2f3da85ff4563fdba8037759b0df4b91656c64`, same feature branch.
+**PARTIAL; production release/activation remains blocked.** Scope, release
+operation classification and minimal external review package are in the updated
+[integration document](m05-project-capture-mvp.md#r1-disposition-and-release-scope).
+
+New `cfg(test)` tls_socket_lab composes existing native CNG OwnedTlsKey signing,
+the existing rustls TLS13/RFC7250 raw-SPKI pin configuration, N7D RawIo and its
+Pool/cancellation/deadline machinery, bounded AE01 records and the existing
+AuthenticatedTransport/SyncEngine/CandidateSyncStore/G3 data path. No additional
+runtime, worker, service, manager or crypto protocol. Test-only serde support
+uses the existing message types; snapshots refuse. Native messages up to 1 MiB
+stream through existing <=64 KiB AE01 records, with no additional header. At
+most eight messages and 1 MiB cumulative queued bytes/capacity per direction;
+serialization/assembly and ciphertext buffers are bounded. This is not an approved
+production wire profile or a full knowledge-v1-full implementation.
+
+Both pins and live reciprocal socket addresses are checked; actual TLS
+exporter plus network/session/peer/epoch context is exchanged and verified
+inside TLS before exposing a transport to the engine. No Sync data crosses
+before that check. TestTrust supplies synthetic membership, while real store
+membership checks reject a revoked peer before Hello/inventory disclosure.
+Per-connection disposable Pool fixtures are used; this does not qualify an
+application owner's shared admission/rate budget or route-monitor integration.
+
+Windows R1 suite: nine real-socket scenarios plus one isolation source guard:
+
+- A→B Project/Capture, B→A Capture in that imported Project; exact complete row
+  images, UUIDs, timestamps, relationships and original canonical events;
+  repeated Sync plus explicit encrypted replay, no duplicate application.
+- The maximum native 20,000-character Unicode Capture (80,000 UTF8 payload
+  bytes) crosses multiple AE01 and TLS records and retains exact original data.
+- Lost acknowledgement after encrypted delivery, disconnect, drop/reopen BOTH
+  SQLite owners, durable resume, no outstanding work or false success. Domain
+  stores and disposable identity fixtures have distinct roots with one owner
+  per root. No process termination or separate-process endpoint claim.
+- Wrong pin, wrong network/session, invalid/interrupted/stalled handshake;
+  ciphertext and canonical-event corruption; contradictory event identity
+  retains collision evidence without overwriting committed knowledge.
+- Pending TLS read cancelled via existing Pool shutdown, actual reset, EOF and
+  EOF inside a partial encrypted frame, outgoing protocol-size refusal, timer/socket/
+  permit cleanup. Deadline tests pre-age monotonic fixture epochs and then
+  await actual reactor deadlines; they do not claim 60 seconds of new TLS idle
+  runtime. Existing N7D real-duration timer tests also run in the full suite.
+- An actual SQLite max_page_count ceiling rejects a multi-record encrypted
+  Capture import with Storage; receiver SQL state/proofs/cursors remain exact.
+  After restoring the ceiling and reopening both owners, retry applies once.
+  This is FULL/rollback evidence, not a WAL/scratch/recovery physical bound or
+  a new G3-specific IOERR-at-COMMIT test. Both completed stores perform enabled
+  Recall polling with zero embedding requests and no distillation/model work.
+- Default/instrumentation activation-path exclusion source guard.
+
+Concrete RED→GREEN corrections:
+
+1. A >one-TLS-record payload stalled after 16384 plaintext bytes: read_tls can
+   consume less than an OS read. The adapter now processes the entire remaining
+   ciphertext slice before another native read. The SQLite FULL/retry scenario
+   reproduces the failure and passes after the fix.
+2. Initial Recall polling nested block_on inside the async harness. Polling now
+   runs after the async scenario; no second runtime was introduced.
+   A further RED test showed that one-message-per-record refused a valid
+   maximum native Capture with Limit. Bounded multi-record JSON assembly now
+   removes that artificial restriction while retaining both existing ceilings.
+3. All five historical native failures were reproduced and fixed: three source
+   assertions now normalize only checkout CRLF; frozen corpus retains STRICT
+   original hashes/byte assertion with scoped LF .gitattributes and no corpus
+   Git diff; JEV's closed-loopback request permits five seconds for Windows'
+   approximately two-second refusal instead of racing a two-second timeout.
+   Network expectation and production request policy are unchanged.
+4. Both architecture failures were reproduced: migration extraction and
+   SpeakInput exclusion expected LF only. Regexes now accept LF/CRLF and retain
+   every schema/DTO restriction. No expectation/hash/contract was relaxed.
+
+Host verification includes synthesis **93 PASS /1 ignored** with strict frozen
+byte hashes and R1 TLS **10 PASS**, 21.02s, including the maximum Capture RED→GREEN.
+The comprehensive final native result after that demonstrated size-gap fix is
+**1416 PASS /0 FAIL /25 ignored**, 333.71s, versus MVP1 1401/5/25. Commands/logs:
+`cargo test --locked --offline --manifest-path apps/arthur/src-tauri/Cargo.toml
+--lib -- --test-threads=1`, `%TEMP%/arthur-r1-native.log`; focused equivalents
+`synthesis::` and `r1_tls`, `arthur-r1-synthesis-final.log`/`arthur-r1-tls-final.log`.
+
+| Final gate (Windows unless stated) | Executed result / evidence |
+| --- | --- |
+| Relevant full-native subsets | N7 40 PASS; security 72 PASS /1 ignored; Sync name filter 172 PASS /1 ignored; journal 287 PASS /1 ignored; dormant v10 24 PASS; MVP1 4 PASS; R1 10 PASS. |
+| Locked/offline `cargo check --all-targets` / `cargo build --bin arthur` | PASS /PASS, 11.48s/1.73s; `arthur-r1-check.log`, `arthur-r1-windows-build.log`. |
+| `npm run typecheck` / `npm run test:architecture` | PASS /88 PASS, 0 FAIL; `arthur-r1-typecheck.log`, `arthur-r1-architecture.log`. |
+| `npm run arthur:check` | 561 PASS /42 files, app typecheck + Vite build PASS; `arthur-r1-frontend.log`. |
+| Android `verify-identity.ps1 -Serial emulator-5580` | Rust/Java/Kotlin/Gradle dedicated APK +42 instrumentation PASS, 0 fail/error/skipped, plus2 separate restart invocations PASS. Fresh XML 2026-10-25 10:24:22 UTC; `arthur-r1-android-identity.log`. |
+| Android default Tauri x86_64 debug APK | PASS; `arthur-r1-android-default.log`. Default package dev.kaloyan.arthur; no identitytest profile or ACCESS_NETWORK_STATE. |
+| Android JNI/isolation | Exactly two existing bridge exports remain in default; two additional test scenario/restart exports exist only in instrumentation. No test JNI leak; `arthur-r1-android-*-exports.log`, `arthur-r1-default-manifest.log`. |
+| Four Windows/Android default/lab dependency graphs | PASS; `verify-isolation.ps1`, `arthur-r1-isolation.log`; no PAKE qualification dependency in default normal/build graphs, positive lab controls present. |
+| Android release +android-identity-tests negative check | Expected refusal PASS: all3 explicit guards, 8 secondary diagnostics, 11 errors; `arthur-r1-release-refusal.log`. This is not successful release packaging. |
+| Scoped rustfmt /cached diff whitespace | PASS /PASS. No global formatting claim. |
+
+All logs are local `%TEMP%/arthur-r1-*`, not committed. Android environment was
+a task-owned read-only/no-window Android16/API36/x86_64 emulator. Its42 tests
+exercise existing native identity, memory TLS and N7D paths; the new socket Sync
+adapter is not compiled into Android instrumentation and is NOT Android encrypted
+Sync evidence. The task emulator was stopped; final adb device inventory is empty.
+No cache cleanup, added permissions, new dependencies or generated Gradle/manifest
+diff. Corpus blobs and original checksum values have no diff. Self-review found
+no new blocker in the qualification data path/lifecycle; it is not independent N1
+approval and does not remove the release blockers listed below.
+
+Changed-file inventory (16): `.gitattributes`; `src/jev/tests.rs`;
+`src/storage/{sync_mvp_tests.rs,sync_tests.rs,sync_tls_tests.rs}`;
+`src/sync/protocol.rs`; `src/sync/security/{mod.rs,native_io_lab.rs,tls_lab.rs,
+tls_socket_lab.rs,transport_candidate.rs}`; `src/synthesis/{architecture_tests.rs,
+tests.rs}` (all src paths under apps/arthur/src-tauri);
+`tests/architecture/foundation_shell.test.ts`; this readiness file and
+`m05-project-capture-mvp.md`. Frozen journal/codec/reducer/migrations/snapshot/D4
+and Cargo.lock are unchanged. No binaries, fixture keys, payloads or raw logs.
+
+N1 remains blocked: exact opaque-ke4.0.1/Argon2/rustls/ring lock unchanged;
+crypto-bigint0.5.5 advisory remains unresolved upstream in that selected chain;
+no applicable independent composition approval. No SPAKE2 replacement. G3 narrow
+scope/import policy and G4 physical bounds still require acceptance. N7 lacks
+native connected-interface/profile/permission proof and approved policy; address
+facts are loopback-only. NativeRuntime owner-generation/shutdown integration
+with this new adapter, real pairing/human approval, native SyncNow/status and
+ArthurClient UI connection remain unimplemented/unverified for release.
+
+Production schema9, dormant M05, ClosedTrust/ClosedLan, closed PAKE/TLS/LAN,
+UnverifiedBounds, frozen journal/codec/reducer/snapshot contracts, no live
+enrollment/production VerifiedSession/public listener/dialer/frontend networking/
+second owner remain unchanged. N1/N2/N3/N7 and G3–G7 are not self-approved.
+No E3B or main merge. A green host regression suite is not a production release
+approval; actual Android encrypted Sync, separate endpoint processes, physical
+LAN/devices, ARM64/API37, successful release packaging and hosted CI remain
+UNVERIFIED. Next qualify the same adapter with Android Keystore/isolated endpoint I/O and the
+existing owner's shared admission/route cancellation, retaining these gates.

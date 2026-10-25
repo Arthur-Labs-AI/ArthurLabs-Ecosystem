@@ -26,6 +26,8 @@ pub(crate) enum Error {
 }
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(test, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 pub(crate) enum Outcome {
     CleanlyApplied,
     ConflictRetained,
@@ -58,6 +60,8 @@ impl Outcome {
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(test, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 pub(crate) enum SyncStatus {
     Syncing,
     CleanlyApplied,
@@ -80,6 +84,8 @@ impl From<Outcome> for SyncStatus {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(test, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 pub(crate) struct Identity {
     pub event: Uuid,
     pub bundle: Uuid,
@@ -95,6 +101,8 @@ pub(crate) struct Envelope {
     pub bytes: Vec<u8>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 pub(crate) struct Progress {
     pub origin: Uuid,
     pub incarnation: Uuid,
@@ -103,6 +111,8 @@ pub(crate) struct Progress {
     pub applied: i64,
 }
 #[derive(Clone)]
+#[cfg_attr(test, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 pub(crate) struct Summary {
     pub known: Vec<Identity>,
     pub next: Option<PageKey>,
@@ -111,6 +121,8 @@ pub(crate) struct Summary {
     pub status: SyncStatus,
 }
 #[derive(Clone)]
+#[cfg_attr(test, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 pub(crate) struct Chunk {
     pub identity: Identity,
     pub index: usize,
@@ -120,11 +132,15 @@ pub(crate) struct Chunk {
     pub bytes: Vec<u8>,
 }
 #[derive(Clone)]
+#[cfg_attr(test, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 pub(crate) struct Receipt {
     pub identity: Identity,
     pub outcome: Outcome,
 }
 #[derive(Clone)]
+#[cfg_attr(test, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 pub(crate) enum Payload {
     Hello {
         version: u32,
@@ -134,15 +150,21 @@ pub(crate) enum Payload {
     },
     Summary(Summary),
     Page(PageKey),
+    #[cfg_attr(test, serde(skip))]
     SnapshotOffer(super::bootstrap::SnapshotOffer),
+    #[cfg_attr(test, serde(skip))]
     SnapshotChunk(super::bootstrap::SnapshotChunk),
+    #[cfg_attr(test, serde(skip))]
     SnapshotPublish(super::bootstrap::SnapshotOffer),
+    #[cfg_attr(test, serde(skip))]
     SnapshotReceipt(super::bootstrap::SnapshotReceipt),
     Chunk(Chunk),
     Receipt(Receipt),
     Request(Vec<Uuid>),
 }
 #[derive(Clone)]
+#[cfg_attr(test, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 pub(crate) struct Message {
     pub network: Uuid,
     pub session: Uuid,
@@ -151,6 +173,8 @@ pub(crate) struct Message {
     pub payload: Payload,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 pub(crate) struct PeerHello {
     pub network: Uuid,
     pub session: Uuid,

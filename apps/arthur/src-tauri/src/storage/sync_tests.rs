@@ -1921,3 +1921,7 @@ mod d3;
 
 #[path="sync_mvp_tests.rs"]
 mod mvp1;
+
+#[cfg(windows)]
+#[path="sync_tls_tests.rs"]
+mod r1;

@@ -166,12 +166,12 @@ pub(crate) fn pair(server: Arc<OwnedTlsKey>, client: Arc<OwnedTlsKey>) -> Result
         client.identity(),
     )
 }
-pub(crate) fn pair_with_pins(
+pub(crate) fn connections(
     server: Arc<OwnedTlsKey>,
     client: Arc<OwnedTlsKey>,
     server_pin: &PublicIdentity,
     client_pin: &PublicIdentity,
-) -> Result<LabChannel> {
+) -> Result<(rustls::ClientConnection, rustls::ServerConnection)> {
     let provider = Arc::new(rustls::crypto::ring::default_provider());
     let mut server_config = rustls::ServerConfig::builder_with_provider(provider.clone())
         .with_protocol_versions(&[&rustls::version::TLS13])
@@ -200,13 +200,23 @@ pub(crate) fn pair_with_pins(
     client_config.resumption = rustls::client::Resumption::disabled();
     client_config.enable_early_data = false;
     client_config.alpn_protocols = vec![b"arthur-e3a-lab-v1".to_vec()];
-    let mut client_conn = rustls::ClientConnection::new(
+    let client_conn = rustls::ClientConnection::new(
         Arc::new(client_config),
         ServerName::try_from("arthur.invalid").map_err(|_| E::Invalid)?,
     )
     .map_err(|_| E::Trust)?;
-    let mut server_conn =
+    let server_conn =
         rustls::ServerConnection::new(Arc::new(server_config)).map_err(|_| E::Trust)?;
+    Ok((client_conn, server_conn))
+}
+pub(crate) fn pair_with_pins(
+    server: Arc<OwnedTlsKey>,
+    client: Arc<OwnedTlsKey>,
+    server_pin: &PublicIdentity,
+    client_pin: &PublicIdentity,
+) -> Result<LabChannel> {
+    let (mut client_conn, mut server_conn) =
+        connections(server.clone(), client.clone(), server_pin, client_pin)?;
     let mut total = 0;
     for _ in 0..32 {
         let mut outbound = Vec::new();

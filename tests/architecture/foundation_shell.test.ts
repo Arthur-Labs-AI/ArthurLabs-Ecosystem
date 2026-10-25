@@ -640,7 +640,7 @@ test("temporary audio is bounded, app-private, never logged and never stored", (
 
 test("schema v6: projects own captures and objects, and nothing else carries a project", () => {
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  const v6 = /pub const SCHEMA_V6: &str = "([\s\S]*?)";\n/.exec(migrations)?.[1] ?? "";
+  const v6 = /pub const SCHEMA_V6: &str = "([\s\S]*?)";\r?\n/.exec(migrations)?.[1] ?? "";
   assert.ok(v6.length > 0, "SCHEMA_V6 exists");
   assert.match(v6, /CREATE TABLE projects \(/);
   assert.match(v6, /ALTER TABLE captures ADD COLUMN project_id TEXT REFERENCES projects\(id\)/);
@@ -830,7 +830,7 @@ test("voice output (M04.6): TTS goes through the provider and SecretStore layer,
   const commands = productionCode(readText(tauriDir, "src/commands/speech.rs"));
   assert.doesNotMatch(commands, /Vec<u8>|bytes|Speech\b|ApiKey|expose\(|endpoint|Authorization/);
   const contract = readFileSync(path.join(root, "packages/contracts/speech.ts"), "utf8");
-  const fields = contract.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "").replace(/export interface SpeakInput[\s\S]*?\n}\n/, "");
+  const fields = contract.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "").replace(/export interface SpeakInput[\s\S]*?\r?\n}\r?\n/, "");
   assert.doesNotMatch(fields, /\b(audio|bytes|blob|text|secret|apiKey|endpoint|header)\??\s*:/i, "no status or result field can carry audio, text or a credential");
 
   // The schema is still v7 and nothing speech-related exists in it.
