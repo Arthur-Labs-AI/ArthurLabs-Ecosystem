@@ -2071,3 +2071,135 @@ approval; actual Android encrypted Sync, separate endpoint processes, physical
 LAN/devices, ARM64/API37, successful release packaging and hosted CI remain
 UNVERIFIED. Next qualify the same adapter with Android Keystore/isolated endpoint I/O and the
 existing owner's shared admission/route cancellation, retaining these gates.
+
+## 27. MEGA M05 R2 — Android encrypted Sync and shared owner (2026-10-25)
+
+Scope: accepted R1 `20cd99cea0c7c7d8cd109ab75fd64440fb72286a`, same
+`feature/nodes-integration`. Qualification implementation; production activation
+is still blocked. Verification results below are filled only from executed gates.
+
+The existing OwnedTlsKey/AndroidIdentity bridge signs TLS CertificateVerify with
+non-exportable Keystore keys. The same rustls TLS13/pinned mutual-auth config,
+exporter binding, AE01 bounded records, RawIo socket adapter, SyncEngine and G3
+importer are reused. No new crypto/dependency, Java production API, JNI export,
+network service, runtime, scheduler or production listener. Five new scenarios
+use the existing `runScenario` dispatcher (37–41).
+
+Each new scenario uses two disposable NativeRuntime roots. The identity, actual
+SQLite file and Coordinator/Pool share their corresponding runtime owner. The
+existing registry/root lock is reused for exact v10 fixture reopen; production
+acquire still uses the v9 opener. This is same-process Android↔Android loopback
+and owner reopen, not separate endpoint processes or process-restart Sync.
+The existing two identity process-restart tests are a separate qualification.
+
+The adapter no longer creates a Pool per connection. Every connection consumes
+the owner's unchanged four-attempt/30-second budget, duplicate/pending/session
+limits, clock and available event fence. R1's fifth same-owner connection now
+waits the real budget window. Independent destructive fault cases use genuinely
+independent fixture owners. No refund/reset was added. Shared-owner tests cover
+exhaustion, duplicate attempts, cancelled admissions, generation/event invalidation
+and pending encrypted IO shutdown. A candidate durable revocation plus explicit
+owner invalidation cancels pending work; automatic signed-registry-to-owner
+notification remains unimplemented for production.
+
+Ordering: handshake and pinned identities → actual exporter and both peers'
+network/session/epoch binding → existing candidate-store membership/revocation
+check → resource-accounting `Permit.establish` → return qualification transport.
+The engine rechecks trust/store authorization before Hello/inventory disclosure
+and transactions recheck durable membership. The former established-before-
+binding issue was reproduced as a failing runtime invariant before moving the
+transition. Pool established means bounded resource accounting, not membership.
+Loopback has no native LAN interface/permission proof; consequently this does
+not publish a production-equivalent authorized Sync session. ClosedTrust and
+ClosedLan remain closed. Native connect/accept now also poll the existing permit
+and handshake deadline, rather than awaiting outside cancellation accounting.
+
+Scenarios assert original canonical envelopes and full Project/Capture row
+images (UUID, content and timestamps), maximum 20,000-codepoint Unicode Capture,
+replay/idempotency, lost encrypted ACK, both owners closing/reopening exact files,
+SQLite FULL without proof/cursor/ACK advance, and durable retry. Wrong actual
+TLS pin, network/session/epoch/exporter, revoked membership, handshake/post-TLS
+cancellation, ciphertext corruption, EOF/partial frame/reset, handshake/idle/total
+deadlines, oversize and shared-owner shutdown use the existing fault seams.
+Android replay evidence is reconnect inventory/idempotency and lost-ACK retry;
+direct canonical-event replay/collision injection remains R1 Windows evidence.
+The new Windows connect regression cancels before the first connect poll;
+physical-network mid-connect interruption is not inferred from that case.
+No payload/private key/raw SQL evidence is committed.
+
+Release gaps: N1's locked opaque-ke4.0.1/Argon2/rustls/ring composition and
+crypto-bigint0.5.5 risk remain unapproved; no PAKE replacement. The existing N1
+review packet still needs independent exact-lock/path-risk remediation and
+review of PAKE approval/confirmation/TLS/context/native signer composition; add
+this adapter/owner delta and actual platform evidence to that packet. Tests do
+not provide independent cryptographic acceptance.
+
+G3 policy and G4 physical bounds are candidates; UnverifiedBounds is unchanged.
+The full knowledge-v1-full contract is not reduced to this create-only scenario.
+The D3/D4 operation classification and remaining end-to-end work in the existing
+integration contract still apply (updates, knowledge/history/review/snapshot
+paths are not claimed qualified over this transport). N7 still lacks approved
+connected-interface/network/profile/permission evidence, API37/NSD policy and
+physical Windows↔Android validation. Android source_selected stays false and
+production ACCESS_NETWORK_STATE stays absent. ARM64, physical devices, separate
+endpoint processes, actual cross-platform connection, successful release
+packaging and hosted CI are UNVERIFIED. Production schema9/dormancy, frozen
+journal/codec/reducer/snapshot contracts, closed PAKE/TLS/LAN/live enrollment and
+frontend APIs remain unchanged; N1/N2/N3/N7 and G3–G7 remain unapproved. No E3B,
+main merge, automatic network startup or production VerifiedSession.
+
+Smallest next step: qualify the existing adapter on an actual Windows↔Android
+connection and native selected-interface/permission evidence under an approved
+N7 policy, while independently resolving N1 and accepting G3/G4 bounds. Then
+wire reviewed enrollment/revocation and the existing native SyncNow/status path;
+no additional infrastructure layer is justified by these results.
+
+Executed verification (Windows host; actual API36/x86_64 emulator):
+
+| Gate | R1 | R2 result/evidence |
+| --- | --- | --- |
+| Final full native | 1416 PASS /0 FAIL /25 ignored | PASS 1422 /0 /25 ignored, 380.19s; `cargo test --locked --offline --manifest-path apps/arthur/src-tauri/Cargo.toml --lib -- --test-threads=1`, `%TEMP%/arthur-r2-native-final.log`. |
+| Full-native subsets (not separate reruns) | N7 40; security 72; Sync 172; journal 287; v10 24 | PASS N7 40; sync::security:: 73 /1 ignored; Sync name filter 174 /1 ignored; storage::journal:: 292 /1 ignored; v10 name filter 24; MVP1 4; R1 TLS 10; R2 6. |
+| Root typecheck / architecture | PASS /88 PASS | PASS `npm run typecheck`; 88/0 `npm run test:architecture`, 2352ms; arthur-r2-typecheck.log / arthur-r2-architecture.log. |
+| Frontend | 561 PASS +build | PASS 561/42 files, 44.22s, app typecheck + Vite build 1.03s; `npm run arthur:check`, arthur-r2-frontend.log. |
+| New shared R2 Windows scenarios | — | PASS 6/0; `cargo test --locked --offline --manifest-path apps/arthur/src-tauri/Cargo.toml --lib r2_ -- --test-threads=1`, `%TEMP%/arthur-r2-focused-final.log`. |
+| Existing R1 TLS scenarios | 10 PASS | PASS 10/0 focused; also included in full native regression. |
+| Android instrumentation | 42 PASS | PASS 47/0/0 skipped, including all five R2 JNI scenarios; verify-identity.ps1, fresh XML timestamp 2026-10-25T11:32:44 UTC, 220.706 seconds. |
+| Android separate-process identity restart | 2 PASS | PASS 2; separate prepare/reopen invocations each report OK (1 test), dedicated test package force-stopped between them. Not cross-process Sync. |
+| Feature/default Android debug APK | PASS | PASS both; Tauri supported generator/build, Gradle Rust/Java/Kotlin/APK. Default regeneration restores generated Gradle package configuration. |
+| Android JNI isolation | PASS | PASS feature has the same four security JNI exports (two existing production bridge + two existing test dispatchers); default has only install/networkChanged, no test dispatcher. |
+| Default Android permissions/id | PASS | PASS apkanalyzer: dev.kaloyan.arthur; no identitytest or ACCESS_NETWORK_STATE in manifest. |
+| Locked Cargo checks/build | PASS | PASS Android debug feature check, Windows all-targets check and default Windows arthur bin build, all locked/offline. |
+| Dependency graph isolation | 4 PASS | PASS all four Windows/Android default/lab cargo trees; optional PAKE/Argon2/crypto-bigint absent default normal/build closures. |
+| Release feature refusal | 3 guards | PASS expected refusal with all five explicit guards (two new), plus eight existing secondary unavailable-method diagnostics. This is not successful release packaging. |
+| Scoped rustfmt / diff whitespace | — | PASS four TLS/scenario files, skip_children=true; git diff --check. Repository-wide formatting is not claimed. |
+
+Both security changes have runtime RED evidence: binding-accounting invariant
+failed against R1; the cancelled-connect regression failed with the former
+unguarded connect/accept and passed with the permit/deadline polling restored.
+No expectation was weakened. R1 interruption now expects
+the precise Cancelled category because it uses the actual interrupt token;
+the R1 TLS and D11 isolation assertions now permit exactly the explicitly
+requested Android debug feature. D11 additionally asserts the release guard.
+The first full host run was 1421 PASS /1 FAIL /25 ignored: only D11 still
+expected the former cfg(test)-only spelling. Its focused rerun passed after
+that authorized scope update; no dependency exclusion was removed.
+
+Changed files (23): under apps/arthur/src-tauri/src:
+`runtime/{mod.rs,lan_candidate.rs}`;
+`storage/{capture_store.rs,security_android_instrumentation.rs,
+security_tls_tests.rs,sync_store.rs,sync_tests.rs,sync_tls_tests.rs,tls_identity.rs}`;
+`storage/journal/{mod.rs,storage.rs,g3.rs,tls_qualification.rs}`;
+`sync/{mod.rs,protocol.rs,trust.rs}`;
+`sync/security/{mod.rs,native_io_lab.rs,tls_socket_lab.rs,transport_candidate.rs}`;
+plus `apps/arthur/src-tauri/gen/android/app/src/androidTest/java/dev/kaloyan/arthur/security/NativeIdentityBridgeTest.java`,
+this readiness document and `docs/architecture/m05-project-capture-mvp.md`.
+Journal storage/G3 changes only extend existing fixture constructor cfg gates;
+no codec/reducer/snapshot/SQL schema/wire contract, Cargo manifest/lock or
+production Java/permission change. No generated Gradle diff is retained.
+
+Self-review: no remaining blocker found in the debug qualification implementation
+for correctness, data-loss/security or ownership/cleanup. This is not independent
+security review. Production revocation notification, application lifecycle/SyncNow
+wiring, native LAN attestation and the unapproved gates above remain release
+work. Hosted CI/release packaging are not marked PASS. Final disposition: PARTIAL.

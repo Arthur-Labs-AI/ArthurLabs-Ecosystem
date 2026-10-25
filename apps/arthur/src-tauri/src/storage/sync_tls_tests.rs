@@ -119,6 +119,7 @@ fn r1_tls_socket_project_capture_round_trip_replay_and_both_owners_restart() {
         let a = a.reopen();
         let b = b.reopen();
         same_supported(&a, &b);
+        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
         exchange(&a, &b, &ka, &kb, 2005, false).await;
         same_supported(&a, &b);
         assert_eq!((a.count("captures"), b.count("captures")), (3, 3));
@@ -267,15 +268,15 @@ fn r1_tls_revoked_membership_refuses_engine_before_hello_or_summary() {
 fn r1_tls_real_handshake_faults_and_socket_timer_cleanup() {
     use crate::sync::security::tls_socket_lab::HandshakeFault;
     execute(async {
-        let ka = Fixture::new().unwrap();
-        let kb = Fixture::new().unwrap();
-        let a = device(ka.public.peer_id(), kb.public.peer_id());
-        let b = device(kb.public.peer_id(), ka.public.peer_id());
         for injection in [
             HandshakeFault::Invalid,
             HandshakeFault::Interrupted,
             HandshakeFault::Stalled,
         ] {
+            let ka = Fixture::new().unwrap();
+            let kb = Fixture::new().unwrap();
+            let a = device(ka.public.peer_id(), kb.public.peer_id());
+            let b = device(kb.public.peer_id(), ka.public.peer_id());
             let result = Pair::connect_fault(
                 ka.key(CertificateRole::Server).unwrap(),
                 kb.key(CertificateRole::Client).unwrap(),
@@ -284,9 +285,16 @@ fn r1_tls_real_handshake_faults_and_socket_timer_cleanup() {
                 Some(injection),
             )
             .await;
-            assert!(matches!(result, Err(Error::Trust | Error::Disconnected)));
+            match injection {
+                HandshakeFault::Interrupted => assert!(matches!(result, Err(Error::Cancelled))),
+                _ => assert!(matches!(result, Err(Error::Trust | Error::Disconnected))),
+            }
         }
         for mode in 0..6 {
+            let ka = Fixture::new().unwrap();
+            let kb = Fixture::new().unwrap();
+            let a = device(ka.public.peer_id(), kb.public.peer_id());
+            let b = device(kb.public.peer_id(), ka.public.peer_id());
             let (wire, _ta, _tb) = connect(&a, &b, &ka, &kb, 2020 + mode).await;
             match mode {
                 0 => {
@@ -471,11 +479,13 @@ fn r1_tls_original_event_replay_and_contradiction_preserve_committed_rows() {
 }
 
 #[test]
-fn r1_tls_lab_has_no_default_or_android_instrumentation_activation_path() {
+fn r1_tls_lab_has_only_test_or_explicit_android_debug_activation_path() {
     let modules = include_str!("../sync/security/mod.rs").replace("\r\n", "\n");
-    assert!(modules.contains("#[cfg(test)]\npub(crate) mod tls_socket_lab;"));
+    assert!(modules.contains("#[cfg(any(test, all(target_os = \"android\", feature = \"android-identity-tests\")))]\npub(crate) mod tls_socket_lab;"));
     let lab = include_str!("../sync/security/tls_socket_lab.rs");
-    assert!(lab.contains("#![cfg(test)]"));
+    assert!(
+        lab.contains("TLS socket qualification is forbidden outside tests/debug instrumentation")
+    );
     assert!(!include_str!("../../Cargo.toml").contains("tls_socket_lab"));
     for source in [
         include_str!("../lib.rs"),

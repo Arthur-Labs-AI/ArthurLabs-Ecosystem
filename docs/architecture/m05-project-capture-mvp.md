@@ -7,6 +7,21 @@ the existing candidate wire profile is unchanged, not newly negotiated.
 
 ## Implementation plan and boundaries
 
+R2 plan (debug qualification only): (1) SQLite remains canonical for knowledge
+and membership; OS Keystore/CNG retains keys. (2) NativeRuntime retains the sole
+store and Coordinator/Pool per root. (3) Qualification calls these existing
+owners, rustls, engine and importer; none depend on the harness. (4) Only existing
+typed messages/permits cross boundaries; no private key or frontend API.
+(5) Binding, cancellation, admission and import failures abort without success.
+(6) Reconnect retains the same owner's attempt budget; drop releases sockets,
+timers and permits. (7) Explicit loopback-only debug admission is distinct from
+native LAN attestation; faults use existing cancellation and deadline seams.
+(8) Production schema v9, frozen contracts and closed factories remain unchanged.
+(9) Verify exact original rows/proofs/cursors, engine outcomes and zero active
+permits. (10) No production-equivalent authorized session is published: native
+LAN checks and independent gate approvals remain required. Extend the existing
+JNI scenario dispatcher, with no new exports, permissions, runtime or listener.
+
 | Architecture question | Decision |
 | --- | --- |
 | Source of truth | Each installation's real SQLite file, including journal and import proofs. |
@@ -161,9 +176,35 @@ N7 still needs native connected-interface/profile/permission proof and approved
 route/certificate/session policy on both platforms; socket addresses alone fail
 that requirement. No firewall change, production listener or automatic LAN.
 
-The smallest next implementation is to execute this adapter and its Project/
-Capture scenario through the existing Android debug qualification entry point
-with Keystore, then an isolated endpoint pair. Bind it to the existing owner's
-shared admission/route cancellation before treating it as application transport.
+R2 extends the same adapter through the existing Android debug qualification
+entry point with Keystore. `journal/tls_qualification.rs` orchestrates the
+existing authoritative writers, engine and G3 on two disposable NativeRuntime
+roots; each root's identity, SQLite and transport Coordinator have one owner.
+No second store owns a root. Its synthetic candidate membership is checked
+after TLS pin/exporter/context verification and before returning the transport,
+then checked again by engine startup and transactional store access. Pool
+`establish` is resource accounting only and now follows those binding checks.
+No production-equivalent authorized session is created: loopback inspection
+does not satisfy native LAN policy, and ClosedTrust/ClosedLan still refuse.
+
+Every connection uses the existing owner's Pool/clock/fence. Reconnect does not
+refund attempts. R1's fifth connection waits the actual 30-second budget window;
+unrelated timeout/reset cases use independent endpoint fixtures. Explicit
+generation invalidation/shutdown cancels pending encrypted IO. The revocation
+scenario writes the durable candidate ledger and explicitly invalidates the
+existing owner; automatic signed-registry-to-owner notification is still release
+work. No additional worker, scheduler, runtime or Java/JNI production API.
+
+The shared scenario checks maximum Unicode Capture, original UUID/content/time
+rows, replay, lost encrypted receipt, both owners closing/reopening exact files,
+SQLite FULL without false ACK/cursor/proof advance and durable retry. Reopen
+reuses the existing ownership registry and test-only v10 opener; production
+startup still selects the v9 opener. Android process-restart identity checks
+remain separate from this same-process two-owner Sync reopen.
+
+Next qualify an actual Windows-to-Android endpoint connection and selected
+socket/interface/network/permission evidence under an approved route policy.
+Independent endpoint processes, physical devices/LAN, ARM64, API37 and release
+packaging are not inferred from loopback or debug instrumentation.
 Production pairing and native SyncNow/status still wait for N1/N2/N3,
 G3–G7 and N7 approval; UI remains native-owned and dormant.

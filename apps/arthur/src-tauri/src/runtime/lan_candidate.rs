@@ -80,6 +80,37 @@ impl Core {
     }
 }
 impl Coordinator {
+    /// Explicit loopback qualification only. Does not mint route/LAN evidence.
+    /// Uses this owner's real clock, budget and event fence; never a fresh Pool.
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(crate) fn admit_loopback_lab(
+        &self,
+        expected: Expected,
+        cancel: &Arc<Interrupt>,
+    ) -> Result<(Arc<Pool>, Permit, crate::sync::security::native_io_lab::NativeTimer)> {
+        let s = self.state.lock().map_err(|_| E::State)?;
+        if s.closed || cancel.cancelled() { return Err(E::Cancelled); }
+        let fence = s.signal.as_ref().map(|signal| signal.fence().ok_or(E::Cancelled)).transpose()?;
+        let permit = self.pool.admit_observed(expected, self.clock.elapsed().as_secs(), cancel, fence)?;
+        drop(s);
+        if permit.cancellation().cancelled() { return Err(E::Cancelled); }
+        Ok((self.pool.clone(), permit, crate::sync::security::native_io_lab::NativeTimer::from_origin(self.clock)))
+    }
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(crate) fn invalidate_loopback_lab(&self) -> Result<()> {
+        self.core.invalidate(None, None)
+    }
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(crate) fn loopback_lab_active(&self) -> usize { self.pool.active_for_test() }
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(crate) fn loopback_event_fixture(&self) -> Result<Arc<Signal>> {
+        let (signal, _) = Signal::channel();
+        let mut s = self.state.lock().map_err(|_| E::State)?;
+        if s.closed || s.signal.is_some() { return Err(E::State); }
+        s.event_stamp = signal.snapshot();
+        s.signal = Some(signal.clone());
+        Ok(signal)
+    }
     pub(super) fn new(owner: &super::TransportOwner) -> Self {
         Self {
             core: Arc::new(Core {

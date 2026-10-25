@@ -50,13 +50,13 @@ impl TrustVerifier for ClosedTrust {
         Err(Error::Trust)
     }
 }
-#[cfg(test)]
-pub(super) struct TestTrust {
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+pub(crate) struct TestTrust {
     pub hello: PeerHello,
     pub expires: u64,
     pub origins: BTreeSet<Uuid>,
 }
-#[cfg(test)]
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 impl TrustVerifier for TestTrust {
     fn verify(&self, hello: &PeerHello) -> Result<VerifiedSession> {
         if hello != &self.hello {

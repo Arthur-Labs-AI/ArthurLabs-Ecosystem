@@ -145,14 +145,14 @@ impl CaptureStore {
     }
 
     /// Synthetic-v10 recovery only. Never called by production's v9 opener.
-    #[cfg(test)]
-    pub(super) fn reopen_candidate_owned_for_test(ownership: DataRootOwnership) -> Result<Self, StoreError> {
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(crate) fn reopen_candidate_owned_for_test(ownership: DataRootOwnership) -> Result<Self, StoreError> {
         let connection = Connection::open(ownership.data_root().join("arthur.db"))?;
         let version: i64 = connection.query_row("PRAGMA user_version", [], |r| r.get(0))?;
         if version != 10 { return Err(StoreError::Invalid("expected synthetic v10".into())); }
         connection.pragma_update(None, "synchronous", "FULL")?;
         connection.pragma_update(None, "foreign_keys", "ON")?;
-        Ok(Self { connection: Mutex::new(connection), _ownership: Some(ownership), _io_vfs:None })
+        Ok(Self { connection: Mutex::new(connection), _ownership: Some(ownership), #[cfg(test)] _io_vfs:None })
     }
 
     /// Lets other modules' tests inject faults (triggers, corruption) without owning the connection.

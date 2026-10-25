@@ -129,18 +129,25 @@ pub(crate) struct RawIo {
 }
 impl RawIo {
     #[cfg(test)]
+    pub(super) fn assert_handshake_accounting(&self) {
+        assert!(
+            !self.session,
+            "binding must complete before session accounting"
+        );
+    }
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn tls_socket(socket: TcpStream, permit: Permit, timer: NativeTimer) -> R<Self> {
         Self::new(socket, permit, timer)
     }
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn tls_established(&mut self) -> R<()> {
         self.begin_lab_session()
     }
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn tls_record_complete(&mut self) {
         self.idle = self.timer.now();
     }
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn tls_deadline_fixture(&mut self, total: bool) {
         self.timer = NativeTimer::from_origin(
             std::time::Instant::now() - Duration::from_secs(if total { 59 } else { 14 }),
@@ -149,15 +156,15 @@ impl RawIo {
             self.idle = self.timer.now();
         }
     }
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn tls_closed(&self) -> bool {
         self.socket.is_none() && self.permit.is_none() && self.timer.registrations() == 0
     }
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn tls_endpoints(&self) -> super::Result<ConnectedEndpoints> {
         self.evidence()
     }
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn tls_reset_fixture(&mut self) {
         if let Some(s) = &self.socket {
             s.set_linger(Some(Duration::ZERO)).unwrap();
@@ -382,8 +389,32 @@ pub(crate) async fn pair(permit: Permit, timer: NativeTimer) -> R<(RawIo, TcpStr
     client_socket
         .bind(SocketAddr::from((Ipv4Addr::LOCALHOST, 0)))
         .map_err(io_error)?;
-    let client = client_socket.connect(selected).await.map_err(io_error)?;
-    let (peer, _) = listener.accept().await.map_err(io_error)?;
+    let mut connecting = Box::pin(async {
+        let client = client_socket.connect(selected).await.map_err(io_error)?;
+        let (peer, _) = listener.accept().await.map_err(io_error)?;
+        Ok((client, peer))
+    });
+    let mut registration = None;
+    let (client, peer) = poll_fn(|cx| {
+        if let Err(e) = permit.register(cx) {
+            return Poll::Ready(Err(security(e)));
+        }
+        let deadline = permit.started() + 10;
+        let (expired, next) = timer.poll_until(cx, deadline);
+        registration = Some(next);
+        if timer.now() >= deadline || expired.is_ready() {
+            return Poll::Ready(Err(Fault::Expired));
+        }
+        let result = connecting.as_mut().poll(cx);
+        if permit.cancelled() {
+            return Poll::Ready(Err(Fault::Cancelled));
+        }
+        result
+    })
+    .await?;
+    drop(registration);
+    permit.clear_registration();
+    drop(connecting);
     drop(listener);
     Ok((RawIo::new(client, permit, timer)?, peer, selected))
 }
@@ -780,4 +811,21 @@ fn n7d_actual_drop_removes_handle_timer_and_wakers() {
 pub(crate) fn qualify_deadlines() -> super::Result<()> {
     std::panic::catch_unwind(n7d_actual_real_handshake_idle_and_total_deadlines)
         .map_err(|_| E::State)
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn r2_cancelled_connect_cannot_return_socket_or_retain_permit() {
+    execute(async {
+        let root = tempfile::tempdir().unwrap();
+        let owner = crate::runtime::NativeRuntime::acquire(root.path()).unwrap();
+        let stop = Arc::new(super::transport_candidate::Interrupt::default());
+        let (pool, permit, timer) = owner
+            .transport_candidate()
+            .admit_loopback_lab(expected(), &stop)
+            .unwrap();
+        stop.cancel();
+        assert!(matches!(pair(permit, timer).await, Err(Fault::Cancelled)));
+        assert_eq!(pool.active_for_test(), 0);
+    });
 }

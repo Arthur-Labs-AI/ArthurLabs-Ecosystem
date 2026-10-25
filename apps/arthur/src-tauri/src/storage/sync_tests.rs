@@ -452,7 +452,9 @@ fn d11_native_dependencies_have_no_ui_network_or_provider_execution() {
     }
     assert!(include_str!("../sync/trust.rs")
         .replace("\r\n", "\n")
-        .contains("#[cfg(test)]\nimpl TrustVerifier for TestTrust"));
+        .contains("#[cfg(any(test, all(target_os = \"android\", feature = \"android-identity-tests\")))]\nimpl TrustVerifier for TestTrust"));
+    assert!(include_str!("security_android_instrumentation.rs")
+        .contains("compile_error!(\"android-identity-tests is forbidden in release builds\")"));
 }
 #[test]
 fn d12_late_ledger_failure_and_expired_commit_roll_back_all_receipts_and_cursors() {

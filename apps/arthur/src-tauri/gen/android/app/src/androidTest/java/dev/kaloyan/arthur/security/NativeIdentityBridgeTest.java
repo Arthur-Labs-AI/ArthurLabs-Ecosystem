@@ -10,6 +10,11 @@ import static org.junit.Assert.assertEquals;
  * and identity-tests.tauri.json. Native harness refuses the production app id. */
 @RunWith(AndroidJUnit4.class)
 public final class NativeIdentityBridgeTest {
+    @Test public void r2_keystore_socket_sync_g3_replay_restart() { assertTrue(runScenario(37)); }
+    @Test public void r2_binding_membership_before_publication() { assertTrue(runScenario(38)); }
+    @Test public void r2_shared_owner_cancel_budget_cleanup() { assertTrue(runScenario(39)); }
+    @Test public void r2_actual_tls_io_faults_bounds_cleanup() { assertTrue(runScenario(40)); }
+    @Test public void r2_sqlite_full_no_ack_reopen_retry() { assertTrue(runScenario(41)); }
     private static native boolean runScenario(int scenario);
     @Test public void eb01_06_09_14_15_18_native_worker_and_crypto() { assertTrue(runScenario(1)); }
     @Test public void eb03_08_10_owned_reopen_substitution_invalidation() { assertTrue(runScenario(2)); }

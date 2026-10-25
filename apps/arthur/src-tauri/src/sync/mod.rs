@@ -15,7 +15,7 @@ mod protocol;
 #[cfg(test)]
 #[path = "../storage/sync_tests.rs"]
 mod tests;
-mod trust;
+pub(crate) mod trust;
 mod validation;
 pub(crate) mod security;
 

@@ -48,6 +48,8 @@ impl OwnedTlsKey {
         key.check()?;
         Ok(Arc::new(key))
     }
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(crate) fn owner(&self) -> &Arc<NativeRuntime> { &self.owner }
     fn check(&self) -> Result<()> {
         #[cfg(any(windows, target_os = "android"))]
         {

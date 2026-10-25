@@ -25,6 +25,8 @@ mod sql_effects;
 mod storage;
 mod stream;
 mod writers;
+#[cfg(all(any(windows, target_os = "android"), any(test, all(target_os = "android", feature = "android-identity-tests"))))]
+pub(crate) mod tls_qualification;
 mod admission;
 mod admission_session;
 mod capacity;

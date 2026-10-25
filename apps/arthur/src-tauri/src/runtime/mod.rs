@@ -90,6 +90,13 @@ fn owners() -> &'static Mutex<HashMap<PathBuf, Entry>> {
 
 impl NativeRuntime {
     pub(crate) fn acquire(data_root: &Path) -> Result<RuntimeHandle, RuntimeError> {
+        Self::acquire_with(data_root, CaptureStore::open_owned)
+    }
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+    pub(crate) fn reopen_candidate_lab(data_root: &Path) -> Result<RuntimeHandle, RuntimeError> {
+        Self::acquire_with(data_root, CaptureStore::reopen_candidate_owned_for_test)
+    }
+    fn acquire_with(data_root: &Path, open: fn(DataRootOwnership) -> Result<CaptureStore, StoreError>) -> Result<RuntimeHandle, RuntimeError> {
         if !data_root.is_absolute() {
             return Err(RuntimeError::RelativeDataRoot);
         }
@@ -121,7 +128,7 @@ impl NativeRuntime {
             published: false,
         };
         let ownership = DataRootOwnership::try_acquire(&root).map_err(RuntimeError::Ownership)?;
-        let store = CaptureStore::open_owned(ownership).map_err(RuntimeError::Storage)?;
+        let store = open(ownership).map_err(RuntimeError::Storage)?;
         let runtime = Arc::new(Self {
             data_root: root.clone(),
             store,

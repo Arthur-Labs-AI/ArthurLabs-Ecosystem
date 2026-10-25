@@ -20,7 +20,7 @@ impl<'a> CandidateSyncStore<'a> {
     pub fn production(_store: &'a CaptureStore) -> Result<Self> {
         Err(Error::ActivationPending)
     }
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub fn synthetic(store: &'a CaptureStore) -> Self {
         Self {
             store,
@@ -241,7 +241,7 @@ pub(super) fn inventory_page(
     };
     Ok((rows, next))
 }
-#[cfg(test)]
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 fn inventory(c: &Connection) -> Result<Vec<Identity>> {
     // Test-only whole-fixture helper; production discovery always uses pages.
     let mut all = Vec::new();
@@ -930,7 +930,7 @@ fn collision(c: &Connection, s: &VerifiedSession, e: &Envelope, reason: &str) ->
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) fn install_candidate(
     store: &CaptureStore,
     network: Uuid,
@@ -960,7 +960,7 @@ pub(crate) fn install_candidate(
     tx.commit().map_err(sql)
 }
 
-#[cfg(test)]
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) fn test_events(store: &CaptureStore) -> Vec<Envelope> {
     let c = store.connection.lock().unwrap();
     inventory(&c)
@@ -979,7 +979,7 @@ pub(crate) fn test_refuses(store: &CaptureStore, statement: &str) -> bool {
         .is_err()
 }
 
-#[cfg(test)]
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) fn grant_test_origins(
     store: &CaptureStore,
     peer: Uuid,

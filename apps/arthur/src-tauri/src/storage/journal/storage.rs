@@ -154,7 +154,7 @@ pub(super) struct Limits {
     pub reserve: Option<u64>,
 }
 impl Limits {
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub fn candidate() -> Self {
         Self {
             core: codec::MAX_CANONICAL_BYTES as u64,
@@ -244,11 +244,11 @@ struct Pending {
 }
 
 impl<'a> JournalKernel<'a> {
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn activate(store: &'a CaptureStore) -> Result<Self> {
         Self::activate_with_policy(store, Limits::candidate())
     }
-    #[cfg(test)]
+    #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn activate_with_policy(store: &'a CaptureStore, limits: Limits) -> Result<Self> {
         Self::activate_inner(store, limits, Hooks::default(), None)
     }

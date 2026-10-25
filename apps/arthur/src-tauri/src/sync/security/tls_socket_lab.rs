@@ -1,5 +1,13 @@
 //! Test-only pinned TLS13 -> N7D RawIo -> existing Sync transport. No enrollment.
-#![cfg(test)]
+#[cfg(not(any(
+    test,
+    all(
+        target_os = "android",
+        feature = "android-identity-tests",
+        debug_assertions
+    )
+)))]
+compile_error!("TLS socket qualification is forbidden outside tests/debug instrumentation");
 use super::{
     identity::PublicIdentity,
     native_io_lab::{self, Fault, NativeTimer, RawIo},
@@ -333,6 +341,8 @@ pub(crate) enum HandshakeFault {
     Invalid,
     Interrupted,
     Stalled,
+    AfterTlsCancelled,
+    ExporterMismatch,
 }
 impl Pair {
     pub(crate) async fn connect(
@@ -350,6 +360,19 @@ impl Pair {
         pins: [&PublicIdentity; 2],
         injection: Option<HandshakeFault>,
     ) -> Result<(Self, TlsTransport, TlsTransport)> {
+        Self::connect_checked(server, client, hellos, pins, injection, || Ok(())).await
+    }
+    /// Debug loopback capability only. Durable membership is checked by the
+    /// existing store before publication, then again by SyncEngine/each store IO.
+    /// This does not satisfy native LAN route policy or mint production trust.
+    pub(crate) async fn connect_checked(
+        server: Arc<OwnedTlsKey>,
+        client: Arc<OwnedTlsKey>,
+        hellos: [PeerHello; 2],
+        pins: [&PublicIdentity; 2],
+        injection: Option<HandshakeFault>,
+        authorize: impl FnOnce() -> Result<()>,
+    ) -> Result<(Self, TlsTransport, TlsTransport)> {
         if hellos[0].local != server.identity().peer_id()
             || hellos[1].local != client.identity().peer_id()
             || hellos[0].peer != pins[1].peer_id()
@@ -357,38 +380,42 @@ impl Pair {
         {
             return Err(Error::Trust);
         }
+        let owners = [server.owner().clone(), client.owner().clone()];
         let (c, s) =
             tls_lab::connections(server, client, pins[0], pins[1]).map_err(|_| Error::Trust)?;
-        let pools = [Arc::new(Pool::default()), Arc::new(Pool::default())];
         let stall = matches!(injection, Some(HandshakeFault::Stalled));
-        let timers = if stall {
-            let epoch = std::time::Instant::now() - std::time::Duration::from_secs(9);
-            [
-                NativeTimer::from_origin(epoch),
-                NativeTimer::from_origin(epoch),
-            ]
-        } else {
-            [NativeTimer::new(), NativeTimer::new()]
-        };
-        let [st, ct] = timers;
-        let cp = pools[1]
-            .admit(
-                Expected {
-                    network: hellos[1].network,
-                    peer: hellos[1].peer,
-                },
-                if stall { 0 } else { ct.now() },
-            )
-            .map_err(|_| Error::Trust)?;
-        let sp = pools[0]
-            .admit(
+        let stops = [Arc::default(), Arc::default()];
+        let (spool, sp, st) = owners[0]
+            .transport_candidate()
+            .admit_loopback_lab(
                 Expected {
                     network: hellos[0].network,
                     peer: hellos[0].peer,
                 },
-                if stall { 0 } else { st.now() },
+                &stops[0],
             )
             .map_err(|_| Error::Trust)?;
+        let (cpool, cp, ct) = owners[1]
+            .transport_candidate()
+            .admit_loopback_lab(
+                Expected {
+                    network: hellos[1].network,
+                    peer: hellos[1].peer,
+                },
+                &stops[1],
+            )
+            .map_err(|_| Error::Trust)?;
+        let pools = [spool, cpool];
+        // Existing timeout fixture ages only its I/O timer, never owner accounting.
+        let (st, ct) = if stall {
+            let epoch = std::time::Instant::now() - std::time::Duration::from_secs(9);
+            (
+                NativeTimer::from_origin(epoch),
+                NativeTimer::from_origin(epoch),
+            )
+        } else {
+            (st, ct)
+        };
         let (client_io, server_io, _) = native_io_lab::pair(cp, ct).await.map_err(fault)?;
         let server_io = RawIo::tls_socket(server_io, sp, st).map_err(fault)?;
         let se = server_io.tls_endpoints().map_err(|_| Error::Trust)?;
@@ -412,7 +439,7 @@ impl Pair {
             pair.corrupt_next_ciphertext(1);
         }
         if matches!(injection, Some(HandshakeFault::Interrupted)) {
-            pair.sockets[1].borrow_mut().raw.abort();
+            stops[1].cancel();
         }
         pair.drive_until(|| {
             pair.sockets.iter().all(|s| {
@@ -428,6 +455,9 @@ impl Pair {
                 e
             }
         })?;
+        if matches!(injection, Some(HandshakeFault::AfterTlsCancelled)) {
+            stops[0].cancel();
+        }
         let mut exporters = Vec::new();
         for socket in &pair.sockets {
             let mut s = socket.borrow_mut();
@@ -444,12 +474,17 @@ impl Pair {
                 return Err(Error::Trust);
             }
             exporters.push(exporter);
-            s.raw.tls_established().map_err(fault)?;
         }
         for i in 0..2 {
+            #[cfg(test)]
+            pair.sockets[i].borrow().raw.assert_handshake_accounting();
+            let mut exporter = exporters[i];
+            if i == 1 && matches!(injection, Some(HandshakeFault::ExporterMismatch)) {
+                exporter[0] ^= 1;
+            }
             let binding = serde_json::to_vec(&Binding {
                 hello: hellos[i].clone(),
-                exporter: exporters[i],
+                exporter,
             })
             .map_err(|_| Error::Protocol)?;
             pair.sockets[i].borrow_mut().queue(binding)?;
@@ -472,7 +507,14 @@ impl Pair {
             {
                 return Err(Error::Trust);
             }
-            pair.sockets[i].borrow_mut().bound = true;
+        }
+        authorize()?;
+        // Resource accounting, NOT membership authorization. Both peers must
+        // finish exporter/context checks before either permit is established.
+        for socket in &pair.sockets {
+            let mut socket = socket.borrow_mut();
+            socket.raw.tls_established().map_err(fault)?;
+            socket.bound = true;
         }
         let a = TlsTransport {
             socket: pair.sockets[0].clone(),

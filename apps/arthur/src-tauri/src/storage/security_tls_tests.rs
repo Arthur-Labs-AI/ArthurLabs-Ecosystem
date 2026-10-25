@@ -64,6 +64,13 @@ impl Fixture {
     pub fn owner(&self) -> Arc<NativeRuntime> {
         self.owner.as_ref().unwrap().clone()
     }
+    pub(crate) fn reopen_candidate(&mut self) -> Result<()> {
+        let owner = self.owner.take().ok_or(E::State)?;
+        if Arc::strong_count(&owner) != 1 { self.owner = Some(owner); return Err(E::State); }
+        drop(owner);
+        self.owner = Some(NativeRuntime::reopen_candidate_lab(&self.root).map_err(|_| E::Storage)?);
+        require(OwnedDeviceIdentity::reopen(self.owner.as_ref().unwrap().store())?.public_identity()? == self.public)
+    }
     pub fn key(&self, role: CertificateRole) -> Result<Arc<OwnedTlsKey>> {
         OwnedTlsKey::lab(self.owner(), self.public.clone(), role)
     }

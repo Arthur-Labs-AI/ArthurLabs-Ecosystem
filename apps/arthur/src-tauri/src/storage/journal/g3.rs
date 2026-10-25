@@ -819,7 +819,7 @@ pub(super) fn head(
     .optional()
     .map_err(|_| super::storage::JournalError::Sql)
 }
-#[cfg(test)]
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) fn install(store: &super::super::capture_store::CaptureStore) -> Result<()> {
     let mut c = store.connection.lock().map_err(|_| Error::Storage)?;
     let tx = c
