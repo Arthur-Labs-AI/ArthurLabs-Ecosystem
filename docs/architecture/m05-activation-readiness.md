@@ -1843,3 +1843,98 @@ N7PolicyPending remain unresolved; N1/N2/N3/N7 and G4–G7 remain unapproved.
 No E3B work, production v10 activation, main merge or activation approval is
 included. The results are local evidence, not a release-readiness declaration
 or an independent N1 security audit.
+
+## 25. MEGA M05 MVP1 — create-only native vertical slice (2026-10-25)
+
+Baseline `7e5dacb14f59b309d650585a55c7b02de62d8313`, same
+`feature/nodes-integration` branch. Proposed scope and remaining product
+connections: [m05-project-capture-mvp](m05-project-capture-mvp.md).
+This is a runnable isolated development demonstration, not production Sync.
+
+Reuses DataRootOwnership/CaptureStore, native JournalKernel writers,
+SyncEngine, CandidateSyncStore, durable membership/progress/receipts and the
+existing create-only G3 importer. Both roots are independent real SQLite files;
+a second owner of either root is rejected. No new coordinator, storage layer,
+transport framework, crypto protocol, production API or migration was added.
+
+Four new `sync::tests::mvp1` tests PASS locally on Windows:
+
+- A creates a Project and Unicode Capture through native journal writers;
+  actual engine exchange imports both into B. B creates a Capture in that
+  imported Project and sends it back. Original complete row images (including
+  UUID, timestamps, content and project association), event identities and
+  canonical bytes match on both sides.
+- A second exchange and explicit canonical replay leave business/event/proof
+  counts unchanged. A later Capture commits at B while its receipt is lost;
+  sender outstanding work is asserted, both engines return Disconnected, both
+  storage owners are dropped/reopened and durable work resumes. Final counts:
+  3 Captures each; A 3 local/1 imported event, B 1 local/3 imported events;
+  one G3 commit proof per imported event, no outstanding work or attention.
+  This tests owner restart in the same test process, not OS process termination.
+- Wrong sender/network and corrupted canonical bytes fail in the actual engine
+  with rejection status and exact unchanged receiver SQL state. A Capture
+  arriving before its Project is explicitly deferred, never partially applied;
+  original dependency arrival plus existing reprocess completes exact rows.
+- Unsupported local Project update refuses the entire attempt before transport
+  or membership changes; both complete SQL states stay unchanged. No journal
+  chain filtering and no false subset success. Both completed installations
+  run enabled Recall polling with zero embedding requests/work; distillation,
+  knowledge objects and revision proposals remain absent.
+
+Only Project/Capture creation is supported by this scenario. Updates/deletes,
+historical knowledge/reviews/reconstruction and other knowledge are unsupported
+here. This capability label is not a new negotiated wire profile and does not
+claim `knowledge-v1-full`. No full-profile contract was changed.
+
+Security boundary: existing cfg(test) TestTrust/FakeTransport with disposable
+synthetic data. No encryption or independent endpoint authentication is claimed.
+No plaintext Sync is sent through N7D. TLS laboratory and nonblocking socket
+qualification remain separate; real encrypted Sync transport is BLOCKED.
+ArthurClient desktop/mobile were inspected; UI remains unchanged because native
+SyncNow/status commands cannot safely connect through the closed production gates.
+
+Final verification on Windows, locked/offline Cargo against
+`apps/arthur/src-tauri/Cargo.toml` (logs in `%TEMP%/arthur-mvp1-*.log`):
+
+| Gate / command | Executed result |
+| --- | --- |
+| `cargo test --lib mvp1 -- --test-threads=1 --nocapture` | PASS: 4/4, 1.22 s; complete workflow printed. |
+| `cargo test --lib -- --test-threads=1` | FAIL: 1401 PASS / 5 historical FAIL / 25 ignored, 364.22 s; exact failed-name set equals N7D. |
+| Relevant tests within that full run | N7 name filter 40 PASS; security 72 PASS / 1 ignored; Sync name filter 162 PASS / 1 ignored; journal 287 PASS / 1 ignored; dormant m05 24 PASS. No separate redundant reruns. |
+| `cargo check --all-targets` / `cargo build --bin arthur` | PASS / PASS, default Windows configuration. |
+| `npm run typecheck` | PASS. |
+| `npm run test:architecture` | FAIL: 86 PASS / same 2 historical FAIL. |
+| `npm run arthur:check` | PASS: 561 tests / 42 files, application typecheck and Vite build. |
+| Scoped `rustfmt --check` / `git diff --check` | PASS / PASS. No global formatting claim. |
+
+Native historical failures remain JEV real-transport Timeout-vs-Network and the
+four synthesis assertions already named in section 24's baseline: same-family
+hold, production constructor, frozen corpus and commit authorization source.
+Architecture failures remain schema-v6 project ownership and M04.6 TTS DTO/source
+assertions. These are accepted baseline failures under the MVP1 request, not
+waived production release gates. No genuinely new failure was found.
+Existing G3 regressions in the full run also cover quota 256/257 with explicit
+StorageLimited, conflicting identities/history, authorization revocation,
+transaction failure/rollback and commit poisoning; physical G4 is not inferred.
+Review found no blocker/important finding in this test-only change's data path,
+security boundary or owner lifecycle. No dependency/schema/generated artifact
+change or cache cleanup; only the test module, its registration and two docs.
+
+Android rebuild,
+instrumentation/restart, physical LAN, ARM64, API37, release packaging and hosted
+CI are UNVERIFIED in MVP1. N7D Android results are historical baseline evidence,
+not rerun results; this change only adds a cfg(test) module and documentation.
+
+Production remains schema9, dormant M05, ClosedTrust/ClosedLan and PAKE/TLS/LAN
+closed; no live enrollment, production VerifiedSession, public listener/dialer,
+second SQLite owner or frontend network/signing API. G4 remains UnverifiedBounds.
+N1/N2/N3/N7 and G4–G7 remain unapproved; narrow G3 scope requires owner approval.
+No E3B, production v10 activation or main merge is included.
+
+**MEGA M05 MVP1 — PARTIAL.** Two independent disposable native installations
+can exchange exact create-only Project/Capture data end-to-end using the real
+engine/importer, repeat safely and resume after both owners reopen. Installed
+Windows/Android apps cannot yet do manual Sync: encrypted Sync transport,
+reviewed enrollment/membership, N1/G3/G4/N7 approvals and native/UI commands are
+missing or unapproved. Next implement only the test-only encrypted adapter
+described in the scope document, then rerun this same workflow through it.

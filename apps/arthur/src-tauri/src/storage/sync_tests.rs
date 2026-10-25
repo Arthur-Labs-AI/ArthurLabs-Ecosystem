@@ -1918,3 +1918,6 @@ fn g3_10_forward_d1_upgrade_never_invents_historical_authorization() {
 
 #[path="sync_d3_tests.rs"]
 mod d3;
+
+#[path="sync_mvp_tests.rs"]
+mod mvp1;
