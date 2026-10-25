@@ -610,3 +610,236 @@ impl Drop for Pair {
         self.abort(Error::Disconnected);
     }
 }
+
+/// Single-process driver of the SAME Socket/TlsTransport for a remote endpoint.
+/// No listener, registry or runtime; only the existing bounded IO state.
+pub(crate) struct Endpoint {
+    socket: Shared,
+}
+impl Endpoint {
+    pub(crate) fn endpoints(&self) -> Result<(std::net::SocketAddr, std::net::SocketAddr)> {
+        let evidence = self
+            .socket
+            .borrow()
+            .raw
+            .tls_endpoints()
+            .map_err(|_| Error::Trust)?;
+        assert!(evidence.require_native_lan().is_err());
+        Ok(evidence.addresses())
+    }
+
+    pub(crate) async fn authenticate(
+        raw: RawIo,
+        key: Arc<OwnedTlsKey>,
+        pin: &PublicIdentity,
+        role: super::tls::CertificateRole,
+        hello: PeerHello,
+        authorize: impl FnOnce() -> Result<()>,
+    ) -> Result<(Self, TlsTransport)> {
+        if hello.local != key.identity().peer_id() || hello.peer != pin.peer_id() {
+            return Err(Error::Trust);
+        }
+        let tls = match role {
+            super::tls::CertificateRole::Server => tls_lab::server(key, pin).map(Connection::from),
+            super::tls::CertificateRole::Client => tls_lab::client(key, pin).map(Connection::from),
+        }
+        .map_err(|_| Error::Trust)?;
+        let driver = Self {
+            socket: Rc::new(RefCell::new(Socket::new(raw, tls))),
+        };
+        driver
+            .until(|| {
+                let s = driver.socket.borrow();
+                !s.tls.is_handshaking() && !s.tls.wants_write() && s.ciphertext.is_empty()
+            })
+            .await?;
+        let exporter = {
+            let s = driver.socket.borrow();
+            if s.tls.protocol_version() != Some(rustls::ProtocolVersion::TLSv1_3)
+                || s.tls.alpn_protocol() != Some(b"arthur-e3a-lab-v1".as_slice())
+            {
+                return Err(Error::Trust);
+            }
+            s.tls
+                .export_keying_material([0; 32], b"EXPORTER-Channel-Binding", Some(&[]))
+                .map_err(|_| Error::Trust)?
+        };
+        if exporter == [0; 32] {
+            return Err(Error::Trust);
+        }
+        driver.socket.borrow_mut().queue(
+            serde_json::to_vec(&Binding {
+                hello: hello.clone(),
+                exporter,
+            })
+            .map_err(|_| Error::Protocol)?,
+        )?;
+        driver
+            .until(|| !driver.socket.borrow().input.is_empty())
+            .await?;
+        let binding: Binding = serde_json::from_slice(
+            &driver
+                .socket
+                .borrow_mut()
+                .input
+                .pop_front()
+                .ok_or(Error::Trust)?,
+        )
+        .map_err(|_| Error::Trust)?;
+        if binding.exporter != exporter
+            || binding.hello.network != hello.network
+            || binding.hello.session != hello.session
+            || binding.hello.epoch != hello.epoch
+            || binding.hello.local != hello.peer
+            || binding.hello.peer != hello.local
+        {
+            return Err(Error::Trust);
+        }
+        authorize()?;
+        {
+            let mut s = driver.socket.borrow_mut();
+            s.raw.tls_established().map_err(fault)?;
+            s.bound = true;
+        }
+        let transport = TlsTransport {
+            socket: driver.socket.clone(),
+            hello,
+            lose_receipts: false,
+        };
+        Ok((driver, transport))
+    }
+    async fn until(&self, ready: impl Fn() -> bool) -> Result<()> {
+        poll_fn(|cx| {
+            if let Err(e) = self.socket.borrow_mut().poll(cx) {
+                return Poll::Ready(Err(e));
+            }
+            if ready() {
+                Poll::Ready(Ok(()))
+            } else {
+                Poll::Pending
+            }
+        })
+        .await
+    }
+    pub(crate) async fn step(&self) -> Result<()> {
+        let before = {
+            let s = self.socket.borrow();
+            (s.wire_bytes, s.received)
+        };
+        self.until(|| {
+            let s = self.socket.borrow();
+            !s.input.is_empty() || (s.wire_bytes, s.received) != before
+        })
+        .await
+    }
+    pub(crate) async fn flush(&self) -> Result<()> {
+        self.until(|| {
+            let s = self.socket.borrow();
+            s.output.is_empty() && s.ciphertext.is_empty() && !s.tls.wants_write()
+        })
+        .await
+    }
+}
+impl Drop for Endpoint {
+    fn drop(&mut self) {
+        self.socket.borrow_mut().abort(Error::Disconnected);
+    }
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn r3_single_endpoint_driver_refuses_wrong_key_pin_context_and_membership() {
+    use super::tls::CertificateRole;
+    use crate::storage::security_tls_tests::Fixture;
+    native_io_lab::execute(async {
+        for mode in 0..7 {
+            let a = Fixture::new().unwrap();
+            let b = Fixture::new().unwrap();
+            let wrong = Fixture::new().unwrap();
+            let mut ah = PeerHello {
+                network: uuid::Uuid::new_v4(),
+                session: uuid::Uuid::new_v4(),
+                local: a.public.peer_id(),
+                peer: b.public.peer_id(),
+                epoch: 1,
+            };
+            let mut bh = PeerHello {
+                local: ah.peer,
+                peer: ah.local,
+                ..ah.clone()
+            };
+            match mode {
+                0 => ah.local = wrong.public.peer_id(),
+                1 => ah.peer = wrong.public.peer_id(),
+                2 => bh.network = uuid::Uuid::new_v4(),
+                3 => bh.session = uuid::Uuid::new_v4(),
+                4 => bh.epoch = 2,
+                5 => bh.peer = wrong.public.peer_id(),
+                _ => (),
+            }
+            let oa = a.owner();
+            let ob = b.owner();
+            let (ap, permit, timer) = oa
+                .transport_candidate()
+                .admit_loopback_lab(
+                    Expected {
+                        network: ah.network,
+                        peer: ah.peer,
+                    },
+                    &Arc::default(),
+                )
+                .unwrap();
+            let (bp, bpermit, btimer) = ob
+                .transport_candidate()
+                .admit_loopback_lab(
+                    Expected {
+                        network: bh.network,
+                        peer: bh.peer,
+                    },
+                    &Arc::default(),
+                )
+                .unwrap();
+            let (raw_b, socket, _) = native_io_lab::pair(bpermit, btimer).await.unwrap();
+            let raw_a = RawIo::tls_socket(socket, permit, timer).unwrap();
+            let authorized = std::cell::Cell::new(0);
+            let (sa, sb) = native_io_lab::both(
+                Endpoint::authenticate(
+                    raw_a,
+                    a.key(CertificateRole::Server).unwrap(),
+                    if mode == 1 { &wrong.public } else { &b.public },
+                    CertificateRole::Server,
+                    ah,
+                    || {
+                        authorized.set(authorized.get() + 1);
+                        if mode == 6 {
+                            Err(Error::Trust)
+                        } else {
+                            Ok(())
+                        }
+                    },
+                ),
+                Endpoint::authenticate(
+                    raw_b,
+                    b.key(CertificateRole::Client).unwrap(),
+                    &a.public,
+                    CertificateRole::Client,
+                    bh,
+                    || {
+                        authorized.set(authorized.get() + 1);
+                        Ok(())
+                    },
+                ),
+            )
+            .await;
+            assert!(sa.is_err());
+            if mode < 6 {
+                assert!(sb.is_err());
+                assert_eq!(authorized.get(), 0);
+            }
+            drop(sa);
+            drop(sb);
+            assert_eq!(ap.active_for_test(), 0);
+            assert_eq!(bp.active_for_test(), 0);
+        }
+    });
+}

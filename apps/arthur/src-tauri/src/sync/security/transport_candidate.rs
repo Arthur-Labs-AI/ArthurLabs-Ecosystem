@@ -62,6 +62,31 @@ pub(crate) struct Permit {
     fence: Option<super::network_watch::Fence>,
 }
 impl Pool {
+    /// Commit notification only; caller must release its SQLite transaction lock.
+    pub(crate) fn revoke(&self, expected: Expected) -> Result<()> {
+        let stops = match self.0.lock() {
+            Ok(s) => {
+                let stops: Vec<_> = s
+                    .active
+                    .iter()
+                    .filter(|x| x.1 == expected)
+                    .filter_map(|x| x.3.upgrade())
+                    .collect();
+                for stop in &stops {
+                    stop.flag.cancel();
+                }
+                stops
+            }
+            Err(e) => {
+                drop(e.into_inner());
+                return self.shutdown();
+            }
+        };
+        for stop in stops {
+            stop.cancel();
+        }
+        Ok(())
+    }
     #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(crate) fn active_for_test(&self) -> usize {
         self.0.lock().unwrap().active.len()
@@ -567,4 +592,26 @@ mod n7b_lifecycle_tests {
         assert!(released.load(Ordering::SeqCst));
         stop.cancel();
     }
+}
+
+#[cfg(test)]
+#[test]
+fn r3_poisoned_revocation_releases_guard_before_fail_closed_shutdown() {
+    let pool = Arc::new(Pool::default());
+    let expected = Expected {
+        network: Uuid::new_v4(),
+        peer: Uuid::new_v4(),
+    };
+    let stop = Arc::new(Interrupt::default());
+    let permit = pool.admit_cancellable(expected, 0, &stop).unwrap();
+    let _ = std::panic::catch_unwind({
+        let pool = pool.clone();
+        move || {
+            let _guard = pool.0.lock().unwrap();
+            panic!("qualification poison");
+        }
+    });
+    assert!(pool.revoke(expected).is_err());
+    assert!(stop.cancelled());
+    drop(permit);
 }

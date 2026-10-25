@@ -628,3 +628,81 @@ fn r2_actual_tls_io_faults_bounds_and_cleanup() {
 fn r2_android_windows_sqlite_full_no_ack_reopen_retry() {
     run(41).unwrap();
 }
+
+#[cfg(test)]
+#[test]
+fn r3_tls_import_vfs_full_ioerr_commit_no_ack_reopen_retry() {
+    use super::fault_io::{Fault as IoFault, FileFault};
+    native_io_lab::execute(async {
+        for fault in [IoFault::WriteFull, IoFault::SyncIo] {
+            let mut a = Fixture::new().unwrap();
+            let mut b = Fixture::new().unwrap();
+            install(&a, &b);
+            install(&b, &a);
+            let oa = a.owner();
+            let ob = b.owner();
+            JournalKernel::activate(oa.store())
+                .unwrap()
+                .write(|w| {
+                    w.create_capture(CreateCaptureInput {
+                        source: "text".into(),
+                        content: "encrypted import COMMIT fault А́ 原文 😀".into(),
+                        project_id: None,
+                    })
+                })
+                .unwrap();
+            ob.store()
+                .connection
+                .lock()
+                .unwrap()
+                .execute_batch(
+                    "PRAGMA journal_mode=DELETE;PRAGMA synchronous=FULL;PRAGMA cache_spill=OFF",
+                )
+                .unwrap();
+            let before = (
+                count(ob.store(), "captures"),
+                count(ob.store(), "import_events"),
+                count(ob.store(), "import_g3_commits"),
+                count(ob.store(), "import_progress"),
+            );
+            let allowed = sync_store::test_events(oa.store())
+                .into_iter()
+                .map(|e| e.identity.origin)
+                .collect();
+            trust(&a, &b, Uuid::new_v4(), &allowed);
+            trust(&b, &a, Uuid::new_v4(), &allowed);
+            // Existing per-main-file VFS shim; no replacement/close while borrowed.
+            let shim = unsafe { FileFault::install(ob.store(), fault) };
+            exchange(&a, &b, 2).await;
+            assert_eq!(shim.hits(), 1);
+            drop(shim);
+            assert_eq!(
+                (
+                    count(ob.store(), "captures"),
+                    count(ob.store(), "import_events"),
+                    count(ob.store(), "import_g3_commits"),
+                    count(ob.store(), "import_progress")
+                ),
+                before
+            );
+            assert_eq!(
+                ob.store()
+                    .connection
+                    .lock()
+                    .unwrap()
+                    .query_row("PRAGMA integrity_check", [], |r| r.get::<_, String>(0))
+                    .unwrap(),
+                "ok"
+            );
+            drop(oa);
+            drop(ob);
+            a.reopen_candidate().unwrap();
+            b.reopen_candidate().unwrap();
+            exchange(&a, &b, 0).await;
+            same(&a, &b);
+            exchange(&a, &b, 0).await;
+            same(&a, &b);
+            assert_eq!(count(b.owner().store(), "captures"), 1);
+        }
+    });
+}

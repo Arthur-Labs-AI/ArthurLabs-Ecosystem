@@ -80,6 +80,9 @@ impl Core {
     }
 }
 impl Coordinator {
+    pub(super) fn bind_store(&self, store: &crate::storage::capture_store::CaptureStore) -> std::result::Result<(), crate::storage::capture_store::StoreError> {
+        store.bind_transport(&self.pool)
+    }
     /// Explicit loopback qualification only. Does not mint route/LAN evidence.
     /// Uses this owner's real clock, budget and event fence; never a fresh Pool.
     #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]

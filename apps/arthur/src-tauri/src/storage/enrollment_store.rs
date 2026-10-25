@@ -149,7 +149,13 @@ impl<'a> NetworkRegistry<'a> {
         if matches!(update.body.action, Action::Genesis { .. }) {
             return Err(E::Trust);
         }
-        self.write(|c| apply(c, update))
+        self.write(|c| apply(c, update))?;
+        if let Action::Revoke { device } = &update.body.action {
+            self.owner.revoked(crate::sync::security::transport_candidate::Expected {
+                network: update.body.network, peer: device.peer_id(),
+            })?;
+        }
+        Ok(())
     }
     pub fn next(&self, action: Action, admin: &dyn DeviceIdentityStore) -> Result<SignedUpdate> {
         let root = self.root()?;

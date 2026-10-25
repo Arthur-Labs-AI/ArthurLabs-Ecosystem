@@ -389,35 +389,79 @@ pub(crate) async fn pair(permit: Permit, timer: NativeTimer) -> R<(RawIo, TcpStr
     client_socket
         .bind(SocketAddr::from((Ipv4Addr::LOCALHOST, 0)))
         .map_err(io_error)?;
-    let mut connecting = Box::pin(async {
-        let client = client_socket.connect(selected).await.map_err(io_error)?;
-        let (peer, _) = listener.accept().await.map_err(io_error)?;
-        Ok((client, peer))
-    });
+    let (client, peer) = admitted(
+        async {
+            let client = client_socket.connect(selected).await.map_err(io_error)?;
+            let (peer, _) = listener.accept().await.map_err(io_error)?;
+            Ok((client, peer))
+        },
+        &permit,
+        &timer,
+    )
+    .await?;
+    drop(listener);
+    Ok((RawIo::new(client, permit, timer)?, peer, selected))
+}
+async fn admitted<T>(
+    work: impl Future<Output = R<T>>,
+    permit: &Permit,
+    timer: &NativeTimer,
+) -> R<T> {
+    let mut work = Box::pin(work);
     let mut registration = None;
-    let (client, peer) = poll_fn(|cx| {
-        if let Err(e) = permit.register(cx) {
-            return Poll::Ready(Err(security(e)));
-        }
+    let result = poll_fn(|cx| {
+        permit.register(cx).map_err(security)?;
         let deadline = permit.started() + 10;
         let (expired, next) = timer.poll_until(cx, deadline);
         registration = Some(next);
         if timer.now() >= deadline || expired.is_ready() {
             return Poll::Ready(Err(Fault::Expired));
         }
-        let result = connecting.as_mut().poll(cx);
+        let result = work.as_mut().poll(cx);
         if permit.cancelled() {
             return Poll::Ready(Err(Fault::Cancelled));
         }
         result
     })
-    .await?;
+    .await;
     drop(registration);
     permit.clear_registration();
-    drop(connecting);
-    drop(listener);
-    Ok((RawIo::new(client, permit, timer)?, peer, selected))
+    result
 }
+pub(crate) async fn connect_loopback(
+    endpoint: SocketAddr,
+    permit: Permit,
+    timer: NativeTimer,
+) -> R<RawIo> {
+    if !endpoint.ip().is_loopback() || endpoint.port() == 0 {
+        return Err(Fault::State);
+    }
+    let socket = admitted(
+        async { TcpStream::connect(endpoint).await.map_err(io_error) },
+        &permit,
+        &timer,
+    )
+    .await?;
+    RawIo::new(socket, permit, timer)
+}
+pub(crate) async fn accept_loopback(
+    listener: tokio::net::TcpListener,
+    permit: Permit,
+    timer: NativeTimer,
+) -> R<RawIo> {
+    if !listener.local_addr().map_err(io_error)?.ip().is_loopback() {
+        return Err(Fault::State);
+    }
+    let socket = admitted(
+        async { listener.accept().await.map(|x| x.0).map_err(io_error) },
+        &permit,
+        &timer,
+    )
+    .await?;
+    drop(listener);
+    RawIo::new(socket, permit, timer)
+}
+
 fn expected() -> Expected {
     Expected {
         network: uuid::Uuid::new_v4(),

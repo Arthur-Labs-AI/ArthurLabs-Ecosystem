@@ -28,6 +28,7 @@ pub(crate) struct Fixture {
     owner: Option<Arc<NativeRuntime>>,
     root: PathBuf,
     slot: Uuid,
+    preserve: bool,
     pub public: PublicIdentity,
 }
 impl Fixture {
@@ -36,8 +37,35 @@ impl Fixture {
         let root = std::env::temp_dir().join(format!("arthur-e3a-{}", Uuid::new_v4()));
         #[cfg(target_os = "android")]
         let root = crate::sync::security::android::bridge()?.test_directory()?;
-        std::fs::create_dir(&root).map_err(|_| E::Storage)?;
-        let owner = NativeRuntime::acquire(&root).map_err(|_| E::Storage)?;
+        Self::at(root, false)
+    }
+    pub(crate) fn at(root: PathBuf, reopen: bool) -> Result<Self> {
+        if !reopen {
+            std::fs::create_dir(&root).map_err(|_| E::Storage)?;
+        }
+        let owner = if reopen {
+            NativeRuntime::reopen_candidate_lab(&root)
+        } else {
+            NativeRuntime::acquire(&root)
+        }
+        .map_err(|_| E::Storage)?;
+        if reopen {
+            let public = OwnedDeviceIdentity::reopen(owner.store())?.public_identity()?;
+            let slot: String = owner
+                .store()
+                .connection
+                .lock()
+                .map_err(|_| E::Storage)?
+                .query_row("SELECT slot FROM e_identity", [], |r| r.get(0))
+                .map_err(|_| E::Storage)?;
+            return Ok(Self {
+                owner: Some(owner),
+                root,
+                slot: Uuid::parse_str(&slot).map_err(|_| E::State)?,
+                preserve: false,
+                public,
+            });
+        }
         {
             let c = owner.store().connection.lock().map_err(|_| E::Storage)?;
             c.execute_batch(include_str!("enrollment_candidate.sql"))
@@ -55,21 +83,31 @@ impl Fixture {
             .query_row("SELECT slot FROM e_identity", [], |r| r.get::<_, String>(0))
             .map_err(|_| E::Storage)?;
         Ok(Self {
+            preserve: false,
             owner: Some(owner),
             root,
             slot: Uuid::parse_str(&slot).map_err(|_| E::State)?,
             public,
         })
     }
+    pub(crate) fn preserve_for_restart(&mut self) {
+        self.preserve = true;
+    }
     pub fn owner(&self) -> Arc<NativeRuntime> {
         self.owner.as_ref().unwrap().clone()
     }
     pub(crate) fn reopen_candidate(&mut self) -> Result<()> {
         let owner = self.owner.take().ok_or(E::State)?;
-        if Arc::strong_count(&owner) != 1 { self.owner = Some(owner); return Err(E::State); }
+        if Arc::strong_count(&owner) != 1 {
+            self.owner = Some(owner);
+            return Err(E::State);
+        }
         drop(owner);
         self.owner = Some(NativeRuntime::reopen_candidate_lab(&self.root).map_err(|_| E::Storage)?);
-        require(OwnedDeviceIdentity::reopen(self.owner.as_ref().unwrap().store())?.public_identity()? == self.public)
+        require(
+            OwnedDeviceIdentity::reopen(self.owner.as_ref().unwrap().store())?.public_identity()?
+                == self.public,
+        )
     }
     pub fn key(&self, role: CertificateRole) -> Result<Arc<OwnedTlsKey>> {
         OwnedTlsKey::lab(self.owner(), self.public.clone(), role)
@@ -90,9 +128,13 @@ impl Fixture {
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
-        let _ = self.delete_os();
+        if !self.preserve {
+            let _ = self.delete_os();
+        }
         drop(self.owner.take());
-        let _ = std::fs::remove_dir_all(&self.root);
+        if !self.preserve {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
     }
 }
 pub(crate) fn preimage(role: CertificateRole) -> Vec<u8> {
@@ -101,6 +143,78 @@ pub(crate) fn preimage(role: CertificateRole) -> Vec<u8> {
     m.push(0);
     m.extend_from_slice(&[0xa5; 32]);
     m
+}
+
+pub(crate) fn committed_revocation() -> Result<()> {
+    use crate::sync::security::{
+        enrollment::{Action, Role},
+        transport_candidate::{Expected, Interrupt},
+    };
+    let a = Fixture::new()?;
+    let b = Fixture::new()?;
+    let owner = a.owner();
+    let identity = OwnedDeviceIdentity::reopen(owner.store())?;
+    let registry = crate::storage::enrollment_store::NetworkRegistry::candidate(owner.store())?;
+    let root = registry.create_network(&identity)?;
+    let grant = registry.next(
+        Action::Grant {
+            device: b.public.clone(),
+            role: Role::Member,
+            capabilities: 3,
+            enrollment: Uuid::new_v4(),
+            expires: 1000,
+            origins: vec![Uuid::new_v4()],
+        },
+        &identity,
+    )?;
+    registry.apply(&grant)?;
+    let stop = Arc::new(Interrupt::default());
+    let (_, permit, _) = owner.transport_candidate().admit_loopback_lab(
+        Expected {
+            network: root.network,
+            peer: b.public.peer_id(),
+        },
+        &stop,
+    )?;
+    let other_stop = Arc::new(Interrupt::default());
+    let (_, other_permit, _) = owner.transport_candidate().admit_loopback_lab(
+        Expected {
+            network: root.network,
+            peer: Uuid::new_v4(),
+        },
+        &other_stop,
+    )?;
+    let revoke = registry.next(
+        Action::Revoke {
+            device: b.public.clone(),
+        },
+        &identity,
+    )?;
+    // A rolled-back signed update cannot publish revocation or cancel work.
+    owner.store().connection.lock().map_err(|_|E::Storage)?.execute_batch(
+        "CREATE TRIGGER r3_abort BEFORE INSERT ON e_updates BEGIN SELECT RAISE(ABORT,'fixture'); END;"
+    ).map_err(|_|E::Storage)?;
+    require(registry.apply(&revoke).is_err())?;
+    require(!stop.cancelled())?;
+    registry.binding(a.public.peer_id(), &b.public, 10)?;
+    owner
+        .store()
+        .connection
+        .lock()
+        .map_err(|_| E::Storage)?
+        .execute_batch("DROP TRIGGER r3_abort")
+        .map_err(|_| E::Storage)?;
+    registry.apply(&revoke)?;
+    require(stop.cancelled() && !other_stop.cancelled())?;
+    require(registry.binding(a.public.peer_id(), &b.public, 10).is_err())?;
+    drop(permit);
+    drop(other_permit);
+    Ok(())
+}
+#[cfg(test)]
+#[test]
+fn r3_committed_registry_revocation_cancels_existing_owner_permit() {
+    committed_revocation().unwrap();
 }
 fn signature(f: &Fixture, role: CertificateRole) -> Result<Vec<u8>> {
     f.key(role)?
@@ -492,4 +606,131 @@ fn e3a_07_actual_android_tls_signature_verifies_on_windows() {
         &hex(f["signature"]),
     )
     .unwrap();
+}
+
+// Real signed registry COMMIT must wake the existing encrypted socket owner.
+pub(crate) fn revocation_tls() -> Result<()> {
+    use crate::sync::security::{
+        enrollment::{Action, Role},
+        native_io_lab,
+        tls_socket_lab::Pair,
+    };
+    std::panic::catch_unwind(|| {
+        native_io_lab::execute(async {
+            for mode in 0..4 {
+                let mut a = Fixture::new().unwrap();
+                let b = Fixture::new().unwrap();
+                {
+                    let owner = a.owner();
+                    let id = OwnedDeviceIdentity::reopen(owner.store()).unwrap();
+                    let registry =
+                        crate::storage::enrollment_store::NetworkRegistry::candidate(owner.store())
+                            .unwrap();
+                    let root = registry.create_network(&id).unwrap();
+                    let grant = registry
+                        .next(
+                            Action::Grant {
+                                device: b.public.clone(),
+                                role: Role::Member,
+                                capabilities: 3,
+                                enrollment: Uuid::new_v4(),
+                                expires: 1000,
+                                origins: vec![Uuid::new_v4()],
+                            },
+                            &id,
+                        )
+                        .unwrap();
+                    registry.apply(&grant).unwrap();
+                    let revoke = registry
+                        .next(
+                            Action::Revoke {
+                                device: b.public.clone(),
+                            },
+                            &id,
+                        )
+                        .unwrap();
+                    let session = Uuid::new_v4();
+                    let ah = PeerHello {
+                        network: root.network,
+                        session,
+                        local: a.public.peer_id(),
+                        peer: b.public.peer_id(),
+                        epoch: 1,
+                    };
+                    let bh = PeerHello {
+                        local: ah.peer,
+                        peer: ah.local,
+                        ..ah.clone()
+                    };
+                    if mode == 0 {
+                        registry.apply(&revoke).unwrap();
+                    }
+                    let pair = Pair::connect_checked(
+                        a.key(CertificateRole::Server).unwrap(),
+                        b.key(CertificateRole::Client).unwrap(),
+                        [ah.clone(), bh],
+                        [&a.public, &b.public],
+                        None,
+                        || {
+                            if mode == 1 {
+                                registry.apply(&revoke).unwrap();
+                            }
+                            registry
+                                .binding(a.public.peer_id(), &b.public, 10)
+                                .map(|_| ())
+                                .map_err(|_| Error::Trust)
+                        },
+                    )
+                    .await;
+                    if mode < 2 {
+                        assert!(matches!(pair, Err(Error::Trust)));
+                        assert_eq!(owner.transport_candidate().loopback_lab_active(), 0);
+                    } else {
+                        let (wire, mut transport, _) = pair.unwrap();
+                        if mode == 3 {
+                            transport
+                                .send(Message {
+                                    network: root.network,
+                                    session,
+                                    from: ah.local,
+                                    to: ah.peer,
+                                    payload: Payload::Hello {
+                                        version: 1,
+                                        required: FEATURES,
+                                        supported: FEATURES,
+                                        profile: "qualification".into(),
+                                    },
+                                })
+                                .unwrap();
+                            wire.transfer().await.unwrap();
+                        }
+                        let (failure, ()) = native_io_lab::both(wire.wait_for_failure(), async {
+                            tokio::task::yield_now().await;
+                            registry.apply(&revoke).unwrap();
+                        })
+                        .await;
+                        assert_eq!(failure, Err(Error::Cancelled));
+                        wire.assert_closed();
+                    }
+                    assert!(registry.binding(a.public.peer_id(), &b.public, 10).is_err());
+                }
+                // Close the actual v9 owner, then reopen the same revoked registry.
+                drop(a.owner.take());
+                a.owner = Some(NativeRuntime::acquire(&a.root).unwrap());
+                let owner = a.owner();
+                assert!(
+                    crate::storage::enrollment_store::NetworkRegistry::candidate(owner.store())
+                        .unwrap()
+                        .binding(a.public.peer_id(), &b.public, 10)
+                        .is_err()
+                );
+            }
+        })
+    })
+    .map_err(|_| E::State)
+}
+#[cfg(test)]
+#[test]
+fn r3_signed_revocation_before_after_tls_during_io_and_owner_restart() {
+    revocation_tls().unwrap();
 }

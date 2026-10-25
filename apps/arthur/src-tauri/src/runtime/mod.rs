@@ -134,6 +134,7 @@ impl NativeRuntime {
             store,
             transport: lan_candidate::Coordinator::new(&TransportOwner(())),
         });
+        runtime.transport.bind_store(&runtime.store).map_err(RuntimeError::Storage)?;
         {
             let mut registry = owners()
                 .lock()

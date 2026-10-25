@@ -208,3 +208,104 @@ Independent endpoint processes, physical devices/LAN, ARM64, API37 and release
 packaging are not inferred from loopback or debug instrumentation.
 Production pairing and native SyncNow/status still wait for N1/N2/N3,
 G3–G7 and N7 approval; UI remains native-owned and dormant.
+
+## R3 implementation plan (qualification and dormant owner wiring)
+
+1. Truth: each endpoint's SQLite and OS key remain canonical; public test manifests
+   only configure pins/session and compare evidence, never transfer knowledge.
+2. Ownership: one NativeRuntime/store/Coordinator/Pool per disposable root. A weak
+   reference to its existing Pool lets the store notify committed revocations.
+3. Direction: orchestration calls the existing socket/TLS/engine/store path;
+   membership storage only signals the existing security resource owner after COMMIT.
+4. Boundary: existing TLS/AE01/Sync messages. Only public pins/configuration and
+   synthetic result snapshots cross the runner boundary; private keys never do.
+5. Failure: bounded admission/connect/handshake/session, exact pins/context and
+   membership; rollback produces no revocation notification or receipt.
+6. Lifecycle: explicit ADB-reverse loopback listener, closed after accept; two real
+   endpoint processes exit/restart between phases; fixtures clean their own roots/keys.
+7. Seams: extend the existing JNI dispatcher and Windows test executable; reuse
+   Socket/RawIo/TlsTransport and existing SQL fault fixtures, no extra engine/runtime.
+8. Compatibility: production schema9/closed factories and frozen SQL/codec stay;
+   all external network qualification remains test/debug-only and explicitly invoked.
+9. Evidence: compare complete original events/rows, durable proofs/cursors, OS
+   public key identity across restart, process IDs, cleanup and exact gate results.
+10. Security: ADB-mediated loopback is not LAN attestation. No firewall/production
+    permission changes or production VerifiedSession; N1/N7/G3/G4 remain blocked.
+
+
+### R3 release scope and review boundary
+
+The product contract is still knowledge-v1-full. R3 does not approve a create-only
+release. Integration priority is existing native D3/D4/snapshot adapters over the
+same authenticated transport after N1/N7 approval, with pending/unsupported
+history retaining attention status. No alternative importer or automatic scheduler.
+
+| Required operation | Current classification / remaining proof |
+| --- | --- |
+| Native Project/Capture creation, exact originals and projected rows | Implemented; R3 independent-process qualification described in readiness §28. |
+| Project/Capture modification, moves, historical state | Existing D4/import/reconstruction candidates and store tests; not independently cross-platform TLS-qualified. Release-critical for full scope. |
+| Knowledge objects, immutable revisions, evidence/provenance | Existing D3/typed G3 candidates and store tests; not integrated in R3 external-process exchange. Release-critical. |
+| Reviews and approved decisions, claims/identity/relations | Existing conservative D4 policies/store tests; policy coverage and full authenticated integration remain incomplete for release. No imported review execution. |
+| Conflicts and alternative branches | Existing durable retention and attention paths; full cross-device conflict/history integration and acceptance remain. Never report unsupported history as clean. |
+| Snapshot/bootstrap and historical reconstruction | Existing bounded capture/retain/publish/reconstruction candidates and tests; not cross-device release-qualified or physically admitted. |
+| Discovery, background sync, dashboards, multi-peer scheduling | Optional and safely deferrable for the intended manual one-pair release. |
+
+Committed signed revocation now signals only matching (network, peer) permits in
+the existing owner's Pool after SQLite COMMIT and after releasing its mutex.
+The store holds only a Weak reference, bound once by NativeRuntime; it neither
+owns another connection nor creates a transport registry. Cancellation flags are
+set under the Pool mutex, with executor wakes outside both mutexes. Transactional
+membership authorization still orders imports and revocation on the one SQLite
+owner. A rolled-back update sends no notification. A post-COMMIT notification
+error is an error, not a rollback claim. New authorization still rereads the
+signed registry, so cancellation is not the source of durable trust.
+
+OS investigation (2026-10-25): Windows already uses IP Helper GetBestRoute2,
+interface consistency and NLM category observations, with generation invalidation.
+[GetBestRoute2](https://learn.microsoft.com/en-us/windows/win32/api/netioapi/nf-netioapi-getbestroute2)
+returns best-route/source information; this is not an attestation of a particular
+connected socket. The only sealed connected constructor still inspects loopback
+and require_native_lan returns N7PolicyPending. On Android,
+[Network.bindSocket(FileDescriptor)](https://developer.android.com/reference/android/net/Network#bindSocket(java.io.FileDescriptor))
+supports binding an unconnected socket to a selected Network. The smallest next
+route seam is to bind the existing native socket before connect, then check its
+connected addresses against fresh LinkProperties/Network identity and callback
+fence. ADB reverse traverses loopback and cannot supply that proof. No speculative
+binding/attestation API is added; source_selected stays false on Android.
+ACCESS_NETWORK_STATE remains confined to the existing standalone debug project;
+production permission changes and API37/physical Wi-Fi behavior are unverified.
+
+N1 reviewer packet: this diff plus Cargo.lock and the existing
+m05-n1-external-review.md; security/pake_qualification.rs,
+composition.rs, tls.rs/tls_lab.rs/tls_socket_lab.rs, storage/tls_identity.rs,
+security/windows.rs and Android Keystore/JNI sources; enrollment_store.rs,
+registry_verification.rs, security/enrollment.rs and enrollment attempt/approval
+stores. Review exact pin/CertificateVerify/exporter/context ordering, durable
+attempt accounting and human confirmation, registry/import COMMIT ordering,
+OS key loss/substitution, cancellation races and default/release isolation.
+Synthetic membership in these tests is not reviewed enrollment and cannot mint
+a production VerifiedSession. Interoperability evidence is in readiness §28.
+
+Current authoritative dependency check: opaque-ke 4.0.1 → elliptic-curve 0.13.8
+(and voprf 0.5.0 → elliptic-curve 0.13.8) → crypto-bigint 0.5.5, confirmed on
+Windows dev and Android feature graphs. Argon2 0.5.3, rustls 0.23.46/ring 0.17.14.
+[RustSec RUSTSEC-2026-0387](https://rustsec.org/advisories/RUSTSEC-2026-0387.html)
+requires crypto-bigint >=0.7.6. The
+[current OPAQUE upstream manifest](https://raw.githubusercontent.com/facebook/opaque-ke/main/Cargo.toml)
+(4.1.0-pre.2) still selects elliptic-curve 0.13/voprf 0.5, and
+[elliptic-curve 0.13.8](https://raw.githubusercontent.com/RustCrypto/traits/elliptic-curve-v0.13.8/elliptic-curve/Cargo.toml)
+requires crypto-bigint 0.5. No supported drop-in fixed chain was identified;
+forcing 0.7 or changing PAKE is not remediation. Selected ristretto255 path
+analysis does not constitute independent approval or erase the locked advisory.
+The old NCC audit cited by upstream covers older releases, not this composition.
+Reviewers must decide affected selected operations/compiler/targets, supported
+upstream remediation and acceptance of exact current code; N1 remains blocked.
+
+The current check also identified
+[RUSTSEC-2026-0386](https://rustsec.org/advisories/RUSTSEC-2026-0386.html)
+in Tokio 1.53.2. R3 updates only the locked Tokio package to supported 1.53.3,
+which RustSec lists as fixed; no protocol or cryptographic-suite change.
+[RUSTSEC-2026-0384](https://rustsec.org/advisories/RUSTSEC-2026-0384.html)
+affects 1.54.0, not this version. This is a targeted advisory check, not a clean
+all-dependency security audit. Production gates remain closed pending independent
+N1/N2/N3/N7 and G3–G7 decisions.

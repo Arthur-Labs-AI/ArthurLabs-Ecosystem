@@ -475,6 +475,8 @@ fn scenario(case: jint) -> Result<()> {
         35 => crate::sync::security::native_io_lab::qualify_fast(),
         36 => crate::sync::security::native_io_lab::qualify_deadlines(),
         37..=41 => super::journal::tls_qualification::run(case),
+        42 => super::security_tls_tests::committed_revocation().and_then(|_| super::security_tls_tests::revocation_tls()),
+        43..=46 => super::journal::cross_device_qualification::run(case),
         _ => Err(E::Invalid),
     }
 }

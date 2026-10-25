@@ -778,6 +778,10 @@ fn e2_14_15_signed_import_and_revocation_have_one_commit_order() {
     for revoke_first in [true, false] {
         let i = Integration::new();
         let session = i.session();
+        let stop=Arc::new(crate::sync::security::transport_candidate::Interrupt::default());
+        let binding=i.f.binding();
+        let (pool,permit,_)=i.f.owner.transport_candidate().admit_loopback_lab(
+            crate::sync::security::transport_candidate::Expected{network:binding.root.network,peer:i.f.peer.public().peer_id()},&stop).unwrap();
         let signed = i.signed(0);
         let store = SignedImportStore::synthetic(i.f.owner.store());
         let r = NetworkRegistry::candidate(i.f.owner.store()).unwrap();
@@ -852,6 +856,9 @@ fn e2_14_15_signed_import_and_revocation_have_one_commit_order() {
                 1
             );
         }
+        assert!(stop.cancelled(),"committed revocation must cancel the same owner's active permit");
+        assert!(store.retain(&session,&signed,i.events[0].clone(),&Clock,&Cancellation::default()).is_err());
+        drop(permit);assert_eq!(pool.active_for_test(),0);
         f::clean(i.f.owner.store());
     }
 }

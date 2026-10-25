@@ -222,6 +222,14 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
         self.status = summary.status;
         self.send(Payload::Summary(summary))
     }
+    /// Explicit reread after a local native commit on an already negotiated
+    /// candidate session. Reuses existing bounded inventory and authorization.
+    pub(crate) fn refresh(&mut self) -> Result<()> {
+        if let Some(e)=self.blocked { return Err(e); }
+        if !self.negotiated || self.advertised_next.is_some() { return Err(Error::Protocol); }
+        self.advertised_after = None;
+        self.advertise()
+    }
     fn retry(&mut self) -> Result<()> {
         let pending = self
             .store

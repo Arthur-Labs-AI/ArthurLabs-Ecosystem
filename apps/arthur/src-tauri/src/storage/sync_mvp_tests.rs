@@ -306,3 +306,33 @@ fn mvp1_out_of_order_capture_is_pending_until_original_project_arrives() {
             .needs_attention
     );
 }
+
+#[test]
+fn r3_native_commit_refreshes_existing_session_inventory() {
+    let a = device(Uuid::from_u128(7310), Uuid::from_u128(7311));
+    let b = device(a.other, a.id);
+    let (project, _) = f::project_and_capture(&a.store, "live project", "initial");
+    let session = Uuid::from_u128(7312);
+    // Both origins exist before the session grants are made.
+    f::capture_in(
+        &b.store,
+        crate::storage::migrations::INBOX_PROJECT_ID,
+        "before session",
+    );
+    let allowed = origins(&a, &b);
+    let sa = CandidateSyncStore::synthetic(&a.store);
+    let sb = CandidateSyncStore::synthetic(&b.store);
+    let (ta, tb, _) = FakeTransport::pair(a.hello(session), b.hello(session));
+    let clock = Clock::default();
+    let cancel = Cancellation::default();
+    let mut ea = SyncEngine::start(&sa, ta, &a.trust(session, &allowed), &clock, &cancel).unwrap();
+    let mut eb = SyncEngine::start(&sb, tb, &b.trust(session, &allowed), &clock, &cancel).unwrap();
+    assert_eq!(eb.refresh(), Err(Error::Protocol));
+    pump(&mut ea, &mut eb);
+    f::capture_in(&b.store, &project, "created while connected А́ 原文 😀");
+    eb.refresh().unwrap();
+    pump(&mut ea, &mut eb);
+    same_supported(&a, &b);
+    assert_eq!(a.count("captures"), 3);
+    assert!(!ea.needs_attention && !eb.needs_attention);
+}

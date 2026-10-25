@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-24T17:36:52.2711070+03:00",
+  "checkedAt": "2026-10-25T18:51:34.2305521+02:00",
   "source": "https://api.osv.dev/v1/querybatch",
   "scope": "Locked all-target transitive closure of opaque-ke and argon2; includes target/build dependencies",
   "packages": 69,

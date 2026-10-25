@@ -2203,3 +2203,221 @@ for correctness, data-loss/security or ownership/cleanup. This is not independen
 security review. Production revocation notification, application lifecycle/SyncNow
 wiring, native LAN attestation and the unapproved gates above remain release
 work. Hosted CI/release packaging are not marked PASS. Final disposition: PARTIAL.
+
+
+## 28. MEGA M05 R3 — independent endpoint qualification (PARTIAL)
+
+Scope: feature/nodes-integration, accepted R2 base
+8c0fbab11725c01661fe7c767a3c5e9a3aab45e6; 2026-10-25. The R3 commit containing
+this section is the evidence snapshot. No production gate is self-approved.
+
+**Cross-platform result: PASS, explicitly debug qualification.** Actual Windows
+CNG and Android Keystore mutually pinned TLS 1.3, exporter/network/session/peer
+binding, existing SyncEngine/CandidateSyncStore/G3 and independent real SQLite
+roots. Membership is synthetic debug configuration with durable authorization
+checks, not live enrollment or a production VerifiedSession. No private key
+leaves its OS store. No FakeTransport carries this success scenario.
+
+Accessible topology was Windows host + Medium_Phone_API_36.1 x86_64 emulator
+(Android16/API36), not a physical device. The runner used explicit ADB reverse
+Android localhost:37431 → an ephemeral Windows localhost listener. The listener
+closes after accept; the controller exchanges public pins/configuration and
+compares synthetic evidence, never forwards Project/Capture data itself.
+
+| Phase | Actual Windows / Android processes | Socket evidence | Durable result |
+| --- | --- | --- | --- |
+| Transfer | 32344 / 11056 | W 127.0.0.1:56092→127.0.0.1:56099; A 127.0.0.1:56098→127.0.0.1:37431 | Native Windows Project + 20,000 emoji Capture imported on Android; native Android Capture on that imported Project returned to Windows. Exactly three canonical events/rows on both. Two encrypted receipts deliberately discarded by the existing Windows receipt-loss fixture remain durably offered, never falsely acknowledged. |
+| Both processes restarted | 21052 / 11101 | W 127.0.0.1:56109→127.0.0.1:56117; A 127.0.0.1:56112→127.0.0.1:37431 | Exact same CNG/Keystore public keys reopened; retry clears both pending receipts. All canonical bytes, hashes, UUIDs, timestamps, Unicode and relationships remain identical across all four result snapshots; no duplicate G3 application. |
+
+Executed `gen/android/verify-identity.ps1 -Serial emulator-5580`, then
+`gen/android/verify-cross-device.ps1 -Serial emulator-5580`. Cross-device runner:
+4 explicit Android cases (prepare/exchange/resume/cleanup) and four independent
+Windows test-executable invocations, each successful; external endpoint test is
+intentionally ignored in ordinary cargo runs. Both transfer phases required
+successful independent process exits, exact three-event comparisons, correct
+receipt states (2→0 on Windows, zero on Android), native TLS/Pool cleanup and
+persisted keys. Fixture cleanup ran; host database-root and ADB reverse removal were verified.
+OS-key deletion uses the existing best-effort fixture destructor. The task-created
+emulator was stopped after network qualification.
+Host evidence: `%TEMP%/arthur-r3-01126547-a6ca-4fd4-989f-feffa868d919` and
+`%TEMP%/arthur-r3-cross-final.log`. Results are disposable synthetic data only.
+
+The test controller now rejects remote `cat` diagnostics even if adb exec-out
+returns exit0, accepts only complete JSON, publishes files atomically and clears
+previous-run barriers. Replay receipts continue through the same engine while
+waiting for the peer's durable result. This is out-of-band test coordination,
+not another wire protocol, service, worker or synchronization engine.
+
+**Revocation: PASS for executed dormant owner wiring.** NativeRuntime binds a
+Weak reference to its existing Pool once. Signed NetworkRegistry.apply notifies
+matching network/peer permits only after successful SQLite COMMIT and after
+releasing the database lock; cancellation flags are set under Pool lock and
+wakes occur outside it. Rollback sends no notification; unrelated permits are
+not cancelled. Poisoned Pool notification releases the poisoned guard before
+fail-closed shutdown (regression tested). Durable authorization remains the
+source of truth, with transactional import recheck, not the cancellation flag.
+
+Tests execute signed revocation before handshake authorization, after TLS before
+session publication, established pending TLS IO, transfer, owner close/reopen
+and denial of new access on Windows and Android. Windows' existing
+`e2_14_15_signed_import_and_revocation_have_one_commit_order` now also admits
+an actual owner permit: revocation first refuses mutation; an import already
+holding the SQLite lock commits before the waiting revocation, which then
+cancels the permit and refuses subsequent imports. No second connection/owner.
+Android's JNI case42 includes registry rollback/selective cancellation plus
+native Keystore TLS lifecycle/reopen checks. This does not claim a physically
+connected device revocation race or production activation.
+
+**Network: N7 remains blocked.** Actual Windows IP Helper smoke: WiFi, link Up,
+WindowsOtherProfileObserved(0/Public), local prefix24, route prefix0, gateway.
+That observation is not private/direct LAN policy approval or selected connected
+interface attestation. Android's existing standalone permission project passed
+actual acquisition/callback qualification (2 tests); its release variant is
+absent. Existing identity build still exercises missing network-state permission.
+Default app permission settings are unchanged. LinkProperties does not prove
+source selection; Android source_selected stays false and connected endpoint
+require_native_lan returns N7PolicyPending. Network.bindSocket(fd) before connect
+is the supported smallest next selected-network seam; no speculative attestation
+framework or production permission was added. Physical same-WiFi, ARM64, API37,
+VPN refusal on an actual connected LAN socket and real network interruption of
+such a session are UNVERIFIED. No firewall/network configuration was changed.
+
+**Storage: executed fault evidence PASS; G3/G4 approval still absent.** New
+Windows `r3_tls_import_vfs_full_ioerr_commit_no_ack_reopen_retry` reuses the
+existing per-main-file VFS shim (no new VFS): actual SQLITE_FULL/xWrite and
+SQLITE_IOERR_FSYNC/xSync during encrypted G3 import COMMIT, real DELETE journal,
+synchronous FULL and cache_spill OFF. Each fault callback is hit exactly once;
+no import receipt, row, proof or progress-row advance; sender keeps its offer,
+SQLite integrity passes, both owners close/reopen, retry applies once and replay
+preserves exact originals. Existing R2 actual max_page_count import FULL/reopen
+scenario also runs on Android. Existing physical/admission/journal matrices
+remain in the full regression. None of this independently certifies production
+bounds for main allocation, DELETE journal/WAL/temp/scratch/recovery usage across
+all release operations/filesystems. Keep UnverifiedBounds and G3–G7 unapproved.
+
+**N1 remains blocked.** Current OSV query checked all69 locked PAKE/Argon2 closure
+packages; one finding, crypto-bigint0.5.5/RUSTSEC-2026-0387, persisted in the
+existing qualification/advisories.json (package inventory unchanged). Exact
+locked path, authoritative fixed versions, compatible-upstream limitation,
+review sources and concrete independent reviewer questions are in the existing
+integration document's R3 section. OPAQUE4.0.1/Argon20.5.3 and the protocol remain
+unchanged; no incompatible bigint override or PAKE replacement. Separately,
+Tokio1.53.2→1.53.3 addresses RUSTSEC-2026-0386 with only that locked package and
+checksum changed. This is not a clean all-dependency audit or independent N1
+approval. Existing CNG↔Keystore public-fixture/JCA evidence remains valid, and
+R3 adds an actual encrypted cross-platform Sync exchange.
+
+Full knowledge-v1-full scope is not reduced: existing D3/D4/knowledge/revision/
+evidence/review/conflict/snapshot/history candidates are store-tested but not
+all integrated and release-qualified over this cross-process TLS path. The
+short scope matrix is in m05-project-capture-mvp.md. Unsupported history keeps
+attention/pending semantics. The next bounded engineering step is native socket
+selection/binding evidence under approved route policy, while the owner obtains
+independent N1 and G3/G4 decisions; then integrate existing release-critical
+D3/D4/history operations on this same transport. No new milestone framework or
+create-only product contract is approved here.
+
+Production schema9, dormant M05, ClosedTrust/ClosedLan/PAKE/TLS/LAN and unavailable
+production SyncNow remain. N1/N2/N3/N7 and G3–G7 are unapproved. No public listener,
+automatic network startup, frontend networking/signing, E3B or main merge.
+
+### R3 changed-file manifest
+
+23 repository-relative paths; the generated Gradle feature suffix was restored
+by the supported default build, so no generated configuration diff is retained.
+Only three files are new: CrossDeviceSyncTest.java, verify-cross-device.ps1 and
+cross_device_qualification.rs. No schema/codec/reducer/snapshot SQL or production
+Java/manifest/UI contract changed.
+
+```text
+apps/arthur/src-tauri/Cargo.lock
+apps/arthur/src-tauri/gen/android/app/src/androidTest/java/dev/kaloyan/arthur/security/CrossDeviceSyncTest.java
+apps/arthur/src-tauri/gen/android/app/src/androidTest/java/dev/kaloyan/arthur/security/NativeIdentityBridgeTest.java
+apps/arthur/src-tauri/gen/android/verify-cross-device.ps1
+apps/arthur/src-tauri/src/runtime/lan_candidate.rs
+apps/arthur/src-tauri/src/runtime/mod.rs
+apps/arthur/src-tauri/src/storage/capture_store.rs
+apps/arthur/src-tauri/src/storage/enrollment_store.rs
+apps/arthur/src-tauri/src/storage/journal/cross_device_qualification.rs
+apps/arthur/src-tauri/src/storage/journal/mod.rs
+apps/arthur/src-tauri/src/storage/journal/tls_qualification.rs
+apps/arthur/src-tauri/src/storage/security_android_instrumentation.rs
+apps/arthur/src-tauri/src/storage/security_e2_tests.rs
+apps/arthur/src-tauri/src/storage/security_tls_tests.rs
+apps/arthur/src-tauri/src/storage/sync_mvp_tests.rs
+apps/arthur/src-tauri/src/sync/engine.rs
+apps/arthur/src-tauri/src/sync/security/native_io_lab.rs
+apps/arthur/src-tauri/src/sync/security/qualification/advisories.json
+apps/arthur/src-tauri/src/sync/security/tls_lab.rs
+apps/arthur/src-tauri/src/sync/security/tls_socket_lab.rs
+apps/arthur/src-tauri/src/sync/security/transport_candidate.rs
+docs/architecture/m05-activation-readiness.md
+docs/architecture/m05-project-capture-mvp.md
+```
+
+Self-review: no remaining qualification correctness, data-loss/security or
+ownership/cleanup blocker identified in the reviewed change. Fixed findings
+include poisoned-lock reentry, peer/key/hello binding at the one-endpoint entry,
+remote-file false-success detection and stale test publications. These were
+covered by targeted regressions or the executed external runner. This is a
+coding self-review, not independent security approval. Best-effort fixture key
+deletion and the unverified physical/release gates above are not promoted into
+stronger claims.
+
+
+### R3 executed gate snapshot versus R2
+
+Full native command: `cargo test --locked --offline --manifest-path
+apps/arthur/src-tauri/Cargo.toml --lib -- --test-threads=1` on Windows;
+1428 PASS / 0 FAIL / 26 ignored, 506.08s. Subset counts below are extracted from
+that complete run using the named filters, not inferred or added as separate
+passing executions. Baseline is the accepted R2 full-run log (1422/0/25,380.19s).
+
+| Gate / filter | R2 | R3 result |
+| --- | --- | --- |
+| Full native | 1422 / 0 / 25 ignored | PASS: 1428 / 0 / 26 ignored |
+| r1_tls | 10 | PASS: 10 |
+| r2_ | 6 | PASS: 6 |
+| r3_ | — | PASS: 6; 1 explicit external-runner entry ignored in ordinary suite |
+| n7 | 40 | PASS: 40; policy approval unchanged |
+| sync::security:: | 73; 1 ignored | PASS: 75; 1 ignored |
+| sync (literal name filter) | 174; 1 ignored | PASS: 177; 1 ignored |
+| storage::journal:: | 292; 1 ignored | PASS: 293; 2 ignored (includes explicit cross-process runner) |
+| m05_v10_tests | 24 | PASS: 24 |
+| Architecture | 88 | PASS: 88, npm run test:architecture |
+| Frontend | 561 + build | PASS: 561/42 files + TypeScript/Vite build, npm run arthur:check |
+| Root TypeScript | PASS | PASS: npm run typecheck |
+| Android instrumentation | 47 + 2 identity restart | PASS: 48 + 2 identity restart; fresh Gradle XML48/0 failures/0 errors/0 skipped,182.796s |
+| Independent CNG↔Keystore Sync + both process restarts | UNVERIFIED | PASS: both actual transfer/recovery phases; 4 Android cases + 4 Windows invocations |
+| Standalone Android permission/callback | 2 | PASS: 2; debug-only project, no release variant |
+| Cargo all-target check | PASS | PASS: cargo check --locked --offline --all-targets on the same manifest |
+| Default Windows binary | PASS | PASS: cargo build --locked --offline --bin arthur on the same manifest |
+| Default Android debug APK | PASS | PASS: supported npm run tauri -- android build --debug --target x86_64 --apk --ci |
+| JNI/default permission isolation | PASS | PASS: feature4 vs default2 security JNI exports; default appid dev.kaloyan.arthur, no ACCESS_NETWORK_STATE/identitytest suffix |
+| Dependency graph isolation | 4 | PASS: existing verify-isolation.ps1,4 target/feature controls |
+| Forbidden Android release feature | Refused,5 explicit +8 secondary errors | PASS isolation: exit101,6 explicit guards + same8 secondary missing-debug-slot errors; not release packaging |
+| Formatting/whitespace | — | PASS: targeted rustfmt --check for eight touched lab/test files; git diff --check. Whole-tree format/lint is UNVERIFIED. |
+| Hosted CI | UNVERIFIED | UNVERIFIED: no applicable existing local workflow; no new CI infrastructure added |
+| Signed release packaging / packaged clean-environment smoke | UNVERIFIED | UNVERIFIED; debug APK and executable builds do not substitute |
+| Physical WiFi, physical Android, ARM64, API37 | UNVERIFIED | UNVERIFIED; no physical Android device was connected |
+| Independent N1/N2/N3/N7 and G3–G7 approval | Unapproved | UNVERIFIED / still unapproved |
+
+Evidence logs are `%TEMP%/arthur-r3-{native-full,cargo-check-final,
+windows-default,default-android,android-stable,cross-final,network,release-guard,
+architecture,frontend,dependencies}.log`; graph snapshots are in
+`%TEMP%/arthur-r3-isolation`. Existing verify-dependencies.ps1 queried OSV for69
+packages and reported the one unresolved bigint advisory. Default APK was
+inspected with apkanalyzer and default/feature shared libraries with LLVM nm.
+APK manifest retains existing INTERNET/RECORD_AUDIO/dynamic-receiver permissions;
+no network-state permission or production manifest change. Native guards,
+dormant schema and architecture checks do not constitute production approval.
+
+Reproduction order on the configured host: verify-identity.ps1 →
+verify-cross-device.ps1 → verify-network.ps1 (the latter replaces the dedicated
+test APK), then restore the supported default Android build. All runner setup
+is explicit; no application or network automatically starts on production boot.
+The external runner is narrowly loopback-only and its ADB mapping is removed in
+finally. Final disposition: PARTIAL. Independent cross-platform transfer and
+automatic committed revocation are now executed evidence; production approvals,
+selected-network qualification, complete authenticated full-scope integration and
+certified physical bounds/release artifacts remain required.
