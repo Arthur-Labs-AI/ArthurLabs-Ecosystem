@@ -1,3 +1,5 @@
+# Layer-skew fix 2026-10-26: rebuilt main+preload, redeployed WSL runtime 1.0.2-7078c67 (verified contents). No source changes; restart required.
+
 # Revision picker — 2026-10-25: runs accept revisionId (engine snapshot-from-material, full plumbing, picker newest-first + dates, confirm display). Gates: engine 18/18 file, desktop 541/541, runtime 74, typechecks/eslint clean, bundle rebuilt. Committed 8cb7b4e. Pre-existing: 6 verifier-trust sandbox failures (clean-tree identical).
 
 # Committed 2026-10-25 on chore/app-cleanup-and-polish: 91096f1 provider settings, 3fa648a button/label spacing, 50cb0b7 turn budget+evidence, f7e621e translations, 676df41 update modal+cancel. All gates green per-commit-area on final tree; dist/ rebuilt locally (gitignored).
