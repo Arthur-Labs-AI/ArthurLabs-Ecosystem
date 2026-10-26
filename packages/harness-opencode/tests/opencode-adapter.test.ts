@@ -11,6 +11,8 @@ import {
   createSnapshotId,
 } from '@qa/shared';
 import {
+  DEFAULT_OPENCODE_TURN_TIMEOUT_MS,
+  describeTurnUpstreamActivity,
   DirectOpenCodeProcessLauncher,
   OpenCodeHarnessAdapter,
   type OpenCodeClientFactory,
@@ -639,6 +641,59 @@ describe('OpenCodeHarnessAdapter', () => {
       failure: { code: 'OPENCODE_START_FAILED' },
     });
     await adapter.dispose();
+  });
+
+  it('keeps a 60 min default single-turn budget for full-project investigations', () => {
+    // Regression pin for run_01M5SWNX0RRAB3QFKB6TGF55CS: a single-shot
+    // execution turn over a 349-file project exceeded the old 30 min budget
+    // with zero partial results, while the sibling GLM run needed 33.5 min
+    // total on the same project. The budget stays a hard cap; productive
+    // single-shot turns just get room to finish.
+    expect(DEFAULT_OPENCODE_TURN_TIMEOUT_MS).toBe(3_600_000);
+  });
+
+  it('says whether a timed-out turn talked to the upstream at all', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-timeout-evidence-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      turnTimeoutMs: 50,
+      clientFactory: async () => ({
+        startSession: async () => ({
+          runPrompt: async () => new Promise<never>(() => undefined),
+          abort: () => undefined,
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    const failure = events.at(-1);
+    expect(failure).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_START_FAILED' },
+    });
+    // A hanging stub relays nothing: the failure must say so explicitly so
+    // the next real timeout distinguishes a stall from slow-but-working.
+    // Route ids and counts only — never credentials or content.
+    expect(JSON.stringify(failure)).toContain('No upstream requests were relayed');
+    expect(JSON.stringify(events)).not.toContain(SENTINEL_VALUE);
+    await adapter.dispose();
+  });
+
+  it('summarizes upstream relay deltas without credentials or content', () => {
+    expect(describeTurnUpstreamActivity({}, {})).toBe(
+      'No upstream requests were relayed during the turn.',
+    );
+    expect(describeTurnUpstreamActivity({ a: 2 }, { a: 2 })).toBe(
+      'No upstream requests were relayed during the turn.',
+    );
+    expect(describeTurnUpstreamActivity({}, { chat: 3, models: 1 })).toBe(
+      'Upstream requests relayed during the turn: chatx3, modelsx1.',
+    );
+    expect(describeTurnUpstreamActivity({ chat: 5 }, { chat: 8 })).toBe(
+      'Upstream requests relayed during the turn: chatx3.',
+    );
   });
 
   it('fails closed before launch when workspace masking is impossible', async () => {

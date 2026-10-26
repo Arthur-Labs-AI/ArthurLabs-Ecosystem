@@ -172,6 +172,35 @@ export type OpenCodeToolShellBuilder = (
   input: OpenCodeToolShellRequest,
 ) => Promise<string | undefined>;
 
+/**
+ * Default single-turn budget (60 min). A single `opencode run` turn owns a
+ * whole investigation phase: on run_01M5SWNX0RRAB3QFKB6TGF55CS the execution
+ * turn of a 349-file project exceeded the previous 30 min budget with zero
+ * partial results, while the sibling GLM run needed 33.5 min total on the
+ * same project. The budget stays a hard cap (hung turns still die); this
+ * only gives productive single-shot turns room to finish.
+ */
+export const DEFAULT_OPENCODE_TURN_TIMEOUT_MS = 3_600_000;
+
+/**
+ * Names-only summary of upstream proxy traffic observed during a turn (route
+ * ids and counts, never credentials or content). Lets a timed-out turn say
+ * whether the model was talking to the upstream at all — the difference
+ * between "stalled with no traffic" and "working but slower than budget".
+ */
+export function describeTurnUpstreamActivity(
+  before: Readonly<Record<string, number>>,
+  after: Readonly<Record<string, number>>,
+): string {
+  const parts: string[] = [];
+  for (const [route, count] of Object.entries(after)) {
+    const delta = count - (before[route] ?? 0);
+    if (delta > 0) parts.push(route + 'x' + String(delta));
+  }
+  if (parts.length === 0) return 'No upstream requests were relayed during the turn.';
+  return 'Upstream requests relayed during the turn: ' + parts.join(', ') + '.';
+}
+
 export class OpenCodeTurnTimeoutError extends OpenCodeHarnessError {
   constructor(phase: string, budgetMs: number) {
     super(
@@ -370,7 +399,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     this.runtime = resolveOpenCodeRuntime({ ...options, environment: this.hostEnvironment });
     this.clientFactory = options.clientFactory ?? createProductionOpenCodeClient;
     this.shutdownTimeoutMs = options.shutdownTimeoutMs ?? 10_000;
-    this.turnTimeoutMs = options.turnTimeoutMs ?? 1_800_000;
+    this.turnTimeoutMs = options.turnTimeoutMs ?? DEFAULT_OPENCODE_TURN_TIMEOUT_MS;
     const child = buildOpenCodeChildEnvironment({ source: this.hostEnvironment });
     this.baseEnvironment = child.environment;
     this.childEnvironmentReport = child;
@@ -693,6 +722,23 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     const deadline = Date.now() + this.turnTimeoutMs;
     const budget = deadline - Date.now();
     if (budget <= 0) throw new OpenCodeTurnTimeoutError(phase, this.turnTimeoutMs);
+    // Upstream traffic baseline: a failed turn must say whether the model
+    // was talking to the upstream at all. Route ids and counts only — the
+    // proxy never exposes credentials or content through this summary.
+    const relayBefore: Record<string, number> = { ...(entry.proxy?.relayedRoutes() ?? {}) };
+    const withUpstreamEvidence = (error: unknown): unknown => {
+      if (!(error instanceof OpenCodeHarnessError) || error.code !== 'OPENCODE_START_FAILED') {
+        return error;
+      }
+      const message =
+        error.message + ' ' + describeTurnUpstreamActivity(relayBefore, entry.proxy?.relayedRoutes() ?? {});
+      if (error instanceof OpenCodeTurnTimeoutError) {
+        const enriched = new OpenCodeTurnTimeoutError(phase, this.turnTimeoutMs);
+        enriched.message = message;
+        return enriched;
+      }
+      return new OpenCodeHarnessError(error.code, message, error.retryable);
+    };
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const result: OpenCodePromptResult = await Promise.race([
@@ -751,6 +797,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         usage: result.usage,
         steps: result.steps,
       };
+    } catch (error) {
+      throw withUpstreamEvidence(error);
     } finally {
       if (timer !== undefined) clearTimeout(timer);
     }
