@@ -8,7 +8,7 @@ use crate::storage::capture_store::CaptureStore;
 use rusqlite::Connection;
 use std::sync::Arc;
 
-pub(super) struct PhysicalAdmission {
+pub(in crate::storage) struct PhysicalAdmission {
     policy: PhysicalAdmissionPolicy,
     provider: Arc<dyn CapacityProvider>,
     claims: Arc<ClaimPool>,
@@ -16,7 +16,7 @@ pub(super) struct PhysicalAdmission {
     binding: Capacity,
 }
 impl PhysicalAdmission {
-    pub fn bind(
+    pub(super) fn bind(
         s: &CaptureStore,
         c: &Connection,
         policy: PhysicalAdmissionPolicy,
@@ -116,7 +116,7 @@ fn number(c: &Connection, sql: &str) -> Result<u64, E> {
         .map_err(|_| E::SpaceUnknown)?;
     u64::try_from(n).map_err(|_| E::Overflow)
 }
-pub(super) struct Budget<'a> {
+pub(in crate::storage) struct Budget<'a> {
     admission: &'a PhysicalAdmission,
     claim: Claim,
     demand: StorageDemand,

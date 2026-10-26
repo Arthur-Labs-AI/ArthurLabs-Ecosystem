@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 pub(super) const MIB: u64 = 1024 * 1024;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum AdmissionError {
+pub(in crate::storage) enum AdmissionError {
     SpaceUnknown,
     SpaceLow,
     VolumeMismatch,
@@ -27,7 +27,7 @@ pub(super) struct Capacity {
 // Each variant names an actual adapter, including its internal domain helpers.
 // These are candidate capped transactions, NOT universal VFS growth estimates.
 // Multiple top-level adapters require a separate composite plan (unsupported).
-pub(super) enum Operation {
+pub(in crate::storage) enum Operation {
     Activation,
     Capture,
     AcceptPendingClaim,
@@ -64,6 +64,8 @@ pub(super) enum Operation {
     SnapshotPack,
     SnapshotAbort,
     SnapshotVerify,
+    // One bounded candidate Sync-store transaction, including reprocessing.
+    ImportTransaction,
     Unknown,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

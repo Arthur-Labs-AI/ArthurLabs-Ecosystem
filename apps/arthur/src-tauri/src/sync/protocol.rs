@@ -150,13 +150,9 @@ pub(crate) enum Payload {
     },
     Summary(Summary),
     Page(PageKey),
-    #[cfg_attr(any(test, all(target_os = "android", feature = "android-identity-tests")), serde(skip))]
     SnapshotOffer(super::bootstrap::SnapshotOffer),
-    #[cfg_attr(any(test, all(target_os = "android", feature = "android-identity-tests")), serde(skip))]
     SnapshotChunk(super::bootstrap::SnapshotChunk),
-    #[cfg_attr(any(test, all(target_os = "android", feature = "android-identity-tests")), serde(skip))]
     SnapshotPublish(super::bootstrap::SnapshotOffer),
-    #[cfg_attr(any(test, all(target_os = "android", feature = "android-identity-tests")), serde(skip))]
     SnapshotReceipt(super::bootstrap::SnapshotReceipt),
     Chunk(Chunk),
     Receipt(Receipt),

@@ -1,0 +1,51 @@
+name: M05 regression gates
+
+on:
+  push:
+    branches: [feature/nodes-integration]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.13.1
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/arthur/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.99.1
+      - name: Install locked JavaScript dependencies
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm ci --prefix apps/arthur
+      - name: Fetch locked Rust graph (including Android graph isolation inputs)
+        run: cargo fetch --locked --manifest-path apps/arthur/src-tauri/Cargo.toml
+      - name: Default Windows build check
+        run: cargo check --locked --offline --manifest-path apps/arthur/src-tauri/Cargo.toml --lib
+      - name: Native regressions including real Windows CNG and TLS
+        run: cargo test --locked --offline --manifest-path apps/arthur/src-tauri/Cargo.toml --lib -- --test-threads=1
+      - name: Production dependency feature isolation
+        run: ./apps/arthur/src-tauri/src/sync/security/qualification/verify-isolation.ps1
+      - name: Architecture gates
+        run: npm run test:architecture
+      - name: Frontend tests, typecheck and build
+        run: npm run arthur:check
+
+# Windows debug tests and target graph checks do not prove Android execution,
+# release packaging, physical LAN eligibility, N1 approval or G4 bounds.
+# No knowledge databases, keys or test logs are uploaded as artifacts.

@@ -17,6 +17,8 @@ use crate::storage::{
 };
 use rusqlite::ffi;
 use std::sync::Arc;
+#[path = "import_physical_tests.rs"]
+mod import;
 #[derive(Clone)]
 struct SimulatedCapacity;
 impl CapacityProvider for SimulatedCapacity {
@@ -930,11 +932,15 @@ fn c_crash_child() {
         true,
     )
     .unwrap();
+    let mode = std::env::var("ARTHUR_G4_BARRIER").unwrap();
+    if mode.starts_with("import-") {
+        import::crash_import(&s, &v, &mode);
+        return;
+    }
     let k = activate(&s, P::instrumented_profile_a());
     let before = fingerprint(&s);
     s.execute_sql_for_test("PRAGMA cache_size=1; PRAGMA cache_spill=ON");
     v.clear_records();
-    let mode = std::env::var("ARTHUR_G4_BARRIER").unwrap();
     let mut i = input();
     i.content = "🦀".repeat(20_000);
     k.write_admitted(O::Capture, |w| {
@@ -977,7 +983,7 @@ fn c13_process_termination_at_deterministic_commit_barriers() {
             let _ = self.0.wait();
         }
     }
-    for mode in ["before", "after"] {
+    for mode in ["before", "after", "import-before", "import-after"] {
         let dir = tempfile::Builder::new()
             .prefix("arthur-g4-")
             .tempdir()
@@ -1042,6 +1048,10 @@ fn c13_process_termination_at_deterministic_commit_barriers() {
                 .unwrap();
         clean(&s);
         assert_eq!(fingerprint(&s), fields[1]);
+        if mode.starts_with("import-") {
+            import::retry_crashed_import(&s, &root, mode);
+            continue;
+        }
         if mode == "before" {
             assert_eq!(cores(&s).len(), 1);
         } else {

@@ -295,6 +295,17 @@ pub(crate) fn install_history(s: &CaptureStore) {
     super::g3::install_history(s).unwrap();
     crate::storage::bootstrap_store::install(s).unwrap();
 }
+pub(crate) async fn with_import_fault(
+    s: &CaptureStore,
+    sync_io: bool,
+    work: impl std::future::Future<Output = ()>,
+) {
+    let fault = if sync_io { super::fault_io::Fault::SyncIo } else { super::fault_io::Fault::WriteFull };
+    // Store remains borrowed until the future and callback guard are dropped.
+    let guard = unsafe { super::fault_io::FileFault::install(s, fault) };
+    work.await;
+    assert_eq!(guard.hits(), 1);
+}
 pub(crate) fn install_d4(s:&CaptureStore) { super::g3::install_d4(s).unwrap(); }
 pub(crate) fn assert_same_row(a:&CaptureStore,b:&CaptureStore,e:super::codec::EntityKind,key:&[String]) {
     let source=a.connection.lock().unwrap(); let target=b.connection.lock().unwrap();
@@ -311,6 +322,12 @@ pub(crate) fn held_project_kernel_continues(s:&CaptureStore,id:&str,import:impl 
     k.write(|w|w.rename_project(id,"Local after foreign transition")).unwrap();
 }
 pub(crate) fn history(s: &CaptureStore) -> (String, String, String) {
+    history_inner(s, false)
+}
+pub(crate) fn history_with_selected_edit(s: &CaptureStore) -> (String, String, String) {
+    history_inner(s, true)
+}
+fn history_inner(s: &CaptureStore, select_edit: bool) -> (String, String, String) {
     use crate::storage::{knowledge_store::NewKnowledgeObject, lineage_store::Changes};
     let k = JournalKernel::activate(s).unwrap();
     let c = k
@@ -362,6 +379,9 @@ pub(crate) fn history(s: &CaptureStore) -> (String, String, String) {
         .unwrap();
     k.write(|w| w.record_distillation(&empty.id, vec![]))
         .unwrap();
+    if select_edit {
+        k.write(|w| w.update_object(&object.id, super::writer_tests::change("Selected native history"))).unwrap();
+    }
     (c.id, object.id, root)
 }
 // An unselected automatic branch generated inside the actual local journal

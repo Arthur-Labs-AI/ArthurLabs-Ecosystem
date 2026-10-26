@@ -5,6 +5,8 @@ use crate::{
     storage::security_tls_tests::Fixture,
     sync::security::{native_io_lab::execute, tls::CertificateRole, tls_socket_lab::Pair},
 };
+#[path = "sync_history_tls_tests.rs"]
+mod history;
 
 async fn connect(
     a: &Peer,

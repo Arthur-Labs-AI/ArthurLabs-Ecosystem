@@ -2607,3 +2607,188 @@ separate required evidence; debug success cannot approve them.
 - `apps/arthur/src-tauri/src/sync/security/transport_candidate.rs`
 - `docs/architecture/m05-activation-readiness.md`
 - `docs/architecture/m05-project-capture-mvp.md`
+
+## 30. R5 — knowledge history and storage release safety (PARTIAL)
+
+Baseline: `72caeb844301cb69c1cbd1d74cf75d75695c651e`,
+`feature/nodes-integration`; inspection started with a clean tree. See the R5
+operation matrix in `m05-project-capture-mvp.md` for supported vs blocked scope.
+
+### Implemented qualification and safety changes
+
+- Existing SnapshotOffer/Chunk/Publish/Receipt now serialize only under the
+  existing test/Android debug qualification cfg. Frozen core, reducer, snapshot
+  and bootstrap payload bytes are unchanged. The bounded R1 TLS adapter, OS CNG
+  keys, exporter/context binding, SyncEngine and G3 importer are reused.
+- Two independent native owners reconstruct Project/Capture history, rename and
+  Capture move, knowledge objects, distillation/empty completion, immutable
+  revisions/parents, evidence and relation originals through encrypted bootstrap.
+  The tail exchanges a reverse evidenced branch plus independently authored
+  knowledge and its permitted selected revision. Original bytes/identities,
+  timestamps, row images, replay and both owner reopens are compared.
+- Engine operation status now respects durable outstanding attention. A later
+  successful Capture cannot label a still-deferred revision CleanlyApplied.
+  Competing heads retain originals without selecting a synchronization winner;
+  unsupported approval and foreign selection on a locally authored head remain
+  explicit, with no remote review execution or local overwrite.
+- Candidate import transactions can borrow the existing PhysicalAdmission.
+  One volume-bound claim and existing VFS/pager budget cover mutation,
+  reprocessing, COMMIT/rollback and configuration restoration before returning
+  a receipt. Ambiguous commit/rollback/cleanup poisons reuse until reopen.
+  Construction with a budget is test-only; production still refuses activation.
+
+### G3/G4 evidence and limits
+
+Observed on disposable Windows SQLite owners using the existing DELETE/FULL
+profile and simulated capacity: a four-operation native distillation import
+grew the main file by **8,192 bytes** and reached **188,776 bytes** of rollback
+journal extent. These are high-water byte extents for this fixture, not general
+allocation/recovery bounds. VFS records keep a live admission token through
+main-file sync; token counts balance and the original max_page_count is restored.
+
+Fault matrix: zero available capacity before mutation; journal SQLITE_FULL;
+main write SQLITE_IOERR_WRITE; main COMMIT sync SQLITE_IOERR_FSYNC; rollback,
+exact prior state, reopen and idempotent retry. The TLS case injects actual
+main-file FULL and COMMIT sync IOERR while importing a multi-row knowledge
+event, asserts StorageLimited/no receipt/no proof or cursor advance, then
+reopens both owners and recovers through the same encrypted bootstrap.
+The existing C13 capability/pipe/kill harness now also interrupts G3 before
+COMMIT after real pager writes and after durable COMMIT, then reopens, checks
+the complete state fingerprint, integrity/FKs and retries from the surviving
+source owner. Maximum valid Unicode Capture/title/body records are imported
+with exact row parity after low-space rejection and capacity recovery.
+
+**G4 remains UnverifiedBounds.** Candidate 32 MiB main / 16 MiB scratch and
+`2 * current image + 1 MiB` journal allowances are enforced experiment budgets,
+not newly approved bounds. No approved worst-case import/reprocessing/staging
+or recovery allocation envelope exists across all maximum histories, filesystems
+and platforms. WAL is unsupported by the existing admission policy; temp and
+subjournal opens are denied by its instrumented VFS. Android allocation,
+external disk consumers, physical exhaustion/power loss and worst-case bootstrap
+staging/publication remain unverified. Release construction must stay closed.
+
+### N1 investigation and independent review handoff (2026-10-26)
+
+The exact locked reverse graph is:
+`crypto-bigint 0.5.5 ← elliptic-curve 0.13.8 ← opaque-ke 4.0.1`, also through
+`voprf 0.5.0 ← opaque-ke`. Argon2 0.5.3 is a separate qualification root;
+it is not the direct parent responsible for crypto-bigint. The existing OSV
+script refreshed the 69-package closure: one finding, RUSTSEC-2026-0387.
+[RustSec](https://rustsec.org/advisories/RUSTSEC-2026-0387.html) specifies fixes
+at >=0.7.6. The locked elliptic-curve requires crypto-bigint ^0.5, which cannot
+accept that fix. Current [OPAQUE upstream manifest](https://raw.githubusercontent.com/facebook/opaque-ke/main/Cargo.toml)
+is 4.1.0-pre.2 and still requires elliptic-curve 0.13/voprf 0.5/Argon2 0.5;
+the [changelog](https://github.com/facebook/opaque-ke/blob/main/CHANGELOG.md)
+retains stable 4.0.1. The newer [elliptic-curve manifest](https://raw.githubusercontent.com/RustCrypto/traits/master/elliptic-curve/Cargo.toml)
+uses crypto-bigint 0.7.8 but is a different 0.14 API line, outside those bounds.
+No compatible supported remediation was established. Cargo.lock is unchanged;
+there is no forced override, fork, advisory suppression or PAKE substitution.
+
+Reachability finding is limited static evidence: Arthur's actual qualification
+suite uses Ristretto255/TripleDh/SHA512/Argon2; locked opaque-ke's Ristretto
+group and voprf's Ristretto scalar/group arithmetic use curve25519-dalek.
+elliptic-curve supplies ExpandMsgXmd hashing, not the selected scalar arithmetic.
+No affected secret-bigint arithmetic call was identified on that selected path.
+This is an inference from source, not a proof across compilers/targets or an
+advisory exemption. Default Windows/Android normal/build dependency graphs omit
+OPAQUE/Argon2/crypto-bigint; explicit qualification graphs include them.
+
+Reviewer package: this section, the R5 scope matrix, existing
+`m05-n1-external-review.md`, exact Cargo.toml/lock and qualification manifests,
+`pake_qualification.rs`, `qualification_vectors.rs`, composition/enrollment/TLS
+and signer sources, and the R5 TLS/fault results. Review questions: accept or
+reject the exact locked dependency risk/path analysis; identify an upstream
+remediation with protocol/encoding/KDF interoperability evidence; assess current
+OPAQUE audit coverage (the historical audit is not approval of this version);
+review enrollment/confirmation/attempt budget/human approval/TLS binding and
+signed membership/revocation. The reviewer must record identity, exact commit,
+platform/configuration scope and explicit acceptance. **No external acceptance
+was provided; N1 stays BLOCKED.**
+
+### Verification snapshot
+
+Commands use the existing manifest `apps/arthur/src-tauri/Cargo.toml`.
+Focused R5: `cargo test --locked --offline --manifest-path <manifest> --lib r5_
+-- --test-threads=1 --nocapture`; C13 runs as part of the full native suite.
+Full native: same command without `r5_`. Default Windows:
+`cargo check --locked --offline --manifest-path <manifest> --lib`.
+Architecture: `npm run test:architecture`; frontend: `npm run arthur:check`.
+Existing qualification scripts `verify-isolation.ps1` and
+`verify-dependencies.ps1` produced current graph and advisory evidence.
+Executed locally on Windows, Rust 1.99.1 / Node 24.13.1:
+
+| Gate | R4 | R5 result |
+| --- | --- | --- |
+| Full native | 1434 PASS / 26 ignored | **1445 PASS / 0 FAIL / 26 ignored**, 564.80 s |
+| R5 focused | — | **11 PASS / 0 FAIL**, 47.73 s |
+| R1 / R2 / R3 / R4 focused | 10 / 6 / 6 / 6 PASS | Same counts PASS in the full run |
+| N7 name filter | 42 PASS | 42 PASS |
+| Sync name filter | 182 PASS | 191 PASS |
+| Journal namespace | 293 PASS | 295 PASS; C13 also covers four barriers now |
+| Dormant v10 | 24 PASS | 24 PASS |
+| Architecture | 88 PASS | 88 PASS |
+| Frontend | 561 PASS + build | 561 PASS + typecheck/build |
+| Default Windows locked/offline check | PASS | PASS |
+| Default/qualification dependency isolation | PASS | Four Windows/Android graphs PASS |
+| PAKE closure OSV | One advisory | 69 packages, one crypto-bigint finding; not remediated |
+| Android instrumentation / cross-platform new history | Prior 48 + 2 restart / ADB-reverse evidence | UNVERIFIED in R5; graph checks do not replace execution |
+| Direct physical LAN / release packaging | NOT TESTED | UNVERIFIED; no physical device/network qualification performed |
+| Hosted CI | No workflow | Implemented; execution status must be read after push |
+
+The first comprehensive development run caught a pagination regression in an
+attempted progress change and a positive scenario outside D4's local-head policy.
+The progress change was removed; R4 transfer scheduling is retained. The
+positive fixture now exercises permitted selected-head history of a separately
+authored object, with a separate negative test preserving the unsupported local
+head boundary. The final complete run above passed without expectation changes
+to existing R4 tests. The new pending-then-applied TLS regression also proves the
+durable-status correction; bootstrap serialization initially failed Protocol
+until the existing excluded message variants were wired.
+
+Evidence: `%TEMP%/arthur-r5-{native-final,focused-final,pagination-final,check,
+architecture,frontend,isolation,dependencies}.log` and
+`%TEMP%/arthur-r5-{isolation,dependencies}/`. These contain synthetic qualification
+results/package metadata, not real user knowledge or private keys.
+
+`.github/workflows/m05.yml` adds one ordinary Windows job: locked Cargo fetch,
+default check/full native tests, existing target-graph isolation, architecture,
+frontend tests/typecheck/build. No secret/knowledge artifacts are uploaded.
+Hosted execution is a separate gate; Android graph isolation is not Android
+instrumentation, and debug tests are not release packaging. Physical LAN,
+Android instrumentation for the new history scenario, N1/N2/N3/N7 and G3–G7
+acceptance remain outstanding. Production remains schema v9, dormant M05,
+ClosedTrust/ClosedLan and closed PAKE/TLS/LAN factories, without live enrollment,
+VerifiedSession, automatic network startup, second SQLite owner or E3B/main merge.
+
+### Smallest remaining release work
+
+1. Resolve the existing G5 historical actor/approval contract and local-head
+   precedence policy with the owners, then integrate only those approved
+   transitions. Do not execute imported reviews or silently narrow full scope.
+2. Complete bounded cross-origin incremental dependency/receipt convergence and
+   qualify maximum bootstrap messages against the existing transport ceilings;
+   current small-history bootstrap evidence does not approve every valid size.
+3. Establish and independently approve G3/G4 worst-case import, staging and
+   recovery allocation bounds on Windows and Android using the existing VFS.
+4. Obtain the exact N1 external acceptance/remediation and remaining native
+   security/platform approvals, physical Windows↔Android LAN evidence and release
+   packaging. Only then consider the existing native foreground SyncNow plan;
+   no E3B, scheduler, discovery or additional network framework in this milestone.
+
+### R5 changed-file manifest
+
+- `.github/workflows/m05.yml`
+- `apps/arthur/src-tauri/src/storage/journal/admission.rs`
+- `apps/arthur/src-tauri/src/storage/journal/admission_session.rs`
+- `apps/arthur/src-tauri/src/storage/journal/import_physical_tests.rs`
+- `apps/arthur/src-tauri/src/storage/journal/mod.rs`
+- `apps/arthur/src-tauri/src/storage/journal/physical_tests.rs`
+- `apps/arthur/src-tauri/src/storage/journal/sync_fixtures.rs`
+- `apps/arthur/src-tauri/src/storage/sync_history_tls_tests.rs`
+- `apps/arthur/src-tauri/src/storage/sync_store.rs`
+- `apps/arthur/src-tauri/src/storage/sync_tls_tests.rs`
+- `apps/arthur/src-tauri/src/sync/bootstrap.rs`
+- `apps/arthur/src-tauri/src/sync/engine.rs`
+- `apps/arthur/src-tauri/src/sync/protocol.rs`
+- `docs/architecture/m05-activation-readiness.md`
+- `docs/architecture/m05-project-capture-mvp.md`

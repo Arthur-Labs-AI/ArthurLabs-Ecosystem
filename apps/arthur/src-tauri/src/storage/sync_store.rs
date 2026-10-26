@@ -15,6 +15,7 @@ use uuid::Uuid;
 pub(crate) struct CandidateSyncStore<'a> {
     store: &'a CaptureStore,
     usable: AtomicBool,
+    physical: Option<super::journal::PhysicalAdmission>,
 }
 impl<'a> CandidateSyncStore<'a> {
     pub fn production(_store: &'a CaptureStore) -> Result<Self> {
@@ -25,7 +26,15 @@ impl<'a> CandidateSyncStore<'a> {
         Self {
             store,
             usable: AtomicBool::new(true),
+            physical: None,
         }
+    }
+    #[cfg(test)]
+    pub(in crate::storage) fn admitted_for_test(
+        store: &'a CaptureStore,
+        physical: super::journal::PhysicalAdmission,
+    ) -> Self {
+        Self { store, usable: AtomicBool::new(true), physical: Some(physical) }
     }
     /// Bounded resumable policy work, on the same owner/transaction as receive.
     pub fn reprocess(
@@ -72,15 +81,34 @@ impl<'a> CandidateSyncStore<'a> {
         let tx = c
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(sql)?;
+        // Reuse the journal's volume-bound claim and VFS/pager budget. Retain
+        // it through COMMIT/rollback and restore configuration before a receipt.
+        let mut budget = match self.physical.as_ref()
+            .map(|p| p.prepare(&tx, super::journal::StorageOperation::ImportTransaction))
+            .transpose()
+        {
+            Ok(b) => b,
+            Err(e) => {
+                if tx.rollback().is_err() || e == super::journal::PhysicalAdmissionError::RecoveryRequired {
+                    self.usable.store(false, Ordering::SeqCst);
+                    let _ = c.pragma_update(None, "query_only", true);
+                    return Err(Error::Storage);
+                }
+                return Err(Error::StorageLimited);
+            }
+        };
         let result = authorize(&tx, s, clock, x)
             .and_then(|_| work(&tx))
             .and_then(|v| {
                 quota(&tx)?;
                 if g3::installed(&tx)? { g3::observers_restored(&tx)?; }
                 authorize(&tx, s, clock, x)?;
+                if let Some(b) = &mut budget {
+                    b.check(&tx).map_err(|_| Error::StorageLimited)?;
+                }
                 Ok(v)
             });
-        match result {
+        let result = match result {
             Ok(v) => match tx.commit() {
                 Ok(()) => Ok(v),
                 Err(_) => {
@@ -93,11 +121,23 @@ impl<'a> CandidateSyncStore<'a> {
                 if tx.rollback().is_err() {
                     self.usable.store(false, Ordering::SeqCst);
                     let _ = c.pragma_update(None, "query_only", true);
-                    return Err(Error::Storage);
+                    Err(Error::Storage)
+                } else {
+                    Err(e)
                 }
-                Err(e)
             }
+        };
+        let cleanup_failed = budget.as_ref().is_some_and(|b| {
+            let io = b.check_io();
+            let restore = b.restore(&c);
+            io.is_err() || restore.is_err()
+        });
+        if cleanup_failed {
+            self.usable.store(false, Ordering::SeqCst);
+            let _ = c.pragma_update(None, "query_only", true);
+            return Err(Error::Storage);
         }
+        result
     }
 }
 fn sql(_: rusqlite::Error) -> Error {

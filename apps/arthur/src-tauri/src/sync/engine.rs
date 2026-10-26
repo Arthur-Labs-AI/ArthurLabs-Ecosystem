@@ -277,7 +277,16 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
         if let Some(e) = self.blocked {
             return Err(e);
         }
-        let result = self.tick_message();
+        let result = self.tick_message().and_then(|worked| {
+            // The last receipt describes one operation, not the complete
+            // history. A later applied event cannot hide retained problems.
+            let summary = self.store.summary(&self.session, self.clock, self.cancel)?;
+            if summary.needs_attention {
+                self.needs_attention = true;
+                self.status = summary.status;
+            }
+            Ok(worked)
+        });
         if let Err(e) = result {
             match e {
                 Error::Trust => self.status = SyncStatus::RejectedTrust,

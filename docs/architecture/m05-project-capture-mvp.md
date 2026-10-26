@@ -1,5 +1,9 @@
 # m05-project-capture-mvp (proposed development scope)
 
+R5 current scope/evidence is recorded at the end of this document and in
+readiness §30. Earlier MVP/R1 statements about missing TLS/history wiring are
+historical milestone dispositions; they do not supersede R5's limited evidence.
+
 Owner review requested: qualify create-only Projects/Captures separately from
 `knowledge-v1-full`. This does not amend that approved contract or authorize
 production activation. The capability name labels the integration scenario;
@@ -401,3 +405,62 @@ applied cursors against actual imported sequences; runner compares these across
 that endpoint's process restart, separately from exact cross-device canonical
 bytes/rows. Local original events and remote import proofs are not conflated.
 See the R4 readiness snapshot for executed results and remaining physical gates.
+
+## R5 — knowledge history and import storage safety (PARTIAL)
+
+The release contract remains `knowledge-v1-full` in `m05-sync-contract.md` §4.
+R5 connects existing D3/D4/bootstrap candidates to the existing Windows TLS lab;
+it does not approve the full profile. The original create-only preflight and
+R1–R4 scenarios remain separate and unchanged in scope.
+
+### Operation inventory
+
+Every category below has authoritative native writers, journal records and codec
+support already present at R4. None requires a replacement event format. All are
+mandatory for full knowledge scope; exclusions remain those in the contract.
+
+| Category | Existing importer / ordering and conflict policy | TLS qualification in R5 |
+| --- | --- | --- |
+| Project/Capture creates | G3; original IDs/times, referenced Project first | R1–R4 retained; history bootstrap and tail |
+| Project rename/archive/restore; Capture/object moves | D4 exact before-state and causal facet proof; imported-owned chains only; archive with children retained as conflict | Rename and Capture move via history bootstrap; other transitions remain store-tested only |
+| Knowledge creation and distillation completion | D3; Capture, run, object, source and initial revision closure; includes empty completion | Native histories reconstructed by bootstrap, reverse creation by event tail |
+| Immutable revisions and parents | D3; matching object and prior parent; original immutable branches | Forward history and reverse unselected revision |
+| Selected heads | D4; exact head reference; cannot overwrite locally authored head | Native selected edit of separately authored object; foreign selection on local head explicitly unsupported |
+| Evidence/provenance | D3; original Capture spans, same-object ancestry and ordinals | Original sources and bidirectional evidenced branches; retraction variants remain store-tested only |
+| Relations/removal history | D4; canonical ends, original ownership and exact observed model-create proof | Original relation via bootstrap; removal/semantic duplicate variants remain store-tested only |
+| Identity decisions, claims and proposals | D4 validates bounded audit, source evidence and open-state dependencies | Open rows delivered in unsupported-review negative case; complete lifecycle remains BLOCKED |
+| Review/approval and claim resolution | Conservative D4 refuses execution; codec lacks an approved authenticated historical actor/signature contract (G5) | Approved native history retained as unsupported; no imported approval |
+| Competing heads | Existing durable originals/conflict retention; no timestamp winner | Both native heads remain selected locally, foreign originals retained; attention persists after restart |
+| Snapshot/bootstrap | Existing bounded staged closure and G3 publication, not database copying | Existing messages now serialize in TLS qualification; exact originals, replay and reopen; maximum-size snapshots NOT qualified |
+
+Arbitrary cross-origin incremental dependency closure is not claimed complete.
+Bounded reprocessing and same-session deferred receipts can still require retry;
+the negative test preserves `DeferredDependency` even after a later valid event.
+R5 proves coherent historical recovery through bootstrap, not universal clean
+one-attempt convergence. Wider lifecycle/authorization acceptance stays BLOCKED.
+
+### Small implementation and ownership plan
+
+| Architecture question | R5 decision |
+| --- | --- |
+| Source of truth | Each existing CaptureStore's SQLite, original journal/import bytes and commit proofs. |
+| Ownership | CandidateSyncStore borrows that owner; PhysicalAdmission creates no connection. |
+| Direction | SyncEngine → existing store/importer → existing admission/VFS; no lower-layer callback into engine. |
+| Boundary | Existing typed messages and transaction-scoped budget; no keys, handles or peer SQL cross it. |
+| Failure | Explicit dependency/conflict/unsupported/integrity/storage outcomes; no receipt before COMMIT and cleanup. |
+| Lifecycle | Budget claimed before mutation; retained through COMMIT/rollback; restore pager limit and release claim; poison uncertain owner until reopen. |
+| Seams | Existing TLS Pair, per-file fault shim, OwnedVfs and C13 pipe/kill barriers; capacity values are explicitly simulated. |
+| Compatibility | v9 production unchanged; frozen core/reducer/snapshot bytes unchanged; snapshot serde is qualification-only. Revert candidate wiring to remove it. |
+| Observability | Engine status reflects durable attention, numeric VFS extents, exact rows/events/proofs; no knowledge logs. |
+| Security | Existing transactional membership/origin checks and signed-registry regressions; no new review authority, enrollment or production session. |
+
+Changes are limited to qualification snapshot serialization, the engine's
+durable-status fix and one optional existing PhysicalAdmission on candidate
+store transactions. The admitted constructor is test-only. Existing synthetic
+scenarios explicitly have no physical bound. Production construction still
+returns ActivationPending; the real admission policy still returns
+UnverifiedBounds. No migration, alternate importer, transport, quota manager,
+runtime, scheduler, frontend signing or networking API is introduced.
+
+Storage evidence and exact verification commands/results are in readiness §30.
+Independent N1/N2/N3/N7 and G3–G7 decisions remain required. No E3B/main merge.
