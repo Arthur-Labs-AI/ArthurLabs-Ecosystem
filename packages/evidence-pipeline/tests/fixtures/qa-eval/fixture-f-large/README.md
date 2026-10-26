@@ -1,0 +1,1 @@
+Fixture F - large-project shape. Critical path is auth to service to db to response; peripheral scripts are low risk.

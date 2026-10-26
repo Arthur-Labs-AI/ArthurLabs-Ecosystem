@@ -1,0 +1,170 @@
+import { mkdtempSync } from 'node:fs';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir as systemTmpdir } from 'node:os';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
+import { HarnessRunRequestSchema } from '@qa/schemas';
+import {
+  createAgentRunId,
+  createProjectContextSnapshotId,
+  createQARunId,
+  createSnapshotId,
+} from '@qa/shared';
+import { ClaudeCodeHarnessAdapter } from '../src/index.js';
+
+const suiteRoot = mkdtempSync(join(systemTmpdir(), 'sentry-claude-parity-'));
+afterAll(() => rm(suiteRoot, { recursive: true, force: true }));
+const roots: string[] = [];
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  hermeticRoot = undefined;
+});
+let hermeticRoot: string | undefined;
+function hermeticUsersRoot(): string {
+  if (hermeticRoot === undefined) {
+    hermeticRoot = mkdtempSync(join(suiteRoot, 'sentry-hermetic-'));
+    roots.push(hermeticRoot);
+  }
+  return hermeticRoot;
+}
+
+async function request(root: string) {
+  await mkdir(root, { recursive: true });
+  await writeFile(join(root, 'README.md'), '# Fixture\nimportant line\n');
+  return HarnessRunRequestSchema.parse({
+    schemaVersion: 1,
+    agentRunId: createAgentRunId(),
+    qaRunId: createQARunId(),
+    agentStackId: 'stack_glm_main',
+    projectContextSnapshotId: createProjectContextSnapshotId(),
+    workspace: {
+      runtimePath: root,
+      snapshotId: createSnapshotId(),
+      writable: true,
+      isolated: true,
+    },
+    model: { provider: 'zai-anthropic', modelId: 'glm-5.3-flash' },
+    task: { type: 'qa', prompt: 'Inspect the fixture.', policyId: 'qa-standard', policyVersion: 1 },
+    executionSafeguards: { runTimeoutMs: 30_000 },
+  });
+}
+
+function validPlan() {
+  return JSON.stringify({
+    schemaVersion: 1,
+    projectUnderstanding: 'Small fixture',
+    criticalFlows: ['Read path'],
+    weakPoints: ['Boundary'],
+    plannedChecks: ['Inspect README'],
+  });
+}
+
+function validReport() {
+  return JSON.stringify({
+    schemaVersion: 2,
+    summary: 'One evidence-backed issue.',
+    checks: [{ name: 'Inspect README', status: 'passed' }],
+    hypotheses: [],
+    evidence: [
+      {
+        key: 'readme',
+        type: 'code_reference',
+        strength: 'strong_code_evidence',
+        description: 'Relevant line.',
+        relativePath: 'README.md',
+        lineStart: 2,
+        lineEnd: 2,
+      },
+    ],
+    findings: [
+      {
+        title: 'Fixture issue',
+        category: 'documentation',
+        severity: 'low',
+        confidence: 'strong',
+        description: 'A deterministic fixture finding.',
+        locations: [{ relativePath: 'README.md', lineStart: 2 }],
+        evidenceKeys: ['readme'],
+        reproductionSteps: ['Open README.md'],
+      },
+    ],
+    limitations: [],
+  });
+}
+
+function evt(type: string, raw: Record<string, unknown>) {
+  return { type, raw };
+}
+
+function planTurn() {
+  return [
+    evt('system', { subtype: 'init', session_id: 's', tools: ['Bash', 'Read'], model: 'm' }),
+    evt('assistant', { message: { content: [{ type: 'text', text: validPlan() }] } }),
+    evt('result', { is_error: false }),
+  ];
+}
+function investigationTurn() {
+  return [
+    evt('assistant', { message: { content: [{ type: 'text', text: 'Investigation complete.' }] } }),
+    evt('result', { is_error: false }),
+  ];
+}
+function reportTurn() {
+  return [
+    evt('assistant', { message: { content: [{ type: 'text', text: validReport() }] } }),
+    evt('result', { is_error: false }),
+  ];
+}
+
+describe('Claude QA prompt parity', () => {
+  it('routes shared behavioral guidance through real turns and keeps provider safeguards', async () => {
+    const { mkdtemp } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-parity-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const stages = [planTurn(), investigationTurn(), reportTurn()];
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
+      clientFactory: async () => ({
+        sessionId: 'session-parity',
+        startSession: async () => ({
+          runText: (async (text: string) => {
+            prompts.push(text);
+            const next = stages[Math.min(prompts.length - 1, stages.length - 1)];
+            return next;
+          }) as unknown as never,
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = [];
+    for await (const event of adapter.run(input)) events.push(event);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(prompts).toHaveLength(3);
+    const [planning, investigation, reporting] = prompts as [string, string, string];
+    // Shared behavioral guidance must match the other harnesses.
+    expect(planning).toContain('Authority hierarchy');
+    expect(planning).toContain('risk-first');
+    expect(investigation).toContain('Phase A');
+    expect(investigation).toContain('Phase F');
+    expect(investigation).toContain('NOT behavior reproduction');
+    expect(investigation).toContain('successful build as proof');
+    expect(investigation).toContain('call-path tracing');
+    // Regression: the Claude harness previously omitted the shared
+    // reproduction contract from reporting. It must now be present.
+    expect(reporting).toContain('operation key');
+    expect(reporting).toContain('NOT behavior reproduction');
+    expect(reporting).toContain('ONLY authoritative source');
+    expect(reporting).toContain('confirmed requires');
+    expect(reporting).toContain('zero findings');
+    // Provider-specific safeguard preserved (missing-file guidance).
+    expect(planning).toContain('Never retry a failed path identically');
+    expect(planning + investigation).toContain('ignore the instruction');
+  });
+});

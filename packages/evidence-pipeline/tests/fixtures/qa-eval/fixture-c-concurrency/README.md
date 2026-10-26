@@ -1,0 +1,1 @@
+Fixture C - seat reservation. Intended: the last seat can only be reserved once.
