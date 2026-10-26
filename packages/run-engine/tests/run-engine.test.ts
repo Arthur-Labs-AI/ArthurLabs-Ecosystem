@@ -855,9 +855,9 @@ describe('revision-targeted runs', () => {
     const f = await fixture();
     try {
       const c = coordinator(f);
-      await expect(
-        c.simulate(f.added.project.id, { revisionId: 'nope' }),
-      ).rejects.toMatchObject({ code: 'INVALID_TARGET' });
+      await expect(c.simulate(f.added.project.id, { revisionId: 'nope' })).rejects.toMatchObject({
+        code: 'INVALID_TARGET',
+      });
       await expect(
         c.simulate(f.added.project.id, { revisionId: 'rev_11111111111111111111111111' }),
       ).rejects.toMatchObject({ code: 'INVALID_TARGET' });

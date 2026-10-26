@@ -265,7 +265,10 @@ export class RunCoordinator {
         sourceRoot = projectDataPaths(this.dataRoot, projectId).workingCopy;
       } else {
         if (!/^rev_[0-9A-HJKMNP-TV-Z]{26}$/.test(options.revisionId)) {
-          throw new RunEngineError('INVALID_TARGET', 'Malformed revision id: ' + options.revisionId);
+          throw new RunEngineError(
+            'INVALID_TARGET',
+            'Malformed revision id: ' + options.revisionId,
+          );
         }
         const stored = this.repository.getRevision(options.revisionId);
         if (stored === undefined || stored.projectId !== projectId) {

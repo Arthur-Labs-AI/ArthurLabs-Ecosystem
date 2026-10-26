@@ -591,14 +591,12 @@ export function ProjectDetail(): React.JSX.Element {
             </div>
             <div className="project-import-timer" aria-live="polite">
               <span>Elapsed:</span>
-              <span data-no-translate="true">
-                {Math.max(0, Math.floor(updateElapsed / 1000))}s
-              </span>
+              <span data-no-translate="true">{Math.max(0, Math.floor(updateElapsed / 1000))}s</span>
             </div>
             <p className="body-secondary" style={{ margin: 0 }}>
-              Rebuilding the project revision in the isolated Sentry runtime store. This window
-              will close automatically when the update completes. Starting a QA run stays disabled
-              until it finishes.
+              Rebuilding the project revision in the isolated Sentry runtime store. This window will
+              close automatically when the update completes. Starting a QA run stays disabled until
+              it finishes.
             </p>
             <div style={{ marginTop: 6 }}>
               <button

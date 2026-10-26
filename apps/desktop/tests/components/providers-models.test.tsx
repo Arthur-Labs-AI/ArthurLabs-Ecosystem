@@ -57,8 +57,16 @@ function mount(status: ReturnType<typeof vi.fn>, save = vi.fn()) {
 const bothKeys = (providerHint: string, modelHint = 'kimi-k3'): Status[] => [
   statusRow('SENTRY_OPENCODE_PROVIDER', providerHint, providerHint !== ''),
   statusRow('SENTRY_OPENCODE_MODEL', modelHint),
-  { ...statusRow('OPENCODE_API_KEY', 'Configured · Stored securely'), source: 'stored', persistence: 'secure' },
-  { ...statusRow('OPENROUTER_API_KEY', 'Configured · Stored securely'), source: 'stored', persistence: 'secure' },
+  {
+    ...statusRow('OPENCODE_API_KEY', 'Configured · Stored securely'),
+    source: 'stored',
+    persistence: 'secure',
+  },
+  {
+    ...statusRow('OPENROUTER_API_KEY', 'Configured · Stored securely'),
+    source: 'stored',
+    persistence: 'secure',
+  },
 ];
 
 describe('Providers model controls', () => {
@@ -67,40 +75,36 @@ describe('Providers model controls', () => {
     const s = mount(query);
     await waitFor(() =>
       expect(
-        (s.openCodeCard().getByLabelText('Value for SENTRY_OPENCODE_MODEL') as HTMLElement)
-          .tagName,
+        (s.openCodeCard().getByLabelText('Value for SENTRY_OPENCODE_MODEL') as HTMLElement).tagName,
       ).toBe('SELECT'),
     );
-    const modelSelect = s.openCodeCard().getByLabelText(
-      'Value for SENTRY_OPENCODE_MODEL',
-    ) as HTMLSelectElement;
+    const modelSelect = s
+      .openCodeCard()
+      .getByLabelText('Value for SENTRY_OPENCODE_MODEL') as HTMLSelectElement;
     expect(modelSelect.tagName).toBe('SELECT');
     expect(modelSelect.value).toBe('kimi-k3');
-    expect(
-      within(modelSelect).getByRole('option', { name: 'glm-5.3-flash' }),
-    ).toBeTruthy();
+    expect(within(modelSelect).getByRole('option', { name: 'glm-5.3-flash' })).toBeTruthy();
 
     const providerSelect = s
       .openCodeCard()
       .getByLabelText('Value for SENTRY_OPENCODE_PROVIDER') as HTMLSelectElement;
     fireEvent.change(providerSelect, { target: { value: 'opencode' } });
-    const manual = s.openCodeCard().getByLabelText(
-      'Value for SENTRY_OPENCODE_MODEL',
-    ) as HTMLInputElement;
+    const manual = s
+      .openCodeCard()
+      .getByLabelText('Value for SENTRY_OPENCODE_MODEL') as HTMLInputElement;
     expect(manual.tagName).toBe('INPUT');
     // No model dropdown in pay-as-you-go modes: only the manual text input.
     expect(manual.id).toBe('provider-SENTRY_OPENCODE_MODEL');
 
     fireEvent.change(providerSelect, { target: { value: 'openrouter' } });
     expect(
-      (s.openCodeCard().getByLabelText('Value for SENTRY_OPENCODE_MODEL') as HTMLElement)
-        .tagName,
+      (s.openCodeCard().getByLabelText('Value for SENTRY_OPENCODE_MODEL') as HTMLElement).tagName,
     ).toBe('INPUT');
 
     fireEvent.change(providerSelect, { target: { value: 'opencode-go' } });
-    const back = s.openCodeCard().getByLabelText(
-      'Value for SENTRY_OPENCODE_MODEL',
-    ) as HTMLSelectElement;
+    const back = s
+      .openCodeCard()
+      .getByLabelText('Value for SENTRY_OPENCODE_MODEL') as HTMLSelectElement;
     expect(back.tagName).toBe('SELECT');
     expect(within(back).getByRole('option', { name: 'gpt-6-luna' })).toBeTruthy();
     // Switching modes is local draft state: nothing is saved implicitly.
@@ -118,9 +122,7 @@ describe('Providers model controls', () => {
       .deepSeekCard()
       .findByLabelText('Value for SENTRY_DEEPSEEK_MODEL')) as HTMLSelectElement;
     fireEvent.change(deepseekSelect, { target: { value: 'deepseek-v4-pro' } });
-    fireEvent.click(
-      within(deepseekSelect.parentElement!).getByRole('button', { name: 'Save' }),
-    );
+    fireEvent.click(within(deepseekSelect.parentElement!).getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(save).toHaveBeenCalledWith('SENTRY_DEEPSEEK_MODEL', 'deepseek-v4-pro'),
     );
@@ -131,37 +133,35 @@ describe('Providers model controls', () => {
     const glmSelect = s.glmCard().getByLabelText('Value for SENTRY_GLM_MODEL') as HTMLSelectElement;
     fireEvent.change(glmSelect, { target: { value: 'glm-5.3-flash' } });
     fireEvent.click(within(glmSelect.parentElement!).getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(save).toHaveBeenCalledWith('SENTRY_GLM_MODEL', 'glm-5.3-flash'),
-    );
+    await waitFor(() => expect(save).toHaveBeenCalledWith('SENTRY_GLM_MODEL', 'glm-5.3-flash'));
   });
 
   it('preserves provider-prefixed, legacy, and custom saved models without rewriting them', async () => {
-    const query = vi.fn().mockResolvedValue([
-      statusRow('SENTRY_OPENCODE_PROVIDER', 'opencode-go'),
-      statusRow('SENTRY_OPENCODE_MODEL', 'opencode-go/kimi-k3'),
-      statusRow('SENTRY_DEEPSEEK_MODEL', 'deepseek-v4-flash'),
-      statusRow('SENTRY_GLM_MODEL', 'my-custom-7b'),
-    ]);
+    const query = vi
+      .fn()
+      .mockResolvedValue([
+        statusRow('SENTRY_OPENCODE_PROVIDER', 'opencode-go'),
+        statusRow('SENTRY_OPENCODE_MODEL', 'opencode-go/kimi-k3'),
+        statusRow('SENTRY_DEEPSEEK_MODEL', 'deepseek-v4-flash'),
+        statusRow('SENTRY_GLM_MODEL', 'my-custom-7b'),
+      ]);
     const save = vi.fn();
     const s = mount(query, save);
 
     // Wait for the Go dropdown (its options render only in dropdown mode).
     await s.openCodeCard().findByRole('option', { name: 'kimi-k3' });
-    const modelSelect = s.openCodeCard().getByLabelText(
-      'Value for SENTRY_OPENCODE_MODEL',
-    ) as HTMLSelectElement;
+    const modelSelect = s
+      .openCodeCard()
+      .getByLabelText('Value for SENTRY_OPENCODE_MODEL') as HTMLSelectElement;
     // Provider prefix is understood for display; the saved id is untouched.
     expect(modelSelect.value).toBe('kimi-k3');
-    expect(
-      s.openCodeCard().queryByText(/not in the current list/),
-    ).toBeNull();
+    expect(s.openCodeCard().queryByText(/not in the current list/)).toBeNull();
 
     expect(s.deepSeekCard().getByText(/is a legacy alias/)).toBeTruthy();
 
-    const customInput = s.glmCard().getByLabelText(
-      'Custom value for SENTRY_GLM_MODEL',
-    ) as HTMLInputElement;
+    const customInput = s
+      .glmCard()
+      .getByLabelText('Custom value for SENTRY_GLM_MODEL') as HTMLInputElement;
     expect(customInput.value).toBe('my-custom-7b');
     expect(s.glmCard().getByText(/not in the current list/)).toBeTruthy();
     expect(save).not.toHaveBeenCalled();
@@ -191,7 +191,10 @@ describe('Providers model controls', () => {
     });
     await waitFor(() =>
       expect(
-        s.openCodeCard().getByRole('button', { name: 'Use OpenRouter key' }).getAttribute('aria-pressed'),
+        s
+          .openCodeCard()
+          .getByRole('button', { name: 'Use OpenRouter key' })
+          .getAttribute('aria-pressed'),
       ).toBe('true'),
     );
     expect(s.openCodeCard().getAllByText('Stored securely')).toHaveLength(2);
@@ -223,13 +226,14 @@ describe('Providers model controls', () => {
     });
     await waitFor(() =>
       expect(
-        s.openCodeCard().getByRole('button', { name: 'Use OpenRouter key' }).getAttribute('aria-pressed'),
+        s
+          .openCodeCard()
+          .getByRole('button', { name: 'Use OpenRouter key' })
+          .getAttribute('aria-pressed'),
       ).toBe('true'),
     );
     fireEvent.click(s.openCodeCard().getByRole('button', { name: 'Use OpenCode key' }));
-    await waitFor(() =>
-      expect(save).toHaveBeenCalledWith('SENTRY_OPENCODE_PROVIDER', 'opencode'),
-    );
+    await waitFor(() => expect(save).toHaveBeenCalledWith('SENTRY_OPENCODE_PROVIDER', 'opencode'));
   });
 
   it('a failed model save shows no success and keeps unrelated drafts', async () => {
@@ -237,24 +241,22 @@ describe('Providers model controls', () => {
     const save = vi.fn().mockRejectedValue(new Error('Credential could not be stored securely'));
     const s = mount(query, save);
 
-    const keyInput = s.deepSeekCard().getByLabelText(
-      'Value for DEEPSEEK_API_KEY',
-    ) as HTMLInputElement;
+    const keyInput = s
+      .deepSeekCard()
+      .getByLabelText('Value for DEEPSEEK_API_KEY') as HTMLInputElement;
     fireEvent.change(keyInput, { target: { value: 'synthetic-key-draft' } });
     const modelSelect = (await s
       .deepSeekCard()
       .findByLabelText('Value for SENTRY_DEEPSEEK_MODEL')) as HTMLSelectElement;
     fireEvent.change(modelSelect, { target: { value: 'deepseek-flash' } });
-    fireEvent.click(
-      within(modelSelect.parentElement!).getByRole('button', { name: 'Save' }),
-    );
+    fireEvent.click(within(modelSelect.parentElement!).getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toContain('could not be stored'),
     );
     expect(screen.queryByRole('status')).toBeNull();
-    expect((s.deepSeekCard().getByLabelText('Value for DEEPSEEK_API_KEY') as HTMLInputElement).value).toBe(
-      'synthetic-key-draft',
-    );
+    expect(
+      (s.deepSeekCard().getByLabelText('Value for DEEPSEEK_API_KEY') as HTMLInputElement).value,
+    ).toBe('synthetic-key-draft');
   });
 
   it('saving one setting does not erase an unrelated unsaved draft', async () => {
@@ -264,17 +266,15 @@ describe('Providers model controls', () => {
       .mockResolvedValue({ configured: true, persistence: 'persisted', source: 'persisted' });
     const s = mount(query, save);
 
-    const keyInput = s.deepSeekCard().getByLabelText(
-      'Value for DEEPSEEK_API_KEY',
-    ) as HTMLInputElement;
+    const keyInput = s
+      .deepSeekCard()
+      .getByLabelText('Value for DEEPSEEK_API_KEY') as HTMLInputElement;
     fireEvent.change(keyInput, { target: { value: 'unsaved-key-draft' } });
     const modelSelect = (await s
       .deepSeekCard()
       .findByLabelText('Value for SENTRY_DEEPSEEK_MODEL')) as HTMLSelectElement;
     fireEvent.change(modelSelect, { target: { value: 'deepseek-flash' } });
-    fireEvent.click(
-      within(modelSelect.parentElement!).getByRole('button', { name: 'Save' }),
-    );
+    fireEvent.click(within(modelSelect.parentElement!).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Saved'));
     expect(
       (s.deepSeekCard().getByLabelText('Value for DEEPSEEK_API_KEY') as HTMLInputElement).value,

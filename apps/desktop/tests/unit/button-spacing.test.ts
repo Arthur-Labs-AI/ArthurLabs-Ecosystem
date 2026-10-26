@@ -8,7 +8,8 @@ describe('button-row spacing', () => {
     const base = styles.match(/[^}]*\.actions\s*\{[^}]*\}/g) ?? [];
     expect(base.length).toBeGreaterThan(0);
     const root = base.find(
-      (rule) => rule.indexOf('.page-header') === -1 && rule.indexOf('.project-removal-dialog') === -1,
+      (rule) =>
+        rule.indexOf('.page-header') === -1 && rule.indexOf('.project-removal-dialog') === -1,
     );
     expect(root).toBeDefined();
     expect(root as string).toMatch(/display\s*:\s*flex/);

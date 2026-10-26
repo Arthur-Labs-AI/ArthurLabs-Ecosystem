@@ -43,7 +43,9 @@ function fixture() {
         agentStacks: [{ id: 'stack_opencode_main', displayName: 'OpenCode', readiness: 'ready' }],
       })),
     },
-    production: { readiness: vi.fn(async () => ({ ready: true, reasons: [], warnings: [], stacks: [] })) },
+    production: {
+      readiness: vi.fn(async () => ({ ready: true, reasons: [], warnings: [], stacks: [] })),
+    },
     system: { activeRuns: vi.fn(async () => []) },
   };
   Object.defineProperty(window, 'sentry', { configurable: true, value: api });
@@ -71,12 +73,18 @@ async function startUpdate() {
 describe('project revision update', () => {
   it('opens a blocking modal and disables run start while updating', async () => {
     const f = fixture();
-    expect(((await screen.findByRole('button', { name: 'Start Full QA' })) as HTMLButtonElement).disabled).toBe(false);
+    expect(
+      ((await screen.findByRole('button', { name: 'Start Full QA' })) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
     const dialog = await startUpdate();
     expect(f.update).toHaveBeenCalledWith('proj_alpha');
     expect(within(dialog).getByText('Updating project')).toBeDefined();
     expect(within(dialog).getByText('Elapsed:')).toBeDefined();
-    expect(((await screen.findByRole('button', { name: 'Start Full QA' })) as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      ((await screen.findByRole('button', { name: 'Start Full QA' })) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
 
   it('cancels the revision from the modal without closing it implicitly', async () => {

@@ -85,7 +85,9 @@ describe('Application settings & localization', () => {
     expect(translateText('10 findings', 'bg')).toBe('10 констатации');
     expect(translateText('1 active run · Open', 'bg')).toBe('1 активно изпълнение · Отвори');
     expect(translateText('3 active runs · Open', 'bg')).toBe('3 активни изпълнения · Отвори');
-    expect(translateText('12 runs · rev ui-revision', 'bg')).toBe('12 изпълнения · rev ui-revision');
+    expect(translateText('12 runs · rev ui-revision', 'bg')).toBe(
+      '12 изпълнения · rev ui-revision',
+    );
     expect(translateText('1 run · rev abc123', 'bg')).toBe('1 изпълнение · rev abc123');
     expect(translateText('FULL QA', 'bg')).toBe('ПЪЛЕН QA');
     expect(translateText('TARGETED QA', 'bg')).toBe('ЦЕЛЕВИ QA');
@@ -121,11 +123,15 @@ describe('Application settings & localization', () => {
     expect(translateText('Not observed', 'bg')).toBe('Не е наблюдавано');
     expect(translateText('Active', 'bg')).toBe('Активно');
     expect(translateText('Open Project — AutoPulse', 'bg')).toBe('Отвори проект — AutoPulse');
-    expect(translateText('Start Targeted QA — AutoPulse', 'bg')).toBe('Стартирай ЦЕЛЕВИ QA — AutoPulse');
-    expect(translateText('Input 12 · Output 34 · Cached 0', 'bg')).toBe('Вход 12 · Изход 34 · Кеширани 0');
-    expect(translateText('No findings were reported before failed. Analysis is incomplete.', 'bg')).toBe(
-      'Не са докладвани констатации преди неуспешно. Анализът е непълен.',
+    expect(translateText('Start Targeted QA — AutoPulse', 'bg')).toBe(
+      'Стартирай ЦЕЛЕВИ QA — AutoPulse',
     );
+    expect(translateText('Input 12 · Output 34 · Cached 0', 'bg')).toBe(
+      'Вход 12 · Изход 34 · Кеширани 0',
+    );
+    expect(
+      translateText('No findings were reported before failed. Analysis is incomplete.', 'bg'),
+    ).toBe('Не са докладвани констатации преди неуспешно. Анализът е непълен.');
     expect(translateText('Cancelled.', 'bg')).toBe('Прекъснато.');
     expect(translateText('Open', 'bg')).toBe('Отворено');
     expect(translateText('Raw events (5)', 'bg')).toBe('Сурови събития (5)');
@@ -136,9 +142,9 @@ describe('Application settings & localization', () => {
     expect(translateText('Input 1,234 · Output 567 · Cached 89', 'bg')).toBe(
       'Вход 1,234 · Изход 567 · Кеширани 89',
     );
-    expect(translateText('No findings were reported before timed out. Analysis is incomplete.', 'bg')).toBe(
-      'Не са докладвани констатации преди изтекло време. Анализът е непълен.',
-    );
+    expect(
+      translateText('No findings were reported before timed out. Analysis is incomplete.', 'bg'),
+    ).toBe('Не са докладвани констатации преди изтекло време. Анализът е непълен.');
     expect(
       translateText(
         'Partial report — agent failed. Reported findings and evidence are retained; analysis is incomplete.',
@@ -159,7 +165,9 @@ describe('Application settings & localization', () => {
     );
     expect(translateText('Analysis cancelled.', 'bg')).toBe('Анализът е прекъснат.');
     expect(translateText('Preparation Observed', 'bg')).toBe('Подготовка наблюдавано');
-    expect(translateText('Commands / Tests Warning', 'bg')).toBe('Команди / Тестове предупреждение');
+    expect(translateText('Commands / Tests Warning', 'bg')).toBe(
+      'Команди / Тестове предупреждение',
+    );
     expect(translateText('Stage: Preparation Observed, Planning Warning', 'bg')).toBe(
       'Етап: Подготовка наблюдавано, Планиране предупреждение',
     );
@@ -171,9 +179,7 @@ describe('Application settings & localization', () => {
     expect(translateText('Reclaim Windows disk space?', 'bg')).toBe(
       'Освобождаване на дисково пространство в Windows?',
     );
-    expect(translateText('Shut down WSL and reclaim', 'bg')).toBe(
-      'Изключи WSL и освободи мястото',
-    );
+    expect(translateText('Shut down WSL and reclaim', 'bg')).toBe('Изключи WSL и освободи мястото');
     expect(translateText('Reclaiming…', 'bg')).toBe('Освобождаване…');
     expect(
       translateText(
@@ -209,8 +215,13 @@ describe('Application settings & localization', () => {
       'Освободени 1.16 GiB от диска Ubuntu. Свободно място на Windows устройството: 86.69 GiB. Sentry се свърза отново.',
     );
     expect(
-      translateText('Reclaimed 0.00 GiB from the Debian disk. Windows drive free: 10.00 GiB.', 'bg'),
-    ).toBe('Освободени 0.00 GiB от диска Debian. Свободно място на Windows устройството: 10.00 GiB.');
+      translateText(
+        'Reclaimed 0.00 GiB from the Debian disk. Windows drive free: 10.00 GiB.',
+        'bg',
+      ),
+    ).toBe(
+      'Освободени 0.00 GiB от диска Debian. Свободно място на Windows устройството: 10.00 GiB.',
+    );
     expect(
       translateText(
         'Saved model “my-custom-7b” is not in the current list. It is preserved — select a listed model above or keep this custom id.',

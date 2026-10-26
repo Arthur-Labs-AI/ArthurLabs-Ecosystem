@@ -184,7 +184,13 @@ describe('shared desktop command router', () => {
     ).rejects.toThrow();
     expect(isCliAllowed('app:set-language')).toBe(false);
     await expect(
-      dispatchDesktopCommand(h.service, 'app:set-language', { language: 'bg' }, {}, { external: true }),
+      dispatchDesktopCommand(
+        h.service,
+        'app:set-language',
+        { language: 'bg' },
+        {},
+        { external: true },
+      ),
     ).rejects.toMatchObject({ code: 'CLI_COMMAND_FORBIDDEN' });
   });
 

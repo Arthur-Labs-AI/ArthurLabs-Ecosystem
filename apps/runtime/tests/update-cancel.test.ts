@@ -1,5 +1,4 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -31,7 +30,8 @@ describe('revision update cancellation', () => {
     await mkdir(jn(source, 'src'), { recursive: true });
     await writeFile(jn(source, 'package.json'), '{"name":"cancel-me"}');
     await writeFile(jn(source, 'src', 'a.ts'), 'export const a = 1;');
-    const { SentryDatabase, SentryRepository, RuntimeInstanceLease } = await import('@qa/persistence');
+    const { SentryDatabase, SentryRepository, RuntimeInstanceLease } =
+      await import('@qa/persistence');
     const { ProjectManager } = await import('@qa/project-manager');
     const seedDb = new SentryDatabase({ dataRoot: jn(root, 'data') });
     const seedRepo = new SentryRepository(seedDb);
@@ -60,7 +60,10 @@ describe('revision update cancellation', () => {
       expect(copy.managedCopy.state).toBe('ready');
       expect(copy.revision.id).toBe(revisionBefore);
       const { projectDataPaths } = await import('@qa/persistence');
-      const kept = await readFile(join(projectDataPaths(jn(root, 'data'), added.project.id).workingCopy, 'src', 'a.ts'), 'utf8');
+      const kept = await readFile(
+        join(projectDataPaths(jn(root, 'data'), added.project.id).workingCopy, 'src', 'a.ts'),
+        'utf8',
+      );
       expect(kept).toContain('export const a = 1;');
     } finally {
       host.close();

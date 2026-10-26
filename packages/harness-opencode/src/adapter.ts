@@ -731,7 +731,9 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         return error;
       }
       const message =
-        error.message + ' ' + describeTurnUpstreamActivity(relayBefore, entry.proxy?.relayedRoutes() ?? {});
+        error.message +
+        ' ' +
+        describeTurnUpstreamActivity(relayBefore, entry.proxy?.relayedRoutes() ?? {});
       if (error instanceof OpenCodeTurnTimeoutError) {
         const enriched = new OpenCodeTurnTimeoutError(phase, this.turnTimeoutMs);
         enriched.message = message;

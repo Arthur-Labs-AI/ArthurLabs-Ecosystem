@@ -60,7 +60,7 @@ interface AgentFieldSpec {
   readonly name: string;
   readonly label: string;
   readonly placeholder?: string;
-  readonly modelList?: "opencode" | "deepseek" | "glm";
+  readonly modelList?: 'opencode' | 'deepseek' | 'glm';
   readonly detailsLabel?: string | null;
 }
 
@@ -171,8 +171,7 @@ export function Providers(): React.JSX.Element {
       | undefined
   )?.agentStacks;
   const detectedOpenCodeBinary = (():
-    | { readonly path: string; readonly available: boolean }
-    | undefined => {
+    { readonly path: string; readonly available: boolean } | undefined => {
     const stack = environmentStacks?.find((s) => s.id === 'stack_opencode_main');
     if (stack?.executionPath === undefined || stack.executionPath === '') return undefined;
     return { path: stack.executionPath, available: stack.binaryAvailable === true };
@@ -340,9 +339,7 @@ export function Providers(): React.JSX.Element {
                           ? ZAI_GLM_MODELS
                           : OPENCODE_GO_MODELS
                     }
-                    optionNote={
-                      field.modelList === 'deepseek' ? deepSeekOptionNote : undefined
-                    }
+                    optionNote={field.modelList === 'deepseek' ? deepSeekOptionNote : undefined}
                     {...fieldProps}
                   />
                 ),
@@ -564,10 +561,16 @@ function CredentialField(props: {
   );
 }
 
-function resolveEffectiveOpenCodeProvider(values: Record<string, string>, byName: Map<string, ProviderStatus>): string {
-  const draft = (values['SENTRY_OPENCODE_PROVIDER'] ?? "").trim().toLowerCase();
-  if (draft !== "") return draft;
-  return inferOpenCodeProvider(byName.get('SENTRY_OPENCODE_PROVIDER'), byName.get('SENTRY_OPENCODE_MODEL')).provider;
+function resolveEffectiveOpenCodeProvider(
+  values: Record<string, string>,
+  byName: Map<string, ProviderStatus>,
+): string {
+  const draft = (values['SENTRY_OPENCODE_PROVIDER'] ?? '').trim().toLowerCase();
+  if (draft !== '') return draft;
+  return inferOpenCodeProvider(
+    byName.get('SENTRY_OPENCODE_PROVIDER'),
+    byName.get('SENTRY_OPENCODE_MODEL'),
+  ).provider;
 }
 
 interface ModelFieldProps {
@@ -587,7 +590,11 @@ interface ModelFieldProps {
   readonly description?: string | undefined;
   readonly optionNote?: ((id: string) => string | undefined) | undefined;
 }
-function modelFieldValue(values: Record<string, string>, name: string, hint: string | undefined): string {
+function modelFieldValue(
+  values: Record<string, string>,
+  name: string,
+  hint: string | undefined,
+): string {
   const draft = values[name] ?? '';
   if (draft !== '') return draft;
   return hint ?? '';
@@ -701,9 +708,7 @@ function ModelSelectField(props: ModelFieldProps): React.JSX.Element {
             id={'provider-' + props.name + '-custom'}
             type="text"
             value={draft !== '' ? draft : (activeHint ?? '')}
-            onChange={(e) =>
-              props.setValues((prev) => ({ ...prev, [props.name]: e.target.value }))
-            }
+            onChange={(e) => props.setValues((prev) => ({ ...prev, [props.name]: e.target.value }))}
             placeholder={props.placeholder}
             aria-label={'Custom value for ' + props.name}
             autoComplete="off"
@@ -769,8 +774,7 @@ function lastExplicitGoZenChoice(
   const draft = (values['SENTRY_OPENCODE_PROVIDER'] ?? '').trim().toLowerCase();
   if (draft === 'opencode-go' || draft === 'opencode') return draft;
   const persisted = byName.get('SENTRY_OPENCODE_PROVIDER');
-  const persistedValue =
-    persisted?.configured === true ? persisted.hint.trim().toLowerCase() : '';
+  const persistedValue = persisted?.configured === true ? persisted.hint.trim().toLowerCase() : '';
   if (persistedValue === 'opencode-go' || persistedValue === 'opencode') return persistedValue;
   if (remembered === 'opencode-go' || remembered === 'opencode') return remembered;
   const model = byName.get('SENTRY_OPENCODE_MODEL');
@@ -800,8 +804,7 @@ function CredentialSourceSelector(props: {
   if (openCodeKey?.configured !== true || openRouterKey?.configured !== true) return null;
   const draft = (props.values['SENTRY_OPENCODE_PROVIDER'] ?? '').trim().toLowerCase();
   const persisted = props.byName.get('SENTRY_OPENCODE_PROVIDER');
-  const persistedValue =
-    persisted?.configured === true ? persisted.hint.trim().toLowerCase() : '';
+  const persistedValue = persisted?.configured === true ? persisted.hint.trim().toLowerCase() : '';
   const active = draft !== '' ? draft : persistedValue;
   const usingOpenRouter = active === '' || active === 'openrouter';
   return (
@@ -837,8 +840,8 @@ function CredentialSourceSelector(props: {
         </button>
       </div>
       <p className="metadata" style={{ margin: '4px 0 0' }}>
-        Both keys are stored securely. Switching only changes which key Sentry uses; the other
-        key stays saved.
+        Both keys are stored securely. Switching only changes which key Sentry uses; the other key
+        stays saved.
       </p>
     </div>
   );
@@ -868,9 +871,7 @@ function OpenCodeCard(props: {
   const draftRaw = props.values['SENTRY_OPENCODE_PROVIDER'];
   const hasDraft = draftRaw !== undefined && draftRaw.trim() !== '';
   const effectiveProvider = resolveEffectiveOpenCodeProvider(props.values, props.byName);
-  const mode = resolveOpenCodeModelMode(
-    effectiveProvider === '' ? undefined : effectiveProvider,
-  );
+  const mode = resolveOpenCodeModelMode(effectiveProvider === '' ? undefined : effectiveProvider);
   const selectValue = hasDraft ? (draftRaw as string) : persistedProvider;
   const persistedKnown =
     persistedProvider === '' || VALID_OPENCODE_PROVIDERS.includes(persistedProvider);
@@ -955,9 +956,7 @@ function OpenCodeCard(props: {
           <button
             className="primary compact"
             disabled={!hasDraft || !draftValid || props.savePending}
-            onClick={() =>
-              props.onSave('SENTRY_OPENCODE_PROVIDER', (draftRaw as string).trim())
-            }
+            onClick={() => props.onSave('SENTRY_OPENCODE_PROVIDER', (draftRaw as string).trim())}
             title="Persist and load into the host process"
           >
             Save
@@ -1046,7 +1045,8 @@ export function HarnessBinaryCard(props: {
   readonly onError: (e: unknown) => void;
   readonly statusPending?: boolean;
   /** Live-detected OpenCode executable from the runtime doctors (optional). */
-  readonly detectedOpenCodeBinary?: { readonly path: string; readonly available: boolean } | undefined;
+  readonly detectedOpenCodeBinary?:
+    { readonly path: string; readonly available: boolean } | undefined;
 }): React.JSX.Element {
   const looksWindowsPath = (value: string): boolean => /^[A-Za-z]:[\\/]/.test(value.trim());
   // OpenCode path suggestion: live runtime detection first (only when the
@@ -1078,10 +1078,8 @@ export function HarnessBinaryCard(props: {
         const status = props.statuses.find((s) => s.name === field.name);
         const current = props.values[field.name] ?? '';
         const windowsPath = looksWindowsPath(current);
-        const suggestion =
-          field.name === 'SENTRY_OPENCODE_BINARY' ? openCodeSuggestion : undefined;
-        const showSuggestion =
-          suggestion !== undefined && current.trim() !== suggestion.path;
+        const suggestion = field.name === 'SENTRY_OPENCODE_BINARY' ? openCodeSuggestion : undefined;
+        const showSuggestion = suggestion !== undefined && current.trim() !== suggestion.path;
         return (
           <div key={field.name} style={{ marginBottom: 12 }}>
             <strong>{field.label}</strong>{' '}
