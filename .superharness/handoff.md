@@ -1,3 +1,21 @@
+# OpenCode turn timeout — local handoff
+
+2026-10-25. Fener run partial: OpenCode turn exceeded 1800000 ms budget. Root cause: 30-min default single-turn budget too small for a single-shot full-project investigation (349 files); hang vs slow undecidable post-hoc because intra-turn output is discarded on timeout. Changed `packages/harness-opencode/src/adapter.ts`: 60-min default + timeout errors now report upstream relay counts (names only). Tests added and green (24/24). To give more time: done via default — just re-run the QA (failure retryable:true). Uncommitted; DeepSeek/GLM defaults untouched; no UI/backend changes.
+
+## Previous record (preserved)
+
+# Button spacing fix — local handoff
+
+2026-10-25. Crowded buttons fixed: base `.actions` rule (`styles.css`, flex/gap 8px/wrap/center) repairs Projects card row (Отвори / Премахни проекта), removal dialog and WSL reclaim dialog at once; AgentInspector View details + CopyId spaced too. All other button rows audited and already gapped. Regression test `tests/unit/button-spacing.test.ts` proven RED pre-fix / GREEN post-fix via stash control. 15/15 focused tests PASS, eslint + renderer typecheck PASS. Uncommitted; no backend changes.
+
+## Previous record (preserved)
+
+# Provider settings completion — local handoff
+
+2026-10-25. Finished the owner's unfinished provider-settings work without reverting anything. What changed: `apps/desktop/src/renderer/lib/provider-models.ts` (official-doc catalogs + prefix/mode helpers), `apps/desktop/src/renderer/pages/Providers.tsx` (Provider select with Go/Go Plus, Zen, OpenRouter labels; Go dropdown vs Zen/OpenRouter manual input switching instantly with mode; both-keys Credential source selector with explicit Go-vs-Zen retention; persisted-only Active upstream line; drafts of unrelated fields preserved on save; unknown saved ids preserved with warnings), `apps/desktop/tests/components/providers-models.test.tsx` (7 rendered-interaction tests), routing assertions in `apps/desktop/tests/unit/desktop-service.test.ts` and `packages/harness-opencode/tests/opencode-discovery.test.ts` (fake credentials, mocked transports). One spec correction: draft test expected 37 Go ids, published docs list 29 — corrected with reason in-file. Gates executed (all PASS): desktop focused 146/146, desktop full unit suite, harness-opencode 17/17, desktop eslint, desktop typecheck x3, renderer vite build. UNVERIFIED: browser screenshot review (no browser here; static markup inspected) and live/paid provider calls (never attempted). `shux contract` unavailable; records maintained directly. Tree left uncommitted; no backend/contracts/schema/version changes.
+
+## Previous record (preserved)
+
 # Project import modal, cancellation, and smooth loader polish — local handoff
 
 2026-10-24. On `chore/app-cleanup-and-polish`: added `smooth_loader_flat_logo.gif`
@@ -1178,3 +1196,21 @@ SENTRY_DESKTOP_URL and ELECTRON_RUN_AS_NODE removed from that shell. Close an
 existing Sentry instance first because of single-instance behavior. Instructions
 only; no app launch, installation, profile change or provider execution performed.
 shux contract attempted again, unavailable; protocol maintained directly.
+
+## 2026-10-25 - Provider model dropdown review and continuation prompt (complete)
+
+Owner requested investigation and a prompt for the implementing AI, not a code fix.
+Reviewed the dirty Providers.tsx plus untracked provider-models.ts and its unit tests,
+existing provider component/status tests, secure credential preferences, runtime forwarding,
+and OpenCode harness provider-to-key mapping. Product files preserved.
+Blockers: ModelSelectField renders LRBLOCK and is never mounted; modelList metadata is
+ignored by card rendering; conditional active-key control is missing. Scoped ESLint FAIL
+(10 unused-variable errors). Renderer typecheck PASS; catalog unit tests 6/6 PASS;
+existing provider component/status tests 9/9 PASS (React warnings). No live UI or paid calls.
+Official OpenCode Go/Console, DeepSeek pricing and Z.AI documentation consulted.
+Go and Go Plus share the published model list; Zen is pay-as-you-go. Continuation prompt
+must explicitly distinguish subscription dropdowns from manual pay-as-you-go entry,
+validate official model IDs and endpoint compatibility, preserve both encrypted keys,
+persist activation with SENTRY_OPENCODE_PROVIDER and test rendered interactions/runtime routing.
+The cause of the other AI stopping cannot be established from the working tree alone.
+shux contract attempted, unavailable on PATH; task status/ledger/handoff updated directly.
