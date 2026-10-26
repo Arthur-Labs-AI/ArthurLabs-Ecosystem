@@ -18,6 +18,31 @@ function shortModel(modelId: string | undefined): string {
   return parts[parts.length - 1] ?? modelId;
 }
 
+function shortRevision(id: string): string {
+  return id.length > 18 ? id.slice(0, 12) + '…' : id;
+}
+
+function formatRevisionDate(iso: string | undefined): string {
+  if (iso === undefined || iso === '') return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString([], {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function sortRevisionsNewestFirst<T extends { id: string; importedAt: string }>(
+  revisions: ReadonlyArray<T>,
+): T[] {
+  return [...revisions].sort((a, b) =>
+    a.importedAt < b.importedAt ? 1 : a.importedAt > b.importedAt ? -1 : b.id < a.id ? 1 : -1,
+  );
+}
+
 export function ProjectDetail(): React.JSX.Element {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -88,6 +113,7 @@ export function ProjectDetail(): React.JSX.Element {
     | undefined;
   const startOptions = (runMode: 'full' | 'targeted'): Record<string, unknown> => ({
     mode: runMode,
+    ...(effectiveRevisionId === undefined ? {} : { revisionId: effectiveRevisionId }),
     ...(runMode === 'targeted'
       ? {
           includePaths: targetPaths
@@ -195,8 +221,19 @@ export function ProjectDetail(): React.JSX.Element {
     | undefined;
   const runList =
     (runs.data as Array<{ id: string; mode: string; status: string }> | undefined) ?? [];
-  const revisionList =
-    (revisions.data as Array<{ id: string; importedAt: string }> | undefined) ?? [];
+  const revisionList = sortRevisionsNewestFirst(
+    (revisions.data as Array<{ id: string; importedAt: string }> | undefined) ?? [],
+  );
+  const currentRevisionId = record?.revision.id;
+  const [selectedRevisionId, setSelectedRevisionId] = React.useState<string | undefined>(undefined);
+  // A selection from another project (or a deleted revision) never leaks
+  // into this run: fall back to the current revision unless the selected
+  // id is actually in this project's list.
+  const effectiveRevisionId =
+    selectedRevisionId !== undefined && revisionList.some((r) => r.id === selectedRevisionId)
+      ? selectedRevisionId
+      : currentRevisionId;
+  const effectiveRevision = revisionList.find((r) => r.id === effectiveRevisionId);
   const pendingStart = confirmStart !== undefined;
   const startPending = startFull.isPending || startTargeted.isPending;
   return (
@@ -319,6 +356,28 @@ export function ProjectDetail(): React.JSX.Element {
               { value: 'targeted', label: 'Targeted QA' },
             ]}
           />
+          <label
+            htmlFor="run-revision"
+            className="metadata"
+            style={{ display: 'block', margin: '12px 0 6px' }}
+          >
+            Revision
+          </label>
+          <select
+            id="run-revision"
+            aria-label="Run revision"
+            value={effectiveRevisionId ?? ''}
+            onChange={(e) => setSelectedRevisionId(e.target.value)}
+            disabled={revisionList.length === 0}
+            style={{ minWidth: 200, maxWidth: '100%' }}
+          >
+            {revisionList.length === 0 ? <option value="">No revisions yet</option> : null}
+            {revisionList.map((revision) => (
+              <option key={revision.id} value={revision.id}>
+                {`${shortRevision(revision.id)} · ${formatRevisionDate(revision.importedAt)}${revision.id === currentRevisionId ? ' · current' : ''}`}
+              </option>
+            ))}
+          </select>
           <div className="metadata" style={{ margin: '12px 0 6px' }}>
             Agents
           </div>
@@ -434,7 +493,7 @@ export function ProjectDetail(): React.JSX.Element {
           {revisionList.map((revision) => (
             <div key={revision.id} className="item">
               <CopyId id={revision.id} />
-              <span className="time">{revision.importedAt}</span>
+              <span className="time">{formatRevisionDate(revision.importedAt)}</span>
             </div>
           ))}
           {revisionList.length === 0 ? <p className="muted">No revisions yet.</p> : null}
@@ -472,6 +531,12 @@ export function ProjectDetail(): React.JSX.Element {
               {effectiveStacks.length} agent{effectiveStacks.length === 1 ? '' : 's'} · uses real
               provider budget.
             </p>
+            {effectiveRevisionId !== undefined ? (
+              <p className="mono metadata" data-no-translate="true">
+                Revision: {shortRevision(effectiveRevisionId)} ·{' '}
+                {formatRevisionDate(effectiveRevision?.importedAt)}
+              </p>
+            ) : null}
             {confirmStart === 'targeted' && targetPaths.trim() !== '' ? (
               <p className="mono metadata">Scope: {targetPaths}</p>
             ) : null}

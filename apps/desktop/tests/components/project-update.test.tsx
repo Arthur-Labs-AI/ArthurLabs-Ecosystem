@@ -24,14 +24,20 @@ function fixture() {
       get: vi.fn(async () => ({
         project: { name: 'Alpha', sourcePath: '/original/Alpha' },
         managedCopy: { state: 'ready' },
-        revision: { id: 'rev_alpha' },
+        revision: { id: 'rev_01K7777777777777777777779B' },
       })),
-      revisions: vi.fn(async () => []),
+      revisions: vi.fn(async () => [
+        { id: 'rev_01K7777777777777777777778A', importedAt: '2026-10-20T10:00:00.000Z' },
+        { id: 'rev_01K7777777777777777777779B', importedAt: '2026-10-25T12:00:00.000Z' },
+      ]),
       doctor: vi.fn(async () => ({ ready: true })),
       update,
       cancelUpdate,
     },
-    runs: { list: vi.fn(async () => []) },
+    runs: {
+      list: vi.fn(async () => []),
+      start: vi.fn(async () => ({ operationId: 'dop_test', runId: 'run_started' })),
+    },
     doctors: {
       environment: vi.fn(async () => ({
         agentStacks: [{ id: 'stack_opencode_main', displayName: 'OpenCode', readiness: 'ready' }],
@@ -94,5 +100,49 @@ describe('project revision update', () => {
     await startUpdate();
     window.dispatchEvent(new Event('beforeunload'));
     await waitFor(() => expect(f.cancelUpdate).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe('run revision selection', () => {
+  it('lists revisions newest-first with added dates and defaults to current', async () => {
+    fixture();
+    const picker = (await screen.findByLabelText('Run revision')) as HTMLSelectElement;
+    const options = Array.from(picker.querySelectorAll('option'));
+    expect(options).toHaveLength(2);
+    expect(options[0]!.value).toBe('rev_01K7777777777777777777779B');
+    expect(options[1]!.value).toBe('rev_01K7777777777777777777778A');
+    expect(picker.value).toBe('rev_01K7777777777777777777779B');
+    expect(options[0]!.text).toContain('current');
+    expect(options[0]!.text).toContain('2026');
+    expect(options[0]!.text).not.toContain('T12:00');
+    expect(options[1]!.text).not.toContain('current');
+  });
+
+  it('starts the run on the selected older revision and shows it for confirmation', async () => {
+    const f = fixture();
+    const picker = (await screen.findByLabelText('Run revision')) as HTMLSelectElement;
+    fireEvent.change(picker, { target: { value: 'rev_01K7777777777777777777778A' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Full QA' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Confirm start full QA' });
+    expect(within(dialog).getByText(/Revision:/)).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Start QA' }));
+    await waitFor(() =>
+      expect(f.api.runs.start).toHaveBeenCalledWith(
+        'proj_alpha',
+        expect.objectContaining({ mode: 'full', revisionId: 'rev_01K7777777777777777777778A' }),
+      ),
+    );
+  });
+
+  it('orders the revision timeline newest-first with readable added dates', async () => {
+    fixture();
+    await screen.findByLabelText('Run revision');
+    const items = document.querySelectorAll('.timeline .item');
+    expect(items).toHaveLength(2);
+    expect(items[0]!.textContent).toContain('7779B');
+    expect(items[0]!.textContent).not.toContain('7778A');
+    expect(items[1]!.textContent).toContain('7778A');
+    expect(items[0]!.textContent).toContain('2026');
+    expect(items[0]!.textContent).not.toContain('2026-10-25T12:00');
   });
 });

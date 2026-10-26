@@ -896,6 +896,7 @@ export class SentryRuntimeHost {
         ? {}
         : { agentStackIds: [...parsed.agentStackIds] as never }),
       ...(parsed.runTimeoutMs === undefined ? {} : { runTimeoutMs: parsed.runTimeoutMs }),
+      ...(parsed.revisionId === undefined ? {} : { revisionId: parsed.revisionId }),
     });
     const settled = runPromise.then(
       (details) => {
@@ -1597,6 +1598,10 @@ export class SentryRuntimeHost {
 const StartRunParamsSchema = z
   .object({
     mode: z.enum(['full', 'targeted']),
+    revisionId: z
+      .string()
+      .regex(/^rev_[0-9A-HJKMNP-TV-Z]{26}$/)
+      .optional(),
     includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
     instructions: z.string().min(1).max(5000).optional(),
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),

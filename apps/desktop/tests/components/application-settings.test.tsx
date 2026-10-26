@@ -241,6 +241,9 @@ describe('Application settings & localization', () => {
     );
     expect(translateText('Updating project', 'bg')).toBe('Обновяване на проекта');
     expect(translateText('Cancel update', 'bg')).toBe('Прекъсни обновяването');
+    expect(translateText('rev_01K77 · 25.10.2026, 18:34 · current', 'bg')).toBe(
+      'rev_01K77 · 25.10.2026, 18:34 · текуща',
+    );
     expect(
       translateText(
         'Review agent details and Environment before deliberately starting another run.',

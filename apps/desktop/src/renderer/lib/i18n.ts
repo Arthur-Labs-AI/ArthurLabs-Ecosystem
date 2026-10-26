@@ -414,6 +414,13 @@ function translateCore(trimmed: string): string {
     return `Активен доставчик: ${activeUpstreamMatch[1] ?? ''}`;
   }
 
+  // Revision picker option: id and formatted date pass through, only the
+  // recency marker translates.
+  const currentRevisionMatch = /^(\S+) · (.+) · current$/.exec(trimmed);
+  if (currentRevisionMatch !== null) {
+    return `${currentRevisionMatch[1] ?? ''} · ${currentRevisionMatch[2] ?? ''} · текуща`;
+  }
+
   return trimmed;
 }
 

@@ -213,6 +213,37 @@ describe('shared desktop command router', () => {
     expect(h.seen).toEqual([{ method: 'projects.cancelUpdate', params: {} }]);
   });
 
+  it('forwards the selected run revision to the runtime', async () => {
+    const h = await harness(true);
+    const revisionId = 'rev_01K' + '7'.repeat(21) + 'AA'; // 26 ULID chars
+    await dispatchDesktopCommand(
+      h.service,
+      'runs:start',
+      {
+        projectId: 'proj_01K7777777777777777777777A8W1',
+        mode: 'full',
+        revisionId,
+      },
+      {},
+    );
+    expect(h.seen.find((c) => c.method === 'runs.start')).toEqual({
+      method: 'runs.start',
+      params: {
+        projectId: 'proj_01K7777777777777777777777A8W1',
+        mode: 'full',
+        revisionId,
+      },
+    });
+    await expect(
+      dispatchDesktopCommand(
+        h.service,
+        'runs:start',
+        { projectId: 'proj_01K7777777777777777777777A8W1', mode: 'full', revisionId: 'nope' },
+        {},
+      ),
+    ).rejects.toThrow();
+  });
+
   it('rejects unknown commands on both paths', async () => {
     const h = await harness(true);
     await expect(dispatchDesktopCommand(h.service, 'nope:missing', {}, {})).rejects.toMatchObject({

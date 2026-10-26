@@ -820,3 +820,57 @@ describe('fake end-to-end run engine', () => {
     f.database.close();
   });
 });
+
+describe('revision-targeted runs', () => {
+  it('runs against an older revision snapshot without moving the working copy', async () => {
+    const f = await fixture();
+    try {
+      const firstRevision = f.added.revision.id;
+      await writeFile(join(f.source, 'src', 'value.txt'), 'B');
+      const updated = await f.manager.updateProjectCopy(f.added.project.id);
+      expect(updated.revision.id).not.toBe(firstRevision);
+      const result = await coordinator(f).simulate(f.added.project.id, {
+        revisionId: firstRevision,
+      });
+      expect(result.run.status).toBe('completed');
+      expect(f.repository.getSnapshot(result.run.snapshotId)?.projectRevisionId).toBe(
+        firstRevision,
+      );
+      // The working copy still tracks the current revision; the old tree
+      // reached the agents only through the frozen snapshot.
+      expect(f.manager.getProject(f.added.project.id)?.revision.id).toBe(updated.revision.id);
+      expect(
+        await readFile(
+          join(projectDataPaths(f.dataRoot, f.added.project.id).workingCopy, 'src', 'value.txt'),
+          'utf8',
+        ),
+      ).toBe('B');
+    } finally {
+      f.lease.release();
+      f.database.close();
+    }
+  });
+
+  it('rejects malformed, foreign, and unknown revisions', async () => {
+    const f = await fixture();
+    try {
+      const c = coordinator(f);
+      await expect(
+        c.simulate(f.added.project.id, { revisionId: 'nope' }),
+      ).rejects.toMatchObject({ code: 'INVALID_TARGET' });
+      await expect(
+        c.simulate(f.added.project.id, { revisionId: 'rev_11111111111111111111111111' }),
+      ).rejects.toMatchObject({ code: 'INVALID_TARGET' });
+      const otherSource = join(f.root, 'other');
+      await mkdir(join(otherSource, 'src'), { recursive: true });
+      await writeFile(join(otherSource, 'src', 'value.txt'), 'other');
+      const other = await f.manager.addProject(otherSource);
+      await expect(
+        c.simulate(f.added.project.id, { revisionId: other.revision.id }),
+      ).rejects.toMatchObject({ code: 'INVALID_TARGET' });
+    } finally {
+      f.lease.release();
+      f.database.close();
+    }
+  });
+});
