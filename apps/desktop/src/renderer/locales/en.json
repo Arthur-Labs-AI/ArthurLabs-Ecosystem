@@ -286,6 +286,8 @@
   "Stopping the runtime, reclaiming disk space, then reconnecting. This may take several minutes.": "Stopping the runtime, reclaiming disk space, then reconnecting. This may take several minutes.",
   "Compaction finished. Reconnect failed; restart Sentry and check Environment.": "Compaction finished. Reconnect failed; restart Sentry and check Environment.",
   "Copied": "Copied",
+  "Use suggested path": "Use suggested path",
+  "Suggested OpenCode path derived from your other executable settings.": "Suggested OpenCode path derived from your other executable settings.",
   "Connect the runtime and finish active QA before reclaiming space.": "Connect the runtime and finish active QA before reclaiming space.",
   "Details": "Details",
   "Export JSON": "Export JSON",

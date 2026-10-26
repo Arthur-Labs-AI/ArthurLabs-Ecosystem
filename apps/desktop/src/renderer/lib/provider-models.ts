@@ -28,6 +28,50 @@
 export const CUSTOM_MODEL_VALUE = '__custom-model__';
 
 /**
+ * Conventional managed OpenCode executable inside the Linux runtime, given
+ * the WSL home directory (e.g. `/home/merte`). Matches the managed install
+ * layout provisioned under `~/.local/share/sentry/tools`.
+ */
+export const MANAGED_OPENCODE_BINARY_SUFFIX =
+  '/.local/share/sentry/tools/opencode/node_modules/.bin/opencode';
+
+/** Minimal status shape needed to derive a managed-binary suggestion. */
+export interface BinaryStatusHint {
+  readonly name: string;
+  readonly configured: boolean;
+  readonly hint: string;
+}
+
+const SIBLING_BINARY_NAMES: readonly string[] = ['SENTRY_DEEPSEEK_BINARY', 'SENTRY_GLM_BINARY'];
+
+/** Extract `/home/<user>` from a saved absolute Linux path, if present. */
+function wslHomePrefix(value: string): string | undefined {
+  const match = /^\/home\/[^/\s]+/.exec(value.trim());
+  return match === null ? undefined : match[0];
+}
+
+/**
+ * Suggest the managed OpenCode executable path by reusing the WSL home
+ * directory from a sibling saved executable setting (DeepSeek, then GLM).
+ * Only the username is taken from the sibling — the rest is the fixed
+ * managed-install layout, never the sibling's own path. Returns undefined
+ * when no sibling carries a usable `/home/<user>` prefix.
+ */
+export function suggestManagedOpenCodeBinary(
+  statuses: ReadonlyArray<BinaryStatusHint>,
+): { readonly path: string; readonly from: string } | undefined {
+  for (const name of SIBLING_BINARY_NAMES) {
+    const status = statuses.find((s) => s.name === name);
+    const hint = status?.configured === true ? status.hint.trim() : '';
+    if (hint === '' || hint === 'missing') continue;
+    const home = wslHomePrefix(hint);
+    if (home === undefined) continue;
+    return { path: home + MANAGED_OPENCODE_BINARY_SUFFIX, from: name };
+  }
+  return undefined;
+}
+
+/**
  * OpenCode Go / Go Plus subscription lineup (29 ids, official Go docs).
  * Go and Go Plus share this published list: do not invent separate catalogs.
  */

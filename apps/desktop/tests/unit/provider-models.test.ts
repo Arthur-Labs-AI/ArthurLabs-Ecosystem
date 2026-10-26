@@ -9,6 +9,7 @@ import {
   modelsForOpenCodeMode,
   resolveOpenCodeModelMode,
   stripKnownOpenCodePrefix,
+  suggestManagedOpenCodeBinary,
 } from "../../src/renderer/lib/provider-models.js";
 
 describe("provider model catalogs", () => {
@@ -70,5 +71,32 @@ describe("provider model catalogs", () => {
   it("reserves a custom sentinel distinct from real model ids", () => {
     const all = [...OPENCODE_GO_MODELS, ...OPENCODE_ZEN_MODELS, ...DEEPSEEK_MODELS, ...ZAI_GLM_MODELS];
     expect(all).not.toContain(CUSTOM_MODEL_VALUE);
+  });
+
+  it("derives the managed OpenCode path from sibling home directories", () => {
+    const deepseek = { name: "SENTRY_DEEPSEEK_BINARY", configured: true, hint: "/home/merte/.local/share/sentry/tools/deepseek/bin/dsh" };
+    expect(suggestManagedOpenCodeBinary([deepseek])).toEqual({
+      path: "/home/merte/.local/share/sentry/tools/opencode/node_modules/.bin/opencode",
+      from: "SENTRY_DEEPSEEK_BINARY",
+    });
+    const glm = { name: "SENTRY_GLM_BINARY", configured: true, hint: "/home/ana/.local/bin/claude" };
+    expect(suggestManagedOpenCodeBinary([glm])).toEqual({
+      path: "/home/ana/.local/share/sentry/tools/opencode/node_modules/.bin/opencode",
+      from: "SENTRY_GLM_BINARY",
+    });
+    // DeepSeek wins over GLM; unconfigured and missing hints are skipped.
+    expect(
+      suggestManagedOpenCodeBinary([
+        { name: "SENTRY_DEEPSEEK_BINARY", configured: false, hint: "missing" },
+        glm,
+      ])?.from,
+    ).toBe("SENTRY_GLM_BINARY");
+    expect(suggestManagedOpenCodeBinary([])).toBeUndefined();
+    expect(
+      suggestManagedOpenCodeBinary([
+        { name: "SENTRY_DEEPSEEK_BINARY", configured: true, hint: "missing" },
+        { name: "SENTRY_GLM_BINARY", configured: true, hint: "C:\\tools\\claude.exe" },
+      ]),
+    ).toBeUndefined();
   });
 });

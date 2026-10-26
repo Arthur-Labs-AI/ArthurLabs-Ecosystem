@@ -291,6 +291,8 @@
   "Stopping the runtime, reclaiming disk space, then reconnecting. This may take several minutes.": "Спиране на средата, освобождаване на дисково място и повторно свързване. Може да отнеме няколко минути.",
   "Compaction finished. Reconnect failed; restart Sentry and check Environment.": "Компактирането завърши. Повторното свързване се провали; рестартирайте Sentry и проверете Средата.",
   "Copied": "Копирано",
+  "Use suggested path": "Използвай предложения път",
+  "Suggested OpenCode path derived from your other executable settings.": "Предложен път за OpenCode, изведен от другите настройки за изпълними файлове.",
   "Connect the runtime and finish active QA before reclaiming space.": "Свържете средата и изчакайте активните QA изпълнения да приключат преди освобождаване на място.",
   "Details": "Детайли",
   "Export JSON": "Експорт JSON",

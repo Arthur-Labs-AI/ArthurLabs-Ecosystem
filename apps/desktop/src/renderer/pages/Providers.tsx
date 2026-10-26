@@ -13,6 +13,7 @@ import {
   modelsForOpenCodeMode,
   resolveOpenCodeModelMode,
   stripKnownOpenCodePrefix,
+  suggestManagedOpenCodeBinary,
 } from '../lib/provider-models.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
@@ -1029,6 +1030,19 @@ export function HarnessBinaryCard(props: {
   readonly statusPending?: boolean;
 }): React.JSX.Element {
   const looksWindowsPath = (value: string): boolean => /^[A-Za-z]:[\\/]/.test(value.trim());
+  // Managed OpenCode path suggestion, reusing the WSL home directory from a
+  // sibling saved executable setting (only the username is taken from it).
+  const openCodeSuggestion = suggestManagedOpenCodeBinary(props.statuses);
+  const openCodeDraft = props.values['SENTRY_OPENCODE_BINARY'] ?? '';
+  const openCodeSaved = props.statuses.find((s) => s.name === 'SENTRY_OPENCODE_BINARY');
+  const autoFilledRef = React.useRef(false);
+  React.useEffect(() => {
+    if (openCodeSuggestion === undefined || autoFilledRef.current) return;
+    if (openCodeDraft !== '' || openCodeSaved?.configured === true) return;
+    autoFilledRef.current = true;
+    const path = openCodeSuggestion.path;
+    props.setValues((prev) => ({ ...prev, ['SENTRY_OPENCODE_BINARY']: path }));
+  }, [openCodeSuggestion, openCodeDraft, openCodeSaved?.configured === true, props.setValues]);
   return (
     <div className="card" style={{ marginBottom: 12, marginTop: 8 }}>
       <h3 className="card-title">Execution runtime</h3>
@@ -1042,6 +1056,10 @@ export function HarnessBinaryCard(props: {
         const status = props.statuses.find((s) => s.name === field.name);
         const current = props.values[field.name] ?? '';
         const windowsPath = looksWindowsPath(current);
+        const suggestion =
+          field.name === 'SENTRY_OPENCODE_BINARY' ? openCodeSuggestion : undefined;
+        const showSuggestion =
+          suggestion !== undefined && current.trim() !== suggestion.path;
         return (
           <div key={field.name} style={{ marginBottom: 12 }}>
             <strong>{field.label}</strong>{' '}
@@ -1104,6 +1122,24 @@ export function HarnessBinaryCard(props: {
                 Windows paths do not apply inside the Linux runtime — enter an absolute Linux path
                 (e.g. /home/…/opencode).
               </p>
+            ) : null}
+            {suggestion !== undefined ? (
+              <p className="metadata" style={{ margin: '4px 0 0' }}>
+                Suggested OpenCode path derived from your other executable settings.
+              </p>
+            ) : null}
+            {showSuggestion && suggestion !== undefined ? (
+              <div style={{ marginTop: 4 }}>
+                <button
+                  type="button"
+                  className="compact ghost"
+                  onClick={() =>
+                    props.setValues((prev) => ({ ...prev, [field.name]: suggestion.path }))
+                  }
+                >
+                  Use suggested path
+                </button>
+              </div>
             ) : null}
           </div>
         );
