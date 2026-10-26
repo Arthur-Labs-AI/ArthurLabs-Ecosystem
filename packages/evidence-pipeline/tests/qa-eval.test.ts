@@ -96,6 +96,31 @@ describe('deterministic QA evaluation', () => {
     );
     expect(result.findings[0]?.reproduced).toBe(true);
     expect(result.findings[0]?.sourceOnly).toBe(false);
+    // Unvalidated reports claim reproduction; only Sentry-validated reports
+    // prove it against the frozen ledger.
+    expect(result.findings[0]?.reproductionProvenance).toBe('self-reported');
+    const trusted = evaluateFixtureReport(
+      {
+        findings: [
+          {
+            title: 'Boundary clamp off by one above 100',
+            category: 'logic',
+            severity: 'medium',
+            confidence: 'confirmed',
+            description: 'Reproduced: clamp yields 101 past the upper boundary.',
+            locations: [{ relativePath: 'fixture-a-logic/score.ts' }],
+            evidenceKeys: ['cmd1'],
+            reproductionSteps: ['node repro.mjs'],
+          },
+        ],
+        evidence: [reproducedEvidence('cmd1')],
+        checks: [],
+        limitations: [],
+      } as never,
+      fixture('fixture-a-logic', groundTruth),
+      { trustedProvenance: true },
+    );
+    expect(trusted.findings[0]?.reproductionProvenance).toBe('sentry-validated');
   });
 
   it('flags path-only overlap as ambiguous, never as a hit', async () => {
@@ -145,7 +170,7 @@ describe('deterministic QA evaluation', () => {
             category: 'logic',
             severity: 'high',
             confidence: 'strong',
-            description: 'Duplicate of the clamp boundary report.',
+            description: 'Duplicate report: values above 100 return 101.',
             locations: [{ relativePath: 'fixture-a-logic/score.ts' }],
             evidenceKeys: ['a1'],
             reproductionSteps: [],

@@ -11,17 +11,15 @@ export function availableSeats(store: SeatStore): number {
 }
 
 /**
- * Deliberately defective asynchronous reservation (check-then-act).
+ * Seat reservation service.
  *
- * The defect: availability is read, the task then yields at an explicit
- * barrier, and the write acts on the STALE observation instead of
- * re-checking. Two concurrent callers that both read while one seat
- * remains both succeed, overbooking the single seat (final seats === -1).
+ * Intended invariant: when only one seat remains, no more than one
+ * concurrent reservation may succeed.
  *
- * Invariant (documented, violated here): when only one seat remains, no
- * more than one concurrent reservation may succeed.
+ * The optional `barrier` is a deterministic scheduling hook used by
+ * concurrency tests to interleave overlapping calls reproducibly.
  */
-export async function reserveSeatDefective(
+export async function reserveSeat(
   store: SeatStore,
   barrier?: {
     notifyRead(): void;

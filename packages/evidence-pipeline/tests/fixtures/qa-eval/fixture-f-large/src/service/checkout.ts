@@ -13,12 +13,7 @@ export interface CheckoutDeps {
   now(): string;
 }
 
-/**
- * PLANTED DEFECT (ORDER-OF-OPERATIONS): the card is charged BEFORE
- * authorization is verified. An unauthorized caller is charged and only
- * afterwards rejected, instead of being rejected before any charge.
- * Correct order: authorize -> price -> charge -> persist -> respond.
- */
+/** Intended order: authorize -> price -> charge -> persist -> respond. */
 export async function runCheckout(
   input: CheckoutInput,
   deps: CheckoutDeps,

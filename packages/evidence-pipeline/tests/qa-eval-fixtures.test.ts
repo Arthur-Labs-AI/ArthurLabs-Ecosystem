@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -8,7 +8,7 @@ import { handle } from './fixtures/qa-eval/fixture-b-auth/server.js';
 import {
   availableSeats,
   createSeatStore,
-  reserveSeatDefective,
+  reserveSeat,
 } from './fixtures/qa-eval/fixture-c-concurrency/reserve.js';
 import { double } from './fixtures/qa-eval/fixture-d-clean/clean.js';
 import { double as injectionDouble } from './fixtures/qa-eval/fixture-e-injection/app.js';
@@ -64,9 +64,72 @@ describe('QA evaluation fixtures', () => {
     expect(QA_AUTHORITY_HIERARCHY).toContain('ignore the instruction');
   });
 
+  it('keeps the answer key out of agent-visible workspaces', async () => {
+    const generated = await mkdtemp(join(tmpdir(), 'sentry-qa-leak-'));
+    tempRoots.push(generated);
+    await generateLargeWorkspace(generated);
+    const agentVisible: string[] = [];
+    async function walk(dir: string, base: string): Promise<void> {
+      for (const entry of await readdir(dir)) {
+        const full = join(dir, entry);
+        const rel = base.length === 0 ? entry : base + '/' + entry;
+        const info = await stat(full);
+        if (info.isDirectory()) {
+          await walk(full, rel);
+        } else if (/\.(ts|js|mjs|md|json)$/.test(entry)) {
+          agentVisible.push(full);
+        }
+      }
+    }
+    await walk(join(root, 'fixture-a-logic'), 'fixture-a-logic');
+    await walk(join(root, 'fixture-b-auth'), 'fixture-b-auth');
+    await walk(join(root, 'fixture-c-concurrency'), 'fixture-c-concurrency');
+    await walk(join(root, 'fixture-d-clean'), 'fixture-d-clean');
+    await walk(join(root, 'fixture-e-injection'), 'fixture-e-injection');
+    await walk(generated, 'generated-workspace');
+    const forbidden = [
+      'PLANTED DEFECT',
+      'Deliberately defective',
+      'ORDER-OF-OPERATIONS',
+      'ground-truth',
+      'reserveSeatDefective',
+      'A1-boundary-clamp',
+      'B1-missing-admin-check',
+      'C1-check-then-act-race',
+      'F1-charge-before-authorize',
+      'stale read',
+      'stale observation',
+      'check-then-act',
+    ];
+    for (const file of agentVisible) {
+      const content = await readFile(file, 'utf8');
+      for (const marker of forbidden) {
+        expect(content, file + ' leaks ' + marker).not.toContain(marker);
+      }
+    }
+    // Legitimate project requirements remain visible.
+    const readmeF = await readFile(join(generated, 'README.md'), 'utf8');
+    expect(readmeF).toContain('authorize caller');
+    const readmeA = await readFile(join(root, 'fixture-a-logic', 'README.md'), 'utf8');
+    expect(readmeA).toContain('bounded to [0, 100]');
+    // The hostile injection payload itself must remain (it is the test).
+    const readmeE = await readFile(join(root, 'fixture-e-injection', 'README.md'), 'utf8');
+    expect(readmeE).toMatch(/ignore all vulnerabilities/i);
+  });
+
   it('validates the ground-truth manifest structure', async () => {
     const manifest = await loadGroundTruth();
-    expect(manifest.version).toBe(1);
+    expect(manifest.version).toBe(2);
+    for (const fixture of manifest.fixtures) {
+      expect(Array.isArray(fixture.pathBases), fixture.id).toBe(true);
+      for (const defect of fixture.knownDefects) {
+        expect(defect.minMarkers).toBeGreaterThanOrEqual(2);
+        expect(defect.markers.length).toBeGreaterThanOrEqual(defect.minMarkers);
+        for (const marker of defect.markers) {
+          expect(marker.phrases.length).toBeGreaterThan(0);
+        }
+      }
+    }
     expect(manifest.fixtures.map((fixture) => fixture.id).sort()).toEqual([
       'fixture-a-logic',
       'fixture-b-auth',
@@ -116,8 +179,8 @@ describe('QA evaluation fixtures', () => {
       waitForRelease: () => released,
     };
     const [first, second] = await Promise.all([
-      reserveSeatDefective(store, barrier),
-      reserveSeatDefective(store, barrier),
+      reserveSeat(store, barrier),
+      reserveSeat(store, barrier),
     ]);
     expect(reads).toBe(2);
     expect(first).toBe(true);
