@@ -1,3 +1,5 @@
+# Agents-explained 2026-10-26: question-only, no code. Agents follow fixed staged prompts (planning/investigation/reporting JSON contracts), identical skeleton across OpenCode/DeepSeek/GLM; mission envelope from run-engine.
+
 # Release-commands assessment 2026-10-26: consumer steps yes-phased (verify/check, guided setup, signed auto-apply last); producer steps stay maintainer-side. No code. Trust anchors already fit (build-identity.json, versioned runtime/current).
 
 # Checks+security 2026-10-26: gates table in task-status; fixed my lint error + formatted my files (d6224ba). Pre-existing fails left for owner: 9 format files, verifier-trust env, RR bump, esbuild install for distribution test.
