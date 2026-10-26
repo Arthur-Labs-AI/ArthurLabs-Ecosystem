@@ -1,3 +1,5 @@
+# Release-commands assessment 2026-10-26: consumer steps yes-phased (verify/check, guided setup, signed auto-apply last); producer steps stay maintainer-side. No code. Trust anchors already fit (build-identity.json, versioned runtime/current).
+
 # Checks+security 2026-10-26: gates table in task-status; fixed my lint error + formatted my files (d6224ba). Pre-existing fails left for owner: 9 format files, verifier-trust env, RR bump, esbuild install for distribution test.
 
 # Detection-first suggestion 2026-10-26: doctors executionPath preferred (availability-gated), sibling fallback. 27/27 suites, bundle rebuilt. Committed c150713.
