@@ -1,3 +1,5 @@
+# Revision picker — 2026-10-25: runs accept revisionId (engine snapshot-from-material, full plumbing, picker newest-first + dates, confirm display). Gates: engine 18/18 file, desktop 541/541, runtime 74, typechecks/eslint clean, bundle rebuilt. Committed 8cb7b4e. Pre-existing: 6 verifier-trust sandbox failures (clean-tree identical).
+
 # Committed 2026-10-25 on chore/app-cleanup-and-polish: 91096f1 provider settings, 3fa648a button/label spacing, 50cb0b7 turn budget+evidence, f7e621e translations, 676df41 update modal+cancel. All gates green per-commit-area on final tree; dist/ rebuilt locally (gitignored).
 
 # Update modal + quit-cancel — 2026-10-25: blocking revision-update window (timer, cancel) + Start QA disabled during update; `projects.cancelUpdate` RPC end-to-end (protocol/runtime/service/router/IPC/preload); before-quit + beforeunload + shutdown abandon the revision (healthy copy preserved, state back to ready). Locales en/bg. Gates: runtime 14, renderer 18, router/quit/preload 26, protocol 18 PASS; typechecks + eslint PASS; bundle rebuilt.
