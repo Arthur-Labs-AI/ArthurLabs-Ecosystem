@@ -1,3 +1,9 @@
+# OpenCode executable auto-fill from sibling settings (owner request)
+
+2026-10-26. Owner: the OpenCode binary field should fill automatically like the others, deriving the WSL username from sibling saved paths. Implemented suggestManagedOpenCodeBinary (takes only `/home/<user>` from DeepSeek/GLM saved hints; fixed managed-install suffix): empty field auto-fills once via effect, stale values get a one-click 'Use suggested path' button, saved values never overwritten implicitly. Static note + button strings in en/bg. Verified: helper units + 3 rendered interaction tests (14/14 with catalog/file suites), typecheck + eslint clean, bundle rebuilt (index-C3w2LD1Z.js). Committed as 05694a6; restart/reload to pick it up.
+
+## Previous record (preserved)
+
 # Stale-layer unrecognized_keys on runs:start — rebuilt + redeployed (owner report)
 
 2026-10-26. Owner saw `unrecognized_keys revisionId` on the Fener detail page. Root cause: layer skew, not code — the renderer bundle was new (sends revisionId) while dist/main (Oct 23) and the deployed WSL runtime (Oct 23, 1.0.2-2640efcd) predated the schema change and rejected it at their strict boundaries. Fixed by building all layers from HEAD: desktop build:main + build:preload (verified cancel-update channel, revisionId forwarding in dist), renderer already current, runtime redeployed via documented apps/runtime/scripts/deploy-wsl-runtime.ps1 (now 1.0.2-7078c67, verified cancelUpdate + revisionId + 60-min default in the deployed bundle, entry validated). No source changes. Owner must quit and relaunch the app (new main + runtime load at startup).

@@ -1,3 +1,5 @@
+# Executable suggestion 2026-10-26: OpenCode binary auto-fill from sibling WSL home + apply button. 14/14 tests, bundle rebuilt. Committed 05694a6.
+
 # Layer-skew fix 2026-10-26: rebuilt main+preload, redeployed WSL runtime 1.0.2-7078c67 (verified contents). No source changes; restart required.
 
 # Revision picker — 2026-10-25: runs accept revisionId (engine snapshot-from-material, full plumbing, picker newest-first + dates, confirm display). Gates: engine 18/18 file, desktop 541/541, runtime 74, typechecks/eslint clean, bundle rebuilt. Committed 8cb7b4e. Pre-existing: 6 verifier-trust sandbox failures (clean-tree identical).
