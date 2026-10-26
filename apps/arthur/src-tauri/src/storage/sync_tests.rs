@@ -524,7 +524,7 @@ fn d12b_actual_deferred_fk_commit_failure_poisoned_owner_returns_no_receipt() {
             &Clock::default(),
             &Cancellation::default()
         ),
-        Err(Error::Storage)
+        Err(Error::CommitUncertain)
     ));
     assert!(matches!(
         db.summary(&s, &Clock::default(), &Cancellation::default()),
@@ -1572,7 +1572,7 @@ fn g3_05_commit_failure_rolls_back_real_domain_and_poisons_without_applied_ack()
             &Clock::default(),
             &Cancellation::default()
         ),
-        Err(Error::Storage)
+        Err(Error::CommitUncertain)
     ));
     assert_eq!(f::state(&b.store), before);
     assert_eq!(b.count("captures"), 0);

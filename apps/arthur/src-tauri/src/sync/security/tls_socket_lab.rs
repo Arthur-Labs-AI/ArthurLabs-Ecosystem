@@ -240,7 +240,11 @@ impl Socket {
             let complete = if !self.bound {
                 true
             } else {
-                match serde_json::from_slice::<Message>(&self.assembling) {
+                // Check only JSON completeness while assembling. Strict typed
+                // decoding still happens in receive(), once, before use. This
+                // avoids reallocating a near-1 MiB byte array for every 64 KiB
+                // record while preserving the existing framing and ceilings.
+                match serde_json::from_slice::<serde::de::IgnoredAny>(&self.assembling) {
                     Ok(_) => true,
                     Err(e) if e.is_eof() => false,
                     Err(_) => return Err(Error::Protocol),

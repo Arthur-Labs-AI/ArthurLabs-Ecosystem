@@ -764,7 +764,7 @@ fn d4_20_actual_commit_failure_returns_no_receipt_and_preserves_recovery_unit() 
                 &Cancellation::default()
             )
             .err(),
-        Some(Error::Storage)
+        Some(Error::CommitUncertain)
     );
     assert_eq!(before, f::state(&b.store));
     assert_eq!(b.count("import_events"), 0);

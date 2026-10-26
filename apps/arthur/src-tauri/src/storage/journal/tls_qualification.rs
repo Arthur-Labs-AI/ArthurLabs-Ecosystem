@@ -78,6 +78,9 @@ fn count(s: &CaptureStore, table: &str) -> i64 {
         .unwrap()
 }
 fn same(a: &Fixture, b: &Fixture) {
+    same_scope(a,b,false)
+}
+fn same_scope(a: &Fixture, b: &Fixture, history: bool) {
     let a = a.owner();
     let b = b.owner();
     let ae = sync_store::test_events(a.store());
@@ -87,11 +90,13 @@ fn same(a: &Fixture, b: &Fixture) {
         let other = be.iter().find(|x| x.identity == e.identity).unwrap();
         assert_eq!(e.bytes, other.bytes);
         for op in &ValidatedEvent::parse(e).unwrap().core().operations {
+            if !history {
             assert!(matches!(op, codec::Operation::RecordCreate(_)));
             assert!(matches!(
                 op.entity(),
                 codec::EntityKind::Projects | codec::EntityKind::Captures
             ));
+            }
             assert_eq!(
                 super::sql_effects::reread(
                     &a.store().connection.lock().unwrap(),
@@ -169,11 +174,12 @@ async fn exchange(a: &Fixture, b: &Fixture, mode: u8) {
     ta.lose_receipts = mode == 1;
     let mut ea = SyncEngine::start(&sa, ta, &at, &Clock, &cancel).unwrap();
     let mut eb = SyncEngine::start(&sb, tb, &bt, &Clock, &cancel).unwrap();
+    if mode == 3 { ea.bootstrap(Uuid::new_v4()).unwrap(); }
     for _ in 0..512 {
         wire.transfer().await.unwrap();
         let aa = ea.tick().unwrap();
         let br = eb.tick();
-        if mode == 2 && br == Err(Error::Storage) {
+        if mode == 2 && matches!(br, Err(Error::Storage | Error::CommitUncertain)) {
             assert!(!sa.outstanding(&av, &Clock, &cancel).unwrap().is_empty());
             wire.abort(Error::Storage);
             wire.assert_closed();
@@ -598,10 +604,61 @@ pub(crate) fn run(case: i32) -> security::Result<()> {
         39 => lifecycle(),
         40 => io_failures(),
         41 => sqlite_failure(),
+        48 => knowledge_history(),
         _ => panic!("unknown qualification case"),
     })
     .map_err(|_| security::SecurityError::State)
 }
+
+// Same compiled scenario on Windows CNG and Android Keystore. All knowledge
+// is written by the existing kernel; no Android-only importer or Sync path.
+fn knowledge_history() {
+    fn original(s: &CaptureStore, name: &str) {
+        let k=JournalKernel::activate(s).unwrap();
+        let project=k.write(|w|w.create_project(name)).unwrap();
+        let capture=k.write(|w|w.create_capture(CreateCaptureInput {source:"text".into(),content:"Alpha Бета 😀 original".into(),project_id:Some(project.id)})).unwrap();
+        let object=k.write(|w|w.record_distillation(&capture.id,vec![crate::storage::knowledge_store::NewKnowledgeObject {kind:"idea".into(),title:name.into(),body:"Original cross-platform body".into(),source_start:0,source_end:5}])).unwrap().remove(0);
+        let root=s.current_revision_id_of(&object.id).unwrap().unwrap();
+        k.write(|w|w.create_revision_from(&object.id,&root,crate::storage::lineage_store::Changes {kind:None,title:None,body:Some("Unselected historical branch".into())},false)).unwrap();
+    }
+    native_io_lab::execute(async {
+        let mut a=Fixture::new().unwrap(); let mut b=Fixture::new().unwrap();
+        install(&a,&b); install(&b,&a);
+        for f in [&a,&b] {
+            let owner=f.owner();
+            super::g3::install_history(owner.store()).unwrap();
+            crate::storage::bootstrap_store::install(owner.store()).unwrap();
+            super::g3::install_d4(owner.store()).unwrap();
+        }
+        original(a.owner().store(),"A native knowledge");
+        original(b.owner().store(),"B native knowledge");
+        let allowed=sync_store::test_events(a.owner().store()).into_iter().chain(sync_store::test_events(b.owner().store())).map(|e|e.identity.origin).collect();
+        let session=Uuid::new_v4();
+        let at=trust(&a,&b,session,&allowed); let bt=trust(&b,&a,session,&allowed);
+        let child=sync_store::test_events(a.owner().store()).pop().unwrap();
+        {
+            let oa=a.owner(); let ob=b.owner();
+            let sa=CandidateSyncStore::synthetic(oa.store()); let sb=CandidateSyncStore::synthetic(ob.store());
+            let av=at.verify(&at.hello).unwrap(); let bv=bt.verify(&bt.hello).unwrap(); let cancel=Cancellation::default();
+            sa.offered(&av,&child.identity,&Clock,&cancel).unwrap();
+            let receipt=sb.retain(&bv,ValidatedEvent::parse(child).unwrap(),&Clock,&cancel).unwrap();
+            assert_eq!(receipt.outcome,Outcome::DeferredDependency);
+            sa.receipt(&av,&receipt,&Clock,&cancel).unwrap();
+        }
+        a.reopen_candidate().unwrap(); b.reopen_candidate().unwrap();
+        // The durable deferred offer is retransmitted over TLS before its
+        // dependencies; foreground reprocessing must emit its revised receipt.
+        exchange(&a,&b,0).await; same_scope(&a,&b,true);
+        exchange(&a,&b,3).await; same_scope(&a,&b,true);
+        a.reopen_candidate().unwrap(); b.reopen_candidate().unwrap();
+        exchange(&a,&b,0).await; same_scope(&a,&b,true);
+        assert_eq!(count(a.owner().store(),"thought_revisions"),4);
+        assert_eq!(count(b.owner().store(),"knowledge_objects"),2);
+    });
+}
+#[cfg(test)]
+#[test]
+fn r6_shared_cng_keystore_incremental_history_bootstrap_and_reopen() { run(48).unwrap(); }
 #[cfg(test)]
 #[test]
 fn r2_native_keystore_cng_shared_owner_sync_workflow() {

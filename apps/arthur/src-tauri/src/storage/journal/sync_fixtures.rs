@@ -21,6 +21,17 @@ pub(crate) fn captures(s: &CaptureStore, texts: &[&str]) {
         .unwrap();
     }
 }
+pub(crate) fn capture_batches(s:&CaptureStore,total:usize,per_batch:usize) {
+    let k=JournalKernel::activate(s).unwrap();
+    for offset in (0..total).step_by(per_batch) {
+        k.write(|w| {
+            for _ in offset..(offset+per_batch).min(total) {
+                w.create_capture(CreateCaptureInput {source:"text".into(),content:"bounded row".into(),project_id:None})?;
+            }
+            Ok(())
+        }).unwrap();
+    }
+}
 pub(crate) fn rename(s: &CaptureStore, name: &str) {
     let k = JournalKernel::activate(s).unwrap();
     k.write(|w| w.rename_project(PROJECT, name)).unwrap();
@@ -526,4 +537,41 @@ pub(crate) fn deny_revision_observer_restore(s: &CaptureStore, work: impl FnOnce
         std::panic::resume_unwind(p)
     }
     count.get()
+}
+
+// Existing SQLite authorizer seam, narrowly refusing only the pager-limit
+// write AFTER actual COMMIT (autocommit=true). No simulated commit result.
+pub(crate) struct BudgetRestoreFault<'a> {
+    store: &'a CaptureStore,
+    state: Box<(usize, *mut rusqlite::ffi::sqlite3)>,
+}
+impl BudgetRestoreFault<'_> { pub fn hits(&self) -> usize { self.state.0 } }
+impl Drop for BudgetRestoreFault<'_> {
+    fn drop(&mut self) {
+        let c = self.store.connection.lock().unwrap();
+        assert_eq!(unsafe { rusqlite::ffi::sqlite3_set_authorizer(c.handle(), None, std::ptr::null_mut()) }, rusqlite::ffi::SQLITE_OK);
+    }
+}
+pub(crate) fn deny_post_commit_budget_restore(s: &CaptureStore) -> BudgetRestoreFault<'_> {
+    use rusqlite::ffi;
+    use std::ffi::{c_char, c_int, c_void, CStr};
+    unsafe extern "C" fn deny(p: *mut c_void, action: c_int, name: *const c_char, value: *const c_char, _: *const c_char, _: *const c_char) -> c_int {
+        let state = &mut *p.cast::<(usize, *mut ffi::sqlite3)>();
+        if action == ffi::SQLITE_PRAGMA && !name.is_null() && !value.is_null()
+            && CStr::from_ptr(name).to_bytes() == b"max_page_count"
+            && ffi::sqlite3_get_autocommit(state.1) != 0 {
+            state.0 += 1;
+            return ffi::SQLITE_DENY;
+        }
+        ffi::SQLITE_OK
+    }
+    let c = s.connection.lock().unwrap();
+    let mut state = Box::new((0, unsafe { c.handle() }));
+    assert_eq!(unsafe { ffi::sqlite3_set_authorizer(c.handle(), Some(deny), (&mut *state as *mut (usize, *mut ffi::sqlite3)).cast()) }, ffi::SQLITE_OK);
+    BudgetRestoreFault { store: s, state }
+}
+pub(crate) fn physically_admitted(s: &CaptureStore) -> crate::storage::sync_store::CandidateSyncStore<'_> {
+    let p=super::admission::PhysicalAdmissionPolicy::synthetic_profile_a();
+    let physical=super::admission_session::PhysicalAdmission::bind(s,&s.connection.lock().unwrap(),p,std::sync::Arc::new(super::capacity::NativeCapacity),super::admission::ClaimPool::new(p.recovery)).unwrap();
+    crate::storage::sync_store::CandidateSyncStore::admitted_for_test(s,physical)
 }

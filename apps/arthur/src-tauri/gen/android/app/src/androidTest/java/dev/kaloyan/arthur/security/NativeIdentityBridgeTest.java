@@ -15,6 +15,7 @@ public final class NativeIdentityBridgeTest {
     @Test public void r2_shared_owner_cancel_budget_cleanup() { assertTrue(runScenario(39)); }
     @Test public void r2_actual_tls_io_faults_bounds_cleanup() { assertTrue(runScenario(40)); }
     @Test public void r2_sqlite_full_no_ack_reopen_retry() { assertTrue(runScenario(41)); }
+    @Test public void r6_incremental_knowledge_history_bootstrap_reopen() { assertTrue(runScenario(48)); }
     static native boolean runScenario(int scenario);
     @Test public void r3_committed_registry_revocation_cancels_owner() { assertTrue(runScenario(42)); }
     @Test public void eb01_06_09_14_15_18_native_worker_and_crypto() { assertTrue(runScenario(1)); }

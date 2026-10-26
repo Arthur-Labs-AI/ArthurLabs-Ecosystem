@@ -114,7 +114,7 @@ impl<'a> CandidateSyncStore<'a> {
                 Err(_) => {
                     self.usable.store(false, Ordering::SeqCst);
                     let _ = c.pragma_update(None, "query_only", true);
-                    Err(Error::Storage)
+                    Err(Error::CommitUncertain)
                 }
             },
             Err(e) => {
@@ -127,6 +127,7 @@ impl<'a> CandidateSyncStore<'a> {
                 }
             }
         };
+        let committed = result.is_ok();
         let cleanup_failed = budget.as_ref().is_some_and(|b| {
             let io = b.check_io();
             let restore = b.restore(&c);
@@ -135,7 +136,7 @@ impl<'a> CandidateSyncStore<'a> {
         if cleanup_failed {
             self.usable.store(false, Ordering::SeqCst);
             let _ = c.pragma_update(None, "query_only", true);
-            return Err(Error::Storage);
+            return Err(if committed { Error::CommittedCleanupFailed } else { result.err().unwrap_or(Error::Storage) });
         }
         result
     }
@@ -657,6 +658,11 @@ pub(super) fn refresh(
     clock: &dyn SyncClock,
     x: &Cancellation,
 ) -> Result<usize> {
+    Ok(refresh_batch(c, s, clock, x)?.0)
+}
+// Preserve the existing 16-event cursor/transaction contract. The foreground
+// engine can distinguish a productive batch from a stable unresolved batch.
+fn refresh_batch(c: &Connection, s: &VerifiedSession, clock: &dyn SyncClock, x: &Cancellation) -> Result<(usize, bool)> {
     let g3 = g3::installed(c)?;
     let cursor: i64 = if g3 {
         c.query_row("SELECT cursor FROM import_g3_policy", [], |r| r.get(0))
@@ -687,6 +693,7 @@ pub(super) fn refresh(
         events = select(0)?
     }
     let mut processed = 0;
+    let mut changed = false;
     for (rowid, event) in events {
         authorize(c, s, clock, x)?;
         let id = Uuid::parse_str(&event).map_err(|_| Error::Storage)?;
@@ -702,6 +709,7 @@ pub(super) fn refresh(
             continue;
         }
         authorize_event_scope(s,&v)?;
+        let prior: (String, bool) = c.query_row("SELECT outcome,chain_ok FROM import_events WHERE event=?1", [&event], |r|Ok((r.get(0)?,r.get(1)?))).map_err(sql)?;
         let (outcome, chain) = match classify(c, &v) {
             Ok(result) => result,
             Err(Error::Integrity) => (Outcome::RejectedIntegrity, false),
@@ -712,6 +720,7 @@ pub(super) fn refresh(
             params![event, outcome.code(), chain],
         )
         .map_err(sql)?;
+        changed |= prior.0 != outcome.code() || prior.1 != chain;
         if g3 {
             c.execute(
                 "UPDATE import_g3_policy SET cursor=?1 WHERE singleton=1",
@@ -721,7 +730,7 @@ pub(super) fn refresh(
         }
         processed += 1;
     }
-    Ok(processed)
+    Ok((processed, changed))
 }
 pub(super) fn cursors(c: &Connection) -> Result<()> {
     let groups = {
@@ -771,6 +780,21 @@ pub(super) fn cursors(c: &Connection) -> Result<()> {
     Ok(())
 }
 impl SyncStore for CandidateSyncStore<'_> {
+    fn settle(&self, s: &VerifiedSession, clock: &dyn SyncClock, x: &Cancellation) -> Result<(usize, bool)> {
+        self.write(s, clock, x, |c| {
+            let result = refresh_batch(c, s, clock, x)?;
+            cursors(c)?;
+            Ok(result)
+        })
+    }
+    fn retained_receipt(&self, s: &VerifiedSession, id: Uuid, clock: &dyn SyncClock, x: &Cancellation) -> Result<Receipt> {
+        self.read(s, clock, x, |c| {
+            let e = ValidatedEvent::parse(load(c, id)?.ok_or(Error::Integrity)?)?;
+            authorize_event_scope(s, &e)?;
+            let outcome: String = c.query_row("SELECT e.outcome FROM import_events e JOIN import_receipts r ON r.event=e.event JOIN import_event_epochs a ON a.event=e.event WHERE e.event=?1 AND r.peer=?2 AND a.epoch=?3", params![id.to_string(),s.binding().peer.to_string(),s.binding().epoch], |r|r.get(0)).map_err(sql)?;
+            Ok(Receipt { identity: e.envelope().identity.clone(), outcome: Outcome::parse(&outcome)? })
+        })
+    }
     fn snapshot_capture(
         &self,
         s: &VerifiedSession,
@@ -959,9 +983,16 @@ impl SyncStore for CandidateSyncStore<'_> {
         x: &Cancellation,
     ) -> Result<Vec<Uuid>> {
         self.read(s,clock,x,|c|{
-        let mut q=c.prepare("SELECT DISTINCT dependency FROM import_pending WHERE dependency LIKE 'event:%' ORDER BY dependency LIMIT 32").map_err(sql)?;
-        let rows=q.query_map([],|r|r.get::<_,String>(0)).map_err(sql)?.collect::<rusqlite::Result<Vec<_>>>().map_err(sql)?;
-        rows.into_iter().map(|e|Uuid::parse_str(&e[6..]).map_err(|_|Error::Storage)).collect()
+        let mut q=c.prepare("SELECT DISTINCT p.event,p.dependency FROM import_pending p JOIN import_receipts r ON r.event=p.event JOIN import_event_epochs a ON a.event=p.event WHERE r.peer=?1 AND a.epoch=?2 AND p.dependency LIKE 'event:%' ORDER BY p.dependency,p.event LIMIT 32").map_err(sql)?;
+        let rows=q.query_map(params![s.binding().peer.to_string(),s.binding().epoch],|r|Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?))).map_err(sql)?.collect::<rusqlite::Result<Vec<_>>>().map_err(sql)?;
+        let mut missing=std::collections::BTreeSet::new();
+        for (event,dependency) in rows {
+            let event=Uuid::parse_str(&event).map_err(|_|Error::Storage)?;
+            let v=ValidatedEvent::parse(load(c,event)?.ok_or(Error::Storage)?)?;
+            authorize_event_scope(s,&v)?;
+            missing.insert(Uuid::parse_str(&dependency[6..]).map_err(|_|Error::Storage)?);
+        }
+        Ok(missing.into_iter().collect())
     })
     }
 }

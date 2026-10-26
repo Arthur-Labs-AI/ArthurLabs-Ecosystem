@@ -8,6 +8,7 @@ import org.json.JSONObject;
 @RunWith(AndroidJUnit4.class)
 public final class NativeIdentityBridgeTest {
     @Test public void r4_actual_owned_socket_selected_network_binding() { assertTrue(runScenario(47)); }
+    @Test public void r6_incremental_knowledge_history_bootstrap_reopen() { assertTrue(runScenario(48)); }
     private void explicitLanRunner() {
         org.junit.Assume.assumeTrue("true".equals(androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("arthurR4Lan")));
     }

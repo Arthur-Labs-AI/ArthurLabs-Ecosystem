@@ -9,6 +9,19 @@ use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
 pub(crate) trait SyncStore {
+    fn settle(
+        &self,
+        s: &VerifiedSession,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<(usize, bool)>;
+    fn retained_receipt(
+        &self,
+        s: &VerifiedSession,
+        id: Uuid,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<Receipt>;
     fn snapshot_capture(
         &self,
         s: &VerifiedSession,
@@ -122,7 +135,19 @@ pub(crate) struct SyncEngine<'a, S: SyncStore, T: AuthenticatedTransport, C: Syn
     pub needs_attention: bool,
     pub status: SyncStatus,
     blocked: Option<Error>,
-    bootstrap: Option<Uuid>,
+    // One already bounded/captured manifest and its next existing message.
+    // Never assemble a second full chunk vector or enqueue the entire image.
+    bootstrap: Option<(SnapshotExport, usize)>,
+    snapshot_pending: Option<Uuid>,
+    snapshot_done: Option<Uuid>,
+    // Session-only receipt/request accounting. Canonical bytes, dependencies,
+    // outcomes and restart progress remain solely in the existing SQLite ledger.
+    deferred: BTreeSet<Uuid>,
+    receipt_after: Option<Uuid>,
+    requested_dependencies: BTreeSet<Uuid>,
+    settle_left: usize,
+    settle_scan: usize,
+    settle_changed: bool,
 }
 impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S, T, C> {
     pub fn start(
@@ -151,6 +176,14 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             status: summary.status,
             blocked: None,
             bootstrap: None,
+            snapshot_pending: None,
+            snapshot_done: None,
+            deferred: BTreeSet::new(),
+            receipt_after: None,
+            requested_dependencies: BTreeSet::new(),
+            settle_left: 0,
+            settle_scan: 0,
+            settle_changed: false,
         };
         engine.send(Payload::Hello {
             version: 1,
@@ -162,40 +195,61 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
     }
     /// Cache a consistent source boundary now; disclose only after negotiation.
     pub fn bootstrap(&mut self, id: Uuid) -> Result<()> {
-        if self.bootstrap.is_some() {
+        if let Some(e) = self.blocked {
+            return Err(e);
+        }
+        if self.bootstrap.is_some() || self.snapshot_pending.is_some() {
             return Err(Error::Limit);
         }
-        if let Err(e) = self
+        let snapshot = match self
             .store
             .snapshot_capture(&self.session, id, self.clock, self.cancel)
         {
-            if matches!(
-                e,
-                Error::SnapshotTooLarge | Error::StorageLimited | Error::Storage
-            ) {
-                self.status = SyncStatus::StorageLimited;
-                self.needs_attention = true;
+            Ok(snapshot) => snapshot,
+            Err(e) => {
+                if matches!(
+                    e,
+                    Error::SnapshotTooLarge
+                        | Error::StorageLimited
+                        | Error::Storage
+                        | Error::CommitUncertain
+                        | Error::CommittedCleanupFailed
+                ) {
+                    self.status = SyncStatus::StorageLimited;
+                    self.needs_attention = true;
+                }
+                return Err(e);
             }
-            return Err(e);
-        }
-        self.bootstrap = Some(id);
+        };
+        self.bootstrap = Some((snapshot, 0));
         if self.negotiated {
             self.send_bootstrap()?;
         }
         Ok(())
     }
     fn send_bootstrap(&mut self) -> Result<()> {
-        let Some(id) = self.bootstrap.take() else {
+        let Some((snapshot, next)) = self.bootstrap.as_ref() else {
             return Ok(());
         };
-        let snapshot = self
-            .store
-            .snapshot_capture(&self.session, id, self.clock, self.cancel)?;
-        self.send(Payload::SnapshotOffer(snapshot.offer.clone()))?;
-        for chunk in snapshot.chunks() {
-            self.send(Payload::SnapshotChunk(chunk))?;
+        let done = *next == snapshot.offer.chunks + 1;
+        let id = snapshot.offer.id;
+        let payload = if *next == 0 {
+            Payload::SnapshotOffer(snapshot.offer.clone())
+        } else if done {
+            Payload::SnapshotPublish(snapshot.offer.clone())
+        } else {
+            Payload::SnapshotChunk(snapshot.chunk(*next - 1).ok_or(Error::Integrity)?)
+        };
+        self.send(payload)?;
+        if done {
+            self.bootstrap = None;
+            self.snapshot_pending = Some(id);
+            self.retry()?;
+            self.advertise()?;
+        } else if let Some((_, next)) = self.bootstrap.as_mut() {
+            *next += 1;
         }
-        self.send(Payload::SnapshotPublish(snapshot.offer))
+        Ok(())
     }
     fn send(&mut self, payload: Payload) -> Result<()> {
         self.session.check(self.clock, self.cancel)?;
@@ -225,8 +279,12 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
     /// Explicit reread after a local native commit on an already negotiated
     /// candidate session. Reuses existing bounded inventory and authorization.
     pub(crate) fn refresh(&mut self) -> Result<()> {
-        if let Some(e)=self.blocked { return Err(e); }
-        if !self.negotiated || self.advertised_next.is_some() { return Err(Error::Protocol); }
+        if let Some(e) = self.blocked {
+            return Err(e);
+        }
+        if !self.negotiated || self.advertised_next.is_some() {
+            return Err(Error::Protocol);
+        }
         self.advertised_after = None;
         self.advertise()
     }
@@ -268,10 +326,71 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
         }
         Ok(())
     }
+    fn settle_tick(&mut self) -> Result<bool> {
+        if self.settle_left > 0 {
+            let (processed, changed) = self.store.settle(&self.session, self.clock, self.cancel)?;
+            self.settle_left -= 1;
+            self.settle_scan -= 1;
+            self.settle_changed |= changed;
+            if changed {
+                self.receipt_after = None;
+            }
+            if processed == 0 || (self.settle_scan == 0 && !self.settle_changed) {
+                self.settle_left = 0;
+            } else if self.settle_scan == 0 {
+                self.settle_scan = MAX_EVENTS.div_ceil(REPROCESS_BATCH);
+                self.settle_changed = false;
+            }
+            return Ok(true);
+        }
+        let next = self
+            .deferred
+            .iter()
+            .copied()
+            .find(|id| self.receipt_after.is_none_or(|after| *id > after));
+        if let Some(id) = next {
+            self.receipt_after = Some(id);
+            let receipt =
+                self.store
+                    .retained_receipt(&self.session, id, self.clock, self.cancel)?;
+            if receipt.outcome != Outcome::DeferredDependency {
+                self.send(Payload::Receipt(receipt))?;
+                self.deferred.remove(&id);
+            }
+            return Ok(true);
+        }
+        let mut request = Vec::new();
+        for id in self.store.missing(&self.session, self.clock, self.cancel)? {
+            if !self.requested_dependencies.contains(&id)
+                && self
+                    .store
+                    .lookup(&self.session, id, self.clock, self.cancel)?
+                    .is_none()
+            {
+                if self.requested_dependencies.len() == MAX_EVENTS {
+                    return Err(Error::Limit);
+                }
+                self.requested_dependencies.insert(id);
+                request.push(id);
+                if request.len() == MAX_BATCH {
+                    break;
+                }
+            }
+        }
+        if !request.is_empty() {
+            self.send(Payload::Request(request))?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
     /// One bounded network message, with no network callback inside a SQL tx.
     pub fn tick(&mut self) -> Result<bool> {
         if self.cancel.cancelled() {
             self.assemblies.clear();
+            self.bootstrap = None;
+            self.snapshot_pending = None;
+            self.status = SyncStatus::Syncing;
+            self.needs_attention = true;
             return Err(Error::Cancelled);
         }
         if let Some(e) = self.blocked {
@@ -281,9 +400,19 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             // The last receipt describes one operation, not the complete
             // history. A later applied event cannot hide retained problems.
             let summary = self.store.summary(&self.session, self.clock, self.cancel)?;
-            if summary.needs_attention {
-                self.needs_attention = true;
+            self.needs_attention = summary.needs_attention;
+            if summary.needs_attention || summary.status == SyncStatus::CleanlyApplied {
                 self.status = summary.status;
+            }
+            if !summary.needs_attention
+                && (self.bootstrap.is_some()
+                    || self.snapshot_pending.is_some()
+                    || !self.in_flight.is_empty()
+                    || !self.assemblies.is_empty()
+                    || !self.deferred.is_empty()
+                    || self.settle_left > 0)
+            {
+                self.status = SyncStatus::Syncing;
             }
             Ok(worked)
         });
@@ -293,14 +422,21 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
                 Error::Integrity | Error::Protocol | Error::Limit => {
                     self.status = SyncStatus::RejectedIntegrity
                 }
-                Error::SnapshotTooLarge | Error::StorageLimited | Error::Storage => {
-                    self.status = SyncStatus::StorageLimited
+                Error::SnapshotTooLarge
+                | Error::StorageLimited
+                | Error::Storage
+                | Error::CommitUncertain
+                | Error::CommittedCleanupFailed => self.status = SyncStatus::StorageLimited,
+                Error::Disconnected | Error::Cancelled => {
+                    self.status = SyncStatus::Syncing;
                 }
                 _ => return result,
             }
             self.needs_attention = true;
             self.blocked = Some(e);
             self.assemblies.clear();
+            self.bootstrap = None;
+            self.snapshot_pending = None;
         }
         result
     }
@@ -310,7 +446,15 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             return Err(e);
         }
         let Some(message) = self.transport.receive()? else {
-            return Ok(false);
+            if self.negotiated && self.bootstrap.is_some() {
+                self.send_bootstrap()?;
+                return Ok(true);
+            }
+            return if self.negotiated {
+                self.settle_tick()
+            } else {
+                Ok(false)
+            };
         };
         let b = self.session.binding();
         if message.network != b.network
@@ -336,9 +480,12 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
                 return Err(Error::Protocol);
             }
             self.negotiated = true;
-            self.send_bootstrap()?;
-            self.retry()?;
-            self.advertise()?;
+            if self.bootstrap.is_some() {
+                self.send_bootstrap()?;
+            } else {
+                self.retry()?;
+                self.advertise()?;
+            }
             return Ok(true);
         }
         if !self.negotiated {
@@ -368,8 +515,17 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
                 self.send(Payload::SnapshotReceipt(receipt))?;
             }
             Payload::SnapshotReceipt(r) => {
+                if self.snapshot_pending != Some(r.offer.id)
+                    && self.snapshot_done != Some(r.offer.id)
+                {
+                    return Err(Error::Integrity);
+                }
                 self.store
                     .snapshot_receipt(&self.session, &r, self.clock, self.cancel)?;
+                if self.snapshot_pending == Some(r.offer.id) {
+                    self.snapshot_pending = None;
+                    self.snapshot_done = Some(r.offer.id);
+                }
                 self.status = r.outcome.into();
                 self.needs_attention = self
                     .store
@@ -451,6 +607,20 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
                         .summary(&self.session, self.clock, self.cancel)?
                         .needs_attention;
                     self.status = receipt.outcome.into();
+                    if receipt.outcome == Outcome::DeferredDependency {
+                        if self.deferred.len() == MAX_EVENTS && !self.deferred.contains(&id) {
+                            return Err(Error::Limit);
+                        }
+                        self.deferred.insert(id);
+                    } else {
+                        self.deferred.remove(&id);
+                    }
+                    if !self.deferred.is_empty() {
+                        self.settle_scan = MAX_EVENTS.div_ceil(REPROCESS_BATCH);
+                        self.settle_left = MAX_EVENTS * self.settle_scan;
+                        self.settle_changed = false;
+                        self.receipt_after = None;
+                    }
                     self.send(Payload::Receipt(receipt))?;
                 }
             }

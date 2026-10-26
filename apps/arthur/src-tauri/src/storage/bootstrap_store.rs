@@ -635,6 +635,14 @@ fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
         .cloned()
         .map(ValidatedEvent::parse)
         .collect::<Result<Vec<_>>>()?;
+    // Bounded borrowed indexes, not another history/projection. Avoid repeated
+    // full-image scans and UUID formatting for every facet of 2,048 rows.
+    // All original field/hash/provenance checks below remain in force.
+    let event_indices: BTreeMap<&str,usize> = validated.iter().enumerate().map(|(i,v)|(v.core().event_id.as_str(),i)).collect();
+    let mut row_index = BTreeMap::new();
+    for r in &image.rows {
+        if row_index.insert((r.entity.as_str(),r.key.clone()),r).is_some() { return Err(Error::Integrity); }
+    }
     let mut seen = BTreeSet::new();
     let mut local = BTreeSet::new();
     let mut proofs = BTreeSet::new();
@@ -689,10 +697,7 @@ fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
                     return Err(Error::Integrity);
                 }
                 let id = text("event")?;
-                let i = events
-                    .iter()
-                    .position(|e| e.identity.event.to_string() == id)
-                    .ok_or(Error::Integrity)?;
+                let i = *event_indices.get(id).ok_or(Error::Integrity)?;
                 if !image.cores[i].materialized || image.cores[i].outcome != "applied" {
                     return Err(Error::Integrity);
                 }
@@ -711,12 +716,7 @@ fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
                     .iter()
                     .find(|f| f.name == facet)
                     .ok_or(Error::Integrity)?;
-                let v = validated
-                    .iter()
-                    .find(|v| {
-                        v.envelope().identity.event.to_string() == text("event").unwrap_or("")
-                    })
-                    .ok_or(Error::Integrity)?;
+                let v = &validated[*event_indices.get(text("event")?).ok_or(Error::Integrity)?];
                 let after = v
                     .core()
                     .operations
@@ -753,11 +753,7 @@ fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
                 {
                     return Err(Error::Integrity);
                 }
-                let current = image
-                    .rows
-                    .iter()
-                    .find(|r| r.entity == entity.as_str() && r.key == key)
-                    .ok_or(Error::Integrity)?;
+                let current = row_index.get(&(entity.as_str(),key.clone())).ok_or(Error::Integrity)?;
                 let (_, record) = row(current)?;
                 if def.fields.iter().any(|f| record.get(*f) != after.get(*f)) {
                     return Err(Error::Integrity);
@@ -1108,7 +1104,7 @@ pub(super) fn receipt(
         Ok(())
     })
 }
-#[cfg(test)]
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests", debug_assertions)))]
 pub(crate) fn install(store: &super::capture_store::CaptureStore) -> Result<()> {
     let mut c = store.connection.lock().map_err(|_| Error::Storage)?;
     let tx = c.transaction().map_err(sql)?;

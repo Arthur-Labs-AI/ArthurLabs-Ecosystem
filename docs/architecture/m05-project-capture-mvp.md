@@ -464,3 +464,74 @@ runtime, scheduler, frontend signing or networking API is introduced.
 
 Storage evidence and exact verification commands/results are in readiness §30.
 Independent N1/N2/N3/N7 and G3–G7 decisions remain required. No E3B/main merge.
+
+## R6 — incremental convergence and bounded bootstrap
+
+R6 supersedes R5's incremental-convergence/maximum-bootstrap gaps above for the
+qualified scenarios. It keeps the existing candidate profile and every frozen
+canonical core, reducer and snapshot format. Complete `knowledge-v1-full` is
+still unapproved; no operation/actor policy was invented.
+
+The foreground engine now requests missing original event IDs through existing
+Request messages, checks each unavailable ID at most once per session, and
+drives the existing durable reprocessing cursor in unchanged 16-event batches.
+A full scan with no durable outcome/chain change stops. Productive scans can
+repeat only within the existing 256-event bound (at most 256 scans), always
+subject to the existing session deadline. Session-only deferred-receipt IDs
+and request accounting are capped at 256 each; all originals, pending reasons,
+outcomes and progress remain authoritative in SQLite. No durable queue, worker,
+dependency graph framework or second owner exists.
+
+After dependency arrival, the engine reads the actual committed outcome and
+issues the existing Receipt again for previously deferred events offered in
+that session. It never upgrades sender delivery from a Summary alone. Resolved
+attention clears; missing/unsupported/conflicting work remains visible. An
+interrupted attempt is not clean. Tests include two native origins, child-first
+TLS delivery, both owners reopening, cross-origin relationship/evidence
+dependencies and incremental convergence with **zero bootstrap units**. An
+offline original owner leaves its forwarded child durably pending and the
+foreground exchange quiesces without repeated dependency requests.
+
+Bootstrap now retains one bounded SnapshotExport and a scalar message cursor,
+sending one existing Offer/Chunk/Publish message per foreground tick instead
+of collecting/enqueuing the whole chunk vector. A scalar pending-offer ID keeps
+the sender Syncing until the matching durable SnapshotReceipt is validated and
+recorded; repeated receipts cannot complete a different pending offer. TLS assembly checks JSON
+completeness without allocating a partial typed Message repeatedly; receive()
+still performs strict typed validation before any use. Metadata verification
+uses bounded borrowed indexes over the already validated 64 cores / 2,048 rows,
+retaining every field, hash, actor-scope and provenance check. No ceiling was
+raised: 4 MiB bootstrap, 256 KiB chunks, 64 KiB AE01 records, 1 MiB serialized
+message/assembly and cumulative transport queue, eight queued messages, original
+5-second native work guards and original transport deadlines.
+
+The qualified near-cap native image is approximately 4,156,2xx bytes in 16
+chunks, including maximum Unicode captures. The exact 64-event / 2,048-row
+case is separate. Tests also interrupt staging, resend a duplicate chunk,
+reopen both owners and resume the exact cached manifest ID. Missing/corrupted
+chunks, wrong offers and event/row/byte overflow refuse without publication or
+an applied receipt. Resource/deadline rejection remains fail-closed; these tests
+do not grant G4 worst-case physical allocation approval.
+
+R6 separates ordinary pre-COMMIT Storage failure, CommitUncertain and
+CommittedCleanupFailed. The latter means SQLite COMMIT returned success and
+budget cleanup failed, not that the mutation rolled back. Both uncertain and
+committed-cleanup cases poison the adapter/owner for writes, send no receipt,
+and require reopening/reconciliation. Local applied progress already committed
+with real rows is authoritative; sender delivery does not advance without the
+durable receipt after retry. Physical tests inject actual journal cleanup and
+post-COMMIT max_page_count restoration failure, then verify exact originals,
+integrity/FKs, released I/O budgets and idempotent retry. The admitted transaction
+also covers foreground reprocessing after reverse-order staging.
+
+### Minimum G5 owner decisions
+
+| Decision | Security consequence / conservative default |
+| --- | --- |
+| Specify the authenticated historical actor/proof permitted to authorize terminal review/claim transitions, including whether legacy-attested decisions may change local authority. | A membership/origin grant alone must not approve a user's draft. Retain original decisions as unsupported; never call local review commands during import. |
+| Specify whether and under which explicit expected-head/owner authorization a foreign selection may supersede a locally authored head. | Keep the local head and retain foreign originals with unsupported/conflict attention until approved. Existing imported-owned exact-causal transitions remain supported. |
+
+Already approved native creation/revision/evidence and conservative D3/D4
+semantics are integrated. These two unresolved decisions require owner/security
+acceptance and compatibility review before any frozen-format extension. N1
+remains independently BLOCKED, and production remains v9/dormant/closed.

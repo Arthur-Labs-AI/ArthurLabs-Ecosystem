@@ -745,7 +745,7 @@ fn d3_16_17_actual_commit_failure_poisoning_and_new_entity_fanout_have_no_ack() 
                 &Cancellation::default()
             )
             .err(),
-        Some(Error::Storage)
+        Some(Error::CommitUncertain)
     );
     assert_eq!(f::state(&b.store), before);
     assert_eq!(

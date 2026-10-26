@@ -1,5 +1,7 @@
 //! R5: existing D3/D4 policies over the R1 TLS adapter. Qualification only.
 use super::*;
+#[path = "sync_r6_tests.rs"]
+mod r6;
 
 fn history_device(id: Uuid, other: Uuid) -> Peer {
     let p = device(id, other);
@@ -18,6 +20,9 @@ async fn history_exchange(
     session: u128,
     bootstrap: bool,
 ) -> [(SyncStatus, bool); 2] {
+    history_exchange_snapshot(a,b,ka,kb,session,bootstrap.then(Uuid::new_v4)).await
+}
+async fn history_exchange_snapshot(a:&Peer,b:&Peer,ka:&Fixture,kb:&Fixture,session:u128,bootstrap:Option<Uuid>) -> [(SyncStatus,bool);2] {
     let allowed = origins(a, b);
     let sa = CandidateSyncStore::synthetic(&a.store);
     let sb = CandidateSyncStore::synthetic(&b.store);
@@ -40,8 +45,8 @@ async fn history_exchange(
         &cancel,
     )
     .unwrap();
-    if bootstrap {
-        ea.bootstrap(Uuid::new_v4()).unwrap();
+    if let Some(id) = bootstrap {
+        ea.bootstrap(id).unwrap();
     }
     for _ in 0..512 {
         wire.transfer().await.unwrap();
@@ -201,7 +206,7 @@ fn r5_tls_multi_operation_commit_full_ioerr_no_receipt_restart_retry() {
                         .unwrap();
                 }
                 wire.transfer().await.unwrap();
-                assert_eq!(eb.tick(), Err(Error::Storage));
+                assert_eq!(eb.tick(), Err(Error::CommitUncertain));
                 assert_eq!(eb.status, SyncStatus::StorageLimited);
                 assert!(eb.needs_attention);
             })

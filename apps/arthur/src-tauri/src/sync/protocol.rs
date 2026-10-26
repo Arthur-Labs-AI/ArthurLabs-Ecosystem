@@ -19,6 +19,10 @@ pub(crate) enum Error {
     Limit,
     Cancelled,
     Storage,
+    /// COMMIT failed; authoritative state must be reconciled after reopening.
+    CommitUncertain,
+    /// SQLite COMMIT succeeded, but physical-budget cleanup did not.
+    CommittedCleanupFailed,
     ActivationPending,
     Disconnected,
     StorageLimited,

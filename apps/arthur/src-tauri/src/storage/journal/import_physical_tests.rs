@@ -356,3 +356,45 @@ pub(super) fn retry_crashed_import(target: &CaptureStore, root: &std::path::Path
     clean(target);
     clean(&source);
 }
+
+#[test]
+fn r6_import_successful_commit_cleanup_failure_is_explicit_and_idempotent_after_reopen() {
+    for restore_fault in [false,true] {
+    let (_source_dir,_,source)=fixture();
+    sync_store::install_candidate(&source,Uuid::new_v4(),Uuid::new_v4(),&[]).unwrap();
+    f::history(&source);
+    let events=sync_store::test_events(&source);
+    let (dir,vfs,target)=fixture();
+    let s=session(&target,&events);
+    let capacity=Arc::new(CapacitySwitch(AtomicU64::new(1024*MIB)));
+    let adapter=admitted(&target,capacity.clone());
+    retain(&adapter,&s,&events[0]).unwrap();
+    let guard = restore_fault.then(|| f::deny_post_commit_budget_restore(&target));
+    if !restore_fault { vfs.inject(Injection {class:Class::Journal,boundary:Boundary::Close,nth:1,code:ffi::SQLITE_IOERR_CLOSE}); }
+    let error=retain(&adapter,&s,&events[1]).err().expect("cleanup must block the receipt");
+    assert_eq!(target.query_i64_for_test("SELECT count(*) FROM knowledge_objects"),1,"SQLite COMMIT actually succeeded");
+    assert_eq!(target.query_i64_for_test("SELECT count(*) FROM import_g3_commits"),2);
+    assert_eq!(error,Error::CommittedCleanupFailed);
+    if let Some(g) = &guard { assert_eq!(g.hits(),1); }
+    drop(guard);
+    assert!(retain(&adapter,&s,&events[1]).is_err());
+    assert_eq!(vfs.counts().0,vfs.counts().1);
+    clean(&target);
+    let committed=state(&target);
+    drop(adapter);
+    let target=reopen(&dir,&vfs,target,&committed);
+    let adapter=admitted(&target,capacity);
+    assert_eq!(retain(&adapter,&s,&events[1]).unwrap().outcome,Outcome::CleanlyApplied);
+    assert_eq!(state(&target),committed);
+    // Newly wired foreground settling uses the very same admitted transaction,
+    // including when later original events were staged in reverse order.
+    assert_eq!(retain(&adapter,&s,&events[4]).unwrap().outcome,Outcome::DeferredDependency);
+    retain(&adapter,&s,&events[3]).unwrap();
+    retain(&adapter,&s,&events[2]).unwrap();
+    for _ in 0..4 { adapter.settle(&s,&Clock,&Cancellation::default()).unwrap(); }
+    assert_eq!(target.query_i64_for_test("SELECT count(*) FROM import_events WHERE outcome='applied'"),5);
+    assert_eq!(target.query_i64_for_test("SELECT max(applied) FROM import_progress"),5);
+    assert_eq!(vfs.counts().0,vfs.counts().1);
+    clean(&target);
+    }
+}

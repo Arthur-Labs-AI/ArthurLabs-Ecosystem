@@ -52,6 +52,12 @@ pub(crate) struct SnapshotExport {
     pub bytes: Vec<u8>,
 }
 impl SnapshotExport {
+    pub fn chunk(&self, index: usize) -> Option<SnapshotChunk> {
+        let start = index.checked_mul(CHUNK)?;
+        let bytes = self.bytes.get(start..self.bytes.len().min(start.checked_add(CHUNK)?))?;
+        if bytes.is_empty() { return None; }
+        Some(SnapshotChunk { offer: self.offer.clone(), index, hash: codec::journal_event_hash(bytes), bytes: bytes.to_vec() })
+    }
     pub fn chunks(&self) -> Vec<SnapshotChunk> {
         self.bytes
             .chunks(CHUNK)

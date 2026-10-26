@@ -2792,3 +2792,180 @@ VerifiedSession, automatic network startup, second SQLite owner or E3B/main merg
 - `apps/arthur/src-tauri/src/sync/protocol.rs`
 - `docs/architecture/m05-activation-readiness.md`
 - `docs/architecture/m05-project-capture-mvp.md`
+
+## 31. R6 — knowledge convergence and release integrity (PARTIAL)
+
+Scope: `feature/nodes-integration`, accepted R5 parent
+`6c5310dc2a092b47678434a091c64e2f9391757f`. The R6 commit containing this
+section is identified by Git and its completed check run, rather than a
+self-referential SHA. Production remains schema v9/dormant, ClosedTrust/ClosedLan,
+with closed PAKE/TLS/LAN factories. No E3B or main merge is authorized here.
+
+### Implemented boundaries and evidence
+
+The existing foreground SyncEngine drives the existing SQLite import cursor in
+16-event transactions. It stops after a stable scan, caps productive scans at
+256, and retains the existing session deadline. Session-only receipt/request
+sets contain at most 256 IDs each. Missing original IDs use existing Request
+messages and are requested at most once per session. A newly resolved event
+gets an updated Receipt read from committed SQLite state; a Summary cannot
+advance delivery. Canonical originals, pending reasons, outcomes, progress and
+restart state remain owned exclusively by the existing CaptureStore/SQLite
+owner. The sets/cursors are bounded scheduling state, not another ledger.
+
+`sync_r6_tests.rs` proves, over the existing authenticated TLS sockets:
+
+- Native histories from two origins, a revision child delivered before its
+  parents, project/capture/KO/revision/evidence/relationship dependencies,
+  both owners reopened, and exact supported rows/original identities/bytes
+  converging incrementally with **zero bootstrap units** and cleared attention.
+- A third, offline original owner: its forwarded child remains durable,
+  DeferredDependency/attention survives reopen, applied progress stays zero,
+  and foreground work quiesces instead of requesting indefinitely.
+- A published bootstrap without its durable receipt stays Syncing even when
+  the sender already has applied imported history; disconnect requires attention.
+  Existing R5 cases still cover unsupported decisions, local-head conflicts,
+  later unrelated success, duplicate receipts and integrity/trust rejection.
+
+Bootstrap emits one existing Offer/Chunk/Publish per foreground tick from one
+bounded captured export. It no longer collects/enqueues every chunk. A scalar
+pending offer remains until a matching validated durable receipt; duplicate
+receipts cannot complete another offer. TLS assembly checks JSON completeness
+without repeatedly allocating a typed payload; receive still strictly decodes
+the complete Message. Bounded borrowed indexes remove repeated full-image
+metadata scans; all provenance/hash/field/actor checks remain.
+
+The near-cap native image was **4,156,221 bytes / 16 chunks** in the final
+focused run (UUID-dependent encoding makes a few bytes vary). It includes
+maximum 20,000-character Unicode captures. A separate valid native image has
+**64 events and exactly 2,048 rows**. Staging interruption, duplicate chunk,
+both-owner reopen and resume of the exact manifest ID pass. Missing chunk,
+wrong offer/hash, and 65-event / 2,049-row / byte-overflow images refuse without
+domain publication or applied receipt. Existing corruption/replay/assembly and
+record/queue overflow cases remain in the full suite. This is near-byte-cap
+execution evidence, not an exactly 4,194,304-byte native-image fixture.
+
+Ceilings are unchanged: bootstrap 4 MiB, chunk 256 KiB, AE01 record 64 KiB,
+serialized message/assembly and cumulative transport queue 1 MiB, eight queued
+messages, native work guard five seconds, and existing transport/session
+deadlines. No new wire format, importer, owner, worker or networking framework.
+
+Storage now distinguishes pre-COMMIT failure, **CommitUncertain** and
+**CommittedCleanupFailed**. The latter proves SQLite COMMIT returned success;
+it does not assert rollback. Cleanup still checks I/O and attempts pager-limit
+restoration. Failure poisons the owner/adapter and blocks receipts/further
+writes. Actual journal-close IOERR and post-COMMIT max_page_count restoration
+refusal tests preserve committed originals, materialized rows and G3 proofs,
+release physical claims, reopen with integrity/FKs intact and retry idempotently.
+The admitted transaction also processes later reverse-order originals.
+The TLS restore-fault test proves no ACK is emitted and sender applied delivery
+does not advance until reopen/retry. Local import_progress committed atomically
+with the real applied rows remains authoritative; it is distinct from sender
+delivery. Existing FULL/IOERR/COMMIT regressions remain. Four earlier assertions
+and shared TLS checks now expect the narrower CommitUncertain for actual COMMIT
+failure; all rollback/poisoning/no-receipt assertions are preserved.
+
+G3 evidence covers tested atomic integration/recovery, including those cleanup
+boundaries. **G4 remains UnverifiedBounds**: observed main/journal extents are
+measurements, not universal maxima. Maximum staging, temporary serialization,
+journal/recovery allocations across devices and adverse disk states still need
+independently accepted bounds. Large TLS fixtures use the existing synthetic
+candidate admission; they do not approve production physical admission.
+
+### Decisions still required
+
+| Gate | Conservative behavior and smallest decision |
+| --- | --- |
+| G5 historical decisions | Specify authenticated historical actor/proof for terminal review/claim transitions, including legacy attestation. Retain unsupported originals; origin membership alone never executes a local approval. |
+| G5 selected heads | Specify explicit expected-head/owner authorization before a foreign selection can replace a locally authored head. Preserve the local head and retained unsupported/conflict evidence. Existing permitted imported-owned causal transitions remain supported. |
+| N1 | BLOCKED. Current locked qualification closure remains opaque-ke 4.0.1 / elliptic-curve 0.13.8 / crypto-bigint 0.5.5. OSV still reports RUSTSEC-2026-0387. No compatible upstream remediation/interoperability proof or independent acceptance was supplied. |
+| Release | N1/N2/N3/N7 and G3–G7 approvals, physical Windows–Android LAN and actual release packaging remain required. Debug execution cannot activate production. |
+
+The [RustSec advisory](https://rustsec.org/advisories/RUSTSEC-2026-0387.html)
+lists a patched crypto-bigint line at 0.7.6; that is not a compatible replacement
+for the locked 0.5 dependency contract. The reviewed
+[upstream opaque-ke manifest](https://github.com/facebook/opaque-ke/blob/main/Cargo.toml)
+still uses the elliptic-curve 0.13 / voprf 0.5 family. The R5 independent-review
+package remains applicable, with these R6 storage/convergence results added.
+Static selected-suite reachability is evidence only, never security approval.
+No fork, override, suppression, PAKE replacement or self-approval was introduced.
+
+### Executed verification
+
+Windows Rust 1.99.1 / Node 24.13.1. Existing manifest and commands from §30;
+focused filter is `r6_`. Logs are synthetic qualification data in
+`%TEMP%/arthur-r6-*.log`.
+
+| Gate | Actual R6 evidence |
+| --- | --- |
+| Full locked/offline native | 1,454 PASS / 0 FAIL / 26 ignored, 603.57 s, before the final outstanding-snapshot-receipt regression/fix. Final commit full-suite result must be read from hosted CI below. |
+| Final focused R6 | **10 PASS / 0 FAIL**, 66.77 s, including admitted cleanup/reprocessing and shared CNG/Keystore scenario. |
+| Architecture | **88 PASS / 0 FAIL** (`npm run test:architecture`). |
+| Frontend | **561 PASS**, typecheck and production web build PASS (`npm run arthur:check`); existing bundle-size warning. |
+| Default Windows | Locked/offline `cargo check --lib` PASS after the final engine fix. |
+| Dependency isolation | Four actual Windows/Android default/qualification graphs PASS. |
+| OSV | 69 packages scanned; one crypto-bigint advisory, still BLOCKED for N1. |
+| Android debug | **49 PASS / 0 FAIL / 0 skipped**, 271.503 s; separate restart prepare/reopen **1 + 1 PASS**. API 36.1 x86_64 emulator, Android Keystore/native TLS. New shared history case passed in 5.374 s. Default APK restoration/isolation is checked separately below. |
+| Hosted CI | Existing `.github/workflows/m05.yml` unchanged. The final commit requires a completed hosted run; read its check result after push. |
+| Physical LAN / release artifacts / G4 | UNVERIFIED / UNVERIFIED / UnverifiedBounds. |
+
+Development verification first reproduced child-first non-convergence, large
+bootstrap enqueue/guard failures and committed-cleanup ambiguity. The final
+receipt regression reproduced CleanlyApplied before ACK, then passed after
+scalar pending-offer accounting. A test link attempted during an already-running
+Windows test executable was rejected by the linker; the isolated rerun reproduced
+the behavioral failure normally. Guard limits and existing durable assertions
+were not relaxed. Resource-heavy Android/native runs were separated.
+
+Android used the existing `gen/android/verify-identity.ps1 -Serial emulator-5554`,
+JBR, SDK and NDK 29.0.14206865, and the existing dedicated `.identitytest` APK.
+The first compile correctly exposed test-only fixture installers; the same
+history/D4/bootstrap installers are now also available only to the existing
+Android debug qualification feature. No production migration caller was added.
+The shared case checks native canonical byte/row parity, deferred-child receipt
+recovery, bootstrap, both-owner reopen and Keystore TLS on Android; its same
+compiled scenario passed Windows CNG. It is not a simultaneous physical
+Windows–Android exchange. Android maximum-byte bootstrap and physical LAN remain
+UNVERIFIED. Evidence: `arthur-r6-android-final.log`, copied
+`arthur-r6-android-results.xml` (2026-10-26T18:23:55 UTC), and feature/default
+export/manifest logs in the system temporary directory. Feature instrumentation
+still has exactly the existing four security JNI exports; no new dispatcher.
+
+The supported default `tauri android init` and x86_64 debug APK build passed
+after instrumentation. Generated Gradle configuration is restored with no diff.
+Apkanalyzer confirms `dev.kaloyan.arthur`, the existing INTERNET/RECORD_AUDIO and
+app-scoped dynamic-receiver permission only; no identitytest suffix,
+ACCESS_NETWORK_STATE or ACCESS_LOCAL_NETWORK. LLVM nm on both the final default
+target library and the library extracted from the actual APK finds exactly the
+two existing security exports (install/networkChanged), no test/restart dispatcher
+and no native_io_lab/TLS-qualification/cross-device-qualification symbols. The
+default APK was not installed or activated. This is a debug APK build/isolation
+check, not release artifact qualification.
+
+### R6 changed-file manifest
+
+- `apps/arthur/src-tauri/gen/android/app/src/androidTest/java/dev/kaloyan/arthur/security/NativeIdentityBridgeTest.java`
+- `apps/arthur/src-tauri/gen/android/qualification-network/src/androidTest/java/dev/kaloyan/arthur/security/NativeIdentityBridgeTest.java`
+- `apps/arthur/src-tauri/src/storage/bootstrap_store.rs`
+- `apps/arthur/src-tauri/src/storage/journal/g3.rs`
+- `apps/arthur/src-tauri/src/storage/journal/import_physical_tests.rs`
+- `apps/arthur/src-tauri/src/storage/journal/sync_fixtures.rs`
+- `apps/arthur/src-tauri/src/storage/journal/tls_qualification.rs`
+- `apps/arthur/src-tauri/src/storage/security_android_instrumentation.rs`
+- `apps/arthur/src-tauri/src/storage/sync_d3_tests.rs`
+- `apps/arthur/src-tauri/src/storage/sync_d4_tests.rs`
+- `apps/arthur/src-tauri/src/storage/sync_history_tls_tests.rs`
+- `apps/arthur/src-tauri/src/storage/sync_r6_tests.rs`
+- `apps/arthur/src-tauri/src/storage/sync_store.rs`
+- `apps/arthur/src-tauri/src/storage/sync_tests.rs`
+- `apps/arthur/src-tauri/src/sync/bootstrap.rs`
+- `apps/arthur/src-tauri/src/sync/engine.rs`
+- `apps/arthur/src-tauri/src/sync/protocol.rs`
+- `apps/arthur/src-tauri/src/sync/security/tls_socket_lab.rs`
+- `docs/architecture/m05-activation-readiness.md`
+- `docs/architecture/m05-project-capture-mvp.md`
+
+The smallest next implementation step remains the explicit G5 owner decisions
+above, followed only by their approved transitions in the existing reducer/import
+path. Independently accepted G4/N1 and platform/release evidence remain
+prerequisites to production activation.
