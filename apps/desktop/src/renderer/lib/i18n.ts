@@ -364,6 +364,56 @@ function translateCore(trimmed: string): string {
     }
   }
 
+  // Interpolated sentences render as a single text node (template literal
+  // in JSX), so they never match the dictionary and need frame handlers.
+  // Dynamic values (distro names, model ids, sizes) pass through untranslated.
+  const reclaimBodyMatch =
+    /^Sentry will stop its runtime and shut down WSL to compact the (.+) disk\. Save work and close other applications using WSL, including Docker and terminals\. If another distribution is running, Sentry will refuse\. Windows will request administrator approval\. Keep Sentry open until compaction finishes\. Your files are kept, and the disk can grow again as needed\. The amount reclaimed may be zero\.$/.exec(
+      trimmed,
+    );
+  if (reclaimBodyMatch !== null) {
+    return `Sentry ще спре средата за изпълнение и ще изключи WSL, за да компактира диска ${reclaimBodyMatch[1] ?? ''}. Запазете работата си и затворете другите приложения, използващи WSL, включително Docker и терминали. Ако работи друга дистрибуция, Sentry ще откаже. Windows ще поиска администраторско одобрение. Дръжте Sentry отворен, докато компактирането завърши. Файловете ви се запазват, а дискът може да порасне отново при нужда. Освободеното количество може да е нула.`;
+  }
+
+  const reclaimedMatch =
+    /^Reclaimed ([\d.]+ GiB) from the (.+) disk\. Windows drive free: ([\d.]+ GiB)\.( Sentry reconnected\.)?$/.exec(
+      trimmed,
+    );
+  if (reclaimedMatch !== null) {
+    return `Освободени ${reclaimedMatch[1] ?? ''} от диска ${reclaimedMatch[2] ?? ''}. Свободно място на Windows устройството: ${reclaimedMatch[3] ?? ''}.${reclaimedMatch[4] !== undefined ? ' Sentry се свърза отново.' : ''}`;
+  }
+
+  const savedModelMatch =
+    /^Saved model “(.+)” is not in the current list\. It is preserved — select a listed model above or keep this custom id\.$/.exec(
+      trimmed,
+    );
+  if (savedModelMatch !== null) {
+    return `Запазеният модел „${savedModelMatch[1] ?? ''}“ не е в текущия списък. Запазен е — изберете модел от списъка по-горе или задръжте този потребителски идентификатор.`;
+  }
+
+  const legacyNoteMatch = /^(\S+) is a (.+)\. Your saved value is preserved\.$/.exec(trimmed);
+  if (legacyNoteMatch !== null) {
+    return `${legacyNoteMatch[1] ?? ''} е ${legacyNoteMatch[2] ?? ''}. Запазената стойност е съхранена.`;
+  }
+
+  const savedProviderMatch =
+    /^Saved provider “(.+)” is unrecognized\. It is preserved — select a supported provider above before saving\.$/.exec(
+      trimmed,
+    );
+  if (savedProviderMatch !== null) {
+    return `Запазеният доставчик „${savedProviderMatch[1] ?? ''}“ е неразпознат. Запазен е — изберете поддържан доставчик по-горе преди запазване.`;
+  }
+
+  const keepSavedMatch = /^Keep saved “(.+)” \(unrecognized\)$/.exec(trimmed);
+  if (keepSavedMatch !== null) {
+    return `Задръж запазеното „${keepSavedMatch[1] ?? ''}“ (неразпознато)`;
+  }
+
+  const activeUpstreamMatch = /^Active upstream: (.+)$/.exec(trimmed);
+  if (activeUpstreamMatch !== null) {
+    return `Активен доставчик: ${activeUpstreamMatch[1] ?? ''}`;
+  }
+
   return trimmed;
 }
 

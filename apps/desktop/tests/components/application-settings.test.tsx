@@ -165,6 +165,82 @@ describe('Application settings & localization', () => {
     );
     expect(translateText('Preparation — Observed', 'bg')).toBe('Подготовка — Наблюдавано');
     expect(translateText('OpenCode — main agent', 'bg')).toBe('OpenCode — main agent');
+    expect(translateText('Reclaim Windows disk space', 'bg')).toBe(
+      'Освободи дисково пространство в Windows',
+    );
+    expect(translateText('Reclaim Windows disk space?', 'bg')).toBe(
+      'Освобождаване на дисково пространство в Windows?',
+    );
+    expect(translateText('Shut down WSL and reclaim', 'bg')).toBe(
+      'Изключи WSL и освободи мястото',
+    );
+    expect(translateText('Reclaiming…', 'bg')).toBe('Освобождаване…');
+    expect(
+      translateText(
+        'Stopping the runtime, reclaiming disk space, then reconnecting. This may take several minutes.',
+        'bg',
+      ),
+    ).toBe(
+      'Спиране на средата, освобождаване на дисково място и повторно свързване. Може да отнеме няколко минути.',
+    );
+    expect(
+      translateText(
+        'Compaction finished. Reconnect failed; restart Sentry and check Environment.',
+        'bg',
+      ),
+    ).toBe(
+      'Компактирането завърши. Повторното свързване се провали; рестартирайте Sentry и проверете Средата.',
+    );
+    expect(translateText('Copied', 'bg')).toBe('Копирано');
+    expect(
+      translateText(
+        'Sentry will stop its runtime and shut down WSL to compact the Ubuntu disk. Save work and close other applications using WSL, including Docker and terminals. If another distribution is running, Sentry will refuse. Windows will request administrator approval. Keep Sentry open until compaction finishes. Your files are kept, and the disk can grow again as needed. The amount reclaimed may be zero.',
+        'bg',
+      ),
+    ).toBe(
+      'Sentry ще спре средата за изпълнение и ще изключи WSL, за да компактира диска Ubuntu. Запазете работата си и затворете другите приложения, използващи WSL, включително Docker и терминали. Ако работи друга дистрибуция, Sentry ще откаже. Windows ще поиска администраторско одобрение. Дръжте Sentry отворен, докато компактирането завърши. Файловете ви се запазват, а дискът може да порасне отново при нужда. Освободеното количество може да е нула.',
+    );
+    expect(
+      translateText(
+        'Reclaimed 1.16 GiB from the Ubuntu disk. Windows drive free: 86.69 GiB. Sentry reconnected.',
+        'bg',
+      ),
+    ).toBe(
+      'Освободени 1.16 GiB от диска Ubuntu. Свободно място на Windows устройството: 86.69 GiB. Sentry се свърза отново.',
+    );
+    expect(
+      translateText('Reclaimed 0.00 GiB from the Debian disk. Windows drive free: 10.00 GiB.', 'bg'),
+    ).toBe('Освободени 0.00 GiB от диска Debian. Свободно място на Windows устройството: 10.00 GiB.');
+    expect(
+      translateText(
+        'Saved model “my-custom-7b” is not in the current list. It is preserved — select a listed model above or keep this custom id.',
+        'bg',
+      ),
+    ).toBe(
+      'Запазеният модел „my-custom-7b“ не е в текущия списък. Запазен е — изберете модел от списъка по-горе или задръжте този потребителски идентификатор.',
+    );
+    expect(
+      translateText(
+        'deepseek-v4-flash is a legacy alias of deepseek-flash. Your saved value is preserved.',
+        'bg',
+      ),
+    ).toBe('deepseek-v4-flash е legacy alias of deepseek-flash. Запазената стойност е съхранена.');
+    expect(
+      translateText(
+        'Saved provider “custom” is unrecognized. It is preserved — select a supported provider above before saving.',
+        'bg',
+      ),
+    ).toBe(
+      'Запазеният доставчик „custom“ е неразпознат. Запазен е — изберете поддържан доставчик по-горе преди запазване.',
+    );
+    expect(translateText('Keep saved “custom” (unrecognized)', 'bg')).toBe(
+      'Задръж запазеното „custom“ (неразпознато)',
+    );
+    expect(translateText('Active upstream: opencode-go · kimi-k3', 'bg')).toBe(
+      'Активен доставчик: opencode-go · kimi-k3',
+    );
+    expect(translateText('Updating project', 'bg')).toBe('Обновяване на проекта');
+    expect(translateText('Cancel update', 'bg')).toBe('Прекъсни обновяването');
     expect(
       translateText(
         'Review agent details and Environment before deliberately starting another run.',
