@@ -288,6 +288,7 @@
   "Copied": "Copied",
   "Use suggested path": "Use suggested path",
   "Suggested OpenCode path derived from your other executable settings.": "Suggested OpenCode path derived from your other executable settings.",
+  "Suggested OpenCode path from runtime detection.": "Suggested OpenCode path from runtime detection.",
   "Connect the runtime and finish active QA before reclaiming space.": "Connect the runtime and finish active QA before reclaiming space.",
   "Details": "Details",
   "Export JSON": "Export JSON",

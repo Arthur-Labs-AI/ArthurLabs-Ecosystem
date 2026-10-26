@@ -9,6 +9,7 @@ import {
   modelsForOpenCodeMode,
   resolveOpenCodeModelMode,
   stripKnownOpenCodePrefix,
+  resolveOpenCodeBinarySuggestion,
   suggestManagedOpenCodeBinary,
 } from "../../src/renderer/lib/provider-models.js";
 
@@ -98,5 +99,24 @@ describe("provider model catalogs", () => {
         { name: "SENTRY_GLM_BINARY", configured: true, hint: "C:\\tools\\claude.exe" },
       ]),
     ).toBeUndefined();
+  });
+
+  it("prefers live detection over the sibling heuristic", () => {
+    const sibling = { name: "SENTRY_DEEPSEEK_BINARY", configured: true, hint: "/home/merte/.local/share/sentry/tools/deepseek/bin/dsh" };
+    expect(
+      resolveOpenCodeBinarySuggestion({ path: "/opt/opencode/bin/opencode", available: true }, [sibling]),
+    ).toEqual({ path: "/opt/opencode/bin/opencode", source: "detected" });
+    // Unavailable detection (managed default with nothing installed) falls back.
+    expect(
+      resolveOpenCodeBinarySuggestion({ path: "/home/merte/.local/share/sentry/tools/opencode/node_modules/.bin/opencode", available: false }, [sibling]),
+    ).toEqual({
+      path: "/home/merte/.local/share/sentry/tools/opencode/node_modules/.bin/opencode",
+      source: "sibling",
+    });
+    // Garbage detection falls back too.
+    expect(
+      resolveOpenCodeBinarySuggestion({ path: "C:\\tools\\opencode.exe", available: true }, [sibling])?.source,
+    ).toBe("sibling");
+    expect(resolveOpenCodeBinarySuggestion(undefined, [])).toBeUndefined();
   });
 });

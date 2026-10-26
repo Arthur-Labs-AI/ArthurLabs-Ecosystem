@@ -57,6 +57,39 @@ function wslHomePrefix(value: string): string | undefined {
  * managed-install layout, never the sibling's own path. Returns undefined
  * when no sibling carries a usable `/home/<user>` prefix.
  */
+/** Live runtime detection of the OpenCode executable (from the doctors). */
+export interface DetectedOpenCodeBinary {
+  readonly path: string;
+  readonly available: boolean;
+}
+
+export interface OpenCodeBinarySuggestion {
+  readonly path: string;
+  readonly source: 'detected' | 'sibling';
+}
+
+function isUsableLinuxPath(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.startsWith('/') && !/\s/.test(trimmed);
+}
+
+/**
+ * Prefer live runtime detection (only when the binary is actually
+ * available — the doctors fall back to the managed default path even when
+ * nothing is installed); otherwise fall back to the sibling-home
+ * heuristic. Returns undefined when neither yields a usable path.
+ */
+export function resolveOpenCodeBinarySuggestion(
+  detected: DetectedOpenCodeBinary | undefined,
+  statuses: ReadonlyArray<BinaryStatusHint>,
+): OpenCodeBinarySuggestion | undefined {
+  if (detected?.available === true && isUsableLinuxPath(detected.path)) {
+    return { path: detected.path.trim(), source: 'detected' };
+  }
+  const sibling = suggestManagedOpenCodeBinary(statuses);
+  return sibling === undefined ? undefined : { path: sibling.path, source: 'sibling' };
+}
+
 export function suggestManagedOpenCodeBinary(
   statuses: ReadonlyArray<BinaryStatusHint>,
 ): { readonly path: string; readonly from: string } | undefined {

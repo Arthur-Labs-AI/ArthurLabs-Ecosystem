@@ -11,9 +11,9 @@ import {
   OPENCODE_ZEN_MODELS,
   ZAI_GLM_MODELS,
   modelsForOpenCodeMode,
+  resolveOpenCodeBinarySuggestion,
   resolveOpenCodeModelMode,
   stripKnownOpenCodePrefix,
-  suggestManagedOpenCodeBinary,
 } from '../lib/provider-models.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
@@ -161,6 +161,22 @@ export function Providers(): React.JSX.Element {
       return result as ProviderStatus[];
     },
   });
+  const environment = useQuery({
+    queryKey: ['environment'],
+    queryFn: () => sentryApi().doctors.environment(),
+  });
+  const environmentStacks = (
+    environment.data as
+      | { agentStacks?: Array<{ id?: string; executionPath?: string; binaryAvailable?: boolean }> }
+      | undefined
+  )?.agentStacks;
+  const detectedOpenCodeBinary = (():
+    | { readonly path: string; readonly available: boolean }
+    | undefined => {
+    const stack = environmentStacks?.find((s) => s.id === 'stack_opencode_main');
+    if (stack?.executionPath === undefined || stack.executionPath === '') return undefined;
+    return { path: stack.executionPath, available: stack.binaryAvailable === true };
+  })();
   const refresh = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['providers'] });
     void queryClient.invalidateQueries({ queryKey: ['environment'] });
@@ -339,6 +355,7 @@ export function Providers(): React.JSX.Element {
         <HarnessBinaryCard
           statuses={statuses.isError ? [] : (statuses.data ?? [])}
           statusPending={statuses.isLoading}
+          detectedOpenCodeBinary={detectedOpenCodeBinary}
           values={values}
           setValues={setValues}
           onSave={(name, value) => save.mutate({ name, value })}
@@ -1028,11 +1045,16 @@ export function HarnessBinaryCard(props: {
   readonly clearPending: boolean;
   readonly onError: (e: unknown) => void;
   readonly statusPending?: boolean;
+  /** Live-detected OpenCode executable from the runtime doctors (optional). */
+  readonly detectedOpenCodeBinary?: { readonly path: string; readonly available: boolean } | undefined;
 }): React.JSX.Element {
   const looksWindowsPath = (value: string): boolean => /^[A-Za-z]:[\\/]/.test(value.trim());
-  // Managed OpenCode path suggestion, reusing the WSL home directory from a
-  // sibling saved executable setting (only the username is taken from it).
-  const openCodeSuggestion = suggestManagedOpenCodeBinary(props.statuses);
+  // OpenCode path suggestion: live runtime detection first (only when the
+  // binary is actually available), sibling-home heuristic as fallback.
+  const openCodeSuggestion = resolveOpenCodeBinarySuggestion(
+    props.detectedOpenCodeBinary,
+    props.statuses,
+  );
   const openCodeDraft = props.values['SENTRY_OPENCODE_BINARY'] ?? '';
   const openCodeSaved = props.statuses.find((s) => s.name === 'SENTRY_OPENCODE_BINARY');
   const autoFilledRef = React.useRef(false);
@@ -1125,7 +1147,9 @@ export function HarnessBinaryCard(props: {
             ) : null}
             {suggestion !== undefined ? (
               <p className="metadata" style={{ margin: '4px 0 0' }}>
-                Suggested OpenCode path derived from your other executable settings.
+                {suggestion.source === 'detected'
+                  ? 'Suggested OpenCode path from runtime detection.'
+                  : 'Suggested OpenCode path derived from your other executable settings.'}
               </p>
             ) : null}
             {showSuggestion && suggestion !== undefined ? (

@@ -293,6 +293,7 @@
   "Copied": "Копирано",
   "Use suggested path": "Използвай предложения път",
   "Suggested OpenCode path derived from your other executable settings.": "Предложен път за OpenCode, изведен от другите настройки за изпълними файлове.",
+  "Suggested OpenCode path from runtime detection.": "Предложен път за OpenCode от проверката на средата за изпълнение.",
   "Connect the runtime and finish active QA before reclaiming space.": "Свържете средата и изчакайте активните QA изпълнения да приключат преди освобождаване на място.",
   "Details": "Детайли",
   "Export JSON": "Експорт JSON",

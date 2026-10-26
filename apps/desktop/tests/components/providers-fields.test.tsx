@@ -92,6 +92,7 @@ describe('Providers OpenCode executable suggestion', () => {
       source: string;
       hint: string;
     }>,
+    detected?: { path: string; available: boolean },
   ) {
     function Wrapper(): React.JSX.Element {
       const [values, setValues] = React.useState<Record<string, string>>({});
@@ -106,6 +107,7 @@ describe('Providers OpenCode executable suggestion', () => {
             savePending={false}
             clearPending={false}
             onError={() => undefined}
+            detectedOpenCodeBinary={detected}
           />
         </MemoryRouter>
       );
@@ -153,5 +155,29 @@ describe('Providers OpenCode executable suggestion', () => {
     expect(
       screen.queryByText('Suggested OpenCode path derived from your other executable settings.'),
     ).toBeNull();
+  });
+
+  it('prefers live detection over the sibling heuristic', async () => {
+    const detected = '/opt/opencode/bin/opencode';
+    mountCard([DEEPSEEK_SAVED], { path: detected, available: true });
+    const input = (await screen.findByLabelText(
+      'Value for SENTRY_OPENCODE_BINARY',
+    )) as HTMLInputElement;
+    await waitFor(() => expect(input.value).toBe(detected));
+    expect(screen.getByText('Suggested OpenCode path from runtime detection.')).toBeDefined();
+    expect(
+      screen.queryByText('Suggested OpenCode path derived from your other executable settings.'),
+    ).toBeNull();
+  });
+
+  it('falls back to the sibling path when detection is unavailable', async () => {
+    mountCard([DEEPSEEK_SAVED], { path: SUGGESTED, available: false });
+    const input = (await screen.findByLabelText(
+      'Value for SENTRY_OPENCODE_BINARY',
+    )) as HTMLInputElement;
+    await waitFor(() => expect(input.value).toBe(SUGGESTED));
+    expect(
+      screen.getByText('Suggested OpenCode path derived from your other executable settings.'),
+    ).toBeDefined();
   });
 });
