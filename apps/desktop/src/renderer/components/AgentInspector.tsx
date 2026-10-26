@@ -621,10 +621,10 @@ export function FindingCard({
             : ''}
         </div>
       ) : null}
-      <div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <button className="compact" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
           {expanded ? 'Hide details' : 'View details'}
-        </button>{' '}
+        </button>
         <CopyId id={finding.id} />
       </div>
       {expanded ? <FindingDetail finding={finding} evidence={evidence} /> : null}

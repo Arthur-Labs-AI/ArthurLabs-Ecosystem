@@ -514,6 +514,16 @@ textarea:focus {
   gap: var(--space-3);
   flex-wrap: wrap;
 }
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.actions-spread {
+  justify-content: space-between;
+  gap: var(--space-3);
+}
 .page-header .actions {
   margin-left: auto;
   display: flex;
@@ -698,6 +708,7 @@ textarea:focus {
   gap: 4px 12px;
   font-size: 12px;
   min-width: 0;
+  align-items: center;
 }
 .kv dt {
   color: var(--text-tertiary);
