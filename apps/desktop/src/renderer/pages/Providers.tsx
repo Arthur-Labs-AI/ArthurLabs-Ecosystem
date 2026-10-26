@@ -3,6 +3,17 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
 import { sentryApi } from '../lib/sentry-api.js';
+import {
+  CUSTOM_MODEL_VALUE,
+  DEEPSEEK_MODELS,
+  LEGACY_DEEPSEEK_ALIASES,
+  OPENCODE_GO_MODELS,
+  OPENCODE_ZEN_MODELS,
+  ZAI_GLM_MODELS,
+  modelsForOpenCodeMode,
+  resolveOpenCodeModelMode,
+  stripKnownOpenCodePrefix,
+} from '../lib/provider-models.js';
 import { PageHeader } from '../components/ui/PageHeader.js';
 import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
 
@@ -48,6 +59,7 @@ interface AgentFieldSpec {
   readonly name: string;
   readonly label: string;
   readonly placeholder?: string;
+  readonly modelList?: "opencode" | "deepseek" | "glm";
   readonly detailsLabel?: string | null;
 }
 
@@ -71,6 +83,7 @@ const AGENT_CARDS: readonly AgentCardSpec[] = [
       },
       {
         name: 'SENTRY_OPENCODE_MODEL',
+        modelList: 'opencode',
         label: 'Model',
         placeholder: 'e.g. kimi-k3, gpt-5.5, or anthropic/claude-sonnet-4',
         detailsLabel: null,
@@ -93,6 +106,7 @@ const AGENT_CARDS: readonly AgentCardSpec[] = [
     fields: [
       {
         name: 'SENTRY_DEEPSEEK_MODEL',
+        modelList: 'deepseek',
         label: 'Model',
         placeholder: 'e.g. deepseek-v4-flash',
       },
@@ -105,6 +119,7 @@ const AGENT_CARDS: readonly AgentCardSpec[] = [
     fields: [
       {
         name: 'SENTRY_GLM_MODEL',
+        modelList: 'glm',
         label: 'Model',
         placeholder: 'e.g. glm-5.3-flash',
       },
@@ -161,8 +176,16 @@ export function Providers(): React.JSX.Element {
       setNote(undefined);
       setError(undefined);
     },
-    onSuccess: (result) => {
-      setValues({});
+    onSuccess: (result, variables) => {
+      // Clear only the saved field's draft: unrelated unsaved drafts stay intact.
+      setValues((prev) => {
+        if (!(variables as { name?: unknown } | undefined)?.name) return prev;
+        const name = (variables as { name: string }).name;
+        if (!(name in prev)) return prev;
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
       setError(undefined);
       const status = result as ProviderStatus;
       setNote(
@@ -272,16 +295,42 @@ export function Providers(): React.JSX.Element {
               {card.subtitle}
             </p>
             {card.title === 'OpenCode' ? <OpenCodeProviderGuidance byName={byName} /> : null}
-            {card.fields.map((field) => (
-              <CredentialField
-                key={field.name}
-                label={field.label}
-                name={field.name}
-                placeholder={field.placeholder}
-                detailsLabel={field.detailsLabel}
-                {...fieldProps}
-              />
-            ))}
+            {card.title === 'OpenCode' ? (
+              <OpenCodeCard {...fieldProps} />
+            ) : (
+              card.fields.map((field) =>
+                field.modelList === undefined ? (
+                  <CredentialField
+                    key={field.name}
+                    label={field.label}
+                    name={field.name}
+                    placeholder={field.placeholder}
+                    detailsLabel={field.detailsLabel}
+                    {...fieldProps}
+                  />
+                ) : (
+                  <ModelSelectField
+                    key={field.name}
+                    label={field.label}
+                    name={field.name}
+                    placeholder={field.placeholder ?? 'Select a model…'}
+                    detailsLabel={field.detailsLabel}
+                    description={DESCRIPTIONS[field.name]}
+                    options={
+                      field.modelList === 'deepseek'
+                        ? DEEPSEEK_MODELS
+                        : field.modelList === 'glm'
+                          ? ZAI_GLM_MODELS
+                          : OPENCODE_GO_MODELS
+                    }
+                    optionNote={
+                      field.modelList === 'deepseek' ? deepSeekOptionNote : undefined
+                    }
+                    {...fieldProps}
+                  />
+                ),
+              )
+            )}
           </section>
         ))}
       </div>
@@ -407,6 +456,7 @@ function CredentialField(props: {
   readonly clearPending: boolean;
   readonly byName: Map<string, ProviderStatus>;
   readonly statusPending: boolean;
+  readonly listId?: string | undefined;
 }): React.JSX.Element {
   const item = props.byName.get(props.name);
   const secret = SECRET_NAMES.has(props.name);
@@ -448,6 +498,7 @@ function CredentialField(props: {
         <input
           id={'provider-' + props.name}
           type={secret ? 'password' : 'text'}
+          list={props.listId}
           value={current}
           onChange={(e) => props.setValues((prev) => ({ ...prev, [props.name]: e.target.value }))}
           placeholder={secret ? '••••••••••' : (activeHint ?? props.placeholder ?? 'Enter value')}
@@ -495,6 +546,471 @@ function CredentialField(props: {
   );
 }
 
+function resolveEffectiveOpenCodeProvider(values: Record<string, string>, byName: Map<string, ProviderStatus>): string {
+  const draft = (values['SENTRY_OPENCODE_PROVIDER'] ?? "").trim().toLowerCase();
+  if (draft !== "") return draft;
+  return inferOpenCodeProvider(byName.get('SENTRY_OPENCODE_PROVIDER'), byName.get('SENTRY_OPENCODE_MODEL')).provider;
+}
+
+interface ModelFieldProps {
+  readonly label: string;
+  readonly name: string;
+  readonly options: ReadonlyArray<string>;
+  readonly setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  readonly onSave: (name: string, value: string) => void;
+  readonly onClear: (name: string) => void;
+  readonly savePending: boolean;
+  readonly clearPending: boolean;
+  readonly byName: Map<string, ProviderStatus>;
+  readonly statusPending: boolean;
+  readonly placeholder: string;
+  readonly values: Record<string, string>;
+  readonly detailsLabel?: string | null | undefined;
+  readonly description?: string | undefined;
+  readonly optionNote?: ((id: string) => string | undefined) | undefined;
+}
+function modelFieldValue(values: Record<string, string>, name: string, hint: string | undefined): string {
+  const draft = values[name] ?? '';
+  if (draft !== '') return draft;
+  return hint ?? '';
+}
+function deepSeekOptionNote(id: string): string | undefined {
+  return LEGACY_DEEPSEEK_ALIASES.includes(id) ? 'legacy alias of deepseek-flash' : undefined;
+}
+/**
+ * Model dropdown with a custom-id escape hatch. The saved value is never
+ * rewritten here: unknown (provider-prefixed, legacy, or custom) ids stay
+ * visible with a warning, and Save stays disabled until there is a value.
+ */
+function ModelSelectField(props: ModelFieldProps): React.JSX.Element {
+  const item = props.byName.get(props.name);
+  const activeHint = item?.configured === true && item.hint !== '' ? item.hint : undefined;
+  const draft = props.values[props.name] ?? '';
+  const current = modelFieldValue(props.values, props.name, activeHint);
+  const trimmed = current.trim();
+  const stripped = stripKnownOpenCodePrefix(trimmed);
+  const known =
+    trimmed === '' || props.options.includes(trimmed) || props.options.includes(stripped);
+  const selectedOption = props.options.includes(trimmed)
+    ? trimmed
+    : stripped !== trimmed && props.options.includes(stripped)
+      ? stripped
+      : '';
+  const [customMode, setCustomMode] = React.useState(false);
+  const showCustom = customMode || (!known && trimmed !== '');
+  const selectValue =
+    known && selectedOption !== '' ? selectedOption : customMode ? CUSTOM_MODEL_VALUE : '';
+  const saveValue = current.trim();
+  const onSelect = (raw: string): void => {
+    if (raw === CUSTOM_MODEL_VALUE) {
+      setCustomMode(true);
+      return;
+    }
+    setCustomMode(false);
+    props.setValues((prev) => ({ ...prev, [props.name]: raw }));
+  };
+  const selectedNote = selectedOption !== '' ? props.optionNote?.(selectedOption) : undefined;
+  const disclosureLabel = props.detailsLabel === undefined ? 'Advanced' : props.detailsLabel;
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <label htmlFor={'provider-' + props.name} className="card-title">
+          {props.label}
+        </label>
+        <span className={item?.configured ? 'metadata' : 'metadata faint'}>
+          {item?.configured && item.source !== 'unavailable' ? (
+            <Check size={12} aria-hidden="true" />
+          ) : null}
+          {item === undefined
+            ? props.statusPending
+              ? 'Checking…'
+              : 'Status unavailable'
+            : item.source === 'unavailable'
+              ? 'Stored credential unavailable'
+              : item.source === 'environment'
+                ? 'From environment'
+                : item.configured && item.source === 'stored' && item.persistence === 'secure'
+                  ? 'Stored securely'
+                  : item.configured && item.source === 'persisted'
+                    ? 'Saved preference'
+                    : item.source === 'missing' && !item.configured
+                      ? 'Not set'
+                      : 'Status unavailable'}
+        </span>
+      </div>
+      <div
+        style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}
+      >
+        <select
+          id={'provider-' + props.name}
+          aria-label={'Value for ' + props.name}
+          value={selectValue}
+          onChange={(e) => onSelect(e.target.value)}
+          style={{ minWidth: 200, flex: 1 }}
+        >
+          <option value="">Select a model…</option>
+          {props.options.map((id) => {
+            const note = props.optionNote?.(id);
+            return (
+              <option key={id} value={id}>
+                {note === undefined ? id : id + ' (' + note + ')'}
+              </option>
+            );
+          })}
+          <option value={CUSTOM_MODEL_VALUE}>Custom model id…</option>
+        </select>
+        <button
+          className="primary compact"
+          disabled={saveValue === '' || props.savePending}
+          onClick={() => props.onSave(props.name, saveValue)}
+          title="Persist and load into the host process"
+        >
+          Save
+        </button>
+        <button
+          className="compact ghost"
+          disabled={
+            (item?.configured !== true && item?.source !== 'unavailable') || props.clearPending
+          }
+          onClick={() => props.onClear(props.name)}
+        >
+          Clear
+        </button>
+      </div>
+      {showCustom ? (
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <input
+            id={'provider-' + props.name + '-custom'}
+            type="text"
+            value={draft !== '' ? draft : (activeHint ?? '')}
+            onChange={(e) =>
+              props.setValues((prev) => ({ ...prev, [props.name]: e.target.value }))
+            }
+            placeholder={props.placeholder}
+            aria-label={'Custom value for ' + props.name}
+            autoComplete="off"
+            spellCheck={false}
+            style={{ minWidth: 200, flex: 1 }}
+          />
+        </div>
+      ) : null}
+      {!known && trimmed !== '' ? (
+        <p className="metadata" style={{ margin: '4px 0 0' }}>
+          {`Saved model “${trimmed}” is not in the current list. It is preserved — select a listed model above or keep this custom id.`}
+        </p>
+      ) : null}
+      {selectedNote !== undefined && known && selectedOption !== '' ? (
+        <p className="metadata" style={{ margin: '4px 0 0' }}>
+          {`${selectedOption} is a ${selectedNote}. Your saved value is preserved.`}
+        </p>
+      ) : null}
+      {item?.storageError !== undefined ? (
+        <p className="metadata">
+          Stored credential unavailable. Check OS secure storage; keep the existing store.
+        </p>
+      ) : null}
+      {disclosureLabel !== null ? (
+        <details style={{ marginTop: 4 }}>
+          <summary className="metadata">{disclosureLabel}</summary>
+          <p className="metadata mono" style={{ margin: '4px 0' }}>
+            {props.name}
+            {item !== undefined ? ' · ' + item.persistence + ' · ' + item.source : ''}
+          </p>
+          <p className="metadata" style={{ margin: 0 }}>
+            {props.description ?? ''}
+          </p>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+const VALID_OPENCODE_PROVIDERS: readonly string[] = ['opencode-go', 'opencode', 'openrouter'];
+
+const OPENCODE_PROVIDER_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  {
+    value: 'opencode-go',
+    label: 'OpenCode Go / Go Plus — monthly subscription (uses the OpenCode API key)',
+  },
+  { value: 'opencode', label: 'OpenCode Zen — pay-as-you-go (uses the OpenCode API key)' },
+  { value: 'openrouter', label: 'OpenRouter — pay-as-you-go (uses the OpenRouter API key)' },
+];
+
+/**
+ * Remember the last explicit Go-vs-Zen choice so switching the credential
+ * source back to the OpenCode key restores it instead of leaving Provider
+ * unset. Draft wins, then the persisted explicit value, then a model-prefix
+ * hint, then the explicit 'opencode-go' fallback (always visible and
+ * correctable in the Provider select — never applied silently elsewhere).
+ */
+function lastExplicitGoZenChoice(
+  values: Record<string, string>,
+  byName: Map<string, ProviderStatus>,
+  remembered: string | null,
+): string {
+  const draft = (values['SENTRY_OPENCODE_PROVIDER'] ?? '').trim().toLowerCase();
+  if (draft === 'opencode-go' || draft === 'opencode') return draft;
+  const persisted = byName.get('SENTRY_OPENCODE_PROVIDER');
+  const persistedValue =
+    persisted?.configured === true ? persisted.hint.trim().toLowerCase() : '';
+  if (persistedValue === 'opencode-go' || persistedValue === 'opencode') return persistedValue;
+  if (remembered === 'opencode-go' || remembered === 'opencode') return remembered;
+  const model = byName.get('SENTRY_OPENCODE_MODEL');
+  const prefix =
+    model?.configured === true && model.hint.includes('/')
+      ? (model.hint.split('/')[0] ?? '').toLowerCase()
+      : '';
+  if (prefix === 'opencode-go' || prefix === 'opencode') return prefix;
+  return 'opencode-go';
+}
+
+/**
+ * Segmented credential-source selector, shown only when both keys are
+ * configured (presence from status metadata — secrets never reach the
+ * renderer). Switching saves only SENTRY_OPENCODE_PROVIDER; both keys stay
+ * securely stored.
+ */
+function CredentialSourceSelector(props: {
+  readonly values: Record<string, string>;
+  readonly byName: Map<string, ProviderStatus>;
+  readonly onSave: (name: string, value: string) => void;
+  readonly savePending: boolean;
+  readonly rememberedGoZen: string | null;
+}): React.JSX.Element | null {
+  const openCodeKey = props.byName.get('OPENCODE_API_KEY');
+  const openRouterKey = props.byName.get('OPENROUTER_API_KEY');
+  if (openCodeKey?.configured !== true || openRouterKey?.configured !== true) return null;
+  const draft = (props.values['SENTRY_OPENCODE_PROVIDER'] ?? '').trim().toLowerCase();
+  const persisted = props.byName.get('SENTRY_OPENCODE_PROVIDER');
+  const persistedValue =
+    persisted?.configured === true ? persisted.hint.trim().toLowerCase() : '';
+  const active = draft !== '' ? draft : persistedValue;
+  const usingOpenRouter = active === '' || active === 'openrouter';
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <span id="credential-source-label" className="card-title">
+        Credential source
+      </span>
+      <div
+        role="group"
+        aria-labelledby="credential-source-label"
+        style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}
+      >
+        <button
+          className={usingOpenRouter ? 'compact ghost' : 'primary compact'}
+          aria-pressed={!usingOpenRouter}
+          disabled={props.savePending}
+          onClick={() =>
+            props.onSave(
+              'SENTRY_OPENCODE_PROVIDER',
+              lastExplicitGoZenChoice(props.values, props.byName, props.rememberedGoZen),
+            )
+          }
+        >
+          Use OpenCode key
+        </button>
+        <button
+          className={usingOpenRouter ? 'primary compact' : 'compact ghost'}
+          aria-pressed={usingOpenRouter}
+          disabled={props.savePending}
+          onClick={() => props.onSave('SENTRY_OPENCODE_PROVIDER', 'openrouter')}
+        >
+          Use OpenRouter key
+        </button>
+      </div>
+      <p className="metadata" style={{ margin: '4px 0 0' }}>
+        Both keys are stored securely. Switching only changes which key Sentry uses; the other
+        key stays saved.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * OpenCode card: selectable provider, mode-aware model control (Go / Go Plus
+ * dropdown from the official Go docs; Zen and OpenRouter use a manual model
+ * text input), credential-source selector, and the two key fields. The
+ * "Active upstream" line reflects persisted status only, so a failed save
+ * never presents a draft as activated.
+ */
+function OpenCodeCard(props: {
+  readonly values: Record<string, string>;
+  readonly setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  readonly onSave: (name: string, value: string) => void;
+  readonly onClear: (name: string) => void;
+  readonly savePending: boolean;
+  readonly clearPending: boolean;
+  readonly byName: Map<string, ProviderStatus>;
+  readonly statusPending: boolean;
+}): React.JSX.Element {
+  const providerStatus = props.byName.get('SENTRY_OPENCODE_PROVIDER');
+  const modelStatus = props.byName.get('SENTRY_OPENCODE_MODEL');
+  const persistedProvider =
+    providerStatus?.configured === true ? providerStatus.hint.trim().toLowerCase() : '';
+  const draftRaw = props.values['SENTRY_OPENCODE_PROVIDER'];
+  const hasDraft = draftRaw !== undefined && draftRaw.trim() !== '';
+  const effectiveProvider = resolveEffectiveOpenCodeProvider(props.values, props.byName);
+  const mode = resolveOpenCodeModelMode(
+    effectiveProvider === '' ? undefined : effectiveProvider,
+  );
+  const selectValue = hasDraft ? (draftRaw as string) : persistedProvider;
+  const persistedKnown =
+    persistedProvider === '' || VALID_OPENCODE_PROVIDERS.includes(persistedProvider);
+  const draftValid =
+    hasDraft && VALID_OPENCODE_PROVIDERS.includes((draftRaw as string).trim().toLowerCase());
+  const activeModel =
+    modelStatus?.configured === true && modelStatus.hint !== '' ? modelStatus.hint : undefined;
+  const hasPersistedState = providerStatus !== undefined || modelStatus !== undefined;
+  // Session memory of the last explicit Go-vs-Zen choice, so switching the
+  // credential source back to the OpenCode key restores it after the
+  // persisted provider has moved to openrouter.
+  const [rememberedGoZen, setRememberedGoZen] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (persistedProvider === 'opencode-go' || persistedProvider === 'opencode') {
+      setRememberedGoZen(persistedProvider);
+    }
+  }, [persistedProvider]);
+  const common = {
+    values: props.values,
+    setValues: props.setValues,
+    onSave: props.onSave,
+    onClear: props.onClear,
+    savePending: props.savePending,
+    clearPending: props.clearPending,
+    byName: props.byName,
+    statusPending: props.statusPending,
+  };
+  return (
+    <div>
+      {hasPersistedState ? (
+        <p className="metadata" style={{ margin: '0 0 12px' }}>
+          {`Active upstream: ${persistedProvider === '' ? 'openrouter (default)' : persistedProvider}${activeModel !== undefined ? ' · ' + activeModel : ' · no model saved'}`}
+        </p>
+      ) : null}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <label htmlFor="provider-SENTRY_OPENCODE_PROVIDER" className="card-title">
+            Provider
+          </label>
+          <span className={providerStatus?.configured ? 'metadata' : 'metadata faint'}>
+            {providerStatus?.configured ? <Check size={12} aria-hidden="true" /> : null}
+            {providerStatus === undefined
+              ? props.statusPending
+                ? 'Checking…'
+                : 'Status unavailable'
+              : providerStatus.source === 'environment'
+                ? 'From environment'
+                : providerStatus.configured
+                  ? 'Saved preference'
+                  : providerStatus.source === 'missing'
+                    ? 'Not set'
+                    : 'Status unavailable'}
+          </span>
+        </div>
+        <div
+          style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}
+        >
+          <select
+            id="provider-SENTRY_OPENCODE_PROVIDER"
+            aria-label="Value for SENTRY_OPENCODE_PROVIDER"
+            value={selectValue}
+            onChange={(e) =>
+              props.setValues((prev) => ({
+                ...prev,
+                SENTRY_OPENCODE_PROVIDER: e.target.value,
+              }))
+            }
+            style={{ minWidth: 200, flex: 1 }}
+          >
+            <option value="">Not set (defaults to OpenRouter pay-as-you-go)</option>
+            {OPENCODE_PROVIDER_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+            {!persistedKnown && !hasDraft ? (
+              <option value={persistedProvider}>
+                {`Keep saved “${persistedProvider}” (unrecognized)`}
+              </option>
+            ) : null}
+          </select>
+          <button
+            className="primary compact"
+            disabled={!hasDraft || !draftValid || props.savePending}
+            onClick={() =>
+              props.onSave('SENTRY_OPENCODE_PROVIDER', (draftRaw as string).trim())
+            }
+            title="Persist and load into the host process"
+          >
+            Save
+          </button>
+          <button
+            className="compact ghost"
+            disabled={providerStatus?.configured !== true || props.clearPending}
+            onClick={() => props.onClear('SENTRY_OPENCODE_PROVIDER')}
+          >
+            Clear
+          </button>
+        </div>
+        {!persistedKnown && !hasDraft ? (
+          <p className="metadata" style={{ margin: '4px 0 0' }}>
+            {`Saved provider “${persistedProvider}” is unrecognized. It is preserved — select a supported provider above before saving.`}
+          </p>
+        ) : null}
+      </div>
+      {mode === 'go' ? (
+        <ModelSelectField
+          label="Model"
+          name="SENTRY_OPENCODE_MODEL"
+          placeholder="e.g. kimi-k3"
+          detailsLabel={null}
+          description={DESCRIPTIONS['SENTRY_OPENCODE_MODEL']}
+          options={modelsForOpenCodeMode('go')}
+          {...common}
+        />
+      ) : (
+        <CredentialField
+          label="Model"
+          name="SENTRY_OPENCODE_MODEL"
+          placeholder={
+            mode === 'zen'
+              ? 'e.g. gpt-5.5, claude-opus-4-6, or kimi-k3'
+              : 'e.g. anthropic/claude-sonnet-4'
+          }
+          detailsLabel={null}
+          listId={mode === 'zen' ? 'opencode-zen-model-suggestions' : undefined}
+          {...common}
+        />
+      )}
+      {mode === 'zen' ? (
+        <datalist id="opencode-zen-model-suggestions">
+          {OPENCODE_ZEN_MODELS.map((id) => (
+            <option key={id} value={id} />
+          ))}
+        </datalist>
+      ) : null}
+      <CredentialSourceSelector
+        values={props.values}
+        byName={props.byName}
+        onSave={props.onSave}
+        savePending={props.savePending}
+        rememberedGoZen={rememberedGoZen}
+      />
+      <CredentialField
+        label="OpenCode API key (Zen & Go)"
+        name="OPENCODE_API_KEY"
+        detailsLabel="Explanation"
+        {...common}
+      />
+      <CredentialField
+        label="OpenRouter API key (Pay-as-you-go)"
+        name="OPENROUTER_API_KEY"
+        detailsLabel="Explanation"
+        {...common}
+      />
+    </div>
+  );
+}
 const BINARY_FIELDS = [
   { name: 'SENTRY_OPENCODE_BINARY', label: 'OpenCode executable' },
   { name: 'SENTRY_DEEPSEEK_BINARY', label: 'DeepSeek executable' },
