@@ -116,15 +116,63 @@ export function ProjectDetail(): React.JSX.Element {
     onSuccess: onStarted,
     onError: onStartError,
   });
+  const [updateStartedAt, setUpdateStartedAt] = React.useState<number | undefined>(undefined);
+  const [updateElapsed, setUpdateElapsed] = React.useState(0);
+  const [cancellingUpdate, setCancellingUpdate] = React.useState(false);
+  const updateCancelledByUserRef = React.useRef(false);
   const update = useMutation({
     mutationFn: () => sentryApi().projects.update(projectId as string),
+    onMutate: () => {
+      updateCancelledByUserRef.current = false;
+      setCancellingUpdate(false);
+      setError(undefined);
+      setUpdateStartedAt(Date.now());
+      setUpdateElapsed(0);
+    },
     onSuccess: () => {
       setError(undefined);
+      setUpdateStartedAt(undefined);
+      setCancellingUpdate(false);
       void queryClient.invalidateQueries({ queryKey: ['project', projectId] });
       void queryClient.invalidateQueries({ queryKey: ['project-revisions', projectId] });
     },
-    onError: (e) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => {
+      setUpdateStartedAt(undefined);
+      setCancellingUpdate(false);
+      if (updateCancelledByUserRef.current) {
+        updateCancelledByUserRef.current = false;
+        return;
+      }
+      const message = e instanceof Error ? e.message : String(e);
+      if (/cancelled|aborted/i.test(message)) return;
+      setError(message);
+    },
   });
+  const cancelUpdate = async (): Promise<void> => {
+    updateCancelledByUserRef.current = true;
+    setCancellingUpdate(true);
+    try {
+      await sentryApi().projects.cancelUpdate?.();
+    } catch {
+      /* best-effort */
+    } finally {
+      setCancellingUpdate(false);
+    }
+  };
+  React.useEffect(() => {
+    if (updateStartedAt === undefined) return;
+    const timer = setInterval(() => setUpdateElapsed(Date.now() - updateStartedAt), 250);
+    return () => clearInterval(timer);
+  }, [updateStartedAt]);
+  React.useEffect(() => {
+    if (!update.isPending) return;
+    const onBeforeUnload = (): void => {
+      updateCancelledByUserRef.current = true;
+      void sentryApi().projects.cancelUpdate?.();
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [update.isPending]);
   const doctor = useQuery({
     queryKey: ['project-doctor', projectId],
     queryFn: () => sentryApi().projects.doctor(projectId as string),
@@ -345,7 +393,12 @@ export function ProjectDetail(): React.JSX.Element {
                 }
                 setConfirmStart(mode);
               }}
-              disabled={startPending || effectiveStacks.length === 0 || gate?.ready !== true}
+              disabled={
+                startPending ||
+                update.isPending ||
+                effectiveStacks.length === 0 ||
+                gate?.ready !== true
+              }
             >
               <FlaskConical size={15} /> {mode === 'full' ? 'Start Full QA' : 'Start Targeted QA'}
             </button>
@@ -429,12 +482,67 @@ export function ProjectDetail(): React.JSX.Element {
               <button
                 className="primary"
                 autoFocus
-                disabled={startPending}
+                disabled={startPending || update.isPending}
                 onClick={() =>
                   confirmStart === 'full' ? startFull.mutate() : startTargeted.mutate()
                 }
               >
                 {startPending ? 'Starting…' : 'Start QA'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {update.isPending ? (
+        <div
+          className="project-import-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Updating project in Sentry"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
+        >
+          <div className="project-import-modal">
+            <img
+              src="./smooth_loader_flat_logo.gif"
+              alt=""
+              className="project-import-loader"
+              aria-hidden="true"
+            />
+            <h2 className="section-title" style={{ fontSize: 16 }}>
+              Updating project
+            </h2>
+            <div
+              className="mono metadata truncate"
+              style={{ maxWidth: '100%' }}
+              title={record?.project.name ?? projectId}
+              data-no-translate="true"
+            >
+              {record?.project.name ?? projectId}
+            </div>
+            <div className="project-import-timer" aria-live="polite">
+              <span>Elapsed:</span>
+              <span data-no-translate="true">
+                {Math.max(0, Math.floor(updateElapsed / 1000))}s
+              </span>
+            </div>
+            <p className="body-secondary" style={{ margin: 0 }}>
+              Rebuilding the project revision in the isolated Sentry runtime store. This window
+              will close automatically when the update completes. Starting a QA run stays disabled
+              until it finishes.
+            </p>
+            <div style={{ marginTop: 6 }}>
+              <button
+                type="button"
+                className="danger compact"
+                disabled={cancellingUpdate}
+                onClick={() => void cancelUpdate()}
+              >
+                {cancellingUpdate ? 'Cancelling…' : 'Cancel update'}
               </button>
             </div>
           </div>

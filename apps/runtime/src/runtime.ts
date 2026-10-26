@@ -461,6 +461,7 @@ export class SentryRuntimeHost {
   private readonly pendingRuns = new Map<string, PendingRun>();
   private readonly pendingRetests = new Map<string, PendingRun>();
   private readonly activeImports = new Set<AbortController>();
+  private readonly activeUpdates = new Set<AbortController>();
   private readonly notify: (event: string, payload?: unknown) => void;
   private configuredModels: { opencode?: string; deepseek?: string; glm?: string } = {};
   private closed = false;
@@ -719,12 +720,37 @@ export class SentryRuntimeHost {
       // Salvage is best-effort; the update below reports authoritatively.
     }
     const includeAll = this.importIncludeAll() ? { includeAll: true as const } : {};
-    if (sourcePath === undefined)
-      return this.projects.updateProjectCopy(id as never, undefined, includeAll);
-    const parsed = z.string().min(1).max(2000).parse(sourcePath);
-    const translated = translateWindowsPath(parsed);
-    await assertReadableDir(translated);
-    return this.projects.updateProjectCopy(id as never, translated, includeAll);
+    const controller = new AbortController();
+    this.activeUpdates.add(controller);
+    try {
+      if (sourcePath === undefined)
+        return await this.projects.updateProjectCopy(id as never, undefined, {
+          ...includeAll,
+          signal: controller.signal,
+        });
+      const parsed = z.string().min(1).max(2000).parse(sourcePath);
+      const translated = translateWindowsPath(parsed);
+      await assertReadableDir(translated);
+      return await this.projects.updateProjectCopy(id as never, translated, {
+        ...includeAll,
+        signal: controller.signal,
+      });
+    } finally {
+      this.activeUpdates.delete(controller);
+    }
+  }
+
+  cancelUpdateProject(): { cancelled: boolean; count: number } {
+    const count = this.activeUpdates.size;
+    for (const controller of this.activeUpdates) {
+      try {
+        controller.abort(new Error('Project revision update cancelled by user'));
+      } catch {
+        /* ignore */
+      }
+    }
+    this.activeUpdates.clear();
+    return { cancelled: count > 0, count };
   }
 
   async deleteProject(projectId: string): Promise<unknown> {
@@ -1487,6 +1513,7 @@ export class SentryRuntimeHost {
           );
         }
         this.cancelAddProject();
+        this.cancelUpdateProject();
         this.shutdownRequested = true;
         return { shuttingDown: true };
       case 'projects.list':
@@ -1495,6 +1522,8 @@ export class SentryRuntimeHost {
         return this.addProject(requireString(params, 'sourcePath'));
       case 'projects.cancelAdd':
         return this.cancelAddProject();
+      case 'projects.cancelUpdate':
+        return this.cancelUpdateProject();
       case 'projects.get':
         return this.getProject(requireString(params, 'projectId'));
       case 'projects.revisions':

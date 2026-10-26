@@ -27,6 +27,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     list: () => invoke('projects:list', {}),
     add: (sourcePath: string) => invoke('projects:add', { sourcePath }),
     cancelAdd: () => invoke('projects:cancel-add', {}),
+    cancelUpdate: () => invoke('projects:cancel-update', {}),
     get: (projectId: string) => invoke('projects:get', { projectId }),
     revisions: (projectId: string) => invoke('projects:revisions', { projectId }),
     remove: (projectId: string) => invoke('projects:delete', { projectId }),

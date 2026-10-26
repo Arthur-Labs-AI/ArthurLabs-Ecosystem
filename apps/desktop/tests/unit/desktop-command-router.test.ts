@@ -207,6 +207,12 @@ describe('shared desktop command router', () => {
     expect(Array.isArray(statuses)).toBe(true);
   });
 
+  it('forwards revision-update cancellation to the runtime', async () => {
+    const h = await harness(true);
+    await dispatchDesktopCommand(h.service, 'projects:cancel-update', {}, {});
+    expect(h.seen).toEqual([{ method: 'projects.cancelUpdate', params: {} }]);
+  });
+
   it('rejects unknown commands on both paths', async () => {
     const h = await harness(true);
     await expect(dispatchDesktopCommand(h.service, 'nope:missing', {}, {})).rejects.toMatchObject({

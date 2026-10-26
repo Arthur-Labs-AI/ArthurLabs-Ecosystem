@@ -10,6 +10,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
   'projects:list': z.object({}).strict(),
   'projects:add': z.object({ sourcePath: z.string().min(1).max(2000) }).strict(),
   'projects:cancel-add': z.object({}).strict(),
+  'projects:cancel-update': z.object({}).strict(),
   'app:set-language': z.object({ language: z.enum(['en', 'bg']) }).strict(),
   'projects:get': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:revisions': z.object({ projectId: z.string().min(1).max(200) }).strict(),
@@ -213,6 +214,8 @@ export async function dispatchDesktopCommand(
       return service.addProject(parsed['sourcePath'] as string);
     case 'projects:cancel-add':
       return service.cancelAddProject();
+    case 'projects:cancel-update':
+      return service.cancelUpdateProject();
     case 'projects:get':
       return service.getProject(parsed['projectId'] as string);
     case 'projects:revisions':

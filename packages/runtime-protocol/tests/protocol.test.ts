@@ -41,6 +41,7 @@ describe('runtime protocol framing', () => {
     // UNKNOWN_METHOD against an otherwise current runtime.
     expect(RUNTIME_METHODS).toContain('runs.exportContent');
     expect(RUNTIME_METHODS).toContain('runs.export');
+    expect(RUNTIME_METHODS).toContain('projects.cancelUpdate');
     expect(RUNTIME_METHODS).not.toContain('runs.merge');
     expect(RUNTIME_METHODS).not.toContain('runs.verify');
     expect(RUNTIME_METHODS).not.toContain('runs.ingest');

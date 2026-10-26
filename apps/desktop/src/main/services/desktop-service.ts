@@ -112,6 +112,10 @@ export class DesktopApplicationService {
     return this.call('projects.cancelAdd', {});
   }
 
+  cancelUpdateProject(): Promise<unknown> {
+    return this.call('projects.cancelUpdate', {});
+  }
+
   getProject(projectId: string): Promise<unknown> {
     const id = ProjectIdInput.parse(projectId);
     return this.call('projects.get', { projectId: id });
