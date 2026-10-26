@@ -1,3 +1,9 @@
+# OpenCode executable prefers runtime detection (owner follow-up)
+
+2026-10-26. Owner approved the live-detection follow-up. resolveOpenCodeBinarySuggestion prefers the doctors' executionPath (gated on binaryAvailable so the managed-default fallback is never suggested when nothing is installed), sibling heuristic as fallback. No new RPC — environment doctors flow through the shared ['environment'] query cache. Source-aware note (en/bg). Verified: resolver units + rendered precedence/fallback tests (27/27 across 4 Providers suites), renderer typecheck + eslint clean, bundle rebuilt (index-Cb3_V-FP.js). Committed as c150713; restart/reload to pick it up.
+
+## Previous record (preserved)
+
 # OpenCode executable auto-fill from sibling settings (owner request)
 
 2026-10-26. Owner: the OpenCode binary field should fill automatically like the others, deriving the WSL username from sibling saved paths. Implemented suggestManagedOpenCodeBinary (takes only `/home/<user>` from DeepSeek/GLM saved hints; fixed managed-install suffix): empty field auto-fills once via effect, stale values get a one-click 'Use suggested path' button, saved values never overwritten implicitly. Static note + button strings in en/bg. Verified: helper units + 3 rendered interaction tests (14/14 with catalog/file suites), typecheck + eslint clean, bundle rebuilt (index-C3w2LD1Z.js). Committed as 05694a6; restart/reload to pick it up.

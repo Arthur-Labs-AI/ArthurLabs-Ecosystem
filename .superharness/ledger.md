@@ -1,3 +1,5 @@
+# Detection-first suggestion 2026-10-26: doctors executionPath preferred (availability-gated), sibling fallback. 27/27 suites, bundle rebuilt. Committed c150713.
+
 # Executable suggestion 2026-10-26: OpenCode binary auto-fill from sibling WSL home + apply button. 14/14 tests, bundle rebuilt. Committed 05694a6.
 
 # Layer-skew fix 2026-10-26: rebuilt main+preload, redeployed WSL runtime 1.0.2-7078c67 (verified contents). No source changes; restart required.
