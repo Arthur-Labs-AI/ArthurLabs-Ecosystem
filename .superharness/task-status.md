@@ -1,3 +1,9 @@
+# Full-project checks + security pass (owner request)
+
+2026-10-26. Scope HEAD d6224ba on chore/app-cleanup-and-polish. Turbo test: all packages green except run-engine (6 verifier-trust env failures proven clean-tree identical + 1 parallel timeout load-flake, 5/5 isolated). Desktop full suite 548/548 post-detection. Turbo typecheck 37/37, turbo lint 20/20 (after fixing my unused import). format:check red only on 9 pre-existing untouched files (my 12 fixed). repository:check PASS. distribution:test 43 pass / 1 env-fail (root esbuild not installed) / 27 platform-skipped. Secrets grep: zero real patterns. Audit: 121 findings triaged (dev/toolchain/transitive-vendor; only shipped-surface note is RR open-redirect high, unreachable — no redirect() calls; remediate by bumping react-router-dom). Live-model tests skipped by env gates (no budget spent). Committed as d6224ba; partial readiness only — see report.
+
+## Previous record (preserved)
+
 # OpenCode executable prefers runtime detection (owner follow-up)
 
 2026-10-26. Owner approved the live-detection follow-up. resolveOpenCodeBinarySuggestion prefers the doctors' executionPath (gated on binaryAvailable so the managed-default fallback is never suggested when nothing is installed), sibling heuristic as fallback. No new RPC — environment doctors flow through the shared ['environment'] query cache. Source-aware note (en/bg). Verified: resolver units + rendered precedence/fallback tests (27/27 across 4 Providers suites), renderer typecheck + eslint clean, bundle rebuilt (index-Cb3_V-FP.js). Committed as c150713; restart/reload to pick it up.

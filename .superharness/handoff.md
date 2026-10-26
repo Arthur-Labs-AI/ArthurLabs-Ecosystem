@@ -1,3 +1,9 @@
+# Checks+security handoff — partial readiness, owner decisions needed
+
+2026-10-26. Do NOT call this release ready: format gate red on 9 pre-existing files, run-engine has 6 env failures + 1 load flake, distribution test blocked on missing root esbuild, audit has 121 triaged findings (worst shipped-surface item: react-router open-redirect high, unreachable today — remediate by bumping react-router-dom in its own task). Everything else green (tests/typecheck/lint/hygiene/secrets). Live-model tests never ran (env-gated, no budget spent). Committed through d6224ba; tree clean.
+
+## Previous record (preserved)
+
 # OpenCode turn timeout — local handoff
 
 2026-10-25. Fener run partial: OpenCode turn exceeded 1800000 ms budget. Root cause: 30-min default single-turn budget too small for a single-shot full-project investigation (349 files); hang vs slow undecidable post-hoc because intra-turn output is discarded on timeout. Changed `packages/harness-opencode/src/adapter.ts`: 60-min default + timeout errors now report upstream relay counts (names only). Tests added and green (24/24). To give more time: done via default — just re-run the QA (failure retryable:true). Uncommitted; DeepSeek/GLM defaults untouched; no UI/backend changes.

@@ -1,3 +1,5 @@
+# Checks+security 2026-10-26: gates table in task-status; fixed my lint error + formatted my files (d6224ba). Pre-existing fails left for owner: 9 format files, verifier-trust env, RR bump, esbuild install for distribution test.
+
 # Detection-first suggestion 2026-10-26: doctors executionPath preferred (availability-gated), sibling fallback. 27/27 suites, bundle rebuilt. Committed c150713.
 
 # Executable suggestion 2026-10-26: OpenCode binary auto-fill from sibling WSL home + apply button. 14/14 tests, bundle rebuilt. Committed 05694a6.
