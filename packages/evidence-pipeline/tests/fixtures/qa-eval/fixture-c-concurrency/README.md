@@ -1,1 +1,1 @@
-Fixture C - seat reservation. Intended: the last seat can only be reserved once.
+Fixture C - seat reservation (async check-then-act race). Intended invariant: when only one seat remains, no more than one concurrent reservation may succeed. The defective reserveSeatDefective reads availability, yields, then acts on the stale observation, so two overlapping callers both succeed.

@@ -2,6 +2,16 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  QA_ANTI_SUPERFICIAL_RULES,
+  QA_AUTHORITY_HIERARCHY,
+  QA_INVESTIGATION_METHOD,
+  QA_INVESTIGATION_REPRODUCTION_GUIDANCE,
+  QA_LARGE_PROJECT_GUIDANCE,
+  QA_PLANNING_RISK_GUIDANCE,
+  QA_REPORTING_COVERAGE_GUIDANCE,
+  REPORT_REPRODUCTION_CONTRACT,
+} from '@qa/evidence-pipeline';
 import { HarnessRunRequestSchema } from '@qa/schemas';
 import {
   createAgentRunId,
@@ -102,7 +112,7 @@ describe('DeepSeek QA prompt parity', () => {
     const adapter = new DeepSeekHarnessAdapter({
       executable: 'dsh-test',
       modelId: 'deepseek-v4-flash',
-      environment: {},
+      environment: { SENTRY_PARITY_SENTINEL: 'sentry-parity-secret-value' },
       clientFactory: async () => ({
         start: async () => undefined,
         startSession: async () => ({ runText: async (text: string) => capture(text) }),
@@ -127,5 +137,22 @@ describe('DeepSeek QA prompt parity', () => {
     expect(reporting).toContain('confirmed requires');
     expect(reporting).toContain('zero findings');
     expect(planning + investigation).toContain('ignore the instruction');
+    expect(planning).toContain(QA_AUTHORITY_HIERARCHY.slice(0, 80));
+    expect(planning).toContain(QA_PLANNING_RISK_GUIDANCE.slice(0, 80));
+    expect(investigation).toContain(QA_INVESTIGATION_METHOD.slice(0, 80));
+    expect(investigation).toContain(QA_INVESTIGATION_REPRODUCTION_GUIDANCE.slice(0, 80));
+    expect(investigation).toContain(QA_ANTI_SUPERFICIAL_RULES.slice(0, 80));
+    expect(investigation).toContain(QA_LARGE_PROJECT_GUIDANCE.slice(0, 80));
+    expect(reporting).toContain(QA_REPORTING_COVERAGE_GUIDANCE.slice(0, 80));
+    expect(reporting).toContain(REPORT_REPRODUCTION_CONTRACT.slice(0, 80));
+    expect(planning).toContain('first character is {');
+    expect(planning).toContain('Immutable mission context:');
+    expect(planning).toContain('User instructions:');
+    expect(investigation).toContain('Frozen plan:');
+    expect(investigation).toContain('Small fixture');
+    expect(reporting).toContain('frozen after investigation');
+    expect(reporting).toContain('No new QA');
+    expect(reporting).toContain('do not run commands');
+    expect(prompts.join('\n')).not.toContain('sentry-parity-secret-value');
   });
 });

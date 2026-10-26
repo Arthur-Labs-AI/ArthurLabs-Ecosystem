@@ -45,9 +45,13 @@ describe('shared QA prompt guidance', () => {
     expect(QA_INVESTIGATION_METHOD).toContain('Phase E');
     expect(QA_INVESTIGATION_METHOD).toContain('Phase F');
     expect(QA_INVESTIGATION_METHOD).toContain('honest coverage');
-    expect(QA_INVESTIGATION_METHOD).not.toMatch(/bug-free/i);
-    // Clean != bug-free is asserted positively: the method must say so.
+    // A clean investigation must never be presented as proof the software
+    // is bug-free. Guard the intent without contradicting the required
+    // positive phrasing below (which itself contains 'bug-free').
+    expect(QA_INVESTIGATION_METHOD).not.toContain('proves the software is bug-free');
+    expect(QA_INVESTIGATION_METHOD).not.toContain('guarantees no defects');
     expect(QA_INVESTIGATION_METHOD).toContain('never means the software is bug-free');
+    expect(QA_INVESTIGATION_METHOD).toContain('never presented as complete');
   });
 
   it('discourages superficial QA without demanding silence', () => {

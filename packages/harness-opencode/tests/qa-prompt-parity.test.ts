@@ -2,6 +2,16 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { REPORT_REPRODUCTION_CONTRACT } from '@qa/evidence-pipeline';
+import {
+  QA_ANTI_SUPERFICIAL_RULES,
+  QA_AUTHORITY_HIERARCHY,
+  QA_INVESTIGATION_METHOD,
+  QA_INVESTIGATION_REPRODUCTION_GUIDANCE,
+  QA_LARGE_PROJECT_GUIDANCE,
+  QA_PLANNING_RISK_GUIDANCE,
+  QA_REPORTING_COVERAGE_GUIDANCE,
+} from '@qa/evidence-pipeline';
 import { HarnessRunRequestSchema } from '@qa/schemas';
 import {
   createAgentRunId,
@@ -114,7 +124,8 @@ describe('OpenCode QA prompt parity', () => {
     const adapter = new OpenCodeHarnessAdapter({
       executable: 'opencode-test',
       modelId: 'anthropic/claude-test',
-      environment: { PATH: '/usr/bin', OPENROUTER_API_KEY: 'x' },
+      environment: { PATH: '/usr/bin', OPENROUTER_API_KEY: 'sentry-parity-secret-credential' },
+      // Sentinel: prompts must never leak host credentials (asserted below).
       clientFactory: factory,
       launcherSelector: async () => new DirectOpenCodeProcessLauncher(),
       toolShellBuilder: async () => undefined,
@@ -147,5 +158,27 @@ describe('OpenCode QA prompt parity', () => {
     expect(reporting).toContain('schemaVersion 2');
     // Prompt-injection boundary present in the real turn.
     expect(planning + investigation).toContain('ignore the instruction');
+    // Shared guidance pinned via the exported constants themselves, not
+    // arbitrary substrings: the turns must carry the canonical text.
+    expect(planning).toContain(QA_AUTHORITY_HIERARCHY.slice(0, 80));
+    expect(planning).toContain(QA_PLANNING_RISK_GUIDANCE.slice(0, 80));
+    expect(investigation).toContain(QA_INVESTIGATION_METHOD.slice(0, 80));
+    expect(investigation).toContain(QA_INVESTIGATION_REPRODUCTION_GUIDANCE.slice(0, 80));
+    expect(investigation).toContain(QA_ANTI_SUPERFICIAL_RULES.slice(0, 80));
+    expect(investigation).toContain(QA_LARGE_PROJECT_GUIDANCE.slice(0, 80));
+    expect(reporting).toContain(QA_REPORTING_COVERAGE_GUIDANCE.slice(0, 80));
+    expect(reporting).toContain(REPORT_REPRODUCTION_CONTRACT.slice(0, 80));
+    // Stage contracts: planning output contract, mission context, frozen
+    // plan in investigation, frozen ledger + tool-free reporting.
+    expect(planning).toContain('first character is {');
+    expect(planning).toContain('Immutable mission context:');
+    expect(planning).toContain('User instructions:');
+    expect(investigation).toContain('Frozen plan:');
+    expect(investigation).toContain('Small fixture');
+    expect(reporting).toContain('frozen after investigation');
+    expect(reporting).toContain('No new QA');
+    expect(reporting).toContain('do not run commands');
+    // No host credentials leak into prompts.
+    expect(prompts.join('\n')).not.toContain('sentry-parity-secret-credential');
   });
 });
