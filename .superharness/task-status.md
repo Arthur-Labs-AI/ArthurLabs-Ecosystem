@@ -1,3 +1,14 @@
+## QA depth activation — COMPLETE
+
+Implementation51c3896 pushed on codex/independent-agent-depth. Active Linux runtime
+1.0.2-51c3896 verified via current symlink and successful runtime.hello (Ubuntu,
+Node22.23.2). Native runtime18 build tasks PASS; actual deployed offline preparation
+smoke PASS (two private ready copies, lifecycle/peer/original/network isolation,
+owned cancellation); native verifier trust8/8 PASS. Windows final engine94 PASS,
+non-engine39tasks PASS, combined static/build60tasks PASS. Sentry reopened from
+this checkout after graceful stop/no active QA. No paid model run/accuracy claim.
+Source tree committed; this receipt records activation. Main/dev unchanged.
+Details and new-run diagnosis: docs/reviews/qa-depth-follow-up.md. shux absent.
 ## QA depth follow-up — IMPLEMENTED / VERIFIED, activation pending
 
 Reviewed owner run_01M5ZNPA0HBVTQE9E42YHESM58: old workflow, all prep limited;

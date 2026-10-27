@@ -60,3 +60,15 @@ itself fails. Stable IDs address the observed long-name serialization failure.
 
 Local command logs: ignored `.tmp-sentry-test-fixtures/fix-*`,
 `checkpoint-*` and `alias-legacy-red.log`. Deployment receipts follow separately.
+
+## Activation receipt
+
+Implementation commit `51c3896` pushed on `codex/independent-agent-depth`.
+Final Windows engine suite: PASS, 94 tests (Linux-only trust excluded there).
+Native Linux deployment `1.0.2-51c3896`: PASS, 18 uncached build tasks, validated
+entry and successful runtime.hello (Ubuntu WSL, Node22.23.2). Verified `current`
+points to this version. Actual deployed preparation smoke: PASS with populated
+read-only cache, two ready/private copies, lifecycle denial, original/peer/network
+isolation and owned cancellation. Native `verification-trust.test.ts`: PASS,8/8.
+Sentry stopped gracefully with no active runs, then reopened from this checkout.
+No paid model run was launched; model-quality comparison remains unverified.
