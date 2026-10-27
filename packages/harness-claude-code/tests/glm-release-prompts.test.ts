@@ -129,70 +129,100 @@ function reportTurn() {
 // Owner requested the v1.0.2 GLM prompts. Other harnesses deliberately keep
 // their newer guidance; cross-harness prompt parity is no longer the GLM spec.
 describe('GLM v1.0.2 prompt behavior', () => {
-  it('uses the release guidance through real turns and keeps provider safeguards', async () => {
-    const { mkdtemp } = await import('node:fs/promises');
-    const { tmpdir } = await import('node:os');
-    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-parity-'));
-    roots.push(root);
-    const input = await request(root);
-    const prompts: string[] = [];
-    const stages = [planTurn(), investigationTurn(), reportTurn()];
-    const adapter = new ClaudeCodeHarnessAdapter({
-      executable: 'claude-test',
-      modelId: 'glm-5.3-flash',
-      environment: { SENTRY_PARITY_SENTINEL: 'sentry-parity-secret-value' },
-      windowsUsersRoot: hermeticUsersRoot(),
-      wslMountIsolationOverride: {
-        status: 'available',
-        backend: 'systemd',
-        windowsMountsHidden: true,
-        reason: 'scripted prompt fixture: no host preflight needed',
-      },
-      clientFactory: async () => ({
-        sessionId: 'session-parity',
-        startSession: async () => ({
-          runText: (async (text: string) => {
-            prompts.push(text);
-            const next = stages[Math.min(prompts.length - 1, stages.length - 1)];
-            return next;
-          }) as unknown as never,
+  it.each([false, true, 'low-budget'])(
+    'keeps safeguards with independent depth enabled=%s',
+    async (depth) => {
+      const { mkdtemp } = await import('node:fs/promises');
+      const { tmpdir } = await import('node:os');
+      const root = await mkdtemp(join(tmpdir(), 'sentry-claude-parity-'));
+      roots.push(root);
+      const base = await request(root);
+      const input = HarnessRunRequestSchema.parse({
+        ...base,
+        task: {
+          ...base.task,
+          ...(depth
+            ? {
+                context: {
+                  qaDepth: {
+                    version: 1,
+                    deadlineAt: Date.now() + (depth === 'low-budget' ? 30_000 : 300_000),
+                  },
+                },
+              }
+            : {}),
+        },
+      });
+      const prompts: string[] = [];
+      const stages = [
+        planTurn(),
+        investigationTurn(),
+        ...(depth === true ? [investigationTurn()] : []),
+        reportTurn(),
+      ];
+      const adapter = new ClaudeCodeHarnessAdapter({
+        executable: 'claude-test',
+        modelId: 'glm-5.3-flash',
+        environment: { SENTRY_PARITY_SENTINEL: 'sentry-parity-secret-value' },
+        windowsUsersRoot: hermeticUsersRoot(),
+        wslMountIsolationOverride: {
+          status: 'available',
+          backend: 'systemd',
+          windowsMountsHidden: true,
+          reason: 'scripted prompt fixture: no host preflight needed',
+        },
+        clientFactory: async () => ({
+          sessionId: 'session-parity',
+          startSession: async () => ({
+            runText: (async (text: string) => {
+              prompts.push(text);
+              const next = stages[Math.min(prompts.length - 1, stages.length - 1)];
+              return next;
+            }) as unknown as never,
+          }),
+          close: async () => undefined,
         }),
-        close: async () => undefined,
-      }),
-    });
-    const events = [];
-    for await (const event of adapter.run(input)) events.push(event);
-    await adapter.dispose();
-    expect(events.at(-1)?.type).toBe('run.completed');
-    expect(prompts).toHaveLength(3);
-    const [planning, investigation, reporting] = prompts as [string, string, string];
-    expect(planning).toContain('a listing plus a handful of file reads is enough');
-    expect(planning).toContain('Explicit run instructions define intended behavior');
-    expect(investigation).toContain('Inspect every applicable area needed for comprehensive QA');
-    expect(investigation).toContain(
-      'a handful of targeted checks beats dozens of exploratory commands',
-    );
-    expect(reporting).toContain('operation key');
-    expect(reporting).toContain('ONLY authoritative source');
-    expect(reporting).toContain('confirmed requires');
-    // Provider-specific safeguard preserved (missing-file guidance).
-    expect(planning).toContain('Never retry a failed path identically');
-    expect(planning).not.toContain(QA_AUTHORITY_HIERARCHY.slice(0, 80));
-    expect(planning).not.toContain(QA_PLANNING_RISK_GUIDANCE.slice(0, 80));
-    expect(investigation).not.toContain(QA_INVESTIGATION_METHOD.slice(0, 80));
-    expect(investigation).not.toContain(QA_INVESTIGATION_REPRODUCTION_GUIDANCE.slice(0, 80));
-    expect(investigation).not.toContain(QA_ANTI_SUPERFICIAL_RULES.slice(0, 80));
-    expect(investigation).not.toContain(QA_LARGE_PROJECT_GUIDANCE.slice(0, 80));
-    expect(reporting).not.toContain(QA_REPORTING_COVERAGE_GUIDANCE.slice(0, 80));
-    expect(reporting).not.toContain(REPORT_REPRODUCTION_CONTRACT.slice(0, 80));
-    expect(planning).toContain('first character is {');
-    expect(planning).toContain('Immutable mission context:');
-    expect(planning).toContain('User instructions:');
-    expect(investigation).toContain('Frozen plan:');
-    expect(investigation).toContain('Small fixture');
-    expect(reporting).toContain('frozen after investigation');
-    expect(reporting).toContain('No new QA');
-    expect(reporting).toContain('do not run commands');
-    expect(prompts.join('\n')).not.toContain('sentry-parity-secret-value');
-  });
+      });
+      const events = [];
+      for await (const event of adapter.run(input)) events.push(event);
+      await adapter.dispose();
+      expect(events.at(-1)?.type).toBe('run.completed');
+      if (depth === 'low-budget')
+        expect(events.some((e) => e.type === 'warning' && e.code === 'QA_CHALLENGE_NOT_RUN')).toBe(
+          true,
+        );
+      expect(prompts).toHaveLength(depth === true ? 4 : 3);
+      if (depth === true) expect(prompts[2]).toContain('CHALLENGE YOUR OWN INVESTIGATION');
+      const [planning, investigation] = prompts as [string, string];
+      const reporting = prompts.at(-1)!;
+      expect(planning).toContain('a listing plus a handful of file reads is enough');
+      expect(planning).toContain('Explicit run instructions define intended behavior');
+      expect(investigation).toContain('Inspect every applicable area needed for comprehensive QA');
+      expect(investigation).toContain(
+        'a handful of targeted checks beats dozens of exploratory commands',
+      );
+      expect(reporting).toContain('operation key');
+      expect(reporting).toContain('ONLY authoritative source');
+      expect(reporting).toContain('confirmed requires');
+      // Provider-specific safeguard preserved (missing-file guidance).
+      expect(planning).toContain('Never retry a failed path identically');
+      expect(planning).not.toContain(QA_AUTHORITY_HIERARCHY.slice(0, 80));
+      expect(planning).not.toContain(QA_PLANNING_RISK_GUIDANCE.slice(0, 80));
+      expect(investigation).not.toContain(QA_INVESTIGATION_METHOD.slice(0, 80));
+      expect(investigation).not.toContain(QA_INVESTIGATION_REPRODUCTION_GUIDANCE.slice(0, 80));
+      expect(investigation).not.toContain(QA_ANTI_SUPERFICIAL_RULES.slice(0, 80));
+      expect(investigation).not.toContain(QA_LARGE_PROJECT_GUIDANCE.slice(0, 80));
+      expect(reporting).not.toContain(QA_REPORTING_COVERAGE_GUIDANCE.slice(0, 80));
+      expect(reporting).not.toContain(REPORT_REPRODUCTION_CONTRACT.slice(0, 80));
+      expect(planning).toContain('first character is {');
+      expect(planning).toContain('Immutable mission context:');
+      expect(planning).toContain('User instructions:');
+      expect(investigation).toContain('Frozen plan:');
+      expect(investigation).toContain('Small fixture');
+      expect(reporting).toContain('frozen after investigation');
+      expect(reporting).toContain('No new QA');
+      expect(reporting).toContain('do not run commands');
+      expect(prompts.join('\n')).not.toContain('sentry-parity-secret-value');
+    },
+  );
 });

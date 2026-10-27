@@ -11,6 +11,13 @@ import {
   type OperationId,
 } from '@qa/shared';
 import {
+  canChallenge,
+  challengePrompt,
+  coverageErrors,
+  reportableDepthPlan,
+  depthPolicy,
+  DEPTH_COVERAGE_GUIDANCE,
+  DEPTH_PREPARATION_GUIDANCE,
   boundCorrectionMessage,
   buildPlanningCorrectionIntro,
   buildReportCorrectionIntro,
@@ -230,6 +237,7 @@ function planningPrompt(request: HarnessRunRequest): string {
     'Keep reconnaissance tight: a listing plus a handful of file reads is enough. Write the plan as soon as you can name concrete checks; do not inventory every file first. Missing documentation is a limitation to record, never a reason to keep searching.',
     'Create an investigation plan before executing it.',
     'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
+    ...(depthPolicy(request.task.context) === undefined ? [] : [DEPTH_PREPARATION_GUIDANCE]),
     'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
     'User instructions: ' + request.task.prompt,
     'OUTPUT CONTRACT (must hold exactly): your ENTIRE response is exactly one raw JSON object matching the schema. No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
@@ -261,6 +269,7 @@ function reportPrompt(
   correction?: readonly string[],
 ): string {
   return [
+    DEPTH_COVERAGE_GUIDANCE,
     'Serialize the investigation you just completed into exactly one Sentry report. No new QA: do not run commands, read files, or use any tools in this turn. Temporary evidence keys only; Sentry owns all durable IDs.',
     ...(correction === undefined ? [] : [buildReportCorrectionIntro(correction)]),
     REPORT_LEDGER_RULES,
@@ -1324,6 +1333,26 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
 
   async *run(request: HarnessRunRequest): AsyncIterable<HarnessEvent> {
     yield event(request.agentRunId, { type: 'run.started' });
+    if (depthPolicy(request.task.context) !== undefined) {
+      yield event(request.agentRunId, {
+        type: 'agent.message',
+        message: 'QA_DEPTH_V1: independent validation enabled.',
+      });
+      const preparation = request.task.context?.['workspacePreparation'] as
+        { status?: string; reason?: string } | undefined;
+      if (preparation !== undefined)
+        yield event(request.agentRunId, {
+          type: 'agent.message',
+          message: 'QA_PREPARATION_RECEIPT: ' + JSON.stringify(preparation),
+        });
+      if (preparation?.status === 'limited')
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_PREPARATION_LIMITED',
+          message: preparation.reason ?? 'Workspace preparation is limited.',
+        });
+    }
+
     // Version policy (data-driven, TASK-0012): the tested version is
     // ready; live-proven incompatible versions fail closed BEFORE any
     // provider budget burns; unknown newer versions warn and continue
@@ -1512,8 +1541,11 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           planCorrection = ['Planning turn produced no response.'];
         } else {
           try {
-            planResult = SentryInvestigationPlanV1Schema.parse(
-              parseWholeJson(planning.text, 'planning', pipeline),
+            planResult = reportableDepthPlan(
+              SentryInvestigationPlanV1Schema.parse(
+                parseWholeJson(planning.text, 'planning', pipeline),
+              ),
+              depthPolicy(request.task.context) !== undefined,
             );
             break;
           } catch (cause) {
@@ -1559,6 +1591,8 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // parsed as a result, never persisted as reasoning); tool events
       // carry the evidentiary facts. Live: yielded mid-turn so the
       // coordinator's activity window tracks real tool work.
+      const depth = depthPolicy(request.task.context);
+      let challenge: CollectedTurn | undefined;
       let investigation: CollectedTurn;
       {
         const live = this.streamPhaseTurn(
@@ -1577,6 +1611,39 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         } catch (cause) {
           for (const emitted of partialTurnEvents(cause)) yield emitted;
           throw cause;
+        }
+      }
+      if (depth !== undefined) {
+        if (canChallenge(depth.deadlineAt)) {
+          yield event(request.agentRunId, {
+            type: 'agent.status',
+            status: 'investigating',
+            message: 'Validating own findings and checking counterarguments.',
+          });
+          const live = this.streamPhaseTurn(
+            session,
+            challengePrompt(planResult),
+            request.agentRunId,
+            'investigation',
+          );
+          try {
+            let step = await live.next();
+            while (step.done !== true) {
+              yield step.value;
+              step = await live.next();
+            }
+            challenge = step.value;
+          } catch (cause) {
+            for (const emitted of partialTurnEvents(cause)) yield emitted;
+            throw cause;
+          }
+        } else {
+          yield event(request.agentRunId, {
+            type: 'warning',
+            code: 'QA_CHALLENGE_NOT_RUN',
+            message:
+              'Validation pass not run: remaining budget reserved for reporting. Analysis is partial.',
+          });
         }
       }
       // STAGE 3 — reporting against the frozen ledger. Strict whole-
@@ -1645,6 +1712,9 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             errors = candidate.errors;
           } else {
             try {
+              const missing =
+                depth === undefined ? [] : coverageErrors(planResult, candidate.report);
+              if (missing.length > 0) throw new Error(missing.join('\n'));
               built = await this.buildReportAttempt(request, candidate.report, pipeline);
               result = candidate.report;
               break;
@@ -1725,6 +1795,15 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         yield event(request.agentRunId, { type: 'evidence.submitted', evidence });
       for (const finding of attempt.findings)
         yield event(request.agentRunId, { type: 'finding.submitted', finding });
+      if (
+        depth !== undefined &&
+        result.checks.some((check) => ['not_run', 'inconclusive'].includes(check.status))
+      )
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_COVERAGE_PARTIAL',
+          message: 'Analysis is partial: applicable planned checks remain unverified.',
+        });
       for (const limitation of result.limitations)
         yield event(request.agentRunId, {
           type: 'warning',
@@ -1735,10 +1814,11 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // every report attempt (initial, schema-fallback retries,
       // corrections). Never hardcoded.
       let summed = sumUsage(planningUsage, investigation.usage ?? {});
+      if (challenge !== undefined) summed = sumUsage(summed, challenge.usage ?? {});
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
         ...summed,
-        turns: planningTurns + 1 + reportTurns.length,
+        turns: planningTurns + 1 + (challenge === undefined ? 0 : 1) + reportTurns.length,
       };
       yield event(request.agentRunId, { type: 'usage.updated', usage });
       yield event(request.agentRunId, {

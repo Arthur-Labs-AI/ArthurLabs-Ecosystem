@@ -1,7 +1,7 @@
 /** Finish-pass closure regressions: strict owner identity, request-only
  *  foreign cancellation, owner-driven settlement (no manual ack), lock and
  *  workspace ordering, stale recovery, deterministic resolution. */
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -18,6 +18,7 @@ import {
 } from '@qa/shared';
 import {
   HarnessAdapterRegistry,
+  FakeHarnessAdapter,
   type HarnessAdapter,
   type HarnessRunRequest,
 } from '@qa/harness-protocol';
@@ -461,5 +462,110 @@ describe('resolution: manifest-based, absence never fixed', () => {
       ],
     });
     expect(classifyRetest(compared.input).result).toBe('inconclusive');
+  });
+});
+
+describe('private preparation and unconditional teardown', () => {
+  it('cancels preparation without launching a provider turn', async () => {
+    const f = await fixture();
+    const registry = new HarnessAdapterRegistry();
+    let launched = false;
+    class ObservedAdapter extends FakeHarnessAdapter {
+      override async *run(request: HarnessRunRequest) {
+        launched = true;
+        yield* super.run(request);
+      }
+    }
+    registry.register({
+      stack: INITIAL_AGENT_STACKS[0]!,
+      createAdapter: () => new ObservedAdapter(),
+    });
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let runId: Parameters<RunCoordinator['requestRunCancellation']>[0] | undefined;
+    const coordinator = new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      registry,
+      async (input) => {
+        entered();
+        await new Promise<void>((_, reject) => {
+          input.signal.addEventListener('abort', () => reject(input.signal.reason), { once: true });
+          if (input.signal.aborted) reject(input.signal.reason);
+        });
+        throw new Error('unreachable');
+      },
+    );
+    try {
+      const running = coordinator.run(f.added.project.id, {
+        executionKind: 'production',
+        onRunCreated: (run) => {
+          runId = run.id;
+        },
+      });
+      await started;
+      coordinator.requestRunCancellation(runId!);
+      const result = await running;
+      expect(result.run.status).toBe('cancelled');
+      expect(result.agentRuns[0]?.status).toBe('cancelled');
+      expect(launched).toBe(false);
+    } finally {
+      f.lease.release();
+      f.database.close();
+    }
+  });
+  it('recreates failed-install copies and cleans workspaces even if dispose rejects', async () => {
+    const f = await fixture();
+    const registry = new HarnessAdapterRegistry();
+    class DisposeFailure extends FakeHarnessAdapter {
+      override async dispose(): Promise<void> {
+        throw new Error('synthetic dispose failure');
+      }
+      override async *run(request: HarnessRunRequest) {
+        await expect(
+          stat(join(request.workspace.runtimePath, 'partial-install-marker')),
+        ).rejects.toMatchObject({ code: 'ENOENT' });
+        yield* super.run(request);
+      }
+    }
+    registry.register({
+      stack: INITIAL_AGENT_STACKS[0]!,
+      createAdapter: () => new DisposeFailure(),
+    });
+    let capturedRoot = '';
+    const coordinator = new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      registry,
+      async (input) => {
+        await writeFile(join(input.workspaceRoot, 'partial-install-marker'), 'must disappear');
+        return {
+          status: 'limited',
+          reason: 'incomplete cache',
+          removedBuildCaches: 0,
+          needsFreshCopy: true,
+        };
+      },
+    );
+    try {
+      const result = await coordinator.run(f.added.project.id, {
+        executionKind: 'production',
+        onHarnessRequest: (request) => {
+          capturedRoot = request.workspace.runtimePath;
+          expect(request.task.context?.['qaDepth']).toMatchObject({ version: 1 });
+        },
+      });
+      expect(result.run.status).toBe('completed');
+      expect(capturedRoot).not.toBe('');
+      await expect(stat(capturedRoot)).rejects.toMatchObject({ code: 'ENOENT' });
+      expect(result.activities.some((a) => a.title.includes('shutdown failed'))).toBe(true);
+    } finally {
+      f.lease.release();
+      f.database.close();
+    }
   });
 });

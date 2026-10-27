@@ -1,3 +1,11 @@
+import { depthPolicy } from '@qa/evidence-pipeline';
+import {
+  createWorkspacePreparer,
+  removeBuildCaches,
+  type PreparationPolicy,
+  type PreparationReceipt,
+  type WorkspacePreparer,
+} from './workspace-preparation.js';
 import {
   createAgentRunId,
   createQARunId,
@@ -200,6 +208,7 @@ export class RunCoordinator {
     private readonly repository: SentryRepository,
     private readonly runtimeLease?: RuntimeInstanceLease,
     private readonly registry: HarnessAdapterRegistry = new HarnessAdapterRegistry(),
+    private readonly prepareWorkspace: WorkspacePreparer = createWorkspacePreparer(),
   ) {
     this.projects = new ProjectManager(
       dataRoot,
@@ -213,6 +222,16 @@ export class RunCoordinator {
   }
 
   async run(projectId: ProjectId, options: RunOptions): Promise<RunDetails> {
+    const preparationPolicy: PreparationPolicy | undefined =
+      options.executionKind === 'production' && process.env['SENTRY_QA_DEPTH'] !== '0'
+        ? {
+            enabled: true,
+            path: process.env['PATH'] ?? '',
+            ...(process.env['SENTRY_QA_CACHE_SEED'] === undefined
+              ? {}
+              : { cacheSeed: process.env['SENTRY_QA_CACHE_SEED'] }),
+          }
+        : undefined;
     const runtimeLease = this.requireRuntimeLease();
     const project = this.projects.getProject(projectId);
     if (project === undefined)
@@ -516,6 +535,7 @@ export class RunCoordinator {
           : selected.map((registration, index) =>
               this.runAgent({
                 run,
+                ...(preparationPolicy === undefined ? {} : { preparationPolicy }),
                 registration,
                 index,
                 // Agent workspaces materialize from this tree: the current
@@ -645,6 +665,7 @@ export class RunCoordinator {
 
   private async runAgent(input: {
     readonly run: QARun;
+    readonly preparationPolicy?: PreparationPolicy;
     readonly registration: HarnessAdapterRegistration;
     readonly index: number;
     readonly workingCopy: string;
@@ -715,6 +736,75 @@ export class RunCoordinator {
         baseline: { snapshotId: input.run.snapshotId, fileHashByPath: baselineHashes },
       });
       this.activeAdapters.set(agentRunId, adapter);
+      const deadlineAt =
+        Date.now() +
+        (input.run.configuration.executionSafeguards?.runTimeoutMs ??
+          SENTRY_PRODUCTION_RUN_TIMEOUT_MS);
+      let workspacePreparation: PreparationReceipt | undefined;
+      if (input.preparationPolicy !== undefined) {
+        const controller = new AbortController();
+        const watcher = this.startCancellationWatcher({
+          qaRunId: input.run.id,
+          agentRunId,
+          adapter,
+          onCancelDelivered: () => controller.abort(),
+        });
+        try {
+          workspacePreparation = await this.prepareWorkspace({
+            workspaceRoot: workspace.runtimePath,
+            policy: input.preparationPolicy,
+            deadlineAt,
+            signal: controller.signal,
+          });
+          if (workspacePreparation.needsFreshCopy) {
+            controller.signal.throwIfAborted();
+            workspace = await this.workspaces.create({
+              projectId: input.run.projectId,
+              qaRunId: input.run.id,
+              agentRunId,
+              snapshotId: input.run.snapshotId,
+              workingCopyPath: input.workingCopy,
+              baseline: { snapshotId: input.run.snapshotId, fileHashByPath: baselineHashes },
+              signal: controller.signal,
+            });
+            await removeBuildCaches(workspace.runtimePath, controller.signal);
+          }
+          this.activities.stage({
+            qaRunId: input.run.id,
+            parentActivityId: input.rootActivityId,
+            agentRunId,
+            source: 'sentry',
+            kind: 'runtime',
+            status: workspacePreparation.status === 'ready' ? 'completed' : 'warning',
+            title:
+              'Workspace preparation: ' +
+              workspacePreparation.status +
+              ' � ' +
+              workspacePreparation.reason,
+          });
+        } catch (cause) {
+          if (
+            !controller.signal.aborted ||
+            (cause instanceof Error && cause.message === 'QA_PREPARATION_PROCESS_CLEANUP_FAILED')
+          )
+            throw cause;
+        } finally {
+          watcher.stop();
+          await watcher.delivery();
+        }
+        if (controller.signal.aborted) {
+          agentRun = AgentRunSchema.parse({
+            ...agentRun,
+            status: 'cancelled',
+            completedAt: nowIsoTimestamp(),
+          });
+          this.persistAgentRunUnlessCancelled(agentRunId, agentRun);
+          return;
+        }
+      }
+
+      if (input.preparationPolicy !== undefined && Date.now() >= deadlineAt)
+        throw new RunTimeoutError('workspace preparation exhausted the run budget');
       const request = HarnessRunRequestSchema.parse({
         schemaVersion: 1,
         agentRunId,
@@ -734,6 +824,9 @@ export class RunCoordinator {
           policyVersion: input.run.configuration.policy.version,
           context: {
             ...input.missionContext,
+            ...(input.preparationPolicy === undefined
+              ? {}
+              : { qaDepth: { version: 1, deadlineAt }, workspacePreparation }),
             agentStack: stack,
           },
         },
@@ -877,33 +970,47 @@ export class RunCoordinator {
       }
     } finally {
       this.activeAdapters.delete(agentRunId);
-      await adapter?.dispose();
-      // Generic shutdown observability: after dispose(), surface any adapter
-      // shutdown diagnostics as run warnings before workspace cleanup.
-      for (const diagnostic of adapter?.getShutdownDiagnostics?.() ?? []) {
-        this.activities.stage({
-          qaRunId: input.run.id,
-          parentActivityId: input.rootActivityId,
-          source: 'sentry',
-          kind: 'runtime',
-          title:
-            diagnostic.severity === 'error'
-              ? 'Shutdown diagnostic (error): ' + diagnostic.code
-              : 'Shutdown diagnostic: ' + diagnostic.code,
-          status: diagnostic.severity === 'error' ? 'failed' : 'warning',
-        });
-      }
-      if (workspace !== undefined) {
-        const cleanup = await this.workspaces.cleanup(workspace);
-        if (cleanup.warning !== undefined) {
+      try {
+        try {
+          await adapter?.dispose();
+          // Generic shutdown observability: after dispose(), surface any adapter
+          // shutdown diagnostics as run warnings before workspace cleanup.
+          for (const diagnostic of adapter?.getShutdownDiagnostics?.() ?? []) {
+            this.activities.stage({
+              qaRunId: input.run.id,
+              parentActivityId: input.rootActivityId,
+              source: 'sentry',
+              kind: 'runtime',
+              title:
+                diagnostic.severity === 'error'
+                  ? 'Shutdown diagnostic (error): ' + diagnostic.code
+                  : 'Shutdown diagnostic: ' + diagnostic.code,
+              status: diagnostic.severity === 'error' ? 'failed' : 'warning',
+            });
+          }
+        } catch {
           this.activities.stage({
             qaRunId: input.run.id,
             parentActivityId: input.rootActivityId,
             source: 'sentry',
             kind: 'runtime',
-            title: cleanup.warning,
             status: 'warning',
+            title: 'Adapter shutdown failed; workspace cleanup continues.',
           });
+        }
+      } finally {
+        if (workspace !== undefined) {
+          const cleanup = await this.workspaces.cleanup(workspace);
+          if (cleanup.warning !== undefined) {
+            this.activities.stage({
+              qaRunId: input.run.id,
+              parentActivityId: input.rootActivityId,
+              source: 'sentry',
+              kind: 'runtime',
+              title: cleanup.warning,
+              status: 'warning',
+            });
+          }
         }
       }
     }
@@ -1030,11 +1137,15 @@ export class RunCoordinator {
     // A run emitting real work never trips; a wedged transport does.
     const startedAt = Date.now();
     const absoluteMaxMs = timeoutMs * 3;
+    const hardDeadline = depthPolicy(request.task.context)?.deadlineAt;
     let lastEventAt = startedAt;
     const timeout = new Promise<never>((_resolve, reject) => {
       const check = (): void => {
         const now = Date.now();
-        if (now - startedAt >= absoluteMaxMs) {
+        if (
+          (hardDeadline !== undefined && now >= hardDeadline) ||
+          now - startedAt >= absoluteMaxMs
+        ) {
           reject(new RunTimeoutError('absolute cap ' + String(absoluteMaxMs) + ' ms reached'));
           return;
         }
@@ -1042,10 +1153,30 @@ export class RunCoordinator {
           reject(new RunTimeoutError('no events for ' + String(timeoutMs) + ' ms'));
           return;
         }
-        timer = setTimeout(check, Math.min(30_000, timeoutMs));
+        timer = setTimeout(
+          check,
+          Math.max(
+            1,
+            Math.min(
+              30_000,
+              timeoutMs,
+              hardDeadline === undefined ? Infinity : hardDeadline - Date.now(),
+            ),
+          ),
+        );
         (timer as unknown as { unref: () => void }).unref?.();
       };
-      timer = setTimeout(check, Math.min(30_000, timeoutMs));
+      timer = setTimeout(
+        check,
+        Math.max(
+          1,
+          Math.min(
+            30_000,
+            timeoutMs,
+            hardDeadline === undefined ? Infinity : hardDeadline - Date.now(),
+          ),
+        ),
+      );
       (timer as unknown as { unref: () => void }).unref?.();
     });
     try {

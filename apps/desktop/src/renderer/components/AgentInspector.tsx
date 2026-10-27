@@ -1,4 +1,5 @@
 import React from 'react';
+import { coverageLabel, proofLabel } from '../lib/qa-quality.js';
 import {
   Activity,
   AlertTriangle,
@@ -162,6 +163,7 @@ export function AgentInspector({
         </h3>
         <div style={{ marginTop: 6 }}>
           <StatusPill status={view.status} />
+          <p className="faint">{coverageLabel(data.events ?? [], view.status)}</p>
         </div>
       </div>
       <Tabs tabs={tabs} active={activeTab} onChange={setTab} label="Agent details" />
@@ -655,6 +657,15 @@ export function FindingDetail({
   return (
     <div style={{ marginTop: 8, borderTop: '1px solid var(--border-default)', paddingTop: 8 }}>
       <h4 style={{ margin: '0 0 4px' }}>{finding.title}</h4>
+      {section(
+        'Evidence',
+        proofLabel(
+          (finding.evidenceIds ?? []).flatMap((id) => {
+            const item = evidenceById.get(id);
+            return item === undefined ? [] : [item];
+          }),
+        ),
+      )}
       {section(
         'Severity',
         <span style={{ textTransform: 'uppercase' }}>{finding.severity.toLowerCase()}</span>,

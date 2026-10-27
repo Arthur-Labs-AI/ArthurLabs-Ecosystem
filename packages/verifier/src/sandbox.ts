@@ -13,6 +13,7 @@ export interface SandboxAvailability {
 }
 
 export interface SandboxCommandInput {
+  readonly signal?: AbortSignal;
   readonly executable: string;
   readonly args: readonly string[];
   readonly cwd: string;
@@ -49,8 +50,8 @@ export interface VerificationSandboxBackend {
   /** Probe real isolation. probeParent must be a bindable directory
    *  on the same filesystem family the verifier will use (the Sentry
    *  dataRoot): the probe creates and removes a temp dir inside it.
-   *  os.tmpdir() and $HOME are NOT universally bindable (WSL2 private
-   *  /tmp; ProtectHome mount-order quirk) and must not be used. */
+   *  os.tmpdir() is not universally bindable (WSL2 private /tmp).
+   *  HOME is hidden with tmpfs while explicitly bound workspaces remain visible. */
   preflight(probeParent: string): Promise<SandboxAvailability>;
   createEnvironment(input: SandboxEnvironmentInput): Promise<VerificationExecutionEnvironment>;
 }
@@ -104,7 +105,7 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
     // NOT (isolation works). A single exit 0 proves both.
     // Probe inside probeParent (bindable, same fs family as the data
     // root). Never os.tmpdir() (private to the user manager on WSL2)
-    // and never $HOME work dirs (ProtectHome mount-order quirk).
+    // HOME paths are supported by a private tmpfs plus explicit workspace binds.
     // Execution proof: work/ IS visible. Hiding proofs: an unbound
     // peer beside work/ and a marker under the REAL home are invisible.
     const { mkdtemp, mkdir, writeFile, rm } = await import('node:fs/promises');
@@ -293,6 +294,7 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
   async runUnit(
     unitName: string,
     input: {
+      signal?: AbortSignal;
       executable: string;
       args: readonly string[];
       cwd: string;
@@ -306,6 +308,7 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
     },
   ): Promise<SandboxCommandResult> {
     const startedAt = Date.now();
+    input.signal?.throwIfAborted();
     const done = (partial: Omit<SandboxCommandResult, 'durationMs'>): SandboxCommandResult => ({
       ...partial,
       durationMs: Math.max(0, Date.now() - startedAt),
@@ -324,7 +327,9 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
     // ReadWritePaths (226/NAMESPACE); the empty-root mount succeeds.
     const properties: string[] = [
       'TemporaryFileSystem=/',
-      'ProtectHome=yes',
+      // An inaccessible HOME mount masks explicit child workspace binds on WSL2.
+      // A private tmpfs hides host HOME while allowing only our explicit binds.
+      'ProtectHome=tmpfs',
       'PrivateNetwork=yes',
       'NoNewPrivileges=yes',
       'KillMode=control-group',
@@ -379,6 +384,16 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
     let stderr = '';
     let timedOut = false;
     let stopPromise: Promise<boolean> | undefined;
+    const abort = (): void => {
+      stopPromise ??= stopUnit(systemctl, unitName);
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        /* Unit stop still owns teardown. */
+      }
+    };
+    input.signal?.addEventListener('abort', abort, { once: true });
+    if (input.signal?.aborted) abort();
     const timer = setTimeout(() => {
       timedOut = true;
       stopPromise = stopUnit(systemctl, unitName);
@@ -400,6 +415,12 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
       child.on('close', (code) => resolveExit(code ?? undefined));
     });
     clearTimeout(timer);
+    input.signal?.removeEventListener('abort', abort);
+    if (input.signal?.aborted) {
+      if (!(await stopPromise))
+        return done({ stdout, stderr, timedOut: false, failure: 'process_tree_cleanup_failed' });
+      input.signal.throwIfAborted();
+    }
     // systemd-run may propagate its own setup failure as if it were
     // the replayed command's exit status. Namespace/exec/chdir failure
     // is an environment error, never evidence of bug absence.
@@ -498,6 +519,7 @@ class SystemdSandboxEnvironment implements VerificationExecutionEnvironment {
     nextUnitSequence += 1;
     const unitName = 'sentry-verify-' + process.pid + '-' + nextUnitSequence;
     return this.options.backend.runUnit(unitName, {
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
       executable: input.executable,
       args: input.args,
       cwd: input.cwd,

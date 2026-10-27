@@ -409,5 +409,12 @@
   "Open": "Отворено",
   "Raw event": "Сурово събитие",
   "Start Targeted QA": "Стартирай целеви QA",
-  "Cancelled.": "Прекъснато."
+  "Cancelled.": "Прекъснато.",
+  "Behavior reproduced": "Поведението е възпроизведено",
+  "Source-supported": "Подкрепено от кода",
+  "Unconfirmed": "Непотвърдено",
+  "Analysis coverage unknown": "Покритието на анализа е неизвестно",
+  "Partial analysis": "Частичен анализ",
+  "Planned checks reported": "Планираните проверки са отчетени",
+  "Analysis in progress": "Анализът продължава"
 }

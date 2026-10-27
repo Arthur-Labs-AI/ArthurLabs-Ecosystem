@@ -394,5 +394,12 @@
   "info": "info",
   "Open": "Open",
   "Raw event": "Raw event",
-  "Historical development run \u2014 Sentry no longer creates simulation runs": "Historical development run \u2014 Sentry no longer creates simulation runs"
+  "Historical development run \u2014 Sentry no longer creates simulation runs": "Historical development run \u2014 Sentry no longer creates simulation runs",
+  "Behavior reproduced": "Behavior reproduced",
+  "Source-supported": "Source-supported",
+  "Unconfirmed": "Unconfirmed",
+  "Analysis coverage unknown": "Analysis coverage unknown",
+  "Partial analysis": "Partial analysis",
+  "Planned checks reported": "Planned checks reported",
+  "Analysis in progress": "Analysis in progress"
 }

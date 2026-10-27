@@ -159,6 +159,7 @@ export class RunActivityProjector {
 
   stage(input: {
     readonly qaRunId: RunActivity['qaRunId'];
+    readonly agentRunId?: RunActivity['agentRunId'];
     readonly parentActivityId?: RunActivityId;
     readonly source: RunActivity['source'];
     readonly kind: RunActivity['kind'];
@@ -171,6 +172,7 @@ export class RunActivityProjector {
       schemaVersion: 1,
       id: createRunActivityId(),
       qaRunId: input.qaRunId,
+      ...(input.agentRunId === undefined ? {} : { agentRunId: input.agentRunId }),
       ...(input.parentActivityId === undefined ? {} : { parentActivityId: input.parentActivityId }),
       source: input.source,
       kind: input.kind,

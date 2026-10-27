@@ -9,6 +9,13 @@ import {
   type OperationId,
 } from '@qa/shared';
 import {
+  canChallenge,
+  challengePrompt,
+  coverageErrors,
+  reportableDepthPlan,
+  depthPolicy,
+  DEPTH_COVERAGE_GUIDANCE,
+  DEPTH_PREPARATION_GUIDANCE,
   boundCorrectionMessage,
   buildPlanningCorrectionIntro,
   buildReportCorrectionIntro,
@@ -312,6 +319,7 @@ function planningPrompt(request: HarnessRunRequest): string {
     QA_PLANNING_RISK_GUIDANCE,
     'Create an investigation plan before executing it. Express prioritization inside the existing schema fields: plannedChecks names the high-risk boundary plus its intended verification.',
     'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
+    ...(depthPolicy(request.task.context) === undefined ? [] : [DEPTH_PREPARATION_GUIDANCE]),
     'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
     'User instructions: ' + request.task.prompt,
     'OUTPUT CONTRACT (must hold exactly): your ENTIRE final response is exactly one raw JSON object matching the schema. No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
@@ -346,6 +354,7 @@ function reportPrompt(
   correction?: readonly string[],
 ): string {
   return [
+    DEPTH_COVERAGE_GUIDANCE,
     'Serialize the investigation you just completed into exactly one Sentry report. No new QA: do not run commands, read files, or use any tools in this turn. Temporary evidence keys only; Sentry owns all durable IDs.',
     ...(correction === undefined ? [] : [buildReportCorrectionIntro(correction)]),
     REPORT_LEDGER_RULES,
@@ -872,6 +881,26 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
 
   async *run(request: HarnessRunRequest): AsyncIterable<HarnessEvent> {
     yield event(request.agentRunId, { type: 'run.started' });
+    if (depthPolicy(request.task.context) !== undefined) {
+      yield event(request.agentRunId, {
+        type: 'agent.message',
+        message: 'QA_DEPTH_V1: independent validation enabled.',
+      });
+      const preparation = request.task.context?.['workspacePreparation'] as
+        { status?: string; reason?: string } | undefined;
+      if (preparation !== undefined)
+        yield event(request.agentRunId, {
+          type: 'agent.message',
+          message: 'QA_PREPARATION_RECEIPT: ' + JSON.stringify(preparation),
+        });
+      if (preparation?.status === 'limited')
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_PREPARATION_LIMITED',
+          message: preparation.reason ?? 'Workspace preparation is limited.',
+        });
+    }
+
     yield event(request.agentRunId, {
       type: 'agent.status',
       status: 'planning',
@@ -1000,8 +1029,11 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           planCorrection = ['Planning turn produced no response.'];
         } else {
           try {
-            planResult = SentryInvestigationPlanV1Schema.parse(
-              parseWholeJson(planning.text, 'planning', pipeline),
+            planResult = reportableDepthPlan(
+              SentryInvestigationPlanV1Schema.parse(
+                parseWholeJson(planning.text, 'planning', pipeline),
+              ),
+              depthPolicy(request.task.context) !== undefined,
             );
             break;
           } catch (cause) {
@@ -1042,6 +1074,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         status: 'investigating',
         message: 'OpenCode is executing the frozen plan.',
       });
+      const depth = depthPolicy(request.task.context);
+      let challenge: CollectedTurn | undefined;
       const investigation = await this.runTurn(
         entry,
         investigationPrompt(planResult),
@@ -1049,6 +1083,30 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         'investigation',
       );
       for (const emitted of investigation.events) yield emitted;
+      if (depth !== undefined) {
+        if (canChallenge(depth.deadlineAt)) {
+          yield event(request.agentRunId, {
+            type: 'agent.status',
+            status: 'investigating',
+            message: 'Validating own findings and checking counterarguments.',
+          });
+          challenge = await this.runTurn(
+            entry,
+            challengePrompt(planResult),
+            request.agentRunId,
+            'investigation',
+          );
+          for (const emitted of challenge.events) yield emitted;
+        } else {
+          yield event(request.agentRunId, {
+            type: 'warning',
+            code: 'QA_CHALLENGE_NOT_RUN',
+            message:
+              'Validation pass not run: remaining budget reserved for reporting. Analysis is partial.',
+          });
+        }
+      }
+
       yield event(request.agentRunId, {
         type: 'agent.status',
         status: 'reporting',
@@ -1095,6 +1153,9 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
             errors = candidate.errors;
           } else {
             try {
+              const missing =
+                depth === undefined ? [] : coverageErrors(planResult, candidate.report);
+              if (missing.length > 0) throw new Error(missing.join('\n'));
               built = await this.buildReportAttempt(request, candidate.report, pipeline);
               result = candidate.report;
               break;
@@ -1163,6 +1224,15 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         yield event(request.agentRunId, { type: 'evidence.submitted', evidence });
       for (const finding of attempt.findings)
         yield event(request.agentRunId, { type: 'finding.submitted', finding });
+      if (
+        depth !== undefined &&
+        result.checks.some((check) => ['not_run', 'inconclusive'].includes(check.status))
+      )
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_COVERAGE_PARTIAL',
+          message: 'Analysis is partial: applicable planned checks remain unverified.',
+        });
       for (const limitation of result.limitations)
         yield event(request.agentRunId, {
           type: 'warning',
@@ -1170,10 +1240,15 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           message: limitation,
         });
       let summed = sumUsage(planningUsage, investigation.usage ?? {});
+      if (challenge !== undefined) summed = sumUsage(summed, challenge.usage ?? {});
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
         ...summed,
-        turns: planningSteps + investigation.steps + reportTurns.reduce((n, t) => n + t.steps, 0),
+        turns:
+          planningSteps +
+          investigation.steps +
+          (challenge?.steps ?? 0) +
+          reportTurns.reduce((n, t) => n + t.steps, 0),
       };
       yield event(request.agentRunId, { type: 'usage.updated', usage });
       yield event(request.agentRunId, {

@@ -87,6 +87,9 @@ jobs:
         if: steps.sandbox.outputs.available == 'true'
         run: |
           pnpm test
+      - name: Private workspace preparation (real sandbox)
+        if: steps.sandbox.outputs.available == 'true'
+        run: pnpm --filter @qa/run-engine test:preparation-sandbox
       # The real-sandbox fixture requires user-unit mounts. Keep it mandatory
       # wherever the runner can provide them; on restricted hosted runners,
       # run every other package and run-engine test without hiding the gap.

@@ -1,3 +1,91 @@
+## Independent agent depth — IMPLEMENTED / VERIFIED
+
+Branch codex/independent-agent-depth from dev f47f527. Private copies/sessions
+preserved; offline per-copy pnpm preparation, common challenge turn, coverage
+validation and UI proof labels implemented. Default production workflow; rollback
+SENTRY_QA_DEPTH=0, offline cache SENTRY_QA_CACHE_SEED required for full preparation.
+New imports prune tsbuildinfo without altering frozen v2 hashes. Reset failed
+install copies, cancel before provider launch, and unconditional workspace cleanup.
+Version probe hook discovery fixed using private HOME; malicious hook smoke PASS.
+Actual WSL HOME sandbox failure reproduced then fixed with private tmpfs HOME;
+original/peer/network isolation, private dependency writes, postinstall denial and
+owned process cancellation verified. Existing native trust suite8 PASS.
+Format/lint20/typecheck37/build20/hygiene PASS; non-engine39 tasks PASS;
+engine87 tests PASS at broad checkpoint, final lifecycle/preparation16 PASS,
+adapter phase9 PASS, depth contract4 PASS. Known opt-in/platform skips retained.
+No paid model comparison or published-artifact install: UNVERIFIED, no accuracy or
+release-ready claim. Full evidence: docs/reviews/independent-agent-depth-verification.md.
+Deleted merged local/remote branches chore/app-cleanup-and-polish (75f5f58),
+fix/glm-sandbox-result-detection (22b58b0), feature/native-linux-support (6793a9c),
+all ancestors of dev. Retained main/dev/new work branch per corrected instruction.
+Temporary WSL verification checkouts cleaned. shux unavailable; direct protocol.
+
+## Independent QA depth implementation plan — COMPLETE (planning only)
+
+Owner requested a simple production-oriented implementation plan, not code.
+Created docs/reviews/independent-agent-depth-plan.md after inspecting workspace,
+adapter phase transitions, report/check schemas and existing sandbox backend.
+Design: preserve private copies/sessions; deterministic offline per-copy
+preparation; one same-session challenge turn; existing evidence/coverage labels.
+Bounded deadlines, no peer sharing/new service/DB migration, fail-closed sandbox,
+cache miss limitations, historical compatibility and rollout/release gates.
+Architecture review ten questions answered in plan. Implementation gates remain
+UNVERIFIED; no product edits, provider calls or commit. shux unavailable.
+
+## OpenCode speed investigation — COMPLETE
+
+Audited nine Desktop exports and current adapter/config/client/pipeline source.
+Muse is fastest in all seven successful paired exports (67–308 seconds).
+Counterexample: MiMo through OpenCode failed after1919seconds, so not a universal
+adapter speed rule. Last run phase seconds: Muse40/117/62, DeepSeek649/577/314,
+GLM351/167/429. GLM total is largely planning/reporting, not longer investigation.
+No short Muse timeout/step cap/explicit low-effort override found. Model declares
+investigation done; adapter advances to report without semantic rebuttal pass.
+DeepSeek restored1009 cached packages (downloaded0;6s), enabling actual tests;
+Muse/GLM reported missing-dependency limits. No live model or setting changes.
+Prompt parity unit1 PASS. Detailed findings/limits:
+docs/reviews/opencode-speed-investigation.md. shux unavailable; direct receipts.
+
+## OpenCode log identity audit — COMPLETE
+
+Inspected exported harness event envelopes for run_01M5YWGJHHS964R0N2GAM5NWRT,
+OpenCode arun_01M5YWGKM6JPKEGHY3TC9YEZZQ. All observed file reads use its isolated
+workspace. Plan records snapshot snap_01M5YWGKKDJ84JY8MM5KX7BZJJ; export maps it
+to revision rev_01M5YPSV7K06HRK480WXE8R9ET (imported 12:54:12.980 UTC).
+Agent calls it Sentry v1.0.2, consistent with README release label; that is not
+proof of Git tag/commit identity. git status explicitly failed: not a git repo.
+Source planning prompt serializes mission context including revision, but raw
+provider prompt receipt is not retained in this export, so exact model attention
+to revision ID cannot be proven. No evidence of reading another revision.
+No product changes or provider execution; protocol notes only. shux absent.
+
+## Review run_01M5YWGJHHS964R0N2GAM5NWRT — COMPLETE
+
+Owner requested verdicts only, one per 14 exported findings. Reviewed current dev
+f47f527 source, protocol validator, cleanup/export/credentials/cancellation flows,
+and tracked-file inventory. Actual production-module synthetic probes confirm:
+forgetAll leaves legacy file, custom file exclusions ignored, root accepted by
+resolveInside, planning->completed rejected. No deletion probe on real data.
+Important: stale incremental caches in snapshots; legacy credential residue;
+dispose rejection skips cleanup. Conditional hardening: cleanup root guard and
+export temp symlink. Qualified: starting->completed violates start-first protocol;
+completed cancellation row is not shown reachable stale; leases intentionally
+support peers; caches/stub locks not tracked (old run JSON IS tracked).
+No new provider run, product fix or commit. shux contract unavailable.
+
+# Verification of 12 exported findings — 2026-10-27
+
+Reviewed run01M5YMA9B8T5581M67PTBCA8Q8 vs dev f47f527; original snapshot
+predates WSL fixture fix. Actual probes confirm snapshot tsbuildinfo/dist defect,
+newline replay mismatch, unknown auth/cookie redaction and conditional merge
+contract mismatch. Other claims rejected/qualified (lease design, untracked
+stubs, environment gates, latent guards/thresholds). Report under docs/reviews.
+Merger29/exclusions5/closure1/verifier1/WSL prompt1 and hygiene PASS.
+No provider run, product/data/settings change or commit; local review receipts
+only. shux absent, protocol direct.
+
+## Previous record (preserved)
+
 # Commit-all / dev integration authorization — 2026-10-27
 
 Owner explicitly authorized committing all current work and integrating dev.
