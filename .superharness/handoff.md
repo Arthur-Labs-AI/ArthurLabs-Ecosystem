@@ -1,3 +1,36 @@
+# Owner-authorized commit/integration to dev — 2026-10-27
+
+Owner explicitly asked to commit all outstanding work and integrate dev.
+PR #40 contains GLM release-prompt restoration plus retained sandbox/error
+fixes. Include current live-smoke receipts and supplied run export (credential
+signature/field scan found no matches), formatted without semantic changes.
+Product source a687c43 already passed six CI checks,97 harness/20 WSL tests
+and60 static/build tasks; live targeted GLM smoke passed4m19. Final receipt/data
+commit gets its own format/hygiene/CI verification. GitHub PR40 is the canonical
+merge receipt. Finish with local dev synchronized to origin/dev and clean tree.
+No force/rewrite/release/extra model call. shux absent; records direct.
+
+## Previous record (preserved)
+
+# Authorized GLM live smoke PASS — 2026-10-27
+
+Investigated run01M5YHZ5A3RAJTK6KV7S11738N: cancelled after19m51.6 wall;
+Windows lid Modern Standby13:40:51–13:48:34 and WSL462.276s clock divergence
+explain about7m42. Last tool13:40:48;45tools all completed/21.066s total;
+no provider/sandbox error. Active phase processes sum~12m07, not20min hung tool.
+
+Explicitly authorized real GLM-only targeted smoke
+`run_01M5YK9M365Q1S9A2TZK0F3N7K` completed in4m19.087s. Scope one timeout
+constants file, same project/runtime/model. All phases PASS; one planning
+retry, no report retry. Node check PASS, two valid evidence, zero findings,
+three tools total1.919s; input55160/output10434/cached146048 tokens,4turns.
+Considerable output generation still dominates (4569tokens before first tool).
+Local fake-endpoint request confirms pinned CLI effort high/adaptive by default;
+no effort/power/source change applied. This scoped smoke is not full-repo QA
+or a full-run speed guarantee. No restart/cancel this turn; shux absent.
+
+## Previous record (preserved)
+
 # GLM v1.0.2 prompts restored — 2026-10-27
 
 Owner requested release behavior only for GLM. All three prompt builders copied

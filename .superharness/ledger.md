@@ -1,3 +1,28 @@
+# Commit-all / dev integration authorization — 2026-10-27
+
+Owner explicitly authorized committing all current work and integrating dev.
+Finalize PR40 with live GLM receipts and owner-provided run export; credential
+signature/field scan found no matches. Preserve JSON semantics while formatting.
+Product a687c43 has six checks/97 harness/20 WSL/static60 PASS,live smoke4m19
+PASS. Final data/receipt commit validated separately; merge receipt in PR40.
+No force/history rewrite/release/model call; shux absent,protocol direct.
+
+## Previous record (preserved)
+
+# GLM sleep diagnosis + authorized live test — 2026-10-27
+
+Owner explicitly requested live GLM-only test. Problem run01M5YHZ5A3RAJTK6KV7S11738N
+cancelled, no provider failure;45completedtools/21.066s. Windows lid standby
+13:40:51–13:48:34 plus WSL462.276s realtime/monotonic drift proves apparent
+extra~7m42 suspension. Test run01M5YK9M365Q1S9A2TZK0F3N7K targeted one file,
+onlyglm-5.3-flash, completed4m19.087s;3tools/1.919s,NodecheckPASS,2evidence,
+0findings,oneplanretry/noreportretry. Usage55160in/10434out/146048cached,4turns.
+High generation overhead observed; fake endpoint confirms defaultCLIadaptive/high.
+No source/config/power policy change or restart/cancel; only one authorized
+real QA started. Scoped success is not full-run latency proof. shux absent.
+
+## Previous record (preserved)
+
 # GLM release prompt restoration — 2026-10-27
 
 Owner chose v1.0.2 behavior for GLM. Copied three prompt builders verbatim from

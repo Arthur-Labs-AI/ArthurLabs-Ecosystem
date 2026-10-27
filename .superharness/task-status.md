@@ -1,3 +1,56 @@
+# Commit all current work and integrate dev — 2026-10-27
+
+Owner explicitly requested committing all outstanding work and putting it in
+dev. Scope: existing GLM fixes/release prompts on PR #40, live smoke receipts
+in these three protocol files, and owner-provided run export
+`sentry-run_01M5Y7P7EE0GPAH3KRBJT00Q4S.json`. Export scan found zero GitHub,
+provider, AWS key/private-key signatures and no suspicious credential fields;
+include it as explicitly requested, preserving JSON content through formatting.
+Ignored environment/runtime/credential data is not part of repository changes.
+
+Product source remains `a687c43` (97 harness tests, 20 deployed WSL tests,
+60 static/build tasks and six PR checks PASS). Real GLM smoke completed in
+4m19 with valid report/two evidence/zero findings; full-run performance remains
+unverified. This final commit changes only receipts and the supplied export.
+Run final format/hygiene/diff and final-head CI before integrating PR #40;
+canonical merge receipt belongs to GitHub PR #40. Owner's direct instruction
+authorizes this integration. No force push/history rewrite/release requested.
+shux unavailable; task status, ledger and handoff maintained directly.
+
+## Previous record (preserved)
+
+# GLM investigation and authorized live smoke — 2026-10-27
+
+Owner explicitly authorized a real GLM-only test after investigating
+`run_01M5YHZ5A3RAJTK6KV7S11738N`. That run was cancelled, not provider-failed:
+13:29:47–13:49:38 Sofia, 45 completed tools / 25 shell commands, summed tool
+duration 21.066s, no unfinished operation. Planning 27 operations, investigation 18. Last tool completed13:40:48. Windows System events prove lid-triggered
+Modern Standby entry13:40:51 (Kernel-Power506), exit13:48:34 (507). WSL journal
+realtime-minus-monotonic divergence462.276135s corroborates suspension/time
+correction. Process elapsed plan5m52.808 + investigation6m14.515; displayed
+19m51.6 includes about7m42 suspension. No sandbox/provider failure recorded.
+
+Authorized targeted real test `run_01M5YK9M365Q1S9A2TZK0F3N7K` on the same
+project, ONLY stack_glm_main/glm-5.3-flash, scope packages/shared/src/run-limits.ts,
+engine silence timeout240000ms. Completed13:52:58–13:57:17 Sofia in4m19.087s.
+PASS all phases, one planning correction, no report retry/provider failure;
+two successful shell commands and one Read (tool total1.919s), valid report,
+two accepted evidence entries, zero findings. Node assertion check passes
+exported positive integer min/max ordering. Agent usage: input55160/output10434/
+cached146048, four turns. Targeted smoke does not prove full-repo latency or
+comprehensive defect detection. Provider diagnostics during the live session
+show4569 output tokens before first tool, explaining substantial generation
+overhead; no raw reasoning copied. Local loopback request probe confirms pinned
+Claude defaults to adaptive thinking/output_config.effort=high/max_tokens32000
+without explicit flags (fake API, no extra paid requests).
+
+No product source/configuration/power-policy change, restart, or cancellation
+performed this turn. Owner-approved smoke is the only new real QA run. Private
+history/export preserved; shux absent, protocol maintained directly. Further
+effort tuning requires separate implementation/evaluation; not silently applied.
+
+## Previous record (preserved)
+
 # Owner-requested GLM v1.0.2 prompt restoration — 2026-10-27
 
 Owner chose copying release behavior for GLM instead of new phase budgets.
