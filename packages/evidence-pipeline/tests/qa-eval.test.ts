@@ -212,6 +212,149 @@ describe('deterministic QA evaluation', () => {
     expect(result.findings[2]?.overstatedConfidence).toBe(true);
   });
 
+  it('never awards true positives for missing or invalid evidence', async () => {
+    const groundTruth = await loadGroundTruth();
+    const strongFinding = {
+      title: 'Clamp returns 101 above 100',
+      category: 'logic',
+      severity: 'medium',
+      confidence: 'strong',
+      description: 'Values above 100 yield 101 in clampScore.',
+      locations: [{ relativePath: 'fixture-a-logic/score.ts' }],
+      reproductionSteps: [],
+    };
+    const validEvidence = [codeEvidence('e1')];
+    // Exclusively invalid key: ambiguous, never a hit.
+    const invalidOnly = evaluateFixtureReport(
+      {
+        findings: [{ ...strongFinding, evidenceKeys: ['ghost'] }],
+        evidence: validEvidence,
+        checks: [],
+        limitations: [],
+      } as never,
+      fixture('fixture-a-logic', groundTruth),
+    );
+    expect(invalidOnly.detected).toEqual([]);
+    expect(invalidOnly.findings[0]?.verdict.kind).toBe('ambiguous');
+    expect(invalidOnly.findings[0]?.invalidEvidenceKeys).toEqual(['ghost']);
+    // Mixed valid and invalid keys: the valid citation sustains the hit.
+    const mixed = evaluateFixtureReport(
+      {
+        findings: [{ ...strongFinding, evidenceKeys: ['e1', 'ghost'] }],
+        evidence: validEvidence,
+        checks: [],
+        limitations: [],
+      } as never,
+      fixture('fixture-a-logic', groundTruth),
+    );
+    expect(mixed.detected).toEqual(['A1-boundary-clamp']);
+    // An invalid first finding must not consume the defect: the later
+    // legitimate finding still earns the true positive (not a duplicate).
+    const afterInvalid = evaluateFixtureReport(
+      {
+        findings: [
+          { ...strongFinding, evidenceKeys: ['ghost'] },
+          { ...strongFinding, evidenceKeys: ['e1'] },
+        ],
+        evidence: validEvidence,
+        checks: [],
+        limitations: [],
+      } as never,
+      fixture('fixture-a-logic', groundTruth),
+    );
+    expect(afterInvalid.findings[0]?.verdict.kind).toBe('ambiguous');
+    expect(afterInvalid.findings[1]?.verdict).toEqual({
+      kind: 'truePositive',
+      defectId: 'A1-boundary-clamp',
+    });
+  });
+
+  it('calibrates confirmed confidence against reproduction evidence', async () => {
+    const groundTruth = await loadGroundTruth();
+    const base = {
+      title: 'Clamp returns 101 above 100',
+      category: 'logic',
+      severity: 'medium',
+      description: 'Values above 100 yield 101 in clampScore.',
+      locations: [{ relativePath: 'fixture-a-logic/score.ts' }],
+      reproductionSteps: [],
+    };
+    const source = [codeEvidence('e1')];
+    // confirmed + only a source reference: overstated.
+    const sourceOnly = evaluateFixtureReport(
+      {
+        findings: [{ ...base, confidence: 'confirmed', evidenceKeys: ['e1'] }],
+        evidence: source,
+        checks: [],
+        limitations: [],
+      } as never,
+      fixture('fixture-a-logic', groundTruth),
+    );
+    expect(sourceOnly.findings[0]?.verdict).toEqual({
+      kind: 'truePositive',
+      defectId: 'A1-boundary-clamp',
+    });
+    expect(sourceOnly.findings[0]?.overstatedConfidence).toBe(true);
+    // strong + meaningful source evidence: valid.
+    const strongSource = evaluateFixtureReport(
+      {
+        findings: [{ ...base, confidence: 'strong', evidenceKeys: ['e1'] }],
+        evidence: source,
+        checks: [],
+        limitations: [],
+      } as never,
+      fixture('fixture-a-logic', groundTruth),
+    );
+    expect(strongSource.findings[0]?.overstatedConfidence).toBe(false);
+    // confirmed + self-reported reproduction: not independently confirmed.
+    const claimed = evaluateFixtureReport(
+      {
+        findings: [{ ...base, confidence: 'confirmed', evidenceKeys: ['cmd1'] }],
+        evidence: [reproducedEvidence('cmd1')],
+        checks: [],
+        limitations: [],
+      } as never,
+      fixture('fixture-a-logic', groundTruth),
+    );
+    expect(claimed.findings[0]?.overstatedConfidence).toBe(true);
+    expect(claimed.findings[0]?.reproductionProvenance).toBe('self-reported');
+    // confirmed + Sentry-validated reproduction: valid.
+    const validated = evaluateFixtureReport(
+      {
+        findings: [{ ...base, confidence: 'confirmed', evidenceKeys: ['cmd1'] }],
+        evidence: [reproducedEvidence('cmd1')],
+        checks: [],
+        limitations: [],
+      } as never,
+      fixture('fixture-a-logic', groundTruth),
+      { trustedProvenance: true },
+    );
+    expect(validated.findings[0]?.overstatedConfidence).toBe(false);
+    expect(validated.findings[0]?.reproductionProvenance).toBe('sentry-validated');
+    // confirmed + nonexistent evidence: overstated.
+    const missing = evaluateFixtureReport(
+      {
+        findings: [{ ...base, confidence: 'confirmed', evidenceKeys: ['ghost'] }],
+        evidence: source,
+        checks: [],
+        limitations: [],
+      } as never,
+      fixture('fixture-a-logic', groundTruth),
+    );
+    expect(missing.findings[0]?.overstatedConfidence).toBe(true);
+    // probable + limited evidence: neither inflated nor rejected.
+    const modest = evaluateFixtureReport(
+      {
+        findings: [{ ...base, confidence: 'probable', evidenceKeys: ['ghost'] }],
+        evidence: source,
+        checks: [],
+        limitations: [],
+      } as never,
+      fixture('fixture-a-logic', groundTruth),
+    );
+    expect(modest.findings[0]?.overstatedConfidence).toBe(false);
+  });
+
   it('treats clean fixtures with zero findings as valid', async () => {
     const groundTruth = await loadGroundTruth();
     const result = evaluateFixtureReport(

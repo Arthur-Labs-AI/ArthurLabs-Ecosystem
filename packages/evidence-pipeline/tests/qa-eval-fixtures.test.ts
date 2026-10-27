@@ -119,7 +119,7 @@ describe('QA evaluation fixtures', () => {
 
   it('validates the ground-truth manifest structure', async () => {
     const manifest = await loadGroundTruth();
-    expect(manifest.version).toBe(2);
+    expect(manifest.version).toBe(3);
     for (const fixture of manifest.fixtures) {
       expect(Array.isArray(fixture.pathBases), fixture.id).toBe(true);
       for (const defect of fixture.knownDefects) {
@@ -127,6 +127,13 @@ describe('QA evaluation fixtures', () => {
         expect(defect.markers.length).toBeGreaterThanOrEqual(defect.minMarkers);
         for (const marker of defect.markers) {
           expect(marker.phrases.length).toBeGreaterThan(0);
+        }
+        expect(defect.requiredMarkers.length).toBeGreaterThan(0);
+        for (const required of defect.requiredMarkers) {
+          expect(
+            defect.markers.some((marker) => marker.id === required),
+            fixture.id + ':' + defect.id + ' requires unknown marker ' + required,
+          ).toBe(true);
         }
       }
     }

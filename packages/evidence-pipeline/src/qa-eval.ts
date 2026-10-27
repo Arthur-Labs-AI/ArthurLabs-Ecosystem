@@ -30,6 +30,14 @@ export interface QaEvalKnownDefect {
   readonly relevantPaths: readonly string[];
   readonly markers: readonly QaEvalBehaviorMarker[];
   readonly minMarkers: number;
+  /**
+   * Marker-group ids that must ALL match for a true positive. Generic
+   * subject groups (function or component names) can never satisfy the
+   * core defect requirement by themselves: at least one group must
+   * identify the actual failure (wrong value, missing check, race
+   * outcome, wrong order).
+   */
+  readonly requiredMarkers: readonly string[];
   readonly expectedBehavior: string;
   readonly actualBehavior: string;
   readonly reproduction: string;
@@ -210,6 +218,12 @@ function countMarkers(text: string, markers: readonly QaEvalBehaviorMarker[]): n
   return markers.filter((marker) => markerMatched(marker, text)).length;
 }
 
+function requiredMarkersMet(text: string, defect: QaEvalKnownDefect): boolean {
+  return defect.requiredMarkers.every((id) =>
+    defect.markers.some((marker) => marker.id === id && markerMatched(marker, text)),
+  );
+}
+
 function canonicalSet(paths: readonly string[], pathBases: readonly string[]): Set<string> {
   const out = new Set<string>();
   for (const raw of paths) {
@@ -251,10 +265,12 @@ type ReportShape = Pick<SentryAgentReportV2, 'findings' | 'evidence' | 'checks' 
 /**
  * Assess every finding of one report against one fixture's known defects.
  * TRUE POSITIVE requires a canonical path overlap AND at least
- * `minMarkers` distinct behavior markers in non-denial sentences AND at
- * least one cited evidence item. Strong mechanism text without a relevant
- * location, path overlap without mechanism detail, negated claims, and
- * evidence-free assertions all abstain or fail — never hit.
+ * `minMarkers` distinct behavior markers (including every
+ * `requiredMarkers` group) in non-denial sentences AND at least one
+ * cited evidence item that exists in the report. Strong mechanism text
+ * without a relevant location, path overlap without mechanism detail,
+ * negated claims, evidence-free assertions, and assertions backed only by
+ * missing or invalid evidence keys all abstain or fail — never hit.
  */
 export function evaluateFixtureReport(
   report: ReportShape,
@@ -275,7 +291,7 @@ export function evaluateFixtureReport(
     for (const defect of fixture.knownDefects) {
       const overlaps = pathOverlaps(findingPaths, defect.relevantPaths, fixture.pathBases);
       const markers = countMarkers(text, defect.markers);
-      const strong = markers >= defect.minMarkers;
+      const strong = markers >= defect.minMarkers && requiredMarkersMet(text, defect);
       if (overlaps && strong && markers >= bestMarkers) {
         best = defect;
         bestMarkers = markers;
@@ -285,21 +301,33 @@ export function evaluateFixtureReport(
         mechanismOnly = defect;
       }
     }
+    const cited = finding.evidenceKeys
+      .map((key) => evidenceByKey.get(key))
+      .filter((item) => item !== undefined);
+    const invalidEvidenceKeys = finding.evidenceKeys.filter((key) => !evidenceByKey.has(key));
     let verdict: QaEvalFindingVerdict;
-    if (best !== undefined && finding.evidenceKeys.length > 0) {
+    if (best !== undefined && cited.length > 0) {
       if (seenDefects.has(best.id)) {
         verdict = { kind: 'duplicate', defectId: best.id };
       } else {
         seenDefects.add(best.id);
         verdict = { kind: 'truePositive', defectId: best.id };
       }
-    } else if (best !== undefined) {
+    } else if (best !== undefined && finding.evidenceKeys.length === 0) {
       verdict = {
         kind: 'ambiguous',
         reason:
           'Finding describes ' +
           best.id +
           ' but cites no supporting evidence; manual review required.',
+      };
+    } else if (best !== undefined) {
+      verdict = {
+        kind: 'ambiguous',
+        reason:
+          'Finding describes ' +
+          best.id +
+          ' but every cited evidence key is missing or invalid; manual review required.',
       };
     } else if (mechanismOnly !== undefined) {
       verdict = {
@@ -323,10 +351,6 @@ export function evaluateFixtureReport(
         reason: 'No known defect matches by location and failure mechanism.',
       };
     }
-    const cited = finding.evidenceKeys
-      .map((key) => evidenceByKey.get(key))
-      .filter((item) => item !== undefined);
-    const invalidEvidenceKeys = finding.evidenceKeys.filter((key) => !evidenceByKey.has(key));
     const reproduced = cited.some(
       (item) => item.strength === 'reproduced_failure' || item.strength === 'reproduced_behavior',
     );
@@ -346,8 +370,15 @@ export function evaluateFixtureReport(
         item.type === 'test',
     );
     const sourceOnly = !reproduced && cited.length > 0 && grounded;
+    // `confirmed` asserts behaviorally reproduced fact: only a reproduced
+    // strength on Sentry-validated operation evidence supports it. Source
+    // inspection alone supports `strong` at most, and a self-reported
+    // reproduction claim without trusted provenance is not independently
+    // confirmed. `trustedProvenance` is a caller-supplied trust assertion:
+    // raw reports must never enable it for themselves.
     const overstatedConfidence =
-      (finding.confidence === 'confirmed' || finding.confidence === 'strong') && !grounded;
+      (finding.confidence === 'confirmed' && !(reproduced && trusted)) ||
+      ((finding.confidence === 'confirmed' || finding.confidence === 'strong') && !grounded);
     findings.push({
       findingTitle: finding.title,
       verdict,

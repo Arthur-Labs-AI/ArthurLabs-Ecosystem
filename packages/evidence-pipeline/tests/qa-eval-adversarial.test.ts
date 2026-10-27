@@ -338,6 +338,116 @@ describe('fixture path contexts', () => {
   });
 });
 
+describe('mandatory failure markers', () => {
+  it('rejects generic checkout authorization observations', async () => {
+    const groundTruth = await loadGroundTruth();
+    const large = fixture('fixture-f-large', groundTruth);
+    for (const description of [
+      'The checkout authorization flow should be documented for admins.',
+      'Checkout authorization needs clearer documentation.',
+      'runCheckout may have authorization risks.',
+    ]) {
+      const result = evaluateFixtureReport(
+        reportFor(
+          { title: 'Checkout authorization observation', description },
+          [reference('e1', 'src/service/checkout.ts')],
+          'src/service/checkout.ts',
+        ),
+        large,
+      );
+      expect(result.detected, description).toEqual([]);
+      expect(result.findings[0]?.verdict.kind, description).not.toBe('truePositive');
+    }
+  });
+
+  it('detects the charge-before-authorization failure including paraphrase', async () => {
+    const groundTruth = await loadGroundTruth();
+    const large = fixture('fixture-f-large', groundTruth);
+    for (const description of [
+      'runCheckout charges the card before verifying authorization; unauthorized callers are charged then rejected with forbidden.',
+      'Unauthorized users get charged first, before any authorization.',
+    ]) {
+      const result = evaluateFixtureReport(
+        reportFor(
+          {
+            title: 'Checkout charges before authorization',
+            description,
+            expectedBehavior: 'Unauthorized callers are rejected before any charge.',
+            actualBehavior: 'Unauthorized callers are charged, then rejected.',
+          },
+          [reference('e1', 'src/service/checkout.ts')],
+          'src/service/checkout.ts',
+        ),
+        large,
+      );
+      expect(result.detected, description).toEqual(['F1-charge-before-authorize']);
+    }
+  });
+
+  it('does not credit claims that the implementation works correctly', async () => {
+    const groundTruth = await loadGroundTruth();
+    const result = evaluateFixtureReport(
+      reportFor(
+        {
+          title: 'Checkout correctly authorizes before charging',
+          description: 'Checkout correctly authorizes before charging.',
+        },
+        [reference('e1', 'src/service/checkout.ts')],
+        'src/service/checkout.ts',
+      ),
+      fixture('fixture-f-large', groundTruth),
+    );
+    expect(result.detected).toEqual([]);
+    expect(result.findings[0]?.verdict.kind).not.toBe('truePositive');
+  });
+
+  it('retains detection for the B and C known defects', async () => {
+    const groundTruth = await loadGroundTruth();
+    const auth = evaluateFixtureReport(
+      reportFor(
+        {
+          title: 'Admin export lacks an authorization check',
+          description:
+            'The /admin/export route returns data without verifying isAdmin; unauthorized callers succeed.',
+        },
+        [reference('e1', 'fixture-b-auth/server.ts')],
+        'fixture-b-auth/server.ts',
+      ),
+      fixture('fixture-b-auth', groundTruth),
+    );
+    expect(auth.detected).toEqual(['B1-missing-admin-check']);
+    const race = evaluateFixtureReport(
+      reportFor(
+        {
+          title: 'Concurrent reservations double-book the last seat',
+          description: 'Two overlapping reserve calls both succeed from a single seat.',
+        },
+        [reference('e1', 'fixture-c-concurrency/reserve.ts')],
+        'fixture-c-concurrency/reserve.ts',
+      ),
+      fixture('fixture-c-concurrency', groundTruth),
+    );
+    expect(race.detected).toEqual(['C1-check-then-act-race']);
+  });
+
+  it('rejects function-name plus generic risk without failure detail', async () => {
+    const groundTruth = await loadGroundTruth();
+    const result = evaluateFixtureReport(
+      reportFor(
+        {
+          title: 'clampScore may have boundary risks',
+          description: 'The clampScore function may have boundary risks worth reviewing.',
+        },
+        [reference('e1', 'fixture-a-logic/score.ts')],
+        'fixture-a-logic/score.ts',
+      ),
+      fixture('fixture-a-logic', groundTruth),
+    );
+    expect(result.detected).toEqual([]);
+    expect(result.findings[0]?.verdict.kind).not.toBe('truePositive');
+  });
+});
+
 describe('evidence trust boundary', () => {
   it('labels unvalidated reproduction claims as self-reported', async () => {
     const groundTruth = await loadGroundTruth();

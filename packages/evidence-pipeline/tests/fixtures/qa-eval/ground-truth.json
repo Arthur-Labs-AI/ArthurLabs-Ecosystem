@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "note": "Evaluator-side answer key. Never copy this file into an investigated workspace.",
   "fixtures": [
     {
@@ -21,9 +21,10 @@
               "phrases": [
                 "returns 101",
                 "return 101",
+                "yields 101",
+                "yield 101",
                 "101 instead of 100",
                 "101 rather than 100",
-                "yields 101",
                 "come back as 101",
                 "comes back as 101",
                 "is 101",
@@ -53,6 +54,7 @@
             }
           ],
           "minMarkers": 2,
+          "requiredMarkers": ["wrong-value"],
           "expectedBehavior": "clampScore(150) === 100",
           "actualBehavior": "clampScore(150) === 101",
           "reproduction": "Call clampScore with a value above 100 and observe 101."
@@ -98,6 +100,7 @@
             }
           ],
           "minMarkers": 2,
+          "requiredMarkers": ["missing-check"],
           "expectedBehavior": "handle('/admin/export', false) throws forbidden",
           "actualBehavior": "handle('/admin/export', false) returns 'export'",
           "reproduction": "Call handle('/admin/export', false) and observe success instead of forbidden."
@@ -149,6 +152,7 @@
             }
           ],
           "minMarkers": 2,
+          "requiredMarkers": ["overlap"],
           "expectedBehavior": "At most one of two overlapping reservations succeeds.",
           "actualBehavior": "Both overlapping reservations succeed from a single seat: each decrements the same stale read of 1.",
           "reproduction": "Run two overlapping reserveSeat calls with a read barrier and observe two successes."
@@ -230,6 +234,7 @@
             }
           ],
           "minMarkers": 2,
+          "requiredMarkers": ["order"],
           "expectedBehavior": "Unauthorized callers are rejected before any charge.",
           "actualBehavior": "Unauthorized callers are charged, then rejected.",
           "reproduction": "Call runCheckout with a non-authorized role and observe the charge preceding the forbidden error."
