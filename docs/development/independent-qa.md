@@ -51,10 +51,13 @@ Zero findings is valid. Tool observations from the challenge remain in the same
 authoritative operation ledger. No provider-specific sandbox/auth workarounds were
 removed; GLM's existing transport and report repair safeguards remain in place.
 
-Each frozen planned check must appear exactly once in the report under its exact
-name. `not_run` and `inconclusive` require details. A claimed pass also requires
+Each frozen planned check must appear exactly once in the report. The host supplies
+short check IDs to avoid copying long descriptions; exact original names remain
+accepted. IDs map back to the original frozen descriptions before validation and
+display; paraphrases are never matched heuristically. `not_run` and `inconclusive` require details. A claimed pass also requires
 `coverage: complete` and `operationKeys` pointing to observed, successful
-executable checks. Read/grep/count operations and shell pipelines masking failure
+executable checks. Read/grep/count operations (including absolute executable paths)
+and ambiguous compound shell commands, pipelines or multiline scripts
 are not accepted as executable coverage. Unsupported or explicitly partial passes
 are downgraded to inconclusive without discarding useful findings. Structural failures use the
 existing bounded report correction, not another investigation or paid run.
@@ -83,9 +86,14 @@ cancellation remain authoritative. No automatic replacement conversation or
 paid investigation retry is introduced. Already persisted events remain available
 if a session fails. Cleanup continues when adapter disposal rejects.
 
-The checkpoint is held by the running adapter until final facts are submitted;
-it is not a crash-recovery journal. A host crash before submission can still lose
-that report. If validation explicitly reports that nothing changed, the adapter
+Before optional validation, converted checkpoint findings/evidence are durably
+saved as a typed `report.checkpoint` event in the existing SQLite journal.
+They are materialized after transport loss or stale-owner recovery if no final
+facts were submitted. Completed agents and already submitted final facts take
+precedence; recovery never labels an interrupted agent completed. No new table
+or migration is required. The additive event requires the updated runtime and
+desktop; old binaries do not understand this event in newer runs.
+If validation explicitly reports that nothing changed, the adapter
 uses the checkpoint directly instead of paying for another full serialization.
 
 `SENTRY_QA_DEPTH=0` in the runtime environment disables the new workflow for future

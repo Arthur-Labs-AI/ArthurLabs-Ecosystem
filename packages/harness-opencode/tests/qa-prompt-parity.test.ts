@@ -62,11 +62,11 @@ function validPlan() {
   });
 }
 
-function validReport() {
+function validReport(alias = false) {
   return JSON.stringify({
     schemaVersion: 2,
     summary: 'One evidence-backed issue.',
-    checks: [{ name: 'Inspect README', status: 'passed' }],
+    checks: [{ name: alias ? 'check_1' : 'Inspect README', status: 'passed' }],
     hypotheses: [],
     evidence: [
       {
@@ -139,7 +139,7 @@ describe('OpenCode QA prompt parity', () => {
               throw new Error('scripted review failure');
             if (prompts.length === 1) return textTurn(validPlan());
             if (prompts.length === 2) return textTurn('Investigation complete.');
-            return textTurn(validReport());
+            return textTurn(validReport(true));
           },
           abort: () => undefined,
         }),
@@ -158,6 +158,10 @@ describe('OpenCode QA prompt parity', () => {
       for await (const event of adapter.run(input)) events.push(event);
       await adapter.dispose();
       expect(events.at(-1)?.type).toBe('run.completed');
+      expect(events.filter((e) => e.type === 'report.checkpoint')).toHaveLength(depth ? 1 : 0);
+      expect(
+        events.some((e) => e.type === 'agent.message' && e.message.includes('Inspect README')),
+      ).toBe(true);
       expect(events.filter((e) => e.type === 'finding.submitted')).toHaveLength(1);
       if (depth === 'low-budget')
         expect(events.some((e) => e.type === 'warning' && e.code === 'QA_CHALLENGE_NOT_RUN')).toBe(

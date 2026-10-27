@@ -382,6 +382,146 @@ describe('micro-patch §27: cancellation before adapter start launches no worker
 });
 
 describe('finish-pass §25: stale owner recovery is honest', () => {
+  it.each([false, true])(
+    'retains checkpoint facts and cleans the workspace even when restore fails=%s',
+    async (restoreFails) => {
+      const f = await fixture();
+      let workspacePath = '';
+      try {
+        if (restoreFails)
+          vi.spyOn(f.repository, 'saveFinding').mockImplementation(() => {
+            throw new Error('scripted restore write failure');
+          });
+        const adapter = new (class extends FakeHarnessAdapter {
+          override async *run(request: HarnessRunRequest) {
+            for await (const event of super.run(request)) {
+              if (event.type !== 'run.completed') {
+                yield event;
+                continue;
+              }
+              yield HarnessEventSchema.parse({
+                schemaVersion: 1,
+                eventId: createHarnessEventId(),
+                agentRunId: request.agentRunId,
+                timestamp: nowIsoTimestamp(),
+                type: 'report.checkpoint',
+                evidence: [],
+                findings: [
+                  {
+                    schemaVersion: 1,
+                    id: createFindingId(),
+                    qaRunId: request.qaRunId,
+                    agentRunId: request.agentRunId,
+                    sourceAgentStackId: request.agentStackId,
+                    title: 'Checkpoint finding',
+                    category: 'logic',
+                    severity: 'low',
+                    confidence: 'speculative',
+                    description: 'Fixture only',
+                    locations: [{ relativePath: 'README.md' }],
+                    evidenceIds: [],
+                    reproductionSteps: [],
+                    createdAt: nowIsoTimestamp(),
+                  },
+                ],
+              });
+              throw new Error('scripted disconnect after checkpoint');
+            }
+          }
+        })();
+        const registry = new HarnessAdapterRegistry();
+        const stack = INITIAL_AGENT_STACKS[0]!;
+        registry.register({
+          stack,
+          runtimeIdentity: { modelId: stack.model.modelId },
+          createAdapter: () => adapter,
+        });
+        const done = await new RunCoordinator(f.dataRoot, f.repository, f.lease, registry).run(
+          f.added.project.id,
+          {
+            executionKind: 'simulation',
+            agentStackIds: [stack.id],
+            onHarnessRequest: (request) => {
+              workspacePath = request.workspace.runtimePath;
+            },
+          },
+        );
+        expect(done.run.status).toBe(restoreFails ? 'failed' : 'partial');
+        expect(f.repository.listFindings(done.run.id)).toHaveLength(restoreFails ? 0 : 1);
+        expect(f.repository.listAgentRuns(done.run.id)[0]?.status).toBe('interrupted');
+        await expect(stat(workspacePath)).rejects.toThrow();
+      } finally {
+        f.database.close();
+      }
+    },
+  );
+  it('recovers durable checkpoint facts after owner death without claiming completion', async () => {
+    const f = await fixture();
+    const { createFakeHarnessRegistry } = await import('../src/index.js');
+    const done = await new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      createFakeHarnessRegistry('success'),
+    ).run(f.added.project.id, {
+      executionKind: 'simulation',
+      agentStackIds: [INITIAL_AGENT_STACKS[0]!.id],
+    });
+    const agent = f.repository.listAgentRuns(done.run.id)[0]!;
+    const checkpointEvidence = {
+      ...f.repository.listEvidence(done.run.id)[0]!,
+      id: createEvidenceId(),
+    };
+    const checkpointFinding = {
+      ...f.repository.listFindings(done.run.id)[0]!,
+      id: createFindingId(),
+      title: 'Recovered checkpoint',
+      evidenceIds: [checkpointEvidence.id],
+    };
+    f.repository.appendHarnessEvent(
+      done.run.id,
+      HarnessEventSchema.parse({
+        schemaVersion: 1,
+        eventId: createHarnessEventId(),
+        agentRunId: agent.id,
+        timestamp: nowIsoTimestamp(),
+        type: 'report.checkpoint',
+        findings: [checkpointFinding],
+        evidence: [checkpointEvidence],
+      }),
+    );
+    // A completed worker must never be replaced by a checkpoint, even if peers died.
+    f.repository.saveRun({
+      ...done.run,
+      status: 'agents_running',
+      completedAt: undefined,
+      runtimeInstanceId: undefined,
+    } as never);
+    await new RunCoordinator(f.dataRoot, f.repository, f.lease).recover();
+    expect(f.repository.listFindings(done.run.id).some((x) => x.id === checkpointFinding.id)).toBe(
+      false,
+    );
+    // Remove simulated final facts, then reproduce interruption before submission.
+    f.database.connection.prepare('DELETE FROM findings WHERE qa_run_id=?').run(done.run.id);
+    f.database.connection.prepare('DELETE FROM evidence WHERE qa_run_id=?').run(done.run.id);
+    f.repository.saveAgentRun({ ...agent, status: 'running', completedAt: undefined } as never);
+    f.repository.saveRun({
+      ...done.run,
+      status: 'agents_running',
+      completedAt: undefined,
+      runtimeInstanceId: undefined,
+    } as never);
+    await new RunCoordinator(f.dataRoot, f.repository, f.lease).recover();
+    expect(f.repository.listFindings(done.run.id).map((x) => x.id)).toEqual([checkpointFinding.id]);
+    expect(f.repository.listEvidence(done.run.id).map((x) => x.id)).toEqual([
+      checkpointEvidence.id,
+    ]);
+    expect(f.repository.getAgentRun(agent.id)?.status).toBe('interrupted');
+    expect(f.repository.getRun(done.run.id)?.status).toBe('partial');
+    await new RunCoordinator(f.dataRoot, f.repository, f.lease).recover();
+    expect(f.repository.listFindings(done.run.id)).toHaveLength(1);
+    f.database.close();
+  });
   it('stale request completes; run interrupts (never fake-cancelled)', async () => {
     const f = await fixture();
     const { createFakeHarnessRegistry } = await import('../src/index.js');

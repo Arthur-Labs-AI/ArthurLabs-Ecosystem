@@ -18,6 +18,8 @@ import {
   challengePrompt,
   coverageErrors,
   groundCoverage,
+  resolveReportChecks,
+  reportCheckAliases,
   reportableDepthPlan,
   depthPolicy,
   DEPTH_COVERAGE_GUIDANCE,
@@ -274,6 +276,7 @@ function reportPrompt(
 ): string {
   return [
     DEPTH_COVERAGE_GUIDANCE,
+    reportCheckAliases(plan),
     'Serialize the investigation you just completed into exactly one Sentry report. No new QA: do not run commands, read files, or use any tools in this turn. Temporary evidence keys only; Sentry owns all durable IDs.',
     ...(correction === undefined ? [] : [buildReportCorrectionIntro(correction)]),
     REPORT_LEDGER_RULES,
@@ -1712,8 +1715,11 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
                 try {
                   const grounded =
                     depth === undefined
-                      ? candidate.report
-                      : groundCoverage(candidate.report, this.observedOperations);
+                      ? resolveReportChecks(planResult, candidate.report)
+                      : groundCoverage(
+                          resolveReportChecks(planResult, candidate.report),
+                          this.observedOperations,
+                        );
                   const missing = depth === undefined ? [] : coverageErrors(planResult, grounded);
                   if (missing.length > 0) throw new Error(missing.join('\n'));
                   built = await this.buildReportAttempt(request, grounded, pipeline);
@@ -1786,6 +1792,11 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         if (result === undefined || built === undefined) break;
         if (reportPass > 0 || depth === undefined) break;
         checkpoint = { result, built };
+        yield event(request.agentRunId, {
+          type: 'report.checkpoint',
+          findings: built.findings,
+          evidence: [...built.evidenceByKey.values()],
+        });
         yield event(request.agentRunId, {
           type: 'agent.message',
           message: 'QA_REPORT_CHECKPOINT_READY: valid report prepared before optional validation.',

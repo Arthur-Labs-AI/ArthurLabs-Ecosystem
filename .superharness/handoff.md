@@ -1,3 +1,30 @@
+## QA depth follow-up — IMPLEMENTED / VERIFIED, activation pending
+
+Reviewed owner run_01M5ZNPA0HBVTQE9E42YHESM58: old workflow, all prep limited;
+DeepSeek18min planning then30min timeout; GLM invalid/truncated report and exact
+long-check-name mismatch. Stable report IDs added to all3 adapters; no fuzzy
+matching. Ambiguous shell success/absolute inspection coverage downgraded.
+Typed report.checkpoint persists converted facts in existing SQLite event journal;
+live disconnect/stale-owner recovery retain facts without fabricated completion.
+Cleanup survives restore write failure. Regression RED->GREEN recorded.
+Final engine94 PASS (excluding Linux trust), non-engine39tasks PASS, final combined
+build/typecheck/lint60tasks PASS; adapter phase18 PASS; format/hygiene/diff PASS.
+No paid run. Desktop stopped gracefully after verifying no active runs. Runtime
+activation/hello and native smoke next. No main/dev merge. shux unavailable.
+Details: docs/reviews/qa-depth-follow-up.md.
+## Review of AI completion d85ca84 — COMPLETE
+
+Owner requested review, not further implementation. Full diff/callers inspected.
+Important correctness gap reproduced: failed node test followed by pwd (semicolon
+or newline), and absolute-path grep still retain passed coverage. Current WSL
+runtime link remains1.0.2-1251a7d; new commit not activated. In-memory checkpoint
+limitation disclosed, no crash-recovery claim. No demonstrated new sandbox escape.
+Evidence73, DeepSeek62, GLM102, engine preparation/closure18 PASS; OpenCode parallel
+PATH probe timeout/EPERM, full serial rerun125 PASS unchanged. Actual WSL populated
+cache preparation/isolation/cancellation smoke PASS. No product edits, deployment,
+paid run or commit. Review: docs/reviews/qa-depth-d85ca84-review.md.
+shux unavailable; direct protocol receipts. Recommended next work: coverage
+negative fixtures and conservative classification, then deploy/hello and comparison.
 ## First real depth run assessment — COMPLETE
 
 Reviewed owner export run_01M5Z8X98VKXVTVJ262GB9HACH, treated as data only.

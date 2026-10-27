@@ -36,7 +36,7 @@ export function reportableDepthPlan<T extends { plannedChecks: readonly string[]
 }
 
 export const DEPTH_COVERAGE_GUIDANCE =
-  'Report every frozen plannedChecks entry exactly once in checks, preserving its exact name. ' +
+  'Report every frozen plannedChecks entry exactly once in checks, using its host-issued short ID when supplied, otherwise its exact name. ' +
   'For not_run or inconclusive give a concrete reason in details. Do not substitute a successful ' +
   'process exit for a successful check. Distinguish a copied-function example from actual-code ' +
   'reproduction and a reachable application failure. Never claim production exposure merely ' +
@@ -44,6 +44,38 @@ export const DEPTH_COVERAGE_GUIDANCE =
   'and operationKeys to the observed successful executable checks covering the WHOLE named check. ' +
   'If only source review, a narrow primitive or part of a broader boundary was checked, set coverage="partial" ' +
   'and status="inconclusive". File reads, grep and counts are not executable coverage.';
+
+/** Short host-owned aliases avoid requiring verbatim repetition of long plan prose. */
+function checkIdentities(plan: { plannedChecks: readonly string[] }) {
+  let prefix = 'check_';
+  while (plan.plannedChecks.some((name) => name.startsWith(prefix))) prefix = '_' + prefix;
+  return plan.plannedChecks.map((description, index) => ({
+    id: prefix + (index + 1),
+    description,
+  }));
+}
+export function reportCheckAliases(plan: { plannedChecks: readonly string[] }): string {
+  return (
+    'Check identity contract: set checks[].name to the short ID below (or its exact frozen description). Never abbreviate or paraphrase a description. Explain results in details, not name.\n' +
+    JSON.stringify(checkIdentities(plan))
+  );
+}
+
+export function resolveReportChecks<T extends { checks: readonly { name: string }[] }>(
+  plan: { plannedChecks: readonly string[] },
+  report: T,
+): T {
+  return {
+    ...report,
+    checks: report.checks.map((check) => {
+      if (plan.plannedChecks.includes(check.name)) return check;
+      const name = checkIdentities(plan).find(
+        (identity) => identity.id === check.name,
+      )?.description;
+      return name === undefined ? check : { ...check, name };
+    }),
+  };
+}
 
 /** Conservative grounding: preserve useful findings, downgrade unsupported pass claims. */
 export function groundCoverage(
@@ -62,9 +94,11 @@ export function groundCoverage(
           op.exitCode === 0 &&
           typeof op.commandText === 'string' &&
           op.commandText.trim().length > 0 &&
-          !/\||;\s*(?:echo|printf|true|exit)\b/.test(op.commandText) &&
+          // Without a shell AST/individual exit statuses, compound commands are
+          // ambiguous even when the last process succeeds. Fail conservatively.
+          !/[;&|\r\n`<>]|\$\(/.test(op.commandText) &&
           !/^(read|grep|glob|search|list|view)$/i.test(op.toolName) &&
-          !/^\s*(?:(?:cd\s+[^;&]+)[;&]+\s*)?(?:rg|grep|cat|sed|head|tail|find|ls|pwd|wc|echo|printf|which)\b/.test(
+          !/^\s*["']?(?:[^\s"']*[\\/])?(?:rg|grep|cat|sed|head|tail|find|ls|pwd|wc|echo|printf|which)(?:\.exe)?(?:["']?\s|$)/i.test(
             op.commandText ?? '',
           ),
       );

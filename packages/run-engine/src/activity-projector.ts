@@ -39,6 +39,8 @@ function eventTitle(event: HarnessEvent): string {
       return 'Finding: ' + event.finding.title;
     case 'evidence.submitted':
       return 'Evidence submitted';
+    case 'report.checkpoint':
+      return 'Validated report checkpoint saved';
     case 'usage.updated':
       return 'Usage updated';
     case 'warning':

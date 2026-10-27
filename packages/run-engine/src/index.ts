@@ -1005,17 +1005,26 @@ export class RunCoordinator {
           });
         }
       } finally {
-        if (workspace !== undefined) {
-          const cleanup = await this.workspaces.cleanup(workspace);
-          if (cleanup.warning !== undefined) {
-            this.activities.stage({
-              qaRunId: input.run.id,
-              parentActivityId: input.rootActivityId,
-              source: 'sentry',
-              kind: 'runtime',
-              title: cleanup.warning,
-              status: 'warning',
-            });
+        // A hard deadline/transport loss can stop the generator before it emits
+        // final facts. Restore only when no final output has been submitted.
+        try {
+          if (agentRun.status !== 'completed')
+            this.repository.transaction(() =>
+              this.restoreReportCheckpointWithinTransaction(input.run.id, agentRunId),
+            );
+        } finally {
+          if (workspace !== undefined) {
+            const cleanup = await this.workspaces.cleanup(workspace);
+            if (cleanup.warning !== undefined) {
+              this.activities.stage({
+                qaRunId: input.run.id,
+                parentActivityId: input.rootActivityId,
+                source: 'sentry',
+                kind: 'runtime',
+                title: cleanup.warning,
+                status: 'warning',
+              });
+            }
           }
         }
       }
@@ -1543,6 +1552,18 @@ export class RunCoordinator {
     return { runId, status: 'cancelled' as const, cancelledAgents: acknowledged.cancelledAgents };
   }
 
+  private restoreReportCheckpointWithinTransaction(qaRunId: QARunId, agentRunId: AgentRunId): void {
+    if (this.repository.agentProducedUsableOutput(agentRunId)) return;
+    let checkpoint: Extract<HarnessEvent, { type: 'report.checkpoint' }> | undefined;
+    for (const stored of this.repository.iterateRunEvents(qaRunId)) {
+      if (stored.event.agentRunId === agentRunId && stored.event.type === 'report.checkpoint')
+        checkpoint = stored.event;
+    }
+    if (checkpoint === undefined) return;
+    for (const evidence of checkpoint.evidence) this.repository.saveEvidence(evidence);
+    for (const finding of checkpoint.findings) this.repository.saveFinding(finding);
+  }
+
   async recover(): Promise<void> {
     const lease = this.requireRuntimeLease();
     await this.projects.recoverAbandonedOperations(lease);
@@ -1584,6 +1605,7 @@ export class RunCoordinator {
             )
           )
             continue;
+          this.restoreReportCheckpointWithinTransaction(run.id, agentRun.id);
           this.repository.saveAgentRun(
             AgentRunSchema.parse({
               ...agentRun,

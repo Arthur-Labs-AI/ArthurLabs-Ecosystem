@@ -69,11 +69,11 @@ function validPlan() {
   });
 }
 
-function validReport() {
+function validReport(alias = false) {
   return JSON.stringify({
     schemaVersion: 2,
     summary: 'One evidence-backed issue.',
-    checks: [{ name: 'Inspect README', status: 'passed' }],
+    checks: [{ name: alias ? 'check_1' : 'Inspect README', status: 'passed' }],
     hypotheses: [],
     evidence: [
       {
@@ -157,9 +157,9 @@ describe('GLM v1.0.2 prompt behavior', () => {
       const stages = [
         planTurn(),
         investigationTurn(),
-        reportTurn(),
+        reportTurn(validReport(Boolean(depth))),
         ...(depth === true || depth === 'review-failure' || depth === 'refinement-failure'
-          ? [investigationTurn(), reportTurn()]
+          ? [investigationTurn(), reportTurn(validReport(Boolean(depth)))]
           : []),
       ];
       const adapter = new ClaudeCodeHarnessAdapter({
@@ -195,6 +195,11 @@ describe('GLM v1.0.2 prompt behavior', () => {
       for await (const event of adapter.run(input)) events.push(event);
       await adapter.dispose();
       expect(events.at(-1)?.type).toBe('run.completed');
+      expect(events.filter((e) => e.type === 'report.checkpoint')).toHaveLength(depth ? 1 : 0);
+      if (depth)
+        expect(
+          events.some((e) => e.type === 'agent.message' && e.message.includes('Inspect README')),
+        ).toBe(true);
       const usageEvent = events.find((e) => e.type === 'usage.updated');
       expect(usageEvent?.type === 'usage.updated' ? usageEvent.usage.turns : undefined).toBe(
         depth === true || depth === 'refinement-failure'
