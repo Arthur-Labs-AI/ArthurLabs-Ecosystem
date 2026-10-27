@@ -1,3 +1,22 @@
+# PR #39 to dev — draft handoff (2026-10-27)
+
+[PR #39](https://github.com/Mert1026/Sentry/pull/39) contains desktop provider
+settings, translations, revision selection/cancellation, shared QA guidance and
+evidence-aware evaluation. Source code checked: `31de8d4`; target: `d366de9`.
+Trial merge is conflict-free. Hygiene, whitespace, lint, typecheck and build
+PASS (60 Turbo tasks, 37 cached). Format FAIL on 14 files. Uncached test run
+FAIL: evidence-pipeline 64 passed / 1 failed, `qa-eval.test.ts:202` expects a hit
+for missing evidence `a1`, contrary to the evaluator and adjacent invalid-key
+test. Turbo stopped early; no full-suite PASS claimed. Product code preserved.
+
+Next: reconcile the contradictory fixture with the evidence contract, format
+the reported files, complete workspace tests on appropriate hosts, and inspect
+current PR CI before marking ready. PR remains draft; owner merges. Native
+sandbox, packaged/interactive and live-provider acceptance UNVERIFIED here.
+No integration merge/release/paid run. `shux` absent; protocol updated directly.
+
+## Previous record (preserved)
+
 # Checks+security handoff — partial readiness, owner decisions needed
 
 2026-10-26. Do NOT call this release ready: format gate red on 9 pre-existing files, run-engine has 6 env failures + 1 load flake, distribution test blocked on missing root esbuild, audit has 121 triaged findings (worst shipped-surface item: react-router open-redirect high, unreachable today — remediate by bumping react-router-dom in its own task). Everything else green (tests/typecheck/lint/hygiene/secrets). Live-model tests never ran (env-gated, no budget spent). Committed through d6224ba; tree clean.

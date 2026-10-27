@@ -1,3 +1,17 @@
+# Repository / PR inspection — 2026-10-27
+
+Owner requested status and PR to dev. Opened draft
+[PR #39](https://github.com/Mert1026/Sentry/pull/39), source `31de8d4` on
+`chore/app-cleanup-and-polish`, target `d366de9`. Initial tree clean, remote
+synchronized, divergence 28 source / 2 target commits; trial merge conflict-free.
+Hygiene/diff PASS; lint/typecheck/build 60 tasks PASS (37 cached). Format FAIL
+on 14 files. Uncached tests stopped at evidence-pipeline: 64 PASS / 1 FAIL,
+contradictory missing-evidence expectation at `qa-eval.test.ts:202`. Remaining
+tests and completed CI UNVERIFIED. Product source unchanged; protocol receipts
+committed separately. No merge/release/paid calls. shux absent, records direct.
+
+## Previous record (preserved)
+
 # Agents-explained 2026-10-26: question-only, no code. Agents follow fixed staged prompts (planning/investigation/reporting JSON contracts), identical skeleton across OpenCode/DeepSeek/GLM; mission envelope from run-engine.
 
 # Release-commands assessment 2026-10-26: consumer steps yes-phased (verify/check, guided setup, signed auto-apply last); producer steps stay maintainer-side. No code. Trust anchors already fit (build-identity.json, versioned runtime/current).

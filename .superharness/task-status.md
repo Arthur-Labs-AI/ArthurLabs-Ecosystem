@@ -1,3 +1,34 @@
+# Repository inspection and PR to dev (2026-10-27)
+
+COMPLETE: owner requested repository status and a PR to dev. Opened draft
+[PR #39](https://github.com/Mert1026/Sentry/pull/39) from
+`chore/app-cleanup-and-polish`, source HEAD `31de8d4`, to `dev` at `d366de9`.
+Initial working tree clean; source branch synchronized with origin, 28 commits
+outside dev, dev has two merge commits outside source. Trial merge via
+`git merge-tree --write-tree HEAD origin/dev` PASS; no branch was merged.
+
+Executed on Windows:
+
+- PASS: `pnpm repository:check`, `git diff --check origin/dev...HEAD`.
+- PASS: `pnpm exec turbo run lint typecheck build --output-logs=errors-only`
+  (60 successful tasks; 37 cached).
+- FAIL: `pnpm format:check` (14 files; left unchanged).
+- FAIL: `pnpm exec turbo run test --output-logs=errors-only --concurrency=2 --force`
+  stopped at evidence-pipeline: 64 passed, 1 failed. At
+  `packages/evidence-pipeline/tests/qa-eval.test.ts:202`, findings cite absent
+  evidence key `a1` but expect truePositive/duplicate; evaluator abstains as
+  ambiguous. The next test explicitly requires abstention for invalid keys.
+  Remaining workspace tests are UNVERIFIED because Turbo stopped early.
+- UNVERIFIED: completed PR CI, native sandbox trust, interactive/packaged
+  acceptance and live-provider calls. CI started on PR creation.
+
+Draft preserves the failures for review; no product fixes, release, paid calls,
+or merge performed. `dev` protection is disabled according to the GitHub branch
+API; owner review remains the documented merge policy. `shux contract` attempted,
+executable absent; task status, ledger and handoff maintained directly.
+
+## Previous record (preserved)
+
 # Full-project checks + security pass (owner request)
 
 2026-10-26. Scope HEAD d6224ba on chore/app-cleanup-and-polish. Turbo test: all packages green except run-engine (6 verifier-trust env failures proven clean-tree identical + 1 parallel timeout load-flake, 5/5 isolated). Desktop full suite 548/548 post-detection. Turbo typecheck 37/37, turbo lint 20/20 (after fixing my unused import). format:check red only on 9 pre-existing untouched files (my 12 fixed). repository:check PASS. distribution:test 43 pass / 1 env-fail (root esbuild not installed) / 27 platform-skipped. Secrets grep: zero real patterns. Audit: 121 findings triaged (dev/toolchain/transitive-vendor; only shipped-surface note is RR open-redirect high, unreachable — no redirect() calls; remediate by bumping react-router-dom). Live-model tests skipped by env gates (no budget spent). Committed as d6224ba; partial readiness only — see report.
