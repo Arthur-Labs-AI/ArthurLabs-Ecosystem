@@ -1,3 +1,18 @@
+# Repeated GLM failure — live runtime restarted (2026-10-27)
+
+Latest run `run_01M5YA4PS5NZ8GQTZDP802RX2G` was handled by old PID 333
+(10:28 Sofia start), surviving the 10:59 deployment; symlink current was new
+but loaded JavaScript remained old. Graceful launcher stop/open completed;
+old runtime exited, new PID 451 started 11:44 with `1.0.2-ae119b9` current.
+Broker GLM doctor healthy/configured/binary available, runtimeVerified false
+(no paid call). Latest exported trigger and real source grep both pass the
+fixed deployed classifier; legacy classifier still reproduces the false alarm.
+Real bwrap diagnostics remain detected. No new production fix needed.
+Old run records preserved; owner export untracked. Live-provider run remains
+UNVERIFIED. shux absent; protocol maintained directly.
+
+## Previous record (preserved)
+
 # GLM source-search false abort handoff — 2026-10-27
 
 The reported GLM_SANDBOX_UNAVAILABLE was triggered by grep output quoting the

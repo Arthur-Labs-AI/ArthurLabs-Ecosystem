@@ -1,3 +1,26 @@
+# GLM repeat failure — live process correction (2026-10-27)
+
+COMPLETE operational correction: latest partial run
+`run_01M5YA4PS5NZ8GQTZDP802RX2G` failed GLM at 11:19 Sofia. The live runtime
+was still PID 333, started 10:28, before deployment of `1.0.2-ae119b9` around
+10:59. Updating the current symlink did not replace Node's loaded modules.
+The earlier isolated smoke test did not establish the live app had restarted.
+
+Executed `sentry.ps1 stop` successfully (graceful, no force), confirmed the old
+runtime exited, then `sentry.ps1 open`. Live runtime is now PID 451, started
+11:44, loading current `1.0.2-ae119b9`. Production broker `cli agent doctor glm
+--json` PASS: configured, binary available, healthy; runtimeVerified false is
+retained honestly because no paid model call was performed.
+
+PASS: latest exported errorPreview through deployed classifier; real grep of
+adapter source reproduces legacy=true / fixed=false; actual bwrap failure
+still detected. Resolved module path points to `1.0.2-ae119b9`. No production
+code changes, history edits, credentials/permissions changes or paid calls.
+Owner export remains untracked; task receipts updated directly (shux absent).
+Live-model end-to-end acceptance remains UNVERIFIED.
+
+## Previous record (preserved)
+
 # GLM false sandbox abort — 2026-10-27
 
 Owner requested diagnosis/fix for partial run `run_01M5Y7P7EE0GPAH3KRBJT00Q4S`.

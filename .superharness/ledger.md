@@ -1,3 +1,16 @@
+# GLM repeated failure — 2026-10-27
+
+Latest export diagnosed directly: run `run_01M5YA4PS5NZ8GQTZDP802RX2G` failed
+at 11:19 Sofia on runtime PID 333 started 10:28, before fixed deployment.
+Graceful `sentry.ps1 stop`/`open` replaced it with PID 451 at 11:44. Current
+runtime `1.0.2-ae119b9`; production broker GLM doctor healthy/configured/binary
+available. Latest error replay + real grep: legacy true, fixed false; real
+bwrap guard PASS. No source change, data/history mutation or paid model call;
+runtimeVerified remains false. Previous smoke did not verify live app restart.
+Owner export untracked; shux absent; protocol direct.
+
+## Previous record (preserved)
+
 # GLM false sandbox abort — 2026-10-27
 
 Owner export proves the final Bash grep read adapter source; its numbered regex
