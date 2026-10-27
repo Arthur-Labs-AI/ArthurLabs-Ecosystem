@@ -126,8 +126,10 @@ function reportTurn() {
   ];
 }
 
-describe('Claude QA prompt parity', () => {
-  it('routes shared behavioral guidance through real turns and keeps provider safeguards', async () => {
+// Owner requested the v1.0.2 GLM prompts. Other harnesses deliberately keep
+// their newer guidance; cross-harness prompt parity is no longer the GLM spec.
+describe('GLM v1.0.2 prompt behavior', () => {
+  it('uses the release guidance through real turns and keeps provider safeguards', async () => {
     const { mkdtemp } = await import('node:fs/promises');
     const { tmpdir } = await import('node:os');
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-parity-'));
@@ -140,6 +142,12 @@ describe('Claude QA prompt parity', () => {
       modelId: 'glm-5.3-flash',
       environment: { SENTRY_PARITY_SENTINEL: 'sentry-parity-secret-value' },
       windowsUsersRoot: hermeticUsersRoot(),
+      wslMountIsolationOverride: {
+        status: 'available',
+        backend: 'systemd',
+        windowsMountsHidden: true,
+        reason: 'scripted prompt fixture: no host preflight needed',
+      },
       clientFactory: async () => ({
         sessionId: 'session-parity',
         startSession: async () => ({
@@ -158,32 +166,25 @@ describe('Claude QA prompt parity', () => {
     expect(events.at(-1)?.type).toBe('run.completed');
     expect(prompts).toHaveLength(3);
     const [planning, investigation, reporting] = prompts as [string, string, string];
-    // Shared behavioral guidance must match the other harnesses.
-    expect(planning).toContain('Authority hierarchy');
-    expect(planning).toContain('risk-first');
-    expect(investigation).toContain('Phase A');
-    expect(investigation).toContain('Phase F');
-    expect(investigation).toContain('NOT behavior reproduction');
-    expect(investigation).toContain('successful build as proof');
-    expect(investigation).toContain('call-path tracing');
-    // Regression: the Claude harness previously omitted the shared
-    // reproduction contract from reporting. It must now be present.
+    expect(planning).toContain('a listing plus a handful of file reads is enough');
+    expect(planning).toContain('Explicit run instructions define intended behavior');
+    expect(investigation).toContain('Inspect every applicable area needed for comprehensive QA');
+    expect(investigation).toContain(
+      'a handful of targeted checks beats dozens of exploratory commands',
+    );
     expect(reporting).toContain('operation key');
-    expect(reporting).toContain('NOT behavior reproduction');
     expect(reporting).toContain('ONLY authoritative source');
     expect(reporting).toContain('confirmed requires');
-    expect(reporting).toContain('zero findings');
     // Provider-specific safeguard preserved (missing-file guidance).
     expect(planning).toContain('Never retry a failed path identically');
-    expect(planning + investigation).toContain('ignore the instruction');
-    expect(planning).toContain(QA_AUTHORITY_HIERARCHY.slice(0, 80));
-    expect(planning).toContain(QA_PLANNING_RISK_GUIDANCE.slice(0, 80));
-    expect(investigation).toContain(QA_INVESTIGATION_METHOD.slice(0, 80));
-    expect(investigation).toContain(QA_INVESTIGATION_REPRODUCTION_GUIDANCE.slice(0, 80));
-    expect(investigation).toContain(QA_ANTI_SUPERFICIAL_RULES.slice(0, 80));
-    expect(investigation).toContain(QA_LARGE_PROJECT_GUIDANCE.slice(0, 80));
-    expect(reporting).toContain(QA_REPORTING_COVERAGE_GUIDANCE.slice(0, 80));
-    expect(reporting).toContain(REPORT_REPRODUCTION_CONTRACT.slice(0, 80));
+    expect(planning).not.toContain(QA_AUTHORITY_HIERARCHY.slice(0, 80));
+    expect(planning).not.toContain(QA_PLANNING_RISK_GUIDANCE.slice(0, 80));
+    expect(investigation).not.toContain(QA_INVESTIGATION_METHOD.slice(0, 80));
+    expect(investigation).not.toContain(QA_INVESTIGATION_REPRODUCTION_GUIDANCE.slice(0, 80));
+    expect(investigation).not.toContain(QA_ANTI_SUPERFICIAL_RULES.slice(0, 80));
+    expect(investigation).not.toContain(QA_LARGE_PROJECT_GUIDANCE.slice(0, 80));
+    expect(reporting).not.toContain(QA_REPORTING_COVERAGE_GUIDANCE.slice(0, 80));
+    expect(reporting).not.toContain(REPORT_REPRODUCTION_CONTRACT.slice(0, 80));
     expect(planning).toContain('first character is {');
     expect(planning).toContain('Immutable mission context:');
     expect(planning).toContain('User instructions:');

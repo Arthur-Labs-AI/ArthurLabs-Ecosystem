@@ -1,3 +1,36 @@
+# GLM v1.0.2 prompts restored — 2026-10-27
+
+Owner requested release behavior only for GLM. All three prompt builders copied
+verbatim from v1.0.2/2640efcd; phase sequencing/timeouts/model handling already
+matched release. Recent shortened report repair intentionally rolled back too.
+Known sandbox false-positive and structured-error-loss fixes retained. No change
+to OpenCode, DeepSeek, shared guidance, engine or user settings. Prompt tests
+now pin the owner-requested release contract; old parity requirement superseded
+explicitly. Two RED cases then GLM97 PASS/12 skips; workspace60 PASS/51 cached;
+final hermetic prompt fixture/hygiene/format/diff PASS. Deployment/restart/CI
+receipts in PR40. Live speed/quality UNVERIFIED; no paid QA initiated. Existing
+analysis notes and owner export preserved. shux absent; records direct.
+
+## Previous record (preserved)
+
+# Slow GLM run diagnosis — 2026-10-27
+
+Run `run_01M5YEVFZR40FGZZ3AW1362MAC`: one glm-5.3-flash agent, cancelled
+after 38m36.6s. Planning 11m20.7s/48 tools, investigation 14m00.8s/45 tools,
+reporting 13m14.1s. All 93 tools completed (54 shell commands), total measured
+tool duration 33.189s; no hung command. First report took 11m37.4s and failed
+manual evidence versus strong_code_evidence validation, causing report repair;
+cancelled 1m36.7s into repair, no accepted findings. Provider/generation/queue
+latency cannot be separated from current telemetry. Journal corroborates phase
+times and low local CPU. Engine's 30-minute silence timer allows 90-minute
+absolute runtime; Claude timer is per turn. Excess planning and costly whole
+report retry need bounded phase budgets/explicit total deadlines/smaller repair
+as a separate implementation task. This turn only inspected existing data and
+updated receipts; no new paid run, production edit, restart or cancellation.
+shux absent; records direct.
+
+## Previous record (preserved)
+
 # GLM reporting diagnostics and context repair — 2026-10-27
 
 Run `run_01M5YC616MF6031VVNKTF42BDX` reached reporting, then invalid JSON and

@@ -1,3 +1,30 @@
+# GLM release prompt restoration — 2026-10-27
+
+Owner chose v1.0.2 behavior for GLM. Copied three prompt builders verbatim from
+2640efcd; phase/timeouts already matched. Kept proven sandbox/diagnostic fixes,
+other agents and shared code unchanged. Release report repair restored; tests
+updated for explicit owner specification change (two RED before rollback,
+97 PASS/12 skips after). Workspace60 PASS/51 cached, final hermetic prompt test,
+hygiene/format/diff PASS; source comparison against tag PASS. Deployment and
+final CI receipts in PR40; no paid run or speed claim. Earlier local analysis
+notes retained in this commit; private export untracked. shux absent.
+
+## Previous record (preserved)
+
+# Slow-run analysis — 2026-10-27
+
+Inspected production CLI, export, unit journal and timeout/reporting sources
+for `run_01M5YEVFZR40FGZZ3AW1362MAC`: cancelled after38m36.6s; planning
+11m20.7/48tools, investigation14m00.8/45tools, reporting13m14.1. Tools sum
+33.189s, none unfinished;54shell commands. First report11m37.4 failed evidence
+strength/type validation, then1m36.7 repair before cancel. Model/remote wait
+dominates but exact provider-side latency unknown. Timeout30min is silence,
+absolute cap90min; no timer malfunction demonstrated. Important efficiency
+findings: excessive planning reconnaissance and whole-report retry. No new run,
+provider call, source change, restart or operator action. shux absent; receipts direct.
+
+## Previous record (preserved)
+
 # GLM reporting failure — 2026-10-27
 
 Pinned Claude /compact against local fake API succeeded despite unrecognized_model;

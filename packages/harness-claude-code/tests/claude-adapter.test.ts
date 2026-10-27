@@ -728,8 +728,10 @@ describe('ClaudeCodeHarnessAdapter', () => {
     expect(events.at(-1)?.type).toBe('run.completed');
     expect(schemaOnAttempt).toEqual([false, false]);
     expect(reportPrompts[0]).toContain('Frozen plan:');
-    expect(reportPrompts[1]).not.toContain('Frozen plan:');
-    expect(reportPrompts[1]?.length).toBeLessThan(reportPrompts[0]?.length ?? 0);
+    // Release v1.0.2 repeats the authoritative plan and evidence contract
+    // during report repair. This intentional rollback is owner-requested.
+    expect(reportPrompts[1]).toContain('Frozen plan:');
+    expect(reportPrompts[1]).toContain('Report evidence contract (exact fields per type');
     // The repair stays in the same session and retains every authoritative
     // operation key, even if Claude compacted the earlier conversation.
     expect(reportPrompts[0]).toContain('Operation op_1');

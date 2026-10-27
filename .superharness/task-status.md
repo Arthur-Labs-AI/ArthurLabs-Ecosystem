@@ -1,3 +1,55 @@
+# Owner-requested GLM v1.0.2 prompt restoration — 2026-10-27
+
+Owner chose copying release behavior for GLM instead of new phase budgets.
+Compared immutable v1.0.2 (`2640efcd78744cb02c517a405e648722e662bd60`): stage
+orchestration, model selection and timeouts are already identical; post-release
+changes are expanded QA prompt guidance plus the proven local bug fixes.
+Copied planningPrompt/investigationPrompt/reportPrompt verbatim from the tag,
+including release report-correction behavior. Removed newer guidance imports
+only from Claude/GLM adapter. Preserved anchored sandbox detection and structured
+provider-error diagnostics; these prevent reproduced defects in the release code.
+OpenCode/DeepSeek/shared prompts/engine/timeouts/configuration untouched.
+
+Owner-directed specification change recorded in tests: GLM no longer requires
+cross-harness prompt parity or the newer compact repair; renamed to release
+prompt regression with release wording/safeguards and original repair contract.
+Two cases RED before restoration; GREEN whole GLM suite 97 PASS / 12 existing
+platform/live skips. Workspace lint/typecheck/build 60 PASS (51 cached), final
+hermetic prompt fixture PASS, hygiene/format/diff PASS. Byte-for-byte source
+comparison of all three builders against tag PASS. No speed or model-quality
+claim without a real run. Deployment/restart/CI receipts in PR #40. Previous
+local analysis notes preserved; private export remains untracked. shux absent.
+
+## Previous record (preserved)
+
+# GLM slow-run investigation — 2026-10-27
+
+READ-ONLY production diagnosis for `run_01M5YEVFZR40FGZZ3AW1362MAC` on owner's
+request. Production CLI and existing export agree: cancelled, one agent,
+glm-5.3-flash, 12:35:19–13:13:56 Sofia (38m36.6s). Planning 11m20.7s with
+48 tools; investigation 14m00.8s with 45 tools; reporting 13m14.1s including
+11m37.4s first attempt and 1m36.7s repair before cancellation. 93 completed
+tool operations / 54 shell commands; summed tool durations 33.189s, slowest
+7.129s, none unfinished. Journald confirms matching phase process lifetimes
+and about 98s summed CPU. No evidence of a wedged local shell command.
+
+Report first attempt rejected for evidence.20.strength: strong_code_evidence
+is impossible for manual evidence. Model output/remote wait dominates wall
+time, but existing records cannot distinguish generation, queueing, throttle
+or compaction. No accepted report means no submitted findings/evidence.
+
+Source inspection confirms runTimeoutMs=1800000 is a silence window with
+90-minute absolute cap (3x), while Claude has a separate 30-minute per-turn
+timer. Therefore passing 30 minutes is expected under current semantics,
+not proof that the timer failed. Excess planning reconnaissance (48 calls
+despite handful-of-reads guidance) and expensive whole-report correction are
+important efficiency findings. No new QA/provider call, cancellation, source
+fix, runtime restart or historical-data mutation performed. shux absent;
+protocol receipts updated directly. Proposed engineering follow-up: enforced
+phase budgets, explicit wall-clock deadline semantics and smaller report repair.
+
+## Previous record (preserved)
+
 # GLM reporting failure — 2026-10-27
 
 Owner supplied run `run_01M5YC616MF6031VVNKTF42BDX`, GLM
