@@ -1,3 +1,17 @@
+# GLM reporting failure — 2026-10-27
+
+Pinned Claude /compact against local fake API succeeded despite unrecognized_model;
+model mappings did not eliminate warning. Owner's actual upstream exit-1 cause
+was lost because transport kept stderr only; journal lacks terminal stdout.
+Fixed structured errors precedence and warning-only misdiagnosis; report repair
+keeps complete ledger/schema/safety but omits repeated plan/evidence examples.
+Three regressions RED before fix; harness 97 PASS / 12 skips afterward,
+workspace static/build 60 PASS, hygiene/format/diff PASS. No paid model calls,
+scrub bypass, model switch, or historical-run changes. Original upstream cause
+and live long-run acceptance UNVERIFIED. Final receipts in PR #40; shux absent.
+
+## Previous record (preserved)
+
 # GLM repeated failure — 2026-10-27
 
 Latest export diagnosed directly: run `run_01M5YA4PS5NZ8GQTZDP802RX2G` failed

@@ -279,12 +279,18 @@ function reportPrompt(
     REPORT_CONFIDENCE_CALIBRATION,
     QA_REPORTING_COVERAGE_GUIDANCE,
     'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info.',
-    'Report evidence contract (exact fields per type; copy names exactly): ' +
-      describeSentryAgentReportContract(),
+    ...(correction === undefined
+      ? [
+          'Report evidence contract (exact fields per type; copy names exactly): ' +
+            describeSentryAgentReportContract(),
+        ]
+      : [
+          'Repair the previous report in this same session. Keep it concise and complete; use the evidence contract already supplied.',
+        ]),
     REPORT_ENVELOPE_SCHEMA,
     'Authoritative Sentry operation ledger (frozen after investigation):\n' +
       renderFrozenLedger(operations),
-    'Frozen plan: ' + JSON.stringify(plan),
+    ...(correction === undefined ? ['Frozen plan: ' + JSON.stringify(plan)] : []),
     'OUTPUT CONTRACT (must hold exactly): your ENTIRE response is exactly one raw JSON object matching SentryAgentReportV2 (schemaVersion 2). No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
   ].join('\n');
 }

@@ -1,3 +1,19 @@
+# GLM reporting diagnostics and context repair — 2026-10-27
+
+Run `run_01M5YC616MF6031VVNKTF42BDX` reached reporting, then invalid JSON and
+compact-time exit 1. Real pinned CLI + loopback mock proved unrecognized_model
+also occurs on successful compact, with or without model-tier mappings. Original
+upstream cause was not persisted; do not claim unsupported model or sandbox
+failure from these stderr notices. SDK now preserves structured terminal errors
+before stderr and filters known warning-only diagnosis. Report repair retains
+all operation keys/schema/safeguards in the same session, omits repeated frozen
+plan and evidence examples to reduce context load. No findings/history discarded.
+97 harness tests PASS / 12 existing skips, workspace static/build 60 PASS,
+hygiene/format/diff PASS. Live-provider long-run success remains UNVERIFIED;
+no paid calls. Deployment/restart/final CI receipts in PR #40. shux absent.
+
+## Previous record (preserved)
+
 # Repeated GLM failure — live runtime restarted (2026-10-27)
 
 Latest run `run_01M5YA4PS5NZ8GQTZDP802RX2G` was handled by old PID 333

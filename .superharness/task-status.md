@@ -1,3 +1,31 @@
+# GLM reporting failure — 2026-10-27
+
+Owner supplied run `run_01M5YC616MF6031VVNKTF42BDX`, GLM
+`arun_01M5YC654AKCEQQANZBK72T98V`. Investigation commands completed, first
+report was invalid JSON, repair exited 1 during compact. Local pinned Claude
+against a loopback mock API reproduced unrecognized_model warnings while both
+normal requests and /compact exited 0. Model-tier mappings did not remove the
+warning. Thus the warning alone is NOT evidence of provider model rejection.
+Original provider cause is UNRECOVERABLE from persisted records: SDK discarded
+terminal stdout errors in favor of stderr warnings; unit journal only records
+exit status. No real provider request or credential used in reproduction.
+
+Implemented: preserve result.errors/result on nonzero exit before warning-only
+stderr; ignore known startup/model notices as failure diagnoses. Shorten report
+repair by retaining schema, safeguards and full authoritative operation ledger
+without resending the frozen plan and full evidence-contract examples. Same
+session, no new QA and no tool access on repair. Context-pressure reduction is
+verified; upstream success of the owner's long session remains UNVERIFIED.
+
+RED: two live-child diagnostic regressions and repair-prompt regression before
+fix. GREEN: whole harness 97 PASS / 12 existing platform/live skips. Workspace
+lint/typecheck/build 60 PASS (51 cached); changed-file format/hygiene/diff PASS;
+harness lint rerun after final test edit PASS. Deployment and final-head CI
+receipts recorded in PR #40. Owner attachments/export/history preserved.
+No scrub/sandbox bypass, model switch or paid calls. shux absent; protocol direct.
+
+## Previous record (preserved)
+
 # GLM repeat failure — live process correction (2026-10-27)
 
 COMPLETE operational correction: latest partial run

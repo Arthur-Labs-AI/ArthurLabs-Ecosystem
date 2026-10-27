@@ -695,6 +695,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
     const input = await request(root);
     let calls = 0;
     const schemaOnAttempt: boolean[] = [];
+    const reportPrompts: string[] = [];
     const adapter = new ClaudeCodeHarnessAdapter({
       executable: 'claude-test',
       modelId: 'glm-5.3-flash',
@@ -709,6 +710,7 @@ describe('ClaudeCodeHarnessAdapter', () => {
             // Report attempt 1 (strict): unparseable prose. Attempt 2
             // (strict repair with correction): valid report.
             schemaOnAttempt.push(options?.outputSchema !== undefined);
+            reportPrompts.push(text);
             if (schemaOnAttempt.length === 1) {
               return [
                 evt('assistant', { message: { content: [{ type: 'text', text: 'prose' }] } }),
@@ -725,6 +727,13 @@ describe('ClaudeCodeHarnessAdapter', () => {
     await adapter.dispose();
     expect(events.at(-1)?.type).toBe('run.completed');
     expect(schemaOnAttempt).toEqual([false, false]);
+    expect(reportPrompts[0]).toContain('Frozen plan:');
+    expect(reportPrompts[1]).not.toContain('Frozen plan:');
+    expect(reportPrompts[1]?.length).toBeLessThan(reportPrompts[0]?.length ?? 0);
+    // The repair stays in the same session and retains every authoritative
+    // operation key, even if Claude compacted the earlier conversation.
+    expect(reportPrompts[0]).toContain('Operation op_1');
+    expect(reportPrompts[1]).toContain('Operation op_1');
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'warning', code: 'GLM_REPORT_RETRY' }),
     );
