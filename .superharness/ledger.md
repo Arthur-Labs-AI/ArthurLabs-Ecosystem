@@ -1,3 +1,17 @@
+# GLM false sandbox abort — 2026-10-27
+
+Owner export proves the final Bash grep read adapter source; its numbered regex
+line matched unanchored sandbox detection. Earlier GLM commands succeeded.
+Added adapter completion/command-ledger regression and source/docs classifier
+counterexamples: six failures before fix. Anchored diagnostic lines, retained
+real bootstrap aborts. Whole harness 94 PASS / 12 platform/live skips;
+lint/typecheck/build 60 PASS (51 cached), hygiene/format/diff PASS. Owner export
+unchanged/untracked; no paid calls or old history changes. Baseline `3def0ee`,
+branch `fix/glm-sandbox-result-detection`. Deploy/CI receipts in fix PR;
+application restart required for replacement runtime. shux absent; protocol direct.
+
+## Previous record (preserved)
+
 # PR #39 check fixes — 2026-10-27
 
 Owner requested failure diagnosis and fixes. CI quality job `122080059654`

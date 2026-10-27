@@ -1,3 +1,27 @@
+# GLM false sandbox abort — 2026-10-27
+
+Owner requested diagnosis/fix for partial run `run_01M5Y7P7EE0GPAH3KRBJT00Q4S`.
+Export treated as data and preserved untracked. GLM had executed shell commands
+successfully; its final Bash grep returned numbered adapter source, including
+the detector's own `bubblewrap.*(permission denied|failed)` regex. Unanchored
+substring detection misclassified that output as GLM_SANDBOX_UNAVAILABLE.
+
+Fixed only the Claude harness classifier: recognize bootstrap markers at
+diagnostic line starts, preserving indented/multiline actual failures. Added
+source-search adapter lifecycle regression and six classifier counterexamples,
+plus four positive fail-closed cases. RED: six regression failures before fix;
+GREEN: whole harness 94 PASS / 12 platform/live skips. Lint/typecheck/build
+60 tasks PASS (51 cached); hygiene, whitespace and format PASS (owner export
+excluded from formatting, unchanged). No model calls or historical run edits.
+
+Updated from owner-merged dev `3def0ee` onto `fix/glm-sandbox-result-detection`.
+Active WSL runtime was `1.0.2-7078c67`; deployment and final CI receipts belong
+to the fix PR. Restart the application to load the replacement runtime.
+No sandbox disabled, profile permissions changed, or process forcibly stopped.
+shux unavailable; task status, ledger and handoff maintained directly.
+
+## Previous record (preserved)
+
 # PR #39 check failures — fixes (2026-10-27)
 
 Owner requested fixes for failed checks. CI quality job `122080059654` on

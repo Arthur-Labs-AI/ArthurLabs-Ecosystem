@@ -403,6 +403,18 @@ describe('Claude executable runtime identity', () => {
     ).resolves.toEqual([]);
   });
 
+  it.each([
+    '346:  if (/bubblewrap.*(permission denied|failed)/i.test(text)) return true;',
+    '341:  if (/\\bbwrap:/i.test(text)) return true;',
+    'docs/setup.md:12:sandbox unavailable',
+    "42: Can't mkdir /tmp/example: Permission denied",
+    'The fixture checks that bubblewrap failed with permission denied.',
+    'Expected diagnostic: bwrap: sandbox unavailable',
+  ])('does not classify source or documentation output as bootstrap failure: %s', async (text) => {
+    const { isSandboxBootstrapFailureText } = await import('../src/index.js');
+    expect(isSandboxBootstrapFailureText(text)).toBe(false);
+  });
+
   it('detects sandbox bootstrap markers without flagging ordinary errors', async () => {
     const { isSandboxBootstrapFailureText } = await import('../src/index.js');
     expect(
@@ -420,5 +432,15 @@ describe('Claude executable runtime identity', () => {
     expect(isSandboxBootstrapFailureText('Exit code 3')).toBe(false);
     expect(isSandboxBootstrapFailureText('EACCES: permission denied')).toBe(false);
     expect(isSandboxBootstrapFailureText('12 passed')).toBe(false);
+  });
+
+  it.each([
+    "Can't mkdir /tmp/sandbox: Permission denied",
+    'sandbox unavailable: namespace setup failed',
+    'bubblewrap: failed to create namespace',
+    'Exit code 1\n\n  bwrap: Creating new namespace failed: Operation not permitted',
+  ])('keeps real bootstrap diagnostics fail-closed: %s', async (text) => {
+    const { isSandboxBootstrapFailureText } = await import('../src/index.js');
+    expect(isSandboxBootstrapFailureText(text)).toBe(true);
   });
 });

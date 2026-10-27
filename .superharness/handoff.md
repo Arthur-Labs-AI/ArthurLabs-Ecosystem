@@ -1,3 +1,19 @@
+# GLM source-search false abort handoff — 2026-10-27
+
+The reported GLM_SANDBOX_UNAVAILABLE was triggered by grep output quoting the
+adapter's own sandbox regex, not an actual bootstrap diagnostic. Earlier Bash
+operations in the export succeeded. Line-anchored diagnostic detection fixes
+the abort; real bwrap failures still abort and never fabricate exit 0.
+New regressions RED before fix, whole harness GREEN 94 PASS / 12 existing skips;
+workspace lint/typecheck/build 60 tasks PASS (51 cached), hygiene/format/diff
+PASS. Owner export preserved untracked; paid/live-provider verification not run.
+Fix branch: `fix/glm-sandbox-result-detection`, baseline owner-merged `3def0ee`.
+Runtime deployment/final CI receipts are in the fix PR. App restart loads the
+replacement; existing process is left running, old run history stays unchanged.
+No sandbox bypass, permission mutation, forced shutdown or merge. shux absent.
+
+## Previous record (preserved)
+
 # PR #39 check-fix handoff (2026-10-27)
 
 CI failure on `134ca01` traced to Prettier (13 tracked files); formatting fixed,

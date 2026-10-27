@@ -334,16 +334,18 @@ function textFromContentBlocks(content: unknown): string {
  * True when Bash-like tool result text proves sandbox/bootstrap failure
  * before the actual shell command executed (bubblewrap could not
  * initialize). Conservative by design: anchored to bootstrap markers
- * (`bwrap:`, bind/mount/mkdir failures, sandbox-unavailable), never to
- * model-chosen command output. Ordinary nonzero exits and missing-file
- * errors are NOT infrastructure failures.
+ * (`bwrap:`, bind/mount/mkdir failures, sandbox-unavailable) at the start
+ * of diagnostic lines. Source searches and documentation can quote these
+ * same markers, so substring matches are not proof of a bootstrap failure.
+ * Ordinary nonzero exits and missing-file errors are NOT infrastructure
+ * failures.
  */
 export function isSandboxBootstrapFailureText(text: string): boolean {
-  if (/\bbwrap:/i.test(text)) return true;
-  if (/can'?t\s+(mkdir|create\s+file|mount|bind|chdir|pivot|clone|unshare)/i.test(text))
+  if (/^[\t ]*bwrap:/im.test(text)) return true;
+  if (/^[\t ]*can'?t\s+(mkdir|create\s+file|mount|bind|chdir|pivot|clone|unshare)\b/im.test(text))
     return true;
-  if (/sandbox\s+unavailable/i.test(text)) return true;
-  if (/bubblewrap.*(permission denied|failed)/i.test(text)) return true;
+  if (/^[\t ]*sandbox[\t ]+unavailable\b/im.test(text)) return true;
+  if (/^[\t ]*bubblewrap\b[^\r\n]*(permission denied|failed)/im.test(text)) return true;
   return false;
 }
 
