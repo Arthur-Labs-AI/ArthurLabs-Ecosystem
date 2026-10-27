@@ -139,7 +139,10 @@ export function Providers(): React.JSX.Element {
   const [values, setValues] = React.useState<Record<string, string>>({});
   const [note, setNote] = React.useState<string | undefined>(undefined);
   const [error, setError] = React.useState<string | undefined>(undefined);
+  const [runtimeWarning, setRuntimeWarning] = React.useState<string | undefined>(undefined);
   const [confirmForget, setConfirmForget] = React.useState(false);
+  const runtimeSynced = (result: unknown): boolean =>
+    (result as { runtimeSynced?: boolean } | null | undefined)?.runtimeSynced !== false;
   const statuses = useQuery({
     queryKey: ['providers'],
     queryFn: async () => {
@@ -183,6 +186,7 @@ export function Providers(): React.JSX.Element {
   };
   const fail = (e: unknown): void => {
     setNote(undefined);
+    setRuntimeWarning(undefined);
     setError(e instanceof Error ? e.message : String(e));
   };
   const save = useMutation({
@@ -190,6 +194,7 @@ export function Providers(): React.JSX.Element {
       sentryApi().providers.save(name, value),
     onMutate: () => {
       setNote(undefined);
+      setRuntimeWarning(undefined);
       setError(undefined);
     },
     onSuccess: (result, variables) => {
@@ -211,6 +216,11 @@ export function Providers(): React.JSX.Element {
             ? 'Saved preference and loaded into the desktop host process.'
             : 'Save completed. Refreshing provider status.',
       );
+      setRuntimeWarning(
+        runtimeSynced(result)
+          ? undefined
+          : 'Saved, but the live runtime did not pick up the change, so agent health may show stale values. Save again or restart the app.',
+      );
       refresh();
     },
     onError: (e) => {
@@ -221,11 +231,17 @@ export function Providers(): React.JSX.Element {
   const clear = useMutation({
     onMutate: () => {
       setNote(undefined);
+      setRuntimeWarning(undefined);
       setError(undefined);
     },
     mutationFn: (name: string) => sentryApi().providers.clearKey(name),
-    onSuccess: () => {
+    onSuccess: (result) => {
       setError(undefined);
+      setRuntimeWarning(
+        runtimeSynced(result)
+          ? undefined
+          : 'Cleared, but the live runtime may still use the old value until you restart the app.',
+      );
       refresh();
     },
     onError: fail,
@@ -233,12 +249,18 @@ export function Providers(): React.JSX.Element {
   const forgetAll = useMutation({
     onMutate: () => {
       setNote(undefined);
+      setRuntimeWarning(undefined);
       setError(undefined);
     },
     mutationFn: () => sentryApi().providers.forgetAll(),
-    onSuccess: () => {
+    onSuccess: (result) => {
       setConfirmForget(false);
       setNote('All provider credentials forgotten. App preferences were preserved.');
+      setRuntimeWarning(
+        runtimeSynced(result)
+          ? undefined
+          : 'Credentials forgotten, but the live runtime may still hold old values until you restart the app.',
+      );
       refresh();
     },
     onError: fail,
@@ -284,6 +306,14 @@ export function Providers(): React.JSX.Element {
         <div className="inline-notice" role="status">
           {note}{' '}
           <button className="compact ghost" onClick={() => setNote(undefined)}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+      {runtimeWarning !== undefined ? (
+        <div className="inline-notice" role="status">
+          {runtimeWarning}{' '}
+          <button className="compact ghost" onClick={() => setRuntimeWarning(undefined)}>
             Dismiss
           </button>
         </div>

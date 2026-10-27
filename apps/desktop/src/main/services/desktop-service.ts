@@ -318,15 +318,15 @@ export class DesktopApplicationService {
       .strict()
       .parse({ name, value });
     const status = await this.deps.credentials.saveKey(parsed.name, parsed.value);
-    await this.pushRuntimeConfiguration().catch(() => undefined);
-    return status;
+    const runtimeSynced = await this.pushRuntimeConfigurationBestEffort();
+    return { ...(status as unknown as Record<string, unknown>), runtimeSynced };
   }
 
   async providerClearKey(name: string): Promise<unknown> {
     const parsed = z.string().min(1).max(200).parse(name);
     const status = await this.deps.credentials.clearKey(parsed);
-    await this.pushRuntimeConfiguration().catch(() => undefined);
-    return status;
+    const runtimeSynced = await this.pushRuntimeConfigurationBestEffort();
+    return { ...(status as unknown as Record<string, unknown>), runtimeSynced };
   }
 
   providerPersist(): Promise<unknown> {
@@ -339,8 +339,29 @@ export class DesktopApplicationService {
 
   async providerForgetAll(): Promise<unknown> {
     const result = await this.deps.credentials.forgetAll();
-    await this.pushRuntimeConfiguration().catch(() => undefined);
-    return result;
+    const runtimeSynced = await this.pushRuntimeConfigurationBestEffort();
+    return { ...(result as Record<string, unknown>), runtimeSynced };
+  }
+
+  /**
+   * Push live config to the runtime, retrying once after a short delay. A
+   * transient IPC/runtime blip must not silently leave agent health
+   * showing stale models: callers report the acknowledgement so the UI
+   * can warn instead of presenting stale values as current.
+   */
+  private async pushRuntimeConfigurationBestEffort(): Promise<boolean> {
+    try {
+      await this.pushRuntimeConfiguration();
+      return true;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      try {
+        await this.pushRuntimeConfiguration();
+        return true;
+      } catch {
+        return false;
+      }
+    }
   }
 
   detectHarnessBinaries(): Promise<unknown> {

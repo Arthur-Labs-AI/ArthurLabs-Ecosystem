@@ -206,6 +206,51 @@ describe('Providers model controls', () => {
     );
   });
 
+  it('warns when the live runtime does not acknowledge a save', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValue([statusRow('SENTRY_DEEPSEEK_MODEL', 'deepseek-v4-flash')]);
+    const save = vi.fn().mockResolvedValue({
+      configured: true,
+      persistence: 'persisted',
+      source: 'persisted',
+      runtimeSynced: false,
+    });
+    const s = mount(query, save);
+    const modelSelect = (await s
+      .deepSeekCard()
+      .findByLabelText('Value for SENTRY_DEEPSEEK_MODEL')) as HTMLSelectElement;
+    fireEvent.change(modelSelect, { target: { value: 'deepseek-v4-pro' } });
+    fireEvent.click(within(modelSelect.parentElement!).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith('SENTRY_DEEPSEEK_MODEL', 'deepseek-v4-pro'),
+    );
+    await waitFor(() => expect(screen.getByText(/live runtime did not pick up/)).toBeTruthy());
+  });
+
+  it('shows no runtime warning when the push is acknowledged', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValue([statusRow('SENTRY_DEEPSEEK_MODEL', 'deepseek-v4-flash')]);
+    const save = vi.fn().mockResolvedValue({
+      configured: true,
+      persistence: 'persisted',
+      source: 'persisted',
+      runtimeSynced: true,
+    });
+    const s = mount(query, save);
+    const modelSelect = (await s
+      .deepSeekCard()
+      .findByLabelText('Value for SENTRY_DEEPSEEK_MODEL')) as HTMLSelectElement;
+    fireEvent.change(modelSelect, { target: { value: 'deepseek-v4-pro' } });
+    fireEvent.click(within(modelSelect.parentElement!).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith('SENTRY_DEEPSEEK_MODEL', 'deepseek-v4-pro'),
+    );
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Saved'));
+    expect(screen.queryByText(/live runtime did not pick up/)).toBeNull();
+  });
+
   it('retains an explicit Zen choice when toggling the credential source', async () => {
     const query = vi.fn().mockResolvedValue(bothKeys('opencode', 'gpt-5.5'));
     const save = vi
