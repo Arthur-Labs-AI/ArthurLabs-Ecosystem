@@ -2,7 +2,7 @@ import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createWorkspacePreparer } from '../src/workspace-preparation.js';
+import { createWorkspacePreparer, discoverOfflineCache } from '../src/workspace-preparation.js';
 import type { SandboxCommandInput, VerificationSandboxBackend } from '@qa/verifier';
 
 const roots: string[] = [];
@@ -38,6 +38,13 @@ async function binaryFixture(root: string) {
   return bin;
 }
 describe('private workspace preparation', () => {
+  it('discovers a populated local store without requiring a hidden environment variable', async () => {
+    const a = await fixture();
+    const store = join(a.root, 'store');
+    await mkdir(join(store, 'v3'), { recursive: true });
+    expect(await discoverOfflineCache([join(a.root, 'missing'), store])).toBe(store);
+    expect(await discoverOfflineCache([join(a.root, 'missing')])).toBeUndefined();
+  });
   it('cleans incremental state only in its own copy and records a missing cache honestly', async () => {
     const a = await fixture();
     const b = await fixture();
@@ -159,7 +166,11 @@ describe('private workspace preparation', () => {
         'PATH',
       ]);
     }
-    expect(installs[0]!.args.at(-1)).not.toBe(installs[1]!.args.at(-1));
+    // Only immutable cache objects are shared; pnpm copies installed packages.
+    expect(installs[0]!.args.at(-1)).toBe(seed);
+    expect(installs[1]!.args.at(-1)).toBe(seed);
+    expect(installs[0]!.cwd).not.toBe(installs[1]!.cwd);
+    expect(commands.some((command) => command.executable.endsWith('/cp'))).toBe(false);
     expect(disposed).toBe(2);
   });
 });

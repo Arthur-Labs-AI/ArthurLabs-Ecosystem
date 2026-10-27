@@ -1,3 +1,27 @@
+## First real depth run assessment — COMPLETE
+
+Reviewed owner export run_01M5Z8X98VKXVTVJ262GB9HACH, treated as data only.
+New QA_DEPTH_V1/challenge executed for all3. All preparation limited: cache unset,
+20 compiler caches removed but dependencies not provisioned. Muse2:35/4commands,
+DeepSeek30:05 timeout during challenge before reporting (145tools, no submitted
+findings/evidence), GLM22:26/5low-info findings. Same target revision/hash as prior.
+Confirmed implementation gaps: manual setup not done at test launch; challenge
+only start-gated, no protected reporting budget; coverage validation structural
+only; timeout diagnostic displays90min while30min hard deadline actually fired.
+GLM cache-exclusion claim refuted against retained revision's source-selection
+and import caller; test-gap claim rests on filenames, not test bodies. Conditional
+manifest integrity gap and low/info hardening remain distinct from major defects.
+No product changes or new provider run. Full report:
+docs/reviews/sentry-run-01M5Z8X98-assessment.md. shux absent; direct receipts.
+
+## Test launch — COMPLETE
+
+Opened the built Desktop from codex/independent-agent-depth at owner request.
+Deployed and activated Linux runtime 1.0.2-1251a7d; native build18 tasks PASS,
+entry validation and runtime.hello PASS (Linux/WSL, protocol1, Node22.23.2).
+Confirmed visible Sentry window from this checkout's electron.exe (PID32960).
+No QA/model run started. Local protocol receipt only; product sources unchanged.
+
 ## Independent agent depth — IMPLEMENTED / VERIFIED
 
 Branch codex/independent-agent-depth from dev f47f527. Private copies/sessions

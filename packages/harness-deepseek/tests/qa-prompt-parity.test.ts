@@ -91,7 +91,7 @@ function validReport() {
 }
 
 describe('DeepSeek QA prompt parity', () => {
-  it.each([false, true, 'low-budget'])(
+  it.each([false, true, 'low-budget', 'review-failure', 'refinement-failure', 'review-unchanged'])(
     'routes independent depth policy enabled=%s',
     async (depth) => {
       const root = await mkdtemp(join(tmpdir(), 'sentry-ds-parity-'));
@@ -106,7 +106,7 @@ describe('DeepSeek QA prompt parity', () => {
                 context: {
                   qaDepth: {
                     version: 1,
-                    deadlineAt: Date.now() + (depth === 'low-budget' ? 30_000 : 300_000),
+                    deadlineAt: Date.now() + (depth === 'low-budget' ? 30_000 : 1_800_000),
                   },
                 },
               }
@@ -116,6 +116,17 @@ describe('DeepSeek QA prompt parity', () => {
       const prompts: string[] = [];
       const capture = (text: string) => {
         prompts.push(text);
+        if (depth === 'review-unchanged' && text.includes('CHALLENGE YOUR OWN INVESTIGATION'))
+          return {
+            sessionId: 's1',
+            finalResponse: '{"reportNeedsUpdate":false}',
+            events: [],
+            notifications: [],
+          };
+        if (depth === 'refinement-failure' && prompts.length === 5)
+          throw new Error('scripted refinement failure');
+        if (depth === 'review-failure' && text.includes('CHALLENGE YOUR OWN INVESTIGATION'))
+          throw new Error('scripted review failure');
         if (prompts.length === 1)
           return { sessionId: 's1', finalResponse: validPlan(), events: [], notifications: [] };
         if (prompts.length === 2)
@@ -141,14 +152,33 @@ describe('DeepSeek QA prompt parity', () => {
       for await (const event of adapter.run(input)) events.push(event);
       await adapter.dispose();
       expect(events.at(-1)?.type).toBe('run.completed');
+      const usageEvent = events.find((e) => e.type === 'usage.updated');
+      expect(usageEvent?.type === 'usage.updated' ? usageEvent.usage.turns : undefined).toBe(
+        depth === true || depth === 'refinement-failure'
+          ? 5
+          : depth === 'review-failure' || depth === 'review-unchanged'
+            ? 4
+            : 3,
+      );
+      expect(events.filter((e) => e.type === 'finding.submitted')).toHaveLength(1);
       if (depth === 'low-budget')
         expect(events.some((e) => e.type === 'warning' && e.code === 'QA_CHALLENGE_NOT_RUN')).toBe(
           true,
         );
-      expect(prompts).toHaveLength(depth === true ? 4 : 3);
-      if (depth === true) expect(prompts[2]).toContain('CHALLENGE YOUR OWN INVESTIGATION');
+      expect(prompts).toHaveLength(
+        depth === true || depth === 'refinement-failure'
+          ? 5
+          : depth === 'review-failure' || depth === 'review-unchanged'
+            ? 4
+            : 3,
+      );
+      if (depth === true) expect(prompts[3]).toContain('CHALLENGE YOUR OWN INVESTIGATION');
       const [planning, investigation] = prompts as [string, string];
-      const reporting = prompts.at(-1)!;
+      const reporting = prompts[2]!;
+      if (depth === 'review-failure' || depth === 'refinement-failure')
+        expect(
+          events.some((e) => e.type === 'warning' && e.code === 'QA_VALIDATION_INCOMPLETE'),
+        ).toBe(true);
       expect(planning).toContain('Authority hierarchy');
       expect(planning).toContain('risk-first');
       expect(investigation).toContain('Phase A');

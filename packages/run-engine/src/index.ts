@@ -1,6 +1,8 @@
 import { depthPolicy } from '@qa/evidence-pipeline';
 import {
   createWorkspacePreparer,
+  discoverOfflineCache,
+  offlineCacheCandidates,
   removeBuildCaches,
   type PreparationPolicy,
   type PreparationReceipt,
@@ -222,14 +224,18 @@ export class RunCoordinator {
   }
 
   async run(projectId: ProjectId, options: RunOptions): Promise<RunDetails> {
+    const configuredSeed = process.env['SENTRY_QA_CACHE_SEED']?.trim();
+    const cacheSeed =
+      configuredSeed ||
+      (process.platform === 'linux'
+        ? await discoverOfflineCache(offlineCacheCandidates(this.dataRoot))
+        : undefined);
     const preparationPolicy: PreparationPolicy | undefined =
       options.executionKind === 'production' && process.env['SENTRY_QA_DEPTH'] !== '0'
         ? {
             enabled: true,
             path: process.env['PATH'] ?? '',
-            ...(process.env['SENTRY_QA_CACHE_SEED'] === undefined
-              ? {}
-              : { cacheSeed: process.env['SENTRY_QA_CACHE_SEED'] }),
+            ...(cacheSeed === undefined ? {} : { cacheSeed }),
           }
         : undefined;
     const runtimeLease = this.requireRuntimeLease();
@@ -1146,7 +1152,13 @@ export class RunCoordinator {
           (hardDeadline !== undefined && now >= hardDeadline) ||
           now - startedAt >= absoluteMaxMs
         ) {
-          reject(new RunTimeoutError('absolute cap ' + String(absoluteMaxMs) + ' ms reached'));
+          reject(
+            new RunTimeoutError(
+              hardDeadline !== undefined && now >= hardDeadline
+                ? 'configured run deadline reached'
+                : 'absolute cap ' + String(absoluteMaxMs) + ' ms reached',
+            ),
+          );
           return;
         }
         if (now - lastEventAt >= timeoutMs) {

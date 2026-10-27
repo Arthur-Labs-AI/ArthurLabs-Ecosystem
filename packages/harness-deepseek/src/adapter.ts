@@ -13,8 +13,12 @@ import {
 } from '@qa/shared';
 import {
   canChallenge,
+  validationBudgetMs,
+  reviewNeedsUpdate,
+  boundedValidation,
   challengePrompt,
   coverageErrors,
+  groundCoverage,
   reportableDepthPlan,
   depthPolicy,
   DEPTH_COVERAGE_GUIDANCE,
@@ -1020,6 +1024,8 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       // carry the evidentiary facts.
       const depth = depthPolicy(request.task.context);
       let challenge: CollectedTurn | undefined;
+      let validationIssued = 0;
+      let reportingIssued = 0;
       const investigation = await this.runTurn(
         session,
         investigationPrompt(planResult),
@@ -1027,29 +1033,6 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         'investigation',
       );
       for (const emitted of investigation.events) yield emitted;
-      if (depth !== undefined) {
-        if (canChallenge(depth.deadlineAt)) {
-          yield event(request.agentRunId, {
-            type: 'agent.status',
-            status: 'investigating',
-            message: 'Validating own findings and checking counterarguments.',
-          });
-          challenge = await this.runTurn(
-            session,
-            challengePrompt(planResult),
-            request.agentRunId,
-            'investigation',
-          );
-          for (const emitted of challenge.events) yield emitted;
-        } else {
-          yield event(request.agentRunId, {
-            type: 'warning',
-            code: 'QA_CHALLENGE_NOT_RUN',
-            message:
-              'Validation pass not run: remaining budget reserved for reporting. Analysis is partial.',
-          });
-        }
-      }
 
       // STAGE 3 — reporting against the frozen ledger. Bounded correction:
       // schema/trust failures retry the REPORT ONLY (same session, no
@@ -1063,80 +1046,188 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       let result: SentryAgentReportV2 | undefined;
       let built: BuiltReportAttempt | undefined;
       let correction: string[] | undefined;
-      for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
-        // Firewall trip fails the REPORT ATTEMPT (not the run): the
-        // correction loop tells the model to serialize without tools.
-        let reporting: CollectedTurn | undefined;
-        let errors: string[] | undefined;
+      let checkpoint: { result: SentryAgentReportV2; built: BuiltReportAttempt } | undefined;
+      let validationCleanupFailed = false;
+      const stopValidation = async (): Promise<void> => {
+        await (this.client?.close() ?? Promise.resolve());
+      };
+      for (let reportPass = 0; reportPass < (depth === undefined ? 1 : 2); reportPass += 1) {
         try {
-          reporting = await this.runTurn(
-            session,
-            reportPrompt(planResult, this.observedOperations, correction),
-            request.agentRunId,
-            'reporting',
-            true,
-          );
-        } catch (cause) {
-          if (
-            cause instanceof DeepSeekHarnessError &&
-            cause.code === 'DEEPSEEK_REPORT_TOOL_FORBIDDEN'
-          ) {
-            errors = [
-              boundCorrectionMessage(messageOf(cause)) +
-                ' The reporting stage is tool-free: ' +
-                'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
-                'Do not run commands, read files, or use any tools.',
-            ];
-          } else {
-            throw cause;
-          }
-        }
-        if (reporting !== undefined) {
-          for (const emitted of reporting.events) yield emitted;
-          reportTurns.push(reporting.usage === undefined ? {} : { usage: reporting.usage });
-          const candidate = parseReportAttempt(reporting.text, pipeline);
-          if (!candidate.ok) {
-            errors = candidate.errors;
-          } else {
+          for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
+            // Firewall trip fails the REPORT ATTEMPT (not the run): the
+            // correction loop tells the model to serialize without tools.
+            let reporting: CollectedTurn | undefined;
+            let errors: string[] | undefined;
             try {
-              const missing =
-                depth === undefined ? [] : coverageErrors(planResult, candidate.report);
-              if (missing.length > 0) throw new Error(missing.join('\n'));
-              built = await this.buildReportAttempt(request, candidate.report, pipeline);
-              result = candidate.report;
-              break;
+              reportingIssued += 1;
+              reporting =
+                reportPass === 0
+                  ? await this.runTurn(
+                      session,
+                      reportPrompt(planResult, this.observedOperations, correction),
+                      request.agentRunId,
+                      'reporting',
+                      true,
+                    )
+                  : await boundedValidation(
+                      () =>
+                        this.runTurn(
+                          session,
+                          reportPrompt(planResult, this.observedOperations, correction),
+                          request.agentRunId,
+                          'reporting',
+                          true,
+                        ),
+                      Math.max(1, depth!.deadlineAt - Date.now() - 30_000),
+                      stopValidation,
+                    );
             } catch (cause) {
-              errors = [boundCorrectionMessage(messageOf(cause))];
+              if (
+                cause instanceof DeepSeekHarnessError &&
+                cause.code === 'DEEPSEEK_REPORT_TOOL_FORBIDDEN'
+              ) {
+                errors = [
+                  boundCorrectionMessage(messageOf(cause)) +
+                    ' The reporting stage is tool-free: ' +
+                    'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
+                    'Do not run commands, read files, or use any tools.',
+                ];
+              } else {
+                throw cause;
+              }
+            }
+            if (reporting !== undefined) {
+              for (const emitted of reporting.events) yield emitted;
+              reportTurns.push(reporting.usage === undefined ? {} : { usage: reporting.usage });
+              const candidate = parseReportAttempt(reporting.text, pipeline);
+              if (!candidate.ok) {
+                errors = candidate.errors;
+              } else {
+                try {
+                  const grounded =
+                    depth === undefined
+                      ? candidate.report
+                      : groundCoverage(candidate.report, this.observedOperations);
+                  const missing = depth === undefined ? [] : coverageErrors(planResult, grounded);
+                  if (missing.length > 0) throw new Error(missing.join('\n'));
+                  built = await this.buildReportAttempt(request, grounded, pipeline);
+                  result = grounded;
+                  break;
+                } catch (cause) {
+                  errors = [boundCorrectionMessage(messageOf(cause))];
+                }
+              }
+            }
+            if (errors === undefined) {
+              throw new DeepSeekHarnessError(
+                'DEEPSEEK_INVALID_RESULT',
+                'DeepSeek report attempt produced no result and no error.',
+              );
+            }
+            correction = errors;
+            if (attempt < MAX_REPORT_ATTEMPTS) {
+              yield event(request.agentRunId, {
+                type: 'warning',
+                code: 'DEEPSEEK_REPORT_RETRY',
+                message:
+                  'DeepSeek report attempt ' +
+                  attempt +
+                  ' rejected; retrying report only (' +
+                  errors.length +
+                  ' issues).',
+              });
+            } else {
+              throw new DeepSeekHarnessError(
+                'DEEPSEEK_INVALID_RESULT',
+                'DeepSeek report failed after ' +
+                  MAX_REPORT_ATTEMPTS +
+                  ' attempts: ' +
+                  errors.map(boundCorrectionMessage).join('; '),
+              );
             }
           }
-        }
-        if (errors === undefined) {
-          throw new DeepSeekHarnessError(
-            'DEEPSEEK_INVALID_RESULT',
-            'DeepSeek report attempt produced no result and no error.',
-          );
-        }
-        correction = errors;
-        if (attempt < MAX_REPORT_ATTEMPTS) {
+        } catch (cause) {
+          if (checkpoint === undefined) throw cause;
+          try {
+            await stopValidation();
+          } catch {
+            validationCleanupFailed = true;
+          }
+          if (cause instanceof Error && cause.message === 'QA_VALIDATION_CLEANUP_FAILED')
+            validationCleanupFailed = true;
+          result = checkpoint.result;
+          built = checkpoint.built;
           yield event(request.agentRunId, {
             type: 'warning',
-            code: 'DEEPSEEK_REPORT_RETRY',
+            code: 'QA_VALIDATION_INCOMPLETE',
             message:
-              'DeepSeek report attempt ' +
-              attempt +
-              ' rejected; retrying report only (' +
-              errors.length +
-              ' issues).',
+              'Optional refinement did not complete; the validated checkpoint report is retained. Analysis is partial.',
           });
-        } else {
-          throw new DeepSeekHarnessError(
-            'DEEPSEEK_INVALID_RESULT',
-            'DeepSeek report failed after ' +
-              MAX_REPORT_ATTEMPTS +
-              ' attempts: ' +
-              errors.map(boundCorrectionMessage).join('; '),
-          );
+          break;
         }
+        if (result === undefined || built === undefined) break;
+        if (reportPass > 0 || depth === undefined) break;
+        checkpoint = { result, built };
+        yield event(request.agentRunId, {
+          type: 'agent.message',
+          message: 'QA_REPORT_CHECKPOINT_READY: valid report prepared before optional validation.',
+        });
+        if (!canChallenge(depth.deadlineAt)) {
+          yield event(request.agentRunId, {
+            type: 'warning',
+            code: 'QA_CHALLENGE_NOT_RUN',
+            message:
+              'Remaining budget reserved for finalization; checkpoint report retained. Analysis is partial.',
+          });
+          break;
+        }
+        try {
+          yield event(request.agentRunId, {
+            type: 'agent.status',
+            status: 'investigating',
+            message:
+              'Validating own findings with a bounded budget; checkpoint report is available.',
+          });
+          validationIssued += 1;
+          challenge = await boundedValidation(
+            () =>
+              this.runTurn(
+                session,
+                challengePrompt(planResult),
+                request.agentRunId,
+                'investigation',
+              ),
+            validationBudgetMs(depth.deadlineAt),
+            stopValidation,
+          );
+          for (const emitted of challenge.events) yield emitted;
+          if (!reviewNeedsUpdate(challenge.text)) break;
+        } catch (cause) {
+          try {
+            await stopValidation();
+          } catch {
+            validationCleanupFailed = true;
+          }
+          if (cause instanceof Error && cause.message === 'QA_VALIDATION_CLEANUP_FAILED')
+            validationCleanupFailed = true;
+          result = checkpoint.result;
+          built = checkpoint.built;
+          yield event(request.agentRunId, {
+            type: 'warning',
+            code: 'QA_VALIDATION_INCOMPLETE',
+            message:
+              'Validation stopped within its own budget; checkpoint report retained. Analysis is partial.',
+          });
+          break;
+        }
+        result = undefined;
+        built = undefined;
+        correction = undefined;
+        yield event(request.agentRunId, {
+          type: 'agent.status',
+          status: 'reporting',
+          message: 'Refining the checkpoint report against the final operation ledger.',
+        });
       }
       if (result === undefined || built === undefined)
         throw new DeepSeekHarnessError('DEEPSEEK_INVALID_RESULT', 'DeepSeek produced no report.');
@@ -1194,13 +1285,25 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
         ...summed,
-        turns: planningTurns + 1 + (challenge === undefined ? 0 : 1) + reportTurns.length,
+        turns: planningTurns + 1 + validationIssued + reportingIssued,
       };
       yield event(request.agentRunId, { type: 'usage.updated', usage });
-      yield event(request.agentRunId, {
-        type: 'run.completed',
-        usage,
-      });
+      if (validationCleanupFailed) {
+        yield event(request.agentRunId, {
+          type: 'run.failed',
+          failure: {
+            code: 'QA_VALIDATION_CLEANUP_FAILED',
+            message:
+              'Validation process cleanup could not be confirmed; checkpoint output was retained.',
+            retryable: false,
+          },
+        });
+      } else {
+        yield event(request.agentRunId, {
+          type: 'run.completed',
+          usage,
+        });
+      }
     } catch (cause) {
       const typed =
         cause instanceof DeepSeekHarnessError

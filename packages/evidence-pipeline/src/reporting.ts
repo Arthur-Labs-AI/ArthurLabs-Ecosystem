@@ -95,7 +95,7 @@ export const REPORT_LEDGER_RULES =
  *  validates (field names fixed; bounds match the Zod schema). */
 export const REPORT_ENVELOPE_SCHEMA =
   'Report envelope (exact shapes; copy names exactly): ' +
-  '{"schemaVersion":2,"summary":string,"checks":[{"name":string,"status":"passed|failed|inconclusive|not_run","details"?:string}],' +
+  '{"schemaVersion":2,"summary":string,"checks":[{"name":string,"status":"passed|failed|inconclusive|not_run","details"?:string,"coverage"?:"complete|partial","operationKeys"?:string[]}],' +
   '"hypotheses":[{"title":string,"rationale":string,"relatedPaths":string[],"plannedChecks":string[at least one]}],' +
   '"evidence":[<see Evidence variants above>],' +
   '"findings":[{"title":string,"category":string,"categoryDetail"?:string,"severity":"critical|high|medium|low|info",' +

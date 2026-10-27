@@ -4,7 +4,7 @@
 import { mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SentryDatabase, SentryRepository, RuntimeInstanceLease } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
 import { INITIAL_AGENT_STACKS } from '@qa/domain';
@@ -466,6 +466,60 @@ describe('resolution: manifest-based, absence never fixed', () => {
 });
 
 describe('private preparation and unconditional teardown', () => {
+  it('reports the configured deadline, not the legacy larger activity cap', async () => {
+    const f = await fixture();
+    const registry = new HarnessAdapterRegistry();
+    let release!: () => void;
+    const untilCancelled = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    class Hanging extends FakeHarnessAdapter {
+      override async *run(request: HarnessRunRequest) {
+        yield HarnessEventSchema.parse({
+          schemaVersion: 1,
+          eventId: createHarnessEventId(),
+          agentRunId: request.agentRunId,
+          timestamp: nowIsoTimestamp(),
+          type: 'run.started',
+        });
+        await untilCancelled;
+      }
+      override async cancel() {
+        release();
+      }
+    }
+    registry.register({ stack: INITIAL_AGENT_STACKS[0]!, createAdapter: () => new Hanging() });
+    let ready!: () => void;
+    const requestReady = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const coordinator = new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      registry,
+      async () => ({ status: 'ready', reason: 'fixture', removedBuildCaches: 0 }),
+    );
+    try {
+      const running = coordinator.run(f.added.project.id, {
+        executionKind: 'production',
+        runTimeoutMs: 10_000,
+        onHarnessRequest: () => {
+          vi.useFakeTimers();
+          ready();
+        },
+      });
+      await requestReady;
+      await vi.advanceTimersByTimeAsync(10_001);
+      const result = await running;
+      expect(result.agentRuns[0]?.failure?.message).toContain('configured run deadline reached');
+      expect(result.agentRuns[0]?.failure?.message).not.toContain('absolute cap');
+    } finally {
+      vi.useRealTimers();
+      f.lease.release();
+      f.database.close();
+    }
+  });
   it('cancels preparation without launching a provider turn', async () => {
     const f = await fixture();
     const registry = new HarnessAdapterRegistry();

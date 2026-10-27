@@ -66,3 +66,15 @@ The owner explicitly revised the request to retain main/dev plus the new working
 branch. Local and origin dev were both `f47f527` when verified; no unique commits
 were discarded. Temporary Linux verification checkouts were removed after testing.
 `shux contract` was unavailable, so task/ledger/handoff receipts were updated directly.
+
+## Follow-up hardening (second pass, same branch)
+
+Prompted by run_01M5Z8X98 (DeepSeek timeout before reporting, generic coverage passes, unprovisioned dependencies). No new services, retries, or model calls.
+
+- Checkpoint report before optional validation; bounded challenge (2 min cap, last 5 min reserved, >=30 s to start); unchanged review skips the second serialization via `{"reportNeedsUpdate":false}` (invalid/prose review requires it).
+- `groundCoverage` downgrades `passed` checks without complete executable proof (source-only, partial, piped/masked commands); `coverage` + `operationKeys` added as optional V2 check fields (strict shape otherwise unchanged; no migration).
+- Timeout diagnostic names the fired deadline (configured run deadline vs absolute cap).
+- Offline pnpm cache auto-discovery from known locations (`dataRoot/cache/pnpm`, XDG store) with `SENTRY_QA_CACHE_SEED` override; only needed package bytes are copied per workspace (multi-GB store mounted read-only, never copied).
+- New/expanded regression tests: review-unchanged/review-failure/refinement-failure in all three harness suites, deadline-message test, store discovery test, zod-bytes smoke variant (`SENTRY_SANDBOX_SMOKE_STORE`).
+
+Verification (this session): `git diff --check` clean; prettier check clean on all touched files; full typecheck (37 tasks), lint (20), build (20) pass; evidence-pipeline 73, opencode 125, deepseek 62, claude 102, schemas 118, run-engine 91 (excl. trust file), desktop qa-quality 2 — all pass; real-WSL preparation smoke passes with and without supplied store (zod bytes land as independent copies); verification-trust not re-run here (Windows node_modules lack the Linux rollup native binding; previously passed on real Ubuntu WSL and its code path is unchanged by this session).

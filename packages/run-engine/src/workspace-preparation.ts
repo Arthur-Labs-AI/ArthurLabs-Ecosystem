@@ -2,6 +2,7 @@ import { readFile, readdir, realpath, lstat, unlink, mkdir } from 'node:fs/promi
 import { dirname, join, resolve } from 'node:path';
 import { isPathInside } from '@qa/persistence';
 import { createHash } from 'node:crypto';
+import { homedir } from 'node:os';
 import {
   SystemdSandboxBackend,
   resolveExecutable,
@@ -30,6 +31,28 @@ export interface PreparationInput {
   readonly signal: AbortSignal;
 }
 export type WorkspacePreparer = (input: PreparationInput) => Promise<PreparationReceipt>;
+
+/** Only known store locations, never a scan of host files or project configuration. */
+export function offlineCacheCandidates(dataRoot: string): readonly string[] {
+  return [
+    join(dataRoot, 'cache', 'pnpm'),
+    join(process.env['XDG_DATA_HOME'] || join(homedir(), '.local', 'share'), 'pnpm', 'store'),
+  ];
+}
+
+export async function discoverOfflineCache(
+  candidates: readonly string[],
+): Promise<string | undefined> {
+  for (const candidate of candidates) {
+    try {
+      const root = await realpath(candidate);
+      if ((await lstat(join(root, 'v3'))).isDirectory()) return root;
+    } catch {
+      /* Missing cache is an explicit limited preparation, never a network fallback. */
+    }
+  }
+  return undefined;
+}
 
 /** Walk only physical directories; imported symlinks must never widen cleanup. */
 export async function removeBuildCaches(root: string, signal?: AbortSignal): Promise<number> {
@@ -160,10 +183,9 @@ export function createWorkspacePreparer(
       const installed = await run(pnpmExecutable, ['--version'], join(privateRoot, 'home'));
       if (installed.exitCode !== 0 || installed.stdout.trim() !== version)
         return limited('Installed pnpm version differs from the project pin.');
-      // Every worker receives a private store and copied package files. No shared writes.
-      const store = join(privateRoot, 'home', 'pnpm-store');
-      const copied = await run('/usr/bin/cp', ['-a', '--reflink=auto', '--', seed, store]);
-      if (copied.exitCode !== 0) throw new Error('QA_PREPARATION_CACHE_COPY_FAILED');
+      // Store is mounted read-only. Only needed installed package bytes are copied;
+      // copying the entire multi-GB store into every workspace is unnecessary.
+      const store = seed;
       const installedPackages = await run(pnpmExecutable, [
         'install',
         '--offline',

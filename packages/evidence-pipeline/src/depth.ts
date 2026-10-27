@@ -1,3 +1,6 @@
+import type { SentryAgentReportV2 } from '@qa/schemas';
+import type { ObservedOperation } from './pipeline.js';
+
 /** Versioned per-run policy, passed by the coordinator, never by project files. */
 export function depthPolicy(
   context: Readonly<Record<string, unknown>> | undefined,
@@ -37,7 +40,57 @@ export const DEPTH_COVERAGE_GUIDANCE =
   'For not_run or inconclusive give a concrete reason in details. Do not substitute a successful ' +
   'process exit for a successful check. Distinguish a copied-function example from actual-code ' +
   'reproduction and a reachable application failure. Never claim production exposure merely ' +
-  'because a malformed internal object triggers a dangerous function.';
+  'because a malformed internal object triggers a dangerous function. For each passed check set coverage="complete" ' +
+  'and operationKeys to the observed successful executable checks covering the WHOLE named check. ' +
+  'If only source review, a narrow primitive or part of a broader boundary was checked, set coverage="partial" ' +
+  'and status="inconclusive". File reads, grep and counts are not executable coverage.';
+
+/** Conservative grounding: preserve useful findings, downgrade unsupported pass claims. */
+export function groundCoverage(
+  report: SentryAgentReportV2,
+  operations: ReadonlyMap<string, ObservedOperation>,
+): SentryAgentReportV2 {
+  let downgraded = false;
+  const checks = report.checks.map((check) => {
+    if (check.status !== 'passed') return check;
+    const proof = (check.operationKeys ?? []).map((key) => operations.get(key));
+    const executable =
+      proof.length > 0 &&
+      proof.every(
+        (op) =>
+          op !== undefined &&
+          op.exitCode === 0 &&
+          typeof op.commandText === 'string' &&
+          op.commandText.trim().length > 0 &&
+          !/\||;\s*(?:echo|printf|true|exit)\b/.test(op.commandText) &&
+          !/^(read|grep|glob|search|list|view)$/i.test(op.toolName) &&
+          !/^\s*(?:(?:cd\s+[^;&]+)[;&]+\s*)?(?:rg|grep|cat|sed|head|tail|find|ls|pwd|wc|echo|printf|which)\b/.test(
+            op.commandText ?? '',
+          ),
+      );
+    if (check.coverage === 'complete' && executable) return check;
+    downgraded = true;
+    return {
+      ...check,
+      status: 'inconclusive' as const,
+      coverage: 'partial' as const,
+      details: ('Complete executable coverage was not established. ' + (check.details ?? '')).slice(
+        0,
+        5000,
+      ),
+    };
+  });
+  return {
+    ...report,
+    checks,
+    limitations: downgraded
+      ? [
+          ...report.limitations,
+          'One or more claimed passes were downgraded: whole-check executable coverage was not established.',
+        ].slice(0, 100)
+      : report.limitations,
+  };
+}
 
 export function challengePrompt(plan: { plannedChecks: readonly string[] }): string {
   return [
@@ -50,14 +103,62 @@ export function challengePrompt(plan: { plannedChecks: readonly string[] }): str
     'If no candidates remain, revisit the most important unchecked risk from your own plan. Zero findings is valid; never invent a defect.',
     'Finish outstanding applicable checks or record specific limitations. Do not manufacture evidence or run unsafe destructive reproductions.',
     DEPTH_COVERAGE_GUIDANCE,
-    'Do not produce the final JSON report. Finish with a short validation-complete message. Reporting follows with the authoritative ledger.',
+    'Do not produce the final report. Return exactly {"reportNeedsUpdate":true} if any finding, confidence, evidence or check coverage must change; otherwise return exactly {"reportNeedsUpdate":false}. A changed report will be serialized against the authoritative ledger. Do not request a rewrite just to rephrase unchanged text.',
     'Frozen planned checks: ' + JSON.stringify(plan.plannedChecks),
   ].join('\n');
 }
 
-/** Reserve the final minute for serialization; no artificial minimum work time. */
+/** Invalid/prose responses conservatively require the normal final report. */
+export function reviewNeedsUpdate(text: string): boolean {
+  try {
+    const value = JSON.parse(text) as Record<string, unknown>;
+    return !(
+      value !== null &&
+      typeof value === 'object' &&
+      Object.keys(value).length === 1 &&
+      value['reportNeedsUpdate'] === false
+    );
+  } catch {
+    return true;
+  }
+}
+
+/** Optional review never consumes the last five minutes; a valid checkpoint exists first. */
+export function validationBudgetMs(deadlineAt: number, now = Date.now()): number {
+  return Math.max(0, Math.min(120_000, deadlineAt - now - 300_000));
+}
+
 export function canChallenge(deadlineAt: number, now = Date.now()): boolean {
-  return deadlineAt - now > 60_000;
+  return validationBudgetMs(deadlineAt, now) >= 30_000;
+}
+
+/** Timeout is terminal for the owned client; callers fall back to the validated checkpoint. */
+export async function boundedValidation<T>(
+  work: () => Promise<T>,
+  budgetMs: number,
+  stop: () => Promise<void>,
+): Promise<T> {
+  if (budgetMs <= 0) throw new Error('QA_VALIDATION_TIMEOUT');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let stopped: Promise<void> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(work),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          stopped = Promise.resolve()
+            .then(stop)
+            .catch(() => {
+              throw new Error('QA_VALIDATION_CLEANUP_FAILED');
+            });
+          reject(new Error('QA_VALIDATION_TIMEOUT'));
+        }, budgetMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    await stopped;
+  }
 }
 
 export function coverageErrors(

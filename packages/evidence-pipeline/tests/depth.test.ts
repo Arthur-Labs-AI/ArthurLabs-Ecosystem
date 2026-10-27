@@ -1,13 +1,90 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   canChallenge,
   challengePrompt,
   coverageErrors,
   depthPolicy,
   reportableDepthPlan,
+  validationBudgetMs,
+  boundedValidation,
+  groundCoverage,
+  reviewNeedsUpdate,
 } from '../src/depth.js';
 
 describe('independent depth policy', () => {
+  it('avoids a second paid serialization when validation confirms the checkpoint unchanged', () => {
+    expect(reviewNeedsUpdate('{"reportNeedsUpdate":false}')).toBe(false);
+    expect(reviewNeedsUpdate('{"reportNeedsUpdate":true}')).toBe(true);
+    expect(reviewNeedsUpdate('No changes')).toBe(true);
+    expect(reviewNeedsUpdate('{"reportNeedsUpdate":false,"finding":"new"}')).toBe(true);
+  });
+  it('downgrades source-only and partial passes, and rejects masked shell success', () => {
+    const report = {
+      schemaVersion: 2 as const,
+      summary: 'fixture',
+      checks: [
+        {
+          name: 'full boundary',
+          status: 'passed' as const,
+          coverage: 'complete' as const,
+          operationKeys: ['op_1'],
+        },
+      ],
+      limitations: [],
+      evidence: [],
+      findings: [],
+      hypotheses: [],
+    };
+    const op = {
+      operationKey: 'op_1',
+      operationId: 'operation_1' as never,
+      toolName: 'bash',
+      exitCode: 0,
+      isTestOperation: true,
+      commandText: 'node tests/boundary.mjs',
+    };
+    expect(groundCoverage(report, new Map()).checks[0]?.status).toBe('inconclusive');
+    expect(
+      groundCoverage(
+        report,
+        new Map([['op_1', { ...op, commandText: 'grep -n guard src/file.ts' }]]),
+      ).checks[0]?.status,
+    ).toBe('inconclusive');
+    expect(
+      groundCoverage(report, new Map([['op_1', { ...op, commandText: 'pnpm test | tail -10' }]]))
+        .checks[0]?.status,
+    ).toBe('inconclusive');
+    expect(
+      groundCoverage(
+        { ...report, checks: [{ ...report.checks[0]!, coverage: 'partial' }] },
+        new Map([['op_1', op]]),
+      ).checks[0]?.status,
+    ).toBe('inconclusive');
+    expect(groundCoverage(report, new Map([['op_1', op]])).checks[0]?.status).toBe('passed');
+  });
+  it('stops owned validation on its own timeout rather than consuming finalization time', async () => {
+    vi.useFakeTimers();
+    let stopped = false;
+    try {
+      const pending = boundedValidation(
+        () => new Promise<never>(() => undefined),
+        100,
+        async () => {
+          stopped = true;
+        },
+      );
+      const assertion = expect(pending).rejects.toThrow('QA_VALIDATION_TIMEOUT');
+      await vi.advanceTimersByTimeAsync(100);
+      await assertion;
+      expect(stopped).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('does not spend the last reporting budget on an optional validation phase', () => {
+    expect(validationBudgetMs(4 * 60_000, 0)).toBe(0);
+    expect(validationBudgetMs(10 * 60_000, 0)).toBe(2 * 60_000);
+  });
   it('rejects plans that cannot be represented by exact report names before investigation', () => {
     expect(() => reportableDepthPlan({ plannedChecks: ['x'.repeat(501)] }, true)).toThrow('500');
     expect(() => reportableDepthPlan({ plannedChecks: ['same', 'same'] }, true)).toThrow('unique');
@@ -20,7 +97,8 @@ describe('independent depth policy', () => {
     expect(depthPolicy({ qaDepth: { version: 2, deadlineAt: 100 } })).toBeUndefined();
     expect(depthPolicy({ qaDepth: { version: 1, deadlineAt: Infinity } })).toBeUndefined();
     expect(depthPolicy({ qaDepth: { version: 1, deadlineAt: 100 } })?.deadlineAt).toBe(100);
-    expect(canChallenge(60_001, 0)).toBe(true);
+    expect(canChallenge(600_000, 0)).toBe(true);
+    expect(canChallenge(4 * 60_000, 0)).toBe(false);
     expect(canChallenge(60_000, 0)).toBe(false);
   });
   it('rejects missing/duplicate checks and unexplained limitations', () => {

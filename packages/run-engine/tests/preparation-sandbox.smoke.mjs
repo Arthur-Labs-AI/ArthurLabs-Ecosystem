@@ -12,8 +12,9 @@ const { AbortController } = globalThis;
 const parent = process.env.SENTRY_SANDBOX_SMOKE_PARENT ?? join(homedir(), '.local', 'share');
 await mkdir(parent, { recursive: true });
 const root = await mkdtemp(join(parent, 'sentry-depth-smoke-'));
-const seed = join(root, 'cache');
-await mkdir(seed);
+const suppliedStore = process.env.SENTRY_SANDBOX_SMOKE_STORE;
+const seed = suppliedStore ?? join(root, 'cache');
+if (suppliedStore === undefined) await mkdir(join(seed, 'v3', 'files'), { recursive: true });
 const peer = join(root, 'private-original.txt');
 await writeFile(peer, 'original');
 const server = createServer((req, res) => res.end('host-visible'));
@@ -32,6 +33,8 @@ const wrapped = {
       dispose: () => env.dispose(),
       run: async (command) => {
         const result = await env.run(command);
+        if (command.args[0] === 'install' && result.exitCode !== 0)
+          console.error(JSON.stringify({ preparationFailure: result }));
         if (command.args[0] === 'install' && result.exitCode === 0) {
           const probe = await env.run({
             ...command,
@@ -61,7 +64,10 @@ try {
         name: 'private-' + name,
         version: '1.0.0',
         packageManager: 'pnpm@9.12.3',
-        dependencies: { 'private-lib': 'workspace:*' },
+        dependencies: {
+          'private-lib': 'workspace:*',
+          ...(suppliedStore === undefined ? {} : { zod: '3.25.76' }),
+        },
         scripts: {
           postinstall: 'node postinstall-fixture.cjs',
         },
@@ -84,7 +90,14 @@ try {
     await writeFile(join(workspaceRoot, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n');
     await writeFile(
       join(workspaceRoot, 'pnpm-lock.yaml'),
-      "lockfileVersion: '9.0'\nsettings:\n  autoInstallPeers: true\n  excludeLinksFromLockfile: false\nimporters:\n  .:\n    dependencies:\n      private-lib:\n        specifier: workspace:*\n        version: link:packages/lib\n  packages/lib: {}\n",
+      "lockfileVersion: '9.0'\nsettings:\n  autoInstallPeers: true\n  excludeLinksFromLockfile: false\nimporters:\n  .:\n    dependencies:\n      private-lib:\n        specifier: workspace:*\n        version: link:packages/lib\n" +
+        (suppliedStore === undefined
+          ? ''
+          : '      zod:\n        specifier: 3.25.76\n        version: 3.25.76\n') +
+        '  packages/lib: {}\n' +
+        (suppliedStore === undefined
+          ? ''
+          : 'packages:\n  zod@3.25.76:\n    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}\nsnapshots:\n  zod@3.25.76: {}\n'),
     );
     const receipt = await createWorkspacePreparer(wrapped)({
       workspaceRoot,
@@ -119,6 +132,12 @@ try {
     (await readFile(join(root, 'b', 'node_modules', 'private-lib', 'value.txt'), 'utf8')) !== 'b'
   )
     throw new Error('dependency writes crossed private workspaces');
+  if (suppliedStore !== undefined) {
+    const a = await stat(join(root, 'a', 'node_modules', 'zod', 'package.json'));
+    const b = await stat(join(root, 'b', 'node_modules', 'zod', 'package.json'));
+    if (a.nlink !== 1 || b.nlink !== 1 || (a.ino === b.ino && a.dev === b.dev))
+      throw new Error('registry package bytes are mutable shared links');
+  }
   const cancelRoot = join(root, 'cancel');
   await mkdir(cancelRoot);
   const cancelEnv = await backend.createEnvironment({

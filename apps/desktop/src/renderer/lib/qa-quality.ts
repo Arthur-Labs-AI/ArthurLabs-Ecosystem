@@ -26,9 +26,12 @@ export function coverageLabel(
     events.some(
       (event) =>
         event.type === 'warning' &&
-        ['QA_PREPARATION_LIMITED', 'QA_COVERAGE_PARTIAL', 'QA_CHALLENGE_NOT_RUN'].includes(
-          event.code ?? '',
-        ),
+        [
+          'QA_PREPARATION_LIMITED',
+          'QA_COVERAGE_PARTIAL',
+          'QA_CHALLENGE_NOT_RUN',
+          'QA_VALIDATION_INCOMPLETE',
+        ].includes(event.code ?? ''),
     )
   )
     return 'Partial analysis';

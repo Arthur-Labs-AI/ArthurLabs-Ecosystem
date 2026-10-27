@@ -119,9 +119,9 @@ function investigationTurn() {
     evt('result', { is_error: false }),
   ];
 }
-function reportTurn() {
+function reportTurn(text = validReport()) {
   return [
-    evt('assistant', { message: { content: [{ type: 'text', text: validReport() }] } }),
+    evt('assistant', { message: { content: [{ type: 'text', text }] } }),
     evt('result', { is_error: false }),
   ];
 }
@@ -129,7 +129,7 @@ function reportTurn() {
 // Owner requested the v1.0.2 GLM prompts. Other harnesses deliberately keep
 // their newer guidance; cross-harness prompt parity is no longer the GLM spec.
 describe('GLM v1.0.2 prompt behavior', () => {
-  it.each([false, true, 'low-budget'])(
+  it.each([false, true, 'low-budget', 'review-failure', 'refinement-failure', 'review-unchanged'])(
     'keeps safeguards with independent depth enabled=%s',
     async (depth) => {
       const { mkdtemp } = await import('node:fs/promises');
@@ -146,7 +146,7 @@ describe('GLM v1.0.2 prompt behavior', () => {
                 context: {
                   qaDepth: {
                     version: 1,
-                    deadlineAt: Date.now() + (depth === 'low-budget' ? 30_000 : 300_000),
+                    deadlineAt: Date.now() + (depth === 'low-budget' ? 30_000 : 1_800_000),
                   },
                 },
               }
@@ -157,8 +157,10 @@ describe('GLM v1.0.2 prompt behavior', () => {
       const stages = [
         planTurn(),
         investigationTurn(),
-        ...(depth === true ? [investigationTurn()] : []),
         reportTurn(),
+        ...(depth === true || depth === 'review-failure' || depth === 'refinement-failure'
+          ? [investigationTurn(), reportTurn()]
+          : []),
       ];
       const adapter = new ClaudeCodeHarnessAdapter({
         executable: 'claude-test',
@@ -176,6 +178,12 @@ describe('GLM v1.0.2 prompt behavior', () => {
           startSession: async () => ({
             runText: (async (text: string) => {
               prompts.push(text);
+              if (depth === 'review-unchanged' && text.includes('CHALLENGE YOUR OWN INVESTIGATION'))
+                return reportTurn('{"reportNeedsUpdate":false}');
+              if (depth === 'refinement-failure' && prompts.length === 5)
+                throw new Error('scripted refinement failure');
+              if (depth === 'review-failure' && text.includes('CHALLENGE YOUR OWN INVESTIGATION'))
+                throw new Error('scripted review failure');
               const next = stages[Math.min(prompts.length - 1, stages.length - 1)];
               return next;
             }) as unknown as never,
@@ -187,14 +195,33 @@ describe('GLM v1.0.2 prompt behavior', () => {
       for await (const event of adapter.run(input)) events.push(event);
       await adapter.dispose();
       expect(events.at(-1)?.type).toBe('run.completed');
+      const usageEvent = events.find((e) => e.type === 'usage.updated');
+      expect(usageEvent?.type === 'usage.updated' ? usageEvent.usage.turns : undefined).toBe(
+        depth === true || depth === 'refinement-failure'
+          ? 5
+          : depth === 'review-failure' || depth === 'review-unchanged'
+            ? 4
+            : 3,
+      );
+      expect(events.filter((e) => e.type === 'finding.submitted')).toHaveLength(1);
       if (depth === 'low-budget')
         expect(events.some((e) => e.type === 'warning' && e.code === 'QA_CHALLENGE_NOT_RUN')).toBe(
           true,
         );
-      expect(prompts).toHaveLength(depth === true ? 4 : 3);
-      if (depth === true) expect(prompts[2]).toContain('CHALLENGE YOUR OWN INVESTIGATION');
+      expect(prompts).toHaveLength(
+        depth === true || depth === 'refinement-failure'
+          ? 5
+          : depth === 'review-failure' || depth === 'review-unchanged'
+            ? 4
+            : 3,
+      );
+      if (depth === true) expect(prompts[3]).toContain('CHALLENGE YOUR OWN INVESTIGATION');
       const [planning, investigation] = prompts as [string, string];
-      const reporting = prompts.at(-1)!;
+      const reporting = prompts[2]!;
+      if (depth === 'review-failure' || depth === 'refinement-failure')
+        expect(
+          events.some((e) => e.type === 'warning' && e.code === 'QA_VALIDATION_INCOMPLETE'),
+        ).toBe(true);
       expect(planning).toContain('a listing plus a handful of file reads is enough');
       expect(planning).toContain('Explicit run instructions define intended behavior');
       expect(investigation).toContain('Inspect every applicable area needed for comprehensive QA');
