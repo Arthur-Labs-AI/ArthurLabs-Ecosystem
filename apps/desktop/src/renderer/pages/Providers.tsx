@@ -605,7 +605,8 @@ function deepSeekOptionNote(id: string): string | undefined {
 /**
  * Model dropdown with a custom-id escape hatch. The saved value is never
  * rewritten here: unknown (provider-prefixed, legacy, or custom) ids stay
- * visible with a warning, and Save stays disabled until there is a value.
+ * visible with a warning, and Save stays disabled until there is an
+ * unsaved draft (it dims again right after a successful save).
  */
 function ModelSelectField(props: ModelFieldProps): React.JSX.Element {
   const item = props.byName.get(props.name);
@@ -625,6 +626,9 @@ function ModelSelectField(props: ModelFieldProps): React.JSX.Element {
   const showCustom = customMode || (!known && trimmed !== '');
   const selectValue =
     known && selectedOption !== '' ? selectedOption : customMode ? CUSTOM_MODEL_VALUE : '';
+  // Save tracks the unsaved draft only: the saved hint stays visible as the
+  // current value, but the button dims once there is nothing new to save.
+  const hasDraft = draft.trim() !== '';
   const saveValue = current.trim();
   const onSelect = (raw: string): void => {
     if (raw === CUSTOM_MODEL_VALUE) {
@@ -686,7 +690,7 @@ function ModelSelectField(props: ModelFieldProps): React.JSX.Element {
         </select>
         <button
           className="primary compact"
-          disabled={saveValue === '' || props.savePending}
+          disabled={!hasDraft || props.savePending}
           onClick={() => props.onSave(props.name, saveValue)}
           title="Persist and load into the host process"
         >

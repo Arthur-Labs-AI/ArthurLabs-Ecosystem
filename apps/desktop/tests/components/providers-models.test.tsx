@@ -259,6 +259,34 @@ describe('Providers model controls', () => {
     ).toBe('synthetic-key-draft');
   });
 
+  it('dims the model Save button once there is nothing new to save', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValue([statusRow('SENTRY_DEEPSEEK_MODEL', 'deepseek-v4-flash')]);
+    const save = vi
+      .fn()
+      .mockResolvedValue({ configured: true, persistence: 'persisted', source: 'persisted' });
+    const s = mount(query, save);
+
+    const modelSelect = (await s
+      .deepSeekCard()
+      .findByLabelText('Value for SENTRY_DEEPSEEK_MODEL')) as HTMLSelectElement;
+    const saveButton = within(modelSelect.parentElement!).getByRole('button', {
+      name: 'Save',
+    }) as HTMLButtonElement;
+    // The saved model is shown, but with no unsaved draft Save stays dimmed.
+    expect(saveButton.disabled).toBe(true);
+
+    fireEvent.change(modelSelect, { target: { value: 'deepseek-v4-pro' } });
+    expect(saveButton.disabled).toBe(false);
+    fireEvent.click(saveButton);
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith('SENTRY_DEEPSEEK_MODEL', 'deepseek-v4-pro'),
+    );
+    // The saved draft is cleared on success, so Save dims again.
+    await waitFor(() => expect(saveButton.disabled).toBe(true));
+  });
+
   it('saving one setting does not erase an unrelated unsaved draft', async () => {
     const query = vi.fn().mockResolvedValue([]);
     const save = vi
