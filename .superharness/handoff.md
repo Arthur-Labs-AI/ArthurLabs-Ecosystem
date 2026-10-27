@@ -1,3 +1,15 @@
+# PR #39 check-fix handoff (2026-10-27)
+
+CI failure on `134ca01` traced to Prettier (13 tracked files); formatting fixed,
+full format/hygiene/whitespace checks PASS. Evaluator test reproduced RED then
+fixed by supplying missing cited evidence `a1` in its fixture; all 65 pipeline
+tests PASS without changing expectations or production logic. Regression guards
+for invalid evidence remain intact. Broader Windows checks started; inspect
+PR #39 for final local/CI receipts before approval. TSX changes formatting only.
+No merge/release/paid calls; shux absent, records direct.
+
+## Previous record (preserved)
+
 # PR #39 to dev — draft handoff (2026-10-27)
 
 [PR #39](https://github.com/Mert1026/Sentry/pull/39) contains desktop provider

@@ -79,10 +79,11 @@ const MAIN_COPY: Record<string, MainCopy> = {
     en: 'Sentry is still running',
     bg: 'Sentry все още работи',
   },
-  'Shutdown could not complete. Cancel active QA work, wait for it to finish, then retry sentry stop.': {
-    en: 'Shutdown could not complete. Cancel active QA work, wait for it to finish, then retry sentry stop.',
-    bg: 'Затварянето не можа да завърши. Прекъснете активната QA работа, изчакайте да приключи и опитайте отново да спрете Sentry.',
-  },
+  'Shutdown could not complete. Cancel active QA work, wait for it to finish, then retry sentry stop.':
+    {
+      en: 'Shutdown could not complete. Cancel active QA work, wait for it to finish, then retry sentry stop.',
+      bg: 'Затварянето не можа да завърши. Прекъснете активната QA работа, изчакайте да приключи и опитайте отново да спрете Sentry.',
+    },
   'Sentry — runtime offline': {
     en: 'Sentry — runtime offline',
     bg: 'Sentry — средата за изпълнение е офлайн',

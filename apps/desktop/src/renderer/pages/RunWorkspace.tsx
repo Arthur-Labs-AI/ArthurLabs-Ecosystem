@@ -302,7 +302,12 @@ export function RunWorkspace(): React.JSX.Element {
     <div className="run-page">
       {snapshot.isError || snapshot.runtimeUnavailable ? (
         <div className="inline-notice tone-warning" role="status">
-          {'Run refresh unavailable. Cached results remain available; the last recorded status below may have changed. Check'}{' '}<Link to="/settings/runtime">Runtime settings</Link>{'.'}{'This communication error does not mean the QA run failed.'}
+          {
+            'Run refresh unavailable. Cached results remain available; the last recorded status below may have changed. Check'
+          }{' '}
+          <Link to="/settings/runtime">Runtime settings</Link>
+          {'.'}
+          {'This communication error does not mean the QA run failed.'}
         </div>
       ) : null}
       <nav className="metadata" aria-label="Breadcrumb">

@@ -187,6 +187,10 @@ describe('deterministic QA evaluation', () => {
           },
         ],
         evidence: [
+          // These two matching findings need a real citation to exercise
+          // true-positive and duplicate classification. Invalid-only keys
+          // are deliberately tested below and must continue to abstain.
+          codeEvidence('a1'),
           {
             key: 'm1',
             type: 'manual',

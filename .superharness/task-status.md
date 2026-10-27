@@ -1,3 +1,24 @@
+# PR #39 check failures — fixes (2026-10-27)
+
+Owner requested fixes for failed checks. CI quality job `122080059654` on
+`134ca01` stopped at Prettier: 13 tracked files lacked canonical formatting.
+Applied Prettier to those files; full `pnpm format:check`, repository hygiene
+and whitespace PASS. Also reproduced the existing evaluator regression:
+`qa-eval.test.ts:202` expected truePositive while its fixture omitted cited
+evidence `a1`. Added `codeEvidence('a1')` to the fixture, preserving every
+expectation and production evaluator behavior. RED: 1 failed / 7 passed;
+GREEN: evidence-pipeline 65/65, including invalid-key abstention guards.
+Existing failing test provides regression coverage; no new behavior introduced.
+
+Lint/typecheck/build PASS: 60 Turbo tasks (40 cached). Broader uncached Windows
+tests started; final receipts belong to PR #39. CI must run against the pushed
+fix before claiming completion.
+TSX diff reviewed: formatting only, hooks/state/accessibility unchanged.
+No hooks/CI/identity changes, paid calls, release or merge. shux unavailable;
+protocol records maintained directly.
+
+## Previous record (preserved)
+
 # Repository inspection and PR to dev (2026-10-27)
 
 COMPLETE: owner requested repository status and a PR to dev. Opened draft

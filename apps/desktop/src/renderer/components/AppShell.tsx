@@ -213,15 +213,15 @@ export function AppShell(): React.JSX.Element {
               >
                 <span className="status-dot status-running pulse" aria-hidden="true" />
                 {collapsed ? null : (
-                  <span>
-                    {count + ' active run' + (count === 1 ? '' : 's') + ' · Open'}
-                  </span>
+                  <span>{count + ' active run' + (count === 1 ? '' : 's') + ' · Open'}</span>
                 )}
               </Link>
             ) : (
               <span>
                 <span className="status-dot status-running pulse" aria-hidden="true" />
-                {collapsed ? null : <span>{' ' + count + ' active run' + (count === 1 ? '' : 's')}</span>}
+                {collapsed ? null : (
+                  <span>{' ' + count + ' active run' + (count === 1 ? '' : 's')}</span>
+                )}
               </span>
             )
           ) : (

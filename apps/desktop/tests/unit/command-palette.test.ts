@@ -36,12 +36,8 @@ describe('command palette (§117)', () => {
     expect(filterPaletteEntries(entries, 'среда', 'bg').map((e) => e.label)).toEqual([
       'Open Environment',
     ]);
-    expect(
-      filterPaletteEntries(entries, 'премахни', 'bg').map((e) => e.label),
-    ).toEqual([]);
-    expect(
-      filterPaletteEntries(entries, 'AutoPulse', 'bg').map((e) => e.label),
-    ).toEqual([
+    expect(filterPaletteEntries(entries, 'премахни', 'bg').map((e) => e.label)).toEqual([]);
+    expect(filterPaletteEntries(entries, 'AutoPulse', 'bg').map((e) => e.label)).toEqual([
       'Open Project — AutoPulse',
       'Start Full QA — AutoPulse',
       'Start Targeted QA — AutoPulse',

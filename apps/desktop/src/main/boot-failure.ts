@@ -79,13 +79,18 @@ export interface FatalScreenCopy {
  * Pass the stored interface language so the static frame translates; the
  * technical detail line always stays in its original language.
  */
-export function fatalScreenCopy(kind: FatalScreenKind, language: AppLanguage = 'en'): FatalScreenCopy {
+export function fatalScreenCopy(
+  kind: FatalScreenKind,
+  language: AppLanguage = 'en',
+): FatalScreenCopy {
   const t = (source: string): string => translateMainCopy(source, language);
   if (kind === 'native-runtime-offline') {
     return {
       title: t('Sentry — runtime offline'),
       heading: t('Sentry Runtime Offline'),
-      intro: t('Sentry Desktop is running, but the native Linux execution runtime could not start.'),
+      intro: t(
+        'Sentry Desktop is running, but the native Linux execution runtime could not start.',
+      ),
       help: t('QA execution is disabled. Native Linux support currently targets CachyOS only.'),
     };
   }

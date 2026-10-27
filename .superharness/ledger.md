@@ -1,3 +1,15 @@
+# PR #39 check fixes — 2026-10-27
+
+Owner requested failure diagnosis and fixes. CI quality job `122080059654`
+failed Prettier on 13 tracked files, now formatted. Full format/hygiene/diff
+PASS. Reproduced evaluator test RED (1/8); supplied absent fixture evidence
+`a1`, preserving expected results and invalid-evidence safety behavior.
+Pipeline GREEN 65/65. Broader local checks and fresh CI receipts tracked in
+PR #39. No production logic/CI/hooks/identity changes or merge/release/paid run.
+shux absent; protocol direct.
+
+## Previous record (preserved)
+
 # Repository / PR inspection — 2026-10-27
 
 Owner requested status and PR to dev. Opened draft

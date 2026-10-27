@@ -96,7 +96,16 @@ function IssuesSummary({ payload }: { payload: Record<string, unknown> }): React
     <div className="node-sub" style={{ marginTop: 4 }}>
       {count + ' created'}
       <div>
-        {breakdown.critical + ' Critical · ' + breakdown.high + ' High · ' + breakdown.medium + ' Medium · ' + breakdown.low + ' Low · ' + breakdown.info + ' Info'}
+        {breakdown.critical +
+          ' Critical · ' +
+          breakdown.high +
+          ' High · ' +
+          breakdown.medium +
+          ' Medium · ' +
+          breakdown.low +
+          ' Low · ' +
+          breakdown.info +
+          ' Info'}
       </div>
     </div>
   );

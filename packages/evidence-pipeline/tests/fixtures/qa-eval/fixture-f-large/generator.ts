@@ -29,11 +29,7 @@ export const FIXTURE_F_CRITICAL_PATHS = [
 ] as const;
 
 /** Peripheral prefixes that must not consume the investigation budget. */
-export const FIXTURE_F_PERIPHERAL_PREFIXES = [
-  'scripts/',
-  'generated/',
-  'peripheral/',
-] as const;
+export const FIXTURE_F_PERIPHERAL_PREFIXES = ['scripts/', 'generated/', 'peripheral/'] as const;
 
 async function seedFiles(): Promise<string[]> {
   const out: string[] = [];

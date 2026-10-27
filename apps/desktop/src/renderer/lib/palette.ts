@@ -40,6 +40,8 @@ export function filterPaletteEntries(
   const q = query.trim().toLowerCase();
   if (q === '') return [...entries];
   return entries.filter((e) =>
-    (e.label + ' ' + (e.hint ?? '') + ' ' + translateText(e.label, language)).toLowerCase().includes(q),
+    (e.label + ' ' + (e.hint ?? '') + ' ' + translateText(e.label, language))
+      .toLowerCase()
+      .includes(q),
   );
 }
