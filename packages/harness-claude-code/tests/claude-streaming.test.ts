@@ -28,6 +28,56 @@ function liveStream(session: ClaudeSessionView, text: string): ClaudeTurnStream 
   return session.runText(text) as ClaudeTurnStream;
 }
 
+describe('structured terminal failures', () => {
+  it('does not promote a model warning to a provider failure diagnosis', async () => {
+    const client = new ClaudeClient({
+      ...baseSpec(),
+      spawnProcess: () =>
+        spawnFixture(
+          'process.stderr.write(\'[claude-code:unrecognized_model] {"model":"glm-5.3"}\\n\'); process.exitCode = 1;',
+        ),
+    });
+    try {
+      await expect(client.runTurnText('report')).rejects.toThrow('No provider error detail');
+    } finally {
+      await client.close();
+    }
+  });
+
+  it.each([true, false])(
+    'preserves provider errors ahead of harmless stderr (newline: %s)',
+    async (newline) => {
+      const script = [
+        'process.stderr.write(\'[claude-code:unrecognized_model] {"model":"glm-5.3","query_source":"compact"}\\n\');',
+        'process.stdout.write(JSON.stringify({type:"system",subtype:"init"}) + "\\n");',
+        'process.stdout.write(JSON.stringify({type:"result",is_error:true,subtype:"error_during_execution",errors:["API Error: 429 provider rate limit"],usage:{input_tokens:123}})' +
+          (newline ? ' + "\\n"' : '') +
+          ');',
+        'process.exitCode = 1;',
+      ].join('\n');
+      const client = new ClaudeClient({ ...baseSpec(), spawnProcess: () => spawnFixture(script) });
+      const session = await client.startSession();
+      const seen: ClaudeStreamEvent[] = [];
+      let error: unknown;
+      try {
+        for await (const event of liveStream(session, 'report')) seen.push(event);
+      } catch (cause) {
+        error = cause;
+      } finally {
+        await client.close();
+      }
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain('429 provider rate limit');
+      expect((error as Error).message).not.toContain('unrecognized_model');
+      expect(seen.at(-1)?.raw).toMatchObject({
+        type: 'result',
+        is_error: true,
+        usage: { input_tokens: 123 },
+      });
+    },
+  );
+});
+
 /**
  * Production-style streaming/termination proof (TASK-0011 Tests A–F).
  *

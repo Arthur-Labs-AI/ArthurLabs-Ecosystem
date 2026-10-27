@@ -372,6 +372,7 @@ class LiveClaudeTurn implements ClaudeTurnStream {
   private readonly turnTimer: ReturnType<typeof setTimeout>;
   private stdoutTail = '';
   private stderrTail = '';
+  private resultFailure = '';
 
   constructor(
     private readonly child: ChildProcess,
@@ -398,7 +399,22 @@ class LiveClaudeTurn implements ClaudeTurnStream {
         if (event !== undefined) this.push(event);
       }
       if (code !== 0) {
-        this.finish({ kind: 'failed', code: code ?? undefined, stderr: this.stderrTail });
+        this.finish({
+          kind: 'failed',
+          code: code ?? undefined,
+          stderr:
+            this.resultFailure ||
+            this.stderrTail
+              .split('\n')
+              .filter(
+                (line) =>
+                  !/\[claude-code:unrecognized_model\]|Permission mode forced to default|Declare allowedTools explicitly/.test(
+                    line,
+                  ),
+              )
+              .join('\n') ||
+            'No provider error detail was returned; stderr contained only startup warnings.',
+        });
         return;
       }
       this.finish({ kind: 'exited' });
@@ -418,6 +434,23 @@ class LiveClaudeTurn implements ClaudeTurnStream {
   }
 
   private push(event: ClaudeStreamEvent): void {
+    if (
+      event.type === 'result' &&
+      (event.raw['is_error'] === true ||
+        (typeof event.raw['subtype'] === 'string' && event.raw['subtype'].startsWith('error')))
+    ) {
+      const errors = event.raw['errors'];
+      const result = event.raw['result'];
+      this.resultFailure = [
+        ...(Array.isArray(errors)
+          ? errors.filter((item): item is string => typeof item === 'string')
+          : []),
+        ...(typeof result === 'string' ? [result] : []),
+      ]
+        .filter((item) => item.trim().length > 0)
+        .join('; ')
+        .slice(0, 2_000);
+    }
     if (isClaudeInitEvent(event) && !this.initializedFlag) {
       this.initializedFlag = true;
       clearTimeout(this.initTimer);

@@ -1,3 +1,116 @@
+# Owner-authorized commit/integration to dev — 2026-10-27
+
+Owner explicitly asked to commit all outstanding work and integrate dev.
+PR #40 contains GLM release-prompt restoration plus retained sandbox/error
+fixes. Include current live-smoke receipts and supplied run export (credential
+signature/field scan found no matches), formatted without semantic changes.
+Product source a687c43 already passed six CI checks,97 harness/20 WSL tests
+and60 static/build tasks; live targeted GLM smoke passed4m19. Final receipt/data
+commit gets its own format/hygiene/CI verification. GitHub PR40 is the canonical
+merge receipt. Finish with local dev synchronized to origin/dev and clean tree.
+No force/rewrite/release/extra model call. shux absent; records direct.
+
+## Previous record (preserved)
+
+# Authorized GLM live smoke PASS — 2026-10-27
+
+Investigated run01M5YHZ5A3RAJTK6KV7S11738N: cancelled after19m51.6 wall;
+Windows lid Modern Standby13:40:51–13:48:34 and WSL462.276s clock divergence
+explain about7m42. Last tool13:40:48;45tools all completed/21.066s total;
+no provider/sandbox error. Active phase processes sum~12m07, not20min hung tool.
+
+Explicitly authorized real GLM-only targeted smoke
+`run_01M5YK9M365Q1S9A2TZK0F3N7K` completed in4m19.087s. Scope one timeout
+constants file, same project/runtime/model. All phases PASS; one planning
+retry, no report retry. Node check PASS, two valid evidence, zero findings,
+three tools total1.919s; input55160/output10434/cached146048 tokens,4turns.
+Considerable output generation still dominates (4569tokens before first tool).
+Local fake-endpoint request confirms pinned CLI effort high/adaptive by default;
+no effort/power/source change applied. This scoped smoke is not full-repo QA
+or a full-run speed guarantee. No restart/cancel this turn; shux absent.
+
+## Previous record (preserved)
+
+# GLM v1.0.2 prompts restored — 2026-10-27
+
+Owner requested release behavior only for GLM. All three prompt builders copied
+verbatim from v1.0.2/2640efcd; phase sequencing/timeouts/model handling already
+matched release. Recent shortened report repair intentionally rolled back too.
+Known sandbox false-positive and structured-error-loss fixes retained. No change
+to OpenCode, DeepSeek, shared guidance, engine or user settings. Prompt tests
+now pin the owner-requested release contract; old parity requirement superseded
+explicitly. Two RED cases then GLM97 PASS/12 skips; workspace60 PASS/51 cached;
+final hermetic prompt fixture/hygiene/format/diff PASS. Deployment/restart/CI
+receipts in PR40. Live speed/quality UNVERIFIED; no paid QA initiated. Existing
+analysis notes and owner export preserved. shux absent; records direct.
+
+## Previous record (preserved)
+
+# Slow GLM run diagnosis — 2026-10-27
+
+Run `run_01M5YEVFZR40FGZZ3AW1362MAC`: one glm-5.3-flash agent, cancelled
+after 38m36.6s. Planning 11m20.7s/48 tools, investigation 14m00.8s/45 tools,
+reporting 13m14.1s. All 93 tools completed (54 shell commands), total measured
+tool duration 33.189s; no hung command. First report took 11m37.4s and failed
+manual evidence versus strong_code_evidence validation, causing report repair;
+cancelled 1m36.7s into repair, no accepted findings. Provider/generation/queue
+latency cannot be separated from current telemetry. Journal corroborates phase
+times and low local CPU. Engine's 30-minute silence timer allows 90-minute
+absolute runtime; Claude timer is per turn. Excess planning and costly whole
+report retry need bounded phase budgets/explicit total deadlines/smaller repair
+as a separate implementation task. This turn only inspected existing data and
+updated receipts; no new paid run, production edit, restart or cancellation.
+shux absent; records direct.
+
+## Previous record (preserved)
+
+# GLM reporting diagnostics and context repair — 2026-10-27
+
+Run `run_01M5YC616MF6031VVNKTF42BDX` reached reporting, then invalid JSON and
+compact-time exit 1. Real pinned CLI + loopback mock proved unrecognized_model
+also occurs on successful compact, with or without model-tier mappings. Original
+upstream cause was not persisted; do not claim unsupported model or sandbox
+failure from these stderr notices. SDK now preserves structured terminal errors
+before stderr and filters known warning-only diagnosis. Report repair retains
+all operation keys/schema/safeguards in the same session, omits repeated frozen
+plan and evidence examples to reduce context load. No findings/history discarded.
+97 harness tests PASS / 12 existing skips, workspace static/build 60 PASS,
+hygiene/format/diff PASS. Live-provider long-run success remains UNVERIFIED;
+no paid calls. Deployment/restart/final CI receipts in PR #40. shux absent.
+
+## Previous record (preserved)
+
+# Repeated GLM failure — live runtime restarted (2026-10-27)
+
+Latest run `run_01M5YA4PS5NZ8GQTZDP802RX2G` was handled by old PID 333
+(10:28 Sofia start), surviving the 10:59 deployment; symlink current was new
+but loaded JavaScript remained old. Graceful launcher stop/open completed;
+old runtime exited, new PID 451 started 11:44 with `1.0.2-ae119b9` current.
+Broker GLM doctor healthy/configured/binary available, runtimeVerified false
+(no paid call). Latest exported trigger and real source grep both pass the
+fixed deployed classifier; legacy classifier still reproduces the false alarm.
+Real bwrap diagnostics remain detected. No new production fix needed.
+Old run records preserved; owner export untracked. Live-provider run remains
+UNVERIFIED. shux absent; protocol maintained directly.
+
+## Previous record (preserved)
+
+# GLM source-search false abort handoff — 2026-10-27
+
+The reported GLM_SANDBOX_UNAVAILABLE was triggered by grep output quoting the
+adapter's own sandbox regex, not an actual bootstrap diagnostic. Earlier Bash
+operations in the export succeeded. Line-anchored diagnostic detection fixes
+the abort; real bwrap failures still abort and never fabricate exit 0.
+New regressions RED before fix, whole harness GREEN 94 PASS / 12 existing skips;
+workspace lint/typecheck/build 60 tasks PASS (51 cached), hygiene/format/diff
+PASS. Owner export preserved untracked; paid/live-provider verification not run.
+Fix branch: `fix/glm-sandbox-result-detection`, baseline owner-merged `3def0ee`.
+Runtime deployment/final CI receipts are in the fix PR. App restart loads the
+replacement; existing process is left running, old run history stays unchanged.
+No sandbox bypass, permission mutation, forced shutdown or merge. shux absent.
+
+## Previous record (preserved)
+
 # PR #39 check-fix handoff (2026-10-27)
 
 CI failure on `134ca01` traced to Prettier (13 tracked files); formatting fixed,

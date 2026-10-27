@@ -1,3 +1,183 @@
+# Commit all current work and integrate dev — 2026-10-27
+
+Owner explicitly requested committing all outstanding work and putting it in
+dev. Scope: existing GLM fixes/release prompts on PR #40, live smoke receipts
+in these three protocol files, and owner-provided run export
+`sentry-run_01M5Y7P7EE0GPAH3KRBJT00Q4S.json`. Export scan found zero GitHub,
+provider, AWS key/private-key signatures and no suspicious credential fields;
+include it as explicitly requested, preserving JSON content through formatting.
+Ignored environment/runtime/credential data is not part of repository changes.
+
+Product source remains `a687c43` (97 harness tests, 20 deployed WSL tests,
+60 static/build tasks and six PR checks PASS). Real GLM smoke completed in
+4m19 with valid report/two evidence/zero findings; full-run performance remains
+unverified. This final commit changes only receipts and the supplied export.
+Run final format/hygiene/diff and final-head CI before integrating PR #40;
+canonical merge receipt belongs to GitHub PR #40. Owner's direct instruction
+authorizes this integration. No force push/history rewrite/release requested.
+shux unavailable; task status, ledger and handoff maintained directly.
+
+## Previous record (preserved)
+
+# GLM investigation and authorized live smoke — 2026-10-27
+
+Owner explicitly authorized a real GLM-only test after investigating
+`run_01M5YHZ5A3RAJTK6KV7S11738N`. That run was cancelled, not provider-failed:
+13:29:47–13:49:38 Sofia, 45 completed tools / 25 shell commands, summed tool
+duration 21.066s, no unfinished operation. Planning 27 operations, investigation 18. Last tool completed13:40:48. Windows System events prove lid-triggered
+Modern Standby entry13:40:51 (Kernel-Power506), exit13:48:34 (507). WSL journal
+realtime-minus-monotonic divergence462.276135s corroborates suspension/time
+correction. Process elapsed plan5m52.808 + investigation6m14.515; displayed
+19m51.6 includes about7m42 suspension. No sandbox/provider failure recorded.
+
+Authorized targeted real test `run_01M5YK9M365Q1S9A2TZK0F3N7K` on the same
+project, ONLY stack_glm_main/glm-5.3-flash, scope packages/shared/src/run-limits.ts,
+engine silence timeout240000ms. Completed13:52:58–13:57:17 Sofia in4m19.087s.
+PASS all phases, one planning correction, no report retry/provider failure;
+two successful shell commands and one Read (tool total1.919s), valid report,
+two accepted evidence entries, zero findings. Node assertion check passes
+exported positive integer min/max ordering. Agent usage: input55160/output10434/
+cached146048, four turns. Targeted smoke does not prove full-repo latency or
+comprehensive defect detection. Provider diagnostics during the live session
+show4569 output tokens before first tool, explaining substantial generation
+overhead; no raw reasoning copied. Local loopback request probe confirms pinned
+Claude defaults to adaptive thinking/output_config.effort=high/max_tokens32000
+without explicit flags (fake API, no extra paid requests).
+
+No product source/configuration/power-policy change, restart, or cancellation
+performed this turn. Owner-approved smoke is the only new real QA run. Private
+history/export preserved; shux absent, protocol maintained directly. Further
+effort tuning requires separate implementation/evaluation; not silently applied.
+
+## Previous record (preserved)
+
+# Owner-requested GLM v1.0.2 prompt restoration — 2026-10-27
+
+Owner chose copying release behavior for GLM instead of new phase budgets.
+Compared immutable v1.0.2 (`2640efcd78744cb02c517a405e648722e662bd60`): stage
+orchestration, model selection and timeouts are already identical; post-release
+changes are expanded QA prompt guidance plus the proven local bug fixes.
+Copied planningPrompt/investigationPrompt/reportPrompt verbatim from the tag,
+including release report-correction behavior. Removed newer guidance imports
+only from Claude/GLM adapter. Preserved anchored sandbox detection and structured
+provider-error diagnostics; these prevent reproduced defects in the release code.
+OpenCode/DeepSeek/shared prompts/engine/timeouts/configuration untouched.
+
+Owner-directed specification change recorded in tests: GLM no longer requires
+cross-harness prompt parity or the newer compact repair; renamed to release
+prompt regression with release wording/safeguards and original repair contract.
+Two cases RED before restoration; GREEN whole GLM suite 97 PASS / 12 existing
+platform/live skips. Workspace lint/typecheck/build 60 PASS (51 cached), final
+hermetic prompt fixture PASS, hygiene/format/diff PASS. Byte-for-byte source
+comparison of all three builders against tag PASS. No speed or model-quality
+claim without a real run. Deployment/restart/CI receipts in PR #40. Previous
+local analysis notes preserved; private export remains untracked. shux absent.
+
+## Previous record (preserved)
+
+# GLM slow-run investigation — 2026-10-27
+
+READ-ONLY production diagnosis for `run_01M5YEVFZR40FGZZ3AW1362MAC` on owner's
+request. Production CLI and existing export agree: cancelled, one agent,
+glm-5.3-flash, 12:35:19–13:13:56 Sofia (38m36.6s). Planning 11m20.7s with
+48 tools; investigation 14m00.8s with 45 tools; reporting 13m14.1s including
+11m37.4s first attempt and 1m36.7s repair before cancellation. 93 completed
+tool operations / 54 shell commands; summed tool durations 33.189s, slowest
+7.129s, none unfinished. Journald confirms matching phase process lifetimes
+and about 98s summed CPU. No evidence of a wedged local shell command.
+
+Report first attempt rejected for evidence.20.strength: strong_code_evidence
+is impossible for manual evidence. Model output/remote wait dominates wall
+time, but existing records cannot distinguish generation, queueing, throttle
+or compaction. No accepted report means no submitted findings/evidence.
+
+Source inspection confirms runTimeoutMs=1800000 is a silence window with
+90-minute absolute cap (3x), while Claude has a separate 30-minute per-turn
+timer. Therefore passing 30 minutes is expected under current semantics,
+not proof that the timer failed. Excess planning reconnaissance (48 calls
+despite handful-of-reads guidance) and expensive whole-report correction are
+important efficiency findings. No new QA/provider call, cancellation, source
+fix, runtime restart or historical-data mutation performed. shux absent;
+protocol receipts updated directly. Proposed engineering follow-up: enforced
+phase budgets, explicit wall-clock deadline semantics and smaller report repair.
+
+## Previous record (preserved)
+
+# GLM reporting failure — 2026-10-27
+
+Owner supplied run `run_01M5YC616MF6031VVNKTF42BDX`, GLM
+`arun_01M5YC654AKCEQQANZBK72T98V`. Investigation commands completed, first
+report was invalid JSON, repair exited 1 during compact. Local pinned Claude
+against a loopback mock API reproduced unrecognized_model warnings while both
+normal requests and /compact exited 0. Model-tier mappings did not remove the
+warning. Thus the warning alone is NOT evidence of provider model rejection.
+Original provider cause is UNRECOVERABLE from persisted records: SDK discarded
+terminal stdout errors in favor of stderr warnings; unit journal only records
+exit status. No real provider request or credential used in reproduction.
+
+Implemented: preserve result.errors/result on nonzero exit before warning-only
+stderr; ignore known startup/model notices as failure diagnoses. Shorten report
+repair by retaining schema, safeguards and full authoritative operation ledger
+without resending the frozen plan and full evidence-contract examples. Same
+session, no new QA and no tool access on repair. Context-pressure reduction is
+verified; upstream success of the owner's long session remains UNVERIFIED.
+
+RED: two live-child diagnostic regressions and repair-prompt regression before
+fix. GREEN: whole harness 97 PASS / 12 existing platform/live skips. Workspace
+lint/typecheck/build 60 PASS (51 cached); changed-file format/hygiene/diff PASS;
+harness lint rerun after final test edit PASS. Deployment and final-head CI
+receipts recorded in PR #40. Owner attachments/export/history preserved.
+No scrub/sandbox bypass, model switch or paid calls. shux absent; protocol direct.
+
+## Previous record (preserved)
+
+# GLM repeat failure — live process correction (2026-10-27)
+
+COMPLETE operational correction: latest partial run
+`run_01M5YA4PS5NZ8GQTZDP802RX2G` failed GLM at 11:19 Sofia. The live runtime
+was still PID 333, started 10:28, before deployment of `1.0.2-ae119b9` around
+10:59. Updating the current symlink did not replace Node's loaded modules.
+The earlier isolated smoke test did not establish the live app had restarted.
+
+Executed `sentry.ps1 stop` successfully (graceful, no force), confirmed the old
+runtime exited, then `sentry.ps1 open`. Live runtime is now PID 451, started
+11:44, loading current `1.0.2-ae119b9`. Production broker `cli agent doctor glm
+--json` PASS: configured, binary available, healthy; runtimeVerified false is
+retained honestly because no paid model call was performed.
+
+PASS: latest exported errorPreview through deployed classifier; real grep of
+adapter source reproduces legacy=true / fixed=false; actual bwrap failure
+still detected. Resolved module path points to `1.0.2-ae119b9`. No production
+code changes, history edits, credentials/permissions changes or paid calls.
+Owner export remains untracked; task receipts updated directly (shux absent).
+Live-model end-to-end acceptance remains UNVERIFIED.
+
+## Previous record (preserved)
+
+# GLM false sandbox abort — 2026-10-27
+
+Owner requested diagnosis/fix for partial run `run_01M5Y7P7EE0GPAH3KRBJT00Q4S`.
+Export treated as data and preserved untracked. GLM had executed shell commands
+successfully; its final Bash grep returned numbered adapter source, including
+the detector's own `bubblewrap.*(permission denied|failed)` regex. Unanchored
+substring detection misclassified that output as GLM_SANDBOX_UNAVAILABLE.
+
+Fixed only the Claude harness classifier: recognize bootstrap markers at
+diagnostic line starts, preserving indented/multiline actual failures. Added
+source-search adapter lifecycle regression and six classifier counterexamples,
+plus four positive fail-closed cases. RED: six regression failures before fix;
+GREEN: whole harness 94 PASS / 12 platform/live skips. Lint/typecheck/build
+60 tasks PASS (51 cached); hygiene, whitespace and format PASS (owner export
+excluded from formatting, unchanged). No model calls or historical run edits.
+
+Updated from owner-merged dev `3def0ee` onto `fix/glm-sandbox-result-detection`.
+Active WSL runtime was `1.0.2-7078c67`; deployment and final CI receipts belong
+to the fix PR. Restart the application to load the replacement runtime.
+No sandbox disabled, profile permissions changed, or process forcibly stopped.
+shux unavailable; task status, ledger and handoff maintained directly.
+
+## Previous record (preserved)
+
 # PR #39 check failures — fixes (2026-10-27)
 
 Owner requested fixes for failed checks. CI quality job `122080059654` on

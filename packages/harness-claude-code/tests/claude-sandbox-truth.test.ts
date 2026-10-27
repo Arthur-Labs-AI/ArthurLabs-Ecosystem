@@ -214,6 +214,35 @@ function adapterWithTurns(turns: ClaudeStreamEvent[][]) {
 }
 
 describe('Bash outcome truthfulness (bubblewrap bootstrap failures)', () => {
+  it('keeps source-search output mentioning sandbox failures as a successful command', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-source-search-'));
+    roots.push(root);
+    const input = await request(root);
+    // The failed owner run searched the adapter itself. Its detector source
+    // matched the old unanchored bootstrap regex and aborted healthy Bash.
+    const output = [
+      '110:   * root with controlled permissions). Production never sets this;',
+      '163: * the cold-start permission abort share this contract.',
+      '346:  if (/bubblewrap.*(permission denied|failed)/i.test(text)) return true;',
+      '347:  if (/\\bbwrap:/i.test(text)) return true;',
+      '348:  // sandbox unavailable is a bootstrap diagnostic',
+    ].join('\n');
+    const command = 'grep -n "permission" packages/harness-claude-code/src/adapter.ts';
+    const adapter = adapterWithTurns([
+      planTurn(),
+      [bashUse('tu-search', command), bashResult('tu-search', output), ...terminalTurn()],
+      reportTurn(validReportV2()),
+    ]);
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(completedOf(events)[0]?.tool).toMatchObject({ name: 'Bash', exitCode: 0 });
+    expect(completedOf(events)[0]?.tool?.infrastructureFailure).toBeUndefined();
+    expect(events.filter((event) => event.type === 'command.executed')).toMatchObject([
+      { command, exitCode: 0 },
+    ]);
+  });
+
   it('never records a bwrap bootstrap failure as Bash exit 0', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-claude-bwrap-truth-'));
     roots.push(root);

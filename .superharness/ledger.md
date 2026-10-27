@@ -1,3 +1,96 @@
+# Commit-all / dev integration authorization — 2026-10-27
+
+Owner explicitly authorized committing all current work and integrating dev.
+Finalize PR40 with live GLM receipts and owner-provided run export; credential
+signature/field scan found no matches. Preserve JSON semantics while formatting.
+Product a687c43 has six checks/97 harness/20 WSL/static60 PASS,live smoke4m19
+PASS. Final data/receipt commit validated separately; merge receipt in PR40.
+No force/history rewrite/release/model call; shux absent,protocol direct.
+
+## Previous record (preserved)
+
+# GLM sleep diagnosis + authorized live test — 2026-10-27
+
+Owner explicitly requested live GLM-only test. Problem run01M5YHZ5A3RAJTK6KV7S11738N
+cancelled, no provider failure;45completedtools/21.066s. Windows lid standby
+13:40:51–13:48:34 plus WSL462.276s realtime/monotonic drift proves apparent
+extra~7m42 suspension. Test run01M5YK9M365Q1S9A2TZK0F3N7K targeted one file,
+onlyglm-5.3-flash, completed4m19.087s;3tools/1.919s,NodecheckPASS,2evidence,
+0findings,oneplanretry/noreportretry. Usage55160in/10434out/146048cached,4turns.
+High generation overhead observed; fake endpoint confirms defaultCLIadaptive/high.
+No source/config/power policy change or restart/cancel; only one authorized
+real QA started. Scoped success is not full-run latency proof. shux absent.
+
+## Previous record (preserved)
+
+# GLM release prompt restoration — 2026-10-27
+
+Owner chose v1.0.2 behavior for GLM. Copied three prompt builders verbatim from
+2640efcd; phase/timeouts already matched. Kept proven sandbox/diagnostic fixes,
+other agents and shared code unchanged. Release report repair restored; tests
+updated for explicit owner specification change (two RED before rollback,
+97 PASS/12 skips after). Workspace60 PASS/51 cached, final hermetic prompt test,
+hygiene/format/diff PASS; source comparison against tag PASS. Deployment and
+final CI receipts in PR40; no paid run or speed claim. Earlier local analysis
+notes retained in this commit; private export untracked. shux absent.
+
+## Previous record (preserved)
+
+# Slow-run analysis — 2026-10-27
+
+Inspected production CLI, export, unit journal and timeout/reporting sources
+for `run_01M5YEVFZR40FGZZ3AW1362MAC`: cancelled after38m36.6s; planning
+11m20.7/48tools, investigation14m00.8/45tools, reporting13m14.1. Tools sum
+33.189s, none unfinished;54shell commands. First report11m37.4 failed evidence
+strength/type validation, then1m36.7 repair before cancel. Model/remote wait
+dominates but exact provider-side latency unknown. Timeout30min is silence,
+absolute cap90min; no timer malfunction demonstrated. Important efficiency
+findings: excessive planning reconnaissance and whole-report retry. No new run,
+provider call, source change, restart or operator action. shux absent; receipts direct.
+
+## Previous record (preserved)
+
+# GLM reporting failure — 2026-10-27
+
+Pinned Claude /compact against local fake API succeeded despite unrecognized_model;
+model mappings did not eliminate warning. Owner's actual upstream exit-1 cause
+was lost because transport kept stderr only; journal lacks terminal stdout.
+Fixed structured errors precedence and warning-only misdiagnosis; report repair
+keeps complete ledger/schema/safety but omits repeated plan/evidence examples.
+Three regressions RED before fix; harness 97 PASS / 12 skips afterward,
+workspace static/build 60 PASS, hygiene/format/diff PASS. No paid model calls,
+scrub bypass, model switch, or historical-run changes. Original upstream cause
+and live long-run acceptance UNVERIFIED. Final receipts in PR #40; shux absent.
+
+## Previous record (preserved)
+
+# GLM repeated failure — 2026-10-27
+
+Latest export diagnosed directly: run `run_01M5YA4PS5NZ8GQTZDP802RX2G` failed
+at 11:19 Sofia on runtime PID 333 started 10:28, before fixed deployment.
+Graceful `sentry.ps1 stop`/`open` replaced it with PID 451 at 11:44. Current
+runtime `1.0.2-ae119b9`; production broker GLM doctor healthy/configured/binary
+available. Latest error replay + real grep: legacy true, fixed false; real
+bwrap guard PASS. No source change, data/history mutation or paid model call;
+runtimeVerified remains false. Previous smoke did not verify live app restart.
+Owner export untracked; shux absent; protocol direct.
+
+## Previous record (preserved)
+
+# GLM false sandbox abort — 2026-10-27
+
+Owner export proves the final Bash grep read adapter source; its numbered regex
+line matched unanchored sandbox detection. Earlier GLM commands succeeded.
+Added adapter completion/command-ledger regression and source/docs classifier
+counterexamples: six failures before fix. Anchored diagnostic lines, retained
+real bootstrap aborts. Whole harness 94 PASS / 12 platform/live skips;
+lint/typecheck/build 60 PASS (51 cached), hygiene/format/diff PASS. Owner export
+unchanged/untracked; no paid calls or old history changes. Baseline `3def0ee`,
+branch `fix/glm-sandbox-result-detection`. Deploy/CI receipts in fix PR;
+application restart required for replacement runtime. shux absent; protocol direct.
+
+## Previous record (preserved)
+
 # PR #39 check fixes — 2026-10-27
 
 Owner requested failure diagnosis and fixes. CI quality job `122080059654`
