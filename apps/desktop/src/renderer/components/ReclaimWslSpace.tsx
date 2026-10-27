@@ -77,11 +77,7 @@ export function ReclaimWslSpace({
         ) : null}
         {operation.data ? (
           <p role="status">
-            Reclaimed{' '}
-            {gib(Math.max(0, operation.data.diskBytesBefore - operation.data.diskBytesAfter))} from
-            the {operation.data.distro} disk. Windows drive free:{' '}
-            {gib(operation.data.windowsFreeBytesAfter)}.
-            {operation.data.reconnected ? ' Sentry reconnected.' : ''}
+            {`Reclaimed ${gib(Math.max(0, operation.data.diskBytesBefore - operation.data.diskBytesAfter))} from the ${operation.data.distro} disk. Windows drive free: ${gib(operation.data.windowsFreeBytesAfter)}.${operation.data.reconnected ? ' Sentry reconnected.' : ''}`}
           </p>
         ) : null}
         {operation.data?.reconnected === false ? (
@@ -102,11 +98,7 @@ export function ReclaimWslSpace({
           >
             <h2 id={titleId}>Reclaim Windows disk space?</h2>
             <p id={descriptionId}>
-              Sentry will stop its runtime and shut down WSL to compact the {distro} disk. Save work
-              and close other applications using WSL, including Docker and terminals. If another
-              distribution is running, Sentry will refuse. Windows will request administrator
-              approval. Keep Sentry open until compaction finishes. Your files are kept, and the
-              disk can grow again as needed. The amount reclaimed may be zero.
+              {`Sentry will stop its runtime and shut down WSL to compact the ${distro} disk. Save work and close other applications using WSL, including Docker and terminals. If another distribution is running, Sentry will refuse. Windows will request administrator approval. Keep Sentry open until compaction finishes. Your files are kept, and the disk can grow again as needed. The amount reclaimed may be zero.`}
             </p>
             {operation.error ? (
               <p role="alert" className="error-box">

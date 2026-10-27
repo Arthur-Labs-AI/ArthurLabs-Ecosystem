@@ -101,6 +101,7 @@ export const RUNTIME_METHODS = [
   'projects.list',
   'projects.add',
   'projects.cancelAdd',
+  'projects.cancelUpdate',
   'projects.get',
   'projects.revisions',
   'projects.update',

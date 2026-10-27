@@ -82,6 +82,8 @@ export function createFakeHarnessRegistry(scenario: SimulationScenario): Harness
 export interface SimulateRunOptions {
   readonly agentStackIds?: readonly AgentStackId[];
   readonly scenario?: SimulationScenario;
+  /** Run against an older project revision (same semantics as RunOptions). */
+  readonly revisionId?: string;
   readonly verificationLevel?: VerificationLevel;
   readonly instructions?: string;
   readonly runTimeoutMs?: number;

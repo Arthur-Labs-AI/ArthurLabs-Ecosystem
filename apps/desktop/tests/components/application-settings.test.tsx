@@ -65,6 +65,9 @@ describe('Application settings & localization', () => {
     expect(translateText('19 findings · 41 evidence', 'bg')).toBe(
       '19 констатации · 41 доказателства',
     );
+    expect(translateText('1 total finding · 1 evidence', 'bg')).toBe(
+      '1 общо констатация · 1 доказателство',
+    );
     expect(translateText('19 total findings · 41 evidence', 'bg')).toBe(
       '19 общо констатации · 41 доказателства',
     );
@@ -80,6 +83,78 @@ describe('Application settings & localization', () => {
     ).toBe('0 активни · 2 завършени · 0 неуспешни / изтекли / прекъснати');
     expect(translateText('AGENT EXECUTIONS COMPLETE', 'bg')).toBe('ЗАВЪРШЕНИ ИЗПЪЛНЕНИЯ НА АГЕНТИ');
     expect(translateText('10 findings', 'bg')).toBe('10 констатации');
+    expect(translateText('1 active run · Open', 'bg')).toBe('1 активно изпълнение · Отвори');
+    expect(translateText('3 active runs · Open', 'bg')).toBe('3 активни изпълнения · Отвори');
+    expect(translateText('12 runs · rev ui-revision', 'bg')).toBe(
+      '12 изпълнения · rev ui-revision',
+    );
+    expect(translateText('1 run · rev abc123', 'bg')).toBe('1 изпълнение · rev abc123');
+    expect(translateText('FULL QA', 'bg')).toBe('ПЪЛЕН QA');
+    expect(translateText('TARGETED QA', 'bg')).toBe('ЦЕЛЕВИ QA');
+    expect(translateText('1 evidence', 'bg')).toBe('1 доказателство');
+    expect(translateText('0 evidence', 'bg')).toBe('0 доказателства');
+    expect(translateText('open', 'bg')).toBe('отворено');
+    expect(translateText('high', 'bg')).toBe('висока');
+    expect(translateText('critical', 'bg')).toBe('критична');
+    expect(translateText('Open most recent active run. 1 active runs', 'bg')).toBe(
+      'Отвори последното активно изпълнение. 1 активно изпълнение',
+    );
+    expect(translateText('Remove project Sentry workspace', 'bg')).toBe(
+      'Премахни проект Sentry workspace',
+    );
+    expect(translateText('Remove Sentry workspace?', 'bg')).toBe('Премахни Sentry workspace?');
+    expect(translateText('Drag to arrange · Scroll to zoom · F to fit', 'bg')).toBe(
+      'Влачи за подреждане · Превърти за мащаб · F за побиране',
+    );
+    expect(translateText('Desktop operation failed', 'bg')).toBe(
+      'Операцията на десктопа е неуспешна',
+    );
+    expect(translateText('1 created', 'bg')).toBe('1 създадени');
+    expect(translateText('TARGETED · 2 paths', 'bg')).toBe('ЦЕЛЕВИ · 2 пътя');
+    expect(translateText('2 Critical · 1 High · 0 Medium · 3 Low · 0 Info', 'bg')).toBe(
+      '2 критични · 1 високи · 0 средни · 3 ниски · 0 информационни',
+    );
+    expect(translateText('OpenCode running', 'bg')).toBe('OpenCode изпълнява се');
+    expect(translateText('GLM completed', 'bg')).toBe('GLM завършено');
+    expect(translateText('Project completed', 'bg')).toBe('Проектът е завършен');
+    expect(translateText('Preparation', 'bg')).toBe('Подготовка');
+    expect(translateText('Commands / Tests', 'bg')).toBe('Команди / Тестове');
+    expect(translateText('Observed', 'bg')).toBe('Наблюдавано');
+    expect(translateText('Not observed', 'bg')).toBe('Не е наблюдавано');
+    expect(translateText('Active', 'bg')).toBe('Активно');
+    expect(translateText('Open Project — AutoPulse', 'bg')).toBe('Отвори проект — AutoPulse');
+    expect(translateText('Start Targeted QA — AutoPulse', 'bg')).toBe(
+      'Стартирай ЦЕЛЕВИ QA — AutoPulse',
+    );
+    expect(translateText('Input 12 · Output 34 · Cached 0', 'bg')).toBe(
+      'Вход 12 · Изход 34 · Кеширани 0',
+    );
+    expect(
+      translateText('No findings were reported before failed. Analysis is incomplete.', 'bg'),
+    ).toBe('Не са докладвани констатации преди неуспешно. Анализът е непълен.');
+    expect(translateText('Cancelled.', 'bg')).toBe('Прекъснато.');
+    expect(translateText('Open', 'bg')).toBe('Отворено');
+    expect(translateText('Raw events (5)', 'bg')).toBe('Сурови събития (5)');
+    expect(translateText('critical: 1', 'bg')).toBe('критична: 1');
+    expect(translateText('critical: 2', 'bg')).toBe('критични: 2');
+    expect(translateText('Open Project — AutoPulse', 'bg')).toBe('Отвори проект — AutoPulse');
+    expect(translateText('Start Full QA — AutoPulse', 'bg')).toBe('Стартирай ПЪЛЕН QA — AutoPulse');
+    expect(translateText('Input 1,234 · Output 567 · Cached 89', 'bg')).toBe(
+      'Вход 1,234 · Изход 567 · Кеширани 89',
+    );
+    expect(
+      translateText('No findings were reported before timed out. Analysis is incomplete.', 'bg'),
+    ).toBe('Не са докладвани констатации преди изтекло време. Анализът е непълен.');
+    expect(
+      translateText(
+        'Partial report — agent failed. Reported findings and evidence are retained; analysis is incomplete.',
+        'bg',
+      ),
+    ).toBe(
+      'Частичен доклад — агент неуспешно. Докладваните констатации и доказателства се запазват; анализът е непълен.',
+    );
+    expect(translateText('OpenCode running', 'bg')).toBe('OpenCode изпълнява се');
+    expect(translateText('Raw events (5)', 'bg')).toBe('Сурови събития (5)');
     expect(
       translateText(
         'Incomplete analysis. Reported findings and evidence are retained independently for each agent.',
@@ -89,6 +164,97 @@ describe('Application settings & localization', () => {
       'Непълен анализ. Докладваните констатации и доказателства се запазват независимо за всеки агент.',
     );
     expect(translateText('Analysis cancelled.', 'bg')).toBe('Анализът е прекъснат.');
+    expect(translateText('Preparation Observed', 'bg')).toBe('Подготовка наблюдавано');
+    expect(translateText('Commands / Tests Warning', 'bg')).toBe(
+      'Команди / Тестове предупреждение',
+    );
+    expect(translateText('Stage: Preparation Observed, Planning Warning', 'bg')).toBe(
+      'Етап: Подготовка наблюдавано, Планиране предупреждение',
+    );
+    expect(translateText('Preparation — Observed', 'bg')).toBe('Подготовка — Наблюдавано');
+    expect(translateText('OpenCode — main agent', 'bg')).toBe('OpenCode — main agent');
+    expect(translateText('Reclaim Windows disk space', 'bg')).toBe(
+      'Освободи дисково пространство в Windows',
+    );
+    expect(translateText('Reclaim Windows disk space?', 'bg')).toBe(
+      'Освобождаване на дисково пространство в Windows?',
+    );
+    expect(translateText('Shut down WSL and reclaim', 'bg')).toBe('Изключи WSL и освободи мястото');
+    expect(translateText('Reclaiming…', 'bg')).toBe('Освобождаване…');
+    expect(
+      translateText(
+        'Stopping the runtime, reclaiming disk space, then reconnecting. This may take several minutes.',
+        'bg',
+      ),
+    ).toBe(
+      'Спиране на средата, освобождаване на дисково място и повторно свързване. Може да отнеме няколко минути.',
+    );
+    expect(
+      translateText(
+        'Compaction finished. Reconnect failed; restart Sentry and check Environment.',
+        'bg',
+      ),
+    ).toBe(
+      'Компактирането завърши. Повторното свързване се провали; рестартирайте Sentry и проверете Средата.',
+    );
+    expect(translateText('Copied', 'bg')).toBe('Копирано');
+    expect(
+      translateText(
+        'Sentry will stop its runtime and shut down WSL to compact the Ubuntu disk. Save work and close other applications using WSL, including Docker and terminals. If another distribution is running, Sentry will refuse. Windows will request administrator approval. Keep Sentry open until compaction finishes. Your files are kept, and the disk can grow again as needed. The amount reclaimed may be zero.',
+        'bg',
+      ),
+    ).toBe(
+      'Sentry ще спре средата за изпълнение и ще изключи WSL, за да компактира диска Ubuntu. Запазете работата си и затворете другите приложения, използващи WSL, включително Docker и терминали. Ако работи друга дистрибуция, Sentry ще откаже. Windows ще поиска администраторско одобрение. Дръжте Sentry отворен, докато компактирането завърши. Файловете ви се запазват, а дискът може да порасне отново при нужда. Освободеното количество може да е нула.',
+    );
+    expect(
+      translateText(
+        'Reclaimed 1.16 GiB from the Ubuntu disk. Windows drive free: 86.69 GiB. Sentry reconnected.',
+        'bg',
+      ),
+    ).toBe(
+      'Освободени 1.16 GiB от диска Ubuntu. Свободно място на Windows устройството: 86.69 GiB. Sentry се свърза отново.',
+    );
+    expect(
+      translateText(
+        'Reclaimed 0.00 GiB from the Debian disk. Windows drive free: 10.00 GiB.',
+        'bg',
+      ),
+    ).toBe(
+      'Освободени 0.00 GiB от диска Debian. Свободно място на Windows устройството: 10.00 GiB.',
+    );
+    expect(
+      translateText(
+        'Saved model “my-custom-7b” is not in the current list. It is preserved — select a listed model above or keep this custom id.',
+        'bg',
+      ),
+    ).toBe(
+      'Запазеният модел „my-custom-7b“ не е в текущия списък. Запазен е — изберете модел от списъка по-горе или задръжте този потребителски идентификатор.',
+    );
+    expect(
+      translateText(
+        'deepseek-v4-flash is a legacy alias of deepseek-flash. Your saved value is preserved.',
+        'bg',
+      ),
+    ).toBe('deepseek-v4-flash е legacy alias of deepseek-flash. Запазената стойност е съхранена.');
+    expect(
+      translateText(
+        'Saved provider “custom” is unrecognized. It is preserved — select a supported provider above before saving.',
+        'bg',
+      ),
+    ).toBe(
+      'Запазеният доставчик „custom“ е неразпознат. Запазен е — изберете поддържан доставчик по-горе преди запазване.',
+    );
+    expect(translateText('Keep saved “custom” (unrecognized)', 'bg')).toBe(
+      'Задръж запазеното „custom“ (неразпознато)',
+    );
+    expect(translateText('Active upstream: opencode-go · kimi-k3', 'bg')).toBe(
+      'Активен доставчик: opencode-go · kimi-k3',
+    );
+    expect(translateText('Updating project', 'bg')).toBe('Обновяване на проекта');
+    expect(translateText('Cancel update', 'bg')).toBe('Прекъсни обновяването');
+    expect(translateText('rev_01K77 · 25.10.2026, 18:34 · current', 'bg')).toBe(
+      'rev_01K77 · 25.10.2026, 18:34 · текуща',
+    );
     expect(
       translateText(
         'Review agent details and Environment before deliberately starting another run.',

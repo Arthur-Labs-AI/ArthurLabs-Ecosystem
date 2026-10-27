@@ -20,7 +20,7 @@ function fakeSafeStorage() {
   };
 }
 
-async function harness(gateReady = true) {
+async function harness(gateReady = true, configureImpl?: () => Promise<unknown>) {
   const root = await mkdtemp(join(tmpdir(), 'sentry-router-'));
   const credentials = new ProviderCredentialService({
     filePath: join(root, 'providers.json'),
@@ -30,6 +30,7 @@ async function harness(gateReady = true) {
   const runtime = {
     request: async (method: string, params: Record<string, unknown> = {}) => {
       seen.push({ method, params });
+      if (method === 'runtime.configure' && configureImpl !== undefined) return configureImpl();
       if (method === 'production.preRunGate')
         return {
           ready: gateReady,
@@ -163,10 +164,91 @@ describe('shared desktop command router', () => {
     }
   });
 
+  it('persists the renderer-selected language without touching the runtime', async () => {
+    const h = await harness(true);
+    const persisted: string[] = [];
+    const result = await dispatchDesktopCommand(
+      h.service,
+      'app:set-language',
+      { language: 'bg' },
+      { persistAppLanguage: (language) => persisted.push(language) },
+    );
+    expect(result).toEqual({ saved: true, language: 'bg' });
+    expect(persisted).toEqual(['bg']);
+    expect(h.seen).toHaveLength(0);
+  });
+
+  it('rejects invalid languages and keeps them out of the external allowlist', async () => {
+    const h = await harness(true);
+    await expect(
+      dispatchDesktopCommand(h.service, 'app:set-language', { language: 'fr' }, {}),
+    ).rejects.toThrow();
+    expect(isCliAllowed('app:set-language')).toBe(false);
+    await expect(
+      dispatchDesktopCommand(
+        h.service,
+        'app:set-language',
+        { language: 'bg' },
+        {},
+        { external: true },
+      ),
+    ).rejects.toMatchObject({ code: 'CLI_COMMAND_FORBIDDEN' });
+  });
+
+  it('lets the language persist during runtime maintenance', async () => {
+    const h = await harness(true);
+    const persisted: string[] = [];
+    const result = await dispatchDesktopCommand(
+      h.service,
+      'app:set-language',
+      { language: 'en' },
+      { maintenanceActive: () => true, persistAppLanguage: (language) => persisted.push(language) },
+    );
+    expect(result).toEqual({ saved: true, language: 'en' });
+    expect(persisted).toEqual(['en']);
+  });
+
   it('keeps renderer-only commands working on the internal path', async () => {
     const h = await harness(true);
     const statuses = await dispatchDesktopCommand(h.service, 'providers:status', {}, {});
     expect(Array.isArray(statuses)).toBe(true);
+  });
+
+  it('forwards revision-update cancellation to the runtime', async () => {
+    const h = await harness(true);
+    await dispatchDesktopCommand(h.service, 'projects:cancel-update', {}, {});
+    expect(h.seen).toEqual([{ method: 'projects.cancelUpdate', params: {} }]);
+  });
+
+  it('forwards the selected run revision to the runtime', async () => {
+    const h = await harness(true);
+    const revisionId = 'rev_01K' + '7'.repeat(21) + 'AA'; // 26 ULID chars
+    await dispatchDesktopCommand(
+      h.service,
+      'runs:start',
+      {
+        projectId: 'proj_01K7777777777777777777777A8W1',
+        mode: 'full',
+        revisionId,
+      },
+      {},
+    );
+    expect(h.seen.find((c) => c.method === 'runs.start')).toEqual({
+      method: 'runs.start',
+      params: {
+        projectId: 'proj_01K7777777777777777777777A8W1',
+        mode: 'full',
+        revisionId,
+      },
+    });
+    await expect(
+      dispatchDesktopCommand(
+        h.service,
+        'runs:start',
+        { projectId: 'proj_01K7777777777777777777777A8W1', mode: 'full', revisionId: 'nope' },
+        {},
+      ),
+    ).rejects.toThrow();
   });
 
   it('rejects unknown commands on both paths', async () => {
@@ -188,5 +270,55 @@ describe('shared desktop command router', () => {
 
   it('every registered channel is known to the router', () => {
     expect(Object.keys(DesktopChannelSchemas).length).toBeGreaterThan(20);
+  });
+
+  it('reports runtimeSynced when the runtime acknowledges a provider save', async () => {
+    const h = await harness(true);
+    const result = (await dispatchDesktopCommand(h.service, 'providers:save', {
+      name: 'SENTRY_DEEPSEEK_MODEL',
+      value: 'deepseek-v4-pro',
+    })) as { configured?: boolean; runtimeSynced?: boolean };
+    expect(result.configured).toBe(true);
+    expect(result.runtimeSynced).toBe(true);
+    expect(h.seen.filter((c) => c.method === 'runtime.configure')).toHaveLength(1);
+  });
+
+  it('still saves but flags runtimeSynced false when the runtime push fails', async () => {
+    const h = await harness(true, () => Promise.reject(new Error('runtime unreachable')));
+    const result = (await dispatchDesktopCommand(h.service, 'providers:save', {
+      name: 'SENTRY_DEEPSEEK_MODEL',
+      value: 'deepseek-v4-pro',
+    })) as { configured?: boolean; runtimeSynced?: boolean };
+    // The value is persisted locally; only the live-runtime sync is flagged.
+    expect(result.configured).toBe(true);
+    expect(result.runtimeSynced).toBe(false);
+    // One immediate attempt plus one retry.
+    expect(h.seen.filter((c) => c.method === 'runtime.configure')).toHaveLength(2);
+    const statuses = (await dispatchDesktopCommand(
+      h.service,
+      'providers:status',
+      {},
+      {},
+    )) as Array<{
+      name: string;
+      configured: boolean;
+    }>;
+    expect(statuses.find((s) => s.name === 'SENTRY_DEEPSEEK_MODEL')?.configured).toBe(true);
+  });
+
+  it('recovers runtimeSynced when the retry succeeds', async () => {
+    let calls = 0;
+    const h = await harness(true, () => {
+      calls += 1;
+      return calls === 1
+        ? Promise.reject(new Error('transient blip'))
+        : Promise.resolve({ configured: true });
+    });
+    const result = (await dispatchDesktopCommand(h.service, 'providers:save', {
+      name: 'SENTRY_DEEPSEEK_MODEL',
+      value: 'deepseek-v4-pro',
+    })) as { runtimeSynced?: boolean };
+    expect(result.runtimeSynced).toBe(true);
+    expect(h.seen.filter((c) => c.method === 'runtime.configure')).toHaveLength(2);
   });
 });

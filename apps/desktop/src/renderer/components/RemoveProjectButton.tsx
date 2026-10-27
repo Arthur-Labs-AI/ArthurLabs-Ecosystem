@@ -70,7 +70,7 @@ export function RemoveProjectButton({
             dismiss();
           }}
         >
-          <h2 id={titleId}>Remove {name}?</h2>
+          <h2 id={titleId}>{'Remove ' + name + '?'}</h2>
           <p id={descriptionId}>
             This permanently deletes Sentry’s stored copy, revisions, run history, findings and
             evidence for this project to free storage inside the runtime. On Windows, use Settings →

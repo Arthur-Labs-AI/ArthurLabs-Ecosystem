@@ -1,3 +1,121 @@
+# PR #39 check failures — fixes (2026-10-27)
+
+Owner requested fixes for failed checks. CI quality job `122080059654` on
+`134ca01` stopped at Prettier: 13 tracked files lacked canonical formatting.
+Applied Prettier to those files; full `pnpm format:check`, repository hygiene
+and whitespace PASS. Also reproduced the existing evaluator regression:
+`qa-eval.test.ts:202` expected truePositive while its fixture omitted cited
+evidence `a1`. Added `codeEvidence('a1')` to the fixture, preserving every
+expectation and production evaluator behavior. RED: 1 failed / 7 passed;
+GREEN: evidence-pipeline 65/65, including invalid-key abstention guards.
+Existing failing test provides regression coverage; no new behavior introduced.
+
+Lint/typecheck/build PASS: 60 Turbo tasks (40 cached). Broader uncached Windows
+tests started; final receipts belong to PR #39. CI must run against the pushed
+fix before claiming completion.
+TSX diff reviewed: formatting only, hooks/state/accessibility unchanged.
+No hooks/CI/identity changes, paid calls, release or merge. shux unavailable;
+protocol records maintained directly.
+
+## Previous record (preserved)
+
+# Repository inspection and PR to dev (2026-10-27)
+
+COMPLETE: owner requested repository status and a PR to dev. Opened draft
+[PR #39](https://github.com/Mert1026/Sentry/pull/39) from
+`chore/app-cleanup-and-polish`, source HEAD `31de8d4`, to `dev` at `d366de9`.
+Initial working tree clean; source branch synchronized with origin, 28 commits
+outside dev, dev has two merge commits outside source. Trial merge via
+`git merge-tree --write-tree HEAD origin/dev` PASS; no branch was merged.
+
+Executed on Windows:
+
+- PASS: `pnpm repository:check`, `git diff --check origin/dev...HEAD`.
+- PASS: `pnpm exec turbo run lint typecheck build --output-logs=errors-only`
+  (60 successful tasks; 37 cached).
+- FAIL: `pnpm format:check` (14 files; left unchanged).
+- FAIL: `pnpm exec turbo run test --output-logs=errors-only --concurrency=2 --force`
+  stopped at evidence-pipeline: 64 passed, 1 failed. At
+  `packages/evidence-pipeline/tests/qa-eval.test.ts:202`, findings cite absent
+  evidence key `a1` but expect truePositive/duplicate; evaluator abstains as
+  ambiguous. The next test explicitly requires abstention for invalid keys.
+  Remaining workspace tests are UNVERIFIED because Turbo stopped early.
+- UNVERIFIED: completed PR CI, native sandbox trust, interactive/packaged
+  acceptance and live-provider calls. CI started on PR creation.
+
+Draft preserves the failures for review; no product fixes, release, paid calls,
+or merge performed. `dev` protection is disabled according to the GitHub branch
+API; owner review remains the documented merge policy. `shux contract` attempted,
+executable absent; task status, ledger and handoff maintained directly.
+
+## Previous record (preserved)
+
+# Full-project checks + security pass (owner request)
+
+2026-10-26. Scope HEAD d6224ba on chore/app-cleanup-and-polish. Turbo test: all packages green except run-engine (6 verifier-trust env failures proven clean-tree identical + 1 parallel timeout load-flake, 5/5 isolated). Desktop full suite 548/548 post-detection. Turbo typecheck 37/37, turbo lint 20/20 (after fixing my unused import). format:check red only on 9 pre-existing untouched files (my 12 fixed). repository:check PASS. distribution:test 43 pass / 1 env-fail (root esbuild not installed) / 27 platform-skipped. Secrets grep: zero real patterns. Audit: 121 findings triaged (dev/toolchain/transitive-vendor; only shipped-surface note is RR open-redirect high, unreachable — no redirect() calls; remediate by bumping react-router-dom). Live-model tests skipped by env gates (no budget spent). Committed as d6224ba; partial readiness only — see report.
+
+## Previous record (preserved)
+
+# OpenCode executable prefers runtime detection (owner follow-up)
+
+2026-10-26. Owner approved the live-detection follow-up. resolveOpenCodeBinarySuggestion prefers the doctors' executionPath (gated on binaryAvailable so the managed-default fallback is never suggested when nothing is installed), sibling heuristic as fallback. No new RPC — environment doctors flow through the shared ['environment'] query cache. Source-aware note (en/bg). Verified: resolver units + rendered precedence/fallback tests (27/27 across 4 Providers suites), renderer typecheck + eslint clean, bundle rebuilt (index-Cb3_V-FP.js). Committed as c150713; restart/reload to pick it up.
+
+## Previous record (preserved)
+
+# OpenCode executable auto-fill from sibling settings (owner request)
+
+2026-10-26. Owner: the OpenCode binary field should fill automatically like the others, deriving the WSL username from sibling saved paths. Implemented suggestManagedOpenCodeBinary (takes only `/home/<user>` from DeepSeek/GLM saved hints; fixed managed-install suffix): empty field auto-fills once via effect, stale values get a one-click 'Use suggested path' button, saved values never overwritten implicitly. Static note + button strings in en/bg. Verified: helper units + 3 rendered interaction tests (14/14 with catalog/file suites), typecheck + eslint clean, bundle rebuilt (index-C3w2LD1Z.js). Committed as 05694a6; restart/reload to pick it up.
+
+## Previous record (preserved)
+
+# Stale-layer unrecognized_keys on runs:start — rebuilt + redeployed (owner report)
+
+2026-10-26. Owner saw `unrecognized_keys revisionId` on the Fener detail page. Root cause: layer skew, not code — the renderer bundle was new (sends revisionId) while dist/main (Oct 23) and the deployed WSL runtime (Oct 23, 1.0.2-2640efcd) predated the schema change and rejected it at their strict boundaries. Fixed by building all layers from HEAD: desktop build:main + build:preload (verified cancel-update channel, revisionId forwarding in dist), renderer already current, runtime redeployed via documented apps/runtime/scripts/deploy-wsl-runtime.ps1 (now 1.0.2-7078c67, verified cancelUpdate + revisionId + 60-min default in the deployed bundle, entry validated). No source changes. Owner must quit and relaunch the app (new main + runtime load at startup).
+
+## Previous record (preserved)
+
+# Run QA on a selected revision, newest-first with added dates (owner request)
+
+2026-10-25. Owner: any run start must allow choosing the revision; revisions newest-first with added dates. Implemented end-to-end: engine RunOptions.revisionId snapshots the revision's retained material read-only (working copy never moves; explicit-current keeps the working-copy path); unknown/foreign/malformed/pre-retention revisions fail closed INVALID_TARGET. Plumbing: runtime StartRunParams, desktop service/router/channel schemas, IPC contract (preload spreads automatically; CLI keeps default behavior). ProjectDetail: Revision picker (default current, cross-project guard), newest-first ordering by importedAt, readable added dates, chosen revision shown in the start confirmation. Verified: engine old-revision simulation + rejections (in 18/18 run-engine.test), desktop 541/541, runtime 74/75 (1 skip), typechecks + eslint clean, bundle rebuilt (index-CRJ_bbzD.js). Pre-existing only: 6 verifier-trust sandbox failures, proven identical on the clean tree. Committed as 8cb7b4e; restart/reload the app to pick it up.
+
+## Previous record (preserved)
+
+# Blocking update modal + auto-cancel revision on quit (owner request)
+
+2026-10-25. Owner: pressing Update Project should open a blocking window like project import (no new runs/anything during revision rebuild), and quitting the app must auto-abandon the revision. Implemented end-to-end mirroring the import-cancel path: runtime tracks active update AbortControllers, `updateProjectCopy` runs with signal (abort restores ready state, healthy copy preserved — proven by test), new `projects.cancelUpdate` RPC (protocol + dispatch + shutdown path), desktop service/router/IPC contract/preload `projects:cancel-update`, `before-quit` cancels updates alongside imports, ProjectDetail shows a non-dismissible modal (loader, elapsed timer, Cancel update) while updating, Start Full/Targeted QA + confirm Start QA disabled during update, `beforeunload` cancels too. Locales en+bg for the new strings (Elapsed:/Cancelling… reused). Verified: runtime update-cancel (2, incl. deterministic in-flight abort) + salvage + shutdown-safety + runtime (14) PASS; renderer update modal (4) + removal + providers (18) PASS; router/quit/preload (26) + protocol (18) PASS; desktop full typecheck, runtime + protocol typechecks, eslint PASS; renderer rebuilt (index-Bc9pUssv.js). dist gitignored. Restart/reload the app to pick it up.
+
+## Previous record (preserved)
+
+# Revision label centered in project cards (owner: misaligned vs rev chip)
+
+2026-10-25. Owner: the Revision label in project tiles sits off-center relative to the rev_… chip (taller pill: 11px mono + padding + border vs 12px label text at row top). Fix: `align-items: center` on the base `.kv` grid — centers every dt with its dd, consistently in all 9 kv usages (Projects, ProjectDetail, Environment, RuntimeSettings, inspectors, run views). Verified: button-spacing + project-removal + runtime-settings 10/10 PASS; renderer rebuilt (index-B1mv_nYw.css). dist gitignored. Restart/reload the app to pick it up.
+
+## Previous record (preserved)
+
+# Project card buttons spread + live bundle rebuilt (owner: still too close)
+
+2026-10-25. Owner reported Open/Remove still too close after the .actions fix — the packaged app was running a stale bundle (dist built before the fix). Changed the project card row to `actions actions-spread` (Отвори left, Премахни проекта right, 12px gap): decisive separation plus mis-click safety for the destructive action. Rebuilt the renderer bundle (new hash index-UMuQ7kKy.css, rule verified inside); dist is gitignored build output, tree otherwise unchanged. Verified: eslint + renderer typecheck PASS, button-spacing + project-removal 8/8 PASS. Note: restart/reload the desktop app to pick up the new bundle. Also confirmed: the 40-min successful run validates the timeout diagnosis (slow-but-working model, not a hang).
+
+## Previous record (preserved)
+
+# OpenCode turn timeout on Fener QA (run_01M5SWNX0RRAB3QFKB6TGF55CS) — investigated, budget raised
+
+2026-10-25. Owner pasted a partial run: OpenCode (opencode-go/mimo-v2.6-flash) failed after ~32 min with OPENCODE_START_FAILED 'turn exceeded its 1800000 ms budget'; DeepSeek (14 min) and GLM (33.5 min total, 4 turns) completed. Evidence from code + run data (via WSL): all harnesses default turnTimeoutMs=1_800_000; the OpenCode planning turn finished in ~2 min, then the single-shot execution turn produced zero Sentry-observable tool events for 30 min before the watchdog killed it (intra-turn model activity is opaque by design — the JSON envelope arrives only at process exit, and stdout is discarded on timeout). Cannot distinguish post-hoc 'slow but working' from 'stalled': DeepSeek/GLM timings show a 349-file project legitimately needs >30 min, so the 30 min single-turn cap is the binding constraint. Fix in packages/harness-opencode/src/adapter.ts: DEFAULT_OPENCODE_TURN_TIMEOUT_MS=3_600_000 (60 min, default only; DeepSeek/GLM untouched — no evidence they need it), plus timeout failures now carry names-only upstream relay evidence (describeTurnUpstreamActivity over proxy relayedRoutes, no credentials/content, no new secret surface) so the next kill states whether the model talked to the upstream. Tests: default pin, relay-summary units, hanging-turn message assertion (incl. sentinel non-leak). Verified: opencode-adapter 24/24 PASS, typecheck PASS, eslint PASS, path-sandbox 18/18 in isolation (full-suite 5s-timeout flakes in that file are load-dependent, occur with and without the change, different test each run). `shux contract` unavailable; records maintained directly. Tree left uncommitted. Follow-up advice: re-run the Fener QA (failure is retryable); consider a larger model than mimo-v2.6-flash for full-project scans.
+
+## Previous record (preserved)
+
+# Button-row spacing (crowded Open/Remove buttons) — implemented and verified
+
+2026-10-25. Owner reported buttons touching each other (Projects: Отвори / Премахни проекта, plus others). Audit of all renderer button rows found one root cause: no base `.actions` CSS rule existed — only `.page-header .actions` (with gap) and `.project-removal-dialog .actions` (justify only). Fixed with a base `.actions` rule in `styles.css` (flex, gap 8px, wrap, center), which repairs three rows at once: project cards (Projects.tsx), the removal dialog (Cancel / Remove permanently), and the WSL reclaim dialog. Also spaced View details + CopyId in AgentInspector. Checked and explicitly OK: PageHeader actions, Providers rows, ProjectDetail/Run/Retest workspace rows, Settings, Environment, Dashboard (all already gapped). New regression test `tests/unit/button-spacing.test.ts` pins the base rule (RED without the fix, GREEN with it). Verified: spacing test + project-removal + wsl-space-reclamation 15/15 PASS, finding-detail/live-workspace/screen-snapshots 46-file batch PASS earlier, eslint PASS, renderer typecheck PASS. `shux contract` unavailable; records maintained directly. Tree left uncommitted.
+
+## Previous record (preserved)
+
+# Provider settings (OpenCode plans, credential source, DeepSeek/GLM models) — implemented and verified
+
+2026-10-25. Finished the unfinished provider-settings pass in the working tree (owner changes preserved; nothing reverted). `apps/desktop/src/renderer/lib/provider-models.ts` now holds exact-ID catalogs verified against the CURRENT official docs: OpenCode Go Model ID table at https://opencode.ai/docs/go/ (29 ids; Go and Go Plus share this published list), OpenCode Zen Model ID table at https://opencode.ai/docs/zen/ (74 paid ids, free-tier *-free excluded; Zen stays a manual text input with datalist suggestions), DeepSeek (deepseek-flash, deepseek-v4-pro current; deepseek-v4-flash kept last as a labelled legacy alias per packages/harness-deepseek/src/discovery.ts), and Z.AI GLM (glm-5.3-flash, glm-5.3, glm-5.2, glm-5.1, glm-5 for https://api.z.ai/api/anthropic per https://docs.z.ai/devpack/latest-model.md and pricing). Spec correction: the draft catalog test asserted 37 Go ids; the published table has 29, so the test was corrected to 29 with the reason recorded in-file. `Providers.tsx`: LRBLOCK removed; OpenCode card has a labelled Provider select (Go / Go Plus subscription, Zen, OpenRouter), a mode-aware Model control (Go dropdown, Zen/OpenRouter manual input, instant on mode change), a Credential source segmented selector shown only when both keys are configured (presence from status metadata; saves only SENTRY_OPENCODE_PROVIDER with Go-vs-Zen retention: draft, persisted, session memory, model-prefix inference, explicit opencode-go fallback), an Active-upstream line from persisted status only, and preserved Save/Clear/loading/error/secure-storage/accessibility chrome. save.onSuccess now clears only the saved field's draft. Unknown saved values (provider-prefixed, legacy, custom) are shown with warnings and never rewritten; Save requires a value. Tests: new tests/components/providers-models.test.tsx (7 rendered-interaction tests), +1 routing test in desktop-service.test.ts (fake keys, mocked transport), +1 Go-credential line in harness-opencode discovery tests. Verified: desktop components+focused units 146/146 PASS, full desktop tests/unit PASS (exit 0), harness-opencode discovery+model 17/17 PASS, desktop eslint PASS (10 prior unused-variable errors gone), desktop typecheck main/preload/renderer PASS, renderer vite build PASS. UNVERIFIED: real-browser screenshot review (no browser/Playwright in this environment; static-markup inspection done instead) and any paid/live provider call (by design, never attempted). `shux contract` unavailable (`shux` not installed); records maintained directly. Working tree left uncommitted as found.
+
+## Previous record (preserved)
+
 # Project import modal, cancellation, and smooth loader polish — implemented and verified
 
 2026-10-24. On `chore/app-cleanup-and-polish`: replaced the inline project
@@ -874,3 +992,21 @@ SENTRY_DESKTOP_URL and ELECTRON_RUN_AS_NODE removed from that shell. Close an
 existing Sentry instance first because of single-instance behavior. Instructions
 only; no app launch, installation, profile change or provider execution performed.
 shux contract attempted again, unavailable; protocol maintained directly.
+
+## 2026-10-25 - Provider model dropdown review and continuation prompt (complete)
+
+Owner requested investigation and a prompt for the implementing AI, not a code fix.
+Reviewed the dirty Providers.tsx plus untracked provider-models.ts and its unit tests,
+existing provider component/status tests, secure credential preferences, runtime forwarding,
+and OpenCode harness provider-to-key mapping. Product files preserved.
+Blockers: ModelSelectField renders LRBLOCK and is never mounted; modelList metadata is
+ignored by card rendering; conditional active-key control is missing. Scoped ESLint FAIL
+(10 unused-variable errors). Renderer typecheck PASS; catalog unit tests 6/6 PASS;
+existing provider component/status tests 9/9 PASS (React warnings). No live UI or paid calls.
+Official OpenCode Go/Console, DeepSeek pricing and Z.AI documentation consulted.
+Go and Go Plus share the published model list; Zen is pay-as-you-go. Continuation prompt
+must explicitly distinguish subscription dropdowns from manual pay-as-you-go entry,
+validate official model IDs and endpoint compatibility, preserve both encrypted keys,
+persist activation with SENTRY_OPENCODE_PROVIDER and test rendered interactions/runtime routing.
+The cause of the other AI stopping cannot be established from the working tree alone.
+shux contract attempted, unavailable on PATH; task status/ledger/handoff updated directly.

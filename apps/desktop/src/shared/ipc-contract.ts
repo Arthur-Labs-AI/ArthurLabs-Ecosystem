@@ -9,6 +9,7 @@ export const IPC_CHANNELS = [
   'projects:list',
   'projects:add',
   'projects:cancel-add',
+  'projects:cancel-update',
   'projects:get',
   'projects:revisions',
   'projects:update',
@@ -48,6 +49,7 @@ export const IPC_CHANNELS = [
   'runtime:reclaim-space',
   'cli:status',
   'cli:set-enabled',
+  'app:set-language',
 ] as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[number];
@@ -116,6 +118,7 @@ export interface SentryDesktopApi {
     list(): Promise<unknown[]>;
     add(sourcePath: string): Promise<unknown>;
     cancelAdd?(): Promise<{ cancelled: boolean; count?: number }>;
+    cancelUpdate?(): Promise<{ cancelled: boolean; count?: number }>;
     get(projectId: string): Promise<unknown>;
     revisions(projectId: string): Promise<unknown[]>;
     update(projectId: string, sourcePath?: string): Promise<unknown>;
@@ -140,6 +143,7 @@ export interface SentryDesktopApi {
         includePaths?: string[];
         instructions?: string;
         agentStackIds?: string[];
+        revisionId?: string;
       },
     ): Promise<DesktopOperation>;
     /** Back-compat alias for start. */
@@ -150,6 +154,7 @@ export interface SentryDesktopApi {
         includePaths?: string[];
         instructions?: string;
         agentStackIds?: string[];
+        revisionId?: string;
       },
     ): Promise<DesktopOperation>;
     cancel(runId: string): Promise<unknown>;
@@ -257,5 +262,13 @@ export interface SentryDesktopApi {
   };
   readonly subscribe: {
     onRunUpdate(callback: RunUpdateCallback): () => void;
+  };
+  readonly app: {
+    /**
+     * Mirror the renderer-selected interface language to the main-process
+     * store so native dialogs and the fatal boot screen can translate.
+     * Best-effort: the renderer selection applies regardless of the write.
+     */
+    setLanguage(language: 'en' | 'bg'): Promise<{ saved: boolean; language: 'en' | 'bg' }>;
   };
 }

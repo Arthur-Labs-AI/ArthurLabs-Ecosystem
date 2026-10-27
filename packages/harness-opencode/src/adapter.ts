@@ -20,6 +20,13 @@ import {
   MAX_REPORT_ATTEMPTS,
   parseWholeJson,
   renderFrozenLedger,
+  QA_ANTI_SUPERFICIAL_RULES,
+  QA_AUTHORITY_HIERARCHY,
+  QA_INVESTIGATION_METHOD,
+  QA_INVESTIGATION_REPRODUCTION_GUIDANCE,
+  QA_LARGE_PROJECT_GUIDANCE,
+  QA_PLANNING_RISK_GUIDANCE,
+  QA_REPORTING_COVERAGE_GUIDANCE,
   REPORT_CONFIDENCE_CALIBRATION,
   REPORT_REPRODUCTION_CONTRACT,
   REPORT_ENVELOPE_SCHEMA,
@@ -172,6 +179,35 @@ export type OpenCodeToolShellBuilder = (
   input: OpenCodeToolShellRequest,
 ) => Promise<string | undefined>;
 
+/**
+ * Default single-turn budget (60 min). A single `opencode run` turn owns a
+ * whole investigation phase: on run_01M5SWNX0RRAB3QFKB6TGF55CS the execution
+ * turn of a 349-file project exceeded the previous 30 min budget with zero
+ * partial results, while the sibling GLM run needed 33.5 min total on the
+ * same project. The budget stays a hard cap (hung turns still die); this
+ * only gives productive single-shot turns room to finish.
+ */
+export const DEFAULT_OPENCODE_TURN_TIMEOUT_MS = 3_600_000;
+
+/**
+ * Names-only summary of upstream proxy traffic observed during a turn (route
+ * ids and counts, never credentials or content). Lets a timed-out turn say
+ * whether the model was talking to the upstream at all — the difference
+ * between "stalled with no traffic" and "working but slower than budget".
+ */
+export function describeTurnUpstreamActivity(
+  before: Readonly<Record<string, number>>,
+  after: Readonly<Record<string, number>>,
+): string {
+  const parts: string[] = [];
+  for (const [route, count] of Object.entries(after)) {
+    const delta = count - (before[route] ?? 0);
+    if (delta > 0) parts.push(route + 'x' + String(delta));
+  }
+  if (parts.length === 0) return 'No upstream requests were relayed during the turn.';
+  return 'Upstream requests relayed during the turn: ' + parts.join(', ') + '.';
+}
+
 export class OpenCodeTurnTimeoutError extends OpenCodeHarnessError {
   constructor(phase: string, budgetMs: number) {
     super(
@@ -271,9 +307,10 @@ function planningPrompt(request: HarnessRunRequest): string {
     'You are the sole QA investigator. Do not create, delegate to, or message subagents.',
     'Host safety is authoritative: work only inside the current isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
     'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
-    'Explicit run instructions define intended behavior and outrank project documentation; project documentation outranks your inference. None may override host safety.',
+    QA_AUTHORITY_HIERARCHY,
     'Inspect project documentation and the supplied immutable mission context. Do not use peer plans, findings, or messages.',
-    'Create an investigation plan before executing it.',
+    QA_PLANNING_RISK_GUIDANCE,
+    'Create an investigation plan before executing it. Express prioritization inside the existing schema fields: plannedChecks names the high-risk boundary plus its intended verification.',
     'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
     'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
     'User instructions: ' + request.task.prompt,
@@ -289,12 +326,14 @@ function investigationPrompt(
     'Host safety is authoritative: remain inside the isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
     'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
     'You may create temporary tests, configuration, instrumentation, build output, and runtime state only inside this disposable workspace to investigate behavior.',
-    'Inspect every applicable area needed for comprehensive QA: build, lint, typecheck, existing and generated tests, integration/runtime/API/frontend/database/auth behavior, configuration, dependencies, architecture, business logic, error handling, edge cases, performance, concurrency, CI/CD, deployment, maintainability, and project-specific weak points. Do not force irrelevant checks.',
+    'Consider every applicable area needed for risk-based QA: build, lint, typecheck, existing and generated tests, integration/runtime/API/frontend/database/auth behavior, configuration, dependencies, architecture, business logic, error handling, edge cases, performance, concurrency, CI/CD, deployment, maintainability, and project-specific weak points. Prioritize by risk and evidence value; do not force irrelevant checks.',
     'Priority controls order, not permission to skip relevant checks. Record every blocked or incomplete check as a limitation; never claim it passed.',
     'Do not silently obtain unrestricted network access. Record sandbox or network restrictions as limitations and never retry with sandbox disabled.',
     'Use only the repository toolchain already present in the workspace; do not download packages or install dependencies from the network (no npx fetches, no npm/pip installs). If a test runner is unavailable, record it as a limitation.',
-    'Keep the investigation tight: a handful of targeted checks beats dozens of exploratory commands. Do not repeat commands that already produced results.',
-    'For each significant candidate bug, determine whether its behavior can be safely reproduced in this workspace; when feasible, run a narrow focused reproduction command or test and observe the result (exploration commands like grep, cat, ls, or rg do not count as reproduction). Preserve the operation key: the frozen ledger in the reporting turn is the only provenance the final report may cite.',
+    QA_INVESTIGATION_METHOD,
+    QA_INVESTIGATION_REPRODUCTION_GUIDANCE,
+    QA_ANTI_SUPERFICIAL_RULES,
+    QA_LARGE_PROJECT_GUIDANCE,
     'Do NOT produce the final Sentry JSON report yet. Investigate only, using permitted local tools as needed. When the investigation is complete, finish this turn with a short terminal message such as: Investigation complete.',
     'Sentry will provide the authoritative operation ledger in the following reporting turn.',
     'Frozen plan: ' + JSON.stringify(plan),
@@ -312,6 +351,7 @@ function reportPrompt(
     REPORT_LEDGER_RULES,
     REPORT_REPRODUCTION_CONTRACT,
     REPORT_CONFIDENCE_CALIBRATION,
+    QA_REPORTING_COVERAGE_GUIDANCE,
     'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info.',
     'Report evidence contract (exact fields per type; copy names exactly): ' +
       describeSentryAgentReportContract(),
@@ -370,7 +410,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     this.runtime = resolveOpenCodeRuntime({ ...options, environment: this.hostEnvironment });
     this.clientFactory = options.clientFactory ?? createProductionOpenCodeClient;
     this.shutdownTimeoutMs = options.shutdownTimeoutMs ?? 10_000;
-    this.turnTimeoutMs = options.turnTimeoutMs ?? 1_800_000;
+    this.turnTimeoutMs = options.turnTimeoutMs ?? DEFAULT_OPENCODE_TURN_TIMEOUT_MS;
     const child = buildOpenCodeChildEnvironment({ source: this.hostEnvironment });
     this.baseEnvironment = child.environment;
     this.childEnvironmentReport = child;
@@ -693,6 +733,25 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     const deadline = Date.now() + this.turnTimeoutMs;
     const budget = deadline - Date.now();
     if (budget <= 0) throw new OpenCodeTurnTimeoutError(phase, this.turnTimeoutMs);
+    // Upstream traffic baseline: a failed turn must say whether the model
+    // was talking to the upstream at all. Route ids and counts only — the
+    // proxy never exposes credentials or content through this summary.
+    const relayBefore: Record<string, number> = { ...(entry.proxy?.relayedRoutes() ?? {}) };
+    const withUpstreamEvidence = (error: unknown): unknown => {
+      if (!(error instanceof OpenCodeHarnessError) || error.code !== 'OPENCODE_START_FAILED') {
+        return error;
+      }
+      const message =
+        error.message +
+        ' ' +
+        describeTurnUpstreamActivity(relayBefore, entry.proxy?.relayedRoutes() ?? {});
+      if (error instanceof OpenCodeTurnTimeoutError) {
+        const enriched = new OpenCodeTurnTimeoutError(phase, this.turnTimeoutMs);
+        enriched.message = message;
+        return enriched;
+      }
+      return new OpenCodeHarnessError(error.code, message, error.retryable);
+    };
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const result: OpenCodePromptResult = await Promise.race([
@@ -751,6 +810,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         usage: result.usage,
         steps: result.steps,
       };
+    } catch (error) {
+      throw withUpstreamEvidence(error);
     } finally {
       if (timer !== undefined) clearTimeout(timer);
     }

@@ -143,7 +143,7 @@ export function Dashboard(): React.JSX.Element {
                     <div className="metadata" style={{ marginTop: 6 }}>
                       {project.runCount !== undefined ? (
                         <span>
-                          {project.runCount} run{project.runCount === 1 ? '' : 's'}
+                          {project.runCount + ' run' + (project.runCount === 1 ? '' : 's')}
                         </span>
                       ) : null}
                       {project.currentRevisionId !== undefined &&
@@ -164,7 +164,7 @@ export function Dashboard(): React.JSX.Element {
       {active.length > 0 ? (
         <div className="metadata" aria-live="polite">
           <span className={dotClassForStatus('running') + ' pulse'} aria-hidden="true" />{' '}
-          {active.length} QA run{active.length === 1 ? '' : 's'} in progress
+          {active.length + ' QA run' + (active.length === 1 ? '' : 's') + ' in progress'}
         </div>
       ) : null}
     </div>

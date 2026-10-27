@@ -64,6 +64,33 @@ function translateExecutionRuntimeLine(trimmed: string): string | undefined {
     .replace(/\(source:\s*explicit\)/i, '(източник: изрично зададен)');
 }
 
+const STAGE_LABEL_BG: Record<string, string> = {
+  Preparation: 'Подготовка',
+  Planning: 'Планиране',
+  Investigation: 'Проучване',
+  'Commands / Tests': 'Команди / Тестове',
+  Evidence: 'Доказателства',
+  Reporting: 'Докладване',
+  Completed: 'Завършено',
+};
+const STAGE_STATE_BG: Record<string, string> = {
+  observed: 'наблюдавано',
+  warning: 'предупреждение',
+  active: 'активно',
+  'not observed': 'не е наблюдавано',
+  completed: 'завършено',
+  failed: 'неуспешно',
+  'timed out': 'изтекло време',
+  interrupted: 'прекъснато',
+  cancelled: 'прекъснато',
+};
+function translateStagePair(label: string, state: string): string | undefined {
+  const bgLabel = STAGE_LABEL_BG[label];
+  if (bgLabel === undefined) return undefined;
+  const bgState = STAGE_STATE_BG[state.toLowerCase()];
+  if (bgState === undefined) return undefined;
+  return bgLabel + ' ' + bgState;
+}
 function translateCore(trimmed: string): string {
   if (trimmed.length === 0) return trimmed;
   const exact = BG_MAP[trimmed];
@@ -140,8 +167,9 @@ function translateCore(trimmed: string): string {
     const isTotal = Boolean(findingsEvidenceMatch[2]);
     const eCount = findingsEvidenceMatch[3];
     const fLabel = fCount === '1' ? 'констатация' : 'констатации';
+    const eLabel = eCount === '1' ? 'доказателство' : 'доказателства';
     const totalWord = isTotal ? 'общо ' : '';
-    return `${fCount} ${totalWord}${fLabel} · ${eCount} доказателства`;
+    return `${fCount} ${totalWord}${fLabel} · ${eCount} ${eLabel}`;
   }
 
   const agentSummaryMatch =
@@ -161,7 +189,7 @@ function translateCore(trimmed: string): string {
   const evidenceCountMatch = /^([\d,]+)\s+evidence$/.exec(trimmed);
   if (evidenceCountMatch !== null) {
     const count = evidenceCountMatch[1];
-    return `${count} доказателства`;
+    return count === '1' ? '1 доказателство' : `${count} доказателства`;
   }
 
   const tabCountMatch = /^(Findings|Evidence)\s*\((\d+)\)$/.exec(trimmed);
@@ -192,6 +220,205 @@ function translateCore(trimmed: string): string {
     /^([?\d]+)\/([?\d]+)\s+agents\s*·\s*(\d+)\s+findings\s*·\s*(\d+)\s+issues$/.exec(trimmed);
   if (runSummaryMatch !== null) {
     return `${runSummaryMatch[1]}/${runSummaryMatch[2]} агента · ${runSummaryMatch[3]} констатации · ${runSummaryMatch[4]} проблема`;
+  }
+
+  const bareModeMatch = /^(FULL|TARGETED)\s+QA$/.exec(trimmed);
+  if (bareModeMatch !== null) {
+    return bareModeMatch[1] === 'FULL' ? 'ПЪЛЕН QA' : 'ЦЕЛЕВИ QA';
+  }
+
+  const runsRevMatch = /^(\d+)\s+runs?\s*·\s*rev\s+(.+)$/.exec(trimmed);
+  if (runsRevMatch !== null) {
+    const count = runsRevMatch[1];
+    const rev = runsRevMatch[2];
+    return count === '1' ? `1 изпълнение · rev ${rev}` : `${count} изпълнения · rev ${rev}`;
+  }
+
+  const openRecentMatch = /^Open most recent active run\. (\d+) active runs?$/.exec(trimmed);
+  if (openRecentMatch !== null) {
+    const count = openRecentMatch[1];
+    return count === '1'
+      ? 'Отвори последното активно изпълнение. 1 активно изпълнение'
+      : `Отвори последното активно изпълнение. ${count} активни изпълнения`;
+  }
+
+  const removeProjectMatch = /^Remove project (.+)$/.exec(trimmed);
+  if (removeProjectMatch !== null) {
+    return `Премахни проект ${removeProjectMatch[1]}`;
+  }
+
+  const removeHeadingMatch = /^Remove (.+)\?$/.exec(trimmed);
+  if (removeHeadingMatch !== null) {
+    return `Премахни ${removeHeadingMatch[1]}?`;
+  }
+
+  const createdMatch = /^(\d+)\s+created$/.exec(trimmed);
+  if (createdMatch !== null) {
+    return `${createdMatch[1]} създадени`;
+  }
+
+  const targetedPathsMatch = /^TARGETED\s*·\s*(\d+)\s+paths?$/.exec(trimmed);
+  if (targetedPathsMatch !== null) {
+    const count = targetedPathsMatch[1];
+    return count === '1' ? 'ЦЕЛЕВИ · 1 път' : `ЦЕЛЕВИ · ${count} пътя`;
+  }
+
+  const severityBreakdownMatch =
+    /^(\d+)\s+Critical\s*·\s*(\d+)\s+High\s*·\s*(\d+)\s+Medium\s*·\s*(\d+)\s+Low\s*·\s*(\d+)\s+Info$/.exec(
+      trimmed,
+    );
+  if (severityBreakdownMatch !== null) {
+    const [, critical, high, medium, low, info] = severityBreakdownMatch;
+    return `${critical} критични · ${high} високи · ${medium} средни · ${low} ниски · ${info} информационни`;
+  }
+
+  const paletteEntryMatch = /^(Open Project|Start Full QA|Start Targeted QA) — (.+)$/.exec(trimmed);
+  if (paletteEntryMatch !== null) {
+    const action =
+      paletteEntryMatch[1] === 'Open Project'
+        ? 'Отвори проект'
+        : paletteEntryMatch[1] === 'Start Full QA'
+          ? 'Стартирай ПЪЛЕН QA'
+          : 'Стартирай ЦЕЛЕВИ QA';
+    return `${action} — ${paletteEntryMatch[2]}`;
+  }
+
+  const ioCountersMatch = /^Input ([^·]+) · Output ([^·]+) · Cached ([^·]+)$/.exec(trimmed);
+  if (ioCountersMatch !== null) {
+    return `Вход ${(ioCountersMatch[1] ?? '').trim()} · Изход ${(ioCountersMatch[2] ?? '').trim()} · Кеширани ${(ioCountersMatch[3] ?? '').trim()}`;
+  }
+
+  const severityCountMatch = /^(critical|high|medium|low|info): (\d+)$/.exec(trimmed);
+  if (severityCountMatch !== null) {
+    const forms: Record<string, [string, string]> = {
+      critical: ['критична', 'критични'],
+      high: ['висока', 'високи'],
+      medium: ['средна', 'средни'],
+      low: ['ниска', 'ниски'],
+      info: ['информационна', 'информационни'],
+    };
+    const sevKey = severityCountMatch[1] ?? '';
+    const sevCount = severityCountMatch[2] ?? '';
+    const [singular, plural] = forms[sevKey] ?? [sevKey, sevKey];
+    return `${sevCount === '1' ? singular : plural}: ${sevCount}`;
+  }
+
+  const beforeStatusMatch =
+    /^No findings were reported before (timed out|failed|cancelled|interrupted)\. Analysis is incomplete\.$/.exec(
+      trimmed,
+    );
+  if (beforeStatusMatch !== null) {
+    const beforeKey = beforeStatusMatch[1] ?? '';
+    const st = STATUS_BG[beforeKey] ?? beforeKey;
+    return `Не са докладвани констатации преди ${st}. Анализът е непълен.`;
+  }
+
+  const partialReportMatch =
+    /^Partial report — agent (timed out|failed|cancelled|interrupted)\. Reported findings and evidence are retained; analysis is incomplete\.$/.exec(
+      trimmed,
+    );
+  if (partialReportMatch !== null) {
+    const partialKey = partialReportMatch[1] ?? '';
+    const st = STATUS_BG[partialKey] ?? partialKey;
+    return `Частичен доклад — агент ${st}. Докладваните констатации и доказателства се запазват; анализът е непълен.`;
+  }
+
+  const rawEventsMatch = /^Raw events \((\d+)\)$/.exec(trimmed);
+  if (rawEventsMatch !== null) {
+    return `Сурови събития (${rawEventsMatch[1]})`;
+  }
+
+  const stagePairMatch =
+    /^(Preparation|Planning|Investigation|Commands \/ Tests|Evidence|Reporting|Completed)\s+(.+)$/.exec(
+      trimmed,
+    );
+  if (stagePairMatch !== null) {
+    const translatedStage = translateStagePair(stagePairMatch[1] ?? '', stagePairMatch[2] ?? '');
+    if (translatedStage !== undefined) return translatedStage;
+  }
+  const stageListPrefix = 'Stage: ';
+  if (trimmed.startsWith(stageListPrefix)) {
+    const stageItems = trimmed.slice(stageListPrefix.length).split(', ');
+    const translatedItems = stageItems.map((item) => translateText(item, 'bg'));
+    if (translatedItems.some((t, i) => t !== stageItems[i]))
+      return 'Етап: ' + translatedItems.join(', ');
+  }
+  const dashIndex = trimmed.indexOf(' — ');
+  if (dashIndex > 0) {
+    const leftSource = trimmed.slice(0, dashIndex);
+    const rightSource = trimmed.slice(dashIndex + 3);
+    const leftText = translateText(leftSource, 'bg');
+    const rightText = translateText(rightSource, 'bg');
+    if (leftText !== leftSource || rightText !== rightSource) return leftText + ' — ' + rightText;
+  }
+  const agentActivityMatch =
+    /^([^\s]+?)\s+(running|planning|completed|failed|timed\s+out|interrupted|investigating|reporting|starting|probing)$/.exec(
+      trimmed,
+    );
+  if (agentActivityMatch !== null) {
+    const name = agentActivityMatch[1];
+    const statusKey = agentActivityMatch[2]?.toLowerCase().replace(/\s+/, ' ') ?? '';
+    const statusBg = STATUS_BG[statusKey];
+    if (statusBg !== undefined) {
+      return `${name} ${statusBg}`;
+    }
+  }
+
+  // Interpolated sentences render as a single text node (template literal
+  // in JSX), so they never match the dictionary and need frame handlers.
+  // Dynamic values (distro names, model ids, sizes) pass through untranslated.
+  const reclaimBodyMatch =
+    /^Sentry will stop its runtime and shut down WSL to compact the (.+) disk\. Save work and close other applications using WSL, including Docker and terminals\. If another distribution is running, Sentry will refuse\. Windows will request administrator approval\. Keep Sentry open until compaction finishes\. Your files are kept, and the disk can grow again as needed\. The amount reclaimed may be zero\.$/.exec(
+      trimmed,
+    );
+  if (reclaimBodyMatch !== null) {
+    return `Sentry ще спре средата за изпълнение и ще изключи WSL, за да компактира диска ${reclaimBodyMatch[1] ?? ''}. Запазете работата си и затворете другите приложения, използващи WSL, включително Docker и терминали. Ако работи друга дистрибуция, Sentry ще откаже. Windows ще поиска администраторско одобрение. Дръжте Sentry отворен, докато компактирането завърши. Файловете ви се запазват, а дискът може да порасне отново при нужда. Освободеното количество може да е нула.`;
+  }
+
+  const reclaimedMatch =
+    /^Reclaimed ([\d.]+ GiB) from the (.+) disk\. Windows drive free: ([\d.]+ GiB)\.( Sentry reconnected\.)?$/.exec(
+      trimmed,
+    );
+  if (reclaimedMatch !== null) {
+    return `Освободени ${reclaimedMatch[1] ?? ''} от диска ${reclaimedMatch[2] ?? ''}. Свободно място на Windows устройството: ${reclaimedMatch[3] ?? ''}.${reclaimedMatch[4] !== undefined ? ' Sentry се свърза отново.' : ''}`;
+  }
+
+  const savedModelMatch =
+    /^Saved model “(.+)” is not in the current list\. It is preserved — select a listed model above or keep this custom id\.$/.exec(
+      trimmed,
+    );
+  if (savedModelMatch !== null) {
+    return `Запазеният модел „${savedModelMatch[1] ?? ''}“ не е в текущия списък. Запазен е — изберете модел от списъка по-горе или задръжте този потребителски идентификатор.`;
+  }
+
+  const legacyNoteMatch = /^(\S+) is a (.+)\. Your saved value is preserved\.$/.exec(trimmed);
+  if (legacyNoteMatch !== null) {
+    return `${legacyNoteMatch[1] ?? ''} е ${legacyNoteMatch[2] ?? ''}. Запазената стойност е съхранена.`;
+  }
+
+  const savedProviderMatch =
+    /^Saved provider “(.+)” is unrecognized\. It is preserved — select a supported provider above before saving\.$/.exec(
+      trimmed,
+    );
+  if (savedProviderMatch !== null) {
+    return `Запазеният доставчик „${savedProviderMatch[1] ?? ''}“ е неразпознат. Запазен е — изберете поддържан доставчик по-горе преди запазване.`;
+  }
+
+  const keepSavedMatch = /^Keep saved “(.+)” \(unrecognized\)$/.exec(trimmed);
+  if (keepSavedMatch !== null) {
+    return `Задръж запазеното „${keepSavedMatch[1] ?? ''}“ (неразпознато)`;
+  }
+
+  const activeUpstreamMatch = /^Active upstream: (.+)$/.exec(trimmed);
+  if (activeUpstreamMatch !== null) {
+    return `Активен доставчик: ${activeUpstreamMatch[1] ?? ''}`;
+  }
+
+  // Revision picker option: id and formatted date pass through, only the
+  // recency marker translates.
+  const currentRevisionMatch = /^(\S+) · (.+) · current$/.exec(trimmed);
+  if (currentRevisionMatch !== null) {
+    return `${currentRevisionMatch[1] ?? ''} · ${currentRevisionMatch[2] ?? ''} · текуща`;
   }
 
   return trimmed;
@@ -268,6 +495,44 @@ function translateSubtree(root: HTMLElement, language: AppLanguage): void {
     if (currentAttr !== target) {
       el.setAttribute('placeholder', target);
     }
+  }
+  // Tooltips and accessible names follow the interface language too.
+  const labelled = root.querySelectorAll('[title], [aria-label]');
+  for (const el of labelled) {
+    if (shouldSkipElement(el)) continue;
+    translateElementAttribute(el, 'title', language);
+    translateElementAttribute(el, 'aria-label', language);
+  }
+}
+
+const originalAttributes = new WeakMap<Element, Map<string, string>>();
+const lastWrittenAttributes = new WeakMap<Element, Map<string, string>>();
+
+function translateElementAttribute(el: Element, attr: string, language: AppLanguage): void {
+  const current = el.getAttribute(attr);
+  if (current === null || current.trim().length === 0) return;
+  let sources = originalAttributes.get(el);
+  if (sources === undefined) {
+    sources = new Map<string, string>();
+    originalAttributes.set(el, sources);
+  }
+  let written = lastWrittenAttributes.get(el);
+  if (written === undefined) {
+    written = new Map<string, string>();
+    lastWrittenAttributes.set(el, written);
+  }
+  const last = written.get(attr);
+  // If React updated the attribute underneath us, refresh the stored English source.
+  if (!sources.has(attr) || (last !== undefined && current !== last)) {
+    sources.set(attr, current);
+  }
+  const source = sources.get(attr) ?? current;
+  const target = language === 'en' ? source : translateText(source, 'bg');
+  if (current !== target) {
+    written.set(attr, target);
+    el.setAttribute(attr, target);
+  } else {
+    written.set(attr, current);
   }
 }
 

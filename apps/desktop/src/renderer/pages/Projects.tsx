@@ -179,7 +179,7 @@ export function Projects(): React.JSX.Element {
                 <dt>Runs</dt>
                 <dd>{String(project.runCount) + (project.runCount === 1 ? ' run' : ' runs')}</dd>
               </dl>
-              <div className="actions" style={{ marginTop: 10, flexWrap: 'wrap' }}>
+              <div className="actions actions-spread" style={{ marginTop: 10 }}>
                 <Link to={'/projects/' + project.projectId}>
                   <button className="compact primary">
                     Open <ArrowRight size={13} />

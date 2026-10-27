@@ -2,8 +2,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { HarnessBinaryCard, Providers } from '../../src/renderer/pages/Providers.js';
+
+afterEach(() => cleanup());
 
 /**
  * The advanced harness-binary section must exist with saveable fields:
@@ -68,5 +71,113 @@ describe('Providers harness binary section', () => {
     expect(html).toContain('Value for OPENROUTER_API_KEY');
     expect(html).toContain('Value for DEEPSEEK_API_KEY');
     expect(html).toContain('Value for ANTHROPIC_AUTH_TOKEN');
+  });
+});
+
+describe('Providers OpenCode executable suggestion', () => {
+  const DEEPSEEK_SAVED = {
+    name: 'SENTRY_DEEPSEEK_BINARY',
+    configured: true,
+    persistence: 'persisted',
+    source: 'persisted',
+    hint: '/home/merte/.local/share/sentry/tools/deepseek/bin/dsh',
+  };
+  const SUGGESTED = '/home/merte/.local/share/sentry/tools/opencode/node_modules/.bin/opencode';
+
+  function mountCard(
+    statuses: Array<{
+      name: string;
+      configured: boolean;
+      persistence: string;
+      source: string;
+      hint: string;
+    }>,
+    detected?: { path: string; available: boolean },
+  ) {
+    function Wrapper(): React.JSX.Element {
+      const [values, setValues] = React.useState<Record<string, string>>({});
+      return (
+        <MemoryRouter>
+          <HarnessBinaryCard
+            statuses={statuses}
+            values={values}
+            setValues={setValues}
+            onSave={() => undefined}
+            onClear={() => undefined}
+            savePending={false}
+            clearPending={false}
+            onError={() => undefined}
+            detectedOpenCodeBinary={detected}
+          />
+        </MemoryRouter>
+      );
+    }
+    render(<Wrapper />);
+  }
+
+  it('auto-fills the empty OpenCode field from the sibling home directory', async () => {
+    mountCard([DEEPSEEK_SAVED]);
+    const input = (await screen.findByLabelText(
+      'Value for SENTRY_OPENCODE_BINARY',
+    )) as HTMLInputElement;
+    await waitFor(() => expect(input.value).toBe(SUGGESTED));
+    expect(
+      screen.getByText('Suggested OpenCode path derived from your other executable settings.'),
+    ).toBeDefined();
+  });
+
+  it('offers the suggestion over a stale saved path without overwriting it', async () => {
+    mountCard([
+      DEEPSEEK_SAVED,
+      {
+        name: 'SENTRY_OPENCODE_BINARY',
+        configured: true,
+        persistence: 'persisted',
+        source: 'persisted',
+        hint: '/home/stale/.local/share/sentry/tools/opencode/node_modules/.bin/opencode',
+      },
+    ]);
+    const input = (await screen.findByLabelText(
+      'Value for SENTRY_OPENCODE_BINARY',
+    )) as HTMLInputElement;
+    expect(input.value).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: 'Use suggested path' }));
+    await waitFor(() => expect(input.value).toBe(SUGGESTED));
+  });
+
+  it('stays quiet without a usable sibling path', async () => {
+    mountCard([]);
+    const input = (await screen.findByLabelText(
+      'Value for SENTRY_OPENCODE_BINARY',
+    )) as HTMLInputElement;
+    expect(input.value).toBe('');
+    expect(screen.queryByRole('button', { name: 'Use suggested path' })).toBeNull();
+    expect(
+      screen.queryByText('Suggested OpenCode path derived from your other executable settings.'),
+    ).toBeNull();
+  });
+
+  it('prefers live detection over the sibling heuristic', async () => {
+    const detected = '/opt/opencode/bin/opencode';
+    mountCard([DEEPSEEK_SAVED], { path: detected, available: true });
+    const input = (await screen.findByLabelText(
+      'Value for SENTRY_OPENCODE_BINARY',
+    )) as HTMLInputElement;
+    await waitFor(() => expect(input.value).toBe(detected));
+    expect(screen.getByText('Suggested OpenCode path from runtime detection.')).toBeDefined();
+    expect(
+      screen.queryByText('Suggested OpenCode path derived from your other executable settings.'),
+    ).toBeNull();
+  });
+
+  it('falls back to the sibling path when detection is unavailable', async () => {
+    mountCard([DEEPSEEK_SAVED], { path: SUGGESTED, available: false });
+    const input = (await screen.findByLabelText(
+      'Value for SENTRY_OPENCODE_BINARY',
+    )) as HTMLInputElement;
+    await waitFor(() => expect(input.value).toBe(SUGGESTED));
+    expect(
+      screen.getByText('Suggested OpenCode path derived from your other executable settings.'),
+    ).toBeDefined();
   });
 });

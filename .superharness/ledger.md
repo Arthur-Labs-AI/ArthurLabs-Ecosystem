@@ -1,3 +1,55 @@
+# PR #39 check fixes — 2026-10-27
+
+Owner requested failure diagnosis and fixes. CI quality job `122080059654`
+failed Prettier on 13 tracked files, now formatted. Full format/hygiene/diff
+PASS. Reproduced evaluator test RED (1/8); supplied absent fixture evidence
+`a1`, preserving expected results and invalid-evidence safety behavior.
+Pipeline GREEN 65/65. Broader local checks and fresh CI receipts tracked in
+PR #39. No production logic/CI/hooks/identity changes or merge/release/paid run.
+shux absent; protocol direct.
+
+## Previous record (preserved)
+
+# Repository / PR inspection — 2026-10-27
+
+Owner requested status and PR to dev. Opened draft
+[PR #39](https://github.com/Mert1026/Sentry/pull/39), source `31de8d4` on
+`chore/app-cleanup-and-polish`, target `d366de9`. Initial tree clean, remote
+synchronized, divergence 28 source / 2 target commits; trial merge conflict-free.
+Hygiene/diff PASS; lint/typecheck/build 60 tasks PASS (37 cached). Format FAIL
+on 14 files. Uncached tests stopped at evidence-pipeline: 64 PASS / 1 FAIL,
+contradictory missing-evidence expectation at `qa-eval.test.ts:202`. Remaining
+tests and completed CI UNVERIFIED. Product source unchanged; protocol receipts
+committed separately. No merge/release/paid calls. shux absent, records direct.
+
+## Previous record (preserved)
+
+# Agents-explained 2026-10-26: question-only, no code. Agents follow fixed staged prompts (planning/investigation/reporting JSON contracts), identical skeleton across OpenCode/DeepSeek/GLM; mission envelope from run-engine.
+
+# Release-commands assessment 2026-10-26: consumer steps yes-phased (verify/check, guided setup, signed auto-apply last); producer steps stay maintainer-side. No code. Trust anchors already fit (build-identity.json, versioned runtime/current).
+
+# Checks+security 2026-10-26: gates table in task-status; fixed my lint error + formatted my files (d6224ba). Pre-existing fails left for owner: 9 format files, verifier-trust env, RR bump, esbuild install for distribution test.
+
+# Detection-first suggestion 2026-10-26: doctors executionPath preferred (availability-gated), sibling fallback. 27/27 suites, bundle rebuilt. Committed c150713.
+
+# Executable suggestion 2026-10-26: OpenCode binary auto-fill from sibling WSL home + apply button. 14/14 tests, bundle rebuilt. Committed 05694a6.
+
+# Layer-skew fix 2026-10-26: rebuilt main+preload, redeployed WSL runtime 1.0.2-7078c67 (verified contents). No source changes; restart required.
+
+# Revision picker — 2026-10-25: runs accept revisionId (engine snapshot-from-material, full plumbing, picker newest-first + dates, confirm display). Gates: engine 18/18 file, desktop 541/541, runtime 74, typechecks/eslint clean, bundle rebuilt. Committed 8cb7b4e. Pre-existing: 6 verifier-trust sandbox failures (clean-tree identical).
+
+# Committed 2026-10-25 on chore/app-cleanup-and-polish: 91096f1 provider settings, 3fa648a button/label spacing, 50cb0b7 turn budget+evidence, f7e621e translations, 676df41 update modal+cancel. All gates green per-commit-area on final tree; dist/ rebuilt locally (gitignored).
+
+# Update modal + quit-cancel — 2026-10-25: blocking revision-update window (timer, cancel) + Start QA disabled during update; `projects.cancelUpdate` RPC end-to-end (protocol/runtime/service/router/IPC/preload); before-quit + beforeunload + shutdown abandon the revision (healthy copy preserved, state back to ready). Locales en/bg. Gates: runtime 14, renderer 18, router/quit/preload 26, protocol 18 PASS; typechecks + eslint PASS; bundle rebuilt.
+
+# Card buttons spread — 2026-10-25: owner still saw Open/Remove close (stale dist bundle). Row now `actions actions-spread` (space-between, 12px). Renderer rebuilt (hash verified); dist gitignored. 8/8 tests, eslint/typecheck PASS. 40-min run confirms slow-model diagnosis.
+
+# OpenCode turn timeout — 2026-10-25: Fener QA partial run; opencode-go/mimo-v2.6-flash execution turn killed at 30-min default with zero observable events (intra-turn opaque by design). Verdict: 30-min single-turn cap is the binding constraint on a 349-file project (GLM needed 33.5 min total). Fix: DEFAULT_OPENCODE_TURN_TIMEOUT_MS=3_600_000 (OpenCode only) + names-only upstream relay evidence on timeout failures. Tests 24/24 adapter PASS; full-suite path-sandbox 5s flakes proven load-dependent (green in isolation both trees). shux unavailable; direct records.
+
+# Button spacing fix — 2026-10-25: owner-reported touching buttons (Отвори / Премахни проекта). Root cause: missing base `.actions` CSS rule. Added flex+gap base (fixes project cards, removal dialog, WSL reclaim dialog) + AgentInspector finding-row gap. Regression test RED→GREEN verified. 15/15 focused PASS, eslint/typecheck PASS. shux unavailable; direct records.
+
+# Provider settings completion — 2026-10-25: finished unfinished Providers.tsx/provider-models peccata in place (owner tree preserved). Official-doc catalogs (Go 29, Zen 74 paid, DeepSeek current+legacy alias, GLM-5.x), mode-aware model controls, both-keys credential-source selector with Go/Zen retention, draft-preserving saves, 7 rendered-interaction tests + routing tests (fake creds/mocked transports, no paid calls). Gates: desktop 146/146 focused + full unit PASS, harness-opencode 17/17 PASS, desktop eslint/typecheck PASS, renderer build PASS. Screenshot review + live calls UNVERIFIED (no browser/paid access). shux unavailable; protocol files updated directly.
+
 - 2026-10-15 — Phase6.6 actual clean stable ZIP332inventory and prepared-host packaged acceptancePASS at40ae67c; full/new counts inhandoff. Initial hostedCI38732769947SUCCESS; distributionFAILonlyuploadquota. Privateisolation failure corrected; exact previousruntime/current restored; readonlypackagedhelper andnonexistentdistrorefusalPASS. Documentationprovenancecommit requires freshfinalheadarchive/acceptance andCI, companionPR28receipts. CONDITIONALLYREADY forownerreview; no publicdeliveryclaim/merge/publication/paidQA/realcompaction.
 
 - 2026-10-15 — Phase6.6 stable transition: verified owner-merged2fa19152/tree7245d164, postmerge CI PASS and upload-only quota FAIL; scoped1.0.0 identity/doc/tests, lock unchanged. Newly executed Windows478/3, distribution34/27 and launchers/static PASS; WSL1298/49,40uncached tasks, physicaltrust8/8, distribution52/9PASS. Clean exact-source archive/packaged acceptance/final PR and head CI pending. Owner state/history/frozen contracts preserved; no publication or privileged disk operation. shux unavailable.
@@ -434,6 +486,26 @@ existing Sentry instance first because of single-instance behavior. Instructions
 only; no app launch, installation, profile change or provider execution performed.
 shux contract attempted again, unavailable; protocol maintained directly.
 
+- 2026-10-24 — Added file-backed app-locale bridge so main-process UI follows the renderer language: renderer `setLanguage` mirrors the choice over a new validated `app:set-language` IPC channel (internal only, maintenance-exempt) into `userData/sentry-app-locale.json`; native `showErrorBox` dialogs and the fatal boot screen translate via `app-locale.ts` copy tables with English fallback. All helpers total (never throw). Verified: new `app-locale` (7), router (15), boot-failure (8), quit-lifecycle (9), language-bridge (3) suites pass; full desktop unit+component 514/514; `typecheck:main/preload/renderer` + lint clean. Dynamic runtime error text and agent content stay untranslated by design.
+
 - 2026-10-23 — Owner approved new UI and requested original green palette. Restored forest-green/olive surfaces, warm text and yellow activity through shared CSS and theme-driven graph colors. Layout/animations/functionality/backend preserved. Build20 PASS/19 cached, desktop lint/renderer types PASS, focused16 and browser13 routes PASS; green screenshots reviewed. Source rebuilt/uncommitted; no provider or owner-data changes. Full Desktop496/3 remains prior evidence. shux unavailable; records maintained directly.
 - 2026-10-23 — Created `chore/app-cleanup-and-polish` from `main` (`2cd64d4`). Researched and polished OpenCode provider & API key distinction in Settings / Providers (`Providers.tsx`), `@qa/harness-opencode`, `@qa/runtime`, `@qa/desktop`, and `docs/setup/opencode.md`: distinguished `OpenCode API key (Zen & Go)` (`OPENCODE_API_KEY`, for `opencode-go` subscriptions and `opencode` Zen pay-as-you-go credits) from `OpenRouter API key (Pay-as-you-go)` (`OPENROUTER_API_KEY`, for `openrouter` only), removed details on `Model` and `Provider`, placed the two API key explanations inside collapsible `<details>` disclosures labeled `Explanation`, removed the sidebar logo border/box (`styles.css`, `sentry-theme.css`) and `OBSERVATION SYSTEM` subtitle (`AppShell.tsx`), wired the `Application` button in `Settings.tsx` to `/settings/application` (`ApplicationSettings.tsx`) with theme modes (`Forest Dark`, `Midnight Slate`, `Daylight Light`), English/Bulgarian localization (`locales/en.json`, `locales/bg.json`, `i18n.ts`, default `en`, agent messages untouched), Local CLI Broker on/off toggle (`cli:set-enabled`), Workspace Motion & Animations toggle, Confirm Before Paid QA Runs toggle, and expanded `Developer mode` explanation, fixed unconfigured `"missing"` input placeholders, added provider inference from qualified `opencode-go/` and `opencode/` model IDs when `SENTRY_OPENCODE_PROVIDER` is unset, normalized provider case on push, and surfaced effective OpenCode model/provider in `environmentDoctors()`. Gates: `@qa/harness-opencode` 116 PASS/8 skip, `@qa/runtime` 72 PASS/1 skip, `@qa/desktop` focused & component/router suites PASS, `typecheck` PASS, `lint` PASS, `build` PASS. No PR opened per owner instruction; `shux contract` unavailable.
 - 2026-10-24 — Added Project Import modal window, end-to-end import cancellation, and `smooth_loader_flat_logo.gif` loading animations across the app (`Projects.tsx`, `index.html`, `sentry-theme.css`, `runtime.ts`, `protocol.ts`, `desktop-service.ts`, `desktop-command-router.ts`, `preload.ts`, `ipc-contract.ts`, `main/index.ts`): directory picker now resolves before opening the modal or starting the elapsed counter; modal blocks `Escape`/backdrop dismissal while active, provides a `Cancel import` button (`projects:cancel-add` -> `projects.cancelAdd` aborting `ProjectManager.addProject`), and automatically cancels in-flight uploads on `beforeunload`, Electron `before-quit`, and runtime shutdown. Verified `@qa/runtime-protocol` 18 PASS, `@qa/desktop` focused suites 30 PASS, `typecheck` 37/37 PASS, `lint` 20/20 PASS, `build` 20/20 PASS. `shux contract` unavailable.
+
+## 2026-10-25 - Provider model dropdown review and continuation prompt (complete)
+
+Owner requested investigation and a prompt for the implementing AI, not a code fix.
+Reviewed the dirty Providers.tsx plus untracked provider-models.ts and its unit tests,
+existing provider component/status tests, secure credential preferences, runtime forwarding,
+and OpenCode harness provider-to-key mapping. Product files preserved.
+Blockers: ModelSelectField renders LRBLOCK and is never mounted; modelList metadata is
+ignored by card rendering; conditional active-key control is missing. Scoped ESLint FAIL
+(10 unused-variable errors). Renderer typecheck PASS; catalog unit tests 6/6 PASS;
+existing provider component/status tests 9/9 PASS (React warnings). No live UI or paid calls.
+Official OpenCode Go/Console, DeepSeek pricing and Z.AI documentation consulted.
+Go and Go Plus share the published model list; Zen is pay-as-you-go. Continuation prompt
+must explicitly distinguish subscription dropdowns from manual pay-as-you-go entry,
+validate official model IDs and endpoint compatibility, preserve both encrypted keys,
+persist activation with SENTRY_OPENCODE_PROVIDER and test rendered interactions/runtime routing.
+The cause of the other AI stopping cannot be established from the working tree alone.
+shux contract attempted, unavailable on PATH; task status/ledger/handoff updated directly.

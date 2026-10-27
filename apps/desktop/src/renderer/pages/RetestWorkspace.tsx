@@ -183,13 +183,13 @@ export function RetestWorkspace(): React.JSX.Element {
         title="Retest"
         crumbs={
           <>
-            <Link to="/issues">Issues</Link> / Retest <CopyId id={data.retestRun.id} />
+            <Link to="/issues">Issues</Link> /{'Retest'} <CopyId id={data.retestRun.id} />
           </>
         }
         actions={<StatusLabel status={data.retestRun.status} />}
       />
       <p className="mono muted">
-        REVISION A <CopyId id={data.retestRun.sourceProjectRevisionId} /> → REVISION B{' '}
+        {'REVISION A'} <CopyId id={data.retestRun.sourceProjectRevisionId} /> →{'REVISION B'}
         <CopyId id={data.retestRun.targetProjectRevisionId} />
       </p>
       <div className="card" style={{ marginBottom: 12 }}>

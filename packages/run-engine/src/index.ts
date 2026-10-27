@@ -15,6 +15,7 @@ import {
   RunActivitySchema,
   TargetSpecSchema,
   type AgentRun,
+  type ProjectRevision,
   type Evidence,
   type Finding,
   type HarnessEvent,
@@ -79,6 +80,14 @@ export interface RunOptions {
     readonly sourceRevisionId?: ProjectRevisionId;
     readonly targetRevisionId?: ProjectRevisionId;
   };
+  /**
+   * Run against an older project revision instead of the current working
+   * copy. The revision must belong to the project and its retained material
+   * must still exist (revisions predating retention cannot run). The run
+   * snapshots the retained material read-only: the working copy is never
+   * moved. Omitted runs the current revision (unchanged behavior).
+   */
+  readonly revisionId?: string;
   readonly onHarnessRequest?: (request: HarnessRunRequest) => void;
   /** Signals this request's identity immediately after the initial row is saved. */
   readonly onRunCreated?: (run: QARun) => void;
@@ -244,15 +253,49 @@ export class RunCoordinator {
     let executionStarted = false;
     let stagedRoot: ReturnType<RunActivityProjector['stage']> | undefined;
     try {
-      const revision = await this.projects.assertWorkingCopyIntegrity(projectId);
+      // Revision selection: omitted (or explicitly the current revision)
+      // targets the current working-copy revision exactly as before. An
+      // explicit older revision snapshots its retained material read-only —
+      // the working copy is never moved, so concurrent state stays intact.
+      let revision: ProjectRevision;
+      let sourceRoot: string;
+      const currentId = project.revision.id;
+      if (options.revisionId === undefined || options.revisionId === currentId) {
+        revision = await this.projects.assertWorkingCopyIntegrity(projectId);
+        sourceRoot = projectDataPaths(this.dataRoot, projectId).workingCopy;
+      } else {
+        if (!/^rev_[0-9A-HJKMNP-TV-Z]{26}$/.test(options.revisionId)) {
+          throw new RunEngineError(
+            'INVALID_TARGET',
+            'Malformed revision id: ' + options.revisionId,
+          );
+        }
+        const stored = this.repository.getRevision(options.revisionId);
+        if (stored === undefined || stored.projectId !== projectId) {
+          throw new RunEngineError(
+            'INVALID_TARGET',
+            'Revision ' + options.revisionId + ' is not part of this project',
+          );
+        }
+        const material = await this.projects.revisionMaterialRoot(projectId, stored.id);
+        if (material === undefined) {
+          throw new RunEngineError(
+            'INVALID_TARGET',
+            'Revision ' +
+              options.revisionId +
+              ' predates retained run material and cannot run; update the project instead',
+          );
+        }
+        revision = stored;
+        sourceRoot = material;
+      }
       const context = project.context ?? this.repository.getContextForRevision(revision.id);
       if (context === undefined) throw new Error('PROJECT_CONTEXT_NOT_FOUND: ' + revision.id);
-      const workingCopy = projectDataPaths(this.dataRoot, projectId).workingCopy;
       const snapshot = await this.snapshots.createSnapshot({
         projectId,
         projectRevisionId: revision.id,
         qaRunId: runId,
-        workingCopyPath: workingCopy,
+        workingCopyPath: sourceRoot,
       });
       if (snapshot.contentHash !== revision.contentHash) throw new Error('PROJECT_COPY_DRIFT');
       const createdAt = nowIsoTimestamp();
@@ -475,7 +518,9 @@ export class RunCoordinator {
                 run,
                 registration,
                 index,
-                workingCopy,
+                // Agent workspaces materialize from this tree: the current
+                // working copy, or retained material for an older revision.
+                workingCopy: sourceRoot,
                 rootActivityId: root.id,
                 missionContext: {
                   project: {

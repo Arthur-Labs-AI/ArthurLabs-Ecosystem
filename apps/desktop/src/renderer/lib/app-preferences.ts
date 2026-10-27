@@ -54,6 +54,32 @@ export function setLanguage(language: AppLanguage): void {
   }
   applyDocumentPreferences();
   notifyPreferencesChanged();
+  persistAppLanguageBestEffort(language);
+}
+
+/**
+ * Mirror the selection to the main-process store so native dialogs and the
+ * fatal boot screen can translate. Fire-and-forget: the renderer selection
+ * applies synchronously above regardless of the bridge outcome.
+ */
+function persistAppLanguageBestEffort(language: AppLanguage): void {
+  try {
+    const bridge = (
+      window as unknown as {
+        sentry?: { app?: { setLanguage?: (language: AppLanguage) => unknown } };
+      }
+    ).sentry;
+    const result = bridge?.app?.setLanguage?.(language);
+    if (
+      result !== undefined &&
+      result !== null &&
+      typeof (result as Promise<unknown>).catch === 'function'
+    ) {
+      (result as Promise<unknown>).catch(() => undefined);
+    }
+  } catch {
+    /* Older preload or non-Electron host: localStorage stays the source of truth. */
+  }
 }
 
 export function isReducedMotionEnabled(): boolean {

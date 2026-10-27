@@ -144,6 +144,40 @@ describe('desktop RPC adapter', () => {
     delete process.env['SENTRY_OPENCODE_MODEL'];
   });
 
+  it('routes the saved provider choice to its stored credential and keeps both keys', async () => {
+    const h = await harness();
+    // Fake credentials only; the runtime transport is the fakeService mock above.
+    await h.service.providerSaveKey('OPENCODE_API_KEY', 'fake-opencode-key-1');
+    await h.service.providerSaveKey('OPENROUTER_API_KEY', 'fake-openrouter-key-1');
+    await h.service.providerSaveKey('SENTRY_OPENCODE_PROVIDER', 'openrouter');
+    await h.service.pushRuntimeConfiguration();
+    const routed = h.seen.filter((c) => c.method === 'runtime.configure').at(-1);
+    expect(routed?.params).toMatchObject({
+      openCodeProvider: 'openrouter',
+      providers: {
+        openCodeApiKey: 'fake-opencode-key-1',
+        openRouterApiKey: 'fake-openrouter-key-1',
+      },
+    });
+    // Switching the credential source keeps both keys securely stored.
+    await h.service.providerSaveKey('SENTRY_OPENCODE_PROVIDER', 'opencode-go');
+    await h.service.pushRuntimeConfiguration();
+    const switched = h.seen.filter((c) => c.method === 'runtime.configure').at(-1);
+    expect(switched?.params).toMatchObject({
+      openCodeProvider: 'opencode-go',
+      providers: {
+        openCodeApiKey: 'fake-opencode-key-1',
+        openRouterApiKey: 'fake-openrouter-key-1',
+      },
+    });
+    const statuses = h.service.providerStatuses() as Array<{ name: string; hint: string }>;
+    expect(JSON.stringify(statuses)).not.toContain('fake-opencode-key-1');
+    expect(JSON.stringify(statuses)).not.toContain('fake-openrouter-key-1');
+    delete process.env['OPENCODE_API_KEY'];
+    delete process.env['OPENROUTER_API_KEY'];
+    delete process.env['SENTRY_OPENCODE_PROVIDER'];
+  });
+
   it('never exposes secret values through statuses', async () => {
     const h = await harness();
     await h.service.providerSaveKey('SENTRY_DEEPSEEK_MODEL', 'deepseek-flash');

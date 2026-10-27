@@ -31,6 +31,10 @@ const RetestRunIdInput = z.string().regex(/^retest_[0-9A-HJKMNP-TV-Z]{26}$/);
 const StartRunOptions = z
   .object({
     mode: z.enum(['full', 'targeted']),
+    revisionId: z
+      .string()
+      .regex(/^rev_[0-9A-HJKMNP-TV-Z]{26}$/)
+      .optional(),
     includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
     instructions: z.string().min(1).max(5000).optional(),
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
@@ -112,6 +116,10 @@ export class DesktopApplicationService {
     return this.call('projects.cancelAdd', {});
   }
 
+  cancelUpdateProject(): Promise<unknown> {
+    return this.call('projects.cancelUpdate', {});
+  }
+
   getProject(projectId: string): Promise<unknown> {
     const id = ProjectIdInput.parse(projectId);
     return this.call('projects.get', { projectId: id });
@@ -172,6 +180,7 @@ export class DesktopApplicationService {
       return (await this.call('runs.start', {
         projectId: id,
         mode: parsed.mode,
+        ...(parsed.revisionId === undefined ? {} : { revisionId: parsed.revisionId }),
         ...(parsed.includePaths === undefined ? {} : { includePaths: [...parsed.includePaths] }),
         ...(parsed.instructions === undefined ? {} : { instructions: parsed.instructions }),
         ...(parsed.agentStackIds === undefined ? {} : { agentStackIds: [...parsed.agentStackIds] }),
@@ -309,15 +318,15 @@ export class DesktopApplicationService {
       .strict()
       .parse({ name, value });
     const status = await this.deps.credentials.saveKey(parsed.name, parsed.value);
-    await this.pushRuntimeConfiguration().catch(() => undefined);
-    return status;
+    const runtimeSynced = await this.pushRuntimeConfigurationBestEffort();
+    return { ...(status as unknown as Record<string, unknown>), runtimeSynced };
   }
 
   async providerClearKey(name: string): Promise<unknown> {
     const parsed = z.string().min(1).max(200).parse(name);
     const status = await this.deps.credentials.clearKey(parsed);
-    await this.pushRuntimeConfiguration().catch(() => undefined);
-    return status;
+    const runtimeSynced = await this.pushRuntimeConfigurationBestEffort();
+    return { ...(status as unknown as Record<string, unknown>), runtimeSynced };
   }
 
   providerPersist(): Promise<unknown> {
@@ -330,8 +339,29 @@ export class DesktopApplicationService {
 
   async providerForgetAll(): Promise<unknown> {
     const result = await this.deps.credentials.forgetAll();
-    await this.pushRuntimeConfiguration().catch(() => undefined);
-    return result;
+    const runtimeSynced = await this.pushRuntimeConfigurationBestEffort();
+    return { ...(result as Record<string, unknown>), runtimeSynced };
+  }
+
+  /**
+   * Push live config to the runtime, retrying once after a short delay. A
+   * transient IPC/runtime blip must not silently leave agent health
+   * showing stale models: callers report the acknowledgement so the UI
+   * can warn instead of presenting stale values as current.
+   */
+  private async pushRuntimeConfigurationBestEffort(): Promise<boolean> {
+    try {
+      await this.pushRuntimeConfiguration();
+      return true;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      try {
+        await this.pushRuntimeConfiguration();
+        return true;
+      } catch {
+        return false;
+      }
+    }
   }
 
   detectHarnessBinaries(): Promise<unknown> {
