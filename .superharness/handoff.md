@@ -1,4 +1,4 @@
-## 2026-10-28 — Reporting reserve VERIFIED / activation pending
+## 2026-10-28 — Reporting reserve COMPLETE / ACTIVATED
 
 Run_01M60MRP6TCY47QM8S1ZXF28HZ consumed30min before reports. Host phase
 deadlines now reserve reporting time; owned shutdown precedes explicit fresh
@@ -8,8 +8,10 @@ Final Windows static60 tasks, broad non-engine39 tasks, engine94, shared86,
 focused DS11/OC13/GLM17 PASS. Native trust8/preparation smoke PASS; actual
 three vendor binaries x investigation/report timeout =6 local-stub cases PASS.
 No funded model run/accuracy claim. Details: docs/reviews/qa-report-reserve.md.
-Next: commit/push, deploy native runtime at commit version, verify hello/current,
-open Desktop. No active QA runs; Desktop was stopped at pre-activation check.
+Implementation defd410 pushed on fix/qa-stage-contracts. Native runtime
+1.0.2-defd410 deployed:18 build tasks PASS, ENTRY_OK, current symlink and
+runtime.hello PASS. Desktop opened from this checkout. No active QA runs
+at pre-activation check. Main/dev were not merged in this task.
 shux contract unavailable; protocol recorded directly.
 
 ## Compact QA stages / live DeepSeek — COMPLETE / ACTIVATED

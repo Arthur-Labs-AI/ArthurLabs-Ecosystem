@@ -80,3 +80,14 @@ remaining actionable data-loss/security findings identified in this diff.
 No DB migration or provider sandbox bypass. Initial static failures (explicit
 optional fields, test const style, CLI error enum) were corrected; final gates
 above passed without removing assertions or weakening sandbox checks.
+
+## Activation
+
+Implementation `defd410` pushed on `fix/qa-stage-contracts`. Deployed native
+`1.0.2-defd410` with deploy-wsl-runtime.ps1:18 tasks PASS, ENTRY_OK,
+SENTRY_DEPLOY_EXIT:0. `current` resolves to that version; runtime.hello returns
+ok:true, Linux/WSL, Node22.23.2. Desktop opened from this checkout after an
+empty active-run query and stopped-desktop status. Main/dev not merged here.
+Format, repository hygiene and diff whitespace checks PASS. Working tree clean
+after this documentation receipt is committed. Funded semantic QA remains
+UNVERIFIED; no guarantee that a model returns valid findings within two attempts.
