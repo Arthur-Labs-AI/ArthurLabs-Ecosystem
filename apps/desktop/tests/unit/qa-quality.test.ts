@@ -16,6 +16,12 @@ describe('QA proof and coverage labels', () => {
       type: 'agent.message',
       message: 'QA_DEPTH_V1: independent validation enabled.',
     };
+    expect(
+      coverageLabel(
+        [marker, { type: 'warning', code: 'QA_INVESTIGATION_INCOMPLETE' }],
+        'completed',
+      ),
+    ).toBe('Partial analysis');
     expect(coverageLabel([], 'completed')).toBe('Analysis coverage unknown');
     expect(coverageLabel([marker], 'completed')).toBe('Planned checks reported');
     expect(

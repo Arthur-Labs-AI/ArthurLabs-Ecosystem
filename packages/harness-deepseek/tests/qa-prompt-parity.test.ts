@@ -2,7 +2,7 @@ import { QA_SESSION_CONTRACT } from '@qa/evidence-pipeline';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { HarnessRunRequestSchema } from '@qa/schemas';
 import {
@@ -83,6 +83,103 @@ function validReport(alias = false) {
 }
 
 describe('DeepSeek QA prompt parity', () => {
+  it.each(['investigation', 'report', 'cancel', 'shutdown-failure', 'exhausted'])(
+    'protects reporting reserve when %s blocks',
+    async (mode) => {
+      const root = await mkdtemp(join(tmpdir(), 'sentry-ds-reserve-'));
+      roots.push(root);
+      const base = await request(root);
+      vi.useFakeTimers();
+      const input = HarnessRunRequestSchema.parse({
+        ...base,
+        task: { ...base.task, context: { qaDepth: { version: 1, deadlineAt: Date.now() + 9000 } } },
+      });
+      let reached!: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        reached = resolve;
+      });
+      let rejectOwned: ((cause: Error) => void) | undefined;
+      const prompts: string[] = [];
+      let clients = 0;
+      const adapter: DeepSeekHarnessAdapter = new DeepSeekHarnessAdapter({
+        executable: 'dsh-test',
+        modelId: 'deepseek-v4-flash',
+        environment: {},
+        clientFactory: async () => {
+          clients += 1;
+          if (clients === 2 && mode === 'cancel') await adapter.cancel(input.agentRunId);
+          return {
+            start: async () => {},
+            startSession: async () => ({
+              runText: async (text: string) => {
+                prompts.push(text);
+                const shouldBlock =
+                  mode === 'exhausted'
+                    ? prompts.length >= 2
+                    : mode === 'report'
+                      ? prompts.length === 3
+                      : prompts.length === 2;
+                if (shouldBlock) {
+                  reached();
+                  return await new Promise<never>((_, reject) => {
+                    rejectOwned = reject;
+                  });
+                }
+                return {
+                  sessionId: 'fixture',
+                  finalResponse:
+                    prompts.length === 1
+                      ? validPlan()
+                      : prompts.length === 2
+                        ? 'Investigation complete.'
+                        : validReport(true),
+                  events: [],
+                  notifications: [],
+                };
+              },
+            }),
+            close: async () => {
+              if (mode === 'shutdown-failure') throw new Error('Owned shutdown failed');
+              rejectOwned?.(new Error('Owned client stopped'));
+            },
+          };
+        },
+      });
+      const events = [];
+      try {
+        const running = (async () => {
+          for await (const event of adapter.run(input)) events.push(event);
+        })();
+        await blocked;
+        await vi.advanceTimersByTimeAsync(
+          mode === 'exhausted' ? 9000 : mode === 'report' ? 4050 : 6000,
+        );
+        await running;
+        if (mode === 'exhausted') {
+          expect(events.at(-1)).toMatchObject({
+            type: 'run.failed',
+            failure: { code: 'QA_REPORT_DEADLINE' },
+          });
+          expect(prompts).toHaveLength(4);
+          expect(clients).toBe(3);
+        } else if (mode === 'cancel' || mode === 'shutdown-failure') {
+          expect(events.at(-1)?.type).toBe('run.failed');
+          expect(prompts).toHaveLength(2);
+          expect(clients).toBe(mode === 'cancel' ? 2 : 1);
+        } else {
+          expect(events.at(-1)?.type).toBe('run.completed');
+          expect(clients).toBe(2);
+          expect(prompts.at(-1)).toContain('REPORT-ONLY RECOVERY');
+          expect(prompts.at(-1)).toContain('schemaVersion');
+          expect(events.filter((e) => e.type === 'finding.submitted')).toHaveLength(1);
+          expect(events.filter((e) => e.type === 'report.checkpoint')).toHaveLength(1);
+        }
+      } finally {
+        vi.useRealTimers();
+        await adapter.dispose().catch(() => {});
+      }
+    },
+  );
   it.each([false, true, 'low-budget', 'review-failure', 'refinement-failure', 'review-unchanged'])(
     'routes independent depth policy enabled=%s',
     async (depth) => {

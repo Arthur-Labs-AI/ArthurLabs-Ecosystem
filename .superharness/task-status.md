@@ -1,3 +1,17 @@
+## 2026-10-28 — Reporting reserve VERIFIED / activation pending
+
+Run_01M60MRP6TCY47QM8S1ZXF28HZ consumed30min before reports. Host phase
+deadlines now reserve reporting time; owned shutdown precedes explicit fresh
+report-only context with same private copy/model and own redacted facts only.
+OC tool observations stream/dedup; failed shutdown/cancel forbids recovery.
+Final Windows static60 tasks, broad non-engine39 tasks, engine94, shared86,
+focused DS11/OC13/GLM17 PASS. Native trust8/preparation smoke PASS; actual
+three vendor binaries x investigation/report timeout =6 local-stub cases PASS.
+No funded model run/accuracy claim. Details: docs/reviews/qa-report-reserve.md.
+Next: commit/push, deploy native runtime at commit version, verify hello/current,
+open Desktop. No active QA runs; Desktop was stopped at pre-activation check.
+shux contract unavailable; protocol recorded directly.
+
 ## Compact QA stages / live DeepSeek — COMPLETE / ACTIVATED
 
 Implementation380b7e0 + test-onlydf224dc pushed on fix/qa-stage-contracts. Old
@@ -1401,3 +1415,8 @@ validate official model IDs and endpoint compatibility, preserve both encrypted 
 persist activation with SENTRY_OPENCODE_PROVIDER and test rendered interactions/runtime routing.
 The cause of the other AI stopping cannot be established from the working tree alone.
 shux contract attempted, unavailable on PATH; task status/ledger/handoff updated directly.
+
+
+## 2026-10-28 — Protected reporting reserve (in progress)
+
+Investigating run_01M60MRP6TCY47QM8S1ZXF28HZ: all agents consumed the run deadline before a valid report. Implementing host phase deadlines, owned-process shutdown and fresh report-only recovery from each agent’s own redacted facts. OpenCode observations now stream. DeepSeek real SDK local-stub probe proves old session IDs cannot resume after process restart. Four deterministic recovery/cancellation/shutdown tests pass for DeepSeek. Remaining: parity tests, real-binary zero-credit recovery, full gates, deployment. shux contract unavailable; protocol updated directly.

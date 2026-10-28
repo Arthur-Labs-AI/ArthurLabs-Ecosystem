@@ -673,11 +673,13 @@ export class ClaudeClient implements ClaudeClientView {
   }
 
   /** Stop exactly the owned transient unit behind a child (no-op direct). */
+  private shutdownFailed = false;
+
   private async stopChildUnit(child: ChildProcess): Promise<void> {
     const stop = this.unitStops.get(child);
     if (stop === undefined) return;
     this.unitStops.delete(child);
-    await stop().catch(() => false);
+    if (!(await stop().catch(() => false))) this.shutdownFailed = true;
   }
 
   constructor(private readonly spec: ClaudeSpawnSpec) {}
@@ -747,7 +749,7 @@ export class ClaudeClient implements ClaudeClientView {
     } catch {
       // already gone
     }
-    await waitForExit(child, 2_000);
+    if (!(await waitForExit(child, 2_000))) this.shutdownFailed = true;
   }
 
   async close(): Promise<void> {
@@ -776,9 +778,12 @@ export class ClaudeClient implements ClaudeClientView {
           // already gone
         }
       }
-      await Promise.all(survivors.map((child) => waitForExit(child, 2_000)));
+      const stopped = await Promise.all(survivors.map((child) => waitForExit(child, 2_000)));
+      if (stopped.some((value) => !value)) this.shutdownFailed = true;
       this.active.clear();
       this.continued.delete(this.sessionId);
+      if (this.shutdownFailed)
+        throw new Error('Owned Claude Code process shutdown could not be confirmed.');
     })();
     return this.closePromise;
   }

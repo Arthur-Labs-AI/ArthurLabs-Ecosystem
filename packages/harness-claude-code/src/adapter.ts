@@ -12,6 +12,12 @@ import {
 } from '@qa/shared';
 import {
   canChallenge,
+  limitPhase,
+  reportAttemptDeadline,
+  investigationDeadline,
+  PhaseDeadlineReached,
+  ObservedToolNotes,
+  buildRecoveryReportContext,
   buildQaPlanningPrompt,
   buildQaInvestigationPrompt,
   buildQaReportPrompt,
@@ -308,7 +314,9 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   private activeTurn: ClaudeTurnStream | undefined;
   private readonly secrets: readonly string[];
   private client?: ClaudeClientView;
-  private closePromise?: Promise<void>;
+  private closePromise: Promise<void> | undefined;
+  private cancelled = false;
+  private readonly toolNotes = new ObservedToolNotes();
   private readonly operationIds = new Map<string, OperationId>();
   private readonly pendingToolUses = new Map<
     string,
@@ -1138,6 +1146,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         }
         for (const emitted of produced) {
           collected.push(emitted);
+          this.toolNotes.add(emitted);
           yield emitted;
         }
       }
@@ -1168,6 +1177,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             const merged = [...collected, ...partialTurnEvents(cause)];
             for (const emitted of merged.slice(collected.length)) {
               collected.push(emitted);
+              this.toolNotes.add(emitted);
               yield emitted;
             }
             await live.abort().catch(() => undefined);
@@ -1183,6 +1193,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         }
         for (const emitted of produced) {
           collected.push(emitted);
+          this.toolNotes.add(emitted);
           yield emitted;
         }
       }
@@ -1436,6 +1447,34 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       };
       this.client = await this.clientFactory(spec);
       session = await this.client.startSession();
+      let recoveryContext = '';
+      let recoveryUsed = false;
+      const startReportContext = async () => {
+        await this.dispose();
+        if (this.cancelled)
+          throw new ClaudeCodeHarnessError(
+            'GLM_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+        const candidate = await this.clientFactory(spec);
+        if (this.cancelled) {
+          await candidate.close();
+          throw new ClaudeCodeHarnessError(
+            'GLM_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+        }
+        this.client = candidate;
+        this.closePromise = undefined;
+        session = await candidate.startSession();
+        if (this.cancelled)
+          throw new ClaudeCodeHarnessError(
+            'GLM_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+        recoveryUsed = true;
+        recoveryContext = buildRecoveryReportContext(request, this.toolNotes.render()) + '\n';
+      };
       markGlmRuntimeVerified();
       const pipeline = pipelineContext(this.secrets);
       // STAGE 1 — planning with one bounded correction. A prose-first or
@@ -1534,14 +1573,18 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       let challenge: CollectedTurn | undefined;
       let validationIssued = 0;
       let reportingIssued = 0;
-      let investigation: CollectedTurn;
+      let investigation: CollectedTurn | undefined;
       {
-        const live = this.streamPhaseTurn(
+        const work = this.streamPhaseTurn(
           session,
           buildQaInvestigationPrompt(planResult, this.observedOperations),
           request.agentRunId,
           'investigation',
         );
+        const live =
+          depth === undefined
+            ? work
+            : limitPhase(work, investigationDeadline(depth.deadlineAt), () => this.dispose());
         try {
           let step = await live.next();
           while (step.done !== true) {
@@ -1551,7 +1594,14 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           investigation = step.value;
         } catch (cause) {
           for (const emitted of partialTurnEvents(cause)) yield emitted;
-          throw cause;
+          if (!(cause instanceof PhaseDeadlineReached) || this.cancelled) throw cause;
+          await startReportContext();
+          yield event(request.agentRunId, {
+            type: 'warning',
+            code: 'QA_INVESTIGATION_INCOMPLETE',
+            message:
+              'Investigation reached its phase deadline. Reporting only this agent’s observed facts in a fresh report-only context; analysis is partial.',
+          });
         }
       }
 
@@ -1582,31 +1632,44 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             let reporting: CollectedTurn | undefined;
             let errors: string[] | undefined;
             try {
+              const reportText =
+                recoveryContext +
+                buildQaReportPrompt(
+                  planResult,
+                  this.observedOperations,
+                  recoveryContext ? undefined : correction,
+                );
+              recoveryContext = '';
               reportingIssued += 1;
               // Live: report-turn events stream mid-turn; the resolved turn
               // feeds report parsing only (its events already yielded).
               if (reportPass > 0) {
                 reporting = await boundedValidation(
                   () =>
-                    this.runTurn(
-                      session!,
-                      buildQaReportPrompt(planResult, this.observedOperations, correction),
-                      request.agentRunId,
-                      'reporting',
-                      { forbidTools: true },
-                    ),
+                    this.runTurn(session!, reportText, request.agentRunId, 'reporting', {
+                      forbidTools: true,
+                    }),
                   Math.max(1, depth!.deadlineAt - Date.now() - 30_000),
                   stopValidation,
                 );
                 for (const emitted of reporting.events) yield emitted;
               } else {
-                const live = this.streamPhaseTurn(
+                const work = this.streamPhaseTurn(
                   session!,
-                  buildQaReportPrompt(planResult, this.observedOperations, correction),
+                  reportText,
                   request.agentRunId,
                   'reporting',
                   { forbidTools: true },
                 );
+                const live =
+                  depth === undefined
+                    ? work
+                    : limitPhase(
+                        work,
+                        reportAttemptDeadline(depth.deadlineAt, attempt),
+                        () => this.dispose(),
+                        'Reporting',
+                      );
                 let step = await live.next();
                 while (step.done !== true) {
                   yield step.value;
@@ -1621,6 +1684,17 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
               // (not the run): the correction loop tells the model to
               // serialize from the frozen ledger without tools.
               if (
+                cause instanceof PhaseDeadlineReached &&
+                reportPass === 0 &&
+                depth !== undefined &&
+                attempt < MAX_REPORT_ATTEMPTS &&
+                !this.cancelled
+              ) {
+                await startReportContext();
+                errors = [
+                  'Reporting time budget reached. Return a shorter complete report from observed facts only.',
+                ];
+              } else if (
                 cause instanceof ClaudeCodeHarnessError &&
                 cause.code === 'GLM_REPORT_TOOL_FORBIDDEN'
               ) {
@@ -1733,7 +1807,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           type: 'agent.message',
           message: 'QA_REPORT_CHECKPOINT_READY: valid report prepared before optional validation.',
         });
-        if (!canChallenge(depth.deadlineAt)) {
+        if (recoveryUsed || !canChallenge(depth.deadlineAt)) {
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'QA_CHALLENGE_NOT_RUN',
@@ -1840,7 +1914,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // Actual turn accounting: every planning attempt + investigation +
       // every report attempt (initial, schema-fallback retries,
       // corrections). Never hardcoded.
-      let summed = sumUsage(planningUsage, investigation.usage ?? {});
+      let summed = sumUsage(planningUsage, investigation?.usage ?? {});
       if (challenge !== undefined) summed = sumUsage(summed, challenge.usage ?? {});
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
@@ -1870,26 +1944,28 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // failures map via classifyTurnFailure. Auth/sandbox hints apply
       // only when no precise signal exists.
       const typed =
-        cause instanceof ClaudeCodeHarnessError
-          ? cause
-          : (() => {
-              const text = String(cause);
-              if (
-                /not logged in|login|authentication_failed|unauthorized|api key|credential|sign in|401/i.test(
-                  text,
+        cause instanceof PhaseDeadlineReached
+          ? new ClaudeCodeHarnessError('QA_REPORT_DEADLINE', cause.message, false)
+          : cause instanceof ClaudeCodeHarnessError
+            ? cause
+            : (() => {
+                const text = String(cause);
+                if (
+                  /not logged in|login|authentication_failed|unauthorized|api key|credential|sign in|401/i.test(
+                    text,
+                  )
                 )
-              )
-                return new ClaudeCodeHarnessError(
-                  'GLM_AUTH_FAILED',
-                  redactDiagnostic(cause, this.secrets),
-                );
-              if (/sandbox/i.test(text))
-                return new ClaudeCodeHarnessError(
-                  'GLM_SANDBOX_UNAVAILABLE',
-                  redactDiagnostic(cause, this.secrets),
-                );
-              return this.classifyTurnFailure(cause, 'run');
-            })();
+                  return new ClaudeCodeHarnessError(
+                    'GLM_AUTH_FAILED',
+                    redactDiagnostic(cause, this.secrets),
+                  );
+                if (/sandbox/i.test(text))
+                  return new ClaudeCodeHarnessError(
+                    'GLM_SANDBOX_UNAVAILABLE',
+                    redactDiagnostic(cause, this.secrets),
+                  );
+                return this.classifyTurnFailure(cause, 'run');
+              })();
       yield event(request.agentRunId, {
         type: 'run.failed',
         failure: {
@@ -1908,6 +1984,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   }
 
   async cancel(_runId: AgentRunId): Promise<void> {
+    this.cancelled = true;
     try {
       // Live cancel: abort the in-flight owned turn immediately so the
       // child dies while the turn is active (not at process exit), then

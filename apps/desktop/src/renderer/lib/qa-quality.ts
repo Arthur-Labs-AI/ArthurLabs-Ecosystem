@@ -31,6 +31,7 @@ export function coverageLabel(
           'QA_COVERAGE_PARTIAL',
           'QA_CHALLENGE_NOT_RUN',
           'QA_VALIDATION_INCOMPLETE',
+          'QA_INVESTIGATION_INCOMPLETE',
         ].includes(event.code ?? ''),
     )
   )

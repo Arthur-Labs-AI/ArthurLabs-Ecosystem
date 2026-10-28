@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { RequestTimeoutError } from '@deepseek-ai/dsh-sdk-client';
 import {
   createFindingId,
+  createAgentRunId,
   createHarnessEventId,
   createInvestigationHypothesisId,
   createInvestigationPlanId,
@@ -13,6 +14,13 @@ import {
 } from '@qa/shared';
 import {
   canChallenge,
+  limitPhase,
+  reportAttemptDeadline,
+  promisePhase,
+  investigationDeadline,
+  PhaseDeadlineReached,
+  ObservedToolNotes,
+  buildRecoveryReportContext,
   buildQaPlanningPrompt,
   buildQaInvestigationPrompt,
   buildQaReportPrompt,
@@ -378,7 +386,9 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
   private readonly turnTimeoutMs: number;
   private readonly secrets: readonly string[];
   private client?: DeepSeekClientView;
-  private closePromise?: Promise<void>;
+  private closePromise: Promise<void> | undefined;
+  private cancelled = false;
+  private readonly toolNotes = new ObservedToolNotes();
   private readonly operationIds = new Map<string, OperationId>();
   private readonly pendingToolCalls = new Map<string, PendingToolCall>();
   private readonly liveOpenOperations = new Map<OperationId, string>();
@@ -763,6 +773,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         }
         const observed = this.observeSessionEvent(raw, agentRunId, emit, forbidTools);
         collected.push(...observed.events);
+        for (const value of observed.events) this.toolNotes.add(value);
         for (const value of observed.events) onObserved?.(value);
         if (observed.usage !== undefined) usage = sumUsage(usage, observed.usage);
       } catch (cause) {
@@ -940,6 +951,40 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           shutdownTimeoutMs: this.shutdownTimeoutMs,
         });
       let session: DeepSeekSessionView;
+      let recoveryContext = '';
+      let recoveryUsed = false;
+      const startReportContext = async () => {
+        await this.dispose();
+        if (this.cancelled)
+          throw new DeepSeekHarnessError(
+            'DEEPSEEK_CANCEL_FAILED',
+            'Run was cancelled before report recovery.',
+          );
+        const candidate = await createClient();
+        if (this.cancelled) {
+          await candidate.close();
+          throw new DeepSeekHarnessError(
+            'DEEPSEEK_CANCEL_FAILED',
+            'Run was cancelled before report recovery.',
+          );
+        }
+        this.client = candidate;
+        this.closePromise = undefined;
+        await candidate.start();
+        if (this.cancelled)
+          throw new DeepSeekHarnessError(
+            'DEEPSEEK_CANCEL_FAILED',
+            'Run was cancelled before report recovery.',
+          );
+        session = await candidate.startSession({ sessionId: createAgentRunId() });
+        if (this.cancelled)
+          throw new DeepSeekHarnessError(
+            'DEEPSEEK_CANCEL_FAILED',
+            'Run was cancelled before report recovery.',
+          );
+        recoveryUsed = true;
+        recoveryContext = buildRecoveryReportContext(request, this.toolNotes.render()) + '\n';
+      };
       try {
         this.client = await createClient();
         await this.client.start();
@@ -1034,12 +1079,28 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       let challenge: CollectedTurn | undefined;
       let validationIssued = 0;
       let reportingIssued = 0;
-      const investigation = yield* this.streamTurn(
-        session,
-        buildQaInvestigationPrompt(planResult, this.observedOperations),
-        request.agentRunId,
-        'investigation',
-      );
+      let investigation: CollectedTurn | undefined;
+      try {
+        const work = this.streamTurn(
+          session,
+          buildQaInvestigationPrompt(planResult, this.observedOperations),
+          request.agentRunId,
+          'investigation',
+        );
+        investigation = yield* depth === undefined
+          ? work
+          : limitPhase(work, investigationDeadline(depth.deadlineAt), () => this.dispose());
+      } catch (cause) {
+        if (!(cause instanceof PhaseDeadlineReached) || this.cancelled) throw cause;
+        this.liveOpenOperations.clear();
+        await startReportContext();
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_INVESTIGATION_INCOMPLETE',
+          message:
+            'Investigation reached its phase deadline. Reporting from this agent’s own observed facts in a fresh report-only context; analysis is partial.',
+        });
+      }
 
       // STAGE 3 — reporting against the frozen ledger. Bounded correction:
       // schema/trust failures retry the REPORT ONLY (same session, no
@@ -1066,30 +1127,47 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
             let reporting: CollectedTurn | undefined;
             let errors: string[] | undefined;
             try {
+              const reportText =
+                recoveryContext +
+                buildQaReportPrompt(
+                  planResult,
+                  this.observedOperations,
+                  recoveryContext ? undefined : correction,
+                );
+              recoveryContext = '';
               reportingIssued += 1;
-              reporting =
-                reportPass === 0
-                  ? await this.runTurn(
-                      session,
-                      buildQaReportPrompt(planResult, this.observedOperations, correction),
-                      request.agentRunId,
-                      'reporting',
-                      true,
-                    )
-                  : await boundedValidation(
-                      () =>
-                        this.runTurn(
-                          session,
-                          buildQaReportPrompt(planResult, this.observedOperations, correction),
-                          request.agentRunId,
-                          'reporting',
-                          true,
-                        ),
-                      Math.max(1, depth!.deadlineAt - Date.now() - 30_000),
-                      stopValidation,
-                    );
+              if (reportPass === 0 && depth !== undefined) {
+                reporting = yield* limitPhase(
+                  promisePhase(() =>
+                    this.runTurn(session, reportText, request.agentRunId, 'reporting', true),
+                  ),
+                  reportAttemptDeadline(depth.deadlineAt, attempt),
+                  () => this.dispose(),
+                  'Reporting',
+                );
+              } else
+                reporting =
+                  reportPass === 0
+                    ? await this.runTurn(session, reportText, request.agentRunId, 'reporting', true)
+                    : await boundedValidation(
+                        () =>
+                          this.runTurn(session, reportText, request.agentRunId, 'reporting', true),
+                        Math.max(1, depth!.deadlineAt - Date.now() - 30_000),
+                        stopValidation,
+                      );
             } catch (cause) {
               if (
+                cause instanceof PhaseDeadlineReached &&
+                reportPass === 0 &&
+                depth !== undefined &&
+                attempt < MAX_REPORT_ATTEMPTS &&
+                !this.cancelled
+              ) {
+                await startReportContext();
+                errors = [
+                  'Reporting time budget reached. Return a shorter complete report from observed facts only.',
+                ];
+              } else if (
                 cause instanceof DeepSeekHarnessError &&
                 cause.code === 'DEEPSEEK_REPORT_TOOL_FORBIDDEN'
               ) {
@@ -1187,7 +1265,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           type: 'agent.message',
           message: 'QA_REPORT_CHECKPOINT_READY: valid report prepared before optional validation.',
         });
-        if (!canChallenge(depth.deadlineAt)) {
+        if (recoveryUsed || !canChallenge(depth.deadlineAt)) {
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'QA_CHALLENGE_NOT_RUN',
@@ -1295,7 +1373,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       // `assistant/message` events sums across ALL turns. Unknown stays
       // unknown (never fabricated zero); turns count actual model turns
       // (every planning attempt + investigation + every report attempt).
-      let summed = sumUsage(planningUsage, investigation.usage ?? {});
+      let summed = sumUsage(planningUsage, investigation?.usage ?? {});
       if (challenge !== undefined) summed = sumUsage(summed, challenge.usage ?? {});
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
@@ -1321,22 +1399,24 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       }
     } catch (cause) {
       const typed =
-        cause instanceof DeepSeekHarnessError
-          ? cause
-          : cause instanceof Error && cause.name === 'ZodError'
-            ? new DeepSeekHarnessError(
-                'DEEPSEEK_INVALID_RESULT',
-                'DeepSeek returned data that did not match the required schema.',
-              )
-            : new DeepSeekHarnessError(
-                /auth|credential|sign in|api key|unauthorized|401/i.test(String(cause))
-                  ? 'DEEPSEEK_AUTH_FAILED'
-                  : /sandbox/i.test(String(cause))
-                    ? 'DEEPSEEK_SANDBOX_UNAVAILABLE'
-                    : 'DEEPSEEK_START_FAILED',
-                redactDiagnostic(cause, this.secrets),
-                true,
-              );
+        cause instanceof PhaseDeadlineReached
+          ? new DeepSeekHarnessError('QA_REPORT_DEADLINE', cause.message, false)
+          : cause instanceof DeepSeekHarnessError
+            ? cause
+            : cause instanceof Error && cause.name === 'ZodError'
+              ? new DeepSeekHarnessError(
+                  'DEEPSEEK_INVALID_RESULT',
+                  'DeepSeek returned data that did not match the required schema.',
+                )
+              : new DeepSeekHarnessError(
+                  /auth|credential|sign in|api key|unauthorized|401/i.test(String(cause))
+                    ? 'DEEPSEEK_AUTH_FAILED'
+                    : /sandbox/i.test(String(cause))
+                      ? 'DEEPSEEK_SANDBOX_UNAVAILABLE'
+                      : 'DEEPSEEK_START_FAILED',
+                  redactDiagnostic(cause, this.secrets),
+                  true,
+                );
       for (const [operationId, name] of this.liveOpenOperations)
         yield event(request.agentRunId, {
           type: 'tool.completed',
@@ -1356,6 +1436,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
   }
 
   async cancel(_runId: AgentRunId): Promise<void> {
+    this.cancelled = true;
     try {
       await this.dispose();
     } catch (cause) {

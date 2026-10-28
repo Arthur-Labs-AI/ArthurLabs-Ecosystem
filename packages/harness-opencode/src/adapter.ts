@@ -10,6 +10,14 @@ import {
 } from '@qa/shared';
 import {
   canChallenge,
+  limitPhase,
+  reportAttemptDeadline,
+  promisePhase,
+  investigationDeadline,
+  PhaseDeadlineReached,
+  ObservedToolNotes,
+  buildRecoveryReportContext,
+  streamObservedWork,
   buildQaPlanningPrompt,
   buildQaInvestigationPrompt,
   buildQaReportPrompt,
@@ -339,6 +347,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
   private readonly sessions = new Map<string, OpenCodeRunEntry>();
   private readonly observedCommands = new Set<string>();
   private readonly observedOperations = new Map<string, ObservedOperation>();
+  private readonly toolNotes = new ObservedToolNotes();
   private operationCounter = 0;
   private cancelledRuns = new Set<string>();
   private readonly shutdownDiagnostics: HarnessDiagnostic[] = [];
@@ -651,6 +660,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     agentRunId: AgentRunId,
     phase: string,
     forbidTools = false,
+    onObserved?: (event: HarnessEvent) => void,
   ): Promise<CollectedTurn> {
     const session = entry.session;
     if (session === undefined) {
@@ -691,6 +701,19 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       return new OpenCodeHarnessError(error.code, message, error.retryable);
     };
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const collected: HarnessEvent[] = [];
+    const seen = new Set<string>();
+    const collect = (observation: OpenCodeToolObservation) => {
+      if (seen.has(observation.callID)) return;
+      seen.add(observation.callID);
+      for (const value of this.observeTool(observation, agentRunId, (fields) =>
+        event(agentRunId, fields),
+      )) {
+        collected.push(value);
+        this.toolNotes.add(value);
+        onObserved?.(value);
+      }
+    };
     try {
       const result: OpenCodePromptResult = await Promise.race([
         session.runPrompt(text, {
@@ -699,6 +722,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           ...(entry.openCodeSessionId === undefined ? {} : { sessionId: entry.openCodeSessionId }),
           environment: this.turnEnvironment(entry, forbidTools),
           context: { provider: this.runtime.provider, model: this.runtime.effectiveModelId },
+          ...(onObserved === undefined ? {} : { onTool: collect }),
         }),
         new Promise<never>((_resolve, reject) => {
           timer = setTimeout(
@@ -735,11 +759,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           'OpenCode used tools during the reporting turn, which must serialize from the frozen ledger only.',
         );
       }
-      const emit = (value: Readonly<Record<string, unknown>>): HarnessEvent =>
-        event(agentRunId, value);
-      const collected: HarnessEvent[] = [];
       for (const observation of result.toolCalls) {
-        collected.push(...this.observeTool(observation, agentRunId, emit));
+        collect(observation);
       }
       return {
         text: result.text,
@@ -923,16 +944,49 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       // selectProductionLauncher (fail-closed, never bypassed implicitly).
       const launcherSelector = this.options.launcherSelector ?? selectProductionLauncher;
       const launcher = await launcherSelector(this.hostEnvironment);
-      const client = await this.clientFactory({
-        executable: this.runtime.executable,
-        cwd: request.workspace.runtimePath,
-        environment: turnBase,
-        modelId: this.runtime.effectiveModelId,
-        shutdownTimeoutMs: this.shutdownTimeoutMs,
-        launcher,
-      });
+      const createClient = () =>
+        this.clientFactory({
+          executable: this.runtime.executable,
+          cwd: request.workspace.runtimePath,
+          environment: turnBase,
+          modelId: this.runtime.effectiveModelId,
+          shutdownTimeoutMs: this.shutdownTimeoutMs,
+          launcher,
+        });
+      const client = await createClient();
       entry.client = client;
       entry.session = await client.startSession();
+      let recoveryContext = '';
+      let recoveryUsed = false;
+      const startReportContext = async () => {
+        await entry.client?.close();
+        const cancelled = () =>
+          entry.controller.signal.aborted || this.cancelledRuns.has(request.agentRunId);
+        if (cancelled())
+          throw new OpenCodeHarnessError(
+            'OPENCODE_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+        const candidate = await createClient();
+        if (cancelled()) {
+          await candidate.close();
+          throw new OpenCodeHarnessError(
+            'OPENCODE_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+        }
+        entry.client = candidate;
+        delete entry.openCodeSessionId;
+        entry.turnsIssued = 0;
+        entry.session = await candidate.startSession();
+        if (cancelled())
+          throw new OpenCodeHarnessError(
+            'OPENCODE_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+        recoveryUsed = true;
+        recoveryContext = buildRecoveryReportContext(request, this.toolNotes.render()) + '\n';
+      };
       markOpenCodeRuntimeVerified();
       this.options.onRuntimeIdentity?.({});
       const pipeline = pipelineContext(this.secrets);
@@ -1003,13 +1057,42 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       });
       const depth = depthPolicy(request.task.context);
       let challenge: CollectedTurn | undefined;
-      const investigation = await this.runTurn(
-        entry,
-        buildQaInvestigationPrompt(planResult, this.observedOperations),
-        request.agentRunId,
-        'investigation',
-      );
-      for (const emitted of investigation.events) yield emitted;
+      let investigation: CollectedTurn | undefined;
+      try {
+        const work = streamObservedWork(
+          (emit) =>
+            this.runTurn(
+              entry,
+              buildQaInvestigationPrompt(planResult, this.observedOperations),
+              request.agentRunId,
+              'investigation',
+              false,
+              emit,
+            ),
+          async () => {
+            await entry.client?.close();
+          },
+        );
+        investigation = yield* depth === undefined
+          ? work
+          : limitPhase(work, investigationDeadline(depth.deadlineAt), async () => {
+              await entry.client?.close();
+            });
+      } catch (cause) {
+        if (
+          !(cause instanceof PhaseDeadlineReached) ||
+          entry.controller.signal.aborted ||
+          this.cancelledRuns.has(request.agentRunId)
+        )
+          throw cause;
+        await startReportContext();
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_INVESTIGATION_INCOMPLETE',
+          message:
+            'Investigation reached its phase deadline. Reporting only this agent’s observed facts in a fresh report-only context; analysis is partial.',
+        });
+      }
 
       yield event(request.agentRunId, {
         type: 'agent.status',
@@ -1031,29 +1114,49 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
             let reporting: CollectedTurn | undefined;
             let errors: string[] | undefined;
             try {
-              reporting =
-                reportPass === 0
-                  ? await this.runTurn(
-                      entry,
-                      buildQaReportPrompt(planResult, this.observedOperations, correction),
-                      request.agentRunId,
-                      'reporting',
-                      true,
-                    )
-                  : await boundedValidation(
-                      () =>
-                        this.runTurn(
-                          entry,
-                          buildQaReportPrompt(planResult, this.observedOperations, correction),
-                          request.agentRunId,
-                          'reporting',
-                          true,
-                        ),
-                      Math.max(1, depth!.deadlineAt - Date.now() - 30_000),
-                      stopValidation,
-                    );
+              const reportText =
+                recoveryContext +
+                buildQaReportPrompt(
+                  planResult,
+                  this.observedOperations,
+                  recoveryContext ? undefined : correction,
+                );
+              recoveryContext = '';
+              if (reportPass === 0 && depth !== undefined) {
+                reporting = yield* limitPhase(
+                  promisePhase(() =>
+                    this.runTurn(entry, reportText, request.agentRunId, 'reporting', true),
+                  ),
+                  reportAttemptDeadline(depth.deadlineAt, attempt),
+                  async () => {
+                    await entry.client?.close();
+                  },
+                  'Reporting',
+                );
+              } else
+                reporting =
+                  reportPass === 0
+                    ? await this.runTurn(entry, reportText, request.agentRunId, 'reporting', true)
+                    : await boundedValidation(
+                        () =>
+                          this.runTurn(entry, reportText, request.agentRunId, 'reporting', true),
+                        Math.max(1, depth!.deadlineAt - Date.now() - 30_000),
+                        stopValidation,
+                      );
             } catch (cause) {
               if (
+                cause instanceof PhaseDeadlineReached &&
+                reportPass === 0 &&
+                depth !== undefined &&
+                attempt < MAX_REPORT_ATTEMPTS &&
+                !entry.controller.signal.aborted &&
+                !this.cancelledRuns.has(request.agentRunId)
+              ) {
+                await startReportContext();
+                errors = [
+                  'Reporting time budget reached. Return a shorter complete report from observed facts only.',
+                ];
+              } else if (
                 cause instanceof OpenCodeHarnessError &&
                 cause.code === 'OPENCODE_REPORT_TOOL_FORBIDDEN'
               ) {
@@ -1154,7 +1257,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           type: 'agent.message',
           message: 'QA_REPORT_CHECKPOINT_READY: valid report prepared before optional validation.',
         });
-        if (!canChallenge(depth.deadlineAt)) {
+        if (recoveryUsed || !canChallenge(depth.deadlineAt)) {
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'QA_CHALLENGE_NOT_RUN',
@@ -1252,14 +1355,14 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           code: 'OPENCODE_LIMITATION',
           message: limitation,
         });
-      let summed = sumUsage(planningUsage, investigation.usage ?? {});
+      let summed = sumUsage(planningUsage, investigation?.usage ?? {});
       if (challenge !== undefined) summed = sumUsage(summed, challenge.usage ?? {});
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
         ...summed,
         turns:
           planningSteps +
-          investigation.steps +
+          (investigation?.steps ?? 0) +
           (challenge?.steps ?? 0) +
           reportTurns.reduce((n, t) => n + t.steps, 0),
       };
@@ -1293,24 +1396,26 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         return;
       }
       const typed =
-        cause instanceof OpenCodeHarnessError
-          ? cause
-          : cause instanceof Error && cause.name === 'ZodError'
-            ? new OpenCodeHarnessError(
-                'OPENCODE_INVALID_RESULT',
-                'OpenCode returned data that did not match the required schema.',
-              )
-            : new OpenCodeHarnessError(
-                /auth|credential|sign in|api key|unauthorized|401|apicallerror/i.test(
-                  String(cause) + ' ' + messageOf(cause),
+        cause instanceof PhaseDeadlineReached
+          ? new OpenCodeHarnessError('QA_REPORT_DEADLINE', cause.message, false)
+          : cause instanceof OpenCodeHarnessError
+            ? cause
+            : cause instanceof Error && cause.name === 'ZodError'
+              ? new OpenCodeHarnessError(
+                  'OPENCODE_INVALID_RESULT',
+                  'OpenCode returned data that did not match the required schema.',
                 )
-                  ? 'OPENCODE_AUTH_FAILED'
-                  : /sandbox/i.test(String(cause))
-                    ? 'OPENCODE_SANDBOX_UNAVAILABLE'
-                    : 'OPENCODE_START_FAILED',
-                redactDiagnostic(cause, this.secrets),
-                true,
-              );
+              : new OpenCodeHarnessError(
+                  /auth|credential|sign in|api key|unauthorized|401|apicallerror/i.test(
+                    String(cause) + ' ' + messageOf(cause),
+                  )
+                    ? 'OPENCODE_AUTH_FAILED'
+                    : /sandbox/i.test(String(cause))
+                      ? 'OPENCODE_SANDBOX_UNAVAILABLE'
+                      : 'OPENCODE_START_FAILED',
+                  redactDiagnostic(cause, this.secrets),
+                  true,
+                );
       yield event(request.agentRunId, {
         type: 'run.failed',
         failure: {
