@@ -5,7 +5,38 @@ No peer plans, reports, files or sessions are shared. The coordinator now prepar
 each copy before model execution. After investigation it prepares a valid
 checkpoint report, then optionally challenges and refines that report in the same
 session under a bounded budget. Existing direct adapter callers
-without the coordinator's versioned policy retain their previous contract.
+without the coordinator's versioned policy retain their three-turn orchestration.
+
+## Ordered compact stage prompts
+
+All three adapters use the same builders in evidence-pipeline/stage-prompts.ts.
+The initial planning turn receives the safety/authority contract, preparation
+receipt, mission and owner instructions once. Planning permits documentation and
+entry-point reconnaissance; tests, builds, lint/typecheck and reproductions belong
+to investigation. Plan entries describe future work, not completed results.
+
+Investigation receives the frozen plan and a compact exact operation receipt.
+Completed checks and unchanged reads should not repeat without new evidence.
+Reporting is serialization only, with the existing tool firewall and bounded
+repair. It receives check IDs, observed operation identities/outcomes and the
+schema-derived evidence contract; correction turns reuse the established schema.
+Environmental restrictions alone go in limitations and inconclusive/not_run
+coverage. A demonstrated product defect in handling such restrictions remains
+reportable. Review is a bounded verification of the checkpoint, not a second full
+investigation. Original phase messages remain in the same private session.
+
+These instructions constrain model behavior; they do not constitute a new native
+planning tool-permission mechanism. Existing sandboxing and report firewalls stay
+authoritative. Compact prompts do not guarantee model accuracy or completion.
+
+DeepSeek planning/investigation now consume the pinned SDK's live root-session
+notifications. Observations pass the same redaction, operation correlation and
+provenance logic before forwarding to the coordinator mid-turn. The final SDK
+buffer is deduplicated. Descendant activity is rejected rather than attributed to
+the parent. On interruption, emitted open operations close with an unknown outcome;
+no command success is fabricated. Tool-free reporting and bounded optional review
+retain their buffered repair/checkpoint behavior. The SDK still has no wire cancel:
+cancellation closes only the owned client.
 
 ## Workspace preparation
 

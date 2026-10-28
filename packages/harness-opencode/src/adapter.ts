@@ -10,6 +10,9 @@ import {
 } from '@qa/shared';
 import {
   canChallenge,
+  buildQaPlanningPrompt,
+  buildQaInvestigationPrompt,
+  buildQaReportPrompt,
   validationBudgetMs,
   reviewNeedsUpdate,
   boundedValidation,
@@ -17,14 +20,10 @@ import {
   coverageErrors,
   groundCoverage,
   resolveReportChecks,
-  reportCheckAliases,
   reportableDepthPlan,
   depthPolicy,
-  DEPTH_COVERAGE_GUIDANCE,
-  DEPTH_PREPARATION_GUIDANCE,
   boundCorrectionMessage,
   buildPlanningCorrectionIntro,
-  buildReportCorrectionIntro,
   buildBaselineIndex,
   commandIdentity,
   convertReportEvidence,
@@ -32,18 +31,6 @@ import {
   MAX_PLANNING_ATTEMPTS,
   MAX_REPORT_ATTEMPTS,
   parseWholeJson,
-  renderFrozenLedger,
-  QA_ANTI_SUPERFICIAL_RULES,
-  QA_AUTHORITY_HIERARCHY,
-  QA_INVESTIGATION_METHOD,
-  QA_INVESTIGATION_REPRODUCTION_GUIDANCE,
-  QA_LARGE_PROJECT_GUIDANCE,
-  QA_PLANNING_RISK_GUIDANCE,
-  QA_REPORTING_COVERAGE_GUIDANCE,
-  REPORT_CONFIDENCE_CALIBRATION,
-  REPORT_REPRODUCTION_CONTRACT,
-  REPORT_ENVELOPE_SCHEMA,
-  REPORT_LEDGER_RULES,
   summarizeSchemaIssues,
   validateLocation,
   validateProductionFindings,
@@ -51,7 +38,6 @@ import {
   type ObservedOperation,
 } from '@qa/evidence-pipeline';
 import {
-  describeSentryAgentReportContract,
   FindingSchema,
   type Finding,
   HarnessEventSchema,
@@ -313,70 +299,6 @@ function messageOf(cause: unknown): string {
 interface BuiltReportAttempt {
   readonly evidenceByKey: ReadonlyMap<string, Evidence>;
   readonly findings: readonly Finding[];
-}
-
-function planningPrompt(request: HarnessRunRequest): string {
-  return [
-    'You are the sole QA investigator. Do not create, delegate to, or message subagents.',
-    'Host safety is authoritative: work only inside the current isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
-    'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
-    QA_AUTHORITY_HIERARCHY,
-    'Inspect project documentation and the supplied immutable mission context. Do not use peer plans, findings, or messages.',
-    QA_PLANNING_RISK_GUIDANCE,
-    'Create an investigation plan before executing it. Express prioritization inside the existing schema fields: plannedChecks names the high-risk boundary plus its intended verification.',
-    'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
-    ...(depthPolicy(request.task.context) === undefined ? [] : [DEPTH_PREPARATION_GUIDANCE]),
-    'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
-    'User instructions: ' + request.task.prompt,
-    'OUTPUT CONTRACT (must hold exactly): your ENTIRE final response is exactly one raw JSON object matching the schema. No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
-  ].join('\n');
-}
-
-function investigationPrompt(
-  plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
-): string {
-  return [
-    'Execute the frozen investigation plan below as the sole investigator. Do not create or use subagents.',
-    'Host safety is authoritative: remain inside the isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
-    'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
-    'You may create temporary tests, configuration, instrumentation, build output, and runtime state only inside this disposable workspace to investigate behavior.',
-    'Consider every applicable area needed for risk-based QA: build, lint, typecheck, existing and generated tests, integration/runtime/API/frontend/database/auth behavior, configuration, dependencies, architecture, business logic, error handling, edge cases, performance, concurrency, CI/CD, deployment, maintainability, and project-specific weak points. Prioritize by risk and evidence value; do not force irrelevant checks.',
-    'Priority controls order, not permission to skip relevant checks. Record every blocked or incomplete check as a limitation; never claim it passed.',
-    'Do not silently obtain unrestricted network access. Record sandbox or network restrictions as limitations and never retry with sandbox disabled.',
-    'Use only the repository toolchain already present in the workspace; do not download packages or install dependencies from the network (no npx fetches, no npm/pip installs). If a test runner is unavailable, record it as a limitation.',
-    QA_INVESTIGATION_METHOD,
-    QA_INVESTIGATION_REPRODUCTION_GUIDANCE,
-    QA_ANTI_SUPERFICIAL_RULES,
-    QA_LARGE_PROJECT_GUIDANCE,
-    'Do NOT produce the final Sentry JSON report yet. Investigate only, using permitted local tools as needed. When the investigation is complete, finish this turn with a short terminal message such as: Investigation complete.',
-    'Sentry will provide the authoritative operation ledger in the following reporting turn.',
-    'Frozen plan: ' + JSON.stringify(plan),
-  ].join('\n');
-}
-
-function reportPrompt(
-  plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
-  operations: ReadonlyMap<string, ObservedOperation>,
-  correction?: readonly string[],
-): string {
-  return [
-    DEPTH_COVERAGE_GUIDANCE,
-    reportCheckAliases(plan),
-    'Serialize the investigation you just completed into exactly one Sentry report. No new QA: do not run commands, read files, or use any tools in this turn. Temporary evidence keys only; Sentry owns all durable IDs.',
-    ...(correction === undefined ? [] : [buildReportCorrectionIntro(correction)]),
-    REPORT_LEDGER_RULES,
-    REPORT_REPRODUCTION_CONTRACT,
-    REPORT_CONFIDENCE_CALIBRATION,
-    QA_REPORTING_COVERAGE_GUIDANCE,
-    'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info.',
-    'Report evidence contract (exact fields per type; copy names exactly): ' +
-      describeSentryAgentReportContract(),
-    REPORT_ENVELOPE_SCHEMA,
-    'Authoritative Sentry operation ledger (frozen after investigation):\n' +
-      renderFrozenLedger(operations),
-    'Frozen plan: ' + JSON.stringify(plan),
-    'OUTPUT CONTRACT (must hold exactly): your ENTIRE final response is exactly one raw JSON object matching SentryAgentReportV2 (schemaVersion 2). No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
-  ].join('\n');
 }
 
 /** Extract a shell command or file path from tool-call input, if present. */
@@ -1022,10 +944,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         const planning = await this.runTurn(
           entry,
           planCorrection === undefined
-            ? planningPrompt(request)
-            : buildPlanningCorrectionIntro(planCorrection) +
-                '\nImmutable mission context: ' +
-                JSON.stringify(request.task.context ?? {}),
+            ? buildQaPlanningPrompt(request)
+            : buildPlanningCorrectionIntro(planCorrection),
           request.agentRunId,
           'planning',
         );
@@ -1085,7 +1005,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       let challenge: CollectedTurn | undefined;
       const investigation = await this.runTurn(
         entry,
-        investigationPrompt(planResult),
+        buildQaInvestigationPrompt(planResult, this.observedOperations),
         request.agentRunId,
         'investigation',
       );
@@ -1115,7 +1035,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
                 reportPass === 0
                   ? await this.runTurn(
                       entry,
-                      reportPrompt(planResult, this.observedOperations, correction),
+                      buildQaReportPrompt(planResult, this.observedOperations, correction),
                       request.agentRunId,
                       'reporting',
                       true,
@@ -1124,7 +1044,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
                       () =>
                         this.runTurn(
                           entry,
-                          reportPrompt(planResult, this.observedOperations, correction),
+                          buildQaReportPrompt(planResult, this.observedOperations, correction),
                           request.agentRunId,
                           'reporting',
                           true,

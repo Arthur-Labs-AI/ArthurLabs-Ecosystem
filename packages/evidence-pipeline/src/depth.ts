@@ -128,16 +128,9 @@ export function groundCoverage(
 
 export function challengePrompt(plan: { plannedChecks: readonly string[] }): string {
   return [
-    'CHALLENGE YOUR OWN INVESTIGATION. This is one bounded validation pass in the same private workspace.',
-    'Do not access the original project, other agents, their workspaces, findings or plans. Never bypass sandboxing.',
-    'Do not install dependencies, commit, push or fix product code. Temporary focused tests inside this workspace are allowed.',
-    'For each significant candidate trace the real caller, input origin and upstream validation; seek a counterexample that refutes the bug.',
-    'When safe and feasible reproduce through the real implementation. Copied logic proves only that example, not a reachable application defect.',
-    'Check whether the behavior is intentional under documented contracts. Remove unsupported candidates or lower confidence and severity; state conditional triggers explicitly.',
-    'If no candidates remain, revisit the most important unchecked risk from your own plan. Zero findings is valid; never invent a defect.',
-    'Finish outstanding applicable checks or record specific limitations. Do not manufacture evidence or run unsafe destructive reproductions.',
-    DEPTH_COVERAGE_GUIDANCE,
-    'Do not produce the final report. Return exactly {"reportNeedsUpdate":true} if any finding, confidence, evidence or check coverage must change; otherwise return exactly {"reportNeedsUpdate":false}. A changed report will be serialized against the authoritative ledger. Do not request a rewrite just to rephrase unchanged text.',
+    'CHALLENGE YOUR OWN INVESTIGATION. Optional bounded review of the checkpoint, not another full investigation. Never bypass sandboxing.',
+    'For significant findings check the real caller, input origin, upstream validation and a counterexample. Use a narrow actual-code check only if it changes the conclusion. Remove unsupported findings; environmental restrictions are limitations. Zero findings is valid.',
+    'Return exactly {"reportNeedsUpdate":true} if findings, evidence or coverage need changes, otherwise {"reportNeedsUpdate":false}. Do not rewrite unchanged prose or repeat completed checks. No final report in this turn.',
     'Frozen planned checks: ' + JSON.stringify(plan.plannedChecks),
   ].join('\n');
 }

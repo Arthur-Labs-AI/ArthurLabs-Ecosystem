@@ -1,18 +1,10 @@
+import { QA_SESSION_CONTRACT } from '@qa/evidence-pipeline';
 import { mkdtempSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir as systemTmpdir } from 'node:os';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
-import {
-  QA_ANTI_SUPERFICIAL_RULES,
-  QA_AUTHORITY_HIERARCHY,
-  QA_INVESTIGATION_METHOD,
-  QA_INVESTIGATION_REPRODUCTION_GUIDANCE,
-  QA_LARGE_PROJECT_GUIDANCE,
-  QA_PLANNING_RISK_GUIDANCE,
-  QA_REPORTING_COVERAGE_GUIDANCE,
-  REPORT_REPRODUCTION_CONTRACT,
-} from '@qa/evidence-pipeline';
+
 import { HarnessRunRequestSchema } from '@qa/schemas';
 import {
   createAgentRunId,
@@ -126,9 +118,8 @@ function reportTurn(text = validReport()) {
   ];
 }
 
-// Owner requested the v1.0.2 GLM prompts. Other harnesses deliberately keep
-// their newer guidance; cross-harness prompt parity is no longer the GLM spec.
-describe('GLM v1.0.2 prompt behavior', () => {
+// Owner now requests shared compact stages; GLM transport safeguards remain.
+describe('GLM ordered stage prompt behavior', () => {
   it.each([false, true, 'low-budget', 'review-failure', 'refinement-failure', 'review-unchanged'])(
     'keeps safeguards with independent depth enabled=%s',
     async (depth) => {
@@ -227,33 +218,23 @@ describe('GLM v1.0.2 prompt behavior', () => {
         expect(
           events.some((e) => e.type === 'warning' && e.code === 'QA_VALIDATION_INCOMPLETE'),
         ).toBe(true);
-      expect(planning).toContain('a listing plus a handful of file reads is enough');
-      expect(planning).toContain('Explicit run instructions define intended behavior');
-      expect(investigation).toContain('Inspect every applicable area needed for comprehensive QA');
-      expect(investigation).toContain(
-        'a handful of targeted checks beats dozens of exploratory commands',
-      );
-      expect(reporting).toContain('operation key');
+      expect(planning).toContain(QA_SESSION_CONTRACT);
+      expect(planning).toContain('No tests, builds, lint, typecheck');
+      expect(planning).toContain('future actions');
+      expect(planning).toContain('User instructions:');
+      expect(planning).toContain('Immutable mission context');
+      expect(investigation).toContain('STAGE 2');
+      expect(investigation).toContain('Do not repeat completed checks');
+      expect(investigation).toContain('counterexample');
+      expect(investigation).toContain('Small fixture');
+      expect(investigation).not.toContain(QA_SESSION_CONTRACT);
+      expect(reporting).toContain('No tools');
       expect(reporting).toContain('ONLY authoritative source');
       expect(reporting).toContain('confirmed requires');
-      // Provider-specific safeguard preserved (missing-file guidance).
-      expect(planning).toContain('Never retry a failed path identically');
-      expect(planning).not.toContain(QA_AUTHORITY_HIERARCHY.slice(0, 80));
-      expect(planning).not.toContain(QA_PLANNING_RISK_GUIDANCE.slice(0, 80));
-      expect(investigation).not.toContain(QA_INVESTIGATION_METHOD.slice(0, 80));
-      expect(investigation).not.toContain(QA_INVESTIGATION_REPRODUCTION_GUIDANCE.slice(0, 80));
-      expect(investigation).not.toContain(QA_ANTI_SUPERFICIAL_RULES.slice(0, 80));
-      expect(investigation).not.toContain(QA_LARGE_PROJECT_GUIDANCE.slice(0, 80));
-      expect(reporting).not.toContain(QA_REPORTING_COVERAGE_GUIDANCE.slice(0, 80));
-      expect(reporting).not.toContain(REPORT_REPRODUCTION_CONTRACT.slice(0, 80));
-      expect(planning).toContain('first character is {');
-      expect(planning).toContain('Immutable mission context:');
-      expect(planning).toContain('User instructions:');
-      expect(investigation).toContain('Frozen plan:');
-      expect(investigation).toContain('Small fixture');
-      expect(reporting).toContain('frozen after investigation');
-      expect(reporting).toContain('No new QA');
-      expect(reporting).toContain('do not run commands');
+      expect(reporting).toContain('not product findings');
+      expect(reporting).toContain('check_1');
+      expect(reporting).not.toContain(QA_SESSION_CONTRACT);
+      expect(prompts.join('\n').split(QA_SESSION_CONTRACT)).toHaveLength(2);
       expect(prompts.join('\n')).not.toContain('sentry-parity-secret-value');
     },
   );

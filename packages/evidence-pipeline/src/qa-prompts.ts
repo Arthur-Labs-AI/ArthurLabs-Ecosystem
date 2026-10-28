@@ -1,11 +1,9 @@
 /**
  * Shared QA prompt guidance (Phase 4.2 companion to reporting.ts).
  *
- * All three AgentStacks (OpenCode, DeepSeek, Claude Code/GLM) embed these
- * constants in their planning / investigation / reporting turns so shared
- * behavioral expectations stay IDENTICAL across harnesses. Provider-specific
- * safeguards (recon shortcuts, sandbox wording, tool firewalls) remain in
- * each adapter; policy semantics must not drift.
+ * Legacy guidance exports retained for compatibility. Runtime stage prompts
+ * now use stage-prompts.ts, shared across OpenCode, DeepSeek and GLM. These
+ * older constants are no longer concatenated into every model turn.
  *
  * Design constraints:
  * - No schema changes (plan V1, report V2 stay intact).

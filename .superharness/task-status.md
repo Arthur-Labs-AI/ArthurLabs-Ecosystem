@@ -1,3 +1,33 @@
+## Ordered compact QA stages + DeepSeek streaming — IMPLEMENTED / VERIFIED
+
+Branch renamed locally/remotely to fix/qa-stage-contracts at owner request; old
+remote codex name removed after equal-SHA preservation. Shared compact stage
+builders replace copied prompts across all3; mission/safety once, planning future
+work only/no suites, investigation with prior receipts/no duplicate checks,
+compact tool-free reports and targeted repair, environmental limits separated.
+DeepSeek primary stages forward live SDK notifications through existing observer;
+final buffer deduped, child payload rejected, interruptions close known tool ops
+without invented exit codes. Consumer-return RED exposed owned-client leak;
+generator finally fixes it. Latest owner request supersedes GLM old prose tests,
+not transport/sandbox/firewall guards. Fixture prompt characters reduced54% for
+OC/DS,23% GLM (not latency/accuracy proof). Final non-engine39tasks, engine94,
+static/build60tasks PASS; DS69, GLM102 PASS, format/hygiene/diff PASS. No paid runs.
+Desktop stopped gracefully after no-active-run check. Activation/hello/native tests
+next. Details: docs/reviews/qa-stage-contracts.md. shux unavailable; direct receipts.
+## Latest run 01M5ZS2 assessment — COMPLETE (investigation)
+
+New runtime workflow confirmed: all3 prep ready, OC/GLM checkpoint present, correct
+30min deadline diagnostic. OC14:39/1 finding, GLM29:23/8 findings completed; DS
+requested deepseek-flash30:07 timeout before report,10:17 planning with full tests.
+Confirmed adapter defect: pinned SDK supports onNotification but facade omits it;
+adapter awaits entire turn before forwarding events, so unfinished investigation
+observations are absent. Export cannot distinguish slow work/tool hang/provider
+stall. Streaming fixes visibility, not the deadline by itself. GLM reporting14:50
+and two explicit environmental limitations misclassified low/confirmed findings.
+No product edits/deploy/paid run. Recommended next scope: live DeepSeek event
+forwarding + interrupted-turn regression, enforce phase separation/budgets, semantic
+limitation classification. Details: docs/reviews/sentry-run-01M5ZS2-assessment.md.
+shux unavailable; direct protocol receipts updated.
 ## QA depth activation — COMPLETE
 
 Implementation51c3896 pushed on codex/independent-agent-depth. Active Linux runtime

@@ -1,17 +1,9 @@
+import { QA_SESSION_CONTRACT } from '@qa/evidence-pipeline';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { REPORT_REPRODUCTION_CONTRACT } from '@qa/evidence-pipeline';
-import {
-  QA_ANTI_SUPERFICIAL_RULES,
-  QA_AUTHORITY_HIERARCHY,
-  QA_INVESTIGATION_METHOD,
-  QA_INVESTIGATION_REPRODUCTION_GUIDANCE,
-  QA_LARGE_PROJECT_GUIDANCE,
-  QA_PLANNING_RISK_GUIDANCE,
-  QA_REPORTING_COVERAGE_GUIDANCE,
-} from '@qa/evidence-pipeline';
+
 import { HarnessRunRequestSchema } from '@qa/schemas';
 import {
   createAgentRunId,
@@ -181,49 +173,23 @@ describe('OpenCode QA prompt parity', () => {
         expect(
           events.some((e) => e.type === 'warning' && e.code === 'QA_VALIDATION_INCOMPLETE'),
         ).toBe(true);
-      // Planning: risk-first, authority hierarchy, schema preserved.
-      expect(planning).toContain('Authority hierarchy');
-      expect(planning).toContain('UNTRUSTED');
-      expect(planning).toContain('risk-first');
-      expect(planning).toContain('do not inventory every file');
-      expect(planning).toContain('"schemaVersion":1');
-      // Investigation: adaptive method, anti-superficial, large-project, reproduction.
-      expect(investigation).toContain('Phase A');
-      expect(investigation).toContain('Phase F');
-      expect(investigation).toContain('NOT behavior reproduction');
-      expect(investigation).toContain('frozen ledger');
-      expect(investigation).toContain('successful build as proof');
-      expect(investigation).toContain('call-path tracing');
-      expect(investigation).toContain('Do NOT produce the final Sentry JSON report yet');
-      // Reporting: shared contracts plus honest coverage, still tool-free.
-      expect(reporting).toContain('ONLY authoritative source');
-      expect(reporting).toContain('operation key');
-      expect(reporting).toContain('confirmed requires');
-      expect(reporting).toContain('zero findings');
-      expect(reporting).toContain('schemaVersion 2');
-      // Prompt-injection boundary present in the real turn.
-      expect(planning + investigation).toContain('ignore the instruction');
-      // Shared guidance pinned via the exported constants themselves, not
-      // arbitrary substrings: the turns must carry the canonical text.
-      expect(planning).toContain(QA_AUTHORITY_HIERARCHY.slice(0, 80));
-      expect(planning).toContain(QA_PLANNING_RISK_GUIDANCE.slice(0, 80));
-      expect(investigation).toContain(QA_INVESTIGATION_METHOD.slice(0, 80));
-      expect(investigation).toContain(QA_INVESTIGATION_REPRODUCTION_GUIDANCE.slice(0, 80));
-      expect(investigation).toContain(QA_ANTI_SUPERFICIAL_RULES.slice(0, 80));
-      expect(investigation).toContain(QA_LARGE_PROJECT_GUIDANCE.slice(0, 80));
-      expect(reporting).toContain(QA_REPORTING_COVERAGE_GUIDANCE.slice(0, 80));
-      expect(reporting).toContain(REPORT_REPRODUCTION_CONTRACT.slice(0, 80));
-      // Stage contracts: planning output contract, mission context, frozen
-      // plan in investigation, frozen ledger + tool-free reporting.
-      expect(planning).toContain('first character is {');
-      expect(planning).toContain('Immutable mission context:');
+      expect(planning).toContain(QA_SESSION_CONTRACT);
+      expect(planning).toContain('No tests, builds, lint, typecheck');
+      expect(planning).toContain('future actions');
       expect(planning).toContain('User instructions:');
-      expect(investigation).toContain('Frozen plan:');
+      expect(planning).toContain('Immutable mission context');
+      expect(investigation).toContain('STAGE 2');
+      expect(investigation).toContain('Do not repeat completed checks');
+      expect(investigation).toContain('counterexample');
       expect(investigation).toContain('Small fixture');
-      expect(reporting).toContain('frozen after investigation');
-      expect(reporting).toContain('No new QA');
-      expect(reporting).toContain('do not run commands');
-      // No host credentials leak into prompts.
+      expect(investigation).not.toContain(QA_SESSION_CONTRACT);
+      expect(reporting).toContain('No tools');
+      expect(reporting).toContain('ONLY authoritative source');
+      expect(reporting).toContain('confirmed requires');
+      expect(reporting).toContain('not product findings');
+      expect(reporting).toContain('check_1');
+      expect(reporting).not.toContain(QA_SESSION_CONTRACT);
+      expect(prompts.join('\n').split(QA_SESSION_CONTRACT)).toHaveLength(2);
       expect(prompts.join('\n')).not.toContain('sentry-parity-secret-credential');
     },
   );

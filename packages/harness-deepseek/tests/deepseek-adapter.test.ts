@@ -536,7 +536,11 @@ describe('DeepSeekHarnessAdapter', () => {
     await adapter.dispose();
     expect(events.at(-1), JSON.stringify(events.at(-1))).toMatchObject({ type: 'run.completed' });
     expect(prompts).toHaveLength(3);
-    expect(prompts[2]).toContain('exitCode: ' + code);
+    expect(
+      JSON.parse(
+        prompts[2]!.split('Authoritative operation receipt (frozen after investigation): ')[1]!,
+      ),
+    ).toContainEqual(expect.objectContaining({ exitCode: code }));
     const started = events.find((event) => event.type === 'tool.started');
     if (started?.type !== 'tool.started') throw new Error('expected observed operation');
     expect(events).toContainEqual(
@@ -1633,4 +1637,105 @@ describe('DeepSeekHarnessAdapter', () => {
     await adapter.dispose();
     expect(close).toHaveBeenCalledTimes(1);
   });
+  it.each(['success', 'disconnect', 'timeout', 'cancel', 'consumer-return'])(
+    'persists live investigation events before idle and settles %s truthfully',
+    async (outcome) => {
+      const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-live-'));
+      roots.push(root);
+      const input = await request(root);
+      if (outcome === 'timeout') vi.useFakeTimers();
+      let resolveTurn!: (value: DeepSeekRunResult) => void;
+      let rejectTurn!: (cause: Error) => void;
+      let calls = 0;
+      let finished = false;
+      const call = {
+        type: 'tool/call',
+        data: {
+          callId: 'live-call',
+          name: 'bash',
+          arguments: JSON.stringify({ command: 'node tests/probe.mjs' }),
+        },
+      };
+      const result = {
+        type: 'tool/result',
+        data: {
+          meta: { exitCode: 0 },
+          message: {
+            content: [
+              {
+                type: 'tool-result',
+                toolCallId: 'live-call',
+                content: [{ type: 'text', text: 'probe passed' }],
+              },
+            ],
+          },
+        },
+      };
+      const close = vi.fn(async () => {
+        rejectTurn?.(new Error('owned transport closed'));
+      });
+      const adapter = new DeepSeekHarnessAdapter({
+        executable: 'dsh-test',
+        modelId: 'deepseek-v4-flash',
+        environment: {},
+        turnTimeoutMs: 100,
+        clientFactory: async () => ({
+          start: async () => {},
+          close,
+          startSession: async () => ({
+            runText: async (_text: string, _id?: string, onEvent?: (event: unknown) => void) => {
+              calls += 1;
+              if (calls === 1) return planResult(validPlan());
+              if (calls > 2) return reportResult(validReportV2());
+              onEvent?.(call);
+              if (outcome === 'success') onEvent?.(result);
+              const answer = await new Promise<DeepSeekRunResult>((resolve, reject) => {
+                resolveTurn = resolve;
+                rejectTurn = reject;
+              });
+              finished = true;
+              return answer;
+            },
+          }),
+        }),
+      });
+      const events: HarnessEvent[] = [];
+      const iter = adapter.run(input)[Symbol.asyncIterator]();
+      try {
+        while (!events.some((e) => e.type === 'tool.started')) {
+          const step = await iter.next();
+          expect(step.done).not.toBe(true);
+          events.push(step.value!);
+        }
+        expect(finished).toBe(false);
+        if (outcome === 'consumer-return') {
+          await iter.return?.(undefined);
+          expect(close).toHaveBeenCalledTimes(1);
+          expect(calls).toBe(2);
+          return;
+        }
+        if (outcome === 'success') resolveTurn(investigationResult([call, result]));
+        else if (outcome === 'timeout') await vi.advanceTimersByTimeAsync(100);
+        else if (outcome === 'cancel') await adapter.cancel(input.agentRunId);
+        else rejectTurn(new Error('scripted transport disconnect'));
+        for (let step = await iter.next(); !step.done; step = await iter.next())
+          events.push(step.value);
+        expect(events.filter((e) => e.type === 'tool.started')).toHaveLength(1);
+        expect(events.filter((e) => e.type === 'tool.completed')).toHaveLength(1);
+        const validator = new IncrementalHarnessEventValidator(input.qaRunId, input.agentRunId);
+        for (const event of events) validator.accept(event);
+        validator.finish();
+        expect(events.at(-1)?.type).toBe(outcome === 'success' ? 'run.completed' : 'run.failed');
+        if (outcome !== 'success') {
+          expect(close).toHaveBeenCalled();
+          expect(events.some((e) => e.type === 'command.executed')).toBe(false);
+          const end = events.find((e) => e.type === 'tool.completed');
+          expect(end?.type === 'tool.completed' ? end.tool.exitCode : 999).toBeUndefined();
+        } else expect(events.filter((e) => e.type === 'command.executed')).toHaveLength(1);
+      } finally {
+        vi.useRealTimers();
+        await adapter.dispose();
+      }
+    },
+  );
 });
