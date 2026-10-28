@@ -1,3 +1,16 @@
+## Compact QA stages / live DeepSeek — COMPLETE / ACTIVATED
+
+Implementation380b7e0 + test-onlydf224dc pushed on fix/qa-stage-contracts. Old
+branch name removed locally/remotely after equal-tip preservation; main/dev stay.
+Final Windows non-engine39tasks, engine94 and static/build60tasks PASS; DS69 PASS.
+Native evidence81, trust8/8 and real preparation/isolation/cancel smoke PASS on
+380b7e0 product code. Native DS initially68/69: test looked up transitive runtime
+from adapter scope instead of SDK owner. Test-only correction retains exact pin;
+Windows/native DS69 PASS, no skips/timeouts/expectations weakened. Final active
+runtime1.0.2-df224dc native18 build tasks + hello/current symlink verified; code
+unchanged from380b7e0. Sentry reopened. No paid run, no claim of model accuracy or
+guaranteed deadline compliance; prompt behavior still needs funded comparison.
+Docs: docs/reviews/qa-stage-contracts.md. shux absent; protocol updated directly.
 ## Ordered compact QA stages + DeepSeek streaming — IMPLEMENTED / VERIFIED
 
 Branch renamed locally/remotely to fix/qa-stage-contracts at owner request; old

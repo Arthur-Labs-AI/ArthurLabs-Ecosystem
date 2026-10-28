@@ -66,3 +66,24 @@ Windows verification: engine94 PASS (Linux trust excluded), full DeepSeek69 PASS
 GLM102 PASS, shared stage contract3 PASS. Full non-engine39 Turbo tasks PASS at
 the broad checkpoint; final static/build60 tasks and final delivery receipts
 follow. Format, whitespace and repository hygiene PASS. No paid model run.
+
+## Delivery receipt
+
+- Product implementation380b7e0 pushed to fix/qa-stage-contracts; former local and
+  remote codex branch name removed, main/dev unchanged.
+- Final non-engine39 Turbo tasks and static/build60 tasks PASS; engine94 PASS.
+- Native deployment380b7e0 built18 tasks and passed hello, evidence-pipeline81,
+  verifier trust8/8, and actual private preparation/isolation/cancellation smoke.
+- Initial native DeepSeek suite was68/69: an existing version-pin test resolved
+  the SDK's transitive runtime from the adapter's package. SDK construction and
+  production discovery already passed. Strict Linux pnpm correctly exposes that
+  dependency only from its owner. Test-only commitdf224dc resolves from the SDK
+  manifest instead, retaining the same exact version assertion. No expectation,
+  timeout, skip or production dependency changed to conceal the failure.
+- Final native deployment1.0.2-df224dc:18 build tasks PASS, current symlink and
+  runtime.hello verified, full DeepSeek69 PASS. Product code is unchanged from
+  380b7e0; df224dc includes the corrected native test. Windows DeepSeek69 and its
+  typecheck/lint PASS after that correction.
+- Sentry reopened from this checkout. No active run was cancelled and no paid
+  provider run was launched. Funded same-snapshot accuracy/latency comparison
+  remains UNVERIFIED. No packaged release/install/upgrade claim is made.
