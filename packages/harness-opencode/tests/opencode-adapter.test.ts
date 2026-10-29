@@ -480,6 +480,58 @@ describe('OpenCodeHarnessAdapter', () => {
     expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
   });
 
+  it('ships a host-composed partial report when the report stage never becomes valid', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-fallback-'));
+    roots.push(root);
+    const base = await request(root);
+    const input = {
+      ...base,
+      task: {
+        ...base.task,
+        context: { qaDepth: { version: 1, deadlineAt: Date.now() + 600_000 } },
+      },
+    };
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+          if (prompt.includes('STAGE 2')) {
+            const probe = {
+              callID: 'fb_probe',
+              tool: 'bash',
+              input: { command: 'node probe.mjs' },
+              status: 'completed' as const,
+              output: 'ok',
+              exitCode: 0,
+            };
+            options.onTool?.(probe);
+            return {
+              ...textTurn('README has no executable claims; probe passed.'),
+              toolCalls: [probe],
+            };
+          }
+          return textTurn('this is not a json report');
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_REPORT_HOST_FALLBACK' }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_COVERAGE_PARTIAL' }),
+    );
+    expect(events.some((e) => e.type === 'finding.submitted')).toBe(false);
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+  });
+
   it('runs all turns in one OpenCode session with composed model id', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-success-'));
     roots.push(root);

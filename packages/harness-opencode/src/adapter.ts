@@ -33,6 +33,7 @@ import {
   buildExecutionNudgePrompt,
   applyBlockedChecks,
   applyUnprovenChecks,
+  composeHostFallbackReport,
   turnProducedProof,
   turnRepeatedRedProof,
   closingTriagesFailures,
@@ -1111,6 +1112,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       const blockedChecks: string[] = [];
       const unprovenChecks: string[] = [];
       const redRetryChecks: string[] = [];
+      const checkConclusions: Array<string | undefined> = [];
       let currentCheck = 0;
       const stopClient = async (): Promise<void> => {
         await entry.client?.close();
@@ -1322,6 +1324,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
             !closingTriagesFailures(turn.text)
           )
             redRetryChecks.push(planResult.plannedChecks[currentCheck] ?? '');
+          checkConclusions[currentCheck] = turn.text.slice(0, 1500);
           investigationUsage = sumUsage(investigationUsage, turn.usage ?? {});
           investigationSteps += turn.steps;
         }
@@ -1564,7 +1567,41 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
             }
           }
         } catch (cause) {
-          if (checkpoint === undefined) throw cause;
+          if (checkpoint === undefined) {
+            // Banked work must not die with a failed report stage: when the
+            // report hits its deadline or stays invalid, ship a host-composed
+            // partial report (no findings, no passes) instead of failing.
+            const fallbackEligible =
+              depth !== undefined &&
+              this.observedOperations.size > 0 &&
+              !entry.controller.signal.aborted &&
+              !this.cancelledRuns.has(request.agentRunId) &&
+              (cause instanceof PhaseDeadlineReached ||
+                (cause instanceof OpenCodeHarnessError &&
+                  cause.code === 'OPENCODE_INVALID_RESULT'));
+            if (!fallbackEligible) throw cause;
+            const reason =
+              cause instanceof PhaseDeadlineReached
+                ? 'the reporting stage reached its protected deadline before a complete report was returned.'
+                : 'the reporting stage stayed invalid after ' + MAX_REPORT_ATTEMPTS + ' attempts.';
+            const fallback = composeHostFallbackReport(
+              planResult,
+              this.observedOperations,
+              checkConclusions,
+              reason,
+            );
+            built = await this.buildReportAttempt(request, fallback, pipeline);
+            result = fallback;
+            yield event(request.agentRunId, {
+              type: 'warning',
+              code: 'QA_REPORT_HOST_FALLBACK',
+              message:
+                'Report stage failed (' +
+                reason.replace(/\.$/, '') +
+                '); composing a partial report from host-observed facts. Analysis is partial.',
+            });
+            break;
+          }
           try {
             await stopValidation();
           } catch {

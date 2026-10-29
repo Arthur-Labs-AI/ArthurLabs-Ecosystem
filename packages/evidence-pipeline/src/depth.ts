@@ -309,6 +309,70 @@ export function applyUnprovenChecks<T extends SentryAgentReportV2>(
   };
 }
 
+/**
+ * Last-resort report when the reporting stage cannot finish (deadline or
+ * repeated invalid output) but investigation already banked work. The host
+ * asserts NO findings and NO passes: every check is inconclusive (or not_run
+ * when the agent never concluded it) and carries the agent's own closing
+ * conclusion, labelled unverified, so the banked work is not thrown away
+ * with a failed run.
+ */
+export function composeHostFallbackReport(
+  plan: { plannedChecks: readonly string[] },
+  operations: ReadonlyMap<string, ObservedOperation>,
+  conclusions: readonly (string | undefined)[],
+  reason: string,
+): SentryAgentReportV2 {
+  let executed = 0;
+  let failed = 0;
+  for (const op of operations.values()) {
+    if (READ_ONLY_TOOL.test(op.toolName) || (op.commandText ?? '').length === 0) continue;
+    executed += 1;
+    if (typeof op.exitCode === 'number' && op.exitCode !== 0) failed += 1;
+  }
+  const concluded = plan.plannedChecks.filter((_, i) => (conclusions[i] ?? '').trim().length > 0);
+  return {
+    schemaVersion: 2,
+    summary:
+      'Host-composed partial report: ' +
+      reason +
+      ' The agent’s findings could not be serialized, so none are asserted here. ' +
+      executed +
+      ' command(s) ran (' +
+      failed +
+      ' non-zero); ' +
+      concluded.length +
+      ' of ' +
+      plan.plannedChecks.length +
+      ' planned check(s) reached a stated conclusion, shown below as unverified agent statements.',
+    checks: plan.plannedChecks.map((name, i) => {
+      const conclusion = (conclusions[i] ?? '').trim();
+      return conclusion.length === 0
+        ? {
+            name,
+            status: 'not_run' as const,
+            details: 'Host: this check never reached a conclusion before the report stage failed.',
+          }
+        : {
+            name,
+            status: 'inconclusive' as const,
+            coverage: 'partial' as const,
+            details: (
+              'Unverified agent conclusion (the report stage did not validate it): ' + conclusion
+            ).slice(0, 5000),
+          };
+    }),
+    hypotheses: [],
+    evidence: [],
+    findings: [],
+    limitations: [
+      'Host fallback: ' +
+        reason +
+        ' Any defect the agent may have found is described only in the per-check conclusions and is not a validated finding.',
+    ],
+  };
+}
+
 export function reportCheckAliases(plan: { plannedChecks: readonly string[] }): string {
   return (
     'Check identity contract: set checks[].name to the short ID below (or its exact frozen description). Never abbreviate or paraphrase a description. Explain results in details, not name.\n' +

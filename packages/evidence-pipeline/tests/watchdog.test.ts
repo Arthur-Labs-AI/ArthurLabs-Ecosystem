@@ -5,6 +5,7 @@ import {
   failedCommandsSince,
   turnWatchdogStop,
   buildAlternativeApproachPrompt,
+  composeHostFallbackReport,
 } from '../src/index.js';
 import { watchTurn } from '../src/phase-budget.js';
 import type { ObservedOperation } from '../src/pipeline.js';
@@ -139,5 +140,21 @@ describe('watchTurn', () => {
     expect(seen).toEqual(['tool.completed', 'command.executed']);
     expect(step.value).toEqual({ stopped: true, reason: 'red' });
     expect(stops).toBe(1);
+  });
+});
+
+describe('host fallback report', () => {
+  it('asserts no findings or passes and keeps conclusions as unverified', () => {
+    const report = composeHostFallbackReport(
+      { plannedChecks: ['A', 'B'] },
+      ledger([{ tool: 'bash', command: 'node p.mjs', exitCode: 1 }]),
+      ['Race is real: reproduced twice.', undefined],
+      'the reporting stage reached its protected deadline.',
+    );
+    expect(report.findings).toEqual([]);
+    expect(report.checks.map((c) => c.status)).toEqual(['inconclusive', 'not_run']);
+    expect(report.checks[0]?.details).toContain('Unverified agent conclusion');
+    expect(report.summary).toContain('1 command(s) ran (1 non-zero)');
+    expect(report.limitations[0]).toContain('Host fallback');
   });
 });
