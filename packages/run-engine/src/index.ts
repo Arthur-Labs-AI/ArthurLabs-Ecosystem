@@ -49,6 +49,7 @@ import {
   type HarnessAdapterRegistration,
 } from '@qa/harness-protocol';
 import {
+  matchImportExclusion,
   projectDataPaths,
   RuntimeInstanceLease,
   RuntimePersistenceError,
@@ -192,6 +193,15 @@ export interface RunStatus {
 
 class RunTimeoutError extends Error {}
 
+/** Stall watchdog: an agent that emits no event for this long is wedged,
+ *  however generous the run fuse is. Deliberately independent of
+ *  runTimeoutMs — raising the fuse must never raise the silence window. */
+export const STALL_SILENCE_MS = 900_000;
+
+export function silenceWindowMs(runTimeoutMs: number): number {
+  return Math.min(runTimeoutMs, STALL_SILENCE_MS);
+}
+
 export const CANCELLATION_POLL_INTERVAL_MS = 500;
 
 export class RunCoordinator {
@@ -321,6 +331,12 @@ export class RunCoordinator {
         projectRevisionId: revision.id,
         qaRunId: runId,
         workingCopyPath: sourceRoot,
+        // HashVersion 2 revisions were hashed under the default import
+        // exclusions; the snapshot must hash the same tree or excluded
+        // noise (installed dependencies, logs) reports phantom drift.
+        ...(revision.hashVersion === 2
+          ? { exclude: (relativePath: string) => matchImportExclusion(relativePath) }
+          : {}),
       });
       if (snapshot.contentHash !== revision.contentHash) throw new Error('PROJECT_COPY_DRIFT');
       const createdAt = nowIsoTimestamp();
@@ -426,7 +442,12 @@ export class RunCoordinator {
       let targetSpec: TargetSpec | undefined;
       if (effectiveMode === 'targeted') {
         const scope = {
-          includePaths: [...(effectiveIncludePaths as readonly string[])],
+          // Directory suggestions are emitted with a trailing slash
+          // (projects:suggest-targets); normalize before manifest matching
+          // and persist the normalized form.
+          includePaths: [...(effectiveIncludePaths as readonly string[])].map((candidate) =>
+            candidate.replace(/\/+$/, ''),
+          ),
           ...(options.target?.issueIds === undefined ? {} : { issueIds: options.target.issueIds }),
           ...(options.target?.userInstructions === undefined
             ? {}
@@ -1152,6 +1173,7 @@ export class RunCoordinator {
     // A run emitting real work never trips; a wedged transport does.
     const startedAt = Date.now();
     const absoluteMaxMs = timeoutMs * 3;
+    const silenceMs = silenceWindowMs(timeoutMs);
     const hardDeadline = depthPolicy(request.task.context)?.deadlineAt;
     let lastEventAt = startedAt;
     const timeout = new Promise<never>((_resolve, reject) => {
@@ -1170,8 +1192,8 @@ export class RunCoordinator {
           );
           return;
         }
-        if (now - lastEventAt >= timeoutMs) {
-          reject(new RunTimeoutError('no events for ' + String(timeoutMs) + ' ms'));
+        if (now - lastEventAt >= silenceMs) {
+          reject(new RunTimeoutError('no events for ' + String(silenceMs) + ' ms'));
           return;
         }
         timer = setTimeout(

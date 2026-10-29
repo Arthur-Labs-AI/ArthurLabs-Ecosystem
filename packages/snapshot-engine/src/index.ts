@@ -28,6 +28,9 @@ export interface CreateSnapshotInput {
   readonly workingCopyPath: string;
   readonly sourceState?: SnapshotSourceState;
   readonly signal?: AbortSignal;
+  /** Entries the revision hash excluded (hashVersion 2 import exclusions)
+   *  must be excluded here too, or the two hashes can never agree. */
+  readonly exclude?: (relativePath: string) => boolean;
 }
 
 export class SnapshotEngine {
@@ -92,7 +95,10 @@ export class SnapshotEngine {
     let symlinkCount = 0;
     let totalBytes = 0;
     const source = (async function* (): AsyncGenerator<string> {
-      for await (const walked of walkTree(input.workingCopyPath, input.signal)) {
+      for await (const walked of walkTree(input.workingCopyPath, {
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+        ...(input.exclude === undefined ? {} : { exclude: input.exclude }),
+      })) {
         const entry = await snapshotEntry(walked, input.signal);
         const line = JSON.stringify(entry) + '\n';
         aggregate.update(line, 'utf8');

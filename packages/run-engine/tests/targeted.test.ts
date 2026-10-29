@@ -2,7 +2,12 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
-import { SentryDatabase, SentryRepository, RuntimeInstanceLease } from '@qa/persistence';
+import {
+  projectDataPaths,
+  SentryDatabase,
+  SentryRepository,
+  RuntimeInstanceLease,
+} from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
 import type { HarnessRunRequest } from '@qa/schemas';
 import { RunEngineError } from '../src/errors.js';
@@ -35,7 +40,7 @@ async function fixture() {
     lease,
     createFakeHarnessRegistry('success'),
   );
-  return { root, source, dataRoot, database, repository, lease, added, runs };
+  return { root, source, dataRoot, database, repository, lease, added, runs, manager };
 }
 
 describe('Phase 7 TARGETED QA (§8-§13, §82)', () => {
@@ -69,6 +74,36 @@ describe('Phase 7 TARGETED QA (§8-§13, §82)', () => {
     expect(spec?.includePaths).toEqual(['src/auth']);
     expect(spec?.snapshotId).toBe(result.run.snapshotId);
     expect(result.run.configuration.instructions?.message).toContain('src/auth');
+    f.database.close();
+  });
+
+  it('accepts trailing-slash directory targets that suggest-targets emits', async () => {
+    const f = await fixture();
+    const result = await f.runs.run(f.added.project.id, {
+      executionKind: 'simulation',
+      mode: 'targeted',
+      target: { includePaths: ['src/auth/'] },
+    });
+    expect(result.run.status).toBe('completed');
+    const spec = f.repository.getTargetSpec(result.run.id);
+    expect(spec?.includePaths).toEqual(['src/auth']);
+    f.database.close();
+  });
+
+  it('ignores import-excluded noise in the working copy at snapshot time', async () => {
+    const f = await fixture();
+    // Excluded noise appearing after import (dependency installs, logs)
+    // passes integrity but must not make the snapshot hash drift.
+    const copy = projectDataPaths(f.dataRoot, f.added.project.id).workingCopy;
+    await mkdir(join(copy, 'node_modules', 'pkg'), { recursive: true });
+    await writeFile(join(copy, 'node_modules', 'pkg', 'index.js'), 'export {};\n');
+    await writeFile(join(copy, 'debug.log'), 'noise\n');
+    await f.manager.assertWorkingCopyIntegrity(f.added.project.id);
+    const result = await f.runs.run(f.added.project.id, {
+      executionKind: 'simulation',
+      mode: 'full',
+    });
+    expect(result.run.status).toBe('completed');
     f.database.close();
   });
 
