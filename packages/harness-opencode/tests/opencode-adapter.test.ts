@@ -273,6 +273,46 @@ describe('OpenCodeHarnessAdapter', () => {
     await adapter.dispose();
   });
 
+  it('recovers a context-exceeded report in a fresh compacted session', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-context-'));
+    roots.push(root);
+    const input = await request(root);
+    let clients = 0;
+    let calls = 0;
+    const prompts: string[] = [];
+    const factory: OpenCodeClientFactory = async () => {
+      clients += 1;
+      return {
+        startSession: async () => ({
+          runPrompt: async (prompt: string) => {
+            prompts.push(prompt);
+            calls += 1;
+            if (calls === 1) return textTurn(validPlan());
+            if (calls === 2) return textTurn('Investigation complete.');
+            if (calls === 3) throw new Error('prompt is too long: 213462 tokens > 200000 maximum');
+            return textTurn(JSON.stringify(validReportV2()));
+          },
+          abort: () => undefined,
+        }),
+        close: async () => undefined,
+      };
+    };
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1), JSON.stringify(events.slice(-4))).toMatchObject({
+      type: 'run.completed',
+    });
+    expect(clients).toBe(2);
+    expect(prompts.at(-1)).toContain('REPORT-ONLY RECOVERY');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_CONTEXT_COMPACTED' }),
+    );
+  });
+
   it('runs all turns in one OpenCode session with composed model id', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-success-'));
     roots.push(root);
@@ -643,13 +683,12 @@ describe('OpenCodeHarnessAdapter', () => {
     await adapter.dispose();
   });
 
-  it('keeps a 60 min default single-turn budget for full-project investigations', () => {
-    // Regression pin for run_01M5SWNX0RRAB3QFKB6TGF55CS: a single-shot
-    // execution turn over a 349-file project exceeded the old 30 min budget
-    // with zero partial results, while the sibling GLM run needed 33.5 min
-    // total on the same project. The budget stays a hard cap; productive
-    // single-shot turns just get room to finish.
-    expect(DEFAULT_OPENCODE_TURN_TIMEOUT_MS).toBe(3_600_000);
+  it('keeps a 3h default single-turn budget for full-project investigations', () => {
+    // Regression pin for run_01M61FYQ7QD3DWVAVSD90PWAKB: GLM's single
+    // investigation turn died at its 30 min cap mid-work on a large project.
+    // All three adapters share the 3h cap; the run fuse and the 15-minute
+    // stall watchdog remain the real stuck-work protection.
+    expect(DEFAULT_OPENCODE_TURN_TIMEOUT_MS).toBe(10_800_000);
   });
 
   it('says whether a timed-out turn talked to the upstream at all', async () => {

@@ -218,7 +218,7 @@ describe('GLM ordered stage prompt behavior', () => {
       }
     },
   );
-  it.each([false, true, 'low-budget', 'review-failure', 'refinement-failure', 'review-unchanged'])(
+  it.each([false, true, 'low-budget'])(
     'keeps safeguards with independent depth enabled=%s',
     async (depth) => {
       const { mkdtemp } = await import('node:fs/promises');
@@ -243,14 +243,7 @@ describe('GLM ordered stage prompt behavior', () => {
         },
       });
       const prompts: string[] = [];
-      const stages = [
-        planTurn(),
-        investigationTurn(),
-        reportTurn(validReport(Boolean(depth))),
-        ...(depth === true || depth === 'review-failure' || depth === 'refinement-failure'
-          ? [investigationTurn(), reportTurn(validReport(Boolean(depth)))]
-          : []),
-      ];
+      const stages = [planTurn(), investigationTurn(), reportTurn(validReport(Boolean(depth)))];
       const adapter = new ClaudeCodeHarnessAdapter({
         executable: 'claude-test',
         modelId: 'glm-5.3-flash',
@@ -267,12 +260,6 @@ describe('GLM ordered stage prompt behavior', () => {
           startSession: async () => ({
             runText: (async (text: string) => {
               prompts.push(text);
-              if (depth === 'review-unchanged' && text.includes('CHALLENGE YOUR OWN INVESTIGATION'))
-                return reportTurn('{"reportNeedsUpdate":false}');
-              if (depth === 'refinement-failure' && prompts.length === 5)
-                throw new Error('scripted refinement failure');
-              if (depth === 'review-failure' && text.includes('CHALLENGE YOUR OWN INVESTIGATION'))
-                throw new Error('scripted review failure');
               const next = stages[Math.min(prompts.length - 1, stages.length - 1)];
               return next;
             }) as unknown as never,
@@ -290,39 +277,27 @@ describe('GLM ordered stage prompt behavior', () => {
           events.some((e) => e.type === 'agent.message' && e.message.includes('Inspect README')),
         ).toBe(true);
       const usageEvent = events.find((e) => e.type === 'usage.updated');
-      expect(usageEvent?.type === 'usage.updated' ? usageEvent.usage.turns : undefined).toBe(
-        depth === true || depth === 'refinement-failure'
-          ? 5
-          : depth === 'review-failure' || depth === 'review-unchanged'
-            ? 4
-            : 3,
-      );
+      // No self-challenge or refinement turn: plan, investigation, report.
+      expect(usageEvent?.type === 'usage.updated' ? usageEvent.usage.turns : undefined).toBe(3);
       expect(events.filter((e) => e.type === 'finding.submitted')).toHaveLength(1);
-      if (depth === 'low-budget')
+      if (depth)
         expect(events.some((e) => e.type === 'warning' && e.code === 'QA_CHALLENGE_NOT_RUN')).toBe(
           true,
         );
-      expect(prompts).toHaveLength(
-        depth === true || depth === 'refinement-failure'
-          ? 5
-          : depth === 'review-failure' || depth === 'review-unchanged'
-            ? 4
-            : 3,
+      expect(prompts).toHaveLength(3);
+      expect(prompts.some((prompt) => prompt.includes('CHALLENGE YOUR OWN INVESTIGATION'))).toBe(
+        false,
       );
-      if (depth === true) expect(prompts[3]).toContain('CHALLENGE YOUR OWN INVESTIGATION');
       const [planning, investigation] = prompts as [string, string];
       const reporting = prompts[2]!;
-      if (depth === 'review-failure' || depth === 'refinement-failure')
-        expect(
-          events.some((e) => e.type === 'warning' && e.code === 'QA_VALIDATION_INCOMPLETE'),
-        ).toBe(true);
       expect(planning).toContain(QA_SESSION_CONTRACT);
       expect(planning).toContain('No tests, builds, lint, typecheck');
       expect(planning).toContain('future actions');
       expect(planning).toContain('User instructions:');
       expect(planning).toContain('Immutable mission context');
       expect(investigation).toContain('STAGE 2');
-      expect(investigation).toContain('Do not repeat completed checks');
+      expect(investigation).toContain('INVESTIGATE CHECK check_1');
+      expect(investigation).toContain('Work ONLY on this check');
       expect(investigation).toContain('counterexample');
       expect(investigation).toContain('Small fixture');
       expect(investigation).not.toContain(QA_SESSION_CONTRACT);

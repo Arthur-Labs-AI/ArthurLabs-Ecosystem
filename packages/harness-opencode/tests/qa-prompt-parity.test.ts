@@ -191,7 +191,7 @@ describe('OpenCode QA prompt parity', () => {
       }
     },
   );
-  it.each([false, true, 'low-budget', 'review-failure', 'refinement-failure', 'review-unchanged'])(
+  it.each([false, true, 'low-budget'])(
     'routes independent depth policy enabled=%s',
     async (depth) => {
       const root = await mkdtemp(join(tmpdir(), 'sentry-oc-parity-'));
@@ -218,12 +218,6 @@ describe('OpenCode QA prompt parity', () => {
         startSession: async () => ({
           runPrompt: async (prompt: string, options) => {
             prompts.push(prompt);
-            if (depth === 'review-unchanged' && prompt.includes('CHALLENGE YOUR OWN INVESTIGATION'))
-              return textTurn('{"reportNeedsUpdate":false}');
-            if (depth === 'refinement-failure' && prompts.length === 5)
-              throw new Error('scripted refinement failure');
-            if (depth === 'review-failure' && prompt.includes('CHALLENGE YOUR OWN INVESTIGATION'))
-              throw new Error('scripted review failure');
             if (prompts.length === 1) return textTurn(validPlan());
             if (prompts.length === 2) {
               const observation = {
@@ -261,31 +255,25 @@ describe('OpenCode QA prompt parity', () => {
         events.some((e) => e.type === 'agent.message' && e.message.includes('Inspect README')),
       ).toBe(true);
       expect(events.filter((e) => e.type === 'finding.submitted')).toHaveLength(1);
-      if (depth === 'low-budget')
+      if (depth)
         expect(events.some((e) => e.type === 'warning' && e.code === 'QA_CHALLENGE_NOT_RUN')).toBe(
           true,
         );
-      expect(prompts).toHaveLength(
-        depth === true || depth === 'refinement-failure'
-          ? 5
-          : depth === 'review-failure' || depth === 'review-unchanged'
-            ? 4
-            : 3,
+      // No self-challenge or refinement turn: plan, investigation, report.
+      expect(prompts).toHaveLength(3);
+      expect(prompts.some((prompt) => prompt.includes('CHALLENGE YOUR OWN INVESTIGATION'))).toBe(
+        false,
       );
-      if (depth === true) expect(prompts[3]).toContain('CHALLENGE YOUR OWN INVESTIGATION');
       const [planning, investigation] = prompts as [string, string];
       const reporting = prompts[2]!;
-      if (depth === 'review-failure' || depth === 'refinement-failure')
-        expect(
-          events.some((e) => e.type === 'warning' && e.code === 'QA_VALIDATION_INCOMPLETE'),
-        ).toBe(true);
       expect(planning).toContain(QA_SESSION_CONTRACT);
       expect(planning).toContain('No tests, builds, lint, typecheck');
       expect(planning).toContain('future actions');
       expect(planning).toContain('User instructions:');
       expect(planning).toContain('Immutable mission context');
       expect(investigation).toContain('STAGE 2');
-      expect(investigation).toContain('Do not repeat completed checks');
+      expect(investigation).toContain('INVESTIGATE CHECK check_1');
+      expect(investigation).toContain('Work ONLY on this check');
       expect(investigation).toContain('counterexample');
       expect(investigation).toContain('Small fixture');
       expect(investigation).not.toContain(QA_SESSION_CONTRACT);

@@ -219,6 +219,49 @@ function threeStage(
 }
 
 describe('ClaudeCodeHarnessAdapter', () => {
+  it('recovers a context-exceeded report in a fresh compacted session', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-context-'));
+    roots.push(root);
+    const input = await request(root);
+    let clients = 0;
+    let calls = 0;
+    const prompts: string[] = [];
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
+      clientFactory: async () => {
+        clients += 1;
+        return {
+          sessionId: 'session-context-' + clients,
+          startSession: async () => ({
+            runText: async (text: string) => {
+              prompts.push(text);
+              calls += 1;
+              if (calls === 1) return planTurn();
+              if (calls === 2) return investigationTurn();
+              if (calls === 3)
+                throw new Error('prompt is too long: 213462 tokens > 200000 maximum');
+              return reportTurn(validReportV2());
+            },
+          }),
+          close: async () => undefined,
+        };
+      },
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1), JSON.stringify(events.slice(-4))).toMatchObject({
+      type: 'run.completed',
+    });
+    expect(clients).toBe(2);
+    expect(prompts.at(-1)).toContain('REPORT-ONLY RECOVERY');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_CONTEXT_COMPACTED' }),
+    );
+  });
+
   it('fails fast with GLM_TOOL_LOOP on 10 identical failing tool calls', async () => {
     // Regression for the 166x Read-on-directory loop that burned a whole
     // 30-minute run budget: the adapter aborts the phase with a clear

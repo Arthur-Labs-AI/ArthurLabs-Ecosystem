@@ -415,6 +415,25 @@ describe('Claude executable runtime identity', () => {
     expect(isSandboxBootstrapFailureText(text)).toBe(false);
   });
 
+  it('does not classify markers buried in file output as bootstrap failure', async () => {
+    const { isSandboxBootstrapFailureText } = await import('../src/index.js');
+    // Regression (run_01M617HK8WXK434SZ4H3RY23K3): a Bash result printing a
+    // test file whose fixture strings quote bwrap at line starts deep in
+    // the content aborted a healthy GLM investigation mid-run.
+    const fileContent = [
+      "import { describe, expect, it } from 'vitest';",
+      "import { renderToolShellWrapper } from '../src/index.js';",
+      "describe('tool shell wrapper', () => {",
+      "  it('fails closed', () => {",
+      '    const diagnostic = `',
+      "bwrap: Can't mkdir /tmp/example: Permission denied",
+      '`;',
+      '  });',
+      '});',
+    ].join('\n');
+    expect(isSandboxBootstrapFailureText(fileContent)).toBe(false);
+  });
+
   it('detects sandbox bootstrap markers without flagging ordinary errors', async () => {
     const { isSandboxBootstrapFailureText } = await import('../src/index.js');
     expect(

@@ -11,20 +11,23 @@ import {
   type OperationId,
 } from '@qa/shared';
 import {
-  canChallenge,
   limitPhase,
   reportAttemptDeadline,
   investigationDeadline,
   PhaseDeadlineReached,
   ObservedToolNotes,
+  ContextBudget,
+  estimatePromptTokens,
+  isContextWindowExceeded,
+  buildInvestigationCompactionContext,
   buildRecoveryReportContext,
   buildQaPlanningPrompt,
-  buildQaInvestigationPrompt,
+  buildQaCheckInvestigationPrompt,
+  applyBlockedChecks,
+  applyUnprovenChecks,
+  turnProducedProof,
   buildQaReportPrompt,
-  validationBudgetMs,
-  reviewNeedsUpdate,
   boundedValidation,
-  challengePrompt,
   coverageErrors,
   groundCoverage,
   resolveReportChecks,
@@ -42,6 +45,9 @@ import {
   summarizeSchemaIssues,
   validateLocation,
   validateProductionFindings,
+  downgradeUngroundedFindings,
+  buildGroundingRepairPrompt,
+  isGroundingRepairableError,
   type EvidencePipelineContext,
   type ObservedOperation,
 } from '@qa/evidence-pipeline';
@@ -124,6 +130,10 @@ export interface ClaudeCodeHarnessAdapterOptions {
    * Production never sets this; the real preflight always runs.
    */
   readonly wslMountIsolationOverride?: ClaudeWslIsolationReport | undefined;
+  /** Provider context window in tokens for the configured GLM model.
+   *  Conservative 200k default (Claude Code session window); rotation
+   *  happens at the shared safety ratio before it is full. */
+  readonly contextWindowTokens?: number;
   readonly onRuntimeIdentity?: (identity: {
     readonly harnessVersion?: string;
     readonly executableVersion?: string;
@@ -230,6 +240,7 @@ function messageOf(cause: unknown): string {
 interface BuiltReportAttempt {
   readonly evidenceByKey: ReadonlyMap<string, Evidence>;
   readonly findings: readonly Finding[];
+  readonly groundingRepairs: readonly string[];
 }
 
 function eventText(value: unknown): string | undefined {
@@ -284,11 +295,16 @@ function textFromContentBlocks(content: unknown): string {
  * failures.
  */
 export function isSandboxBootstrapFailureText(text: string): boolean {
-  if (/^[\t ]*bwrap:/im.test(text)) return true;
-  if (/^[\t ]*can'?t\s+(mkdir|create\s+file|mount|bind|chdir|pivot|clone|unshare)\b/im.test(text))
+  // A genuine bootstrap failure IS the leading diagnostic of the result
+  // (optionally after an `Exit code N` line). Markers buried deeper are
+  // quoted content — e.g. a printed test file whose fixtures quote bwrap —
+  // and must never abort a healthy investigation.
+  const head = text.split(/\r?\n/).slice(0, 3).join('\n');
+  if (/^[\t ]*bwrap:/im.test(head)) return true;
+  if (/^[\t ]*can'?t\s+(mkdir|create\s+file|mount|bind|chdir|pivot|clone|unshare)\b/im.test(head))
     return true;
-  if (/^[\t ]*sandbox[\t ]+unavailable\b/im.test(text)) return true;
-  if (/^[\t ]*bubblewrap\b[^\r\n]*(permission denied|failed)/im.test(text)) return true;
+  if (/^[\t ]*sandbox[\t ]+unavailable\b/im.test(head)) return true;
+  if (/^[\t ]*bubblewrap\b[^\r\n]*(permission denied|failed)/im.test(head)) return true;
   return false;
 }
 
@@ -507,7 +523,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     this.runtime = resolveGlmRuntime({ ...options, environment: this.hostEnvironment });
     this.clientFactory = options.clientFactory ?? createProductionClaudeClient;
     this.shutdownTimeoutMs = options.shutdownTimeoutMs ?? 10_000;
-    this.turnTimeoutMs = options.turnTimeoutMs ?? 1_800_000;
+    this.turnTimeoutMs = options.turnTimeoutMs ?? 10_800_000;
     this.initializeTimeoutMs = options.initializeTimeoutMs ?? 30_000;
     const child = buildClaudeChildEnvironment({ source: this.hostEnvironment });
     this.environment = child.environment;
@@ -610,11 +626,12 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       });
       evidenceByKey.set(source.key, converted);
     }
-    validateProductionFindings(result.findings, evidenceByKey, (message: string) =>
+    const repaired = downgradeUngroundedFindings(result.findings, evidenceByKey);
+    validateProductionFindings(repaired.findings, evidenceByKey, (message: string) =>
       pipeline.errors.invalidResult(message),
     );
     const findings: Finding[] = [];
-    for (const source of result.findings) {
+    for (const source of repaired.findings) {
       for (const location of source.locations)
         await validateLocation(
           request.workspace.runtimePath,
@@ -642,7 +659,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         }),
       );
     }
-    return { evidenceByKey, findings };
+    return { evidenceByKey, findings, groundingRepairs: repaired.repairs };
   }
 
   private observeStreamEvent(
@@ -865,7 +882,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             new ClaudeCodeHarnessError(
               'GLM_SANDBOX_UNAVAILABLE',
               'Claude Code sandbox failed to initialize (' +
-                redactDiagnostic(rawResultText, this.secrets).slice(0, 300) +
+                redactDiagnostic(rawResultText, this.secrets).split(/\r?\n/)[0]!.slice(0, 200) +
                 '); the shell command never executed. Repair the sandbox instead of retrying model turns.',
             ),
             { partialEvents: [...out] },
@@ -1448,8 +1465,9 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       this.client = await this.clientFactory(spec);
       session = await this.client.startSession();
       let recoveryContext = '';
-      let recoveryUsed = false;
-      const startReportContext = async () => {
+      let compactionContext = '';
+      const contextBudget = new ContextBudget(this.options.contextWindowTokens ?? 200_000);
+      const freshClient = async () => {
         await this.dispose();
         if (this.cancelled)
           throw new ClaudeCodeHarnessError(
@@ -1472,8 +1490,29 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             'GLM_CANCEL_FAILED',
             'Run cancelled before report recovery.',
           );
-        recoveryUsed = true;
+      };
+      const startReportContext = async () => {
+        await freshClient();
         recoveryContext = buildRecoveryReportContext(request, this.toolNotes.render()) + '\n';
+        contextBudget.reset();
+      };
+      /** Host compaction: discard the bloated session; only host-observed
+       *  facts (frozen plan, operation receipt, bounded tool notes) cross
+       *  into the fresh session as the next turn's seed. */
+      const startInvestigationContext = async (
+        completedChecks: number,
+        plan: { plannedChecks: readonly string[] },
+      ) => {
+        await freshClient();
+        compactionContext =
+          buildInvestigationCompactionContext(
+            request,
+            plan,
+            this.observedOperations,
+            this.toolNotes.render(),
+            completedChecks,
+          ) + '\n';
+        contextBudget.reset();
       };
       markGlmRuntimeVerified();
       const pipeline = pipelineContext(this.secrets);
@@ -1514,6 +1553,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           }
         }
         planningTurns += 1;
+        contextBudget.observeTurn(planning.usage);
         planningUsage = sumUsage(planningUsage, planning.usage ?? {});
         if (planning.text.trim().length === 0) {
           planCorrection = ['Planning turn produced no response.'];
@@ -1569,38 +1609,107 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // parsed as a result, never persisted as reasoning); tool events
       // carry the evidentiary facts. Live: yielded mid-turn so the
       // coordinator's activity window tracks real tool work.
+      // Investigation: one host-driven turn per frozen check (see
+      // DeepSeek adapter). A dead turn blocks only its remaining checks.
       const depth = depthPolicy(request.task.context);
-      let challenge: CollectedTurn | undefined;
-      let validationIssued = 0;
       let reportingIssued = 0;
-      let investigation: CollectedTurn | undefined;
+      let investigationUsage: AgentUsage | undefined;
+      let investigationTurns = 0;
+      const blockedChecks: string[] = [];
+      const unprovenChecks: string[] = [];
       {
-        const work = this.streamPhaseTurn(
-          session,
-          buildQaInvestigationPrompt(planResult, this.observedOperations),
-          request.agentRunId,
-          'investigation',
-        );
-        const live =
-          depth === undefined
-            ? work
-            : limitPhase(work, investigationDeadline(depth.deadlineAt), () => this.dispose());
-        try {
-          let step = await live.next();
-          while (step.done !== true) {
-            yield step.value;
-            step = await live.next();
+        let currentCheck = 0;
+        let interrupted = false;
+        let contextRetriedForCheck = false;
+        for (; currentCheck < planResult.plannedChecks.length; currentCheck += 1) {
+          yield event(request.agentRunId, {
+            type: 'agent.status',
+            status: 'investigating',
+            message:
+              'Claude Code is investigating check ' +
+              (currentCheck + 1) +
+              '/' +
+              planResult.plannedChecks.length +
+              ': ' +
+              (planResult.plannedChecks[currentCheck] ?? '').slice(0, 120),
+          });
+          const ledgerBeforeTurn = new Set(this.observedOperations.keys());
+          const checkPrompt = buildQaCheckInvestigationPrompt(
+            planResult,
+            currentCheck,
+            this.observedOperations,
+          );
+          // Prevention: rotate BEFORE the provider rejects a turn for
+          // context overflow (host compaction; see DeepSeek adapter).
+          if (
+            currentCheck > 0 &&
+            compactionContext === '' &&
+            contextBudget.shouldRotate(estimatePromptTokens(checkPrompt))
+          ) {
+            await startInvestigationContext(currentCheck, planResult);
+            yield event(request.agentRunId, {
+              type: 'warning',
+              code: 'QA_CONTEXT_COMPACTED',
+              message:
+                'Context budget reached during investigation; continuing in a fresh session seeded with host-observed facts only.',
+            });
           }
-          investigation = step.value;
-        } catch (cause) {
-          for (const emitted of partialTurnEvents(cause)) yield emitted;
-          if (!(cause instanceof PhaseDeadlineReached) || this.cancelled) throw cause;
+          const turnText = compactionContext + checkPrompt;
+          compactionContext = '';
+          const work = this.streamPhaseTurn(session, turnText, request.agentRunId, 'investigation');
+          const live =
+            depth === undefined
+              ? work
+              : limitPhase(work, investigationDeadline(depth.deadlineAt), () => this.dispose());
+          try {
+            let step = await live.next();
+            while (step.done !== true) {
+              yield step.value;
+              step = await live.next();
+            }
+            if (!turnProducedProof(ledgerBeforeTurn, this.observedOperations))
+              unprovenChecks.push(planResult.plannedChecks[currentCheck] ?? '');
+            investigationTurns += 1;
+            contextBudget.observeTurn(step.value.usage);
+            contextRetriedForCheck = false;
+            investigationUsage = sumUsage(investigationUsage, step.value.usage ?? {});
+          } catch (cause) {
+            for (const emitted of partialTurnEvents(cause)) yield emitted;
+            // Reactive compaction: one fresh-session retry of THIS check.
+            if (isContextWindowExceeded(cause) && !contextRetriedForCheck && !this.cancelled) {
+              contextRetriedForCheck = true;
+              await startInvestigationContext(currentCheck, planResult);
+              yield event(request.agentRunId, {
+                type: 'warning',
+                code: 'QA_CONTEXT_COMPACTED',
+                message:
+                  'Provider reported context overflow during investigation; retrying this check once in a fresh session seeded with host-observed facts only.',
+              });
+              currentCheck -= 1;
+              continue;
+            }
+            if (
+              (depth === undefined && !isContextWindowExceeded(cause)) ||
+              !(
+                cause instanceof PhaseDeadlineReached ||
+                cause instanceof ClaudeTurnTimeoutError ||
+                isContextWindowExceeded(cause)
+              ) ||
+              this.cancelled
+            )
+              throw cause;
+            blockedChecks.push(...planResult.plannedChecks.slice(currentCheck));
+            interrupted = true;
+            break;
+          }
+        }
+        if (interrupted) {
           await startReportContext();
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'QA_INVESTIGATION_INCOMPLETE',
             message:
-              'Investigation reached its phase deadline. Reporting only this agent’s observed facts in a fresh report-only context; analysis is partial.',
+              'Investigation turn ended early; remaining checks are inconclusive. Reporting only this agent’s observed facts in a fresh report-only context; analysis is partial.',
           });
         }
       }
@@ -1617,10 +1726,28 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         status: 'reporting',
         message: 'Claude Code is serializing the frozen investigation into a report.',
       });
+      // Prevention: reporting is the context peak — rotate first when the
+      // investigation session is near its window (see DeepSeek adapter).
+      if (
+        recoveryContext === '' &&
+        contextBudget.shouldRotate(
+          estimatePromptTokens(buildQaReportPrompt(planResult, this.observedOperations)),
+        )
+      ) {
+        await startReportContext();
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_CONTEXT_COMPACTED',
+          message:
+            'Context budget reached before reporting; reporting from a fresh session seeded with host-observed facts only.',
+        });
+      }
+      let contextReportRecovered = false;
       const reportTurns: Array<{ usage?: AgentUsage }> = [];
       let result: SentryAgentReportV2 | undefined;
       let built: BuiltReportAttempt | undefined;
       let correction: string[] | undefined;
+      let groundingRepairUsed = false;
       let checkpoint: { result: SentryAgentReportV2; built: BuiltReportAttempt } | undefined;
       let validationCleanupFailed = false;
       const stopValidation = async (): Promise<void> => {
@@ -1683,7 +1810,22 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
               // tool-free turn. Per protocol this fails the REPORT ATTEMPT
               // (not the run): the correction loop tells the model to
               // serialize from the frozen ledger without tools.
-              if (
+              if (isContextWindowExceeded(cause) && !contextReportRecovered && !this.cancelled) {
+                // Reactive compaction: rotate once to a fresh report-only
+                // context and retry there (see DeepSeek adapter).
+                contextReportRecovered = true;
+                await startReportContext();
+                if (attempt >= MAX_REPORT_ATTEMPTS) attempt -= 1;
+                errors = [
+                  'Context window exceeded. Return a shorter complete report from observed facts only.',
+                ];
+                yield event(request.agentRunId, {
+                  type: 'warning',
+                  code: 'QA_CONTEXT_COMPACTED',
+                  message:
+                    'Provider reported context overflow during reporting; retrying in a fresh session seeded with host-observed facts only.',
+                });
+              } else if (
                 cause instanceof PhaseDeadlineReached &&
                 reportPass === 0 &&
                 depth !== undefined &&
@@ -1719,17 +1861,30 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
                 errors = candidate.errors;
               } else {
                 try {
-                  const grounded =
-                    depth === undefined
-                      ? resolveReportChecks(planResult, candidate.report)
-                      : groundCoverage(
-                          resolveReportChecks(planResult, candidate.report),
-                          this.observedOperations,
-                        );
+                  const grounded = applyUnprovenChecks(
+                    applyBlockedChecks(
+                      depth === undefined
+                        ? resolveReportChecks(planResult, candidate.report)
+                        : groundCoverage(
+                            resolveReportChecks(planResult, candidate.report),
+                            this.observedOperations,
+                          ),
+                      blockedChecks,
+                    ),
+                    unprovenChecks,
+                  );
                   const missing = depth === undefined ? [] : coverageErrors(planResult, grounded);
                   if (missing.length > 0) throw new Error(missing.join('\n'));
                   built = await this.buildReportAttempt(request, grounded, pipeline);
                   result = grounded;
+                  if (built.groundingRepairs.length > 0)
+                    yield event(request.agentRunId, {
+                      type: 'warning',
+                      code: 'QA_GROUNDING_DOWNGRADED',
+                      message:
+                        'Ungrounded confidence downgraded, findings preserved: ' +
+                        built.groundingRepairs.join('; '),
+                    });
                   break;
                 } catch (cause) {
                   errors = [boundCorrectionMessage(messageOf(cause))];
@@ -1745,6 +1900,34 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
               );
             }
             correction = errors;
+            if (
+              attempt < MAX_REPORT_ATTEMPTS &&
+              !groundingRepairUsed &&
+              !this.cancelled &&
+              isGroundingRepairableError(errors)
+            ) {
+              // One bounded tool-enabled repair in the live session (see
+              // the DeepSeek adapter for the shared contract).
+              groundingRepairUsed = true;
+              yield event(request.agentRunId, {
+                type: 'warning',
+                code: 'QA_GROUNDING_REPAIR',
+                message:
+                  'Report lacks observed grounding; running the single missing operation before one report retry.',
+              });
+              try {
+                const repair = await this.runTurn(
+                  session!,
+                  buildGroundingRepairPrompt(errors, this.observedOperations),
+                  request.agentRunId,
+                  'investigation',
+                );
+                for (const emitted of repair.events) yield emitted;
+                reportTurns.push(repair.usage === undefined ? {} : { usage: repair.usage });
+              } catch {
+                // Fall through: the tool-free correction below still runs.
+              }
+            }
             if (attempt < MAX_REPORT_ATTEMPTS) {
               // Observability: persist the bounded rejection reasons (not just
               // the count) so a failed correction loop is diagnosable from run
@@ -1807,62 +1990,13 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           type: 'agent.message',
           message: 'QA_REPORT_CHECKPOINT_READY: valid report prepared before optional validation.',
         });
-        if (recoveryUsed || !canChallenge(depth.deadlineAt)) {
-          yield event(request.agentRunId, {
-            type: 'warning',
-            code: 'QA_CHALLENGE_NOT_RUN',
-            message:
-              'Remaining budget reserved for finalization; checkpoint report retained. Analysis is partial.',
-          });
-          break;
-        }
-        try {
-          yield event(request.agentRunId, {
-            type: 'agent.status',
-            status: 'investigating',
-            message:
-              'Validating own findings with a bounded budget; checkpoint report is available.',
-          });
-          validationIssued += 1;
-          challenge = await boundedValidation(
-            () =>
-              this.runTurn(
-                session!,
-                challengePrompt(planResult),
-                request.agentRunId,
-                'investigation',
-              ),
-            validationBudgetMs(depth.deadlineAt),
-            stopValidation,
-          );
-          for (const emitted of challenge.events) yield emitted;
-          if (!reviewNeedsUpdate(challenge.text)) break;
-        } catch (cause) {
-          try {
-            await stopValidation();
-          } catch {
-            validationCleanupFailed = true;
-          }
-          if (cause instanceof Error && cause.message === 'QA_VALIDATION_CLEANUP_FAILED')
-            validationCleanupFailed = true;
-          result = checkpoint.result;
-          built = checkpoint.built;
-          yield event(request.agentRunId, {
-            type: 'warning',
-            code: 'QA_VALIDATION_INCOMPLETE',
-            message:
-              'Validation stopped within its own budget; checkpoint report retained. Analysis is partial.',
-          });
-          break;
-        }
-        result = undefined;
-        built = undefined;
-        correction = undefined;
+        // The validated checkpoint IS the final report (see DeepSeek).
         yield event(request.agentRunId, {
-          type: 'agent.status',
-          status: 'reporting',
-          message: 'Refining the checkpoint report against the final operation ledger.',
+          type: 'warning',
+          code: 'QA_CHALLENGE_NOT_RUN',
+          message: 'Checkpoint report is final; no self-challenge stage.',
         });
+        break;
       }
       if (result === undefined || built === undefined)
         throw new ClaudeCodeHarnessError('GLM_INVALID_RESULT', 'Claude Code produced no report.');
@@ -1914,12 +2048,11 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // Actual turn accounting: every planning attempt + investigation +
       // every report attempt (initial, schema-fallback retries,
       // corrections). Never hardcoded.
-      let summed = sumUsage(planningUsage, investigation?.usage ?? {});
-      if (challenge !== undefined) summed = sumUsage(summed, challenge.usage ?? {});
+      let summed = sumUsage(planningUsage, investigationUsage ?? {});
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
         ...summed,
-        turns: planningTurns + 1 + validationIssued + reportingIssued,
+        turns: planningTurns + investigationTurns + reportingIssued,
       };
       yield event(request.agentRunId, { type: 'usage.updated', usage });
       if (validationCleanupFailed) {
