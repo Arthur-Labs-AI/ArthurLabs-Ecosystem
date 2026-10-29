@@ -28,6 +28,7 @@ import {
   applyUnprovenChecks,
   turnProducedProof,
   turnRepeatedRedProof,
+  closingTriagesFailures,
   buildQaReportPrompt,
   boundedValidation,
   coverageErrors,
@@ -1219,7 +1220,10 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           contextBudget.observeTurn(turn.usage);
           if (!turnProducedProof(ledgerBeforeTurn, this.observedOperations))
             unprovenChecks.push(planResult.plannedChecks[currentCheck] ?? '');
-          if (turnRepeatedRedProof(ledgerBeforeTurn, this.observedOperations))
+          if (
+            turnRepeatedRedProof(ledgerBeforeTurn, this.observedOperations) &&
+            !closingTriagesFailures(turn.text)
+          )
             redRetryChecks.push(planResult.plannedChecks[currentCheck] ?? '');
           investigationUsage = sumUsage(investigationUsage, turn.usage ?? {});
           investigationSteps += turn.steps;

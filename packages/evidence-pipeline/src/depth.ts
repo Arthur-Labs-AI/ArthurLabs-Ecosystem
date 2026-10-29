@@ -156,6 +156,20 @@ export function turnRepeatedRedProof(
 }
 
 /**
+ * True when the check turn's closing text explicitly classifies the red runs
+ * (fixture/probe/test error, or "not a product defect"). The host cannot
+ * verify the claim, but silent edit-to-green is what the gate exists to stop:
+ * an agent that names the cause has done the triage the prompt demands, and
+ * its pass stays visible with the stated reasoning.
+ */
+export function closingTriagesFailures(text: string | undefined): boolean {
+  if (text === undefined) return false;
+  return /\b(fixture|probe|test|harness)\s+(error|bug|issue|mistake|problem|quirk)s?\b|\bnot a product (defect|bug)|\b(triaged|classified)\b[^.]{0,80}\b(fixture|probe|not a product)/i.test(
+    text,
+  );
+}
+
+/**
  * Host-side truth the model cannot overrule: a check claimed passed whose
  * own turn produced no successful executable reproduction (or whose proof
  * run failed repeatedly before being edited to pass) is inconclusive.

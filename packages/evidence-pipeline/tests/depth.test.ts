@@ -15,6 +15,7 @@ import {
   reportCheckAliases,
   turnProducedProof,
   turnRepeatedRedProof,
+  closingTriagesFailures,
 } from '../src/depth.js';
 
 describe('independent depth policy', () => {
@@ -88,6 +89,16 @@ describe('independent depth policy', () => {
     expect(repaired.checks[0]).toMatchObject({ status: 'inconclusive', coverage: 'partial' });
     expect(repaired.checks[0]?.details).toContain('triaged');
     expect(repaired.limitations.join(' ')).toContain('failing proof command');
+  });
+  it('recognizes a closing that explicitly triages red runs', () => {
+    expect(
+      closingTriagesFailures('Probe failures were triaged as fixture errors in the probe itself.'),
+    ).toBe(true);
+    expect(closingTriagesFailures('The red run was a test error, not a product defect.')).toBe(
+      true,
+    );
+    expect(closingTriagesFailures('All checks passed after a few tweaks.')).toBe(false);
+    expect(closingTriagesFailures(undefined)).toBe(false);
   });
   it('detects executable proof only from operations added during the turn', () => {
     const proof = {

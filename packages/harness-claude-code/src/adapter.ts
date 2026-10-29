@@ -1,3 +1,4 @@
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
@@ -27,6 +28,7 @@ import {
   applyUnprovenChecks,
   turnProducedProof,
   turnRepeatedRedProof,
+  closingTriagesFailures,
   buildQaReportPrompt,
   boundedValidation,
   coverageErrors,
@@ -203,6 +205,16 @@ function isSpawnFailure(cause: unknown): boolean {
   if (cause instanceof ClaudeCodeHarnessError && cause.code !== 'GLM_START_FAILED') return false;
   const text = cause instanceof Error ? cause.message : String(cause);
   return SPAWN_ERRNOS.test(text);
+}
+
+function isMidRunSandboxFailure(cause: unknown): boolean {
+  return cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_SANDBOX_UNAVAILABLE';
+}
+
+/** True once any command in the ledger really ran (observed exit code). */
+function hasExecutedCommand(operations: ReadonlyMap<string, ObservedOperation>): boolean {
+  for (const op of operations.values()) if (typeof op.exitCode === 'number') return true;
+  return false;
 }
 
 /** Events buffered before a loop-breaker abort: flush so the run record
@@ -1493,6 +1505,16 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             'GLM_CANCEL_FAILED',
             'Run cancelled before report recovery.',
           );
+        // The workspace can vanish mid-run (run 01M63HWV: bwrap "Can't find
+        // source path"). Recreate the disposable cwd/home/settings so the
+        // fresh, tool-free recovery session can still start; the report
+        // reads the host ledger, never the workspace.
+        if (!existsSync(spec.cwd) || !existsSync(settingsPath)) {
+          mkdirSync(spec.cwd, { recursive: true });
+          mkdirSync(ephemeralClaudeDir, { recursive: true });
+          mkdirSync(configDir, { recursive: true });
+          writeFileSync(settingsPath, JSON.stringify(buildClaudeSettings()), 'utf8');
+        }
         const candidate = await this.clientFactory(spec);
         if (this.cancelled) {
           await candidate.close();
@@ -1689,7 +1711,10 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             }
             if (!turnProducedProof(ledgerBeforeTurn, this.observedOperations))
               unprovenChecks.push(planResult.plannedChecks[currentCheck] ?? '');
-            if (turnRepeatedRedProof(ledgerBeforeTurn, this.observedOperations))
+            if (
+              turnRepeatedRedProof(ledgerBeforeTurn, this.observedOperations) &&
+              !closingTriagesFailures(step.value.text)
+            )
               redRetryChecks.push(planResult.plannedChecks[currentCheck] ?? '');
             investigationTurns += 1;
             contextBudget.observeTurn(step.value.usage);
@@ -1710,12 +1735,16 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
               currentCheck -= 1;
               continue;
             }
-            // A spawn failure (E2BIG, EAGAIN, ...) after banked operations
-            // is retryable-by-design: block the remaining checks and report
-            // the banked facts from a fresh context instead of failing the
-            // run and discarding finished work.
+            // A spawn failure (E2BIG, EAGAIN, ...) after banked operations,
+            // or a sandbox that died mid-run after commands already executed
+            // (a cold-start sandbox failure has no executed command and
+            // still fails fast), is infrastructure loss, not a verdict:
+            // block the remaining checks and report the banked facts from a
+            // fresh context instead of failing the run and discarding
+            // finished work.
             const spawnFailureWithBankedWork =
-              this.observedOperations.size > 0 && isSpawnFailure(cause);
+              (this.observedOperations.size > 0 && isSpawnFailure(cause)) ||
+              (isMidRunSandboxFailure(cause) && hasExecutedCommand(this.observedOperations));
             if (
               (depth === undefined &&
                 !isContextWindowExceeded(cause) &&

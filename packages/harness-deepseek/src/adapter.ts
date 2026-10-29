@@ -30,6 +30,7 @@ import {
   applyUnprovenChecks,
   turnProducedProof,
   turnRepeatedRedProof,
+  closingTriagesFailures,
   buildQaReportPrompt,
   boundedValidation,
   coverageErrors,
@@ -1206,7 +1207,10 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           contextBudget.observeTurn(turn.usage);
           if (!turnProducedProof(ledgerBeforeTurn, this.observedOperations))
             unprovenChecks.push(planResult.plannedChecks[currentCheck] ?? '');
-          if (turnRepeatedRedProof(ledgerBeforeTurn, this.observedOperations))
+          if (
+            turnRepeatedRedProof(ledgerBeforeTurn, this.observedOperations) &&
+            !closingTriagesFailures(turn.text)
+          )
             redRetryChecks.push(planResult.plannedChecks[currentCheck] ?? '');
           investigationTurns += 1;
           investigationUsage = sumUsage(investigationUsage, turn.usage ?? {});
