@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { ReportTurnOptions } from '@qa/evidence-pipeline';
 import {
   DirectClaudeProcessLauncher,
+  feedClaudeStdin,
   type ClaudeProcessLauncher,
   type OwnedClaudeProcess,
 } from './launcher.js';
@@ -592,16 +593,18 @@ function spawnOwnedClaudeTurn(
   // No shell anywhere: argv arrays end to end.
   let owned: OwnedClaudeProcess;
   if (spec.spawnProcess !== undefined) {
-    const child = spec.spawnProcess(spec.executable, [...args, prompt], {
+    const child = spec.spawnProcess(spec.executable, args, {
       cwd: spec.cwd,
       env: buildClaudeSpawnEnv(spec),
     });
+    feedClaudeStdin(child, prompt);
     owned = { child, unitName: undefined, stopOwnedUnit: async () => true };
   } else {
     const launcher: ClaudeProcessLauncher = spec.launcher ?? new DirectClaudeProcessLauncher();
     owned = launcher.launch({
       executable: spec.executable,
-      argv: [...args, prompt],
+      argv: args,
+      stdin: prompt,
       cwd: spec.cwd,
       env: buildClaudeSpawnEnv(spec),
     });

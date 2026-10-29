@@ -186,6 +186,24 @@ function isEventCarryingAbort(cause: unknown): cause is ClaudeCodeHarnessError {
   );
 }
 
+const SPAWN_ERRNOS = /\b(E2BIG|EAGAIN|ENOMEM|EMFILE|ENFILE)\b/;
+
+/**
+ * True for a failure to launch the Claude child (argument list too long,
+ * process/fd/memory exhaustion), raw or already classified as
+ * GLM_START_FAILED. Binary-missing/permission errors are NOT included:
+ * they are configuration faults a fresh report context cannot cure.
+ */
+function isSpawnFailure(cause: unknown): boolean {
+  if (typeof cause === 'object' && cause !== null) {
+    const code = (cause as { code?: unknown }).code;
+    if (typeof code === 'string' && SPAWN_ERRNOS.test(code)) return true;
+  }
+  if (cause instanceof ClaudeCodeHarnessError && cause.code !== 'GLM_START_FAILED') return false;
+  const text = cause instanceof Error ? cause.message : String(cause);
+  return SPAWN_ERRNOS.test(text);
+}
+
 /** Events buffered before a loop-breaker abort: flush so the run record
  *  shows the thrash (and the model saw the correction) instead of 3
  *  events for 25 tool calls. */
@@ -1688,12 +1706,21 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
               currentCheck -= 1;
               continue;
             }
+            // A spawn failure (E2BIG, EAGAIN, ...) after banked operations
+            // is retryable-by-design: block the remaining checks and report
+            // the banked facts from a fresh context instead of failing the
+            // run and discarding finished work.
+            const spawnFailureWithBankedWork =
+              this.observedOperations.size > 0 && isSpawnFailure(cause);
             if (
-              (depth === undefined && !isContextWindowExceeded(cause)) ||
+              (depth === undefined &&
+                !isContextWindowExceeded(cause) &&
+                !spawnFailureWithBankedWork) ||
               !(
                 cause instanceof PhaseDeadlineReached ||
                 cause instanceof ClaudeTurnTimeoutError ||
-                isContextWindowExceeded(cause)
+                isContextWindowExceeded(cause) ||
+                spawnFailureWithBankedWork
               ) ||
               this.cancelled
             )

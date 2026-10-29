@@ -35,6 +35,22 @@ export interface ClaudeLaunchInput {
   readonly cwd: string;
   /** Already-sanitized parent payload (buildClaudeSpawnEnv output). */
   readonly env: NodeJS.ProcessEnv;
+  /**
+   * Prompt text delivered over the child's stdin (`claude -p` reads it
+   * when no positional prompt is given). Keeps the ever-growing prompt
+   * out of argv, which is bounded by the OS (E2BIG).
+   */
+  readonly stdin?: string;
+}
+
+/** Write the prompt to the child's stdin and close it; never throws. */
+export function feedClaudeStdin(child: ChildProcess, text: string): void {
+  const stream = child.stdin;
+  if (stream === null || stream === undefined) return;
+  stream.on('error', () => {
+    // EPIPE when the child exits before reading; its exit is reported elsewhere.
+  });
+  stream.end(text, 'utf8');
 }
 
 export interface OwnedClaudeProcess {
@@ -61,8 +77,9 @@ export class DirectClaudeProcessLauncher implements ClaudeProcessLauncher {
       env: input.env,
       windowsHide: true,
       shell: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [input.stdin === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
     });
+    if (input.stdin !== undefined) feedClaudeStdin(child, input.stdin);
     return {
       child,
       unitName: undefined,
@@ -192,8 +209,10 @@ export class SystemdIsolatedClaudeProcessLauncher implements ClaudeProcessLaunch
       env: { ...process.env, ...input.env },
       windowsHide: true,
       shell: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [input.stdin === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
     });
+    // --pipe forwards the client's stdin into the unit.
+    if (input.stdin !== undefined) feedClaudeStdin(child, input.stdin);
     let stopped = false;
     return {
       child,
