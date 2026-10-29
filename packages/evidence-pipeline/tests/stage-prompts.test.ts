@@ -86,6 +86,15 @@ describe('ordered compact QA stages', () => {
     expect(text).toContain('A failing run is signal');
     expect(text).toContain('PRODUCT defect');
     expect(text).toContain('Never loosen');
+    // Missing dependencies are confirmed once, then routed around.
+    expect(text).toContain('Missing dependencies are a limitation');
+    expect(text).toContain('ONCE');
+  });
+
+  it('calibrates report severity so harness-script defects are never critical', () => {
+    const text = buildQaReportPrompt(plan, new Map());
+    expect(text).toContain('Severity rubric');
+    expect(text).toContain('never critical');
   });
 
   it('keeps reporting tool-free and puts unavailable environment checks in limitations', () => {
