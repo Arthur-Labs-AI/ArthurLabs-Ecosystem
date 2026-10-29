@@ -1,3 +1,55 @@
+## 2026-10-29 - Uncommitted QA stack committed to fix/qa-stage-contracts
+
+The accumulated uncommitted stack (per-check investigation loop, closure
+gate, grounding repair/downgrade, null-exit ledger fix, stall watchdog,
+challenge removal, 3h safety fuse, context-window compaction) was split
+into structured commits on fix/qa-stage-contracts (not main, not pushed):
+f7aad54 fix(evidence-pipeline): add context budget, grounding repair, and
+per-check closure; 8c4cceb fix(qa): compact contexts and drive per-check
+investigation in all three harnesses; 5892cfc fix(run-engine): add stall
+watchdog, 3h safety fuse, and snapshot hash parity; c71eeaf feat(desktop):
+accept revisionId for production QA runs. Verified this session before
+committing: evidence 100, DS 77, GLM 107 PASS; run-engine focused
+targeted+stall-watchdog 14 PASS. OpenCode suite: 129 PASS, 1 FAIL =
+pre-existing functional systemd probe on Windows (unavailable systemd),
+unrelated to the committed files. Full run-engine suite likewise fails
+only on verification-trust systemd/EBUSY environment cases, recorded
+earlier as environmental. Paid comparison run remains owner's.
+shux CLI unavailable in this environment (contract command could not run).
+## 2026-10-28 - Context-window compaction in all 3 harnesses (uncommitted, deployed)
+
+Owner run_01M622G8P67JCK4CCA3VG0CYXN: DeepSeek reporting died with
+CONTEXT_WINDOW_EXCEEDED (816237 message tokens + 256000 requested completion
+> 1048576 window) after 1231 events in ONE session; run failed, 0 findings
+from DS, GLM cancelled as a consequence. Root cause: no context budget
+anywhere - planning+per-check investigation+reporting shared one session,
+and the existing fresh report context was used only on deadline/timeout.
+Fix, identical semantics in DS/OC/GLM via shared evidence-pipeline:
+(a) new context-budget.ts: isContextWindowExceeded classifier (provider
+wordings + error codes + cause chain), ContextBudget (peak observed input
+tokens, rotate at 70% of window, reset on rotation), estimatePromptTokens.
+(b) buildInvestigationCompactionContext: host compaction seed - contract,
+frozen plan, operation receipt, bounded tool notes; model reasoning never
+crosses. (c) Each adapter: proactive rotation before a check turn and
+before reporting when budget trips; reactive rotation+one retry of the
+same check / report attempt on provider context overflow; overflow after
+retry falls back to blocked-checks + fresh report (partial, never run loss).
+Warning code QA_CONTEXT_COMPACTED in all 3. Windows: DS 1048576 (provider-
+reported), OC/GLM conservative 200000 defaults, all overridable via
+contextWindowTokens adapter option. Regression tests red-first: DS report
+recovery (was run.failed, now run.completed + 2 clients + REPORT-ONLY
+RECOVERY seed), DS proactive rotation (tiny window), OC report recovery,
+GLM report recovery, shared classifier/budget units.
+Gates: evidence 100, DS 77, OC 130, GLM 107 PASS; typecheck 37/37, lint
+20/20, build 20/20, prettier PASS. Full turbo test: only
+@qa/snapshot-engine FAIL = 5s timeout flake under parallel load (passes
+standalone 4/4 in 390ms; package does not depend on touched code) - not
+all-green, recorded honestly. Runtime redeployed 1.0.2-488602a (18 tasks,
+ENTRY_OK, SENTRY_DEPLOY_EXIT:0); Sentry reopened, Running yes. Nothing
+committed. Paid comparison run is owner's; acceptance = DS completes
+reporting on a long investigation (or emits QA_CONTEXT_COMPACTED and
+still reports) instead of CONTEXT_WINDOW_EXCEEDED run failure.
+shux CLI unavailable in this environment (contract command could not run).
 ## 2026-10-28 — Reporting reserve COMPLETE / ACTIVATED
 
 Run_01M60MRP6TCY47QM8S1ZXF28HZ consumed30min before reports. Host phase
@@ -816,3 +868,17 @@ shux contract attempted, unavailable on PATH; task status/ledger/handoff updated
 ## 2026-10-28 — Protected reporting reserve (in progress)
 
 Investigating run_01M60MRP6TCY47QM8S1ZXF28HZ: all agents consumed the run deadline before a valid report. Implementing host phase deadlines, owned-process shutdown and fresh report-only recovery from each agent’s own redacted facts. OpenCode observations now stream. DeepSeek real SDK local-stub probe proves old session IDs cannot resume after process restart. Four deterministic recovery/cancellation/shutdown tests pass for DeepSeek. Remaining: parity tests, real-binary zero-credit recovery, full gates, deployment. shux contract unavailable; protocol updated directly.
+
+
+## 2026-10-28 — Infrastructure and large-project problem document (complete)
+
+Owner requested one detailed English Markdown file. Created
+docs/architecture/QA_EXECUTION_INFRASTRUCTURE_AND_LARGE_PROJECT_LIMITATIONS.md
+at source488602a: architecture, package ownership, Windows/WSL RPC, managed
+copies, private agents, preparation, provider differences, persistence, evidence,
+latest export chronology, reserve formulas, large-project limits and explicitly
+unimplemented proposals. Cross-checked source and owner export. Historical gate
+receipts remain attributed; no new model-quality or live-runtime claims.
+Documentation formatting and referenced repository-path checks PASS. Product
+code/settings/prompts untouched; no provider run/deployment/commit performed.
+shux contract attempted, unavailable on PATH; protocol maintained directly.

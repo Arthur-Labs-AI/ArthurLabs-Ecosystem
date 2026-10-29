@@ -1,3 +1,198 @@
+## 2026-10-29 - Uncommitted QA stack committed to fix/qa-stage-contracts
+
+The accumulated uncommitted stack (per-check investigation loop, closure
+gate, grounding repair/downgrade, null-exit ledger fix, stall watchdog,
+challenge removal, 3h safety fuse, context-window compaction) was split
+into structured commits on fix/qa-stage-contracts (not main, not pushed):
+f7aad54 fix(evidence-pipeline): add context budget, grounding repair, and
+per-check closure; 8c4cceb fix(qa): compact contexts and drive per-check
+investigation in all three harnesses; 5892cfc fix(run-engine): add stall
+watchdog, 3h safety fuse, and snapshot hash parity; c71eeaf feat(desktop):
+accept revisionId for production QA runs. Verified this session before
+committing: evidence 100, DS 77, GLM 107 PASS; run-engine focused
+targeted+stall-watchdog 14 PASS. OpenCode suite: 129 PASS, 1 FAIL =
+pre-existing functional systemd probe on Windows (unavailable systemd),
+unrelated to the committed files. Full run-engine suite likewise fails
+only on verification-trust systemd/EBUSY environment cases, recorded
+earlier as environmental. Paid comparison run remains owner's.
+shux CLI unavailable in this environment (contract command could not run).
+## 2026-10-28 - Context-window compaction in all 3 harnesses (uncommitted, deployed)
+
+Owner run_01M622G8P67JCK4CCA3VG0CYXN: DeepSeek reporting died with
+CONTEXT_WINDOW_EXCEEDED (816237 message tokens + 256000 requested completion
+> 1048576 window) after 1231 events in ONE session; run failed, 0 findings
+from DS, GLM cancelled as a consequence. Root cause: no context budget
+anywhere - planning+per-check investigation+reporting shared one session,
+and the existing fresh report context was used only on deadline/timeout.
+Fix, identical semantics in DS/OC/GLM via shared evidence-pipeline:
+(a) new context-budget.ts: isContextWindowExceeded classifier (provider
+wordings + error codes + cause chain), ContextBudget (peak observed input
+tokens, rotate at 70% of window, reset on rotation), estimatePromptTokens.
+(b) buildInvestigationCompactionContext: host compaction seed - contract,
+frozen plan, operation receipt, bounded tool notes; model reasoning never
+crosses. (c) Each adapter: proactive rotation before a check turn and
+before reporting when budget trips; reactive rotation+one retry of the
+same check / report attempt on provider context overflow; overflow after
+retry falls back to blocked-checks + fresh report (partial, never run loss).
+Warning code QA_CONTEXT_COMPACTED in all 3. Windows: DS 1048576 (provider-
+reported), OC/GLM conservative 200000 defaults, all overridable via
+contextWindowTokens adapter option. Regression tests red-first: DS report
+recovery (was run.failed, now run.completed + 2 clients + REPORT-ONLY
+RECOVERY seed), DS proactive rotation (tiny window), OC report recovery,
+GLM report recovery, shared classifier/budget units.
+Gates: evidence 100, DS 77, OC 130, GLM 107 PASS; typecheck 37/37, lint
+20/20, build 20/20, prettier PASS. Full turbo test: only
+@qa/snapshot-engine FAIL = 5s timeout flake under parallel load (passes
+standalone 4/4 in 390ms; package does not depend on touched code) - not
+all-green, recorded honestly. Runtime redeployed 1.0.2-488602a (18 tasks,
+ENTRY_OK, SENTRY_DEPLOY_EXIT:0); Sentry reopened, Running yes. Nothing
+committed. Paid comparison run is owner's; acceptance = DS completes
+reporting on a long investigation (or emits QA_CONTEXT_COMPACTED and
+still reports) instead of CONTEXT_WINDOW_EXCEEDED run failure.
+shux CLI unavailable in this environment (contract command could not run).
+## 2026-10-28 — Null-exit ledger fix (uncommitted, deployed)
+
+Owner-approved plan executed. Characterization of runs 01M61MECT/01M61THP
+ledgers: dominant loss class is compound commands (GLM 183/196 known-exit
+ops compound, OC 35/35), second is vendor exit capture (DS only 26/143
+tool completions with known exit in run 2). Fixes, truth never weakened
+(no default 0, no model-claimed exits, compound predicate untouched):
+(a) DeepSeek marker parse now reads a rolling 1024-char tail of the tool
+result (tailTextFromToolResultMessage in harness-deepseek adapter) instead
+of the 4000-char head-bounded diagnostic text, which lost trailing
+[exit code: N] markers on long outputs; red-first fixtures: trailing
+marker after 5000 chars captured, mid-output marker stays unknown.
+(b) OpenCode step closed as vendor limitation: state.metadata.exit in
+wire.ts is the only exit field the wire carries; no second field exists
+in fixtures/schema, absent stays unknown by design.
+(c) Shared check prompt + grounding-repair prompt now require proof runs
+as ONE single non-compound command (probe file, then `node <file>`), so
+agents produce certifiable exits instead of `| tail` pipelines.
+Gates: evidence 93, DS (48 incl. 2 new)/OC/GLM suites, run-engine focused,
+CLI, build 20, typecheck 37, lint, prettier, diff-check PASS. Runtime
+redeployed 1.0.2-488602a ENTRY_OK; Sentry reopened, Running yes. Paid
+comparison run is owner's; acceptance = confirmed count up vs 01M61THP
+baseline without honest downgrades disappearing. Nothing committed.
+
+## 2026-10-28 — Per-check closure gate + hostile-input prompt matrix (uncommitted, deployed)
+
+Run run_01M61MECTJXJYX6CMJ30ACB3NZ analysis: DS 7 confirmed findings/32min;
+GLM 0 findings/82min with 29 executed evidence items (all invariants held on
+main paths, but checks 1+3 repros died in setup and closed source-only); OC
+completed on reasoning-only evidence. Owner approved hardening, implemented
+identically for all 3 adapters via shared evidence-pipeline code:
+(a) closure gate — turnProducedProof/isExecutableProofOperation in depth.ts
+(groundCoverage now reuses the predicate) and applyUnprovenChecks: a check
+claimed passed whose own turn added no successful executable reproduction is
+forced inconclusive with a Host limitation; failed (finding) checks never
+rewritten. Adapters snapshot ledger keys per check turn and apply the gate
+after applyBlockedChecks.
+(b) check prompt now requires hostile-input attempts (backslashes/traversal/
+symlinks/empty entries, legacy state, lifecycle transitions, encoded/quoted
+payloads), a blocked-not-verified rule with one simplified-repro retry, and a
+closing "Breaks attempted:" line; report guidance requires attempted breaks
+named in check details. Red-first tests in depth.test.ts + stage-prompts
+.test.ts (4 failures observed pre-implementation). Gates: evidence 93,
+DS/OC/GLM suites, run-engine focused, CLI, build 20, typecheck 37, lint,
+prettier, diff-check PASS. Runtime redeployed 1.0.2-488602a ENTRY_OK; Sentry
+reopened, Running yes. Nothing committed. shux CLI unavailable in this
+environment (contract command could not run).
+
+## 2026-10-28 — Per-check investigation loop in all 3 adapters (uncommitted, deployed)
+
+Owner approved one design for all three. Investigation is now host-driven:
+one turn per frozen check (shared buildQaCheckInvestigationPrompt in
+stage-prompts.ts, reportCheckAlias in depth.ts), sequential in the same
+session, agent.status progress per check. A turn ending early (phase
+deadline or adapter turn timeout, depth mode only) blocks its remaining
+checks; applyBlockedChecks forces them inconclusive in the report and a
+fresh report context reports from the banked ledger — earlier checks are
+no longer lost with a dead turn (GLM run_01M61FYQ failure mode). Legacy
+(depth-undefined) semantics unchanged. DS gains a 2-check loop regression
+test; parity suites now assert per-check prompts. Gates: DS/OC/GLM,
+evidence, run-engine focused, CLI, build 20, typecheck 37, lint, prettier,
+diff-check PASS (counts in session log). Runtime redeployed 1.0.2-488602a
+ENTRY_OK; Sentry reopened, Running yes. Paid comparison run still owner's.
+
+## 2026-10-28 — Run 01M61FYQ progress; 3h caps + prompt completion rule (uncommitted, deployed)
+
+Run_01M61FYQ (runtime 1.0.2-488602a pre-prompt-fix): partial 33min, 2/3
+completed, 7 findings. OC 8min/1 finding (stopped early, checks partial);
+DS completed 29.6min, 6 findings (5 confirmed, spot-verified symlink-import
+and clean-agent-lost findings against code); GLM failed GLM_TURN_TIMEOUT
+at exactly 30min — a per-turn adapter cap (DS/GLM 1.8M ms, OC 3.6M ms),
+not the 2h fuse. Fixes: fuse and all 3 turn caps now 10.8M ms (3h; owner
+may set up to 12h/run; stall watchdog stays 15min). Prompt fixes in
+stage-prompts.ts: removed stale 'optional review'; planning now caps 8
+checks, one check = one decidable question; investigation completion is
+checklist-defined ('never end while a planned check is merely unexplored'),
+host interrupts for reporting. Gates: DS/OC/GLM/evidence/persistence PASS,
+CLI 45 PASS after one load flake (rerun PASS). Runtime redeployed
+(1.0.2-488602a, 18 tasks, ENTRY_OK) and Sentry reopened, Running yes.
+
+## 2026-10-28 — Simplification pass: stall watchdog + challenge removal (uncommitted)
+
+Owner: do not overengineer. Two small changes only. (A) Stall watchdog:
+run-engine silence window is now min(runTimeoutMs, 15min) via exported
+silenceWindowMs/STALL_SILENCE_MS — previously the silence window WAS the
+run timeout, so the 2h fuse would have let a wedged agent hang 2h with
+zero events. New unit test in run-engine/tests/stall-watchdog.test.ts.
+(B) Challenge/refinement stage deleted from all 3 adapters: the validated
+report.checkpoint is final (QA_CHALLENGE_NOT_RUN retained as the emitted
+code for UI compatibility). One model turn per agent saved; dead
+challenge/validation declarations and imports removed. Parity tests in
+DS/OC/GLM updated: routes are now exactly plan -> investigation -> report
+(3 turns), no CHALLENGE prompt ever sent. Counts: DS 72, OC 129, GLM 106,
+run-engine focused 19, CLI 45 PASS; build/lint/typecheck PASS.
+Phase 2 (incremental records) deliberately NOT built: it needs a new
+model->host channel per vendor transport; checkpoint + grounding repair
+already bank validated findings at first report. That is the simple path.
+
+## 2026-10-28 — Peaceful investigation Phases 0/1/4/5 IMPLEMENTED (uncommitted)
+
+Owner approved plan + option (b). Done this session (all red-first):
+Phase 1 grounding repair: shared downgradeUngroundedFindings (strong->probable,
+confirmed->strong/probable, findings preserved, QA_GROUNDING_DOWNGRADED warning)
+wired into OC/DS/GLM buildReportAttempt; one bounded tool-enabled
+QA_GROUNDING_REPAIR turn in all 3 adapters (DS end-to-end test: reproduced
+claim citing unobserved op -> repair observes exit -> confirmed finding
+submitted). DS test contract updated for the 7 unobserved-outcome cases
+(spec changed, not weakened). Phase 4: trailing-slash targets normalized in
+run-engine; runs:start-production accepts revisionId; snapshot hash applies
+hashVersion-2 import exclusions (phantom PROJECT_COPY_DRIFT fixed). Phase 5:
+GLM sandbox classifier only trusts markers in the first 3 lines (file-content
+false positive from run_01M617HK fixed); failure message now first line only.
+Gates: build 20/20, lint 20/20, typecheck 37/37, CLI 45/45, desktop 559,
+evidence 88+21, DS 75, OC 132, GLM 109, run-engine targeted 12 PASS.
+FAIL(environmental): run-engine verification-trust (systemd unavailable on
+Windows), distribution packaged-cli-process (root esbuild link missing;
+43/44 distribution tests pass). Full pnpm test once flaked evidence-pipeline
+under parallel load; filtered rerun PASS. Remaining: Phase 2 incremental
+investigation records (needs new model->host record channel), Phase 3
+host-compiled report + challenge/recovery removal + stall watchdog, Phase 6
+paid Sentry-on-Sentry rerun (owner authorization) + native activation.
+CLI surface untouched except router schema parity for revisionId.
+
+## 2026-10-28 — Peaceful investigation redesign Slice 1 IMPLEMENTED / VERIFIED (uncommitted)
+
+Owner decision (b): remove the ~30min investigation budget; agents work
+completion-driven with a generous safety fuse only. Diagnosis of
+run_01M617HK8WXK434SZ4H3RY23K3: OC completed (3 verified findings), DS lost
+22min to DEEPSEEK_INVALID_RESULT (strong finding, ungrounded evidence), GLM
+misclassified sandbox failure. Slice 1 (this worktree, not committed):
+production fuse 30min -> 2h (persistence/config.ts, fuse only, never a
+phase target); investigationDeadline now protects only a fixed 5min
+reporting reserve (proportional only for tiny fixtures) instead of 1/3 of
+remaining time; shared isGroundingRepairableError + buildGroundingRepairPrompt
+in evidence-pipeline/reporting.ts (missing-observation is repairable by one
+bounded tool-enabled turn in the live session; misrepresentation fails
+closed). Regression tests red-first (3 fail) then green: evidence-pipeline
+88 tests, persistence 30 tests, lint/typecheck/build PASS, diff-check PASS.
+Remaining: Slice 2 wire grounding-repair turn into OC/DS/GLM adapters +
+downgrade-don't-discard fallback; Slice 3 incremental finding persistence +
+host-compiled report, remove challenge/report-recovery machinery. No paid
+run, no runtime activation yet. shux unavailable; recorded directly.
+
 ## 2026-10-28 — Reporting reserve COMPLETE / ACTIVATED
 
 Run_01M60MRP6TCY47QM8S1ZXF28HZ consumed30min before reports. Host phase
@@ -1422,3 +1617,17 @@ shux contract attempted, unavailable on PATH; task status/ledger/handoff updated
 ## 2026-10-28 — Protected reporting reserve (in progress)
 
 Investigating run_01M60MRP6TCY47QM8S1ZXF28HZ: all agents consumed the run deadline before a valid report. Implementing host phase deadlines, owned-process shutdown and fresh report-only recovery from each agent’s own redacted facts. OpenCode observations now stream. DeepSeek real SDK local-stub probe proves old session IDs cannot resume after process restart. Four deterministic recovery/cancellation/shutdown tests pass for DeepSeek. Remaining: parity tests, real-binary zero-credit recovery, full gates, deployment. shux contract unavailable; protocol updated directly.
+
+
+## 2026-10-28 — Infrastructure and large-project problem document (complete)
+
+Owner requested one detailed English Markdown file. Created
+docs/architecture/QA_EXECUTION_INFRASTRUCTURE_AND_LARGE_PROJECT_LIMITATIONS.md
+at source488602a: architecture, package ownership, Windows/WSL RPC, managed
+copies, private agents, preparation, provider differences, persistence, evidence,
+latest export chronology, reserve formulas, large-project limits and explicitly
+unimplemented proposals. Cross-checked source and owner export. Historical gate
+receipts remain attributed; no new model-quality or live-runtime claims.
+Documentation formatting and referenced repository-path checks PASS. Product
+code/settings/prompts untouched; no provider run/deployment/commit performed.
+shux contract attempted, unavailable on PATH; protocol maintained directly.
