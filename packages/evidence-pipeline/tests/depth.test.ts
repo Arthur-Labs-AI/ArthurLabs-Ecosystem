@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  applyBlockedChecks,
+  applyUnprovenChecks,
   canChallenge,
   challengePrompt,
   coverageErrors,
@@ -11,9 +13,74 @@ import {
   reviewNeedsUpdate,
   resolveReportChecks,
   reportCheckAliases,
+  turnProducedProof,
 } from '../src/depth.js';
 
 describe('independent depth policy', () => {
+  it('forces host-blocked checks to inconclusive, never passed', () => {
+    const report = {
+      schemaVersion: 2 as const,
+      summary: 'fixture',
+      checks: [
+        { name: 'Boundary', status: 'passed' as const, details: 'claimed' },
+        { name: 'Other', status: 'passed' as const },
+      ],
+      hypotheses: [],
+      evidence: [],
+      findings: [],
+      limitations: [] as string[],
+    };
+    const repaired = applyBlockedChecks(report as never, ['Boundary']);
+    expect(repaired.checks[0]).toMatchObject({ status: 'inconclusive', coverage: 'partial' });
+    expect(repaired.checks[0]?.details).toContain('Host:');
+    expect(repaired.checks[1]?.status).toBe('passed');
+    expect(repaired.limitations.join(' ')).toContain('inconclusive, not passed');
+    expect(applyBlockedChecks(report as never, [])).toBe(report);
+  });
+  it('forces passed checks without in-turn executable proof to inconclusive', () => {
+    const report = {
+      schemaVersion: 2 as const,
+      summary: 'fixture',
+      checks: [
+        { name: 'SourceOnly', status: 'passed' as const, details: 'read the code' },
+        { name: 'Probed', status: 'passed' as const },
+        { name: 'FoundBug', status: 'failed' as const },
+      ],
+      hypotheses: [],
+      evidence: [],
+      findings: [],
+      limitations: [] as string[],
+    };
+    const repaired = applyUnprovenChecks(report as never, ['SourceOnly', 'FoundBug']);
+    expect(repaired.checks[0]).toMatchObject({ status: 'inconclusive', coverage: 'partial' });
+    expect(repaired.checks[0]?.details).toContain('no successful executable reproduction');
+    expect(repaired.checks[1]?.status).toBe('passed');
+    // A check that produced a finding is never rewritten by the proof gate.
+    expect(repaired.checks[2]?.status).toBe('failed');
+    expect(repaired.limitations.join(' ')).toContain('cannot pass on source review alone');
+    expect(applyUnprovenChecks(report as never, [])).toBe(report);
+  });
+  it('detects executable proof only from operations added during the turn', () => {
+    const proof = {
+      operationKey: 'op_2',
+      operationId: 'operation_2' as never,
+      toolName: 'bash',
+      exitCode: 0,
+      isTestOperation: true,
+      commandText: 'node probe.mjs',
+    };
+    const read = { ...proof, operationKey: 'op_3', toolName: 'read', commandText: undefined };
+    const failed = { ...proof, operationKey: 'op_4', exitCode: 1 };
+    const ops = new Map([
+      ['op_1', { ...proof, operationKey: 'op_1' }],
+      ['op_2', proof],
+    ]);
+    // op_1 predates the turn: citing it cannot prove this check.
+    expect(turnProducedProof(new Set(['op_1']), ops)).toBe(true);
+    expect(turnProducedProof(new Set(['op_1', 'op_2']), ops)).toBe(false);
+    expect(turnProducedProof(new Set(), new Map([['op_3', read]]))).toBe(false);
+    expect(turnProducedProof(new Set(), new Map([['op_4', failed]]))).toBe(false);
+  });
   it('maps only stable check IDs or exact frozen names, never fuzzy descriptions', () => {
     const plan = { plannedChecks: ['Very long check: executed - inspected caller', 'Other check'] };
     const report = {

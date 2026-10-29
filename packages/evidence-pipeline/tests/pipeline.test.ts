@@ -13,7 +13,10 @@ import {
 } from '@qa/shared';
 import {
   buildBaselineIndex,
+  buildGroundingRepairPrompt,
   buildReportCorrectionIntro,
+  downgradeUngroundedFindings,
+  isGroundingRepairableError,
   REPORT_STRENGTH_CONFIDENCE_ATOMICITY,
   commandIdentity,
   convertEvidence,
@@ -469,6 +472,102 @@ describe('shared evidence pipeline', () => {
         (message) => new PipelineError(message),
       ),
     ).toThrow(PipelineError);
+  });
+
+  it('classifies only missing-grounding failures as operation-repairable', () => {
+    // DeepSeek run_01M617HK8WXK434SZ4H3RY23K3: a strong finding cited only
+    // downgraded manual evidence. Re-running the one missing operation can
+    // ground it; the whole investigation must not restart.
+    expect(
+      isGroundingRepairableError(['Strong findings require grounded source/tool evidence']),
+    ).toBe(true);
+    expect(
+      isGroundingRepairableError([
+        'Confirmed findings require reproduced or directly correlated operation evidence; manual/model reasoning alone is insufficient',
+      ]),
+    ).toBe(true);
+    expect(
+      isGroundingRepairableError([
+        'Reproduced command evidence cites an operation whose exit code was not observed.',
+      ]),
+    ).toBe(true);
+    expect(
+      isGroundingRepairableError([
+        'Reproduced command evidence cites an operation without observed command outcome.',
+      ]),
+    ).toBe(true);
+    // Fabrication/misrepresentation is never repaired by another operation:
+    // the claim itself is false, so the finding must be corrected or dropped.
+    expect(
+      isGroundingRepairableError([
+        'Command evidence operation does not match the claimed exit code.',
+      ]),
+    ).toBe(false);
+    expect(isGroundingRepairableError(['Finding references unknown evidence: ev_x'])).toBe(false);
+    expect(isGroundingRepairableError(['findings.0.title: Required'])).toBe(false);
+  });
+
+  it('builds a repair prompt scoped to the missing operation only', () => {
+    const prompt = buildGroundingRepairPrompt(
+      ['Strong findings require grounded source/tool evidence'],
+      new Map(),
+    );
+    expect(prompt).toContain('GROUNDING REPAIR');
+    expect(prompt).toContain('ONLY the operation needed');
+    expect(prompt).toContain('Do not start new lines of investigation');
+    expect(prompt).toContain('host must observe');
+    expect(prompt).toContain('ONE single non-compound command');
+    expect(prompt).toContain('Strong findings require grounded source/tool evidence');
+  });
+
+  it('downgrades ungrounded confidence instead of discarding the finding', async () => {
+    const root = await workspace();
+    const req = request(root);
+    const source = {
+      key: 'ref',
+      type: 'code_reference',
+      strength: 'strong_code_evidence',
+      description: 'Line.',
+      relativePath: 'a.ts',
+      lineStart: 1,
+      lineEnd: 1,
+    } as SentryAgentEvidenceV1;
+    const codeEvidence = await convertEvidence(req, source, context, emptyGrounding());
+    const manualEvidence = {
+      ...codeEvidence,
+      id: 'ev_manual000000000000000000000',
+      type: 'manual',
+      strength: 'agent_reasoning',
+      groundingOperationIds: [],
+    } as typeof codeEvidence;
+    // Confirmed with only source evidence -> strong (never reproduced).
+    const confirmed = downgradeUngroundedFindings(
+      [{ evidenceKeys: ['ref'], confidence: 'confirmed' as const, title: 'A' }],
+      new Map([['ref', codeEvidence]]),
+    );
+    expect(confirmed.findings[0]?.confidence).toBe('strong');
+    expect(confirmed.repairs).toHaveLength(1);
+    // Strong with only manual reasoning -> probable, finding preserved.
+    const strong = downgradeUngroundedFindings(
+      [{ evidenceKeys: ['man'], confidence: 'strong' as const, title: 'B' }],
+      new Map([['man', manualEvidence]]),
+    );
+    expect(strong.findings[0]?.confidence).toBe('probable');
+    expect(strong.findings[0]?.title).toBe('B');
+    // No evidence at all is NOT repaired: validation must still reject it.
+    const empty = downgradeUngroundedFindings(
+      [{ evidenceKeys: [], confidence: 'strong' as const, title: 'C' }],
+      new Map(),
+    );
+    expect(empty.findings[0]?.confidence).toBe('strong');
+    expect(empty.repairs).toHaveLength(0);
+    // Already-grounded findings are untouched.
+    const ok = downgradeUngroundedFindings(
+      [{ evidenceKeys: ['ref'], confidence: 'strong' as const, title: 'D' }],
+      new Map([['ref', codeEvidence]]),
+    );
+    expect(ok.findings[0]?.confidence).toBe('strong');
+    expect(ok.repairs).toHaveLength(0);
   });
 
   it('parses whole JSON and summarizes schema issues without values', () => {

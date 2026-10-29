@@ -22,7 +22,7 @@ import {
   type SentryAgentEvidenceV1,
   type SentryAgentReportEvidenceV2,
 } from '@qa/schemas';
-import { validateFindingTrust } from '@qa/domain';
+import { groundingOfEvidence, validateFindingTrust } from '@qa/domain';
 
 export interface PipelineErrorFactory {
   invalidResult(message: string): Error;
@@ -635,6 +635,62 @@ export function validateProductionFindings(
       throw fail(verdict.reason);
     }
   }
+}
+
+/**
+ * Downgrade-don't-discard: a finding whose confidence overclaims its
+ * grounding keeps the finding at the highest confidence its evidence
+ * actually supports. Only missing-grounding overclaims are repaired here;
+ * absent or unknown evidence is left untouched so validation still rejects
+ * it, and misrepresentation failures never reach this path (they throw
+ * during evidence conversion). Deterministic and host-side: no model turn
+ * is spent fixing a label.
+ */
+export function downgradeUngroundedFindings<
+  T extends {
+    readonly evidenceKeys: readonly string[];
+    readonly confidence: FindingConfidence;
+  },
+>(
+  findings: readonly T[],
+  evidenceByKey: ReadonlyMap<string, Evidence>,
+): { findings: T[]; repairs: string[] } {
+  const repairs: string[] = [];
+  const evidence = [...evidenceByKey.values()];
+  const repaired = findings.map((finding, index) => {
+    if (finding.evidenceKeys.length === 0) return finding;
+    const items = finding.evidenceKeys.map((key) => evidenceByKey.get(key));
+    if (items.some((item) => item === undefined)) return finding;
+    const verdict = validateFindingTrust(
+      {
+        confidence: finding.confidence,
+        evidenceIds: finding.evidenceKeys.map(
+          (key) => (evidenceByKey.get(key)?.id ?? key) as Evidence['id'],
+        ),
+      },
+      evidence,
+    );
+    if (verdict.ok) return finding;
+    const grounded = (items as Evidence[]).some(
+      (item) => groundingOfEvidence(item) !== 'model_reported',
+    );
+    let confidence: FindingConfidence | undefined;
+    if (finding.confidence === 'confirmed') confidence = grounded ? 'strong' : 'probable';
+    else if (finding.confidence === 'strong' && !grounded) confidence = 'probable';
+    if (confidence === undefined) return finding;
+    repairs.push(
+      'findings.' +
+        index +
+        ' confidence ' +
+        finding.confidence +
+        ' -> ' +
+        confidence +
+        ': ' +
+        verdict.reason,
+    );
+    return { ...finding, confidence };
+  });
+  return { findings: repaired, repairs };
 }
 
 export function summarizeSchemaIssues(error: {

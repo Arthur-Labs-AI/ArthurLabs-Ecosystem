@@ -163,3 +163,46 @@ export function buildReportCorrectionIntro(errors: readonly string[]): string {
 export function boundCorrectionMessage(message: string): string {
   return message.length > 500 ? message.slice(0, 500) + '…' : message;
 }
+
+const GROUNDING_MISSING =
+  /require[ds]? (grounded|reproduced|directly correlated)|grounded source\/tool evidence|correlated observed operation|exit code was not observed|without observed|unobserved|no evidence references/i;
+const GROUNDING_FATAL =
+  /does not match|mismatch|unknown evidence|unknown operation correlation|no observed command text/i;
+
+/**
+ * A grounding failure is operation-repairable only when the defect is
+ * MISSING observation: the agent can still run the one cited read/command/
+ * test and let the host observe it. Misrepresentation (claimed exit code or
+ * command text contradicting what the host observed) is never repairable by
+ * another operation — the claim itself must be corrected or dropped. This
+ * classification is the gate for the bounded grounding-repair turn; it must
+ * fail closed.
+ */
+export function isGroundingRepairableError(errors: readonly string[]): boolean {
+  return errors.some((error) => GROUNDING_MISSING.test(error) && !GROUNDING_FATAL.test(error));
+}
+
+/**
+ * One bounded, tool-enabled repair turn scoped to the missing grounding.
+ * Unlike the tool-free report correction, this turn runs in the live
+ * investigation session so the host must observe the new operation and add
+ * it to the ledger before the report is retried. It never authorizes new
+ * lines of investigation or new findings.
+ */
+export function buildGroundingRepairPrompt(
+  errors: readonly string[],
+  operations: ReadonlyMap<string, ObservedOperation>,
+): string {
+  const bounded = errors.slice(0, 8).map((error, index) => `${index + 1}. ${error}`);
+  return (
+    'GROUNDING REPAIR. Your report was rejected only because observation is missing:\n' +
+    bounded.join('\n') +
+    '\nRun ONLY the operation needed to ground the cited finding: re-read the cited file at the cited lines, or run the exact reproduction command/test the finding claims. ' +
+    'Run it as ONE single non-compound command (no pipes, redirects, `;`, `&&` or `||`): write any probe to a temp file first and execute that file, so the host records one unambiguous exit code. ' +
+    'Do not start new lines of investigation. Do not search for new findings. Do not broaden scope. ' +
+    'The host must observe the operation and its outcome; your description of it is not grounding. ' +
+    'Stop as soon as that one operation completes, then return the same report citing the newly observed operation key from the ledger below.\n' +
+    'Frozen ledger:\n' +
+    renderFrozenLedger(operations)
+  );
+}

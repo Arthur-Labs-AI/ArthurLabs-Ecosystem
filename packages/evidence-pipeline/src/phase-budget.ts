@@ -10,8 +10,17 @@ export class PhaseDeadlineReached extends Error {
     );
   }
 }
+/** Fixed reporting window protected at the safety fuse. It is deliberately
+ *  NOT a fraction of the remaining budget: a larger fuse must give the
+ *  investigation more peace, not a proportionally larger reporting slice. */
+export const REPORTING_RESERVE_MS = 300_000;
+
 export function investigationDeadline(deadlineAt: number, now = Date.now()): number {
-  return now + Math.max(0, Math.floor(((deadlineAt - now) * 2) / 3));
+  const remaining = Math.max(0, deadlineAt - now);
+  // Tiny synthetic budgets keep a proportional reserve so short fixtures
+  // still retain a usable reporting window.
+  const reserve = Math.min(REPORTING_RESERVE_MS, Math.floor(remaining / 3));
+  return deadlineAt - reserve;
 }
 
 /** A deadline stops OWNED work before reporting; it never extends the run. */

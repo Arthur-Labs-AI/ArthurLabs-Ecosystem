@@ -20,9 +20,15 @@ describe('host reporting reserve', () => {
     expect(called).not.toHaveBeenCalled();
     expect(stop).toHaveBeenCalledOnce();
   });
-  it('reserves a third of remaining time, never extends the run', () => {
-    expect(investigationDeadline(1800000, 0)).toBe(1200000);
-    expect(investigationDeadline(1800000, 300000)).toBe(1300000);
+  it('reserves only a fixed reporting window, never extends the run', () => {
+    // Investigation keeps everything except a fixed 5-minute reporting
+    // reserve; the reserve must not grow with the safety fuse.
+    expect(investigationDeadline(7_200_000, 0)).toBe(6_900_000);
+    expect(investigationDeadline(1800000, 0)).toBe(1500000);
+    expect(investigationDeadline(1800000, 300000)).toBe(1500000);
+    // Tiny synthetic budgets keep a proportional reserve so fixtures retain
+    // a usable reporting window.
+    expect(investigationDeadline(90000, 0)).toBe(60000);
     expect(reportAttemptDeadline(600000, 1, 0)).toBe(285000);
     expect(reportAttemptDeadline(600000, 2, 285000)).toBe(570000);
   });

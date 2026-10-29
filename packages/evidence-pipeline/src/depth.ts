@@ -42,7 +42,8 @@ export const DEPTH_COVERAGE_GUIDANCE =
   'reproduction and a reachable application failure. Never claim production exposure merely ' +
   'because a malformed internal object triggers a dangerous function. For each passed check set coverage="complete" ' +
   'and operationKeys to the observed successful executable checks covering the WHOLE named check. ' +
-  'If only source review, a narrow primitive or part of a broader boundary was checked, set coverage="partial" ' +
+  'In every check details, name the concrete breaks attempted and their outcomes; a passed claim with no attempted break, ' +
+  'or with only source review, a narrow primitive or part of a broader boundary checked, must set coverage="partial" ' +
   'and status="inconclusive". File reads, grep and counts are not executable coverage.';
 
 /** Short host-owned aliases avoid requiring verbatim repetition of long plan prose. */
@@ -54,6 +55,115 @@ function checkIdentities(plan: { plannedChecks: readonly string[] }) {
     description,
   }));
 }
+export function reportCheckAlias(
+  plan: { plannedChecks: readonly string[] },
+  index: number,
+): string {
+  return checkIdentities(plan)[index]?.id ?? 'check_' + (index + 1);
+}
+
+/**
+ * Host-side truth the model cannot overrule: a check whose investigation
+ * turn failed before completion is inconclusive, whatever a later report
+ * claims. Applied after coverage grounding, before validation.
+ */
+export function applyBlockedChecks<T extends SentryAgentReportV2>(
+  report: T,
+  blockedDescriptions: readonly string[],
+): T {
+  if (blockedDescriptions.length === 0) return report;
+  const blocked = new Set(blockedDescriptions);
+  return {
+    ...report,
+    checks: report.checks.map((check) =>
+      blocked.has(check.name)
+        ? {
+            ...check,
+            status: 'inconclusive' as const,
+            coverage: 'partial' as const,
+            details:
+              'Host: the investigation turn for this check ended before completion. ' +
+              (check.details ?? ''),
+          }
+        : check,
+    ),
+    limitations: [
+      ...report.limitations,
+      'Host ended ' +
+        blockedDescriptions.length +
+        ' planned check turn(s) early; those checks are inconclusive, not passed.',
+    ].slice(0, 100),
+  };
+}
+
+/** One operation certifies executable proof: ran, succeeded, unambiguous. */
+export function isExecutableProofOperation(op: ObservedOperation): boolean {
+  return (
+    op.exitCode === 0 &&
+    typeof op.commandText === 'string' &&
+    op.commandText.trim().length > 0 &&
+    // Without a shell AST/individual exit statuses, compound commands are
+    // ambiguous even when the last process succeeds. Fail conservatively.
+    !/[;&|\r\n`<>]|\$\(/.test(op.commandText) &&
+    !/^(read|grep|glob|search|list|view)$/i.test(op.toolName) &&
+    !/^\s*["']?(?:[^\s"']*[\\/])?(?:rg|grep|cat|sed|head|tail|find|ls|pwd|wc|echo|printf|which)(?:\.exe)?(?:["']?\s|$)/i.test(
+      op.commandText ?? '',
+    )
+  );
+}
+
+/**
+ * Per-check closure truth: a check turn proves itself only with executable
+ * proof produced DURING that turn. Operations banked by earlier checks (or
+ * by planning) cannot certify a later check.
+ */
+export function turnProducedProof(
+  beforeKeys: ReadonlySet<string>,
+  operations: ReadonlyMap<string, ObservedOperation>,
+): boolean {
+  for (const [key, op] of operations) {
+    if (!beforeKeys.has(key) && isExecutableProofOperation(op)) return true;
+  }
+  return false;
+}
+
+/**
+ * Host-side truth the model cannot overrule: a check claimed passed whose
+ * own turn produced no successful executable reproduction is inconclusive.
+ * Checks that produced findings (failed) are never rewritten here.
+ */
+export function applyUnprovenChecks<T extends SentryAgentReportV2>(
+  report: T,
+  unprovenDescriptions: readonly string[],
+): T {
+  if (unprovenDescriptions.length === 0) return report;
+  const unproven = new Set(unprovenDescriptions);
+  let forced = 0;
+  const checks = report.checks.map((check) => {
+    if (!unproven.has(check.name) || check.status !== 'passed') return check;
+    forced += 1;
+    return {
+      ...check,
+      status: 'inconclusive' as const,
+      coverage: 'partial' as const,
+      details:
+        'Host: no successful executable reproduction was observed during this check turn. ' +
+        (check.details ?? ''),
+    };
+  });
+  if (forced === 0) return report;
+  return {
+    ...report,
+    checks,
+    limitations: [
+      ...report.limitations,
+      'Host: ' +
+        forced +
+        ' check(s) had no successful executable reproduction in their own turn; a check cannot pass on source review alone.',
+    ].slice(0, 100),
+  };
+}
+
 export function reportCheckAliases(plan: { plannedChecks: readonly string[] }): string {
   return (
     'Check identity contract: set checks[].name to the short ID below (or its exact frozen description). Never abbreviate or paraphrase a description. Explain results in details, not name.\n' +
@@ -87,21 +197,7 @@ export function groundCoverage(
     if (check.status !== 'passed') return check;
     const proof = (check.operationKeys ?? []).map((key) => operations.get(key));
     const executable =
-      proof.length > 0 &&
-      proof.every(
-        (op) =>
-          op !== undefined &&
-          op.exitCode === 0 &&
-          typeof op.commandText === 'string' &&
-          op.commandText.trim().length > 0 &&
-          // Without a shell AST/individual exit statuses, compound commands are
-          // ambiguous even when the last process succeeds. Fail conservatively.
-          !/[;&|\r\n`<>]|\$\(/.test(op.commandText) &&
-          !/^(read|grep|glob|search|list|view)$/i.test(op.toolName) &&
-          !/^\s*["']?(?:[^\s"']*[\\/])?(?:rg|grep|cat|sed|head|tail|find|ls|pwd|wc|echo|printf|which)(?:\.exe)?(?:["']?\s|$)/i.test(
-            op.commandText ?? '',
-          ),
-      );
+      proof.length > 0 && proof.every((op) => op !== undefined && isExecutableProofOperation(op));
     if (check.coverage === 'complete' && executable) return check;
     downgraded = true;
     return {
