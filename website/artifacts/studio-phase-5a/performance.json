@@ -1,0 +1,2925 @@
+{
+  "method": "Chromium headless native rAF intervals during actual lifting/opening/closing phases. Two open/return inspections per sample. No video or other website automation browser during profiling. Shared host; viewport simulation, not physical-device FPS.",
+  "results": [
+    {
+      "width": 1440,
+      "height": 1000,
+      "run": 0,
+      "samples": 158,
+      "medianMs": 16.700000000000045,
+      "p95Ms": 33.40000000000009,
+      "maxMs": 33.40000000000009,
+      "over50Ms": 0,
+      "runningCSSAfterReturn": 2,
+      "runningCSSAfterReturnSettled": 0,
+      "frames": [
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "lifting",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 33.19999999999982
+        },
+        {
+          "phase": "opening",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "closing",
+          "dt": 33.29999999999973
+        },
+        {
+          "phase": "closing",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 33.29999999999973
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 33.29999999999973
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 33.29999999999973
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 33.20000000000027
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999727
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 33.399999999999636
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 33.399999999999636
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 33.399999999999636
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 33.399999999999636
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 33.399999999999636
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 33.399999999999636
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 33.399999999999636
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 1000,
+      "run": 1,
+      "samples": 155,
+      "medianMs": 16.700000000000045,
+      "p95Ms": 33.400000000000546,
+      "maxMs": 50.09999999999991,
+      "over50Ms": 2,
+      "runningCSSAfterReturn": 2,
+      "runningCSSAfterReturnSettled": 0,
+      "frames": [
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "lifting",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 33.39999999999998
+        },
+        {
+          "phase": "opening",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 33.39999999999998
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000007
+        },
+        {
+          "phase": "opening",
+          "dt": 33.39999999999998
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000007
+        },
+        {
+          "phase": "opening",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 33.399999999999864
+        },
+        {
+          "phase": "opening",
+          "dt": 49.90000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 33.299999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 50.09999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 33.19999999999982
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 33.29999999999973
+        },
+        {
+          "phase": "closing",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 33.399999999999636
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 33.29999999999973
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 33.29999999999973
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 50.09999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999727
+        },
+        {
+          "phase": "opening",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 33.29999999999973
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 33.40000000000009
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 33.399999999999636
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 33.400000000000546
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 33.400000000000546
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 33.400000000000546
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 33.400000000000546
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 33.400000000000546
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 33.30000000000018
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 33.400000000000546
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "run": 0,
+      "samples": 202,
+      "medianMs": 16.699999999999818,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 33.30000000000001,
+      "over50Ms": 0,
+      "runningCSSAfterReturn": 2,
+      "runningCSSAfterReturnSettled": 0,
+      "frames": [
+        {
+          "phase": "lifting",
+          "dt": 16.69999999999999
+        },
+        {
+          "phase": "lifting",
+          "dt": 33.30000000000001
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.5
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "closing",
+          "dt": 16.799999999999727
+        },
+        {
+          "phase": "closing",
+          "dt": 16.5
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.799999999999727
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.799999999999727
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999727
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999727
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "run": 1,
+      "samples": 201,
+      "medianMs": 16.699999999999818,
+      "p95Ms": 16.700000000000728,
+      "maxMs": 33.39999999999998,
+      "over50Ms": 0,
+      "runningCSSAfterReturn": 2,
+      "runningCSSAfterReturnSettled": 0,
+      "frames": [
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "lifting",
+          "dt": 33.39999999999998
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.599999999999966
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.69999999999999
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.69999999999999
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.69999999999999
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.5
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000023
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999932
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999955
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000136
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000045
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.5
+        },
+        {
+          "phase": "closing",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.799999999999727
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.799999999999727
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.800000000000182
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "lifting",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "opening",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "opening",
+          "dt": 16.799999999999727
+        },
+        {
+          "phase": "opening",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.59999999999991
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000273
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.600000000000364
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        },
+        {
+          "phase": "closing",
+          "dt": 16.700000000000728
+        },
+        {
+          "phase": "closing",
+          "dt": 16.599999999999454
+        },
+        {
+          "phase": "closing",
+          "dt": 16.699999999999818
+        }
+      ]
+    }
+  ]
+}

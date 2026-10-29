@@ -67,7 +67,7 @@ test('reduced motion keeps an accessible selectable hero without a scroll trap',
 });
 
 test('route foundations and unknown route', async ({ page }) => {
-  for (const [path, heading] of [['/suite', 'Three applications.One greater possibility.'], ['/studio', 'Arthur Studio'], ['/nexus', 'One task.The right intelligence.'], ['/sentry', 'Generation isn’tverification.'], ['/hardware', 'Beyond the screen.']]) {
+  for (const [path, heading] of [['/suite', 'Three applications.One greater possibility.'], ['/studio', 'A home forunfinished ideas.'], ['/nexus', 'One task.The right intelligence.'], ['/sentry', 'Generation isn’tverification.'], ['/hardware', 'Beyond the screen.']]) {
     const response = await page.goto(path);
     expect(response!.status()).toBe(200);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(heading);

@@ -1,0 +1,32 @@
+[
+  {
+    "width": 390,
+    "capture": "hero",
+    "identical": false
+  },
+  {
+    "width": 390,
+    "capture": "desk",
+    "identical": true
+  },
+  {
+    "width": 390,
+    "capture": "full",
+    "identical": false
+  },
+  {
+    "width": 1440,
+    "capture": "hero",
+    "identical": false
+  },
+  {
+    "width": 1440,
+    "capture": "desk",
+    "identical": true
+  },
+  {
+    "width": 1440,
+    "capture": "full",
+    "identical": false
+  }
+]

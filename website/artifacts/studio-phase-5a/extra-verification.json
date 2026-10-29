@@ -1,0 +1,36 @@
+[
+  {
+    "width": 320,
+    "allObjectsContained": true,
+    "hoverShadowChanges": true,
+    "noIdleDrift": true
+  },
+  {
+    "width": 390,
+    "allObjectsContained": true,
+    "hoverShadowChanges": true,
+    "noIdleDrift": true
+  },
+  {
+    "width": 768,
+    "allObjectsContained": true,
+    "hoverShadowChanges": true,
+    "noIdleDrift": true
+  },
+  {
+    "width": 1440,
+    "allObjectsContained": true,
+    "hoverShadowChanges": true,
+    "noIdleDrift": true
+  },
+  {
+    "width": 1920,
+    "allObjectsContained": true,
+    "hoverShadowChanges": true,
+    "noIdleDrift": true
+  },
+  {
+    "javaScriptDisabled": true,
+    "collectionAndDownloads": "available"
+  }
+]

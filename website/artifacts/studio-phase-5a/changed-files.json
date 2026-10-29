@@ -1,0 +1,87 @@
+[
+  {
+    "path": "src/components/studio-concept/content.ts",
+    "bytes": 4194,
+    "sha256": "6c86c0d90902a351a33f7fa4d20bf8cac26b395c8b53e857f9d279702b408138"
+  },
+  {
+    "path": "src/components/studio-concept/HandStudy.tsx",
+    "bytes": 1269,
+    "sha256": "01e95793bd3604bb194a78abf7bcbe22f84471180198eb6e00dac0eeaadf7079"
+  },
+  {
+    "path": "src/components/studio-concept/ObjectSurface.tsx",
+    "bytes": 2352,
+    "sha256": "6d1b2db00a23ecacb1308d75c1a8426a78d3dd7eb366ff39027fe242da787ebc"
+  },
+  {
+    "path": "src/components/studio-concept/InspectorContent.tsx",
+    "bytes": 3685,
+    "sha256": "792e7ff72808a19decf63d943af985c1f21c9bc4dd0e047929135b3161fbccfa"
+  },
+  {
+    "path": "src/components/studio-concept/motion.ts",
+    "bytes": 4744,
+    "sha256": "ad730d8020abc0ac30849e92879c0fa1d2df52487212004ed3e6dcefeb0d5a3d"
+  },
+  {
+    "path": "src/components/studio-concept/InfiniteDesk.tsx",
+    "bytes": 6490,
+    "sha256": "bb1f37e130003f1ed2385eb77debfa21a6f176b083db52f6640008bc4ef7f41a"
+  },
+  {
+    "path": "src/components/studio-concept/Hero.tsx",
+    "bytes": 1209,
+    "sha256": "310613acb0db034b848848abe0f82ddb3583e28b28816e9b7bb48735303feb4e"
+  },
+  {
+    "path": "src/components/studio-concept/Editorial.tsx",
+    "bytes": 2604,
+    "sha256": "87fe77a2a1eba8a4ff714d94ce960210f77071de2bdb2c23a2ae8397080f92fa"
+  },
+  {
+    "path": "src/components/studio-concept/Downloads.tsx",
+    "bytes": 1607,
+    "sha256": "487fad0361bd49b57e790f5186ff3d8a8c62588e6c081dd4a008d53c39e5719d"
+  },
+  {
+    "path": "src/components/studio-concept/studio.module.css",
+    "bytes": 24695,
+    "sha256": "7bf9754c7ab1e792874ad66494cc8f2162a92be7e1e070ad4ba9ec4498e7d0ca"
+  },
+  {
+    "path": "src/app/studio/concept/page.tsx",
+    "bytes": 770,
+    "sha256": "e75eb40d98ece67432f15b9f8b3a3c5e161070ac0449aee5ebe4632e4376d32c"
+  },
+  {
+    "path": "tests/studio-concept.spec.ts",
+    "bytes": 7683,
+    "sha256": "db7afc8103c3f8199534e561f6d6f606c26d1ab4fc37f7cbb0f9795cdbb9c213"
+  },
+  {
+    "path": "public/fonts/studio/newsreader-latin-wght-normal.woff2",
+    "bytes": 58084,
+    "sha256": "62981321d9a3cc7a61a73792729043703fd6112da86e8ec848bb57f088578757"
+  },
+  {
+    "path": "public/fonts/studio/newsreader-latin-wght-italic.woff2",
+    "bytes": 64520,
+    "sha256": "48bc8861b9b2ca9300747cad4fd6a3b4ac3028d364df00bd1b72097baa75e509"
+  },
+  {
+    "path": "public/fonts/studio/hanken-grotesk-latin-wght-normal.woff2",
+    "bytes": 34704,
+    "sha256": "e9201eddf1d41d0b62253295d869ce3cf65768f7102b797f02c7f8c876b4a9d5"
+  },
+  {
+    "path": "public/fonts/studio/LICENSE-Newsreader.txt",
+    "bytes": 4520,
+    "sha256": "26028ec4e13b650065fa525a09532176f8a668b76ff849ea01c564a7480f91e7"
+  },
+  {
+    "path": "public/fonts/studio/LICENSE-HankenGrotesk.txt",
+    "bytes": 4530,
+    "sha256": "f45f60ca871850c58d8dc9c973bd6fcad40c137e9d037172b961e8ca68c87ef7"
+  }
+]

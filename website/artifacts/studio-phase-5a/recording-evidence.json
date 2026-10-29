@@ -1,0 +1,90 @@
+[
+  {
+    "width": 1440,
+    "height": 1000,
+    "input": "raw mouse coordinates",
+    "file": "artifacts/studio-phase-5a/studio-1440-exploration.webm",
+    "errors": [],
+    "samples": [
+      {
+        "id": "thought",
+        "action": "select",
+        "elapsedSec": 3.42
+      },
+      {
+        "id": "thought",
+        "action": "return",
+        "elapsedSec": 6.947
+      },
+      {
+        "id": "study",
+        "action": "select",
+        "elapsedSec": 8.987
+      },
+      {
+        "id": "study",
+        "action": "return",
+        "elapsedSec": 12.181
+      },
+      {
+        "id": "observations",
+        "action": "select",
+        "elapsedSec": 14.218
+      },
+      {
+        "id": "observations",
+        "action": "return",
+        "elapsedSec": 17.503
+      },
+      {
+        "id": "studio",
+        "action": "select",
+        "elapsedSec": 19.458
+      },
+      {
+        "id": "studio",
+        "action": "return",
+        "elapsedSec": 23.185
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "input": "native touch taps",
+    "file": "artifacts/studio-phase-5a/studio-390-exploration.webm",
+    "errors": [],
+    "samples": [
+      {
+        "id": "thought",
+        "action": "select",
+        "elapsedSec": 3.051
+      },
+      {
+        "id": "thought",
+        "action": "return",
+        "elapsedSec": 6.53
+      },
+      {
+        "id": "question",
+        "action": "select",
+        "elapsedSec": 8.433
+      },
+      {
+        "id": "question",
+        "action": "return",
+        "elapsedSec": 12.069
+      },
+      {
+        "id": "studio",
+        "action": "select",
+        "elapsedSec": 13.969
+      },
+      {
+        "id": "studio",
+        "action": "return",
+        "elapsedSec": 17.458
+      }
+    ]
+  }
+]

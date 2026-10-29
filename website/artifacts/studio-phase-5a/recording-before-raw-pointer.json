@@ -1,0 +1,86 @@
+[
+  {
+    "width": 1440,
+    "height": 1000,
+    "file": "artifacts/studio-phase-5a/studio-1440-exploration.webm",
+    "samples": [
+      {
+        "id": "thought",
+        "action": "select",
+        "elapsedSec": 3.832
+      },
+      {
+        "id": "thought",
+        "action": "return",
+        "elapsedSec": 7.383
+      },
+      {
+        "id": "study",
+        "action": "select",
+        "elapsedSec": 9.458
+      },
+      {
+        "id": "study",
+        "action": "return",
+        "elapsedSec": 13.204
+      },
+      {
+        "id": "observations",
+        "action": "select",
+        "elapsedSec": 15.202
+      },
+      {
+        "id": "observations",
+        "action": "return",
+        "elapsedSec": 18.917
+      },
+      {
+        "id": "studio",
+        "action": "select",
+        "elapsedSec": 20.92
+      },
+      {
+        "id": "studio",
+        "action": "return",
+        "elapsedSec": 24.924
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "file": "artifacts/studio-phase-5a/studio-390-exploration.webm",
+    "samples": [
+      {
+        "id": "thought",
+        "action": "select",
+        "elapsedSec": 3.329
+      },
+      {
+        "id": "thought",
+        "action": "return",
+        "elapsedSec": 6.921
+      },
+      {
+        "id": "question",
+        "action": "select",
+        "elapsedSec": 8.915
+      },
+      {
+        "id": "question",
+        "action": "return",
+        "elapsedSec": 12.644
+      },
+      {
+        "id": "studio",
+        "action": "select",
+        "elapsedSec": 14.61
+      },
+      {
+        "id": "studio",
+        "action": "return",
+        "elapsedSec": 18.389
+      }
+    ]
+  }
+]

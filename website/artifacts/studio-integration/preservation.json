@@ -1,0 +1,12 @@
+{
+  "modified": [
+    "src/app/studio/concept/page.tsx",
+    "tests/landing.spec.ts"
+  ],
+  "created": [
+    "src/components/studio-concept/StudioExperience.tsx",
+    "src/app/studio/page.tsx",
+    "tests/studio-product.spec.ts"
+  ],
+  "deleted": []
+}

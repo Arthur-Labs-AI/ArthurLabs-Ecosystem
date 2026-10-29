@@ -1,0 +1,18 @@
+import {useState} from 'react';
+import {HandStudy} from './HandStudy';
+import {observations, wordings, type DeskObject} from './content';
+import styles from './studio.module.css';
+type Props = {object:DeskObject; thought:string; onThought:(text:string)=>void};
+export function InspectorContent({object, thought, onThought}:Props) {
+  const [draft,setDraft]=useState(thought),[choice,setChoice]=useState(0),[saved,setSaved]=useState(false);
+  return <div className={styles.detailContent} data-detail-content>
+    <span className={styles.kicker}>{object.category}</span><h2 id="desk-inspector-title">{object.title}</h2><p className={styles.detailIntro}>{object.description}</p>
+    {object.id==='thought' && <div className={styles.demo}><label htmlFor="sample-thought">Try another wording</label><textarea id="sample-thought" maxLength={96} value={draft} onChange={e=>{setDraft(e.target.value);setSaved(false);}} rows={3}/><button type="button" disabled={!draft.trim()} onClick={()=>{onThought(draft.trim());setSaved(true);}}>Keep this wording on the desk <span aria-hidden="true">↗</span></button><small role="status">{saved?'Your sample wording is on the desk.':'Browser-only sample. Nothing is sent or saved to an account.'}</small></div>}
+    {object.id==='study' && <div className={styles.demo}><p className={styles.demoLabel}>A change in perspective</p><div className={styles.choices} role="group" aria-label="Study perspective">{['A small gesture','An open invitation'].map((t,i)=><button type="button" key={t} aria-pressed={choice===i} onClick={()=>setChoice(i)}>{t}</button>)}</div><div className={styles.miniStudy}><HandStudy open={choice===1}/><p>{choice===0?'A small physical vocabulary, with many possible meanings.':'What if the person decided when the interface could listen?'}</p></div><small>Conceptual drawing, not a gesture-recognition feature.</small></div>}
+    {object.id==='observations' && <div className={styles.demo}><div className={styles.choices} role="group" aria-label="Explore observations">{['Context','Intention','Consent'].map((t,i)=><button type="button" key={t} aria-pressed={choice===i} onClick={()=>setChoice(i)}>{t}</button>)}</div><div className={styles.observationDetail} aria-live="polite"><h3>{observations[choice].title}</h3><p>{observations[choice].text}</p></div><small>Illustrative observations around one fictional idea.</small></div>}
+    {object.id==='question' && <div className={styles.questionDetail}><span>NOT EVERY QUESTION NEEDS AN IMMEDIATE ANSWER.</span><blockquote>“What would an interface need to know—and what should it never need to know?”</blockquote><p>In Studio, Ask Arthur draws on knowledge within your chosen project. This question is a writing prompt; no answer has been generated here.</p></div>}
+    {object.id==='revisions' && <div className={styles.demo}><div className={styles.choices} role="group" aria-label="Compare sample wordings">{['First wording','A different perspective'].map((t,i)=><button type="button" key={t} aria-pressed={choice===i} onClick={()=>setChoice(i)}>{t}</button>)}</div><blockquote className={styles.wording} aria-live="polite">{wordings[choice]}</blockquote><small>Illustrative comparison. It does not change a real Studio revision.</small></div>}
+    {object.id==='studio' && <p className={styles.interfaceNote}>Original capture · 1616 × 998 · preserved aspect ratio. Scroll within this inspection to see the complete interface and explanation.</p>}
+    <div className={styles.capability}><span>{object.status==='Illustrative'?'WEBSITE CONCEPT':object.status==='Restricted'?'IMPLEMENTED / WITH LIMITS':'IN THE APPLICATION'}</span><p>{object.capability}</p></div>
+  </div>;
+}

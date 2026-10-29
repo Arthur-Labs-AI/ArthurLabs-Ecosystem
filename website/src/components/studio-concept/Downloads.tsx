@@ -1,0 +1,8 @@
+import Link from 'next/link';
+import {eligibleArtifacts} from '@/components/suite-launch/releases';
+import type {Artifact} from '@/lib/release-types';
+import styles from './studio.module.css';
+export function StudioDownloads({catalog}:{catalog?:readonly Artifact[]}){
+ const releases=eligibleArtifacts('studio',catalog);
+ return <section id="studio-downloads" className={styles.downloads} aria-labelledby="studio-download-title"><div><span className={styles.kicker}>AN INDEPENDENT APPLICATION</span><h2 id="studio-download-title" tabIndex={-1}>Make room<br/><em>for your ideas.</em></h2><p>Arthur Studio has its own distribution. A Suite package is not required.</p></div><div className={styles.downloadPanel}>{releases.length?releases.map(a=><article key={a.url}><span className={styles.kicker}>VERIFIED ARTIFACT</span><h3>Arthur Studio {a.version}</h3><p>{a.system} · {a.architecture} · {a.format}</p><a className={styles.primary} href={a.url} download={a.filename}>Download {a.filename} ↗</a><p>{a.evidence}</p><small>Metadata checked {a.verifiedAt}</small></article>):<><span className={styles.availability}><span/> IN DEVELOPMENT</span><h3>Download Not Yet Available</h3><p>No verified public Arthur Studio package is listed. Versions, platforms, architecture and installation guidance will appear here when a reviewed artifact is available.</p><span className={styles.releaseNote}>Build targets are not a promise of installer support.</span></>}<Link className={styles.suiteDownload} href="/suite">Explore Studio within the Full Suite <span aria-hidden="true">↗</span></Link></div></section>;
+}

@@ -1,0 +1,22 @@
+{
+  "inspectedReadOnly": "/home/kaloyan/Projects/A.R.T.H.U.R",
+  "files": {
+    "apps/arthur/README.md": "332ab01ae62f8672c05844246b0a73e82f7037635945d18f3e32c1174c47f5ba",
+    "apps/arthur/src/client/arthur-client.ts": "fef7436402178a57a1f714b7d48a90421d247ca76506528e4485a86d4a19da58",
+    "apps/arthur/src/client/desktop-client.ts": "8c07f210c53077dba1ff5f2a5bf75fe6364108600fd8e5bdaf0eb68c1be35c91",
+    "apps/arthur/src/features/home/HomeScreen.tsx": "2dc917c67a1979a0d3e3115c6c57fe10d412f53e370716c31e9997f9288b64f1",
+    "apps/arthur/src/features/ideas/IdeasScreen.tsx": "99ebb2632e2c97ae9c28dce9005badeed871f5c25ebe4358e085d031eda87c85",
+    "apps/arthur/src/features/graph/ConnectionsScreen.tsx": "d118e07101c5afed663758af138b2a9c5b5d094445fa2eabe6e5abf49eb99764",
+    "apps/arthur/src/features/lineage/EvolutionScreen.tsx": "07340bebc5a01dd311636235c5ad8577927057cb95d12e76feb45b71e08575b7",
+    "apps/arthur/src/features/recall/AskScreen.tsx": "dd7740ba63717200431985a7a2897ca4007e1590de1fbbfd1a50f877bb60022c",
+    "apps/arthur/src/features/review/ReviewScreen.tsx": "94c2ad962b0e33afc4c38bfb2713d5b5f78eddaefe1562548f1ea4451643a82c",
+    "docs/architecture/cognitive-recall/m04c-implementation-notes.md": "892ab0e8fceca0ac011a094b88f720a75cf1896c494639338b1571c07bfda94c",
+    "docs/architecture/m047b-phase5-review-first-activation.md": "1abe042cd18ee7bc4dd501f13cdebaf68f08a57947db3e56b2877f46c66534ac"
+  },
+  "releaseCheck": {
+    "date": "2026-10-28",
+    "url": "https://api.github.com/repos/Kaloyan3D/A.R.T.H.U.R/releases",
+    "httpStatus": 404,
+    "meaning": "Public release metadata inaccessible; no Studio distribution artifact promoted."
+  }
+}

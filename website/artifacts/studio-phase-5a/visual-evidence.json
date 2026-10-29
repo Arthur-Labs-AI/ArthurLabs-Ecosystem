@@ -1,0 +1,137 @@
+[
+  {
+    "width": 320,
+    "height": 844,
+    "overflow": false,
+    "errors": [],
+    "objects": [
+      {
+        "id": "thought",
+        "dialogOverflow": false,
+        "capture": null
+      },
+      {
+        "id": "studio",
+        "dialogOverflow": false,
+        "capture": {
+          "width": 278,
+          "height": 172,
+          "nativeWidth": 1616,
+          "nativeHeight": 998
+        }
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "errors": [],
+    "objects": [
+      {
+        "id": "thought",
+        "dialogOverflow": false,
+        "capture": null
+      },
+      {
+        "id": "studio",
+        "dialogOverflow": false,
+        "capture": {
+          "width": 348,
+          "height": 215,
+          "nativeWidth": 1616,
+          "nativeHeight": 998
+        }
+      }
+    ]
+  },
+  {
+    "width": 768,
+    "height": 1024,
+    "overflow": false,
+    "errors": [],
+    "objects": [
+      {
+        "id": "thought",
+        "dialogOverflow": false,
+        "capture": null
+      },
+      {
+        "id": "studio",
+        "dialogOverflow": false,
+        "capture": {
+          "width": 686,
+          "height": 424,
+          "nativeWidth": 1616,
+          "nativeHeight": 998
+        }
+      }
+    ]
+  },
+  {
+    "width": 1440,
+    "height": 1000,
+    "overflow": false,
+    "errors": [],
+    "objects": [
+      {
+        "id": "thought",
+        "dialogOverflow": false,
+        "capture": null
+      },
+      {
+        "id": "study",
+        "dialogOverflow": false,
+        "capture": null
+      },
+      {
+        "id": "observations",
+        "dialogOverflow": false,
+        "capture": null
+      },
+      {
+        "id": "question",
+        "dialogOverflow": false,
+        "capture": null
+      },
+      {
+        "id": "revisions",
+        "dialogOverflow": false,
+        "capture": null
+      },
+      {
+        "id": "studio",
+        "dialogOverflow": false,
+        "capture": {
+          "width": 1348,
+          "height": 832,
+          "nativeWidth": 1616,
+          "nativeHeight": 998
+        }
+      }
+    ]
+  },
+  {
+    "width": 1920,
+    "height": 1080,
+    "overflow": false,
+    "errors": [],
+    "objects": [
+      {
+        "id": "thought",
+        "dialogOverflow": false,
+        "capture": null
+      },
+      {
+        "id": "studio",
+        "dialogOverflow": false,
+        "capture": {
+          "width": 1348,
+          "height": 832,
+          "nativeWidth": 1616,
+          "nativeHeight": 998
+        }
+      }
+    ]
+  }
+]

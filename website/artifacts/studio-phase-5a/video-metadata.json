@@ -1,0 +1,34 @@
+[
+  {
+    "file": "artifacts/studio-phase-5a/studio-1440-exploration.webm",
+    "bytes": 8321207,
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "width": 1440,
+        "height": 1000,
+        "r_frame_rate": "25/1"
+      }
+    ],
+    "format": {
+      "duration": "25.840000"
+    }
+  },
+  {
+    "file": "artifacts/studio-phase-5a/studio-390-exploration.webm",
+    "bytes": 2530315,
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "width": 390,
+        "height": 844,
+        "r_frame_rate": "25/1"
+      }
+    ],
+    "format": {
+      "duration": "21.240000"
+    }
+  }
+]
