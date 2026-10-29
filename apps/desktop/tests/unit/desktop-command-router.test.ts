@@ -130,6 +130,19 @@ describe('shared desktop command router', () => {
     ).rejects.toThrow();
   });
 
+  it('accepts revisionId on runs:start-production exactly like runs:start', async () => {
+    const h = await harness(true);
+    const revisionId = 'rev_01K7777777777777777777A8W1';
+    await dispatchDesktopCommand(
+      h.service,
+      'runs:start-production',
+      { projectId: 'proj_01K7777777777777777777A8W1', mode: 'full', revisionId },
+      {},
+    );
+    const start = h.seen.find((c) => c.method === 'runs.start');
+    expect(start?.params['revisionId']).toBe(revisionId);
+  });
+
   it('fires run-created hooks for CLI-started runs (Desktop live updates stay truthful)', async () => {
     const h = await harness(true);
     const onRunCreated = vi.fn();
