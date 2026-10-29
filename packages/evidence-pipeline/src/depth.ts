@@ -127,20 +127,66 @@ export function turnProducedProof(
   return false;
 }
 
+/** Same proof command failing this many times in one turn is a retry-until-green loop. */
+export const RED_RETRY_THRESHOLD = 3;
+
+/**
+ * True when a check turn re-ran the same executable proof command and it
+ * failed (non-zero exit) at least RED_RETRY_THRESHOLD times. The model then
+ * edits the repro until green (fixture-fix framing) and every red run that
+ * might have been a product defect is explained away; the pass cannot be
+ * certified.
+ */
+export function turnRepeatedRedProof(
+  beforeKeys: ReadonlySet<string>,
+  operations: ReadonlyMap<string, ObservedOperation>,
+): boolean {
+  const failures = new Map<string, number>();
+  for (const [key, op] of operations) {
+    if (beforeKeys.has(key)) continue;
+    if (typeof op.exitCode !== 'number' || op.exitCode === 0) continue;
+    const text = op.commandText?.trim();
+    if (text === undefined || text.length === 0) continue;
+    if (/^(read|grep|glob|search|list|view)$/i.test(op.toolName)) continue;
+    const count = (failures.get(text) ?? 0) + 1;
+    if (count >= RED_RETRY_THRESHOLD) return true;
+    failures.set(text, count);
+  }
+  return false;
+}
+
 /**
  * Host-side truth the model cannot overrule: a check claimed passed whose
- * own turn produced no successful executable reproduction is inconclusive.
+ * own turn produced no successful executable reproduction (or whose proof
+ * run failed repeatedly before being edited to pass) is inconclusive.
  * Checks that produced findings (failed) are never rewritten here.
  */
 export function applyUnprovenChecks<T extends SentryAgentReportV2>(
   report: T,
   unprovenDescriptions: readonly string[],
+  redRetryDescriptions: readonly string[] = [],
 ): T {
-  if (unprovenDescriptions.length === 0) return report;
+  if (unprovenDescriptions.length === 0 && redRetryDescriptions.length === 0) return report;
   const unproven = new Set(unprovenDescriptions);
+  const redRetry = new Set(redRetryDescriptions);
   let forced = 0;
+  let redForced = 0;
   const checks = report.checks.map((check) => {
-    if (!unproven.has(check.name) || check.status !== 'passed') return check;
+    if (check.status !== 'passed') return check;
+    if (!unproven.has(check.name) && redRetry.has(check.name)) {
+      redForced += 1;
+      return {
+        ...check,
+        status: 'inconclusive' as const,
+        coverage: 'partial' as const,
+        details:
+          'Host: the same proof command failed ' +
+          RED_RETRY_THRESHOLD +
+          '+ times in this check turn before the pass; each red run must be triaged as a product defect or a proven fixture error, not edited away. ' +
+          (check.details ?? ''),
+      };
+    }
+    if (!unproven.has(check.name)) return check;
     forced += 1;
     return {
       ...check,
@@ -151,15 +197,26 @@ export function applyUnprovenChecks<T extends SentryAgentReportV2>(
         (check.details ?? ''),
     };
   });
-  if (forced === 0) return report;
+  if (forced === 0 && redForced === 0) return report;
   return {
     ...report,
     checks,
     limitations: [
       ...report.limitations,
-      'Host: ' +
-        forced +
-        ' check(s) had no successful executable reproduction in their own turn; a check cannot pass on source review alone.',
+      ...(forced === 0
+        ? []
+        : [
+            'Host: ' +
+              forced +
+              ' check(s) had no successful executable reproduction in their own turn; a check cannot pass on source review alone.',
+          ]),
+      ...(redForced === 0
+        ? []
+        : [
+            'Host: ' +
+              redForced +
+              ' check(s) re-ran a failing proof command repeatedly before passing; the failures were not triaged, so those passes are unverified.',
+          ]),
     ].slice(0, 100),
   };
 }

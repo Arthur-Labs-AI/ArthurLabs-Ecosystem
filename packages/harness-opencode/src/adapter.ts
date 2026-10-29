@@ -23,9 +23,11 @@ import {
   streamObservedWork,
   buildQaPlanningPrompt,
   buildQaCheckInvestigationPrompt,
+  buildExecutionNudgePrompt,
   applyBlockedChecks,
   applyUnprovenChecks,
   turnProducedProof,
+  turnRepeatedRedProof,
   buildQaReportPrompt,
   boundedValidation,
   coverageErrors,
@@ -1097,6 +1099,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       let investigationSteps = 0;
       const blockedChecks: string[] = [];
       const unprovenChecks: string[] = [];
+      const redRetryChecks: string[] = [];
       let currentCheck = 0;
       try {
         for (; currentCheck < planResult.plannedChecks.length; currentCheck += 1) {
@@ -1169,9 +1172,55 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
               });
             }
           }
+          if (
+            !turnProducedProof(ledgerBeforeTurn, this.observedOperations) &&
+            !entry.controller.signal.aborted &&
+            !this.cancelledRuns.has(request.agentRunId)
+          ) {
+            // Read/grep-only turn: one bounded host nudge to execute.
+            yield event(request.agentRunId, {
+              type: 'warning',
+              code: 'QA_EXECUTION_NUDGE',
+              message:
+                'Check turn ended without executable proof; issuing one follow-up turn requiring a real reproduction.',
+            });
+            const nudgeText = buildExecutionNudgePrompt(planResult, currentCheck);
+            const nudgeWork = streamObservedWork(
+              (emit) =>
+                this.runTurn(entry, nudgeText, request.agentRunId, 'investigation', false, emit),
+              async () => {
+                await entry.client?.close();
+              },
+            );
+            try {
+              const nudged: CollectedTurn = yield* depth === undefined
+                ? nudgeWork
+                : limitPhase(nudgeWork, investigationDeadline(depth.deadlineAt), async () => {
+                    await entry.client?.close();
+                  });
+              turn = {
+                ...turn,
+                text: nudged.text,
+                usage: sumUsage(turn.usage, nudged.usage ?? {}),
+                steps: turn.steps + nudged.steps,
+              };
+            } catch (cause) {
+              if (
+                cause instanceof PhaseDeadlineReached ||
+                cause instanceof OpenCodeTurnTimeoutError ||
+                isContextWindowExceeded(cause) ||
+                entry.controller.signal.aborted ||
+                this.cancelledRuns.has(request.agentRunId)
+              )
+                throw cause;
+              // Any other nudge failure keeps the original turn's banked work.
+            }
+          }
           contextBudget.observeTurn(turn.usage);
           if (!turnProducedProof(ledgerBeforeTurn, this.observedOperations))
             unprovenChecks.push(planResult.plannedChecks[currentCheck] ?? '');
+          if (turnRepeatedRedProof(ledgerBeforeTurn, this.observedOperations))
+            redRetryChecks.push(planResult.plannedChecks[currentCheck] ?? '');
           investigationUsage = sumUsage(investigationUsage, turn.usage ?? {});
           investigationSteps += turn.steps;
         }
@@ -1333,6 +1382,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
                       blockedChecks,
                     ),
                     unprovenChecks,
+                    redRetryChecks,
                   );
                   const missing = depth === undefined ? [] : coverageErrors(planResult, grounded);
                   if (missing.length > 0) throw new Error(missing.join('\n'));

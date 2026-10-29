@@ -284,11 +284,23 @@ describe('OpenCodeHarnessAdapter', () => {
       clients += 1;
       return {
         startSession: async () => ({
-          runPrompt: async (prompt: string) => {
+          runPrompt: async (prompt: string, options) => {
             prompts.push(prompt);
             calls += 1;
             if (calls === 1) return textTurn(validPlan());
-            if (calls === 2) return textTurn('Investigation complete.');
+            if (calls === 2) {
+              // Executed proof, so the host does not issue an execution nudge.
+              const probe = {
+                callID: 'context_probe',
+                tool: 'bash',
+                input: { command: 'node probe.mjs' },
+                status: 'completed' as const,
+                output: 'ok',
+                exitCode: 0,
+              };
+              options.onTool?.(probe);
+              return { ...textTurn('Investigation complete.'), toolCalls: [probe] };
+            }
             if (calls === 3) throw new Error('prompt is too long: 213462 tokens > 200000 maximum');
             return textTurn(JSON.stringify(validReportV2()));
           },
@@ -311,6 +323,49 @@ describe('OpenCodeHarnessAdapter', () => {
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'warning', code: 'QA_CONTEXT_COMPACTED' }),
     );
+  });
+
+  it('nudges once when a check turn ends without executable proof', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-nudge-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          prompts.push(prompt);
+          if (prompts.length === 1) return textTurn(validPlan());
+          if (prompts.length === 2) return textTurn('Read the code; looks fine.');
+          if (prompts.length === 3) {
+            const probe = {
+              callID: 'nudge_probe',
+              tool: 'bash',
+              input: { command: 'node probe.mjs' },
+              status: 'completed' as const,
+              output: 'ok',
+              exitCode: 0,
+            };
+            options.onTool?.(probe);
+            return { ...textTurn('Probed.'), toolCalls: [probe] };
+          }
+          return textTurn(JSON.stringify(validReportV2()));
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(prompts[2]).toContain('EXECUTION REQUIRED');
+    expect(prompts).toHaveLength(4);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_EXECUTION_NUDGE' }),
+    );
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
   });
 
   it('runs all turns in one OpenCode session with composed model id', async () => {
@@ -340,7 +395,7 @@ describe('OpenCodeHarnessAdapter', () => {
               {
                 callID: 'call_bash_1',
                 tool: 'bash',
-                input: { command: 'rg important README.md' },
+                input: { command: 'node probe.mjs' },
                 status: 'completed',
                 output: 'important line',
                 exitCode: 0,

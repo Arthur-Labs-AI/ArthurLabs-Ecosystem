@@ -81,10 +81,27 @@ export function buildQaCheckInvestigationPrompt(
       description +
       '". Other checks get their own turns; do not work on them. Trace real callers and input validation; form a concrete hypothesis and seek a counterexample. Reproduce significant candidates through actual code with narrow tests when feasible. Copied logic or file reads do not prove reachable behavior.',
     'Before concluding, attempt the hostile inputs that apply to this check: malformed names and paths (backslashes, traversal, symlinks, empty entries), pre-existing or legacy state, lifecycle transitions (create, delete, forget, restart, retest), and encoded or quoted payloads. If a category cannot apply, note that in your closing instead of skipping it silently. A check whose repro failed during setup is blocked, not verified: simplify the repro (direct built-dist or compiled-source probe) and retry once before giving up. Proof-bearing runs must be single non-compound commands: write probes to a temp file first, then run `node <file>` (or the one test command) as its own command — no pipes, redirects, `;`, `&&` or `||` on a run this check will cite, or the host cannot certify it.',
+    'A failing run is signal, not noise. When a proof run exits non-zero, triage it before changing anything: read the actual assertion or error and decide whether it is a PRODUCT defect (report it as a finding candidate and reproduce it minimally) or a proven FIXTURE error (missing build, wrong import, wrong API shape — name the exact cause). Never loosen, delete or rewrite an assertion just to turn a run green; an assertion that disagrees with the code under test is a hypothesis to investigate, and behavior you call "by design" must be justified from the documented contract. Your tests must try to break the property, not restate that the guard exists. Prefer running the real code path over a stub of it. Re-running the same failing command three times fails the check turn.',
     'When this check is decided or concretely blocked, stop. End with 2-3 sentences: your conclusion for this check, the key operations that support it, and any remaining gap. Then one line starting "Breaks attempted:" listing each hostile input or transition you actually tried and its outcome. No final JSON report yet.',
     'Frozen plan: ' + JSON.stringify(plan),
     'Already observed operations (exitCode:null means unknown): ' +
       compactOperationReceipt(operations),
+  ].join('\n');
+}
+
+/**
+ * One bounded follow-up when a check turn ended without any executable
+ * proof (read/grep-heavy, source-review-only). Headless harnesses have no
+ * mid-turn injection channel, so the host nudges between turns instead.
+ */
+export function buildExecutionNudgePrompt(plan: Plan, index: number): string {
+  return [
+    'EXECUTION REQUIRED — CHECK ' +
+      reportCheckAlias(plan, index) +
+      '. Your last turn on "' +
+      (plan.plannedChecks[index] ?? '') +
+      '" ended with reading and searching only; no command you ran certified a behavior. Reading code cannot pass or fail a check.',
+    'Now write a small probe or test that drives the REAL code path with a hostile or boundary input chosen to break the property (not a stub that restates the guard), run it as ONE single non-compound command, and triage any non-zero exit as a product defect or a proven fixture error. Then stop with your conclusion and a "Breaks attempted:" line. Do not re-read files you have already read.',
   ].join('\n');
 }
 

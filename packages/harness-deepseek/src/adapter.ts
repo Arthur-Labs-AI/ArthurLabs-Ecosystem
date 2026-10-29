@@ -29,6 +29,7 @@ import {
   applyBlockedChecks,
   applyUnprovenChecks,
   turnProducedProof,
+  turnRepeatedRedProof,
   buildQaReportPrompt,
   boundedValidation,
   coverageErrors,
@@ -1142,6 +1143,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       let investigationTurns = 0;
       const blockedChecks: string[] = [];
       const unprovenChecks: string[] = [];
+      const redRetryChecks: string[] = [];
       let currentCheck = 0;
       try {
         for (; currentCheck < planResult.plannedChecks.length; currentCheck += 1) {
@@ -1204,6 +1206,8 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           contextBudget.observeTurn(turn.usage);
           if (!turnProducedProof(ledgerBeforeTurn, this.observedOperations))
             unprovenChecks.push(planResult.plannedChecks[currentCheck] ?? '');
+          if (turnRepeatedRedProof(ledgerBeforeTurn, this.observedOperations))
+            redRetryChecks.push(planResult.plannedChecks[currentCheck] ?? '');
           investigationTurns += 1;
           investigationUsage = sumUsage(investigationUsage, turn.usage ?? {});
         }
@@ -1362,6 +1366,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
                       blockedChecks,
                     ),
                     unprovenChecks,
+                    redRetryChecks,
                   );
                   const missing = depth === undefined ? [] : coverageErrors(planResult, grounded);
                   if (missing.length > 0) throw new Error(missing.join('\n'));

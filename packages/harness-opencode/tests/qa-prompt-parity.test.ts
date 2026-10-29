@@ -126,8 +126,16 @@ describe('OpenCode QA prompt parity', () => {
           return {
             startSession: async () => ({
               abort: () => undefined,
-              runPrompt: async (text: string) => {
+              runPrompt: async (text: string, options) => {
                 prompts.push(text);
+                const probe = {
+                  callID: 'reserve_probe_' + prompts.length,
+                  tool: 'bash',
+                  input: { command: 'node probe.mjs' },
+                  status: 'completed' as const,
+                  output: 'ok',
+                  exitCode: 0,
+                };
                 const shouldBlock =
                   mode === 'exhausted'
                     ? prompts.length >= 2
@@ -140,13 +148,12 @@ describe('OpenCode QA prompt parity', () => {
                     rejectOwned = reject;
                   });
                 }
-                return textTurn(
-                  prompts.length === 1
-                    ? validPlan()
-                    : prompts.length === 2
-                      ? 'Investigation complete.'
-                      : validReport(true),
-                );
+                if (prompts.length === 2) {
+                  // Executed proof, so the host does not issue an execution nudge.
+                  options.onTool?.(probe);
+                  return { ...textTurn('Investigation complete.'), toolCalls: [probe] };
+                }
+                return textTurn(prompts.length === 1 ? validPlan() : validReport(true));
               },
             }),
             close: async () => {
@@ -221,11 +228,12 @@ describe('OpenCode QA prompt parity', () => {
             if (prompts.length === 1) return textTurn(validPlan());
             if (prompts.length === 2) {
               const observation = {
-                callID: 'synthetic_read',
-                tool: 'read',
-                input: { filePath: 'README.md' },
+                callID: 'synthetic_probe',
+                tool: 'bash',
+                input: { command: 'node probe.mjs' },
                 status: 'completed' as const,
                 output: 'Observed fixture text',
+                exitCode: 0,
               };
               options.onTool?.(observation);
               return { ...textTurn('Investigation complete.'), toolCalls: [observation] };

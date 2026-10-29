@@ -82,6 +82,10 @@ describe('ordered compact QA stages', () => {
     // Proof commands must be certifiable: single, non-compound, own exit.
     expect(text).toContain('single non-compound commands');
     expect(text).toContain('cannot certify it');
+    // Failing runs are triaged, never edited green.
+    expect(text).toContain('A failing run is signal');
+    expect(text).toContain('PRODUCT defect');
+    expect(text).toContain('Never loosen');
   });
 
   it('keeps reporting tool-free and puts unavailable environment checks in limitations', () => {

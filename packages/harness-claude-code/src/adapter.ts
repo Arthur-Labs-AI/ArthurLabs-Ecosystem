@@ -26,6 +26,7 @@ import {
   applyBlockedChecks,
   applyUnprovenChecks,
   turnProducedProof,
+  turnRepeatedRedProof,
   buildQaReportPrompt,
   boundedValidation,
   coverageErrors,
@@ -1635,6 +1636,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       let investigationTurns = 0;
       const blockedChecks: string[] = [];
       const unprovenChecks: string[] = [];
+      const redRetryChecks: string[] = [];
       {
         let currentCheck = 0;
         let interrupted = false;
@@ -1687,6 +1689,8 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             }
             if (!turnProducedProof(ledgerBeforeTurn, this.observedOperations))
               unprovenChecks.push(planResult.plannedChecks[currentCheck] ?? '');
+            if (turnRepeatedRedProof(ledgerBeforeTurn, this.observedOperations))
+              redRetryChecks.push(planResult.plannedChecks[currentCheck] ?? '');
             investigationTurns += 1;
             contextBudget.observeTurn(step.value.usage);
             contextRetriedForCheck = false;
@@ -1899,6 +1903,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
                       blockedChecks,
                     ),
                     unprovenChecks,
+                    redRetryChecks,
                   );
                   const missing = depth === undefined ? [] : coverageErrors(planResult, grounded);
                   if (missing.length > 0) throw new Error(missing.join('\n'));

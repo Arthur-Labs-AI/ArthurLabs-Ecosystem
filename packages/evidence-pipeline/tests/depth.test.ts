@@ -14,6 +14,7 @@ import {
   resolveReportChecks,
   reportCheckAliases,
   turnProducedProof,
+  turnRepeatedRedProof,
 } from '../src/depth.js';
 
 describe('independent depth policy', () => {
@@ -59,6 +60,34 @@ describe('independent depth policy', () => {
     expect(repaired.checks[2]?.status).toBe('failed');
     expect(repaired.limitations.join(' ')).toContain('cannot pass on source review alone');
     expect(applyUnprovenChecks(report as never, [])).toBe(report);
+  });
+  it('flags a pass reached by re-running the same failing proof command', () => {
+    const red = (n: number) => ({
+      operationKey: 'op_' + n,
+      operationId: ('operation_' + n) as never,
+      toolName: 'bash',
+      exitCode: 1,
+      isTestOperation: true,
+      commandText: 'node_modules/.bin/vitest run tests/qa-check4.test.ts',
+    });
+    const ops = new Map([1, 2, 3].map((n) => ['op_' + n, red(n)] as const));
+    expect(turnRepeatedRedProof(new Set(), ops)).toBe(true);
+    expect(turnRepeatedRedProof(new Set(['op_1']), ops)).toBe(false);
+    const two = new Map([1, 2].map((n) => ['op_' + n, red(n)] as const));
+    expect(turnRepeatedRedProof(new Set(), two)).toBe(false);
+    const report = {
+      schemaVersion: 2 as const,
+      summary: 'fixture',
+      checks: [{ name: 'Evidence', status: 'passed' as const, details: 'green' }],
+      hypotheses: [],
+      evidence: [],
+      findings: [],
+      limitations: [] as string[],
+    };
+    const repaired = applyUnprovenChecks(report as never, [], ['Evidence']);
+    expect(repaired.checks[0]).toMatchObject({ status: 'inconclusive', coverage: 'partial' });
+    expect(repaired.checks[0]?.details).toContain('triaged');
+    expect(repaired.limitations.join(' ')).toContain('failing proof command');
   });
   it('detects executable proof only from operations added during the turn', () => {
     const proof = {
