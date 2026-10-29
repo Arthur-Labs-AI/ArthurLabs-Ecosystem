@@ -92,6 +92,75 @@ export async function* limitPhase<T>(
   }
 }
 
+export type WatchedTurn<T, S> =
+  { readonly stopped: false; readonly value: T } | { readonly stopped: true; readonly reason: S };
+
+/** Events of one tool batch arrive together; this is the silence that ends it. */
+const BATCH_SETTLE_MS = 150;
+const BATCH_DRAIN_LIMIT = 50;
+
+/**
+ * Stops OWNED work early on a behavioural signal instead of a clock. After
+ * each event `probe` inspects the host ledger; once it reports a reason the
+ * current tool batch is drained (so the ledger and command events stay
+ * complete), a following tool.started is withheld, and the turn is stopped.
+ * A source that finishes by itself is returned as a normal completion.
+ */
+export async function* watchTurn<T, S>(
+  source: AsyncGenerator<HarnessEvent, T>,
+  probe: () => S | undefined,
+  stop: () => Promise<void>,
+): AsyncGenerator<HarnessEvent, WatchedTurn<T, S>> {
+  let pending: Promise<IteratorResult<HarnessEvent, T>> | undefined;
+  const take = (): Promise<IteratorResult<HarnessEvent, T>> => {
+    const next = (pending ??= source.next());
+    pending = undefined;
+    return next;
+  };
+  let finished = false;
+  try {
+    while (true) {
+      const next = await take();
+      if (next.done) {
+        finished = true;
+        return { stopped: false, value: next.value };
+      }
+      yield next.value;
+      const reason = probe();
+      if (reason === undefined) continue;
+      for (let drained = 0; drained < BATCH_DRAIN_LIMIT; drained += 1) {
+        const waiting = (pending ??= source.next());
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const settled = await Promise.race([
+          waiting,
+          new Promise<'quiet'>((resolve) => {
+            timer = setTimeout(() => resolve('quiet'), BATCH_SETTLE_MS);
+          }),
+        ]);
+        if (timer !== undefined) clearTimeout(timer);
+        if (settled === 'quiet') break;
+        pending = undefined;
+        if (settled.done) {
+          finished = true;
+          return { stopped: false, value: settled.value };
+        }
+        if (settled.value.type === 'tool.started') break;
+        yield settled.value;
+      }
+      void pending?.catch(() => undefined);
+      await stop();
+      await source.return(undefined as T).catch(() => undefined);
+      finished = true;
+      return { stopped: true, reason };
+    }
+  } finally {
+    if (!finished) {
+      await stop();
+      await source.return(undefined as T).catch(() => undefined);
+    }
+  }
+}
+
 export function reportAttemptDeadline(
   deadlineAt: number,
   attempt: number,

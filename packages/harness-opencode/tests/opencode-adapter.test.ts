@@ -368,6 +368,118 @@ describe('OpenCodeHarnessAdapter', () => {
     expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
   });
 
+  /** A check turn that keeps issuing tools, then hangs until the host closes the client. */
+  function stuckFactory(
+    prompts: string[],
+    stuck: (onTool: (tool: Record<string, unknown>) => void) => void,
+    attemptsThatStick = 0,
+  ): OpenCodeClientFactory {
+    let attemptsSeen = 0;
+    return async () => {
+      let release: () => void = () => undefined;
+      const hang = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return {
+        startSession: async () => ({
+          runPrompt: async (prompt: string, options) => {
+            prompts.push(prompt);
+            const emit = (tool: Record<string, unknown>) => options.onTool?.(tool as never);
+            if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+            if (prompt.includes('STAGE 3')) return textTurn(JSON.stringify(validReportV2()));
+            const isAttempt = prompt.includes('APPROACH CHANGE');
+            if (isAttempt) attemptsSeen += 1;
+            if (!isAttempt || attemptsSeen <= attemptsThatStick) {
+              stuck(emit);
+              await hang;
+              return textTurn('stopped');
+            }
+            const probe = {
+              callID: 'alt_probe_' + attemptsSeen,
+              tool: 'bash',
+              input: { command: 'node alternative.mjs' },
+              status: 'completed' as const,
+              output: 'ok',
+              exitCode: 0,
+            };
+            emit(probe);
+            return { ...textTurn('Decided by a direct probe.'), toolCalls: [probe] };
+          },
+          abort: () => undefined,
+        }),
+        close: async () => {
+          release();
+        },
+      };
+    };
+  }
+
+  const failingRun = (index: number) => ({
+    callID: 'red_' + index,
+    tool: 'bash',
+    input: { command: 'vitest run probe.test.ts' },
+    status: 'error' as const,
+    error: 'assertion failed',
+    exitCode: 1,
+  });
+
+  it('stops a retry-until-green check turn and grants a different-approach attempt', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-redretry-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: stuckFactory(prompts, (emit) => {
+        for (const i of [1, 2, 3]) emit(failingRun(i));
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    const attempt = prompts.find((prompt) => prompt.includes('APPROACH CHANGE'));
+    expect(attempt).toContain('attempt 1 of 3');
+    expect(attempt).toContain('vitest run probe.test.ts');
+    expect(attempt).toContain('Do not re-run those commands');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_APPROACH_CHANGE' }),
+    );
+    expect(events).not.toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_APPROACH_EXHAUSTED' }),
+    );
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+  });
+
+  it('stops a read-only spiral and keeps the check inconclusive when every approach sticks', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-spiral-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: stuckFactory(
+        prompts,
+        (emit) => {
+          for (let i = 0; i < 25; i += 1)
+            emit({
+              callID: 'read_' + i + '_' + prompts.length,
+              tool: 'read',
+              input: { filePath: 'src/file-' + i + '-' + prompts.length + '.ts' },
+              status: 'completed',
+              output: 'x',
+            });
+        },
+        3,
+      ),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(prompts.filter((prompt) => prompt.includes('APPROACH CHANGE'))).toHaveLength(3);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_APPROACH_EXHAUSTED' }),
+    );
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+  });
+
   it('runs all turns in one OpenCode session with composed model id', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-success-'));
     roots.push(root);

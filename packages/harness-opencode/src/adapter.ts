@@ -21,6 +21,13 @@ import {
   buildInvestigationCompactionContext,
   buildRecoveryReportContext,
   streamObservedWork,
+  watchTurn,
+  type WatchedTurn,
+  turnWatchdogStop,
+  failedCommandsSince,
+  MAX_APPROACH_ATTEMPTS,
+  type TurnStop,
+  buildAlternativeApproachPrompt,
   buildQaPlanningPrompt,
   buildQaCheckInvestigationPrompt,
   buildExecutionNudgePrompt,
@@ -246,6 +253,9 @@ interface CollectedTurn {
   readonly usage?: AgentUsage | undefined;
   readonly steps: number;
 }
+
+/** Placeholder for a turn the host stopped; its text and usage were never collected. */
+const STOPPED_TURN: CollectedTurn = { text: '', observations: [], events: [], steps: 0 };
 
 /** Owned per-AgentRun execution state (Sentry IDs and OpenCode IDs tracked separately). */
 interface OpenCodeRunEntry {
@@ -1102,6 +1112,27 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       const unprovenChecks: string[] = [];
       const redRetryChecks: string[] = [];
       let currentCheck = 0;
+      const stopClient = async (): Promise<void> => {
+        await entry.client?.close();
+      };
+      /** One owned investigation turn, stopped early on a behavioural signal. */
+      const runWatchedTurn = (
+        turnText: string,
+        beforeKeys: ReadonlySet<string>,
+      ): AsyncGenerator<HarnessEvent, WatchedTurn<CollectedTurn, TurnStop>> => {
+        const watched = watchTurn(
+          streamObservedWork(
+            (emit) =>
+              this.runTurn(entry, turnText, request.agentRunId, 'investigation', false, emit),
+            stopClient,
+          ),
+          () => turnWatchdogStop(beforeKeys, this.observedOperations),
+          stopClient,
+        );
+        return depth === undefined
+          ? watched
+          : limitPhase(watched, investigationDeadline(depth.deadlineAt), stopClient);
+      };
       try {
         for (; currentCheck < planResult.plannedChecks.length; currentCheck += 1) {
           yield event(request.agentRunId, {
@@ -1137,23 +1168,15 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
             });
           }
           let turn: CollectedTurn | undefined;
+          let tripped: TurnStop | undefined;
           let contextRetried = false;
           while (turn === undefined) {
             const turnText = compactionContext + checkPrompt;
             compactionContext = '';
-            const work = streamObservedWork(
-              (emit) =>
-                this.runTurn(entry, turnText, request.agentRunId, 'investigation', false, emit),
-              async () => {
-                await entry.client?.close();
-              },
-            );
             try {
-              turn = yield* depth === undefined
-                ? work
-                : limitPhase(work, investigationDeadline(depth.deadlineAt), async () => {
-                    await entry.client?.close();
-                  });
+              const outcome = yield* runWatchedTurn(turnText, ledgerBeforeTurn);
+              if (outcome.stopped) tripped = outcome.reason;
+              turn = outcome.stopped ? STOPPED_TURN : outcome.value;
             } catch (cause) {
               // Reactive compaction: one fresh-session retry of THIS check.
               if (
@@ -1173,7 +1196,81 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
               });
             }
           }
+          // The host stopped the turn on a behavioural signal (same command
+          // failing again and again, or a read-only spiral): grant bounded
+          // attempts with a different method, each in a fresh seeded session.
+          let approachAttempts = 0;
+          while (
+            tripped !== undefined &&
+            approachAttempts < MAX_APPROACH_ATTEMPTS &&
+            !entry.controller.signal.aborted &&
+            !this.cancelledRuns.has(request.agentRunId)
+          ) {
+            approachAttempts += 1;
+            const attemptBefore = new Set(this.observedOperations.keys());
+            await startInvestigationContext(currentCheck, planResult);
+            const attemptText =
+              compactionContext +
+              buildAlternativeApproachPrompt(
+                planResult,
+                currentCheck,
+                tripped,
+                approachAttempts,
+                failedCommandsSince(ledgerBeforeTurn, this.observedOperations),
+              );
+            compactionContext = '';
+            yield event(request.agentRunId, {
+              type: 'warning',
+              code: 'QA_APPROACH_CHANGE',
+              message:
+                'Check turn stopped (' +
+                (tripped.kind === 'red-retry'
+                  ? 'same command failed ' + tripped.failures + ' times'
+                  : tripped.reads + ' read-only calls without running anything') +
+                '); attempt ' +
+                approachAttempts +
+                ' of ' +
+                MAX_APPROACH_ATTEMPTS +
+                ' with a different approach in a fresh session.',
+            });
+            try {
+              const outcome = yield* runWatchedTurn(attemptText, attemptBefore);
+              if (outcome.stopped) tripped = outcome.reason;
+              else {
+                tripped = undefined;
+                turn = {
+                  ...turn,
+                  text: outcome.value.text,
+                  usage: sumUsage(turn.usage, outcome.value.usage ?? {}),
+                  steps: turn.steps + outcome.value.steps,
+                };
+              }
+            } catch (cause) {
+              if (
+                cause instanceof PhaseDeadlineReached ||
+                cause instanceof OpenCodeTurnTimeoutError ||
+                isContextWindowExceeded(cause) ||
+                entry.controller.signal.aborted ||
+                this.cancelledRuns.has(request.agentRunId)
+              )
+                throw cause;
+              break; // Any other attempt failure keeps the banked work.
+            }
+          }
+          if (tripped !== undefined) {
+            yield event(request.agentRunId, {
+              type: 'warning',
+              code: 'QA_APPROACH_EXHAUSTED',
+              message:
+                'Check could not be decided after ' +
+                approachAttempts +
+                ' approach change(s); it stays inconclusive and the failed approaches remain in the ledger.',
+            });
+            unprovenChecks.push(planResult.plannedChecks[currentCheck] ?? '');
+            redRetryChecks.push(planResult.plannedChecks[currentCheck] ?? '');
+          }
           if (
+            tripped === undefined &&
             !turnProducedProof(ledgerBeforeTurn, this.observedOperations) &&
             !entry.controller.signal.aborted &&
             !this.cancelledRuns.has(request.agentRunId)

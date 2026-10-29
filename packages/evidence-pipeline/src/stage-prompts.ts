@@ -1,6 +1,13 @@
 import { describeSentryAgentReportContract, FINDING_CATEGORIES } from '@qa/schemas';
 import type { ObservedOperation } from './pipeline.js';
-import { reportCheckAliases, reportCheckAlias, DEPTH_COVERAGE_GUIDANCE } from './depth.js';
+import {
+  reportCheckAliases,
+  reportCheckAlias,
+  DEPTH_COVERAGE_GUIDANCE,
+  MAX_APPROACH_ATTEMPTS,
+  type FailedAttempt,
+  type TurnStop,
+} from './depth.js';
 import { REPORT_ENVELOPE_SCHEMA, buildReportCorrectionIntro } from './reporting.js';
 
 /** Sent once, in the first planning message of the same owned session. */
@@ -107,6 +114,44 @@ export function buildExecutionNudgePrompt(plan: Plan, index: number): string {
       (plan.plannedChecks[index] ?? '') +
       '" ended with reading and searching only; no command you ran certified a behavior. Reading code cannot pass or fail a check.',
     'Now write a small probe or test that drives the REAL code path with a hostile or boundary input chosen to break the property (not a stub that restates the guard), run it as ONE single non-compound command, and triage any non-zero exit as a product defect or a proven fixture error. Then stop with your conclusion and a "Breaks attempted:" line. Do not re-read files you have already read.',
+  ].join('\n');
+}
+
+/**
+ * Follow-up turn after the host stopped a check turn that was retrying the
+ * same failing command or only reading. The failed approaches come from the
+ * host ledger so the agent cannot repeat them.
+ */
+export function buildAlternativeApproachPrompt(
+  plan: Plan,
+  index: number,
+  stop: TurnStop,
+  attempt: number,
+  failed: readonly FailedAttempt[],
+): string {
+  const why =
+    stop.kind === 'red-retry'
+      ? 'the same command failed ' +
+        stop.failures +
+        ' times in one turn ("' +
+        stop.command.slice(0, 160) +
+        '")'
+      : 'it made ' + stop.reads + ' read-only calls in a row without running or changing anything';
+  return [
+    'APPROACH CHANGE — CHECK ' +
+      reportCheckAlias(plan, index) +
+      ' (attempt ' +
+      attempt +
+      ' of ' +
+      MAX_APPROACH_ATTEMPTS +
+      '). The host stopped your last turn on "' +
+      (plan.plannedChecks[index] ?? '') +
+      '" because ' +
+      why +
+      '. Do not re-run those commands or small edits of them.',
+    'Commands that already failed (host ledger): ' + JSON.stringify(failed),
+    'Decide the SAME question with a DIFFERENT method: another entry point into the code, a direct probe of the built output or source module, a smaller reproduction, or a different caller path. A new method never means a looser assertion: do not weaken, delete or rewrite a check just to turn it green. First triage why it failed. If the red result is the real behavior of the code under test, stop retrying: reproduce it once minimally and conclude with it as a defect candidate. If setup is the blocker (missing build, wrong import, absent dependency), name the exact cause and route around it. If you have only been reading, write and run a probe now as ONE single non-compound command.',
+    'Then stop with 2-3 sentences of conclusion, the approaches you tried this attempt, and a "Breaks attempted:" line. If this approach also cannot decide the check, say it is blocked and why.',
   ].join('\n');
 }
 

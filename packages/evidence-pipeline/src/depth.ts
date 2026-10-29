@@ -156,6 +156,80 @@ export function turnRepeatedRedProof(
 }
 
 /**
+ * Consecutive read-only operations (read/grep/glob/search/list/view) without
+ * any executed or edited operation in between. Behavioural, not temporal: a
+ * large project may legitimately take long, but reading 25 times without
+ * running or changing anything is a source-review spiral on any project.
+ */
+export const NO_PROGRESS_LIMIT = 25;
+
+/** Approach changes the host grants one check after its turn was stopped. */
+export const MAX_APPROACH_ATTEMPTS = 3;
+
+export type TurnStop =
+  | { readonly kind: 'red-retry'; readonly command: string; readonly failures: number }
+  | { readonly kind: 'no-progress'; readonly reads: number };
+
+const READ_ONLY_TOOL = /^(read|grep|glob|search|list|view)$/i;
+
+export interface FailedAttempt {
+  readonly command: string;
+  readonly exitCode: number;
+  readonly times: number;
+}
+
+/** Distinct failing commands of the turn, for the approach-change brief. */
+export function failedCommandsSince(
+  beforeKeys: ReadonlySet<string>,
+  operations: ReadonlyMap<string, ObservedOperation>,
+): FailedAttempt[] {
+  const failed = new Map<string, { exitCode: number; times: number }>();
+  for (const [key, op] of operations) {
+    if (beforeKeys.has(key)) continue;
+    if (typeof op.exitCode !== 'number' || op.exitCode === 0) continue;
+    const text = op.commandText?.trim();
+    if (text === undefined || text.length === 0 || READ_ONLY_TOOL.test(op.toolName)) continue;
+    const entry = failed.get(text) ?? { exitCode: op.exitCode, times: 0 };
+    entry.times += 1;
+    entry.exitCode = op.exitCode;
+    failed.set(text, entry);
+  }
+  return [...failed].map(([command, { exitCode, times }]) => ({
+    command: command.slice(0, 300),
+    exitCode,
+    times,
+  }));
+}
+
+/**
+ * Live watchdog over ONE check turn: a stop is warranted when the same
+ * command failed RED_RETRY_THRESHOLD times (retry-until-green) or the turn
+ * is stuck reading (NO_PROGRESS_LIMIT read-only operations in a row).
+ */
+export function turnWatchdogStop(
+  beforeKeys: ReadonlySet<string>,
+  operations: ReadonlyMap<string, ObservedOperation>,
+): TurnStop | undefined {
+  const failures = new Map<string, number>();
+  let reads = 0;
+  for (const [key, op] of operations) {
+    if (beforeKeys.has(key)) continue;
+    if (READ_ONLY_TOOL.test(op.toolName)) {
+      reads += 1;
+      continue;
+    }
+    reads = 0;
+    const text = op.commandText?.trim();
+    if (typeof op.exitCode !== 'number' || op.exitCode === 0) continue;
+    if (text === undefined || text.length === 0) continue;
+    const count = (failures.get(text) ?? 0) + 1;
+    if (count >= RED_RETRY_THRESHOLD) return { kind: 'red-retry', command: text, failures: count };
+    failures.set(text, count);
+  }
+  return reads >= NO_PROGRESS_LIMIT ? { kind: 'no-progress', reads } : undefined;
+}
+
+/**
  * True when the check turn's closing text explicitly classifies the red runs
  * (fixture/probe/test error, or "not a product defect"). The host cannot
  * verify the claim, but silent edit-to-green is what the gate exists to stop:
