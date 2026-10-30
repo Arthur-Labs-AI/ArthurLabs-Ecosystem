@@ -37,6 +37,7 @@ const StartRunOptions = z
     instructions: z.string().min(1).max(5000).optional(),
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
     runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
+    webAccess: z.boolean().optional(),
   })
   .strict();
 
@@ -183,6 +184,7 @@ export class DesktopApplicationService {
         ...(parsed.instructions === undefined ? {} : { instructions: parsed.instructions }),
         ...(parsed.agentStackIds === undefined ? {} : { agentStackIds: [...parsed.agentStackIds] }),
         ...(parsed.runTimeoutMs === undefined ? {} : { runTimeoutMs: parsed.runTimeoutMs }),
+        ...(parsed.webAccess === true ? { webAccess: true } : {}),
       })) as DesktopOperation;
     } catch (error) {
       // A client-side timeout does NOT mean the runtime didn't start the run:

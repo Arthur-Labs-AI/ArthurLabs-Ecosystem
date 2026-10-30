@@ -1,0 +1,119 @@
+/**
+ * Agent network policy shared by every harness.
+ *
+ * Package/module installs are always allowed so build, typecheck, lint and
+ * tests can actually run; they reach only package-registry hosts. General
+ * web access (agent fetch/search tools) is a per-run opt-in and defaults to
+ * off. Host loopback, LAN and private addresses are never reachable.
+ */
+
+/** The only hosts agent shells may reach. One place; harnesses enforce it. */
+export const PACKAGE_REGISTRY_HOSTS: readonly string[] = [
+  // npm / JavaScript
+  'registry.npmjs.org',
+  'registry.npmjs.com',
+  'registry.yarnpkg.com',
+  'repo.yarnpkg.com',
+  'npm.jsr.io',
+  'jsr.io',
+  'nodejs.org',
+  // Python
+  'pypi.org',
+  'files.pythonhosted.org',
+  // Rust
+  'crates.io',
+  'index.crates.io',
+  'static.crates.io',
+  // Go
+  'proxy.golang.org',
+  'sum.golang.org',
+  // Ruby
+  'rubygems.org',
+  'index.rubygems.org',
+  // JVM
+  'repo.maven.apache.org',
+  'repo1.maven.org',
+  'plugins.gradle.org',
+  'services.gradle.org',
+  // .NET
+  'api.nuget.org',
+  // PHP
+  'repo.packagist.org',
+  // GitHub (release archives and git dependencies)
+  'github.com',
+  'codeload.github.com',
+  'objects.githubusercontent.com',
+  'release-assets.githubusercontent.com',
+];
+
+function normalizeHost(host: string): string {
+  return host.trim().toLowerCase().replace(/\.$/, '');
+}
+
+/**
+ * Case-insensitive exact or `*.suffix` match. A wildcard matches subdomains
+ * only, and `registry.npmjs.org.evil.com` never matches `registry.npmjs.org`.
+ */
+export function hostMatchesAllowlist(host: string, patterns: readonly string[]): boolean {
+  const candidate = normalizeHost(host);
+  if (candidate.length === 0) return false;
+  return patterns.some((raw) => {
+    const pattern = normalizeHost(raw);
+    if (pattern.startsWith('*.')) return candidate.endsWith(pattern.slice(1));
+    return candidate === pattern;
+  });
+}
+
+/** True only when the run explicitly opted in to general web access. */
+export function webAccessEnabled(
+  safeguards: { readonly webAccess?: boolean | undefined } | undefined,
+): boolean {
+  return safeguards?.webAccess === true;
+}
+
+/** Package-manager caches live inside the workspace, the only place shells may write. */
+export const DEPENDENCY_CACHE_DIRNAME = '.sentry-cache';
+
+export function dependencyCacheEnvironment(workspacePath: string): Record<string, string> {
+  const root = workspacePath.replace(/[\\/]+$/, '') + '/' + DEPENDENCY_CACHE_DIRNAME;
+  return {
+    npm_config_cache: root + '/npm',
+    npm_config_store_dir: root + '/pnpm-store',
+    YARN_CACHE_FOLDER: root + '/yarn',
+    PIP_CACHE_DIR: root + '/pip',
+    GOPATH: root + '/go',
+    GOMODCACHE: root + '/go/pkg/mod',
+    GRADLE_USER_HOME: root + '/gradle',
+    COREPACK_HOME: root + '/corepack',
+    npm_config_update_notifier: 'false',
+    npm_config_fund: 'false',
+    npm_config_audit: 'false',
+    PIP_DISABLE_PIP_VERSION_CHECK: '1',
+    // CARGO_HOME is intentionally not set: it would break rustup proxies.
+  };
+}
+
+/** Commands that install dependencies. They prepare a check but never prove one. */
+export const DEPENDENCY_INSTALL_COMMAND =
+  /^\s*(?:(?:pnpm|npm|yarn|bun)\s+(?:install|i|ci|add|fetch)\b|corepack\s+(?:enable|prepare)\b|pip3?\s+install\b|python3?\s+-m\s+pip\s+install\b|uv\s+(?:sync|pip\s+install)\b|cargo\s+(?:fetch|vendor)\b|go\s+mod\s+(?:download|tidy|vendor)\b|bundle\s+install\b|composer\s+install\b|dotnet\s+restore\b|mvn\s+dependency:|gradle\s+dependencies\b)/i;
+
+export interface AgentNetworkPromptOptions {
+  readonly webAccess: boolean;
+  /** False for harnesses without web tools (they must never be told to use them). */
+  readonly webToolsAvailable?: boolean;
+}
+
+/** Identical network guidance for every agent's investigation prompt. */
+export function agentNetworkPromptLines(options: AgentNetworkPromptOptions): string[] {
+  const lines = [
+    'Install the project’s dependencies inside this workspace with its own package manager and lockfile (for example `pnpm install --frozen-lockfile`, `npm ci`, `yarn install --immutable`, `pip install -r requirements.txt` into a `.venv`, `cargo fetch`, `go mod download`) BEFORE build, lint, typecheck or tests. An install only prepares a check; it is never proof of one.',
+    'Shell network access reaches package registries only. Never work around that restriction. If an install fails, record the exact failure as a limitation, continue statically, and never claim a check passed that could not run.',
+    'Never run scripts that publish, deploy or contact production systems.',
+  ];
+  if (options.webAccess && options.webToolsAvailable !== false)
+    lines.push(
+      'Web access is enabled for this run: you may use web fetch/search for documentation, changelogs and security advisories, and must cite what you used. Never send source code, secrets or workspace contents to a website.',
+    );
+  else lines.push('Web access is disabled for this run: do not use web fetch or search tools.');
+  return lines;
+}

@@ -144,10 +144,23 @@ and do not retry a start blindly after an uncertain response.
 sentry cli run start proj_ID --mode full --agents opencode,deepseek,glm --json
 sentry cli run start proj_ID --mode targeted --agents deepseek --paths src/auth,src/api --json
 sentry cli run start proj_ID --mode full --agents opencode --wait --timeout-ms 1800000 --json
+sentry cli run start proj_ID --mode full --agents opencode,glm --web --json
 sentry cli run list proj_ID --json
 sentry cli run show run_ID --json
 sentry cli run status run_ID --json
 ```
+
+### Dependency installs and web access
+
+Agents install the project's dependencies (with its own package manager and
+lockfile) before running build, lint, typecheck and tests. Installs always work
+and reach package registries only (npm, PyPI, crates.io, Go, RubyGems, Maven,
+NuGet, Packagist, GitHub release archives); every other host stays blocked.
+
+General web access (agent web fetch/search for docs and advisories) is off by
+default. Pass `--web` to `run start` to enable it for that run only; the Desktop
+start dialog has the same "Allow web access" checkbox. DeepSeek has no web
+tools, so the flag does not change it.
 
 ### Results and exports
 

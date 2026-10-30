@@ -25,8 +25,15 @@ import { dirname, join } from 'node:path';
  * is spawned by the process launcher and never exec'd through this
  * wrapper). Same-namespace loopback still works, so a shell that starts
  * its own local server and probes it keeps functioning; only HOST network
- * access is removed. There is intentionally no toggle: network access for
- * model-controlled shells is deny-by-default and Sentry-owned.
+ * access is removed. Network access for model-controlled shells is
+ * deny-by-default and Sentry-owned.
+ *
+ * Package installs (always on): when `egress` is set the namespace keeps
+ * `--unshare-net` and gains exactly one way out, a Unix socket bind-mounted
+ * at /tmp/.sentry-egress.sock and bridged by `socat` to 127.0.0.1:<port>
+ * inside the namespace. Proxy environment variables point package managers
+ * at it, and the host-side proxy admits only package-registry hosts.
+ * Without `egress` the wrapper is the fully offline one.
  *
  * In-process file tools (`read`/`edit`) do NOT pass through here; they are
  * contained by explicit deny rules plus upstream ask-to-reject, and they
@@ -50,6 +57,35 @@ export interface ToolShellSpec {
   readonly scopeHome: string;
   /** Absolute agent workspace (re-bound read-write). */
   readonly workspace: string;
+  /** Registry-only egress through a host-side proxy; omitted means fully offline. */
+  readonly egress?: ToolShellEgress | undefined;
+}
+
+export interface ToolShellEgress {
+  /** Absolute host path of the egress proxy Unix socket. */
+  readonly socketPath: string;
+  /** Absolute socat binary path (bridges the in-namespace loopback port to the socket). */
+  readonly socat: string;
+  /** Loopback port inside the tool namespace. */
+  readonly port: number;
+}
+
+export const TOOL_SHELL_EGRESS_SOCKET = '/tmp/.sentry-egress.sock';
+export const TOOL_SHELL_EGRESS_PORT = 39871;
+
+/** Proxy environment for tool shells; only the in-namespace loopback bridge is reachable. */
+export function toolShellProxyEnvironment(port: number): Record<string, string> {
+  const proxy = 'http://127.0.0.1:' + port;
+  return {
+    HTTPS_PROXY: proxy,
+    HTTP_PROXY: proxy,
+    https_proxy: proxy,
+    http_proxy: proxy,
+    npm_config_https_proxy: proxy,
+    npm_config_proxy: proxy,
+    NO_PROXY: 'localhost,127.0.0.1,::1',
+    no_proxy: 'localhost,127.0.0.1,::1',
+  };
 }
 
 /** Normalize a hide candidate; undefined means never hide (root/empty/drive-root). */
@@ -106,6 +142,46 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
   spec.hidePaths.forEach((p) => {
     hideArgs.push(`  --tmpfs ${q(p)} \\`);
   });
+  const egress = spec.egress;
+  const egressPrelude =
+    egress === undefined
+      ? []
+      : [
+          'SENTRY_EGRESS_SOCKET=' + q(egress.socketPath),
+          'SENTRY_SOCAT=' + q(egress.socat),
+          'export SENTRY_REAL_SHELL SENTRY_SOCAT',
+          'SENTRY_PRELUDE=' +
+            q(
+              [
+                'socat_pid=',
+                '"$SENTRY_SOCAT" TCP-LISTEN:' +
+                  egress.port +
+                  ',bind=127.0.0.1,fork,reuseaddr UNIX-CONNECT:' +
+                  TOOL_SHELL_EGRESS_SOCKET +
+                  ' >/dev/null 2>&1 &',
+                'socat_pid=$!',
+                'n=0',
+                'while [ "$n" -lt 40 ]; do',
+                '  if (exec 3<>/dev/tcp/127.0.0.1/' + egress.port + ') 2>/dev/null; then break; fi',
+                '  n=$((n+1)); sleep 0.05',
+                'done',
+                '"$SENTRY_REAL_SHELL" -o pipefail -c "$1"',
+                'code=$?',
+                'kill "$socat_pid" 2>/dev/null',
+                'exit "$code"',
+              ].join('\n'),
+            ),
+        ];
+  const egressBinds =
+    egress === undefined
+      ? []
+      : [
+          '  --unshare-pid \\',
+          '  --bind "$SENTRY_EGRESS_SOCKET" ' + TOOL_SHELL_EGRESS_SOCKET + ' \\',
+          ...Object.entries(toolShellProxyEnvironment(egress.port)).map(
+            ([name, value]) => '  --setenv ' + name + ' ' + q(value) + ' \\',
+          ),
+        ];
   return [
     '#!/bin/sh',
     '# Sentry-owned OpenCode tool shell wrapper (generated per AgentRun).',
@@ -116,6 +192,7 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
     `SENTRY_RUN_TMP=${q(spec.runTmp)}`,
     `SENTRY_WORKSPACE=${q(spec.workspace)}`,
     `SENTRY_SCOPE_HOME=${q(spec.scopeHome)}`,
+    ...egressPrelude,
     'if [ "$SENTRY_SCOPE_HOME" != "$HOME" ]; then',
     '  echo "sentry-tool-shell: HOME mismatch" >&2',
     '  exit 126',
@@ -140,7 +217,10 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
     ...hideArgs,
     '  --bind "$SENTRY_WORKSPACE" "$SENTRY_WORKSPACE" \\',
     '  --bind "$SENTRY_SCOPE_HOME" "$SENTRY_SCOPE_HOME" \\',
-    '  -- "$SENTRY_REAL_SHELL" -o pipefail -c "$SCRIPT"',
+    ...egressBinds,
+    egress === undefined
+      ? '  -- "$SENTRY_REAL_SHELL" -o pipefail -c "$SCRIPT"'
+      : '  -- "$SENTRY_REAL_SHELL" -o pipefail -c "$SENTRY_PRELUDE" sentry-egress "$SCRIPT"',
     '',
   ].join('\n');
 }

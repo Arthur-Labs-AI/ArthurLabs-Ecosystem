@@ -213,3 +213,31 @@ describe('retry identity and executed reproductions', () => {
     expect(turnExecutedReproduction(new Set(['op_1']), red)).toBe(false);
   });
 });
+
+describe('dependency installs never prove a check', () => {
+  const ran = (command: string) =>
+    ({
+      ...(ledger([{ tool: 'bash', command, exitCode: 0 }]).get('op_1') as ObservedOperation),
+    }) as ObservedOperation;
+
+  it.each([
+    'pnpm install --frozen-lockfile',
+    'npm ci',
+    'yarn install --immutable',
+    'pip install -r requirements.txt',
+    'python3 -m pip install pytest',
+    'cargo fetch',
+    'go mod download',
+    'corepack enable',
+  ])('does not certify %s as executable proof', (command) => {
+    expect(isExecutableProofOperation(ran(command))).toBe(false);
+    expect(turnExecutedReproduction(new Set(), new Map([['op_1', ran(command)]]))).toBe(false);
+  });
+
+  it.each(['pnpm test', 'npm run build', 'node probe.mjs', 'cargo test', 'pytest tests/a.py'])(
+    'still certifies %s',
+    (command) => {
+      expect(isExecutableProofOperation(ran(command))).toBe(true);
+    },
+  );
+});

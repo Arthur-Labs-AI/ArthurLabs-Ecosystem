@@ -426,6 +426,7 @@ export async function executeFrontendCommand(
         ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
         agentStackIds: input.agents.map((name) => stackIdForAgent(name)),
         ...(input.runTimeoutMs === undefined ? {} : { runTimeoutMs: input.runTimeoutMs }),
+        ...(input.webAccess === true ? { webAccess: true } : {}),
       })) as { operationId?: string; runId?: string; status?: string } & Record<string, unknown>;
       if (typeof started.runId !== 'string') {
         throw new DesktopProtocolError(

@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import type { ReportTurnOptions } from '@qa/evidence-pipeline';
+import { PACKAGE_REGISTRY_HOSTS } from '@qa/shared';
 import {
   DirectClaudeProcessLauncher,
   feedClaudeStdin,
@@ -66,6 +67,20 @@ export function classifyClaudeCodeVersion(version: string | undefined): ClaudeCo
 export const CLAUDE_PLANNING_ALLOWED_TOOLS = 'Bash,Read,WebFetch,WebSearch' as const;
 export const CLAUDE_INVESTIGATION_ALLOWED_TOOLS =
   'Bash,Read,Edit,Write,WebFetch,WebSearch' as const;
+
+/** Web tools exist only on runs that opted in to web access. */
+export const CLAUDE_WEB_TOOLS = ['WebFetch', 'WebSearch'] as const;
+
+export function withoutWebTools(list: string): string {
+  return list
+    .split(',')
+    .filter((name) => !(CLAUDE_WEB_TOOLS as readonly string[]).includes(name.trim()))
+    .join(',');
+}
+
+/** Tools that stay denied on every turn (unchanged policy). */
+const CLAUDE_ALWAYS_DENIED_TOOLS =
+  'Agent,Task,TaskOutput,TaskStop,Skill,CronCreate,CronDelete,CronList,ScheduleWakeup,EnterWorktree,ExitWorktree,Artifact';
 
 /** One parsed stream-json line (structural parse only, never scraped text). */
 export interface ClaudeStreamEvent {
@@ -167,6 +182,8 @@ export interface ClaudeSpawnSpec {
    * tests either omit this (direct) or inject fakes.
    */
   readonly launcher?: ClaudeProcessLauncher | undefined;
+  /** Per-run opt-in to WebFetch/WebSearch; omitted means off. Package installs are always allowed. */
+  readonly webAccess?: boolean;
 }
 
 export type ClaudeClientFactory = (spec: ClaudeSpawnSpec) => Promise<ClaudeClientView>;
@@ -194,12 +211,17 @@ export function parseStreamJsonLine(line: string): ClaudeStreamEvent | undefined
 }
 
 /** Settings JSON Sentry writes per AgentRun (fail-closed sandbox). */
-export function buildClaudeSettings(): Record<string, unknown> {
+export function buildClaudeSettings(
+  input: { readonly allowedDomains?: readonly string[] } = {},
+): Record<string, unknown> {
   return {
     sandbox: {
       enabled: true,
       failIfUnavailable: true,
       allowUnsandboxedCommands: false,
+      // Shell network reaches package registries only; with
+      // --permission-prompts none every other host is denied, not prompted.
+      network: { allowedDomains: [...(input.allowedDomains ?? PACKAGE_REGISTRY_HOSTS)] },
     },
     disableBypassPermissionsMode: 'disable',
     // No subagent fanout: the Agent/Task tools stay denied at the CLI
@@ -231,7 +253,10 @@ export function buildClaudeArgs(input: {
    * compatibility. Reporting passes none (firewall-enforced tool-free).
    */
   readonly allowedTools?: string;
+  /** Opt-in to WebFetch/WebSearch. Otherwise they are stripped from the allowlist and denied. */
+  readonly webAccess?: boolean;
 }): string[] {
+  const webAccess = input.webAccess === true;
   return [
     '-p',
     '--verbose',
@@ -270,9 +295,13 @@ export function buildClaudeArgs(input: {
     // verified syntax. Forbidden tools stay denied (disallowed wins on
     // overlap; TaskStop joins the fanout family: background-task control
     // with no QA use).
-    ...(input.allowedTools === undefined ? [] : ['--allowedTools', input.allowedTools]),
+    ...(input.allowedTools === undefined
+      ? []
+      : ['--allowedTools', webAccess ? input.allowedTools : withoutWebTools(input.allowedTools)]),
     '--disallowedTools',
-    'Agent,Task,TaskOutput,TaskStop,Skill,CronCreate,CronDelete,CronList,ScheduleWakeup,EnterWorktree,ExitWorktree,Artifact',
+    webAccess
+      ? CLAUDE_ALWAYS_DENIED_TOOLS
+      : CLAUDE_ALWAYS_DENIED_TOOLS + ',' + CLAUDE_WEB_TOOLS.join(','),
     // Session identity: a fresh turn mints the id via --session-id; a
     // continuing turn resumes via --resume ALONE. Combining --session-id
     // with --resume is rejected without --fork-session (verified on
@@ -587,6 +616,7 @@ function spawnOwnedClaudeTurn(
     resume,
     ...(jsonSchema === undefined ? {} : { jsonSchema }),
     ...(allowedTools === undefined ? {} : { allowedTools }),
+    ...(spec.webAccess === true ? { webAccess: true } : {}),
   });
   // Process boundary: the test seam wins when present; otherwise the
   // spec launcher (systemd-isolated on WSL workers) or direct spawn.

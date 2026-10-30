@@ -122,6 +122,7 @@ export interface SentryDesktopApi {
         instructions?: string;
         agentStackIds?: string[];
         revisionId?: string;
+        webAccess?: boolean;
       },
     ): Promise<DesktopOperation>;
     /** Back-compat alias for start. */
@@ -133,6 +134,7 @@ export interface SentryDesktopApi {
         instructions?: string;
         agentStackIds?: string[];
         revisionId?: string;
+        webAccess?: boolean;
       },
     ): Promise<DesktopOperation>;
     cancel(runId: string): Promise<unknown>;

@@ -47,6 +47,7 @@ export type ParsedCliCommand =
       readonly wait: boolean;
       readonly instructions?: string;
       readonly runTimeoutMs?: number;
+      readonly webAccess?: boolean;
       readonly paths?: string;
     })
   | (BaseCommand<'run.list'> & { readonly projectId: string })
@@ -224,6 +225,7 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
       '--instructions',
       '--timeout-ms',
       '--paths',
+      '--web',
     ]);
     const [projectId] = positional(tail);
     if (projectId === undefined || positional(tail).length !== 1) {
@@ -286,6 +288,7 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
       wait,
       ...(instructions === undefined ? {} : { instructions }),
       ...(runTimeoutMs === undefined ? {} : { runTimeoutMs }),
+      ...(tail.includes('--web') ? { webAccess: true } : {}),
       ...(paths === undefined ? {} : { paths }),
     };
   }

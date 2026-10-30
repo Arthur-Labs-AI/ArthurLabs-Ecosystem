@@ -322,6 +322,7 @@ export async function executeCommand(
             : {}),
           ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
           ...(input.runTimeoutMs === undefined ? {} : { runTimeoutMs: input.runTimeoutMs }),
+          ...(input.webAccess === true ? { webAccess: true } : {}),
         });
         return success(input.command, {
           simulated: false,

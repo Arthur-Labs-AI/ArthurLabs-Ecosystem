@@ -1,5 +1,5 @@
 import type { AgentUsage, HarnessEvent } from '@qa/schemas';
-import type { AgentRunId } from '@qa/shared';
+import type { AgentNetworkPromptOptions, AgentRunId } from '@qa/shared';
 import type { ObservedOperation } from './pipeline.js';
 import type { ContextBudget } from './context-budget.js';
 import { estimatePromptTokens, isContextWindowExceeded } from './context-budget.js';
@@ -45,6 +45,8 @@ export interface CheckInvestigationHooks<T extends InvestigationTurn> {
   /** The adapter's live frozen-ledger map; read after every event. */
   readonly operations: ReadonlyMap<string, ObservedOperation>;
   readonly contextBudget: ContextBudget;
+  /** Network guidance for the check prompt: web opt-in and whether this harness has web tools. */
+  readonly network: AgentNetworkPromptOptions;
   /** Validated harness event factory (adapter-specific envelope). */
   readonly event: (body: Readonly<Record<string, unknown>>) => HarnessEvent;
   /** One investigation turn in the adapter's live session. */
@@ -170,7 +172,12 @@ export async function* investigateChecks<T extends InvestigationTurn>(
           description(currentCheck).slice(0, 120),
       });
       const ledgerBeforeTurn = new Set(operations.keys());
-      const checkPrompt = buildQaCheckInvestigationPrompt(plan, currentCheck, operations);
+      const checkPrompt = buildQaCheckInvestigationPrompt(
+        plan,
+        currentCheck,
+        operations,
+        hooks.network,
+      );
       // Prevention: rotate BEFORE the provider rejects a turn for context
       // overflow (host compaction; no model summary crosses the boundary).
       if (

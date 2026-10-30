@@ -1088,6 +1088,17 @@ describe('ClaudeCodeHarnessAdapter', () => {
     expect(parseStreamJsonLine('[1,2]')).toBeUndefined();
   });
 
+  it('limits sandbox shell network to package registries', () => {
+    const sandbox = (
+      buildClaudeSettings() as { sandbox: { network: { allowedDomains: string[] } } }
+    ).sandbox;
+    const domains = sandbox.network.allowedDomains;
+    expect(domains).toContain('registry.npmjs.org');
+    expect(domains).toContain('pypi.org');
+    expect(domains).not.toContain('*');
+    expect(domains.some((host) => /z\.ai|bigmodel|anthropic|openai/i.test(host))).toBe(false);
+  });
+
   it('writes fail-closed sandbox settings', () => {
     expect(buildClaudeSettings()).toMatchObject({
       sandbox: { enabled: true, failIfUnavailable: true, allowUnsandboxedCommands: false },

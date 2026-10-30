@@ -1,4 +1,5 @@
 import type { SentryAgentReportV2 } from '@qa/schemas';
+import { DEPENDENCY_INSTALL_COMMAND } from '@qa/shared';
 import type { ObservedOperation } from './pipeline.js';
 
 /** Versioned per-run policy, passed by the coordinator, never by project files. */
@@ -17,7 +18,7 @@ export function depthPolicy(
 
 export const DEPTH_PREPARATION_GUIDANCE =
   'Sentry has prepared this private workspace. Read workspacePreparation in mission context. ' +
-  'Do not install or download dependencies yourself. A limited preparation permits source review, ' +
+  'Install missing dependencies yourself with the project’s own package manager and lockfile (registries only); an install prepares a check but never proves one. If an install fails, a limited preparation permits source review, ' +
   'but unavailable executable checks must remain not_run or inconclusive. Generated dependencies ' +
   'and build outputs are not original snapshot evidence. Keep planned check names unique and at most 500 characters so reporting can preserve them exactly.';
 
@@ -120,6 +121,7 @@ export function isExecutableProofOperation(op: ObservedOperation): boolean {
       withoutHarmlessOutputHandling(op.commandText, op.pipefail === true),
     ) &&
     !/^(read|grep|glob|search|list|view)$/i.test(op.toolName) &&
+    !DEPENDENCY_INSTALL_COMMAND.test(op.commandText) &&
     !/^\s*["']?(?:[^\s"']*[\\/])?(?:rg|grep|cat|sed|head|tail|find|ls|pwd|wc|echo|printf|which)(?:\.exe)?(?:["']?\s|$)/i.test(
       op.commandText ?? '',
     )
@@ -167,7 +169,8 @@ export function turnExecutedReproduction(
     if (beforeKeys.has(key) || typeof op.exitCode !== 'number') continue;
     if (/^(read|grep|glob|search|list|view)$/i.test(op.toolName)) continue;
     const text = op.commandText?.trim() ?? '';
-    if (text.length > 0 && !READ_ONLY_SHELL.test(text)) return true;
+    if (text.length > 0 && !READ_ONLY_SHELL.test(text) && !DEPENDENCY_INSTALL_COMMAND.test(text))
+      return true;
   }
   return false;
 }

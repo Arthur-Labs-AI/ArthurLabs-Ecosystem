@@ -1,3 +1,6 @@
+import { randomBytes } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   createFindingId,
   createHarnessEventId,
@@ -5,6 +8,8 @@ import {
   createInvestigationPlanId,
   createOperationId,
   nowIsoTimestamp,
+  webAccessEnabled,
+  PACKAGE_REGISTRY_HOSTS,
   type AgentRunId,
   type OperationId,
 } from '@qa/shared';
@@ -98,7 +103,13 @@ import {
 } from './scope.js';
 import { findExecutable, type OpenCodeProcessLauncher } from './process.js';
 import { SENTRY_PROXY_DUMMY_KEY, startOpenCodeAuthProxy, type OpenCodeAuthProxy } from './proxy.js';
-import { computeToolHiddenPaths, writeToolShellWrapper } from './toolshell.js';
+import { startEgressProxy, type EgressProxy } from './egress.js';
+import {
+  TOOL_SHELL_EGRESS_PORT,
+  computeToolHiddenPaths,
+  writeToolShellWrapper,
+  type ToolShellEgress,
+} from './toolshell.js';
 import {
   createProductionOpenCodeClient,
   selectProductionLauncher,
@@ -252,6 +263,8 @@ interface OpenCodeRunEntry {
   turnsIssued: number;
   scope?: OpenCodeRunScope | undefined;
   proxy?: OpenCodeAuthProxy | undefined;
+  /** Registry-only egress proxy for tool shells (absent when socat is missing or the shell is bypassed). */
+  egress?: EgressProxy | undefined;
   session?: OpenCodeSessionView | undefined;
   client?: OpenCodeClientView | undefined;
   maskedConfig: readonly string[];
@@ -532,11 +545,12 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     request: HarnessRunRequest,
     scope: OpenCodeRunScope,
     proxy: OpenCodeAuthProxy,
+    entry: OpenCodeRunEntry,
   ): Promise<NodeJS.ProcessEnv> {
     const scoped = applyOpenCodeScopeEnvironment(this.baseEnvironment, scope);
     let shell: string | undefined;
     if (process.platform === 'linux') {
-      shell = await this.buildToolShell(scope, request.workspace.runtimePath);
+      shell = await this.buildToolShell(scope, request.workspace.runtimePath, entry);
       if (shell !== undefined) this.pipefailRuns.add(request.agentRunId);
     } else {
       this.shutdownDiagnostics.push({
@@ -589,6 +603,11 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           }
         : {}),
       ...(shell === undefined ? {} : { shell }),
+      // OpenCode web tools run in the parent process with host networking, so
+      // they are gated by permission, not by the tool network namespace.
+      ...(webAccessEnabled(request.executionSafeguards)
+        ? {}
+        : { permission: { webfetch: 'deny', websearch: 'deny' } as const }),
     });
     return { ...scoped, OPENCODE_CONFIG_CONTENT: configContent };
   }
@@ -600,10 +619,11 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
   private async buildToolShell(
     scope: OpenCodeRunScope,
     workspacePath: string,
+    entry: OpenCodeRunEntry,
   ): Promise<string | undefined> {
     const builder = this.options.toolShellBuilder;
     if (builder !== undefined) return builder({ scope, workspacePath });
-    return this.buildProductionToolShell(scope, workspacePath);
+    return this.buildProductionToolShell(scope, workspacePath, entry);
   }
 
   /**
@@ -614,6 +634,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
   private async buildProductionToolShell(
     scope: OpenCodeRunScope,
     workspacePath: string,
+    entry: OpenCodeRunEntry,
   ): Promise<string | undefined> {
     if (openCodeSandboxBypassed(this.hostEnvironment)) {
       this.shutdownDiagnostics.push({
@@ -641,6 +662,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       );
     }
     const realHome = this.hostEnvironment.HOME;
+    const egress = await this.startToolShellEgress(scope, entry);
     return writeToolShellWrapper({
       scopeBinDir: scope.binDir,
       spec: {
@@ -654,8 +676,59 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         runTmp: scope.runTmp,
         scopeHome: scope.home,
         workspace: workspacePath,
+        ...(egress === undefined ? {} : { egress }),
       },
     });
+  }
+
+  /**
+   * Package installs are always on: start the registry-only egress proxy for
+   * this run's tool shells. Without socat the shells stay fully offline and
+   * the gap is reported, never silently widened.
+   */
+  private async startToolShellEgress(
+    scope: OpenCodeRunScope,
+    entry: OpenCodeRunEntry,
+  ): Promise<ToolShellEgress | undefined> {
+    const socat = await findExecutable(['/usr/bin/socat', '/bin/socat', 'socat']);
+    if (socat === undefined) {
+      this.shutdownDiagnostics.push({
+        code: 'OPENCODE_EGRESS_UNAVAILABLE',
+        severity: 'warning',
+        message:
+          'socat is not installed: OpenCode tool shells stay fully offline, so dependency installs cannot run.',
+        retryable: false,
+      });
+      return undefined;
+    }
+    // Unix socket paths are limited to ~107 bytes; fall back to a short tmp path.
+    let socketPath = join(scope.directory, 'egress.sock');
+    if (Buffer.byteLength(socketPath) > 100)
+      socketPath = join(tmpdir(), 'sentry-eg-' + randomBytes(6).toString('hex') + '.sock');
+    entry.egress = await startEgressProxy({ socketPath, allowedHosts: PACKAGE_REGISTRY_HOSTS });
+    return { socketPath, socat, port: TOOL_SHELL_EGRESS_PORT };
+  }
+
+  /** Closes the egress proxy and records what it admitted and refused (hostnames only). */
+  private async closeEgress(entry: OpenCodeRunEntry): Promise<void> {
+    const egress = entry.egress;
+    if (egress === undefined) return;
+    entry.egress = undefined;
+    const stats = egress.stats();
+    this.shutdownDiagnostics.push({
+      code: 'OPENCODE_EGRESS_SUMMARY',
+      severity: 'info',
+      message:
+        'Tool shell egress: ' +
+        stats.allowed +
+        ' registry tunnel(s) allowed, ' +
+        stats.denied +
+        ' refused' +
+        (stats.deniedHosts.length === 0 ? '' : ' (' + stats.deniedHosts.join(', ') + ')') +
+        '.',
+      retryable: false,
+    });
+    await egress.close().catch(() => undefined);
   }
 
   private turnEnvironment(entry: OpenCodeRunEntry, forbidTools: boolean): NodeJS.ProcessEnv {
@@ -947,7 +1020,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       });
       // Tool shell wrapper (Linux production): bwrap namespace per shell
       // invocation. Fail closed unless explicitly bypassed for dev/test.
-      const turnBase = await this.buildTurnBase(request, scope, proxy);
+      const turnBase = await this.buildTurnBase(request, scope, proxy, entry);
       entry.turnBase = turnBase;
       // Launcher selection is a HOST capability decision (user-manager
       // reachability), not a turn-scoped one: the turn environment is
@@ -1088,6 +1161,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         depth,
         operations: this.observedOperations,
         contextBudget,
+        network: { webAccess: webAccessEnabled(request.executionSafeguards) },
         event: (body) => event(request.agentRunId, body),
         streamTurn: (turnText) =>
           streamObservedWork(
@@ -1559,6 +1633,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         });
       }
     }
+    if (entry !== undefined) await this.closeEgress(entry);
     // Auth proxy stops before scope cleanup: no new upstream use, and the
     // key leaves memory with the closure. Scope removal follows.
     if (entry?.proxy !== undefined) {
@@ -1648,6 +1723,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         entry.client = undefined;
         closers.push(client.close().catch(() => undefined));
       }
+      if (entry.egress !== undefined) closers.push(this.closeEgress(entry));
       if (entry.proxy !== undefined) {
         const proxy = entry.proxy;
         entry.proxy = undefined;

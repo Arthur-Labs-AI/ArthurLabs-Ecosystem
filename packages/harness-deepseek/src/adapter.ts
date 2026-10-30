@@ -9,6 +9,7 @@ import {
   createInvestigationPlanId,
   createOperationId,
   nowIsoTimestamp,
+  webAccessEnabled,
   type AgentRunId,
   type OperationId,
 } from '@qa/shared';
@@ -1124,6 +1125,10 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         depth,
         operations: this.observedOperations,
         contextBudget,
+        network: {
+          webAccess: webAccessEnabled(request.executionSafeguards),
+          webToolsAvailable: false,
+        },
         event: (body) => event(request.agentRunId, body),
         streamTurn: (turnText) =>
           this.streamTurn(session, turnText, request.agentRunId, 'investigation'),

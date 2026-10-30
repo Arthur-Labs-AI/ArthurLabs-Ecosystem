@@ -8,6 +8,8 @@ import {
   createInvestigationPlanId,
   createOperationId,
   nowIsoTimestamp,
+  dependencyCacheEnvironment,
+  webAccessEnabled,
   type AgentRunId,
   type OperationId,
 } from '@qa/shared';
@@ -1478,7 +1480,11 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         cwd: request.workspace.runtimePath,
         configDir,
         homeDir: ephemeralHome,
-        environment: this.environment,
+        environment: {
+          ...this.environment,
+          ...dependencyCacheEnvironment(request.workspace.runtimePath),
+        },
+        webAccess: webAccessEnabled(request.executionSafeguards),
         modelId: this.runtime.modelId,
         settingsPath,
         initializeTimeoutMs: this.initializeTimeoutMs,
@@ -1638,6 +1644,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         depth,
         operations: this.observedOperations,
         contextBudget,
+        network: { webAccess: webAccessEnabled(request.executionSafeguards) },
         event: (body) => event(request.agentRunId, body),
         streamTurn: (turnText) =>
           this.streamPhaseTurn(session!, turnText, request.agentRunId, 'investigation'),

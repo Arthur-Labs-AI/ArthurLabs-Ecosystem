@@ -50,6 +50,7 @@ export function ProjectDetail(): React.JSX.Element {
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [mode, setMode] = React.useState<'full' | 'targeted'>('full');
   const [targetPaths, setTargetPaths] = React.useState('');
+  const [webAccess, setWebAccess] = React.useState(false);
   const detail = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => sentryApi().projects.get(projectId as string),
@@ -123,6 +124,7 @@ export function ProjectDetail(): React.JSX.Element {
         }
       : {}),
     ...(effectiveStacks.length === 0 ? {} : { agentStackIds: effectiveStacks }),
+    ...(webAccess ? { webAccess: true } : {}),
   });
   const onStarted = (operation: unknown): void => {
     const runId = (operation as { runId?: string }).runId;
@@ -378,6 +380,22 @@ export function ProjectDetail(): React.JSX.Element {
               </option>
             ))}
           </select>
+          <label
+            className="metadata"
+            style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '12px 0 6px' }}
+          >
+            <input
+              type="checkbox"
+              aria-label="Allow web access"
+              checked={webAccess}
+              onChange={(e) => setWebAccess(e.target.checked)}
+            />
+            Allow web access
+          </label>
+          <p className="metadata" style={{ margin: '0 0 6px' }}>
+            Package installs from registries are always allowed. Web access also lets agents fetch
+            and search the web for docs and advisories.
+          </p>
           <div className="metadata" style={{ margin: '12px 0 6px' }}>
             Agents
           </div>
@@ -537,6 +555,9 @@ export function ProjectDetail(): React.JSX.Element {
                 {formatRevisionDate(effectiveRevision?.importedAt)}
               </p>
             ) : null}
+            <p className="metadata">
+              Web access: {webAccess ? 'on' : 'off'} · package installs: on
+            </p>
             {confirmStart === 'targeted' && targetPaths.trim() !== '' ? (
               <p className="mono metadata">Scope: {targetPaths}</p>
             ) : null}
