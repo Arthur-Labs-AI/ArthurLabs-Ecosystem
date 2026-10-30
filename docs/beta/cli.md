@@ -104,8 +104,6 @@ capabilities [--json]
 project list/add/show/update/delete/revisions/doctor
 agent list | agent doctor opencode|deepseek|glm
 run start/list/show/status/cancel/result/export
-issue list/show/history
-retest start/show/cancel
 ```
 
 `project add` accepts normal Windows paths (`C:\Projects\SampleApp`); the
@@ -179,8 +177,7 @@ sentry cli project delete proj_ID --yes --json
 
 A. Canonical through the broker: capabilities, agent list/doctor, project
 add/list/show/update/delete/revisions/doctor, run
-start/list/show/status/cancel/result/export, issue list/show/history,
-retest start/show/cancel, plus system/runtime status reads.
+start/list/show/status/cancel/result/export, plus system/runtime status reads.
 
 B. Added to the canonical runtime for this interface: `projects.delete`
 (with `--yes` preserved), the `runs:export-content` channel, and the
@@ -192,9 +189,6 @@ deterministic local development):
 
 ```text
 run simulate ......... FAKE harness runs (development only).
-run merge ............ retired merger RPC (use the Desktop run workspace).
-issue ingest ......... retired merger RPC.
-verify start/show/doctor .. retired verifier RPCs.
 doctor storage/cleanup/config .. Windows-local inspection; the data root now
    lives in WSL, so use the Desktop Environment page instead.
 ```

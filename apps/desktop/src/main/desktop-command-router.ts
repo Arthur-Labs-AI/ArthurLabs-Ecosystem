@@ -65,19 +65,6 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
   'runs:export-content': z
     .object({ runId: z.string().min(1).max(100), format: z.enum(['log', 'json']) })
     .strict(),
-  'issues:list': z.object({ projectId: z.string().min(1).max(200) }).strict(),
-  'issues:get': z.object({ issueId: z.string().min(1).max(100) }).strict(),
-  'issues:history': z.object({ issueId: z.string().min(1).max(100) }).strict(),
-  'retests:list': z.object({ issueId: z.string().min(1).max(100) }).strict(),
-  'retests:start': z
-    .object({
-      issueId: z.string().min(1).max(100),
-      revisionId: z.string().min(1).max(100).optional(),
-      agentStackIds: z.array(z.string().min(1).max(200)).max(10).optional(),
-    })
-    .strict(),
-  'retests:get': z.object({ retestRunId: z.string().min(1).max(100) }).strict(),
-  'retests:cancel': z.object({ retestRunId: z.string().min(1).max(100) }).strict(),
   'doctors:environment': z.object({}).strict(),
   'providers:status': z.object({}).strict(),
   'providers:save': z
@@ -117,7 +104,6 @@ export interface CommandRouterHooks {
   readonly maintenanceActive?: () => boolean;
   readonly reclaimSpace?: () => Promise<unknown>;
   readonly onRunCreated?: (runId: string, operationId?: string) => void;
-  readonly onRetestCreated?: (retestRunId: string, operationId?: string) => void;
   readonly requestSavePath?: (options: SaveDialogOptions) => Promise<string | null>;
   readonly cliStatus?: () => unknown;
   readonly cliSetEnabled?: (enabled: boolean) => Promise<unknown>;
@@ -292,31 +278,6 @@ export async function dispatchDesktopCommand(
       const show = hooks.showInFolder;
       return revealSavedExport(parsed['path'] as string, { showInFolder: (path) => show(path) });
     }
-    case 'issues:list':
-      return service.listIssues(parsed['projectId'] as string);
-    case 'issues:get':
-      return service.getIssue(parsed['issueId'] as string);
-    case 'issues:history':
-      return service.issueHistory(parsed['issueId'] as string);
-    case 'retests:list':
-      return service.listRetests(parsed['issueId'] as string);
-    case 'retests:start': {
-      const operation = await service.startRetest(parsed['issueId'] as string, {
-        ...(parsed['revisionId'] === undefined
-          ? {}
-          : { revisionId: parsed['revisionId'] as string }),
-        ...(parsed['agentStackIds'] === undefined
-          ? {}
-          : { agentStackIds: parsed['agentStackIds'] as string[] }),
-      });
-      if (operation.retestRunId !== undefined)
-        hooks.onRetestCreated?.(operation.retestRunId, operation.operationId);
-      return operation;
-    }
-    case 'retests:get':
-      return service.retestSnapshot(parsed['retestRunId'] as string);
-    case 'retests:cancel':
-      return service.cancelRetest(parsed['retestRunId'] as string);
     case 'doctors:environment':
       return service.environmentDoctors();
     case 'providers:status':

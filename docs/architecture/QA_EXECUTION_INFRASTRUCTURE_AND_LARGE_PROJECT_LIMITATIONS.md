@@ -63,27 +63,23 @@ Turborepo builds workspace dependencies before their consumers. Tests depend on 
 
 ### 4.2 Workspace packages
 
-| Package               | Main responsibility                                                                           |
-| --------------------- | --------------------------------------------------------------------------------------------- |
-| `shared`              | IDs, timestamps, shared utilities and constants                                               |
-| `schemas`             | Versioned, serializable data contracts and validation                                         |
-| `domain`              | Domain rules and application concepts                                                         |
-| `persistence`         | SQLite repository, migrations, filesystem artifacts, paths, ownership leases                  |
-| `project-manager`     | Managed copies, project revisions, updates, locks and removal                                 |
-| `snapshot-engine`     | Frozen snapshot identity, manifests and baseline content hashes                               |
-| `context-builder`     | Project context material and indexes associated with revisions                                |
-| `workspace-factory`   | Disposable private workspaces for individual AgentRuns                                        |
-| `harness-protocol`    | Adapter interface, registry, request/event validation and sequencing                          |
-| `harness-opencode`    | OpenCode execution, configuration isolation, provider relay and event translation             |
-| `harness-deepseek`    | DeepSeek SDK integration, sessions, notifications and report processing                       |
-| `harness-claude-code` | GLM through Claude Code, process lifecycle, sandbox and reporting controls                    |
-| `evidence-pipeline`   | Shared prompts, report validation, operation grounding, coverage and phase deadlines          |
-| `run-engine`          | Run orchestration, agent execution, preparation, event persistence, cancellation and exports  |
-| `runtime-protocol`    | Typed NDJSON request/response/notification transport                                          |
-| `merger`              | Retained historical/internal finding-merging functionality                                    |
-| `verifier`            | Retained verification functionality and sandbox execution primitives also used by preparation |
-
-The presence of merger, verifier, issue and retest code does not mean that every current Desktop Full QA run automatically executes that historical pipeline.
+| Package               | Main responsibility                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| `shared`              | IDs, timestamps, shared utilities and constants                                              |
+| `schemas`             | Versioned, serializable data contracts and validation                                        |
+| `domain`              | Domain rules and application concepts                                                        |
+| `persistence`         | SQLite repository, migrations, filesystem artifacts, paths, ownership leases                 |
+| `project-manager`     | Managed copies, project revisions, updates, locks and removal                                |
+| `snapshot-engine`     | Frozen snapshot identity, manifests and baseline content hashes                              |
+| `context-builder`     | Project context material and indexes associated with revisions                               |
+| `workspace-factory`   | Disposable private workspaces for individual AgentRuns                                       |
+| `harness-protocol`    | Adapter interface, registry, request/event validation and sequencing                         |
+| `harness-opencode`    | OpenCode execution, configuration isolation, provider relay and event translation            |
+| `harness-deepseek`    | DeepSeek SDK integration, sessions, notifications and report processing                      |
+| `harness-claude-code` | GLM through Claude Code, process lifecycle, sandbox and reporting controls                   |
+| `evidence-pipeline`   | Shared prompts, report validation, operation grounding, coverage and phase deadlines         |
+| `run-engine`          | Run orchestration, agent execution, preparation, event persistence, cancellation and exports |
+| `runtime-protocol`    | Typed NDJSON request/response/notification transport                                         |
 
 ## 5. Overall runtime topology
 

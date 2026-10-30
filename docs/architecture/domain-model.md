@@ -65,13 +65,6 @@ it never mutates the initial plan.
   paths, optional suggested patch artifact, and regression-test advice. It has no
   application/validation status or transition and grants no write authority.
 
-## Retest
-
-`mode: retest` requires `RetestTarget` with the historical QARun and UnifiedIssue.
-The Retest's own snapshot points to the current revision. Optional `RetestResult`
-records `fixed|still_reproducible|partially_fixed|inconclusive` plus evidence IDs.
-Non-Retest modes reject Retest-only fields.
-
 ## Observability, exports, and usage
 
 `HarnessEvent` is adapter-bound output for one agent. `RunActivity` is a normalized

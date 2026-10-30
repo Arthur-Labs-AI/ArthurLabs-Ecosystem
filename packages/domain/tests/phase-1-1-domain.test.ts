@@ -7,7 +7,6 @@ import {
   ProjectSnapshotSchema,
   QARunSchema,
   RunActivitySchema,
-  UnifiedIssueSchema,
 } from '@qa/schemas';
 import {
   aggregateAgentRunOutcome,
@@ -18,12 +17,10 @@ import {
   isQARunForContext,
   isPlanForAgentRun,
   isQARunForSnapshot,
-  isRetestLineageValid,
   isSnapshotForRevision,
 } from '../src/index.js';
 
 const T1 = '2026-09-09T19:00:00.000Z';
-const T2 = '2026-09-10T19:00:00.000Z';
 const SHA = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 const revision = ProjectRevisionSchema.parse({
   schemaVersion: 1,
@@ -65,7 +62,6 @@ const context = ProjectContextSnapshotSchema.parse({
 });
 const configuration = {
   agentStackIds: ['stack_muse_main'],
-  verificationLevel: 'strict',
   instructions: { message: 'Investigate fully.', createdAt: T1 },
   policy: { id: 'qa-standard', version: 1 },
 };
@@ -165,33 +161,6 @@ describe('Phase 1.1 domain invariants', () => {
         parent,
       ),
     ).toBe(false);
-  });
-
-  it('validates retest lineage against an earlier issue and run', () => {
-    const issue = UnifiedIssueSchema.parse({
-      schemaVersion: 1,
-      id: 'issue_01K7777777777777777777A8WB',
-      qaRunId: sourceRun.id,
-      title: 'Issue',
-      category: 'logic',
-      severity: 'medium',
-      status: 'confirmed',
-      agreementState: 'single_source',
-      findingIds: ['find_01K7777777777777777777A8W7'],
-      sourceAgentStackIds: ['stack_muse_main'],
-      evidenceIds: [],
-      createdAt: T1,
-    });
-    const retest = QARunSchema.parse({
-      ...sourceRun,
-      id: 'run_01K7777777777777777777A8WD',
-      mode: 'retest',
-      status: 'created',
-      createdAt: T2,
-      retestTarget: { sourceQARunId: sourceRun.id, unifiedIssueId: issue.id },
-    });
-    expect(isRetestLineageValid(retest, sourceRun, issue)).toBe(true);
-    expect(isRetestLineageValid({ ...retest, createdAt: T1 }, sourceRun, issue)).toBe(false);
   });
 
   it('aggregates partial worker outcomes without treating cancellation as worker failure', () => {

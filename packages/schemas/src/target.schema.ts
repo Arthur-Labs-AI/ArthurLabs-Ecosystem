@@ -13,7 +13,6 @@ import {
   RelativePathSchema,
   SchemaVersionSchema,
   SnapshotIdSchema,
-  UnifiedIssueIdSchema,
 } from './primitives.js';
 import { createHash } from 'node:crypto';
 
@@ -23,7 +22,6 @@ export const TargetSpecSchema = z
     qaRunId: QARunIdSchema,
     snapshotId: SnapshotIdSchema,
     includePaths: z.array(RelativePathSchema).min(1).max(100),
-    issueIds: z.array(UnifiedIssueIdSchema).max(100).default([]),
     userInstructions: z.string().min(1).max(5000).optional(),
     createdAt: IsoTimestampSchema,
   })
@@ -37,22 +35,13 @@ export const TargetSpecSchema = z
         message: 'includePaths must not contain duplicates',
       });
     }
-    const issueSeen = new Set(spec.issueIds);
-    if (issueSeen.size !== spec.issueIds.length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['issueIds'],
-        message: 'issueIds must not contain duplicates',
-      });
-    }
   });
 export type TargetSpec = z.infer<typeof TargetSpecSchema>;
 
 /** Deterministic input digest over the target/audit dimensions (§77):
- *  selected paths, issue targets, instructions, agents, snapshot, policy. */
+ *  selected paths, instructions, agents, snapshot, policy. */
 export function targetSpecDigest(input: {
   readonly includePaths: readonly string[];
-  readonly issueIds: readonly string[];
   readonly userInstructions?: string;
   readonly agentStackIds: readonly string[];
   readonly snapshotId: string;
@@ -61,7 +50,6 @@ export function targetSpecDigest(input: {
 }): string {
   const canonical = JSON.stringify({
     includePaths: [...input.includePaths].sort(),
-    issueIds: [...input.issueIds].sort(),
     userInstructions: input.userInstructions ?? null,
     agentStackIds: [...input.agentStackIds].sort(),
     snapshotId: input.snapshotId,

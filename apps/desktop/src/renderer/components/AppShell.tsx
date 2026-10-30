@@ -39,8 +39,6 @@ function pageCrumb(pathname: string): React.ReactNode {
   if (pathname.startsWith('/settings/')) return 'System / Settings';
   if (pathname.startsWith('/runs/')) return 'Project / QA Run';
   if (pathname === '/runs') return 'Workspace / Runs';
-  if (pathname.startsWith('/issues')) return 'Workspace / Issues';
-  if (pathname.startsWith('/retests/')) return 'Project / Retest';
   if (pathname === '/history') return 'Workspace / History';
   return 'Overview / Dashboard';
 }
@@ -70,15 +68,13 @@ export function AppShell(): React.JSX.Element {
     if (runtime.isError || runtime.data?.connected === false) wasUnavailable.current = true;
     if (!runtime.isError && runtime.data?.connected === true && wasUnavailable.current) {
       wasUnavailable.current = false;
-      // Read-only caches; snapshot hooks reconcile their own run/retest IDs.
+      // Read-only caches; snapshot hooks reconcile their own run IDs.
       const keys = new Set([
         'projects',
         'project',
         'project-name',
         'project-runs',
         'project-revisions',
-        'project-issues',
-        'issue-history',
         'system',
         'environment',
         'production-readiness',

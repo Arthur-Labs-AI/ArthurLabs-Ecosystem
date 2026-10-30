@@ -2,14 +2,10 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
-import { RunCoordinator, retestIssue } from '@qa/run-engine';
-import { createProjectId, createIssueId } from '@qa/shared';
+import { RunCoordinator } from '@qa/run-engine';
+import { createProjectId } from '@qa/shared';
 import { PassThrough } from 'node:stream';
 import { SentryRuntimeHost, serveStdio } from '../src/runtime.js';
-vi.mock('@qa/run-engine', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@qa/run-engine')>();
-  return { ...actual, retestIssue: vi.fn(actual.retestIssue) };
-});
 
 it('refuses shutdown while a run is pending, including before row creation', async () => {
   const root = await mkdtemp(join(tmpdir(), 'sentry-shutdown-'));
@@ -33,36 +29,6 @@ it('refuses shutdown while a run is pending, including before row creation', asy
     await pending.catch(() => undefined);
     run.mockRestore();
     await expect(host.dispatch('runtime.shutdown', {})).resolves.toEqual({ shuttingDown: true });
-    host.close();
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-it('refuses shutdown while retest is pending, then rejects work after acceptance', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'sentry-retest-shutdown-'));
-  const host = new SentryRuntimeHost(root, () => undefined);
-  let release!: (error: Error) => void;
-  vi.mocked(retestIssue).mockImplementationOnce(
-    () =>
-      new Promise((_resolve, reject) => {
-        release = reject;
-      }),
-  );
-  const pending = host.startRetest(createIssueId(), {});
-  void pending.catch(() => undefined);
-  try {
-    await expect(host.dispatch('runtime.shutdown', {})).rejects.toMatchObject({
-      code: 'RUNTIME_BUSY',
-    });
-    release(new Error('fixture retest cancelled'));
-    await pending.catch(() => undefined);
-    await expect(host.dispatch('runtime.shutdown', {})).resolves.toEqual({ shuttingDown: true });
-    await expect(
-      host.dispatch('runs.start', { projectId: createProjectId() }),
-    ).rejects.toMatchObject({ code: 'RUNTIME_SHUTTING_DOWN' });
-  } finally {
-    release(new Error('fixture cleanup'));
-    await pending.catch(() => undefined);
     host.close();
     await rm(root, { recursive: true, force: true });
   }

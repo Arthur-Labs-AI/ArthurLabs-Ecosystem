@@ -25,13 +25,6 @@ export const IPC_CHANNELS = [
   'runs:export',
   'runs:export-save',
   'runs:export-reveal',
-  'issues:list',
-  'issues:get',
-  'issues:history',
-  'retests:list',
-  'retests:start',
-  'retests:get',
-  'retests:cancel',
   'doctors:environment',
   'providers:status',
   'providers:save',
@@ -66,7 +59,6 @@ export interface WslSpaceResult {
 export interface DesktopOperation {
   readonly operationId: string;
   readonly runId?: string | undefined;
-  readonly retestRunId?: string | undefined;
   // Persisted initial status for async starts (e.g. agents_running): lets
   // CLI callers return the created runId without a follow-up status request.
   readonly status?: string | undefined;
@@ -79,25 +71,12 @@ export interface DesktopRunSnapshot {
   readonly evidence: unknown[];
   readonly activities: unknown[];
   readonly events: unknown[];
-  readonly mergeResults: unknown[];
-  readonly verificationRuns: unknown[];
-  readonly issues: unknown[];
   readonly targetSpec?: unknown;
 }
 
 export type RunSnapshot = DesktopRunSnapshot;
 
-export interface DesktopRetestSnapshot {
-  readonly retestRun: unknown;
-  readonly spec?: unknown;
-  readonly targetRun?: DesktopRunSnapshot | undefined;
-  readonly assessments: unknown[];
-}
-
-export type RetestSnapshot = DesktopRetestSnapshot;
-
-export type RunUpdateKind =
-  'run-created' | 'run-snapshot' | 'retest-created' | 'retest-snapshot' | 'active-runs';
+export type RunUpdateKind = 'run-created' | 'run-snapshot' | 'active-runs';
 
 export interface ActiveRunsPayload {
   readonly activeRuns: Array<{ runId: string; projectId: string; status: string }>;
@@ -106,9 +85,8 @@ export interface ActiveRunsPayload {
 export interface RunUpdatePayload {
   readonly kind: RunUpdateKind;
   readonly runId?: string | undefined;
-  readonly retestRunId?: string | undefined;
   readonly operationId?: string | undefined;
-  readonly snapshot?: RunSnapshot | RetestSnapshot | undefined;
+  readonly snapshot?: RunSnapshot | undefined;
 }
 
 export type RunUpdateCallback = (payload: RunUpdatePayload) => void;
@@ -173,20 +151,6 @@ export interface SentryDesktopApi {
      * Export in the OS file manager. Unknown paths are rejected.
      */
     revealExport(path: string): Promise<{ status: 'shown' }>;
-  };
-  readonly issues: {
-    list(projectId: string): Promise<unknown[]>;
-    get(issueId: string): Promise<unknown>;
-    history(issueId: string): Promise<unknown>;
-  };
-  readonly retests: {
-    list(issueId: string): Promise<unknown[]>;
-    start(
-      issueId: string,
-      options?: { revisionId?: string | undefined; agentStackIds?: string[] },
-    ): Promise<DesktopOperation>;
-    get(retestRunId: string): Promise<RetestSnapshot>;
-    cancel(retestRunId: string): Promise<unknown>;
   };
   readonly doctors: {
     environment(): Promise<unknown>;

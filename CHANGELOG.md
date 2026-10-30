@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+- Remove the merger and verifier packages and the merge, verification, issue and
+  retest services, RPCs, CLI commands (`run merge`, `issue`, `retest`, `verify`)
+  and Desktop pages. See [ADR 0015](docs/adr/0015-remove-merge-verification-issue-retest.md).
+- Add persistence migration 7: drops the merge, verification, issue and retest
+  tables and legacy retest runs. Full and Targeted runs, findings, evidence and
+  exports are kept; issue and retest history is not.
+- Move the workspace-preparation sandbox into `@qa/run-engine`.
+
 ## [1.0.2] - 2026-10-16
 
 - Ship the production CLI frontend and command forwarding in Windows archives,

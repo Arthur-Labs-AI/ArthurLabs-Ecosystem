@@ -15,11 +15,10 @@
  * - Minimal `TemporaryFileSystem=/mnt/c` shadow is preferred over an
  *   empty-root namespace: Claude keeps its full Linux environment
  *   (DNS, CA certs, toolchain, HOME, /tmp) with zero re-binding.
- * - `InaccessiblePaths=/mnt/c` is deliberately NOT used: the verifier
- *   history proves it fails unit setup with 226/NAMESPACE on WSL2.
+ * - `InaccessiblePaths=/mnt/c` is deliberately NOT used: history
+ *   proves it fails unit setup with 226/NAMESPACE on WSL2.
  * - `PrivateNetwork` is deliberately NOT set: Claude needs HTTPS to the
- *   provider endpoint (the verifier uses it only because verification
- *   is model-free).
+ *   provider endpoint.
  * - Secret transport uses `systemd-run --setenv=NAME` (name only,
  *   verified on systemd 259): values are copied from the launcher
  *   process env into the unit, so argv/process listings never carry

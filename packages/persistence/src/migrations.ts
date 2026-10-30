@@ -182,4 +182,35 @@ WHEN NEW.retest_run_id IS NOT OLD.retest_run_id OR NEW.project_id IS NOT OLD.pro
 BEGIN SELECT RAISE(ABORT,'RETEST_SPEC_IMMUTABLE'); END;
 `,
   },
+  {
+    version: 7,
+    name: 'remove_merge_verification_issue_retest',
+    sql: `
+DROP TABLE IF EXISTS retest_control_requests;
+DROP TABLE IF EXISTS retest_specs;
+DROP TABLE IF EXISTS retest_assessments;
+DROP TABLE IF EXISTS retest_runs;
+DROP TABLE IF EXISTS issue_ingest_keys;
+DROP TABLE IF EXISTS issue_events;
+DROP TABLE IF EXISTS issue_occurrences;
+DROP TABLE IF EXISTS issues;
+DROP TABLE IF EXISTS verification_assertions;
+DROP TABLE IF EXISTS verification_observations;
+DROP TABLE IF EXISTS verification_steps;
+DROP TABLE IF EXISTS verification_attempts;
+DROP TABLE IF EXISTS verification_runs;
+DROP TABLE IF EXISTS cluster_disagreements;
+DROP TABLE IF EXISTS cluster_evidence;
+DROP TABLE IF EXISTS finding_cluster_members;
+DROP TABLE IF EXISTS finding_clusters;
+DROP TABLE IF EXISTS merge_results;
+DELETE FROM qa_runs WHERE json_extract(payload,'$.mode') NOT IN ('full','targeted');
+DELETE FROM agent_runs WHERE json_extract(payload,'$.taskType') IN ('verify','retest');
+UPDATE qa_runs SET status='partial', payload=json_set(payload,'$.status','partial') WHERE status IN ('clustering','verifying');
+UPDATE qa_runs SET payload=json_remove(payload,'$.lineage','$.configuration.verificationLevel');
+UPDATE target_specs SET payload=json_remove(payload,'$.issueIds');
+DELETE FROM run_activities WHERE json_extract(payload,'$.kind') IN ('merger','verification') OR json_extract(payload,'$.source') IN ('merger','verifier');
+DELETE FROM artifacts WHERE qa_run_id IS NOT NULL AND qa_run_id NOT IN (SELECT id FROM qa_runs);
+`,
+  },
 ] as const;

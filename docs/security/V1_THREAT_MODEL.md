@@ -137,8 +137,8 @@ emits a warning diagnostic and is documented development-only. In-process file
 tools are deny-listed and can only observe a dummy proxy credential. Claude
 Code bootstrap failures (bwrap/bind/mount text without `is_error`) are
 classified as infrastructure failure with `GLM_SANDBOX_UNAVAILABLE`, never as
-exit 0 (`claude-sandbox-truth.test.ts`). Verifier replay uses the systemd
-empty-root mount namespace (`packages/verifier/src/sandbox.ts`) with canary
+exit 0 (`claude-sandbox-truth.test.ts`). Workspace preparation uses the systemd
+empty-root mount namespace (`packages/run-engine/src/sandbox.ts`) with canary
 preflight (work visible, peer + home markers hidden) and honest
 `backend: 'none'` when units cannot start — never host fallback.
 

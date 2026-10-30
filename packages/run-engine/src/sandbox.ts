@@ -1,8 +1,14 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { access, constants, mkdir, realpath, stat } from 'node:fs/promises';
-import { delimiter, dirname, join } from 'node:path';
-import type { VerificationExecutionFailure } from './runner.js';
+import { delimiter, dirname, join, resolve } from 'node:path';
+
+export type SandboxFailure =
+  | 'executable_unavailable'
+  | 'spawn_failed'
+  | 'timed_out'
+  | 'sandbox_failed'
+  | 'process_tree_cleanup_failed';
 
 let nextUnitSequence = 0;
 
@@ -27,7 +33,7 @@ export interface SandboxCommandResult {
   readonly stderr: string;
   readonly timedOut: boolean;
   readonly durationMs: number;
-  readonly failure?: VerificationExecutionFailure;
+  readonly failure?: SandboxFailure;
 }
 
 export interface SandboxEnvironmentInput {
@@ -42,21 +48,20 @@ export interface SandboxEnvironmentInput {
   readonly inaccessiblePaths: readonly string[];
 }
 
-/** Generic verification execution boundary (§6-7). Verifier code
- *  depends on this abstraction, never on provider harnesses or raw
- *  spawn. Exactly one environment per attempt; dispose() ends it. */
-export interface VerificationSandboxBackend {
+/** Generic sandboxed execution boundary. Callers depend on this
+ *  abstraction, never on provider harnesses or raw spawn. Exactly one environment per attempt; dispose() ends it. */
+export interface SandboxBackend {
   readonly id: 'systemd' | 'none';
   /** Probe real isolation. probeParent must be a bindable directory
-   *  on the same filesystem family the verifier will use (the Sentry
+   *  on the same filesystem family the sandbox will use (the Sentry
    *  dataRoot): the probe creates and removes a temp dir inside it.
    *  os.tmpdir() is not universally bindable (WSL2 private /tmp).
    *  HOME is hidden with tmpfs while explicitly bound workspaces remain visible. */
   preflight(probeParent: string): Promise<SandboxAvailability>;
-  createEnvironment(input: SandboxEnvironmentInput): Promise<VerificationExecutionEnvironment>;
+  createEnvironment(input: SandboxEnvironmentInput): Promise<SandboxEnvironment>;
 }
 
-export interface VerificationExecutionEnvironment {
+export interface SandboxEnvironment {
   readonly sandboxId: string;
   run(input: SandboxCommandInput): Promise<SandboxCommandResult>;
   dispose(): Promise<'clean' | 'process_tree_cleanup_failed'>;
@@ -82,7 +87,7 @@ async function probeBinary(name: string): Promise<string | undefined> {
  *  running user manager; everywhere else preflight reports
  *  unavailable and replay becomes honestly inconclusive (§13).
  *  NEVER falls back to host execution (§71). */
-export class SystemdSandboxBackend implements VerificationSandboxBackend {
+export class SystemdSandboxBackend implements SandboxBackend {
   readonly id = 'systemd' as const;
   private systemctl: string | undefined;
   private systemdRun: string | undefined;
@@ -209,9 +214,7 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
     }
   }
 
-  async createEnvironment(
-    input: SandboxEnvironmentInput,
-  ): Promise<VerificationExecutionEnvironment> {
+  async createEnvironment(input: SandboxEnvironmentInput): Promise<SandboxEnvironment> {
     const homeDir = join(input.attemptRoot, 'home');
     await mkdir(join(homeDir, '.cache'), { recursive: true });
     await mkdir(join(homeDir, '.config'), { recursive: true });
@@ -319,7 +322,7 @@ export class SystemdSandboxBackend implements VerificationSandboxBackend {
     const systemdRun = this.systemdRun;
     const systemctl = this.systemctl;
     // Start from an empty root, then expose ONLY the read-only system
-    // toolchain and the verifier-owned workspace/HOME/tmp. ProtectSystem
+    // toolchain and the sandbox-owned workspace/HOME/tmp. ProtectSystem
     // alone prevents writes but leaves host and peer files readable;
     // combining it with TemporaryFileSystem=/ on WSL2 unexpectedly
     // reveals the host root again (caught by the peer preflight).
@@ -497,7 +500,7 @@ async function stopUnit(systemctl: string, unitName: string): Promise<boolean> {
   }
 }
 
-class SystemdSandboxEnvironment implements VerificationExecutionEnvironment {
+class SystemdSandboxEnvironment implements SandboxEnvironment {
   readonly sandboxId = 'systemd';
   private disposed = false;
 
@@ -544,7 +547,7 @@ class SystemdSandboxEnvironment implements VerificationExecutionEnvironment {
 
 /** Unavailable backend: every replay becomes unsupported (§13, §71).
  *  NEVER falls back to host execution. */
-export class UnavailableSandboxBackend implements VerificationSandboxBackend {
+export class UnavailableSandboxBackend implements SandboxBackend {
   readonly id = 'none' as const;
 
   constructor(private readonly reason: string) {}
@@ -553,9 +556,7 @@ export class UnavailableSandboxBackend implements VerificationSandboxBackend {
     return { available: false, backend: 'none', reason: this.reason };
   }
 
-  async createEnvironment(
-    _input: SandboxEnvironmentInput,
-  ): Promise<VerificationExecutionEnvironment> {
+  async createEnvironment(_input: SandboxEnvironmentInput): Promise<SandboxEnvironment> {
     throw new Error('Sandbox unavailable: ' + this.reason);
   }
 }
@@ -583,4 +584,37 @@ export function attemptSandboxPaths(attemptRoot: string): { homeDir: string } {
 
 export function sandboxParentDir(workspaceRoot: string): string {
   return dirname(workspaceRoot);
+}
+
+/** Bindable parent for sandbox staging directories: `/var/tmp` on Linux,
+ *  under the data root's parent otherwise (WSL2/odd layouts where
+ *  `/var/tmp` is not bindable into user units). */
+export function sandboxStagingParent(dataRoot: string): string {
+  if (process.platform === 'linux') return '/var/tmp';
+  return join(resolve(dataRoot, '..'), '.tmp-sentry-staging');
+}
+
+export async function resolveExecutable(
+  head: string,
+  pathValue: string | undefined,
+): Promise<string | undefined> {
+  const extensions =
+    process.platform === 'win32'
+      ? (process.env['PATHEXT'] ?? '.EXE;.CMD;.BAT').split(';').map((e) => e.toLowerCase())
+      : [''];
+  const directories = (pathValue ?? '').split(delimiter).filter((d) => d.length > 0);
+  const candidates: string[] =
+    head.includes('/') || head.includes('\\') ? [head] : directories.map((dir) => join(dir, head));
+  for (const candidate of candidates) {
+    for (const extension of extensions) {
+      const full = candidate + extension;
+      try {
+        await access(full, process.platform === 'win32' ? constants.F_OK : constants.X_OK);
+        return full;
+      } catch {
+        // Not this candidate; keep searching.
+      }
+    }
+  }
+  return undefined;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRetestGraph, buildRunGraph } from '../../src/renderer/lib/run-graph.js';
+import { buildRunGraph } from '../../src/renderer/lib/run-graph.js';
 
 const BASE_RUN = {
   id: 'run_01K7777777777777777777A8W1',
@@ -203,97 +203,5 @@ describe('run graph builder', () => {
     expect(graph.nodes.filter((n) => n.kind === 'agent').every((n) => n.status === 'waiting')).toBe(
       true,
     );
-  });
-
-  it('ignores historical merger/verifier payloads without creating pipeline nodes', () => {
-    const graph = buildRunGraph({
-      run: BASE_RUN,
-      agentRuns: AGENTS,
-      findings: [],
-      evidence: [],
-      mergeResults: [
-        {
-          id: 'merge_01K7777777777777777777A8W1',
-          mergerVersion: 2,
-          usableAgentRunIds: [AGENTS[0]?.id ?? '', AGENTS[1]?.id ?? ''],
-          expectedAgentStackIds: ['stack_muse_main', 'stack_deepseek_main', 'stack_glm_main'],
-          unavailableAgentStackIds: ['stack_glm_main'],
-          clusters: [
-            {
-              id: 'cluster_01K7777777777777777777A8W1',
-              agreementState: 'multi_source',
-              supportingAgentCount: 2,
-              usableAgentCount: 2,
-            },
-          ],
-        },
-      ],
-      verificationRuns: [
-        {
-          id: 'vrun_01K7777777777777777777A8W1',
-          status: 'completed',
-          verifierVersion: 3,
-          attempts: [{ outcome: 'reproduced' }, { outcome: 'inconclusive' }],
-        },
-      ],
-      issueCount: 3,
-    });
-    const kinds = graph.nodes.map((n) => n.kind);
-    expect(kinds).not.toContain('merger');
-    expect(kinds).not.toContain('verifier');
-    expect(kinds).not.toContain('issues');
-    expect(graph.nodes).toHaveLength(6);
-  });
-
-  it.each(['full', 'targeted'])('places the %s retest assessment below every agent', (mode) => {
-    const graph = buildRetestGraph({
-      run: { ...BASE_RUN, mode },
-      agentRuns: AGENTS,
-      findings: [],
-      evidence: [],
-      sourceRevisionId: 'revision-a',
-      targetRevisionId: 'revision-b',
-      assessment: undefined,
-    });
-    const assessment = graph.nodes.find((node) => node.kind === 'retest-assessment');
-    const agentBottom = Math.max(
-      ...graph.nodes.filter((node) => node.kind === 'agent').map((node) => node.position.y),
-    );
-    expect((assessment?.position.y ?? 0) - agentBottom).toBeGreaterThanOrEqual(220);
-  });
-
-  it('renders retest cancelled/failed runs with preserved lineage (§171)', () => {
-    for (const status of ['cancelled', 'failed']) {
-      const graph = buildRetestGraph({
-        run: { ...BASE_RUN, status },
-        agentRuns: AGENTS,
-        findings: [],
-        evidence: [],
-        sourceRevisionId: 'rev_01K7777777777777777777A8W1',
-        targetRevisionId: 'rev_01K7777777777777777777A8W2',
-        assessment: undefined,
-      });
-      expect(graph.nodes.some((n) => n.kind === 'retest-source')).toBe(true);
-      expect(graph.nodes.some((n) => n.kind === 'retest-spec')).toBe(true);
-    }
-  });
-
-  it('builds the A→B retest lineage for every assessment outcome', () => {
-    for (const outcome of ['fixed', 'still_reproducible', 'partially_fixed', 'inconclusive']) {
-      const graph = buildRetestGraph({
-        run: BASE_RUN,
-        agentRuns: AGENTS,
-        findings: [],
-        evidence: [],
-        sourceRevisionId: 'rev_01K7777777777777777777A8W1',
-        targetRevisionId: 'rev_01K7777777777777777777A8W2',
-        assessment: { outcome },
-      });
-      expect(graph.nodes.some((n) => n.kind === 'retest-source')).toBe(true);
-      expect(graph.nodes.some((n) => n.kind === 'retest-spec')).toBe(true);
-      expect(graph.nodes.some((n) => n.kind === 'retest-assessment')).toBe(true);
-      const assessment = graph.nodes.find((n) => n.kind === 'retest-assessment');
-      expect(assessment?.data['outcome']).toBe(outcome);
-    }
   });
 });

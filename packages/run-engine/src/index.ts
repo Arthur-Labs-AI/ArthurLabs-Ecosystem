@@ -15,7 +15,6 @@ import {
   type AgentRunId,
   type AgentStackId,
   type ProjectId,
-  type ProjectRevisionId,
   type QARunId,
 } from '@qa/shared';
 import {
@@ -32,9 +31,7 @@ import {
   type HarnessRunRequest,
   type HarnessWorkspace,
   type QARun,
-  type QARunLineage,
   type TargetSpec,
-  type VerificationLevel,
 } from '@qa/schemas';
 import {
   aggregateAgentUsage,
@@ -63,21 +60,17 @@ import { WorkspaceFactory } from '@qa/workspace-factory';
 import { RunActivityProjector } from './activity-projector.js';
 import { RunExporter } from './exporters.js';
 import { RunEngineError } from './errors.js';
-import { recoverRetests } from './retest-service.js';
-import { recoverVerifications } from './verification-service.js';
 
 export interface TargetedScope {
   /** Project-relative target paths (§9-§10). Validated against the frozen
    *  snapshot manifest before agents start; rejected when unknown. */
   readonly includePaths: readonly string[];
-  readonly issueIds?: readonly string[];
   readonly userInstructions?: string;
 }
 
 export interface RunOptions {
   readonly agentStackIds?: readonly AgentStackId[];
   readonly executionKind: 'simulation' | 'production';
-  readonly verificationLevel?: VerificationLevel;
   readonly instructions?: string;
   readonly runTimeoutMs?: number;
   /** Phase 7 (§8-§13): TARGETED QA. Same independent agent architecture
@@ -85,12 +78,6 @@ export interface RunOptions {
    *  Omitted (or mode 'full') preserves FULL semantics unchanged (§7). */
   readonly mode?: 'full' | 'targeted';
   readonly target?: TargetedScope;
-  /** Phase 7 run lineage (§37): e.g. FULL → TARGETED follow-up. */
-  readonly lineage?: {
-    readonly parentRunId?: QARunId;
-    readonly sourceRevisionId?: ProjectRevisionId;
-    readonly targetRevisionId?: ProjectRevisionId;
-  };
   /**
    * Run against an older project revision instead of the current working
    * copy. The revision must belong to the project and its retained material
@@ -103,36 +90,6 @@ export interface RunOptions {
   /** Signals this request's identity immediately after the initial row is saved. */
   readonly onRunCreated?: (run: QARun) => void;
   readonly onHarnessEventPersisted?: (event: HarnessEvent, agentRun: AgentRun) => void;
-  /** Finish-pass §29/§35: fires after revision integrity + snapshot freeze
-   *  (lock held), BEFORE target validation + TargetSpec persistence + any
-   *  agent adapter start. May return `overrideIncludePaths` to replace the
-   *  requested TARGETED scope with snapshot-manifest-resolved paths
-   *  (Retest historical resolution). Generic: any caller may use it. */
-  readonly onSnapshotFrozen?: (
-    frozen: SnapshotFrozenContext,
-  ) =>
-    | Promise<{ mode?: 'full' | 'targeted'; overrideIncludePaths?: readonly string[] } | void>
-    | { mode?: 'full' | 'targeted'; overrideIncludePaths?: readonly string[] }
-    | void;
-}
-
-/** Finish-pass §36: the frozen half of a run — revision + snapshot + the
- *  immutable file manifest, before target validation and agent start. */
-export interface SnapshotFrozenContext {
-  readonly runId: QARunId;
-  readonly projectId: ProjectId;
-  readonly revision: {
-    readonly id: string;
-    readonly contentHash: string;
-  };
-  readonly snapshot: {
-    readonly id: string;
-    readonly projectRevisionId: string;
-  };
-  /** Immutable file set from the frozen manifest (never the mutable tree). */
-  readonly snapshotFiles: ReadonlySet<string>;
-  readonly mode: 'full' | 'targeted';
-  readonly requestedIncludePaths: readonly string[] | undefined;
 }
 
 export interface RunDetails {
@@ -281,7 +238,7 @@ export class RunCoordinator {
     const runId = createQARunId();
     this.projects.lockProjectForRun(projectId, runId);
     // Final micro-fix §7/§14: pre-execution boundary. The initial QARun row
-    // persists before the frozen hook (active-Retest fix — must remain), so
+    // persists before target validation, so
     // any handled failure before worker launch must terminalize that same
     // row as failed. Execution starts at first runAgent() launch only.
     let runPersisted = false;
@@ -340,26 +297,9 @@ export class RunCoordinator {
       });
       if (snapshot.contentHash !== revision.contentHash) throw new Error('PROJECT_COPY_DRIFT');
       const createdAt = nowIsoTimestamp();
-      const lineage: QARunLineage | undefined =
-        options.lineage === undefined
-          ? undefined
-          : {
-              ...(options.lineage.parentRunId === undefined
-                ? {}
-                : { parentRunId: options.lineage.parentRunId }),
-              ...(options.lineage.sourceRevisionId === undefined
-                ? {}
-                : { sourceRevisionId: options.lineage.sourceRevisionId }),
-              ...(options.lineage.targetRevisionId === undefined
-                ? {}
-                : { targetRevisionId: options.lineage.targetRevisionId }),
-            };
-      // Micro-patch §7: persist the initial child QARun row BEFORE the
-      // frozen hook so callbacks (Retest targetQaRunId) can reference it
-      // without violating the qa_runs FK. Status agents_running is the
-      // existing pre-execution state (minimum change — no new status).
-      // The hook may still adjust mode before agents begin (§8); the same
-      // row is updated, never a second QARun.
+      // Persist the initial QARun row before target validation. Status
+      // agents_running is the pre-execution state; the same row is updated
+      // once preparation completes, never a second QARun.
       let run = QARunSchema.parse({
         schemaVersion: 1,
         id: runId,
@@ -370,10 +310,8 @@ export class RunCoordinator {
         projectContextSnapshotId: context.id,
         mode,
         status: 'agents_running',
-        ...(lineage === undefined ? {} : { lineage }),
         configuration: {
           agentStackIds: selected.map((item) => item.stack.id),
-          verificationLevel: options.verificationLevel ?? 'strict',
           ...(options.instructions === undefined
             ? {}
             : { instructions: { message: options.instructions, createdAt } }),
@@ -395,35 +333,9 @@ export class RunCoordinator {
       // Frozen manifest file set: the immutable source of truth for scope
       // validation (never the mutable working copy).
       const frozenBaseline = await this.snapshots.baselineFileHashes(snapshot.id);
-      const frozenFiles: ReadonlySet<string> = new Set(frozenBaseline.keys());
-      // Finish-pass §29/§35 hook: fires after freeze (lock held), before
-      // target validation + TargetSpec persistence + agent start. The hook
-      // may assert revision identity (Retest B≠C race) and override the
-      // TARGETED scope with manifest-resolved paths, or flip to full for
-      // the explicit focused full-snapshot fallback.
-      let effectiveMode = mode;
-      let effectiveIncludePaths: readonly string[] | undefined =
+      const effectiveMode = mode;
+      const effectiveIncludePaths: readonly string[] | undefined =
         options.target?.includePaths === undefined ? undefined : [...options.target.includePaths];
-      if (options.onSnapshotFrozen !== undefined) {
-        const hookResult = await options.onSnapshotFrozen({
-          runId,
-          projectId,
-          revision: { id: revision.id, contentHash: revision.contentHash },
-          snapshot: { id: snapshot.id, projectRevisionId: snapshot.projectRevisionId },
-          snapshotFiles: frozenFiles,
-          mode,
-          requestedIncludePaths: effectiveIncludePaths,
-        });
-        if (hookResult !== undefined) {
-          if (hookResult.mode !== undefined) effectiveMode = hookResult.mode;
-          if (effectiveMode === 'full') {
-            // Explicit focused full-snapshot fallback: no target scope.
-            effectiveIncludePaths = undefined;
-          } else if (hookResult.overrideIncludePaths !== undefined) {
-            effectiveIncludePaths = [...hookResult.overrideIncludePaths];
-          }
-        }
-      }
       if (effectiveMode === 'full' && effectiveIncludePaths !== undefined) {
         throw new RunEngineError(
           'INVALID_TARGET',
@@ -448,7 +360,6 @@ export class RunCoordinator {
           includePaths: [...(effectiveIncludePaths as readonly string[])].map((candidate) =>
             candidate.replace(/\/+$/, ''),
           ),
-          ...(options.target?.issueIds === undefined ? {} : { issueIds: options.target.issueIds }),
           ...(options.target?.userInstructions === undefined
             ? {}
             : { userInstructions: options.target.userInstructions }),
@@ -469,7 +380,6 @@ export class RunCoordinator {
           qaRunId: runId,
           snapshotId: snapshot.id,
           includePaths: [...scope.includePaths],
-          issueIds: scope.issueIds === undefined ? [] : [...scope.issueIds],
           ...(scope.userInstructions === undefined
             ? {}
             : { userInstructions: scope.userInstructions }),
@@ -499,7 +409,6 @@ export class RunCoordinator {
         mode: effectiveMode,
         configuration: {
           agentStackIds: run.configuration.agentStackIds,
-          verificationLevel: run.configuration.verificationLevel,
           ...(run.configuration.policy === undefined ? {} : { policy: run.configuration.policy }),
           ...(run.configuration.executionProfileId === undefined
             ? {}
@@ -612,17 +521,13 @@ export class RunCoordinator {
                 producedUsableOutput: this.repository.agentProducedUsableOutput(agentRun.id),
               })),
             );
-      const finalStages =
-        options.executionKind === 'simulation'
-          ? ([
-              ['merger', 'merger', 'Merger (deterministic no-op)'],
-              ['verifier', 'verification', 'Verification (simulated)'],
-              ['report', 'report', 'Report'],
-            ] as const)
-          : ([['report', 'report', 'Report']] as const);
-      for (const [source, kind, title] of finalStages) {
-        this.activities.stage({ qaRunId: runId, parentActivityId: root.id, source, kind, title });
-      }
+      this.activities.stage({
+        qaRunId: runId,
+        parentActivityId: root.id,
+        source: 'report',
+        kind: 'report',
+        title: 'Report',
+      });
       const completedAt = nowIsoTimestamp();
       run = QARunSchema.parse({
         ...run,
@@ -1437,7 +1342,7 @@ export class RunCoordinator {
   /** Synchronous owner acknowledge for the narrow single-process case:
    *  the caller IS the local owner AND holds live adapters AND the run is
    *  not currently executing inside this coordinator's run() (e.g. stale
-   *  rows, tests, retest cascade within the owner process). Refuses foreign
+   *  rows, tests). Refuses foreign
    *  runtimes outright. Production cross-process cancellation never calls
    *  this from a foreign process — the owner's workers drive it. */
   acknowledgeRunCancellation(runId: QARunId): {
@@ -1541,11 +1446,10 @@ export class RunCoordinator {
   /** Owner-process cancel: request, then acknowledge as the verified local
    *  owner. Foreign runtimes are refused by acknowledgeRunCancellation;
    *  cross-process callers use requestRunCancellation and let the owner
-   *  workers drive cancellation. Preserved for in-process callers (tests,
-   *  retest cascade within the owner process).
+   *  workers drive cancellation. Preserved for in-process callers (tests).
    */
   /** Legacy single-process cancel: request + immediately acknowledge as
-   *  owner. Preserved for in-process callers (tests, retest cascade).
+   *  owner. Preserved for in-process callers (tests).
    *  Cross-process callers should use requestRunCancellation and let the
    *  owner acknowledge. */
   cancelRun(runId: QARunId): { runId: QARunId; status: 'cancelled'; cancelledAgents: number } {
@@ -1685,17 +1589,6 @@ export class RunCoordinator {
         }
       }
     }
-    // Verification crash recovery uses the same lease freshness — no
-    // parallel lease system (§64). Stale-owned running verifications
-    // become interrupted with completed observations preserved.
-    // Product note: new runs no longer create verification runs, but this
-    // compatibility path stays so historical nonterminal verification rows
-    // can never corrupt boot recovery. Do not remove while historical
-    // VerificationRun rows remain readable.
-    await recoverVerifications(this.repository, (instanceId) => lease.isFresh(instanceId as never));
-    // Retest crash recovery (§55): stale-owned nonterminal retest runs
-    // become interrupted; completed assessments and occurrences persist.
-    recoverRetests(this.repository, (instanceId) => lease.isFresh(instanceId as never));
   }
 
   private requireRuntimeLease(): RuntimeInstanceLease {
@@ -1714,8 +1607,5 @@ export * from './errors.js';
 
 export * from './activity-projector.js';
 export * from './exporters.js';
-export * from './merge-service.js';
-export * from './issue-service.js';
-export * from './retest-service.js';
-export * from './verification-service.js';
+export * from './sandbox.js';
 export * from './simulation.js';

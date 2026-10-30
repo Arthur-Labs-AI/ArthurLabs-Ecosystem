@@ -3,11 +3,7 @@ import { dirname, join, resolve } from 'node:path';
 import { isPathInside } from '@qa/persistence';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
-import {
-  SystemdSandboxBackend,
-  resolveExecutable,
-  type VerificationSandboxBackend,
-} from '@qa/verifier';
+import { SystemdSandboxBackend, resolveExecutable, type SandboxBackend } from './sandbox.js';
 
 export interface PreparationPolicy {
   readonly enabled: boolean;
@@ -74,7 +70,7 @@ export async function removeBuildCaches(root: string, signal?: AbortSignal): Pro
 
 /** No shell interpolation, project hooks, network, or unrestricted host fallback. */
 export function createWorkspacePreparer(
-  backend: VerificationSandboxBackend = new SystemdSandboxBackend(),
+  backend: SandboxBackend = new SystemdSandboxBackend(),
 ): WorkspacePreparer {
   return async ({ workspaceRoot, policy, deadlineAt, signal }) => {
     signal.throwIfAborted();

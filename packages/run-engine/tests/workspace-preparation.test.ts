@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createWorkspacePreparer, discoverOfflineCache } from '../src/workspace-preparation.js';
-import type { SandboxCommandInput, VerificationSandboxBackend } from '@qa/verifier';
+import type { SandboxBackend, SandboxCommandInput } from '../src/sandbox.js';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -88,7 +88,7 @@ describe('private workspace preparation', () => {
     const a = await fixture();
     const seed = join(a.root, 'cache');
     await mkdir(seed);
-    const backend: VerificationSandboxBackend = {
+    const backend: SandboxBackend = {
       id: 'none',
       preflight: async () => ({ available: false, backend: 'none' }),
       createEnvironment: async () => {
@@ -111,7 +111,7 @@ describe('private workspace preparation', () => {
     const path = await binaryFixture(a.root);
     const commands: SandboxCommandInput[] = [];
     let disposed = 0;
-    const backend: VerificationSandboxBackend = {
+    const backend: SandboxBackend = {
       id: 'systemd',
       preflight: async () => ({ available: true, backend: 'systemd' }),
       createEnvironment: async (input) => {

@@ -12,9 +12,6 @@ import {
   ProjectSchema,
   ProjectSnapshotSchema,
   QARunSchema,
-  UnifiedIssueSchema,
-  VerificationAttemptSchema,
-  FixProposalSchema,
   ProjectRevisionSchema,
   ManagedProjectCopySchema,
   ProjectContextSnapshotSchema,
@@ -29,8 +26,6 @@ import {
   isPlanForAgentRun,
   isQARunForSnapshot,
   isQARunForContext,
-  isRetestAgainstNewerRevision,
-  isRetestLineageValid,
   isSnapshotForRevision,
 } from '../src/index.js';
 
@@ -59,13 +54,9 @@ const schemas: Record<string, { parse: (v: unknown) => unknown }> = {
   'finding-2.json': FindingSchema,
   'evidence.json': EvidenceSchema,
   'evidence-2.json': EvidenceSchema,
-  'unified-issue.json': UnifiedIssueSchema,
-  'verification.json': VerificationAttemptSchema,
-  'fix-proposal.json': FixProposalSchema,
   'cicd-plan.json': CICDPlanSchema,
   'artifact.json': ArtifactSchema,
   'run-activity.json': RunActivitySchema,
-  'retest-qa-run.json': QARunSchema,
 };
 void HarnessRunRequestSchema;
 
@@ -80,11 +71,8 @@ describe('contract fixtures', () => {
     expect(rel.agentRuns).toHaveLength(3);
     expect(rel.findings).toHaveLength(2);
     const run = QARunSchema.parse(load('qa-run.json'));
-    const issue = UnifiedIssueSchema.parse(load('unified-issue.json'));
     const f1 = FindingSchema.parse(load('finding.json'));
     expect(f1.qaRunId).toBe(run.id);
-    expect(issue.qaRunId).toBe(run.id);
-    expect(issue.findingIds).toContain(f1.id);
     expect(run.configuration.agentStackIds).toContain(f1.sourceAgentStackId);
 
     const revision = ProjectRevisionSchema.parse(load('project-revision.json'));
@@ -101,15 +89,9 @@ describe('contract fixtures', () => {
     expect(isAgentRunForQARun(agentRun, run)).toBe(true);
     expect(isPlanForAgentRun(plan, agentRun, run)).toBe(true);
 
-    const retest = QARunSchema.parse(load('retest-qa-run.json'));
-    expect(isRetestLineageValid(retest, run, issue)).toBe(true);
-    const retestRevision = ProjectRevisionSchema.parse(load('project-revision-2.json'));
-    const retestSnapshot = ProjectSnapshotSchema.parse(load('snapshot-2.json'));
-    const retestContext = ProjectContextSnapshotSchema.parse(load('project-context-2.json'));
-    expect(isContextForRevision(retestContext, retestRevision)).toBe(true);
-    expect(
-      isRetestAgainstNewerRevision(retest, retestSnapshot, retestRevision, snapshot, revision),
-    ).toBe(true);
+    const revision2 = ProjectRevisionSchema.parse(load('project-revision-2.json'));
+    const context2 = ProjectContextSnapshotSchema.parse(load('project-context-2.json'));
+    expect(isContextForRevision(context2, revision2)).toBe(true);
   });
   it('no fixture leaks absolute machine paths', () => {
     for (const f of readdirSync(dir)) {

@@ -22,7 +22,7 @@ import {
   type HarnessAdapter,
   type HarnessRunRequest,
 } from '@qa/harness-protocol';
-import { RunCoordinator, resolveRetestTargets } from '../src/index.js';
+import { RunCoordinator } from '../src/index.js';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -348,7 +348,7 @@ describe('finish-pass §24/§56-§58: multi-agent cancel preserves completed', (
 });
 
 describe('micro-patch §27: cancellation before adapter start launches no workers', () => {
-  it('hook-time self-cancel short-circuits provider execution', async () => {
+  it('self-cancel right after the run row is created short-circuits provider execution', async () => {
     const f = await fixture();
     let adapterStarts = 0;
     const counting = new HarnessAdapterRegistry();
@@ -363,13 +363,13 @@ describe('micro-patch §27: cancellation before adapter start launches no worker
       });
     }
     const owner = new RunCoordinator(f.dataRoot, f.repository, f.lease, counting);
-    // Simulate a cancel landing after freeze but before workers: the hook
-    // requests cancellation of its own freshly persisted run row.
+    // Simulate a cancel landing before workers: the callback requests
+    // cancellation of its own freshly persisted run row.
     const details = await owner.run(f.added.project.id, {
       executionKind: 'simulation',
       runTimeoutMs: 30_000,
-      onSnapshotFrozen: (frozen) => {
-        owner.requestRunCancellation(frozen.runId);
+      onRunCreated: (created) => {
+        owner.requestRunCancellation(created.id);
       },
     });
     expect(details.run.status).toBe('cancelled');
@@ -562,47 +562,6 @@ describe('finish-pass §25: stale owner recovery is honest', () => {
     expect(f.repository.getRunControlRequest(completed.run.id)?.completedAt).toBeDefined();
     f.database.close();
   }, 120_000);
-});
-
-describe('resolution: manifest-based, absence never fixed', () => {
-  it('deleted file resolves to the nearest existing ancestor', () => {
-    const resolved = resolveRetestTargets({
-      historicalPaths: ['src/auth/legacy-token.ts'],
-      snapshotFiles: new Set(['src/auth/login.ts', 'README.md']),
-    });
-    expect(resolved.strategy).toBe('nearest_ancestor');
-    expect(resolved.resolvedTargetPaths).toEqual(['src/auth']);
-  });
-  it('all targets gone uses the explicit focused full-snapshot fallback', () => {
-    const resolved = resolveRetestTargets({
-      historicalPaths: ['src/auth/legacy-token.ts'],
-      snapshotFiles: new Set(['README.md']),
-    });
-    expect(resolved.strategy).toBe('full_snapshot_fallback');
-    expect(resolved.limitations.join(' ')).toMatch(/RETEST_HISTORICAL_TARGETS_ABSENT/);
-  });
-  it('different failure stays inconclusive, never fixed', async () => {
-    const { compareRetestSteps, classifyRetest } = await import('@qa/domain');
-    const compared = compareRetestSteps({
-      sourceSteps: [
-        {
-          type: 'command_replay',
-          expected: { command: 'npm test', cwdRelative: '.', exitCode: '1' },
-          outcome: 'matched',
-          matchStrength: 'strong_match',
-        },
-      ],
-      targetSteps: [
-        {
-          type: 'command_replay',
-          expected: { command: 'npm test', cwdRelative: '.', exitCode: '2' },
-          outcome: 'matched',
-          matchStrength: 'strong_match',
-        },
-      ],
-    });
-    expect(classifyRetest(compared.input).result).toBe('inconclusive');
-  });
 });
 
 describe('private preparation and unconditional teardown', () => {

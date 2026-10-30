@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { sentryApi } from '../lib/sentry-api.js';
 import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
@@ -17,46 +17,19 @@ export function History(): React.JSX.Element {
     queryFn: () => sentryApi().runs.list(effective),
     enabled: effective !== '',
   });
-  const issues = useQuery({
-    queryKey: ['project-issues', effective],
-    queryFn: () => sentryApi().issues.list(effective),
-    enabled: effective !== '',
-  });
   const runList =
     (runs.data as
       Array<{ id: string; mode: string; status: string; createdAt: string }> | undefined) ?? [];
-  const issueList =
-    (issues.data as Array<{ id: string; title: string; severity: string }> | undefined) ?? [];
-  const histories = useQueries({
-    queries: issueList.slice(0, 20).map((issue) => ({
-      queryKey: ['issue-history', issue.id],
-      queryFn: () => sentryApi().issues.history(issue.id),
-      enabled: effective !== '',
-    })),
-  });
   const timeline = [
     ...runList.map((run) => ({
       at: run.createdAt,
       label: run.mode + ' run ' + run.status,
       to: '/runs/' + run.id,
     })),
-    ...histories.flatMap((h) => {
-      const data = h.data as
-        | { retests?: Array<{ id: string; status: string }>; assessments?: Array<{ id: string }> }
-        | undefined;
-      return (data?.retests ?? []).map((retest) => ({
-        at: '',
-        label: 'retest ' + retest.status,
-        to: '/retests/' + retest.id,
-      }));
-    }),
   ].sort((a, b) => (a.at < b.at ? 1 : -1));
   return (
     <div className="page">
-      <PageHeader
-        title="History"
-        subtitle="Trace runs, retests, and issue activity across your workspace."
-      />
+      <PageHeader title="History" subtitle="Trace QA runs across your workspace." />
       <div className="filter-toolbar">
         <select
           value={effective}
@@ -70,8 +43,8 @@ export function History(): React.JSX.Element {
           ))}
         </select>
       </div>
-      <PageSection title="Runs, retests & issues">
-        {timeline.length === 0 && issueList.length === 0 ? (
+      <PageSection title="Runs">
+        {timeline.length === 0 ? (
           <EmptyState title="No history yet." body="Recorded project activity will appear here." />
         ) : (
           <div className="timeline">
@@ -80,13 +53,6 @@ export function History(): React.JSX.Element {
                 <HistoryIcon size={14} className="faint" aria-hidden="true" />
                 {item.at !== '' ? <span className="time">{item.at}</span> : null}
                 <Link to={item.to}>{item.label}</Link>
-              </div>
-            ))}
-            {issueList.map((issue) => (
-              <div key={issue.id} className="item">
-                <span>Issue</span>
-                <Link to={'/issues/' + issue.id}>{issue.title}</Link>
-                <span className="muted">{issue.severity}</span>
               </div>
             ))}
           </div>

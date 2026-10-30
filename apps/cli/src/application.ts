@@ -10,17 +10,7 @@ import {
   resolveSentryDataRoot,
 } from '@qa/persistence';
 import { ProjectManager, ProjectManagerError } from '@qa/project-manager';
-import {
-  createFakeHarnessRegistry,
-  ingestMergeIssues,
-  mergeRun,
-  MergeServiceError,
-  retestIssue,
-  RunCoordinator,
-  RunEngineError,
-  VerificationServiceError,
-  verifyMerge,
-} from '@qa/run-engine';
+import { createFakeHarnessRegistry, RunCoordinator } from '@qa/run-engine';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
 import {
   createOpenCodeRegistration,
@@ -39,7 +29,6 @@ import {
   CliSuccessEnvelopeSchema,
   ProjectIdSchema,
   QARunIdSchema,
-  projectIssueState,
   type CliSuccessEnvelope,
 } from '@qa/schemas';
 import type { ParsedCliCommand } from './arguments.js';
@@ -136,10 +125,8 @@ export async function executeCommand(
         runInspection: true,
         fakeRunSimulation: true,
         realAgentExecution: true,
-        retestExecution: true,
         runCancellation: true,
         targetedExecution: true,
-        issueLineage: true,
       },
       agentStacks: [
         { id: 'opencode', displayName: 'OpenCode QA Agent', harness: 'opencode' },
@@ -319,7 +306,6 @@ export async function executeCommand(
         const details = await runs.run(projectId, {
           executionKind: 'production',
           agentStackIds: requestedStackIds,
-          verificationLevel: 'strict',
           ...(input.mode === 'targeted'
             ? {
                 mode: 'targeted' as const,
@@ -421,118 +407,6 @@ export async function executeCommand(
       });
     });
   }
-  if (input.command === 'issue.list') {
-    const projectId = parseArgument(ProjectIdSchema, input.projectId, 'project-id');
-    return withReadRuntime(async ({ repository }) => {
-      if (repository.getProject(projectId) === undefined) {
-        throw new ProjectManagerError('PROJECT_NOT_FOUND', 'Project not found: ' + projectId);
-      }
-      return success(input.command, {
-        projectId,
-        issues: repository.listIssues(projectId).map((issue) => ({
-          issueId: issue.id,
-          projectId: issue.projectId,
-          title: issue.title,
-          currentState: projectIssueState(repository.listIssueEvents(issue.id)),
-          occurrenceCount: repository.listIssueOccurrences(issue.id).length,
-          updatedAt: issue.updatedAt,
-        })),
-      });
-    });
-  }
-  if (input.command === 'issue.show' || input.command === 'issue.history') {
-    const issueId = input.issueId;
-    if (!/^issue_[0-9A-HJKMNP-TV-Z]{26}$/.test(issueId)) {
-      throw new RunEngineError('ISSUE_NOT_FOUND', 'Issue not found: ' + issueId);
-    }
-    return withReadRuntime(async ({ repository }) => {
-      const issue = repository.getIssue(issueId);
-      if (issue === undefined) {
-        throw new RunEngineError('ISSUE_NOT_FOUND', 'Issue not found: ' + issueId);
-      }
-      const events = repository.listIssueEvents(issue.id);
-      const occurrences = repository.listIssueOccurrences(issue.id);
-      const assessments = repository.listRetestAssessments(issue.id);
-      const currentState = projectIssueState(events);
-      if (input.command === 'issue.show') {
-        return success(input.command, { issue, currentState, occurrences, assessments });
-      }
-      return success(input.command, { issue, currentState, events, occurrences, assessments });
-    });
-  }
-  if (input.command === 'issue.ingest') {
-    return withMutationRuntime(async ({ repository }) => {
-      const { mergeResultId, issues } = ingestMergeIssues(repository, input.mergeResultId);
-      return success(input.command, { mergeResultId, issues });
-    }, options);
-  }
-  if (input.command === 'retest.start') {
-    const registry = new HarnessAdapterRegistry()
-      .register(createOpenCodeRegistration())
-      .register(createDeepSeekRegistration())
-      .register(createGlmRegistration());
-    const requestedStackIds = input.agents.map((name) =>
-      AgentStackDefinitionSchema.shape.id.parse('stack_' + name + '_main'),
-    );
-    return withMutationRuntime(
-      async ({ repository, dataRoot, lease }) => {
-        if (lease === undefined)
-          throw new RunEngineError(
-            'RUN_EXECUTION_FAILED',
-            'Retest requires an active runtime lease',
-          );
-        const result = await retestIssue({ dataRoot, repository, lease, registry }, input.issueId, {
-          agentStackIds: requestedStackIds,
-          ...(input.revision === undefined ? {} : { targetRevisionId: input.revision as never }),
-        });
-        return success(input.command, {
-          retestRunId: result.retestRun.id,
-          issueId: result.retestRun.issueId,
-          status: result.retestRun.status,
-          ...(result.assessment === undefined ? {} : { assessmentId: result.assessment.id }),
-          ...(result.assessment === undefined ? {} : { result: result.assessment.result }),
-          ...(result.targetRun === undefined ? {} : { targetRunId: result.targetRun.id }),
-        });
-      },
-      options,
-      registry,
-    );
-  }
-  if (input.command === 'retest.show') {
-    return withReadRuntime(async ({ repository }) => {
-      const run = repository.getRetestRun(input.retestRunId);
-      if (run === undefined) {
-        throw new RunEngineError('RUN_NOT_FOUND', 'RetestRun not found: ' + input.retestRunId);
-      }
-      const assessments = repository.listRetestAssessmentsForRun(run.id);
-      return success(input.command, {
-        run,
-        ...(assessments.length === 0 ? {} : { assessment: assessments[assessments.length - 1] }),
-        assessments,
-      });
-    });
-  }
-  if (input.command === 'retest.cancel') {
-    return withMutationRuntime(async ({ repository, dataRoot, lease }) => {
-      if (lease === undefined)
-        throw new RunEngineError(
-          'RUN_EXECUTION_FAILED',
-          'Retest cancel requires an active runtime lease',
-        );
-      const registry = new HarnessAdapterRegistry();
-      const { requestRetestCancellation } = await import('@qa/run-engine');
-      const requested = requestRetestCancellation(
-        { dataRoot, repository, lease, registry },
-        input.retestRunId,
-      );
-      // Finish-pass request-only: the owning Retest runtime propagates to
-      // the child run and terminalizes; a foreign CLI never acknowledges.
-      return success(input.command, {
-        retestRunId: requested.retestRunId,
-        status: requested.status,
-      });
-    }, options);
-  }
   if (input.command === 'doctor.storage') {
     return withReadRuntime(async ({ repository, dataRoot }) => {
       const report = await storageReport({ dataRoot, repository });
@@ -545,8 +419,6 @@ export async function executeCommand(
         projects: report.projects,
         revisions: report.revisions,
         runs: report.runs,
-        issues: report.issues,
-        retests: report.retests,
         orphans: report.orphans,
       });
     });
@@ -572,118 +444,6 @@ export async function executeCommand(
         }
         throw cause;
       }
-    });
-  }
-  if (input.command === 'run.merge') {
-    const mergeRunId = parseArgument(QARunIdSchema, input.runId, 'run-id');
-    return withMutationRuntime(async ({ repository }) => {
-      try {
-        const { result, reused } = mergeRun(repository, mergeRunId);
-        return success(input.command, {
-          runId: mergeRunId,
-          mergeResultId: result.id,
-          reused,
-          clusters: result.clusterCount,
-          sourceFindings: result.sourceFindingCount,
-          usableAgents: result.usableAgentRunIds.length,
-          unavailableAgents: result.unavailableAgentStackIds,
-        });
-      } catch (cause) {
-        if (cause instanceof MergeServiceError) {
-          throw new RunEngineError(
-            cause.code === 'RUN_NOT_FOUND'
-              ? 'RUN_NOT_FOUND'
-              : cause.code === 'RUN_NOT_TERMINAL'
-                ? 'RUN_NOT_COMPLETE'
-                : 'RUN_EXECUTION_FAILED',
-            cause.message,
-          );
-        }
-        throw cause;
-      }
-    }, options);
-  }
-  if (input.command === 'verify.start') {
-    return withMutationRuntime(async ({ repository, dataRoot, lease }) => {
-      try {
-        const clusterIds =
-          input.clusters === undefined
-            ? undefined
-            : input.clusters
-                .split(',')
-                .map((id) => id.trim())
-                .filter((id) => id.length > 0);
-        const { run, attempts } = await verifyMerge(repository, dataRoot, input.mergeResultId, {
-          ...(clusterIds === undefined ? {} : { clusterIds }),
-          ...(lease?.instanceId === undefined ? {} : { runtimeInstanceId: lease.instanceId }),
-        });
-        const count = (outcome: string) => attempts.filter((a) => a.outcome === outcome).length;
-        return success(input.command, {
-          verificationRunId: run.id,
-          mergeResultId: run.mergeResultId,
-          status: run.status,
-          attempts: {
-            total: attempts.length,
-            reproduced: count('reproduced'),
-            partiallyVerified: count('partially_verified'),
-            notReproducible: count('not_reproducible'),
-            inconclusive: count('inconclusive'),
-            failed: attempts.filter((a) => a.status !== 'completed').length,
-          },
-        });
-      } catch (cause) {
-        if (cause instanceof VerificationServiceError) {
-          throw new RunEngineError(
-            cause.code === 'MERGE_RESULT_NOT_FOUND' || cause.code === 'CLUSTER_NOT_FOUND'
-              ? 'RUN_NOT_FOUND'
-              : cause.code === 'NO_VERIFIABLE_CLUSTERS'
-                ? 'RUN_EXECUTION_FAILED'
-                : 'RUN_NOT_COMPLETE',
-            cause.message,
-          );
-        }
-        throw cause;
-      }
-    }, options);
-  }
-  if (input.command === 'verify.doctor') {
-    return withReadRuntime(async ({ dataRoot }) => {
-      const { SystemdSandboxBackend } = await import('@qa/verifier');
-      const { verifierStagingParent } = await import('@qa/run-engine');
-      // Probe the staging parent, not the raw data root: execution
-      // binds the staging copy, so availability must be measured
-      // where the mounts will actually land.
-      const { mkdir } = await import('node:fs/promises');
-      const probeParent = verifierStagingParent(dataRoot);
-      await mkdir(probeParent, { recursive: true });
-      const availability = await new SystemdSandboxBackend().preflight(probeParent);
-      return success(input.command, {
-        sandboxBackend: 'systemd',
-        sandboxAvailable: availability.available,
-        runtimeReplaySupported: availability.available,
-        ...(availability.reason === undefined ? {} : { reason: availability.reason }),
-        supportedPlatforms: ['linux', 'wsl2'],
-      });
-    });
-  }
-  if (input.command === 'verify.show') {
-    return withReadRuntime(async ({ repository }) => {
-      const run = repository.getVerificationRun(input.verificationRunId);
-      if (run === undefined) {
-        throw new RunEngineError(
-          'RUN_NOT_FOUND',
-          'VerificationRun not found: ' + input.verificationRunId,
-        );
-      }
-      return success(input.command, {
-        run,
-        attempts: repository.listVerificationAttempts(run.id).map((attempt) => ({
-          ...attempt,
-          steps: repository.listVerificationSteps(attempt.id),
-          observations: repository.listVerificationObservations(attempt.id),
-          assertions: repository.listVerificationAssertions(attempt.id),
-        })),
-      });
     });
   }
   if (input.command === 'run.result') {

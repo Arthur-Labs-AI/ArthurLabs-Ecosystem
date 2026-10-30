@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RunWorkspace } from '../../src/renderer/pages/RunWorkspace.js';
 import { AgentInspector } from '../../src/renderer/components/AgentInspector.js';
 import { RunSummaryPanel } from '../../src/renderer/components/RunSummaryPanel.js';
-import { RetestWorkspace } from '../../src/renderer/pages/RetestWorkspace.js';
 import { AppShell } from '../../src/renderer/components/AppShell.js';
 import { makeAgentNodeView } from '../fixtures.js';
 
@@ -57,9 +56,6 @@ function snapshot(status = 'agents_running') {
     evidence: [],
     events: [],
     activities: [],
-    mergeResults: [],
-    verificationRuns: [],
-    issues: [],
   };
 }
 function workspace(data = snapshot()) {
@@ -106,43 +102,6 @@ describe('truthful run workspace', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Findings/ }));
     expect(screen.getByText('DeepSeek only')).toBeTruthy();
     expect(screen.queryByText('Retained finding')).toBeNull();
-  });
-
-  it('retains the historical retest assessment after a failed refresh', async () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    clients.push(client);
-    const data = {
-      retestRun: {
-        id: 'rt',
-        status: 'completed',
-        sourceProjectRevisionId: 'old',
-        targetProjectRevisionId: 'new',
-      },
-      assessments: [{ result: 'fixed' }],
-    };
-    client.setQueryData(['retest', 'rt'], data);
-    const get = vi.fn(async () => data);
-    vi.stubGlobal('sentry', {
-      retests: { get },
-      runtime: { status: vi.fn(async () => ({ connected: true })) },
-      subscribe: { onRunUpdate: () => () => undefined },
-    });
-    render(
-      <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={['/retests/rt']}>
-          <Routes>
-            <Route path="/retests/:retestRunId" element={<RetestWorkspace />} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-    await waitFor(() => expect(client.getQueryState(['retest', 'rt'])?.fetchStatus).toBe('idle'));
-    get.mockRejectedValue(new Error('offline'));
-    await act(async () => {
-      await client.invalidateQueries({ queryKey: ['retest', 'rt'] });
-    });
-    expect(screen.getByText('FIXED')).toBeTruthy();
-    expect(await screen.findByText(/Cached results remain available/)).toBeTruthy();
   });
 
   it('a status query error does not leave a cached connected indicator or claim no active runs', async () => {

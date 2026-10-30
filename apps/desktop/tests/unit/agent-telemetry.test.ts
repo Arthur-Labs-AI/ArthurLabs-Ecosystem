@@ -5,10 +5,6 @@ import {
   projectRecentActivity,
   projectTimeline,
 } from '../../src/renderer/lib/agent-telemetry.js';
-import {
-  summarizeVerificationAttempts,
-  severityBreakdown,
-} from '../../src/renderer/lib/verify-summary.js';
 import { makeAgentRun } from '../fixtures.js';
 
 describe('agent telemetry projector', () => {
@@ -285,7 +281,7 @@ describe('agent telemetry projector', () => {
     expect(view.stages.find((s) => s.state === 'failed')).toBeDefined();
   });
 
-  it('builds a categorized timeline and summarizes verification outcomes', () => {
+  it('builds a categorized timeline', () => {
     const agentRun = makeAgentRun({ status: 'running' });
     const timeline = projectTimeline(
       [
@@ -300,23 +296,6 @@ describe('agent telemetry projector', () => {
       [],
     );
     expect(timeline.map((t) => t.category)).toEqual(['Lifecycle', 'File']);
-    const counts = summarizeVerificationAttempts([
-      { outcome: 'reproduced' },
-      { outcome: 'partially_verified' },
-      { outcome: 'not_reproducible' },
-      { outcome: 'inconclusive' },
-    ]);
-    expect(counts).toEqual({
-      attempts: 4,
-      reproduced: 1,
-      partial: 1,
-      notReproducible: 1,
-      inconclusive: 1,
-    });
-    expect(severityBreakdown([{ severity: 'critical' }, { severity: 'high' }])).toMatchObject({
-      critical: 1,
-      high: 1,
-    });
   });
 
   it('filters recent activity to high-value operations', () => {

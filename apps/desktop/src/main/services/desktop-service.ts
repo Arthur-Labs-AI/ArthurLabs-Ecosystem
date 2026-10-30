@@ -10,7 +10,7 @@
 import { z } from 'zod';
 import { RUN_TIMEOUT_MS_MAX, RUN_TIMEOUT_MS_MIN } from '@qa/shared';
 import type { AgentStackDefinition } from '@qa/schemas';
-import type { DesktopOperation, RetestSnapshot, RunSnapshot } from '../../shared/ipc-contract.js';
+import type { DesktopOperation, RunSnapshot } from '../../shared/ipc-contract.js';
 import { toSafeError } from '../desktop-command-router.js';
 import type { ProviderCredentialService } from './provider-credentials.js';
 import type { RuntimeClient } from '../runtime/runtime-client.js';
@@ -26,8 +26,6 @@ export interface DesktopServiceDeps {
 
 const ProjectIdInput = z.string().min(1).max(200);
 const RunIdInput = z.string().regex(/^run_[0-9A-HJKMNP-TV-Z]{26}$/);
-const IssueIdInput = z.string().regex(/^issue_[0-9A-HJKMNP-TV-Z]{26}$/);
-const RetestRunIdInput = z.string().regex(/^retest_[0-9A-HJKMNP-TV-Z]{26}$/);
 const StartRunOptions = z
   .object({
     mode: z.enum(['full', 'targeted']),
@@ -250,52 +248,6 @@ export class DesktopApplicationService {
     const id = RunIdInput.parse(runId);
     const parsed = z.enum(['log', 'json']).parse(format);
     return this.call('runs.export', { runId: id, format: parsed });
-  }
-
-  // ---- issues ----
-  listIssues(projectId: string): Promise<unknown[]> {
-    const id = ProjectIdInput.parse(projectId);
-    return this.call('issues.list', { projectId: id }) as Promise<unknown[]>;
-  }
-
-  getIssue(issueId: string): Promise<unknown> {
-    const id = IssueIdInput.parse(issueId);
-    return this.call('issues.get', { issueId: id });
-  }
-
-  issueHistory(issueId: string): Promise<unknown> {
-    const id = IssueIdInput.parse(issueId);
-    return this.call('issues.history', { issueId: id });
-  }
-
-  // ---- retests ----
-  listRetests(issueId: string): Promise<unknown[]> {
-    const id = IssueIdInput.parse(issueId);
-    return this.call('retests.list', { issueId: id }) as Promise<unknown[]>;
-  }
-
-  startRetest(
-    issueId: string,
-    options?: { revisionId?: string; agentStackIds?: string[] },
-  ): Promise<DesktopOperation> {
-    const id = IssueIdInput.parse(issueId);
-    return this.call('retests.start', {
-      issueId: id,
-      ...(options?.revisionId === undefined ? {} : { revisionId: options.revisionId }),
-      ...(options?.agentStackIds === undefined
-        ? {}
-        : { agentStackIds: [...options.agentStackIds] }),
-    }) as Promise<DesktopOperation>;
-  }
-
-  retestSnapshot(retestRunId: string): Promise<RetestSnapshot> {
-    const id = RetestRunIdInput.parse(retestRunId);
-    return this.call('retests.get', { retestRunId: id }) as Promise<RetestSnapshot>;
-  }
-
-  cancelRetest(retestRunId: string): Promise<unknown> {
-    const id = RetestRunIdInput.parse(retestRunId);
-    return this.call('retests.cancel', { retestRunId: id });
   }
 
   // ---- doctors / system ----

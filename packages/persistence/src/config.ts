@@ -20,7 +20,6 @@ export const SENTRY_DEFAULT_AGENTS = ['opencode', 'deepseek', 'glm'] as const;
 // per run.
 export const SENTRY_PRODUCTION_RUN_TIMEOUT_MS = 10_800_000;
 export const SENTRY_SIMULATION_RUN_TIMEOUT_MS = 2_000;
-export const SENTRY_VERIFICATION_COMMAND_TIMEOUT_MS = 120_000;
 export const SENTRY_SANDBOX_BACKEND = 'systemd' as const;
 export const SENTRY_SUPPORTED_PLATFORMS = ['linux', 'wsl2'] as const;
 
@@ -29,7 +28,6 @@ export interface SentryConfig {
   readonly defaultAgents: readonly string[];
   readonly productionRunTimeoutMs: number;
   readonly simulationRunTimeoutMs: number;
-  readonly verificationCommandTimeoutMs: number;
   readonly orphanMinAgeMs: number;
   readonly sandboxBackend: string;
   readonly supportedPlatforms: readonly string[];
@@ -41,7 +39,6 @@ export function resolveSentryConfig(options: { dataRoot?: string } = {}): Sentry
     defaultAgents: [...SENTRY_DEFAULT_AGENTS],
     productionRunTimeoutMs: SENTRY_PRODUCTION_RUN_TIMEOUT_MS,
     simulationRunTimeoutMs: SENTRY_SIMULATION_RUN_TIMEOUT_MS,
-    verificationCommandTimeoutMs: SENTRY_VERIFICATION_COMMAND_TIMEOUT_MS,
     orphanMinAgeMs: ORPHAN_MIN_AGE_MS,
     sandboxBackend: SENTRY_SANDBOX_BACKEND,
     supportedPlatforms: [...SENTRY_SUPPORTED_PLATFORMS],

@@ -184,19 +184,6 @@ describe('Phase 7 TARGETED QA (§8-§13, §82)', () => {
     f.database.close();
   });
 
-  it('records run lineage for a TARGETED follow-up (§37)', async () => {
-    const f = await fixture();
-    const first = await f.runs.run(f.added.project.id, { executionKind: 'simulation' });
-    const second = await f.runs.run(f.added.project.id, {
-      executionKind: 'simulation',
-      mode: 'targeted',
-      target: { includePaths: ['src/auth'] },
-      lineage: { parentRunId: first.run.id },
-    });
-    expect(second.run.lineage?.parentRunId).toBe(first.run.id);
-    f.database.close();
-  });
-
   it('partial agent failure keeps completed outputs and stays useful (§114)', async () => {
     const f = await fixture();
     const partial = new RunCoordinator(

@@ -216,10 +216,9 @@ function translateCore(trimmed: string): string {
     if (st === 'partial') return 'Анализът е частичен.';
   }
 
-  const runSummaryMatch =
-    /^([?\d]+)\/([?\d]+)\s+agents\s*·\s*(\d+)\s+findings\s*·\s*(\d+)\s+issues$/.exec(trimmed);
+  const runSummaryMatch = /^([?\d]+)\/([?\d]+)\s+agents\s*·\s*(\d+)\s+findings$/.exec(trimmed);
   if (runSummaryMatch !== null) {
-    return `${runSummaryMatch[1]}/${runSummaryMatch[2]} агента · ${runSummaryMatch[3]} констатации · ${runSummaryMatch[4]} проблема`;
+    return `${runSummaryMatch[1]}/${runSummaryMatch[2]} агента · ${runSummaryMatch[3]} констатации`;
   }
 
   const bareModeMatch = /^(FULL|TARGETED)\s+QA$/.exec(trimmed);

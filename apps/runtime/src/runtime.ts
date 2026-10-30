@@ -5,7 +5,7 @@
  * - stdin: one JSON request object per line (NDJSON).
  * - stdout: PROTOCOL ONLY (one JSON response/notification per line).
  * - stderr: bounded human diagnostics (never secrets, never protocol).
- * Long operations (runs.start / retests.start) return the persisted identity
+ * Long operations (runs.start) return the persisted identity
  * as soon as the row exists; the promise stays owned here. Live state flows
  * via notifications plus renderer polling.
  */
@@ -22,15 +22,7 @@ import {
   resolveSentryDataRoot,
 } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
-import {
-  RunCoordinator,
-  mergeRun,
-  verifyMerge,
-  ingestMergeIssues,
-  retestIssue,
-  requestRetestCancellation,
-  cancelRetestRun,
-} from '@qa/run-engine';
+import { RunCoordinator, SystemdSandboxBackend, sandboxStagingParent } from '@qa/run-engine';
 import {
   createOpenCodeRegistration,
   credentialEnvForProvider,
@@ -58,14 +50,7 @@ import {
   type ClaudeExecutableIdentity,
 } from '@qa/harness-claude-code';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
-import { selectCurrentMergeResult } from '@qa/merger';
-import { projectIssueState } from '@qa/schemas';
-import {
-  RUN_TIMEOUT_MS_MAX,
-  RUN_TIMEOUT_MS_MIN,
-  createQARunId,
-  createRetestRunId,
-} from '@qa/shared';
+import { RUN_TIMEOUT_MS_MAX, RUN_TIMEOUT_MS_MIN, createQARunId } from '@qa/shared';
 import {
   RUNTIME_EXPORT_MAX_RAW_BYTES,
   RUNTIME_PROTOCOL_VERSION,
@@ -85,9 +70,6 @@ export const RUNTIME_VERSION = releaseIdentity?.version ?? '1.0.2';
 
 const ProjectIdInput = z.string().min(1).max(200);
 const RunIdInput = z.string().regex(/^run_[0-9A-HJKMNP-TV-Z]{26}$/);
-const IssueIdInput = z.string().regex(/^issue_[0-9A-HJKMNP-TV-Z]{26}$/);
-const RetestRunIdInput = z.string().regex(/^retest_[0-9A-HJKMNP-TV-Z]{26}$/);
-const MergeResultIdInput = z.string().regex(/^merge_[0-9A-HJKMNP-TV-Z]{26}$/);
 
 function toError(error: unknown): { code: string; message: string } {
   if (typeof error === 'object' && error !== null && 'code' in error) {
@@ -459,7 +441,6 @@ export class SentryRuntimeHost {
   private readonly registry: HarnessAdapterRegistry;
   private readonly coordinator: RunCoordinator;
   private readonly pendingRuns = new Map<string, PendingRun>();
-  private readonly pendingRetests = new Map<string, PendingRun>();
   private readonly activeImports = new Set<AbortController>();
   private readonly activeUpdates = new Set<AbortController>();
   private readonly notify: (event: string, payload?: unknown) => void;
@@ -780,7 +761,6 @@ export class SentryRuntimeHost {
       currentRevisionId: record.revision.id,
       revisionCount: this.repository.listRevisions(id as never).length,
       runCount: this.repository.countProjectRuns(id as never),
-      issueCount: this.repository.listIssues(id as never).length,
       detectedEcosystem: ecosystem,
       warnings:
         ecosystem.length === 0 ? ['No known ecosystem markers at the working-copy root.'] : [],
@@ -794,33 +774,12 @@ export class SentryRuntimeHost {
       ...run,
       agentSummary: this.coordinator.getRunStatus(run.id).agents,
       findingCount: this.repository.countRunFindings(run.id),
-      issueCount: this.repository.listOccurrencesForRun(run.id).length,
     }));
   }
 
   runSnapshot(runId: string): unknown {
     const id = RunIdInput.parse(runId);
     const details = this.coordinator.getRunDetails(id as never);
-    const mergeResults = this.repository.listMergeResults(id as never).map((merge) => ({
-      ...merge,
-      clusters: this.repository.listClusters(merge.id),
-    }));
-    // Authoritative current MergeResult (§12): highest supported
-    // mergerVersion for this run — never repository ordering ([0]).
-    // Historical results remain viewable in mergeResults.
-    const currentMergeResultId = selectCurrentMergeResult(mergeResults)?.id;
-    const verificationRuns = mergeResults.flatMap((m) =>
-      this.repository.listVerificationRuns(m.id).map((vrun) => ({
-        ...vrun,
-        attempts: this.repository.listVerificationAttempts(vrun.id).map((attempt) => ({
-          ...attempt,
-          steps: this.repository.listVerificationSteps(attempt.id),
-          observations: this.repository.listVerificationObservations(attempt.id),
-          assertions: this.repository.listVerificationAssertions(attempt.id),
-        })),
-      })),
-    );
-    const issues = this.repository.listOccurrencesForRun(id as never);
     let targetSpec: unknown;
     try {
       targetSpec = this.repository.getTargetSpec(id as never) ?? undefined;
@@ -860,10 +819,6 @@ export class SentryRuntimeHost {
       },
       activities: details.activities,
       events: details.events.map((e) => e.event),
-      mergeResults,
-      ...(currentMergeResultId === undefined ? {} : { currentMergeResultId }),
-      verificationRuns,
-      issues,
       ...(targetSpec === undefined ? {} : { targetSpec }),
     };
   }
@@ -944,21 +899,6 @@ export class SentryRuntimeHost {
     }
   }
 
-  mergeRun(runId: string): unknown {
-    const id = RunIdInput.parse(runId);
-    return mergeRun(this.repository, id as never);
-  }
-
-  async verifyMerge(mergeResultId: string): Promise<unknown> {
-    const id = MergeResultIdInput.parse(mergeResultId);
-    return verifyMerge(this.repository, this.dataRoot, id as never);
-  }
-
-  ingestIssues(mergeResultId: string): unknown {
-    const id = MergeResultIdInput.parse(mergeResultId);
-    return ingestMergeIssues(this.repository, id as never);
-  }
-
   /** Narrow Save As source: validated runId + format only. No caller-
    *  supplied paths ever reach the filesystem; bytes always come from the
    *  canonical RunExporter artifact for this run + format. The artifact
@@ -991,143 +931,6 @@ export class SentryRuntimeHost {
     return this.coordinator.exportRun(id as never, parsed);
   }
 
-  // ---- issues ----
-  listIssues(projectId: string): unknown[] {
-    const id = ProjectIdInput.parse(projectId);
-    return this.repository.listIssues(id as never).map((issue) => ({
-      ...issue,
-      currentState: projectIssueState(this.repository.listIssueEvents(issue.id)),
-    }));
-  }
-
-  getIssue(issueId: string): unknown {
-    const id = IssueIdInput.parse(issueId);
-    const issue = this.repository.getIssue(id as never);
-    if (issue === undefined) throw rpcError('ISSUE_NOT_FOUND', 'Issue not found: ' + id);
-    return {
-      ...issue,
-      currentState: projectIssueState(this.repository.listIssueEvents(id as never)),
-    };
-  }
-
-  issueHistory(issueId: string): unknown {
-    const id = IssueIdInput.parse(issueId);
-    const events = this.repository.listIssueEvents(id as never);
-    return {
-      issue: this.repository.getIssue(id as never),
-      currentState: projectIssueState(events),
-      occurrences: this.repository.listIssueOccurrences(id as never),
-      events,
-      assessments: this.repository.listRetestAssessments(id as never),
-      retests: this.repository.listRetestRuns(id as never),
-    };
-  }
-
-  // ---- retests (async: retestRunId as soon as the row exists) ----
-  listRetests(issueId: string): unknown[] {
-    const id = IssueIdInput.parse(issueId);
-    return this.repository.listRetestRuns(id as never);
-  }
-
-  async startRetest(
-    issueId: string,
-    params: unknown,
-  ): Promise<{ operationId: string; retestRunId?: string }> {
-    const id = IssueIdInput.parse(issueId);
-    const parsed = StartRetestParamsSchema.parse(params ?? {});
-    const operationId = 'dop_' + createRetestRunId().slice(7);
-    let created!: (retestRunId: string) => void;
-    const identity = new Promise<string>((resolve) => {
-      created = resolve;
-    });
-    const retestPromise = retestIssue(
-      {
-        dataRoot: this.dataRoot,
-        repository: this.repository,
-        lease: this.lease,
-        registry: this.registry,
-      },
-      id as never,
-      {
-        onRetestCreated: (run) => created(run.id),
-        ...(parsed.revisionId === undefined
-          ? {}
-          : { targetRevisionId: parsed.revisionId as never }),
-        ...(parsed.agentStackIds === undefined
-          ? {}
-          : { agentStackIds: [...parsed.agentStackIds] as never }),
-      },
-    );
-    const settled = retestPromise.then(
-      (result) => {
-        this.pendingRetests.delete(operationId);
-        this.notify('retest.snapshot', { retestRunId: result.retestRun.id });
-        return result;
-      },
-      (error: unknown) => {
-        this.pendingRetests.delete(operationId);
-        throw error;
-      },
-    );
-    settled.then(undefined, () => undefined);
-    this.pendingRetests.set(operationId, { operationId, promise: settled });
-    const retestRunId = await Promise.race([
-      identity,
-      settled.then((result) => result.retestRun.id),
-    ]);
-    if (this.repository.getRetestRun(retestRunId) === undefined) {
-      throw rpcError(
-        'RETEST_NOT_FOUND',
-        'Retest row missing immediately after start: ' + retestRunId,
-      );
-    }
-    this.notify('retest.created', { retestRunId, operationId });
-    return { operationId, retestRunId };
-  }
-
-  retestSnapshot(retestRunId: string): unknown {
-    const id = RetestRunIdInput.parse(retestRunId);
-    const retestRun = this.repository.getRetestRun(id as never);
-    if (retestRun === undefined) throw rpcError('RETEST_NOT_FOUND', 'Retest not found: ' + id);
-    const assessments = this.repository.listRetestAssessmentsForRun(id as never);
-    let spec: unknown;
-    try {
-      spec = this.repository.getRetestSpec(id as never) ?? undefined;
-    } catch {
-      spec = undefined;
-    }
-    let targetRun: unknown;
-    try {
-      if (retestRun.targetQaRunId !== undefined) {
-        targetRun = this.runSnapshot(retestRun.targetQaRunId as string);
-      }
-    } catch {
-      targetRun = undefined;
-    }
-    return {
-      retestRun,
-      assessments,
-      ...(spec === undefined ? {} : { spec }),
-      ...(targetRun === undefined ? {} : { targetRun }),
-    };
-  }
-
-  cancelRetest(retestRunId: string): unknown {
-    const id = RetestRunIdInput.parse(retestRunId);
-    const deps = {
-      dataRoot: this.dataRoot,
-      repository: this.repository,
-      lease: this.lease,
-      registry: this.registry,
-    };
-    try {
-      requestRetestCancellation(deps, id as never);
-      return cancelRetestRun(deps, id as never);
-    } catch (error) {
-      const sanitized = toError(error);
-      throw rpcError(sanitized.code, sanitized.message);
-    }
-  }
   // ---- doctors / system (all inside the Linux runtime) ----
   async environmentDoctors(): Promise<unknown> {
     const [{ doctorOpenCode }, { doctorDeepSeek }, { doctorGlm }] = await Promise.all([
@@ -1163,29 +966,22 @@ export class SentryRuntimeHost {
       runtimeVerified: doctor?.runtimeVerified ?? false,
       readiness: doctor?.readiness ?? 'unknown',
     });
-    let verifier: Record<string, unknown> = {
+    let sandbox: Record<string, unknown> = {
       sandboxAvailable: false,
-      runtimeReplaySupported: false,
       reason: 'probe pending',
     };
     try {
-      const [{ SystemdSandboxBackend }, { verifierStagingParent }, { mkdir }] = await Promise.all([
-        import('@qa/verifier'),
-        import('@qa/run-engine'),
-        import('node:fs/promises'),
-      ]);
-      const probeParent = verifierStagingParent(this.dataRoot);
+      const { mkdir } = await import('node:fs/promises');
+      const probeParent = sandboxStagingParent(this.dataRoot);
       await mkdir(probeParent, { recursive: true });
       const availability = await new SystemdSandboxBackend().preflight(probeParent);
-      verifier = {
+      sandbox = {
         sandboxAvailable: availability.available,
-        runtimeReplaySupported: availability.available,
         ...(availability.reason === undefined ? {} : { reason: availability.reason }),
       };
     } catch (error) {
-      verifier = {
+      sandbox = {
         sandboxAvailable: false,
-        runtimeReplaySupported: false,
         reason: error instanceof Error ? error.message.slice(0, 300) : 'probe failed',
       };
     }
@@ -1241,7 +1037,7 @@ export class SentryRuntimeHost {
       runtime: await this.runtimeIdentity(),
       agentStacks: stacks,
       sandboxDeps,
-      verifier,
+      sandbox,
       dataRoot: this.dataRoot,
     };
   }
@@ -1260,7 +1056,7 @@ export class SentryRuntimeHost {
   systemInfo(): unknown {
     return {
       dataRoot: this.dataRoot,
-      versions: { runtime: RUNTIME_VERSION, merger: '2', verifier: '3', retest: '2' },
+      versions: { runtime: RUNTIME_VERSION },
     };
   }
 
@@ -1507,7 +1303,7 @@ export class SentryRuntimeHost {
       case 'runtime.environment':
         return this.environmentDoctors();
       case 'runtime.shutdown':
-        if (this.pendingRuns.size > 0 || this.pendingRetests.size > 0) {
+        if (this.pendingRuns.size > 0) {
           throw rpcError(
             'RUNTIME_BUSY',
             'QA work is still active. Cancel it, wait for completion, then retry sentry stop.',
@@ -1553,30 +1349,10 @@ export class SentryRuntimeHost {
       }
       case 'runs.cancel':
         return this.requestRunCancellation(requireString(params, 'runId'));
-      // Merger / Verifier / issue-ingest RPCs are retired from the active
-      // product. The class methods below stay for CLI + historical
-      // compatibility but are no longer reachable over the WSL bridge.
       case 'runs.export':
         return this.exportRun(requireString(params, 'runId'), requireString(params, 'format'));
       case 'runs.exportContent':
         return this.exportContent(requireString(params, 'runId'), requireString(params, 'format'));
-      case 'issues.list':
-        return this.listIssues(requireString(params, 'projectId'));
-      case 'issues.get':
-        return this.getIssue(requireString(params, 'issueId'));
-      case 'issues.history':
-        return this.issueHistory(requireString(params, 'issueId'));
-      case 'retests.list':
-        return this.listRetests(requireString(params, 'issueId'));
-      case 'retests.start': {
-        const { issueId: _issueId, ...rest } = params;
-        void _issueId;
-        return this.startRetest(requireString(params, 'issueId'), rest);
-      }
-      case 'retests.get':
-        return this.retestSnapshot(requireString(params, 'retestRunId'));
-      case 'retests.cancel':
-        return this.cancelRetest(requireString(params, 'retestRunId'));
       case 'system.activeRuns':
         return this.activeRuns();
       case 'system.info':
@@ -1606,13 +1382,6 @@ const StartRunParamsSchema = z
     instructions: z.string().min(1).max(5000).optional(),
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
     runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
-  })
-  .strict();
-
-const StartRetestParamsSchema = z
-  .object({
-    revisionId: z.string().min(1).max(100).optional(),
-    agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
   })
   .strict();
 
@@ -1673,7 +1442,6 @@ function wslDistroName(): string | undefined {
 
 async function systemdIdentity(): Promise<Record<string, unknown>> {
   try {
-    const { SystemdSandboxBackend } = await import('@qa/verifier');
     const backend = new SystemdSandboxBackend();
     const available = typeof backend.preflight === 'function';
     void available;

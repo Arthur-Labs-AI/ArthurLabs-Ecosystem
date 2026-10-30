@@ -62,9 +62,6 @@ export function installUiFixture() {
         startedAt,
       },
     ],
-    mergeResults: [],
-    verificationRuns: [],
-    issues: [],
   };
   const projects = [
     {
@@ -76,13 +73,6 @@ export function installUiFixture() {
       currentRevisionId: 'ui-revision',
     },
   ];
-  const issue = {
-    id: 'ui-issue',
-    title: 'Session refresh lacks expiry validation',
-    severity: 'high',
-    category: 'security',
-    currentState: 'open',
-  };
   const listeners = new Set();
   const state = new URLSearchParams(window.location.search).get('state');
   const noop = async () => undefined;
@@ -124,30 +114,6 @@ export function installUiFixture() {
       ],
       get: async () => structuredClone(snapshot),
       exportSave: async () => ({ status: 'cancelled' }),
-    },
-    issues: {
-      list: async () => [issue],
-      get: async () => issue,
-      history: async () => ({
-        currentState: 'open',
-        events: [],
-        occurrences: [],
-        retests: [],
-        assessments: [],
-      }),
-    },
-    retests: {
-      get: async () => ({
-        retestRun: {
-          id: 'ui-retest',
-          status: 'agents_running',
-          targetQaRunId: run.id,
-          sourceProjectRevisionId: 'revision-a',
-          targetProjectRevisionId: 'revision-b',
-        },
-        targetRun: structuredClone(snapshot),
-        assessments: [],
-      }),
     },
     runtime: {
       status: async () => ({

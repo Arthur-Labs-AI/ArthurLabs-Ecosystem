@@ -52,25 +52,6 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
       invoke('runs:export-save', { runId, format }),
     revealExport: (path: string) => invoke('runs:export-reveal', { path }),
   },
-  issues: {
-    list: (projectId: string) => invoke('issues:list', { projectId }),
-    get: (issueId: string) => invoke('issues:get', { issueId }),
-    history: (issueId: string) => invoke('issues:history', { issueId }),
-  },
-  retests: {
-    list: (issueId: string) => invoke('retests:list', { issueId }),
-    start: (
-      issueId: string,
-      options?: { revisionId?: string | undefined; agentStackIds?: string[] },
-    ) =>
-      invoke('retests:start', {
-        issueId,
-        ...(options?.revisionId === undefined ? {} : { revisionId: options.revisionId }),
-        ...(options?.agentStackIds === undefined ? {} : { agentStackIds: options.agentStackIds }),
-      }),
-    get: (retestRunId: string) => invoke('retests:get', { retestRunId }),
-    cancel: (retestRunId: string) => invoke('retests:cancel', { retestRunId }),
-  },
   doctors: {
     environment: () => invoke('doctors:environment', {}),
   },
@@ -112,12 +93,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
       const isRunUpdate = (value: unknown): value is Parameters<RunUpdateCallback>[0] => {
         if (typeof value !== 'object' || value === null) return false;
         const kind = (value as { kind?: unknown }).kind;
-        return (
-          kind === 'run-created' ||
-          kind === 'run-snapshot' ||
-          kind === 'retest-created' ||
-          kind === 'retest-snapshot'
-        );
+        return kind === 'run-created' || kind === 'run-snapshot';
       };
       const listener = (_event: unknown, payload: unknown) => {
         if (isRunUpdate(payload)) callback(payload);

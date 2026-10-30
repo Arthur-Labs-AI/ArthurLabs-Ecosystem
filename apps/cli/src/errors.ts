@@ -67,13 +67,9 @@ function canonicalError(cause: unknown): CliError {
             ? 'PROJECT_NOT_FOUND'
             : cause.code === 'AGENT_STACK_NOT_FOUND' || cause.code === 'INVALID_TARGET'
               ? 'INVALID_ARGUMENT'
-              : cause.code === 'ISSUE_NOT_FOUND'
-                ? 'ISSUE_NOT_FOUND'
-                : cause.code === 'ISSUE_CONFLICT'
-                  ? 'ISSUE_CONFLICT'
-                  : cause.code === 'PROJECT_COPY_DRIFT'
-                    ? 'PROJECT_COPY_DRIFT'
-                    : 'RUN_EXECUTION_FAILED';
+              : cause.code === 'PROJECT_COPY_DRIFT'
+                ? 'PROJECT_COPY_DRIFT'
+                : 'RUN_EXECUTION_FAILED';
     return { code, message: bounded(cause.message), retryable: RETRYABLE.has(code) };
   }
   if (cause instanceof HarnessProtocolError) {

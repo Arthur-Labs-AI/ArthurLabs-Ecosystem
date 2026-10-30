@@ -1,6 +1,5 @@
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { summarizeVerificationAttempts, severityBreakdown } from '../../lib/verify-summary.js';
 import { StatusIcon, nodeStateClass } from '../StatusGlyph.js';
 import { dotClassForStatus } from '../ui/StatusPill.js';
 import { truncateMiddle } from '../../lib/agent-telemetry.js';
@@ -30,83 +29,11 @@ export function PipelineNode({ data }: NodeProps): React.JSX.Element {
           <StatusIcon status={status} size={12} />
         </span>
       </div>
-      {kind === 'merger' ? <MergerSummary payload={payload} /> : null}
-      {kind === 'verifier' ? <VerifierSummary payload={payload} /> : null}
-      {kind === 'issues' ? <IssuesSummary payload={payload} /> : null}
       {kind === 'target' ? <TargetSummary payload={payload} /> : null}
-      {kind === 'retest-assessment' ? <AssessmentSummary payload={payload} /> : null}
       {kind === 'project' || kind === 'revision' || kind === 'snapshot' ? (
         <SystemIdSummary payload={payload} kind={kind} />
       ) : null}
       <Handle type="source" position={Position.Bottom} />
-    </div>
-  );
-}
-
-function MergerSummary({ payload }: { payload: Record<string, unknown> }): React.JSX.Element {
-  const clusters = (payload['clusters'] as Array<{ id: string }> | undefined) ?? [];
-  const usable = payload['usableAgentCount'] as number | undefined;
-  const expected = payload['expectedAgentCount'] as number | undefined;
-  const unavailable = (payload['unavailableAgentStackIds'] as string[] | undefined) ?? [];
-  return (
-    <div className="node-sub" style={{ marginTop: 4 }}>
-      Merger · {clusters.length} cluster{clusters.length === 1 ? '' : 's'}
-      {usable !== undefined && expected !== undefined ? (
-        <div>
-          Agents usable {usable}/{expected}
-        </div>
-      ) : null}
-      {unavailable.length > 0 ? (
-        <div className="truncate" title={'Unavailable: ' + unavailable.join(', ')}>
-          Unavailable: {unavailable.join(', ')}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function VerifierSummary({ payload }: { payload: Record<string, unknown> }): React.JSX.Element {
-  const attempts = (payload['attempts'] as Array<{ outcome?: string }> | undefined) ?? [];
-  const counts = summarizeVerificationAttempts(attempts);
-  return (
-    <div className="node-sub" style={{ marginTop: 4 }} title="Verifier outcome breakdown">
-      Verifier · {counts.attempts} attempt{counts.attempts === 1 ? '' : 's'}
-      {counts.attempts > 0 ? (
-        <div>
-          Reproduced {counts.reproduced} · Partial {counts.partial} · Not repro{' '}
-          {counts.notReproducible} · Inconclusive {counts.inconclusive}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function IssuesSummary({ payload }: { payload: Record<string, unknown> }): React.JSX.Element {
-  const count = (payload['count'] as number | undefined) ?? 0;
-  const findings = (payload['findings'] as Array<{ severity?: string }> | undefined) ?? [];
-  if (count === 0) {
-    return (
-      <div className="node-sub" style={{ marginTop: 4 }}>
-        No issues ingested
-      </div>
-    );
-  }
-  const breakdown = severityBreakdown(findings);
-  return (
-    <div className="node-sub" style={{ marginTop: 4 }}>
-      {count + ' created'}
-      <div>
-        {breakdown.critical +
-          ' Critical · ' +
-          breakdown.high +
-          ' High · ' +
-          breakdown.medium +
-          ' Medium · ' +
-          breakdown.low +
-          ' Low · ' +
-          breakdown.info +
-          ' Info'}
-      </div>
     </div>
   );
 }
@@ -121,15 +48,6 @@ function TargetSummary({ payload }: { payload: Record<string, unknown> }): React
           {p}
         </div>
       ))}
-    </div>
-  );
-}
-
-function AssessmentSummary({ payload }: { payload: Record<string, unknown> }): React.JSX.Element {
-  const outcome = (payload['outcome'] as string | undefined) ?? 'pending';
-  return (
-    <div className="node-sub" style={{ marginTop: 4 }}>
-      {outcome.toUpperCase().replace(/_/g, ' ')}
     </div>
   );
 }

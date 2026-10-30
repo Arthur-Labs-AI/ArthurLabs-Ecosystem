@@ -70,7 +70,6 @@ describe('Phase 2.1 runtime integrity contracts', () => {
       status: 'agents_running',
       configuration: {
         agentStackIds: ['stack_muse_main'],
-        verificationLevel: 'strict',
         policy: { id: 'qa-standard', version: 1 },
       },
       createdAt: timestamp,

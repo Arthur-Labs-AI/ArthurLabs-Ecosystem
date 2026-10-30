@@ -162,15 +162,11 @@ async function boot(): Promise<void> {
   liveUpdates = new DesktopLiveUpdates(() => mainWindow, bootstrapped.service);
   const updates: DesktopLiveUpdates = liveUpdates;
   bootstrapped.runtime.onNotification((event, payload) => {
-    const typed = payload as { runId?: string; retestRunId?: string } | undefined;
+    const typed = payload as { runId?: string } | undefined;
     if (event === 'run.created' && typeof typed?.runId === 'string') {
       updates.notifyRunCreated(typed.runId);
     } else if (event === 'run.snapshot' && typeof typed?.runId === 'string') {
       updates.watchRun(typed.runId);
-    } else if (event === 'retest.created' && typeof typed?.retestRunId === 'string') {
-      updates.notifyRetestCreated(typed.retestRunId);
-    } else if (event === 'retest.snapshot' && typeof typed?.retestRunId === 'string') {
-      updates.watchRetest(typed.retestRunId);
     } else if (event === 'activeRuns.updated') {
       updates.refreshActiveRuns();
     }
@@ -208,8 +204,6 @@ async function boot(): Promise<void> {
         {
           maintenanceActive: () => maintenance?.active ?? false,
           onRunCreated: (runId, operationId) => updates.notifyRunCreated(runId, operationId),
-          onRetestCreated: (retestRunId, operationId) =>
-            updates.notifyRetestCreated(retestRunId, operationId),
           // Self-status: external clients may inspect broker liveness and
           // (non-secret) client names; the payload carries no credentials.
           cliStatus: () => cliServer?.status ?? { started: false },
@@ -234,8 +228,6 @@ async function boot(): Promise<void> {
     },
     redactErrorText,
     onRunCreated: (runId, operationId) => updates.notifyRunCreated(runId, operationId),
-    onRetestCreated: (retestRunId, operationId) =>
-      updates.notifyRetestCreated(retestRunId, operationId),
     cliStatus: () => broker.status,
     cliSetEnabled: async (enabled: boolean) => {
       if (enabled) return broker.start();
@@ -272,11 +264,6 @@ async function boot(): Promise<void> {
   ipcMain.handle('sentry:unwatch-run', (_event, payload: unknown) => {
     const runId = (payload as { runId?: unknown }).runId;
     if (typeof runId === 'string') liveUpdates?.unwatchRun(runId);
-    return { ok: true as const, result: null };
-  });
-  ipcMain.handle('sentry:watch-retest', (_event, payload: unknown) => {
-    const retestRunId = (payload as { retestRunId?: unknown }).retestRunId;
-    if (typeof retestRunId === 'string') liveUpdates?.watchRetest(retestRunId);
     return { ok: true as const, result: null };
   });
 

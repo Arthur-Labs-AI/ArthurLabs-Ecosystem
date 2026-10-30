@@ -16,11 +16,6 @@ export function RunSummaryPanel({
   const agentRuns = (snapshot['agentRuns'] as Array<Record<string, unknown>>) ?? [];
   const findings = (snapshot['findings'] as unknown[]) ?? [];
   const evidence = (snapshot['evidence'] as unknown[]) ?? [];
-  // Historical merger/verifier/issues payloads may still be present on old
-  // runs; the active product reports independent per-agent results instead.
-  void (snapshot['mergeResults'] as unknown);
-  void (snapshot['verificationRuns'] as unknown);
-  void (snapshot['issues'] as unknown);
   const projectName =
     project !== undefined
       ? String(project['name'] ?? run['projectId'] ?? '')

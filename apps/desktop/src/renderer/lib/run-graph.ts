@@ -7,18 +7,7 @@
 import type { AgentNodeView, AgentRunLike, EvidenceLike, FindingLike, RunLike } from './types.js';
 import { projectAgentTelemetry, AGENT_DISPLAY_NAMES } from './agent-telemetry.js';
 
-export type RunNodeKind =
-  | 'project'
-  | 'revision'
-  | 'snapshot'
-  | 'target'
-  | 'agent'
-  | 'merger'
-  | 'verifier'
-  | 'issues'
-  | 'retest-source'
-  | 'retest-spec'
-  | 'retest-assessment';
+export type RunNodeKind = 'project' | 'revision' | 'snapshot' | 'target' | 'agent';
 
 export interface RunGraphNode {
   readonly id: string;
@@ -38,8 +27,6 @@ export interface RunGraphEdge {
 
 export interface RunWorkspaceInput {
   readonly run: RunLike;
-  /** True when an idempotent issue-ingest marker was observed (honest zero-issue ingest). */
-  readonly ingestRan?: boolean;
   readonly agentRuns: readonly AgentRunLike[];
   readonly findings: readonly FindingLike[];
   readonly evidence: readonly EvidenceLike[];
@@ -53,65 +40,6 @@ export interface RunWorkspaceInput {
     >
   >;
   readonly targetSpec?: { includePaths?: readonly string[]; userInstructions?: string } | undefined;
-  readonly mergeResults?:
-    | readonly {
-        id: string;
-        mergerVersion?: number | undefined;
-        normalizerVersion?: number | undefined;
-        usableAgentRunIds?: readonly string[] | undefined;
-        unavailableAgentStackIds?: readonly string[] | undefined;
-        expectedAgentStackIds?: readonly string[] | undefined;
-        clusters?:
-          | readonly {
-              id: string;
-              agreementState?: string | undefined;
-              supportingAgentCount?: number | undefined;
-              usableAgentCount?: number | undefined;
-              expectedAgentCount?: number | undefined;
-              unavailableAgentStackIds?: readonly string[] | undefined;
-              sourceAgentStackIds?: readonly string[] | undefined;
-              sourceFindingIds?: readonly string[] | undefined;
-              representativeFindingId?: string | undefined;
-              severityValues?: readonly string[] | undefined;
-              hasReproducedEvidence?: boolean | undefined;
-            }[]
-          | undefined;
-      }[]
-    | undefined;
-  readonly verificationRuns?:
-    | readonly {
-        id: string;
-        status: string;
-        verifierVersion?: number | undefined;
-        recipeVersion?: number | undefined;
-        signatureVersion?: number | undefined;
-        attempts?:
-          | readonly {
-              id?: string | undefined;
-              findingClusterId?: string | undefined;
-              status?: string | undefined;
-              outcome?: string | undefined;
-              matchStrength?: string | undefined;
-              steps?:
-                | readonly {
-                    id?: string | undefined;
-                    type?: string | undefined;
-                    status?: string | undefined;
-                    outcome?: string | undefined;
-                    matchStrength?: string | undefined;
-                  }[]
-                | undefined;
-              observations?: readonly unknown[] | undefined;
-              assertions?:
-                readonly { subject?: string | undefined; state?: string | undefined }[] | undefined;
-            }[]
-          | undefined;
-      }[]
-    | undefined;
-  readonly findingsById?:
-    | Readonly<Record<string, { title?: string | undefined; severity?: string | undefined }>>
-    | undefined;
-  readonly issueCount?: number;
   readonly agentDisplayNames?: Readonly<Record<string, string>>;
 }
 
@@ -242,82 +170,5 @@ export function buildRunGraph(
     });
   });
 
-  // Product direction change: a QA run ends at the independent agent
-  // fan-out. Merger / Verifier / Issues nodes are retired from the active
-  // graph — new runs never emit them. Historical mergeResults /
-  // verificationRuns / issueCount inputs stay accepted (persistence and
-  // export compatibility) but are intentionally ignored here.
-  void input.mergeResults;
-  void input.verificationRuns;
-  void input.findingsById;
-  void input.issueCount;
-  void (input as { ingestRan?: boolean }).ingestRan;
   return { nodes, edges, agents };
-}
-
-export interface RetestWorkspaceInput extends RunWorkspaceInput {
-  readonly sourceRevisionId: string;
-  readonly targetRevisionId: string;
-  /** Frozen backend field is `result`; `outcome` accepted as legacy alias. */
-  readonly assessment?: { result?: string; outcome?: string };
-}
-
-export function buildRetestGraph(
-  input: RetestWorkspaceInput,
-  now?: number,
-): { nodes: RunGraphNode[]; edges: RunGraphEdge[]; agents: AgentNodeView[] } {
-  const base = buildRunGraph(input, now);
-  const sourceNode: RunGraphNode = {
-    id: 'retest-source',
-    kind: 'retest-source',
-    label: 'Revision A (source)',
-    status: 'completed',
-    position: { x: 40, y: 0 },
-    data: { revisionId: input.sourceRevisionId },
-  };
-  const specNode: RunGraphNode = {
-    id: 'retest-spec',
-    kind: 'retest-spec',
-    label: 'RetestSpec v2',
-    status: 'completed',
-    position: { x: 40, y: 110 },
-    data: { targetRevisionId: input.targetRevisionId },
-  };
-  const assessmentResult = input.assessment?.result ?? input.assessment?.outcome;
-  const assessmentNode: RunGraphNode = {
-    id: 'retest-assessment',
-    kind: 'retest-assessment',
-    label: 'Retest Assessment',
-    status: assessmentResult ?? input.run.status,
-    // Assessment is a separate row after the agent fan-out, including targeted runs.
-    position: { x: 340, y: Math.max(0, ...base.nodes.map((node) => node.position.y)) + 240 },
-    data: { result: assessmentResult, outcome: assessmentResult },
-  };
-  return {
-    agents: base.agents,
-    nodes: [sourceNode, specNode, ...base.nodes, assessmentNode],
-    edges: [
-      {
-        id: 'e-retest-source-spec',
-        source: 'retest-source',
-        target: 'retest-spec',
-        state: 'completed',
-      },
-      {
-        id: 'e-retest-spec-revision',
-        source: 'retest-spec',
-        target: 'revision',
-        state: 'completed',
-      },
-      ...base.edges,
-      {
-        // Merger / Issues nodes are retired: the historical assessment hangs
-        // off the snapshot instead of a dangling 'issues' source.
-        id: 'e-snapshot-assessment',
-        source: 'snapshot',
-        target: 'retest-assessment',
-        state: edgeStateFor(input.run.status),
-      },
-    ],
-  };
 }

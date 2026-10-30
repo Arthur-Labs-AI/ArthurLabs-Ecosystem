@@ -93,31 +93,20 @@ completion or create a second run.
 
 Runtime leases/heartbeats establish ownership. Boot recovery interrupts work
 whose owner is stale, preserves findings/evidence and releases abandoned locks.
-Historical verification and retest recovery remains necessary while those rows
-exist. Notifications refresh Desktop cached snapshots; polling/re-reading snapshots
+Notifications refresh Desktop cached snapshots; polling/re-reading snapshots
 reconciles dropped hints and reconnects. Persisted status, typed failure codes,
 agent events, activities, usage and exports are the observable record.
 
-## Historical compatibility, migrations and rollback
+## Removal of merge, verification, issue and retest
 
-`runs.get` still returns merge results/clusters, verification runs/attempts/
-steps/observations/assertions and issue occurrences. JSON/log exports retain
-their historical sections. Historical simulation and Muse identities remain
-readable. The active canvas shows recorded agent selection (or recorded
-AgentRuns when configuration is absent), with no invented pipeline nodes.
-Retained inspectors display saved compatibility details without offering retired
-commands. Historical architecture documents remain records of earlier phases.
-
-Existing issues retain merge/cluster/verification lineage. Retests still use
-historical source steps and invoke merge/verification services internally after
-their independent target QA to compute the existing assessment. This limited
-compatibility path remains supported; it is not a new automatic stage for Full
-or Targeted QA and must not be removed or redesigned during Phase 1.
-
-Keep merger/verifier packages, payload schemas, tables, migrations and recovery
-paths. Phase 1 has no migration or contract version change; rollback is a code
-revert, with no data conversion. Any later retirement needs its own dependency
-assessment, historical-data tests and owner-approved migration plan.
+The merger and verifier packages, the merge/verification/issue/retest services,
+their RPCs, CLI commands and Desktop pages were removed (see
+[ADR 0015](../adr/0015-remove-merge-verification-issue-retest.md)). Full and
+Targeted QA end at the independent agent fan-out and the report. Persistence
+migration 7 drops the merge, cluster, verification, issue and retest tables and
+discards legacy retest runs; ordinary Full/Targeted runs, findings, evidence
+and exports are kept. The systemd sandbox that workspace preparation uses now
+lives in `@qa/run-engine`.
 
 ## Test seams and security
 
@@ -137,8 +126,5 @@ Linux runtime and sandbox tests remain required for Windows through WSL2.
 
 ## Retired product flows
 
-The current Desktop/runtime RPC surface does not expose standalone merge,
-verify or issue-ingest commands. Do not restore Merger → Verifier → Issue
-Ingestion orchestration, compulsory clustering/deduplication, or confidence
-derived from agent agreement. Compatibility code is retained because current
-data and existing retests depend on it, not as a promised future product stage.
+Do not restore Merger → Verifier → Issue Ingestion orchestration, compulsory
+clustering/deduplication, or confidence derived from agent agreement.

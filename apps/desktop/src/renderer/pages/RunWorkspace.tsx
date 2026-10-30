@@ -207,8 +207,6 @@ export function RunWorkspace(): React.JSX.Element {
           Record<string, unknown> & { type: string; agentRunId: string; timestamp: string }
         >;
         targetSpec?: { includePaths?: string[]; userInstructions?: string };
-        // Historical merger/verifier/issues payloads may still arrive from
-        // older runs via runs:get; the active product ignores them.
       }
     | undefined;
 

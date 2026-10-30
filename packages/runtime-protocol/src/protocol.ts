@@ -115,13 +115,6 @@ export const RUNTIME_METHODS = [
   'runs.cancel',
   'runs.export',
   'runs.exportContent',
-  'issues.list',
-  'issues.get',
-  'issues.history',
-  'retests.list',
-  'retests.start',
-  'retests.get',
-  'retests.cancel',
   'system.activeRuns',
   'system.info',
   'production.readiness',
@@ -132,8 +125,6 @@ export type RuntimeMethod = (typeof RUNTIME_METHODS)[number];
 export const RUNTIME_NOTIFICATIONS = [
   'run.created',
   'run.snapshot',
-  'retest.created',
-  'retest.snapshot',
   'activeRuns.updated',
   'runtime.status',
 ] as const;

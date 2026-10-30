@@ -4,22 +4,11 @@ import { join } from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { RuntimeInstanceLease, SentryDatabase, SentryRepository } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
-import {
-  createFakeHarnessRegistry,
-  ingestMergeIssues,
-  mergeRun,
-  retestIssue,
-  RunCoordinator,
-  type RunOptions,
-} from '@qa/run-engine';
-import { createQARunId, createRetestRunId } from '@qa/shared';
-import { RetestRunSchema, type RetestRun } from '@qa/schemas';
+import { INITIAL_AGENT_STACKS } from '@qa/domain';
+import { FakeHarnessAdapter, HarnessAdapterRegistry } from '@qa/harness-protocol';
+import { createFakeHarnessRegistry, RunCoordinator, type RunOptions } from '@qa/run-engine';
+import { createQARunId } from '@qa/shared';
 import { SentryRuntimeHost } from '../src/runtime.js';
-
-vi.mock('@qa/run-engine', async (original) => {
-  const actual = await original<typeof import('@qa/run-engine')>();
-  return { ...actual, retestIssue: vi.fn(actual.retestIssue) };
-});
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -57,8 +46,6 @@ async function fixture() {
     createFakeHarnessRegistry('success'),
   );
   const saved = await coordinator.run(added.project.id, { executionKind: 'simulation' });
-  const { result: merge } = mergeRun(repository, saved.run.id);
-  const issueId = ingestMergeIssues(repository, merge.id).issues[0]!.issueId;
   const notify = vi.fn();
   const host = new SentryRuntimeHost(dataRoot, notify);
   cleanups.push(async () => {
@@ -67,23 +54,38 @@ async function fixture() {
     database.close();
     await rm(root, { recursive: true, force: true });
   });
-  return { host, repository, saved, issueId, merge, lease, projects, source, coordinator, notify };
+  return { host, repository, saved, lease, projects, source, coordinator, notify, dataRoot };
 }
 
 it('preserves a real project-lock rejection when the accepted run persists before detection wakes', async () => {
   const f = await fixture();
   const original = RunCoordinator.prototype.run;
-  const frozen = deferred<void>();
+  const started = deferred<void>();
   const release = deferred<void>();
   const workflows: Array<ReturnType<RunCoordinator['run']>> = [];
-  vi.spyOn(RunCoordinator.prototype, 'run').mockImplementation((id, options) => {
-    const workflow = original.call(f.coordinator, id, {
-      ...options,
-      onSnapshotFrozen: async () => {
-        frozen.resolve();
-        await release.promise;
+  // Hold the accepted run open inside its agents so the project stays locked.
+  class GatedAdapter extends FakeHarnessAdapter {
+    override async *run(request: Parameters<FakeHarnessAdapter['run']>[0]) {
+      started.resolve();
+      await release.promise;
+      yield* super.run(request);
+    }
+  }
+  const gated = new HarnessAdapterRegistry();
+  for (const stack of INITIAL_AGENT_STACKS) {
+    gated.register({
+      stack,
+      runtimeIdentity: {
+        modelId: stack.model.modelId,
+        adapterId: 'gated',
+        adapterVersion: '0.1.0',
       },
+      createAdapter: () => new GatedAdapter(),
     });
+  }
+  const gatedCoordinator = new RunCoordinator(f.dataRoot, f.repository, f.lease, gated);
+  vi.spyOn(RunCoordinator.prototype, 'run').mockImplementation((id, options) => {
+    const workflow = original.call(gatedCoordinator, id, options);
     workflows.push(workflow);
     return workflow;
   });
@@ -95,7 +97,7 @@ it('preserves a real project-lock rejection when the accepted run persists befor
     (error: unknown) => ({ error }),
   );
   try {
-    await frozen.promise;
+    await started.promise;
     await vi.advanceTimersByTimeAsync(100);
     const response = await accepted;
     expect(response.runId).not.toBe(f.saved.run.id);
@@ -109,32 +111,18 @@ it('preserves a real project-lock rejection when the accepted run persists befor
   }
 });
 
-it.each(['run', 'retest'] as const)('never returns an unpersisted %s identity', async (kind) => {
+it('never returns an unpersisted run identity', async () => {
   const f = await fixture();
   const workflow = deferred<never>();
-  if (kind === 'run') {
-    vi.spyOn(RunCoordinator.prototype, 'run').mockImplementation((_id, options) => {
-      options.onRunCreated?.({ ...f.saved.run, id: createQARunId() });
-      return workflow.promise;
-    });
-  } else {
-    vi.mocked(retestIssue).mockImplementationOnce((_deps, _id, options) => {
-      options?.onRetestCreated?.({ id: createRetestRunId() } as RetestRun);
-      return workflow.promise;
-    });
-  }
+  vi.spyOn(RunCoordinator.prototype, 'run').mockImplementation((_id, options) => {
+    options.onRunCreated?.({ ...f.saved.run, id: createQARunId() });
+    return workflow.promise;
+  });
   try {
-    const starting =
-      kind === 'run'
-        ? f.host.startRun(f.saved.run.projectId, { mode: 'full' })
-        : f.host.startRetest(f.issueId, {});
-    await expect(starting).rejects.toMatchObject({
-      code: kind === 'run' ? 'RUN_NOT_FOUND' : 'RETEST_NOT_FOUND',
+    await expect(f.host.startRun(f.saved.run.projectId, { mode: 'full' })).rejects.toMatchObject({
+      code: 'RUN_NOT_FOUND',
     });
-    expect(f.notify).not.toHaveBeenCalledWith(
-      kind === 'run' ? 'run.created' : 'retest.created',
-      expect.anything(),
-    );
+    expect(f.notify).not.toHaveBeenCalledWith('run.created', expect.anything());
   } finally {
     workflow.reject(new Error('fixture workflow cleanup'));
     await workflow.promise.catch(() => undefined);
@@ -202,110 +190,3 @@ it('never associates a conflicting request with the accepted request row', async
     await Promise.allSettled([first, second]);
   }
 });
-
-it('returns a fast persisted retest row without waiting for the retest to finish', async () => {
-  const f = await fixture();
-  await writeFile(join(f.source, 'README.md'), '# Updated identity fixture\n');
-  const target = await f.projects.updateProjectCopy(f.saved.run.projectId);
-  const row = RetestRunSchema.parse({
-    schemaVersion: 1,
-    id: createRetestRunId(),
-    retestVersion: 1,
-    projectId: f.saved.run.projectId,
-    issueId: f.issueId,
-    sourceProjectRevisionId: f.repository.getSnapshot(f.saved.run.snapshotId)!.projectRevisionId,
-    targetProjectRevisionId: target.revision.id,
-    sourceSnapshotId: f.saved.run.snapshotId,
-    sourceQaRunId: f.saved.run.id,
-    sourceMergeResultId: f.merge.id,
-    sourceFindingClusterId: f.merge.clusters[0]!.id,
-    agentStackIds: ['stack_deepseek_main'],
-    status: 'created',
-    runtimeInstanceId: f.lease.instanceId,
-    createdAt: f.saved.run.createdAt,
-  });
-  const workflow = deferred<Awaited<ReturnType<typeof retestIssue>>>();
-  vi.mocked(retestIssue).mockImplementationOnce((_deps, _id, options) => {
-    f.repository.saveRetestRun(row);
-    options?.onRetestCreated?.(row);
-    return workflow.promise;
-  });
-  vi.useFakeTimers();
-  let response: unknown;
-  const starting = f.host.startRetest(f.issueId, {}).then((value) => {
-    response = value;
-    return value;
-  });
-  try {
-    await vi.advanceTimersByTimeAsync(50);
-    expect(response).toMatchObject({ retestRunId: row.id });
-    expect(f.repository.getRetestRun(row.id)).toEqual(row);
-  } finally {
-    workflow.resolve({
-      retestRun: row,
-      assessment: undefined,
-      spec: undefined,
-      targetRun: undefined,
-    });
-    await vi.advanceTimersByTimeAsync(50);
-    await starting;
-  }
-});
-
-it('keeps concurrent real retest request identities distinct before child settlement', async () => {
-  const f = await fixture();
-  await writeFile(join(f.source, 'README.md'), '# Retest identity revision B\n');
-  await f.projects.updateProjectCopy(f.saved.run.projectId);
-  const actual = await vi.importActual<typeof import('@qa/run-engine')>('@qa/run-engine');
-  const originalIntegrity = ProjectManager.prototype.assertWorkingCopyIntegrity;
-  const barrier = deferred<void>();
-  let checks = 0;
-  vi.spyOn(ProjectManager.prototype, 'assertWorkingCopyIntegrity').mockImplementation(
-    async function (id) {
-      const revision = await originalIntegrity.call(this, id);
-      checks += 1;
-      if (checks === 2) barrier.resolve();
-      await barrier.promise;
-      return revision;
-    },
-  );
-  const release = deferred<void>();
-  const bothCreated = deferred<void>();
-  const rows: RetestRun[] = [];
-  const workflows: Array<ReturnType<typeof retestIssue>> = [];
-  vi.mocked(retestIssue).mockImplementation((deps, id, options) => {
-    const workflow = actual.retestIssue(
-      { ...deps, registry: createFakeHarnessRegistry('success') },
-      id,
-      {
-        ...options,
-        onRetestCreated: (row) => {
-          rows.push(row);
-          options?.onRetestCreated?.(row);
-          if (rows.length === 2) bothCreated.resolve();
-        },
-        onChildSnapshotFrozen: async () => {
-          await release.promise;
-        },
-      },
-    );
-    workflows.push(workflow);
-    return workflow;
-  });
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
-  const first = f.host.startRetest(f.issueId, {});
-  const second = f.host.startRetest(f.issueId, {});
-  try {
-    await bothCreated.promise;
-    await vi.advanceTimersByTimeAsync(50);
-    const responses = await Promise.all([first, second]);
-    expect(new Set(responses.map((response) => response.retestRunId))).toEqual(
-      new Set(rows.map((row) => row.id)),
-    );
-    expect(new Set(responses.map((response) => response.operationId)).size).toBe(2);
-  } finally {
-    release.resolve();
-    await vi.advanceTimersByTimeAsync(100);
-    await Promise.allSettled([...workflows, first, second]);
-  }
-}, 15000);
