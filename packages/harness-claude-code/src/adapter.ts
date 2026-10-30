@@ -13,8 +13,8 @@ import {
 } from '@qa/shared';
 import {
   limitPhase,
+  investigateChecks,
   reportAttemptDeadline,
-  investigationDeadline,
   PhaseDeadlineReached,
   ObservedToolNotes,
   ContextBudget,
@@ -23,12 +23,8 @@ import {
   buildInvestigationCompactionContext,
   buildRecoveryReportContext,
   buildQaPlanningPrompt,
-  buildQaCheckInvestigationPrompt,
   applyBlockedChecks,
   applyUnprovenChecks,
-  turnProducedProof,
-  turnRepeatedRedProof,
-  closingTriagesFailures,
   buildQaReportPrompt,
   boundedValidation,
   coverageErrors,
@@ -1496,7 +1492,6 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       this.client = await this.clientFactory(spec);
       session = await this.client.startSession();
       let recoveryContext = '';
-      let compactionContext = '';
       const contextBudget = new ContextBudget(this.options.contextWindowTokens ?? 200_000);
       const freshClient = async () => {
         await this.dispose();
@@ -1535,24 +1530,6 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       const startReportContext = async () => {
         await freshClient();
         recoveryContext = buildRecoveryReportContext(request, this.toolNotes.render()) + '\n';
-        contextBudget.reset();
-      };
-      /** Host compaction: discard the bloated session; only host-observed
-       *  facts (frozen plan, operation receipt, bounded tool notes) cross
-       *  into the fresh session as the next turn's seed. */
-      const startInvestigationContext = async (
-        completedChecks: number,
-        plan: { plannedChecks: readonly string[] },
-      ) => {
-        await freshClient();
-        compactionContext =
-          buildInvestigationCompactionContext(
-            request,
-            plan,
-            this.observedOperations,
-            this.toolNotes.render(),
-            completedChecks,
-          ) + '\n';
         contextBudget.reset();
       };
       markGlmRuntimeVerified();
@@ -1654,125 +1631,43 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // DeepSeek adapter). A dead turn blocks only its remaining checks.
       const depth = depthPolicy(request.task.context);
       let reportingIssued = 0;
-      let investigationUsage: AgentUsage | undefined;
-      let investigationTurns = 0;
-      const blockedChecks: string[] = [];
-      const unprovenChecks: string[] = [];
-      const redRetryChecks: string[] = [];
-      {
-        let currentCheck = 0;
-        let interrupted = false;
-        let contextRetriedForCheck = false;
-        for (; currentCheck < planResult.plannedChecks.length; currentCheck += 1) {
-          yield event(request.agentRunId, {
-            type: 'agent.status',
-            status: 'investigating',
-            message:
-              'Claude Code is investigating check ' +
-              (currentCheck + 1) +
-              '/' +
-              planResult.plannedChecks.length +
-              ': ' +
-              (planResult.plannedChecks[currentCheck] ?? '').slice(0, 120),
-          });
-          const ledgerBeforeTurn = new Set(this.observedOperations.keys());
-          const checkPrompt = buildQaCheckInvestigationPrompt(
-            planResult,
-            currentCheck,
+      const investigation = yield* investigateChecks<CollectedTurn>({
+        agentLabel: 'Claude Code',
+        agentRunId: request.agentRunId,
+        plan: planResult,
+        depth,
+        operations: this.observedOperations,
+        contextBudget,
+        event: (body) => event(request.agentRunId, body),
+        streamTurn: (turnText) =>
+          this.streamPhaseTurn(session!, turnText, request.agentRunId, 'investigation'),
+        stop: () => this.dispose(),
+        freshSession: freshClient,
+        compactionSeed: (completedChecks) =>
+          buildInvestigationCompactionContext(
+            request,
+            planResult!,
             this.observedOperations,
-          );
-          // Prevention: rotate BEFORE the provider rejects a turn for
-          // context overflow (host compaction; see DeepSeek adapter).
-          if (
-            currentCheck > 0 &&
-            compactionContext === '' &&
-            contextBudget.shouldRotate(estimatePromptTokens(checkPrompt))
-          ) {
-            await startInvestigationContext(currentCheck, planResult);
-            yield event(request.agentRunId, {
-              type: 'warning',
-              code: 'QA_CONTEXT_COMPACTED',
-              message:
-                'Context budget reached during investigation; continuing in a fresh session seeded with host-observed facts only.',
-            });
-          }
-          const turnText = compactionContext + checkPrompt;
-          compactionContext = '';
-          const work = this.streamPhaseTurn(session, turnText, request.agentRunId, 'investigation');
-          const live =
-            depth === undefined
-              ? work
-              : limitPhase(work, investigationDeadline(depth.deadlineAt), () => this.dispose());
-          try {
-            let step = await live.next();
-            while (step.done !== true) {
-              yield step.value;
-              step = await live.next();
-            }
-            if (!turnProducedProof(ledgerBeforeTurn, this.observedOperations))
-              unprovenChecks.push(planResult.plannedChecks[currentCheck] ?? '');
-            if (
-              turnRepeatedRedProof(ledgerBeforeTurn, this.observedOperations) &&
-              !closingTriagesFailures(step.value.text)
-            )
-              redRetryChecks.push(planResult.plannedChecks[currentCheck] ?? '');
-            investigationTurns += 1;
-            contextBudget.observeTurn(step.value.usage);
-            contextRetriedForCheck = false;
-            investigationUsage = sumUsage(investigationUsage, step.value.usage ?? {});
-          } catch (cause) {
-            for (const emitted of partialTurnEvents(cause)) yield emitted;
-            // Reactive compaction: one fresh-session retry of THIS check.
-            if (isContextWindowExceeded(cause) && !contextRetriedForCheck && !this.cancelled) {
-              contextRetriedForCheck = true;
-              await startInvestigationContext(currentCheck, planResult);
-              yield event(request.agentRunId, {
-                type: 'warning',
-                code: 'QA_CONTEXT_COMPACTED',
-                message:
-                  'Provider reported context overflow during investigation; retrying this check once in a fresh session seeded with host-observed facts only.',
-              });
-              currentCheck -= 1;
-              continue;
-            }
-            // A spawn failure (E2BIG, EAGAIN, ...) after banked operations,
-            // or a sandbox that died mid-run after commands already executed
-            // (a cold-start sandbox failure has no executed command and
-            // still fails fast), is infrastructure loss, not a verdict:
-            // block the remaining checks and report the banked facts from a
-            // fresh context instead of failing the run and discarding
-            // finished work.
-            const spawnFailureWithBankedWork =
-              (this.observedOperations.size > 0 && isSpawnFailure(cause)) ||
-              (isMidRunSandboxFailure(cause) && hasExecutedCommand(this.observedOperations));
-            if (
-              (depth === undefined &&
-                !isContextWindowExceeded(cause) &&
-                !spawnFailureWithBankedWork) ||
-              !(
-                cause instanceof PhaseDeadlineReached ||
-                cause instanceof ClaudeTurnTimeoutError ||
-                isContextWindowExceeded(cause) ||
-                spawnFailureWithBankedWork
-              ) ||
-              this.cancelled
-            )
-              throw cause;
-            blockedChecks.push(...planResult.plannedChecks.slice(currentCheck));
-            interrupted = true;
-            break;
-          }
-        }
-        if (interrupted) {
-          await startReportContext();
-          yield event(request.agentRunId, {
-            type: 'warning',
-            code: 'QA_INVESTIGATION_INCOMPLETE',
-            message:
-              'Investigation turn ended early; remaining checks are inconclusive. Reporting only this agent’s observed facts in a fresh report-only context; analysis is partial.',
-          });
-        }
-      }
+            this.toolNotes.render(),
+            completedChecks,
+          ) + '\n',
+        startReportContext,
+        cancelled: () => this.cancelled,
+        isTurnTimeout: (cause) => cause instanceof ClaudeTurnTimeoutError,
+        // A spawn failure (E2BIG, EAGAIN, ...) after banked operations, or a
+        // sandbox that died mid-run after commands already executed (a
+        // cold-start sandbox failure has no executed command and still
+        // fails fast), is infrastructure loss, not a verdict: block the
+        // remaining checks and report the banked facts from a fresh context
+        // instead of failing the run and discarding finished work.
+        isSalvageable: (cause) =>
+          (this.observedOperations.size > 0 && isSpawnFailure(cause)) ||
+          (isMidRunSandboxFailure(cause) && hasExecutedCommand(this.observedOperations)),
+        partialEvents: (cause) => partialTurnEvents(cause),
+      });
+      const { blockedChecks, unprovenChecks, redRetryChecks } = investigation;
+      const investigationUsage = investigation.usage;
+      const investigationTurns = investigation.steps;
 
       // STAGE 3 — reporting against the frozen ledger. Strict whole-
       // document JSON only. Provider structured output (--json-schema)

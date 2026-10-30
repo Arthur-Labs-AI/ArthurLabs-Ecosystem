@@ -107,6 +107,21 @@ function planTurn() {
 }
 function investigationTurn() {
   return [
+    // Executed probe: read-only investigation turns are nudged by the host.
+    evt('assistant', {
+      message: {
+        content: [
+          { type: 'tool_use', id: 'tu-probe', name: 'Bash', input: { command: 'node probe.mjs' } },
+        ],
+      },
+    }),
+    evt('user', {
+      message: {
+        content: [
+          { type: 'tool_result', tool_use_id: 'tu-probe', content: [{ type: 'text', text: 'ok' }] },
+        ],
+      },
+    }),
     evt('assistant', { message: { content: [{ type: 'text', text: 'Investigation complete.' }] } }),
     evt('result', { is_error: false }),
   ];

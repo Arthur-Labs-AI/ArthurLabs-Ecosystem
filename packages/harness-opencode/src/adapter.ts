@@ -12,7 +12,6 @@ import {
   limitPhase,
   reportAttemptDeadline,
   promisePhase,
-  investigationDeadline,
   PhaseDeadlineReached,
   ObservedToolNotes,
   ContextBudget,
@@ -21,23 +20,11 @@ import {
   buildInvestigationCompactionContext,
   buildRecoveryReportContext,
   streamObservedWork,
-  watchTurn,
-  type WatchedTurn,
-  turnWatchdogStop,
-  failedCommandsSince,
-  MAX_APPROACH_ATTEMPTS,
-  type TurnStop,
-  buildAlternativeApproachPrompt,
+  investigateChecks,
   buildQaPlanningPrompt,
-  buildQaCheckInvestigationPrompt,
-  buildExecutionNudgePrompt,
   applyBlockedChecks,
   applyUnprovenChecks,
   composeHostFallbackReport,
-  turnProducedProof,
-  turnExecutedReproduction,
-  turnRepeatedRedProof,
-  closingTriagesFailures,
   buildQaReportPrompt,
   boundedValidation,
   coverageErrors,
@@ -255,9 +242,6 @@ interface CollectedTurn {
   readonly usage?: AgentUsage | undefined;
   readonly steps: number;
 }
-
-/** Placeholder for a turn the host stopped; its text and usage were never collected. */
-const STOPPED_TURN: CollectedTurn = { text: '', observations: [], events: [], steps: 0 };
 
 /** Owned per-AgentRun execution state (Sentry IDs and OpenCode IDs tracked separately). */
 interface OpenCodeRunEntry {
@@ -988,7 +972,6 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       entry.client = client;
       entry.session = await client.startSession();
       let recoveryContext = '';
-      let compactionContext = '';
       const contextBudget = new ContextBudget(this.options.contextWindowTokens ?? 200_000);
       const freshClient = async () => {
         await entry.client?.close();
@@ -1020,24 +1003,6 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       const startReportContext = async () => {
         await freshClient();
         recoveryContext = buildRecoveryReportContext(request, this.toolNotes.render()) + '\n';
-        contextBudget.reset();
-      };
-      /** Host compaction: discard the bloated session; only host-observed
-       *  facts (frozen plan, operation receipt, bounded tool notes) cross
-       *  into the fresh session as the next turn's seed. */
-      const startInvestigationContext = async (
-        completedChecks: number,
-        plan: { plannedChecks: readonly string[] },
-      ) => {
-        await freshClient();
-        compactionContext =
-          buildInvestigationCompactionContext(
-            request,
-            plan,
-            this.observedOperations,
-            this.toolNotes.render(),
-            completedChecks,
-          ) + '\n';
         contextBudget.reset();
       };
       markOpenCodeRuntimeVerified();
@@ -1109,252 +1074,45 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         status: 'investigating',
         message: 'OpenCode is executing the frozen plan.',
       });
-      // Investigation: one host-driven turn per frozen check (see
-      // DeepSeek adapter). A dead turn blocks only its remaining checks.
+      // Investigation: one host-driven turn per frozen check, shared by all
+      // adapters (see investigateChecks). A dead turn blocks only its
+      // remaining checks.
       const depth = depthPolicy(request.task.context);
-      let investigationUsage: AgentUsage | undefined;
-      let investigationSteps = 0;
-      const blockedChecks: string[] = [];
-      const unprovenChecks: string[] = [];
-      const redRetryChecks: string[] = [];
-      const checkConclusions: Array<string | undefined> = [];
-      let currentCheck = 0;
       const stopClient = async (): Promise<void> => {
         await entry.client?.close();
       };
-      /** One owned investigation turn, stopped early on a behavioural signal. */
-      const runWatchedTurn = (
-        turnText: string,
-        beforeKeys: ReadonlySet<string>,
-      ): AsyncGenerator<HarnessEvent, WatchedTurn<CollectedTurn, TurnStop>> => {
-        const watched = watchTurn(
+      const investigation = yield* investigateChecks<CollectedTurn>({
+        agentLabel: 'OpenCode',
+        agentRunId: request.agentRunId,
+        plan: planResult,
+        depth,
+        operations: this.observedOperations,
+        contextBudget,
+        event: (body) => event(request.agentRunId, body),
+        streamTurn: (turnText) =>
           streamObservedWork(
             (emit) =>
               this.runTurn(entry, turnText, request.agentRunId, 'investigation', false, emit),
             stopClient,
           ),
-          () => turnWatchdogStop(beforeKeys, this.observedOperations),
-          stopClient,
-        );
-        return depth === undefined
-          ? watched
-          : limitPhase(watched, investigationDeadline(depth.deadlineAt), stopClient);
-      };
-      try {
-        for (; currentCheck < planResult.plannedChecks.length; currentCheck += 1) {
-          yield event(request.agentRunId, {
-            type: 'agent.status',
-            status: 'investigating',
-            message:
-              'OpenCode is investigating check ' +
-              (currentCheck + 1) +
-              '/' +
-              planResult.plannedChecks.length +
-              ': ' +
-              (planResult.plannedChecks[currentCheck] ?? '').slice(0, 120),
-          });
-          const ledgerBeforeTurn = new Set(this.observedOperations.keys());
-          const checkPrompt = buildQaCheckInvestigationPrompt(
-            planResult,
-            currentCheck,
+        stop: stopClient,
+        freshSession: freshClient,
+        compactionSeed: (completedChecks) =>
+          buildInvestigationCompactionContext(
+            request,
+            planResult!,
             this.observedOperations,
-          );
-          // Prevention: rotate BEFORE the provider rejects a turn for
-          // context overflow (host compaction; see DeepSeek adapter).
-          if (
-            currentCheck > 0 &&
-            compactionContext === '' &&
-            contextBudget.shouldRotate(estimatePromptTokens(checkPrompt))
-          ) {
-            await startInvestigationContext(currentCheck, planResult);
-            yield event(request.agentRunId, {
-              type: 'warning',
-              code: 'QA_CONTEXT_COMPACTED',
-              message:
-                'Context budget reached during investigation; continuing in a fresh session seeded with host-observed facts only.',
-            });
-          }
-          let turn: CollectedTurn | undefined;
-          let tripped: TurnStop | undefined;
-          let contextRetried = false;
-          while (turn === undefined) {
-            const turnText = compactionContext + checkPrompt;
-            compactionContext = '';
-            try {
-              const outcome = yield* runWatchedTurn(turnText, ledgerBeforeTurn);
-              if (outcome.stopped) tripped = outcome.reason;
-              turn = outcome.stopped ? STOPPED_TURN : outcome.value;
-            } catch (cause) {
-              // Reactive compaction: one fresh-session retry of THIS check.
-              if (
-                !isContextWindowExceeded(cause) ||
-                contextRetried ||
-                entry.controller.signal.aborted ||
-                this.cancelledRuns.has(request.agentRunId)
-              )
-                throw cause;
-              contextRetried = true;
-              await startInvestigationContext(currentCheck, planResult);
-              yield event(request.agentRunId, {
-                type: 'warning',
-                code: 'QA_CONTEXT_COMPACTED',
-                message:
-                  'Provider reported context overflow during investigation; retrying this check once in a fresh session seeded with host-observed facts only.',
-              });
-            }
-          }
-          // The host stopped the turn on a behavioural signal (same command
-          // failing again and again, or a read-only spiral): grant bounded
-          // attempts with a different method, each in a fresh seeded session.
-          let approachAttempts = 0;
-          while (
-            tripped !== undefined &&
-            approachAttempts < MAX_APPROACH_ATTEMPTS &&
-            !entry.controller.signal.aborted &&
-            !this.cancelledRuns.has(request.agentRunId)
-          ) {
-            approachAttempts += 1;
-            const attemptBefore = new Set(this.observedOperations.keys());
-            await startInvestigationContext(currentCheck, planResult);
-            const attemptText =
-              compactionContext +
-              buildAlternativeApproachPrompt(
-                planResult,
-                currentCheck,
-                tripped,
-                approachAttempts,
-                failedCommandsSince(ledgerBeforeTurn, this.observedOperations),
-              );
-            compactionContext = '';
-            yield event(request.agentRunId, {
-              type: 'warning',
-              code: 'QA_APPROACH_CHANGE',
-              message:
-                'Check turn stopped (' +
-                (tripped.kind === 'red-retry'
-                  ? 'same command failed ' + tripped.failures + ' times'
-                  : tripped.reads + ' read-only calls without running anything') +
-                '); attempt ' +
-                approachAttempts +
-                ' of ' +
-                MAX_APPROACH_ATTEMPTS +
-                ' with a different approach in a fresh session.',
-            });
-            try {
-              const outcome = yield* runWatchedTurn(attemptText, attemptBefore);
-              if (outcome.stopped) tripped = outcome.reason;
-              else {
-                tripped = undefined;
-                turn = {
-                  ...turn,
-                  text: outcome.value.text,
-                  usage: sumUsage(turn.usage, outcome.value.usage ?? {}),
-                  steps: turn.steps + outcome.value.steps,
-                };
-              }
-            } catch (cause) {
-              if (
-                cause instanceof PhaseDeadlineReached ||
-                cause instanceof OpenCodeTurnTimeoutError ||
-                isContextWindowExceeded(cause) ||
-                entry.controller.signal.aborted ||
-                this.cancelledRuns.has(request.agentRunId)
-              )
-                throw cause;
-              break; // Any other attempt failure keeps the banked work.
-            }
-          }
-          if (tripped !== undefined) {
-            yield event(request.agentRunId, {
-              type: 'warning',
-              code: 'QA_APPROACH_EXHAUSTED',
-              message:
-                'Check could not be decided after ' +
-                approachAttempts +
-                ' approach change(s); it stays inconclusive and the failed approaches remain in the ledger.',
-            });
-            unprovenChecks.push(planResult.plannedChecks[currentCheck] ?? '');
-            redRetryChecks.push(planResult.plannedChecks[currentCheck] ?? '');
-          }
-          if (
-            tripped === undefined &&
-            !turnProducedProof(ledgerBeforeTurn, this.observedOperations) &&
-            !turnExecutedReproduction(ledgerBeforeTurn, this.observedOperations) &&
-            !entry.controller.signal.aborted &&
-            !this.cancelledRuns.has(request.agentRunId)
-          ) {
-            // Read/grep-only turn: one bounded host nudge to execute.
-            yield event(request.agentRunId, {
-              type: 'warning',
-              code: 'QA_EXECUTION_NUDGE',
-              message:
-                'Check turn ended without executable proof; issuing one follow-up turn requiring a real reproduction.',
-            });
-            const nudgeText = buildExecutionNudgePrompt(planResult, currentCheck);
-            const nudgeWork = streamObservedWork(
-              (emit) =>
-                this.runTurn(entry, nudgeText, request.agentRunId, 'investigation', false, emit),
-              async () => {
-                await entry.client?.close();
-              },
-            );
-            try {
-              const nudged: CollectedTurn = yield* depth === undefined
-                ? nudgeWork
-                : limitPhase(nudgeWork, investigationDeadline(depth.deadlineAt), async () => {
-                    await entry.client?.close();
-                  });
-              turn = {
-                ...turn,
-                text: nudged.text,
-                usage: sumUsage(turn.usage, nudged.usage ?? {}),
-                steps: turn.steps + nudged.steps,
-              };
-            } catch (cause) {
-              if (
-                cause instanceof PhaseDeadlineReached ||
-                cause instanceof OpenCodeTurnTimeoutError ||
-                isContextWindowExceeded(cause) ||
-                entry.controller.signal.aborted ||
-                this.cancelledRuns.has(request.agentRunId)
-              )
-                throw cause;
-              // Any other nudge failure keeps the original turn's banked work.
-            }
-          }
-          contextBudget.observeTurn(turn.usage);
-          if (!turnProducedProof(ledgerBeforeTurn, this.observedOperations))
-            unprovenChecks.push(planResult.plannedChecks[currentCheck] ?? '');
-          if (
-            turnRepeatedRedProof(ledgerBeforeTurn, this.observedOperations) &&
-            !closingTriagesFailures(turn.text)
-          )
-            redRetryChecks.push(planResult.plannedChecks[currentCheck] ?? '');
-          checkConclusions[currentCheck] = turn.text.slice(0, 1500);
-          investigationUsage = sumUsage(investigationUsage, turn.usage ?? {});
-          investigationSteps += turn.steps;
-        }
-      } catch (cause) {
-        if (
-          (depth === undefined && !isContextWindowExceeded(cause)) ||
-          !(
-            cause instanceof PhaseDeadlineReached ||
-            cause instanceof OpenCodeTurnTimeoutError ||
-            isContextWindowExceeded(cause)
-          ) ||
-          entry.controller.signal.aborted ||
-          this.cancelledRuns.has(request.agentRunId)
-        )
-          throw cause;
-        blockedChecks.push(...planResult.plannedChecks.slice(currentCheck));
-        await startReportContext();
-        yield event(request.agentRunId, {
-          type: 'warning',
-          code: 'QA_INVESTIGATION_INCOMPLETE',
-          message:
-            'Investigation turn ended early; remaining checks are inconclusive. Reporting only this agent’s observed facts in a fresh report-only context; analysis is partial.',
-        });
-      }
+            this.toolNotes.render(),
+            completedChecks,
+          ) + '\n',
+        startReportContext,
+        cancelled: () =>
+          entry.controller.signal.aborted || this.cancelledRuns.has(request.agentRunId),
+        isTurnTimeout: (cause) => cause instanceof OpenCodeTurnTimeoutError,
+      });
+      const { blockedChecks, unprovenChecks, redRetryChecks, checkConclusions } = investigation;
+      const investigationUsage = investigation.usage;
+      const investigationSteps = investigation.steps;
 
       yield event(request.agentRunId, {
         type: 'agent.status',

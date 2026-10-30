@@ -13,6 +13,32 @@ import {
 } from '@qa/shared';
 import { DeepSeekHarnessAdapter } from '../src/index.js';
 
+/** Executed, successful probe: read-only investigation turns are nudged by the host. */
+const PROBE_EVENTS = [
+  {
+    type: 'tool/call',
+    data: {
+      callId: 'parity-probe',
+      name: 'bash',
+      arguments: JSON.stringify({ command: 'node probe.mjs' }),
+    },
+  },
+  {
+    type: 'tool/result',
+    data: {
+      message: {
+        content: [
+          {
+            type: 'tool-result',
+            toolCallId: 'parity-probe',
+            content: [{ type: 'text', text: 'ok\n[Command finished with exit code 0]' }],
+          },
+        ],
+      },
+    },
+  },
+];
+
 const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
@@ -133,7 +159,7 @@ describe('DeepSeek QA prompt parity', () => {
                       : prompts.length === 2
                         ? 'Investigation complete.'
                         : validReport(true),
-                  events: [],
+                  events: prompts.length === 2 ? PROBE_EVENTS : [],
                   notifications: [],
                 };
               },
@@ -211,7 +237,7 @@ describe('DeepSeek QA prompt parity', () => {
           return {
             sessionId: 's1',
             finalResponse: 'Investigation complete.',
-            events: [],
+            events: PROBE_EVENTS,
             notifications: [],
           };
         return {

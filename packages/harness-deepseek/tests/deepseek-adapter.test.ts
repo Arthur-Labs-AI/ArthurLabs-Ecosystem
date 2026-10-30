@@ -75,7 +75,31 @@ function executionResult(finalResponse: string, events: unknown[] = []) {
 }
 
 /** Investigation turn: tool events plus terminal prose (never final JSON). */
-function investigationResult(events: unknown[] = []) {
+/** An executed, successful probe: read-only investigation turns are nudged by the host. */
+function executedProbeEvents(callId = 'default-probe'): unknown[] {
+  return [
+    {
+      type: 'tool/call',
+      data: { callId, name: 'bash', arguments: JSON.stringify({ command: 'node probe.mjs' }) },
+    },
+    {
+      type: 'tool/result',
+      data: {
+        message: {
+          content: [
+            {
+              type: 'tool-result',
+              toolCallId: callId,
+              content: [{ type: 'text', text: 'ok\n[Command finished with exit code 0]' }],
+            },
+          ],
+        },
+      },
+    },
+  ];
+}
+
+function investigationResult(events: unknown[] = executedProbeEvents()) {
   return executionResult('Investigation complete.', events);
 }
 
@@ -708,7 +732,8 @@ describe('DeepSeekHarnessAdapter', () => {
       // manual reasoning, the finding is preserved at probable confidence,
       // and no command outcome is fabricated.
       expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
-      expect(runText).toHaveBeenCalledTimes(3);
+      // plan, investigation, host nudge (no observed exit), report.
+      expect(runText).toHaveBeenCalledTimes(4);
       expect(events.some((event) => event.type === 'command.executed')).toBe(false);
       expect(events).toContainEqual(
         expect.objectContaining({
@@ -773,6 +798,8 @@ describe('DeepSeekHarnessAdapter', () => {
       planResult(validPlan()),
       // Investigation: operation observed without an exit outcome.
       investigationResult(toolEvents('repair-1', 'some output')),
+      // Host nudge: the unobserved exit leaves no executed proof.
+      executionResult('Nothing more to run.'),
       // Report 1: reproduced claim citing the unobserved operation (no
       // exit-code claim of its own: observation is simply missing).
       reproducedReport('op_1'),
@@ -834,7 +861,7 @@ describe('DeepSeekHarnessAdapter', () => {
       prompts.push(text);
       calls += 1;
       if (calls === 1) return planResult(plan);
-      if (calls <= 3) return investigationResult([]);
+      if (calls <= 3) return investigationResult();
       return reportResult({
         ...validReportV2(),
         checks: [
@@ -880,7 +907,7 @@ describe('DeepSeekHarnessAdapter', () => {
       prompts.push(text);
       calls += 1;
       if (calls === 1) return planResult(validPlan());
-      if (calls === 2) return investigationResult([]);
+      if (calls === 2) return investigationResult();
       if (calls === 3)
         throw new Error(
           "CONTEXT_WINDOW_EXCEEDED (HTTP 400). This model's maximum context length is 1048576 tokens. However, you requested 1072237 tokens (816237 in the messages, 256000 in the completion).",
@@ -930,7 +957,7 @@ describe('DeepSeekHarnessAdapter', () => {
       prompts.push(text);
       calls += 1;
       if (calls === 1) return planResult(plan);
-      if (calls <= 3) return investigationResult([]);
+      if (calls <= 3) return investigationResult();
       return reportResult({
         ...validReportV2(),
         checks: [
