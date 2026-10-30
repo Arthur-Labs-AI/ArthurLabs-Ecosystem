@@ -57,6 +57,8 @@ export interface ObservedOperation {
   /** True when this operation ran a test command (generic detection). */
   readonly isTestOperation: boolean;
   readonly durationMs?: number;
+  /** True when the host ran the command under `set -o pipefail`: a zero exit then certifies every pipeline stage. */
+  readonly pipefail?: boolean;
 }
 
 export interface ObservedEvidenceGrounding {

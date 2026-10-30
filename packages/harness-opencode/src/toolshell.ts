@@ -140,7 +140,7 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
     ...hideArgs,
     '  --bind "$SENTRY_WORKSPACE" "$SENTRY_WORKSPACE" \\',
     '  --bind "$SENTRY_SCOPE_HOME" "$SENTRY_SCOPE_HOME" \\',
-    '  -- "$SENTRY_REAL_SHELL" -c "$SCRIPT"',
+    '  -- "$SENTRY_REAL_SHELL" -o pipefail -c "$SCRIPT"',
     '',
   ].join('\n');
 }

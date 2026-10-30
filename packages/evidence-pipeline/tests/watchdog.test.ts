@@ -4,6 +4,7 @@ import {
   NO_PROGRESS_LIMIT,
   failedCommandsSince,
   turnWatchdogStop,
+  isExecutableProofOperation,
   buildAlternativeApproachPrompt,
   composeHostFallbackReport,
 } from '../src/index.js';
@@ -156,5 +157,29 @@ describe('host fallback report', () => {
     expect(report.checks[0]?.details).toContain('Unverified agent conclusion');
     expect(report.summary).toContain('1 command(s) ran (1 non-zero)');
     expect(report.limitations[0]).toContain('Host fallback');
+  });
+});
+
+describe('proof certification of output handling', () => {
+  const withFlag = (command: string, pipefail: boolean): ObservedOperation => ({
+    ...(ledger([{ tool: 'bash', command, exitCode: 0 }]).get('op_1') as ObservedOperation),
+    ...(pipefail ? { pipefail: true } : {}),
+  });
+
+  it('accepts stderr redirects, which never change the exit status', () => {
+    expect(isExecutableProofOperation(withFlag('npx vitest run a.test.ts 2>&1', false))).toBe(true);
+    expect(isExecutableProofOperation(withFlag('node p.mjs 2>/dev/null', false))).toBe(true);
+  });
+
+  it('accepts a trailing tail/head filter only under pipefail', () => {
+    const cmd = 'npx vitest run a.test.ts 2>&1 | tail -40';
+    expect(isExecutableProofOperation(withFlag(cmd, true))).toBe(true);
+    expect(isExecutableProofOperation(withFlag(cmd, false))).toBe(false);
+  });
+
+  it('still rejects compound commands and other pipes under pipefail', () => {
+    expect(isExecutableProofOperation(withFlag('node a.mjs && node b.mjs', true))).toBe(false);
+    expect(isExecutableProofOperation(withFlag('node a.mjs | grep ok', true))).toBe(false);
+    expect(isExecutableProofOperation(withFlag('node a.mjs > out.txt', true))).toBe(false);
   });
 });

@@ -40,7 +40,7 @@ describe('tool shell wrapper', () => {
     expect(script).toContain("--tmpfs '/home/user'");
     expect(script).toContain("SENTRY_WORKSPACE='/tmp/data/w1'");
     expect(script).toContain('--bind "$SENTRY_WORKSPACE" "$SENTRY_WORKSPACE"');
-    expect(script).toContain('-- "$SENTRY_REAL_SHELL" -c "$SCRIPT"');
+    expect(script).toContain('-- "$SENTRY_REAL_SHELL" -o pipefail -c "$SCRIPT"');
     expect(script).toContain('exit 126');
   });
 });

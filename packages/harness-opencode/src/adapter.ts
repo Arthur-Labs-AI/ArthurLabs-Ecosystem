@@ -372,6 +372,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
   private readonly sessions = new Map<string, OpenCodeRunEntry>();
   private readonly observedCommands = new Set<string>();
   private readonly observedOperations = new Map<string, ObservedOperation>();
+  /** Runs whose tool shell is the pipefail wrapper: a zero exit certifies every pipeline stage. */
+  private readonly pipefailRuns = new Set<AgentRunId>();
   private readonly toolNotes = new ObservedToolNotes();
   private operationCounter = 0;
   private cancelledRuns = new Set<string>();
@@ -519,6 +521,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         commandText: command,
         ...(exitCode === undefined ? {} : { exitCode }),
         isTestOperation: isTestCommand(observation.tool + ' ' + command),
+        ...(this.pipefailRuns.has(agentRunId) ? { pipefail: true } : {}),
       });
     }
     if (observation.status === 'completed' && observation.output !== undefined) {
@@ -549,6 +552,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     let shell: string | undefined;
     if (process.platform === 'linux') {
       shell = await this.buildToolShell(scope, request.workspace.runtimePath);
+      if (shell !== undefined) this.pipefailRuns.add(request.agentRunId);
     } else {
       this.shutdownDiagnostics.push({
         code: 'OPENCODE_DIRECT_SHELL',

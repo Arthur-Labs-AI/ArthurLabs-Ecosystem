@@ -96,6 +96,18 @@ export function applyBlockedChecks<T extends SentryAgentReportV2>(
   };
 }
 
+/**
+ * Output handling that cannot change a command's exit status: stderr
+ * redirects always, and a trailing `| tail`/`| head` filter only when the
+ * host ran the command under pipefail (otherwise the pipeline's exit code is
+ * the filter's, which would certify a failed run).
+ */
+function withoutHarmlessOutputHandling(command: string, pipefail: boolean): string {
+  let text = command.trim();
+  if (pipefail) text = text.replace(/\s*\|\s*(?:tail|head)(?:\s+-(?:[nc]\s*)?\+?\d+)?\s*$/, '');
+  return text.replace(/\s+2>\s*&1(?=\s|$)/g, '').replace(/\s+2>\s*\/dev\/null(?=\s|$)/g, '');
+}
+
 /** One operation certifies executable proof: ran, succeeded, unambiguous. */
 export function isExecutableProofOperation(op: ObservedOperation): boolean {
   return (
@@ -104,7 +116,9 @@ export function isExecutableProofOperation(op: ObservedOperation): boolean {
     op.commandText.trim().length > 0 &&
     // Without a shell AST/individual exit statuses, compound commands are
     // ambiguous even when the last process succeeds. Fail conservatively.
-    !/[;&|\r\n`<>]|\$\(/.test(op.commandText) &&
+    !/[;&|\r\n`<>]|\$\(/.test(
+      withoutHarmlessOutputHandling(op.commandText, op.pipefail === true),
+    ) &&
     !/^(read|grep|glob|search|list|view)$/i.test(op.toolName) &&
     !/^\s*["']?(?:[^\s"']*[\\/])?(?:rg|grep|cat|sed|head|tail|find|ls|pwd|wc|echo|printf|which)(?:\.exe)?(?:["']?\s|$)/i.test(
       op.commandText ?? '',
