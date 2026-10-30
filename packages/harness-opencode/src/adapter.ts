@@ -35,6 +35,7 @@ import {
   applyUnprovenChecks,
   composeHostFallbackReport,
   turnProducedProof,
+  turnExecutedReproduction,
   turnRepeatedRedProof,
   closingTriagesFailures,
   buildQaReportPrompt,
@@ -1278,6 +1279,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           if (
             tripped === undefined &&
             !turnProducedProof(ledgerBeforeTurn, this.observedOperations) &&
+            !turnExecutedReproduction(ledgerBeforeTurn, this.observedOperations) &&
             !entry.controller.signal.aborted &&
             !this.cancelledRuns.has(request.agentRunId)
           ) {

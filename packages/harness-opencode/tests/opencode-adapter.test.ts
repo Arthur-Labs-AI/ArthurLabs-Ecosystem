@@ -532,6 +532,46 @@ describe('OpenCodeHarnessAdapter', () => {
     expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
   });
 
+  it('does not nudge a check turn whose executed probe failed', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-rednonudge-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          prompts.push(prompt);
+          if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+          if (prompt.includes('STAGE 2')) {
+            const probe = {
+              callID: 'red_once',
+              tool: 'bash',
+              input: { command: 'node probe.mjs' },
+              status: 'error' as const,
+              error: 'assertion failed: defect reproduced',
+              exitCode: 1,
+            };
+            options.onTool?.(probe);
+            return { ...textTurn('Probe reproduced the defect.'), toolCalls: [probe] };
+          }
+          return textTurn(JSON.stringify(validReportV2()));
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(prompts.some((prompt) => prompt.includes('EXECUTION REQUIRED'))).toBe(false);
+    expect(events).not.toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_EXECUTION_NUDGE' }),
+    );
+  });
+
   it('runs all turns in one OpenCode session with composed model id', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-success-'));
     roots.push(root);

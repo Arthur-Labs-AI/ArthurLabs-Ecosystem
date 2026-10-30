@@ -5,6 +5,8 @@ import {
   failedCommandsSince,
   turnWatchdogStop,
   isExecutableProofOperation,
+  retryKey,
+  turnExecutedReproduction,
   buildAlternativeApproachPrompt,
   composeHostFallbackReport,
 } from '../src/index.js';
@@ -181,5 +183,33 @@ describe('proof certification of output handling', () => {
     expect(isExecutableProofOperation(withFlag('node a.mjs && node b.mjs', true))).toBe(false);
     expect(isExecutableProofOperation(withFlag('node a.mjs | grep ok', true))).toBe(false);
     expect(isExecutableProofOperation(withFlag('node a.mjs > out.txt', true))).toBe(false);
+  });
+});
+
+describe('retry identity and executed reproductions', () => {
+  it('counts the same run with varying tail/redirect handling as one command', () => {
+    const run = (n: number) => ({
+      tool: 'bash',
+      command: './node_modules/.bin/vitest run a.test.ts 2>&1 | tail -' + n,
+      exitCode: 1,
+    });
+    const ops = ledger([run(100), run(120), run(150)]);
+    expect(turnWatchdogStop(new Set(), ops)).toMatchObject({ kind: 'red-retry', failures: 3 });
+    expect(failedCommandsSince(new Set(), ops)).toEqual([
+      { command: './node_modules/.bin/vitest run a.test.ts', exitCode: 1, times: 3 },
+    ]);
+    expect(retryKey('node p.mjs   2>&1 | head -5')).toBe('node p.mjs');
+  });
+
+  it('treats a red probe as an executed reproduction but not a failed ls', () => {
+    const red = ledger([{ tool: 'bash', command: 'vitest run probe.test.ts', exitCode: 1 }]);
+    expect(turnExecutedReproduction(new Set(), red)).toBe(true);
+    const looked = ledger([
+      { tool: 'bash', command: 'ls missing', exitCode: 2 },
+      { tool: 'read', command: 'src/a.ts' },
+      { tool: 'edit', command: 'probe.test.ts' },
+    ]);
+    expect(turnExecutedReproduction(new Set(), looked)).toBe(false);
+    expect(turnExecutedReproduction(new Set(['op_1']), red)).toBe(false);
   });
 });

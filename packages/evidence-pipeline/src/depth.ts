@@ -141,6 +141,37 @@ export function turnProducedProof(
   return false;
 }
 
+/**
+ * Identity of a command for retry counting: the same run is the same run
+ * whatever output trimming (`| tail -70` vs `| tail -120`) or stderr
+ * redirect the agent appends, so varying them cannot hide a retry loop.
+ */
+export function retryKey(command: string): string {
+  return withoutHarmlessOutputHandling(command, true).replace(/\s+/g, ' ');
+}
+
+/** Shell commands that only look around; they never reproduce a behavior. */
+const READ_ONLY_SHELL =
+  /^\s*["']?(?:[^\s"']*[\\/])?(?:rg|grep|cat|sed|head|tail|find|ls|pwd|wc|echo|printf|which)(?:\.exe)?(?:["']?\s|$)/i;
+
+/**
+ * True when the turn executed something that could reproduce a behavior and
+ * reported an exit status, pass or fail. A red probe that demonstrates a
+ * defect is an executed reproduction; only read-only turns need a nudge.
+ */
+export function turnExecutedReproduction(
+  beforeKeys: ReadonlySet<string>,
+  operations: ReadonlyMap<string, ObservedOperation>,
+): boolean {
+  for (const [key, op] of operations) {
+    if (beforeKeys.has(key) || typeof op.exitCode !== 'number') continue;
+    if (/^(read|grep|glob|search|list|view)$/i.test(op.toolName)) continue;
+    const text = op.commandText?.trim() ?? '';
+    if (text.length > 0 && !READ_ONLY_SHELL.test(text)) return true;
+  }
+  return false;
+}
+
 /** Same proof command failing this many times in one turn is a retry-until-green loop. */
 export const RED_RETRY_THRESHOLD = 3;
 
@@ -159,9 +190,10 @@ export function turnRepeatedRedProof(
   for (const [key, op] of operations) {
     if (beforeKeys.has(key)) continue;
     if (typeof op.exitCode !== 'number' || op.exitCode === 0) continue;
-    const text = op.commandText?.trim();
-    if (text === undefined || text.length === 0) continue;
+    const raw = op.commandText?.trim();
+    if (raw === undefined || raw.length === 0) continue;
     if (/^(read|grep|glob|search|list|view)$/i.test(op.toolName)) continue;
+    const text = retryKey(raw);
     const count = (failures.get(text) ?? 0) + 1;
     if (count >= RED_RETRY_THRESHOLD) return true;
     failures.set(text, count);
@@ -201,8 +233,9 @@ export function failedCommandsSince(
   for (const [key, op] of operations) {
     if (beforeKeys.has(key)) continue;
     if (typeof op.exitCode !== 'number' || op.exitCode === 0) continue;
-    const text = op.commandText?.trim();
-    if (text === undefined || text.length === 0 || READ_ONLY_TOOL.test(op.toolName)) continue;
+    const raw = op.commandText?.trim();
+    if (raw === undefined || raw.length === 0 || READ_ONLY_TOOL.test(op.toolName)) continue;
+    const text = retryKey(raw);
     const entry = failed.get(text) ?? { exitCode: op.exitCode, times: 0 };
     entry.times += 1;
     entry.exitCode = op.exitCode;
@@ -233,9 +266,10 @@ export function turnWatchdogStop(
       continue;
     }
     reads = 0;
-    const text = op.commandText?.trim();
+    const raw = op.commandText?.trim();
     if (typeof op.exitCode !== 'number' || op.exitCode === 0) continue;
-    if (text === undefined || text.length === 0) continue;
+    if (raw === undefined || raw.length === 0) continue;
+    const text = retryKey(raw);
     const count = (failures.get(text) ?? 0) + 1;
     if (count >= RED_RETRY_THRESHOLD) return { kind: 'red-retry', command: text, failures: count };
     failures.set(text, count);
