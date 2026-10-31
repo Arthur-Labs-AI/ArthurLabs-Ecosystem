@@ -27,6 +27,9 @@ import {
   renderCheckConclusions,
 } from './stage-prompts.js';
 
+/** Closing characters of a check turn kept as its conclusion (conclusion plus "Breaks attempted"). */
+const CONCLUSION_CHARS = 1500;
+
 /** What the shared loop needs from an adapter's collected turn. */
 export interface InvestigationTurn {
   readonly text: string;
@@ -316,7 +319,8 @@ export async function* investigateChecks<T extends InvestigationTurn>(
         unprovenChecks.push(description(currentCheck));
       if (turnRepeatedRedProof(ledgerBeforeTurn, operations) && !closingTriagesFailures(turn.text))
         redRetryChecks.push(description(currentCheck));
-      checkConclusions[currentCheck] = turn.text.slice(0, 1500);
+      // The closing statement is at the END of the turn text; the start is narration.
+      checkConclusions[currentCheck] = turn.text.trim().slice(-CONCLUSION_CHARS);
       usage = sumAgentUsage(usage, turn.usage ?? {});
       steps += issued;
     }

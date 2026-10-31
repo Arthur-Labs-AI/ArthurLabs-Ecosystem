@@ -12,8 +12,11 @@ export class PhaseDeadlineReached extends Error {
 }
 /** Fixed reporting window protected at the safety fuse. It is deliberately
  *  NOT a fraction of the remaining budget: a larger fuse must give the
- *  investigation more peace, not a proportionally larger reporting slice. */
-export const REPORTING_RESERVE_MS = 300_000;
+ *  investigation more peace, not a proportionally larger reporting slice.
+ *  Sized from production runs: a report stage took 2.4, 4.7 and 8.9 minutes,
+ *  and one rejected attempt needs a full second attempt after it, so five
+ *  minutes cut a report off twice. */
+export const REPORTING_RESERVE_MS = 720_000;
 
 export function investigationDeadline(deadlineAt: number, now = Date.now()): number {
   const remaining = Math.max(0, deadlineAt - now);

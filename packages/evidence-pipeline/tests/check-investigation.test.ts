@@ -250,3 +250,24 @@ describe('investigateChecks conclusions handoff', () => {
     expect(reportBlocks[0]).toContain('the race is real');
   });
 });
+
+describe('investigateChecks conclusion capture', () => {
+  it('keeps the closing statement, not the start of the narration', async () => {
+    const narration = 'Let me read the code. '.repeat(200);
+    const closing =
+      'Conclusion: the evidence pipeline trusts a model-declared strength.\nBreaks attempted: synthetic V2 report with exit 0 cited as reproduced_failure.';
+    const { hooks } = harness(
+      (_text, ops) => {
+        addOp(ops, 'bash', 'node probe.mjs', 0);
+        return { text: narration + closing };
+      },
+      { plan: { plannedChecks: ['Check A'] } },
+    );
+    const { value } = await drain(investigateChecks(hooks));
+    const kept = value.checkConclusions[0] ?? '';
+    expect(kept.length).toBeLessThanOrEqual(1500);
+    expect(kept.endsWith('as reproduced_failure.')).toBe(true);
+    expect(kept).toContain('Conclusion: the evidence pipeline trusts');
+    expect(kept).toContain('Breaks attempted:');
+  });
+});

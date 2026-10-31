@@ -3,6 +3,7 @@ import {
   limitPhase,
   PhaseDeadlineReached,
   investigationDeadline,
+  REPORTING_RESERVE_MS,
   reportAttemptDeadline,
   ObservedToolNotes,
 } from '../src/phase-budget.js';
@@ -21,11 +22,14 @@ describe('host reporting reserve', () => {
     expect(stop).toHaveBeenCalledOnce();
   });
   it('reserves only a fixed reporting window, never extends the run', () => {
-    // Investigation keeps everything except a fixed 5-minute reporting
+    // Investigation keeps everything except a fixed 12-minute reporting
     // reserve; the reserve must not grow with the safety fuse.
-    expect(investigationDeadline(7_200_000, 0)).toBe(6_900_000);
-    expect(investigationDeadline(1800000, 0)).toBe(1500000);
-    expect(investigationDeadline(1800000, 300000)).toBe(1500000);
+    expect(REPORTING_RESERVE_MS).toBe(720_000);
+    expect(investigationDeadline(10_800_000, 0)).toBe(10_080_000);
+    expect(investigationDeadline(7_200_000, 0)).toBe(6_480_000);
+    // A short budget is capped at a third, so the investigation keeps two thirds.
+    expect(investigationDeadline(1800000, 0)).toBe(1200000);
+    expect(investigationDeadline(1800000, 300000)).toBe(1300000);
     // Tiny synthetic budgets keep a proportional reserve so fixtures retain
     // a usable reporting window.
     expect(investigationDeadline(90000, 0)).toBe(60000);
