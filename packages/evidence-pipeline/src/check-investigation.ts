@@ -24,6 +24,7 @@ import {
   buildAlternativeApproachPrompt,
   buildExecutionNudgePrompt,
   buildQaCheckInvestigationPrompt,
+  renderCheckConclusions,
 } from './stage-prompts.js';
 
 /** What the shared loop needs from an adapter's collected turn. */
@@ -56,9 +57,9 @@ export interface CheckInvestigationHooks<T extends InvestigationTurn> {
   /** Discards the bloated session and starts a fresh one. */
   readonly freshSession: () => Promise<void>;
   /** Host-observed seed for a fresh investigation session. */
-  readonly compactionSeed: (completedChecks: number) => string;
+  readonly compactionSeed: (completedChecks: number, conclusions: string) => string;
   /** Switches the adapter to a fresh report-only context (called when investigation ends early). */
-  readonly startReportContext: () => Promise<void>;
+  readonly startReportContext: (conclusions: string) => Promise<void>;
   readonly cancelled: () => boolean;
   /** The adapter's own per-turn timeout error. */
   readonly isTurnTimeout: (cause: unknown) => boolean;
@@ -120,7 +121,7 @@ export async function* investigateChecks<T extends InvestigationTurn>(
 
   const rotate = async (completedChecks: number): Promise<void> => {
     await hooks.freshSession();
-    seed = hooks.compactionSeed(completedChecks);
+    seed = hooks.compactionSeed(completedChecks, renderCheckConclusions(plan, checkConclusions));
     contextBudget.reset();
   };
 
@@ -328,7 +329,7 @@ export async function* investigateChecks<T extends InvestigationTurn>(
       throw cause;
     blockedChecks.push(...plan.plannedChecks.slice(currentCheck));
     hooks.onInterrupted?.();
-    await hooks.startReportContext();
+    await hooks.startReportContext(renderCheckConclusions(plan, checkConclusions));
     yield hooks.event({
       type: 'warning',
       code: 'QA_INVESTIGATION_INCOMPLETE',

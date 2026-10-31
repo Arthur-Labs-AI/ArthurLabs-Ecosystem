@@ -20,6 +20,8 @@ import {
   promisePhase,
   PhaseDeadlineReached,
   ObservedToolNotes,
+  renderCheckConclusions,
+  compactToolOutput,
   ContextBudget,
   estimatePromptTokens,
   isContextWindowExceeded,
@@ -756,7 +758,10 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       out.push(
         emit({
           type: 'agent.message',
-          message: ('tool ' + toolName + ' result: ' + resultText).slice(0, 2_000),
+          message: ('tool ' + toolName + ' result: ' + compactToolOutput(resultText)).slice(
+            0,
+            2_000,
+          ),
         }),
       );
     }
@@ -1018,9 +1023,13 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
             'Run was cancelled before report recovery.',
           );
       };
-      const startReportContext = async () => {
+      /** The investigator's per-check closing statements, labelled unverified for fresh sessions. */
+      let conclusionBlock = '';
+      const startReportContext = async (conclusions?: string) => {
+        if (conclusions !== undefined) conclusionBlock = conclusions;
         await freshSession();
-        recoveryContext = buildRecoveryReportContext(request, this.toolNotes.render()) + '\n';
+        recoveryContext =
+          buildRecoveryReportContext(request, this.toolNotes.render(), conclusionBlock) + '\n';
         contextBudget.reset();
       };
       try {
@@ -1134,19 +1143,21 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           this.streamTurn(session, turnText, request.agentRunId, 'investigation'),
         stop: () => this.dispose(),
         freshSession,
-        compactionSeed: (completedChecks) =>
+        compactionSeed: (completedChecks, conclusions) =>
           buildInvestigationCompactionContext(
             request,
             planResult!,
             this.observedOperations,
             this.toolNotes.render(),
             completedChecks,
+            conclusions,
           ) + '\n',
         startReportContext,
         cancelled: () => this.cancelled,
         isTurnTimeout: (cause) => cause instanceof DeepSeekTurnTimeoutError,
         onInterrupted: () => this.liveOpenOperations.clear(),
       });
+      conclusionBlock = renderCheckConclusions(planResult, investigation.checkConclusions);
       const { blockedChecks, unprovenChecks, redRetryChecks } = investigation;
       const investigationUsage = investigation.usage;
       const investigationTurns = investigation.steps;

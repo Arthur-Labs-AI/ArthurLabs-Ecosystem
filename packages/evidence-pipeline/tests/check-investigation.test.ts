@@ -195,3 +195,58 @@ describe('investigateChecks', () => {
     expect(events).toContain(tail);
   });
 });
+
+describe('investigateChecks conclusions handoff', () => {
+  it('gives fresh sessions the investigator’s closing statements so far', async () => {
+    const seeds: string[] = [];
+    let calls = 0;
+    const { hooks } = harness(
+      (_text, ops) => {
+        calls += 1;
+        if (calls === 1) {
+          addOp(ops, 'bash', 'node probe.mjs', 0);
+          return { text: 'Check A: the race is real, reproduced twice.' };
+        }
+        // Check B overflows once: the fresh session is seeded with check A's statement.
+        if (calls === 2) throw new Error('prompt is too long: 213462 tokens > 200000 maximum');
+        addOp(ops, 'bash', 'node probe-b.mjs', 0);
+        return { text: 'Check B: fine.' };
+      },
+      {
+        compactionSeed: (completed, conclusions) => {
+          seeds.push(completed + '|' + conclusions);
+          return 'SEED\n';
+        },
+      },
+    );
+    await drain(investigateChecks(hooks));
+    expect(seeds).toHaveLength(1);
+    expect(seeds[0]).toContain('1|');
+    expect(seeds[0]).toContain('the race is real, reproduced twice');
+    expect(seeds[0]).not.toContain('Check B');
+  });
+
+  it('hands the statements to the report context when investigation ends early', async () => {
+    const reportBlocks: string[] = [];
+    let calls = 0;
+    const { hooks } = harness(
+      (_text, ops) => {
+        calls += 1;
+        if (calls === 1) {
+          addOp(ops, 'bash', 'node probe.mjs', 0);
+          return { text: 'Check A: the race is real.' };
+        }
+        throw new PhaseDeadlineReached();
+      },
+      {
+        depth: { deadlineAt: Date.now() + 600_000 },
+        startReportContext: async (conclusions) => {
+          reportBlocks.push(conclusions);
+        },
+      },
+    );
+    await drain(investigateChecks(hooks));
+    expect(reportBlocks).toHaveLength(1);
+    expect(reportBlocks[0]).toContain('the race is real');
+  });
+});

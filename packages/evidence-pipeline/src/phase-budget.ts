@@ -175,24 +175,76 @@ export async function* promisePhase<T>(work: () => Promise<T>): AsyncGenerator<H
   return await work();
 }
 
-/** Only already-redacted public tool output, never model reasoning or peers. */
+type NoteKind = 'read' | 'write' | 'command';
+interface ToolNote {
+  readonly text: string;
+  readonly kind: NoteKind;
+  /** A failing or erroring command: the evidence a review needs most. */
+  readonly important: boolean;
+}
+
+const READ_TOOLS = /^(?:read|grep|glob|search|list|view|webfetch|websearch|todowrite|todoread)$/i;
+const WRITE_TOOLS =
+  /^(?:write|edit|patch|apply_patch|write_file|edit_file|create_file|str_replace\w*)$/i;
+const FAILURE_SIGNAL =
+  /exit code [1-9]|\b(?:FAIL(?:ED)?|AssertionError|Traceback|panic|ERR_[A-Z_]+|ELIFECYCLE)\b|Error:|✗|×/;
+const NOTES_BUDGET_CHARS = 120_000;
+const READ_NOTE_CHARS = 260;
+
+/**
+ * Only already-redacted public tool output, never model reasoning or peers.
+ *
+ * Kept as a digest, not a rolling tail: a long run reads hundreds of files,
+ * and a flat "last N characters" buffer let those reads push out the
+ * command output that carried the evidence. Under budget pressure reads go
+ * first, then passing commands (their exit codes stay in the receipt), then
+ * written probe sources (the reproduction), and failing commands last.
+ */
 export class ObservedToolNotes {
-  private values: string[] = [];
+  private notes: ToolNote[] = [];
   private chars = 0;
   private truncated = false;
+
   add(event: HarnessEvent): void {
     if (event.type !== 'agent.message' || !/^(tool |observed tool )/.test(event.message)) return;
-    const value = event.message.slice(-80000);
-    if (value.length < event.message.length) this.truncated = true;
-    this.values.push(value);
-    this.chars += value.length;
-    while (this.chars > 80000 && this.values.length > 1) {
-      this.chars -= this.values.shift()!.length;
+    const name = /^(?:observed )?tool\s+([A-Za-z_]+)/.exec(event.message)?.[1] ?? '';
+    const kind: NoteKind = READ_TOOLS.test(name)
+      ? 'read'
+      : WRITE_TOOLS.test(name)
+        ? 'write'
+        : 'command';
+    const limit = kind === 'read' ? READ_NOTE_CHARS : 4000;
+    const text = event.message.length > limit ? event.message.slice(0, limit) : event.message;
+    if (text.length < event.message.length) this.truncated = true;
+    this.notes.push({ text, kind, important: kind === 'command' && FAILURE_SIGNAL.test(text) });
+    this.chars += text.length;
+    this.evict();
+  }
+
+  private evict(): void {
+    const ranks: Array<(note: ToolNote) => boolean> = [
+      (note) => note.kind === 'read',
+      (note) => note.kind === 'command' && !note.important,
+      (note) => note.kind === 'write',
+      () => true,
+    ];
+    while (this.chars > NOTES_BUDGET_CHARS && this.notes.length > 1) {
+      let removed = false;
+      for (const matches of ranks) {
+        const index = this.notes.findIndex(matches);
+        if (index < 0 || index === this.notes.length - 1) continue;
+        this.chars -= this.notes[index]!.text.length;
+        this.notes.splice(index, 1);
+        removed = true;
+        break;
+      }
       this.truncated = true;
+      if (!removed) break;
     }
   }
+
   render(): string {
-    return JSON.stringify({ truncated: this.truncated, outputs: this.values });
+    return JSON.stringify({ truncated: this.truncated, outputs: this.notes.map((n) => n.text) });
   }
 }
 

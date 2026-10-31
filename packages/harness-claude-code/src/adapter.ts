@@ -19,6 +19,8 @@ import {
   reportAttemptDeadline,
   PhaseDeadlineReached,
   ObservedToolNotes,
+  renderCheckConclusions,
+  compactToolOutput,
   ContextBudget,
   estimatePromptTokens,
   isContextWindowExceeded,
@@ -983,7 +985,10 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           out.push(
             emit({
               type: 'agent.message',
-              message: ('tool ' + toolName + ' result: ' + rawResultText).slice(0, 2_000),
+              message: ('tool ' + toolName + ' result: ' + compactToolOutput(rawResultText)).slice(
+                0,
+                2_000,
+              ),
             }),
           );
         }
@@ -1533,9 +1538,13 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             'Run cancelled before report recovery.',
           );
       };
-      const startReportContext = async () => {
+      /** The investigator's per-check closing statements, labelled unverified for fresh sessions. */
+      let conclusionBlock = '';
+      const startReportContext = async (conclusions?: string) => {
+        if (conclusions !== undefined) conclusionBlock = conclusions;
         await freshClient();
-        recoveryContext = buildRecoveryReportContext(request, this.toolNotes.render()) + '\n';
+        recoveryContext =
+          buildRecoveryReportContext(request, this.toolNotes.render(), conclusionBlock) + '\n';
         contextBudget.reset();
       };
       markGlmRuntimeVerified();
@@ -1650,13 +1659,14 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           this.streamPhaseTurn(session!, turnText, request.agentRunId, 'investigation'),
         stop: () => this.dispose(),
         freshSession: freshClient,
-        compactionSeed: (completedChecks) =>
+        compactionSeed: (completedChecks, conclusions) =>
           buildInvestigationCompactionContext(
             request,
             planResult!,
             this.observedOperations,
             this.toolNotes.render(),
             completedChecks,
+            conclusions,
           ) + '\n',
         startReportContext,
         cancelled: () => this.cancelled,
@@ -1672,6 +1682,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           (isMidRunSandboxFailure(cause) && hasExecutedCommand(this.observedOperations)),
         partialEvents: (cause) => partialTurnEvents(cause),
       });
+      conclusionBlock = renderCheckConclusions(planResult, investigation.checkConclusions);
       const { blockedChecks, unprovenChecks, redRetryChecks } = investigation;
       const investigationUsage = investigation.usage;
       const investigationTurns = investigation.steps;

@@ -19,6 +19,8 @@ import {
   promisePhase,
   PhaseDeadlineReached,
   ObservedToolNotes,
+  renderCheckConclusions,
+  compactToolOutput,
   ContextBudget,
   estimatePromptTokens,
   isContextWindowExceeded,
@@ -94,7 +96,7 @@ import {
   buildOpenCodeToolEnvironment,
 } from './environment.js';
 import { OpenCodeHarnessError } from './errors.js';
-import { redactDiagnostic, redactStructured, secretValues } from './redaction.js';
+import { redactDiagnostic, redactStructured, redactText, secretValues } from './redaction.js';
 import {
   cleanupOpenCodeRunScope,
   createOpenCodeRunScope,
@@ -523,7 +525,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       });
     }
     if (observation.status === 'completed' && observation.output !== undefined) {
-      const summary = redactDiagnostic(observation.output.trim(), this.secrets).slice(0, 1000);
+      // Head + tail, not head only: the failing assertion is at the end.
+      const summary = compactToolOutput(redactText(observation.output, this.secrets));
       if (summary.length > 0) {
         out.push(
           emit({
@@ -532,6 +535,24 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           }),
         );
       }
+    }
+    // A probe the agent wrote is the reproduction; it is usually deleted
+    // afterwards, so its source is kept in the digest while it is visible.
+    if (observation.tool === 'write' && observation.status === 'completed') {
+      const path = commandFromToolInput(observation.tool, observation.input) ?? '';
+      const source = observation.input['content'];
+      if (typeof source === 'string' && source.length > 0)
+        out.push(
+          emit({
+            type: 'agent.message',
+            message: (
+              'observed tool write source ' +
+              path +
+              ': ' +
+              redactText(source, this.secrets).slice(0, 1500)
+            ).slice(0, 2000),
+          }),
+        );
     }
     return out;
   }
@@ -1073,9 +1094,13 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
             'Run cancelled before report recovery.',
           );
       };
-      const startReportContext = async () => {
+      /** The investigator's per-check closing statements, labelled unverified for fresh sessions. */
+      let conclusionBlock = '';
+      const startReportContext = async (conclusions?: string) => {
+        if (conclusions !== undefined) conclusionBlock = conclusions;
         await freshClient();
-        recoveryContext = buildRecoveryReportContext(request, this.toolNotes.render()) + '\n';
+        recoveryContext =
+          buildRecoveryReportContext(request, this.toolNotes.render(), conclusionBlock) + '\n';
         contextBudget.reset();
       };
       markOpenCodeRuntimeVerified();
@@ -1171,19 +1196,21 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           ),
         stop: stopClient,
         freshSession: freshClient,
-        compactionSeed: (completedChecks) =>
+        compactionSeed: (completedChecks, conclusions) =>
           buildInvestigationCompactionContext(
             request,
             planResult!,
             this.observedOperations,
             this.toolNotes.render(),
             completedChecks,
+            conclusions,
           ) + '\n',
         startReportContext,
         cancelled: () =>
           entry.controller.signal.aborted || this.cancelledRuns.has(request.agentRunId),
         isTurnTimeout: (cause) => cause instanceof OpenCodeTurnTimeoutError,
       });
+      conclusionBlock = renderCheckConclusions(planResult, investigation.checkConclusions);
       const { blockedChecks, unprovenChecks, redRetryChecks, checkConclusions } = investigation;
       const investigationUsage = investigation.usage;
       const investigationSteps = investigation.steps;

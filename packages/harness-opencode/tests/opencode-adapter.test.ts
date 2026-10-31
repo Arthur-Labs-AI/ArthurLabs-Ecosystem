@@ -572,6 +572,69 @@ describe('OpenCodeHarnessAdapter', () => {
     );
   });
 
+  it('keeps the tail of a long command output and the source of a written probe', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-digest-'));
+    roots.push(root);
+    const input = await request(root);
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+          if (prompt.includes('STAGE 2')) {
+            const write = {
+              callID: 'digest_write',
+              tool: 'write',
+              input: {
+                filePath: '/ws/probe.mjs',
+                content: 'assert(lease.acquire() && lease.acquire())',
+              },
+              status: 'completed' as const,
+              output: 'Wrote file successfully.',
+            };
+            const longOutput = ['Progress: resolved 1009, downloaded 8']
+              .concat(Array.from({ length: 300 }, (_, i) => 'log line ' + i))
+              .concat(['AssertionError: lease acquired twice'])
+              .join(String.fromCharCode(10));
+            const run = {
+              callID: 'digest_run',
+              tool: 'bash',
+              input: { command: 'node probe.mjs' },
+              status: 'completed' as const,
+              output: longOutput,
+              exitCode: 0,
+            };
+            options.onTool?.(write);
+            options.onTool?.(run);
+            return { ...textTurn('Probed.'), toolCalls: [write, run] };
+          }
+          return textTurn(JSON.stringify(validReportV2()));
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    const messages = events.flatMap((event) =>
+      event.type === 'agent.message' ? [event.message] : [],
+    );
+    const output = messages.find((message) => message.startsWith('observed tool bash output'));
+    expect(output).toContain('AssertionError: lease acquired twice');
+    expect(output).not.toContain('Progress: resolved');
+    expect(output).toMatch(/characters omitted/);
+    expect(
+      messages.some(
+        (message) =>
+          message.startsWith('observed tool write source /ws/probe.mjs') &&
+          message.includes('lease.acquire()'),
+      ),
+    ).toBe(true);
+  });
+
   it('runs all turns in one OpenCode session with composed model id', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-success-'));
     roots.push(root);
