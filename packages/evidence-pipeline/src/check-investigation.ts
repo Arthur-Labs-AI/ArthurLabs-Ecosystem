@@ -349,7 +349,7 @@ export async function* investigateChecks<T extends InvestigationTurn>(
           if (statement.length > 0 && turnProducedProof(before, operations))
             checkConclusions[index] = (
               (checkConclusions[index] ?? '').slice(0, 500) +
-              '\nDEEPENING: ' +
+              '\nDEEPENING (extra angles; the first-pass verdict above stands unless this reproduced a defect): ' +
               statement
             ).slice(-CONCLUSION_CHARS);
         }

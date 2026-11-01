@@ -439,9 +439,11 @@ describe('investigateChecks second pass', () => {
     expect(deepening[0]).toContain('CHECK check_1');
     expect(deepening[0]).toContain('first pass: Check A');
     expect(value.checkConclusions[0]).toContain('first pass: Check A');
-    expect(value.checkConclusions[0]).toContain('DEEPENING: deepened: Check A');
+    expect(value.checkConclusions[0]).toContain('first-pass verdict above stands');
+    expect(value.checkConclusions[0]).toContain('deepened: Check A');
     expect(value.checkConclusions[4]).toBe('first pass: Check E');
-    expect(reportContexts.at(-1)).toContain('DEEPENING: deepened: Check A');
+    expect(reportContexts.at(-1)).toContain('deepened: Check A');
+    expect(deepening[0]).toContain('NOT a result');
   });
 
   it('does not deepen when half of the window is already used or checks are undecided', async () => {

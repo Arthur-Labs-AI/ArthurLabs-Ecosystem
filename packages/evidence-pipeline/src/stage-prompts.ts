@@ -235,7 +235,7 @@ export function buildDeepeningPrompt(
       JSON.stringify(earlierStatement.slice(-800)),
     'Commands that already ran for this check (host ledger): ' +
       JSON.stringify(executedCommands.slice(-8).map((c) => c.slice(0, 160))),
-    'Try to BREAK the property from angles the first pass did not cover: other entry points that reach the same code, boundary and hostile inputs not yet used, concurrency and ordering, failure and cleanup paths, and the exact wording of the documented behaviour. Execute the REAL code path with a small probe (one single non-compound command) for each angle. A reproduced defect is a finding: state the trigger and the operation that showed it. If every angle holds, say which angles you ran. Stop after 2-3 sentences of conclusion and a "Breaks attempted:" line.',
+    'Try to BREAK the property from angles the first pass did not cover: other entry points that reach the same code, boundary and hostile inputs not yet used, concurrency and ordering, failure and cleanup paths, and the exact wording of the documented behaviour. Execute the REAL code path with a small probe (one single non-compound command) for each angle. A reproduced defect is a finding: state the trigger and the operation that showed it. If every angle holds, say which angles you ran. Your first-pass verdict stands unless this pass reproduces a defect, so a probe that crashes through a bug of your own (a ReferenceError, a wrong path, cleanup code that throws) is NOT a result: fix the probe and rerun it until it exits 0 with its full output, or state plainly that the angle stayed undecided. Never leave your last run of an angle failing. Stop after 2-3 sentences of conclusion and a "Breaks attempted:" line.',
   ].join('\n');
 }
 
