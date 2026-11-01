@@ -4,6 +4,7 @@ import {
   NO_PROGRESS_LIMIT,
   failedCommandsSince,
   turnWatchdogStop,
+  turnProducedProof,
   isExecutableProofOperation,
   retryKey,
   turnExecutedReproduction,
@@ -229,17 +230,29 @@ describe('dependency installs never prove a check', () => {
     'cargo fetch',
     'go mod download',
     'corepack enable',
+    // environment prefixes and package builds are setup too (a run counted them as proof)
+    'CI=true pnpm install --frozen-lockfile',
+    'NODE_ENV=test npm ci',
+    'pnpm --filter @qa/run-engine... build',
+    'CI=true pnpm --filter @qa/shared --filter @qa/schemas run build',
+    'pnpm exec turbo run build --filter=@qa/x',
+    'npm run build',
   ])('does not certify %s as executable proof', (command) => {
     expect(isExecutableProofOperation(ran(command))).toBe(false);
     expect(turnExecutedReproduction(new Set(), new Map([['op_1', ran(command)]]))).toBe(false);
   });
 
-  it.each(['pnpm test', 'npm run build', 'node probe.mjs', 'cargo test', 'pytest tests/a.py'])(
-    'still certifies %s',
-    (command) => {
-      expect(isExecutableProofOperation(ran(command))).toBe(true);
-    },
-  );
+  it.each([
+    'pnpm test',
+    'node probe.mjs',
+    'cargo test',
+    'pytest tests/a.py',
+    'CI=true pnpm test',
+    'pnpm --filter @qa/x test',
+    'CI=1 node probe.mjs',
+  ])('still certifies %s', (command) => {
+    expect(isExecutableProofOperation(ran(command))).toBe(true);
+  });
 });
 
 describe('read-only spiral counts every looking tool', () => {
@@ -279,5 +292,35 @@ describe('read-only spiral counts every looking tool', () => {
       command: 'probe-' + i + '.mjs',
     }));
     expect(turnWatchdogStop(new Set(), ledger(work))).toBeUndefined();
+  });
+});
+
+describe('a check that only installed and built has no proof', () => {
+  it('leaves the check unproven so the second pass can take it', () => {
+    const setup = ledger([
+      {
+        tool: 'bash',
+        command: 'pnpm install --frozen-lockfile --ignore-scripts 2>&1 | tail -n 20',
+        exitCode: 0,
+      },
+      {
+        tool: 'bash',
+        command: 'CI=true pnpm install --frozen-lockfile --ignore-scripts',
+        exitCode: 0,
+      },
+      {
+        tool: 'bash',
+        command: 'CI=true pnpm --filter @qa/run-engine... build 2>&1 | tail -n 30',
+        exitCode: 0,
+      },
+    ]);
+    expect(turnProducedProof(new Set(), setup)).toBe(false);
+    setup.set('op_4', {
+      ...(ledger([{ tool: 'bash', command: 'node check-probe.mjs', exitCode: 0 }]).get(
+        'op_1',
+      ) as ObservedOperation),
+      operationKey: 'op_4',
+    });
+    expect(turnProducedProof(new Set(), setup)).toBe(true);
   });
 });

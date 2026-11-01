@@ -84,6 +84,9 @@ describe('ordered compact QA stages', () => {
     expect(text).toContain('cannot certify it');
     // Failing runs are triaged, never edited green.
     expect(text).toContain('A failing run is signal');
+    // Probes live inside the workspace: the write tool and the shell see different /tmp.
+    expect(text).toContain('.qa-tmp/probe.mjs');
+    expect(text).toContain('never `/tmp`');
     expect(text).toContain('PRODUCT defect');
     expect(text).toContain('Never loosen');
     // Missing dependencies are confirmed once, then routed around.

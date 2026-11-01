@@ -107,9 +107,13 @@ export function dependencyCacheEnvironment(workspacePath: string): Record<string
   };
 }
 
-/** Commands that install dependencies. They prepare a check but never prove one. */
+/**
+ * Setup commands: dependency installs and package builds. They prepare a check,
+ * they never prove one. Leading environment assignments (`CI=true pnpm install`)
+ * do not change that.
+ */
 export const DEPENDENCY_INSTALL_COMMAND =
-  /^\s*(?:(?:pnpm|npm|yarn|bun)\s+(?:install|i|ci|add|fetch)\b|corepack\s+(?:enable|prepare)\b|pip3?\s+install\b|python3?\s+-m\s+pip\s+install\b|uv\s+(?:sync|pip\s+install)\b|cargo\s+(?:fetch|vendor)\b|go\s+mod\s+(?:download|tidy|vendor)\b|bundle\s+install\b|composer\s+install\b|dotnet\s+restore\b|mvn\s+dependency:|gradle\s+dependencies\b)/i;
+  /^\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:(?:pnpm|npm|yarn|bun)\s+(?:install|i|ci|add|fetch)\b|(?:pnpm|npm|yarn|bun)\s+(?:(?:--filter|-F)\s+\S+\s+|--workspace-root\s+|-w\s+|--recursive\s+|-r\s+)*(?:run\s+)?build(?::\S+)?\b|(?:pnpm\s+exec\s+|npx\s+)?turbo\s+run\s+build\b|corepack\s+(?:enable|prepare)\b|pip3?\s+install\b|python3?\s+-m\s+pip\s+install\b|uv\s+(?:sync|pip\s+install)\b|cargo\s+(?:fetch|vendor)\b|go\s+mod\s+(?:download|tidy|vendor)\b|bundle\s+install\b|composer\s+install\b|dotnet\s+restore\b|mvn\s+dependency:|gradle\s+dependencies\b)/i;
 
 export interface AgentNetworkPromptOptions {
   readonly webAccess: boolean;
