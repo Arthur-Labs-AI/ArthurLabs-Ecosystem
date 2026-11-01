@@ -14,3 +14,16 @@ export function describeSchemaIssues(cause: unknown, limit = 3): string {
     })
     .join('; ');
 }
+
+/**
+ * Bounded reason a planning attempt was rejected: the rejected fields for a
+ * schema failure, otherwise the (already redacted) failure message, whitespace
+ * collapsed and cut. Returns 'empty response' for a blank answer.
+ */
+export function describePlanRejection(cause: unknown, empty = false): string {
+  if (empty) return 'empty response';
+  const fields = describeSchemaIssues(cause);
+  if (fields.length > 0) return fields;
+  const message = (cause as { message?: unknown } | null | undefined)?.message;
+  return typeof message === 'string' ? message.replace(/\s+/g, ' ').trim().slice(0, 160) : 'unknown';
+}

@@ -12,6 +12,7 @@ import {
   webAccessEnabled,
   type AgentRunId,
   type OperationId,
+  describePlanRejection,
   describeSchemaIssues,
 } from '@qa/shared';
 import {
@@ -1559,6 +1560,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // minted once; resume chain continues into investigation).
       let planResult: ReturnType<typeof SentryInvestigationPlanV1Schema.parse> | undefined;
       let planCorrection: string[] | undefined;
+      let planRejection = '';
       let planningTurns = 0;
       let planningUsage: AgentUsage | undefined;
       for (let attempt = 1; attempt <= MAX_PLANNING_ATTEMPTS; attempt += 1) {
@@ -1593,6 +1595,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         planningUsage = sumUsage(planningUsage, planning.usage ?? {});
         if (planning.text.trim().length === 0) {
           planCorrection = ['Planning turn produced no response.'];
+          planRejection = describePlanRejection(undefined, true);
         } else {
           try {
             planResult = reportableDepthPlan(
@@ -1605,6 +1608,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             break;
           } catch (cause) {
             planCorrection = [boundCorrectionMessage(messageOf(cause))];
+            planRejection = describePlanRejection(cause);
           }
         }
         if (attempt < MAX_PLANNING_ATTEMPTS) {
@@ -1612,7 +1616,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             type: 'warning',
             code: 'GLM_PLANNING_RETRY',
             message:
-              'Claude Code planning attempt ' + attempt + ' rejected; retrying planning only.',
+              'Claude Code planning attempt ' + attempt + ' rejected (' + planRejection + '); retrying planning only.',
           });
         } else {
           throw new ClaudeCodeHarnessError(

@@ -12,6 +12,7 @@ import {
   webAccessEnabled,
   type AgentRunId,
   type OperationId,
+  describePlanRejection,
   describeSchemaIssues,
 } from '@qa/shared';
 import {
@@ -1058,6 +1059,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       // error fed back; planning ops stay valid (ledger not frozen yet).
       let planResult: ReturnType<typeof SentryInvestigationPlanV1Schema.parse> | undefined;
       let planCorrection: string[] | undefined;
+      let planRejection = '';
       let planningUsage: AgentUsage | undefined;
       let planningTurns = 0;
       for (let attempt = 1; attempt <= MAX_PLANNING_ATTEMPTS; attempt += 1) {
@@ -1075,6 +1077,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         planningUsage = sumUsage(planningUsage, planning.usage ?? {});
         if (planning.text.trim().length === 0) {
           planCorrection = ['Planning turn produced no response.'];
+          planRejection = describePlanRejection(undefined, true);
         } else {
           try {
             planResult = reportableDepthPlan(
@@ -1087,13 +1090,14 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
             break;
           } catch (cause) {
             planCorrection = [boundCorrectionMessage(messageOf(cause))];
+            planRejection = describePlanRejection(cause);
           }
         }
         if (attempt < MAX_PLANNING_ATTEMPTS) {
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'DEEPSEEK_PLANNING_RETRY',
-            message: 'DeepSeek planning attempt ' + attempt + ' rejected; retrying planning only.',
+            message: 'DeepSeek planning attempt ' + attempt + ' rejected (' + planRejection + '); retrying planning only.',
           });
         } else {
           throw new DeepSeekHarnessError(
