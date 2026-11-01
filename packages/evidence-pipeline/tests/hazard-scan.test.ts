@@ -29,6 +29,7 @@ describe('hazard scan', () => {
       'node_modules/dep/index.js': 'rmSync(path);',
       'packages/store/src/index.test.ts': 'rmSync(path);',
       'tests/helper.ts': 'rmSync(path);',
+      'scripts/build.mjs': 'rmSync(path); name.replaceAll("\\\\", "/");',
     };
     for (const [name, text] of Object.entries(files)) {
       await mkdir(join(root, name, '..'), { recursive: true });

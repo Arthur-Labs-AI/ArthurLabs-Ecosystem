@@ -255,6 +255,15 @@ describe('independent depth policy', () => {
     expect(status([['op_1', probe], ['op_2', read]])).toBe('passed');
     expect(status([['op_2', read]])).toBe('inconclusive');
     expect(status([['op_1', probe]])).toBe('inconclusive');
+    const why = (ops: Array<[string, typeof probe]>) =>
+      groundCoverage(report, new Map(ops)).checks[0]?.details;
+    expect(why([['op_2', read]])).toContain('not in the host ledger');
+    expect(
+      groundCoverage(
+        { ...report, checks: [{ ...report.checks[0]!, operationKeys: ['op_2'] }] },
+        new Map([['op_2', read]]),
+      ).checks[0]?.details,
+    ).toContain('none of the cited operations is a single successful command');
   });
   it('stops owned validation on its own timeout rather than consuming finalization time', async () => {
     vi.useFakeTimers();

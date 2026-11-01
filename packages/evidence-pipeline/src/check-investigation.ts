@@ -26,7 +26,7 @@ import {
   turnWatchdogStop,
   type TurnStop,
 } from './depth.js';
-import { hazardModuleKey, type HazardFile } from './hazard-scan.js';
+import { deletesData, hazardModuleKey, type HazardFile } from './hazard-scan.js';
 import {
   PhaseDeadlineReached,
   investigationDeadline,
@@ -441,7 +441,12 @@ export async function* investigateChecks<T extends InvestigationTurn>(
         file,
         touches: reached.split(hazardModuleKey(file.file)).length - 1,
       }))
-      .sort((a, b) => a.touches - b.touches || b.file.score - a.file.score)
+      .sort(
+        (a, b) =>
+          Number(deletesData(b.file)) - Number(deletesData(a.file)) ||
+          a.touches - b.touches ||
+          b.file.score - a.file.score,
+      )
       .slice(0, MAX_SWEEP_TURNS);
     if (ranked.length === 0) return;
     // Sweep findings are not tied to one planned check; the last check carries the statement.
@@ -488,7 +493,16 @@ export async function* investigateChecks<T extends InvestigationTurn>(
         usage = sumAgentUsage(usage, outcome.value.usage ?? {});
         steps += outcome.value.steps ?? 1;
         const statement = outcome.value.text.trim();
-        if (statement.length > 0 && turnProducedProof(before, operations)) {
+        const proved = turnProducedProof(before, operations);
+        yield hooks.event({
+          type: 'warning',
+          code: 'QA_HAZARD_SWEEP_TURN',
+          message:
+            file.file +
+            (proved ? ' (probed): ' : ' (no executable proof): ') +
+            statement.replace(/\s+/g, ' ').slice(0, 300),
+        });
+        if (statement.length > 0 && proved) {
           idle = 0;
           checkConclusions[carrier] = (
             (checkConclusions[carrier] ?? '').slice(0, 500) +

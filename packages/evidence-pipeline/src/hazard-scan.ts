@@ -25,7 +25,11 @@ const SKIP_DIRECTORIES = new Set([
   '__tests__',
   '__pycache__',
   'fixtures',
+  // build, release and UI glue: rarely where a product data defect lives
+  'scripts',
+  'renderer',
 ]);
+const DELETES_LABEL = 'deletes files or directories';
 const SOURCE_FILE = /\.(?:[cm]?[jt]sx?|py|go|rs|java|kt|rb|php|cs)$/i;
 const NON_PRODUCT_FILE = /(?:[._-](?:test|spec)\.|\.d\.ts$|\.config\.)/i;
 const MAX_FILE_BYTES = 150_000;
@@ -43,7 +47,7 @@ interface HazardPattern {
 // Language-neutral on purpose: the patterns name operations, not frameworks.
 const HAZARD_PATTERNS: readonly HazardPattern[] = [
   {
-    label: 'deletes files or directories',
+    label: DELETES_LABEL,
     weight: 4,
     pattern:
       /\b(?:rmSync|rmdirSync|unlinkSync|rmdir|unlink|removeSync|rmtree|remove_dir_all|RemoveAll|os\.remove|fs\.rm|fsp\.rm|rm)\s*\(/,
@@ -69,6 +73,11 @@ const HAZARD_PATTERNS: readonly HazardPattern[] = [
     pattern: /\b(?:createHash|hashlib|sha256|sha1|md5)\b/,
   },
 ];
+
+/** Deleting code is where one wrong argument loses data, so it is probed first. */
+export function deletesData(file: HazardFile): boolean {
+  return file.hazards.includes(DELETES_LABEL);
+}
 
 export function scoreHazards(source: string): { hazards: string[]; score: number } {
   const hazards: string[] = [];

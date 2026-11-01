@@ -275,7 +275,7 @@ export const MAX_LEAD_TURNS = 4;
  * executable proof.
  */
 export const SWEEP_MIN_REMAINING_FRACTION = 0.3;
-export const MAX_SWEEP_TURNS = 8;
+export const MAX_SWEEP_TURNS = 12;
 export const SWEEP_IDLE_TURN_LIMIT = 2;
 
 /**
@@ -568,14 +568,25 @@ export function groundCoverage(
       proof.some((op) => op !== undefined && isExecutableProofOperation(op));
     if (check.coverage === 'complete' && executable) return check;
     downgraded = true;
+    // Name the cause so a downgrade can be diagnosed from the report alone.
+    const cause =
+      check.coverage !== 'complete'
+        ? 'the agent marked coverage ' + check.coverage
+        : proof.length === 0
+          ? 'no operation was cited'
+          : proof.some((op) => op === undefined)
+            ? 'a cited operation is not in the host ledger'
+            : 'none of the cited operations is a single successful command';
     return {
       ...check,
       status: 'inconclusive' as const,
       coverage: 'partial' as const,
-      details: ('Complete executable coverage was not established. ' + (check.details ?? '')).slice(
-        0,
-        5000,
-      ),
+      details: (
+        'Complete executable coverage was not established (' +
+        cause +
+        '). ' +
+        (check.details ?? '')
+      ).slice(0, 5000),
     };
   });
   return {

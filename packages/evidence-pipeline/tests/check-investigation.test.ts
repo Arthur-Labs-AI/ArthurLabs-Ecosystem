@@ -489,8 +489,9 @@ describe('investigateChecks second pass', () => {
       undecided: [],
       clockPerTurnMin: 2,
       hazards: [
-        { file: 'packages/probed/src/index.ts', hazards: ['deletes files or directories'], score: 8 },
+        { file: 'packages/probed/src/index.ts', hazards: ['parses or deserializes text'], score: 8 },
         { file: 'packages/fresh/src/index.ts', hazards: ['hashes or fingerprints content'], score: 4 },
+        { file: 'packages/wipe/src/index.ts', hazards: ['deletes files or directories'], score: 4 },
       ],
     });
     (hooks.operations as Ops).set('op_0', {
@@ -504,10 +505,12 @@ describe('investigateChecks second pass', () => {
     const { events, value } = await drain(investigateChecks(hooks));
     expect(codes(events)).toContain('QA_HAZARD_SWEEP');
     const sweep = prompts.filter((p) => p.includes('HAZARD SWEEP'));
-    expect(sweep).toHaveLength(2);
-    // the file no probe has reached goes first
-    expect(sweep[0]).toContain('packages/fresh/src/index.ts');
-    expect(sweep[1]).toContain('packages/probed/src/index.ts');
+    expect(sweep).toHaveLength(3);
+    // code that deletes goes first, then files no probe has reached, then the rest
+    expect(sweep[0]).toContain('packages/wipe/src/index.ts');
+    expect(sweep[1]).toContain('packages/fresh/src/index.ts');
+    expect(sweep[2]).toContain('packages/probed/src/index.ts');
+    expect(codes(events).filter((c) => c === 'QA_HAZARD_SWEEP_TURN')).toHaveLength(3);
     expect(value.checkConclusions[1]).toContain('HAZARD SWEEP (packages/fresh/src/index.ts');
     expect(reportContexts.at(-1)).toContain('HAZARD SWEEP');
   });
